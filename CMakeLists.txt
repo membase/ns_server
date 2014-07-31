@@ -172,7 +172,6 @@ CONFIGURE_FILE (etc/static_config.in "${_etcdir}/couchbase/static_config" @ONLY)
 FILE (WRITE "${_etcdir}/couchbase/config" "")    # create empty file
 SET (_cdbetcdir "${_etcdir}/couchdb/default.d")
 FILE (MAKE_DIRECTORY "${_cdbetcdir}")
-CONFIGURE_FILE (etc/geocouch.ini.in "${_cdbetcdir}/geocouch.ini" COPY_ONLY)
 SET (COUCHBASE_DB_DIR "${CMAKE_INSTALL_PREFIX}/var/lib/couchbase/data")
 CONFIGURE_FILE (etc/capi.ini.in "${_cdbetcdir}/capi.ini" @ONLY)
 INSTALL (DIRECTORY "${_etcdir}/" DESTINATION etc)

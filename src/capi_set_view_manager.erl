@@ -53,6 +53,10 @@ initiate_indexing(Bucket) ->
 reset_master_vbucket(Bucket) ->
     gen_server:call(server(Bucket), reset_master_vbucket, infinity).
 
+-define(csv_call_all(Call, Bucket, DDocId, RestArgs),
+        ok = ?csv_call(Call, mapreduce_view, Bucket, DDocId, RestArgs),
+        ok = ?csv_call(Call, spatial_view, Bucket, DDocId, RestArgs)).
+
 -define(csv_call(Call, Kind, Bucket, DDocId, RestArgs),
         %% hack to not introduce any variables in the caller environment
         ((fun () ->
@@ -223,7 +227,8 @@ handle_call(initiate_indexing, _From, State) ->
     [case DDocId of
          <<"_design/dev_", _/binary>> -> ok;
          _ ->
-             couch_set_view:trigger_update(mapreduce_view, BinBucket, DDocId, 0)
+             couch_set_view:trigger_update(mapreduce_view, BinBucket, DDocId, 0),
+             couch_set_view:trigger_update(spatial_view, BinBucket, DDocId, 0)
      end || DDocId <- DDocIds],
     {reply, ok, State};
 handle_call({interactive_update, #doc{id=Id}=Doc}, _From,
@@ -382,6 +387,17 @@ maybe_define_group(DDocId,
             ok;
         throw:view_already_defined ->
             already_defined
+    end,
+    try
+        ok = ?csv_call(define_group, spatial_view, SetName, DDocId, [Params])
+    catch
+        throw:{not_found, deleted} ->
+            %% The document has been deleted but we still think it's
+            %% alive. Eventually we will get a notification from master db
+            %% watcher and delete it from a list of design documents.
+            ok;
+        throw:view_already_defined ->
+            already_defined
     end.
 
 define_and_reapply_index_states(SetName, DDocId, Active, Passive, Cleanup,
@@ -419,25 +435,21 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
             false ->
                 ok;
             true ->
-                ok = ?csv_call(mark_partitions_indexable,
-                               mapreduce_view, SetName, DDocId,
-                                [UnpauseVBuckets])
+                ?csv_call_all(mark_partitions_indexable,
+                              SetName, DDocId, [UnpauseVBuckets])
         end,
 
         %% this should go first because some of the replica vbuckets might
         %% need to be cleaned up from main index
-        ok = ?csv_call(set_partition_states,
-                       mapreduce_view, SetName, DDocId,
-                       [Active, Passive, Cleanup]),
+        ?csv_call_all(set_partition_states,
+                      SetName, DDocId, [Active, Passive, Cleanup]),
 
         case UseReplicaIndex of
             true ->
-                ok = ?csv_call(add_replica_partitions,
-                               mapreduce_view, SetName, DDocId,
-                               [Replica]),
-                ok = ?csv_call(remove_replica_partitions,
-                               mapreduce_view, SetName, DDocId,
-                               [ReplicaCleanup]);
+                ?csv_call_all(add_replica_partitions,
+                              SetName, DDocId, [Replica]),
+                ?csv_call_all(remove_replica_partitions,
+                              SetName, DDocId, [ReplicaCleanup]);
             false ->
                 ok
         end,
@@ -446,9 +458,8 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
             false ->
                 ok;
             true ->
-                ok = ?csv_call(mark_partitions_unindexable,
-                               mapreduce_view, SetName, DDocId,
-                               [PauseVBuckets])
+                ?csv_call_all(mark_partitions_unindexable,
+                              SetName, DDocId, [PauseVBuckets])
         end
 
     catch
@@ -508,12 +519,19 @@ do_wait_index_updated({Pid, _} = From, VBucket,
                      case DDocId of
                          <<"_design/dev_", _/binary>> -> Acc;
                          _ ->
-                             Ref = couch_set_view:monitor_partition_update(
-                                     mapreduce_view, BinBucket, DDocId,
-                                     VBucket),
+                             RefMapReduce =
+                                 couch_set_view:monitor_partition_update(
+                                   mapreduce_view, BinBucket, DDocId,
+                                   VBucket),
                              couch_set_view:trigger_update(
                                mapreduce_view, BinBucket, DDocId, 0),
-                             [Ref | Acc]
+                             RefSpatial =
+                                 couch_set_view:monitor_partition_update(
+                                   spatial_view, BinBucket, DDocId,
+                                   VBucket),
+                             couch_set_view:trigger_update(
+                               spatial_view, BinBucket, DDocId, 0),
+                             [RefMapReduce, RefSpatial | Acc]
                      end
              end, [], DDocIds),
     ?log_debug("References to wait: ~p (~p, ~p)", [Refs, Bucket, VBucket]),

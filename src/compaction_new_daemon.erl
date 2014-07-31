@@ -572,31 +572,11 @@ try_to_cleanup_indexes(BucketName) ->
     end,
 
     try
-        capi_spatial:cleanup_spatial_index_files(BucketName)
+        couch_set_view:cleanup_index_files(spatial_view, BucketName)
     catch SpatialT:SpatialE ->
             ?log_error("Error while doing cleanup of old "
                        "spatial index files for bucket `~s`: ~p~n~p",
                        [BucketName, {SpatialT, SpatialE}, erlang:get_stacktrace()])
-    end,
-
-    %% we still use ordinary views for development subset
-    MasterDbName = db_name(BucketName, <<"master">>),
-    case couch_db:open_int(MasterDbName, []) of
-        {ok, Db} ->
-            try
-                couch_view:cleanup_index_files(Db)
-            catch
-                ViewE:ViewT ->
-                    ?log_error(
-                       "Error while doing cleanup of old "
-                       "index files for database `~s`: ~p~n~p",
-                       [MasterDbName, {ViewT, ViewE}, erlang:get_stacktrace()])
-            after
-                couch_db:close(Db)
-            end;
-        Error ->
-            ?log_error("Failed to open database `~s`: ~p",
-                       [MasterDbName, Error])
     end.
 
 chain_compactors(Compactors) ->

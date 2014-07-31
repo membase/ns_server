@@ -16,6 +16,7 @@ _all_docs = {capi_view, all_docs_db_req}
 
 [httpd_design_handlers]
 _view = {capi_view, handle_view_req}
+_spatial = {capi_spatial, handle_view_req}
 
 [database_compaction]
 doc_buffer_size = 2097152

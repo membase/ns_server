@@ -23,9 +23,6 @@
 -export([do_handle_view_req/5, finalize_view_merge_params/2,
          vbucket_db_name/2]).
 
-%% For capi_spatial
--export([run_on_subset/2, when_has_active_vbuckets/3]).
-
 -import(couch_util, [
                      get_value/2,
                      get_value/3
@@ -114,14 +111,6 @@ do_handle_view_req(Mod, Req, DbName, DDocName, ViewName) ->
                     subset_design_doc_view(Mod, Req, DbName, DDocName,
                                            ViewName, [VBucket])
             end
-    end.
-
-when_has_active_vbuckets(Req, Bucket, Fn) ->
-    case capi_frontend:has_active_vbuckets(Bucket) of
-        true ->
-            Fn();
-        false ->
-            capi_frontend:send_no_active_vbuckets(Req, Bucket)
     end.
 
 
@@ -222,4 +211,6 @@ set_active_partition(Mod, DDocId, BucketName, VBucket) ->
 -spec query_index(mapreduce_view | spatial_view, #index_merge{}, #httpd{}) ->
                          ok.
 query_index(mapreduce_view, MergeParams, Req) ->
-        couch_index_merger:query_index(couch_view_merger, MergeParams, Req).
+    couch_index_merger:query_index(couch_view_merger, MergeParams, Req);
+query_index(spatial_view, MergeParams, Req) ->
+    couch_index_merger:query_index(spatial_merger, MergeParams, Req).
