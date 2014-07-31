@@ -1387,7 +1387,19 @@ membase_stats_description(BucketId) ->
                          {desc,<<"Number of bytes per second being sent for views DCP connections for this bucket (measured from ep_dcp_views_total_bytes)">>}]},
                 {struct,[{title,<<"drain rate bytes/sec">>},
                          {name,<<"ep_dcp_other_total_bytes">>},
-                         {desc,<<"Number of bytes per second being sent for other DCP connections for this bucket (measured from ep_dcp_other_total_bytes)">>}]}
+                         {desc,<<"Number of bytes per second being sent for other DCP connections for this bucket (measured from ep_dcp_other_total_bytes)">>}]},
+                {struct, [{title, <<"backoffs/sec">>},
+                          {name, <<"ep_dcp_replica_backoff">>},
+                          {desc,<<"Number of backoffs for replication DCP connections">>}]},
+                {struct, [{title, <<"backoffs/sec">>},
+                          {name, <<"ep_dcp_xdcr_backoff">>},
+                          {desc,<<"Number of backoffs for xdcr DCP connections">>}]},
+                {struct, [{title, <<"backoffs/sec">>},
+                          {name, <<"ep_dcp_views_backoff">>},
+                          {desc,<<"Number of backoffs for views DCP connections">>}]},
+                {struct, [{title, <<"backoffs/sec">>},
+                          {name, <<"ep_dcp_other_backoff">>},
+                          {desc,<<"Number of backoffs for other DCP connections">>}]}
                ]}]}]
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_replication_stats_descriptions(BucketId)

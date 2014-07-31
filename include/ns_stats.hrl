@@ -243,7 +243,8 @@
                            items_sent = 0,
                            producer_count = 0,
                            total_backlog_size = 0,
-                           total_bytes = 0}).
+                           total_bytes = 0,
+                           backoff = 0}).
 
 -define(TAP_STAT_GAUGES,
         ep_tap_rebalance_count, ep_tap_rebalance_qlen, ep_tap_rebalance_queue_backfillremaining, ep_tap_rebalance_queue_itemondisk, ep_tap_rebalance_total_backlog_size,
@@ -261,21 +262,25 @@
         ep_dcp_replica_items_remaining,
         ep_dcp_replica_producer_count,
         ep_dcp_replica_total_backlog_size,
+        ep_dcp_replica_backoff,
 
         ep_dcp_xdcr_count,
         ep_dcp_xdcr_items_remaining,
         ep_dcp_xdcr_producer_count,
         ep_dcp_xdcr_total_backlog_size,
+        ep_dcp_xdcr_backoff,
 
         ep_dcp_views_count,
         ep_dcp_views_items_remaining,
         ep_dcp_views_producer_count,
         ep_dcp_views_total_backlog_size,
+        ep_dcp_views_backoff,
 
         ep_dcp_other_count,
         ep_dcp_other_items_remaining,
         ep_dcp_other_producer_count,
-        ep_dcp_other_total_backlog_size).
+        ep_dcp_other_total_backlog_size,
+        ep_dcp_other_backoff).
 
 -define(DCP_STAT_COUNTERS,
         ep_dcp_replica_items_sent,
@@ -349,6 +354,7 @@ sub_tap_stream_stats(A, B) ->
 ?DEFINE_EXTRACT(producer_count);
 ?DEFINE_EXTRACT(total_backlog_size);
 ?DEFINE_EXTRACT(total_bytes);
+?DEFINE_EXTRACT(backoff);
 extract_agg_dcp_stat(_K, _V, Acc) -> Acc.
 -undef(DEFINE_EXTRACT).
 
@@ -359,7 +365,8 @@ dcp_stream_stats_to_kvlist(Prefix, Record) ->
      ?DEFINE_TO_KVLIST(items_sent),
      ?DEFINE_TO_KVLIST(producer_count),
      ?DEFINE_TO_KVLIST(total_backlog_size),
-     ?DEFINE_TO_KVLIST(total_bytes)].
+     ?DEFINE_TO_KVLIST(total_bytes),
+     ?DEFINE_TO_KVLIST(backoff)].
 -undef(DEFINE_TO_KVLIST).
 
 -define(DEFINE_FORMULA(N), N = D#dcp_stream_stats.N - (A#dcp_stream_stats.N + B#dcp_stream_stats.N + C#dcp_stream_stats.N)).
@@ -369,7 +376,8 @@ calc_dcp_other_stats(A, B, C, D) ->
                       ?DEFINE_FORMULA(items_sent),
                       ?DEFINE_FORMULA(producer_count),
                       ?DEFINE_FORMULA(total_backlog_size),
-                      ?DEFINE_FORMULA(total_bytes)}.
+                      ?DEFINE_FORMULA(total_bytes),
+                      ?DEFINE_FORMULA(backoff)}.
 -undef(DEFINE_FORMULA).
 
 -endif. % NEED_TAP_STREAM_STATS_CODE
