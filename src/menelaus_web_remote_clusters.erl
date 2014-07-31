@@ -333,6 +333,7 @@ check_remote_cluster_already_exists(RemoteUUID, Clusters) ->
 %% actually go to remote cluster to verify it; returns updated cluster
 %% proplist with uuid being added;
 validate_remote_cluster(Cluster, OtherClusters) ->
+    ?log_debug("Going to fetch remote cluster info with params:~n~p", [Cluster]),
     case remote_clusters_info:fetch_remote_cluster(Cluster) of
         {ok, #remote_cluster{uuid=RemoteUUID}} ->
             case check_remote_cluster_already_exists(RemoteUUID, OtherClusters) of
