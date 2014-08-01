@@ -147,7 +147,7 @@ var LogsSection = {
 
     var allActiveNodeBoxes;
     var allNodeBoxes;
-    var overlay;
+    var overlayCollectInfoStartNewView;
     var self = this;
 
     collectResultSectionSpinner.show();
@@ -208,16 +208,18 @@ var LogsSection = {
     collectForm.submit(function (e) {
       e.preventDefault();
 
+      hideErrors();
+
       var formValues = getCollectFormValues();
 
       if (formValues["upload"]) {
-        var nonEmptyUpload = _.detect(("uploadHost customer ticket").split(" "), function (k) {
-          return formValues[k] !== undefined;
-        });
-        if (!nonEmptyUpload) {
-          var resp = JSON.stringify({"uploadHost": "upload host must be given if upload is selected",
-                                     "customer": "customer must be given if upload is selected"});
-          onError({responseText: resp});
+        if (!formValues["customer"]) {
+          showCollectInfoErrors("customer field must be given if upload is selected", "customer");
+        }
+        if (!formValues["uploadHost"]) {
+          showCollectInfoErrors("upload host field must be given if upload is selected", "uploadHost");
+        }
+        if (!formValues["uploadHost"] || !formValues["customer"]) {
           return;
         }
       }
@@ -228,46 +230,20 @@ var LogsSection = {
 
       var overlayCollectForm = overlayWithSpinner(collectForm);
 
-      $.ajax({
-        type: 'POST',
-        url: '/controller/startLogsCollection',
-        data: formValues,
-        success: onSuccess,
-        error: onError,
-        complete: function () {
-          overlayCollectForm.remove();
-          saveButton.attr('disabled', false);
+      jsonPostWithErrors('/controller/startLogsCollection', $.param(formValues), function (commonError, status, perFieldErrors) {
+        overlayCollectForm.remove();
+        saveButton.attr('disabled', false);
+        if (status === 'success') {
+          overlayCollectInfoStartNewView = overlayWithSpinner(collectInfoStartNewView);
+          showResultViewBtn.hide();
+          self.tasksCollectionInfoCell.changedSlot.subscribeOnce(function () {
+            collectInfoViewNameCell.setValue("result");
+          });
+          recalculateTasksUri();
+        } else {
+          handleCollectInfoServersError(commonError, perFieldErrors);
         }
       });
-
-      function onSuccess() {
-        overlay = overlayWithSpinner(collectInfoStartNewView);
-        showResultViewBtn.hide();
-        self.tasksCollectionInfoCell.changedSlot.subscribeOnce(function () {
-          collectInfoViewNameCell.setValue("result");
-        });
-        recalculateTasksUri();
-        hideErrors();
-      }
-
-      function onError(resp) {
-        hideErrors();
-        var errors = {};
-        try {
-          errors = JSON.parse(resp.responseText);
-        } catch (e) {
-          // nothing
-          console.log("failed to parse json errors: ", e);
-        }
-        console.log("Got errors: ", errors);
-        _.each(errors, function (value, key) {
-          if (key != '_') {
-            showErrors(key, value);
-          } else {
-            showErrors('generalCollectInfo', value);
-          }
-        });
-      }
     });
     uploadToCouchbase.change(function (e) {
       $('input[type="text"]', uploadToForm).attr('disabled', !$(this).attr('checked'));
@@ -317,7 +293,11 @@ var LogsSection = {
       return params;
     }
 
-    function showErrors(key, value) {
+    function handleCollectInfoServersError(commonError, perFieldErrors) {
+      _.each((!!commonError.length ? commonError : perFieldErrors), showCollectInfoErrors);
+    }
+    function showCollectInfoErrors(value, key) {
+      key = key || 'generalCollectInfo';
       $("#js_" + key + "_error").text(value).show();
       $("#js_" + key + "_input").addClass("dynamic_input_error");
     }
@@ -412,8 +392,8 @@ var LogsSection = {
       switchCollectionInfoView(isResultView, isCurrentlyRunning, isRunBefore);
       collectResultSectionSpinner.hide();
 
-      if (overlay) {
-        overlay.remove();
+      if (overlayCollectInfoStartNewView) {
+        overlayCollectInfoStartNewView.remove();
       }
       if (isResultView) {
         renderResultView(collectionInfo);
