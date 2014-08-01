@@ -129,15 +129,6 @@ _start() {
     # note: we depend on pwd being $datadir from _prepare_datadir
     _drop_old_crashdumps
 
-    # Set an ENV variable to force C++ STL and string classes to not use its
-    # default memory pooling allocator.
-    # For GCC 3.2.2 and later
-    GLIBCPP_FORCE_NEW=1
-    export GLIBCPP_FORCE_NEW
-    # For GCC 3.4 and later
-    GLIBCXX_FORCE_NEW=1
-    export GLIBCXX_FORCE_NEW
-
     umask 007
 
     exec erl \
