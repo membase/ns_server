@@ -494,7 +494,7 @@ var SampleBucketSection = {
           } else {
             tmp = '<li><input type="checkbox" value="' + htmlName + '" id="sample-' +
               htmlName + '" data-quotaNeeded="'+ bucket.quotaNeeded +
-              '" />&nbsp; <label for="sample-' + htmlName + '">' + htmlName +
+              '" /> <label for="sample-' + htmlName + '">' + htmlName +
               '</label></li>';
             available.push(tmp);
           }

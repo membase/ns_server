@@ -990,33 +990,40 @@
               <div class="panes clearfix">
                 <div id="js_cluster_settings_container" class="cluster_settings_container">
                   <form id="js_cluster_public_settings_form" class="cluster_settings_form">
-                    <h3 style="display: inline-block; margin-right: 0;">
+                    <h2>
+                      Configure Cluster
+                    </h2>
+                    <div class="sub_section">
                       <label>Cluster Name:</label>
                       <input type="text" name="tabName" maxlength="256">
-                    </h3>
-                    <span>(0 — 256 chars)</span>
+                      <span>(0 — 256 chars)</span>
+                    </div>
                     <div class="certificate_section">
                       <h3>Certificate:</h3>
-                      <p>
-                        Self-signed SSL certificate is deployed across the cluster on each nodes.
-                      </p>
-                      <p>
-                        <a id="js_show_hide_cert_area">Show</a> certificate.
-                      </p>
-                      <div class="about-cert-area_wrapper" id="js_about-cert-area_wrapper">
-                        <textarea id="js-about-cert-area" readonly="readonly"></textarea>
-                        <div></div>
-                        <div onclick="regenerateCertificate();" class="edit_btn when-roadmin-avoid-me">Regenerate</div>
-                        <span style="color:red;display:inline;margin-left:5px;">* Clicking 'Regenerate' will immediately generate new certificate for the cluster</span>
+                      <div class="sub_section">
+                        <p>
+                          Self-signed SSL certificate is deployed across the cluster on each nodes.
+                        </p>
+                        <p>
+                          <a id="js_show_hide_cert_area">Show</a> certificate.
+                        </p>
+                        <div class="about-cert-area_wrapper" id="js_about-cert-area_wrapper">
+                          <textarea id="js-about-cert-area" readonly="readonly"></textarea>
+                          <div></div>
+                          <div onclick="regenerateCertificate();" class="edit_btn when-roadmin-avoid-me">Regenerate</div>
+                          <span style="color:red;display:inline;margin-left:5px;font-size:11px;">* Clicking 'Regenerate' will immediately generate new certificate for the cluster</span>
+                        </div>
                       </div>
                     </div>
                     <h3>Cluster RAM Quota:</h3>
-                    <div class="row">
-                      <label>RAM Available:</label><span style="vertical-align:middle;"><span id="js_cluster_settings_total_ram"></span> MB</span>
-                    </div>
-                    <div class="row">
-                      <label for="cluster_settings_ram_quota">Per Server RAM Quota:</label><input type="text" class="focusme" id="cluster_settings_ram_quota" name="memoryQuota" style="width:58px;"><span style="vertical-align:middle;"> MB (256 MB — <span id="js_ram-max-size"></span> MB)</span>
-                      <div class="error-container err-memoryQuota"></div>
+                    <div class="sub_section">
+                      <div class="row">
+                        <label>RAM Available:</label><span style="vertical-align:middle;"><span id="js_cluster_settings_total_ram"></span> MB</span>
+                      </div>
+                      <div class="row">
+                        <label for="cluster_settings_ram_quota">Per Server RAM Quota:</label><input type="text" class="focusme" id="cluster_settings_ram_quota" name="memoryQuota" style="width:58px;"><span style="vertical-align:middle;"> MB (256 MB — <span id="js_ram-max-size"></span> MB)</span>
+                        <div class="error-container err-memoryQuota"></div>
+                      </div>
                     </div>
                     <div class="save_cancel when-roadmin-hide-me">
                       <button class="save_button float_right" type="submit">
@@ -1029,97 +1036,83 @@
                 <div id="auto_failover_container" class="auto_failover"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
                 <div id="email_alerts_container" class="email_alerts"><div class='spinner' style="height:350px;line-height:350px;width:100%"><span>Loading...</span></div></div>
                 <div id="compaction_container"><form>
-                  <fieldset class="auto_compaction persistent-only">
-                    <p>Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes when the following conditions are met.</p>
-                    <ul>
-                      <li><h4>Database Fragmentation</h4></li>
-                      <li>Set the database fragmentation level to determine the point when compaction is triggered.</li>
-                      <li class="database">
-                        <span>
-                          <input type="checkbox"
-                                 id="48099acb-df16-4e1e-9949-2aaccfeb9e41"
-                                 class="check-for-databaseFragmentationThresholdPercentage" />
-                        </span>
-                        <span class="input_wrapper">
-                          <input type="number"
-                                 id="decaebe7-bb14-4c1f-9bb1-70ceb7fb2e43"
-                                 name="databaseFragmentationThreshold[percentage]" />%
-                        </span>
-                        <div class="error-container err-databaseFragmentationThreshold-percentage-"></div>
-                     </li>
-                      <li class="database">
-                        <input type="checkbox"
-                               class="check-for-databaseFragmentationThresholdSize" />
-                        <span class="input_wrapper">
-                          <input type="number" id="settings-db-compaction-size"
-                                 name="databaseFragmentationThreshold[size]"
-                                 class="size" />MB
-                        </span>
-                        <div class="error-container err-databaseFragmentationThreshold-size-"></div>
-                      </li>
-
-                      <li><h4>View Fragmentation</h4></li>
-                      <li>Set the view fragmentation level to determine the point when compaction is triggered.</li>
-                      <li class="view">
-
+                  <div class="auto_compaction persistent-only">
+                    <h2>Auto-Compaction</h2>
+                    <div class="sub_section">
+                      <p>Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes when the following conditions are met.</p>
+                    </div>
+                    <h3>Database Fragmentation</h3>
+                    <div class="sub_section">
+                      <p>Set the database fragmentation level to determine the point when compaction is triggered.</p>
+                      <p class="row">
+                        <input type="checkbox" id="48099acb-df16-4e1e-9949-2aaccfeb9e41" class="check-for-databaseFragmentationThresholdPercentage">
+                        <input type="number" id="decaebe7-bb14-4c1f-9bb1-70ceb7fb2e43" name="databaseFragmentationThreshold[percentage]"> %
+                        <span class="error-container err-databaseFragmentationThreshold-percentage-"></span>
+                      </p>
+                      <p class="row">
+                        <input type="checkbox" class="check-for-databaseFragmentationThresholdSize">
+                        <input type="number" id="settings-db-compaction-size" name="databaseFragmentationThreshold[size]" class="size"> MB
+                        <span class="error-container err-databaseFragmentationThreshold-size-"></span>
+                      </p>
+                    </div>
+                    <h3>View Fragmentation</h3>
+                    <div class="sub_section">
+                      <p>Set the view fragmentation level to determine the point when compaction is triggered.</p>
+                      <p class="row">
                         <input type="checkbox" id="0a2cb7a3-84b7-4822-bf32-87d3e192926a" class="check-for-viewFragmentationThresholdPercentage" />
-                        <span class="input_wrapper">
-                          <input id="8e49a092-3108-46ed-b5c3-9b95c4ceda6f" name="viewFragmentationThreshold[percentage]" type="number" />%
-                        </span>
-                        <div class="error-container err-viewFragmentationThreshold-percentage-"></div>
-                      </li>
-                      <li class="view">
-                        <input type="checkbox" class="check-for-viewFragmentationThresholdSize" />
-                        <span class="input_wrapper">
-                          <input type="number" id="settings-view-compaction-size"
-                                 name="viewFragmentationThreshold[size]"
-                                 class="size" />MB
-                        </span>
-                        <div class="error-container err-viewFragmentationThreshold-size-"></div>
-
-                      </li>
-                      <li><h4>Time Interval</h4></li>
-                      <li class="period">
-                        <span class="toggle">
-                          <input type="checkbox" id="f5962927-16af-4eb6-802c-86fe6c3a238d" class="check-for-allowedTimePeriod"/> <label for="f5962927-16af-4eb6-802c-86fe6c3a238d">Set the time interval for when compaction is allowed to run</label>
-                        </span><br>
-                        <span class="input_wrapper">
-                          Start Time:
-                          <input id="8a786bbb-e9df-46d4-8733-2993ae0c2b95" name="allowedTimePeriod[fromHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[fromMinute]" type="number" min="0" max="59" placeholder="MM" />
-                          End Time: <input name="allowedTimePeriod[toHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[toMinute]" type="number" min="0" max="59" placeholder="MM" />
-                        </span>
+                        <input id="8e49a092-3108-46ed-b5c3-9b95c4ceda6f" name="viewFragmentationThreshold[percentage]" type="number"> %
+                        <span class="error-container err-viewFragmentationThreshold-percentage-"></span>
+                      </p>
+                      <p class="row">
+                        <input type="checkbox" class="check-for-viewFragmentationThresholdSize">
+                        <input type="number" id="settings-view-compaction-size" name="viewFragmentationThreshold[size]" class="size"> MB
+                        <span class="error-container err-viewFragmentationThreshold-size-"></span>
+                      </p>
+                    </div>
+                    <h3>Time Interval</h3>
+                    <div class="sub_section">
+                      <div class="row">
+                        <input type="checkbox" id="f5962927-16af-4eb6-802c-86fe6c3a238d" class="check-for-allowedTimePeriod"/>
+                        <label for="f5962927-16af-4eb6-802c-86fe6c3a238d">Set the time interval for when compaction is allowed to run</label>
+                      </div>
+                      <div class="row">
+                        Start Time:
+                        <input id="8a786bbb-e9df-46d4-8733-2993ae0c2b95" name="allowedTimePeriod[fromHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[fromMinute]" type="number" min="0" max="59" placeholder="MM" />
+                        End Time: <input name="allowedTimePeriod[toHour]" type="number" min="0" max="23" placeholder="HH" />:<input name="allowedTimePeriod[toMinute]" type="number" min="0" max="59" placeholder="MM" />
                         <div class="error-container err-allowedTimePeriod"></div>
                         <div class="error-container err-allowedTimePeriod-fromHour-"></div>
                         <div class="error-container err-allowedTimePeriod-fromMinute-"></div>
                         <div class="error-container err-allowedTimePeriod-toHour-"></div>
                         <div class="error-container err-allowedTimePeriod-toMinute-"></div>
-                        <div>
-                          <input type="hidden" name="allowedTimePeriod[abortOutside]" value="false" />
-                          <input id="302bc9f8-0a98-4963-85a4-5670ab8f1c25" type="checkbox" name="allowedTimePeriod[abortOutside]" value="true" />
-                          <label for="302bc9f8-0a98-4963-85a4-5670ab8f1c25">Abort compaction if run time exceeds the set time interval</label>
-                          <div class="error-container err-allowedTimePeriod-abortOutside-"></div>
-                        </div>
-                      </li>
-                      <li>
+                      </div>
+                      <div class="row">
+                        <input type="hidden" name="allowedTimePeriod[abortOutside]" value="false" />
+                        <input id="302bc9f8-0a98-4963-85a4-5670ab8f1c25" type="checkbox" name="allowedTimePeriod[abortOutside]" value="true" />
+                        <label for="302bc9f8-0a98-4963-85a4-5670ab8f1c25">Abort compaction if run time exceeds the set time interval</label>
+                        <div class="error-container err-allowedTimePeriod-abortOutside-"></div>
+                      </div>
+                      <div class="row">
                         <input type="hidden" name="parallelDBAndViewCompaction" value="false" />
                         <input id="f6fb6488-c05a-4baa-88f7-27032da6600b" type="checkbox" name="parallelDBAndViewCompaction" value="true" />
                         <label for="f6fb6488-c05a-4baa-88f7-27032da6600b">Compact Database and View in parallel</label>
                         <div class="error-container err-parallelDBAndViewCompaction"></div>
-                      </li>
-                      <li><h4>Metadata Purge Interval</h4></li>
-                      <li class="view">
+                      </div>
+                    </div>
+                    <h3>Metadata Purge Interval</h3>
+                    <div class="sub_section">
+                      <div class="row">
                         <label for="fc68aaf1-9519-4eeb-ba28-3daa042aae22">Set the frequency of metadata purge interval:</label>
                         <input id="fc68aaf1-9519-4eeb-ba28-3daa042aae22" name="purgeInterval" style="width: 2.5em;">
                         <span>Range 0.04 (1 H) - 60days</span>
-                        <div class="error-container err-purgeInterval" style="display: inline; padding-left: 0;"></div>
                         <a class="text_11 tooltip"><span>What's this?</span>
                           <span class="tooltip_msg"><span>
                               Metadata Purge Interval. Allowed range is 0.04 - 60 where 0.04 = 1h, 0.5 = 12h. Set how frequently a node will purge metadata on deleted items. If set too high, may significantly delay the node from reclaiming disk space. If set too low, may cause data inconsistencies in XDCR or Views.
                           </span></span>
                         </a>
-                      </li>
-                    </ul>
-                  </fieldset> <!-- .auto_compaction -->
+                        <div class="error-container err-purgeInterval" style="display: inline; padding-left: 0;"></div>
+                      </div>
+                    </div>
+                  </div> <!-- .auto_compaction -->
                   <div class="save_cancel when-roadmin-hide-me">
                     <button class="save_button float_right" type="submit">
                       Save
@@ -1127,41 +1120,50 @@
                   </div>
                 </form></div>
                 <div id="sample_buckets_container"><form id="sample_buckets_form">
-                  <p id="sample_buckets_quota_warning" class="warning_message">
-                    Your cluster does not have enough RAM quota available to create
-                    the selected sample data buckets. Please free at least
-                    <span id="sampleQuotaRequired"></span>MB of RAM Quota per node.
-                  </p>
-                  <p id="sample_buckets_rebalance_warning" class="warning_message">
-                    Can not load samples during rebalance.
-                  </p>
-                  <p id="sample_buckets_maximum_warning" class="warning_message">
-                    Maximum number of buckets has been reached. For optimal performance,
-                    no more than
-                    <span id="maxBucketCount"></span> buckets are allowed.
-                  </p>
-                  <p>Sample buckets are available to demonstrate the power of
-                    Couchbase Server. These samples contain data and sample MapReduce
-                    queries.</p>
+                  <h2>Sample Buckets</h2>
+                  <div class="sub_section">
+                    <p id="sample_buckets_quota_warning" class="warning_message">
+                      Your cluster does not have enough RAM quota available to create
+                      the selected sample data buckets. Please free at least
+                      <span id="sampleQuotaRequired"></span>MB of RAM Quota per node.
+                    </p>
+                    <p id="sample_buckets_rebalance_warning" class="warning_message">
+                      Can not load samples during rebalance.
+                    </p>
+                    <p id="sample_buckets_maximum_warning" class="warning_message">
+                      Maximum number of buckets has been reached. For optimal performance,
+                      no more than
+                      <span id="maxBucketCount"></span> buckets are allowed.
+                    </p>
+                    <p>Sample buckets are available to demonstrate the power of
+                      Couchbase Server. These samples contain data and sample MapReduce
+                      queries.</p>
+                  </div>
                   <h3>Installed Samples</h3>
-                  <ul id="installed_samples"></ul>
+                  <div class="sub_section">
+                    <ul id="installed_samples"></ul>
+                  </div>
                   <h3>Available Samples</h3>
-                  <ul id="available_samples" class="casper_settings_sample_warnign"></ul>
-                    <div class="save_cancel when-roadmin-hide-me">
-                    <button class="save_button float_right" type="submit"
-                            id="sample_buckets_settings_btn">
-                      Create
-                    </button>
-                   </div>
+                  <div class="sub_section">
+                    <ul id="available_samples" class="casper_settings_sample_warnign"></ul>
+                  </div>
+                  <div class="save_cancel when-roadmin-hide-me">
+                  <button class="save_button float_right" type="submit"
+                          id="sample_buckets_settings_btn">
+                    Create
+                  </button>
+                 </div>
                 </form></div>
                 <div class="account_management_container when-roadmin-avoid-me">
-                  <h3>Read-Only User</h3>
-                  <p>This user will have read-only access and
-                      cannot make any changes to the system. The user
-                      can only view existing servers, buckets, views
-                      and monitor stats.</p>
+                  <h2>Read-Only User</h2>
+                  <div class="sub_section">
+                    <p>This user will have read-only access and
+                        cannot make any changes to the system. The user
+                        can only view existing servers, buckets, views
+                        and monitor stats.</p>
+                  </div>
                   <form id="js_account_management_form" class="account_management_form" autocomplete="off">
-                    <fieldset>
+                    <div class="sub_section">
                       <label>
                         <span>Username:</span><input type="text" name="username" maxlength="24" autocomplete="off">
                         <i class="errors js_error_username"></i>
@@ -1174,12 +1176,12 @@
                         <span>Verify Password:</span><input type="password" name="verifyPassword" maxlength="24" autocomplete="off">
                         <i class="errors js_error_verifyPassword casper_create_roadmin_with_errors"></i>
                       </label>
-                    </fieldset>
+                    </div>
                     <div class="save_cancel when-roadmin-hide-me">
                         <button class="save_button float_right casper_settings_create_accaunt" type="submit" id="sample_buckets_settings_btn">Create</button>
                     </div>
                   </form>
-                  <div id="js_account_delete" class="account_delete">
+                  <div id="js_account_delete" class="account_delete sub_section">
                     <p id="js_user_created">User: <span id="js_roadmin_name" style="color:#222;"></span> created successfully.</p>
                     <p id="js_user_exists">User already exists.</p>
                     <div>
@@ -1197,46 +1199,49 @@
           </div>
 
           <script id="notifications_template" type="text/html">
-            <p>You are running version {%= h(version) %}</p>
-            {% if (enabled===true) { %}
-              {% if (newVersion===undefined) { %}
-              <p class="warning"><strong>Warning</strong> – There
-                was a problem with retreiving the update information.</p>
-              {% } else if (newVersion===false) { %}
-              <p>No updates available.</p>
-              {% } else { %}
-              <p>A new version ({%= h(newVersion) %}) is available:</p>
-              <ul>
-                <li>
-                  <a href="{%= h(links.release) %}">Release notes</a>
-                </li>
-                <li>
-                  <a href="{%= h(links.download) %}">Download</a>
-                  the new version
-                </li>
-              </ul>
-                {% if (info!='') { %}
-                <p>{%= h(info) %}</p>
+            <h2>Update Notifications</h2>
+            <div class="sub_section">
+              <p>You are running version {%= h(version) %}.</p>
+              {% if (enabled===true) { %}
+                {% if (newVersion===undefined) { %}
+                <p class="warning"><strong>Warning</strong> – There
+                  was a problem with retreiving the update information.</p>
+                {% } else if (newVersion===false) { %}
+                <p>No updates available.</p>
+                {% } else { %}
+                <p>A new version ({%= h(newVersion) %}) is available:</p>
+                <ul>
+                  <li>
+                    <a href="{%= h(links.release) %}">Release notes</a>
+                  </li>
+                  <li>
+                    <a href="{%= h(links.download) %}">Download</a>
+                    the new version
+                  </li>
+                </ul>
+                  {% if (info!='') { %}
+                  <p>{%= h(info) %}</p>
+                  {% } %}
                 {% } %}
               {% } %}
-            {% } %}
-            <label class="for-enable-replicas">
-              {% if (enabled===true) { %}
-              <input type="checkbox" id="notification-updates" checked="checked">
-              {% } else { %}
-              <input type="checkbox" id="notification-updates">
-              {% } %}
-              <span>Enable software update notifications.</span>
-              <a class="tooltip casper_settings_software_update_tooltip"><span>What's this?</span>
-                <span class="tooltip_msg text_11" style="width:310px;"><span>
-                  Enabling software update notifications allows notification in
-                  the Couchbase web console when a new version of Couchbase Server
-                  is available. Configuration information transferred in the
-                  update check is anonymous and does not include any stored
-                  key-value data.
-                </span></span>
-              </a>
-            </label>
+              <label class="for-enable-replicas">
+                {% if (enabled===true) { %}
+                <input type="checkbox" id="notification-updates" checked="checked">
+                {% } else { %}
+                <input type="checkbox" id="notification-updates">
+                {% } %}
+                <span>Enable software update notifications.</span>
+                <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
+                  <span class="tooltip_msg text_11" style="width:310px;"><span>
+                    Enabling software update notifications allows notification in
+                    the Couchbase web console when a new version of Couchbase Server
+                    is available. Configuration information transferred in the
+                    update check is anonymous and does not include any stored
+                    key-value data.
+                  </span></span>
+                </a>
+              </label>
+            </div>
             <div class="save_cancel when-roadmin-hide-me">
               <button class="save_button float_right" type="button"
                       disabled="disabled">
@@ -1245,30 +1250,34 @@
             </div>
           </script>
           <script id="auto_failover_template" type="text/html">
-            <label class="for-enable-replicas casper_settings_auto_failover_enabled"
-                   for="auto_failover_enabled">
-              <input type="checkbox" id="auto_failover_enabled">
-              <span>Enable auto-failover</span>
-            </label>
-            <label for="auto_failover_timeout">
-              <span>Timeout: </span>
-            </label>
-            <input type="text" id="auto_failover_timeout"
-                   value="{%= timeout %}" disabled="disabled" />
-            <a class="text_11 tooltip casper_settings_auto_failover_timeout_tooltip"><span>What's this?</span>
-              <span class="tooltip_msg"><span>
-                  How long (in seconds) a node must be considered down before it gets auto-failed-over.
-              </span></span>
-            </a>
-            <div class="error-container err-timeout"></div>
-            {% if (count > 0) { %}
-            <div class="count_reset">
-              A server was automatically failed over
-              <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me">
-                <span>Reset Quota</span>
-              </a>
+            <h2>Auto-Failover</h2>
+            <div class="sub_section">
+              <label class="for-enable-replicas casper_settings_auto_failover_enabled"
+                     for="auto_failover_enabled">
+                <input type="checkbox" id="auto_failover_enabled">
+                <span>Enable auto-failover</span>
+              </label>
+              <p>
+                <label for="auto_failover_timeout">
+                  <span>Timeout: </span>
+                </label>
+                <input type="text" id="auto_failover_timeout" value="{%= timeout %}" disabled="disabled" />
+                <span class="error-container err-timeout"></span>
+                <a class="text_11 tooltip casper_settings_auto_failover_timeout_tooltip"><span>What's this?</span>
+                  <span class="tooltip_msg"><span>
+                      How long (in seconds) a node must be considered down before it gets auto-failed-over.
+                  </span></span>
+                </a>
+              </p>
+              {% if (count > 0) { %}
+              <div class="count_reset">
+                A server was automatically failed over
+                <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me">
+                  <span>Reset Quota</span>
+                </a>
+              </div>
+              {% } %}
             </div>
-            {% } %}
             <div class="save_cancel when-roadmin-hide-me">
               <button class="save_button float_right" type="button"
                       disabled="disabled">
@@ -1277,80 +1286,69 @@
             </div>
           </script>
           <script id="email_alerts_template" type="text/html">
-            <label class="for-enable-replicas"
-                   for="email_alerts_enabled">
-              <input type="checkbox" id="email_alerts_enabled" class="casper_settings_alerts_errors">
-              <span>Enable email alerts</span>
-            </label>
-            <fieldset>
-              <legend>Email Server Settings</legend>
+            <h2>Email Alerts</h2>
+            <div class="sub_section">
+              <label class="for-enable-replicas">
+                <input type="checkbox" id="email_alerts_enabled" class="casper_settings_alerts_errors">
+                <span>Enable email alerts</span>
+              </label>
+            </div>
+            <h3>Email Server Settings</h3>
+            <div class="sub_section fields">
               <div class="row">
-                <label for="email_alerts_host">
-                  <span>Host:</span>
-                </label>
-                <input type="text" id="email_alerts_host"
-                       value="{%= h(emailServer.host) %}" disabled="disabled" />
-              </div>
-              <div>
-                <label for="email_alerts_port">
-                  <span>Port:</span>
-                </label>
-                <input type="text" id="email_alerts_port"
-                       value="{%= h(emailServer.port) %}" disabled="disabled" />
+                <label for="email_alerts_host">Host:</label>
+                <input type="text" id="email_alerts_host" value="{%= h(emailServer.host) %}" disabled="disabled">
+                <label for="email_alerts_port" style="text-align: right;">Port:</label>
+                <input type="text" id="email_alerts_port" value="{%= h(emailServer.port) %}" disabled="disabled">
                 <div class="error-container err-email_port"></div>
               </div>
-              <label for="email_alerts_user">
-                <span>Username:</span>
-              </label>
-              <input type="text" id="email_alerts_user"
-                     value="{%= h(emailServer.user) %}" disabled="disabled" />
-              <label for="email_alerts_pass">
-                <span>Password:</span>
-              </label>
-              <input type="password" id="email_alerts_pass"
-                     value="{%= h(emailServer.pass) %}" disabled="disabled" />
-              <label for="email_alerts_encrypt">
-                <span>Require TLS:</span>
-              </label>
-              <input type="checkbox" id="email_alerts_encrypt"
-                     {% if (emailServer.encrypt) { %}
-                     checked="checked"
-                     {% } %}
-                     />
-            </fieldset>
-            <fieldset>
-              <legend>Email Settings</legend>
-              <label for="email_alerts_sender">
-                <span>Sender email:</span>
-              </label>
-              <input type="text" id="email_alerts_sender"
-                     value="{%= h(sender) %}" disabled="disabled" />
-              <div class="error-container err-sender"></div>
-              <label for="email_alerts_sender">
-                <span>Recipients:</span>
-              </label>
-              <textarea id="email_alerts_recipients" disabled="disabled">{%= h(recipients) %}</textarea>
-              <span style="vertical-align:top;margin:0 5px;line-height:24px">separate addresses with comma "," or spaces " "</span></div>
-              <div class="error-container err-recipients"></div>
-              <div class="when-roadmin-avoid-me"><button class="edit_btn" id="test_email">Test Mail</button> <span>using the settings above</span></div>
-            </fieldset>
-            <fieldset id="email_alerts_alerts">
-              <legend>Available Alerts</legend>
-              <div class="checkboxes">
-                {% for (var i=0; i<alerts.length; i++) { %}
-                <label for="email_alerts_alerts_{%= h(alerts[i].label) %}">
-                  <input type="checkbox"
-                         id="email_alerts_alerts_{%= h(alerts[i].value) %}"
-                         value="{%= h(alerts[i].value) %}"
-                         {% if (alerts[i].enabled) { %}
-                         checked="checked"
-                         {% } %}
-                         />
-                  <span>{%= h(alerts[i].label) %}</span>
-                </label>
-                {% } %}
+              <div class="row">
+                <label for="email_alerts_user">Username:</label>
+                <input type="text" id="email_alerts_user" value="{%= h(emailServer.user) %}" disabled="disabled">
               </div>
-            </fieldset>
+              <div class="row">
+                <label for="email_alerts_pass">Password:</label>
+                <input type="password" id="email_alerts_pass" value="{%= h(emailServer.pass) %}" disabled="disabled">
+              </div>
+              <div class="row">
+                <label for="email_alerts_encrypt">Require TLS:</label>
+                <input type="checkbox" id="email_alerts_encrypt"
+                       {% if (emailServer.encrypt) { %}
+                       checked="checked"
+                       {% } %}
+                      >
+              </div>
+            </div>
+            <h3>Email Settings</h3>
+            <div class="sub_section fields">
+              <div class="row">
+                <label for="email_alerts_sender">Sender email:</label>
+                <input type="text" id="email_alerts_sender" value="{%= h(sender) %}" disabled="disabled">
+                <div class="error-container err-sender"></div>
+              </div>
+              <div class="row">
+                <label for="email_alerts_sender" style="vertical-align:top;">Recipients:</label>
+                <textarea id="email_alerts_recipients" disabled="disabled">{%= h(recipients) %}</textarea>
+                <span style="vertical-align:top;margin:0 5px;line-height:24px">separate addresses with comma "," or spaces " "</span>
+                <div class="error-container err-recipients"></div>
+                <div class="when-roadmin-avoid-me"><button class="edit_btn" id="test_email">Test Mail</button> <span>using the settings above</span></div>
+              </div>
+            </div>
+            <h3>Available Alerts</h3>
+            <div class="sub_section checkboxes" id="email_alerts_alerts">
+              {% for (var i=0; i<alerts.length; i++) { %}
+              <label for="email_alerts_alerts_{%= h(alerts[i].label) %}">
+                <input type="checkbox"
+                       id="email_alerts_alerts_{%= h(alerts[i].value) %}"
+                       value="{%= h(alerts[i].value) %}"
+                       {% if (alerts[i].enabled) { %}
+                       checked="checked"
+                       {% } %}
+                       />
+                <span>{%= h(alerts[i].label) %}</span>
+              </label>
+              {% } %}
+            </div>
             <div class="save_cancel when-roadmin-hide-me">
               <button class="save_button float_right" type="button"
                       disabled="disabled">

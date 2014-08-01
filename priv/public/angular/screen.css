@@ -407,29 +407,31 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .css_hex_symbol {position: absolute; margin-left: -10px;}
 /* cluster settings styles */
 
-.cluster_settings_container h3 {margin: 24px 36px 10px;}
+.settings {font-size: 13px; line-height: 23px; color: #444245;}
+.settings p {line-height: 20px;}
+.settings .warning {font-size: 11px;}
+.settings .error-container {font-size: 11px;}
+.settings .cluster_settings_container .row label {width: 140px;}
+.settings p {margin: 10px 0;}
+.settings input {vertical-align: middle;}
+
 .cluster_settings_container .list_button {float: none; margin-left: 283px;}
 .cluster_settings_container label,
 .cluster_settings_container input {-moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
 .cluster_settings_container label {padding-right: 5px;}
 .cluster_settings_container .error-container {margin-top: 5px;}
-.cluster_settings_container .row {margin: 5px 60px; line-height: 24px;}
+.cluster_settings_container .row {line-height: 23px;}
 
-.certificate_section textarea {height: 187px; margin-left: 60px; width: 400px; font-size: 10px;}
-.certificate_section p {margin: 5px 0 5px 65px; line-height: 24px;}
-.certificate_section .edit_btn {border:none;float:none;margin:3px 0pt 3px 65px;font-size:0.85em;line-height:21px;display:inline-block;}
+.certificate_section textarea {height: 155px; width: 400px; font-size: 10px;}
+.certificate_section .edit_btn {border:none;float:none;margin:3px 0pt 3px 0;font-size: 10px;line-height:21px;display:inline-block;}
 .certificate_section .about-cert-area_wrapper {overflow: hidden; z-index: 1;position: relative; display: none;}
 
 /* update notification styles */
 #notifications_container .item {padding:13px;}
 #notifications_container .save_button {float:right;}
-#notifications_container p, #notifications_container ul {line-height:1.4;margin:1em 0;padding:0 10px}
-#notifications_container ul {list-style-type:disc; margin:5px 0 0 15px;padding:0 20px}
-#notifications_container li {}
-#notifications_container label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
-#notifications_container label input {padding:3px 3px;font-size:13px;border:1px solid #ccd3d7}
-#notifications_container label input[type="checkbox"] {position:relative;top:2px}
-#notifications_container label > span {margin:0 5px}
+#notifications_container ul {list-style-type:disc; margin:5px 0 0 15px;padding:0 20px;}
+#notifications_container label {display:block;margin-top:10px;}
+#notifications_container label >* {vertical-align: middle;}
 
 /* Should be detected automatically in the future */
 #updates_notifications_confirmation_dialog {width:700px !important;}
@@ -437,51 +439,36 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .error-container{color:red !important;}
 
 /* auto-failover styles */
-.auto_failover label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
 .auto_failover input {border:1px solid #ccd3d7;padding:3px;font-size:13px;}
 .auto_failvoer input[type="checkbox"] {border:none;position:relative;top:2px;}
-.auto_failover label span {display:block;float:left;margin:0 5px;text-align:right;width:120px}
 .auto_failover input[type="checkbox"] + span {display:inline;float:none}
 
-.auto_failover #auto_failover_timeout, .auto_failover #auto_failover_max_nodes {width:3em}
-.auto_failover .error-container {margin-left:145px;margin-top:5px;}
+.auto_failover #auto_failover_timeout{width:3em}
 
 /* email alerts styles */
-.email_alerts label {display:block;line-height:24px;margin-left:16px;margin-top:16px;}
-.email_alerts input, .email_alerts textarea {width:150px}
-.email_alerts textarea {height: 100px;width: 250px}
-.email_alerts input[type="checkbox"] {border:none;position:relative;top:2px;width:auto}
-.email_alerts label span {display:block;float:left;margin:0 5px;text-align:right;width:120px}
-.email_alerts input[type="checkbox"] + span {display:inline;float:none}
-/*.email_alerts label + input[type="checkbox"] {display:inline;float:none;vertical-align:sub}*/
-.email_alerts label + input[type="checkbox"] {top:4px}
-/*.email_alerts fieldset {margin:16px;margin-left:130px;padding-top:20px;position:relative}*/
-.email_alerts fieldset {float:left;margin:16px;margin-bottom:8px;width:100%;padding:0}
-.email_alerts .checkboxes {margin-left:111px;margin-top:16px}
-.email_alerts .checkboxes label {margin-top:0}
-
-.email_alerts .row {float:left;width:310px}
-.email_alerts .row + div span {width:3em}
+.email_alerts label {display: inline-block;}
+.email_alerts input[type="text"] {width:150px;}
+.email_alerts textarea {height: 100px; width: 250px;}
+.email_alerts .fields label {width: 95px;}
+.email_alerts .fields .row {margin-top: 10px;}
+.email_alerts .checkboxes label {display: block;}
+.email_alerts .err-recipients {margin-left: 97px;}
+.email_alerts .err-sender,
+.email_alerts .err-email_port {display: inline-block;}
 .email_alerts #email_alerts_port {width:3em}
-#test_email {float: left; border:none; font-size: 0.85em; margin: 3px 0pt 3px 150px;}
-/* button prefix is due to an IE 7 bug that causes the span.failed_over_message to display...all the time... */
-button#test_email + span {line-height:2.25em;margin-left:0.5em}
+#test_email {float: left; border:none; font-size: 0.85em; margin: 3px 5px 3px 97px;}
 
 #compaction_container {margin-top:24px}
-#compaction_container fieldset, #sample_buckets_container fieldset{padding:0;margin:0 20px}
-#compaction_container legend, #sample_buckets_container legend{padding-bottom:1em}
 #compaction_container .tooltip_msg {line-height: 11px; width: 300px;}
 #compaction_container .tooltip {line-height: 12px; margin-left: 10px;}
+#sample_buckets_container .warning_message {display: none; margin-left: -25px;}
 
-#sample_buckets_form p { margin: 10px 0 10px 10px; }
-#sample_buckets_form h3 { margin: 20px 10px; }
-#sample_buckets_form ul { margin: 10px 0px 20px 30px; }
-#installed_samples { list-style-type: disc; }
 #installed_samples a { color: #DD3B2C; }
 
 #init_sample_buckets_dialog p { margin: 10px 0 10px 40px; }
 #init_sample_buckets_dialog h3,
-#init_cluster_form h3 { margin: 20px 50px 6px; font-weight: normal; color: #444245; font-size: 16px;}
+#init_cluster_form h3,
+.settings h3 { margin: 20px 50px 6px; font-weight: normal; color: #444245; font-size: 16px;}
 #init_sample_buckets_dialog ul { margin: 6px 0px 20px 85px; font-family: Verdana, Helvetica, Sans-Serif; font-size: 10pt;}
 #init_sample_buckets_dialog ul li {height: 23px;}
 #init_sample_buckets_dialog ul label,
@@ -574,7 +561,7 @@ body.auth #cluster_state_id, body.init_welcome #cluster_state_id {font-style:ita
 
 .active_tooltip {z-index: 2;}
 .active_tooltip span.tooltip_msg {display:block;}
-.tooltip {position:relative; display:inline-block; text-decoration:none !important; padding-bottom:4px}
+.tooltip {position:relative; display:inline-block; text-decoration:none !important;}
 .tooltip:hover span:first-child {text-decoration:underline;}
 .tooltip .tooltip_msg {display:none; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(../images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10; line-height: 11px; cursor: default;}
 .wider_tooltip.tooltip .tooltip_msg {width:200px; background-image:url(../images/tooltip_bg_777777.png);}
@@ -638,6 +625,7 @@ body.init_resources #init_resources_dialog {background:none; background-color:#e
 
 #init_cluster_dialog {background:none; background-color:#eee; display: block; padding-bottom:-50px;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
 .init_block h2.question {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-family:Verdana, Helvetica, Sans-Serif; font-weight:lighter; margin:25px 50px 20px; padding-bottom:5px;}
+.settings h2 {border-bottom:1px solid #d5dadd; color:#444245; font-size:14pt; font-weight:lighter; margin:25px 50px 20px; padding-bottom:5px;}
 #init_cluster_dialog p.pad_10 {color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; margin-left:85px; margin-right:85px;}
 #init_cluster_dialog div.join_cluster_dialog_errors_container {color:#ff0000; display:none; margin-left:85px; width:500px;}
 
@@ -888,7 +876,6 @@ span.drag_placeholder {height: 56px; display: block; border: 1px dashed #999; ba
 #auto_failover_count_container {position:absolute;right:9px;top:0;}
 #auto_failover_count_container.notify {color:#fa9b00}
 #auto_failover_count_container .edit_btn, #auto_failover_container .edit_btn{display:inline-block;float:none;font-size:0.8em;vertical-align:middle;}
-#auto_failover_container .count_reset {margin: 15px 0 15px 20px}
 
 .buckets .list {table-layout:fixed;}
 .buckets .list tr:first-child th {padding-left: 0px; padding-right: 0px;}
@@ -1061,6 +1048,7 @@ input.view_name{width:20em;padding:5px}
 .bucket_details label {display: inline-block; vertical-align: middle;}
 .bucket_details .with_radiogroup {display: inline-block; vertical-align: top;}
 .bucket_details .sub_section {margin: 0 35px;}
+.settings .sub_section {margin: 0 85px;}
 .bucket_details .cache_metadata_block {margin-top: 10px;}
 .bucket_details input, .bucket_details select {vertical-align: middle;}
 .bucket_details input[type="radio"] {margin-top: 2px;}
@@ -1111,7 +1099,6 @@ input.view_name{width:20em;padding:5px}
 .auto_compaction label span {display:inline;float:none;margin:0}
 .auto_compaction .toggle {display:block;float:left;padding-right:10px;}
 .auto_compaction input[type="checkbox"], .auto_compaction input[type="radio"] {position:static}
-.auto_compaction .error-container {line-height: 1.5em;padding-left:2.2em;width: 100%;}
 
 .io-error-notice-wrapper {position: fixed; top: 0px; width: 100%; height: 0px; overflow: visible; text-align: center; z-index: 9999; padding: 3px 0;}
 .io-error-notice { background-color: #FFF1A8; font-size: 14px; padding: 3px 10px;}
@@ -1352,10 +1339,9 @@ input[type=number].size {width:4em;}
 .xdcr_advaced_settings.dialog label,
 .xdcr_advaced_settings.dialog input,
 .account_management_container span.list_button {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
-.account_management_container label span {width: 120px; text-align: right; margin-right: 5px;}
-.account_management_container label input {width: 200px; height: 20px;}
-.account_management_container span.list_button {float: none; margin-left: 40px;}
-.account_management_container p {padding: 0 30px 10px; line-height: 25px;}
+.account_management_container label span {width: 120px; margin-right: 5px;}
+.account_management_container label input {width: 150px;}
+.account_management_container span.list_button {float: none; margin-left: 0; margin-right: 40px;}
 .account_management_container .error {border: 1px solid red;}
 .account_management_container .errors {color: red;}
 .account_management_container h3 {margin: 20px 24px 15px 24px;}
