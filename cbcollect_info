@@ -409,11 +409,11 @@ def make_product_task(guts, initargs_path, options):
 
     _tasks = [
         UnixTask("Directory structure",
-                 ["ls", "-lR", root]),
+                 ["ls", "-lRai", root]),
         UnixTask("Database directory structure",
-                 ["ls", "-lR", dbdir]),
+                 ["ls", "-lRai", dbdir]),
         UnixTask("Index directory structure",
-                 ["ls", "-lR", viewdir]),
+                 ["ls", "-lRai", viewdir]),
         LinuxTask("Database directory filefrag info",
                   ["find", dbdir, "-type", "f", "-exec", "filefrag", "-v", "{}", "+"]),
         LinuxTask("Index directory filefrag info",
