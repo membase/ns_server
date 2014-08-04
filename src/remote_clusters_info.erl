@@ -86,7 +86,7 @@
          get_remote_bucket/3, get_remote_bucket/4,
          get_remote_bucket_by_ref/2, get_remote_bucket_by_ref/3,
          remote_bucket_reference/2, parse_remote_bucket_reference/1,
-         invalidate_remote_bucket/2, invalidate_remote_bucket_by_ref/1,
+         invalidate_remote_bucket_by_ref/1,
          find_cluster_by_uuid/1,
          get_memcached_vbucket_info_by_ref/3,
          get_memcached_vbucket_info_by_ref/4]).
@@ -202,7 +202,15 @@ get_remote_bucket_by_ref(Reference, Through, Timeout) ->
 
 invalidate_remote_bucket_by_ref(Reference) ->
     {ok, {ClusterUUID, BucketName}} = parse_remote_bucket_reference(Reference),
-    invalidate_remote_bucket(ClusterUUID, BucketName).
+    Cluster = find_cluster_by_uuid(ClusterUUID),
+    case Cluster of
+        {error, _, _} ->
+            ?log_debug("could not find cluster to invalidate ~s: ~p", [ClusterUUID, Cluster]),
+            Cluster;
+        _ ->
+            gen_server:call(?MODULE,
+                            {invalidate_remote_bucket, Cluster, BucketName}, infinity)
+    end.
 
 -spec get_remote_bucket(string(), bucket_name(), cache_through_mode()) ->
                                {ok, #remote_bucket{}} |
@@ -247,16 +255,6 @@ get_remote_bucket(ClusterName, Bucket, Through, Timeout) ->
             gen_server:call(?MODULE,
                             {get_remote_bucket, Cluster,
                              Bucket, Through, Timeout}, infinity)
-    end.
-
-invalidate_remote_bucket(ClusterName, Bucket) ->
-    Cluster = find_cluster_by_name(ClusterName),
-    case Cluster of
-        {error, _, _} ->
-            Cluster;
-        _ ->
-            gen_server:call(?MODULE,
-                            {invalidate_remote_bucket, Cluster, Bucket}, infinity)
     end.
 
 get_memcached_vbucket_info_by_ref(Reference, ForceRefresh, VBucket) ->
