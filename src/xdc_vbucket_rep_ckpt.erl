@@ -19,7 +19,7 @@
 %% public functions
 -export([start_timer/1, cancel_timer/1]).
 -export([do_checkpoint/1]).
--export([read_validate_checkpoint/3]).
+-export([read_validate_checkpoint/4]).
 -export([get_local_vbuuid/2]).
 -export([build_request_base/4]).
 
@@ -245,7 +245,7 @@ extract_vbopaque(Props) ->
     end,
     RemoteVBOpaque.
 
-perform_pre_replicate(RemoteCommitOpaque, {_, _, HttpDB} = ApiRequestBase) ->
+perform_pre_replicate(RemoteCommitOpaque, {_, _, HttpDB} = ApiRequestBase, DisableCkptBackwardsCompat) ->
     ReqBody = case RemoteCommitOpaque of
                   undefined -> [];
                   _ ->
@@ -264,8 +264,8 @@ perform_pre_replicate(RemoteCommitOpaque, {_, _, HttpDB} = ApiRequestBase) ->
                      [{statusCode, 400},
                       {vbopaque, {json, VBOpaque}}]),
             {mismatch, VBOpaque};
-        {error, 404, _, _} ->
-            ?x_trace(preReplicateFailed, [{statusCode, 404}]),
+        {error, 404, _, _} when DisableCkptBackwardsCompat =:= false ->
+            ?x_trace(preReplicateFailedDueToOldNode, [{statusCode, 404}]),
             ?xdcr_debug("_pre_replicate returned 404. Assuming older node"),
             case couch_api_wrap:get_db_info(HttpDB) of
                 {ok, Props} ->
@@ -283,19 +283,19 @@ perform_pre_replicate(RemoteCommitOpaque, {_, _, HttpDB} = ApiRequestBase) ->
     end.
 
 
-read_validate_checkpoint(Rep, Vb, ApiRequestBase) ->
+read_validate_checkpoint(Rep, Vb, ApiRequestBase, DisableCkptBackwardsCompat) ->
     DB = capi_utils:must_open_master_vbucket(Rep#rep.source),
     DocId = build_commit_doc_id(Rep, Vb),
     case couch_db:open_doc_int(DB, DocId, [ejson_body]) of
         {ok, #doc{body = Body}} ->
-            parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase);
+            parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase, DisableCkptBackwardsCompat);
         {not_found, _} ->
             ?xdcr_debug("Found no local checkpoint document for vb: ~B. Will start from scratch", [Vb]),
-            handle_no_checkpoint(ApiRequestBase)
+            handle_no_checkpoint(ApiRequestBase, DisableCkptBackwardsCompat)
     end.
 
-handle_no_checkpoint(ApiRequestBase) ->
-    {_, RemoteVBOpaque} = perform_pre_replicate(undefined, ApiRequestBase),
+handle_no_checkpoint(ApiRequestBase, DisableCkptBackwardsCompat) ->
+    {_, RemoteVBOpaque} = perform_pre_replicate(undefined, ApiRequestBase, DisableCkptBackwardsCompat),
     handle_no_checkpoint_with_opaque(RemoteVBOpaque).
 
 handle_no_checkpoint_with_opaque(RemoteVBOpaque) ->
@@ -304,16 +304,16 @@ handle_no_checkpoint_with_opaque(RemoteVBOpaque) ->
     {StartSeq, 0, 0, 0,
      RemoteVBOpaque}.
 
-parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase) ->
+parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase, DisableCkptBackwardsCompat) ->
     try
-        do_parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase)
+        do_parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase, DisableCkptBackwardsCompat)
     catch T:E ->
             S = erlang:get_stacktrace(),
             ?xdcr_debug("Got parse_validate_checkpoint_doc exception: ~p:~p~n~p", [T, E, S]),
             erlang:raise(T, E, S)
     end.
 
-do_parse_validate_checkpoint_doc(Vb, Body0, ApiRequestBase) ->
+do_parse_validate_checkpoint_doc(Vb, Body0, ApiRequestBase, DisableCkptBackwardsCompat) ->
     Body = case Body0 of
                {XB} -> XB;
                _ -> []
@@ -330,9 +330,9 @@ do_parse_validate_checkpoint_doc(Vb, Body0, ApiRequestBase) ->
           is_integer(SnapshotSeq) andalso
           is_integer(SnapshotEndSeq)) of
         false ->
-            handle_no_checkpoint(ApiRequestBase);
+            handle_no_checkpoint(ApiRequestBase, DisableCkptBackwardsCompat);
         true ->
-            case perform_pre_replicate(CommitOpaque, ApiRequestBase) of
+            case perform_pre_replicate(CommitOpaque, ApiRequestBase, DisableCkptBackwardsCompat) of
                 {mismatch, RemoteVBOpaque} ->
                     ?xdcr_debug("local checkpoint for vb ~B does not match due to remote side. Checkpoint seqno: ~B. xdcr will start from scratch", [Vb, Seqno]),
                     handle_no_checkpoint_with_opaque(RemoteVBOpaque);

@@ -613,8 +613,10 @@ init_replication_state(#init_state{rep = Rep,
                                                              CurrRemoteBucket#remote_bucket.uuid,
                                                              Vb),
 
+    DisableCkptBackwardsCompat = lists:member(<<"xdcrCheckpointing">>, CurrRemoteBucket#remote_bucket.bucket_caps),
+
     {StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
-     RemoteVBOpaque} = xdc_vbucket_rep_ckpt:read_validate_checkpoint(Rep, Vb, ApiRequestBase),
+     RemoteVBOpaque} = xdc_vbucket_rep_ckpt:read_validate_checkpoint(Rep, Vb, ApiRequestBase, DisableCkptBackwardsCompat),
 
     ?log_debug("Inited replication position: ~p",
                [{StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
