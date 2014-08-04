@@ -301,14 +301,14 @@ build_bucket_capabilities(BucketConfig) ->
             membase ->
                 case cluster_compat_mode:is_cluster_30() of
                     true ->
-                        [cbhello, touch, couchapi, cccp];
+                        [cbhello, touch, couchapi, cccp, xdcrCheckpointing, nodesExt];
                     _ ->
                         [touch, couchapi]
                 end;
             memcached ->
                 case cluster_compat_mode:is_cluster_30() of
                     true ->
-                        [cbhello];
+                        [cbhello, nodesExt];
                     _ ->
                         []
                 end
