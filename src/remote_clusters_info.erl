@@ -1600,7 +1600,6 @@ gc_buckets(CachedClusters) ->
 
               lists:foreach(
                 fun (Bucket) ->
-                        ?log_debug("gc-ing bucket: ~p", [{bucket, Cluster, Bucket}]),
                         true = ets:delete(?CACHE, {bucket, Cluster, Bucket})
                 end, Removed),
 
@@ -1617,8 +1616,7 @@ do_build_present_replications_dict(DocPLists) ->
                  Pair
              end
              || PList <- DocPLists,
-                {TargetLabel, Target} <- PList,
-                TargetLabel =:= <<"target">> orelse TargetLabel =:= target],
+                {<<"target">>, Target} <- PList],
     lists:foldl(
       fun ({UUID, BucketName}, D) ->
               dict:update(UUID,
