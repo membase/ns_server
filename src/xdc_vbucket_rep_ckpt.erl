@@ -25,6 +25,8 @@
 
 -include("xdc_replicator.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+
 -define(HTTP_RETRIES, 5).
 
 start_timer(#rep_state{rep_details=#rep{options=Options}} = State) ->
@@ -166,22 +168,41 @@ send_post(Method, ExtraBody, {BaseURL, BodyBase, HttpDB}) ->
 send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions) ->
     do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions, ?HTTP_RETRIES).
 
+is_ssl_error(Reason) ->
+    %% note: due to incorrect typespec of lhttpc:request dialyzer
+    %% thinks that reason must be atom. So we have to fool it via
+    %% nif_error.
+    {'EXIT', {ReasonCopy, _}} = (catch erlang:nif_error(Reason)),
+    case ReasonCopy of
+        {{tls_alert, _}, _} ->
+            true;
+        _ ->
+            false
+    end.
+
+is_ssl_error_test() ->
+    true = is_ssl_error({{tls_alert, []}, []}),
+    false = is_ssl_error("something_else").
+
 do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions, Retries) ->
     RV = lhttpc:request(URL, Method, Headers, Body, Timeout, HTTPOptions),
     case RV of
         {ok, _} ->
             RV;
-        {error, {{tls_alert, _}, _} = Reason} ->
-            ?xdcr_debug("Got https error doing ~s to ~s. Will NOT retry. Error: ~p", [Method, URL, Reason]),
-            RV;
         {error, Reason} ->
-            NewRetries = Retries - 1,
-            case NewRetries < 0 of
+            case is_ssl_error(Reason) of
                 true ->
+                    ?xdcr_debug("Got https error doing ~s to ~s. Will NOT retry. Error: ~p", [Method, URL, Reason]),
                     RV;
-                _ ->
-                    ?xdcr_debug("Got http error doing ~s to ~s. Will retry. Error: ~p", [Method, URL, Reason]),
-                    do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions, NewRetries)
+                false ->
+                    NewRetries = Retries - 1,
+                    case NewRetries < 0 of
+                        true ->
+                            RV;
+                        _ ->
+                            ?xdcr_debug("Got http error doing ~s to ~s. Will retry. Error: ~p", [Method, URL, Reason]),
+                            do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions, NewRetries)
+                    end
             end
     end.
 
