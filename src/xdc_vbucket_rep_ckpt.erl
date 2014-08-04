@@ -55,7 +55,7 @@ cancel_timer(#rep_state{timer = Timer} = State) ->
 do_checkpoint(#rep_state{current_through_seq=Seq, committed_seq=Seq} = State) ->
     ?x_trace(noCheckpointNeeded, [{committedSeq, Seq}]),
     {ok, <<"no checkpoint">>, State};
-do_checkpoint(#rep_state{remote_vbopaque = {old_node_marker, RemoteStartTime},
+do_checkpoint(#rep_state{remote_vbopaque = {[{old_node_marker, RemoteStartTime}]},
                          target = TargetDB} = State) ->
     ?xdcr_debug("Faking checkpoint into old node"),
     %% note: we're not bumping any counters or reporting anything to
@@ -255,21 +255,21 @@ perform_pre_replicate(RemoteCommitOpaque, {_, _, HttpDB} = ApiRequestBase) ->
     case send_post("_pre_replicate", ReqBody , ApiRequestBase) of
         {ok, Props} ->
             VBOpaque = extract_vbopaque(Props),
-            ?x_trace(preReplicateOK, [{vbopaque, VBOpaque}]),
+            ?x_trace(preReplicateOK, [{vbopaque, {json, VBOpaque}}]),
             {ok, VBOpaque};
         {error, 400 = _StatusCode, {JSON}, _} when is_list(JSON) ->
             ?xdcr_debug("_pre_replicate returned mismatch status: ~p", [JSON]),
             VBOpaque = extract_vbopaque(JSON),
             ?x_trace(preReplicateFailed,
                      [{statusCode, 400},
-                      {vbopaque, VBOpaque}]),
+                      {vbopaque, {json, VBOpaque}}]),
             {mismatch, VBOpaque};
         {error, 404, _, _} ->
             ?x_trace(preReplicateFailed, [{statusCode, 404}]),
             ?xdcr_debug("_pre_replicate returned 404. Assuming older node"),
             case couch_api_wrap:get_db_info(HttpDB) of
                 {ok, Props} ->
-                    {mismatch, {old_node_marker, proplists:get_value(<<"instance_start_time">>, Props)}};
+                    {mismatch, {[{old_node_marker, proplists:get_value(<<"instance_start_time">>, Props)}]}};
                 Error ->
                     ?xdcr_error("Failed to get dbinfo of remote node (~s): ~p",
                                 [misc:sanitize_url(HttpDB#httpdb.url),
@@ -299,7 +299,7 @@ handle_no_checkpoint(ApiRequestBase) ->
     handle_no_checkpoint_with_opaque(RemoteVBOpaque).
 
 handle_no_checkpoint_with_opaque(RemoteVBOpaque) ->
-    ?x_trace(noCheckpoint, [{vbopaque, RemoteVBOpaque}]),
+    ?x_trace(noCheckpoint, [{vbopaque, {json, RemoteVBOpaque}}]),
     StartSeq = 0,
     {StartSeq, 0, 0, 0,
      RemoteVBOpaque}.
