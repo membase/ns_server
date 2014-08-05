@@ -737,11 +737,10 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .servers_list .rebalance_empty {padding:0 15px; background:none; color:#656565;}
 
 .servers_list .actions {padding-left:0;}
-.pending_removal_message {float:right; margin:0 10px 0 0; padding:1em 0;}
-.pending_add_message {margin:0; color:#e54c2a; text-align: center; display: inline-block; width: 100px; vertical-align: middle;}
-.list td.dynamic_inactiveAdded .list_button {float: none; display: inline-block; vertical-align: middle; margin: 0;}
-.list td.dynamic_inactiveAdded {text-align: right; white-space: nowrap;}
-.list td.dynamic_inactiveAdded .pending_add_message {white-space: normal;}
+.servers_list .state_message {margin:0; color:#e54c2a; text-align: center; display: inline-block; width: 100px; vertical-align: middle;}
+.list td.with_state_message .list_button {float: none; display: inline-block; vertical-align: middle; margin: 0;}
+.list td.with_state_message {text-align: right; white-space: nowrap;}
+.list td.with_state_message .state_message {white-space: normal;}
 .server_row.status_up {background-position:10px 20px !important;}
 .server_row.status_down {background-position:10px -157px !important; background-color:#61696c;}
 
@@ -769,7 +768,7 @@ ul.tabs .badge_display .badge {display:block;}
 .rebalancing li {display:block; position:relative;}
 .rebalancing li a {text-decoration:none !important; cursor:default;}
 
-.failed_over_message {float:right; color:#9c9e9e; display:none;padding:1em}
+.failed_over_message {color: #9c9e9e; display: none; padding:1em}
 .failed_over .failed_over_message {display:block;}
 
 .add_back_failed_over_node {font-size: 12px; line-height: 32px; padding: 10px 0;}

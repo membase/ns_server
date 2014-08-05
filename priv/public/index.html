@@ -329,19 +329,19 @@
                 </td>
 
                 <!-- {% if (s.clusterMembership == 'inactiveAdded') { %} -->
-                <td colspan="2" class="actions dynamic_inactiveAdded">
+                <td colspan="2" class="actions with_state_message">
                   {% if (s.recoveryType === 'none') { %}
-                    <span class="pending_add_message">Pending Add</span>
+                    <span class="state_message">Pending Add</span>
                     <a href="#" class="list_button btn_cancel eject_server when-roadmin-avoid-me"><span>Cancel</span></a>
                   {% } else { %}
-                    <span class="pending_add_message">Pending {%= h(s.recoveryType) %} recovery</span>
+                    <span class="state_message">Pending {%= h(s.recoveryType) %} recovery</span>
                     <a href="#" class="list_button btn_cancel eject_server when-roadmin-avoid-me"><span>Cancel</span></a>
                   {% } %}
                 </td>
                 <!-- {% } else if (s.pendingEject) { %} -->
-                <td class="actions" colspan="2">
+                <td class="actions with_state_message" colspan="2">
+                  <span class="state_message">Pending Removal</span>
                   <a href="#" class="list_button btn_cancel remove_from_list when-roadmin-avoid-me"><span>Cancel</span></a>
-                  <span class="pending_add_message">Pending Removal</span>
                 </td>
                 <!-- {% } else { %} -->
                 <td class="actions" colspan="2">
