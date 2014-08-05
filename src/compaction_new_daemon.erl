@@ -153,7 +153,7 @@ init([]) ->
 
     ets:new(compaction_daemon, [protected, named_table, set]),
 
-    {ok, KVThrottle} = concurrency_throttle:start_link({1, kv_throttle}, undefined),
+    {ok, KVThrottle} = new_concurrency_throttle:start_link({1, kv_throttle}, undefined),
     ets:insert(compaction_daemon, {kv_throttle, KVThrottle}),
 
     CheckInterval = get_check_interval(ns_config:get()),
@@ -1518,7 +1518,7 @@ maybe_cancel_compaction(Compaction,
 
 get_kv_token() ->
     [{_, Pid}] = ets:lookup(compaction_daemon, kv_throttle),
-    concurrency_throttle:send_back_when_can_go(Pid, go),
+    new_concurrency_throttle:send_back_when_can_go(Pid, go),
     receive
         {'EXIT', _, Reason} = ExitMsg ->
             ?log_debug("Got exit waiting for token: ~p", [ExitMsg]),

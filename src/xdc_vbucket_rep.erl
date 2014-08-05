@@ -79,7 +79,7 @@ init(#init_state{init_throttle = InitThrottle,
                  parent = Parent} = InitState) ->
     process_flag(trap_exit, true),
     %% signal to self to initialize
-    ok = concurrency_throttle:send_back_when_can_go(InitThrottle, init),
+    ok = new_concurrency_throttle:send_back_when_can_go(InitThrottle, init),
     ?x_trace(init,
              [{repID, Rep#rep.id},
               {vb, Vb},
@@ -133,7 +133,7 @@ handle_info(init, #init_state{init_throttle = InitThrottle} = InitState) ->
                         [InitState, {ErrorType,Error}, erlang:get_stacktrace()]),
             {stop, Error, InitState}
     after
-        concurrency_throttle:is_done(InitThrottle)
+        new_concurrency_throttle:is_done(InitThrottle)
     end;
 
 handle_info(wake_me_up,
@@ -144,7 +144,7 @@ handle_info(wake_me_up,
                        throttle = Throttle,
                        target_name = TgtURI} = St) ->
     TargetNode =  target_uri_to_node(TgtURI),
-    ok = concurrency_throttle:send_back_when_can_go(Throttle, TargetNode, start_replication),
+    ok = new_concurrency_throttle:send_back_when_can_go(Throttle, TargetNode, start_replication),
 
     SeqnoKey = iolist_to_binary(io_lib:format("vb_~B:high_seqno", [Vb])),
     {ok, StatsValue} =
@@ -504,7 +504,7 @@ report_error(_Err, Vb, Parent) ->
 
 replication_turn_is_done(#rep_state{throttle = T} = State) ->
     ?x_trace(turnIsDone, []),
-    concurrency_throttle:is_done(T),
+    new_concurrency_throttle:is_done(T),
     State.
 
 update_work_time(#rep_state{status = VbStatus} = State) ->

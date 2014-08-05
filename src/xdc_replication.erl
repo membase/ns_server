@@ -109,14 +109,8 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
     ?xdcr_debug("ns config event handler subscribed", []),
 
     MaxConcurrentReps = options_to_num_tokens(Options),
-    ThrottleMod = case ns_config:read_key_fast(xdcr_use_old_throttle, false) of
-                      true ->
-                          concurrency_throttle;
-                      _ ->
-                          new_concurrency_throttle
-                  end,
-    {ok, InitThrottle} = ThrottleMod:start_link({MaxConcurrentReps, ?XDCR_INIT_CONCUR_THROTTLE}, self()),
-    {ok, WorkThrottle} = ThrottleMod:start_link({MaxConcurrentReps, ?XDCR_REPL_CONCUR_THROTTLE}, self()),
+    {ok, InitThrottle} = new_concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_INIT_CONCUR_THROTTLE}, self()),
+    {ok, WorkThrottle} = new_concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_REPL_CONCUR_THROTTLE}, self()),
     ?xdcr_debug("throttle process created (init throttle: ~p, work throttle: ~p). Tokens count is ~p",
                 [InitThrottle, WorkThrottle, MaxConcurrentReps]),
     Sup = start_vbucket_rep_sup(Rep),
@@ -245,8 +239,8 @@ handle_call({update_replication, NewRep}, _From,
                     ?xdcr_debug("total number of tokens has been changed from ~p to ~p, "
                                 "adjust work throttle (pid: ~p) accordingly",
                                 [State#replication.num_tokens, NewTokens, WorkThrottle]),
-                    concurrency_throttle:change_tokens(InitThrottle, NewTokens),
-                    concurrency_throttle:change_tokens(WorkThrottle, NewTokens);
+                    new_concurrency_throttle:change_tokens(InitThrottle, NewTokens),
+                    new_concurrency_throttle:change_tokens(WorkThrottle, NewTokens);
                 _->
                     ok
             end,

@@ -133,9 +133,9 @@ collect_cluster_logs(Nodes, BaseURL) ->
     update_ets_status({cluster, Nodes, BaseURL, Timestamp, self()}),
 
     CollectConcurrency = ns_config:read_key_fast(cluster_logs_collection_concurrency, 1024),
-    {ok, CollectThrottle} = concurrency_throttle:start_link({CollectConcurrency, log_collection}, undefined),
+    {ok, CollectThrottle} = new_concurrency_throttle:start_link({CollectConcurrency, log_collection}, undefined),
     UploadConcurrency = ns_config:read_key_fast(cluster_logs_upload_concurrency, 1),
-    {ok, UploadThrottle} = concurrency_throttle:start_link({UploadConcurrency, log_upload}, undefined),
+    {ok, UploadThrottle} = new_concurrency_throttle:start_link({UploadConcurrency, log_upload}, undefined),
 
     update_ets_status({collect_throttle, CollectThrottle}),
     update_ets_status({upload_throttle, UploadThrottle}),
@@ -183,7 +183,7 @@ lookup_throttle(ThrottleName) ->
 
 get_token(ThrottleName) ->
     Pid = lookup_throttle(ThrottleName),
-    concurrency_throttle:send_back_when_can_go(Pid, go),
+    new_concurrency_throttle:send_back_when_can_go(Pid, go),
     receive
         {'EXIT', _, Reason} = ExitMsg ->
             ?log_debug("Got exit waiting for token: ~p", [ExitMsg]),
@@ -193,7 +193,7 @@ get_token(ThrottleName) ->
     end.
 
 put_token(ThrottleName) ->
-    concurrency_throttle:is_done(lookup_throttle(ThrottleName)).
+    new_concurrency_throttle:is_done(lookup_throttle(ThrottleName)).
 
 start_subtask(Node, Subtask, M, F, A) ->
     Pid = proc_lib:spawn_link(Node, M, F, A),
