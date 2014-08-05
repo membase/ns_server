@@ -19,7 +19,9 @@
 -export([get_missing_revs/2, update_replicated_docs/3]).
 
 %% those are referenced from capi.ini
--export([handle_pre_replicate/1, handle_commit_for_checkpoint/1]).
+-export([handle_pre_replicate/1,
+         handle_commit_for_checkpoint/1,
+         handle_mass_vbopaque_check/1]).
 
 -include("xdc_replicator.hrl").
 -include("mc_entry.hrl").
@@ -288,6 +290,103 @@ handle_pre_replicate(Req) ->
            end,
 
     couch_httpd:send_json(Req, Code, {[{<<"vbopaque">>, VBUUID}]}).
+
+handle_mass_vbopaque_check(Req) ->
+    couch_httpd:validate_ctype(Req, "application/json"),
+    {Obj} = couch_httpd:json_body_obj(Req),
+    Bucket = proplists:get_value(<<"bucket">>, Obj),
+
+    Opaques0 = proplists:get_value(<<"vbopaques">>, Obj),
+    BucketUUID = proplists:get_value(<<"bucketUUID">>, Obj),
+    Opaques =
+        case is_list(Opaques0) of
+            true ->
+                Opaques0;
+            _ ->
+                undefined
+        end,
+    case (Bucket =:= undefined
+          orelse Opaques =:= undefined
+          orelse BucketUUID =:= undefined) of
+        true ->
+            erlang:throw(not_found);
+        _ -> true
+    end,
+    BucketConfig = capi_frontend:verify_bucket_auth(Req, Bucket),
+
+    case proplists:get_value(uuid, BucketConfig) =:= BucketUUID of
+        true ->
+            ok;
+        false ->
+            erlang:throw({not_found, uuid_mismatch})
+    end,
+
+    Keys0 = [{iolist_to_binary(io_lib:format("vb_~B:uuid", [Vb])), Vb, VO}
+             || [Vb, VO] <- Opaques],
+    Keys = lists:sort(Keys0),
+
+    {ok, KV0} = ns_memcached:stats(couch_util:to_list(Bucket), <<"vbucket-seqno">>),
+    KV = lists:sort([{K, V} || {K, V} <- KV0,
+                               is_uuid_stat_key(K)]),
+
+    {Matched, Mismatched, Missing} = mass_vbopaque_check_loop(Keys, KV, [], [], []),
+
+    couch_httpd:send_json(Req, 200, {[{<<"matched">>, Matched},
+                                      {<<"mismatched">>, [[V, O] || {V, O} <- Mismatched]},
+                                      {<<"missing">>, Missing}]}).
+
+is_uuid_stat_key(K) when size(K) < 5 ->
+    false;
+is_uuid_stat_key(K) ->
+    PrefixSize = size(K)-5,
+    case K of
+        <<_:PrefixSize/binary, ":uuid">> ->
+            true;
+        _ ->
+            false
+    end.
+
+is_uuid_stat_key_test() ->
+    true = is_uuid_stat_key(<<"vb_5:uuid">>),
+    false = is_uuid_stat_key(<<"vb_5:seqno">>),
+    false = is_uuid_stat_key(<<>>),
+    false = is_uuid_stat_key(<<"a">>).
+
+mass_vbopaque_check_loop([{K1, Vb, VO} | RestExpected] = Expected,
+                         [{K2, Value} | RestStats] = Stats,
+                         AccMatch, AccMismatch, AccMissing) ->
+    if
+        K1 > K2 ->
+            mass_vbopaque_check_loop(Expected, RestStats,
+                                     AccMatch, AccMismatch, AccMissing);
+        K1 =:= K2 ->
+            RealVO = list_to_integer(binary_to_list(Value)),
+            case VO =:= RealVO of
+                true ->
+                    mass_vbopaque_check_loop(RestExpected, RestStats,
+                                             [Vb | AccMatch], AccMismatch, AccMissing);
+                false ->
+                    mass_vbopaque_check_loop(RestExpected, RestStats,
+                                             AccMatch, [{Vb, RealVO} | AccMismatch], AccMissing)
+            end;
+        true ->
+            mass_vbopaque_check_loop(RestExpected, Stats,
+                                     AccMatch, AccMismatch, [Vb | AccMissing])
+    end;
+mass_vbopaque_check_loop([] = _Expected, _Stats, AccMatch, AccMismatch, AccMissing) ->
+    {AccMatch, AccMismatch, AccMissing};
+mass_vbopaque_check_loop([{_, Vb, _} | RestExpected], [] = _Stats, AccMatch, AccMismatch, AccMissing) ->
+    mass_vbopaque_check_loop(RestExpected, [], AccMatch, AccMismatch, [Vb | AccMissing]).
+
+mass_vbopaque_check_loop_test() ->
+    Expected = [{100, 0, 0},
+                {110, 1, 21},
+                {120, 2, 3},
+                {130, 3, 4}],
+    Stats = [{110, <<"21">>},
+             {115, <<"a">>},
+             {120, <<"33">>}],
+    {[1, a], [{2, 33}, b], [3, 0, c]} = mass_vbopaque_check_loop(Expected, Stats, [a], [b], [c]).
 
 get_vbucket_seqno_stats(BucketName, Vb) ->
     {ok, KV} = ns_memcached:stats(couch_util:to_list(BucketName), io_lib:format("vbucket-seqno ~B", [Vb])),
