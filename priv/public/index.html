@@ -990,10 +990,11 @@
               <div class="panes clearfix">
                 <div id="js_cluster_settings_container" class="cluster_settings_container">
                   <form id="js_cluster_public_settings_form" class="cluster_settings_form">
-                    <h3>
+                    <h3 style="display: inline-block; margin-right: 0;">
                       <label>Cluster Name:</label>
-                      <input type="text" name="tabName">
+                      <input type="text" name="tabName" maxlength="256">
                     </h3>
+                    <span>(0 — 256 chars)</span>
                     <div class="certificate_section">
                       <h3>Certificate:</h3>
                       <p>
