@@ -21,7 +21,7 @@
 -export([local_couch_uri_for_vbucket/2]).
 -export([my_active_vbuckets/1]).
 -export([parse_rep_db/3]).
--export([sanitize_status/3, get_rep_info/1]).
+-export([sanitize_status/3, sanitize_url/1, get_rep_info/1]).
 -export([create_stats_table/0,
          init_replication_stats/1,
          cleanup_replication_stats/1,
