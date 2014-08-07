@@ -108,6 +108,9 @@ handle_info({failover_id, FailoverUUID,
 
     {noreply, NewState};
 
+handle_info(opaque_mismatch, State) ->
+    {stop, {shutdown, opaque_mismatch}, State};
+
 handle_info({stream_end, SnapshotStart, SnapshotEnd, LastSeenSeqno}, State) ->
     ?x_trace(gotStreamEnd,
              [{snapshotStart, SnapshotStart},
@@ -445,6 +448,15 @@ terminate(Reason, #init_state{rep = #rep{target = TargetRef}, parent = P, vb = V
 
 terminate(Reason, State) when Reason == normal orelse Reason == shutdown ->
     ?x_trace(terminateNormal, []),
+    terminate_cleanup(State);
+
+terminate({shutdown, Subreason}, #rep_state{
+                                    rep_details = #rep{target = TargetRef}
+                                   } = State) ->
+    ?xdcr_debug("Got semi-clean shutdown. Will invalidate remote cluster info still: ~p", [Subreason]),
+    %% an unhandled error happened. Invalidate target vb map cache.
+    remote_clusters_info:invalidate_remote_bucket_by_ref(TargetRef),
+    ?x_trace(terminateSemiNormal, [{subreason, xdcr_trace_log_formatter:format_pp(Subreason)}]),
     terminate_cleanup(State);
 
 terminate(Reason, #rep_state{

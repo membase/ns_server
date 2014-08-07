@@ -20,8 +20,9 @@
 -export([start_timer/1, cancel_timer/1]).
 -export([do_checkpoint/1]).
 -export([read_validate_checkpoint/4]).
+-export([mass_validate_vbopaque/4]).
 -export([get_local_vbuuid/2]).
--export([build_request_base/4]).
+-export([build_request_base/4, httpdb_to_base_url/1]).
 
 -include("xdc_replicator.hrl").
 
@@ -135,11 +136,17 @@ do_checkpoint(#rep_state{rep_details = #rep{id = RepId},
     end.
 
 build_request_base(HttpDB, Bucket, BucketUUID, VBucket) ->
-    [Scheme, Host, _DbName] = string:tokens(HttpDB#httpdb.url, "/"),
-    URL = Scheme ++ "//" ++ Host ++ "/",
+    {URL, BodyBase0, HttpDB} = build_no_vbucket_request_base(HttpDB, Bucket, BucketUUID),
+    {URL, [{<<"vb">>, VBucket} | BodyBase0], HttpDB}.
 
-    BodyBase = [{<<"vb">>, VBucket},
-                {<<"bucket">>, Bucket},
+httpdb_to_base_url(HttpDB) ->
+    [Scheme, Host, _DbName] = string:tokens(HttpDB#httpdb.url, "/"),
+    Scheme ++ "//" ++ Host ++ "/".
+
+build_no_vbucket_request_base(HttpDB, Bucket, BucketUUID) ->
+    URL = httpdb_to_base_url(HttpDB),
+
+    BodyBase = [{<<"bucket">>, Bucket},
                 {<<"bucketUUID">>, BucketUUID}],
     {URL, BodyBase, HttpDB}.
 
@@ -349,3 +356,51 @@ get_local_vbuuid(BucketName, Vb) ->
     {ok, KV} = ns_memcached:stats(couch_util:to_list(BucketName), io_lib:format("vbucket-seqno ~B", [Vb])),
     Key = iolist_to_binary(io_lib:format("vb_~B:uuid", [Vb])),
     misc:expect_prop_value(Key, KV).
+
+-spec mass_validate_vbopaque(#httpdb{}, binary(), binary(),
+                             [#xdcr_vb_stats_sample{}]) ->
+                                    [#xdcr_vb_stats_sample{}] | {error, _, _, _} | {other_error, _}.
+mass_validate_vbopaque(HttpDB, TargetRef, UUID, StatsSamples) ->
+    {ok, {_, BucketNameString}} = remote_clusters_info:parse_remote_bucket_reference(TargetRef),
+    BucketName = erlang:list_to_binary(BucketNameString),
+    RBase = build_no_vbucket_request_base(HttpDB, BucketName, UUID),
+    Pairs = [case Sample of
+                 #xdcr_vb_stats_sample{id_and_vb = {_, Vb}, remote_vbopaque = Opaque} ->
+                     [Vb, Opaque]
+             end || Sample <- StatsSamples],
+    Body = [{<<"vbopaques">>, Pairs}],
+    case (catch send_post("_mass_vbopaque_check", Body, RBase)) of
+        {ok, Props} ->
+            handle_mass_vbopaque_success(Props, StatsSamples);
+        {error, _StatusCode, _BodyJSON, _Body} = Err ->
+            Err;
+        OtherError ->
+            {other_error, OtherError}
+    end.
+
+handle_mass_vbopaque_success(Props, StatsSamples) ->
+    Mismatched = proplists:get_value(<<"mismatched">>, Props, []),
+    Missing = proplists:get_value(<<"missing">>, Props, []),
+    BadVbs = lists:sort([Vb || [Vb | _] <- Mismatched] ++ Missing),
+    SortedSamples = lists:sort(
+                      fun (#xdcr_vb_stats_sample{id_and_vb = {_, VbA}},
+                           #xdcr_vb_stats_sample{id_and_vb = {_, VbB}}) ->
+                              VbA =< VbB
+                      end, StatsSamples),
+    handle_mass_vbopaque_success_loop(BadVbs, SortedSamples, []).
+
+handle_mass_vbopaque_success_loop([Vb | RestVbs] = BadVbs,
+                                  [FirstSample | RestSamples],
+                                  Acc) ->
+    #xdcr_vb_stats_sample{id_and_vb = {_, SampleVb}} = FirstSample,
+    if
+        SampleVb < Vb ->
+            handle_mass_vbopaque_success_loop(BadVbs, RestSamples, Acc);
+        SampleVb =:= Vb ->
+            handle_mass_vbopaque_success_loop(RestVbs, RestSamples,
+                                              [FirstSample | Acc]);
+        true ->
+            erlang:error({unknown_vb, Vb, FirstSample})
+    end;
+handle_mass_vbopaque_success_loop([], _RestSamples, Acc) ->
+    Acc.

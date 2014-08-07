@@ -119,6 +119,12 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
              [{repID, Rep#rep.id},
               {source, SrcBucketBinary},
               {target, Rep#rep.target}]),
+    case RepMode =:= "xmem" of
+        true ->
+            {ok, _} = xdcr_opaque_checker:start_link(Rep);
+        false ->
+            ok
+    end,
     case ns_bucket:get_bucket(?b2l(SrcBucketBinary)) of
         {ok, SrcBucketConfig} ->
             Vbs = xdc_rep_utils:my_active_vbuckets(SrcBucketConfig),
