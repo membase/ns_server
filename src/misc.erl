@@ -680,6 +680,9 @@ keygroup_test() ->
      {b, [{b, 2}, {b, 3}]}] = keygroup(1, [{a, 1}, {a, 2}, {b, 2}, {b, 3}]),
     [] = keygroup(1, []).
 
+sort_and_keygroup(Index, List) ->
+    keygroup(Index, lists:keysort(Index, List)).
+
 keymin(I, [H|T]) ->
     keymin(I, T, H).
 
