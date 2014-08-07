@@ -522,7 +522,7 @@ var SetupWizard = {
         }
 
         var self = this;
-        var spinner = overlayWithSpinner('#init_secure_form', false);
+        var spinner = overlayWithSpinner('#init_secure_dialog');
         saveAuthData(function () {
           DAL.performLogin(user, pw, function () {
             createBuckets(opt.sampleBuckets, opt.defaultBucketData,
