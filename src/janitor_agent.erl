@@ -890,11 +890,22 @@ handle_call_via_servant({FromPid, _Tag}, State, Req, Body) ->
                          end),
     {reply, {Pid, Tag}, State}.
 
-handle_cast({apply_vbucket_state_reply, Reply},
-            #state{apply_vbucket_states_queue = Q} = State) ->
-    {{value, From}, NewQ} = queue:out(Q),
-    gen_server:reply(From, Reply),
-    {noreply, State#state{apply_vbucket_states_queue = NewQ}};
+handle_cast({apply_vbucket_state_reply, ReplyPid, Reply},
+            #state{apply_vbucket_states_queue = Q,
+                   apply_vbucket_states_worker = WorkerPid} = State) ->
+    case ReplyPid =:= WorkerPid of
+        true ->
+            ?log_debug("Got reply from apply_vbucket_states_worker: ~p", [Reply]),
+            {{value, From}, NewQ} = queue:out(Q),
+            gen_server:reply(From, Reply),
+            {noreply, State#state{apply_vbucket_states_queue = NewQ}};
+        false ->
+            ?log_debug("Got reply from old "
+                       "apply_vbucket_states_worker ~p (current worker ~p): ~p. "
+                       "Dropping on the floor",
+                       [ReplyPid, WorkerPid, Reply]),
+            {noreply, State}
+    end;
 handle_cast(_, _State) ->
     erlang:error(cannot_do).
 
@@ -1125,7 +1136,7 @@ apply_vbucket_states_worker_loop() ->
     receive
         {Parent, Call, State} ->
             Reply = handle_apply_vbucket_state(Call, State),
-            gen_server:cast(Parent, {apply_vbucket_state_reply, Reply}),
+            gen_server:cast(Parent, {apply_vbucket_state_reply, self(), Reply}),
             apply_vbucket_states_worker_loop()
     end.
 
