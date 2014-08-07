@@ -939,21 +939,6 @@ pass_vbucket_states_to_set_view_manager(#state{bucket_name = BucketName,
     State.
 
 set_rebalance_mref(Pid, State0) ->
-    case State0#state.rebalance_mref of
-        undefined ->
-            ok;
-        OldMRef ->
-            case cluster_compat_mode:is_cluster_30() andalso
-                State0#state.rebalance_status =:= in_process andalso
-                State0#state.rebalancer_type =:= rebalancer of
-                true ->
-                    %% something went wrong. nuke replicator just in case
-                    (catch dcp_sup:nuke(State0#state.bucket_name));
-                false ->
-                    ok
-            end,
-            erlang:demonitor(OldMRef, [flush])
-    end,
     [begin
          ?log_debug("Killing rebalance-related subprocess: ~p", [P]),
          erlang:unlink(P),
@@ -972,6 +957,22 @@ set_rebalance_mref(Pid, State0) ->
             misc:wait_for_process(P, infinity),
             [gen_server:reply(From, rebalance_aborted) ||
                 From <- queue:to_list(State0#state.apply_vbucket_states_queue)]
+    end,
+
+    case State0#state.rebalance_mref of
+        undefined ->
+            ok;
+        OldMRef ->
+            case cluster_compat_mode:is_cluster_30() andalso
+                State0#state.rebalance_status =:= in_process andalso
+                State0#state.rebalancer_type =:= rebalancer of
+                true ->
+                    %% something went wrong. nuke replicator just in case
+                    (catch dcp_sup:nuke(State0#state.bucket_name));
+                false ->
+                    ok
+            end,
+            erlang:demonitor(OldMRef, [flush])
     end,
 
     State = State0#state{rebalance_pid = Pid,
