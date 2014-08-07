@@ -217,7 +217,7 @@ get_meta(Bucket, VBucket, DocId) ->
             Other
     end.
 
-extract_ck_params(Req) ->
+extract_base_ck_params(Req) ->
     couch_httpd:validate_ctype(Req, "application/json"),
     {Obj} = couch_httpd:json_body_obj(Req),
     Bucket =
@@ -231,13 +231,11 @@ extract_ck_params(Req) ->
                 B1
         end,
 
-    VB = proplists:get_value(<<"vb">>, Obj),
     BucketUUID = proplists:get_value(<<"bucketUUID">>, Obj),
     case (Bucket =:= undefined
-          orelse VB =:= undefined
           orelse BucketUUID =:= undefined) of
         true ->
-            erlang:throw(not_found);
+            erlang:throw(bad_request);
         _ -> true
     end,
     BucketConfig = capi_frontend:verify_bucket_auth(Req, Bucket),
@@ -249,9 +247,21 @@ extract_ck_params(Req) ->
             erlang:throw({not_found, uuid_mismatch})
     end,
 
-    VBOpaque = proplists:get_value(<<"vbopaque">>, Obj),
+    {Obj, Bucket}.
 
-    CommitOpaque = proplists:get_value(<<"commitopaque">>, Obj),
+extract_ck_params(Req) ->
+    {Body, Bucket} = extract_base_ck_params(Req),
+
+    VB = proplists:get_value(<<"vb">>, Body),
+    case VB =:= undefined of
+        true ->
+            erlang:throw(bad_request);
+        _ -> true
+    end,
+
+    VBOpaque = proplists:get_value(<<"vbopaque">>, Body),
+
+    CommitOpaque = proplists:get_value(<<"commitopaque">>, Body),
 
     {Bucket, VB, VBOpaque, CommitOpaque}.
 
@@ -292,12 +302,9 @@ handle_pre_replicate(Req) ->
     couch_httpd:send_json(Req, Code, {[{<<"vbopaque">>, VBUUID}]}).
 
 handle_mass_vbopaque_check(Req) ->
-    couch_httpd:validate_ctype(Req, "application/json"),
-    {Obj} = couch_httpd:json_body_obj(Req),
-    Bucket = proplists:get_value(<<"bucket">>, Obj),
+    {Body, Bucket} = extract_base_ck_params(Req),
 
-    Opaques0 = proplists:get_value(<<"vbopaques">>, Obj),
-    BucketUUID = proplists:get_value(<<"bucketUUID">>, Obj),
+    Opaques0 = proplists:get_value(<<"vbopaques">>, Body),
     Opaques =
         case is_list(Opaques0) of
             true ->
@@ -305,20 +312,10 @@ handle_mass_vbopaque_check(Req) ->
             _ ->
                 undefined
         end,
-    case (Bucket =:= undefined
-          orelse Opaques =:= undefined
-          orelse BucketUUID =:= undefined) of
+    case Opaques =:= undefined of
         true ->
-            erlang:throw(not_found);
+            erlang:throw(bad_request);
         _ -> true
-    end,
-    BucketConfig = capi_frontend:verify_bucket_auth(Req, Bucket),
-
-    case proplists:get_value(uuid, BucketConfig) =:= BucketUUID of
-        true ->
-            ok;
-        false ->
-            erlang:throw({not_found, uuid_mismatch})
     end,
 
     Keys0 = [{iolist_to_binary(io_lib:format("vb_~B:uuid", [Vb])), Vb, VO}
