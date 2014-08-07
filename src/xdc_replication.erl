@@ -114,6 +114,7 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
     ?xdcr_debug("throttle process created (init throttle: ~p, work throttle: ~p). Tokens count is ~p",
                 [InitThrottle, WorkThrottle, MaxConcurrentReps]),
     Sup = start_vbucket_rep_sup(Rep),
+    xdc_rep_utils:cleanup_replication_vb_stats(Rep#rep.id),
     ?x_trace(replicationInit,
              [{repID, Rep#rep.id},
               {source, SrcBucketBinary},
@@ -343,8 +344,6 @@ start_vb_replicators(#replication{rep = Rep,
     ?xdcr_debug("starting replicators for new vbs :~p", [NewVbs]),
     lists:foreach(
       fun(Vb) ->
-              ets:insert(xdcr_stats, #xdcr_vb_stats_sample{id_and_vb = {Rep#rep.id, Vb}}),
-
               {ok, Pid} = xdc_vbucket_rep_sup:start_vbucket_rep(Sup,
                                                                 Rep,
                                                                 Vb,

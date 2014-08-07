@@ -618,6 +618,8 @@ init_replication_state(#init_state{rep = Rep,
     {StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
      RemoteVBOpaque} = xdc_vbucket_rep_ckpt:read_validate_checkpoint(Rep, Vb, ApiRequestBase, DisableCkptBackwardsCompat),
 
+    register_vb_stats(Rep#rep.id, Vb, CurrRemoteBucket, Target, RemoteVBOpaque),
+
     ?log_debug("Inited replication position: ~p",
                [{StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
                  RemoteVBOpaque}]),
@@ -694,6 +696,14 @@ init_replication_state(#init_state{rep = Rep,
                 [Vb, RepState#rep_state.source_name,
                  misc:sanitize_url(RepState#rep_state.target_name), RepMode, XMemRemoteStr]),
     RepState.
+
+register_vb_stats(Id, Vb, CurrRemoteBucket, Target, RemoteVBOpaque) ->
+    R = #xdcr_vb_stats_sample{id_and_vb = {Id, Vb},
+                              pid = self(),
+                              httpdb = Target,
+                              bucket_uuid = CurrRemoteBucket#remote_bucket.uuid,
+                              remote_vbopaque = RemoteVBOpaque},
+    ets:insert(xdcr_stats, R).
 
 update_rep_options(#rep_state{rep_details =
                                   #rep{id = Id,

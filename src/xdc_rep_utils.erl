@@ -24,7 +24,8 @@
 -export([sanitize_status/3, get_rep_info/1]).
 -export([create_stats_table/0,
          init_replication_stats/1,
-         cleanup_replication_stats/1]).
+         cleanup_replication_stats/1,
+         cleanup_replication_vb_stats/1]).
 
 -include("xdc_replicator.hrl").
 -include_lib("stdlib/include/ms_transform.hrl").
@@ -187,6 +188,9 @@ init_replication_stats(Id) ->
 
 cleanup_replication_stats(Id) ->
     ets:delete(xdcr_stats, Id),
+    cleanup_replication_vb_stats(Id).
+
+cleanup_replication_vb_stats(Id) ->
     %% removes tuples of the form {xdcr_vb_stats_sample, {Id, _}, ...}
     %% we use such composite keys to store per-vbucket and
     %% per-replication stats (like through seqno)

@@ -79,6 +79,10 @@
                            }).
 
 -record(xdcr_vb_stats_sample, {id_and_vb,
+                               pid,
+                               httpdb,
+                               bucket_uuid,
+                               remote_vbopaque,
                                vbucket_seqno = 0,
                                through_seqno = 0}).
 
