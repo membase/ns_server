@@ -96,7 +96,7 @@ get_children(Bucket) ->
 
 nuke(Bucket) ->
     Children = get_children(Bucket),
-    misc:terminate_and_wait(nuke, Children),
+    misc:terminate_and_wait({shutdown, nuke}, Children),
 
     Connections = get_remaining_connections(Bucket),
     misc:parallel_map(
