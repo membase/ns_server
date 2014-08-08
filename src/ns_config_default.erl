@@ -50,6 +50,40 @@ get_data_dir() ->
         _ -> RawDir
     end.
 
+detect_enterprise_version(NsServerVersion) ->
+    case re:run(NsServerVersion, <<"-enterprise$">>) of
+        nomatch ->
+            false;
+        _ ->
+            true
+    end.
+
+%% dialyzer proves that statically and complains about impossible code
+%% path if I use ?assert... Sucker
+detect_enterprise_version_test() ->
+    true = detect_enterprise_version(<<"1.8.0r-9-ga083a1e-enterprise">>),
+    true = not detect_enterprise_version(<<"1.8.0r-9-ga083a1e-comm">>).
+
+is_forced_enterprise() ->
+    case os:getenv("FORCE_ENTERPRISE") of
+        false ->
+            false;
+        "0" ->
+            false;
+        _ ->
+            true
+    end.
+
+init_is_enterprise() ->
+    MaybeNsServerVersion =
+        [V || {ns_server, _, V} <- application:loaded_applications()],
+    case lists:any(fun (V) -> detect_enterprise_version(V) end, MaybeNsServerVersion) of
+        true ->
+            true;
+        _ ->
+            is_forced_enterprise()
+    end.
+
 default() ->
     ensure_data_dir(),
     DataDir = get_data_dir(),
@@ -72,7 +106,10 @@ default() ->
     filelib:ensure_dir(RawLogDir),
     file:make_dir(RawLogDir),
 
+    IsEnterprise = init_is_enterprise(),
+
     [{directory, path_config:component_path(data, "config")},
+     {is_enterprise, IsEnterprise},
      {index_aware_rebalance_disabled, false},
      {max_bucket_count, 10},
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},

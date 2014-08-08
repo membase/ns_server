@@ -899,47 +899,8 @@ get_uuid() ->
 handle_versions(Req) ->
     reply_json(Req, {struct, menelaus_web_cache:versions_response()}).
 
-detect_enterprise_version(NsServerVersion) ->
-    case re:run(NsServerVersion, <<"-enterprise$">>) of
-        nomatch ->
-            false;
-        _ ->
-            true
-    end.
-
-%% dialyzer proves that statically and complains about impossible code
-%% path if I use ?assert... Sucker
-detect_enterprise_version_test() ->
-    true = detect_enterprise_version(<<"1.8.0r-9-ga083a1e-enterprise">>),
-    true = not detect_enterprise_version(<<"1.8.0r-9-ga083a1e-comm">>).
-
-is_forced_enterprise() ->
-    case os:getenv("FORCE_ENTERPRISE") of
-        false ->
-            false;
-        "0" ->
-            false;
-        _ ->
-            true
-    end.
-
 is_enterprise() ->
-    menelaus_web_cache:lookup_or_compute_with_expiration(
-      is_enterprise,
-      fun () ->
-              Val = case is_forced_enterprise() of
-                        false ->
-                            Versions = ns_info:version(),
-                            NsServerVersion = list_to_binary(proplists:get_value(ns_server, Versions, "unknown")),
-                            detect_enterprise_version(NsServerVersion);
-                        true ->
-                            true
-                    end,
-              {Val, 1000000, unused}
-      end,
-      fun (_Key, _Value, _) ->
-              false
-      end).
+    ns_config:read_key_fast(is_enterprise, false).
 
 is_xdcr_over_ssl_allowed() ->
     is_enterprise() andalso cluster_compat_mode:is_cluster_25().
