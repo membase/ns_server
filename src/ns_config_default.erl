@@ -145,18 +145,32 @@ default() ->
       [{port, misc:get_env_default(rest_port, 8091)}, % Port number of the REST admin API and UI.
        {port_meta, PortMeta}]},
 
-     {{node, node(), ssl_rest_port}, misc:get_env_default(ssl_rest_port, 18091)},
+     {{node, node(), ssl_rest_port},
+      case IsEnterprise of
+          true -> misc:get_env_default(ssl_rest_port, 18091);
+          _ -> undefined
+      end},
 
      {{node, node(), capi_port},
       CAPIPort},
 
-     {{node, node(), ssl_capi_port}, misc:get_env_default(ssl_capi_port, 18092)},
+     {{node, node(), ssl_capi_port},
+      case IsEnterprise of
+          true -> misc:get_env_default(ssl_capi_port, 18092);
+          _ -> undefined
+      end},
 
      {{node, node(), ssl_proxy_downstream_port},
-      misc:get_env_default(ssl_proxy_downstream_port, 11214)},
+      case IsEnterprise of
+          true -> misc:get_env_default(ssl_proxy_downstream_port, 11214);
+          _ -> undefined
+      end},
 
      {{node, node(), ssl_proxy_upstream_port},
-      misc:get_env_default(ssl_proxy_upstream_port, 11215)},
+      case IsEnterprise of
+          true -> misc:get_env_default(ssl_proxy_upstream_port, 11215);
+          _ -> undefined
+      end},
 
      %% pre 3.0 format:
      %% {rest_creds, [{creds, [{"user", [{password, "password"}]},
@@ -177,7 +191,10 @@ default() ->
       [{port, misc:get_env_default(memcached_port, 11210)},
        {mccouch_port, misc:get_env_default(mccouch_port, 11213)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
-       {ssl_port, misc:get_env_default(memcached_ssl_port, 11207)},
+       {ssl_port, case IsEnterprise of
+                      true -> misc:get_env_default(memcached_ssl_port, 11207);
+                      _ -> undefined
+                  end},
        {admin_user, "_admin"},
        %% Note that this is not actually the password that is being used; as
        %% part of upgrading config from 2.2 to 2.3 version it's replaced by
