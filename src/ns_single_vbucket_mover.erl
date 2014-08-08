@@ -109,8 +109,26 @@ spawn_and_wait(Body) ->
                     ok;
                 false ->
                     self() ! ExitMsg,
-                    ?log_error("Got unexpected exit signal ~p", [ExitMsg]),
-                    exit({unexpected_exit, ExitMsg})
+
+                    Shutdown =
+                        case Reason of
+                            shutdown ->
+                                true;
+                            {shutdown, _} ->
+                                true;
+                            _ ->
+                                false
+                        end,
+
+                    case Shutdown of
+                        true ->
+                            ?log_debug("Got shutdown exit signal ~p. "
+                                       "Assuming it's from our parent", [ExitMsg]),
+                            exit(Reason);
+                        false ->
+                            ?log_error("Got unexpected exit signal ~p", [ExitMsg]),
+                            exit({unexpected_exit, ExitMsg})
+                    end
             end
     end.
 
