@@ -98,8 +98,8 @@ build_ports(Node, Config) ->
 
 build_services(Node, Config) ->
     CapiPorts = lists:append([case ns_config:search_node(Node, Config, ConfigKey) of
-                                  {value, Value} -> [{JKey, Value}];
-                                  false -> []
+                                  {value, Value} when Value =/= undefined -> [{JKey, Value}];
+                                  _ -> []
                               end || {ConfigKey, JKey} <- [{ssl_capi_port, capiSSL},
                                                            {ssl_rest_port, mgmtSSL}]]),
     PortsD = case ns_config:search_node_prop(Node, Config, memcached, ssl_port) of

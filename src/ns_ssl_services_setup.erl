@@ -33,7 +33,14 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 start_link_capi_service() ->
-    {value, SSLPort} = ns_config:search_node(ssl_capi_port),
+    case ns_config:search_node(ssl_capi_port) of
+        {value, SSLPort} when SSLPort =/= undefined ->
+            do_start_link_capi_service(SSLPort);
+        _ ->
+            ignore
+    end.
+
+do_start_link_capi_service(SSLPort) ->
 
     Options = [{port, SSLPort},
                {ssl, true},
@@ -119,13 +126,17 @@ start_link_rest_service() ->
     Config0 = menelaus_web:webconfig(),
     Config1 = lists:keydelete(port, 1, Config0),
     Config2 = lists:keydelete(name, 1, Config1),
-    {value, SSLPort} = ns_config:search_node(ssl_rest_port),
-    Config3 = [{ssl, true},
-               {name, menelaus_web_ssl},
-               {ssl_opts, ssl_server_opts()},
-               {port, SSLPort}
-               | Config2],
-    menelaus_web:start_link(Config3).
+    case ns_config:search_node(ssl_rest_port) of
+        {value, SSLPort} when SSLPort =/= undefined ->
+            Config3 = [{ssl, true},
+                       {name, menelaus_web_ssl},
+                       {ssl_opts, ssl_server_opts()},
+                       {port, SSLPort}
+                       | Config2],
+            menelaus_web:start_link(Config3);
+        _ ->
+            ignore
+    end.
 
 ssl_cert_key_path() ->
     filename:join(path_config:component_path(data, "config"), "ssl-cert-key.pem").

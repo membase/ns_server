@@ -638,8 +638,8 @@ is_port_free(BucketName, Port, Config) ->
     {value, UpstreamProxyPort} = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}),
     {value, DownstreamProxyPort} = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}),
 
-    {value, SSLCapiPort} = ns_config:search(Config, {node, node(), ssl_capi_port}),
-    {value, SSLRestPort} = ns_config:search(Config, {node, node(), ssl_rest_port}),
+    SSLCapiPort = ns_config:search(Config, {node, node(), ssl_capi_port}, undefined),
+    SSLRestPort = ns_config:search(Config, {node, node(), ssl_rest_port}, undefined),
 
     Port =/= ns_config:search_node_prop(Config, memcached, port)
         andalso Port =/= ns_config:search_node_prop(Config, memcached, dedicated_port)
