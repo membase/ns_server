@@ -737,7 +737,7 @@ var ServersSection = {
           });
         } if (errorObject && errorObject.deltaRecoveryNotPossible) {
           self.serversCell.changedSlot.subscribeOnce(function () {
-            var msg = "Could not Rebalance because requested delta recovery is not possible. You probably add more nodes then cluster had before failover or possible remove some nodes.";
+            var msg = "Could not Rebalance because requested delta recovery is not possible. You probably added more nodes to the cluster or changed server groups configuration.";
             alert(msg);
           });
         } else {
