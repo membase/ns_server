@@ -85,9 +85,17 @@ childs_loop_continue(Childs) ->
             set_childs_and_loop(NewChilds)
     end.
 
-create_ssl_proxy_spec(Config) ->
-    {value, UpstreamPort} = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}),
-    {value, DownstreamPort} = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}),
+maybe_create_ssl_proxy_spec(Config) ->
+    UpstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}, undefined),
+    DownstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}, undefined),
+    case UpstreamPort =/= undefined andalso DownstreamPort =/= undefined of
+        true ->
+            [create_ssl_proxy_spec(UpstreamPort, DownstreamPort)];
+        _ ->
+            []
+    end.
+
+create_ssl_proxy_spec(UpstreamPort, DownstreamPort) ->
     Path = ns_ssl_services_setup:ssl_cert_key_path(),
     CACertPath = ns_ssl_services_setup:ssl_cacert_key_path(),
     PathArgs = ["-pa"] ++ code:get_path(),
@@ -181,6 +189,9 @@ dynamic_children() ->
     Config = ns_config:get(),
 
     {value, PortServers} = ns_config:search_node(Config, port_servers),
+
+    MaybeSSLProxySpec = maybe_create_ssl_proxy_spec(Config),
+
     [begin
          Expanded = expand_args(NCAO),
          case Expanded of
@@ -191,7 +202,7 @@ dynamic_children() ->
                  Expanded
          end
      end || NCAO <- PortServers] ++
-        per_bucket_moxi_specs(Config) ++ [create_ssl_proxy_spec(Config)].
+        per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
 
 expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
     Config = ns_config:get(),

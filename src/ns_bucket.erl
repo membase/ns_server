@@ -635,8 +635,8 @@ is_port_free(BucketName, Port, Config) ->
                        _ ->
                            proplists:get_value(port, menelaus_web:webconfig(Config))
                    end,
-    {value, UpstreamProxyPort} = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}),
-    {value, DownstreamProxyPort} = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}),
+    UpstreamProxyPort = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}, undefined),
+    DownstreamProxyPort = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}, undefined),
 
     SSLCapiPort = ns_config:search(Config, {node, node(), ssl_capi_port}, undefined),
     SSLRestPort = ns_config:search(Config, {node, node(), ssl_rest_port}, undefined),
