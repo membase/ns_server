@@ -174,21 +174,22 @@ default() ->
      {{node, node(), memcached_config},
       {[
         {interfaces,
-         [
-          {[{host, <<"*">>},
-            {port, port},
+         {ns_ports_setup, omit_missing_mcd_ports,
+          [
+           {[{host, <<"*">>},
+             {port, port},
             {maxconn, 30000}]},
 
-          {[{host, <<"*">>},
-            {port, dedicated_port},
-            {maxconn, 5000}]},
+           {[{host, <<"*">>},
+             {port, dedicated_port},
+             {maxconn, 5000}]},
 
-          {[{host, <<"*">>},
-            {port, ssl_port},
-            {maxconn, 30000},
-            {ssl, {[{key, list_to_binary(ns_ssl_services_setup:memcached_key_path())},
-                    {cert, list_to_binary(ns_ssl_services_setup:memcached_cert_path())}]}}]}
-         ]},
+           {[{host, <<"*">>},
+             {port, ssl_port},
+             {maxconn, 30000},
+             {ssl, {[{key, list_to_binary(ns_ssl_services_setup:memcached_key_path())},
+                     {cert, list_to_binary(ns_ssl_services_setup:memcached_cert_path())}]}}]}
+          ]}},
 
         {extensions,
          [

@@ -5,7 +5,8 @@
 -export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
          restart_xdcr_proxy/0,
-         memcached_config_path/0]).
+         memcached_config_path/0,
+         omit_missing_mcd_ports/2]).
 
 start() ->
     {ok, proc_lib:spawn_link(?MODULE, setup_body_tramp, [])}.
@@ -269,8 +270,8 @@ expand_memcached_config({Props}, Params) when is_list(Props) ->
     {[{Key, expand_memcached_config(Value, Params)} || {Key, Value} <- Props]};
 expand_memcached_config(Array, Params) when is_list(Array) ->
     [expand_memcached_config(Elem, Params) || Elem <- Array];
-expand_memcached_config({M, F, A}, _Params) ->
-    M:F(A);
+expand_memcached_config({M, F, A}, Params) ->
+    M:F(A, Params);
 expand_memcached_config({Fmt, Args}, Params) ->
     Args1 = [expand_memcached_config(A, Params) || A <- Args],
     iolist_to_binary(io_lib:format(Fmt, Args1));
@@ -280,3 +281,17 @@ expand_memcached_config(Param, Params)
     Value;
 expand_memcached_config(Verbatim, _Params) ->
     Verbatim.
+
+omit_missing_mcd_ports(Interfaces, MCDParams) ->
+    ExpandedPorts = misc:rewrite(
+                      fun ({port, PortName}) when is_atom(PortName) ->
+                              {stop, {port, proplists:get_value(PortName, MCDParams)}};
+                          (_Other) ->
+                              continue
+                      end, Interfaces),
+    Ports = [Obj || Obj <- ExpandedPorts,
+                    case Obj of
+                        {PortProps} ->
+                            proplists:get_value(port, PortProps) =/= undefined
+                    end],
+    expand_memcached_config(Ports, MCDParams).
