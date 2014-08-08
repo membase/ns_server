@@ -628,6 +628,7 @@ is_port_free(BucketName, Port) ->
     is_port_free(BucketName, Port, ns_config:get()).
 
 is_port_free(BucketName, Port, Config) ->
+    true = (Port /= undefined),
     TakenWebPort = case BucketName of
                        [] ->
                            0;
@@ -659,7 +660,7 @@ validate_bucket_config(BucketName, NewConfig) ->
     case is_valid_bucket_name(BucketName) of
         true ->
             Port = proplists:get_value(moxi_port, NewConfig),
-            case is_port_free(BucketName, Port) of
+            case Port =:= undefined orelse is_port_free(BucketName, Port) of
                 false ->
                     {error, {port_conflict, Port}};
                 true ->
