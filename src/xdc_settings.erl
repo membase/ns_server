@@ -68,7 +68,7 @@ get_all_settings_snapshot_by_doc_id(DocId) when is_binary(DocId) ->
 
 settings_specs() ->
     [{max_concurrent_reps,              per_replication, {int, 2, 256},              16},
-     {checkpoint_interval,              per_replication, {int, 60, 14400},           1800},
+     {checkpoint_interval,              per_replication, {int, 10, 14400},           1800},
      {doc_batch_size_kb,                per_replication, {int, 10, 10000},           2048},
      {failure_restart_interval,         per_replication, {int, 1, 300},              30},
      {worker_batch_size,                per_replication, {int, 500, 10000},          500},
