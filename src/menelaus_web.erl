@@ -1334,8 +1334,8 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     PortsKV = lists:foldl(
                 fun ({ConfigKey, JKey}, Acc) ->
                         case ns_config:search_node(WantENode, Config, ConfigKey) of
-                            {value, Value} -> [{JKey, Value} | Acc];
-                            false -> Acc
+                            {value, Value} when Value =/= undefined -> [{JKey, Value} | Acc];
+                            _ -> Acc
                         end
                 end, PortsKV0, PortKeys),
 
