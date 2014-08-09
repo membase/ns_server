@@ -397,20 +397,12 @@ get_vbucket_seqno_stats(BucketName, Vb) ->
 handle_commit_for_checkpoint(#httpd{method='POST'}=Req) ->
     {Bucket, VB, VBOpaque, _} = extract_ck_params(Req),
 
-    TimeBefore = erlang:now(),
-    system_stats_collector:increment_counter(xdcr_checkpoint_commits_enters, 1),
-    try
-        case ns_memcached:perform_checkpoint_commit_for_xdcr(Bucket, VB, ?XDCR_CHECKPOINT_TIMEOUT) of
-            ok -> ok;
-            {memcached_error, not_my_vbucket} ->
-                erlang:throw({not_found, not_my_vbucket})
-        end
-    after
-        system_stats_collector:increment_counter(xdcr_checkpoint_commits_leaves, 1)
+    case ns_config:read_key_fast(xdcr_commits_dont_wait_disk, false) of
+        true ->
+            ok;
+        false ->
+            do_checkpoint_commit(Bucket, VB)
     end,
-
-    TimeAfter = erlang:now(),
-    system_stats_collector:add_histo(xdcr_checkpoint_commit_time, timer:now_diff(TimeAfter, TimeBefore)),
 
     {UUID, Seqno} = get_vbucket_seqno_stats(Bucket, VB),
 
@@ -425,6 +417,22 @@ handle_commit_for_checkpoint(#httpd{method='POST'}=Req) ->
             system_stats_collector:increment_counter(xdcr_checkpoint_commit_mismatches, 1),
             couch_httpd:send_json(Req, 400, {[{<<"vbopaque">>, UUID}]})
     end.
+
+do_checkpoint_commit(Bucket, VB) ->
+    TimeBefore = erlang:now(),
+    system_stats_collector:increment_counter(xdcr_checkpoint_commits_enters, 1),
+    try
+        case ns_memcached:perform_checkpoint_commit_for_xdcr(Bucket, VB, ?XDCR_CHECKPOINT_TIMEOUT) of
+            ok -> ok;
+            {memcached_error, not_my_vbucket} ->
+                erlang:throw({not_found, not_my_vbucket})
+        end
+    after
+        system_stats_collector:increment_counter(xdcr_checkpoint_commits_leaves, 1)
+    end,
+
+    TimeAfter = erlang:now(),
+    system_stats_collector:add_histo(xdcr_checkpoint_commit_time, timer:now_diff(TimeAfter, TimeBefore)).
 
 validate_commit(FailoverLog, CommitUUID, CommitSeq) ->
     {FailoverUUIDs, FailoverSeqs} = lists:unzip(FailoverLog),
