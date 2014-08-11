@@ -787,20 +787,34 @@ find_delta_recovery_map(Config, AllNodes, DeltaNodes, Bucket, BucketConfig) ->
 find_delta_recovery_map_loop([], _Config, _Bucket, _Options, _DeltaNodes) ->
     false;
 find_delta_recovery_map_loop([TargetMap | Rest], Config, Bucket, Options, DeltaNodes) ->
-    TargetMapArray = array:from_list(TargetMap),
+    {_, TargetVBucketsDict} =
+        lists:foldl(
+          fun (Chain, {V, D}) ->
+                  D1 = lists:foldl(
+                         fun (Node, Acc) ->
+                                 case lists:member(Node, Chain) of
+                                     true ->
+                                         dict:update(Node,
+                                                     fun (Vs) ->
+                                                             [V | Vs]
+                                                     end, Acc);
+                                     false ->
+                                         Acc
+                                 end
+                         end, D, DeltaNodes),
+
+                  {V+1, D1}
+          end,
+          {0, dict:from_list([{N, []} || N <- DeltaNodes])}, TargetMap),
 
     Usable =
         lists:all(
           fun (Node) ->
                   AllFailoverVBuckets = get_failover_vbuckets(Config, Node),
-                  VBuckets = proplists:get_value(Bucket, AllFailoverVBuckets),
+                  FailoverVBuckets = proplists:get_value(Bucket, AllFailoverVBuckets),
+                  TargetVBuckets = lists:reverse(dict:fetch(Node, TargetVBucketsDict)),
 
-                  VBuckets =/= undefined andalso
-                      lists:all(
-                        fun (V) ->
-                                Chain = array:get(V, TargetMapArray),
-                                lists:member(Node, Chain)
-                        end, VBuckets)
+                  TargetVBuckets =:= FailoverVBuckets
           end, DeltaNodes),
 
     case Usable of
