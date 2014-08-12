@@ -111,6 +111,21 @@ handle_info({failover_id, FailoverUUID,
 handle_info(opaque_mismatch, State) ->
     {stop, {shutdown, opaque_mismatch}, State};
 
+handle_info({updated_highseqno, Seqno}, #rep_state{rep_details = #rep{id = RepId},
+                                                   status = #rep_vb_status{vb = Vb}
+                                                  } = State) ->
+    case ets:lookup(xdcr_stats, {RepId, Vb}) of
+        [#xdcr_vb_stats_sample{vbucket_seqno = KnownSeqno}] when KnownSeqno < Seqno ->
+            ?xdcr_debug("updating vb ~p seqno from ~p to ~p", [Vb, KnownSeqno, Seqno]),
+            ets:update_element(xdcr_stats, {RepId, Vb},
+                               {#xdcr_vb_stats_sample.vbucket_seqno, Seqno});
+        _ ->
+            ok
+    end,
+    {noreply, State};
+handle_info({updated_highseqno, _Seqno}, OtherState) ->
+    {noreply, OtherState};
+
 handle_info({stream_end, SnapshotStart, SnapshotEnd, LastSeenSeqno}, State) ->
     ?x_trace(gotStreamEnd,
              [{snapshotStart, SnapshotStart},
