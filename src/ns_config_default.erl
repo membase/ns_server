@@ -109,7 +109,7 @@ default() ->
     IsEnterprise = init_is_enterprise(),
 
     [{directory, path_config:component_path(data, "config")},
-     {is_enterprise, IsEnterprise},
+     {{node, node(), is_enterprise}, IsEnterprise},
      {index_aware_rebalance_disabled, false},
      {max_bucket_count, 10},
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},
