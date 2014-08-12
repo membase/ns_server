@@ -82,24 +82,6 @@ terminate(Reason, #state{proxies = Proxies,
                          producer_node = ProdNode,
                          bucket = Bucket}) ->
     dcp_proxy:terminate_and_wait(Reason, Proxies),
-    case Reason of
-        normal ->
-            ok;
-        shutdown ->
-            ok;
-        _ ->
-            RV =
-                (catch
-                     misc:parallel_map(
-                       fun ({Type, Node}) ->
-                               dcp_proxy:nuke_connection(Type, ConnName, Node, Bucket)
-                       end,
-                       [{consumer, node()}, {producer, ProdNode}],
-                       5000)),
-
-            ?log_debug("Terminating with reason ~p. Nuked connection ~p with result ~p.",
-                       [Reason, ConnName, RV])
-    end,
     ok.
 
 handle_info({'EXIT', _Pid, Reason}, State) ->

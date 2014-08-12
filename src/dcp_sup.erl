@@ -98,7 +98,7 @@ nuke(Bucket) ->
     Children = get_children(Bucket),
     misc:terminate_and_wait({shutdown, nuke}, Children),
 
-    Connections = get_remaining_connections(Bucket),
+    Connections = get_dcp_connections(Bucket),
     misc:parallel_map(
       fun (ConnName) ->
               dcp_proxy:nuke_connection(consumer, ConnName, node(), Bucket)
@@ -107,7 +107,7 @@ nuke(Bucket) ->
       infinity),
     Children =/= [] andalso Connections =/= [].
 
-get_remaining_connections(Bucket) ->
+get_dcp_connections(Bucket) ->
     {ok, Connections} =
         ns_memcached:raw_stats(
           node(), Bucket, <<"dcp">>,
