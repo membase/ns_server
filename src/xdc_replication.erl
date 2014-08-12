@@ -109,7 +109,8 @@ init([#rep{source = SrcBucketBinary, replication_mode = RepMode, options = Optio
     ?xdcr_debug("ns config event handler subscribed", []),
 
     MaxConcurrentReps = options_to_num_tokens(Options),
-    {ok, InitThrottle} = new_concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_INIT_CONCUR_THROTTLE}, self()),
+    MaxInitReps = erlang:max(MaxConcurrentReps, 1),
+    {ok, InitThrottle} = new_concurrency_throttle:start_link({MaxInitReps, ?XDCR_INIT_CONCUR_THROTTLE}, self()),
     {ok, WorkThrottle} = new_concurrency_throttle:start_link({MaxConcurrentReps, ?XDCR_REPL_CONCUR_THROTTLE}, self()),
     ?xdcr_debug("throttle process created (init throttle: ~p, work throttle: ~p). Tokens count is ~p",
                 [InitThrottle, WorkThrottle, MaxConcurrentReps]),
@@ -246,7 +247,8 @@ handle_call({update_replication, NewRep}, _From,
                     ?xdcr_debug("total number of tokens has been changed from ~p to ~p, "
                                 "adjust work throttle (pid: ~p) accordingly",
                                 [State#replication.num_tokens, NewTokens, WorkThrottle]),
-                    new_concurrency_throttle:change_tokens(InitThrottle, NewTokens),
+                    MaxInitReps = erlang:max(NewTokens, 1),
+                    new_concurrency_throttle:change_tokens(InitThrottle, MaxInitReps),
                     new_concurrency_throttle:change_tokens(WorkThrottle, NewTokens);
                 _->
                     ok
