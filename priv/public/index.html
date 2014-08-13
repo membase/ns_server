@@ -2108,16 +2108,18 @@
           <div class="with_radiogroup">
             <div>
               <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain_new" checked="checked">
-              <label for="cache_metadata_retain_new">Retain metadata in memory even for non-resident items</label>
+              <label for="cache_metadata_retain_new">Value Eviction</label>
             </div>
             <div>
               <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain_new">
-              <label for="cache_metadata_non_retain_new">Don't retain metadata in memory for non-resident items</label>
+              <label for="cache_metadata_non_retain_new">Full Eviction</label>
             </div>
           </div>
           <a class="tooltip text_11"><span>What's this?</span>
-            <span class="tooltip_msg" style="width:200px;"><span>
-                Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
+            <span class="tooltip_msg" style="width:350px;"><span>
+              Value Eviction - During eviction, only the value will be evicted (key and metadata will remain in memory).
+              Full Eviction - During eviction, everything (including key, metadata and value) will be evicted.
+              Value Eviction needs more system memory but provides the best performance. Full Eviction reduces memory overhead requirement.
             </span></span>
           </a>
         </div>
@@ -3178,16 +3180,18 @@
           <div class="with_radiogroup">
             <div>
               <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain-init" checked="checked">
-              <label for="cache_metadata_retain-init">Retain metadata in memory even for non-resident items</label>
+              <label for="cache_metadata_retain-init">Value Eviction</label>
             </div>
             <div>
               <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain-init">
-              <label for="cache_metadata_non_retain-init">Don’t retain metadata in memory for non-resident items</label>
+              <label for="cache_metadata_non_retain-init">Full Eviction</label>
             </div>
           </div>
           <a class="tooltip text_11"><span>What's this?</span>
-            <span class="tooltip_msg" style="width:200px;"><span>
-                Retaining metadata needs more system memory, but can provide best performance. Not retaining metadata can reduce memory overhead requirement.
+            <span class="tooltip_msg" style="width:350px;"><span>
+              Value Eviction - During eviction, only the value will be evicted (key and metadata will remain in memory).
+              Full Eviction - During eviction, everything (including key, metadata and value) will be evicted.
+              Value Eviction needs more system memory but provides the best performance. Full Eviction reduces memory overhead requirement.
             </span></span>
           </a>
         </div>
