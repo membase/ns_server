@@ -592,6 +592,11 @@ handle_call(prepare_flush, _From, #state{bucket_name = BucketName} = State) ->
     {reply, ns_memcached:disable_traffic(BucketName, infinity), State};
 handle_call(complete_flush, _From, State) ->
     {reply, ok, consider_doing_flush(State)};
+handle_call(query_vbucket_states, _From, #state{bucket_name = BucketName,
+                                               rebalance_status = in_process,
+                                               rebalancer_type = rebalancer} = State) ->
+    ?log_info("Attempt to query vbucket states for bucket ~p during rebalance", [BucketName]),
+    {reply, rebalancing, State};
 handle_call(query_vbucket_states, _From, #state{bucket_name = BucketName} = State) ->
     NewState = consider_doing_flush(State),
     %% NOTE: uses 'outer' memcached timeout of 60 seconds
