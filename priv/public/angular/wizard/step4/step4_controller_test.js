@@ -45,6 +45,7 @@ describe("wizard.step4.Controller", function () {
     $scope.onSubmit();
     $httpBackend.flush();
     expect($scope.spinner).toBe(false);
+    expect($state.transitionTo.calls.count()).toBe(1);
   });
 
   it('should send email onSubmit if email exist', function () {

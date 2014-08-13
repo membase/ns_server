@@ -13,12 +13,11 @@ angular.module('index', [
 
     authService.entryPoint();
 
-    //async template preload
     _.each(angularTemplatesList, function (url) {
       $http.get("/angular/" + url, {cache: $templateCache});
     });
 
-  }]).run(['$rootScope', '$location', '$templateCache', function ($rootScope, $location, $templateCache) {
+  }]).run(['$rootScope', '$location', function ($rootScope, $location) {
     $rootScope.$on('$stateChangeStart', function (event, current) {
       this.locationSearch = $location.search();
     });

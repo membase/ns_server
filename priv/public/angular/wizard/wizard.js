@@ -8,8 +8,8 @@ angular.module('wizard', [
   'wizard.step5.service',
   'dialog',
   'ui.router'
-]).config(['$stateProvider', '$urlRouterProvider',
-    function ($stateProvider, $urlRouterProvider) {
+]).config(['$stateProvider',
+    function ($stateProvider) {
 
       $stateProvider
         .state('wizard', {
