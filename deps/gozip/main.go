@@ -60,7 +60,7 @@ func zipifyPath(path string) string {
 		path = path[len(volume):]
 	}
 
-	return strings.TrimPrefix(path, "/")
+	return filepath.ToSlash(strings.TrimPrefix(path, "/"))
 }
 
 type walkFn func(string, *os.File, os.FileInfo) error
