@@ -424,7 +424,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                       {'DOWN', MRef, _, _, _} ->
                                           ok
                                   end,
-                                  case ns_janitor:cleanup(BucketName, [{timeout, 10}]) of
+                                  case ns_janitor:cleanup(BucketName, [{query_states_timeout, 10000}]) of
                                       ok -> ok;
                                       {error, _, BadNodes} ->
                                           exit({pre_rebalance_janitor_run_failed, BadNodes})

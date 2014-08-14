@@ -794,7 +794,7 @@ idle({start_recovery, Bucket}, {FromPid, _} = _From,
 
         ns_bucket:set_servers(Bucket, Servers),
 
-        case ns_janitor:cleanup(Bucket, [{timeout, 10}]) of
+        case ns_janitor:cleanup(Bucket, [{query_states_timeout, 10000}]) of
             ok ->
                 ok;
             {error, _, FailedNodes1} ->
@@ -1171,7 +1171,7 @@ perform_bucket_flushing_with_config(BucketName, State, BucketConfig) ->
             case RV of
                 ok ->
                     ?log_info("Requesting janitor run to actually revive bucket ~p after flush", [BucketName]),
-                    JanitorRV = ns_janitor:cleanup(BucketName, [{timeout, 1}]),
+                    JanitorRV = ns_janitor:cleanup(BucketName, [{query_states_timeout, 1000}]),
                     case JanitorRV of
                         ok -> ok;
                         _ ->
