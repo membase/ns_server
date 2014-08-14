@@ -77,10 +77,7 @@ handle_cast(Msg, State) ->
     ?rebalance_warning("Unhandled cast: ~p" , [Msg]),
     {noreply, State}.
 
-terminate(Reason, #state{proxies = Proxies,
-                         connection_name = ConnName,
-                         producer_node = ProdNode,
-                         bucket = Bucket}) ->
+terminate(Reason, #state{proxies = Proxies}) ->
     dcp_proxy:terminate_and_wait(Reason, Proxies),
     ok.
 
