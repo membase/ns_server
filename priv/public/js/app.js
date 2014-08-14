@@ -359,25 +359,39 @@ var SetupWizard = {
           authType: 'sasl',
           replicaNumber: 1,
           replicaIndex: false,
-          threadsNumber: 3
+          threadsNumber: 3,
+          thisIsBucketTemplate: true
         }, $.deparam(opt.defaultBucketData ? opt.defaultBucketData : ''));
 
-        $.ajax({
-          type:'GET',
-          url:'/nodes/self',
-          dataType: 'json',
-          error: function () {
-            SetupWizard.panicAndReload();
-          },
-          success: function (nodeData) {
+        var nodesSelfCell = Cell.compute(function (v) {
+          return future.get({url: "/nodes/self"});
+        });
+
+        var missingDefaultBucketMarker = {};
+
+        var defaultBucketInfoCell = Cell.compute(function (v) {
+          return future.get({
+            url: "/pools/default/buckets/default",
+            missingValue: missingDefaultBucketMarker
+          });
+        });
+
+        Cell.compute(function (v) {
+          return [v.need(nodesSelfCell), v.need(defaultBucketInfoCell)];
+        }).getValue(function (arr) {
+          nodeData = arr[0];
+          defaultBucketInfo = arr[1];
+          if (defaultBucketInfo === missingDefaultBucketMarker) {
             data = _.extend({
               quota: {
                 rawRAM: nodeData.storageTotals.ram.quotaTotal - nodeData.storageTotals.ram.quotaUsed
                   - sampleBucketsRAMQuota
               }
             }, data);
-            callback(data);
+          } else {
+            data = defaultBucketInfo;
           }
+          callback(data);
         });
       };
 
@@ -389,12 +403,19 @@ var SetupWizard = {
 
       function createBucketDialog(initValue, callback) {
         var dialogVisible = false;
-        var dialog = new BucketDetailsDialog(initValue, true, {
+        var defaultBucketExists = !initValue.thisIsBucketTemplate;
+        var dialog = new BucketDetailsDialog(initValue, !defaultBucketExists, {
           id: 'init_bucket_dialog',
           refreshBuckets: function (b) {
             b();
           },
           doCreateBucket: function (uri, form, callback) {
+            if (defaultBucketExists) {
+              opt.defaultBucketData = false;
+              var data = dialog.getFormValues(form);
+              jsonPostWithErrors(uri, data, callback);
+              return;
+            }
             opt.defaultBucketData = dialog.getFormData();
             jsonPostWithErrors(initValue.validateURL, getFormValuesForValidation(form), callback);
           },
@@ -489,6 +510,10 @@ var SetupWizard = {
         };
 
         var createDefaultBucket = function (bucketData, onSuccess, onError) {
+          if (bucketData === false) {
+            onSuccess();
+            return;
+          }
           jsonPostWithErrors('/pools/default/buckets', bucketData + "&name=default&authType=sasl&saslPassword=",
           function (simpleErrors, status, errorObject) {
             if (status === 'success') {
