@@ -48,7 +48,7 @@
                 rebalance_subprocesses_registry :: pid()}).
 
 -export([wait_for_bucket_creation/2, query_states/3,
-         apply_new_bucket_config/6,
+         apply_new_bucket_config_with_timeout/6,
          mark_bucket_warmed/2,
          delete_vbucket_copies/4,
          prepare_nodes_for_rebalance/3,
@@ -222,32 +222,40 @@ get_apply_new_config_call(Rebalancer, NewBucketConfig, IgnoredVBuckets) ->
     {if_rebalance, Rebalancer,
      {apply_new_config, Rebalancer, NewBucketConfig, IgnoredVBuckets}}.
 
-apply_new_bucket_config(Bucket, Rebalancer, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
+apply_new_bucket_config_with_timeout(Bucket, Rebalancer, Servers,
+                                     NewBucketConfig, IgnoredVBuckets,
+                                     Timeout0) ->
+    Timeout = case Timeout0 of
+                  undefined_timeout -> ?APPLY_NEW_CONFIG_TIMEOUT;
+                  _ -> Timeout0
+              end,
     true = (Rebalancer =:= undefined orelse is_pid(Rebalancer)),
     case cluster_compat_mode:get_replication_topology() of
         star ->
-            apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies,
-                                         NewBucketConfig, IgnoredVBuckets);
+            apply_new_bucket_config_star(Bucket, Rebalancer, Servers,
+                                         NewBucketConfig, IgnoredVBuckets, Timeout);
         chain ->
-            apply_new_bucket_config_chain(Bucket, Rebalancer, Servers, Zombies,
-                                          NewBucketConfig, IgnoredVBuckets)
+            apply_new_bucket_config_chain(Bucket, Rebalancer, Servers,
+                                          NewBucketConfig, IgnoredVBuckets, Timeout)
     end.
 
-apply_new_bucket_config_chain(Bucket, Rebalancer, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
-    RV1 = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
+apply_new_bucket_config_chain(Bucket, Rebalancer, Servers,
+                              NewBucketConfig, IgnoredVBuckets, Timeout) ->
+    RV1 = gen_server:multi_call(Servers, server_name(Bucket),
                                 get_apply_new_config_call(Rebalancer, NewBucketConfig, IgnoredVBuckets),
-                                ?APPLY_NEW_CONFIG_TIMEOUT),
+                                Timeout),
     case process_apply_config_rv(Bucket, RV1, apply_new_config) of
         ok ->
-            RV2 = gen_server:multi_call(Servers -- Zombies, server_name(Bucket),
+            RV2 = gen_server:multi_call(Servers, server_name(Bucket),
                                         {apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
-                                        ?APPLY_NEW_CONFIG_TIMEOUT),
+                                        Timeout),
             process_apply_config_rv(Bucket, RV2, apply_new_config_replicas_phase);
         Other ->
             Other
     end.
 
-apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies, NewBucketConfig, IgnoredVBuckets) ->
+apply_new_bucket_config_star(Bucket, Rebalancer, Servers,
+                             NewBucketConfig, IgnoredVBuckets, Timeout) ->
     Map = proplists:get_value(map, NewBucketConfig),
     true = (Map =/= undefined),
     NumVBuckets = proplists:get_value(num_vbuckets, NewBucketConfig),
@@ -262,15 +270,14 @@ apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies, NewBucketConf
     %% [master_node, replica_node] for every replica node. This ensures that
     %% apply_new_config sets the vbucket to replica state on replica_node and
     %% that apply_new_config_replica_phase sets up the replication correctly.
-    AliveServers = Servers -- Zombies,
     NodeMaps0 = dict:from_list(
                   [{N, array:new([{size, NumVBuckets},
-                                  {default, [undefined]}])} || N <- AliveServers]),
+                                  {default, [undefined]}])} || N <- Servers]),
 
     NodeMaps1 =
         lists:foldl(
           fun ({VBucket, [Master | Replicas]}, Acc) ->
-                  Acc1 = case lists:member(Master, AliveServers) of
+                  Acc1 = case lists:member(Master, Servers) of
                              true ->
                                  NodeMap0 = dict:fetch(Master, Acc),
                                  NodeMap1 = array:set(VBucket, [Master], NodeMap0),
@@ -281,7 +288,7 @@ apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies, NewBucketConf
 
                   lists:foldl(
                     fun (Dst, Acc2) ->
-                            case lists:member(Dst, AliveServers) of
+                            case lists:member(Dst, Servers) of
                                 true ->
                                     NodeMap2 = dict:fetch(Dst, Acc2),
                                     %% note that master may be undefined here;
@@ -304,8 +311,8 @@ apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies, NewBucketConf
                                                  get_apply_new_config_call(Rebalancer,
                                                                            dict:fetch(Node, NodeMaps),
                                                                            IgnoredVBuckets),
-                                                 ?APPLY_NEW_CONFIG_TIMEOUT)}
-            end, AliveServers, infinity),
+                                                 Timeout)}
+            end, Servers, infinity),
     case process_apply_config_rv(Bucket, {RV1, []}, apply_new_config) of
         ok ->
             RV2 = misc:parallel_map(
@@ -315,8 +322,8 @@ apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies, NewBucketConf
                                                    {apply_new_config_replicas_phase,
                                                     dict:fetch(Node, NodeMaps),
                                                     IgnoredVBuckets},
-                                                   ?APPLY_NEW_CONFIG_TIMEOUT)}
-                    end, AliveServers, infinity),
+                                                   Timeout)}
+                    end, Servers, infinity),
             process_apply_config_rv(Bucket, {RV2, []}, apply_new_config_replicas_phase);
         Other ->
             Other

@@ -1240,8 +1240,9 @@ apply_recoverer_bucket_config(Bucket, BucketConfig, Servers) ->
     {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1),
     case Zombies of
         [] ->
-            janitor_agent:apply_new_bucket_config(
-              Bucket, undefined, Servers, [], BucketConfig, []);
+            janitor_agent:apply_new_bucket_config_with_timeout(
+              Bucket, undefined, Servers,
+              BucketConfig, [], undefined_timeout);
         _ ->
             ?log_error("Failed to query states from some of the nodes: ~p", [Zombies]),
             {error, {failed_nodes, Zombies}}
