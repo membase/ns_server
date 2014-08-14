@@ -24,7 +24,24 @@
     } else {
       return escapedStrLength;
     }
-}
+  }
+
+  // This is an atered version of the jQuery.param()
+  // https://github.com/jquery/jquery/blob/master/src/serialize.js
+  function serializeData(data) {
+    if (!angular.isObject(data)) {
+      return data == null ? "" : data.toString();
+    }
+    var rv = [];
+    var name;
+    for (name in data) {
+      if (data.hasOwnProperty(name)) {
+        var value = data[name];
+        rv.push(encodeURIComponent(name) + "=" + encodeURIComponent(value == null ? "" : value));
+      }
+    }
+    return rv.join("&").replace(/%20/g, "+");
+  }
 
   function formatMemSize(value) {
     return formatQuantity(value, null, ' ');
@@ -262,6 +279,7 @@
   }
 
   _.mixin({ 'count': count});
+  _.mixin({ 'serializeData': serializeData});
   _.mixin({ 'createApplyToScope': createApplyToScope});
   _.mixin({ 'MBtoBytes': MBtoBytes});
   _.mixin({ 'bytesToMB': bytesToMB});

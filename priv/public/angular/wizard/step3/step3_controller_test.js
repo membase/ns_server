@@ -6,6 +6,7 @@ describe("wizard.step3.Controller", function () {
   var $scope;
   var $state;
   var createController;
+  var response = {replicaNumber: 1, hello: 'there', quota: {rawRAM: 1000000000}};
 
   beforeEach(angular.mock.module('wizard'));
 
@@ -28,42 +29,79 @@ describe("wizard.step3.Controller", function () {
     }
   }));
 
-  it('should be properly initialized', function () {
+  it('should be properly initialized if default bucket not presented', function () {
+    expect($scope.focusMe).toBe(undefined);
+    expect($scope.replicaNumberEnabled).toBe(undefined);
+    joinClusterService.model.dynamicRamQuota = 100000;
+    step2Service.model.sampleBucketsRAMQuota = 9999999999;
+    $httpBackend.expectGET('/pools/default/buckets/default').respond(404);
+    $httpBackend.expectPOST('/pools/default/buckets?ignore_warnings=1&just_validate=1').respond(200);
     createController();
+    $httpBackend.flush();
+    expect(step3Service.model.bucketConf.ramQuotaMB).toBe(90464);
     expect($scope.guageConfig).toEqual({});
-    expect($scope.modelStep3Service).toBe(step3Service.model);
-    expect($scope.focusMe).toEqual(true);
+    expect($scope.modelStep3Service.bucketConf).toBe(step3Service.model.bucketConf);
+    expect($scope.modelStep3Service.isDefaultBucketPresented).toBe(undefined);
+    expect($scope.focusMe).toBe(true);
+    expect($scope.replicaNumberEnabled).toBe(true);
     expect($scope.onSubmit).toEqual(jasmine.any(Function));
   });
 
-  it('should set ramQuotaMB on initialize', function () {
-    joinClusterService.model.dynamicRamQuota = 100000;
-    step2Service.model.sampleBucketsRAMQuota = 9999999999;
+  it('should be properly initialized if default bucket presented', function () {
+    expect($scope.focusMe).toBe(undefined);
+    expect($scope.replicaNumberEnabled).toBe(undefined);
+    $httpBackend.expectGET('/pools/default/buckets/default').respond(200, response);
+    $httpBackend.expectPOST('/pools/default/buckets/default?ignore_warnings=1&just_validate=1').respond(200);
     createController();
-    expect(step3Service.model.bucketConf.ramQuotaMB).toBe(90464);
+    $httpBackend.flush();
+    expect($scope.guageConfig).toEqual({});
+    expect($scope.modelStep3Service.bucketConf).toEqual({ replicaNumber : 1, otherBucketsRamQuotaMB : 0, ramQuotaMB : 953 });
+    expect($scope.modelStep3Service.isDefaultBucketPresented).toBe(true);
+    expect($scope.focusMe).toBe(true);
+    expect($scope.replicaNumberEnabled).toBe(true);
+    expect($scope.onSubmit).toEqual(jasmine.any(Function));
   });
 
-  it('should go to next step if there are no errors', function () {
+  it('should going to the next step if there are no errors', function () {
     createController();
-    $scope.errors = {error: 'error'};
+    $httpBackend.expectGET('/pools/default/buckets/default').respond(400);
+    $httpBackend.expectPOST('/pools/default/buckets?ignore_warnings=1&just_validate=1').respond(200);
+    $httpBackend.flush();
+
+    $httpBackend.expectPOST('/pools/default/buckets?ignore_warnings=1&just_validate=1').respond(400);
     $scope.onSubmit();
+    $httpBackend.flush();
     expect($state.transitionTo.calls.count()).toBe(0);
-    $scope.errors = {};
+
+    $httpBackend.expectPOST('/pools/default/buckets?ignore_warnings=1&just_validate=1').respond(200);
     $scope.onSubmit();
+    $httpBackend.flush();
     expect($state.transitionTo.calls.count()).toBe(1);
+
+    $scope.modelStep3Service.isDefaultBucketPresented = true;
+
+    $httpBackend.expectPOST('/pools/default/buckets/default').respond(400);
+    $scope.onSubmit();
+    $httpBackend.flush();
+    expect($state.transitionTo.calls.count()).toBe(1);
+
+    $httpBackend.expectPOST('/pools/default/buckets/default').respond(200);
+    $scope.onSubmit();
+    $httpBackend.flush();
+    expect($state.transitionTo.calls.count()).toBe(2);
   });
 
   it('should checking bucketConf on errors in live time', function () {
+    $httpBackend.expectGET('/pools/default/buckets/default').respond(404);
     $httpBackend.expectPOST('/pools/default/buckets?ignore_warnings=1&just_validate=1').respond(200);
     createController();
-    $scope.$apply();
     $httpBackend.flush();
   });
 
   it('should populate guageConfig', function () {
+    $httpBackend.expectGET('/pools/default/buckets/default').respond(404);
     $httpBackend.expectPOST('/pools/default/buckets?ignore_warnings=1&just_validate=1').respond(200, {summaries: {ramSummary: {thisAlloc: 200000, nodesCount: 2, perNodeMegs: 100, total: 20000000, otherBuckets: 1111111}}});
     createController();
-    $scope.$apply();
     $httpBackend.flush();
     expect($scope.guageConfig).toEqual({ topRight : { name : 'Cluster quota', value : '19 MB' }, items : [ { name : 'Other Buckets', value : 1111111, itemStyle : { 'background-color' : '#00BCE9', 'z-index' : '2' }, labelStyle : { color : '#1878a2', 'text-align' : 'left' } }, { name : 'This Bucket', value : 200000, itemStyle : { 'background-color' : '#7EDB49', 'z-index' : '1' }, labelStyle : { color : '#409f05', 'text-align' : 'center' } }, { name : 'Free', value : 18688889, itemStyle : { 'background-color' : '#E1E2E3' }, labelStyle : { color : '#444245', 'text-align' : 'right' } } ], markers : [  ] });
   });

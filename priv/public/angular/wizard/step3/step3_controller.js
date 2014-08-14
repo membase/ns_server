@@ -3,20 +3,42 @@ angular.module('wizard')
     ['$scope', '$state', 'wizard.step3.service', 'wizard.step2.service', 'wizard.step1.joinCluster.service',
       function ($scope, $state, step3Service, step2Service, joinClusterService) {
         $scope.guageConfig = {};
-        $scope.focusMe = true;
-        $scope.replicaNumberEnabled = true;
 
-        step3Service.model.bucketConf.ramQuotaMB = joinClusterService.model.dynamicRamQuota - _.bytesToMB(step2Service.model.sampleBucketsRAMQuota);
-        $scope.modelStep3Service = step3Service.model;
+        step3Service.tryToGetDefaultBucketInfo()
+        .success(function (data) {
+          step3Service.model.bucketConf = _.extend(step3Service.getBucketConf(data), {
+            ramQuotaMB: _.bytesToMB(data.quota.rawRAM)
+          });
 
-        $scope.onSubmit = function onSubmit() {
-          if (!_.isEmpty($scope.errors)) {
-            return;
-          }
+          step3Service.model.isDefaultBucketPresented = true;
+        })
+        .error(function (data, status) {
+          step3Service.model.bucketConf = _.extend(step3Service.getBucketConf(), {
+            ramQuotaMB: joinClusterService.model.dynamicRamQuota - _.bytesToMB(step2Service.model.sampleBucketsRAMQuota)
+          });
+        })
+        ['finally'](function () {
+
+          $scope.modelStep3Service = step3Service.model;
+          $scope.focusMe = true;
+          $scope.replicaNumberEnabled = true;
+        });
+
+        function goToTheNextStep() {
           $state.transitionTo('wizard.step4');
         }
 
+        $scope.onSubmit = function onSubmit() {
+          step3Service
+            .postBuckets(!step3Service.model.isDefaultBucketPresented)
+            .success(goToTheNextStep)
+            .error(onResult);
+        };
+
         $scope.$watch('replicaNumberEnabled', function (isEnabled) {
+          if (isEnabled === undefined) {
+            return;
+          }
           if (!isEnabled) {
             $scope.modelStep3Service.bucketConf.replicaNumber = 0;
             $scope.modelStep3Service.bucketConf.replicaIndex = 0;

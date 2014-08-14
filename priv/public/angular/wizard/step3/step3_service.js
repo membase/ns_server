@@ -4,29 +4,36 @@ angular.module('wizard.step3.service', [])
 
       var scope = {};
       scope.model = {};
-      scope.model.bucketConf = {
+
+      var defaultBucketUrl = '/pools/default/buckets/default';
+      var defaultBucketConf = {
+        authType: 'sasl',
+        name: 'default',
+        saslPassword: '',
         bucketType: 'membase',
         evictionPolicy: 'valueOnly',
         replicaNumber: "1",
         replicaIndex: "0",
-        threadsNumber: "8",
+        threadsNumber: "3",
         flushEnabled: "0",
         ramQuotaMB: "0"
+      };
+
+      scope.tryToGetDefaultBucketInfo = function tryToGetDefaultBucketInfo(justValidate) {
+        return $http({method: 'GET', url: defaultBucketUrl});
+      };
+
+      scope.getBucketConf = function getBucketConf(data) {
+        return _.extend(data ? _.pick(data, _.keys(defaultBucketConf)) : defaultBucketConf, {
+          otherBucketsRamQuotaMB: _.bytesToMB(step2Service.model.sampleBucketsRAMQuota)
+        });
       };
 
       scope.postBuckets = function postBuckets(justValidate) {
         var request = {
           method: 'POST',
-          url: '/pools/default/buckets',
-          data: 'authType=sasl' + '&name=default' + '&saslPassword=' +
-                '&bucketType=' + scope.model.bucketConf.bucketType +
-                '&evictionPolicy=' + scope.model.bucketConf.evictionPolicy +
-                '&replicaNumber=' + scope.model.bucketConf.replicaNumber +
-                '&threadsNumber=' + scope.model.bucketConf.threadsNumber +
-                '&ramQuotaMB=' + scope.model.bucketConf.ramQuotaMB +
-                '&flushEnabled=' + scope.model.bucketConf.flushEnabled +
-                '&replicaIndex=' + scope.model.bucketConf.replicaIndex +
-                '&otherBucketsRamQuotaMB=' + _.bytesToMB(step2Service.model.sampleBucketsRAMQuota),
+          url: scope.model.isDefaultBucketPresented ? defaultBucketUrl : '/pools/default/buckets',
+          data: _.serializeData(scope.model.bucketConf),
           headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
         };
 
