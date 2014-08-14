@@ -117,6 +117,9 @@ cleanup_with_states(Bucket, Options, BucketConfig, Servers, States, [] = Zombies
         true ->
             ok;
         false ->
+            ?log_info("Janitor is going to change bucket config for bucket ~p", [Bucket]),
+            ?log_info("VBucket states:~n~p", [States]),
+            ?log_info("Old bucket config:~n~p", [BucketConfig]),
             ok = ns_bucket:set_bucket_config(Bucket, NewBucketConfig)
     end,
 
