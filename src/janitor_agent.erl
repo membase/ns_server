@@ -48,7 +48,6 @@
                 rebalance_subprocesses_registry :: pid()}).
 
 -export([wait_for_bucket_creation/2, query_states/3,
-         apply_new_bucket_config/5,
          apply_new_bucket_config/6,
          mark_bucket_warmed/2,
          delete_vbucket_copies/4,
@@ -223,10 +222,8 @@ get_apply_new_config_call(Rebalancer, NewBucketConfig, IgnoredVBuckets) ->
     {if_rebalance, Rebalancer,
      {apply_new_config, Rebalancer, NewBucketConfig, IgnoredVBuckets}}.
 
-apply_new_bucket_config(Bucket, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
-    apply_new_bucket_config(Bucket, undefined, Servers, Zombies, NewBucketConfig, IgnoredVBuckets).
-
 apply_new_bucket_config(Bucket, Rebalancer, Servers, [] = Zombies, NewBucketConfig, IgnoredVBuckets) ->
+    true = (Rebalancer =:= undefined orelse is_pid(Rebalancer)),
     case cluster_compat_mode:get_replication_topology() of
         star ->
             apply_new_bucket_config_star(Bucket, Rebalancer, Servers, Zombies,

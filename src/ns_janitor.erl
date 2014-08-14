@@ -120,7 +120,8 @@ cleanup_with_states(Bucket, Options, BucketConfig, Servers, States, [] = Zombies
             ok = ns_bucket:set_bucket_config(Bucket, NewBucketConfig)
     end,
 
-    ok = janitor_agent:apply_new_bucket_config(Bucket, Servers, Zombies, NewBucketConfig, IgnoredVBuckets),
+    ok = janitor_agent:apply_new_bucket_config(Bucket, undefined, Servers,
+                                               Zombies, NewBucketConfig, IgnoredVBuckets),
 
     case Zombies =:= [] andalso proplists:get_bool(consider_stopping_rebalance_status, Options) of
         true ->
