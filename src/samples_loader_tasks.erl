@@ -122,7 +122,7 @@ perform_loading_task(Name, Quota) ->
     Port = misc:node_rest_port(ns_config:get(), node()),
     BinDir = path_config:component_path(bin),
 
-    Cmd = BinDir ++ "/tools/cbdocloader",
+    Cmd = BinDir ++ "/cbdocloader",
     Args = ["-n", Host ++ ":" ++ integer_to_list(Port),
             "-b", Name,
             "-s", integer_to_list(Quota),
