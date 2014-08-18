@@ -20,13 +20,13 @@ describe("wizard.step4.service", function () {
   it('should be able to send requests', function () {
     service.model.register = {
       version: 'version',
-      email: 'email',
+      email: 'my@email.com',
       firstname: 'firstname',
       lastname: 'lastname',
       company: 'company',
       agree: true
     };
-    $httpBackend.expectJSONP('http://ph.couchbase.net/email?callback=JSON_CALLBACK&email=email&firstname=firstname&lastname=lastname&company=company&version=version').respond(200);
+    $httpBackend.expectJSONP('http://ph.couchbase.net/email?callback=JSON_CALLBACK&company=company&email=my%40email.com&firstname=firstname&lastname=lastname&version=version').respond(200);
     $httpBackend.expectPOST('/settings/stats').respond(200);
     service.postEmail();
     service.postStats();

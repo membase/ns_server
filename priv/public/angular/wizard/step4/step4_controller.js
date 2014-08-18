@@ -3,7 +3,7 @@ angular.module('wizard')
     function ($scope, $state, step4Service, authService) {
       $scope.focusMe = true;
 
-      step4Service.model.register.version = authService.version || 'unknown';
+      step4Service.model.register.version = authService.model.version || 'unknown';
       $scope.modelStep4Service = step4Service.model;
 
       $scope.onSubmit = function onSubmit() {

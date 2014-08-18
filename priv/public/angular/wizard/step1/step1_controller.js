@@ -31,7 +31,7 @@ angular.module('wizard')
         }
         function doLogin() {
           authService.manualLogin({
-            name: joinClusterService.model.clusterMember.user,
+            username: joinClusterService.model.clusterMember.user,
             password: joinClusterService.model.clusterMember.password
           }).success(joinClusterService.resetClusterMember)
 

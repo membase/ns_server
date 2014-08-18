@@ -34,9 +34,7 @@ angular.module('wizard.step1.joinCluster.service', [])
           return $http({
             method: 'POST',
             url: '/node/controller/doJoinCluster',
-            data: 'hostname=' + scope.model.clusterMember.hostname +
-                  '&user=' + scope.model.clusterMember.user +
-                  '&password=' + scope.model.clusterMember.password,
+            data: _.serializeData(scope.model.clusterMember),
             headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
           });
         };

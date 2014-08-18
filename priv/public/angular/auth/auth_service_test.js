@@ -81,7 +81,7 @@ describe("auth.service", function () {
     simulateNotLoggedIn();
     $httpBackend.expectPOST('/uilogin').respond(200);
     $httpBackend.expectGET('/pools').respond(200, {isAdminCreds: true, pools: [{uri:"pools/zombie"}]});
-    authService.manualLogin({user: 'yarrr', password: 'hey-ho'});
+    authService.manualLogin({username: 'yarrr', password: 'hey-ho'});
     $httpBackend.flush();
 
     expect($state.current.name).toEqual('app.overview');
@@ -91,7 +91,7 @@ describe("auth.service", function () {
   it('should stay on auth screen if manually login is failed', function () {
     simulateNotLoggedIn();
     $httpBackend.expectPOST('/uilogin').respond(400);
-    authService.manualLogin({user: 'yarrr', password: 'hey-ho'});
+    authService.manualLogin({username: 'yarrr', password: 'hey-ho'});
     $httpBackend.flush();
     expect($state.current.name).toEqual('auth');
     expect(authService.model.isAuth).toBeFalsy();

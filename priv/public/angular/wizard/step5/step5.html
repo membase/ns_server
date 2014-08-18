@@ -16,12 +16,12 @@
       <div ng-show="form.$error.passLength">A password of at least six characters is required</div>
       <div ng-show="form.$error.userReq">Username is required</div>
     </div>
-    <div class="warn" style="color:#EC5223;font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; line-height:20px; margin-left:75px; width:500px;" id="update_notifications_errors_container" ng-show="errors">
+    <div class="warn" id="update_notifications_errors_container" ng-show="errors">
       <div ng-repeat="error in errors">{{error}}</div>
     </div>
     <div class="username-input input" style="margin-top: 20px;">
       <label for="secure-username">Username:</label>
-      <input type="text" name="username" class="inp" value="Administrator" id="secure-username" maxlength="24" ng-model="modelStep5Service.user.name"/>
+      <input type="text" name="username" class="inp" value="Administrator" id="secure-username" maxlength="24" ng-model="modelStep5Service.user.username"/>
     </div>
     <div class="password-input input">
       <label for="secure-password">Password:</label>

@@ -40,7 +40,8 @@
         rv.push(encodeURIComponent(name) + "=" + encodeURIComponent(value == null ? "" : value));
       }
     }
-    return rv.join("&").replace(/%20/g, "+");
+
+    return rv.sort().join("&").replace(/%20/g, "+");
   }
 
   function formatMemSize(value) {

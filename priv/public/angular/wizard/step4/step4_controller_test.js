@@ -50,7 +50,7 @@ describe("wizard.step4.Controller", function () {
 
   it('should send email onSubmit if email exist', function () {
     $scope.modelStep4Service.register.email = 'my@email.com';
-    $httpBackend.expectJSONP('http://ph.couchbase.net/email?callback=JSON_CALLBACK&email=my@email.com&firstname=&lastname=&company=&version=unknown').respond(200);
+    $httpBackend.expectJSONP('http://ph.couchbase.net/email?callback=JSON_CALLBACK&company=&email=my%40email.com&firstname=&lastname=&version=unknown').respond(200);
     $httpBackend.expectPOST('/settings/stats').respond(200);
     $scope.onSubmit();
     $httpBackend.flush();

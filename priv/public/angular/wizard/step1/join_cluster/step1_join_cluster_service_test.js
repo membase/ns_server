@@ -34,7 +34,7 @@ describe("wizard.step1.joinCluster.service", function () {
   it('should be able to send requests', function () {
     populate();
     $httpBackend.expectPOST('/pools/default', 'memoryQuota=10').respond(200);
-    $httpBackend.expectPOST('/node/controller/doJoinCluster', 'hostname=127.0.0.1&user=Administrator&password=').respond(200);
+    $httpBackend.expectPOST('/node/controller/doJoinCluster', 'hostname=127.0.0.1&password=&user=Administrator').respond(200);
     joinClusterService.postMemory();
     joinClusterService.postJoinCluster();
     $httpBackend.flush();

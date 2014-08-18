@@ -30,7 +30,7 @@ describe("wizard.step5.Controller", function () {
   });
 
   it('should properly send requests', function () {
-    $httpBackend.expectPOST('/settings/web', 'port=SAME&username=Administrator&password=').respond(200);
+    $httpBackend.expectPOST('/settings/web', 'password=&port=SAME&username=Administrator').respond(200);
     $httpBackend.expectPOST('/uilogin').respond(200);
     $httpBackend.expectGET('/pools').respond(200);
     $httpBackend.expectPOST('/pools/default/buckets').respond(200);
@@ -40,7 +40,7 @@ describe("wizard.step5.Controller", function () {
 
   it('should install sample buckets if needed', function () {
     step2Service.model.selected = {name: 'some'};
-    $httpBackend.expectPOST('/settings/web', 'port=SAME&username=Administrator&password=').respond(200);
+    $httpBackend.expectPOST('/settings/web', 'password=&port=SAME&username=Administrator').respond(200);
     $httpBackend.expectPOST('/uilogin').respond(200);
     $httpBackend.expectGET('/pools').respond(200);
     $httpBackend.expectPOST('/pools/default/buckets').respond(200);

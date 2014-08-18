@@ -2,6 +2,7 @@ angular.module('auth.service', ['ui.router']).config(function ($httpProvider, $s
   $httpProvider.defaults.headers.common['invalid-auth-response'] = 'on';
   $httpProvider.defaults.headers.common['Cache-Control'] = 'no-cache';
   $httpProvider.defaults.headers.common['Pragma'] = 'no-cache';
+  $httpProvider.defaults.headers.common['ns_server-ui'] = 'yes';
   $httpProvider.responseInterceptors.push(['$q', '$location', logsOutUserOn401]);
 
   $stateProvider.state('auth', {
@@ -46,7 +47,7 @@ angular.module('auth.service', ['ui.router']).config(function ($httpProvider, $s
         return $http({
           method: 'POST',
           url: '/uilogin',
-          data: 'user=' + user.name + '&password=' + user.password,
+          data: 'user=' + user.username + '&password=' + user.password,
           headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
         }).success(getPools);
       }

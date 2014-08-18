@@ -15,14 +15,14 @@ angular.module('wizard.step4.service', [])
       };
 
       scope.postEmail = function postEmail() {
+        var cloned = _.clone(scope.model.register);
+
+        delete cloned.agree;
+        cloned.callback = 'JSON_CALLBACK';
+
         return $http({
           method: 'JSONP',
-          url: 'http://ph.couchbase.net/email?callback=JSON_CALLBACK' +
-               '&email=' + scope.model.register.email +
-               '&firstname=' + scope.model.register.firstname +
-               '&lastname=' + scope.model.register.lastname +
-               '&company=' + scope.model.register.company +
-               '&version=' + scope.model.register.version
+          url: 'http://ph.couchbase.net/email?' + _.serializeData(cloned)
         });
       };
 

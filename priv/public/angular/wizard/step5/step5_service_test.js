@@ -17,7 +17,7 @@ describe("wizard.step5.service", function () {
   });
 
   it('should be able to send requests', function () {
-    $httpBackend.expectPOST('/settings/web', 'port=SAME&username=Administrator&password=' , {"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8","Accept":"application/json, text/plain, */*"}).respond(200);
+    $httpBackend.expectPOST('/settings/web', 'password=&port=SAME&username=Administrator' , {"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8","Accept":"application/json, text/plain, */*"}).respond(200);
     service.postAuth();
     $httpBackend.flush();
   });

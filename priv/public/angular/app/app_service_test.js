@@ -25,7 +25,7 @@ describe("app.service", function () {
   it('should have response type json', function () {
     var firstReq = {url: 'app/service/', params: {waitChange: 3000}};
     var emptyResp = '';
-    var headers = {"Accept":"application/json, text/plain, */*","invalid-auth-response":"on","Cache-Control":"no-cache","Pragma":"no-cache"};
+    var headers = {"Accept":"application/json, text/plain, */*","invalid-auth-response":"on","Cache-Control":"no-cache","Pragma":"no-cache","ns_server-ui":"yes"};
 
     $httpBackend.expectGET('app/service/?waitChange=3000', headers).respond(emptyResp);
     service.runDefaultPoolsDetailsLoop(firstReq);
