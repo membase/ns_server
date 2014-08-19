@@ -280,7 +280,7 @@ do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, [] = Zombies) ->
                                         %%              end};
                                         false ->
                                             [] = Zombies,
-                                            missing;
+                                            {N, missing};
                                         X -> X
                                     end
                             end, Chain),
@@ -314,9 +314,7 @@ do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, [] = Zombies) ->
                                                                         N =/= undefined],
                                 %% and if everything fits -- cool
                                 FFMasterState =:= active
-                                    andalso lists:all(fun (replica) -> true;
-                                                          (_) -> false
-                                                      end, FFReplicaStates);
+                                    andalso lists:all(fun (S) -> S =:= replica end, FFReplicaStates);
                             _ ->
                                 false
                         end,
@@ -343,6 +341,8 @@ do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, [] = Zombies) ->
                                        [VBucket, Bucket, Node]),
                                     [Node];
                                 Pos ->
+                                    ?log_warning("Master for vbucket ~p in ~p is not active, but ~p is (one of replicas). So making that master.",
+                                                 [VBucket, Bucket, Node]),
                                     [Node|lists:nthtail(Pos, Chain)]
                             end
                     end;
@@ -354,8 +354,39 @@ do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, [] = Zombies) ->
                     %% vbucket map
                     ignore
             end;
-        _ ->
+        [{_,_} | _] ->
             %% NOTE: here we know that master is either active or zombie
             %% just keep existing vbucket map chain
             Chain
     end.
+
+sanify_basic_test() ->
+    %% normal case when everything matches vb map
+    [a, b] = do_sanify_chain("B", [{a, 0, active}, {b, 0, replica}],
+                             [a, b], [], 0, []),
+
+    %% yes, the code will keep both masters as long as expected master
+    %% is there. Possibly something to fix in future
+    [a, b] = do_sanify_chain("B", [{a, 0, active}, {b, 0, active}],
+                             [a, b], [], 0, []),
+
+    %% main chain doesn't match but fast-forward chain does
+    [b, c] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, active}, {c, 0, replica}],
+                             [a, b], [b, c], 0, []),
+
+    %% main chain doesn't match but ff chain does. And old master is already deleted
+    [b, c] = do_sanify_chain("B", [{b, 0, active}, {c, 0, replica}],
+                             [a, b], [b, c], 0, []),
+
+    %% lets make sure we touch all paths just in case
+    %% this runs "there are >1 unexpected master" case
+    ignore = do_sanify_chain("B", [{a, 0, active}, {b, 0, active}],
+                             [c, a, b], [], 0, []),
+    %% this runs "master is one of replicas" case
+    [b] = do_sanify_chain("B", [{b, 0, active}, {c, 0, replica}],
+                          [a, b], [], 0, []),
+    %% and this runs "master is some non-chain member node" case
+    [c] = do_sanify_chain("B", [{c, 0, active}],
+                          [a, b], [], 0, []),
+
+    ok.
