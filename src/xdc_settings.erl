@@ -73,7 +73,7 @@ settings_specs() ->
      {failure_restart_interval,         per_replication, {int, 1, 300},              30},
      {worker_batch_size,                per_replication, {int, 500, 10000},          500},
      {connection_timeout,               per_replication, {int, 10, 10000},           180},
-     {worker_processes,                 per_replication, {int, 1, 32},               4},
+     {worker_processes,                 per_replication, {int, 1, 128},               4},
      {http_connections,                 per_replication, {int, 1, 100},              20},
      {retries_per_request,              per_replication, {int, 1, 100},              2},
      {optimistic_replication_threshold, per_replication, {int, 0, 20 * 1024 * 1024}, 256},
