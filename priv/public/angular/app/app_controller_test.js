@@ -1,76 +1,59 @@
-describe("app.controller", function () {
+describe("appController", function () {
   var $scope;
+  var mnAuthService;
+  var $templateCache;
+  var createController;
+  var $http;
   var $state;
-  var authService;
-  var appService;
+  var $location;
 
+  beforeEach(angular.mock.module('ui.router', function ($stateProvider) {
+    $stateProvider.state('test', {url: '/test'}).state('test2', {url: '/test2'});
+  }));
   beforeEach(angular.mock.module('app'));
+  beforeEach(angular.mock.module('mnAuthService'));
 
   beforeEach(inject(function ($injector) {
     var $rootScope = $injector.get('$rootScope');
     var $controller = $injector.get('$controller');
-    $state = {current: {name: "default"}};
-    authService = $injector.get('auth.service');
-    appService = $injector.get('app.service');
+    $http = $injector.get('$http');
+    $state = $injector.get('$state');
+    mnAuthService = $injector.get('mnAuthService');
+    $templateCache = $injector.get('$templateCache');
+    $location = $injector.get('$location');
 
-    spyOn(authService, 'entryPoint');
-    spyOn(appService, 'runDefaultPoolsDetailsLoop');
+    spyOn(mnAuthService, 'entryPoint');
+    spyOn($http, 'get');
 
     $scope = $rootScope.$new();
 
-    $controller('app.Controller', {'$scope': $scope, '$state': $state});
+    createController = function createControlle() {
+      return $controller('appController', {'$scope': $scope});
+    };
   }));
 
   it('should be properly initialized', function () {
-    expect($scope.$state).toBeDefined();
-    expect($scope.Math).toBeDefined();
-    expect($scope._).toBeDefined();
-    expect($scope.logout).toBeDefined(jasmine.any(Function));
+    expect(angularTemplatesList).toEqual(jasmine.any(Object));
+    createController();
+    expect(mnAuthService.entryPoint.calls.count()).toBe(1);
   });
 
-  it('should call runDefaultPoolsDetailsLoop with params if isAuth and defaultPoolUri are truly', function () {
-    authService.model.isAuth = false;
-    authService.model.defaultPoolUri = false;
-    $scope.$apply();
+  it('should preload templates with caching', function () {
+    angularTemplatesList = ["hellow", "there"];
+    createController();
 
-    expect(appService.runDefaultPoolsDetailsLoop.calls.count()).toBe(1);
-
-    authService.model.isAuth = true;
-    authService.model.defaultPoolUri = false;
-    $scope.$apply();
-
-    expect(appService.runDefaultPoolsDetailsLoop.calls.count()).toBe(1);
-
-    authService.model.isAuth = false;
-    authService.model.defaultPoolUri = 'some/one';
-    $scope.$apply();
-
-    expect(appService.runDefaultPoolsDetailsLoop.calls.count()).toBe(1);
-
-    authService.model.isAuth = true;
-    authService.model.defaultPoolUri = 'some/one';
-    $scope.$apply();
-
-    expect(appService.runDefaultPoolsDetailsLoop.calls.count()).toBe(2);
-    expect(appService.runDefaultPoolsDetailsLoop.calls.mostRecent().args).toEqual([jasmine.any(Object), undefined, jasmine.any(Object)]);
+    expect($http.get.calls.count()).toBe(2);
+    expect($http.get.calls.argsFor(0)[1].cache).toBe($templateCache);
+    expect($http.get.calls.argsFor(0)[0]).toBe("/angular/hellow");
   });
 
-  it('should recalculate params if state is changed', function () {
-    authService.model.isAuth = true;
-    authService.model.defaultPoolUri = 'some/one';
+  it('should keeping hash params beetween state transitions', function () {
+    createController();
+    $location.search({hellow: 'there'});
+    $state.transitionTo('test');
     $scope.$apply();
-
-    expect(appService.runDefaultPoolsDetailsLoop.calls.count()).toBe(1);
-
-    $state.current.name = "default";
+    $state.transitionTo('test2');
     $scope.$apply();
-
-    expect(appService.runDefaultPoolsDetailsLoop.calls.count()).toBe(1);
-
-    $state.current.name = "app.overview";
-    $scope.$apply();
-
-    expect(appService.runDefaultPoolsDetailsLoop.calls.count()).toBe(2);
+    expect($location.search()).toEqual({hellow: 'there'});
   });
-
 });

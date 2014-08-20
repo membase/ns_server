@@ -1,0 +1,26 @@
+<div class="pad" id="init_cluster_dialog" mn-spinner-directive="spinner" mn-spinner-directive>
+  <div class="config-top">
+    <h1>Configure Server</h1>
+    <h2>Step <span class="current-step">1</span> of 5</h2>
+  </div>
+  <form ng-submit="onSubmit()">
+
+    <div ui-view="diskStorage"></div>
+
+    <h2 class="question">Configure Server Hostname</h2>
+    <div class="hostname_setup_block">
+      <label for="setup_hostname">Hostname:</label>
+      <input type="text" name="hostname" ng-model="mnWizardStep1ServiceModel.hostname" />
+      <br class="clear" />
+      <div class="warning pat_10" id="init_cluster_dialog_hostname_errors_container" ng-if="postHostnameErrors">
+        {{postHostnameErrors}}
+      </div>
+    </div>
+
+    <div ui-view="joinCluster"></div>
+
+    <div class="config-bottom">
+      <button name="next" value="Next" class="submit next direction-button" id="step-2-next" type="submit">Next</button>
+    </div>
+  </form>
+</div>

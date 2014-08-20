@@ -1,28 +1,15 @@
-angular.module('app')
-  .controller('app.Controller',
-    ['$scope', '$state', '$location', 'auth.service', 'app.service',
-      function ($scope, $state, $location, authService, appService) {
-        $scope.$state = $state;
-        $scope.$location = $location;
-        $scope._ = _;
-        $scope.Math = Math;
-        $scope.logout = authService.manualLogout;
+angular.module('app').controller('appController',
+  function (mnAuthService, $templateCache, $http, $rootScope, $location) {
+    mnAuthService.entryPoint();
 
-        //app model sharing
-        $scope.appServiceModel = appService.model;
+    _.each(angularTemplatesList, function (url) {
+      $http.get("/angular/" + url, {cache: $templateCache});
+    });
 
-        $scope.$watch(function () {
-          if (!(authService.model.defaultPoolUri && authService.model.isAuth)) {
-            return;
-          }
-
-          return {
-            url: authService.model.defaultPoolUri,
-            params: {
-              waitChange: $state.current.name === 'app.overview' ||
-                          $state.current.name === 'app.manage_servers' ?
-                          3000 : 20000
-            }
-          };
-        }, appService.runDefaultPoolsDetailsLoop, true);
-      }]);
+    $rootScope.$on('$stateChangeStart', function (event, current) {
+      this.locationSearch = $location.search();
+    });
+    $rootScope.$on('$stateChangeSuccess', function () {
+      $location.search(this.locationSearch);
+    });
+  });

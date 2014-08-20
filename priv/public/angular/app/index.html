@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Couhbase Console</title>
+    <link rel="stylesheet" type="text/css" href="app.css">
+    <link rel="stylesheet" type="text/css" href="components/mn_dialog/mn_dialog_directive.css">
+    <link rel="stylesheet" type="text/css" href="mn_dialogs/about/mn_dialogs_about.css">
+
+    <script src="/angular/angular-templates-list.js"></script>
+
+    <script src="/angular/libs/angular.js"></script>
+    <script src="/angular/libs/angular-ui-router.js"></script>
+    <script src="/angular/libs/lodash.compat.js"></script>
+    <script src="/angular/libs/lodash.mixin.js"></script>
+
+    <script src="app.js"></script>
+    <script src="app_config.js"></script>
+    <script src="app_controller.js"></script>
+
+    <script src="mn_admin/mn_admin_config.js"></script>
+    <script src="mn_admin/mn_admin_controller.js"></script>
+    <script src="mn_admin/mn_admin_service.js"></script>
+
+    <script src="mn_admin/overview/mn_admin_overview_controller.js"></script>
+    <script src="mn_admin/overview/mn_admin_overview_service.js"></script>
+
+
+    <script src="mn_wizard/mn_wizard_config.js"></script>
+    <script src="mn_wizard/mn_wizard_controller.js"></script>
+    <script src="mn_wizard/welcome/mn_wizard_welcome_controller.js"></script>
+
+    <script src="mn_wizard/step1/mn_wizard_step1_controller.js"></script>
+    <script src="mn_wizard/step1/mn_wizard_step1_service.js"></script>
+    <script src="mn_wizard/step1/disk_storage/mn_wizard_step1_disk_storage_controller.js"></script>
+    <script src="mn_wizard/step1/disk_storage/mn_wizard_step1_disk_storage_service.js"></script>
+    <script src="mn_wizard/step1/join_cluster/mn_wizard_step1_join_cluster_controller.js"></script>
+    <script src="mn_wizard/step1/join_cluster/mn_wizard_step1_join_cluster_service.js"></script>
+
+    <script src="mn_wizard/step2/mn_wizard_step2_controller.js"></script>
+    <script src="mn_wizard/step2/mn_wizard_step2_service.js"></script>
+
+    <script src="mn_wizard/step3/mn_wizard_step3_controller.js"></script>
+    <script src="mn_wizard/step3/mn_wizard_step3_service.js"></script>
+
+    <script src="mn_wizard/step4/mn_wizard_step4_controller.js"></script>
+    <script src="mn_wizard/step4/mn_wizard_step4_service.js"></script>
+
+    <script src="mn_wizard/step5/mn_wizard_step5_controller.js"></script>
+    <script src="mn_wizard/step5/mn_wizard_step5_service.js"></script>
+
+    <script src="components/mn_pretty_version_filter/mn_pretty_version_filter.js"></script>
+    <script src="components/mn_bar_usage/mn_bar_usage_directive.js"></script>
+    <script src="components/mn_focus/mn_focus_directive.js"></script>
+    <script src="components/mn_spinner/mn_spinner_directive.js"></script>
+
+    <script src="components/mn_dialog/mn_dialog_service.js"></script>
+    <script src="components/mn_dialog/mn_dialog_directive.js"></script>
+
+    <script src="mn_auth/mn_auth_config.js"></script>
+    <script src="mn_auth/mn_auth_controller.js"></script>
+    <script src="mn_auth/mn_auth_service.js"></script>
+
+  </head>
+  <body data-ng-app="app" ui-view="" ng-controller="appController"></body>
+</html>

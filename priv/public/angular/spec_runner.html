@@ -4,92 +4,93 @@
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Jasmine Spec Runner v2.0.0</title>
 
-  <link rel="shortcut icon" type="image/png" href="/angular/deps/jasmine/jasmine_favicon.png">
-  <link rel="stylesheet" type="text/css" href="/angular/deps/jasmine/jasmine.css">
+  <link rel="shortcut icon" type="image/png" href="libs/jasmine/jasmine_favicon.png">
+  <link rel="stylesheet" type="text/css" href="libs/jasmine/jasmine.css">
 
-  <script type="text/javascript" src="/angular/deps/jasmine/jasmine.js"></script>
-  <script type="text/javascript" src="/angular/deps/jasmine/jasmine-html.js"></script>
-  <script type="text/javascript" src="/angular/deps/jasmine/boot.js"></script>
+  <script type="text/javascript" src="libs/jasmine/jasmine.js"></script>
+  <script type="text/javascript" src="libs/jasmine/jasmine-html.js"></script>
+  <script type="text/javascript" src="libs/jasmine/boot.js"></script>
 
 
-  <script src="/angular/deps/angular.js"></script>
-  <script src="/angular/deps/angular-ui-router.js"></script>
-  <script src="/angular/deps/angular-mocks.js"></script>
-  <script src="/angular/deps/lodash.compat.js"></script>
-  <script src="/angular/deps/lodash.mixin.js"></script>
+  <script src="libs/angular.js"></script>
+  <script src="libs/angular-ui-router.js"></script>
+  <script src="libs/angular-mocks.js"></script>
+  <script src="libs/lodash.compat.js"></script>
+  <script src="libs/lodash.mixin.js"></script>
 
-  <script src="/angular/angular-templates-list.js"></script>
+  <script src="angular-templates-list.js"></script>
 
 <!-- your angular app code -->
-  <script src="/angular/filters/pretty_version.js"></script>
+  <script src="app/app.js"></script>
+  <script src="app/app_config.js"></script>
+  <script src="app/app_controller.js"></script>
 
-  <script src="/angular/index_controller.js"></script>
+  <script src="app/mn_admin/mn_admin_config.js"></script>
+  <script src="app/mn_admin/mn_admin_controller.js"></script>
+  <script src="app/mn_admin/mn_admin_service.js"></script>
 
-  <script src="/angular/app/app.js"></script>
-  <script src="/angular/app/app_controller.js"></script>
-  <script src="/angular/app/app_service.js"></script>
+  <script src="app/mn_admin/overview/mn_admin_overview_controller.js"></script>
+  <script src="app/mn_admin/overview/mn_admin_overview_service.js"></script>
 
-  <script src="/angular/wizard/wizard.js"></script>
-  <script src="/angular/wizard/wizard_controller.js"></script>
-  <script src="/angular/wizard/welcome/welcome_controller.js"></script>
 
-  <script src="/angular/wizard/step1/step1_controller.js"></script>
-  <script src="/angular/wizard/step1/step1_service.js"></script>
-  <script src="/angular/wizard/step1/disk_storage/step1_disk_storage_controller.js"></script>
-  <script src="/angular/wizard/step1/disk_storage/step1_disk_storage_service.js"></script>
-  <script src="/angular/wizard/step1/join_cluster/step1_join_cluster_controller.js"></script>
-  <script src="/angular/wizard/step1/join_cluster/step1_join_cluster_service.js"></script>
+  <script src="app/mn_wizard/mn_wizard_config.js"></script>
+  <script src="app/mn_wizard/mn_wizard_controller.js"></script>
+  <script src="app/mn_wizard/welcome/mn_wizard_welcome_controller.js"></script>
 
-  <script src="/angular/wizard/step2/step2_controller.js"></script>
-  <script src="/angular/wizard/step2/step2_service.js"></script>
+  <script src="app/mn_wizard/step1/mn_wizard_step1_controller.js"></script>
+  <script src="app/mn_wizard/step1/mn_wizard_step1_service.js"></script>
+  <script src="app/mn_wizard/step1/disk_storage/mn_wizard_step1_disk_storage_controller.js"></script>
+  <script src="app/mn_wizard/step1/disk_storage/mn_wizard_step1_disk_storage_service.js"></script>
+  <script src="app/mn_wizard/step1/join_cluster/mn_wizard_step1_join_cluster_controller.js"></script>
+  <script src="app/mn_wizard/step1/join_cluster/mn_wizard_step1_join_cluster_service.js"></script>
 
-  <script src="/angular/wizard/step3/step3_controller.js"></script>
-  <script src="/angular/wizard/step3/step3_service.js"></script>
+  <script src="app/mn_wizard/step2/mn_wizard_step2_controller.js"></script>
+  <script src="app/mn_wizard/step2/mn_wizard_step2_service.js"></script>
 
-  <script src="/angular/wizard/step4/step4_controller.js"></script>
-  <script src="/angular/wizard/step4/step4_service.js"></script>
+  <script src="app/mn_wizard/step3/mn_wizard_step3_controller.js"></script>
+  <script src="app/mn_wizard/step3/mn_wizard_step3_service.js"></script>
 
-  <script src="/angular/wizard/step5/step5_controller.js"></script>
-  <script src="/angular/wizard/step5/step5_service.js"></script>
+  <script src="app/mn_wizard/step4/mn_wizard_step4_controller.js"></script>
+  <script src="app/mn_wizard/step4/mn_wizard_step4_service.js"></script>
 
-  <script src="/angular/components/bar_gauge/bar_gauge_directive.js"></script>
+  <script src="app/mn_wizard/step5/mn_wizard_step5_controller.js"></script>
+  <script src="app/mn_wizard/step5/mn_wizard_step5_service.js"></script>
 
-  <script src="/angular/components/focus_directive.js"></script>
-  <script src="/angular/components/spinner/spinner_directive.js"></script>
+  <script src="app/components/mn_pretty_version_filter/mn_pretty_version_filter.js"></script>
+  <script src="app/components/mn_bar_usage/mn_bar_usage_directive.js"></script>
+  <script src="app/components/mn_focus/mn_focus_directive.js"></script>
+  <script src="app/components/mn_spinner/mn_spinner_directive.js"></script>
 
-  <script src="/angular/components/dialog/dialog_service.js"></script>
-  <script src="/angular/components/dialog/dialog_directive.js"></script>
+  <script src="app/components/mn_dialog/mn_dialog_service.js"></script>
+  <script src="app/components/mn_dialog/mn_dialog_directive.js"></script>
 
-  <script src="/angular/auth/auth_controller.js"></script>
-  <script src="/angular/auth/auth_service.js"></script>
-
-  <script src="/angular/app/overview/overview_controller.js"></script>
-  <script src="/angular/app/overview/overview_service.js"></script>
-
+  <script src="app/mn_auth/mn_auth_config.js"></script>
+  <script src="app/mn_auth/mn_auth_controller.js"></script>
+  <script src="app/mn_auth/mn_auth_service.js"></script>
   <!-- your Jasmine specs (tests) -->
-  <script src="/angular/components/spinner/spinner_directive_test.js"></script>
+  <script src="app/components/mn_spinner/mn_spinner_directive_test.js"></script>
 
-  <script src="/angular/index_controller_test.js"></script>
-  <script src="/angular/app/app_service_test.js"></script>
-  <script src="/angular/app/app_controller_test.js"></script>
-  <script src="/angular/auth/auth_service_test.js"></script>
-  <script src="/angular/auth/auth_controller_test.js"></script>
-  <script src="/angular/wizard/wizard_controller_test.js"></script>
-  <script src="/angular/wizard/welcome/welcome_controller_test.js"></script>
-  <script src="/angular/wizard/step1/step1_service_test.js"></script>
-  <script src="/angular/wizard/step1/step1_controller_test.js"></script>
-  <script src="/angular/wizard/step1/disk_storage/step1_disk_storage_service_test.js"></script>
-  <script src="/angular/wizard/step1/disk_storage/step1_disk_storage_controller_test.js"></script>
-  <script src="/angular/wizard/step1/join_cluster/step1_join_cluster_service_test.js"></script>
-  <script src="/angular/wizard/step1/join_cluster/step1_join_cluster_controller_test.js"></script>
-  <script src="/angular/wizard/step2/step2_controller_test.js"></script>
-  <script src="/angular/wizard/step2/step2_service_test.js"></script>
-  <script src="/angular/wizard/step3/step3_controller_test.js"></script>
-  <script src="/angular/wizard/step3/step3_service_test.js"></script>
-  <script src="/angular/wizard/step4/step4_controller_test.js"></script>
-  <script src="/angular/wizard/step4/step4_service_test.js"></script>
-  <script src="/angular/wizard/step5/step5_controller_test.js"></script>
-  <script src="/angular/wizard/step5/step5_service_test.js"></script>
+  <script src="app/app_controller_test.js"></script>
+  <script src="app/mn_admin/mn_admin_service_test.js"></script>
+  <script src="app/mn_admin/mn_admin_controller_test.js"></script>
+  <script src="app/mn_auth/mn_auth_service_test.js"></script>
+  <script src="app/mn_auth/mn_auth_controller_test.js"></script>
+  <script src="app/mn_wizard/mn_wizard_controller_test.js"></script>
+  <script src="app/mn_wizard/welcome/mn_wizard_welcome_controller_test.js"></script>
+  <script src="app/mn_wizard/step1/mn_wizard_step1_service_test.js"></script>
+  <script src="app/mn_wizard/step1/mn_wizard_step1_controller_test.js"></script>
+  <script src="app/mn_wizard/step1/disk_storage/mn_wizard_step1_disk_storage_service_test.js"></script>
+  <script src="app/mn_wizard/step1/disk_storage/mn_wizard_step1_disk_storage_controller_test.js"></script>
+  <script src="app/mn_wizard/step1/join_cluster/mn_wizard_step1_join_cluster_service_test.js"></script>
+  <script src="app/mn_wizard/step1/join_cluster/mn_wizard_step1_join_cluster_controller_test.js"></script>
+  <script src="app/mn_wizard/step2/mn_wizard_step2_controller_test.js"></script>
+  <script src="app/mn_wizard/step2/mn_wizard_step2_service_test.js"></script>
+  <script src="app/mn_wizard/step3/mn_wizard_step3_controller_test.js"></script>
+  <script src="app/mn_wizard/step3/mn_wizard_step3_service_test.js"></script>
+  <script src="app/mn_wizard/step4/mn_wizard_step4_controller_test.js"></script>
+  <script src="app/mn_wizard/step4/mn_wizard_step4_service_test.js"></script>
+  <script src="app/mn_wizard/step5/mn_wizard_step5_controller_test.js"></script>
+  <script src="app/mn_wizard/step5/mn_wizard_step5_service_test.js"></script>
 
 </head>
 <body>

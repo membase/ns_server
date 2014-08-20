@@ -1,0 +1,12 @@
+<div class="dialog_full_screen dialog_main_wrapper">
+  <div class="dialog_overlay dialog_full_screen"></div>
+  <div class="dialog_horizontal_center">
+    <div class="dialog_vertical_center">
+      <div class="dialog_ dialog_corner_radius" ng-style="dialogStyle">
+        <h1 class="dialog_corner_radius">{{mnDialogTitle}}</h1>
+        <div class="dialog_close dialog_corner_radius" ng-click="hideDialog()"><span></span></div>
+        <div class="dialog_content" ng-transclude></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,38 @@
+<div class="pad" id="init_secure_dialog" mn-spinner-directive="spinner">
+  <div class="config-top">
+    <h1>Configure Server</h1>
+    <h2>Step <span class="current-step">5</span> of 5</h2>
+  </div>
+  <h2 class="question">Secure this Server</h2>
+  <p class="pad_10">
+    Please create an administrator account for this Server. If you want to join other
+    servers to this one to form a cluster, you will need to use these administrator
+    credentials in the "join cluster" process.
+  </p>
+  <form id="init_secure_form" class="form block" autocomplete="off" name="form" novalidate ng-submit="onSubmit()">
+    <div class="warn" id="update_notifications_errors_container" ng-show="form.$invalid">
+      <div ng-show="form.$error.equals">'Password' and 'Verify Password' do not match</div>
+      <div ng-show="form.$error.passLength">A password of at least six characters is required</div>
+      <div ng-show="form.$error.userReq">Username is required</div>
+    </div>
+    <div class="warn" id="update_notifications_errors_container" ng-show="errors">
+      <div ng-repeat="error in errors">{{error}}</div>
+    </div>
+    <div class="username-input input" style="margin-top: 20px;">
+      <label for="secure-username">Username:</label>
+      <input type="text" name="username" class="inp" value="Administrator" id="secure-username" maxlength="24" ng-model="mnWizardStep5ServiceModel.user.username"/>
+    </div>
+    <div class="password-input input">
+      <label for="secure-password">Password:</label>
+      <input type="password" name="password" ng-model="mnWizardStep5ServiceModel.user.password" class="inp focusme" id="secure-password" maxlength="24" autocomplete="off" mn-focus-directive="focusMe"/>
+    </div>
+    <div class="password-input-verify input">
+      <label for="secure-password">Verify Password:</label>
+      <input type="password" name="passwordVerify" class="inp" id="secure-password-verify" maxlength="24" autocomplete="off" ng-model="mnWizardStep5ServiceModel.user.verifyPassword"/>
+    </div>
+    <div class="config-bottom">
+      <button name="finish" value="Finish" class="submit finish direction-button" id="step-5-finish" type="submit">Next</button>
+      <button name="back" value="Back" class="submit back direction-button" id="step-5-back" type="button" ui-sref="wizard.step4">Back</button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,79 @@
+<div id="js_overview" class="overview">
+  <h1>Cluster Overview</h1>
+  <div id="notice_container"></div>
+  <div class="shadow_box">
+    <div class="hdr">
+      <span class="staleness-notice">Difficulties communicating with the
+      cluster; displaying cached information!</span>Cluster
+    </div>
+    <div class="section" id="overview_clusters_block">
+      <div class="item ram-item">
+        <div class="label">
+          <strong>RAM Overview</strong>
+        </div>
+        <div class="line_cnt usage-block" mn-bar-usage-directive base-info="mnAdminOverviewServiceModel.ramOverviewConfig"></div>
+      </div>
+      <div class="item disk-item">
+        <div class="label">
+          <strong>Disk Overview</strong>
+        </div>
+        <div class="line_cnt usage-block" mn-bar-usage-directive base-info="mnAdminOverviewServiceModel.hddOverviewConfig"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shadow_box">
+    <div class="hdr">
+      <span class="staleness-notice">Difficulties communicating
+      with the cluster; displaying cached information!</span>
+      Buckets <span>(<span class="buckets-number">??</span> active)</span>
+    </div>
+    <div class="section">
+      <div class="item">
+        <div class="graph_main">
+          <span class="graph_info_label">Operations per second</span>
+          <div id="overview_ops_graph" class="graph"></div>
+        </div>
+        <div class="graph_main">
+          <span class="graph_info_label">Disk fetches per second</span>
+          <div id="overview_reads_graph" class="graph"></div>
+        </div>
+        <div class="no_stats_marker">
+          <span class="with_buckets">Waiting for samples...</span>
+          <span class="without_buckets">No buckets currently defined! Go to <a href="#sec=buckets">Manage Buckets</a> to create some.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shadow_box">
+    <div class="hdr">
+      <span class="staleness-notice">Difficulties communicating with
+      the cluster; displaying cached information!</span>Servers
+    </div>
+    <div class="section" id="overview_servers_block">
+      <div class="item ovf">
+        <div class="actservers">
+          <h3>Active Servers: <span id="active-servers-count">{{mnAdminOverviewServiceModel.activeNodesLength}}</span></h3>
+        </div>
+        <ul>
+          <li class="fail" ng-class="{'is-zero':!mnAdminOverviewServiceModel.failedOverNodesLength}">
+            <a href="#visitServersTab=pending" ng-show="mnAdminOverviewServiceModel.failedOverNodesLength">Servers Failed Over: <span class="failed-over-count">{{mnAdminOverviewServiceModel.failedOverNodesLength}}</span></a>
+            <span class="when-zero" ng-show="!mnAdminOverviewServiceModel.failedOverNodesLength">Servers Failed Over: 0</span>
+            <span class="badge" ng-show="mnAdminOverviewServiceModel.failedOverNodesLength"><span class="failed-over-count">{{mnAdminOverviewServiceModel.failedOverNodesLength}}</span></span>
+          </li>
+          <li class="down" ng-class="{'is-zero':!mnAdminOverviewServiceModel.downNodesLength}">
+            <a href="#visitServersTab=active" ng-show="mnAdminOverviewServiceModel.downNodesLength">Servers Down: <span class="down-count">{{mnAdminOverviewServiceModel.downNodesLength}}</span></a>
+            <span class="when-zero" ng-show="!mnAdminOverviewServiceModel.downNodesLength">Servers Down: 0</span>
+            <span class="badge" ng-show="mnAdminOverviewServiceModel.downNodesLength"><span class="down-count">{{mnAdminOverviewServiceModel.downNodesLength}}</span></span>
+          </li>
+          <li class="pending" ng-class="{'is-zero':!mnAdminOverviewServiceModel.pendingNodesLength}">
+            <a href="#visitServersTab=pending" ng-show="mnAdminOverviewServiceModel.pendingNodesLength">Servers Pending Rebalance: <span class="pending-count">{{mnAdminOverviewServiceModel.pendingNodesLength}}</span></a>
+            <span class="when-zero" ng-show="!mnAdminOverviewServiceModel.pendingNodesLength">Servers Pending Rebalance: 0</span>
+            <span class="badge" ng-show="mnAdminOverviewServiceModel.pendingNodesLength"><span class="pending-count">{{mnAdminOverviewServiceModel.pendingNodesLength}}</span></span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
