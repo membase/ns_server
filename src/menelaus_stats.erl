@@ -485,7 +485,7 @@ computed_stats_lazy_proplist(BucketName) ->
 
     ResidenceCalculator = fun (NonResident, Total) ->
                                   try (Total - NonResident) * 100 / Total
-                                  catch error:badarith -> 0
+                                  catch error:badarith -> 100
                                   end
                           end,
 
