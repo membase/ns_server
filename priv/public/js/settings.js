@@ -1137,7 +1137,7 @@ var AccountManagementSection = {
     });
 
     self.roAdminNameCell.subscribeValue(function (value) {
-      $("#js_roadmin_name").text(value || "undefined");
+      $(".js_roadmin_name").text(value || "undefined");
     });
 
     Cell.subscribeMultipleValues(function (errors, cred) {
