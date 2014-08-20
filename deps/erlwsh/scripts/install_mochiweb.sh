@@ -14,7 +14,7 @@ erl_exists()
     echo -n "check if Erlang/OTP exists... "
     if !(erl -version > /dev/null 2>&1); then
         echo "First, You must install the erlang otp"
-        echo "http://www.erlang.org/downloads.html"
+        echo "http://www.erlang.org/download.html"
         exit 1
     fi
     echo "ok"
@@ -32,9 +32,9 @@ erl_lib()
 
 svn_co()
 {
-    echo "checkout the mochiweb codes from the google code... "
-    if !(svn co http://mochiweb.googlecode.com/svn/trunk/ $MOCHI_DIR); then
-        echo "svn co mochiweb codes error"
+    echo "checkout the mochiweb codes from the github..."
+    if !(git clone https://github.com/mochi/mochiweb.git $MOCHI_DIR); then
+        echo "git clone mochiweb codes error"
         exit 1
     fi
     echo "ok"
