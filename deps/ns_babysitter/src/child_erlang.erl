@@ -69,10 +69,7 @@ open_port_args() ->
     Env = [{"NS_SERVER_BABYSITTER_COOKIE", atom_to_list(erlang:get_cookie())},
            {"CHILD_ERLANG_ENV_ARGS", misc:inspect_term(AppEnvArgs)} | Env0],
 
-    [{spawn_executable, ErlPath},
-     [{args, AllArgs},
-      {env, Env},
-      exit_status, use_stdio, stream, eof]].
+    {ErlPath, AllArgs, [{env, Env}, exit_status, use_stdio, stream, eof]}.
 
 child_start(Arg) ->
     try
