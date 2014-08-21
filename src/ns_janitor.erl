@@ -312,9 +312,24 @@ do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, [] = Zombies) ->
                                 [FFMasterState | FFReplicaStates] = [proplists:get_value(N, NodeStates)
                                                                      || N <- FutureChain,
                                                                         N =/= undefined],
+                                ExpectedFFReplicasStates =
+                                    [case N =:= Master of
+                                         true ->
+                                             %% in case of completed
+                                             %% move old master is
+                                             %% expected to be dead
+                                             dead;
+                                         _ ->
+                                             %% and all other nodes in
+                                             %% fast-forward chain are
+                                             %% expected to be
+                                             %% replicas
+                                             replica
+                                     end || N <- tl(FutureChain),
+                                            N =/= undefined],
                                 %% and if everything fits -- cool
-                                FFMasterState =:= active
-                                    andalso lists:all(fun (S) -> S =:= replica end, FFReplicaStates);
+                                active = FFMasterState,
+                                FFReplicaStates =:= ExpectedFFReplicasStates;
                             _ ->
                                 false
                         end,
@@ -389,4 +404,29 @@ sanify_basic_test() ->
     [c] = do_sanify_chain("B", [{c, 0, active}],
                           [a, b], [], 0, []),
 
+    %% lets also test rebalance stopped prior to complete takeover
+    [a, b] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, replica},
+                                   {c, 0, pending}, {d, 0, replica}],
+                             [a, b], [c, d], 0, []),
     ok.
+
+sanify_doesnt_lose_replicas_on_stopped_rebalance_test() ->
+    %% simulates the following: We've completed move that switches
+    %% replica and active but rebalance was stopped before we updated
+    %% vbmap. We have code in sanify to detect this condition using
+    %% fast-forward map and is supposed to recover perfectly from this
+    %% condition.
+    [a, b] = do_sanify_chain("B", [{a, 0, active}, {b, 0, dead}],
+                            [b, a], [a, b], 0, []),
+    %% same stuff but prior to takeover
+    [a, b] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, pending}],
+                             [a, b], [b, a], 0, []),
+    %% lets test more usual case too
+    [c, d] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, replica},
+                                   {c, 0, active}, {d, 0, replica}],
+                             [a, b], [c, d], 0, []),
+    %% but without FF map we're (too) conservative (should be fixable
+    %% someday)
+    [c] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, replica},
+                                {c, 0, active}, {d, 0, replica}],
+                          [a, b], [], 0, []).
