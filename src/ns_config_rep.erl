@@ -369,8 +369,8 @@ do_merge(RemoteKVList) ->
 
 get_remote(Node, Timeout) ->
     hd(misc:parallel_map(fun (_) ->
-                                 Blob = gen_server:call({ns_config_remote, Node},
-                                                        get_compressed,
-                                                        Timeout),
+                                 Blob = ns_config_replica:get_compressed(
+                                          ns_config_remote,
+                                          Node, Timeout),
                                  binary_to_term(zlib:uncompress(Blob))
                          end, [Node], Timeout)).

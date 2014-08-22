@@ -47,8 +47,8 @@ get(Name, Node, Timeout) ->
     gen_server:call({Name, Node}, get, Timeout).
 
 -spec get_compressed(term(), node(), timeout()) -> binary().
-get_compressed(Name, Name, Timeout) ->
-    gen_server:call({Name, Name}, get_compressed, Timeout).
+get_compressed(Name, Node, Timeout) ->
+    gen_server:call({Name, Node}, get_compressed, Timeout).
 
 %%%===================================================================
 %%% gen_server callbacks
