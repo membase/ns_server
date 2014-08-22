@@ -48,6 +48,8 @@
          synchronize_local/0, synchronize_remote/0, synchronize_remote/1,
          pull_and_push/1]).
 
+-export([get_remote/2]).
+
 -record(state, {}).
 
 start_link() ->

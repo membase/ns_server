@@ -78,9 +78,10 @@
          fold/3, read_key_fast/2, get_timeout_fast/2,
          delete/1,
          strip_metadata/1, extract_vclock/1,
-         latest_config_marker/0]).
+         latest_config_marker/0,
+         duplicate_node_keys/3]).
 
--export([save_config_sync/1]).
+-export([save_config_sync/1, do_not_save_config/1]).
 
 % Exported for tests only
 -export([save_file/3, load_config/3,
@@ -697,9 +698,23 @@ init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
         Error ->
             {stop, Error}
     end;
-
+init({pull_from_node, Node} = Init) ->
+    KVList = duplicate_node_keys(ns_config_rep:get_remote(Node, infinity),
+                               Node, node()),
+    Cfg = #config{dynamic = [KVList],
+                  policy_mod = ns_config_default,
+                  saver_mfa = {?MODULE, do_not_save_config, []},
+                  init = Init},
+    do_init(Cfg);
 init([ConfigPath, PolicyMod]) ->
     init({full, ConfigPath, undefined, PolicyMod}).
+
+duplicate_node_keys(KVList, FromNode, ToNode) ->
+    lists:flatmap(fun ({{node, Node, Key}, Value} = Val) when Node =:= FromNode ->
+                          [{{node, ToNode, Key}, Value}, Val];
+                      (Other) ->
+                          [Other]
+                  end, KVList).
 
 test_setup(KVPairs) ->
     (catch ets:new(ns_config_ets_dup, [public, set, named_table])),
@@ -933,6 +948,9 @@ save_config_sync(#config{dynamic = D}, DirPath) ->
 save_config_sync(Config) ->
     {value, DirPath} = search(Config, directory),
     save_config_sync(Config, DirPath).
+
+do_not_save_config(_Config) ->
+    ok.
 
 initiate_save_config(Config) ->
     case Config#config.saver_pid of
