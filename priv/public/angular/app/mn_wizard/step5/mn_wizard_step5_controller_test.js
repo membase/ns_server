@@ -23,7 +23,7 @@ describe("mnWizardStep5Controller", function () {
   }));
 
   it('should be properly initialized', function () {
-    expect($scope.viewLoading).toBe(undefined);
+    expect($scope.viewLoading).toBe(false);
     expect($scope.mnWizardStep5ServiceModel).toBe(mnWizardStep5Service.model);
     expect($scope.onSubmit).toEqual(jasmine.any(Function));
   });

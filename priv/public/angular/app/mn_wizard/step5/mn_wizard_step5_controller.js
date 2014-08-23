@@ -6,9 +6,11 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
     function reset() {
       $scope.viewLoading = false;
       $scope.focusMe = true;
-      user.password = null;
-      user.verifyPassword = null;
+      user.password = undefined;
+      user.verifyPassword = undefined;
     }
+
+    reset();
 
     $scope.onSubmit = function () {
       if ($scope.viewLoading) {

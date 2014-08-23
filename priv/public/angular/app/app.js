@@ -1,5 +1,3 @@
-angular.module('mnAdminService', []);
-
 angular.module('mnWizardStep1Service', []);
 angular.module('mnWizardStep1DiskStorageService', []);
 angular.module('mnWizardStep1JoinClusterService', []);
@@ -14,11 +12,18 @@ angular.module('mnFocus', []);
 angular.module('mnSpinner', []);
 angular.module('mnPrettyVersionFilter', []);
 
-angular.module('mnAdminOverviewService', ['mnAdminService']);
-angular.module('mnAdminOverview', ['mnAdminOverviewService']);
-
 angular.module('mnAuthService', ['ui.router']);
 angular.module('mnAuth', ['mnAuthService']);
+
+angular.module('mnAdmin', [
+  'mnAuthService',
+  'mnAdminService',
+  'mnAdminOverviewService',
+  'mnAdminOverview'
+]);
+angular.module('mnAdminService', []);
+angular.module('mnAdminOverviewService', ['mnAdminService']);
+angular.module('mnAdminOverview', ['mnAdminOverviewService']);
 
 angular.module('mnWizard', [
   'mnWizardStep1Service',
@@ -30,13 +35,6 @@ angular.module('mnWizard', [
   'mnWizardStep5Service',
   'mnDialog',
   'ui.router'
-]);
-
-angular.module('mnAdmin', [
-  'mnAdminService',
-  'mnAuthService',
-  'mnAdminOverviewService',
-  'mnAdminOverview'
 ]);
 
 angular.module('app', [

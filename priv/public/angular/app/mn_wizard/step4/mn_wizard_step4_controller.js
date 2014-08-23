@@ -3,6 +3,7 @@ angular.module('mnWizard').controller('mnWizardStep4Controller',
 
     mnWizardStep4Service.model.register.version = mnAuthService.model.version || 'unknown';
     $scope.mnWizardStep4ServiceModel = mnWizardStep4Service.model;
+    $scope.viewLoading = false;
 
     $scope.onSubmit = function () {
       if ($scope.form.$invalid || $scope.viewLoading) {

@@ -1,6 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep1Controller',
   function ($scope, $state, mnWizardStep1Service, mnAuthService, mnWizardStep1JoinClusterService, mnWizardStep1DiskStorageService) {
-    $scope.viewLoading = true;
     $scope.mnWizardStep1ServiceModel = mnWizardStep1Service.model;
 
     $scope.onSubmit = function (e) {
@@ -11,7 +10,7 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
       makeRequest(mnWizardStep1DiskStorageService, 'postDiskStorage').success(doPostHostName);
     }
 
-    mnWizardStep1Service.getSelfConfig().success(stopSpinner).error(stopSpinner);
+    mnWizardStep1Service.getSelfConfig().then(stopSpinner);
 
     function doPostHostName() {
       var nextAction = mnWizardStep1JoinClusterService.model.joinCluster === 'ok' ? doPostJoinCluster : doPostMemory;

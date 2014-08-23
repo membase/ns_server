@@ -43,6 +43,7 @@ describe("mnWizardStep3Controller", function () {
     expect($scope.modelStep3Service.bucketConf).toBe(mnWizardStep3Service.model.bucketConf);
     expect($scope.modelStep3Service.isDefaultBucketPresented).toBe(undefined);
     expect($scope.focusMe).toBe(true);
+    expect($scope.viewLoading).toBe(false);
     expect($scope.replicaNumberEnabled).toBe(true);
     expect($scope.onSubmit).toEqual(jasmine.any(Function));
   });
@@ -58,6 +59,7 @@ describe("mnWizardStep3Controller", function () {
     expect($scope.modelStep3Service.bucketConf).toEqual({ replicaNumber : 1, otherBucketsRamQuotaMB : 0, ramQuotaMB : 953 });
     expect($scope.modelStep3Service.isDefaultBucketPresented).toBe(true);
     expect($scope.focusMe).toBe(true);
+    expect($scope.viewLoading).toBe(false);
     expect($scope.replicaNumberEnabled).toBe(true);
     expect($scope.onSubmit).toEqual(jasmine.any(Function));
   });

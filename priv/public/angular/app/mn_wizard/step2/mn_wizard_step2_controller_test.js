@@ -18,7 +18,6 @@ describe("mnWizardStep2Controller", function () {
 
   it('should be properly initialized', function () {
     $httpBackend.expectGET('/sampleBuckets').respond(200, "hey");
-    expect($scope.viewLoading).toBe(true);
     expect($scope.mnWizardStep2ServiceModel).toBe(mnWizardStep2Service.model);
     $httpBackend.flush();
     expect($scope.viewLoading).toBe(false);

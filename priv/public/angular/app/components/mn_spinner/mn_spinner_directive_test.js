@@ -21,7 +21,7 @@ describe("mnSpinnerDirective", function () {
 
   it('should be properly initialized', function () {
     var spinner = createSpinner();
-    expect(spinner.html()).toEqual('content<div class="spinner ng-hide" ng-show="viewLoading"></div>');
+    expect(spinner.html()).toEqual('content<div class="spinner" ng-show="viewLoading"></div>');
     expect(spinner.hasClass('spinner_wrap')).toBe(true);
   });
 

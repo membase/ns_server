@@ -1,6 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep2Controller',
   function ($scope, mnWizardStep2Service) {
-    $scope.viewLoading = true;
     $scope.mnWizardStep2ServiceModel = mnWizardStep2Service.model;
 
     $scope.$watch('mnWizardStep2ServiceModel.selected', function (selected) {

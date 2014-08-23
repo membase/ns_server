@@ -25,6 +25,7 @@ describe("mnWizardStep4Controller", function () {
   it('should be properly initialized', function () {
     expect($scope.mnWizardStep4ServiceModel).toBe(mnWizardStep4Service.model);
     expect($scope.onSubmit).toEqual(jasmine.any(Function));
+    expect($scope.viewLoading).toEqual(false);
   });
 
   it('should not send requests if form fields are invalid or spinner is shown', function () {

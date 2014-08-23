@@ -25,7 +25,6 @@ describe("mnWizardStep1Controller", function () {
 
   it('should be properly initialized', function () {
     $httpBackend.expectGET('/nodes/self').respond(200);
-    expect($scope.viewLoading).toBe(true);
     expect($scope.mnWizardStep1ServiceModel).toBe(mnWizardStep1Service.model);
     expect($scope.onSubmit).toEqual(jasmine.any(Function));
     $httpBackend.flush();
