@@ -228,6 +228,8 @@ bringup(MyIP, UserSupplied) ->
     Rv = decode_status(net_kernel:start([MyNodeName, longnames])),
     net_kernel:set_net_ticktime(misc:get_env_default(set_net_ticktime, 60)),
 
+    erlang:set_cookie(ns_node_disco:couchdb_node(), ns_server:get_babysitter_cookie()),
+
     %% Rv can be false in case -name has been passed to erl but we still need
     %% to save the node name to be able to shutdown the server gracefully.
     ActualNodeName = erlang:atom_to_list(node()),

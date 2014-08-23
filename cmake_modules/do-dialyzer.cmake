@@ -35,7 +35,8 @@ EXECUTE_PROCESS (COMMAND "${CMAKE_COMMAND}" -E echo
   ${_couchdb_bin_dir}/src/couch_index_merger/ebin
   ${_couchdb_bin_dir}/src/mapreduce
   deps/ns_babysitter/ebin
-  deps/ns_ssl_proxy/ebin)
+  deps/ns_ssl_proxy/ebin
+  deps/ns_couchdb/ebin)
 EXECUTE_PROCESS (RESULT_VARIABLE _failure
   COMMAND dialyzer --plt "${COUCHBASE_PLT}" ${DIALYZER_FLAGS}
   --apps ${beamfiles}
@@ -44,7 +45,8 @@ EXECUTE_PROCESS (RESULT_VARIABLE _failure
   ${_couchdb_bin_dir}/src/couch_index_merger/ebin
   ${_couchdb_bin_dir}/src/mapreduce
   deps/ns_babysitter/ebin
-  deps/ns_ssl_proxy/ebin)
+  deps/ns_ssl_proxy/ebin
+  deps/ns_couchdb/ebin)
 IF (_failure)
   MESSAGE (FATAL_ERROR "failed running dialyzer")
 ENDIF (_failure)

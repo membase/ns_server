@@ -110,6 +110,49 @@ maybe_create_ssl_proxy_spec(Config) ->
 create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort) ->
     Path = ns_ssl_services_setup:ssl_cert_key_path(),
     CACertPath = ns_ssl_services_setup:ssl_cacert_key_path(),
+
+    Args = [{upstream_port, UpstreamPort},
+            {downstream_port, DownstreamPort},
+            {local_memcached_port, LocalMemcachedPort},
+            {cert_file, Path},
+            {private_key_file, Path},
+            {cacert_file, CACertPath}],
+
+    ErlangArgs = ["-smp", "enable",
+                  "+P", "327680",
+                  "+K", "true",
+                  "-kernel", "error_logger", "false",
+                  "-sasl", "sasl_error_logger", "false",
+                  "-nouser",
+                  "-run", "child_erlang", "child_start", "ns_ssl_proxy"],
+
+    create_erl_node_spec(xdcr_proxy, Args, "NS_SSL_PROXY_ENV_ARGS", ErlangArgs).
+
+create_ns_couchdb_spec() ->
+    CouchIni = case init:get_argument(couch_ini) of
+                   error ->
+                       [];
+                   {ok, [[]]} ->
+                       [];
+                   {ok, [Values]} ->
+                       ["-couch_ini" | Values]
+               end,
+
+    ErlangArgs = CouchIni ++
+        ["-setcookie", atom_to_list(ns_server:get_babysitter_cookie()),
+         "-name", atom_to_list(ns_node_disco:couchdb_node()),
+         "-smp", "enable",
+         "+P", "327680",
+         "+K", "true",
+         "-kernel", "error_logger", "false",
+         "-sasl", "sasl_error_logger", "false",
+         "-nouser",
+         "-hidden",
+         "-run", "child_erlang", "child_start", "ns_couchdb"],
+
+    create_erl_node_spec(ns_couchdb, [{ns_server_node, node()}], "NS_COUCHDB_ENV_ARGS", ErlangArgs).
+
+create_erl_node_spec(Type, Args, EnvArgsVar, ErlangArgs) ->
     PathArgs = ["-pa"] ++ code:get_path(),
     EnvArgsTail = [{K, V}
                    || {K, V} <- application:get_all_env(ns_server),
@@ -121,21 +164,9 @@ create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort) ->
                           "disk_sink_opts" -> true;
                           _ -> false
                       end],
-    EnvArgs = [{upstream_port, UpstreamPort},
-               {downstream_port, DownstreamPort},
-               {local_memcached_port, LocalMemcachedPort},
-               {cert_file, Path},
-               {private_key_file, Path},
-               {cacert_file, CACertPath}
-               | EnvArgsTail],
+    EnvArgs = Args ++ EnvArgsTail,
 
-    AllArgs = ["-smp", "enable",
-               "+P", "327680",
-               "+K", "true",
-               "-kernel", "error_logger", "false",
-               "-sasl", "sasl_error_logger", "false",
-               "-nouser"] ++ PathArgs ++
-        ["-run", "child_erlang", "child_start", "ns_ssl_proxy"],
+    AllArgs = PathArgs ++ ErlangArgs,
 
     ErlPath = filename:join([hd(proplists:get_value(root, init:get_arguments())),
                              "bin", "erl"]),
@@ -144,9 +175,10 @@ create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort) ->
                false ->
                    [];
                Base ->
-                   [{"ERL_CRASH_DUMP", Base ++ ".xdcr_proxy"}]
+                   [{"ERL_CRASH_DUMP", Base ++ "." ++ atom_to_list(Type)}]
            end,
-    Env = [{"NS_SSL_PROXY_ENV_ARGS", misc:inspect_term(EnvArgs)} | Env0],
+
+    Env = [{EnvArgsVar, misc:inspect_term(EnvArgs)} | Env0],
 
     Options0 = [use_stdio, port_server_send_eol, {env, Env}],
     Options =
@@ -157,7 +189,7 @@ create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort) ->
                 Options0
         end,
 
-    {xdcr_proxy, ErlPath, AllArgs, Options}.
+    {Type, ErlPath, AllArgs, Options}.
 
 per_bucket_moxi_specs(Config) ->
     BucketConfigs = ns_bucket:get_buckets(Config),
@@ -204,10 +236,11 @@ dynamic_children() ->
     {value, PortServers} = ns_config:search_node(Config, port_servers),
 
     MaybeSSLProxySpec = maybe_create_ssl_proxy_spec(Config),
+    NSCouchdbSpec = create_ns_couchdb_spec(),
 
     [expand_args(NCAO) || NCAO <- PortServers] ++
         query_node_spec(Config) ++
-        per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
+        per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec ++ [NSCouchdbSpec].
 
 %% TODO: this is all temp code (and windows incompabile) until:
 %%

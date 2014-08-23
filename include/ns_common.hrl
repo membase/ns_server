@@ -68,6 +68,7 @@
 -define(STATS_LOG_FILENAME, "stats.log").
 -define(BABYSITTER_LOG_FILENAME, "babysitter.log").
 -define(SSL_PROXY_LOG_FILENAME, "ssl_proxy.log").
+-define(NS_COUCHDB_LOG_FILENAME, "ns_couchdb.log").
 -define(REPORTS_LOG_FILENAME, "reports.log").
 -define(XDCR_TRACE_LOG_FILENAME, "xdcr_trace.log").
 -define(ACCESS_LOG_FILENAME, "http_access.log").

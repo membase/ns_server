@@ -85,7 +85,7 @@ ADD_DEPENDENCIES (ns_distclean realclean ns_dataclean)
 
 ADD_SUBDIRECTORY (deps)
 Rebar (TARGET ns_server NOCLEAN
-  DEPENDS ale erlwsh mlockall ns_babysitter ns_ssl_proxy gen_smtp)
+  DEPENDS ale erlwsh mlockall ns_babysitter ns_ssl_proxy gen_smtp ns_couchdb)
 
 # Test invocation
 ADD_CUSTOM_TARGET (ns_test

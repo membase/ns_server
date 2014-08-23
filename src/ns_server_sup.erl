@@ -50,8 +50,8 @@ pre_start() ->
     misc:ping_jointo().
 
 child_specs() ->
-    [{setup_babysitter_node,
-      {ns_server, setup_babysitter_node, []},
+    [{setup_node_names,
+      {ns_server, setup_node_names, []},
       transient, brutal_kill, worker, []},
 
      {ns_disksup, {ns_disksup, start_link, []},

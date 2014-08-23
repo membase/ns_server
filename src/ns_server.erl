@@ -17,8 +17,9 @@
 
 -behavior(application).
 
--export([start/2, stop/1, get_loglevel/1, restart/0, setup_babysitter_node/0, get_babysitter_node/0,
-         get_babysitter_cookie/0]).
+-export([start/2, stop/1, get_loglevel/1, restart/0, setup_node_names/0, get_babysitter_node/0,
+         get_babysitter_cookie/0,
+         start_disk_sink/2]).
 
 -include("ns_common.hrl").
 -include_lib("ale/include/ale.hrl").
@@ -266,10 +267,13 @@ start_disk_sink(Name, FileName) ->
 stop(_State) ->
     ok.
 
-setup_babysitter_node() ->
-    {Name, _} = misc:node_name_host(node()),
+setup_node_names() ->
+    Name =  misc:node_name_short(),
     Babysitter = list_to_atom("babysitter_of_" ++ Name ++ "@127.0.0.1"),
+    Couchdb = list_to_atom("couchdb_" ++ Name ++ "@127.0.0.1"),
+    application:set_env(ns_server, ns_couchdb_node, Couchdb),
     application:set_env(ns_server, babysitter_node, Babysitter),
+    erlang:set_cookie(Couchdb, get_babysitter_cookie()),
     ignore.
 
 get_babysitter_cookie() ->

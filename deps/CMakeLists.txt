@@ -4,6 +4,7 @@ ADD_SUBDIRECTORY (erlwsh)
 ADD_SUBDIRECTORY (mlockall)
 ADD_SUBDIRECTORY (ns_babysitter)
 ADD_SUBDIRECTORY (ns_ssl_proxy)
+ADD_SUBDIRECTORY (ns_couchdb)
 
 # The following deps use Go. To make the build as flexible as possible,
 # we provide pre-built binaries on supported platforms. On other platforms,
