@@ -280,6 +280,7 @@
   }
 
   _.mixin({ 'count': count});
+  _.mixin({ 'prepareQuantity': prepareQuantity});
   _.mixin({ 'serializeData': serializeData});
   _.mixin({ 'createApplyToScope': createApplyToScope});
   _.mixin({ 'MBtoBytes': MBtoBytes});

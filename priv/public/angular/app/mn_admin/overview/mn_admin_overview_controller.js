@@ -5,6 +5,51 @@ angular.module('mnAdminOverview')
     $scope.mnAdminOverviewServiceModel.ramOverviewConfig = {};
     $scope.mnAdminOverviewServiceModel.hddOverviewConfig = {};
 
+    mnAdminOverviewService.runStatsLoop();
+
+    $scope.$on('$destroy', function () {
+      mnAdminOverviewService.stopStatsLoop();
+    });
+    $scope.$watch('mnAdminOverviewServiceModel.stats', function (stats) {
+      if (!stats || !stats.ops.length || !stats.ep_bg_fetched.length) {
+        return;
+      }
+
+      var now = (new Date()).valueOf();
+      var tstamps = stats.timestamp || [];
+      var breakInterval;
+      if (tstamps.length > 1) {
+        breakInterval = (tstamps[tstamps.length-1] - tstamps[0]) /
+          Math.min(tstamps.length / 2, 30);
+      }
+
+      var options = {
+        lastSampleTime: now,
+        breakInterval: breakInterval,
+        processPlotOptions: function (plotOptions, plotDatas) {
+          var firstData = plotDatas[0];
+          var t0 = firstData[0][0];
+          var t1 = now;
+          if (t1 - t0 < 300000) {
+            plotOptions.xaxis.ticks = [t0, t1];
+            plotOptions.xaxis.tickSize = [null, "minute"];
+          }
+          return plotOptions;
+        }
+      };
+
+      $scope.opsGraphConfig = {
+        stats: stats['ops'],
+        tstamps: tstamps,
+        options: options
+      };
+
+      $scope.readsGraphConfig = {
+        stats: stats['ep_bg_fetched'],
+        tstamps: tstamps,
+        options: options
+      };
+    });
 
     $scope.$watch('mnAdminServiceModel.details', function (details) {
       if (!details) {
@@ -31,12 +76,12 @@ angular.module('mnAdminOverview')
           items: [{
             name: 'In Use',
             value: usedQuota,
-            itemStyle: {'background-color': '#00BCE9'},
+            itemStyle: {'background-color': '#00BCE9', 'z-index': 3},
             labelStyle: {'color':'#1878a2', 'text-align': 'left'}
           }, {
             name: 'Unused',
             value: bucketsQuota - usedQuota,
-            itemStyle: {'background-color': '#7EDB49'},
+            itemStyle: {'background-color': '#7EDB49', 'z-index': 2},
             labelStyle: {'color': '#409f05', 'text-align': 'center'}
           }, {
             name: 'Unallocated',
@@ -54,7 +99,7 @@ angular.module('mnAdminOverview')
           ramOverviewConfig.items[1] = {
             name: 'Overused',
             value: usedQuota - bucketsQuota,
-            itemStyle: {'background-color': '#F40015'},
+            itemStyle: {'background-color': '#F40015', 'z-index': 4},
             labelStyle: {'color': '#e43a1b'}
           };
           if (usedQuota < quotaTotal) {
@@ -64,7 +109,7 @@ angular.module('mnAdminOverview')
             gaugeOptions.items.length = 2;
             gaugeOptions.markers.push({
               value: quotaTotal,
-              itemStyle: {'color': '#444245'}
+              itemStyle: {'color': '#444245', 'z-index': 5}
             })
           }
         }
@@ -94,12 +139,12 @@ angular.module('mnAdminOverview')
           items: [{
             name: 'In Use',
             value: usedSpace,
-            itemStyle: {'background-color': '#00BCE9'},
+            itemStyle: {'background-color': '#00BCE9', 'z-index': 3},
             labelStyle: {'color': '#1878A2', 'text-align': 'left'}
           }, {
             name: 'Other Data',
             value: other,
-            itemStyle: {'background-color': '#FDC90D'},
+            itemStyle: {'background-color': '#FDC90D', 'z-index': 2},
             labelStyle: {'color': '#C19710', 'text-align': 'center'}
           }, {
             name: "Free",

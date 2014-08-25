@@ -10,6 +10,7 @@ angular.module('mnBarUsage', []);
 angular.module('mnDialog', []);
 angular.module('mnFocus', []);
 angular.module('mnSpinner', []);
+angular.module('mnPlot', []);
 angular.module('mnPrettyVersionFilter', []);
 
 angular.module('mnAuthService', ['ui.router']);
@@ -45,5 +46,6 @@ angular.module('app', [
   'mnFocus',
   'mnDialog',
   'mnSpinner',
+  'mnPlot',
   'mnPrettyVersionFilter'
 ]).run();

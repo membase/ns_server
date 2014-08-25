@@ -355,11 +355,11 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 .overview .section .item .top-right {float:right;padding-bottom:13px;color:#444245;text-align:right;}
 .overview .section .item .top-left {float:left;margin-left:3px; padding-bottom:13px;color:#e43a1b;}
 
-.usage_biggest {float:left;position:relative;width:775px;height:31px;background:url(/images/usages.png) no-repeat;}
-.usage_biggest div {background:url(/images/usages_new.png) 0 0 no-repeat;position:absolute;top:0px;left:0px;height:31px;}
-.usage_biggest i {position:absolute;top:-8px;right:0;display:block;width:1px;height:47px;background-color:#e43a1b;font-size:0;line-height:0;}
-.usage_biggest + table  {clear:both;width:599px;}
-.usage_biggest + table td {padding:13px 0 0 3px;}
+.usage_biggest .usage {float:left;position:relative;width:775px;height:31px;background:url(/images/usages.png) no-repeat;}
+.usage_biggest .usage div {background:url(/images/usages_new.png) 0 0 no-repeat;position:absolute;top:0px;left:0px;height:31px;}
+.usage_biggest .usage i {position:absolute;top:-8px;right:0;display:block;width:1px;height:47px;background-color:#e43a1b;font-size:0;line-height:0;}
+.usage_biggest .usage + table  {clear:both;width:599px;}
+.usage_biggest .usage + table td {padding:13px 0 0 3px;}
 
 .disk-item .usage_biggest + table  {clear:both;width:599px;}
 .disk-item .usage_biggest + table td {padding:13px 0 0 3px;color:#C19710;text-align:left;}
