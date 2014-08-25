@@ -964,7 +964,7 @@ ram_summary_to_proplist(V) ->
 
 interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGetter) ->
     RAMQuota = proplists:get_value(ram_quota, ParsedProps),
-    OtherBucketsRAMQuota = proplists:get_value(other_buckets_ram_quota, ParsedProps),
+    OtherBucketsRAMQuota = proplists:get_value(other_buckets_ram_quota, ParsedProps, 0),
     NodesCount = proplists:get_value(nodesCount, ClusterStorageTotals),
     ParsedQuota = RAMQuota * NodesCount,
     PerNode = RAMQuota div ?MIB,
