@@ -309,27 +309,36 @@ do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, [] = Zombies) ->
                         case FutureChain of
                             [Node | _] ->
                                 %% if active is future master check rest of future chain
-                                [FFMasterState | FFReplicaStates] = [proplists:get_value(N, NodeStates)
-                                                                     || N <- FutureChain,
-                                                                        N =/= undefined],
-                                ExpectedFFReplicasStates =
-                                    [case N =:= Master of
-                                         true ->
-                                             %% in case of completed
-                                             %% move old master is
-                                             %% expected to be dead
-                                             dead;
-                                         _ ->
-                                             %% and all other nodes in
-                                             %% fast-forward chain are
-                                             %% expected to be
-                                             %% replicas
-                                             replica
-                                     end || N <- tl(FutureChain),
-                                            N =/= undefined],
+                                active = proplists:get_value(hd(FutureChain), NodeStates),
                                 %% and if everything fits -- cool
-                                active = FFMasterState,
-                                FFReplicaStates =:= ExpectedFFReplicasStates;
+                                %%
+                                %% we check expected replicas to be
+                                %% replicas. One other allowed
+                                %% possibility is if old master is
+                                %% replica in ff chain. In which case
+                                %% depending on where rebalance was
+                                %% stopped it may be dead (if stopped
+                                %% right after takeover) or replica
+                                %% (if stopped after post-move vbucket
+                                %% states are set).
+                                lists:all(
+                                  fun (undefined = _N) ->
+                                          true;
+                                      (N) ->
+                                          ActualState = proplists:get_value(N, NodeStates),
+                                          if
+                                              ActualState =:= replica ->
+                                                  true;
+                                              N =:= Master ->
+                                                  %% old master might
+                                                  %% be dead or
+                                                  %% replica. Replica
+                                                  %% is tested above
+                                                  ActualState =:= dead;
+                                              true ->
+                                                  false
+                                          end
+                                  end, tl(FutureChain));
                             _ ->
                                 false
                         end,
@@ -417,6 +426,11 @@ sanify_doesnt_lose_replicas_on_stopped_rebalance_test() ->
     %% fast-forward map and is supposed to recover perfectly from this
     %% condition.
     [a, b] = do_sanify_chain("B", [{a, 0, active}, {b, 0, dead}],
+                            [b, a], [a, b], 0, []),
+
+    %% rebalance can be stopped after updating vbucket states but
+    %% before vbucket map update
+    [a, b] = do_sanify_chain("B", [{a, 0, active}, {b, 0, replica}],
                             [b, a], [a, b], 0, []),
     %% same stuff but prior to takeover
     [a, b] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, pending}],
