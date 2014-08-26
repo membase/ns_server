@@ -1005,46 +1005,114 @@ with_nodes(Object, Context, Props, K) ->
     expect_nested_array(
       <<"nodes">>, Object, Context,
       fun (NodeList) ->
-              Nodes =
-                  lists:flatmap(
-                    fun (Node) ->
-                            extract_node_props(Props, Context, Node)
-                    end, NodeList),
-              case Nodes of
+              Nodes0 = [extract_node_props(Props, Context, Node)
+                        || Node <- NodeList],
+              BadNodes = [E || E <- Nodes0,
+                               case E of
+                                   {ok, _} -> false;
+                                   _ -> true
+                               end],
+              GoodNodes = lists:append([N || {ok, N} <- Nodes0]),
+              case BadNodes of
                   [] ->
-                      Msg = io_lib:format("(~s) unable to extract any nodes",
-                                          [Context]),
-                      {error, {bad_value, <<"nodes">>}, iolist_to_binary(Msg)};
+                      K(GoodNodes);
                   _ ->
-                      K(Nodes)
+                      Msg = io_lib:format("(~s) unable to extract some nodes: ~p",
+                                          [Context, BadNodes]),
+                      {error, {bad_value, <<"nodes">>}, iolist_to_binary(Msg)}
               end
       end).
+
+with_nodes_basic_test() ->
+    Kf = fun (Value) -> {ok, {v, Value}} end,
+
+    ?assertMatch({error, {missing_field, _}, _}, with_nodes([], <<"s">>, [], Kf)),
+
+    {ok, {v, []}} = with_nodes([{<<"nodes">>, []}], <<"s">>, [], Kf),
+
+    UnreachFn = fun () -> erlang:error(a) end,
+    {ok, {v, []}} = with_nodes([{<<"nodes">>, []}], <<"s">>, UnreachFn , Kf),
+
+    N1 = [{<<"hostname">>, <<"asd.asd">>},
+          {<<"opt">>, 1}],
+    N2 = [{<<"hostname">>, <<"basd.asd">>}],
+    Nodes = [{<<"nodes">>, [{struct, N1}, {struct, N2}]}],
+
+    RV1 = with_nodes(Nodes, <<"s">>, [{<<"unknown">>, UnreachFn}], Kf),
+    ?assertMatch({error, _, _}, RV1),
+
+    RV2 = with_nodes(Nodes,
+                     <<"s">>, [{<<"hostname">>, fun extract_string/2},
+                               {<<"opt">>, {optional, fun extract_number/2}}],
+                     Kf),
+    {ok, {v, [[{<<"hostname">>, <<"asd.asd">>},
+               {<<"opt">>, 1}],
+              [{<<"hostname">>, <<"basd.asd">>}]]}} =
+        RV2,
+
+    {ok, {v, []}} = with_nodes(Nodes, <<"s">>,
+                               fun (_NI, _Ctx) -> {ok, []} end,
+                               Kf),
+
+    {ok, {v, [foo, bar, foo, bar]}} =
+        with_nodes(Nodes, <<"s">>,
+                   fun (_NI, _Ctx) -> {ok, [foo, bar]} end,
+                   Kf).
+
+
+extract_node_props_loop([{Prop, Extract0} | RestProps], Context, Node) ->
+    {Optional, Extract} = case Extract0 of
+                              {optional, XE} ->
+                                  {true, XE};
+                              _ ->
+                                  {false, Extract0}
+                          end,
+    case proplists:get_value(Prop, Node) of
+        undefined ->
+            case Optional of
+                true ->
+                    ?xdcr_debug("Missing optional `~s` field in node info:~n~p",
+                                [Prop, Node]),
+                    extract_node_props_loop(RestProps, Context, Node);
+                false ->
+                    {error, {missing_field, Prop}, <<"">>}
+            end;
+        Value ->
+            case Extract(Value, Context) of
+                {ok, FinalValue} ->
+                    RestExtracted0 = extract_node_props_loop(RestProps, Context, Node),
+                    case RestExtracted0 of
+                        {ok, RestExtracted} ->
+                            {ok, [{Prop, FinalValue} | RestExtracted]};
+                        Err ->
+                            Err
+                    end;
+                {bad_value, Msg} ->
+                    case Optional of
+                        true ->
+                            ?log_warning("~s:~n~p", [Msg, Value]),
+                            extract_node_props_loop(RestProps, Context, Node);
+                        false ->
+                            {error, {bad_value, Prop}, Msg}
+                    end
+            end
+    end;
+extract_node_props_loop([], _Context, _Node) ->
+    {ok, []}.
 
 extract_node_props(PropsExtractor, Context, NodeStruct) when is_function(PropsExtractor) ->
     PropsExtractor(NodeStruct, Context);
 extract_node_props(Props, Context, {struct, Node}) ->
-    R =
-        lists:foldl(
-          fun ({Prop, Extract}, Acc) ->
-                  case proplists:get_value(Prop, Node) of
-                      undefined ->
-                          ?log_warning("Missing `~s` field in node info:~n~p",
-                                       [Prop, Node]),
-                          Acc;
-                      Value ->
-                          case Extract(Value, Context) of
-                              {ok, FinalValue} ->
-                                  [{Prop, FinalValue} | Acc];
-                              {bad_value, Msg} ->
-                                  ?log_warning("~s:~n~p", [Msg, Value]),
-                                  Acc
-                          end
-                  end
-          end, [], Props),
-    [R];
+    case extract_node_props_loop(Props, Context, Node) of
+        {ok, PList} ->
+            {ok, [PList]};
+        Err -> Err
+    end;
 extract_node_props(_Props, Context, Node) ->
-    ?log_warning("(~s) got invalid node info value:~n~p", [Context, Node]),
-    [].
+    Msg0 = io_lib:format("(~s) got invalid node info value:~n~p", [Context, Node]),
+    Msg = iolist_to_binary(Msg0),
+    ?log_warning("~s", [Msg]),
+    {error, bad_value, Msg}.
 
 props_to_remote_node(Props) ->
     Hostname = proplists:get_value(<<"hostname">>, Props),
@@ -1137,7 +1205,7 @@ remote_bucket_with_pool_details(PoolDetails, RemoteCluster, Bucket, Creds, JsonG
       PoolDetails, <<"default pool details">>,
       [{<<"hostname">>, fun extract_string/2},
        {<<"ports">>, fun extract_object/2},
-       {<<"version">>, fun extract_version/2}],
+       {<<"version">>, {optional, fun extract_version/2}}],
       fun (PoolNodeProps) ->
               with_buckets(
                 PoolDetails, JsonGet,
@@ -1165,33 +1233,31 @@ maybe_extract_important_buckets_props({struct, NodeKV}, Ctx) ->
     case proplists:get_value(<<"couchApiBase">>, NodeKV) of
         undefined ->
             ?log_debug("skipping node without couchApiBase: ~p", [NodeKV]),
-            [];
+            {ok, []};
         _ ->
-            RV = extract_node_props([{<<"hostname">>, fun extract_string/2},
-                                     {<<"couchApiBase">>, fun extract_string/2},
-                                     {<<"ports">>, fun extract_object/2}],
-                                    Ctx, {struct, NodeKV}),
-            case RV of
-                [Props] ->
-                    case proplists:get_value(<<"couchApiBaseHTTPS">>, NodeKV) of
-                        undefined ->
-                            RV;
-                        _ ->
-                            case extract_node_props([{<<"couchApiBaseHTTPS">>, fun extract_string/2}],
-                                                    Ctx, {struct, NodeKV}) of
-                                [] ->
-                                    RV;
-                                [Props2] ->
-                                    ?log_debug("extracted couchApiBaseHTTPS"),
-                                    [Props2 ++ Props]
-                            end
-                    end;
-                [] ->
-                    RV
-            end
+            extract_node_props([{<<"hostname">>, fun extract_string/2},
+                                {<<"couchApiBase">>, fun extract_string/2},
+                                {<<"ports">>, fun extract_object/2},
+                                {<<"couchApiBaseHTTPS">>, {optional, fun extract_string/2}}],
+                               Ctx, {struct, NodeKV})
     end;
 maybe_extract_important_buckets_props(BadNodeStruct, Ctx) ->
     extract_node_props([], Ctx, BadNodeStruct).
+
+maybe_extract_important_buckets_props_basic_test() ->
+    Ctx = <<"s">>,
+    {ok, []} = maybe_extract_important_buckets_props({struct, []}, Ctx),
+    KV0 = [{<<"hostname">>, <<"h">>},
+           {<<"couchApiBase">>, <<"ab">>},
+           {<<"ports">>, {struct, []}}],
+    KV1 = KV0 ++ [{<<"couchApiBaseHTTPS">>, <<"sab">>}],
+    Ex0 = lists:keyreplace(<<"ports">>, 1, KV0, {<<"ports">>, []}),
+    Ex1 = lists:keyreplace(<<"ports">>, 1, KV1, {<<"ports">>, []}),
+    {ok, [Ex0]} = maybe_extract_important_buckets_props({struct, KV0}, Ctx),
+    {ok, [Ex1]} = maybe_extract_important_buckets_props({struct, KV1}, Ctx),
+    ?assertMatch({error, _, _},
+                 maybe_extract_important_buckets_props(
+                   {struct, lists:keydelete(<<"hostname">>, 1, KV0)}, Ctx)).
 
 
 remote_bucket_with_bucket(BucketName, BucketObject, OrigRemoteCluster,
@@ -1353,22 +1419,27 @@ do_with_mcd_to_couch_uri_dict([Props | Rest], Dict, Creds, Cert, K) ->
                     end,
     Ports = proplists:get_value(<<"ports">>, Props),
 
-    %% this is ensured by `extract_node_props' function
+    %% this is ensured by `maybe_extract_important_buckets_props' function
     true = (Hostname =/= undefined),
-    true = (CouchApiBase0 =/= undefined),
     true = (Ports =/= undefined),
 
-    {Host, _Port} = host_and_port(Hostname),
-    CouchApiBase = add_credentials(CouchApiBase0, Creds),
+    case CouchApiBase0 of
+        undefined ->
+            ?log_debug("Skipping node without either couchApiBase or couchApiBaseHTTPS (~s)", [Hostname]),
+            do_with_mcd_to_couch_uri_dict(Rest, Dict, Creds, Cert, K);
+        _ ->
+            {Host, _Port} = host_and_port(Hostname),
+            CouchApiBase = add_credentials(CouchApiBase0, Creds),
 
-    expect_nested_number(
-      <<"direct">>, Ports, <<"node ports object">>,
-      fun (DirectPort) ->
-              McdUri = iolist_to_binary([Host, $:, integer_to_list(DirectPort)]),
-              NewDict = dict:store(McdUri, CouchApiBase, Dict),
+            expect_nested_number(
+              <<"direct">>, Ports, <<"node ports object">>,
+              fun (DirectPort) ->
+                      McdUri = iolist_to_binary([Host, $:, integer_to_list(DirectPort)]),
+                      NewDict = dict:store(McdUri, CouchApiBase, Dict),
 
-              do_with_mcd_to_couch_uri_dict(Rest, NewDict, Creds, Cert, K)
-      end).
+                      do_with_mcd_to_couch_uri_dict(Rest, NewDict, Creds, Cert, K)
+              end)
+    end.
 
 add_credentials(URLBinary, {Username, Password}) ->
     URL = binary_to_list(URLBinary),
