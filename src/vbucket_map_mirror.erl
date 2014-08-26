@@ -61,6 +61,9 @@ cleaner_loop({buckets, [{configs, NewBuckets0}]}, {Parent, CurrentBuckets}) ->
 cleaner_loop({{_, _, capi_port}, _Value}, State) ->
     submit_full_reset(),
     State;
+cleaner_loop({{_, _, ssl_capi_port}, _Value}, State) ->
+    submit_full_reset(),
+    State;
 cleaner_loop(_, Cleaner) ->
     Cleaner.
 
