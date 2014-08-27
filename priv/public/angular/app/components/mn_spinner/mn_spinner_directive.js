@@ -1,14 +1,19 @@
-angular.module('mnSpinner').directive('mnSpinnerDirective', function ($http, $compile) {
+angular.module('mnSpinner').directive('mnSpinnerDirective', function ($http, $compile, $rootScope) {
 
   return {
+    restrict: 'A',
+    scope: {
+      mnSpinnerDirective: '=',
+    },
     compile: function ($element) {
-      $element.append("<div class=\"spinner\" ng-show=\"viewLoading\"></div>");
+      var scope = $rootScope.$new();
+      $element.append($compile("<div class=\"spinner\" ng-show=\"viewLoading\"></div>")(scope));
       $element.addClass('spinner_wrap');
 
       return function link($scope) {
-        if ($scope.viewLoading === undefined) {
-          $scope.viewLoading = true;
-        }
+        $scope.$watch('mnSpinnerDirective', function (mnSpinnerDirective) {
+          scope.viewLoading = !!mnSpinnerDirective;
+        });
       };
     }
   };

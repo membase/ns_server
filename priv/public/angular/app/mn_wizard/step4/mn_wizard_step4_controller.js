@@ -3,7 +3,6 @@ angular.module('mnWizard').controller('mnWizardStep4Controller',
 
     mnWizardStep4Service.model.register.version = mnAuthService.model.version || 'unknown';
     $scope.mnWizardStep4ServiceModel = mnWizardStep4Service.model;
-    $scope.viewLoading = false;
 
     $scope.onSubmit = function () {
       if ($scope.form.$invalid || $scope.viewLoading) {
@@ -14,11 +13,11 @@ angular.module('mnWizard').controller('mnWizardStep4Controller',
       $scope.mnWizardStep4ServiceModel.register.email && mnWizardStep4Service.postEmail();
 
       mnWizardStep4Service.postStats().success(function () {
-        $scope.viewLoading = false;
         $state.transitionTo('wizard.step5');
       }).error(function (errors) {
-        $scope.viewLoading = false;
         $scope.errors = errors;
+      })['finally'](function () {
+        $scope.viewLoading = false;
       });
     };
   });

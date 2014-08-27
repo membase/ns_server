@@ -10,8 +10,11 @@ angular.module('mnWizard').controller('mnWizardStep2Controller',
       return memo + Number(num);
     }
 
+    $scope.$watch('sampleBuckets', function (buckets) {
+      $scope.viewLoading = !buckets;
+    });
+
     mnWizardStep2Service.getSampleBuckets().success(function (buckets) {
-      $scope.viewLoading = false;
       $scope.sampleBuckets = buckets;
     });
   });

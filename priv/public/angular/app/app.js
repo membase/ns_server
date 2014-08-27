@@ -20,11 +20,21 @@ angular.module('mnAdmin', [
   'mnAuthService',
   'mnAdminService',
   'mnAdminOverviewService',
-  'mnAdminOverview'
+  'mnAdminOverview',
+  'mnAdminBucketsService',
+  'mnAdminBuckets',
+  'mnAdminServersService',
+  'mnAdminServers',
 ]);
 angular.module('mnAdminService', []);
 angular.module('mnAdminOverviewService', ['mnAdminService']);
 angular.module('mnAdminOverview', ['mnAdminOverviewService']);
+
+angular.module('mnAdminBucketsService', []);
+angular.module('mnAdminBuckets', []);
+
+angular.module('mnAdminServersService', []);
+angular.module('mnAdminServers', []);
 
 angular.module('mnWizard', [
   'mnWizardStep1Service',

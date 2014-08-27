@@ -3,14 +3,20 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
     $scope.mnWizardStep1ServiceModel = mnWizardStep1Service.model;
 
     $scope.onSubmit = function (e) {
-      if ($scope.viewLoading) {
+      if ($scope.stepSubmited) {
         return;
       }
-      $scope.viewLoading = true;
+      $scope.stepSubmited = true;
       makeRequest(mnWizardStep1DiskStorageService, 'postDiskStorage').success(doPostHostName);
     }
 
-    mnWizardStep1Service.getSelfConfig().then(stopSpinner);
+    $scope.$watch(function () {
+      return !$scope.mnWizardStep1ServiceModel.nodeConfig || $scope.stepSubmited;
+    }, function (isViewLoading) {
+      $scope.viewLoading = isViewLoading;
+    });
+
+    mnWizardStep1Service.getSelfConfig();
 
     function doPostHostName() {
       var nextAction = mnWizardStep1JoinClusterService.model.joinCluster === 'ok' ? doPostJoinCluster : doPostMemory;
@@ -34,7 +40,7 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
 
     }
     function stopSpinner() {
-      $scope.viewLoading = false;
+      $scope.stepSubmited = false;
     }
     function postMemoryErrorExtr(errors) {
       return errors.errors.memoryQuota;

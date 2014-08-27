@@ -20,7 +20,10 @@ angular.module('mnWizard').controller('mnWizardStep3Controller',
       $scope.modelStep3Service = mnWizardStep3Service.model;
       $scope.focusMe = true;
       $scope.replicaNumberEnabled = true;
-      $scope.viewLoading = false;
+    });
+
+    $scope.$watch('modelStep3Service', function (modelStep3Service) {
+      $scope.viewLoading = !modelStep3Service;
     });
 
     function goToTheNextStep() {

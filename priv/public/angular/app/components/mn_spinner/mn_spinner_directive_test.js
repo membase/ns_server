@@ -10,7 +10,7 @@ describe("mnSpinnerDirective", function () {
   beforeEach(inject(function ($injector) {
     $rootScope = $injector.get('$rootScope');
     $compile = $injector.get('$compile')
-    $element = angular.element('<div mn-spinner-directive="spinner" id="spinner">content</div>');
+    $element = angular.element('<div mn-spinner-directive="viewLoading"="spinner" id="spinner">content</div>');
 
     createSpinner = function () {
       $compile($element)($rootScope);
@@ -21,7 +21,7 @@ describe("mnSpinnerDirective", function () {
 
   it('should be properly initialized', function () {
     var spinner = createSpinner();
-    expect(spinner.html()).toEqual('content<div class="spinner" ng-show="viewLoading"></div>');
+    expect(spinner.html()).toEqual('content<div class="spinner ng-scope ng-hide" ng-show="viewLoading"></div>');
     expect(spinner.hasClass('spinner_wrap')).toBe(true);
   });
 

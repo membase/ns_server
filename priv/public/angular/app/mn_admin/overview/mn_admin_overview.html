@@ -7,13 +7,13 @@
       cluster; displaying cached information!</span>Cluster
     </div>
     <div class="section" id="overview_clusters_block">
-      <div class="item ram-item">
+      <div class="item ram-item" mn-spinner-directive="!mnAdminOverviewServiceModel.ramOverviewConfig">
         <div class="label">
           <strong>RAM Overview</strong>
         </div>
         <div class="line_cnt usage-block usage_biggest" mn-bar-usage-directive base-info="mnAdminOverviewServiceModel.ramOverviewConfig"></div>
       </div>
-      <div class="item disk-item">
+      <div class="item disk-item" mn-spinner-directive="!mnAdminOverviewServiceModel.hddOverviewConfig">
         <div class="label">
           <strong>Disk Overview</strong>
         </div>
@@ -26,15 +26,15 @@
     <div class="hdr">
       <span class="staleness-notice">Difficulties communicating
       with the cluster; displaying cached information!</span>
-      Buckets <span>(<span class="buckets-number">??</span> active)</span>
+      Buckets <span>(<span class="buckets-number">{{bucketsLength || '0'}}</span> active)</span>
     </div>
     <div class="section">
       <div class="item">
-        <div class="graph_main">
+        <div class="graph_main" mn-spinner-directive="!opsGraphConfig">
           <span class="graph_info_label">Operations per second</span>
           <div id="overview_ops_graph" class="graph" mn-plot-directive mn-plot-config="opsGraphConfig"></div>
         </div>
-        <div class="graph_main">
+        <div class="graph_main" mn-spinner-directive="!readsGraphConfig">
           <span class="graph_info_label">Disk fetches per second</span>
           <div id="overview_reads_graph" class="graph" mn-plot-directive mn-plot-config="readsGraphConfig"></div>
         </div>
@@ -54,23 +54,31 @@
     <div class="section" id="overview_servers_block">
       <div class="item ovf">
         <div class="actservers">
-          <h3>Active Servers: <span id="active-servers-count">{{mnAdminOverviewServiceModel.activeNodesLength}}</span></h3>
+          <h3>Active Servers: <span id="active-servers-count">{{mnAdminServersServiceModel.activeNodes.length || '0'}}</span></h3>
         </div>
         <ul>
-          <li class="fail" ng-class="{'is-zero':!mnAdminOverviewServiceModel.failedOverNodesLength}">
-            <a href="#visitServersTab=pending" ng-show="mnAdminOverviewServiceModel.failedOverNodesLength">Servers Failed Over: <span class="failed-over-count">{{mnAdminOverviewServiceModel.failedOverNodesLength}}</span></a>
-            <span class="when-zero" ng-show="!mnAdminOverviewServiceModel.failedOverNodesLength">Servers Failed Over: 0</span>
-            <span class="badge" ng-show="mnAdminOverviewServiceModel.failedOverNodesLength"><span class="failed-over-count">{{mnAdminOverviewServiceModel.failedOverNodesLength}}</span></span>
+          <li class="fail" ng-class="{'is-zero':!mnAdminServersServiceModel.failedOverNodes.length}">
+            <span class="when-non-zero">
+              <a href="#visitServersTab=pending">Servers Failed Over: <span class="failed-over-count">{{mnAdminServersServiceModel.failedOverNodes.length}}</span></a>
+              <span class="badge">
+                <span class="failed-over-count">{{mnAdminServersServiceModel.failedOverNodes.length}}</span>
+              </span>
+            </span>
+            <span class="when-zero">Servers Failed Over: 0</span>
           </li>
-          <li class="down" ng-class="{'is-zero':!mnAdminOverviewServiceModel.downNodesLength}">
-            <a href="#visitServersTab=active" ng-show="mnAdminOverviewServiceModel.downNodesLength">Servers Down: <span class="down-count">{{mnAdminOverviewServiceModel.downNodesLength}}</span></a>
-            <span class="when-zero" ng-show="!mnAdminOverviewServiceModel.downNodesLength">Servers Down: 0</span>
-            <span class="badge" ng-show="mnAdminOverviewServiceModel.downNodesLength"><span class="down-count">{{mnAdminOverviewServiceModel.downNodesLength}}</span></span>
+          <li class="down" ng-class="{'is-zero':!mnAdminServersServiceModel.pendingNodes.length}">
+            <span class="when-non-zero">
+              <a href="#visitServersTab=active">Servers Down: <span class="down-count">{{mnAdminServersServiceModel.downNodes.length}}</span></a>
+              <span class="badge"><span class="down-count">{{mnAdminServersServiceModel.downNodes.length}}</span></span>
+            </span>
+            <span class="when-zero">Servers Down: 0</span>
           </li>
-          <li class="pending" ng-class="{'is-zero':!mnAdminOverviewServiceModel.pendingNodesLength}">
-            <a href="#visitServersTab=pending" ng-show="mnAdminOverviewServiceModel.pendingNodesLength">Servers Pending Rebalance: <span class="pending-count">{{mnAdminOverviewServiceModel.pendingNodesLength}}</span></a>
-            <span class="when-zero" ng-show="!mnAdminOverviewServiceModel.pendingNodesLength">Servers Pending Rebalance: 0</span>
-            <span class="badge" ng-show="mnAdminOverviewServiceModel.pendingNodesLength"><span class="pending-count">{{mnAdminOverviewServiceModel.pendingNodesLength}}</span></span>
+          <li class="pending" ng-class="{'is-zero':!mnAdminServersServiceModel.pendingNodes.length}">
+            <span class="when-non-zero">
+              <a href="#visitServersTab=pending">Servers Pending Rebalance: <span class="pending-count">{{mnAdminServersServiceModel.pendingNodes.length}}</span></a>
+              <span class="badge"><span class="pending-count">{{mnAdminServersServiceModel.pendingNodes.length}}</span></span>
+            </span>
+            <span class="when-zero">Servers Pending Rebalance: 0</span>
           </li>
         </ul>
       </div>

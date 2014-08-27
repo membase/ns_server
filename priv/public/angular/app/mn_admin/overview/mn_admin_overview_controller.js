@@ -1,15 +1,22 @@
-angular.module('mnAdminOverview')
-  .controller('mnAdminOverviewController', function ($scope, mnAdminOverviewService) {
+angular.module('mnAdminOverview').controller('mnAdminOverviewController',
+  function ($scope, mnAdminOverviewService, mnAdminBucketsService, mnAdminService) {
     $scope.mnAdminOverviewServiceModel = mnAdminOverviewService.model;
-
-    $scope.mnAdminOverviewServiceModel.ramOverviewConfig = {};
-    $scope.mnAdminOverviewServiceModel.hddOverviewConfig = {};
 
     mnAdminOverviewService.runStatsLoop();
 
     $scope.$on('$destroy', function () {
       mnAdminOverviewService.stopStatsLoop();
     });
+
+    $scope.$watch('mnAdminServiceModel.details.buckets.uri', function (url) {
+      if (!url) {
+        return;
+      }
+      mnAdminBucketsService.getRawDetailedBuckets().success(function () {
+        $scope.bucketsLength = _.count(mnAdminBucketsService.model.details.length, 'bucket');
+      });
+    });
+
     $scope.$watch('mnAdminOverviewServiceModel.stats', function (stats) {
       if (!stats || !stats.ops.length || !stats.ep_bg_fetched.length) {
         return;
@@ -19,7 +26,7 @@ angular.module('mnAdminOverview')
       var tstamps = stats.timestamp || [];
       var breakInterval;
       if (tstamps.length > 1) {
-        breakInterval = (tstamps[tstamps.length-1] - tstamps[0]) /
+        breakInterval = (tstamps[tstamps.length - 1] - tstamps[0]) /
           Math.min(tstamps.length / 2, 30);
       }
 
@@ -51,6 +58,57 @@ angular.module('mnAdminOverview')
       };
     });
 
+
+    var ramOverviewConfig = {
+      topLeft: {
+        name: 'Total Allocated'
+      },
+      topRight: {
+        name: 'Total in Cluster'
+      },
+      items: [{
+        name: 'In Use',
+        itemStyle: {'background-color': '#00BCE9', 'z-index': 3},
+        labelStyle: {'color':'#1878a2', 'text-align': 'left'}
+      }, {
+        name: 'Unused',
+        itemStyle: {'background-color': '#7EDB49', 'z-index': 2},
+        labelStyle: {'color': '#409f05', 'text-align': 'center'}
+      }, {
+        name: 'Unallocated',
+        itemStyle: {'background-color': '#E1E2E3'},
+        labelStyle: {'color': '#444245', 'text-align': 'right'}
+      }],
+      markers: [{
+        itemStyle: {'background-color': '#e43a1b'}
+      }]
+    };
+
+    var hddOverviewConfig = {
+      topLeft: {
+        name: 'Usable Free Space'
+      },
+      topRight: {
+        name: 'Total Cluster Storage'
+      },
+      items: [{
+        name: 'In Use',
+        itemStyle: {'background-color': '#00BCE9', 'z-index': 3},
+        labelStyle: {'color': '#1878A2', 'text-align': 'left'}
+      }, {
+        name: 'Other Data',
+        itemStyle: {'background-color': '#FDC90D', 'z-index': 2},
+        labelStyle: {'color': '#C19710', 'text-align': 'center'}
+      }, {
+        name: "Free",
+        itemStyle: {'background-color': '#E1E2E3'},
+        labelStyle: {'color': '#444245', 'text-align': 'right'}
+      }],
+      markers: [{
+        itemStyle: {'background-color': '#E43A1B'}
+      }]
+    };
+
     $scope.$watch('mnAdminServiceModel.details', function (details) {
       if (!details) {
         return;
@@ -62,38 +120,13 @@ angular.module('mnAdminOverview')
         var bucketsQuota = ram.quotaUsed;
         var quotaTotal = ram.quotaTotal;
 
-        var ramOverviewConfig = {
-          // topAttrs: {'class': 'line_cnt'},
-          // usageAttrs: {'class': 'usage_biggest'},
-          topLeft: {
-            name: 'Total Allocated',
-            value: _.formatMemSize(bucketsQuota)
-          },
-          topRight: {
-            name: 'Total in Cluster',
-            value: _.formatMemSize(quotaTotal)
-          },
-          items: [{
-            name: 'In Use',
-            value: usedQuota,
-            itemStyle: {'background-color': '#00BCE9', 'z-index': 3},
-            labelStyle: {'color':'#1878a2', 'text-align': 'left'}
-          }, {
-            name: 'Unused',
-            value: bucketsQuota - usedQuota,
-            itemStyle: {'background-color': '#7EDB49', 'z-index': 2},
-            labelStyle: {'color': '#409f05', 'text-align': 'center'}
-          }, {
-            name: 'Unallocated',
-            value: Math.max(quotaTotal - bucketsQuota, 0),
-            itemStyle: {'background-color': '#E1E2E3'},
-            labelStyle: {'color': '#444245', 'text-align': 'right'}
-          }],
-          markers: [{
-            value: bucketsQuota,
-            itemStyle: {'background-color': '#e43a1b'}
-          }]
-        };
+        ramOverviewConfig.topLeft.value = _.formatMemSize(bucketsQuota);
+        ramOverviewConfig.topRight.value = _.formatMemSize(quotaTotal);
+        ramOverviewConfig.items[0].value = usedQuota;
+        ramOverviewConfig.items[1].value = bucketsQuota - usedQuota;
+        ramOverviewConfig.items[2].value = Math.max(quotaTotal - bucketsQuota, 0);
+        ramOverviewConfig.markers[0].value = bucketsQuota
+
         if (ramOverviewConfig.items[1].value < 0) {
           ramOverviewConfig.items[0].value = bucketsQuota;
           ramOverviewConfig.items[1] = {
@@ -103,11 +136,11 @@ angular.module('mnAdminOverview')
             labelStyle: {'color': '#e43a1b'}
           };
           if (usedQuota < quotaTotal) {
-            gaugeOptions.items[2].name = 'Available';
-            gaugeOptions.items[2].value = quotaTotal - usedQuota;
+            ramOverviewConfig.items[2].name = 'Available';
+            ramOverviewConfig.items[2].value = quotaTotal - usedQuota;
           } else {
-            gaugeOptions.items.length = 2;
-            gaugeOptions.markers.push({
+            ramOverviewConfig.items.length = 2;
+            ramOverviewConfig.markers.push({
               value: quotaTotal,
               itemStyle: {'color': '#444245', 'z-index': 5}
             })
@@ -125,38 +158,12 @@ angular.module('mnAdminOverview')
         var other = hdd.used - usedSpace;
         var free = hdd.free;
 
-        var hddOverviewConfig = {
-          // topAttrs: {'class': 'line_cnt'},
-          // usageAttrs: {'class': 'usage_biggest'},
-          topLeft: {
-            name: 'Usable Free Space',
-            value: _.formatMemSize(free)
-          },
-          topRight: {
-            name: 'Total Cluster Storage',
-            value: _.formatMemSize(total)
-          },
-          items: [{
-            name: 'In Use',
-            value: usedSpace,
-            itemStyle: {'background-color': '#00BCE9', 'z-index': 3},
-            labelStyle: {'color': '#1878A2', 'text-align': 'left'}
-          }, {
-            name: 'Other Data',
-            value: other,
-            itemStyle: {'background-color': '#FDC90D', 'z-index': 2},
-            labelStyle: {'color': '#C19710', 'text-align': 'center'}
-          }, {
-            name: "Free",
-            value: total - other - usedSpace,
-            itemStyle: {'background-color': '#E1E2E3'},
-            labelStyle: {'color': '#444245', 'text-align': 'right'}
-          }],
-          markers: [{
-            value: other + usedSpace + free,
-            itemStyle: {'background-color': '#E43A1B'}
-          }]
-        };
+        hddOverviewConfig.topLeft.value = _.formatMemSize(free);
+        hddOverviewConfig.topRight.value = _.formatMemSize(total);
+        hddOverviewConfig.items[0].value = usedSpace;
+        hddOverviewConfig.items[1].value = other;
+        hddOverviewConfig.items[2].value = total - other - usedSpace;
+        hddOverviewConfig.markers[0].value = other + usedSpace + free;
 
         $scope.mnAdminOverviewServiceModel.hddOverviewConfig = hddOverviewConfig;
       })();

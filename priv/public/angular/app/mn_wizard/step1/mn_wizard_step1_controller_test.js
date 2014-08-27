@@ -28,7 +28,7 @@ describe("mnWizardStep1Controller", function () {
     expect($scope.mnWizardStep1ServiceModel).toBe(mnWizardStep1Service.model);
     expect($scope.onSubmit).toEqual(jasmine.any(Function));
     $httpBackend.flush();
-    expect($scope.viewLoading).toBe(false);
+    expect($scope.viewLoading).toBe(true);
   });
 
   it('should send configuration to the server on submit', function () {
@@ -66,7 +66,7 @@ describe("mnWizardStep1Controller", function () {
     $httpBackend.expectPOST('/nodes/self/controller/settings').respond(400);
     $scope.onSubmit();
     $httpBackend.flush();
-    expect($scope.viewLoading).toBeFalsy();
+    expect($scope.viewLoading).toBe(true);
     $httpBackend.verifyNoOutstandingRequest();
     $httpBackend.verifyNoOutstandingExpectation();
 
@@ -74,7 +74,7 @@ describe("mnWizardStep1Controller", function () {
     $httpBackend.expectPOST('/nodes/self/controller/settings').respond(200);
     $httpBackend.expectPOST('/node/controller/rename').respond(400, []);
     $httpBackend.flush();
-    expect($scope.viewLoading).toBeFalsy();
+    expect($scope.viewLoading).toBe(true);
     $httpBackend.verifyNoOutstandingRequest();
     $httpBackend.verifyNoOutstandingExpectation();
 
@@ -83,7 +83,7 @@ describe("mnWizardStep1Controller", function () {
     $httpBackend.expectPOST('/node/controller/rename').respond(200);
     $httpBackend.expectPOST('/pools/default').respond(400, {errors: {}});
     $httpBackend.flush();
-    expect($scope.viewLoading).toBeFalsy();
+    expect($scope.viewLoading).toBe(true);
     $httpBackend.verifyNoOutstandingRequest();
     $httpBackend.verifyNoOutstandingExpectation();
 
@@ -94,7 +94,7 @@ describe("mnWizardStep1Controller", function () {
     $httpBackend.expectPOST('/node/controller/rename').respond(200);
     $httpBackend.expectPOST('/node/controller/doJoinCluster').respond(400);
     $httpBackend.flush();
-    expect($scope.viewLoading).toBeFalsy();
+    expect($scope.viewLoading).toBe(true);
     $httpBackend.verifyNoOutstandingRequest();
     $httpBackend.verifyNoOutstandingExpectation();
 
