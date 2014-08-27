@@ -91,7 +91,7 @@ function dateToFakeRFC1123(date) {
   var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return ['XXX, ', twoDigits(date.getUTCDate()), ' ',
     monthNames[date.getUTCMonth()], ' ', date.getUTCFullYear(), ' ',
-    twoDigits(date.getHours()), ':', twoDigits(date.getMinutes()), ':', twoDigits(date.getSeconds()),
+    twoDigits(date.getUTCHours()), ':', twoDigits(date.getUTCMinutes()), ':', twoDigits(date.getUTCSeconds()),
     ' GMT'].join('');
 }
 
@@ -330,19 +330,19 @@ var MockedRequest = mkClass({
       [61, 65, 64, 75, 77, 57, 68, 76, 64, 61, 66, 63, 68, 37, 32, 60, 72, 54, 43, 41, 55, 52, 45, 25, 23, 22, 50, 67, 59, 55, 65, 64, 75, 77, 57, 68, 76, 64, 61, 66, 63, 68, 37, 32, 60, 72, 54, 43, 41, 55, 52, 45, 25, 23, 22, 50, 67, 59, 55]
     ];
     var samples = {};
-    var recognizedStats = [];
     var statsDirectory = MockedRequest.prototype.findResponseFor("GET", ["pools", "default", "buckets", 4, "statsDirectory"]);
     var allStatsInfos = [].concat.apply([], _.pluck(statsDirectory.blocks, 'stats'));
-    _.each(allStatsInfos, function (info) {
-      recognizedStats.push(info.name)
-    });
 
-    for (var idx in recognizedStats) {
-      var data = samplesSelection[(idx + zoom.charCodeAt(0)) % 4];
-      samples[recognizedStats[idx]] = _.map(data, function (i) {
-        return i * 10E9
-      });
-    }
+    _.each(allStatsInfos, function (info, idx) {
+      var si = (idx + zoom.charCodeAt(0)) % 4;
+      var data = samplesSelection[si];
+      if (info.maxY) {
+        data = _.clone(data);
+      } else {
+        data = _.map(data, function (v) {return v * 1E9;});
+      }
+      samples[info.name] = data;
+    });
     var samplesSize = samplesSelection[0].length;
 
     var samplesInterval = 1000;
@@ -358,11 +358,22 @@ var MockedRequest = mkClass({
     }
 
     var now = (new Date()).valueOf();
-    var base = (new Date(2010, 1, 1)).valueOf();
-    var lastSampleTstamp = Math.ceil((now - base) / 1000) * 1000;
+    var lastSampleTstamp = Math.floor(now / 1000) * 1000;
 
+    var lastSampleT = params['haveTStamp'];
+    if (lastSampleT) {
+      lastSampleT = parseInt(lastSampleT, 10);
+    }
+    var delayReply = false;
     if (samplesInterval == 1000) {
       var rotates = ((now / 1000) >> 0) % samplesSize;
+
+      if (lastSampleT === lastSampleTstamp) {
+        lastSampleTstamp += 1000;
+        rotates += 1;
+        delayReply = true;
+      }
+
       var newSamples = {};
       for (var k in samples) {
         var data = samples[k];
@@ -371,23 +382,18 @@ var MockedRequest = mkClass({
       samples = newSamples;
     }
 
-    samples.timestamp = _.range(lastSampleTstamp - samplesSelection[0].length * samplesInterval, lastSampleTstamp, samplesInterval);
+    samples.timestamp = _.map(_.range(samplesSelection[0].length).reverse(), function (i) {
+      return lastSampleTstamp - i * samplesInterval;
+    });
 
-    var lastSampleT = params['haveTStamp']
     if (lastSampleT) {
-      lastSampleT = parseInt(lastSampleT, 10);
       var index = _.lastIndexOf(samples.timestamp, lastSampleT);
       if (index == samples.timestamp.length - 1) {
-        var self = this;
-        _.delay(function () {
-          self.fakeResponse(self.handleStats());
-        }, 1000);
-        this.responseDelayed = true;
-        return;
+        throw new Error();
       }
       if (index >= 0) {
         for (var statName in samples) {
-          samples[statName] = samples[statName].slice(index + 1);
+          samples[statName] = samples[statName].slice(index);
         }
       }
     }
@@ -398,7 +404,7 @@ var MockedRequest = mkClass({
       }
     }
 
-    return {
+    var rv = {
       hot_keys: [{
         name: "user:image:value",
         ops: 10000,
@@ -432,6 +438,13 @@ var MockedRequest = mkClass({
         samples: samples
       }
     };
+
+    this.responseDelayed = true;
+
+    var self = this;
+    _.delay(function () {
+      self.fakeResponse(rv);
+    }, delayReply ? 1000 : 0);
   },
   handleLogin: function () {
     var params = this.deserialize();
