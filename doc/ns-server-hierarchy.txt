@@ -125,12 +125,6 @@
                                     (event-handler 'menelaus_event
                                                    :to ns_config_events
                                                    :to ns_node_disco_events))
-                        (supervisor 'mc_sup :mode :rest_for_one :since "2.0"
-                                    "remains of mccouch"
-                                    (supervisor 'mc_conn_sup
-                                                "individual mccouch connections live here. See mc_connection")
-                                    (worker 'mc_tcp_listener
-                                            "accept loop for mccouch connections"))
                         (worker 'ns_ports_setup '(ns_ports_setup start)
                                 "build list of port servers (with full command line and environment) and passes it to
                                 babysitter's ns_child_ports_sup. It links to babysitter's ns_child_ports_sup.  And
