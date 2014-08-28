@@ -605,11 +605,7 @@ var DAL = {
   }).name("isBucketsAvailableCell");
 
   cells.bucketsListCell.refresh = function (callback) {
-    var cell = cells.bucketsListCell;
-    if (callback) {
-      cell.changedSlot.subscribeOnce(callback);
-    }
-    cell.invalidate();
+    rawDetailedBuckets.invalidate(callback);
   };
 })(DAL.cells);
 
