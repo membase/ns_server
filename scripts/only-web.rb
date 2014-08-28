@@ -29,7 +29,7 @@ class Middleware
   def call(env)
     req = Rack::Request.new(env)
     if req.path_info == "/index.html"
-      text = IO.read($DOCROOT + "/index.html").gsub("</body>", "<script src='/js/hooks.js'></script></body>")
+      text = IO.read($DOCROOT + "/index.html").gsub("</body>", "<script src='/js/mn-hooks.js'></script></body>")
       return [200, {'Content-Type' => 'text/html; charset=utf-8'}, [text]]
     elsif req.path_info.starts_with?('/js/')
       path = req.path_info
