@@ -17,17 +17,17 @@
 
 -behaviour(supervisor).
 
--export([start_link/0]).
+-export([start_link/1]).
 -export([init/1]).
 
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+start_link(SingleBucketSup) ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [SingleBucketSup]).
 
-init([]) ->
-    {ok, {{one_for_all, 3, 10}, child_specs()}}.
+init([SingleBucketSup]) ->
+    {ok, {{one_for_all, 3, 10}, child_specs(SingleBucketSup)}}.
 
-child_specs() ->
+child_specs(SingleBucketSup) ->
     [{ns_bucket_worker, {work_queue, start_link, [ns_bucket_worker]},
       permanent, 1000, worker, [work_queue]},
-     {ns_bucket_sup, {ns_bucket_sup, start_link, []},
+     {ns_bucket_sup, {ns_bucket_sup, start_link, [SingleBucketSup]},
       permanent, infinity, supervisor, [ns_bucket_sup]}].

@@ -21,58 +21,55 @@
 
 -include("ns_common.hrl").
 
--export([start_link/0, subscribe_on_config_events/0]).
+-export([start_link/1, subscribe_on_config_events/1]).
 
 -export([init/1]).
 
 
 %% API
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+start_link(SingleBucketSup) ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [SingleBucketSup]).
 
 
 %% supervisor callbacks
 
 -define(SUBSCRIPTION_SPEC_NAME, buckets_observing_subscription).
 
-init([]) ->
+init([SingleBucketSup]) ->
     SubscriptionChild = {?SUBSCRIPTION_SPEC_NAME,
-                         {?MODULE, subscribe_on_config_events, []},
+                         {?MODULE, subscribe_on_config_events, [SingleBucketSup]},
                          permanent, 1000, worker, []},
     {ok, {{one_for_one, 3, 10},
           [SubscriptionChild]}}.
 
 %% Internal functions
 
-ns_config_event_handler_body({buckets, RawBuckets}, State) ->
+ns_config_event_handler_body({buckets, RawBuckets}, SingleBucketSup) ->
     Buckets = ns_bucket:node_bucket_names(node(),
                                           proplists:get_value(configs, RawBuckets, [])),
     work_queue:submit_work(ns_bucket_worker,
                            fun () ->
-                                   update_childs(Buckets)
+                                   update_childs(Buckets, SingleBucketSup)
                            end),
-    State;
-ns_config_event_handler_body(_, _State) ->
-    ignored.
+    SingleBucketSup;
+ns_config_event_handler_body(_, SingleBucketSup) ->
+    SingleBucketSup.
 
 
-subscribe_on_config_events() ->
+subscribe_on_config_events(SingleBucketSup) ->
     Pid = ns_pubsub:subscribe_link(
             ns_config_events,
-            fun ns_config_event_handler_body/2, undefined),
-    undefined = ns_config_event_handler_body({buckets, [{configs, ns_bucket:get_buckets()}]}, undefined),
+            fun ns_config_event_handler_body/2, SingleBucketSup),
+    ns_config_event_handler_body({buckets, [{configs, ns_bucket:get_buckets()}]},
+                                 SingleBucketSup),
     {ok, Pid}.
 
-
-%% @private
-%% @doc The child specs for each bucket.
-child_specs(Bucket) ->
-    [{{per_bucket_sup, Bucket}, {single_bucket_sup, start_link, [Bucket]},
-      permanent, infinity, supervisor, [single_bucket_sup]}].
-
-
-update_childs(Buckets) ->
-    NewSpecs = lists:flatmap(fun child_specs/1, Buckets),
+update_childs(Buckets, SingleBucketSup) ->
+    NewSpecs = lists:flatmap(
+                 fun (Bucket) ->
+                         [{{per_bucket_sup, Bucket}, {SingleBucketSup, start_link, [Bucket]},
+                           permanent, infinity, supervisor, [SingleBucketSup]}]
+                 end, Buckets),
     NewIds = [element(1, X) || X <- NewSpecs],
     OldSpecs = supervisor:which_children(?MODULE),
     RunningIds = [element(1, X) || X <- OldSpecs],
