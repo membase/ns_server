@@ -1756,7 +1756,7 @@
               <script id="spatial_results_template" type="text/html">
               <table class="list align_text" style="width:100%">
                 <tr>
-                    <th class="keycol">Bbox</th>
+                    <th class="keycol">Key</th>
                     <th class="keycol">Geometry</th>
                     <th>Value</th>
                 </tr>
@@ -1765,7 +1765,7 @@
                 <tbody>
                 <tr>
                     <td class="keycol">
-                        <div class="key">{%= h(JSON.stringify(r.bbox)) %}</div>
+                        <div class="key">{%= h(JSON.stringify(r.key)) %}</div>
                         {% if (h(r.id) !== "undefined") { %}
                           <a class="id">{%= h(r.id) %}</a>
                         {% } else { %}

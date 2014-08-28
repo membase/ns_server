@@ -1165,7 +1165,7 @@ var ViewsSection = {
 
     self.viewResultsCellSpatial.subscribeValue(function (value) {
       if (value) {
-        var rows = _.filter(value.rows, function (r) {return ('bbox' in r)});
+        var rows = _.filter(value.rows, function (r) {return ('key' in r)});
         var targ = {rows: rows};
       } else {
         var targ = {rows: {lackOfValue: true}};
