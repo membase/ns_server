@@ -951,7 +951,7 @@ _.extend(mnMockRouting.prototype, {
       return [delay, 200, rv, {}];
     };
   },
-  __definemnMockRouting: function () {
+  __defineRoutes: function () {
     var x = {}
 
     function mkHTTPMethod(method) {
@@ -2562,7 +2562,7 @@ _.extend(mnMockRouting.prototype, {
   }
 });
 
-mnMockRouting.prototype.routes = mnMockRouting.prototype.__definemnMockRouting();
+mnMockRouting.prototype.routes = mnMockRouting.prototype.__defineRoutes();
 
 // code below is only for Cells ui
 if (('Cell' in window) && ('OverviewSection' in window)) {(function () {
