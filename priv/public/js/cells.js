@@ -654,6 +654,7 @@ _.extend(Cell, {
         future.start(cell);
       } catch (e) {
         console.log("Got error trying to start future: ", e);
+        debugger
       }
     }
     if (cell.delayedBroadcast) {
