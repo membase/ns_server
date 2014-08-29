@@ -488,8 +488,8 @@ function createViewsCells(ns, bucketsListCell, capiBaseCell, modeCell, tasksProg
           initial.full_set = 'true';
         }
         return buildDocURL(dbURL, ddocAndSpatial[0].meta.id, "_spatial", ddocAndSpatial[1], _.extend(initial, filterParams, {
-          //limit: ViewsSection.PAGE_LIMIT.toString(),
-          //skip: String((pageNo - 1) * 10)
+          limit: ViewsSection.PAGE_LIMIT.toString(),
+          skip: String((pageNo - 1) * 10)
           //bbox: "-180,-90,180,90"
         }));
       };
@@ -915,9 +915,8 @@ var ViewsSection = {
         return;
       }
       var defaultParams = "connection_timeout=60000";
-      var spatialfilterParams = "&bbox=-180,-90,180,90";
       var staleParam = tabsVal === 'production' ? "&stale=update_after" : "&stale=false";
-      SpatialFilter.initialParams = defaultParams + spatialfilterParams + staleParam;
+      SpatialFilter.initialParams = defaultParams + staleParam;
       ViewsFilter.initialParams = defaultParams + staleParam;
 
       if (!spatialVal) {
