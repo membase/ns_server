@@ -135,7 +135,12 @@ generic_loglevel(LoggerName, LogLevel, Formatter, Preformatted, Raw) ->
          true ->
              io_lib:format(
                "LogMsg0 = ~p:format_msg(Info, UserMsg),"
-               "LogMsg = unicode:characters_to_binary(LogMsg0),", [Formatter]);
+               "LogMsg = case unicode:characters_to_binary(LogMsg0) of"
+               "             V when is_binary(V) ->"
+               "                 V;"
+               "             {_, Partial, _} ->"
+               "                 <<Partial/binary, \"...truncated due to encoding error\\n\">>"
+               "         end,", [Formatter]);
          false ->
              ""
      end,
