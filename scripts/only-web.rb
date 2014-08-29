@@ -31,6 +31,17 @@ class Middleware
     if req.path_info == "/index.html"
       text = IO.read($DOCROOT + "/index.html").gsub("</body>", "<script src='/js/mn-hooks.js'></script></body>")
       return [200, {'Content-Type' => 'text/html; charset=utf-8'}, [text]]
+    elsif req.path_info == "/angular/app/index.html"
+      text = IO.read($DOCROOT + req.path_info)
+      # we add angular-mocks and mn-hooks
+      extra_scripts = <<HERE
+<script src='/angular/libs/angular-mocks.js'></script>
+<script src='/js/mn-hooks.js'></script>
+HERE
+      text = text.gsub("</head>", extra_scripts + "</head>")
+      # and we replace app with appDev
+      text = text.gsub('app="app"', 'app="appDev"')
+      return [200, {'Content-Type' => 'text/html; charset=utf-8'}, [text]]
     elsif req.path_info.starts_with?('/js/')
       path = req.path_info
       if File.file?(path)
