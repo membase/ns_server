@@ -30,6 +30,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-export([update_ns_server_node_name/1]).
+
 -define(MERGING_EMERGENCY_THRESHOLD, 2000).
 -define(PULL_TIMEOUT, 30000).
 
@@ -38,6 +40,10 @@ start_link() ->
 
 init([]) ->
     {ok, []}.
+
+update_ns_server_node_name(Node) ->
+    gen_server:cast({ns_config_rep, ns_node_disco:couchdb_node()},
+                    {update_ns_server_node_name, Node}).
 
 schedule_config_pull() ->
     Frequency = 5000 + trunc(random:uniform() * 55000),
@@ -75,6 +81,10 @@ handle_cast({merge_compressed, Blob}, State) ->
             exit(emergency_kill);
         false -> ok
     end,
+    {noreply, State};
+handle_cast({update_ns_server_node_name, Node}, State) ->
+    ?log_debug("Update ns_server node name to ~p", [Node]),
+    application:set_env(ns_couchdb, ns_server_node, Node),
     {noreply, State};
 handle_cast(Msg, State) ->
     ?log_error("Unhandled cast: ~p", [Msg]),

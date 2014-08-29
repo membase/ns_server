@@ -427,6 +427,10 @@ maybe_rename(NewAddr, UserSupplied) ->
                   net_restarted ->
                       master_activity_events:note_name_changed(),
                       NewName = node(),
+
+                      %% update new node name on child couchdb node
+                      ns_couchdb_config_rep:update_ns_server_node_name(NewName),
+
                       ?cluster_debug("Renaming node from ~p to ~p.", [OldName, NewName]),
                       rename_node_in_config(OldName, NewName),
                       renamed
