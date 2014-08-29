@@ -82,10 +82,6 @@ default() ->
                         ns_storage_conf:default_memory_quota(MemData);
                     _ -> undefined
                 end,
-    CAPIPort = case erlang:get(capi_port_override) of
-                   undefined -> list_to_integer(couch_config:get("httpd", "port", "5984"));
-                   CAPIVal -> CAPIVal
-               end,
 
     PortMeta = case application:get_env(rest_port) of
                    {ok, _Port} -> local;
@@ -139,7 +135,7 @@ default() ->
       end},
 
      {{node, node(), capi_port},
-      CAPIPort},
+      misc:get_env_default(capi_port, 8092)},
 
      {{node, node(), ssl_capi_port},
       case IsEnterprise of
