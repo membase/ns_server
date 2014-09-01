@@ -17,7 +17,7 @@ describe("mnWizardStep4Controller", function () {
     $scope.form = {};
     $state = $injector.get('$state');
 
-    spyOn($state, 'transitionTo');
+    spyOn($state, 'go');
 
     $controller('mnWizardStep4Controller', {'$scope': $scope});
   }));
@@ -45,7 +45,7 @@ describe("mnWizardStep4Controller", function () {
     $scope.onSubmit();
     $httpBackend.flush();
     expect($scope.viewLoading).toBe(false);
-    expect($state.transitionTo.calls.count()).toBe(1);
+    expect($state.go.calls.count()).toBe(1);
   });
 
   it('should send email onSubmit if email exist', function () {

@@ -29,7 +29,7 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
       makeRequest(mnWizardStep1JoinClusterService, 'postMemory', postMemoryErrorExtr).success(goToNextPage);
     }
     function goToNextPage() {
-      $state.transitionTo('wizard.step2');
+      $state.go('wizard.step2');
       mnWizardStep1JoinClusterService.resetClusterMember();
     }
     function doLogin() {

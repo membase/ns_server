@@ -13,7 +13,7 @@ angular.module('mnWizard').controller('mnWizardStep4Controller',
       $scope.mnWizardStep4ServiceModel.register.email && mnWizardStep4Service.postEmail();
 
       mnWizardStep4Service.postStats().success(function () {
-        $state.transitionTo('wizard.step5');
+        $state.go('wizard.step5');
       }).error(function (errors) {
         $scope.errors = errors;
       })['finally'](function () {

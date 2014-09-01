@@ -20,7 +20,7 @@ describe("mnWizardStep3Controller", function () {
     mnWizardStep2Service = $injector.get('mnWizardStep2Service');
     $state = $injector.get('$state');
 
-    spyOn($state, 'transitionTo');
+    spyOn($state, 'go');
 
     $scope = $rootScope.$new();
 
@@ -73,24 +73,24 @@ describe("mnWizardStep3Controller", function () {
     $httpBackend.expectPOST('/pools/default/buckets?ignore_warnings=1&just_validate=1').respond(400);
     $scope.onSubmit();
     $httpBackend.flush();
-    expect($state.transitionTo.calls.count()).toBe(0);
+    expect($state.go.calls.count()).toBe(0);
 
     $httpBackend.expectPOST('/pools/default/buckets?ignore_warnings=1&just_validate=1').respond(200);
     $scope.onSubmit();
     $httpBackend.flush();
-    expect($state.transitionTo.calls.count()).toBe(1);
+    expect($state.go.calls.count()).toBe(1);
 
     $scope.modelStep3Service.isDefaultBucketPresented = true;
 
     $httpBackend.expectPOST('/pools/default/buckets/default').respond(400);
     $scope.onSubmit();
     $httpBackend.flush();
-    expect($state.transitionTo.calls.count()).toBe(1);
+    expect($state.go.calls.count()).toBe(1);
 
     $httpBackend.expectPOST('/pools/default/buckets/default').respond(200);
     $scope.onSubmit();
     $httpBackend.flush();
-    expect($state.transitionTo.calls.count()).toBe(2);
+    expect($state.go.calls.count()).toBe(2);
   });
 
   it('should checking bucketConf on errors in live time', function () {

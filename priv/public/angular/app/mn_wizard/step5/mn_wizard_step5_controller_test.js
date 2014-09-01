@@ -11,6 +11,7 @@ describe("mnWizardStep5Controller", function () {
   beforeEach(inject(function ($injector) {
     var $rootScope = $injector.get('$rootScope');
     var $controller = $injector.get('$controller');
+    var $state = $injector.get('$state');
     $httpBackend = $injector.get('$httpBackend');
 
     mnWizardStep5Service = $injector.get('mnWizardStep5Service');
@@ -18,6 +19,8 @@ describe("mnWizardStep5Controller", function () {
     $scope = $rootScope.$new();
     $scope.form = {};
     $scope.form.$setValidity = function () {};
+
+    spyOn($state, 'go');
 
     $controller('mnWizardStep5Controller', {'$scope': $scope});
   }));

@@ -18,7 +18,7 @@ describe("mnWizardStep1Controller", function () {
     mnWizardStep1JoinClusterService = $injector.get('mnWizardStep1JoinClusterService');
     $scope = $rootScope.$new();
 
-    spyOn($state, 'transitionTo');
+    spyOn($state, 'go');
 
     $controller('mnWizardStep1Controller', {'$scope': $scope});
   }));

@@ -8,8 +8,11 @@ describe("mnAuthController", function () {
     var $rootScope = $injector.get('$rootScope');
     var $controller = $injector.get('$controller');
     $httpBackend = $injector.get('$httpBackend');
+    var $state = $injector.get('$state')
 
     $httpBackend.whenGET('/pools').respond(200);
+
+    spyOn($state, 'go');
 
     $scope = $rootScope.$new();
     $controller('mnAuthController', {'$scope': $scope});
@@ -20,7 +23,7 @@ describe("mnAuthController", function () {
     expect($scope.submit).toEqual(jasmine.any(Function));
   });
 
-  it('should leave flag loginFailed as it is if login success', function () {
+  it('should leave flag loginFailed if login success', function () {
     $scope.submit();
     $httpBackend.expectPOST('/uilogin').respond(200);
     $httpBackend.flush();

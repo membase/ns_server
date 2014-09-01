@@ -48,12 +48,14 @@ describe("appController", function () {
   });
 
   it('should keeping hash params beetween state transitions', function () {
+    mnAuthService.model.initialized = true;
     createController();
     $location.search({hellow: 'there'});
-    $state.transitionTo('test');
+    $state.go('test');
     $scope.$apply();
-    $state.transitionTo('test2');
+    $state.go('test2');
     $scope.$apply();
+    expect($state.current.name).toBe('test2');
     expect($location.search()).toEqual({hellow: 'there'});
   });
 });

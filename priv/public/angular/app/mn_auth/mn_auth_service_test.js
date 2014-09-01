@@ -1,19 +1,26 @@
 describe("mnAuthService", function () {
   var $httpBackend;
   var $state;
+  var $location;
   var createAuthService;
   var mnAuthService;
 
   beforeEach(angular.mock.module('mnAuthService'));
+  beforeEach(angular.mock.module('mnAuth'));
   beforeEach(angular.mock.module('ui.router'));
   beforeEach(angular.mock.module(function ($stateProvider) {
     $stateProvider
-      .state('auth', {})
       .state('app', {})
       .state('app.overview', {
+        url: '/overview',
+        authenticate: true
+      })
+      .state('app.servers', {
+        url: '/servers',
         authenticate: true
       })
       .state('wizard', {
+        abstract: true,
         authenticate: false
       })
       .state('wizard.welcome', {
@@ -25,10 +32,16 @@ describe("mnAuthService", function () {
 
     $state = $injector.get('$state');
     $httpBackend = $injector.get('$httpBackend');
+    $location = $injector.get('$location');
     mnAuthService = $injector.get('mnAuthService');
+    $rootScope = $injector.get('$rootScope');
 
-    $httpBackend.whenGET('/angular/auth/auth.html').respond(200)
+    $httpBackend.whenGET('mn_auth/mn_auth.html').respond(200)
   }));
+  function go(name) {
+    $state.go(name);
+    $rootScope.$apply();
+  }
 
   function expectPoolsWith(data) {
     $httpBackend.expectGET('/pools').respond(200, data);
@@ -63,13 +76,13 @@ describe("mnAuthService", function () {
 
   it('should redirect to auth page if user try to open protected page', function () {
     simulateNotLoggedIn();
-    $state.transitionTo('app.overview');
+    go('app.overview')
     expect($state.current.name).toEqual('auth');
   });
 
   it('should redirect to app if logged in', function () {
     simulateLoggedIn();
-    $state.transitionTo('auth');
+    go('auth');
     expect($state.current.name).toEqual('app.overview');
   });
 
@@ -96,6 +109,13 @@ describe("mnAuthService", function () {
     $httpBackend.flush();
     expect($state.current.name).toEqual('auth');
     expect(mnAuthService.model.isAuth).toBeFalsy();
+  });
+
+  it('should stay on same authenticated page', function () {
+    simulateLoggedIn();
+    go('app.servers');
+    simulateLoggedIn();
+    expect($state.current.name).toEqual('app.servers');
   });
 
   it('should logout', function () {

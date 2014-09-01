@@ -1,5 +1,8 @@
-angular.module('mnAuth').config( function ($stateProvider, $httpProvider) {
+angular.module('mnAuth').config( function ($stateProvider, $httpProvider, $urlRouterProvider) {
   $httpProvider.responseInterceptors.push(['$q', '$location', logsOutUserOn401]);
+
+  $urlRouterProvider.when('', '/auth');
+  $urlRouterProvider.when('/', '/auth');
 
   function logsOutUserOn401($q, $location) {
     return function (promise) {

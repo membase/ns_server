@@ -27,7 +27,7 @@ angular.module('mnWizard').controller('mnWizardStep3Controller',
     });
 
     function goToTheNextStep() {
-      $state.transitionTo('wizard.step4');
+      $state.go('wizard.step4');
     }
 
     $scope.onSubmit = function () {
