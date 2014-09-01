@@ -2490,7 +2490,6 @@ angular.module('mnPlot').directive('mnPlotDirective', function () {
     link: function ($scope, $element) {
       var plot;
       $scope.$on('$destroy', function () {
-        plot.shutdown();
         jQuery($element).removeData("plot");
         plot = null;
       });

@@ -1,19 +1,19 @@
 angular.module('mnAdminOverview').controller('mnAdminOverviewController',
-  function ($scope, mnAdminOverviewService, mnAdminBucketsService, mnAdminService) {
+  function ($scope, mnAdminOverviewService, mnAdminBucketsService, mnDateService) {
     $scope.mnAdminOverviewServiceModel = mnAdminOverviewService.model;
 
     mnAdminOverviewService.runStatsLoop();
 
     $scope.$on('$destroy', function () {
-      mnAdminOverviewService.stopStatsLoop();
+      mnAdminOverviewService.clearStatsTimeout();
     });
 
     $scope.$watch('mnAdminServiceModel.details.buckets.uri', function (url) {
       if (!url) {
         return;
       }
-      mnAdminBucketsService.getRawDetailedBuckets().success(function () {
-        $scope.bucketsLength = _.count(mnAdminBucketsService.model.details.length, 'bucket');
+      mnAdminBucketsService.getRawDetailedBuckets(url).success(function () {
+        $scope.bucketsLength = _.count(mnAdminBucketsService.model.bucketsDetails.length, 'bucket');
       });
     });
 
@@ -22,7 +22,7 @@ angular.module('mnAdminOverview').controller('mnAdminOverviewController',
         return;
       }
 
-      var now = (new Date()).valueOf();
+      var now = (mnDateService.newDate()).valueOf();
       var tstamps = stats.timestamp || [];
       var breakInterval;
       if (tstamps.length > 1) {
@@ -59,7 +59,7 @@ angular.module('mnAdminOverview').controller('mnAdminOverviewController',
     });
 
 
-    var ramOverviewConfig = {
+    var ramOverviewConfigBase = {
       topLeft: {
         name: 'Total Allocated'
       },
@@ -84,7 +84,7 @@ angular.module('mnAdminOverview').controller('mnAdminOverviewController',
       }]
     };
 
-    var hddOverviewConfig = {
+    var hddOverviewConfigBase = {
       topLeft: {
         name: 'Usable Free Space'
       },
@@ -119,6 +119,8 @@ angular.module('mnAdminOverview').controller('mnAdminOverviewController',
         var usedQuota = ram.usedByData;
         var bucketsQuota = ram.quotaUsed;
         var quotaTotal = ram.quotaTotal;
+
+        ramOverviewConfig = _.clone(ramOverviewConfigBase, true);
 
         ramOverviewConfig.topLeft.value = _.formatMemSize(bucketsQuota);
         ramOverviewConfig.topRight.value = _.formatMemSize(quotaTotal);
@@ -157,6 +159,8 @@ angular.module('mnAdminOverview').controller('mnAdminOverviewController',
         var total = hdd.total;
         var other = hdd.used - usedSpace;
         var free = hdd.free;
+
+        hddOverviewConfig = _.clone(hddOverviewConfigBase, true);
 
         hddOverviewConfig.topLeft.value = _.formatMemSize(free);
         hddOverviewConfig.topRight.value = _.formatMemSize(total);

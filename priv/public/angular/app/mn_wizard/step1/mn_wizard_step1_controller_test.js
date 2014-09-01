@@ -1,12 +1,10 @@
 describe("mnWizardStep1Controller", function () {
   var mnWizardStep1Service;
-  var mnWizardStep1DiskStorageService;
   var mnWizardStep1JoinClusterService;
   var $httpBackend;
   var $scope;
 
   beforeEach(angular.mock.module('mnWizard'));
-  beforeEach(angular.mock.module('mnAuthService'));
 
   beforeEach(inject(function ($injector) {
     var $rootScope = $injector.get('$rootScope');

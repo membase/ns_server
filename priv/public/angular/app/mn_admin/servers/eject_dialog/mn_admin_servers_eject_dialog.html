@@ -1,0 +1,12 @@
+<div id="eject_confirmation_dialog"
+     data-mn-dialog-directive
+     data-mn-dialog-title="Confirm Server Removal"
+     data-mn-dialog-width="711px">
+    <div class="warning pat_20">
+      <strong>Warning</strong> – Removing this server from the cluster will reduce cache capacity across all data buckets. Are you sure you want to remove this server?
+    </div>
+    <div class="right save_cancel pas_20 footer_bg">
+      <button type="submit" class="save_button float_right" ng-click="doEjectServer()">Remove</button>
+      <a class="close casper_close_eject_confirmation_dialog float_right" ng-click="mnDialogService.removeLastOpened()">Cancel</a>
+    </div>
+</div>

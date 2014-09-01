@@ -1,8 +1,7 @@
 <div class="dialog_about"
   data-mn-dialog-directive
   data-mn-dialog-title="About Couchbase Server"
-  data-mn-dialog-width="650px"
-  data-mn-dialog-show="aboutDialog">
+  data-mn-dialog-width="650px">
     <div class="dialog_inner_content">
       <p>
         Version: {{mnAuthServiceModel.version | mnPrettyVersionFilter}}
@@ -12,7 +11,7 @@
       </p>
     </div>
     <div class="config-bottom">
-      <button class="direction-button" ng-click="$$prevSibling.hideDialog()">
+      <button class="direction-button" ng-click="mnDialogService.removeLastOpened()">
         Close
       </button>
     </div>

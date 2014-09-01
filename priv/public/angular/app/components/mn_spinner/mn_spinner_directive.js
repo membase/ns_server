@@ -3,7 +3,7 @@ angular.module('mnSpinner').directive('mnSpinnerDirective', function ($http, $co
   return {
     restrict: 'A',
     scope: {
-      mnSpinnerDirective: '=',
+      mnSpinnerDirective: '='
     },
     compile: function ($element) {
       var scope = $rootScope.$new();
@@ -13,6 +13,11 @@ angular.module('mnSpinner').directive('mnSpinnerDirective', function ($http, $co
       return function link($scope) {
         $scope.$watch('mnSpinnerDirective', function (mnSpinnerDirective) {
           scope.viewLoading = !!mnSpinnerDirective;
+        });
+
+        $scope.$on('$destroy', function () {
+          scope.$destroy();
+          scope = null;
         });
       };
     }

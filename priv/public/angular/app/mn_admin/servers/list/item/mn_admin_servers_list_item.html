@@ -1,0 +1,97 @@
+<tr ng-if="isReAddPossible" class="add_back_row when-roadmin-avoid-me">
+  <td colspan="11">
+    <span class="add_back_btn" ng-click="reAddNode('full')"><span>Full Recovery</span></span>
+    <span class="add_back_btn only-when-30" ng-click="reAddNode('delta')"><span>Delta Recovery</span></span>
+    <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
+  </td>
+</tr>
+<tr class="server_row {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" id="{{safeNodeOtpNode}}">
+  <td class="node_name ellipsis" colspan="2">
+    <a ng-if="!isNodeUnhealthy"
+       ng-click="toggleDetails()"
+       class="{{'casper_open_cluster_' + safeNodeOtpNode}}"
+       title="Show Server Node info">
+        <ins class="expander" ng-class="{closed:!isDetailsOpened}"></ins>
+    </a>
+    <span ng-if="isNodeInactiveFaied &amp;&amp; !isNodeUnhealthy">
+      {{strippedPort}}
+    </span>
+    <span ng-if="isNodeUnhealthy">
+      {{node.hostname}}
+    </span>
+    <a ng-if="!isNodeInactiveFaied &amp;&amp; !isNodeUnhealthy"
+       ng-click="$location.search({openedServers: node.hostname, section: 'analytics'})"
+       title="{{'View Analytics for ' + node.hostname}}">
+      {{strippedPort}}
+    </a>
+  </td>
+  <td class="{{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" ng-class="{dynamic_lastActive: isLastActive}">
+  </td>
+  <td>
+    <div class="ellipsis" title="{{node.group}}">{{node.group}}</div>
+  </td>
+  <td class="ram" mn-vertical-bar="" conf="ramUsageConf">
+  </td>
+  <td class="ram" mn-vertical-bar="" conf="swapUsageConf">
+  </td>
+  <td class="ram" mn-vertical-bar="" conf="cpuUsageConf">
+  </td>
+  <td class="ram">
+    <span ng-if="!isDataDiskUsageAvailable">
+      N/A
+    </span>
+    <span ng-if="isDataDiskUsageAvailable">
+      {{couchDataSize}} / <br>{{couchDiskUsage}}
+    </span>
+  </td>
+  <td class="rep">
+    {{currItems}}/<br>{{currVbItems}}
+  </td>
+  <td class="actions" ng-if="mnAdminTasksServiceModel.inRebalance" colspan="2">
+    <span class="usage_info">{{node.rebalanceProgressPercent}} % Complete</span>
+    <span class="server_usage"><span style="width: {{node.rebalanceProgressPercent}}%"></span></span>
+  </td>
+  <td
+    ng-if="!mnAdminTasksServiceModel.inRebalance &amp;&amp; isNodeInactiveAdded &amp;&amp; node.recoveryType === 'none'"
+    class="actions with_state_message" colspan="2">
+      <span class="state_message">Pending Add</span>
+      <a
+        class="list_button btn_cancel eject_server when-roadmin-avoid-me"
+        ng-class="{dynamic_disabled: mnAdminTasksServiceModel.inRecoveryMode}"
+        ng-click="!mnAdminTasksServiceModel.inRecoveryMode &amp;&amp; ejectServer()"><span>Cancel</span></a>
+  </td>
+  <td
+    ng-if="!mnAdminTasksServiceModel.inRebalance &amp;&amp; isNodeInactiveAdded &amp;&amp; node.recoveryType !== 'none'"
+    class="actions with_state_message" colspan="2" >
+      <span class="state_message">Pending {{node.recoveryType}} recovery</span>
+      <a
+        class="list_button btn_cancel eject_server when-roadmin-avoid-me"
+        ng-class="{dynamic_disabled: mnAdminTasksServiceModel.inRecoveryMode}"
+        ng-click="!mnAdminTasksServiceModel.inRecoveryMode &amp;&amp; cancelFailOverNode()"><span>Cancel</span></a>
+  </td>
+  <td
+    ng-if="!mnAdminTasksServiceModel.inRebalance &amp;&amp; !isNodeInactiveAdded &amp;&amp; node.pendingEject"
+    class="actions with_state_message" colspan="2">
+      <span class="state_message">Pending Removal</span>
+      <a
+        class="list_button btn_cancel remove_from_list when-roadmin-avoid-me"
+        ng-class="{dynamic_disabled: mnAdminTasksServiceModel.inRecoveryMode}"
+        ng-click="!mnAdminTasksServiceModel.inRecoveryMode &amp;&amp; cancelEjectServer()"><span>Cancel</span></a>
+  </td>
+  <td
+    ng-if="!mnAdminTasksServiceModel.inRebalance &amp;&amp; !isNodeInactiveAdded &amp;&amp; !node.pendingEject"
+    class="actions" colspan="2">
+      <a
+        class="list_button eject_server when-roadmin-avoid-me casper_servers_remove_popup"
+        ng-class="{dynamic_disabled: isLastActive || isActiveUnhealthy || mnAdminTasksServiceModel.inRecoveryMode}"
+        ng-click="!(isLastActive || isActiveUnhealthy || mnAdminTasksServiceModel.inRecoveryMode) &amp;&amp; ejectServer()"><span>Remove</span></a>
+      <a
+        class="list_button failover_server when-roadmin-avoid-me casper_servers_failover_popup"
+        ng-class="{dynamic_disabled: isLastActive || mnAdminTasksServiceModel.inRecoveryMode}"
+        ng-click="!(isLastActive || mnAdminTasksServiceModel.inRecoveryMode) &amp;&amp; failOverNode()"><span>Fail Over</span></a>
+      <span class="failed_over_message">Failed Over: Pending Removal</span>
+  </td>
+</tr>
+<tr ng-if="isDetailsOpened" ui-view="item_details">
+</tr>
+

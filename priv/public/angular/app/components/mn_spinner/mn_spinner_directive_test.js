@@ -1,16 +1,12 @@
 describe("mnSpinnerDirective", function () {
-  var $rootScope;
-  var $element;
-  var $compile;
   var createSpinner;
-  var $httpBackend;
 
   beforeEach(angular.mock.module('mnSpinner'));
 
   beforeEach(inject(function ($injector) {
-    $rootScope = $injector.get('$rootScope');
-    $compile = $injector.get('$compile')
-    $element = angular.element('<div mn-spinner-directive="viewLoading"="spinner" id="spinner">content</div>');
+    var $rootScope; = $injector.get('$rootScope');
+    var $compile; = $injector.get('$compile')
+    var $element = angular.element('<div mn-spinner-directive="viewLoading"="spinner" id="spinner">content</div>');
 
     createSpinner = function () {
       $compile($element)($rootScope);

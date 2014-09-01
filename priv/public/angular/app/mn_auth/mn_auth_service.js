@@ -19,7 +19,7 @@ angular.module('mnAuthService').factory('mnAuthService',
       if (mnAuthService.model.initialized) {
         if (mnAuthService.model.isAuth) {
           event.preventDefault();
-          $state.go('app.overview');
+          $state.go('admin.overview');
         }
       } else {
         event.preventDefault();
@@ -38,7 +38,7 @@ angular.module('mnAuthService').factory('mnAuthService',
       headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
     }).success(function () {
       getPools().success(function () {
-        $state.go('app.overview');
+        $state.go('admin.overview');
       })
     });
   }

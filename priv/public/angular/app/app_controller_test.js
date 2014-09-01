@@ -6,12 +6,12 @@ describe("appController", function () {
   var $http;
   var $state;
   var $location;
+  var mnDialogService;
 
   beforeEach(angular.mock.module('ui.router', function ($stateProvider) {
     $stateProvider.state('test', {url: '/test'}).state('test2', {url: '/test2'});
   }));
   beforeEach(angular.mock.module('app'));
-  beforeEach(angular.mock.module('mnAuthService'));
 
   beforeEach(inject(function ($injector) {
     var $rootScope = $injector.get('$rootScope');
@@ -19,6 +19,7 @@ describe("appController", function () {
     $http = $injector.get('$http');
     $state = $injector.get('$state');
     mnAuthService = $injector.get('mnAuthService');
+    mnDialogService = $injector.get('mnDialogService');
     $templateCache = $injector.get('$templateCache');
     $location = $injector.get('$location');
 
@@ -35,6 +36,7 @@ describe("appController", function () {
   it('should be properly initialized', function () {
     expect(angularTemplatesList).toEqual(jasmine.any(Object));
     createController();
+    expect($scope.mnDialogService).toBe(mnDialogService);
     expect(mnAuthService.entryPoint.calls.count()).toBe(1);
   });
 

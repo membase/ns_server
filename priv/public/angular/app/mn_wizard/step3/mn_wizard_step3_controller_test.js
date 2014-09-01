@@ -15,6 +15,8 @@ describe("mnWizardStep3Controller", function () {
     var $controller = $injector.get('$controller');
     $httpBackend = $injector.get('$httpBackend');
 
+    $httpBackend.whenGET('mn_auth/mn_auth.html').respond(200);
+
     mnWizardStep1JoinClusterService = $injector.get('mnWizardStep1JoinClusterService');
     mnWizardStep3Service = $injector.get('mnWizardStep3Service');
     mnWizardStep2Service = $injector.get('mnWizardStep2Service');

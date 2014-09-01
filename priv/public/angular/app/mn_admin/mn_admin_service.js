@@ -1,15 +1,31 @@
 angular.module('mnAdminService').factory('mnAdminService',
-  function ($http, $q, $timeout) {
+  function ($http, $q, $timeout, $state, mnAuthService) {
     var canceler;
     var timeout;
     var mnAdminService = {};
     mnAdminService.model = {};
 
-    mnAdminService.runDefaultPoolsDetailsLoop = function (params, next) {
+    mnAdminService.stopDefaultPoolsDetailsLoop = function () {
       canceler && canceler.resolve();
-      if (!params) {
+    };
+
+    mnAdminService.waitChangeOfPoolsDetailsLoop = function () {
+      return $state.current.name === 'admin.overview' ||
+             $state.current.name === 'admin.manage_servers' ? 3000 : 20000;
+    };
+
+    mnAdminService.runDefaultPoolsDetailsLoop = function (next) {
+      mnAdminService.stopDefaultPoolsDetailsLoop();
+
+      if (!(mnAuthService.model.defaultPoolUri && mnAuthService.model.isAuth)) {
         return;
       }
+
+      var params = {
+        url: mnAuthService.model.defaultPoolUri,
+        params: {waitChange: mnAdminService.waitChangeOfPoolsDetailsLoop()}
+      };
+
       canceler = $q.defer();
       params.timeout = canceler.promise;
       params.method = 'GET';
@@ -27,7 +43,7 @@ angular.module('mnAdminService').factory('mnAdminService',
         }
         mnAdminService.model.isEnterprise = details.isEnterprise;
         mnAdminService.model.details = details;
-        mnAdminService.runDefaultPoolsDetailsLoop(params, details);
+        mnAdminService.runDefaultPoolsDetailsLoop(details);
       });
     }
 

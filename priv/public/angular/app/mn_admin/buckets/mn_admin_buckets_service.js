@@ -1,15 +1,14 @@
 angular.module('mnAdminBucketsService').factory('mnAdminBucketsService',
-  function (mnAdminService, $q, $http) {
+  function ($q, $http) {
     var mnAdminBucketsService = {};
 
     mnAdminBucketsService.model = {};
 
-    mnAdminBucketsService.getRawDetailedBuckets = function () {
-      var url = mnAdminService.model.details.buckets.uri;
-      if (!url) {
-        return $q.defer().reject('buckets uri has not been retrieved');
+    mnAdminBucketsService.getRawDetailedBuckets = function (uri) {
+      if (!uri) {
+        return;
       }
-      return $http.get(mnAdminService.model.details.buckets.uri + '&basic_stats=true').success(populateModel);
+      return $http.get(uri + '&basic_stats=true').success(populateModel);
     };
 
     function populateModel(bucketsDetails) {
@@ -18,7 +17,6 @@ angular.module('mnAdminBucketsService').factory('mnAdminBucketsService',
 
       _.each(bucketsDetails, function (bucket) {
         var storageTotals = bucket.basicStats.storageTotals;
-        console.log(bucket)
 
         if (bucket.bucketType == 'memcached') {
           bucket.bucketTypeName = 'Memcached';
@@ -57,7 +55,7 @@ angular.module('mnAdminBucketsService').factory('mnAdminBucketsService',
         bucket.healthStats = [h.healthy || 0, h.warmup || 0, h.unhealthy || 0];
       });
 
-      mnAdminBucketsService.model.details = bucketsDetails;
+      mnAdminBucketsService.model.bucketsDetails = bucketsDetails;
     }
 
     return mnAdminBucketsService;

@@ -13,18 +13,17 @@ angular.module('mnWizard').config(function ($stateProvider) {
       authenticate: false
     })
     .state('wizard.step1', {
-      abstract: true,
-      templateUrl: 'mn_wizard/step1/mn_wizard_step1.html',
-      controller: 'mnWizardStep1Controller',
-      authenticate: false
-    })
-    .state('wizard.step1.views', {
+      authenticate: false,
       views: {
-        diskStorage: {
+        "": {
+          templateUrl: 'mn_wizard/step1/mn_wizard_step1.html',
+          controller: 'mnWizardStep1Controller',
+        },
+        "diskStorage@wizard.step1": {
           templateUrl: 'mn_wizard/step1/disk_storage/mn_wizard_step1_disk_storage.html',
           controller: 'mnWizardStep1DiskStorageController'
         },
-        joinCluster: {
+        "joinCluster@wizard.step1": {
           templateUrl: 'mn_wizard/step1/join_cluster/mn_wizard_step1_join_cluster.html',
           controller: 'mnWizardStep1JoinClusterController'
         }

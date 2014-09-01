@@ -1,29 +1,50 @@
 angular.module('mnAdmin').controller('mnAdminController',
-  function ($scope, $state, $location, mnAuthService, mnAdminService, mnAdminServersService) {
+  function ($scope, $state, $location, mnAuthService, mnAdminService, mnAdminServersService, mnAdminTasksService, mnAdminGroupsService, mnAdminServersListItemService) {
     $scope.$state = $state;
     $scope.$location = $location;
     $scope._ = _;
     $scope.Math = Math;
     $scope.logout = mnAuthService.manualLogout;
 
-    //app model sharing
     $scope.mnAdminServiceModel = mnAdminService.model;
+    $scope.mnAdminGroupsServiceModel = mnAdminGroupsService.model;
     $scope.mnAdminServersServiceModel = mnAdminServersService.model;
+    $scope.mnAdminTasksServiceModel = mnAdminTasksService.model;
 
-    $scope.$watch('mnAdminServiceModel.details.nodes', mnAdminServersService.populateModel);
+    $scope.$on('$destroy', function () {
+      mnAdminTasksService.stopTasksLoop();
+      mnAdminService.stopDefaultPoolsDetailsLoop();
+    });
+
+    mnAdminService.runDefaultPoolsDetailsLoop();
+
+    $scope.$watch(mnAdminService.waitChangeOfPoolsDetailsLoop, mnAdminService.runDefaultPoolsDetailsLoop);
+
+    $scope.$watch('mnAdminServiceModel.details.tasks.uri', mnAdminTasksService.runTasksLoop);
+
+    $scope.$watch('mnAdminServiceModel.details.serverGroupsUri', mnAdminGroupsService.getGroups);
 
     $scope.$watch(function () {
-      if (!(mnAuthService.model.defaultPoolUri && mnAuthService.model.isAuth)) {
+      if (mnAdminService.model.details) {
+        return {
+          isGroupsAvailable: mnAdminGroupsService.model.isGroupsAvailable,
+          hostnameToGroup: mnAdminGroupsService.model.hostnameToGroup,
+          nodes: mnAdminService.model.details.nodes,
+          pendingEjectLength: mnAdminServersListItemService.model.pendingEject.length
+        };
+      }
+    }, function (deps) {
+      if (!deps) {
         return;
       }
+      deps.pendingEject = mnAdminServersListItemService.model.pendingEject;
+      mnAdminServersService.populateNodesModel(deps);
+    }, true);
 
-      return {
-        url: mnAuthService.model.defaultPoolUri,
-        params: {
-          waitChange: $state.current.name === 'app.overview' ||
-                      $state.current.name === 'app.manage_servers' ?
-                      3000 : 20000
-        }
-      };
-    }, mnAdminService.runDefaultPoolsDetailsLoop, true);
+    $scope.$watch(function () {
+      return !!(mnAuthService.model.isEnterprise &&
+             mnAdminService.model.details &&
+             mnAdminService.model.details.serverGroupsUri);
+    }, mnAdminGroupsService.setIsGroupsAvailable);
+
   });

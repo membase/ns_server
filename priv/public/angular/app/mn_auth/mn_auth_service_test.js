@@ -10,12 +10,12 @@ describe("mnAuthService", function () {
   beforeEach(angular.mock.module('ui.router'));
   beforeEach(angular.mock.module(function ($stateProvider) {
     $stateProvider
-      .state('app', {})
-      .state('app.overview', {
+      .state('admin', {})
+      .state('admin.overview', {
         url: '/overview',
         authenticate: true
       })
-      .state('app.servers', {
+      .state('admin.servers', {
         url: '/servers',
         authenticate: true
       })
@@ -64,7 +64,7 @@ describe("mnAuthService", function () {
 
   it('should login if user recently did it', function () {
     simulateLoggedIn();
-    expect($state.current.name).toEqual('app.overview');
+    expect($state.current.name).toEqual('admin.overview');
     expect(mnAuthService.model.isAuth).toBeTruthy();
   });
 
@@ -76,14 +76,14 @@ describe("mnAuthService", function () {
 
   it('should redirect to auth page if user try to open protected page', function () {
     simulateNotLoggedIn();
-    go('app.overview')
+    go('admin.overview')
     expect($state.current.name).toEqual('auth');
   });
 
   it('should redirect to app if logged in', function () {
     simulateLoggedIn();
     go('auth');
-    expect($state.current.name).toEqual('app.overview');
+    expect($state.current.name).toEqual('admin.overview');
   });
 
   it('should redirect to wizard if cluster not initialized', function () {
@@ -98,7 +98,7 @@ describe("mnAuthService", function () {
     mnAuthService.manualLogin({username: 'yarrr', password: 'hey-ho'});
     $httpBackend.flush();
 
-    expect($state.current.name).toEqual('app.overview');
+    expect($state.current.name).toEqual('admin.overview');
     expect(mnAuthService.model.isAuth).toBeTruthy();
   });
 
@@ -113,9 +113,9 @@ describe("mnAuthService", function () {
 
   it('should stay on same authenticated page', function () {
     simulateLoggedIn();
-    go('app.servers');
+    go('admin.servers');
     simulateLoggedIn();
-    expect($state.current.name).toEqual('app.servers');
+    expect($state.current.name).toEqual('admin.servers');
   });
 
   it('should logout', function () {
@@ -123,6 +123,18 @@ describe("mnAuthService", function () {
     $httpBackend.expectPOST('/uilogout').respond(200);
     mnAuthService.manualLogout();
     $httpBackend.flush();
+    expect($state.current.name).toEqual('auth');
+    expect(mnAuthService.isAuth).toBeFalsy();
+  });
+
+  it('should logout if response status is 401', function () {
+    simulateNotLoggedIn();
+    $httpBackend.expectPOST('/uilogin').respond(200);
+    $httpBackend.expectGET('/pools').respond(401, {isAdminCreds: true, pools: [{uri:"pools/zombie"}]});
+    mnAuthService.manualLogin({username: 'yarrr', password: 'hey-ho'});
+    $httpBackend.expectPOST('/uilogout').respond(200);
+    $httpBackend.flush();
+
     expect($state.current.name).toEqual('auth');
     expect(mnAuthService.isAuth).toBeFalsy();
   });

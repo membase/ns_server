@@ -1,5 +1,5 @@
 angular.module('mnAdminOverviewService').factory('mnAdminOverviewService',
-  function (mnAdminService, $http, $timeout) {
+  function ($http, $timeout) {
     var mnAdminOverviewService = {};
 
     mnAdminOverviewService.model = {};
@@ -12,6 +12,10 @@ angular.module('mnAdminOverviewService').factory('mnAdminOverviewService',
       }
       mnAdminOverviewService.model.stats = stats;
 
+      if (statsLoopTimeout) {
+        mnAdminOverviewService.clearStatsTimeout();
+      }
+
       var ts = stats.timestamp;
       var interval = ts[ts.length - 1] - ts[0];
       if (isNaN(interval) || interval < 15000) {
@@ -23,7 +27,7 @@ angular.module('mnAdminOverviewService').factory('mnAdminOverviewService',
       }
     }
 
-    mnAdminOverviewService.stopStatsLoop = function () {
+    mnAdminOverviewService.clearStatsTimeout = function () {
       $timeout.cancel(statsLoopTimeout);
     };
 

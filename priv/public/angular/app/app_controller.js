@@ -1,6 +1,8 @@
 angular.module('app').controller('appController',
-  function (mnAuthService, $templateCache, $http, $rootScope, $location) {
+  function (mnAuthService, $scope, $templateCache, $http, $rootScope, $location, mnDialogService) {
     mnAuthService.entryPoint();
+
+    $scope.mnDialogService = mnDialogService;
 
     _.each(angularTemplatesList, function (url) {
       $http.get("/angular/" + url, {cache: $templateCache});

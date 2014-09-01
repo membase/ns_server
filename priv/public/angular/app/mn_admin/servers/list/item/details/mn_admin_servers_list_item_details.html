@@ -1,0 +1,89 @@
+<td colspan="11" class="settings-placeholder" mn-spinner-directive="!getMemoryCacheConfig || !getDiskStorageConfig">
+<div class="first gong_rb">
+  <div class="pad">
+    <table class="properties_table">
+      <tr>
+          <td>Server Name: <span>{{details.hostname}}</span></td>
+          <td>Uptime: <span>{{details.uptime}}</span></td>
+          <td>OS: <span>{{details.os}}</span></td>
+      </tr>
+      <tr>
+        <td colspan="3">Version: <span>{{details.version | mnPrettyVersionFilter:true}}</span></td>
+      </tr>
+    </table>
+  </div>
+  <div class="side side_1"></div>
+  <div class="side side_2"></div>
+  <div class="side side_3"></div>
+  <div class="side side_4"></div>
+</div>
+<div class="additional_server_info">
+    <h3 ng-if="detailedProgress">Rebalance Progress</h3>
+    <div class="rebalance_progress" ng-if="detailedProgress">
+      <div>
+        <p class="direction">Data being transferred out</p>
+
+        <p>
+          <span>Bucket:</span>
+          {{detailedProgress.bucket}}
+          ({{detailedProgress.bucketNumber}} out of {{detailedProgress.bucketsCount}})
+        </p>
+        <p>
+          <span>Total number of keys to be transferred:</span>
+          {{ detailedProgress.outgoing.docsTotal }}
+        </p>
+        <p>
+          <span>Estimated number of keys transferred:</span>
+          {{ detailedProgress.outgoing.docsTransferred }}
+        </p>
+        <p>
+          <span>
+            Number of Active# vBuckets and Replica# vBuckets to transfer:
+          </span>
+          Active#-{{ detailedProgress.outgoing.activeVBucketsLeft }}
+          Replica#-{{ detailedProgress.outgoing.replicaVBucketsLeft }}
+        </p>
+      </div>
+
+      <div ng-if="detailedProgress.ingoing">
+        <p class="direction">Data being transferred in</p>
+        <p>
+          <span>Bucket:</span>
+          {{ detailedProgress.bucket }}
+          ({{ detailedProgress.bucketNumber }} out of {{ detailedProgress.bucketsCount }})
+        </p>
+        <p>
+          <span>Total number of keys to be transferred:</span>
+          {{ detailedProgress.ingoing.docsTotal }}
+        </p>
+        <p>
+          <span>Estimated number of keys transferred:</span>
+          {{ detailedProgress.ingoing.docsTransferred }}
+        </p>
+        <p>
+          <span>
+            Number of Active# vBuckets and Replica# vBuckets to transfer:
+          </span>
+          Active#-{{ detailedProgress.ingoing.activeVBucketsLeft }}
+          Replica#-{{ detailedProgress.ingoing.replicaVBucketsLeft }}
+        </p>
+      </div>
+
+    </div>
+  <!-- {%= tmpl("js_warm_up_tmpl")({thisWarmupTasks: thisNodeWarmupTasks}) %} -->
+
+  <h3>Memory Cache</h3>
+  <div class="info_block">
+    <span class="dynamic_ram">Dynamic RAM:</span>
+    <div class="usage-block" mn-bar-usage-directive base-info="getMemoryCacheConfig"></div>
+  </div>
+  <h3>Disk Storage</h3>
+  <div class="info_block">
+    <span class="disk_storage">
+      <span>Disk One: </span>
+        <span class="path" title="{{details.storageTotals.hdd[0].path}}">{{ellipsisPath}}</span>
+    </span>
+    <div class="usage-block" mn-bar-usage-directive base-info="getDiskStorageConfig"></div>
+  </div>
+</div><!-- additional_server_info -->
+</td>

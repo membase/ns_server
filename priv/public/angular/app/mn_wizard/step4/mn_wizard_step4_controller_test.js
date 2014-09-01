@@ -5,7 +5,6 @@ describe("mnWizardStep4Controller", function () {
   var $state;
 
   beforeEach(angular.mock.module('mnWizard'));
-  beforeEach(angular.mock.module('mnAuth'));
 
   beforeEach(inject(function ($injector) {
     var $rootScope = $injector.get('$rootScope');
@@ -14,7 +13,7 @@ describe("mnWizardStep4Controller", function () {
 
     mnWizardStep4Service = $injector.get('mnWizardStep4Service');
     $scope = $rootScope.$new();
-    $scope.form = {};
+    $scope.form = new specRunnerHelper.MockedForm();
     $state = $injector.get('$state');
 
     spyOn($state, 'go');

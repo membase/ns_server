@@ -1,4 +1,4 @@
-angular.module('mnDialog').directive('mnDialogDirective', function ($compile) {
+angular.module('mnDialog').directive('mnDialogDirective', function ($compile, mnDialogService) {
 
   return {
     restrict: 'A',
@@ -6,6 +6,7 @@ angular.module('mnDialog').directive('mnDialogDirective', function ($compile) {
       mnDialogTitle: '@',
       mnDialogWidth: '@'
     },
+    isolate: false,
     replace: true,
     transclude: true,
     link: function ($scope, $element, $attrs) {
@@ -14,8 +15,8 @@ angular.module('mnDialog').directive('mnDialogDirective', function ($compile) {
         width: $scope.mnDialogWidth
       };
 
-      $scope.hideDialog = function () {
-        $element.remove();
+      $scope.hide = function () {
+        mnDialogService.removeLastOpened();
       };
     },
     templateUrl: 'components/mn_dialog/mn_dialog_directive.html'

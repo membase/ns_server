@@ -17,7 +17,7 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
         return;
       }
       $scope.viewLoading = true;
-      $scope.form.$setValidity('userReq', !!user.username)
+      $scope.form.$setValidity('userReq', !!user.username);
       $scope.form.$setValidity('equals', user.password === user.verifyPassword);
       $scope.form.$setValidity('passLength', user.password && user.password.length >= 6);
 

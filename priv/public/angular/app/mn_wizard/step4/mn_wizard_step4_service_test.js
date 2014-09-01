@@ -1,6 +1,5 @@
 describe("mnWizardStep4Service", function () {
   var $httpBackend;
-  var $timeout;
   var mnWizardStep4Service;
 
   beforeEach(angular.mock.module('mnWizard'));

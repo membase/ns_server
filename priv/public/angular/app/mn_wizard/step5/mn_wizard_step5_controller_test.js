@@ -3,10 +3,8 @@ describe("mnWizardStep5Controller", function () {
   var mnWizardStep2Service;
   var $httpBackend;
   var $scope;
-  var $state;
 
   beforeEach(angular.mock.module('mnWizard'));
-  beforeEach(angular.mock.module('mnAuth'));
 
   beforeEach(inject(function ($injector) {
     var $rootScope = $injector.get('$rootScope');
@@ -17,8 +15,7 @@ describe("mnWizardStep5Controller", function () {
     mnWizardStep5Service = $injector.get('mnWizardStep5Service');
     mnWizardStep2Service = $injector.get('mnWizardStep2Service');
     $scope = $rootScope.$new();
-    $scope.form = {};
-    $scope.form.$setValidity = function () {};
+    $scope.form = new specRunnerHelper.MockedForm();
 
     spyOn($state, 'go');
 
