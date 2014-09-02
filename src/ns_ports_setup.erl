@@ -153,7 +153,7 @@ create_ns_couchdb_spec() ->
     create_erl_node_spec(ns_couchdb, [{ns_server_node, node()}], "NS_COUCHDB_ENV_ARGS", ErlangArgs).
 
 create_erl_node_spec(Type, Args, EnvArgsVar, ErlangArgs) ->
-    PathArgs = ["-pa"] ++ code:get_path(),
+    PathArgs = ["-pa"] ++ lists:reverse(code:get_path()),
     EnvArgsTail = [{K, V}
                    || {K, V} <- application:get_all_env(ns_server),
                       case atom_to_list(K) of
