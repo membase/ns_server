@@ -19,23 +19,13 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([default/0, mergable/1, upgrade_config/1, get_current_version/0]).
+-export([default/0, upgrade_config/1, get_current_version/0]).
 
 -define(ISASL_PW, "isasl.pw").
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
     {3,0}.
-
-% Allow all keys to be mergable.
-
-mergable(ListOfKVLists) ->
-    lists:usort(lists:flatmap(fun keys/1, ListOfKVLists)).
-
-keys(KVLists) ->
-    lists:flatmap(fun (KVList) ->
-                          [K || {K,_} <- KVList]
-                  end, KVLists).
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),

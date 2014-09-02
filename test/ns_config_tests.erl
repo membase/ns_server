@@ -76,8 +76,6 @@ all_test_() ->
 
 default() -> [].
 
-mergable(A) -> ns_config_default:mergable(A).
-
 upgrade_config(_) -> [].
 
 test_search_list() ->
