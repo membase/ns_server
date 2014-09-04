@@ -206,7 +206,7 @@ default() ->
         [{membase,
           [{engine, path_config:component_path(lib, "memcached/ep.so")},
            {static_config_string,
-            "vb0=false;waitforwarmup=false;failpartialwarmup=false"}]},
+            "failpartialwarmup=false"}]},
          {memcached,
           [{engine,
             path_config:component_path(lib, "memcached/default_engine.so")},
