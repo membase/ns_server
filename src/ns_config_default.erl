@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {3,0}.
+    {3,0,1}.
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),
@@ -413,7 +413,10 @@ upgrade_config(Config) ->
              upgrade_config_from_2_2_0_to_2_3_0(Config)];
         {value, {2,3,0}} ->
             [{set, {node, node(), config_version}, {3,0}} |
-             upgrade_config_from_2_3_0_to_3_0(Config)]
+             upgrade_config_from_2_3_0_to_3_0(Config)];
+        {value, {3,0}} ->
+            [{set, {node, node(), config_version}, {3,0,1}} |
+             upgrade_config_from_3_0_to_3_0_1(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -672,6 +675,19 @@ upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ->
           end, McdConfig),
 
     [{set, McdKey, NewOrUpdatedParams ++ StrippedMcdConfig}].
+
+upgrade_config_from_3_0_to_3_0_1(Config) ->
+    ?log_info("Upgrading config from 3.0 to 3.0.1"),
+    DefaultConfig = default(),
+    do_upgrade_config_from_3_0_to_3_0_1(Config, DefaultConfig).
+
+do_upgrade_config_from_3_0_to_3_0_1(Config, DefaultConfig) ->
+    McdKey = {node, node(), memcached},
+    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
+    {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
+    EnginesTuple = {engines, _} = lists:keyfind(engines, 1, DefaultMcdConfig),
+    NewMcdConfig = lists:keystore(engines, 1, CurrentMcdConfig, EnginesTuple),
+    [{set, McdKey, NewMcdConfig}].
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
@@ -995,6 +1011,25 @@ upgrade_2_3_0_to_3_0_test() ->
                   {set, {node, _, port_servers}, _},
                   {set, {node, _, memcached_config}, _}],
                  do_upgrade_config_from_2_3_0_to_3_0(Cfg, Default)).
+
+upgrade_3_0_to_3_0_1_test() ->
+    Cfg = [[{some_key, some_value},
+            {{node, node(), memcached},
+             [{engines, old_value},
+              {ssl_port, 1},
+              {verbosity, 2},
+              {port, 3}]},
+            {{node, node(), memcached_config}, memcached_config}]],
+    Default = [{{node, node(), port_servers}, port_servers_cfg},
+               {{node, node(), memcached}, [{ssl_port, 1}, {verbosity, 3},
+                                            {engines, [something]}]},
+               {{node, node(), memcached_config}, memcached_config}],
+
+    ?assertMatch([{set, {node, _, memcached}, [{engines, [something]},
+                                               {ssl_port, 1}, {verbosity, 2},
+                                               {port, 3}]}],
+                 do_upgrade_config_from_3_0_to_3_0_1(Cfg, Default)).
+
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
