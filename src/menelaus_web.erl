@@ -2292,11 +2292,12 @@ handle_node_settings_post(Node, Req) ->
     Results1 =
         case Results0 of
             [ok] ->
-                %% NOTE: due to required restart we need to protect
-                %% ourselves from 'death signal' of parent
-                erlang:process_flag(trap_exit, true),
                 case ns_storage_conf:setup_disk_storage_conf(DbPath, IxPath) of
                     ok ->
+                        %% NOTE: due to required restart we need to protect
+                        %% ourselves from 'death signal' of parent
+                        erlang:process_flag(trap_exit, true),
+
                         %% performing required restart from
                         %% successfull path change
                         ns_server:restart(),
