@@ -126,12 +126,11 @@ perform_loading_task(Name, Quota) ->
     Args = ["-n", Host ++ ":" ++ integer_to_list(Port),
             "-b", Name,
             "-s", integer_to_list(Quota),
-            "-u", Name,
-            "-p", "",
             filename:join([BinDir, "..", "samples", Name ++ ".zip"])],
 
     EPort = open_port({spawn_executable, Cmd},
                       [exit_status,
+                       {env, [{"BUCKET_USERNAME", Name}, {"BUCKET_PASSWORD", ""}]},
                        {args, Args},
                        stderr_to_stdout]),
     case wait_for_exit(EPort, Name) of
