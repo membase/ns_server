@@ -587,41 +587,39 @@ do_handle_call({get_vbucket_checkpoint_ids, VBucketId}, _From, State) ->
 do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.
 
-
-complete_connection_phase({ok, Sock}, Bucket) ->
-    case ensure_bucket(Sock, Bucket) of
-        ok ->
-            {ok, Sock};
-        EnsureBucketError ->
-            {ensure_bucket_failed, EnsureBucketError}
-    end;
-complete_connection_phase(Err, _Bucket) ->
-    Err.
-
 handle_cast({connect_done, WorkersCount, RV}, #state{bucket = Bucket,
                                                      status = OldStatus} = State) ->
     gen_event:notify(buckets_events, {started, Bucket}),
     erlang:process_flag(trap_exit, true),
 
-    case complete_connection_phase(RV, Bucket) of
+    case RV of
         {ok, Sock} ->
-            connecting = OldStatus,
+            try ensure_bucket(Sock, Bucket) of
+                ok ->
+                    connecting = OldStatus,
 
-            ?log_info("Main ns_memcached connection established: ~p", [RV]),
+                    ?log_info("Main ns_memcached connection established: ~p", [RV]),
 
-            {ok, Timer} = timer2:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
-            Self = self(),
-            Self ! check_started,
+                    {ok, Timer} = timer2:send_interval(?CHECK_WARMUP_INTERVAL, check_started),
+                    Self = self(),
+                    Self ! check_started,
 
-            InitialState = State#state{
-                             timer = Timer,
-                             start_time = os:timestamp(),
-                             sock = Sock,
-                             status = init
-                            },
-            [proc_lib:spawn_link(erlang, apply, [fun worker_init/2, [Self, InitialState]])
-             || _ <- lists:seq(1, WorkersCount)],
-            {noreply, InitialState};
+                    InitialState = State#state{
+                                     timer = Timer,
+                                     start_time = os:timestamp(),
+                                     sock = Sock,
+                                     status = init
+                                    },
+                    [proc_lib:spawn_link(erlang, apply, [fun worker_init/2, [Self, InitialState]])
+                     || _ <- lists:seq(1, WorkersCount)],
+                    {noreply, InitialState};
+                Error ->
+                    ?log_info("ensure_bucket failed: ~p", [Error]),
+                    {stop, Error}
+            catch
+                exit:{shutdown, reconfig} ->
+                    {stop, {shutdown, reconfig}, State#state{sock = Sock}}
+            end;
         Error ->
             ?log_info("Failed to establish ns_memcached connection: ~p", [RV]),
             {stop, Error}
@@ -1236,7 +1234,7 @@ ensure_bucket_config(Sock, Bucket, membase, {MaxSize, DBDir, NumThreads}) ->
                     ?log_info("Changing dbname of ~p from ~s to ~s", [Bucket, X2,
                                                                       DBDirBin]),
                     %% Just exit; this will delete and recreate the bucket
-                    exit(normal)
+                    exit({shutdown, reconfig})
             end
     end;
 ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
