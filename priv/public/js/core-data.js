@@ -474,7 +474,11 @@ var DAL = {
 
     _.each(allNodes, function (n) {
       var interestingStats = n.interestingStats;
-      if (interestingStats && ('couch_docs_data_size' in interestingStats)) {
+      if (interestingStats &&
+          ('couch_docs_data_size' in interestingStats) &&
+          ('couch_views_data_size' in interestingStats) &&
+          ('couch_docs_actual_disk_size' in interestingStats) &&
+          ('couch_views_actual_disk_size' in interestingStats)) {
         n.couchDataSize = interestingStats.couch_docs_data_size + interestingStats.couch_views_data_size;
         n.couchDiskUsage = interestingStats.couch_docs_actual_disk_size + interestingStats.couch_views_actual_disk_size;
       }
