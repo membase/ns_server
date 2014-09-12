@@ -43,8 +43,6 @@
 -define(HIBERNATE_TIMEOUT, 10000).
 
 init([Type, ConnName, Node, Bucket, ExtModule, InitArgs]) ->
-    erlang:process_flag(trap_exit, true),
-
     {ExtState, State} = ExtModule:init(
                           InitArgs,
                           #state{connect_info = {Type, ConnName, Node, Bucket},
@@ -72,11 +70,8 @@ handle_cast(Msg, State = #state{ext_module = ExtModule, ext_state = ExtState}) -
     {noreply, NewExtState, NewState} = ExtModule:handle_cast(Msg, ExtState, State),
     {noreply, NewState#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}.
 
-terminate(_Reason, #state{sock = undefined}) ->
-    ok;
-terminate(_Reason, #state{sock = Sock}) ->
-    ?log_debug("Terminating. Disconnecting from socket ~p", [Sock]),
-    disconnect(Sock).
+terminate(_Reason, _State) ->
+    ok.
 
 handle_info({tcp, Socket, Data}, #state{sock = Socket} = State) ->
     %% Set up the socket to receive another message
