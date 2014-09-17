@@ -90,6 +90,16 @@ update_childs(Buckets) ->
                           true = is_tuple(Tuple),
                           ?log_debug("Stopping child for dead bucket: ~p~n",
                                      [Tuple]),
-                          supervisor:terminate_child(?MODULE, StopId),
+                          TimeoutPid = diag_handler:arm_timeout(
+                                         30000,
+                                         fun (_) ->
+                                                 ?log_debug("Observing slow bucket supervisor stop request"),
+                                                 timeout_diag_logger:log_diagnostics(slow_bucket_stop)
+                                         end),
+                          try
+                              supervisor:terminate_child(?MODULE, StopId)
+                          after
+                              diag_handler:disarm_timeout(TimeoutPid)
+                          end,
                           supervisor:delete_child(?MODULE, StopId)
                   end, ToStop).
