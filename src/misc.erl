@@ -517,7 +517,11 @@ wait_for_process_test_() ->
 
 -spec terminate_and_wait(Reason :: term(), Processes :: [pid()]) -> ok.
 terminate_and_wait(Reason, Processes) ->
-    [(catch erlang:exit(P, Reason)) || P <- Processes],
+    RealReason = case Reason of
+                     normal -> shutdown;
+                     _ -> Reason
+                 end,
+    [(catch erlang:exit(P, RealReason)) || P <- Processes],
     [misc:wait_for_process(P, infinity) || P <- Processes],
     ok.
 
