@@ -189,7 +189,6 @@ default() ->
                                                 % Memcached config
      {{node, node(), memcached},
       [{port, misc:get_env_default(memcached_port, 11210)},
-       {mccouch_port, misc:get_env_default(mccouch_port, 11213)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
        {ssl_port, case IsEnterprise of
                       true -> misc:get_env_default(memcached_ssl_port, 11207);
@@ -610,8 +609,7 @@ maybe_upgrade_engines_add_mccouch_port_log_params(Config, DefaultConfig) ->
     NewOrUpdatedParams =
         lists:filter(
           fun ({Key, _Value}) ->
-                  lists:member(Key, [mccouch_port,
-                                     log_path, log_prefix, log_generations,
+                  lists:member(Key, [log_path, log_prefix, log_generations,
                                      log_cyclesize, log_sleeptime,
                                      log_rotation_period,
                                      engines])
@@ -938,8 +936,7 @@ upgrade_1_8_1_to_2_0_test() ->
                   {autocompaction, compaction_something},
                   {{node, node(), compaction_daemon}, compaction_daemon_settings},
                   {{node, node(), memcached},
-                   [{mccouch_port, mccouch_port},
-                    {log_path, log_path},
+                   [{log_path, log_path},
                     {log_prefix, log_prefix},
                     {log_generations, log_generations},
                     {log_rotation_period, log_rotation_period},
@@ -950,8 +947,7 @@ upgrade_1_8_1_to_2_0_test() ->
     ?assertEqual([{set, autocompaction, compaction_something},
                   {set, {node, node(), compaction_daemon}, compaction_daemon_settings},
                   {set, {node, node(), memcached},
-                   [{mccouch_port, mccouch_port},
-                    {log_path, log_path},
+                   [{log_path, log_path},
                     {log_prefix, log_prefix},
                     {log_generations, log_generations},
                     {log_rotation_period, log_rotation_period},
@@ -966,8 +962,7 @@ upgrade_1_8_1_to_2_0_test() ->
     ?assertEqual([{set, {node, node(), capi_port}, somethingelse},
                   {set, autocompaction, compaction_something},
                   {set, {node, node(), memcached},
-                   [{mccouch_port, mccouch_port},
-                    {log_path, log_path},
+                   [{log_path, log_path},
                     {log_prefix, log_prefix},
                     {log_generations, log_generations},
                     {log_rotation_period, log_rotation_period},
