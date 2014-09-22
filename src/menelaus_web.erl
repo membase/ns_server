@@ -233,6 +233,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "buckets", Id, "statsDirectory"] ->
                              {auth_bucket, fun menelaus_stats:serve_stats_directory/3,
                               ["default", Id]};
+                         ["pools", "default", "nodeServices"] ->
+                             {auth_any_bucket, fun serve_node_services/1, []};
                          ["pools", "default", "b", BucketName] ->
                              {auth_bucket, fun serve_short_bucket_info/3,
                               ["default", BucketName]};
@@ -3221,6 +3223,9 @@ serve_streaming_short_bucket_info(_PoolId, BucketName, Req) ->
               V = build_terse_bucket_info(BucketName),
               {just_write, {write, V}}
       end, Req, undefined).
+
+serve_node_services(Req) ->
+    reply_ok(Req, "application/json", bucket_info_cache:tmp_build_node_services()).
 
 decode_recovery_type("delta") ->
     delta;

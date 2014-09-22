@@ -23,6 +23,8 @@
          terse_bucket_info/1,
          terse_bucket_info_with_local_addr/2]).
 
+-export([tmp_build_node_services/0]).
+
 %% for diagnostics
 -export([submit_buckets_reset/2,
          submit_full_reset/0]).
@@ -213,6 +215,20 @@ terse_bucket_info(BucketName) ->
         [{_, V}] ->
             {ok, V}
     end.
+
+%% TODO: this is quick hack to make integration/prototyping work
+%% possible. It's neither clean nor efficient at this time. On purpose.
+tmp_build_node_services() ->
+    Config = ns_config:get(),
+    {value, _, BucketVC} = ns_config:search_with_vclock(Config, buckets),
+    Rev = vclock:count_changes(BucketVC),
+
+    NEIs = [{[{services, {build_services(Node, Config)}}
+              | maybe_build_ext_hostname(Node)]}
+            || Node <- ns_node_disco:nodes_wanted(Config)],
+    J = {[{rev, Rev},
+          {nodesExt, NEIs}]},
+    ejson:encode(J).
 
 terse_bucket_info_with_local_addr(BucketName, LocalAddr) ->
     case terse_bucket_info(BucketName) of
