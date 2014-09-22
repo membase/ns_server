@@ -130,14 +130,6 @@
 -define(EBUSY,            16#85).
 -define(ETMPFAIL,         16#86).
 
-% mccouch notifications
--define(MCCOUCH_VB_NO_CHANGE,            16#00).
--define(MCCOUCH_VB_STATE_CHANGED,        16#01).
--define(MCCOUCH_VB_CHECKPOINT_CHANGED,   16#02).
--define(MCCOUCH_VB_COMPACTION_DONE,      16#04).
--define(MCCOUCH_VB_COMPACT_OPENDB_ERROR, 16#08).
--define(MCCOUCH_VB_COMPACT_RENAME_ERROR, 16#0C).
-
 % Vbucket States
 -define(VB_STATE_ACTIVE, 1).
 -define(VB_STATE_REPLICA, 2).
