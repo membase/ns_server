@@ -108,12 +108,23 @@ build_services(Node, Config) ->
                  SslPort ->
                      [{kvSSL, SslPort} | CapiPorts]
              end,
+    PortsQ = case os:getenv("ENABLE_QUERY") =/= false of
+                 true ->
+                     case ns_config:search(Config, {node, Node, query_port}) of
+                         {value, QPort} ->
+                             [{n1ql, QPort} | PortsD];
+                         false ->
+                             PortsD
+                     end;
+                 _ ->
+                     PortsD
+             end,
     {value, CapiPort} = ns_config:search_node(Node, Config, capi_port),
     [{mgmt, misc:node_rest_port(Config, Node)},
      {capi, CapiPort},
      {moxi, ns_config:search_node_prop(Node, Config, moxi, port)},
      {kv, ns_config:search_node_prop(Node, Config, memcached, port)}
-     | PortsD].
+     | PortsQ].
 
 maybe_build_ext_hostname(Node) ->
     case misc:node_name_host(Node) of
