@@ -203,7 +203,36 @@ dynamic_children() ->
                  Expanded
          end
      end || NCAO <- PortServers] ++
+        query_node_spec(Config) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
+
+%% TODO: this is all temp code (and windows incompabile) until:
+%%
+%% a) cbq-engine is included into manifest officially
+%% b) cbq-engine can exit on EOF on stdin
+%% c) we have node roles
+query_node_spec(Config) ->
+    case (os:getenv("ENABLE_QUERY") =/= false andalso
+          %% TODO: is_system_provisioned that's using global config
+          %% isn't quite correct too, but will work ok for now
+          menelaus_web:is_system_provisioned() =/= false) of
+        false ->
+            [];
+        _ ->
+            RestPort = misc:node_rest_port(Config, node()),
+            ShCmd = "'" ++ path_config:component_path(bin, "cbq-engine") ++ "'",
+            ShDataStore = "--datastore=http://127.0.0.1:" ++ integer_to_list(RestPort),
+            ShHttp = "--http=:" ++ integer_to_list(ns_config:search(Config, {node, node(), query_port}, 8093)),
+            ShString = string:join([ShCmd, ShDataStore, ShHttp], " "),
+            %% TODO: we use a bit of shell to make it kill cbq-engine
+            %% on EOF which is dirty and windows incompatible. But
+            %% that should be ok for now.
+            Spec = {'query', "/bin/sh",
+                    ["-c", "((" ++ ShString ++ " ; kill -9 0) &); cat >/dev/null ; kill -9 0"],
+                    [use_stdio, exit_status, stderr_to_stdout, stream]},
+
+            [Spec]
+    end.
 
 expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
     Config = ns_config:get(),
