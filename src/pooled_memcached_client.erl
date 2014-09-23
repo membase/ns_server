@@ -5,14 +5,14 @@
 -include("mc_entry.hrl").
 -include("couch_db.hrl").
 
--export([find_missing_revs/3, bulk_set_metas/3]).
+-export([find_missing_revs/4, bulk_set_metas/4]).
 
--spec find_missing_revs(any(), vbucket_id(), [{binary(), rev()}]) ->
+-spec find_missing_revs(any(), vbucket_id(), [{binary(), rev()}], non_neg_integer() | infinity) ->
                                {ok,
                                 [{binary(), rev()}],
                                 [{atom(), {binary(), rev()}}]}.
-find_missing_revs(DestRef, Vb, IdRevs) ->
-    execute(DestRef, fun find_missing_revs_inner/3, [Vb, IdRevs]).
+find_missing_revs(DestRef, Vb, IdRevs, Timeout) ->
+    execute(DestRef, fun find_missing_revs_inner/4, [Vb, IdRevs, Timeout]).
 
 send_batch({batch_socket, Socket}, Data) ->
     BatchBytes = iolist_size(Data),
@@ -30,7 +30,7 @@ extract_recv_socket(S) ->
     S.
 
 
-find_missing_revs_inner(S, Vb, IdRevs) ->
+find_missing_revs_inner(S, Vb, IdRevs, Timeout) ->
     SenderPid = spawn_link(
                   fun () ->
                           Data = [begin
@@ -41,17 +41,17 @@ find_missing_revs_inner(S, Vb, IdRevs) ->
                                   end || {Key, _Rev} <- IdRevs],
                           send_batch(S, Data)
                   end),
-    RV = fetch_missing_revs_loop(extract_recv_socket(S), IdRevs, [], []),
+    RV = fetch_missing_revs_loop(extract_recv_socket(S), IdRevs, [], [], Timeout),
     erlang:unlink(SenderPid),
     erlang:exit(SenderPid, kill),
     misc:wait_for_process(SenderPid, infinity),
     RV.
 
-fetch_missing_revs_loop(_S, [], Acc, AccErr) ->
+fetch_missing_revs_loop(_S, [], Acc, AccErr, _Timeout) ->
     {ok, lists:reverse(Acc), lists:reverse(AccErr)};
-fetch_missing_revs_loop(S, [{_Key, Rev} = Pair | Rest], Acc, AccErr) ->
+fetch_missing_revs_loop(S, [{_Key, Rev} = Pair | Rest], Acc, AccErr, Timeout) ->
     Missing =
-        case mc_binary:recv(S, res, infinity) of
+        case mc_binary:recv(S, res, Timeout) of
             %% get meta of key successfully
             {ok, #mc_header{status=?SUCCESS}, #mc_entry{ext = Ext, cas = CAS}} ->
                 <<_MetaFlags:32/big, ItemFlags:32/big,
@@ -68,22 +68,22 @@ fetch_missing_revs_loop(S, [{_Key, Rev} = Pair | Rest], Acc, AccErr) ->
         end,
     case Missing of
         {error, Err} ->
-            fetch_missing_revs_loop(S, Rest, Acc, [{Err, Pair} | AccErr]);
+            fetch_missing_revs_loop(S, Rest, Acc, [{Err, Pair} | AccErr], Timeout);
         _Bool ->
             NewAcc = if Missing -> [Pair | Acc];
                         true -> Acc
                      end,
-            fetch_missing_revs_loop(S, Rest, NewAcc, AccErr)
+            fetch_missing_revs_loop(S, Rest, NewAcc, AccErr, Timeout)
     end.
 
 
-bulk_set_metas(_DestRef, _Vb, [] = _DocsList) ->
+bulk_set_metas(_DestRef, _Vb, [] = _DocsList, _Timeout) ->
     {ok, []};
-bulk_set_metas(DestRef, Vb, DocsList) ->
-    execute(DestRef, fun bulk_set_metas_inner/3, [Vb, DocsList]).
+bulk_set_metas(DestRef, Vb, DocsList, Timeout) ->
+    execute(DestRef, fun bulk_set_metas_inner/4, [Vb, DocsList, Timeout]).
 
-bulk_set_metas_inner(S, Vb, DocsList) ->
-    RecverPid = erlang:spawn_link(erlang, apply, [fun bulk_set_metas_recv_replies/3, [S, self(), length(DocsList)]]),
+bulk_set_metas_inner(S, Vb, DocsList, Timeout) ->
+    RecverPid = erlang:spawn_link(erlang, apply, [fun bulk_set_metas_recv_replies/4, [S, self(), length(DocsList), Timeout]]),
     Data = [encode_single_set_meta(Vb, Doc) || Doc <- DocsList],
     send_batch(S, Data),
     receive
@@ -108,17 +108,17 @@ encode_single_set_meta(Vb,
     McBody = #mc_entry{key = Key, data = Data, ext = Ext, cas = CAS},
     mc_binary:encode(req, McHeader, McBody).
 
-bulk_set_metas_recv_replies(S, Parent, Count) ->
-    RVs = bulk_set_metas_replies_loop(extract_recv_socket(S), Count, []),
+bulk_set_metas_recv_replies(S, Parent, Count, Timeout) ->
+    RVs = bulk_set_metas_replies_loop(extract_recv_socket(S), Count, [], Timeout),
     Parent ! {self(), RVs}.
 
-bulk_set_metas_replies_loop(_S, 0, Acc) ->
+bulk_set_metas_replies_loop(_S, 0, Acc, _Timeout) ->
     lists:reverse(Acc);
-bulk_set_metas_replies_loop(S, Count, Acc) ->
-    case mc_binary:recv(S, res, infinity) of
+bulk_set_metas_replies_loop(S, Count, Acc, Timeout) ->
+    case mc_binary:recv(S, res, Timeout) of
         {ok, #mc_header{status=Status}, _} ->
             NewAcc = [mc_client_binary:map_status(Status) | Acc],
-            bulk_set_metas_replies_loop(S, Count - 1, NewAcc)
+            bulk_set_metas_replies_loop(S, Count - 1, NewAcc, Timeout)
     end.
 
 execute(DestRef, Body, Args) ->

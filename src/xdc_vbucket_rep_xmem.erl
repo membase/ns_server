@@ -20,6 +20,11 @@
 
 -include("xdc_replicator.hrl").
 
+%% we give xmem ops a very "healthy" timeout of ten minutes. The
+%% purpose is not panicking on slow downsteam, but rather to catch
+%% some possible "forgotten" connections when there's NAT between clusters.
+-define(XMEM_TIMEOUT, (10*60*1000)).
+
 make_location(#xdc_rep_xmem_remote{ip = Host,
                                    port = Port,
                                    bucket = Bucket,
@@ -44,7 +49,7 @@ make_location(#xdc_rep_xmem_remote{ip = Host,
 
 find_missing(#xdc_xmem_location{vb = VBucket, mcd_loc = McdDst}, IdRevs) ->
     {ok, MissingRevs, Errors} =
-        pooled_memcached_client:find_missing_revs(McdDst, VBucket, IdRevs),
+        pooled_memcached_client:find_missing_revs(McdDst, VBucket, IdRevs, ?XMEM_TIMEOUT),
     ErrRevs =
         [begin
              ?xdcr_trace("Error! memcached error when fetching metadata from remote for key: ~p, "
@@ -60,7 +65,7 @@ flush_docs(#xdc_xmem_location{vb = VBucket,
                               connection_timeout = ConnectionTimeout}, DocsList) ->
     TimeStart = now(),
 
-    {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, DocsList),
+    {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, DocsList, ?XMEM_TIMEOUT),
 
     {ErrorDict, ErrorKeysDict} = categorise_statuses_to_dict(Statuses, DocsList),
     Flushed = lookup_error_dict(success, ErrorDict),
