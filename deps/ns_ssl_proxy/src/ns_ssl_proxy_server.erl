@@ -48,6 +48,7 @@ start_upstream(Socket) ->
     {ok, PlainSocket} = gen_tcp:connect(binary_to_list(ProxyHost), ProxyPort,
                                         [binary,
                                          inet,
+                                         {keepalive, true},
                                          {packet, raw},
                                          {nodelay, true},
                                          {active, false}], ?PROXY_RESPONSE_TIMEOUT),

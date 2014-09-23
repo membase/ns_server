@@ -36,6 +36,7 @@ init() ->
                      {backlog, 100},
                      inet,
                      binary,
+                     {keepalive, true},
                      {packet, raw},
                      {active, false},
                      {nodelay, true},
