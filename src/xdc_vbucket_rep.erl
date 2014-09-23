@@ -352,7 +352,6 @@ handle_call({worker_done, Pid}, _From,
 
             %% allow another replicator to go
             State2 = replication_turn_is_done(State),
-            couch_api_wrap:db_close(State2#rep_state.src_master_db),
             couch_api_wrap:db_close(State2#rep_state.target),
 
             update_work_time(State2),
@@ -387,7 +386,6 @@ handle_call({worker_done, Pid}, _From,
             NewState = State2#rep_state{
                          workers = [],
                          status = VbStatus3,
-                         src_master_db = undefined,
                          target = undefined,
                          current_through_snapshot_seq = NewSnapshotSeq,
                          current_through_snapshot_end_seq = NewSnapshotEndSeq},
@@ -510,8 +508,7 @@ terminate(Reason, #rep_state{
 
 terminate_cleanup(State0) ->
     State = xdc_vbucket_rep_ckpt:cancel_timer(State0),
-    Dbs = [State#rep_state.target,
-           State#rep_state.src_master_db],
+    Dbs = [State#rep_state.target],
     [catch couch_api_wrap:db_close(Db) || Db <- Dbs, Db /= undefined].
 
 
@@ -583,8 +580,6 @@ init_replication_state(#init_state{rep = Rep,
     CertPEM = CurrRemoteBucket#remote_bucket.cluster_cert,
     TgtDb = xdc_rep_utils:parse_rep_db(TgtURI, [], [{xdcr_cert, CertPEM} | Options]),
     {ok, Target} = couch_api_wrap:db_open(TgtDb, []),
-
-    SrcMasterDb = capi_utils:must_open_master_vbucket(Src),
 
     XMemRemote = case RepMode of
                      "xmem" ->
@@ -673,7 +668,6 @@ init_replication_state(#init_state{rep = Rep,
     %%             false
     %%     end,
 
-    couch_db:close(SrcMasterDb),
     couch_api_wrap:db_close(Target),
 
     RepState = #rep_state{
@@ -683,7 +677,6 @@ init_replication_state(#init_state{rep = Rep,
       source_name = SrcVbDb,
       target_name = TgtURI,
       target = Target,
-      src_master_db = SrcMasterDb,
       remote_vbopaque = RemoteVBOpaque,
       start_seq = StartSeq,
       current_through_seq = StartSeq,
@@ -786,8 +779,6 @@ start_replication(#rep_state{
         end,
     {ok, Target} = couch_api_wrap:db_open(TgtDB, []),
 
-    SrcMasterDb = capi_utils:must_open_master_vbucket(SourceBucket),
-
     {ok, ChangesQueue} = couch_work_queue:new([
                                                {max_items, BatchSizeItems * NumWorkers * 2},
                                                {max_size, 100 * 1024 * NumWorkers}
@@ -867,8 +858,7 @@ start_replication(#rep_state{
     %% check if we need do checkpointing, replicator will crash if checkpoint failure
     State1 = State#rep_state{
                xmem_location = XMemLoc,
-               target = Target,
-               src_master_db = SrcMasterDb},
+               target = Target},
 
     {Succ, CkptErrReason, NewState} =
         case TimeSinceLastCkpt > IntervalSecs of
@@ -884,7 +874,6 @@ start_replication(#rep_state{
     ResultState = NewState#rep_state{
                     changes_queue = ChangesQueue,
                     workers = Workers,
-                    src_master_db = SrcMasterDb,
                     target_name = TgtURI,
                     target = Target,
                     timer = xdc_vbucket_rep_ckpt:start_timer(State),
