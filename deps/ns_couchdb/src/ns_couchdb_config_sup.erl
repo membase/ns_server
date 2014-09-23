@@ -39,5 +39,9 @@ init([]) ->
 
            {ns_config,
             {ns_config, start_link, [{pull_from_node, ns_node_disco:ns_server_node()}]},
-            permanent, 1000, worker, [ns_config, ns_config_default]}
+            permanent, 1000, worker, [ns_config, ns_config_default]},
+
+           {ns_couchdb_config_rep,
+            {ns_couchdb_config_rep, start_link, []},
+            permanent, 1000, worker, []}
           ]}}.

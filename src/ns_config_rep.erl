@@ -326,8 +326,10 @@ do_push() ->
     do_push(ns_config:get_kv_list(?SELF_PULL_TIMEOUT)).
 
 do_push(RawKVList) ->
-    do_push(RawKVList, ns_node_disco:nodes_actual_other()).
+    do_push(RawKVList, ns_node_disco:nodes_actual_other() ++ ns_node_disco:local_sub_nodes()).
 
+do_push(_RawKVList, []) ->
+    ok;
 do_push(RawKVList, OtherNodes) ->
     Blob = zlib:compress(term_to_binary(RawKVList)),
     misc:parallel_map(fun(Node) ->
@@ -362,6 +364,7 @@ do_merge(RemoteKVList) ->
         _ ->
             case ns_config:cas_remote_config(NewKVList, LocalKVList) of
                 true ->
+                    do_push(NewKVList -- LocalKVList, ns_node_disco:local_sub_nodes()),
                     ok;
                 _ ->
                     ?log_warning("config cas failed. Retrying", []),
