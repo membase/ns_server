@@ -15,49 +15,71 @@
 %%
 -module(capi_http_proxy).
 
--include("couch_db.hrl").
+-include("ns_common.hrl").
 
--export([handle_proxy_req/1]).
+-export([handle_request/1]).
 
-handle_proxy_req(MochiReq) ->
-    DefaultSpec = "{couch_httpd_db, handle_request}",
-    DefaultFun = couch_httpd:make_arity_1_fun(
-                   couch_config:get("httpd", "default_handler", DefaultSpec)
-                  ),
+should_proxy_header('Accept') ->
+    true;
+should_proxy_header('Accept-Encoding') ->
+    true;
+should_proxy_header('Accept-Language') ->
+    true;
+should_proxy_header('Cache-Control') ->
+    true;
+should_proxy_header('Connection') ->
+    true;
+should_proxy_header('Content-Type') ->
+    true;
+should_proxy_header('Pragma') ->
+    true;
+should_proxy_header('Referer') ->
+    true;
+should_proxy_header(_) ->
+    false.
 
-    UrlHandlersList = lists:map(
-                        fun({UrlKey, SpecStr}) ->
-                                {?l2b(UrlKey), couch_httpd:make_arity_1_fun(SpecStr)}
-                        end, couch_config:get("httpd_global_handlers")),
+convert_header_name(Header) when is_atom(Header) ->
+    atom_to_list(Header);
+convert_header_name(Header) when is_list(Header) ->
+    Header.
 
-    DbUrlHandlersList = lists:map(
-                          fun({UrlKey, SpecStr}) ->
-                                  {?l2b(UrlKey), couch_httpd:make_arity_2_fun(SpecStr)}
-                          end, couch_config:get("httpd_db_handlers")),
+convert_headers(MochiHeaders) ->
+    HeadersList = mochiweb_headers:to_list(MochiHeaders),
+    lists:filtermap(fun ({Name, Value}) ->
+                            case should_proxy_header(Name) of
+                                true ->
+                                    {true, {convert_header_name(Name), Value}};
+                                false ->
+                                    false
+                            end
+                    end, HeadersList).
 
-    DesignUrlHandlersList = lists:map(
-                              fun({UrlKey, SpecStr}) ->
-                                      {?l2b(UrlKey), couch_httpd:make_arity_3_fun(SpecStr)}
-                              end, couch_config:get("httpd_design_handlers")),
+convert_body(undefined) ->
+    <<>>;
+convert_body(Body) ->
+    Body.
 
-    UrlHandlers = dict:from_list(UrlHandlersList),
-    DbUrlHandlers = dict:from_list(DbUrlHandlersList),
-    DesignUrlHandlers = dict:from_list(DesignUrlHandlersList),
+handle_request(MochiReq) ->
+    "/couchBase" ++ Path = MochiReq:get(raw_path),
+    SchemaAndHost = "http://" ++ Host =
+        binary_to_list(vbucket_map_mirror:node_to_capi_base_url(node(), "127.0.0.1")),
+    URL = SchemaAndHost ++ Path,
 
-    DbFrontendModule = list_to_atom(couch_config:get("httpd", "db_frontend", "couch_db_frontend")),
+    Params = MochiReq:parse_qs(),
+    Timeout = list_to_integer(proplists:get_value("connection_timeout", Params, "30000")),
 
-    "/" ++ RawPath = MochiReq:get(raw_path),
-
-    CutRawPath = lists:dropwhile(fun ($/) -> false;
-                                     (_) -> true
-                                 end, RawPath),
-
-    NewMochiReq = mochiweb_request:new(MochiReq:get(socket),
-                                       MochiReq:get(method),
-                                       CutRawPath,
-                                       MochiReq:get(version),
-                                       MochiReq:get(headers)),
-
-    couch_httpd:handle_request(NewMochiReq, DbFrontendModule,
-                               DefaultFun, UrlHandlers,
-                               DbUrlHandlers, DesignUrlHandlers).
+    Method = MochiReq:get(method),
+    Headers = [{"Host", Host}, {"Capi-Auth-Token", atom_to_list(ns_server:get_babysitter_cookie())}]
+        ++ convert_headers(MochiReq:get(headers)),
+    Body = convert_body(MochiReq:recv_body()),
+    {ok, {{Code, _}, RespHeaders, RespBody}} =
+        lhttpc:request(URL, Method, Headers, Body, Timeout, []),
+    NewRespHeaders =
+        lists:filter(fun ({"Transfer-Encoding", _}) ->
+                             false;
+                         ({"Www-Authenticate", _}) ->
+                             false;
+                         (_) ->
+                             true
+                     end, RespHeaders),
+    MochiReq:respond({Code, NewRespHeaders, RespBody}).
