@@ -34,6 +34,7 @@ init() ->
                     [{reuseaddr, true},
                      inet,
                      binary,
+                     {keepalive, true},
                      {packet, raw},
                      {active, false},
                      {nodelay, true},
