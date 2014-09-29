@@ -621,6 +621,10 @@ def generate_upload_url(parser, options, zip_filename):
     return upload_url
 
 def main():
+    # ask all tools to use C locale (MB-12050)
+    os.environ['LANG'] = 'C'
+    os.environ['LC_ALL'] = 'C'
+
     mydir = os.path.dirname(sys.argv[0])
     #(MB-8239)erl script fails in OSX as it is unable to find COUCHBASE_TOP -ravi
     if platform.system() == 'Darwin':
