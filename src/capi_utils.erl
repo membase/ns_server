@@ -98,17 +98,6 @@ build_dbname(BucketName, VBucket) ->
     iolist_to_binary([BucketName, $/, SubName]).
 
 
--spec must_open_vbucket(BucketName :: ext_bucket_name(),
-                        VBucket :: ext_vbucket_id()) -> #db{}.
-must_open_vbucket(BucketName, VBucket) ->
-    DBName = build_dbname(BucketName, VBucket),
-    case couch_db:open_int(DBName, []) of
-        {ok, RealDb} ->
-            RealDb;
-        Error ->
-            exit({open_db_failed, Error})
-    end.
-
 must_open_master_vbucket(BucketName) ->
     DBName = build_dbname(BucketName, <<"master">>),
     case couch_db:open_int(DBName, []) of
