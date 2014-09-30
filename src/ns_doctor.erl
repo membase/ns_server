@@ -195,7 +195,7 @@ get_tasks_version() ->
 
 build_tasks_list(NodeNeededP, PoolId, RebStatusTimeout) ->
     NodesDict = gen_server:call(?MODULE, get_nodes),
-    AllRepDocs = xdc_rdoc_replication_srv:find_all_replication_docs(),
+    AllRepDocs = xdc_rdoc_api:find_all_replication_docs(),
     do_build_tasks_list(NodesDict, NodeNeededP, PoolId, AllRepDocs, RebStatusTimeout).
 
 %% Internal functions

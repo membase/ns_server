@@ -1677,7 +1677,7 @@ gc_buckets(CachedClusters) ->
       end, CachedClusters).
 
 build_present_replications_dict() ->
-    Docs = xdc_rdoc_replication_srv:find_all_replication_docs(),
+    Docs = xdc_rdoc_api:find_all_replication_docs(),
     do_build_present_replications_dict(Docs).
 
 do_build_present_replications_dict(DocPLists) ->

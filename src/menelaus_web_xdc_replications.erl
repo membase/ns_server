@@ -45,7 +45,7 @@ handle_create_replication(Req) ->
                 true ->
                     ok;
                 false ->
-                    ok = xdc_rdoc_replication_srv:update_doc(ReplicationDoc),
+                    ok = xdc_rdoc_api:update_doc(ReplicationDoc),
 
                     ale:info(?USER_LOGGER,
                              "Replication from bucket \"~s\" to "
@@ -63,7 +63,7 @@ handle_create_replication(Req) ->
     end.
 
 handle_cancel_replication(XID, Req) ->
-    case xdc_rdoc_replication_srv:delete_replicator_doc(XID) of
+    case xdc_rdoc_api:delete_replicator_doc(XID) of
         ok ->
             menelaus_util:reply_json(Req, [], 200);
         not_found ->
@@ -104,7 +104,7 @@ handle_replication_settings_post(XID, Req) ->
                                   true ->
                                       ok;
                                   false ->
-                                      ok = xdc_rdoc_replication_srv:update_doc(RepDoc1)
+                                      ok = xdc_rdoc_api:update_doc(RepDoc1)
                               end,
                               handle_replication_settings_body(RepDoc1, Req)
                       end;
@@ -362,7 +362,7 @@ replication_id(ClusterUUID, FromBucket, ToBucket) ->
     iolist_to_binary([ClusterUUID, $/, FromBucket, $/, ToBucket]).
 
 with_replicator_doc(Req, XID, Body) ->
-    case xdc_rdoc_replication_srv:get_full_replicator_doc(XID) of
+    case xdc_rdoc_api:get_full_replicator_doc(XID) of
         not_found ->
             menelaus_util:reply_not_found(Req);
         {ok, Doc} ->

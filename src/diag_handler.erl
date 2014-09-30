@@ -235,7 +235,7 @@ collect_diag_per_node_binary_body(Reply) ->
     Reply(master_events, (catch master_activity_events_keeper:get_history_raw())),
     Reply(ns_server_stats, (catch system_stats_collector:get_ns_server_stats())),
     Reply(active_buckets, ActiveBuckets),
-    Reply(replication_docs, (catch xdc_rdoc_replication_srv:find_all_replication_docs(5000))),
+    Reply(replication_docs, (catch xdc_rdoc_api:find_all_replication_docs(5000))),
     Reply(master_local_docs, [{Bucket, (catch capi_utils:capture_local_master_docs(Bucket, 10000))} || Bucket <- ActiveBuckets]),
     Reply(design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket, 2000))} || Bucket <- ActiveBuckets]),
     Reply(tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))),

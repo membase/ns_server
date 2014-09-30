@@ -63,7 +63,7 @@ get_all_settings_snapshot(Props) ->
     misc:update_proplist(GlobalSettings, ReplicationSettings).
 
 get_all_settings_snapshot_by_doc_id(DocId) when is_binary(DocId) ->
-    {ok, #doc{body={Props}}} = xdc_rdoc_replication_srv:get_full_replicator_doc(DocId),
+    {ok, #doc{body={Props}}} = xdc_rdoc_api:get_full_replicator_doc(DocId),
     get_all_settings_snapshot(Props).
 
 settings_specs() ->

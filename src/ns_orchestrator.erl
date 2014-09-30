@@ -604,7 +604,7 @@ idle({flush_bucket, BucketName}, _From, State) ->
     perform_bucket_flushing(BucketName, State);
 idle({delete_bucket, BucketName}, _From,
      #idle_state{remaining_buckets=RemainingBuckets} = State) ->
-    xdc_rdoc_replication_srv:delete_all_replications(BucketName),
+    xdc_rdoc_api:delete_all_replications(BucketName),
     DeleteRV = ns_bucket:delete_bucket_returning_config(BucketName),
     NewState =
         case DeleteRV of
