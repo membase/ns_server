@@ -158,7 +158,7 @@ maybe_adjust_data_size(DataSize, DiskSize, MinFileSize) ->
 grab_couch_stats(Bucket, MinFileSize) ->
     BinBucket = ?l2b(Bucket),
 
-    DDocIdList = capi_ddoc_replication_srv:fetch_ddoc_ids(BinBucket),
+    DDocIdList = capi_utils:fetch_ddoc_ids(BinBucket),
     ViewStats = collect_view_stats(BinBucket, DDocIdList, MinFileSize),
     {ViewsDiskSize, ViewsDataSize} = aggregate_view_stats_loop(0, 0, ViewStats),
 

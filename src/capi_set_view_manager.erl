@@ -26,7 +26,7 @@
 %% API
 -export([set_vbucket_states/3, server/1,
          wait_index_updated/2, initiate_indexing/1, reset_master_vbucket/1,
-         get_safe_purge_seqs/1]).
+         get_safe_purge_seqs/1, foreach_doc/3, update_doc/2]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -52,6 +52,15 @@ initiate_indexing(Bucket) ->
 
 reset_master_vbucket(Bucket) ->
     gen_server:call(server(Bucket), reset_master_vbucket, infinity).
+
+-spec foreach_doc(ext_bucket_name(),
+                  fun ((#doc{}) -> any()),
+                  non_neg_integer() | infinity) -> [{binary(), any()}].
+foreach_doc(Bucket, Fun, Timeout) ->
+    gen_server:call(server(Bucket), {foreach_doc, Fun}, Timeout).
+
+update_doc(Bucket, Doc) ->
+    gen_server:call(server(Bucket), {interactive_update, Doc}, infinity).
 
 -define(csv_call_all(Call, Bucket, DDocId, RestArgs),
         ok = ?csv_call(Call, mapreduce_view, Bucket, DDocId, RestArgs),
@@ -579,7 +588,7 @@ get_safe_purge_seqs(BucketName) ->
                       ?log_error("ignoring unexpected get_indexed_seqs(~s, ~s) failure: ~p", [BucketName, DDocId, Error]),
                       SafeSeqs
               end
-      end, [], capi_ddoc_replication_srv:fetch_ddoc_ids(BucketName)).
+      end, [], capi_utils:fetch_ddoc_ids(BucketName)).
 
 spawn_ddoc_replicator(ServerName) ->
     proc_lib:spawn_link(

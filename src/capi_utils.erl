@@ -121,6 +121,9 @@ couch_doc_to_mochi_json(Doc) ->
 extract_doc_id(Doc) ->
     Doc#doc.id.
 
+sort_by_doc_id(Docs) ->
+    lists:keysort(#doc.id, Docs).
+
 capture_local_master_docs(Bucket, Timeout) ->
     misc:executing_on_new_process(
       fun () ->
@@ -135,3 +138,62 @@ capture_local_master_docs(Bucket, Timeout) ->
                                                     end, [], []),
               LocalDocs
       end).
+
+
+-spec fetch_ddoc_ids(bucket_name() | binary()) -> [binary()].
+fetch_ddoc_ids(Bucket) ->
+    Pairs = foreach_live_ddoc_id(Bucket, fun (_) -> ok end),
+    erlang:element(1, lists:unzip(Pairs)).
+
+-spec foreach_live_ddoc_id(bucket_name() | binary(),
+                           fun ((binary()) -> any())) -> [{binary(), any()}].
+foreach_live_ddoc_id(Bucket, Fun) ->
+    Ref = make_ref(),
+    RVs = capi_set_view_manager:foreach_doc(
+            Bucket,
+            fun (Doc) ->
+                    case Doc of
+                        #doc{deleted = true} ->
+                            Ref;
+                        _ ->
+                            Fun(Doc#doc.id)
+                    end
+            end, infinity),
+    [Pair || {_Id, V} = Pair <- RVs,
+             V =/= Ref].
+
+full_live_ddocs(Bucket) ->
+    full_live_ddocs(Bucket, infinity).
+
+full_live_ddocs(Bucket, Timeout) ->
+    Ref = make_ref(),
+    RVs = capi_set_view_manager:foreach_doc(
+            Bucket,
+            fun (Doc) ->
+                    case Doc of
+                        #doc{deleted = true} ->
+                            Ref;
+                        _ ->
+                            Doc
+                    end
+            end, Timeout),
+    [V || {_Id, V} <- RVs,
+          V =/= Ref].
+
+-spec get_design_doc_signatures(bucket_name() | binary()) -> dict().
+get_design_doc_signatures(BucketId) ->
+    DesignDocIds = try
+                       fetch_ddoc_ids(BucketId)
+                   catch
+                       exit:{noproc, _} ->
+                           []
+                   end,
+
+    %% fold over design docs and get the signature
+    lists:foldl(
+      fun (DDocId, BySig) ->
+              {ok, Signature} = couch_set_view:get_group_signature(
+                                  mapreduce_view, list_to_binary(BucketId),
+                                  DDocId),
+              dict:append(Signature, DDocId, BySig)
+      end, dict:new(), DesignDocIds).

@@ -121,7 +121,7 @@ trigger_updates_for_bucket(Bucket, MinNumChanges, ReplicaMinNumChanges) ->
                       do_trigger_update_for_ddoc(SetName, DDoc,
                                                  MinNumChanges, ReplicaMinNumChanges)
               end
-      end, capi_ddoc_replication_srv:full_live_ddocs(Bucket)).
+      end, capi_utils:full_live_ddocs(Bucket)).
 
 do_trigger_update_for_ddoc(SetName, DDoc0, MinNumChanges, ReplicaMinNumChanges) ->
     #doc{id=Id} = DDoc = couch_doc:with_ejson_body(DDoc0),

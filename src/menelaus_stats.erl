@@ -920,21 +920,7 @@ couchbase_replication_stats_descriptions(BucketId) ->
               end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->
-    DesignDocIds = try
-                       capi_ddoc_replication_srv:fetch_ddoc_ids(BucketId)
-                   catch
-                       exit:{noproc, _} ->
-                           []
-                   end,
-
-    % fold over design docs and get the signature
-    DictBySig = lists:foldl(
-      fun (DDocId, BySig) ->
-              {ok, Signature} = couch_set_view:get_group_signature(
-                                  mapreduce_view, list_to_binary(BucketId),
-                                  DDocId),
-              dict:append(Signature, DDocId, BySig)
-      end, dict:new(), DesignDocIds),
+    DictBySig = capi_utils:get_design_doc_signatures(BucketId),
 
     dict:fold(
       fun(Sig, DDocIds0, Stats) ->

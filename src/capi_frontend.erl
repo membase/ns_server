@@ -188,7 +188,7 @@ with_master_vbucket(DbName, Fun) ->
 
 update_doc(#db{filepath = undefined, name=Name},
            #doc{id = <<"_design/",_/binary>>} = Doc, _Options) ->
-    case capi_ddoc_replication_srv:update_doc(Name, Doc) of
+    case capi_set_view_manager:update_doc(Name, Doc) of
         ok ->
             ok;
         {not_found, _} = Error ->

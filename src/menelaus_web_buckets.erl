@@ -1230,7 +1230,7 @@ handle_ddocs_list(PoolId, BucketName, Req) ->
     end.
 
 do_handle_ddocs_list(PoolId, Bucket, Req) ->
-    DDocs = capi_ddoc_replication_srv:sorted_full_live_ddocs(Bucket),
+    DDocs = capi_utils:sort_by_doc_id(capi_utils:full_live_ddocs(Bucket)),
     RV = [begin
               Id = capi_utils:extract_doc_id(Doc),
               {struct, [{doc, capi_utils:couch_doc_to_mochi_json(Doc)},
@@ -1300,7 +1300,7 @@ complete_update_ddoc_options(Req, Bucket, #doc{body={Body0}}= DDoc, Options0) ->
 
     NewBody = {NewBody0},
     NewDDoc = DDoc#doc{body=NewBody},
-    ok = capi_ddoc_replication_srv:update_doc(Bucket, NewDDoc),
+    ok = capi_set_view_manager:update_doc(Bucket, NewDDoc),
     reply_json(Req, capi_utils:couch_json_to_mochi_json(Options)).
 
 handle_local_random_key(_PoolId, Bucket, Req) ->
