@@ -100,6 +100,8 @@ start_upstream(Socket) ->
     wait_and_close_sockets(Socket, SSLSocket).
 
 start_downstream(SSLSocket) ->
+    {ok, LocalMemcachedPort} = application:get_env(ns_ssl_proxy, local_memcached_port),
+
     ?log_debug("Got downstream connect. Doing ssl_accept"),
     case ssl:ssl_accept(SSLSocket) of
         ok -> ok;
@@ -115,6 +117,14 @@ start_downstream(SSLSocket) ->
     Port = proplists:get_value(<<"port">>, KV),
 
     ?log_debug("Got port: ~p", [Port]),
+
+    case Port =/= LocalMemcachedPort of
+        true ->
+            ?log_debug("Port ~B is not permitted (~B)", [Port, LocalMemcachedPort]),
+            erlang:exit(bad_port);
+        false ->
+            ok
+    end,
 
     {ok, Socket} = gen_tcp:connect("127.0.0.1", Port,
                                    [binary,

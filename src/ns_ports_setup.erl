@@ -89,14 +89,15 @@ childs_loop_continue(Childs) ->
 maybe_create_ssl_proxy_spec(Config) ->
     UpstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}, undefined),
     DownstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}, undefined),
+    LocalMemcachedPort = ns_config:search_node_prop(node(), Config, memcached, port),
     case UpstreamPort =/= undefined andalso DownstreamPort =/= undefined of
         true ->
-            [create_ssl_proxy_spec(UpstreamPort, DownstreamPort)];
+            [create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort)];
         _ ->
             []
     end.
 
-create_ssl_proxy_spec(UpstreamPort, DownstreamPort) ->
+create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort) ->
     Path = ns_ssl_services_setup:ssl_cert_key_path(),
     CACertPath = ns_ssl_services_setup:ssl_cacert_key_path(),
     PathArgs = ["-pa"] ++ code:get_path(),
@@ -112,6 +113,7 @@ create_ssl_proxy_spec(UpstreamPort, DownstreamPort) ->
                       end],
     EnvArgs = [{upstream_port, UpstreamPort},
                {downstream_port, DownstreamPort},
+               {local_memcached_port, LocalMemcachedPort},
                {cert_file, Path},
                {private_key_file, Path},
                {cacert_file, CACertPath}
