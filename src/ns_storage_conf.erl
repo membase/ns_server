@@ -28,7 +28,7 @@
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
-         delete_databases_and_files/1, delete_unused_buckets_db_files/0]).
+         delete_unused_buckets_db_files/0]).
 
 -export([cluster_storage_info/0, cluster_storage_info/1, nodes_storage_info/1]).
 
@@ -353,16 +353,6 @@ extract_disk_stats_for_path(StatsList, Path0) ->
     SortedList = lists:sort(LessEqFn, StatsList),
     extract_disk_stats_for_path_rec(SortedList, Path).
 
-bucket_databases(Bucket) when is_list(Bucket) ->
-    bucket_databases(list_to_binary(Bucket));
-bucket_databases(Bucket) when is_binary(Bucket) ->
-    couch_server:all_known_databases_with_prefix(iolist_to_binary([Bucket, $/])).
-
-delete_couch_database(DB) ->
-    RV = couch_server:delete(DB, []),
-    ?log_info("Deleting database ~p: ~p~n", [DB, RV]),
-    RV.
-
 %% scan data directory for bucket names
 bucket_names_from_disk() ->
     {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
@@ -390,53 +380,12 @@ delete_disk_buckets_databases(Pred) ->
 delete_disk_buckets_databases_loop(_Pred, []) ->
     ok;
 delete_disk_buckets_databases_loop(Pred, [Bucket | Rest]) ->
-    case delete_databases_and_files(Bucket) of
+    case ns_couchdb_storage:delete_databases_and_files(Bucket) of
         ok ->
             delete_disk_buckets_databases_loop(Pred, Rest);
         Error ->
             Error
     end.
-
-
-delete_databases_and_files(Bucket) ->
-    AllDBs = bucket_databases(Bucket),
-    MasterDB = iolist_to_binary([Bucket, <<"/master">>]),
-    {MaybeMasterDb, RestDBs} = lists:partition(
-                            fun (Name) ->
-                                    Name =:= MasterDB
-                            end, AllDBs),
-    RV = case delete_databases_loop(MaybeMasterDb ++ RestDBs) of
-             ok ->
-                 ?log_info("Couch dbs are deleted. Proceeding with bucket directory"),
-                 {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
-                 Path = filename:join(DbDir, Bucket),
-                 case misc:rm_rf(Path) of
-                     ok -> ok;
-                     Error ->
-                         ale:error(?USER_LOGGER, "Unable to rm -rf bucket database directory ~s~n~p", [Bucket, Error]),
-                         Error
-                 end;
-             Error ->
-                 ale:error(?USER_LOGGER, "Unable to delete some DBs for bucket ~s. Leaving bucket directory undeleted~n~p", [Bucket, Error]),
-                 Error
-         end,
-    do_delete_bucket_indexes(Bucket),
-    RV.
-
-do_delete_bucket_indexes(Bucket) ->
-    {ok, BaseIxDir} = this_node_ixdir(),
-    couch_set_view:delete_index_dir(BaseIxDir, list_to_binary(Bucket)).
-
-delete_databases_loop([]) ->
-    ok;
-delete_databases_loop([Db | Rest]) ->
-    case delete_couch_database(Db) of
-        ok ->
-            delete_databases_loop(Rest);
-        Error ->
-            Error
-    end.
-
 
 %% deletes all databases files for buckets not defined for this node
 %% note: this is called remotely
