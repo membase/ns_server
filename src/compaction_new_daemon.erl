@@ -21,7 +21,6 @@
 -behaviour(gen_server).
 
 -include("ns_common.hrl").
--include("couch_db.hrl").
 
 %% API
 -export([start_link/0,
@@ -489,7 +488,7 @@ spawn_scheduled_views_compactor(BucketName, {Config, ConfigProps}) ->
               exit_if_no_bucket(BucketName),
               exit_if_bucket_is_paused(BucketName),
 
-              try_to_cleanup_indexes(BucketName),
+              ns_couchdb_api:try_to_cleanup_indexes(BucketName),
 
               ?log_info("Start compaction of indexes for bucket ~s with config: ~n~p",
                         [BucketName, ConfigProps]),
@@ -512,7 +511,7 @@ spawn_views_compactor_for_paused_bucket(BucketName, {Config, ConfigProps}) ->
       fun () ->
               exit_if_no_bucket(BucketName),
 
-              try_to_cleanup_indexes(BucketName),
+              ns_couchdb_api:try_to_cleanup_indexes(BucketName),
 
               ?log_info("Start compaction of indexes for paused bucket ~s with config: ~n~p",
                         [BucketName, ConfigProps]),
@@ -535,7 +534,7 @@ spawn_forced_bucket_compactor(BucketName, {Config, ConfigProps}) ->
       fun () ->
               exit_if_no_bucket(BucketName),
 
-              try_to_cleanup_indexes(BucketName),
+              ns_couchdb_api:try_to_cleanup_indexes(BucketName),
 
               ?log_info("Start forced compaction of bucket ~s with config: ~n~p",
                         [BucketName, ConfigProps]),
@@ -559,25 +558,6 @@ spawn_forced_bucket_compactor(BucketName, {Config, ConfigProps}) ->
                       misc:wait_for_process(Pid, infinity)
               end
       end).
-
-try_to_cleanup_indexes(BucketName) ->
-    ?log_info("Cleaning up indexes for bucket `~s`", [BucketName]),
-
-    try
-        couch_set_view:cleanup_index_files(mapreduce_view, BucketName)
-    catch SetViewT:SetViewE ->
-            ?log_error("Error while doing cleanup of old "
-                       "index files for bucket `~s`: ~p~n~p",
-                       [BucketName, {SetViewT, SetViewE}, erlang:get_stacktrace()])
-    end,
-
-    try
-        couch_set_view:cleanup_index_files(spatial_view, BucketName)
-    catch SpatialT:SpatialE ->
-            ?log_error("Error while doing cleanup of old "
-                       "spatial index files for bucket `~s`: ~p~n~p",
-                       [BucketName, {SpatialT, SpatialE}, erlang:get_stacktrace()])
-    end.
 
 chain_compactors(Compactors) ->
     Parent = self(),
@@ -662,7 +642,7 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                                             PurgeTS0
                                     end,
 
-                          {{PurgeTS, 0, false}, capi_set_view_manager:get_safe_purge_seqs(BucketName)}
+                          {{PurgeTS, 0, false}, ns_couchdb_api:get_safe_purge_seqs(BucketName)}
                   end,
 
               Force orelse get_kv_token(),
@@ -697,32 +677,11 @@ make_per_vbucket_compaction_options({TS, 0, DD} = GeneralOption, {Vb, _}, SafeVi
             {TS, Seq, DD}
     end.
 
-open_db_or_fail(DbName) ->
-    case couch_db:open_int(DbName, []) of
-        {ok, Db} ->
-            Db;
-        Error ->
-            ?log_error("Failed to open database `~s`: ~p", [DbName, Error]),
-            exit({open_db_failed, Error})
-    end.
-
 vbucket_needs_compaction({DataSize, FileSize}, Config) ->
     #config{daemon=#daemon_config{min_file_size=MinFileSize},
             db_fragmentation=FragThreshold} = Config,
 
     file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize).
-
-get_master_db_size_info(DbName) ->
-    Db = open_db_or_fail(DbName),
-
-    try
-        {ok, DbInfo} = couch_db:get_db_info(Db),
-
-        {proplists:get_value(data_size, DbInfo, 0),
-         proplists:get_value(disk_size, DbInfo)}
-    after
-        couch_db:close(Db)
-    end.
 
 get_db_size_info(Bucket, VBucket) ->
     {ok, Props} = ns_memcached:get_vbucket_details_stats(Bucket, VBucket),
@@ -783,7 +742,7 @@ spawn_vbuckets_compactor(BucketName, Manager, Config, Force, Options, SafeViewSe
 
 maybe_compact_master_db(BucketName, Config, Force) ->
     DbName = db_name(BucketName, "master"),
-    SizeInfo = get_master_db_size_info(DbName),
+    SizeInfo = ns_couchdb_api:get_master_vbucket_size(BucketName),
 
     Force orelse vbucket_needs_compaction(SizeInfo, Config) orelse exit(normal),
 
@@ -791,15 +750,14 @@ maybe_compact_master_db(BucketName, Config, Force) ->
     ensure_can_db_compact(DbName, SizeInfo),
 
     ?log_info("Compacting `~s'", [DbName]),
-    Ret = compact_master_vbucket(DbName),
+    Ret = compact_master_vbucket(BucketName),
     ?log_info("Compaction of ~p has finished with ~p", [DbName, Ret]),
     Ret.
 
-compact_master_vbucket(DbName) ->
-    Db = open_db_or_fail(DbName),
+compact_master_vbucket(BucketName) ->
     process_flag(trap_exit, true),
 
-    {ok, Compactor} = couch_db:start_compact(Db, [dropdeletes]),
+    {ok, Compactor, Db} = ns_couchdb_api:start_master_vbucket_compact(BucketName),
 
     CompactorRef = erlang:monitor(process, Compactor),
 
@@ -808,14 +766,14 @@ compact_master_vbucket(DbName) ->
             ?log_debug("Got exit signal from parent: ~p", [Exit]),
 
             erlang:demonitor(CompactorRef),
-            ok = couch_db:cancel_compact(Db),
+            ok = ns_couchdb_api:cancel_master_vbucket_compact(Db),
             Reason;
         {'DOWN', CompactorRef, process, Compactor, normal} ->
             ok;
         {'DOWN', CompactorRef, process, Compactor, noproc} ->
             %% compactor died before we managed to monitor it;
             %% we will treat this as an error
-            {db_compactor_died_too_soon, DbName};
+            {db_compactor_died_too_soon, db_name(BucketName, "master")};
         {'DOWN', CompactorRef, process, Compactor, Reason} ->
             Reason
     end.
@@ -915,9 +873,7 @@ do_spawn_view_index_compactor(Parent, BucketName, DDocId, Type, InitialStatus) -
             ?log_debug("Got exit signal from parent: ~p", [Exit]),
 
             erlang:demonitor(CompactorRef),
-            ok = couch_set_view_compactor:cancel_compact(mapreduce_view,
-                                                         BucketName, DDocId,
-                                                         Type, prod),
+            ok = ns_couchdb_api:cancel_view_compact(BucketName, DDocId, Type),
             exit(Reason);
         {'DOWN', CompactorRef, process, Compactor, normal} ->
             ok;
@@ -936,9 +892,7 @@ do_spawn_view_index_compactor(Parent, BucketName, DDocId, Type, InitialStatus) -
     end.
 
 start_view_index_compactor(BucketName, DDocId, Type, InitialStatus) ->
-    case couch_set_view_compactor:start_compact(mapreduce_view, BucketName,
-                                                DDocId, Type, prod,
-                                                InitialStatus) of
+    case ns_couchdb_api:start_view_compact(BucketName, DDocId, Type, InitialStatus) of
         {ok, Pid} ->
             Pid;
         {error, initial_build} ->
@@ -1072,8 +1026,7 @@ ensure_can_view_compact(BucketName, DDocId, Type) ->
     end.
 
 get_group_data_info(BucketName, DDocId, main) ->
-    {ok, Info} = couch_set_view:get_group_data_size(mapreduce_view,
-                                                    BucketName, DDocId),
+    {ok, Info} = ns_couchdb_api:get_view_group_data_size(BucketName, DDocId),
     Info;
 get_group_data_info(BucketName, DDocId, replica) ->
     MainInfo = get_group_data_info(BucketName, DDocId, main),

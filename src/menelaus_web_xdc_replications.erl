@@ -249,18 +249,14 @@ check_bucket_uuid(BucketConfig, RemoteUUID) ->
 
 check_no_duplicated_replication(ClusterUUID, FromBucket, ToBucket) ->
     ReplicationId = replication_id(ClusterUUID, FromBucket, ToBucket),
-    {ok, Db} = couch_db:open_int(<<"_replicator">>, []),
-
-    try
-        case couch_db:open_doc(Db, ReplicationId) of
-            {ok, _Doc} ->
-                [{<<"_">>,
-                  <<"Replication to the same remote cluster and bucket already exists">>}];
-            {not_found, _} ->
-                 ok
-        end
-    after
-        couch_db:close(Db)
+    case ns_couchdb_api:get_doc(xdcr, ReplicationId) of
+        {ok, #doc{deleted = false}} ->
+            [{<<"_">>,
+              <<"Replication to the same remote cluster and bucket already exists">>}];
+        {ok, #doc{deleted = true}} ->
+            ok;
+        {not_found, _} ->
+            ok
     end.
 
 check_map_size(BucketConfig, Map) ->

@@ -139,7 +139,6 @@ capture_local_master_docs(Bucket, Timeout) ->
               LocalDocs
       end).
 
-
 -spec fetch_ddoc_ids(bucket_name() | binary()) -> [binary()].
 fetch_ddoc_ids(Bucket) ->
     Pairs = foreach_live_ddoc_id(Bucket, fun (_) -> ok end),
@@ -149,7 +148,7 @@ fetch_ddoc_ids(Bucket) ->
                            fun ((binary()) -> any())) -> [{binary(), any()}].
 foreach_live_ddoc_id(Bucket, Fun) ->
     Ref = make_ref(),
-    RVs = capi_set_view_manager:foreach_doc(
+    RVs = ns_couchdb_api:foreach_doc(
             Bucket,
             fun (Doc) ->
                     case Doc of
@@ -167,7 +166,7 @@ full_live_ddocs(Bucket) ->
 
 full_live_ddocs(Bucket, Timeout) ->
     Ref = make_ref(),
-    RVs = capi_set_view_manager:foreach_doc(
+    RVs = ns_couchdb_api:foreach_doc(
             Bucket,
             fun (Doc) ->
                     case Doc of

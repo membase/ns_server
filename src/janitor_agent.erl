@@ -752,7 +752,7 @@ handle_call({wait_index_updated, VBucket}, From, #state{bucket_name = Bucket} = 
                State,
                From,
                fun () ->
-                       capi_set_view_manager:wait_index_updated(Bucket, VBucket)
+                       ns_couchdb_api:wait_index_updated(Bucket, VBucket)
                end),
     {noreply, State2};
 handle_call({wait_dcp_data_move, ReplicaNodes, VBucket}, From, #state{bucket_name = Bucket} = State) ->
@@ -776,7 +776,7 @@ handle_call(initiate_indexing, From, #state{bucket_name = Bucket} = State) ->
                State,
                From,
                fun () ->
-                       ok = capi_set_view_manager:initiate_indexing(Bucket)
+                       ok = ns_couchdb_api:initiate_indexing(Bucket)
                end),
     {noreply, State2};
 handle_call({create_new_checkpoint, VBucket},
@@ -953,9 +953,9 @@ server_name(Bucket) ->
 pass_vbucket_states_to_set_view_manager(#state{bucket_name = BucketName,
                                                last_applied_vbucket_states = WantedVBuckets,
                                                rebalance_only_vbucket_states = RebalanceVBuckets} = State) ->
-    ok = capi_set_view_manager:set_vbucket_states(BucketName,
-                                                  WantedVBuckets,
-                                                  RebalanceVBuckets),
+    ok = ns_couchdb_api:set_vbucket_states(BucketName,
+                                           WantedVBuckets,
+                                           RebalanceVBuckets),
     State.
 
 set_rebalance_mref(Pid, State0) ->
@@ -1089,7 +1089,7 @@ perform_flush(#state{bucket_name = BucketName} = State, BucketConfig, ConfigFlus
                            flushseq = ConfigFlushSeq},
     ?log_info("Removing all vbuckets from indexes"),
     pass_vbucket_states_to_set_view_manager(NewState),
-    ok = capi_set_view_manager:reset_master_vbucket(BucketName),
+    ok = ns_couchdb_api:reset_master_vbucket(BucketName),
     ?log_info("Shutting down incoming replications"),
     ok = replication_manager:set_incoming_replication_map(BucketName, []),
     %% kill all vbuckets

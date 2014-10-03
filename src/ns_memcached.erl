@@ -796,7 +796,7 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                     %% when they should be deleted
                     true ->
                         ?log_debug("Proceeding into vbuckets dbs deletions"),
-                        ns_couchdb_storage:delete_databases_and_files(Bucket);
+                        ns_couchdb_api:delete_databases_and_files(Bucket);
                     _ -> ok
                 end
             end;

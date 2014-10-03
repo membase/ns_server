@@ -245,7 +245,7 @@ handle_cast(leave, State) ->
     ns_config:set_initial(nodes_wanted, [node()]),
     ns_cookie_manager:cookie_sync(),
 
-    ReplicatorDeleteRV = ns_couchdb_storage:delete_couch_database(<<"_replicator">>),
+    ReplicatorDeleteRV = ns_couchdb_api:delete_couch_database(<<"_replicator">>),
     ?cluster_debug("Deleted _replicator db: ~p", [ReplicatorDeleteRV]),
 
     ?cluster_debug("Leaving cluster", []),
@@ -904,7 +904,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
     Status = try
         ?cluster_debug("ns_cluster: joining cluster. Child has exited.", []),
 
-        RV = ns_couchdb_storage:delete_couch_database(<<"_replicator">>),
+        RV = ns_couchdb_api:delete_couch_database(<<"_replicator">>),
         ?cluster_debug("Deleted _replicator db: ~p.", [RV]),
         case RV =:= ok orelse RV =:= not_found of
             true ->

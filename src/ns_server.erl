@@ -89,7 +89,7 @@ restart() ->
     DontRestart = [dist_manager, cb_couch_sup],
     ChildIds = [element(1, Spec) || Spec <- ChildSpecs] -- DontRestart,
     [supervisor:terminate_child(ns_server_cluster_sup, Id) || Id <- lists:reverse(ChildIds)],
-    cb_couch_sup:restart_couch(),
+    ns_couchdb_api:restart_couch(),
     [supervisor:restart_child(ns_server_cluster_sup, Id) || Id <- ChildIds].
 
 get_config_path() ->

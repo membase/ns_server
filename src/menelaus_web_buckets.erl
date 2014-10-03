@@ -1244,54 +1244,50 @@ do_handle_ddocs_list(PoolId, Bucket, Req) ->
 handle_set_ddoc_update_min_changes(_PoolId, Bucket, DDocIdStr, Req) ->
     DDocId = list_to_binary(DDocIdStr),
 
-    capi_frontend:with_master_vbucket(
-      Bucket,
-      fun (MasterDb) ->
-              case couch_db:open_doc(MasterDb, DDocId, [ejson_body]) of
-                  {ok, #doc{body={Body}} = DDoc} ->
-                      {Options0} = proplists:get_value(<<"options">>, Body, {[]}),
-                      Params = Req:parse_post(),
+    case ns_couchdb_api:get_doc(Bucket, DDocId) of
+        {ok, #doc{body={Body}} = DDoc} ->
+            {Options0} = proplists:get_value(<<"options">>, Body, {[]}),
+            Params = Req:parse_post(),
 
-                      {Options1, Errors} =
-                          lists:foldl(
-                            fun (Key, {AccOptions, AccErrors}) ->
-                                    BinKey = list_to_binary(Key),
-                                    %% just unset the option
-                                    AccOptions1 = lists:keydelete(BinKey, 1, AccOptions),
+            {Options1, Errors} =
+                lists:foldl(
+                  fun (Key, {AccOptions, AccErrors}) ->
+                          BinKey = list_to_binary(Key),
+                          %% just unset the option
+                          AccOptions1 = lists:keydelete(BinKey, 1, AccOptions),
 
-                                    case proplists:get_value(Key, Params) of
-                                        undefined ->
-                                            {AccOptions1, AccErrors};
-                                        Value ->
-                                            case menelaus_util:parse_validate_number(
-                                                   Value, 0, undefined) of
-                                                {ok, Parsed} ->
-                                                    AccOptions2 =
-                                                        [{BinKey, Parsed} | AccOptions1],
-                                                    {AccOptions2, AccErrors};
-                                                Error ->
-                                                    Msg = io_lib:format(
-                                                            "Invalid ~s: ~p",
-                                                            [Key, Error]),
-                                                    AccErrors1 =
-                                                        [{Key, iolist_to_binary(Msg)}],
-                                                    {AccOptions, AccErrors1}
-                                            end
-                                    end
-                            end, {Options0, []},
-                            ["updateMinChanges", "replicaUpdateMinChanges"]),
+                          case proplists:get_value(Key, Params) of
+                              undefined ->
+                                  {AccOptions1, AccErrors};
+                              Value ->
+                                  case menelaus_util:parse_validate_number(
+                                         Value, 0, undefined) of
+                                      {ok, Parsed} ->
+                                          AccOptions2 =
+                                              [{BinKey, Parsed} | AccOptions1],
+                                          {AccOptions2, AccErrors};
+                                      Error ->
+                                          Msg = io_lib:format(
+                                                  "Invalid ~s: ~p",
+                                                  [Key, Error]),
+                                          AccErrors1 =
+                                              [{Key, iolist_to_binary(Msg)}],
+                                          {AccOptions, AccErrors1}
+                                  end
+                          end
+                  end, {Options0, []},
+                  ["updateMinChanges", "replicaUpdateMinChanges"]),
 
-                      case Errors of
-                          [] ->
-                              complete_update_ddoc_options(Req, Bucket, DDoc, Options1);
-                          _ ->
-                              reply_json(Req, {struct, Errors}, 400)
-                      end;
-                  {not_found, _} ->
-                      reply_json(Req, {struct, [{'_',
-                                                 <<"Design document not found">>}]}, 400)
-              end
-      end).
+            case Errors of
+                [] ->
+                    complete_update_ddoc_options(Req, Bucket, DDoc, Options1);
+                _ ->
+                    reply_json(Req, {struct, Errors}, 400)
+            end;
+        {not_found, _} ->
+            reply_json(Req, {struct, [{'_',
+                                       <<"Design document not found">>}]}, 400)
+    end.
 
 complete_update_ddoc_options(Req, Bucket, #doc{body={Body0}}= DDoc, Options0) ->
     Options = {Options0},
@@ -1300,7 +1296,7 @@ complete_update_ddoc_options(Req, Bucket, #doc{body={Body0}}= DDoc, Options0) ->
 
     NewBody = {NewBody0},
     NewDDoc = DDoc#doc{body=NewBody},
-    ok = capi_set_view_manager:update_doc(Bucket, NewDDoc),
+    ok = ns_couchdb_api:update_doc(Bucket, NewDDoc),
     reply_json(Req, capi_utils:couch_json_to_mochi_json(Options)).
 
 handle_local_random_key(_PoolId, Bucket, Req) ->

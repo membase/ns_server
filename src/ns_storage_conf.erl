@@ -48,7 +48,7 @@ memory_quota(Config) ->
     RV.
 
 couch_storage_path(Field) ->
-    try cb_config_couch_sync:get_db_and_ix_paths() of
+    try ns_couchdb_api:get_db_and_ix_paths() of
         PList ->
             {Field, RV} = lists:keyfind(Field, 1, PList),
             {ok, RV}
@@ -105,7 +105,7 @@ change_memory_quota(NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
 -spec setup_disk_storage_conf(DbPath::string(), IxDir::string()) -> ok | {errors, [Msg :: binary()]}.
 setup_disk_storage_conf(DbPath, IxPath) ->
     [{db_path, CurrentDbDir},
-     {index_path, CurrentIxDir}] = lists:sort(cb_config_couch_sync:get_db_and_ix_paths()),
+     {index_path, CurrentIxDir}] = lists:sort(ns_couchdb_api:get_db_and_ix_paths()),
 
     NewDbDir = misc:absname(DbPath),
     NewIxDir = misc:absname(IxPath),
@@ -134,7 +134,7 @@ setup_disk_storage_conf(DbPath, IxPath) ->
 
                     case RV of
                         ok ->
-                            cb_config_couch_sync:set_db_and_ix_paths(NewDbDir, NewIxDir);
+                            ns_couchdb_api:set_db_and_ix_paths(NewDbDir, NewIxDir);
                         _ ->
                             RV
                     end;
@@ -147,7 +147,7 @@ setup_disk_storage_conf(DbPath, IxPath) ->
 
 %% this is RPCed by pre-2.0 nodes
 local_bucket_disk_usage(BucketName) ->
-    {ok, Stats} = couch_stats_reader:fetch_stats(BucketName),
+    {ok, Stats} = ns_couchdb_api:fetch_couch_stats(BucketName),
     Docs = proplists:get_value(couch_docs_actual_disk_size, Stats, 0),
     Views = proplists:get_value(couch_views_actual_disk_size, Stats, 0),
     Docs + Views.
@@ -355,7 +355,7 @@ extract_disk_stats_for_path(StatsList, Path0) ->
 
 %% scan data directory for bucket names
 bucket_names_from_disk() ->
-    {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
+    {ok, DbDir} = this_node_dbdir(),
     Files = filelib:wildcard("*", DbDir),
     lists:foldl(
       fun (MaybeBucket, Acc) ->
@@ -380,7 +380,7 @@ delete_disk_buckets_databases(Pred) ->
 delete_disk_buckets_databases_loop(_Pred, []) ->
     ok;
 delete_disk_buckets_databases_loop(Pred, [Bucket | Rest]) ->
-    case ns_couchdb_storage:delete_databases_and_files(Bucket) of
+    case ns_couchdb_api:delete_databases_and_files(Bucket) of
         ok ->
             delete_disk_buckets_databases_loop(Pred, Rest);
         Error ->

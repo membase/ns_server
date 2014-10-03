@@ -130,7 +130,7 @@ log_all_tap_and_checkpoint_stats() ->
     ?log_info("end of logging tap & checkpoint stats").
 
 task_status_all() ->
-    local_tasks:all() ++ couch_task_status:all().
+    local_tasks:all() ++ ns_couchdb_api:get_tasks().
 
 do_diag_per_node() ->
     ActiveBuckets = ns_memcached:active_buckets(),

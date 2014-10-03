@@ -290,7 +290,7 @@ current_status_slow_inner() ->
     Tasks = lists:filter(
         fun (Task) ->
                 is_view_task(Task) orelse is_bucket_compaction_task(Task)
-        end, couch_task_status:all() ++ local_tasks:all())
+        end, ns_couchdb_api:get_tasks() ++ local_tasks:all())
         ++ grab_local_xdcr_replications()
         ++ grab_samples_loading_tasks()
         ++ grab_warmup_tasks()
@@ -305,7 +305,7 @@ current_status_slow_inner() ->
 
     ClusterCompatVersion = effective_cluster_compat_version(),
 
-    StorageConf0 = cb_config_couch_sync:get_db_and_ix_paths(),
+    StorageConf0 = ns_couchdb_api:get_db_and_ix_paths(),
     StorageConf =
         lists:map(
           fun ({Key, Path}) ->

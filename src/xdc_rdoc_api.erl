@@ -29,8 +29,7 @@
          find_all_replication_docs/1]).
 
 update_doc(Doc) ->
-    gen_server:call(xdc_rdoc_replication_srv,
-                    {interactive_update, Doc}, infinity).
+    ns_couchdb_api:update_doc(xdcr, Doc).
 
 -spec delete_replicator_doc(string()) -> ok | not_found.
 delete_replicator_doc(XID) ->
@@ -85,8 +84,7 @@ find_all_replication_docs() ->
 -spec find_all_replication_docs(non_neg_integer() | infinity) ->
                                        [Doc :: [{Key :: atom(), Value :: _}]].
 find_all_replication_docs(Timeout) ->
-    RVs = gen_server:call(xdc_rdoc_replication_srv,
-                          {foreach_doc, fun find_all_replication_docs_body/1}, Timeout),
+    RVs = ns_couchdb_api:foreach_doc(xdcr, fun find_all_replication_docs_body/1, Timeout),
     [Doc || {_, Doc} <- RVs,
             Doc =/= undefined].
 
@@ -136,8 +134,8 @@ delete_all_replications(Bucket) ->
 get_full_replicator_doc(Id) when is_list(Id) ->
     get_full_replicator_doc(list_to_binary(Id));
 get_full_replicator_doc(Id) when is_binary(Id) ->
-    case gen_server:call(xdc_rdoc_replication_srv, {get_full_replicator_doc, Id}, infinity) of
-        not_found ->
+    case ns_couchdb_api:get_doc(xdcr, Id) of
+        {not_found, _} ->
             not_found;
         {ok, #doc{body={Props0}} = Doc} ->
             Props = [{couch_util:to_binary(K), V} || {K, V} <- Props0],

@@ -82,7 +82,7 @@ prefilter_timings(RawTimings) ->
 
 grab_all_stats(Bucket) ->
     {ok, PlainStats} = ns_memcached:stats(Bucket),
-    CouchStats = case (catch couch_stats_reader:fetch_stats(Bucket)) of
+    CouchStats = case (catch ns_couchdb_api:fetch_couch_stats(Bucket)) of
                      {ok, CS} -> CS;
                      Crap ->
                          ?log_info("Failed to fetch couch stats:~n~p", [Crap]),

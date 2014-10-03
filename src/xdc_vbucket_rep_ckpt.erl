@@ -108,13 +108,9 @@ do_checkpoint(#rep_state{rep_details = #rep{id = RepId},
                               {<<"seqno">>, NewSeq},
                               {<<"dcp_snapshot_seqno">>, NewSnapshotSeq},
                               {<<"dcp_snapshot_end_seqno">>, NewSnapshotEndSeq}]},
-            DB = capi_utils:must_open_master_vbucket(SourceBucketName),
-            try
-                ok = couch_db:update_doc(DB, #doc{id = CheckpointDocId,
-                                                  body = CheckpointDoc})
-            after
-                couch_db:close(DB)
-            end,
+            ns_couchdb_api:update_doc(SourceBucketName,
+                                      #doc{id = CheckpointDocId,
+                                           body = CheckpointDoc}),
             NewState = State#rep_state{committed_seq = NewSeq,
                                        last_checkpoint_time = os:timestamp()},
             ?x_trace(savedCheckpoint,
@@ -291,9 +287,9 @@ perform_pre_replicate(RemoteCommitOpaque, {_, _, HttpDB} = ApiRequestBase, Disab
 
 
 read_validate_checkpoint(Rep, Vb, ApiRequestBase, DisableCkptBackwardsCompat) ->
-    DB = capi_utils:must_open_master_vbucket(Rep#rep.source),
     DocId = build_commit_doc_id(Rep, Vb),
-    case couch_db:open_doc_int(DB, DocId, [ejson_body]) of
+
+    case ns_couchdb_api:get_doc(Rep#rep.source, DocId) of
         {ok, #doc{body = Body}} ->
             parse_validate_checkpoint_doc(Vb, Body, ApiRequestBase, DisableCkptBackwardsCompat);
         {not_found, _} ->

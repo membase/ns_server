@@ -920,7 +920,7 @@ couchbase_replication_stats_descriptions(BucketId) ->
               end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->
-    DictBySig = capi_utils:get_design_doc_signatures(BucketId),
+    DictBySig = ns_couchdb_api:get_design_doc_signatures(BucketId),
 
     dict:fold(
       fun(Sig, DDocIds0, Stats) ->
