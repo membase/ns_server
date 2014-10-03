@@ -8,24 +8,6 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       return $http({method: 'POST', url: url});
     };
 
-    //TODO: move it to the AutoFailoverSettings section
-    var resetAutoFailOverCountCanceler;
-    mnAdminServersService.resetAutoFailOverCount = function () {
-      resetAutoFailOverCountCanceler && resetAutoFailOverCountCanceler.resolve();
-      resetAutoFailOverCountCanceler = $q.defer();
-
-      return $http({
-        method: 'POST',
-        url: '/settings/autoFailover/resetCount',
-        timeout: resetAutoFailOverCountCanceler.promise
-      });
-    };
-
-    //TODO: move it to the AutoFailoverSettings section
-    mnAdminServersService.getAutoFailoverSettings = function (url) {
-      return $http({method: 'GET', url: "/settings/autoFailover"});
-    };
-
     mnAdminServersService.postAndReload = function (url, data) {
       var params = {
         method: 'POST',

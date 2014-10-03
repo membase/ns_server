@@ -41,5 +41,18 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
           controller: 'mnAdminServersListItemDetailsController'
         }
       }
+    })
+    .state('admin.settings', {
+      url: '/settings',
+      abstract: true,
+      controller: 'mnAdminSettingsController',
+      templateUrl: 'mn_admin/settings/mn_admin_settings.html',
+      authenticate: true
+    })
+    .state('admin.settings.cluster', {
+      url: '/cluster',
+      controller: 'mnAdminSettingsClusterController',
+      templateUrl: 'mn_admin/settings/cluster/mn_admin_settings_cluster.html',
+      authenticate: true
     });
 });

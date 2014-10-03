@@ -1,5 +1,5 @@
 angular.module('mnAdminServers').controller('mnAdminServersController',
-  function ($scope, $timeout, $stateParams, mnAdminServersService, mnAdminService, mnAdminTasksService, mnDialogService, $state, mnAdminServersService, mnAdminServersListItemService) {
+  function ($scope, $timeout, $stateParams, mnAdminServersService, mnAdminService, mnAdminTasksService, mnDialogService, $state, mnAdminServersService, mnAdminServersListItemService, mnAdminSettingsAutoFailoverService) {
 
     $scope.addServer = function () {
       mnDialogService.open({
@@ -65,7 +65,7 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
     }
 
     $scope.resetAutoFailOverCount = function () {
-      mnAdminServersService.resetAutoFailOverCount()
+      mnAdminSettingsAutoFailoverService.resetAutoFailOverCount()
         .success(function () {
           $scope.isResetAutoFailOverCountSuccess = true;
           $timeout(function () {
@@ -89,7 +89,7 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
         mayRebalanceWithoutSampleLoading: mnAdminServersService.model.mayRebalanceWithoutSampleLoading
       };
     }, function () {
-      mnAdminServersService.getAutoFailoverSettings().success(function (data) {
+      mnAdminSettingsAutoFailoverService.getAutoFailoverSettings().success(function (data) {
         $scope.isAutoFailOverCountAvailable = !!(data && data.count > 0);
       });
     }, true);

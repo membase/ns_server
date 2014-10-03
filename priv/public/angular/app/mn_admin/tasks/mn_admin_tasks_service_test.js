@@ -47,14 +47,14 @@ describe("mnAdminTasksService", function () {
   });
 
   it('should cancel existing requests if new one on the way', function () {
-    $httpBackend.expectGET('run').respond(200, []);
+    var counter = new specRunnerHelper.Counter;
+    $httpBackend.expectGET('run').respond(counter.increment.bind(counter));
+    $httpBackend.expectGET('run').respond(counter.increment.bind(counter));
+    mnAdminTasksService.runTasksLoop('run');
     mnAdminTasksService.runTasksLoop('run');
     $httpBackend.flush();
-    $httpBackend.expectGET('run').respond(200, []);
-    mnAdminTasksService.runTasksLoop('run');
-    $httpBackend.flush();
-    $httpBackend.expectGET('run').respond(200, []);
-    $timeout.flush();
+
+    expect(counter.counter).toBe(1);
   });
 
   it('should using recommended refresh period as loop interval timeout', function () {

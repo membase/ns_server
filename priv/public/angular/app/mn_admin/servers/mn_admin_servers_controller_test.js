@@ -9,6 +9,7 @@ describe("mnAdminServersController", function () {
   var promise;
   var $stateParams;
   var $timeout;
+  var mnAdminSettingsAutoFailoverService;
 
   beforeEach(angular.mock.module('mnAdminServers'));
 
@@ -21,6 +22,7 @@ describe("mnAdminServersController", function () {
     mnAdminTasksService = $injector.get('mnAdminTasksService');
     mnAdminService = $injector.get('mnAdminService');
     mnAdminServersListItemService = $injector.get('mnAdminServersListItemService');
+    mnAdminSettingsAutoFailoverService = $injector.get('mnAdminSettingsAutoFailoverService');
     $state = $injector.get('$state');
     $timeout = $injector.get('$timeout');
     $stateParams = $injector.get('$stateParams');
@@ -33,8 +35,8 @@ describe("mnAdminServersController", function () {
     spyOn(mnAdminServersService, 'postAndReload').and.returnValue(promise);
     spyOn(mnAdminServersService, 'onStopRebalance').and.returnValue(promise);
     spyOn(mnDialogService, 'removeLastOpened');
-    spyOn(mnAdminServersService, 'getAutoFailoverSettings').and.returnValue(promise);
-    spyOn(mnAdminServersService, 'resetAutoFailOverCount').and.returnValue(promise);
+    spyOn(mnAdminSettingsAutoFailoverService, 'getAutoFailoverSettings').and.returnValue(promise);
+    spyOn(mnAdminSettingsAutoFailoverService, 'resetAutoFailOverCount').and.returnValue(promise);
 
     $scope = $rootScope.$new();
 
@@ -81,25 +83,25 @@ describe("mnAdminServersController", function () {
 
   it('should react on getAutoFailoverSettings deps changes', function () {
     $scope.$apply();
-    expect(mnAdminServersService.getAutoFailoverSettings.calls.count()).toBe(1);
+    expect(mnAdminSettingsAutoFailoverService.getAutoFailoverSettings.calls.count()).toBe(1);
 
     mnAdminServersService.model.nodes = 'test';
     $scope.$apply();
-    expect(mnAdminServersService.getAutoFailoverSettings.calls.count()).toBe(2);
+    expect(mnAdminSettingsAutoFailoverService.getAutoFailoverSettings.calls.count()).toBe(2);
 
     mnAdminTasksService.model.inRecoveryMode = 'test';
     $scope.$apply();
-    expect(mnAdminServersService.getAutoFailoverSettings.calls.count()).toBe(3);
+    expect(mnAdminSettingsAutoFailoverService.getAutoFailoverSettings.calls.count()).toBe(3);
 
     mnAdminTasksService.model.isLoadingSamples = 'test';
     $scope.$apply();
-    expect(mnAdminServersService.getAutoFailoverSettings.calls.count()).toBe(4);
+    expect(mnAdminSettingsAutoFailoverService.getAutoFailoverSettings.calls.count()).toBe(4);
     expect($scope.isAutoFailOverCountAvailable).toBe(false);
 
     mnAdminServersService.model.mayRebalanceWithoutSampleLoading = 'test';
     promise.setResponse({count: 1});
     $scope.$apply();
-    expect(mnAdminServersService.getAutoFailoverSettings.calls.count()).toBe(5);
+    expect(mnAdminSettingsAutoFailoverService.getAutoFailoverSettings.calls.count()).toBe(5);
     expect($scope.isAutoFailOverCountAvailable).toBe(true);
   });
 

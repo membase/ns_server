@@ -425,7 +425,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 
 .certificate_section textarea {height: 155px; width: 400px; font-size: 10px;}
 .certificate_section .edit_btn {border:none;float:none;margin:3px 0pt 3px 0;font-size: 10px;line-height:21px;display:inline-block;}
-.certificate_section .about-cert-area_wrapper {overflow: hidden; z-index: 1;position: relative; display: none;}
+.certificate_section .about-cert-area_wrapper {overflow: hidden; z-index: 1;position: relative;}
 
 /* update notification styles */
 #notifications_container .item {padding:13px;}
