@@ -14,7 +14,7 @@
       </tr>
     </tbody>
     <tbody ng-repeat="node in nodesList | orderBy:'hostname' track by node.otpNode" ui-view="item"></tbody>
-    <tbody ng-if="!nodesList">
+    <tbody ng-if="!nodesList[0]">
       <tr class="server_row rebalance_empty">
         <td colspan="11">There are no servers pending rebalance.</td>
       </tr>

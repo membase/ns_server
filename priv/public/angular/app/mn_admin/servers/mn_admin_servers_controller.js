@@ -82,13 +82,6 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
     };
 
     $scope.$watch(function () {
-      var nodes = mnAdminServersService.model.nodes;
-      return nodes && nodes[$stateParams.list];
-    }, function (nodes) {
-      $scope.nodesList = nodes;
-    });
-
-    $scope.$watch(function () {
       return {
         nodes: mnAdminServersService.model.nodes,
         tasksRecovery: mnAdminTasksService.model.inRecoveryMode,

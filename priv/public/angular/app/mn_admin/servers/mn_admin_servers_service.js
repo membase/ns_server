@@ -1,5 +1,5 @@
 angular.module('mnAdminServersService').factory('mnAdminServersService',
-  function ($http, mnAdminService) {
+  function ($http, $q, mnAdminService) {
     var mnAdminServersService = {};
 
     mnAdminServersService.model = {};
@@ -12,6 +12,7 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
     var resetAutoFailOverCountCanceler;
     mnAdminServersService.resetAutoFailOverCount = function () {
       resetAutoFailOverCountCanceler && resetAutoFailOverCountCanceler.resolve();
+      resetAutoFailOverCountCanceler = $q.defer();
 
       return $http({
         method: 'POST',
