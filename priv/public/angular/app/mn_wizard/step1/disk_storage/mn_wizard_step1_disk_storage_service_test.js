@@ -72,7 +72,7 @@ describe("mnWizardStep1DiskStorageService", function () {
 
   it('should be able to send requests', function () {
     populate();
-    $httpBackend.expectPOST('/nodes/self/controller/settings', 'path=/home/pavel/projects/couchbase/ns_server/data/n_0/data&index_path=/home/pavel/projects/couchbase/ns_server/data/n_0/data').respond(200);
+    $httpBackend.expectPOST('/nodes/self/controller/settings', 'index_path=%2Fhome%2Fpavel%2Fprojects%2Fcouchbase%2Fns_server%2Fdata%2Fn_0%2Fdata&path=%2Fhome%2Fpavel%2Fprojects%2Fcouchbase%2Fns_server%2Fdata%2Fn_0%2Fdata').respond(200);
     mnWizardStep1DiskStorageService.postDiskStorage();
     $httpBackend.flush();
   });

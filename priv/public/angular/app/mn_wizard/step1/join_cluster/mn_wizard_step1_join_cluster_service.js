@@ -26,7 +26,7 @@ angular.module('mnWizardStep1JoinClusterService').factory('mnWizardStep1JoinClus
       return $http({
         method: 'POST',
         url: '/pools/default',
-        data: 'memoryQuota=' + mnWizardStep1JoinClusterService.model.dynamicRamQuota,
+        data: _.serializeData({memoryQuota: mnWizardStep1JoinClusterService.model.dynamicRamQuota}),
         headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
       });
     };

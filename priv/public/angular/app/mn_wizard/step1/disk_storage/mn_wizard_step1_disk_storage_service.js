@@ -36,8 +36,10 @@ angular.module('mnWizardStep1DiskStorageService').factory('mnWizardStep1DiskStor
       return $http({
         method: 'POST',
         url: '/nodes/self/controller/settings',
-        data: 'path=' + mnWizardStep1DiskStorageService.model.dbPath +
-              '&index_path=' + mnWizardStep1DiskStorageService.model.indexPath,
+        data: _.serializeData({
+          path: mnWizardStep1DiskStorageService.model.dbPath,
+          index_path: mnWizardStep1DiskStorageService.model.indexPath
+        }),
         headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
       });
     };

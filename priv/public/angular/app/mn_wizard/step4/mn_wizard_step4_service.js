@@ -29,7 +29,7 @@ angular.module('mnWizardStep4Service').factory('mnWizardStep4Service',
       return $http({
         method: 'POST',
         url: '/settings/stats',
-        data: 'sendStats=' + mnWizardStep4Service.model.sendStats,
+        data: _.serializeData({sendStats: mnWizardStep4Service.model.sendStats}),
         headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
       });
     };

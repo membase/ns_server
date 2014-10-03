@@ -19,7 +19,7 @@ angular.module('mnWizardStep1Service').factory('mnWizardStep1Service',
       return $http({
         method: 'POST',
         url: '/node/controller/rename',
-        data: 'hostname=' + mnWizardStep1Service.model.hostname,
+        data: _.serializeData({hostname: mnWizardStep1Service.model.hostname}),
         headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
       });
     };

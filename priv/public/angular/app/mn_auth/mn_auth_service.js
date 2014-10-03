@@ -34,7 +34,7 @@ angular.module('mnAuthService').factory('mnAuthService',
     return $http({
       method: 'POST',
       url: '/uilogin',
-      data: 'user=' + user.username + '&password=' + user.password,
+      data: _.serializeData({user: user.username, password: user.password}),
       headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
     }).success(function () {
       getPools().success(function () {
