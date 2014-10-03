@@ -2177,7 +2177,8 @@ build_full_node_info(Node, LocalAddr) ->
                    Y    -> Y
                end,
     NodeStatus = ns_doctor:get_node(Node),
-    StorageConf = ns_storage_conf:storage_conf_from_node_status(NodeStatus),
+    StorageConf = ns_storage_conf:storage_conf_from_node_status(
+                    ns_storage_conf:ensure_storage_conf(NodeStatus)),
     R = {struct, storage_conf_to_json(StorageConf)},
     DiskData = proplists:get_value(disk_data, NodeStatus, []),
     Fields = [{availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},

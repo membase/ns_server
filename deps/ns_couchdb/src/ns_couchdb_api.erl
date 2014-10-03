@@ -24,7 +24,9 @@
 
 -export([set_db_and_ix_paths/2,
          get_db_and_ix_paths/0,
+         get_db_and_ix_paths/2,
          get_tasks/0,
+         get_tasks/2,
          restart_couch/0,
          delete_couch_database/1,
          fetch_stats/0,
@@ -54,18 +56,26 @@
 
 -export([handle_link/3]).
 
--define(RPC_TIMEOUT, infinity).
-
 -spec get_db_and_ix_paths() -> [{db_path | index_path, string()}].
 get_db_and_ix_paths() ->
     maybe_rpc_couchdb_node(get_db_and_ix_paths).
+
+-spec get_db_and_ix_paths(timeout(), [{db_path | index_path, string()}] | undefined) ->
+                                 [{db_path | index_path, string()}].
+get_db_and_ix_paths(RpcTimeout, Default) ->
+    maybe_rpc_couchdb_node(get_db_and_ix_paths, RpcTimeout, Default).
 
 -spec set_db_and_ix_paths(DbPath :: string(), IxPath :: string()) -> ok.
 set_db_and_ix_paths(DbPath0, IxPath0) ->
     maybe_rpc_couchdb_node({set_db_and_ix_paths, DbPath0, IxPath0}).
 
+-spec get_tasks() -> [{atom(), any()}].
 get_tasks() ->
     maybe_rpc_couchdb_node(get_tasks).
+
+-spec get_tasks(timeout(), [{atom(), any()}]) -> [{atom(), any()}].
+get_tasks(RpcTimeout, Default) ->
+    maybe_rpc_couchdb_node(get_tasks, RpcTimeout, Default).
 
 restart_couch() ->
     maybe_rpc_couchdb_node(restart_couch).
@@ -139,16 +149,19 @@ link_to_doc_mgr(Type, Bucket, Pid) ->
     maybe_rpc_couchdb_node({link_to_doc_mgr, Type, Bucket, Pid}).
 
 maybe_rpc_couchdb_node(Request) ->
+    maybe_rpc_couchdb_node(Request, infinity, undefined).
+
+maybe_rpc_couchdb_node(Request, RpcTimeout, Default) ->
     ThisNode = node(),
     case ns_node_disco:couchdb_node() of
         ThisNode ->
             handle_rpc(Request);
         Node ->
-            rpc_couchdb_node(1, Node, Request)
+            rpc_couchdb_node(1, Node, Request, RpcTimeout, Default)
     end.
 
-rpc_couchdb_node(Try, Node, Request) ->
-    RV = rpc:call(Node, ?MODULE, handle_rpc, [Request], ?RPC_TIMEOUT),
+rpc_couchdb_node(Try, Node, Request, RpcTimeout, Default) ->
+    RV = rpc:call(Node, ?MODULE, handle_rpc, [Request], RpcTimeout),
     NotYet = case RV of
                  {badrpc, nodedown} ->
                      true;
@@ -159,18 +172,22 @@ rpc_couchdb_node(Try, Node, Request) ->
                  _ ->
                      false
              end,
-    case {Try, NotYet} of
-        {600, true} -> %% 10 minutes
+    case {Try, NotYet, Default} of
+        {600, true, _} -> %% 10 minutes
             Stack = try throw(42) catch 42 -> erlang:get_stacktrace() end,
             ?log_debug("RPC to couchdb node failed for ~p with ~p~nStack: ~p", [Request, RV, Stack]),
             RV;
-        {_, true} ->
-            retry_rpc_couchdb_node(Try, Node, Request);
-        {_, false} ->
+        {_, true, undefined} ->
+            retry_rpc_couchdb_node(Try, Node, Request, RpcTimeout);
+        {_, true, Default} ->
+            ?log_debug("RPC to couchdb node failed for ~p with ~p. Use default value ~p~n",
+                       [Request, RV, Default]),
+            Default;
+        {_, false, _} ->
             RV
     end.
 
-retry_rpc_couchdb_node(Try, Node, Request) ->
+retry_rpc_couchdb_node(Try, Node, Request, RpcTimeout) ->
     ?log_debug("Wait for couchdb node to be able to serve ~p. Attempt ~p", [Request, Try]),
     receive
         {'EXIT', Pid, Reason} ->
@@ -179,7 +196,7 @@ retry_rpc_couchdb_node(Try, Node, Request) ->
     after 1000 ->
             ok
     end,
-    rpc_couchdb_node(Try + 1, Node, Request).
+    rpc_couchdb_node(Try + 1, Node, Request, RpcTimeout, undefined).
 
 handle_rpc(get_db_and_ix_paths) ->
     try

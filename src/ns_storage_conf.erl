@@ -25,6 +25,7 @@
 -export([memory_quota/0, change_memory_quota/1,
          setup_disk_storage_conf/2,
          storage_conf/1, storage_conf_from_node_status/1,
+         query_storage_conf/2, ensure_storage_conf/1,
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
@@ -171,8 +172,27 @@ local_bucket_disk_usage(BucketName) ->
 %         [{path", /another/good/disk/path}, {quotaMb, 5678}, {state, ok}]]}]
 %
 storage_conf(Node) ->
-    NodeStatus = ns_doctor:get_node(Node),
+    NodeStatus = ensure_storage_conf(ns_doctor:get_node(Node)),
     storage_conf_from_node_status(NodeStatus).
+
+query_storage_conf(RpcTimeout, Default) ->
+    StorageConf = ns_couchdb_api:get_db_and_ix_paths(RpcTimeout, Default),
+    lists:map(
+      fun ({Key, Path}) ->
+              %% db_path and index_path are guaranteed to be absolute
+              {ok, RealPath} = misc:realpath(Path, "/"),
+              {Key, RealPath}
+      end, StorageConf).
+
+ensure_storage_conf(NodeStatus) ->
+    StorageConf = proplists:get_value(node_storage_conf, NodeStatus, []),
+    case StorageConf of
+        [] ->
+            lists:keystore(node_storage_conf, 1, NodeStatus,
+                           {node_storage_conf, query_storage_conf(infinity, undefined)});
+        _ ->
+            NodeStatus
+    end.
 
 storage_conf_from_node_status(NodeStatus) ->
     StorageConf = proplists:get_value(node_storage_conf, NodeStatus, []),
