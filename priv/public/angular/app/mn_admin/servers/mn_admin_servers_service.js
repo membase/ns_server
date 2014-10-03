@@ -88,17 +88,31 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
 
       nodesModelDeps.pendingEject = stillActualEject;
 
-      rv = {
-        pending: _.filter(nodes, filterPendingNodes).concat(nodesModelDeps.pendingEject),
-        active: _.filter(nodes, filterActiveNodes),
-        failedOver: _.filter(nodes, filterFailedOverNodes),
-        down: _.filter(nodes, filterDownNodes),
-        allNodes: nodes
-      };
+      var rv = {};
 
-      rv.reallyActive = _.filter(rv.active, filterReallyActiveNodes);
+      rv.allNodes = nodes;
 
-      rv.unhealthyActive = _.detect(rv.active, unhealthyActiveNodes);
+      rv.failedOver = _.filter(nodes, isFailedOverNode);
+
+      rv.onlyActive = _.filter(nodes, isActiveNode);
+
+      rv.active = rv.failedOver.concat(rv.onlyActive);
+
+      rv.down = _.filter(nodes, function (node) {
+        return !isHealthyNode(node);
+      });
+
+      rv.pending = _.filter(nodes, function (node) {
+        return !isActiveNode(node);
+      }).concat(nodesModelDeps.pendingEject);
+
+      rv.reallyActive = _.filter(rv.onlyActive, function (node) {
+        return !isPendingEjectNode(node);
+      });
+
+      rv.unhealthyActive = _.detect(rv.reallyActive, function (node) {
+        return isUnhealthyNode(node);
+      });
 
       mnAdminServersService.model.nodes = rv;
     };
@@ -133,28 +147,20 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       }
     }
 
-    function filterReallyActiveNodes(n) {
-      return n.clusterMembership === 'active' && !n.pendingEject;
+    function isActiveNode(node) {
+      return node.clusterMembership === 'active';
     }
-
-    function unhealthyActiveNodes(n) {
-      return n.clusterMembership == 'active' && !n.pendingEject && n.status === 'unhealthy';
+    function isPendingEjectNode(node) {
+      return node.pendingEject;
     }
-
-    function filterActiveNodes(node) {
-      return node.clusterMembership === 'active' || node.clusterMembership === 'inactiveFailed';
+    function isUnhealthyNode(node) {
+      return node.status === 'unhealthy';
     }
-
-    function filterPendingNodes(node) {
-      return node.clusterMembership !== 'active';
+    function isHealthyNode(node) {
+      return node.status === 'healthy';
     }
-
-    function filterFailedOverNodes(node) {
+    function isFailedOverNode(node) {
       return node.clusterMembership === 'inactiveFailed';
-    }
-
-    function filterDownNodes(node) {
-      return node.status !== 'healthy';
     }
 
     return mnAdminServersService;
