@@ -23,6 +23,10 @@ start() ->
         %% Check disk space every minute instead of every 30
         application:set_env(os_mon, disk_space_check_interval, 1),
         ok = application:start(ale),
+        ok = application:start(crypto),
+        ok = ssl:start(permanent),
+        ok = application:start(lhttpc),
+
         %% sasl is required to start os_mon; later we just disable default
         %% sasl report handler in cb_init_loggers
         ok = application:start(sasl),

@@ -99,7 +99,7 @@ run_on_subset_according_to_stats(Bucket) ->
 
 do_handle_view_req(Mod, Req, DbName, DDocName, ViewName) ->
     VBucketsDict = vbucket_map_mirror:node_vbuckets_dict(binary_to_list(DbName)),
-    case dict:find(node(), VBucketsDict) of
+    case dict:find(ns_node_disco:ns_server_node(), VBucketsDict) of
         error ->
             capi_frontend:send_no_active_vbuckets(Req, DbName);
         _ ->
@@ -115,8 +115,9 @@ do_handle_view_req(Mod, Req, DbName, DDocName, ViewName) ->
 
 
 view_merge_params(Mod, Req, BucketName, DDocId, ViewName, NodeToVBuckets) ->
+    NSServerNode = ns_node_disco:ns_server_node(),
     ViewSpecs = dict:fold(
-                  fun(Node, VBuckets, Acc) when Node =:= node() ->
+                  fun(Node, VBuckets, Acc) when Node =:= NSServerNode ->
                           build_local_set_specs(BucketName,
                                                 DDocId, ViewName, VBuckets) ++ Acc;
                      (Node, VBuckets, Acc) ->

@@ -43,5 +43,9 @@ init([]) ->
 
            {ns_couchdb_config_rep,
             {ns_couchdb_config_rep, start_link, []},
+            permanent, 1000, worker, []},
+
+           {cb_config_couch_sync,
+            {cb_config_couch_sync, start_link, []},
             permanent, 1000, worker, []}
           ]}}.

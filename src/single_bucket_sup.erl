@@ -36,9 +36,12 @@ top_loop(ParentPid, Pid, BucketName) ->
     end.
 
 child_specs(BucketName) ->
-    [{{capi_set_view_manager, BucketName},
-      {capi_set_view_manager, start_link, [BucketName]},
-      permanent, 1000, worker, [capi_set_view_manager]},
+    [{{doc_replicator, BucketName},
+      {doc_replicator, start_link, [BucketName]},
+      permanent, 1000, worker, [doc_replicator]},
+     {{doc_replication_srv, BucketName},
+      {doc_replication_srv, start_link, [BucketName]},
+      permanent, 1000, worker, [doc_replication_srv]},
      {{ns_memcached, BucketName}, {ns_memcached, start_link, [BucketName]},
       %% sometimes bucket deletion is slow. NOTE: we're not deleting
       %% bucket on system shutdown anymore
@@ -53,9 +56,6 @@ child_specs(BucketName) ->
       permanent, 1000, worker, []},
      {{janitor_agent_sup, BucketName}, {janitor_agent_sup, start_link, [BucketName]},
       permanent, 10000, worker, [janitor_agent_sup]},
-     {{couch_stats_reader, BucketName},
-      {couch_stats_reader, start_link, [BucketName]},
-      permanent, 1000, worker, [couch_stats_reader]},
      {{stats_collector, BucketName}, {stats_collector, start_link, [BucketName]},
       permanent, 1000, worker, [stats_collector]},
      {{stats_archiver, BucketName}, {stats_archiver, start_link, [BucketName]},

@@ -89,12 +89,17 @@
 -define(XDCR_TRACE_LOGGER, xdcr_trace).
 -define(ACCESS_LOGGER, access).
 
--define(LOGGERS, [?COUCHDB_LOGGER, ?NS_SERVER_LOGGER,
+-define(LOGGERS, [?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
                   ?NS_DOCTOR_LOGGER, ?STATS_LOGGER,
-                  ?REBALANCE_LOGGER, ?CLUSTER_LOGGER, ?VIEWS_LOGGER,
-                  ?MAPREDUCE_ERRORS_LOGGER, ?XDCR_LOGGER,
-                  ?XDCR_TRACE_LOGGER]).
+                  ?REBALANCE_LOGGER, ?CLUSTER_LOGGER,
+                  ?XDCR_LOGGER, ?XDCR_TRACE_LOGGER]).
+
+-define(NS_COUCHDB_LOGGERS, [?NS_SERVER_LOGGER,
+                             ?COUCHDB_LOGGER,
+                             ?VIEWS_LOGGER,
+                             ?MAPREDUCE_ERRORS_LOGGER,
+                             ?XDCR_LOGGER]).
 
 -define(LOG(Level, Format, Args),
         ale:log(?NS_SERVER_LOGGER, Level, Format, Args)).

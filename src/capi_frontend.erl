@@ -63,7 +63,8 @@ continue_do_db_req(#httpd{user_ctx=UserCtx,
 
     case VBucket of
         undefined ->
-            case lists:member(node(), couch_util:get_value(servers, BucketConfig)) of
+            case lists:member(ns_node_disco:ns_server_node(),
+                              couch_util:get_value(servers, BucketConfig)) of
                 true ->
                     %% undefined #db fields indicate bucket database
                     Db = #db{user_ctx = UserCtx, name = BucketName},
@@ -318,7 +319,7 @@ couch_doc_open(Db, DocId, Options) ->
 first_vbucket(Bucket) ->
     {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
     Map = proplists:get_value(map, Config, []),
-    {ok, Index} = first_vbucket(node(), Map, 0),
+    {ok, Index} = first_vbucket(ns_node_disco:ns_server_node(), Map, 0),
     Index.
 
 
@@ -334,7 +335,7 @@ first_vbucket(Node, [_First|Rest], I) ->
 has_active_vbuckets(Bucket) ->
     {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
     Map = proplists:get_value(map, Config, []),
-    first_vbucket(node(), Map, 0) =/= {error, no_vbucket_found}.
+    first_vbucket(ns_node_disco:ns_server_node(), Map, 0) =/= {error, no_vbucket_found}.
 
 -spec get_version() -> string().
 get_version() ->

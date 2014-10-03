@@ -24,9 +24,9 @@
 -export([start_link/1]).
 
 %% API
--export([set_vbucket_states/3, server/1,
+-export([set_vbucket_states/3,
          wait_index_updated/2, initiate_indexing/1, reset_master_vbucket/1,
-         get_safe_purge_seqs/1, foreach_doc/3, update_doc/2]).
+         get_safe_purge_seqs/1, foreach_doc/3, update_doc/2, link/3]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -39,7 +39,8 @@
                 master_db_watcher :: pid(),
                 wanted_states :: [missing | active | replica],
                 rebalance_states :: [rebalance_vbucket_state()],
-                ddoc_replicator :: pid()}).
+                ddoc_replicator :: pid() | undefined,
+                ddoc_replication_srv :: pid() | undefined}).
 
 set_vbucket_states(Bucket, WantedStates, RebalanceStates) ->
     gen_server:call(server(Bucket), {set_vbucket_states, WantedStates, RebalanceStates}, infinity).
@@ -61,6 +62,10 @@ foreach_doc(Bucket, Fun, Timeout) ->
 
 update_doc(Bucket, Doc) ->
     gen_server:call(server(Bucket), {interactive_update, Doc}, infinity).
+
+-spec link(replicator | replication_srv, ext_bucket_name(), pid()) -> {ok, pid()} | retry.
+link(Type, Bucket, Pid) ->
+    gen_server:call(server(Bucket), {link, Type, Pid}, infinity).
 
 -define(csv_call_all(Call, Bucket, DDocId, RestArgs),
         ok = ?csv_call(Call, mapreduce_view, Bucket, DDocId, RestArgs),
@@ -164,16 +169,6 @@ start_link(Bucket) ->
                                     {Bucket, UseReplicaIndex, VBucketsCount}, [])
       end).
 
-nodeup_monitoring_loop(Parent) ->
-    receive
-        {nodeup, _} ->
-            ?log_debug("got nodeup event. Considering ddocs replication"),
-            Parent ! replicate_newnodes_docs;
-        _ ->
-            ok
-    end,
-    nodeup_monitoring_loop(Parent).
-
 init({Bucket, UseReplicaIndex, NumVBuckets}) ->
     process_flag(trap_exit, true),
     Self = self(),
@@ -184,23 +179,7 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
       fun (_, _) -> Self ! replicate_newnodes_docs end,
       empty),
 
-    {ok, DDocReplicationProxy} = capi_ddoc_replication_srv:start_link(Bucket),
-    erlang:put('ddoc_replication_proxy', DDocReplicationProxy),
-
-    %% anytime we disconnect or reconnect, force a replicate event.
-    erlang:spawn_link(
-      fun () ->
-              ok = net_kernel:monitor_nodes(true),
-              nodeup_monitoring_loop(Self)
-      end),
     Self ! replicate_newnodes_docs,
-
-    %% Explicitly ask all available nodes to send their documents to us
-    ServerName = capi_ddoc_replication_srv:proxy_server_name(Bucket),
-    [{ServerName, N} ! replicate_newnodes_docs ||
-        N <- get_remote_nodes(Bucket)],
-
-    Replicator = spawn_ddoc_replicator(ServerName),
 
     proc_lib:init_ack({ok, self()}),
 
@@ -220,7 +199,7 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
                    use_replica_index=UseReplicaIndex,
                    wanted_states = [],
                    rebalance_states = [],
-                   ddoc_replicator = Replicator},
+                   ddoc_replicator = undefined},
 
     [maybe_define_group(DDocId, State)
      || DDocId <- get_live_ddoc_ids(State)],
@@ -275,8 +254,7 @@ handle_call(initiate_indexing, _From, State) ->
              couch_set_view:trigger_update(spatial_view, BinBucket, DDocId, 0)
      end || DDocId <- DDocIds],
     {reply, ok, State};
-handle_call({interactive_update, #doc{id=Id}=Doc}, _From,
-            #state{ddoc_replicator = Replicator} = State) ->
+handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
     #state{local_docs=Docs}=State,
     Rand = crypto:rand_uniform(0, 16#100000000),
     RandBin = <<Rand:32/integer>>,
@@ -302,8 +280,9 @@ handle_call({interactive_update, #doc{id=Id}=Doc}, _From,
             try
                 ?log_debug("Writing interactively saved ddoc ~p", [Doc]),
                 SavedDocState = save_doc(NewDoc, State),
+                {Replicator, NewState} = get_replicator(SavedDocState),
                 Replicator ! {replicate_change, NewDoc},
-                {reply, ok, SavedDocState}
+                {reply, ok, NewState}
             catch throw:{invalid_design_doc, _} = Error ->
                     ?log_debug("Document validation failed: ~p", [Error]),
                     {reply, Error, State}
@@ -331,8 +310,11 @@ handle_call(reset_master_vbucket, _From, #state{bucket = Bucket,
     {ok, MasterDB} = open_local_db(Bucket),
     ok = couch_db:close(MasterDB),
     [save_doc(Doc, State) || Doc <- LocalDocs],
-    {reply, ok, State}.
-
+    {reply, ok, State};
+handle_call({link, replicator, Pid}, _From, State) ->
+    ns_couchdb_api:handle_link(Pid, #state.ddoc_replicator, State);
+handle_call({link, replication_srv, Pid}, _From, State) ->
+    ns_couchdb_api:handle_link(Pid, #state.ddoc_replication_srv, State).
 
 handle_cast({replicated_update, #doc{id=Id, rev=Rev}=Doc}, State) ->
     %% this is replicated from another node in the cluster. We only accept it
@@ -361,11 +343,10 @@ aggregate_update_ddoc_messages(DDocId, Deleted) ->
             Deleted
     end.
 
-handle_info(replicate_newnodes_docs, #state{bucket = Bucket,
-                                            local_docs = Docs,
-                                            ddoc_replicator = Replicator} = State) ->
-    Replicator ! {replicate_newnodes_docs, get_remote_nodes(Bucket), Docs},
-    {noreply, State};
+handle_info(replicate_newnodes_docs, #state{local_docs = Docs} = State) ->
+    {Replicator, NewState} = get_replicator(State),
+    Replicator ! {replicate_newnodes_docs, Docs},
+    {noreply, NewState};
 handle_info({update_ddoc, DDocId, Deleted0}, State) ->
     Deleted = aggregate_update_ddoc_messages(DDocId, Deleted0),
     ?log_info("Processing update_ddoc ~s (~p)", [DDocId, Deleted]),
@@ -390,17 +371,7 @@ handle_info(Info, State) ->
     ?log_info("Ignoring unexpected message: ~p", [Info]),
     {noreply, State}.
 
-terminate(_Reason, #state{ddoc_replicator = Replicator} = _State) ->
-    case erlang:get('ddoc_replication_proxy') of
-        Pid when is_pid(Pid) ->
-            erlang:exit(Pid, kill),
-            misc:wait_for_process(Pid, infinity);
-        _ ->
-            ok
-    end,
-
-    erlang:exit(Replicator, kill),
-    misc:wait_for_process(Replicator, infinity),
+terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -625,52 +596,12 @@ get_safe_purge_seqs(BucketName) ->
               end
       end, [], capi_utils:fetch_ddoc_ids(BucketName)).
 
-spawn_ddoc_replicator(ServerName) ->
-    proc_lib:spawn_link(
-      fun () ->
-              ddoc_replicator_loop(ServerName, [])
-      end).
-
-ddoc_replicator_loop(ServerName, RemoteNodes) ->
-    NewRemoteNodes =
-        receive
-            {replicate_change, Doc} ->
-                [replicate_change_to_node(ServerName, Node, Doc)
-                 || Node <- RemoteNodes],
-                RemoteNodes;
-            {replicate_newnodes_docs, AllNodes, Docs} ->
-                ?log_debug("doing replicate_newnodes_docs"),
-
-                NewNodes = AllNodes -- RemoteNodes,
-                case NewNodes of
-                    [] ->
-                        ok;
-                    _ ->
-                        [monitor(process, {ServerName, Node}) || Node <- NewNodes],
-                        [replicate_change_to_node(ServerName, S, D)
-                         || S <- NewNodes,
-                            D <- Docs]
-                end,
-                AllNodes;
-            {'DOWN', _Ref, _Type, {Server, RemoteNode}, Error} ->
-                ?log_warning("Remote server node ~p process down: ~p",
-                             [{Server, RemoteNode}, Error]),
-                RemoteNodes -- [RemoteNode];
-            Msg ->
-                ?log_error("Got unexpected message: ~p", [Msg]),
-                exit({unexpected_message, Msg})
-        end,
-
-    ddoc_replicator_loop(ServerName, NewRemoteNodes).
-
-replicate_change_to_node(ServerName, Node, Doc) ->
-    ?log_debug("Sending ~s to ~s", [Doc#doc.id, Node]),
-    gen_server:cast({ServerName, Node}, {replicated_update, Doc}).
-
-get_remote_nodes(Bucket) ->
-    case ns_bucket:get_bucket(Bucket) of
-        {ok, Conf} ->
-            proplists:get_value(servers, Conf) -- [node()];
-        not_present ->
-            []
-    end.
+get_replicator(#state{ddoc_replicator = undefined} = State) ->
+    receive
+        {'$gen_call', From, {link, replicator, Pid} = Msg} ->
+            {reply, Reply, NewState} = handle_call(Msg, From, State),
+            gen_server:reply(From, Reply),
+            {Pid, NewState}
+    end;
+get_replicator(#state{ddoc_replicator = Replicator} = State) ->
+    {Replicator, State}.

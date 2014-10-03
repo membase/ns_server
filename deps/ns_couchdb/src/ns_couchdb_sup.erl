@@ -44,10 +44,39 @@ init([]) ->
 
 child_specs() ->
     [
+     {cb_couch_sup, {cb_couch_sup, start_link, []},
+      permanent, 5000, supervisor, [cb_couch_sup]},
+
+     %% this must be placed after cb_couch_sup since couchdb starts
+     %% sasl application
+     {cb_init_loggers, {cb_init_loggers, start_link, []},
+      transient, 1000, worker, [cb_init_loggers]},
+
+     {ns_memcached_sockets_pool, {ns_memcached_sockets_pool, start_link, []},
+      permanent, 1000, worker, []},
+
+     {xdcr_dcp_sockets_pool, {xdcr_dcp_sockets_pool, start_link, []},
+      permanent, 1000, worker, []},
+
      {ns_couchdb_stats_collector, {ns_couchdb_stats_collector, start_link, []},
       permanent, 1000, worker, [ns_couchdb_stats_collector]},
 
      {ns_couchdb_config_sup, {ns_couchdb_config_sup, start_link, []},
       permanent, infinity, supervisor,
-      [ns_couchdb_config_sup]}
+      [ns_couchdb_config_sup]},
+
+     {xdc_rdoc_manager, {xdc_rdoc_manager, start_link, []},
+      permanent, 1000, worker, [xdc_rdoc_manager]},
+
+     {request_throttler, {request_throttler, start_link, []},
+      permanent, 1000, worker, [request_throttler]},
+
+     {vbucket_map_mirror, {vbucket_map_mirror, start_link, []},
+      permanent, brutal_kill, worker, []},
+
+     {ns_bucket_worker_sup, {ns_bucket_worker_sup, start_link, [ns_couchdb_single_bucket_sup]},
+      permanent, infinity, supervisor, [ns_bucket_worker_sup]},
+
+     {set_view_update_daemon, {set_view_update_daemon, start_link, []},
+      permanent, 1000, worker, [set_view_update_daemon]}
     ].

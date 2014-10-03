@@ -19,7 +19,7 @@
 
 -export([start/2, stop/1, get_loglevel/1, restart/0, setup_node_names/0, get_babysitter_node/0,
          get_babysitter_cookie/0,
-         start_disk_sink/2]).
+         start_disk_sink/2, adjust_loglevel/2]).
 
 -include("ns_common.hrl").
 -include_lib("ale/include/ale.hrl").
@@ -168,9 +168,6 @@ do_init_logging() ->
 
     ok = start_disk_sink(disk_default, ?DEFAULT_LOG_FILENAME),
     ok = start_disk_sink(disk_error, ?ERRORS_LOG_FILENAME),
-    ok = start_disk_sink(disk_views, ?VIEWS_LOG_FILENAME),
-    ok = start_disk_sink(disk_mapreduce_errors, ?MAPREDUCE_ERRORS_LOG_FILENAME),
-    ok = start_disk_sink(disk_couchdb, ?COUCHDB_LOG_FILENAME),
     ok = start_disk_sink(disk_debug, ?DEBUG_LOG_FILENAME),
     ok = start_disk_sink(disk_xdcr, ?XDCR_LOG_FILENAME),
     ok = start_disk_sink(disk_xdcr_errors, ?XDCR_ERRORS_LOG_FILENAME),
@@ -200,9 +197,7 @@ do_init_logging() ->
     OverrideLoglevels = [{?STATS_LOGGER, warn},
                          {?NS_DOCTOR_LOGGER, warn}],
 
-    MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER, ?COUCHDB_LOGGER,
-                                      ?ERROR_LOGGER, ?XDCR_TRACE_LOGGER,
-                                      ?MAPREDUCE_ERRORS_LOGGER],
+    MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER, ?ERROR_LOGGER, ?XDCR_TRACE_LOGGER],
 
     lists:foreach(
       fun (Logger) ->
@@ -228,10 +223,6 @@ do_init_logging() ->
     ok = ale:add_sink(?CLUSTER_LOGGER, ns_log, info),
     ok = ale:add_sink(?REBALANCE_LOGGER, ns_log, error),
 
-    ok = ale:add_sink(?VIEWS_LOGGER, disk_views),
-    ok = ale:add_sink(?MAPREDUCE_ERRORS_LOGGER, disk_mapreduce_errors),
-
-    ok = ale:add_sink(?COUCHDB_LOGGER, disk_couchdb, get_loglevel(?COUCHDB_LOGGER)),
     ok = ale:add_sink(?XDCR_LOGGER, disk_xdcr, get_loglevel(?XDCR_LOGGER)),
     ok = ale:add_sink(?XDCR_LOGGER, disk_xdcr_errors,
                       adjust_loglevel(get_loglevel(?XDCR_LOGGER), error)),

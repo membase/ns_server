@@ -53,9 +53,5 @@ init([]) ->
            %% logs config changes for debugging.
            {ns_config_log,
             {ns_config_log, start_link, []},
-            permanent, 1000, worker, []},
-
-           {cb_config_couch_sync,
-            {cb_config_couch_sync, start_link, []},
             permanent, 1000, worker, []}
           ]}}.

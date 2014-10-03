@@ -46,10 +46,13 @@
          cancel_view_compact/3,
          try_to_cleanup_indexes/1,
          get_view_group_data_size/2,
-         get_safe_purge_seqs/1]).
+         get_safe_purge_seqs/1,
 
+         link_to_doc_mgr/3]).
 
 -export([handle_rpc/1]).
+
+-export([handle_link/3]).
 
 -define(RPC_TIMEOUT, infinity).
 
@@ -131,13 +134,67 @@ get_view_group_data_size(BucketName, DDocId) ->
 get_safe_purge_seqs(BucketName) ->
     maybe_rpc_couchdb_node({get_safe_purge_seqs, BucketName}).
 
+-spec link_to_doc_mgr(atom(), ext_bucket_name() | xdcr, pid()) -> {ok, pid()} | {badrpc, any()}.
+link_to_doc_mgr(Type, Bucket, Pid) ->
+    maybe_rpc_couchdb_node({link_to_doc_mgr, Type, Bucket, Pid}).
+
 maybe_rpc_couchdb_node(Request) ->
-    handle_rpc(Request).
+    ThisNode = node(),
+    case ns_node_disco:couchdb_node() of
+        ThisNode ->
+            handle_rpc(Request);
+        Node ->
+            rpc_couchdb_node(1, Node, Request)
+    end.
+
+rpc_couchdb_node(Try, Node, Request) ->
+    RV = rpc:call(Node, ?MODULE, handle_rpc, [Request], ?RPC_TIMEOUT),
+    NotYet = case RV of
+                 {badrpc, nodedown} ->
+                     true;
+                 {badrpc, {'EXIT', {noproc, _}}} ->
+                     true;
+                 {badrpc, {'EXIT', retry}} ->
+                     true;
+                 _ ->
+                     false
+             end,
+    case {Try, NotYet} of
+        {600, true} -> %% 10 minutes
+            Stack = try throw(42) catch 42 -> erlang:get_stacktrace() end,
+            ?log_debug("RPC to couchdb node failed for ~p with ~p~nStack: ~p", [Request, RV, Stack]),
+            RV;
+        {_, true} ->
+            retry_rpc_couchdb_node(Try, Node, Request);
+        {_, false} ->
+            RV
+    end.
+
+retry_rpc_couchdb_node(Try, Node, Request) ->
+    ?log_debug("Wait for couchdb node to be able to serve ~p. Attempt ~p", [Request, Try]),
+    receive
+        {'EXIT', Pid, Reason} ->
+            ?log_debug("Received exit from ~p with reason ~p", [Pid, Reason]),
+            exit(Reason)
+    after 1000 ->
+            ok
+    end,
+    rpc_couchdb_node(Try + 1, Node, Request).
 
 handle_rpc(get_db_and_ix_paths) ->
-    cb_config_couch_sync:get_db_and_ix_paths();
+    try
+        cb_config_couch_sync:get_db_and_ix_paths()
+    catch
+        error:badarg ->
+            exit(retry)
+    end;
 handle_rpc({set_db_and_ix_paths, DbPath0, IxPath0}) ->
-    cb_config_couch_sync:set_db_and_ix_paths(DbPath0, IxPath0);
+    try
+        cb_config_couch_sync:set_db_and_ix_paths(DbPath0, IxPath0)
+    catch
+        error:badarg ->
+            exit(retry)
+    end;
 handle_rpc(get_tasks) ->
     couch_task_status:all();
 handle_rpc(restart_couch) ->
@@ -162,17 +219,20 @@ handle_rpc({reset_master_vbucket, BucketName}) ->
     capi_set_view_manager:reset_master_vbucket(BucketName);
 
 handle_rpc({get_design_doc_signatures, Bucket}) ->
-    capi_utils:get_design_doc_signatures(Bucket);
+    try
+        capi_utils:get_design_doc_signatures(Bucket)
+    catch
+        error:badarg ->
+            exit(retry)
+    end;
 
 handle_rpc({foreach_doc, xdcr, Fun, Timeout}) ->
-    gen_server:call(xdc_rdoc_replication_srv,
-                    {foreach_doc, Fun}, Timeout);
+    xdc_rdoc_manager:foreach_doc(Fun, Timeout);
 handle_rpc({foreach_doc, Bucket, Fun, Timeout}) ->
     capi_set_view_manager:foreach_doc(Bucket, Fun, Timeout);
 
 handle_rpc({update_doc, xdcr, Doc}) ->
-    gen_server:call(xdc_rdoc_replication_srv,
-                    {interactive_update, Doc}, infinity);
+    xdc_rdoc_manager:update_doc(Doc);
 handle_rpc({update_doc, Bucket, #doc{id = <<"_local/", _/binary>> = Id} = Doc}) ->
     capi_frontend:with_master_vbucket(
       Bucket,
@@ -183,12 +243,7 @@ handle_rpc({update_doc, Bucket, Doc}) ->
     capi_set_view_manager:update_doc(Bucket, Doc);
 
 handle_rpc({get_doc, xdcr, Id}) ->
-    case gen_server:call(xdc_rdoc_replication_srv, {get_full_replicator_doc, Id}, infinity) of
-        not_found ->
-            {not_found, not_found};
-        RV ->
-            RV
-    end;
+    xdc_rdoc_manager:get_doc(Id);
 handle_rpc({get_doc, Bucket, <<"_local/", _/binary>> = Id}) ->
     capi_frontend:with_master_vbucket(
       Bucket,
@@ -252,4 +307,30 @@ handle_rpc({get_view_group_data_size, BucketName, DDocId}) ->
     couch_set_view:get_group_data_size(mapreduce_view, BucketName, DDocId);
 
 handle_rpc({get_safe_purge_seqs, BucketName}) ->
-    capi_set_view_manager:get_safe_purge_seqs(BucketName).
+    capi_set_view_manager:get_safe_purge_seqs(BucketName);
+
+handle_rpc({link_to_doc_mgr, Type, xdcr, Pid}) ->
+    case xdc_rdoc_manager:link(Type, Pid) of
+        retry ->
+            exit(retry);
+        RV ->
+            RV
+    end;
+handle_rpc({link_to_doc_mgr, Type, Bucket, Pid}) ->
+    case capi_set_view_manager:link(Type, Bucket, Pid) of
+        retry ->
+            exit(retry);
+        RV ->
+            RV
+    end.
+
+handle_link(Pid, N, State) ->
+    OldPid = element(N, State),
+    handle_link(Pid, OldPid, N, State).
+
+handle_link(Pid, undefined, N, State) ->
+    erlang:link(Pid),
+    {reply, {ok, self()}, setelement(N, State, Pid)};
+handle_link(_Pid, OldPid, _N, State) ->
+    ?log_debug("Process already linked to ~p. Retry", [OldPid]),
+    {reply, retry, State}.

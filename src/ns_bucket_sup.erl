@@ -45,7 +45,7 @@ init([SingleBucketSup]) ->
 %% Internal functions
 
 ns_config_event_handler_body({buckets, RawBuckets}, SingleBucketSup) ->
-    Buckets = ns_bucket:node_bucket_names(node(),
+    Buckets = ns_bucket:node_bucket_names(ns_node_disco:ns_server_node(),
                                           proplists:get_value(configs, RawBuckets, [])),
     work_queue:submit_work(ns_bucket_worker,
                            fun () ->

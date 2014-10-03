@@ -62,8 +62,9 @@ setup_env() ->
       end, EnvArgs).
 
 init_logging() ->
-    Loggers = [?NS_SERVER_LOGGER, ?COUCHDB_LOGGER],
-    AllLoggers = Loggers ++ [?ALE_LOGGER, ?ERROR_LOGGER],
+    StdLoggers = [?ALE_LOGGER, ?ERROR_LOGGER],
+    Loggers = ?NS_COUCHDB_LOGGERS,
+    AllLoggers = Loggers ++ StdLoggers,
 
     lists:foreach(
       fun (Logger) ->
@@ -72,6 +73,8 @@ init_logging() ->
 
     ok = ns_server:start_disk_sink(ns_couchdb_sink, ?NS_COUCHDB_LOG_FILENAME),
     ok = ns_server:start_disk_sink(disk_couchdb, ?COUCHDB_LOG_FILENAME),
+    ok = ns_server:start_disk_sink(disk_views, ?VIEWS_LOG_FILENAME),
+    ok = ns_server:start_disk_sink(disk_mapreduce_errors, ?MAPREDUCE_ERRORS_LOG_FILENAME),
 
     ok = ale:set_loglevel(?ERROR_LOGGER, debug),
 
@@ -82,10 +85,18 @@ init_logging() ->
 
     lists:foreach(
       fun (Logger) ->
+              ok = ale:set_loglevel(Logger, debug)
+      end,
+      StdLoggers),
+
+    lists:foreach(
+      fun (Logger) ->
               ok = ale:add_sink(Logger, ns_couchdb_sink, ns_server:get_loglevel(Logger))
       end, AllLoggers),
 
     ok = ale:add_sink(?COUCHDB_LOGGER, disk_couchdb, ns_server:get_loglevel(?COUCHDB_LOGGER)),
+    ok = ale:add_sink(?VIEWS_LOGGER, disk_views),
+    ok = ale:add_sink(?MAPREDUCE_ERRORS_LOGGER, disk_mapreduce_errors),
 
     case misc:get_env_default(ns_couchdb, dont_suppress_stderr_logger, false) of
         true ->
