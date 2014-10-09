@@ -179,7 +179,12 @@ default() ->
      {remote_clusters, []},
      {{node, node(), isasl}, [{path, filename:join(DataDir, ?ISASL_PW)}]},
 
-                                                % Memcached config
+     {memcached,
+      [{maxconn, 30000},
+       {dedicated_port_maxconn, 5000},
+       {verbosity, 0}]},
+
+     %% Memcached config
      {{node, node(), memcached},
       [{port, misc:get_env_default(memcached_port, 11210)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
@@ -203,6 +208,7 @@ default() ->
           [{engine,
             path_config:component_path(lib, "memcached/default_engine.so")},
            {static_config_string, "vb0=true"}]}]},
+       {config_path, path_config:default_memcached_config_path()},
        {log_path, path_config:component_path(data, "logs")},
        %% Prefix of the log files within the log path that should be rotated.
        {log_prefix, "memcached.log"},
@@ -214,8 +220,7 @@ default() ->
        %% flush interval of memcached's logger in seconds
        {log_sleeptime, 19},
        %% Milliseconds between log rotation runs.
-       {log_rotation_period, 39003},
-       {verbosity, 0}]},
+       {log_rotation_period, 39003}]},
 
      {{node, node(), memcached_config},
       {[
@@ -224,15 +229,15 @@ default() ->
           [
            {[{host, <<"*">>},
              {port, port},
-            {maxconn, 30000}]},
+             {maxconn, maxconn}]},
 
            {[{host, <<"*">>},
              {port, dedicated_port},
-             {maxconn, 5000}]},
+             {maxconn, dedicated_port_maxconn}]},
 
            {[{host, <<"*">>},
              {port, ssl_port},
-             {maxconn, 30000},
+             {maxconn, maxconn},
              {ssl, {[{key, list_to_binary(ns_ssl_services_setup:memcached_key_path())},
                      {cert, list_to_binary(ns_ssl_services_setup:memcached_cert_path())}]}}]}
           ]}},
@@ -302,7 +307,7 @@ default() ->
          stream]
        },
        {memcached, path_config:component_path(bin, "memcached"),
-        ["-C", ns_ports_setup:memcached_config_path()],
+        ["-C", {"~s", [{memcached, config_path}]}],
         [{env, [{"EVENT_NOSELECT", "1"},
                 %% NOTE: bucket engine keeps this number of top keys
                 %% per top-keys-shard. And number of shards is hard-coded to 8
@@ -684,11 +689,19 @@ upgrade_config_from_3_0_to_3_0_1(Config) ->
 
 do_upgrade_config_from_3_0_to_3_0_1(Config, DefaultConfig) ->
     McdKey = {node, node(), memcached},
+    JTKey = {node, node(), memcached_config},
+    PortServersKey = {node, node(), port_servers},
     {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
+    {value, DefaultJsonTemplateConfig} = ns_config:search([DefaultConfig], JTKey),
+    {value, DefaultPortServers} = ns_config:search([DefaultConfig], PortServersKey),
     {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
     EnginesTuple = {engines, _} = lists:keyfind(engines, 1, DefaultMcdConfig),
-    NewMcdConfig = lists:keystore(engines, 1, CurrentMcdConfig, EnginesTuple),
-    [{set, McdKey, NewMcdConfig}].
+    ConfigPathTuple = {config_path, _} = lists:keyfind(config_path, 1, DefaultMcdConfig),
+    NewMcdConfig0 = lists:keystore(engines, 1, CurrentMcdConfig, EnginesTuple),
+    NewMcdConfig = lists:keystore(config_path, 1, NewMcdConfig0, ConfigPathTuple),
+    [{set, McdKey, NewMcdConfig},
+     {set, JTKey, DefaultJsonTemplateConfig},
+     {set, PortServersKey, DefaultPortServers}].
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
@@ -1020,12 +1033,17 @@ upgrade_3_0_to_3_0_1_test() ->
             {{node, node(), memcached_config}, memcached_config}]],
     Default = [{{node, node(), port_servers}, port_servers_cfg},
                {{node, node(), memcached}, [{ssl_port, 1}, {verbosity, 3},
+                                            {config_path, cfg_path},
                                             {engines, [something]}]},
-               {{node, node(), memcached_config}, memcached_config}],
+               {{node, node(), memcached_config}, memcached_config},
+               {{node, node(), port_servers}, port_servers_cfg}],
 
     ?assertMatch([{set, {node, _, memcached}, [{engines, [something]},
                                                {ssl_port, 1}, {verbosity, 2},
-                                               {port, 3}]}],
+                                               {port, 3},
+                                               {config_path, cfg_path}]},
+                  {set, {node, _, memcached_config}, memcached_config},
+                  {set, {node, _, port_servers}, port_servers_cfg}],
                  do_upgrade_config_from_3_0_to_3_0_1(Cfg, Default)).
 
 

@@ -18,6 +18,9 @@
 -export([component_path/1, component_path/2,
          tempfile/2, tempfile/3]).
 
+%% used by ns_config_default
+-export([default_memcached_config_path/0]).
+
 component_path_key(tmp) -> path_config_tmpdir;
 component_path_key(data) -> path_config_datadir;
 component_path_key(bin) -> path_config_bindir;
@@ -62,3 +65,6 @@ tempfile(Dir, Prefix, Suffix) ->
 tempfile(Prefix, Suffix) ->
     Dir = component_path(tmp),
     tempfile(Dir, Prefix, Suffix).
+
+default_memcached_config_path() ->
+    filename:join(component_path(data, "config"), "memcached.json").
