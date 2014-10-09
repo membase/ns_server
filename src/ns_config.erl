@@ -77,7 +77,8 @@
          upgrade_config_explicitly/1, config_version_token/0,
          fold/3, read_key_fast/2, get_timeout_fast/2,
          delete/1,
-         strip_metadata/1, extract_vclock/1]).
+         strip_metadata/1, extract_vclock/1,
+         latest_config_marker/0]).
 
 -export([save_config_sync/1]).
 
@@ -1158,6 +1159,9 @@ sync_announcements() ->
     after 0 ->
             ok
     end.
+
+latest_config_marker() ->
+    'latest-config-marker'.
 
 -ifdef(EUNIT).
 
