@@ -55,7 +55,7 @@ angular.module('mnAdminServers').controller('mnAdminServersListItemController',
     }, applyToScope('isDetailsOpened'));
 
     $scope.$watch(function () {
-      return mnAdminServersService.model.nodes.reallyActive.length === 1;
+      return mnAdminService.model.nodes.reallyActive.length === 1;
     }, applyToScope('isLastActive'));
 
     $scope.$watch(function () {

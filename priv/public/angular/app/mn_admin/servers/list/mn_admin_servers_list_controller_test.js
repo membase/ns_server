@@ -17,7 +17,7 @@ describe("mnAdminServersListController", function () {
   }));
 
   it('should be able to switch servers list', function () {
-    mnAdminServersService.model.nodes = {active: 'active', pending: 'pending'};
+    mnAdminService.model.nodes = {active: 'active', pending: 'pending'};
     $stateParams.list = 'active';
     $scope.$apply();
     expect($scope.nodesList).toEqual('active');

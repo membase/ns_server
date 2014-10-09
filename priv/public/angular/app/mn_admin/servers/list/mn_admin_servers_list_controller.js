@@ -1,7 +1,7 @@
 angular.module('mnAdminServers').controller('mnAdminServersListController',
-  function ($scope, $stateParams, mnAdminServersService) {
+  function ($scope, $stateParams, mnAdminService, mnAdminServersService) {
     $scope.$watch(function () {
-      var nodes = mnAdminServersService.model.nodes;
+      var nodes = mnAdminService.model.nodes;
       return nodes && nodes[$stateParams.list];
     }, function (nodes) {
       $scope.nodesList = nodes;

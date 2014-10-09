@@ -76,7 +76,7 @@ describe("mnAdminServersListItemController", function () {
   });
 
   it('should toggle node details hostname', function () {
-    mnAdminServersService.model.nodes = {reallyActive: []};
+    mnAdminService.model.nodes = {reallyActive: []};
     $scope.nodesList = [];
     $location.search({'openedServers': ['0.0.0.0:9001','0.0.0.0:9002','0.0.0.0:9003']});
     $scope.node = {"systemStats":{"cpu_utilization_rate":76.5,"swap_total":6291451904,"swap_used":0,"mem_total":6191300608,"mem_free":2507350016},"interestingStats":{"cmd_get":0,"couch_docs_actual_disk_size":15172420,"couch_docs_data_size":15157248,"couch_views_actual_disk_size":0,"couch_views_data_size":0,"curr_items":0,"curr_items_tot":0,"ep_bg_fetched":0,"get_hits":0,"mem_used":33098960,"ops":0,"vb_replica_curr_items":0},"uptime":"22550","memoryTotal":6191300608,"memoryFree":2507350016,"mcdMemoryReserved":4723,"mcdMemoryAllocated":4723,"couchApiBase":"http://0.0.0.0:9501/","clusterMembership":"active","recoveryType":"none","status":"warmup","otpNode":"n_1@0.0.0.0","thisNode":true,"hostname":"0.0.0.0:9001","clusterCompatibility":196608,"version":"3.0.0r-902-g3d88063","os":"x86_64-pc-linux-gnu","ports":{"proxy":12003,"direct":12002},"group":"Group 1","rebalanceProgressPercent":0};
@@ -89,7 +89,7 @@ describe("mnAdminServersListItemController", function () {
   });
 
   it('should properly create scope properties', function () {
-    mnAdminServersService.model.nodes = {reallyActive: []};
+    mnAdminService.model.nodes = {reallyActive: []};
     $scope.nodesList = [];
     $location.search({'openedServers': ['0.0.0.0:9001','0.0.0.0:9002','0.0.0.0:9003']});
     $scope.node = {"systemStats":{"cpu_utilization_rate":76.5,"swap_total":6291451904,"swap_used":0,"mem_total":6191300608,"mem_free":2507350016},"interestingStats":{"cmd_get":0,"couch_docs_actual_disk_size":15172420,"couch_docs_data_size":15157248,"couch_views_actual_disk_size":0,"couch_views_data_size":0,"curr_items":0,"curr_items_tot":0,"ep_bg_fetched":0,"get_hits":0,"mem_used":33098960,"ops":0,"vb_replica_curr_items":0},"uptime":"22550","memoryTotal":6191300608,"memoryFree":2507350016,"mcdMemoryReserved":4723,"mcdMemoryAllocated":4723,"couchApiBase":"http://0.0.0.0:9501/","clusterMembership":"active","recoveryType":"none","status":"warmup","otpNode":"n_1@0.0.0.0","thisNode":true,"hostname":"0.0.0.0:9001","clusterCompatibility":196608,"version":"3.0.0r-902-g3d88063","os":"x86_64-pc-linux-gnu","ports":{"proxy":12003,"direct":12002},"group":"Group 1","rebalanceProgressPercent":0};

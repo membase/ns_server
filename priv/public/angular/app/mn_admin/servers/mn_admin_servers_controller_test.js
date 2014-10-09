@@ -85,7 +85,7 @@ describe("mnAdminServersController", function () {
     $scope.$apply();
     expect(mnAdminSettingsAutoFailoverService.getAutoFailoverSettings.calls.count()).toBe(1);
 
-    mnAdminServersService.model.nodes = 'test';
+    mnAdminService.model.nodes = 'test';
     $scope.$apply();
     expect(mnAdminSettingsAutoFailoverService.getAutoFailoverSettings.calls.count()).toBe(2);
 
@@ -126,7 +126,7 @@ describe("mnAdminServersController", function () {
     expect(mnAdminServersService.populateRebalanceModel.calls.count()).toBe(1);
 
     mnAdminService.model = {details: {nodes: 'test'}};
-    mnAdminServersService.model.nodes = {};
+    mnAdminService.model.nodes = {};
     $scope.$apply();
     expect(mnAdminServersService.populateRebalanceModel.calls.count()).toBe(2);
 
@@ -146,11 +146,11 @@ describe("mnAdminServersController", function () {
     $scope.$apply();
     expect(mnAdminServersService.populateRebalanceModel.calls.count()).toBe(6);
 
-    mnAdminServersService.model.nodes.unhealthyActive = 'test'
+    mnAdminService.model.nodes.unhealthyActive = 'test'
     $scope.$apply();
     expect(mnAdminServersService.populateRebalanceModel.calls.count()).toBe(7);
 
-    mnAdminServersService.model.nodes.pending = 'test';
+    mnAdminService.model.nodes.pending = 'test';
     $scope.$apply();
     expect(mnAdminServersService.populateRebalanceModel.calls.count()).toBe(8);
   });
@@ -159,12 +159,12 @@ describe("mnAdminServersController", function () {
     $scope.$apply();
     expect(mnAdminServersService.populatePerNodeRepalanceProgress.calls.count()).toBe(1);
 
-    mnAdminServersService.model.nodes = undefined;
+    mnAdminService.model.nodes = undefined;
     mnAdminTasksService.model.tasksRebalance = 'test';
     $scope.$apply();
     expect(mnAdminServersService.populatePerNodeRepalanceProgress.calls.count()).toBe(1);
 
-    mnAdminServersService.model.nodes = {allNodes: 'test'};
+    mnAdminService.model.nodes = {allNodes: 'test'};
     $scope.$apply();
     expect(mnAdminServersService.populatePerNodeRepalanceProgress.calls.count()).toBe(2);
 
@@ -183,7 +183,7 @@ describe("mnAdminServersController", function () {
 
   it('should run rebalance', function () {
     mnAdminServersListItemService.model.pendingEject = [{otpNode: 'test'}, {otpNode: 'test2'}];
-    mnAdminServersService.model.nodes = {allNodes: [{otpNode: 'test'}, {otpNode: 'test2'}]};
+    mnAdminService.model.nodes = {allNodes: [{otpNode: 'test'}, {otpNode: 'test2'}]};
     mnAdminService.model.details = {controllers: {rebalance: {uri: "test"}}};
 
     $scope.onRebalance();

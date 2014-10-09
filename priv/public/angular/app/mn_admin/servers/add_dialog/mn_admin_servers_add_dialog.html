@@ -22,11 +22,11 @@
             </span></span>
           </a>
         </li>
-        <li class="when-groups" ng-if="mnAdminGroupsServiceModel.isGroupsAvailable">
+        <li class="when-groups" ng-if="mnAdminServiceModel.isGroupsAvailable">
           <label class="label" for="js_servers_group_select">Server Group:</label>
           <select id="js_servers_group_select" class="server_group_select" style="width:157px;" name="group"
             ng-model="mnAdminServersAddDialogServiceModel.selectedGroup"
-            ng-options="group.name for group in mnAdminGroupsServiceModel.groups"></select>
+            ng-options="group.name for group in mnAdminServiceModel.groups"></select>
         </li>
       </ul>
     </fieldset>

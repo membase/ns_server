@@ -59,10 +59,10 @@ describe("mnAdminController", function () {
 
   it('should react on getGroups deps changes', function () {
     $scope.$apply();
-    expect(mnAdminGroupsService.getGroups.calls.count()).toBe(1);
+    expect(mnAdminService.getGroups.calls.count()).toBe(1);
     mnAdminService.model.details = {serverGroupsUri: 'test'};
     $scope.$apply();
-    expect(mnAdminGroupsService.getGroups.calls.count()).toBe(2);
+    expect(mnAdminService.getGroups.calls.count()).toBe(2);
   });
 
   it('should react on populateNodesModel deps changes', function () {
@@ -74,11 +74,11 @@ describe("mnAdminController", function () {
     $scope.$apply();
     expect(mnAdminServersService.populateNodesModel.calls.count()).toBe(1);
 
-    mnAdminGroupsService.model.isGroupsAvailable = true;
+    mnAdminService.model.isGroupsAvailable = true;
     $scope.$apply();
     expect(mnAdminServersService.populateNodesModel.calls.count()).toBe(2);
 
-    mnAdminGroupsService.model.hostnameToGroup = 'test';
+    mnAdminService.model.hostnameToGroup = 'test';
     $scope.$apply();
     expect(mnAdminServersService.populateNodesModel.calls.count()).toBe(3);
 

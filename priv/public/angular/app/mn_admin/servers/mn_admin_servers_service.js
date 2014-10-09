@@ -1,5 +1,5 @@
 angular.module('mnAdminServersService').factory('mnAdminServersService',
-  function ($http, $q, mnAdminService) {
+  function ($http, $q, mnAdminService, mnAdminServersListItemService) {
     var mnAdminServersService = {};
 
     mnAdminServersService.model = {};
@@ -39,66 +39,6 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       });
     };
 
-    mnAdminServersService.populateNodesModel = function (nodesModelDeps) {
-      if (!nodesModelDeps || !nodesModelDeps.hostnameToGroup) {
-        return;
-      }
-
-      var hostnameToGroup = (nodesModelDeps.isGroupsAvailable && nodesModelDeps.hostnameToGroup) || {};
-
-      var nodes = _.map(nodesModelDeps.nodes, function (n) {
-        n = _.clone(n);
-        var group = hostnameToGroup[n.hostname];
-        if (group) {
-          n.group = group.name;
-        }
-        return n;
-      });
-
-      var stillActualEject = [];
-
-      _.each(nodesModelDeps.pendingEject, function (node) {
-        var original = _.detect(nodes, function (n) {
-          return n.otpNode == node.otpNode;
-        });
-        if (!original || original.clusterMembership === 'inactiveAdded') {
-          return;
-        }
-        stillActualEject.push(original);
-        original.pendingEject = true;
-      });
-
-      nodesModelDeps.pendingEject = stillActualEject;
-
-      var rv = {};
-
-      rv.allNodes = nodes;
-
-      rv.failedOver = _.filter(nodes, isFailedOverNode);
-
-      rv.onlyActive = _.filter(nodes, isActiveNode);
-
-      rv.active = rv.failedOver.concat(rv.onlyActive);
-
-      rv.down = _.filter(nodes, function (node) {
-        return !isHealthyNode(node);
-      });
-
-      rv.pending = _.filter(nodes, function (node) {
-        return !isActiveNode(node);
-      }).concat(nodesModelDeps.pendingEject);
-
-      rv.reallyActive = _.filter(rv.onlyActive, function (node) {
-        return !isPendingEjectNode(node);
-      });
-
-      rv.unhealthyActive = _.detect(rv.reallyActive, function (node) {
-        return isUnhealthyNode(node);
-      });
-
-      mnAdminServersService.model.nodes = rv;
-    };
-
     mnAdminServersService.populateFailoverWarningsModel = function (failoverWarnings) {
       mnAdminServersService.model.failoverWarnings = _.map(failoverWarnings, convertFailoverWarnings);
     };
@@ -127,22 +67,6 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
         case 'softNodesNeeded': return 'Additional active servers required to provide the desired number of replicas!';
         case 'softRebalanceNeeded': return 'Rebalance recommended, some data does not have the desired replicas configuration!';
       }
-    }
-
-    function isActiveNode(node) {
-      return node.clusterMembership === 'active';
-    }
-    function isPendingEjectNode(node) {
-      return node.pendingEject;
-    }
-    function isUnhealthyNode(node) {
-      return node.status === 'unhealthy';
-    }
-    function isHealthyNode(node) {
-      return node.status === 'healthy';
-    }
-    function isFailedOverNode(node) {
-      return node.clusterMembership === 'inactiveFailed';
     }
 
     return mnAdminServersService;

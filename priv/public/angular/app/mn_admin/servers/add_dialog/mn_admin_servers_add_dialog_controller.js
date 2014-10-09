@@ -12,7 +12,7 @@ angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
 
     mnAdminServersAddDialogService.model.selectedGroup = undefined;
     $scope.$watch(function () {
-      return mnAdminGroupsService.model.isGroupsAvailable && mnAdminGroupsService.model.groups[0];
+      return mnAdminService.model.isGroupsAvailable && mnAdminService.model.groups[0];
     }, function (defaultGroup) {
       if (!mnAdminServersAddDialogService.model.selectedGroup) {
         mnAdminServersAddDialogService.model.selectedGroup = defaultGroup;
@@ -35,7 +35,7 @@ angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
         .error(function (errors) {
           $scope.formErrors = errors;
         }).success(function () {
-          mnAdminGroupsService.getGroups(mnAdminService.model.details.serverGroupsUri);
+          mnAdminService.getGroups(mnAdminService.model.details.serverGroupsUri);
           mnDialogService.removeLastOpened();
         })['finally'](reset);
 

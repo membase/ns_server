@@ -16,7 +16,7 @@
   <div class="shadow_box">
     <div class="header_2">
       <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-      <a class="btn_1 when-enterprise when-roadmin-avoid-me" href="#visitSec=groups" id="js_server_groups_tab" ng-show="mnAdminGroupsServiceModel.isGroupsAvailable"><span>Server Groups</span></a>
+      <a class="btn_1 when-enterprise when-roadmin-avoid-me" href="#visitSec=groups" id="js_server_groups_tab" ng-show="mnAdminServiceModel.isGroupsAvailable"><span>Server Groups</span></a>
       <a class="add_button btn_1 when-roadmin-hide-me casper_servers_add_popup" ng-show="!mnAdminServersServiceModel.rebalancing" ng-click="addServer()"><span>Add Server</span></a>
       <a class="rebalance_button btn_1 when-roadmin-hide-me" data-ng-show="mnAdminServersServiceModel.mayRebalance" ng-click="onRebalance()"><span>Rebalance</span></a>
       <a class="stop_rebalance_button btn_1 when-roadmin-hide-me" data-ng-show="mnAdminTasksServiceModel.inRebalance" ng-click="onStopRebalance()">
@@ -28,7 +28,7 @@
         <li class="tab_left"><a ui-sref="admin.servers.list({ list: 'active' })" ui-sref-active="selected">Active Servers</a></li>
         <li class="tab_right" id="rebalance_tab">
           <a class="casper_servers_pending_rebalance_tab" ui-sref="admin.servers.list({ list: 'pending' })" ui-sref-active="selected">Pending Rebalance</a>
-          <span class="badge" data-ng-show="!mnAdminServersServiceModel.rebalancing &amp;&amp; mnAdminServersServiceModel.nodes.pending.length"><span>{{mnAdminServersServiceModel.nodes.pending.length}}</span></span>
+          <span class="badge" data-ng-show="!mnAdminServersServiceModel.rebalancing &amp;&amp; mnAdminServiceModel.nodes.pending.length"><span>{{mnAdminServiceModel.nodes.pending.length}}</span></span>
         </li>
       </ul>
     </div>

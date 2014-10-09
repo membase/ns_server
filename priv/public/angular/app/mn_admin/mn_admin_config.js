@@ -1,10 +1,18 @@
-angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
+angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider ) {
 
   $stateProvider
     .state('admin', {
       abstract: true,
       templateUrl: 'mn_admin/mn_admin.html',
-      controller: 'mnAdminController'
+      controller: 'mnAdminController',
+      resolve: {
+        mnAdminInitData: function ($q, mnAdminService) {
+          return $q.all([
+            mnAdminService.runDefaultPoolsDetailsLoop(),
+            mnAdminService.getGroups()
+          ]);
+        }
+      }
     })
     .state('admin.overview', {
       url: '/overview',
@@ -53,6 +61,14 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
       url: '/cluster',
       controller: 'mnAdminSettingsClusterController',
       templateUrl: 'mn_admin/settings/cluster/mn_admin_settings_cluster.html',
+      resolve: {
+        mnAdminSettingsClusterInitData: function ($q, mnAdminSettingsClusterService) {
+          return $q.all([
+            mnAdminSettingsClusterService.getAndSetDefaultCertificate(),
+            mnAdminSettingsClusterService.getAndSetVisulaSettings()
+          ]);
+        }
+      },
       authenticate: true
     });
 });

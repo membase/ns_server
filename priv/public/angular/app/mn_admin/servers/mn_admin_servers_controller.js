@@ -10,7 +10,7 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
 
     $scope.onRebalance = function () {
       mnAdminServersService.postAndReload(mnAdminService.model.details.controllers.rebalance.uri, {
-        knownNodes: _.pluck(mnAdminServersService.model.nodes.allNodes, 'otpNode').join(','),
+        knownNodes: _.pluck(mnAdminService.model.nodes.allNodes, 'otpNode').join(','),
         ejectedNodes: _.pluck(mnAdminServersListItemService.model.pendingEject, 'otpNode').join(',')
       }).success(function () {
         $state.go('admin.servers.list', {list: 'active'});
@@ -83,7 +83,7 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
 
     $scope.$watch(function () {
       return {
-        nodes: mnAdminServersService.model.nodes,
+        nodes: mnAdminService.model.nodes,
         tasksRecovery: mnAdminTasksService.model.inRecoveryMode,
         isLoadingSamples: mnAdminTasksService.model.isLoadingSamples,
         mayRebalanceWithoutSampleLoading: mnAdminServersService.model.mayRebalanceWithoutSampleLoading
@@ -99,7 +99,7 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
     $scope.$watch('mnAdminServiceModel.details.failoverWarnings', mnAdminServersService.populateFailoverWarningsModel);
 
     $scope.$watch(function () {
-      if (!mnAdminService.model.details || !mnAdminServersService.model.nodes) {
+      if (!mnAdminService.model.details || !mnAdminService.model.nodes) {
         return;
       }
 
@@ -108,18 +108,18 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
         isLoadingSamples: mnAdminTasksService.model.isLoadingSamples,
         rebalanceStatus: mnAdminService.model.details.rebalanceStatus,
         balanced: mnAdminService.model.details.balanced,
-        unhealthyActiveNodes: mnAdminServersService.model.nodes.unhealthyActive,
-        pendingNodes: mnAdminServersService.model.nodes.pending
+        unhealthyActiveNodes: mnAdminService.model.nodes.unhealthyActive,
+        pendingNodes: mnAdminService.model.nodes.pending
       };
     }, mnAdminServersService.populateRebalanceModel, true);
 
     $scope.$watch(function () {
-      if (!mnAdminServersService.model.nodes) {
+      if (!mnAdminService.model.nodes) {
         return;
       }
       return {
         progress: mnAdminTasksService.model.tasksRebalance,
-        nodes: mnAdminServersService.model.nodes.allNodes
+        nodes: mnAdminService.model.nodes.allNodes
       };
     }, mnAdminServersService.populatePerNodeRepalanceProgress, true);
   });

@@ -50,7 +50,7 @@ describe("mnAdminServersAddDialogController", function () {
     $scope.mnAdminServersAddDialogServiceModel.newServer = {hostname: 'test'};
     $scope.onSubmit();
     expect(mnAdminServersAddDialogService.addServer).toHaveBeenCalledWith('uri');
-    expect(mnAdminGroupsService.getGroups).toHaveBeenCalledWith('serverGroupsUri');
+    expect(mnAdminService.getGroups).toHaveBeenCalledWith('serverGroupsUri');
     expect(mnDialogService.removeLastOpened).toHaveBeenCalled();
   });
 
@@ -63,9 +63,9 @@ describe("mnAdminServersAddDialogController", function () {
   });
 
   it('should select first group by default', function () {
-    mnAdminGroupsService.model.isGroupsAvailable = true;
+    mnAdminService.model.isGroupsAvailable = true;
     var groupMarker = {};
-    mnAdminGroupsService.model.groups = [groupMarker];
+    mnAdminService.model.groups = [groupMarker];
     $scope.$apply();
     expect(mnAdminServersAddDialogService.model.selectedGroup).toBe(groupMarker);
   });

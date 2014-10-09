@@ -28,7 +28,6 @@ angular.module('mnAdmin', [
   'mnAdminBuckets',
   'mnAdminServersService',
   'mnAdminServers',
-  'mnAdminGroupsService',
   'mnAdminSettings',
   'mnAdminSettingsService'
 ]);
@@ -64,7 +63,6 @@ angular.module('mnAdminServers', [
   'ui.router',
   'mnAdminServersListItemDetailsService',
   'mnAdminServersAddDialogService',
-  'mnAdminGroupsService',
   'mnAdminSettingsAutoFailoverService'
 ]);
 angular.module('mnAdminSettings', [
@@ -82,8 +80,6 @@ angular.module('mnAdminSettingsClusterService', [
   'mnAdminServersService'
 ]);
 angular.module('mnAdminSettingsAutoFailoverService', []);
-
-angular.module('mnAdminGroupsService', []);
 
 angular.module('mnWizard', [
   'mnWizardStep1Service',
