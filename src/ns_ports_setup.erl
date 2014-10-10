@@ -4,12 +4,17 @@
 
 -export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
-         restart_xdcr_proxy/0,
          memcached_config_path/0,
-         omit_missing_mcd_ports/2]).
+         restart_xdcr_proxy/0, sync/0]).
+
+%% referenced by config
+-export([omit_missing_mcd_ports/2]).
 
 start() ->
-    {ok, proc_lib:spawn_link(?MODULE, setup_body_tramp, [])}.
+    proc_lib:start_link(?MODULE, setup_body_tramp, []).
+
+sync() ->
+    gen_server:call(?MODULE, sync, infinity).
 
 %% ns_config announces full list as well which we don't need
 is_useless_event(List) when is_list(List) ->
@@ -26,6 +31,7 @@ setup_body_tramp() ->
 setup_body() ->
     Self = self(),
     erlang:register(?MODULE, Self),
+    proc_lib:init_ack({ok, Self}),
     ns_pubsub:subscribe_link(ns_config_events,
                              fun (Event) ->
                                      case is_useless_event(Event) of
@@ -66,12 +72,17 @@ childs_loop(Childs) ->
 childs_loop_continue(Childs) ->
     receive
         check_childs_update ->
-            ok;
+            do_childs_loop_continue(Childs);
+        {'$gen_call', From, sync} ->
+            gen_server:reply(From, ok),
+            childs_loop(Childs);
         X ->
             erlang:error({unexpected_message, X})
     after 0 ->
             erlang:error(expected_some_message)
-    end,
+    end.
+
+do_childs_loop_continue(Childs) ->
     %% this sets bound on frequency of checking of port_servers
     %% configuration updates. NOTE: this thing also depends on other
     %% config variables. Particularly moxi's environment variables
