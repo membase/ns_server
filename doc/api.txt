@@ -405,6 +405,47 @@ GET /pools/default/serverGroups =>
     "groups": [(<groupInfo>)+]
 }
 
+// mcd-settings is list of key-value pairs.
+// current setting values are all numbers
+// list of supported setting names can be seen below.
+//
+// See memcached.json.4 manpage for description of those settings. There
+// are only two settings that ns_server is not mapping directly: maxconn
+// and dedicated_port_maxconn. Those settings represent connections limit
+// on default interface (11210) and 11209 interface respectively.
+//
+// settings which were never set are going to be omitted. For per-node settings
+//  ns_server also implements API to "unset" individual settings.
+<mcd-settings> =>
+{
+  ((maxconn | dedicated_port_maxconn | verbosity | default_reqs_per_event
+     | reqs_per_event_high_priority | reqs_per_event_med_priority | reqs_per_event_low_priority
+     | threads): <number>)*
+}
+
+
+// ns_server implements per-node and global settings.
+// memcached.json for specific is built from union of global and it's node settings.
+//  with per-node settings taking precedence.
+// APIs below return defined per-node settings and global settings.
+
+GET /pools/default/settings/memcached/node/self =>
+
+<mcd-settings>
+
+GET /pools/default/settings/memcached/node/<otp-node> =>
+
+<mcd-settings>
+
+GET /pools/default/settings/memcached/global =>
+
+<mcd-settings>
+
+// returns value of specific setting if this setting is set for this node (404 otherwise)
+GET /pools/default/settings/memcached/node/<otp-node>/setting/<setting-name> =>
+
+{value: <integer>}
+
 
 ======
 POST
@@ -516,6 +557,20 @@ cancels in-progress logs collection.
 
    200 "" // request have probably succeeded (we're merely best effort on this)
 
+POST /pools/default/settings/memcached/node/<otp-node>
+POST /pools/default/settings/memcached/node/self
+
+<setting-name>=<integer>(&<setting-name>=<integer>)*
+
+sets per-node settings to given values.
+
+POST /pools/default/settings/memcached/global
+
+<setting-name>=<integer>(&<setting-name>=<integer>)*
+
+sets global settings to given values.
+
+
 ====
 PUT
 ===
@@ -570,6 +625,8 @@ DELETE /pools/default/remoteClusters/<name>
 // deletes server group (must be empty)
 DELETE /pools/default/serverGroups/<:uuid>
 
+// deletes given per-node setting
+DELETE /pools/default/settings/memcached/node/<otp-node>/setting/<setting-name>
 
 
 ==== document editing (private and internal!) ====
