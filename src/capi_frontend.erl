@@ -291,10 +291,6 @@ open_doc(#db{filepath = undefined} = Db, <<"_design/",_/binary>> = DocId, Option
 open_doc(_Db, _DocId, _Options) ->
     {not_found, missing}.
 
-
-task_status_all() ->
-    couch_db_frontend:task_status_all().
-
 restart_core_server() ->
     exit(not_implemented(restart_core_server, [])).
 

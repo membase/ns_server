@@ -48,7 +48,9 @@ stop_cluster() ->
 
 init([]) ->
     {ok, {{one_for_one, 10, 1},
-          [{cb_couch_sup, {cb_couch_sup, start_link, []},
+          [{local_tasks, {local_tasks, start_link, []},
+            permanent, brutal_kill, worker, [local_tasks]},
+           {cb_couch_sup, {cb_couch_sup, start_link, []},
             permanent, 5000, supervisor, [cb_couch_sup]},
            %% this must be placed after cb_couch_sup since couchdb starts
            %% sasl application

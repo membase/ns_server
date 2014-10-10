@@ -290,7 +290,7 @@ current_status_slow_inner() ->
     Tasks = lists:filter(
         fun (Task) ->
                 is_view_task(Task) orelse is_bucket_compaction_task(Task)
-        end, couch_task_status:all())
+        end, couch_task_status:all() ++ local_tasks:all())
         ++ grab_local_xdcr_replications()
         ++ grab_samples_loading_tasks()
         ++ grab_warmup_tasks()

@@ -129,6 +129,9 @@ log_all_tap_and_checkpoint_stats() ->
      end || {Bucket, Type, Values} <- grab_all_tap_and_checkpoint_stats()],
     ?log_info("end of logging tap & checkpoint stats").
 
+task_status_all() ->
+    local_tasks:all() ++ couch_task_status:all().
+
 do_diag_per_node() ->
     ActiveBuckets = ns_memcached:active_buckets(),
     [{version, ns_info:version()},
@@ -139,7 +142,7 @@ do_diag_per_node() ->
      {babysitter_processes, (catch grab_babysitter_process_infos())},
      {memory, memsup:get_memory_data()},
      {disk, (catch ns_disksup:get_disk_data())},
-     {active_tasks, capi_frontend:task_status_all()},
+     {active_tasks, task_status_all()},
      {master_events, (catch master_activity_events_keeper:get_history())},
      {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
      {active_buckets, ActiveBuckets},
@@ -231,7 +234,7 @@ collect_diag_per_node_binary_body(Reply) ->
     Reply(basic_info, element(2, ns_info:basic_info())),
     Reply(memory, memsup:get_memory_data()),
     Reply(disk, (catch ns_disksup:get_disk_data())),
-    Reply(active_tasks, capi_frontend:task_status_all()),
+    Reply(active_tasks, task_status_all()),
     Reply(master_events, (catch master_activity_events_keeper:get_history_raw())),
     Reply(ns_server_stats, (catch system_stats_collector:get_ns_server_stats())),
     Reply(active_buckets, ActiveBuckets),

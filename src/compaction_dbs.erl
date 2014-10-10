@@ -54,7 +54,7 @@ init([BucketName, VBucketDbs, Force, OriginalTarget]) ->
 
     Total = length(VBucketDbs),
 
-    ok = couch_task_status:add_task(
+    ok = local_tasks:add_task(
            [{type, bucket_compaction},
             {original_target, OriginalTarget},
             {trigger_type, TriggerType},
@@ -79,7 +79,7 @@ handle_cast(update_progress,
                    progress_current = Current} = State) ->
     NewCurrent = Current + 1,
     Progress = (NewCurrent * 100) div Total,
-    ok = couch_task_status:update(
+    ok = local_tasks:update(
            [{vbuckets_done, NewCurrent},
             {progress, Progress}]),
     {noreply, State#state{progress_current = NewCurrent}}.
