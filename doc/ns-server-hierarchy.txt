@@ -137,6 +137,8 @@
                                     ;; started through supervisor_cushion
                                     (gen_server 'ns_port_server "memcached")
                                     (gen_server 'ns_port_server "moxi"))
+                        (gen-server 'ns_memcached_sockets_pool
+                                    "instance of ns_connection_pool for long blocking memcached calls")
                         (event-handler 'ns_port_memcached_killer :to ns_config_events
                                        "implements memcached die! signalling after failover")
                         (gen-server 'memcached_clients_pool
@@ -156,8 +158,6 @@
                                     (gen-server 'xdc_rep_manager
                                                 "monitors _replicator db for replications. Babysits couch replications. Interacts
                                                  with couch replicator in really subtle ways"))
-                        (gen-server 'ns_memcached_sockets_pool
-                                    "instance of ns_connection_pool for long blocking memcached calls")
                         (supervisor 'ns_bucket_sup :mode :one_for_one
                                     (pubsub-link 'buckets_observing_subscription :to 'ns_config_events
                                                  "observes config for buckets that should be started/stopped

@@ -145,6 +145,9 @@ child_specs() ->
      {ns_ports_setup, {ns_ports_setup, start, []},
       {permanent, 4}, brutal_kill, worker, []},
 
+     {ns_memcached_sockets_pool, {ns_memcached_sockets_pool, start_link, []},
+      permanent, 1000, worker, []},
+
      {ns_port_memcached_killer, {ns_ports_setup, start_memcached_force_killer, []},
       permanent, brutal_kill, worker, []},
 
@@ -183,9 +186,6 @@ child_specs() ->
      {xdcr_sup,
       {xdcr_sup, start_link, []},
       permanent, infinity, supervisor, []},
-
-     {ns_memcached_sockets_pool, {ns_memcached_sockets_pool, start_link, []},
-      permanent, 1000, worker, []},
 
      {xdcr_dcp_sockets_pool, {xdcr_dcp_sockets_pool, start_link, []},
       permanent, 1000, worker, []},
