@@ -79,22 +79,9 @@ sanitize(Struct) ->
 launch_port(NCAO) ->
     Id = sanitize(NCAO),
 
-    NCAO1 = case NCAO of
-                {Name, Cmd, Args, Opts, Files} ->
-                    lists:foreach(
-                      fun ({Path, Contents}) ->
-                              ok = misc:atomic_write_file(Path, Contents)
-                      end, Files),
-
-                    {Name, Cmd, Args, Opts};
-                _ ->
-                    NCAO
-            end,
-
     ?log_info("supervising port: ~p", [Id]),
-    {ok, C} = supervisor:start_child(?MODULE,
-                                     create_child_spec(Id, NCAO1)),
-    {ok, C}.
+    {ok, _C} = supervisor:start_child(?MODULE,
+                                      create_child_spec(Id, NCAO)).
 
 create_ns_server_supervisor_spec() ->
     {ErlCmd, NSServerArgs, NSServerOpts} = child_erlang:open_port_args(),
