@@ -266,6 +266,12 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth_ro, fun menelaus_web_groups:handle_server_groups/1};
                          ["pools", "default", "certificate"] ->
                              {done, handle_cluster_certificate(Req)};
+                         ["pools", "default", "settings", "memcached", "global"] ->
+                             {auth, fun menelaus_web_mcd_settings:handle_global_get/1};
+                         ["pools", "default", "settings", "memcached", "node", Node] ->
+                             {auth, fun menelaus_web_mcd_settings:handle_node_get/2, [Node]};
+                         ["pools", "default", "settings", "memcached", "node", Node, "setting", Name] ->
+                             {auth, fun menelaus_web_mcd_settings:handle_node_setting_get/3, [Node, Name]};
                          ["nodeStatuses"] ->
                              {auth_ro, fun handle_node_statuses/1};
                          ["logs"] ->
@@ -470,6 +476,12 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_update/2, [Id]};
                          ["pools", "default", "serverGroups"] ->
                              {auth, fun menelaus_web_groups:handle_server_groups_post/1};
+                         ["pools", "default", "settings", "memcached", "global"] ->
+                             {auth, fun menelaus_web_mcd_settings:handle_global_post/1};
+                         ["pools", "default", "settings", "memcached", "node", Node] ->
+                             {auth, fun menelaus_web_mcd_settings:handle_node_post/2, [Node]};
+                         ["pools", "default", "settings", "memcached", "node", Node, "_restart"] ->
+                             {auth, fun menelaus_web_mcd_settings:handle_node_restart/2, [Node]};
                          ["logClientError"] -> {auth,
                                                 fun (R) ->
                                                         User = menelaus_auth:extract_auth_user(R),
@@ -504,6 +516,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun handle_read_only_user_delete/1};
                          ["pools", "default", "serverGroups", GroupUUID] ->
                              {auth, fun menelaus_web_groups:handle_server_group_delete/2, [GroupUUID]};
+                         ["pools", "default", "settings", "memcached", "node", Node, "setting", Name] ->
+                             {auth, fun menelaus_web_mcd_settings:handle_node_setting_delete/3, [Node, Name]};
                          ["couchBase" | _] -> {done, capi_http_proxy:handle_proxy_req(Req)};
                          _ ->
                              ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
