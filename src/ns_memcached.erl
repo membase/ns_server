@@ -131,7 +131,9 @@
          compact_vbucket/3,
          get_vbucket_high_seqno/2,
          wait_for_seqno_persistence/3,
-         get_keys/3
+         get_keys/3,
+         config_validate/1,
+         config_reload/0
         ]).
 
 %% for ns_memcached_sockets_pool only
@@ -1554,3 +1556,18 @@ get_keys(Bucket, NodeVBuckets, Params) ->
                       {Node, {T, E}}
               end
       end, NodeVBuckets, infinity).
+
+-spec config_validate(binary()) -> ok | mc_error().
+config_validate(NewConfig) ->
+    misc:executing_on_new_process(
+      fun () ->
+              {ok, Sock} = connect(1),
+              mc_client_binary:config_validate(Sock, NewConfig)
+      end).
+
+config_reload() ->
+    misc:executing_on_new_process(
+      fun () ->
+              {ok, Sock} = connect(1),
+              mc_client_binary:config_reload(Sock)
+      end).

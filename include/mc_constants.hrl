@@ -37,6 +37,10 @@
 -define(CMD_SASL_AUTH,       16#21).
 -define(CMD_SASL_STEP,       16#22).
 
+%% this commands are used to manage dynamic reloading of memcached.json
+-define(CMD_CONFIG_VALIDATE, 16#25).
+-define(CMD_CONFIG_RELOAD, 16#26).
+
 -define(CMD_CREATE_BUCKET, 16#85).
 -define(CMD_DELETE_BUCKET, 16#86).
 -define(CMD_LIST_BUCKETS , 16#87).

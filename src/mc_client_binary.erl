@@ -70,7 +70,9 @@
          get_random_key/1,
          compact_vbucket/5,
          wait_for_seqno_persistence/3,
-         vbucket_state_to_atom/1
+         vbucket_state_to_atom/1,
+         config_validate/2,
+         config_reload/1
         ]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
@@ -1001,4 +1003,22 @@ get_random_key(Sock) ->
             {ok, Key};
         Other ->
             process_error_response(Other)
+    end.
+
+config_validate(Sock, Body) ->
+    RV = cmd(?CMD_CONFIG_VALIDATE, Sock, undefined, undefined,
+             {#mc_header{}, #mc_entry{data = Body}},
+             infinity),
+    case process_error_response(RV) of
+        {memcached_error, success, _} -> ok;
+        Err -> Err
+    end.
+
+config_reload(Sock) ->
+    RV = cmd(?CMD_CONFIG_RELOAD, Sock, undefined, undefined,
+             {#mc_header{}, #mc_entry{}},
+             infinity),
+    case process_error_response(RV) of
+        {memcached_error, success, _} -> ok;
+        Err -> Err
     end.
