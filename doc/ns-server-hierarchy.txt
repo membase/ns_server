@@ -139,6 +139,9 @@
                                     (gen_server 'ns_port_server "moxi"))
                         (gen-server 'ns_memcached_sockets_pool
                                     "instance of ns_connection_pool for long blocking memcached calls")
+                        (gen-server 'memcached_config_mgr
+                                    "writes memcached.json and asks babysitter to actually start memcached."
+                                    "Also handles dynamic memcached config reloads.")
                         (event-handler 'ns_port_memcached_killer :to ns_config_events
                                        "implements memcached die! signalling after failover")
                         (gen-server 'memcached_clients_pool

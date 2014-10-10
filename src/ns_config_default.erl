@@ -327,6 +327,7 @@ default() ->
          use_stdio,
          stderr_to_stdout, exit_status,
          port_server_send_eol,
+         port_server_dont_start,
          stream]
        }]
      },

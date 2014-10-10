@@ -4,7 +4,6 @@
 
 -export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
-         memcached_config_path/0,
          restart_xdcr_proxy/0, sync/0]).
 
 %% referenced by config
@@ -206,16 +205,7 @@ dynamic_children() ->
 
     MaybeSSLProxySpec = maybe_create_ssl_proxy_spec(Config),
 
-    [begin
-         Expanded = expand_args(NCAO),
-         case Expanded of
-             {memcached, Cmd, Args, Opts} ->
-                 {memcached, Cmd, Args, Opts,
-                  [{memcached_config_path(), memcached_config(Config)}]};
-             _ ->
-                 Expanded
-         end
-     end || NCAO <- PortServers] ++
+    [expand_args(NCAO) || NCAO <- PortServers] ++
         query_node_spec(Config) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
 
@@ -296,37 +286,6 @@ memcached_force_killer_fn({{node, Node, membership}, NewMembership}, PrevMembers
 memcached_force_killer_fn(_, State) ->
     State.
 
-memcached_config_path() ->
-    filename:join(path_config:component_path(data, "config"), "memcached.json").
-
-memcached_config(Config) ->
-    McdParamsLocal = ns_config:search(Config, {node, node(), memcached}, []),
-    McdParamsGlobal = ns_config:search(Config, memcached, []),
-    McdParams = McdParamsLocal ++ McdParamsGlobal,
-
-    {value, McdConf} = ns_config:search(Config, {node, node(), memcached_config}),
-
-    {Props} = expand_memcached_config(McdConf, McdParams),
-    ExtraProps = ns_config:search(Config,
-                                  {node, node(), memcached_config_extra}, []),
-    ejson:encode({Props ++ ExtraProps}).
-
-expand_memcached_config({Props}, Params) when is_list(Props) ->
-    {[{Key, expand_memcached_config(Value, Params)} || {Key, Value} <- Props]};
-expand_memcached_config(Array, Params) when is_list(Array) ->
-    [expand_memcached_config(Elem, Params) || Elem <- Array];
-expand_memcached_config({M, F, A}, Params) ->
-    M:F(A, Params);
-expand_memcached_config({Fmt, Args}, Params) ->
-    Args1 = [expand_memcached_config(A, Params) || A <- Args],
-    iolist_to_binary(io_lib:format(Fmt, Args1));
-expand_memcached_config(Param, Params)
-  when is_atom(Param), Param =/= true, Param =/= false ->
-    {Param, Value} = lists:keyfind(Param, 1, Params),
-    Value;
-expand_memcached_config(Verbatim, _Params) ->
-    Verbatim.
-
 omit_missing_mcd_ports(Interfaces, MCDParams) ->
     ExpandedPorts = misc:rewrite(
                       fun ({port, PortName}) when is_atom(PortName) ->
@@ -339,4 +298,4 @@ omit_missing_mcd_ports(Interfaces, MCDParams) ->
                         {PortProps} ->
                             proplists:get_value(port, PortProps) =/= undefined
                     end],
-    expand_memcached_config(Ports, MCDParams).
+    memcached_config_mgr:expand_memcached_config(Ports, MCDParams).

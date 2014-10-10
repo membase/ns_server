@@ -148,6 +148,9 @@ child_specs() ->
      {ns_memcached_sockets_pool, {ns_memcached_sockets_pool, start_link, []},
       permanent, 1000, worker, []},
 
+     {memcached_config_mgr, {memcached_config_mgr, start_link, []},
+      {permanent, 4}, 1000, worker, []},
+
      {ns_port_memcached_killer, {ns_ports_setup, start_memcached_force_killer, []},
       permanent, brutal_kill, worker, []},
 
