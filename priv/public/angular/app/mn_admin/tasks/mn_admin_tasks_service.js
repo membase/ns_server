@@ -1,33 +1,43 @@
 angular.module('mnAdminTasksService').factory('mnAdminTasksService',
-  function ($http, $timeout, $q) {
+  function (mnHttpService) {
     var mnAdminTasksService = {};
-    var tasksLoopTimeout;
-    var tasksLoopCanceler;
 
     mnAdminTasksService.model = {};
 
-    mnAdminTasksService.stopTasksLoop = function () {
-      $timeout.cancel(tasksLoopTimeout);
-      tasksLoopCanceler && tasksLoopCanceler.resolve();
-    };
-    mnAdminTasksService.runTasksLoop = function (url) {
-      if (!url) {
-        return
-      }
-      tasksLoopCanceler && tasksLoopCanceler.resolve();
-      tasksLoopCanceler = $q.defer();
+    mnAdminTasksService.runTasksLoop = mnHttpService({
+      method: 'GET',
+      keepURL: true,
+      success: [runTasksLoop, populateModel]
+    });
 
-      return $http({
-        method: 'GET',
-        url: url,
-        timeout: tasksLoopCanceler.promise
-      }).success(function (tasks) {
-        runTasksLoop(tasks, url);
+    var prevPeriod;
+
+    function runTasksLoop(tasks) {
+      var minPeriod = 1 << 28;
+      _.each(tasks, function (taskInfo) {
+        var period = taskInfo.recommendedRefreshPeriod;
+        if (!period) {
+          return;
+        }
+        period = (period * 1000) >> 0;
+        if (period < minPeriod) {
+          minPeriod = period;
+        }
       });
-    };
+
+      if (prevPeriod === minPeriod) {
+        return;
+      }
+      prevPeriod = minPeriod;
+      mnAdminTasksService.runTasksLoop({period: minPeriod});
+    }
+
+    mnAdminTasksService.stopTasksLoop = mnAdminTasksService.runTasksLoop.cancel
 
     function populateModel(tasks) {
-
+      if (!tasks) {
+        return;
+      }
       var model = mnAdminTasksService.model;
 
       model.tasksRecovery = _.detect(tasks, detectRecoveryTasks);
@@ -48,34 +58,6 @@ angular.module('mnAdminTasksService').factory('mnAdminTasksService',
 
     function detectLoadingSamples(taskInfo) {
       return taskInfo.type === "loadingSampleBucket" && taskInfo.status === "running";
-    }
-
-    function runTasksLoop(tasks, url) {
-      if (!tasks) {
-        return;
-      }
-
-      populateModel(tasks);
-
-      if (tasksLoopTimeout) {
-        $timeout.cancel(tasksLoopTimeout);
-      }
-
-      var minPeriod = 1 << 28;
-      _.each(tasks, function (taskInfo) {
-        var period = taskInfo.recommendedRefreshPeriod;
-        if (!period) {
-          return;
-        }
-        period = (period * 1000) >> 0;
-        if (period < minPeriod) {
-          minPeriod = period;
-        }
-      });
-
-      tasksLoopTimeout = $timeout(function () {
-        mnAdminTasksService.runTasksLoop(url);
-      }, minPeriod);
     }
 
     return mnAdminTasksService;

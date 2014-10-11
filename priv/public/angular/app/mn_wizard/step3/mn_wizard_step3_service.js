@@ -1,10 +1,9 @@
 angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
-  function ($http, mnWizardStep2Service) {
+  function (mnHttpService, mnWizardStep2Service) {
 
     var mnWizardStep3Service = {};
     mnWizardStep3Service.model = {};
 
-    var defaultBucketUrl = '/pools/default/buckets/default';
     var defaultBucketConf = {
       authType: 'sasl',
       name: 'default',
@@ -18,9 +17,28 @@ angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
       ramQuotaMB: "0"
     };
 
-    mnWizardStep3Service.tryToGetDefaultBucketInfo = function (justValidate) {
-      return $http({method: 'GET', url: defaultBucketUrl});
-    };
+    mnWizardStep3Service.tryToGetDefaultBucketInfo = mnHttpService({
+      method: 'GET',
+      url: '/pools/default/buckets/default'
+    });
+
+    function getPostBucketsParams(justValidate) {
+      var requestParams = {
+        data: mnWizardStep3Service.model.bucketConf
+      };
+
+      if (mnWizardStep3Service.model.isDefaultBucketPresented) {
+        requestParams.url = '/pools/default/buckets/default';
+      }
+
+      if (justValidate) {
+        requestParams.params = {
+          just_validate: 1,
+          ignore_warnings: 1
+        };
+      }
+      return requestParams;
+    }
 
     mnWizardStep3Service.getBucketConf = function (data) {
       return _.extend(data ? _.pick(data, _.keys(defaultBucketConf)) : defaultBucketConf, {
@@ -28,23 +46,10 @@ angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
       });
     };
 
-    mnWizardStep3Service.postBuckets = function (justValidate) {
-      var request = {
-        method: 'POST',
-        url: mnWizardStep3Service.model.isDefaultBucketPresented ? defaultBucketUrl : '/pools/default/buckets',
-        data: _.serializeData(mnWizardStep3Service.model.bucketConf),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-      };
-
-      if (justValidate) {
-        request.params = {
-          just_validate: 1,
-          ignore_warnings: 1
-        };
-      }
-
-      return $http(request);
-    };
+    mnWizardStep3Service.postBuckets = _.compose(mnHttpService({
+      method: 'POST',
+      url: '/pools/default/buckets'
+    }), getPostBucketsParams);
 
     return mnWizardStep3Service;
   });

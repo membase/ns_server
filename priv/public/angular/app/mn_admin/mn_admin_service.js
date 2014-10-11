@@ -1,13 +1,7 @@
 angular.module('mnAdminService').factory('mnAdminService',
-  function ($http, $q, $timeout, $state, mnAuthService, mnAdminTasksService, mnAdminServersListItemService) {
-    var canceler;
-    var timeout;
+  function ($http, $q, $timeout, $state, mnHttpService, mnAuthService, mnAdminTasksService, mnAdminServersListItemService) {
     var mnAdminService = {};
     mnAdminService.model = {};
-
-    function stopDefaultPoolsDetailsLoop() {
-      canceler && canceler.resolve();
-    }
 
     function prepareNodesModel() {
       var hostnameToGroup = (mnAdminService.model.isGroupsAvailable && mnAdminService.model.hostnameToGroup) || {};
@@ -75,6 +69,21 @@ angular.module('mnAdminService').factory('mnAdminService',
       mnAdminService.model.hostnameToGroup = hostnameToGroup;
     }
 
+    mnAdminService.getGroups = _.compose(mnHttpService({
+      method: 'GET',
+      url: '/pools/default/serverGroups',
+      success: [prepareGroupsModel]
+    }), function (url) {
+      return {url: url};
+    });
+
+    var defaultPoolsDetailsRequest = mnHttpService({
+      method: 'GET',
+      responseType: 'json',
+      timeout: 30000,
+      success: [defaultPoolsDetailsLoop]
+    });
+
     function preparePoolDetails(details) {
       if (!details) {
         return;
@@ -83,38 +92,19 @@ angular.module('mnAdminService').factory('mnAdminService',
       mnAdminService.model.details = details;
       mnAdminService.model.isGroupsAvailable = !!(mnAdminService.model.isEnterprise && mnAdminService.model.details.serverGroupsUri);
       prepareNodesModel();
-      mnAdminService.runDefaultPoolsDetailsLoop(details);
+      mnAdminService.model.ramTotalPerActiveNode = mnAdminService.model.details.storageTotals.ram.total / mnAdminService.model.nodes.onlyActive.length;
     }
 
-    mnAdminService.getGroups = function (url) {
-      return $http({method: 'GET', url: url || '/pools/default/serverGroups'}).success(prepareGroupsModel);
-    };
+    function defaultPoolsDetailsLoop(details) {
+      var params = {};
+      params.url = mnAuthService.model.defaultPoolUri;
+      params.params = {waitChange: getWaitChangeOfPoolsDetailsLoop()};
+      details && details.etag && (params.params.etag = details.etag);
 
-    mnAdminService.runDefaultPoolsDetailsLoop = function (next) {
-      stopDefaultPoolsDetailsLoop();
+      return defaultPoolsDetailsRequest(params).success(preparePoolDetails);
+    }
 
-      if (!(mnAuthService.model.defaultPoolUri && mnAuthService.model.isAuth)) {
-        return;
-      }
-
-      var params = {
-        url: mnAuthService.model.defaultPoolUri,
-        params: {waitChange: getWaitChangeOfPoolsDetailsLoop()}
-      };
-
-      canceler = $q.defer();
-      params.timeout = canceler.promise;
-      params.method = 'GET';
-      params.responseType = 'json';
-
-      if (next && next.etag) {
-        timeout && $timeout.cancel(timeout);
-        timeout = $timeout(canceler.resolve, 30000); //TODO: add some behaviour for this case
-        params.params.etag = next.etag;
-      }
-
-      return $http(params).success(preparePoolDetails);
-    };
+    mnAdminService.runDefaultPoolsDetailsLoop = defaultPoolsDetailsLoop;
 
     function getWaitChangeOfPoolsDetailsLoop() {
       return $state.current.name === 'admin.overview' ||
@@ -122,8 +112,8 @@ angular.module('mnAdminService').factory('mnAdminService',
     }
 
     mnAdminService.initializeWatchers = function ($scope) {
-      $scope.$on('$destroy', mnAdminTasksService.stopTasksLoopfunction);
-      $scope.$on('$destroy', stopDefaultPoolsDetailsLoop);
+      $scope.$on('$destroy', mnAdminTasksService.stopTasksLoop);
+      $scope.$on('$destroy', defaultPoolsDetailsRequest.cancel);
 
       $scope.$watch(getWaitChangeOfPoolsDetailsLoop, mnAdminService.runDefaultPoolsDetailsLoop);
 
@@ -136,8 +126,8 @@ angular.module('mnAdminService').factory('mnAdminService',
       }, prepareNodesModel, true);
 
       $scope.$watch(function () {
-        return mnAdminService.model.details.tasks.uri;
-      }, mnAdminTasksService.runTasksLoop);
+        return {url: mnAdminService.model.details.tasks.uri};
+      }, mnAdminTasksService.runTasksLoop, true);
 
       $scope.$watch(function () {
         return mnAdminService.model.details.serverGroupsUri;

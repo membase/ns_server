@@ -1,5 +1,5 @@
 angular.module('mnWizardStep1DiskStorageService').factory('mnWizardStep1DiskStorageService',
-  function ($http) {
+  function (mnHttpService) {
 
     var preprocessPath;
     var re = /^[A-Z]:\//;
@@ -32,17 +32,10 @@ angular.module('mnWizardStep1DiskStorageService').factory('mnWizardStep1DiskStor
       }) || {path: "/", sizeKBytes: 0, usagePercent: 0};
     };
 
-    mnWizardStep1DiskStorageService.postDiskStorage = function () {
-      return $http({
-        method: 'POST',
-        url: '/nodes/self/controller/settings',
-        data: _.serializeData({
-          path: mnWizardStep1DiskStorageService.model.dbPath,
-          index_path: mnWizardStep1DiskStorageService.model.indexPath
-        }),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-      });
-    };
+    mnWizardStep1DiskStorageService.postDiskStorage = mnHttpService({
+      method: 'POST',
+      url: '/nodes/self/controller/settings'
+    });
 
     function preprocessPathStandard(p) {
       if (p.charAt(p.length-1) != '/') {

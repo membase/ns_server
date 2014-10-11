@@ -1,5 +1,5 @@
 angular.module('mnWizardStep4Service').factory('mnWizardStep4Service',
-  function ($http) {
+  function (mnHttpService) {
 
     var mnWizardStep4Service = {};
     mnWizardStep4Service.model = {};
@@ -13,26 +13,19 @@ angular.module('mnWizardStep4Service').factory('mnWizardStep4Service',
       agree: true
     };
 
-    mnWizardStep4Service.postEmail = function () {
-      var cloned = _.clone(mnWizardStep4Service.model.register);
+    mnWizardStep4Service.postEmail = mnHttpService({
+      method: 'JSONP',
+      url: 'http://ph.couchbase.net/email',
+      params: {
+        callback: 'JSON_CALLBACK'
+      }
+    });
 
-      delete cloned.agree;
-      cloned.callback = 'JSON_CALLBACK';
 
-      return $http({
-        method: 'JSONP',
-        url: 'http://ph.couchbase.net/email?' + _.serializeData(cloned)
-      });
-    };
-
-    mnWizardStep4Service.postStats = function () {
-      return $http({
-        method: 'POST',
-        url: '/settings/stats',
-        data: _.serializeData({sendStats: mnWizardStep4Service.model.sendStats}),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-      });
-    };
+    mnWizardStep4Service.postStats = mnHttpService({
+      method: 'POST',
+      url: '/settings/stats'
+    });
 
     return mnWizardStep4Service;
   });

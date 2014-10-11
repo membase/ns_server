@@ -24,11 +24,17 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
       if ($scope.form.$invalid) {
         return reset();
       }
-      mnWizardStep5Service.postAuth().success(function () {
+
+      var data = _.clone(mnWizardStep5Service.model.user);
+      delete data.verifyPassword;
+
+      mnWizardStep5Service.postAuth({data: data}).success(function () {
         mnAuthService.manualLogin($scope.mnWizardStep5ServiceModel.user).success(function () {
           mnWizardStep5Service.resetUserCreds();
           mnWizardStep3Service.postBuckets(false).success(function () {
-            !_.isEmpty(mnWizardStep2Service.model.selected) && mnWizardStep2Service.installSampleBuckets().error(function () {
+            !_.isEmpty(mnWizardStep2Service.model.selected) && mnWizardStep2Service.installSampleBuckets({
+              data: JSON.stringify(_.keys(mnWizardStep2Service.model.selected)),
+            }).error(function () {
               // var errReason = errorObject && errorObject.reason || simpleErrors.join(' and ');
               // genericDialog({
               //   buttons: {ok: true},

@@ -29,6 +29,9 @@
   // This is an atered version of the jQuery.param()
   // https://github.com/jquery/jquery/blob/master/src/serialize.js
   function serializeData(data) {
+    if (angular.isString(data)) {
+      return data;
+    }
     if (!angular.isObject(data)) {
       return data == null ? "" : data.toString();
     }

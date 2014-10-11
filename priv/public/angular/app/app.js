@@ -7,6 +7,7 @@ angular.module('mnWizardStep4Service', []);
 angular.module('mnWizardStep5Service', []);
 
 angular.module('mnDialogs', []);
+angular.module('mnHttp', []);
 angular.module('mnBarUsage', []);
 angular.module('mnDialog', []);
 angular.module('mnFocus', []);
@@ -98,6 +99,7 @@ angular.module('app', [
   'mnAuthService',
   'mnWizard',
   'mnAuth',
+  'mnHttp',
   'mnAdmin',
   'mnBarUsage',
   'mnFocus',

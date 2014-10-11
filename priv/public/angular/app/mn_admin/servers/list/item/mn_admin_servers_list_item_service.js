@@ -1,5 +1,5 @@
 angular.module('mnAdminServersListItemService').factory('mnAdminServersListItemService',
-  function ($http) {
+  function () {
     var mnAdminServersListItemService = {};
 
     mnAdminServersListItemService.model = {};

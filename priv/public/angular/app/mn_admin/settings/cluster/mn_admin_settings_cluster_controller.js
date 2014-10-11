@@ -6,33 +6,21 @@ angular.module('mnAdminSettingsCluster').controller('mnAdminSettingsClusterContr
     var clusterCertificateSpinnerCtrl = function (state) {
       $scope.regenerateCertificateInprogress = state;
     };
-    var clusterSettingsSpinnerCtrl = function (state) {
+
+    var settingsClusterLoadedCtrl = function (state) {
       $scope.settingsClusterLoaded = state;
-    };
+    }
 
     $scope.saveVisualInternalSettings = function () {
-      clusterSettingsSpinnerCtrl(true);
-      mnAdminSettingsClusterService.saveVisualInternalSettings({
-        memoryQuota: $scope.memoryQuota,
-        tabName: $scope.tabName
-      })['finally'](function () {
-        clusterSettingsSpinnerCtrl(false);
-      });
+      mnAdminSettingsClusterService.saveVisualInternalSettings({spinner: settingsClusterLoadedCtrl, data: $scope.formData});
     };
     $scope.regenerateCertificate = function () {
-      clusterCertificateSpinnerCtrl(true);
-      mnAdminSettingsClusterService.regenerateCertificate()['finally'](function () {
-        clusterCertificateSpinnerCtrl(false);
-      });
+      mnAdminSettingsClusterService.regenerateCertificate({spinner: clusterCertificateSpinnerCtrl});
     };
     $scope.toggleCertArea = function () {
       $scope.toggleCertAreaFlag = !$scope.toggleCertAreaFlag;
     };
 
-    clusterCertificateSpinnerCtrl(true);
-    mnAdminSettingsClusterService.getAndSetDefaultCertificate()['finally'](function () {
-      clusterCertificateSpinnerCtrl(false);
-    });
-
+    mnAdminSettingsClusterService.getAndSetDefaultCertificate({spinner: clusterCertificateSpinnerCtrl});
     mnAdminSettingsClusterService.initializeMnAdminSettingsClusterScope($scope);
   });

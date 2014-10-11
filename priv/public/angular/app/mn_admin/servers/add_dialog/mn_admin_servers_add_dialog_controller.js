@@ -1,5 +1,5 @@
 angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
-  function ($scope, mnAdminServersAddDialogService, mnAdminGroupsService, mnAdminService, mnDialogService) {
+  function ($scope, mnAdminServersAddDialogService, mnAdminService, mnDialogService) {
     reset();
     $scope.mnAdminServersAddDialogServiceModel = mnAdminServersAddDialogService.model;
     var newServer = $scope.mnAdminServersAddDialogServiceModel.newServer;

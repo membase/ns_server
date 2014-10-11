@@ -1,5 +1,5 @@
 angular.module('mnWizardStep5Service').factory('mnWizardStep5Service',
-  function ($http) {
+  function (mnHttpService) {
     var defaultUserCreds = {
       username: 'Administrator',
       password: '',
@@ -15,19 +15,13 @@ angular.module('mnWizardStep5Service').factory('mnWizardStep5Service',
 
     mnWizardStep5Service.resetUserCreds();
 
-    mnWizardStep5Service.postAuth = function () {
-      var cloned = _.clone(mnWizardStep5Service.model.user);
-
-      delete cloned.verifyPassword;
-      cloned.port = "SAME";
-
-      return $http({
-        method: 'POST',
-        url: '/settings/web',
-        data: _.serializeData(cloned),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-      });
-    };
+    mnWizardStep5Service.postAuth = mnHttpService({
+      method: 'POST',
+      url: '/settings/web',
+      data: {
+        port: "SAME"
+      }
+    });
 
     return mnWizardStep5Service;
   });

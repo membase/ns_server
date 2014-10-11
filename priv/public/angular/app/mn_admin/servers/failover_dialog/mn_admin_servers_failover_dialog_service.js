@@ -1,10 +1,12 @@
 angular.module('mnAdminServersFailOverDialogService').factory('mnAdminServersFailOverDialogService',
-  function ($http, $q, $timeout) {
+  function (mnHttpService) {
     var mnAdminServersFailOverDialogService = {};
     mnAdminServersFailOverDialogService.model = {};
-    mnAdminServersFailOverDialogService.getNodeStatuses = function (url) {
-      return $http({method: 'GET', url: url});
-    };
+    mnAdminServersFailOverDialogService.getNodeStatuses = _.compose(mnHttpService({
+      method: 'GET'
+    }), function (url) {
+      return {url: url};
+    });
 
     return mnAdminServersFailOverDialogService;
   });

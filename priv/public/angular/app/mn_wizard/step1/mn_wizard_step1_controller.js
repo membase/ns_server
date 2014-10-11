@@ -7,7 +7,10 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
         return;
       }
       $scope.stepSubmited = true;
-      makeRequest(mnWizardStep1DiskStorageService, 'postDiskStorage').success(doPostHostName);
+      makeRequest(mnWizardStep1DiskStorageService, 'postDiskStorage', undefined, {
+        path: mnWizardStep1DiskStorageService.model.dbPath,
+        index_path: mnWizardStep1DiskStorageService.model.indexPath
+      }).success(doPostHostName);
     }
 
     $scope.$watch(function () {
@@ -20,13 +23,13 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
 
     function doPostHostName() {
       var nextAction = mnWizardStep1JoinClusterService.model.joinCluster === 'ok' ? doPostJoinCluster : doPostMemory;
-      makeRequest(mnWizardStep1Service, 'postHostname', postHostnameErrorExtr).success(nextAction);
+      makeRequest(mnWizardStep1Service, 'postHostname', postHostnameErrorExtr, {hostname: mnWizardStep1Service.model.hostname}).success(nextAction);
     }
     function doPostJoinCluster() {
-      makeRequest(mnWizardStep1JoinClusterService, 'postJoinCluster').success(doLogin);
+      makeRequest(mnWizardStep1JoinClusterService, 'postJoinCluster', undefined, mnWizardStep1JoinClusterService.model.clusterMember).success(doLogin);
     }
     function doPostMemory() {
-      makeRequest(mnWizardStep1JoinClusterService, 'postMemory', postMemoryErrorExtr).success(goToNextPage);
+      makeRequest(mnWizardStep1JoinClusterService, 'postMemory', postMemoryErrorExtr, {memoryQuota: mnWizardStep1JoinClusterService.model.dynamicRamQuota}).success(goToNextPage);
     }
     function goToNextPage() {
       $state.go('wizard.step2');
@@ -50,8 +53,8 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
     }
 
 
-    function makeRequest(module, method, errorExtractor) {
-      return module[method]().success(function () {
+    function makeRequest(module, method, errorExtractor, data) {
+      return module[method]({data: data}).success(function () {
         $scope[method + 'Errors'] = false;
       }).error(function (errors) {
         $scope[method + 'Errors'] = errorExtractor ? errorExtractor(errors) : errors;

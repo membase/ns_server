@@ -1,5 +1,5 @@
 angular.module('mnAdminSettingsClusterService').factory('mnAdminSettingsClusterService',
-  function ($http, mnAdminService, mnAdminServersService) {
+  function ($http, mnAdminService, mnAdminServersService, mnHttpService) {
     var mnAdminSettingsClusterService = {};
     mnAdminSettingsClusterService.model = {};
     var model = mnAdminSettingsClusterService.model;
@@ -14,59 +14,52 @@ angular.module('mnAdminSettingsClusterService').factory('mnAdminSettingsClusterS
       model.errors = errors.errors;
     };
 
-    mnAdminSettingsClusterService.getAndSetDefaultCertificate = function () {
-      return $http({
-        method: 'GET',
-        url: '/pools/default/certificate'
-      }).success(setCertificate);
-    };
-    mnAdminSettingsClusterService.regenerateCertificate = function () {
-      return $http({
-        method: 'POST',
-        url: '/controller/regenerateCertificate',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-      }).success(setCertificate);
-    };
-    mnAdminSettingsClusterService.saveVisualInternalSettings = function (settings, justValidate) {
-      var params = {
-        method: 'POST',
-        url: '/internalSettings/visual',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
-        data: _.serializeData(settings)
-      };
-
-      if (!!justValidate) {
-        params.url += '?just_validate=1';
-        return $http(params).success(setError).error(setError);
-      } else {
-        return $http(params).error(setError).success(mnAdminService.runDefaultPoolsDetailsLoop);
-      }
-    };
-    mnAdminSettingsClusterService.getAndSetVisulaSettings = function () {
-      return $http({
-        method: 'GET',
-        url: (mnAdminService.model.details ? mnAdminService.model.details.visualSettingsUri : '/internalSettings/visual'),
-      }).success(function (visualInternalSettings) {
+    mnAdminSettingsClusterService.getAndSetDefaultCertificate = mnHttpService({
+      method: 'GET',
+      url: '/pools/default/certificate',
+      success: [setCertificate]
+    });
+    mnAdminSettingsClusterService.regenerateCertificate = mnHttpService({
+      method: 'POST',
+      url: '/controller/regenerateCertificate',
+      success: [setCertificate]
+    });
+    mnAdminSettingsClusterService.getAndSetVisulaSettings = mnHttpService({
+      method: 'GET',
+      url: '/internalSettings/visual',
+      success: [function (visualInternalSettings) {
         model.tabName = visualInternalSettings.tabName;
-      });
+      }]
+    });
+
+    var saveVisualInternalSettings = mnHttpService({
+      method: 'POST',
+      url: '/internalSettings/visual',
+      error: [setError]
+    });
+
+    mnAdminSettingsClusterService.saveVisualInternalSettings = function (params) {
+      return saveVisualInternalSettings(params).success(
+        params.justValidate ? setError : mnAdminService.runDefaultPoolsDetailsLoop
+      );
     };
 
 
     mnAdminSettingsClusterService.initializeMnAdminSettingsClusterScope = function ($scope) {
-      $scope.memoryQuota = getInMegs(mnAdminService.model.details.storageTotals.ram.quotaTotalPerNode);
-      $scope.tabName = mnAdminSettingsClusterService.model.tabName;
+      $scope.formData = {};
+      $scope.formData.memoryQuota = getInMegs(mnAdminService.model.details.storageTotals.ram.quotaTotalPerNode);
+      $scope.formData.tabName = mnAdminSettingsClusterService.model.tabName;
 
-      $scope.$watch('memoryQuota', function () {
+      $scope.$watch('formData.memoryQuota', function () {
         mnAdminSettingsClusterService.saveVisualInternalSettings({
-          memoryQuota: $scope.memoryQuota,
-          tabName: $scope.tabName
-        }, "justValidate");
+          data: $scope.formData,
+          justValidate: true
+        });
       }); //live validation of memoryQuota
 
       $scope.$watch(function () {
-        return mnAdminService.model.details.storageTotals.ram.total /
-               mnAdminService.model.nodes.onlyActive.length;
-      }, function (ramTotalPerActiveNode ) {
+        return mnAdminService.model.ramTotalPerActiveNode;
+      }, function (ramTotalPerActiveNode) {
         model.totalRam = getInMegs(ramTotalPerActiveNode);
         model.maxRamMegs = Math.max(
           getInMegs(ramTotalPerActiveNode) - 1024,

@@ -1,5 +1,5 @@
 angular.module('mnAdminServersAddDialogService').factory('mnAdminServersAddDialogService',
-  function ($http) {
+  function (mnHttpService) {
     var mnAdminServersAddDialogService = {};
     var initialNewServer = {
       hostname: '',
@@ -13,16 +13,16 @@ angular.module('mnAdminServersAddDialogService').factory('mnAdminServersAddDialo
     mnAdminServersAddDialogService.resetModel = function () {
       mnAdminServersAddDialogService.model.newServer = _.clone(initialNewServer);
     };
-    mnAdminServersAddDialogService.addServer = function (url) {
-      var selectedGroup = mnAdminServersAddDialogService.model.selectedGroup;
 
-      return $http({
-        method: 'POST',
+    mnAdminServersAddDialogService.addServer = _.compose(mnHttpService({
+      method: 'POST'
+    }), function (url) {
+      var selectedGroup = mnAdminServersAddDialogService.model.selectedGroup;
+      return {
         url: (selectedGroup && selectedGroup.addNodeURI) || url,
-        data: _.serializeData(mnAdminServersAddDialogService.model.newServer),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-      });
-    };
+        data: mnAdminServersAddDialogService.model.newServer
+      };
+    });
 
     return mnAdminServersAddDialogService;
 

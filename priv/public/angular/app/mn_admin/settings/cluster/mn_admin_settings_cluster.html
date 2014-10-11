@@ -5,7 +5,7 @@
     </h2>
     <div class="sub_section">
       <label>Cluster Name:</label>
-      <input type="text" name="tabName" maxlength="256" ng-model="tabName">
+      <input type="text" name="tabName" maxlength="256" ng-model="formData.tabName">
       <span>(0 — 256 chars)</span>
     </div>
     <div class="certificate_section">
@@ -31,7 +31,7 @@
         <label>RAM Available:</label><span style="vertical-align:middle;"><span id="js_cluster_settings_total_ram">{{model.totalRam}}</span> MB</span>
       </div>
       <div class="row">
-        <label for="cluster_settings_ram_quota">Per Server RAM Quota:</label><input type="text" mn-focus-directive="focusMe" class="focusme" id="cluster_settings_ram_quota" name="memoryQuota" style="width:58px;" ng-model="memoryQuota"><span style="vertical-align:middle;"> MB (256 MB — <span id="js_ram-max-size">{{model.maxRamMegs}}</span> MB)</span>
+        <label for="cluster_settings_ram_quota">Per Server RAM Quota:</label><input type="text" mn-focus-directive="focusMe" class="focusme" id="cluster_settings_ram_quota" name="memoryQuota" style="width:58px;" ng-model="formData.memoryQuota"><span style="vertical-align:middle;"> MB (256 MB — <span id="js_ram-max-size">{{model.maxRamMegs}}</span> MB)</span>
         <div class="error-container err-memoryQuota" ng-show="model.errors.memoryQuota">{{model.errors.memoryQuota}}</div>
       </div>
     </div>

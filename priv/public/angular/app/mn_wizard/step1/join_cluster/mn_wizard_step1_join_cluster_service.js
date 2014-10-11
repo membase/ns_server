@@ -1,5 +1,5 @@
 angular.module('mnWizardStep1JoinClusterService').factory('mnWizardStep1JoinClusterService',
-  function ($http, mnWizardStep1Service) {
+  function (mnHttpService, mnWizardStep1Service) {
 
     var mnWizardStep1JoinClusterService = {};
 
@@ -17,28 +17,20 @@ angular.module('mnWizardStep1JoinClusterService').factory('mnWizardStep1JoinClus
     };
 
     mnWizardStep1JoinClusterService.resetClusterMember = function () {
-      mnWizardStep1JoinClusterService.model.clusterMember = defaultClusterMember;
+      mnWizardStep1JoinClusterService.model.clusterMember = _.clone(defaultClusterMember);
     };
 
     mnWizardStep1JoinClusterService.resetClusterMember();
 
-    mnWizardStep1JoinClusterService.postMemory = function () {
-      return $http({
-        method: 'POST',
-        url: '/pools/default',
-        data: _.serializeData({memoryQuota: mnWizardStep1JoinClusterService.model.dynamicRamQuota}),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-      });
-    };
+    mnWizardStep1JoinClusterService.postMemory = mnHttpService({
+      method: 'POST',
+      url: '/pools/default'
+    });
 
-    mnWizardStep1JoinClusterService.postJoinCluster = function () {
-      return $http({
-        method: 'POST',
-        url: '/node/controller/doJoinCluster',
-        data: _.serializeData(mnWizardStep1JoinClusterService.model.clusterMember),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-      });
-    };
+    mnWizardStep1JoinClusterService.postJoinCluster = mnHttpService({
+      method: 'POST',
+      url: '/node/controller/doJoinCluster'
+    });
 
     mnWizardStep1JoinClusterService.populateModel = function (ram) {
       if (!ram) {

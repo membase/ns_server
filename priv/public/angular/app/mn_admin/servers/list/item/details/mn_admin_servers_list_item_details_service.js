@@ -1,10 +1,12 @@
 angular.module('mnAdminServersListItemDetailsService').factory('mnAdminServersListItemDetailsService',
-  function ($http) {
+  function (mnHttpService) {
     var mnAdminServersListItemDetailsService = {};
 
-    mnAdminServersListItemDetailsService.getNodeDetails = function (node) {
-      return $http({url: '/nodes/' + encodeURIComponent(node.otpNode), method: 'GET'});
-    };
+    mnAdminServersListItemDetailsService.getNodeDetails = _.compose(mnHttpService({
+      method: 'GET'
+    }), function (node) {
+      return {url: '/nodes/' + encodeURIComponent(node.otpNode)};
+    });
 
     return mnAdminServersListItemDetailsService;
   });
