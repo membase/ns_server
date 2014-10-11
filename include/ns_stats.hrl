@@ -148,8 +148,6 @@
         get_hits,
         get_misses,
 
-        %% Number of io read operations
-        %% ep_io_num_read,
         %% Total number of items persisted.
         %% ep_total_persisted,
 
