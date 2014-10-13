@@ -283,16 +283,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth) ->
                                 {directoryURI, StatsDirectoryUri},
                                 {nodeStatsListURI, NodeStatsListURI}]}},
               {ddocs, {struct, [{uri, DDocsURI}]}},
-              {nodeLocator, ns_bucket:node_locator(BucketConfig)},
-              {fastWarmupSettings,
-               case proplists:get_value(fast_warmup, BucketConfig) of
-                   undefined ->
-                       false;
-                   false ->
-                       false;
-                   FWSettings ->
-                       menelaus_web:build_fast_warmup_settings(FWSettings)
-               end}
+              {nodeLocator, ns_bucket:node_locator(BucketConfig)}
               | Suffix3]}.
 
 build_bucket_capabilities(BucketConfig) ->
@@ -402,7 +393,7 @@ respond_bucket_created(Req, PoolId, BucketId) ->
 extract_bucket_props(BucketId, Props) ->
     ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, replica_index, ram_quota, auth_type,
                                                                      sasl_password, moxi_port,
-                                                                     autocompaction, purge_interval, fast_warmup,
+                                                                     autocompaction, purge_interval,
                                                                      flush_enabled, num_threads, eviction_policy]],
                            X =/= false],
     case BucketId of
@@ -898,17 +889,6 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                   []
                           end ++ [{ok, autocompaction, ACSettings} | Candidates1]
                   end,
-    Candidates3 =
-        case menelaus_web:parse_validate_bucket_fast_warmup_settings(Params) of
-            nothing ->
-                Candidates2;
-            false ->
-                [{ok, fast_warmup, false} | Candidates2];
-            {errors, FWErrors} ->
-                [{error, F, M} || {F, M} <- FWErrors] ++ Candidates2;
-            {ok, FWSettings} ->
-                [{ok, fast_warmup, FWSettings} | Candidates2]
-        end,
     Candidates = case BucketType of
                      memcached ->
                          [{ok, bucketType, memcached}
@@ -932,10 +912,10 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                           end,
                           parse_validate_threads_number(proplists:get_value("threadsNumber", Params)),
                           parse_validate_eviction_policy(proplists:get_value("evictionPolicy", Params))
-                          | Candidates3];
+                          | Candidates2];
                      _ ->
                          [{error, bucketType, <<"invalid bucket type">>}
-                          | Candidates3]
+                          | Candidates2]
                  end,
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.

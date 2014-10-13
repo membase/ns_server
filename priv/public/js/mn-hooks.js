@@ -1980,10 +1980,6 @@ _.extend(mnMockRouting.prototype, {
       "replication": {
         "createURI": "/controller/createReplication",
         "validateURI": "/controller/createReplication?just_validate=1"
-      },
-      "setFastWarmup": {
-        "uri": "/controller/setFastWarmup",
-        "validateURI": "/controller/setFastWarmup?just_validate=1"
       }
     },
     "rebalanceStatus": "none",
@@ -2001,11 +1997,6 @@ _.extend(mnMockRouting.prototype, {
         "percentage": 30,
         "size": "undefined"
       }
-    },
-    "fastWarmupSettings": {
-      "fastWarmupEnabled": true,
-      "minMemoryThreshold": 10,
-      "minItemsThreshold": 10
     },
     "tasks": {
       "uri": "/pools/default/tasks?v=133172395"
@@ -2082,7 +2073,6 @@ _.extend(mnMockRouting.prototype, {
       "uri": "/pools/default/buckets/default/ddocs"
     },
     "nodeLocator": "vbucket",
-    "fastWarmupSettings": false,
     "autoCompactionSettings": false,
     "uuid": "ebb026fbdbd6177e549b26950ff7b41e",
     "evictionPolicy": "valueOnly",
@@ -2217,7 +2207,6 @@ _.extend(mnMockRouting.prototype, {
       "uri": "/pools/default/buckets/mcd/ddocs"
     },
     "nodeLocator": "ketama",
-    "fastWarmupSettings": false,
     "autoCompactionSettings": false,
     "uuid": "357548f0d9f345f28396bf7571058629",
     "replicaNumber": 0,

@@ -116,10 +116,6 @@ GET /pools/default =>
         "replication": {
             "createURI": "/controller/createReplication?uuid=14c408ed8df50823715f47b900bd1b4f", // POST here in order to create xdcr replication
             "validateURI": "/controller/createReplication?just_validate=1" // private
-        },
-        "setFastWarmup": {
-            "uri": "/controller/setFastWarmup?uuid=14c408ed8df50823715f47b900bd1b4f",
-            "validateURI": "/controller/setFastWarmup?just_validate=1"
         }
     },
     "balanced": <:bool>,
@@ -140,11 +136,6 @@ GET /pools/default =>
             "percentage": 30,
             "size": "undefined"
         }
-    },
-    "fastWarmupSettings": { // private, deprecated
-        "fastWarmupEnabled": true,
-        "minMemoryThreshold": 10,
-        "minItemsThreshold": 10
     },
     "tasks": {
         "uri": "/pools/default/tasks?v=84138772" // pointer to tasks API. Note ?v= thing is changing each time list of tasks (but not their progress) is changed
@@ -237,7 +228,6 @@ GET /pools/default/buckets/default =>
     },
     "nodeLocator": ("vbucket" | "ketama"), // ketama is used for memcached buckets, vbucket for membase/couchbase. if vbucket is present you need to use vbucket map below
     "autoCompactionSettings": (false | <compactionSettings>), // false if bucket inherits cluster-wide compaction settings or own compaction settings info as can be seen in pool details
-    "fastWarmupSettings": false,
     "uuid": "7554c64cd513f87c806b307efeb0a842", // yes bucket has it's own unique id. If bucket is deleted and re-created new bucket instance will have different uuid
     "vBucketServerMap": { // this will in fact only present for non-memcached buckets
         "hashAlgorithm": "CRC",
