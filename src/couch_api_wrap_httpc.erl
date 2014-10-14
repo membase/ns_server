@@ -133,8 +133,8 @@ maybe_retry(Error, #httpdb{retries = 0} = HttpDb, Params, _Callback) ->
 maybe_retry(Error, #httpdb{retries = Retries} = HttpDb, Params, Callback) ->
     Method = get_value(method, Params, "GET"),
     Url = couch_util:url_strip_password(full_url(HttpDb, Params)),
-    ?LOG_INFO("Retrying ~s request to ~s in ~p seconds due to error ~s",
-        [Method, Url, HttpDb#httpdb.wait / 1000, error_cause(Error)]),
+    ?xdcr_info("Retrying ~s request to ~s in ~p seconds due to error ~s",
+               [Method, Url, HttpDb#httpdb.wait / 1000, error_cause(Error)]),
     ok = timer:sleep(HttpDb#httpdb.wait),
     HttpDb2 = HttpDb#httpdb{
         retries = Retries - 1,
@@ -151,12 +151,12 @@ report_error(HttpDb, Params, Error) ->
 
 
 do_report_error(Url, Method, {code, Code}) ->
-    ?LOG_ERROR("Replicator, request ~s to ~p failed. The received "
-        "HTTP error code is ~p", [Method, Url, Code]);
+    ?xdcr_error("Replicator, request ~s to ~p failed. The received "
+                "HTTP error code is ~p", [Method, Url, Code]);
 
 do_report_error(FullUrl, Method, Error) ->
-    ?LOG_ERROR("Replicator, request ~s to ~p failed due to error ~s",
-        [Method, FullUrl, error_cause(Error)]).
+    ?xdcr_error("Replicator, request ~s to ~p failed due to error ~s",
+                [Method, FullUrl, error_cause(Error)]).
 
 
 error_cause({error, Cause}) ->
