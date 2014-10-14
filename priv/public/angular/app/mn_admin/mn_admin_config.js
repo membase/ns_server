@@ -62,11 +62,11 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider ) 
       controller: 'mnAdminSettingsClusterController',
       templateUrl: 'mn_admin/settings/cluster/mn_admin_settings_cluster.html',
       resolve: {
-        mnAdminSettingsClusterInitData: function ($q, mnAdminSettingsClusterService) {
-          return $q.all([
-            mnAdminSettingsClusterService.getAndSetDefaultCertificate(),
-            mnAdminSettingsClusterService.getAndSetVisulaSettings()
-          ]);
+        defaultCertificate: function (mnAdminSettingsClusterService) {
+          return mnAdminSettingsClusterService.getDefaultCertificate();
+        },
+        getVisulaSettings: function (mnAdminSettingsClusterService) {
+          return mnAdminSettingsClusterService.getVisulaSettings();
         }
       },
       authenticate: true
