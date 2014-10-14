@@ -452,7 +452,7 @@ name=<name>&hostname=<hostname>&username=<username>&password=<password>&demandEn
 
 
 POST /controller/createReplication
-fromBucket=<local-bucket-name>&toBucket=<remote-bucket-name>&replicationType=continuous&toCluster=<remote cluster name>
+fromBucket=<local-bucket-name>&toBucket=<remote-bucket-name>&replicationType=continuous&toCluster=<remote cluster name>(&type=(capi|xmem))?
 
 // empty post here deletes xdcr replication
 POST /controller/cancelXDCR/<:string>
