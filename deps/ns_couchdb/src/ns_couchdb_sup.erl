@@ -44,6 +44,9 @@ init([]) ->
 
 child_specs() ->
     [
+     {ns_couchdb_stats_collector, {ns_couchdb_stats_collector, start_link, []},
+      permanent, 1000, worker, [ns_couchdb_stats_collector]},
+
      {ns_couchdb_config_sup, {ns_couchdb_config_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_couchdb_config_sup]}

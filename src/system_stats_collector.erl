@@ -38,7 +38,8 @@
 
 -export([increment_counter/2, get_ns_server_stats/0, set_counter/2,
          add_histo/2,
-         cleanup_stale_epoch_histos/0, log_system_stats/1]).
+         cleanup_stale_epoch_histos/0, log_system_stats/1,
+         stale_histo_epoch_cleaner/0]).
 
 -record(state, {port, prev_sample}).
 
@@ -410,7 +411,10 @@ add_ets_stats(Stats) ->
                                     {hibernated_waked, WakeupRate}])).
 
 log_system_stats(TS) ->
-    stats_collector:log_stats(TS, "@system", lists:sort(ets:tab2list(ns_server_system_stats))).
+    NSServerStats = lists:sort(ets:tab2list(ns_server_system_stats)),
+    NSCouchDbStats = ns_couchdb_api:fetch_stats(),
+
+    stats_collector:log_stats(TS, "@system", lists:keymerge(1, NSServerStats, NSCouchDbStats)).
 
 handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
     case flush_ticks(0) of
