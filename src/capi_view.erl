@@ -149,8 +149,8 @@ send_no_active_vbuckets(CouchReq, Bucket0) ->
     Req = CouchReq#httpd.mochi_req,
     Bucket = iolist_to_binary(Bucket0),
     LocalAddr = menelaus_util:local_addr(Req),
-    Headers0 = [{"Content-Type", "application/json"} |
-                menelaus_util:server_header()],
+    Headers0 = [{"Content-Type", "application/json"},
+                {"Cache-Control", "must-revalidate"}],
     RedirectNode = find_node_with_vbuckets(Bucket),
     Headers = case RedirectNode of
                   undefined -> Headers0;
