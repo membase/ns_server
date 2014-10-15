@@ -170,10 +170,8 @@ get_db_info(#db{name = DbName}) ->
                  [BucketV, _Vb] -> BucketV;
                  _ -> throw(not_found)
              end,
-    {ok, Stats0} = ns_memcached:stats(Bucket, <<"">>),
-    EpStartupTime =  proplists:get_value(<<"ep_startup_time">>, Stats0),
     Info = [{db_name, DbName},
-            {instance_start_time, EpStartupTime}],
+            {instance_start_time, ns_memcached:get_ep_startup_time_for_xdcr(Bucket)}],
     {ok, Info}.
 
 with_master_vbucket(#db{name = DbName}, Fun) ->
@@ -230,9 +228,7 @@ update_docs(Db, Docs, Options, replicated_changes) ->
 -spec ensure_full_commit(any(), integer()) -> {ok, binary()}.
 ensure_full_commit(#db{name = DbName}, _RequiredSeq) ->
     [Bucket, _VBucket] = string:tokens(binary_to_list(DbName), [$/]),
-    {ok, Stats} = ns_memcached:stats(Bucket, <<"">>),
-    EpStartupTime = proplists:get_value(<<"ep_startup_time">>, Stats),
-    {ok, EpStartupTime}.
+    {ok, ns_memcached:get_ep_startup_time_for_xdcr(Bucket)}.
 
 check_is_admin(_Db) ->
     ok.

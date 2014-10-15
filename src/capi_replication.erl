@@ -322,7 +322,7 @@ handle_mass_vbopaque_check(Req) ->
              || [Vb, VO] <- Opaques],
     Keys = lists:sort(Keys0),
 
-    {ok, KV0} = ns_memcached:stats(couch_util:to_list(Bucket), <<"vbucket-seqno">>),
+    KV0 = ns_memcached:get_seqno_stats(Bucket, undefined),
     KV = lists:sort([{K, V} || {K, V} <- KV0,
                                is_uuid_stat_key(K)]),
 
@@ -386,7 +386,7 @@ mass_vbopaque_check_loop_test() ->
     {[1, a], [{2, 33}, b], [3, 0, c]} = mass_vbopaque_check_loop(Expected, Stats, [a], [b], [c]).
 
 get_vbucket_seqno_stats(BucketName, Vb) ->
-    {ok, KV} = ns_memcached:stats(couch_util:to_list(BucketName), io_lib:format("vbucket-seqno ~B", [Vb])),
+    KV = ns_memcached:get_seqno_stats(BucketName, Vb),
     Key = iolist_to_binary(io_lib:format("vb_~B:uuid", [Vb])),
     SeqnoKey = iolist_to_binary(io_lib:format("vb_~B:high_seqno", [Vb])),
     U0 = misc:expect_prop_value(Key, KV),

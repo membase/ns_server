@@ -114,6 +114,7 @@
          get_from_replica/3,
          get_meta/3,
          update_with_rev/7,
+         get_seqno_stats/2,
          connect_and_send_isasl_refresh/0,
          connect_and_send_ssl_certs_refresh/0,
          get_vbucket_checkpoint_ids/2,
@@ -342,10 +343,8 @@ assign_queue({deregister_tap_client, _}) -> #state.heavy_calls_queue;
 assign_queue({add, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
 assign_queue({get, _Key, _VBucket}) -> #state.heavy_calls_queue;
 assign_queue({get_from_replica, _Key, _VBucket}) -> #state.heavy_calls_queue;
-assign_queue({get_meta, _Key, _VBucket}) -> #state.heavy_calls_queue;
 assign_queue({delete, _Key, _VBucket, _CAS}) -> #state.heavy_calls_queue;
 assign_queue({set, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
-assign_queue({update_with_rev, _Key, _VBucket, _Value, _Meta, _Deleted, _LocalCAS}) -> #state.heavy_calls_queue;
 assign_queue({get_keys, _VBuckets, _Params}) -> #state.heavy_calls_queue;
 assign_queue({sync, _Key, _VBucket, _CAS}) -> #state.very_heavy_calls_queue;
 assign_queue({get_mass_tap_docs_estimate, _VBuckets}) -> #state.very_heavy_calls_queue;
@@ -523,12 +522,6 @@ do_handle_call({set, Key, VBucket, Val}, _From, State) ->
                                   #mc_entry{key = Key, data = Val}}),
     {reply, Reply, State};
 
-do_handle_call({update_with_rev, VBucket, Key, Value, Rev, Deleting, LocalCAS},
-               _From, State) ->
-    Reply = mc_client_binary:update_with_rev(State#state.sock,
-                                             VBucket, Key, Value, Rev, Deleting, LocalCAS),
-    {reply, Reply, State};
-
 do_handle_call({create_new_checkpoint, VBucket},
             _From, State) ->
     Reply = mc_client_binary:create_new_checkpoint(State#state.sock, VBucket),
@@ -551,10 +544,6 @@ do_handle_call({get_from_replica, Key, VBucket}, _From, State) ->
     Reply = mc_client_binary:cmd(?CMD_GET_REPLICA, State#state.sock, undefined, undefined,
                                  {#mc_header{vbucket = VBucket},
                                   #mc_entry{key = Key}}),
-    {reply, Reply, State};
-
-do_handle_call({get_meta, Key, VBucket}, _From, State) ->
-    Reply = mc_client_binary:get_meta(State#state.sock, Key, VBucket),
     {reply, Reply, State};
 
 do_handle_call({sync, Key, VBucket, CAS}, _From, State) ->
@@ -951,9 +940,10 @@ get_from_replica(Bucket, Key, VBucket) ->
     | {memcached_error, key_enoent, integer()}
     | mc_error().
 get_meta(Bucket, Key, VBucket) ->
-    do_call({server(Bucket), node()},
-            {get_meta, Key, VBucket}, ?TIMEOUT_HEAVY).
-
+    perform_very_long_call(
+      fun (Sock) ->
+              {reply, mc_client_binary:get_meta(Sock, Key, VBucket)}
+      end, Bucket).
 
 %% @doc send a set command to memcached instance
 -spec delete(bucket_name(), binary(), integer(), integer()) ->
@@ -980,11 +970,11 @@ set(Bucket, Key, VBucket, Value) ->
                              {ok, #mc_header{}, #mc_entry{}} |
                              {memcached_error, atom(), binary()}.
 update_with_rev(Bucket, VBucket, Id, Value, Rev, Deleted, LocalCAS) ->
-    do_call(server(Bucket),
-            {update_with_rev, VBucket,
-             Id, Value, Rev, Deleted,
-             LocalCAS},
-            ?TIMEOUT_HEAVY).
+    perform_very_long_call(
+      fun (Sock) ->
+              {reply, mc_client_binary:update_with_rev(
+                        Sock, VBucket, Id, Value, Rev, Deleted, LocalCAS)}
+      end, Bucket).
 
 -spec create_new_checkpoint(bucket_name(), vbucket_id()) ->
     {ok, Checkpoint::integer(), Checkpoint::integer()} | mc_error().
@@ -1208,6 +1198,26 @@ get_vbucket_checkpoint_ids(Bucket, VBucketId) ->
 get_vbucket_high_seqno(Bucket, VBucketId) ->
     do_call(server(Bucket), {get_vbucket_high_seqno, VBucketId}, ?TIMEOUT).
 
+-spec get_seqno_stats(ext_bucket_name(), vbucket_id() | undefined) ->
+                             [{binary(), binary()}].
+get_seqno_stats(Bucket, VBucket) ->
+    Key = case VBucket of
+              undefined ->
+                  <<"vbucket-seqno">>;
+              _ ->
+                  list_to_binary(io_lib:format("vbucket-seqno ~B", [VBucket]))
+          end,
+    perform_very_long_call(
+      fun (Sock) ->
+              {ok, Stats} =
+                  mc_binary:quick_stats(
+                    Sock,
+                    Key,
+                    fun (K, V, Acc) ->
+                            [{K, V} | Acc]
+                    end, []),
+              {reply, Stats}
+      end, Bucket).
 
 connect_and_send_isasl_refresh() ->
     case connect(1) of
@@ -1503,7 +1513,8 @@ get_ep_startup_time_for_xdcr(Bucket) ->
                                 true -> V;
                                 _ -> Acc
                             end
-                    end, <<>>),
+                    end, undefined),
+              false = StartupTime =:= undefined,
               {reply, StartupTime}
       end, Bucket).
 
