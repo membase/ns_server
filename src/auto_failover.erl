@@ -189,6 +189,7 @@ handle_call(disable_auto_failover, _From, #state{tick_ref=Ref}=State) ->
     {ok, cancel} = timer2:cancel(Ref),
     State2 = State#state{tick_ref=nil, auto_failover_logic_state = undefined},
     make_state_persistent(State2),
+    ale:info(?USER_LOGGER, "Disabled auto-failover"),
     {reply, ok, State2};
 handle_call(reset_auto_failover_count, _From, State) ->
     {noreply, NewState} = handle_cast(reset_auto_failover_count, State),
@@ -203,6 +204,7 @@ handle_cast(reset_auto_failover_count, State) ->
                          auto_failover_logic_state = init_logic_state(State#state.timeout)},
     State3 = init_reported(State2),
     make_state_persistent(State3),
+    ale:info(?USER_LOGGER, "Reset auto-failover count"),
     {noreply, State3};
 
 handle_cast(_Msg, State) ->
