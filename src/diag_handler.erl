@@ -238,7 +238,8 @@ collect_diag_per_node_binary_body(Reply) ->
     Reply(master_local_docs, [{Bucket, (catch capi_utils:capture_local_master_docs(Bucket, 10000))} || Bucket <- ActiveBuckets]),
     Reply(design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket, 2000))} || Bucket <- ActiveBuckets]),
     Reply(tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))),
-    Reply(ets_tables, (catch grab_all_ets_tables())).
+    Reply(ets_tables, (catch grab_all_ets_tables())),
+    Reply(internal_settings, (catch menelaus_web:build_internal_settings_kvs())).
 
 grab_babysitter_process_infos() ->
     rpc:call(ns_server:get_babysitter_node(), ?MODULE, grab_process_infos, [], 5000).

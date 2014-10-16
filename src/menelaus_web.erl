@@ -62,6 +62,9 @@
 
 -export([reset_admin_password/1]).
 
+%% for /diag
+-export([build_internal_settings_kvs/0]).
+
 -import(menelaus_util,
         [redirect_permanently/2,
          bin_concat_path/1,
