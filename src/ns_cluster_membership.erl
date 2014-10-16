@@ -26,7 +26,6 @@
          activate/1,
          deactivate/1,
          failover/1,
-         re_add_node/1,
          re_failover/1,
          system_joinable/0,
          start_rebalance/3,
@@ -118,18 +117,6 @@ is_balanced() ->
 
 failover(Node) ->
     ns_orchestrator:failover(Node).
-
-re_add_node(Node) ->
-    KVList0 = [{{node, Node, membership}, inactiveAdded}],
-
-    KVList = case cluster_compat_mode:is_cluster_30() of
-                 true ->
-                     [{{node, Node, recovery_type}, full} | KVList0];
-                 false ->
-                     KVList0
-             end,
-
-    ns_config:set(KVList).
 
 re_failover_possible(NodeString) ->
     case (catch list_to_existing_atom(NodeString)) of

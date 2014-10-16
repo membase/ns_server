@@ -2523,9 +2523,7 @@ handle_stop_rebalance(Req) ->
 
 handle_re_add_node(Req) ->
     Params = Req:parse_post(),
-    Node = list_to_atom(proplists:get_value("otpNode", Params, "undefined")),
-    ok = ns_cluster_membership:re_add_node(Node),
-    reply(Req, 200).
+    do_handle_set_recovery_type(Req, full, Params).
 
 handle_re_failover(Req) ->
     Params = Req:parse_post(),
@@ -3152,9 +3150,12 @@ decode_recovery_type(_) ->
 
 handle_set_recovery_type(Req) ->
     Params = Req:parse_post(),
+    Type = decode_recovery_type(proplists:get_value("recoveryType", Params)),
+    do_handle_set_recovery_type(Req, Type, Params).
+
+do_handle_set_recovery_type(Req, Type, Params) ->
     NodeStr = proplists:get_value("otpNode", Params),
 
-    Type = decode_recovery_type(proplists:get_value("recoveryType", Params)),
     Node = try
                list_to_existing_atom(NodeStr)
            catch
