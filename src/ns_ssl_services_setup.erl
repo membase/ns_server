@@ -120,6 +120,7 @@ ssl_server_opts() ->
     Path = ssl_cert_key_path(),
     [{keyfile, Path},
      {certfile, Path},
+     {versions, ['tlsv1', 'tlsv1.1', 'tlsv1.2']},
      {cacertfile, ssl_cacert_key_path()}].
 
 start_link_rest_service() ->
