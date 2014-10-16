@@ -26,6 +26,7 @@
 -export([do_diag_per_node/0, do_diag_per_node_binary/0,
          handle_diag/1,
          handle_sasl_logs/1, handle_sasl_logs/2,
+         handle_diag_ale/1,
          arm_timeout/2, arm_timeout/1, disarm_timeout/1,
          grab_process_info/1, manifest/0,
          grab_all_tap_and_checkpoint_stats/0,
@@ -239,7 +240,8 @@ collect_diag_per_node_binary_body(Reply) ->
     Reply(design_docs, [{Bucket, (catch capi_ddoc_replication_srv:full_live_ddocs(Bucket, 2000))} || Bucket <- ActiveBuckets]),
     Reply(tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))),
     Reply(ets_tables, (catch grab_all_ets_tables())),
-    Reply(internal_settings, (catch menelaus_web:build_internal_settings_kvs())).
+    Reply(internal_settings, (catch menelaus_web:build_internal_settings_kvs())),
+    Reply(logging, (catch ale:capture_logging_diagnostics())).
 
 grab_babysitter_process_infos() ->
     rpc:call(ns_server:get_babysitter_node(), ?MODULE, grab_process_infos, [], 5000).
@@ -628,6 +630,18 @@ handle_sasl_logs(LogName, Req) ->
 
 handle_sasl_logs(Req) ->
     handle_sasl_logs(?DEBUG_LOG_FILENAME, Req).
+
+plist_to_ejson_rewriter([Tuple|_] = ListOfTuples) when is_tuple(Tuple) ->
+    Objects = [misc:rewrite(fun plist_to_ejson_rewriter/1, PL)
+               || PL <- ListOfTuples],
+    {stop, {Objects}};
+plist_to_ejson_rewriter(_Other) ->
+    continue.
+
+handle_diag_ale(Req) ->
+    PList = ale:capture_logging_diagnostics(),
+    Objects = misc:rewrite(fun plist_to_ejson_rewriter/1, PList),
+    menelaus_util:reply_json(Req, Objects).
 
 arm_timeout(Millis) ->
     arm_timeout(Millis,

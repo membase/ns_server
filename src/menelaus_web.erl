@@ -309,6 +309,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["diag"] ->
                              {auth_special, fun diag_handler:handle_diag/1, []};
                          ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
+                         ["diag", "ale"] -> {auth, fun diag_handler:handle_diag_ale/1};
                          ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
                          ["pools", "default", "rebalanceProgress"] ->
                              {auth_ro, fun handle_rebalance_progress/2, ["default"]};
