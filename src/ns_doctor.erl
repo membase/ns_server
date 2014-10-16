@@ -680,7 +680,7 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
     PreRebalanceTasks = [{struct, V} || V <- PreRebalanceTasks2],
 
     RebalanceTask0 =
-        case ns_cluster_membership:get_rebalance_status() of
+        case (catch ns_orchestrator:rebalance_progress_full()) of
             {running, PerNode} ->
                 DetailedProgress = get_detailed_progress(),
 
@@ -706,9 +706,11 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
                   {struct, [{Node, {struct, [{progress, Progress * 100}]}}
                             || {Node, Progress} <- PerNode]}},
                  {detailedProgress, DetailedProgress}];
-            _ ->
+            FullProgress ->
                 [{type, rebalance},
-                 {status, notRunning}
+                 {status, notRunning},
+                 {statusIsStale, FullProgress =/= not_running},
+                 {masterRequestTimedOut, misc:is_timeout_exit(FullProgress)}
                  | case ns_config:search(rebalance_status) of
                        {value, {none, ErrorMessage}} ->
                            [{errorMessage, iolist_to_binary(ErrorMessage)}];
