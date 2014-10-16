@@ -766,9 +766,34 @@ do_rewrite(Fun, [H|T]) ->
 do_rewrite(_Fun, []) ->
     [];
 do_rewrite(Fun, Tuple) when is_tuple(Tuple) ->
-    list_to_tuple(do_rewrite(Fun, tuple_to_list(Tuple)));
+    L = [rewrite(Fun, E) || E <- tuple_to_list(Tuple)],
+    list_to_tuple(L);
 do_rewrite(_Fun, Term) ->
     Term.
+
+rewrite_correctly_callbacks_on_tuples_test() ->
+    executing_on_new_process(
+      fun () ->
+              {a, b, c} =
+                  rewrite(
+                    fun (Term) ->
+                            self() ! {term, Term},
+                            continue
+                    end, {a, b, c}),
+              Terms =
+                  letrec(
+                    [[]],
+                    fun (Rec, Acc) ->
+                            receive
+                                X ->
+                                    {term, T} = X,
+                                    Rec(Rec, [T | Acc])
+                            after 0 ->
+                                    lists:reverse(Acc)
+                            end
+                    end),
+              [{a, b, c}, a, b, c] = Terms
+      end).
 
 rewrite_value(Old, New, Struct) ->
     rewrite(
