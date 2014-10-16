@@ -48,6 +48,7 @@
          request_janitor_run/1,
          rebalance_progress/0,
          rebalance_progress_full/0,
+         rebalance_progress_full/1,
          start_link/0,
          start_rebalance/3,
          stop_rebalance/0,
@@ -186,6 +187,10 @@ needs_rebalance(Nodes) ->
 -spec rebalance_progress_full() -> {running, [{atom(), float()}]} | not_running.
 rebalance_progress_full() ->
     gen_fsm:sync_send_event(?SERVER, rebalance_progress, 2000).
+
+-spec rebalance_progress_full(non_neg_integer()) -> {running, [{atom(), float()}]} | not_running.
+rebalance_progress_full(Timeout) ->
+    gen_fsm:sync_send_event(?SERVER, rebalance_progress, Timeout).
 
 -spec rebalance_progress() -> {running, [{atom(), float()}]} | not_running.
 rebalance_progress() ->

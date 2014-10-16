@@ -2536,11 +2536,20 @@ handle_re_failover(Req) ->
     end.
 
 handle_tasks(PoolId, Req) ->
+    RebTimeoutS = proplists:get_value("rebalanceStatusTimeout", Req:parse_qs(), "2000"),
+    case menelaus_util:parse_validate_number(RebTimeoutS, 1000, 120000) of
+        {ok, RebTimeout} ->
+            do_handle_tasks(PoolId, Req, RebTimeout);
+        _ ->
+            reply_json(Req, {struct, [{rebalanceStatusTimeout, <<"invalid">>}]}, 400)
+    end.
+
+do_handle_tasks(PoolId, Req, RebTimeout) ->
     NodesSet = sets:from_list(ns_node_disco:nodes_wanted()),
     JSON = ns_doctor:build_tasks_list(
              fun (Node) ->
                      sets:is_element(Node, NodesSet)
-             end, PoolId),
+             end, PoolId, RebTimeout),
     reply_json(Req, JSON, 200).
 
 handle_reset_alerts(Req) ->

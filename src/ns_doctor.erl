@@ -27,7 +27,7 @@
          code_change/3]).
 %% API
 -export([get_nodes/0, get_node/1, get_node/2,
-         get_tasks_version/0, build_tasks_list/2]).
+         get_tasks_version/0, build_tasks_list/3]).
 
 -record(state, {
           nodes :: dict(),
@@ -193,10 +193,10 @@ get_node(Node) ->
 get_tasks_version() ->
     gen_server:call(?MODULE, get_tasks_version).
 
-build_tasks_list(NodeNeededP, PoolId) ->
+build_tasks_list(NodeNeededP, PoolId, RebStatusTimeout) ->
     NodesDict = gen_server:call(?MODULE, get_nodes),
     AllRepDocs = xdc_rdoc_replication_srv:find_all_replication_docs(),
-    do_build_tasks_list(NodesDict, NodeNeededP, PoolId, AllRepDocs).
+    do_build_tasks_list(NodesDict, NodeNeededP, PoolId, AllRepDocs, RebStatusTimeout).
 
 %% Internal functions
 
@@ -568,7 +568,7 @@ pick_latest_cluster_collect_task(AllNodeTasks) ->
     end.
 
 
-do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
+do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs, RebStatusTimeout) ->
     AllNodeTasks =
         dict:fold(
           fun (Node, NodeInfo, Acc) ->
@@ -680,7 +680,7 @@ do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs) ->
     PreRebalanceTasks = [{struct, V} || V <- PreRebalanceTasks2],
 
     RebalanceTask0 =
-        case (catch ns_orchestrator:rebalance_progress_full()) of
+        case (catch ns_orchestrator:rebalance_progress_full(RebStatusTimeout)) of
             {running, PerNode} ->
                 DetailedProgress = get_detailed_progress(),
 
