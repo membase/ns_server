@@ -39,6 +39,7 @@ init() ->
                      {packet, raw},
                      {active, false},
                      {nodelay, true},
+                     {versions, ['tlsv1', 'tlsv1.1', 'tlsv1.2']},
                      {certfile, CertFile},
                      {keyfile, PrivateKeyFile},
                      {cacertfile, CACertFile}]) of
