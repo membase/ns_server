@@ -1422,6 +1422,10 @@ is_undef_exit(M, F, A, {undef, [{M, F, A, []} | _]}) -> true; % R15, R16
 is_undef_exit(M, F, A, {undef, [{M, F, A} | _]}) -> true; % R14
 is_undef_exit(_M, _F, _A, _Reason) -> false.
 
+is_timeout_exit({'EXIT', timeout}) -> true;
+is_timeout_exit({'EXIT', {timeout, _}}) -> true;
+is_timeout_exit(_) -> false.
+
 -spec sync_shutdown_many_i_am_trapping_exits(Pids :: [pid()]) -> ok.
 sync_shutdown_many_i_am_trapping_exits(Pids) ->
     {trap_exit, true} = erlang:process_info(self(), trap_exit),
