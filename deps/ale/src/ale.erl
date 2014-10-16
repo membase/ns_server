@@ -27,6 +27,8 @@
          sync_sink/1,
          sync_all_sinks/0,
 
+         capture_logging_diagnostics/0,
+
          %% counterparts of pseudo-functions handled by ale_transform
          get_effective_loglevel/1, is_loglevel_enabled/2, sync/1,
 
@@ -186,6 +188,20 @@ xcritical(LoggerName, {M, F, L}, Data, Fmt, Args) ->
 sync(LoggerName) ->
     call_logger_impl(LoggerName, sync, []).
 
+capture_logging_diagnostics() ->
+    #state{sinks = Sinks, loggers = Loggers} = gen_server:call(?MODULE, get_state),
+    LoggersD = [{N,
+                 [{loglevel, L},
+                  {formatter, F},
+                  {sinks, [{SN, SL}
+                           || {_, #sink{name = SN, loglevel = SL}} <- dict:to_list(LSinks)]}]}
+                || {_, #logger{name = N,
+                               loglevel = L,
+                               sinks = LSinks,
+                               formatter = F}} <- dict:to_list(Loggers)],
+    [{sinks, dict:to_list(Sinks)},
+     {loggers, LoggersD}].
+
 %% Callbacks
 init([]) ->
     State = #state{sinks=dict:new(),
@@ -199,6 +215,9 @@ init([]) ->
     set_error_logger_handler(),
 
     {ok, State2}.
+
+handle_call(get_state, _From, State) ->
+    {reply, State, State};
 
 handle_call({start_sink, Name, Type, Module, Args}, _From, State) ->
     RV = do_start_sink(Name, Type, Module, Args, State),
