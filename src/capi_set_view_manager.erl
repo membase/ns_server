@@ -187,13 +187,6 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
     {ok, DDocReplicationProxy} = capi_ddoc_replication_srv:start_link(Bucket),
     erlang:put('ddoc_replication_proxy', DDocReplicationProxy),
 
-    {ok, Db} = open_local_db(Bucket),
-    Docs = try
-               {ok, ADocs} = couch_db:get_design_docs(Db, deleted_also),
-               ADocs
-           after
-               ok = couch_db:close(Db)
-           end,
     %% anytime we disconnect or reconnect, force a replicate event.
     erlang:spawn_link(
       fun () ->
@@ -209,6 +202,18 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
 
     Replicator = spawn_ddoc_replicator(ServerName),
 
+    proc_lib:init_ack({ok, self()}),
+
+    wait_for_bucket_to_start(Bucket, 0),
+
+    {ok, Db} = open_local_db(Bucket),
+    Docs = try
+               {ok, ADocs} = couch_db:get_design_docs(Db, deleted_also),
+               ADocs
+           after
+               ok = couch_db:close(Db)
+           end,
+
     State = #state{bucket=Bucket,
                    local_docs = Docs,
                    num_vbuckets = NumVBuckets,
@@ -217,12 +222,42 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
                    rebalance_states = [],
                    ddoc_replicator = Replicator},
 
-    proc_lib:init_ack({ok, self()}),
-
     [maybe_define_group(DDocId, State)
      || DDocId <- get_live_ddoc_ids(State)],
 
     gen_server:enter_loop(?MODULE, [], State).
+
+wait_for_bucket_to_start(Bucket, Time) ->
+    RV = ns_memcached:perform_very_long_call(
+           fun (_Sock) ->
+                   ?log_debug("Engine for bucket ~p is created in memcached", [Bucket]),
+                   {reply, ok}
+           end, Bucket),
+    case RV of
+        ok ->
+            ok;
+        {error, {select_bucket_failed, {memcached_error, key_enoent, _}}} = RV ->
+            case Time of
+                10000 ->
+                    ?log_error("Engine for bucket ~p didn't start in ~p ms. Exit.", [Bucket, Time]),
+                    exit(RV);
+                _ ->
+                    receive
+                        {'EXIT', Pid, Reason} ->
+                            ?log_debug("Received exit from ~p with reason ~p", [Pid, Reason]),
+                            exit(Reason)
+                    after 500 ->
+                            ok
+                    end,
+
+                    Time1 = Time + 500,
+                    ?log_debug("Waiting for engine to start. Bucket: ~p, Wait time: ~p ms.",
+                               [Bucket, Time1]),
+                    wait_for_bucket_to_start(Bucket, Time1)
+            end;
+        Error ->
+            exit(Error)
+    end.
 
 get_live_ddoc_ids(#state{local_docs = Docs}) ->
     [Id || #doc{id = Id, deleted = false} <- Docs].
