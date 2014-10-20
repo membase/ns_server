@@ -917,7 +917,7 @@ var ViewsSection = {
       var defaultParams = "connection_timeout=60000";
       var staleParam = tabsVal === 'production' ? "&stale=update_after" : "&stale=false";
       SpatialFilter.initialParams = defaultParams + staleParam;
-      ViewsFilter.initialParams = defaultParams + staleParam;
+      ViewsFilter.initialParams = defaultParams + staleParam + "&inclusive_end=true";
 
       if (!spatialVal) {
         SpatialFilter.rawFilterParamsCell.setValue(SpatialFilter.initialParams);
