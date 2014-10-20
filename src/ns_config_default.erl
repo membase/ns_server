@@ -656,6 +656,8 @@ do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig) ->
         [{set, PortServersKey, DefaultPortServers},
          {set, McdConfigKey, DefaultMcdConfig}].
 
+%% NOTE: verbosity part actually doesn't work anymore because default
+%% memcached config doesn't have verbosity field anymore
 upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ->
     McdKey = {node, node(), memcached},
 
@@ -692,8 +694,9 @@ do_upgrade_config_from_3_0_to_3_0_1(Config, DefaultConfig) ->
     EnginesTuple = {engines, _} = lists:keyfind(engines, 1, DefaultMcdConfig),
     ConfigPathTuple = {config_path, _} = lists:keyfind(config_path, 1, DefaultMcdConfig),
     NewMcdConfig0 = lists:keystore(engines, 1, CurrentMcdConfig, EnginesTuple),
-    NewMcdConfig = lists:keystore(config_path, 1, NewMcdConfig0, ConfigPathTuple),
-    [{set, McdKey, NewMcdConfig},
+    NewMcdConfig1 = lists:keystore(config_path, 1, NewMcdConfig0, ConfigPathTuple),
+    NewMcdConfig2 = lists:keydelete(verbosity, 1, NewMcdConfig1),
+    [{set, McdKey, NewMcdConfig2},
      {set, JTKey, DefaultJsonTemplateConfig},
      {set, PortServersKey, DefaultPortServers}].
 
@@ -1026,14 +1029,14 @@ upgrade_3_0_to_3_0_1_test() ->
               {port, 3}]},
             {{node, node(), memcached_config}, memcached_config}]],
     Default = [{{node, node(), port_servers}, port_servers_cfg},
-               {{node, node(), memcached}, [{ssl_port, 1}, {verbosity, 3},
+               {{node, node(), memcached}, [{ssl_port, 1},
                                             {config_path, cfg_path},
                                             {engines, [something]}]},
                {{node, node(), memcached_config}, memcached_config},
                {{node, node(), port_servers}, port_servers_cfg}],
 
     ?assertMatch([{set, {node, _, memcached}, [{engines, [something]},
-                                               {ssl_port, 1}, {verbosity, 2},
+                                               {ssl_port, 1},
                                                {port, 3},
                                                {config_path, cfg_path}]},
                   {set, {node, _, memcached_config}, memcached_config},
