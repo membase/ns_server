@@ -1329,8 +1329,10 @@ ensure_bucket_config(Sock, Bucket, membase,
           end, {missing_max_size, missing_path,
                 missing_num_threads, missing_eviction_policy}),
 
-    NumThreadsChanged = (NumThreadsBin =/= ActualNumThreads),
-    EvictionPolicyChanged = (EvictionPolicyBin =/= ActualEvictionPolicy),
+    CanReloadBuckets = ns_config:read_key_fast(dont_reload_bucket_on_cfg_change, false) =:= false,
+
+    NumThreadsChanged = CanReloadBuckets andalso (NumThreadsBin =/= ActualNumThreads),
+    EvictionPolicyChanged = CanReloadBuckets andalso (EvictionPolicyBin =/= ActualEvictionPolicy),
 
     case NumThreadsChanged of
         true ->
