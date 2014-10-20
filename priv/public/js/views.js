@@ -918,7 +918,7 @@ var ViewsSection = {
       var spatialfilterParams = "&bbox=-180,-90,180,90";
       var staleParam = tabsVal === 'production' ? "&stale=update_after" : "&stale=false";
       SpatialFilter.initialParams = defaultParams + spatialfilterParams + staleParam;
-      ViewsFilter.initialParams = defaultParams + staleParam;
+      ViewsFilter.initialParams = defaultParams + staleParam + "&inclusive_end=true";
 
       if (!spatialVal) {
         SpatialFilter.rawFilterParamsCell.setValue(SpatialFilter.initialParams);
