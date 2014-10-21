@@ -135,7 +135,14 @@ maybe_build_ext_hostname(Node) ->
     end.
 
 do_compute_bucket_info(Bucket, Config) ->
-    {ok, BucketConfig, BucketVC} = ns_bucket:get_bucket_with_vclock(Bucket, Config),
+    case ns_bucket:get_bucket_with_vclock(Bucket, Config) of
+        {ok, BucketConfig, BucketVC} ->
+            compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC);
+        not_present ->
+            not_present
+    end.
+
+compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
     {_, Servers0} = lists:keyfind(servers, 1, BucketConfig),
 
     %% we do sorting to make nodes list match order of servers inside vBucketServerMap
@@ -176,12 +183,11 @@ do_compute_bucket_info(Bucket, Config) ->
           {nodeLocator, ns_bucket:node_locator(BucketConfig)},
           {uuid, UUID}
           | MaybeVBMap]},
-    ejson:encode(J).
+    {ok, ejson:encode(J)}.
 
 compute_bucket_info(Bucket) ->
     Config = ns_config:get(),
-    try do_compute_bucket_info(Bucket, Config) of
-        V -> {ok, V}
+    try do_compute_bucket_info(Bucket, Config)
     catch T:E ->
             {T, E, erlang:get_stacktrace()}
     end.
