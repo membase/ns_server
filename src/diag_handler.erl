@@ -33,8 +33,10 @@
          grab_all_tap_and_checkpoint_stats/1,
          log_all_tap_and_checkpoint_stats/0,
          diagnosing_timeouts/1,
-         %% rpc-ed to grab babysitter processes
-         grab_process_infos/0]).
+         %% rpc-ed to grab babysitter and couchdb processes
+         grab_process_infos/0,
+         %% rpc-ed to grab couchdb ets_tables
+         grab_all_ets_tables/0]).
 
 % Read the manifest.xml file
 manifest() ->
@@ -245,6 +247,7 @@ collect_diag_per_node_binary_body(Reply) ->
     Reply(design_docs, [{Bucket, (catch capi_utils:full_live_ddocs(Bucket, 2000))} || Bucket <- ActiveBuckets]),
     Reply(tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))),
     Reply(ets_tables, (catch grab_all_ets_tables())),
+    Reply(couchdb_ets_tables, (catch grab_couchdb_ets_tables())),
     Reply(internal_settings, (catch menelaus_web:build_internal_settings_kvs())),
     Reply(logging, (catch ale:capture_logging_diagnostics())).
 
@@ -262,6 +265,9 @@ grab_process_infos_loop([], Acc) ->
 grab_process_infos_loop([P | RestPids], Acc) ->
     NewAcc = [{P, (catch grab_process_info(P))} | Acc],
     grab_process_infos_loop(RestPids, NewAcc).
+
+grab_couchdb_ets_tables() ->
+    rpc:call(ns_node_disco:couchdb_node(), ?MODULE, grab_all_ets_tables, [], 5000).
 
 grab_all_ets_tables() ->
     lists:flatmap(
@@ -513,8 +519,8 @@ do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
     DiagNoStats = lists:keydelete(stats, 1, PerNodeDiag),
     do_handle_per_node_ets_tables(Resp, Node, DiagNoStats).
 
-do_handle_per_node_ets_tables(Resp, Node, PerNodeDiag) ->
-    EtsTables0 = proplists:get_value(ets_tables, PerNodeDiag, []),
+write_ets_tables(Resp, Node, Key, PerNodeDiag) ->
+    EtsTables0 = proplists:get_value(Key, PerNodeDiag, []),
     EtsTables = case is_list(EtsTables0) of
                     true ->
                         EtsTables0;
@@ -526,8 +532,8 @@ do_handle_per_node_ets_tables(Resp, Node, PerNodeDiag) ->
       fun () ->
               lists:foreach(
                 fun ({Table, Values}) ->
-                        write_chunk_format(Resp, "per_node_ets_tables(~p, ~p) =~n",
-                                           [Node, Table]),
+                        write_chunk_format(Resp, "per_node_~p(~p, ~p) =~n",
+                                           [Key, Node, Table]),
 
                         lists:foreach(
                           fun (Value) ->
@@ -538,8 +544,12 @@ do_handle_per_node_ets_tables(Resp, Node, PerNodeDiag) ->
                 end, EtsTables)
       end),
 
-    DiagNoEtsTables = lists:keydelete(ets_tables, 1, PerNodeDiag),
-    do_continue_handling_per_node_just_diag(Resp, Node, DiagNoEtsTables).
+    lists:keydelete(Key, 1, PerNodeDiag).
+
+do_handle_per_node_ets_tables(Resp, Node, PerNodeDiag) ->
+    PerNodeDiag1 = write_ets_tables(Resp, Node, ets_tables, PerNodeDiag),
+    PerNodeDiag2 = write_ets_tables(Resp, Node, couchdb_ets_tables, PerNodeDiag1),
+    do_continue_handling_per_node_just_diag(Resp, Node, PerNodeDiag2).
 
 do_continue_handling_per_node_just_diag(Resp, Node, Diag) ->
     erlang:garbage_collect(),
