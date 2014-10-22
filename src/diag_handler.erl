@@ -140,6 +140,7 @@ do_diag_per_node() ->
      {basic_info, element(2, ns_info:basic_info())},
      {processes, grab_process_infos()},
      {babysitter_processes, (catch grab_babysitter_process_infos())},
+     {couchdb_processes, (catch grab_couchdb_process_infos())},
      {memory, memsup:get_memory_data()},
      {disk, (catch ns_disksup:get_disk_data())},
      {active_tasks, task_status_all()},
@@ -228,6 +229,7 @@ collect_diag_per_node_binary_body(Reply) ->
 
     Reply(processes, grab_process_infos()),
     Reply(babysitter_processes, (catch grab_babysitter_process_infos())),
+    Reply(couchdb_processes, (catch grab_couchdb_process_infos())),
     Reply(version, ns_info:version()),
     Reply(manifest, manifest()),
     Reply(config, ns_config_log:sanitize(ns_config:get_kv_list())),
@@ -248,6 +250,9 @@ collect_diag_per_node_binary_body(Reply) ->
 
 grab_babysitter_process_infos() ->
     rpc:call(ns_server:get_babysitter_node(), ?MODULE, grab_process_infos, [], 5000).
+
+grab_couchdb_process_infos() ->
+    rpc:call(ns_node_disco:couchdb_node(), ?MODULE, grab_process_infos, [], 5000).
 
 grab_process_infos() ->
     grab_process_infos_loop(erlang:processes(), []).
@@ -433,43 +438,44 @@ do_handle_per_node_just_diag(Resp, Node, PerNodeDiag) ->
 
     do_handle_per_node_processes(Resp, Node, DiagNoMasterEvents).
 
-do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
-    erlang:garbage_collect(),
-
-    Processes = proplists:get_value(processes, PerNodeDiag),
-
-    BabysitterProcesses0 = proplists:get_value(babysitter_processes, PerNodeDiag, []),
+get_other_node_processes(Key, PerNodeDiag) ->
+    Processes = proplists:get_value(Key, PerNodeDiag, []),
     %% it may be rpc or any other error; just pretend it's the process so that
     %% the error is visible
-    BabysitterProcesses = case is_list(BabysitterProcesses0) of
-                              true ->
-                                  BabysitterProcesses0;
-                              false ->
-                                  [BabysitterProcesses0]
-                          end,
+    case is_list(Processes) of
+        true ->
+            Processes;
+        false ->
+            [Processes]
+    end.
 
-    DiagNoProcesses = lists:keydelete(processes, 1,
-                                       lists:keydelete(babysitter_processes, 1, PerNodeDiag)),
-
+write_processes(Resp, Node, Key, Processes) ->
     misc:executing_on_new_process(
       fun () ->
-              write_chunk_format(Resp, "per_node_processes(~p) =~n", [Node]),
+              write_chunk_format(Resp, "per_node_~p(~p) =~n", [Key, Node]),
               lists:foreach(
                 fun (Process) ->
                         write_chunk_format(Resp, "     ~p~n", [Process])
                 end, Processes),
               Resp:write_chunk(<<"\n\n">>)
-      end),
+      end).
 
-    misc:executing_on_new_process(
-      fun () ->
-              write_chunk_format(Resp, "per_node_babysitter_processes(~p) =~n", [Node]),
-              lists:foreach(
-                fun (Process) ->
-                        write_chunk_format(Resp, "     ~p~n", [Process])
-                end, BabysitterProcesses),
-              Resp:write_chunk(<<"\n\n">>)
-      end),
+do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
+    erlang:garbage_collect(),
+
+    Processes = proplists:get_value(processes, PerNodeDiag),
+
+    BabysitterProcesses = get_other_node_processes(babysitter_processes, PerNodeDiag),
+    CouchdbProcesses = get_other_node_processes(couchdb_processes, PerNodeDiag),
+
+    DiagNoProcesses = lists:keydelete(
+                        processes, 1,
+                        lists:keydelete(babysitter_processes, 1,
+                                        lists:keydelete(couchdb_processes, 1, PerNodeDiag))),
+
+    write_processes(Resp, Node, processes, Processes),
+    write_processes(Resp, Node, babysitter_processes, BabysitterProcesses),
+    write_processes(Resp, Node, couchdb_processes, CouchdbProcesses),
 
     do_handle_per_node_stats(Resp, Node, DiagNoProcesses).
 
