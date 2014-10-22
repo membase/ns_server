@@ -96,6 +96,13 @@ setup_static_config() ->
                   end, Terms).
 
 init_logging() ->
+    ale:with_configuration_batching(
+      fun () ->
+              do_init_logging()
+      end),
+    ale:info(?NS_SERVER_LOGGER, "Brought up babysitter logging").
+
+do_init_logging() ->
     {ok, Dir} = application:get_env(ns_server, error_logger_mf_dir),
     DiskSinkOpts = misc:get_env_default(ns_server, disk_sink_opts, []),
 
@@ -123,8 +130,7 @@ init_logging() ->
               end, [?NS_SERVER_LOGGER, ?ERROR_LOGGER]);
         false ->
             ok
-    end,
-    ale:info(?NS_SERVER_LOGGER, "Brought up babysitter logging").
+    end.
 
 stop(_) ->
     ok.
