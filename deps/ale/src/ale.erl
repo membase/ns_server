@@ -27,6 +27,8 @@
          sync_sink/1,
          sync_all_sinks/0,
 
+         with_configuration_batching/1,
+
          capture_logging_diagnostics/0,
 
          %% counterparts of pseudo-functions handled by ale_transform
@@ -47,8 +49,9 @@
 
 -include("ale.hrl").
 
--record(state, {sinks   :: dict(),
-                loggers :: dict()}).
+-record(state, {compile_frozen = false :: boolean(),
+                sinks                  :: dict(),
+                loggers                :: dict()}).
 
 -record(logger, {name      :: atom(),
                  loglevel  :: loglevel(),
@@ -65,6 +68,24 @@ start_link() ->
 
 start_sink(Name, Module, Args) ->
     gen_server:call(?MODULE, {start_sink, Name, Module:sink_type(), Module, Args}).
+
+with_configuration_batching(Body) ->
+    Old = freeze_compilations(),
+    case Old of
+        true ->
+            Body();
+        false ->
+            try Body()
+            after
+                thaw_compilations()
+            end
+    end.
+
+freeze_compilations() ->
+    gen_server:call(?MODULE, freeze_compilations, infinity).
+
+thaw_compilations() ->
+    ok = gen_server:call(?MODULE, thaw_compilations, infinity).
 
 stop_sink(Name) ->
     gen_server:call(?MODULE, {stop_sink, Name}).
@@ -259,6 +280,19 @@ handle_call({get_sink_loglevel, LoggerName, SinkName}, _From, State) ->
 
 handle_call(get_sink_names, _From, State) ->
     {reply, dict:fetch_keys(State#state.sinks), State};
+
+handle_call(freeze_compilations, _From, State) ->
+    {reply, State#state.compile_frozen, State#state{compile_frozen = true}};
+
+handle_call(thaw_compilations, _From, State) ->
+    case State#state.compile_frozen of
+        false ->
+            {reply, ok, State};
+        true ->
+            [just_compile_logger(State, Logger)
+             || {_, Logger} <- dict:to_list(State#state.loggers)],
+            {reply, ok, State#state{compile_frozen = false}}
+    end;
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -480,12 +514,25 @@ set_error_logger_handler() ->
     ok = gen_event:add_sup_handler(error_logger, ale_error_logger_handler,
                                    [?ERROR_LOGGER]).
 
-compile(#state{sinks=SinkTypes,
+compile(#state{compile_frozen = Frozen,
                loggers=Loggers} = State,
-        #logger{name=LoggerName,
-                loglevel=LogLevel,
-                formatter=Formatter,
-                sinks=Sinks} = Logger) ->
+        #logger{name=LoggerName} = Logger) ->
+
+    case Frozen of
+        false ->
+            just_compile_logger(State, Logger);
+        _ ->
+            ok
+    end,
+
+    NewLoggers = dict:store(LoggerName, Logger, Loggers),
+    State#state{loggers=NewLoggers}.
+
+just_compile_logger(#state{sinks=SinkTypes} = _State,
+                    #logger{name=LoggerName,
+                            loglevel=LogLevel,
+                            formatter=Formatter,
+                            sinks=Sinks} = _Logger) ->
     SinksList =
         dict:fold(
           fun (SinkName,
@@ -496,10 +543,7 @@ compile(#state{sinks=SinkTypes,
                   [{SinkName, SinkId, SinkLogLevel, SinkType} | Acc]
           end, [], Sinks),
 
-    ok = ale_codegen:load_logger(LoggerName, LogLevel, Formatter, SinksList),
-
-    NewLoggers = dict:store(LoggerName, Logger, Loggers),
-    State#state{loggers=NewLoggers}.
+    ok = ale_codegen:load_logger(LoggerName, LogLevel, Formatter, SinksList).
 
 is_valid_loglevel(LogLevel) ->
     lists:member(LogLevel, ?LOGLEVELS).
