@@ -151,6 +151,13 @@ adjust_loglevel(LogLevel, ThresholdLogLevel) ->
     end.
 
 init_logging() ->
+    ale:with_configuration_batching(
+      fun () ->
+              do_init_logging()
+      end),
+    ale:info(?NS_SERVER_LOGGER, "Started & configured logging").
+
+do_init_logging() ->
     StdLoggers = [?ALE_LOGGER, ?ERROR_LOGGER],
     AllLoggers = StdLoggers ++ ?LOGGERS,
 
@@ -249,8 +256,7 @@ init_logging() ->
               end, AllLoggers ++ [?ACCESS_LOGGER] -- [?XDCR_TRACE_LOGGER]);
         false ->
             ok
-    end,
-    ale:info(?NS_SERVER_LOGGER, "Started & configured logging").
+    end.
 
 start_sink(Name, Module, Args) ->
     ale:stop_sink(Name),

@@ -33,7 +33,7 @@ function performSignOut() {
     });
 
     _.defer(function () {
-      var e = $('#auth_dialog [name=password]').get(0);
+      var e = $('#auth_dialog [name=login]').get(0);
       try {e.focus();} catch (ex) {}
     });
   });
