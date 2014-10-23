@@ -39,7 +39,7 @@ child_specs(BucketName) ->
     [{{capi_set_view_manager, BucketName},
       {capi_set_view_manager, start_link, [BucketName]},
       permanent, 1000, worker, [capi_set_view_manager]},
-     {{ns_memcached, BucketName}, {ns_memcached_sup, start_link, [BucketName]},
+     {{ns_memcached_sup, BucketName}, {ns_memcached_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [ns_memcached_sup]},
      {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [ns_vbm_sup]},
