@@ -55,10 +55,13 @@ setup_env() ->
     EnvArgsStr = os:getenv("NS_COUCHDB_ENV_ARGS"),
     true = is_list(EnvArgsStr),
 
+    ok = application:load(ns_server),
+
     {ok, EnvArgs} = couch_util:parse_term(EnvArgsStr),
     lists:foreach(
       fun ({Key, Value}) ->
-              application:set_env(ns_couchdb, Key, Value)
+              application:set_env(ns_couchdb, Key, Value),
+              application:set_env(ns_server, Key, Value)
       end, EnvArgs).
 
 init_logging() ->
