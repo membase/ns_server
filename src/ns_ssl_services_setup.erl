@@ -33,7 +33,9 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 start_link_capi_service() ->
-    case ns_config:search_node(ssl_capi_port) of
+    case ns_config:search_node(ns_node_disco:ns_server_node(),
+                               ns_config:latest_config_marker(),
+                               ssl_capi_port) of
         {value, SSLPort} when SSLPort =/= undefined ->
             do_start_link_capi_service(SSLPort);
         _ ->

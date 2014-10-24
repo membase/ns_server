@@ -29,8 +29,5 @@ child_specs() ->
 
      {ns_rest_ssl_service,
       {ns_ssl_services_setup, start_link_rest_service, []},
-      permanent, 1000, worker, []},
-
-     {ns_capi_ssl_service,
-      {ns_ssl_services_setup, start_link_capi_service, []},
-      permanent, 1000, worker, []}].
+      permanent, 1000, worker, []}
+    ].
