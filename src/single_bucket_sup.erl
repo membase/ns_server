@@ -42,10 +42,8 @@ child_specs(BucketName) ->
      {{doc_replication_srv, BucketName},
       {doc_replication_srv, start_link, [BucketName]},
       permanent, 1000, worker, [doc_replication_srv]},
-     {{ns_memcached, BucketName}, {ns_memcached, start_link, [BucketName]},
-      %% sometimes bucket deletion is slow. NOTE: we're not deleting
-      %% bucket on system shutdown anymore
-      permanent, 86400000, worker, [ns_memcached]},
+     {{ns_memcached_sup, BucketName}, {ns_memcached_sup, start_link, [BucketName]},
+      permanent, infinity, supervisor, [ns_memcached_sup]},
      {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [ns_vbm_sup]},
      {{dcp_sup, BucketName}, {dcp_sup, start_link, [BucketName]},
@@ -64,10 +62,7 @@ child_specs(BucketName) ->
       permanent, 1000, worker, [stats_reader]},
      {{failover_safeness_level, BucketName},
       {failover_safeness_level, start_link, [BucketName]},
-      permanent, 1000, worker, [failover_safeness_level]},
-     {{terse_bucket_info_uploader, BucketName},
-      {terse_bucket_info_uploader, start_link, [BucketName]},
-      permanent, 1000, worker, []}].
+      permanent, 1000, worker, [failover_safeness_level]}].
 
 init([BucketName]) ->
     {ok, {{one_for_one,
