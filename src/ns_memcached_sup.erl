@@ -26,7 +26,7 @@
 -export([init/1]).
 
 start_link(BucketName) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [BucketName]).
+    supervisor:start_link(?MODULE, [BucketName]).
 
 init([BucketName]) ->
     {ok, {{rest_for_one,
