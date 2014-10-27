@@ -136,8 +136,8 @@ handle_info({stream_end, SnapshotStart, SnapshotEnd, LastSeenSeqno}, State) ->
 handle_info({'EXIT',_Pid, normal}, St) ->
     {noreply, St};
 
-handle_info({'EXIT',_Pid, Reason}, St) ->
-    {stop, Reason, St};
+handle_info({'EXIT',_Pid, _Reason} = OrigExit, St) ->
+    {stop, xdc_rep_utils:sanitize_exit_reason({child_died, OrigExit}), St};
 
 handle_info(init, #init_state{init_throttle = InitThrottle} = InitState) ->
     ?x_trace(gotInitToken, []),
