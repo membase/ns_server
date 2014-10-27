@@ -22,6 +22,7 @@
 -export([my_active_vbuckets/1]).
 -export([parse_rep_db/3]).
 -export([sanitize_status/3, sanitize_url/1, get_rep_info/1]).
+-export([sanitize_exit_reason/1]).
 -export([create_stats_table/0,
          init_replication_stats/1,
          cleanup_replication_stats/1,
@@ -175,6 +176,15 @@ sanitize_state(State) ->
 
 sanitize_status(_Opt, _PDict, State) ->
     [{data, [{"State", sanitize_state(State)}]}].
+
+sanitize_exit_reason(Reason) ->
+    misc:rewrite(
+      fun (Binary) when is_binary(Binary) ->
+              {stop, <<"binary">>};
+          (_Other) ->
+              continue
+      end,
+      Reason).
 
 get_rep_info(#rep{source = Src, target = Tgt, replication_mode = Mode}) ->
     ?format_msg("from ~p to ~p in mode: ~p", [Src, Tgt, Mode]).
