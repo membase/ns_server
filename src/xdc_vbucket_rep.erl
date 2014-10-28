@@ -642,7 +642,7 @@ init_replication_state(#init_state{rep = Rep,
 
     register_vb_stats(Rep#rep.id, Vb, CurrRemoteBucket, Target, RemoteVBOpaque),
 
-    ?log_debug("Inited replication position: ~p",
+    ?xdcr_debug("Inited replication position: ~p",
                [{StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
                  RemoteVBOpaque}]),
 
