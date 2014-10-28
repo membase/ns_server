@@ -205,7 +205,7 @@ invalidate_remote_bucket_by_ref(Reference) ->
     Cluster = find_cluster_by_uuid(ClusterUUID),
     case Cluster of
         {error, _, _} ->
-            ?log_debug("could not find cluster to invalidate ~s: ~p", [ClusterUUID, Cluster]),
+            ?xdcr_debug("could not find cluster to invalidate ~s: ~p", [ClusterUUID, Cluster]),
             Cluster;
         _ ->
             gen_server:call(?MODULE,
@@ -330,8 +330,8 @@ handle_call({get_remote_bucket, Cluster, Bucket, false, Timeout}, From, State) -
                 true ->
                     {reply, {ok, Cached}, State};
                 false ->
-                    ?log_debug("Found cached bucket info (~s/~s), but cert did not match. Forcing refresh",
-                               [UUID, Bucket]),
+                    ?xdcr_debug("Found cached bucket info (~s/~s), but cert did not match. Forcing refresh",
+                                [UUID, Bucket]),
                     handle_call({get_remote_bucket, Cluster, Bucket, true, Timeout},
                                 From, State)
             end
@@ -366,10 +366,10 @@ handle_call({get_remote_bucket, Cluster, Bucket, ForceMode, Timeout}, From, Stat
 
                 case HaveNode andalso CachedCert =:= Cert of
                     true ->
-                        ?log_debug("FoundCluster: ~p", [FoundCluster]),
+                        ?xdcr_debug("FoundCluster: ~p", [FoundCluster]),
                         FoundCluster;
                     false ->
-                        ?log_debug("Found cluster but cert or nodes did not match"),
+                        ?xdcr_debug("Found cluster but cert or nodes did not match"),
                         undefined
                 end
         end,
@@ -388,7 +388,7 @@ handle_call({get_remote_bucket, Cluster, Bucket, ForceMode, Timeout}, From, Stat
                              end,
                 Nodes = [NodeRecord],
                 RV = #remote_cluster{uuid=UUID, nodes=Nodes, cert=Cert},
-                ?log_debug("Constructed remote_cluster ~p", [RV]),
+                ?xdcr_debug("Constructed remote_cluster ~p", [RV]),
                 RV;
             _ ->
                 RemoteCluster0
@@ -407,11 +407,11 @@ handle_call({get_remote_bucket, Cluster, Bucket, ForceMode, Timeout}, From, Stat
             {noreply, State}
     end;
 handle_call(Request, From, State) ->
-    ?log_warning("Got unexpected call request: ~p", [{Request, From}]),
+    ?xdcr_warning("Got unexpected call request: ~p", [{Request, From}]),
     {reply, unhandled, State}.
 
 handle_cast(Msg, State) ->
-    ?log_warning("Got unexpected cast: ~p", [Msg]),
+    ?xdcr_warning("Got unexpected cast: ~p", [Msg]),
     {noreply, State}.
 
 handle_info({cache_remote_cluster, UUID, RemoteCluster0}, State) ->
@@ -444,7 +444,7 @@ handle_info({remote_bucket_request_result, TargetNode, {UUID, Bucket} = Id, R},
                                   Type =:= not_capable ->
                 {State, R};
             Error ->
-                ?log_error("Failed to grab remote bucket `~s`: ~p", [Bucket, Error]),
+                ?xdcr_error("Failed to grab remote bucket `~s`: ~p", [Bucket, Error]),
                 case dict:size(BucketRequests1) of
                     0 ->
                         %% no more ongoing request so we just return an error to
@@ -535,7 +535,7 @@ handle_info({update_cluster_config, UUID, Tries}, State) ->
 
     {noreply, NewState};
 handle_info(Info, State) ->
-    ?log_warning("Got unexpected info: ~p", [Info]),
+    ?xdcr_warning("Got unexpected info: ~p", [Info]),
     {noreply, State}.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -549,12 +549,12 @@ read_or_create_table(TableName, Path) ->
     Read =
         case filelib:is_regular(Path) of
             true ->
-                ?log_info("Reading ~p content from ~s", [TableName, Path]),
+                ?xdcr_info("Reading ~p content from ~s", [TableName, Path]),
                 case ets:file2tab(Path, [{verify, true}]) of
                     {ok, TableName} ->
                         true;
                     {error, Error} ->
-                        ?log_warning("Failed to read ~p content from ~s: ~p",
+                        ?xdcr_warning("Failed to read ~p content from ~s: ~p",
                                      [TableName, Path, Error]),
                         false
                 end;
@@ -575,8 +575,8 @@ dump_table(TableName, Path) ->
         ok ->
             ok;
         {error, Error} ->
-            ?log_error("Failed to dump table `~s` to file `~s`: ~p",
-                       [TableName, Path, Error]),
+            ?xdcr_error("Failed to dump table `~s` to file `~s`: ~p",
+                        [TableName, Path, Error]),
             ok
     end.
 
@@ -710,7 +710,7 @@ expect(Value, Context, Extract, K) ->
         {ok, ExtractedValue} ->
             K(ExtractedValue);
         {bad_value, Msg} ->
-            ?log_warning("~s:~n~p", [Msg, Value]),
+            ?xdcr_warning("~s:~n~p", [Msg, Value]),
             {error, bad_value, Msg}
     end.
 
@@ -730,7 +730,7 @@ expect_nested(Field, Props, Context, Extract, K) ->
     case proplists:get_value(Field, Props) of
         undefined ->
             Msg = io_lib:format("(~s) missing field `~s`", [Context, Field]),
-            ?log_warning("~s:~n~p", [Msg, Props]),
+            ?xdcr_warning("~s:~n~p", [Msg, Props]),
             {error, {missing_field, Field}, iolist_to_binary(Msg)};
         Value ->
             ExtContext = io_lib:format("field `~s` in ~s", [Field, Context]),
@@ -738,7 +738,7 @@ expect_nested(Field, Props, Context, Extract, K) ->
                 {ok, ActualValue} ->
                     K(ActualValue);
                 {bad_value, Msg} ->
-                    ?log_warning("~s:~n~p", [Msg, Value]),
+                    ?xdcr_warning("~s:~n~p", [Msg, Value]),
                     {error, {bad_value, Field}, Msg}
             end
     end.
@@ -1090,7 +1090,7 @@ extract_node_props_loop([{Prop, Extract0} | RestProps], Context, Node) ->
                 {bad_value, Msg} ->
                     case Optional of
                         true ->
-                            ?log_warning("~s:~n~p", [Msg, Value]),
+                            ?xdcr_warning("~s:~n~p", [Msg, Value]),
                             extract_node_props_loop(RestProps, Context, Node);
                         false ->
                             {error, {bad_value, Prop}, Msg}
@@ -1111,7 +1111,7 @@ extract_node_props(Props, Context, {struct, Node}) ->
 extract_node_props(_Props, Context, Node) ->
     Msg0 = io_lib:format("(~s) got invalid node info value:~n~p", [Context, Node]),
     Msg = iolist_to_binary(Msg0),
-    ?log_warning("~s", [Msg]),
+    ?xdcr_warning("~s", [Msg]),
     {error, bad_value, Msg}.
 
 props_to_remote_node(Props) ->
@@ -1191,10 +1191,10 @@ remote_bucket_from_node(RemoteNode, Bucket, Username, Password,
 
                         end);
                   false ->
-                      ?log_info("Attempted to get vbucket map for bucket `~s` "
-                                "from remote node ~s://~s:~b. But cluster's "
-                                "uuid (~s) does not match expected one (~s)",
-                                [Bucket, Scheme, Host, Port, ActualUUID, UUID]),
+                      ?xdcr_info("Attempted to get vbucket map for bucket `~s` "
+                                 "from remote node ~s://~s:~b. But cluster's "
+                                 "uuid (~s) does not match expected one (~s)",
+                                 [Bucket, Scheme, Host, Port, ActualUUID, UUID]),
                       {error, other_cluster,
                        <<"Remote cluster uuid doesn't match expected one.">>}
               end
@@ -1232,7 +1232,7 @@ remote_bucket_with_pool_details(PoolDetails, RemoteCluster, Bucket, Creds, JsonG
 maybe_extract_important_buckets_props({struct, NodeKV}, Ctx) ->
     case proplists:get_value(<<"couchApiBase">>, NodeKV) of
         undefined ->
-            ?log_debug("skipping node without couchApiBase: ~p", [NodeKV]),
+            ?xdcr_debug("skipping node without couchApiBase: ~p", [NodeKV]),
             {ok, []};
         _ ->
             extract_node_props([{<<"hostname">>, fun extract_string/2},
@@ -1327,7 +1327,7 @@ with_remote_nodes_mapped_server_list(RemoteNodes, ServerMap, K) ->
               RH = [{iolist_to_binary([H, ":", integer_to_list(P)]), R} || #remote_node{host = H, memcached_port = P} = R <- RemoteNodes],
               Mapped = [case lists:keyfind(Hostname, 1, RH) of
                             false ->
-                                ?log_debug("Could not find: ~p in ~p", [Hostname, RH]),
+                                ?xdcr_debug("Could not find: ~p in ~p", [Hostname, RH]),
                                 error;
                             {_, R} -> R
                         end || Hostname <- ServerList],
@@ -1371,13 +1371,13 @@ build_vbmap_chain(Chain, IxToCouchDict, VBucket) ->
                           error ->
                               Msg = io_lib:format("Invalid node reference in "
                                                   "vbucket map chain: ~p", [NodeIx]),
-                              ?log_error("~s", [Msg]),
+                              ?xdcr_error("~s", [Msg]),
                               {error, bad_value, iolist_to_binary(Msg)};
                           {ok, none} ->
                               Msg = io_lib:format("Invalid node reference in "
                                                   "vbucket map chain: ~p. "
                                                   "Found node without couchApiBase in active vbucket map position", [NodeIx]),
-                              ?log_error("~s", [Msg]),
+                              ?xdcr_error("~s", [Msg]),
                               {error, bad_value, iolist_to_binary(Msg)};
                           {ok, URL} ->
                               {ok, [iolist_to_binary([URL, "%2f", integer_to_list(VBucket)])]}
@@ -1393,7 +1393,7 @@ do_build_ix_to_couch_uri_dict([], _McdToCouchDict, _Ix, D) ->
 do_build_ix_to_couch_uri_dict([S | Rest], McdToCouchDict, Ix, D) ->
     case dict:find(S, McdToCouchDict) of
         error ->
-            ?log_debug("Was not able to find node corresponding to server ~s. Assuming it's couchApiBase-less node", [S]),
+            ?xdcr_debug("Was not able to find node corresponding to server ~s. Assuming it's couchApiBase-less node", [S]),
 
             D1 = dict:store(Ix, none, D),
             do_build_ix_to_couch_uri_dict(Rest, McdToCouchDict, Ix + 1, D1);
@@ -1411,10 +1411,10 @@ do_with_mcd_to_couch_uri_dict([Props | Rest], Dict, Creds, Cert, K) ->
     Hostname = proplists:get_value(<<"hostname">>, Props),
     CouchApiBase0 = case Cert of
                         undefined ->
-                            ?log_debug("Going to pick plain couchApiBase for mcd_to_couch_uri_dict: ~p", [proplists:get_value(<<"couchApiBase">>, Props)]),
+                            ?xdcr_debug("Going to pick plain couchApiBase for mcd_to_couch_uri_dict: ~p", [proplists:get_value(<<"couchApiBase">>, Props)]),
                             proplists:get_value(<<"couchApiBase">>, Props);
                         _ ->
-                            ?log_debug("Going to pick couchApiBaseHTTPS for mcd_to_couch_uri_dict: ~p", [proplists:get_value(<<"couchApiBaseHTTPS">>, Props)]),
+                            ?xdcr_debug("Going to pick couchApiBaseHTTPS for mcd_to_couch_uri_dict: ~p", [proplists:get_value(<<"couchApiBaseHTTPS">>, Props)]),
                             proplists:get_value(<<"couchApiBaseHTTPS">>, Props)
                     end,
     Ports = proplists:get_value(<<"ports">>, Props),
@@ -1425,7 +1425,7 @@ do_with_mcd_to_couch_uri_dict([Props | Rest], Dict, Creds, Cert, K) ->
 
     case CouchApiBase0 of
         undefined ->
-            ?log_debug("Skipping node without either couchApiBase or couchApiBaseHTTPS (~s)", [Hostname]),
+            ?xdcr_debug("Skipping node without either couchApiBase or couchApiBaseHTTPS (~s)", [Hostname]),
             do_with_mcd_to_couch_uri_dict(Rest, Dict, Creds, Cert, K);
         _ ->
             {Host, _Port} = host_and_port(Hostname),
@@ -1524,7 +1524,7 @@ mk_plain_json_get(Host, Port, Username, Password, HttpOptionsOverride) ->
 do_mk_json_get(Host, Port, Options, Scheme, Username, Password) ->
     fun (Path, K) ->
             URL = menelaus_rest:rest_url(Host, Port, Path, Scheme),
-            ?log_debug("Doing get of ~s", [URL]),
+            ?xdcr_debug("Doing get of ~s", [URL]),
             R = menelaus_rest:json_request_hilevel(get,
                                                    {URL, {Host, Port, Path}},
                                                    {Username, Password},
@@ -1534,18 +1534,18 @@ do_mk_json_get(Host, Port, Options, Scheme, Username, Password) ->
                 {ok, Value} ->
                     K(Value);
                 {client_error, Body} ->
-                    ?log_error("Request to ~s://~s:****@~s:~b~s returned "
-                               "400 status code:~n~p",
-                               [Scheme, mochiweb_util:quote_plus(Username),
-                                Host, Port, Path, Body]),
+                    ?xdcr_error("Request to ~s://~s:****@~s:~b~s returned "
+                                "400 status code:~n~p",
+                                [Scheme, mochiweb_util:quote_plus(Username),
+                                 Host, Port, Path, Body]),
 
                     %% convert it to the same form as all other errors
                     {error, client_error,
                      <<"Remote cluster returned 400 status code unexpectedly">>};
                 Error ->
-                    ?log_error("Request to ~s://~s:****@~s:~b~s failed:~n~p",
-                               [Scheme, mochiweb_util:quote_plus(Username),
-                                Host, Port, Path, Error]),
+                    ?xdcr_error("Request to ~s://~s:****@~s:~b~s failed:~n~p",
+                                [Scheme, mochiweb_util:quote_plus(Username),
+                                 Host, Port, Path, Error]),
                     Error
             end
     end.
@@ -1669,7 +1669,7 @@ gc_buckets(CachedClusters) ->
 
               lists:foreach(
                 fun (Bucket) ->
-                        ?log_debug("gc-ing bucket: ~p", [{bucket, Cluster, Bucket}]),
+                        ?xdcr_debug("gc-ing bucket: ~p", [{bucket, Cluster, Bucket}]),
                         true = ets:delete(?CACHE, {bucket, Cluster, Bucket})
                 end, Removed),
 
@@ -1742,8 +1742,8 @@ maybe_schedule_cluster_config_update(
         is_cluster_config_update_required(RemoteCluster,
                                           get_remote_clusters()) of
         true ->
-            ?log_debug("Scheduling config update for cluster ~s",
-                       [UUID]),
+            ?xdcr_debug("Scheduling config update for cluster ~s",
+                        [UUID]),
             schedule_cluster_config_update(UUID, ?CAS_TRIES),
 
             NewScheduled = sets:add_element(UUID, Scheduled),
@@ -1823,9 +1823,9 @@ try_update_cluster_config(UUID, LastAttempt) ->
                         _ ->
                             case LastAttempt of
                                 true ->
-                                    ?log_error("Exceeded number of retries when "
-                                               "trying to update cluster ~s (~s)",
-                                               [ClusterName, UUID]);
+                                    ?xdcr_error("Exceeded number of retries when "
+                                                "trying to update cluster ~s (~s)",
+                                                [ClusterName, UUID]);
                                 false ->
                                     ok
                             end,
