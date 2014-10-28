@@ -290,9 +290,9 @@ handle_pre_replicate(Req) ->
 
     VBMatches = VBOpaque =:= undefined orelse VBOpaque =:= VBUUID,
 
-    ?log_debug("CommitOk: ~p, VBMatches: ~p, CommitOpaque: ~p, stuff: ~p",
-               [CommitOk, VBMatches,
-                CommitOpaque, {FailoverLog, CommitUUID, CommitSeq}]),
+    ?xdcr_debug("CommitOk: ~p, VBMatches: ~p, CommitOpaque: ~p, stuff: ~p",
+                [CommitOk, VBMatches,
+                 CommitOpaque, {FailoverLog, CommitUUID, CommitSeq}]),
 
     Code = case VBMatches andalso CommitOk of
                true -> 200;
@@ -406,7 +406,7 @@ handle_commit_for_checkpoint(#httpd{method='POST'}=Req) ->
 
     {UUID, Seqno} = get_vbucket_seqno_stats(Bucket, VB),
 
-    ?log_debug("UUID: ~p, VBOpaque: ~p", [{UUID, Seqno}, VBOpaque]),
+    ?xdcr_debug("UUID: ~p, VBOpaque: ~p", [{UUID, Seqno}, VBOpaque]),
 
     case UUID =:= VBOpaque of
         true ->
