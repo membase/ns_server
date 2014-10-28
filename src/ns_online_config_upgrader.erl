@@ -23,7 +23,7 @@
 
 upgrade_config(OldVersion, NewVersion) ->
     true = (OldVersion =/= NewVersion),
-    true = (NewVersion =< [3, 0]),
+    true = (NewVersion =< [3, 2]),
 
     ns_config:set(dynamic_config_version, OldVersion),
     ok = ns_config:upgrade_config_explicitly(
@@ -42,7 +42,10 @@ do_upgrade_config(Config, FinalVersion) ->
              upgrade_config_from_2_0_to_2_5(Config)];
         {value, [2, 5]} ->
             [{set, dynamic_config_version, [3, 0]} |
-             upgrade_config_from_2_5_to_3_0(Config)]
+             upgrade_config_from_2_5_to_3_0(Config)];
+        {value, [3, 0]} ->
+            ?log_info("Performing online config upgrade to 3.2 version"),
+            [{set, dynamic_config_version, [3, 2]}]
     end.
 
 upgrade_config_from_2_0_to_2_5(Config) ->

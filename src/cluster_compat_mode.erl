@@ -28,7 +28,9 @@
          get_replication_topology/0,
          is_node_compatible/2,
          split_live_nodes_by_version/1,
-         is_cluster_30/0]).
+         is_cluster_30/0,
+         is_cluster_sherlock/0,
+         sherlock_compat_mode_string/0]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
@@ -41,14 +43,14 @@ get_compat_version() ->
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.0
 supported_compat_version() ->
-    [3, 0].
+    [3, 2].
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.1+
 %%
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
-    [3, 0, 0].
+    [3, 2, 0].
 
 check_is_progress_tracking_supported() ->
     are_all_nodes_compatible([2,0,2]).
@@ -66,6 +68,12 @@ is_cluster_30() ->
 
 is_cluster_25() ->
     is_enabled([2, 5]).
+
+is_cluster_sherlock() ->
+    is_enabled([3, 2]).
+
+sherlock_compat_mode_string() ->
+    "3.2".
 
 is_index_aware_rebalance_on() ->
     Disabled = ns_config:read_key_fast(index_aware_rebalance_disabled, false),
