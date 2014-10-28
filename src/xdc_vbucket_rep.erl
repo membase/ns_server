@@ -738,6 +738,46 @@ update_rep_options(#rep_state{rep_details =
             State#rep_state{rep_details = NewRep}
     end.
 
+%% "inserts" intermediate process that stops "neighbors" logic in
+%% proc_lib from seeing child process.
+%%
+%% I.e. normally when proc_lib process handles handles top-level
+%% exception it will recursively find (via what they claim is breadth
+%% first search) all linked processes that don't have trap_exit set
+%% and dumps their state as part of crash message.
+%%
+%% We need to prevent this because mailboxes of xdc_vbucket_rep childs
+%% may contain doc bodies.
+%%
+%% We do it by spawning non-trap-exit childs via intermediate process
+%% that does set trap_exit and thus stops neighbors from ever finding
+%% them.
+%%
+%% NOTE: that this intermediate process has to avoid convenience of
+%% proc_lib to prevent his crash from triggering crash message dumping
+%% behavior in proc_lib.
+start_via_exit_eater(Body) ->
+    Parent = self(),
+    Pid = erlang:spawn_link(erlang, apply, [fun do_start_via_exit_eater/2, [Body, Parent]]),
+    misc:sync_wait(Pid).
+
+do_start_via_exit_eater(Body, Parent) ->
+    erlang:process_flag(trap_exit, true),
+    RV = Body(),
+    proc_lib:init_ack(Parent, RV),
+    receive
+        {'EXIT', _Pid, Reason} = ExitMsg ->
+            case Reason of
+                normal -> ok;
+                _ ->
+                    ?xdcr_debug("Processing exit: ~p", [ExitMsg])
+            end,
+            exit(Reason);
+        Other ->
+            ?xdcr_error("Unexpected message: ~p", [Other]),
+            exit({unexpected_msg, Other})
+    end.
+
 start_replication(#rep_state{
                      target_name = OrigTgtURI,
                      dcp_failover_uuid = FailoverUUID,
@@ -779,10 +819,13 @@ start_replication(#rep_state{
         end,
     {ok, Target} = couch_api_wrap:db_open(TgtDB, []),
 
-    {ok, ChangesQueue} = couch_work_queue:new([
-                                               {max_items, BatchSizeItems * NumWorkers * 2},
-                                               {max_size, 100 * 1024 * NumWorkers}
-                                              ]),
+    {ok, ChangesQueue} = start_via_exit_eater(
+                           fun () ->
+                                   couch_work_queue:new([
+                                                         {max_items, BatchSizeItems * NumWorkers * 2},
+                                                         {max_size, 100 * 1024 * NumWorkers}
+                                                        ])
+                           end),
     %% This starts the _changes reader process. It adds the changes from
     %% the source db to the ChangesQueue.
     SupportsDatatype =
@@ -798,7 +841,11 @@ start_replication(#rep_state{
     erlang:put(changes_reader, ChangesReader),
     %% Changes manager - responsible for dequeing batches from the changes queue
     %% and deliver them to the worker processes.
-    ChangesManager = spawn_changes_manager(self(), ChangesQueue, BatchSizeItems),
+    Self = self(),
+    ChangesManager = start_via_exit_eater(
+                       fun () ->
+                               spawn_changes_manager(Self, ChangesQueue, BatchSizeItems)
+                       end),
     %% This starts the worker processes. They ask the changes queue manager for a
     %% a batch of _changes rows to process -> check which revs are missing in the
     %% target, and for the missing ones, it copies them from the source to the target.
@@ -832,8 +879,11 @@ start_replication(#rep_state{
     Workers = lists:map(
                 fun(WorkerID) ->
                         WorkerOption2 = WorkerOption#rep_worker_option{worker_id = WorkerID},
-                        {ok, WorkerPid} = xdc_vbucket_rep_worker:start_link(WorkerOption2),
-                        WorkerPid
+                        start_via_exit_eater(
+                          fun () ->
+                                  {ok, WorkerPid} = xdc_vbucket_rep_worker:start_link(WorkerOption2),
+                                  WorkerPid
+                          end)
                 end,
                 lists:seq(1, NumWorkers)),
 
