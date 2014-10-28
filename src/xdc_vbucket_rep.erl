@@ -393,6 +393,12 @@ handle_call({worker_done, Pid}, _From,
             %% cancel the timer since we will start it next time the vb rep waken up
             NewState2 = xdc_vbucket_rep_ckpt:cancel_timer(NewState),
 
+            ?xdcr_debug("done replication: ~p",
+                        [{State2#rep_state.status#rep_vb_status.vb,
+                          State2#rep_state.current_through_seq,
+                          NewSnapshotSeq,
+                          NewSnapshotEndSeq}]),
+
             check_src_db_updated(NewState2),
 
             % hibernate to reduce memory footprint while idle
@@ -835,6 +841,7 @@ start_replication(#rep_state{
             _ ->
                 false
         end,
+    ?xdcr_debug("Starting replication: ~p", [{Vb, ChangesQueue, StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID}]),
     ChangesReader = spawn_changes_reader(SourceBucket, Vb, ChangesQueue,
                                          StartSeq, SnapshotStart, SnapshotEnd, FailoverUUID,
                                          SupportsDatatype),
