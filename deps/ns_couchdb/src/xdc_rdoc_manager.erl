@@ -19,31 +19,49 @@
 
 -behaviour(gen_server).
 
--export([start_link/0,
+-export([start_link_remote/1,
          update_doc/1,
          foreach_doc/2,
          foreach_doc/3,
-         get_doc/1,
-         link/2]).
+         get_doc/1]).
 
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {ddoc_replicator :: pid() | undefined,
-                ddoc_replication_srv :: pid() | undefined,
-                rep_manager :: pid() | undefined,
+-record(state, {ddoc_replicator :: pid(),
+                rep_manager :: pid(),
                 local_docs = [] :: [#doc{}]}).
 
 -define(DB_NAME, <<"_replicator">>).
 
-start_link() ->
-    gen_server:start_link({local, ?MODULE},
-                          ?MODULE, [], []).
+start_link_remote(Node) ->
+    ReplicationSrvr = erlang:whereis(doc_replication_srv:proxy_server_name(xdcr)),
+    Replicator = erlang:whereis(doc_replicator:server_name(xdcr)),
+    RepManager = erlang:whereis(xdc_rep_manager),
+
+    ?log_debug("Starting xdc_rdoc_manager on ~p with following links: ~p",
+               [Node, [Replicator, ReplicationSrvr, RepManager]]),
+    true = is_pid(ReplicationSrvr),
+    true = is_pid(Replicator),
+    true = is_pid(RepManager),
+
+    misc:start_link(Node, misc, turn_into_gen_server,
+                    [{local, ?MODULE},
+                     ?MODULE,
+                     {Replicator, ReplicationSrvr, RepManager}, []]).
 
 %% Callbacks
 
-init([]) ->
+init({Replicator, ReplicationSrvr, RepManager}) ->
     Self = self(),
+
+    ns_couchdb_api:register_doc_manager(Replicator),
+    ns_couchdb_api:register_doc_manager(ReplicationSrvr),
+    ns_couchdb_api:register_doc_manager(RepManager),
+
+    proc_lib:init_ack({ok, Self}),
+
+    ok = misc:wait_for_local_name(couch_server, 10000),
 
     {ok, Db} = open_or_create_replicator_db(),
     Docs = try
@@ -55,11 +73,10 @@ init([]) ->
     Self ! replicate_newnodes_docs,
 
     ?log_debug("Loaded the following docs:~n~p", [Docs]),
-    {ok, #state{local_docs=Docs,
-                ddoc_replicator = undefined,
-                ddoc_replication_srv = undefined,
-                rep_manager = undefined}}.
-
+    gen_server:enter_loop(?MODULE, [],
+                          #state{local_docs=Docs,
+                                 ddoc_replicator = Replicator,
+                                 rep_manager = RepManager}).
 
 handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
     #state{local_docs=Docs}=State,
@@ -74,9 +91,8 @@ handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
     NewDoc = Doc#doc{rev=NewRev},
     try
         ?log_debug("Writing interactively saved ddoc ~p", [Doc]),
-        SavedDocState = save_doc(NewDoc, State),
-        {Replicator, NewState} = get_replicator(SavedDocState),
-        Replicator ! {replicate_change, NewDoc},
+        NewState = save_doc(NewDoc, State),
+        NewState#state.ddoc_replicator ! {replicate_change, NewDoc},
         {reply, ok, NewState}
     catch throw:{invalid_design_doc, _} = Error ->
             ?log_debug("Document validation failed: ~p", [Error]),
@@ -93,23 +109,12 @@ handle_call({get_doc, Id}, _From, #state{local_docs = Docs} = State) ->
                 Doc = couch_doc:with_ejson_body(Doc0),
                 {ok, Doc}
         end,
-    {reply, R, State};
-
-handle_call({link, replicator, Pid}, _From, State) ->
-    ns_couchdb_api:handle_link(Pid, #state.ddoc_replicator, State);
-handle_call({link, replication_srv, Pid}, _From, State) ->
-    ns_couchdb_api:handle_link(Pid, #state.ddoc_replication_srv, State);
-handle_call({link, rep_manager, Pid}, _From, State) ->
-    ns_couchdb_api:handle_link(Pid, #state.rep_manager, State).
-
-notify_rep_manager(_Doc, #state{rep_manager = undefined}) ->
-    ok;
-notify_rep_manager(Doc, #state{rep_manager = Pid}) ->
-    Pid ! {rep_db_update, Doc}.
+    {reply, R, State}.
 
 save_doc(#doc{id = Id} = Doc,
-         #state{local_docs=Docs}=State) ->
-    notify_rep_manager(Doc, State),
+         #state{local_docs = Docs,
+                rep_manager = RepManager}=State) ->
+    RepManager ! {rep_db_update, Doc},
 
     {ok, Db} = open_replicator_db(),
     try
@@ -140,9 +145,8 @@ handle_cast({replicated_update, #doc{id=Id, rev=Rev}=Doc}, State) ->
 
 
 handle_info(replicate_newnodes_docs, #state{local_docs = Docs} = State) ->
-    {Replicator, NewState} = get_replicator(State),
-    Replicator ! {replicate_newnodes_docs, Docs},
-    {noreply, NewState}.
+    State#state.ddoc_replicator ! {replicate_newnodes_docs, Docs},
+    {noreply, State}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -170,10 +174,6 @@ foreach_doc(Fun, Timeout) ->
 foreach_doc(Pid, Fun, Timeout) ->
     gen_server:call(Pid, {foreach_doc, Fun}, Timeout).
 
--spec link(replicator | replication_srv | rep_manager, pid()) -> {ok, pid()} | retry.
-link(Type, Pid) ->
-    gen_server:call(?MODULE, {link, Type, Pid}, infinity).
-
 load_local_docs(Db) ->
     {ok,_, Docs} = couch_db:enum_docs(
                      Db,
@@ -183,16 +183,6 @@ load_local_docs(Db) ->
                      end,
                      [], []),
     {ok, Docs}.
-
-get_replicator(#state{ddoc_replicator = undefined} = State) ->
-    receive
-        {'$gen_call', From, {link, replicator, Pid} = Msg} ->
-            {reply, Reply, NewState} = handle_call(Msg, From, State),
-            gen_server:reply(From, Reply),
-            {Pid, NewState}
-    end;
-get_replicator(#state{ddoc_replicator = Replicator} = State) ->
-    {Replicator, State}.
 
 maybe_cleanup_replicator_db() ->
     case open_replicator_db() of

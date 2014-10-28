@@ -50,13 +50,11 @@
          get_view_group_data_size/2,
          get_safe_purge_seqs/1,
 
-         wait_for_name/1,
-
-         link_to_doc_mgr/3]).
+         wait_for_name/1]).
 
 -export([handle_rpc/1]).
 
--export([handle_link/3]).
+-export([wait_for_doc_manager/0, register_doc_manager/1]).
 
 -spec get_db_and_ix_paths() -> [{db_path | index_path, string()}].
 get_db_and_ix_paths() ->
@@ -145,10 +143,6 @@ get_view_group_data_size(BucketName, DDocId) ->
 
 get_safe_purge_seqs(BucketName) ->
     maybe_rpc_couchdb_node({get_safe_purge_seqs, BucketName}).
-
--spec link_to_doc_mgr(atom(), ext_bucket_name() | xdcr, pid()) -> {ok, pid()} | {badrpc, any()}.
-link_to_doc_mgr(Type, Bucket, Pid) ->
-    maybe_rpc_couchdb_node({link_to_doc_mgr, Type, Bucket, Pid}).
 
 wait_for_name(Name) ->
     ?log_debug("Waiting for ~p on couchdb node to start", [Name]),
@@ -356,30 +350,22 @@ handle_rpc({get_view_group_data_size, BucketName, DDocId}) ->
     couch_set_view:get_group_data_size(mapreduce_view, BucketName, DDocId);
 
 handle_rpc({get_safe_purge_seqs, BucketName}) ->
-    capi_set_view_manager:get_safe_purge_seqs(BucketName);
+    capi_set_view_manager:get_safe_purge_seqs(BucketName).
 
-handle_rpc({link_to_doc_mgr, Type, xdcr, Pid}) ->
-    case xdc_rdoc_manager:link(Type, Pid) of
-        retry ->
-            exit(retry);
-        RV ->
-            RV
-    end;
-handle_rpc({link_to_doc_mgr, Type, Bucket, Pid}) ->
-    case capi_set_view_manager:link(Type, Bucket, Pid) of
-        retry ->
-            exit(retry);
-        RV ->
-            RV
+wait_for_doc_manager() ->
+    ?log_debug("Start waiting for doc manager"),
+    receive
+        {doc_manager_pid, Pid} ->
+            ?log_debug("Received doc manager registration from ~p", [Pid]),
+            Pid;
+        {'EXIT', ExitPid, Reason} ->
+            ?log_debug("Received exit from ~p with reason ~p", [ExitPid, Reason]),
+            exit(Reason)
+    after 10000 ->
+            ?log_error("Waited 10000 ms for doc manager pid to no avail. Crash."),
+            exit(doc_manager_not_available)
     end.
 
-handle_link(Pid, N, State) ->
-    OldPid = element(N, State),
-    handle_link(Pid, OldPid, N, State).
-
-handle_link(Pid, undefined, N, State) ->
-    erlang:link(Pid),
-    {reply, {ok, self()}, setelement(N, State, Pid)};
-handle_link(_Pid, OldPid, _N, State) ->
-    ?log_debug("Process already linked to ~p. Retry", [OldPid]),
-    {reply, retry, State}.
+register_doc_manager(Pid) ->
+    ?log_debug("Register doc manager with ~p", [Pid]),
+    Pid ! {doc_manager_pid, self()}.

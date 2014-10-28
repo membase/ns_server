@@ -32,7 +32,7 @@ start_link(Bucket) ->
 start_proxy_loop(Bucket) ->
     erlang:register(proxy_server_name(Bucket), self()),
     proc_lib:init_ack({ok, self()}),
-    {ok, DocMgr} = ns_couchdb_api:link_to_doc_mgr(replication_srv, Bucket, self()),
+    DocMgr = ns_couchdb_api:wait_for_doc_manager(),
     proxy_loop(DocMgr).
 
 proxy_loop(DocMgr) ->

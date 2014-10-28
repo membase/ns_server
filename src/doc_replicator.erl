@@ -21,7 +21,7 @@
 -include("ns_common.hrl").
 -include("couch_db.hrl").
 
--export([start_link/1]).
+-export([start_link/1, server_name/1]).
 
 start_link(Bucket) ->
     proc_lib:start_link(erlang, apply, [fun start_loop/1, [Bucket]]).
@@ -30,7 +30,7 @@ start_loop(Bucket) ->
     ServerName = doc_replication_srv:proxy_server_name(Bucket),
     erlang:register(server_name(Bucket), self()),
     proc_lib:init_ack({ok, self()}),
-    {ok, DocMgr} = ns_couchdb_api:link_to_doc_mgr(replicator, Bucket, self()),
+    DocMgr = ns_couchdb_api:wait_for_doc_manager(),
 
     %% anytime we disconnect or reconnect, force a replicate event.
     erlang:spawn_link(

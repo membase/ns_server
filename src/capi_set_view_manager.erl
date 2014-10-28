@@ -21,12 +21,12 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/1]).
+-export([start_link_remote/2]).
 
 %% API
 -export([set_vbucket_states/3,
          wait_index_updated/2, initiate_indexing/1, reset_master_vbucket/1,
-         get_safe_purge_seqs/1, foreach_doc/3, update_doc/2, link/3]).
+         get_safe_purge_seqs/1, foreach_doc/3, update_doc/2]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -36,11 +36,9 @@
                 local_docs = [] :: [#doc{}],
                 num_vbuckets :: non_neg_integer(),
                 use_replica_index :: boolean(),
-                master_db_watcher :: pid(),
                 wanted_states :: [missing | active | replica],
                 rebalance_states :: [rebalance_vbucket_state()],
-                ddoc_replicator :: pid() | undefined,
-                ddoc_replication_srv :: pid() | undefined}).
+                ddoc_replicator :: pid()}).
 
 set_vbucket_states(Bucket, WantedStates, RebalanceStates) ->
     gen_server:call(server(Bucket), {set_vbucket_states, WantedStates, RebalanceStates}, infinity).
@@ -62,10 +60,6 @@ foreach_doc(Bucket, Fun, Timeout) ->
 
 update_doc(Bucket, Doc) ->
     gen_server:call(server(Bucket), {interactive_update, Doc}, infinity).
-
--spec link(replicator | replication_srv, ext_bucket_name(), pid()) -> {ok, pid()} | retry.
-link(Type, Bucket, Pid) ->
-    gen_server:call(server(Bucket), {link, Type, Pid}, infinity).
 
 -define(csv_call_all(Call, Bucket, DDocId, RestArgs),
         ok = ?csv_call(Call, mapreduce_view, Bucket, DDocId, RestArgs),
@@ -158,20 +152,32 @@ change_vbucket_states(#state{bucket = Bucket,
         compute_index_states(WantedStates, RebalanceStates),
     do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State).
 
-start_link(Bucket) ->
+start_link_remote(Node, Bucket) ->
     single_bucket_sup:ignore_if_not_couchbase_bucket(
       Bucket,
       fun (BucketConfig) ->
+              ReplicationSrvr = erlang:whereis(doc_replication_srv:proxy_server_name(Bucket)),
+              Replicator = erlang:whereis(doc_replicator:server_name(Bucket)),
+
+              true = is_pid(ReplicationSrvr),
+              true = is_pid(Replicator),
+
               UseReplicaIndex = (proplists:get_value(replica_index, BucketConfig) =/= false),
               VBucketsCount = proplists:get_value(num_vbuckets, BucketConfig),
 
-              gen_server:start_link({local, server(Bucket)}, ?MODULE,
-                                    {Bucket, UseReplicaIndex, VBucketsCount}, [])
+              misc:start_link(Node, misc, turn_into_gen_server,
+                              [{local, server(Bucket)},
+                               ?MODULE,
+                               {Bucket, Replicator, ReplicationSrvr,
+                                UseReplicaIndex, VBucketsCount}, []])
       end).
 
-init({Bucket, UseReplicaIndex, NumVBuckets}) ->
+init({Bucket, Replicator, ReplicationSrvr, UseReplicaIndex, NumVBuckets}) ->
     process_flag(trap_exit, true),
     Self = self(),
+
+    ns_couchdb_api:register_doc_manager(Replicator),
+    ns_couchdb_api:register_doc_manager(ReplicationSrvr),
 
     %% Update myself whenever the config changes (rebalance)
     ns_pubsub:subscribe_link(
@@ -181,7 +187,9 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
 
     Self ! replicate_newnodes_docs,
 
-    proc_lib:init_ack({ok, self()}),
+    proc_lib:init_ack({ok, Self}),
+
+    ok = misc:wait_for_local_name(couch_server, 10000),
 
     wait_for_bucket_to_start(Bucket, 0),
 
@@ -199,7 +207,7 @@ init({Bucket, UseReplicaIndex, NumVBuckets}) ->
                    use_replica_index=UseReplicaIndex,
                    wanted_states = [],
                    rebalance_states = [],
-                   ddoc_replicator = undefined},
+                   ddoc_replicator = Replicator},
 
     [maybe_define_group(DDocId, State)
      || DDocId <- get_live_ddoc_ids(State)],
@@ -279,9 +287,8 @@ handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
             NewDoc = Doc#doc{rev=NewRev},
             try
                 ?log_debug("Writing interactively saved ddoc ~p", [Doc]),
-                SavedDocState = save_doc(NewDoc, State),
-                {Replicator, NewState} = get_replicator(SavedDocState),
-                Replicator ! {replicate_change, NewDoc},
+                NewState = save_doc(NewDoc, State),
+                NewState#state.ddoc_replicator ! {replicate_change, NewDoc},
                 {reply, ok, NewState}
             catch throw:{invalid_design_doc, _} = Error ->
                     ?log_debug("Document validation failed: ~p", [Error]),
@@ -310,11 +317,7 @@ handle_call(reset_master_vbucket, _From, #state{bucket = Bucket,
     {ok, MasterDB} = open_local_db(Bucket),
     ok = couch_db:close(MasterDB),
     [save_doc(Doc, State) || Doc <- LocalDocs],
-    {reply, ok, State};
-handle_call({link, replicator, Pid}, _From, State) ->
-    ns_couchdb_api:handle_link(Pid, #state.ddoc_replicator, State);
-handle_call({link, replication_srv, Pid}, _From, State) ->
-    ns_couchdb_api:handle_link(Pid, #state.ddoc_replication_srv, State).
+    {reply, ok, State}.
 
 handle_cast({replicated_update, #doc{id=Id, rev=Rev}=Doc}, State) ->
     %% this is replicated from another node in the cluster. We only accept it
@@ -343,10 +346,10 @@ aggregate_update_ddoc_messages(DDocId, Deleted) ->
             Deleted
     end.
 
-handle_info(replicate_newnodes_docs, #state{local_docs = Docs} = State) ->
-    {Replicator, NewState} = get_replicator(State),
+handle_info(replicate_newnodes_docs, #state{local_docs = Docs,
+                                            ddoc_replicator = Replicator} = State) ->
     Replicator ! {replicate_newnodes_docs, Docs},
-    {noreply, NewState};
+    {noreply, State};
 handle_info({update_ddoc, DDocId, Deleted0}, State) ->
     Deleted = aggregate_update_ddoc_messages(DDocId, Deleted0),
     ?log_info("Processing update_ddoc ~s (~p)", [DDocId, Deleted]),
@@ -595,13 +598,3 @@ get_safe_purge_seqs(BucketName) ->
                       SafeSeqs
               end
       end, [], capi_utils:fetch_ddoc_ids(BucketName)).
-
-get_replicator(#state{ddoc_replicator = undefined} = State) ->
-    receive
-        {'$gen_call', From, {link, replicator, Pid} = Msg} ->
-            {reply, Reply, NewState} = handle_call(Msg, From, State),
-            gen_server:reply(From, Reply),
-            {Pid, NewState}
-    end;
-get_replicator(#state{ddoc_replicator = Replicator} = State) ->
-    {Replicator, State}.

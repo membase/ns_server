@@ -39,7 +39,7 @@
 
 
 %% API
--export([start_link/1, fetch_stats/1]).
+-export([start_link_remote/2, fetch_stats/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
@@ -51,10 +51,13 @@
 -define(SAMPLE_INTERVAL, 5000).
 
 
-start_link(Bucket) ->
-    gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
+start_link_remote(Node, Bucket) ->
+    misc:start_link(Node, misc, turn_into_gen_server,
+                    [{local, server(Bucket)},
+                     ?MODULE,
+                     [Bucket], []]).
 
-init(Bucket) ->
+init([Bucket]) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
     case ns_bucket:bucket_type(BucketConfig) of
         membase ->

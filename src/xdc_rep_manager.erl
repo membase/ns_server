@@ -93,7 +93,7 @@ latest_errors() ->
 init(_) ->
     proc_lib:init_ack({ok, self()}),
 
-    {ok, DocMgr} = ns_couchdb_api:link_to_doc_mgr(rep_manager, xdcr, self()),
+    DocMgr = ns_couchdb_api:wait_for_doc_manager(),
 
     IdDocList = xdc_rdoc_manager:foreach_doc(
                   DocMgr,

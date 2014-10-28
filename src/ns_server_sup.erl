@@ -207,13 +207,6 @@ child_specs() ->
      {compaction_new_daemon, {compaction_new_daemon, start_link, []},
       {permanent, 4}, 86400000, worker, [compaction_new_daemon]},
 
-     {xdc_rdoc_replicator,
-      {doc_replicator, start_link, [xdcr]},
-      permanent, 1000, worker, [doc_replicator]},
-
-     {xdc_rdoc_replication_srv, {doc_replication_srv, start_link, [xdcr]},
-      permanent, 1000, worker, [doc_replication_srv]},
-
      {cluster_logs_sup, {cluster_logs_sup, start_link, []},
       permanent, infinity, supervisor, []}
     ].

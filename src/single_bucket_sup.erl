@@ -36,12 +36,9 @@ top_loop(ParentPid, Pid, BucketName) ->
     end.
 
 child_specs(BucketName) ->
-    [{{doc_replicator, BucketName},
-      {doc_replicator, start_link, [BucketName]},
-      permanent, 1000, worker, [doc_replicator]},
-     {{doc_replication_srv, BucketName},
-      {doc_replication_srv, start_link, [BucketName]},
-      permanent, 1000, worker, [doc_replication_srv]},
+    [{{docs_sup, BucketName},
+      {docs_sup, start_link, [BucketName]},
+      permanent, infinity, supervisor, [docs_sup]},
      {{ns_memcached_sup, BucketName}, {ns_memcached_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [ns_memcached_sup]},
      {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},

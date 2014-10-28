@@ -20,11 +20,13 @@
 -export([init/1]).
 -export([link_stats_holder_body/0]).
 
+-include("ns_common.hrl").
+
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link(?MODULE, []).
 
 init([]) ->
-    {ok, {{rest_for_one, 3, 10}, child_specs()}}.
+    {ok, {{one_for_all, 3, 10}, child_specs()}}.
 
 link_stats_holder_body() ->
     xdc_rep_utils:create_stats_table(),
@@ -44,4 +46,17 @@ child_specs() ->
 
      {xdc_rep_manager,
       {xdc_rep_manager, start_link, []},
-      permanent, 30000, worker, []}].
+      permanent, 30000, worker, []},
+
+     {xdc_rdoc_replicator,
+      {doc_replicator, start_link, [xdcr]},
+      permanent, 1000, worker, [doc_replicator]},
+
+     {xdc_rdoc_replication_srv, {doc_replication_srv, start_link, [xdcr]},
+      permanent, 1000, worker, [doc_replication_srv]},
+
+     {wait_for_couchdb_node, {ns_couchdb_api, wait_for_name, [last_process]},
+      transient, brutal_kill, worker, []},
+
+     {xdc_rdoc_manager, {xdc_rdoc_manager, start_link_remote, [ns_node_disco:couchdb_node()]},
+      permanent, 1000, worker, []}].
