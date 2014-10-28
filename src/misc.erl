@@ -525,28 +525,39 @@ terminate_and_wait(Reason, Processes) ->
     [misc:wait_for_process(P, infinity) || P <- Processes],
     ok.
 
--define(WAIT_FOR_GLOBAL_NAME_SLEEP, 200).
+-define(WAIT_FOR_NAME_SLEEP, 200).
 
 %% waits until given name is globally registered. I.e. until calling
 %% {global, Name} starts working
 wait_for_global_name(Name, TimeoutMillis) ->
-    Tries = (TimeoutMillis + ?WAIT_FOR_GLOBAL_NAME_SLEEP-1) div ?WAIT_FOR_GLOBAL_NAME_SLEEP,
-    wait_for_global_name_loop(Name, Tries).
+    wait_for_name({global, Name}, TimeoutMillis).
 
-wait_for_global_name_loop(Name, 0) ->
-    case is_pid(global:whereis_name(Name)) of
+wait_for_local_name(Name, TimeoutMillis) ->
+    wait_for_name({local, Name}, TimeoutMillis).
+
+wait_for_name(Name, TimeoutMillis) ->
+    Tries = (TimeoutMillis + ?WAIT_FOR_NAME_SLEEP-1) div ?WAIT_FOR_NAME_SLEEP,
+    wait_for_name_loop(Name, Tries).
+
+wait_for_name_loop(Name, 0) ->
+    case is_pid(whereis_name(Name)) of
         true ->
             ok;
         _ -> failed
     end;
-wait_for_global_name_loop(Name, TriesLeft) ->
-    case is_pid(global:whereis_name(Name)) of
+wait_for_name_loop(Name, TriesLeft) ->
+    case is_pid(whereis_name(Name)) of
         true ->
             ok;
         false ->
-            timer:sleep(?WAIT_FOR_GLOBAL_NAME_SLEEP),
-            wait_for_global_name_loop(Name, TriesLeft-1)
+            timer:sleep(?WAIT_FOR_NAME_SLEEP),
+            wait_for_name_loop(Name, TriesLeft-1)
     end.
+
+whereis_name({global, Name}) ->
+    global:whereis_name(Name);
+whereis_name({local, Name}) ->
+    erlang:whereis(Name).
 
 %% Like proc_lib:start_link but allows to specify a node to spawn a process on.
 -spec start_link(node(), module(), atom(), [any()]) -> any() | {error, term()}.
