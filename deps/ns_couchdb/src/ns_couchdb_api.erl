@@ -50,6 +50,8 @@
          get_view_group_data_size/2,
          get_safe_purge_seqs/1,
 
+         wait_for_name/1,
+
          link_to_doc_mgr/3]).
 
 -export([handle_rpc/1]).
@@ -148,6 +150,28 @@ get_safe_purge_seqs(BucketName) ->
 link_to_doc_mgr(Type, Bucket, Pid) ->
     maybe_rpc_couchdb_node({link_to_doc_mgr, Type, Bucket, Pid}).
 
+wait_for_name(Name) ->
+    ?log_debug("Waiting for ~p on couchdb node to start", [Name]),
+    do_wait_for_name(Name),
+    ignore.
+
+do_wait_for_name(Name) ->
+    case rpc:call(ns_node_disco:couchdb_node(), ?MODULE, handle_rpc, [{whereis, Name}], 1000) of
+        {loaded, Pid} ->
+            ?log_debug("Process ~p (~p) is available on couchdb node.", [Name, Pid]),
+            Pid;
+        RV ->
+            ?log_debug("Whereis for name ~p returned ~p. Keep waiting.", [Name, RV]),
+            receive
+                {'EXIT', Pid, Reason} ->
+                    ?log_debug("Received exit from ~p with reason ~p", [Pid, Reason]),
+                    exit(Reason)
+            after 500 ->
+                    ok
+            end,
+            do_wait_for_name(Name)
+    end.
+
 maybe_rpc_couchdb_node(Request) ->
     maybe_rpc_couchdb_node(Request, infinity, undefined).
 
@@ -198,6 +222,14 @@ retry_rpc_couchdb_node(Try, Node, Request, RpcTimeout) ->
     end,
     rpc_couchdb_node(Try + 1, Node, Request, RpcTimeout, undefined).
 
+handle_rpc({whereis, Name}) ->
+    Pid = whereis(Name),
+    case is_pid(Pid) of
+        true ->
+            {loaded, Pid};
+        false ->
+            not_found
+    end;
 handle_rpc(get_db_and_ix_paths) ->
     try
         cb_config_couch_sync:get_db_and_ix_paths()

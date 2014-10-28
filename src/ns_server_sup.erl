@@ -50,11 +50,7 @@ pre_start() ->
     misc:ping_jointo().
 
 child_specs() ->
-    [{setup_node_names,
-      {ns_server, setup_node_names, []},
-      transient, brutal_kill, worker, []},
-
-     {ns_disksup, {ns_disksup, start_link, []},
+    [{ns_disksup, {ns_disksup, start_link, []},
       {permanent, 4}, 1000, worker, []},
 
      {diag_handler_worker, {work_queue, start_link, [diag_handler_worker]},

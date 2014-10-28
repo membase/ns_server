@@ -4,7 +4,7 @@
 
 -export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
-         restart_xdcr_proxy/0, sync/0]).
+         restart_xdcr_proxy/0, sync/0, create_erl_node_spec/4]).
 
 %% referenced by config
 -export([omit_missing_mcd_ports/2]).
@@ -128,30 +128,6 @@ create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort) ->
 
     create_erl_node_spec(xdcr_proxy, Args, "NS_SSL_PROXY_ENV_ARGS", ErlangArgs).
 
-create_ns_couchdb_spec() ->
-    CouchIni = case init:get_argument(couch_ini) of
-                   error ->
-                       [];
-                   {ok, [[]]} ->
-                       [];
-                   {ok, [Values]} ->
-                       ["-couch_ini" | Values]
-               end,
-
-    ErlangArgs = CouchIni ++
-        ["-setcookie", atom_to_list(ns_server:get_babysitter_cookie()),
-         "-name", atom_to_list(ns_node_disco:couchdb_node()),
-         "-smp", "enable",
-         "+P", "327680",
-         "+K", "true",
-         "-kernel", "error_logger", "false",
-         "-sasl", "sasl_error_logger", "false",
-         "-nouser",
-         "-hidden",
-         "-run", "child_erlang", "child_start", "ns_couchdb"],
-
-    create_erl_node_spec(ns_couchdb, [{ns_server_node, node()}], "NS_COUCHDB_ENV_ARGS", ErlangArgs).
-
 create_erl_node_spec(Type, Args, EnvArgsVar, ErlangArgs) ->
     PathArgs = ["-pa"] ++ lists:reverse(code:get_path()),
     EnvArgsTail = [{K, V}
@@ -236,12 +212,11 @@ dynamic_children() ->
     {value, PortServers} = ns_config:search_node(Config, port_servers),
 
     MaybeSSLProxySpec = maybe_create_ssl_proxy_spec(Config),
-    NSCouchdbSpec = create_ns_couchdb_spec(),
 
     [expand_args(NCAO) || NCAO <- PortServers,
                           allowed_service(NCAO, Config)] ++
         query_node_spec(Config) ++
-        per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec ++ [NSCouchdbSpec].
+        per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
 
 allowed_service({moxi, _, _, _} = _NCAO, Config) ->
     lists:member(moxi, ns_cluster_membership:node_services(Config, node()));

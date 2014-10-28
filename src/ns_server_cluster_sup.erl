@@ -18,7 +18,7 @@
 -behavior(supervisor).
 
 %% API
--export ([start_cluster/0, start_link/0, stop_cluster/0]).
+-export ([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -27,20 +27,9 @@
 %% API
 %%
 
-%% @doc Start child after its been stopped
-start_cluster() ->
-    supervisor:restart_child(?MODULE, ns_server_sup).
-
-
 %% @doc Start the supervisor
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-
-%% @doc Stop ns_server_sup
-stop_cluster() ->
-    supervisor:terminate_child(?MODULE, ns_server_sup).
-
 
 %%
 %% Supervisor callbacks
@@ -68,6 +57,6 @@ init([]) ->
             {ns_process_registry, start_link,
              [vbucket_filter_changes_registry, [{terminate_command, shutdown}]]},
             permanent, 100, worker, [ns_process_registry]},
-           {ns_server_sup, {ns_server_sup, start_link, []},
-            permanent, infinity, supervisor, [ns_server_sup]}
+           {ns_server_nodes_sup, {ns_server_nodes_sup, start_link, []},
+            permanent, infinity, supervisor, [ns_server_nodes_sup]}
           ]}}.

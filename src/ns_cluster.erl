@@ -168,7 +168,7 @@ handle_cast(leave, State) ->
     ok = misc:write_file(leave_marker_path(), <<"">>),
 
     %% first thing we do is stopping nearly everything
-    ok = ns_server_cluster_sup:stop_cluster(),
+    ok = ns_server_nodes_sup:stop_ns_server(),
 
     stats_archiver:wipe(),
 
@@ -236,7 +236,7 @@ handle_cast(leave, State) ->
     timer:sleep(1000),
 
     ok = file:delete(leave_marker_path()),
-    {ok, _} = ns_server_cluster_sup:start_cluster(),
+    {ok, _} = ns_server_nodes_sup:start_ns_server(),
     ns_ports_setup:restart_memcached(),
     {noreply, State}.
 
@@ -918,7 +918,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
     %% let ns_memcached know that we don't need to preserve data at all
     ns_config:set(i_am_a_dead_man, true),
     %% Pull the rug out from under the app
-    ok = ns_server_cluster_sup:stop_cluster(),
+    ok = ns_server_nodes_sup:stop_ns_server(),
     ns_log:delete_log(),
     Status = try
         ?cluster_debug("ns_cluster: joining cluster. Child has exited.", []),
@@ -954,13 +954,13 @@ perform_actual_join(RemoteNode, NewCookie) ->
             Stack = erlang:get_stacktrace(),
 
             ?cluster_error("Error during join: ~p", [{Type, Error, Stack}]),
-            {ok, _} = ns_server_cluster_sup:start_cluster(),
+            {ok, _} = ns_server_nodes_sup:start_ns_server(),
 
             erlang:raise(Type, Error, Stack)
     end,
     ?cluster_debug("Join status: ~p, starting ns_server_cluster back",
                    [Status]),
-    Status2 = case ns_server_cluster_sup:start_cluster() of
+    Status2 = case ns_server_nodes_sup:start_ns_server() of
                   {error, _} = E ->
                       {error, start_cluster_failed,
                        <<"Failed to start ns_server cluster processes back. Logs might have more details.">>,
