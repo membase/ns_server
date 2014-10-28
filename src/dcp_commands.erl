@@ -21,7 +21,8 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
--export([open_connection/3, add_stream/4, close_stream/3, stream_request/8,
+-export([open_connection/3, open_connection/4,
+         add_stream/4, close_stream/3, stream_request/8,
          setup_flow_control/2,
          process_response/2, format_packet_nicely/1]).
 
@@ -40,6 +41,10 @@ process_response({ok, Header, Body}) ->
 
 -spec open_connection(port(), dcp_conn_name(), dcp_conn_type()) -> ok | dcp_error().
 open_connection(Sock, ConnName, Type) ->
+    open_connection(Sock, ConnName, Type, ns_server).
+
+-spec open_connection(port(), dcp_conn_name(), dcp_conn_type(), atom()) -> ok | dcp_error().
+open_connection(Sock, ConnName, Type, Logger) ->
     Flags = case Type of
                 consumer ->
                     <<0:32/big>>;
@@ -50,7 +55,7 @@ open_connection(Sock, ConnName, Type) ->
             end,
     Extra = <<0:32, Flags/binary>>,
 
-    ?log_debug("Open ~p connection ~p on socket ~p", [Type, ConnName, Sock]),
+    ale:debug(Logger, "Open ~p connection ~p on socket ~p", [Type, ConnName, Sock]),
     process_response(
       mc_client_binary:cmd_vocal(?DCP_OPEN, Sock,
                                  {#mc_header{},

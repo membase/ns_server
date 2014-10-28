@@ -152,7 +152,7 @@ start(Socket, Vb, FailoverId, StartSeqno0, SnapshotStart0, SnapshotEnd0, Callbac
                 %% we actually need to rollback, but if we just pass
                 %% EndSeqno that is lower than SnapshotStart, ep-engine
                 %% will return an ERANGE error
-                ?log_debug("high seqno ~B is lower than snapthot start seqno ~B",
+                ?xdcr_debug("high seqno ~B is lower than snapthot start seqno ~B",
                            [EndSeqno, SnapshotStart0]),
                 {EndSeqno, EndSeqno, EndSeqno};
             false ->
@@ -186,7 +186,7 @@ do_start(Socket, Vb, FailoverId,
                     SnapshotStart = ActualSnapshotStart,
                     {Data1, ActualSnapshotEnd0};
                 {_, EndPacket = #dcp_packet{opcode = ?DCP_STREAM_END}, <<>>, _} ->
-                    ?log_debug("Got stream end without snapshot marker"),
+                    ?xdcr_debug("Got stream end without snapshot marker"),
                     %% it's only possible if all those values are same
                     %%
                     %% * immediate end stream is only possible if
@@ -210,8 +210,8 @@ do_start(Socket, Vb, FailoverId,
             proc_lib:init_ack({ok, self()}),
             socket_loop_enter(Socket, Callback, Acc, Data2, Parent);
         #dcp_packet{status = ?ROLLBACK, body = <<RollbackSeq:64>>} ->
-            ?log_debug("handling rollback to ~B", [RollbackSeq]),
-            ?log_debug("Request was: ~p", [{Vb, Opaque, StartSeqno, EndSeqno,
+            ?xdcr_debug("handling rollback to ~B", [RollbackSeq]),
+            ?xdcr_debug("Request was: ~p", [{Vb, Opaque, StartSeqno, EndSeqno,
                                             FailoverId, SnapshotStart, SnapshotEnd}]),
             %% in case of xdcr we cannot rewind the destination. So we
             %% just "formally" rollback our start point to resume
@@ -244,7 +244,7 @@ stream_vbucket_inner(Bucket, Vb, FailoverId,
         ok ->
             ok = xdcr_dcp_sockets_pool:put_socket(Bucket, S);
         stop ->
-            ?log_debug("Got stop. Dropping socket on the floor")
+            ?xdcr_debug("Got stop. Dropping socket on the floor")
     end.
 
 
@@ -387,7 +387,7 @@ consumer_loop_have_msg(Child, Callback, Acc, ConsumedSoFar,
                                SnapshotStart, SnapshotEnd, LastSeenSeqno,
                                NewData);
         {'EXIT', _From, Reason} = ExitMsg ->
-            ?log_debug("Got exit signal: ~p", [ExitMsg]),
+            ?xdcr_debug("Got exit signal: ~p", [ExitMsg]),
             exit(Reason);
         %% this is handling please_stop message for xdc_vbucket_rep
         %% changes reader loop efficiently, i.e. without selective
@@ -563,7 +563,7 @@ get_failover_log(Bucket, VB) ->
 
 test() ->
     Cb = fun (Packet, Acc) ->
-                 ?log_debug("packet: ~p", [Packet]),
+                 ?xdcr_debug("packet: ~p", [Packet]),
                  case Packet of
                      {failover_id, _FUUID, _, _, _, _} ->
                          {ok, Acc};
