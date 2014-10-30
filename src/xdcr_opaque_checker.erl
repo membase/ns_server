@@ -45,7 +45,7 @@ handle_call(_Request, _From, _State) ->
     erlang:error(unexpected_call).
 
 handle_cast(_Msg, _State) ->
-    error:error(unexpected_cast).
+    erlang:error(unexpected_cast).
 
 handle_info(check_opaques, Rep) ->
     maybe_check_opaques(Rep),
