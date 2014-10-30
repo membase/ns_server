@@ -49,8 +49,7 @@
          shun/1,
          start_link/0]).
 
--export([add_node/3,
-         add_node_to_group/4,
+-export([add_node_to_group/4,
          engage_cluster/1, complete_join/1,
          check_host_connectivity/1, change_address/1]).
 
@@ -69,16 +68,6 @@
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-
-add_node(RemoteAddr, RestPort, Auth) ->
-    RV = gen_server:call(?MODULE, {add_node, RemoteAddr, RestPort, Auth}, ?ADD_NODE_TIMEOUT),
-    case RV of
-        {error, _What, Message, _Nested} ->
-            ?cluster_log(?NODE_JOIN_FAILED, "Failed to add node ~s:~w to cluster. ~s",
-                         [RemoteAddr, RestPort, Message]);
-        _ -> ok
-    end,
-    RV.
 
 add_node_to_group(RemoteAddr, RestPort, Auth, GroupUUID) ->
     RV = gen_server:call(?MODULE, {add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID}, ?ADD_NODE_TIMEOUT),
@@ -142,12 +131,6 @@ counter_inc(CounterName) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-
-handle_call({add_node, RemoteAddr, RestPort, Auth}, _From, State) ->
-    ?cluster_debug("handling add_node(~p, ~p, ..)", [RemoteAddr, RestPort]),
-    RV = do_add_node(RemoteAddr, RestPort, Auth, undefined),
-    ?cluster_debug("add_node(~p, ~p, ..) -> ~p", [RemoteAddr, RestPort, RV]),
-    {reply, RV, State};
 
 handle_call({add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID}, _From, State) ->
     ?cluster_debug("handling add_node(~p, ~p, ~p, ..)", [RemoteAddr, RestPort, GroupUUID]),
