@@ -566,6 +566,14 @@ start_link(Node, M, F, A)
     Pid = proc_lib:spawn_link(Node, M, F, A),
     sync_wait(Pid).
 
+%% turns _this_ process into gen_server loop. Initializing and
+%% registering it properly.
+turn_into_gen_server({local, Name}, Mod, Args, GenServerOpts) ->
+    erlang:register(Name, self()),
+    {ok, State} = Mod:init(Args),
+    proc_lib:init_ack({ok, self()}),
+    gen_server:enter_loop(Mod, GenServerOpts, State, {local, Name}).
+
 sync_wait(Pid) ->
     receive
         {ack, Pid, Return} ->
