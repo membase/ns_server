@@ -9,7 +9,7 @@ describe("appController", function () {
   var mnDialogService;
 
   beforeEach(angular.mock.module('ui.router', function ($stateProvider) {
-    $stateProvider.state('test', {url: '/test'}).state('test2', {url: '/test2'});
+    $stateProvider.state('app.test', {url: '/test'}).state('app.test2', {url: '/test2'});
   }));
   beforeEach(angular.mock.module('app'));
 

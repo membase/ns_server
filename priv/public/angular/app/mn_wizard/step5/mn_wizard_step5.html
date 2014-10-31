@@ -12,27 +12,28 @@
   <form id="init_secure_form" class="form block" autocomplete="off" name="form" novalidate ng-submit="onSubmit()">
     <div class="warn" id="update_notifications_errors_container" ng-show="form.$invalid">
       <div ng-show="form.$error.equals">'Password' and 'Verify Password' do not match</div>
-      <div ng-show="form.$error.passLength">A password of at least six characters is required</div>
-      <div ng-show="form.$error.userReq">Username is required</div>
+      <div ng-show="form.password.$error.minlength">A password of at least six characters is required</div>
+      <div ng-show="form.password.$error.maxlength || form.username.$error.maxlength">Maximum 24 characters exceeded</div>
+      <div ng-show="form.username.$error.required">Username is required</div>
     </div>
     <div class="warn" id="update_notifications_errors_container" ng-show="errors">
       <div ng-repeat="error in errors">{{error}}</div>
     </div>
     <div class="username-input input" style="margin-top: 20px;">
       <label for="secure-username">Username:</label>
-      <input type="text" name="username" class="inp" value="Administrator" id="secure-username" maxlength="24" ng-model="mnWizardStep5ServiceModel.user.username"/>
+      <input type="text" name="username" class="inp" value="Administrator" id="secure-username" ng-maxlength="24" ng-model="user.username" required/>
     </div>
     <div class="password-input input">
       <label for="secure-password">Password:</label>
-      <input type="password" name="password" ng-model="mnWizardStep5ServiceModel.user.password" class="inp focusme" id="secure-password" maxlength="24" autocomplete="off" mn-focus-directive="focusMe"/>
+      <input type="password" name="password" ng-model="user.password" class="inp focusme" id="secure-password" ng-minlength="6" ng-maxlength="24" required autocomplete="off" mn-focus-directive="focusMe"/>
     </div>
     <div class="password-input-verify input">
       <label for="secure-password">Verify Password:</label>
-      <input type="password" name="passwordVerify" class="inp" id="secure-password-verify" maxlength="24" autocomplete="off" ng-model="mnWizardStep5ServiceModel.user.verifyPassword"/>
+      <input type="password" name="passwordVerify" class="inp" id="secure-password-verify" maxlength="24" autocomplete="off" ng-model="user.verifyPassword"/>
     </div>
     <div class="config-bottom">
       <button name="finish" value="Finish" class="submit finish direction-button" id="step-5-finish" type="submit">Next</button>
-      <button name="back" value="Back" class="submit back direction-button" id="step-5-back" type="button" ui-sref="wizard.step4">Back</button>
+      <button name="back" value="Back" class="submit back direction-button" id="step-5-back" type="button" ui-sref="app.wizard.step4">Back</button>
     </div>
   </form>
 </div>

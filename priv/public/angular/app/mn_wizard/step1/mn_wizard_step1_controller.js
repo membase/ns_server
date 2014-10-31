@@ -1,64 +1,59 @@
 angular.module('mnWizard').controller('mnWizardStep1Controller',
-  function ($scope, $state, mnWizardStep1Service, mnAuthService, mnWizardStep1JoinClusterService, mnWizardStep1DiskStorageService) {
-    $scope.mnWizardStep1ServiceModel = mnWizardStep1Service.model;
+  function ($scope, $state, $window, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper) {
+    $scope.hostname = selfConfig.hostname;
 
-    $scope.onSubmit = function (e) {
-      if ($scope.stepSubmited) {
-        return;
-      }
-      $scope.stepSubmited = true;
-      makeRequest(mnWizardStep1DiskStorageService, 'postDiskStorage', undefined, {
-        path: mnWizardStep1DiskStorageService.model.dbPath,
-        index_path: mnWizardStep1DiskStorageService.model.indexPath
-      }).success(doPostHostName);
-    }
+    $scope.clusterMember = {
+      hostname: "127.0.0.1",
+      username: "Administrator",
+      password: ''
+    };
 
-    $scope.$watch(function () {
-      return !$scope.mnWizardStep1ServiceModel.nodeConfig || $scope.stepSubmited;
-    }, function (isViewLoading) {
-      $scope.viewLoading = isViewLoading;
+    $scope.dynamicRamQuota = selfConfig.dynamicRamQuota;
+    $scope.ramTotalSize = selfConfig.ramTotalSize;
+    $scope.ramMaxMegs = selfConfig.ramMaxMegs;
+    $scope.joinCluster = 'no';
+
+    $scope.dbPath = selfConfig.storage.hdd[0].path;
+    $scope.indexPath = selfConfig.storage.hdd[0].index_path;
+    $scope.isEnterprise = pools.isEnterprise;
+
+    $scope.$watch('dynamicRamQuota', mnWizardStep1Service.setDynamicRamQuota);
+
+    $scope.$watch('dbPath', function (pathValue) {
+      $scope.dbPathTotal = mnWizardStep1Service.lookup(pathValue, selfConfig.preprocessedAvailableStorage);
+    });
+    $scope.$watch('indexPath', function (pathValue) {
+      $scope.indexPathTotal = mnWizardStep1Service.lookup(pathValue, selfConfig.preprocessedAvailableStorage);
     });
 
-    mnWizardStep1Service.getSelfConfig();
-
-    function doPostHostName() {
-      var nextAction = mnWizardStep1JoinClusterService.model.joinCluster === 'ok' ? doPostJoinCluster : doPostMemory;
-      makeRequest(mnWizardStep1Service, 'postHostname', postHostnameErrorExtr, {hostname: mnWizardStep1Service.model.hostname}).success(nextAction);
-    }
-    function doPostJoinCluster() {
-      makeRequest(mnWizardStep1JoinClusterService, 'postJoinCluster', undefined, mnWizardStep1JoinClusterService.model.clusterMember).success(doLogin);
-    }
-    function doPostMemory() {
-      makeRequest(mnWizardStep1JoinClusterService, 'postMemory', postMemoryErrorExtr, {memoryQuota: mnWizardStep1JoinClusterService.model.dynamicRamQuota}).success(goToNextPage);
-    }
-    function goToNextPage() {
-      $state.go('wizard.step2');
-      mnWizardStep1JoinClusterService.resetClusterMember();
-    }
-    function doLogin() {
-      mnAuthService.manualLogin({
-        username: mnWizardStep1JoinClusterService.model.clusterMember.user,
-        password: mnWizardStep1JoinClusterService.model.clusterMember.password
-      }).success(mnWizardStep1JoinClusterService.resetClusterMember)
-
-    }
-    function stopSpinner() {
-      $scope.stepSubmited = false;
-    }
-    function postMemoryErrorExtr(errors) {
-      return errors.errors.memoryQuota;
-    }
-    function postHostnameErrorExtr(errors) {
-      return errors[0];
+    $scope.isJoinCluster = function (value) {
+      return $scope.joinCluster === value;
     }
 
+    function login() {
+      return mnAuthService.manualLogin($scope.clusterMember);
+    }
+    function goNext() {
+      $state.go('app.wizard.step2');
+    }
+    function makeRequestWithErrorsHandler(method, data) {
+      return mnHelper.rejectReasonToScopeApplyer($scope, method + 'Errors', mnWizardStep1Service[method](data));
+    }
 
-    function makeRequest(module, method, errorExtractor, data) {
-      return module[method]({data: data}).success(function () {
-        $scope[method + 'Errors'] = false;
-      }).error(function (errors) {
-        $scope[method + 'Errors'] = errorExtractor ? errorExtractor(errors) : errors;
-        stopSpinner();
+    $scope.onSubmit = function (e) {
+      if ($scope.viewLoading) {
+        return;
+      }
+      var promise = $q.all([
+        makeRequestWithErrorsHandler('postDiskStorage', {path: $scope.dbPath, index_path: $scope.indexPath}),
+        makeRequestWithErrorsHandler('postHostname', $scope.hostname)
+      ]).then(function () {
+        if ($scope.isJoinCluster('ok')) {
+          return makeRequestWithErrorsHandler('postJoinCluster', $scope.clusterMember).then(login).then(function () {$window.location.reload();});
+        } else {
+          return makeRequestWithErrorsHandler('postMemory', $scope.dynamicRamQuota).then(goNext);
+        }
       });
-    }
+      mnHelper.handleSpinner($scope, promise);
+    };
   });

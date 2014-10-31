@@ -15,11 +15,11 @@
         <label>Bucket Type:</label>
         <div class="with_radiogroup">
           <div>
-            <input type="radio" name="bucketType" value="membase" id="bucket_type_membase_init" ng-model="modelStep3Service.bucketConf.bucketType">
+            <input type="radio" name="bucketType" value="membase" id="bucket_type_membase_init" ng-model="bucketConf.bucketType" disabled="true">
             <label for="bucket_type_membase_init">Couchbase</label>
           </div>
           <div>
-            <input type="radio" name="bucketType" value="memcached" id="bucket_type_memcached_init" ng-model="modelStep3Service.bucketConf.bucketType">
+            <input type="radio" name="bucketType" value="memcached" id="bucket_type_memcached_init" ng-model="bucketConf.bucketType" disabled="true">
             <label for="bucket_type_memcached_init" >Memcached</label>
           </div>
         </div>
@@ -32,7 +32,7 @@
         <div class="usage-block size-gauge for-ram" mn-bar-usage-directive base-info="guageConfig" ></div>
         <div class="gauge-label">
           <label for="ram_quota_mb_init">Per Node RAM Quota:</label>
-          <input name="ramQuotaMB" class="focusme" mn-focus-directive="focusMe" ng-class="{invalid: errors.ramQuotaMB}" value="30" ng-model="modelStep3Service.bucketConf.ramQuotaMB">
+          <input name="ramQuotaMB" class="focusme" mn-focus-directive="focusMe" ng-class="{invalid: errors.ramQuotaMB}" value="30" ng-model="bucketConf.ramQuotaMB">
           <abbr>MB</abbr>
         </div>
       </div>
@@ -40,15 +40,15 @@
       <p class="memcached-summary when-non-persistent" ng-show="!!perNodeMegs">
          Total bucket size = {{totalBucketSize}} MB ({{perNodeMegs}} MB x {{nodeCount}})
       </p>
-      <div class="cache_metadata_block persistent-only" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
+      <div class="cache_metadata_block persistent-only" ng-show="bucketConf.bucketType === 'membase'">
         <label>Cache Metadata:</label>
         <div class="with_radiogroup">
           <div>
-            <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain-init" checked="checked" ng-model="modelStep3Service.bucketConf.evictionPolicy">
+            <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain-init" checked="checked" ng-model="bucketConf.evictionPolicy">
             <label for="cache_metadata_retain-init">Value Ejection</label>
           </div>
           <div>
-            <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain-init" ng-model="modelStep3Service.bucketConf.evictionPolicy">
+            <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain-init" ng-model="bucketConf.evictionPolicy">
             <label for="cache_metadata_non_retain-init">Full Ejection</label>
           </div>
         </div>
@@ -62,36 +62,36 @@
       </div>
     </div>
 
-    <div class="persistent-only" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
+    <div class="persistent-only" ng-show="bucketConf.bucketType === 'membase'">
       <h2>Replicas</h2>
       <div class="sub_section replicas_settigns">
         <input type="checkbox" checked id="for-enable-replicas-init" class="js_for-enable-replicas" ng-model="replicaNumberEnabled">
         <label for="for-enable-replicas-init">Enable</label>
         <div class="for-replica-number" ng-if="replicaNumberEnabled">
-          <select name="replicaNumber" ng-model="modelStep3Service.bucketConf.replicaNumber">
+          <select name="replicaNumber" ng-model="bucketConf.replicaNumber">
             <option value="1">1</option><option value="2">2</option><option value="3">3</option>
           </select>
           <label>Number of replica (backup) copies</label>
         </div>
         <div class="error-container err-replicaNumber" ng-show="errors.replicaNumber">{{errors.replicaNumber}}</div>
         <div>
-          <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag-init" ng-model="modelStep3Service.bucketConf.replicaIndex" ng-false-value="0" ng-true-value="1" ng-disabled="!replicaNumberEnabled">
+          <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag-init" ng-model="bucketConf.replicaIndex" ng-false-value="0" ng-true-value="1" ng-disabled="!replicaNumberEnabled">
           <label for="label_replica_index_flag-init">Index replicas</label>
         </div>
       </div>
     </div><!-- .persistent-only -->
 
-    <div class="persistent-only bucket-io-priority" ng-show="modelStep3Service.bucketConf.bucketType === 'membase'">
+    <div class="persistent-only bucket-io-priority" ng-show="bucketConf.bucketType === 'membase'">
       <h2>Disk I/O Optimization</h2>
       <div class="sub_section">
         <label>Set the bucket disk I/O priority:</label>
         <div class="with_radiogroup">
           <div>
-            <input type="radio" name="threadsNumber" value="3" checked="true" id="low_threads_number_init" ng-model="modelStep3Service.bucketConf.threadsNumber">
+            <input type="radio" name="threadsNumber" value="3" checked="true" id="low_threads_number_init" ng-model="bucketConf.threadsNumber">
             <label for="low_threads_number_init">Low (default)</label>
           </div>
           <div>
-            <input type="radio" name="threadsNumber" value="8" id="hight_threads_number_init" ng-model="modelStep3Service.bucketConf.threadsNumber">
+            <input type="radio" name="threadsNumber" value="8" id="hight_threads_number_init" ng-model="bucketConf.threadsNumber">
             <label for="hight_threads_number_init">High</label>
           </div>
         </div>
@@ -105,7 +105,7 @@
 
     <h2>Flush</h2>
     <div class="sub_section">
-      <input type="checkbox" class="for-enable-flush" id="for-enable-flush-init" name="flushEnabled" value="1" ng-model="modelStep3Service.bucketConf.flushEnabled" ng-false-value="0" ng-true-value="1">
+      <input type="checkbox" class="for-enable-flush" id="for-enable-flush-init" name="flushEnabled" value="1" ng-model="bucketConf.flushEnabled" ng-false-value="0" ng-true-value="1">
       <label for="for-enable-flush-init">Enable</label>
       <a class="tooltip text_11"><span>What's this?</span>
         <span class="tooltip_msg" style="width:218px;"><span>
@@ -117,6 +117,6 @@
 
   <div class="config-bottom">
   <button name="finish" class="submit finish direction-button" type="submit">Next</button>
-  <button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button" ui-sref="wizard.step2">Back</button>
+  <button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button" ui-sref="app.wizard.step2">Back</button>
   </div></form>
 </div>

@@ -1,7 +1,7 @@
 .dialog_full_screen {position: absolute; top: 0; left: 0; width: 100%; height: 100%;}
+.dialog_overlay {z-index: 9999; background-color: #000000; opacity: .5; cursor: pointer;}
 
-.dialog_main_wrapper {z-index: 9999;}
-.dialog_main_wrapper .dialog_overlay {z-index: 9999; background-color: #000000; opacity: .5; cursor: pointer;}
+.dialog_main_wrapper {z-index: 9999;height: 100%;}
 .dialog_main_wrapper .dialog_horizontal_center {position: relative; z-index: 10000; display: table; overflow: hidden; height: 100%; margin: 0 auto;}
 .dialog_main_wrapper .dialog_vertical_center {display: table-cell; vertical-align: middle;}
 .dialog_main_wrapper .dialog_corner_radius {border-radius: 4px; -moz-border-radius: 4px; -webkit-border-radius: 4px; -o-border-radius: 4px; -ms-border-radius: 4px; -khtml-border-radius: 4px;}

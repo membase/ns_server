@@ -10,20 +10,20 @@ describe("mnAuthService", function () {
   beforeEach(angular.mock.module('ui.router'));
   beforeEach(angular.mock.module(function ($stateProvider) {
     $stateProvider
-      .state('admin', {})
-      .state('admin.overview', {
+      .state('app.admin', {})
+      .state('app.admin.overview', {
         url: '/overview',
         authenticate: true
       })
-      .state('admin.servers', {
+      .state('app.admin.servers', {
         url: '/servers',
         authenticate: true
       })
-      .state('wizard', {
+      .state('app.wizard', {
         abstract: true,
         authenticate: false
       })
-      .state('wizard.welcome', {
+      .state('app.wizard.welcome', {
         authenticate: false
       });
   }));

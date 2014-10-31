@@ -1,63 +1,59 @@
-angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider ) {
+angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
 
   $stateProvider
-    .state('admin', {
+    .state('app.admin', {
       abstract: true,
       templateUrl: 'mn_admin/mn_admin.html',
       controller: 'mnAdminController',
       resolve: {
-        mnAdminInitData: function ($q, mnAdminService) {
-          return $q.all([
-            mnAdminService.runDefaultPoolsDetailsLoop(),
-            mnAdminService.getGroups()
-          ]);
+        tasks: function (mnTasksDetails) {
+          return mnTasksDetails.getFresh();
         }
       }
     })
-    .state('admin.overview', {
+    .state('app.admin.overview', {
       url: '/overview',
       controller: 'mnAdminOverviewController',
       templateUrl: 'mn_admin/overview/mn_admin_overview.html',
-      authenticate: true
+      resolve: {
+        nodes: function (mnAdminServersService) {
+          return mnAdminServersService.getNodes();
+        },
+        buckets: function (mnAdminBucketsService) {
+          return mnAdminBucketsService.getRawDetailedBuckets();
+        }
+      }
     })
-    .state('admin.servers', {
-      url: '/servers',
-      controller: 'mnAdminServersController',
-      templateUrl: 'mn_admin/servers/mn_admin_servers.html',
-      authenticate: true,
-      abstract: true
-    })
-    .state('admin.servers.list', {
-      url: '/:list',
-      authenticate: true,
+    .state('app.admin.servers', {
+      url: '/servers/:list',
       params: {
         list: {
-          value: 'active',
+          value: 'active'
         }
       },
       views: {
-        "": {
-          controller: 'mnAdminServersListController',
-          templateUrl: 'mn_admin/servers/list/mn_admin_servers_list.html'
+        "" : {
+          controller: 'mnAdminServersController',
+          templateUrl: 'mn_admin/servers/mn_admin_servers.html',
+          resolve: {
+            serversState: function (mnAdminServersService, $stateParams) {
+              return mnAdminServersService.getServersState($stateParams.list);
+            }
+          }
         },
-        "item@admin.servers.list": {
-          templateUrl: 'mn_admin/servers/list/item/mn_admin_servers_list_item.html',
-          controller: 'mnAdminServersListItemController',
-        },
-        "item_details@admin.servers.list": {
-          templateUrl: 'mn_admin/servers/list/item/details/mn_admin_servers_list_item_details.html',
+        "details@app.admin.servers": {
+          templateUrl: 'mn_admin/servers/details/mn_admin_servers_list_item_details.html',
           controller: 'mnAdminServersListItemDetailsController'
         }
       }
     })
-    .state('admin.settings', {
+    .state('app.admin.settings', {
       url: '/settings',
       abstract: true,
       controller: 'mnAdminSettingsController',
-      templateUrl: 'mn_admin/settings/mn_admin_settings.html',
-      authenticate: true
+      templateUrl: 'mn_admin/settings/mn_admin_settings.html'
     })
-    .state('admin.settings.cluster', {
+    .state('app.admin.settings.cluster', {
       url: '/cluster',
       controller: 'mnAdminSettingsClusterController',
       templateUrl: 'mn_admin/settings/cluster/mn_admin_settings_cluster.html',
@@ -68,7 +64,6 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider ) 
         getVisulaSettings: function (mnAdminSettingsClusterService) {
           return mnAdminSettingsClusterService.getVisulaSettings();
         }
-      },
-      authenticate: true
+      }
     });
 });

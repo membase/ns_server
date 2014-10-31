@@ -4,7 +4,7 @@
     <table class="properties_table">
       <tr>
           <td>Server Name: <span>{{details.hostname}}</span></td>
-          <td>Uptime: <span>{{details.uptime}}</span></td>
+          <td>Uptime: <span>{{uptime}}</span></td>
           <td>OS: <span>{{details.os}}</span></td>
       </tr>
       <tr>
@@ -19,15 +19,14 @@
 </div>
 <div class="additional_server_info">
     <h3 ng-if="detailedProgress">Rebalance Progress</h3>
+    <p ng-if="detailedProgress.bucket">
+      <span>Bucket:</span>
+      {{detailedProgress.bucket}}
+      ({{detailedProgress.bucketNumber}} out of {{detailedProgress.bucketsCount}})
+    </p>
     <div class="rebalance_progress" ng-if="detailedProgress">
-      <div>
+      <div ng-if="detailedProgress.outgoing">
         <p class="direction">Data being transferred out</p>
-
-        <p>
-          <span>Bucket:</span>
-          {{detailedProgress.bucket}}
-          ({{detailedProgress.bucketNumber}} out of {{detailedProgress.bucketsCount}})
-        </p>
         <p>
           <span>Total number of keys to be transferred:</span>
           {{ detailedProgress.outgoing.docsTotal }}
@@ -47,11 +46,6 @@
 
       <div ng-if="detailedProgress.ingoing">
         <p class="direction">Data being transferred in</p>
-        <p>
-          <span>Bucket:</span>
-          {{ detailedProgress.bucket }}
-          ({{ detailedProgress.bucketNumber }} out of {{ detailedProgress.bucketsCount }})
-        </p>
         <p>
           <span>Total number of keys to be transferred:</span>
           {{ detailedProgress.ingoing.docsTotal }}

@@ -1,15 +1,27 @@
 angular.module('mnAdmin').controller('mnAdminController',
-  function ($scope, $state, $location, mnAuthService, mnAdminService, mnAdminServersService, mnAdminTasksService) {
+  function ($scope, $state, $location, $window, $timeout, mnAuthService, tasks, mnTasksDetails) {
     $scope.$state = $state;
     $scope.$location = $location;
     $scope._ = _;
     $scope.Math = Math;
-    $scope.logout = mnAuthService.manualLogout;
+    $scope.logout = function () {
+      mnAuthService.manualLogout().then(function () {
+        $window.location.reload();
+      });
+    };
 
-    $scope.mnAdminServiceModel = mnAdminService.model;
-    $scope.mnAdminServersServiceModel = mnAdminServersService.model;
-    $scope.mnAdminTasksServiceModel = mnAdminTasksService.model;
+    $scope.tasks = tasks;
 
-    mnAdminService.initializeWatchers($scope);
+    var updateTasksCycle;
+    (function updateTasks() {
+      mnTasksDetails.getFresh().then(function (tasks) {
+        $scope.tasks = tasks;
+        updateTasksCycle = $timeout(updateTasks, tasks.recommendedRefreshPeriod);
+      });
+    })();
+
+    $scope.$on('$destroy', function () {
+      $timeout.cancel(updateTasksCycle);
+    });
 
   });

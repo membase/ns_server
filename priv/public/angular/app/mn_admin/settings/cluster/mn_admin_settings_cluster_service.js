@@ -1,31 +1,41 @@
 angular.module('mnAdminSettingsClusterService').factory('mnAdminSettingsClusterService',
-  function (mnAdminService, mnHttpService) {
+  function (mnAdminService, mnHttp) {
     var mnAdminSettingsClusterService = {};
 
-    mnAdminSettingsClusterService.getDefaultCertificate = mnHttpService({
-      method: 'GET',
-      url: '/pools/default/certificate'
-    });
-    mnAdminSettingsClusterService.regenerateCertificate = mnHttpService({
-      method: 'POST',
-      url: '/controller/regenerateCertificate'
-    });
-    mnAdminSettingsClusterService.getVisulaSettings = mnHttpService({
-      method: 'GET',
-      url: '/internalSettings/visual'
-    });
-    mnAdminSettingsClusterService.saveVisualInternalSettings = mnHttpService({
-      method: 'POST',
-      url: '/internalSettings/visual',
-      success: [mnAdminService.runDefaultPoolsDetailsLoop]
-    });
-    mnAdminSettingsClusterService.visualInternalSettingsValidation = mnHttpService({
-      method: 'POST',
-      params: {
-        just_validate: 1,
-      },
-      url: '/internalSettings/visual'
-    });
+
+    mnAdminSettingsClusterService.getDefaultCertificate = function () {
+      return mnHttp({
+        method: 'GET',
+        url: '/pools/default/certificate'
+      });
+    };
+    mnAdminSettingsClusterService.regenerateCertificate = function () {
+      return mnHttp({
+        method: 'POST',
+        url: '/controller/regenerateCertificate'
+      });
+    };
+    mnAdminSettingsClusterService.getVisulaSettings = function () {
+      return mnHttp({
+        method: 'GET',
+        url: '/internalSettings/visual'
+      });
+    };
+    mnAdminSettingsClusterService.saveVisualInternalSettings = function () {
+      return mnHttp({
+        method: 'POST',
+        url: '/internalSettings/visual'
+      }).then(mnAdminService.runDefaultPoolsDetailsLoop)
+    };
+    mnAdminSettingsClusterService.visualInternalSettingsValidation = function () {
+      return mnHttp({
+        method: 'POST',
+        params: {
+          just_validate: 1,
+        },
+        url: '/internalSettings/visual'
+      });
+    };
 
     return mnAdminSettingsClusterService;
 });

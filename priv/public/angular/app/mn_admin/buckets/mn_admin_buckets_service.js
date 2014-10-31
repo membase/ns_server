@@ -1,14 +1,11 @@
 angular.module('mnAdminBucketsService').factory('mnAdminBucketsService',
-  function ($q, $http) {
+  function ($q, mnHttp) {
     var mnAdminBucketsService = {};
 
     mnAdminBucketsService.model = {};
 
-    mnAdminBucketsService.getRawDetailedBuckets = function (uri) {
-      if (!uri) {
-        return;
-      }
-      return $http.get(uri + '&basic_stats=true').success(populateModel);
+    mnAdminBucketsService.getRawDetailedBuckets = function () {
+      return mnHttp.get('/pools/default/buckets?basic_stats=true').success(populateModel);
     };
 
     function populateModel(bucketsDetails) {

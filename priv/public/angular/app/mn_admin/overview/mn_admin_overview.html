@@ -7,17 +7,17 @@
       cluster; displaying cached information!</span>Cluster
     </div>
     <div class="section" id="overview_clusters_block">
-      <div class="item ram-item" mn-spinner-directive="!mnAdminOverviewServiceModel.ramOverviewConfig">
+      <div class="item ram-item" mn-spinner-directive="!ramOverviewConfig">
         <div class="label">
           <strong>RAM Overview</strong>
         </div>
-        <div class="line_cnt usage-block usage_biggest" mn-bar-usage-directive base-info="mnAdminOverviewServiceModel.ramOverviewConfig"></div>
+        <div class="line_cnt usage-block usage_biggest" mn-bar-usage-directive base-info="ramOverviewConfig"></div>
       </div>
-      <div class="item disk-item" mn-spinner-directive="!mnAdminOverviewServiceModel.hddOverviewConfig">
+      <div class="item disk-item" mn-spinner-directive="!hddOverviewConfig">
         <div class="label">
           <strong>Disk Overview</strong>
         </div>
-        <div class="line_cnt usage-block usage_biggest" mn-bar-usage-directive base-info="mnAdminOverviewServiceModel.hddOverviewConfig"></div>
+        <div class="line_cnt usage-block usage_biggest" mn-bar-usage-directive base-info="hddOverviewConfig"></div>
       </div>
     </div>
   </div>
@@ -54,22 +54,22 @@
     <div class="section" id="overview_servers_block">
       <div class="item ovf">
         <div class="actservers">
-          <h3>Active Servers: <span id="active-servers-count">{{mnAdminServiceModel.nodes.active.length || '0'}}</span></h3>
+          <h3>Active Servers: <span id="active-servers-count">{{active.length || '0'}}</span></h3>
         </div>
         <ul>
-          <li class="fail" ng-class="{'is-zero':!mnAdminServiceModel.nodes.failedOver.length}">
+          <li class="fail" ng-class="{'is-zero':!failedOver.length}">
             <span class="when-non-zero">
-              <a href="#visitServersTab=pending">Servers Failed Over: <span class="failed-over-count">{{mnAdminServiceModel.nodes.failedOver.length}}</span></a>
+              <a href="#visitServersTab=pending">Servers Failed Over: <span class="failed-over-count">{{failedOver.length}}</span></a>
               <span class="badge">
-                <span class="failed-over-count">{{mnAdminServiceModel.nodes.failedOver.length}}</span>
+                <span class="failed-over-count">{{failedOver.length}}</span>
               </span>
             </span>
             <span class="when-zero">Servers Failed Over: 0</span>
           </li>
-          <li class="down" ng-class="{'is-zero':!mnAdminServiceModel.nodes.down.length}">
+          <li class="down" ng-class="{'is-zero':!down.length}">
             <span class="when-non-zero">
-              <a href="#visitServersTab=active">Servers Down: <span class="down-count">{{mnAdminServiceModel.nodes.down.length}}</span></a>
-              <span class="badge"><span class="down-count">{{mnAdminServiceModel.nodes.down.length}}</span></span>
+              <a href="#visitServersTab=active">Servers Down: <span class="down-count">{{down.length}}</span></a>
+              <span class="badge"><span class="down-count">{{down.length}}</span></span>
             </span>
             <span class="when-zero">Servers Down: 0</span>
           </li>

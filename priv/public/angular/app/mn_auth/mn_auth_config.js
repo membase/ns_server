@@ -20,10 +20,10 @@ angular.module('mnAuth').config( function ($stateProvider, $httpProvider, $urlRo
     };
   }
 
-  $stateProvider.state('auth', {
+  $stateProvider.state('app.auth', {
     url: '/auth',
     templateUrl: 'mn_auth/mn_auth.html',
     controller: 'mnAuthController',
-    authenticate: false
+    notAuthenticate: true
   });
 });

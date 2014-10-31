@@ -1,31 +1,27 @@
 angular.module('mnWizardStep4Service').factory('mnWizardStep4Service',
-  function (mnHttpService) {
-
+  function (mnHttp) {
     var mnWizardStep4Service = {};
-    mnWizardStep4Service.model = {};
-    mnWizardStep4Service.model.sendStats = true;
-    mnWizardStep4Service.model.register = {
-      version: '',
-      email: '',
-      firstname: '',
-      lastname: '',
-      company: '',
-      agree: true
+
+    mnWizardStep4Service.postEmail = function (register) {
+      var params = _.clone(register);
+      delete params.agree;
+      params.callback = 'JSON_CALLBACK';
+
+      return mnHttp({
+        method: 'JSONP',
+        url: 'http://ph.couchbase.net/email',
+        params: params
+      });
     };
 
-    mnWizardStep4Service.postEmail = mnHttpService({
-      method: 'JSONP',
-      url: 'http://ph.couchbase.net/email',
-      params: {
-        callback: 'JSON_CALLBACK'
-      }
-    });
 
-
-    mnWizardStep4Service.postStats = mnHttpService({
-      method: 'POST',
-      url: '/settings/stats'
-    });
+    mnWizardStep4Service.postStats = function (data) {
+      return mnHttp({
+        method: 'POST',
+        url: '/settings/stats',
+        data: data
+      });
+    };
 
     return mnWizardStep4Service;
   });

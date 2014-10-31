@@ -1,15 +1,24 @@
+angular.module('mnWizard', [
+  'mnWizardStep1Service',
+  'mnWizardStep2Service',
+  'mnWizardStep3Service',
+  'mnWizardStep4Service',
+  'mnWizardStep5Service',
+  'mnAuth',
+  'ui.router'
+]);
+
 angular.module('mnWizardStep1Service', []);
-angular.module('mnWizardStep1DiskStorageService', []);
-angular.module('mnWizardStep1JoinClusterService', []);
 angular.module('mnWizardStep2Service', []);
 angular.module('mnWizardStep3Service', []);
 angular.module('mnWizardStep4Service', []);
 angular.module('mnWizardStep5Service', []);
 
-angular.module('mnDialogs', []);
 angular.module('mnHttp', []);
+angular.module('mnPoolDetails', []);
+angular.module('mnTasksDetails', []);
+angular.module('mnHelper', []);
 angular.module('mnBarUsage', []);
-angular.module('mnDialog', []);
 angular.module('mnFocus', []);
 angular.module('mnSpinner', []);
 angular.module('mnPlot', []);
@@ -19,9 +28,7 @@ angular.module('mnAuthService', ['ui.router']);
 angular.module('mnAuth', ['mnAuthService']);
 
 angular.module('mnAdmin', [
-  'mnDialogs',
   'mnAuthService',
-  'mnAdminTasksService',
   'mnAdminService',
   'mnAdminOverviewService',
   'mnAdminOverview',
@@ -35,8 +42,6 @@ angular.module('mnAdmin', [
 angular.module('mnAdminService', ['mnAuthService']);
 angular.module('mnDateService', []);
 
-angular.module('mnAdminTasksService', []);
-
 angular.module('mnAdminOverviewService', []);
 angular.module('mnAdminBucketsService', []);
 angular.module('mnAdminBuckets', []);
@@ -47,23 +52,13 @@ angular.module('mnAdminOverview', [
 ]);
 
 angular.module('mnAdminServersService', ['mnAdminService']);
-
-angular.module('mnAdminServersAddDialog', []);
-angular.module('mnAdminServersListItemService', []);
 angular.module('mnAdminServersListItemDetailsService', []);
-angular.module('mnAdminServersFailOverDialogService', []);
-angular.module('mnAdminServersAddDialogService', []);
 
 angular.module('mnAdminServers', [
   'mnAdminService',
   'mnAdminServersService',
-  'mnAdminServersFailOverDialogService',
-  'mnAdminServersListItemService',
-  'mnDialog',
-  'mnAdminTasksService',
   'ui.router',
   'mnAdminServersListItemDetailsService',
-  'mnAdminServersAddDialogService',
   'mnAdminSettingsAutoFailoverService'
 ]);
 angular.module('mnAdminSettings', [
@@ -82,30 +77,43 @@ angular.module('mnAdminSettingsClusterService', [
 ]);
 angular.module('mnAdminSettingsAutoFailoverService', []);
 
-angular.module('mnWizard', [
-  'mnWizardStep1Service',
-  'mnWizardStep1DiskStorageService',
-  'mnWizardStep1JoinClusterService',
-  'mnWizardStep2Service',
-  'mnWizardStep3Service',
-  'mnWizardStep4Service',
-  'mnWizardStep5Service',
-  'mnDialog',
-  'mnAuth',
-  'ui.router'
-]);
-
 angular.module('app', [
   'mnAuthService',
+  'mnPoolDetails',
+  'mnTasksDetails',
+  'ui.bootstrap',
   'mnWizard',
-  'mnAuth',
+  'mnHelper',
   'mnHttp',
+  'mnAuth',
   'mnAdmin',
   'mnBarUsage',
   'mnFocus',
-  'mnDialog',
   'mnSpinner',
   'mnPlot',
   'mnVerticalBar',
   'mnPrettyVersionFilter'
-]).run();
+]).run(function ($rootScope, $state, $urlRouter, mnAuthService) {
+  mnAuthService.getPools().then(function (pools) {
+    $rootScope.$on('$stateChangeStart', function (event, current) {
+      if (!current.notAuthenticate && !pools.isAuthenticated) {
+        event.preventDefault();
+         $state.go('app.auth');
+      }
+
+      if (current.name == 'app.auth') {
+        if (pools.isInitialized) {
+          if (pools.isAuthenticated) {
+            event.preventDefault();
+            $state.go('app.admin.overview');
+          }
+        } else {
+          event.preventDefault();
+          $state.go('app.wizard.welcome');
+        }
+      }
+    });
+    $urlRouter.listen();
+    $urlRouter.sync();
+  });
+});

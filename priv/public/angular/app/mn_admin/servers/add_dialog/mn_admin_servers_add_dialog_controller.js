@@ -1,43 +1,40 @@
 angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
-  function ($scope, mnAdminServersAddDialogService, mnAdminService, mnDialogService) {
+  function ($scope, mnAdminServersService, mnAdminService, $modalInstance, mnHelper, groups) {
     reset();
-    $scope.mnAdminServersAddDialogServiceModel = mnAdminServersAddDialogService.model;
-    var newServer = $scope.mnAdminServersAddDialogServiceModel.newServer;
-
-    function reset() {
-      $scope.viewLoading = false;
-      $scope.focusMe = true;
-      mnAdminServersAddDialogService.resetModel();
+    $scope.newServer = {
+      hostname: '',
+      user: 'Administrator',
+      password: ''
+    };
+    $scope.cancel = function () {
+      $modalInstance.dismiss('cancel');
     }
 
-    mnAdminServersAddDialogService.model.selectedGroup = undefined;
-    $scope.$watch(function () {
-      return mnAdminService.model.isGroupsAvailable && mnAdminService.model.groups[0];
-    }, function (defaultGroup) {
-      if (!mnAdminServersAddDialogService.model.selectedGroup) {
-        mnAdminServersAddDialogService.model.selectedGroup = defaultGroup;
-      }
-    });
+    function reset() {
+      $scope.focusMe = true;
+    }
 
-    $scope.onSubmit = function () {
+    $scope.isGroupsAvailable = !!groups;
+
+    if ($scope.isGroupsAvailable) {
+      $scope.selectedGroup = groups.groups[0];
+      $scope.groups = groups.groups;
+    }
+
+    $scope.onSubmit = function (form) {
       if ($scope.viewLoading) {
         return;
       }
-      $scope.viewLoading = true;
-      $scope.form.$setValidity('hostnameReq', !!newServer.hostname);
-
-      if ($scope.form.$invalid) {
+      if (form.$invalid) {
         return reset();
       }
 
-      mnAdminServersAddDialogService
-        .addServer(mnAdminService.model.details.controllers.addNode.uri)
-        .error(function (errors) {
-          $scope.formErrors = errors;
-        }).success(function () {
-          mnAdminService.getGroups(mnAdminService.model.details.serverGroupsUri);
-          mnDialogService.removeLastOpened();
-        })['finally'](reset);
-
+      var promise = mnAdminServersService.addServer($scope.selectedGroup, $scope.newServer);
+      promise.then(function () {
+        $modalInstance.close();
+        mnAdminServersService.reloadServersState();
+      });
+      mnHelper.rejectReasonToScopeApplyer($scope, promise);
+      mnHelper.handleSpinner($scope, promise);
     };
   });

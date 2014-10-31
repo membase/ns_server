@@ -1,8 +1,6 @@
-<div id="failover_confirmation_dialog"
-     data-mn-dialog-directive
-     data-mn-dialog-title="{{'Confirm Node Fail Over for ' + node.hostname}}"
-     data-mn-dialog-width="711px">
-  <div ng-controller="mnAdminServersFailOverDialogController">
+<div id="failover_confirmation_dialog" style="width:711px">
+  <h1 class="dialog_corner_radius">Confirm Node Fail Over for {{node.hostname}}</h1>
+  <div>
     <div mn-spinner-directive="viewLoading">
       <div class="pas_20">
         <div class="failover_warning pat_20">
@@ -49,7 +47,7 @@
       </div>
       <div class="right save_cancel">
         <button type="submit" class="save_button float_right" ng-click="onSubmit()" ng-model="button" ng-disabled="!confirmation">Fail Over</button>
-        <a class="close casper_close_failover_confirmation_dialog cancel_button float_right" ng-click="mnDialogService.removeLastOpened();">Cancel</a>
+        <a class="close casper_close_failover_confirmation_dialog cancel_button float_right" ng-click="cancel();">Cancel</a>
       </div>
     </div>
   </div>

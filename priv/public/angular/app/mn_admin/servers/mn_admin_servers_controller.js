@@ -1,125 +1,119 @@
 angular.module('mnAdminServers').controller('mnAdminServersController',
-  function ($scope, $timeout, $stateParams, mnAdminServersService, mnAdminService, mnAdminTasksService, mnDialogService, $state, mnAdminServersService, mnAdminServersListItemService, mnAdminSettingsAutoFailoverService) {
+  function ($scope, $state, $modal, $interval, $location, $stateParams, $timeout, mnPoolDetails, serversState, mnHelper, mnAdminSettingsAutoFailoverService, mnAdminServersService) {
+
+    _.extend($scope, serversState);
+    var updateServersCycle;
+    (function updateServers() {
+      mnAdminServersService.getServersState($stateParams.list).then(function (serversState) {
+        _.extend($scope, serversState);
+        updateServersCycle = $timeout(updateServers, serversState.recommendedRefreshPeriod);
+      });
+    })();
+
+    $scope.$on('$destroy', function () {
+      $timeout.cancel(updateServersCycle);
+    });
 
     $scope.addServer = function () {
-      mnDialogService.open({
-        template: '/angular/app/mn_admin/servers/add_dialog/mn_admin_servers_add_dialog.html',
-        scope: $scope
-      });
-    };
-
-    $scope.onRebalance = function () {
-      mnAdminServersService.postAndReload(mnAdminService.model.details.controllers.rebalance.uri, {
-        knownNodes: _.pluck(mnAdminService.model.nodes.allNodes, 'otpNode').join(','),
-        ejectedNodes: _.pluck(mnAdminServersListItemService.model.pendingEject, 'otpNode').join(',')
-      }).success(function () {
-        $state.go('admin.servers.list', {list: 'active'});
-      });
-    };
-
-    $scope.onStopRecovery = function () {
-      mnAdminServersService.postAndReload(mnAdminTasksService.model.stopRecoveryURI);
-    };
-
-    function displayRequestFailedNotice(data, status) {
-      (status != 400) //&& displayNotice("Request failed. Check logs.", true);
-    }
-
-    function displayAdditionalConfiramtion(data, status) {
-      (status == 400) && mnDialogService.open({
-        template: '/angular/app/mn_admin/servers/stop_rebalance_dialog/mn_admin_servers_stop_rebalance_dialog.html',
-        scope: $scope
-      });
-    }
-
-    function closeStopRebalanceDialog() {
-      $scope.mnDialogStopRebalanceDialogLoading = false;
-      mnDialogService.removeLastOpened();
-    }
-
-    $scope.onStopRebalance = function () {
-      var url = mnAdminService.model.details.stopRebalanceUri;
-      var isAlreadyOpened = !!mnDialogService.getLastOpened();
-
-      var request = mnAdminServersService.onStopRebalance(url).error(displayRequestFailedNotice);
-
-      if (isAlreadyOpened) {
-        $scope.mnDialogStopRebalanceDialogLoading = true;
-        request.success(closeStopRebalanceDialog);
-      } else {
-        request.error(displayAdditionalConfiramtion);
-      }
-    };
-
-    function maybeRebalanceError(task) {
-      if (!task) {
-        return;
-      }
-      if (task.status !== 'running') {
-        if (mnAdminServersService.model.sawRebalanceRunning && task.errorMessage) {
-          mnAdminServersService.model.sawRebalanceRunning = false;
-          // displayNotice(task.errorMessage, true);
+      $modal.open({
+        templateUrl: '/angular/app/mn_admin/servers/add_dialog/mn_admin_servers_add_dialog.html',
+        controller: 'mnAdminServersAddDialogController',
+        resolve: {
+          groups: function (mnAdminService) {
+            return mnPoolDetails.get().then(function (poolDetails) {
+              if (poolDetails.isGroupsAvailable) {
+                return mnAdminService.getGroups();
+              }
+            });
+          }
         }
-      }
-      mnAdminServersService.model.sawRebalanceRunning = true;
-    }
-
+      });
+    };
+    $scope.postRebalance = function () {
+      mnAdminServersService.postRebalance($scope.allNodes).then(function () {
+        $state.go('app.admin.servers', {list: 'active'});
+        mnAdminServersService.reloadServersState();
+      });
+    };
+    $scope.onStopRecovery = function () {
+      mnAdminServersService.stopRecovery($scope.tasks.tasksRecovery.stopURI).then(mnAdminServersService.reloadServersState)
+    };
+    $scope.stopRebalance = function () {
+      var request = mnAdminServersService.stopRebalance().then(
+        mnAdminServersService.reloadServersState,
+        function (reps) {
+          (reps.status === 400) && $modal.open({
+            templateUrl: '/angular/app/mn_admin/servers/stop_rebalance_dialog/mn_admin_servers_stop_rebalance_dialog.html',
+            controller: 'mnAdminServersEjectDialogController'
+          });
+      });
+    };
     $scope.resetAutoFailOverCount = function () {
       mnAdminSettingsAutoFailoverService.resetAutoFailOverCount()
-        .success(function () {
+        .then(function () {
           $scope.isResetAutoFailOverCountSuccess = true;
           $timeout(function () {
             $scope.isAutoFailOverCountAvailable = false;
             $scope.isResetAutoFailOverCountSuccess = false;
           }, 3000);
-        }).error(function () {
-          // genericDialog({
-          //   buttons: {ok: true},
-          //   header: 'Unable to reset the auto-failover quota',
-          //   textHTML: 'An error occured, auto-failover quota was not reset.'
-          // });
+        }, function () {
+          $scope.showAutoFailOverWarningMessage = true
         });
     };
 
-    $scope.$watch(function () {
-      return {
-        nodes: mnAdminService.model.nodes,
-        tasksRecovery: mnAdminTasksService.model.inRecoveryMode,
-        isLoadingSamples: mnAdminTasksService.model.isLoadingSamples,
-        mayRebalanceWithoutSampleLoading: mnAdminServersService.model.mayRebalanceWithoutSampleLoading
-      };
-    }, function () {
-      mnAdminSettingsAutoFailoverService.getAutoFailoverSettings().success(function (data) {
-        $scope.isAutoFailOverCountAvailable = !!(data && data.count > 0);
+
+    function getOpenedServers() {
+      return _.wrapToArray($location.search()['openedServers']);
+    }
+    $scope.isDetailsOpened = function (hostname) {
+      return _.contains(getOpenedServers(), hostname);
+    };
+    $scope.toggleDetails = function (hostname) {
+      var currentlyOpened = getOpenedServers();
+      if ($scope.isDetailsOpened(hostname)) {
+        $location.search('openedServers', _.difference(currentlyOpened, [hostname]));
+      } else {
+        currentlyOpened.push(hostname);
+        $location.search('openedServers', currentlyOpened);
+      }
+    };
+
+    $scope.ejectServer = function (node) {
+      $modal.open({
+        templateUrl: '/angular/app/mn_admin/servers/eject_dialog/mn_admin_servers_eject_dialog.html',
+        controller: 'mnAdminServersEjectDialogController',
+        resolve: {
+          node: function () {
+            return node;
+          }
+        }
       });
-    }, true);
+    };
+    $scope.failOverNode = function (node) {
+      $modal.open({
+        templateUrl: '/angular/app/mn_admin/servers/failover_dialog/mn_admin_servers_failover_dialog.html',
+        controller: 'mnAdminServersFailOverDialogController',
+        resolve: {
+          node: function () {
+            return node;
+          }
+        }
+      });
+    };
+    $scope.reAddNode = function (type, otpNode) {
+      mnAdminServersService.reAddNode({
+        otpNode: otpNode,
+        recoveryType: type
+      }).then(mnAdminServersService.reloadServersState);
+    };
+    $scope.cancelFailOverNode = function (otpNode) {
+      mnAdminServersService.cancelFailOverNode({
+        otpNode: otpNode
+      }).then(mnAdminServersService.reloadServersState);
+    };
+    $scope.cancelEjectServer = function (node) {
+      mnAdminServersService.removeFromPendingEject(node);
+      mnAdminServersService.reloadServersState();
+    };
 
-    $scope.$watch('mnAdminTasksServiceModel.tasksRebalance', maybeRebalanceError);
-
-    $scope.$watch('mnAdminServiceModel.details.failoverWarnings', mnAdminServersService.populateFailoverWarningsModel);
-
-    $scope.$watch(function () {
-      if (!mnAdminService.model.details || !mnAdminService.model.nodes) {
-        return;
-      }
-
-      return {
-        inRecoveryMode: mnAdminTasksService.model.inRecoveryMode,
-        isLoadingSamples: mnAdminTasksService.model.isLoadingSamples,
-        rebalanceStatus: mnAdminService.model.details.rebalanceStatus,
-        balanced: mnAdminService.model.details.balanced,
-        unhealthyActiveNodes: mnAdminService.model.nodes.unhealthyActive,
-        pendingNodes: mnAdminService.model.nodes.pending
-      };
-    }, mnAdminServersService.populateRebalanceModel, true);
-
-    $scope.$watch(function () {
-      if (!mnAdminService.model.nodes) {
-        return;
-      }
-      return {
-        progress: mnAdminTasksService.model.tasksRebalance,
-        nodes: mnAdminService.model.nodes.allNodes
-      };
-    }, mnAdminServersService.populatePerNodeRepalanceProgress, true);
   });

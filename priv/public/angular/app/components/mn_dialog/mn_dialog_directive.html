@@ -1,4 +1,8 @@
-<div class="dialog_full_screen dialog_main_wrapper">
+<div tabindex="-1" role="dialog" class="modal fade" ng-class="{in: animate}" ng-style="{'z-index': 1050 + index*10, display: 'block'}" ng-click="close($event)">
+    <div class="modal-dialog" ng-class="{'modal-sm': size == 'sm', 'modal-lg': size == 'lg'}">
+    <div class="modal-content" ng-transclude></div></div>
+</div>
+<!-- <div class="dialog_full_screen dialog_main_wrapper">
   <div class="dialog_overlay dialog_full_screen"></div>
   <div class="dialog_horizontal_center">
     <div class="dialog_vertical_center">
@@ -9,4 +13,4 @@
       </div>
     </div>
   </div>
-</div>
+</div> -->

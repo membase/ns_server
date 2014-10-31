@@ -1,27 +1,18 @@
 angular.module('mnWizardStep5Service').factory('mnWizardStep5Service',
-  function (mnHttpService) {
-    var defaultUserCreds = {
-      username: 'Administrator',
-      password: '',
-      verifyPassword: ''
-    };
+  function (mnHttp) {
     var mnWizardStep5Service = {};
 
-    mnWizardStep5Service.model = {};
+    mnWizardStep5Service.postAuth = function (user) {
+      var data = _.clone(user);
+      delete data.verifyPassword;
+      data.port = "SAME";
 
-    mnWizardStep5Service.resetUserCreds = function () {
-      mnWizardStep5Service.model.user = defaultUserCreds;
+      return mnHttp({
+        method: 'POST',
+        url: '/settings/web',
+        data: data
+      });
     };
-
-    mnWizardStep5Service.resetUserCreds();
-
-    mnWizardStep5Service.postAuth = mnHttpService({
-      method: 'POST',
-      url: '/settings/web',
-      data: {
-        port: "SAME"
-      }
-    });
 
     return mnWizardStep5Service;
   });

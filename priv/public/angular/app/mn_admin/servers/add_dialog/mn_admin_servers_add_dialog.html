@@ -1,32 +1,28 @@
-<div class="join_cluster"
-     id="join_cluster_dialog"
-     data-mn-dialog-directive
-     data-mn-dialog-title="Add Server"
-     data-mn-dialog-width="550px">
-  <!-- Join cluster -->
-  <div ng-controller="mnAdminServersAddDialogController">
-  <form novalidate ng-submit="onSubmit()" autocomplete="off" name="form" mn-spinner-directive="viewLoading">
+<div class="join_cluster" id="join_cluster_dialog" style="width: 550px">
+  <h1 class="dialog_corner_radius">Add Server</h1>
+  <div>
+  <form novalidate ng-submit="onSubmit(form)" autocomplete="off" name="form" mn-spinner-directive="viewLoading">
     <div class="warning pat_10" id="join_cluster_dialog_errors_container">
       <div><strong>Warning</strong> – Adding a server to this cluster means all data on that server will be removed.</div>
-      <div ng-repeat="error in formErrors"><strong>Attention</strong> - {{error}}<br></div>
-      <div ng-show="form.$error.hostnameReq"><strong>Attention</strong> - Server IP Address cannot be blank.</div>
+      <div ng-repeat="error in errors"><strong>Attention</strong> - {{error}}<br></div>
+      <div ng-show="form.hostname.$error.required"><strong>Attention</strong> - Server IP Address cannot be blank.</div>
     </div>
     <fieldset>
       <ul>
         <li>
           <label class="label" for="add-server-hostname">Server IP Address*:</label>
-          <input type="text" class="inp" name="hostname" id="add-server-hostname" ng-model="mnAdminServersAddDialogServiceModel.newServer.hostname" mn-focus-directive="focusMe">
+          <input type="text" class="inp" name="hostname" id="add-server-hostname" ng-model="newServer.hostname" mn-focus-directive="focusMe" required>
           <a class="text_11 tooltip"><span>What's this?</span>
             <span class="tooltip_msg"><span>
               This is the hostname or IP address of a server node that you wish to add.
             </span></span>
           </a>
         </li>
-        <li class="when-groups" ng-if="mnAdminServiceModel.isGroupsAvailable">
+        <li class="when-groups" ng-if="isGroupsAvailable">
           <label class="label" for="js_servers_group_select">Server Group:</label>
           <select id="js_servers_group_select" class="server_group_select" style="width:157px;" name="group"
-            ng-model="mnAdminServersAddDialogServiceModel.selectedGroup"
-            ng-options="group.name for group in mnAdminServiceModel.groups"></select>
+            ng-model="selectedGroup"
+            ng-options="group.name for group in groups"></select>
         </li>
       </ul>
     </fieldset>
@@ -39,17 +35,17 @@
       <ul>
         <li>
           <label class="label" for="user_inp">Username:</label>
-          <input type="text" class="inp" name="user" id="user_inp" ng-model="mnAdminServersAddDialogServiceModel.newServer.user">
+          <input type="text" class="inp" name="user" id="user_inp" ng-model="newServer.user">
         </li>
         <li>
           <label class="label" for="password_inp">Password:</label>
-          <input type="password" class="inp" name="password" id="password_inp" ng-model="mnAdminServersAddDialogServiceModel.newServer.password">
+          <input type="password" class="inp" name="password" id="password_inp" ng-model="newServer.password">
         </li>
       </ul>
     </fieldset>
     <div class="save_cancel clearfix">
       <button type="submit" class="save_button float_right">Add Server</button>
-      <a class="casper_close_join_cluster_dialog close" ng-click="mnDialogService.removeLastOpened()">Cancel</a>
+      <a class="casper_close_join_cluster_dialog close" ng-click="cancel()">Cancel</a>
     </div>
   </form>
   <!-- END join cluster -->

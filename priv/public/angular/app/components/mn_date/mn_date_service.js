@@ -1,5 +1,5 @@
 angular.module('mnDateService').factory('mnDateService',
-  function ($http) {
+  function () {
     var mnDateService = {};
 
     mnDateService.setTimestamp = function (timestamp) {

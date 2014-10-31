@@ -1,21 +1,19 @@
 angular.module('mnAdminSettingsAutoFailoverService').factory('mnAdminSettingsAutoFailoverService',
-  function ($http, $q) {
+  function (mnHttp) {
     var mnAdminSettingsAutoFailoverService = {};
 
-    var resetAutoFailOverCountCanceler;
     mnAdminSettingsAutoFailoverService.resetAutoFailOverCount = function () {
-      resetAutoFailOverCountCanceler && resetAutoFailOverCountCanceler.resolve();
-      resetAutoFailOverCountCanceler = $q.defer();
-
-      return $http({
+      return mnHttp({
         method: 'POST',
         url: '/settings/autoFailover/resetCount',
-        timeout: resetAutoFailOverCountCanceler.promise
       });
     };
 
-    mnAdminSettingsAutoFailoverService.getAutoFailoverSettings = function (url) {
-      return $http({method: 'GET', url: "/settings/autoFailover"});
+    mnAdminSettingsAutoFailoverService.getAutoFailoverSettings = function () {
+      return mnHttp({
+        method: 'GET',
+        url: "/settings/autoFailover"
+      });
     };
 
     return mnAdminSettingsAutoFailoverService;

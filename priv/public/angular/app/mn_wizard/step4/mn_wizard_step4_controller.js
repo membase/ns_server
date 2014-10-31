@@ -1,33 +1,32 @@
 angular.module('mnWizard').controller('mnWizardStep4Controller',
-  function ($scope, $state, mnWizardStep4Service, mnAuthService) {
+  function ($scope, $state, mnWizardStep4Service, pools, mnHelper) {
 
-    mnWizardStep4Service.model.register.version = mnAuthService.model.version || 'unknown';
-    $scope.mnWizardStep4ServiceModel = mnWizardStep4Service.model;
+    $scope.isEnterprise = pools.isEnterprise;
 
-    function viewLoadingCtrl(state) {
-      $scope.viewLoading = state;
-    }
+    $scope.register = {
+      version: '',
+      email: '',
+      firstname: '',
+      lastname: '',
+      company: '',
+      agree: true,
+      version: pools.implementationVersion || 'unknown'
+    };
+
+    $scope.sendStats = true;
 
     $scope.onSubmit = function () {
       if ($scope.form.$invalid || $scope.viewLoading) {
         return;
       }
 
-      if ($scope.mnWizardStep4ServiceModel.register.email) {
-        var data = _.clone(mnWizardStep4Service.model.register);
-        delete data.agree;
-        mnWizardStep4Service.postEmail({params: data});
-      }
+      $scope.register.email && mnWizardStep4Service.postEmail($scope.register);
 
-      mnWizardStep4Service.postStats({
-        spinner: viewLoadingCtrl,
-        data: {
-          sendStats: mnWizardStep4Service.model.sendStats
-        }
-      }).success(function () {
-        $state.go('wizard.step5');
-      }).error(function (errors) {
-        $scope.errors = errors;
+      var promise = mnWizardStep4Service.postStats({sendStats: $scope.sendStats});
+      mnHelper.handleSpinner($scope, promise);
+      mnHelper.rejectReasonToScopeApplyer($scope, promise);
+      promise.then(function () {
+        $state.go('app.wizard.step5');
       });
     };
   });

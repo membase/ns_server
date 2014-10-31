@@ -1,8 +1,5 @@
 angular.module('app').controller('appController',
-  function (mnAuthService, $scope, $templateCache, $http, $rootScope, $location, mnDialogService) {
-    mnAuthService.entryPoint();
-
-    $scope.mnDialogService = mnDialogService;
+  function ($scope, $templateCache, $http, $rootScope, $location) {
 
     _.each(angularTemplatesList, function (url) {
       $http.get("/angular/" + url, {cache: $templateCache});
@@ -12,6 +9,6 @@ angular.module('app').controller('appController',
       this.locationSearch = $location.search();
     });
     $rootScope.$on('$stateChangeSuccess', function () {
-      $location.search(this.locationSearch);
+      $location.search(this.locationSearch || '');
     });
   });
