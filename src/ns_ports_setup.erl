@@ -238,19 +238,19 @@ dynamic_children() ->
     MaybeSSLProxySpec = maybe_create_ssl_proxy_spec(Config),
     NSCouchdbSpec = create_ns_couchdb_spec(),
 
-    [expand_args(NCAO) || NCAO <- PortServers] ++
+    [expand_args(NCAO) || NCAO <- PortServers,
+                          allowed_service(NCAO, Config)] ++
         query_node_spec(Config) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec ++ [NSCouchdbSpec].
 
-%% TODO: this is all temp code (and windows incompabile) until:
-%%
-%% a) cbq-engine is included into manifest officially
-%% b) we have node roles
+allowed_service({moxi, _, _, _} = _NCAO, Config) ->
+    lists:member(moxi, ns_cluster_membership:node_services(Config, node()));
+allowed_service(_NCAO, _Config) ->
+    true.
+
 query_node_spec(Config) ->
-    case (os:getenv("ENABLE_QUERY") =/= false andalso
-          %% TODO: is_system_provisioned that's using global config
-          %% isn't quite correct too, but will work ok for now
-          menelaus_web:is_system_provisioned() =/= false) of
+    Svcs = ns_cluster_membership:node_services(Config, node()),
+    case lists:member(n1ql, Svcs) of
         false ->
             [];
         _ ->
