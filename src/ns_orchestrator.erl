@@ -173,7 +173,7 @@ try_autofailover(Node) ->
 
 -spec needs_rebalance() -> boolean().
 needs_rebalance() ->
-    needs_rebalance(ns_node_disco:nodes_wanted()).
+    needs_rebalance(ns_cluster_membership:filter_out_non_kv_nodes(ns_node_disco:nodes_wanted())).
 
 
 -spec needs_rebalance([atom(), ...]) -> boolean().

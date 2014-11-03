@@ -383,8 +383,10 @@ failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], Activ
 failover_warnings() ->
     Config = ns_config:get(),
 
-    ActiveNodes = ns_cluster_membership:active_nodes(Config),
-    LiveNodes = ns_cluster_membership:actual_active_nodes(Config),
+    ActiveNodes0 = ns_cluster_membership:active_nodes(Config),
+    LiveNodes0 = ns_cluster_membership:actual_active_nodes(Config),
+    ActiveNodes = ns_cluster_membership:filter_out_non_kv_nodes(ActiveNodes0),
+    LiveNodes = ns_cluster_membership:filter_out_non_kv_nodes(LiveNodes0),
     {BaseSafety0, ExtraSafety}
         = failover_safety_rec(?FS_OK, ok,
                               [C || {_, C} <- get_buckets(Config),
