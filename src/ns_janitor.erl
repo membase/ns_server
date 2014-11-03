@@ -191,7 +191,8 @@ maybe_stop_rebalance_status() ->
 compute_servers_list_cleanup(BucketConfig, FullConfig) ->
     case proplists:get_value(servers, BucketConfig) of
         [] ->
-            NewServers = ns_cluster_membership:active_nodes(FullConfig),
+            NewServers0 = ns_cluster_membership:active_nodes(FullConfig),
+            NewServers = ns_cluster_membership:filter_out_non_kv_nodes(NewServers0, FullConfig),
             {update_servers, NewServers};
         Servers when is_list(Servers) ->
             none;

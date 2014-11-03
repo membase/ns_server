@@ -41,7 +41,9 @@
 -export([supported_services/0,
          default_services/0,
          node_services/2,
-         node_services_with_rev/2]).
+         node_services_with_rev/2,
+         filter_out_non_kv_nodes/1,
+         filter_out_non_kv_nodes/2]).
 
 active_nodes() ->
     active_nodes(ns_config:get()).
@@ -216,3 +218,10 @@ node_services_with_rev(Config, Node) ->
         {value, Value, VClock} ->
             {Value, vclock:count_changes(VClock)}
     end.
+
+filter_out_non_kv_nodes(Nodes) ->
+    filter_out_non_kv_nodes(Nodes, ns_config:latest_config_marker()).
+
+filter_out_non_kv_nodes(Nodes, Config) ->
+    [N || N <- Nodes,
+          kv <- ns_cluster_membership:node_services(Config, N)].

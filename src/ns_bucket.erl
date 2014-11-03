@@ -678,10 +678,11 @@ new_bucket_default_params(membase) ->
      {ram_quota, 0},
      {servers, []}];
 new_bucket_default_params(memcached) ->
+    Nodes = ns_cluster_membership:filter_out_non_kv_nodes(ns_cluster_membership:active_nodes()),
     [{type, memcached},
      {num_vbuckets, 0},
      {num_replicas, 0},
-     {servers, ns_cluster_membership:active_nodes()},
+     {servers, Nodes},
      {map, []},
      {ram_quota, 0}].
 

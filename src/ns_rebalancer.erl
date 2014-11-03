@@ -364,7 +364,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     EjectNodes = EjectNodesAll -- [node()],
     FailedNodes = FailedNodesAll -- [node()],
 
-    LiveNodes = KeepNodes ++ EjectNodesAll,
+    KeepKVNodes = ns_cluster_membership:filter_out_non_kv_nodes(KeepNodes),
+    LiveKVNodes = ns_cluster_membership:filter_out_non_kv_nodes(KeepNodes ++ EjectNodesAll),
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [sanitize(BucketConfigs)]),
 
@@ -392,18 +393,18 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                           BucketCompletion = I / NumBuckets,
                           ns_orchestrator:update_progress(
                             dict:from_list([{N, BucketCompletion}
-                                            || N <- LiveNodes])),
+                                            || N <- LiveKVNodes])),
                           case proplists:get_value(type, BucketConfig) of
                               memcached ->
                                   master_activity_events:note_bucket_rebalance_started(BucketName),
-                                  ns_bucket:set_servers(BucketName, KeepNodes),
+                                  ns_bucket:set_servers(BucketName, KeepKVNodes),
                                   master_activity_events:note_bucket_rebalance_ended(BucketName);
                               membase ->
                                   %% Only start one bucket at a time to avoid
                                   %% overloading things
                                   ThisEjected = ordsets:intersection(lists:sort(proplists:get_value(servers, BucketConfig, [])),
                                                                      lists:sort(EjectNodesAll)),
-                                  ThisLiveNodes = KeepNodes ++ ThisEjected,
+                                  ThisLiveNodes = KeepKVNodes ++ ThisEjected,
                                   ns_bucket:set_servers(BucketName, ThisLiveNodes),
                                   Pid = erlang:spawn_link(
                                           fun () ->
@@ -435,13 +436,13 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                   master_activity_events:note_bucket_rebalance_started(BucketName),
                                   {NewMap, MapOptions} =
                                       rebalance(BucketName, NewConf,
-                                                KeepNodes, BucketCompletion,
+                                                KeepKVNodes, BucketCompletion,
                                                 NumBuckets, DeltaRecoveryBuckets),
                                   ns_bucket:set_map_opts(BucketName, MapOptions),
                                   ns_bucket:update_bucket_props(BucketName,
                                                                 [{deltaRecoveryMap, undefined}]),
                                   master_activity_events:note_bucket_rebalance_ended(BucketName),
-                                  run_verify_replication(BucketName, KeepNodes, NewMap)
+                                  run_verify_replication(BucketName, KeepKVNodes, NewMap)
                           end
                   end, misc:enumerate(BucketConfigs, 0)),
 
