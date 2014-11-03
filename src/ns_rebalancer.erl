@@ -1033,12 +1033,18 @@ check_graceful_failover_possible(Node, [{_BucketName, BucketConfig} | RestBucket
 
 check_failover_possible(Node) ->
     case ns_cluster_membership:active_nodes() of
-        [Node] ->                           % Node is bound
+        [Node] -> %% Node is bound
             last_node;
         ActiveNodes ->
             case lists:member(Node, ActiveNodes) of
                 true ->
-                    ok;
+                    case ns_cluster_membership:filter_out_non_kv_nodes(ActiveNodes) of
+                        %% Node is bound
+                        [Node] ->
+                            last_node;
+                        _ ->
+                            ok
+                    end;
                 false ->
                     unknown_node
             end
