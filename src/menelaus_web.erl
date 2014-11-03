@@ -2633,6 +2633,8 @@ do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, DeltaRecoveryBuckets) ->
             reply_text(Req, "No active nodes left", 400);
         in_recovery ->
             reply_text(Req, "Cluster is in recovery mode.", 503);
+        no_kv_nodes_left ->
+            reply_json(Req, {struct, [{noKVNodesLeft, 1}]}, 400);
         ok ->
             reply(Req, 200)
     end.

@@ -745,9 +745,14 @@ var ServersSection = {
             var msg = "Could not Rebalance because the cluster configuration was modified by someone else.\nYou may want to verify the latest cluster configuration and, if necessary, please retry a Rebalance."
             alert(msg);
           });
-        } if (errorObject && errorObject.deltaRecoveryNotPossible) {
+        } else if (errorObject && errorObject.deltaRecoveryNotPossible) {
           self.serversCell.changedSlot.subscribeOnce(function () {
             var msg = "Could not Rebalance because requested delta recovery is not possible. You probably added more nodes to the cluster or changed server groups configuration.";
+            alert(msg);
+          });
+        } else if (errorObject && errorObject.noKVNodesLeft) {
+          self.serversCell.changedSlot.subscribeOnce(function () {
+            var msg = "Could not Rebalance out last kv node(s).";
             alert(msg);
           });
         } else {

@@ -228,7 +228,8 @@ ensure_janitor_run(BucketName) ->
 -spec start_rebalance([node()], [node()], all | [bucket_name()]) ->
                              ok | in_progress | already_balanced |
                              nodes_mismatch | no_active_nodes_left |
-                             in_recovery | delta_recovery_not_possible.
+                             in_recovery | delta_recovery_not_possible |
+                             no_kv_nodes_left.
 start_rebalance(KnownNodes, EjectNodes, DeltaRecoveryBuckets) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_all_state_event(
@@ -725,6 +726,8 @@ idle({start_rebalance, KeepNodes, EjectNodes,
                                 keep_nodes=KeepNodes,
                                 eject_nodes=EjectNodes,
                                 failed_nodes=FailedNodes}};
+        {error, no_kv_nodes_left} ->
+            {reply, no_kv_nodes_left, idle, State};
         {error, delta_recovery_not_possible} ->
             {reply, delta_recovery_not_possible, idle, State}
     end;
