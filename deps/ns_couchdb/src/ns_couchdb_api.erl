@@ -175,46 +175,23 @@ maybe_rpc_couchdb_node(Request, RpcTimeout, Default) ->
         ThisNode ->
             handle_rpc(Request);
         Node ->
-            rpc_couchdb_node(1, Node, Request, RpcTimeout, Default)
+            rpc_couchdb_node(Node, Request, RpcTimeout, Default)
     end.
 
-rpc_couchdb_node(Try, Node, Request, RpcTimeout, Default) ->
+rpc_couchdb_node(Node, Request, RpcTimeout, Default) ->
     RV = rpc:call(Node, ?MODULE, handle_rpc, [Request], RpcTimeout),
-    NotYet = case RV of
-                 {badrpc, nodedown} ->
-                     true;
-                 {badrpc, {'EXIT', {noproc, _}}} ->
-                     true;
-                 {badrpc, {'EXIT', retry}} ->
-                     true;
-                 _ ->
-                     false
-             end,
-    case {Try, NotYet, Default} of
-        {600, true, _} -> %% 10 minutes
+    case {RV, Default} of
+        {{badrpc, _}, undefined} ->
             Stack = try throw(42) catch 42 -> erlang:get_stacktrace() end,
             ?log_debug("RPC to couchdb node failed for ~p with ~p~nStack: ~p", [Request, RV, Stack]),
-            RV;
-        {_, true, undefined} ->
-            retry_rpc_couchdb_node(Try, Node, Request, RpcTimeout);
-        {_, true, Default} ->
+            exit({error, RV});
+        {{badrpc, _}, Default} ->
             ?log_debug("RPC to couchdb node failed for ~p with ~p. Use default value ~p~n",
                        [Request, RV, Default]),
             Default;
-        {_, false, _} ->
+        {_, _} ->
             RV
     end.
-
-retry_rpc_couchdb_node(Try, Node, Request, RpcTimeout) ->
-    ?log_debug("Wait for couchdb node to be able to serve ~p. Attempt ~p", [Request, Try]),
-    receive
-        {'EXIT', Pid, Reason} ->
-            ?log_debug("Received exit from ~p with reason ~p", [Pid, Reason]),
-            exit(Reason)
-    after 1000 ->
-            ok
-    end,
-    rpc_couchdb_node(Try + 1, Node, Request, RpcTimeout, undefined).
 
 handle_rpc({whereis, Name}) ->
     Pid = whereis(Name),
@@ -225,19 +202,9 @@ handle_rpc({whereis, Name}) ->
             not_found
     end;
 handle_rpc(get_db_and_ix_paths) ->
-    try
-        cb_config_couch_sync:get_db_and_ix_paths()
-    catch
-        error:badarg ->
-            exit(retry)
-    end;
+    cb_config_couch_sync:get_db_and_ix_paths();
 handle_rpc({set_db_and_ix_paths, DbPath0, IxPath0}) ->
-    try
-        cb_config_couch_sync:set_db_and_ix_paths(DbPath0, IxPath0)
-    catch
-        error:badarg ->
-            exit(retry)
-    end;
+    cb_config_couch_sync:set_db_and_ix_paths(DbPath0, IxPath0);
 handle_rpc(get_tasks) ->
     couch_task_status:all();
 handle_rpc(restart_couch) ->
@@ -262,12 +229,7 @@ handle_rpc({reset_master_vbucket, BucketName}) ->
     capi_set_view_manager:reset_master_vbucket(BucketName);
 
 handle_rpc({get_design_doc_signatures, Bucket}) ->
-    try
-        capi_utils:get_design_doc_signatures(Bucket)
-    catch
-        error:badarg ->
-            exit(retry)
-    end;
+    capi_utils:get_design_doc_signatures(Bucket);
 
 handle_rpc({foreach_doc, xdcr, Fun, Timeout}) ->
     xdc_rdoc_manager:foreach_doc(Fun, Timeout);
