@@ -151,8 +151,8 @@ var DAL = {
   },
   prettyVersion: function(str, full) {
     var a = DAL.parseVersion(str);
-    // Example default result: "1.8.0-7 enterprise Edition (build-7)"
-    // Example full result: "1.8.0-7 enterprise Edition (build-7-g35c9cdd)"
+    // Example default result: "1.8.0-7 Enterprise Edition (build-7)"
+    // Example full result: "1.8.0-7 Enterprise Edition (build-7-g35c9cdd)"
     var suffix = "";
     if (full) {
       suffix = '-' + a[2];
