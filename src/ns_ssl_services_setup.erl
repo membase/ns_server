@@ -317,7 +317,8 @@ restart_ssl_services() ->
     %% to shutdown us.
     %%
     %% We're not trapping exits and that makes this interaction safe.
-    ok = ns_ssl_services_sup:restart_ssl_services(),
+    ok = ns_ssl_services_sup:restart_ssl_service(),
+    ok = ns_couchdb_api:restart_capi_ssl_service(),
     restart_xdcr_proxy(),
     ok = ns_memcached:connect_and_send_isasl_refresh().
 

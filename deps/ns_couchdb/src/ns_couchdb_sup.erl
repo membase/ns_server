@@ -21,7 +21,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, restart_capi_ssl_service/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -81,3 +81,8 @@ child_specs() ->
      {last_process, {work_queue, start_link, [last_process]},
       permanent, 1000, worker, []}
     ].
+
+restart_capi_ssl_service() ->
+    ok = supervisor:terminate_child(?MODULE, ns_capi_ssl_service),
+    {ok, _} = supervisor:restart_child(?MODULE, ns_capi_ssl_service),
+    ok.
