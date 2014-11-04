@@ -35,13 +35,13 @@ setup_body() ->
                              fun (Event) ->
                                      case is_useless_event(Event) of
                                          false ->
-                                             Self ! check_childs_update;
+                                             Self ! check_children_update;
                                          _ ->
                                              []
                                      end
                              end),
-    Childs = dynamic_children(),
-    set_childs_and_loop(Childs).
+    Children = dynamic_children(),
+    set_children_and_loop(Children).
 
 %% rpc:called (2.0.2+) after any bucket is deleted
 restart_moxi() ->
@@ -59,41 +59,41 @@ restart_xdcr_proxy() ->
 restart_port_by_name(Name) ->
     rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, restart_port_by_name, [Name]).
 
-set_childs_and_loop(Childs) ->
-    Pid = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, set_dynamic_children, [Childs]),
+set_children_and_loop(Children) ->
+    Pid = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, set_dynamic_children, [Children]),
     {is_pid, true, Pid} = {is_pid, erlang:is_pid(Pid), Pid},
     erlang:link(Pid),
-    childs_loop(Childs).
+    children_loop(Children).
 
-childs_loop(Childs) ->
-    proc_lib:hibernate(erlang, apply, [fun childs_loop_continue/1, [Childs]]).
+children_loop(Children) ->
+    proc_lib:hibernate(erlang, apply, [fun children_loop_continue/1, [Children]]).
 
-childs_loop_continue(Childs) ->
+children_loop_continue(Children) ->
     receive
-        check_childs_update ->
-            do_childs_loop_continue(Childs);
+        check_children_update ->
+            do_children_loop_continue(Children);
         {'$gen_call', From, sync} ->
             gen_server:reply(From, ok),
-            childs_loop(Childs);
+            children_loop(Children);
         X ->
             erlang:error({unexpected_message, X})
     after 0 ->
             erlang:error(expected_some_message)
     end.
 
-do_childs_loop_continue(Childs) ->
+do_children_loop_continue(Children) ->
     %% this sets bound on frequency of checking of port_servers
     %% configuration updates. NOTE: this thing also depends on other
     %% config variables. Particularly moxi's environment variables
     %% need admin credentials. So we're forced to react on any config
     %% change
     timer:sleep(50),
-    misc:flush(check_childs_update),
+    misc:flush(check_children_update),
     case dynamic_children() of
-        Childs ->
-            childs_loop(Childs);
-        NewChilds ->
-            set_childs_and_loop(NewChilds)
+        Children ->
+            children_loop(Children);
+        NewChildren ->
+            set_children_and_loop(NewChildren)
     end.
 
 maybe_create_ssl_proxy_spec(Config) ->
