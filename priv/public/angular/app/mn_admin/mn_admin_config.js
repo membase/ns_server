@@ -62,6 +62,12 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
         },
         getVisulaSettings: function (mnAdminSettingsClusterService) {
           return mnAdminSettingsClusterService.getVisulaSettings();
+        },
+        nodes: function (mnAdminServersService) {
+          return mnAdminServersService.getNodes();
+        },
+        poolDetails: function (mnPoolDetails) {
+          return mnPoolDetails.getFresh()
         }
       }
     });

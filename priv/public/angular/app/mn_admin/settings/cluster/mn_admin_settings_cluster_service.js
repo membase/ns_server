@@ -1,5 +1,5 @@
 angular.module('mnAdminSettingsClusterService').factory('mnAdminSettingsClusterService',
-  function (mnAdminService, mnHttp) {
+  function (mnHttp) {
     var mnAdminSettingsClusterService = {};
 
 

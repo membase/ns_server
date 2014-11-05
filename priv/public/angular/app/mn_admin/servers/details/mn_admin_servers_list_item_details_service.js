@@ -55,7 +55,7 @@ angular.module('mnAdminServersListItemDetailsService').factory('mnAdminServersLi
         rv.ellipsisPath = details.storage.hdd[0] && _.ellipsisiseOnLeft(details.storage.hdd[0].path || "", 25);
 
         var rebalanceTask = tasks.tasksRebalance.status === 'running' && tasks.tasksRebalance;
-        rv.detailedProgress = rebalanceTask.detailedProgress.perNode && rebalanceTask.detailedProgress.perNode[node.otpNode];
+        rv.detailedProgress = rebalanceTask.detailedProgress && rebalanceTask.detailedProgress.perNode && rebalanceTask.detailedProgress.perNode[node.otpNode];
 
         rv.details = details;
         return rv;

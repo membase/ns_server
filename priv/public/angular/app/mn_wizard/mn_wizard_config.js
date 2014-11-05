@@ -8,7 +8,6 @@ angular.module('mnWizard').config(function ($stateProvider) {
     })
     .state('app.wizard.welcome', {
       templateUrl: 'mn_wizard/welcome/mn_wizard_welcome.html',
-      controller: 'mnWizardWelcomeController',
       notAuthenticate: true
     })
     .state('app.wizard.step1', {
