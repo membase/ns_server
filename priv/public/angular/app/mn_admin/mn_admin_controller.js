@@ -1,8 +1,5 @@
 angular.module('mnAdmin').controller('mnAdminController',
-  function ($scope, $state, $location, $window, $timeout, mnAuthService, tasks, mnTasksDetails) {
-    $scope.$state = $state;
-    $scope.$location = $location;
-    $scope._ = _;
+  function ($scope, $window, $timeout, mnAuthService, tasks, mnTasksDetails) {
     $scope.Math = Math;
     $scope.logout = function () {
       mnAuthService.manualLogout().then(function () {

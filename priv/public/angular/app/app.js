@@ -36,8 +36,8 @@ angular.module('mnAdmin', [
   'mnAdminBuckets',
   'mnAdminServersService',
   'mnAdminServers',
-  'mnAdminSettings',
-  'mnAdminSettingsService'
+  'mnAdminSettingsCluster',
+  'mnAdminSettingsClusterService'
 ]);
 angular.module('mnAdminService', ['mnAuthService']);
 angular.module('mnDateService', []);
@@ -61,20 +61,8 @@ angular.module('mnAdminServers', [
   'mnAdminServersListItemDetailsService',
   'mnAdminSettingsAutoFailoverService'
 ]);
-angular.module('mnAdminSettings', [
-  'mnAdminSettingsCluster',
-  'mnAdminSettingsClusterService',
-  'mnAdminSettingsAutoFailoverService'
-]);
-angular.module('mnAdminSettingsCluster', [
-  'mnAdminSettingsClusterService'
-]);
-
-angular.module('mnAdminSettingsService', []);
-angular.module('mnAdminSettingsClusterService', [
-  'mnAdminService',
-  'mnAdminServersService'
-]);
+angular.module('mnAdminSettingsCluster', ['mnAdminSettingsClusterService']);
+angular.module('mnAdminSettingsClusterService', []);
 angular.module('mnAdminSettingsAutoFailoverService', []);
 
 angular.module('app', [

@@ -50,7 +50,6 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
     .state('app.admin.settings', {
       url: '/settings',
       abstract: true,
-      controller: 'mnAdminSettingsController',
       templateUrl: 'mn_admin/settings/mn_admin_settings.html'
     })
     .state('app.admin.settings.cluster', {

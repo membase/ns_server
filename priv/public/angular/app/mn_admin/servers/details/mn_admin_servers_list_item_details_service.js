@@ -28,34 +28,6 @@ angular.module('mnAdminServersListItemDetailsService').factory('mnAdminServersLi
       };
     }
 
-    function prepareRebalanceDetails(detailedProgress) {
-      var rv = {};
-      if (detailedProgress) {
-        rv.detailedProgress = {};
-
-        var ingoing = detailedProgress.ingoing;
-        if (ingoing.activeVBucketsLeft != 0 || ingoing.replicaVBucketsLeft != 0 || ingoing.docsTotal != 0 || ingoing.docsTransferred != 0) {
-          rv.detailedProgress.ingoing = ingoing;
-        } else {
-          rv.detailedProgress.ingoing = false;
-        }
-
-        var outgoing = detailedProgress.outgoing;
-        if (outgoing.activeVBucketsLeft != 0 || outgoing.replicaVBucketsLeft != 0 || outgoing.docsTotal != 0 || outgoing.docsTransferred != 0) {
-          rv.detailedProgress.outgoing = outgoing;
-        } else {
-          rv.detailedProgress.outgoing = false;
-        }
-
-        rv.detailedProgress.bucket = detailedProgress.bucket;
-        rv.detailedProgress.bucketNumber = detailedProgress.bucketNumber;
-        rv.detailedProgress.bucketsCount = detailedProgress.bucketsCount;
-      } else {
-        rv.detailedProgress = false;
-      }
-      return rv;
-    }
-
     mnAdminServersListItemDetailsService.getNodeDetails = function (node) {
       return $q.all([
         mnHttp({method: 'GET', url: '/nodes/' + encodeURIComponent(node.otpNode)}),
