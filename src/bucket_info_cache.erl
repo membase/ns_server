@@ -98,41 +98,48 @@ build_ports(Node, Config) ->
     [{proxy, ns_config:search_node_prop(Node, Config, moxi, port)},
      {direct, ns_config:search_node_prop(Node, Config, memcached, port)}].
 
-build_services(Node, Config) ->
-    CapiPorts = lists:append([case ns_config:search_node(Node, Config, ConfigKey) of
-                                  {value, Value} when Value =/= undefined -> [{JKey, Value}];
-                                  _ -> []
-                              end || {ConfigKey, JKey} <- [{ssl_capi_port, capiSSL},
-                                                           {ssl_rest_port, mgmtSSL}]]),
-    PortsD = case ns_config:search_node_prop(Node, Config, memcached, ssl_port) of
-                 undefined ->
-                     CapiPorts;
-                 SslPort ->
-                     [{kvSSL, SslPort} | CapiPorts]
-             end,
-    PortsQ = case os:getenv("ENABLE_QUERY") =/= false of
-                 true ->
-                     case ns_config:search(Config, {node, Node, query_port}) of
-                         {value, QPort} ->
-                             [{n1ql, QPort} | PortsD];
-                         false ->
-                             PortsD
-                     end;
-                 _ ->
-                     PortsD
-             end,
+build_services(Node, Config, EnabledServices) ->
+    SSLPorts = lists:append([case ns_config:search_node(Node, Config, ConfigKey) of
+                                 {value, Value} when Value =/= undefined -> [{JKey, Value}];
+                                 _ -> []
+                             end || {ConfigKey, JKey} <- [{ssl_capi_port, capiSSL},
+                                                          {ssl_rest_port, mgmtSSL}]]),
+    OptServices =
+        [case S of
+             kv ->
+                 KVSSL = case ns_config:search_node_prop(Node, Config, memcached, ssl_port) of
+                             undefined ->
+                                 [];
+                             SslPort ->
+                                 [{kvSSL, SslPort}]
+                         end,
+                 [{kv ,ns_config:search_node_prop(Node, Config, memcached, port)}
+                  | KVSSL];
+             moxi ->
+                 [{moxi, ns_config:search_node_prop(Node, Config, moxi, port)}];
+             n1ql ->
+                 [{n1ql, ns_config:search(Config, {node, Node, query_port}, undefined)}]
+         end || S <- EnabledServices],
     {value, CapiPort} = ns_config:search_node(Node, Config, capi_port),
     [{mgmt, misc:node_rest_port(Config, Node)},
-     {capi, CapiPort},
-     {moxi, ns_config:search_node_prop(Node, Config, moxi, port)},
-     {kv, ns_config:search_node_prop(Node, Config, memcached, port)}
-     | PortsQ].
+     {capi, CapiPort}
+     | lists:append([SSLPorts | OptServices])].
 
 maybe_build_ext_hostname(Node) ->
     case misc:node_name_host(Node) of
         {_, "127.0.0.1"} -> [];
         {_, H} -> [{hostname, list_to_binary(H)}]
     end.
+
+build_nodes_ext([] = _Nodes, _Config, RevAcc, NodesExtAcc) ->
+    {lists:reverse(NodesExtAcc), RevAcc};
+build_nodes_ext([Node | RestNodes], Config, RevAcc, NodesExtAcc) ->
+    {Services, Rev} = ns_cluster_membership:node_services_with_rev(Config, Node),
+    NodeInfo = {[{services, {build_services(Node, Config, Services)}}
+                 | maybe_build_ext_hostname(Node)]},
+    build_nodes_ext(RestNodes, Config,
+                    RevAcc + Rev,
+                    [NodeInfo | NodesExtAcc]).
 
 do_compute_bucket_info(Bucket, Config) ->
     case ns_bucket:get_bucket_with_vclock(Bucket, Config) of
@@ -154,9 +161,8 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
              {ports, {build_ports(Node, Config)}}]}
            || Node <- Servers],
 
-    NEIs = [{[{services, {build_services(Node, Config)}}
-              | maybe_build_ext_hostname(Node)]}
-            || Node <- Servers],
+    AllServers = Servers ++ ordsets:subtract(ns_cluster_membership:active_nodes(Config), Servers),
+    {NEIs, RevServices} = build_nodes_ext(AllServers, Config, 0, []),
 
     {_, UUID} = lists:keyfind(uuid, 1, BucketConfig),
 
@@ -174,7 +180,7 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
                          | Caps]
                  end,
 
-    J = {[{rev, vclock:count_changes(BucketVC)},
+    J = {[{rev, vclock:count_changes(BucketVC) + RevServices},
           {name, BucketBin},
           {uri, <<"/pools/default/buckets/", BucketBin/binary, "?bucket_uuid=", UUID/binary>>},
           {streamingUri, <<"/pools/default/bucketsStreaming/", BucketBin/binary, "?bucket_uuid=", UUID/binary>>},
@@ -229,10 +235,9 @@ tmp_build_node_services() ->
     {value, _, BucketVC} = ns_config:search_with_vclock(Config, buckets),
     Rev = vclock:count_changes(BucketVC),
 
-    NEIs = [{[{services, {build_services(Node, Config)}}
-              | maybe_build_ext_hostname(Node)]}
-            || Node <- ns_node_disco:nodes_wanted(Config)],
-    J = {[{rev, Rev},
+    {NEIs, RevServices} = build_nodes_ext(ns_cluster_membership:active_nodes(Config),
+                                          Config, 0, []),
+    J = {[{rev, Rev + RevServices},
           {nodesExt, NEIs}]},
     ejson:encode(J).
 
