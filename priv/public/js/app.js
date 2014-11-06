@@ -745,6 +745,16 @@ var SetupWizard = {
           m = "none";
         }
 
+        var services = "";
+        dialog.find("[name=services]:checked").each(function (idx, e) {
+          var name = $(e).val();
+          if (!services) {
+            services = name;
+          } else {
+            services = services + "," + name;
+          }
+        });
+
         var pathErrorsContainer = dialog.find('.init_cluster_dialog_errors_container');
         var hostnameErrorsContainer = $('#init_cluster_dialog_hostname_errors_container');
         var memoryErrorsContainer = $('#init_cluster_dialog_memory_errors_container');
@@ -798,6 +808,14 @@ var SetupWizard = {
           hostnameArguments = arguments;
 
           if ($('#no-join-cluster')[0].checked) {
+            jsonPostWithErrors(
+              "/node/controller/setupServices",
+              $.param({services: services}),
+              function () {
+                // TODO: don't assume it'll succeed
+                // TODO: ensure we wait for this POST to complete
+              });
+
             jsonPostWithErrors('/pools/default',
                                $.param({memoryQuota: m}),
                                memPost);

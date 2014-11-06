@@ -3118,6 +3118,21 @@
              <input type="text" class="focusme" id="init_dynamic_ram_quota" name="dynamic-ram-quota" value="" />
              <span>MB (256 MB &mdash; <span class="ram-max-size"></span> MB)</span>
            </div>
+           <div>
+             <label>Services:</label>
+           </div>
+           <div>
+             <input type="checkbox" class="inp" name="services" value="kv" id="wizard_setup_data_checkbox" checked disabled/>
+             <label class="label" for="add_servers_data_checkbox" style="text-align: left;">Data</label>
+           </div>
+           <div>
+             <input type="checkbox" class="inp" name="services" value="n1ql" id="wizard_setup_n1ql_checkbox" />
+             <label class="label" for="wizard_setup_n1ql_checkbox" style="text-align: left;">N1QL</label>
+           </div>
+           <div>
+             <input type="checkbox" class="inp" name="services" value="moxi" id="wizard_setup_moxi_checkbox" checked/>
+             <label class="label" for="wizard_setup_moxi_checkbox" style="text-align: left;">Moxi</label>
+           </div>
          </div>
          <div class="warning pat_10" id="init_cluster_dialog_memory_errors_container" style="display:none;"></div>
       </div>
