@@ -360,6 +360,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["nodes", NodeId, "controller", "settings"] ->
                              {auth, fun handle_node_settings_post/2,
                               [NodeId]};
+                         ["node", "controller", "setupServices"] ->
+                             {auth, fun handle_setup_services_post/1};
                          ["settings", "web"] ->
                              {auth, fun handle_settings_web_post/1};
                          ["settings", "alerts"] ->
@@ -2441,6 +2443,27 @@ handle_node_settings_post(Node, Req) ->
                       end, Results1) of
         [] -> exit(cannot_happen);
         Errs -> reply_json(Req, Errs, 400)
+    end.
+
+handle_setup_services_post(Req) ->
+    Params = Req:parse_post(),
+    case is_system_provisioned() of
+        true ->
+            reply_text(Req, <<"cannot change node services after cluster is provisioned">>, 400);
+        _ ->
+            ServicesString = proplists:get_value("services", Params, ""),
+            case parse_validate_services_list(ServicesString) of
+                {ok, Svcs} ->
+                    case lists:member(kv, Svcs) of
+                        true ->
+                            ns_config:set({node, node(), services}, Svcs),
+                            reply_text(Req, "", 200);
+                        _ ->
+                            reply_text(Req, "cannot setup first cluster node without kv service", 400)
+                    end;
+                {error, Msg} ->
+                    reply_text(Req, Msg, 400)
+            end
     end.
 
 validate_add_node_params(User, Password) ->
