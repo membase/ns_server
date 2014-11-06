@@ -785,6 +785,15 @@ var SetupWizard = {
           return ok;
         }
 
+        function handleDiskAndHostnameErrors() {
+          // NOTE: we want to call both error handling functions, thus
+          // we're calling them explicitly instead of doing just && of
+          // calls which would short-circuit computation
+          var diskOK = handleDiskStatus.apply(null, diskArguments);
+          var hostnameOK = handleHostnameStatus.apply(null, hostnameArguments);
+          return diskOK && hostnameOK;
+        }
+
         function afterHostname() {
           hostnameArguments = arguments;
 
@@ -795,9 +804,9 @@ var SetupWizard = {
             return;
           }
 
-          if (handleDiskStatus.apply(null, diskArguments) &&
-              handleHostnameStatus.apply(null, hostnameArguments))
+          if (handleDiskAndHostnameErrors()) {
             SetupWizard.doClusterJoin();
+          }
         }
 
         function handleHostnameStatus(data, status) {
@@ -810,8 +819,7 @@ var SetupWizard = {
         }
 
         function memPost(data, status, errObject) {
-          var ok = handleDiskStatus.apply(null, diskArguments) &&
-                handleHostnameStatus.apply(null, hostnameArguments);
+          var ok = handleDiskAndHostnameErrors();
 
           if (status == 'success') {
             if (ok) {
