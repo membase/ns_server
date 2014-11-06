@@ -232,29 +232,42 @@
             </div>
           </div>
           <script id="manage_server_list_template" type="text/html">
-          <table class="list" style="width:100%">
+          <table class="list" style="width:100%;">
+            <colgroup>
+              <col style="width:19%">
+              <col style="width:9%">
+              <col style='{%= isGroupRaw ? "width: 7%;" : "width: 0px;" %}'>
+              <col style="width:7%">
+              <col style="width:8%">
+              <col style="width:8%">
+              <col style="width:8%">
+              <col style="width:8%">
+              <col style="width:4%">
+              <col style="width:22%">
+            </colgroup>
             <tbody>
               <tr>
-                <th class="node_name" colspan="2" style="text-align:left;">Server Node Name</th>
+                <th class="node_name" style="text-align:left;">Server Node Name</th>
                 <th></th>
                 <th style='{%= isGroupRaw ? "text-align: center!important;" : "width: 0px;" %}'>{%= isGroupRaw ? "Group" : " " %}</th>
+                <th >Services</th>
                 <th>RAM Usage</th>
                 <th>Swap Usage</th>
                 <th>CPU Usage</th>
                 <th>Data/Disk Usage</th>
-                <th colspan="2" style="text-indent:18px;">Items (Active / Replica)</th>
+                <th style="text-indent:8px;white-space: nowrap;">Items (Active / Replica)</th>
                 <th></th>
               </tr>
             <!-- {% if (!rows.length) { %} -->
               <tr class="server_row rebalance_empty">
-                <td colspan="11">There are no servers pending rebalance.</td>
+                <td colspan="10">There are no servers pending rebalance.</td>
               </tr>
             <!-- {% } %} -->
             <!-- {% _.each(rows, function (s) { %} -->
 
             <!-- {% if (s.reAddPossible) { %} -->
               <tr class="add_back_row when-roadmin-avoid-me">
-                <td colspan="11">{%= V.setData('server', s) %}
+                <td colspan="10">{%= V.setData('server', s) %}
                   <span class="add_back_btn" data-recovery-type="full"><span>Full Recovery</span></span>
                   <span class="add_back_btn only-when-30" data-recovery-type="delta"><span>Delta Recovery</span></span>
                   <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
@@ -264,7 +277,7 @@
 
               <tr class="server_row {%= s.nodeClass %}" id="{%= h(s.otpNode.replace('@', '-')) %}">
 
-                <td class="node_name ellipsis" colspan="2">{%= V.setData('server', s) %}
+                <td class="node_name ellipsis">{%= V.setData('server', s) %}
               <!-- {% if (s.reAddPossible) { %} -->
                   <a href="#openServer={%= h(s.otpNode) %}" class="casper_open_cluster_{%= makeSafeForCSS(s.otpNode) %}"><ins class="expander closed"></ins></a>
                   {%= V.stripPortHTML(s.hostname, rows) %}
@@ -278,8 +291,14 @@
               <!-- {% } %} -->
                 </td>
 
-                <td class="{%= s.nodeClass %}"></td>
+                <td class="servers_icons {%= s.nodeClass %}">
+                <!-- {% if (s.services.length > 1) { %} -->
+                  <span class="servers_services_wrarning" title="Its not recommended to provision a node with more than 1 services if this a production cluster"></span>
+                <!-- {% } %} -->
+                </td>
                 <td><div class="ellipsis" title="{%= s.group %}">{%= h(s.group || "") %}</div></td>
+
+                <td style="text-align: left;">{%= V.formatServices(s.services) %}</td>
 
                 <td class="ram">
                   <!-- {% if ((s.memoryTotal > 0) && isFinite(s.memoryFree)) { %} -->
@@ -323,13 +342,13 @@
                       })(s.couchDataSize, s.couchDiskUsage) %}
                 </td>
 
-                <td class="rep">
+                <td class="rep" style="padding-left:0;padding-right:0;">
                   {%= V.formatQuantity(s.interestingStats.curr_items || 0, 1000, ' ') %}/<br>
                   {%= V.formatQuantity(s.interestingStats.vb_replica_curr_items || 0, 1000, ' ') %}
                 </td>
 
                 <!-- {% if (s.clusterMembership == 'inactiveAdded') { %} -->
-                <td colspan="2" class="actions with_state_message">
+                <td class="actions with_state_message">
                   {% if (s.recoveryType === 'none') { %}
                     <span class="state_message">Pending Add</span>
                     <a href="#" class="list_button btn_cancel eject_server when-roadmin-avoid-me"><span>Cancel</span></a>
@@ -339,12 +358,12 @@
                   {% } %}
                 </td>
                 <!-- {% } else if (s.pendingEject) { %} -->
-                <td class="actions with_state_message" colspan="2">
+                <td class="actions with_state_message">
                   <span class="state_message">Pending Removal</span>
                   <a href="#" class="list_button btn_cancel remove_from_list when-roadmin-avoid-me"><span>Cancel</span></a>
                 </td>
                 <!-- {% } else { %} -->
-                <td class="actions" colspan="2">
+                <td class="actions">
                   <a class="list_button eject_server when-roadmin-avoid-me casper_servers_remove_popup"><span>Remove</span></a>
                   <a class="list_button failover_server when-roadmin-avoid-me casper_servers_failover_popup"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
@@ -353,7 +372,7 @@
 
               </tr>
             <!-- {% if (expandingAllowed) { %} -->
-              <tr><td colspan="11" class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</td></tr>
+              <tr><td colspan="10" class="settings-placeholder" style="display:none;">{%= ServersSection.renderServerDetails(s) %}</td></tr>
             <!-- {% } %} -->
           <!-- {% }); %} -->
             </tbody>
@@ -2514,7 +2533,7 @@
 </div>
 
 
-<div class="dialog join_cluster" id="join_cluster_dialog" title="Add Server">
+<div class="dialog join_cluster join_cluster_dialog" id="join_cluster_dialog" title="Add Server">
   <!-- Join cluster -->
   <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
   <script id="join_cluster_dialog_errors_template" type="text/html">
@@ -2559,18 +2578,24 @@
     </fieldset>
     <fieldset>
       <legend>Services</legend>
-      <ul>
+      <div class="pat_10 init_cluster_service_per_node_warning">
+        Warning: Not recommended to have >1 Service per node in a production environment.
+      </div>
+      <ul class="join_cluster_dialog_services">
         <li>
           <input type="checkbox" class="inp" name="services" value="kv" id="add_servers_data_checkbox" />
-          <label class="label" for="add_servers_data_checkbox" style="text-align: left;">Data</label>
-        </li>
-        <li>
+          <label class="label" for="add_servers_data_checkbox" style="text-align: left; width: 45px;">Data</label>
+
           <input type="checkbox" class="inp" name="services" value="n1ql" id="add_servers_n1ql_checkbox" />
-          <label class="label" for="add_servers_n1ql_checkbox" style="text-align: left;">N1QL</label>
-        </li>
-        <li>
+          <label class="label" for="add_servers_n1ql_checkbox" style="text-align: left; width: 45px;">N1QL</label>
+
           <input type="checkbox" class="inp" name="services" value="moxi" id="add_servers_moxi_checkbox" />
-          <label class="label" for="add_servers_moxi_checkbox" style="text-align: left;">Moxi</label>
+          <label class="label" for="add_servers_moxi_checkbox" style="text-align: left; width: 45px;">Moxi</label>
+          <a class="tooltip text_11"><span>What's this?</span>
+            <span class="tooltip_msg" style="width:350px;"><span>
+              What's this?
+            </span></span>
+          </a>
         </li>
       </ul>
     </fieldset>
@@ -3105,43 +3130,56 @@
     <form id="init_cluster_form" class="form block"><input type="submit" style="width:0px; height: 0px; border: 0; padding: 0 0; margin: 0 0;display:none;">
       <div>
          <h3><label>
-           <input type="radio" name="join_cluster" id="no-join-cluster" checked />
-           Start a new cluster.
+            <input type="radio" name="join_cluster" id="no-join-cluster" checked />
+            Start a new cluster.
          </label></h3>
-         <div class="memory-quota">
-           <div>
-             <label>RAM Available: </label>
-             <span class="ram-total-size"></span>
-           </div>
-           <div>
-             <label for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
-             <input type="text" class="focusme" id="init_dynamic_ram_quota" name="dynamic-ram-quota" value="" />
-             <span>MB (256 MB &mdash; <span class="ram-max-size"></span> MB)</span>
-           </div>
-           <div>
-             <label>Services:</label>
-           </div>
-           <div>
-             <input type="checkbox" class="inp" name="services" value="kv" id="wizard_setup_data_checkbox" checked disabled/>
-             <label class="label" for="add_servers_data_checkbox" style="text-align: left;">Data</label>
-           </div>
-           <div>
-             <input type="checkbox" class="inp" name="services" value="n1ql" id="wizard_setup_n1ql_checkbox" />
-             <label class="label" for="wizard_setup_n1ql_checkbox" style="text-align: left;">N1QL</label>
-           </div>
-           <div>
-             <input type="checkbox" class="inp" name="services" value="moxi" id="wizard_setup_moxi_checkbox" checked/>
-             <label class="label" for="wizard_setup_moxi_checkbox" style="text-align: left;">Moxi</label>
-           </div>
+         <div class="start_new_cluster_block js_start_new_cluster_block">
+            <label>Services:</label>
+            <a class="tooltip text_11"><span>What's this?</span>
+              <span class="tooltip_msg" style="width:350px;"><span>
+                What's this?
+              </span></span>
+            </a>
+            <div class="init_cluster_service_per_node_warning">
+              Warning: Not recommended to have >1 Service per node in a production environment.
+            </div>
+            <div class="warning pat_10" id="init_cluster_dialog_memory_errors_container"></div>
+            <div class="warning pat_10" id="init_cluster_service_errors_container"></div>
+            <div title="Data has to be set for the first node in a new cluster">
+              <input type="checkbox" class="inp" name="services" value="kv" id="wizard_setup_data_checkbox" checked disabled/>
+              <label class="label" style="text-align: left;">Data</label>
+              <div class="memory-quota">
+                <div>
+                  <label>RAM Available: </label>
+                  <span class="ram-total-size"></span>
+                </div>
+                <div>
+                  <label for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
+                  <input type="text" class="focusme" id="init_dynamic_ram_quota" name="dynamic-ram-quota" value="" />
+                  <span>MB (256 MB &mdash; <span class="ram-max-size"></span> MB)</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <input type="checkbox" class="inp" name="services" value="n1ql" id="wizard_setup_n1ql_checkbox" />
+              <label class="label" for="wizard_setup_n1ql_checkbox" style="text-align: left;">N1QL</label>
+            </div>
+            <div>
+              <input type="checkbox" class="inp" name="services" value="moxi" id="wizard_setup_moxi_checkbox" />
+              <label class="label" for="wizard_setup_moxi_checkbox" style="text-align: left;">Moxi</label>
+            </div>
          </div>
-         <div class="warning pat_10" id="init_cluster_dialog_memory_errors_container" style="display:none;"></div>
       </div>
       <div>
         <h3><label>
           <input type="radio" name="join_cluster" id="join-cluster" />
           Join a cluster now.
         </label></h3>
-        <div class="login-credentials">
+        <div class="login-credentials js_login-credentials">
+          <div class="init_cluster_service_per_node_warning">
+            Warning: Not recommended to have >1 Service per node in a production environment.
+          </div>
+          <p class="warning pat_10 join_cluster_dialog_errors_container" style="margin: 10px 30px 10px 0;"></p>
           <div>
             <label for="clusterMemberHostIp">IP Address:</label>
             <input type="text" class="inp" name="hostname" id="clusterMemberHostIp" value="" />
@@ -3157,7 +3195,24 @@
             <input type="password" class="inp" name="password" id="join_password_input" />
             <br class="clear" />
           </div>
-          <p class="warning pat_10 join_cluster_dialog_errors_container"></p>
+          <div>
+            <label for="services_password_input">Services:</label>
+            <div style="display: inline;">
+              <input type="checkbox" class="inp" name="services" value="kv" id="wizard_join_servers_data_checkbox" checked/>
+              <label class="label" for="wizard_join_servers_data_checkbox" style="text-align: left; width: 45px;">Data</label>
+
+              <input type="checkbox" class="inp" name="services" value="n1ql" id="wizard_join_setup_n1ql_checkbox" />
+              <label class="label" for="wizard_join_setup_n1ql_checkbox" style="text-align: left; width: 45px;">N1QL</label>
+
+              <input type="checkbox" class="inp" name="services" value="moxi" id="wizard_join_setup_moxi_checkbox" />
+              <label class="label" for="wizard_join_setup_moxi_checkbox" style="text-align: left; width: 45px;">Moxi</label>
+            </div>
+            <a class="tooltip text_11"><span>What's this?</span>
+              <span class="tooltip_msg" style="width:350px;"><span>
+                What's this?
+              </span></span>
+            </a>
+          </div>
        </div>
       </div>
     </form>

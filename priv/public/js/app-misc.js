@@ -178,8 +178,7 @@ function jsonPostWithErrors(url, data, callback, ajaxOptions) {
     var modalAction = new ModalAction();
   }
 
-  $.ajax(options);
-  return;
+  return $.ajax(options);
 
   function ajaxCallback(data, textStatus) {
     var errorsData;
@@ -433,6 +432,15 @@ _.extend(ViewHelpers, {
     }
 
     return t;
+  },
+  formatServices: function (services) {
+    return _(services).map(function (service) {
+      switch (service) {
+        case 'kv': return 'Data';
+        case 'n1ql': return 'N1QL';
+        case 'moxi': return 'Moxi';
+      }
+    }).join('<br>');
   },
   formatQuantity: function (value, numberSystem, spacing) {
     if (spacing == null) {

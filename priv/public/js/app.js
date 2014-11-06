@@ -307,7 +307,7 @@ var SetupWizard = {
     var errorsContainer = form.parent().find('.join_cluster_dialog_errors_container');
     errorsContainer.hide();
 
-    var data = ServersSection.validateJoinClusterParams(form);
+    var data = ServersSection.validateJoinClusterParams($('.js_login-credentials'));
     if (data.length) {
       renderTemplate('join_cluster_dialog_errors', data, errorsContainer[0]);
       errorsContainer.show();
@@ -315,7 +315,8 @@ var SetupWizard = {
     }
 
     var overlay = overlayWithSpinner($('#init_cluster_dialog'), '#EEE');
-    jsonPostWithErrors('/node/controller/doJoinCluster', $.param(data), function (errors, status) {
+
+    return jsonPostWithErrors('/node/controller/doJoinCluster', $.param(data), function (errors, status) {
       if (status != 'success') {
         overlay.remove();
         renderTemplate('join_cluster_dialog_errors', errors, errorsContainer[0]);
@@ -586,20 +587,22 @@ var SetupWizard = {
         SetupWizard.show("cluster");
       });
     },
-
     cluster: function (node, pagePrefix, opt) {
       var dialog = $('#init_cluster_dialog');
       var resourcesObserver;
 
       $('#join-cluster').click(function (e) {
-        $('.login-credentials').slideDown();
-        $('.memory-quota').slideUp();
+        $('.js_login-credentials').slideDown();
+        $('.js_start_new_cluster_block').slideUp();
         $('#init_cluster_dialog_memory_errors_container').slideUp();
       });
       $('#no-join-cluster').click(function (e) {
-        $('.memory-quota').slideDown();
-        $('.login-credentials').slideUp();
+        $('.js_start_new_cluster_block').slideDown();
+        $('.js_login-credentials').slideUp();
       });
+
+      ServersSection.notifyAboutServicesBestPractice($('.js_start_new_cluster_block'));
+      ServersSection.notifyAboutServicesBestPractice($('.js_login-credentials'));
 
       // we return function signaling that we're not yet ready to show
       // our page of wizard (no data to display in the form), but will
@@ -627,7 +630,7 @@ var SetupWizard = {
 
           _.defer(function () {
             if ($('#join-cluster')[0].checked)
-              $('.login-credentials').show();
+              $('.js_login-credentials').show();
           });
 
           var m = data['memoryQuota'];
@@ -732,124 +735,83 @@ var SetupWizard = {
         if (saving) {
           return;
         }
+        saving = true;
 
         dialog.find('.warning').hide();
 
-        var dbPath = dialog.find('[name=db_path]').val() || "";
-        var ixPath = dialog.find('[name=index_path]').val() || "";
-
-        var hostname = dialog.find('[name=hostname]').val() || "";
-
-        var m = dialog.find('[name=dynamic-ram-quota]').val() || "";
-        if (m == "") {
-          m = "none";
-        }
-
-        var services = "";
-        dialog.find("[name=services]:checked").each(function (idx, e) {
-          var name = $(e).val();
-          if (!services) {
-            services = name;
-          } else {
-            services = services + "," + name;
-          }
-        });
+        var dbPath = dialog.find('[name=db_path]').val();
+        var ixPath = dialog.find('[name=index_path]').val();
+        var hostname = dialog.find('[name=hostname]').val();
+        var memoryQuota  = dialog.find('[name=dynamic-ram-quota]').val() || "none";
+        var services = ServersSection.getCheckedServices($('.js_start_new_cluster_block'));
 
         var pathErrorsContainer = dialog.find('.init_cluster_dialog_errors_container');
         var hostnameErrorsContainer = $('#init_cluster_dialog_hostname_errors_container');
         var memoryErrorsContainer = $('#init_cluster_dialog_memory_errors_container');
-        pathErrorsContainer.hide();
-        hostnameErrorsContainer.hide();
-        memoryErrorsContainer.hide();
+        var serviceErrorsContainer = $('#init_cluster_service_errors_container');
+        $(pathErrorsContainer, hostnameErrorsContainer, memoryErrorsContainer, serviceErrorsContainer).hide();
 
         var spinner = overlayWithSpinner(dialog);
-        saving = true;
 
-        jsonPostWithErrors('/nodes/' + node + '/controller/settings',
-                           $.param({path: dbPath,
-                                    index_path: ixPath}),
-                           afterDisk);
+        var diskParams = $.param({path: dbPath, index_path: ixPath});
+        var hostnameParams = $.param({hostname: hostname});
+        var memoryQuotaParams = $.param({memoryQuota: memoryQuota});
+        var servicesParams = $.param({services: services});
+        var ajaxOptions = {dataType: 'text'}; //because with dataType json jQuery returning “parsererror”
 
-        var diskArguments;
-        var hostnameArguments;
-
-        function afterDisk() {
-          // remember our arguments so that we can display validation
-          // errors later. We're doing that to display validation errors
-          // from memory quota and disk path posts simultaneously
-          diskArguments = arguments;
-
-          jsonPostWithErrors('/node/controller/rename',
-                             $.param({hostname: hostname}),
-                             afterHostname);
-        }
-
-        function handleDiskStatus(data, status) {
-          saving = false;
-          spinner.remove();
-          var ok = (status == 'success');
-          if (!ok) {
-            renderTemplate('join_cluster_dialog_errors', data, pathErrorsContainer[0]);
-            pathErrorsContainer.show();
-          }
-          return ok;
-        }
-
-        function handleDiskAndHostnameErrors() {
-          // NOTE: we want to call both error handling functions, thus
-          // we're calling them explicitly instead of doing just && of
-          // calls which would short-circuit computation
-          var diskOK = handleDiskStatus.apply(null, diskArguments);
-          var hostnameOK = handleHostnameStatus.apply(null, hostnameArguments);
-          return diskOK && hostnameOK;
-        }
-
-        function afterHostname() {
-          hostnameArguments = arguments;
-
+        jQuery.when(
+          jsonPostWithErrors('/nodes/' + node + '/controller/settings', diskParams, maybeShowDiskErrors, ajaxOptions),
+          jsonPostWithErrors('/node/controller/rename', hostnameParams, maybeShowHostnameErrors, ajaxOptions)
+        ).done(function () {
           if ($('#no-join-cluster')[0].checked) {
-            jsonPostWithErrors(
-              "/node/controller/setupServices",
-              $.param({services: services}),
-              function () {
-                // TODO: don't assume it'll succeed
-                // TODO: ensure we wait for this POST to complete
-              });
-
-            jsonPostWithErrors('/pools/default',
-                               $.param({memoryQuota: m}),
-                               memPost);
-            return;
-          }
-
-          if (handleDiskAndHostnameErrors()) {
-            SetupWizard.doClusterJoin();
-          }
-        }
-
-        function handleHostnameStatus(data, status) {
-          var ok = (status == 'success') ;
-          if (!ok) {
-            hostnameErrorsContainer.text(data[0]);
-            hostnameErrorsContainer.show();
-          }
-          return ok;
-        }
-
-        function memPost(data, status, errObject) {
-          var ok = handleDiskAndHostnameErrors();
-
-          if (status == 'success') {
-            if (ok) {
+            jQuery.when(
+              jsonPostWithErrors("/node/controller/setupServices", servicesParams, maybeShowServicesErrors, ajaxOptions),
+              jsonPostWithErrors('/pools/default', memoryQuotaParams, maybeShowMemoryQuotaErrors, ajaxOptions)
+            ).done(function () {
               BucketsSection.refreshBuckets();
               SetupWizard.show("sample_buckets");
               onLeave();
-            }
+            }).always(removeSpinner);
           } else {
-            if (errObject != undefined) {
-              memoryErrorsContainer.text(errObject.errors.memoryQuota);
-              memoryErrorsContainer.show();
+            var deferred = SetupWizard.doClusterJoin();
+            if (deferred) {
+              deferred.always(removeSpinner);
+            } else {
+              removeSpinner();
             }
+          }
+        }).fail(removeSpinner);
+
+        function removeSpinner() {
+          saving = false;
+          spinner.remove();
+        }
+
+        function maybeShowDiskErrors(data, status, errObject) {
+          if (status !== 'success') {
+            renderTemplate('join_cluster_dialog_errors', errObject, pathErrorsContainer[0]);
+            pathErrorsContainer.show();
+          }
+        }
+
+        function maybeShowMemoryQuotaErrors(data, status, errObject) {
+          if (status !== 'success') {
+            memoryErrorsContainer.text(errObject.errors.memoryQuota);
+            memoryErrorsContainer.show();
+          }
+        }
+
+        function maybeShowServicesErrors(data, status, errObject) {
+          if (status !== 'success') {
+            serviceErrorsContainer.text(errObject.error);
+            serviceErrorsContainer.show();
+          }
+        }
+
+        function maybeShowHostnameErrors(data, status, errObject) {
+          if (status !== 'success') {
+            hostnameErrorsContainer.text(errObject[0]);
+            hostnameErrorsContainer.show();
           }
         }
       }

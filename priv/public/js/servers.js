@@ -495,32 +495,40 @@ var ServersSection = {
 
     this.postAndReload(uri, "");
   },
+  notifyAboutServicesBestPractice: function (form) {
+    $("input[name=services]", form).unbind('change').change(function (e) {
+      $(".init_cluster_service_per_node_warning", form).toggle(
+        $("input[name=services]:checked", form).length > 1);
+    }).change();
+  },
+  getCheckedServices: function (context) {
+    return $("[name=services]:checked", context).map(function () {
+      return this.value;
+    }).get().join(',');
+  },
   validateJoinClusterParams: function (form) {
     var data = {}
     _.each("hostname user password".split(' '), function (name) {
       data[name] = form.find('[name=' + name + ']').val();
     });
 
-    var errors = [];
+    data.services = ServersSection.getCheckedServices(form);
 
-    if (data['hostname'] == "")
+    var errors = [];
+    if (data['services'] == "") {
+      errors.push("Please specify a Service(s) for this node.");
+    }
+    if (data['hostname'] == "") {
       errors.push("Server IP Address cannot be blank.");
+    }
     if (!data['user'] || !data['password']) {
       data['user'] = '';
       data['password'] = '';
     }
 
-    form.find("[name=services]:checked").each(function (idx, e) {
-      var name = $(e).val();
-      if (!data["services"]) {
-        data["services"] = name;
-      } else {
-        data["services"] = data["services"] + "," + name;
-      }
-    });
-
-    if (!errors.length)
+    if (!errors.length) {
       return data;
+    }
     return errors;
   },
   onAdd: function () {
@@ -539,7 +547,7 @@ var ServersSection = {
     dialog.find(".when-groups").toggle(!!DAL.cells.groupsAvailableCell.value);
     dialog.find("[name=services]").prop("checked", false);
     dialog.find("[name=services][value=kv]").prop("checked", true);
-    dialog.find("[name=services][value=moxi]").prop("checked", true);
+    ServersSection.notifyAboutServicesBestPractice(dialog);
 
     showDialog('join_cluster_dialog', {
       onHide: function () {
