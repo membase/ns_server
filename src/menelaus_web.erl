@@ -1346,7 +1346,8 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
           {clusterCompatibility, ns_heart:effective_cluster_compat_version()},
           {version, list_to_binary(Version)},
           {os, list_to_binary(OS)},
-          {ports, {struct, PortsKV}}
+          {ports, {struct, PortsKV}},
+          {services, ns_cluster_membership:node_services(Config, WantENode)}
          ],
     case WantENode =:= node() of
         true ->
