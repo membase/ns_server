@@ -38,6 +38,11 @@
          update_recovery_type/2
         ]).
 
+-export([supported_services/0,
+         default_services/0,
+         node_services/2,
+         node_services_with_rev/2]).
+
 active_nodes() ->
     active_nodes(ns_config:get()).
 
@@ -188,4 +193,26 @@ update_recovery_type(Node, NewType) ->
             Error;
         retry_needed ->
             erlang:error(exceeded_retries)
+    end.
+
+supported_services() ->
+    [kv, moxi, n1ql].
+
+default_services() ->
+    [kv, moxi].
+
+node_services(Config, Node) ->
+    case ns_config:search(Config, {node, Node, services}) of
+        false ->
+            default_services();
+        {value, Value} ->
+            Value
+    end.
+
+node_services_with_rev(Config, Node) ->
+    case ns_config:search_with_vclock(Config, {node, Node, services}) of
+        false ->
+            {default_services(), 0};
+        {value, Value, VClock} ->
+            {Value, vclock:count_changes(VClock)}
     end.
