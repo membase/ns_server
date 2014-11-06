@@ -510,6 +510,15 @@ var ServersSection = {
       data['password'] = '';
     }
 
+    form.find("[name=services]:checked").each(function (idx, e) {
+      var name = $(e).val();
+      if (!data["services"]) {
+        data["services"] = name;
+      } else {
+        data["services"] = data["services"] + "," + name;
+      }
+    });
+
     if (!errors.length)
       return data;
     return errors;
@@ -528,6 +537,9 @@ var ServersSection = {
     dialog.find("input:not([type]), input[type=text], input[type=password]").val('');
     dialog.find('[name=user]').val('Administrator');
     dialog.find(".when-groups").toggle(!!DAL.cells.groupsAvailableCell.value);
+    dialog.find("[name=services]").prop("checked", false);
+    dialog.find("[name=services][value=kv]").prop("checked", true);
+    dialog.find("[name=services][value=moxi]").prop("checked", true);
 
     showDialog('join_cluster_dialog', {
       onHide: function () {
