@@ -21,7 +21,8 @@
          bad_memory_size_error/2,
          incompatible_cluster_version_error/3,
          verify_otp_connectivity_port_error/2,
-         verify_otp_connectivity_connection_error/4]).
+         verify_otp_connectivity_connection_error/4,
+         unsupported_services_error/2]).
 
 -spec connection_error_message(term(), string(), string() | integer()) -> binary() | undefined.
 connection_error_message({Error, _}, Host, Port) ->
@@ -132,3 +133,7 @@ verify_otp_connectivity_connection_error(Reason, OtpNode, Host, Port) ->
              end,
     list_to_binary(io_lib:format("Failed to reach otp port ~p for node ~p.~s"
                                  " This can be firewall problem.", [Port, Detail, OtpNode])).
+
+unsupported_services_error(AvailableServices, RequestedServices) ->
+    list_to_binary(io_lib:format("Node doesn't support requested services: ~p. Supported services: ~p",
+                                 [RequestedServices, AvailableServices])).

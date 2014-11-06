@@ -353,6 +353,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun handle_complete_join/1};
                          ["node", "controller", "doJoinCluster"] ->
                              {auth, fun handle_join/1};
+                         ["node", "controller", "doJoinClusterV2"] ->
+                             {auth, fun handle_join/1};
                          ["node", "controller", "rename"] ->
                              {auth, fun handle_node_rename/1};
                          ["nodes", NodeId, "controller", "settings"] ->
@@ -391,7 +393,11 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun handle_eject_post/1};
                          ["controller", "addNode"] ->
                              {auth, fun handle_add_node/1};
+                         ["controller", "addNodeV2"] ->
+                             {auth, fun handle_add_node/1};
                          ["pools", "default", "serverGroups", UUID, "addNode"] ->
+                             {auth, fun handle_add_node_to_group/2, [UUID]};
+                         ["pools", "default", "serverGroups", UUID, "addNodeV2"] ->
                              {auth, fun handle_add_node_to_group/2, [UUID]};
                          ["controller", "failOver"] ->
                              {auth, fun handle_failover/1};
@@ -874,15 +880,19 @@ handle_engage_cluster2(Req) ->
             {_, _} = CompatTuple = lists:keyfind(<<"clusterCompatibility">>, 1, NodeKVList),
             ThreeXCompat = ns_heart:effective_cluster_compat_version_for(
                             cluster_compat_mode:supported_compat_version()),
-            Result2 = case CompatTuple of
-                          {_, V} when V < ThreeXCompat ->
-                              ?log_info("Lowering our advertised clusterCompatibility in order to enable joining 2.x cluster"),
-                              Result3 = lists:keyreplace(<<"clusterCompatibility">>, 1, Result, CompatTuple),
-                              lists:keyreplace(clusterCompatibility, 1, Result3, CompatTuple);
-                          _ ->
-                              Result
-                      end,
-            reply_json(Req, {struct, Result2});
+            ResultWithCompat =
+                case CompatTuple of
+                    {_, V} when V < ThreeXCompat ->
+                        ?log_info("Lowering our advertised clusterCompatibility in order to enable joining older cluster"),
+                        Result3 = lists:keyreplace(<<"clusterCompatibility">>, 1, Result, CompatTuple),
+                        lists:keyreplace(clusterCompatibility, 1, Result3, CompatTuple);
+                    _ ->
+                        Result
+                end,
+            ResultWithServices =
+                [{supportedServices, ns_cluster_membership:supported_services()}
+                 | ResultWithCompat],
+            reply_json(Req, {struct, ResultWithServices});
         {error, _What, Message, _Nested} ->
             reply_json(Req, [Message], 400)
     end,
@@ -1054,7 +1064,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
     {Alerts, AlertsSilenceToken} = menelaus_web_alerts_srv:fetch_alerts(),
 
     Controllers = {struct, [
-      {addNode, {struct, [{uri, <<"/controller/addNode?uuid=", UUID/binary>>}]}},
+      {addNode, {struct, [{uri, <<"/controller/addNodeV2?uuid=", UUID/binary>>}]}},
       {rebalance, {struct, [{uri, <<"/controller/rebalance?uuid=", UUID/binary>>}]}},
       {failOver, {struct, [{uri, <<"/controller/failOver?uuid=", UUID/binary>>}]}},
       {startGracefulFailover, {struct, [{uri, <<"/controller/startGracefulFailover?uuid=", UUID/binary>>}]}},
@@ -1431,20 +1441,54 @@ handle_join(Req) ->
             handle_join_clean_node(Req)
     end.
 
-handle_join_clean_node(Req) ->
-    Params = Req:parse_post(),
+parse_validate_services_list(ServicesList) ->
+    KnownServices = ns_cluster_membership:supported_services(),
+    ServicePairs = [{erlang:atom_to_list(S), S} || S <- KnownServices],
+    ServiceStrings = string:tokens(ServicesList, ","),
+    FoundServices = [{SN, lists:keyfind(SN, 1, ServicePairs)} || SN <- ServiceStrings],
+    UnknownServices = [SN || {SN, false} <- FoundServices],
+    case UnknownServices of
+        [_|_] ->
+            Msg = io_lib:format("Unknown services: ~p", [UnknownServices]),
+            {error, iolist_to_binary(Msg)};
+        [] ->
+            RV = lists:usort([S || {_, {_, S}} <- FoundServices]),
+            case RV of
+                [] ->
+                    {error, <<"At least one service has to be selected">>};
+                _ ->
+                    {ok, RV}
+            end
+    end.
+
+parse_validate_services_list_test() ->
+    {error, _} = parse_validate_services_list(""),
+    ?assertEqual({ok, [kv, n1ql]}, parse_validate_services_list("n1ql,kv")),
+    {ok, [kv]} = parse_validate_services_list("kv"),
+    {error, _} = parse_validate_services_list("n1ql,kv,s"),
+    ?assertMatch({error, _}, parse_validate_services_list("neeql,kv")).
+
+parse_join_cluster_params(Params, ThisIsJoin) ->
+    Version = proplists:get_value("version", Params, "3.0"),
+
+    OldVersion = (Version =:= "3.0"),
 
     Hostname = case proplists:get_value("hostname", Params) of
                    undefined ->
-                       %%  this is for backward compatibility
-                       ClusterMemberPort = proplists:get_value("clusterMemberPort", Params),
-                       ClusterMemberHostIp = proplists:get_value("clusterMemberHostIp", Params),
-                       case lists:member(undefined,
-                                         [ClusterMemberPort, ClusterMemberHostIp]) of
+                       if
+                           ThisIsJoin andalso OldVersion ->
+                               %%  this is for backward compatibility
+                               ClusterMemberPort = proplists:get_value("clusterMemberPort", Params),
+                               ClusterMemberHostIp = proplists:get_value("clusterMemberHostIp", Params),
+                               case lists:member(undefined,
+                                                 [ClusterMemberPort, ClusterMemberHostIp]) of
+                                   true ->
+                                       "";
+                                   _ ->
+                                       lists:concat([ClusterMemberHostIp, ":", ClusterMemberPort])
+                               end;
                            true ->
-                               undefined;
-                           _ ->
-                               lists:concat([ClusterMemberHostIp, ":", ClusterMemberPort])
+                               ""
                        end;
                    X ->
                        X
@@ -1452,33 +1496,124 @@ handle_join_clean_node(Req) ->
 
     OtherUser = proplists:get_value("user", Params),
     OtherPswd = proplists:get_value("password", Params),
-    case lists:member(undefined,
-                      [Hostname, OtherUser, OtherPswd]) of
-        true  ->
-            ?MENELAUS_WEB_LOG(0013, "Received request to join cluster missing a parameter.", []),
-            reply_text(Req, "Attempt to join node to cluster received with missing parameters.\n", 400);
-        false ->
-            case (catch parse_hostname(Hostname)) of
-                {error, Msgs} ->
-                    reply_json(Req, Msgs, 400);
-                {OtherHost, OtherPort} ->
-                    handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd)
-            end
+
+    SherlockVersion = cluster_compat_mode:sherlock_compat_mode_string(),
+
+    VersionErrors = case Version of
+                        "3.0" ->
+                            [];
+                        %% bound above
+                        SherlockVersion ->
+                            KnownParams = ["hostname", "version", "user", "password", "services"],
+                            UnknownParams = [K || {K, _} <- Params,
+                                                  not lists:member(K, KnownParams)],
+                            case UnknownParams of
+                                [_|_] ->
+                                    Msg = io_lib:format("Got unknown parameters: ~p", [UnknownParams]),
+                                    [iolist_to_binary(Msg)];
+                                [] ->
+                                    []
+                            end;
+                        _ ->
+                            [<<"version is not recognized">>]
+                    end,
+
+    Services = case proplists:get_value("services", Params) of
+                   undefined ->
+                       {ok, ns_cluster_membership:default_services()};
+                   SvcParams ->
+                       case parse_validate_services_list(SvcParams) of
+                           {ok, Svcs} ->
+                               case (Svcs =:= ns_cluster_membership:default_services()
+                                     orelse cluster_compat_mode:is_cluster_sherlock()) of
+                                   true ->
+                                       {ok, Svcs};
+                                   false ->
+                                       {error, <<"services parameter is not supported in this cluster compatibility mode">>}
+                               end;
+                           SvcsError ->
+                               SvcsError
+                       end
+               end,
+
+    BasePList = [{user, OtherUser},
+                 {password, OtherPswd}],
+
+    MissingFieldErrors = [iolist_to_binary([atom_to_list(F), <<" is missing">>])
+                          || {F, V} <- BasePList,
+                             V =:= undefined],
+
+    {HostnameError, ParsedHostnameRV} =
+        case (catch parse_hostname(Hostname)) of
+            {error, HMsgs} ->
+                {HMsgs, undefined};
+            {ParsedHost, ParsedPort} when is_list(ParsedHost) ->
+                {[], {ParsedHost, ParsedPort}}
+        end,
+
+    Errors = MissingFieldErrors ++ VersionErrors ++ HostnameError ++
+        case Services of
+            {error, ServicesError} ->
+                [ServicesError];
+            _ ->
+                []
+        end,
+    case Errors of
+        [] ->
+            {ok, ServicesList} = Services,
+            {Host, Port} = ParsedHostnameRV,
+            {ok, [{services, ServicesList},
+                  {host, Host},
+                  {port, Port}
+                  | BasePList]};
+        _ ->
+            {errors, Errors}
     end.
 
-handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd) ->
+handle_join_clean_node(Req) ->
+    Params = Req:parse_post(),
+
+    case parse_join_cluster_params(Params, true) of
+        {errors, Errors} ->
+            reply_json(Req, Errors, 400);
+        {ok, Fields} ->
+            OtherHost = proplists:get_value(host, Fields),
+            OtherPort = proplists:get_value(port, Fields),
+            OtherUser = proplists:get_value(user, Fields),
+            OtherPswd = proplists:get_value(password, Fields),
+            Services = proplists:get_value(services, Fields),
+            handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd, Services)
+    end.
+
+handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd, Services) ->
     process_flag(trap_exit, true),
     RV = case ns_cluster:check_host_connectivity(OtherHost) of
              {ok, MyIP} ->
                  {struct, MyPList} = build_full_node_info(node(), MyIP),
                  Hostname = misc:expect_prop_value(hostname, MyPList),
 
+                 BasePayload = [{<<"hostname">>, Hostname},
+                                {<<"user">>, []},
+                                {<<"password">>, []}],
+
+                 {Payload, Endpoint} =
+                     case Services =:= ns_cluster_membership:default_services() of
+                         true ->
+                             {BasePayload, "/controller/addNode"};
+                         false ->
+                             ServicesStr = string:join([erlang:atom_to_list(S) || S <- Services], ","),
+                             SVCPayload = [{"version", cluster_compat_mode:sherlock_compat_mode_string()},
+                                           {"services", ServicesStr}
+                                           | BasePayload],
+                             {SVCPayload, "/controller/addNodeV2"}
+                     end,
+
+
+                 %% TODO: gracefully handle 404 from addNodeV2 endpoint
                  menelaus_rest:json_request_hilevel(post,
-                                                    {OtherHost, OtherPort, "/controller/addNode",
+                                                    {OtherHost, OtherPort, Endpoint,
                                                      "application/x-www-form-urlencoded",
-                                                     mochiweb_util:urlencode([{<<"hostname">>, Hostname},
-                                                                              {<<"user">>, []},
-                                                                              {<<"password">>, []}])},
+                                                     mochiweb_util:urlencode(Payload)},
                                                     {OtherUser, OtherPswd});
              X -> X
          end,
@@ -2360,23 +2495,31 @@ do_handle_add_node(Req, GroupUUID) ->
     %% parameter example: hostname=epsilon.local, user=Administrator, password=asd!23
     Params = Req:parse_post(),
 
-    HostAndPort = (catch parse_hostname(proplists:get_value("hostname", Params, ""))),
-
-    Errors = case HostAndPort of
-                 {error, L} ->
-                     L;
-                 _ -> []
+    Parsed = case parse_join_cluster_params(Params, false) of
+                 {ok, ParsedKV} ->
+                     case validate_add_node_params(proplists:get_value(user, ParsedKV),
+                                                   proplists:get_value(password, ParsedKV)) of
+                         [] ->
+                             {ok, ParsedKV};
+                         CredErrors ->
+                             {errors, CredErrors}
+                     end;
+                 {errors, ParseErrors} ->
+                     {errors, ParseErrors}
              end,
 
-    User = proplists:get_value("user", Params, ""),
-    Password = proplists:get_value("password", Params, ""),
-
-    case validate_add_node_params(User, Password) ++ Errors of
-        [] ->
-            {Hostname, Port} = HostAndPort,
+    case Parsed of
+        {ok, KV} ->
+            User = proplists:get_value(user, KV),
+            Password = proplists:get_value(password, KV),
+            Hostname = proplists:get_value(host, KV),
+            Port = proplists:get_value(port, KV),
+            Services = proplists:get_value(services, KV),
             case ns_cluster:add_node_to_group(
                    Hostname, Port,
-                   {User, Password}, GroupUUID) of
+                   {User, Password},
+                   GroupUUID,
+                   Services) of
                 {ok, OtpNode} ->
                     reply_json(Req, {struct, [{otpNode, OtpNode}]}, 200);
                 {error, unknown_group, Message, _} ->
@@ -2384,7 +2527,8 @@ do_handle_add_node(Req, GroupUUID) ->
                 {error, _What, Message, _Nested} ->
                     reply_json(Req, [Message], 400)
             end;
-        ErrorList -> reply_json(Req, ErrorList, 400)
+        {errors, ErrorList} ->
+            reply_json(Req, ErrorList, 400)
     end.
 
 parse_failover_args(Req) ->

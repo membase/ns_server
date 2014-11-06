@@ -89,7 +89,7 @@ GET /pools/default =>
     },
     "controllers": {
         "addNode": {
-            "uri": "/controller/addNode?uuid=14c408ed8df50823715f47b900bd1b4f"
+            "uri": "/controller/addNodeV2?uuid=14c408ed8df50823715f47b900bd1b4f"
         },
         "rebalance": {
             "uri": "/controller/rebalance?uuid=14c408ed8df50823715f47b900bd1b4f"

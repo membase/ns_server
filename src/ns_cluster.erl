@@ -49,7 +49,7 @@
          shun/1,
          start_link/0]).
 
--export([add_node_to_group/4,
+-export([add_node_to_group/5,
          engage_cluster/1, complete_join/1,
          check_host_connectivity/1, change_address/1]).
 
@@ -69,8 +69,9 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-add_node_to_group(RemoteAddr, RestPort, Auth, GroupUUID) ->
-    RV = gen_server:call(?MODULE, {add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID}, ?ADD_NODE_TIMEOUT),
+add_node_to_group(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
+    RV = gen_server:call(?MODULE, {add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID, Services},
+                         ?ADD_NODE_TIMEOUT),
     case RV of
         {error, _What, Message, _Nested} ->
             ?cluster_log(?NODE_JOIN_FAILED, "Failed to add node ~s:~w to cluster. ~s",
@@ -132,9 +133,9 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 
-handle_call({add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID}, _From, State) ->
+handle_call({add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID, Services}, _From, State) ->
     ?cluster_debug("handling add_node(~p, ~p, ~p, ..)", [RemoteAddr, RestPort, GroupUUID]),
-    RV = do_add_node(RemoteAddr, RestPort, Auth, GroupUUID),
+    RV = do_add_node(RemoteAddr, RestPort, Auth, GroupUUID, Services),
     ?cluster_debug("add_node(~p, ~p, ~p, ..) -> ~p", [RemoteAddr, RestPort, GroupUUID, RV]),
     {reply, RV, State};
 
@@ -448,17 +449,19 @@ check_add_possible(Body) ->
             Body()
     end.
 
-do_add_node(RemoteAddr, RestPort, Auth, GroupUUID) ->
-    check_add_possible(fun () ->
-                               do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID)
-                       end).
+do_add_node(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
+    check_add_possible(
+      fun () ->
+              do_add_node_allowed(RemoteAddr, RestPort, Auth,
+                                  GroupUUID, Services)
+      end).
 
 should_change_address() ->
     %% adjust our name if we're alone
     ns_node_disco:nodes_wanted() =:= [node()] andalso
         not dist_manager:using_user_supplied_address().
 
-do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID) ->
+do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
     case check_host_connectivity(RemoteAddr) of
         {ok, MyIP} ->
             R = case should_change_address() of
@@ -477,7 +480,8 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID) ->
                 end,
             case R of
                 ok ->
-                    do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID);
+                    do_add_node_with_connectivity(RemoteAddr, RestPort, Auth,
+                                                  GroupUUID, Services);
                 {address_save_failed, Error} = Nested ->
                     Msg = io_lib:format("Could not save address after rename: ~p",
                                         [Error]),
@@ -486,7 +490,7 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID) ->
         X -> X
     end.
 
-do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID) ->
+do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
     {struct, NodeInfo} = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
     Struct = {struct, [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)}
                        | NodeInfo]},
@@ -513,7 +517,7 @@ do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID) ->
     case ExtendedRV of
         {ok, {struct, NodeKVList}} ->
             try
-                do_add_node_engaged(NodeKVList, Auth, GroupUUID)
+                do_add_node_engaged(NodeKVList, Auth, GroupUUID, Services)
             catch
                 exit:{unexpected_json, _Where, _Field} = Exc ->
                     JsonMsg = ns_error_messages:engage_cluster_json_error(Exc),
@@ -584,14 +588,17 @@ verify_otp_connectivity(OtpNode) ->
             end
     end.
 
-do_add_node_engaged(NodeKVList, Auth, GroupUUID) ->
+do_add_node_engaged(NodeKVList, Auth, GroupUUID, Services) ->
     OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
     RV = verify_otp_connectivity(OtpNode),
     case RV of
         ok ->
-            case check_can_add_node(NodeKVList) of
+            case check_can_add_node(NodeKVList, Services) of
                 ok ->
-                    node_add_transaction(OtpNode, GroupUUID,
+                    %% TODO: only add services if possible
+                    %% TODO: consider getting list of supported
+                    %% services from NodeKVList
+                    node_add_transaction(OtpNode, GroupUUID, Services,
                                          fun () ->
                                                  do_add_node_engaged_inner(NodeKVList, OtpNode, Auth)
                                          end);
@@ -600,7 +607,7 @@ do_add_node_engaged(NodeKVList, Auth, GroupUUID) ->
         X -> X
     end.
 
-check_can_add_node(NodeKVList) ->
+check_can_add_node(NodeKVList, Services) ->
     JoineeClusterCompatVersion = expect_json_property_integer(<<"clusterCompatibility">>, NodeKVList),
     MyCompatVersion = misc:expect_prop_value(cluster_compatibility_version, dict:fetch(node(), ns_doctor:get_nodes())),
     case JoineeClusterCompatVersion =:= MyCompatVersion of
@@ -611,13 +618,41 @@ check_can_add_node(NodeKVList) ->
                                                         "Upgrade node to Couchbase Server version 2 or greater and retry.", [Version])),
                          incompatible_cluster_version};
                     _ ->
-                        ok
+                        check_can_add_node_with_services(NodeKVList, Services)
                 end;
         false -> {error, incompatible_cluster_version,
                   ns_error_messages:incompatible_cluster_version_error(MyCompatVersion,
                                                                        JoineeClusterCompatVersion,
                                                                        expect_json_property_atom(<<"otpNode">>, NodeKVList)),
                   {incompatible_cluster_version, MyCompatVersion, JoineeClusterCompatVersion}}
+    end.
+
+check_can_add_node_with_services(NodeKVList, Services) ->
+    Supported = case lists:keyfind(<<"supportedServices">>, 1, NodeKVList) of
+                    false ->
+                        [atom_to_binary(S, latin1) || S <- ns_cluster_membership:default_services()];
+                    {_, List} ->
+                        case is_list(List) of
+                            false ->
+                                erlang:exit({unexpected_json, not_list, <<"supportedServices">>});
+                            _ ->
+                                case [[] || B <- List, not is_binary(B)] =:= [] of
+                                    false ->
+                                        erlang:exit({unexpected_json, not_list, <<"supportedServices">>});
+                                    true ->
+                                        List
+                                end
+                        end
+                end,
+    RequestedBin = [atom_to_binary(S, latin1) || S <- Services],
+    UnsupportedRequested = RequestedBin -- Supported,
+    case UnsupportedRequested of
+        [] ->
+            ok;
+        _ ->
+            {error, incompatible_services,
+             ns_error_messages:unsupported_services_error(Services, Supported),
+             incompatible_services}
     end.
 
 do_add_node_engaged_inner(NodeKVList, OtpNode, Auth) ->
@@ -660,13 +695,14 @@ do_add_node_engaged_inner(NodeKVList, OtpNode, Auth) ->
             {error, complete_join, M, E}
     end.
 
-node_add_transaction(Node, GroupUUID, Body) ->
+node_add_transaction(Node, GroupUUID, Services, Body) ->
     TXNRV = ns_config:run_txn(
               fun (Cfg, SetFn) ->
                       {value, NWanted} = ns_config:search(Cfg, nodes_wanted),
                       NewNWanted = lists:usort([Node | NWanted]),
                       Cfg1 = SetFn(nodes_wanted, NewNWanted, Cfg),
                       Cfg2 = SetFn({node, Node, membership}, inactiveAdded, Cfg1),
+                      CfgPreGroups = SetFn({node, Node, services}, Services, Cfg2),
                       case ns_config:search(Cfg, cluster_compat_version, undefined) of
                           [_A, _B] = CompatVersion when CompatVersion >= [2, 5] ->
                               {value, Groups} = ns_config:search(Cfg, server_groups),
@@ -693,12 +729,12 @@ node_add_transaction(Node, GroupUUID, Body) ->
                                       NewGroupNodes = lists:usort([Node | GroupNodes]),
                                       NewGroup = lists:keystore(nodes, 1, TheGroup, {nodes, NewGroupNodes}),
                                       NewGroups = lists:usort([NewGroup | (Groups -- MaybeGroup)]),
-                                      Cfg3 = SetFn(server_groups, NewGroups, Cfg2),
+                                      Cfg3 = SetFn(server_groups, NewGroups, CfgPreGroups),
                                       {commit, Cfg3}
                               end;
                           _ ->
                               %% we're pre 2.5 compat mode. Not touching server groups
-                              {commit, Cfg2}
+                              {commit, CfgPreGroups}
                       end
               end),
     case TXNRV of
