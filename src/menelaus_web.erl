@@ -750,7 +750,7 @@ validate_post_sample_buckets(Samples) ->
 
 check_quota(Samples) ->
 
-    NodesCount = length(ns_cluster_membership:active_nodes()),
+    NodesCount = length(ns_cluster_membership:filter_out_non_kv_nodes(ns_cluster_membership:active_nodes())),
     StorageInfo = ns_storage_conf:cluster_storage_info(),
     RamQuotas = proplists:get_value(ram, StorageInfo),
     QuotaUsed = proplists:get_value(quotaUsed, RamQuotas),
