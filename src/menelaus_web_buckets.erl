@@ -566,11 +566,11 @@ perform_warnings_validation(Ctx, ParsedProps, Errors) ->
 num_replicas_warnings_validation(_Ctx, undefined) ->
     [];
 num_replicas_warnings_validation(Ctx, NReplicas) ->
-    ActiveCount = length(ns_cluster_membership:active_nodes()),
+    ActiveCount = length(ns_cluster_membership:filter_out_non_kv_nodes(ns_cluster_membership:active_nodes())),
     Warnings =
         if
             ActiveCount =< NReplicas ->
-                ["you do not have enough servers to support this number of replicas"];
+                ["you do not have enough data servers to support this number of replicas"];
             true ->
                 []
         end ++
