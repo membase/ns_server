@@ -17,7 +17,7 @@
 
 -behavior(application).
 
--export([start/2, stop/1, get_loglevel/1, restart/0, setup_node_names/0, get_babysitter_node/0,
+-export([start/2, stop/1, get_loglevel/1, setup_node_names/0, get_babysitter_node/0,
          get_babysitter_cookie/0,
          start_disk_sink/2, adjust_loglevel/2]).
 
@@ -77,20 +77,6 @@ start(_Type, _Args) ->
     end,
 
     ns_server_cluster_sup:start_link().
-
-restart() ->
-    %% NOTE: starting and stopping in usual way is surprisingly
-    %% hard. Because we normally do that from process which
-    %% group_leader is application_master of ns_server application. So
-    %% we just terminate and restart all childs instead.
-    {ok, {_, ChildSpecs}} = ns_server_cluster_sup:init([]),
-    %% we don't restart dist manager in order to avoid shutting
-    %% down/restarting net_kernel
-    DontRestart = [dist_manager, cb_couch_sup],
-    ChildIds = [element(1, Spec) || Spec <- ChildSpecs] -- DontRestart,
-    [supervisor:terminate_child(ns_server_cluster_sup, Id) || Id <- lists:reverse(ChildIds)],
-    ns_couchdb_api:restart_couch(),
-    [supervisor:restart_child(ns_server_cluster_sup, Id) || Id <- ChildIds].
 
 get_config_path() ->
     case application:get_env(ns_server, config_path) of
