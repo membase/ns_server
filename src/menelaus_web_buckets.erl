@@ -1067,7 +1067,7 @@ parse_validate_other_buckets_ram_quota(Value) ->
     end.
 
 extended_cluster_storage_info() ->
-    [{nodesCount, length(ns_cluster_membership:active_nodes())}
+    [{nodesCount, length(ns_cluster_membership:filter_out_non_kv_nodes(ns_cluster_membership:active_nodes()))}
      | ns_storage_conf:cluster_storage_info()].
 
 
