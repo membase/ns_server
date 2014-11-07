@@ -573,11 +573,11 @@ handle_uilogin(Req) ->
     Password = proplists:get_value("password", Params),
     case menelaus_auth:check_auth({User, Password}) of
         true ->
-            menelaus_auth:complete_uilogin(Req, admin);
+            menelaus_auth:complete_uilogin(Req, User, admin);
         _ ->
             case menelaus_auth:is_read_only_auth({User, Password}) of
                 true ->
-                    menelaus_auth:complete_uilogin(Req, ro_admin);
+                    menelaus_auth:complete_uilogin(Req, User, ro_admin);
                 _ ->
                     reply(Req, 400)
             end

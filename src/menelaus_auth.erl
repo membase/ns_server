@@ -34,7 +34,7 @@
          is_under_admin/1,
          is_read_only_auth/1,
          extract_ui_auth_token/1,
-         complete_uilogin/2,
+         complete_uilogin/3,
          complete_uilogout/1,
          maybe_refresh_token/1,
          may_expose_bucket_auth/1]).
@@ -130,8 +130,8 @@ kill_auth_cookie(Req) ->
     {Name, Content} = mochiweb_cookies:cookie(ui_auth_cookie_name(Req), "", Options),
     {Name, Content ++ "; expires=Thu, 01 Jan 1970 00:00:00 GMT"}.
 
-complete_uilogin(Req, Role) ->
-    Token = menelaus_ui_auth:generate_token(Role),
+complete_uilogin(Req, User, Role) ->
+    Token = menelaus_ui_auth:generate_token({User, Role}),
     CookieHeader = generate_auth_cookie(Req, Token),
     menelaus_util:reply(Req, 200, [CookieHeader]).
 
@@ -178,7 +178,7 @@ check_auth_any_bucket(UserPassword) ->
 %% checks if given credentials are admin credentials
 check_auth({token, Token}) ->
     case menelaus_ui_auth:check(Token) of
-        {ok, admin} ->
+        {ok, {_, admin}} ->
             true;
         _ ->
             % An undefined user means no login/password auth check.
@@ -200,7 +200,7 @@ check_special_auth(undefined) ->
 
 is_read_only_auth({token, Token}) ->
     case menelaus_ui_auth:check(Token) of
-        {ok, ro_admin} -> true;
+        {ok, {_, ro_admin}} -> true;
         _ -> false
     end;
 is_read_only_auth({User, Password}) ->
