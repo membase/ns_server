@@ -237,7 +237,12 @@ attempt(DbName, DocId, Mod, Fun, Args, fast_forward) ->
 
     case R of
         next_attempt ->
-            Nodes = ns_cluster_membership:active_nodes(),
+            Nodes = case ns_bucket:get_bucket(?b2l(DbName)) of
+                        {ok, BC} ->
+                            ns_bucket:bucket_nodes(BC);
+                        not_present ->
+                            []
+                    end,
             attempt(DbName, DocId, Mod, Fun, Args, Nodes);
         {ok, R1} ->
             R1
