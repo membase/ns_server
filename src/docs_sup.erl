@@ -39,8 +39,6 @@ child_specs(BucketName) ->
      {doc_replication_srv,
       {doc_replication_srv, start_link, [BucketName]},
       permanent, 1000, worker, [doc_replication_srv]},
-     {wait_for_couchdb_node, {ns_couchdb_api, wait_for_name, [last_process]},
-      transient, brutal_kill, worker, []},
      {capi_set_view_manager,
       {capi_set_view_manager, start_link_remote, [ns_node_disco:couchdb_node(), BucketName]},
       permanent, 1000, worker, []},

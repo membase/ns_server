@@ -26,6 +26,8 @@
 %% API
 -export([start_link/0, start_couchdb_node/0, start_ns_server/0, stop_ns_server/0]).
 
+-export([pause_ns_couchdb_link/0, unpause_ns_couchdb_link/0]).
+
 %% Supervisor callbacks
 -export([init/1]).
 
@@ -60,10 +62,19 @@ child_specs() ->
       transient, brutal_kill, worker, []},
 
      {start_couchdb_node, {?MODULE, start_couchdb_node, []},
-      {permanent, 5000}, 1000, worker, []},
+      {permanent, 5}, 1000, worker, []},
+
+     {wait_for_couchdb_node, {erlang, apply, [fun wait_link_to_couchdb_node/0, []]},
+      permanent, 1000, worker, []},
 
      {ns_server_sup, {ns_server_sup, start_link, []},
       permanent, infinity, supervisor, [ns_server_sup]}].
+
+pause_ns_couchdb_link() ->
+    ok = gen_server:call(wait_link_to_couchdb_node, pause, infinity).
+
+unpause_ns_couchdb_link() ->
+    ok = gen_server:call(wait_link_to_couchdb_node, unpause, infinity).
 
 create_ns_couchdb_spec() ->
     CouchIni = case init:get_argument(couch_ini) of
@@ -91,25 +102,79 @@ create_ns_couchdb_spec() ->
       ns_couchdb, [{ns_server_node, node()}], "NS_COUCHDB_ENV_ARGS", ErlangArgs).
 
 start_couchdb_node() ->
-    proc_lib:start_link(
-      erlang, apply,
-      [fun () ->
-               ok = net_kernel:monitor_nodes(true, [nodedown_reason]),
-               ns_port_server:start_link(fun () -> create_ns_couchdb_spec() end),
-               ns_couchdb_api:wait_for_name(last_process),
+    ns_port_server:start_link(fun () -> create_ns_couchdb_spec() end).
 
-               proc_lib:init_ack({ok, self()}),
-               monitor_couchdb_node_loop(ns_node_disco:couchdb_node())
-       end, []]).
+wait_link_to_couchdb_node() ->
+    proc_lib:start_link(erlang, apply, [fun do_wait_link_to_couchdb_node/0, []]).
 
-monitor_couchdb_node_loop(CouchdbNode) ->
+
+do_wait_link_to_couchdb_node() ->
+    erlang:register(wait_link_to_couchdb_node, self()),
+    do_wait_link_to_couchdb_node_2(true).
+
+do_wait_link_to_couchdb_node_2(Initial) ->
+    ?log_debug("Waiting for couchdb node to start"),
+    RV = misc:poll_for_condition(
+           fun () ->
+                   case rpc:call(ns_node_disco:couchdb_node(), erlang, apply, [fun is_couchdb_node_ready/0, []], 5000) of
+                       {ok, _} = OK -> OK;
+                       Other ->
+                           ?log_debug("ns_couchdb is not ready: ~p", [Other]),
+                           false
+                   end
+           end,
+           60000, 200),
+    case RV of
+        {ok, Pid} ->
+            case Initial of
+                true ->
+                    proc_lib:init_ack({ok, self()});
+                _ -> ok
+            end,
+            MRef = erlang:monitor(process, Pid),
+            wait_link_to_couchdb_node_loop(MRef);
+        timeout ->
+            exit(timeout)
+    end.
+
+wait_link_to_couchdb_node_loop(MRef) ->
     receive
-        {nodeup, CouchdbNode} ->
-            ?log_debug("Node ~p started.", [CouchdbNode]),
-            monitor_couchdb_node_loop(CouchdbNode);
-        {nodedown, CouchdbNode} ->
-            ?log_debug("Node ~p went down. Restart port and ns_server_sup.", [CouchdbNode]),
-            exit({shutdown, {nodedown, CouchdbNode}});
+        {'$gen_call', {FromPid, _} = From, pause} ->
+            erlang:demonitor(MRef, [flush]),
+            MRef2 = erlang:monitor(process, FromPid),
+            gen_server:reply(From, ok),
+            wait_link_to_couchdb_node_paused_loop(FromPid, MRef2);
+        Msg ->
+            ?log_debug("Exiting due to message: ~p", [Msg]),
+            exit(normal)
+    end.
+
+wait_link_to_couchdb_node_paused_loop(PauserPid, PauserMRef) ->
+    receive
+        {'$gen_call', {FromPid, _} = From, Msg} ->
+            case Msg of
+                pause ->
+                    gen_server:reply(From, already_paused);
+                unpause when FromPid =:= PauserPid ->
+                    erlang:demonitor(PauserMRef),
+                    gen_server:reply(From, ok),
+                    do_wait_link_to_couchdb_node_2(false)
+            end;
+        Msg ->
+            ?log_debug("Exiting due to message: ~p", [Msg]),
+            exit(normal)
+    end.
+
+%% NOTE: rpc-ed between ns_server and ns_couchdb nodes.
+is_couchdb_node_ready() ->
+    case erlang:whereis(ns_couchdb_sup) of
+        P when is_pid(P) ->
+            try supervisor:which_children(P) of
+                _ ->
+                    {ok, P}
+            catch _:_ ->
+                    false
+            end;
         _ ->
-            monitor_couchdb_node_loop(CouchdbNode)
+            false
     end.

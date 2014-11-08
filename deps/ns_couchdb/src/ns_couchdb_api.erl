@@ -49,9 +49,7 @@
          cancel_view_compact/3,
          try_to_cleanup_indexes/1,
          get_view_group_data_size/2,
-         get_safe_purge_seqs/1,
-
-         wait_for_name/1]).
+         get_safe_purge_seqs/1]).
 
 -export([handle_rpc/1]).
 
@@ -156,28 +154,6 @@ get_view_group_data_size(BucketName, DDocId) ->
 
 get_safe_purge_seqs(BucketName) ->
     maybe_rpc_couchdb_node({get_safe_purge_seqs, BucketName}).
-
-wait_for_name(Name) ->
-    ?log_debug("Waiting for ~p on couchdb node to start", [Name]),
-    do_wait_for_name(Name),
-    ignore.
-
-do_wait_for_name(Name) ->
-    case rpc:call(ns_node_disco:couchdb_node(), ?MODULE, handle_rpc, [{whereis, Name}], 1000) of
-        {loaded, Pid} ->
-            ?log_debug("Process ~p (~p) is available on couchdb node.", [Name, Pid]),
-            Pid;
-        RV ->
-            ?log_debug("Whereis for name ~p returned ~p. Keep waiting.", [Name, RV]),
-            receive
-                {'EXIT', Pid, Reason} ->
-                    ?log_debug("Received exit from ~p with reason ~p", [Pid, Reason]),
-                    exit(Reason)
-            after 500 ->
-                    ok
-            end,
-            do_wait_for_name(Name)
-    end.
 
 maybe_rpc_couchdb_node(Request) ->
     maybe_rpc_couchdb_node(Request, infinity, undefined).
