@@ -1,4 +1,4 @@
-<div class="join_cluster" id="join_cluster_dialog" style="width: 550px">
+<div class="join_cluster join_cluster_dialog" id="join_cluster_dialog" style="width: 550px">
   <h1 class="dialog_corner_radius">Add Server</h1>
   <div>
   <form novalidate ng-submit="onSubmit(form)" autocomplete="off" name="form" mn-spinner-directive="viewLoading">
@@ -6,6 +6,7 @@
       <div><strong>Warning</strong> – Adding a server to this cluster means all data on that server will be removed.</div>
       <div ng-repeat="error in errors"><strong>Attention</strong> - {{error}}<br></div>
       <div ng-show="form.hostname.$error.required"><strong>Attention</strong> - Server IP Address cannot be blank.</div>
+      <span class="warning" ng-show="form.$error.services" style="margin: 10px 30px 10px 0px; display: block; padding: 0;"><strong>Attention</strong> - Please specify a Service(s) for this node.</span>
     </div>
     <fieldset>
       <ul>
@@ -42,6 +43,28 @@
           <input type="password" class="inp" name="password" id="password_inp" ng-model="newServer.password">
         </li>
       </ul>
+    </fieldset>
+    <fieldset>
+      <legend>Services</legend>
+      <div class="init_cluster_service_per_node_warning" ng-show="servicesWarning" style="margin-left: 20px;">
+        Warning: Not recommended to have >1 Service per node in a production environment.
+      </div>
+      <ul class="join_cluster_dialog_services">
+        <li>
+          <input type="checkbox" class="inp" name="services" value="kv" ng-model="services.kv"  id="add_servers_data_checkbox" />
+          <label class="label" for="add_servers_data_checkbox" style="text-align: left; width: 45px;">Data</label>
+          <input type="checkbox" class="inp" name="services" value="n1ql" ng-model="services.n1ql"  id="add_servers_n1ql_checkbox" />
+          <label class="label" for="add_servers_n1ql_checkbox" style="text-align: left; width: 45px;">N1QL</label>
+          <input type="checkbox" class="inp" name="services" value="moxi" ng-model="services.moxi"  id="add_servers_moxi_checkbox" />
+          <label class="label" for="add_servers_moxi_checkbox" style="text-align: left; width: 45px;">Moxi</label>
+          <a class="tooltip text_11"><span>What's this?</span>
+            <span class="tooltip_msg" style="width:350px;"><span>
+              What's this?
+            </span></span>
+          </a>
+        </li>
+      </ul>
+    </fieldset>
     </fieldset>
     <div class="save_cancel clearfix">
       <button type="submit" class="save_button float_right">Add Server</button>

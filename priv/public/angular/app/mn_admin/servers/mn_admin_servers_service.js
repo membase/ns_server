@@ -1,5 +1,5 @@
 angular.module('mnAdminServersService').factory('mnAdminServersService',
-  function (mnHttp, mnAdminService, mnTasksDetails, mnPoolDetails, $q, $state, $stateParams) {
+  function (mnHttp, mnAdminService, mnTasksDetails, mnPoolDetails, $q, $state, $stateParams, mnHelper) {
     var mnAdminServersService = {};
 
     var pendingEject = [];
@@ -22,10 +22,29 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       $state.transitionTo($state.current, $stateParams, {reload: true, inherit: true, notify: true});
     };
 
+    mnAdminServersService.initializeServices = function ($scope) {
+      $scope.services = {
+        kv: true
+      };
+
+      $scope.$watch(function () {
+        return mnHelper.checkboxesToList($scope.services);
+      }, function (services) {
+        $scope.servicesWarning = services.length > 1;
+      }, true);
+    };
+
     mnAdminServersService.reAddNode = function (data) {
       return mnHttp({
         method: 'POST',
         url: '/controller/setRecoveryType',
+        data: data
+      });
+    };
+    mnAdminServersService.setupServices = function (data) {
+      return mnHttp({
+        method: 'POST',
+        url: '/node/controller/setupServices',
         data: data
       });
     };

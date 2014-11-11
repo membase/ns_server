@@ -60,6 +60,15 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
           $scope.showAutoFailOverWarningMessage = true
         });
     };
+    $scope.formatServices = function (services) {
+      return _(services).map(function (service) {
+        switch (service) {
+          case 'kv': return 'Data';
+          case 'n1ql': return 'N1QL';
+          case 'moxi': return 'Moxi';
+        }
+      }).value();
+    }
 
 
     function getOpenedServers() {

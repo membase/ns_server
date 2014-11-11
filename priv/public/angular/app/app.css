@@ -216,6 +216,8 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .servers .list th {text-align:left!important;padding-right:0!important;padding-left:0!important;}
 .servers .list td.ram {padding-left:5px!important;padding-right:0!important;}
 .servers .list th.node_name {padding-left:14px!important;}
+.servers .servers_icons {padding-right: 21px; text-align: right;}
+.servers .servers_services_wrarning {display: inline-block; width: 21px; height: 20px; background: url('/images/warning_bg_yellow.png') 0 0 no-repeat; }
 
 .vertical_bar {float:left;overflow:hidden;width:1em;height:3em;background:white;border:1px solid #999;border-radius:2px;margin-right:5px}
 .vertical_bar .used{position:relative;background:#00BCE9;}
@@ -557,7 +559,10 @@ body.auth #cluster_state_id, body.init_welcome #cluster_state_id {font-style:ita
 
 .analytics > h1 { text-transform: none !important; }
 
-#join_cluster_dialog label {width:150px !important;}
+.join_cluster_dialog label {width:150px;}
+.join_cluster_dialog_services {margin-left: 90px;}
+.join_cluster_dialog_services input {border: 0; margin-right: 0;}
+.join_cluster_dialog_services input, .join_cluster_dialog_services label {vertical-align: middle;}
 #join_cluster_dialog_errors_container {padding-left: 40px;}
 
 .active_tooltip {z-index: 2;}
@@ -634,12 +639,16 @@ body.init_resources #init_resources_dialog {background:none; background-color:#e
 #init_cluster_form > div > div {margin-left:85px;}
 #init_cluster_form div label {display:inline-block;white-space:nowrap;}
 #init_cluster_form input {font-size:13px;border:1px solid #ccd3d7;padding:3px;vertical-align: middle;}
-#init_cluster_form .memory-quota {overflow:hidden;}
+#init_cluster_form .memory-quota {overflow:hidden;margin-left: 20px;}
 #init_cluster_form .login-credentials label{width:100px;}
 #init_cluster_form .login-credentials { margin-right: 85px;}
 #init_cluster_form .memory-quota label{width:170px;}
 #init_cluster_form .memory-quota input {width:60px;vertical-align:middle;}
 #init_cluster_form .login-credentials > div {margin-top: 10px;}
+
+.init_block .start_new_cluster_block > div {margin-left: 20px;}
+.init_block .start_new_cluster_block .warning {margin: 10px 30px 10px 0;}
+.init_cluster_service_per_node_warning {color:#ec5223;font-size:11px;margin: 10px 40px 10px 0;padding: 0; line-height: 15px;}
 
 .init_block .warning {clear:both;display:block;line-height:15px; margin: 20px 0 0; font-size: 11px; padding: 0;}
 .init_block .ram-total-size {line-height: 25px;}
@@ -705,14 +714,14 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .server_row .dynamic_inactiveFailed,
 .server_row .dynamic_warmup,
 .server_row .pending_add {width: 65px; padding: 0 !important; background-image: url("/images/server_status_icons_solid_bg-v2.png"); background-repeat: no-repeat;}
-.server_row .dynamic_healthy {background-position: 50% 19px;}
+.server_row .dynamic_healthy {background-position: 0 19px;}
 .server_row .dynamic_unhealthy,
-.server_row .dynamic_unhealthy.dynamic_inactiveFailed {background-position: 50% -160px;}
+.server_row .dynamic_unhealthy.dynamic_inactiveFailed {background-position: 0 -160px;}
 .server_row .dynamic_inactiveFailed,
 .server_row .dynamic_warmup,
-.server_row .pending_add {background-position: center -310px;}
-.server_row.dynamic_inactiveFailed .dynamic_inactiveFailed {background-position: center -303px;}
-.server_row.dynamic_inactiveFailed .dynamic_unhealthy.dynamic_inactiveFailed {background-position: center -154px;}
+.server_row .pending_add {background-position: 0 -310px;}
+.server_row.dynamic_inactiveFailed .dynamic_inactiveFailed {background-position: 0 -303px;}
+.server_row.dynamic_inactiveFailed .dynamic_unhealthy.dynamic_inactiveFailed {background-position: 0 -154px;}
 
 .servers h2 { height: 25px;}
 .servers_list ul {*margin:-1px 0 0;*position:relative;*top:1px;}

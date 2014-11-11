@@ -38,29 +38,42 @@
     <div class="panes">
       <div class="servers_list">
         <table class="list" style="width:100%">
+          <colgroup>
+            <col style="width:19%">
+            <col style="width:9%">
+            <col style='{%= isGroupsAvailable ? "width: 7%;" : "width: 0px;" %}'>
+            <col style="width:7%">
+            <col style="width:8%">
+            <col style="width:8%">
+            <col style="width:8%">
+            <col style="width:8%">
+            <col style="width:4%">
+            <col style="width:22%">
+          </colgroup>
           <tbody>
             <tr>
-              <th class="node_name" colspan="2" style="text-align:left;">Server Node Name</th>
+              <th class="node_name" style="text-align:left;">Server Node Name</th>
               <th></th>
               <th style='{{ isGroupsAvailable ? "text-align: center!important;" : "width: 0px;" }}'>{{ isGroupsAvailable ? "Group" : " " }}</th>
+              <th>Services</th>
               <th>RAM Usage</th>
               <th>Swap Usage</th>
               <th>CPU Usage</th>
               <th>Data/Disk Usage</th>
-              <th colspan="2" style="text-indent:18px;">Items (Active / Replica)</th>
+              <th style="text-indent:8px;white-space: nowrap;">Items (Active / Replica)</th>
               <th></th>
             </tr>
           </tbody>
           <tbody ng-repeat="node in currentNodes | orderBy:'hostname' track by node.otpNode">
             <tr ng-if="node.isReAddPossible" class="add_back_row when-roadmin-avoid-me">
-              <td colspan="11">
+              <td colspan="10">
                 <span class="add_back_btn" ng-click="reAddNode('full', node.otpNode)"><span>Full Recovery</span></span>
                 <span class="add_back_btn only-when-30" ng-click="reAddNode('delta', node.otpNode)"><span>Delta Recovery</span></span>
                 <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
               </td>
             </tr>
             <tr class="server_row {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" id="{{node.safeNodeOtpNode}}">
-              <td class="node_name ellipsis" colspan="2">
+              <td class="node_name ellipsis">
                 <a ng-if="!node.isNodeUnhealthy"
                    ng-click="toggleDetails(node.hostname)"
                    class="{{'casper_open_cluster_' + node.safeNodeOtpNode}}"
@@ -78,11 +91,18 @@
                   {{node.strippedPort}}
                 </a>
               </td>
-              <td class="{{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" ng-class="{dynamic_lastActive: node.isLastActive}">
+              <td class="servers_icons  {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" ng-class="{dynamic_lastActive: node.isLastActive}">
+                <span class="servers_services_wrarning" ng-show="{{node.services.length > 1}}" title="Its not recommended to provision a node with more than 1 services if this a production cluster"></span>
               </td>
               <td>
                 <div class="ellipsis" title="{{node.group}}">{{node.group}}</div>
               </td>
+              <td style="text-align: left;">
+                <span ng-repeat="service in formatServices(node.services)">
+                  {{service}}
+                </span>
+              </td>
+
               <td class="ram" mn-vertical-bar="" conf="node.ramUsageConf">
               </td>
               <td class="ram" mn-vertical-bar="" conf="node.swapUsageConf">
@@ -97,18 +117,18 @@
                   {{node.couchDataSize}} / <br>{{node.couchDiskUsage}}
                 </span>
               </td>
-              <td class="rep">
+              <td class="rep" style="padding-left:0;padding-right:0;">
                 {{node.currItems}}/<br>{{node.currVbItems}}
               </td>
               <td
                 ng-if="tasks.inRebalance &amp;&amp; tasks.tasksRebalance.status === 'running'"
-                class="actions" colspan="2">
+                class="actions">
                   <span class="usage_info">{{node.rebalanceProgress}} % Complete</span>
                   <span class="server_usage"><span style="width: {{node.rebalanceProgress}}%"></span></span>
               </td>
               <td
                 ng-if="!tasks.inRebalance &amp;&amp; node.isNodeInactiveAdded &amp;&amp; node.recoveryType === 'none'"
-                class="actions with_state_message" colspan="2">
+                class="actions with_state_message">
                   <span class="state_message">Pending Add</span>
                   <a
                     class="list_button btn_cancel eject_server when-roadmin-avoid-me"
@@ -117,7 +137,7 @@
               </td>
               <td
                 ng-if="!tasks.inRebalance &amp;&amp; node.isNodeInactiveAdded &amp;&amp; node.recoveryType !== 'none'"
-                class="actions with_state_message" colspan="2" >
+                class="actions with_state_message">
                   <span class="state_message">Pending {{node.recoveryType}} recovery</span>
                   <a
                     class="list_button btn_cancel eject_server when-roadmin-avoid-me"
@@ -126,7 +146,7 @@
               </td>
               <td
                 ng-if="!tasks.inRebalance &amp;&amp; !node.isNodeInactiveAdded &amp;&amp; node.pendingEject"
-                class="actions with_state_message" colspan="2">
+                class="actions with_state_message">
                   <span class="state_message">Pending Removal</span>
                   <a
                     class="list_button btn_cancel remove_from_list when-roadmin-avoid-me"
@@ -135,7 +155,7 @@
               </td>
               <td
                 ng-if="!tasks.inRebalance &amp;&amp; !node.isNodeInactiveAdded &amp;&amp; !node.pendingEject"
-                class="actions" colspan="2">
+                class="actions">
                   <a
                     class="list_button eject_server when-roadmin-avoid-me casper_servers_remove_popup"
                     ng-class="{dynamic_disabled: node.isLastActive || node.isActiveUnhealthy || tasks.inRecoveryMode}"
@@ -153,7 +173,7 @@
 
           <tbody ng-if="!currentNodes.length">
             <tr class="server_row rebalance_empty">
-              <td colspan="11">There are no servers pending rebalance.</td>
+              <td colspan="10">There are no servers pending rebalance.</td>
             </tr>
           </tbody>
         </table>

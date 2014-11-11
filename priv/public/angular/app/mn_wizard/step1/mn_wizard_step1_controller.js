@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep1Controller',
-  function ($scope, $state, $window, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper) {
+  function ($scope, $state, $window, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper, mnAdminServersService) {
     $scope.hostname = selfConfig.hostname;
 
     $scope.clusterMember = {
@@ -7,6 +7,12 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
       username: "Administrator",
       password: ''
     };
+
+    mnAdminServersService.initializeServices($scope);
+
+    $scope.$watch('joinCluster', function () {
+      $scope.services = {kv: true};
+    });
 
     $scope.dynamicRamQuota = selfConfig.dynamicRamQuota;
     $scope.ramTotalSize = selfConfig.ramTotalSize;
@@ -44,14 +50,27 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
       if ($scope.viewLoading) {
         return;
       }
+      var isJoinCluster = $scope.isJoinCluster('ok');
+      if (isJoinCluster) {
+        $scope.joinClusterForm.$setValidity('services', !!mnHelper.checkboxesToList($scope.services).length);
+      }
+      if ($scope.joinClusterForm.$invalid) {
+        return;
+      }
       var promise = $q.all([
         makeRequestWithErrorsHandler('postDiskStorage', {path: $scope.dbPath, index_path: $scope.indexPath}),
         makeRequestWithErrorsHandler('postHostname', $scope.hostname)
       ]).then(function () {
-        if ($scope.isJoinCluster('ok')) {
-          return makeRequestWithErrorsHandler('postJoinCluster', $scope.clusterMember).then(login).then(function () {$window.location.reload();});
+        var services = mnHelper.checkboxesToList($scope.services);
+        if (!isJoinCluster) {
+          return $q.all([
+            mnHelper.rejectReasonToScopeApplyer($scope, 'setupServicesErrors', mnAdminServersService.setupServices({services: services.join(',')})),
+            makeRequestWithErrorsHandler('postMemory', $scope.dynamicRamQuota).then(goNext)
+          ]);
         } else {
-          return makeRequestWithErrorsHandler('postMemory', $scope.dynamicRamQuota).then(goNext);
+          var data = _.clone($scope.clusterMember);
+          data.services = services.join(',');
+          return makeRequestWithErrorsHandler('postJoinCluster', data).then(login).then(function () {$window.location.reload();});
         }
       });
       mnHelper.handleSpinner($scope, promise);

@@ -8,7 +8,7 @@ angular.module('mnWizard', [
   'ui.router'
 ]);
 
-angular.module('mnWizardStep1Service', []);
+angular.module('mnWizardStep1Service', ['mnAdminServersService']);
 angular.module('mnWizardStep2Service', []);
 angular.module('mnWizardStep3Service', []);
 angular.module('mnWizardStep4Service', []);

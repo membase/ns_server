@@ -6,13 +6,16 @@ angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
       user: 'Administrator',
       password: ''
     };
+
     $scope.cancel = function () {
       $modalInstance.dismiss('cancel');
-    }
+    };
 
     function reset() {
       $scope.focusMe = true;
     }
+
+    mnAdminServersService.initializeServices($scope);
 
     $scope.isGroupsAvailable = !!groups;
 
@@ -25,6 +28,9 @@ angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
       if ($scope.viewLoading) {
         return;
       }
+
+      form.$setValidity('services', !!mnHelper.checkboxesToList($scope.services).length);
+
       if (form.$invalid) {
         return reset();
       }

@@ -16,6 +16,10 @@ angular.module('mnHelper').factory('mnHelper',
       });
     };
 
+    mnHelper.checkboxesToList = function (object) {
+      return _(object).pick(angular.identity).keys().value();
+    };
+
     mnHelper.rejectReasonToScopeApplyer = function ($scope, name, promise) {
       if (!promise) {
         promise = name;
