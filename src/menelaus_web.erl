@@ -579,7 +579,7 @@ handle_uilogin(Req) ->
                 true ->
                     menelaus_auth:complete_uilogin(Req, User, ro_admin);
                 _ ->
-                    reply(Req, 400)
+                    menelaus_auth:reject_uilogin(Req, User)
             end
     end.
 

@@ -72,7 +72,9 @@
          wait_for_seqno_persistence/3,
          vbucket_state_to_atom/1,
          config_validate/2,
-         config_reload/1
+         config_reload/1,
+         audit_put/3,
+         audit_config_reload/1
         ]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
@@ -96,7 +98,8 @@
                      ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
                      ?RDECR | ?RDECRQ | ?SYNC | ?CMD_CHECKPOINT_PERSISTENCE |
                      ?CMD_SEQNO_PERSISTENCE | ?CMD_GET_RANDOM_KEY |
-                     ?CMD_COMPACT_DB.
+                     ?CMD_COMPACT_DB | ?CMD_AUDIT_PUT | ?CMD_AUDIT_CONFIG_RELOAD.
+
 
 %% A memcached client that speaks binary protocol.
 -spec cmd(mc_opcode(), port(), recv_callback(), any(),
@@ -1016,6 +1019,24 @@ config_validate(Sock, Body) ->
 
 config_reload(Sock) ->
     RV = cmd(?CMD_CONFIG_RELOAD, Sock, undefined, undefined,
+             {#mc_header{}, #mc_entry{}},
+             infinity),
+    case process_error_response(RV) of
+        {memcached_error, success, _} -> ok;
+        Err -> Err
+    end.
+
+audit_put(Sock, Code, Body) ->
+    RV = cmd(?CMD_AUDIT_PUT, Sock, undefined, undefined,
+             {#mc_header{}, #mc_entry{data = Body, ext = <<Code:32>>}},
+             infinity),
+    case process_error_response(RV) of
+        {memcached_error, success, _} -> ok;
+        Err -> Err
+    end.
+
+audit_config_reload(Sock) ->
+    RV = cmd(?CMD_AUDIT_CONFIG_RELOAD, Sock, undefined, undefined,
              {#mc_header{}, #mc_entry{}},
              infinity),
     case process_error_response(RV) of

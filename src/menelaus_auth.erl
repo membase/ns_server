@@ -35,6 +35,7 @@
          is_read_only_auth/1,
          extract_ui_auth_token/1,
          complete_uilogin/3,
+         reject_uilogin/2,
          complete_uilogout/1,
          maybe_refresh_token/1,
          may_expose_bucket_auth/1,
@@ -138,7 +139,12 @@ kill_auth_cookie(Req) ->
 complete_uilogin(Req, User, Role) ->
     Token = menelaus_ui_auth:generate_token({User, Role}),
     CookieHeader = generate_auth_cookie(Req, Token),
+    ns_audit:login_success(store_user_info(Req, User, Role, Token)),
     menelaus_util:reply(Req, 200, [CookieHeader]).
+
+reject_uilogin(Req, User) ->
+    ns_audit:login_failure(store_user_info(Req, User, undefined, undefined)),
+    menelaus_util:reply(Req, 400).
 
 complete_uilogout(Req) ->
     CookieHeader = kill_auth_cookie(Req),
