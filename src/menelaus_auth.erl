@@ -37,7 +37,10 @@
          complete_uilogin/3,
          complete_uilogout/1,
          maybe_refresh_token/1,
-         may_expose_bucket_auth/1]).
+         may_expose_bucket_auth/1,
+         get_user/1,
+         get_token/1,
+         get_role/1]).
 
 %% External API
 
@@ -77,20 +80,22 @@ is_bucket_accessible(BucketTuple, Req, ReadOnlyOk) ->
 
 apply_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
-    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_auth/1).
+    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_admin_auth/2).
 
 apply_ro_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
-    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_ro_auth/1).
+    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_read_only_auth/2).
 
 apply_special_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
-    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_special_auth/1).
+    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_special_auth/2).
 
 apply_auth_with_auth_data(Req, F, Args, UserPassword, AuthFun) ->
-    case AuthFun(UserPassword) of
-        true -> apply(F, Args ++ [Req]);
-        _ -> require_auth(Req)
+    case AuthFun(Req, UserPassword) of
+        {true, NewReq} ->
+            apply(F, Args ++ [NewReq]);
+        _ ->
+            require_auth(Req)
     end.
 
 
@@ -152,6 +157,22 @@ maybe_refresh_token(Req) ->
             []
     end.
 
+store_user_info(Req, User, Role, Token) ->
+    Headers = Req:get(headers),
+    H1 = mochiweb_headers:enter("menelaus_auth-user", User, Headers),
+    H2 = mochiweb_headers:enter("menelaus_auth-role", Role, H1),
+    H3 = mochiweb_headers:enter("menelaus_auth-token", Token, H2),
+    mochiweb_request:new(Req:get(socket), Req:get(method), Req:get(raw_path), Req:get(version), H3).
+
+get_user(Req) ->
+    Req:get_header_value("menelaus_auth-user").
+
+get_token(Req) ->
+    Req:get_header_value("menelaus_auth-token").
+
+get_role(Req) ->
+    Req:get_header_value("menelaus_auth-role").
+
 %% applies given function F if current credentials allow access to at
 %% least single SASL-auth bucket. So admin credentials and bucket
 %% credentials works. Other credentials do not allow access. Empty
@@ -162,50 +183,112 @@ apply_auth_any_bucket(Req, F, Args) ->
             apply_ro_auth(Req, F, Args);
         _ ->
             UserPassword = extract_auth(Req),
-            case check_auth_any_bucket(UserPassword) of
-                true -> apply(F, Args ++ [Req]);
-                _    -> apply_ro_auth(Req, F, Args)
+            case check_auth_any_bucket(Req, UserPassword) of
+                {true, NewReq} ->
+                    apply(F, Args ++ [NewReq]);
+                _ ->
+                    apply_ro_auth(Req, F, Args)
             end
     end.
 
 %% Checks if given credentials allow access to any SASL-auth
 %% bucket.
-check_auth_any_bucket(UserPassword) ->
+check_auth_any_bucket(Req, UserPassword = {User, _}) ->
     Buckets = ns_bucket:get_buckets(),
-    lists:any(bucket_auth_fun(UserPassword, true),
-              Buckets).
+    case lists:any(bucket_auth_fun(UserPassword, true),
+                   Buckets) of
+        true ->
+            {true, store_user_info(Req, User, bucket, undefined)};
+        false ->
+            false
+    end.
+
+check_auth(Auth) ->
+    case check_admin_auth_int(Auth) of
+        {true, _User, _Token} ->
+            true;
+        false ->
+            false
+    end.
+
+check_admin_auth(Req, Auth) ->
+    case check_admin_auth_int(Auth) of
+        {true, User, Token} ->
+            {true, store_user_info(Req, User, admin, Token)};
+        false ->
+            false
+    end.
 
 %% checks if given credentials are admin credentials
-check_auth({token, Token}) ->
+check_admin_auth_int({token, Token}) ->
     case menelaus_ui_auth:check(Token) of
-        {ok, {_, admin}} ->
-            true;
+        {ok, {User, admin}} ->
+            {true, User, Token};
         _ ->
             % An undefined user means no login/password auth check.
-            ns_config_auth:get_user(admin) =:= undefined
+            case ns_config_auth:get_user(admin) of
+                undefined ->
+                    {true, undefined, Token};
+                _ ->
+                    false
+            end
     end;
-check_auth({User, Password}) ->
-    ns_config_auth:authenticate(admin, User, Password);
-check_auth(undefined) ->
-    ns_config_auth:get_user(admin) =:= undefined.
+check_admin_auth_int({User, Password}) ->
+    case ns_config_auth:authenticate(admin, User, Password) of
+        true ->
+            {true, User, undefined};
+        false ->
+            false
+    end;
+check_admin_auth_int(undefined) ->
+    case ns_config_auth:get_user(admin) of
+        undefined ->
+            {true, undefined, undefined};
+        _ ->
+            false
+    end.
 
-check_ro_auth(UserPassword) ->
-    is_read_only_auth(UserPassword) orelse check_auth(UserPassword).
-
-check_special_auth({User, Password}) ->
-    ns_config_auth:authenticate(special, User, Password) orelse
-        check_auth({User, Password});
-check_special_auth(undefined) ->
+check_special_auth(Req, {User, Password}) ->
+    case ns_config_auth:authenticate(special, User, Password) of
+        true ->
+            {true, store_user_info(Req, User, special, undefined)};
+        false ->
+            check_admin_auth(Req, {User, Password})
+        end;
+check_special_auth(_, undefined) ->
     false.
 
-is_read_only_auth({token, Token}) ->
+is_read_only_auth(Auth) ->
+    case check_read_only_auth(Auth) of
+        {true, _, _} ->
+            true;
+        false ->
+            false
+    end.
+
+check_read_only_auth(Req, Auth) ->
+    case check_read_only_auth(Auth) of
+        {true, User, Token} ->
+            {true, store_user_info(Req, User, ro_admin, Token)};
+        false ->
+            check_admin_auth(Req, Auth)
+    end.
+
+check_read_only_auth({token, Token}) ->
     case menelaus_ui_auth:check(Token) of
-        {ok, {_, ro_admin}} -> true;
-        _ -> false
+        {ok, {User, ro_admin}} ->
+            {true, User, Token};
+        _ ->
+            false
     end;
-is_read_only_auth({User, Password}) ->
-    ns_config_auth:authenticate(ro_admin, User, Password);
-is_read_only_auth(undefined) ->
+check_read_only_auth({User, Password}) ->
+    case ns_config_auth:authenticate(ro_admin, User, Password) of
+        true ->
+            {true, User, undefined};
+        false ->
+            false
+    end;
+check_read_only_auth(undefined) ->
     false.
 
 extract_auth_user(Req) ->
@@ -270,8 +353,10 @@ parse_user(UserPasswordStr) ->
 %% password at all
 bucket_auth_fun(UserPassword, ReadOnlyOk) ->
     IsAdmin = case ReadOnlyOk of
-                  true -> check_ro_auth(UserPassword);
-                  _ -> check_auth(UserPassword)
+                  true ->
+                      is_read_only_auth(UserPassword) orelse check_auth(UserPassword);
+                  _ ->
+                      check_auth(UserPassword)
               end,
     case IsAdmin of
         true ->
