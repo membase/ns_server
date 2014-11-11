@@ -49,10 +49,10 @@ child_specs() ->
       permanent, 30000, worker, []},
 
      {xdc_rdoc_replicator,
-      {doc_replicator, start_link, [xdcr]},
+      {doc_replicator, start_link_xdcr, []},
       permanent, 1000, worker, [doc_replicator]},
 
-     {xdc_rdoc_replication_srv, {doc_replication_srv, start_link, [xdcr]},
+     {xdc_rdoc_replication_srv, {doc_replication_srv, start_link_xdcr, []},
       permanent, 1000, worker, [doc_replication_srv]},
 
      {wait_for_couchdb_node, {ns_couchdb_api, wait_for_name, [last_process]},

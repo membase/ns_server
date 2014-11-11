@@ -24,10 +24,18 @@
 
 
 -export([start_link/1,
+         start_link_xdcr/0,
          proxy_server_name/1]).
 
+start_link_xdcr() ->
+    proc_lib:start_link(erlang, apply, [fun start_proxy_loop/1, [xdcr]]).
+
 start_link(Bucket) ->
-    proc_lib:start_link(erlang, apply, [fun start_proxy_loop/1, [Bucket]]).
+    single_bucket_sup:ignore_if_not_couchbase_bucket(
+      Bucket,
+      fun (_) ->
+              proc_lib:start_link(erlang, apply, [fun start_proxy_loop/1, [Bucket]])
+      end).
 
 start_proxy_loop(Bucket) ->
     erlang:register(proxy_server_name(Bucket), self()),

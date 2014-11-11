@@ -21,10 +21,17 @@
 -include("ns_common.hrl").
 -include("couch_db.hrl").
 
--export([start_link/1, server_name/1]).
+-export([start_link/1, start_link_xdcr/0, server_name/1]).
+
+start_link_xdcr() ->
+    proc_lib:start_link(erlang, apply, [fun start_loop/1, [xdcr]]).
 
 start_link(Bucket) ->
-    proc_lib:start_link(erlang, apply, [fun start_loop/1, [Bucket]]).
+    single_bucket_sup:ignore_if_not_couchbase_bucket(
+      Bucket,
+      fun (_) ->
+              proc_lib:start_link(erlang, apply, [fun start_loop/1, [Bucket]])
+      end).
 
 start_loop(Bucket) ->
     ServerName = doc_replication_srv:proxy_server_name(Bucket),
