@@ -38,12 +38,10 @@ delete_databases_and_files(Bucket) ->
                  case misc:rm_rf(Path) of
                      ok -> ok;
                      Error ->
-                         ale:error(?USER_LOGGER, "Unable to rm -rf bucket database directory ~s~n~p", [Bucket, Error]),
-                         Error
+                         {rm_rf_error, Error}
                  end;
              Error ->
-                 ale:error(?USER_LOGGER, "Unable to delete some DBs for bucket ~s. Leaving bucket directory undeleted~n~p", [Bucket, Error]),
-                 Error
+                 {delete_vbuckets_error, Error}
          end,
     do_delete_bucket_indexes(Bucket),
     RV.

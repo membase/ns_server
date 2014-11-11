@@ -94,7 +94,16 @@ fetch_couch_stats(BucketName) ->
     maybe_rpc_couchdb_node({fetch_couch_stats, BucketName}).
 
 delete_databases_and_files(Bucket) ->
-    maybe_rpc_couchdb_node({delete_databases_and_files, Bucket}).
+    case maybe_rpc_couchdb_node({delete_databases_and_files, Bucket}) of
+        {delete_vbuckets_error, Error} ->
+            ale:error(?USER_LOGGER, "Unable to delete some DBs for bucket ~s. Leaving bucket directory undeleted~n~p", [Bucket, Error]),
+            Error;
+        {rm_rf_error, Error} ->
+            ale:error(?USER_LOGGER, "Unable to rm -rf bucket database directory ~s~n~p", [Bucket, Error]),
+            Error;
+        Other ->
+            Other
+    end.
 
 wait_index_updated(Bucket, VBucket) ->
     maybe_rpc_couchdb_node({wait_index_updated, Bucket, VBucket}).
