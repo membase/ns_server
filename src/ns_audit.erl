@@ -41,7 +41,7 @@ get_timestamp(Now = {_, _, Microsecs}) ->
     Time = io_lib:format("~2.2.0w:~2.2.0w:~2.2.0w.~6.6.0w", [Hour, Min, Sec, Microsecs]),
     Offset = io_lib:format("~p:~2.2.0w", [OffsetHrs, OffsetMin]),
 
-    props_to_json([{"date", Date}, {"time", Time}, {"UTCOffset", Offset}]).
+    props_to_json([{date, Date}, {time, Time}, {'UTCOffset', Offset}]).
 
 props_to_json(Props) ->
     {lists:map(fun ({Key, Value}) when is_list(Value) ->
@@ -51,15 +51,15 @@ props_to_json(Props) ->
                end, Props)}.
 
 get_user_id(User) ->
-    props_to_json([{"source", "internal"}, {"user", User}]).
+    props_to_json([{source, "internal"}, {user, User}]).
 
 put(Code, Req, Params) ->
-    Body = props_to_json([{"name", Code},
-                          {"timestamp", get_timestamp(now())},
-                          {"sessionID", menelaus_auth:get_token(Req)},
-                          {"remote", Req:get(peer)},
-                          {"userid", get_user_id(menelaus_auth:get_user(Req))},
-                          {"params", props_to_json(Params)}]),
+    Body = props_to_json([{name, Code},
+                          {timestamp, get_timestamp(now())},
+                          {sessionID, menelaus_auth:get_token(Req)},
+                          {remote, Req:get(peer)},
+                          {userid, get_user_id(menelaus_auth:get_user(Req))},
+                          {params, props_to_json(Params)}]),
 
     EncodedBody = ejson:encode(Body),
     ?log_debug("Audit ~p: ~p", [Code, EncodedBody]),
@@ -70,8 +70,8 @@ put(Code, Req, Params) ->
       end).
 
 login_success(Req) ->
-    put(login_success, Req, [{"role", menelaus_auth:get_role(Req)},
-                             {"userid", get_user_id(menelaus_auth:get_user(Req))}]).
+    put(login_success, Req, [{role, menelaus_auth:get_role(Req)},
+                             {userid, get_user_id(menelaus_auth:get_user(Req))}]).
 
 login_failure(Req) ->
-    put(login_failure, Req, [{"userid", get_user_id(menelaus_auth:get_user(Req))}]).
+    put(login_failure, Req, [{userid, get_user_id(menelaus_auth:get_user(Req))}]).
