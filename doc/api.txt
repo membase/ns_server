@@ -183,6 +183,7 @@ GET /pools/default =>
             "clusterCompatibility": 131072, // private.
             "version": "2.0.0r_276_ged5c769",
             "os": "i486-pc-linux-gnu",
+            "services: ["kv", "moxi", "n1ql"],
             "ports": {
                 "proxy": 12003, // moxi port of this node
                 "direct": 12002, // memcached port of this node,
@@ -450,7 +451,6 @@ name=<name>&hostname=<hostname>&username=<username>&password=<password>
 POST /pools/default/remoteClusters
 name=<name>&hostname=<hostname>&username=<username>&password=<password>&demandEncryption=1&certificate=<cert>
 
-
 POST /controller/createReplication
 fromBucket=<local-bucket-name>&toBucket=<remote-bucket-name>&replicationType=continuous&toCluster=<remote cluster name>(&type=(capi|xmem))?
 
@@ -468,6 +468,21 @@ default values.
 // creates server group with given name
 POST /pools/default/serverGroups
 name=<group name>
+
+// adds node with given hostname to given server group with specified
+// set of services
+//
+// services field is optional and defaults to kv,moxi
+POST /pools/default/serverGroups/<group-uuid>/addNode
+hostname=<hostname>&user=Administrator&password=asdasd&services=kv,n1ql,moxi
+
+// same as serverGroups addNode endpoint, but for default server group
+POST /controller/addNode
+hostname=<hostname>&user=Administrator&password=asdasd&services=kv,n1ql,moxi
+
+// joins _this_ node to cluster which member is given in hostname parameter
+POST /node/controller/doJoinCluster
+hostname=<hostname>&user=Administrator&password=asdasd&services=kv,n1ql,moxi
 
 // empty post causes certificate regeneration
 POST /controller/regenerateCertificate
