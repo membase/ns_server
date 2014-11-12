@@ -41,7 +41,8 @@
          may_expose_bucket_auth/1,
          get_user/1,
          get_token/1,
-         get_role/1]).
+         get_role/1,
+         validate_request/1]).
 
 %% External API
 
@@ -162,6 +163,11 @@ maybe_refresh_token(Req) ->
         _ ->
             []
     end.
+
+validate_request(Req) ->
+    undefined = Req:get_header_value("menelaus_auth-user"),
+    undefined = Req:get_header_value("menelaus_auth-role"),
+    undefined = Req:get_header_value("menelaus_auth-token").
 
 store_user_info(Req, User, Role, Token) ->
     Headers = Req:get(headers),

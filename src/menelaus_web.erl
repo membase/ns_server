@@ -184,6 +184,7 @@ is_throttled_request(_) ->
     true.
 
 loop_inner(Req, AppRoot, Path, PathTokens) ->
+    menelaus_auth:validate_request(Req),
     Action = case Req:get(method) of
                  Method when Method =:= 'GET'; Method =:= 'HEAD' ->
                      case PathTokens of
