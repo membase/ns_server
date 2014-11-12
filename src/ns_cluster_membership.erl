@@ -198,7 +198,7 @@ update_recovery_type(Node, NewType) ->
     end.
 
 supported_services() ->
-    [kv, moxi, n1ql].
+    [kv, moxi, n1ql, index].
 
 default_services() ->
     [kv, moxi].

@@ -215,6 +215,8 @@ dynamic_children() ->
 
     [expand_args(NCAO) || NCAO <- PortServers,
                           allowed_service(NCAO, Config)] ++
+        kv_node_projector_spec(Config) ++
+        index_node_spec(Config) ++
         query_node_spec(Config) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
 
@@ -245,6 +247,50 @@ query_node_spec(Config) ->
                     [DataStoreArg, HttpArg, CnfgStoreArg],
                     [use_stdio, exit_status, port_server_send_eol, stderr_to_stdout, stream]},
 
+            [Spec]
+    end.
+
+kv_node_projector_spec(Config) ->
+    Svcs = ns_cluster_membership:node_services(Config, node()),
+    case lists:member(kv, Svcs) of
+        false ->
+            [];
+        _ ->
+            % Projector is a component that is required by 2i
+            ProjectorPort = ns_config:search(Config, {node, node(), projector_port}, 9999),
+            RestPort = misc:node_rest_port(Config, node()),
+            LocalMemcachedPort = ns_config:search_node_prop(node(), Config, memcached, port),
+            ClusterArg = "127.0.0.1:" ++ integer_to_list(RestPort),
+            KvListArg = "-kvaddrs=127.0.0.1:" ++ integer_to_list(LocalMemcachedPort),
+            AdminPortArg = "-adminport=127.0.0.1:" ++ integer_to_list(ProjectorPort),
+            ProjLogArg = '-debug=true',
+            ProjectorCmd = path_config:component_path(bin, "projector"),
+
+            Spec = {'projector', ProjectorCmd,
+                    [ProjLogArg, KvListArg, AdminPortArg, ClusterArg],
+                    [use_stdio, exit_status, stderr_to_stdout, stream]},
+            [Spec]
+    end.
+
+index_node_spec(Config) ->
+    Svcs = ns_cluster_membership:node_services(Config, node()),
+    case lists:member(index, Svcs) of
+        false ->
+            [];
+        _ ->
+            NumVBuckets = case ns_config:search(couchbase_num_vbuckets_default) of
+                              false -> misc:getenv_int("COUCHBASE_NUM_VBUCKETS", 1024);
+                              {value, X} -> X
+                          end,
+            IndexerCmd = path_config:component_path(bin, "indexer"),
+            IdxrLogArg = '-log=2',
+            NumVBsArg = "-vbuckets=" ++ integer_to_list(NumVBuckets),
+            ProjectorPort = ns_config:search(Config, {node, node(), projector_port}, 9999),
+            ProjectorArg = "-projector=127.0.0.1:" ++ integer_to_list(ProjectorPort),
+
+            Spec = {'indexer', IndexerCmd,
+                    [NumVBsArg, ProjectorArg, IdxrLogArg],
+                    [use_stdio, exit_status, stderr_to_stdout, stream]},
             [Spec]
     end.
 

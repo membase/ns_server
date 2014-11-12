@@ -5,6 +5,7 @@ import platform
 base_direct_port = 12000
 base_api_port = 9000
 base_couch_port = 9500
+base_projector_port = 10000
 
 LOGLEVELS = ["debug", "info", "warn", "error", "critical"]
 
@@ -128,6 +129,7 @@ def erlang_args_for_node(i):
         "path_config_tmpdir", quote_string_for_erl(tempdir),
         "rest_port", str(base_api_port + i),
         "query_port", str(base_couch_port - 1 - i),
+        "projector_port", str(base_projector_port - 1 - i),
         "ssl_rest_port", str(10000 + base_api_port + i),
         "capi_port", str(base_couch_port + i),
         "ssl_capi_port", str(10000 + base_couch_port + i),

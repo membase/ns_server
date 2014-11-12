@@ -1467,7 +1467,7 @@ parse_validate_services_list(ServicesList) ->
 
 parse_validate_services_list_test() ->
     {error, _} = parse_validate_services_list(""),
-    ?assertEqual({ok, [kv, n1ql]}, parse_validate_services_list("n1ql,kv")),
+    ?assertEqual({ok, [index, kv, n1ql]}, parse_validate_services_list("n1ql,kv,index")),
     {ok, [kv]} = parse_validate_services_list("kv"),
     {error, _} = parse_validate_services_list("n1ql,kv,s"),
     ?assertMatch({error, _}, parse_validate_services_list("neeql,kv")).

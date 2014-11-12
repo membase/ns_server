@@ -116,12 +116,20 @@ build_services(Node, Config, EnabledServices) ->
                              SslPort ->
                                  [{kvSSL, SslPort}]
                          end,
+                 KVProj = case ns_config:search(Config, {node, Node, projector_port}, undefined) of
+                              undefined ->
+                                  KVSSL;
+                              ProjPort ->
+                                  [{projector, ProjPort} | KVSSL]
+                          end,
                  [{kv ,ns_config:search_node_prop(Node, Config, memcached, port)}
-                  | KVSSL];
+                  | KVProj];
              moxi ->
                  [{moxi, ns_config:search_node_prop(Node, Config, moxi, port)}];
              n1ql ->
-                 [{n1ql, ns_config:search(Config, {node, Node, query_port}, undefined)}]
+                 [{n1ql, ns_config:search(Config, {node, Node, query_port}, undefined)}];
+             index ->
+                 [{index, ns_config:search(Config, {node, Node, indexer_port}, undefined)}]
          end || S <- EnabledServices],
     {value, CapiPort} = ns_config:search_node(Node, Config, capi_port),
     [{mgmt, misc:node_rest_port(Config, Node)},

@@ -146,6 +146,12 @@ default() ->
      {{node, node(), query_port},
       misc:get_env_default(query_port, 8093)},
 
+     {{node, node(), projector_port},
+      misc:get_env_default(projector_port, 9999)},
+
+     {{node, node(), indexer_port},
+      misc:get_env_default(indexer_port, 9102)},
+
      {{node, node(), ssl_proxy_downstream_port},
       case IsEnterprise of
           true -> misc:get_env_default(ssl_proxy_downstream_port, 11214);
