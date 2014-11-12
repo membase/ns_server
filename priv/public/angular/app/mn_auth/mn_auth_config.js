@@ -1,5 +1,5 @@
 angular.module('mnAuth').config( function ($stateProvider, $httpProvider, $urlRouterProvider) {
-  $httpProvider.responseInterceptors.push(['$q', '$injector', logsOutUserOn401]);
+  $httpProvider.interceptors.push(['$q', '$injector', logsOutUserOn401]);
 
   $urlRouterProvider.when('', '/auth');
   $urlRouterProvider.when('/', '/auth');
