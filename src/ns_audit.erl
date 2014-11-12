@@ -20,12 +20,18 @@
 -include("ns_common.hrl").
 
 -export([login_success/1,
-         login_failure/1]).
+         login_failure/1,
+         delete_user/3,
+         password_change/3]).
 
 code(login_success) ->
     10000;
 code(login_failure) ->
-    10001.
+    10001;
+code(delete_user) ->
+    10004;
+code(password_change) ->
+    10005.
 
 to_binary(A) when is_list(A) ->
     iolist_to_binary(A);
@@ -87,3 +93,11 @@ login_success(Req) ->
 
 login_failure(Req) ->
     put(login_failure, Req, [{userid, get_user_id(menelaus_auth:get_user(Req))}]).
+
+delete_user(Req, User, Role) ->
+    put(delete_user, Req, [{role, to_binary(Role)},
+                           {userid, get_user_id(User)}]).
+
+password_change(Req, User, Role) ->
+    put(password_change, Req, [{role, to_binary(Role)},
+                               {userid, get_user_id(User)}]).

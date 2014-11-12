@@ -1818,7 +1818,8 @@ handle_settings_read_only_user_post(Req) ->
         [] ->
             case ValidateOnly of
                 false ->
-                    ns_config_auth:set_credentials(ro_admin, U, P);
+                    ns_config_auth:set_credentials(ro_admin, U, P),
+                    ns_audit:password_change(Req, U, ro_admin);
                 true ->
                     true
             end,
@@ -1831,8 +1832,9 @@ handle_read_only_user_delete(Req) ->
     case ns_config_auth:get_user(ro_admin) of
         undefined ->
             reply_json(Req, <<"Read-Only admin does not exist">>, 404);
-        _ ->
+        User ->
             ns_config_auth:unset_credentials(ro_admin),
+            ns_audit:delete_user(Req, User, ro_admin),
             reply_json(Req, [], 200)
     end.
 
@@ -1846,6 +1848,7 @@ handle_read_only_user_reset(Req) ->
             case validate_cred(NewROAPass, password) of
                 true ->
                     ns_config_auth:set_credentials(ro_admin, ROAName, NewROAPass),
+                    ns_audit:password_change(Req, ROAName, ro_admin),
                     reply_json(Req, [], 200);
                 Error -> reply_json(Req, {struct, [{errors, {struct, [{password, Error}]}}]}, 400)
             end
@@ -2138,10 +2141,17 @@ handle_settings_web_post(Req) ->
                     maybe_cleanup_old_buckets(),
                     ns_config:set(rest, [{port, PortInt}]),
                     ns_config_auth:set_credentials(admin, U, P),
+                    ns_audit:password_change(Req, U, admin),
 
                     %% NOTE: this to avoid admin user name to be equal
                     %% to read only user name
-                    ns_config_auth:unset_credentials(ro_admin),
+                    case ns_config_auth:get_user(ro_admin) of
+                        undefined ->
+                            ok;
+                        ROUser ->
+                            ns_config_auth:unset_credentials(ro_admin),
+                            ns_audit:delete_user(Req, ROUser, admin)
+                    end,
 
                     menelaus_ui_auth:reset()
 
@@ -2237,6 +2247,7 @@ reset_admin_password(Password) ->
             Err;
         _ ->
             ok = ns_config_auth:set_credentials(admin, User, Password),
+            ns_audit:password_change(undefined, User, admin),
             {ok, ?l2b(io_lib:format("Password for user ~s was successfully replaced.", [User]))}
     end.
 
