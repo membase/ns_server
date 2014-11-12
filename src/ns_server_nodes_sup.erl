@@ -61,8 +61,9 @@ child_specs() ->
       {ns_server, setup_node_names, []},
       transient, brutal_kill, worker, []},
 
+     %% we cannot "kill" this guy anyways. Thus hefty shutdown timeout.
      {start_couchdb_node, {?MODULE, start_couchdb_node, []},
-      {permanent, 5}, 1000, worker, []},
+      {permanent, 5}, 86400000, worker, []},
 
      {wait_for_couchdb_node, {erlang, apply, [fun wait_link_to_couchdb_node/0, []]},
       permanent, 1000, worker, []},
@@ -105,15 +106,14 @@ start_couchdb_node() ->
     ns_port_server:start_link(fun () -> create_ns_couchdb_spec() end).
 
 wait_link_to_couchdb_node() ->
-    proc_lib:start_link(erlang, apply, [fun do_wait_link_to_couchdb_node/0, []]).
+    proc_lib:start_link(erlang, apply, [fun start_wait_link_to_couchdb_node/0, []]).
 
-
-do_wait_link_to_couchdb_node() ->
+start_wait_link_to_couchdb_node() ->
     erlang:register(wait_link_to_couchdb_node, self()),
-    do_wait_link_to_couchdb_node_2(true).
+    do_wait_link_to_couchdb_node(true).
 
-do_wait_link_to_couchdb_node_2(Initial) ->
-    ?log_debug("Waiting for couchdb node to start"),
+do_wait_link_to_couchdb_node(Initial) ->
+    ?log_debug("Waiting for ns_couchdb node to start"),
     RV = misc:poll_for_condition(
            fun () ->
                    case rpc:call(ns_node_disco:couchdb_node(), erlang, apply, [fun is_couchdb_node_ready/0, []], 5000) of
@@ -158,7 +158,7 @@ wait_link_to_couchdb_node_paused_loop(PauserPid, PauserMRef) ->
                 unpause when FromPid =:= PauserPid ->
                     erlang:demonitor(PauserMRef),
                     gen_server:reply(From, ok),
-                    do_wait_link_to_couchdb_node_2(false)
+                    do_wait_link_to_couchdb_node(false)
             end;
         Msg ->
             ?log_debug("Exiting due to message: ~p", [Msg]),
