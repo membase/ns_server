@@ -1,5 +1,5 @@
 angular.module('mnAdminBucketsService').factory('mnAdminBucketsService',
-  function ($q, mnHttp) {
+  function (mnHttp) {
     var mnAdminBucketsService = {};
 
     mnAdminBucketsService.model = {};

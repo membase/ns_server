@@ -134,6 +134,7 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
 
         var total = node.memoryTotal;
         var free = node.memoryFree;
+
         node.ramUsageConf = {
           exist: (total > 0) && _.isFinite(free),
           height: (total - free) / total * 100,

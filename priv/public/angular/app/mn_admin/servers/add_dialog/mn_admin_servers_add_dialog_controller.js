@@ -1,5 +1,5 @@
 angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
-  function ($scope, mnAdminServersService, mnAdminService, $modalInstance, mnHelper, groups) {
+  function ($scope, mnAdminServersService, $modalInstance, mnHelper, groups) {
     reset();
     $scope.newServer = {
       hostname: '',

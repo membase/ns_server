@@ -1,4 +1,4 @@
-angular.module('mnVerticalBar', []).directive('mnVerticalBar', function () {
+angular.module('mnVerticalBar').directive('mnVerticalBar', function () {
 
   return {
     restrict: 'A',

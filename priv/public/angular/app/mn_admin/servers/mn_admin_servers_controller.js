@@ -1,5 +1,5 @@
 angular.module('mnAdminServers').controller('mnAdminServersController',
-  function ($scope, $state, $modal, $interval, $location, $stateParams, $timeout, mnPoolDetails, serversState, mnHelper, mnAdminSettingsAutoFailoverService, mnAdminServersService) {
+  function ($scope, $state, $modal, $interval, $location, $stateParams, $timeout, mnPoolDetails, serversState, mnAdminSettingsAutoFailoverService, mnAdminServersService) {
 
     _.extend($scope, serversState);
     var updateServersCycle;

@@ -1,5 +1,5 @@
 angular.module('mnAuthService').factory('mnAuthService',
-  function ($rootScope, mnHttp, $state, $urlRouter, mnAdminService) {
+  function (mnHttp) {
 
   var mnAuthService = {};
 
