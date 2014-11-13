@@ -5,7 +5,6 @@ angular.module('mnFocus', []);
 angular.module('mnSpinner', []);
 angular.module('mnPlot', []);
 angular.module('mnPrettyVersionFilter', []);
-angular.module('mnDateService', []);
 angular.module('mnVerticalBar', []);
 
 angular.module('mnPoolDetails', [
@@ -101,7 +100,6 @@ angular.module('mnAdminOverview', [
 ]);
 angular.module('mnAdminOverviewService', [
   'mnPoolDetails',
-  'mnDateService',
   'mnHttp'
 ]);
 
@@ -119,7 +117,6 @@ angular.module('app', [
   'mnSpinner',
   'mnPlot',
   'mnPrettyVersionFilter',
-  'mnDateService',
   'mnVerticalBar',
 
   'mnPoolDetails',

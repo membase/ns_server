@@ -1,5 +1,5 @@
 angular.module('mnAdminOverviewService').factory('mnAdminOverviewService',
-  function (mnHttp, mnDateService, mnPoolDetails) {
+  function (mnHttp, mnPoolDetails) {
     var mnAdminOverviewService = {};
 
     var processPlotOptions = function (plotOptions, plotDatas) {
@@ -69,7 +69,7 @@ angular.module('mnAdminOverviewService').factory('mnAdminOverviewService',
         method: "GET"
       }).then(function (statsResponse) {
         var stats = statsResponse.data;
-        var now = (mnDateService.newDate()).valueOf();
+        var now = new Date().valueOf();
         var tstamps = stats.timestamp || [];
         var interval = tstamps[tstamps.length - 1] - tstamps[0];
         var breakInterval = (tstamps.length > 1) ? (interval / Math.min(tstamps.length / 2, 30)) : undefined;
