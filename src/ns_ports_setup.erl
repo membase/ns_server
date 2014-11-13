@@ -223,9 +223,16 @@ allowed_service({moxi, _, _, _} = _NCAO, Config) ->
 allowed_service(_NCAO, _Config) ->
     true.
 
+should_run_service(Config, Service) ->
+    case ns_cluster_membership:get_cluster_membership(node(), Config) =:= active  of
+        false -> false;
+        true ->
+            Svcs = ns_cluster_membership:node_services(Config, node()),
+            lists:member(Service, Svcs)
+    end.
+
 query_node_spec(Config) ->
-    Svcs = ns_cluster_membership:node_services(Config, node()),
-    case lists:member(n1ql, Svcs) of
+    case should_run_service(Config, n1ql) of
         false ->
             [];
         _ ->
