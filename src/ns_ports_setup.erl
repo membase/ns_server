@@ -243,7 +243,7 @@ query_node_spec(Config) ->
             HttpArg = "--http=:" ++ integer_to_list(ns_config:search(Config, {node, node(), query_port}, 8093)),
             Spec = {'query', Command,
                     [DataStoreArg, HttpArg, CnfgStoreArg],
-                    [use_stdio, exit_status, stderr_to_stdout, stream]},
+                    [use_stdio, exit_status, port_server_send_eol, stderr_to_stdout, stream]},
 
             [Spec]
     end.
