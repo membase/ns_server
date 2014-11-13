@@ -10,7 +10,8 @@ angular.module('mnPrettyVersionFilter', []);
 angular.module('mnVerticalBar', []);
 
 angular.module('mnPoolDefault', [
-  'mnHttp'
+  'mnHttp',
+  'mnPools'
 ]);
 angular.module('mnTasksDetails', [
   'mnHttp'

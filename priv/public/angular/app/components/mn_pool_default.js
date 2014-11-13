@@ -1,18 +1,22 @@
 angular.module('mnPoolDefault').factory('mnPoolDefault',
-  function (mnHttp, $cacheFactory, $q) {
+  function (mnHttp, $cacheFactory, $q, mnPools) {
     var mnPoolDefault = {};
 
     mnPoolDefault.get = function () {
-      return mnHttp({
-        method: 'GET',
-        url: '/pools/default?waitChange=0',
-        responseType: 'json',
-        cache: true,
-        timeout: 30000
-      }).then(function (resp) {
-        var poolDefault = resp.data;
+      return $q.all([
+        mnHttp({
+          method: 'GET',
+          url: '/pools/default?waitChange=0',
+          responseType: 'json',
+          cache: true,
+          timeout: 30000
+        }),
+        mnPools.get()
+      ]).then(function (resp) {
+        var poolDefault = resp[0].data;
+        var pools = resp[1]
         poolDefault.rebalancing = poolDefault.rebalanceStatus !== 'none';
-        poolDefault.isGroupsAvailable = !!(poolDefault.isEnterprise && poolDefault.serverGroupsUri);
+        poolDefault.isGroupsAvailable = !!(pools.isEnterprise && poolDefault.serverGroupsUri);
         return poolDefault;
       });
     };

@@ -170,10 +170,9 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
     function prepareNodes(responses) {
       var groups = responses[1];
       var poolDefault = responses[0];
-      var isGroupsAvailable = poolDefault.isGroupsAvailable && poolDefault.serverGroupsUri;
       var nodes = poolDefault.nodes;
 
-      if (isGroupsAvailable) {
+      if (poolDefault.isGroupsAvailable) {
         var hostnameToGroup = {};
 
         _.each(groups, function (group) {
