@@ -57,11 +57,20 @@ get_user_id(User) ->
     {[{source, internal}, {user, to_binary(User)}]}.
 
 put(Code, Req, Params) ->
+    {User, Token, Peer} =
+        case Req of
+            undefined ->
+                {anonymous, undefined, undefined};
+            _ ->
+                {get_user_id(menelaus_auth:get_user(Req)),
+                 to_binary(menelaus_auth:get_token(Req)),
+                 to_binary(Req:get(peer))}
+        end,
     Body = {[{name, Code},
              {timestamp, get_timestamp(now())},
-             {sessionID, to_binary(menelaus_auth:get_token(Req))},
-             {remote, to_binary(Req:get(peer))},
-             {userid, get_user_id(menelaus_auth:get_user(Req))},
+             {sessionID, Token},
+             {remote, Peer},
+             {userid, User},
              {params, {Params}}]},
 
     EncodedBody = ejson:encode(Body),
