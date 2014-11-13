@@ -9,7 +9,7 @@ angular.module('mnPlot', []);
 angular.module('mnPrettyVersionFilter', []);
 angular.module('mnVerticalBar', []);
 
-angular.module('mnPoolDetails', [
+angular.module('mnPoolDefault', [
   'mnHttp'
 ]);
 angular.module('mnTasksDetails', [
@@ -76,7 +76,7 @@ angular.module('mnAdminSettingsAutoFailoverService', [
 
 
 angular.module('mnAdminServers', [
-  'mnPoolDetails',
+  'mnPoolDefault',
   'ui.router',
   'ui.bootstrap',
   'mnAdminServersListItemDetailsService',
@@ -86,7 +86,7 @@ angular.module('mnAdminServers', [
 ]);
 angular.module('mnAdminServersService', [
   'mnTasksDetails',
-  'mnPoolDetails',
+  'mnPoolDefault',
   'mnHelper',
   'mnHttp'
 ]);
@@ -100,7 +100,7 @@ angular.module('mnAdminOverview', [
   'mnAdminOverviewService'
 ]);
 angular.module('mnAdminOverviewService', [
-  'mnPoolDetails',
+  'mnPoolDefault',
   'mnHttp'
 ]);
 
@@ -120,7 +120,7 @@ angular.module('app', [
   'mnPrettyVersionFilter',
   'mnVerticalBar',
 
-  'mnPoolDetails',
+  'mnPoolDefault',
   'mnTasksDetails',
 
   'ui.router',

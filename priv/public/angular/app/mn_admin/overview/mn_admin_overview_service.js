@@ -1,5 +1,5 @@
 angular.module('mnAdminOverviewService').factory('mnAdminOverviewService',
-  function (mnHttp, mnPoolDetails) {
+  function (mnHttp, mnPoolDefault) {
     var mnAdminOverviewService = {};
 
     var processPlotOptions = function (plotOptions, plotDatas) {
@@ -100,7 +100,7 @@ angular.module('mnAdminOverviewService').factory('mnAdminOverviewService',
     };
 
     mnAdminOverviewService.getOverviewConfig = function () {
-      return mnPoolDetails.getFresh().then(function (poolsDetails) {
+      return mnPoolDefault.getFresh().then(function (poolsDetails) {
         var details = poolsDetails;
         var rv = {};
 

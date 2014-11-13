@@ -1,10 +1,10 @@
 angular.module('mnAdminSettingsCluster').controller('mnAdminSettingsClusterController',
-  function ($scope, mnAdminSettingsClusterService, nodes, poolDetails, defaultCertificate, getVisulaSettings, mnHelper) {
+  function ($scope, mnAdminSettingsClusterService, nodes, poolDefault, defaultCertificate, getVisulaSettings, mnHelper) {
     $scope.focusMe = true;
 
     $scope.formData = {};
     $scope.formData.tabName = getVisulaSettings.data.tabName;
-    $scope.formData.memoryQuota = getInMegs(poolDetails.storageTotals.ram.quotaTotalPerNode);
+    $scope.formData.memoryQuota = getInMegs(poolDefault.storageTotals.ram.quotaTotalPerNode);
     $scope.totalRam = getInMegs(nodes.ramTotalPerActiveNode);
     $scope.maxRamMegs = Math.max(getInMegs(nodes.ramTotalPerActiveNode) - 1024, Math.floor(nodes.ramTotalPerActiveNode * 4 / (5 * Math.Mi)));
     setCertificate(defaultCertificate.data);

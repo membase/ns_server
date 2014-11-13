@@ -1,5 +1,5 @@
 angular.module('mnAdminServersService').factory('mnAdminServersService',
-  function (mnHttp, mnTasksDetails, mnPoolDetails, $q, $state, $stateParams, mnHelper) {
+  function (mnHttp, mnTasksDetails, mnPoolDefault, $q, $state, $stateParams, mnHelper) {
     var mnAdminServersService = {};
 
     var pendingEject = [];
@@ -169,9 +169,9 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
 
     function prepareNodes(responses) {
       var groups = responses[1];
-      var poolDetails = responses[0];
-      var isGroupsAvailable = poolDetails.isGroupsAvailable && poolDetails.serverGroupsUri;
-      var nodes = poolDetails.nodes;
+      var poolDefault = responses[0];
+      var isGroupsAvailable = poolDefault.isGroupsAvailable && poolDefault.serverGroupsUri;
+      var nodes = poolDefault.nodes;
 
       if (isGroupsAvailable) {
         var hostnameToGroup = {};
@@ -230,14 +230,14 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       rv.unhealthyActive = _.detect(rv.reallyActive, function (node) {
         return node.status === 'unhealthy';
       });
-      rv.ramTotalPerActiveNode = poolDetails.storageTotals.ram.total / rv.onlyActive.length;
+      rv.ramTotalPerActiveNode = poolDefault.storageTotals.ram.total / rv.onlyActive.length;
 
       return rv;
     };
 
     mnAdminServersService.getNodes = function () {
       return $q.all([
-        mnPoolDetails.getFresh(),
+        mnPoolDefault.getFresh(),
         mnAdminServersService.getGroups()
       ]).then(prepareNodes);
     };
@@ -245,25 +245,25 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
     mnAdminServersService.getServersState = function (stateParamsNodeType) {
       return $q.all([
         mnAdminServersService.getNodes(),
-        mnPoolDetails.get(),
+        mnPoolDefault.get(),
         mnTasksDetails.get()
       ]).then(function (results) {
 
         var rv = {};
-        var poolDetails = results[1];
+        var poolDefault = results[1];
         var nodes = results[0];
         var tasks = results[2];
         rv.allNodes = nodes.allNodes;
-        rv.isGroupsAvailable = poolDetails.isGroupsAvailable;
+        rv.isGroupsAvailable = poolDefault.isGroupsAvailable;
         rv.currentNodes = prepareNode(nodes, tasks, stateParamsNodeType);
         rv.recommendedRefreshPeriod = tasks.recommendedRefreshPeriod;
-        rv.rebalancing = poolDetails.rebalancing;
+        rv.rebalancing = poolDefault.rebalancing;
         rv.pendingLength = nodes.pending.length;
-        rv.mayRebalanceWithoutSampleLoading = !poolDetails.rebalancing && !tasks.inRecoveryMode && (!!nodes.pending.length || !poolDetails.balanced) && !nodes.unhealthyActiveNodes;
+        rv.mayRebalanceWithoutSampleLoading = !poolDefault.rebalancing && !tasks.inRecoveryMode && (!!nodes.pending.length || !poolDefault.balanced) && !nodes.unhealthyActiveNodes;
         rv.mayRebalance = rv.mayRebalanceWithoutSampleLoading && !tasks.isLoadingSamples;
         rv.showWarningMessage = rv.mayRebalanceWithoutSampleLoading && tasks.isLoadingSamples;
         rv.showPendingBadge = !rv.rebalancing && rv.pendingLength;
-        rv.failoverWarnings = _.map(poolDetails.failoverWarnings, function (failoverWarning) {
+        rv.failoverWarnings = _.map(poolDefault.failoverWarnings, function (failoverWarning) {
           switch (failoverWarning) {
             case 'failoverNeeded': return;
             case 'rebalanceNeeded': return 'Rebalance required, some data is not currently replicated!';

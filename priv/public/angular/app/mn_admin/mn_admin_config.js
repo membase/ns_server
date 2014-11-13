@@ -66,8 +66,8 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
         nodes: function (mnAdminServersService) {
           return mnAdminServersService.getNodes();
         },
-        poolDetails: function (mnPoolDetails) {
-          return mnPoolDetails.getFresh()
+        poolDefault: function (mnPoolDefault) {
+          return mnPoolDefault.getFresh()
         }
       }
     });

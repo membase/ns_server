@@ -1,5 +1,5 @@
 angular.module('mnAdminServers').controller('mnAdminServersController',
-  function ($scope, $state, $modal, $interval, $location, $stateParams, $timeout, mnPoolDetails, serversState, mnAdminSettingsAutoFailoverService, mnAdminServersService, mnHelper) {
+  function ($scope, $state, $modal, $interval, $location, $stateParams, $timeout, mnPoolDefault, serversState, mnAdminSettingsAutoFailoverService, mnAdminServersService, mnHelper) {
 
     _.extend($scope, serversState);
     var updateServersCycle;
@@ -20,8 +20,8 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
         controller: 'mnAdminServersAddDialogController',
         resolve: {
           groups: function () {
-            return mnPoolDetails.get().then(function (poolDetails) {
-              if (poolDetails.isGroupsAvailable) {
+            return mnPoolDefault.get().then(function (poolDefault) {
+              if (poolDefault.isGroupsAvailable) {
                 return mnAdminServersService.getGroups();
               }
             });
