@@ -21,18 +21,20 @@ angular.module('mnAdminSettingsClusterService').factory('mnAdminSettingsClusterS
         url: '/internalSettings/visual'
       });
     };
-    mnAdminSettingsClusterService.saveVisualInternalSettings = function () {
+    mnAdminSettingsClusterService.saveVisualInternalSettings = function (data) {
       return mnHttp({
         method: 'POST',
-        url: '/internalSettings/visual'
+        url: '/internalSettings/visual',
+        data: data
       });
     };
-    mnAdminSettingsClusterService.visualInternalSettingsValidation = function () {
+    mnAdminSettingsClusterService.visualInternalSettingsValidation = function (data) {
       return mnHttp({
         method: 'POST',
         params: {
           just_validate: 1,
         },
+        data: data,
         url: '/internalSettings/visual'
       });
     };

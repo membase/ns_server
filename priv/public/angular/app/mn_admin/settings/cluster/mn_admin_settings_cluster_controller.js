@@ -10,19 +10,11 @@ angular.module('mnAdminSettingsCluster').controller('mnAdminSettingsClusterContr
     setCertificate(defaultCertificate.data);
 
     var liveValidation = _.debounce(function () {
-      mnAdminSettingsClusterService.visualInternalSettingsValidation({
-        data: $scope.formData
-      }).error(setError).success(setError);
+      mnAdminSettingsClusterService.visualInternalSettingsValidation($scope.formData).error(setError).success(setError);
     }, 500);
 
     $scope.$watch('formData.memoryQuota', liveValidation);
 
-    function clusterCertificateSpinnerCtrl(state) {
-      $scope.regenerateCertificateInprogress = state;
-    };
-    function settingsClusterLoadedCtrl(state) {
-      $scope.settingsClusterLoaded = state;
-    }
     function setCertificate(certificate) {
       $scope.certificate = certificate;
     }
@@ -34,15 +26,12 @@ angular.module('mnAdminSettingsCluster').controller('mnAdminSettingsClusterContr
     }
 
     $scope.saveVisualInternalSettings = function () {
-      mnAdminSettingsClusterService.saveVisualInternalSettings({
-        spinner: settingsClusterLoadedCtrl,
-        data: $scope.formData
-      }).success(mnHelper.reloadState).error(setError);
+      var promise = mnAdminSettingsClusterService.saveVisualInternalSettings($scope.formData).success(mnHelper.reloadState).error(setError);
+      mnHelper.handleSpinner($scope, 'settingsClusterLoaded', promise);
     };
     $scope.regenerateCertificate = function () {
-      mnAdminSettingsClusterService.regenerateCertificate({
-        spinner: clusterCertificateSpinnerCtrl
-      }).success(setCertificate);
+      var promise = mnAdminSettingsClusterService.regenerateCertificate().success(setCertificate);
+      mnHelper.handleSpinner($scope, 'regenerateCertificateInprogress', promise);
     };
     $scope.toggleCertArea = function () {
       $scope.toggleCertAreaFlag = !$scope.toggleCertAreaFlag;
