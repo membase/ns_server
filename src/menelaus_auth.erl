@@ -199,11 +199,15 @@ apply_auth_any_bucket(Req, F, Args) ->
 
 %% Checks if given credentials allow access to any SASL-auth
 %% bucket.
-check_auth_any_bucket(Req, UserPassword = {User, _}) ->
+check_auth_any_bucket(Req, UserPassword) ->
     Buckets = ns_bucket:get_buckets(),
     case lists:any(bucket_auth_fun(UserPassword, true),
                    Buckets) of
         true ->
+            User = case UserPassword of
+                       {UserX, _} -> UserX;
+                       undefined -> anonymous
+                   end,
             {true, store_user_info(Req, User, bucket, undefined)};
         false ->
             false
