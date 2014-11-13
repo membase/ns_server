@@ -1,5 +1,5 @@
 angular.module('mnAuth').controller('mnAuthController',
-  function ($scope, mnAuthService, $window) {
+  function ($scope, mnAuthService, mnHelper) {
     $scope.loginFailed = false;
 
     function error() {
@@ -7,7 +7,7 @@ angular.module('mnAuth').controller('mnAuthController',
     }
     function success() {
       $scope.loginFailed = false;
-      $window.location.reload();
+      mnHelper.reloadApp();
     }
 
     $scope.submit = function () {

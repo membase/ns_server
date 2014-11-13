@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep5Controller',
-  function ($scope, mnWizardStep5Service, mnWizardStep2Service, mnAuthService, $window, mnHelper) {
+  function ($scope, mnWizardStep5Service, mnWizardStep2Service, mnAuthService, mnHelper) {
     $scope.user = {
       username: 'Administrator',
       password: '',
@@ -37,8 +37,6 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
       var promise = login($scope.user);
       mnHelper.rejectReasonToScopeApplyer($scope, promise);
       mnHelper.handleSpinner($scope, promise);
-      promise.then(function () {
-        $window.location.reload();
-      });
+      promise.then(mnHelper.reloadApp);
     }
   });

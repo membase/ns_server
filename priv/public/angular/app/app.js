@@ -48,13 +48,15 @@ angular.module('mnAuthService', [
   'mnHttp'
 ]);
 angular.module('mnAuth', [
-  'mnAuthService'
+  'mnAuthService',
+  'mnHelper'
 ]);
 
 
 angular.module('mnAdmin', [
   'mnTasksDetails',
   'mnAuthService',
+  'mnHelper',
   'ui.router'
 ]);
 

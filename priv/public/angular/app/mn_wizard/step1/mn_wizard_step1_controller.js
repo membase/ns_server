@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep1Controller',
-  function ($scope, $state, $window, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper, mnAdminServersService) {
+  function ($scope, $state, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper, mnAdminServersService) {
     $scope.hostname = selfConfig.hostname;
 
     $scope.clusterMember = {
@@ -70,7 +70,7 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
         } else {
           var data = _.clone($scope.clusterMember);
           data.services = services.join(',');
-          return makeRequestWithErrorsHandler('postJoinCluster', data).then(login).then(function () {$window.location.reload();});
+          return makeRequestWithErrorsHandler('postJoinCluster', data).then(login).then(mnHelper.reloadApp);
         }
       });
       mnHelper.handleSpinner($scope, promise);

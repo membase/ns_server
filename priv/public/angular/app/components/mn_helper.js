@@ -1,5 +1,5 @@
 angular.module('mnHelper').factory('mnHelper',
-  function () {
+  function ($window) {
     var mnHelper = {};
 
     mnHelper.handleSpinner = function ($scope, name, promise) {
@@ -18,6 +18,10 @@ angular.module('mnHelper').factory('mnHelper',
 
     mnHelper.checkboxesToList = function (object) {
       return _(object).pick(angular.identity).keys().value();
+    };
+
+    mnHelper.reloadApp = function () {
+      $window.location.reload();
     };
 
     mnHelper.rejectReasonToScopeApplyer = function ($scope, name, promise) {
