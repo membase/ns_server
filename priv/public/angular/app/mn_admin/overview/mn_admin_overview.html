@@ -73,10 +73,10 @@
             </span>
             <span class="when-zero">Servers Down: 0</span>
           </li>
-          <li class="pending" ng-class="{'is-zero':!mnAdminServiceModel.nodes.pending.length}">
+          <li class="pending" ng-class="{'is-zero':!pending.length}">
             <span class="when-non-zero">
-              <a href="#visitServersTab=pending">Servers Pending Rebalance: <span class="pending-count">{{mnAdminServiceModel.nodes.pending.length}}</span></a>
-              <span class="badge"><span class="pending-count">{{mnAdminServiceModel.nodes.pending.length}}</span></span>
+              <a href="#visitServersTab=pending">Servers Pending Rebalance: <span class="pending-count">{{pending.length}}</span></a>
+              <span class="badge"><span class="pending-count">{{pending.length}}</span></span>
             </span>
             <span class="when-zero">Servers Pending Rebalance: 0</span>
           </li>
