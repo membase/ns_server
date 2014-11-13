@@ -10,8 +10,8 @@ angular.module('app').config(function ($httpProvider, $stateProvider, $urlRouter
     template: '<div ui-view="" />',
     controller: 'appController',
     resolve: {
-      pools: function (mnAuthService) {
-        return mnAuthService.getPools();
+      pools: function (mnPools) {
+        return mnPools.get();
       }
     }
   });

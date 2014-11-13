@@ -15,6 +15,9 @@ angular.module('mnPoolDefault', [
 angular.module('mnTasksDetails', [
   'mnHttp'
 ]);
+angular.module('mnPools', [
+  'mnHttp'
+]);
 
 angular.module('mnWizard', [
   'mnAuthService',
@@ -122,6 +125,7 @@ angular.module('app', [
 
   'mnPoolDefault',
   'mnTasksDetails',
+  'mnPools',
 
   'ui.router',
   'ui.bootstrap',
@@ -135,8 +139,8 @@ angular.module('app', [
   'mnAdminBucketsService'
 
 
-]).run(function ($rootScope, $state, $urlRouter, mnAuthService) {
-  mnAuthService.getPools().then(function (pools) {
+]).run(function ($rootScope, $state, $urlRouter, mnPools) {
+  mnPools.get().then(function (pools) {
     $rootScope.$on('$stateChangeStart', function (event, current) {
       if (!current.notAuthenticate && !pools.isAuthenticated) {
         event.preventDefault();
