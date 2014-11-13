@@ -2678,6 +2678,7 @@ do_handle_rebalance(Req, KnownNodesS, EjectedNodesS, DeltaRecoveryBuckets) ->
         no_kv_nodes_left ->
             reply_json(Req, {struct, [{noKVNodesLeft, 1}]}, 400);
         ok ->
+            ns_audit:rebalance_initiated(Req, KnownNodes, EjectedNodes, DeltaRecoveryBuckets),
             reply(Req, 200)
     end.
 

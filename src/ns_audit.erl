@@ -26,7 +26,8 @@
          add_node/7,
          remove_node/2,
          failover_node/3,
-         enter_node_recovery/3]).
+         enter_node_recovery/3,
+         rebalance_initiated/4]).
 
 code(login_success) ->
     10000;
@@ -43,7 +44,10 @@ code(remove_node) ->
 code(failover_node) ->
     10009;
 code(enter_node_recovery) ->
-    10010.
+    10010;
+code(rebalance_initiated) ->
+    10011.
+
 
 to_binary(A) when is_list(A) ->
     iolist_to_binary(A);
@@ -130,3 +134,15 @@ failover_node(Req, Node, Type) ->
 
 enter_node_recovery(Req, Node, Type) ->
     put(enter_node_recovery, Req, [{node, Node}, {type, Type}]).
+
+rebalance_initiated(Req, KnownNodes, EjectedNodes, DeltaRecoveryBuckets) ->
+    Buckets = case DeltaRecoveryBuckets of
+                  all ->
+                      all;
+                  _ ->
+                      [to_binary(Bucket) || Bucket <- DeltaRecoveryBuckets]
+              end,
+    put(rebalance_initiated, Req,
+        [{known_nodes, KnownNodes},
+         {ejected_nodes, EjectedNodes},
+         {delta_recovery_buckets, Buckets}]).
