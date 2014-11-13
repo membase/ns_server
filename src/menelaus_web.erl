@@ -1684,6 +1684,7 @@ handle_eject_post(Req) ->
 handle_force_self_eject(Req) ->
     erlang:process_flag(trap_exit, true),
     ns_cluster:force_eject_self(),
+    ns_audit:remove_node(Req, node()),
     reply_text(Req, "done", 200),
     ok.
 
@@ -1691,6 +1692,7 @@ do_handle_eject_post(Req, OtpNode) ->
     case OtpNode =:= node() of
         true ->
             do_eject_myself(),
+            ns_audit:remove_node(Req, node()),
             reply(Req, 200);
         false ->
             case lists:member(OtpNode, ns_node_disco:nodes_wanted()) of
@@ -1698,6 +1700,7 @@ do_handle_eject_post(Req, OtpNode) ->
                     ns_cluster:leave(OtpNode),
                     ?MENELAUS_WEB_LOG(?NODE_EJECTED, "Node ejected: ~p from node: ~p",
                                       [OtpNode, erlang:node()]),
+                    ns_audit:remove_node(Req, OtpNode),
                     reply(Req, 200);
                 false ->
                                                 % Node doesn't exist.
@@ -2557,6 +2560,7 @@ do_handle_add_node(Req, GroupUUID) ->
                    GroupUUID,
                    Services) of
                 {ok, OtpNode} ->
+                    ns_audit:add_node(Req, Hostname, Port, User, GroupUUID, Services, OtpNode),
                     reply_json(Req, {struct, [{otpNode, OtpNode}]}, 200);
                 {error, unknown_group, Message, _} ->
                     reply_json(Req, [Message], 404);
@@ -2586,6 +2590,7 @@ handle_failover(Req) ->
         {ok, Node} ->
             case ns_cluster_membership:failover(Node) of
                 ok ->
+                    ns_audit:failover_node(Req, Node, hard),
                     reply(Req, 200);
                 rebalance_running ->
                     reply_text(Req, "Rebalance running.", 503);
@@ -2619,6 +2624,7 @@ handle_start_graceful_failover(Req) ->
                   end,
             case Msg of
                 [] ->
+                    ns_audit:failover_node(Req, Node, graceful),
                     reply(Req, 200);
                 {Code, Text} ->
                     reply_text(Req, Text, Code)
@@ -2715,6 +2721,7 @@ handle_re_failover(Req) ->
     NodeString = proplists:get_value("otpNode", Params, "undefined"),
     case ns_cluster_membership:re_failover(NodeString) of
         ok ->
+            ns_audit:failover_node(Req, list_to_existing_atom(NodeString), cancel_recovery),
             reply(Req, 200);
         not_possible ->
             reply(Req, 400)
@@ -3385,6 +3392,7 @@ do_handle_set_recovery_type(Req, Type, Params) ->
         [] ->
             case ns_cluster_membership:update_recovery_type(Node, Type) of
                 ok ->
+                    ns_audit:enter_node_recovery(Req, Node, Type),
                     reply_json(Req, [], 200);
                 bad_node ->
                     reply_json(Req, {struct, [{otpNode, OtpNodeErrorMsg}]}, 400)

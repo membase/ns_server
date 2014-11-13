@@ -22,7 +22,11 @@
 -export([login_success/1,
          login_failure/1,
          delete_user/3,
-         password_change/3]).
+         password_change/3,
+         add_node/7,
+         remove_node/2,
+         failover_node/3,
+         enter_node_recovery/3]).
 
 code(login_success) ->
     10000;
@@ -31,7 +35,15 @@ code(login_failure) ->
 code(delete_user) ->
     10004;
 code(password_change) ->
-    10005.
+    10005;
+code(add_node) ->
+    10007;
+code(remove_node) ->
+    10008;
+code(failover_node) ->
+    10009;
+code(enter_node_recovery) ->
+    10010.
 
 to_binary(A) when is_list(A) ->
     iolist_to_binary(A);
@@ -101,3 +113,20 @@ delete_user(Req, User, Role) ->
 password_change(Req, User, Role) ->
     put(password_change, Req, [{role, to_binary(Role)},
                                {userid, get_user_id(User)}]).
+
+add_node(Req, Hostname, Port, User, GroupUUID, Services, Node) ->
+    put(add_node, Req, [{node, Node},
+                        {groupUUID, to_binary(GroupUUID)},
+                        {hostname, to_binary(Hostname)},
+                        {port, Port},
+                        {services, Services},
+                        {user, get_user_id(User)}]).
+
+remove_node(Req, Node) ->
+    put(remove_node, Req, [{node, Node}]).
+
+failover_node(Req, Node, Type) ->
+    put(failover_node, Req, [{node, Node}, {type, Type}]).
+
+enter_node_recovery(Req, Node, Type) ->
+    put(enter_node_recovery, Req, [{node, Node}, {type, Type}]).

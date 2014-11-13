@@ -616,7 +616,8 @@ eject_nodes(Nodes) ->
                  end,
     lists:foreach(fun (N) ->
                           ns_cluster_membership:deactivate([N]),
-                          ns_cluster:leave(N)
+                          ns_cluster:leave(N),
+                          ns_audit:remove_node(undefined, N)
                   end, LeaveNodes).
 
 
