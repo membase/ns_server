@@ -71,6 +71,9 @@ cleaner_loop({{node, _, memcached}, _Value}, State) ->
 cleaner_loop({{node, _, moxi}, _Value}, State) ->
     submit_full_reset(),
     State;
+cleaner_loop({{node, _, membership}, _Value}, State) ->
+    submit_full_reset(),
+    State;
 cleaner_loop({cluster_compat_version, _Value}, State) ->
     submit_full_reset(),
     State;
