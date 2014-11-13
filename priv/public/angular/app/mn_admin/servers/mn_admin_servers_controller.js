@@ -19,10 +19,10 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
         templateUrl: '/angular/app/mn_admin/servers/add_dialog/mn_admin_servers_add_dialog.html',
         controller: 'mnAdminServersAddDialogController',
         resolve: {
-          groups: function (mnAdminService) {
+          groups: function () {
             return mnPoolDetails.get().then(function (poolDetails) {
               if (poolDetails.isGroupsAvailable) {
-                return mnAdminService.getGroups();
+                return mnAdminServersService.getGroups();
               }
             });
           }

@@ -57,9 +57,6 @@ angular.module('mnAdmin', [
   'mnAuthService',
   'ui.router'
 ]);
-angular.module('mnAdminService', [
-  'mnHttp'
-]);
 
 
 angular.module('mnAdminSettingsCluster', [
@@ -83,7 +80,6 @@ angular.module('mnAdminServers', [
   'mnHelper'
 ]);
 angular.module('mnAdminServersService', [
-  'mnAdminService',
   'mnTasksDetails',
   'mnPoolDetails',
   'mnHelper',

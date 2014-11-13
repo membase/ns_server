@@ -1,5 +1,5 @@
 angular.module('mnAdminServersService').factory('mnAdminServersService',
-  function (mnHttp, mnAdminService, mnTasksDetails, mnPoolDetails, $q, $state, $stateParams, mnHelper) {
+  function (mnHttp, mnTasksDetails, mnPoolDetails, $q, $state, $stateParams, mnHelper) {
     var mnAdminServersService = {};
 
     var pendingEject = [];
@@ -40,6 +40,14 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
         url: '/controller/setRecoveryType',
         data: data
       });
+    };
+    mnAdminServersService.getGroups = function () {
+      return mnHttp({
+        method: 'GET',
+        url: '/pools/default/serverGroups'
+      }).then(function (resp) {
+        return resp.data;
+      })
     };
     mnAdminServersService.setupServices = function (data) {
       return mnHttp({
@@ -234,7 +242,7 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
     mnAdminServersService.getNodes = function () {
       return $q.all([
         mnPoolDetails.getFresh(),
-        mnAdminService.getGroups()
+        mnAdminServersService.getGroups()
       ]).then(prepareNodes);
     };
 
