@@ -27,6 +27,10 @@ code(login_success) ->
 code(login_failure) ->
     10001.
 
+to_binary(A) when is_list(A) ->
+    iolist_to_binary(A);
+to_binary(A) ->
+    A.
 
 get_timestamp(Now = {_, _, Microsecs}) ->
     {{YYYY, MM, DD}, {Hour, Min, Sec}} = LocalNow = calendar:now_to_local_time(Now),
@@ -41,25 +45,24 @@ get_timestamp(Now = {_, _, Microsecs}) ->
     Time = io_lib:format("~2.2.0w:~2.2.0w:~2.2.0w.~6.6.0w", [Hour, Min, Sec, Microsecs]),
     Offset = io_lib:format("~p:~2.2.0w", [OffsetHrs, OffsetMin]),
 
-    props_to_json([{date, Date}, {time, Time}, {'UTCOffset', Offset}]).
+    {[{date, to_binary(Date)},
+      {time, to_binary(Time)},
+      {'UTCOffset', to_binary(Offset)}]}.
 
-props_to_json(Props) ->
-    {lists:map(fun ({Key, Value}) when is_list(Value) ->
-                       {Key, iolist_to_binary(Value)};
-                   (Prop) ->
-                       Prop
-               end, Props)}.
-
+get_user_id(anonymous) ->
+    anonymous;
+get_user_id(undefined) ->
+    anonymous;
 get_user_id(User) ->
-    props_to_json([{source, "internal"}, {user, User}]).
+    {[{source, internal}, {user, to_binary(User)}]}.
 
 put(Code, Req, Params) ->
-    Body = props_to_json([{name, Code},
-                          {timestamp, get_timestamp(now())},
-                          {sessionID, menelaus_auth:get_token(Req)},
-                          {remote, Req:get(peer)},
-                          {userid, get_user_id(menelaus_auth:get_user(Req))},
-                          {params, props_to_json(Params)}]),
+    Body = {[{name, Code},
+             {timestamp, get_timestamp(now())},
+             {sessionID, to_binary(menelaus_auth:get_token(Req))},
+             {remote, to_binary(Req:get(peer))},
+             {userid, get_user_id(menelaus_auth:get_user(Req))},
+             {params, {Params}}]},
 
     EncodedBody = ejson:encode(Body),
     ?log_debug("Audit ~p: ~p", [Code, EncodedBody]),
@@ -70,7 +73,7 @@ put(Code, Req, Params) ->
       end).
 
 login_success(Req) ->
-    put(login_success, Req, [{role, menelaus_auth:get_role(Req)},
+    put(login_success, Req, [{role, to_binary(menelaus_auth:get_role(Req))},
                              {userid, get_user_id(menelaus_auth:get_user(Req))}]).
 
 login_failure(Req) ->
