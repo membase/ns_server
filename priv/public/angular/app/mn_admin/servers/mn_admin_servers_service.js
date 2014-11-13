@@ -18,10 +18,6 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       pendingEject = newPendingEject;
     };
 
-    mnAdminServersService.reloadServersState = function () {
-      $state.transitionTo($state.current, $stateParams, {reload: true, inherit: true, notify: true});
-    };
-
     mnAdminServersService.initializeServices = function ($scope) {
       $scope.services = {
         kv: true

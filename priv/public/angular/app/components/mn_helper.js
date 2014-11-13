@@ -1,5 +1,5 @@
 angular.module('mnHelper').factory('mnHelper',
-  function ($window) {
+  function ($window, $state, $stateParams) {
     var mnHelper = {};
 
     mnHelper.handleSpinner = function ($scope, name, promise) {
@@ -22,6 +22,10 @@ angular.module('mnHelper').factory('mnHelper',
 
     mnHelper.reloadApp = function () {
       $window.location.reload();
+    };
+
+    mnHelper.reloadState = function () {
+      $state.transitionTo($state.current, $stateParams, {reload: true, inherit: true, notify: true});
     };
 
     mnHelper.rejectReasonToScopeApplyer = function ($scope, name, promise) {

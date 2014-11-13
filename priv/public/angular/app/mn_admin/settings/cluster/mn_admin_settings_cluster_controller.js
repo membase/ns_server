@@ -1,5 +1,5 @@
 angular.module('mnAdminSettingsCluster').controller('mnAdminSettingsClusterController',
-  function ($scope, mnAdminSettingsClusterService, nodes, poolDetails, defaultCertificate, getVisulaSettings) {
+  function ($scope, mnAdminSettingsClusterService, nodes, poolDetails, defaultCertificate, getVisulaSettings, mnHelper) {
     $scope.focusMe = true;
 
     $scope.formData = {};
@@ -37,7 +37,7 @@ angular.module('mnAdminSettingsCluster').controller('mnAdminSettingsClusterContr
       mnAdminSettingsClusterService.saveVisualInternalSettings({
         spinner: settingsClusterLoadedCtrl,
         data: $scope.formData
-      }).error(setError);
+      }).success(mnHelper.reloadState).error(setError);
     };
     $scope.regenerateCertificate = function () {
       mnAdminSettingsClusterService.regenerateCertificate({

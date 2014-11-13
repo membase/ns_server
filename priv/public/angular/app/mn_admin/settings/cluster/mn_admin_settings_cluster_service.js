@@ -25,7 +25,7 @@ angular.module('mnAdminSettingsClusterService').factory('mnAdminSettingsClusterS
       return mnHttp({
         method: 'POST',
         url: '/internalSettings/visual'
-      }).then(mnAdminService.runDefaultPoolsDetailsLoop)
+      });
     };
     mnAdminSettingsClusterService.visualInternalSettingsValidation = function () {
       return mnHttp({

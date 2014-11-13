@@ -5,7 +5,7 @@ angular.module('mnAdminSettingsAutoFailoverService').factory('mnAdminSettingsAut
     mnAdminSettingsAutoFailoverService.resetAutoFailOverCount = function () {
       return mnHttp({
         method: 'POST',
-        url: '/settings/autoFailover/resetCount',
+        url: '/settings/autoFailover/resetCount'
       });
     };
 

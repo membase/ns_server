@@ -18,7 +18,7 @@ angular.module('mnAdminServers').controller('mnAdminServersFailOverDialogControl
     $scope.onSubmit = function () {
       mnAdminServersService.postFailover($scope.failOver, node.otpNode).then(function () {
         $modalInstance.close();
-        mnAdminServersService.reloadServersState();
+        mnHelper.reloadState();
       });
     };
   });

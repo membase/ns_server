@@ -1,5 +1,7 @@
 angular.module('mnHttp', []);
-angular.module('mnHelper', []);
+angular.module('mnHelper', [
+  'ui.router'
+]);
 angular.module('mnBarUsage', []);
 angular.module('mnFocus', []);
 angular.module('mnSpinner', []);
@@ -62,7 +64,8 @@ angular.module('mnAdmin', [
 
 
 angular.module('mnAdminSettingsCluster', [
-  'mnAdminSettingsClusterService'
+  'mnAdminSettingsClusterService',
+  'mnHelper'
 ]);
 angular.module('mnAdminSettingsClusterService', [
   'mnHttp'

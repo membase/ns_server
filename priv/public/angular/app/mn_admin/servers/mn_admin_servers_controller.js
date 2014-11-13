@@ -1,5 +1,5 @@
 angular.module('mnAdminServers').controller('mnAdminServersController',
-  function ($scope, $state, $modal, $interval, $location, $stateParams, $timeout, mnPoolDetails, serversState, mnAdminSettingsAutoFailoverService, mnAdminServersService) {
+  function ($scope, $state, $modal, $interval, $location, $stateParams, $timeout, mnPoolDetails, serversState, mnAdminSettingsAutoFailoverService, mnAdminServersService, mnHelper) {
 
     _.extend($scope, serversState);
     var updateServersCycle;
@@ -32,15 +32,15 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
     $scope.postRebalance = function () {
       mnAdminServersService.postRebalance($scope.allNodes).then(function () {
         $state.go('app.admin.servers', {list: 'active'});
-        mnAdminServersService.reloadServersState();
+        mnHelper.reloadState();
       });
     };
     $scope.onStopRecovery = function () {
-      mnAdminServersService.stopRecovery($scope.tasks.tasksRecovery.stopURI).then(mnAdminServersService.reloadServersState)
+      mnAdminServersService.stopRecovery($scope.tasks.tasksRecovery.stopURI).then(mnHelper.reloadState)
     };
     $scope.stopRebalance = function () {
       var request = mnAdminServersService.stopRebalance().then(
-        mnAdminServersService.reloadServersState,
+        mnHelper.reloadState,
         function (reps) {
           (reps.status === 400) && $modal.open({
             templateUrl: '/angular/app/mn_admin/servers/stop_rebalance_dialog/mn_admin_servers_stop_rebalance_dialog.html',
@@ -113,16 +113,16 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
       mnAdminServersService.reAddNode({
         otpNode: otpNode,
         recoveryType: type
-      }).then(mnAdminServersService.reloadServersState);
+      }).then(mnHelper.reloadState);
     };
     $scope.cancelFailOverNode = function (otpNode) {
       mnAdminServersService.cancelFailOverNode({
         otpNode: otpNode
-      }).then(mnAdminServersService.reloadServersState);
+      }).then(mnHelper.reloadState);
     };
     $scope.cancelEjectServer = function (node) {
       mnAdminServersService.removeFromPendingEject(node);
-      mnAdminServersService.reloadServersState();
+      mnHelper.reloadState();
     };
 
   });

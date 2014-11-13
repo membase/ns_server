@@ -38,7 +38,7 @@ angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
       var promise = mnAdminServersService.addServer($scope.selectedGroup, $scope.newServer);
       promise.then(function () {
         $modalInstance.close();
-        mnAdminServersService.reloadServersState();
+        mnHelper.reloadState();
       });
       mnHelper.rejectReasonToScopeApplyer($scope, promise);
       mnHelper.handleSpinner($scope, promise);
