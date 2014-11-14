@@ -21,6 +21,11 @@
 -include("xdc_replicator.hrl").
 -include("xdcr_dcp_streamer.hrl").
 
+%% we give xmem ops a very "healthy" timeout of ten minutes. The
+%% purpose is not panicking on slow downsteam, but rather to catch
+%% some possible "forgotten" connections when there's NAT between clusters.
+-define(XMEM_TIMEOUT, (10*60*1000)).
+
 make_location(#xdc_rep_xmem_remote{ip = Host,
                                    port = Port,
                                    bucket = Bucket,
@@ -46,7 +51,7 @@ make_location(#xdc_rep_xmem_remote{ip = Host,
 
 find_missing(#xdc_xmem_location{vb = VBucket, mcd_loc = McdDst}, IdRevs) ->
     {ok, MissingRevs, Errors} =
-        pooled_memcached_client:find_missing_revs(McdDst, VBucket, IdRevs),
+        pooled_memcached_client:find_missing_revs(McdDst, VBucket, IdRevs, ?XMEM_TIMEOUT),
     ErrRevs =
         [Pair || {_Error, Pair} <- Errors],
     {ok, ErrRevs ++ MissingRevs}.
@@ -61,7 +66,7 @@ do_flush_docs(#xdc_xmem_location{vb = VBucket,
     true = (TriesLeft > 0),
     TimeStart = os:timestamp(),
 
-    {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, MutationsList),
+    {ok, Statuses} = pooled_memcached_client:bulk_set_metas(McdDst, VBucket, MutationsList, ?XMEM_TIMEOUT),
     ?x_trace(xmemSetMetas, [{ids, {json, [M#dcp_mutation.id || M <- MutationsList]}},
                             {statuses, {json, Statuses}},
                             {startTS, xdcr_trace_log_formatter:format_ts(TimeStart)}]),
