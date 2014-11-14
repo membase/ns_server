@@ -233,7 +233,7 @@ handle_rpc({update_doc, Bucket, #doc{id = <<"_local/", _/binary>> = Id} = Doc}) 
     capi_frontend:with_master_vbucket(
       Bucket,
       fun (DB) ->
-              ok = couch_db:update_doc(DB, #doc{id = Id, body = Doc})
+              ok = couch_db:update_doc(DB, Doc)
       end);
 handle_rpc({update_doc, Bucket, Doc}) ->
     capi_set_view_manager:update_doc(Bucket, Doc);
