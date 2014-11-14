@@ -1708,7 +1708,8 @@ _.extend(mnMockRouting.prototype, {
     "ports": {
       "proxy": 12001,
       "direct": 12000
-    }
+    },
+    "services": ["kv"]
   },
   {
     "systemStats": {
@@ -1750,7 +1751,8 @@ _.extend(mnMockRouting.prototype, {
     "ports": {
       "proxy": 12001,
       "direct": 12000
-    }
+    },
+    "services": ["kv", "n1ql", "moxi"]
   },{
     "systemStats": {
       "cpu_utilization_rate": 20,
@@ -1792,7 +1794,8 @@ _.extend(mnMockRouting.prototype, {
     "ports": {
       "proxy": 12001,
       "direct": 12000
-    }
+    },
+    "services": ["kv"]
   },{
     "systemStats": {
       "cpu_utilization_rate": 20,
@@ -1833,7 +1836,8 @@ _.extend(mnMockRouting.prototype, {
     "ports": {
       "proxy": 12001,
       "direct": 12000
-    }
+    },
+    "services": ["kv", "n1ql"]
   },{
     "systemStats": {
       "cpu_utilization_rate": 14.136125654450261,
@@ -1874,7 +1878,8 @@ _.extend(mnMockRouting.prototype, {
     "ports": {
       "proxy": 12001,
       "direct": 12000
-    }
+    },
+    "services": ["kv", "n1ql", "moxi"]
   }],
   basePoolDetails: {
     "etag": "83993131",
