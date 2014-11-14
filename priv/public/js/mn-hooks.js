@@ -2725,47 +2725,8 @@ if (('Cell' in window) && ('OverviewSection' in window)) {(function () {
 
 // this is for angular's E2E $httpBackend
 if ('angular' in window) {(function () {
-  var mnHooks = angular.module("mnHooks", ['ngMockE2E']);
-  mnHooks.config(function ($provide) {
-    // in our http backend decorator we wrap callback (note how
-    // we pass all args unchanged except for callback) to handle
-    // promises of results. So that we can delay responses
-    $provide.decorator("$httpBackend", function ($delegate) {
-      // copy methods like whenXXX and expectXXX
-      _.each(_.keys($delegate), function (key) {
-        var prop = $delegate[key];
-        mnHooksHTTPBackend[key] = prop;
-      });
-      mnHooksHTTPBackend.extraXHRDelay = 200;
-      return mnHooksHTTPBackend;
 
-      function mnHooksHTTPBackend(method, url, data, callback, headers, timeout, withCredentials) {
-        // note: future angular might change args here. We should be careful
-        return $delegate(method, url, data, callbackWrapper, headers, timeout, withCredentials);
-
-        // note: angular 1.3 also passes statusText but we don't care and I believe it should be fine
-        function callbackWrapper(status, data, headers) {
-          if (status.then) {
-            // assuming that status is a promise
-            status.then(function (sdh) {
-              var status = sdh[0];
-              var data = sdh[1];
-              var headers = sdh[2];
-              callback(sdh[0], sdh[1], sdh[2]);
-            }, function (err) {
-              console.log("unexpected failure of http backend promise: ", err);
-              throw Error();
-            });
-            return;
-          }
-          callback(status, data, headers);
-        }
-      }
-    });
-  });
-
-  mnHooks.run(function wireHTTPBackend ($httpBackend, $q, $timeout) {
-    window.theHTTPBackend = $httpBackend;
+  angular.module("mnHooks", ['ngMockE2E']).run(function wireHTTPBackend ($httpBackend) {
     mnMockRouting.instance = new mnMockRouting();
     function respondFn(method, url, data, headers) {
       var path = url.split('?')[0].split("/");
@@ -2775,17 +2736,13 @@ if ('angular' in window) {(function () {
       }
       var action = mnMockRouting.instance.getResponse(method, path, query);
       var resp = action(data, headers);
-      var delay = resp[0];
       var status = resp[1];
       var data = resp[2];
       var headers = resp[3];
-      var d = $q.defer();
+
       console.log("intercepted xhr: ", method, url, data, headers);
-      $timeout(function () {
-        console.log("sending response (" + url + "). Status: " + status + ". ", data);
-        d.resolve([status, JSON.stringify(data), headers]);
-      }, delay + $httpBackend.extraXHRDelay, false);
-      return [d.promise];
+
+      return [status, JSON.stringify(data), headers];
     }
     var tester = {
       test: function () {return true;}
