@@ -229,7 +229,7 @@ handle_rpc({foreach_doc, Bucket, Fun, Timeout}) ->
 
 handle_rpc({update_doc, xdcr, Doc}) ->
     xdc_rdoc_manager:update_doc(Doc);
-handle_rpc({update_doc, Bucket, #doc{id = <<"_local/", _/binary>> = Id} = Doc}) ->
+handle_rpc({update_doc, Bucket, #doc{id = <<"_local/", _/binary>>} = Doc}) ->
     capi_frontend:with_master_vbucket(
       Bucket,
       fun (DB) ->
