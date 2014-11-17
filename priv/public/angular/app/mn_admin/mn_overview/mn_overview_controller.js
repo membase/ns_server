@@ -1,13 +1,13 @@
-angular.module('mnAdminOverview').controller('mnAdminOverviewController',
-  function ($scope, $interval, nodes, buckets, mnAdminOverviewService) {
+angular.module('mnOverview').controller('mnOverviewController',
+  function ($scope, $interval, nodes, buckets, mnOverviewService) {
     function scopeApplyer(method) {
       return function callee() {
         method().then(_.partial(_.extend, $scope));
         return callee;
       };
     }
-    var getStatsId = $interval(scopeApplyer(mnAdminOverviewService.getStats)(), 3000);
-    var overviewId = $interval(scopeApplyer(mnAdminOverviewService.getOverviewConfig)(), 3000);
+    var getStatsId = $interval(scopeApplyer(mnOverviewService.getStats)(), 3000);
+    var overviewId = $interval(scopeApplyer(mnOverviewService.getOverviewConfig)(), 3000);
 
     $scope.bucketsLength = buckets.data.length;
     $scope.failedOver = nodes.failedOver;

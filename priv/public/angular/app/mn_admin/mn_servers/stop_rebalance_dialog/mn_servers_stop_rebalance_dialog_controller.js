@@ -1,10 +1,10 @@
-angular.module('mnAdminServers').controller('mnAdminServersStopRebalanceController',
-  function ($scope, $modalInstance, mnHelper, $state, mnAdminServersService) {
+angular.module('mnServers').controller('mnServersStopRebalanceController',
+  function ($scope, $modalInstance, mnHelper, $state, mnServersService) {
     $scope.cancel = function () {
       $modalInstance.dismiss('cancel');
     }
     $scope.onStopRebalance = function () {
-      var request = mnAdminServersService.stopRebalance();
+      var request = mnServersService.stopRebalance();
       request.then(function () {
         $modalInstance.close();
       });

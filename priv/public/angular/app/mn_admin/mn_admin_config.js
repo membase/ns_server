@@ -13,14 +13,14 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
     })
     .state('app.admin.overview', {
       url: '/overview',
-      controller: 'mnAdminOverviewController',
-      templateUrl: 'mn_admin/overview/mn_admin_overview.html',
+      controller: 'mnOverviewController',
+      templateUrl: 'mn_admin/mn_overview/mn_overview.html',
       resolve: {
-        nodes: function (mnAdminServersService) {
-          return mnAdminServersService.getNodes();
+        nodes: function (mnServersService) {
+          return mnServersService.getNodes();
         },
-        buckets: function (mnAdminBucketsService) {
-          return mnAdminBucketsService.getRawDetailedBuckets();
+        buckets: function (mnBucketsService) {
+          return mnBucketsService.getRawDetailedBuckets();
         }
       }
     })
@@ -33,38 +33,38 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
       },
       views: {
         "" : {
-          controller: 'mnAdminServersController',
-          templateUrl: 'mn_admin/servers/mn_admin_servers.html',
+          controller: 'mnServersController',
+          templateUrl: 'mn_admin/mn_servers/mn_servers.html',
           resolve: {
-            serversState: function (mnAdminServersService, $stateParams) {
-              return mnAdminServersService.getServersState($stateParams.list);
+            serversState: function (mnServersService, $stateParams) {
+              return mnServersService.getServersState($stateParams.list);
             }
           }
         },
         "details@app.admin.servers": {
-          templateUrl: 'mn_admin/servers/details/mn_admin_servers_list_item_details.html',
-          controller: 'mnAdminServersListItemDetailsController'
+          templateUrl: 'mn_admin/mn_servers/details/mn_servers_list_item_details.html',
+          controller: 'mnServersListItemDetailsController'
         }
       }
     })
     .state('app.admin.settings', {
       url: '/settings',
       abstract: true,
-      templateUrl: 'mn_admin/settings/mn_admin_settings.html'
+      templateUrl: 'mn_admin/mn_settings/mn_settings.html'
     })
     .state('app.admin.settings.cluster', {
       url: '/cluster',
-      controller: 'mnAdminSettingsClusterController',
-      templateUrl: 'mn_admin/settings/cluster/mn_admin_settings_cluster.html',
+      controller: 'mnSettingsClusterController',
+      templateUrl: 'mn_admin/mn_settings/cluster/mn_settings_cluster.html',
       resolve: {
-        defaultCertificate: function (mnAdminSettingsClusterService) {
-          return mnAdminSettingsClusterService.getDefaultCertificate();
+        defaultCertificate: function (mnSettingsClusterService) {
+          return mnSettingsClusterService.getDefaultCertificate();
         },
-        getVisulaSettings: function (mnAdminSettingsClusterService) {
-          return mnAdminSettingsClusterService.getVisulaSettings();
+        getVisulaSettings: function (mnSettingsClusterService) {
+          return mnSettingsClusterService.getVisulaSettings();
         },
-        nodes: function (mnAdminServersService) {
-          return mnAdminServersService.getNodes();
+        nodes: function (mnServersService) {
+          return mnServersService.getNodes();
         },
         poolDefault: function (mnPoolDefault) {
           return mnPoolDefault.getFresh()

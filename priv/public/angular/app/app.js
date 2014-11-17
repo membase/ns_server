@@ -22,7 +22,7 @@ angular.module('mnPools', [
 
 angular.module('mnWizard', [
   'mnAuthService',
-  'mnAdminServersService',
+  'mnServersService',
   'mnHelper',
   'ui.router',
   'mnWizardStep1Service',
@@ -67,49 +67,49 @@ angular.module('mnAdmin', [
 ]);
 
 
-angular.module('mnAdminSettingsCluster', [
-  'mnAdminSettingsClusterService',
+angular.module('mnSettingsCluster', [
+  'mnSettingsClusterService',
   'mnHelper'
 ]);
-angular.module('mnAdminSettingsClusterService', [
+angular.module('mnSettingsClusterService', [
   'mnHttp'
 ]);
-angular.module('mnAdminSettingsAutoFailoverService', [
+angular.module('mnSettingsAutoFailoverService', [
   'mnHttp'
 ]);
 
 
-angular.module('mnAdminServers', [
+angular.module('mnServers', [
   'mnPoolDefault',
   'ui.router',
   'ui.bootstrap',
-  'mnAdminServersListItemDetailsService',
-  'mnAdminSettingsAutoFailoverService',
-  'mnAdminServersService',
+  'mnServersListItemDetailsService',
+  'mnSettingsAutoFailoverService',
+  'mnServersService',
   'mnHelper'
 ]);
-angular.module('mnAdminServersService', [
+angular.module('mnServersService', [
   'mnTasksDetails',
   'mnPoolDefault',
   'mnHelper',
   'mnHttp'
 ]);
-angular.module('mnAdminServersListItemDetailsService', [
+angular.module('mnServersListItemDetailsService', [
   'mnTasksDetails',
   'mnHttp'
 ]);
 
 
-angular.module('mnAdminOverview', [
-  'mnAdminOverviewService'
+angular.module('mnOverview', [
+  'mnOverviewService'
 ]);
-angular.module('mnAdminOverviewService', [
+angular.module('mnOverviewService', [
   'mnPoolDefault',
   'mnHttp'
 ]);
 
 
-angular.module('mnAdminBucketsService', [
+angular.module('mnBucketsService', [
   'mnHttp'
 ]);
 
@@ -134,10 +134,10 @@ angular.module('app', [
   'mnWizard',
   'mnAuth',
   'mnAdmin',
-  'mnAdminSettingsCluster',
-  'mnAdminServers',
-  'mnAdminOverview',
-  'mnAdminBucketsService'
+  'mnSettingsCluster',
+  'mnServers',
+  'mnOverview',
+  'mnBucketsService'
 
 
 ]).run(function ($rootScope, $state, $urlRouter, mnPools) {

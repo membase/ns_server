@@ -1,7 +1,7 @@
-angular.module('mnAdminServers').controller('mnAdminServersFailOverDialogController',
-  function ($scope, mnAdminServersService, mnHelper, node, $modalInstance) {
+angular.module('mnServers').controller('mnServersFailOverDialogController',
+  function ($scope, mnServersService, mnHelper, node, $modalInstance) {
     $scope.node = node;
-    var promise = mnAdminServersService.getNodeStatuses(node.hostname);
+    var promise = mnServersService.getNodeStatuses(node.hostname);
     mnHelper.handleSpinner($scope, promise);
     promise.then(function (details) {
       if (details) {
@@ -16,7 +16,7 @@ angular.module('mnAdminServers').controller('mnAdminServersFailOverDialogControl
     };
 
     $scope.onSubmit = function () {
-      mnAdminServersService.postFailover($scope.failOver, node.otpNode).then(function () {
+      mnServersService.postFailover($scope.failOver, node.otpNode).then(function () {
         $modalInstance.close();
         mnHelper.reloadState();
       });

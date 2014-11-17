@@ -1,5 +1,5 @@
-angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
-  function ($scope, mnAdminServersService, $modalInstance, mnHelper, groups) {
+angular.module('mnServers').controller('mnServersAddDialogController',
+  function ($scope, mnServersService, $modalInstance, mnHelper, groups) {
     reset();
     $scope.newServer = {
       hostname: '',
@@ -15,7 +15,7 @@ angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
       $scope.focusMe = true;
     }
 
-    mnAdminServersService.initializeServices($scope);
+    mnServersService.initializeServices($scope);
 
     $scope.isGroupsAvailable = !!groups;
 
@@ -35,7 +35,7 @@ angular.module('mnAdminServers').controller('mnAdminServersAddDialogController',
         return reset();
       }
 
-      var promise = mnAdminServersService.addServer($scope.selectedGroup, $scope.newServer);
+      var promise = mnServersService.addServer($scope.selectedGroup, $scope.newServer);
       promise.then(function () {
         $modalInstance.close();
         mnHelper.reloadState();

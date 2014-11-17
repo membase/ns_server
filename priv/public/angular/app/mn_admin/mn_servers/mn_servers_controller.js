@@ -1,10 +1,10 @@
-angular.module('mnAdminServers').controller('mnAdminServersController',
-  function ($scope, $state, $modal, $interval, $location, $stateParams, $timeout, mnPoolDefault, serversState, mnAdminSettingsAutoFailoverService, mnAdminServersService, mnHelper) {
+angular.module('mnServers').controller('mnServersController',
+  function ($scope, $state, $modal, $interval, $location, $stateParams, $timeout, mnPoolDefault, serversState, mnSettingsAutoFailoverService, mnServersService, mnHelper) {
 
     _.extend($scope, serversState);
     var updateServersCycle;
     (function updateServers() {
-      mnAdminServersService.getServersState($stateParams.list).then(function (serversState) {
+      mnServersService.getServersState($stateParams.list).then(function (serversState) {
         _.extend($scope, serversState);
         updateServersCycle = $timeout(updateServers, serversState.recommendedRefreshPeriod);
       });
@@ -16,13 +16,13 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
 
     $scope.addServer = function () {
       $modal.open({
-        templateUrl: '/angular/app/mn_admin/servers/add_dialog/mn_admin_servers_add_dialog.html',
-        controller: 'mnAdminServersAddDialogController',
+        templateUrl: '/angular/app/mn_admin/mn_servers/add_dialog/mn_servers_add_dialog.html',
+        controller: 'mnServersAddDialogController',
         resolve: {
           groups: function () {
             return mnPoolDefault.get().then(function (poolDefault) {
               if (poolDefault.isGroupsAvailable) {
-                return mnAdminServersService.getGroups();
+                return mnServersService.getGroups();
               }
             });
           }
@@ -30,26 +30,26 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
       });
     };
     $scope.postRebalance = function () {
-      mnAdminServersService.postRebalance($scope.allNodes).then(function () {
+      mnServersService.postRebalance($scope.allNodes).then(function () {
         $state.go('app.admin.servers', {list: 'active'});
         mnHelper.reloadState();
       });
     };
     $scope.onStopRecovery = function () {
-      mnAdminServersService.stopRecovery($scope.tasks.tasksRecovery.stopURI).then(mnHelper.reloadState)
+      mnServersService.stopRecovery($scope.tasks.tasksRecovery.stopURI).then(mnHelper.reloadState)
     };
     $scope.stopRebalance = function () {
-      var request = mnAdminServersService.stopRebalance().then(
+      var request = mnServersService.stopRebalance().then(
         mnHelper.reloadState,
         function (reps) {
           (reps.status === 400) && $modal.open({
-            templateUrl: '/angular/app/mn_admin/servers/stop_rebalance_dialog/mn_admin_servers_stop_rebalance_dialog.html',
-            controller: 'mnAdminServersEjectDialogController'
+            templateUrl: '/angular/app/mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
+            controller: 'mnServersEjectDialogController'
           });
       });
     };
     $scope.resetAutoFailOverCount = function () {
-      mnAdminSettingsAutoFailoverService.resetAutoFailOverCount()
+      mnSettingsAutoFailoverService.resetAutoFailOverCount()
         .then(function () {
           $scope.isResetAutoFailOverCountSuccess = true;
           $timeout(function () {
@@ -89,8 +89,8 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
 
     $scope.ejectServer = function (node) {
       $modal.open({
-        templateUrl: '/angular/app/mn_admin/servers/eject_dialog/mn_admin_servers_eject_dialog.html',
-        controller: 'mnAdminServersEjectDialogController',
+        templateUrl: '/angular/app/mn_admin/mn_servers/eject_dialog/mn_servers_eject_dialog.html',
+        controller: 'mnServersEjectDialogController',
         resolve: {
           node: function () {
             return node;
@@ -100,8 +100,8 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
     };
     $scope.failOverNode = function (node) {
       $modal.open({
-        templateUrl: '/angular/app/mn_admin/servers/failover_dialog/mn_admin_servers_failover_dialog.html',
-        controller: 'mnAdminServersFailOverDialogController',
+        templateUrl: '/angular/app/mn_admin/mn_servers/failover_dialog/mn_servers_failover_dialog.html',
+        controller: 'mnServersFailOverDialogController',
         resolve: {
           node: function () {
             return node;
@@ -110,18 +110,18 @@ angular.module('mnAdminServers').controller('mnAdminServersController',
       });
     };
     $scope.reAddNode = function (type, otpNode) {
-      mnAdminServersService.reAddNode({
+      mnServersService.reAddNode({
         otpNode: otpNode,
         recoveryType: type
       }).then(mnHelper.reloadState);
     };
     $scope.cancelFailOverNode = function (otpNode) {
-      mnAdminServersService.cancelFailOverNode({
+      mnServersService.cancelFailOverNode({
         otpNode: otpNode
       }).then(mnHelper.reloadState);
     };
     $scope.cancelEjectServer = function (node) {
-      mnAdminServersService.removeFromPendingEject(node);
+      mnServersService.removeFromPendingEject(node);
       mnHelper.reloadState();
     };
 

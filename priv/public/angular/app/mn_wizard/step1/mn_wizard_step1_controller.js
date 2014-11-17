@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep1Controller',
-  function ($scope, $state, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper, mnAdminServersService) {
+  function ($scope, $state, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper, mnServersService) {
     $scope.hostname = selfConfig.hostname;
 
     $scope.clusterMember = {
@@ -8,7 +8,7 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
       password: ''
     };
 
-    mnAdminServersService.initializeServices($scope);
+    mnServersService.initializeServices($scope);
 
     $scope.$watch('joinCluster', function () {
       $scope.services = {kv: true};
@@ -64,7 +64,7 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
         var services = mnHelper.checkboxesToList($scope.services);
         if (!isJoinCluster) {
           return $q.all([
-            mnHelper.rejectReasonToScopeApplyer($scope, 'setupServicesErrors', mnAdminServersService.setupServices({services: services.join(',')})),
+            mnHelper.rejectReasonToScopeApplyer($scope, 'setupServicesErrors', mnServersService.setupServices({services: services.join(',')})),
             makeRequestWithErrorsHandler('postMemory', $scope.dynamicRamQuota).then(goNext)
           ]);
         } else {

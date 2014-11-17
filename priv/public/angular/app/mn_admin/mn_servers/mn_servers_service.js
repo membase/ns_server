@@ -1,24 +1,24 @@
-angular.module('mnAdminServersService').factory('mnAdminServersService',
+angular.module('mnServersService').factory('mnServersService',
   function (mnHttp, mnTasksDetails, mnPoolDefault, $q, $state, $stateParams, mnHelper) {
-    var mnAdminServersService = {};
+    var mnServersService = {};
 
     var pendingEject = [];
 
-    mnAdminServersService.addToPendingEject = function (node) {
+    mnServersService.addToPendingEject = function (node) {
       pendingEject.push(node);
     };
-    mnAdminServersService.removeFromPendingEject = function (node) {
+    mnServersService.removeFromPendingEject = function (node) {
       node.pendingEject = false;
       _.remove(pendingEject, {'hostname': node.hostname});
     };
-    mnAdminServersService.getPendingEject = function () {
+    mnServersService.getPendingEject = function () {
       return pendingEject;
     };
-    mnAdminServersService.setPendingEject = function (newPendingEject) {
+    mnServersService.setPendingEject = function (newPendingEject) {
       pendingEject = newPendingEject;
     };
 
-    mnAdminServersService.initializeServices = function ($scope) {
+    mnServersService.initializeServices = function ($scope) {
       $scope.services = {
         kv: true
       };
@@ -30,14 +30,14 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       }, true);
     };
 
-    mnAdminServersService.reAddNode = function (data) {
+    mnServersService.reAddNode = function (data) {
       return mnHttp({
         method: 'POST',
         url: '/controller/setRecoveryType',
         data: data
       });
     };
-    mnAdminServersService.getGroups = function () {
+    mnServersService.getGroups = function () {
       return mnHttp({
         method: 'GET',
         url: '/pools/default/serverGroups'
@@ -45,57 +45,57 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
         return resp.data;
       })
     };
-    mnAdminServersService.setupServices = function (data) {
+    mnServersService.setupServices = function (data) {
       return mnHttp({
         method: 'POST',
         url: '/node/controller/setupServices',
         data: data
       });
     };
-    mnAdminServersService.cancelFailOverNode = function (data) {
+    mnServersService.cancelFailOverNode = function (data) {
       return mnHttp({
         method: 'POST',
         url: '/controller/reFailOver',
         data: data
       });
     };
-    mnAdminServersService.stopRebalance = function () {
+    mnServersService.stopRebalance = function () {
       return mnHttp({
         method: 'POST',
         url: '/controller/stopRebalance'
       });
     };
-    mnAdminServersService.stopRecovery = function (url) {
+    mnServersService.stopRecovery = function (url) {
       return mnHttp({
         method: 'POST',
         url: url
       });
     };
-    mnAdminServersService.postFailover = function (type, otpNode) {
+    mnServersService.postFailover = function (type, otpNode) {
       return mnHttp({
         method: 'POST',
         url: '/controller/' + type,
         data: {otpNode: otpNode}
       });
     };
-    mnAdminServersService.ejectNode = function (data) {
+    mnServersService.ejectNode = function (data) {
       return mnHttp({
         method: 'POST',
         url: '/controller/ejectNode',
         data: data
       });
     };
-    mnAdminServersService.postRebalance = function (allNodes) {
+    mnServersService.postRebalance = function (allNodes) {
       return mnHttp({
         method: 'POST',
         url: '/controller/rebalance',
         data: {
           knownNodes: _.pluck(allNodes, 'otpNode').join(','),
-          ejectedNodes: _.pluck(mnAdminServersService.getPendingEject(), 'otpNode').join(',')
+          ejectedNodes: _.pluck(mnServersService.getPendingEject(), 'otpNode').join(',')
         }
       });
     };
-    mnAdminServersService.getNodeStatuses = function (hostname) {
+    mnServersService.getNodeStatuses = function (hostname) {
       return mnHttp({
         method: 'GET',
         url: '/nodeStatuses'
@@ -193,7 +193,7 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
 
       var stillActualEject = [];
 
-      _.each(mnAdminServersService.getPendingEject(), function (node) {
+      _.each(mnServersService.getPendingEject(), function (node) {
         var original = _.detect(nodes, function (n) {
           return n.otpNode == node.otpNode;
         });
@@ -204,7 +204,7 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
         original.pendingEject = true;
       });
 
-      mnAdminServersService.setPendingEject(stillActualEject);
+      mnServersService.setPendingEject(stillActualEject);
 
       var rv = {};
 
@@ -222,7 +222,7 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       });
       rv.pending = _.filter(nodes, function (node) {
         return node.clusterMembership !== 'active';
-      }).concat(mnAdminServersService.getPendingEject());
+      }).concat(mnServersService.getPendingEject());
       rv.reallyActive = _.filter(rv.onlyActive, function (node) {
         return !node.pendingEject
       });
@@ -234,16 +234,16 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       return rv;
     };
 
-    mnAdminServersService.getNodes = function () {
+    mnServersService.getNodes = function () {
       return $q.all([
         mnPoolDefault.getFresh(),
-        mnAdminServersService.getGroups()
+        mnServersService.getGroups()
       ]).then(prepareNodes);
     };
 
-    mnAdminServersService.getServersState = function (stateParamsNodeType) {
+    mnServersService.getServersState = function (stateParamsNodeType) {
       return $q.all([
-        mnAdminServersService.getNodes(),
+        mnServersService.getNodes(),
         mnPoolDefault.get(),
         mnTasksDetails.get()
       ]).then(function (results) {
@@ -275,7 +275,7 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       });
     };
 
-    mnAdminServersService.addServer = function (selectedGroup, newServer) {
+    mnServersService.addServer = function (selectedGroup, newServer) {
       return mnHttp({
         method: 'POST',
         url: (selectedGroup && selectedGroup.addNodeURI) || '/controller/addNode',
@@ -283,5 +283,5 @@ angular.module('mnAdminServersService').factory('mnAdminServersService',
       });
     };
 
-    return mnAdminServersService;
+    return mnServersService;
   });

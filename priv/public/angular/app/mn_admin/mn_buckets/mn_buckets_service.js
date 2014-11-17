@@ -1,10 +1,10 @@
-angular.module('mnAdminBucketsService').factory('mnAdminBucketsService',
+angular.module('mnBucketsService').factory('mnBucketsService',
   function (mnHttp) {
-    var mnAdminBucketsService = {};
+    var mnBucketsService = {};
 
-    mnAdminBucketsService.model = {};
+    mnBucketsService.model = {};
 
-    mnAdminBucketsService.getRawDetailedBuckets = function () {
+    mnBucketsService.getRawDetailedBuckets = function () {
       return mnHttp.get('/pools/default/buckets?basic_stats=true').success(populateModel);
     };
 
@@ -52,8 +52,8 @@ angular.module('mnAdminBucketsService').factory('mnAdminBucketsService',
         bucket.healthStats = [h.healthy || 0, h.warmup || 0, h.unhealthy || 0];
       });
 
-      mnAdminBucketsService.model.bucketsDetails = bucketsDetails;
+      mnBucketsService.model.bucketsDetails = bucketsDetails;
     }
 
-    return mnAdminBucketsService;
+    return mnBucketsService;
   });

@@ -1,6 +1,6 @@
-angular.module('mnAdminServersListItemDetailsService').factory('mnAdminServersListItemDetailsService',
+angular.module('mnServersListItemDetailsService').factory('mnServersListItemDetailsService',
   function (mnHttp, $q, mnTasksDetails) {
-    var mnAdminServersListItemDetailsService = {};
+    var mnServersListItemDetailsService = {};
 
     function formatWarmupMessages(warmupTasks, keyName) {
       if (!warmupTasks.length) {
@@ -61,7 +61,7 @@ angular.module('mnAdminServersListItemDetailsService').factory('mnAdminServersLi
       };
     }
 
-    mnAdminServersListItemDetailsService.getNodeDetails = function (node) {
+    mnServersListItemDetailsService.getNodeDetails = function (node) {
       return $q.all([
         mnHttp({method: 'GET', url: '/nodes/' + encodeURIComponent(node.otpNode)}),
         mnTasksDetails.get()
@@ -99,5 +99,5 @@ angular.module('mnAdminServersListItemDetailsService').factory('mnAdminServersLi
       });
     };
 
-    return mnAdminServersListItemDetailsService;
+    return mnServersListItemDetailsService;
   });
