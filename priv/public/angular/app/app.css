@@ -87,7 +87,7 @@ a.dynamic_disabled{text-decoration:none;cursor:default;}
 
 
 #container {background-color:#fff;position:absolute;width:100%;min-width:960px;min-height:100%;overflow: hidden;}
-#mainContainer {position:relative;width:960px;left:12%;margin-top:15px;padding:0 0 220px;}
+#mainContainer {position:relative;width:1060px;left:12%;margin-top:15px;padding:0 0 220px;}
 .main_holder {position:relative; margin:auto; left:0px !important;}
 .cnt_holder {width:960px; position:relative; margin: 0 auto;}
 .log_wrap {overflow: hidden;}
@@ -351,16 +351,44 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 .shadow_box .hdr {min-height:39px;padding:0 18px;line-height:39px;font-size:21px;background:url(/images/bg_h2.gif) 0 100% repeat-x #e3e3e4;overflow:hidden;}
 .shadow_box .hdr span {font-size:18px;}
 .overview .section {border:2px solid #d4d4d5;border-width:0 2px;}
-.overview .section .item {padding:13px 13px 13px 16px;border-bottom:1px solid #ced5d9;}
+.overview .section .item.ovf {padding: 0; text-align: left;}
+.overview .section .item {padding:13px 13px 13px 16px;border-bottom:1px solid #ced5d9;text-align: center;}
 .overview .section .item .label {float:left;clear:right;width:128px;margin:22px 0 0;color:#9b9b9b;line-height:1.4;}
 .overview .section .item .label strong {display:block;color:#444245;padding:4px 0 3px;font-weight:normal;font-size:16px;margin-top:3px;}
 .overview .section .item .label span {display:block;text-transform:none;}
-.overview .section .item .line_cnt {height:85px;margin:0 0 0 130px;}
+.overview .section .item .line_cnt {height:85px;margin:0 0 0 130px;overflow: hidden;}
 .overview .section .item .top-right {float:right;padding-bottom:13px;color:#444245;text-align:right;}
 .overview .section .item .top-left {float:left;margin-left:3px; padding-bottom:13px;color:#e43a1b;}
 
-.usage_biggest .usage {float:left;position:relative;width:775px;height:31px;background:url(/images/usages.png) no-repeat;}
-.usage_biggest .usage div {background:url(/images/usages_new.png) 0 0 no-repeat;position:absolute;top:0px;left:0px;height:31px;}
+.usage { clear: both; width: 100%; height: 21px; position: relative; border: 1px solid #c6c6c6;
+  overflow: hidden;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  background: rgba(255,255,255,1);
+  background: -moz-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 90%, rgba(89,89,89,1) 100%);
+  background: -webkit-gradient(left top, left bottom, color-stop(0%, rgba(255,255,255,1)), color-stop(20%, rgba(255,255,255,0)), color-stop(90%, rgba(0,0,0,0)), color-stop(100%, rgba(89,89,89,1)));
+  background: -webkit-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 90%, rgba(89,89,89,1) 100%);
+  background: -o-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 90%, rgba(89,89,89,1) 100%);
+  background: -ms-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 90%, rgba(89,89,89,1) 100%);
+  background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 90%, rgba(89,89,89,1) 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#595959', GradientType=0 );
+}
+.usage div { height:21px; position: absolute; left: 0px; top: 0px;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  background: rgba(255,255,255,1);
+  background: -moz-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 80%, rgba(89,89,89,1) 100%);
+  background: -webkit-gradient(left top, left bottom, color-stop(0%, rgba(255,255,255,1)), color-stop(20%, rgba(255,255,255,0)), color-stop(80%, rgba(0,0,0,0)), color-stop(100%, rgba(89,89,89,1)));
+  background: -webkit-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 80%, rgba(89,89,89,1) 100%);
+  background: -o-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 80%, rgba(89,89,89,1) 100%);
+  background: -ms-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 80%, rgba(89,89,89,1) 100%);
+  background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 80%, rgba(89,89,89,1) 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#595959', GradientType=0 );
+}
+
+.usage_biggest .usage, .usage_biggest .usage div {height:31px;}
 .usage_biggest .usage i {position:absolute;top:-8px;right:0;display:block;width:1px;height:47px;background-color:#e43a1b;font-size:0;line-height:0;}
 .usage_biggest .usage + table  {clear:both;width:599px;}
 .usage_biggest .usage + table td {padding:13px 0 0 3px;}
@@ -370,7 +398,7 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 .disk-item .usage_biggest + table td+td {color:#1878a2;text-align:center;}
 .disk-item .usage_biggest + table td+td+td {color:#000;text-align:right;}
 
-.overview .graph_main {display:inline-block;width:420px;margin:0 0 0 20px; *zoom:1;*display:inline;position:relative;}
+.overview .graph_main {display:inline-block;width:420px;margin:0 0 0 60px; *zoom:1;*display:inline;position:relative;}
 .overview .graph_main .graph {width:420px;height:140px;position:relative;}
 .overview .graph_main .graph_info_label {display:block;text-align:center;font-size:13px;left:0;top:0;right:0;}
 .overview .no_stats_marker,
@@ -381,18 +409,18 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 .overview .no-samples-yet .no_stats_marker { display: block;}
 .overview .no-samples-yet .graph_main { display: none;}
 
-.actservers {float:left;width:261px;min-height:120px;padding:30px 0 0 173px;background:url(/images/ico_server_big.png) 50px 13px no-repeat;}
-.actservers h3 {padding:0 0 5px;font-size:18px;font-weight:normal;}
+.actservers {float:left;width:339px;min-height:140px;padding:50px 0 0 173px;background:url(/images/ico_server_big.png) 83px 33px no-repeat;}
+.actservers h3 {padding:0 0 5px 54px;font-size:18px;font-weight:normal;}
 .actservers p {padding:0 0 2px;line-height:1.4;}
 .actservers p b {color:#888;}
 .actservers a {font-weight:bold;line-height:25px;}
-.actservers + ul {float:left;width:475px;margin:-27px 0 0;position:relative;top:14px;left:13px;}
+.actservers + ul {overflow:hidden;display:block;position:relative;}
 .actservers + ul li {font-size:16px;height:70px;line-height:70px;padding:0 0 0 66px;position:relative;text-transform:none; border-left:1px solid #ced5d9;border-bottom:1px solid #ced5d9;background:url(/images/server_icon.png) 19px 15px no-repeat;}
 .actservers + ul li.fail,
 .actservers + ul li.fail a,
 .actservers + ul li.down,
 .actservers + ul li.down a {color:#e43a1b;}
-.actservers + ul .badge {top:6px;right:436px;}
+.actservers + ul .badge {top:6px;left:10px; right: auto;}
 
 p.info {padding:5px 24px 15px;font-weight:bold;}
 
@@ -773,7 +801,7 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .servers_list .server_down .serverName {color:#26BBFF;}
 
 .servers .gong_rb {margin:10px 0 10px;}
-
+.additional_server_info .disk_storage {width: 230px;}
 .additional_server_info .rebalance_progress {padding-left: 246px; background:url(/images/icons.png) 0 -480px no-repeat;}
 .additional_server_info .rebalance_progress p.direction {margin: 10px 0; white-space: nowrap;font-weight: bold}
 .additional_server_info .rebalance_progress div {margin: 20px 0;}
@@ -784,19 +812,17 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .additional_server_info .info_block {display:block; overflow:hidden;}
 .additional_server_info .info_block .path {display:block;width:160px;font-size:11px;line-height:1.25;padding-top:8px;white-space:nowrap;overflow:hidden;}
 .additional_server_info .info_block.last {padding:10px 0 10px 0;}
-.additional_server_info .dynamic_ram {display:block; height:40px; padding:0 0 0 77px; background:url(/images/icons.png) -6px -190px no-repeat; float:left;}
+.additional_server_info .dynamic_ram {display:block; height:40px; width: 230px; padding:0 0 0 77px; background:url(/images/icons.png) -6px -190px no-repeat; float:left;}
 .total_ram {display:block; height:14px; text-align:right;}
 
-.additional_server_info .usage-block { width:670px; float:right; font-size:12px}
+.additional_server_info .usage-block { overflow: hidden; font-size:12px}
 .additional_server_info .usage-block .top-left {display:block;float:left;margin: 0 0 5px;color:#e43a1b;}
 .additional_server_info .usage-block .top-right { display:block; float:right;margin: 0 0 5px; }
-.additional_server_info .usage-block .usage { clear:both; width:670px; height:21px; position:relative; background:url(/images/usages_two.png) 0 0 no-repeat; }
-.additional_server_info .usage-block .usage div { height:21px; position:absolute; left:0px; top:0px; background:url(/images/usages_two.png) 0 0 no-repeat; }
 .additional_server_info .usage-block table {margin:5px 0 0}
 .additional_server_info .usage-block td {padding:3px 0 0 !important;float:none;}
 .additional_server_info .usage-block i {position:absolute;top:-4px;right:0;display:block;width:1px;height:30px;font-size:0;line-height:0;}
 
-.solid_state, .disk_storage {float:left;width:169px;height:40px;padding:0 0 0 77px;background:url(/images/icons.png) -6px -289px no-repeat;}
+.solid_state, .disk_storage {float:left;width:180px;min-height:40px;padding:0 0 0 77px;background:url(/images/icons.png) -6px -289px no-repeat;}
  .disk_storage {background-position:-6px -390px;}
 .additional_server_info .add_btn {display:block; width:61px; height:21px; background:url(/images/add_btn.png) 0 0 no-repeat; float:right;}
 .additional_server_info .info_message {font-size:16px;}
@@ -832,7 +858,7 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .group_wrapper .head .btn_1 {margin-top: 6px; float:right;}
 .group_wrapper .head .btn_1 span {overflow: hidden; font-size: 14px;}
 .group_wrapper .group_servers {min-height: 45px;background: #eeeeef;}
-.group_wrapper .group_servers .dragged {border: 1px solid #ced5d9; width: 941px;}
+.group_wrapper .group_servers .dragged {border: 1px solid #ced5d9; width: 1041px;}
 .group_wrapper .group_servers,
 .group_wrapper .head {border-right: 1px solid #d9d9d9; border-left: 1px solid #d9d9d9;}
 
@@ -914,9 +940,9 @@ span.drag_placeholder {height: 56px; display: block; border: 1px dashed #999; ba
 .list .highlight td {background-color:#eee !important;}
 .properties_table {width: 100%;}
 .properties_table tr td {text-align:left !important; vertical-align:top !important; background:none !important; border:0px !important;height:auto;line-height:1em}
-.gong_rb .pad > div > span, .properties_table tr td span {color: #7C7D7F;}
-.gong_rb .pad > div {width:230px;padding:10px;line-height:12px;height:12px;float:left;}
-.gong_rb .pad .last {overflow:hidden;width:auto;float:none;line-height:30px;height:30px;padding-top:15px;}
+.gong_rb .pad > div > div > span, .properties_table tr td span {color: #7C7D7F;}
+.gong_rb .pad > div > div{width:230px;padding:10px;line-height:12px;height:12px;float:left;}
+.gong_rb .pad .last {overflow:hidden;width:auto;float:none;line-height:30px;height:30px;padding-top:15px;padding-right: 10px; }
 .list table.label {float:left;margin:2px 0 0;}
 .list table.label td:first-child {width:175px;color:#444245; text-align:right;}
 
@@ -1028,16 +1054,14 @@ input.view_name{width:20em;padding:5px}
 .internal_settings_dialog form {border-top: 1px solid #dfdfe0;}
 
 .bucket_details_info h2 {margin: 0 0 10px; padding: 5px 0 7px; color: #5391BA; font-size: 15px; font-weight: bold; border-bottom: 1px solid #bbbdbf; clear: both;}
-.bucket_details_info .size-gauge {float:right;width:600px;position:relative;top:-6px;line-height:24px;}
+.bucket_details_info .size-gauge {overflow:hidden;position:relative;top:-6px;line-height:24px;}
 .bucket_details_info .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
 .bucket_details_info .size-gauge .top-right {float:right;font-size:12px;}
-.bucket_details_info .size-gauge .usage {clear:both;position:relative;height:21px;background:url(/images/usages_third.png) 0 -46px no-repeat;}
-.bucket_details_info .size-gauge .usage div {width:600px;height:21px;position:absolute;left:0px;top:0px;background:url(/images/usages_third.png) 0 0 no-repeat;}
 .bucket_details_info .size-gauge table {width:100%;text-align:justify;line-height:1.3;}
 .bucket_details_info .size-gauge table td {padding:4px 0 0;text-align:right;font-size:10px;background:none;border:none;}
 .bucket_details_info .size-gauge .usage i {background:none;display:block;font-size:0;height:25px;line-height:0;position:absolute;;top:-5px;width:1px;}
-.bucket_details_info .disk_storage {width: auto;}
-.bucket_details_info label {display:block;line-height:24px;overflow:hidden;font-size:12px;}
+.bucket_details_info .disk_storage {width: 230px;}
+.bucket_details_info label {display:block;line-height:24px; font-size:12px;}
 .bucket_details_info label span {display:block;float:left;text-align:left;}
 .bucket_details_info label span + span {width:60px !important;margin-left: 5px;color:#7C7D7F;}
 .bucket_details_info label abbr {margin-left:6px;}
@@ -1081,8 +1105,7 @@ input.view_name{width:20em;padding:5px}
 .bucket_details .for-ram-quota span {color:#222}
 .bucket_details .size-gauge .top-left {float:left;color:#C19710;font-size:12px;}
 .bucket_details .size-gauge .top-right {float:right;font-size:12px;}
-.bucket_details .size-gauge .usage {clear:both;position:relative;height:15px;background:url(/images/usages.png) 0 -46px no-repeat;}
-.bucket_details .size-gauge .usage div {width:363px;height:15px;position:absolute;left:0px;top:0px;background:url(/images/usages.png) 0 -46px no-repeat;}
+.bucket_details .size-gauge .usage, .bucket_details .size-gauge .usage div {height:15px;}
 .bucket_details .size-gauge table {width:100%;text-align:justify;line-height:1.3;}
 .bucket_details .size-gauge table td {padding:4px 0 0;text-align:right;font-size:10px;background:none;border:none;}
 .bucket_details .size-gauge .usage i {background:none;display:block;font-size:0;height:25px;line-height:0;position:absolute;;top:-5px;width:1px;}
