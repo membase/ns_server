@@ -23,6 +23,7 @@ angular.module('mnTasksDetails').factory('mnTasksDetails',
         rv.tasks = tasks;
         rv.tasksRecovery = _.detect(tasks, detectRecoveryTasks);
         rv.tasksRebalance = _.detect(tasks, detectRebalanceTasks);
+        rv.tasksWarmingUp = _.filter(tasks, detectWarmupTask);
         rv.inRebalance = !!(rv.tasksRebalance && rv.tasksRebalance.status === "running");
         rv.inRecoveryMode = !!rv.tasksRecovery;
         rv.isLoadingSamples = !!_.detect(tasks, detectLoadingSamples);
@@ -47,6 +48,10 @@ angular.module('mnTasksDetails').factory('mnTasksDetails',
 
     function detectLoadingSamples(taskInfo) {
       return taskInfo.type === "loadingSampleBucket" && taskInfo.status === "running";
+    }
+
+    function detectWarmupTask(task) {
+      return task.type === 'warming_up' && task.status === 'running';
     }
 
     mnTasksDetails.clearCache = function () {
