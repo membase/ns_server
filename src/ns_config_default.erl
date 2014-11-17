@@ -660,7 +660,31 @@ do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig) ->
     McdConfigKey = {node, node(), memcached_config},
     {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdConfigKey),
 
+    %% MB-12655: we 'upgrade' all per node keys of this node to include vclock.
+    %%
+    %% NOTE: that on brand new installations of 3.0+ we already force
+    %% all per-node keys to have vclocks as part of work on
+    %% MB-10254. At the time of this writing it is done as part of
+    %% ns_config initialization
+    %%
+    %% NOTE: that this was added for 3.0.2 release, retrofitting "to
+    %% 3.0" config upgrade. That is ok given that even 3.0.0 should be
+    %% okay with such config upgrade. And given that for nodes already
+    %% affected by MB-12655, there's specific way to unbreak them. And
+    %% also given that (healthy) 3.0 nodes don't need such upgrade
+    %% because they have vclocks for per-node keys already. Doing it
+    %% for 3.0 also makes it much simpler to merge it between 3.0.2, 3.1
+    %% and master branches.
+    PerNodeKeyTouchings = [{set, K, V}
+                           || {{node, N, KN} = K, V} <- ns_config:get_kv_list_with_config(Config),
+                              N =:= node(),
+                              KN =/= config_version,
+                              KN =/= memcached,
+                              KN =/= memcached_config,
+                              KN =/= port_servers],
+
     upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ++
+        PerNodeKeyTouchings ++
         [{set, PortServersKey, DefaultPortServers},
          {set, McdConfigKey, DefaultMcdConfig}].
 
@@ -1004,6 +1028,7 @@ upgrade_2_2_0_to_2_3_0_test() ->
 
 upgrade_2_3_0_to_3_0_test() ->
     Cfg = [[{some_key, some_value},
+            {{node, node(), ssl_capi_port}, 18092},
             {{node, node(), memcached},
              [{ssl_port, 1}, {verbosity, "-v"}, {port, 3}]},
             {{node, node(), memcached_config}, memcached_config}]],
@@ -1013,6 +1038,7 @@ upgrade_2_3_0_to_3_0_test() ->
 
     ?assertMatch([{set, {node, _, memcached}, [{ssl_port, 1},
                                                {verbosity, 2}, {port, 3}]},
+                  {set, {node, _, ssl_capi_port}, 18092},
                   {set, {node, _, port_servers}, _},
                   {set, {node, _, memcached_config}, _}],
                  do_upgrade_config_from_2_3_0_to_3_0(Cfg, Default)).
