@@ -8,6 +8,6 @@ angular.module('mnServers').controller('mnServersStopRebalanceController',
       request.then(function () {
         $modalInstance.close();
       });
-      mnHelper.handleSpinner($scope, 'mnDialogStopRebalanceDialogLoading', request);
+      mnHelper.handleSpinner($scope, request, 'mnDialogStopRebalanceDialogLoading', true);
     };
   });

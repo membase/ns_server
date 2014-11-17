@@ -36,7 +36,7 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
 
       var promise = login($scope.user);
       mnHelper.rejectReasonToScopeApplyer($scope, promise);
-      mnHelper.handleSpinner($scope, promise);
+      mnHelper.handleSpinner($scope, promise, null, true);
       promise.then(mnHelper.reloadApp);
     }
   });

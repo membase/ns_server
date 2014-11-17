@@ -41,6 +41,6 @@ angular.module('mnServers').controller('mnServersAddDialogController',
         mnHelper.reloadState();
       });
       mnHelper.rejectReasonToScopeApplyer($scope, promise);
-      mnHelper.handleSpinner($scope, promise);
+      mnHelper.handleSpinner($scope, promise, undefined, true);
     };
   });

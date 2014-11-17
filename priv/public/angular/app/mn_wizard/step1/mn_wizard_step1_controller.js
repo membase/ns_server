@@ -73,6 +73,6 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
           return makeRequestWithErrorsHandler('postJoinCluster', data).then(login).then(mnHelper.reloadApp);
         }
       });
-      mnHelper.handleSpinner($scope, promise);
+      mnHelper.handleSpinner($scope, promise, null, true);
     };
   });

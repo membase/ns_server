@@ -7,7 +7,7 @@ angular.module('mnWizard').controller('mnWizardStep3Controller',
 
     $scope.onSubmit = function () {
       var promise = mnWizardStep3Service.postBuckets({data: $scope.bucketConf});
-      mnHelper.handleSpinner($scope, promise);
+      mnHelper.handleSpinner($scope, promise, null, true);
       promise.then(function (result) {
         if (!result) {
           $state.go('app.wizard.step4');

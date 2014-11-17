@@ -2,18 +2,31 @@ angular.module('mnHelper').factory('mnHelper',
   function ($window, $state, $stateParams) {
     var mnHelper = {};
 
-    mnHelper.handleSpinner = function ($scope, name, promise) {
-      if (!promise) {
-        promise = name;
+    mnHelper.handleSpinner = function ($scope, promise, name, isInfinitForSuccess) {
+      if (!name) {
         name = 'viewLoading';
       }
       function spinnerCtrl(isLoaded) {
         $scope[name] = isLoaded;
       }
-      spinnerCtrl(true);
-      return promise['finally'](function () {
+      function hideSpinner() {
         spinnerCtrl(false);
-      });
+        return promise;
+      }
+      spinnerCtrl(true);
+      if (isInfinitForSuccess) {
+        if (promise.success) {
+          return promise.error(hideSpinner);
+        } else {
+          return promise.then(null, hideSpinner);
+        }
+      } else {
+        if (promise.success) {
+          return promise.success(hideSpinner).error(hideSpinner);
+        } else {
+          return promise.then(hideSpinner, hideSpinner);
+        }
+      }
     };
 
     mnHelper.checkboxesToList = function (object) {
