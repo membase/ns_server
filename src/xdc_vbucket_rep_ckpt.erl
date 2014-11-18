@@ -164,7 +164,7 @@ send_post(Method, ExtraBody, {BaseURL, BodyBase, HttpDB}) ->
                     {error, StatusCode, (catch ejson:decode(RespBody)), RespBody}
             end;
         {error, Reason} ->
-            ?xdcr_error("Checkpointing related POST to ~s failed: ~p", [URL, Reason]),
+            ?xdcr_error("Checkpointing related POST to ~s failed: ~p", [misc:sanitize_url(URL), Reason]),
             erlang:error({checkpoint_post_failed, Method, Reason})
     end.
 
@@ -195,7 +195,7 @@ do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions,
         {error, Reason} ->
             case is_ssl_error(Reason) of
                 true ->
-                    ?xdcr_debug("Got https error doing ~s to ~s. Will NOT retry. Error: ~p", [Method, URL, Reason]),
+                    ?xdcr_debug("Got https error doing ~s to ~s. Will NOT retry. Error: ~p", [Method, misc:sanitize_url(URL), Reason]),
                     RV;
                 false ->
                     NewRetries = Retries - 1,
@@ -203,7 +203,7 @@ do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions,
                         true ->
                             RV;
                         _ ->
-                            ?xdcr_debug("Got http error doing ~s to ~s. Will retry. Error: ~p", [Method, URL, Reason]),
+                            ?xdcr_debug("Got http error doing ~s to ~s. Will retry. Error: ~p", [Method, misc:sanitize_url(URL), Reason]),
                             do_send_retriable_http_request(URL, Method, Headers, Body, Timeout, HTTPOptions, NewRetries)
                     end
             end
