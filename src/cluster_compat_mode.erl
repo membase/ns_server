@@ -48,7 +48,7 @@ supported_compat_version() ->
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
-    [3, 0, 0].
+    [3, 0, 2].
 
 check_is_progress_tracking_supported() ->
     are_all_nodes_compatible([2,0,2]).
