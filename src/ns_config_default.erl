@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {3,0,1}.
+    {3,0,2}.
 
 % Allow all keys to be mergable.
 
@@ -424,8 +424,8 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {3,0}} |
              upgrade_config_from_2_3_0_to_3_0(Config)];
         {value, {3,0}} ->
-            [{set, {node, node(), config_version}, {3,0,1}} |
-             upgrade_config_from_3_0_to_3_0_1(Config)]
+            [{set, {node, node(), config_version}, {3,0,2}} |
+             upgrade_config_from_3_0_to_3_0_2(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -684,12 +684,12 @@ upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ->
 
     [{set, McdKey, NewOrUpdatedParams ++ StrippedMcdConfig}].
 
-upgrade_config_from_3_0_to_3_0_1(Config) ->
-    ?log_info("Upgrading config from 3.0 to 3.0.1"),
+upgrade_config_from_3_0_to_3_0_2(Config) ->
+    ?log_info("Upgrading config from 3.0 to 3.0.2"),
     DefaultConfig = default(),
-    do_upgrade_config_from_3_0_to_3_0_1(Config, DefaultConfig).
+    do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig).
 
-do_upgrade_config_from_3_0_to_3_0_1(Config, DefaultConfig) ->
+do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig) ->
     McdKey = {node, node(), memcached},
     {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
     {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
@@ -1030,7 +1030,7 @@ upgrade_2_3_0_to_3_0_test() ->
                   {set, {node, _, memcached_config}, _}],
                  do_upgrade_config_from_2_3_0_to_3_0(Cfg, Default)).
 
-upgrade_3_0_to_3_0_1_test() ->
+upgrade_3_0_to_3_0_2_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
              [{engines, old_value},
@@ -1047,7 +1047,7 @@ upgrade_3_0_to_3_0_1_test() ->
                                                {ssl_port, 1}, {verbosity, 2},
                                                {port, 3}]},
                   {set, {node, _, memcached_config}, memcached_config}],
-                 do_upgrade_config_from_3_0_to_3_0_1(Cfg, Default)).
+                 do_upgrade_config_from_3_0_to_3_0_2(Cfg, Default)).
 
 
 no_upgrade_on_current_version_test() ->
