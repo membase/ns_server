@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {3,0,1}.
+    {3,0,99}.
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),
@@ -416,8 +416,11 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {3,0}} |
              upgrade_config_from_2_3_0_to_3_0(Config)];
         {value, {3,0}} ->
-            [{set, {node, node(), config_version}, {3,0,1}} |
-             upgrade_config_from_3_0_to_3_0_1(Config)]
+            [{set, {node, node(), config_version}, {3,0,2}} |
+             upgrade_config_from_3_0_to_3_0_2(Config)];
+        {value, {3,0,2}} ->
+            [{set, {node, node(), config_version}, {3,0,99}} |
+             upgrade_config_from_3_0_2_to_3_0_99(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -678,12 +681,38 @@ upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ->
 
     [{set, McdKey, NewOrUpdatedParams ++ StrippedMcdConfig}].
 
-upgrade_config_from_3_0_to_3_0_1(Config) ->
-    ?log_info("Upgrading config from 3.0 to 3.0.1"),
+upgrade_config_from_3_0_to_3_0_2(Config) ->
+    ?log_info("Upgrading config from 3.0 to 3.0.2"),
     DefaultConfig = default(),
-    do_upgrade_config_from_3_0_to_3_0_1(Config, DefaultConfig).
+    do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig).
 
-do_upgrade_config_from_3_0_to_3_0_1(Config, DefaultConfig) ->
+do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig) ->
+    McdKey = {node, node(), memcached},
+    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
+    {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
+    EnginesTuple = {engines, _} = lists:keyfind(engines, 1, DefaultMcdConfig),
+    NewMcdConfig = lists:keystore(engines, 1, CurrentMcdConfig, EnginesTuple),
+
+    %% MB-12655: we 'upgrade' all per node keys of this node to include vclock.
+    %%
+    %% NOTE: that on brand new installations of 3.0+ we already force
+    %% all per-node keys to have vclocks as part of work on
+    %% MB-10254. At the time of this writing it is done as part of
+    %% ns_config initialization
+    PerNodeKeyTouchings = [{set, K, V}
+                           || {{node, N, KN} = K, V} <- ns_config:get_kv_list_with_config(Config),
+                              N =:= node(),
+                              KN =/= config_version,
+                              KN =/= memcached],
+
+    [{set, McdKey, NewMcdConfig} | PerNodeKeyTouchings].
+
+upgrade_config_from_3_0_2_to_3_0_99(Config) ->
+    ?log_info("Upgrading config from 3.0.2 to 3.0.99"),
+    DefaultConfig = default(),
+    do_upgrade_config_from_3_0_2_to_3_0_99(Config, DefaultConfig).
+
+do_upgrade_config_from_3_0_2_to_3_0_99(Config, DefaultConfig) ->
     McdKey = {node, node(), memcached},
     JTKey = {node, node(), memcached_config},
     PortServersKey = {node, node(), port_servers},
@@ -1020,7 +1049,26 @@ upgrade_2_3_0_to_3_0_test() ->
                   {set, {node, _, memcached_config}, _}],
                  do_upgrade_config_from_2_3_0_to_3_0(Cfg, Default)).
 
-upgrade_3_0_to_3_0_1_test() ->
+upgrade_3_0_to_3_0_2_test() ->
+    Cfg = [[{some_key, some_value},
+            {{node, node(), memcached},
+             [{engines, old_value},
+              {ssl_port, 1},
+              {verbosity, 2},
+              {port, 3}]},
+            {{node, node(), memcached_config}, memcached_config}]],
+    Default = [{{node, node(), port_servers}, port_servers_cfg},
+               {{node, node(), memcached}, [{ssl_port, 1}, {verbosity, 3},
+                                            {engines, [something]}]},
+               {{node, node(), memcached_config}, memcached_config}],
+
+    ?assertMatch([{set, {node, _, memcached}, [{engines, [something]},
+                                               {ssl_port, 1}, {verbosity, 2},
+                                               {port, 3}]},
+                  {set, {node, _, memcached_config}, memcached_config}],
+                 do_upgrade_config_from_3_0_to_3_0_2(Cfg, Default)).
+
+upgrade_3_0_2_to_3_0_99_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
              [{engines, old_value},
@@ -1041,7 +1089,7 @@ upgrade_3_0_to_3_0_1_test() ->
                                                {config_path, cfg_path}]},
                   {set, {node, _, memcached_config}, memcached_config},
                   {set, {node, _, port_servers}, port_servers_cfg}],
-                 do_upgrade_config_from_3_0_to_3_0_1(Cfg, Default)).
+                 do_upgrade_config_from_3_0_2_to_3_0_99(Cfg, Default)).
 
 
 no_upgrade_on_current_version_test() ->

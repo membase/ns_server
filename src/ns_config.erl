@@ -413,6 +413,8 @@ get_kv_list() -> get_kv_list(?DEFAULT_TIMEOUT).
 -spec get_kv_list(timeout()) -> [{term(), term()}].
 get_kv_list(Timeout) -> get_kv_list_with_config(ns_config:get(node(), Timeout)).
 
+get_kv_list_with_config([DynamicConfig]) ->
+    DynamicConfig;
 get_kv_list_with_config(Config) ->
     config_dynamic(Config).
 
