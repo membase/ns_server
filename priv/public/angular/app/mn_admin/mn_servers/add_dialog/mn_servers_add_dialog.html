@@ -1,7 +1,7 @@
 <div class="join_cluster join_cluster_dialog" id="join_cluster_dialog" style="width: 550px">
   <h1 class="dialog_corner_radius">Add Server</h1>
   <div>
-  <form novalidate ng-submit="onSubmit(form)" autocomplete="off" name="form" mn-spinner-directive="viewLoading">
+  <form novalidate ng-submit="onSubmit(form)" autocomplete="off" name="form" mn-spinner="viewLoading">
     <div class="warning pat_10" id="join_cluster_dialog_errors_container">
       <div><strong>Warning</strong> – Adding a server to this cluster means all data on that server will be removed.</div>
       <div ng-repeat="error in errors"><strong>Attention</strong> - {{error}}<br></div>
@@ -12,7 +12,7 @@
       <ul>
         <li>
           <label class="label" for="add-server-hostname">Server IP Address*:</label>
-          <input type="text" class="inp" name="hostname" id="add-server-hostname" ng-model="newServer.hostname" mn-focus-directive="focusMe" required>
+          <input type="text" class="inp" name="hostname" id="add-server-hostname" ng-model="newServer.hostname" mn-focus="focusMe" required>
           <a class="text_11 tooltip"><span>What's this?</span>
             <span class="tooltip_msg"><span>
               This is the hostname or IP address of a server node that you wish to add.

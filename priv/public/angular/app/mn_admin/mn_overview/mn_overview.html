@@ -7,17 +7,17 @@
       cluster; displaying cached information!</span>Cluster
     </div>
     <div class="section" id="overview_clusters_block">
-      <div class="item ram-item" mn-spinner-directive="!ramOverviewConfig">
+      <div class="item ram-item" mn-spinner="!ramOverviewConfig">
         <div class="label">
           <strong>RAM Overview</strong>
         </div>
-        <div class="line_cnt usage-block usage_biggest" mn-bar-usage-directive base-info="ramOverviewConfig"></div>
+        <div class="line_cnt usage-block usage_biggest" mn-bar-usage base-info="ramOverviewConfig"></div>
       </div>
-      <div class="item disk-item" mn-spinner-directive="!hddOverviewConfig">
+      <div class="item disk-item" mn-spinner="!hddOverviewConfig">
         <div class="label">
           <strong>Disk Overview</strong>
         </div>
-        <div class="line_cnt usage-block usage_biggest" mn-bar-usage-directive base-info="hddOverviewConfig"></div>
+        <div class="line_cnt usage-block usage_biggest" mn-bar-usage base-info="hddOverviewConfig"></div>
       </div>
     </div>
   </div>
@@ -30,13 +30,13 @@
     </div>
     <div class="section">
       <div class="item">
-        <div class="graph_main" mn-spinner-directive="!opsGraphConfig" style="margin: 0;">
+        <div class="graph_main" mn-spinner="!opsGraphConfig" style="margin: 0;">
           <span class="graph_info_label">Operations per second</span>
-          <div id="overview_ops_graph" class="graph" mn-plot-directive mn-plot-config="opsGraphConfig"></div>
+          <div id="overview_ops_graph" class="graph" mn-plot mn-plot-config="opsGraphConfig"></div>
         </div>
-        <div class="graph_main" mn-spinner-directive="!readsGraphConfig">
+        <div class="graph_main" mn-spinner="!readsGraphConfig">
           <span class="graph_info_label">Disk fetches per second</span>
-          <div id="overview_reads_graph" class="graph" mn-plot-directive mn-plot-config="readsGraphConfig"></div>
+          <div id="overview_reads_graph" class="graph" mn-plot mn-plot-config="readsGraphConfig"></div>
         </div>
         <div class="no_stats_marker">
           <span class="with_buckets">Waiting for samples...</span>

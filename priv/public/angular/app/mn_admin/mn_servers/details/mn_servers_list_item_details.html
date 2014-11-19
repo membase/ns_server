@@ -1,4 +1,4 @@
-<td colspan="10" class="settings-placeholder" mn-spinner-directive="!getMemoryCacheConfig || !getDiskStorageConfig">
+<td colspan="10" class="settings-placeholder" mn-spinner="!getMemoryCacheConfig || !getDiskStorageConfig">
 <div class="first gong_rb">
   <div class="pad">
     <table class="properties_table">
@@ -87,7 +87,7 @@
   <h3>Memory Cache</h3>
   <div class="info_block">
     <span class="dynamic_ram">Dynamic RAM:</span>
-    <div class="usage-block" mn-bar-usage-directive base-info="getMemoryCacheConfig"></div>
+    <div class="usage-block" mn-bar-usage base-info="getMemoryCacheConfig"></div>
   </div>
   <h3>Disk Storage</h3>
   <div class="info_block">
@@ -95,7 +95,7 @@
       <span>Disk One: </span>
         <span class="path" title="{{details.storageTotals.hdd[0].path}}">{{ellipsisPath}}</span>
     </span>
-    <div class="usage-block" mn-bar-usage-directive base-info="getDiskStorageConfig"></div>
+    <div class="usage-block" mn-bar-usage base-info="getDiskStorageConfig"></div>
   </div>
 </div><!-- additional_server_info -->
 </td>

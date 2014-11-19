@@ -1,4 +1,4 @@
-<div class="pad bucket_details" id="init_bucket_dialog" mn-spinner-directive="viewLoading">
+<div class="pad bucket_details" id="init_bucket_dialog" mn-spinner="viewLoading">
   <div class="config-top">
     <h1>Create Default Bucket</h1>
     <h2>Step <i class="current-step">3</i> of 5</h2>
@@ -29,10 +29,10 @@
     <h2>Memory Size</h2>
     <div class="sub_section" style="margin-right: 0;">
       <div class="for-ram-quota">
-        <div class="usage-block size-gauge for-ram" mn-bar-usage-directive base-info="guageConfig" ></div>
+        <div class="usage-block size-gauge for-ram" mn-bar-usage base-info="guageConfig" ></div>
         <div class="gauge-label">
           <label for="ram_quota_mb_init">Per Node RAM Quota:</label>
-          <input name="ramQuotaMB" class="focusme" mn-focus-directive="focusMe" ng-class="{invalid: errors.ramQuotaMB}" value="30" ng-model="bucketConf.ramQuotaMB">
+          <input name="ramQuotaMB" class="focusme" mn-focus="focusMe" ng-class="{invalid: errors.ramQuotaMB}" value="30" ng-model="bucketConf.ramQuotaMB">
           <abbr>MB</abbr>
         </div>
       </div>

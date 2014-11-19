@@ -1,4 +1,4 @@
-<div class="pad" id="init_cluster_dialog" mn-spinner-directive="viewLoading">
+<div class="pad" id="init_cluster_dialog" mn-spinner="viewLoading">
   <div class="config-top">
     <h1>Configure Server</h1>
     <h2>Step <span class="current-step">1</span> of 5</h2>
@@ -97,7 +97,7 @@
                 </div>
                 <div>
                   <label for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
-                  <input type="text" ng-model="dynamicRamQuota" mn-focus-directive="focusMe"  id="init_dynamic_ram_quota">
+                  <input type="text" ng-model="dynamicRamQuota" mn-focus="focusMe"  id="init_dynamic_ram_quota">
                   <span>MB (256 MB &mdash; {{ramMaxMegs}} MB)</span>
                 </div>
               </div>

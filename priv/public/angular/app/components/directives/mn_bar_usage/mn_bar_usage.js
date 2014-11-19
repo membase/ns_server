@@ -1,4 +1,4 @@
-angular.module('mnBarUsage').directive('mnBarUsageDirective', function () {
+angular.module('mnBarUsage').directive('mnBarUsage', function () {
 
   return {
     restrict: 'A',
@@ -6,7 +6,7 @@ angular.module('mnBarUsage').directive('mnBarUsageDirective', function () {
       baseInfo: '=',
     },
     isolate: false,
-    templateUrl: 'components/mn_bar_usage/mn_bar_usage.html',
+    templateUrl: 'components/directives/mn_bar_usage/mn_bar_usage.html',
     controller: function ($scope) {
       $scope.$watch('baseInfo', function (options) {
         if (!options) {

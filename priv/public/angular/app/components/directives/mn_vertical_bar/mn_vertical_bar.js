@@ -6,6 +6,6 @@ angular.module('mnVerticalBar').directive('mnVerticalBar', function () {
       conf: '='
     },
     isolate: false,
-    templateUrl: 'components/mn_vertical_bar/mn_vertical_bar.html'
+    templateUrl: 'components/directives/mn_vertical_bar/mn_vertical_bar.html'
   };
 });

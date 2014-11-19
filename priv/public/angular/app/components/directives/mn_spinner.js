@@ -1,9 +1,9 @@
-angular.module('mnSpinner').directive('mnSpinnerDirective', function ($compile, $rootScope) {
+angular.module('mnSpinner').directive('mnSpinner', function ($compile, $rootScope) {
 
   return {
     restrict: 'A',
     scope: {
-      mnSpinnerDirective: '='
+      mnSpinner: '='
     },
     compile: function ($element) {
       var scope = $rootScope.$new();
@@ -11,8 +11,8 @@ angular.module('mnSpinner').directive('mnSpinnerDirective', function ($compile, 
       $element.addClass('spinner_wrap');
 
       return function link($scope) {
-        $scope.$watch('mnSpinnerDirective', function (mnSpinnerDirective) {
-          scope.viewLoading = !!mnSpinnerDirective;
+        $scope.$watch('mnSpinner', function (mnSpinner) {
+          scope.viewLoading = !!mnSpinner;
         });
 
         $scope.$on('$destroy', function () {
