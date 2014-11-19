@@ -72,7 +72,8 @@ angular.module('mnServers').controller('mnServersController',
 
 
     function getOpenedServers() {
-      return _.wrapToArray($location.search()['openedServers']);
+      var value = $location.search()[hashKey];
+      return value ? _.isArray(value) ? value : [value] : [];
     }
     $scope.isDetailsOpened = function (hostname) {
       return _.contains(getOpenedServers(), hostname);

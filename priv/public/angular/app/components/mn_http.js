@@ -1,5 +1,25 @@
 angular.module('mnHttp').factory('mnHttp',
   function ($http) {
+    // This is an atered version of the jQuery.param()
+    // https://github.com/jquery/jquery/blob/master/src/serialize.js
+    function serializeData(data) {
+      if (angular.isString(data)) {
+        return data;
+      }
+      if (!angular.isObject(data)) {
+        return data == null ? "" : data.toString();
+      }
+      var rv = [];
+      var name;
+      for (name in data) {
+        if (data.hasOwnProperty(name)) {
+          var value = data[name];
+          rv.push(encodeURIComponent(name) + "=" + encodeURIComponent(value == null ? "" : value));
+        }
+      }
+
+      return rv.sort().join("&").replace(/%20/g, "+");
+    }
     function mnHttp(config) {
       switch (config.method.toLowerCase()) {
         case 'post':
@@ -9,7 +29,7 @@ angular.module('mnHttp').factory('mnHttp',
             delete config.notForm;
           }
 
-          config.data = _.serializeData(config.data);
+          config.data = serializeData(config.data);
         break;
       }
       return $http(config);

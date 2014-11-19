@@ -1,5 +1,5 @@
 angular.module('mnBucketsService').factory('mnBucketsService',
-  function (mnHttp) {
+  function (mnHttp, mnTruncateTo3DigitsFilter, mnCalculatePercentFilter) {
     var mnBucketsService = {};
 
     mnBucketsService.model = {};

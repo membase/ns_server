@@ -1,5 +1,5 @@
 angular.module('mnServersListItemDetailsService').factory('mnServersListItemDetailsService',
-  function (mnHttp, $q, mnTasksDetails) {
+  function (mnHttp, $q, mnTasksDetails, mnFormatUptimeFilter, mnFormatMemSizeFilter, mnEllipsisiseOnLeftFilter) {
     var mnServersListItemDetailsService = {};
 
     function formatWarmupMessages(warmupTasks, keyName) {
@@ -39,7 +39,7 @@ angular.module('mnServersListItemDetailsService').factory('mnServersListItemDeta
       return {
         topRight: {
           name: 'Total',
-          value: _.formatMemSize(totals.total)
+          value: mnFormatMemSizeFilter(totals.total)
         },
         items: [{
           name: 'In Use',
@@ -74,7 +74,7 @@ angular.module('mnServersListItemDetailsService').factory('mnServersListItemDeta
         var memoryCacheConfig = getBaseConfig(details.storageTotals.ram);
         memoryCacheConfig.topLeft = {
           name: 'Couchbase Quota',
-          value: _.formatMemSize(details.storageTotals.ram.quotaTotal)
+          value: mnFormatMemSizeFilter(details.storageTotals.ram.quotaTotal)
         };
 
         memoryCacheConfig.markers.push({
@@ -84,8 +84,8 @@ angular.module('mnServersListItemDetailsService').factory('mnServersListItemDeta
         });
 
         rv.getMemoryCacheConfig = memoryCacheConfig;
-        rv.uptime = _.formatUptime(details.uptime);
-        rv.ellipsisPath = details.storage.hdd[0] && _.ellipsisiseOnLeft(details.storage.hdd[0].path || "", 25);
+        rv.uptime = mnFormatUptimeFilter(details.uptime);
+        rv.ellipsisPath = details.storage.hdd[0] && mnEllipsisiseOnLeftFilter(details.storage.hdd[0].path || "", 25);
 
         var rebalanceTask = tasks.tasksRebalance.status === 'running' && tasks.tasksRebalance;
         rv.detailedProgress = rebalanceTask.detailedProgress && rebalanceTask.detailedProgress.perNode && rebalanceTask.detailedProgress.perNode[node.otpNode];

@@ -1,5 +1,5 @@
 angular.module('mnServersService').factory('mnServersService',
-  function (mnHttp, mnTasksDetails, mnPoolDefault, $q, $state, $stateParams, mnHelper) {
+  function (mnHttp, mnTasksDetails, mnPoolDefault, $q, $state, $stateParams, mnHelper, mnTruncateTo3DigitsFilter, mnStripPortHTMLFilter, mnMakeSafeForCSSFilter, mnFormatQuantityFilter) {
     var mnServersService = {};
 
     var pendingEject = [];
@@ -119,10 +119,10 @@ angular.module('mnServersService').factory('mnServersService',
 
     function prepareNode(nodes, tasks, stateParamsNodeType) {
       return _.map(nodes[stateParamsNodeType], function (node) {
-        node.couchDataSize = _.formatQuantity(node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size']);
-        node.couchDiskUsage = _.formatQuantity(node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size']);
-        node.currItems = _.formatQuantity(node.interestingStats['curr_items'] || 0, 1000, ' ');
-        node.currVbItems = _.formatQuantity(node.interestingStats['vb_replica_curr_items'] || 0, 1000, ' ');
+        node.couchDataSize = mnFormatQuantityFilter(node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size']);
+        node.couchDiskUsage = mnFormatQuantityFilter(node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size']);
+        node.currItems = mnFormatQuantityFilter(node.interestingStats['curr_items'] || 0, 1000, ' ');
+        node.currVbItems = mnFormatQuantityFilter(node.interestingStats['vb_replica_curr_items'] || 0, 1000, ' ');
         node.isDataDiskUsageAvailable = !!(node.couchDataSize && node.couchDiskUsage);
         node.isNodeUnhealthy = node.status === 'unhealthy';
         node.isNodeInactiveFaied = node.clusterMembership === 'inactiveFailed';
@@ -130,11 +130,11 @@ angular.module('mnServersService').factory('mnServersService',
         node.isReAddPossible = node.isNodeInactiveFaied && !node.isNodeUnhealthy;
         node.isLastActive = nodes.reallyActive.length === 1;
         node.isActiveUnhealthy = stateParamsNodeType === "active" && node.isNodeUnhealthy;
-        node.safeNodeOtpNode = _.makeSafeForCSS(node.otpNode);
-        node.strippedPort = _.stripPortHTML(node.hostname, nodes.allNodes);
+        node.safeNodeOtpNode = mnMakeSafeForCSSFilter(node.otpNode);
+        node.strippedPort = mnStripPortHTMLFilter(node.hostname, nodes.allNodes);
 
         var rebalanceProgress = tasks.tasksRebalance.perNode && tasks.tasksRebalance.perNode[node.otpNode];
-        node.rebalanceProgress = rebalanceProgress ? _.truncateTo3Digits(rebalanceProgress.progress) : 0 ;
+        node.rebalanceProgress = rebalanceProgress ? mnTruncateTo3DigitsFilter(rebalanceProgress.progress) : 0 ;
 
         var total = node.memoryTotal;
         var free = node.memoryFree;
@@ -143,7 +143,7 @@ angular.module('mnServersService').factory('mnServersService',
           exist: (total > 0) && _.isFinite(free),
           height: (total - free) / total * 100,
           top: 105 - ((total - free) / total * 100),
-          value: _.truncateTo3Digits((total - free) / total * 100)
+          value: mnTruncateTo3DigitsFilter((total - free) / total * 100)
         };
 
         var swapTotal = node.systemStats.swap_total;
@@ -152,7 +152,7 @@ angular.module('mnServersService').factory('mnServersService',
           exist: swapTotal > 0 && _.isFinite(swapUsed),
           height: swapUsed / swapTotal * 100,
           top: 105 - (swapUsed / swapTotal * 100),
-          value: _.truncateTo3Digits((swapUsed / swapTotal) * 100)
+          value: mnTruncateTo3DigitsFilter((swapUsed / swapTotal) * 100)
         };
 
         var cpuRate = node.systemStats.cpu_utilization_rate;
@@ -160,7 +160,7 @@ angular.module('mnServersService').factory('mnServersService',
           exist: _.isFinite(cpuRate),
           height: Math.floor(cpuRate * 100) / 100,
           top: 105 - (Math.floor(cpuRate * 100) / 100),
-          value: _.truncateTo3Digits(Math.floor(cpuRate * 100) / 100)
+          value: mnTruncateTo3DigitsFilter(Math.floor(cpuRate * 100) / 100)
         };
 
         return node;

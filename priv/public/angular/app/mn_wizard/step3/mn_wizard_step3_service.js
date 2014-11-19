@@ -1,5 +1,5 @@
 angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
-  function (mnHttp, mnWizardStep2Service, mnWizardStep1Service) {
+  function (mnHttp, mnWizardStep2Service, mnWizardStep1Service, mnBytesToMBFilter, mnCountFilter, mnFormatMemSizeFilter) {
 
     var mnWizardStep3Service = {};
 
@@ -26,15 +26,15 @@ angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
         var data = resp.data;
         var bucketConf = _.pick(data, _.keys(defaultBucketConf));
         bucketConf.isDefault = true;
-        bucketConf.ramQuotaMB = _.bytesToMB(resp.data.quota.rawRAM);
+        bucketConf.ramQuotaMB = mnBytesToMBFilter(resp.data.quota.rawRAM);
         return bucketConf;
       }, function () {
         var bucketConf = _.clone(defaultBucketConf);
         bucketConf.isDefault = false;
-        bucketConf.ramQuotaMB = mnWizardStep1Service.getDynamicRamQuota() - _.bytesToMB(mnWizardStep2Service.getSampleBucketsRAMQuota())
+        bucketConf.ramQuotaMB = mnWizardStep1Service.getDynamicRamQuota() - mnBytesToMBFilter(mnWizardStep2Service.getSampleBucketsRAMQuota())
         return bucketConf;
       }).then(function (bucketConf) {
-        bucketConf.otherBucketsRamQuotaMB = _.bytesToMB(mnWizardStep2Service.getSampleBucketsRAMQuota());
+        bucketConf.otherBucketsRamQuotaMB = mnBytesToMBFilter(mnWizardStep2Service.getSampleBucketsRAMQuota());
         return bucketConf;
       })
     };
@@ -48,7 +48,7 @@ angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
       var options = {
         topRight: {
           name: 'Cluster quota',
-          value: _.formatMemSize(ramSummary.total)
+          value: mnFormatMemSizeFilter(ramSummary.total)
         },
         items: [{
           name: 'Other Buckets',
@@ -87,14 +87,14 @@ angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
         });
         options.topLeft = {
           name: 'Total Allocated',
-          value: _.formatMemSize(ramSummary.otherBuckets + ramSummary.thisAlloc),
+          value: mnFormatMemSizeFilter(ramSummary.otherBuckets + ramSummary.thisAlloc),
           itemStyle: {'color': '#e43a1b'}
         };
       }
 
       return {
-        totalBucketSize: _.bytesToMB(ramSummary.thisAlloc * ramSummary.nodesCount),
-        nodeCount: _.count(ramSummary.nodesCount, 'node'),
+        totalBucketSize: mnBytesToMBFilter(ramSummary.thisAlloc * ramSummary.nodesCount),
+        nodeCount: mnCountFilter(ramSummary.nodesCount, 'node'),
         perNodeMegs: ramSummary.perNodeMegs,
         guageConfig: options,
         errors: result.errors

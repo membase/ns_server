@@ -6,8 +6,9 @@ angular.module('mnBarUsage', []);
 angular.module('mnFocus', []);
 angular.module('mnSpinner', []);
 angular.module('mnPlot', []);
-angular.module('mnPrettyVersionFilter', []);
 angular.module('mnVerticalBar', []);
+
+angular.module('mnFilters', []);
 
 angular.module('mnPoolDefault', [
   'mnHttp',
@@ -115,13 +116,14 @@ angular.module('mnBucketsService', [
 
 
 angular.module('app', [
+  'mnFilters',
+
   'mnHttp',
   'mnHelper',
   'mnBarUsage',
   'mnFocus',
   'mnSpinner',
   'mnPlot',
-  'mnPrettyVersionFilter',
   'mnVerticalBar',
 
   'mnPoolDefault',

@@ -1,4 +1,4 @@
-angular.module('mnBarUsage').directive('mnBarUsage', function () {
+angular.module('mnBarUsage').directive('mnBarUsage', function (mnFormatMemSizeFilter, mnRescaleForSumFilter, mnCalculatePercentFilter) {
 
   return {
     restrict: 'A',
@@ -18,7 +18,7 @@ angular.module('mnBarUsage').directive('mnBarUsage', function () {
           if (item.renderedValue) {
             return false;
           } else {
-            item.renderedValue = _.formatMemSize(item.value);
+            item.renderedValue = mnFormatMemSizeFilter(item.value);
           }
         });
         var items = newOptions.items;
@@ -29,7 +29,7 @@ angular.module('mnBarUsage').directive('mnBarUsage', function () {
           return sum + num;
         });
 
-        values = _.rescaleForSum(100, values, total);
+        values = mnRescaleForSumFilter(100, values, total);
 
         _.each(values, function (item, i) {
           var v = values[i];
@@ -38,7 +38,7 @@ angular.module('mnBarUsage').directive('mnBarUsage', function () {
           sum += v;
         });
         _.each(newOptions.markers, function (marker) {
-          var percent = _.calculatePercent(marker.value, total);
+          var percent = mnCalculatePercentFilter(marker.value, total);
           var i;
           if (_.indexOf(values, percent) < 0 && (i = _.indexOf(values, percent+1)) >= 0) {
             // if we're very close to some value, stick to it, so that
