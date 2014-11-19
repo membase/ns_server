@@ -181,7 +181,9 @@ build_remote_set_specs(Mod, Node, BucketName, DDocId, ViewName, VBuckets) ->
                        spatial_view ->
                            <<"/_spatial_merge">>
                    end,
-    MergeURL = iolist_to_binary([vbucket_map_mirror:node_to_inner_capi_base_url(Node),
+    [{cookie, Cookie}] = ns_config:read_key_fast(otp, undefined),
+    MergeURL = iolist_to_binary([vbucket_map_mirror:node_to_inner_capi_base_url(
+                                   Node, "%40ns_server", atom_to_list(Cookie)),
                                  MergeHandler]),
 
     Sets = {[

@@ -40,7 +40,7 @@
 
 -export([start_link/0,
          node_vbuckets_dict/1, node_vbuckets_dict_or_not_present/1,
-         node_to_inner_capi_base_url/1, submit_full_reset/0,
+         node_to_inner_capi_base_url/3, submit_full_reset/0,
          node_to_capi_base_url/2]).
 
 start_link() ->
@@ -136,27 +136,33 @@ node_vbuckets_dict(BucketName) ->
             RV
     end.
 
-call_compute_node_base_url(Node) ->
+call_compute_node_base_url(Node, User, Password) ->
     work_queue:submit_sync_work(
       vbucket_map_mirror,
       fun () ->
               case capi_utils:compute_capi_port(Node) of
                   undefined ->
-                      ets:insert(vbucket_map_mirror, {Node, undefined, false}),
+                      ets:insert(vbucket_map_mirror, {{Node, User, Password}, undefined, false}),
                       undefined;
                   Port ->
                       {RealNode, Schema} = case Node of
                                                {ssl, V} -> {V, <<"https://">>};
                                                _ -> {Node, <<"http://">>}
                                            end,
+                      Auth = case {User, Password} of
+                                 {undefined, undefined} ->
+                                     [];
+                                 {_, _} ->
+                                     [User, $:, Password, $@]
+                             end,
                       case misc:node_name_host(RealNode) of
                           {_, "127.0.0.1" = H} ->
-                              U = iolist_to_binary([Schema, H, $:, integer_to_list(Port)]),
-                              ets:insert(vbucket_map_mirror, {Node, U, Port}),
+                              U = iolist_to_binary([Schema, Auth, H, $:, integer_to_list(Port)]),
+                              ets:insert(vbucket_map_mirror, {{Node, User, Password}, U, Port}),
                               U;
                           {_Name, H} ->
-                              U = iolist_to_binary([Schema, H, $:, integer_to_list(Port)]),
-                              ets:insert(vbucket_map_mirror, {Node, U, false}),
+                              U = iolist_to_binary([Schema, Auth, H, $:, integer_to_list(Port)]),
+                              ets:insert(vbucket_map_mirror, {{Node, User, Password}, U, false}),
                               U
                       end
               end
@@ -166,11 +172,11 @@ call_compute_node_base_url(Node) ->
 %%
 %% NOTE: it's not necessarily suitable for sending outside because ip
 %% can be localhost!
-node_to_inner_capi_base_url(Node) ->
-    case ets:lookup(vbucket_map_mirror, Node) of
+node_to_inner_capi_base_url(Node, User, Password) ->
+    case ets:lookup(vbucket_map_mirror, {Node, User, Password}) of
         [] ->
-            call_compute_node_base_url(Node),
-            node_to_inner_capi_base_url(Node);
+            call_compute_node_base_url(Node, User, Password),
+            node_to_inner_capi_base_url(Node, User, Password);
         [{_, URL, _}] ->
             URL
     end.
@@ -178,9 +184,9 @@ node_to_inner_capi_base_url(Node) ->
 -spec node_to_capi_base_url(node() | {ssl, node()},
                             iolist() | binary()) -> undefined | binary().
 node_to_capi_base_url(Node, LocalAddr) ->
-    case ets:lookup(vbucket_map_mirror, Node) of
+    case ets:lookup(vbucket_map_mirror, {Node, undefined, undefined}) of
         [] ->
-            call_compute_node_base_url(Node),
+            call_compute_node_base_url(Node, undefined, undefined),
             node_to_capi_base_url(Node, LocalAddr);
         [{_, URL, false}] ->
             URL;

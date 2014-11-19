@@ -19,7 +19,7 @@
 -include_lib("couch_index_merger/include/couch_index_merger.hrl").
 
 %% Public API
--export([handle_view_req/3, all_docs_db_req/2]).
+-export([handle_view_req/3, all_docs_db_req/2, handle_view_merge_req/1]).
 
 
 handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
@@ -38,6 +38,27 @@ handle_view_req(#httpd{method='POST',
 
 handle_view_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
+
+handle_view_merge_req(#httpd{mochi_req = MochiReq} = Req) ->
+    [{cookie, Cookie}] = ns_config:read_key_fast(otp, undefined),
+    CookieStr = atom_to_list(Cookie),
+    Allowed =
+        case menelaus_auth:extract_auth(MochiReq) of
+            {"@ns_server", CookieStr} ->
+                true;
+            {_, _} ->
+                false;
+            _ ->
+                %% backwards compat - allow anonymous access in pre 3.2 clusters
+                not cluster_compat_mode:is_cluster_sherlock()
+        end,
+    case Allowed of
+        true ->
+            couch_httpd_view_merger:handle_req(Req);
+        false ->
+            couch_httpd:send_error(Req, 401, <<"unauthorized">>,
+                                   <<"Access is allowed only to ns_server.">>)
+    end.
 
 all_docs_db_req(_Req,
                 #db{filepath = undefined}) ->
