@@ -330,6 +330,7 @@ def make_os_tasks():
         AllOsTask("Network routing table", "netstat -rn"),
         LinuxTask("Network socket statistics", "ss -a"),
         UnixTask("Arp cache", "arp -na"),
+        LinuxTask("Iptables dump", "iptables-save"),
         WindowsTask("Arp cache", "arp -a"),
         WindowsTask("Network Interface Controller", "wmic nic", reformat=True),
         WindowsTask("Network Adapter", "wmic nicconfig", reformat=True),
