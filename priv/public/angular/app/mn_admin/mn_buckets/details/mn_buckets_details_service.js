@@ -1,5 +1,5 @@
 angular.module('mnBucketsDetailsService').factory('mnBucketsDetailsService',
-  function ($q, mnHttp, mnTasksDetails, mnPoolDefault, mnFormatMemSizeFilter) {
+  function ($q, mnHttp, mnTasksDetails, mnPoolDefault, mnFormatMemSizeFilter, mnCompaction) {
     var mnBucketsDetailsService = {};
 
     mnBucketsDetailsService.getBucketRamGuageConfig = function (ramSummary) {
@@ -125,6 +125,13 @@ angular.module('mnBucketsDetailsService').factory('mnBucketsDetailsService',
         details.thisBucketCompactionTask = _.find(tasks.tasks, function (task) {
           return task.type === 'bucket_compaction' && task.bucket === bucket.name;
         });
+
+        if (details.thisBucketCompactionTask && !!details.thisBucketCompactionTask.cancelURI) {
+          details.showCancel = true;
+          details.disableCancel = !!mnCompaction.getStartedCompactions()[details.thisBucketCompactionTask.cancelURI];
+        } else {
+          details.disableCompact = !!(mnCompaction.getStartedCompactions()[bucket.controllers.compactAll] || details.thisBucketCompactionTask);
+        }
 
         if (bucket.isMembase) {
           details.hddConfig = getGuageConfig(

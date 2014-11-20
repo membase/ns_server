@@ -1,6 +1,7 @@
 angular.module('mnHttp', []);
 angular.module('mnHelper', [
-  'ui.router'
+  'ui.router',
+  'mnTasksDetails'
 ]);
 angular.module('mnBarUsage', []);
 angular.module('mnWarmupProgress', []);
@@ -8,6 +9,9 @@ angular.module('mnFocus', []);
 angular.module('mnSpinner', []);
 angular.module('mnPlot', []);
 angular.module('mnVerticalBar', []);
+angular.module('mnCompaction', [
+  'mnHttp'
+]);
 
 angular.module('mnFilters', []);
 
@@ -114,7 +118,8 @@ angular.module('mnOverviewService', [
 angular.module('mnBuckets', [
   'mnHelper',
   'mnBucketsService',
-  'mnBucketsDetailsService'
+  'mnBucketsDetailsService',
+  'mnCompaction'
 ]);
 angular.module('mnBucketsService', [
   'mnHttp'
@@ -122,7 +127,8 @@ angular.module('mnBucketsService', [
 angular.module('mnBucketsDetailsService', [
   'mnHttp',
   'mnPoolDefault',
-  'mnTasksDetails'
+  'mnTasksDetails',
+  'mnCompaction'
 ]);
 
 
@@ -137,6 +143,7 @@ angular.module('app', [
   'mnPlot',
   'mnVerticalBar',
   'mnWarmupProgress',
+  'mnCompaction',
 
   'mnPoolDefault',
   'mnTasksDetails',
