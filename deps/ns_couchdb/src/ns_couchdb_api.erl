@@ -24,7 +24,6 @@
 
 -export([set_db_and_ix_paths/2,
          get_db_and_ix_paths/0,
-         get_db_and_ix_paths/2,
          get_tasks/0,
          get_tasks/2,
          restart_couch/0,
@@ -58,11 +57,6 @@
 -spec get_db_and_ix_paths() -> [{db_path | index_path, string()}].
 get_db_and_ix_paths() ->
     maybe_rpc_couchdb_node(get_db_and_ix_paths).
-
--spec get_db_and_ix_paths(timeout(), [{db_path | index_path, string()}] | undefined) ->
-                                 [{db_path | index_path, string()}].
-get_db_and_ix_paths(RpcTimeout, Default) ->
-    maybe_rpc_couchdb_node(get_db_and_ix_paths, RpcTimeout, Default).
 
 -spec set_db_and_ix_paths(DbPath :: string(), IxPath :: string()) -> ok.
 set_db_and_ix_paths(DbPath0, IxPath0) ->

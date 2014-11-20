@@ -305,7 +305,7 @@ current_status_slow_inner() ->
 
     ClusterCompatVersion = effective_cluster_compat_version(),
 
-    StorageConf = ns_storage_conf:query_storage_conf(2000, []),
+    StorageConf = ns_storage_conf:query_storage_conf(),
 
     ProcessesStats =
         lists:filter(

@@ -25,11 +25,12 @@
 -export([memory_quota/0, change_memory_quota/1,
          setup_disk_storage_conf/2,
          storage_conf/1, storage_conf_from_node_status/1,
-         query_storage_conf/2, ensure_storage_conf/1,
+         query_storage_conf/0,
          local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
-         delete_unused_buckets_db_files/0]).
+         delete_unused_buckets_db_files/0,
+         setup_db_and_ix_paths/0]).
 
 -export([cluster_storage_info/0, cluster_storage_info/1, nodes_storage_info/1]).
 
@@ -48,8 +49,24 @@ memory_quota(Config) ->
     {value, RV} = ns_config:search(Config, memory_quota),
     RV.
 
+setup_db_and_ix_paths() ->
+    setup_db_and_ix_paths(ns_couchdb_api:get_db_and_ix_paths()),
+    ignore.
+
+setup_db_and_ix_paths(Dirs) ->
+    ?log_debug("Initialize db_and_ix_paths variable with ~p", [Dirs]),
+    application:set_env(ns_server, db_and_ix_paths, Dirs).
+
+get_db_and_ix_paths() ->
+    case application:get_env(ns_server, db_and_ix_paths) of
+        undefined ->
+            ns_couchdb_api:get_db_and_ix_paths();
+        {ok, Paths} ->
+            Paths
+    end.
+
 couch_storage_path(Field) ->
-    try ns_couchdb_api:get_db_and_ix_paths() of
+    try get_db_and_ix_paths() of
         PList ->
             {Field, RV} = lists:keyfind(Field, 1, PList),
             {ok, RV}
@@ -135,7 +152,9 @@ setup_disk_storage_conf(DbPath, IxPath) ->
 
                     case RV of
                         ok ->
-                            ns_couchdb_api:set_db_and_ix_paths(NewDbDir, NewIxDir);
+                            ns_couchdb_api:set_db_and_ix_paths(NewDbDir, NewIxDir),
+                            setup_db_and_ix_paths([{db_path, NewDbDir},
+                                                   {index_path, NewIxDir}]);
                         _ ->
                             RV
                     end;
@@ -172,27 +191,17 @@ local_bucket_disk_usage(BucketName) ->
 %         [{path", /another/good/disk/path}, {quotaMb, 5678}, {state, ok}]]}]
 %
 storage_conf(Node) ->
-    NodeStatus = ensure_storage_conf(ns_doctor:get_node(Node)),
+    NodeStatus = ns_doctor:get_node(Node),
     storage_conf_from_node_status(NodeStatus).
 
-query_storage_conf(RpcTimeout, Default) ->
-    StorageConf = ns_couchdb_api:get_db_and_ix_paths(RpcTimeout, Default),
+query_storage_conf() ->
+    StorageConf = get_db_and_ix_paths(),
     lists:map(
       fun ({Key, Path}) ->
               %% db_path and index_path are guaranteed to be absolute
               {ok, RealPath} = misc:realpath(Path, "/"),
               {Key, RealPath}
       end, StorageConf).
-
-ensure_storage_conf(NodeStatus) ->
-    StorageConf = proplists:get_value(node_storage_conf, NodeStatus, []),
-    case StorageConf of
-        [] ->
-            lists:keystore(node_storage_conf, 1, NodeStatus,
-                           {node_storage_conf, query_storage_conf(infinity, undefined)});
-        _ ->
-            NodeStatus
-    end.
 
 storage_conf_from_node_status(NodeStatus) ->
     StorageConf = proplists:get_value(node_storage_conf, NodeStatus, []),
