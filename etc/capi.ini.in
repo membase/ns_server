@@ -40,6 +40,7 @@ _pre_replicate = {capi_replication, handle_pre_replicate}
 _mass_vbopaque_check = {capi_replication, handle_mass_vbopaque_check}
 _commit_for_checkpoint = {capi_replication, handle_commit_for_checkpoint}
 _view_merge = {capi_view, handle_view_merge_req}
+_spatial_merge = {capi_spatial, handle_view_merge_req}
 
 ;[compactions]
 ;_default = [{db_fragmentation, {"30%", nil}},

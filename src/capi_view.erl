@@ -19,7 +19,7 @@
 -include_lib("couch_index_merger/include/couch_index_merger.hrl").
 
 %% Public API
--export([handle_view_req/3, all_docs_db_req/2, handle_view_merge_req/1]).
+-export([handle_view_req/3, all_docs_db_req/2, handle_view_merge_req/1, handle_with_auth/2]).
 
 
 handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
@@ -39,7 +39,7 @@ handle_view_req(#httpd{method='POST',
 handle_view_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
 
-handle_view_merge_req(#httpd{mochi_req = MochiReq} = Req) ->
+handle_with_auth(#httpd{mochi_req = MochiReq} = Req, Module) ->
     [{cookie, Cookie}] = ns_config:read_key_fast(otp, undefined),
     CookieStr = atom_to_list(Cookie),
     Allowed =
@@ -54,11 +54,14 @@ handle_view_merge_req(#httpd{mochi_req = MochiReq} = Req) ->
         end,
     case Allowed of
         true ->
-            couch_httpd_view_merger:handle_req(Req);
+            Module:handle_req(Req);
         false ->
             couch_httpd:send_error(Req, 401, <<"unauthorized">>,
                                    <<"Access is allowed only to ns_server.">>)
     end.
+
+handle_view_merge_req(Req) ->
+    handle_with_auth(Req, couch_httpd_view_merger).
 
 all_docs_db_req(_Req,
                 #db{filepath = undefined}) ->

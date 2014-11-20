@@ -18,7 +18,7 @@
 -include("couch_db.hrl").
 
 %% Public API
--export([handle_view_req/3]).
+-export([handle_view_req/3, handle_view_merge_req/1]).
 
 
 handle_view_req(Req, Db, DDoc) when Db#db.filepath =/= undefined ->
@@ -39,3 +39,6 @@ handle_view_req(#httpd{method='POST',
 
 handle_view_req(Req, _Db, _DDoc) ->
     couch_httpd:send_method_not_allowed(Req, "GET,POST,HEAD").
+
+handle_view_merge_req(Req) ->
+    capi_view:handle_with_auth(Req, spatial_http).
