@@ -111,12 +111,12 @@ child_loop_quick_exit(BootModule) ->
     misc:halt(0).
 
 child_loop(Port, BootModule) ->
-    io:format("~p: Booted. Waiting for shutdown request\n", [os:getpid()]),
-    ?log_debug("~p: Entered child_loop", [os:getpid()]),
+    io:format("~s: Booted. Waiting for shutdown request\n", [os:getpid()]),
+    ?log_debug("~s: Entered child_loop", [os:getpid()]),
     receive
         {Port, {data, <<"shutdown\n">>}} ->
-            io:format("~p: got shutdown request. Exiting\n", [os:getpid()]),
-            ?log_debug("~p: Got EOL", [os:getpid()]),
+            io:format("~s: got shutdown request. Exiting\n", [os:getpid()]),
+            ?log_debug("~s: Got EOL", [os:getpid()]),
             BootModule:stop(),
             ?log_debug("Got EOL: after ~s:stop()", [BootModule]),
             misc:halt(0);
