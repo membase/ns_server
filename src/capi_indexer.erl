@@ -86,7 +86,7 @@ run_on_subset(#httpd{path_parts=[_, _, DName, _, _]}=Req, Name) ->
 %% depending on the number of items in the cluster
 -spec run_on_subset_according_to_stats(binary()) -> true | false | {error, no_stats}.
 run_on_subset_according_to_stats(Bucket) ->
-    case catch stats_reader:latest(minute, node(), ?b2l(Bucket), 1) of
+    case catch stats_reader:latest(minute, ns_node_disco:ns_server_node(), ?b2l(Bucket), 1) of
         {ok, [Stats|_]} ->
             {ok, Config} = ns_bucket:get_bucket(?b2l(Bucket)),
             NumVBuckets = proplists:get_value(num_vbuckets, Config, []),
