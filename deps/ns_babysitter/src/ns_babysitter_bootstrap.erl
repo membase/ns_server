@@ -2,17 +2,21 @@
 
 -export([start/0, stop/0, get_quick_stop/0, remote_stop/1, override_resolver/0]).
 
+-include("ns_common.hrl").
+
 start() ->
     try
         ok = application:start(ale),
         ok = application:start(sasl),
-        ok = application:start(ns_babysitter, permanent)
+        ok = application:start(ns_babysitter, permanent),
+        (catch ?log_info("~s: babysitter has started", [os:getpid()]))
     catch T:E ->
             timer:sleep(500),
             erlang:T(E)
     end.
 
 stop() ->
+    (catch ?log_info("~s: got shutdown request. Terminating.", [os:getpid()])),
     application:stop(ns_babysitter),
     ale:sync_all_sinks(),
     init:stop().
