@@ -146,8 +146,14 @@ build_nodes_ext([] = _Nodes, _Config, RevAcc, NodesExtAcc) ->
     {lists:reverse(NodesExtAcc), RevAcc};
 build_nodes_ext([Node | RestNodes], Config, RevAcc, NodesExtAcc) ->
     {Services, Rev} = ns_cluster_membership:node_services_with_rev(Config, Node),
-    NodeInfo = {[{services, {build_services(Node, Config, Services)}}
-                 | maybe_build_ext_hostname(Node)]},
+    NI1 = maybe_build_ext_hostname(Node),
+    NI2 = case Node =:= node() of
+              true ->
+                  [{'thisNode', true} | NI1];
+              _ ->
+                  NI1
+          end,
+    NodeInfo = {[{services, {build_services(Node, Config, Services)}} | NI2]},
     build_nodes_ext(RestNodes, Config,
                     RevAcc + Rev,
                     [NodeInfo | NodesExtAcc]).
