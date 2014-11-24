@@ -252,7 +252,7 @@ query_node_spec(Config) ->
 
 kv_node_projector_spec(Config) ->
     Svcs = ns_cluster_membership:node_services(Config, node()),
-    case lists:member(kv, Svcs) of
+    case lists:member(kv, Svcs) andalso os:getenv("ENABLE_PROJECTOR") =/= false of
         false ->
             [];
         _ ->
