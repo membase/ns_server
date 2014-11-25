@@ -33,7 +33,8 @@ start_link() ->
 
 -record(state, {
           port_pid :: pid(),
-          memcached_config :: binary()}).
+          memcached_config :: binary()
+         }).
 
 init([]) ->
     proc_lib:init_ack({ok, self()}),
@@ -41,7 +42,7 @@ init([]) ->
     ns_ports_setup:sync(),
     ?log_debug("ns_ports_setup seems to be ready"),
     Pid = find_port_pid_loop(100, 250),
-    erlang:monitor(process, Pid),
+    remote_monitors:monitor(Pid),
     Config = ns_config:get(),
     WantedMcdConfig = memcached_config(Config),
     ReadConfigResult = read_current_memcached_config(Pid),
@@ -130,7 +131,7 @@ handle_info(do_check, #state{memcached_config = CurrentMcdConfig} = State) ->
         DifferentConfig ->
             apply_changed_memcached_config(DifferentConfig, State)
     end;
-handle_info({'DOWN', _MRef, _Type, Pid, Reason}, #state{port_pid = Pid} = State) ->
+handle_info({remote_monitor_down, Pid, Reason}, #state{port_pid = Pid} = State) ->
     ?log_debug("Got DOWN with reason: ~p from memcached port server: ~p. Shutting down", [Reason, Pid]),
     {stop, {shutdown, {memcached_port_server_down, Pid, Reason}}, State};
 handle_info(Other, State) ->

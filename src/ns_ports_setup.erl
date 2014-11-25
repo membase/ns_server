@@ -41,7 +41,7 @@ setup_body() ->
                                      end
                              end),
     Children = dynamic_children(),
-    set_children_and_loop(Children).
+    set_children_and_loop(Children, undefined).
 
 %% rpc:called (2.0.2+) after any bucket is deleted
 restart_moxi() ->
@@ -59,29 +59,45 @@ restart_xdcr_proxy() ->
 restart_port_by_name(Name) ->
     rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, restart_port_by_name, [Name]).
 
-set_children_and_loop(Children) ->
+set_children_and_loop(Children, Sup) ->
     Pid = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, set_dynamic_children, [Children]),
-    {is_pid, true, Pid} = {is_pid, erlang:is_pid(Pid), Pid},
-    erlang:link(Pid),
-    children_loop(Children).
+    case Sup of
+        undefined ->
+            {is_pid, true, Pid} = {is_pid, erlang:is_pid(Pid), Pid},
+            ?log_debug("Monitor ns_child_ports_sup ~p", [Pid]),
+            remote_monitors:monitor(Pid);
+        Pid ->
+            ok;
+        _ ->
+            ?log_debug("ns_child_ports_sup was restarted on babysitter node. Exit. Old pid = ~p, new pid = ~p",
+                       [Sup, Pid]),
+            erlang:error(child_ports_sup_died)
+    end,
+    children_loop(Children, Pid).
 
-children_loop(Children) ->
-    proc_lib:hibernate(erlang, apply, [fun children_loop_continue/1, [Children]]).
+children_loop(Children, Sup) ->
+    proc_lib:hibernate(erlang, apply, [fun children_loop_continue/2, [Children, Sup]]).
 
-children_loop_continue(Children) ->
+children_loop_continue(Children, Sup) ->
     receive
         check_children_update ->
-            do_children_loop_continue(Children);
+            do_children_loop_continue(Children, Sup);
         {'$gen_call', From, sync} ->
             gen_server:reply(From, ok),
-            children_loop(Children);
+            children_loop(Children, Sup);
+        {remote_monitor_down, Sup, unpaused} ->
+            ?log_debug("Remote monitor ~p was unpaused after node name change. Restart.", [Sup]),
+            erlang:exit(shutdown);
+        {remote_monitor_down, Sup, Reason} ->
+            ?log_debug("ns_child_ports_sup ~p died on babysitter node with ~p. Restart.", [Sup, Reason]),
+            erlang:error({child_ports_sup_died, Sup, Reason});
         X ->
             erlang:error({unexpected_message, X})
     after 0 ->
             erlang:error(expected_some_message)
     end.
 
-do_children_loop_continue(Children) ->
+do_children_loop_continue(Children, Sup) ->
     %% this sets bound on frequency of checking of port_servers
     %% configuration updates. NOTE: this thing also depends on other
     %% config variables. Particularly moxi's environment variables
@@ -91,9 +107,9 @@ do_children_loop_continue(Children) ->
     misc:flush(check_children_update),
     case dynamic_children() of
         Children ->
-            children_loop(Children);
+            children_loop(Children, Sup);
         NewChildren ->
-            set_children_and_loop(NewChildren)
+            set_children_and_loop(NewChildren, Sup)
     end.
 
 maybe_create_ssl_proxy_spec(Config) ->
