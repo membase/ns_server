@@ -218,6 +218,7 @@ dynamic_children() ->
         kv_node_projector_spec(Config) ++
         index_node_spec(Config) ++
         query_node_spec(Config) ++
+        meta_node_spec(Config) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
 
 allowed_service({moxi, _, _, _} = _NCAO, Config) ->
@@ -303,6 +304,75 @@ index_node_spec(Config) ->
             Spec = {'indexer', IndexerCmd,
                     [NumVBsArg, ProjectorArg, IdxrLogArg],
                     [use_stdio, exit_status, stderr_to_stdout, stream]},
+            [Spec]
+    end.
+
+meta_node_spec(Config) ->
+    GometaCmd = find_executable("gometa"),
+
+    case GometaCmd =/= false andalso
+        ns_cluster_membership:get_cluster_membership(node(), Config) =:= active of
+        false ->
+            [];
+        true ->
+            Nodes = [begin
+                         RequestPort = ns_config:search_node_prop(N, Config, meta, request_port),
+                         ElectionPort = ns_config:search_node_prop(N, Config, meta, election_port),
+                         MessagePort = ns_config:search_node_prop(N, Config, meta, message_port),
+
+                         {_, Host} = misc:node_name_host(N),
+
+                         RequestAddr = list_to_binary(Host ++ ":" ++ integer_to_list(RequestPort)),
+                         ElectionAddr = list_to_binary(Host ++ ":" ++ integer_to_list(ElectionPort)),
+                         MessageAddr = list_to_binary(Host ++ ":" ++ integer_to_list(MessagePort)),
+
+                         {N, {RequestAddr, ElectionAddr, MessageAddr}}
+                     end || N <- ns_cluster_membership:active_nodes(Config)],
+
+            Hash = erlang:phash2(Nodes),
+            GometaDir = path_config:component_path(data, "gometa"),
+            ConfPath = filename:join(GometaDir, "gometa.conf." ++ integer_to_list(Hash)),
+
+            case file:read_file_info(ConfPath) of
+                {ok, _} ->
+                    ok;
+                {error, enoent} ->
+                    lists:foreach(
+                      fun (P) ->
+                              ok = file:delete(P)
+                      end, filelib:wildcard(filename:join(GometaDir, "gometa.conf.*"))),
+
+                    {Host, Peers} =
+                        lists:foldl(
+                          fun ({N, {RequestAddr, ElectionAddr, MessageAddr}}, {AccHost, AccPeers}) ->
+                                  JSON = {[{<<"RequestAddr">>, RequestAddr},
+                                           {<<"ElectionAddr">>, ElectionAddr},
+                                           {<<"MessageAddr">>, MessageAddr}]},
+
+                                  case N =:= node() of
+                                      true ->
+                                          {JSON, AccPeers};
+                                      false ->
+                                          {AccHost, [JSON | AccPeers]}
+                                  end
+                          end, {undefined, []}, Nodes),
+
+                    true = (Host =/= undefined),
+
+                    Conf = {[{"Host", Host},
+                             {"Peer", Peers}]},
+
+                    ok = filelib:ensure_dir(ConfPath),
+                    ok = misc:write_file(ConfPath, ejson:encode(Conf))
+            end,
+
+            Args = ["-config", ConfPath],
+            Spec = {meta, GometaCmd, Args,
+                    [use_stdio, exit_status, port_server_send_eol,
+                     stderr_to_stdout, stream,
+                     {cd, GometaDir}
+                    ]},
+
             [Spec]
     end.
 

@@ -369,7 +369,12 @@ default() ->
      {{request_limit, rest}, undefined},
      {{request_limit, capi}, undefined},
      {drop_request_memory_threshold_mib, undefined},
-     {replication_topology, star}].
+     {replication_topology, star},
+
+     {{node, node(), meta},
+      [{request_port, misc:get_env_default(meta_request_port, 10000)},
+       {election_port, misc:get_env_default(meta_election_port, 10001)},
+       {message_port, misc:get_env_default(meta_message_port, 10001)}]}].
 
 %% Recursively replace all strings in a hierarchy that start
 %% with a given Prefix with a ReplacementPrefix.  For example,
