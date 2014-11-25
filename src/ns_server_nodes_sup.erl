@@ -26,8 +26,6 @@
 %% API
 -export([start_link/0, start_couchdb_node/0, start_ns_server/0, stop_ns_server/0]).
 
--export([pause_ns_couchdb_link/0, unpause_ns_couchdb_link/0]).
-
 %% Supervisor callbacks
 -export([init/1]).
 
@@ -61,6 +59,9 @@ child_specs() ->
       {ns_server, setup_node_names, []},
       transient, brutal_kill, worker, []},
 
+     {remote_monitors, {remote_monitors, start_link, []},
+      permanent, 1000, worker, []},
+
      %% we cannot "kill" this guy anyways. Thus hefty shutdown timeout.
      {start_couchdb_node, {?MODULE, start_couchdb_node, []},
       {permanent, 5}, 86400000, worker, []},
@@ -70,12 +71,6 @@ child_specs() ->
 
      {ns_server_sup, {ns_server_sup, start_link, []},
       permanent, infinity, supervisor, [ns_server_sup]}].
-
-pause_ns_couchdb_link() ->
-    ok = gen_server:call(wait_link_to_couchdb_node, pause, infinity).
-
-unpause_ns_couchdb_link() ->
-    ok = gen_server:call(wait_link_to_couchdb_node, unpause, infinity).
 
 create_ns_couchdb_spec() ->
     CouchIni = case init:get_argument(couch_ini) of
@@ -131,35 +126,20 @@ do_wait_link_to_couchdb_node(Initial) ->
                     proc_lib:init_ack({ok, self()});
                 _ -> ok
             end,
-            MRef = erlang:monitor(process, Pid),
-            wait_link_to_couchdb_node_loop(MRef);
+            remote_monitors:monitor(Pid),
+            wait_link_to_couchdb_node_loop(Pid);
         timeout ->
             exit(timeout)
     end.
 
-wait_link_to_couchdb_node_loop(MRef) ->
+wait_link_to_couchdb_node_loop(Pid) ->
     receive
-        {'$gen_call', {FromPid, _} = From, pause} ->
-            erlang:demonitor(MRef, [flush]),
-            MRef2 = erlang:monitor(process, FromPid),
-            gen_server:reply(From, ok),
-            wait_link_to_couchdb_node_paused_loop(FromPid, MRef2);
-        Msg ->
-            ?log_debug("Exiting due to message: ~p", [Msg]),
-            exit(normal)
-    end.
-
-wait_link_to_couchdb_node_paused_loop(PauserPid, PauserMRef) ->
-    receive
-        {'$gen_call', {FromPid, _} = From, Msg} ->
-            case Msg of
-                pause ->
-                    gen_server:reply(From, already_paused);
-                unpause when FromPid =:= PauserPid ->
-                    erlang:demonitor(PauserMRef),
-                    gen_server:reply(From, ok),
-                    do_wait_link_to_couchdb_node(false)
-            end;
+        {remote_monitor_down, Pid, unpaused} ->
+            ?log_debug("Link to couchdb node was unpaused."),
+            do_wait_link_to_couchdb_node(false);
+        {remote_monitor_down, Pid, Reason} ->
+            ?log_debug("Link to couchdb node was lost. Reason: ~p", [Reason]),
+            exit(normal);
         Msg ->
             ?log_debug("Exiting due to message: ~p", [Msg]),
             exit(normal)

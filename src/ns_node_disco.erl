@@ -175,7 +175,6 @@ handle_call({register_node_renaming_txn, Pid}, _From, State) ->
     case State of
         #state{node_renaming_txn_mref = undefined} ->
             MRef = erlang:monitor(process, Pid),
-            ns_server_nodes_sup:pause_ns_couchdb_link(),
             NewState = State#state{node_renaming_txn_mref = MRef},
             {reply, ok, NewState};
         _ ->
@@ -188,7 +187,6 @@ handle_call(Msg, _From, State) ->
 
 handle_info({'DOWN', MRef, _, _, _}, #state{node_renaming_txn_mref = MRef} = State) ->
     self() ! notify_clients,
-    ns_server_nodes_sup:unpause_ns_couchdb_link(),
     {noreply, State#state{node_renaming_txn_mref = undefined}};
 handle_info({nodeup, Node, InfoList}, State) ->
     ?user_log(?NODE_UP, "Node ~p saw that node ~p came up. Tags: ~p",

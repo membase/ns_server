@@ -398,6 +398,11 @@ maybe_rename(NewAddr, UserSupplied) ->
               %% prevent node disco events while we're in the middle
               %% of renaming
               ns_node_disco:register_node_renaming_txn(self()),
+
+              %% prevent breaking remote monitors while we're in the middle
+              %% of renaming
+              remote_monitors:register_node_renaming_txn(self()),
+
               case dist_manager:adjust_my_address(NewAddr, UserSupplied) of
                   nothing ->
                       ?cluster_debug("Not renaming node.", []),
