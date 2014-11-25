@@ -1555,6 +1555,7 @@ delaying_crash(DelayBy, Body) ->
         Body()
     catch T:E ->
             ST = erlang:get_stacktrace(),
+            ?log_debug("Delaying crash ~p:~p by ~pms~nStacktrace: ~p", [T, E, DelayBy, ST]),
             timer:sleep(DelayBy),
             erlang:raise(T, E, ST)
     end.
