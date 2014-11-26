@@ -250,9 +250,21 @@ query_node_spec(Config) ->
             [Spec]
     end.
 
+is_projector_available(ProjectorCmd) ->
+    K ='ns_ports_setup-projector-available',
+    case erlang:get(K) of
+        undefined ->
+            RV = (os:find_executable(ProjectorCmd) =/= false),
+            erlang:put(K, RV),
+            RV;
+        V ->
+            V
+    end.
+
 kv_node_projector_spec(Config) ->
+    ProjectorCmd = path_config:component_path(bin, "projector"),
     Svcs = ns_cluster_membership:node_services(Config, node()),
-    case lists:member(kv, Svcs) andalso os:getenv("ENABLE_PROJECTOR") =/= false of
+    case lists:member(kv, Svcs) andalso is_projector_available(ProjectorCmd) of
         false ->
             [];
         _ ->
@@ -263,8 +275,7 @@ kv_node_projector_spec(Config) ->
             ClusterArg = "127.0.0.1:" ++ integer_to_list(RestPort),
             KvListArg = "-kvaddrs=127.0.0.1:" ++ integer_to_list(LocalMemcachedPort),
             AdminPortArg = "-adminport=127.0.0.1:" ++ integer_to_list(ProjectorPort),
-            ProjLogArg = '-debug=true',
-            ProjectorCmd = path_config:component_path(bin, "projector"),
+            ProjLogArg = "-debug=true",
 
             Spec = {'projector', ProjectorCmd,
                     [ProjLogArg, KvListArg, AdminPortArg, ClusterArg],
