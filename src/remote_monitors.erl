@@ -26,7 +26,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/0, monitor/1, register_node_renaming_txn/1]).
+-export([start_link/0, monitor/1, register_node_renaming_txn/1, wait_for_net_kernel/0]).
 
 -record(state, {node_renaming_txn_mref :: undefined | reference(),
                 monitors :: [] | [pid()]
@@ -45,6 +45,17 @@ register_node_renaming_txn(Pid) ->
 monitor(Pid) ->
     gen_server:call(?MODULE, {monitor, Pid}).
 
+wait_for_net_kernel() ->
+    case gen_server:call(?MODULE, monitor_net_kernel) of
+        unpaused ->
+            ignore;
+        ok ->
+            receive
+                {remote_monitor_down, undefined, unpaused} ->
+                    ignore
+            end
+    end.
+
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
@@ -62,16 +73,20 @@ handle_call({register_node_renaming_txn, Pid}, _From, #state{monitors = Monitors
             {reply, already_doing_renaming, State}
     end;
 
-handle_call({monitor, Pid}, {FromPid, _}, #state{monitors = Monitors} = State) ->
+handle_call({monitor, Pid}, {FromPid, _}, State) ->
     MonState = case State of
                    #state{node_renaming_txn_mref = undefined} ->
                        unpaused;
                    _ ->
                        paused
                end,
-    MonPid = proc_lib:start_link(erlang, apply,
-                                 [fun init_monitor/3, [MonState, Pid, FromPid]]),
-    {reply, ok, State#state{monitors = [MonPid | Monitors]}}.
+    do_add_monitor(MonState, Pid, FromPid, State);
+
+handle_call(monitor_net_kernel, _From, #state{node_renaming_txn_mref = undefined} = State) ->
+    {reply, unpaused, State};
+
+handle_call(monitor_net_kernel, {FromPid, _}, State) ->
+    do_add_monitor(paused, undefined, FromPid, State).
 
 handle_info({'DOWN', MRef, _, _, _}, #state{node_renaming_txn_mref = MRef,
                                             monitors = Monitors} = State) ->
@@ -85,6 +100,11 @@ handle_cast({remove_monitor, Pid}, #state{monitors = Monitors} = State) ->
 
 remove_monitor(Pid) ->
     gen_server:cast(?MODULE, {remove_monitor, Pid}).
+
+do_add_monitor(MonState, Pid, FromPid, #state{monitors = Monitors} = State) ->
+    MonPid = proc_lib:start_link(erlang, apply,
+                                 [fun init_monitor/3, [MonState, Pid, FromPid]]),
+    {reply, ok, State#state{monitors = [MonPid | Monitors]}}.
 
 init_monitor(unpaused, Pid, FromPid) ->
     process_flag(trap_exit, true),

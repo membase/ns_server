@@ -33,7 +33,10 @@ init([BucketName]) ->
           child_specs(BucketName)}}.
 
 child_specs(BucketName) ->
-    [{doc_replicator,
+    [{wait_for_net_kernel,
+      {remote_monitors, wait_for_net_kernel, []},
+      transient, brutal_kill, worker, []},
+     {doc_replicator,
       {doc_replicator, start_link, [BucketName]},
       permanent, 1000, worker, [doc_replicator]},
      {doc_replication_srv,

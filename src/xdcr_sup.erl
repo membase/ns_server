@@ -36,7 +36,11 @@ link_stats_holder_body() ->
     end.
 
 child_specs() ->
-    [{xdc_stats_holder,
+    [{wait_for_net_kernel,
+      {remote_monitors, wait_for_net_kernel, []},
+      transient, brutal_kill, worker, []},
+
+     {xdc_stats_holder,
       {proc_lib, start_link, [?MODULE, link_stats_holder_body, []]},
       permanent, 1000, worker, []},
 
