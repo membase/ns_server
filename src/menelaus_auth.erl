@@ -22,7 +22,6 @@
 
 -export([apply_auth/3,
          apply_ro_auth/3,
-         apply_special_auth/3,
          require_auth/1,
          filter_accessible_buckets/2,
          is_bucket_accessible/3,
@@ -87,10 +86,6 @@ apply_auth(Req, F, Args) ->
 apply_ro_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
     apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_read_only_auth/2).
-
-apply_special_auth(Req, F, Args) ->
-    UserPassword = extract_auth(Req),
-    apply_auth_with_auth_data(Req, F, Args, UserPassword, fun check_special_auth/2).
 
 apply_auth_with_auth_data(Req, F, Args, UserPassword, AuthFun) ->
     case AuthFun(Req, UserPassword) of
@@ -263,16 +258,6 @@ check_admin_auth_int(undefined) ->
         _ ->
             false
     end.
-
-check_special_auth(Req, {User, Password}) ->
-    case ns_config_auth:authenticate(special, User, Password) of
-        true ->
-            {true, store_user_info(Req, User, special, undefined)};
-        false ->
-            check_admin_auth(Req, {User, Password})
-        end;
-check_special_auth(_, undefined) ->
-    false.
 
 is_read_only_auth(Auth) ->
     case check_read_only_auth(Auth) of

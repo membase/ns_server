@@ -211,7 +211,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "buckets"] ->
                              {auth_any_bucket, fun menelaus_web_buckets:handle_bucket_list/1, []};
                          ["pools", "default", "saslBucketsStreaming"] ->
-                             {auth_special, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2,
+                             {auth, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2,
                               ["default"]};
                          ["pools", "default", "buckets", Id] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_bucket_info/3,
@@ -308,7 +308,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["nodes", "self", "xdcrSSLPorts"] ->
                              {done, handle_node_self_xdcr_ssl_ports(Req)};
                          ["diag"] ->
-                             {auth_special, fun diag_handler:handle_diag/1, []};
+                             {auth, fun diag_handler:handle_diag/1, []};
                          ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
                          ["diag", "ale"] -> {auth, fun diag_handler:handle_diag_ale/1};
                          ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
@@ -553,7 +553,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
         {done, RV} -> RV;
         {auth_ro, F} -> auth_ro(Req, F, []);
         {auth_ro, F, Args} -> auth_ro(Req, F, Args);
-        {auth_special, F, Args} -> auth_special(Req, F, Args);
         {auth, F} -> auth(Req, F, []);
         {auth, F, Args} -> auth(Req, F, Args);
         {auth_bucket_mutate, F, Args} ->
@@ -617,9 +616,6 @@ auth(Req, F, Args) ->
 
 auth_ro(Req, F, Args) ->
     menelaus_auth:apply_ro_auth(Req, fun check_uuid/3, [F, Args]).
-
-auth_special(Req, F, Args) ->
-    menelaus_auth:apply_special_auth(Req, fun check_uuid/3, [F, Args]).
 
 auth_any_bucket(Req, F, Args) ->
     menelaus_auth:apply_auth_any_bucket(Req, fun check_uuid/3, [F, Args]).

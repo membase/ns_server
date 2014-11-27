@@ -110,10 +110,13 @@ credentials_changed_old(admin, User, Password) ->
             true
     end.
 
-authenticate(special, User, Password) ->
-    User =:= get_user(special) andalso
-        Password =:= ns_config:search_node_prop('latest-config-marker', memcached, admin_pass);
+authenticate(Role, "@" = User, Password) ->
+    Password =:= ns_config:search_node_prop('latest-config-marker', memcached, admin_pass)
+        orelse authenticate_non_special(Role, User, Password);
 authenticate(Role, User, Password) ->
+    authenticate_non_special(Role, User, Password).
+
+authenticate_non_special(Role, User, Password) ->
     case cluster_compat_mode:is_cluster_30() of
         true ->
             authenticate_30(Role, User, Password);
