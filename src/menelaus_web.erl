@@ -490,6 +490,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_mcd_settings:handle_node_post/2, [Node]};
                          ["pools", "default", "settings", "memcached", "node", Node, "_restart"] ->
                              {auth, fun menelaus_web_mcd_settings:handle_node_restart/2, [Node]};
+                         ["_cbauth"] ->
+                             {auth, fun menelaus_cbauth:handle_cbauth_post/1};
                          ["logClientError"] -> {auth,
                                                 fun (R) ->
                                                         User = menelaus_auth:extract_auth_user(R),

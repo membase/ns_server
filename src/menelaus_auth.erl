@@ -41,7 +41,8 @@
          get_user/1,
          get_token/1,
          get_role/1,
-         validate_request/1]).
+         validate_request/1,
+         check_creds/3]).
 
 %% External API
 
@@ -386,3 +387,30 @@ is_under_admin(Req) ->
 
 may_expose_bucket_auth(Req) ->
     not is_read_only_auth(extract_auth(Req)).
+
+check_creds(User, Password, undefined) ->
+    case ns_config_auth:authenticate(admin, User, Password) of
+        true ->
+            {true, true};
+        _ ->
+            {false, false}
+    end;
+check_creds(User, Password, Bucket) ->
+    IsAdmin = check_auth({User, Password}),
+    case IsAdmin of
+        true ->
+            {true, true};
+        false ->
+            Auth = case {User, Password} of
+                       {"", ""} -> undefined;
+                       AuthX -> AuthX
+                   end,
+            F = bucket_auth_fun(Auth, false),
+            Ok = case ns_bucket:get_bucket(Bucket) of
+                     {ok, BucketInfo} ->
+                         F({Bucket, BucketInfo});
+                     not_present ->
+                         false
+                 end,
+            {Ok, false}
+    end.

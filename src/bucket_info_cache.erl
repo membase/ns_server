@@ -25,6 +25,8 @@
 
 -export([tmp_build_node_services/0]).
 
+-export([build_services/3]).
+
 %% for diagnostics
 -export([submit_buckets_reset/2,
          submit_full_reset/0]).
