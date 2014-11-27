@@ -902,13 +902,17 @@ start_view_index_compactor(BucketName, DDocId, Type, InitialStatus) ->
 bucket_needs_compaction(BucketName, NumVBuckets,
                         #config{daemon=#daemon_config{min_file_size=MinFileSize},
                                 db_fragmentation=FragThreshold}) ->
-    {DataSize, FileSize} = aggregated_size_info(binary_to_list(BucketName)),
+    try aggregated_size_info(binary_to_list(BucketName)) of
+        {DataSize, FileSize} ->
+            ?log_debug("`~s` data size is ~p, disk size is ~p",
+                       [BucketName, DataSize, FileSize]),
 
-    ?log_debug("`~s` data size is ~p, disk size is ~p",
-               [BucketName, DataSize, FileSize]),
-
-    file_needs_compaction(DataSize, FileSize,
-                          FragThreshold, MinFileSize * NumVBuckets).
+            file_needs_compaction(DataSize, FileSize,
+                                  FragThreshold, MinFileSize * NumVBuckets)
+    catch exit:{noproc, _} ->
+            ?log_debug("memcached is not started for bucket ~p yet", [BucketName]),
+            false
+    end.
 
 file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize) ->
     %% NOTE: If there are no vbuckets on this node MinFileSize will be
