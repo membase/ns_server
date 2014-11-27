@@ -298,11 +298,11 @@ index_node_spec(Config) ->
             IndexerCmd = path_config:component_path(bin, "indexer"),
             IdxrLogArg = '-log=2',
             NumVBsArg = "-vbuckets=" ++ integer_to_list(NumVBuckets),
-            ProjectorPort = ns_config:search(Config, {node, node(), projector_port}, 9999),
-            ProjectorArg = "-projector=127.0.0.1:" ++ integer_to_list(ProjectorPort),
+            RestPort = misc:node_rest_port(Config, node()),
+            ClusterArg = "-cluster=127.0.0.1:" ++ integer_to_list(RestPort),
 
             Spec = {'indexer', IndexerCmd,
-                    [NumVBsArg, ProjectorArg, IdxrLogArg],
+                    [NumVBsArg, ClusterArg, IdxrLogArg],
                     [use_stdio, exit_status, stderr_to_stdout, stream]},
             [Spec]
     end.
