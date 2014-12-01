@@ -250,11 +250,12 @@ query_node_spec(Config) ->
             [Spec]
     end.
 
-is_projector_available(ProjectorCmd) ->
-    K ='ns_ports_setup-projector-available',
+find_executable(Name) ->
+    K = list_to_atom("ns_ports_setup-" ++ Name ++ "-available"),
     case erlang:get(K) of
         undefined ->
-            RV = (os:find_executable(ProjectorCmd) =/= false),
+            Cmd = path_config:component_path(bin, Name),
+            RV = os:find_executable(Cmd),
             erlang:put(K, RV),
             RV;
         V ->
@@ -262,9 +263,9 @@ is_projector_available(ProjectorCmd) ->
     end.
 
 kv_node_projector_spec(Config) ->
-    ProjectorCmd = path_config:component_path(bin, "projector"),
+    ProjectorCmd = find_executable("projector"),
     Svcs = ns_cluster_membership:node_services(Config, node()),
-    case lists:member(kv, Svcs) andalso is_projector_available(ProjectorCmd) of
+    case lists:member(kv, Svcs) andalso ProjectorCmd =/= false of
         false ->
             [];
         _ ->
