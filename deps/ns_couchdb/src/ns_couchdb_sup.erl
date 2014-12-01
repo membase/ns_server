@@ -76,9 +76,6 @@ child_specs() ->
 
      {ns_capi_ssl_service,
       {ns_ssl_services_setup, start_link_capi_service, []},
-      permanent, 1000, worker, []},
-
-     {last_process, {work_queue, start_link, [last_process]},
       permanent, 1000, worker, []}
     ].
 
