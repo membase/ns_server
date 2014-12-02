@@ -76,7 +76,10 @@ child_specs() ->
 
      {ns_capi_ssl_service,
       {ns_ssl_services_setup, start_link_capi_service, []},
-      permanent, 1000, worker, []}
+      permanent, 1000, worker, []},
+
+     {dir_size, {dir_size, start_link, []},
+      permanent, 1000, worker, [dir_size]}
     ].
 
 restart_capi_ssl_service() ->
