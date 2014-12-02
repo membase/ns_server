@@ -182,14 +182,6 @@ rpc_couchdb_node(Node, Request, RpcTimeout, Default) ->
             RV
     end.
 
-handle_rpc({whereis, Name}) ->
-    Pid = whereis(Name),
-    case is_pid(Pid) of
-        true ->
-            {loaded, Pid};
-        false ->
-            not_found
-    end;
 handle_rpc(get_db_and_ix_paths) ->
     cb_config_couch_sync:get_db_and_ix_paths();
 handle_rpc({set_db_and_ix_paths, DbPath0, IxPath0}) ->
