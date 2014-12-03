@@ -13,8 +13,8 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc api that contains almost everything (with the exception of compaction_api)
-%%      that ns_server node calls on ns_couchdb node
+%% @doc api that contains almost everything that ns_server node calls on
+%%      ns_couchdb node
 %%
 
 -module(ns_couchdb_api).
