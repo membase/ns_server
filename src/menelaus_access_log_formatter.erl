@@ -45,9 +45,14 @@ get_datetime(Time) ->
     io_lib:format("[~2.10.0B/~s/~4.10.0B:~2.10.0B:~2.10.0B:~2.10.0B ~s~2.10.0B~2.10.0B]",
                   [Day, month(Month), Year, Hour, Minute, Second, PlusMinus, TZHours, TZMinutes]).
 
+method_to_list(Atom) when is_atom(Atom) ->
+    atom_to_list(Atom);
+method_to_list(List) when is_list(List) ->
+    List.
+
 get_path_info(Req) ->
     ["\"",
-     atom_to_list(Req:get(method)),
+     method_to_list(Req:get(method)),
      " ",
      Req:get(path),
      " HTTP/",
