@@ -546,6 +546,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
                              {done, reply_text(Req, "Method Not Allowed", 405)}
                      end;
+                 "RPCCONNECT" ->
+                     {auth, fun json_rpc_connection:handle_rpc_connect/1};
 
                  _ ->
                      ?MENELAUS_WEB_LOG(0004, "Invalid request received: ~p", [Req]),
