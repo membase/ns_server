@@ -9,6 +9,11 @@
 %% referenced by config
 -export([omit_missing_mcd_ports/2]).
 
+%% NOTE: this is only to calm dialyzer down which otherwise complains that
+%% RPCService is always saslauthd
+-export([build_cbauth_env_vars/2]).
+
+
 start() ->
     proc_lib:start_link(?MODULE, setup_body_tramp, []).
 
@@ -235,6 +240,7 @@ dynamic_children() ->
         index_node_spec(Config) ++
         query_node_spec(Config) ++
         meta_node_spec(Config) ++
+        saslauthd_port_spec(Config) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
 
 allowed_service({moxi, _, _, _} = _NCAO, Config) ->
@@ -390,6 +396,33 @@ meta_node_spec(Config) ->
                     ]},
 
             [Spec]
+    end.
+
+build_cbauth_env_vars(Config, RPCService) ->
+    RestPort = misc:node_rest_port(Config, node()),
+
+    MaybeRPC =
+        case RPCService =:= undefined of
+            true -> [];
+            false ->
+                [{"NS_SERVER_CBAUTH_RPC_URL", "http://127.0.0.1:"
+                  ++ integer_to_list(RestPort)
+                  ++ "/" ++ atom_to_list(RPCService)}]
+        end,
+    [{"NS_SERVER_CBAUTH_URL", "http://127.0.0.1:" ++ integer_to_list(RestPort) ++ "/_cbauth"},
+     {"NS_SERVER_CBAUTH_USER", ns_config_auth:get_user(special)},
+     {"NS_SERVER_CBAUTH_PWD", ns_config_auth:get_password(special)}
+    | MaybeRPC].
+
+saslauthd_port_spec(Config) ->
+    Cmd = find_executable("saslauthd-port"),
+    case Cmd =/= false of
+        true ->
+            [{saslauthd_port, Cmd, [],
+              [use_stdio, exit_status, stderr_to_stdout, stream,
+               {env, build_cbauth_env_vars(Config, saslauthd)}]}];
+        _ ->
+            []
     end.
 
 expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
