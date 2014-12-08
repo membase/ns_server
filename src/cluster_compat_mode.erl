@@ -30,7 +30,8 @@
          split_live_nodes_by_version/1,
          is_cluster_30/0,
          is_cluster_sherlock/0,
-         sherlock_compat_mode_string/0]).
+         sherlock_compat_mode_string/0,
+         is_goxdcr_enabled/0]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
@@ -82,6 +83,10 @@ is_index_aware_rebalance_on() ->
 is_index_pausing_on() ->
     is_index_aware_rebalance_on() andalso
         (not ns_config:read_key_fast(index_pausing_disabled, false)).
+
+is_goxdcr_enabled() ->
+    is_cluster_sherlock() andalso
+        ns_config:read_key_fast(goxdcr_enabled, false).
 
 get_replication_topology() ->
     ns_config:read_key_fast(replication_topology, star).
