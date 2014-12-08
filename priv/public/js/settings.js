@@ -20,7 +20,7 @@ var SettingsSection = {
                              '#js_settings .panes > div',
                              ['cluster','update_notifications', 'auto_failover',
                               'email_alerts', 'settings_compaction',
-                              'settings_sample_buckets', 'account_management']);
+                              'settings_sample_buckets', 'ldap_setup', 'account_management']);
 
     Cell.subscribeMultipleValues(function (isROAdmin, lastCompatMode) {
       if (lastCompatMode === undefined || isROAdmin == undefined) {
@@ -41,12 +41,14 @@ var SettingsSection = {
     AutoCompactionSection.init();
     SampleBucketSection.init();
     AccountManagementSection.init();
+    LDAPSetupSection.init();
   },
   onEnter: function () {
     SampleBucketSection.refresh();
     UpdatesNotificationsSection.refresh();
     AutoFailoverSection.refresh();
     EmailAlertsSection.refresh();
+    LDAPSetupSection.refresh();
   },
   navClick: function () {
     this.onLeave();
@@ -1528,4 +1530,78 @@ var AutoCompactionSection = {
       });
     };
   })()
+};
+
+function ldapSetupSectionCells(ns, tabs) {
+  ns.onLDAPTabCell = Cell.computeEager(function (v) {
+    return v.need(tabs) == "ldap_setup";
+  });
+  ns.settingsCell = Cell.computeEager(function (v) {
+    if (!v.need(ns.onLDAPTabCell)) {
+      return;
+    }
+    return future.get({url: "/settings/ldapAuth"});
+  });
+  ns.showSpinnerCell = Cell.computeEager(function (v) {
+    if (!v(ns.onLDAPTabCell)) {
+      return false;
+    }
+    return !v(ns.settingsCell);
+  });
+}
+
+var LDAPSetupSection = {
+  init: function () {
+    var self = LDAPSetupSection;
+    self.form = $("#js_ldap_setup_form");
+    var spinner;
+    ldapSetupSectionCells(self, SettingsSection.tabs);
+    self.showSpinnerCell.subscribeValue(function (val) {
+      if (!val) {
+        if (!spinner) {
+          return;
+        } else {
+          spinner.remove();
+          spinner = undefined;
+        }
+      } else {
+        if (spinner) {
+          BUG("spinner");
+        }
+        spinner = overlayWithSpinner(self.form);
+      }
+    });
+    self.settingsCell.subscribeValue(function (settings) {
+      if (settings) {
+        self.fillForm(settings);
+      }
+    });
+    self.form.submit(function (e) {
+      e.preventDefault();
+      self.submit();
+    });
+  },
+  fillForm: function (settings) {
+    var s = {
+      enabled: settings.enabled,
+      admins: (settings.admins || []).join("\n"),
+      roAdmins: (settings.roAdmins || []).join("\n")
+    };
+    setFormValues(this.form, s);
+  },
+  refresh: function () {
+    this.settingsCell.recalculate();
+  },
+  submit: function () {
+    var self = this;
+    self.settingsCell.setValue(undefined);
+    $.ajax({
+      type: "POST",
+      url: "/settings/ldapAuth",
+      data: serializeForm(self.form),
+      complete: function () {
+        self.settingsCell.recalculate();
+      }
+    });
+  }
 };

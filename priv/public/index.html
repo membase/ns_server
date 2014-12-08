@@ -1007,6 +1007,7 @@
                   <li><a id="settings_alerts" class="casper_settings_alerts">Alerts</a></li>
                   <li><a id="settings_compaction" class="casper_settings_compaction">Auto-Compaction</a></li>
                   <li><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
+                  <li class="when-roadmin-avoid-me"><a id="ldap_setup">LDAP Auth Setup</a></li>
                   <li class="when-roadmin-avoid-me"><a id="account_management" class="casper_settings_account_management">Account Management</a></li>
                 </ul>
               </div>
@@ -1177,6 +1178,19 @@
                   </button>
                  </div>
                 </form></div>
+                <div class="ldap_setup_container account_management_container when-roadmin-avoid-me">
+                  <h2>LDAP Auth Setup</h2>
+                  <form id="js_ldap_setup_form" class="account_management_form" autocomplete="off">
+                    <div class="sub_section">
+                      <label><span>Enable:</span><input type=hidden name=enabled value=0><input type=checkbox name=enabled value=1 style="width:auto;"></label>
+                      <label><span style="display:inline-block;vertical-align:top;">Read-Ony Admins:</span><textarea name="roAdmins" style="height:100px; width:250px;"></textarea></label>
+                      <label><span style="display:inline-block;vertical-align:top;">Full Admins:</span><textarea name="admins" style="height:100px; width:250px;"></textarea></label>
+                    </div>
+                    <div class="save_cancel">
+                        <button class="save_button float_right" type="submit">Save</button>
+                    </div>
+                  </form>
+                </div>
                 <div class="account_management_container when-roadmin-avoid-me">
                   <h2>Read-Only User</h2>
                   <div class="sub_section">
