@@ -152,8 +152,20 @@ default() ->
      {{node, node(), xdcr_rest_port},
       misc:get_env_default(xdcr_rest_port, 9998)},
 
-     {{node, node(), indexer_port},
-      misc:get_env_default(indexer_port, 9102)},
+     {{node, node(), indexer_admin_port},
+      misc:get_env_default(indexer_admin_port, 9100)},
+
+     {{node, node(), indexer_scan_port},
+      misc:get_env_default(indexer_scan_port, 9101)},
+
+     {{node, node(), indexer_stinit_port},
+      misc:get_env_default(indexer_stinit_port, 9102)},
+
+     {{node, node(), indexer_stcatchup_port},
+      misc:get_env_default(indexer_stcatchup_port, 9103)},
+
+     {{node, node(), indexer_stmaint_port},
+      misc:get_env_default(indexer_stmaint_port, 9104)},
 
      {{node, node(), ssl_proxy_downstream_port},
       case IsEnterprise of

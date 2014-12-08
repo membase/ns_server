@@ -337,13 +337,24 @@ index_node_spec(Config) ->
                               {value, X} -> X
                           end,
             IndexerCmd = path_config:component_path(bin, "indexer"),
-            IdxrLogArg = '-log=2',
-            NumVBsArg = "-vbuckets=" ++ integer_to_list(NumVBuckets),
             RestPort = misc:node_rest_port(Config, node()),
-            ClusterArg = "-cluster=127.0.0.1:" ++ integer_to_list(RestPort),
+            AdminPort = ns_config:search(Config, {node, node(), indexer_admin_port}, 9100),
+            ScanPort = ns_config:search(Config, {node, node(), indexer_scan_port}, 9101),
+            StInitPort = ns_config:search(Config, {node, node(), indexer_stinit_port}, 9102),
+            StCatchupPort = ns_config:search(Config, {node, node(), indexer_stcatchup_port}, 9103),
+            StMaintPort = ns_config:search(Config, {node, node(), indexer_stmaint_port}, 9104),
 
             Spec = {'indexer', IndexerCmd,
-                    [NumVBsArg, ClusterArg, IdxrLogArg],
+                    [
+                         "-log=2",
+                         "-vbuckets=" ++ integer_to_list(NumVBuckets),
+                         "-cluster=127.0.0.1:" ++ integer_to_list(RestPort),
+                         "-adminPort=" ++ integer_to_list(AdminPort),
+                         "-scanPort=" ++ integer_to_list(ScanPort),
+                         "-streamInitPort=" ++ integer_to_list(StInitPort),
+                         "-streamCatchupPort=" ++ integer_to_list(StCatchupPort),
+                         "-streamMaintPort=" ++ integer_to_list(StMaintPort)
+                     ],
                     [use_stdio, exit_status, stderr_to_stdout, stream]},
             [Spec]
     end.
