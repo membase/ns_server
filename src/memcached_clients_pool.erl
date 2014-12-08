@@ -1,7 +1,6 @@
 -module(memcached_clients_pool).
 
 -include("ns_common.hrl").
--include("remote_clusters_info.hrl").
 
 -export([start_link/0,
          make_loc/5]).

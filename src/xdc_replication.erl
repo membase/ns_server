@@ -26,7 +26,6 @@
 -export([code_change/3, terminate/2]).
 
 -include("xdc_replicator.hrl").
--include("remote_clusters_info.hrl").
 -include_lib("stdlib/include/ms_transform.hrl").
 
 %% rate of replicaiton stat maintained in bucket replicator
