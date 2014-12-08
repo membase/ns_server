@@ -587,7 +587,14 @@ handle_uilogin(Req) ->
                 true ->
                     menelaus_auth:complete_uilogin(Req, User, ro_admin);
                 _ ->
-                    menelaus_auth:reject_uilogin(Req, User)
+                    case menelaus_auth:check_ldap_auth(User, Password) of
+                        admin ->
+                            menelaus_auth:complete_uilogin(Req, User, admin);
+                        ro_admin ->
+                            menelaus_auth:complete_uilogin(Req, User, ro_admin);
+                        false ->
+                            menelaus_auth:reject_uilogin(Req, User)
+                    end
             end
     end.
 

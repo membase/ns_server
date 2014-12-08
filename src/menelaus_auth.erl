@@ -45,7 +45,8 @@
          check_creds/3]).
 
 -export([build_ldap_auth_settings/0,
-         set_ldap_auth_settings/1]).
+         set_ldap_auth_settings/1,
+         check_ldap_auth/2]).
 
 %% External API
 
@@ -430,3 +431,31 @@ build_ldap_auth_settings() ->
 
 set_ldap_auth_settings(Settings) ->
     ns_config:set(ldap_auth_settings, Settings).
+
+check_ldap_auth(User, Password) ->
+    LDAPCfg = build_ldap_auth_settings(),
+    Enabled = ({enabled, true} =:= lists:keyfind(enabled, 1, LDAPCfg)),
+    case Enabled of
+        false ->
+            false;
+        true ->
+            {_, Admins} = lists:keyfind(admins, 1, LDAPCfg),
+            {_, RoAdmins} = lists:keyfind(roAdmins, 1, LDAPCfg),
+            UserB = list_to_binary(User),
+            IsAdmin = lists:member(UserB, Admins),
+            IsRoAdmin = lists:member(UserB, RoAdmins),
+            Authed = ((catch saslauthd_auth:verify_creds(User, Password)) =:= true),
+            case Authed of
+                false ->
+                    false;
+                true ->
+                    if
+                        IsAdmin ->
+                            admin;
+                        IsRoAdmin ->
+                            ro_admin;
+                        true ->
+                            false
+                    end
+            end
+    end.
