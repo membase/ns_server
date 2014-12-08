@@ -149,6 +149,9 @@ default() ->
      {{node, node(), projector_port},
       misc:get_env_default(projector_port, 9999)},
 
+     {{node, node(), xdcr_rest_port},
+      misc:get_env_default(xdcr_rest_port, 9998)},
+
      {{node, node(), indexer_port},
       misc:get_env_default(indexer_port, 9102)},
 
