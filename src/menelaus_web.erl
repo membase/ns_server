@@ -299,6 +299,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth_ro, fun menelaus_web_xdc_replications:handle_global_replication_settings/1};
                          ["settings", "replications", XID] ->
                              {auth_ro, fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]};
+                         ["settings", "ldapAuth"] ->
+                             {auth, fun handle_ldap_auth_settings/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
                          ["internalSettings", "visual"] ->
@@ -385,6 +387,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_xdc_replications:handle_global_replication_settings_post/1};
                          ["settings", "replications", XID] ->
                              {auth, fun menelaus_web_xdc_replications:handle_replication_settings_post/2, [XID]};
+                         ["settings", "ldapAuth"] ->
+                             {auth, fun handle_ldap_auth_settings_post/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings_post/1};
                          ["internalSettings", "visual"] ->
@@ -3519,3 +3523,25 @@ hostname_parsing_test() ->
     ok.
 
 -endif.
+
+handle_ldap_auth_settings(Req) ->
+    reply_json(Req, {menelaus_auth:build_ldap_auth_settings()}).
+
+extract_user_list(String) ->
+    StringNoCR = [C || C <- String, C =/= $\r],
+    Strings = string:tokens(StringNoCR, "\n"),
+    [B || B <- [list_to_binary(misc:trim(S)) || S <- Strings],
+          B =/= <<>>].
+
+%% TODO: add proper validation and ?validate_only support
+%% TODO: consider some kind of CAS/?rev support
+handle_ldap_auth_settings_post(Req) ->
+    Params = Req:parse_post(),
+    Enabled = proplists:get_value("enabled", Params, "0") =/= "0",
+    Admins = extract_user_list(proplists:get_value("admins", Params, "")),
+    RoAdmins = extract_user_list(proplists:get_value("roAdmins", Params, "")),
+    EJSON = [{enabled, Enabled},
+             {admins, Admins},
+             {roAdmins, RoAdmins}],
+    menelaus_auth:set_ldap_auth_settings(EJSON),
+    reply_json(Req, []).

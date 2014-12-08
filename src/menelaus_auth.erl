@@ -44,6 +44,9 @@
          validate_request/1,
          check_creds/3]).
 
+-export([build_ldap_auth_settings/0,
+         set_ldap_auth_settings/1]).
+
 %% External API
 
 %% Respond with 401 Auth. required
@@ -414,3 +417,16 @@ check_creds(User, Password, Bucket) ->
                  end,
             {Ok, false}
     end.
+
+build_ldap_auth_settings() ->
+    case ns_config:search(ldap_auth_settings) of
+        {value, Settings} ->
+            Settings;
+        false ->
+            [{enabled, false},
+             {admins, []},
+             {roAdmins, []}]
+    end.
+
+set_ldap_auth_settings(Settings) ->
+    ns_config:set(ldap_auth_settings, Settings).
