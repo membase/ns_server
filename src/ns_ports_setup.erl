@@ -9,11 +9,6 @@
 %% referenced by config
 -export([omit_missing_mcd_ports/2]).
 
-%% NOTE: this is only to calm dialyzer down which otherwise complains that
-%% RPCService is always saslauthd
--export([build_cbauth_env_vars/2]).
-
-
 start() ->
     proc_lib:start_link(?MODULE, setup_body_tramp, []).
 
@@ -241,6 +236,7 @@ dynamic_children() ->
         query_node_spec(Config) ++
         meta_node_spec(Config) ++
         saslauthd_port_spec(Config) ++
+        goxdcr_spec(Config) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
 
 allowed_service({moxi, _, _, _} = _NCAO, Config) ->
@@ -305,6 +301,28 @@ kv_node_projector_spec(Config) ->
                     [ProjLogArg, KvListArg, AdminPortArg, ClusterArg],
                     [use_stdio, exit_status, stderr_to_stdout, stream]},
             [Spec]
+    end.
+
+goxdcr_spec(Config) ->
+    Cmd = find_executable("goxdcr"),
+
+    case cluster_compat_mode:is_goxdcr_enabled() andalso
+        Cmd =/= false andalso
+        ns_cluster_membership:get_cluster_membership(node(), Config) =:= active of
+        false ->
+            [];
+        true ->
+            AdminPort = "-sourceKVAdminPort=" ++
+                integer_to_list(misc:node_rest_port(Config, node())),
+            XdcrRestPort = "-xdcrRestPort=" ++
+                integer_to_list(ns_config:search(Config, {node, node(), xdcr_rest_port}, 9998)),
+            GometaRequestPort = "-gometaRequestPort=" ++
+                integer_to_list(ns_config:search_node_prop(Config, meta, request_port)),
+            IsEnterprise = "-isEnterprise=" ++ atom_to_list(menelaus_web:is_enterprise()),
+            [{'goxdcr', Cmd,
+              [AdminPort, XdcrRestPort, GometaRequestPort, IsEnterprise],
+              [use_stdio, exit_status, stderr_to_stdout, stream,
+               {env, build_cbauth_env_vars(Config, undefined)}]}]
     end.
 
 index_node_spec(Config) ->
