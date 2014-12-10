@@ -28,8 +28,7 @@
 -export([build_services/3]).
 
 %% for diagnostics
--export([submit_buckets_reset/2,
-         submit_full_reset/0]).
+-export([submit_full_reset/0]).
 
 %% NOTE: we're doing global replace of this string. So it must not
 %% need any JSON escaping and it must not otherwise occur in terse
@@ -42,16 +41,16 @@ start_link() ->
 cache_init() ->
     {ok, _} = gen_event:start_link({local, bucket_info_cache_invalidations}),
     ets:new(bucket_info_cache, [set, named_table]),
+    ets:new(bucket_info_cache_buckets, [ordered_set, named_table]),
     Self = self(),
-    ns_pubsub:subscribe_link(ns_config_events, fun cleaner_loop/2, {Self, []}),
+    ns_pubsub:subscribe_link(ns_config_events, fun cleaner_loop/2, Self),
+    {value, [{configs, NewBuckets}]} = ns_config:search(buckets),
+    submit_new_buckets(Self, NewBuckets),
     submit_full_reset().
 
-cleaner_loop({buckets, [{configs, NewBuckets0}]}, {Parent, CurrentBuckets}) ->
-    NewBuckets = lists:sort(NewBuckets0),
-    ToClean = ordsets:subtract(CurrentBuckets, NewBuckets),
-    BucketNames  = [Name || {Name, _} <- ToClean],
-    submit_buckets_reset(Parent, BucketNames),
-    {Parent, NewBuckets};
+cleaner_loop({buckets, [{configs, NewBuckets}]}, Parent) ->
+    submit_new_buckets(Parent, NewBuckets),
+    Parent;
 cleaner_loop({{_, _, capi_port}, _Value}, State) ->
     submit_full_reset(),
     State;
@@ -82,20 +81,31 @@ cleaner_loop({cluster_compat_version, _Value}, State) ->
 cleaner_loop(_, Cleaner) ->
     Cleaner.
 
-submit_buckets_reset(Pid, BucketNames) ->
+submit_new_buckets(Pid, Buckets0) ->
     work_queue:submit_work(
       Pid,
       fun () ->
-              [ets:delete(bucket_info_cache, Name) || Name <- BucketNames],
+              Buckets = lists:sort(Buckets0),
+              BucketNames = compute_buckets_to_invalidate(Buckets),
+              [begin
+                   ets:delete(bucket_info_cache, Name),
+                   ets:delete(bucket_info_cache_buckets, Name)
+               end || Name <- BucketNames],
               [gen_event:notify(bucket_info_cache_invalidations, Name) || Name <- BucketNames],
               ok
       end).
+
+compute_buckets_to_invalidate(Buckets) ->
+    CachedBuckets = ets:tab2list(bucket_info_cache_buckets),
+    Inv = ordsets:subtract(CachedBuckets, Buckets),
+    [BucketName || {BucketName, _} <- Inv].
 
 submit_full_reset() ->
     work_queue:submit_work(
       bucket_info_cache,
       fun () ->
               ets:delete_all_objects(bucket_info_cache),
+              ets:delete_all_objects(bucket_info_cache_buckets),
               gen_event:notify(bucket_info_cache_invalidations, '*')
       end).
 
@@ -209,7 +219,7 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
           {nodeLocator, ns_bucket:node_locator(BucketConfig)},
           {uuid, UUID}
           | MaybeVBMap]},
-    {ok, ejson:encode(J)}.
+    {ok, ejson:encode(J), BucketConfig}.
 
 compute_bucket_info(Bucket) ->
     Config = ns_config:get(),
@@ -226,8 +236,9 @@ call_compute_bucket_info(BucketName) ->
               case ets:lookup(bucket_info_cache, BucketName) of
                   [] ->
                       case compute_bucket_info(BucketName) of
-                          {ok, V} ->
+                          {ok, V, BucketConfig} ->
                               ets:insert(bucket_info_cache, {BucketName, V}),
+                              ets:insert(bucket_info_cache_buckets, {BucketName, BucketConfig}),
                               {ok, V};
                           Other ->
                               %% note: we might consider caching
