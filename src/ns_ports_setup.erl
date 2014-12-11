@@ -284,7 +284,8 @@ find_executable(Name) ->
 kv_node_projector_spec(Config) ->
     ProjectorCmd = find_executable("projector"),
     Svcs = ns_cluster_membership:node_services(Config, node()),
-    case lists:member(kv, Svcs) andalso ProjectorCmd =/= false of
+    case lists:member(kv, Svcs) andalso ProjectorCmd =/= false andalso
+        menelaus_web:is_system_provisioned() of
         false ->
             [];
         _ ->
