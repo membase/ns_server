@@ -295,7 +295,7 @@ kv_node_projector_spec(Config) ->
             LocalMemcachedPort = ns_config:search_node_prop(node(), Config, memcached, port),
             ClusterArg = "127.0.0.1:" ++ integer_to_list(RestPort),
             KvListArg = "-kvaddrs=127.0.0.1:" ++ integer_to_list(LocalMemcachedPort),
-            AdminPortArg = "-adminport=127.0.0.1:" ++ integer_to_list(ProjectorPort),
+            AdminPortArg = "-adminport=:" ++ integer_to_list(ProjectorPort),
             ProjLogArg = "-debug=true",
 
             Spec = {'projector', ProjectorCmd,
