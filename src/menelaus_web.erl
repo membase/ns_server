@@ -53,7 +53,8 @@
          parse_validate_bucket_auto_compaction_settings/1,
          is_enterprise/0,
          is_xdcr_over_ssl_allowed/0,
-         assert_is_enterprise/0]).
+         assert_is_enterprise/0,
+         proxy_to_goxdcr/1]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -3132,15 +3133,17 @@ convert_header_name(Header) when is_list(Header) ->
     Header.
 
 query_goxdcr(MochiReq, Body) ->
-    URL = "http://127.0.0.1:" ++ integer_to_list(get_goxdcr_rest_port()) ++ MochiReq:get(raw_path),
-    Method = MochiReq:get(method),
-
     HeadersList = mochiweb_headers:to_list(MochiReq:get(headers)),
     Headers = lists:filtermap(fun ({'Content-Length', _Value}) ->
                                       false;
                                   ({Name, Value}) ->
                                       {true, {convert_header_name(Name), Value}}
                               end, HeadersList),
+    query_goxdcr(MochiReq, Headers, Body).
+
+query_goxdcr(MochiReq, Headers, Body) ->
+    URL = "http://127.0.0.1:" ++ integer_to_list(get_goxdcr_rest_port()) ++ MochiReq:get(raw_path),
+    Method = MochiReq:get(method),
 
     Params = MochiReq:parse_qs(),
     Timeout = list_to_integer(proplists:get_value("connection_timeout", Params, "30000")),
@@ -3148,6 +3151,17 @@ query_goxdcr(MochiReq, Body) ->
     {ok, {{Code, _}, RespHeaders, RespBody}} =
         lhttpc:request(URL, Method, Headers, Body, Timeout, []),
     {Code, RespHeaders, RespBody}.
+
+proxy_to_goxdcr(MochiReq) ->
+    Headers = [{convert_header_name(Name), Value} ||
+                  {Name, Value} <- mochiweb_headers:to_list(MochiReq:get(headers))],
+    Body = case MochiReq:recv_body() of
+               undefined ->
+                   <<>>;
+               B ->
+                   B
+           end,
+    MochiReq:respond(query_goxdcr(MochiReq, Headers, Body)).
 
 internal_settings_conf() ->
     GetBool = fun (SV) ->
