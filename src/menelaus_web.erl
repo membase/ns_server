@@ -54,7 +54,8 @@
          is_enterprise/0,
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
-         proxy_to_goxdcr/1]).
+         proxy_to_goxdcr/1,
+         proxy_to_goxdcr/2]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -3139,10 +3140,10 @@ query_goxdcr(MochiReq, Body) ->
                                   ({Name, Value}) ->
                                       {true, {convert_header_name(Name), Value}}
                               end, HeadersList),
-    query_goxdcr(MochiReq, Headers, Body).
+    query_goxdcr(MochiReq, MochiReq:get(raw_path), Headers, Body).
 
-query_goxdcr(MochiReq, Headers, Body) ->
-    URL = "http://127.0.0.1:" ++ integer_to_list(get_goxdcr_rest_port()) ++ MochiReq:get(raw_path),
+query_goxdcr(MochiReq, Path, Headers, Body) ->
+    URL = "http://127.0.0.1:" ++ integer_to_list(get_goxdcr_rest_port()) ++ Path,
     Method = MochiReq:get(method),
 
     Params = MochiReq:parse_qs(),
@@ -3152,7 +3153,11 @@ query_goxdcr(MochiReq, Headers, Body) ->
         lhttpc:request(URL, Method, Headers, Body, Timeout, []),
     {Code, RespHeaders, RespBody}.
 
+
 proxy_to_goxdcr(MochiReq) ->
+    proxy_to_goxdcr(MochiReq, MochiReq:get(raw_path)).
+
+proxy_to_goxdcr(MochiReq, Path) ->
     Headers = [{convert_header_name(Name), Value} ||
                   {Name, Value} <- mochiweb_headers:to_list(MochiReq:get(headers))],
     Body = case MochiReq:recv_body() of
@@ -3161,7 +3166,7 @@ proxy_to_goxdcr(MochiReq) ->
                B ->
                    B
            end,
-    MochiReq:respond(query_goxdcr(MochiReq, Headers, Body)).
+    MochiReq:respond(query_goxdcr(MochiReq, Path, Headers, Body)).
 
 internal_settings_conf() ->
     GetBool = fun (SV) ->

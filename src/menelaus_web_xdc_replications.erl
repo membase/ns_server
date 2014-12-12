@@ -75,7 +75,7 @@ handle_cancel_replication(XID, Req) ->
         false ->
             do_handle_cancel_replication(XID, Req);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req)
+            menelaus_web:proxy_to_goxdcr(Req, "/controller/cancelXDCR/" ++ XID)
     end.
 
 do_handle_cancel_replication(XID, Req) ->
