@@ -31,6 +31,14 @@
 -type replication_type() :: 'one-time' | continuous.
 
 handle_create_replication(Req) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            do_handle_create_replication(Req);
+        true ->
+            menelaus_web:proxy_to_goxdcr(Req)
+    end.
+
+do_handle_create_replication(Req) ->
     Params = Req:parse_post(),
     Config = ns_config:get(),
     Buckets = ns_bucket:get_buckets(Config),
@@ -63,6 +71,14 @@ handle_create_replication(Req) ->
     end.
 
 handle_cancel_replication(XID, Req) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            do_handle_cancel_replication(XID, Req);
+        true ->
+            menelaus_web:proxy_to_goxdcr(Req)
+    end.
+
+do_handle_cancel_replication(XID, Req) ->
     case xdc_rdoc_api:delete_replicator_doc(XID) of
         ok ->
             menelaus_util:reply_json(Req, [], 200);
@@ -71,6 +87,14 @@ handle_cancel_replication(XID, Req) ->
     end.
 
 handle_replication_settings(XID, Req) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            do_handle_replication_settings(XID, Req);
+        true ->
+            menelaus_web:proxy_to_goxdcr(Req)
+    end.
+
+do_handle_replication_settings(XID, Req) ->
     with_replicator_doc(
       Req, XID,
       fun (RepDoc) ->
@@ -87,6 +111,14 @@ format_setting_value(socket_options, V) -> {V};
 format_setting_value(_K, V) -> V.
 
 handle_replication_settings_post(XID, Req) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            do_handle_replication_settings_post(XID, Req);
+        true ->
+            menelaus_web:proxy_to_goxdcr(Req)
+    end.
+
+do_handle_replication_settings_post(XID, Req) ->
     with_replicator_doc(
       Req, XID,
       fun (RepDoc) ->
@@ -114,11 +146,27 @@ handle_replication_settings_post(XID, Req) ->
       end).
 
 handle_global_replication_settings(Req) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            do_handle_global_replication_settings(Req);
+        true ->
+            menelaus_web:proxy_to_goxdcr(Req)
+    end.
+
+do_handle_global_replication_settings(Req) ->
     SettingsRaw = xdc_settings:get_all_global_settings(),
     Settings = [{key_to_request_key(K), format_setting_value(K, V)} || {K, V} <- SettingsRaw],
     menelaus_util:reply_json(Req, {struct, Settings}, 200).
 
 handle_global_replication_settings_post(Req) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            do_handle_global_replication_settings_post(Req);
+        true ->
+            menelaus_web:proxy_to_goxdcr(Req)
+    end.
+
+do_handle_global_replication_settings_post(Req) ->
     Params = Req:parse_post(),
     Specs = settings_specs(),
 
