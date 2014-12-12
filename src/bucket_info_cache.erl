@@ -142,11 +142,11 @@ build_services(Node, Config, EnabledServices) ->
                  [{n1ql, ns_config:search(Config, {node, Node, query_port}, undefined)}];
              index ->
                  [
-                  {index_admin, ns_config:search(Config, {node, Node, indexer_admin_port}, undefined)},
-                  {index_scan, ns_config:search(Config, {node, Node, indexer_scan_port}, undefined)},
-                  {index_stream_init, ns_config:search(Config, {node, Node, indexer_stinit_port}, undefined)},
-                  {index_stream_catchup, ns_config:search(Config, {node, Node, indexer_stcatchup_port}, undefined)},
-                  {index_stream_maint, ns_config:search(Config, {node, Node, indexer_stmaint_port}, undefined)}
+                  {indexAdmin, ns_config:search(Config, {node, Node, indexer_admin_port}, undefined)},
+                  {indexScan, ns_config:search(Config, {node, Node, indexer_scan_port}, undefined)},
+                  {indexStreamInit, ns_config:search(Config, {node, Node, indexer_stinit_port}, undefined)},
+                  {indexStreamCatchup, ns_config:search(Config, {node, Node, indexer_stcatchup_port}, undefined)},
+                  {indexStreamMaint, ns_config:search(Config, {node, Node, indexer_stmaint_port}, undefined)}
                  ]
          end || S <- EnabledServices],
     {value, CapiPort} = ns_config:search_node(Node, Config, capi_port),
