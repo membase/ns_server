@@ -3123,173 +3123,161 @@ handle_settings_auto_compaction(Req) ->
             {purgeInterval, compaction_api:get_purge_interval(global)}],
     reply_json(Req, {struct, JSON}, 200).
 
+get_goxdcr_rest_port() ->
+    ns_config:read_key_fast({node, node(), xdcr_rest_port}, 9998).
+
+convert_header_name(Header) when is_atom(Header) ->
+    atom_to_list(Header);
+convert_header_name(Header) when is_list(Header) ->
+    Header.
+
+query_goxdcr(MochiReq, Body) ->
+    URL = "http://127.0.0.1:" ++ integer_to_list(get_goxdcr_rest_port()) ++ MochiReq:get(raw_path),
+    Method = MochiReq:get(method),
+
+    HeadersList = mochiweb_headers:to_list(MochiReq:get(headers)),
+    Headers = lists:filtermap(fun ({'Content-Length', _Value}) ->
+                                      false;
+                                  ({Name, Value}) ->
+                                      {true, {convert_header_name(Name), Value}}
+                              end, HeadersList),
+
+    Params = MochiReq:parse_qs(),
+    Timeout = list_to_integer(proplists:get_value("connection_timeout", Params, "30000")),
+
+    {ok, {{Code, _}, RespHeaders, RespBody}} =
+        lhttpc:request(URL, Method, Headers, Body, Timeout, []),
+    {Code, RespHeaders, RespBody}.
+
+internal_settings_conf() ->
+    GetBool = fun (SV) ->
+                      case SV of
+                          "true" -> {ok, true};
+                          "false" -> {ok, false};
+                          _ -> invalid
+                      end
+              end,
+
+    GetNumber = fun (Min, Max) ->
+                        fun (SV) ->
+                                parse_validate_number(SV, Min, Max)
+                        end
+                end,
+    GetNumberOrEmpty = fun (Min, Max, Empty) ->
+                               fun (SV) ->
+                                       case SV of
+                                           "" -> Empty;
+                                           _ ->
+                                               parse_validate_number(SV, Min, Max)
+                                       end
+                               end
+                       end,
+
+    [{index_aware_rebalance_disabled, indexAwareRebalanceDisabled, false, GetBool},
+     {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false, GetBool},
+     {index_pausing_disabled, rebalanceIndexPausingDisabled, false, GetBool},
+     {rebalance_ignore_view_compactions, rebalanceIgnoreViewCompactions, false, GetBool},
+     {rebalance_moves_per_node, rebalanceMovesPerNode, 1, GetNumber(1, 1024)},
+     {rebalance_moves_before_compaction, rebalanceMovesBeforeCompaction, 64, GetNumber(1, 1024)},
+     {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>, GetNumber(1, 1024)},
+     {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>, GetNumber(1, 1024)},
+     {max_bucket_count, maxBucketCount, 10, GetNumber(1, 8192)},
+     {{request_limit, rest}, restRequestLimit, undefined, GetNumberOrEmpty(0, 99999, {ok, undefined})},
+     {{request_limit, capi}, capiRequestLimit, undefined, GetNumberOrEmpty(0, 99999, {ok, undefined})},
+     {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, undefined,
+      GetNumberOrEmpty(0, 99999, {ok, undefined})}] ++
+        case cluster_compat_mode:is_goxdcr_enabled() of
+            false ->
+                [{{xdcr, max_concurrent_reps}, xdcrMaxConcurrentReps, 32, GetNumber(1, 256)},
+                 {{xdcr, checkpoint_interval}, xdcrCheckpointInterval, 1800, GetNumber(60, 14400)},
+                 {{xdcr, worker_batch_size}, xdcrWorkerBatchSize, 500, GetNumber(500, 10000)},
+                 {{xdcr, doc_batch_size_kb}, xdcrDocBatchSizeKb, 2048, GetNumber(10, 100000)},
+                 {{xdcr, failure_restart_interval}, xdcrFailureRestartInterval, 30, GetNumber(1, 300)},
+                 {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, 256,
+                  GetNumberOrEmpty(0, 20*1024*1024, undefined)},
+                 {xdcr_anticipatory_delay, xdcrAnticipatoryDelay, 0, GetNumber(0, 99999)}];
+            true ->
+                []
+        end.
+
 build_internal_settings_kvs() ->
-    Triples = [{index_aware_rebalance_disabled, indexAwareRebalanceDisabled, false},
-               {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false},
-               {index_pausing_disabled, rebalanceIndexPausingDisabled, false},
-               {rebalance_ignore_view_compactions, rebalanceIgnoreViewCompactions, false},
-               {rebalance_moves_per_node, rebalanceMovesPerNode, 1},
-               {rebalance_moves_before_compaction, rebalanceMovesBeforeCompaction, 64},
-               {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>},
-               {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>},
-               {max_bucket_count, maxBucketCount, 10},
-               {{xdcr, max_concurrent_reps}, xdcrMaxConcurrentReps, 32},
-               {{xdcr, checkpoint_interval}, xdcrCheckpointInterval, 1800},
-               {{xdcr, worker_batch_size}, xdcrWorkerBatchSize, 500},
-               {{xdcr, doc_batch_size_kb}, xdcrDocBatchSizeKb, 2048},
-               {{xdcr, failure_restart_interval}, xdcrFailureRestartInterval, 30},
-               {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, 256},
-               {{request_limit, rest}, restRequestLimit, <<>>},
-               {{request_limit, capi}, capiRequestLimit, <<>>},
-               {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, <<>>},
-               {xdcr_anticipatory_delay, xdcrAnticipatoryDelay, 0}],
+    Conf = internal_settings_conf(),
     [{JK, case ns_config:read_key_fast(CK, DV) of
               undefined ->
                   DV;
               V ->
                   V
           end}
-     || {CK, JK, DV} <- Triples].
+     || {CK, JK, DV, _} <- Conf].
 
 handle_internal_settings(Req) ->
-    reply_json(Req, {struct, build_internal_settings_kvs()}).
+    InternalSettings = lists:filter(
+                         fun ({_, undefined}) ->
+                                 false;
+                             (_) ->
+                                 true
+                         end, build_internal_settings_kvs()),
+
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            reply_json(Req, {InternalSettings});
+        true ->
+            case query_goxdcr(Req, []) of
+                {200, _Headers, Body} ->
+                    {struct, XdcrSettings} = mochijson2:decode(Body),
+                    reply_json(Req, {InternalSettings ++ XdcrSettings});
+                RV ->
+                    Req:respond(RV)
+            end
+    end.
 
 handle_internal_settings_post(Req) ->
+    Conf = [{CK, atom_to_list(JK), JK, Parser} ||
+               {CK, JK, _, Parser} <- internal_settings_conf()],
     Params = Req:parse_post(),
     CurrentValues = build_internal_settings_kvs(),
-    MaybeSet = fun (JK, CK, V) ->
-                       case proplists:get_value(JK, CurrentValues) of
-                           V -> undefined;
-                           _ ->
-                               fun () -> ns_config:set(CK, V) end
-                       end
-               end,
-    Actions = [case parse_validate_boolean_field("indexAwareRebalanceDisabled", [], Params) of
-                   [] -> undefined;
-                   [{ok, _, V}] -> MaybeSet(indexAwareRebalanceDisabled, index_aware_rebalance_disabled, V)
-               end,
-               case parse_validate_boolean_field("rebalanceIndexWaitingDisabled", [], Params) of
-                   [] -> undefined;
-                   [{ok, _, V}] -> MaybeSet(rebalanceIndexWaitingDisabled, rebalance_index_waiting_disabled, V)
-               end,
-               case parse_validate_boolean_field("rebalanceIndexPausingDisabled", [], Params) of
-                   [] -> undefined;
-                   [{ok, _, V}] -> MaybeSet(rebalanceIndexPausingDisabled, index_pausing_disabled, V)
-               end,
-               case parse_validate_boolean_field("rebalanceIgnoreViewCompactions", [], Params) of
-                   [] -> undefined;
-                   [{ok, _, V}] -> MaybeSet(rebalanceIgnoreViewCompactions, rebalance_ignore_view_compactions, V)
-               end,
-               case proplists:get_value("rebalanceMovesPerNode", Params) of
-                   undefined -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 1, 1024),
-                       MaybeSet(rebalanceMovesPerNode, rebalance_moves_per_node, V)
-               end,
-               case proplists:get_value("rebalanceMovesBeforeCompaction", Params) of
-                   undefined -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 1, 1024),
-                       MaybeSet(rebalanceMovesBeforeCompaction, rebalance_moves_before_compaction, V)
-               end,
-               case proplists:get_value("maxParallelIndexers", Params) of
-                   undefined -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 1, 1024),
-                       MaybeSet(maxParallelIndexers, {couchdb, max_parallel_indexers}, V)
-               end,
-               case proplists:get_value("maxParallelReplicaIndexers", Params) of
-                   undefined -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 1, 1024),
-                       MaybeSet(maxParallelReplicaIndexers, {couchdb, max_parallel_replica_indexers}, V)
-               end,
-               case proplists:get_value("maxBucketCount", Params) of
-                   undefined -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 1, 8192),
-                       MaybeSet(maxBucketCount, max_bucket_count, V)
-               end,
-               case proplists:get_value("xdcrMaxConcurrentReps", Params) of
-                   undefined -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 1, 256),
-                       MaybeSet(xdcrMaxConcurrentReps, {xdcr, max_concurrent_reps}, V)
-               end,
-               case proplists:get_value("xdcrCheckpointInterval", Params) of
-                   undefined -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 60, 14400),
-                       MaybeSet(xdcrCheckpointInterval, {xdcr, checkpoint_interval}, V)
-               end,
-               case proplists:get_value("xdcrWorkerBatchSize", Params) of
-                   undefined -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 500, 10000),
-                       MaybeSet(xdcrWorkerBatchSize, {xdcr, worker_batch_size}, V)
-               end,
-               case proplists:get_value("xdcrDocBatchSizeKb", Params) of
-                   undefined -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 10, 100000),
-                       MaybeSet(xdcrDocBatchSizeKb, {xdcr, doc_batch_size_kb}, V)
-               end,
-               case proplists:get_value("xdcrFailureRestartInterval", Params) of
-                   undefined -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 1, 300),
-                       MaybeSet(xdcrFailureRestartInterval, {xdcr, failure_restart_interval}, V)
-               end,
-               case proplists:get_value("xdcrOptimisticReplicationThreshold", Params) of
-                   undefined -> undefined;
-                   "" -> undefined;
-                   SV ->
-                       {ok, V} = parse_validate_number(SV, 0, 20*1024*1024),
-                       MaybeSet(xdcrOptimisticReplicationThreshold, {xdcr, optimistic_replication_threshold}, V)
-               end,
-               case proplists:get_value("restRequestLimit", Params) of
-                   undefined -> undefined;
-                   Other ->
-                       MaybeSet(restRequestLimit, {request_limit, rest},
-                                case Other of
-                                    "" -> undefined;
-                                    SV ->
-                                        {ok, V0} = parse_validate_number(SV, 0, 99999),
-                                        V0
-                                end)
-               end,
-               case proplists:get_value("capiRequestLimit", Params) of
-                   undefined -> undefined;
-                   Other ->
-                       MaybeSet(capiRequestLimit, {request_limit, capi},
-                                case Other of
-                                    "" -> undefined;
-                                    SV ->
-                                        {ok, V0} = parse_validate_number(SV, 0, 99999),
-                                        V0
-                                end)
-               end,
-               case proplists:get_value("dropRequestMemoryThresholdMiB", Params) of
-                   undefined -> undefined;
-                   Other ->
-                       MaybeSet(dropRequestMemoryThresholdMiB, drop_request_memory_threshold_mib,
-                                case Other of
-                                    "" -> undefined;
-                                    SV ->
-                                        {ok, V0} = parse_validate_number(SV, 0, 99999),
-                                        V0
-                                end)
-               end,
-              case proplists:get_value("xdcrAnticipatoryDelay", Params) of
-                  undefined -> undefined;
-                  Other ->
-                      {ok, SV} = parse_validate_number(Other, 0, 99999),
-                      MaybeSet(xdcrAnticipatoryDelay, xdcr_anticipatory_delay, SV)
-              end],
-    [Action()
-     || Action <- Actions,
-        Action =/= undefined],
-    reply_json(Req, []).
+    {ToSet, NotFound, Errors} =
+        lists:foldl(
+          fun ({SJK, SV}, {ListToSet, ListNotFound, ListErrors}) ->
+                  case lists:keyfind(SJK, 2, Conf) of
+                      {CK, SJK, JK, Parser} ->
+                          case Parser(SV) of
+                              {ok, V} ->
+                                  case proplists:get_value(JK, CurrentValues) of
+                                      V ->
+                                          {ListToSet, ListNotFound, ListErrors};
+                                      _ ->
+                                          {[{CK, V} | ListToSet], ListNotFound, ListErrors}
+                                  end;
+                              _ ->
+                                  {ListToSet, ListNotFound,
+                                   [iolist_to_binary(io_lib:format("~s is invalid", [SJK])) | ListErrors]}
+                          end;
+                      false ->
+                          {ListToSet, [{SJK, SV} | ListNotFound], ListErrors}
+                  end
+          end, {[], [], []}, Params),
+
+    case Errors of
+        [] ->
+            [ns_config:set(CK, V) || {CK, V} <- ToSet],
+
+            case NotFound of
+                [] ->
+                    reply_json(Req, []);
+                _ ->
+                    {Code, RespHeaders, RespBody} =
+                        query_goxdcr(Req, mochiweb_util:urlencode(NotFound)),
+                    case Code of
+                        200 ->
+                            reply_json(Req, []);
+                        _ ->
+                            Req:respond({Code, RespHeaders, RespBody})
+                    end
+            end;
+        _ ->
+            reply_json(Req, {[{error, X} || X <- Errors]}, 400)
+    end.
 
 handle_node_rename(Req) ->
     Params = Req:parse_post(),
