@@ -1,17 +1,17 @@
 angular.module('mnServers').controller('mnServersController',
   function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, serversState, mnSettingsAutoFailoverService, mnServersService, mnHelper) {
 
-    _.extend($scope, serversState);
-    var updateServersCycle;
-    (function updateServers() {
-      mnServersService.getServersState($stateParams.list).then(function (serversState) {
-        _.extend($scope, serversState);
-        updateServersCycle = $timeout(updateServers, serversState.recommendedRefreshPeriod);
-      });
-    })();
+    function applyServersState(serversState) {
+      _.extend($scope, serversState);
+    }
 
-    $scope.$on('$destroy', function () {
-      $timeout.cancel(updateServersCycle);
+    applyServersState(serversState);
+
+    mnHelper.setupLongPolling({
+      methodToCall: mnServersService.getServersState,
+      methodParams: [$stateParams.list],
+      scope: $scope,
+      onUpdate: applyServersState
     });
 
     $scope.addServer = function () {

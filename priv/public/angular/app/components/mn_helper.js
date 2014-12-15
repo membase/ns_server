@@ -1,5 +1,5 @@
 angular.module('mnHelper').factory('mnHelper',
-  function ($window, $state, $stateParams, $location) {
+  function ($window, $state, $stateParams, $location, $timeout) {
     var mnHelper = {};
 
     mnHelper.handleSpinner = function ($scope, promise, name, isInfinitForSuccess) {
@@ -27,6 +27,20 @@ angular.module('mnHelper').factory('mnHelper',
           return promise.then(hideSpinner, hideSpinner);
         }
       }
+    };
+
+    mnHelper.setupLongPolling = function (config) {
+      var cycleId;
+      (function cycle() {
+        config.methodToCall.apply(null, config.methodParams).then(function (rv) {
+          cycleId = $timeout(cycle, rv.recommendedRefreshPeriod || 20000);
+          return rv;
+        }).then(config.onUpdate);
+      })();
+
+      config.scope.$on('$destroy', function () {
+        $timeout.cancel(cycleId);
+      });
     };
 
     mnHelper.initializeDetailsHashObserver = function ($scope, hashKey) {

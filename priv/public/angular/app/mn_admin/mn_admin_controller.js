@@ -1,22 +1,19 @@
 angular.module('mnAdmin').controller('mnAdminController',
-  function ($scope, mnHelper, $timeout, mnAuthService, tasks, mnTasksDetails) {
+  function ($scope, mnHelper, mnAuthService, tasks, mnTasksDetails) {
 
     $scope.logout = function () {
       mnAuthService.manualLogout().then(mnHelper.reloadApp);
     };
 
-    $scope.tasks = tasks;
+    function applyTasks(tasks) {
+      $scope.tasks = tasks;
+    }
 
-    var updateTasksCycle;
-    (function updateTasks() {
-      mnTasksDetails.getFresh().then(function (tasks) {
-        $scope.tasks = tasks;
-        updateTasksCycle = $timeout(updateTasks, tasks.recommendedRefreshPeriod);
-      });
-    })();
+    applyTasks(tasks);
 
-    $scope.$on('$destroy', function () {
-      $timeout.cancel(updateTasksCycle);
+    mnHelper.setupLongPolling({
+      methodToCall: mnTasksDetails.getFresh,
+      scope: $scope,
+      onUpdate: applyTasks
     });
-
   });
