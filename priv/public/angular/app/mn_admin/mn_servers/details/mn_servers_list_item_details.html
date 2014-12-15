@@ -64,25 +64,7 @@
       </div>
 
     </div>
-    <div ng-if="warmUpTasks">
-      <h3>Warmup Progress</h3>
-      <div class="warmup_icon"></div>
-      <div class="warmup_table_wrapper">
-        <table class="warmup_table">
-          <colgroup>
-            <col class="bucket_name">
-            <col>
-          </colgroup>
-          <tbody ng-repeat="task in warmUpTasks">
-            <tr>
-              <td title="task.key" class="ellipsis">{{task.key}}</td>
-              <td>{{task.status}}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="clear"></div>
-    </div>
+    <div ng-if="warmUpTasks.length" mn-warmup-progress warm-up-tasks="warmUpTasks" sort-by="bucket"></div>
 
   <h3>Memory Cache</h3>
   <div class="info_block">

@@ -2,39 +2,6 @@ angular.module('mnServersListItemDetailsService').factory('mnServersListItemDeta
   function (mnHttp, $q, mnTasksDetails, mnFormatUptimeFilter, mnFormatMemSizeFilter, mnEllipsisiseOnLeftFilter) {
     var mnServersListItemDetailsService = {};
 
-    function formatWarmupMessages(warmupTasks, keyName) {
-      if (!warmupTasks.length) {
-        return false;
-      }
-      warmupTasks = _.sortBy(_.clone(warmupTasks), keyName);
-      var originLength = warmupTasks.length;
-      if (warmupTasks.length > 3) {
-        warmupTasks.length = 3;
-      }
-
-      var rv = _.map(warmupTasks, function (task) {
-        var message = task.stats.ep_warmup_state;
-
-        switch (message) {
-          case "loading keys":
-            message += " (" + task.stats.ep_warmup_key_count +
-              " / " + task.stats.ep_warmup_estimated_key_count + ")";
-          break;
-          case "loading data":
-            message += " (" + task.stats.ep_warmup_value_count +
-              " / " + task.stats.ep_warmup_estimated_value_count + ")";
-          break;
-        }
-        return {key: task[keyName], status: message};
-      });
-
-      if (warmupTasks.length === 3 && originLength > 3) {
-        rv.push({key: "more ...", status: ""});
-      }
-
-      return rv;
-    }
-
     function getBaseConfig(totals) {
       return {
         topRight: {
@@ -90,9 +57,9 @@ angular.module('mnServersListItemDetailsService').factory('mnServersListItemDeta
         var rebalanceTask = tasks.tasksRebalance.status === 'running' && tasks.tasksRebalance;
         rv.detailedProgress = rebalanceTask.detailedProgress && rebalanceTask.detailedProgress.perNode && rebalanceTask.detailedProgress.perNode[node.otpNode];
 
-        rv.warmUpTasks = formatWarmupMessages(_.filter(tasks.tasksWarmingUp, function (task) {
+        rv.warmUpTasks = _.filter(tasks.tasksWarmingUp, function (task) {
           return task.node === node.otpNode;
-        }), 'bucket');
+        });
 
         rv.details = details;
         return rv;

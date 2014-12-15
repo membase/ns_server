@@ -3,6 +3,7 @@ angular.module('mnHelper', [
   'ui.router'
 ]);
 angular.module('mnBarUsage', []);
+angular.module('mnWarmupProgress', []);
 angular.module('mnFocus', []);
 angular.module('mnSpinner', []);
 angular.module('mnPlot', []);
@@ -125,6 +126,7 @@ angular.module('app', [
   'mnSpinner',
   'mnPlot',
   'mnVerticalBar',
+  'mnWarmupProgress',
 
   'mnPoolDefault',
   'mnTasksDetails',
