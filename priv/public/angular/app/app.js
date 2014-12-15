@@ -42,7 +42,8 @@ angular.module('mnWizardStep2Service', [
 angular.module('mnWizardStep3Service', [
   'mnHttp',
   'mnWizardStep1Service',
-  'mnWizardStep2Service'
+  'mnWizardStep2Service',
+  'mnBucketsDetailsService'
 ]);
 angular.module('mnWizardStep4Service', [
   'mnHttp'
@@ -110,9 +111,18 @@ angular.module('mnOverviewService', [
   'mnHttp'
 ]);
 
-
+angular.module('mnBuckets', [
+  'mnHelper',
+  'mnBucketsService',
+  'mnBucketsDetailsService'
+]);
 angular.module('mnBucketsService', [
   'mnHttp'
+]);
+angular.module('mnBucketsDetailsService', [
+  'mnHttp',
+  'mnPoolDefault',
+  'mnTasksDetails'
 ]);
 
 
@@ -141,7 +151,7 @@ angular.module('app', [
   'mnSettingsCluster',
   'mnServers',
   'mnOverview',
-  'mnBucketsService'
+  'mnBuckets'
 
 
 ]).run(function ($rootScope, $state, $urlRouter, mnPools) {

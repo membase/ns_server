@@ -20,7 +20,25 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
           return mnServersService.getNodes();
         },
         buckets: function (mnBucketsService) {
-          return mnBucketsService.getRawDetailedBuckets();
+          return mnBucketsService.getBuckets();
+        }
+      }
+    })
+    .state('app.admin.buckets', {
+      url: '/buckets',
+      views: {
+        "": {
+          controller: 'mnBucketsController',
+          templateUrl: 'mn_admin/mn_buckets/mn_buckets.html',
+          resolve: {
+            buckets: function (mnBucketsService) {
+              return mnBucketsService.getBuckets();
+            }
+          }
+        },
+        "details@app.admin.buckets": {
+          templateUrl: 'mn_admin/mn_buckets/details/mn_buckets_details.html',
+          controller: 'mnBucketsDetailsController'
         }
       }
     })
@@ -67,7 +85,7 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
           return mnServersService.getNodes();
         },
         poolDefault: function (mnPoolDefault) {
-          return mnPoolDefault.getFresh()
+          return mnPoolDefault.getFresh();
         }
       }
     });

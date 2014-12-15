@@ -1,0 +1,26 @@
+<divv id="js_buckets" class="buckets">
+  <h1>Data Buckets</h1>
+  <div class="shadow_box" id="couchbase_buckets">
+    <div id="manage_buckets_top_bar" class="header_2">
+      <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
+      <div class="right" style="overflow:hidden;">
+        <button class="button_200 create-bucket-button when-roadmin-hide-me casper_buckets_new_data_bucket" style="float:right;">Create New Data Bucket</button>
+        <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+      </div>
+    </div>
+    <div id="bucket_list_container">
+      <div mn-buckets-list buckets="buckets.byType.membase"></div>
+    </div>
+  </div>
+  <div class="shadow_box" id="memcached_buckets" ng-if="buckets.byType.memcached.length">
+    <div id="manage_buckets_top_bar" class="header_2">
+      <h4 style="float:left">Memcached Buckets</h4>
+      <div class="right">
+        <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+      </div>
+    </div>
+    <div id="memcached_bucket_list_container">
+      <div mn-buckets-list buckets="buckets.byType.memcached"></div>
+    </div>
+  </div>
+</div>

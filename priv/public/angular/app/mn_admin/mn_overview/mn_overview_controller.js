@@ -9,7 +9,7 @@ angular.module('mnOverview').controller('mnOverviewController',
     var getStatsId = $interval(scopeApplyer(mnOverviewService.getStats)(), 3000);
     var overviewId = $interval(scopeApplyer(mnOverviewService.getOverviewConfig)(), 3000);
 
-    $scope.bucketsLength = buckets.data.length;
+    $scope.bucketsLength = buckets.length;
     $scope.failedOver = nodes.failedOver;
     $scope.down = nodes.down;
     $scope.pending = nodes.pending;

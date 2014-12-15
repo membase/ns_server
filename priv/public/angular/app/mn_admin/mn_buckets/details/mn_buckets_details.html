@@ -1,0 +1,71 @@
+<td colspan="18" class="settings-placeholder"  mn-spinner="!ramConfig || !hddConfig">
+  <div class="gong_rb">
+    <div class="pad">
+      <div style="width:800px;float:left;">
+        <div>
+          Access Control:
+          <span>
+            {{authType === 'none' ? 'Port' : name === 'default' ? 'None' : 'Authentication'}}
+            {{authType === 'none' ? ': ' + proxyPort : ''}}
+          </span>
+        </div>
+        <div ng-if="isMembase">
+          Replicas: <span>{{ replicaNumber != 0 ? (replicaNumber | mnCount:'replica copy') : 'disabled'}}</span>
+        </div>
+        <div ng-if="isMembase">
+          Compaction: <span class="bucket_progress_container" data-name="{{name}}">
+          {{thisBucketCompactionTask ? thisBucketCompactionTask.progress + "% complete" : "Not active"}}
+          </span>
+        </div>
+        <div ng-if="isMembase">
+          Cache Metadata: <span>{{evictionPolicy === "valueOnly" ? 'Value Ejection' : 'Full Ejection'}}</span>
+        </div>
+        <div ng-if="isMembase">
+          Disk I/O priority: <span>{{threadsNumber === 3 ? 'Low' : 'High'}}</span>
+        </div>
+      </div>
+      <div class="last when-roadmin-hide-me">
+        <a class="inner_btn casper_buckets_edit_bucket_popup" href="#editBucket={%= h(encodeURIComponent(uri)) %}">Edit</a>
+          <button ng-show="!showCancel && !noCompaction" class="inner_btn compact_btn" ng-class="{dynamic_disabled: disableCompact}" data-uri="{{controllers.compactAll}}">
+            <span>Compact</span>
+          </button>
+          <button  ng-show="!noCompaction" class="inner_btn cancel_compact_btn " ng-class="{dynamic_disabled: disableCompact}" data-uri="{%= h(thisBucketCompactionTask.cancelURI) %}"><span>Cancel</span></button>
+      </div>
+    </div>
+    <div class="side side_1"></div>
+    <div class="side side_2"></div>
+    <div class="side side_3"></div>
+    <div class="side side_4"></div>
+  </div>
+
+  <div class="additional_server_info bucket_details_info">
+    <div ng-if="warmUpTasks.length" mn-warmup-progress warm-up-tasks="warmUpTasks" sort-by="hostname"></div>
+
+    <h2>Cache Size</h2>
+    <div class="dynamic_ram">
+      <label class="for-hdd-quota">
+        <span>Dynamic RAM Quota:</span>
+        <span>{{quota.rawRAM | mnFormatQuantity}}</span>
+        <abbr></abbr>
+      </label>
+    </div>
+    <div class="usage-block for-ram" mn-bar-usage base-info="ramConfig"></div>
+
+    <div ng-if="hddConfig">
+      <h2>Storage Size</h2>
+      <div class="disk_storage">
+        <label class="for-hdd-quota" style="padding:0;">
+          <span>Persistence Enabled:</span>
+          <span>Yes</span><br>
+          <span>Disk Usage:</span>
+          <span>{{basicStats.diskUsed | mnFormatQuantity}}</span><br>
+          <span>Data Usage:</span>
+          <span>{{basicStats.dataUsed | mnFormatQuantity}}</span>
+          <abbr></abbr>
+        </label>
+      </div>
+      <div class="usage-block for-hdd" mn-bar-usage base-info="hddConfig"></div>
+    </div>
+
+  </div>
+</td>
