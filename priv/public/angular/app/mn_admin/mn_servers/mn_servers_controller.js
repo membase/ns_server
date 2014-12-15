@@ -1,5 +1,5 @@
 angular.module('mnServers').controller('mnServersController',
-  function ($scope, $state, $modal, $interval, $location, $stateParams, $timeout, mnPoolDefault, serversState, mnSettingsAutoFailoverService, mnServersService, mnHelper) {
+  function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, serversState, mnSettingsAutoFailoverService, mnServersService, mnHelper) {
 
     _.extend($scope, serversState);
     var updateServersCycle;
@@ -70,23 +70,7 @@ angular.module('mnServers').controller('mnServersController',
       }).value();
     }
 
-
-    function getOpenedServers() {
-      var value = $location.search()[hashKey];
-      return value ? _.isArray(value) ? value : [value] : [];
-    }
-    $scope.isDetailsOpened = function (hostname) {
-      return _.contains(getOpenedServers(), hostname);
-    };
-    $scope.toggleDetails = function (hostname) {
-      var currentlyOpened = getOpenedServers();
-      if ($scope.isDetailsOpened(hostname)) {
-        $location.search('openedServers', _.difference(currentlyOpened, [hostname]));
-      } else {
-        currentlyOpened.push(hostname);
-        $location.search('openedServers', currentlyOpened);
-      }
-    };
+    mnHelper.initializeDetailsHashObserver($scope, 'openedServers');
 
     $scope.ejectServer = function (node) {
       $modal.open({

@@ -1,5 +1,5 @@
 angular.module('mnHelper').factory('mnHelper',
-  function ($window, $state, $stateParams) {
+  function ($window, $state, $stateParams, $location) {
     var mnHelper = {};
 
     mnHelper.handleSpinner = function ($scope, promise, name, isInfinitForSuccess) {
@@ -28,6 +28,25 @@ angular.module('mnHelper').factory('mnHelper',
         }
       }
     };
+
+    mnHelper.initializeDetailsHashObserver = function ($scope, hashKey) {
+      function getOpenedServers() {
+        var value = $location.search()[hashKey];
+        return value ? _.isArray(value) ? value : [value] : [];
+      }
+      $scope.isDetailsOpened = function (hashValue) {
+        return _.contains(getOpenedServers(), hashValue);
+      };
+      $scope.toggleDetails = function (hashValue) {
+        var currentlyOpened = getOpenedServers();
+        if ($scope.isDetailsOpened(hashValue)) {
+          $location.search(hashKey, _.difference(currentlyOpened, [hashValue]));
+        } else {
+          currentlyOpened.push(hashValue);
+          $location.search(hashKey, currentlyOpened);
+        }
+      };
+    }
 
     mnHelper.checkboxesToList = function (object) {
       return _(object).pick(angular.identity).keys().value();
