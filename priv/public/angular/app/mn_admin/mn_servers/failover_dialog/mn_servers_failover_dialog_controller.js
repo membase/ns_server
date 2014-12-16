@@ -5,7 +5,7 @@ angular.module('mnServers').controller('mnServersFailOverDialogController',
     mnHelper.handleSpinner($scope, promise);
     promise.then(function (details) {
       if (details) {
-        _.extend($scope, details);
+        $scope.status = details;
       } else {
         $modalInstance.close();
       }

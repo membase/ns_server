@@ -3,7 +3,7 @@ angular.module('mnServers')
     function ($scope, mnServersListItemDetailsService) {
       $scope.$watch('node', function () {
         mnServersListItemDetailsService.getNodeDetails($scope.node).then(function (details) {
-          _.extend($scope, details);
+          $scope.server = details;
         });
       });
     });

@@ -1,9 +1,9 @@
-<div id="js_servers" class="servers" data-ng-class="{'rebalancing': rebalancing}">
+<div id="js_servers" class="servers" data-ng-class="{'rebalancing': serversState.rebalancing}">
   <h1>Servers</h1>
-  <div class="warning_message failover_warning" data-ng-repeat="warning in failoverWarnings" ng-if="warning">
+  <div class="warning_message failover_warning" data-ng-repeat="warning in serversState.failoverWarnings" ng-if="warning">
     <span ng-show="warning">Fail Over Warning: <span class="warning-text">{{warning}}</span></span>
   </div>
-  <div class="warning_message" style="color:red;" id="js_rebalance_during_sample_load" ng-show="showWarningMessage">
+  <div class="warning_message" style="color:red;" id="js_rebalance_during_sample_load" ng-show="serversState.showWarningMessage">
     Warning: Rebalance is not available until data loading is completed!
   </div>
   <div class="warning_message" style="color:red;" ng-show="showAutoFailOverWarningMessage">
@@ -19,9 +19,9 @@
   <div class="shadow_box">
     <div class="header_2">
       <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
-      <a class="btn_1 when-enterprise when-roadmin-avoid-me" href="#visitSec=groups" id="js_server_groups_tab" ng-show="isGroupsAvailable"><span>Server Groups</span></a>
-      <a class="add_button btn_1 when-roadmin-hide-me casper_servers_add_popup" ng-show="!rebalancing" ng-click="addServer()"><span>Add Server</span></a>
-      <a class="rebalance_button btn_1 when-roadmin-hide-me" data-ng-show="mayRebalance" ng-click="postRebalance()"><span>Rebalance</span></a>
+      <a class="btn_1 when-enterprise when-roadmin-avoid-me" href="#visitSec=groups" id="js_server_groups_tab" ng-show="serversState.isGroupsAvailable"><span>Server Groups</span></a>
+      <a class="add_button btn_1 when-roadmin-hide-me casper_servers_add_popup" ng-show="!serversState.rebalancing" ng-click="addServer()"><span>Add Server</span></a>
+      <a class="rebalance_button btn_1 when-roadmin-hide-me" data-ng-show="serversState.mayRebalance" ng-click="postRebalance()"><span>Rebalance</span></a>
       <a class="stop_rebalance_button btn_1 when-roadmin-hide-me" data-ng-show="tasks.inRebalance" ng-click="stopRebalance()">
         <span ng-show="tasks.isSubtypeGraceful">Stop Fail Over</span>
         <span ng-show="!tasks.isSubtypeGraceful">Stop Rebalance</span>
@@ -31,7 +31,7 @@
         <li class="tab_left"><a ui-sref="app.admin.servers({ list: 'active' })" ui-sref-active="selected">Active Servers</a></li>
         <li class="tab_right" id="rebalance_tab">
           <a class="casper_servers_pending_rebalance_tab" ui-sref="app.admin.servers({ list: 'pending' })" ui-sref-active="selected">Pending Rebalance</a>
-          <span class="badge" data-ng-show="showPendingBadge"><span>{{pendingLength}}</span></span>
+          <span class="badge" data-ng-show="serversState.showPendingBadge"><span>{{serversState.pendingLength}}</span></span>
         </li>
       </ul>
     </div>
@@ -41,7 +41,7 @@
           <colgroup>
             <col style="width:19%">
             <col style="width:9%">
-            <col style='{%= isGroupsAvailable ? "width: 7%;" : "width: 0px;" %}'>
+            <col style='{%= serversState.isGroupsAvailable ? "width: 7%;" : "width: 0px;" %}'>
             <col style="width:7%">
             <col style="width:8%">
             <col style="width:8%">
@@ -54,7 +54,7 @@
             <tr>
               <th class="node_name" style="text-align:left;">Server Node Name</th>
               <th></th>
-              <th style='{{ isGroupsAvailable ? "text-align: center!important;" : "width: 0px;" }}'>{{ isGroupsAvailable ? "Group" : " " }}</th>
+              <th style='{{ serversState.isGroupsAvailable ? "text-align: center!important;" : "width: 0px;" }}'>{{ serversState.isGroupsAvailable ? "Group" : " " }}</th>
               <th>Services</th>
               <th>RAM Usage</th>
               <th>Swap Usage</th>
@@ -64,7 +64,7 @@
               <th></th>
             </tr>
           </tbody>
-          <tbody ng-repeat="node in currentNodes | orderBy:'hostname' track by node.otpNode">
+          <tbody ng-repeat="node in serversState.currentNodes | orderBy:'hostname' track by node.otpNode">
             <tr ng-if="node.isReAddPossible" class="add_back_row when-roadmin-avoid-me">
               <td colspan="10">
                 <span class="add_back_btn" ng-click="reAddNode('full', node.otpNode)"><span>Full Recovery</span></span>
@@ -171,7 +171,7 @@
             </tr>
           </tbody>
 
-          <tbody ng-if="!currentNodes.length">
+          <tbody ng-if="!serversState.currentNodes.length">
             <tr class="server_row rebalance_empty">
               <td colspan="10">There are no servers pending rebalance.</td>
             </tr>

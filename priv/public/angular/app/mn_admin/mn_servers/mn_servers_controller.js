@@ -2,7 +2,7 @@ angular.module('mnServers').controller('mnServersController',
   function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, serversState, mnSettingsAutoFailoverService, mnServersService, mnHelper) {
 
     function applyServersState(serversState) {
-      _.extend($scope, serversState);
+      $scope.serversState = serversState;
     }
 
     applyServersState(serversState);
@@ -30,7 +30,7 @@ angular.module('mnServers').controller('mnServersController',
       });
     };
     $scope.postRebalance = function () {
-      mnServersService.postRebalance($scope.allNodes).then(function () {
+      mnServersService.postRebalance($scope.serversState.allNodes).then(function () {
         $state.go('app.admin.servers', {list: 'active'});
         mnHelper.reloadState();
       });

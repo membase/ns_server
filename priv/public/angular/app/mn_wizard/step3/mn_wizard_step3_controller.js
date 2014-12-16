@@ -12,7 +12,7 @@ angular.module('mnWizard').controller('mnWizardStep3Controller',
         if (!result) {
           $state.go('app.wizard.step4');
         } else {
-          _.extend($scope, result);
+          $scope.validationResult = result;
         }
       });
     };
@@ -33,7 +33,7 @@ angular.module('mnWizard').controller('mnWizardStep3Controller',
           just_validate: 1
         }
       }).then(function (result) {
-        _.extend($scope, result);
+        $scope.validationResult = result;
       });
     }, true);
   });
