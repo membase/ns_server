@@ -229,8 +229,7 @@ dynamic_children() ->
 
     MaybeSSLProxySpec = maybe_create_ssl_proxy_spec(Config),
 
-    [expand_args(NCAO) || NCAO <- PortServers,
-                          allowed_service(NCAO, Config)] ++
+    [expand_args(NCAO) || NCAO <- PortServers] ++
         kv_node_projector_spec(Config) ++
         index_node_spec(Config) ++
         query_node_spec(Config) ++
@@ -238,11 +237,6 @@ dynamic_children() ->
         saslauthd_port_spec(Config) ++
         goxdcr_spec(Config) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
-
-allowed_service({moxi, _, _, _} = _NCAO, Config) ->
-    lists:member(moxi, ns_cluster_membership:node_services(Config, node()));
-allowed_service(_NCAO, _Config) ->
-    true.
 
 should_run_service(Config, Service) ->
     case ns_cluster_membership:get_cluster_membership(node(), Config) =:= active  of

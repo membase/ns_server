@@ -198,10 +198,10 @@ update_recovery_type(Node, NewType) ->
     end.
 
 supported_services() ->
-    [kv, moxi, n1ql, index].
+    [kv, n1ql, index].
 
 default_services() ->
-    [kv, moxi].
+    [kv].
 
 node_services(Config, Node) ->
     case ns_config:search(Config, {node, Node, services}) of
