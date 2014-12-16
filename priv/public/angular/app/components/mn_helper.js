@@ -14,18 +14,11 @@ angular.module('mnHelper').factory('mnHelper',
         return promise;
       }
       spinnerCtrl(true);
-      if (isInfinitForSuccess) {
-        if (promise.success) {
-          return promise.error(hideSpinner);
-        } else {
-          return promise.then(null, hideSpinner);
-        }
+      if (promise.success) {
+        var rv = promise.error(hideSpinner);
+        return isInfinitForSuccess ? rv : rv.success(hideSpinner);
       } else {
-        if (promise.success) {
-          return promise.success(hideSpinner).error(hideSpinner);
-        } else {
-          return promise.then(hideSpinner, hideSpinner);
-        }
+        return promise.then(isInfinitForSuccess ? null : hideSpinner, hideSpinner);
       }
     };
 
@@ -60,7 +53,7 @@ angular.module('mnHelper').factory('mnHelper',
           $location.search(hashKey, currentlyOpened);
         }
       };
-    }
+    };
 
     mnHelper.checkboxesToList = function (object) {
       return _(object).pick(angular.identity).keys().value();
