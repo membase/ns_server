@@ -8,8 +8,9 @@ angular.module('mnServers').controller('mnServersController',
     applyServersState(serversState);
 
     mnHelper.setupLongPolling({
-      methodToCall: mnServersService.getServersState,
-      methodParams: [$stateParams.list],
+      methodToCall: function () {
+        return mnServersService.getServersState($stateParams.list)
+      },
       scope: $scope,
       onUpdate: applyServersState
     });

@@ -1,5 +1,5 @@
 angular.module('mnHelper').factory('mnHelper',
-  function ($window, $state, $stateParams, $location, $timeout) {
+  function ($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails) {
     var mnHelper = {};
 
     mnHelper.handleSpinner = function ($scope, promise, name, isInfinitForSuccess) {
@@ -25,8 +25,14 @@ angular.module('mnHelper').factory('mnHelper',
     mnHelper.setupLongPolling = function (config) {
       var cycleId;
       (function cycle() {
-        config.methodToCall.apply(null, config.methodParams).then(function (rv) {
-          cycleId = $timeout(cycle, rv.recommendedRefreshPeriod || 20000);
+        $q.all([
+          config.methodToCall(),
+          mnTasksDetails.get()
+        ]).then(function (result) {
+          var tasks = result[1];
+          var rv = result[0];
+          var recommendedRefreshPeriod = (_(tasks.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
+          cycleId = $timeout(cycle, recommendedRefreshPeriod || 20000);
           return rv;
         }).then(config.onUpdate);
       })();

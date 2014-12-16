@@ -30,10 +30,6 @@ angular.module('mnTasksDetails').factory('mnTasksDetails',
         rv.stopRecoveryURI = rv.tasksRecovery && rv.tasksRecovery.stopURI;
         rv.isSubtypeGraceful = rv.tasksRebalance.subtype === 'gracefulFailover';
 
-        rv.recommendedRefreshPeriod = _.min(_.pluck(tasks, 'recommendedRefreshPeriod'), function (period) {
-          return (period * 1000) >> 0;
-        }) || 10000;
-
         return rv;
       });
     };

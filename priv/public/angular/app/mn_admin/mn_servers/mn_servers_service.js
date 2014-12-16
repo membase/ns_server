@@ -255,7 +255,6 @@ angular.module('mnServersService').factory('mnServersService',
         rv.allNodes = nodes.allNodes;
         rv.isGroupsAvailable = poolDefault.isGroupsAvailable;
         rv.currentNodes = prepareNode(nodes, tasks, stateParamsNodeType);
-        rv.recommendedRefreshPeriod = tasks.recommendedRefreshPeriod;
         rv.rebalancing = poolDefault.rebalancing;
         rv.pendingLength = nodes.pending.length;
         rv.mayRebalanceWithoutSampleLoading = !poolDefault.rebalancing && !tasks.inRecoveryMode && (!!nodes.pending.length || !poolDefault.balanced) && !nodes.unhealthyActiveNodes;
