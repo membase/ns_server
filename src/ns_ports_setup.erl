@@ -373,8 +373,14 @@ meta_node_spec(Config) ->
                          MessagePort = ns_config:search_node_prop(N, Config, meta, message_port),
 
                          {_, Host} = misc:node_name_host(N),
+                         MaybeHost = case N =:= node() of
+                                    false ->
+                                        Host;
+                                    true ->
+                                        ""
+                                end,
 
-                         RequestAddr = list_to_binary(Host ++ ":" ++ integer_to_list(RequestPort)),
+                         RequestAddr = list_to_binary(MaybeHost ++ ":" ++ integer_to_list(RequestPort)),
                          ElectionAddr = list_to_binary(Host ++ ":" ++ integer_to_list(ElectionPort)),
                          MessageAddr = list_to_binary(Host ++ ":" ++ integer_to_list(MessagePort)),
 
