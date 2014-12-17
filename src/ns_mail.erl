@@ -68,13 +68,22 @@ do_send_async(Subject, Body, Config, Callback) ->
     {ok, Pid} =
         gen_smtp_client:send(
           {Sender, Recipients, Message}, Options,
-          fun (Reply) ->
+          fun (Reply0) ->
+                  Reply = case Reply0 of
+                              {ok, _} ->
+                                  ok;
+                              {error, _, Reason} ->
+                                  {error, Reason};
+                              {exit, Reason} ->
+                                  {error, Reason}
+                          end,
+
                   case Reply of
-                      {error, _, Reason} ->
+                      {error, _} ->
                           ale:warn(?USER_LOGGER,
                                    "Could not send email: ~p. "
                                    "Make sure that your email settings are correct.",
-                                   [Reason]);
+                                   [Reply0]);
                       _ ->
                           ok
                   end,

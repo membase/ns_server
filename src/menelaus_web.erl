@@ -2213,12 +2213,20 @@ handle_settings_alerts_send_test_email(Req) ->
     {ok, Config} = menelaus_alert:parse_settings_alerts_post(PostArgs1),
 
     case ns_mail:send(Subject, Body, Config) of
-        {error, _, {_, _, {error, Reason}}} ->
-            reply_json(Req, {struct, [{error, Reason}]}, 400);
+        ok ->
+            reply(Req, 200);
         {error, Reason} ->
-            reply_json(Req, {struct, [{error, Reason}]}, 400);
-        _ ->
-            reply(Req, 200)
+            Msg =
+                case Reason of
+                    {_, _, {error, R}} ->
+                        R;
+                    {_, _, R} ->
+                        R;
+                    R ->
+                        R
+                end,
+
+            reply_json(Req, {struct, [{error, couch_util:to_binary(Msg)}]}, 400)
     end.
 
 gen_password(Length) ->
