@@ -458,7 +458,7 @@ search_with_vclock_kvlist([KVList | Rest], Key) ->
         {_, [{'_vclock', Clock} | Value]} ->
             {value, Value, Clock};
         {_, Value} ->
-            {value, Value, undefined};
+            {value, Value, []};
         false ->
             search_with_vclock_kvlist(Rest, Key)
     end.
