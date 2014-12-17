@@ -23,7 +23,7 @@
          terse_bucket_info/1,
          terse_bucket_info_with_local_addr/2]).
 
--export([tmp_build_node_services/0]).
+-export([build_node_services/0]).
 
 -export([build_services/3]).
 
@@ -265,17 +265,41 @@ terse_bucket_info(BucketName) ->
             {ok, V}
     end.
 
-%% TODO: this is quick hack to make integration/prototyping work
-%% possible. It's neither clean nor efficient at this time. On purpose.
-tmp_build_node_services() ->
-    Config = ns_config:get(),
-    {value, _, BucketVC} = ns_config:search_with_vclock(Config, buckets),
-    Rev = vclock:count_changes(BucketVC),
+build_node_services() ->
+    case ets:lookup(bucket_info_cache, 'node_services') of
+        [] ->
+            case call_build_node_services() of
+                {ok, V} -> V;
+                {T, E, Stack} ->
+                    erlang:raise(T, E, Stack)
+            end;
+        [{_, V}] ->
+            V
+    end.
 
-    {NEIs, RevServices} = build_nodes_ext(ns_cluster_membership:active_nodes(Config),
-                                          Config, 0, []),
-    J = {[{rev, Rev + RevServices},
-          {nodesExt, NEIs}]},
+call_build_node_services() ->
+    work_queue:submit_sync_work(
+      bucket_info_cache,
+      fun () ->
+              case ets:lookup(bucket_info_cache, 'node_services') of
+                  [] ->
+                      try do_build_node_services() of
+                          V ->
+                              ets:insert(bucket_info_cache, {'node_services', V}),
+                              {ok, V}
+                      catch T:E ->
+                              {T, E, erlang:get_stacktrace()}
+                      end;
+                  [{_, V}] ->
+                          {ok, V}
+              end
+      end).
+
+do_build_node_services() ->
+    Config = ns_config:get(),
+    {NEIs, _RevServices} = build_nodes_ext(ns_cluster_membership:active_nodes(Config),
+                                           Config, 0, []),
+    J = {[{nodesExt, NEIs}]},
     ejson:encode(J).
 
 terse_bucket_info_with_local_addr(BucketName, LocalAddr) ->

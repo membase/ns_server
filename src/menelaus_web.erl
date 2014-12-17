@@ -238,6 +238,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                               ["default", Id]};
                          ["pools", "default", "nodeServices"] ->
                              {auth_any_bucket, fun serve_node_services/1, []};
+                         ["pools", "default", "nodeServicesStreaming"] ->
+                             {auth_any_bucket, fun serve_node_services_streaming/1, []};
                          ["pools", "default", "b", BucketName] ->
                              {auth_bucket, fun serve_short_bucket_info/3,
                               ["default", BucketName]};
@@ -3366,7 +3368,14 @@ serve_streaming_short_bucket_info(_PoolId, BucketName, Req) ->
       end, Req, undefined).
 
 serve_node_services(Req) ->
-    reply_ok(Req, "application/json", bucket_info_cache:tmp_build_node_services()).
+    reply_ok(Req, "application/json", bucket_info_cache:build_node_services()).
+
+serve_node_services_streaming(Req) ->
+    handle_streaming(
+      fun (_) ->
+              V = bucket_info_cache:build_node_services(),
+              {just_write, {write, V}}
+      end, Req, undefined).
 
 decode_recovery_type("delta") ->
     delta;
