@@ -81,6 +81,8 @@
          latest_config_marker/0,
          duplicate_node_keys/3]).
 
+-export([compute_global_rev/1]).
+
 -export([save_config_sync/1, do_not_save_config/1]).
 
 % Exported for tests only
@@ -626,6 +628,24 @@ attach_vclock(Value, Node) ->
     VClock = lists:sort(vclock:increment(Node, vclock:fresh())),
     [{?METADATA_VCLOCK, VClock} | strip_metadata(Value)].
 
+%% NOTE: this function is not supposed to be used widely. It won't
+%% "scale" with size of config. It is ok with existing limits of
+%% config, but before we're able to switch to newer config we might
+%% have to adapt users of this function to use some other way to track
+%% "revision" of config they see. (Or not, if other config has some
+%% "natural" way to track revision of data, e.g. ZAB's/RAFT's txn ids
+%% or equivalent multi-paxos thing)
+compute_global_rev('latest-config-marker') ->
+    compute_global_rev(ns_config:get());
+compute_global_rev(Config) ->
+    KVList = config_dynamic(Config),
+    lists:foldl(
+      fun ({{local_changes_count, _}, [{'_vclock', VC}|_]}, Acc) ->
+              Acc + vclock:count_changes(VC);
+          (_, Acc) ->
+              Acc
+      end, 0, KVList).
+
 %% gen_server callbacks
 
 upgrade_config(Config) ->
@@ -682,6 +702,28 @@ do_upgrade_config(#config{uuid = UUID} = Config, Changes, Upgrader) ->
     NewConfig = Config#config{dynamic=[NewList]},
     do_upgrade_config(NewConfig, Upgrader(NewConfig), Upgrader).
 
+bump_local_changes_counter_full(#config{uuid = UUID, dynamic = [KVList]} = Config) ->
+    {RevPrefix, Tail} = bump_counter_rec(UUID, KVList, []),
+    [{{local_changes_count, UUID}, _} = NewCounterPair | _] = Tail,
+    NewKVList = lists:reverse(RevPrefix, Tail),
+    {Config#config{dynamic = [NewKVList]}, NewCounterPair}.
+
+bump_local_changes_counter(Config) ->
+    {NewCfg, _} = bump_local_changes_counter_full(Config),
+    NewCfg.
+
+bump_counter_rec(UUID, [], Acc) ->
+    Pair = {{local_changes_count, UUID}, increment_vclock([], [], UUID)},
+    {Acc, [Pair]};
+bump_counter_rec(UUID, [{K, V} | KVRest], Acc) ->
+    case K of
+        %% NOTE: that UUID is bound
+        {local_changes_count, UUID} ->
+            {Acc, [{K, increment_vclock([], V, UUID)} | KVRest]};
+        _ ->
+            bump_counter_rec(UUID, KVRest, [{K, V} | Acc])
+    end.
+
 do_init(Config) ->
     erlang:process_flag(trap_exit, true),
 
@@ -696,7 +738,7 @@ do_init(Config) ->
         if
             UpgradedConfig =/= Config ->
                 ?log_debug("Upgraded initial config:~n~p~n", [ns_config_log:sanitize(UpgradedConfig)]),
-                initiate_save_config(UpgradedConfig);
+                initiate_save_config(bump_local_changes_counter(UpgradedConfig));
             true ->
                 UpgradedConfig
         end,
@@ -815,10 +857,12 @@ handle_call({update_with_changes, Fun}, From, #config{uuid = UUID} = State) ->
     try Fun(OldList, UUID) of
         {[], _} ->
             {reply, ok, State};
-        {NewPairs, NewConfig} ->
+        {NewPairs0, NewConfig} ->
+            {NewState, CounterPair} = bump_local_changes_counter_full(State#config{dynamic=[NewConfig]}),
+            NewPairs = [CounterPair | NewPairs0],
             update_ets_dup(NewPairs),
             announce_locally_made_changes(NewPairs),
-            handle_call(resave, From, State#config{dynamic=[NewConfig]})
+            handle_call(resave, From, NewState)
     catch
         T:E ->
             Stacktrace = erlang:get_stacktrace(),
@@ -846,8 +890,14 @@ handle_call({clear, Keep}, From, State) ->
 handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
     case OldKVList =:= hd(State#config.dynamic) of
         true ->
-            NewState = State#config{dynamic = [NewKVList]},
-            Diff = NewKVList -- OldKVList,
+            NewState0 = State#config{dynamic = [NewKVList]},
+            NewState = case RemoteOrLocal of
+                           remote ->
+                               NewState0;
+                           local ->
+                               bump_local_changes_counter(NewState0)
+                       end,
+            Diff = config_dynamic(NewState) -- OldKVList,
             update_ets_dup(Diff),
             case RemoteOrLocal of
                 remote ->
@@ -862,7 +912,7 @@ handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
 
 handle_call({upgrade_config_explicitly, Upgrader}, _From, State) ->
     OldKVList = config_dynamic(State),
-    NewConfig = upgrade_config(State, Upgrader),
+    NewConfig = bump_local_changes_counter(upgrade_config(State, Upgrader)),
 
     NewKVList = config_dynamic(NewConfig),
     Diff = NewKVList -- OldKVList,
@@ -1223,7 +1273,8 @@ all_test_() ->
               [{"test_with_saver_stop", fun test_with_saver_stop/0},
                {"test_clear", fun test_clear/0},
                {"test_with_saver_set_and_stop", fun test_with_saver_set_and_stop/0},
-               {"test_clear_with_concurrent_save", fun test_clear_with_concurrent_save/0}]}}].
+               {"test_clear_with_concurrent_save", fun test_clear_with_concurrent_save/0},
+               {"test_local_changes_count", fun test_local_changes_count/0}]}}].
 
 test_setup() ->
     F = fun () -> ok end,
@@ -1417,9 +1468,11 @@ setup_with_saver() ->
       [fun () ->
                Cfg = #config{dynamic = [[{config_version, ns_config_default:get_current_version()},
                                          {a, [{b, 1}, {c, 2}]},
-                                         {d, 3}]],
+                                         {d, 3},
+                                         {{local_changes_count, testuuid}, []}]],
                              policy_mod = ns_config_default,
-                             saver_mfa = {?MODULE, send_config, [save_config_target]}},
+                             saver_mfa = {?MODULE, send_config, [save_config_target]},
+                             uuid = testuuid},
                {ok, _} = ns_config:start_link({with_state, Cfg}),
                MRef = erlang:monitor(process, Parent),
 
@@ -1646,6 +1699,35 @@ test_clear_with_concurrent_save() ->
     %% returning to original config
     ?assertEqual({value, 3}, ns_config:search(d)),
     ?assertEqual(2, ns_config:search_prop(ns_config:get(), a, c)).
+
+test_local_changes_count() ->
+    erlang:process_flag(trap_exit, true),
+    true = erlang:register(save_config_target, self()),
+
+    ?assertEqual({value, 3}, ns_config:search(d)),
+    ?assertEqual({value, 3}, ns_config:search(ns_config:get(), d)),
+
+    ?assertEqual(0, compute_global_rev(ns_config:latest_config_marker())),
+    ?assertEqual(0, compute_global_rev(ns_config:get())),
+
+    ?assertEqual([], ns_config:read_key_fast({local_changes_count, testuuid}, undefined)),
+
+    ns_config:set(d, 4),
+
+    receive
+        {saving, Ref1, _C, Pid1} ->
+            Pid1 ! {Ref1, ok}
+    end,
+
+    fail_on_incoming_message(),
+
+    ?assertEqual(1, compute_global_rev(ns_config:latest_config_marker())),
+    ?assertEqual(1, compute_global_rev(ns_config:get())),
+
+    {value, [], VC} = ns_config:search_with_vclock(ns_config:get(), {local_changes_count, testuuid}),
+    ?assertEqual(1, vclock:count_changes(VC)),
+
+    ok.
 
 upgrade_config_case(InitialList, Changes, ExpectedList) ->
     Upgrader = fun (_) -> [] end,
