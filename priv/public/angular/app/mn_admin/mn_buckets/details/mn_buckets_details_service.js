@@ -89,12 +89,29 @@ angular.module('mnBucketsDetailsService').factory('mnBucketsDetailsService',
       };
     }
 
+    mnBucketsDetailsService.deleteBucket = function (bucket) {
+      return mnHttp({
+        method: 'DELETE',
+        url: bucket.uri
+      });
+    };
+    mnBucketsDetailsService.flushBucket = function (bucket) {
+      return mnHttp({
+        method: 'POST',
+        url: bucket.controllers.flush
+      });
+    };
+
+    mnBucketsDetailsService.doGetDetails = function (bucket) {
+      return mnHttp({
+        method: 'GET',
+        url: bucket.uri + "&basic_stats=true"
+      });
+    };
+
     mnBucketsDetailsService.getDetails = function (bucket) {
       return $q.all([
-        mnHttp({
-          method: 'GET',
-          url: bucket.uri + "&basic_stats=true"
-        }),
+        mnBucketsDetailsService.doGetDetails(bucket),
         mnTasksDetails.get(),
         mnPoolDefault.get()
       ]).then(function (resp) {
@@ -110,6 +127,8 @@ angular.module('mnBucketsDetailsService').factory('mnBucketsDetailsService',
           thisAlloc: details.quota.ram,
           otherBuckets: ram.quotaUsedPerNode * details.nodes.length - details.quota.ram
         });
+
+        details.flushEnabled = details.controllers !== undefined && details.controllers.flush !== undefined;
 
         details.isMembase = bucket.isMembase;
         details.warmUpTasks = _.filter(tasks.tasks, function (task) {

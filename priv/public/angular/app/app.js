@@ -9,6 +9,10 @@ angular.module('mnFocus', []);
 angular.module('mnSpinner', []);
 angular.module('mnPlot', []);
 angular.module('mnVerticalBar', []);
+angular.module('mnBucketsForm', [
+  'mnHttp',
+  'mnBucketsDetailsService'
+]);
 angular.module('mnCompaction', [
   'mnHttp'
 ]);
@@ -46,8 +50,7 @@ angular.module('mnWizardStep2Service', [
 angular.module('mnWizardStep3Service', [
   'mnHttp',
   'mnWizardStep1Service',
-  'mnWizardStep2Service',
-  'mnBucketsDetailsService'
+  'mnWizardStep2Service'
 ]);
 angular.module('mnWizardStep4Service', [
   'mnHttp'
@@ -130,6 +133,12 @@ angular.module('mnBucketsDetailsService', [
   'mnTasksDetails',
   'mnCompaction'
 ]);
+angular.module('mnBucketsDetailsDialogService', [
+  'mnHttp',
+  'mnPoolDefault',
+  'mnServersService',
+  'mnBucketsDetailsService'
+]);
 
 
 angular.module('app', [
@@ -144,6 +153,7 @@ angular.module('app', [
   'mnVerticalBar',
   'mnWarmupProgress',
   'mnCompaction',
+  'mnBucketsForm',
 
   'mnPoolDefault',
   'mnTasksDetails',
@@ -158,7 +168,8 @@ angular.module('app', [
   'mnSettingsCluster',
   'mnServers',
   'mnOverview',
-  'mnBuckets'
+  'mnBuckets',
+  'mnBucketsDetailsDialogService'
 
 
 ]).run(function ($rootScope, $state, $urlRouter, mnPools) {

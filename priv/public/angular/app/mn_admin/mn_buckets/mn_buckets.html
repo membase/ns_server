@@ -1,10 +1,19 @@
 <divv id="js_buckets" class="buckets">
   <h1>Data Buckets</h1>
+  <div class="warning_message" data-ng-repeat="warning in buckets.creationWarnings" ng-if="warning">
+    <span ng-show="warning">Attention: <span class="warning-text">{{warning}}</span></span>
+  </div>
   <div class="shadow_box" id="couchbase_buckets">
     <div id="manage_buckets_top_bar" class="header_2">
       <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
       <div class="right" style="overflow:hidden;">
-        <button class="button_200 create-bucket-button when-roadmin-hide-me casper_buckets_new_data_bucket" style="float:right;">Create New Data Bucket</button>
+        <button
+          ng-show="!buckets.creationWarnings.length"
+          class="button_200 create-bucket-button when-roadmin-hide-me casper_buckets_new_data_bucket"
+          style="float:right;"
+          ng-click="addBucket()">
+            Create New Data Bucket
+        </button>
         <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>

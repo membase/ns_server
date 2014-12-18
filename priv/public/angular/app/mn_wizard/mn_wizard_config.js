@@ -36,7 +36,7 @@ angular.module('mnWizard').config(function ($stateProvider) {
       notAuthenticate: true,
       resolve: {
         bucketConf: function (mnWizardStep3Service) {
-          return mnWizardStep3Service.getBucketConf();
+          return mnWizardStep3Service.getWizardBucketConf();
         }
       }
     })

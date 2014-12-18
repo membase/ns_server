@@ -1,0 +1,146 @@
+<div class="clearfix">
+  <h2>Bucket Settings</h2>
+  <div class="bucket-icon sub_section">
+    <div>
+      <label>Bucket Name:</label>
+      <input ng-model="bucketConf.name" ng-disabled="canChangeBucketsSettings">
+      <span class="error-container err-name" ng-show="validationResult.errors.name">{{validationResult.errors.name}}</span>
+    </div>
+    <div>
+      <label>Bucket Type:</label>
+      <div class="with_radiogroup">
+        <div>
+          <input type="radio" name="bucketType" value="membase" id="bucket_type_membase_init" ng-model="bucketConf.bucketType" ng-disabled="canChangeBucketsSettings">
+          <label for="bucket_type_membase_init">Couchbase</label>
+        </div>
+        <div>
+          <input type="radio" name="bucketType" value="memcached" id="bucket_type_memcached_init" ng-model="bucketConf.bucketType" ng-disabled="canChangeBucketsSettings">
+          <label for="bucket_type_memcached_init">Memcached</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Memory Size</h2>
+  <div class="sub_section" style="margin-right: 0;">
+    <div class="for-ram-quota">
+      <div class="usage-block size-gauge for-ram" mn-bar-usage base-info="validationResult.guageConfig" ></div>
+      <div class="gauge-label">
+        <label for="ram_quota_mb_init">Per Node RAM Quota:</label>
+        <input name="ramQuotaMB" class="focusme" mn-focus="focusMe" ng-class="{invalid: validationResult.errors.ramQuotaMB}" value="30" ng-model="bucketConf.ramQuotaMB">
+        <abbr>MB</abbr>
+      </div>
+    </div>
+    <div class="error-container err-ramQuotaMB" ng-show="validationResult.errors.ramQuotaMB">{{validationResult.errors.ramQuotaMB}}</div>
+    <p class="memcached-summary when-non-persistent" ng-show="!!validationResult.perNodeMegs">
+       Total bucket size = {{validationResult.totalBucketSize}} MB ({{validationResult.perNodeMegs}} MB x {{validationResult.nodeCount}})
+    </p>
+    <div class="cache_metadata_block persistent-only" ng-show="bucketConf.bucketType === 'membase'">
+      <label>Cache Metadata:</label>
+      <div class="with_radiogroup">
+        <div>
+          <input type="radio" name="evictionPolicy" value="valueOnly" id="cache_metadata_retain-init" checked="checked" ng-model="bucketConf.evictionPolicy">
+          <label for="cache_metadata_retain-init">Value Ejection</label>
+        </div>
+        <div>
+          <input type="radio" name="evictionPolicy" value="fullEviction" id="cache_metadata_non_retain-init" ng-model="bucketConf.evictionPolicy">
+          <label for="cache_metadata_non_retain-init">Full Ejection</label>
+        </div>
+      </div>
+      <a class="tooltip text_11"><span>What's this?</span>
+        <span class="tooltip_msg" style="width:350px;"><span>
+          Value Ejection - During ejection, only the value will be ejected (key and metadata will remain in memory).
+          Full Ejection - During ejection, everything (including key, metadata and value) will be ejected.
+          Value Ejection needs more system memory but provides the best performance. Full Ejection reduces memory overhead requirement.
+        </span></span>
+      </a>
+      <div class="error-container" ng-show="!!evictionPolicyWarning">
+        {{evictionPolicyWarning}}
+      </div>
+    </div>
+  </div>
+
+  <h2 ng-if="!bucketConf.isWizard">Access Control</h2>
+  <div ng-if="!bucketConf.isWizard" class="sub_section">
+    <div>
+      <input id="js_bucket_details_sasl_selected" type="radio" name="authType" value="sasl" ng-model="bucketConf.authType">
+      <div class="with_radiogroup">
+        <label for="js_bucket_details_sasl_selected">
+          <span ng-if="bucketConf.isDefault">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</span>
+          <span ng-if="!bucketConf.isDefault">Standard port (TCP port 11211. Needs SASL auth.)</span>
+        </label>
+        <div ng-if="!bucketConf.isDefault">
+          <label for="js_bucket_details_sasl_password">Enter password:</label>
+          <input type="password" name="saslPassword" id="js_bucket_details_sasl_password" ng-model="bucketConf.saslPassword" ng-disabled="bucketConf.authType !== 'sasl'" value="">
+          <div class="error-container err-saslPassword"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <input type="radio" name="authType" ng-model="bucketConf.authType" value="none" id="js_bucket_details_auth_type" ng-disabled="isDefault">
+      <div class="with_radiogroup">
+        <label for="js_bucket_details_auth_type">Dedicated port (supports ASCII protocol and is auth-less)</label>
+        <div>
+          <label for="js_bucket_details_proxy_port">Protocol Port:</label>
+          <input id="js_bucket_details_proxy_port" name="proxyPort" style="width:50px" ng-model="bucketConf.proxyPort" ng-disabled="bucketConf.authType !== 'none'">
+          <span class="error-container err-proxyPort"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="persistent-only" ng-show="bucketConf.bucketType === 'membase'">
+    <h2>Replicas</h2>
+    <div class="sub_section replicas_settigns">
+      <input type="checkbox" id="for-enable-replicas-init" class="js_for-enable-replicas" ng-model="replicaNumberEnabled">
+      <label for="for-enable-replicas-init">Enable</label>
+      <div class="for-replica-number" ng-if="replicaNumberEnabled">
+        <select name="replicaNumber" ng-model="bucketConf.replicaNumber">
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        </select>
+        <label>Number of replica (backup) copies</label>
+      </div>
+      <div class="error-container err-replicaNumber" ng-show="validationResult.errors.replicaNumber">{{validationResult.errors.replicaNumber}}</div>
+      <div>
+        <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag-init" ng-model="bucketConf.replicaIndex" ng-false-value="0" ng-true-value="1" ng-disabled="!(replicaNumberEnabled && bucketConf.isNew)">
+        <label for="label_replica_index_flag-init">Index replicas</label>
+      </div>
+    </div>
+  </div><!-- .persistent-only -->
+
+  <div class="persistent-only bucket-io-priority" ng-show="bucketConf.bucketType === 'membase'">
+    <h2>Disk I/O Optimization</h2>
+    <div class="sub_section">
+      <label>Set the bucket disk I/O priority:</label>
+      <div class="with_radiogroup">
+        <div>
+          <input type="radio" name="threadsNumber" value="3" checked="true" id="low_threads_number_init" ng-model="bucketConf.threadsNumber">
+          <label for="low_threads_number_init">Low (default)</label>
+        </div>
+        <div>
+          <input type="radio" name="threadsNumber" value="8" id="hight_threads_number_init" ng-model="bucketConf.threadsNumber">
+          <label for="hight_threads_number_init">High</label>
+        </div>
+      </div>
+      <a class="tooltip text_11"><span>What's this?</span>
+        <span class="tooltip_msg" style="width:200px;"><span>
+            This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.
+        </span></span>
+      </a>
+      <div class="error-container" ng-show="!!threadsNumberWarning">
+        {{threadsNumberWarning}}
+      </div>
+    </div>
+  </div> <!-- .persistent-only -->
+
+  <h2>Flush</h2>
+  <div class="sub_section">
+    <input type="checkbox" class="for-enable-flush" id="for-enable-flush-init" name="flushEnabled" value="1" ng-model="bucketConf.flushEnabled" ng-false-value="0" ng-true-value="1">
+    <label for="for-enable-flush-init">Enable</label>
+    <a class="tooltip text_11"><span>What's this?</span>
+      <span class="tooltip_msg" style="width:218px;"><span>
+        When flushed, items in memcached buckets are flagged for removal and subsequently removed; items in couchbase buckets are immediately removed. This does not affect the item count immediately.
+      </span></span>
+    </a>
+  </div>
+</div>

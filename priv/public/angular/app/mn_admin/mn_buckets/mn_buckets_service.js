@@ -1,12 +1,16 @@
 angular.module('mnBucketsService').factory('mnBucketsService',
-  function (mnHttp, mnTruncateTo3DigitsFilter, mnCalculatePercentFilter) {
+  function (mnHttp, $q, mnPoolDefault, mnTruncateTo3DigitsFilter, mnCalculatePercentFilter) {
     var mnBucketsService = {};
 
     mnBucketsService.model = {};
 
     mnBucketsService.getBuckets = function () {
-      return mnHttp.get('/pools/default/buckets?basic_stats=true').then(function (resp) {
-        var bucketsDetails = resp.data;
+      return $q.all([
+        mnPoolDefault.getFresh(),
+        mnHttp.get('/pools/default/buckets?basic_stats=true')
+      ]).then(function (resp) {
+        var poolsDefault = resp[0];
+        var bucketsDetails = resp[1].data;
         bucketsDetails.byType = {membase: [], memcached: []};
         bucketsDetails.byType.membase.isMembase = true;
         bucketsDetails.byType.memcached.isMemcached = true;
@@ -45,6 +49,20 @@ angular.module('mnBucketsService').factory('mnBucketsService',
           // order of these values is important to match pie chart colors
           bucket.healthStats = [h.healthy || 0, h.warmup || 0, h.unhealthy || 0];
         });
+
+        var warnings = [];
+        var totals = poolsDefault.storageTotals;
+        if (poolsDefault.rebalancing) {
+          warnings.push('Cannot create buckets while rebalance is running.');
+        }
+        if (totals.ram.quotaTotal == totals.ram.quotaUsed) {
+          warnings.push('Cluster memory fully allocated. Delete some buckets or change bucket sizes to make RAM available for additional buckets.');
+        }
+        if (bucketsDetails.length >= poolsDefault.maxBucketCount) {
+          warnings.push('Maximum number of buckets has been reached.\n\nFor optimal performance, no more than ' + poolsDefault.maxBucketCount + ' buckets are allowed.');
+        }
+
+        bucketsDetails.creationWarnings = warnings;
 
         return bucketsDetails;
       });

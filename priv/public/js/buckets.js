@@ -963,6 +963,7 @@ var BucketsSection = {
 
       BucketsSection.settingsWidget.detailsMap.getValue(function (mapValue) {
         var fullDetailsCell = mapValue.get(bucketDetails);
+        console.log(bucketDetails, fullDetailsCell.value)
         if (!fullDetailsCell) {
           return;
         }
