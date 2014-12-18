@@ -437,10 +437,11 @@ _.extend(ViewHelpers, {
     return _(services).map(function (service) {
       switch (service) {
         case 'kv': return 'Data';
-        case 'n1ql': return 'N1QL';
+        case 'n1ql': return 'Query';
         case 'moxi': return 'Moxi';
+        case 'index': return 'Index';
       }
-    }).join('<br>');
+    }).sort().join('<br>');
   },
   formatQuantity: function (value, numberSystem, spacing) {
     if (spacing == null) {
