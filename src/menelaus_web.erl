@@ -3289,7 +3289,7 @@ handle_internal_settings_post(Req) ->
 
     case Errors of
         [] ->
-            [ns_config:set(CK, V) || {CK, V} <- ToSet],
+            ns_config:set(ToSet),
 
             case NotFound of
                 [] ->
