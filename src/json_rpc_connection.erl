@@ -22,7 +22,8 @@
 -export([start/2,
          perform_call/3, perform_call/4,
          have_named_connection/1,
-         handle_rpc_connect/1]).
+         handle_rpc_connect/1,
+         reannounce/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -32,11 +33,12 @@
                 sock :: port(),
                 id_to_caller_tid :: ets:tid()}).
 
+-define(PREFIX, "json_rpc_connection-").
 
 label_to_name(Pid) when is_pid(Pid) ->
     Pid;
 label_to_name(Label) ->
-    list_to_atom("json_rpc_connection-" ++ atom_to_list(Label)).
+    list_to_atom(?PREFIX ++ atom_to_list(Label)).
 
 start(Label, InetSock) ->
     {ok, Pid} = gen_server:start(?MODULE, {self(), Label}, []),
@@ -90,10 +92,22 @@ init({Starter, Label}) ->
     IdToCaller = ets:new(ets, [set, private]),
     _ = proc_lib:spawn_link(erlang, apply, [fun receiver_loop/3, [InetSock, self(), <<>>]]),
     ?log_debug("connected"),
+    gen_event:notify(json_rpc_events, {started, Label, self()}),
     {ok, #state{counter = 0,
                 sock = InetSock,
                 id_to_caller_tid = IdToCaller}}.
 
+reannounce() ->
+    lists:map(fun (Name) ->
+                      case atom_to_list(Name) of
+                          ?PREFIX ++ Label ->
+                              gen_event:notify(json_rpc_events,
+                                               {needs_update, list_to_existing_atom(Label),
+                                                whereis(Name)});
+                          _ ->
+                              ok
+                      end
+              end, registered()).
 
 handle_cast(_Msg, _State) ->
     erlang:error(unknown).

@@ -94,6 +94,10 @@ init([]) ->
                      {menelaus_stats_gatherer, start_link, []},
                      permanent, 5000, worker, dynamic},
 
+    RpcEvents = {json_rpc_events,
+                 {gen_event, start_link, [{local, json_rpc_events}]},
+                 permanent, 1000, worker, []},
+
     Web = {menelaus_web,
            {menelaus_web, start_link, []},
            permanent, 5000, worker, dynamic},
@@ -114,7 +118,7 @@ init([]) ->
                     {work_queue, start_link, [menelaus_metakv_worker]},
                     permanent, 1000, worker, []},
 
-    Processes = [SSL, UIAuth, Cache, StatsGatherer, MetaKVWorker, Web, WebEvent, HotKeysKeeper, Alerts],
+    Processes = [SSL, UIAuth, Cache, StatsGatherer, RpcEvents, MetaKVWorker, Web, WebEvent, HotKeysKeeper, Alerts],
     {ok, {{one_for_one, 10, 10}, Processes}}.
 
 ns_log_cat(?START_OK) ->
