@@ -53,6 +53,9 @@ perform_call(Label, Name, EJsonArg, Timeout) ->
         false ->
             {_, Error} = lists:keyfind(<<"error">>, 1, KV),
             {error, Error};
+        {_, null} ->
+            {_, Error} = lists:keyfind(<<"error">>, 1, KV),
+            {error, Error};
         {_, Res} ->
             {ok, Res}
     end.
