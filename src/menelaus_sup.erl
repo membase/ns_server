@@ -118,7 +118,12 @@ init([]) ->
                     {work_queue, start_link, [menelaus_metakv_worker]},
                     permanent, 1000, worker, []},
 
-    Processes = [SSL, UIAuth, Cache, StatsGatherer, RpcEvents, MetaKVWorker, Web, WebEvent, HotKeysKeeper, Alerts],
+    CBAuth = {menelaus_cbauth,
+              {menelaus_cbauth, start_link, []},
+              permanent, 1000, worker, dynamic},
+
+    Processes = [SSL, UIAuth, Cache, StatsGatherer, RpcEvents, MetaKVWorker, Web, WebEvent, HotKeysKeeper, Alerts,
+                 CBAuth],
     {ok, {{one_for_one, 10, 10}, Processes}}.
 
 ns_log_cat(?START_OK) ->

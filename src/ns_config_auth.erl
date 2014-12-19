@@ -25,7 +25,8 @@
          get_password/1,
          credentials_changed/3,
          unset_credentials/1,
-         upgrade/1]).
+         upgrade/1,
+         get_creds/1]).
 
 get_key(admin) ->
     rest_creds;
@@ -84,6 +85,14 @@ get_user_old(ro_admin) ->
 
 get_password(special) ->
     ns_config:search_node_prop('latest-config-marker', memcached, admin_pass).
+
+get_creds(Role) ->
+    case ns_config:search(get_key(Role)) of
+        {value, {User, {password, {Salt, Mac}}}} ->
+            {User, Salt, Mac};
+        _ ->
+            undefined
+    end.
 
 credentials_changed(Role, User, Password) ->
     case cluster_compat_mode:is_cluster_30() of
