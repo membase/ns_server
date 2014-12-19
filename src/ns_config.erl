@@ -463,7 +463,8 @@ search_with_vclock_kvlist([KVList | Rest], Key) ->
             search_with_vclock_kvlist(Rest, Key)
     end.
 
-get_static_and_dynamic(#config{dynamic = DL, static = SL}) -> [hd(DL) | SL].
+get_static_and_dynamic(#config{dynamic = DL, static = SL}) -> [hd(DL) | SL];
+get_static_and_dynamic([DL]) -> [DL].
 
 search_with_vclock(Config, Key) ->
     LL = get_static_and_dynamic(Config),
