@@ -72,23 +72,23 @@
                 <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
               </td>
             </tr>
-            <tr class="server_row {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" id="{{node.safeNodeOtpNode}}">
+            <tr class="server_row {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" id="{{node.otpNode | mnMakeSafeForCSS}}">
               <td class="node_name ellipsis">
                 <a ng-if="!node.isNodeUnhealthy"
                    ng-click="toggleDetails(node.hostname)"
-                   class="{{'casper_open_cluster_' + node.safeNodeOtpNode}}"
+                   class="{{'casper_open_cluster_' + node.otpNode | mnMakeSafeForCSS}}"
                    title="Show Server Node info">
                     <ins class="expander" ng-class="{closed:!isDetailsOpened(node.hostname)}"></ins>
                 </a>
                 <span ng-if="node.isNodeInactiveFaied &amp;&amp; !node.isNodeUnhealthy">
-                  {{node.strippedPort}}
+                  {{node.hostname | mnStripPortHTML:serversState.allNodes}}
                 </span>
                 <span ng-if="node.isNodeUnhealthy">
                   {{node.hostname}}
                 </span>
                 <a ng-if="!node.isNodeInactiveFaied &amp;&amp; !node.isNodeUnhealthy"
                    title="{{'View Analytics for ' + node.hostname}}">
-                  {{node.strippedPort}}
+                  {{node.hostname | mnStripPortHTML:serversState.allNodes}}
                 </a>
               </td>
               <td class="servers_icons  {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" ng-class="{dynamic_lastActive: node.isLastActive}">
@@ -114,17 +114,17 @@
                   N/A
                 </span>
                 <span ng-if="node.isDataDiskUsageAvailable">
-                  {{node.couchDataSize}} / <br>{{node.couchDiskUsage}}
+                  {{node.couchDataSize | mnFormatQuantity}} / <br>{{node.couchDiskUsage | mnFormatQuantity}}
                 </span>
               </td>
               <td class="rep" style="padding-left:0;padding-right:0;">
-                {{node.currItems}}/<br>{{node.currVbItems}}
+                {{node.currItems || 0 | mnFormatQuantity:1000:' ' }}/<br>{{node.currVbItems || 0 | mnFormatQuantity:1000:' ' }}
               </td>
               <td
                 ng-if="tasks.inRebalance &amp;&amp; tasks.tasksRebalance.status === 'running'"
                 class="actions">
-                  <span class="usage_info">{{node.rebalanceProgress}} % Complete</span>
-                  <span class="server_usage"><span style="width: {{node.rebalanceProgress}}%"></span></span>
+                  <span class="usage_info">{{node.rebalanceProgress | mnTruncateTo3Digits}} % Complete</span>
+                  <span class="server_usage"><span style="width: {{node.rebalanceProgress | mnTruncateTo3Digits}}%"></span></span>
               </td>
               <td
                 ng-if="!tasks.inRebalance &amp;&amp; node.isNodeInactiveAdded &amp;&amp; node.recoveryType === 'none'"

@@ -1,5 +1,5 @@
 <div class="vertical_bar" ng-if="conf.exist">
   <div class="used" style="height:{{conf.height}}%;top:{{conf.top}}%"></div>
 </div>
-<div class="wrap" ng-if="conf.exist">{{conf.value}}%</div>
+<div class="wrap" ng-if="conf.exist">{{conf.value | mnTruncateTo3Digits}}%</div>
 <div class="not_active" ng-if="!conf.exist">N/A</div>

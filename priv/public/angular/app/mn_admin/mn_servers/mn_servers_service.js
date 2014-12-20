@@ -1,5 +1,5 @@
 angular.module('mnServersService').factory('mnServersService',
-  function (mnHttp, mnTasksDetails, mnPoolDefault, $q, $state, $stateParams, mnHelper, mnTruncateTo3DigitsFilter, mnStripPortHTMLFilter, mnMakeSafeForCSSFilter, mnFormatQuantityFilter) {
+  function (mnHttp, mnTasksDetails, mnPoolDefault, $q, $state, $stateParams, mnHelper) {
     var mnServersService = {};
 
     var pendingEject = [];
@@ -119,22 +119,20 @@ angular.module('mnServersService').factory('mnServersService',
 
     function prepareNode(nodes, tasks, stateParamsNodeType) {
       return _.map(nodes[stateParamsNodeType], function (node) {
-        node.couchDataSize = mnFormatQuantityFilter(node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size']);
-        node.couchDiskUsage = mnFormatQuantityFilter(node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size']);
-        node.currItems = mnFormatQuantityFilter(node.interestingStats['curr_items'] || 0, 1000, ' ');
-        node.currVbItems = mnFormatQuantityFilter(node.interestingStats['vb_replica_curr_items'] || 0, 1000, ' ');
-        node.isDataDiskUsageAvailable = !!(node.couchDataSize && node.couchDiskUsage);
+        node.couchDataSize = node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size'];
+        node.couchDiskUsage = node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size'];
+        node.currItems = node.interestingStats['curr_items'];
+        node.currVbItems = node.interestingStats['vb_replica_curr_items'];
+        node.isDataDiskUsageAvailable = !!(node.couchDataSize || node.couchDiskUsage);
         node.isNodeUnhealthy = node.status === 'unhealthy';
         node.isNodeInactiveFaied = node.clusterMembership === 'inactiveFailed';
         node.isNodeInactiveAdded = node.clusterMembership === 'inactiveAdded';
         node.isReAddPossible = node.isNodeInactiveFaied && !node.isNodeUnhealthy;
         node.isLastActive = nodes.reallyActive.length === 1;
         node.isActiveUnhealthy = stateParamsNodeType === "active" && node.isNodeUnhealthy;
-        node.safeNodeOtpNode = mnMakeSafeForCSSFilter(node.otpNode);
-        node.strippedPort = mnStripPortHTMLFilter(node.hostname, nodes.allNodes);
 
         var rebalanceProgress = tasks.tasksRebalance.perNode && tasks.tasksRebalance.perNode[node.otpNode];
-        node.rebalanceProgress = rebalanceProgress ? mnTruncateTo3DigitsFilter(rebalanceProgress.progress) : 0 ;
+        node.rebalanceProgress = rebalanceProgress ? rebalanceProgress.progress : 0 ;
 
         var total = node.memoryTotal;
         var free = node.memoryFree;
@@ -143,7 +141,7 @@ angular.module('mnServersService').factory('mnServersService',
           exist: (total > 0) && _.isFinite(free),
           height: (total - free) / total * 100,
           top: 105 - ((total - free) / total * 100),
-          value: mnTruncateTo3DigitsFilter((total - free) / total * 100)
+          value: (total - free) / total * 100
         };
 
         var swapTotal = node.systemStats.swap_total;
@@ -152,7 +150,7 @@ angular.module('mnServersService').factory('mnServersService',
           exist: swapTotal > 0 && _.isFinite(swapUsed),
           height: swapUsed / swapTotal * 100,
           top: 105 - (swapUsed / swapTotal * 100),
-          value: mnTruncateTo3DigitsFilter((swapUsed / swapTotal) * 100)
+          value: (swapUsed / swapTotal) * 100
         };
 
         var cpuRate = node.systemStats.cpu_utilization_rate;
@@ -160,7 +158,7 @@ angular.module('mnServersService').factory('mnServersService',
           exist: _.isFinite(cpuRate),
           height: Math.floor(cpuRate * 100) / 100,
           top: 105 - (Math.floor(cpuRate * 100) / 100),
-          value: mnTruncateTo3DigitsFilter(Math.floor(cpuRate * 100) / 100)
+          value: Math.floor(cpuRate * 100) / 100
         };
 
         return node;
@@ -257,7 +255,7 @@ angular.module('mnServersService').factory('mnServersService',
         rv.currentNodes = prepareNode(nodes, tasks, stateParamsNodeType);
         rv.rebalancing = poolDefault.rebalancing;
         rv.pendingLength = nodes.pending.length;
-        rv.mayRebalanceWithoutSampleLoading = !poolDefault.rebalancing && !tasks.inRecoveryMode && (!!nodes.pending.length || !poolDefault.balanced) && !nodes.unhealthyActiveNodes;
+        rv.mayRebalanceWithoutSampleLoading = !poolDefault.rebalancing && !tasks.inRecoveryMode && (!!nodes.pending.length || !poolDefault.balanced) && !nodes.unhealthyActive;
         rv.mayRebalance = rv.mayRebalanceWithoutSampleLoading && !tasks.isLoadingSamples;
         rv.showWarningMessage = rv.mayRebalanceWithoutSampleLoading && tasks.isLoadingSamples;
         rv.showPendingBadge = !rv.rebalancing && rv.pendingLength;

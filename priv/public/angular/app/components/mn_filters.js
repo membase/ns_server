@@ -208,7 +208,7 @@ angular.module('mnFilters')
 
   .filter('mnFormatQuantity', function (mnPrepareQuantityFilter, mnTruncateTo3DigitsFilter) {
     return function (value, numberSystem, spacing) {
-      if (!value) {
+      if (!value && !_.isNumber(value)) {
         return value;
       }
       if (spacing == null) {
