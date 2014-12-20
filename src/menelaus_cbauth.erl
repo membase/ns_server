@@ -48,7 +48,12 @@ find_hostport_node(Hostport, Config) ->
                    {_, "127.0.0.1"} ->
                        true;
                    {_, H} ->
-                       H =:= Host
+                       case H =:= Host of
+                           true ->
+                               true;
+                           _ ->
+                               N =:= node() andalso Host =:= "127.0.0.1"
+                       end
                end],
     find_hostport_node_loop(NToS, Port).
 
