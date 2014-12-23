@@ -422,6 +422,8 @@ get_kv_list_with_config(Config) ->
 
 search(Key) ->
     case ets:lookup(ns_config_ets_dup, Key) of
+        [{_, ?DELETED_MARKER}] ->
+            false;
         [{_, V}] ->
             {value, V};
         _ ->
@@ -985,22 +987,14 @@ announce_changes(KVList) ->
     % Fire a generic event that 'something changed'.
     gen_event:notify(ns_config_events, KVList).
 
-update_ets_dup([]) ->
-    ok;
 update_ets_dup(KVList) ->
-    lists:foreach(
-      fun ({Key, Value}) ->
-              case strip_metadata(Value) of
-                  ?DELETED_MARKER ->
-                      ets:delete(ns_config_ets_dup, Key);
-                  X ->
-                      ets:insert(ns_config_ets_dup, {Key, X})
-              end
-      end,
-      KVList).
+    KVs = [{K, strip_metadata(V)} || {K, V} <- KVList],
+    ets:insert(ns_config_ets_dup, KVs).
 
 read_key_fast(Key, Default) ->
     case ets:lookup(ns_config_ets_dup, Key) of
+        [{_, ?DELETED_MARKER}] ->
+            Default;
         [{_, V}] ->
             V;
         _ -> Default
