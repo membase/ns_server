@@ -294,7 +294,8 @@ kv_node_projector_spec(Config) ->
 
             Spec = {'projector', ProjectorCmd,
                     [ProjLogArg, KvListArg, AdminPortArg, ClusterArg],
-                    [use_stdio, exit_status, stderr_to_stdout, stream]},
+                    [use_stdio, exit_status, stderr_to_stdout, stream,
+                     {env, build_cbauth_env_vars(Config, undefined)}]},
             [Spec]
     end.
 
@@ -349,7 +350,8 @@ index_node_spec(Config) ->
                          "-streamCatchupPort=" ++ integer_to_list(StCatchupPort),
                          "-streamMaintPort=" ++ integer_to_list(StMaintPort)
                      ],
-                    [use_stdio, exit_status, stderr_to_stdout, stream]},
+                    [use_stdio, exit_status, stderr_to_stdout, stream,
+                     {env, build_cbauth_env_vars(Config, undefined)}]},
             [Spec]
     end.
 
