@@ -49,6 +49,9 @@ schedule_config_pull() ->
     Frequency = 5000 + trunc(random:uniform() * 55000),
     timer2:send_after(Frequency, self(), pull).
 
+meld_config(KVList, FromNode) ->
+    ok = gen_server:call(ns_config, {merge_ns_couchdb_config, KVList, FromNode}, infinity).
+
 do_pull() ->
     Node = ns_node_disco:ns_server_node(),
     ?log_info("Pulling config from: ~p~n", [Node]),
@@ -58,9 +61,7 @@ do_pull() ->
         {'EXIT', _} ->
             ok;
         KVList ->
-            KVList1 = ns_config:duplicate_node_keys(KVList, Node, node()),
-            ns_config:set(KVList1),
-            ok
+            meld_config(KVList, Node)
     end.
 
 handle_call(Msg, _From, State) ->
@@ -69,9 +70,8 @@ handle_call(Msg, _From, State) ->
 
 handle_cast({merge_compressed, Blob}, State) ->
     KVList = binary_to_term(zlib:uncompress(Blob)),
-    KVList1 = ns_config:duplicate_node_keys(KVList, ns_node_disco:ns_server_node(), node()),
 
-    ns_config:set(KVList1),
+    meld_config(KVList, ns_node_disco:ns_server_node()),
 
     {message_queue_len, QL} = erlang:process_info(self(), message_queue_len),
     case QL > ?MERGING_EMERGENCY_THRESHOLD of

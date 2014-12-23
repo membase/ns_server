@@ -78,8 +78,7 @@
          fold/3, read_key_fast/2, get_timeout_fast/2,
          delete/1,
          strip_metadata/1, extract_vclock/1,
-         latest_config_marker/0,
-         duplicate_node_keys/3]).
+         latest_config_marker/0]).
 
 -export([compute_global_rev/1]).
 
@@ -887,12 +886,23 @@ handle_call({clear, Keep}, From, State) ->
     ?log_debug("Full result of clear:~n~p", [RV]),
     RV;
 
+handle_call({merge_ns_couchdb_config, NewKVList0, FromNode}, _From, State) ->
+    NewKVList1 = lists:sort(duplicate_node_keys(NewKVList0, FromNode, node())),
+    OldKVList = config_dynamic(State),
+    NewKVList = misc:ukeymergewith(fun (New, _Old) -> New end,
+                                   1, NewKVList1, lists:sort(OldKVList)),
+    C = {cas_config, NewKVList, OldKVList, replace},
+    {reply, true, NewState} = handle_call(C, [], State),
+    {reply, ok, NewState};
+
 handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
     case OldKVList =:= hd(State#config.dynamic) of
         true ->
             NewState0 = State#config{dynamic = [NewKVList]},
             NewState = case RemoteOrLocal of
                            remote ->
+                               NewState0;
+                           replace ->
                                NewState0;
                            local ->
                                bump_local_changes_counter(NewState0)
@@ -902,7 +912,7 @@ handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
             case RemoteOrLocal of
                 remote ->
                     announce_changes(Diff);
-                local ->
+                _ ->
                     announce_locally_made_changes(Diff)
             end,
             {reply, true, initiate_save_config(NewState)};
