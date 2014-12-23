@@ -2,7 +2,6 @@ angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
   function (mnHttp, mnWizardStep2Service, mnWizardStep1Service, mnBytesToMBFilter, bucketsFormConfiguration) {
 
     var mnWizardStep3Service = {};
-    var bucketConf = _.clone(bucketsFormConfiguration);
 
     mnWizardStep3Service.getWizardBucketConf = function () {
       return mnHttp({
@@ -10,11 +9,12 @@ angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
         url: '/pools/default/buckets/default'
       }).then(function (resp) {
         var data = resp.data;
-        var bucketConf = _.pick(data, _.keys(bucketConf));
+        var bucketConf = _.pick(data, _.keys( _.clone(bucketsFormConfiguration)));
         bucketConf.ramQuotaMB = mnBytesToMBFilter(resp.data.quota.rawRAM);
         bucketConf.uri = '/pools/default/buckets/default';
         return bucketConf;
       }, function () {
+        var bucketConf = _.clone(bucketsFormConfiguration);
         bucketConf.name = 'default';
         bucketConf.isNew = true;
         bucketConf.ramQuotaMB =  mnWizardStep1Service.getDynamicRamQuota() - mnBytesToMBFilter(mnWizardStep2Service.getSampleBucketsRAMQuota())
