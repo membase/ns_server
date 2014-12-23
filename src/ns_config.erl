@@ -430,6 +430,17 @@ search(Key) ->
             false
     end.
 
+read_key_fast(Key, Default) ->
+    case search(Key) of
+        {value, V} ->
+            V;
+        false ->
+            Default
+    end.
+
+get_timeout_fast(Operation, Default) ->
+    read_key_fast({node, node(), {timeout, Operation}}, Default).
+
 search_node(Key) -> search_node(?MODULE:get(), Key).
 
 search('latest-config-marker', Key) ->
@@ -990,18 +1001,6 @@ announce_changes(KVList) ->
 update_ets_dup(KVList) ->
     KVs = [{K, strip_metadata(V)} || {K, V} <- KVList],
     ets:insert(ns_config_ets_dup, KVs).
-
-read_key_fast(Key, Default) ->
-    case ets:lookup(ns_config_ets_dup, Key) of
-        [{_, ?DELETED_MARKER}] ->
-            Default;
-        [{_, V}] ->
-            V;
-        _ -> Default
-    end.
-
-get_timeout_fast(Operation, Default) ->
-    read_key_fast({node, node(), {timeout, Operation}}, Default).
 
 load_file(txt, ConfigPath) -> read_includes(ConfigPath);
 
