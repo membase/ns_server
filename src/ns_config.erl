@@ -757,7 +757,7 @@ init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
     end;
 init({pull_from_node, Node} = Init) ->
     KVList = duplicate_node_keys(ns_config_rep:get_remote(Node, infinity),
-                               Node, node()),
+                                 Node, node()),
     Cfg = #config{dynamic = [KVList],
                   policy_mod = ns_config_default,
                   saver_mfa = {?MODULE, do_not_save_config, []},
@@ -965,12 +965,12 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
             ok = filelib:ensure_dir(C),
             ?log_info("Loading dynamic config from ~p", [C]),
             Dynamic0 = case load_file(bin, C) of
-                    {ok, DRead} ->
-                        DRead;
-                    not_found ->
-                        ?log_info("No dynamic config file found. Assuming we're brand new node"),
-                        [[]]
-                end,
+                           {ok, DRead} ->
+                               DRead;
+                           not_found ->
+                               ?log_info("No dynamic config file found. Assuming we're brand new node"),
+                               [[]]
+                       end,
             ?log_debug("Here's full dynamic config we loaded:~n~p", [ns_config_log:sanitize(Dynamic0)]),
 
             {UUID, Dynamic1} =
@@ -1202,11 +1202,11 @@ merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
 read_includes(Path) -> read_includes([{include, Path}], []).
 
 read_includes([{include, Path} | Terms], Acc) ->
-  case file:consult(Path) of
-    {ok, IncTerms}  -> read_includes(IncTerms ++ Terms, Acc);
-    {error, enoent} -> {error, {bad_config_path, Path}};
-    Error           -> Error
-  end;
+    case file:consult(Path) of
+        {ok, IncTerms}  -> read_includes(IncTerms ++ Terms, Acc);
+        {error, enoent} -> {error, {bad_config_path, Path}};
+        Error           -> Error
+    end;
 read_includes([X | Rest], Acc) -> read_includes(Rest, [X | Acc]);
 read_includes([], Result)      -> {ok, lists:reverse(Result)}.
 
