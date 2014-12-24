@@ -41,7 +41,6 @@
 -export([supported_services/0,
          default_services/0,
          node_services/2,
-         node_services_with_rev/2,
          filter_out_non_kv_nodes/1,
          filter_out_non_kv_nodes/2]).
 
@@ -209,14 +208,6 @@ node_services(Config, Node) ->
             default_services();
         {value, Value} ->
             Value
-    end.
-
-node_services_with_rev(Config, Node) ->
-    case ns_config:search_with_vclock(Config, {node, Node, services}) of
-        false ->
-            {default_services(), 0};
-        {value, Value, VClock} ->
-            {Value, vclock:count_changes(VClock)}
     end.
 
 filter_out_non_kv_nodes(Nodes) ->
