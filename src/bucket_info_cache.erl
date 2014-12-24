@@ -161,10 +161,10 @@ maybe_build_ext_hostname(Node) ->
         {_, H} -> [{hostname, list_to_binary(H)}]
     end.
 
-build_nodes_ext([] = _Nodes, _Config, RevAcc, NodesExtAcc) ->
-    {lists:reverse(NodesExtAcc), RevAcc};
-build_nodes_ext([Node | RestNodes], Config, RevAcc, NodesExtAcc) ->
-    {Services, Rev} = ns_cluster_membership:node_services_with_rev(Config, Node),
+build_nodes_ext([] = _Nodes, _Config, NodesExtAcc) ->
+    lists:reverse(NodesExtAcc);
+build_nodes_ext([Node | RestNodes], Config, NodesExtAcc) ->
+    Services = ns_cluster_membership:node_services(Config, Node),
     NI1 = maybe_build_ext_hostname(Node),
     NI2 = case Node =:= node() of
               true ->
@@ -174,7 +174,6 @@ build_nodes_ext([Node | RestNodes], Config, RevAcc, NodesExtAcc) ->
           end,
     NodeInfo = {[{services, {build_services(Node, Config, Services)}} | NI2]},
     build_nodes_ext(RestNodes, Config,
-                    RevAcc + Rev,
                     [NodeInfo | NodesExtAcc]).
 
 do_compute_bucket_info(Bucket, Config) ->
@@ -198,7 +197,7 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
            || Node <- Servers],
 
     AllServers = Servers ++ ordsets:subtract(ns_cluster_membership:active_nodes(Config), Servers),
-    {NEIs, RevServices} = build_nodes_ext(AllServers, Config, 0, []),
+    NEIs = build_nodes_ext(AllServers, Config, []),
 
     {_, UUID} = lists:keyfind(uuid, 1, BucketConfig),
 
@@ -216,7 +215,23 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
                          | Caps]
                  end,
 
-    J = {[{rev, vclock:count_changes(BucketVC) + RevServices},
+    %% NOTE: that we're reading compat mode not from config snapshot
+    %% we're given. So we can serve older config with newer compat
+    %% mode. That should be ok under our assumption that compat mode
+    %% never decreases.
+    %%
+    %% We're computing rev using config's global rev which allows us
+    %% to track changes to node services and set of active nodes. But
+    %% for mixed version clusters we want to be serving same revs as
+    %% 3.0 nodes.
+    Rev = case cluster_compat_mode:is_cluster_sherlock() of
+              true ->
+                  ns_config:compute_global_rev(Config);
+              false ->
+                  vclock:count_changes(BucketVC)
+          end,
+
+    J = {[{rev, Rev},
           {name, BucketBin},
           {uri, <<"/pools/default/buckets/", BucketBin/binary, "?bucket_uuid=", UUID/binary>>},
           {streamingUri, <<"/pools/default/bucketsStreaming/", BucketBin/binary, "?bucket_uuid=", UUID/binary>>},
@@ -297,9 +312,10 @@ call_build_node_services() ->
 
 do_build_node_services() ->
     Config = ns_config:get(),
-    {NEIs, _RevServices} = build_nodes_ext(ns_cluster_membership:active_nodes(Config),
-                                           Config, 0, []),
-    J = {[{nodesExt, NEIs}]},
+    NEIs = build_nodes_ext(ns_cluster_membership:active_nodes(Config),
+                           Config, []),
+    J = {[{rev, ns_config:compute_global_rev(Config)},
+          {nodesExt, NEIs}]},
     ejson:encode(J).
 
 terse_bucket_info_with_local_addr(BucketName, LocalAddr) ->
