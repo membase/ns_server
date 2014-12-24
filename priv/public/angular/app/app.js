@@ -140,6 +140,13 @@ angular.module('mnBucketsDetailsDialogService', [
   'mnBucketsDetailsService'
 ]);
 
+angular.module('mnViews', [
+  'mnViewsService'
+]);
+angular.module('mnViewsService', [
+  'mnHttp'
+]);
+
 
 angular.module('app', [
   'mnFilters',
@@ -161,6 +168,8 @@ angular.module('app', [
 
   'ui.router',
   'ui.bootstrap',
+  'ui.select',
+  'ngSanitize',
 
   'mnWizard',
   'mnAuth',
@@ -169,7 +178,8 @@ angular.module('app', [
   'mnServers',
   'mnOverview',
   'mnBuckets',
-  'mnBucketsDetailsDialogService'
+  'mnBucketsDetailsDialogService',
+  'mnViews'
 
 
 ]).run(function ($rootScope, $state, $urlRouter, mnPools) {

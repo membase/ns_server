@@ -2,14 +2,20 @@
 <html data-ng-app="app">
   <head>
     <title>Couhbase Console</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <link rel="stylesheet" type="text/css" href="app.css">
     <link rel="stylesheet" type="text/css" href="template/modal/modal.css">
+    <link rel="stylesheet" type="text/css" href="/angular/libs/selectize.default.css">
+    <link rel="stylesheet" type="text/css" href="/angular/libs/angular-ui-select.css">
 
     <script src="/angular/angular-templates-list.js"></script>
 
     <script src="/angular/libs/angular.js"></script>
+    <script src="/angular/libs/angular-sanitize.js"></script>
     <script src="/angular/libs/angular-ui-router.js"></script>
     <script src="/angular/libs/angular-ui-bootstrap.js"></script>
+    <script src="/angular/libs/angular-ui-select.js"></script>
+
     <script src="/angular/libs/lodash.compat.js"></script>
 
     <script src="app.js"></script>
@@ -41,6 +47,13 @@
     <script src="mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog_service.js"></script>
     <script src="mn_admin/mn_buckets/delete_dialog/mn_buckets_delete_dialog_controller.js"></script>
     <script src="mn_admin/mn_buckets/flush_dialog/mn_buckets_flush_dialog_controller.js"></script>
+
+    <script src="mn_admin/mn_views/mn_views_service.js"></script>
+    <script src="mn_admin/mn_views/mn_views_controller.js"></script>
+    <script src="mn_admin/mn_views/create_dialog/mn_views_create_dialog_controller.js"></script>
+    <script src="mn_admin/mn_views/delete_ddoc_dialog/mn_views_delete_ddoc_dialog_controller.js"></script>
+    <script src="mn_admin/mn_views/delete_view_dialog/mn_views_delete_view_dialog_controller.js"></script>
+    <script src="mn_admin/mn_views/copy_dialog/mn_views_copy_dialog_controller.js"></script>
 
     <script src="mn_admin/mn_settings/auto_failover/mn_settings_auto_failover_service.js"></script>
 

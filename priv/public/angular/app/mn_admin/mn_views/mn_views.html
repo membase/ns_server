@@ -1,0 +1,117 @@
+<div id="js_views" class="views">
+  <h1 style="">
+    <span >
+      <ui-select ng-model="views.bucketsNames.selected" theme="selectize" ng-disabled="disabled" style="width: 200px; display: inline-block; vertical-align: middle;">
+        <ui-select-match>{{$select.selected}}</ui-select-match>
+        <ui-select-choices repeat="name in views.bucketsNames | filter: $select.search">
+          <span ng-bind-html="name | highlight: $select.search"></span>
+        </ui-select-choices>
+      </ui-select>
+      <span style="vertical-align: middle;">
+       &gt; <a href="#visitSec=views" style="vertical-align: middle;">Views</a>
+      </span>
+    </span>
+  </h1>
+  <div class="shadow_box" id="views_list">
+    <div class="header_2">
+      <ul class="tabs switcher">
+        <li class="tab_left">
+          <a ui-sref="app.admin.views({ type: 'development' })" ui-sref-active="selected">Development Views</a>
+        </li>
+        <li class="tab_right">
+          <a class="casper_views_prod_tab" ui-sref="app.admin.views({ type: 'production' })" ui-sref-active="selected">Production Views</a>
+          <span class="badge notify" ng-show="views.production.length"><span id="prod_view_count">{{views.production.length}}</span></span>
+        </li>
+      </ul>
+      <div class="create_view">
+        <a class="button_200 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup" ng-click="showCreationDialog()" ng-show="views.bucketsNames.selected && views.isDevelopmentViews && !views.ddocsAreInFactMissing"><span>Create Development View</span></a>
+        <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+      </div>
+    </div>
+    <div class="panes">
+      <div class="views_list" >
+        <table class="list">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Language</th>
+              <th>Status</th>
+              <th><div style="display:none">Disk Size</div></th>
+              <th colspan=2 class="last"></th>
+            </tr>
+          </thead>
+          <tbody ng-if="!views.bucketsNames.selected">
+            <tr>
+              <td colspan="6" class="empty">
+                <span>
+                  No buckets currently defined! Go to
+                  <a ui-sref="app.admin.buckets">Data Buckets</a>
+                  to create some.
+                </span>
+              </td>
+            </tr>
+          </tbody>
+          <tbody ng-if="views.ddocsAreInFactMissing">
+            <tr>
+              <td colspan="6" class="empty">
+                <span style="line-height:23px">This node doesn't host current bucket yet, so for list of design docs, please, visit different node's UI</span>
+              </td>
+            </tr>
+          </tbody>
+          <tbody ng-if="views.bucketsNames.selected && !views.ddocsAreInFactMissing && !views[views.type].length">
+            <tr>
+              <td colspan="6" class="empty">
+                <span ng-show="views.isDevelopmentViews" style="line-height:23px">There are currently no Design Documents in Development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
+                <span ng-show="!views.isDevelopmentViews" style="line-height:23px">There are no Design Documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
+              </td>
+            </tr>
+          </tbody>
+          <tbody ng-repeat="row in views[views.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="views.rows.length">
+            <tr>
+              <td class="design_doc_name ellipsis">
+                {{row.doc.meta.id}}
+              </td>
+              <td class="langv">{{row.doc.language || "javascript"}}</td>
+              <td>
+                <div class="indexer_progress" ng-if="row.task">
+                  <div class="usage_smallest">
+                    <div class="used" style="width: {{row.task.progress}}%"></div>
+                  </div>
+                  <span class="ddoc_message">{{row.task.type == 'indexer' ? "Indexing" : "Compacting"}} {{row.task.progress}}%</span>
+                </div>
+              </td>
+              <td colspan="3" class="when-roadmin-hide-me">
+                <a ng-show="!views.isDevelopmentViews" class="list_button when-in-prod casper_views_copy_to_dev" ng-click="copyToDev(row.doc)"><span>Copy to Dev</span></a>
+                <a ng-show="views.isDevelopmentViews" class="list_button when-in-dev" ng-class="{dynamic_disabled: row.isEmpty}" ng-click="publishDdoc(row.doc)"><span>Publish</span></a>
+                <a ng-show="views.isDevelopmentViews" class="list_button when-in-dev casper_views_add_view_popup" ng-click="showCreationDialog(row.doc)"><span>Add View</span></a>
+                <a ng-show="views.isDevelopmentViews" class="list_button when-in-dev casper_views_add_spatial_popup" ng-click="showCreationDialog(row.doc, true)"><span>Add Spatial View</span></a>
+                <a class="list_button casper_views_delete_popup" ng-click="showDdocDeletionDialog(row.doc)"><span>Delete</span></a>
+                <button class="list_button" ng-class="{dynamic_disabled: row.disableCompact}" ng-click="!row.disableCompact && registerCompactionAsTriggeredAndPost(row)"><span>Compact</span></button>
+              </td>
+            </tr>
+            <tr ng-if="row.isEmpty">
+              <td colspan="5" style="padding:15px;line-height:23px;">No views defined!<span class="when-in-dev"> Click "Create Development View" above to create one.</span></td>
+            </tr>
+            <tr ng-if="row.containsViews" ng-repeat="(key, view) in row.doc.json.views">
+              <td class="view_name ellipsis" colspan="5">
+                <a class="casper_views_view_tab" style="display:block;line-height:33px;" href="{%=h(viewInfo.viewLink)%}">{{key}}</a>
+              </td>
+              <td>
+                <a class="list_button btn_remove when-roadmin-avoid-me" ng-click="showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
+                <a class="list_button btn_edit" href="{%=h(viewInfo.viewLink)%}"><span>{{ddoc.canEditDoc ? 'Edit' : 'Show' }}</span></a>
+              </td>
+            </tr>
+            <tr ng-if="row.containsSpatials" ng-repeat="(key, spatial) in row.doc.json.spatial">
+              <td class="view_name ellipsis" colspan="5">
+                <a href="{%=h(spatialInfo.viewLink)%}">[Spatial] {{key}}</a>
+              </td>
+              <td>
+                <a class="list_button btn_remove when-roadmin-avoid-me"ng-click="showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

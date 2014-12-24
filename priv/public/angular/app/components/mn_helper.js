@@ -24,7 +24,7 @@ angular.module('mnHelper').factory('mnHelper',
 
     mnHelper.setupLongPolling = function (config) {
       var cycleId;
-      (function cycle() {
+      function cycle() {
         $q.all([
           config.methodToCall(),
           mnTasksDetails.get()
@@ -35,11 +35,19 @@ angular.module('mnHelper').factory('mnHelper',
           cycleId = $timeout(cycle, recommendedRefreshPeriod || 20000);
           return rv;
         }).then(config.onUpdate);
-      })();
+      }
+      cycle();
 
       config.scope.$on('$destroy', function () {
         $timeout.cancel(cycleId);
       });
+
+      return {
+        reload: function () {
+          $timeout.cancel(cycleId);
+          cycle();
+        }
+      };
     };
 
     mnHelper.initializeDetailsHashObserver = function ($scope, hashKey) {

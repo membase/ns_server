@@ -6,7 +6,7 @@ angular.module('mnBuckets').controller('mnBucketsController',
     applyBuckets(buckets);
 
     $scope.addBucket = function () {
-      mnBucketsService.getBuckets().then(function (buckets) {
+      mnBucketsService.getBucketsState().then(function (buckets) {
         applyBuckets(buckets);
 
         !buckets.creationWarnings.length && $modal.open({
@@ -22,7 +22,7 @@ angular.module('mnBuckets').controller('mnBucketsController',
     };
 
     mnHelper.setupLongPolling({
-      methodToCall: mnBucketsService.getBuckets,
+      methodToCall: mnBucketsService.getBucketsState,
       scope: $scope,
       onUpdate: applyBuckets
     });

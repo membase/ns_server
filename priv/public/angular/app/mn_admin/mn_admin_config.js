@@ -20,7 +20,22 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
           return mnServersService.getNodes();
         },
         buckets: function (mnBucketsService) {
-          return mnBucketsService.getBuckets();
+          return mnBucketsService.getBucketsByType();
+        }
+      }
+    })
+    .state('app.admin.views', {
+      url: '/views/:type?viewsBucket',
+      params: {
+        type: {
+          value: 'development'
+        }
+      },
+      templateUrl: 'mn_admin/mn_views/mn_views.html',
+      controller: 'mnViewsController',
+      resolve: {
+        views: function (mnViewsService, $stateParams) {
+          return mnViewsService.getViewsState($stateParams);
         }
       }
     })
@@ -32,7 +47,7 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
           templateUrl: 'mn_admin/mn_buckets/mn_buckets.html',
           resolve: {
             buckets: function (mnBucketsService) {
-              return mnBucketsService.getBuckets();
+              return mnBucketsService.getBucketsState();
             }
           }
         },

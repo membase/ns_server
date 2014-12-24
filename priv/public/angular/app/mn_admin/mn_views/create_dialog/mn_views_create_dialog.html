@@ -1,0 +1,25 @@
+<div class="view_document_dialog" id="copy_view_dialog" title="Copy View" style="width:30em">
+  <h1>Create Development View</h1>
+  <form ng-submit="onSubmit(ddocForm)" name="ddocForm" mn-spinner="viewLoading">
+    <span class="warning pat_10" ng-show="error">{{error}}</span>
+    <span class="warning pat_10" ng-show="
+      (ddocForm.designdoc_name.$dirty && ddocForm.designdoc_name.$error.required) ||
+      (ddocForm.view_name.$dirty && ddocForm.view_name.$error.required)">
+      Design Document and View names cannot be empty
+    </span>
+    <div class="clearfix" style="padding-top:15px">
+       <label class="bolder">Design Document Name:</label>
+       <div style="width:20em; margin: 8px 0; padding: 0 5px; border: 1px solid #CCD3D7;background-color:white;font-size:13px;line-height:normal;">
+       <table style="margin:0;padding:0;border:0;width:260px;">
+         <tr><td><label for="copy_view_ddoc_name" style="line-height:inherit;">_design/dev_</label></td>
+         <td style="width:2000px;"><input id="copy_view_ddoc_name" name="designdoc_name" style="width:100%;border:0;padding:0;font-family:inherit;color:inherit;" ng-model="ddoc.name" ng-disabled="doesDdocExist" required/></td></tr>
+       </table></div>
+       <label class="bolder">View Name:</label>
+       <input name="view_name" class="view_name" ng-model="ddoc.view" required />
+    </div>
+    <div class="save_cancel">
+      <button class="save_button float_right" type="submit">Save</button>
+      <a class="close" ng-click="$dismiss()">Cancel</a>
+    </div>
+  </form>
+</div>

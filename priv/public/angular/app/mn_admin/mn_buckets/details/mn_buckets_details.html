@@ -26,10 +26,10 @@
       </div>
       <div class="last when-roadmin-hide-me">
         <a class="inner_btn casper_buckets_edit_bucket_popup" ng-click="editBucket(bucketDetails)" >Edit</a>
-        <button ng-show="!bucketDetails.showCancel && !bucketDetails.noCompaction" class="inner_btn compact_btn" ng-class="{dynamic_disabled: bucketDetails.disableCompact}" ng-click="!bucketDetails.disableCompact && registerCompactionAsTriggeredAndPost(bucketDetails.controllers.compactAll)">
+        <button ng-show="!bucketDetails.showCancel && !bucketDetails.noCompaction" class="inner_btn compact_btn" ng-class="{dynamic_disabled: bucketDetails.disableCompact}" ng-click="!bucketDetails.disableCompact && registerCompactionAsTriggeredAndPost(bucketDetails.controllers.compactAll, 'disableCompact')">
           <span>Compact</span>
         </button>
-        <button  ng-show="bucketDetails.showCancel" class="inner_btn cancel_compact_btn " ng-class="{dynamic_disabled: bucketDetails.disableCancel}" ng-click="!bucketDetails.disableCancel && registerCompactionAsTriggeredAndPost(bucketDetails.thisBucketCompactionTask.cancelURI)"><span>Cancel</span></button>
+        <button  ng-show="bucketDetails.showCancel" class="inner_btn cancel_compact_btn " ng-class="{dynamic_disabled: bucketDetails.disableCancel}" ng-click="!bucketDetails.disableCancel && registerCompactionAsTriggeredAndPost(bucketDetails.thisBucketCompactionTask.cancelURI, 'disableCancel')"><span>Cancel</span></button>
         <button class="inner_btn " ng-click="deleteBucket(bucketDetails)"><span>Delete</span></button>
         <button ng-show="bucketDetails.flushEnabled" class="inner_btn " ng-click="flushBucket(bucketDetails)" ><span>Flush</span></button>
       </div>

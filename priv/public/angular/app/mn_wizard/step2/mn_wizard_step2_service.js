@@ -2,10 +2,10 @@ angular.module('mnWizardStep2Service').factory('mnWizardStep2Service',
   function (mnHttp) {
     var mnWizardStep2Service = {};
     var sampleBucketsRAMQuota = 0;
-    var selected = {};
+    var selectedSamples = {};
 
     mnWizardStep2Service.setSelected = function (selected) {
-      selected = selected;
+      selectedSamples = selected;
       sampleBucketsRAMQuota = _.reduce(selected, function (memo, num) {
         return memo + Number(num);
       }, 0);
@@ -16,8 +16,8 @@ angular.module('mnWizardStep2Service').factory('mnWizardStep2Service',
     };
 
     mnWizardStep2Service.isSomeBucketSelected = function () {
-      return !_.isEmpty(selected);
-    }
+      return sampleBucketsRAMQuota !== 0;
+    };
 
     mnWizardStep2Service.getSampleBuckets = function () {
       return mnHttp({
@@ -31,7 +31,7 @@ angular.module('mnWizardStep2Service').factory('mnWizardStep2Service',
         url: '/sampleBuckets/install',
         method: 'POST',
         timeout: 140000,
-        data: JSON.stringify(_.keys(selected))
+        data: JSON.stringify(_.keys(selectedSamples))
       });
     };
 

@@ -1,6 +1,6 @@
 angular.module('mnBuckets').controller('mnBucketsDetailsController',
   function ($scope, mnBucketsDetailsService, mnCompaction, mnHelper, $modal, mnBytesToMBFilter, mnBucketsDetailsDialogService) {
-    function getBucketsDetaisl() {
+    function getBucketsDetails() {
       mnBucketsDetailsService.getDetails($scope.bucket).then(function (details) {
         $scope.bucketDetails = details;
       });
@@ -39,8 +39,9 @@ angular.module('mnBuckets').controller('mnBucketsDetailsController',
       });
     };
 
-    $scope.registerCompactionAsTriggeredAndPost = function (url) {
-      mnCompaction.registerAsTriggeredAndPost(url).then(getBucketsDetaisl);
+    $scope.registerCompactionAsTriggeredAndPost = function (url, disableButtonKey) {
+      $scope.bucketDetails[disableButtonKey] = true;
+      mnCompaction.registerAsTriggeredAndPost(url).then(getBucketsDetails);
     };
-    $scope.$watch('bucket', getBucketsDetaisl);
+    $scope.$watch('bucket', getBucketsDetails);
   });

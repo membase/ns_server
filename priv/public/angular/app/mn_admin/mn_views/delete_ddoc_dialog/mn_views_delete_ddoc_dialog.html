@@ -1,0 +1,12 @@
+<div class="view_document_dialog" id="delete_designdoc_confirmation_dialog" style="width:711px">
+  <h1>Delete Design Document "{{currentDdocName}}"</h1>
+  <form ng-submit="doDelete()">
+    <p class="pat_20 pas_20">
+      The views contained in this Design Document will no longer be accessible. Are you sure you want to remove this Design Document?
+    </p>
+    <div class="save_cancel">
+      <button class="save_button float_right" type="submit">Delete</button>
+      <a class="close" ng-click="$dismiss()">Cancel</a>
+    </div>
+  </form>
+</div>

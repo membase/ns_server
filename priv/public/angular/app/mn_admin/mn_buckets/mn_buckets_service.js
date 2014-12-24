@@ -4,21 +4,15 @@ angular.module('mnBucketsService').factory('mnBucketsService',
 
     mnBucketsService.model = {};
 
-    mnBucketsService.getBuckets = function () {
+    mnBucketsService.getBucketsState = function () {
       return $q.all([
         mnPoolDefault.getFresh(),
-        mnHttp.get('/pools/default/buckets?basic_stats=true')
+        mnBucketsService.getBucketsByType()
       ]).then(function (resp) {
         var poolsDefault = resp[0];
-        var bucketsDetails = resp[1].data;
-        bucketsDetails.byType = {membase: [], memcached: []};
-        bucketsDetails.byType.membase.isMembase = true;
-        bucketsDetails.byType.memcached.isMemcached = true;
+        var bucketsDetails = resp[1];
 
         _.each(bucketsDetails, function (bucket) {
-          bucketsDetails.byType[bucket.bucketType].push(bucket);
-          bucket.isMembase = bucket.bucketType === 'membase';
-
           if (bucket.isMembase) {
             bucket.truncatedDiskFetches = mnTruncateTo3DigitsFilter(bucket.basicStats.diskFetches);
           } else {
@@ -64,6 +58,22 @@ angular.module('mnBucketsService').factory('mnBucketsService',
 
         bucketsDetails.creationWarnings = warnings;
 
+        return bucketsDetails;
+      })
+    };
+
+    mnBucketsService.getBucketsByType = function () {
+      return mnHttp.get('/pools/default/buckets?basic_stats=true').then(function (resp) {
+        var bucketsDetails = resp.data
+        bucketsDetails.byType = {membase: [], memcached: []};
+        bucketsDetails.byType.membase.isMembase = true;
+        bucketsDetails.byType.memcached.isMemcached = true;
+        _.each(bucketsDetails, function (bucket) {
+          bucketsDetails.byType[bucket.bucketType].push(bucket);
+          bucket.isMembase = bucket.bucketType === 'membase';
+        });
+        bucketsDetails.byType.membase.names = _.pluck(bucketsDetails.byType.membase, 'name');;
+        bucketsDetails.byType.membase.defaultName = _.contains(bucketsDetails.byType.membase.names, 'default') ? 'default' : bucketsDetails.byType.membase.names[0] || '';
         return bucketsDetails;
       });
     };
