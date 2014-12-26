@@ -4,10 +4,12 @@ import os, sys, getopt, urllib2, urllib, json
 from urllib2 import HTTPError
 
 valid_bucket_types = ["membase", "memcached"]
+valid_service_types = {"kv", "n1ql", "index"}
 
 def usage():
     print "usage: \n\
             -n <number of nodes>\n\
+            -T <services to run> (kv, n1ql, index) default: kv\n\
             -s <memory size (min 256) default: 256\n\
             -t <bucket type> (membase, memcached) default: membase\n\
             -r <num replicas> (max 3) default: 1 (Only for membase buckets!)\n\
@@ -25,7 +27,7 @@ class PasswordManager(urllib2.HTTPPasswordMgr):
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:iS:")
+        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:iS:T:")
     except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -36,6 +38,7 @@ def main():
     replicas = 1
     replica_index = True
     start_index = 0
+    services = {"kv"}
 
     data_base_path = os.getcwd() + "/data"
     for o, a in opts:
@@ -51,11 +54,14 @@ def main():
             replica_index = False
         elif o == "-S":
             start_index = int(a)
+        elif o == "-T":
+            services = set(a.replace(' ','').split(','))
         else:
             usage()
             sys.exit()
     if nodes == 0 or buckettype not in valid_bucket_types or \
-            int(memsize) < 256 or int(replicas) > 3:
+            int(memsize) < 256 or int(replicas) > 3 or \
+            not services.issubset(valid_service_types):
         usage()
         sys.exit()
 
@@ -64,9 +70,10 @@ def main():
     o = urllib2.build_opener(handler)
 
     print "Connecting {0} nodes, bucket type {1}, mem size {2} " \
-        "with {3} replica copies, start index {4}, " \
+        "with {3} replica copies, start index {4}, service {5} " \
         "password asdasd\n".format(nodes, buckettype,
-                                   memsize, replicas, start_index)
+                                   memsize, replicas, start_index,
+                                   "+".join(services))
 
     base_port = 9000 + start_index
 
@@ -87,9 +94,10 @@ def main():
         port = base_port + i
         print "Connecting node {0}".format(i)
         o.open("http://127.0.0.1:{0}/node/controller/doJoinCluster".format(port),
-               "user=Administrator&password=asdasd&" \
-                   "clusterMemberHostIp=127.0.0.1" \
-                   "&clusterMemberPort={0}".format(base_port)).read()
+               "user=Administrator&password=asdasd&" +
+                   "clusterMemberHostIp=127.0.0.1" +
+                   "&clusterMemberPort={0}".format(base_port) +
+                   "&services={0}".format(",".join(services))).read()
 
     print "Getting node list"
     info = json.loads(o.open("http://127.0.0.1:{0}/nodeStatuses".format(base_port)).read())
