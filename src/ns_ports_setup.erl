@@ -331,6 +331,8 @@ index_node_spec(Config) ->
             StInitPort = ns_config:search(Config, {node, node(), indexer_stinit_port}, 9102),
             StCatchupPort = ns_config:search(Config, {node, node(), indexer_stcatchup_port}, 9103),
             StMaintPort = ns_config:search(Config, {node, node(), indexer_stmaint_port}, 9104),
+            {ok, IdxDir} = ns_storage_conf:this_node_ixdir(),
+            IdxDir2 = filename:join(IdxDir, "@2i"),
 
             Spec = {'indexer', IndexerCmd,
                     [
@@ -341,7 +343,8 @@ index_node_spec(Config) ->
                          "-scanPort=" ++ integer_to_list(ScanPort),
                          "-streamInitPort=" ++ integer_to_list(StInitPort),
                          "-streamCatchupPort=" ++ integer_to_list(StCatchupPort),
-                         "-streamMaintPort=" ++ integer_to_list(StMaintPort)
+                         "-streamMaintPort=" ++ integer_to_list(StMaintPort),
+                         "-storageDir=" ++ IdxDir2
                      ],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?INDEXER_LOG_FILENAME},
