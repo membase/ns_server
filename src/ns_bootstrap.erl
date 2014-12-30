@@ -26,6 +26,8 @@ start() ->
         ok = application:start(crypto),
         ok = ssl:start(permanent),
         ok = application:start(lhttpc),
+        %% inets is needed for httpc which we still use occasionally
+        ok = inets:start(),
 
         %% sasl is required to start os_mon; later we just disable default
         %% sasl report handler in cb_init_loggers
