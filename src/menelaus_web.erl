@@ -502,6 +502,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_cbauth:handle_cbauth_post/1};
                          ["_metakv"] ->
                              {auth, fun menelaus_metakv:handle_post/1};
+                         ["_log"] ->
+                             {auth, fun handle_log_post/1};
                          ["logClientError"] -> {auth,
                                                 fun (R) ->
                                                         User = menelaus_auth:extract_auth_user(R),
@@ -3578,3 +3580,43 @@ handle_ldap_auth_settings_post(Req) ->
              {roAdmins, RoAdmins}],
     menelaus_auth:set_ldap_auth_settings(EJSON),
     reply_json(Req, []).
+
+handle_log_post(Req) ->
+    Params = Req:parse_post(),
+    Msg = proplists:get_value("message", Params),
+    LogLevel = proplists:get_value("logLevel", Params),
+    Component = proplists:get_value("component", Params),
+
+    Errors =
+        lists:flatten([case Msg of
+                           undefined ->
+                               {<<"message">>, <<"missing value">>};
+                           _ ->
+                               []
+                       end,
+                       case LogLevel of
+                           "info" ->
+                               [];
+                           "warn" ->
+                               [];
+                           "error" ->
+                               [];
+                           _ ->
+                               {<<"logLevel">>, <<"invalid or missing value">>}
+                       end,
+                       case Component of
+                           undefined ->
+                               {<<"component">>, <<"missing value">>};
+                           _ ->
+                               []
+                       end]),
+
+    case Errors of
+        [] ->
+            Fun = list_to_existing_atom([$x | LogLevel]),
+            ale:Fun(?USER_LOGGER,
+                    {list_to_atom(Component), unknown, -1}, undefined, Msg, []),
+            reply_json(Req, []);
+        _ ->
+            reply_json(Req, {struct, Errors}, 400)
+    end.
