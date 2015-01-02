@@ -104,14 +104,9 @@ init_logging() ->
 
 do_init_logging() ->
     {ok, Dir} = application:get_env(ns_server, error_logger_mf_dir),
-    DiskSinkOpts = misc:get_env_default(ns_server, disk_sink_opts, []),
-
     ok = convert_disk_log_files(Dir),
 
-    LogPath = filename:join(Dir, ?BABYSITTER_LOG_FILENAME),
-
-    ok = ale:start_sink(babysitter_sink,
-                        ale_disk_sink, [LogPath, DiskSinkOpts]),
+    ok = ns_server:start_disk_sink(babysitter_sink, ?BABYSITTER_LOG_FILENAME),
 
     ok = ale:start_logger(?NS_SERVER_LOGGER, debug),
     ok = ale:set_loglevel(?ERROR_LOGGER, debug),
