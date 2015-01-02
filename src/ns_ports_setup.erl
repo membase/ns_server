@@ -258,7 +258,8 @@ query_node_spec(Config) ->
             HttpArg = "--http=:" ++ integer_to_list(ns_config:search(Config, {node, node(), query_port}, 8093)),
             Spec = {'query', Command,
                     [DataStoreArg, HttpArg, CnfgStoreArg],
-                    [use_stdio, exit_status, port_server_send_eol, stderr_to_stdout, stream]},
+                    [use_stdio, exit_status, port_server_send_eol, stderr_to_stdout, stream,
+                     {log, ?QUERY_LOG_FILENAME}]},
 
             [Spec]
     end.
@@ -295,6 +296,7 @@ kv_node_projector_spec(Config) ->
             Spec = {'projector', ProjectorCmd,
                     [ProjLogArg, KvListArg, AdminPortArg, ClusterArg],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
+                     {log, ?PROJECTOR_LOG_FILENAME},
                      {env, build_cbauth_env_vars(Config, undefined)}]},
             [Spec]
     end.
@@ -318,6 +320,7 @@ goxdcr_spec(Config) ->
             [{'goxdcr', Cmd,
               [AdminPort, XdcrRestPort, GometaRequestPort, IsEnterprise],
               [use_stdio, exit_status, stderr_to_stdout, stream,
+               {log, ?GOXDCR_LOG_FILENAME},
                {env, build_cbauth_env_vars(Config, undefined)}]}]
     end.
 
@@ -351,6 +354,7 @@ index_node_spec(Config) ->
                          "-streamMaintPort=" ++ integer_to_list(StMaintPort)
                      ],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
+                     {log, ?INDEXER_LOG_FILENAME},
                      {env, build_cbauth_env_vars(Config, undefined)}]},
             [Spec]
     end.
