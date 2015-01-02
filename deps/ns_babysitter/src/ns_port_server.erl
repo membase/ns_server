@@ -51,6 +51,7 @@
 -record(state, {port :: port() | {inactive, tuple()},
                 name :: term(),
                 messages,
+                logger :: atom(),
                 log_tref :: timer:tref(),
                 log_buffer = [],
                 dropped=0 :: non_neg_integer(),
@@ -65,16 +66,36 @@ start_link(Fun) ->
 init(Fun) ->
     {Name, _Cmd, _Args, Opts} = Params = Fun(),
     process_flag(trap_exit, true), % Make sure terminate gets called
-    Opts2 = proplists:delete(port_server_send_eol, proplists:delete(port_server_dont_start, Opts)),
+    Opts2 = lists:foldl(fun proplists:delete/2, Opts,
+                        [port_server_send_eol, port_server_dont_start, log]),
     SendEOL = proplists:get_value(port_server_send_eol, Opts),
     DontStart = proplists:get_bool(port_server_dont_start, Opts),
+    Log = proplists:get_value(log, Opts),
     Params2 = erlang:setelement(4, Params, Opts2),
+
+    State =
+        case Log of
+            undefined ->
+                #state{};
+            _ when is_list(Log) ->
+                Sink = Logger = Name,
+
+                ok = ns_server:start_disk_sink(Sink, Log),
+
+                ale:stop_logger(Logger),
+                ok = ale:start_logger(Logger, debug, ale_noop_formatter),
+
+                ok = ale:add_sink(Logger, Sink, debug),
+
+                #state{logger=Name}
+        end,
+
     Port = case DontStart of
                false -> open_port(Params2);
                true -> {inactive, Params2}
            end,
-    {ok, #state{port = Port, name = Name, send_eol = SendEOL,
-                messages = ringbuffer:new(?NUM_MESSAGES)}}.
+    {ok, State#state{port = Port, name = Name, send_eol = SendEOL,
+                     messages = ringbuffer:new(?NUM_MESSAGES)}}.
 
 handle_info({send_to_port, Msg}, #state{port = P} = State) when not is_port(P) ->
     ?log_debug("Got send_to_port when there's no port running yet. Will kill myself."),
@@ -83,23 +104,30 @@ handle_info({send_to_port, Msg}, State) ->
     ?log_debug("Sending the following to port: ~p", [Msg]),
     port_command(State#state.port, Msg),
     {noreply, State};
-handle_info({_Port, {data, {_, Msg}}}, State) ->
+handle_info({_Port, {data, {_, Msg}}}, #state{logger = Logger} = State) ->
     %% Store the last messages in case of a crash
     Messages = ringbuffer:add(Msg, State#state.messages),
-    {Buf, Dropped} = case {State#state.log_buffer, State#state.dropped} of
-                         {B, D} when length(B) < ?MAX_MESSAGES ->
-                             {[Msg|B], D};
-                         {B, D} ->
-                             {B, D + 1}
-                     end,
-    TRef = case State#state.log_tref of
-               undefined ->
-                   timer2:send_after(?INTERVAL, log);
-               T ->
-                   T
-           end,
-    {noreply, State#state{messages=Messages, log_buffer=Buf, log_tref=TRef,
-                          dropped=Dropped}};
+    State1 = State#state{messages=Messages},
+
+    case Logger of
+        undefined ->
+            {Buf, Dropped} = case {State#state.log_buffer, State#state.dropped} of
+                                 {B, D} when length(B) < ?MAX_MESSAGES ->
+                                     {[Msg|B], D};
+                                 {B, D} ->
+                                     {B, D + 1}
+                             end,
+            TRef = case State#state.log_tref of
+                       undefined ->
+                           timer2:send_after(?INTERVAL, log);
+                       T ->
+                           T
+                   end,
+            {noreply, State1#state{log_buffer=Buf, log_tref=TRef, dropped=Dropped}};
+        _ ->
+            ale:debug(Logger, [Msg, $\n]),
+            {noreply, State1}
+    end;
 handle_info(log, State) ->
     State1 = log(State),
     {noreply, State1};
@@ -172,8 +200,7 @@ format_lines(Name, Lines) ->
     Prefix = io_lib:format("~p~p: ", [Name, self()]),
     [[Prefix, Line, $\n] || Line <- Lines].
 
-
-log(State) ->
+log(#state{logger = undefined} = State) ->
     case State#state.log_buffer of
         [] ->
             ok;
@@ -187,7 +214,9 @@ log(State) ->
                                  [Dropped, State#state.name])
             end
     end,
-    State#state{log_tref=undefined, log_buffer=[], dropped=0}.
+    State#state{log_tref=undefined, log_buffer=[], dropped=0};
+log(_) ->
+    ok.
 
 
 open_port({_Name, Cmd, Args, OptsIn}) ->
