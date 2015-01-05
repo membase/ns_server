@@ -30,7 +30,7 @@ angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
       return mnHttp({
         data: data,
         method: 'POST',
-        url: data.url
+        url: data.uri
       });
     };
 
