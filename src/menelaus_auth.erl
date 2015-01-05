@@ -199,6 +199,7 @@ apply_auth_any_bucket(Req, F, Args) ->
                 {true, NewReq} ->
                     apply(F, Args ++ [NewReq]);
                 _ ->
+                    %% this is needed to cover the case when there's no buckets
                     apply_ro_auth(Req, F, Args)
             end
     end.
@@ -206,17 +207,22 @@ apply_auth_any_bucket(Req, F, Args) ->
 %% Checks if given credentials allow access to any SASL-auth
 %% bucket.
 check_auth_any_bucket(Req, UserPassword) ->
-    Buckets = ns_bucket:get_buckets(),
-    case lists:any(bucket_auth_fun(UserPassword, true),
-                   Buckets) of
-        true ->
-            User = case UserPassword of
-                       {UserX, _} -> UserX;
-                       undefined -> anonymous
-                   end,
-            {true, store_user_info(Req, User, bucket, undefined)};
+    case check_read_only_auth(Req, UserPassword) of
+        {true, _NewReq} = RV ->
+            RV;
         false ->
-            false
+            Buckets = ns_bucket:get_buckets(),
+            case lists:any(bucket_auth_fun(UserPassword, true),
+                           Buckets) of
+                true ->
+                    {User, Role} = case UserPassword of
+                                       {UserX, _} -> {UserX, bucket};
+                                       undefined -> {anonymous, anonymous}
+                                   end,
+                    {true, store_user_info(Req, User, Role, undefined)};
+                false ->
+                    false
+            end
     end.
 
 check_auth(Auth) ->
