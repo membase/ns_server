@@ -16,28 +16,31 @@
 
 -module(menelaus_cbauth).
 
--export([handle_cbauth_post/1]).
+-export([handle_cbauth_post/1, handle_service_auth/3]).
 
 -include("ns_common.hrl").
 
 handle_cbauth_post(Req) ->
-    Params = Req:parse_post(),
-    Method = proplists:get_value("method", Params),
-    ?log_debug("method: ~s", [Method]),
-    case Method of
-        "auth" ->
-            handle_auth_post(Req, Params);
-        "getMcdAuth" ->
-            handle_service_auth(Req, Params, true);
-        "getHTTPAuth" ->
-            handle_service_auth(Req, Params, false)
-    end.
+    Role = Req:get_header_value("menelaus_auth-role"),
+    User = Req:get_header_value("menelaus_auth-user"),
+    BucketsList =
+        case Role of
+            "anonymous" ->
+                menelaus_web_buckets:all_accessible_bucket_names(default, Req);
+            "bucket" ->
+                [User];
+            _ ->
+                []
+        end,
+    Buckets = case BucketsList of
+                  [] ->
+                      [];
+                  _ ->
+                      [{buckets, [erlang:list_to_binary(B) || B <- BucketsList]}]
+              end,
 
-handle_auth_post(Req, Params) ->
-    [User, Password, Bucket] = [proplists:get_value(K, Params) || K <- ["user", "pwd", "bucket"]],
-    ?log_debug("auth args: ~p", [[User, Password, Bucket]]),
-    {Allowed, Admin} = menelaus_auth:check_creds(User, Password, Bucket),
-    menelaus_util:reply_json(Req, {[{isAdmin, Admin}, {allowed, Allowed}]}).
+    menelaus_util:reply_json(Req, {[{role, erlang:list_to_binary(Role)},
+                                    {user, erlang:list_to_binary(User)}] ++ Buckets}).
 
 find_hostport_node(Hostport, Config) ->
     [Host, PortS] = string:tokens(Hostport, ":"),
@@ -67,8 +70,7 @@ find_hostport_node_loop([{N, SVCs} | Rest], Port) ->
             find_hostport_node_loop(Rest, Port)
     end.
 
-handle_service_auth(Req, Params, IsMcd) ->
-    Hostport = proplists:get_value("hostport", Params),
+handle_service_auth(Hostport, IsMcd, Req) ->
     Config = ns_config:get(),
     N = find_hostport_node(Hostport, Config),
     case N of
