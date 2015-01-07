@@ -82,6 +82,13 @@ module Methods
     $base_url = old_base
   end
 
+  def switching_username(username)
+    old, $username = $username, username
+    yield
+  ensure
+    $username = old
+  end
+
   def setup_node!(hostname, no_default_bucket = $opts.no_default_bucket)
     switching_node(hostname) do
       # wait_rebalancing
