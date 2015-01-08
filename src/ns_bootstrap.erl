@@ -48,6 +48,7 @@ stop() ->
     error_logger:info_msg("Initiated server shutdown"),
     RV = try
              ok = application:stop(ns_server),
+             ?log_info("Successfully stopped ns_server"),
              ale:sync_all_sinks(),
              %% TODO: somehow shutdown of ale may take up to about 5
              %% seconds. So we're just doing sync above and exit
