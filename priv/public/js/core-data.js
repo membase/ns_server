@@ -404,6 +404,8 @@ var DAL = {
     allNodes = [];
 
     var isEnterprise = v.need(DAL.cells.isEnterpriseCell);
+    var compatVersion = v(DAL.cells.compatVersion);
+    var compat30 = encodeCompatVersion(3, 0);
     var poolDetails = v.need(DAL.cells.currentPoolDetailsCell);
     var hostnameToGroup = {};
     var detailsAreStale = v.need(IOCenter.staleness);
@@ -493,6 +495,7 @@ var DAL = {
       n.ejectPossible = !detailsAreStale && !n.pendingEject;
       n.failoverPossible = !detailsAreStale && (n.clusterMembership !== 'inactiveFailed');
       n.reAddPossible = !detailsAreStale && (n.clusterMembership === 'inactiveFailed' && n.status !== 'unhealthy');
+      n.deltaRecoveryPossible = !detailsAreStale && compatVersion && (compatVersion >= compat30) && (n.services.indexOf("kv") >= 0);
 
       var nodeClass = '';
       if (n.clusterMembership === 'inactiveFailed') {

@@ -269,7 +269,9 @@
               <tr class="add_back_row when-roadmin-avoid-me">
                 <td colspan="10">{%= V.setData('server', s) %}
                   <span class="add_back_btn" data-recovery-type="full"><span>Full Recovery</span></span>
-                  <span class="add_back_btn only-when-30" data-recovery-type="delta"><span>Delta Recovery</span></span>
+                  <!-- {% if (s.deltaRecoveryPossible) { %} -->
+                  <span class="add_back_btn" data-recovery-type="delta"><span>Delta Recovery</span></span>
+                  <!-- {% } %} -->
                   <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
                 </td>
               </tr>
