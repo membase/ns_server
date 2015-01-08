@@ -675,7 +675,11 @@ var ServersSection = {
 
       var backfill = node.replication < 1;
       var down = node.status != 'healthy';
-      visibleWarning = dialog.find(['.warning', down ? 'down' : 'up', backfill ? 'backfill' : 'no_backfill'].join('_')).show();
+      var subsectionType = ['.warning', down ? 'down' : 'up', backfill ? 'backfill' : 'no_backfill'].join('_');
+      if (node.dataless) {
+        subsectionType = '.warning_dataless';
+      }
+      visibleWarning = dialog.find(subsectionType).show();
       dialog.find('.backfill_percent').text(truncateTo3Digits(node.replication * 100));
       var confirmation = visibleWarning.find('[name=confirmation]');
 
