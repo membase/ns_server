@@ -1028,16 +1028,32 @@ do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I, N) ->
     run_mover(BucketName, BucketConfig, proplists:get_value(servers, BucketConfig),
               I, N, Map, Map1).
 
-check_graceful_failover_possible(_Node, []) ->
-    true;
-check_graceful_failover_possible(Node, [{_BucketName, BucketConfig} | RestBucketConfigs]) ->
+check_graceful_failover_possible(Node, BucketsAll) ->
+    case check_graceful_failover_possible_rec(Node, BucketsAll) of
+        false -> false;
+        [] -> false;
+        [_|_] -> true
+    end.
+
+check_graceful_failover_possible_rec(_Node, []) ->
+    [];
+check_graceful_failover_possible_rec(Node, [{BucketName, BucketConfig} | RestBucketConfigs]) ->
     Map = proplists:get_value(map, BucketConfig, []),
-    Map1 = mb_map:promote_replicas_for_graceful_failover(Map, Node),
-    case lists:any(fun (Chain) -> hd(Chain) =:= Node end, Map1) of
+    Servers = proplists:get_value(servers, BucketConfig, []),
+    case lists:member(Node, Servers) of
         true ->
-            false;
+            Map1 = mb_map:promote_replicas_for_graceful_failover(Map, Node),
+            case lists:any(fun (Chain) -> hd(Chain) =:= Node end, Map1) of
+                true ->
+                    false;
+                false ->
+                    case check_graceful_failover_possible_rec(Node, RestBucketConfigs) of
+                        false -> false;
+                        RecRV -> [BucketName | RecRV]
+                    end
+            end;
         false ->
-            check_graceful_failover_possible(Node, RestBucketConfigs)
+            check_graceful_failover_possible_rec(Node, RestBucketConfigs)
     end.
 
 check_failover_possible(Node) ->
