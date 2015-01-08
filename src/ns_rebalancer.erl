@@ -329,7 +329,8 @@ start_link_rebalance(KeepNodes, EjectNodes,
     proc_lib:start_link(
       erlang, apply,
       [fun () ->
-               case ns_cluster_membership:filter_out_non_kv_nodes(KeepNodes) =:= [] of
+               KVKeep = ns_cluster_membership:filter_out_non_kv_nodes(KeepNodes),
+               case KVKeep =:= [] of
                    true ->
                        proc_lib:init_ack({error, no_kv_nodes_left}),
                        exit(normal);
@@ -339,7 +340,7 @@ start_link_rebalance(KeepNodes, EjectNodes,
 
                BucketConfigs = ns_bucket:get_buckets(),
                DeltaRecoveryBucketTuples =
-                   build_delta_recovery_buckets(KeepNodes, DeltaNodes, BucketConfigs, DeltaRecoveryBucketNames),
+                   build_delta_recovery_buckets(KVKeep, DeltaNodes, BucketConfigs, DeltaRecoveryBucketNames),
 
                NotOk = BucketConfigs =/= [] andalso DeltaNodes =/= [] andalso DeltaRecoveryBucketTuples =:= [],
 
