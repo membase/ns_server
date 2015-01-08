@@ -2858,6 +2858,7 @@ handle_node_statuses(Req) ->
                                         {gracefulFailoverPossible,
                                          ns_rebalancer:check_graceful_failover_possible(N, BucketsAll)},
                                         {otpNode, N},
+                                        {dataless, not lists:member(kv, ns_cluster_membership:node_services(Config, N))},
                                         {replication, average_failover_safenesses(N, FreshStatuses, BucketsAll)}]}
                       end,
                   {Hostname, V}
