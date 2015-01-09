@@ -344,10 +344,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                                                              [{"Cache-Control", "max-age=30000000"}])};
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
                          ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
-                         ["_cbauth", Hostport, "mcd"] ->
-                             {auth, fun menelaus_cbauth:handle_service_auth/3, [Hostport, true]};
-                         ["_cbauth", Hostport, "http"] ->
-                             {auth, fun menelaus_cbauth:handle_service_auth/3, [Hostport, false]};
                          _ ->
                              {done, menelaus_util:serve_file(Req, Path, AppRoot,
                                                              [{"Cache-Control", "max-age=10"}])}
