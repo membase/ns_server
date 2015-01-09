@@ -43,9 +43,9 @@
          get_role/1,
          validate_request/1]).
 
--export([build_ldap_auth_settings/0,
-         set_ldap_auth_settings/1,
-         check_ldap_auth/2]).
+-export([build_saslauthd_auth_settings/0,
+         set_saslauthd_auth_settings/1,
+         check_saslauthd_auth/2]).
 
 %% External API
 
@@ -397,8 +397,8 @@ is_under_admin(Req) ->
 may_expose_bucket_auth(Req) ->
     not is_read_only_auth(extract_auth(Req)).
 
-build_ldap_auth_settings() ->
-    case ns_config:search(ldap_auth_settings) of
+build_saslauthd_auth_settings() ->
+    case ns_config:search(saslauthd_auth_settings) of
         {value, Settings} ->
             Settings;
         false ->
@@ -407,11 +407,11 @@ build_ldap_auth_settings() ->
              {roAdmins, []}]
     end.
 
-set_ldap_auth_settings(Settings) ->
-    ns_config:set(ldap_auth_settings, Settings).
+set_saslauthd_auth_settings(Settings) ->
+    ns_config:set(saslauthd_auth_settings, Settings).
 
-check_ldap_auth(User, Password) ->
-    LDAPCfg = build_ldap_auth_settings(),
+check_saslauthd_auth(User, Password) ->
+    LDAPCfg = build_saslauthd_auth_settings(),
     Enabled = ({enabled, true} =:= lists:keyfind(enabled, 1, LDAPCfg)),
     case Enabled of
         false ->
@@ -420,8 +420,8 @@ check_ldap_auth(User, Password) ->
             {_, Admins} = lists:keyfind(admins, 1, LDAPCfg),
             {_, RoAdmins} = lists:keyfind(roAdmins, 1, LDAPCfg),
             UserB = list_to_binary(User),
-            IsAdmin = lists:member(UserB, Admins),
-            IsRoAdmin = lists:member(UserB, RoAdmins),
+            IsAdmin = is_list(Admins) andalso lists:member(UserB, Admins),
+            IsRoAdmin = is_list(RoAdmins) andalso lists:member(UserB, RoAdmins),
             Authed = ((catch saslauthd_auth:verify_creds(User, Password)) =:= true),
             case Authed of
                 false ->
@@ -431,6 +431,10 @@ check_ldap_auth(User, Password) ->
                         IsAdmin ->
                             admin;
                         IsRoAdmin ->
+                            ro_admin;
+                        Admins =:= asterisk ->
+                            admin;
+                        RoAdmins =:= asterisk ->
                             ro_admin;
                         true ->
                             false

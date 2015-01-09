@@ -303,8 +303,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth_ro, fun menelaus_web_xdc_replications:handle_global_replication_settings/1};
                          ["settings", "replications", XID] ->
                              {auth_ro, fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]};
-                         ["settings", "ldapAuth"] ->
-                             {auth, fun handle_ldap_auth_settings/1};
+                         ["settings", "saslauthdAuth"] ->
+                             {auth, fun handle_saslauthd_auth_settings/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
                          ["internalSettings", "visual"] ->
@@ -395,8 +395,10 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_xdc_replications:handle_global_replication_settings_post/1};
                          ["settings", "replications", XID] ->
                              {auth, fun menelaus_web_xdc_replications:handle_replication_settings_post/2, [XID]};
-                         ["settings", "ldapAuth"] ->
-                             {auth, fun handle_ldap_auth_settings_post/1};
+                         ["settings", "saslauthdAuth"] ->
+                             {auth, fun handle_saslauthd_auth_settings_post/1};
+                         ["validateCredentials"] ->
+                             {auth, fun handle_validate_saslauthd_creds_post/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings_post/1};
                          ["internalSettings", "visual"] ->
@@ -587,27 +589,35 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
             auth_check_bucket_uuid(Req, F, Args)
     end.
 
+verify_login_creds(User, Password) ->
+    case menelaus_auth:check_auth({User, Password}) of
+        true ->
+            {ok, admin, builtin};
+        _ ->
+            case menelaus_auth:is_read_only_auth({User, Password}) of
+                true ->
+                    {ok, ro_admin, builtin};
+                _ ->
+                    case menelaus_auth:check_saslauthd_auth(User, Password) of
+                        admin ->
+                            {ok, admin, saslauthd};
+                        ro_admin ->
+                            {ok, ro_admin, saslauthd};
+                        false ->
+                            false
+                    end
+            end
+    end.
+
 handle_uilogin(Req) ->
     Params = Req:parse_post(),
     User = proplists:get_value("user", Params),
     Password = proplists:get_value("password", Params),
-    case menelaus_auth:check_auth({User, Password}) of
-        true ->
-            menelaus_auth:complete_uilogin(Req, User, admin);
-        _ ->
-            case menelaus_auth:is_read_only_auth({User, Password}) of
-                true ->
-                    menelaus_auth:complete_uilogin(Req, User, ro_admin);
-                _ ->
-                    case menelaus_auth:check_ldap_auth(User, Password) of
-                        admin ->
-                            menelaus_auth:complete_uilogin(Req, User, admin);
-                        ro_admin ->
-                            menelaus_auth:complete_uilogin(Req, User, ro_admin);
-                        false ->
-                            menelaus_auth:reject_uilogin(Req, User)
-                    end
-            end
+    case verify_login_creds(User, Password) of
+        {ok, Role, _Src} ->
+            menelaus_auth:complete_uilogin(Req, User, Role);
+        false ->
+            menelaus_auth:reject_uilogin(Req, User)
     end.
 
 handle_uilogout(Req) ->
@@ -3573,27 +3583,72 @@ hostname_parsing_test() ->
 
 -endif.
 
-handle_ldap_auth_settings(Req) ->
-    reply_json(Req, {menelaus_auth:build_ldap_auth_settings()}).
+handle_saslauthd_auth_settings(Req) ->
+    reply_json(Req, {menelaus_auth:build_saslauthd_auth_settings()}).
 
+extract_user_list(undefined) ->
+    asterisk;
 extract_user_list(String) ->
     StringNoCR = [C || C <- String, C =/= $\r],
     Strings = string:tokens(StringNoCR, "\n"),
     [B || B <- [list_to_binary(misc:trim(S)) || S <- Strings],
           B =/= <<>>].
 
-%% TODO: add proper validation and ?validate_only support
-%% TODO: consider some kind of CAS/?rev support
-handle_ldap_auth_settings_post(Req) ->
+parse_validate_saslauthd_settings(Params) ->
+    EnabledR = case parse_validate_boolean_field("enabled", enabled, Params) of
+                   [] ->
+                       [{error, enabled, <<"is missing">>}];
+                   EnabledX -> EnabledX
+               end,
+    Admins = extract_user_list(proplists:get_value("admins", Params)),
+    RoAdmins = extract_user_list(proplists:get_value("roAdmins", Params)),
+    MaybeExtraFields = case proplists:get_keys(Params) -- ["enabled", "roAdmins", "admins"] of
+                           [] ->
+                               [];
+                           UnknownKeys ->
+                               Msg = io_lib:format("failed to recognize the following fields ~s", [string:join(UnknownKeys, ", ")]),
+                               [{error, '_', iolist_to_binary(Msg)}]
+                       end,
+    MaybeTwoAsterisks = case Admins =:= asterisk andalso RoAdmins =:= asterisk of
+                            true ->
+                                [{error, 'admins', <<"at least one of admins or roAdmins needs to be given">>}];
+                            false ->
+                                []
+                        end,
+    Everything = EnabledR ++ MaybeExtraFields ++ MaybeTwoAsterisks,
+    case [{Field, Msg} || {error, Field, Msg} <- Everything] of
+        [] ->
+            [{ok, enabled, Enabled}] = EnabledR,
+            {ok, [{enabled, Enabled},
+                  {admins, Admins},
+                  {roAdmins, RoAdmins}]};
+        Errors ->
+            {errors, Errors}
+    end.
+
+handle_saslauthd_auth_settings_post(Req) ->
+    case parse_validate_saslauthd_settings(Req:parse_post()) of
+        {ok, Props} ->
+            menelaus_auth:set_saslauthd_auth_settings(Props),
+            handle_saslauthd_auth_settings(Req);
+        {errors, Errors} ->
+            reply_json(Req, {Errors}, 400)
+    end.
+
+handle_validate_saslauthd_creds_post(Req) ->
     Params = Req:parse_post(),
-    Enabled = proplists:get_value("enabled", Params, "0") =/= "0",
-    Admins = extract_user_list(proplists:get_value("admins", Params, "")),
-    RoAdmins = extract_user_list(proplists:get_value("roAdmins", Params, "")),
-    EJSON = [{enabled, Enabled},
-             {admins, Admins},
-             {roAdmins, RoAdmins}],
-    menelaus_auth:set_ldap_auth_settings(EJSON),
-    reply_json(Req, []).
+    VRV = verify_login_creds(proplists:get_value("user", Params, ""),
+                             proplists:get_value("password", Params, "")),
+    JR = case VRV of
+             {ok, ro_admin, _} -> roAdmin;
+             {ok, admin, _} -> fullAdmin;
+             _ -> none
+         end,
+    Src = case VRV of
+              {ok, _, XSrc} -> XSrc;
+              _ -> builtin
+          end,
+    reply_json(Req, {[{role, JR}, {source, Src}]}).
 
 handle_log_post(Req) ->
     Params = Req:parse_post(),

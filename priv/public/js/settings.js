@@ -1540,7 +1540,7 @@ function ldapSetupSectionCells(ns, tabs) {
     if (!v.need(ns.onLDAPTabCell)) {
       return;
     }
-    return future.get({url: "/settings/ldapAuth"});
+    return future.get({url: "/settings/saslauthdAuth"});
   });
   ns.showSpinnerCell = Cell.computeEager(function (v) {
     if (!v(ns.onLDAPTabCell)) {
@@ -1553,9 +1553,58 @@ function ldapSetupSectionCells(ns, tabs) {
 var LDAPSetupSection = {
   init: function () {
     var self = LDAPSetupSection;
-    self.form = $("#js_ldap_setup_form");
-    var spinner;
     ldapSetupSectionCells(self, SettingsSection.tabs);
+
+    self.ldapSetupForm = $("#js_ldap_setup_form");
+    self.ldapSetupContainer = $("#js_ldap_setup_container");
+    self.ldapValidateForm = $("#js_ldap_validate_form");
+    self.ldapValidateFormResult = $("#js_ldap_validate_form_result");
+    self.ldapEnabled = $("#js_ldap_enabled");
+    self.ldapSetupFormSubmit = $("#js_ldap_setup_form_submit")
+    var spinner;
+    var roAdminsTextarea = $('[name=roAdmins]', self.ldapSetupForm);
+    var adminsTextarea = $('[name=admins]', self.ldapSetupForm);
+    var defaultValueFields = $('[name=deftype]', self.ldapSetupForm);
+
+    self.ldapSetupFormSubmit.click(function () {
+      self.ldapSetupForm.submit();
+    });
+
+    $(':input', self.ldapSetupForm).change(function () {
+      self.ldapSetupFormSubmit.prop('disabled', false);
+    }).bind('input', function () {
+      self.ldapSetupFormSubmit.prop('disabled', false);
+    })
+
+    self.ldapSetupFormSubmit.prop('disabled', true);
+
+    self.ldapEnabled.change(function () {
+      var isChecked = self.ldapEnabled.attr('checked');
+      $(':input', self.ldapValidateForm)
+        .add(':input', self.ldapSetupForm)
+        .not(self.ldapEnabled)
+        .prop('disabled', !isChecked);
+        if (isChecked) {
+          defaultValueFields.filter(':checked').change();
+        }
+    });
+
+    defaultValueFields.change(function () {
+      switch ($(this).val()) {
+        case 'ro':
+          roAdminsTextarea.prop('disabled', true);
+          adminsTextarea.prop('disabled', false);
+        break;
+        case 'admin':
+          roAdminsTextarea.prop('disabled', false);
+          adminsTextarea.prop('disabled', true);
+        break;
+        default:
+          roAdminsTextarea.prop('disabled', false);
+          adminsTextarea.prop('disabled', false);
+      }
+    });
+
     self.showSpinnerCell.subscribeValue(function (val) {
       if (!val) {
         if (!spinner) {
@@ -1568,7 +1617,7 @@ var LDAPSetupSection = {
         if (spinner) {
           BUG("spinner");
         }
-        spinner = overlayWithSpinner(self.form);
+        spinner = overlayWithSpinner(self.ldapSetupContainer);
       }
     });
     self.settingsCell.subscribeValue(function (settings) {
@@ -1576,29 +1625,95 @@ var LDAPSetupSection = {
         self.fillForm(settings);
       }
     });
-    self.form.submit(function (e) {
+    self.ldapSetupForm.submit(function (e) {
       e.preventDefault();
       self.submit();
     });
+    self.ldapValidateForm.submit(function (e) {
+      e.preventDefault();
+      self.validateLdapCredentials();
+    });
   },
   fillForm: function (settings) {
+    var self = this;
+    var roAdmins = settings.roAdmins;
+    var admins = settings.admins;
+    var deftype = "none";
+    if (admins === "asterisk") {
+      admins = [];
+      deftype = "admin";
+    } else if (roAdmins === "asterisk") {
+      roAdmins = [];
+      deftype = "ro";
+    }
     var s = {
       enabled: settings.enabled,
-      admins: (settings.admins || []).join("\n"),
-      roAdmins: (settings.roAdmins || []).join("\n")
+      admins: admins.join("\n"),
+      roAdmins: roAdmins.join("\n"),
+      deftype: deftype
     };
-    setFormValues(this.form, s);
+    setFormValues(self.ldapSetupContainer, s);
+    self.ldapEnabled.change();
+    self.ldapSetupFormSubmit.prop('disabled', true);
+  },
+  validateLdapCredentials: function () {
+    var self = this;
+    var spinner = overlayWithSpinner(self.ldapValidateForm);
+    var formData = serializeForm(self.ldapValidateForm);
+    self.ldapValidateFormResult.text('');
+    $("[name=password]", self.ldapValidateForm).val("");
+    $.ajax({
+      type: "POST",
+      dataType: 'json',
+      url: "/validateCredentials",
+      data: formData,
+      success: function (data) {
+        var role = data["role"];
+        var source = data["source"];
+        var user = $.deparam(formData)["user"];
+        var text = "User '" + user + "' has ";
+        switch (role) {
+        case "none":
+          text += " no access";
+          break;
+        case "roAdmin":
+          text += '"Full Admin" access';
+          break;
+        case "fullAdmin":
+          text += '"Read-Only Admin" access';
+        }
+        if (role !== "none" && source === "builtin") {
+          text += ", but it is recognized not via LDAP";
+        }
+        self.ldapValidateFormResult.text(text);
+      },
+      complete: function () {
+        spinner.remove();
+        spinner = undefined;
+      }
+    });
   },
   refresh: function () {
     this.settingsCell.recalculate();
+    this.ldapValidateFormResult.text('');
   },
   submit: function () {
     var self = this;
     self.settingsCell.setValue(undefined);
+    var formData = $.deparam(serializeForm(self.ldapSetupForm));
+    var defType = formData["deftype"];
+    delete formData["deftype"];
+    switch (defType) {
+    case "ro":
+      delete formData["roAdmins"];
+      break;
+    case "admin":
+      delete formData["admins"];
+    }
     $.ajax({
       type: "POST",
-      url: "/settings/ldapAuth",
-      data: serializeForm(self.form),
+      url: "/settings/saslauthdAuth",
+      data: $.param(formData),
       complete: function () {
         self.settingsCell.recalculate();
       }

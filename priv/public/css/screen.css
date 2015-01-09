@@ -1362,6 +1362,14 @@ input[type=number].size {width:4em;}
 
 #view_details .results_block .list {table-layout:fixed;}
 
+.ldap_setup_container .sub_section > label {display: block;padding-bottom: 10px;}
+.ldap_setup_container .sub_section > label span {width: 120px; display: inline-block;}
+.ldap_setup_container textarea {width: 250px; height: 100px;}
+.ldap_setup_container .textarea_label span {vertical-align: top;}
+.ldap_setup_container .radio_set label {margin-right: 12px;}
+.ldap_setup_container .radio_set input {margin-right: 2px;}
+.ldap_setup_container .edit_btn {border: 0;float:none;margin-left:212px;}
+
 .account_management_container fieldset {overflow: hidden;}
 .account_management_container label {display: block; padding: 5px 0;}
 .reset_roadmin_form label,
