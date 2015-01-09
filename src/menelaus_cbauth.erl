@@ -130,28 +130,6 @@ notify_cbauth(Label, Info) ->
             {error, noproc}
     end.
 
-handle_cbauth_post(Req) ->
-    Role = Req:get_header_value("menelaus_auth-role"),
-    User = Req:get_header_value("menelaus_auth-user"),
-    BucketsList =
-        case Role of
-            "anonymous" ->
-                menelaus_web_buckets:all_accessible_bucket_names(default, Req);
-            "bucket" ->
-                [User];
-            _ ->
-                []
-        end,
-    Buckets = case BucketsList of
-                  [] ->
-                      [];
-                  _ ->
-                      [{buckets, [erlang:list_to_binary(B) || B <- BucketsList]}]
-              end,
-
-    menelaus_util:reply_json(Req, {[{role, erlang:list_to_binary(Role)},
-                                    {user, erlang:list_to_binary(User)}] ++ Buckets}).
-
 interesting_service(kv) ->
     true;
 interesting_service(mgmt) ->
@@ -214,3 +192,9 @@ build_auth_info() ->
     {[{nodes, Nodes} |
       [{buckets, build_buckets_info()} |
        build_cred_info(admin) ++ build_cred_info(ro_admin)]]}.
+
+handle_cbauth_post(Req) ->
+    Role = menelaus_auth:get_role(Req),
+    User = menelaus_auth:get_user(Req),
+    menelaus_util:reply_json(Req, {[{role, erlang:list_to_binary(Role)},
+                                    {user, erlang:list_to_binary(User)}]}).

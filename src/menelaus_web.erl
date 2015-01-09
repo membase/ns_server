@@ -503,7 +503,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "settings", "memcached", "node", Node, "_restart"] ->
                              {auth, fun menelaus_web_mcd_settings:handle_node_restart/2, [Node]};
                          ["_cbauth"] ->
-                             {auth_any_bucket, fun menelaus_cbauth:handle_cbauth_post/1};
+                             {auth_ro, fun menelaus_cbauth:handle_cbauth_post/1};
                          ["_metakv"] ->
                              {auth, fun menelaus_metakv:handle_post/1};
                          ["_log"] ->
