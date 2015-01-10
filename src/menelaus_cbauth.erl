@@ -17,12 +17,12 @@
 -module(menelaus_cbauth).
 
 -export([handle_cbauth_post/1]).
--behaviour(gen_event).
+-behaviour(gen_server).
 
 -export([start_link/0]).
 
 
--export([init/1, handle_event/2, handle_call/2,
+-export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {cbauth_info = undefined, rpc_processes = []}).
@@ -30,21 +30,28 @@
 -include("ns_common.hrl").
 
 start_link() ->
-    misc:start_event_link(fun () ->
-                                  gen_event:add_sup_handler(ns_config_events, ?MODULE, [])
-                          end).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
     ns_pubsub:subscribe_link(json_rpc_events, fun json_rpc_event/1),
     ns_pubsub:subscribe_link(ns_node_disco_events, fun node_disco_event/1),
+    ns_pubsub:subscribe_link(ns_config_events, fun ns_config_event/1),
     json_rpc_connection:reannounce(),
     {ok, #state{}}.
 
 json_rpc_event(Event) ->
-    gen_event:call(ns_config_events, ?MODULE, Event).
+    ok = gen_server:cast(?MODULE, Event).
 
-node_disco_event(Event) ->
-    gen_event:call(ns_config_events, ?MODULE, Event).
+node_disco_event(_Event) ->
+    ?MODULE ! maybe_notify_cbauth.
+
+ns_config_event(Event) ->
+    case is_interesting(Event) of
+        true ->
+            ?MODULE ! maybe_notify_cbauth;
+        _ ->
+            ok
+    end.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
@@ -61,17 +68,10 @@ is_interesting({rest_creds, _}) -> true;
 is_interesting({read_only_user_creds, _}) -> true;
 is_interesting(_) -> false.
 
-handle_event(Event, State) ->
-    case is_interesting(Event) of
-        true ->
-            {ok, maybe_notify_cbauth(State)};
-        _ ->
-            {ok, State}
-    end.
+handle_call(_Msg, _From, State) ->
+    {reply, not_implemented, State}.
 
-handle_call({ns_node_disco_events, _NodesBefore, _NodesAfter}, State) ->
-    {ok, ok, maybe_notify_cbauth(State)};
-handle_call({Msg, Label, Pid}, #state{rpc_processes = Processes,
+handle_cast({Msg, Label, Pid}, #state{rpc_processes = Processes,
                                       cbauth_info = CBAuthInfo} = State) ->
     ?log_debug("Observed json rpc process ~p ~p", [{Label, Pid}, Msg]),
     Info = case CBAuthInfo of
@@ -92,17 +92,20 @@ handle_call({Msg, Label, Pid}, #state{rpc_processes = Processes,
                                    Processes
                            end
                    end,
-    {ok, ok, State#state{rpc_processes = NewProcesses,
-                         cbauth_info = Info}}.
+    {noreply, State#state{rpc_processes = NewProcesses,
+                          cbauth_info = Info}}.
 
+handle_info(maybe_notify_cbauth, State) ->
+    misc:flush(maybe_notify_cbauth),
+    {noreply, maybe_notify_cbauth(State)};
 handle_info({'DOWN', MRef, _, Pid, Reason},
             #state{rpc_processes = Processes} = State) ->
     {value, {MRef, Label}, NewProcesses} = lists:keytake(MRef, 1, Processes),
     ?log_debug("Observed json rpc process ~p died with reason ~p", [{Label, Pid}, Reason]),
-    {ok, State#state{rpc_processes = NewProcesses}};
+    {noreply, State#state{rpc_processes = NewProcesses}};
 
 handle_info(_Info, State) ->
-    {ok, State}.
+    {noreply, State}.
 
 maybe_notify_cbauth(#state{rpc_processes = Processes,
                            cbauth_info = CBAuthInfo} = State) ->
