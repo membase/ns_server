@@ -54,22 +54,30 @@ to_binary(A) when is_list(A) ->
 to_binary(A) ->
     A.
 
-get_timestamp(Now = {_, _, Microsecs}) ->
+now_to_iso8601(Now = {_, _, Microsecs}) ->
     {{YYYY, MM, DD}, {Hour, Min, Sec}} = LocalNow = calendar:now_to_local_time(Now),
 
     UTCSec = calendar:datetime_to_gregorian_seconds(calendar:now_to_universal_time(Now)),
     LocSec = calendar:datetime_to_gregorian_seconds(LocalNow),
-    OffsetTotalMins = (LocSec - UTCSec) div 60,
-    OffsetHrs = OffsetTotalMins div 60,
-    OffsetMin = abs(OffsetTotalMins rem 60),
-
-    Date = io_lib:format("~4.4.0w-~2.2.0w-~2.2.0w", [YYYY, MM, DD]),
-    Time = io_lib:format("~2.2.0w:~2.2.0w:~2.2.0w.~6.6.0w", [Hour, Min, Sec, Microsecs]),
-    Offset = io_lib:format("~p:~2.2.0w", [OffsetHrs, OffsetMin]),
-
-    {[{date, to_binary(Date)},
-      {time, to_binary(Time)},
-      {'UTCOffset', to_binary(Offset)}]}.
+    Offset =
+        case (LocSec - UTCSec) div 60 of
+            0 ->
+                "Z";
+            OffsetTotalMins ->
+                OffsetHrs = OffsetTotalMins div 60,
+                OffsetMin = abs(OffsetTotalMins rem 60),
+                OffsetSign = case OffsetHrs < 0 of
+                                 true ->
+                                     "-";
+                                 false ->
+                                     "+"
+                             end,
+                io_lib:format("~s~2.2.0w:~2.2.0w", [OffsetSign, abs(OffsetHrs), OffsetMin])
+        end,
+    Timestamp =
+        io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",
+                      [YYYY, MM, DD, Hour, Min, Sec, Microsecs div 1000]) ++ Offset,
+    to_binary(Timestamp).
 
 get_user_id(anonymous) ->
     anonymous;
@@ -89,7 +97,7 @@ put(Code, Req, Params) ->
                  to_binary(Req:get(peer))}
         end,
     Body = {[{name, Code},
-             {timestamp, get_timestamp(now())},
+             {timestamp, now_to_iso8601(now())},
              {sessionID, Token},
              {remote, Peer},
              {userid, User},
