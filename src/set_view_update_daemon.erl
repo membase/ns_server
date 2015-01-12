@@ -61,7 +61,7 @@ handle_call(Msg, _From, State) ->
 handle_cast(trigger_updates,
             #state{num_changes=MinNumChanges,
                    replica_num_changes=ReplicaMinNumChanges} = State) ->
-    Buckets = ns_bucket:node_bucket_names_of_type(node(), membase),
+    Buckets = ns_bucket:node_bucket_names_of_type(ns_node_disco:ns_server_node(), membase),
     lists:foreach(
       fun (Bucket) ->
               ok = trigger_updates_for_bucket(Bucket,
