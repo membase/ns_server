@@ -80,15 +80,19 @@ handle_mutate(Req, Params, Value) ->
                   binary_to_term(XRevB)
           end,
     K = {metakv, Path},
-    RV = ns_config:run_txn(
-           fun (Cfg, SetFn) ->
-                   OldVC = get_old_vclock(Cfg, K),
-                   case Rev =:= undefined orelse Rev =:= OldVC of
-                       true ->
-                           {commit, SetFn(K, Value, Cfg)};
-                       false ->
-                           {abort, mismatch}
-                   end
+    RV = work_queue:submit_sync_work(
+           menelaus_metakv_worker,
+           fun () ->
+                   ns_config:run_txn(
+                     fun (Cfg, SetFn) ->
+                             OldVC = get_old_vclock(Cfg, K),
+                             case Rev =:= undefined orelse Rev =:= OldVC of
+                                 true ->
+                                     {commit, SetFn(K, Value, Cfg)};
+                                 false ->
+                                     {abort, mismatch}
+                             end
+                     end)
            end),
     case RV of
         {abort, mismatch} ->

@@ -110,7 +110,11 @@ init([]) ->
                      {hot_keys_keeper, start_link, []},
                      permanent, 5000, worker, dynamic},
 
-    Processes = [SSL, UIAuth, Cache, StatsGatherer, Web, WebEvent, HotKeysKeeper, Alerts],
+    MetaKVWorker = {menelaus_metakv_worker,
+                    {work_queue, start_link, [menelaus_metakv_worker]},
+                    permanent, 1000, worker, []},
+
+    Processes = [SSL, UIAuth, Cache, StatsGatherer, MetaKVWorker, Web, WebEvent, HotKeysKeeper, Alerts],
     {ok, {{one_for_one, 10, 10}, Processes}}.
 
 ns_log_cat(?START_OK) ->
