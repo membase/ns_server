@@ -256,6 +256,9 @@ memcached_config(Config) ->
     ExtraProps = ns_config:search(Config, {node, node(), memcached_config_extra}, []),
     ExtraPropsG = ns_config:search(Config, memcached_config_extra, []),
 
+    BinPrefix = filename:dirname(path_config:component_path(bin)),
+    RootProp = [{root, list_to_binary(BinPrefix)}],
+
     %% removes duplicates of properties making sure that local
     %% memcached_config_extra props overwrite global extra props and
     %% that memcached_config props overwrite them both.
@@ -263,7 +266,7 @@ memcached_config(Config) ->
         lists:foldl(
           fun (List, Acc) ->
                   normalize_memcached_props(List, Acc)
-          end, [], [ExtraPropsG, ExtraProps, Props]),
+          end, [], [ExtraPropsG, ExtraProps, RootProp, Props]),
 
     ejson:encode({lists:sort(FinalProps)}).
 
