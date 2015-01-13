@@ -95,6 +95,8 @@ delete_prev_config_file() ->
 
 is_notable_config_key({node, N, memcached}) ->
     N =:= node();
+is_notable_config_key({node, N, memcached_defaults}) ->
+    N =:= node();
 is_notable_config_key({node, N, memcached_config}) ->
     N =:= node();
 is_notable_config_key({node, N, memcached_config_extra}) ->
@@ -249,7 +251,9 @@ memcached_config(Config) ->
 
     GlobalMcdParams = ns_config:search(Config, memcached, []),
 
-    McdParams = McdParams0 ++ GlobalMcdParams,
+    DefaultMcdParams = ns_config:search(Config, {node, node(), memcached_defaults}, []),
+
+    McdParams = McdParams0 ++ GlobalMcdParams ++ DefaultMcdParams,
 
     {Props} = expand_memcached_config(McdConf, McdParams),
     ExtraProps = ns_config:search(Config, {node, node(), memcached_config_extra}, []),

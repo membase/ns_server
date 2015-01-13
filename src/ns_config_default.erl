@@ -172,7 +172,9 @@ default() ->
      {remote_clusters, []},
      {{node, node(), isasl}, [{path, filename:join(DataDir, ?ISASL_PW)}]},
 
-     {memcached,
+     {memcached, []},
+
+     {{node, node(), memcached_defaults},
       [{maxconn, 30000},
        {dedicated_port_maxconn, 5000},
        {verbosity, 0}]},
