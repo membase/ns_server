@@ -748,7 +748,7 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
 
     Candidates0 = [{ok, name, BucketName},
                    {ok, auth_type, AuthType},
-                   parse_validate_flush_enabled(proplists:get_value("flushEnabled", Params, "0")),
+                   validate_with_missing(proplists:get_value("flushEnabled", Params), "0", IsNew, fun parse_validate_flush_enabled/1),
                    case IsNew of
                        true ->
                            case BucketConfig of
@@ -764,14 +764,14 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                            {error, name, <<"Bucket name cannot start with dot.">>};
                                        {error, empty} ->
                                            %% we'll give error on empty bucket name later
-                                           undefined;
+                                           ignore;
                                        _ ->
-                                           %% we have to check for conflict here because we were looking 
+                                           %% we have to check for conflict here because we were looking
                                            %% for BucketConfig using case sensetive search (in basic_bucket_params_screening/4)
                                            %% but we do not allow buckets with the same names in a different register
                                            case BucketName =/= undefined andalso ns_bucket:name_conflict(BucketName, AllBuckets) of
                                                false ->
-                                                  undefined;
+                                                  ignore;
                                                _ ->
                                                   {error, name, <<"Bucket with given name already exists">>}
                                            end
@@ -793,7 +793,7 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                true ->
                                    {error, name, ?l2b(io_lib:format("Bucket name cannot exceed ~p characters",
                                                                     [?MAX_BUCKET_NAME_LEN]))};
-                               _ -> undefined
+                               _ -> ignore
                            end
                    end,
                    case AuthType of
@@ -802,7 +802,7 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                            case ProxyPort of
                                undefined when BucketConfig =/= false ->
                                    case ns_bucket:auth_type(BucketConfig) of
-                                       AuthType -> nothing;
+                                       AuthType -> ignore;
                                        _ ->
                                            {error, proxyPort,
                                             <<"port is missing">>}
@@ -865,14 +865,14 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                      {error, ramQuotaMB, Msg};
                                  IsNew =/= true andalso BucketConfig =/= false andalso BucketType =:= memcached ->
                                      case ns_bucket:raw_ram_quota(BucketConfig) of
-                                         RAMQuotaMB -> ok;
+                                         RAMQuotaMB -> ignore;
                                          _ ->
                                              {error, ramQuotaMB, <<"cannot change quota of memcached buckets">>}
                                      end;
                                  true ->
-                                     ok
+                                     ignore
                              end;
-                         _ -> ok
+                         _ -> ignore
                      end,
     Candidates1 = [QuotaSizeError | Candidates0],
     Candidates2 = case menelaus_web:parse_validate_bucket_auto_compaction_settings(Params) of
@@ -894,7 +894,19 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                          [{ok, bucketType, memcached}
                           | Candidates1];
                      membase ->
-                         ReplicasNumResult = parse_validate_replicas_number(proplists:get_value("replicaNumber", Params), IsNew),
+                         ReplicasNumResult =
+                             validate_with_missing(
+                               proplists:get_value("replicaNumber", Params),
+                               %% replicaNumber doesn't have
+                               %% default. Has to be given for
+                               %% creates, but may be omitted for
+                               %% updates. Later is for backwards
+                               %% compat, the former is from earlier
+                               %% code and stricter requirements is
+                               %% IMO ok to keep.
+                               undefined,
+                               IsNew,
+                               fun parse_validate_replicas_number/1),
                          [{ok, bucketType, membase},
                           ReplicasNumResult,
                           case IsNew of
@@ -908,15 +920,25 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                       end,
                                   parse_validate_replica_index(proplists:get_value("replicaIndex", Params, ReplicaIndexDefault));
                               false ->
-                                  undefined
+                                  ignore
                           end,
-                          parse_validate_threads_number(proplists:get_value("threadsNumber", Params)),
-                          parse_validate_eviction_policy(proplists:get_value("evictionPolicy", Params))
+                          validate_with_missing(proplists:get_value("threadsNumber", Params), "3", IsNew, fun parse_validate_threads_number/1),
+                          validate_with_missing(proplists:get_value("evictionPolicy", Params), "valueOnly", IsNew, fun parse_validate_eviction_policy/1)
                           | Candidates2];
                      _ ->
                          [{error, bucketType, <<"invalid bucket type">>}
                           | Candidates2]
                  end,
+    %% this is to validate that Candidates elements have specific
+    %% structure
+    [case E of
+         %% ok-s are used to keep correctly parsed/validated params
+         {ok, _, _} -> [];
+         %% error-s hold errors
+         {error, _, _} -> [];
+         %% ignore-s are used to "do nothing"
+         ignore -> []
+     end || E <- Candidates],
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
 
@@ -996,10 +1018,19 @@ interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
                  this_used = ThisUsed,
                  free = Total - OtherData - OtherBuckets}.
 
-parse_validate_replicas_number(undefined, false) ->
-    % for backward compatibility we should not require replicas number for update
-    {ok, undefined};
-parse_validate_replicas_number(NumReplicas, _IsNew) ->
+validate_with_missing(GivenValue, DefaultValue, IsNew, Fn) ->
+    case Fn(GivenValue) of
+        {error, _, _} ->
+            case IsNew andalso DefaultValue =/= undefined of
+                true ->
+                    {ok, _, _} = Fn(DefaultValue);
+                false ->
+                    ignore
+            end;
+        {ok, _, _} = RV -> RV
+    end.
+
+parse_validate_replicas_number(NumReplicas) ->
     case menelaus_util:parse_validate_number(NumReplicas, 0, 3) of
         invalid ->
             {error, replicaNumber, <<"The replica number must be specified and must be a non-negative integer.">>};
@@ -1018,8 +1049,6 @@ parse_validate_flush_enabled("0") -> {ok, flush_enabled, false};
 parse_validate_flush_enabled("1") -> {ok, flush_enabled, true};
 parse_validate_flush_enabled(_ReplicaValue) -> {error, flushEnabled, <<"flushEnabled can only be 1 or 0">>}.
 
-parse_validate_threads_number(undefined) ->
-    {ok, num_threads, 3};
 parse_validate_threads_number(NumThreads) ->
     case menelaus_util:parse_validate_number(NumThreads, 2, 8) of
         invalid ->
@@ -1035,8 +1064,6 @@ parse_validate_threads_number(NumThreads) ->
             {ok, num_threads, X}
     end.
 
-parse_validate_eviction_policy(undefined) ->
-    {ok, eviction_policy, value_only};
 parse_validate_eviction_policy("valueOnly") ->
     {ok, eviction_policy, value_only};
 parse_validate_eviction_policy("fullEviction") ->
@@ -1128,12 +1155,16 @@ basic_bucket_params_screening_test() ->
                     {auth_type, sasl},
                     {sasl_password, "asdasd"}]}],
     %% it is possible to create bucket with ok params
-    {_OK1, E1} = basic_bucket_params_screening(true, "mcd",
-                                               [{"bucketType", "membase"},
-                                                {"authType", "sasl"}, {"saslPassword", ""},
-                                                {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
-                                               tl(AllBuckets)),
+    {OK1, E1} = basic_bucket_params_screening(true, "mcd",
+                                              [{"bucketType", "membase"},
+                                               {"authType", "sasl"}, {"saslPassword", ""},
+                                               {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                              tl(AllBuckets)),
     [] = E1,
+    %% missing fields have their defaults set
+    true = proplists:is_defined(num_threads, OK1),
+    true = proplists:is_defined(eviction_policy, OK1),
+    true = proplists:is_defined(replica_index, OK1),
 
     %% it is not possible to create bucket with duplicate name
     {_OK2, E2} = basic_bucket_params_screening(true, "mcd",
@@ -1174,6 +1205,9 @@ basic_bucket_params_screening_test() ->
     {sasl_password, "password"} = lists:keyfind(sasl_password, 1, OK6),
     {auth_type, sasl} = lists:keyfind(auth_type, 1, OK6),
     [] = E6,
+    ?assertEqual(false, lists:keyfind(num_threads, 1, OK6)),
+    ?assertEqual(false, lists:keyfind(eviction_policy, 1, OK6)),
+    ?assertEqual(false, lists:keyfind(replica_index, 1, OK6)),
 
     %% its not possible to update memcached bucket ram quota
     {_OK7, E7} = basic_bucket_params_screening(false, "mcd",
@@ -1213,6 +1247,16 @@ basic_bucket_params_screening_test() ->
                                               AllBuckets),
     ?assertEqual([{name, ?l2b(io_lib:format("Bucket name cannot exceed ~p characters",
                                             [?MAX_BUCKET_NAME_LEN]))}], E11),
+
+    %% it is possible to update optional fields
+    {OK12, E12} = basic_bucket_params_screening(false, "third",
+                                                [{"bucketType", "membase"},
+                                                 {"threadsNumber", "8"},
+                                                 {"evictionPolicy", "fullEviction"}],
+                                                AllBuckets),
+    [] = E12,
+    ?assertEqual(8, proplists:get_value(num_threads, OK12)),
+    ?assertEqual(full_eviction, proplists:get_value(eviction_policy, OK12)),
 
     ok.
 
