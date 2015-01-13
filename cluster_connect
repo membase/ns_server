@@ -9,7 +9,7 @@ valid_service_types = {"kv", "n1ql", "index"}
 def usage():
     print "usage: \n\
             -n <number of nodes>\n\
-            -T <services to run> (kv, n1ql, index) default: kv\n\
+            -T <services to run. kv if unspecified> (eg: n0:kv,n1:index+n1ql)\n\
             -s <memory size (min 256) default: 256\n\
             -t <bucket type> (membase, memcached) default: membase\n\
             -r <num replicas> (max 3) default: 1 (Only for membase buckets!)\n\
@@ -38,12 +38,12 @@ def main():
     replicas = 1
     replica_index = True
     start_index = 0
-    services = {"kv"}
+    deploy = {}
 
     data_base_path = os.getcwd() + "/data"
     for o, a in opts:
         if o == "-n":
-            nodes = a
+            nodes = int(a)
         elif o == "-t":
             buckettype = a
         elif o == "-s":
@@ -55,13 +55,17 @@ def main():
         elif o == "-S":
             start_index = int(a)
         elif o == "-T":
-            services = set(a.replace(' ','').split(','))
+            plan = dict(e.split(':') for e in a.replace(' ','').split(','))
+            deploy = dict([(k, v.split('+')) for k, v in plan.items()])
         else:
             usage()
             sys.exit()
+
+    deploy["n0"] = deploy.get("n0", []) + ["kv"]
     if nodes == 0 or buckettype not in valid_bucket_types or \
             int(memsize) < 256 or int(replicas) > 3 or \
-            not services.issubset(valid_service_types):
+            not set(deploy.keys()) <= set(["n" + str(i) for i in range(nodes)]) or \
+            not set(reduce(lambda x,y:x+y, deploy.values(), [])) <= valid_service_types:
         usage()
         sys.exit()
 
@@ -70,13 +74,17 @@ def main():
     o = urllib2.build_opener(handler)
 
     print "Connecting {0} nodes, bucket type {1}, mem size {2} " \
-        "with {3} replica copies, start index {4}, service {5} " \
-        "password asdasd\n".format(nodes, buckettype,
+        "with {3} replica copies, start index {4}, password asdasd, "\
+        "deployment plan {5}\n".format(nodes, buckettype,
                                    memsize, replicas, start_index,
-                                   "+".join(services))
+                                   str(deploy))
 
     base_port = 9000 + start_index
 
+    services = deploy["n0"]
+    print "Connecting node 0 with services {0}".format(str(services))
+    o.open("http://127.0.0.1:{0}/node/controller/setupServices".format(base_port),
+           "services={0}".format(",".join(services))).read()
     o.open("http://127.0.0.1:{0}/pools/default".format(base_port),
            "memoryQuota=" + str(memsize)).read()
     o.open("http://127.0.0.1:{0}/pools/default/buckets".format(base_port),
@@ -90,9 +98,11 @@ def main():
     o.open("http://127.0.0.1:{0}/settings/web".format(base_port),
            "port=SAME&username=Administrator&password=asdasd").read()
 
-    for i in range(1, int(nodes)):
+    for i in range(1, nodes):
         port = base_port + i
-        print "Connecting node {0}".format(i)
+        services = deploy.get("n" + str(i), [])
+        if not services: services = ["kv"]
+        print "Connecting node {0} with services {1}".format(i, str(services))
         o.open("http://127.0.0.1:{0}/node/controller/doJoinCluster".format(port),
                "user=Administrator&password=asdasd&" +
                    "clusterMemberHostIp=127.0.0.1" +
