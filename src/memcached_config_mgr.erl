@@ -24,6 +24,9 @@
 
 -export([expand_memcached_config/2]).
 
+%% referenced from ns_config_default
+-export([get_minidump_dir/2]).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -294,3 +297,6 @@ expand_memcached_config(Param, Params)
     Value;
 expand_memcached_config(Verbatim, _Params) ->
     Verbatim.
+
+get_minidump_dir([], Params) ->
+    list_to_binary(proplists:get_value(breakpad_minidump_dir_path, Params,  proplists:get_value(log_path, Params))).

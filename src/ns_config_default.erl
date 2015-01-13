@@ -198,7 +198,8 @@ default() ->
      {{node, node(), memcached_defaults},
       [{maxconn, 30000},
        {dedicated_port_maxconn, 5000},
-       {verbosity, 0}]},
+       {verbosity, 0},
+       {breakpad_enabled, true}]},
 
      %% Memcached config
      {{node, node(), memcached},
@@ -257,6 +258,10 @@ default() ->
              {ssl, {[{key, list_to_binary(ns_ssl_services_setup:memcached_key_path())},
                      {cert, list_to_binary(ns_ssl_services_setup:memcached_cert_path())}]}}]}
           ]}},
+
+        {breakpad,
+         {[{enabled, breakpad_enabled},
+           {minidump_dir, {memcached_config_mgr, get_minidump_dir, []}}]}},
 
         {extensions,
          [
