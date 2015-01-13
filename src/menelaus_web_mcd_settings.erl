@@ -33,16 +33,18 @@
 -define(MAXINT, 16#7FFFFFFF).
 
 supported_setting_names() ->
-    [{maxconn, 1000, ?MAXINT},
-     {dedicated_port_maxconn, 1000, ?MAXINT},
-     {verbosity, 0, ?MAXINT}].
+    [{maxconn, {int, 1000, ?MAXINT}},
+     {dedicated_port_maxconn, {int, 1000, ?MAXINT}},
+     {verbosity, {int, 0, ?MAXINT}},
+     {breakpad_enabled, bool},
+     {breakpad_minidump_dir_path, string}].
 
 supported_extra_setting_names() ->
-    [{default_reqs_per_event, 0, ?MAXINT},
-     {reqs_per_event_high_priority, 0, ?MAXINT},
-     {reqs_per_event_med_priority, 0, ?MAXINT},
-     {reqs_per_event_low_priority, 0, ?MAXINT},
-     {threads, 0, ?MAXINT}].
+    [{default_reqs_per_event, {int, 0, ?MAXINT}},
+     {reqs_per_event_high_priority, {int, 0, ?MAXINT}},
+     {reqs_per_event_med_priority, {int, 0, ?MAXINT}},
+     {reqs_per_event_low_priority, {int, 0, ?MAXINT}},
+     {threads, {int, 0, ?MAXINT}}].
 
 parse_validate_node("self") ->
     parse_validate_node(atom_to_list(node()));
@@ -94,11 +96,17 @@ handle_node_get(Name, Req) ->
 
 map_settings(SettingNames, Settings) ->
     lists:flatmap(
-      fun ({Name, _, _}) ->
+      fun ({Name, _}) ->
               case lists:keyfind(Name, 1, Settings) of
                   false ->
                       [];
-                  {_, Value} ->
+                  {_, Value0} ->
+                      Value = case is_list(Value0) of
+                                  true ->
+                                      list_to_binary(Value0);
+                                  false ->
+                                      Value0
+                              end,
                       [{Name, Value}]
               end
       end, SettingNames).
@@ -126,7 +134,7 @@ handle_node_post(Name, Req) ->
       end).
 
 handle_post(Req, SettingsKey, ExtraConfigKey) ->
-    KnownNames = lists:map(fun ({A, _, _}) -> atom_to_list(A) end,
+    KnownNames = lists:map(fun ({A, _}) -> atom_to_list(A) end,
                            supported_setting_names() ++ supported_extra_setting_names()),
     Params = Req:parse_post(),
     UnknownParams = [K || {K, _} <- Params,
@@ -139,16 +147,30 @@ handle_post(Req, SettingsKey, ExtraConfigKey) ->
             reply_json(Req, {struct, [{'_', iolist_to_binary(Msg)}]}, 400)
     end.
 
+validate_param(Value, {int, Min, Max}) ->
+    menelaus_util:parse_validate_number(Value, Min, Max);
+validate_param(Value, bool) ->
+    case Value of
+        "true" ->
+            {ok, true};
+        "false" ->
+            {ok, false};
+        _->
+            <<"must be either true or false">>
+    end;
+validate_param(Value, string) ->
+    {ok, Value}.
+
 continue_handle_post(Req, Params, SettingsKey, ExtraConfigKey) ->
     ParsedParams =
         lists:flatmap(
-          fun ({Name, Min, Max}) ->
+          fun ({Name, ValidationType}) ->
                   NameString = atom_to_list(Name),
                   case lists:keyfind(NameString, 1, Params) of
                       false ->
                           [];
                       {_, Value} ->
-                          [{Name, menelaus_util:parse_validate_number(Value, Min, Max)}]
+                          [{Name, validate_param(Value, ValidationType)}]
                   end
           end, supported_setting_names() ++ supported_extra_setting_names()),
     InvalidParams = [{K, V} || {K, V} <- ParsedParams,
@@ -218,9 +240,9 @@ handle_node_setting_delete(NodeName, SettingName, Req) ->
       end).
 
 perform_delete_txn(Node, SettingName) ->
-    MaybeSetting = [K || {K, _, _} <- supported_setting_names(),
+    MaybeSetting = [K || {K, _} <- supported_setting_names(),
                          atom_to_list(K) =:= SettingName],
-    MaybeExtra = [K || {K, _, _} <- supported_extra_setting_names(),
+    MaybeExtra = [K || {K, _} <- supported_extra_setting_names(),
                        atom_to_list(K) =:= SettingName],
     if
         MaybeSetting =/= [] ->
