@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {3,0,99}.
+    {3, 2}.
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),
@@ -448,7 +448,10 @@ upgrade_config(Config) ->
              upgrade_config_from_3_0_to_3_0_2(Config)];
         {value, {3,0,2}} ->
             [{set, {node, node(), config_version}, {3,0,99}} |
-             upgrade_config_from_3_0_2_to_3_0_99(Config)]
+             upgrade_config_from_3_0_2_to_3_0_99(Config)];
+        {value, {3,0,99}} ->
+            [{set, {node, node(), config_version}, {3,2}} |
+             upgrade_config_from_3_0_99_to_3_2(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -756,6 +759,15 @@ do_upgrade_config_from_3_0_2_to_3_0_99(Config, DefaultConfig) ->
     [{set, McdKey, NewMcdConfig2},
      {set, JTKey, DefaultJsonTemplateConfig},
      {set, PortServersKey, DefaultPortServers}].
+
+upgrade_config_from_3_0_99_to_3_2(Config) ->
+    ?log_info("Upgrading config from 3.0.99 to 3.2"),
+    do_upgrade_config_from_3_0_99_to_3_2(Config, default()).
+
+do_upgrade_config_from_3_0_99_to_3_2(_Config, DefaultConfig) ->
+    MCDefaultsK = {node, node(), memcached_defaults},
+    {value, NewDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
+    [{set, MCDefaultsK, NewDefaults}].
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
