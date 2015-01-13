@@ -23,7 +23,7 @@
 -include("ns_common.hrl").
 
 %% API
--export([start_link/1]).
+-export([start_link/1, start_link_named/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -62,6 +62,9 @@
 start_link(Fun) ->
     gen_server:start_link(?MODULE,
                           Fun, []).
+
+start_link_named(Name, Fun) ->
+    gen_server:start_link({local, Name}, ?MODULE, Fun, []).
 
 init(Fun) ->
     {Name, _Cmd, _Args, Opts} = Params = Fun(),

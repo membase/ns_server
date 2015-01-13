@@ -102,7 +102,7 @@ create_ns_couchdb_spec() ->
       ns_couchdb, [{ns_server_node, node()}], "NS_COUCHDB_ENV_ARGS", ErlangArgs).
 
 start_couchdb_node() ->
-    ns_port_server:start_link(fun () -> create_ns_couchdb_spec() end).
+    ns_port_server:start_link_named(ns_couchdb_port, fun () -> create_ns_couchdb_spec() end).
 
 wait_link_to_couchdb_node() ->
     proc_lib:start_link(erlang, apply, [fun start_wait_link_to_couchdb_node/0, []]).
@@ -113,6 +113,7 @@ start_wait_link_to_couchdb_node() ->
 
 do_wait_link_to_couchdb_node(Initial) ->
     ?log_debug("Waiting for ns_couchdb node to start"),
+    erlang:link(erlang:whereis(ns_couchdb_port)),
     RV = misc:poll_for_condition(
            fun () ->
                    case rpc:call(ns_node_disco:couchdb_node(), erlang, apply, [fun is_couchdb_node_ready/0, []], 5000) of
