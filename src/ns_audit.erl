@@ -30,23 +30,23 @@
          rebalance_initiated/4]).
 
 code(login_success) ->
-    10000;
+    8192;
 code(login_failure) ->
-    10001;
+    8193;
 code(delete_user) ->
-    10004;
+    8194;
 code(password_change) ->
-    10005;
+    8195;
 code(add_node) ->
-    10007;
+    8196;
 code(remove_node) ->
-    10008;
+    8197;
 code(failover_node) ->
-    10009;
+    8198;
 code(enter_node_recovery) ->
-    10010;
+    8199;
 code(rebalance_initiated) ->
-    10011.
+    8200.
 
 
 to_binary(A) when is_list(A) ->
@@ -74,37 +74,48 @@ now_to_iso8601(Now = {_, _, Microsecs}) ->
                              end,
                 io_lib:format("~s~2.2.0w:~2.2.0w", [OffsetSign, abs(OffsetHrs), OffsetMin])
         end,
-    Timestamp =
-        io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",
-                      [YYYY, MM, DD, Hour, Min, Sec, Microsecs div 1000]) ++ Offset,
-    to_binary(Timestamp).
+    io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",
+                  [YYYY, MM, DD, Hour, Min, Sec, Microsecs div 1000]) ++ Offset.
 
 get_user_id(anonymous) ->
     anonymous;
 get_user_id(undefined) ->
     anonymous;
 get_user_id(User) ->
-    {[{source, internal}, {user, to_binary(User)}]}.
+    {[{source, ns_server}, {user, to_binary(User)}]}.
+
+get_remote(Req) ->
+    Socket = Req:get(socket),
+    {ok, {Host, Port}} = mochiweb_socket:peername(Socket),
+    {[{ip, to_binary(inet_parse:ntoa(Host))},
+      {port, Port}]}.
 
 put(Code, Req, Params) ->
-    {User, Token, Peer} =
+    {User, Token, Remote} =
         case Req of
             undefined ->
                 {anonymous, undefined, undefined};
             _ ->
                 {get_user_id(menelaus_auth:get_user(Req)),
-                 to_binary(menelaus_auth:get_token(Req)),
-                 to_binary(Req:get(peer))}
+                 menelaus_auth:get_token(Req),
+                 get_remote(Req)}
         end,
-    Body = {[{name, Code},
-             {timestamp, now_to_iso8601(now())},
-             {sessionID, Token},
-             {remote, Peer},
-             {userid, User},
-             {params, {Params}}]},
+    Body = [{timestamp, now_to_iso8601(now())},
+            {remote, Remote},
+            {sessionid, Token},
+            {real_userid, User}] ++ Params,
 
-    EncodedBody = ejson:encode(Body),
-    ?log_debug("Audit ~p: ~p", [Code, EncodedBody]),
+    Body1 = lists:foldl(
+              fun ({_Key, undefined}, Acc) ->
+                      Acc;
+                  ({_Key, "undefined"}, Acc) ->
+                      Acc;
+                  ({Key, Value}, Acc) ->
+                      [{Key, to_binary(Value)} | Acc]
+              end, [], Body),
+
+    ?log_debug("Audit ~p: ~p", [Code, Body1]),
+    EncodedBody = ejson:encode({Body1}),
 
     ns_memcached_sockets_pool:executing_on_socket(
       fun (Sock) ->
@@ -112,26 +123,28 @@ put(Code, Req, Params) ->
       end).
 
 login_success(Req) ->
-    put(login_success, Req, [{role, to_binary(menelaus_auth:get_role(Req))},
-                             {userid, get_user_id(menelaus_auth:get_user(Req))}]).
+    put(login_success, Req, [{role, menelaus_auth:get_role(Req)}]).
 
 login_failure(Req) ->
-    put(login_failure, Req, [{userid, get_user_id(menelaus_auth:get_user(Req))}]).
+    put(login_failure, Req, []).
 
 delete_user(Req, User, Role) ->
-    put(delete_user, Req, [{role, to_binary(Role)},
+    put(delete_user, Req, [{role, Role},
                            {userid, get_user_id(User)}]).
 
 password_change(Req, User, Role) ->
-    put(password_change, Req, [{role, to_binary(Role)},
+    put(password_change, Req, [{role, Role},
                                {userid, get_user_id(User)}]).
+
+print_list(List) ->
+    io_lib:format("~p", [List]).
 
 add_node(Req, Hostname, Port, User, GroupUUID, Services, Node) ->
     put(add_node, Req, [{node, Node},
-                        {groupUUID, to_binary(GroupUUID)},
-                        {hostname, to_binary(Hostname)},
+                        {groupUUID, GroupUUID},
+                        {hostname, Hostname},
                         {port, Port},
-                        {services, Services},
+                        {services, print_list(Services)},
                         {user, get_user_id(User)}]).
 
 remove_node(Req, Node) ->
@@ -148,9 +161,9 @@ rebalance_initiated(Req, KnownNodes, EjectedNodes, DeltaRecoveryBuckets) ->
                   all ->
                       all;
                   _ ->
-                      [to_binary(Bucket) || Bucket <- DeltaRecoveryBuckets]
+                      print_list(DeltaRecoveryBuckets)
               end,
     put(rebalance_initiated, Req,
-        [{known_nodes, KnownNodes},
-         {ejected_nodes, EjectedNodes},
+        [{known_nodes, print_list(KnownNodes)},
+         {ejected_nodes, print_list(EjectedNodes)},
          {delta_recovery_buckets, Buckets}]).

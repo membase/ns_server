@@ -1,0 +1,159 @@
+{
+    "version" : 1,
+    "module" : "ns_server",
+    "events" : [
+      {
+          "id" : 8192,
+          "name" : "login success",
+          "description" : "Successful login to couchbase cluster",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "role" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8193,
+          "name" : "login faulure",
+          "description" : "Unsuccessful attempt to login to couchbase cluster",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1}
+          },
+          "optional_fields" : {
+          }
+      },
+      {
+          "id" : 8194,
+          "name" : "delete user",
+          "description" : "User was deleted",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "role" : "",
+              "userid" : {"source" : "", "user" : ""}
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8195,
+          "name" : "password change",
+          "description" : "Password was changed",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "role" : "",
+              "userid" : {"source" : "", "user" : ""}
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8196,
+          "name" : "add node",
+          "description" : "Node was added to the cluster",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "user" : {"source" : "", "user" : ""},
+              "node" : "",
+              "groupUUID" : "",
+              "hostname" : "",
+              "port" : 1,
+              "services" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8197,
+          "name" : "remove node",
+          "description" : "Node was removed from the cluster",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "node" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8198,
+          "name" : "failover node",
+          "description" : "Node was failed over",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "node" : "",
+              "type" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8199,
+          "name" : "enter node recovery",
+          "description" : "Entered node recovery",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "node" : "",
+              "type" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8200,
+          "name" : "rebalance initiated",
+          "description" : "Rebalance was initiated",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "known_nodes" : [],
+              "ejected_nodes" : [],
+              "delta_recovery_buckets" : []
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      }
+    ]
+}
