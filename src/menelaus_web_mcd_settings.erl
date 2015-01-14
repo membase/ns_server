@@ -18,6 +18,7 @@
 -include("ns_common.hrl").
 
 -export([handle_global_get/1,
+         handle_effective_get/2,
          handle_global_post/1,
          handle_node_get/2,
          handle_node_post/2,
@@ -64,6 +65,22 @@ with_parsed_node(Name, Req, Body) ->
 
 handle_global_get(Req) ->
     handle_get(Req, memcached, memcached_config_extra, 200).
+
+handle_effective_get(Name, Req) ->
+    with_parsed_node(
+      Name, Req,
+      fun (Node) ->
+              KVsGlobal = build_setting_kvs(memcached, memcached_config_extra),
+              KVsLocal = build_setting_kvs({node, Node, memcached},
+                                           {node, Node, memcached_config_extra}),
+              KVsDefault = build_setting_kvs({node, Node, memcached_defaults},
+                                             erlang:make_ref()),
+              KVs = lists:foldl(
+                      fun ({K, V}, Acc) ->
+                              lists:keystore(K, 1, Acc, {K, V})
+                      end, [], lists:append([KVsDefault, KVsGlobal, KVsLocal])),
+              reply_json(Req, {struct, KVs}, 200)
+      end).
 
 handle_node_get(Name, Req) ->
     with_parsed_node(
