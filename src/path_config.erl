@@ -25,9 +25,10 @@ component_path_key(tmp) -> path_config_tmpdir;
 component_path_key(data) -> path_config_datadir;
 component_path_key(bin) -> path_config_bindir;
 component_path_key(lib) -> path_config_libdir;
-component_path_key(etc) -> path_config_etcdir.
+component_path_key(etc) -> path_config_etcdir;
+component_path_key(sec) -> path_config_secdir.
 
--spec component_path(etc | tmp | data | lib | bin) -> string().
+-spec component_path(etc | tmp | data | lib | bin | sec) -> string().
 component_path(NameAtom) ->
     try ets:lookup(path_config_override, component_path_key(NameAtom)) of
         [{_,X}|_] -> X;
@@ -51,7 +52,7 @@ component_path(NameAtom) ->
             RV
     end.
 
--spec component_path(etc | tmp | data | lib | bin, string()) -> string().
+-spec component_path(etc | tmp | data | lib | bin | sec, string()) -> string().
 component_path(NameAtom, SubPath) ->
     filename:join(component_path(NameAtom), SubPath).
 

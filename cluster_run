@@ -130,6 +130,7 @@ def erlang_args_for_node(i):
         "path_config_libdir", quote_string_for_erl(PREFIX+"/lib"),
         "path_config_datadir", quote_string_for_erl(datadir),
         "path_config_tmpdir", quote_string_for_erl(tempdir),
+        "path_config_secdir", quote_string_for_erl(PREFIX+"/etc/security"),
         "rest_port", str(base_api_port + i),
         "query_port", str(base_couch_port - 1 - i),
         "projector_port", str(base_projector_port + i),

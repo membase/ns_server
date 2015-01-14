@@ -4,6 +4,7 @@
 {path_config_libdir, "@BIN_PREFIX@/lib"}.
 {path_config_datadir, "@DATA_PREFIX@/var/lib/couchbase"}.
 {path_config_tmpdir, "@DATA_PREFIX@/var/lib/couchbase/tmp"}.
+{path_config_secdir, "@BIN_PREFIX@/etc/security"}.
 
 {nodefile, "@DATA_PREFIX@/var/lib/couchbase/couchbase-server.node"}.
 
