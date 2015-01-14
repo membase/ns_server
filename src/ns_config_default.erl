@@ -226,6 +226,7 @@ default() ->
             path_config:component_path(lib, "memcached/default_engine.so")},
            {static_config_string, "vb0=true"}]}]},
        {config_path, path_config:default_memcached_config_path()},
+       {audit_file, ns_audit_cfg:default_audit_json_path()},
        {log_path, path_config:component_path(data, "logs")},
        %% Prefix of the log files within the log path that should be rotated.
        {log_prefix, "memcached.log"},
@@ -282,7 +283,8 @@ default() ->
            {config, {"admin=~s;default_bucket_name=default;auto_create=false",
                      [admin_user]}}]}},
 
-        {verbosity, verbosity}
+        {verbosity, verbosity},
+        {audit_file, {"~s", [audit_file]}}
        ]}},
 
      {memory_quota, InitQuota},
@@ -769,10 +771,25 @@ upgrade_config_from_3_0_99_to_3_2(Config) ->
     ?log_info("Upgrading config from 3.0.99 to 3.2"),
     do_upgrade_config_from_3_0_99_to_3_2(Config, default()).
 
-do_upgrade_config_from_3_0_99_to_3_2(_Config, DefaultConfig) ->
+do_upgrade_config_from_3_0_99_to_3_2(Config, DefaultConfig) ->
     MCDefaultsK = {node, node(), memcached_defaults},
     {value, NewDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
-    [{set, MCDefaultsK, NewDefaults}].
+
+    McdKey = {node, node(), memcached},
+    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
+    AuditFileTupleMcd = {audit_file, _} = lists:keyfind(audit_file, 1, DefaultMcdConfig),
+    {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
+    NewMcdConfig = lists:keystore(audit_file, 1, CurrentMcdConfig, AuditFileTupleMcd),
+
+    JTKey = {node, node(), memcached_config},
+    {value, {DefaultJsonTemplateConfig}} = ns_config:search([DefaultConfig], JTKey),
+    AuditFileTupleJT = {audit_file, _} = lists:keyfind(audit_file, 1, DefaultJsonTemplateConfig),
+    {value, {CurrentJsonTemplateConfig}} = ns_config:search(Config, JTKey),
+    NewJsonTemplateConfig = lists:keystore(audit_file, 1, CurrentJsonTemplateConfig, AuditFileTupleJT),
+
+    [{set, MCDefaultsK, NewDefaults},
+     {set, McdKey, NewMcdConfig},
+     {set, JTKey, {NewJsonTemplateConfig}}].
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
@@ -1136,6 +1153,25 @@ upgrade_3_0_2_to_3_0_99_test() ->
                   {set, {node, _, port_servers}, port_servers_cfg}],
                  do_upgrade_config_from_3_0_2_to_3_0_99(Cfg, Default)).
 
+upgrade_3_0_99_to_3_2_test() ->
+    Cfg = [[{some_key, some_value},
+            {{node, node(), memcached},
+             [{some_key, some_value}]},
+            {{node, node(), memcached_config},
+             {[{some_key, some_value}]}}
+           ]],
+    Default = [{{node, node(), memcached_defaults},
+                [{some, stuff}]},
+               {{node, node(), memcached},
+                [{audit_file, audit_file_path}]},
+               {{node, node(), memcached_config},
+                {[{audit_file, audit_file}]}}],
+    ?assertMatch([{set, {node, _, memcached_defaults}, [{some, stuff}]},
+                  {set, {node, _, memcached}, [{some_key, some_value},
+                                               {audit_file, audit_file_path}]},
+                  {set, {node, _, memcached_config}, {[{some_key, some_value},
+                                                       {audit_file, audit_file}]}}],
+                 do_upgrade_config_from_3_0_99_to_3_2(Cfg, Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
