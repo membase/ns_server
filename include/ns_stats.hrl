@@ -175,9 +175,6 @@
         %% to disk
         %% ep_num_eject_replicas,
 
-        %% Number of times item values got ejected from memory to disk
-        ep_num_value_ejects,
-
         %% Number of create operations
         vb_active_ops_create,
         %% Number of create operations
