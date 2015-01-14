@@ -182,7 +182,11 @@ init({Bucket, Replicator, ReplicationSrvr, UseReplicaIndex, NumVBuckets}) ->
     %% Update myself whenever the config changes (rebalance)
     ns_pubsub:subscribe_link(
       ns_config_events,
-      fun (_, _) -> Self ! replicate_newnodes_docs end,
+      fun ({buckets, _}, _) ->
+              Self ! replicate_newnodes_docs;
+          (_, _) ->
+              ok
+      end,
       empty),
 
     Self ! replicate_newnodes_docs,
