@@ -273,6 +273,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {done, handle_cluster_certificate(Req)};
                          ["pools", "default", "settings", "memcached", "global"] ->
                              {auth, fun menelaus_web_mcd_settings:handle_global_get/1};
+                         ["pools", "default", "settings", "memcached", "effective", Node] ->
+                             {auth, fun menelaus_web_mcd_settings:handle_effective_get/2, [Node]};
                          ["pools", "default", "settings", "memcached", "node", Node] ->
                              {auth, fun menelaus_web_mcd_settings:handle_node_get/2, [Node]};
                          ["pools", "default", "settings", "memcached", "node", Node, "setting", Name] ->
