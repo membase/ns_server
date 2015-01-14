@@ -412,6 +412,8 @@ GET /pools/default/serverGroups =>
   ((maxconn | dedicated_port_maxconn | verbosity | default_reqs_per_event
      | reqs_per_event_high_priority | reqs_per_event_med_priority | reqs_per_event_low_priority
      | threads): <number>)*
+  (breakpad_enabled: <bool>)?
+  (breakpad_minidump_dir_path: <string>)?
 }
 
 
@@ -432,10 +434,16 @@ GET /pools/default/settings/memcached/global =>
 
 <mcd-settings>
 
+// returns memcached settings of this node that are actually in effect
+// for given node.
+GET /pools/default/settings/memcached/effective/(<otp-node>|self) =>
+
+<mcd-settings>
+
 // returns value of specific setting if this setting is set for this node (404 otherwise)
 GET /pools/default/settings/memcached/node/<otp-node>/setting/<setting-name> =>
 
-{value: <integer>}
+{value: <value>}
 
 
 ======
@@ -565,7 +573,7 @@ cancels in-progress logs collection.
 POST /pools/default/settings/memcached/node/<otp-node>
 POST /pools/default/settings/memcached/node/self
 
-<setting-name>=<integer>(&<setting-name>=<integer>)*
+<setting-name>=<value>(&<setting-name>=<value>)*
 
 sets per-node settings to given values.
 
