@@ -92,6 +92,10 @@ default() ->
     filelib:ensure_dir(RawLogDir),
     file:make_dir(RawLogDir),
 
+    BreakpadMinidumpDir = path_config:component_path(data, "crash"),
+    filelib:ensure_dir(BreakpadMinidumpDir),
+    file:make_dir(BreakpadMinidumpDir),
+
     IsEnterprise = init_is_enterprise(),
 
     AuditJson = case misc:get_env_default(path_audit_log, []) of
@@ -208,7 +212,9 @@ default() ->
       [{maxconn, 30000},
        {dedicated_port_maxconn, 5000},
        {verbosity, 0},
-       {breakpad_enabled, true}]},
+       {breakpad_enabled, true},
+       %% Location that Breakpad should write minidumps upon memcached crash.
+       {breakpad_minidump_dir_path, BreakpadMinidumpDir}]},
 
      %% Memcached config
      {{node, node(), memcached},
