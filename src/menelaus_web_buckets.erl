@@ -331,8 +331,8 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
                               VBM = case ns_bucket:bucket_type(BucketInfo) of
                                         membase ->
                                             [{vBucketServerMap,
-                                             ns_bucket:json_map_from_config(
-                                               LocalAddr, BucketInfo)}];
+                                              ns_bucket:json_map_from_config(
+                                                LocalAddr, BucketInfo)}];
                                         memcached ->
                                             []
                                     end,
@@ -540,10 +540,10 @@ do_bucket_create(Name, Params, Ctx) ->
                     FinalErrors = perform_warnings_validation(Ctx, ParsedProps, []),
                     {{struct, [{errors, {struct, FinalErrors}},
                                {summaries, {struct, JSONSummaries}}]},
-                               case FinalErrors of
-                                   [] -> 200;
-                                   _ -> 400
-                               end}
+                     case FinalErrors of
+                         [] -> 200;
+                         _ -> 400
+                     end}
             end
     end.
 
@@ -554,9 +554,9 @@ handle_bucket_create(PoolId, Req) ->
 
     case do_bucket_create(Name, Params, Ctx) of
         ok ->
-           respond_bucket_created(Req, PoolId, Name);
+            respond_bucket_created(Req, PoolId, Name);
         {Struct, Code} ->
-           reply_json(Req, Struct, Code)
+            reply_json(Req, Struct, Code)
     end.
 
 perform_warnings_validation(Ctx, ParsedProps, Errors) ->
@@ -771,9 +771,9 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                            %% but we do not allow buckets with the same names in a different register
                                            case BucketName =/= undefined andalso ns_bucket:name_conflict(BucketName, AllBuckets) of
                                                false ->
-                                                  ignore;
+                                                   ignore;
                                                _ ->
-                                                  {error, name, <<"Bucket with given name already exists">>}
+                                                   {error, name, <<"Bucket with given name already exists">>}
                                            end
                                    end;
                                _ ->
@@ -1126,7 +1126,7 @@ handle_cancel_view_compaction(_PoolId, Bucket, DDocId, Req) ->
     ok = compaction_api:cancel_forced_view_compaction(Bucket, DDocId),
     reply(Req, 200).
 
-% for test
+%% for test
 basic_bucket_params_screening(IsNew, Name, Params, AllBuckets) ->
     Ctx = init_bucket_validation_context(IsNew, Name, AllBuckets, undefined, false, false),
     basic_bucket_params_screening(Ctx, Params).
@@ -1168,10 +1168,10 @@ basic_bucket_params_screening_test() ->
 
     %% it is not possible to create bucket with duplicate name
     {_OK2, E2} = basic_bucket_params_screening(true, "mcd",
-                                              [{"bucketType", "membase"},
-                                               {"authType", "sasl"}, {"saslPassword", ""},
-                                               {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
-                                              AllBuckets),
+                                               [{"bucketType", "membase"},
+                                                {"authType", "sasl"}, {"saslPassword", ""},
+                                                {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                               AllBuckets),
     true = lists:member(name, proplists:get_keys(E2)), % mcd is already present
 
     %% it is not possible to update missing bucket. And specific format of errors
@@ -1233,18 +1233,18 @@ basic_bucket_params_screening_test() ->
 
     %% it is not possible to create bucket with duplicate name in different register
     {_OK10, E10} = basic_bucket_params_screening(true, "Mcd",
-                                              [{"bucketType", "membase"},
-                                               {"authType", "sasl"}, {"saslPassword", ""},
-                                               {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
-                                              AllBuckets),
+                                                 [{"bucketType", "membase"},
+                                                  {"authType", "sasl"}, {"saslPassword", ""},
+                                                  {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                                 AllBuckets),
     ?assertEqual([{name, <<"Bucket with given name already exists">>}], E10),
 
     %% it is not possible to create bucket with name longer than 100 characters
     {_OK11, E11} = basic_bucket_params_screening(true, "12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901",
-                                              [{"bucketType", "membase"},
-                                               {"authType", "sasl"}, {"saslPassword", ""},
-                                               {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
-                                              AllBuckets),
+                                                 [{"bucketType", "membase"},
+                                                  {"authType", "sasl"}, {"saslPassword", ""},
+                                                  {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
+                                                 AllBuckets),
     ?assertEqual([{name, ?l2b(io_lib:format("Bucket name cannot exceed ~p characters",
                                             [?MAX_BUCKET_NAME_LEN]))}], E11),
 
