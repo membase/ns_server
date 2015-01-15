@@ -297,7 +297,7 @@ kv_node_projector_spec(Config) ->
                     [ProjLogArg, KvListArg, AdminPortArg, ClusterArg],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?PROJECTOR_LOG_FILENAME},
-                     {env, build_cbauth_env_vars(Config, undefined)}]},
+                     {env, build_cbauth_env_vars(Config, projector)}]},
             [Spec]
     end.
 
@@ -321,7 +321,7 @@ goxdcr_spec(Config) ->
               [AdminPort, XdcrRestPort, GometaRequestPort, IsEnterprise],
               [use_stdio, exit_status, stderr_to_stdout, stream,
                {log, ?GOXDCR_LOG_FILENAME},
-               {env, build_cbauth_env_vars(Config, undefined)}]}]
+               {env, build_cbauth_env_vars(Config, goxdcr)}]}]
     end.
 
 index_node_spec(Config) ->
@@ -355,7 +355,7 @@ index_node_spec(Config) ->
                      ],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?INDEXER_LOG_FILENAME},
-                     {env, build_cbauth_env_vars(Config, undefined)}]},
+                     {env, build_cbauth_env_vars(Config, index)}]},
             [Spec]
     end.
 
@@ -435,20 +435,14 @@ meta_node_spec(Config) ->
     end.
 
 build_cbauth_env_vars(Config, RPCService) ->
+    true = (RPCService =/= undefined),
     RestPort = misc:node_rest_port(Config, node()),
 
-    MaybeRPC =
-        case RPCService =:= undefined of
-            true -> [];
-            false ->
-                [{"NS_SERVER_CBAUTH_RPC_URL", "http://127.0.0.1:"
-                  ++ integer_to_list(RestPort)
-                  ++ "/" ++ atom_to_list(RPCService)}]
-        end,
     [{"NS_SERVER_CBAUTH_URL", "http://127.0.0.1:" ++ integer_to_list(RestPort) ++ "/_cbauth"},
      {"NS_SERVER_CBAUTH_USER", ns_config_auth:get_user(special)},
-     {"NS_SERVER_CBAUTH_PWD", ns_config_auth:get_password(special)}
-    | MaybeRPC].
+     {"NS_SERVER_CBAUTH_PWD", ns_config_auth:get_password(special)},
+     {"NS_SERVER_CBAUTH_RPC_URL", ("http://127.0.0.1:" ++ integer_to_list(RestPort)
+                                   ++ "/" ++ atom_to_list(RPCService))}].
 
 saslauthd_port_spec(Config) ->
     Cmd = find_executable("saslauthd-port"),
