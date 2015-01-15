@@ -572,10 +572,20 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     IdxDir = proplists:get_value({"couchdb", "view_index_dir"}, CouchInisPList, ""),
     RestPort = extract_rest_port(NSConfig, Node),
     MCDConfig = search_config_for_node(NSConfig, Node, memcached, []),
+    MCDDefaults = search_config_for_node(NSConfig, Node, memcached_defaults, []),
     MCDPort = search_config(MCDConfig, port, ""),
     MCDAdmin = search_config(MCDConfig, admin_user, ""),
     MCDPass = search_config(MCDConfig, admin_pass, ""),
     MCDLogs = search_config(MCDConfig, log_path, ""),
+
+    %% Minidump path can be overridden both globally and per-node, so have
+    %% to check three possible locations:
+    DefaultMDD = search_config(MCDDefaults, breakpad_minidump_dir_path, ""),
+    GlobalMDD = search_config(search_config(NSConfig, memcached, []),
+                              breakpad_minidump_dir_path, DefaultMDD),
+    PerNodeMDD = search_config(MCDConfig, breakpad_minidump_dir_path,
+                               GlobalMDD),
+
     BucketConfigs = search_config(search_config(NSConfig, buckets, []),
                                   configs, []),
     BucketTypePairs = [{Name, search_config(Props, type, undefined)} || {Name, Props} <- BucketConfigs],
@@ -599,7 +609,8 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
              {log_path, search_config(StaticTerms, error_logger_mf_dir, "")},
              {memcached_admin, MCDAdmin},
              {memcached_pass, MCDPass},
-             {memcached_logs_path, MCDLogs}],
+             {memcached_logs_path, MCDLogs},
+             {memcached_breakpad_minidump_dir, PerNodeMDD}],
 
     output([E || {K, V} <- Pairs,
                  E <- [K, V]]),

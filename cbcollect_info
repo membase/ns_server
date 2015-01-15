@@ -135,6 +135,18 @@ class TaskRunner(object):
 
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
+    def collect_file(self, filename):
+        """Add a file to the list of files collected. Used to capture the exact
+        file (including timestamps) from the Couchbase instance.
+
+        filename - Absolute path to file to collect.
+        """
+        if not filename in self.files:
+            self.files[filename] = open(filename, 'r')
+        else:
+            log("Unable to collect file '{0}' - already collected.".format(
+                filename))
+
     def get_file(self, filename):
         if filename in self.files:
             fp = self.files[filename]
@@ -750,6 +762,12 @@ def main():
 
     for task in make_product_task(guts, guts_initargs_path, options):
         runner.run(task)
+
+    # Collect breakpad crash dumps.
+    for dump in glob.glob(os.path.join(read_guts(guts,
+                                       "memcached_breakpad_minidump_dir"),
+                          "*.dmp")):
+        runner.collect_file(dump)
 
     if zip_node.split("@")[-1] == "127.0.0.1":
         zip_node = '@'.join(zip_node.split("@")[:-1] + [find_primary_addr("127.0.0.1")])
