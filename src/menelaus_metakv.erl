@@ -98,6 +98,7 @@ handle_mutate(Req, Params, Value) ->
         {abort, mismatch} ->
             menelaus_util:reply(Req, 409);
         {commit, _} ->
+            ?log_debug("updated ~s to hold ~s", [Path, Value]),
             menelaus_util:reply(Req, 200)
     end.
 
@@ -127,6 +128,7 @@ handle_iterate_post(Req, Params) ->
     Filter = mk_config_filter(Path),
     Self = self(),
     HTTPRes = menelaus_util:reply_ok(Req, "application/json; charset=utf-8", chunked),
+    ?log_debug("Starting iteration of ~s. Continuous = ~s", [Path, Continuous]),
     case Continuous of
         true ->
             ok = mochiweb_socket:setopts(Req:get(socket), [{active, true}]),
@@ -163,6 +165,7 @@ output_kv(HTTPRes, {metakv, K}, V0) ->
                        _ ->
                            {Rev0, base64:encode(V)}
                    end,
+    ?log_debug("Sent ~s rev: ~s", [K, Rev]),
     HTTPRes:write_chunk(ejson:encode({[{rev, Rev},
                                        {path, K},
                                        {value, Value}]})).
