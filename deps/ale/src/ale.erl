@@ -67,7 +67,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 start_sink(Name, Module, Args) ->
-    gen_server:call(?MODULE, {start_sink, Name, Module:sink_type(), Module, Args}).
+    gen_server:call(?MODULE, {start_sink, Name, Module:meta(), Module, Args}).
 
 with_configuration_batching(Body) ->
     Old = freeze_compilations(),
@@ -240,8 +240,8 @@ init([]) ->
 handle_call(get_state, _From, State) ->
     {reply, State, State};
 
-handle_call({start_sink, Name, Type, Module, Args}, _From, State) ->
-    RV = do_start_sink(Name, Type, Module, Args, State),
+handle_call({start_sink, Name, SinkMeta, Module, Args}, _From, State) ->
+    RV = do_start_sink(Name, SinkMeta, Module, Args, State),
     handle_result(RV, State);
 
 handle_call({stop_sink, Name}, _From, State) ->
@@ -345,7 +345,7 @@ handle_result(Result, OldState) ->
             {reply, Result, OldState}
     end.
 
-do_start_sink(Name, Type, Module, Args, #state{sinks=Sinks} = State) ->
+do_start_sink(Name, SinkMeta, Module, Args, #state{sinks=Sinks} = State) ->
     case dict:find(Name, Sinks) of
         {ok, _} ->
             {error, duplicate_sink};
@@ -356,7 +356,7 @@ do_start_sink(Name, Type, Module, Args, #state{sinks=Sinks} = State) ->
             RV = ale_dynamic_sup:start_child(SinkId, Module, Args1),
             case RV of
                 {ok, _} ->
-                    NewSinks = dict:store(Name, Type, Sinks),
+                    NewSinks = dict:store(Name, SinkMeta, Sinks),
                     NewState = State#state{sinks=NewSinks},
                     {ok, NewState};
                 _Other ->
@@ -528,7 +528,7 @@ compile(#state{compile_frozen = Frozen,
     NewLoggers = dict:store(LoggerName, Logger, Loggers),
     State#state{loggers=NewLoggers}.
 
-just_compile_logger(#state{sinks=SinkTypes} = _State,
+just_compile_logger(#state{sinks=SinkMetas} = _State,
                     #logger{name=LoggerName,
                             loglevel=LogLevel,
                             formatter=Formatter,
@@ -539,8 +539,8 @@ just_compile_logger(#state{sinks=SinkTypes} = _State,
                #sink{name=SinkName, loglevel=SinkLogLevel},
                Acc) ->
                   SinkId = ale_utils:sink_id(SinkName),
-                  {ok, SinkType} = dict:find(SinkName, SinkTypes),
-                  [{SinkName, SinkId, SinkLogLevel, SinkType} | Acc]
+                  {ok, SinkMeta} = dict:find(SinkName, SinkMetas),
+                  [{SinkName, SinkId, SinkLogLevel, SinkMeta} | Acc]
           end, [], Sinks),
 
     ok = ale_codegen:load_logger(LoggerName, LogLevel, Formatter, SinksList).

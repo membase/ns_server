@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, sink_type/0]).
+-export([start_link/1, meta/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -34,8 +34,8 @@ start_link(Name) ->
 start_link(Name, Opts) ->
     gen_server:start_link({local, Name}, ?MODULE, [Opts], []).
 
-sink_type() ->
-    preformatted.
+meta() ->
+    [{type, preformatted}].
 
 init([_Opts]) ->
     {ok, #state{}}.

@@ -88,17 +88,20 @@ loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Formatter, Sinks) ->
                 {[], []};
             true ->
                 lists:foldl(
-                  fun ({_, Sink, SinkLogLevel, SinkType}, {P, R} = Acc) ->
+                  fun ({_, Sink, SinkLogLevel, SinkMeta}, {P, R} = Acc) ->
                           Enabled =
                               ale_utils:loglevel_enabled(LogLevel, SinkLogLevel),
 
                           case Enabled of
                               true ->
+                                  SinkType = proplists:get_value(type, SinkMeta, preformatted),
+                                  Async = proplists:get_bool(async, SinkMeta),
+
                                   case SinkType of
                                       preformatted ->
-                                          {[Sink | P], R};
+                                          {[{Sink, Async} | P], R};
                                       raw ->
-                                          {P, [Sink | R]}
+                                          {P, [{Sink, Async} | R]}
                                   end;
                               false ->
                                   Acc
@@ -146,17 +149,31 @@ generic_loglevel(LoggerName, LogLevel, Formatter, Preformatted, Raw) ->
      end,
 
      lists:map(
-       fun (Sink) ->
-               io_lib:format(
-                 "ok = gen_server:call('~s', {log, LogMsg}, infinity),",
-                 [Sink])
+       fun ({Sink, Async}) ->
+               case Async of
+                   true ->
+                       io_lib:format(
+                         "ok = gen_server:cast('~s', {log, LogMsg}),",
+                         [Sink]);
+                   false ->
+                       io_lib:format(
+                         "ok = gen_server:call('~s', {log, LogMsg}, infinity),",
+                         [Sink])
+               end
        end, Preformatted),
 
      lists:map(
-       fun (Sink) ->
-               io_lib:format(
-                 "ok = gen_server:call('~s', {raw_log, Info, UserMsg}, infinity),",
-                 [Sink])
+       fun ({Sink, Async}) ->
+               case Async of
+                   true ->
+                       io_lib:format(
+                         "ok = gen_server:cast('~s', {raw_log, Info, UserMsg}),",
+                         [Sink]);
+                   false ->
+                       io_lib:format(
+                         "ok = gen_server:call('~s', {raw_log, Info, UserMsg}, infinity),",
+                         [Sink])
+               end
        end, Raw),
 
      "ok.\n"].

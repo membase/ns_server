@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2, start_link/3, sink_type/0]).
+-export([start_link/2, start_link/3, meta/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -61,8 +61,9 @@ start_link(Name, Path) ->
 start_link(Name, Path, Opts) ->
     gen_server:start_link({local, Name}, ?MODULE, [Name, Path, Opts], []).
 
-sink_type() ->
-    preformatted.
+meta() ->
+    [async,
+     {type, preformatted}].
 
 init([Name, Path, Opts]) ->
     process_flag(trap_exit, true),
@@ -101,8 +102,6 @@ init([Name, Path, Opts]) ->
 
     {ok, State}.
 
-handle_call({log, Msg}, _From, State) ->
-    {reply, ok, log_msg(Msg, State)};
 handle_call(sync, From, #state{worker = Worker} = State) ->
     NewState = flush_buffer(State),
 
@@ -117,6 +116,8 @@ handle_call(sync, From, #state{worker = Worker} = State) ->
 handle_call(Request, _From, State) ->
     {stop, {unexpected_call, Request}, State}.
 
+handle_cast({log, Msg}, State) ->
+    {noreply, log_msg(Msg, State)};
 handle_cast(Msg, State) ->
     {stop, {unexpected_cast, Msg}, State}.
 
