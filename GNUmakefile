@@ -62,3 +62,8 @@ prebuild_gozip:
 	cd deps/gozip && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-gozip
 	cd deps/gozip && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-gozip
 	cd deps/gozip && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-gozip.exe
+
+prebuild_goport:
+	cd deps/goport && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-goport
+	cd deps/goport && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-goport
+	cd deps/goport && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-goport.exe
