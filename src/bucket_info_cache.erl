@@ -151,8 +151,7 @@ build_services(Node, Config, EnabledServices) ->
          end || S <- EnabledServices],
     {value, CapiPort} = ns_config:search_node(Node, Config, capi_port),
     [{mgmt, misc:node_rest_port(Config, Node)},
-     {capi, CapiPort},
-     {meta, ns_config:search_node_prop(Node, Config, meta, request_port)}
+     {capi, CapiPort}
      | lists:append([SSLPorts | OptServices])].
 
 maybe_build_ext_hostname(Node) ->

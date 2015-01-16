@@ -233,7 +233,6 @@ dynamic_children() ->
         kv_node_projector_spec(Config) ++
         index_node_spec(Config) ++
         query_node_spec(Config) ++
-        meta_node_spec(Config) ++
         saslauthd_port_spec(Config) ++
         goxdcr_spec(Config) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
@@ -314,11 +313,9 @@ goxdcr_spec(Config) ->
                 integer_to_list(misc:node_rest_port(Config, node())),
             XdcrRestPort = "-xdcrRestPort=" ++
                 integer_to_list(ns_config:search(Config, {node, node(), xdcr_rest_port}, 9998)),
-            GometaRequestPort = "-gometaRequestPort=" ++
-                integer_to_list(ns_config:search_node_prop(Config, meta, request_port)),
             IsEnterprise = "-isEnterprise=" ++ atom_to_list(menelaus_web:is_enterprise()),
             [{'goxdcr', Cmd,
-              [AdminPort, XdcrRestPort, GometaRequestPort, IsEnterprise],
+              [AdminPort, XdcrRestPort, IsEnterprise],
               [use_stdio, exit_status, stderr_to_stdout, stream,
                {log, ?GOXDCR_LOG_FILENAME},
                {env, build_cbauth_env_vars(Config, goxdcr)}]}]
@@ -356,81 +353,6 @@ index_node_spec(Config) ->
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?INDEXER_LOG_FILENAME},
                      {env, build_cbauth_env_vars(Config, index)}]},
-            [Spec]
-    end.
-
-meta_node_spec(Config) ->
-    GometaCmd = find_executable("gometa"),
-
-    case GometaCmd =/= false andalso
-        ns_cluster_membership:get_cluster_membership(node(), Config) =:= active of
-        false ->
-            [];
-        true ->
-            Nodes = [begin
-                         RequestPort = ns_config:search_node_prop(N, Config, meta, request_port),
-                         ElectionPort = ns_config:search_node_prop(N, Config, meta, election_port),
-                         MessagePort = ns_config:search_node_prop(N, Config, meta, message_port),
-
-                         {_, Host} = misc:node_name_host(N),
-                         MaybeHost = case N =:= node() of
-                                    false ->
-                                        Host;
-                                    true ->
-                                        ""
-                                end,
-
-                         RequestAddr = list_to_binary(MaybeHost ++ ":" ++ integer_to_list(RequestPort)),
-                         ElectionAddr = list_to_binary(Host ++ ":" ++ integer_to_list(ElectionPort)),
-                         MessageAddr = list_to_binary(Host ++ ":" ++ integer_to_list(MessagePort)),
-
-                         {N, {RequestAddr, ElectionAddr, MessageAddr}}
-                     end || N <- ns_cluster_membership:active_nodes(Config)],
-
-            Hash = erlang:phash2(Nodes),
-            GometaDir = path_config:component_path(data, "gometa"),
-            ConfPath = filename:join(GometaDir, "gometa.conf." ++ integer_to_list(Hash)),
-
-            case file:read_file_info(ConfPath) of
-                {ok, _} ->
-                    ok;
-                {error, enoent} ->
-                    lists:foreach(
-                      fun (P) ->
-                              ok = file:delete(P)
-                      end, filelib:wildcard(filename:join(GometaDir, "gometa.conf.*"))),
-
-                    {Host, Peers} =
-                        lists:foldl(
-                          fun ({N, {RequestAddr, ElectionAddr, MessageAddr}}, {AccHost, AccPeers}) ->
-                                  JSON = {[{<<"RequestAddr">>, RequestAddr},
-                                           {<<"ElectionAddr">>, ElectionAddr},
-                                           {<<"MessageAddr">>, MessageAddr}]},
-
-                                  case N =:= node() of
-                                      true ->
-                                          {JSON, AccPeers};
-                                      false ->
-                                          {AccHost, [JSON | AccPeers]}
-                                  end
-                          end, {undefined, []}, Nodes),
-
-                    true = (Host =/= undefined),
-
-                    Conf = {[{"Host", Host},
-                             {"Peer", Peers}]},
-
-                    ok = filelib:ensure_dir(ConfPath),
-                    ok = misc:write_file(ConfPath, ejson:encode(Conf))
-            end,
-
-            Args = ["-config", ConfPath],
-            Spec = {meta, GometaCmd, Args,
-                    [use_stdio, exit_status, port_server_send_eol,
-                     stderr_to_stdout, stream,
-                     {cd, GometaDir}
-                    ]},
-
             [Spec]
     end.
 
