@@ -118,7 +118,7 @@ maybe_notify_cbauth(#state{rpc_processes = Processes,
     end.
 
 notify_cbauth(Label, Info) ->
-    Method = "AuthCacheSvc.UpdateCache",
+    Method = "AuthCacheSvc.UpdateDB",
     try json_rpc_connection:perform_call(Label, Method, Info) of
         {error, <<"rpc: can't find method ", _/binary>>} ->
             ?log_debug("Rpc connection doesn't implement ~p", [Method]),
@@ -166,16 +166,15 @@ build_node_info(N, Config) ->
 
 build_buckets_info() ->
     Buckets = ns_bucket:get_buckets(),
-    lists:map(fun ({BucketName, BucketProps}) ->
-                      {[{name, erlang:list_to_binary(BucketName)},
-                        {password,
-                         case proplists:get_value(auth_type, BucketProps) of
-                             sasl ->
-                                 erlang:list_to_binary(proplists:get_value(sasl_password, BucketProps));
-                             none ->
-                                 <<"">>
-                         end}]}
-              end, Buckets).
+    {lists:map(fun ({BucketName, BucketProps}) ->
+                       {erlang:list_to_binary(BucketName),
+                        case proplists:get_value(auth_type, BucketProps) of
+                            sasl ->
+                                erlang:list_to_binary(proplists:get_value(sasl_password, BucketProps));
+                            none ->
+                                <<"">>
+                        end}
+               end, Buckets)}.
 
 build_cred_info(Role) ->
     case ns_config_auth:get_creds(Role) of
@@ -192,9 +191,12 @@ build_auth_info() ->
     Nodes =
         [build_node_info(N, Config) || N <- ns_cluster_membership:active_nodes(Config)],
 
-    {[{nodes, Nodes} |
-      [{buckets, build_buckets_info()} |
-       build_cred_info(admin) ++ build_cred_info(ro_admin)]]}.
+    TokenURL = io_lib:format("http://127.0.0.1:~w/_cbauth", [misc:node_rest_port(Config, node())]),
+
+    {[{nodes, Nodes},
+      {buckets, build_buckets_info()},
+      {tokenCheckURL, iolist_to_binary(TokenURL)}
+      | (build_cred_info(admin) ++ build_cred_info(ro_admin))]}.
 
 handle_cbauth_post(Req) ->
     Role = menelaus_auth:get_role(Req),
