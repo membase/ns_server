@@ -230,11 +230,11 @@ dynamic_children() ->
     MaybeSSLProxySpec = maybe_create_ssl_proxy_spec(Config),
 
     [expand_args(NCAO) || NCAO <- PortServers] ++
-        kv_node_projector_spec(Config) ++
-        index_node_spec(Config) ++
-        query_node_spec(Config) ++
+        run_via_goport(kv_node_projector_spec(Config)) ++
+        run_via_goport(index_node_spec(Config)) ++
+        run_via_goport(query_node_spec(Config)) ++
         saslauthd_port_spec(Config) ++
-        goxdcr_spec(Config) ++
+        run_via_goport(goxdcr_spec(Config)) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
 
 should_run_service(Config, Service) ->
@@ -439,3 +439,24 @@ omit_missing_mcd_ports(Interfaces, MCDParams) ->
                             proplists:get_value(port, PortProps) =/= undefined
                     end],
     memcached_config_mgr:expand_memcached_config(Ports, MCDParams).
+
+run_via_goport(Specs) ->
+    lists:map(fun do_run_via_goport/1, Specs).
+
+do_run_via_goport({Name, Cmd, Args, Opts}) ->
+    GoportName =
+        case erlang:system_info(system_architecture) of
+            "win32" ->
+                "goport.exe";
+            _ ->
+                "goport"
+        end,
+
+    GoportPath = path_config:component_path(bin, GoportName),
+    GoportArgsEnv = binary_to_list(ejson:encode([list_to_binary(L) || L <- [Cmd | Args]])),
+
+    Env = proplists:get_value(env, Opts, []),
+    Env1 = [{"GOPORT_ARGS", GoportArgsEnv} | Env],
+
+    Opts1 = lists:keystore(env, 1, Opts, {env, Env1}),
+    {Name, GoportPath, ["--graceful-shutdown"], Opts1}.
