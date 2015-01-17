@@ -103,6 +103,12 @@ class TestCBAuth < Minitest::Test
     end
     puts ":44443 is free"
 
+    token = post!("/diag/eval", 'menelaus_util:reply_text(Req, menelaus_ui_auth:generate_token({"Administrator", admin}), 200), done.')
+    token_headers = {
+      "Ns_server-Ui" => "yes",
+      "Cookie" => "ui-auth-#{all.first.gsub(":", "%3A")}=#{token}"
+    }
+
     IO.popen("/tmp/cbauth-example --listen=127.0.0.1:44443 --mgmtURL=#{base_url}", "r+") do |f|
       poll_condition do
         TCPSocket.new("127.0.0.1", 44443).tap(&:close) rescue false
@@ -112,6 +118,10 @@ class TestCBAuth < Minitest::Test
         getj! "/bucket/other"
         switching_username nil do
           getj! "/bucket/default"
+          getj! "/bucket/other", token_headers
+          assert_raises RestClient::Unauthorized do
+            getj! "/bucket/other"
+          end
         end
       end
       f.close_write
