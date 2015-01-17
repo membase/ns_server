@@ -82,7 +82,15 @@
          reply_json/4,
          reply_not_found/1,
          get_option/2,
-         parse_validate_number/3]).
+         parse_validate_number/3,
+         is_valid_positive_integer/1,
+         is_valid_positive_integer_in_range/3,
+         validate_boolean/2,
+         validate_dir/2,
+         validate_positive_integer/2,
+         validate_unsupported_params/1,
+         validate_has_params/1,
+         execute_if_validated/3]).
 
 -define(AUTO_FAILLOVER_MIN_TIMEOUT, 30).
 -define(AUTO_FAILLOVER_MAX_TIMEOUT, 3600).
@@ -307,6 +315,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth_ro, fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]};
                          ["settings", "saslauthdAuth"] ->
                              {auth, fun handle_saslauthd_auth_settings/1};
+                         ["settings", "audit"] ->
+                             {auth, fun handle_settings_audit/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
                          ["internalSettings", "visual"] ->
@@ -395,6 +405,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_xdc_replications:handle_replication_settings_post/2, [XID]};
                          ["settings", "saslauthdAuth"] ->
                              {auth, fun handle_saslauthd_auth_settings_post/1};
+                         ["settings", "audit"] ->
+                             {auth, fun handle_settings_audit_post/1};
                          ["validateCredentials"] ->
                              {auth, fun handle_validate_saslauthd_creds_post/1};
                          ["internalSettings"] ->
@@ -2072,14 +2084,6 @@ validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
             {error, [Error]}
     end.
 
-is_valid_positive_integer(String) ->
-    Int = (catch list_to_integer(String)),
-    (is_integer(Int) andalso (Int > 0)).
-
-is_valid_positive_integer_in_range(String, Min, Max) ->
-    Int = (catch list_to_integer(String)),
-    (is_integer(Int) andalso (Int >= Min) andalso (Int =< Max)).
-
 %% @doc Resets the number of nodes that were automatically failovered to zero
 handle_settings_auto_failover_reset_count(Req) ->
     auto_failover:reset_count(),
@@ -3687,3 +3691,29 @@ handle_log_post(Req) ->
         _ ->
             reply_json(Req, {struct, Errors}, 400)
     end.
+
+handle_settings_audit(Req) ->
+    menelaus_web:assert_is_enterprise(),
+    Props = ns_audit_cfg:get_global(),
+    Json = lists:map(fun ({K, V}) when is_list(V) ->
+                             {K, list_to_binary(V)};
+                         (Other) ->
+                             Other
+                     end, Props),
+    reply_json(Req, {Json}).
+
+validate_settings_audit(Args) ->
+    R = validate_has_params({Args, [], []}),
+    R0 = validate_boolean(cbauditd_enabled, R),
+    R1 = validate_dir(log_path, R0),
+    R2 = validate_dir(archive_path, R1),
+    R3 = validate_positive_integer(rotate_interval, R2),
+    validate_unsupported_params(R3).
+
+handle_settings_audit_post(Req) ->
+    menelaus_web:assert_is_enterprise(),
+    Args = Req:parse_post(),
+    execute_if_validated(fun (Values) ->
+                                 ns_audit_cfg:set_global(Values),
+                                 reply(Req, 200)
+                         end, Req, validate_settings_audit(Args)).

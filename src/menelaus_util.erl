@@ -56,7 +56,15 @@
          parse_validate_port_number/1,
          validate_email_address/1,
          insecure_pipe_through_command/2,
-         encode_json/1]).
+         encode_json/1,
+         is_valid_positive_integer/1,
+         is_valid_positive_integer_in_range/3,
+         validate_boolean/2,
+         validate_dir/2,
+         validate_positive_integer/2,
+         validate_unsupported_params/1,
+         validate_has_params/1,
+         execute_if_validated/3]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
@@ -426,4 +434,84 @@ encode_json(JSON) ->
             ?log_debug("errored while sending:~n~p~n->~n~p", [JSON, Stripped]),
             Stack = erlang:get_stacktrace(),
             erlang:raise(T, E, Stack)
+    end.
+
+is_valid_positive_integer(String) ->
+    Int = (catch erlang:list_to_integer(String)),
+    (is_integer(Int) andalso (Int > 0)).
+
+is_valid_positive_integer_in_range(String, Min, Max) ->
+    Int = (catch erlang:list_to_integer(String)),
+    (is_integer(Int) andalso (Int >= Min) andalso (Int =< Max)).
+
+return_value(Name, Value, {OutList, InList, Errors}) ->
+    {lists:keydelete(atom_to_list(Name), 1, OutList), [{Name, Value} | InList], Errors}.
+
+return_error(Name, Error, {OutList, InList, Errors}) ->
+    {lists:keydelete(atom_to_list(Name), 1, OutList), InList,
+     [{Name, iolist_to_binary(Error)} | Errors]}.
+
+validate_boolean(Name, {OutList, _, _} = State) ->
+    Value = proplists:get_value(atom_to_list(Name), OutList),
+    case Value of
+        "true" ->
+            return_value(Name, true, State);
+        "false" ->
+            return_value(Name, false, State);
+        undefined ->
+            State;
+        _ ->
+            return_error(Name, io_lib:format("The value of ~p must be true or false",
+                                             [Name]), State)
+    end.
+
+validate_dir(Name, {OutList, _, _} = State) ->
+    Value = proplists:get_value(atom_to_list(Name), OutList),
+    case Value of
+        undefined ->
+            State;
+        _ ->
+            case filelib:is_dir(Value) of
+                true ->
+                    return_value(Name, Value, State);
+                false ->
+                    return_error(Name, io_lib:format("The value of ~p must be a valid directory",
+                                                     [Name]), State)
+            end
+    end.
+
+validate_positive_integer(Name, {OutList, _, _} = State) ->
+    Value = proplists:get_value(atom_to_list(Name), OutList),
+    case Value of
+        undefined ->
+            State;
+        _ ->
+            case is_valid_positive_integer(Value) of
+                true ->
+                    return_value(Name, erlang:list_to_integer(Value), State);
+                false ->
+                    return_error(Name, io_lib:format("The value of ~p must be a positive integer",
+                                                     [Name]), State)
+            end
+    end.
+
+validate_unsupported_params({OutList, InList, Errors}) ->
+    NewErrors = [{list_to_binary(Key),
+                  iolist_to_binary(["Found unsupported key ", Key])} || {Key, _} <- OutList] ++ Errors,
+    {OutList, InList, NewErrors}.
+
+validate_has_params({[], InList, Errors}) ->
+    {[], InList, [{<<"_">>, <<"Request should have form parameters">>} | Errors]};
+validate_has_params(State) ->
+    State.
+
+execute_if_validated(Fun, Req, {_, Values, Errors}) ->
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
+    case {ValidateOnly, Errors} of
+        {true, _} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200);
+        {false, []} ->
+            Fun(Values);
+        {false, _} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400)
     end.
