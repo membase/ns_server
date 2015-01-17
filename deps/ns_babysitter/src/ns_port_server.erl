@@ -54,8 +54,7 @@
                 logger :: atom(),
                 log_tref :: timer:tref(),
                 log_buffer = [],
-                dropped=0 :: non_neg_integer(),
-                send_eol :: boolean()}).
+                dropped=0 :: non_neg_integer()}).
 
 %% API
 
@@ -70,8 +69,7 @@ init(Fun) ->
     {Name, _Cmd, _Args, Opts} = Params = Fun(),
     process_flag(trap_exit, true), % Make sure terminate gets called
     Opts2 = lists:foldl(fun proplists:delete/2, Opts,
-                        [port_server_send_eol, port_server_dont_start, log]),
-    SendEOL = proplists:get_value(port_server_send_eol, Opts),
+                        [port_server_dont_start, log]),
     DontStart = proplists:get_bool(port_server_dont_start, Opts),
     Log = proplists:get_value(log, Opts),
     Params2 = erlang:setelement(4, Params, Opts2),
@@ -97,7 +95,7 @@ init(Fun) ->
                false -> open_port(Params2);
                true -> {inactive, Params2}
            end,
-    {ok, State#state{port = Port, name = Name, send_eol = SendEOL,
+    {ok, State#state{port = Port, name = Name,
                      messages = ringbuffer:new(?NUM_MESSAGES)}}.
 
 handle_info({send_to_port, Msg}, #state{port = P} = State) when not is_port(P) ->
@@ -178,7 +176,7 @@ wait_for_child_death_process_info(Msg, State) ->
 terminate(Reason, #state{port = P} = _State) when not is_port(P) ->
     ?log_debug("doing nothing in terminate(~p) because port is not active", [Reason]),
     ok;
-terminate(shutdown, #state{send_eol = true, port = Port, name = Name} = State) ->
+terminate(shutdown, #state{port = Port, name = Name} = State) ->
     ShutdownCmd = misc:get_env_default(ns_babysitter, port_shutdown_command, "shutdown"),
     ?log_debug("Sending ~s to port ~p", [ShutdownCmd, Name]),
     port_command(Port, [ShutdownCmd, 10]),

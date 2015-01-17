@@ -86,12 +86,11 @@ launch_port(NCAO) ->
 create_ns_server_supervisor_spec() ->
     {ErlCmd, NSServerArgs, NSServerOpts} = child_erlang:open_port_args(),
 
-    Options0 = [port_server_send_eol | NSServerOpts],
     Options = case misc:get_env_default(ns_server, dont_suppress_stderr_logger, false) of
                   true ->
-                      [ns_server_no_stderr_to_stdout | Options0];
+                      [ns_server_no_stderr_to_stdout | NSServerOpts];
                   _ ->
-                      Options0
+                      NSServerOpts
               end,
 
     NCAO = {ns_server, ErlCmd, NSServerArgs, Options},

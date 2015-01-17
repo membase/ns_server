@@ -172,7 +172,7 @@ create_erl_node_spec(Type, Args, EnvArgsVar, ErlangArgs) ->
 
     Env = [{EnvArgsVar, misc:inspect_term(EnvArgs)} | Env0],
 
-    Options0 = [use_stdio, port_server_send_eol, {env, Env}],
+    Options0 = [use_stdio, {env, Env}],
     Options =
         case misc:get_env_default(dont_suppress_stderr_logger, false) of
             true ->
@@ -257,7 +257,7 @@ query_node_spec(Config) ->
             HttpArg = "--http=:" ++ integer_to_list(ns_config:search(Config, {node, node(), query_port}, 8093)),
             Spec = {'query', Command,
                     [DataStoreArg, HttpArg, CnfgStoreArg],
-                    [use_stdio, exit_status, port_server_send_eol, stderr_to_stdout, stream,
+                    [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?QUERY_LOG_FILENAME}]},
 
             [Spec]

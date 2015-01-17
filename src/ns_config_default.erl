@@ -340,7 +340,6 @@ default() ->
                 {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}}
                ]},
          use_stdio, exit_status,
-         port_server_send_eol,
          stderr_to_stdout,
          stream]
        },
@@ -364,7 +363,6 @@ default() ->
                 {"ISASL_PWFILE", {"~s", [{isasl, path}]}}]},
          use_stdio,
          stderr_to_stdout, exit_status,
-         port_server_send_eol,
          port_server_dont_start,
          stream]
        }]
@@ -783,7 +781,10 @@ upgrade_config_from_3_0_99_to_3_2(Config) ->
 
 do_upgrade_config_from_3_0_99_to_3_2(Config, DefaultConfig) ->
     MCDefaultsK = {node, node(), memcached_defaults},
-    {value, NewDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
+    {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
+
+    PortServersK = {node, node(), port_servers},
+    {value, NewPSDefaults} = ns_config:search([DefaultConfig], PortServersK),
 
     McdKey = {node, node(), memcached},
     {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
@@ -797,7 +798,8 @@ do_upgrade_config_from_3_0_99_to_3_2(Config, DefaultConfig) ->
     {value, {CurrentJsonTemplateConfig}} = ns_config:search(Config, JTKey),
     NewJsonTemplateConfig = lists:keystore(audit_file, 1, CurrentJsonTemplateConfig, AuditFileTupleJT),
 
-    [{set, MCDefaultsK, NewDefaults},
+    [{set, MCDefaultsK, NewMCDefaults},
+     {set, PortServersK, NewPSDefaults},
      {set, McdKey, NewMcdConfig},
      {set, JTKey, {NewJsonTemplateConfig}}].
 
@@ -1167,16 +1169,19 @@ upgrade_3_0_99_to_3_2_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
              [{some_key, some_value}]},
+            {{node, node(), port_servers}, old_port_servers},
             {{node, node(), memcached_config},
              {[{some_key, some_value}]}}
            ]],
     Default = [{{node, node(), memcached_defaults},
                 [{some, stuff}]},
+               {{node, node(), port_servers}, new_port_servers},
                {{node, node(), memcached},
                 [{audit_file, audit_file_path}]},
                {{node, node(), memcached_config},
                 {[{audit_file, audit_file}]}}],
     ?assertMatch([{set, {node, _, memcached_defaults}, [{some, stuff}]},
+                  {set, {node, _, port_servers}, new_port_servers},
                   {set, {node, _, memcached}, [{some_key, some_value},
                                                {audit_file, audit_file_path}]},
                   {set, {node, _, memcached_config}, {[{some_key, some_value},
