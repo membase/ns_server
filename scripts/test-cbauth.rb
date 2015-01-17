@@ -7,18 +7,24 @@ require_relative 'base-test'
 class TestCBAuth < Minitest::Test
   include Methods
 
+  SKIP_SETUP = ENV['CBAUTH_TEST_SKIP_SETUP']
+
   def all
     $all_nodes
   end
 
   def setup
-    uncluster_everything!
-    # this is sadly needed so far
-    sleep 4
-    setup_node! all.first
+    unless SKIP_SETUP
+      uncluster_everything!
+      # this is sadly needed so far
+      sleep 4
+      setup_node! all.first
+    end
     set_node! all.first
-    all[1..-1].each {|n| add_node! n, all.first}
-    rebalance!
+    unless SKIP_SETUP
+      all[1..-1].each {|n| add_node! n, all.first}
+      rebalance!
+    end
   end
 
   def teardown
@@ -67,9 +73,11 @@ class TestCBAuth < Minitest::Test
   end
 
   def test_basic_stuff
-    create_bucket! "other", "apassword"
-    create_bucket! "default"
-    create_bucket! "foo", ""
+    unless SKIP_SETUP
+      create_bucket! "other", "apassword"
+      create_bucket! "default"
+      create_bucket! "foo", ""
+    end
 
     puts post!("/diag/eval", 'ns_orchestrator:ensure_janitor_run("default")')
     puts post!("/diag/eval", 'ns_orchestrator:ensure_janitor_run("other")')
