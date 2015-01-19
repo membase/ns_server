@@ -599,31 +599,11 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
             auth_check_bucket_uuid(Req, F, Args)
     end.
 
-verify_login_creds(User, Password) ->
-    case menelaus_auth:check_auth({User, Password}) of
-        true ->
-            {ok, admin, builtin};
-        _ ->
-            case menelaus_auth:is_read_only_auth({User, Password}) of
-                true ->
-                    {ok, ro_admin, builtin};
-                _ ->
-                    case menelaus_auth:check_saslauthd_auth(User, Password) of
-                        admin ->
-                            {ok, admin, saslauthd};
-                        ro_admin ->
-                            {ok, ro_admin, saslauthd};
-                        false ->
-                            false
-                    end
-            end
-    end.
-
 handle_uilogin(Req) ->
     Params = Req:parse_post(),
     User = proplists:get_value("user", Params),
     Password = proplists:get_value("password", Params),
-    case verify_login_creds(User, Password) of
+    case menelaus_auth:verify_login_creds(User, Password) of
         {ok, Role, _Src} ->
             menelaus_auth:complete_uilogin(Req, User, Role);
         false ->
@@ -3646,8 +3626,8 @@ handle_saslauthd_auth_settings_post(Req) ->
 
 handle_validate_saslauthd_creds_post(Req) ->
     Params = Req:parse_post(),
-    VRV = verify_login_creds(proplists:get_value("user", Params, ""),
-                             proplists:get_value("password", Params, "")),
+    VRV = menelaus_auth:verify_login_creds(proplists:get_value("user", Params, ""),
+                                           proplists:get_value("password", Params, "")),
     JR = case VRV of
              {ok, ro_admin, _} -> roAdmin;
              {ok, admin, _} -> fullAdmin;

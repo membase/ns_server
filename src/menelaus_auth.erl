@@ -41,7 +41,8 @@
          get_user/1,
          get_token/1,
          get_role/1,
-         validate_request/1]).
+         validate_request/1,
+         verify_login_creds/2]).
 
 -export([build_saslauthd_auth_settings/0,
          set_saslauthd_auth_settings/1,
@@ -255,7 +256,7 @@ check_admin_auth_int({token, Token}) ->
             end
     end;
 check_admin_auth_int({User, Password}) ->
-    case ns_config_auth:authenticate(admin, User, Password) of
+    case check_user_creds(admin, User, Password) of
         true ->
             {true, User, undefined};
         false ->
@@ -293,7 +294,7 @@ check_read_only_auth({token, Token}) ->
             false
     end;
 check_read_only_auth({User, Password}) ->
-    case ns_config_auth:authenticate(ro_admin, User, Password) of
+    case check_user_creds(ro_admin, User, Password) of
         true ->
             {true, User, undefined};
         false ->
@@ -437,6 +438,29 @@ check_saslauthd_auth(User, Password) ->
                         RoAdmins =:= asterisk ->
                             ro_admin;
                         true ->
+                            false
+                    end
+            end
+    end.
+
+check_user_creds(Role, User, Password) ->
+    ns_config_auth:authenticate(Role, User, Password) orelse check_saslauthd_auth(User, Password) =:= Role.
+
+verify_login_creds(User, Password) ->
+    case ns_config_auth:authenticate(admin, User, Password) of
+        true ->
+            {ok, admin, builtin};
+        false ->
+            case ns_config_auth:authenticate(ro_admin, User, Password) of
+                true ->
+                    {ok, ro_admin, builtin};
+                false ->
+                    case check_saslauthd_auth(User, Password) of
+                        admin ->
+                            {ok, admin, saslauthd};
+                        ro_admin ->
+                            {ok, ro_admin, saslauthd};
+                        false ->
                             false
                     end
             end
