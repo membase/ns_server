@@ -1677,10 +1677,10 @@ var LDAPSetupSection = {
           text += " no access";
           break;
         case "roAdmin":
-          text += '"Full Admin" access';
+          text += '"Read-Only Admin" access';
           break;
         case "fullAdmin":
-          text += '"Read-Only Admin" access';
+          text += '"Full Admin" access';
         }
         if (role !== "none" && source === "builtin") {
           text += ", but it is recognized not via LDAP";
