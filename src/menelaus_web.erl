@@ -3602,8 +3602,15 @@ parse_validate_saslauthd_settings(Params) ->
                        [{error, enabled, <<"is missing">>}];
                    EnabledX -> EnabledX
                end,
-    Admins = extract_user_list(proplists:get_value("admins", Params)),
-    RoAdmins = extract_user_list(proplists:get_value("roAdmins", Params)),
+    [AdminsParam, RoAdminsParam] =
+        case EnabledR of
+            [{ok, enabled, false}] ->
+                ["", ""];
+            _ ->
+                [proplists:get_value(K, Params) || K <- ["admins", "roAdmins"]]
+        end,
+    Admins = extract_user_list(AdminsParam),
+    RoAdmins = extract_user_list(RoAdminsParam),
     MaybeExtraFields = case proplists:get_keys(Params) -- ["enabled", "roAdmins", "admins"] of
                            [] ->
                                [];

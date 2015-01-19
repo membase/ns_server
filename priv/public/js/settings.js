@@ -1582,7 +1582,7 @@ var LDAPSetupSection = {
       var isChecked = self.ldapEnabled.attr('checked');
       $(':input', self.ldapValidateForm)
         .add(':input', self.ldapSetupForm)
-        .not(self.ldapEnabled)
+        .not(self.ldapEnabled).not("[type=hidden]")
         .prop('disabled', !isChecked);
         if (isChecked) {
           defaultValueFields.filter(':checked').change();
