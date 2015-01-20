@@ -135,16 +135,22 @@ do_trigger_update_for_ddoc(SetName, DDoc0, MinNumChanges, ReplicaMinNumChanges) 
         0 ->
             ok;
         _ ->
-            ok = couch_set_view:trigger_update(mapreduce_view, SetName, Id,
-                                               DDocMinNumChanges)
+            lists:foreach(
+              fun (Type) ->
+                      ok = couch_set_view:trigger_update(
+                             Type, SetName, Id, DDocMinNumChanges)
+              end, [mapreduce_view, spatial_view])
     end,
 
     case DDocReplicaMinNumChanges of
         0 ->
             ok;
         _ ->
-            ok = couch_set_view:trigger_replica_update(
-                   mapreduce_view, SetName, Id, DDocReplicaMinNumChanges)
+            lists:foreach(
+              fun (Type) ->
+                      ok = couch_set_view:trigger_replica_update(
+                             Type, SetName, Id, DDocReplicaMinNumChanges)
+              end, [mapreduce_view, spatial_view])
     end.
 
 ddoc_update_min_changes(Key, #doc{body={Body}}, Default) ->
