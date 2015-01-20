@@ -20,17 +20,15 @@ var SettingsSection = {
                              '#js_settings .panes > div',
                              ['cluster','update_notifications', 'auto_failover',
                               'email_alerts', 'settings_compaction',
-                              'ldap_setup', 'settings_sample_buckets', 'account_management']);
+                              'ldap_setup', 'settings_sample_buckets', 'account_management', 'audit']);
 
     Cell.subscribeMultipleValues(function (isROAdmin, lastCompatMode) {
       if (lastCompatMode === undefined || isROAdmin == undefined) {
         return;
       }
 
-      var rightTab = !isROAdmin ? "account_management" : !lastCompatMode ? "settings_sample_buckets" : "settings_compaction";
-
-      $('#js_settings .tabs > *').removeClass("tab_right");
-      $("#" + rightTab).parent().addClass("tab_right");
+      $('#js_settings .tabs li').removeClass("tab_right");
+      $('#js_settings .tabs li:visible:last').addClass("tab_right");
 
     }, DAL.cells.isROAdminCell, DAL.cells.runningInCompatMode);
 
@@ -42,6 +40,7 @@ var SettingsSection = {
     SampleBucketSection.init();
     AccountManagementSection.init();
     LDAPSetupSection.init();
+    AuditSetupSection.init();
   },
   onEnter: function () {
     SampleBucketSection.refresh();
@@ -1529,6 +1528,134 @@ var AutoCompactionSection = {
       });
     };
   })()
+};
+
+function auditSetupSectionCells(ns, tabs, sectionCell) {
+  ns.onLDAPTabCell = Cell.computeEager(function (v) {
+    return v.need(sectionCell) == "settings" && v.need(tabs) == "audit";
+  });
+  ns.settingsCell = Cell.computeEager(function (v) {
+    if (!v.need(ns.onLDAPTabCell)) {
+      return;
+    }
+    return future.get({url: "/settings/audit"});
+  });
+  ns.showSpinnerCell = Cell.computeEager(function (v) {
+    if (!v(ns.onLDAPTabCell)) {
+      return false;
+    }
+    return !v(ns.settingsCell);
+  });
+}
+
+var AuditSetupSection = {
+  init: function () {
+    var self = AuditSetupSection;
+    auditSetupSectionCells(self, SettingsSection.tabs, DAL.cells.mode);
+
+    self.auditSetupForm = $("#js_audit_setup_form");
+    self.auditSetupContainer = $("#js_audit_setup_container");
+    self.auditEnabled = $("#js_audit_enabled");
+    self.auditSetupFormSubmit = $("#js_audit_setup_form_submit");
+    self.auditArchivePathField = $("#js_archive_path_field");
+    var spinner;
+
+    self.auditArchivePathField.bind('input', function () {
+      $(this).attr('title', $(this).val());
+    });
+
+    $(':input', self.auditSetupForm).change(function () {
+      self.auditSetupFormSubmit.prop('disabled', false);
+    }).bind('input', function () {
+      self.auditSetupFormSubmit.prop('disabled', false);
+    });
+
+    self.auditEnabled.change(function () {
+      var isChecked = self.auditEnabled.attr('checked');
+      $(':input', self.auditSetupForm).not(self.auditEnabled).not(self.auditSetupFormSubmit).prop('disabled', !isChecked);
+    });
+
+    self.showSpinnerCell.subscribeValue(function (val) {
+      if (!val) {
+        if (!spinner) {
+          return;
+        } else {
+          spinner.remove();
+          spinner = undefined;
+        }
+      } else {
+        if (spinner) {
+          BUG("spinner");
+        }
+        spinner = overlayWithSpinner(self.auditSetupContainer);
+      }
+    });
+
+    DAL.cells.isROAdminCell.subscribeValue(function (isROAdmin) {
+      $(':input', self.auditSetupContainer).prop('disabled', isROAdmin);
+    });
+
+    self.auditSetupForm.submit(function (e) {
+      e.preventDefault();
+      self.submit();
+    });
+
+    self.settingsCell.subscribeValue(function (settings) {
+      if (settings) {
+        self.fillForm(settings);
+      }
+    });
+  },
+  precisionFloating: function (float) {
+    return Number(float.toFixed(5));
+  },
+  formatTimeUnit: function (unit) {
+    switch (unit) {
+      case 'seconds': return 1;
+      case 'minutes': return 60;
+      case 'hours': return 60 * 60;
+      case 'days': return 60 * 60 * 24;
+    }
+  },
+  formatRotateInterval: function (interval) {
+    var self = AuditSetupSection;
+    return _.chain(['days', 'hours', 'minutes', 'seconds']).map(function (unit) {
+      return [interval / self.formatTimeUnit(unit), unit];
+    }).find(function (value) {
+      return value[0] >= 1;
+    }).value();
+  },
+  fillForm: function (settings) {
+    var self = this;
+    var formattedInterval = self.formatRotateInterval(settings["rotate_interval"]);
+    settings["rotate_interval"] = formattedInterval[0];
+    settings["rotate_interval_unit"] = formattedInterval[1];
+    setFormValues(self.auditSetupForm, settings);
+    self.auditSetupFormSubmit.prop('disabled', true);
+    if (!DAL.cells.isROAdminCell.value) {
+      self.auditEnabled.change();
+      self.auditArchivePathField.trigger('input');
+    }
+  },
+  submit: function () {
+    var self = this;
+    var formData = $.deparam(serializeForm(self.auditSetupForm));
+    self.settingsCell.setValue(undefined);
+    if (!formData["auditd_enabled"]) {
+      formData["auditd_enabled"] = "false";
+    } else {
+      formData["rotate_interval"] = formData["rotate_interval"] * self.formatTimeUnit(formData["rotate_interval_unit"]);
+      delete formData["rotate_interval_unit"];
+    }
+    $.ajax({
+      type: "POST",
+      url: "/settings/audit",
+      data: $.param(formData),
+      complete: function () {
+        self.settingsCell.recalculate();
+      }
+    });
+  }
 };
 
 function ldapSetupSectionCells(ns, tabs, sectionCell) {

@@ -1467,3 +1467,7 @@ input[type=number].size {width:4em;}
 
 .for_upload {line-height: 30px; padding-left: 5px;}
 .for_upload label {display: inline-block; width: 200px;}
+
+.audit_container label span {width: 150px;display: inline-block;}
+.audit_container .row {display: block; margin: 10px 0;}
+.archive_path_field {width: 230px;}
