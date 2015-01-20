@@ -54,7 +54,7 @@ get_path_info(Req) ->
     ["\"",
      method_to_list(Req:get(method)),
      " ",
-     Req:get(path),
+     Req:get(raw_path),
      " HTTP/",
      get_version(Req),
      "\""].
