@@ -583,6 +583,15 @@ POST /pools/default/settings/memcached/global
 
 sets global settings to given values.
 
+// internal
+POST /validateCredentials
+
+user=<user>&password=<password>
+
+200 {source: "builtin" | "saslauthd",
+     role: "fullAdmin" | "roAdmin"}
+
+
 
 ====
 PUT
