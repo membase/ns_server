@@ -592,6 +592,24 @@ user=<user>&password=<password>
      role: "fullAdmin" | "roAdmin"}
 
 
+POST /settings/saslauthdAuth
+
+enabled=(true|false)&(roAdmins=<user-list>)?&(admins=<user-list>)?
+
+200 "" // request succeeded
+
+Updates "ldap" auth settings. "enabled" parameter must be true or
+false. When true ldap auth integration is enabled. Otherwise it is
+disabled.
+
+When enabled, at least one of roAdmins or admins must be given. Both
+may be given too. When roAdmins is given it is new-line separated list
+of usernames. When roAdmins is absent it means that roAdmins is
+"asterisk". I.e. _all_ users recognized via saslauthd but not in
+admins list will be recognized as read-only admins. admins field
+behaves same as roAdmins field, but describes full admins instead of
+read-only admins.
+
 
 ====
 PUT
