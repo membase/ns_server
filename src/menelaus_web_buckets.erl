@@ -292,7 +292,13 @@ build_bucket_capabilities(BucketConfig) ->
             membase ->
                 case cluster_compat_mode:is_cluster_30() of
                     true ->
-                        [cbhello, touch, couchapi, cccp, xdcrCheckpointing, nodesExt];
+                        MaybeDCP = case cluster_compat_mode:is_cluster_sherlock() of
+                                       true ->
+                                           [dcp];
+                                       false ->
+                                           []
+                                   end,
+                        [cbhello, touch, couchapi, cccp, xdcrCheckpointing, nodesExt | MaybeDCP];
                     _ ->
                         [touch, couchapi]
                 end;
