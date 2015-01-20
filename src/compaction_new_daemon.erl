@@ -807,27 +807,31 @@ spawn_view_compactor(BucketName, DDocId, Config, Force, OriginalTarget) ->
               Compactors =
                   [ [{type, view},
                      {important, true},
-                     {name, view_name(BucketName, DDocId, Type)},
-                     {fa, {fun spawn_view_index_compactor/6,
+                     {name, view_name(BucketName, DDocId, Kind, Type)},
+                     {fa, {fun spawn_view_index_compactor/7,
                            [BucketName, DDocId,
-                            Type, Config, Force, OriginalTarget]}}] ||
-                      Type <- [main, replica] ],
+                            Kind, Type,
+                            Config, Force, OriginalTarget]}}] ||
+                      Type <- [main, replica],
+                      Kind <- [mapreduce_view, spatial_view]],
 
               do_chain_compactors(Parent, Compactors)
       end).
 
-view_name(BucketName, DDocId, Type) ->
-    <<BucketName/binary, $/, DDocId/binary, $/,
+view_name(BucketName, DDocId, Kind, Type) ->
+    <<(atom_to_binary(Kind, latin1))/binary, $/,
+      BucketName/binary, $/, DDocId/binary, $/,
       (atom_to_binary(Type, latin1))/binary>>.
 
 spawn_view_index_compactor(BucketName, DDocId,
-                           Type, Config, Force, OriginalTarget) ->
+                           Kind, Type,
+                           Config, Force, OriginalTarget) ->
     Force orelse exit_if_uninhibit_requsted(),
     Parent = self(),
 
     proc_lib:spawn_link(
       fun () ->
-              ViewName = view_name(BucketName, DDocId, Type),
+              ViewName = view_name(BucketName, DDocId, Kind, Type),
 
               DoCompact =
                   case Force of
@@ -836,13 +840,13 @@ spawn_view_index_compactor(BucketName, DDocId,
                                     [ViewName]),
                           true;
                       false ->
-                          view_needs_compaction(BucketName, DDocId, Type, Config)
+                          view_needs_compaction(BucketName, DDocId, Kind, Type, Config)
                   end,
 
               DoCompact orelse exit(normal),
 
               %% effectful
-              ensure_can_view_compact(BucketName, DDocId, Type),
+              ensure_can_view_compact(BucketName, DDocId, Kind, Type),
 
               ?log_info("Compacting indexes for ~s", [ViewName]),
               process_flag(trap_exit, true),
@@ -858,14 +862,14 @@ spawn_view_index_compactor(BucketName, DDocId,
                                {trigger_type, TriggerType}],
 
               do_spawn_view_index_compactor(Parent, BucketName,
-                                            DDocId, Type, InitialStatus),
+                                            DDocId, Kind, Type, InitialStatus),
 
               ?log_info("Finished compacting indexes for ~s", [ViewName])
       end).
 
-do_spawn_view_index_compactor(Parent, BucketName, DDocId, Type, InitialStatus) ->
+do_spawn_view_index_compactor(Parent, BucketName, DDocId, Kind, Type, InitialStatus) ->
     Compactor = start_view_index_compactor(BucketName, DDocId,
-                                           Type, InitialStatus),
+                                           Kind, Type, InitialStatus),
     CompactorRef = erlang:monitor(process, Compactor),
 
     receive
@@ -873,29 +877,31 @@ do_spawn_view_index_compactor(Parent, BucketName, DDocId, Type, InitialStatus) -
             ?log_debug("Got exit signal from parent: ~p", [Exit]),
 
             erlang:demonitor(CompactorRef),
-            ok = ns_couchdb_api:cancel_view_compact(BucketName, DDocId, Type),
+            ok = ns_couchdb_api:cancel_view_compact(BucketName, DDocId, Kind, Type),
             exit(Reason);
         {'DOWN', CompactorRef, process, Compactor, normal} ->
             ok;
         {'DOWN', CompactorRef, process, Compactor, noproc} ->
             exit({index_compactor_died_too_soon,
-                  BucketName, DDocId, Type});
+                  BucketName, DDocId, Kind, Type});
         {'DOWN', CompactorRef, process, Compactor, Reason}
           when Reason =:= shutdown;
                Reason =:= {updater_died, shutdown};
                Reason =:= {updated_died, noproc};
                Reason =:= {updater_died, {updater_error, shutdown}} ->
             do_spawn_view_index_compactor(Parent, BucketName,
-                                          DDocId, Type, InitialStatus);
+                                          DDocId, Kind, Type, InitialStatus);
         {'DOWN', CompactorRef, process, Compactor, Reason} ->
             exit(Reason)
     end.
 
-start_view_index_compactor(BucketName, DDocId, Type, InitialStatus) ->
-    case ns_couchdb_api:start_view_compact(BucketName, DDocId, Type, InitialStatus) of
+start_view_index_compactor(BucketName, DDocId, Kind, Type, InitialStatus) ->
+    case ns_couchdb_api:start_view_compact(BucketName, DDocId, Kind, Type, InitialStatus) of
         {ok, Pid} ->
             Pid;
         {error, initial_build} ->
+            exit(normal);
+        {error, empty_group} ->
             exit(normal)
     end.
 
@@ -975,10 +981,10 @@ free_space(Path) ->
         ns_storage_conf:extract_disk_stats_for_path(Stats, RealPath),
     trunc(Total - (Total * (Usage / 100))) * 1024.
 
-view_needs_compaction(BucketName, DDocId, Type,
+view_needs_compaction(BucketName, DDocId, Kind, Type,
                       #config{view_fragmentation=FragThreshold,
                               daemon=#daemon_config{min_file_size=MinFileSize}}) ->
-    Info = get_group_data_info(BucketName, DDocId, Type),
+    Info = get_group_data_info(BucketName, DDocId, Kind, Type),
 
     case Info of
         disabled ->
@@ -994,16 +1000,16 @@ view_needs_compaction(BucketName, DDocId, Type,
                     FileSize = proplists:get_value(disk_size, Info),
                     DataSize = proplists:get_value(data_size, Info, 0),
 
-                    ?log_debug("`~s/~s/~s` data_size is ~p, disk_size is ~p",
-                               [BucketName, DDocId, Type, DataSize, FileSize]),
+                    ?log_debug("`~s` data_size is ~p, disk_size is ~p",
+                               [view_name(BucketName, DDocId, Kind, Type), DataSize, FileSize]),
 
                     file_needs_compaction(DataSize, FileSize,
                                           FragThreshold, MinFileSize)
             end
     end.
 
-ensure_can_view_compact(BucketName, DDocId, Type) ->
-    Info = get_group_data_info(BucketName, DDocId, Type),
+ensure_can_view_compact(BucketName, DDocId, Kind, Type) ->
+    Info = get_group_data_info(BucketName, DDocId, Kind, Type),
 
     case Info of
         disabled ->
@@ -1020,20 +1026,20 @@ ensure_can_view_compact(BucketName, DDocId, Type) ->
                     ok;
                 false ->
                     ale:error(?USER_LOGGER,
-                              "Cannot compact view ~s/~s/~p: "
+                              "Cannot compact view `~s`: "
                               "the estimated necessary disk space is about ~p bytes "
                               "but the currently available disk space is ~p bytes.",
-                              [BucketName, DDocId, Type, SpaceRequired, Free]),
+                              [view_name(BucketName, DDocId, Kind, Type), SpaceRequired, Free]),
                     exit({not_enough_space,
                           BucketName, DDocId, SpaceRequired, Free})
             end
     end.
 
-get_group_data_info(BucketName, DDocId, main) ->
-    {ok, Info} = ns_couchdb_api:get_view_group_data_size(BucketName, DDocId),
+get_group_data_info(BucketName, DDocId, Kind, main) ->
+    {ok, Info} = ns_couchdb_api:get_view_group_data_size(BucketName, DDocId, Kind),
     Info;
-get_group_data_info(BucketName, DDocId, replica) ->
-    MainInfo = get_group_data_info(BucketName, DDocId, main),
+get_group_data_info(BucketName, DDocId, Kind, replica) ->
+    MainInfo = get_group_data_info(BucketName, DDocId, Kind, main),
     proplists:get_value(replica_group_info, MainInfo, disabled).
 
 ddoc_names(BucketName) ->

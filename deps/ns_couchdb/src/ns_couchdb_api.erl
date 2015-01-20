@@ -44,10 +44,10 @@
          get_master_vbucket_size/1,
          start_master_vbucket_compact/1,
          cancel_master_vbucket_compact/1,
-         start_view_compact/4,
-         cancel_view_compact/3,
+         start_view_compact/5,
+         cancel_view_compact/4,
          try_to_cleanup_indexes/1,
-         get_view_group_data_size/2,
+         get_view_group_data_size/3,
          get_safe_purge_seqs/1]).
 
 -export([handle_rpc/1]).
@@ -134,17 +134,17 @@ start_master_vbucket_compact(Bucket) ->
 cancel_master_vbucket_compact(Db) ->
     maybe_rpc_couchdb_node({cancel_master_vbucket_compact, Db}).
 
-start_view_compact(Bucket, DDocId, Type, InitialStatus) ->
-    maybe_rpc_couchdb_node({start_view_compact, Bucket, DDocId, Type, InitialStatus}).
+start_view_compact(Bucket, DDocId, Kind, Type, InitialStatus) ->
+    maybe_rpc_couchdb_node({start_view_compact, Bucket, DDocId, Kind, Type, InitialStatus}).
 
-cancel_view_compact(Bucket, DDocId, Type) ->
-    maybe_rpc_couchdb_node({cancel_view_compact, Bucket, DDocId, Type}).
+cancel_view_compact(Bucket, DDocId, Kind, Type) ->
+    maybe_rpc_couchdb_node({cancel_view_compact, Bucket, DDocId, Kind, Type}).
 
 try_to_cleanup_indexes(BucketName) ->
     maybe_rpc_couchdb_node({try_to_cleanup_indexes, BucketName}).
 
-get_view_group_data_size(BucketName, DDocId) ->
-    maybe_rpc_couchdb_node({get_view_group_data_size, BucketName, DDocId}).
+get_view_group_data_size(BucketName, DDocId, Kind) ->
+    maybe_rpc_couchdb_node({get_view_group_data_size, BucketName, DDocId, Kind}).
 
 get_safe_purge_seqs(BucketName) ->
     maybe_rpc_couchdb_node({get_safe_purge_seqs, BucketName}).
@@ -256,13 +256,13 @@ handle_rpc({start_master_vbucket_compact, Bucket}) ->
 handle_rpc({cancel_master_vbucket_compact, Db}) ->
     couch_db:cancel_compact(Db);
 
-handle_rpc({start_view_compact, Bucket, DDocId, Type, InitialStatus}) ->
-    couch_set_view_compactor:start_compact(mapreduce_view, Bucket,
+handle_rpc({start_view_compact, Bucket, DDocId, Kind, Type, InitialStatus}) ->
+    couch_set_view_compactor:start_compact(Kind, Bucket,
                                            DDocId, Type, prod,
                                            InitialStatus);
 
-handle_rpc({cancel_view_compact, Bucket, DDocId, Type}) ->
-    couch_set_view_compactor:cancel_compact(mapreduce_view,
+handle_rpc({cancel_view_compact, Bucket, DDocId, Kind, Type}) ->
+    couch_set_view_compactor:cancel_compact(Kind,
                                             Bucket, DDocId,
                                             Type, prod);
 
@@ -285,8 +285,8 @@ handle_rpc({try_to_cleanup_indexes, BucketName}) ->
                        [BucketName, {SpatialT, SpatialE}, erlang:get_stacktrace()])
     end;
 
-handle_rpc({get_view_group_data_size, BucketName, DDocId}) ->
-    couch_set_view:get_group_data_size(mapreduce_view, BucketName, DDocId);
+handle_rpc({get_view_group_data_size, BucketName, DDocId, Kind}) ->
+    couch_set_view:get_group_data_size(Kind, BucketName, DDocId);
 
 handle_rpc({get_safe_purge_seqs, BucketName}) ->
     capi_set_view_manager:get_safe_purge_seqs(BucketName).
