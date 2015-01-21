@@ -217,8 +217,8 @@ worker_loop(Parent, #state{sock = Sock} = State, PrevCounterSlot) ->
                 {R, State};
             {compromised_reply, R, State} ->
                 ok = gen_tcp:close(Sock),
-                ?log_warning("Call ~p compromised our connection. Reconnecting.",
-                             [Msg]),
+                ?log_warning("Call ~p (return value ~p) compromised our connection. Reconnecting.",
+                             [Msg, R]),
                 {R, do_worker_init(State)}
         end,
 
