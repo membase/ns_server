@@ -637,8 +637,20 @@ do_handle_call({get_vbucket_high_seqno, VBucketId}, _From, State) ->
             undefined),
     {reply, Res, State};
 do_handle_call({get_keys, VBuckets, Params}, _From, State) ->
-    {reply, mc_binary:get_keys(State#state.sock, VBuckets,
-                               Params, ?GET_KEYS_TIMEOUT), State};
+    RV = mc_binary:get_keys(State#state.sock, VBuckets, Params, ?GET_KEYS_TIMEOUT),
+
+    case RV of
+        {ok, _}  ->
+            {reply, RV, State};
+        {error, {memecached_error, _}} ->
+            %% we take special care to leave the socket in the sane state in
+            %% case of expected memcached errors (think rebalance)
+            {reply, RV, State};
+        {error, _} ->
+            %% any other error might leave unread responses on the socket so
+            %% we can't reuse it
+            {compromised_reply, RV, State}
+    end;
 
 do_handle_call(_, _From, State) ->
     {reply, unhandled, State}.

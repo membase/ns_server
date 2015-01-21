@@ -46,9 +46,9 @@ recv_with_data(Sock, Len, TimeoutRef, Data) ->
                 {tcp, Sock, NewData} ->
                     recv_with_data(Sock, Len, TimeoutRef, <<Data/binary, NewData/binary>>);
                 {tcp_closed, Sock} ->
-                    {error, closed};
+                    throw({error, closed});
                 TimeoutRef ->
-                    {error, timeout}
+                    throw({error, timeout})
             end
     end.
 
