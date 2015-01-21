@@ -171,18 +171,21 @@ query_states(Bucket, Nodes, undefined) ->
     query_states(Bucket, Nodes, ?WAIT_FOR_MEMCACHED_SECONDS);
 query_states(Bucket, Nodes, ReadynessWaitTimeout) ->
     NodeRVs = wait_for_memcached(Nodes, Bucket, connected, ReadynessWaitTimeout),
-    BadNodes = [N || {N, R} <- NodeRVs,
-                     case R of
-                         {ok, _} -> false;
-                         _ -> true
-                     end],
-    case BadNodes of
+    Failures = [{N, R} || {N, R} <- NodeRVs,
+                          case R of
+                              {ok, _} -> false;
+                              _ -> true
+                          end],
+    case Failures of
         [] ->
             RV = [{Node, VBucket, State}
                   || {Node, {ok, Pairs}} <- NodeRVs,
                      {VBucket, State} <- Pairs],
             {ok, RV, []};
         _ ->
+            ?log_error("Failed to query vbucket states from some nodes:~n~p", [Failures]),
+
+            BadNodes = [N || {N, _} <- Failures],
             {ok, [], BadNodes}
     end.
 
