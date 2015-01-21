@@ -47,8 +47,8 @@
         ns_config:get_timeout_fast(ns_memcached_mark_warmed, 5000)).
 %% half-second is definitely 'slow' for any definition of slow
 -define(SLOW_CALL_THRESHOLD_MICROS, 500000).
--define(GET_KEYS_TIMEOUT, ns_config:get_timeout_fast(memcached_get_keys_timeout, 60000)).
--define(GET_KEYS_OUTER_TIMEOUT, ns_config:get_timeout_fast(memcached_get_keys_outer_timeout, 70000)).
+-define(GET_KEYS_TIMEOUT, ns_config:get_timeout_fast(ns_memcached_get_keys_timeout, 60000)).
+-define(GET_KEYS_OUTER_TIMEOUT, ns_config:get_timeout_fast(ns_memcached_get_keys_outer_timeout, 70000)).
 
 -define(CONNECTION_ATTEMPTS, 5).
 
