@@ -34,7 +34,7 @@ string_key(archive_path) ->
 string_key(_) ->
     false.
 
-updatable_key(cbauditd_enabled) ->
+updatable_key(auditd_enabled) ->
     true;
 updatable_key(rotate_interval) ->
     true;

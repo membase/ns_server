@@ -3691,7 +3691,7 @@ handle_settings_audit(Req) ->
 
 validate_settings_audit(Args) ->
     R = validate_has_params({Args, [], []}),
-    R0 = validate_boolean(cbauditd_enabled, R),
+    R0 = validate_boolean(auditd_enabled, R),
     R1 = validate_dir(log_path, R0),
     R2 = validate_dir(archive_path, R1),
     R3 = validate_positive_integer(rotate_interval, R2),
