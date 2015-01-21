@@ -20,7 +20,7 @@ var SettingsSection = {
                              '#js_settings .panes > div',
                              ['cluster','update_notifications', 'auto_failover',
                               'email_alerts', 'settings_compaction',
-                              'settings_sample_buckets', 'ldap_setup', 'account_management']);
+                              'ldap_setup', 'settings_sample_buckets', 'account_management']);
 
     Cell.subscribeMultipleValues(function (isROAdmin, lastCompatMode) {
       if (lastCompatMode === undefined || isROAdmin == undefined) {
@@ -48,7 +48,6 @@ var SettingsSection = {
     UpdatesNotificationsSection.refresh();
     AutoFailoverSection.refresh();
     EmailAlertsSection.refresh();
-    LDAPSetupSection.refresh();
   },
   navClick: function () {
     this.onLeave();
@@ -1532,9 +1531,9 @@ var AutoCompactionSection = {
   })()
 };
 
-function ldapSetupSectionCells(ns, tabs) {
+function ldapSetupSectionCells(ns, tabs, sectionCell) {
   ns.onLDAPTabCell = Cell.computeEager(function (v) {
-    return v.need(tabs) == "ldap_setup";
+    return v.need(sectionCell) == "settings" && v.need(tabs) == "ldap_setup";
   });
   ns.settingsCell = Cell.computeEager(function (v) {
     if (!v.need(ns.onLDAPTabCell)) {
@@ -1553,14 +1552,15 @@ function ldapSetupSectionCells(ns, tabs) {
 var LDAPSetupSection = {
   init: function () {
     var self = LDAPSetupSection;
-    ldapSetupSectionCells(self, SettingsSection.tabs);
+    ldapSetupSectionCells(self, SettingsSection.tabs, DAL.cells.mode);
 
     self.ldapSetupForm = $("#js_ldap_setup_form");
     self.ldapSetupContainer = $("#js_ldap_setup_container");
     self.ldapValidateForm = $("#js_ldap_validate_form");
     self.ldapValidateFormResult = $("#js_ldap_validate_form_result");
     self.ldapEnabled = $("#js_ldap_enabled");
-    self.ldapSetupFormSubmit = $("#js_ldap_setup_form_submit")
+    self.ldapSetupFormSubmit = $("#js_ldap_setup_form_submit");
+    self.ldapValidateFormSubmit = $("#js_ldap_validate_form_submit");
     var spinner;
     var roAdminsTextarea = $('[name=roAdmins]', self.ldapSetupForm);
     var adminsTextarea = $('[name=admins]', self.ldapSetupForm);
@@ -1574,28 +1574,34 @@ var LDAPSetupSection = {
       self.ldapSetupFormSubmit.prop('disabled', false);
     }).bind('input', function () {
       self.ldapSetupFormSubmit.prop('disabled', false);
-    })
+    });
 
-    self.ldapSetupFormSubmit.prop('disabled', true);
+    $(':input', self.ldapValidateForm).bind('input', function () {
+      var allFieldsFilled = $("input", self.ldapValidateForm).filter(function () {
+          return $.trim($(this).val()).length > 0;
+      }).length === 2;
+      self.ldapValidateFormSubmit.prop('disabled', !allFieldsFilled);
+    });
 
     self.ldapEnabled.change(function () {
       var isChecked = self.ldapEnabled.attr('checked');
       $(':input', self.ldapValidateForm)
         .add(':input', self.ldapSetupForm)
-        .not(self.ldapEnabled).not("[type=hidden]")
+        .not(self.ldapEnabled)
         .prop('disabled', !isChecked);
         if (isChecked) {
           defaultValueFields.filter(':checked').change();
+          $(':input', self.ldapValidateForm).trigger('input');
         }
     });
 
     defaultValueFields.change(function () {
       switch ($(this).val()) {
-        case 'ro':
+        case 'roAdmins':
           roAdminsTextarea.prop('disabled', true);
           adminsTextarea.prop('disabled', false);
         break;
-        case 'admin':
+        case 'admins':
           roAdminsTextarea.prop('disabled', false);
           adminsTextarea.prop('disabled', true);
         break;
@@ -1620,9 +1626,14 @@ var LDAPSetupSection = {
         spinner = overlayWithSpinner(self.ldapSetupContainer);
       }
     });
-    self.settingsCell.subscribeValue(function (settings) {
-      if (settings) {
-        self.fillForm(settings);
+
+    DAL.cells.isROAdminCell.subscribeValue(function (isROAdmin) {
+      $(':input', self.ldapSetupContainer).prop('disabled', isROAdmin);
+    });
+
+    self.onLDAPTabCell.subscribeValue(function (val) {
+      if (!val) {
+        self.resetValidateLdapForm();
       }
     });
     self.ldapSetupForm.submit(function (e) {
@@ -1633,35 +1644,49 @@ var LDAPSetupSection = {
       e.preventDefault();
       self.validateLdapCredentials();
     });
+
+    self.settingsCell.subscribeValue(function (settings) {
+      if (settings) {
+        self.fillForm(settings);
+      }
+    });
+  },
+  prepareSetupFields: function (settings, key) {
+    if (settings[key] === "asterisk") {
+      settings[key] = [];
+      settings.deftype = key;
+    } else {
+      settings[key].join("\n");
+    }
   },
   fillForm: function (settings) {
     var self = this;
-    var roAdmins = settings.roAdmins;
-    var admins = settings.admins;
-    var deftype = "none";
-    if (admins === "asterisk") {
-      admins = [];
-      deftype = "admin";
-    } else if (roAdmins === "asterisk") {
-      roAdmins = [];
-      deftype = "ro";
-    }
-    var s = {
-      enabled: settings.enabled,
-      admins: admins.join("\n"),
-      roAdmins: roAdmins.join("\n"),
-      deftype: deftype
-    };
-    setFormValues(self.ldapSetupContainer, s);
-    self.ldapEnabled.change();
+    settings.deftype = "none";
+    self.prepareSetupFields(settings, "roAdmins");
+    self.prepareSetupFields(settings, "admins");
+    setFormValues(self.ldapSetupForm, settings);
     self.ldapSetupFormSubmit.prop('disabled', true);
+    if (!DAL.cells.isROAdminCell.value) {
+      self.ldapEnabled.change();
+    }
+  },
+  resetValidateLdapForm: function () {
+    this.ldapValidateFormResult.text('');
+    this.ldapValidateForm.trigger('reset');
+    this.ldapValidateFormSubmit.prop('disabled', true);
+  },
+  formatRoleMessage: function (role) {
+    switch (role) {
+      case "none": return "no";
+      case "roAdmin": return "\"Read-Only Admin\"";
+      case "fullAdmin": return "\"Full Admin\"";
+    }
   },
   validateLdapCredentials: function () {
     var self = this;
     var spinner = overlayWithSpinner(self.ldapValidateForm);
     var formData = serializeForm(self.ldapValidateForm);
-    self.ldapValidateFormResult.text('');
-    $("[name=password]", self.ldapValidateForm).val("");
+    self.resetValidateLdapForm();
     $.ajax({
       type: "POST",
       dataType: 'json',
@@ -1671,17 +1696,7 @@ var LDAPSetupSection = {
         var role = data["role"];
         var source = data["source"];
         var user = $.deparam(formData)["user"];
-        var text = "User '" + user + "' has ";
-        switch (role) {
-        case "none":
-          text += " no access";
-          break;
-        case "roAdmin":
-          text += '"Read-Only Admin" access';
-          break;
-        case "fullAdmin":
-          text += '"Full Admin" access';
-        }
+        var text = "User '" + user + "' has " + self.formatRoleMessage(role) + " access";
         if (role !== "none" && source === "builtin") {
           text += ", but it is recognized not via LDAP";
         }
@@ -1693,23 +1708,17 @@ var LDAPSetupSection = {
       }
     });
   },
-  refresh: function () {
-    this.settingsCell.recalculate();
-    this.ldapValidateFormResult.text('');
-  },
   submit: function () {
     var self = this;
-    self.settingsCell.setValue(undefined);
     var formData = $.deparam(serializeForm(self.ldapSetupForm));
-    var defType = formData["deftype"];
-    delete formData["deftype"];
-    switch (defType) {
-    case "ro":
-      delete formData["roAdmins"];
-      break;
-    case "admin":
-      delete formData["admins"];
+    if (formData["enabled"]) {
+      var defType = formData["deftype"];
+      delete formData["deftype"];
+      delete formData[defType];
+    } else {
+      formData["enabled"] = "false";
     }
+    self.settingsCell.setValue(undefined);
     $.ajax({
       type: "POST",
       url: "/settings/saslauthdAuth",

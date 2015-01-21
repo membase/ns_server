@@ -1008,8 +1008,8 @@
                   <li><a id="settings_auto_failover" class="casper_settings_auto_failover">Auto-Failover</a></li>
                   <li><a id="settings_alerts" class="casper_settings_alerts">Alerts</a></li>
                   <li><a id="settings_compaction" class="casper_settings_compaction">Auto-Compaction</a></li>
+                  <li><a id="ldap_setup">LDAP Auth Setup</a></li>
                   <li><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
-                  <li class="when-roadmin-avoid-me"><a id="ldap_setup">LDAP Auth Setup</a></li>
                   <li class="when-roadmin-avoid-me"><a id="account_management" class="casper_settings_account_management">Account Management</a></li>
                 </ul>
               </div>
@@ -1145,6 +1145,42 @@
                     </button>
                   </div>
                 </form></div>
+                <div id="js_ldap_setup_container" class="ldap_setup_container">
+                  <h2>LDAP Auth</h2>
+                  <div class="sub_section">
+                    <p>Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes when the following conditions are met.</p>
+                  </div>
+                  <div style="float:left;">
+                    <h3>Setup</h3>
+                    <form id="js_ldap_setup_form" autocomplete="off">
+                      <div class="sub_section" style="margin-right:0;">
+                        <label><span>Enable:</span><input type="checkbox" name="enabled" value="true" id="js_ldap_enabled"></label>
+                        <label class="textarea_label"><span>Read-Only Admins:</span><textarea name="roAdmins"></textarea></label>
+                        <label class="textarea_label"><span>Full Admins:</span><textarea name="admins"></textarea></label>
+                        <label style="display: inline-block;"><span>Default:</span></label>
+                        <span class="radio_set">
+                          <label><input type="radio" value="roAdmins" name="deftype"><span>Read-only</span></label>
+                          <label><input type="radio" value="admins" name="deftype"><span>Full Admin</span></label>
+                          <label><input type="radio" value="none" name="deftype"><span>None</span></label>
+                        </span>
+                      </div>
+                    </form>
+                  </div>
+                  <div style="overflow: hidden">
+                    <h3>Test</h3>
+                    <form id="js_ldap_validate_form" autocomplete="off">
+                      <div class="sub_section">
+                        <label><span>Username:</span><input type="text" name="user" autocomplete="off"></label>
+                        <label><span>Password:</span><input type="password" name="password" autocomplete="off"></label>
+                        <button class="edit_btn" id="js_ldap_validate_form_submit">Validate</button>
+                        <p id="js_ldap_validate_form_result"></p>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="save_cancel">
+                    <button class="save_button float_right" id="js_ldap_setup_form_submit">Save</button>
+                  </div>
+                </div>
                 <div id="sample_buckets_container"><form id="sample_buckets_form">
                   <h2>Sample Buckets</h2>
                   <div class="sub_section">
@@ -1180,42 +1216,6 @@
                   </button>
                  </div>
                 </form></div>
-                <div id="js_ldap_setup_container" class="ldap_setup_container when-roadmin-avoid-me">
-                  <h2>LDAP Auth</h2>
-                  <div class="sub_section">
-                    <p>Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes when the following conditions are met.</p>
-                  </div>
-                  <div style="float:left;">
-                    <h3>Setup</h3>
-                    <form id="js_ldap_setup_form" autocomplete="off">
-                      <div class="sub_section" style="margin-right:0;">
-                        <label><span>Enable:</span><input type="hidden" name="enabled" value="false"><input type="checkbox" name="enabled" value="true" id="js_ldap_enabled"></label>
-                        <label class="textarea_label"><span>Read-Only Admins:</span><textarea name="roAdmins"></textarea></label>
-                        <label class="textarea_label"><span>Full Admins:</span><textarea name="admins"></textarea></label>
-                        <label style="display: inline-block;"><span>Default:</span></label>
-                        <span class="radio_set">
-                          <label><input type="radio" value="ro" name="deftype"><span>Read-only</span></label>
-                          <label><input type="radio" value="admin" name="deftype"><span>Full Admin</span></label>
-                          <label><input type="radio" value="none" name="deftype"><span>None</span></label>
-                        </span>
-                      </div>
-                    </form>
-                  </div>
-                  <div style="overflow: hidden">
-                    <h3>Test</h3>
-                    <form id="js_ldap_validate_form" autocomplete="off">
-                      <div class="sub_section">
-                        <label><span>Username:</span><input type="text" name="user" autocomplete="off"></label>
-                        <label><span>Password:</span><input type="password" name="password" autocomplete="off"></label>
-                        <button class="edit_btn">Validate</button>
-                        <p id="js_ldap_validate_form_result"></p>
-                      </div>
-                    </form>
-                  </div>
-                  <div class="save_cancel">
-                    <button class="save_button float_right" id="js_ldap_setup_form_submit">Save</button>
-                  </div>
-                </div>
                 <div class="account_management_container when-roadmin-avoid-me">
                   <h2>Read-Only User</h2>
                   <div class="sub_section">
