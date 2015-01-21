@@ -48,6 +48,7 @@
 %% half-second is definitely 'slow' for any definition of slow
 -define(SLOW_CALL_THRESHOLD_MICROS, 500000).
 -define(GET_KEYS_TIMEOUT, ns_config:get_timeout_fast(memcached_get_keys_timeout, 60000)).
+-define(GET_KEYS_OUTER_TIMEOUT, ns_config:get_timeout_fast(memcached_get_keys_outer_timeout, 70000)).
 
 -define(CONNECTION_ATTEMPTS, 5).
 
@@ -1568,10 +1569,18 @@ do_perform_checkpoint_commit_for_xdcr_loop(Sock, VBucketId, WaitedSeqno) ->
     end.
 
 get_keys(Bucket, NodeVBuckets, Params) ->
+    try
+        {ok, do_get_keys(Bucket, NodeVBuckets, Params)}
+    catch
+        exit:timeout ->
+            {error, timeout}
+    end.
+
+do_get_keys(Bucket, NodeVBuckets, Params) ->
     misc:parallel_map(
       fun ({Node, VBuckets}) ->
               try do_call({server(Bucket), Node},
-                           {get_keys, VBuckets, Params}, ?GET_KEYS_TIMEOUT) of
+                           {get_keys, VBuckets, Params}, infinity) of
                   unhandled ->
                       {Node, {ok, []}};
                   R ->
@@ -1580,7 +1589,7 @@ get_keys(Bucket, NodeVBuckets, Params) ->
                   T:E ->
                       {Node, {T, E}}
               end
-      end, NodeVBuckets, infinity).
+      end, NodeVBuckets, ?GET_KEYS_OUTER_TIMEOUT).
 
 -spec config_validate(binary()) -> ok | mc_error().
 config_validate(NewConfig) ->

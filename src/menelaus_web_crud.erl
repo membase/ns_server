@@ -75,35 +75,47 @@ do_handle_list(Req, _Bucket, _Params, 0) ->
                 {reason, <<"could not get consistent vbucket map">>}]}, 503);
 do_handle_list(Req, Bucket, {Skip, Limit, Params}, N) ->
     NodeVBuckets = dict:to_list(vbucket_map_mirror:node_vbuckets_dict(Bucket)),
-    Results = ns_memcached:get_keys(Bucket, NodeVBuckets, Params),
 
-    try lists:foldl(
-          fun ({_Node, R}, Acc) ->
-                  case R of
-                      {ok, Values} ->
-                          heap_insert(Acc, Values);
-                      Error ->
-                          throw({error, Error})
-                  end
-          end, couch_skew:new(), Results) of
-
-        Heap ->
+    case build_keys_heap(Bucket, NodeVBuckets, Params) of
+        {ok, Heap} ->
             Heap1 = handle_skip(Heap, Skip),
             menelaus_util:reply_json(Req,
-                                     {struct, [{rows, handle_limit(Heap1, Limit)}]})
-    catch
-        throw:{error, {memcached_error, not_my_vbucket}} ->
+                                     {struct, [{rows, handle_limit(Heap1, Limit)}]});
+        {error, {memcached_error, not_my_vbucket}} ->
             timer:sleep(1000),
             do_handle_list(Req, Bucket, {Skip, Limit, Params}, N - 1);
-        throw:{error, {memcached_error, Type}} ->
+        {error, {memcached_error, Type}} ->
             menelaus_util:reply_json(Req,
                                      {struct, [{error, memcached_error},
                                                {reason, Type}]}, 500);
-        throw:{error, Error} ->
+        {error, Error} ->
             menelaus_util:reply_json(Req,
                                      {struct, [{error, couch_util:to_binary(Error)},
                                                {reason, <<"unknown error">>}]}, 500)
     end.
+
+build_keys_heap(Bucket, NodeVBuckets, Params) ->
+    case ns_memcached:get_keys(Bucket, NodeVBuckets, Params) of
+        {ok, Results} ->
+            try lists:foldl(
+                  fun ({_Node, R}, Acc) ->
+                          case R of
+                              {ok, Values} ->
+                                  heap_insert(Acc, Values);
+                              Error ->
+                                  throw({error, Error})
+                          end
+                  end, couch_skew:new(), Results) of
+                Heap ->
+                    {ok, Heap}
+            catch
+                throw:{error, _} = Error ->
+                    Error
+            end;
+        {error, _} = Error ->
+            Error
+    end.
+
 
 heap_less([{A, _} | _], [{B, _} | _]) ->
     A < B.
