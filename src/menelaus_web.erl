@@ -952,7 +952,7 @@ handle_versions(Req) ->
     reply_json(Req, {struct, menelaus_web_cache:versions_response()}).
 
 is_enterprise() ->
-    true.
+    ns_config:read_key_fast({node, node(), is_enterprise}, false).
 
 is_xdcr_over_ssl_allowed() ->
     is_enterprise() andalso cluster_compat_mode:is_cluster_25().
