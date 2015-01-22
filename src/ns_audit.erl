@@ -49,6 +49,8 @@ code(rebalance_initiated) ->
     8200.
 
 
+to_binary({list, List}) ->
+    [to_binary(A) || A <- List];
 to_binary(A) when is_list(A) ->
     iolist_to_binary(A);
 to_binary(A) ->
@@ -136,15 +138,12 @@ password_change(Req, User, Role) ->
     put(password_change, Req, [{role, Role},
                                {userid, get_user_id(User)}]).
 
-print_list(List) ->
-    io_lib:format("~p", [List]).
-
 add_node(Req, Hostname, Port, User, GroupUUID, Services, Node) ->
     put(add_node, Req, [{node, Node},
                         {groupUUID, GroupUUID},
                         {hostname, Hostname},
                         {port, Port},
-                        {services, print_list(Services)},
+                        {services, {list, Services}},
                         {user, get_user_id(User)}]).
 
 remove_node(Req, Node) ->
@@ -161,9 +160,9 @@ rebalance_initiated(Req, KnownNodes, EjectedNodes, DeltaRecoveryBuckets) ->
                   all ->
                       all;
                   _ ->
-                      print_list(DeltaRecoveryBuckets)
+                      {list, DeltaRecoveryBuckets}
               end,
     put(rebalance_initiated, Req,
-        [{known_nodes, print_list(KnownNodes)},
-         {ejected_nodes, print_list(EjectedNodes)},
+        [{known_nodes, {list, KnownNodes}},
+         {ejected_nodes, {list, EjectedNodes}},
          {delta_recovery_buckets, Buckets}]).
