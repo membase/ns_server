@@ -66,7 +66,10 @@ get_document_replica(Bucket, VBucket, Key) ->
            end}.
 
 grab_all_xdcr_checkpoints(BucketName, Timeout) ->
-    {json, {struct, capi_utils:capture_local_master_docs(BucketName, Timeout)}}.
+    Fn = fun () ->
+                 {json, {struct, capi_utils:capture_local_master_docs(BucketName, Timeout)}}
+         end,
+    rpc:call(ns_node_disco:couchdb_node(), erlang, apply, [Fn, []]).
 
 shutdown_nicely() ->
     ns_babysitter_bootstrap:remote_stop(ns_server:get_babysitter_node()).
