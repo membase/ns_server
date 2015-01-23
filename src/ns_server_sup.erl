@@ -204,6 +204,15 @@ child_specs() ->
      {{stats_reader, "@system"}, {stats_reader, start_link, ["@system"]},
       permanent, 1000, worker, [start_reader]},
 
+     {{stats_archiver, "@query"}, {stats_archiver, start_link, ["@query"]},
+      permanent, 1000, worker, [stats_archiver]},
+
+     {{stats_reader, "@query"}, {stats_reader, start_link, ["@query"]},
+      permanent, 1000, worker, [stats_reader]},
+
+     {query_stats_collector, {query_stats_collector, start_link, []},
+      permanent, 1000, worker, []},
+
      {compaction_daemon, {compaction_daemon, start_link, []},
       permanent, 1000, worker, [compaction_daemon]},
 
