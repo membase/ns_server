@@ -77,6 +77,8 @@
 -define(DELETE_BUCKET_TIMEOUT, ns_config:get_global_timeout(delete_bucket, 30000)).
 -define(FLUSH_BUCKET_TIMEOUT, ns_config:get_global_timeout(flush_bucket, 60000)).
 -define(CREATE_BUCKET_TIMEOUT, ns_config:get_global_timeout(create_bucket, 5000)).
+-define(RECOVERY_QUERY_STATES_TIMEOUT,
+        ns_config:get_global_timeout(recovery_query_states, 5000)).
 
 %% gen_fsm callbacks
 -export([code_change/4,
@@ -1245,7 +1247,7 @@ do_flush_old_style(BucketName, BucketConfig) ->
     end.
 
 apply_recoverer_bucket_config(Bucket, BucketConfig, Servers) ->
-    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1000),
+    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, ?RECOVERY_QUERY_STATES_TIMEOUT),
     case Zombies of
         [] ->
             janitor_agent:apply_new_bucket_config_with_timeout(
