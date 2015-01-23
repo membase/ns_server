@@ -42,7 +42,8 @@
          default_services/0,
          node_services/2,
          filter_out_non_kv_nodes/1,
-         filter_out_non_kv_nodes/2]).
+         filter_out_non_kv_nodes/2,
+         should_run_service/3]).
 
 active_nodes() ->
     active_nodes(ns_config:get()).
@@ -216,3 +217,11 @@ filter_out_non_kv_nodes(Nodes) ->
 filter_out_non_kv_nodes(Nodes, Config) ->
     [N || N <- Nodes,
           kv <- ns_cluster_membership:node_services(Config, N)].
+
+should_run_service(Config, Service, Node) ->
+    case ns_cluster_membership:get_cluster_membership(Node, Config) =:= active  of
+        false -> false;
+        true ->
+            Svcs = ns_cluster_membership:node_services(Config, Node),
+            lists:member(Service, Svcs)
+    end.

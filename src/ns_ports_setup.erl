@@ -237,16 +237,8 @@ dynamic_children() ->
         run_via_goport(goxdcr_spec(Config)) ++
         per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
 
-should_run_service(Config, Service) ->
-    case ns_cluster_membership:get_cluster_membership(node(), Config) =:= active  of
-        false -> false;
-        true ->
-            Svcs = ns_cluster_membership:node_services(Config, node()),
-            lists:member(Service, Svcs)
-    end.
-
 query_node_spec(Config) ->
-    case should_run_service(Config, n1ql) of
+    case ns_cluster_membership:should_run_service(Config, n1ql, node()) of
         false ->
             [];
         _ ->
