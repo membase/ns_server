@@ -713,7 +713,7 @@ handle_post_sample_buckets(Req) ->
 
     Errors = case validate_post_sample_buckets(Samples) of
                  ok ->
-                     start_loading_samples(Samples);
+                     start_loading_samples(Req, Samples);
                  X1 ->
                      X1
              end,
@@ -726,8 +726,8 @@ handle_post_sample_buckets(Req) ->
             reply_json(Req, [Msg || {error, Msg} <- X2], 400)
     end.
 
-start_loading_samples(Samples) ->
-    Errors = [start_loading_sample(binary_to_list(Sample))
+start_loading_samples(Req, Samples) ->
+    Errors = [start_loading_sample(Req, binary_to_list(Sample))
               || Sample <- Samples],
     case [X || X <- Errors, X =/= ok] of
         [] ->
@@ -736,7 +736,7 @@ start_loading_samples(Samples) ->
             lists:flatten(X)
     end.
 
-start_loading_sample(Name) ->
+start_loading_sample(Req, Name) ->
     Params = [{"threadsNumber", "3"},
               {"replicaIndex", "0"},
               {"replicaNumber", "1"},
@@ -745,7 +745,7 @@ start_loading_sample(Name) ->
               {"ramQuotaMB", integer_to_list(?SAMPLE_BUCKET_QUOTA_MB) },
               {"bucketType", "membase"},
               {"name", Name}],
-    case menelaus_web_buckets:create_bucket(Name, Params) of
+    case menelaus_web_buckets:create_bucket(Req, Name, Params) of
         ok ->
             start_loading_sample_task(Name);
         {_, Code} when Code < 300 ->

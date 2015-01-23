@@ -36,7 +36,7 @@
          handle_bucket_delete/3,
          handle_bucket_update/3,
          handle_bucket_create/2,
-         create_bucket/2,
+         create_bucket/3,
          handle_bucket_flush/3,
          handle_compact_bucket/3,
          handle_purge_compact_bucket/3,
@@ -380,6 +380,7 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
 handle_bucket_delete(_PoolId, BucketId, Req) ->
     case ns_orchestrator:delete_bucket(BucketId) of
         ok ->
+            ns_audit:delete_bucket(Req, BucketId),
             ?MENELAUS_WEB_LOG(?BUCKET_DELETED, "Deleted bucket \"~s\"~n", [BucketId]),
             reply(Req, 200);
         rebalance_running ->
@@ -474,6 +475,7 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
             UpdatedProps = extract_bucket_props(BucketId, ParsedProps),
             case ns_orchestrator:update_bucket(BucketType, BucketId, UpdatedProps) of
                 ok ->
+                    ns_audit:modify_bucket(Req, BucketId, BucketType, UpdatedProps),
                     ale:info(?USER_LOGGER, "Updated bucket ~s (of type ~s) properties:~n~p",
                              [BucketId, BucketType, lists:keydelete(sasl_password, 1, UpdatedProps)]),
                     reply(Req, 200);
@@ -493,16 +495,17 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                        end)
     end.
 
-create_bucket(Name, Params) ->
+create_bucket(Req, Name, Params) ->
     Ctx = init_bucket_validation_context(true, Name, false, false),
-    do_bucket_create(Name, Params, Ctx).
+    do_bucket_create(Req, Name, Params, Ctx).
 
-do_bucket_create(Name, ParsedProps) ->
+do_bucket_create(Req, Name, ParsedProps) ->
     BucketType = proplists:get_value(bucketType, ParsedProps),
     BucketProps = extract_bucket_props(Name, ParsedProps),
     menelaus_web:maybe_cleanup_old_buckets(),
     case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
         ok ->
+            ns_audit:create_bucket(Req, Name, BucketType, BucketProps),
             ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n~p",
                               [Name, BucketType, lists:keydelete(sasl_password, 1, BucketProps)]),
             ok;
@@ -520,7 +523,7 @@ do_bucket_create(Name, ParsedProps) ->
             {errors_500, [{'_', <<"Cannot create buckets when cluster is in recovery mode">>}]}
     end.
 
-do_bucket_create(Name, Params, Ctx) ->
+do_bucket_create(Req, Name, Params, Ctx) ->
     MaxBuckets = ns_config:read_key_fast(max_bucket_count, 10),
     case length(Ctx#bv_ctx.all_buckets) >= MaxBuckets of
         true ->
@@ -532,7 +535,7 @@ do_bucket_create(Name, Params, Ctx) ->
                     {{struct, [{errors, {struct, Errors}},
                                {summaries, {struct, JSONSummaries}}]}, 400};
                 {false, _, {ok, ParsedProps, _}} ->
-                    case do_bucket_create(Name, ParsedProps) of
+                    case do_bucket_create(Req, Name, ParsedProps) of
                         ok -> ok;
                         {errors, Errors} ->
                             {{struct, Errors}, 400};
@@ -558,7 +561,7 @@ handle_bucket_create(PoolId, Req) ->
     Name = proplists:get_value("name", Params),
     Ctx = init_bucket_validation_context(true, Name, Req),
 
-    case do_bucket_create(Name, Params, Ctx) of
+    case do_bucket_create(Req, Name, Params, Ctx) of
         ok ->
             respond_bucket_created(Req, PoolId, Name);
         {Struct, Code} ->
@@ -624,6 +627,7 @@ handle_bucket_flush(_PoolId, Id, Req) ->
 do_handle_bucket_flush(Id, Req) ->
     case ns_orchestrator:flush_bucket(Id) of
         ok ->
+            ns_audit:flush_bucket(Req, Id),
             reply(Req, 200);
         rebalance_running ->
             reply_json(Req, {struct, [{'_', <<"Cannot flush buckets during rebalance">>}]}, 503);

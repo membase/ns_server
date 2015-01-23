@@ -27,7 +27,11 @@
          remove_node/2,
          failover_node/3,
          enter_node_recovery/3,
-         rebalance_initiated/4]).
+         rebalance_initiated/4,
+         create_bucket/4,
+         modify_bucket/4,
+         delete_bucket/2,
+         flush_bucket/2]).
 
 code(login_success) ->
     8192;
@@ -46,7 +50,16 @@ code(failover_node) ->
 code(enter_node_recovery) ->
     8199;
 code(rebalance_initiated) ->
-    8200.
+    8200;
+code(create_bucket) ->
+    8201;
+code(modify_bucket) ->
+    8202;
+code(delete_bucket) ->
+    8203;
+code(flush_bucket) ->
+    8204.
+
 
 
 to_binary({list, List}) ->
@@ -166,3 +179,23 @@ rebalance_initiated(Req, KnownNodes, EjectedNodes, DeltaRecoveryBuckets) ->
         [{known_nodes, {list, KnownNodes}},
          {ejected_nodes, {list, EjectedNodes}},
          {delta_recovery_buckets, Buckets}]).
+
+create_bucket(Req, Name, Type, Props) ->
+    put(create_bucket, Req,
+        [{name, Name},
+         {type, Type},
+         {props, {[{K, to_binary(V)} || {K, V} <- Props,
+                                        K =/= sasl_password]}}]).
+
+modify_bucket(Req, Name, Type, Props) ->
+    put(modify_bucket, Req,
+        [{name, Name},
+         {type, Type},
+         {props, {[{K, to_binary(V)} || {K, V} <- Props,
+                                        K =/= sasl_password]}}]).
+
+delete_bucket(Req, Name) ->
+    put(delete_bucket, Req, [{name, Name}]).
+
+flush_bucket(Req, Name) ->
+    put(flush_bucket, Req, [{name, Name}]).
