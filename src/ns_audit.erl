@@ -31,7 +31,8 @@
          create_bucket/4,
          modify_bucket/4,
          delete_bucket/2,
-         flush_bucket/2]).
+         flush_bucket/2,
+         start_loading_sample/2]).
 
 code(login_success) ->
     8192;
@@ -58,8 +59,9 @@ code(modify_bucket) ->
 code(delete_bucket) ->
     8203;
 code(flush_bucket) ->
-    8204.
-
+    8204;
+code(start_loading_sample) ->
+    8205.
 
 
 to_binary({list, List}) ->
@@ -199,3 +201,6 @@ delete_bucket(Req, Name) ->
 
 flush_bucket(Req, Name) ->
     put(flush_bucket, Req, [{name, Name}]).
+
+start_loading_sample(Req, Name) ->
+    put(start_loading_sample, Req, [{name, Name}]).
