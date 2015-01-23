@@ -75,7 +75,7 @@
          sync_announcements/0,
          get_kv_list/0, get_kv_list/1, get_kv_list_with_config/1,
          upgrade_config_explicitly/1, config_version_token/0,
-         fold/3, read_key_fast/2, get_timeout/2,
+         fold/3, read_key_fast/2, get_timeout/2, get_global_timeout/2,
          delete/1,
          strip_metadata/1, extract_vclock/1,
          latest_config_marker/0]).
@@ -441,6 +441,9 @@ read_key_fast(Key, Default) ->
 
 get_timeout(Operation, Default) ->
     read_key_fast({node, node(), {timeout, Operation}}, Default).
+
+get_global_timeout(Operation, Default) ->
+    read_key_fast({timeout, Operation}, Default).
 
 search_node(Key) -> search_node(?MODULE:get(), Key).
 
