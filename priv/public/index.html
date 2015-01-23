@@ -1008,10 +1008,10 @@
                   <li><a id="settings_auto_failover" class="casper_settings_auto_failover">Auto-Failover</a></li>
                   <li><a id="settings_alerts" class="casper_settings_alerts">Alerts</a></li>
                   <li><a id="settings_compaction" class="casper_settings_compaction">Auto-Compaction</a></li>
-                  <li><a id="ldap_setup">LDAP Auth Setup</a></li>
-                  <li><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
+                  <li class="only-when-32"><a id="ldap_setup">LDAP Auth Setup</a></li>
                   <li class="when-roadmin-avoid-me"><a id="account_management" class="casper_settings_account_management">Account Management</a></li>
-                  <li class="when-enterprise"><a id="audit">Audit</a></li>
+                  <li class="when-enterprise only-when-32"><a id="audit">Audit</a></li>
+                  <li class="tab_right"><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
                 </ul>
               </div>
               <div class="panes clearfix">
@@ -1146,7 +1146,7 @@
                     </button>
                   </div>
                 </form></div>
-                <div id="js_ldap_setup_container" class="ldap_setup_container">
+                <div id="js_ldap_setup_container" class="ldap_setup_container only-when-32">
                   <h2>LDAP Auth</h2>
                   <div class="sub_section">
                     <p>Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes when the following conditions are met.</p>
@@ -1182,41 +1182,6 @@
                     <button class="save_button float_right" id="js_ldap_setup_form_submit">Save</button>
                   </div>
                 </div>
-                <div id="sample_buckets_container"><form id="sample_buckets_form">
-                  <h2>Sample Buckets</h2>
-                  <div class="sub_section">
-                    <p id="sample_buckets_quota_warning" class="warning_message">
-                      Your cluster does not have enough RAM quota available to create
-                      the selected sample data buckets. Please free at least
-                      <span id="sampleQuotaRequired"></span>MB of RAM Quota per node.
-                    </p>
-                    <p id="sample_buckets_rebalance_warning" class="warning_message">
-                      Can not load samples during rebalance.
-                    </p>
-                    <p id="sample_buckets_maximum_warning" class="warning_message">
-                      Maximum number of buckets has been reached. For optimal performance,
-                      no more than
-                      <span id="maxBucketCount"></span> buckets are allowed.
-                    </p>
-                    <p>Sample buckets are available to demonstrate the power of
-                      Couchbase Server. These samples contain data and sample MapReduce
-                      queries.</p>
-                  </div>
-                  <h3>Installed Samples</h3>
-                  <div class="sub_section">
-                    <ul id="installed_samples"></ul>
-                  </div>
-                  <h3>Available Samples</h3>
-                  <div class="sub_section">
-                    <ul id="available_samples" class="casper_settings_sample_warnign"></ul>
-                  </div>
-                  <div class="save_cancel when-roadmin-hide-me">
-                  <button class="save_button float_right" type="submit"
-                          id="sample_buckets_settings_btn">
-                    Create
-                  </button>
-                 </div>
-                </form></div>
                 <div class="account_management_container when-roadmin-avoid-me">
                   <h2>Read-Only User</h2>
                   <div class="sub_section">
@@ -1257,7 +1222,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="audit_container when-enterprise" id="js_audit_setup_container">
+                <div class="audit_container when-enterprise only-when-32" id="js_audit_setup_container">
                   <h2>Audit Configuration</h2>
                   <p class="sub_section">Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes when the following conditions are met.</p>
                   <form id="js_audit_setup_form">
@@ -1283,6 +1248,41 @@
                     </div>
                   </form>
                 </div>
+                <div id="sample_buckets_container"><form id="sample_buckets_form">
+                  <h2>Sample Buckets</h2>
+                  <div class="sub_section">
+                    <p id="sample_buckets_quota_warning" class="warning_message">
+                      Your cluster does not have enough RAM quota available to create
+                      the selected sample data buckets. Please free at least
+                      <span id="sampleQuotaRequired"></span>MB of RAM Quota per node.
+                    </p>
+                    <p id="sample_buckets_rebalance_warning" class="warning_message">
+                      Can not load samples during rebalance.
+                    </p>
+                    <p id="sample_buckets_maximum_warning" class="warning_message">
+                      Maximum number of buckets has been reached. For optimal performance,
+                      no more than
+                      <span id="maxBucketCount"></span> buckets are allowed.
+                    </p>
+                    <p>Sample buckets are available to demonstrate the power of
+                      Couchbase Server. These samples contain data and sample MapReduce
+                      queries.</p>
+                  </div>
+                  <h3>Installed Samples</h3>
+                  <div class="sub_section">
+                    <ul id="installed_samples"></ul>
+                  </div>
+                  <h3>Available Samples</h3>
+                  <div class="sub_section">
+                    <ul id="available_samples" class="casper_settings_sample_warnign"></ul>
+                  </div>
+                  <div class="save_cancel when-roadmin-hide-me">
+                  <button class="save_button float_right" type="submit"
+                          id="sample_buckets_settings_btn">
+                    Create
+                  </button>
+                 </div>
+                </form></div>
               </div>
             </div>
           </div>

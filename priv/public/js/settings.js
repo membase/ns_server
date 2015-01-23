@@ -20,17 +20,7 @@ var SettingsSection = {
                              '#js_settings .panes > div',
                              ['cluster','update_notifications', 'auto_failover',
                               'email_alerts', 'settings_compaction',
-                              'ldap_setup', 'settings_sample_buckets', 'account_management', 'audit']);
-
-    Cell.subscribeMultipleValues(function (isROAdmin, lastCompatMode) {
-      if (lastCompatMode === undefined || isROAdmin == undefined) {
-        return;
-      }
-
-      $('#js_settings .tabs li').removeClass("tab_right");
-      $('#js_settings .tabs li:visible:last').addClass("tab_right");
-
-    }, DAL.cells.isROAdminCell, DAL.cells.runningInCompatMode);
+                              'ldap_setup', 'account_management', 'audit', 'settings_sample_buckets']);
 
     ClusterSection.init();
     UpdatesNotificationsSection.init();
