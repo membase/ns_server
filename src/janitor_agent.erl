@@ -20,17 +20,17 @@
 
 -define(WAIT_FOR_MEMCACHED_SECONDS, 5).
 
--define(APPLY_NEW_CONFIG_TIMEOUT, ns_config:get_timeout_fast(janitor_agent_apply_config, 30000)).
+-define(APPLY_NEW_CONFIG_TIMEOUT, ns_config:get_timeout(janitor_agent_apply_config, 30000)).
 %% NOTE: there's also ns_memcached timeout anyways
--define(DELETE_VBUCKET_TIMEOUT, ns_config:get_timeout_fast(janitor_agent_delete_vbucket, 120000)).
+-define(DELETE_VBUCKET_TIMEOUT, ns_config:get_timeout(janitor_agent_delete_vbucket, 120000)).
 
--define(PREPARE_REBALANCE_TIMEOUT, ns_config:get_timeout_fast(janitor_agent_prepare_rebalance, 30000)).
+-define(PREPARE_REBALANCE_TIMEOUT, ns_config:get_timeout(janitor_agent_prepare_rebalance, 30000)).
 
--define(PREPARE_FLUSH_TIMEOUT, ns_config:get_timeout_fast(janitor_agent_prepare_flush, 30000)).
+-define(PREPARE_FLUSH_TIMEOUT, ns_config:get_timeout(janitor_agent_prepare_flush, 30000)).
 
 -define(SET_VBUCKET_STATE_TIMEOUT, infinity).
 
--define(GET_SRC_DST_REPLICATIONS_TIMEOUT, ns_config:get_timeout_fast(janitor_agent_get_src_dst_replications, 30000)).
+-define(GET_SRC_DST_REPLICATIONS_TIMEOUT, ns_config:get_timeout(janitor_agent_get_src_dst_replications, 30000)).
 
 -record(state, {bucket_name :: bucket_name(),
                 rebalance_pid :: undefined | pid(),

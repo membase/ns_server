@@ -379,7 +379,7 @@ is_bucket_compaction_task(Task) ->
     {type, Type} = lists:keyfind(type, 1, Task),
     Type =:= bucket_compaction.
 
--define(STALE_XDCR_ERROR_SECONDS, ns_config:get_timeout_fast(xdcr_stale_error_seconds, 7200)).
+-define(STALE_XDCR_ERROR_SECONDS, ns_config:get_timeout(xdcr_stale_error_seconds, 7200)).
 
 %% NOTE: also removes datetime component
 -spec filter_out_stale_xdcr_errors([{erlang:timestamp(), binary()}], integer()) -> [binary()].

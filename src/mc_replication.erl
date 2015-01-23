@@ -21,7 +21,7 @@
 
 -export([connect/1, process_data/4, process_data/3]).
 
--define(CONNECT_TIMEOUT, ns_config:get_timeout_fast(ebucketmigrator_connect, 180000)).
+-define(CONNECT_TIMEOUT, ns_config:get_timeout(ebucketmigrator_connect, 180000)).
 
 -define(RECBUF, ns_config:read_key_fast({node, node(), mc_replication_recbuf}, 64 * 1024)).
 -define(SNDBUF, ns_config:read_key_fast({node, node(), mc_replication_sndbuf}, 64 * 1024)).

@@ -32,7 +32,7 @@
 -define(SLOW_THRESHOLD_SECONDS, 180).
 
 %% note that usual REST call timeout is 60 seconds. So no point making it any longer
--define(XDCR_CHECKPOINT_TIMEOUT, ns_config:get_timeout_fast(xdcr_checkpoint_timeout, 60000)).
+-define(XDCR_CHECKPOINT_TIMEOUT, ns_config:get_timeout(xdcr_checkpoint_timeout, 60000)).
 
 
 %% public functions

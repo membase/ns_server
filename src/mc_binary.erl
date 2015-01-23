@@ -28,8 +28,8 @@
          decode_packet/1,
          get_keys/4]).
 
--define(RECV_TIMEOUT, ns_config:get_timeout_fast(memcached_recv, 120000)).
--define(QUICK_STATS_RECV_TIMEOUT, ns_config:get_timeout_fast(memcached_stats_recv, 180000)).
+-define(RECV_TIMEOUT, ns_config:get_timeout(memcached_recv, 120000)).
+-define(QUICK_STATS_RECV_TIMEOUT, ns_config:get_timeout(memcached_stats_recv, 180000)).
 
 %% Functions to work with memcached binary protocol packets.
 
