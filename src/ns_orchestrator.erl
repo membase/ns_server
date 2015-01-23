@@ -1245,7 +1245,7 @@ do_flush_old_style(BucketName, BucketConfig) ->
     end.
 
 apply_recoverer_bucket_config(Bucket, BucketConfig, Servers) ->
-    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1),
+    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1000),
     case Zombies of
         [] ->
             janitor_agent:apply_new_bucket_config_with_timeout(

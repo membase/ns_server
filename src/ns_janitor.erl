@@ -104,12 +104,8 @@ cleanup_with_membase_bucket_check_map(Bucket, Options, BucketConfig) ->
 cleanup_with_membase_bucket_vbucket_map(Bucket, Options, BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig, []),
     true = (Servers =/= []),
-    TimeoutMillis = proplists:get_value(query_states_timeout, Options),
-    TimeoutSeconds = case TimeoutMillis of
-                         undefined -> undefined;
-                         _ -> (TimeoutMillis + 999) div 1000
-                     end,
-    {ok, States, Zombies} = janitor_agent:query_states(Bucket, Servers, TimeoutSeconds),
+    Timeout = proplists:get_value(query_states_timeout, Options),
+    {ok, States, Zombies} = janitor_agent:query_states(Bucket, Servers, Timeout),
     cleanup_with_states(Bucket, Options, BucketConfig, Servers, States, Zombies).
 
 cleanup_with_states(Bucket, _Options, _BucketConfig, _Servers, _States, Zombies) when Zombies =/= [] ->

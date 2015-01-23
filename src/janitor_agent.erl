@@ -18,7 +18,7 @@
 
 -include("ns_common.hrl").
 
--define(WAIT_FOR_MEMCACHED_SECONDS, 5).
+-define(WAIT_FOR_MEMCACHED_TIMEOUT, ns_config:get_timeout(wait_for_memcached, 5000)).
 
 -define(APPLY_NEW_CONFIG_TIMEOUT, ns_config:get_timeout(janitor_agent_apply_config, 30000)).
 %% NOTE: there's also ns_memcached timeout anyways
@@ -85,7 +85,7 @@
          terminate/2, code_change/3]).
 
 wait_for_bucket_creation(Bucket, Nodes) ->
-    NodeRVs = wait_for_memcached(Nodes, Bucket, up, ?WAIT_FOR_MEMCACHED_SECONDS),
+    NodeRVs = wait_for_memcached(Nodes, Bucket, up, ?WAIT_FOR_MEMCACHED_TIMEOUT),
     BadNodes = [N || {N, R} <- NodeRVs,
                      case R of
                          warming_up -> false;
@@ -116,7 +116,7 @@ query_vbucket_states_loop_next_step(Node, Bucket, Type) ->
     query_vbucket_states_loop(Node, Bucket, Type).
 
 -spec wait_for_memcached([node()], bucket_name(), up | connected, non_neg_integer()) -> [{node(), warming_up | {ok, list()} | any()}].
-wait_for_memcached(Nodes, Bucket, Type, SecondsToWait) ->
+wait_for_memcached(Nodes, Bucket, Type, WaitTimeout) ->
     Parent = self(),
     misc:executing_on_new_process(
       fun () ->
@@ -125,7 +125,7 @@ wait_for_memcached(Nodes, Bucket, Type, SecondsToWait) ->
               Me = self(),
               NodePids = [{Node, proc_lib:spawn_link(
                                    fun () ->
-                                           {ok, TRef} = timer2:kill_after(SecondsToWait * 1000),
+                                           {ok, TRef} = timer2:kill_after(WaitTimeout),
                                            RV = query_vbucket_states_loop(Node, Bucket, Type),
                                            Me ! {'EXIT', self(), {Ref, RV}},
                                            %% doing cancel is quite
@@ -168,7 +168,7 @@ complete_flush(Bucket, Nodes, Timeout) ->
 %% TODO: consider supporting partial janitoring
 -spec query_states(bucket_name(), [node()], undefined | pos_integer()) -> {ok, [{node(), vbucket_id(), vbucket_state()}], [node()]}.
 query_states(Bucket, Nodes, undefined) ->
-    query_states(Bucket, Nodes, ?WAIT_FOR_MEMCACHED_SECONDS);
+    query_states(Bucket, Nodes, ?WAIT_FOR_MEMCACHED_TIMEOUT);
 query_states(Bucket, Nodes, ReadynessWaitTimeout) ->
     NodeRVs = wait_for_memcached(Nodes, Bucket, connected, ReadynessWaitTimeout),
     Failures = [{N, R} || {N, R} <- NodeRVs,

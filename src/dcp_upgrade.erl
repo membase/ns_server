@@ -214,7 +214,7 @@ verify_upgrade(Bucket, BucketConfig) ->
     ns_rebalancer:verify_replication(Bucket, Nodes, Map).
 
 apply_bucket_config(Bucket, BucketConfig, Servers) ->
-    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1),
+    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1000),
     case Zombies of
         [] ->
             janitor_agent:apply_new_bucket_config_with_timeout(

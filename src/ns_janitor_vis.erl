@@ -48,7 +48,7 @@ graphviz(Bucket) ->
     {ok, Config} = ns_bucket:get_bucket(Bucket),
     Map = proplists:get_value(map, Config, []),
     Servers = proplists:get_value(servers, Config, []),
-    {ok, States, Zombies} = janitor_agent:query_states(Bucket, Servers, 1),
+    {ok, States, Zombies} = janitor_agent:query_states(Bucket, Servers, 1000),
     Nodes = lists:sort(Servers),
     NodeColors = lists:map(fun (Node) ->
                                    case lists:member(Node, Zombies) of

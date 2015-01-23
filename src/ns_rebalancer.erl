@@ -51,7 +51,7 @@
 
 -define(BUCKETS_SHUTDOWN_WAIT_TIMEOUT, 20000).
 
--define(REBALANCER_READINESS_WAIT_SECONDS, 60).
+-define(REBALANCER_READINESS_WAIT_TIMEOUT, 60000).
 
 %%
 %% API
@@ -418,7 +418,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                   Pid = erlang:spawn_link(
                                           fun () ->
                                                   ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
-                                                  {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_SECONDS),
+                                                  {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
                                                   case Zombies of
                                                       [] ->
                                                           ?rebalance_info("Bucket is ready on all nodes"),
