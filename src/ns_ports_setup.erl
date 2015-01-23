@@ -258,6 +258,7 @@ query_node_spec(Config) ->
             Spec = {'query', Command,
                     [DataStoreArg, HttpArg, CnfgStoreArg],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
+                     {env, build_cbauth_env_vars(Config, 'cbq-engine')},
                      {log, ?QUERY_LOG_FILENAME}]},
 
             [Spec]
