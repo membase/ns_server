@@ -74,9 +74,9 @@
 -define(REBALANCE_PROGRESS, 5).
 -define(REBALANCE_STOPPED, 7).
 
--define(DELETE_BUCKET_TIMEOUT, 30000).
--define(FLUSH_BUCKET_TIMEOUT, 60000).
--define(CREATE_BUCKET_TIMEOUT, 5000).
+-define(DELETE_BUCKET_TIMEOUT, ns_config:get_global_timeout(delete_bucket, 30000)).
+-define(FLUSH_BUCKET_TIMEOUT, ns_config:get_global_timeout(flush_bucket, 60000)).
+-define(CREATE_BUCKET_TIMEOUT, ns_config:get_global_timeout(create_bucket, 5000)).
 
 %% gen_fsm callbacks
 -export([code_change/4,
