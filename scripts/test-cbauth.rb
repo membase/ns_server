@@ -96,6 +96,9 @@ class TestCBAuth < Minitest::Test
     sh "/tmp/multi-bucket-demo --serverURL=#{base_url}"
     sh "/tmp/multi-bucket-demo --serverURL=#{base_url} --bucketName=default"
     sh "/tmp/multi-bucket-demo --serverURL=#{base_url} --bucketName=other"
+    15.times do |i|
+      sh "/tmp/multi-bucket-demo --serverURL=#{base_url} --bucketName=other -keyToSet='foo#{i+100}'"
+    end
 
     puts "waiting for :44443 to be free"
     poll_condition do
