@@ -953,6 +953,26 @@ var AnalyticsSection = {
 
     StatsModel.setupDirectoryRefreshOnStatKeysChange();
 
+    // this hides Query block in analytics if query stats are missing.
+    ;(function () {
+      var hidingQueryBlock = false;
+      // this cell is purely "presentational" cell
+      StatsModel.hideQueryBlockCell = Cell.compute(function (v) {
+        if (v.need(StatsModel.displayingSpecificStatsCell)) {
+          return false;
+        }
+        if (v.need(StatsModel.aggregateGraphsConfigurationCell).samples["query_requests"]) {
+          return false;
+        }
+        return true;
+      }).name("hideQueryBlockCell").subscribeValue(function (hide) {
+        hidingQueryBlock = !!hide;
+      });
+      $(window).bind("template:rendered", function () {
+        $(".analytics_query_block").toggle(!hidingQueryBlock);
+      });
+    })();
+
     $('#js_analytics .js_block-expander').live('click', function () {
       // this forces configuration refresh and graphs redraw
       self.widget.forceNextRendering();

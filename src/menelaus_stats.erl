@@ -394,10 +394,10 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
       end, ListOfLists),
     [hd(ets:lookup(ETS, T)) || #stat_entry{timestamp = T} <- MainSamples].
 
-grab_system_aggregate_op_stats(Bucket, all, ClientTStamp, Window) ->
-    grab_aggregate_op_stats("@system", ns_bucket:live_bucket_nodes(Bucket), ClientTStamp, Window);
-grab_system_aggregate_op_stats(_Bucket, [Node], ClientTStamp, Window) ->
-    grab_aggregate_op_stats("@system", [Node], ClientTStamp, Window).
+grab_system_aggregate_op_stats(Kind, Bucket, all, ClientTStamp, Window) ->
+    grab_aggregate_op_stats(Kind, ns_bucket:live_bucket_nodes(Bucket), ClientTStamp, Window);
+grab_system_aggregate_op_stats(Kind, _Bucket, [Node], ClientTStamp, Window) ->
+    grab_aggregate_op_stats(Kind, [Node], ClientTStamp, Window).
 
 grab_aggregate_op_stats(Bucket, all, ClientTStamp, Window) ->
     grab_aggregate_op_stats(Bucket, ns_bucket:live_bucket_nodes(Bucket), ClientTStamp, Window);
@@ -575,6 +575,34 @@ computed_stats_lazy_proplist(BucketName) ->
                       end,
                       Reps),
 
+    QueryAvgRequestTime = Z2(query_request_time, query_requests,
+                             fun (TimeNanos, Count) ->
+                                     try TimeNanos * 1.0E-9 / Count
+                                     catch error:badarith -> 0
+                                     end
+                             end),
+
+    QueryAvgServiceTime = Z2(query_service_time, query_requests,
+                             fun (TimeNanos, Count) ->
+                                     try TimeNanos * 1.0E-9 / Count
+                                     catch error:badarith -> 0
+                                     end
+                             end),
+
+    QueryAvgResultSize = Z2(query_result_size, query_requests,
+                            fun (Size, Count) ->
+                                    try Size / Count
+                                    catch error:badarith -> 0
+                                    end
+                            end),
+
+    QueryAvgResultCount = Z2(query_result_count, query_requests,
+                             fun (RCount, Count) ->
+                                     try RCount / Count
+                                     catch error:badarith -> 0
+                                     end
+                             end),
+
     [{<<"couch_total_disk_size">>, TotalDisk},
      {<<"couch_docs_fragmentation">>, DocsFragmentation},
      {<<"couch_views_fragmentation">>, ViewsFragmentation},
@@ -590,7 +618,11 @@ computed_stats_lazy_proplist(BucketName) ->
      {<<"vb_pending_resident_items_ratio">>, PendingResRate},
      {<<"avg_disk_update_time">>, AverageDiskUpdateTime},
      {<<"avg_disk_commit_time">>, AverageCommitTime},
-     {<<"avg_bg_wait_time">>, AverageBgWait}] ++ XDCAllRepStats.
+     {<<"avg_bg_wait_time">>, AverageBgWait},
+     {<<"query_avg_req_time">>, QueryAvgRequestTime},
+     {<<"query_avg_svc_time">>, QueryAvgServiceTime},
+     {<<"query_avg_response_size">>, QueryAvgResultSize},
+     {<<"query_avg_result_count">>, QueryAvgResultCount}] ++ XDCAllRepStats.
 
 %% converts list of samples to proplist of stat values.
 %%
@@ -620,17 +652,18 @@ samples_to_proplists(Samples, BucketName) ->
                        end, InitialAcc, ReversedRest),
 
     ExtraStats = lists:map(fun ({K, {F, [StatNameA, StatNameB]}}) ->
-                                   ResA = orddict:find(StatNameA, Dict),
-                                   ResB = orddict:find(StatNameB, Dict),
+                                   ResA = lists:keyfind(StatNameA, 1, Dict),
+                                   ResB = lists:keyfind(StatNameB, 1, Dict),
                                    ValR = case {ResA, ResB} of
-                                              {{ok, ValA}, {ok, ValB}} ->
+                                              {{_, ValA}, {_, ValB}} ->
                                                   lists:zipwith(
                                                     fun (A, B) when A =/= null, B =/= null ->
                                                             F(A, B);
                                                         (_, _) ->
                                                             null
                                                     end, ValA, ValB);
-                                              _ -> undefined
+                                              _ ->
+                                                  undefined
                                           end,
                                    {K, ValR}
                            end, computed_stats_lazy_proplist(BucketName)),
@@ -697,11 +730,29 @@ build_bucket_stats_ops_response(Nodes, BucketName, Params) ->
     {ClientTStamp, {Step, _, Count} = Window} = parse_stats_params(Params),
 
     BucketRawSamples = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
-    SystemRawSamples = grab_system_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
+    SystemRawSamples = grab_system_aggregate_op_stats("@system", BucketName, Nodes, ClientTStamp, Window),
 
     % this will throw out all samples with timestamps that are not present
     % in both BucketRawSamples and SystemRawSamples
-    Samples = join_samples(BucketRawSamples, SystemRawSamples),
+    BSSamples = join_samples(BucketRawSamples, SystemRawSamples),
+
+    AddQuery = case Nodes of
+                   all -> false;
+                   [_] ->
+                       %% our ui sends _ with all requests. And we
+                       %% want to auto-add query stats iff UI is
+                       %% asking. We want everyone else to use some
+                       %% other API.
+                       proplists:get_value("_", Params) =/= undefined
+               end,
+
+    Samples = case AddQuery of
+                  false ->
+                      BSSamples;
+                  true ->
+                      QueryRawSamples = grab_system_aggregate_op_stats("@query", BucketName, Nodes, ClientTStamp, Window),
+                      join_samples(BSSamples, QueryRawSamples)
+              end,
 
     StatsPropList = samples_to_proplists(Samples, BucketName),
 
@@ -948,6 +999,50 @@ couchbase_view_stats_descriptions(BucketId) ->
                                   ]}]},
               [MyStats|Stats]
       end, [], DictBySig).
+
+couchbase_query_stats_descriptions(_BucketId) ->
+    [{struct, [{blockName, <<"Query">>},
+               {extraCSSClasses, <<"dynamic_closed analytics_query_block">>},
+               {stats,
+                [{struct, [{title, <<"Requests/sec">>},
+                           {name, <<"query_requests">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Selects/sec">>},
+                           {name, <<"query_selects">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Request Times">>},
+                           {name, <<"query_avg_req_time">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Service Times">>},
+                           {name, <<"query_avg_svc_time">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Result Sizes">>},
+                           {name, <<"query_avg_response_size">>},
+                           {desc, <<"tdb">>}]},
+                 {struct, [{title, <<"Errors">>},
+                           {name, <<"query_errors">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Warnings">>},
+                           {name, <<"query_warnings">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Result Counts">>},
+                           {name, <<"query_avg_result_count">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Queries > 250ms">>},
+                           {name, <<"query_requests_250ms">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Queries > 500ms">>},
+                           {name, <<"query_requests_500ms">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Queries > 1000ms">>},
+                           {name, <<"query_requests_1000ms">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Queries > 5000ms">>},
+                           {name, <<"query_requests_5000ms">>},
+                           {desc, <<"tbd">>}]},
+                 {struct, [{title, <<"Mutations">>},
+                           {name, <<"query_mutations">>},
+                           {desc, <<"tbd">>}]}]}]}].
 
 membase_stats_description(BucketId) ->
     [{struct,[{blockName,<<"Summary">>},
@@ -1381,6 +1476,7 @@ membase_stats_description(BucketId) ->
                ]}]}]
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_replication_stats_descriptions(BucketId)
+        ++ couchbase_query_stats_descriptions(BucketId)
         ++ [{struct,[{blockName,<<"Incoming XDCR Operations">>},
                      {bigTitlePrefix, <<"Incoming XDCR">>},
                      {extraCSSClasses,<<"dynamic_closed">>},
