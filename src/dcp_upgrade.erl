@@ -41,6 +41,9 @@
                 progress :: dict(),
                 workers :: [pid()]}).
 
+-define(DCP_UPGRADE_QUERY_STATES_TIMEOUT,
+        ns_config:get_global_timeout(dcp_upgrade_query_states, 5000)).
+
 start_link(Buckets) ->
     Parent = self(),
     gen_server:start_link(?MODULE, [Parent, Buckets], []).
@@ -222,7 +225,7 @@ verify_upgrade(Bucket, BucketConfig) ->
     ns_rebalancer:verify_replication(Bucket, Nodes, Map).
 
 apply_bucket_config(UpgraderPid, Bucket, BucketConfig, Servers) ->
-    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1000),
+    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, ?DCP_UPGRADE_QUERY_STATES_TIMEOUT),
     case Zombies of
         [] ->
             janitor_agent:apply_new_bucket_config_with_timeout(
