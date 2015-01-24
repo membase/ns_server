@@ -33,7 +33,8 @@
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
 
--record(state, {buckets :: [{bucket_name(), term()}],
+-record(state, {parent :: pid(),
+                buckets :: [{bucket_name(), term()}],
                 num_buckets :: non_neg_integer(),
                 bucket :: bucket_name(),
                 bucket_config :: term(),
@@ -41,29 +42,36 @@
                 workers :: [pid()]}).
 
 start_link(Buckets) ->
-    gen_server:start_link(?MODULE, {Buckets}, []).
+    Parent = self(),
+    gen_server:start_link(?MODULE, [Parent, Buckets], []).
 
 code_change(_OldVsn, _Extra, State) ->
     {ok, State}.
 
-init({Buckets}) ->
+init([Parent, Buckets]) ->
     process_flag(trap_exit, true),
 
     NumBuckets = length(Buckets),
     self() ! upgrade_next_bucket,
 
-    {ok, #state{buckets = Buckets,
+    {ok, #state{parent = Parent,
+                buckets = Buckets,
                 num_buckets = NumBuckets,
                 workers = []}}.
 
 handle_call({apply_replication_status, Partition, Replicas}, _From,
             #state{bucket = Bucket,
                    bucket_config = Config} = State) ->
-    NewReplicationType = upgrade_replication_type(Partition, Config),
-    NewConfig = lists:keystore(repl_type, 1, Config,
-                               {repl_type, NewReplicationType}),
-    ok = apply_bucket_config(Bucket, NewConfig, Replicas),
-    {reply, ok, State#state{bucket_config = NewConfig}};
+    UpgraderPid = self(),
+    run_in_subprocess(
+      State,
+      fun () ->
+              NewReplicationType = upgrade_replication_type(Partition, Config),
+              NewConfig = lists:keystore(repl_type, 1, Config,
+                                         {repl_type, NewReplicationType}),
+              ok = apply_bucket_config(UpgraderPid, Bucket, NewConfig, Replicas),
+              {reply, ok, State#state{bucket_config = NewConfig}}
+      end);
 handle_call({update_replication_status, Partition, Master, NumPartitions}, _From,
            #state{bucket = Bucket,
                   progress = Progress,
@@ -213,12 +221,12 @@ verify_upgrade(Bucket, BucketConfig) ->
     Nodes = ns_bucket:bucket_nodes(BucketConfig),
     ns_rebalancer:verify_replication(Bucket, Nodes, Map).
 
-apply_bucket_config(Bucket, BucketConfig, Servers) ->
+apply_bucket_config(UpgraderPid, Bucket, BucketConfig, Servers) ->
     {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1000),
     case Zombies of
         [] ->
             janitor_agent:apply_new_bucket_config_with_timeout(
-              Bucket, self(), Servers, BucketConfig, [], undefined_timeout);
+              Bucket, UpgraderPid, Servers, BucketConfig, [], undefined_timeout);
         _ ->
             ?log_error("Failed to query states from some of the nodes: ~p", [Zombies]),
             {error, {failed_nodes, Zombies}}
@@ -279,3 +287,28 @@ upgrade_bucket_trivial(Bucket, BucketConfig) ->
                                {repl_type, dcp}),
     ok = ns_bucket:set_bucket_config(Bucket, NewConfig),
     master_activity_events:note_bucket_upgraded_to_dcp(Bucket).
+
+run_in_subprocess(#state{parent = Parent} = State, Body) ->
+    Pid = proc_lib:spawn_link(
+            fun () ->
+                    RV = Body(),
+                    exit({result, self(), RV})
+            end),
+
+    receive
+        stop ->
+            misc:terminate_and_wait(kill, Pid),
+            {stop, shutdown, State};
+        {'EXIT', Parent, Reason} = Msg ->
+            ?log_debug("Got exit from parent: ~p", [Msg]),
+            misc:terminate_and_wait(kill, Pid),
+            {stop, Reason, State};
+        {'EXIT', Pid, Reason} ->
+            case Reason of
+                {result, Pid, RV} ->
+                    RV;
+                _ ->
+                    ?log_error("Subprocess ~p terminated unexpectedly: ~p", [Pid, Reason]),
+                    {stop, {subprocess_died, Reason}, State}
+            end
+    end.
