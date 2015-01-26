@@ -18,7 +18,7 @@
 -export([verify_creds/2]).
 
 verify_creds(Username, Password) ->
-    {ok, Resp} = json_rpc_connection:perform_call(saslauthd, "SASLDAuth.Check",
+    {ok, Resp} = json_rpc_connection:perform_call('saslauthd-saslauthd-port', "SASLDAuth.Check",
                                                   {[{user, list_to_binary(Username)},
                                                     {pwd, list_to_binary(Password)}]}),
 
