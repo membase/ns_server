@@ -16,9 +16,9 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
 
     function login(user) {
       return mnWizardStep5Service.postAuth(user).then(function () {
-        return mnAuthService.manualLogin(user).then(function () {
+        return mnAuthService.login(user).then(function () {
           if (mnWizardStep2Service.isSomeBucketSelected()) {
-            return mnWizardStep2Service.installSampleBuckets()
+            return mnWizardStep2Service.installSampleBuckets();
           }
         });
       });
@@ -37,6 +37,5 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
       var promise = login($scope.user);
       mnHelper.rejectReasonToScopeApplyer($scope, promise);
       mnHelper.handleSpinner($scope, promise, null, true);
-      promise.then(mnHelper.reloadApp);
     }
   });

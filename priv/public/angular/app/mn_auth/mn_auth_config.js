@@ -14,16 +14,14 @@ angular.module('mnAuth').config( function ($stateProvider, $httpProvider, $urlRo
     function error(response) {
       if (response.status === 401) {
         var mnAuthService = $injector.get('mnAuthService');
-        mnAuthService.manualLogout();
+        mnAuthService.logout();
       }
       return $q.reject(response);
     };
   }
 
   $stateProvider.state('app.auth', {
-    url: '/auth',
     templateUrl: 'mn_auth/mn_auth.html',
-    controller: 'mnAuthController',
-    notAuthenticate: true
+    controller: 'mnAuthController'
   });
 });

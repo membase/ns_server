@@ -1,9 +1,9 @@
 angular.module('mnAuthService').factory('mnAuthService',
-  function (mnHttp) {
+  function (mnHttp, $rootScope, $state, mnPools) {
 
   var mnAuthService = {};
 
-  mnAuthService.manualLogin = function (user) {
+  mnAuthService.login = function (user) {
     user = user || {};
     return mnHttp({
       method: 'POST',
@@ -12,13 +12,21 @@ angular.module('mnAuthService').factory('mnAuthService',
         user: user.username,
         password: user.password
       }
+    }).then(function () {
+      return mnPools.getFresh().then(function () {
+        $state.go('app.admin.overview');
+      });
     });
   };
 
-  mnAuthService.manualLogout = function () {
+  mnAuthService.logout = function () {
     return mnHttp({
       method: 'POST',
       url: "/uilogout"
+    }).then(function () {
+      return mnPools.getFresh().then(function () {
+        $state.go('app.auth');
+      });
     });
   };
 

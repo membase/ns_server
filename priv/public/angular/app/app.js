@@ -183,26 +183,19 @@ angular.module('app', [
 
 
 ]).run(function ($rootScope, $state, $urlRouter, mnPools) {
-  mnPools.get().then(function (pools) {
-    $rootScope.$on('$stateChangeStart', function (event, current) {
-      if (!current.notAuthenticate && !pools.isAuthenticated) {
-        event.preventDefault();
-        $state.go('app.auth');
-      }
-
-      if (current.name == 'app.auth') {
+  $rootScope.$on('$locationChangeSuccess', function (event) {
+    event.preventDefault();
+    mnPools.get().then(function (pools) {
+      if (pools.isAuthenticated) {
+        $urlRouter.sync();
+      } else {
         if (pools.isInitialized) {
-          if (pools.isAuthenticated) {
-            event.preventDefault();
-            $state.go('app.admin.overview');
-          }
+          $state.go('app.auth');
         } else {
-          event.preventDefault();
           $state.go('app.wizard.welcome');
         }
       }
     });
-    $urlRouter.listen();
-    $urlRouter.sync();
   });
+  $urlRouter.listen();
 });

@@ -17,4 +17,5 @@ angular.module('app').config(function ($httpProvider, $stateProvider, $urlRouter
   });
 
   $urlRouterProvider.deferIntercept();
+  $urlRouterProvider.otherwise('/overview');
 });

@@ -2,7 +2,7 @@ angular.module('mnAdmin').controller('mnAdminController',
   function ($scope, mnHelper, mnAuthService, tasks, mnTasksDetails) {
 
     $scope.logout = function () {
-      mnAuthService.manualLogout().then(mnHelper.reloadApp);
+      mnAuthService.logout();
     };
 
     function applyTasks(tasks) {

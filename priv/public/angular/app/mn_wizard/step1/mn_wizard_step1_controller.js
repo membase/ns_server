@@ -37,7 +37,7 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
     }
 
     function login() {
-      return mnAuthService.manualLogin($scope.clusterMember);
+      return mnAuthService.login($scope.clusterMember);
     }
     function goNext() {
       $state.go('app.wizard.step2');

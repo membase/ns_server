@@ -1,16 +1,12 @@
 angular.module('mnAuth').controller('mnAuthController',
-  function ($scope, mnAuthService, mnHelper) {
+  function ($scope, mnAuthService, mnHelper, mnPools, $state) {
     $scope.loginFailed = false;
 
     function error() {
       $scope.loginFailed = true;
     }
-    function success() {
-      $scope.loginFailed = false;
-      mnHelper.reloadApp();
-    }
 
     $scope.submit = function () {
-      mnAuthService.manualLogin($scope.user).then(success, error);
+      mnAuthService.login($scope.user).then(null, error);
     }
   });
