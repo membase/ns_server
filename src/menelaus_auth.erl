@@ -423,7 +423,7 @@ check_saslauthd_auth(User, Password) ->
             UserB = list_to_binary(User),
             IsAdmin = is_list(Admins) andalso lists:member(UserB, Admins),
             IsRoAdmin = is_list(RoAdmins) andalso lists:member(UserB, RoAdmins),
-            Authed = ((catch saslauthd_auth:verify_creds(User, Password)) =:= true),
+            Authed = saslauthd_auth:verify_creds(User, Password),
             case Authed of
                 false ->
                     false;
