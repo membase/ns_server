@@ -29,10 +29,12 @@ angular.module('mnTasksDetails', [
 angular.module('mnPools', [
   'mnHttp'
 ]);
+angular.module('mnAlertsService', []);
 
 angular.module('mnWizard', [
   'mnAuthService',
   'mnServersService',
+  'mnAlertsService',
   'mnHelper',
   'ui.router',
   'mnWizardStep1Service',
@@ -68,8 +70,8 @@ angular.module('mnAuth', [
   'mnHelper'
 ]);
 
-
 angular.module('mnAdmin', [
+  'mnAlertsService',
   'mnTasksDetails',
   'mnAuthService',
   'mnHelper',

@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep5Controller',
-  function ($scope, mnWizardStep5Service, mnWizardStep2Service, mnAuthService, mnHelper) {
+  function ($scope, mnWizardStep5Service, mnWizardStep2Service, mnAuthService, mnHelper, mnAlertsService) {
     $scope.user = {
       username: 'Administrator',
       password: '',
@@ -18,7 +18,9 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
       return mnWizardStep5Service.postAuth(user).then(function () {
         return mnAuthService.login(user).then(function () {
           if (mnWizardStep2Service.isSomeBucketSelected()) {
-            return mnWizardStep2Service.installSampleBuckets();
+            return mnWizardStep2Service.installSampleBuckets().then(null, function (resp) {
+              mnAlertsService.formatAndSetAlerts(resp.data, 'danger');
+            });
           }
         });
       });

@@ -1457,3 +1457,5 @@ input[type=number].size {width:4em;}
 
 .for_upload {line-height: 30px; padding-left: 5px;}
 .for_upload label {display: inline-block; width: 200px;}
+
+.global_alerts_container {width: 1060px; margin: 0 auto;}
