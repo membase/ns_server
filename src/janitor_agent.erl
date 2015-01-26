@@ -20,7 +20,7 @@
 
 -define(WAIT_FOR_MEMCACHED_TIMEOUT, ns_config:get_timeout(wait_for_memcached, 5000)).
 
--define(APPLY_NEW_CONFIG_TIMEOUT, ns_config:get_timeout(janitor_agent_apply_config, 30000)).
+-define(APPLY_NEW_CONFIG_TIMEOUT, ns_config:get_timeout(janitor_agent_apply_config, 60000)).
 %% NOTE: there's also ns_memcached timeout anyways
 -define(DELETE_VBUCKET_TIMEOUT, ns_config:get_timeout(janitor_agent_delete_vbucket, 120000)).
 

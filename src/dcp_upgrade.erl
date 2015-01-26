@@ -42,7 +42,7 @@
                 workers :: [pid()]}).
 
 -define(DCP_UPGRADE_QUERY_STATES_TIMEOUT,
-        ns_config:get_global_timeout(dcp_upgrade_query_states, 5000)).
+        ns_config:get_global_timeout(dcp_upgrade_query_states, 60000)).
 
 start_link(Buckets) ->
     Parent = self(),
