@@ -640,17 +640,18 @@ do_handle_memcached_log(Resp, File) ->
     end.
 
 handle_sasl_logs(LogName, Req) ->
-    case ns_log_browser:log_exists(LogName) of
+    FullLogName = LogName ++ ".log",
+    case ns_log_browser:log_exists(FullLogName) of
         true ->
             Resp = menelaus_util:reply_ok(Req, "text/plain; charset=utf-8", chunked),
-            handle_log(Resp, LogName),
+            handle_log(Resp, FullLogName),
             Resp:write_chunk(<<"">>);
         false ->
             menelaus_util:reply_text(Req, "Requested log file not found.\r\n", 404)
     end.
 
 handle_sasl_logs(Req) ->
-    handle_sasl_logs(?DEBUG_LOG_FILENAME, Req).
+    handle_sasl_logs("debug", Req).
 
 plist_to_ejson_rewriter([Tuple|_] = ListOfTuples) when is_tuple(Tuple) ->
     Objects = [misc:rewrite(fun plist_to_ejson_rewriter/1, PL)
