@@ -54,6 +54,7 @@
          is_enterprise/0,
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
+         assert_is_sherlock/0,
          proxy_to_goxdcr/1,
          proxy_to_goxdcr/2]).
 
@@ -966,6 +967,17 @@ assert_is_enterprise() ->
                           400,
                           "This http API endpoint requires enterprise edition",
                           [{"X-enterprise-edition-needed", 1}]})
+    end.
+
+assert_is_sherlock() ->
+    case cluster_compat_mode:is_cluster_sherlock() of
+        true ->
+            ok;
+        false ->
+            erlang:throw({web_exception,
+                          400,
+                          "This http API endpoint isn't supported in mixed version clusters",
+                          []})
     end.
 
 % {"default", [
@@ -3566,6 +3578,9 @@ hostname_parsing_test() ->
 -endif.
 
 handle_saslauthd_auth_settings(Req) ->
+    assert_is_enterprise(),
+    assert_is_sherlock(),
+
     reply_json(Req, {menelaus_auth:build_saslauthd_auth_settings()}).
 
 extract_user_list(undefined) ->
@@ -3616,6 +3631,9 @@ parse_validate_saslauthd_settings(Params) ->
     end.
 
 handle_saslauthd_auth_settings_post(Req) ->
+    assert_is_enterprise(),
+    assert_is_sherlock(),
+
     case parse_validate_saslauthd_settings(Req:parse_post()) of
         {ok, Props} ->
             menelaus_auth:set_saslauthd_auth_settings(Props),
@@ -3625,6 +3643,9 @@ handle_saslauthd_auth_settings_post(Req) ->
     end.
 
 handle_validate_saslauthd_creds_post(Req) ->
+    assert_is_enterprise(),
+    assert_is_sherlock(),
+
     Params = Req:parse_post(),
     VRV = menelaus_auth:verify_login_creds(proplists:get_value("user", Params, ""),
                                            proplists:get_value("password", Params, "")),
@@ -3680,7 +3701,9 @@ handle_log_post(Req) ->
     end.
 
 handle_settings_audit(Req) ->
-    menelaus_web:assert_is_enterprise(),
+    assert_is_enterprise(),
+    assert_is_sherlock(),
+
     Props = ns_audit_cfg:get_global(),
     Json = lists:map(fun ({K, V}) when is_list(V) ->
                              {K, list_to_binary(V)};
@@ -3698,7 +3721,9 @@ validate_settings_audit(Args) ->
     validate_unsupported_params(R3).
 
 handle_settings_audit_post(Req) ->
-    menelaus_web:assert_is_enterprise(),
+    assert_is_enterprise(),
+    assert_is_sherlock(),
+
     Args = Req:parse_post(),
     execute_if_validated(fun (Values) ->
                                  ns_audit_cfg:set_global(Values),
