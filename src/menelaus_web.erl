@@ -1906,7 +1906,7 @@ handle_read_only_user_reset(Req) ->
             end
     end.
 
-memory_quota_validation(MemoryQuota) ->
+memory_quota_validation(Req, MemoryQuota) ->
     case MemoryQuota of
        undefined -> ok;
        X ->
@@ -1915,9 +1915,10 @@ memory_quota_validation(MemoryQuota) ->
            case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
                {ok, Number} ->
                    {ok, fun () ->
-                                ok = ns_storage_conf:change_memory_quota(Number)
+                                ok = ns_storage_conf:change_memory_quota(Number),
                                 %% TODO: that should
                                 %% really be a cluster setting
+                                ns_audit:change_memory_quota(Req, Number)
                         end};
                invalid -> {memoryQuota, <<"The RAM Quota value must be a number.">>};
                too_small ->
@@ -1943,7 +1944,7 @@ handle_visual_internal_settings_post(Req) ->
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     MemoryQuota = proplists:get_value("memoryQuota", Params),
     TabName = proplists:get_value("tabName", Params, ""),
-    Results = [memory_quota_validation(MemoryQuota)],
+    Results = [memory_quota_validation(Req, MemoryQuota)],
     case {ValidateOnly, lists:filter(fun(ok) -> false;
                                         ({ok, _}) -> false;
                                         (_) -> true
@@ -1964,7 +1965,7 @@ handle_pool_settings(_PoolId, Req) ->
     Params = Req:parse_post(),
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     MemoryQuota = proplists:get_value("memoryQuota", Params),
-    Results = [memory_quota_validation(MemoryQuota)],
+    Results = [memory_quota_validation(Req, MemoryQuota)],
     case {ValidateOnly, lists:filter(fun(ok) -> false;
                                         ({ok, _}) -> false;
                                         (_) -> true
@@ -2487,6 +2488,7 @@ handle_node_settings_post(Node, Req) ->
             [ok] ->
                 case ns_storage_conf:setup_disk_storage_conf(DbPath, IxPath) of
                     ok ->
+                        ns_audit:disk_storage_conf(Req, Node, DbPath, IxPath),
                         %% NOTE: due to required restart we need to protect
                         %% ourselves from 'death signal' of parent
                         erlang:process_flag(trap_exit, true),
@@ -2521,6 +2523,7 @@ handle_setup_services_post(Req) ->
                     case lists:member(kv, Svcs) of
                         true ->
                             ns_config:set({node, node(), services}, Svcs),
+                            ns_audit:setup_node_services(Req, node(), Svcs),
                             reply_text(Req, "", 200);
                         _ ->
                             reply_text(Req, "cannot setup first cluster node without kv service", 400)
@@ -3342,6 +3345,7 @@ handle_internal_settings_post(Req) ->
 
 handle_node_rename(Req) ->
     Params = Req:parse_post(),
+    Node = node(),
 
     Reply =
         case proplists:get_value("hostname", Params) of
@@ -3350,6 +3354,7 @@ handle_node_rename(Req) ->
             Hostname ->
                 case ns_cluster:change_address(Hostname) of
                     ok ->
+                        ns_audit:rename_node(Req, Node, Hostname),
                         ok;
                     {cannot_resolve, Errno} ->
                         Msg = io_lib:format("Could not resolve the hostname: ~p", [Errno]),

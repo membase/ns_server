@@ -238,6 +238,74 @@
           "optional_fields" : {
               "sessionid" : ""
           }
+      },
+      {
+          "id" : 8206,
+          "name" : "disk storage conf",
+          "description" : "Disk storage configuration was set",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "node" : "",
+              "db_path" : "",
+              "index_path" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8207,
+          "name" : "rename node",
+          "description" : "The node was renamed",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "node" : "",
+              "hostname" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8208,
+          "name" : "setup node services",
+          "description" : "The services were set for the node",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "node" : "",
+              "services" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8209,
+          "name" : "change memory quota",
+          "description" : "The memory quota for the cluster was changed",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "quota" : 1
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
       }
     ]
 }

@@ -32,7 +32,12 @@
          modify_bucket/4,
          delete_bucket/2,
          flush_bucket/2,
-         start_loading_sample/2]).
+         start_loading_sample/2,
+         disk_storage_conf/4,
+         rename_node/3,
+         setup_node_services/3,
+         change_memory_quota/2
+        ]).
 
 code(login_success) ->
     8192;
@@ -61,8 +66,15 @@ code(delete_bucket) ->
 code(flush_bucket) ->
     8204;
 code(start_loading_sample) ->
-    8205.
-
+    8205;
+code(disk_storage_conf) ->
+    8206;
+code(rename_node) ->
+    8207;
+code(setup_node_services) ->
+    8208;
+code(change_memory_quota) ->
+    8209.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -204,3 +216,19 @@ flush_bucket(Req, Name) ->
 
 start_loading_sample(Req, Name) ->
     put(start_loading_sample, Req, [{name, Name}]).
+
+disk_storage_conf(Req, Node, DbPath, IxPath) ->
+    put(disk_storage_conf, Req, [{node, Node},
+                                 {db_path, DbPath},
+                                 {index_path, IxPath}]).
+
+rename_node(Req, Node, Hostname) ->
+    put(rename_node, Req, [{node, Node},
+                           {hostname, Hostname}]).
+
+setup_node_services(Req, Node, Services) ->
+    put(setup_node_services, Req, [{node, Node},
+                                   {services, {list, Services}}]).
+
+change_memory_quota(Req, Quota) ->
+    put(change_memory_quota, Req, [{quota, Quota}]).
