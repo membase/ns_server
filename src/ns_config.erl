@@ -191,8 +191,9 @@ set(Key, Value) ->
 %% to cas new config returning retry_needed if it fails
 -spec run_txn(fun((ConfigKVList :: [[term()]],
                    UpdateFn :: fun((Key :: term(), Value :: term(), Cfg :: [term()]) -> NewConfig :: [[term()]]))
-                  -> {commit, ConfigKVList :: [[term()]]} | {abort, any()})) ->
-                     {commit, [term()]} | {abort, any()} | retry_needed.
+                  -> {commit, ConfigKVList :: [[term()]]} |
+                     {commit, ConfigKVList :: [[term()]], term()} | {abort, any()})) ->
+                     {commit, [term()]} | {commit, [term()], term()} | {abort, any()} | retry_needed.
 run_txn(Body) ->
     run_txn_loop(Body, 10).
 
@@ -209,6 +210,11 @@ run_txn_loop(Body, RetriesLeft) ->
         {commit, [NewCfg]} ->
             case cas_local_config(NewCfg, hd(Cfg)) of
                 true -> {commit, NewCfg};
+                false -> run_txn_loop(Body, RetriesLeft - 1)
+            end;
+        {commit, [NewCfg], Extra} ->
+            case cas_local_config(NewCfg, hd(Cfg)) of
+                true -> {commit, NewCfg, Extra};
                 false -> run_txn_loop(Body, RetriesLeft - 1)
             end;
         {abort, _} = AbortRV ->

@@ -19,7 +19,8 @@
 
 -include("ns_common.hrl").
 
--export([login_success/1,
+-export([commit/1,
+         login_success/1,
          login_failure/1,
          delete_user/3,
          password_change/3,
@@ -36,7 +37,11 @@
          disk_storage_conf/4,
          rename_node/3,
          setup_node_services/3,
-         change_memory_quota/2
+         change_memory_quota/2,
+         prepare_add_group/2,
+         prepare_delete_group/2,
+         prepare_update_group/2,
+         update_group/2
         ]).
 
 code(login_success) ->
@@ -74,7 +79,13 @@ code(rename_node) ->
 code(setup_node_services) ->
     8208;
 code(change_memory_quota) ->
-    8209.
+    8209;
+code(add_group) ->
+    8210;
+code(delete_group) ->
+    8211;
+code(update_group) ->
+    8212.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -119,7 +130,7 @@ get_remote(Req) ->
     {[{ip, to_binary(inet_parse:ntoa(Host))},
       {port, Port}]}.
 
-put(Code, Req, Params) ->
+prepare(Req, Params) ->
     {User, Token, Remote} =
         case Req of
             undefined ->
@@ -134,17 +145,22 @@ put(Code, Req, Params) ->
             {sessionid, Token},
             {real_userid, User}] ++ Params,
 
-    Body1 = lists:foldl(
-              fun ({_Key, undefined}, Acc) ->
-                      Acc;
-                  ({_Key, "undefined"}, Acc) ->
-                      Acc;
-                  ({Key, Value}, Acc) ->
-                      [{Key, to_binary(Value)} | Acc]
-              end, [], Body),
+    lists:foldl(
+      fun ({_Key, undefined}, Acc) ->
+              Acc;
+          ({_Key, "undefined"}, Acc) ->
+              Acc;
+          ({Key, Value}, Acc) ->
+              [{Key, to_binary(Value)} | Acc]
+      end, [], Body).
 
-    ?log_debug("Audit ~p: ~p", [Code, Body1]),
-    EncodedBody = ejson:encode({Body1}),
+put(Code, Req, Params) ->
+    Body = prepare(Req, Params),
+    commit({Code, Body}).
+
+commit({Code, Body}) ->
+    ?log_debug("Audit ~p: ~p", [Code, Body]),
+    EncodedBody = ejson:encode({Body}),
 
     ns_memcached_sockets_pool:executing_on_socket(
       fun (Sock) ->
@@ -232,3 +248,21 @@ setup_node_services(Req, Node, Services) ->
 
 change_memory_quota(Req, Quota) ->
     put(change_memory_quota, Req, [{quota, Quota}]).
+
+prepare_add_group(Req, Group) ->
+    {add_group, prepare(Req, [{name, proplists:get_value(name, Group)},
+                              {uuid, proplists:get_value(uuid, Group)}])}.
+
+prepare_delete_group(Req, Group) ->
+    {delete_group, prepare(Req, [{name, proplists:get_value(name, Group)},
+                                 {uuid, proplists:get_value(uuid, Group)}])}.
+
+prepare_update_group(Req, Group) ->
+    {update_group, prepare(Req, [{name, proplists:get_value(name, Group)},
+                                 {uuid, proplists:get_value(uuid, Group)},
+                                 {nodes, {list, proplists:get_value(nodes, Group, [])}}])}.
+
+update_group(Req, Group) ->
+    put(update_group, Req, [{name, proplists:get_value(name, Group)},
+                            {uuid, proplists:get_value(uuid, Group)},
+                            {nodes, {list, proplists:get_value(nodes, Group, [])}}]).

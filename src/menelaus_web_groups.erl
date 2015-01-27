@@ -111,6 +111,7 @@ finish_handle_server_groups_put(Req, ReplacementGroups, RawGroups) ->
               end),
     case TXNRV of
         {commit, _} ->
+            [ns_audit:update_group(Req, Group) || Group <- ReplacementGroups],
             reply_json(Req, [], 200);
         {abort, {error, rebalance_running}} ->
             reply_json(Req, <<"Cannot update server group while rebalance is running">>, 503);
@@ -242,7 +243,7 @@ handle_server_groups_post(Req) ->
     true = cluster_compat_mode:is_cluster_25(),
     case parse_groups_post(Req:parse_post()) of
         {ok, Name} ->
-            case do_handle_server_groups_post(Name) of
+            case do_handle_server_groups_post(Name, Req) of
                 ok ->
                     reply_json(Req, []);
                 {error, already_exists} ->
@@ -252,7 +253,7 @@ handle_server_groups_post(Req) ->
             reply_json(Req, {struct, Errors}, 400)
     end.
 
-do_handle_server_groups_post(Name) ->
+do_handle_server_groups_post(Name, Req) ->
     TXNRV = ns_config:run_txn(
               fun (Cfg, SetFn) ->
                       {value, ExistingGroups} = ns_config:search(Cfg, server_groups),
@@ -265,13 +266,15 @@ do_handle_server_groups_post(Name) ->
                                         {name, Name},
                                         {nodes, []}],
                               NewGroups = lists:sort([AGroup | ExistingGroups]),
-                              {commit, SetFn(server_groups, NewGroups, Cfg)};
+                              {commit, SetFn(server_groups, NewGroups, Cfg),
+                               ns_audit:prepare_add_group(Req, AGroup)};
                           _ ->
                               {abort, {error, already_exists}}
                       end
               end),
     case TXNRV of
-        {commit, _} ->
+        {commit, _, AuditEvent} ->
+            ns_audit:commit(AuditEvent),
             ok;
         {abort, {error, already_exists} = Error} ->
             Error;
@@ -323,7 +326,7 @@ handle_server_group_update(GroupUUID, Req) ->
     true = cluster_compat_mode:is_cluster_25(),
     case parse_groups_post(Req:parse_post()) of
         {ok, Name} ->
-            case do_group_update(list_to_binary(GroupUUID), Name) of
+            case do_group_update(list_to_binary(GroupUUID), Name, Req) of
                 ok ->
                     reply_json(Req, []);
                 {error, not_found} ->
@@ -335,7 +338,7 @@ handle_server_group_update(GroupUUID, Req) ->
             reply_json(Req, {struct, Errors}, 400)
     end.
 
-do_group_update(GroupUUID, Name) ->
+do_group_update(GroupUUID, Name, Req) ->
     TXNRV = ns_config:run_txn(
               fun (Cfg, SetFn) ->
                       {value, Groups} = ns_config:search(Cfg, server_groups),
@@ -352,11 +355,13 @@ do_group_update(GroupUUID, Name) ->
                           {[_], []} ->
                               UpdatedGroup = lists:keyreplace(name, 1, hd(MaybeCandidateGroup), {name, Name}),
                               NewGroups = lists:sort([UpdatedGroup | OtherGroups]),
-                              {commit, SetFn(server_groups, NewGroups, Cfg)}
+                              {commit, SetFn(server_groups, NewGroups, Cfg),
+                               ns_audit:prepare_update_group(Req, UpdatedGroup)}
                       end
               end),
     case TXNRV of
-        {commit, _} ->
+        {commit, _, AuditEvent} ->
+            ns_audit:commit(AuditEvent),
             ok;
         {abort, Error} ->
             Error;
@@ -367,7 +372,7 @@ do_group_update(GroupUUID, Name) ->
 handle_server_group_delete(GroupUUID, Req) ->
     menelaus_web:assert_is_enterprise(),
     true = cluster_compat_mode:is_cluster_25(),
-    case do_group_delete(list_to_binary(GroupUUID)) of
+    case do_group_delete(list_to_binary(GroupUUID), Req) of
         ok ->
             reply_json(Req, []);
         {error, not_found} ->
@@ -376,7 +381,7 @@ handle_server_group_delete(GroupUUID, Req) ->
             reply_json(Req, {struct, [{'_', <<"group is not empty">>}]}, 400)
     end.
 
-do_group_delete(GroupUUID) ->
+do_group_delete(GroupUUID, Req) ->
     TXNRV = ns_config:run_txn(
               fun (Cfg, SetFn) ->
                       {value, Groups} = ns_config:search(Cfg, server_groups),
@@ -391,12 +396,14 @@ do_group_delete(GroupUUID) ->
                                       {abort, {error, not_empty}};
                                   [] ->
                                       NewGroups = Groups -- MaybeG,
-                                      {commit, SetFn(server_groups, NewGroups, Cfg)}
+                                      {commit, SetFn(server_groups, NewGroups, Cfg),
+                                       ns_audit:prepare_delete_group(Req, Victim)}
                               end
                       end
               end),
     case TXNRV of
-        {commit, _} ->
+        {commit, _, AuditEvent} ->
+            ns_audit:commit(AuditEvent),
             ok;
         {abort, Error} ->
             Error;
