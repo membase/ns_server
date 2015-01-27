@@ -236,12 +236,16 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_crud:handle_list/2, [Id]};
                          ["pools", "default", "buckets", Id, "docs", DocId] ->
                              {auth, fun menelaus_web_crud:handle_get/3, [Id, DocId]};
+                         ["pools", "default", "@query", "stats"] ->
+                             {auth_ro, fun menelaus_stats:handle_bucket_stats/3, ["default", "@query"]};
                          ["pools", "default", "buckets", Id, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                               ["default", Id]};
                          ["pools", "default", "buckets", Id, "localRandomKey"] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_local_random_key/3,
                               ["default", Id]};
+                         ["pools", "default", "buckets", "@query", "statsDirectory"] ->
+                             {auth_ro, fun menelaus_stats:serve_stats_directory/3, ["default", "@query"]};
                          ["pools", "default", "buckets", Id, "statsDirectory"] ->
                              {auth_bucket, fun menelaus_stats:serve_stats_directory/3,
                               ["default", Id]};
@@ -255,19 +259,24 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "bs", BucketName] ->
                              {auth_bucket, fun serve_streaming_short_bucket_info/3,
                               ["default", BucketName]};
-                         %% GET /pools/{PoolId}/buckets/{Id}/nodes
+                         ["pools", "default", "buckets", "@query", "nodes"] ->
+                             {auth_ro, fun handle_bucket_node_list/3,
+                              ["default", "@query"]};
                          ["pools", "default", "buckets", Id, "nodes"] ->
                              {auth_bucket, fun handle_bucket_node_list/3,
                               ["default", Id]};
-                         %% GET /pools/{PoolId}/buckets/{Id}/nodes/{NodeId}
                          ["pools", "default", "buckets", Id, "nodes", NodeId] ->
                              {auth_bucket, fun handle_bucket_node_info/4,
                               ["default", Id, NodeId]};
-                         %% GET /pools/{PoolId}/buckets/{Id}/nodes/{NodeId}/stats
+                         ["pools", "default", "buckets", "@query", "nodes", NodeId, "stats"] ->
+                             {auth_ro, fun menelaus_stats:handle_bucket_node_stats/4,
+                              ["default", "@query", NodeId]};
                          ["pools", "default", "buckets", Id, "nodes", NodeId, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_node_stats/4,
                               ["default", Id, NodeId]};
-                         %% GET /pools/{PoolId}/buckets/{Id}/stats/{StatName}
+                         ["pools", "default", "buckets", "@query", "stats", StatName] ->
+                             {auth_ro, fun menelaus_stats:handle_specific_stat_for_buckets/4,
+                              ["default", "@query", StatName]};
                          ["pools", "default", "buckets", Id, "stats", StatName] ->
                              {auth_bucket, fun menelaus_stats:handle_specific_stat_for_buckets/4,
                               ["default", Id, StatName]};
@@ -2784,33 +2793,38 @@ handle_reset_alerts(Req) ->
     Token = list_to_binary(proplists:get_value("token", Params, "")),
     reply_json(Req, menelaus_web_alerts_srv:consume_alerts(Token)).
 
+nodes_to_hostnames(Config, BucketName, Req) ->
+    Nodes = case BucketName of
+                "@query" ->
+                    ns_cluster_membership:n1ql_active_nodes(Config);
+                _ ->
+                    {ok, BucketPList} = ns_bucket:get_bucket_light(BucketName),
+                    ns_bucket:bucket_nodes(BucketPList)
+            end,
+    LocalAddr = menelaus_util:local_addr(Req),
+    [{N, list_to_binary(build_node_hostname(Config, N, LocalAddr))}
+     || N <- Nodes].
+
 %% Node list
 %% GET /pools/{PoolID}/buckets/{Id}/nodes
 %%
 %% Provides a list of nodes for a specific bucket (generally all nodes) with
 %% links to stats for that bucket
 handle_bucket_node_list(_PoolId, BucketName, Req) ->
-    {ok, BucketPList} = ns_bucket:get_bucket(BucketName),
-    Nodes = menelaus_web_buckets:build_bucket_node_infos(BucketName, BucketPList,
-                                                         stable, menelaus_util:local_addr(Req)),
+    NHs = nodes_to_hostnames(ns_config:get(), BucketName, Req),
     Servers =
-        [begin
-             Hostname = proplists:get_value(hostname, N),
-             {struct,
-              [{hostname, Hostname},
-               {uri, bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname])},
-               {stats, {struct, [{uri,
-                                  bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"])}]}}]}
-         end || {struct, N} <- Nodes],
+        [{struct,
+          [{hostname, Hostname},
+           {uri, bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname])},
+           {stats, {struct, [{uri,
+                              bin_concat_path(["pools", "default", "buckets", BucketName, "nodes", Hostname, "stats"])}]}}]}
+         || {_, Hostname} <- NHs],
     reply_json(Req, {struct, [{servers, Servers}]}).
 
-find_bucket_hostname(BucketName, Hostname, Req) ->
-    Config = ns_config:get(),
-    {ok, BucketPList} = ns_bucket:get_bucket(BucketName, Config),
-    Nodes = ns_bucket:bucket_nodes(BucketPList),
-    LocalAddr = menelaus_util:local_addr(Req),
-    BucketHostnames = [{N, build_node_hostname(Config, N, LocalAddr)} || N <- Nodes],
-    case [N || {N, CandidateHostname} <- BucketHostnames,
+find_bucket_hostname(BucketName, HostnameList, Req) ->
+    Hostname = list_to_binary(HostnameList),
+    NHs = nodes_to_hostnames(ns_config:get(), BucketName, Req),
+    case [N || {N, CandidateHostname} <- NHs,
                CandidateHostname =:= Hostname] of
         [] ->
             false;

@@ -43,7 +43,8 @@
          node_services/2,
          filter_out_non_kv_nodes/1,
          filter_out_non_kv_nodes/2,
-         should_run_service/3]).
+         should_run_service/3,
+         n1ql_active_nodes/1]).
 
 active_nodes() ->
     active_nodes(ns_config:get()).
@@ -225,3 +226,7 @@ should_run_service(Config, Service, Node) ->
             Svcs = ns_cluster_membership:node_services(Config, Node),
             lists:member(Service, Svcs)
     end.
+
+n1ql_active_nodes(Config) ->
+    [N || N <- ns_cluster_membership:active_nodes(Config),
+          n1ql <- ns_cluster_membership:node_services(Config, N)].

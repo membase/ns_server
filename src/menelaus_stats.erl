@@ -307,7 +307,7 @@ get_samples_for_stat(BucketName, StatName, ForNodes, ClientTStamp, Window) ->
     {[lists:map(StatExtractor, NodeSamples) || {_, NodeSamples} <- AllNodesSamples], Nodes}.
 
 get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window) ->
-    ForNodes = ns_bucket:live_bucket_nodes(BucketName),
+    ForNodes = bucket_nodes(BucketName),
     RV = {Samples, _} = get_samples_for_stat("@system", StatName, ForNodes, ClientTStamp, Window),
     case are_samples_undefined(Samples) of
         true ->
@@ -336,7 +336,7 @@ build_response_for_specific_stat(BucketName, StatName, Params, LocalAddr) ->
                             [dict_safe_fetch(T, Dict, 0) || T <- Timestamps]
                     end, tl(NodesSamples)),
     {struct, [{samplesCount, Count},
-              {isPersistent, ns_bucket:is_persistent(BucketName)},
+              {isPersistent, is_persistent(BucketName)},
               {lastTStamp, case Timestamps of
                                [] -> 0;
                                L -> lists:last(L)
@@ -394,13 +394,23 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
       end, ListOfLists),
     [hd(ets:lookup(ETS, T)) || #stat_entry{timestamp = T} <- MainSamples].
 
+bucket_nodes("@query") ->
+    ns_cluster_membership:n1ql_active_nodes(ns_config:latest_config_marker());
+bucket_nodes(Bucket) ->
+    ns_bucket:live_bucket_nodes(Bucket).
+
+is_persistent("@query") ->
+    false;
+is_persistent(BucketName) ->
+    ns_bucket:is_persistent(BucketName).
+
 grab_system_aggregate_op_stats(Kind, Bucket, all, ClientTStamp, Window) ->
-    grab_aggregate_op_stats(Kind, ns_bucket:live_bucket_nodes(Bucket), ClientTStamp, Window);
+    grab_aggregate_op_stats(Kind, bucket_nodes(Bucket), ClientTStamp, Window);
 grab_system_aggregate_op_stats(Kind, _Bucket, [Node], ClientTStamp, Window) ->
     grab_aggregate_op_stats(Kind, [Node], ClientTStamp, Window).
 
 grab_aggregate_op_stats(Bucket, all, ClientTStamp, Window) ->
-    grab_aggregate_op_stats(Bucket, ns_bucket:live_bucket_nodes(Bucket), ClientTStamp, Window);
+    grab_aggregate_op_stats(Bucket, bucket_nodes(Bucket), ClientTStamp, Window);
 grab_aggregate_op_stats(Bucket, Nodes, ClientTStamp, Window) ->
     {_MainNode, MainSamples, Replies} =
         menelaus_stats_gatherer:gather_stats(Bucket, Nodes, ClientTStamp, Window),
@@ -434,6 +444,43 @@ parse_stats_params(Params) ->
 
 computed_stats_lazy_proplist("@system") ->
     [];
+computed_stats_lazy_proplist("@query") ->
+    Z2 = fun (StatNameA, StatNameB, Combiner) ->
+                 {Combiner, [StatNameA, StatNameB]}
+         end,
+    QueryAvgRequestTime = Z2(query_request_time, query_requests,
+                             fun (TimeNanos, Count) ->
+                                     try TimeNanos * 1.0E-9 / Count
+                                     catch error:badarith -> 0
+                                     end
+                             end),
+
+    QueryAvgServiceTime = Z2(query_service_time, query_requests,
+                             fun (TimeNanos, Count) ->
+                                     try TimeNanos * 1.0E-9 / Count
+                                     catch error:badarith -> 0
+                                     end
+                             end),
+
+    QueryAvgResultSize = Z2(query_result_size, query_requests,
+                            fun (Size, Count) ->
+                                    try Size / Count
+                                    catch error:badarith -> 0
+                                    end
+                            end),
+
+    QueryAvgResultCount = Z2(query_result_count, query_requests,
+                             fun (RCount, Count) ->
+                                     try RCount / Count
+                                     catch error:badarith -> 0
+                                     end
+                             end),
+
+
+    [{<<"query_avg_req_time">>, QueryAvgRequestTime},
+     {<<"query_avg_svc_time">>, QueryAvgServiceTime},
+     {<<"query_avg_response_size">>, QueryAvgResultSize},
+     {<<"query_avg_result_count">>, QueryAvgResultCount}];
 computed_stats_lazy_proplist(BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
@@ -575,34 +622,6 @@ computed_stats_lazy_proplist(BucketName) ->
                       end,
                       Reps),
 
-    QueryAvgRequestTime = Z2(query_request_time, query_requests,
-                             fun (TimeNanos, Count) ->
-                                     try TimeNanos * 1.0E-9 / Count
-                                     catch error:badarith -> 0
-                                     end
-                             end),
-
-    QueryAvgServiceTime = Z2(query_service_time, query_requests,
-                             fun (TimeNanos, Count) ->
-                                     try TimeNanos * 1.0E-9 / Count
-                                     catch error:badarith -> 0
-                                     end
-                             end),
-
-    QueryAvgResultSize = Z2(query_result_size, query_requests,
-                            fun (Size, Count) ->
-                                    try Size / Count
-                                    catch error:badarith -> 0
-                                    end
-                            end),
-
-    QueryAvgResultCount = Z2(query_result_count, query_requests,
-                             fun (RCount, Count) ->
-                                     try RCount / Count
-                                     catch error:badarith -> 0
-                                     end
-                             end),
-
     [{<<"couch_total_disk_size">>, TotalDisk},
      {<<"couch_docs_fragmentation">>, DocsFragmentation},
      {<<"couch_views_fragmentation">>, ViewsFragmentation},
@@ -618,11 +637,8 @@ computed_stats_lazy_proplist(BucketName) ->
      {<<"vb_pending_resident_items_ratio">>, PendingResRate},
      {<<"avg_disk_update_time">>, AverageDiskUpdateTime},
      {<<"avg_disk_commit_time">>, AverageCommitTime},
-     {<<"avg_bg_wait_time">>, AverageBgWait},
-     {<<"query_avg_req_time">>, QueryAvgRequestTime},
-     {<<"query_avg_svc_time">>, QueryAvgServiceTime},
-     {<<"query_avg_response_size">>, QueryAvgResultSize},
-     {<<"query_avg_result_count">>, QueryAvgResultCount}] ++ XDCAllRepStats.
+     {<<"avg_bg_wait_time">>, AverageBgWait}] ++ XDCAllRepStats
+        ++ computed_stats_lazy_proplist("@query").
 
 %% converts list of samples to proplist of stat values.
 %%
@@ -759,7 +775,7 @@ build_bucket_stats_ops_response(Nodes, BucketName, Params) ->
     [{op, {struct,
            [{samples, {struct, StatsPropList}},
             {samplesCount, Count},
-            {isPersistent, ns_bucket:is_persistent(BucketName)},
+            {isPersistent, is_persistent(BucketName)},
             {lastTStamp, case proplists:get_value(timestamp, StatsPropList) of
                              [] -> 0;
                              L -> lists:last(L)
@@ -1000,9 +1016,15 @@ couchbase_view_stats_descriptions(BucketId) ->
               [MyStats|Stats]
       end, [], DictBySig).
 
-couchbase_query_stats_descriptions(_BucketId) ->
+couchbase_query_stats_descriptions(Bucket) ->
+    Classes = case Bucket of
+                  "@query" ->
+                      <<"">>;
+                  _ ->
+                      <<"dynamic_closed analytics_query_block">>
+              end,
     [{struct, [{blockName, <<"Query">>},
-               {extraCSSClasses, <<"dynamic_closed analytics_query_block">>},
+               {extraCSSClasses, Classes},
                {stats,
                 [{struct, [{title, <<"Requests/sec">>},
                            {name, <<"query_requests">>},
@@ -1600,12 +1622,17 @@ server_resources_stats_description() ->
                 {title,<<"streaming wakeups/sec">>},
                 {desc,<<"Rate of streaming request wakeups on port 8091">>}]}]}].
 
-serve_stats_directory(_PoolId, BucketId, Req) ->
+base_stats_directory("@query") ->
+    couchbase_query_stats_descriptions("@query");
+base_stats_directory(BucketId) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
-    BaseDescription = case ns_bucket:bucket_type(BucketConfig) of
-                          membase -> membase_stats_description(BucketId);
-                          memcached -> memcached_stats_description()
-                      end,
+    case ns_bucket:bucket_type(BucketConfig) of
+        membase -> membase_stats_description(BucketId);
+        memcached -> memcached_stats_description()
+    end.
+
+serve_stats_directory(_PoolId, BucketId, Req) ->
+    BaseDescription = base_stats_directory(BucketId),
     BaseDescription1 = [{struct, server_resources_stats_description()} | BaseDescription],
     Prefix = menelaus_util:concat_url_path(["pools", "default", "buckets", BucketId, "stats"]),
     Desc = [{struct, add_specific_stats_url(BD, Prefix)} || {struct, BD} <- BaseDescription1],
