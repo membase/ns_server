@@ -1002,10 +1002,12 @@ var AnalyticsSection = {
         return true;
       }).name("hideQueryBlockCell").subscribeValue(function (hide) {
         hidingQueryBlock = !!hide;
+        doHiding();
       });
-      $(window).bind("template:rendered", function () {
+      function doHiding() {
         $(".analytics_query_block").toggle(!hidingQueryBlock);
-      });
+      }
+      $(window).bind("template:rendered", doHiding);
     })();
 
     $('#js_analytics .js_block-expander').live('click', function () {
