@@ -133,19 +133,6 @@ notify_cbauth(Label, Info) ->
             {error, noproc}
     end.
 
-interesting_service(kv) ->
-    true;
-interesting_service(mgmt) ->
-    true;
-interesting_service(capi) ->
-    true;
-interesting_service(capiSSL) ->
-    true;
-interesting_service(mgmtSSL) ->
-    true;
-interesting_service(_) ->
-    false.
-
 build_node_info(N, Config) ->
     Services = bucket_info_cache:build_services(N, Config,
                                                 ns_cluster_membership:node_services(Config, N)),
@@ -161,8 +148,7 @@ build_node_info(N, Config) ->
        erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_user))},
       {admin_pass,
        erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_pass))},
-      {ports, [Port || {Key, Port} <- Services,
-                       interesting_service(Key)]}] ++ Local}.
+      {ports, [Port || {_Key, Port} <- Services]}] ++ Local}.
 
 build_buckets_info() ->
     Buckets = ns_bucket:get_buckets(),
