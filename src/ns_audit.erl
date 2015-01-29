@@ -48,7 +48,10 @@
          xdcr_create_replication/3,
          xdcr_update_replication/3,
          xdcr_cancel_replication/2,
-         xdcr_update_global_settings/2
+         xdcr_update_global_settings/2,
+         enable_auto_failover/3,
+         disable_auto_failover/1,
+         reset_auto_failover_count/1
         ]).
 
 code(login_success) ->
@@ -106,7 +109,13 @@ code(xdcr_update_replication) ->
 code(xdcr_cancel_replication) ->
     8218;
 code(xdcr_update_global_settings) ->
-    8219.
+    8219;
+code(enable_auto_failover) ->
+    8220;
+code(disable_auto_failover) ->
+    8221;
+code(reset_auto_failover_count) ->
+    8222.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -331,3 +340,13 @@ xdcr_cancel_replication(Req, Id) ->
 
 xdcr_update_global_settings(Req, Settings) ->
     put(xdcr_update_global_settings, Req, [{settings, {prepare_list(Settings)}}]).
+
+enable_auto_failover(Req, Timeout, MaxNodes) ->
+    put(enable_auto_failover, Req, [{timeout, Timeout},
+                                    {max_nodes, MaxNodes}]).
+
+disable_auto_failover(Req) ->
+    put(disable_auto_failover, Req, []).
+
+reset_auto_failover_count(Req) ->
+    put(reset_auto_failover_count, Req, []).

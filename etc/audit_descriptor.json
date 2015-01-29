@@ -484,6 +484,53 @@
           "optional_fields" : {
               "sessionid" : ""
           }
+      },
+      {
+          "id" : 8220,
+          "name" : "enable auto failover",
+          "description" : "Auto Failover was enabled",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "timeout" : 1,
+              "max_nodes" : 1
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8221,
+          "name" : "disable auto failover",
+          "description" : "Auto Failover was disabled",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1}
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8222,
+          "name" : "reset auto failover count",
+          "description" : "Count for Auto Failover was reset",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1}
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
       }
     ]
 }

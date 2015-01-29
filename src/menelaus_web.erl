@@ -2051,9 +2051,11 @@ handle_settings_auto_failover_post(Req) ->
           validate_settings_auto_failover(Enabled, Timeout, MaxNodes)} of
         {false, [true, Timeout2, MaxNodes2]} ->
             auto_failover:enable(Timeout2, MaxNodes2),
+            ns_audit:enable_auto_failover(Req, Timeout2, MaxNodes2),
             reply(Req, 200);
         {false, false} ->
             auto_failover:disable(),
+            ns_audit:disable_auto_failover(Req),
             reply(Req, 200);
         {false, {error, Errors}} ->
             Errors2 = [<<Msg/binary, "\n">> || {_, Msg} <- Errors],
@@ -2094,6 +2096,7 @@ validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
 %% @doc Resets the number of nodes that were automatically failovered to zero
 handle_settings_auto_failover_reset_count(Req) ->
     auto_failover:reset_count(),
+    ns_audit:reset_auto_failover_count(Req),
     reply(Req, 200).
 
 %% true if system is correctly provisioned
