@@ -52,7 +52,8 @@
          enable_auto_failover/3,
          disable_auto_failover/1,
          reset_auto_failover_count/1,
-         alerts/2
+         alerts/2,
+         modify_compaction_settings/2
         ]).
 
 code(login_success) ->
@@ -120,7 +121,9 @@ code(reset_auto_failover_count) ->
 code(enable_cluster_alerts) ->
     8223;
 code(disable_cluster_alerts) ->
-    8224.
+    8224;
+code(modify_compaction_settings) ->
+    8225.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -369,3 +372,23 @@ alerts(Req, Settings) ->
                  {alerts, {list, misc:expect_prop_value(alerts, Settings)}},
                  {email_server, {prepare_list(EmailServer1)}}])
     end.
+
+build_threshold({Percentage, Size}) ->
+    {prepare_list([{percentage, Percentage}, {size, Size}])}.
+
+modify_compaction_settings(Req, Settings) ->
+    Data = lists:foldl(
+             fun ({allowed_time_period, V}, Acc) ->
+                     [{allowed_time_period, {prepare_list(V)}} | Acc];
+                 ({database_fragmentation_threshold, V}, Acc) ->
+                     [{database_fragmentation_threshold, build_threshold(V)} | Acc];
+                 ({view_fragmentation_threshold, V}, Acc) ->
+                     [{view_fragmentation_threshold, build_threshold(V)} | Acc];
+                 ({purge_interval, _} = T, Acc) ->
+                     [T | Acc];
+                 ({parallel_db_and_view_compaction, _} = T, Acc) ->
+                     [T | Acc];
+                 (_, Acc) ->
+                     Acc
+             end, [], Settings),
+    put(modify_compaction_settings, Req, Data).

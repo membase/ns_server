@@ -3026,6 +3026,7 @@ handle_set_autocompaction(Req) ->
                 [] ->
                     ok
             end,
+            ns_audit:modify_compaction_settings(Req, ACSettings ++ MaybePurgeInterval),
             reply_json(Req, [], 200)
     end.
 

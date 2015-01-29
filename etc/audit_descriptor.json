@@ -565,6 +565,27 @@
           "optional_fields" : {
               "sessionid" : ""
           }
+      },
+      {
+          "id" : 8225,
+          "name" : "modify compaction settings",
+          "description" : "Compaction settings were modified",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1}
+          },
+          "optional_fields" : {
+              "sessionid" : "",
+              "allowed_time_period" : {"from_hour" : 1, "to_hour" : 1, "from_minute" : 1,
+                                       "to_minute" : 1, "abort_outside" : false},
+              "database_fragmentation_threshold" : {"percentage" : 1, "size" : 1},
+              "view_fragmentation_threshold" : {"percentage" : 1, "size" : 1},
+              "parallel_db_and_view_compaction" : false,
+              "purge_interval" : ""
+          }
       }
     ]
 }
