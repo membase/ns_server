@@ -55,6 +55,8 @@ do_handle_create_replication(Req) ->
                 false ->
                     ok = xdc_rdoc_api:update_doc(ReplicationDoc),
 
+                    ns_audit:xdcr_create_replication(Req, ReplicationDoc#doc.id, ParsedParams),
+
                     ale:info(?USER_LOGGER,
                              "Replication from bucket \"~s\" to "
                              "bucket \"~s\" on cluster \"~s\" created.",
@@ -81,6 +83,7 @@ handle_cancel_replication(XID, Req) ->
 do_handle_cancel_replication(XID, Req) ->
     case xdc_rdoc_api:delete_replicator_doc(XID) of
         ok ->
+            ns_audit:xdcr_cancel_replication(Req, XID),
             menelaus_util:reply_json(Req, [], 200);
         not_found ->
             menelaus_util:reply_json(Req, [], 404)
@@ -136,7 +139,8 @@ do_handle_replication_settings_post(XID, Req) ->
                                   true ->
                                       ok;
                                   false ->
-                                      ok = xdc_rdoc_api:update_doc(RepDoc1)
+                                      ok = xdc_rdoc_api:update_doc(RepDoc1),
+                                      ns_audit:xdcr_update_replication(Req, RepDoc1#doc.id, NewProps)
                               end,
                               handle_replication_settings_body(RepDoc1, Req)
                       end;
@@ -193,6 +197,7 @@ do_handle_global_replication_settings_post(Req) ->
                     menelaus_util:reply_json(Req, [], 200);
                 false ->
                     xdc_settings:update_global_settings(Settings),
+                    ns_audit:xdcr_update_global_settings(Req, Settings),
                     handle_global_replication_settings(Req)
             end;
         _ ->

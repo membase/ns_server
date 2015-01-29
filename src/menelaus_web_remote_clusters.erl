@@ -107,6 +107,8 @@ do_handle_remote_clusters_post(Req, Params, JustValidate, TriesLeft) ->
                                              "Created remote cluster reference \"~s\" via ~s.",
                                              [Name, Hostname]),
 
+                                    ns_audit:xdcr_create_cluster_ref(Req, FinalKVList),
+
                                     menelaus_util:reply_json(Req,
                                                              build_remote_cluster_info(FinalKVList));
                                 _ ->
@@ -280,6 +282,8 @@ do_handle_remote_cluster_update_found_this(Id, OldCluster, Req, Params, JustVali
 
                             case cas_remote_clusters(ExistingClusters, NewClusters) of
                                 ok ->
+                                    ns_audit:xdcr_update_cluster_ref(Req, FinalKVList),
+
                                     OldName = misc:expect_prop_value(name, OldCluster),
                                     OldHostname = misc:expect_prop_value(hostname, OldCluster),
 
@@ -440,6 +444,8 @@ do_handle_remote_cluster_delete(Id, Req, TriesLeft) ->
 
             case cas_remote_clusters(ExistingClusters, NewClusters) of
                 ok ->
+                    ns_audit:xdcr_delete_cluster_ref(Req, ThisCluster),
+
                     Name = misc:expect_prop_value(name, ThisCluster),
                     Hostname = misc:expect_prop_value(hostname, ThisCluster),
 
