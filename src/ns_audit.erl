@@ -51,7 +51,8 @@
          xdcr_update_global_settings/2,
          enable_auto_failover/3,
          disable_auto_failover/1,
-         reset_auto_failover_count/1
+         reset_auto_failover_count/1,
+         alerts/2
         ]).
 
 code(login_success) ->
@@ -115,7 +116,11 @@ code(enable_auto_failover) ->
 code(disable_auto_failover) ->
     8221;
 code(reset_auto_failover_count) ->
-    8222.
+    8222;
+code(enable_cluster_alerts) ->
+    8223;
+code(disable_cluster_alerts) ->
+    8224.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -350,3 +355,17 @@ disable_auto_failover(Req) ->
 
 reset_auto_failover_count(Req) ->
     put(reset_auto_failover_count, Req, []).
+
+alerts(Req, Settings) ->
+    case misc:expect_prop_value(enabled, Settings) of
+        false ->
+            put(disable_cluster_alerts, Req, []);
+        true ->
+            EmailServer = misc:expect_prop_value(email_server, Settings),
+            EmailServer1 = proplists:delete(pass, EmailServer),
+            put(enable_cluster_alerts, Req,
+                [{sender, misc:expect_prop_value(sender, Settings)},
+                 {recipients, {list, misc:expect_prop_value(recipients, Settings)}},
+                 {alerts, {list, misc:expect_prop_value(alerts, Settings)}},
+                 {email_server, {prepare_list(EmailServer1)}}])
+    end.

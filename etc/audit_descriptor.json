@@ -531,6 +531,40 @@
           "optional_fields" : {
               "sessionid" : ""
           }
+      },
+      {
+          "id" : 8223,
+          "name" : "enable cluster alerts",
+          "description" : "Cluster alerts were enabled",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "sender" : "",
+              "recipients" : "",
+              "alerts" : "",
+              "email_server" : {"user" : "", "host" : "", "port" : 1, "encrypt" : false}
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8224,
+          "name" : "disable cluster alerts",
+          "description" : "Cluster alerts were disabled",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1}
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
       }
     ]
 }

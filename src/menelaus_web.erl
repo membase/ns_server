@@ -2226,6 +2226,7 @@ handle_settings_alerts_post(Req) ->
     case {ValidateOnly, menelaus_alert:parse_settings_alerts_post(PostArgs)} of
         {false, {ok, Config}} ->
             ns_config:set(email_alerts, Config),
+            ns_audit:alerts(Req, Config),
             reply(Req, 200);
         {false, {error, Errors}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
