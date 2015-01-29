@@ -130,7 +130,6 @@ handle_call(all, _, Server) ->
 handle_cast({update_status, Pid, NewProps}, Server) ->
     case ets:lookup(?MODULE, Pid) of
     [{Pid, _CurProps}] ->
-        ?log_debug("New task status for ~p: ~p", [Pid, NewProps]),
         true = ets:insert(?MODULE, {Pid, NewProps});
     _ ->
         % Task finished/died in the meanwhile and we must have received
