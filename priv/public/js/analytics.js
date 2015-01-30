@@ -255,34 +255,6 @@ var StatsModel = {};
     }
   }
 
-  var niqlServers = self.niqlServers = Cell.compute(function (v) {
-    var servers = v.need(DAL.cells.serversCell).active;
-    servers = _.filter(servers, function (si) {return (si.services || []).indexOf("n1ql") != -1;});
-    return _.map(servers, function (si) {return {hostname: si.hostname};});
-  }).name("niqlServers");
-  niqlServers.equality = _.isEqual;
-
-  var queryBucketInfoCell = self.queryBucketInfoCell = Cell.compute(function (v) {
-    var queryServers = v.need(niqlServers);
-    return {
-      uri: "/pools/default/buckets/@query",
-      name: "@query",
-      nodes: queryServers,
-      stats: {nodeStatsListURI: "/pools/default/buckets/@query/nodes",
-              directoryURI: "/pools/default/buckets/@query/statsDirectory",
-              uri: "/pools/default/@query/stats"}
-    };
-  });
-
-  var statsBucketsList = self.statsBucketsList = Cell.compute(function (v) {
-    var queryBucketInfo = v.need(queryBucketInfoCell);
-    if (queryBucketInfo.nodes.length == 0) {
-      return v.need(DAL.cells.bucketsListCell);
-    }
-    return [queryBucketInfo].concat(v.need(DAL.cells.bucketsListCell));
-  }).name("statsBucketsList");
-  statsBucketsList.equality = _.isEqual;
-
   var statsBucketURL = self.statsBucketURL = new StringHashFragmentCell("statsBucket");
   var statsHostname = self.statsHostname = new StringHashFragmentCell("statsHostname");
   var statsStatName = self.statsStatName = new StringHashFragmentCell("statsStatName");
@@ -290,19 +262,12 @@ var StatsModel = {};
   // contains bucket details of statsBucketURL bucket (or default if there are no such bucket)
   var statsBucketDetails = self.statsBucketDetails = Cell.compute(function (v) {
     var uri = v(statsBucketURL);
-    var buckets = v.need(self.statsBucketsList);
+    var buckets = v.need(DAL.cells.bucketsListCell);
     var rv;
     if (uri !== undefined) {
       rv = _.detect(buckets, function (info) {return info.uri === uri});
     } else {
-      var hostname = v(statsHostname);
-      var validBuckets = buckets;
-      if (hostname) {
-        validBuckets = _.filter(validBuckets, function (bi) {
-          return _.detect(bi.nodes, function (ni) {return ni.hostname == hostname;});
-        });
-      }
-      rv = _.detect(validBuckets, function (info) {return info.name === "default"}) || validBuckets[0];
+      rv = _.detect(buckets, function (info) {return info.name === "default"}) || buckets[0];
     }
     return rv;
   }).name("statsBucketDetails");
@@ -1028,7 +993,7 @@ var AnalyticsSection = {
           return;
         }
 
-        var allBuckets = v.need(StatsModel.statsBucketsList);
+        var allBuckets = v.need(DAL.cells.bucketsListCell);
         var selectedBucket = v(StatsModel.statsBucketDetails);
         return {list: _.map(allBuckets, function (info) {return [info.uri, info.name]}),
                 selected: selectedBucket && selectedBucket.uri};
