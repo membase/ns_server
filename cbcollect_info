@@ -344,7 +344,7 @@ def make_os_tasks():
         UnixTask("Network status", "netstat -anp || netstat -an"),
         WindowsTask("Network status", "netstat -ano"),
         AllOsTask("Network routing table", "netstat -rn"),
-        LinuxTask("Network socket statistics", "ss -a"),
+        LinuxTask("Network socket statistics", "ss -an"),
         UnixTask("Arp cache", "arp -na"),
         LinuxTask("Iptables dump", "iptables-save"),
         UnixTask("Raw /etc/hosts", "cat /etc/hosts"),
