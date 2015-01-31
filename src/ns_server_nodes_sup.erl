@@ -24,7 +24,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_couchdb_node/0, start_ns_server/0, stop_ns_server/0]).
+-export([start_link/0, start_couchdb_node/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -44,14 +44,6 @@ init([]) ->
     {ok, { {rest_for_one,
             misc:get_env_default(max_r, 3),
             misc:get_env_default(max_t, 10)}, child_specs()} }.
-
-%% @doc Start child after its been stopped
-start_ns_server() ->
-    supervisor:restart_child(?MODULE, ns_server_sup).
-
-%% @doc Stop ns_server_sup
-stop_ns_server() ->
-    supervisor:terminate_child(?MODULE, ns_server_sup).
 
 child_specs() ->
     [

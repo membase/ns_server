@@ -26,9 +26,7 @@
          get_db_and_ix_paths/0,
          get_tasks/0,
          get_tasks/2,
-         restart_couch/0,
          restart_capi_ssl_service/0,
-         delete_couch_database/1,
          fetch_stats/0,
          fetch_couch_stats/1,
          delete_databases_and_files/1,
@@ -70,14 +68,8 @@ get_tasks() ->
 get_tasks(RpcTimeout, Default) ->
     maybe_rpc_couchdb_node(get_tasks, RpcTimeout, Default).
 
-restart_couch() ->
-    maybe_rpc_couchdb_node(restart_couch).
-
 restart_capi_ssl_service() ->
     maybe_rpc_couchdb_node(restart_capi_ssl_service).
-
-delete_couch_database(DB) ->
-    maybe_rpc_couchdb_node({delete_couch_database, DB}).
 
 fetch_stats() ->
     maybe_rpc_couchdb_node(fetch_stats).
@@ -182,12 +174,8 @@ handle_rpc({set_db_and_ix_paths, DbPath0, IxPath0}) ->
     cb_config_couch_sync:set_db_and_ix_paths(DbPath0, IxPath0);
 handle_rpc(get_tasks) ->
     couch_task_status:all();
-handle_rpc(restart_couch) ->
-    cb_couch_sup:restart_couch();
 handle_rpc(restart_capi_ssl_service) ->
     ns_couchdb_sup:restart_capi_ssl_service();
-handle_rpc({delete_couch_database, DB}) ->
-    ns_couchdb_storage:delete_couch_database(DB);
 handle_rpc(fetch_stats) ->
     ns_couchdb_stats_collector:get_stats();
 handle_rpc({fetch_couch_stats, BucketName}) ->

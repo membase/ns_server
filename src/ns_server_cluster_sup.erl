@@ -18,7 +18,7 @@
 -behavior(supervisor).
 
 %% API
--export ([start_link/0, restart/0]).
+-export([start_link/0, restart/0, start_ns_server/0, stop_ns_server/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -61,6 +61,14 @@ init([]) ->
             permanent, infinity, supervisor, [ns_server_nodes_sup]}
           ]}}.
 
+%% @doc Start ns_server and couchdb
+start_ns_server() ->
+    supervisor:restart_child(?MODULE, ns_server_nodes_sup).
+
+%% @doc Stop ns_server and couchdb
+stop_ns_server() ->
+    supervisor:terminate_child(?MODULE, ns_server_nodes_sup).
+
 restart() ->
     %% NOTE: starting and stopping in usual way is surprisingly
     %% hard. Because we normally do that from process which
@@ -71,8 +79,7 @@ restart() ->
     %% down/restarting net_kernel
     DontRestart = [dist_manager, ns_server_nodes_sup],
     ChildIds = [element(1, Spec) || Spec <- ChildSpecs] -- DontRestart,
-    ns_server_nodes_sup:stop_ns_server(),
+    stop_ns_server(),
     [supervisor:terminate_child(?MODULE, Id) || Id <- lists:reverse(ChildIds)],
     [supervisor:restart_child(?MODULE, Id) || Id <- ChildIds],
-    ns_couchdb_api:restart_couch(),
-    ns_server_nodes_sup:start_ns_server().
+    start_ns_server().

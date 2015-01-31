@@ -20,8 +20,7 @@
 
 -include("ns_common.hrl").
 
--export([delete_databases_and_files/1,
-         delete_couch_database/1]).
+-export([delete_databases_and_files/1, delete_couch_database_files/1]).
 
 delete_databases_and_files(Bucket) ->
     AllDBs = bucket_databases(Bucket),
@@ -69,3 +68,24 @@ delete_couch_database(DB) ->
     RV = couch_server:delete(DB, []),
     ?log_info("Deleting database ~p: ~p~n", [DB, RV]),
     RV.
+
+delete_couch_database_files(DbName) ->
+    undefined = whereis(couch_server),
+
+    {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
+    FilePath = filename:join(DbDir, DbName ++ ".*"),
+    Files = filelib:wildcard(FilePath),
+
+    ?log_info("Deleting ~p", [Files]),
+
+    delete_couch_database_files_loop(Files).
+
+delete_couch_database_files_loop([]) ->
+    ok;
+delete_couch_database_files_loop([File | Files]) ->
+    case misc:rm_rf(File) of
+        ok ->
+            delete_couch_database_files_loop(Files);
+        Error ->
+            Error
+    end.
