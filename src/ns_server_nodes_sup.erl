@@ -54,6 +54,10 @@ child_specs() ->
      {remote_monitors, {remote_monitors, start_link, []},
       permanent, 1000, worker, []},
 
+     {ns_ssl_services_sup,
+      {ns_ssl_services_sup, start_link, []},
+      permanent, infinity, supervisor, []},
+
      %% we cannot "kill" this guy anyways. Thus hefty shutdown timeout.
      {start_couchdb_node, {?MODULE, start_couchdb_node, []},
       {permanent, 5}, 86400000, worker, []},
