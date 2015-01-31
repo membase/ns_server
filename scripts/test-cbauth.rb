@@ -5,7 +5,7 @@ require_relative 'base-test'
 
 
 class TestCBAuth < Minitest::Test
-  include Methods
+  include RESTMethods
 
   SKIP_SETUP = ENV['CBAUTH_TEST_SKIP_SETUP']
 

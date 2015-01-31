@@ -1,10 +1,10 @@
 #!/usr/bin/ruby
 
 require_relative 'base-test'
-require 'test/unit'
+require 'minitest/autorun'
 
-class TestRepl < Test::Unit::TestCase
-  include Methods
+class TestRepl < Minitest::Test
+  include RESTMethods
 
   def all
     $all_nodes
@@ -13,6 +13,8 @@ class TestRepl < Test::Unit::TestCase
   def setup
     uncluster_everything!
     assert(all.size >= 2)
+    # this is sadly needed so far
+    sleep 4
     setup_node! all.first
     set_node! all.first
     cluster_two!

@@ -1,10 +1,10 @@
 #!/usr/bin/ruby
 
 require_relative 'base-test'
-require 'test/unit'
+require 'minitest/autorun'
 
-class TestGroups < Test::Unit::TestCase
-  include Methods
+class TestGroups < Minitest::Test
+  include RESTMethods
 
   def all
     $all_nodes
@@ -13,6 +13,8 @@ class TestGroups < Test::Unit::TestCase
   def setup
     uncluster_everything!
     assert(all.size >= 2)
+    # this is sadly needed so far
+    sleep 4
     setup_node! all.first
     set_node! all.first
   end
@@ -117,7 +119,7 @@ class TestGroups < Test::Unit::TestCase
 
     assert_equal 0, group_1["nodes"].size
     assert_equal 1, group_2["nodes"].size
-    assert_not_equal new_server_groups["uri"], server_groups["uri"]
+    refute_equal new_server_groups["uri"], server_groups["uri"]
   end
 
   def test_add_to_group
@@ -265,7 +267,7 @@ class TestGroups < Test::Unit::TestCase
     post! "/pools/default/serverGroups", :name => "Group 1"
     server_groups = getj!("/pools/default/serverGroups")
     group_1 = server_groups["groups"].detect {|g| g["name"] == "Group 1"}
-    assert_not_equal "/pools/default/serverGroups/0", group_1["uri"]
+    refute_equal "/pools/default/serverGroups/0", group_1["uri"]
     assert_equal 0, group_1["nodes"].size
   end
 end
