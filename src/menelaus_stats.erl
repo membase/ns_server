@@ -188,7 +188,7 @@ handle_bucket_stats(_PoolId, Id, Req) ->
 %% Per-node stats match bucket stats with the addition of a 'hostname' key,
 %% stats specific to the node (obviously), and removal of any cross-node stats
 handle_bucket_node_stats(_PoolId, BucketName, HostName, Req) ->
-    case menelaus_web:find_bucket_hostname(BucketName, HostName, Req) of
+    case menelaus_web:find_node_hostname(HostName, Req) of
         false ->
             menelaus_util:reply_not_found(Req);
         {ok, Node} ->
@@ -294,15 +294,18 @@ get_samples_for_stat(BucketName, StatName, ForNodes, ClientTStamp, Window) ->
 
     {[lists:map(StatExtractor, NodeSamples) || {_, NodeSamples} <- AllNodesSamples], Nodes}.
 
-get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window) ->
-    ForNodes = bucket_nodes(BucketName),
-    RV = {Samples, _} = get_samples_for_stat("@system", StatName, ForNodes, ClientTStamp, Window),
-    case are_samples_undefined(Samples) of
+get_samples_from_one_of_kind([Kind | RestKinds], StatName, ClientTStamp, Window) ->
+    ForNodes = bucket_nodes(Kind),
+    RV = {Samples, _} = get_samples_for_stat(Kind, StatName, ForNodes, ClientTStamp, Window),
+    case RestKinds =/= [] andalso are_samples_undefined(Samples) of
         true ->
-            get_samples_for_stat(BucketName, StatName, ForNodes, ClientTStamp, Window);
+            get_samples_from_one_of_kind(RestKinds, StatName, ClientTStamp, Window);
         false ->
             RV
     end.
+
+get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window) ->
+    get_samples_from_one_of_kind(["@system", "@query", BucketName], StatName, ClientTStamp, Window).
 
 build_response_for_specific_stat(BucketName, StatName, Params, LocalAddr) ->
     {ClientTStamp, {Step, _, Count} = Window} =
@@ -382,6 +385,8 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
       end, ListOfLists),
     [hd(ets:lookup(ETS, T)) || #stat_entry{timestamp = T} <- MainSamples].
 
+bucket_nodes("@system") ->
+    ns_cluster_membership:actual_active_nodes();
 bucket_nodes("@query") ->
     ns_cluster_membership:n1ql_active_nodes(ns_config:latest_config_marker());
 bucket_nodes(Bucket) ->
@@ -392,10 +397,10 @@ is_persistent("@query") ->
 is_persistent(BucketName) ->
     ns_bucket:is_persistent(BucketName).
 
-grab_system_aggregate_op_stats(Kind, Bucket, all, ClientTStamp, Window) ->
-    grab_aggregate_op_stats(Kind, bucket_nodes(Bucket), ClientTStamp, Window);
-grab_system_aggregate_op_stats(Kind, _Bucket, [Node], ClientTStamp, Window) ->
-    grab_aggregate_op_stats(Kind, [Node], ClientTStamp, Window).
+grab_system_aggregate_op_stats(all, ClientTStamp, Window) ->
+    grab_aggregate_op_stats("@system", bucket_nodes("@system"), ClientTStamp, Window);
+grab_system_aggregate_op_stats([Node], ClientTStamp, Window) ->
+    grab_aggregate_op_stats("@system", [Node], ClientTStamp, Window).
 
 grab_aggregate_op_stats(Bucket, all, ClientTStamp, Window) ->
     grab_aggregate_op_stats(Bucket, bucket_nodes(Bucket), ClientTStamp, Window);
@@ -734,28 +739,50 @@ build_bucket_stats_ops_response(Nodes, BucketName, Params) ->
     {ClientTStamp, {Step, _, Count} = Window} = parse_stats_params(Params),
 
     BucketRawSamples = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
-    SystemRawSamples = grab_system_aggregate_op_stats("@system", BucketName, Nodes, ClientTStamp, Window),
+    SystemRawSamples = grab_system_aggregate_op_stats(Nodes, ClientTStamp, Window),
 
     % this will throw out all samples with timestamps that are not present
     % in both BucketRawSamples and SystemRawSamples
     BSSamples = join_samples(BucketRawSamples, SystemRawSamples),
 
-    AddQuery = case Nodes of
-                   all -> false;
-                   [_] ->
-                       %% our ui sends _ with all requests. And we
-                       %% want to auto-add query stats iff UI is
-                       %% asking. We want everyone else to use some
-                       %% other API.
-                       proplists:get_value("_", Params) =/= undefined
+    QNodes = bucket_nodes("@query"),
+    %% our ui sends _ with all requests. And we want to auto-add query
+    %% stats only if UI is asking. We want everyone else to use some
+    %% other API.
+    AddQuery = case ((proplists:get_value("_", Params) =/= undefined)
+                     andalso BucketName =/= "@query") of
+                   true ->
+                       case Nodes of
+                           all ->
+                               QNodes =/= [];
+                           [_|_] ->
+                               (Nodes -- QNodes) =/= Nodes
+                       end;
+                   false ->
+                       false
                end,
 
     Samples = case AddQuery of
                   false ->
                       BSSamples;
                   true ->
-                      QueryRawSamples = grab_system_aggregate_op_stats("@query", BucketName, Nodes, ClientTStamp, Window),
-                      join_samples(BSSamples, QueryRawSamples)
+                      QueryRawSamples = grab_aggregate_op_stats("@query", QNodes, ClientTStamp, Window),
+                      case Nodes of
+                          [SingleNode] ->
+                              case not lists:member(SingleNode, bucket_nodes(BucketName)) of
+                                  true ->
+                                      %% We're asking nodes that don't
+                                      %% have given bucket. Thus
+                                      %% BucketRawSamples must be
+                                      %% empty. Thus we shouldn't even
+                                      %% try to join_samples with it
+                                      join_samples(QueryRawSamples, SystemRawSamples);
+                                  false ->
+                                      join_samples(BSSamples, QueryRawSamples)
+                              end;
+                          _ ->
+                              join_samples(BSSamples, QueryRawSamples)
+                      end
               end,
 
     StatsPropList = samples_to_proplists(Samples, BucketName),

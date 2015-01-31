@@ -47,7 +47,7 @@
          handle_streaming/3,
          is_system_provisioned/0,
          maybe_cleanup_old_buckets/0,
-         find_bucket_hostname/3,
+         find_node_hostname/2,
          build_auto_compaction_settings/1,
          parse_validate_auto_compaction_settings/1,
          parse_validate_bucket_auto_compaction_settings/1,
@@ -2805,14 +2805,8 @@ handle_reset_alerts(Req) ->
     Token = list_to_binary(proplists:get_value("token", Params, "")),
     reply_json(Req, menelaus_web_alerts_srv:consume_alerts(Token)).
 
-nodes_to_hostnames(Config, BucketName, Req) ->
-    Nodes = case BucketName of
-                "@query" ->
-                    ns_cluster_membership:n1ql_active_nodes(Config);
-                _ ->
-                    {ok, BucketPList} = ns_bucket:get_bucket_light(BucketName),
-                    ns_bucket:bucket_nodes(BucketPList)
-            end,
+nodes_to_hostnames(Config, Req) ->
+    Nodes = ns_cluster_membership:active_nodes(Config),
     LocalAddr = menelaus_util:local_addr(Req),
     [{N, list_to_binary(build_node_hostname(Config, N, LocalAddr))}
      || N <- Nodes].
@@ -2823,7 +2817,9 @@ nodes_to_hostnames(Config, BucketName, Req) ->
 %% Provides a list of nodes for a specific bucket (generally all nodes) with
 %% links to stats for that bucket
 handle_bucket_node_list(_PoolId, BucketName, Req) ->
-    NHs = nodes_to_hostnames(ns_config:get(), BucketName, Req),
+    %% NOTE: since sherlock release we're listing all active nodes as
+    %% part of our approach for dealing with query stats
+    NHs = nodes_to_hostnames(ns_config:get(), Req),
     Servers =
         [{struct,
           [{hostname, Hostname},
@@ -2833,9 +2829,9 @@ handle_bucket_node_list(_PoolId, BucketName, Req) ->
          || {_, Hostname} <- NHs],
     reply_json(Req, {struct, [{servers, Servers}]}).
 
-find_bucket_hostname(BucketName, HostnameList, Req) ->
+find_node_hostname(HostnameList, Req) ->
     Hostname = list_to_binary(HostnameList),
-    NHs = nodes_to_hostnames(ns_config:get(), BucketName, Req),
+    NHs = nodes_to_hostnames(ns_config:get(), Req),
     case [N || {N, CandidateHostname} <- NHs,
                CandidateHostname =:= Hostname] of
         [] ->
@@ -2852,7 +2848,7 @@ find_bucket_hostname(BucketName, HostnameList, Req) ->
 %%
 %% TODO: consider what else might be of value here
 handle_bucket_node_info(_PoolId, BucketName, Hostname, Req) ->
-    case find_bucket_hostname(BucketName, Hostname, Req) of
+    case find_node_hostname(Hostname, Req) of
         false ->
             reply_not_found(Req);
         _ ->
