@@ -315,8 +315,7 @@ goxdcr_spec(Config) ->
     end.
 
 index_node_spec(Config) ->
-    Svcs = ns_cluster_membership:node_services(Config, node()),
-    case lists:member(index, Svcs) of
+    case ns_cluster_membership:should_run_service(Config, index, node()) of
         false ->
             [];
         _ ->
