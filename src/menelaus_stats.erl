@@ -26,7 +26,6 @@
 -export([handle_bucket_stats/3,
          handle_bucket_node_stats/4,
          handle_specific_stat_for_buckets/4,
-         handle_specific_stat_for_buckets_group_per_node/4,
          handle_overview_stats/2,
          basic_stats/1,
          bucket_disk_usage/1,
@@ -207,19 +206,8 @@ handle_bucket_node_stats(_PoolId, BucketName, HostName, Req) ->
                         | HKS ++ Ops]})
       end.
 
-%% Specific Stat URL for all buckets
-%% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}
-handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
-    Params = Req:parse_qs(),
-    case proplists:get_value("per_node", Params, "true") of
-        undefined ->
-            menelaus_util:reply(Req, 501);
-        "true" ->
-            handle_specific_stat_for_buckets_group_per_node(PoolId, Id, StatName, Req)
-    end.
-
 %% Specific Stat URL grouped by nodes
-%% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}?per_node=true
+%% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}
 %%
 %% Req:ok({"application/json",
 %%         menelaus_util:server_header(),
@@ -228,7 +216,7 @@ handle_specific_stat_for_buckets(PoolId, Id, StatName, Req) ->
 %%     \"nodeStats\": [{\"127.0.0.1:9000\": [1,2,3,4,5]},
 %%                     {\"127.0.0.1:9001\": [1,2,3,4,5]}]
 %%   }">>}).
-handle_specific_stat_for_buckets_group_per_node(_PoolId, BucketName, StatName, Req) ->
+handle_specific_stat_for_buckets(_PoolId, BucketName, StatName, Req) ->
     Params = Req:parse_qs(),
     menelaus_util:reply_json(
       Req,
