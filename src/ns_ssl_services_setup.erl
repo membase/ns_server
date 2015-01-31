@@ -43,6 +43,7 @@ start_link_capi_service() ->
     end.
 
 do_start_link_capi_service(SSLPort) ->
+    ok = ssl_manager:clear_pem_cache(),
 
     Options = [{port, SSLPort},
                {ssl, true},
