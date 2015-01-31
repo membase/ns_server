@@ -755,7 +755,7 @@ var maybeReloadAppDueToLeak = (function () {
                                      reqOpt('timeOffset')).plotSeries;
 
     var lastY = data[data.length-1];
-    var maxString = isNaN(lastY) ? '?' : ViewHelpers.formatQuantity(lastY, options.isBytes ? 1024 : 1000);
+    var maxString = isNaN(lastY) ? 'N/A' : ViewHelpers.formatQuantity(lastY, options.isBytes ? 1024 : 1000);
     queuedUpdates.push(function () {
       jq.find('#js_small_graph_value').text(maxString);
     });
