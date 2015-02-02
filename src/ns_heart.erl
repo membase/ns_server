@@ -351,18 +351,18 @@ grab_fresh_failover_safeness_infos(BucketsAll) ->
 do_grab_fresh_failover_safeness_infos(BucketsAll, Timeout) ->
     Nodes = ns_node_disco:nodes_actual_proper(),
     BucketNames = proplists:get_keys(BucketsAll),
-    {NodeResp, NewErrors} =
-        misc:multicall_result_to_plist(
+    {NodeResp, NodeErrors, DownNodes} =
+        misc:rpc_multicall_with_plist_result(
           Nodes,
-          rpc:multicall(Nodes,
-                        failover_safeness_level, build_local_safeness_info,
-                        [BucketNames], Timeout)),
+          failover_safeness_level, build_local_safeness_info,
+          [BucketNames], Timeout),
 
-    case NewErrors of
-        [] -> ok;
-        _ ->
+    case NodeErrors =:= [] andalso DownNodes =:= [] of
+        true ->
+            ok;
+        false ->
             ?log_warning("Some nodes didn't return their failover "
-                         "safeness infos: ~n~p", [NewErrors])
+                         "safeness infos: ~n~p", [{NodeErrors, DownNodes}])
     end,
 
     dict:from_list(NodeResp).
