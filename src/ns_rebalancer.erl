@@ -296,7 +296,9 @@ wait_local_buckets_shutdown_complete() ->
       end).
 
 do_wait_buckets_shutdown(KeepNodes) ->
-    {Good, ReallyBad, FailedNodes} = multicall_ignoring_undefined(KeepNodes, ns_rebalancer, wait_local_buckets_shutdown_complete, []),
+    {Good, ReallyBad, FailedNodes} =
+        misc:rpc_multicall_with_plist_result(
+          KeepNodes, ns_rebalancer, wait_local_buckets_shutdown_complete, []),
     NonOk = [Pair || {_Node, Result} = Pair <- Good,
                      Result =/= ok],
     Failures = ReallyBad ++ NonOk ++ [{N, node_was_down} || N <- FailedNodes],
@@ -715,26 +717,8 @@ wait_for_mover_tail(Pid, Ref) ->
             end
     end.
 
-multicall_ignoring_undefined(Nodes, M, F, A) ->
-    {Results, DownNodes} = rpc:multicall(Nodes, M, F, A),
-
-    {Good, Bad} =
-        misc:multicall_result_to_plist(Nodes, {Results, DownNodes}),
-    ReallyBad =
-        lists:filter(
-          fun ({_Node, Reason}) ->
-                  case Reason of
-                      {'EXIT', ExitReason} ->
-                          %% this may be just an old node; if so, ignore it
-                          not misc:is_undef_exit(M, F, A, ExitReason);
-                      _ ->
-                          true
-                  end
-          end, Bad),
-    {Good, ReallyBad, DownNodes}.
-
 maybe_cleanup_old_buckets(KeepNodes) ->
-    case multicall_ignoring_undefined(KeepNodes, ns_storage_conf, delete_unused_buckets_db_files, []) of
+    case misc:rpc_multicall_with_plist_result(KeepNodes, ns_storage_conf, delete_unused_buckets_db_files, []) of
         {_, _, DownNodes} when DownNodes =/= [] ->
             ?rebalance_error("Failed to cleanup old buckets on some nodes: ~p",
                              [DownNodes]),
