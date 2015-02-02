@@ -23,7 +23,8 @@
 -export([rest_url/3,
          rest_url/4,
          json_request_hilevel/3,
-         json_request_hilevel/4]).
+         json_request_hilevel/4,
+         add_basic_auth/3]).
 
 -spec rest_url(string(), string() | integer(), string(), string()) -> string().
 rest_url(Host, Port, Path, Scheme) when is_integer(Port) ->
@@ -34,10 +35,13 @@ rest_url(Host, Port, Path, Scheme) ->
 rest_url(Host, Port, Path) ->
     rest_url(Host, Port, Path, "http").
 
-rest_add_auth(Headers, {User, Password}) ->
+add_basic_auth(Headers, User, Password) ->
     UserPassword = base64:encode_to_string(User ++ ":" ++ Password),
     [{"Authorization",
-      "Basic " ++ UserPassword} | Headers];
+      "Basic " ++ UserPassword} | Headers].
+
+rest_add_auth(Headers, {User, Password}) ->
+    add_basic_auth(Headers, User, Password);
 rest_add_auth(Headers, undefined) ->
     Headers.
 
