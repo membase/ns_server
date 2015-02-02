@@ -324,9 +324,9 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["settings", "replications", XID] ->
                              {auth_ro, fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]};
                          ["settings", "saslauthdAuth"] ->
-                             {auth, fun handle_saslauthd_auth_settings/1};
+                             {auth_ro, fun handle_saslauthd_auth_settings/1};
                          ["settings", "audit"] ->
-                             {auth, fun handle_settings_audit/1};
+                             {auth_ro, fun handle_settings_audit/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
                          ["internalSettings", "visual"] ->
