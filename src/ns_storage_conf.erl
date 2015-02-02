@@ -30,6 +30,7 @@
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
          delete_unused_buckets_db_files/0,
+         delete_old_2i_indexes/0,
          setup_db_and_ix_paths/0]).
 
 -export([cluster_storage_info/0, cluster_storage_info/1, nodes_storage_info/1]).
@@ -435,6 +436,17 @@ delete_unused_buckets_db_files() ->
               end,
               RV
       end).
+
+%% deletes @2i subdirectory in index directory of this node.
+%%
+%% NOTE: rpc-called remotely from ns_rebalancer prior to activating
+%% new nodes at the start of rebalance.
+%%
+%% Since sherlock compat mode.
+delete_old_2i_indexes() ->
+    {ok, IxDir} = this_node_ixdir(),
+    Dir = filename:join(IxDir, "@2i"),
+    misc:rm_rf(Dir).
 
 -ifdef(EUNIT).
 extract_disk_stats_for_path_test() ->

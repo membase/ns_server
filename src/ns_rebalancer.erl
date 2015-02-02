@@ -356,6 +356,9 @@ start_link_rebalance(KeepNodes, EjectNodes,
                          self(), KeepNodes, EjectNodes, FailedNodes, DeltaNodes),
 
                        ok = apply_delta_recovery_buckets(DeltaRecoveryBucketTuples, DeltaNodes),
+
+                       ok = drop_old_2i_indexes(KeepNodes),
+
                        ns_cluster_membership:activate(KeepNodes),
 
                        rebalance(KeepNodes, EjectNodes, FailedNodes,
@@ -1057,5 +1060,31 @@ check_failover_possible(Node) ->
                     end;
                 false ->
                     unknown_node
+            end
+    end.
+
+drop_old_2i_indexes(KeepNodes) ->
+    case cluster_compat_mode:is_cluster_sherlock() of
+        false ->
+            ok;
+        true ->
+            Config = ns_config:get(),
+            NewNodes = KeepNodes -- ns_cluster_membership:active_nodes(Config),
+            ?rebalance_info("Going to drop possible old 2i indexes on nodes ~p", [NewNodes]),
+            {Oks, RPCErrors, Downs} = misc:rpc_multicall_with_plist_result(
+                                        NewNodes,
+                                        ns_storage_conf, delete_old_2i_indexes, []),
+            Errors = [{N, RV}
+                      || {N, RV} <- Oks,
+                         RV =/= ok]
+                ++ RPCErrors
+                ++ [{N, timeout} || N <- Downs],
+            case Errors of
+                [] ->
+                    ?rebalance_debug("Cleanup succeeded: ~p", [Oks]),
+                    ok;
+                _ ->
+                    ?rebalance_error("Failed to cleanup indexes: ~p", [Errors]),
+                    {old_indexes_cleanup_failed, Errors}
             end
     end.
