@@ -19,20 +19,21 @@ IF ("${PRODUCT_VERSION}" STREQUAL "")
   # Cache "git describe" output
   EXECUTE_PROCESS(COMMAND git describe
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    OUTPUT_VARIABLE _ns_version
+    OUTPUT_VARIABLE _product_version
     ERROR_QUIET
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 ELSE ("${PRODUCT_VERSION}" STREQUAL "")
-  # BUILD_ENTERPRISE variable is defined in couchbase-cli CMakeLists.txt
-  IF (BUILD_ENTERPRISE)
-    SET (_ns_version "${PRODUCT_VERSION}-enterprise")
-  ELSE (BUILD_ENTERPRISE)
-    SET (_ns_version "${PRODUCT_VERSION}-community")
-  ENDIF (BUILD_ENTERPRISE)
+  SET(_product_version "${PRODUCT_VERSION}")
 ENDIF ("${PRODUCT_VERSION}" STREQUAL "")
 
-  SET (NS_SERVER_VERSION "${_ns_version}" CACHE STRING
-  "Couchbase server version" FORCE)
+IF (BUILD_ENTERPRISE)
+  SET (_ns_version "${_product_version}-enterprise")
+ELSE (BUILD_ENTERPRISE)
+  SET (_ns_version "${_product_version}-community")
+ENDIF (BUILD_ENTERPRISE)
+
+SET (NS_SERVER_VERSION "${_ns_version}" CACHE STRING
+     "Couchbase server version" FORCE)
 MARK_AS_ADVANCED (NS_SERVER_VERSION)
 
 # Create rebar.config
