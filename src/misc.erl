@@ -1096,24 +1096,25 @@ raw_read_loop(File, Acc) ->
             erlang:error(Reason)
     end.
 
-multicall_result_to_plist_rec([], _ResL, _BadNodes, Acc) ->
-    Acc;
+multicall_result_to_plist_rec([], _ResL, _BadNodes, SuccessAcc, ErrorAcc) ->
+    {SuccessAcc, ErrorAcc};
 multicall_result_to_plist_rec([N | Nodes], Results, BadNodes,
-                              {SuccessAcc, ErrorAcc} = Acc) ->
+                              SuccessAcc, ErrorAcc) ->
     case lists:member(N, BadNodes) of
         true ->
-            multicall_result_to_plist_rec(Nodes, Results, BadNodes, Acc);
+            multicall_result_to_plist_rec(Nodes, Results, BadNodes, SuccessAcc, ErrorAcc);
         _ ->
             [Res | ResRest] = Results,
 
             case Res of
                 {badrpc, Reason} ->
-                    NewAcc = {SuccessAcc, [{N, Reason} | ErrorAcc]},
+                    NewErrAcc = [{N, Reason} | ErrorAcc],
                     multicall_result_to_plist_rec(Nodes, ResRest, BadNodes,
-                                                  NewAcc);
+                                                  SuccessAcc, NewErrAcc);
                 _ ->
-                    NewAcc = {[{N, Res} | SuccessAcc], ErrorAcc},
-                    multicall_result_to_plist_rec(Nodes, ResRest, BadNodes, NewAcc)
+                    NewOkAcc = [{N, Res} | SuccessAcc],
+                    multicall_result_to_plist_rec(Nodes, ResRest, BadNodes,
+                                                 NewOkAcc, ErrorAcc)
             end
     end.
 
@@ -1121,7 +1122,29 @@ multicall_result_to_plist_rec([N | Nodes], Results, BadNodes,
 %% values for nodes that succeeded. Second one is a mapping from Nodes to
 %% error reason for failed nodes.
 multicall_result_to_plist(Nodes, {ResL, BadNodes}) ->
-    multicall_result_to_plist_rec(Nodes, ResL, BadNodes, {[], []}).
+    multicall_result_to_plist_rec(Nodes, ResL, BadNodes, [], []).
+
+%% Returns a pair of proplists and list of nodes. First element is a
+%% mapping from Nodes to return values for nodes that
+%% succeeded. Second one is a mapping from Nodes to error reason for
+%% failed nodes. And third tuple element is BadNodes argument unchanged.
+-spec assoc_multicall_results([node()], [any() | {badrpc, any()}], [node()]) ->
+                                    {OkNodeResults::[{node(), any()}],
+                                     BadRPCNodeResults::[{node(), any()}],
+                                     BadNodes::[node()]}.
+assoc_multicall_results(Nodes, ResL, BadNodes) ->
+    {OkNodeResults, BadRPCNodeResults} = multicall_result_to_plist_rec(Nodes, ResL, BadNodes, [], []),
+    {OkNodeResults, BadRPCNodeResults, BadNodes}.
+
+%% Performs rpc:multicall and massages results into "normal results",
+%% {badrpc, ...} results and timeouts/disconnects. Returns triple
+%% produced by assoc_multicall_results/3 above.
+rpc_multicall_with_plist_result(Nodes, M, F, A, Timeout) ->
+    {ResL, BadNodes} = rpc:multicall(Nodes, M, F, A, Timeout),
+    assoc_multicall_results(Nodes, ResL, BadNodes).
+
+rpc_multicall_with_plist_result(Nodes, M, F, A) ->
+    rpc_multicall_with_plist_result(Nodes, M, F, A, infinity).
 
 -spec realpath(string(), string()) -> {ok, string()} | {error, atom(), string(), any()}.
 realpath(Path, BaseDir) ->
