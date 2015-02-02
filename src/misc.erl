@@ -1096,33 +1096,27 @@ raw_read_loop(File, Acc) ->
             erlang:error(Reason)
     end.
 
-multicall_result_to_plist_rec([], _ResL, _BadNodes, SuccessAcc, ErrorAcc) ->
+assoc_multicall_results_rec([], _ResL, _BadNodes, SuccessAcc, ErrorAcc) ->
     {SuccessAcc, ErrorAcc};
-multicall_result_to_plist_rec([N | Nodes], Results, BadNodes,
-                              SuccessAcc, ErrorAcc) ->
+assoc_multicall_results_rec([N | Nodes], Results, BadNodes,
+                            SuccessAcc, ErrorAcc) ->
     case lists:member(N, BadNodes) of
         true ->
-            multicall_result_to_plist_rec(Nodes, Results, BadNodes, SuccessAcc, ErrorAcc);
+            assoc_multicall_results_rec(Nodes, Results, BadNodes, SuccessAcc, ErrorAcc);
         _ ->
             [Res | ResRest] = Results,
 
             case Res of
                 {badrpc, Reason} ->
                     NewErrAcc = [{N, Reason} | ErrorAcc],
-                    multicall_result_to_plist_rec(Nodes, ResRest, BadNodes,
-                                                  SuccessAcc, NewErrAcc);
+                    assoc_multicall_results_rec(Nodes, ResRest, BadNodes,
+                                                SuccessAcc, NewErrAcc);
                 _ ->
                     NewOkAcc = [{N, Res} | SuccessAcc],
-                    multicall_result_to_plist_rec(Nodes, ResRest, BadNodes,
-                                                 NewOkAcc, ErrorAcc)
+                    assoc_multicall_results_rec(Nodes, ResRest, BadNodes,
+                                                NewOkAcc, ErrorAcc)
             end
     end.
-
-%% Returns a pair of proplists. First one is a mapping from Nodes to return
-%% values for nodes that succeeded. Second one is a mapping from Nodes to
-%% error reason for failed nodes.
-multicall_result_to_plist(Nodes, {ResL, BadNodes}) ->
-    multicall_result_to_plist_rec(Nodes, ResL, BadNodes, [], []).
 
 %% Returns a pair of proplists and list of nodes. First element is a
 %% mapping from Nodes to return values for nodes that
@@ -1133,7 +1127,7 @@ multicall_result_to_plist(Nodes, {ResL, BadNodes}) ->
                                      BadRPCNodeResults::[{node(), any()}],
                                      BadNodes::[node()]}.
 assoc_multicall_results(Nodes, ResL, BadNodes) ->
-    {OkNodeResults, BadRPCNodeResults} = multicall_result_to_plist_rec(Nodes, ResL, BadNodes, [], []),
+    {OkNodeResults, BadRPCNodeResults} = assoc_multicall_results_rec(Nodes, ResL, BadNodes, [], []),
     {OkNodeResults, BadRPCNodeResults, BadNodes}.
 
 %% Performs rpc:multicall and massages results into "normal results",
