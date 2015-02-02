@@ -53,7 +53,8 @@
          disable_auto_failover/1,
          reset_auto_failover_count/1,
          alerts/2,
-         modify_compaction_settings/2
+         modify_compaction_settings/2,
+         regenerate_certificate/1
         ]).
 
 code(login_success) ->
@@ -123,7 +124,9 @@ code(enable_cluster_alerts) ->
 code(disable_cluster_alerts) ->
     8224;
 code(modify_compaction_settings) ->
-    8225.
+    8225;
+code(regenerate_certificate) ->
+    8226.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -392,3 +395,6 @@ modify_compaction_settings(Req, Settings) ->
                      Acc
              end, [], Settings),
     put(modify_compaction_settings, Req, Data).
+
+regenerate_certificate(Req) ->
+    put(regenerate_certificate, Req, []).

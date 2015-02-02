@@ -586,6 +586,21 @@
               "parallel_db_and_view_compaction" : false,
               "purge_interval" : ""
           }
+      },
+      {
+          "id" : 8226,
+          "name" : "regenerate certificate",
+          "description" : "Self-signed SSL certificate was regenerated",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1}
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
       }
     ]
 }

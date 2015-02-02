@@ -2439,6 +2439,7 @@ handle_regenerate_certificate(Req) ->
     ns_server_cert:generate_and_set_cert_and_pkey(),
     ns_ssl_services_setup:sync_local_cert_and_pkey_change(),
     ?log_info("Completed certificate regeneration"),
+    ns_audit:regenerate_certificate(Req),
     handle_cluster_certificate(Req).
 
 -spec handle_node_settings_post(string() | atom(), any()) -> no_return().
