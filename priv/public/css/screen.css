@@ -1472,3 +1472,5 @@ input[type=number].size {width:4em;}
 .audit_container label span {width: 150px;display: inline-block;}
 .audit_container .row {display: block; margin: 10px 0;}
 .archive_path_field {width: 230px;}
+
+.query_notice {position: absolute; width: 670px; left: 100px; top: 3px;}

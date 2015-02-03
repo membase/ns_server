@@ -531,6 +531,9 @@
                       {% _.each(blocks, function (blockInfo) { %}
                       <div id="{%= h(blockInfo.id) %}" class="darker_block js_darker_block {%= blockInfo.extraCSSClasses %}">
                         {% if (!blockInfo.hideThis) { %}<h3 class="block-expander js_block-expander"><ins></ins>{%= h(blockInfo.blockName) %}</h3>{% } %}
+                        {% if (blockInfo.blockName === 'Query') {%}
+                        <span class="query_notice"><span class="i">i</span> Metrics for Query are not per bucket and will not change if bucket dropdown above is changed</span>
+                        {% } %}
                         <div class="stats js_stats">
                         {% if (blockInfo.columns) { %}
                           <ul class="col_headers">
