@@ -174,6 +174,8 @@ rm_rf(Name) when is_list(Name) ->
                   ?log_warning("rm_rf failed because ~p", [Reason]),
                   Error
           end;
+      {error, enoent} ->
+          ok;
       Error ->
           ?log_warning("stat on ~s failed: ~p", [Name, Error]),
           Error
