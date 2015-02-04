@@ -34,7 +34,7 @@ couch_start_arguments=""
 LD_LIBRARY_PATH="@PREFIX@/lib":"@PREFIX@/lib/memcached":$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH
 
-DYLD_LIBRARY_PATH="@PREFIX@/lib":"@PREFIX@/lib/memcached":$DYLD_LIBRARY_PATH
+DYLD_LIBRARY_PATH="/usr/lib:@PREFIX@/lib":"@PREFIX@/lib/memcached":$DYLD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH
 
 ERL_CRASH_DUMP_BASE=erl_crash.dump.$(date +%s).$$
