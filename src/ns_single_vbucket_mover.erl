@@ -45,7 +45,7 @@ cleanup_list_del(Pid) ->
     List2 = ordsets:del_element(Pid, List),
     erlang:put(cleanup_list, List2).
 
-get_vbucket_repl_type(VBucket, {dcp, [Partitions]}) ->
+get_vbucket_repl_type(VBucket, {dcp, Partitions}) ->
     case lists:member(VBucket, Partitions) of
         true ->
             tap;
@@ -76,6 +76,8 @@ mover(Parent, Bucket, VBucket, OldChain, NewChain, ReplType) ->
     VBucketReplType = get_vbucket_repl_type(VBucket, ReplType),
     misc:try_with_maybe_ignorant_after(
       fun () ->
+              process_flag(trap_exit, true),
+
               case {IndexAware, VBucketReplType} of
                   {_, dcp} ->
                       mover_inner_dcp(Parent, Bucket, VBucket, OldChain, NewChain, IndexAware);
@@ -246,8 +248,6 @@ maybe_initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket
 
 mover_inner_dcp(Parent, Bucket, VBucket,
                 [OldMaster|_] = OldChain, [NewMaster|_] = NewChain, IndexAware) ->
-    process_flag(trap_exit, true),
-
     maybe_inhibit_view_compaction(Parent, OldMaster, Bucket, NewMaster, IndexAware),
 
     %% build new chain as replicas of existing master
@@ -367,8 +367,6 @@ wait_seqno_persisted_many(Bucket, Parent, Nodes, VBucket, SeqNo) ->
 
 mover_inner(Parent, Bucket, VBucket,
             [Node|_] = OldChain, [NewNode|_] = NewChain) ->
-    process_flag(trap_exit, true),
-
     inhibit_view_compaction(Parent, Node, Bucket, NewNode),
 
     % build new chain as replicas of existing master
@@ -479,7 +477,6 @@ set_initial_vbucket_state(Bucket, Parent, VBucket, ReplicaNodes, JustBackfillNod
 
 mover_inner_old_style(Parent, Bucket, VBucket,
                       [Node|_], [NewNode|_] = NewChain) ->
-    process_flag(trap_exit, true),
     % build new chain as replicas of existing master
     {ReplicaNodes, JustBackfillNodes} =
         get_replica_and_backfill_nodes(Node, NewChain),

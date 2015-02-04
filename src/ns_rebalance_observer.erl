@@ -212,7 +212,7 @@ initiate_bucket_rebalance(BucketName, OldState) ->
 
     Moves =
         [begin
-             {_, {MasterEstimate, MasterChkItems, ReplType}} = lists:keyfind({MasterNode, VB}, 1, SomeEstimates),
+             {_, {MasterEstimate, MasterChkItems, VBReplType}} = lists:keyfind({MasterNode, VB}, 1, SomeEstimates),
              RBStats =
                  [begin
                       {_, {ReplicaEstimate, _, _}} = lists:keyfind({Replica, VB}, 1, SomeEstimates),
@@ -237,7 +237,7 @@ initiate_bucket_rebalance(BucketName, OldState) ->
              #move_state{vbucket = VB,
                          before_chain = ChainBefore,
                          after_chain = ChainAfter,
-                         repl_type = ReplType,
+                         repl_type = VBReplType,
                          stats = RBStats}
          end || {VB, [MasterNode|_] = ChainBefore, ChainAfter} <- Diff],
 
