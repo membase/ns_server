@@ -26,12 +26,17 @@ angular.module('mnSettingsCluster').controller('mnSettingsClusterController',
     }
 
     $scope.saveVisualInternalSettings = function () {
-      var promise = mnSettingsClusterService.saveVisualInternalSettings($scope.formData).success(mnHelper.reloadState).error(setError);
-      mnHelper.handleSpinner($scope, promise, 'settingsClusterLoaded');
+      var promise = mnSettingsClusterService.saveVisualInternalSettings($scope.formData).error(setError);
+      mnHelper
+        .promiseHelper($scope, promise)
+        .showSpinner('settingsClusterLoaded')
+        .reloadState();
     };
     $scope.regenerateCertificate = function () {
       var promise = mnSettingsClusterService.regenerateCertificate().success(setCertificate);
-      mnHelper.handleSpinner($scope, promise, 'regenerateCertificateInprogress');
+      mnHelper
+        .promiseHelper($scope, promise)
+        .showSpinner('regenerateCertificateInprogress');
     };
     $scope.toggleCertArea = function () {
       $scope.toggleCertAreaFlag = !$scope.toggleCertAreaFlag;

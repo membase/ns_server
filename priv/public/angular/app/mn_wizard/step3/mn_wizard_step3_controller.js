@@ -4,13 +4,12 @@ angular.module('mnWizard').controller('mnWizardStep3Controller',
 
     $scope.onSubmit = function () {
       var promise = mnWizardStep3Service.postBuckets($scope.bucketConf);
-      mnHelper.handleSpinner($scope, promise, null, true);
-      promise.then(function (result) {
-        if (!result.data) {
-          $state.go('app.wizard.step4');
-        } else {
-          $scope.validationResult = result;
-        }
-      });
+      mnHelper
+        .promiseHelper($scope, promise)
+        .showErrorsSensitiveSpinner()
+        .getPromise()
+        .then(function (result) {
+          !result.data && $state.go('app.wizard.step4');
+        });
     };
   });

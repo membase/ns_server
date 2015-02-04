@@ -36,11 +36,11 @@ angular.module('mnServers').controller('mnServersAddDialogController',
       }
 
       var promise = mnServersService.addServer($scope.selectedGroup, $scope.newServer);
-      promise.then(function () {
-        $modalInstance.close();
-        mnHelper.reloadState();
-      });
-      mnHelper.rejectReasonToScopeApplyer($scope, promise);
-      mnHelper.handleSpinner($scope, promise, undefined, true);
+      mnHelper
+        .promiseHelper($scope, promise, $modalInstance)
+        .showErrorsSensitiveSpinner()
+        .catchErrors()
+        .closeOnSuccess()
+        .reloadState();
     };
   });

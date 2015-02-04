@@ -23,10 +23,13 @@ angular.module('mnWizard').controller('mnWizardStep4Controller',
       $scope.register.email && mnWizardStep4Service.postEmail($scope.register);
 
       var promise = mnWizardStep4Service.postStats({sendStats: $scope.sendStats});
-      mnHelper.handleSpinner($scope, promise, null, true);
-      mnHelper.rejectReasonToScopeApplyer($scope, promise);
-      promise.then(function () {
-        $state.go('app.wizard.step5');
-      });
+      mnHelper
+        .promiseHelper($scope, promise)
+        .showErrorsSensitiveSpinner()
+        .catchErrors()
+        .getPromise()
+        .then(function () {
+          $state.go('app.wizard.step5');
+        });
     };
   });

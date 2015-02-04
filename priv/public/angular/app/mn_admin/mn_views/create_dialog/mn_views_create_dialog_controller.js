@@ -47,6 +47,6 @@ angular.module('mnViews').controller('mnViewsCreateDialogController',
         return createDdoc();
       });
 
-      mnHelper.handleSpinner($scope, promise);
+      mnHelper.showSpinner($scope, promise);
     };
   });

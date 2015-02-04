@@ -1,26 +1,92 @@
 angular.module('mnHelper').factory('mnHelper',
-  function ($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails) {
+  function ($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService) {
     var mnHelper = {};
 
-    mnHelper.handleSpinner = function ($scope, promise, name, isInfinitForSuccess) {
-      if (!name) {
-        name = 'viewLoading';
-      }
+
+    mnHelper.promiseHelper = function (scope, promise, modalInstance) {
+      var spinnerName = 'viewLoading';
+      var errorsName = 'errors';
       function spinnerCtrl(isLoaded) {
-        $scope[name] = isLoaded;
+        scope[spinnerName] = isLoaded;
+      }
+      function errorsCtrl(errors) {
+        scope[errorsName] = errors;
       }
       function hideSpinner() {
         spinnerCtrl(false);
-        return promise;
       }
-      spinnerCtrl(true);
-      if (promise.success) {
-        var rv = promise.error(hideSpinner);
-        return isInfinitForSuccess ? rv : rv.success(hideSpinner);
-      } else {
-        return promise.then(isInfinitForSuccess ? null : hideSpinner, hideSpinner);
+      function removeErrors() {
+        errorsCtrl(false);
       }
+      function setSpinnerName(name) {
+        spinnerName = name;
+      }
+      function setErrorsName(name) {
+        errorsName = name;
+      }
+      function closeModal() {
+        modalInstance.close();
+      }
+      return {
+        getPromise: function () {
+          return promise;
+        },
+        reloadState: function () {
+          promise.then(function () {
+            mnHelper.reloadState();
+          });
+          return this;
+        },
+        closeFinally: function () {
+          promise['finally'](closeModal);
+          return this;
+        },
+        closeOnSuccess: function () {
+          promise.then(closeModal);
+          return this;
+        },
+        showErrorsSensitiveSpinner: function (name) {
+          name && setSpinnerName(name);
+          spinnerCtrl(true);
+          promise.then(null, hideSpinner);
+          return this;
+        },
+        showSpinner: function (name) {
+          name && setSpinnerName(name);
+          spinnerCtrl(true);
+          promise.then(hideSpinner, hideSpinner);
+          return this;
+        },
+        catchErrors: function (name) {
+          name && setErrorsName(name);
+          promise.then(removeErrors, function (resp) {
+            errorsCtrl(resp.data);
+          });
+          return this;
+        },
+        catchGlobalErrors: function () {
+          promise.then(null, function (resp) {
+            mnAlertsService.formatAndSetAlerts(resp.data, 'danger');
+          });
+          return this;
+        }
+      };
     };
+
+    mnHelper.handleModalAction = function ($scope, promise, $modalInstance) {
+      return mnHelper
+        .promiseHelper($scope, promise, $modalInstance)
+        .showErrorsSensitiveSpinner()
+        .closeFinally()
+        .reloadState();
+    };
+
+    function createPromiseHelperShortcuts(name) {
+      mnHelper[name] = function (scope, promise, scopeName) {
+        return mnHelper.promiseHelper(scope, promise)[name](scopeName).getPromise();
+      };
+    }
+    angular.forEach(['showSpinner', 'showErrorsSensitiveSpinner', 'catchErrors'], createPromiseHelperShortcuts);
 
     mnHelper.setupLongPolling = function (config) {
       var cycleId;
@@ -79,28 +145,6 @@ angular.module('mnHelper').factory('mnHelper',
 
     mnHelper.reloadState = function () {
       $state.transitionTo($state.current, $stateParams, {reload: true, inherit: true, notify: true});
-    };
-
-    mnHelper.rejectReasonToScopeApplyer = function ($scope, name, promise) {
-      if (!promise) {
-        promise = name;
-        name = 'errors';
-      }
-      function errorsCtrl(errors) {
-        $scope[name] = errors;
-      }
-      function success() {
-        errorsCtrl(false);
-        return promise;
-      }
-      if (promise.success) {
-        return promise.success(success).error(errorsCtrl);
-      } else {
-        return promise.then(success, function (resp) {
-          errorsCtrl(resp.data);
-          return promise;
-        });
-      }
     };
 
     return mnHelper;

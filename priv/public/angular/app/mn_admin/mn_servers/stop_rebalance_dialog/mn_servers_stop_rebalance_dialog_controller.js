@@ -1,13 +1,6 @@
-angular.module('mnServers').controller('mnServersStopRebalanceController',
-  function ($scope, $modalInstance, mnHelper, $state, mnServersService) {
-    $scope.cancel = function () {
-      $modalInstance.dismiss('cancel');
-    }
+angular.module('mnServers').controller('mnServersStopRebalanceDialogController',
+  function ($scope, $modalInstance, mnHelper, mnServersService) {
     $scope.onStopRebalance = function () {
-      var request = mnServersService.stopRebalance();
-      request.then(function () {
-        $modalInstance.close();
-      });
-      mnHelper.handleSpinner($scope, request, 'mnDialogStopRebalanceDialogLoading', true);
+      mnHelper.handleModalAction($scope, mnServersService.stopRebalance(), $modalInstance);
     };
   });

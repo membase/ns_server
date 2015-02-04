@@ -4,18 +4,15 @@ angular.module('mnBuckets').controller('mnBucketsDetailsDialogController',
 
     $scope.onSubmit = function () {
       var promise = mnBucketsDetailsDialogService.postBuckets($scope.bucketConf);
-      mnHelper.handleSpinner($scope, promise, null, true);
-      promise.then(function (result) {
-        if (!result.data) {
-          $modalInstance.dismiss('cancel');
-          mnHelper.reloadState();
-        } else {
-          $scope.validationResult = result;
-        }
-      });
-    };
-
-    $scope.cancel = function () {
-      $modalInstance.dismiss('cancel');
+      mnHelper
+        .promiseHelper($scope, promise)
+        .showErrorsSensitiveSpinner()
+        .getPromise()
+        .then(function (result) {
+          if (!result.data) {
+            $modalInstance.close();
+            mnHelper.reloadState();
+          }
+        });
     };
   });

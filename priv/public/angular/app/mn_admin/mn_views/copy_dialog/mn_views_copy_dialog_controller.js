@@ -21,6 +21,6 @@ angular.module('mnViews').controller('mnViewsCopyDialogController',
         }).result.then(copy);
       }, copy);
 
-      mnHelper.handleSpinner($scope, promise);
+      mnHelper.showSpinner($scope, promise);
     };
   });

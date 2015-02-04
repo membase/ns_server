@@ -43,7 +43,7 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
       $state.go('app.wizard.step2');
     }
     function makeRequestWithErrorsHandler(method, data) {
-      return mnHelper.rejectReasonToScopeApplyer($scope, method + 'Errors', mnWizardStep1Service[method](data));
+      return mnHelper.catchErrors($scope, mnWizardStep1Service[method](data), method + 'Errors');
     }
 
     $scope.onSubmit = function (e) {
@@ -64,15 +64,15 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
         var services = mnHelper.checkboxesToList($scope.services);
         if (!isJoinCluster) {
           return $q.all([
-            mnHelper.rejectReasonToScopeApplyer($scope, 'setupServicesErrors', mnServersService.setupServices({services: services.join(',')})),
+            mnHelper.catchErrors($scope, mnServersService.setupServices({services: services.join(',')}), 'setupServicesErrors'),
             makeRequestWithErrorsHandler('postMemory', $scope.dynamicRamQuota).then(goNext)
           ]);
         } else {
           var data = _.clone($scope.clusterMember);
           data.services = services.join(',');
-          return makeRequestWithErrorsHandler('postJoinCluster', data).then(login).then(mnHelper.reloadApp);
+          return makeRequestWithErrorsHandler('postJoinCluster', data).then(login);
         }
       });
-      mnHelper.handleSpinner($scope, promise, null, true);
+      mnHelper.showErrorsSensitiveSpinner($scope, promise);
     };
   });

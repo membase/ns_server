@@ -11,10 +11,6 @@ angular.module('mnViews').controller('mnViewsDeleteViewDialogController',
         return mnViewsService.createDdoc(url, presentDdoc);
       });
 
-      mnHelper.handleSpinner($scope, promise, null, true);
-      promise['finally'](function () {
-        mnHelper.reloadState();
-        $modalInstance.close();
-      });
+      mnHelper.handleModalAction($scope, promise, $modalInstance);
     };
   });

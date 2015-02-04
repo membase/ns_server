@@ -45,7 +45,7 @@ angular.module('mnServers').controller('mnServersController',
         function (reps) {
           (reps.status === 400) && $modal.open({
             templateUrl: '/angular/app/mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
-            controller: 'mnServersEjectDialogController'
+            controller: 'mnServersStopRebalanceDialogController'
           });
       });
     };
