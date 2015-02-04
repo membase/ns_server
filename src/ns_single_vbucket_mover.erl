@@ -45,7 +45,7 @@ cleanup_list_del(Pid) ->
     List2 = ordsets:del_element(Pid, List),
     erlang:put(cleanup_list, List2).
 
-get_vbucket_repl_type(VBucket, {dcp, [Partitions]}) ->
+get_vbucket_repl_type(VBucket, {dcp, Partitions}) ->
     case lists:member(VBucket, Partitions) of
         true ->
             tap;
