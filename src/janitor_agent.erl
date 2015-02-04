@@ -923,10 +923,11 @@ handle_cast(_, _State) ->
 
 handle_info({'DOWN', _MRef, _, _, _}, #state{rebalancer_type = upgrader} = State) ->
     {noreply, set_rebalance_mref(undefined, State)};
-handle_info({'DOWN', MRef, _, _, _}, #state{rebalance_mref = RMRef,
-                                            last_applied_vbucket_states = WantedVBuckets} = State)
+handle_info({'DOWN', MRef, _, Pid, Reason}, #state{rebalance_mref = RMRef,
+                                                   last_applied_vbucket_states = WantedVBuckets} = State)
   when MRef =:= RMRef ->
-    ?log_info("Undoing temporary vbucket states caused by rebalance"),
+    ?log_info("Rebalancer ~p died with reason ~p. Undoing temporary vbucket states caused by rebalance",
+              [Pid, Reason]),
     State2 = State#state{rebalance_only_vbucket_states = [undefined
                                                           || _ <- WantedVBuckets]},
     State3 = set_rebalance_mref(undefined, State2),
