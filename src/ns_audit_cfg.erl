@@ -31,6 +31,8 @@ string_key(log_path) ->
     true;
 string_key(archive_path) ->
     true;
+string_key(descriptors_path) ->
+    true;
 string_key(_) ->
     false.
 
@@ -45,9 +47,9 @@ updatable_key(archive_path) ->
 updatable_key(_) ->
     false.
 
-is_notable_config_key(audit_json) ->
+is_notable_config_key(audit) ->
     true;
-is_notable_config_key({node, N, audit_json}) ->
+is_notable_config_key({node, N, audit}) ->
     N =:= node();
 is_notable_config_key(_) ->
     false.
@@ -62,20 +64,10 @@ set_global(KVList) ->
     true = lists:any(fun({K, _}) ->
                              updatable_key(K)
                      end, KVList),
-    ns_config:set_sub(audit_json, KVList).
+    ns_config:set_sub(audit, KVList).
 
 init([]) ->
-    {Global, Local} = case read_config() of
-                          {[], L} ->
-                              {prime_config(), L};
-                          S ->
-                              S
-                      end,
-
-    %% memcached requires that audit_events.json should be located in the same
-    %% directory with audit.json. so we need to copy the file produced by build
-    %% to the audit.json location until memcached will provide us wiser alternative
-    ensure_audit_events_file(),
+    {Global, Local} = read_config(),
 
     Self = self(),
     ns_pubsub:subscribe_link(ns_config_events,
@@ -117,42 +109,17 @@ code_change(_OldVsn, State, _Extra) ->
 terminate(_Reason, _State) ->
     ok.
 
-prime_config() ->
-    {ok, Content} = file:read_file(path_config:component_path(sec, "audit.json")),
-    {Json} = ejson:decode(Content),
-    Params = lists:map(fun({K, V}) ->
-                               Key = list_to_atom(binary_to_list(K)),
-                               {Key, case string_key(Key) of
-                                         true ->
-                                             binary_to_list(V);
-                                         false ->
-                                             V
-                                     end}
-                       end, Json),
-    SortedParams = lists:keysort(1, Params),
-    ns_config:set(audit_json, SortedParams),
-    ?log_debug("Setting initial content for audit.json : ~p", [SortedParams]),
-    SortedParams.
-
 default_audit_json_path() ->
     filename:join(path_config:component_path(data, "config"), "audit.json").
 
 audit_json_path() ->
     ns_config:search_node_prop(node(), 'latest-config-marker', memcached, audit_file).
 
-ensure_audit_events_file() ->
-    Path = filename:join(filename:dirname(audit_json_path()), "audit_events.json"),
-    case filelib:is_regular(Path) of
-        false ->
-            {ok, Content} = file:read_file(path_config:component_path(sec, "audit_events.json")),
-            ok = misc:write_file(Path, Content);
-        true ->
-            ok
-    end.
-
 write_audit_json(Params) ->
     Path = audit_json_path(),
-    ?log_debug("Writing new content to ~p : ~p", [Path, Params]),
+    CompleteParams = Params ++ [{version, 1},
+                                {descriptors_path, path_config:component_path(sec)}],
+    ?log_debug("Writing new content to ~p : ~p", [Path, CompleteParams]),
     Json = lists:map(fun({K, V}) ->
                              {K, case string_key(K) of
                                      true ->
@@ -160,7 +127,7 @@ write_audit_json(Params) ->
                                      false ->
                                          V
                                  end}
-                     end, Params),
+                     end, CompleteParams),
     Bytes = ejson:encode({Json}),
     ok = misc:atomic_write_file(Path, Bytes),
     case should_update_memcached() of
@@ -185,13 +152,13 @@ should_update_memcached() ->
     end.
 
 read_config() ->
-    {case ns_config:search(audit_json) of
+    {case ns_config:search(audit) of
          {value, V} ->
              lists:keysort(1, V);
          false ->
              []
      end,
-     case ns_config:search({node, node(), audit_json}) of
+     case ns_config:search({node, node(), audit}) of
          {value, V} ->
              lists:keysort(1, V);
          false ->

@@ -98,12 +98,13 @@ default() ->
 
     IsEnterprise = init_is_enterprise(),
 
-    AuditJson = case misc:get_env_default(path_audit_log, []) of
-                    [] ->
-                        [];
-                    Path ->
-                        [{archive_path, Path}, {log_path, Path}]
-                end,
+    {AuditGlobalLogs, AuditLocalLogs} =
+        case misc:get_env_default(path_audit_log, []) of
+            [] ->
+                {[{archive_path, RawLogDir}, {log_path, RawLogDir}], []};
+            Path ->
+                {[], [{archive_path, Path}, {log_path, Path}]}
+        end,
 
     [{directory, path_config:component_path(data, "config")},
      {{node, node(), is_enterprise}, IsEnterprise},
@@ -207,7 +208,13 @@ default() ->
      {remote_clusters, []},
      {{node, node(), isasl}, [{path, filename:join(DataDir, ?ISASL_PW)}]},
 
-     {{node, node(), audit_json}, AuditJson},
+     {audit,
+      [{auditd_enabled, true},
+       {rotate_interval, 86400},
+       {disabled, []},
+       {sync, []}] ++ AuditGlobalLogs},
+
+     {{node, node(), audit}, AuditLocalLogs},
 
      {memcached, []},
 
