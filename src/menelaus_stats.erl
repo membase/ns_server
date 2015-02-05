@@ -1197,7 +1197,10 @@ membase_stats_description(BucketId) ->
                                  "(measured from replication_changes_left).">>}]},
                 {struct,[{title,<<"Intra-Replication Queue">>},
                          {name,<<"ep_dcp_replica_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]}
+                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]},
+                {struct,[{title,<<"N1QL Queries/sec">>},
+                         {name, <<"query_requests">>},
+                         {desc, <<"Number of N1QL requests processed per second.">>}]}
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
