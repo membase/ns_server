@@ -88,7 +88,8 @@
          is_valid_positive_integer_in_range/3,
          validate_boolean/2,
          validate_dir/2,
-         validate_positive_integer/2,
+         validate_integer/2,
+         validate_range/4,
          validate_unsupported_params/1,
          validate_has_params/1,
          execute_if_validated/3]).
@@ -3743,8 +3744,9 @@ validate_settings_audit(Args) ->
     R0 = validate_boolean(auditd_enabled, R),
     R1 = validate_dir(log_path, R0),
     R2 = validate_dir(archive_path, R1),
-    R3 = validate_positive_integer(rotate_interval, R2),
-    validate_unsupported_params(R3).
+    R3 = validate_integer(rotate_interval, R2),
+    R4 = validate_range(rotate_interval, 15*60, 60*60*24*7, R3),
+    validate_unsupported_params(R4).
 
 handle_settings_audit_post(Req) ->
     assert_is_enterprise(),

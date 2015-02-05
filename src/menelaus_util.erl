@@ -61,7 +61,8 @@
          is_valid_positive_integer_in_range/3,
          validate_boolean/2,
          validate_dir/2,
-         validate_positive_integer/2,
+         validate_integer/2,
+         validate_range/4,
          validate_unsupported_params/1,
          validate_has_params/1,
          execute_if_validated/3]).
@@ -480,18 +481,34 @@ validate_dir(Name, {OutList, _, _} = State) ->
             end
     end.
 
-validate_positive_integer(Name, {OutList, _, _} = State) ->
+validate_integer(Name, {OutList, _, _} = State) ->
     Value = proplists:get_value(atom_to_list(Name), OutList),
     case Value of
         undefined ->
             State;
         _ ->
-            case is_valid_positive_integer(Value) of
+            Int = (catch erlang:list_to_integer(Value)),
+            case is_integer(Int) of
                 true ->
-                    return_value(Name, erlang:list_to_integer(Value), State);
+                    return_value(Name, Int, State);
                 false ->
-                    return_error(Name, io_lib:format("The value of ~p must be a positive integer",
+                    return_error(Name, io_lib:format("The value of ~p must be integer",
                                                      [Name]), State)
+            end
+    end.
+
+validate_range(Name, Min, Max, {_, InList, _} = State) ->
+    Value = proplists:get_value(Name, InList),
+    case Value of
+        undefined ->
+            State;
+        _ ->
+            case (Value >= Min) andalso (Value =< Max) of
+                true ->
+                    State;
+                false ->
+                    return_error(Name, io_lib:format("The value of ~p must be in range from ~p to ~p",
+                                                     [Name, Min, Max]), State)
             end
     end.
 
