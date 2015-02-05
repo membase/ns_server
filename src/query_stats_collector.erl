@@ -85,7 +85,6 @@ latest_tick(TS, NumDropped) ->
 %% doesn't like trying to deal with empty gauges below.
 -define(Q_GAUGES, [active_requests, queued_requests]).
 -define(Q_COUNTERS, [errors,
-                     mutations,
                      request_time,
                      requests,
                      requests_500ms,

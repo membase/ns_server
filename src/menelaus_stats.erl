@@ -1076,9 +1076,6 @@ couchbase_query_stats_descriptions(Bucket) ->
                            {desc, <<"tbd">>}]},
                  {struct, [{title, <<"Queries > 5000ms">>},
                            {name, <<"query_requests_5000ms">>},
-                           {desc, <<"tbd">>}]},
-                 {struct, [{title, <<"Mutations">>},
-                           {name, <<"query_mutations">>},
                            {desc, <<"tbd">>}]}]}]}].
 
 membase_stats_description(BucketId) ->
