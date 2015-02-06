@@ -126,7 +126,12 @@ ui_auth_cookie_name(Req) ->
     end.
 
 extract_ui_auth_token(Req) ->
-    lookup_cookie(Req, ui_auth_cookie_name(Req)).
+    case Req:get_header_value("ns_server-auth-token") of
+        undefined ->
+            lookup_cookie(Req, ui_auth_cookie_name(Req));
+        T ->
+            T
+    end.
 
 generate_auth_cookie(Req, Token) ->
     Options = [{path, "/"}, {http_only, true}],

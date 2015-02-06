@@ -3206,8 +3206,14 @@ proxy_to_goxdcr(MochiReq) ->
     proxy_to_goxdcr(MochiReq, MochiReq:get(raw_path)).
 
 proxy_to_goxdcr(MochiReq, Path) ->
-    Headers = [{convert_header_name(Name), Value} ||
-                  {Name, Value} <- mochiweb_headers:to_list(MochiReq:get(headers))],
+    Headers0 = [{convert_header_name(Name), Value} ||
+                   {Name, Value} <- mochiweb_headers:to_list(MochiReq:get(headers))],
+    Headers = case menelaus_auth:extract_ui_auth_token(MochiReq) of
+                  undefined ->
+                      Headers0;
+                  Token ->
+                      [{"ns_server-auth-token", Token} | Headers0]
+              end,
     Body = case MochiReq:recv_body() of
                undefined ->
                    <<>>;

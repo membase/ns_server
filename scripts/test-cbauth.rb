@@ -111,6 +111,10 @@ class TestCBAuth < Minitest::Test
       "Ns_server-Ui" => "yes",
       "Cookie" => "ui-auth-#{all.first.gsub(":", "%3A")}=#{token}"
     }
+    token_headers2 = {
+      "Ns_server-Ui" => "yes",
+      "Ns_server-Auth-Token" => token
+    }
 
     IO.popen("/tmp/cbauth-example --listen=127.0.0.1:44443 --mgmtURL=#{base_url}", "r+") do |f|
       poll_condition do
@@ -122,6 +126,7 @@ class TestCBAuth < Minitest::Test
         switching_username nil do
           getj! "/bucket/default"
           getj! "/bucket/other", token_headers
+          getj! "/bucket/other", token_headers2
           assert_raises RestClient::Unauthorized do
             getj! "/bucket/other"
           end
