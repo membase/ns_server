@@ -19,8 +19,7 @@
 
 -include("ns_common.hrl").
 
--export([commit/1,
-         login_success/1,
+-export([login_success/1,
          login_failure/1,
          delete_user/3,
          password_change/3,
@@ -38,9 +37,8 @@
          rename_node/3,
          setup_node_services/3,
          change_memory_quota/2,
-         prepare_add_group/2,
-         prepare_delete_group/2,
-         prepare_update_group/2,
+         add_group/2,
+         delete_group/2,
          update_group/2,
          xdcr_create_cluster_ref/2,
          xdcr_update_cluster_ref/2,
@@ -200,9 +198,7 @@ prepare(Req, Params) ->
 
 put(Code, Req, Params) ->
     Body = prepare(Req, Params),
-    commit({Code, Body}).
 
-commit({Code, Body}) ->
     ?log_debug("Audit ~p: ~p", [Code, Body]),
     EncodedBody = ejson:encode({Body}),
 
@@ -293,18 +289,13 @@ setup_node_services(Req, Node, Services) ->
 change_memory_quota(Req, Quota) ->
     put(change_memory_quota, Req, [{quota, Quota}]).
 
-prepare_add_group(Req, Group) ->
-    {add_group, prepare(Req, [{name, proplists:get_value(name, Group)},
-                              {uuid, proplists:get_value(uuid, Group)}])}.
+add_group(Req, Group) ->
+    put(add_group, Req, [{name, proplists:get_value(name, Group)},
+                         {uuid, proplists:get_value(uuid, Group)}]).
 
-prepare_delete_group(Req, Group) ->
-    {delete_group, prepare(Req, [{name, proplists:get_value(name, Group)},
-                                 {uuid, proplists:get_value(uuid, Group)}])}.
-
-prepare_update_group(Req, Group) ->
-    {update_group, prepare(Req, [{name, proplists:get_value(name, Group)},
-                                 {uuid, proplists:get_value(uuid, Group)},
-                                 {nodes, {list, proplists:get_value(nodes, Group, [])}}])}.
+delete_group(Req, Group) ->
+    put(delete_group, Req, [{name, proplists:get_value(name, Group)},
+                             {uuid, proplists:get_value(uuid, Group)}]).
 
 update_group(Req, Group) ->
     put(update_group, Req, [{name, proplists:get_value(name, Group)},

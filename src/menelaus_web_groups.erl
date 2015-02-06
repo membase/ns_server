@@ -266,15 +266,14 @@ do_handle_server_groups_post(Name, Req) ->
                                         {name, Name},
                                         {nodes, []}],
                               NewGroups = lists:sort([AGroup | ExistingGroups]),
-                              {commit, SetFn(server_groups, NewGroups, Cfg),
-                               ns_audit:prepare_add_group(Req, AGroup)};
+                              {commit, SetFn(server_groups, NewGroups, Cfg), AGroup};
                           _ ->
                               {abort, {error, already_exists}}
                       end
               end),
     case TXNRV of
-        {commit, _, AuditEvent} ->
-            ns_audit:commit(AuditEvent),
+        {commit, _, AGroup} ->
+            ns_audit:add_group(Req, AGroup),
             ok;
         {abort, {error, already_exists} = Error} ->
             Error;
@@ -355,13 +354,12 @@ do_group_update(GroupUUID, Name, Req) ->
                           {[_], []} ->
                               UpdatedGroup = lists:keyreplace(name, 1, hd(MaybeCandidateGroup), {name, Name}),
                               NewGroups = lists:sort([UpdatedGroup | OtherGroups]),
-                              {commit, SetFn(server_groups, NewGroups, Cfg),
-                               ns_audit:prepare_update_group(Req, UpdatedGroup)}
+                              {commit, SetFn(server_groups, NewGroups, Cfg), UpdatedGroup}
                       end
               end),
     case TXNRV of
-        {commit, _, AuditEvent} ->
-            ns_audit:commit(AuditEvent),
+        {commit, _, UpdatedGroup} ->
+            ns_audit:update_group(Req, UpdatedGroup),
             ok;
         {abort, Error} ->
             Error;
@@ -396,14 +394,13 @@ do_group_delete(GroupUUID, Req) ->
                                       {abort, {error, not_empty}};
                                   [] ->
                                       NewGroups = Groups -- MaybeG,
-                                      {commit, SetFn(server_groups, NewGroups, Cfg),
-                                       ns_audit:prepare_delete_group(Req, Victim)}
+                                      {commit, SetFn(server_groups, NewGroups, Cfg), Victim}
                               end
                       end
               end),
     case TXNRV of
-        {commit, _, AuditEvent} ->
-            ns_audit:commit(AuditEvent),
+        {commit, _, Victim} ->
+            ns_audit:delete_group(Req, Victim),
             ok;
         {abort, Error} ->
             Error;
