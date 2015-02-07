@@ -83,21 +83,35 @@ handle_mutate(Req, Params, Value) ->
     RV = work_queue:submit_sync_work(
            menelaus_metakv_worker,
            fun () ->
-                   ns_config:run_txn(
-                     fun (Cfg, SetFn) ->
-                             OldVC = get_old_vclock(Cfg, K),
-                             case Rev =:= undefined orelse Rev =:= OldVC of
-                                 true ->
-                                     {commit, SetFn(K, Value, Cfg)};
-                                 false ->
-                                     {abort, mismatch}
-                             end
-                     end)
+                   case Rev =:= undefined of
+                       true ->
+                           ns_config:set(K, Value),
+                           commit;
+                       false ->
+                           RV = ns_config:run_txn(
+                                  fun (Cfg, SetFn) ->
+                                          OldVC = get_old_vclock(Cfg, K),
+                                          case Rev =:= OldVC of
+                                              true ->
+                                                  {commit, SetFn(K, Value, Cfg)};
+                                              false ->
+                                                  {abort, mismatch}
+                                          end
+                                  end),
+                           case RV of
+                               {commit, _} ->
+                                   %% don't send whole config back
+                                   %% from worker
+                                   commit;
+                               _ ->
+                                   RV
+                           end
+                   end
            end),
     case RV of
         {abort, mismatch} ->
             menelaus_util:reply(Req, 409);
-        {commit, _} ->
+        commit ->
             ?log_debug("updated ~s to hold ~s", [Path, Value]),
             menelaus_util:reply(Req, 200)
     end.
