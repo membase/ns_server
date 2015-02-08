@@ -185,6 +185,9 @@ angular.module('app', [
 
 
 ]).run(function ($rootScope, $state, $urlRouter, mnPools) {
+  $rootScope.$on('$stateChangeError', function (event, toState, toParams, fromState, fromParams, error) {
+    throw new Error(error.message);
+  });
   $rootScope.$on('$locationChangeSuccess', function (event) {
     event.preventDefault();
     mnPools.get().then(function (pools) {
