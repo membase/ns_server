@@ -1,0 +1,54 @@
+<div class="join_cluster create_replication_dialog" id="create_replication_dialog" style="width:600px">
+  <h1>Create Replication</h1>
+  <form ng-submit="createReplication()" mn-spinner="viewLoading">
+    <div class="warning pat_10" id="create_replication_dialog_errors_container" style="line-height: 18px;">
+      <span ng-repeat="error in errors.errors"><strong>Attention</strong> - {{error}}<br></span>
+    </div>
+    <fieldset>
+      <fieldset style="float:left;width:230px;">
+        <legend>Replicate changes from:</legend>
+        <ul>
+          <li><label>Cluster:</label>
+            <span style="font-size: 0.7em;font-weight: bold;margin-left: 0.2em;">this cluster</span>
+          </li>
+          <li><label for="replication_from_bucket">Bucket:</label>
+            <select name="fromBucket" ng-model="replication.fromBucket" id="replication_from_bucket" style="width: 154px;"
+              ng-options="bucket.name as bucket.name for bucket in buckets">
+            </select>
+          </li>
+        </ul>
+      </fieldset>
+      <fieldset style="float:left;width:250px;">
+        <legend>To:</legend>
+        <ul>
+          <li><label for="replication_to_cluster">Cluster:</label>
+            <select name="toCluster" ng-model="replication.toCluster" id="replication_to_cluster" style="width: 154px;" 
+              ng-options="reference.name as reference.name for reference in xdcr.references">
+            </select>
+          </li>
+          <li><label for="replication_to_bucket">Bucket:</label>
+            <input name="toBucket" ng-model="replication.toBucket" id="replication_to_bucket" type="text" />
+            <!-- TODO: this needs to become a select box like the one above -->
+          </li>
+        </ul>
+      </fieldset>
+      <fieldset class="xdcr_advaced_settings" id="js_xdcr_advaced_settings" style="clear:both;">
+        <legend id="js_xdcr_advaced_settings_btn" ng-click="showAdvancedSettings = !showAdvancedSettings">Advanced settings:</legend>
+        <div id="js_xdcr_advaced_settings_container" class="xdcr_advaced_settings_container" ng-show="showAdvancedSettings">
+          <div>
+            <label for="xdcr_advaced_settings_type">XDCR Protocol:</label>
+            <select id="xdcr_advaced_settings_type" ng-model="replication.type" name="type">
+              <option value="capi">Version 1</option>
+              <option value="xmem">Version 2</option>
+            </select>
+          </div>
+          <div mn-xdcr-settings="replication"></div>
+        </div>
+      </fieldset>
+    </fieldset>
+    <div class="save_cancel">
+      <button class="save_button float_right replicate-button" type="submit" style="margin-left:12px;">Replicate</button>
+      <a class="close" ng-click="$dismiss()">Cancel</a>
+    </div>
+  </form>
+</div>

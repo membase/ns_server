@@ -149,6 +149,14 @@ angular.module('mnViewsService', [
   'mnHttp'
 ]);
 
+angular.module('mnXDCR', [
+  'mnXDCRService'
+]);
+angular.module('mnXDCRService', [
+  'mnHttp',
+  'mnTasksDetails'
+]);
+
 
 angular.module('app', [
   'mnFilters',
@@ -181,7 +189,9 @@ angular.module('app', [
   'mnOverview',
   'mnBuckets',
   'mnBucketsDetailsDialogService',
-  'mnViews'
+  'mnViews',
+  'mnXDCR',
+  'mnXDCRService'
 
 
 ]).run(function ($rootScope, $state, $urlRouter, mnPools) {

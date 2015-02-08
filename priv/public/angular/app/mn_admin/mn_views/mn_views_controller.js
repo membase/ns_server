@@ -19,20 +19,14 @@ angular.module('mnViews').controller('mnViewsController',
       onUpdate: applyBuckets
     });
 
-    function wrapInFunction(value) {
-      return function () {
-        return value;
-      };
-    }
-
     $scope.showCreationDialog = function (ddoc, isSpatial) {
       $modal.open({
         controller: 'mnViewsCreateDialogController',
         templateUrl: '/angular/app/mn_admin/mn_views/create_dialog/mn_views_create_dialog.html',
         scope: $scope,
         resolve: {
-          currentDdocName: wrapInFunction(ddoc && ddoc.meta.id),
-          isSpatial: wrapInFunction(isSpatial)
+          currentDdocName: mnHelper.wrapInFunction(ddoc && ddoc.meta.id),
+          isSpatial: mnHelper.wrapInFunction(isSpatial)
         }
       });
     };
@@ -42,7 +36,7 @@ angular.module('mnViews').controller('mnViewsController',
         templateUrl: '/angular/app/mn_admin/mn_views/delete_ddoc_dialog/mn_views_delete_ddoc_dialog.html',
         scope: $scope,
         resolve: {
-          currentDdocName: wrapInFunction(ddoc.meta.id)
+          currentDdocName: mnHelper.wrapInFunction(ddoc.meta.id)
         }
       });
     };
@@ -52,9 +46,9 @@ angular.module('mnViews').controller('mnViewsController',
         templateUrl: '/angular/app/mn_admin/mn_views/delete_view_dialog/mn_views_delete_view_dialog.html',
         scope: $scope,
         resolve: {
-          currentDdocName: wrapInFunction(ddoc.meta.id),
-          currentViewName: wrapInFunction(viewName),
-          isSpatial: wrapInFunction(isSpatial)
+          currentDdocName: mnHelper.wrapInFunction(ddoc.meta.id),
+          currentViewName: mnHelper.wrapInFunction(viewName),
+          isSpatial: mnHelper.wrapInFunction(isSpatial)
         }
       });
     };
@@ -82,7 +76,7 @@ angular.module('mnViews').controller('mnViewsController',
         templateUrl: '/angular/app/mn_admin/mn_views/copy_dialog/mn_views_copy_dialog.html',
         scope: $scope,
         resolve: {
-          currentDdoc: wrapInFunction(ddoc)
+          currentDdoc: mnHelper.wrapInFunction(ddoc)
         }
       });
     };

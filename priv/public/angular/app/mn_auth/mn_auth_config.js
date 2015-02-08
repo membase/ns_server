@@ -12,6 +12,7 @@ angular.module('mnAuth').config( function ($stateProvider, $httpProvider, $urlRo
       return response;
     };
     function error(response) {
+      console.log(response)
       if (response.status === 401) {
         var mnAuthService = $injector.get('mnAuthService');
         mnAuthService.logout();

@@ -1,0 +1,12 @@
+<div class="join_cluster" id="create_cluster_reference_dialog" style="width:500px">
+  <h1>Confirm delete</h1>
+  <form ng-submit="deleteReplication()" mn-spinner="viewLoading">
+    <p class="pat_20 pas_20">
+      Please, confirm deleting this replication.
+    </p>
+    <div class="save_cancel">
+      <button class="save_button float_right" type="submit">OK</button>
+      <a class="close"  ng-click="$dismiss()">Cancel</a>
+    </div>
+  </form>
+</div>

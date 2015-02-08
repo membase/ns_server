@@ -539,7 +539,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .join_cluster fieldset legend label {font-size:14px;width:auto!important;}
 .join_cluster label {display:inline-block;width:5em;font-size:12px;text-align:right;}
 #create_cluster_reference_dialog label{width:15em}
-#ssh_key_area-2 {display: none;}
+
 .join_cluster ul li {margin:0.6em 0}
 .join_cluster ul ul label {display:inline;width:auto;text-align:left}
 .join_cluster input {margin:0 4px 0 1px;padding:4px 3px;border:1px solid #ccd2d6;}
@@ -1384,7 +1384,6 @@ input[type=number].size {width:4em;}
 .add_group_form .warning {padding-bottom: 10px; text-align: right; padding-right: 10px; }
 
 .xdcr_advaced_settings label {width: 246px; font-size: 12px; text-align: left; margin-left: 15px;}
-.xdcr_advaced_settings_container {display: none;}
 .xdcr_advaced_settings {line-height: 33px;}
 .xdcr_advaced_settings input {width: 50px;}
 .xdcr_advaced_settings i {font-size: 12px; color: red; display: block; line-height: 12px; margin-left: 30px;}

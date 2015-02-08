@@ -1,0 +1,12 @@
+<div class="join_cluster" id="create_cluster_reference_dialog" title="Create Cluster Reference" style="width:500px">
+  <h1>Delete Cluster Reference</h1>
+  <form ng-submit="deleteClusterReference()" mn-spinner="viewLoading">
+    <p class="pat_20 pas_20">
+      Please, confirm deleting remote cluster reference "{{name}}".
+    </p>
+    <div class="save_cancel">
+      <button class="save_button float_right" type="submit">OK</button>
+      <a class="close"  ng-click="$dismiss()">Cancel</a>
+    </div>
+  </form>
+</div>

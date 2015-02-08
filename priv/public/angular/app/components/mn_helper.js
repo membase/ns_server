@@ -116,6 +116,12 @@ angular.module('mnHelper').factory('mnHelper',
       };
     };
 
+    mnHelper.wrapInFunction = function (value) {
+      return function () {
+        return value;
+      };
+    };
+
     mnHelper.initializeDetailsHashObserver = function ($scope, hashKey) {
       function getOpenedServers() {
         var value = $location.search()[hashKey];

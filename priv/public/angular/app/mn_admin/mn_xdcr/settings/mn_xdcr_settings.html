@@ -1,0 +1,37 @@
+<div>
+  <div>
+    <label for="max_concurrent_reps">XDCR Max Replications per Bucket:</label>
+    <input type="text" id="max_concurrent_reps" name="maxConcurrentReps" ng-model="settings.maxConcurrentReps">
+    <i class="error js_error js_maxConcurrentReps" ng-show="errors.maxConcurrentReps">{{errors.maxConcurrentReps}}</i>
+  </div>
+  <div>
+    <label for="worker_processes_setting">XDCR workers per Replication:</label>
+    <input type="text" id="worker_processes_setting" name="workerProcesses" ng-model="settings.workerProcesses">
+    <i class="error js_error js_workerProcesses" ng-show="errors.workerProcesses">{{errors.workerProcesses}}</i>
+  </div>
+  <div>
+    <label for="checkpoint_interval">XDCR Checkpoint Interval:</label>
+    <input type="text" id="checkpoint_interval" name="checkpointInterval" ng-model="settings.checkpointInterval">
+    <i class="error js_error js_checkpointInterval" ng-show="errors.checkpointInterval">{{errors.checkpointInterval}}</i>
+  </div>
+  <div>
+    <label for="worker_batch_size">XDCR Batch Count:</label>
+    <input type="text" id="worker_batch_size" name="workerBatchSize" ng-model="settings.workerBatchSize">
+    <i class="error js_error js_workerBatchSize" ng-show="errors.workerBatchSize">{{errors.workerBatchSize}}</i>
+  </div>
+  <div>
+    <label for="doc_batch_size_kb">XDCR Batch Size (kB):</label>
+    <input type="text" id="doc_batch_size_kb" name="docBatchSizeKb" ng-model="settings.docBatchSizeKb">
+    <i class="error js_error js_docBatchSizeKb" ng-show="errors.docBatchSizeKb">{{errors.docBatchSizeKb}}</i>
+  </div>
+  <div>
+    <label for="failure_restart_interval">XDCR Failure Retry Interval:</label>
+    <input type="text" id="failure_restart_interval" name="failureRestartInterval" ng-model="settings.failureRestartInterval">
+    <i class="error js_error js_failureRestartInterval" ng-show="errors.failureRestartInterval">{{errors.failureRestartInterval}}</i>
+  </div>
+  <div>
+    <label for="optimistic_replication_threshold">XDCR Optimistic Replication Threshold:</label>
+    <input type="text" id="optimistic_replication_threshold" name="optimisticReplicationThreshold" ng-model="settings.optimisticReplicationThreshold">
+    <i class="error js_error js_optimisticReplicationThreshold" ng-show="errors.optimisticReplicationThreshold">{{errors.optimisticReplicationThreshold}}</i>
+  </div>
+</div>

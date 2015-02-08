@@ -295,4 +295,8 @@ angular.module('mnFilters')
       }
       return [a[0], a[3], "Edition", "(build-" + a[1] + suffix + ")"].join(' ');
     };
+  })
+
+  .filter('encodeURIComponent', function () {
+    return encodeURIComponent;
   });

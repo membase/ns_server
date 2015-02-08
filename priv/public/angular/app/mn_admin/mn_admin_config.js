@@ -80,6 +80,16 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
         }
       }
     })
+    .state('app.admin.replications', {
+      url: '/replications',
+      templateUrl: 'mn_admin/mn_xdcr/mn_xdcr.html',
+      controller: 'mnXDCRController',
+      resolve: {
+        xdcr: function (mnXDCRService) {
+          return mnXDCRService.getReplicationState();
+        }
+      }
+    })
     .state('app.admin.settings', {
       url: '/settings',
       abstract: true,

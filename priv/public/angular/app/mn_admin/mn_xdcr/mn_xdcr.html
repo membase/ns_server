@@ -1,0 +1,101 @@
+<div id="js_replications" class="replications">
+  <h1>Replications</h1>
+  <div id="cluster_references" class="shadow_box">
+    <div class="darker_block js_darker_block" style="font-size:13px;">
+      <h3 class="js_block-expander block-expander">
+        <ins></ins><span class="view_head">Remote Clusters</span>
+        <span class="buttons">
+          <a class="btn_1 when-roadmin-hide-me" id="create_cluster_reference" ng-click="createClusterReference()">
+            <span>Create Cluster Reference</span>
+          </a>
+        </span>
+      </h3>
+
+      <div class="stats" id="cluster_reference_list_container">
+        <table class="list casper_remout_cluster_container" style="width:100%">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>IP/hostname</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody ng-if="xdcr.references.length" ng-repeat="row in xdcr.references | orderBy:'name' track by row.name">
+            <tr>
+              <td>{{row.name}}</td>
+              <td>
+                <a href="{{ window.location.protocol + '//' + row.hostname + 'index.html#/analytics&amp;statsHostname=' + (row.hostname | encodeURIComponent) }}" target="blank">{{row.hostname}}</a>
+              </td>
+              <td>
+                <a class="list_button delete-button when-roadmin-avoid-me" ng-click="deleteClusterReference(row)"><span>Delete</span></a>
+                <a class="list_button edit-button when-roadmin-avoid-me" ng-click="editClusterReference(row)"><span>Edit</span></a>
+              </td>
+            </tr>
+          </tbody>
+          <tbody ng-if="!xdcr.references.length">
+            <tr><td colspan="3" style="text-align:center">No cluster references defined. <span class="when-roadmin-avoid-me">Please create one.</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ongoing Replications -->
+  <div id="ongoing_replications" class="shadow_box">
+    <div class="darker_block" style="font-size:13px;">
+      <h3>
+        <span class="view_head" style="padding-left: 0">Ongoing Replications</span>
+        <span class="buttons">
+          <a ng-show="xdcr.references.length" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="createReplications()">
+            <span>Create Replication</span>
+          </a>
+        </span>
+      </h3>
+
+      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container">
+        <table class="list" style="width:100%">
+          <colgroup>
+            <col class="bucket">
+            <col class="protocol">
+            <col class="from">
+            <col class="to">
+            <col class="status">
+            <col class="when">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Bucket</th>
+              <th>Protocol</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Status</th>
+              <th>When</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody ng-if="xdcr.replications.length" ng-repeat="row in xdcr.replications track by row.name">
+            <tr class="row">
+              <td>{{row.source}}</td>
+              <td>{{row.protocol}}</td>
+              <td style="color:#777">this cluster</td>
+              <td>{{row.to}}</td>
+              <td class="replication_status_cell">
+                <span>{{row.humanStatus}}</span>
+                <span ng-show="row.status !== 'notRunning'" class="only-when-30 js_replication_control replication_control dynamic_{{row.status}}" ng-click="row.status !== 'spinner' && pausePlayReplication(row)"></span>
+                <a ng-show="row.errors.length" ng-click="showReplicationErrors(row)">Last {{row.errors.length | mnCount:'error'}}</a>
+              </td>
+              <td>{{row.when}}</td>
+              <td>
+                <a class="list_button when-roadmin-avoid-me" ng-click="deleteReplication(row)"><span>Delete</span></a>
+                <span class="list_button when-roadmin-avoid-me js_per_xdcr_settings" ng-click="editReplication(row)"><span>Edit</span></span>
+              </td>
+            </tr>
+          </tbody>
+          <tbody ng-if="!xdcr.replications.length">
+            <tr><td colspan="8" style="text-align:center">There are no replications currently in progress.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
