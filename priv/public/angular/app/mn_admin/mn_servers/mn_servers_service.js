@@ -166,7 +166,7 @@ angular.module('mnServersService').factory('mnServersService',
     }
 
     function prepareNodes(responses) {
-      var groups = responses[1];
+      var groups = responses[1].groups;
       var poolDefault = responses[0];
       var nodes = poolDefault.nodes;
 

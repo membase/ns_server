@@ -48,8 +48,8 @@
         <li class="line" ui-sref-active="currentNav">
           <a class="switch_replications" ui-sref="app.admin.replications">XDCR</a>
         </li>
-        <li class="line" data-section="log">
-          <a class="switch_log">Log</a>
+        <li class="line" ng-class="{currentNav: ('app.admin.logs' | includedByState)}">
+          <a class="switch_log" ui-sref="app.admin.logs.list">Log</a>
         </li>
         <li class="line" ui-sref-active="currentNav" id="nav_settings_container">
           <a href="#?section=settings" ui-sref="app.admin.settings.cluster" class="switch_settings">Settings</a>

@@ -157,6 +157,16 @@ angular.module('mnXDCRService', [
   'mnTasksDetails'
 ]);
 
+angular.module('mnLogs', [
+  'mnLogsService'
+]);
+angular.module('mnLogsCollectInfoService', [
+  'mnHttp'
+]);
+angular.module('mnLogsService', [
+  'mnHttp'
+]);
+
 
 angular.module('app', [
   'mnFilters',
@@ -191,7 +201,9 @@ angular.module('app', [
   'mnBucketsDetailsDialogService',
   'mnViews',
   'mnXDCR',
-  'mnXDCRService'
+  'mnXDCRService',
+  'mnLogs',
+  'mnLogsCollectInfoService'
 
 
 ]).run(function ($rootScope, $state, $urlRouter, mnPools) {

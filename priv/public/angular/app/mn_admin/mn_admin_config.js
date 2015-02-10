@@ -90,6 +90,40 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
         }
       }
     })
+    .state('app.admin.logs', {
+      url: '/logs',
+      abstract: true,
+      templateUrl: 'mn_admin/mn_logs/mn_logs.html'
+    })
+    .state('app.admin.logs.list', {
+      url: '',
+      controller: 'mnLogsListController',
+      templateUrl: 'mn_admin/mn_logs/list/mn_logs_list.html',
+      resolve: {
+        logs: function (mnLogsService) {
+          return mnLogsService.getLogs();
+        }
+      }
+    })
+    .state('app.admin.logs.collectInfo', {
+      url: '/collectInfo',
+      abstract: true,
+      controller: 'mnLogsCollectInfoController',
+      templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
+      resolve: {
+        state: function (mnLogsCollectInfoService) {
+          return mnLogsCollectInfoService.getState();
+        }
+      }
+    })
+    .state('app.admin.logs.collectInfo.result', {
+      url: '/result',
+      templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info_result.html'
+    })
+    .state('app.admin.logs.collectInfo.form', {
+      url: '/form',
+      templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info_form.html'
+    })
     .state('app.admin.settings', {
       url: '/settings',
       abstract: true,

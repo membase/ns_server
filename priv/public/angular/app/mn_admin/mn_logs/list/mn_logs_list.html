@@ -1,0 +1,23 @@
+<div id="logs_container">
+<table class="lined_tab">
+  <thead>
+    <tr>
+      <th>Event</th>
+      <th>Module Code</th>
+      <th>Server Node</th>
+      <th>Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="row in logs | orderBy:'serverTime':true">
+      <td style="white-space: pre-wrap;">{{row.text}}</td>
+      <td>{{row.module}} {{row.code | moduleCode }}</td>
+      <td>{{row.node}}</td>
+      <td class="text_11 nobr">
+        <strong>{{row.serverTime | date:'mediumTime':'UTC'}}</strong>
+        {{row.serverTime | date:'EEE MMM d, yyyy'}}
+      </td>
+    </tr>
+  </tbody>
+</table>
+</div>

@@ -1,0 +1,18 @@
+<div id="js_logs" class="logs">
+  <!-- Shadow box -->
+  <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+  <h1>Log</h1>
+  <div class="clear"></div>
+  <div class="shadow_box">
+    <div class="section">
+      <div class="header_2">
+        <ul class="tabs when-roadmin-avoid-me">
+          <li class="tab_left" ui-sref="app.admin.logs.list" ui-sref-active="selected"><a>Logs</a></li>
+          <li class="tab_right" ui-sref="app.admin.logs.collectInfo.form" ng-class="{selected: ('app.admin.logs.collectInfo' | includedByState)}"><a>Collect Information</a></li>
+        </ul>
+      </div>
+      <div class="panes clearfix" ui-view>
+      </div>
+    </div>
+  </div>
+</div>

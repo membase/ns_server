@@ -72,7 +72,7 @@
                 <span class="add_b_message">This server is now reachable. Do you want to add it back to the cluster on the next rebalance?</span>
               </td>
             </tr>
-            <tr class="server_row {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" id="{{node.otpNode | mnMakeSafeForCSS}}">
+            <tr class="server_row " id="{{node.otpNode | mnMakeSafeForCSS}}">
               <td class="node_name ellipsis">
                 <a ng-if="!node.isNodeUnhealthy"
                    ng-click="toggleDetails(node.hostname)"

@@ -735,19 +735,18 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 
 .btn_x {margin: 4px 0 0;width:25px;height:24px;background:url(/images/btn_x.png) no-repeat}
 
-.server_row .dynamic_healthy,
-.server_row .dynamic_unhealthy,
-.server_row .dynamic_inactiveFailed,
-.server_row .dynamic_warmup,
-.server_row .pending_add {width: 65px; padding: 0 !important; background-image: url("/images/server_status_icons_solid_bg-v2.png"); background-repeat: no-repeat;}
-.server_row .dynamic_healthy {background-position: 0 19px;}
-.server_row .dynamic_unhealthy,
-.server_row .dynamic_unhealthy.dynamic_inactiveFailed {background-position: 0 -160px;}
-.server_row .dynamic_inactiveFailed,
-.server_row .dynamic_warmup,
-.server_row .pending_add {background-position: 0 -310px;}
-.server_row.dynamic_inactiveFailed .dynamic_inactiveFailed {background-position: 0 -303px;}
-.server_row.dynamic_inactiveFailed .dynamic_unhealthy.dynamic_inactiveFailed {background-position: 0 -154px;}
+.dynamic_healthy,
+.dynamic_unhealthy,
+.dynamic_inactiveFailed,
+.dynamic_warmup,
+.pending_add {width: 65px; padding: 0 !important; background-image: url("/images/server_status_icons_solid_bg-v2.png"); background-repeat: no-repeat;}
+.dynamic_healthy {background-position: 0 19px;}
+.dynamic_unhealthy {background-position: 0 -160px;}
+.dynamic_inactiveFailed,
+.dynamic_warmup,
+.pending_add {background-position: 0 -310px;}
+.dynamic_inactiveFailed {background-position: 0 -303px;}
+.dynamic_unhealthy.dynamic_inactiveFailed {background-position: 0 -154px;}
 
 .servers h2 { height: 25px;}
 .servers_list ul {*margin:-1px 0 0;*position:relative;*top:1px;}
@@ -831,7 +830,7 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .add_back_btn span {display: block; padding-top: 2px; padding-left: 31px; font-size: 13px; font-weight: bold; color: #fff; line-height: 29px; background: url('/images/green_btn_plus_icon.png') no-repeat 11px 50%;}
 
 .list {border-right:1px solid #d9dce0;background:none #eee;}
-.list td {background:none #eee;border-bottom:1px solid #ced5d9; padding:10px;border-right:0px; text-align:center;vertical-align:middle;}
+.list td {border-bottom:1px solid #ced5d9; padding:10px;border-right:0px; text-align:center;vertical-align:middle;}
 .align_text td {text-align:left}
 
 .buckets .properties_table td {color:#404042}
@@ -1417,16 +1416,10 @@ input[type=number].size {width:4em;}
 .collect_information_dialog h2 {margin-top: 15px;clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-bottom:10px;border-bottom:1px solid #d4d9dc;}
 .collect_information_dialog .collect_from {padding-left: 20px; padding-top: 5px; line-height: 30px;}
 .collect_information_dialog .collect_from input {vertical-align: middle; margin-right: 5px;}
-.collect_information_dialog .collect_from label {vertical-align: middle;}
+.collect_information_dialog .collect_from label {vertical-align: middle; display: inline-block; width: 170px;}
+.collect_information_dialog .selected_nodes .icon {display: inline-block; height: 58px; vertical-align: middle; background-image: url("/images/server_status_icons_solid_bg-v2.png"); background-repeat: no-repeat; margin: -14px 0;}
 .collect_information_dialog .selected_nodes {padding: 9px 0 9px 60px; margin: 0; display: inline-block; background: no-repeat url('/images/server_icon.png') 0 50%; }
-.collect_information_dialog .selected_nodes li {background-image: url("/images/server_status_icons_solid_bg-v2.png"); background-repeat: no-repeat; padding-right: 150px;}
-.collect_information_dialog .dynamic_server_up {background-position: 100% 8px;}
-.collect_information_dialog .dynamic_server_down,
-.collect_information_dialog .dynamic_server_down.dynamic_failed_over {background-position: 100% -170px;}
-.collect_information_dialog .dynamic_server_warmup,
-.collect_information_dialog .dynamic_pending_add {background-position: 100% -320px;}
-.collect_information_dialog .dynamic_failed_over {background-position: 100% -534px;}
-.collect_information_dialog .dynamic_server_down.dynamic_failed_over {background-position: 100% -170px;}
+.collect_information_dialog .selected_nodes li { padding-right: 150px; width: 300px;}
 .collect_information_dialog .save_cancel button {color: #fff;}
 .collect_information_dialog .js_error_container {display: none; color: red; display: inline-block; margin-left: 10px;}
 .collect_information_dialog .dynamic_input_error {border-color: red;}
@@ -1458,3 +1451,5 @@ input[type=number].size {width:4em;}
 .for_upload label {display: inline-block; width: 200px;}
 
 .global_alerts_container {width: 1060px; margin: 0 auto;}
+
+#js_collect_information .controls {text-align: right; height: 30px; padding-right: 10px; margin-top: -40px; padding-bottom: 10px; margin-left: 300px;}
