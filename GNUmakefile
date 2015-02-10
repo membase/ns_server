@@ -42,28 +42,10 @@ TAGS:
 
 
 
+GO_PREBUILDS := vbmap generate_cert gozip goport
+GO_PREBUILD_TARGETS := $(patsubst %, prebuild_%, $(GO_PREBUILDS))
 
-# Targets from this point on are NOT currently replicated with CMake, so
-# this GNUmakefile remains the only way to invoke them. Ideally at some
-# point this should be rectified. TODO
-
-
-prebuild_vbmap:
-	cd deps/vbmap && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-vbmap
-	cd deps/vbmap && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-vbmap
-	cd deps/vbmap && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-vbmap.exe
-
-prebuild_generate_cert:
-	cd deps/generate_cert && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-generate_cert
-	cd deps/generate_cert && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-generate_cert
-	cd deps/generate_cert && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-generate_cert.exe
-
-prebuild_gozip:
-	cd deps/gozip && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-gozip
-	cd deps/gozip && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-gozip
-	cd deps/gozip && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-gozip.exe
-
-prebuild_goport:
-	cd deps/goport && GOOS=linux GOARCH=386 go build -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-goport
-	cd deps/goport && GOOS=darwin GOARCH=386 go build -o ../../priv/i386-darwin-goport
-	cd deps/goport && GOOS=windows GOARCH=386 go build -o ../../priv/i386-win32-goport.exe
+$(GO_PREBUILD_TARGETS): prebuild_%:
+	cd deps/$* && CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -a -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-$*
+	cd deps/$* && CGO_ENABLED=0 GOOS=darwin GOARCH=386 go build -a -o ../../priv/i386-darwin-$*
+	cd deps/$* && CGO_ENABLED=0 GOOS=windows GOARCH=386 go build -a -o ../../priv/i386-win32-$*.exe
