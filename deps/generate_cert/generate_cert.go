@@ -15,6 +15,7 @@ import (
 	"math/big"
 	"os"
 	"time"
+	"net"
 )
 
 func mustNoErr(err error) {
@@ -104,6 +105,10 @@ func main() {
 			KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			BasicConstraintsValid: true,
+		}
+
+		if ip := net.ParseIP(commonName); ip != nil {
+			leafTemplate.IPAddresses = []net.IP{ip}
 		}
 
 		certDer, err := x509.CreateCertificate(rand.Reader, &leafTemplate, caCert, &leafPKey.PublicKey, pkey)
