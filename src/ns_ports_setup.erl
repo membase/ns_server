@@ -307,8 +307,20 @@ goxdcr_spec(Config) ->
             XdcrRestPort = "-xdcrRestPort=" ++
                 integer_to_list(ns_config:search(Config, {node, node(), xdcr_rest_port}, 9998)),
             IsEnterprise = "-isEnterprise=" ++ atom_to_list(menelaus_web:is_enterprise()),
-            [{'goxdcr', Cmd,
-              [AdminPort, XdcrRestPort, IsEnterprise],
+
+            Args0 = [AdminPort, XdcrRestPort, IsEnterprise],
+
+            UpstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}, undefined),
+            Args =
+                case UpstreamPort of
+                    undefined ->
+                        Args0;
+                    _ ->
+                        LocalProxyPort = "-localProxyPort=" ++ integer_to_list(UpstreamPort),
+                        [LocalProxyPort | Args0]
+                end,
+
+            [{'goxdcr', Cmd, Args,
               [use_stdio, exit_status, stderr_to_stdout, stream,
                {log, ?GOXDCR_LOG_FILENAME},
                {env, build_cbauth_env_vars(Config, goxdcr)}]}]
