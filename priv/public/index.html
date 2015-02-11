@@ -1230,20 +1230,20 @@
                   <p class="sub_section">Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes when the following conditions are met.</p>
                   <form id="js_audit_setup_form">
                     <div class="sub_section" style="margin-right:0;">
+                      <i class="err-_ error-container"></i>
                       <div class="row">
                         <label><span>Enable:</span><input type="checkbox" name="auditd_enabled" value="true" id="js_audit_enabled"></label>
                       </div>
                       <div class="row">
-                        <label><span>Target directory:</span><input name="archive_path" class="archive_path_field" id="js_archive_path_field"></label>
+                        <label><span>Target log directory:</span><input name="log_path" class="archive_path_field" id="js_archive_path_field">
+                        <i class="err-log_path error-container"></i></label>
                       </div>
                       <div class="row">
-                        <label><span>Log rotation time interval:</span><input name="rotate_interval"></label>
-                        <select name="rotate_interval_unit">
-                          <option value="seconds">Seconds</option>
-                          <option value="minutes">Minutes</option>
-                          <option value="hours">Hours</option>
-                          <option value="days">Days</option>
-                        </select>
+                        <label><span>Target archive directory:</span><input name="archive_path" class="archive_path_field" id="js_archive_path_field">
+                        <i class="err-archive_path error-container"></i></label>
+                      </div>
+                      <div class="row">
+                        <label><span>Log rotation time interval:</span><input name="rotate_interval" style="width:2.5em;"> <i class="err-rotate_interval error-container"></i></label>
                       </div>
                     </div>
                     <div class="save_cancel">

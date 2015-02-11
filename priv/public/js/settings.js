@@ -1521,17 +1521,17 @@ var AutoCompactionSection = {
 };
 
 function auditSetupSectionCells(ns, tabs, sectionCell) {
-  ns.onLDAPTabCell = Cell.computeEager(function (v) {
+  ns.onAuditTabCell = Cell.computeEager(function (v) {
     return v.need(sectionCell) == "settings" && v.need(tabs) == "audit";
   });
   ns.settingsCell = Cell.computeEager(function (v) {
-    if (!v.need(ns.onLDAPTabCell)) {
+    if (!v.need(ns.onAuditTabCell)) {
       return;
     }
     return future.get({url: "/settings/audit"});
   });
   ns.showSpinnerCell = Cell.computeEager(function (v) {
-    if (!v(ns.onLDAPTabCell)) {
+    if (!v(ns.onAuditTabCell)) {
       return false;
     }
     return !v(ns.settingsCell);
@@ -1554,15 +1554,22 @@ var AuditSetupSection = {
       $(this).attr('title', $(this).val());
     });
 
-    $(':input', self.auditSetupForm).change(function () {
-      self.auditSetupFormSubmit.prop('disabled', false);
-    }).bind('input', function () {
-      self.auditSetupFormSubmit.prop('disabled', false);
-    });
-
     self.auditEnabled.change(function () {
       var isChecked = self.auditEnabled.attr('checked');
       $(':input', self.auditSetupForm).not(self.auditEnabled).not(self.auditSetupFormSubmit).prop('disabled', !isChecked);
+    });
+
+    self.formValidation = setupFormValidation(self.auditSetupForm, '/settings/audit?just_validate=1', function (status, errors) {
+      $.isEmptyObject(errors.errors) && (errors.errors = null);
+      SettingsSection.renderErrors(errors, self.auditSetupForm);
+    }, self.getForm);
+    self.formValidation.pause();
+
+    self.onAuditTabCell.subscribeValue(function (value) {
+      if (!value) {
+        self.formValidation.pause();
+        SettingsSection.renderErrors({errors:null}, self.auditSetupForm);
+      }
     });
 
     self.showSpinnerCell.subscribeValue(function (val) {
@@ -1593,35 +1600,21 @@ var AuditSetupSection = {
     self.settingsCell.subscribeValue(function (settings) {
       if (settings) {
         self.fillForm(settings);
+        self.formValidation.unpause();
       }
     });
   },
-  precisionFloating: function (float) {
-    return Number(float.toFixed(5));
-  },
-  formatTimeUnit: function (unit) {
-    switch (unit) {
-      case 'seconds': return 1;
-      case 'minutes': return 60;
-      case 'hours': return 60 * 60;
-      case 'days': return 60 * 60 * 24;
-    }
-  },
-  formatRotateInterval: function (interval) {
+  getForm: function () {
     var self = AuditSetupSection;
-    return _.chain(['days', 'hours', 'minutes', 'seconds']).map(function (unit) {
-      return [interval / self.formatTimeUnit(unit), unit];
-    }).find(function (value) {
-      return value[0] >= 1;
-    }).value();
+    var formData = $.deparam(serializeForm(self.auditSetupForm));
+    if (!formData["auditd_enabled"]) {
+      formData["auditd_enabled"] = "false";
+    }
+    return $.param(formData);
   },
   fillForm: function (settings) {
     var self = this;
-    var formattedInterval = self.formatRotateInterval(settings["rotate_interval"]);
-    settings["rotate_interval"] = formattedInterval[0];
-    settings["rotate_interval_unit"] = formattedInterval[1];
     setFormValues(self.auditSetupForm, settings);
-    self.auditSetupFormSubmit.prop('disabled', true);
     if (!DAL.cells.isROAdminCell.value) {
       self.auditEnabled.change();
       self.auditArchivePathField.trigger('input');
@@ -1629,18 +1622,15 @@ var AuditSetupSection = {
   },
   submit: function () {
     var self = this;
-    var formData = $.deparam(serializeForm(self.auditSetupForm));
+    self.formValidation.pause();
     self.settingsCell.setValue(undefined);
-    if (!formData["auditd_enabled"]) {
-      formData["auditd_enabled"] = "false";
-    } else {
-      formData["rotate_interval"] = formData["rotate_interval"] * self.formatTimeUnit(formData["rotate_interval_unit"]);
-      delete formData["rotate_interval_unit"];
-    }
     $.ajax({
       type: "POST",
       url: "/settings/audit",
-      data: $.param(formData),
+      data: self.getForm(),
+      error: function (xhr) {
+        SettingsSection.renderErrors(JSON.parse(xhr.responseText), self.auditSetupForm);
+      },
       complete: function () {
         self.settingsCell.recalculate();
       }
