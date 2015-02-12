@@ -51,8 +51,8 @@
       },
       {
           "id" : 8195,
-          "name" : "password change",
-          "description" : "Password was changed",
+          "name" : "user credentials change",
+          "description" : "User credentials were changed",
           "sync" : false,
           "enabled" : true,
           "mandatory_fields" : {
