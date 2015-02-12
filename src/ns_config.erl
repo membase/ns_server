@@ -931,14 +931,20 @@ handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
 
 handle_call({upgrade_config_explicitly, Upgrader}, _From, State) ->
     OldKVList = config_dynamic(State),
-    NewConfig = bump_local_changes_counter(upgrade_config(State, Upgrader)),
+    NewConfig0 = upgrade_config(State, Upgrader),
 
-    NewKVList = config_dynamic(NewConfig),
-    Diff = NewKVList -- OldKVList,
+    case OldKVList =:= config_dynamic(NewConfig0) of
+        true ->
+            {reply, ok, State};
+        false ->
+            NewConfig = bump_local_changes_counter(NewConfig0),
+            NewKVList = config_dynamic(NewConfig),
+            Diff = NewKVList -- OldKVList,
 
-    update_ets_dup(Diff),
-    announce_locally_made_changes(Diff),
-    {reply, ok, NewConfig}.
+            update_ets_dup(Diff),
+            announce_locally_made_changes(Diff),
+            {reply, ok, NewConfig}
+    end.
 
 
 %%--------------------------------------------------------------------
