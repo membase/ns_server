@@ -20,7 +20,7 @@
       },
       {
           "id" : 8193,
-          "name" : "login faulure",
+          "name" : "login failure",
           "description" : "Unsuccessful attempt to login to couchbase cluster",
           "sync" : false,
           "enabled" : true,
