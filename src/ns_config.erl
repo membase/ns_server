@@ -943,7 +943,7 @@ handle_call({upgrade_config_explicitly, Upgrader}, _From, State) ->
 
             update_ets_dup(Diff),
             announce_locally_made_changes(Diff),
-            {reply, ok, NewConfig}
+            {reply, ok, initiate_save_config(NewConfig)}
     end.
 
 
