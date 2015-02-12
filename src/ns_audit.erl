@@ -250,19 +250,27 @@ rebalance_initiated(Req, KnownNodes, EjectedNodes, DeltaRecoveryBuckets) ->
          {ejected_nodes, {list, EjectedNodes}},
          {delta_recovery_buckets, Buckets}]).
 
+build_bucket_props(Props) ->
+    lists:foldl(
+      fun({sasl_password, _}, Acc) ->
+              Acc;
+         ({autocompaction, CProps}, Acc) ->
+              [{autocompaction, {build_compaction_settings(CProps)}} | Acc];
+         ({K, V}, Acc) ->
+              [{K, to_binary(V)} | Acc]
+      end, [], Props).
+
 create_bucket(Req, Name, Type, Props) ->
     put(create_bucket, Req,
         [{name, Name},
          {type, Type},
-         {props, {[{K, to_binary(V)} || {K, V} <- Props,
-                                        K =/= sasl_password]}}]).
+         {props, {build_bucket_props(Props)}}]).
 
 modify_bucket(Req, Name, Type, Props) ->
     put(modify_bucket, Req,
         [{name, Name},
          {type, Type},
-         {props, {[{K, to_binary(V)} || {K, V} <- Props,
-                                        K =/= sasl_password]}}]).
+         {props, {build_bucket_props(Props)}}]).
 
 delete_bucket(Req, Name) ->
     put(delete_bucket, Req, [{name, Name}]).
@@ -370,21 +378,24 @@ alerts(Req, Settings) ->
 build_threshold({Percentage, Size}) ->
     {prepare_list([{percentage, Percentage}, {size, Size}])}.
 
+build_compaction_settings(Settings) ->
+    lists:foldl(
+      fun ({allowed_time_period, V}, Acc) ->
+              [{allowed_time_period, {prepare_list(V)}} | Acc];
+          ({database_fragmentation_threshold, V}, Acc) ->
+              [{database_fragmentation_threshold, build_threshold(V)} | Acc];
+          ({view_fragmentation_threshold, V}, Acc) ->
+              [{view_fragmentation_threshold, build_threshold(V)} | Acc];
+          ({purge_interval, _} = T, Acc) ->
+              [T | Acc];
+          ({parallel_db_and_view_compaction, _} = T, Acc) ->
+              [T | Acc];
+          (_, Acc) ->
+              Acc
+      end, [], Settings).
+
 modify_compaction_settings(Req, Settings) ->
-    Data = lists:foldl(
-             fun ({allowed_time_period, V}, Acc) ->
-                     [{allowed_time_period, {prepare_list(V)}} | Acc];
-                 ({database_fragmentation_threshold, V}, Acc) ->
-                     [{database_fragmentation_threshold, build_threshold(V)} | Acc];
-                 ({view_fragmentation_threshold, V}, Acc) ->
-                     [{view_fragmentation_threshold, build_threshold(V)} | Acc];
-                 ({purge_interval, _} = T, Acc) ->
-                     [T | Acc];
-                 ({parallel_db_and_view_compaction, _} = T, Acc) ->
-                     [T | Acc];
-                 (_, Acc) ->
-                     Acc
-             end, [], Settings),
+    Data = build_compaction_settings(Settings),
     put(modify_compaction_settings, Req, Data).
 
 regenerate_certificate(Req) ->
