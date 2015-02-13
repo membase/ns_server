@@ -315,7 +315,7 @@ def make_os_tasks():
         LinuxTask("Core dump settings", "find /proc/sys/kernel -type f -name '*core*' -print -exec cat '{}' ';'"),
         UnixTask("sysctl settings", "sysctl -a"),
         LinuxTask("relevant lsof output",
-                  "echo moxi memcached vbucketmigrator beam couch_compact godu sigar_port | xargs -n1 pgrep | xargs -n1 -r -- lsof -n -p"),
+                  "echo moxi memcached beam couch_compact godu sigar_port | xargs -n1 pgrep | xargs -n1 -r -- lsof -n -p"),
         LinuxTask("LVM info", "lvdisplay"),
         LinuxTask("LVM info", "vgdisplay"),
         LinuxTask("LVM info", "pvdisplay"),
