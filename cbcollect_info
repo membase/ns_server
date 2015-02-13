@@ -278,6 +278,9 @@ def basedir():
     return mydir
 
 def make_os_tasks():
+    programs = " ".join(["moxi", "memcached", "beam.smp",
+                         "couch_compact", "godu", "sigar_port"])
+
     _tasks = [
         UnixTask("uname", "uname -a"),
         UnixTask("time and TZ", "date; date -u"),
@@ -315,7 +318,7 @@ def make_os_tasks():
         LinuxTask("Core dump settings", "find /proc/sys/kernel -type f -name '*core*' -print -exec cat '{}' ';'"),
         UnixTask("sysctl settings", "sysctl -a"),
         LinuxTask("relevant lsof output",
-                  "echo moxi memcached beam couch_compact godu sigar_port | xargs -n1 pgrep | xargs -n1 -r -- lsof -n -p"),
+                  "echo %(programs)s | xargs -n1 pgrep | xargs -n1 -r -- lsof -n -p" % locals()),
         LinuxTask("LVM info", "lvdisplay"),
         LinuxTask("LVM info", "vgdisplay"),
         LinuxTask("LVM info", "pvdisplay"),
@@ -371,10 +374,10 @@ def make_os_tasks():
         LinuxTask("Raw /proc/uptime", "cat /proc/uptime"),
         LinuxTask("All logs", "tar cz /var/log/syslog* /var/log/dmesg /var/log/messages* /var/log/daemon* /var/log/debug* /var/log/kern.log* 2>/dev/null",
                   log_file="syslog.tar.gz", no_header = True),
-        LinuxTask("Relevant proc data", "echo moxi beam.smp memcached couch_compact sigar_port godu | "
-                  "xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; cat /proc/$1/status; cat /proc/$1/limits; cat /proc/$1/smaps; cat /proc/$1/numa_maps; cat /proc/$1/task/*/sched; echo' --"),
-        LinuxTask("Processes' environment", "echo beam.smp memcached | "
-                  r"xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; ( cat /proc/$1/environ | tr \\0 \\n ); echo' --"),
+        LinuxTask("Relevant proc data", "echo %(programs)s | "
+                  "xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; cat /proc/$1/status; cat /proc/$1/limits; cat /proc/$1/smaps; cat /proc/$1/numa_maps; cat /proc/$1/task/*/sched; echo' --" % locals()),
+        LinuxTask("Processes' environment", "echo %(programs)s | "
+                  r"xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; ( cat /proc/$1/environ | tr \\0 \\n ); echo' --" % locals()),
         LinuxTask("NUMA data", "numactl --hardware"),
         LinuxTask("NUMA data", "numactl --show"),
         LinuxTask("NUMA data", "cat /sys/devices/system/node/node*/numastat"),
