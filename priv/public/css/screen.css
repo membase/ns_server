@@ -95,7 +95,7 @@ a.dynamic_disabled{text-decoration:none;cursor:default;}
 .page-header {background:url('../images/header_bg.png') 0 bottom repeat-x;height:60px;}
 
 #headerNav {clear:both;height:50px;background:url('../images/navigation_bg.png') repeat-x;}
-#headerNav .contents{width:55em;margin:auto;}
+#headerNav .contents{width:915px;margin:auto;}
 #headerNav ul li {float:left;position:relative}
 #headerNav li a {display:block;text-decoration:none;padding:13px 23px 7px;line-height:27px}
 #headerNav li:hover {background:url('../images/active_hover_bg.png') repeat-x;}

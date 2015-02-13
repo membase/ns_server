@@ -46,6 +46,7 @@
           <li class="line"><a class="switch_servers switch_groups" href="#visitSec=servers">Server Nodes</a></li>
           <li class="line"><a class="switch_buckets" href="#visitSec=buckets">Data Buckets</a></li>
           <li class="line"><a class="switch_views" href="#visitSec=views">Views</a></li>
+          <li class="line"><a class="switch_indexes" href="#visitSec=indexes">Index</a></li>
           <li class="line"><a class="switch_replications" href="#visitSec=replications">XDCR</a></li>
           <li class="line"><a class="switch_log" href="#visitSec=log">Log</a></li>
           <li class="line" id="nav_settings_container"><a href="#visitSec=settings" class="switch_settings">Settings</a></li>
@@ -1881,6 +1882,83 @@
           </div>
         </div>
 
+        <script id="js_indexes_list_template" type="text/html">
+          <table class="list align_text" style="width:100%">
+            <thead>
+              <tr>
+                <th>Bucket</th>
+                <th>Node</th>
+                <th>Index Name</th>
+                <th>Definition</th>
+                <th>Status</th>
+                <th>Build Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if (rows.length) { %}
+                {% _.each(rows, function (row) { %}
+                  <tr>
+                    <td>{%= h(row.bucket) %}</td>
+                    <td>{%= h(row.hostname) %}</td>
+                    <td>{%= h(row.index) %}</td>
+                    <td>{%= h(row.definition || "TODO") %}</td>
+                    <td>{%= h(row.status || "TODO") %}</td>
+                    <td>{%= h(row.progress || "TODO") %}</td>
+                  </tr>
+                {% }); %}
+              {% } %}
+            </tbody>
+          </table>
+        </script>
+
+        <script id="js_index_nodes_list_template" type="text/html">
+          <table class="list align_text" style="width:100%">
+            <thead>
+              <tr>
+                <th>Node</th>
+                <th>Current RAM Quota</th>
+                <th>RAM Quota on Restart</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if (rows.length) { %}
+                {% _.each(rows, function (row) { %}
+                  <tr>
+                    <td>{%= h(row.hostname) %}</td>
+                    <td>{%= h(row.currentQuota) %}</td>
+                    <td>{%= h(row.pendingQuota) %}</td>
+                  </tr>
+                {% }); %}
+              {% } %}
+            </tbody>
+          </table>
+        </script>
+
+        <div id="js_indexes" class="indexes" style="display:none">
+          <h1>Indexes</h1>
+          <div class="shadow_box">
+            <div class="header_2">
+              <ul class="tabs switcher">
+                <li class="tab_left">
+                  <a>Indexes</a>
+                </li>
+                <li class="tab_right">
+                  <a>Index Nodes</a>
+                </li>
+              </ul>
+              <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+            </div>
+            <div class="panes">
+              <div>
+                <div id="js_indexes_list_container" class="servers_list"></div>
+              </div>
+              <div>
+                <div id="js_index_nodes_list_container" class="servers_list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div id="js_replications" class="replications" style="display:none">
           <h1>Replications</h1>
           <!-- Clusters -->
@@ -3636,6 +3714,7 @@ $(window).bind('template:rendered', function () {
 <script src="js/buckets.js"></script>
 <script src="js/filter.js"></script>
 <script src="js/views.js"></script>
+<script src="js/indexes.js"></script>
 <script src="js/replications.js"></script>
 <script src="js/documents.js"></script>
 <script src="js/overview.js"></script>

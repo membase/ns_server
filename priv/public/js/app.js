@@ -113,7 +113,8 @@ var ThePage = {
              replications: ReplicationsSection,
              documents: DocumentsSection,
              log: LogsSection,
-             settings: SettingsSection},
+             settings: SettingsSection,
+             indexes: IndexesSection},
 
   coming: {alerts:true},
 
