@@ -209,7 +209,7 @@ default() ->
      {{node, node(), isasl}, [{path, filename:join(DataDir, ?ISASL_PW)}]},
 
      {audit,
-      [{auditd_enabled, true},
+      [{auditd_enabled, false},
        {rotate_interval, 86400},
        {disabled, []},
        {sync, []}] ++ AuditGlobalLogs},
