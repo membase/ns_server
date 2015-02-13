@@ -302,47 +302,34 @@ do_unpack_processes_v2(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
         <<>> ->
             Acc;
         _ ->
-            NewSample0 =
-                [{proc_stat_name(Name, mem_size), MemSize},
-                 {proc_stat_name(Name, mem_resident), MemResident},
-                 {proc_stat_name(Name, mem_share), MemShare},
-                 {proc_stat_name(Name, cpu_utilization), CpuUtilization},
-                 {proc_stat_name(Name, minor_faults_raw), MinorFaults},
-                 {proc_stat_name(Name, major_faults_raw), MajorFaults},
-                 {proc_stat_name(Name, page_faults_raw), PageFaults}],
+            PidBinary = list_to_binary(integer_to_list(Pid)),
 
-            OldPid = proc_stat(Name, pid, PrevSampleAcc),
-            {MinorFaultsDiff, MajorFaultsDiff, PageFaultsDiff} =
-                case OldPid =:= Pid of
-                    true ->
-                        OldMinorFaults = proc_stat(Name, minor_faults, PrevSampleAcc),
-                        OldMajorFaults = proc_stat(Name, major_faults, PrevSampleAcc),
-                        OldPageFaults = proc_stat(Name, page_faults, PrevSampleAcc),
+            OldMinorFaults = proc_stat(Name, PidBinary, minor_faults, PrevSampleAcc, 0),
+            OldMajorFaults = proc_stat(Name, PidBinary, major_faults, PrevSampleAcc, 0),
+            OldPageFaults = proc_stat(Name, PidBinary, page_faults, PrevSampleAcc, 0),
 
-                        true = (OldMinorFaults =/= undefined),
-                        true = (OldMajorFaults =/= undefined),
-                        true = (OldPageFaults =/= undefined),
+            MinorFaultsDiff = MinorFaults - OldMinorFaults,
+            MajorFaultsDiff = MajorFaults - OldMajorFaults,
+            PageFaultsDiff = PageFaults - OldPageFaults,
 
-                        {MinorFaults - OldMinorFaults,
-                         MajorFaults - OldMajorFaults,
-                         PageFaults - OldPageFaults};
-                    false ->
-                        {MinorFaults, MajorFaults, PageFaults}
-                end,
+            NewSample =
+                [{proc_stat_name(Name, PidBinary, major_faults), MajorFaultsDiff},
+                 {proc_stat_name(Name, PidBinary, minor_faults), MinorFaultsDiff},
+                 {proc_stat_name(Name, PidBinary, page_faults), PageFaultsDiff},
+                 {proc_stat_name(Name, PidBinary, mem_size), MemSize},
+                 {proc_stat_name(Name, PidBinary, mem_resident), MemResident},
+                 {proc_stat_name(Name, PidBinary, mem_share), MemShare},
+                 {proc_stat_name(Name, PidBinary, cpu_utilization), CpuUtilization},
+                 {proc_stat_name(Name, PidBinary, minor_faults_raw), MinorFaults},
+                 {proc_stat_name(Name, PidBinary, major_faults_raw), MajorFaults},
+                 {proc_stat_name(Name, PidBinary, page_faults_raw), PageFaults}],
 
-            NewSample1 =
-                [{proc_stat_name(Name, major_faults), MajorFaultsDiff},
-                 {proc_stat_name(Name, minor_faults), MinorFaultsDiff},
-                 {proc_stat_name(Name, page_faults), PageFaultsDiff} |
-                 NewSample0],
+            PrevSample1 = [{proc_stat_name(Name, PidBinary, major_faults), MajorFaults},
+                           {proc_stat_name(Name, PidBinary, minor_faults), MinorFaults},
+                           {proc_stat_name(Name, PidBinary, page_faults), PageFaults}
+                           | PrevSampleAcc],
 
-            PrevSample1 = misc:update_proplist(PrevSampleAcc,
-                                               [{proc_stat_name(Name, pid), Pid},
-                                                {proc_stat_name(Name, major_faults), MajorFaults},
-                                                {proc_stat_name(Name, minor_faults), MinorFaults},
-                                                {proc_stat_name(Name, page_faults), PageFaults}]),
-
-            Acc1 = {NewSample1 ++ NewSampleAcc, PrevSample1},
+            Acc1 = {NewSample ++ NewSampleAcc, PrevSample1},
             do_unpack_processes_v2(Rest, Acc1)
     end.
 
@@ -359,19 +346,16 @@ do_extract_string(Bin, Pos) ->
             binary:part(Bin, 0, Pos + 1)
     end.
 
-proc_stat(Name, Stat, Sample) ->
-    proc_stat(Name, Stat, Sample, undefined).
-
-proc_stat(Name, Stat, Sample, Default) ->
-    case lists:keyfind(proc_stat_name(Name, Stat), 1, Sample) of
+proc_stat(Name, Pid, Stat, Sample, Default) ->
+    case lists:keyfind(proc_stat_name(Name, Pid, Stat), 1, Sample) of
         {_, V} ->
             V;
         _ ->
             Default
     end.
 
-proc_stat_name(Name, Stat) ->
-    <<"proc/", Name/binary, $/, (atom_to_binary(Stat, latin1))/binary>>.
+proc_stat_name(Name, Pid, Stat) ->
+    <<"proc/", Pid/binary, $/, Name/binary, $/, (atom_to_binary(Stat, latin1))/binary>>.
 
 add_ets_stats(Stats) ->
     [{_, NowRestLeaves}] = ets:lookup(ns_server_system_stats, {request_leaves, rest}),
