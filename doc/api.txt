@@ -480,17 +480,17 @@ name=<group name>
 // adds node with given hostname to given server group with specified
 // set of services
 //
-// services field is optional and defaults to kv,moxi
+// services field is optional and defaults to kv
 POST /pools/default/serverGroups/<group-uuid>/addNode
-hostname=<hostname>&user=Administrator&password=asdasd&services=kv,n1ql,moxi
+hostname=<hostname>&user=Administrator&password=asdasd&services=kv,n1ql
 
 // same as serverGroups addNode endpoint, but for default server group
 POST /controller/addNode
-hostname=<hostname>&user=Administrator&password=asdasd&services=kv,n1ql,moxi
+hostname=<hostname>&user=Administrator&password=asdasd&services=kv,n1ql
 
 // joins _this_ node to cluster which member is given in hostname parameter
 POST /node/controller/doJoinCluster
-hostname=<hostname>&user=Administrator&password=asdasd&services=kv,n1ql,moxi
+hostname=<hostname>&user=Administrator&password=asdasd&services=kv,n1ql
 
 // empty post causes certificate regeneration
 POST /controller/regenerateCertificate
