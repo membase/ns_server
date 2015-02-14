@@ -25,8 +25,6 @@
 
 -include("ns_stats.hrl").
 
--define(MAIN_BEAM_NAME, <<"(main)beam.smp">>).
-
 -define(ETS_LOG_INTVL, 180).
 
 %% API
@@ -270,32 +268,24 @@ unpack_data_v2(Bin, PrevSample) ->
                          LocalDiff = CPULocalMS - OldCPULocal,
                          IdleDiff = CPUIdleMS - OldCPUIdle,
 
-                         MajorFaults = beam_stat(major_faults, NowSamplesProcs, 0),
-                         MinorFaults = beam_stat(minor_faults, NowSamplesProcs, 0),
-                         PageFaults = beam_stat(page_faults, NowSamplesProcs, 0),
-
                          RV1 = misc:update_proplist(RawStatsGlobal,
                                                     [{cpu_local_ms, LocalDiff},
                                                      {cpu_idle_ms, IdleDiff}]),
 
                          [{mem_free, MemActualFree},
                           {cpu_utilization_rate, try 100 * (LocalDiff - IdleDiff) / LocalDiff
-                                                 catch error:badarith -> 0 end},
-                          {major_faults, MajorFaults},
-                          {minor_faults, MinorFaults},
-                          {page_faults, PageFaults}
+                                                 catch error:badarith -> 0 end}
                           | RV1 ++ NowSamplesProcs]
                  end,
 
     {NowSamples, {RawStatsGlobal, PrevSampleProcs1}}.
 
 unpack_processes_v2(Bin, PrevSamples) ->
-    BeamPid = list_to_integer(os:getpid()),
-    do_unpack_processes_v2(Bin, BeamPid, {[], PrevSamples}).
+    do_unpack_processes_v2(Bin, {[], PrevSamples}).
 
-do_unpack_processes_v2(Bin, _, Acc) when size(Bin) =:= 0 ->
+do_unpack_processes_v2(Bin, Acc) when size(Bin) =:= 0 ->
     Acc;
-do_unpack_processes_v2(Bin, BeamPid, {NewSampleAcc, PrevSampleAcc} = Acc) ->
+do_unpack_processes_v2(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
     <<Name0:12/binary,
       CpuUtilization:32/native,
       Pid:64/native,
@@ -307,18 +297,11 @@ do_unpack_processes_v2(Bin, BeamPid, {NewSampleAcc, PrevSampleAcc} = Acc) ->
       PageFaults:64/native,
       Rest/binary>> = Bin,
 
-    RawName = extract_string(Name0),
-    case RawName of
+    Name = extract_string(Name0),
+    case Name of
         <<>> ->
             Acc;
         _ ->
-            Name = case Pid =:= BeamPid of
-                       true ->
-                           ?MAIN_BEAM_NAME;
-                       false ->
-                           RawName
-                   end,
-
             NewSample0 =
                 [{proc_stat_name(Name, mem_size), MemSize},
                  {proc_stat_name(Name, mem_resident), MemResident},
@@ -360,7 +343,7 @@ do_unpack_processes_v2(Bin, BeamPid, {NewSampleAcc, PrevSampleAcc} = Acc) ->
                                                 {proc_stat_name(Name, page_faults), PageFaults}]),
 
             Acc1 = {NewSample1 ++ NewSampleAcc, PrevSample1},
-            do_unpack_processes_v2(Rest, BeamPid, Acc1)
+            do_unpack_processes_v2(Rest, Acc1)
     end.
 
 extract_string(Bin) ->
@@ -375,9 +358,6 @@ do_extract_string(Bin, Pos) ->
         _ ->
             binary:part(Bin, 0, Pos + 1)
     end.
-
-beam_stat(Stat, Sample, Default) ->
-    proc_stat(?MAIN_BEAM_NAME, Stat, Sample, Default).
 
 proc_stat(Name, Stat, Sample) ->
     proc_stat(Name, Stat, Sample, undefined).
