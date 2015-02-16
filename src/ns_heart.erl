@@ -309,8 +309,15 @@ current_status_slow_inner() ->
 
     ProcessesStats =
         lists:filter(
-          fun ({<<"proc/", _/binary>>, _}) ->
-                  true;
+          fun ({<<"proc/", Rest/binary>>, _}) ->
+                  case binary:split(Rest, <<$/>>, [global]) of
+                      [_Pid, _Process, StatName] ->
+                          lists:member(StatName,
+                                       [<<"mem_resident">>, <<"mem_size">>,
+                                        <<"cpu_utilization">>, <<"major_faults_raw">>]);
+                      _ ->
+                          false
+                  end;
               (_) ->
                   false
           end, SystemStats),
