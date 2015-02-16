@@ -73,7 +73,7 @@ handle_remote_clusters(Req) ->
             JSON = lists:map(fun build_remote_cluster_info/1, RemoteClusters),
             menelaus_util:reply_json(Req, JSON);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req)
+            goxdcr_rest:proxy(Req)
     end.
 
 handle_remote_clusters_post(Req) ->
@@ -83,7 +83,7 @@ handle_remote_clusters_post(Req) ->
             QS = Req:parse_qs(),
             do_handle_remote_clusters_post(Req, Params, proplists:get_value("just_validate", QS), 10);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req)
+            goxdcr_rest:proxy(Req)
     end.
 
 do_handle_remote_clusters_post(_Req, _Params, _JustValidate, _TriesLeft = 0) ->
@@ -251,7 +251,7 @@ handle_remote_cluster_update(Id, Req) ->
             QS = Req:parse_qs(),
             do_handle_remote_cluster_update(Id, Req, Params, proplists:get_value("just_validate", QS), 10);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req)
+            goxdcr_rest:proxy(Req)
     end.
 
 do_handle_remote_cluster_update(_Id, _Req, _Params, _JustValidate, _TriesLeft = 0) ->
@@ -423,7 +423,7 @@ handle_remote_cluster_delete(Id, Req) ->
         false ->
             do_handle_remote_cluster_delete(Id, Req, 10);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req)
+            goxdcr_rest:proxy(Req)
     end.
 
 do_handle_remote_cluster_delete(_Id, _Req, _TriesLeft = 0) ->

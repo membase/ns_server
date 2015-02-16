@@ -54,9 +54,7 @@
          is_enterprise/0,
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
-         assert_is_sherlock/0,
-         proxy_to_goxdcr/1,
-         proxy_to_goxdcr/2]).
+         assert_is_sherlock/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -3173,55 +3171,6 @@ handle_settings_auto_compaction(Req) ->
             {purgeInterval, compaction_api:get_purge_interval(global)}],
     reply_json(Req, {struct, JSON}, 200).
 
-get_goxdcr_rest_port() ->
-    ns_config:read_key_fast({node, node(), xdcr_rest_port}, 9998).
-
-convert_header_name(Header) when is_atom(Header) ->
-    atom_to_list(Header);
-convert_header_name(Header) when is_list(Header) ->
-    Header.
-
-query_goxdcr(MochiReq, Body) ->
-    HeadersList = mochiweb_headers:to_list(MochiReq:get(headers)),
-    Headers = lists:filtermap(fun ({'Content-Length', _Value}) ->
-                                      false;
-                                  ({Name, Value}) ->
-                                      {true, {convert_header_name(Name), Value}}
-                              end, HeadersList),
-    query_goxdcr(MochiReq, MochiReq:get(raw_path), Headers, Body).
-
-query_goxdcr(MochiReq, Path, Headers, Body) ->
-    URL = "http://127.0.0.1:" ++ integer_to_list(get_goxdcr_rest_port()) ++ Path,
-    Method = MochiReq:get(method),
-
-    Params = MochiReq:parse_qs(),
-    Timeout = list_to_integer(proplists:get_value("connection_timeout", Params, "30000")),
-
-    {ok, {{Code, _}, RespHeaders, RespBody}} =
-        lhttpc:request(URL, Method, Headers, Body, Timeout, []),
-    {Code, RespHeaders, RespBody}.
-
-
-proxy_to_goxdcr(MochiReq) ->
-    proxy_to_goxdcr(MochiReq, MochiReq:get(raw_path)).
-
-proxy_to_goxdcr(MochiReq, Path) ->
-    Headers0 = [{convert_header_name(Name), Value} ||
-                   {Name, Value} <- mochiweb_headers:to_list(MochiReq:get(headers))],
-    Headers = case menelaus_auth:extract_ui_auth_token(MochiReq) of
-                  undefined ->
-                      Headers0;
-                  Token ->
-                      [{"ns_server-auth-token", Token} | Headers0]
-              end,
-    Body = case MochiReq:recv_body() of
-               undefined ->
-                   <<>>;
-               B ->
-                   B
-           end,
-    MochiReq:respond(query_goxdcr(MochiReq, Path, Headers, Body)).
-
 internal_settings_conf() ->
     GetBool = fun (SV) ->
                       case SV of
@@ -3295,7 +3244,7 @@ handle_internal_settings(Req) ->
         false ->
             reply_json(Req, {InternalSettings});
         true ->
-            case query_goxdcr(Req, []) of
+            case goxdcr_rest:send(Req, []) of
                 {200, _Headers, Body} ->
                     {struct, XdcrSettings} = mochijson2:decode(Body),
                     reply_json(Req, {InternalSettings ++ XdcrSettings});
@@ -3340,7 +3289,7 @@ handle_internal_settings_post(Req) ->
                     reply_json(Req, []);
                 _ ->
                     {Code, RespHeaders, RespBody} =
-                        query_goxdcr(Req, mochiweb_util:urlencode(NotFound)),
+                        goxdcr_rest:send(Req, mochiweb_util:urlencode(NotFound)),
                     case Code of
                         200 ->
                             reply_json(Req, []);

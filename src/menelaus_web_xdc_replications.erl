@@ -35,7 +35,7 @@ handle_create_replication(Req) ->
         false ->
             do_handle_create_replication(Req);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req)
+            goxdcr_rest:proxy(Req)
     end.
 
 do_handle_create_replication(Req) ->
@@ -77,7 +77,7 @@ handle_cancel_replication(XID, Req) ->
         false ->
             do_handle_cancel_replication(XID, Req);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req, "/controller/cancelXDCR/" ++ XID)
+            goxdcr_rest:proxy(Req, "/controller/cancelXDCR/" ++ XID)
     end.
 
 do_handle_cancel_replication(XID, Req) ->
@@ -94,7 +94,7 @@ handle_replication_settings(XID, Req) ->
         false ->
             do_handle_replication_settings(XID, Req);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req)
+            goxdcr_rest:proxy(Req)
     end.
 
 do_handle_replication_settings(XID, Req) ->
@@ -118,7 +118,7 @@ handle_replication_settings_post(XID, Req) ->
         false ->
             do_handle_replication_settings_post(XID, Req);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req)
+            goxdcr_rest:proxy(Req)
     end.
 
 do_handle_replication_settings_post(XID, Req) ->
@@ -154,7 +154,7 @@ handle_global_replication_settings(Req) ->
         false ->
             do_handle_global_replication_settings(Req);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req)
+            goxdcr_rest:proxy(Req)
     end.
 
 do_handle_global_replication_settings(Req) ->
@@ -167,7 +167,7 @@ handle_global_replication_settings_post(Req) ->
         false ->
             do_handle_global_replication_settings_post(Req);
         true ->
-            menelaus_web:proxy_to_goxdcr(Req)
+            goxdcr_rest:proxy(Req)
     end.
 
 do_handle_global_replication_settings_post(Req) ->
