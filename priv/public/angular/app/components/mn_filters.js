@@ -265,8 +265,11 @@ angular.module('mnFilters')
     };
   })
 
-  .filter('mnPrettyVersion', function () {
-    function parseVersion(str) {
+  .filter('parseVersion', function () {
+    return function (str) {
+      if (!str) {
+        return;
+      }
       // Expected string format:
       //   {release version}-{build #}-{Release type or SHA}-{enterprise / community}
       // Example: "1.8.0-9-ga083a1e-enterprise"
@@ -281,12 +284,15 @@ angular.module('mnFilters')
       a[3] = (a[3] && (a[3].substr(0, 1).toUpperCase() + a[3].substr(1))) || "DEV";
       return a; // Example result: ["1.8.0-9", "9", "ga083a1e", "Enterprise"]
     }
+  })
+
+  .filter('mnPrettyVersion', function (parseVersionFilter) {
 
     return function (str, full) {
       if (!str) {
         return;
       }
-      var a = parseVersion(str);
+      var a = parseVersionFilter(str);
       // Example default result: "1.8.0-7 Enterprise Edition (build-7)"
       // Example full result: "1.8.0-7 Enterprise Edition (build-7-g35c9cdd)"
       var suffix = "";

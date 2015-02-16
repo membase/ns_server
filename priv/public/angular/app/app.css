@@ -90,9 +90,9 @@ a.dynamic_disabled{text-decoration:none;cursor:default;}
 #mainContainer {position:relative;width:1060px;left:12%;margin-top:15px;padding:0 0 220px;}
 .main_holder {position:relative; margin:auto; left:0px !important;}
 .cnt_holder {width:960px; position:relative; margin: 0 auto;}
-.log_wrap {overflow: hidden;}
+.log_wrap {float: left;}
 .log_wrap a {display: block; width: 109px; height: 60px; background: url(/images/couchbase_small_2.0.2.png) no-repeat 50% 50%;}
-
+.tab_name {overflow: hidden; font-size: 30px; font-weight: normal; line-height: 60px; text-align: center;}
 .page-header {background:url('/images/header_bg.png') 0 bottom repeat-x;height:60px;}
 
 #headerNav {clear:both;height:50px;background:url('/images/navigation_bg.png') repeat-x;}
@@ -1453,3 +1453,7 @@ input[type=number].size {width:4em;}
 .global_alerts_container {width: 1060px; margin: 0 auto;}
 
 #js_collect_information .controls {text-align: right; height: 30px; padding-right: 10px; margin-top: -40px; padding-bottom: 10px; margin-left: 300px;}
+
+[ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {
+  display: none !important;
+}
