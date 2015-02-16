@@ -84,21 +84,17 @@ flush_ticks(Acc) ->
             Acc
     end.
 
--define(STATS_V0_BLOCK_SIZE, 88).
--define(STATS_V1_BLOCK_SIZE, 112).
--define(STATS_V2_BLOCK_SIZE, 808).
-
 recv_data(Port) ->
     recv_data_loop(Port, <<"">>).
 
-recv_data_loop(Port, <<0:32/native, _/binary>> = Acc) ->
-    Data = recv_data_with_length(Port, Acc, ?STATS_V0_BLOCK_SIZE - erlang:size(Acc)),
+recv_data_loop(Port, <<0:32/native, StructSize:32/native, _/binary>> = Acc) ->
+    Data = recv_data_with_length(Port, Acc, StructSize - erlang:size(Acc)),
     {Data, fun unpack_data_v0/2};
-recv_data_loop(Port, <<1:32/native, _/binary>> = Acc) ->
-    Data = recv_data_with_length(Port, Acc, ?STATS_V1_BLOCK_SIZE - erlang:size(Acc)),
+recv_data_loop(Port, <<1:32/native, StructSize:32/native, _/binary>> = Acc) ->
+    Data = recv_data_with_length(Port, Acc, StructSize - erlang:size(Acc)),
     {Data, fun unpack_data_v1/2};
-recv_data_loop(Port, <<2:32/native, _/binary>> = Acc) ->
-    Data = recv_data_with_length(Port, Acc, ?STATS_V2_BLOCK_SIZE - erlang:size(Acc)),
+recv_data_loop(Port, <<2:32/native, StructSize:32/native, _/binary>> = Acc) ->
+    Data = recv_data_with_length(Port, Acc, StructSize - erlang:size(Acc)),
     {Data, fun unpack_data_v2/2};
 recv_data_loop(Port, Acc) ->
     receive
