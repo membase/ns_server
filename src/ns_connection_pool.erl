@@ -36,15 +36,11 @@
 %%
 %%% @doc Connection manager for the more or less arbitrary protocol tcp sockets.
 %%% This gen_server is responsible for keeping track of persistent
-%%% connections to HTTP servers. The only interesting API is
-%%% `connection_count/0' and `connection_count/1'.
+%%% connections to HTTP servers.
 -module(ns_connection_pool).
 
 -export([
         start_link/1,
-        connection_count/1,
-        connection_count/2,
-        update_connection_timeout/2,
         maybe_take_socket/2,
         put_socket/3
     ]).
@@ -84,39 +80,6 @@ put_socket(Server, Dest, Socket) ->
         _ ->
             ok
     end.
-
-
-%% @spec (PoolPidOrName) -> Count
-%%    Count = integer()
-%% @doc Returns the total number of active connections maintained by the
-%% specified pool (manager).
-%% @end
--spec connection_count(pid() | atom()) -> non_neg_integer().
-connection_count(PidOrName) ->
-    gen_server:call(PidOrName, connection_count).
-
-%% @spec (PoolPidOrName, Destination) -> Count
-%%    PoolPidOrName = pid() | atom()
-%%    Destination = term()
-%%    Count = integer()
-%% @doc Returns the number of active connections to the specific
-%% `Destination' maintained by the httpc manager.
-%% @end
--spec connection_count(pid() | atom(), term()) ->
-    non_neg_integer().
-connection_count(PidOrName, Destination) ->
-    gen_server:call(PidOrName, {connection_count, Destination}).
-
-%% @spec (PoolPidOrName, Timeout) -> ok
-%%    PoolPidOrName = pid() | atom()
-%%    Timeout = integer()
-%% @doc Updates the timeout for persistent connections.
-%% This will only affect future sockets handed to the manager. The sockets
-%% already managed will keep their timers.
-%% @end
--spec update_connection_timeout(pid() | atom(), non_neg_integer()) -> ok.
-update_connection_timeout(PidOrName, Milliseconds) ->
-    gen_server:cast(PidOrName, {update_timeout, Milliseconds}).
 
 -spec start_link([{atom(), non_neg_integer()}]) ->
     {ok, pid()} | {error, already_started}.
@@ -167,14 +130,6 @@ handle_call({socket, Pid, Dest}, {Pid, _Ref} = From, State) ->
                     {reply, no_socket, monitor_client(Dest, From, State2)}
             end
     end;
-handle_call(connection_count, _, State) ->
-    {reply, dict:size(State#ns_connection_pool.sockets), State};
-handle_call({connection_count, Destination}, _, State) ->
-    Count = case dict:find(Destination, State#ns_connection_pool.destinations) of
-        {ok, Sockets} -> length(Sockets);
-        error         -> 0
-    end,
-    {reply, Count, State};
 handle_call({done, Dest, Socket}, {Pid, _} = From, State) ->
     gen_server:reply(From, ok),
     case dict:find(Pid, State#ns_connection_pool.clients) of
@@ -194,8 +149,6 @@ handle_call(_, _, State) ->
 
 %% @hidden
 -spec handle_cast(any(), #ns_connection_pool{}) -> {noreply, #ns_connection_pool{}}.
-handle_cast({update_timeout, Milliseconds}, State) ->
-    {noreply, State#ns_connection_pool{timeout = Milliseconds}};
 handle_cast(_, State) ->
     {noreply, State}.
 
