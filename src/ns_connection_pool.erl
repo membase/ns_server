@@ -53,8 +53,8 @@
 -behaviour(gen_server).
 
 -record(ns_connection_pool, {
-          destinations = dict:new(),
-          sockets = dict:new(),
+          destinations = dict:new(), % Dest => [Socket]
+          sockets = dict:new(), % Socket => {Dest, Timer}
           clients = dict:new(), % Pid => {Dest, MonRef}
           queues = dict:new(),  % Dest => queue of Froms
           max_pool_size = 50 :: non_neg_integer(),
