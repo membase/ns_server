@@ -26,7 +26,7 @@
 start_link() ->
     Options = [{name, ?MODULE},
                {connection_timeout, 30000},
-               {pool_size, 10000}],
+               {pool_size_per_dest, 10000}],
     ns_connection_pool:start_link(Options).
 
 

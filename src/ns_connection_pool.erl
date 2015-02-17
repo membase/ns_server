@@ -58,8 +58,9 @@
           destinations = dict:new(), % Dest => [Socket]
           sockets = dict:new(), % Socket => {Dest, Timer}
           clients = dict:new(), % Pid => {Dest, MonRef}
+          clients_counts = dict:new(), % Dest => integer()
           queues = dict:new(),  % Dest => queue of Froms
-          max_pool_size = 50 :: non_neg_integer(),
+          pool_size_per_dest = 5 :: non_neg_integer(),
           timeout = 300000 :: non_neg_integer()
          }).
 
@@ -103,40 +104,33 @@ init(Options) ->
             ok
     end,
     Timeout = proplists:get_value(connection_timeout, Options),
-    Size = proplists:get_value(pool_size, Options),
-    {ok, #ns_connection_pool{timeout = Timeout, max_pool_size = Size}}.
+    Size = proplists:get_value(pool_size_per_dest, Options),
+    {ok, #ns_connection_pool{timeout = Timeout, pool_size_per_dest = Size}}.
 
 %% @hidden
 -spec handle_call(any(), any(), #ns_connection_pool{}) ->
                          {reply, any(), #ns_connection_pool{}}.
-handle_call({socket, Pid, Dest}, {Pid, _Ref} = From, State) ->
-    #ns_connection_pool{
-       max_pool_size = MaxSize,
-       clients = Clients,
-       queues = Queues
-      } = State,
+handle_call({socket, Pid, Dest}, {Pid, _Ref} = From,
+            #ns_connection_pool{pool_size_per_dest = MaxSize} = State) ->
     {Reply0, State2} = find_socket(Dest, Pid, State),
     case Reply0 of
         {ok, _Socket} ->
             State3 = monitor_client(Dest, From, State2),
             {reply, Reply0, State3};
         no_socket ->
-            case dict:size(Clients) >= MaxSize of
+            case dest_clients_count(Dest, State2) >= MaxSize of
                 true ->
-                    Queues2 = add_to_queue(Dest, From, Queues),
-                    {noreply, State2#ns_connection_pool{queues = Queues2}};
+                    {noreply, add_to_queue(Dest, From, State2)};
                 false ->
                     {reply, no_socket, monitor_client(Dest, From, State2)}
             end
     end;
 handle_call({done, Dest, Socket}, {Pid, _} = From, State) ->
     gen_server:reply(From, ok),
-    case dict:find(Pid, State#ns_connection_pool.clients) of
-        {ok, {Dest, MonRef}} ->
+    case find_client(Pid, State) of
+        {ok, {Dest, MonRef}, State2} ->
             true = erlang:demonitor(MonRef, [flush]),
-            Clients2 = dict:erase(Pid, State#ns_connection_pool.clients),
-            State2 = deliver_socket(Socket, Dest, State#ns_connection_pool{clients = Clients2}),
-            {noreply, State2};
+            {noreply, deliver_socket(Socket, Dest, State2)};
         error ->
             %% NOTE: we don't expect that to happen often, but it is
             %% in fact possible if connection pool died and was
@@ -173,15 +167,13 @@ handle_info({tcp, Socket, _}, State) ->
 handle_info({ssl, Socket, _}, State) ->
     {noreply, remove_socket(Socket, State)}; % got garbage
 handle_info({'DOWN', MonRef, process, Pid, _Reason}, State) ->
-    {Dest, MonRef} = dict:fetch(Pid, State#ns_connection_pool.clients),
-    Clients2 = dict:erase(Pid, State#ns_connection_pool.clients),
-    case queue_out(Dest, State#ns_connection_pool.queues) of
+    {ok, {Dest, MonRef}, State2} = find_client(Pid, State),
+    case queue_out(Dest, State2) of
         empty ->
-            {noreply, State#ns_connection_pool{clients = Clients2}};
-        {ok, From, Queues2} ->
+            {noreply, State2};
+        {ok, From, State3} ->
             gen_server:reply(From, no_socket),
-            State2 = State#ns_connection_pool{queues = Queues2, clients = Clients2},
-            {noreply, monitor_client(Dest, From, State2)}
+            {noreply, monitor_client(Dest, From, State3)}
     end;
 handle_info(_, State) ->
     {noreply, State}.
@@ -266,15 +258,18 @@ cancel_timer(Timer, Socket) ->
         _     -> ok
     end.
 
-add_to_queue(Dest, From, Queues) ->
-    case dict:find(Dest, Queues) of
-        error ->
-            dict:store(Dest, queue:in(From, queue:new()), Queues);
-        {ok, Q} ->
-            dict:store(Dest, queue:in(From, Q), Queues)
-    end.
+add_to_queue(Dest, From, #ns_connection_pool{queues = Queues} = State) ->
+    NewQueues =
+        case dict:find(Dest, Queues) of
+            error ->
+                dict:store(Dest, queue:in(From, queue:new()), Queues);
+            {ok, Q} ->
+                dict:store(Dest, queue:in(From, Q), Queues)
+        end,
 
-queue_out(Dest, Queues) ->
+    State#ns_connection_pool{queues = NewQueues}.
+
+queue_out(Dest, #ns_connection_pool{queues = Queues} = State) ->
     case dict:find(Dest, Queues) of
         error ->
             empty;
@@ -286,32 +281,59 @@ queue_out(Dest, Queues) ->
                           false ->
                               dict:store(Dest, Q2, Queues)
                       end,
-            {ok, From, Queues2}
+            {ok, From, State#ns_connection_pool{queues = Queues2}}
     end.
 
 deliver_socket(Socket, Dest, State) ->
-    case queue_out(Dest, State#ns_connection_pool.queues) of
+    case queue_out(Dest, State) of
         empty ->
             store_socket(Dest, Socket, State);
-        {ok, {PidWaiter, _} = FromWaiter, Queues2} ->
+        {ok, {PidWaiter, _} = FromWaiter, State2} ->
             inet:setopts(Socket, [{active, false}]),
             case gen_tcp:controlling_process(Socket, PidWaiter) of
                 ok ->
                     gen_server:reply(FromWaiter, {ok, Socket}),
-                    monitor_client(Dest, FromWaiter, State#ns_connection_pool{queues = Queues2});
+                    monitor_client(Dest, FromWaiter, State2);
                 {error, badarg} -> % Pid died, reuse for someone else
                     inet:setopts(Socket, [{active, once}]),
-                    deliver_socket(Socket, Dest, State#ns_connection_pool{queues = Queues2});
+                    deliver_socket(Socket, Dest, State2);
                 _ ->
                     %% Something wrong with the socket; remove it and reply
                     %% no_socket to the waiter
                     catch gen_tcp:close(Socket),
                     gen_server:reply(FromWaiter, no_socket),
-                    monitor_client(Dest, FromWaiter, State#ns_connection_pool{queues = Queues2})
+                    monitor_client(Dest, FromWaiter, State2)
             end
     end.
 
-monitor_client(Dest, {Pid, _} = _From, State) ->
+monitor_client(Dest, {Pid, _} = _From,
+               #ns_connection_pool{clients = Clients,
+                                   clients_counts = Counts} = State) ->
     MonRef = erlang:monitor(process, Pid),
-    Clients2 = dict:store(Pid, {Dest, MonRef}, State#ns_connection_pool.clients),
-    State#ns_connection_pool{clients = Clients2}.
+    Clients2 = dict:store(Pid, {Dest, MonRef}, Clients),
+    Counts2 = dict:update_counter(Dest, 1, Counts),
+    State#ns_connection_pool{clients = Clients2,
+                             clients_counts = Counts2}.
+
+find_client(Pid, #ns_connection_pool{clients = Clients,
+                                     clients_counts = Counts} = State) ->
+    case dict:find(Pid, Clients) of
+        {ok, {Dest, _MonRef} = RV} ->
+            Clients2 = dict:erase(Pid, Clients),
+
+            true = dest_clients_count(Dest, State) >= 0,
+            Counts2 = dict:update_counter(Dest, -1, Counts),
+
+            {ok, RV, State#ns_connection_pool{clients = Clients2,
+                                              clients_counts = Counts2}};
+        error ->
+            error
+    end.
+
+dest_clients_count(Dest, #ns_connection_pool{clients_counts = Counts}) ->
+    case dict:find(Dest, Counts) of
+        {ok, C} ->
+            C;
+        error ->
+            0
+    end.

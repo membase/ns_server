@@ -11,7 +11,7 @@
 start_link() ->
     Options = [{name, proxied_memcached_clients_pool},
                {connection_timeout, 30000},
-               {pool_size, 200}],
+               {pool_size_per_dest, 100}],
     ns_connection_pool:start_link(Options).
 
 take_socket({?MODULE, {Host, Port, Bucket, Auth, LP, RP, Cert, Enchancer}}) ->
