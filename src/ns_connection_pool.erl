@@ -188,8 +188,8 @@ handle_info(_, State) ->
 
 %% @hidden
 -spec terminate(any(), #ns_connection_pool{}) -> ok.
-terminate(_, State) ->
-    close_sockets(State#ns_connection_pool.sockets).
+terminate(_, _State) ->
+    ok.
 
 %% @hidden
 -spec code_change(any(), #ns_connection_pool{}, any()) -> {'ok', #ns_connection_pool{}}.
@@ -254,12 +254,6 @@ update_dest(Destination, [], Destinations) ->
     dict:erase(Destination, Destinations);
 update_dest(Destination, Sockets, Destinations) ->
     dict:store(Destination, Sockets, Destinations).
-
-close_sockets(Sockets) ->
-    lists:foreach(fun({Socket, {_Dest, Timer}}) ->
-                          gen_tcp:close(Socket),
-                          erlang:cancel_timer(Timer)
-                  end, dict:to_list(Sockets)).
 
 cancel_timer(Timer, Socket) ->
     case erlang:cancel_timer(Timer) of
