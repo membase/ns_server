@@ -21,7 +21,8 @@
 
 -export([proxy/1,
          proxy/2,
-         send/2]).
+         send/2,
+         find_all_replication_docs/1]).
 
 get_rest_port() ->
     ns_config:read_key_fast({node, node(), xdcr_rest_port}, 9998).
@@ -46,15 +47,21 @@ convert_headers(MochiReq) ->
     end.
 
 send(MochiReq, Method, Path, Headers, Body) ->
-    URL = "http://127.0.0.1:" ++ integer_to_list(get_rest_port()) ++ Path,
-
     Params = MochiReq:parse_qs(),
     Timeout = list_to_integer(proplists:get_value("connection_timeout", Params, "30000")),
+    send_with_timeout(Method, Path, Headers, Body, Timeout).
+
+send_with_timeout(Method, Path, Headers, Body, Timeout) ->
+    URL = "http://127.0.0.1:" ++ integer_to_list(get_rest_port()) ++ Path,
 
     {ok, {{Code, _}, RespHeaders, RespBody}} =
         lhttpc:request(URL, Method, Headers, Body, Timeout, []),
     {Code, RespHeaders, RespBody}.
 
+special_auth_headers() ->
+    menelaus_rest:add_basic_auth([{"Accept", "application/json"}],
+                                 ns_config_auth:get_user(special),
+                                 ns_config_auth:get_password(special)).
 
 proxy(MochiReq) ->
     proxy(MochiReq, MochiReq:get(raw_path)).
@@ -72,3 +79,31 @@ proxy(MochiReq, Path) ->
 send(MochiReq, Body) ->
     Headers = convert_headers(MochiReq),
     send(MochiReq, MochiReq:get(method), MochiReq:get(raw_path), Headers, Body).
+
+interesting_doc_key(<<"id">>) ->
+    true;
+interesting_doc_key(<<"type">>) ->
+    true;
+interesting_doc_key(<<"source">>) ->
+    true;
+interesting_doc_key(<<"target">>) ->
+    true;
+interesting_doc_key(<<"continuous">>) ->
+    true;
+interesting_doc_key(_) ->
+    false.
+
+process_doc({Props}) ->
+    [{list_to_atom(binary_to_list(Key)), Value} ||
+        {Key, Value} <- Props,
+        interesting_doc_key(Key)].
+
+find_all_replication_docs(Timeout) ->
+    RV = {Code, _Headers, Body} =
+        send_with_timeout("GET", "/pools/default/replications", special_auth_headers(), [], Timeout),
+    case Code of
+        200 ->
+            [process_doc(Doc) || Doc <- ejson:decode(Body)];
+        _ ->
+            erlang:throw({unsuccesful_goxdcr_call, RV})
+    end.

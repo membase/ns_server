@@ -84,9 +84,14 @@ find_all_replication_docs() ->
 -spec find_all_replication_docs(non_neg_integer() | infinity) ->
                                        [Doc :: [{Key :: atom(), Value :: _}]].
 find_all_replication_docs(Timeout) ->
-    RVs = ns_couchdb_api:foreach_doc(xdcr, fun find_all_replication_docs_body/1, Timeout),
-    [Doc || {_, Doc} <- RVs,
-            Doc =/= undefined].
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        true ->
+            goxdcr_rest:find_all_replication_docs(Timeout);
+        false ->
+            RVs = ns_couchdb_api:foreach_doc(xdcr, fun find_all_replication_docs_body/1, Timeout),
+            [Doc || {_, Doc} <- RVs,
+                    Doc =/= undefined]
+    end.
 
 find_all_replication_docs_body(Doc0) ->
     Doc = couch_doc:with_ejson_body(Doc0),
