@@ -254,6 +254,8 @@ build_bucket_props(Props) ->
     lists:foldl(
       fun({sasl_password, _}, Acc) ->
               Acc;
+         ({autocompaction, false}, Acc) ->
+              Acc;
          ({autocompaction, CProps}, Acc) ->
               [{autocompaction, {build_compaction_settings(CProps)}} | Acc];
          ({K, V}, Acc) ->
