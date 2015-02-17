@@ -39,30 +39,27 @@
 %%% connections to HTTP servers.
 -module(ns_connection_pool).
 
--export([
-        start_link/1,
-        maybe_take_socket/2,
-        put_socket/3
-    ]).
--export([
-        init/1,
-        handle_call/3,
-        handle_cast/2,
-        handle_info/2,
-        code_change/3,
-        terminate/2
-    ]).
+-export([start_link/1,
+         maybe_take_socket/2,
+         put_socket/3]).
+
+-export([init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         code_change/3,
+         terminate/2]).
 
 -behaviour(gen_server).
 
 -record(ns_connection_pool, {
-        destinations = dict:new(),
-        sockets = dict:new(),
-        clients = dict:new(), % Pid => {Dest, MonRef}
-        queues = dict:new(),  % Dest => queue of Froms
-        max_pool_size = 50 :: non_neg_integer(),
-        timeout = 300000 :: non_neg_integer()
-    }).
+          destinations = dict:new(),
+          sockets = dict:new(),
+          clients = dict:new(), % Pid => {Dest, MonRef}
+          queues = dict:new(),  % Dest => queue of Froms
+          max_pool_size = 50 :: non_neg_integer(),
+          timeout = 300000 :: non_neg_integer()
+         }).
 
 maybe_take_socket(Server, Dest) ->
     gen_server:call(Server, {socket, self(), Dest}, infinity).
@@ -82,7 +79,7 @@ put_socket(Server, Dest, Socket) ->
     end.
 
 -spec start_link([{atom(), non_neg_integer()}]) ->
-    {ok, pid()} | {error, already_started}.
+                        {ok, pid()} | {error, already_started}.
 start_link(Options) ->
     case proplists:get_value(name, Options) of
         undefined ->
@@ -97,8 +94,8 @@ init(Options) ->
     process_flag(priority, high),
     case lists:member({seed,1}, ssl:module_info(exports)) of
         true ->
-            % Make sure that the ssl random number generator is seeded
-            % This was new in R13 (ssl-3.10.1 in R13B vs. ssl-3.10.0 in R12B-5)
+            %% Make sure that the ssl random number generator is seeded
+            %% This was new in R13 (ssl-3.10.1 in R13B vs. ssl-3.10.0 in R12B-5)
             apply(ssl, seed, [crypto:rand_bytes(255)]);
         false ->
             ok
@@ -109,13 +106,13 @@ init(Options) ->
 
 %% @hidden
 -spec handle_call(any(), any(), #ns_connection_pool{}) ->
-    {reply, any(), #ns_connection_pool{}}.
+                         {reply, any(), #ns_connection_pool{}}.
 handle_call({socket, Pid, Dest}, {Pid, _Ref} = From, State) ->
     #ns_connection_pool{
-        max_pool_size = MaxSize,
-        clients = Clients,
-        queues = Queues
-    } = State,
+       max_pool_size = MaxSize,
+       clients = Clients,
+       queues = Queues
+      } = State,
     {Reply0, State2} = find_socket(Dest, Pid, State),
     case Reply0 of
         {ok, _Socket} ->
@@ -202,9 +199,9 @@ find_socket(Dest, Pid, State) ->
                     {_, Timer} = dict:fetch(Socket, State#ns_connection_pool.sockets),
                     cancel_timer(Timer, Socket),
                     NewState = State#ns_connection_pool{
-                        destinations = update_dest(Dest, Sockets, Dests),
-                        sockets = dict:erase(Socket, State#ns_connection_pool.sockets)
-                    },
+                                 destinations = update_dest(Dest, Sockets, Dests),
+                                 sockets = dict:erase(Socket, State#ns_connection_pool.sockets)
+                                },
                     {{ok, Socket}, NewState};
                 {error, badarg} -> % Pid has timed out, reuse for someone else
                     inet:setopts(Socket, [{active, once}]),
@@ -224,9 +221,9 @@ remove_socket(Socket, State) ->
             gen_tcp:close(Socket),
             Sockets = lists:delete(Socket, dict:fetch(Dest, Dests)),
             State#ns_connection_pool{
-                destinations = update_dest(Dest, Sockets, Dests),
-                sockets = dict:erase(Socket, State#ns_connection_pool.sockets)
-            };
+              destinations = update_dest(Dest, Sockets, Dests),
+              sockets = dict:erase(Socket, State#ns_connection_pool.sockets)
+             };
         error ->
             State
     end.
@@ -234,17 +231,17 @@ remove_socket(Socket, State) ->
 store_socket(Dest, Socket, State) ->
     Timeout = State#ns_connection_pool.timeout,
     Timer = erlang:send_after(Timeout, self(), {timeout, Socket}),
-    % the socket might be closed from the other side
+    %% the socket might be closed from the other side
     inet:setopts(Socket, [{active, once}]),
     Dests = State#ns_connection_pool.destinations,
     Sockets = case dict:find(Dest, Dests) of
-        {ok, S} -> [Socket | S];
-        error   -> [Socket]
-    end,
+                  {ok, S} -> [Socket | S];
+                  error   -> [Socket]
+              end,
     State#ns_connection_pool{
-        destinations = dict:store(Dest, Sockets, Dests),
-        sockets = dict:store(Socket, {Dest, Timer}, State#ns_connection_pool.sockets)
-    }.
+      destinations = dict:store(Dest, Sockets, Dests),
+      sockets = dict:store(Socket, {Dest, Timer}, State#ns_connection_pool.sockets)
+     }.
 
 update_dest(Destination, [], Destinations) ->
     dict:erase(Destination, Destinations);
@@ -253,9 +250,9 @@ update_dest(Destination, Sockets, Destinations) ->
 
 close_sockets(Sockets) ->
     lists:foreach(fun({Socket, {_Dest, Timer}}) ->
-                gen_tcp:close(Socket),
-                erlang:cancel_timer(Timer)
-        end, dict:to_list(Sockets)).
+                          gen_tcp:close(Socket),
+                          erlang:cancel_timer(Timer)
+                  end, dict:to_list(Sockets)).
 
 cancel_timer(Timer, Socket) ->
     case erlang:cancel_timer(Timer) of
@@ -283,11 +280,11 @@ queue_out(Dest, Queues) ->
         {ok, Q} ->
             {{value, From}, Q2} = queue:out(Q),
             Queues2 = case queue:is_empty(Q2) of
-                true ->
-                    dict:erase(Dest, Queues);
-                false ->
-                    dict:store(Dest, Q2, Queues)
-            end,
+                          true ->
+                              dict:erase(Dest, Queues);
+                          false ->
+                              dict:store(Dest, Q2, Queues)
+                      end,
             {ok, From, Queues2}
     end.
 
