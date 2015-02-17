@@ -157,7 +157,7 @@ unpack_data_v0(Bin, PrevSample) ->
                                                   catch error:badarith -> 0 end}
                            | RV2]
                  end,
-    {NowSamples, RawStats}.
+    {{NowSamples, undefined}, RawStats}.
 
 
 unpack_data_v1(Bin, PrevSample) ->
@@ -214,7 +214,7 @@ unpack_data_v1(Bin, PrevSample) ->
                                                   catch error:badarith -> 0 end}
                            | RV1]
                  end,
-    {NowSamples, RawStats}.
+    {{NowSamples, undefined}, RawStats}.
 
 unpack_data_v2(Bin, PrevSample) ->
     <<Version:32/native,
@@ -242,7 +242,14 @@ unpack_data_v2(Bin, PrevSample) ->
                 PrevSample
         end,
 
-    {NowSamplesProcs, PrevSampleProcs1} = unpack_processes_v2(Rest, PrevSampleProcs),
+    {NowSamplesProcs0, PrevSampleProcs1} = unpack_processes_v2(Rest, PrevSampleProcs),
+    NowSamplesProcs =
+        case NowSamplesProcs0 of
+            [] ->
+                undefined;
+            _ ->
+                NowSamplesProcs0
+        end,
 
     RawStatsGlobal = [{cpu_local_ms, CPULocalMS},
                       {cpu_idle_ms, CPUIdleMS},
@@ -255,26 +262,27 @@ unpack_data_v2(Bin, PrevSample) ->
                       {mem_actual_used, MemActualUsed},
                       {mem_actual_free, MemActualFree}],
 
-    NowSamples = case PrevSampleGlobal of
-                     undefined ->
-                         undefined;
-                     _ ->
-                         {_, OldCPULocal} = lists:keyfind(cpu_local_ms, 1, PrevSampleGlobal),
-                         {_, OldCPUIdle} = lists:keyfind(cpu_idle_ms, 1, PrevSampleGlobal),
-                         LocalDiff = CPULocalMS - OldCPULocal,
-                         IdleDiff = CPUIdleMS - OldCPUIdle,
+    NowSamplesGlobal =
+        case PrevSampleGlobal of
+            undefined ->
+                undefined;
+            _ ->
+                {_, OldCPULocal} = lists:keyfind(cpu_local_ms, 1, PrevSampleGlobal),
+                {_, OldCPUIdle} = lists:keyfind(cpu_idle_ms, 1, PrevSampleGlobal),
+                LocalDiff = CPULocalMS - OldCPULocal,
+                IdleDiff = CPUIdleMS - OldCPUIdle,
 
-                         RV1 = misc:update_proplist(RawStatsGlobal,
-                                                    [{cpu_local_ms, LocalDiff},
-                                                     {cpu_idle_ms, IdleDiff}]),
+                RV1 = misc:update_proplist(RawStatsGlobal,
+                                           [{cpu_local_ms, LocalDiff},
+                                            {cpu_idle_ms, IdleDiff}]),
 
-                         [{mem_free, MemActualFree},
-                          {cpu_utilization_rate, try 100 * (LocalDiff - IdleDiff) / LocalDiff
-                                                 catch error:badarith -> 0 end}
-                          | RV1 ++ NowSamplesProcs]
-                 end,
+                [{mem_free, MemActualFree},
+                 {cpu_utilization_rate, try 100 * (LocalDiff - IdleDiff) / LocalDiff
+                                        catch error:badarith -> 0 end}
+                 | RV1]
+        end,
 
-    {NowSamples, {RawStatsGlobal, PrevSampleProcs1}}.
+    {{NowSamplesGlobal, NowSamplesProcs}, {RawStatsGlobal, PrevSampleProcs1}}.
 
 unpack_processes_v2(Bin, PrevSamples) ->
     do_unpack_processes_v2(Bin, {[], PrevSamples}).
@@ -383,9 +391,10 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
     end,
     port_command(Port, <<0:32/native>>),
     {Binary, UnpackFn} = recv_data(Port),
-    {Stats0, NewPrevSample} = UnpackFn(Binary, PrevSample),
+    {{Stats0, ProcStats}, NewPrevSample} = UnpackFn(Binary, PrevSample),
     case Stats0 of
-        undefined -> ok;
+        undefined ->
+            ok;
         _ ->
             Stats = lists:sort(Stats0),
             Stats2 = add_ets_stats(Stats),
@@ -399,6 +408,17 @@ handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
                              {stats, "@system", #stat_entry{timestamp = TS,
                                                             values = Stats2}})
     end,
+
+    case ProcStats of
+        undefined ->
+            ok;
+        _ ->
+            gen_event:notify(ns_stats_event,
+                             {stats, "@system-processes",
+                              #stat_entry{timestamp = TS,
+                                          values = ProcStats}})
+    end,
+
     update_merger_rates(),
     sample_ns_memcached_queues(),
     {noreply, #state{port = Port, prev_sample = NewPrevSample}};

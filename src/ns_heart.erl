@@ -252,13 +252,15 @@ current_status_slow(TS) ->
     [{status_latency, Diff} | Status0].
 
 current_status_slow_inner() ->
-    SystemStats =
-        case catch stats_reader:latest("minute", node(), "@system") of
-            {ok, StatsRec} -> StatsRec#stat_entry.values;
-            CrapSys ->
-                ?log_debug("Ignoring failure to grab system stats:~n~p~n", [CrapSys]),
-                []
-        end,
+    [SystemStats, ProcessesStats] =
+        [begin
+             case catch stats_reader:latest("minute", node(), PseudoBucket) of
+                 {ok, StatsRec} -> StatsRec#stat_entry.values;
+                 CrapSys ->
+                     ?log_debug("Ignoring failure to grab ~p stats:~n~p~n", [PseudoBucket, CrapSys]),
+                     []
+             end
+         end || PseudoBucket <- ["@system", "@system-processes"]],
 
     BucketNames = ns_bucket:node_bucket_names(node()),
 
@@ -307,7 +309,7 @@ current_status_slow_inner() ->
 
     StorageConf = ns_storage_conf:query_storage_conf(),
 
-    ProcessesStats =
+    InterestingProcessesStats =
         lists:filter(
           fun ({<<"proc/", Rest/binary>>, _}) ->
                   case binary:split(Rest, <<$/>>, [global]) of
@@ -320,7 +322,7 @@ current_status_slow_inner() ->
                   end;
               (_) ->
                   false
-          end, SystemStats),
+          end, ProcessesStats),
 
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
         [{local_tasks, Tasks},
@@ -333,7 +335,7 @@ current_status_slow_inner() ->
                                   mem_total, mem_free]]},
          {interesting_stats, InterestingStats},
          {per_bucket_interesting_stats, PerBucketInterestingStats},
-         {processes_stats, ProcessesStats},
+         {processes_stats, InterestingProcessesStats},
          {cluster_compatibility_version, ClusterCompatVersion}
          | element(2, ns_info:basic_info())] ++ MaybeMeminfo.
 
