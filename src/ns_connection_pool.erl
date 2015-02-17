@@ -295,9 +295,12 @@ deliver_socket(Socket, Dest, State) ->
                 {error, badarg} -> % Pid died, reuse for someone else
                     inet:setopts(Socket, [{active, once}]),
                     deliver_socket(Socket, Dest, State#ns_connection_pool{queues = Queues2});
-                _ -> % Something wrong with the socket; just remove it
+                _ ->
+                    %% Something wrong with the socket; remove it and reply
+                    %% no_socket to the waiter
                     catch gen_tcp:close(Socket),
-                    State
+                    gen_server:reply(FromWaiter, no_socket),
+                    monitor_client(Dest, FromWaiter, State#ns_connection_pool{queues = Queues2})
             end
     end.
 
