@@ -8,6 +8,12 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
       resolve: {
         tasks: function (mnTasksDetails) {
           return mnTasksDetails.getFresh();
+        },
+        updates: function (mnSettingsNotificationsService) {
+          return mnSettingsNotificationsService.maybeCheckUpdates();
+        },
+        launchpadSource: function (updates, mnSettingsNotificationsService) {
+          return updates.sendStats && mnSettingsNotificationsService.buildPhoneHomeThingy();
         }
       }
     })
@@ -144,5 +150,10 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
           return mnPoolDefault.getFresh();
         }
       }
+    })
+    .state('app.admin.settings.notifications', {
+      url: '/notifications',
+      controller: 'mnSettingsNotificationsController',
+      templateUrl: 'mn_admin/mn_settings/notifications/mn_settings_notifications.html'
     });
 });

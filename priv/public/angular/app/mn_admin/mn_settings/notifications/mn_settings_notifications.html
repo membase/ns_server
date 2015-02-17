@@ -1,0 +1,39 @@
+<div mn-spinner="viewLoading">
+  <h2>Update Notifications</h2>
+  <form ng-submit="submit()">
+    <div class="sub_section" >
+      <p>You are running version {{implementationVersion | mnPrettyVersion}}.</p>
+      <div ng-if="updates.sendStats">
+        <p ng-if="updates.newVersion === undefined" class="warning"><strong>Warning</strong> – There was a problem with retreiving the update information.</p>
+        <p ng-if="updates.newVersion === false">No updates available.</p>
+        <p ng-if="updates.newVersion">A new version ({{updates.newVersion}}) is available:</p>
+        <ul ng-if="updates.newVersion">
+          <li>
+            <a href="{{updates.links.release}}">Release notes</a>
+          </li>
+          <li>
+            <a href="{{updates.links.download}}">Download</a>
+            the new version
+          </li>
+        </ul>
+        <p ng-if="updates.info">{{updates.info}}</p>
+      </div>
+      <label class="for-enable-replicas">
+        <input type="checkbox" id="notification-updates" ng-model="enabled">
+        <span>Enable software update notifications.</span>
+        <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
+          <span class="tooltip_msg text_11" style="width:310px;"><span>
+            Enabling software update notifications allows notification in
+            the Couchbase web console when a new version of Couchbase Server
+            is available. Configuration information transferred in the
+            update check is anonymous and does not include any stored
+            key-value data.
+          </span></span>
+        </a>
+      </label>
+    </div>
+    <div class="save_cancel when-roadmin-hide-me">
+      <button class="save_button float_right" type="submit">Save</button>
+    </div>
+  </form>
+</div>

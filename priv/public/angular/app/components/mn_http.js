@@ -24,7 +24,9 @@ angular.module('mnHttp').factory('mnHttp',
       switch (config.method.toLowerCase()) {
         case 'post':
           if (!config.notForm) {
-            config.headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'};
+            config.headers = _.extend({
+              'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            }, config.headers);
           } else {
             delete config.notForm;
           }

@@ -2,6 +2,8 @@ angular.module('mnPools').factory('mnPools',
   function (mnHttp, $cacheFactory) {
     var mnPools = {};
 
+    var launchID =  (new Date()).valueOf() + '-' + ((Math.random() * 65536) >> 0);
+
     mnPools.get = function () {
       return mnHttp({
         method: 'GET',
@@ -13,6 +15,7 @@ angular.module('mnPools').factory('mnPools',
         var rv = {};
         pools.isInitialized = !!pools.pools.length;
         pools.isAuthenticated = pools.isAdminCreds && pools.isInitialized;
+        pools.launchID = pools.uuid + '-' + launchID;
         return pools;
       }, function (resp) {
         if (resp.status === 401) {

@@ -1,5 +1,8 @@
 angular.module('mnAdmin').controller('mnAdminController',
-  function ($scope, $rootScope, $q, mnHelper, mnAuthService, tasks, mnTasksDetails, mnAlertsService, mnPoolDefault) {
+  function ($scope, $rootScope, $q, mnHelper, pools, mnAuthService, tasks, updates, mnTasksDetails, mnAlertsService, mnPoolDefault, launchpadSource) {
+    $scope.launchpadId = pools.launchID;
+    $scope.launchpadSource = launchpadSource;
+    $scope.updates = updates;
     $scope.alerts = mnAlertsService.alerts;
     $scope.closeAlert = mnAlertsService.closeAlert;
 

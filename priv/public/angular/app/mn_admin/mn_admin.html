@@ -1,4 +1,5 @@
 <div id="container">
+  <div mn-launchpad launchpad-source="launchpadSource" launchpad-id="launchpadId"></div>
   <div class="page-header">
     <div class="cnt_holder main_holder">
       <div class="topper_nav">
@@ -52,8 +53,11 @@
         <li class="line" ng-class="{currentNav: ('app.admin.logs' | includedByState)}">
           <a class="switch_log" ui-sref="app.admin.logs.list">Log</a>
         </li>
-        <li class="line" ui-sref-active="currentNav" id="nav_settings_container">
-          <a href="#?section=settings" ui-sref="app.admin.settings.cluster" class="switch_settings">Settings</a>
+        <li class="line" ng-class="{currentNav: ('app.admin.settings' | includedByState)}" id="nav_settings_container">
+          <a href="#?section=settings" ui-sref="app.admin.settings.cluster" class="switch_settings">Settings
+            <span ng-show="updates.sendStats && !!updates.newVersion" class="badge notify"><span>!</span></span>
+          </a>
+          </a>
         </li>
       </ul>
     </div>

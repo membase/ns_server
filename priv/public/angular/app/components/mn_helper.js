@@ -75,9 +75,9 @@ angular.module('mnHelper').factory('mnHelper',
           });
           return this;
         },
-        catchGlobalErrors: function () {
+        catchGlobalErrors: function (errorMessage) {
           promise.then(null, function (resp) {
-            mnAlertsService.formatAndSetAlerts(resp.data, 'danger');
+            mnAlertsService.formatAndSetAlerts(resp.data || errorMessage, 'danger');
           });
           return this;
         }

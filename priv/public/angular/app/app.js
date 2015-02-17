@@ -4,6 +4,7 @@ angular.module('mnHelper', [
   'mnTasksDetails'
 ]);
 angular.module('mnBarUsage', []);
+angular.module('mnLaunchpad', []);
 angular.module('mnWarmupProgress', []);
 angular.module('mnFocus', []);
 angular.module('mnSpinner', []);
@@ -83,7 +84,14 @@ angular.module('mnSettingsCluster', [
   'mnSettingsClusterService',
   'mnHelper'
 ]);
+angular.module('mnSettingsNotifications', [
+  'mnSettingsNotificationsService',
+  'mnHelper'
+]);
 angular.module('mnSettingsClusterService', [
+  'mnHttp'
+]);
+angular.module('mnSettingsNotificationsService', [
   'mnHttp'
 ]);
 angular.module('mnSettingsAutoFailoverService', [
@@ -181,6 +189,7 @@ angular.module('app', [
   'mnWarmupProgress',
   'mnCompaction',
   'mnBucketsForm',
+  'mnLaunchpad',
 
   'mnPoolDefault',
   'mnTasksDetails',
@@ -195,6 +204,7 @@ angular.module('app', [
   'mnAuth',
   'mnAdmin',
   'mnSettingsCluster',
+  'mnSettingsNotifications',
   'mnServers',
   'mnOverview',
   'mnBuckets',
