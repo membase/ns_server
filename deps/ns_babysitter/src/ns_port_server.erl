@@ -15,9 +15,6 @@
 %%
 -module(ns_port_server).
 
--define(ABNORMAL, 0).
--define(LF_DEATH_TIMEOUT, 60000).
-
 -behavior(gen_server).
 
 -include("ns_common.hrl").
@@ -42,8 +39,6 @@
 %% The following gives us 300 lines/second in bursts up to 60 lines
 -define(MAX_MESSAGES, 60). % Max messages per interval
 -define(INTERVAL, 200). % Interval over which to throttle
-
--define(UNEXPECTED, 1).
 
 -include_lib("eunit/include/eunit.hrl").
 
