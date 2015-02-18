@@ -235,7 +235,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_crud:handle_list/2, [Id]};
                          ["pools", "default", "buckets", Id, "docs", DocId] ->
                              {auth, fun menelaus_web_crud:handle_get/3, [Id, DocId]};
-                         ["pools", "default", "@query", "stats"] ->
+                         ["pools", "default", "buckets", "@query", "stats"] ->
                              {auth_ro, fun menelaus_stats:handle_bucket_stats/3, ["default", "@query"]};
                          ["pools", "default", "buckets", Id, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
