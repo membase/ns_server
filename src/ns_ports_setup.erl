@@ -456,4 +456,4 @@ do_run_via_goport({Name, Cmd, Args, Opts}) ->
     Env1 = [{"GOPORT_ARGS", GoportArgsEnv} | Env],
 
     Opts1 = lists:keystore(env, 1, Opts, {env, Env1}),
-    {Name, GoportPath, ["--graceful-shutdown"], Opts1}.
+    {Name, GoportPath, [], Opts1}.
