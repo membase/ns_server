@@ -18,33 +18,33 @@
 
 -include("ns_common.hrl").
 
--export([upgrade_config/2]).
+-export([upgrade_config/1]).
 
-upgrade_config(OldVersion, NewVersion) ->
-    true = (OldVersion =/= NewVersion),
+upgrade_config(NewVersion) ->
     true = (NewVersion =< [3, 2]),
 
-    ns_config:set(dynamic_config_version, OldVersion),
     ok = ns_config:upgrade_config_explicitly(
            fun (Config) ->
                    do_upgrade_config(Config, NewVersion)
            end).
 
 do_upgrade_config(Config, FinalVersion) ->
-    case ns_config:search(Config, dynamic_config_version) of
+    case ns_config:search(Config, cluster_compat_version) of
+        false ->
+            [{set, cluster_compat_version, [2, 0]}];
         {value, undefined} ->
-            [{set, dynamic_config_version, [2, 0]}];
+            [{set, cluster_compat_version, [2, 0]}];
         {value, FinalVersion} ->
             [];
         {value, [2, 0]} ->
-            [{set, dynamic_config_version, [2, 5]} |
+            [{set, cluster_compat_version, [2, 5]} |
              upgrade_config_from_2_0_to_2_5(Config)];
         {value, [2, 5]} ->
-            [{set, dynamic_config_version, [3, 0]} |
+            [{set, cluster_compat_version, [3, 0]} |
              upgrade_config_from_2_5_to_3_0(Config)];
         {value, [3, 0]} ->
             ?log_info("Performing online config upgrade to 3.2 version"),
-            [{set, dynamic_config_version, [3, 2]}]
+            [{set, cluster_compat_version, [3, 2]}]
     end.
 
 upgrade_config_from_2_0_to_2_5(Config) ->

@@ -174,8 +174,8 @@ do_consider_switching_compat_mode(Config, CurrentVersion) ->
             ok
     end.
 
-do_switch_compat_mode(Version, NodesWanted) ->
-    ns_config:set(cluster_compat_version, Version),
+do_switch_compat_mode(NewVersion, NodesWanted) ->
+    ns_online_config_upgrader:upgrade_config(NewVersion),
     try
         ns_config:sync_announcements(),
         case ns_config_rep:synchronize_remote(NodesWanted) of

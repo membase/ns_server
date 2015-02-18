@@ -1150,8 +1150,6 @@ consider_switching_compat_mode() ->
             NewVersion = cluster_compat_mode:get_compat_version(),
             ale:warn(?USER_LOGGER, "Changed cluster compat mode from ~p to ~p",
                      [CurrentVersion, NewVersion]),
-
-            ok = ns_online_config_upgrader:upgrade_config(CurrentVersion, NewVersion),
             exit(normal);
         ok ->
             ok
