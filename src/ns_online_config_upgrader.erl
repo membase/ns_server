@@ -17,7 +17,6 @@
 -module(ns_online_config_upgrader).
 
 -include("ns_common.hrl").
--include_lib("eunit/include/eunit.hrl").
 
 -export([upgrade_config/2]).
 
