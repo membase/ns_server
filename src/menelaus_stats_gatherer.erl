@@ -155,8 +155,13 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-handle_call({gather_stats, Bucket, Nodes, ClientTStamp, Window}, _From, State) ->
-    {reply, gather_op_stats(node(), Bucket, Nodes, ClientTStamp, Window), State};
+handle_call({gather_stats, Bucket, Nodes, ClientTStamp, Window}, From, State) ->
+    proc_lib:spawn_link(
+      fun () ->
+              RV = gather_op_stats(node(), Bucket, Nodes, ClientTStamp, Window),
+              gen_server:reply(From, RV)
+      end),
+    {noreply, State};
 handle_call(_, _From, State) ->
     {reply, not_supported, State}.
 
