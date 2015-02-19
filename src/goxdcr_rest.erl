@@ -23,7 +23,8 @@
          proxy/2,
          send/2,
          find_all_replication_docs/1,
-         all_local_replication_infos/0]).
+         all_local_replication_infos/0,
+         delete_all_replications/1]).
 
 get_rest_port() ->
     ns_config:read_key_fast({node, node(), xdcr_rest_port}, 9998).
@@ -94,12 +95,20 @@ interesting_doc_key(<<"continuous">>) ->
 interesting_doc_key(_) ->
     false.
 
+query_goxdcr(Method, Path, Timeout) ->
+    query_goxdcr(fun (_) -> ok end, Method, Path, Timeout).
+
 query_goxdcr(Fun, Method, Path, Timeout) ->
     RV = {Code, _Headers, Body} =
         send_with_timeout(Method, Path, special_auth_headers(), [], Timeout),
     case Code of
         200 ->
-            Fun(ejson:decode(Body));
+            case Body of
+                <<>> ->
+                    Fun([]);
+                _ ->
+                    Fun(ejson:decode(Body))
+            end;
         _ ->
             erlang:throw({unsuccesful_goxdcr_call, RV})
     end.
@@ -132,3 +141,6 @@ all_local_replication_infos() ->
                                              process_repl_info(Info, Acc)
                                      end, [], Json)
                  end, "GET", "/pools/default/replicationInfos", 30000).
+
+delete_all_replications(Bucket) ->
+    query_goxdcr("DELETE", "/pools/default/replications/" ++ Bucket, 30000).

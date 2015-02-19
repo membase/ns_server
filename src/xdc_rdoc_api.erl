@@ -124,17 +124,22 @@ find_all_replication_docs_body(Doc0) ->
     end.
 
 delete_all_replications(Bucket) ->
-    XDCRDocs = find_all_replication_docs(),
-    lists:foreach(
-      fun (PList) ->
-              case ?b2l(misc:expect_prop_value(source, PList)) of
-                  Bucket ->
-                      Id = misc:expect_prop_value(id, PList),
-                      delete_replicator_doc(?b2l(Id));
-                  _ ->
-                      ok
-              end
-      end, XDCRDocs).
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        true ->
+            goxdcr_rest:delete_all_replications(Bucket);
+        false ->
+            XDCRDocs = find_all_replication_docs(),
+            lists:foreach(
+              fun (PList) ->
+                      case ?b2l(misc:expect_prop_value(source, PList)) of
+                          Bucket ->
+                              Id = misc:expect_prop_value(id, PList),
+                              delete_replicator_doc(?b2l(Id));
+                          _ ->
+                              ok
+                      end
+              end, XDCRDocs)
+    end.
 
 -spec get_full_replicator_doc(string() | binary()) -> {ok, #doc{}} | not_found.
 get_full_replicator_doc(Id) when is_list(Id) ->
