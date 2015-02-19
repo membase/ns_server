@@ -1751,3 +1751,44 @@ var StringSetHashFragmentCell = mkClass(StringHashFragmentCell, {
     this.setValue([]);
   }
 });
+
+// This function adds name()-s to Cell properties of given object. It
+// excludes cells that already have name and cells that are (for any
+// reason) available under multiple attributes.
+Cell.autonameCells = function (obj) {
+  // this marker field is used to mark cells we've already seen
+  var markerId = _.uniqueId("cell");
+  // toName is array of unnamed cells we've found so far on given
+  // 'obj'
+  var toName = [];
+  _.each(obj, function (v, k) {
+    if (!(v instanceof Cell)) {
+      return;
+    }
+    if (v.name()) {
+      return;
+    }
+    // we already saw that cell
+    if (v[markerId]) {
+      v[markerId]++;
+    } else {
+      v[markerId] = 1;
+      toName.push([v, k]);
+    }
+  });
+  _.each(toName, function (pair) {
+    var v = pair[0];
+    var k = pair[1];
+    var count = v[markerId];
+    if (!count || count < 1) {
+      BUG();
+    }
+    delete v[markerId];
+    // we only auto-name cells that are reachable only via single
+    // attribute. Just in case
+    if (count != 1) {
+      return;
+    }
+    v.name(k);
+  });
+};

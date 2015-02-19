@@ -896,4 +896,33 @@ CellsTest.prototype.testLazyCellsDetachEffectsExpectFail = function () {
   // AND WE FAIL IN THIS CODE
   assertEquals("hey", gotValue2);
   // TODO: fix and finish this test
-}
+};
+
+CellsTest.prototype.testAutonameCells = function () {
+  var c1, c2, c3;
+  var obj = {
+    c1: c1 = new Cell(),
+    c2: c2 = Cell.compute(function (v) {return 1;}),
+    c3: c3 = Cell.compute(function (v) {return 1;})
+  };
+  assertEquals(c1, obj.c1);
+  assertEquals(c2, obj.c2);
+  assertEquals(c3, obj.c3);
+  obj.c3.name("c3custom");
+  Cell.autonameCells(obj);
+  assertEquals(c1, obj.c1);
+  assertEquals(c2, obj.c2);
+  assertEquals(c3, obj.c3);
+  assertEquals("c1", c1.name());
+  assertEquals("c2", c2.name());
+  assertEquals("c3custom", c3.name());
+
+  var obj = {
+    c1: c1 = new Cell(),
+    c2: c2 = Cell.compute(function (v) {return 1;}),
+    c3: c2
+  };
+  Cell.autonameCells(obj);
+  assertEquals("c1", c1.name());
+  assertEquals(null, c2.name());
+};
