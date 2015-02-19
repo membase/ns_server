@@ -1100,7 +1100,7 @@ couchbase_query_stats_descriptions(Bucket) ->
                            {name, <<"query_requests_5000ms">>},
                            {desc, <<"Number of queries that take longer than 5000 ms per second">>}]}]}]}].
 
-membase_stats_description(BucketId) ->
+membase_stats_description(BucketId, AddQuery) ->
     [{struct,[{blockName,<<"Summary">>},
               {stats,
                [{struct,[{title,<<"ops per second">>},
@@ -1219,10 +1219,14 @@ membase_stats_description(BucketId) ->
                                  "(measured from replication_changes_left).">>}]},
                 {struct,[{title,<<"Intra-Replication Queue">>},
                          {name,<<"ep_dcp_replica_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]},
-                {struct,[{title,<<"N1QL Queries/sec">>},
-                         {name, <<"query_requests">>},
-                         {desc, <<"Number of N1QL requests processed per second.">>}]}
+                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]}
+                | case AddQuery of
+                      true ->
+                          [{struct,[{title,<<"N1QL Queries/sec">>},
+                                    {name, <<"query_requests">>},
+                                    {desc, <<"Number of N1QL requests processed per second.">>}]}];
+                      _ -> []
+                  end
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
@@ -1535,7 +1539,10 @@ membase_stats_description(BucketId) ->
                ]}]}]
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_replication_stats_descriptions(BucketId)
-        ++ couchbase_query_stats_descriptions(BucketId)
+        ++ case AddQuery of
+               true -> couchbase_query_stats_descriptions(BucketId);
+               false -> []
+           end
         ++ [{struct,[{blockName,<<"Incoming XDCR Operations">>},
                      {bigTitlePrefix, <<"Incoming XDCR">>},
                      {extraCSSClasses,<<"dynamic_closed">>},
@@ -1659,20 +1666,20 @@ server_resources_stats_description() ->
                 {title,<<"streaming wakeups/sec">>},
                 {desc,<<"Rate of streaming request wakeups on port 8091">>}]}]}].
 
-base_stats_directory("@query") ->
+base_stats_directory("@query", _) ->
     couchbase_query_stats_descriptions("@query");
-base_stats_directory(BucketId) ->
+base_stats_directory(BucketId, AddQuery) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
-    case ns_bucket:bucket_type(BucketConfig) of
-        membase -> membase_stats_description(BucketId);
-        memcached -> memcached_stats_description()
-    end.
+    Base = case ns_bucket:bucket_type(BucketConfig) of
+               membase -> membase_stats_description(BucketId, AddQuery);
+               memcached -> memcached_stats_description()
+           end,
+    [{struct, server_resources_stats_description()} | Base].
 
 serve_stats_directory(_PoolId, BucketId, Req) ->
-    BaseDescription = base_stats_directory(BucketId),
-    BaseDescription1 = [{struct, server_resources_stats_description()} | BaseDescription],
+    BaseDescription = base_stats_directory(BucketId, true),
     Prefix = menelaus_util:concat_url_path(["pools", "default", "buckets", BucketId, "stats"]),
-    Desc = [{struct, add_specific_stats_url(BD, Prefix)} || {struct, BD} <- BaseDescription1],
+    Desc = [{struct, add_specific_stats_url(BD, Prefix)} || {struct, BD} <- BaseDescription],
     menelaus_util:reply_json(Req, {struct, [{blocks, Desc}]}).
 
 add_specific_stats_url(BlockDesc, Prefix) ->
