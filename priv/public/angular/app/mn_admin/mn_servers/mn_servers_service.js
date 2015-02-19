@@ -1,5 +1,5 @@
 angular.module('mnServersService').factory('mnServersService',
-  function (mnHttp, mnTasksDetails, mnPoolDefault, $q, $state, $stateParams, mnHelper) {
+  function (mnHttp, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, $q, $state, $stateParams, mnHelper) {
     var mnServersService = {};
 
     var pendingEject = [];
@@ -243,13 +243,15 @@ angular.module('mnServersService').factory('mnServersService',
       return $q.all([
         mnServersService.getNodes(),
         mnPoolDefault.get(),
-        mnTasksDetails.get()
+        mnTasksDetails.get(),
+        mnSettingsAutoFailoverService.getAutoFailoverSettings()
       ]).then(function (results) {
 
         var rv = {};
         var poolDefault = results[1];
         var nodes = results[0];
         var tasks = results[2];
+        var autoFailoverSettings = results[3];
         rv.allNodes = nodes.allNodes;
         rv.isGroupsAvailable = poolDefault.isGroupsAvailable;
         rv.currentNodes = prepareNode(nodes, tasks, stateParamsNodeType);
@@ -268,6 +270,7 @@ angular.module('mnServersService').factory('mnServersService',
             case 'softRebalanceNeeded': return 'Rebalance recommended, some data does not have the desired replicas configuration!';
           }
         });
+        rv.autoFailoverSettingsCount = autoFailoverSettings.data.count;
         return rv;
       });
     };

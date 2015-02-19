@@ -84,15 +84,19 @@ angular.module('mnSettingsCluster', [
   'mnSettingsClusterService',
   'mnHelper'
 ]);
+angular.module('mnSettingsClusterService', [
+  'mnHttp'
+]);
 angular.module('mnSettingsNotifications', [
   'mnSettingsNotificationsService',
   'mnHelper'
 ]);
-angular.module('mnSettingsClusterService', [
-  'mnHttp'
-]);
 angular.module('mnSettingsNotificationsService', [
   'mnHttp'
+]);
+angular.module('mnSettingsAutoFailover', [
+  'mnSettingsAutoFailoverService',
+  'mnHelper'
 ]);
 angular.module('mnSettingsAutoFailoverService', [
   'mnHttp'
@@ -203,6 +207,7 @@ angular.module('app', [
   'mnWizard',
   'mnAuth',
   'mnAdmin',
+  'mnSettingsAutoFailover',
   'mnSettingsCluster',
   'mnSettingsNotifications',
   'mnServers',

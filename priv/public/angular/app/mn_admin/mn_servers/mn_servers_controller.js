@@ -1,5 +1,5 @@
 angular.module('mnServers').controller('mnServersController',
-  function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, serversState, mnSettingsAutoFailoverService, mnServersService, mnHelper) {
+  function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, serversState, mnServersService, mnHelper) {
 
     function applyServersState(serversState) {
       $scope.serversState = serversState;
@@ -48,18 +48,6 @@ angular.module('mnServers').controller('mnServersController',
             controller: 'mnServersStopRebalanceDialogController'
           });
       });
-    };
-    $scope.resetAutoFailOverCount = function () {
-      mnSettingsAutoFailoverService.resetAutoFailOverCount()
-        .then(function () {
-          $scope.isResetAutoFailOverCountSuccess = true;
-          $timeout(function () {
-            $scope.isAutoFailOverCountAvailable = false;
-            $scope.isResetAutoFailOverCountSuccess = false;
-          }, 3000);
-        }, function () {
-          $scope.showAutoFailOverWarningMessage = true
-        });
     };
     $scope.formatServices = function (services) {
       return _(services).map(function (service) {

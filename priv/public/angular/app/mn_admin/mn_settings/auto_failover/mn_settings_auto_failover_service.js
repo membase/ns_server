@@ -16,5 +16,13 @@ angular.module('mnSettingsAutoFailoverService').factory('mnSettingsAutoFailoverS
       });
     };
 
+    mnSettingsAutoFailoverService.saveAutoFailoverSettings = function (autoFailoverSettings) {
+      return mnHttp({
+        method: 'POST',
+        url: "/settings/autoFailover",
+        data: autoFailoverSettings
+      });
+    };
+
     return mnSettingsAutoFailoverService;
 });

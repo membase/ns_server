@@ -1,5 +1,5 @@
 angular.module('mnAdmin').controller('mnAdminController',
-  function ($scope, $rootScope, $q, mnHelper, pools, mnAuthService, tasks, updates, mnTasksDetails, mnAlertsService, mnPoolDefault, launchpadSource) {
+  function ($scope, $rootScope, $q, mnHelper, pools, mnAuthService, tasks, updates, mnTasksDetails, mnAlertsService, mnPoolDefault, launchpadSource, mnSettingsAutoFailoverService) {
     $scope.launchpadId = pools.launchID;
     $scope.launchpadSource = launchpadSource;
     $scope.updates = updates;
@@ -9,6 +9,12 @@ angular.module('mnAdmin').controller('mnAdminController',
 
     $scope.logout = function () {
       mnAuthService.logout();
+    };
+    $scope.resetAutoFailOverCount = function () {
+      mnHelper.promiseHelper($scope, mnSettingsAutoFailoverService.resetAutoFailOverCount())
+        .showSpinner('resetQuotaLoading')
+        .catchGlobalErrors('Unable to reset the auto-failover quota!')
+        .reloadState();
     };
 
     function applyTasks(resp) {

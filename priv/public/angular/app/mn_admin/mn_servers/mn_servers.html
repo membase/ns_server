@@ -6,14 +6,10 @@
   <div class="warning_message" style="color:red;" id="js_rebalance_during_sample_load" ng-show="serversState.showWarningMessage">
     Warning: Rebalance is not available until data loading is completed!
   </div>
-  <div class="warning_message" style="color:red;" ng-show="showAutoFailOverWarningMessage">
-    Warning: Unable to reset the auto-failover quota!
-  </div>
-  <div id="auto_failover_count_container" class="warning_message" ng-show="isAutoFailOverCountAvailable">
+  <div id="auto_failover_count_container" class="warning_message" ng-show="serversState.autoFailoverSettingsCount > 0">
     A server was automatically failed over
-    <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me" ng-click="resetAutoFailOverCount()">
-      <span ng-show="!isResetAutoFailOverCountSuccess">Reset Quota</span>
-      <span ng-show="isResetAutoFailOverCountSuccess">Done!</span>
+    <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me" ng-click="resetAutoFailOverCount()" mn-spinner="resetQuotaLoading">
+      <span>Reset Quota</span>
     </a>
   </div>
   <div class="shadow_box">

@@ -16,6 +16,8 @@ angular.module('mnAlertsService').service('mnAlertsService',
       angular.forEach(incomingAlerts, function (msg) {
         this.push({type: type, msg: msg});
       }, alerts);
+
+      angular.isString(incomingAlerts) && alerts.push({type: type, msg: incomingAlerts});
     };
 
     mnAlertsService.closeAlert = function(index) {
