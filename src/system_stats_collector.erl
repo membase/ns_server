@@ -256,7 +256,7 @@ proc_stat(Name, Pid, Stat, Sample, Default) ->
     end.
 
 proc_stat_name(Name, Pid, Stat) ->
-    <<"proc/", Pid/binary, $/, Name/binary, $/, (atom_to_binary(Stat, latin1))/binary>>.
+    <<Name/binary, $/, Pid/binary, $/, (atom_to_binary(Stat, latin1))/binary>>.
 
 add_ets_stats(Stats) ->
     [{_, NowRestLeaves}] = ets:lookup(ns_server_system_stats, {request_leaves, rest}),
