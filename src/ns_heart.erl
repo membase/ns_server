@@ -315,7 +315,7 @@ current_status_slow_inner() ->
                   case binary:split(Rest, <<$/>>, [global]) of
                       [_Pid, _Process, StatName] ->
                           lists:member(StatName,
-                                       [<<"mem_resident">>, <<"mem_size">>,
+                                       [<<"ppid">>, <<"mem_resident">>, <<"mem_size">>,
                                         <<"cpu_utilization">>, <<"major_faults_raw">>]);
                       _ ->
                           false

@@ -87,7 +87,7 @@ flush_ticks(Acc) ->
 recv_data(Port) ->
     recv_data_loop(Port, <<"">>).
 
-recv_data_loop(Port, <<2:32/native, StructSize:32/native, _/binary>> = Acc) ->
+recv_data_loop(Port, <<3:32/native, StructSize:32/native, _/binary>> = Acc) ->
     recv_data_with_length(Port, Acc, StructSize - erlang:size(Acc));
 recv_data_loop(_, <<V:32/native, _/binary>>) ->
     error({unsupported_portsigar_version, V});
@@ -127,7 +127,7 @@ unpack_data(Bin, PrevSample) ->
       Rest/binary>> = Bin,
 
     StructSize = erlang:size(Bin),
-    Version = 2,
+    Version = 3,
 
     {PrevSampleGlobal, PrevSampleProcs} =
         case PrevSample of
@@ -185,9 +185,10 @@ unpack_processes(Bin, PrevSamples) ->
 do_unpack_processes(Bin, Acc) when size(Bin) =:= 0 ->
     Acc;
 do_unpack_processes(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
-    <<Name0:12/binary,
+    <<Name0:60/binary,
       CpuUtilization:32/native,
       Pid:64/native,
+      PPid:64/native,
       MemSize:64/native,
       MemResident:64/native,
       MemShare:64/native,
@@ -212,7 +213,8 @@ do_unpack_processes(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
             PageFaultsDiff = PageFaults - OldPageFaults,
 
             NewSample =
-                [{proc_stat_name(Name, PidBinary, major_faults), MajorFaultsDiff},
+                [{proc_stat_name(Name, PidBinary, ppid), PPid},
+                 {proc_stat_name(Name, PidBinary, major_faults), MajorFaultsDiff},
                  {proc_stat_name(Name, PidBinary, minor_faults), MinorFaultsDiff},
                  {proc_stat_name(Name, PidBinary, page_faults), PageFaultsDiff},
                  {proc_stat_name(Name, PidBinary, mem_size), MemSize},
