@@ -26,7 +26,8 @@
          delete_all_replications/1,
          get_full_replicator_doc/1,
          find_all_replication_docs/0,
-         find_all_replication_docs/1]).
+         find_all_replication_docs/1,
+         all_local_replication_infos/0]).
 
 update_doc(Doc) ->
     ns_couchdb_api:update_doc(xdcr, Doc).
@@ -145,4 +146,14 @@ get_full_replicator_doc(Id) when is_binary(Id) ->
         {ok, #doc{body={Props0}} = Doc} ->
             Props = [{couch_util:to_binary(K), V} || {K, V} <- Props0],
             {ok, Doc#doc{body={Props}}}
+    end.
+
+-spec all_local_replication_infos() -> [{Id :: binary(), [{atom(), _}],
+                                         [{erlang:timestamp(), ErrorMsg :: binary()}]}].
+all_local_replication_infos() ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        true ->
+            goxdcr_rest:all_local_replication_infos();
+        false ->
+            xdc_replication_sup:all_local_replication_infos()
     end.

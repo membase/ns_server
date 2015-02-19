@@ -22,7 +22,8 @@
 -export([proxy/1,
          proxy/2,
          send/2,
-         find_all_replication_docs/1]).
+         find_all_replication_docs/1,
+         all_local_replication_infos/0]).
 
 get_rest_port() ->
     ns_config:read_key_fast({node, node(), xdcr_rest_port}, 9998).
@@ -93,17 +94,41 @@ interesting_doc_key(<<"continuous">>) ->
 interesting_doc_key(_) ->
     false.
 
+query_goxdcr(Fun, Method, Path, Timeout) ->
+    RV = {Code, _Headers, Body} =
+        send_with_timeout(Method, Path, special_auth_headers(), [], Timeout),
+    case Code of
+        200 ->
+            Fun(ejson:decode(Body));
+        _ ->
+            erlang:throw({unsuccesful_goxdcr_call, RV})
+    end.
+
 process_doc({Props}) ->
     [{list_to_atom(binary_to_list(Key)), Value} ||
         {Key, Value} <- Props,
         interesting_doc_key(Key)].
 
 find_all_replication_docs(Timeout) ->
-    RV = {Code, _Headers, Body} =
-        send_with_timeout("GET", "/pools/default/replications", special_auth_headers(), [], Timeout),
-    case Code of
-        200 ->
-            [process_doc(Doc) || Doc <- ejson:decode(Body)];
-        _ ->
-            erlang:throw({unsuccesful_goxdcr_call, RV})
+    query_goxdcr(fun (Json) ->
+                         [process_doc(Doc) || Doc <- Json]
+                 end, "GET", "/pools/default/replications", Timeout).
+
+
+process_repl_info({Info}, Acc) ->
+    case misc:expect_prop_value(<<"StatsMap">>, Info) of
+        null ->
+            Acc;
+        {StatsList} ->
+            Id = misc:expect_prop_value(<<"Id">>, Info),
+            Stats = [{list_to_atom(binary_to_list(K)), list_to_integer(binary_to_list(V))} ||
+                        {K, V} <- StatsList],
+            [{Id, Stats, []}, Acc]
     end.
+
+all_local_replication_infos() ->
+    query_goxdcr(fun (Json) ->
+                         lists:foldl(fun (Info, Acc) ->
+                                             process_repl_info(Info, Acc)
+                                     end, [], Json)
+                 end, "GET", "/pools/default/replicationInfos", 30000).
