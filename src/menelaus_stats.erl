@@ -32,6 +32,8 @@
          bucket_ram_usage/1,
          serve_stats_directory/3]).
 
+-export([serve_ui_stats/1]).
+
 %% External API
 bucket_disk_usage(BucketName) ->
     {_, _, _, _, DiskUsed, _}
@@ -1691,3 +1693,246 @@ add_specific_stats_url(BlockDesc, Prefix) ->
                                       end} |
                    KV]} || {struct, KV} <- Infos],
     lists:keyreplace(stats, 1, BlockDesc, {stats, NewInfos}).
+
+grab_ui_stats(Kind, Nodes, HaveStamp, Wnd) ->
+    TS = proplists:get_value(list_to_binary(Kind), HaveStamp),
+    S = grab_aggregate_op_stats(Kind, Nodes, TS, Wnd),
+    samples_to_proplists(S, Kind).
+
+%% Returns multiple blocks of stats and other things convenient for
+%% analytics UI.
+%%
+%% This is private and thus easily evolve-able API.
+%%
+%% It serves all stats that we're going to display on
+%% analytics. Currently that is bucket stats, portion of system stats and
+%% @query stats (with @index-<bucket> to follow soon).
+%%
+%% Response format is roughly as follows:
+%% {
+%%   directory: {url: "/pools/default/buckets/default/statsDirectory?v=40989663&addq=1"},
+%%   hot_keys: [],
+%%   interval: 1000,
+%%   isPersistent: true,
+%%   lastTStamp: {default: 1424312639799, @system: 1424312639799, @query: 1424312640799},
+%%   mainStatsBlock: "default",
+%%   nextReqAfter: 0,
+%%   samplesCount: 60,
+%%   specificStatName: null,
+%%   stats: {
+%%     @query: {query_avg_req_time: [0, 0], query_avg_svc_time: [0, 0], query_avg_response_size: [0, 0],…},
+%%     @system: {cpu_idle_ms: [14950, 15070], cpu_local_ms: [16310, 16090],…},
+%%     default: {couch_total_disk_size: [578886, 578886], couch_docs_fragmentation: [0, 0],…}
+%% }}
+%%
+%%
+%% Overall focus of this API was to pull as much logic as possible
+%% from .js and into server, and to be able to handle displaying
+%% multiple stats on single analytics page (i.e. @system, bucket,
+%% @query, @index and possibly more (like @memcached-global)).
+%%
+%% Biggest differences from old-style (and public) stats are:
+%%
+%%  * independent "delta encoding" for different stats block. Which
+%%  allows us to handle things such as missing samples in some stats
+%%  without having to drop matching timestamps everywhere (like we
+%%  still do between @system and bucket stats)
+%%
+%%  * automatically version-ed directory url. Thus UI doesn't have to
+%%  have logic to "watch" served stats and reload directory
+%%
+%%  * maximally unified format and UI logic between aggregated and
+%%  "specific" stats
+%%
+%%  * nextReqAfter tells ui when to send request for next sample
+%%
+%% * UI is not expected to be "hypertext" anymore, but to simply send
+%% all parameters to _uistats and receive correct response back
+%% (handling aggregate and specific stats in single place). We do
+%% refer to directory separately, however, for efficiency (i.e. so
+%% that ui does not have to receive/parse stats directory every time it receives
+%% new stats samples).
+%%
+serve_ui_stats(Req) ->
+    Params = Req:parse_qs(),
+    case proplists:get_value("statName", Params) of
+        undefined ->
+            serve_aggregated_ui_stats(Req, Params);
+         StatName ->
+            serve_specific_ui_stats(Req, StatName, Params)
+    end.
+
+extract_ui_stats_params(Params) ->
+    Bucket = proplists:get_value("bucket", Params),
+    {HaveStamp} = ejson:decode(list_to_binary(proplists:get_value("haveTStamp", Params, "{}"))),
+    {Step, Period} = case proplists:get_value("zoom", Params) of
+                         "minute" -> {1, minute};
+                         "hour" -> {60, hour};
+                         "day" -> {1440, day};
+                         "week" -> {11520, week};
+                         "month" -> {44640, month};
+                         "year" -> {527040, year}
+                     end,
+    Wnd = {Step, Period, 60},
+    {Bucket, HaveStamp, Wnd}.
+
+serve_aggregated_ui_stats(Req, Params) ->
+    {Bucket, HaveStamp, Wnd} = extract_ui_stats_params(Params),
+    Nodes = case proplists:get_value("node", Params, all) of
+                all -> all;
+                XHost ->
+                    case menelaus_web:find_node_hostname(XHost, Req) of
+                        {ok, N} -> [N];
+                        _ ->
+                            erlang:throw({web_exception, 404, "not found", []})
+                    end
+            end,
+    BS = grab_ui_stats(Bucket, Nodes, HaveStamp, Wnd),
+    QNodes = bucket_nodes("@query"),
+    HaveQuery = case Nodes of
+                    all ->
+                        QNodes =/= [];
+                    [_|_] ->
+                        (Nodes -- QNodes) =/= Nodes
+                end,
+    SS = grab_ui_stats("@system", Nodes, HaveStamp, Wnd),
+    MaybeQStats = case HaveQuery of
+                      false ->
+                          [];
+                      true ->
+                          QS = grab_ui_stats("@query", Nodes, HaveStamp, Wnd),
+                          [{<<"@query">>, {QS}}]
+                  end,
+    Stats = [{list_to_binary(Bucket), {BS}},
+             {<<"@system">>, {SS}}
+             | MaybeQStats],
+    NewHaveStamp = [case proplists:get_value(timestamp, S) of
+                        [] -> {Name, 0};
+                        L -> {Name, lists:last(L)}
+                    end || {Name, {S}} <- Stats],
+    StatsDirectoryV = erlang:phash2(base_stats_directory(Bucket, HaveQuery)),
+    DirAddQ = case HaveQuery of
+                  true ->
+                      "&addq=1";
+                  _ ->
+                      ""
+              end,
+    DirQS = "?v=" ++ integer_to_list(StatsDirectoryV) ++ DirAddQ,
+    DirURL = list_to_binary("/pools/default/buckets/" ++ Bucket
+                            ++ "/statsDirectory" ++ DirQS),
+
+    [{hot_keys, HKs0}] = build_bucket_stats_hks_response(Bucket),
+    HKs = [{HK} || {struct, HK} <- HKs0],
+    Extra = [{hot_keys, HKs}],
+    output_ui_stats(Req, Stats,
+                    {[{url, DirURL}]},
+                    Wnd, Bucket, null, NewHaveStamp, Extra).
+
+maybe_string_hostname_port(H) ->
+    case lists:reverse(H) of
+        "1908:" ++ RevPref ->
+            lists:reverse(RevPref);
+        _ ->
+            H
+    end.
+
+serve_specific_ui_stats(Req, StatName, Params) ->
+    {Bucket, HaveStamp, Wnd} = extract_ui_stats_params(Params),
+    ClientTStamp = proplists:get_value(<<"perNode">>, HaveStamp),
+
+    FullDirectory = base_stats_directory(Bucket, true),
+    StatNameB = list_to_binary(StatName),
+    MaybeStatDesc = [Desc
+                     || Block <- FullDirectory,
+                        XDesc <- case Block of
+                                     {struct, BlockProps} ->
+                                         {_, XStats} = lists:keyfind(stats, 1, BlockProps),
+                                         XStats
+                                 end,
+                        Desc <- case XDesc of
+                                    {struct, DescProps} ->
+                                        {_, DescName} = lists:keyfind(name, 1, DescProps),
+                                        case DescName =:= StatNameB of
+                                            true ->
+                                                [DescProps];
+                                            false ->
+                                                []
+                                        end
+                                end],
+
+    case MaybeStatDesc of
+        [] ->
+            erlang:throw({web_exception, 404, "not found", []});
+        [_|_] ->
+            ok
+    end,
+
+    StatDescProps = hd(MaybeStatDesc),
+
+    {NodesSamples, Nodes} =
+        get_samples_for_system_or_bucket_stat(Bucket, StatName, ClientTStamp, Wnd),
+
+    Config = ns_config:get(),
+    LocalAddr = menelaus_util:local_addr(Req),
+    StringHostnames = [menelaus_web:build_node_hostname(Config, N, LocalAddr) || N <- Nodes],
+    StatKeys = [list_to_binary("@"++H) || H <- StringHostnames],
+
+    Timestamps = [TS || {TS, _} <- hd(NodesSamples)],
+    MainValues = [VS || {_, VS} <- hd(NodesSamples)],
+
+    AllignedRestValues
+        = lists:map(fun (undefined) -> [undefined || _ <- Timestamps];
+                        (Samples) ->
+                            Dict = orddict:from_list(Samples),
+                            [dict_safe_fetch(T, Dict, 0) || T <- Timestamps]
+                    end, tl(NodesSamples)),
+
+    Stats = lists:zipwith(fun (H, VS) ->
+                                  {H, VS}
+                          end,
+                          StatKeys, [MainValues | AllignedRestValues]),
+    LastTStamp = case Timestamps of
+                     [] -> 0;
+                     L -> lists:last(L)
+                 end,
+
+    RestStatDescProps =
+        [{K, V} || {K, V} <- StatDescProps,
+                   K =/= name andalso K =/= title],
+
+    StatInfos = [{[{title, list_to_binary(maybe_string_hostname_port(H))},
+                   {name, list_to_binary("@"++H)}
+                  | RestStatDescProps]}
+                 || H <- StringHostnames],
+
+    ServeDirectory = {[{value, {[{thisISSpecificStats, true},
+                                 {blocks, [{[{blockName, <<"Specific Stats">>},
+                                             {hideThis, true},
+                                             {stats, StatInfos}]}]}]}},
+                       {origTitle, misc:expect_prop_value(title, StatDescProps)},
+                       {url, null}]},
+
+    FullStats = [{timestamp, Timestamps} | Stats],
+
+    output_ui_stats(Req,
+                    [{perNode, {FullStats}}],
+                    ServeDirectory,
+                    Wnd, Bucket, list_to_binary(StatName),
+                    [{perNode, LastTStamp}], []).
+
+
+output_ui_stats(Req, Stats, Directory, Wnd, Bucket, StatName, NewHaveStamp, Extra) ->
+    Step = element(1, Wnd),
+    J = [{stats, {Stats}},
+         {directory, Directory},
+         {samplesCount, 60},
+         {interval, Step * 1000},
+         {isPersistent, is_persistent(Bucket)},
+         {nextReqAfter, case Step of
+                            1 -> 0;
+                            _ -> 30000
+                        end},
+         {mainStatsBlock, element(1, hd(Stats))},
+         {specificStatName, StatName},
+         {lastTStamp, {NewHaveStamp}} | Extra],
+    menelaus_util:reply_json(Req, {J}).

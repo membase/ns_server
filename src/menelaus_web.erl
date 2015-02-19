@@ -216,6 +216,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth_any_bucket, fun check_and_handle_pool_info/2, ["default"]};
                          ["pools", "default", "overviewStats"] ->
                              {auth_ro, fun menelaus_stats:handle_overview_stats/2, ["default"]};
+                         ["_uistats"] ->
+                             {auth_ro, fun menelaus_stats:serve_ui_stats/1};
                          ["poolsStreaming", "default"] ->
                              {auth_any_bucket, fun handle_pool_info_streaming/2, ["default"]};
                          ["pools", "default", "buckets"] ->
