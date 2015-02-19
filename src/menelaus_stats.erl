@@ -745,47 +745,7 @@ build_bucket_stats_ops_response(Nodes, BucketName, Params) ->
 
     % this will throw out all samples with timestamps that are not present
     % in both BucketRawSamples and SystemRawSamples
-    BSSamples = join_samples(BucketRawSamples, SystemRawSamples),
-
-    QNodes = bucket_nodes("@query"),
-    %% our ui sends _ with all requests. And we want to auto-add query
-    %% stats only if UI is asking. We want everyone else to use some
-    %% other API.
-    AddQuery = case ((proplists:get_value("_", Params) =/= undefined)
-                     andalso BucketName =/= "@query") of
-                   true ->
-                       case Nodes of
-                           all ->
-                               QNodes =/= [];
-                           [_|_] ->
-                               (Nodes -- QNodes) =/= Nodes
-                       end;
-                   false ->
-                       false
-               end,
-
-    Samples = case AddQuery of
-                  false ->
-                      BSSamples;
-                  true ->
-                      QueryRawSamples = grab_aggregate_op_stats("@query", QNodes, ClientTStamp, Window),
-                      case Nodes of
-                          [SingleNode] ->
-                              case not lists:member(SingleNode, bucket_nodes(BucketName)) of
-                                  true ->
-                                      %% We're asking nodes that don't
-                                      %% have given bucket. Thus
-                                      %% BucketRawSamples must be
-                                      %% empty. Thus we shouldn't even
-                                      %% try to join_samples with it
-                                      join_samples(QueryRawSamples, SystemRawSamples);
-                                  false ->
-                                      join_samples(BSSamples, QueryRawSamples)
-                              end;
-                          _ ->
-                              join_samples(BSSamples, QueryRawSamples)
-                      end
-              end,
+    Samples = join_samples(BucketRawSamples, SystemRawSamples),
 
     StatsPropList = samples_to_proplists(Samples, BucketName),
 
@@ -1055,15 +1015,9 @@ do_couchbase_view_stats_descriptions(BucketId) ->
               [MyStats|Stats]
       end, [], DictBySig).
 
-couchbase_query_stats_descriptions(Bucket) ->
-    Classes = case Bucket of
-                  "@query" ->
-                      <<"">>;
-                  _ ->
-                      <<"dynamic_closed analytics_query_block">>
-              end,
+couchbase_query_stats_descriptions() ->
     [{struct, [{blockName, <<"Query">>},
-               {extraCSSClasses, Classes},
+               {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
                 [{struct, [{title, <<"Requests/sec">>},
                            {name, <<"query_requests">>},
@@ -1542,7 +1496,7 @@ membase_stats_description(BucketId, AddQuery) ->
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_replication_stats_descriptions(BucketId)
         ++ case AddQuery of
-               true -> couchbase_query_stats_descriptions(BucketId);
+               true -> couchbase_query_stats_descriptions();
                false -> []
            end
         ++ [{struct,[{blockName,<<"Incoming XDCR Operations">>},
@@ -1669,7 +1623,7 @@ server_resources_stats_description() ->
                 {desc,<<"Rate of streaming request wakeups on port 8091">>}]}]}].
 
 base_stats_directory("@query", _) ->
-    couchbase_query_stats_descriptions("@query");
+    couchbase_query_stats_descriptions();
 base_stats_directory(BucketId, AddQuery) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
     Base = case ns_bucket:bucket_type(BucketConfig) of
@@ -1679,7 +1633,9 @@ base_stats_directory(BucketId, AddQuery) ->
     [{struct, server_resources_stats_description()} | Base].
 
 serve_stats_directory(_PoolId, BucketId, Req) ->
-    BaseDescription = base_stats_directory(BucketId, true),
+    Params = Req:parse_qs(),
+    AddQuery = proplists:get_value("addq", Params, "") =/= "",
+    BaseDescription = base_stats_directory(BucketId, AddQuery),
     Prefix = menelaus_util:concat_url_path(["pools", "default", "buckets", BucketId, "stats"]),
     Desc = [{struct, add_specific_stats_url(BD, Prefix)} || {struct, BD} <- BaseDescription],
     menelaus_util:reply_json(Req, {struct, [{blocks, Desc}]}).
