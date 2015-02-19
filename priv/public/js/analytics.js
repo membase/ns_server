@@ -42,7 +42,7 @@ var StatsModel = {};
     return async;
   }
 
-  function createSamplesFuture(statsURL, statsData, bufferDepth, realTimeRestorer) {
+  function createSamplesFuture(opts, bufferDepth) {
     var cancelMark = {};
     var mark404 = {};
 
@@ -52,7 +52,9 @@ var StatsModel = {};
       }
 
       function onCancel() {
-        async.cancel();
+        if (async) {
+          async.cancel();
+        }
       }
       function unbind() {
         $(mainAsync).unbind('cancelled', onCancel);
@@ -60,7 +62,7 @@ var StatsModel = {};
       $(mainAsync).bind('cancelled', onCancel);
 
       var async;
-      return async = getCPS({url: statsURL, data: data, missingValue: mark404}, cancelMark, function (value, status, xhr) {
+      return async = getCPS({url: '/_uistats', data: data, missingValue: mark404}, cancelMark, function (value, status, xhr) {
         unbind();
         if (value !== cancelMark && value !== mark404) {
           var date = xhr.getResponseHeader('date');
@@ -71,124 +73,58 @@ var StatsModel = {};
       });
     }
 
-    var mainAsync = future(function (dataCallback) {
-      function deliverValue(value) {
-        return dataCallback.continuing(value);
-      }
-      nonRealtimeLoop(deliverValue);
+    var dataCallback;
+
+    var mainAsync = future(function (_dataCallback) {
+      dataCallback = _dataCallback;
+      loop();
     });
     mainAsync.cancel = function () {
-      $(this).trigger('cancelled');
-    }
+      $(this).trigger("cancelled");
+    };
+
+    var extraOpts = {};
+    var prevValue;
 
     return mainAsync;
 
-    function nonRealtimeLoop(deliverValue) {
-      doGet(statsData, function (value) {
-        if (value === cancelMark || value === mark404) {
-          return;
-        }
+    function loop(deliverValue) {
+      doGet(_.extend({}, opts, extraOpts), onLoopData);
+    }
 
-        deliverValue(value);
+    function onLoopData(value) {
+      if (prevValue) {
+        value = maybeApplyDelta(prevValue, value);
+      }
+      if (!dataCallback.continuing(value)) {
+        return;
+      }
+      prevValue = value;
+      if (value.lastTStamp) {
+        extraOpts = {haveTStamp: JSON.stringify(value.lastTStamp)};
+      }
+      if (!('nextReqAfter' in value)) {
+        BUG();
+      }
+      setTimeout(loop, value.nextReqAfter);
+    }
 
-        // this is the only non-generic place in this function. We're
-        // able to extract interval from specific and from normal
+    function restoreOpsBlock(prevSamples, samples, keepCount) {
+      var prevTS = prevSamples.timestamp;
+      if (samples.timestamp && samples.timestamp.length == 0) {
+        // server was unable to return any data for this "kind" of
         // stats
-        var interval = value.interval || value.op.interval;
-        if (interval < 2000) {
-          startRealTimeLoop(deliverValue, value);
-        } else {
-          setTimeout(function () {
-            nonRealtimeLoop(deliverValue);
-          }, Math.min(interval/2, 60000));
+        if (prevSamples && prevSamples.timestamp && prevSamples.timestamp.length > 0) {
+          return prevSamples;
         }
-      });
-    }
-
-    function startRealTimeLoop(realDeliverValue, value) {
-      // we're going to actually deliver values each second and
-      // deliverValue we pass to loop just stores last value
-      function deliverValue(val) {
-        value = val;
+        return samples;
       }
-      var intervalId = setInterval(function () {
-        realDeliverValue(_.clone(value));
-      }, 1000);
-
-      function onCancel() {
-        clearInterval(intervalId);
-        unbind();
+      if (prevTS == undefined ||
+          prevTS.length == 0 ||
+          prevTS[prevTS.length-1] != samples.timestamp[0]) {
+        return samples;
       }
-      function unbind() {
-        $(mainAsync).unbind('cancelled', onCancel);
-      }
-      $(mainAsync).bind('cancelled', onCancel);
-
-      realTimeLoop(deliverValue, value, realTimeRestorer);
-    }
-
-    function realTimeLoop(deliverValue, lastValue, realTimeRestorer) {
-      realTimeRestorer(lastValue, statsData, bufferDepth, function (data, restorer) {
-        doGet(data, function (rawStats) {
-          if (rawStats === cancelMark || rawStats === mark404) {
-            return;
-          }
-
-          var restoredValue = restorer(rawStats);
-          deliverValue(restoredValue);
-          realTimeLoop(deliverValue, restoredValue, realTimeRestorer);
-        });
-      });
-    }
-  }
-
-  // Prepares data for stats request and returns it and stats
-  // restoring function. This code is calling continuation 'cont' with
-  // two arguments rather then returning array with two elements (and
-  // then having to unpack at call-site).
-  //
-  // Returned stats restoring function will then be called with result
-  // of get request and is responsible for building complete stats
-  // from old sample it has and new result.
-  function aggregateRealTimeRestorer(lastValue, statsData, bufferDepth, mvReturn) {
-    var keepCount = lastValue.op.samplesCount + bufferDepth;
-    var data = statsData;
-
-    if (lastValue.op.lastTStamp) {
-      data = _.extend({haveTStamp: lastValue.op.lastTStamp}, data);
-    } else {
-      // if we don't have any stats, pause a bit, dont send new stats
-      // request immediately. Because doing so will return immediately
-      // making us send another request and so on, spamming server.
-      setTimeout(function () {
-        mvReturn(data, restorer);
-      }, 1000);
-      return;
-    }
-
-    return mvReturn(data, restorer);
-    function restorer(rawStats) {
-      var op = rawStats.op;
-
-      var samples = op.samples;
-      // if we have empty stats re-use previous value instead of rendering empty stats
-      if (samples && samples.timestamp.length === 0) {
-        return lastValue;
-      }
-
-      if (lastValue === undefined) {
-        return rawStats;
-      }
-
       var newSamples = {};
-      var prevSamples = lastValue.op.samples;
-
-      if (prevSamples.timestamp === undefined ||
-          prevSamples.timestamp.length === 0 ||
-          prevSamples.timestamp[prevSamples.timestamp.length - 1] != samples.timestamp[0]) {
-        return rawStats;
-      }
-
       for (var keyName in samples) {
         var ps = prevSamples[keyName];
         if (!ps) {
@@ -197,67 +133,33 @@ var StatsModel = {};
         }
         newSamples[keyName] = ps.concat(samples[keyName].slice(1)).slice(-keepCount);
       }
-
-      var restored = _.clone(rawStats);
-      restored.op = _.clone(op);
-      restored.op.samples = newSamples;
-
-      return restored;
-    }
-  }
-
-  function specificStatsRealTimeRestorer(lastValue, statsData, bufferDepth, mvReturn) {
-    var keepCount = lastValue.samplesCount + bufferDepth;
-    var data = statsData;
-
-    if (lastValue.lastTStamp) {
-      data = _.extend({haveTStamp: lastValue.lastTStamp}, data);
-    } else {
-      // if we don't have any stats, pause a bit, dont send new stats
-      // request immediately. Because doing so will return immediately
-      // making us send another request and so on, spamming server.
-      setTimeout(function () {
-        mvReturn(data, restorer);
-      }, 1000);
-      return;
+      return newSamples;
     }
 
-    return mvReturn(data, restorer);
-    function restorer(rawStats) {
-      // if we have empty stats re-use previous value instead of rendering empty stats
-      if (rawStats.timestamp.length === 0) {
-        return lastValue;
+    function maybeApplyDelta(prevValue, value) {
+      var stats = value.stats;
+      var prevStats = prevValue.stats || {};
+      for (var kind in stats) {
+        var newSamples = restoreOpsBlock(prevStats[kind],
+                                         stats[kind],
+                                         value.samplesCount + bufferDepth);
+        stats[kind] = newSamples;
       }
-
-      if (lastValue === undefined ||
-          lastValue.timestamp === undefined ||
-          lastValue.timestamp.length === 0 ||
-          lastValue.timestamp[lastValue.timestamp.length - 1] != rawStats.timestamp[0]) {
-        return rawStats;
-      }
-
-      var samples = rawStats.nodeStats;
-
-      var newSamples = {};
-      var prevSamples = lastValue.nodeStats;
-
-      for (var keyName in samples) {
-        newSamples[keyName] = prevSamples[keyName].concat(samples[keyName].slice(1)).slice(-keepCount);
-      }
-
-      var newTimestamp = lastValue.timestamp.concat(rawStats.timestamp.slice(1)).slice(-keepCount);
-
-      var restored = _.clone(rawStats);
-      restored.nodeStats = newSamples;
-      restored.timestamp = newTimestamp;
-
-      return restored;
+      return value;
     }
   }
 
   var statsBucketURL = self.statsBucketURL = new StringHashFragmentCell("statsBucket");
   var statsHostname = self.statsHostname = new StringHashFragmentCell("statsHostname");
   var statsStatName = self.statsStatName = new StringHashFragmentCell("statsStatName");
+
+  self.selectedGraphNameCell = new StringHashFragmentCell("graph");
+
+  self.configurationExtra = new Cell();
+
+  self.smallGraphSelectionCellCell = Cell.compute(function (v) {
+    return v.need(self.displayingSpecificStatsCell) ? self.statsHostname : self.selectedGraphNameCell;
+  });
 
   // contains bucket details of statsBucketURL bucket (or default if there are no such bucket)
   var statsBucketDetails = self.statsBucketDetails = Cell.compute(function (v) {
@@ -272,23 +174,8 @@ var StatsModel = {};
     return rv;
   }).name("statsBucketDetails");
 
-  self.knownHostnamesCell = Cell.compute(function (v) {
-    var allNames = _.pluck(v.need(DAL.cells.serversCell).allNodes, 'hostname').sort();
-    var activeNames = _.pluck(v.need(DAL.cells.serversCell).active, 'hostname').sort();
-    return {all: allNames, active: activeNames};
-  }).name("knownHostnamesCell");
-  self.knownHostnamesCell.equality = _.isEqual;
-
-  // contains list of links to per-node stats for particular bucket
-  var statsNodesCell = self.statsNodesCell = Cell.compute(function (v) {
-    v.need(self.knownHostnamesCell); // this cell should be refreshed
-                                     // when list of known nodes
-                                     // changes
-    return future.get({url: v.need(statsBucketDetails).stats.nodeStatsListURI});
-  }).name("statsNodesCell");
-
   var statsOptionsCell = self.statsOptionsCell = (new Cell()).name("statsOptionsCell");
-  statsOptionsCell.setValue({nonQ: ['keysInterval', 'nonQ'], resampleForUI: '1'});
+  statsOptionsCell.setValue({});
   _.extend(statsOptionsCell, {
     update: function (options) {
       this.modifyValue(_.bind($.extend, $, {}), options);
@@ -300,85 +187,6 @@ var StatsModel = {};
   self.samplesBufferDepth = Cell.computeEager(function (v) {
     return v(samplesBufferDepthRAW) || 1;
   });
-
-  var statsDirectoryURLCell = self.statsDirectoryURLCell = Cell.compute(function (v) {
-    if (v.need(DAL.cells.mode) !== 'analytics') {
-      return;
-    }
-    return v.need(statsBucketDetails).stats.directoryURI;
-  }).name("statsDirectoryURLCell");
-
-  var rawStatsDescCell = self.rawStatsDescCell = Cell.compute(function (v) {
-    return future.get({url: v.need(statsDirectoryURLCell)});
-  }).name("rawStatsDescCell");
-
-  var nameToStatInfoCell = Cell.compute(function (v) {
-    var desc = v.need(rawStatsDescCell);
-    var allStatsInfos = [].concat.apply([], _.pluck(desc.blocks, 'stats'));
-    var rv = {};
-    _.each(allStatsInfos, function (info) {
-      rv[info.name] = info;
-    });
-    return rv;
-  }).name("nameToStatInfoCell");
-
-  var specificStatsInfo = Cell.compute(function (v) {
-    var statName = v(statsStatName);
-    if (!statName) {
-      return {url: null, statName: null, desc: null, isBytes: null};
-    }
-    var mapping = v.need(nameToStatInfoCell);
-    if (!mapping[statName]) {
-      return {url: null, statName: null, desc: null, isBytes: null};
-    }
-    return {url: mapping[statName].specificStatsURL,
-            statName: statName, desc: mapping[statName].desc, isBytes: mapping[statName].isBytes};
-  }).name("specificStatsInfo");
-
-  var effectiveSpecificStatName = self.effectiveSpecificStatName = Cell.compute(function (v) {
-    return v.need(specificStatsInfo).statName;
-  }).name("effectiveSpecificStatName");
-  effectiveSpecificStatName.equality = function (a,b) {return a===b};
-
-  var specificStatsURLCell = self.specificStatsURLCell = Cell.compute(function (v) {
-    return v.need(specificStatsInfo).url;
-  }).name("specificStatsURLCell");
-  specificStatsURLCell.equality = function (a,b) {return a===b};
-
-  var specificStatDescriptionCell = self.specificStatDescriptionCell = Cell.compute(function (v) {
-    return v.need(specificStatsInfo).desc;
-  }).name("specificStatDescriptionCell");
-  specificStatDescriptionCell.equality = function (a,b) {return a===b};
-
-  // true if we should be displaying specific stats and false if we should be displaying normal stats
-  var displayingSpecificStatsCell = self.displayingSpecificStatsCell = Cell.compute(function (v) {
-    return !!v.need(specificStatsURLCell);
-  }).name("displayingSpecificStatsCell");
-
-  // contains either bucket info or per-node stat info (as found in
-  // statsNodesCell response) for which (normal) stats are displayed
-  var targetCell = self.targetCell = Cell.compute(function (v) {
-    if (v.need(DAL.cells.mode) !== 'analytics' || v.need(displayingSpecificStatsCell)) {
-      return;
-    }
-
-    var hostname = v(statsHostname);
-    if (!hostname) {
-      return v.need(statsBucketDetails);
-    }
-
-    var nodes = v.need(statsNodesCell);
-    var nodeInfo = _.detect(nodes.servers, function (info) {return info.hostname === hostname});
-    if (!nodeInfo) {
-      return v.need(statsBucketDetails);
-    }
-
-    return nodeInfo;
-  }).name("targetCell");
-
-  var statsURLCell = self.statsURLCell = Cell.compute(function (v) {
-    return v.need(targetCell).stats.uri;
-  }).name("statsURLCell");
 
   var zoomLevel;
   (function () {
@@ -414,68 +222,54 @@ var StatsModel = {};
     });
   })();
 
-  self.zoomLevel = zoomLevel;
-
-  var statsCell = self.statsCell = Cell.compute(function (v) {
-    if (v.need(DAL.cells.mode) != 'analytics') {
+  self.rawStatsCell = Cell.compute(function (v) {
+    if (v.need(DAL.cells.mode) != "analytics") {
       return;
     }
     var options = v.need(statsOptionsCell);
-    var url = v.need(statsURLCell);
-
-    var data = _.extend({}, options);
-    _.each(data.nonQ, function (n) {
-      delete data[n];
-    });
-
+    var node;
+    var bucket = v.need(statsBucketDetails).name;
+    var data = _.extend({bucket: bucket}, options);
+    var statName = v(statsStatName);
+    if (statName) {
+      data.statName = statName;
+    } else if ((node = v(statsHostname))) {
+      // we don't send node it we're dealing with "specific stats" and
+      // we're careful to depend on statsHostname cell _only_ we're
+      // willing to send node.
+      data.node = node;
+    }
     var bufferDepth = v.need(self.samplesBufferDepth);
+    return createSamplesFuture(data, bufferDepth);
+  });
 
-    return createSamplesFuture(url, data, bufferDepth, aggregateRealTimeRestorer);
-  }).name("statsCell");
+  self.displayingSpecificStatsCell = Cell.compute(function (v) {
+    return !!(v.need(self.rawStatsCell).specificStatName);
+  });
 
-  var specificStatsCell = self.specificStatsCell = Cell.compute(function (v) {
-    if (v.need(DAL.cells.mode) != 'analytics') {
-      return;
+  self.directoryURLCell = Cell.compute(function (v) {
+    return v.need(self.rawStatsCell).directory.url;
+  });
+  self.directoryURLCell.equality = function (a, b) {return a === b;};
+
+  self.directoryValueCell = Cell.compute(function (v) {
+    return v.need(self.rawStatsCell).directory.value;
+  });
+  self.directoryValueCell.equality = _.isEqual;
+
+  self.directoryCell = Cell.compute(function (v) {
+    var url = v.need(self.directoryURLCell);
+    if (url) {
+      return future.get({url: url});
     }
+    return v.need(self.directoryValueCell);
+  });
 
-    var url = v(specificStatsURLCell);
-    if (!url) { // we're 'expecting' null here too
-      return;
-    }
-    var options = v.need(statsOptionsCell);
+  self.specificStatTitleCell = Cell.compute(function (v) {
+    return v.need(self.rawStatsCell).directory.origTitle;
+  });
 
-    var data = _.extend({}, options);
-    _.each(data.nonQ, function (n) {
-      delete data[n];
-    });
-
-    var bufferDepth = v.need(self.samplesBufferDepth);
-
-    return createSamplesFuture(url, data, bufferDepth, specificStatsRealTimeRestorer);
-  }).name("specificStatsCell");
-
-  // containts list of hostnames for specific stats ordered by natural
-  // sort order of hostname or ip
-  var specificStatsNodesCell = Cell.compute(function (v) {
-    return _.keys(v.need(specificStatsCell).nodeStats).sort(naturalSort);
-  }).name("specificStatsNodesCell");
-
-  var visibleStatsDescCell = self.visibleStatsDescCell = Cell.compute(function (v) {
-    if (v.need(displayingSpecificStatsCell)) {
-      var nodes = v.need(specificStatsNodesCell);
-      var specStatsInfo = v.need(specificStatsInfo);
-      return {thisISSpecificStats: true,
-              blocks: [{blockName: "Specific Stats", hideThis: true,
-                        stats: _.map(nodes, function (hostname) {
-                          return {title: ViewHelpers.maybeStripPort(hostname, nodes),
-                                  name: hostname, desc: specStatsInfo.desc, isBytes: specStatsInfo.isBytes};
-                        })}]};
-    } else {
-      return v.need(rawStatsDescCell);
-    }
-  }).name("visibleStatsDescCell");
-
-  self.infosCell = Cell.needing(visibleStatsDescCell).compute(function (v, statDesc) {
+  self.infosCell = Cell.needing(self.directoryCell).compute(function (v, statDesc) {
     statDesc = JSON.parse(JSON.stringify(statDesc)); // this makes deep copy of statDesc
 
     var infos = [];
@@ -544,169 +338,73 @@ var StatsModel = {};
     });
 
     return {statDesc: statDesc, infos: infos};
-  }).name("infosCell");
+  });
 
   self.statsDescInfoCell = Cell.needing(self.infosCell).compute(function (v, infos) {
     return infos.statDesc;
   }).name("statsDescInfoCell");
 
-  self.selectedGraphNameCell = (new StringHashFragmentCell("graph")).name("selectedGraphNameCell");
-
-  self.configurationExtra = (new Cell()).name("configurationExtra");
-
-  self.smallGraphSelectionCellCell = Cell.compute(function (v) {
-    return v.need(displayingSpecificStatsCell) ? self.statsHostname : self.selectedGraphNameCell;
-  }).name("smallGraphSelectionCellCell");
-
-  self.aggregateGraphsConfigurationCell = Cell.compute(function (v) {
-    var selectedGraphName = v(self.selectedGraphNameCell);
-    var stats = v.need(self.statsCell);
+  self.graphsConfigurationCell = Cell.compute(function (v) {
+    var selectedGraphName = v(v.need(self.smallGraphSelectionCellCell));
+    var stats = v.need(self.rawStatsCell);
     var selected;
 
     var infos = v.need(self.infosCell).infos;
-    if (!selectedGraphName || !(selectedGraphName in infos.byName)) {
-      selected = infos[0];
-    } else {
+    if (selectedGraphName && (selectedGraphName in infos.byName)) {
       selected = infos.byName[selectedGraphName];
-    }
-
-    var op = stats.op;
-    if (!op) {
-      BUG();
-    }
-
-    if (!op.samples[selected.name]) {
-      selected = _.detect(infos, function (info) {return op.samples[info.name];}) || selected;
-    }
-
-    return {
-      interval: op.interval,
-      zoomLevel: v.need(zoomLevel),
-      selected: selected,
-      samples: op.samples,
-      timestamp: op.samples.timestamp,
-      serverDate: stats.serverDate,
-      clientDate: stats.clientDate,
-      infos: infos,
-      extra: v(self.configurationExtra)
-    };
-  }).name("aggregateGraphsConfigurationCell");
-
-  self.specificGraphsConfigurationCell = Cell.compute(function (v) {
-    var infos = v.need(self.infosCell).infos;
-    var stats = v.need(specificStatsCell);
-    var selectedHostname = v(statsHostname);
-    var selected;
-
-    var infos = v.need(self.infosCell).infos;
-    if (!selectedHostname || !(selectedHostname in infos.byName)) {
-      selected = infos[0];
     } else {
-      selected = infos.byName[selectedHostname];
+      selected = infos[0];
     }
 
-    if (!stats.nodeStats[selected.name]) {
-      selected = _.detect(infos, function (info) {return stats.nodeStats[info.name];}) || selected;
+    var auxTS = {};
+
+    var samples = _.clone(stats.stats[stats.mainStatsBlock]);
+    _.each(stats.stats, function (subSamples, subName) {
+      if (subName === stats.mainStatsBlock) {
+        return;
+      }
+      var timestamps = subSamples.timestamp;
+      for (var k in subSamples) {
+        if (k == "timestamp") {
+          continue;
+        }
+        samples[k] = subSamples[k];
+        auxTS[k] = timestamps;
+      }
+    });
+
+    if (!samples[selected.name]) {
+      selected = _.detect(infos, function (info) {return samples[info.name];}) || selected;
     }
 
     return {
       interval: stats.interval,
       zoomLevel: v.need(zoomLevel),
       selected: selected,
-      samples: stats.nodeStats,
-      timestamp: stats.timestamp,
+      samples: samples,
+      timestamp: samples.timestamp,
+      auxTimestamps: auxTS,
       serverDate: stats.serverDate,
       clientDate: stats.clientDate,
       infos: infos,
       extra: v(self.configurationExtra)
     };
-  }).name("specificGraphsConfigurationCell");
+  });
 
-  self.specificStatsNamesSetCell = Cell.compute(function (v) {
-    var rawDesc = v.need(rawStatsDescCell);
-    var knownDescTexts = {};
-    var allStatInfos = [].concat.apply([], _.pluck(rawDesc.blocks, 'stats'));
+  self.statsNodesCell = Cell.compute(function (v) {
+    return v.need(DAL.cells.serversCell).active;
+  });
 
-    _.each(allStatInfos, function (statInfo) {
-      if (statInfo.missing) {
-        return;
-      }
-      knownDescTexts[statInfo.title] = (knownDescTexts[statInfo.title] || 0) + 1;
-    });
-
-    var markedNames = {};
-    var result = [];
-    _.each(rawDesc.blocks, function (blockInfo) {
-      _.each(blockInfo.stats, function (statInfo, idx) {
-        var title = statInfo.title;
-        if (!title) {
-          throw new Error();
-        }
-        if (knownDescTexts[title] > 1 && blockInfo.columns) {
-          // we have 'shared name'. So let's 'unshare' it be prepending column name
-          title = blockInfo.columns[idx % 4] + ' ' + title;
-        }
-        var name = statInfo.name;
-        if (markedNames[name]) {
-          return;
-        }
-        result.push([name, title]);
-        markedNames[name] = true;
-      });
-    });
-
-    result = _.sortBy(result, function (r) {return r[1]});
-
-    var byName = result.byName = {};
-    _.each(result, function (pair) {
-      byName[pair[0]] = pair;
-    });
-
-    return result;
-  }).name("specificStatsNamesSetCell");
-
-  self.graphsConfigurationCell = Cell.compute(function (v) {
-    if (v.need(self.displayingSpecificStatsCell)) {
-      return v.need(self.specificGraphsConfigurationCell);
-    } else {
-      return v.need(self.aggregateGraphsConfigurationCell);
-    }
-  }).name("graphsConfigurationCell");
-
-  self.hotKeysCell = Cell.compute(function (v) {
-    if (!v.need(DAL.cells.isBucketsAvailableCell)) {
+  self.hotKeysCell = Cell.computeEager(function (v) {
+    if (!v(self.statsBucketDetails)) {
+      // this deals with "no buckets at all" case for us
       return [];
     }
-    return v.need(statsCell).hot_keys;
-  }).name("hotKeysCell");
+    return v.need(self.rawStatsCell).hot_keys || [];
+  });
+  self.hotKeysCell.equality = _.isEqual;
 
-  self.setupDirectoryRefreshOnStatKeysChange = function () {
-    var graphSetupCell = Cell.compute(function (v) {
-      return [v.need(statsOptionsCell),
-              v(statsURLCell),
-              v(specificStatsURLCell)];
-    });
-    var sampleKeysCell = Cell.compute(function (v) {
-      var cfg = v.need(self.graphsConfigurationCell);
-      return _.keys(cfg.samples);
-    });
-    graphSetupCell.equality = sampleKeysCell.equality = _.isEqual;
-    var seenSetup;
-    var seenSampleKeys;
-    Cell.subscribeMultipleValues(function (setup, keys, displayingSpecific) {
-      if (displayingSpecific !== false) {
-        return;
-      }
-      if (_.isEqual(setup, seenSetup)
-          && seenSampleKeys !== undefined
-          && !_.isEqual(seenSampleKeys, keys)) {
-        rawStatsDescCell.recalculate();
-      }
-      seenSetup = setup;
-      seenSampleKeys = keys;
-    }, graphSetupCell, sampleKeysCell, displayingSpecificStatsCell);
-  }
-
+  Cell.autonameCells(self);
 })(StatsModel);
 
 var maybeReloadAppDueToLeak = (function () {
@@ -870,14 +568,6 @@ var GraphsWidget = mkClass({
 
     var timeOffset = configuration.clientDate - configuration.serverDate;
 
-    // TODO: empty stats should be maybe handled elsewhere
-    if (!stats) {
-      stats = {timestamp: []};
-      _.each(_.keys(configuration.infos), function (name) {
-        stats[name] = [];
-      });
-    }
-
     var zoomMillis = (self.zoomToSeconds[configuration.zoomLevel] || 60) * 1000;
     var selected = configuration.selected;
     var now = (new Date()).valueOf();
@@ -887,7 +577,9 @@ var GraphsWidget = mkClass({
 
     maybeReloadAppDueToLeak();
 
-    plotStatGraph(self.largeGraphJQ, stats[selected.name], configuration.timestamp, {
+    var auxTS = configuration.auxTimestamps || {};
+
+    plotStatGraph(self.largeGraphJQ, stats[selected.name], auxTS[selected.name] || configuration.timestamp, {
       color: '#1d88ad',
       verticalMargin: 1.02,
       fixedTimeWidth: zoomMillis,
@@ -924,7 +616,7 @@ var GraphsWidget = mkClass({
         now: now,
         zoomMillis: zoomMillis,
         isSelected: selected.name == statName,
-        timestamp: configuration.timestamp,
+        timestamp: auxTS[statName] || configuration.timestamp,
         maxY: configuration.infos.byName[statName].maxY,
         isBytes: statInfo.isBytes
       });
@@ -950,30 +642,6 @@ var AnalyticsSection = {
     StatsModel.displayingSpecificStatsCell.subscribeValue(function (displayingSpecificStats) {
       $('#js_top_keys_block').toggle(!displayingSpecificStats);
     });
-
-    StatsModel.setupDirectoryRefreshOnStatKeysChange();
-
-    // this hides Query block in analytics if query stats are missing.
-    ;(function () {
-      var hidingQueryBlock = false;
-      // this cell is purely "presentational" cell
-      StatsModel.hideQueryBlockCell = Cell.compute(function (v) {
-        if (v.need(StatsModel.displayingSpecificStatsCell)) {
-          return false;
-        }
-        if (v.need(StatsModel.aggregateGraphsConfigurationCell).samples["query_requests"]) {
-          return false;
-        }
-        return true;
-      }).name("hideQueryBlockCell").subscribeValue(function (hide) {
-        hidingQueryBlock = !!hide;
-        doHiding();
-      });
-      function doHiding() {
-        $(".analytics_query_block").toggle(!hidingQueryBlock);
-      }
-      $(window).bind("template:rendered", doHiding);
-    })();
 
     $('#js_analytics .js_block-expander').live('click', function () {
       // this forces configuration refresh and graphs redraw
@@ -1013,26 +681,20 @@ var AnalyticsSection = {
         }
 
         var allNodes = v(StatsModel.statsNodesCell);
-        var selectedNode;
         var statsHostname = v(StatsModel.statsHostname);
-
-        if (statsHostname) {
-          selectedNode = v(StatsModel.targetCell);
-        }
 
         var list;
         if (allNodes) {
-          list = _.map(allNodes.servers, function (srv) {
-            var name = ViewHelpers.maybeStripPort(srv.hostname, allNodes.servers);
+          list = _.map(allNodes, function (srv) {
+            var name = ViewHelpers.maybeStripPort(srv.hostname, allNodes);
             return [srv.hostname, name];
           });
           // natural sort by full hostname (which includes port number)
           list.sort(mkComparatorByProp(0, naturalSort));
-          list.unshift(['', 'All Server Nodes (' + allNodes.servers.length + ')' ]);
+          list.unshift(['', 'All Server Nodes (' + allNodes.length + ')' ]);
         }
 
-        return {list: list,
-                selected: selectedNode && selectedNode.hostname};
+        return {list: list, selected: statsHostname};
       });
       $('#js_analytics_servers_select').bindListCell(cell, {
         onChange: function (e, newValue) {
@@ -1127,7 +789,7 @@ var AnalyticsSection = {
           aInner = "show by server";
         } else {
           params.graph = StatsModel.statsStatName.value;
-          params.statsHostname = graphParam;
+          params.statsHostname = graphParam.slice(1);
           aInner = "show this server";
         }
 
@@ -1142,18 +804,10 @@ var AnalyticsSection = {
       $('#js_analytics .js_when-specific-stats').toggle(displayingSpecificStats);
     });
 
-    Cell.subscribeMultipleValues(function (specificStatsNamesSet, statsStatName) {
-      var text = '?';
-      if (specificStatsNamesSet && statsStatName) {
-        var pair = specificStatsNamesSet.byName[statsStatName];
-        if (pair) {
-          text = pair[1];
-        } else {
-          debugger
-        }
-      }
+    StatsModel.specificStatTitleCell.subscribeValue(function (val) {
+      var text = val || '?';
       $('.js_specific-stat-description').text(text);
-    }, StatsModel.specificStatsNamesSetCell, StatsModel.effectiveSpecificStatName);
+    });
   },
   onLeave: function () {
     setHashFragmentParam("zoom", undefined);
