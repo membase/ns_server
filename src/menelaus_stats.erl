@@ -920,7 +920,23 @@ aggregate_stat_entries(A, B) ->
 
 -define(SPACE_CHAR, 16#20).
 
+simple_memoize(Key, Body, Expiration) ->
+    menelaus_web_cache:lookup_or_compute_with_expiration(
+      Key,
+      fun () ->
+              {Body(), Expiration, []}
+      end,
+      fun (_Key, _Value, []) ->
+              false
+      end).
+
 couchbase_replication_stats_descriptions(BucketId) ->
+    simple_memoize({stats_directory_xdcr, BucketId},
+                   fun () ->
+                           do_couchbase_replication_stats_descriptions(BucketId)
+                   end, 5000).
+
+do_couchbase_replication_stats_descriptions(BucketId) ->
     Reps = xdc_replication_sup:get_replications(list_to_binary(BucketId)),
     lists:map(fun ({Id, Pid}) ->
                       {ok, Targ} = xdc_replication:target(Pid),
@@ -1002,6 +1018,12 @@ couchbase_replication_stats_descriptions(BucketId) ->
               end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->
+    simple_memoize({stats_directory_views, BucketId},
+                   fun () ->
+                           do_couchbase_view_stats_descriptions(BucketId)
+                   end, 5000).
+
+do_couchbase_view_stats_descriptions(BucketId) ->
     DictBySig = ns_couchdb_api:get_design_doc_signatures(BucketId),
 
     dict:fold(
