@@ -219,6 +219,9 @@ child_specs() ->
      {query_stats_collector, {query_stats_collector, start_link, []},
       permanent, 1000, worker, []},
 
+     {index_stats_sup, {index_stats_sup, start_link, []},
+      permanent, infinity, supervisor, []},
+
      {compaction_daemon, {compaction_daemon, start_link, []},
       permanent, 1000, worker, [compaction_daemon]},
 
