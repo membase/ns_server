@@ -307,7 +307,8 @@ get_samples_from_one_of_kind([Kind | RestKinds], StatName, ClientTStamp, Window)
     end.
 
 get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window) ->
-    get_samples_from_one_of_kind(["@system", "@query", BucketName], StatName, ClientTStamp, Window).
+    get_samples_from_one_of_kind(["@system", "@query", "@index-" ++ BucketName, BucketName],
+                                 StatName, ClientTStamp, Window).
 
 build_response_for_specific_stat(BucketName, StatName, Params, LocalAddr) ->
     {ClientTStamp, {Step, _, Count} = Window} =
@@ -391,10 +392,14 @@ bucket_nodes("@system") ->
     ns_cluster_membership:actual_active_nodes();
 bucket_nodes("@query") ->
     ns_cluster_membership:n1ql_active_nodes(ns_config:latest_config_marker());
+bucket_nodes("@index-"++_) ->
+    ns_cluster_membership:index_active_nodes(ns_config:latest_config_marker());
 bucket_nodes(Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket).
 
 is_persistent("@query") ->
+    false;
+is_persistent("@index-"++_) ->
     false;
 is_persistent(BucketName) ->
     ns_bucket:is_persistent(BucketName).
@@ -476,6 +481,8 @@ computed_stats_lazy_proplist("@query") ->
      {<<"query_avg_svc_time">>, QueryAvgServiceTime},
      {<<"query_avg_response_size">>, QueryAvgResultSize},
      {<<"query_avg_result_count">>, QueryAvgResultCount}];
+computed_stats_lazy_proplist("@index-"++_) ->
+    [];
 computed_stats_lazy_proplist(BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
@@ -1015,6 +1022,42 @@ do_couchbase_view_stats_descriptions(BucketId) ->
               [MyStats|Stats]
       end, [], DictBySig).
 
+couchbase_index_stats_descriptions(_, false) ->
+    [];
+couchbase_index_stats_descriptions(BucketId, AddIndex) ->
+    simple_memoize({stats_directory_index, BucketId, AddIndex},
+                   fun () ->
+                           do_couchbase_index_stats_descriptions(BucketId, AddIndex)
+                   end, 5000).
+
+do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
+    Nodes = case AddIndex of
+                all ->
+                    bucket_nodes("@index-" ++ BucketId);
+                XNodes ->
+                    XNodes
+            end,
+    NIs = ns_doctor:get_nodes(),
+    AllIndexes0 =
+        [case dict:find(N, NIs) of
+             error -> [];
+             {ok, NI} ->
+                 Indexes = proplists:get_value(indexes, proplists:get_value(index_status, NI, []), []),
+                 proplists:get_value(list_to_binary(BucketId), Indexes, [])
+         end || N <- Nodes],
+    AllIndexes = lists:usort(lists:append(AllIndexes0)),
+    [{struct, [{blockName, <<"Index Stats: ", Id/binary>>},
+               {extraCSSClasses, <<"dynamic_closed">>},
+               {stats,
+                [{struct,[{isBytes, true},
+                          {title, <<"Disk Size">>},
+                          {name, iolist_to_binary([<<"index/">>, Id, <<"/disk_size">>])},
+                          {desc, <<"TBD">>}]},
+                 {struct, [{title, <<"Scans/sec">>},
+                           {name, iolist_to_binary([<<"index/">>, Id, <<"/num_requests">>])},
+                           {desc, <<"TBD">>}]}]}]}
+     || Id <- AllIndexes].
+
 couchbase_query_stats_descriptions() ->
     [{struct, [{blockName, <<"Query">>},
                {extraCSSClasses, <<"dynamic_closed">>},
@@ -1056,7 +1099,7 @@ couchbase_query_stats_descriptions() ->
                            {name, <<"query_requests_5000ms">>},
                            {desc, <<"Number of queries that take longer than 5000 ms per second">>}]}]}]}].
 
-membase_stats_description(BucketId, AddQuery) ->
+membase_stats_description(BucketId, AddQuery, AddIndex) ->
     [{struct,[{blockName,<<"Summary">>},
               {stats,
                [{struct,[{title,<<"ops per second">>},
@@ -1176,13 +1219,24 @@ membase_stats_description(BucketId, AddQuery) ->
                 {struct,[{title,<<"Intra-Replication Queue">>},
                          {name,<<"ep_dcp_replica_items_remaining">>},
                          {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]}
-                | case AddQuery of
-                      true ->
-                          [{struct,[{title,<<"N1QL Queries/sec">>},
-                                    {name, <<"query_requests">>},
-                                    {desc, <<"Number of N1QL requests processed per second.">>}]}];
-                      _ -> []
-                  end
+                | (case AddQuery of
+                       true ->
+                           [{struct,[{title,<<"N1QL Queries/sec">>},
+                                     {name, <<"query_requests">>},
+                                     {desc, <<"Number of N1QL requests processed per second.">>}]}];
+                       _ -> []
+                   end ++ case AddIndex of
+                              false ->
+                                  [];
+                              _ ->
+                                  [{struct, [{title, <<"Index Disk Size">>},
+                                             {name, <<"index/disk_size">>},
+                                             {desc, <<"TBD">>},
+                                             {isBytes, true}]},
+                                   {struct, [{title, <<"Index Scans/sec">>},
+                                             {name, <<"index/num_requests">>},
+                                             {desc, <<"TBD">>}]}]
+                          end)
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
@@ -1494,6 +1548,7 @@ membase_stats_description(BucketId, AddQuery) ->
                           {desc,<<"Number of backoffs for other DCP connections">>}]}
                ]}]}]
         ++ couchbase_view_stats_descriptions(BucketId)
+        ++ couchbase_index_stats_descriptions(BucketId, AddIndex)
         ++ couchbase_replication_stats_descriptions(BucketId)
         ++ case AddQuery of
                true -> couchbase_query_stats_descriptions();
@@ -1622,12 +1677,12 @@ server_resources_stats_description() ->
                 {title,<<"streaming wakeups/sec">>},
                 {desc,<<"Rate of streaming request wakeups on port 8091">>}]}]}].
 
-base_stats_directory("@query", _) ->
+base_stats_directory("@query", _, _) ->
     couchbase_query_stats_descriptions();
-base_stats_directory(BucketId, AddQuery) ->
+base_stats_directory(BucketId, AddQuery, AddIndex) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
     Base = case ns_bucket:bucket_type(BucketConfig) of
-               membase -> membase_stats_description(BucketId, AddQuery);
+               membase -> membase_stats_description(BucketId, AddQuery, AddIndex);
                memcached -> memcached_stats_description()
            end,
     [{struct, server_resources_stats_description()} | Base].
@@ -1635,7 +1690,18 @@ base_stats_directory(BucketId, AddQuery) ->
 serve_stats_directory(_PoolId, BucketId, Req) ->
     Params = Req:parse_qs(),
     AddQuery = proplists:get_value("addq", Params, "") =/= "",
-    BaseDescription = base_stats_directory(BucketId, AddQuery),
+    AddIndex = case proplists:get_value("addi", Params) of
+                   undefined ->
+                       false;
+                   AddIndexX ->
+                       case ejson:decode(AddIndexX) of
+                           <<"all">> ->
+                               all;
+                           AddIndexDecoded ->
+                               [binary_to_existing_atom(N, latin1) || N <- AddIndexDecoded]
+                       end
+               end,
+    BaseDescription = base_stats_directory(BucketId, AddQuery, AddIndex),
     Prefix = menelaus_util:concat_url_path(["pools", "default", "buckets", BucketId, "stats"]),
     Desc = [{struct, add_specific_stats_url(BD, Prefix)} || {struct, BD} <- BaseDescription],
     menelaus_util:reply_json(Req, {struct, [{blocks, Desc}]}).
@@ -1662,7 +1728,7 @@ grab_ui_stats(Kind, Nodes, HaveStamp, Wnd) ->
 %%
 %% It serves all stats that we're going to display on
 %% analytics. Currently that is bucket stats, portion of system stats and
-%% @query stats (with @index-<bucket> to follow soon).
+%% @query stats.
 %%
 %% Response format is roughly as follows:
 %% {
@@ -1678,7 +1744,8 @@ grab_ui_stats(Kind, Nodes, HaveStamp, Wnd) ->
 %%   stats: {
 %%     @query: {query_avg_req_time: [0, 0], query_avg_svc_time: [0, 0], query_avg_response_size: [0, 0],…},
 %%     @system: {cpu_idle_ms: [14950, 15070], cpu_local_ms: [16310, 16090],…},
-%%     default: {couch_total_disk_size: [578886, 578886], couch_docs_fragmentation: [0, 0],…}
+%%     default: {couch_total_disk_size: [578886, 578886], couch_docs_fragmentation: [0, 0],…},
+%%     "@index-default": …
 %% }}
 %%
 %%
@@ -1759,21 +1826,48 @@ serve_aggregated_ui_stats(Req, Params) ->
                           QS = grab_ui_stats("@query", Nodes, HaveStamp, Wnd),
                           [{<<"@query">>, {QS}}]
                   end,
+    INodes = bucket_nodes("@index-" ++ Bucket),
+    HaveIndexBool  = case Nodes of
+                         all ->
+                             INodes =/= [];
+                         _ ->
+                             (Nodes -- INodes) =/= Nodes
+                     end,
+    HaveIndex = case HaveIndexBool of
+                    true ->
+                        Nodes;
+                    false ->
+                        false
+                end,
+    MaybeIStats = case HaveIndex of
+                      false ->
+                          MaybeQStats;
+                      _ ->
+                          IS = grab_ui_stats("@index-" ++ Bucket, Nodes, HaveStamp, Wnd),
+                          [{iolist_to_binary([<<"@index-">>, Bucket]), {IS}}
+                           | MaybeQStats]
+                  end,
     Stats = [{list_to_binary(Bucket), {BS}},
              {<<"@system">>, {SS}}
-             | MaybeQStats],
+             | MaybeIStats],
     NewHaveStamp = [case proplists:get_value(timestamp, S) of
                         [] -> {Name, 0};
                         L -> {Name, lists:last(L)}
                     end || {Name, {S}} <- Stats],
-    StatsDirectoryV = erlang:phash2(base_stats_directory(Bucket, HaveQuery)),
+    StatsDirectoryV = erlang:phash2(base_stats_directory(Bucket, HaveQuery, HaveIndex)),
     DirAddQ = case HaveQuery of
                   true ->
                       "&addq=1";
                   _ ->
                       ""
               end,
-    DirQS = "?v=" ++ integer_to_list(StatsDirectoryV) ++ DirAddQ,
+    DirAddI = case HaveIndex of
+                  false -> "";
+                  _ ->
+                      NodesJSON = binary_to_list(iolist_to_binary(ejson:encode(Nodes))),
+                      "&addi=" ++ mochiweb_util:quote_plus(NodesJSON)
+              end,
+    DirQS = "?v=" ++ integer_to_list(StatsDirectoryV) ++ DirAddQ ++ DirAddI,
     DirURL = list_to_binary("/pools/default/buckets/" ++ Bucket
                             ++ "/statsDirectory" ++ DirQS),
 
@@ -1796,7 +1890,7 @@ serve_specific_ui_stats(Req, StatName, Params) ->
     {Bucket, HaveStamp, Wnd} = extract_ui_stats_params(Params),
     ClientTStamp = proplists:get_value(<<"perNode">>, HaveStamp),
 
-    FullDirectory = base_stats_directory(Bucket, true),
+    FullDirectory = base_stats_directory(Bucket, true, all),
     StatNameB = list_to_binary(StatName),
     MaybeStatDesc = [Desc
                      || Block <- FullDirectory,
