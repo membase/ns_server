@@ -276,6 +276,12 @@ current_status_slow_inner() ->
                             end
                     end, [], BucketNames),
 
+    IndexStatus = try index_status_keeper:get(2000)
+                  catch T:E ->
+                          ?log_debug("ignoring failure to get index status: ~p~n~p", [{T, E}, erlang:get_stacktrace()]),
+                          []
+                  end,
+
     InterestingStats =
         lists:foldl(fun ({BucketName, InterestingValues}, Acc) ->
                             orddict:merge(fun (K, V1, V2) ->
@@ -336,6 +342,7 @@ current_status_slow_inner() ->
          {interesting_stats, InterestingStats},
          {per_bucket_interesting_stats, PerBucketInterestingStats},
          {processes_stats, InterestingProcessesStats},
+         {index_status, IndexStatus},
          {cluster_compatibility_version, ClusterCompatVersion}
          | element(2, ns_info:basic_info())] ++ MaybeMeminfo.
 
