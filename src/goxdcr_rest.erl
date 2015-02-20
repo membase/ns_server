@@ -25,7 +25,9 @@
          find_all_replication_docs/1,
          all_local_replication_infos/0,
          delete_all_replications/1,
-         stats/1]).
+         stats/1,
+         get_replications/1,
+         get_replications_with_remote_info/1]).
 
 get_rest_port() ->
     ns_config:read_key_fast({node, node(), xdcr_rest_port}, 9998).
@@ -160,3 +162,35 @@ stats(Bucket) ->
                         [Bucket, {T,E,erlang:get_stacktrace()}]),
             []
     end.
+
+get_replications(BucketName) ->
+    BucketNameBin = list_to_binary(BucketName),
+    AllDocs = find_all_replication_docs(30000),
+    [misc:expect_prop_value(id, Props) || Props <- AllDocs,
+                                          misc:expect_prop_value(source, Props) =:= BucketNameBin].
+
+get_replications_with_remote_info(BucketName) ->
+    BucketNameBin = list_to_binary(BucketName),
+
+    RemoteClusters =
+        query_goxdcr(
+          fun (Json) ->
+                  [{misc:expect_prop_value(<<"uuid">>, Cluster),
+                    misc:expect_prop_value(<<"name">>, Cluster)}
+                   || {Cluster} <- Json]
+          end, "GET", "/pools/default/remoteClusters", 30000),
+
+    lists:foldl(
+      fun (Props, Acc) ->
+              case misc:expect_prop_value(source, Props) of
+                  BucketNameBin ->
+                      Id = misc:expect_prop_value(id, Props),
+                      Targ = misc:expect_prop_value(target, Props),
+                      {ok, {RemoteClusterUUID, RemoteBucket}} =
+                          remote_clusters_info:parse_remote_bucket_reference(Targ),
+                      ClusterName = proplists:get_value(RemoteClusterUUID, RemoteClusters, <<"unknown">>),
+                      [{Id, ClusterName, RemoteBucket} | Acc];
+                  _ ->
+                      Acc
+              end
+      end, [], find_all_replication_docs(30000)).

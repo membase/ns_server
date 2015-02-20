@@ -929,6 +929,99 @@ simple_memoize(Key, Body, Expiration) ->
               false
       end).
 
+couchbase_goxdcr_stats_descriptions(BucketId) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        true ->
+            simple_memoize({stats_directory_goxdcr, BucketId},
+                           fun () ->
+                                   do_couchbase_goxdcr_stats_descriptions(BucketId)
+                           end, 5000);
+        false ->
+            []
+    end.
+
+do_couchbase_goxdcr_stats_descriptions(BucketId) ->
+    Reps = goxdcr_rest:get_replications_with_remote_info(BucketId),
+    lists:map(fun ({Id, RemoteClusterName, RemoteBucket}) ->
+                      Prefix = <<"replications/", Id/binary,"/">>,
+
+                      BlockName = io_lib:format("Outbound XDCR Operations to bucket ~p "
+                                                "on remote cluster ~p",[RemoteBucket, RemoteClusterName]),
+
+                      {struct,[{blockName, iolist_to_binary(BlockName)},
+                               {extraCSSClasses,<<"dynamic_closed">>},
+                               {stats,
+                                [
+                                 {struct,[{title,<<"outbound XDCR mutations">>},
+                                          {name,<<Prefix/binary,"changes_left">>},
+                                          {desc,<<"Number of mutations to be replicated to other clusters "
+                                                  "(measured from per-replication stat changes_left)">>}]},
+                                 {struct,[{title,<<"outbound XDCR mutations replicated">>},
+                                          {name,<<Prefix/binary,"docs_written">>},
+                                          {desc,<<"Number of mutations that have already replicated to other clusters "
+                                                  "(measured from per-replication stat docs_written)">>}]},
+                                 {struct,[{title,<<"outbound XDCR mutations filtered">>},
+                                          {name,<<Prefix/binary,"docs_filtered">>},
+                                          {desc,<<"Number of mutations that have been filtered out and have not been replicated to other clusters "
+                                                  "(measured from per-replication stat docs_filtered)">>}]},
+                                 {struct,[{title,<<"percent completed">>},
+                                          {maxY, 100},
+                                          {name,<<Prefix/binary, "percent_completeness">>},
+                                          {desc,<<"Percentage of checked items out of all checked and to-be-replicated items "
+                                                  "(measured from per-replication stat percent_completeness)">>}]},
+                                 {struct,[{isBytes,true},
+                                          {title,<<"data replicated">>},
+                                          {name,<<Prefix/binary,"data_replicated">>},
+                                          {desc,<<"The total size (in bytes) of mutations replicated"
+                                                  "(measured from per-replication stat data_replicated)">>}]},
+                                 {struct,[{title,<<"mutation replication rate">>},
+                                          {name,<<Prefix/binary,"rate_replicated">>},
+                                          {desc,<<"Rate of replication in terms of number of replicated mutations per second "
+                                                  "(measured from per-replication stat rate_replication)">>}]},
+                                 {struct,[{isBytes,true},
+                                          {title,<<"data replication rate">>},
+                                          {name,<<Prefix/binary,"bandwidth_usage">>},
+                                          {desc,<<"Rate of replication in terms of bytes replicated per second "
+                                                  "(measured from per-replication stat bandwidth_usage)">>}]},
+                                 {struct,[{title,<<"opt. replication rate">>},
+                                          {name,<<Prefix/binary,"rate_doc_opt_repd">>},
+                                          {desc,<<"Rate of optimistic replications in terms of number of replicated mutations per second ">>}]},
+                                 {struct,[{title,<<"doc checks rate">>},
+                                          {name,<<Prefix/binary,"rate_doc_checks">>},
+                                          {desc,<<"Rate of doc checks per second ">>}]},
+                                 {struct,[{title,<<"ms meta batch latency">>},
+                                          {name,<<Prefix/binary, "wtavg_meta_latency">>},
+                                          {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster "
+                                                  "(measured from per-replication stat wtavg_meta_latency)">>}]},
+                                 {struct,[{title,<<"ms doc batch latency">>},
+                                          {name,<<Prefix/binary, "wtavg_docs_latency">>},
+                                          {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
+                                                  "(measured from per-replication stat wtavg_docs_latency)">>}]},
+                                 {struct,[{title,<<"Number of document in replication queue">>},
+                                          {name,<<Prefix/binary, "docs_rep_queue">>},
+                                          {desc,<<"The number of documents in the replication queue "
+                                                  "(measured from per-replication stat docs_rep_queue)">>}]},
+                                 {struct,[{isBytes,true},
+                                          {title,<<"size of replication queue">>},
+                                          {name,<<Prefix/binary, "size_rep_queue">>},
+                                          {desc,<<"The total size (in bytes) of all documents in the replication queue "
+                                                  "(measured from per-replication stat size_rep_queue)">>}]},
+                                 {struct,[{title,<<"Number of checkpoints">>},
+                                          {name,<<Prefix/binary,"num_checkpoints">>},
+                                          {desc,<<"Number of completed checkpoints "
+                                                  "(measured from per-replication stat num_checkpoints)">>}]},
+                                 {struct,[{title,<<"Number of failed checkpoints">>},
+                                          {name,<<Prefix/binary, "num_failedckpts">>},
+                                          {desc,<<"Number of failed checkpoints "
+                                                  "(measured from per-replication stat num_failedckpts)">>}]},
+                                 {struct,[{title,<<"time commiting checkpoints">>},
+                                          {name,<<Prefix/binary, "time_committing">>},
+                                          {desc,<<"Average time, in ms, spent in commiting checkpoints "
+                                                  "(measured from per-replication stat time_committing)">>}]}
+                                ]}]}
+              end, Reps).
+
+
 couchbase_replication_stats_descriptions(BucketId) ->
     simple_memoize({stats_directory_xdcr, BucketId},
                    fun () ->
@@ -1580,6 +1673,7 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_index_stats_descriptions(BucketId, AddIndex)
         ++ couchbase_replication_stats_descriptions(BucketId)
+        ++ couchbase_goxdcr_stats_descriptions(BucketId)
         ++ case AddQuery of
                true -> couchbase_query_stats_descriptions();
                false -> []
