@@ -1857,25 +1857,24 @@ serve_aggregated_ui_stats(Req, Params) ->
     StatsDirectoryV = erlang:phash2(base_stats_directory(Bucket, HaveQuery, HaveIndex)),
     DirAddQ = case HaveQuery of
                   true ->
-                      "&addq=1";
+                      [{addq, <<"1">>}];
                   _ ->
-                      ""
+                      []
               end,
     DirAddI = case HaveIndex of
-                  false -> "";
+                  false -> DirAddQ;
                   _ ->
-                      NodesJSON = binary_to_list(iolist_to_binary(ejson:encode(Nodes))),
-                      "&addi=" ++ mochiweb_util:quote_plus(NodesJSON)
+                      NodesJSON = iolist_to_binary(ejson:encode(Nodes)),
+                      [{addi, NodesJSON} | DirAddQ]
               end,
-    DirQS = "?v=" ++ integer_to_list(StatsDirectoryV) ++ DirAddQ ++ DirAddI,
-    DirURL = list_to_binary("/pools/default/buckets/" ++ Bucket
-                            ++ "/statsDirectory" ++ DirQS),
+    DirQS = [{v, integer_to_list(StatsDirectoryV)} | DirAddI],
+    DirURL = "/pools/default/buckets/" ++ menelaus_util:concat_url_path([Bucket, "statsDirectory"], DirQS),
 
     [{hot_keys, HKs0}] = build_bucket_stats_hks_response(Bucket),
     HKs = [{HK} || {struct, HK} <- HKs0],
     Extra = [{hot_keys, HKs}],
     output_ui_stats(Req, Stats,
-                    {[{url, DirURL}]},
+                    {[{url, list_to_binary(DirURL)}]},
                     Wnd, Bucket, null, NewHaveStamp, Extra).
 
 maybe_string_hostname_port(H) ->
