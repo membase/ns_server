@@ -24,7 +24,8 @@
          send/2,
          find_all_replication_docs/1,
          all_local_replication_infos/0,
-         delete_all_replications/1]).
+         delete_all_replications/1,
+         stats/1]).
 
 get_rest_port() ->
     ns_config:read_key_fast({node, node(), xdcr_rest_port}, 9998).
@@ -144,3 +145,18 @@ all_local_replication_infos() ->
 
 delete_all_replications(Bucket) ->
     query_goxdcr("DELETE", "/pools/default/replications/" ++ mochiweb_util:quote_plus(Bucket), 30000).
+
+grab_stats(Bucket) ->
+    query_goxdcr(fun ({Json}) ->
+                         [{Id, Stats} || {Id, {Stats}} <- Json]
+                 end, "GET", "/stats/buckets/" ++ mochiweb_util:quote_plus(Bucket), 30000).
+
+stats(Bucket) ->
+    try grab_stats(Bucket) of
+        Stats ->
+            Stats
+    catch T:E ->
+            ?xdcr_debug("Unable to obtain stats for bucket ~p from goxdcr:~n~p",
+                        [Bucket, {T,E,erlang:get_stacktrace()}]),
+            []
+    end.
