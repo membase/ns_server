@@ -119,7 +119,9 @@ massage_stats([{K, V} | Rest], AccGauges, AccCounters) ->
     end.
 
 get_stats() ->
-    case ns_cluster_membership:should_run_service(ns_config:latest_config_marker(), index, node()) of
+    HaveIndex = ns_cluster_membership:should_run_service(ns_config:latest_config_marker(), index, node()),
+    Enabled = ns_config:read_key_fast(indexer_stats_enabled, false),
+    case HaveIndex andalso Enabled of
         true ->
             do_get_stats();
         false ->
