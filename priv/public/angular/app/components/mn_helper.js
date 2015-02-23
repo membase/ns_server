@@ -68,6 +68,10 @@ angular.module('mnHelper').factory('mnHelper',
           promise.then(hideSpinner, hideSpinner);
           return this;
         },
+        prepareErrors: function (cb) {
+          promise.then(null, cb);
+          return this
+        },
         catchErrors: function (name) {
           name && setErrorsName(name);
           promise.then(removeErrors, function (resp) {
@@ -75,9 +79,15 @@ angular.module('mnHelper').factory('mnHelper',
           });
           return this;
         },
-        catchGlobalErrors: function (errorMessage) {
+        catchGlobalErrors: function (errorMessage, timeout) {
           promise.then(null, function (resp) {
-            mnAlertsService.formatAndSetAlerts(resp.data || errorMessage, 'danger');
+            mnAlertsService.formatAndSetAlerts(errorMessage || resp.data, 'danger', timeout);
+          });
+          return this;
+        },
+        showGlobalSuccess: function (successMessage, timeout) {
+          promise.then(function (resp) {
+            mnAlertsService.formatAndSetAlerts(successMessage || resp.data, 'success', timeout);
           });
           return this;
         }

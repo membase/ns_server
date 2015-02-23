@@ -101,6 +101,13 @@ angular.module('mnSettingsAutoFailover', [
 angular.module('mnSettingsAutoFailoverService', [
   'mnHttp'
 ]);
+angular.module('mnSettingsAlerts', [
+  'mnSettingsAlertsService',
+  'mnHelper'
+]);
+angular.module('mnSettingsAlertsService', [
+  'mnHttp'
+]);
 
 
 angular.module('mnServers', [
@@ -210,6 +217,7 @@ angular.module('app', [
   'mnSettingsAutoFailover',
   'mnSettingsCluster',
   'mnSettingsNotifications',
+  'mnSettingsAlerts',
   'mnServers',
   'mnOverview',
   'mnBuckets',
@@ -218,7 +226,7 @@ angular.module('app', [
   'mnXDCR',
   'mnXDCRService',
   'mnLogs',
-  'mnLogsCollectInfoService'
+  'mnLogsCollectInfoService',
 
 
 ]).run(function ($rootScope, $state, $urlRouter, mnPools) {

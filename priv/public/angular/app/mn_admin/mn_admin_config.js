@@ -165,5 +165,15 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
           return mnSettingsAutoFailoverService.getAutoFailoverSettings();
         }
       }
+    })
+    .state('app.admin.settings.alerts', {
+      url: '/alerts',
+      controller: 'mnSettingsAlertsController',
+      templateUrl: 'mn_admin/mn_settings/alerts/mn_settings_alerts.html',
+      resolve: {
+        alertsSettings: function (mnSettingsAlertsService) {
+          return mnSettingsAlertsService.getAlerts();
+        }
+      }
     });
 });
