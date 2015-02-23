@@ -760,27 +760,26 @@ var SetupWizard = {
         var servicesParams = $.param({services: services});
         var ajaxOptions = {dataType: 'text'}; //because with dataType json jQuery returning “parsererror”
 
-        jQuery.when(
-          jsonPostWithErrors('/nodes/' + node + '/controller/settings', diskParams, maybeShowDiskErrors, ajaxOptions),
-          jsonPostWithErrors('/node/controller/rename', hostnameParams, maybeShowHostnameErrors, ajaxOptions)
-        ).done(function () {
-          if ($('#no-join-cluster')[0].checked) {
-            jQuery.when(
-              jsonPostWithErrors("/node/controller/setupServices", servicesParams, maybeShowServicesErrors, ajaxOptions),
-              jsonPostWithErrors('/pools/default', memoryQuotaParams, maybeShowMemoryQuotaErrors, ajaxOptions)
-            ).done(function () {
-              BucketsSection.refreshBuckets();
-              SetupWizard.show("sample_buckets");
-              onLeave();
-            }).always(removeSpinner);
-          } else {
-            var deferred = SetupWizard.doClusterJoin();
-            if (deferred) {
-              deferred.always(removeSpinner);
+        jQuery.when(jsonPostWithErrors('/nodes/' + node + '/controller/settings', diskParams, maybeShowDiskErrors, ajaxOptions)).done(function () {
+          jQuery.when(jsonPostWithErrors('/node/controller/rename', hostnameParams, maybeShowHostnameErrors, ajaxOptions)).done(function () {
+            if ($('#no-join-cluster')[0].checked) {
+              jQuery.when(
+                jsonPostWithErrors("/node/controller/setupServices", servicesParams, maybeShowServicesErrors, ajaxOptions),
+                jsonPostWithErrors('/pools/default', memoryQuotaParams, maybeShowMemoryQuotaErrors, ajaxOptions)
+              ).done(function () {
+                BucketsSection.refreshBuckets();
+                SetupWizard.show("sample_buckets");
+                onLeave();
+              }).always(removeSpinner);
             } else {
-              removeSpinner();
+              var deferred = SetupWizard.doClusterJoin();
+              if (deferred) {
+                deferred.always(removeSpinner);
+              } else {
+                removeSpinner();
+              }
             }
-          }
+          }).fail(removeSpinner);
         }).fail(removeSpinner);
 
         function removeSpinner() {
