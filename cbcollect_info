@@ -557,7 +557,11 @@ def dump_utilities(*args, **kwargs):
                            MacOSXTask : 'Mac OS X' }
     platform_utils = dict((name, set()) for name in specific_platforms.values())
 
-    tasks = make_os_tasks() + make_product_task({}, "")
+    class FakeOptions(object):
+        def __getattr__(self, name):
+            return None
+
+    tasks = make_os_tasks() + make_product_task({}, "", FakeOptions())
 
     for task in tasks:
         utility = guess_utility(task.command)
