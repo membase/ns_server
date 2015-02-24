@@ -52,6 +52,8 @@
 
 -behaviour(gen_server).
 
+-include("ns_common.hrl").
+
 -record(ns_connection_pool, {
           destinations = dict:new(), % Dest => [Socket]
           sockets = dict:new(), % Socket => {Dest, Timer}
@@ -133,6 +135,11 @@ handle_call({done, Dest, Socket}, {Pid, _} = From, State) ->
             %% NOTE: we don't expect that to happen often, but it is
             %% in fact possible if connection pool died and was
             %% restarted between taking socket and returning it back.
+            case (catch gen_tcp:close(Socket)) of
+                ok -> ok;
+                CloseErr ->
+                    ?log_error("Failed to close unknown socket: ~p", [CloseErr])
+            end,
             {noreply, State}
     end;
 handle_call(_, _, State) ->
