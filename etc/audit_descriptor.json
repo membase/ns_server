@@ -426,7 +426,7 @@
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
               "remote" : {"ip" : "", "port" : 1},
-              "id" : "",
+              "rep_id" : "",
               "from_bucket" : "",
               "to_bucket" : "",
               "to_cluster" : "",
@@ -446,7 +446,7 @@
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
               "remote" : {"ip" : "", "port" : 1},
-              "id" : "",
+              "rep_id" : "",
               "settings" : ""
           },
           "optional_fields" : {
@@ -463,7 +463,7 @@
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
               "remote" : {"ip" : "", "port" : 1},
-              "id" : ""
+              "rep_id" : ""
           },
           "optional_fields" : {
               "sessionid" : ""

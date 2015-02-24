@@ -340,15 +340,15 @@ xdcr_create_replication(Req, Id, Props) ->
                                 false
                         end, Props),
 
-    put(xdcr_create_replication, Req, [{id, Id},
+    put(xdcr_create_replication, Req, [{rep_id, Id},
                                        {settings, {prepare_list(Settings)}}] ++ Params).
 
 xdcr_update_replication(Req, Id, Props) ->
-    put(xdcr_update_replication, Req, [{id, Id},
+    put(xdcr_update_replication, Req, [{rep_id, Id},
                                        {settings, {prepare_list(Props)}}]).
 
 xdcr_cancel_replication(Req, Id) ->
-    put(xdcr_cancel_replication, Req, [{id, Id}]).
+    put(xdcr_cancel_replication, Req, [{rep_id, Id}]).
 
 xdcr_update_global_settings(Req, Settings) ->
     put(xdcr_update_global_settings, Req, [{settings, {prepare_list(Settings)}}]).
