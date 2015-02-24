@@ -114,19 +114,28 @@ build_ports(Node, Config) ->
      {direct, ns_config:search_node_prop(Node, Config, memcached, port)}].
 
 build_services(Node, Config, EnabledServices) ->
-    SSLPorts = lists:append([case ns_config:search_node(Node, Config, ConfigKey) of
-                                 {value, Value} when Value =/= undefined -> [{JKey, Value}];
-                                 _ -> []
-                             end || {ConfigKey, JKey} <- [{ssl_capi_port, capiSSL},
-                                                          {ssl_rest_port, mgmtSSL}]]),
+    GetSSLPort = fun (ConfigKey, JKey) ->
+                         case ns_config:search_node(Node, Config, ConfigKey) of
+                             {value, Value} when Value =/= undefined ->
+                                 [{JKey, Value}];
+                             _ ->
+                                 []
+                         end
+                 end,
+
     OptServices =
         [case S of
              kv ->
+                 KVCapiSSL = GetSSLPort(ssl_capi_port, capiSSL),
+
+                 {value, CapiPort} = ns_config:search_node(Node, Config, capi_port),
+                 KVCapiPorts = [{capi, CapiPort} | KVCapiSSL],
+
                  KVSSL = case ns_config:search_node_prop(Node, Config, memcached, ssl_port) of
                              undefined ->
-                                 [];
+                                 KVCapiPorts;
                              SslPort ->
-                                 [{kvSSL, SslPort}]
+                                 [{kvSSL, SslPort} | KVCapiPorts]
                          end,
                  KVProj = case ns_config:search(Config, {node, Node, projector_port}, undefined) of
                               undefined ->
@@ -150,10 +159,10 @@ build_services(Node, Config, EnabledServices) ->
                   {indexStreamMaint, ns_config:search(Config, {node, Node, indexer_stmaint_port}, undefined)}
                  ]
          end || S <- EnabledServices],
-    {value, CapiPort} = ns_config:search_node(Node, Config, capi_port),
-    [{mgmt, misc:node_rest_port(Config, Node)},
-     {capi, CapiPort}
-     | lists:append([SSLPorts | OptServices])].
+
+    MgmtSSL = GetSSLPort(ssl_rest_port, mgmtSSL),
+    [{mgmt, misc:node_rest_port(Config, Node)}
+     | lists:append([MgmtSSL | OptServices])].
 
 maybe_build_ext_hostname(Node) ->
     case misc:node_name_host(Node) of
