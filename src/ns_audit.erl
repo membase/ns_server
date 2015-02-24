@@ -300,15 +300,15 @@ change_memory_quota(Req, Quota) ->
     put(change_memory_quota, Req, [{quota, Quota}]).
 
 add_group(Req, Group) ->
-    put(add_group, Req, [{name, proplists:get_value(name, Group)},
+    put(add_group, Req, [{group_name, proplists:get_value(name, Group)},
                          {uuid, proplists:get_value(uuid, Group)}]).
 
 delete_group(Req, Group) ->
-    put(delete_group, Req, [{name, proplists:get_value(name, Group)},
+    put(delete_group, Req, [{group_name, proplists:get_value(name, Group)},
                              {uuid, proplists:get_value(uuid, Group)}]).
 
 update_group(Req, Group) ->
-    put(update_group, Req, [{name, proplists:get_value(name, Group)},
+    put(update_group, Req, [{group_name, proplists:get_value(name, Group)},
                             {uuid, proplists:get_value(uuid, Group)},
                             {nodes, {list, proplists:get_value(nodes, Group, [])}}]).
 
