@@ -642,12 +642,25 @@ def generate_upload_url(parser, options, zip_filename):
         customer = urllib.quote(options.upload_customer)
         fname = urllib.quote(zip_filename)
         if options.upload_ticket:
-            ticket = urllib.quote(options.upload_ticket)
-            upload_url = "https://%s/%s/%s/%s" % (upload_host, customer, ticket, fname)
+            upload_url = "https://%s/%s/%d/%s" % (upload_host, customer, options.upload_ticket, fname)
         else:
             upload_url = "https://%s/%s/%s" % (upload_host, customer, fname)
         log("Will upload collected .zip file into %s" % upload_url)
     return upload_url
+
+def check_ticket(option, opt, value):
+    if re.match('^\d{1,7}$', value):
+        return int(value)
+    else:
+        raise optparse.OptionValueError(
+            "option %s: invalid ticket number: %r" % (opt, value))
+
+class CbcollectInfoOptions(optparse.Option):
+    from copy import copy
+
+    TYPES = optparse.Option.TYPES + ("ticket",)
+    TYPE_CHECKER = copy(optparse.Option.TYPE_CHECKER)
+    TYPE_CHECKER["ticket"] = check_ticket
 
 def main():
     # ask all tools to use C locale (MB-12050)
@@ -659,7 +672,7 @@ def main():
     if platform.system() == 'Darwin':
         os.environ["COUCHBASE_TOP"] = os.path.abspath(os.path.join(mydir, ".."))
 
-    parser = optparse.OptionParser(usage=USAGE)
+    parser = optparse.OptionParser(usage=USAGE, option_class=CbcollectInfoOptions)
     parser.add_option("-r", dest="root",
                       help="root directory - defaults to %s" % (mydir + "/.."),
                       default=os.path.abspath(os.path.join(mydir, "..")))
@@ -682,7 +695,7 @@ def main():
                       help="gather diagnotics and upload it for couchbase support. Gives upload host")
     parser.add_option("--customer", dest="upload_customer",
                       help="specifies customer name for upload")
-    parser.add_option("--ticket", dest="upload_ticket",
+    parser.add_option("--ticket", dest="upload_ticket", type='ticket',
                       help="specifies support ticket number for upload")
     options, args = parser.parse_args()
 
