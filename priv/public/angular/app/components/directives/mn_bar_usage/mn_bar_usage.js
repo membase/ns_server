@@ -25,9 +25,9 @@ angular.module('mnBarUsage').directive('mnBarUsage', function (mnFormatMemSizeFi
         var values = _.map(items, function (item) {
           return Math.max(item.value, 0);
         });
-        var total = _(values).reduce(function (sum, num) {
+        var total = _.chain(values).reduce(function (sum, num) {
           return sum + num;
-        });
+        }).value();
 
         values = mnRescaleForSumFilter(100, values, total);
 

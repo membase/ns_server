@@ -118,7 +118,7 @@ angular.module('mnHelper').factory('mnHelper',
         ]).then(function (result) {
           var tasks = result[1];
           var rv = result[0];
-          var recommendedRefreshPeriod = (_(tasks.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
+          var recommendedRefreshPeriod = (_.chain(tasks.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
           cycleId = $timeout(cycle, recommendedRefreshPeriod || 20000);
           return rv;
         }).then(config.onUpdate);
@@ -163,7 +163,7 @@ angular.module('mnHelper').factory('mnHelper',
     };
 
     mnHelper.checkboxesToList = function (object) {
-      return _(object).pick(angular.identity).keys().value();
+      return _.chain(object).pick(angular.identity).keys().value();
     };
 
     mnHelper.reloadApp = function () {
