@@ -38,6 +38,8 @@ updatable_key(auditd_enabled) ->
     true;
 updatable_key(rotate_interval) ->
     true;
+updatable_key(rotate_size) ->
+    true;
 updatable_key(log_path) ->
     true;
 updatable_key(_) ->

@@ -3720,7 +3720,9 @@ validate_settings_audit(Args) ->
     R1 = validate_dir(log_path, R0),
     R2 = validate_integer(rotate_interval, R1),
     R3 = validate_range(rotate_interval, 15*60, 60*60*24*7, R2),
-    validate_unsupported_params(R3).
+    R4 = validate_integer(rotate_size, R3),
+    R5 = validate_range(rotate_size, 0, 500*1024*1024, R4),
+    validate_unsupported_params(R5).
 
 handle_settings_audit_post(Req) ->
     assert_is_enterprise(),
