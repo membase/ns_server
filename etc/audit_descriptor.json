@@ -233,7 +233,7 @@
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
               "remote" : {"ip" : "", "port" : 1},
-              "name" : ""
+              "bucket_name" : ""
           },
           "optional_fields" : {
               "sessionid" : ""

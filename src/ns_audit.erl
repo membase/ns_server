@@ -281,7 +281,7 @@ flush_bucket(Req, Name) ->
     put(flush_bucket, Req, [{name, Name}]).
 
 start_loading_sample(Req, Name) ->
-    put(start_loading_sample, Req, [{name, Name}]).
+    put(start_loading_sample, Req, [{bucket_name, Name}]).
 
 disk_storage_conf(Req, Node, DbPath, IxPath) ->
     put(disk_storage_conf, Req, [{node, Node},
