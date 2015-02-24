@@ -101,9 +101,9 @@ default() ->
     {AuditGlobalLogs, AuditLocalLogs} =
         case misc:get_env_default(path_audit_log, []) of
             [] ->
-                {[{archive_path, RawLogDir}, {log_path, RawLogDir}], []};
+                {[{log_path, RawLogDir}], []};
             Path ->
-                {[], [{archive_path, Path}, {log_path, Path}]}
+                {[], [{log_path, Path}]}
         end,
 
     [{directory, path_config:component_path(data, "config")},

@@ -29,8 +29,6 @@
 
 string_key(log_path) ->
     true;
-string_key(archive_path) ->
-    true;
 string_key(descriptors_path) ->
     true;
 string_key(_) ->
@@ -41,8 +39,6 @@ updatable_key(auditd_enabled) ->
 updatable_key(rotate_interval) ->
     true;
 updatable_key(log_path) ->
-    true;
-updatable_key(archive_path) ->
     true;
 updatable_key(_) ->
     false.
