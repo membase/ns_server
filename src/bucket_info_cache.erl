@@ -134,7 +134,7 @@ build_services(Node, Config, EnabledServices) ->
                               ProjPort ->
                                   [{projector, ProjPort} | KVSSL]
                           end,
-                 [{kv ,ns_config:search_node_prop(Node, Config, memcached, port)}
+                 [{kv, ns_config:search_node_prop(Node, Config, memcached, port)}
                   | KVProj];
              moxi ->
                  [{moxi, ns_config:search_node_prop(Node, Config, moxi, port)}];
