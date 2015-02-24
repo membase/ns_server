@@ -348,9 +348,8 @@ alert_key(_) -> all.
 
 check_host_connectivity(OtherHost) ->
     %% connect to epmd at other side
-    case gen_tcp:connect(OtherHost, 4369,
-                         [binary, {packet, 0}, {active, false}],
-                         5000) of
+    ConnRV = (catch gen_tcp:connect(OtherHost, 4369, [binary, {packet, 0}, {active, false}], 5000)),
+    case ConnRV of
         {ok, Socket} ->
             %% and determine our ip address
             {ok, {IpAddr, _}} = inet:sockname(Socket),
@@ -358,7 +357,15 @@ check_host_connectivity(OtherHost) ->
             RV = string:join(lists:map(fun erlang:integer_to_list/1,
                                        tuple_to_list(IpAddr)), "."),
             {ok, RV};
-        {error, Reason} = X ->
+        _ ->
+            Reason =
+                case ConnRV of
+                    {'EXIT', R} ->
+                        R;
+                    {error, R} ->
+                        R
+                end,
+
             M = case ns_error_messages:connection_error_message(Reason, OtherHost, "4369") of
                     undefined ->
                         list_to_binary(io_lib:format("Failed to reach erlang port mapper "
@@ -366,7 +373,8 @@ check_host_connectivity(OtherHost) ->
                     Msg ->
                         iolist_to_binary([<<"Failed to reach erlang port mapper. ">>, Msg])
                 end,
-            {error, host_connectivity, M, X}
+
+            {error, host_connectivity, M, ConnRV}
     end.
 
 -spec do_change_address(string(), boolean()) -> ok | {address_save_failed, _} | not_self_started.
