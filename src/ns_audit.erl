@@ -264,21 +264,21 @@ build_bucket_props(Props) ->
 
 create_bucket(Req, Name, Type, Props) ->
     put(create_bucket, Req,
-        [{name, Name},
+        [{bucket_name, Name},
          {type, Type},
          {props, {build_bucket_props(Props)}}]).
 
 modify_bucket(Req, Name, Type, Props) ->
     put(modify_bucket, Req,
-        [{name, Name},
+        [{bucket_name, Name},
          {type, Type},
          {props, {build_bucket_props(Props)}}]).
 
 delete_bucket(Req, Name) ->
-    put(delete_bucket, Req, [{name, Name}]).
+    put(delete_bucket, Req, [{bucket_name, Name}]).
 
 flush_bucket(Req, Name) ->
-    put(flush_bucket, Req, [{name, Name}]).
+    put(flush_bucket, Req, [{bucket_name, Name}]).
 
 start_loading_sample(Req, Name) ->
     put(start_loading_sample, Req, [{bucket_name, Name}]).
