@@ -255,7 +255,7 @@ init([]) ->
             %% supervisor is waiting us to complete init and our call
             %% to terminate ns_server_sup is going to cause deadlock
             gen_server:cast(self(), leave);
-        _ ->
+        {error, enoent} ->
             ok
     end,
     {ok, #state{}}.
