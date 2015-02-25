@@ -1298,10 +1298,12 @@ build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr) ->
                   end,
             KV3 = case Bucket of
                       undefined ->
-                          case capi_utils:capi_url_bin(WantENode, <<"/">>, LocalAddr) of
-                              undefined -> KV2;
-                              CapiURL ->
-                                  [{couchApiBase, CapiURL}
+                          case [capi_utils:capi_url_bin(WantENode, <<"/">>, LocalAddr),
+                                capi_utils:capi_url_bin({ssl, WantENode}, <<"/">>, LocalAddr)] of
+                              [undefined, undefined] -> KV2;
+                              [CapiURL, CapiSSLURL] ->
+                                  [{couchApiBase, CapiURL},
+                                   {couchApiBaseHTTPS, CapiSSLURL}
                                    | KV2]
                           end;
                       _ ->

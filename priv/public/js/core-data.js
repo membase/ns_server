@@ -648,7 +648,7 @@ var DAL = {
       return this.self.value;
     }
 
-    return thisNode.couchApiBase;
+    return window.location.protocol === "https:" ? thisNode.couchApiBaseHTTPS : thisNode.couchApiBase;
   }).name("capiBaseCell");
 
   var compatVersionCell = DAL.cells.compatVersion = Cell.computeEager(function (v) {

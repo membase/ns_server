@@ -929,13 +929,13 @@ var ViewsSection = {
       var intPageVal = subset === 'prod' ? intPageFull : intPage;
 
       if (builder) {
-        var url = builder(intPageVal, subset);
-        url = url.replace(/^http:\/\/(.*?):/, "http://" + window.location.hostname + ":");
-        var text = url.substring(url.indexOf('?'));
-        ViewsFilter.filtersUrl.attr('href', url);
-        ViewsFilter.filtersUrl.text(text);
-        SpatialFilter.filtersUrl.attr('href', url);
-        SpatialFilter.filtersUrl.text(text);
+        var parser = document.createElement('a');
+        parser.href = builder(intPageVal, subset);
+        parser.hostname = window.location.hostname;
+        ViewsFilter.filtersUrl.attr('href', parser.href);
+        ViewsFilter.filtersUrl.text(parser.search);
+        SpatialFilter.filtersUrl.attr('href', parser.href);
+        SpatialFilter.filtersUrl.text(parser.search);
       }
     }, DAL.cells.mode, self.modeTabs, SpatialFilter.rawFilterParamsCell,
          ViewsFilter.rawFilterParamsCell, self.subsetTabCell, self.intFullSubsetPageCell, self.intPageCell, self.proposedURLBuilderCell);
