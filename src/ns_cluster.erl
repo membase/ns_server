@@ -250,7 +250,9 @@ handle_info(Msg, State) ->
 init([]) ->
     case marker_exists(leave_marker_path()) of
         true ->
-            ?log_info("found marker of in-flight cluster leave. Looks like previous leave procedure crashed. Going to complete leave cluster procedure"),
+            ?log_info("Found marker of in-flight cluster leave. "
+                      "Looks like previous leave procedure crashed. "
+                      "Going to complete leave cluster procedure."),
             %% we have to do it async because otherwise our parent
             %% supervisor is waiting us to complete init and our call
             %% to terminate ns_server_sup is going to cause deadlock
