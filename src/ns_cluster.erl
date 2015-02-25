@@ -165,7 +165,7 @@ handle_call({change_address, Address}, _From, State) ->
 handle_cast(leave, State) ->
     ?cluster_log(0001, "Node ~p is leaving cluster.", [node()]),
 
-    ok = misc:write_file(leave_marker_path(), <<"">>),
+    create_marker(leave_marker_path()),
 
     %% first thing we do is stopping nearly everything
     ok = ns_server_cluster_sup:stop_ns_server(),
@@ -235,7 +235,7 @@ handle_cast(leave, State) ->
     ?cluster_debug("Leaving cluster", []),
     timer:sleep(1000),
 
-    ok = file:delete(leave_marker_path()),
+    remove_marker(leave_marker_path()),
     {ok, _} = ns_server_cluster_sup:start_ns_server(),
     ns_ports_setup:restart_memcached(),
     {noreply, State}.
@@ -248,14 +248,14 @@ handle_info(Msg, State) ->
 
 
 init([]) ->
-    case file:read_file_info(leave_marker_path()) of
-        {ok, _} ->
+    case marker_exists(leave_marker_path()) of
+        true ->
             ?log_info("found marker of in-flight cluster leave. Looks like previous leave procedure crashed. Going to complete leave cluster procedure"),
             %% we have to do it async because otherwise our parent
             %% supervisor is waiting us to complete init and our call
             %% to terminate ns_server_sup is going to cause deadlock
             gen_server:cast(self(), leave);
-        {error, enoent} ->
+        false ->
             ok
     end,
     {ok, #state{}}.
@@ -989,6 +989,23 @@ perform_actual_join(RemoteNode, NewCookie) ->
             ?cluster_error("Failed to join cluster because of: ~p",
                            [Status2]),
             Status2
+    end.
+
+create_marker(Path) ->
+    ok = misc:write_file(Path, <<"">>).
+
+remove_marker(Path) ->
+    ok = file:delete(Path).
+
+marker_exists(Path) ->
+    case file:read_file_info(Path) of
+        {ok, _} ->
+            true;
+        {error, enoent} ->
+            false;
+        Other ->
+            ?cluster_error("Unexpected error when reading marker ~p: ~p", [Path, Other]),
+            exit({failed_to_read_marker, Path, Other})
     end.
 
 leave_marker_path() ->
