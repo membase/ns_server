@@ -183,7 +183,7 @@ GET /pools/default =>
             "clusterCompatibility": 131072, // private.
             "version": "2.0.0r_276_ged5c769",
             "os": "i486-pc-linux-gnu",
-            "services: ["kv", "moxi", "n1ql"],
+            "services: ["kv", "n1ql"],
             "ports": {
                 "proxy": 12003, // moxi port of this node
                 "direct": 12002, // memcached port of this node,
