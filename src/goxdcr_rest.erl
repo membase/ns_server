@@ -143,4 +143,4 @@ all_local_replication_infos() ->
                  end, "GET", "/pools/default/replicationInfos", 30000).
 
 delete_all_replications(Bucket) ->
-    query_goxdcr("DELETE", "/pools/default/replications/" ++ Bucket, 30000).
+    query_goxdcr("DELETE", "/pools/default/replications/" ++ mochiweb_util:quote_plus(Bucket), 30000).
