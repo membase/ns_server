@@ -18,7 +18,8 @@
 -behavior(supervisor).
 
 %% API
--export([start_link/0, restart/0, start_ns_server/0, stop_ns_server/0]).
+-export([start_link/0,
+         start_ns_server/0, stop_ns_server/0, restart_ns_server/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -69,17 +70,6 @@ start_ns_server() ->
 stop_ns_server() ->
     supervisor:terminate_child(?MODULE, ns_server_nodes_sup).
 
-restart() ->
-    %% NOTE: starting and stopping in usual way is surprisingly
-    %% hard. Because we normally do that from process which
-    %% group_leader is application_master of ns_server application. So
-    %% we just terminate and restart all childs instead.
-    {ok, {_, ChildSpecs}} = init([]),
-    %% we don't restart dist manager in order to avoid shutting
-    %% down/restarting net_kernel
-    DontRestart = [dist_manager, ns_server_nodes_sup],
-    ChildIds = [element(1, Spec) || Spec <- ChildSpecs] -- DontRestart,
-    stop_ns_server(),
-    [supervisor:terminate_child(?MODULE, Id) || Id <- lists:reverse(ChildIds)],
-    [supervisor:restart_child(?MODULE, Id) || Id <- ChildIds],
+restart_ns_server() ->
+    ok = stop_ns_server(),
     start_ns_server().

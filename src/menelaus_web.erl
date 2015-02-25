@@ -2524,7 +2524,7 @@ handle_node_settings_post(Node, Req) ->
 
                         %% performing required restart from
                         %% successfull path change
-                        ns_server_cluster_sup:restart(),
+                        {ok, _} = ns_server_cluster_sup:restart_ns_server(),
                         reply(Req, 200),
                         erlang:exit(normal);
                     {errors, Msgs} -> Msgs
