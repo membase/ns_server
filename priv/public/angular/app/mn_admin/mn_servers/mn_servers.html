@@ -92,7 +92,7 @@
                 </a>
               </td>
               <td class="servers_icons  {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" ng-class="{dynamic_lastActive: node.isLastActive}">
-                <span class="servers_services_wrarning" ng-show="{{node.services.length > 1}}" title="It is not recommended to provision a node with more than 1 service if this a production cluster"></span>
+                <span class="servers_services_wrarning" ng-show="{{node.services.length > 1}}" title="It is not recommended to provision a node with more than 1 service if this is a production cluster"></span>
               </td>
               <td>
                 <div class="ellipsis" title="{{node.group}}">{{node.group}}</div>
