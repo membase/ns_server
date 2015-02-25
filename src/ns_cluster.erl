@@ -235,11 +235,31 @@ handle_cast(leave, State) ->
     ?cluster_debug("Leaving cluster", []),
     timer:sleep(1000),
 
+    create_marker(start_marker_path()),
     remove_marker(leave_marker_path()),
+
     {ok, _} = ns_server_cluster_sup:start_ns_server(),
     ns_ports_setup:restart_memcached(),
-    {noreply, State}.
 
+    remove_marker(start_marker_path()),
+
+    {noreply, State};
+handle_cast(retry_start_after_leave, State) ->
+    case ns_server_cluster_sup:start_ns_server() of
+        {ok, _} ->
+            ok;
+        {error, running} ->
+            ?log_warning("ns_server is already running. Ignoring."),
+            ok;
+        Other ->
+            exit({failed_to_start_ns_server_after_leave, Other})
+    end,
+
+    ns_ports_setup:restart_memcached(),
+
+    remove_marker(start_marker_path()),
+
+    {noreply, State}.
 
 
 handle_info(Msg, State) ->
@@ -258,7 +278,15 @@ init([]) ->
             %% to terminate ns_server_sup is going to cause deadlock
             gen_server:cast(self(), leave);
         false ->
-            ok
+            case marker_exists(start_marker_path()) of
+                true ->
+                    ?log_info("Found marker ~p. "
+                              "Looks like we failed to restart ns_server after leave. "
+                              "Will try again.", [start_marker_path()]),
+                    gen_server:cast(self(), retry_start_after_leave);
+                false ->
+                    ok
+            end
     end,
     {ok, #state{}}.
 
@@ -1012,3 +1040,6 @@ marker_exists(Path) ->
 
 leave_marker_path() ->
     path_config:component_path(data, "leave_marker").
+
+start_marker_path() ->
+    path_config:component_path(data, "start_marker").
