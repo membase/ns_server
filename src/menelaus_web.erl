@@ -2594,7 +2594,7 @@ parse_hostname([_ | _] = Hostname) ->
                                  throw({error, [<<"The hostname is malformed.">>]})
                          end,
 
-    {Host, menelaus_util:parse_validate_port_number(StringPort)};
+    {string:strip(Host), menelaus_util:parse_validate_port_number(StringPort)};
 
 parse_hostname([]) ->
     throw({error, [<<"Hostname is required.">>]}).
