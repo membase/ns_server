@@ -19,11 +19,17 @@
 
 -include("ns_common.hrl").
 
+%% API
+
 -export([node_name_changed/0,
          start_link/0]).
 
+%% Supervisor callbacks
 -export([init/1]).
 
+%% ===================================================================
+%% API functions
+%% ===================================================================
 
 %% @doc Notify the supervisor that the node's name has changed so it
 %% can restart children that care.
@@ -37,6 +43,10 @@ node_name_changed() ->
 
 start_link() ->
     supervisor2:start_link({local, ?MODULE}, ?MODULE, []).
+
+%% ===================================================================
+%% Supervisor callbacks
+%% ===================================================================
 
 init([]) ->
     pre_start(),
