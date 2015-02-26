@@ -353,16 +353,10 @@ task_operation(extract, BucketCompaction, RawTask)
       {VBucketsDone, TotalVBuckets}}];
 task_operation(extract, XDCR, RawTask)
   when XDCR =:= xdcr ->
-    {_, ChangesLeft} = lists:keyfind(changes_left, 1, RawTask),
-    {_, DocsChecked} = lists:keyfind(docs_checked, 1, RawTask),
-    {_, DocsWritten} = lists:keyfind(docs_written, 1, RawTask),
-    MaxVBReps = case lists:keyfind(max_vbreps, 1, RawTask) of
-                    false ->
-                        %% heartbeat from older node;
-                        null;
-                    {_, X} ->
-                        X
-                end,
+    ChangesLeft = proplists:get_value(changes_left, RawTask, 0),
+    DocsChecked = proplists:get_value(docs_checked, RawTask, 0),
+    DocsWritten = proplists:get_value(docs_written, RawTask, 0),
+    MaxVBReps = proplists:get_value(max_vbreps, RawTask, null),
     Errors = proplists:get_value(errors, RawTask, []),
     {_, Id} = lists:keyfind(id, 1, RawTask),
     [{{XDCR, Id}, {ChangesLeft, DocsChecked, DocsWritten, Errors, MaxVBReps}}];
