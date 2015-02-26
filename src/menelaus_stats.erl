@@ -307,7 +307,8 @@ get_samples_from_one_of_kind([Kind | RestKinds], StatName, ClientTStamp, Window)
     end.
 
 get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window) ->
-    get_samples_from_one_of_kind(["@system", "@query", "@index-" ++ BucketName, BucketName],
+    get_samples_from_one_of_kind(["@system", "@query", "@index-" ++ BucketName,
+                                  "@goxdcr-" ++ BucketName, BucketName],
                                  StatName, ClientTStamp, Window).
 
 build_response_for_specific_stat(BucketName, StatName, Params, LocalAddr) ->
@@ -394,12 +395,16 @@ bucket_nodes("@query") ->
     ns_cluster_membership:n1ql_active_nodes(ns_config:latest_config_marker());
 bucket_nodes("@index-"++_) ->
     ns_cluster_membership:index_active_nodes(ns_config:latest_config_marker());
+bucket_nodes("@goxdcr-"++Bucket) ->
+    ns_bucket:live_bucket_nodes(Bucket);
 bucket_nodes(Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket).
 
 is_persistent("@query") ->
     false;
 is_persistent("@index-"++_) ->
+    false;
+is_persistent("@goxdcr-"++_) ->
     false;
 is_persistent(BucketName) ->
     ns_bucket:is_persistent(BucketName).
@@ -483,6 +488,31 @@ computed_stats_lazy_proplist("@query") ->
      {<<"query_avg_result_count">>, QueryAvgResultCount}];
 computed_stats_lazy_proplist("@index-"++_) ->
     [];
+computed_stats_lazy_proplist("@goxdcr-"++BucketName) ->
+    Z2 = fun (StatNameA, StatNameB, Combiner) ->
+                 {Combiner, [StatNameA, StatNameB]}
+         end,
+    %% compute a list of per replication XDC stats
+    Reps = case cluster_compat_mode:is_goxdcr_enabled() of
+               true ->
+                   goxdcr_rest:get_replications(BucketName);
+               false ->
+                   []
+           end,
+    lists:flatmap(fun (Id) ->
+                          Prefix = <<"replications/", Id/binary,"/">>,
+
+                          PercentCompleteness = Z2(<<Prefix/binary, "docs_checked">>,
+                                                   <<Prefix/binary, "changes_left">>,
+                                                   fun (Checked, Left) ->
+                                                           try (100 * Checked) / (Checked + Left)
+                                                           catch error:badarith -> 0
+                                                           end
+                                                   end),
+
+                          [{<<Prefix/binary, "percent_completeness">>, PercentCompleteness}]
+                  end,
+                  Reps);
 computed_stats_lazy_proplist(BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
@@ -1811,6 +1841,7 @@ serve_aggregated_ui_stats(Req, Params) ->
                     end
             end,
     BS = grab_ui_stats(Bucket, Nodes, HaveStamp, Wnd),
+    GoXDCRStats = [{<<"@goxdcr">>, {grab_ui_stats("@goxdcr-" ++ Bucket, Nodes, HaveStamp, Wnd)}}],
     QNodes = bucket_nodes("@query"),
     HaveQuery = case Nodes of
                     all ->
@@ -1821,10 +1852,10 @@ serve_aggregated_ui_stats(Req, Params) ->
     SS = grab_ui_stats("@system", Nodes, HaveStamp, Wnd),
     MaybeQStats = case HaveQuery of
                       false ->
-                          [];
+                          GoXDCRStats;
                       true ->
                           QS = grab_ui_stats("@query", Nodes, HaveStamp, Wnd),
-                          [{<<"@query">>, {QS}}]
+                          [{<<"@query">>, {QS}} | GoXDCRStats]
                   end,
     INodes = bucket_nodes("@index-" ++ Bucket),
     HaveIndexBool  = case Nodes of
