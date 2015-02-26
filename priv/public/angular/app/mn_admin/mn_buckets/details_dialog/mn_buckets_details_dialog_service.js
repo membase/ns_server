@@ -1,7 +1,33 @@
 angular.module('mnBucketsDetailsDialogService').factory('mnBucketsDetailsDialogService',
-  function (mnHttp, $q, mnBytesToMBFilter, mnPoolDefault, mnServersService, bucketsFormConfiguration, mnBucketsDetailsService) {
+  function (mnHttp, $q, mnBytesToMBFilter, mnCountFilter, mnSettingsAutoCompactionService, mnPoolDefault, mnServersService, bucketsFormConfiguration, mnBucketsDetailsService) {
 
     var mnBucketsDetailsDialogService = {};
+
+    mnBucketsDetailsDialogService.prepareBucketConfigForSaving = function (bucketConf, autoCompactionSettings) {
+      var conf = {};
+      angular.forEach(['bucketType', 'ramQuotaMB', 'name', 'evictionPolicy', 'authType', 'saslPassword', 'proxyPort', 'replicaNumber', 'replicaIndex', 'threadsNumber', 'flushEnabled', 'autoCompactionDefined'], function (fieldName) {
+        if (bucketConf[fieldName] !== undefined) {
+          conf[fieldName] = bucketConf[fieldName];
+        }
+      });
+      if (conf.autoCompactionDefined) {
+        _.extend(conf, mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings));
+      }
+      return conf;
+    };
+
+    mnBucketsDetailsDialogService.adaptValidationResult = function (resp) {
+      var result = resp.data;
+      var ramSummary = result.summaries.ramSummary;
+
+      return {
+        totalBucketSize: mnBytesToMBFilter(ramSummary.thisAlloc),
+        nodeCount: mnCountFilter(ramSummary.nodesCount, 'node'),
+        perNodeMegs: ramSummary.perNodeMegs,
+        guageConfig: mnBucketsDetailsService.getBucketRamGuageConfig(ramSummary),
+        errors: result.errors
+      };
+    };
 
     mnBucketsDetailsDialogService.getNewBucketConf = function () {
       return $q.all([
@@ -27,11 +53,11 @@ angular.module('mnBucketsDetailsDialogService').factory('mnBucketsDetailsDialogS
       });
     };
 
-    mnBucketsDetailsDialogService.postBuckets = function (data) {
+    mnBucketsDetailsDialogService.postBuckets = function (data, uri) {
       return mnHttp({
         data: data,
         method: 'POST',
-        url: data.uri
+        url: uri
       });
     };
 

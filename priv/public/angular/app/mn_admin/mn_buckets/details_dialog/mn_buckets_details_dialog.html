@@ -3,7 +3,7 @@
   <h1 class="dialog_corner_radius" ng-show="!bucketConf.isNew">Configure Bucket</h1>
   <div mn-spinner="viewLoading">
     <form ng-submit="onSubmit()">
-      <div mn-buckets-form bucket-conf="bucketConf"></div>
+      <div mn-buckets-form bucket-conf="bucketConf" auto-compaction-settings="autoCompactionSettings"></div>
       <div class="save_cancel">
         <button class="save_button float_right when-roadmin-hide-me" type="submit">
           <span ng-show="bucketConf.isNew">Create</span>

@@ -14,6 +14,7 @@ angular.module('mnBucketsForm', [
   'mnHttp',
   'mnBucketsDetailsService'
 ]);
+angular.module('mnAutoCompactionForm', []);
 angular.module('mnCompaction', [
   'mnHttp'
 ]);
@@ -108,6 +109,13 @@ angular.module('mnSettingsAlerts', [
 angular.module('mnSettingsAlertsService', [
   'mnHttp'
 ]);
+angular.module('mnSettingsAutoCompaction', [
+  'mnSettingsAutoCompactionService',
+  'mnHelper'
+]);
+angular.module('mnSettingsAutoCompactionService', [
+  'mnHttp'
+]);
 
 
 angular.module('mnServers', [
@@ -200,6 +208,7 @@ angular.module('app', [
   'mnWarmupProgress',
   'mnCompaction',
   'mnBucketsForm',
+  'mnAutoCompactionForm',
   'mnLaunchpad',
 
   'mnPoolDefault',
@@ -218,6 +227,7 @@ angular.module('app', [
   'mnSettingsCluster',
   'mnSettingsNotifications',
   'mnSettingsAlerts',
+  'mnSettingsAutoCompaction',
   'mnServers',
   'mnOverview',
   'mnBuckets',

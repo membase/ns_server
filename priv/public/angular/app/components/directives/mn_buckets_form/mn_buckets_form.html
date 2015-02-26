@@ -133,6 +133,22 @@
     </div>
   </div> <!-- .persistent-only -->
 
+  <div ng-if="!bucketConf.isWizard">
+    <div class="bucket_details_auto_compaction persistent-only" id="js_bucket_auto_compaction_settings">
+      <h2>Auto-Compaction</h2>
+      <div class="sub_section">
+        <p>Auto-Compaction settings trigger the compaction process. The process comparts databases and their respective view indexes when the following conditions are met.</p>
+
+        <ul>
+          <li>
+            <label><input type="checkbox" name="autoCompactionDefined" ng-model="bucketConf.autoCompactionDefined" value="true" /> Override the default autocompaction settings?</label>
+          </li>
+        </ul>
+        <div ng-show="bucketConf.autoCompactionDefined" mn-auto-compaction-form auto-compaction-settings="autoCompactionSettings" validation-errors="validationResult.errors"></div>
+      </div>
+    </div> <!-- .auto_compaction -->
+  </div>
+
   <h2>Flush</h2>
   <div class="sub_section">
     <input type="checkbox" class="for-enable-flush" id="for-enable-flush-init" name="flushEnabled" value="1" ng-model="bucketConf.flushEnabled" ng-false-value="0" ng-true-value="1">

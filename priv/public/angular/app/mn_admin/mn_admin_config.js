@@ -175,5 +175,15 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
           return mnSettingsAlertsService.getAlerts();
         }
       }
+    })
+    .state('app.admin.settings.autoCompaction', {
+      url: '/autoCompaction',
+      controller: 'mnSettingsAutoCompactionController',
+      templateUrl: 'mn_admin/mn_settings/auto_compaction/mn_settings_auto_compaction.html',
+      resolve: {
+        autoCompactionSettings: function (mnSettingsAutoCompactionService) {
+          return mnSettingsAutoCompactionService.getAutoCompaction();
+        }
+      }
     });
 });

@@ -1,4 +1,4 @@
-angular.module('mnBucketsForm').directive('mnBucketsForm', function (mnHttp, mnBucketsDetailsService, mnBytesToMBFilter, mnCountFilter) {
+angular.module('mnBucketsForm').directive('mnBucketsForm', function (mnHttp, mnBucketsDetailsDialogService, mnBytesToMBFilter, mnCountFilter) {
 
   function threadsEvictionWarning(scope, value) {
     var initialValue = scope.bucketConf[value];
@@ -15,7 +15,8 @@ angular.module('mnBucketsForm').directive('mnBucketsForm', function (mnHttp, mnB
   return {
     restrict: 'A',
     scope: {
-      bucketConf: '='
+      bucketConf: '=',
+      autoCompactionSettings: '='
     },
     isolate: false,
     replace: true,
@@ -39,28 +40,26 @@ angular.module('mnBucketsForm').directive('mnBucketsForm', function (mnHttp, mnB
         threadsEvictionWarning($scope, 'evictionPolicy');
       }
 
-      function onResult(resp) {
-        var result = resp.data;
-        var ramSummary = result.summaries.ramSummary;
-
-        $scope.validationResult = {
-          totalBucketSize: mnBytesToMBFilter(ramSummary.thisAlloc),
-          nodeCount: mnCountFilter(ramSummary.nodesCount, 'node'),
-          perNodeMegs: ramSummary.perNodeMegs,
-          guageConfig: mnBucketsDetailsService.getBucketRamGuageConfig(ramSummary),
-          errors: result.errors
+      $scope.$watch(function () {
+        return {
+          bucketConf: $scope.bucketConf,
+          autoCompactionSettings: $scope.autoCompactionSettings
         };
-      }
-
-      $scope.$watch('bucketConf', function () {
+      }, function (values) {
+        var bucketConf = values.bucketConf;
+        var autoCompactionSettings = values.autoCompactionSettings;
         mnHttp({
           method: 'POST',
-          url: $scope.bucketConf.uri,
-          data: $scope.bucketConf,
+          url: bucketConf.uri,
+          data: mnBucketsDetailsDialogService.prepareBucketConfigForSaving(bucketConf, autoCompactionSettings),
           params: {
             just_validate: 1
           }
-        }).then(onResult, onResult);
+        })
+        .then(mnBucketsDetailsDialogService.adaptValidationResult, mnBucketsDetailsDialogService.adaptValidationResult)
+        .then(function (result) {
+          $scope.validationResult = result;
+        });
       }, true);
     }
   };

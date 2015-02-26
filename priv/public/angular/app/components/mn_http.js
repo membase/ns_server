@@ -1,8 +1,23 @@
 angular.module('mnHttp').factory('mnHttp',
   function ($http) {
-    // This is an atered version of the jQuery.param()
-    // https://github.com/jquery/jquery/blob/master/src/serialize.js
-    function serializeData(data) {
+
+    function serialize(rv, data, parentName) {
+      var name;
+      for (name in data) {
+        if (data.hasOwnProperty(name)) {
+          var value = data[name];
+          if (parentName) {
+            name = parentName + '[' + name + ']';
+          }
+          if (angular.isObject(value)) {
+            serialize(rv, value, name);
+          } else {
+            rv.push(encodeURIComponent(name) + "=" + encodeURIComponent(value == null ? "" : value));
+          }
+        }
+      }
+    }
+    window.serializeData = function serializeData(data) {
       if (angular.isString(data)) {
         return data;
       }
@@ -10,13 +25,8 @@ angular.module('mnHttp').factory('mnHttp',
         return data == null ? "" : data.toString();
       }
       var rv = [];
-      var name;
-      for (name in data) {
-        if (data.hasOwnProperty(name)) {
-          var value = data[name];
-          rv.push(encodeURIComponent(name) + "=" + encodeURIComponent(value == null ? "" : value));
-        }
-      }
+
+      serialize(rv, data);
 
       return rv.sort().join("&").replace(/%20/g, "+");
     }

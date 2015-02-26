@@ -1,5 +1,5 @@
 angular.module('mnBuckets').controller('mnBucketsDetailsController',
-  function ($scope, mnBucketsDetailsService, mnCompaction, mnHelper, $modal, mnBytesToMBFilter, mnBucketsDetailsDialogService) {
+  function ($scope, mnBucketsDetailsService, mnSettingsAutoCompactionService, mnCompaction, mnHelper, $modal, mnBytesToMBFilter, mnBucketsDetailsDialogService) {
     function getBucketsDetails() {
       mnBucketsDetailsService.getDetails($scope.bucket).then(function (details) {
         $scope.bucketDetails = details;
@@ -12,6 +12,11 @@ angular.module('mnBuckets').controller('mnBucketsDetailsController',
         resolve: {
           bucketConf: function () {
             return mnBucketsDetailsDialogService.reviewBucketConf($scope.bucketDetails);
+          },
+          autoCompactionSettings: function () {
+            return !$scope.bucketDetails.autoCompactionSettings ?
+                    mnSettingsAutoCompactionService.getAutoCompaction() :
+                    mnSettingsAutoCompactionService.prepareSettingsForView($scope.bucketDetails);
           }
         }
       });
