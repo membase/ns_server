@@ -1059,22 +1059,23 @@ var BucketsSection = {
           return;
         }
 
-        var activeServersLength = DAL.cells.serversCell.value.active.length;
-        var rawRAM = Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / activeServersLength);
+        DAL.cells.serversCell.getValue(function (servers) {
+          var activeServersLength = servers.active.length;
+          var rawRAM = Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / activeServersLength);
 
-        (new BucketDetailsDialog({
-          uri: '/pools/default/buckets',
-          bucketType: 'membase',
-          authType: 'sasl',
-          quota: {
-            rawRAM: rawRAM
-          },
-          replicaIndex: false,
-          replicaNumber: 1,
-          threadsNumber: 3,
-          evictionPolicy: 'valueOnly'
-        }, true)).startDialog();
-
+          (new BucketDetailsDialog({
+            uri: '/pools/default/buckets',
+            bucketType: 'membase',
+            authType: 'sasl',
+            quota: {
+              rawRAM: rawRAM
+            },
+            replicaIndex: false,
+            replicaNumber: 1,
+            threadsNumber: 3,
+            evictionPolicy: 'valueOnly'
+          }, true)).startDialog();
+        });
       });
     });
   },
