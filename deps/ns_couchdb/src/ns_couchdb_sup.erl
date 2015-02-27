@@ -74,15 +74,15 @@ child_specs() ->
      {set_view_update_daemon, {set_view_update_daemon, start_link, []},
       permanent, 1000, worker, [set_view_update_daemon]},
 
-     {ns_capi_ssl_service,
-      {ns_ssl_services_setup, start_link_capi_service, []},
-      permanent, 1000, worker, []},
+     restartable:spec(
+       {ns_capi_ssl_service,
+        {ns_ssl_services_setup, start_link_capi_service, []},
+        permanent, 1000, worker, []}),
 
      {dir_size, {dir_size, start_link, []},
       permanent, 1000, worker, [dir_size]}
     ].
 
 restart_capi_ssl_service() ->
-    ok = supervisor:terminate_child(?MODULE, ns_capi_ssl_service),
-    {ok, _} = supervisor:restart_child(?MODULE, ns_capi_ssl_service),
+    {ok, _} = restartable:restart(?MODULE, ns_capi_ssl_service),
     ok.

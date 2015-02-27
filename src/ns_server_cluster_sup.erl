@@ -58,8 +58,9 @@ init([]) ->
             {ns_process_registry, start_link,
              [vbucket_filter_changes_registry, [{terminate_command, shutdown}]]},
             permanent, 100, worker, [ns_process_registry]},
-           {ns_server_nodes_sup, {ns_server_nodes_sup, start_link, []},
-            permanent, infinity, supervisor, [ns_server_nodes_sup]}
+           restartable:spec(
+             {ns_server_nodes_sup, {ns_server_nodes_sup, start_link, []},
+              permanent, infinity, supervisor, [ns_server_nodes_sup]})
           ]}}.
 
 %% @doc Start ns_server and couchdb
@@ -71,5 +72,4 @@ stop_ns_server() ->
     supervisor:terminate_child(?MODULE, ns_server_nodes_sup).
 
 restart_ns_server() ->
-    ok = stop_ns_server(),
-    start_ns_server().
+    restartable:restart(?MODULE, ns_server_nodes_sup).

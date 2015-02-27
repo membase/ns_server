@@ -99,11 +99,13 @@ create_ns_server_supervisor_spec() ->
 create_child_spec(Id, {Name, Cmd, Args, Opts}) ->
     %% wrap parameters into function here to protect passwords
     %% that could be inside those parameters from being logged
-    {Id,
-     {supervisor_cushion, start_link,
-      [Name, 5000, infinity, ns_port_server, start_link, [fun() -> {Name, Cmd, Args, Opts} end]]},
-     permanent, 86400000, worker,
-     [ns_port_server]}.
+    restartable:spec(
+      {Id,
+       {supervisor_cushion, start_link,
+        [Name, 5000, infinity, ns_port_server, start_link,
+         [fun() -> {Name, Cmd, Args, Opts} end]]},
+       permanent, 86400000, worker,
+       [ns_port_server]}).
 
 terminate_port(Id) ->
     ?log_info("unsupervising port: ~p", [Id]),
@@ -112,8 +114,7 @@ terminate_port(Id) ->
 
 restart_port(Id) ->
     ?log_info("restarting port: ~p", [Id]),
-    ok = supervisor:terminate_child(?MODULE, Id),
-    {ok, _} = supervisor:restart_child(?MODULE, Id).
+    {ok, _} = restartable:restart(?MODULE, Id).
 
 restart_port_by_name(Name) ->
     Id = lists:keyfind(Name, 1, current_ports()),

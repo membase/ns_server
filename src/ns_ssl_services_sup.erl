@@ -16,8 +16,7 @@ init([]) ->
           child_specs()}}.
 
 restart_ssl_service() ->
-    ok = supervisor2:terminate_child(?MODULE, ns_rest_ssl_service),
-    {ok, _} = supervisor2:restart_child(?MODULE, ns_rest_ssl_service),
+    {ok, _} = restartable:restart(?MODULE, ns_rest_ssl_service),
     ok.
 
 child_specs() ->
@@ -25,7 +24,8 @@ child_specs() ->
       {ns_ssl_services_setup, start_link, []},
       permanent, 1000, worker, []},
 
-     {ns_rest_ssl_service,
-      {ns_ssl_services_setup, start_link_rest_service, []},
-      permanent, 1000, worker, []}
+     restartable:spec(
+       {ns_rest_ssl_service,
+        {ns_ssl_services_setup, start_link_rest_service, []},
+        permanent, 1000, worker, []})
     ].

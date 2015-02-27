@@ -34,10 +34,8 @@
 %% @doc Notify the supervisor that the node's name has changed so it
 %% can restart children that care.
 node_name_changed() ->
-    ok = supervisor2:terminate_child(?MODULE, ns_doctor),
-    {ok, _} = supervisor2:restart_child(?MODULE, ns_doctor),
-    ok = supervisor2:terminate_child(?MODULE, mb_master),
-    {ok, _} = supervisor2:restart_child(?MODULE, mb_master),
+    {ok, _} = restartable:restart(?MODULE, ns_doctor),
+    {ok, _} = restartable:restart(?MODULE, mb_master),
     ok.
 
 
@@ -116,8 +114,9 @@ child_specs() ->
      {ns_heart_sup, {ns_heart_sup, start_link, []},
       permanent, infinity, supervisor, [ns_heart_sup]},
 
-     {ns_doctor, {ns_doctor, start_link, []},
-      permanent, 1000, worker, [ns_doctor]},
+     restartable:spec(
+       {ns_doctor, {ns_doctor, start_link, []},
+        permanent, 1000, worker, [ns_doctor]}),
 
      {remote_clusters_info, {remote_clusters_info, start_link, []},
       permanent, 1000, worker, [remote_servers_info]},
@@ -127,8 +126,9 @@ child_specs() ->
 
      %% Starts mb_master_sup, which has all processes that start on the master
      %% node.
-     {mb_master, {mb_master, start_link, []},
-      permanent, infinity, supervisor, [mb_master]},
+     restartable:spec(
+       {mb_master, {mb_master, start_link, []},
+        permanent, infinity, supervisor, [mb_master]}),
 
      {master_activity_events_ingress, {gen_event, start_link, [{local, master_activity_events_ingress}]},
       permanent, brutal_kill, worker, dynamic},
