@@ -29,8 +29,7 @@ get_current_version() ->
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),
-    filelib:ensure_dir(RawDir),
-    file:make_dir(RawDir),
+    ok = misc:mkdir_p(RawDir),
     RawDir.
 
 get_data_dir() ->
@@ -89,12 +88,10 @@ default() ->
                end,
 
     RawLogDir = path_config:component_path(data, "logs"),
-    filelib:ensure_dir(RawLogDir),
-    file:make_dir(RawLogDir),
+    ok = misc:mkdir_p(RawLogDir),
 
     BreakpadMinidumpDir = path_config:component_path(data, "crash"),
-    filelib:ensure_dir(BreakpadMinidumpDir),
-    file:make_dir(BreakpadMinidumpDir),
+    ok = misc:mkdir_p(BreakpadMinidumpDir),
 
     IsEnterprise = init_is_enterprise(),
 

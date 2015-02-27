@@ -1681,3 +1681,28 @@ halt(Status) ->
         error:undef ->
             erlang:halt(Status)
     end.
+
+%% Ensure that directory exists. Analogous to running mkdir -p in shell.
+mkdir_p(Path) ->
+    case filelib:ensure_dir(Path) of
+        ok ->
+            case file:make_dir(Path) of
+                {error, eexist} ->
+                    case file:read_file_info(Path) of
+                        {ok, Info} ->
+                            case Info#file_info.type of
+                                directory ->
+                                    ok;
+                                _ ->
+                                    {error, eexist}
+                            end;
+                        Error ->
+                            Error
+                    end;
+                %% either ok or other error
+                Other ->
+                    Other
+            end;
+        Error ->
+            Error
+    end.
