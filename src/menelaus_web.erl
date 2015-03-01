@@ -238,7 +238,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "buckets", Id, "docs", DocId] ->
                              {auth, fun menelaus_web_crud:handle_get/3, [Id, DocId]};
                          ["pools", "default", "buckets", "@query", "stats"] ->
-                             {auth_ro, fun menelaus_stats:handle_bucket_stats/3, ["default", "@query"]};
+                             {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", "@query"]};
                          ["pools", "default", "buckets", Id, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                               ["default", Id]};
@@ -270,7 +270,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth_bucket, fun handle_bucket_node_info/4,
                               ["default", Id, NodeId]};
                          ["pools", "default", "buckets", "@query", "nodes", NodeId, "stats"] ->
-                             {auth_ro, fun menelaus_stats:handle_bucket_node_stats/4,
+                             {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
                               ["default", "@query", NodeId]};
                          ["pools", "default", "buckets", Id, "nodes", NodeId, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_node_stats/4,

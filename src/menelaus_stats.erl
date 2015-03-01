@@ -24,7 +24,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([handle_bucket_stats/3,
+         handle_stats_section/3,
          handle_bucket_node_stats/4,
+         handle_stats_section_for_node/4,
          handle_specific_stat_for_buckets/4,
          handle_overview_stats/2,
          basic_stats/1,
@@ -180,9 +182,15 @@ handle_overview_stats(PoolId, Req) ->
 %% GET /pools/{PoolID}/buckets/{Id}/stats
 handle_bucket_stats(_PoolId, Id, Req) ->
     Params = Req:parse_qs(),
-    PropList1 = build_bucket_stats_ops_response(all, Id, Params),
+    PropList1 = build_bucket_stats_ops_response(all, Id, Params, true),
     PropList2 = build_bucket_stats_hks_response(Id),
     menelaus_util:reply_json(Req, {struct, PropList1 ++ PropList2}).
+
+handle_stats_section(_PoolId, Id, Req) ->
+    Params = Req:parse_qs(),
+    PropList1 = build_bucket_stats_ops_response(all, Id, Params, false),
+    menelaus_util:reply_json(Req, {struct, PropList1}).
+
 
 %% Per-Node Stats
 %% GET /pools/{PoolID}/buckets/{Id}/nodes/{NodeId}/stats
@@ -195,7 +203,7 @@ handle_bucket_node_stats(_PoolId, BucketName, HostName, Req) ->
             menelaus_util:reply_not_found(Req);
         {ok, Node} ->
             Params = Req:parse_qs(),
-            Ops = build_bucket_stats_ops_response([Node], BucketName, Params),
+            Ops = build_bucket_stats_ops_response([Node], BucketName, Params, true),
             BucketsTopKeys = case hot_keys_keeper:bucket_hot_keys(BucketName, Node) of
                                  undefined -> [];
                                  X -> X
@@ -206,7 +214,20 @@ handle_bucket_node_stats(_PoolId, BucketName, HostName, Req) ->
               Req,
               {struct, [{hostname, list_to_binary(HostName)}
                         | HKS ++ Ops]})
-      end.
+    end.
+
+handle_stats_section_for_node(_PoolId, Id, HostName, Req) ->
+    case menelaus_web:find_node_hostname(HostName, Req) of
+        false ->
+            menelaus_util:reply_not_found(Req);
+        {ok, Node} ->
+            Params = Req:parse_qs(),
+            Ops = build_bucket_stats_ops_response([Node], Id, Params, false),
+            menelaus_util:reply_json(
+              Req,
+              {struct, [{hostname, list_to_binary(HostName)}
+                        | Ops]})
+    end.
 
 %% Specific Stat URL grouped by nodes
 %% GET /pools/{PoolID}/buckets/{Id}/stats/{StatName}
@@ -773,16 +794,20 @@ join_samples_test() ->
     ?assertEqual(R1, join_samples(A, B)),
     ?assertEqual(R2, join_samples(B, A)).
 
-
-build_bucket_stats_ops_response(Nodes, BucketName, Params) ->
+build_bucket_stats_ops_response(Nodes, BucketName, Params, WithSystemStats) ->
     {ClientTStamp, {Step, _, Count} = Window} = parse_stats_params(Params),
 
     BucketRawSamples = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
-    SystemRawSamples = grab_system_aggregate_op_stats(Nodes, ClientTStamp, Window),
+    Samples = case WithSystemStats of
+                  true ->
+                      SystemRawSamples = grab_system_aggregate_op_stats(Nodes, ClientTStamp, Window),
 
-    % this will throw out all samples with timestamps that are not present
-    % in both BucketRawSamples and SystemRawSamples
-    Samples = join_samples(BucketRawSamples, SystemRawSamples),
+                      %% this will throw out all samples with timestamps that are not present
+                      %% in both BucketRawSamples and SystemRawSamples
+                      join_samples(BucketRawSamples, SystemRawSamples);
+                  false ->
+                      BucketRawSamples
+              end,
 
     StatsPropList = samples_to_proplists(Samples, BucketName),
 
