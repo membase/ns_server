@@ -950,6 +950,9 @@ var ViewsSection = {
     });
 
     btnCreate.bind('click', function (e) {
+      if (btnCreate.hasClass('dynamic_disabled')) {
+        return;
+      }
       e.preventDefault();
       ViewsSection.startCreateView();
     });
