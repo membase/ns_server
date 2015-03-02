@@ -506,8 +506,18 @@ do_bucket_create(Req, Name, ParsedProps) ->
     case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
         ok ->
             ns_audit:create_bucket(Req, Name, BucketType, BucketProps),
+            %% Default bucket type is now couchbase and not membase.
+            %% Ideally, we should change the default bucket type atom to couchbase
+            %% but the bucket type membase is used/checked at multiple locations.
+            %% Instead, fix the log message to display the correct bucket type.
+            DisplayBucketType = case BucketType of
+                                    membase ->
+                                        couchbase;
+                                    Other ->
+                                        Other
+                                end,
             ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n~p",
-                              [Name, BucketType, lists:keydelete(sasl_password, 1, BucketProps)]),
+                              [Name, DisplayBucketType, lists:keydelete(sasl_password, 1, BucketProps)]),
             ok;
         {error, {already_exists, _}} ->
             {errors, [{name, <<"Bucket with given name already exists">>}]};
