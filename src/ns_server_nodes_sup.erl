@@ -109,28 +109,44 @@ start_wait_link_to_couchdb_node() ->
 
 do_wait_link_to_couchdb_node(Initial) ->
     ?log_debug("Waiting for ns_couchdb node to start"),
-    erlang:link(erlang:whereis(ns_couchdb_port)),
-    RV = misc:poll_for_condition(
-           fun () ->
-                   case rpc:call(ns_node_disco:couchdb_node(), erlang, apply, [fun is_couchdb_node_ready/0, []], 5000) of
-                       {ok, _} = OK -> OK;
-                       Other ->
-                           ?log_debug("ns_couchdb is not ready: ~p", [Other]),
-                           false
-                   end
-           end,
-           60000, 200),
-    case RV of
-        {ok, Pid} ->
-            case Initial of
-                true ->
-                    proc_lib:init_ack({ok, self()});
-                _ -> ok
-            end,
-            remote_monitors:monitor(Pid),
-            wait_link_to_couchdb_node_loop(Pid);
-        timeout ->
-            exit(timeout)
+    Self = self(),
+    Ref = make_ref(),
+    MRef = erlang:monitor(process, erlang:whereis(ns_couchdb_port)),
+
+    proc_lib:spawn_link(
+      fun () ->
+              RV = misc:poll_for_condition(
+                     fun () ->
+                             case rpc:call(ns_node_disco:couchdb_node(),
+                                           erlang, apply,
+                                           [fun is_couchdb_node_ready/0, []], 5000) of
+                                 {ok, _} = OK -> OK;
+                                 Other ->
+                                     ?log_debug("ns_couchdb is not ready: ~p", [Other]),
+                                     false
+                             end
+                     end,
+                     60000, 200),
+              Self ! {Ref, RV}
+      end),
+
+    receive
+        {Ref, RV} ->
+            case RV of
+                {ok, Pid} ->
+                    case Initial of
+                        true ->
+                            proc_lib:init_ack({ok, self()});
+                        _ -> ok
+                    end,
+                    remote_monitors:monitor(Pid),
+                    wait_link_to_couchdb_node_loop(Pid);
+                timeout ->
+                    exit(timeout)
+            end;
+        {'DOWN', MRef, process, Pid, Reason} ->
+            ?log_error("ns_couchdb_port(~p) died with reason ~p", [Pid, Reason]),
+            exit(Reason)
     end.
 
 wait_link_to_couchdb_node_loop(Pid) ->
