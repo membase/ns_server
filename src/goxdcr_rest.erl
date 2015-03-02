@@ -26,7 +26,6 @@
          all_local_replication_infos/0,
          delete_all_replications/1,
          stats/1,
-         get_replications/1,
          get_replications_with_remote_info/1]).
 
 get_rest_port() ->
@@ -162,12 +161,6 @@ stats(Bucket) ->
                         [Bucket, {T,E,erlang:get_stacktrace()}]),
             []
     end.
-
-get_replications(BucketName) ->
-    BucketNameBin = list_to_binary(BucketName),
-    AllDocs = find_all_replication_docs(30000),
-    [misc:expect_prop_value(id, Props) || Props <- AllDocs,
-                                          misc:expect_prop_value(source, Props) =:= BucketNameBin].
 
 get_replications_with_remote_info(BucketName) ->
     BucketNameBin = list_to_binary(BucketName),
