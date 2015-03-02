@@ -3113,15 +3113,25 @@
               <option value="xmem" selected="selected">Version 2</option>
             </select>
           </div>
-          <div>
+          <div class="not-when-40">
             <label for="max_concurrent_reps">XDCR Max Replications per Bucket:</label>
             <input type="text" id="max_concurrent_reps" name="maxConcurrentReps">
             <i class="error js_error js_maxConcurrentReps"></i>
           </div>
-          <div>
+          <div class="not-when-40">
             <label for="worker_processes_setting">XDCR workers per Replication:</label>
             <input type="text" id="worker_processes_setting" name="workerProcesses">
             <i class="error js_error js_workerProcesses"></i>
+          </div>
+          <div class="only-when-40">
+            <label for="source_nozzle_per_node">XDCR Source Nozzles per Node:</label>
+            <input type="text" id="source_nozzle_per_node" name="sourceNozzlePerNode">
+            <i class="error js_error js_sourceNozzlePerNode"></i>
+          </div>
+          <div class="only-when-40">
+            <label for="target_nozzle_per_node">XDCR Target Nozzles per Node:</label>
+            <input type="text" id="target_nozzle_per_node" name="targetNozzlePerNode">
+            <i class="error js_error js_targetNozzlePerNode"></i>
           </div>
           <div>
             <label for="checkpoint_interval">XDCR Checkpoint Interval:</label>
@@ -3147,6 +3157,16 @@
             <label for="optimistic_replication_threshold">XDCR Optimistic Replication Threshold:</label>
             <input type="text" id="optimistic_replication_threshold" name="optimisticReplicationThreshold">
             <i class="error js_error js_optimisticReplicationThreshold"></i>
+          </div>
+          <div class="only-when-40">
+            <label for="statistics_collection_interval">XDCR Statistics Collection Interval:</label>
+            <input type="text" id="statistics_collection_interval" name="statisticsCollectionInterval">
+            <i class="error js_error js_statisticsCollectionInterval"></i>
+          </div>
+          <div class="only-when-40">
+            <label for="logging_level">XDCR Logging Level:</label>
+            <input type="text" id="logging_level" name="loggingLevel">
+            <i class="error js_error js_loggingLevel"></i>
           </div>
         </div>
       </fieldset>
