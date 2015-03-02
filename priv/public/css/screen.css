@@ -370,7 +370,6 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
   background: -o-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 90%, rgba(89,89,89,1) 100%);
   background: -ms-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 90%, rgba(89,89,89,1) 100%);
   background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 90%, rgba(89,89,89,1) 100%);
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#595959', GradientType=0 );
 }
 .usage div { height:21px; position: absolute; left: 0px; top: 0px;
   -moz-box-sizing: border-box;
@@ -383,7 +382,6 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
   background: -o-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 80%, rgba(89,89,89,1) 100%);
   background: -ms-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 80%, rgba(89,89,89,1) 100%);
   background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(0,0,0,0) 80%, rgba(89,89,89,1) 100%);
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#595959', GradientType=0 );
 }
 
 .usage_biggest, .usage_biggest div {height:31px;}
