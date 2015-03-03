@@ -326,6 +326,12 @@ time_to_epoch_float({Mega,Sec,Micro}) ->
 time_to_epoch_float(_) ->
   undefined.
 
+epoch_to_time(Nano) ->
+    Micro = Nano div 1000,
+    Sec = Micro div 1000000,
+    Mega = Sec div 1000000,
+    {Mega, Sec - Mega * 1000000, Micro - Sec * 1000000}.
+
 byte_size(List) when is_list(List) ->
   lists:foldl(fun(El, Acc) -> Acc + ?MODULE:byte_size(El) end, 0, List);
 

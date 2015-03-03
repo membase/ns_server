@@ -134,7 +134,13 @@ process_repl_info({Info}, Acc) ->
             Id = misc:expect_prop_value(<<"Id">>, Info),
             Stats = [{list_to_atom(binary_to_list(K)), list_to_integer(binary_to_list(V))} ||
                         {K, V} <- StatsList],
-            [{Id, Stats, []}, Acc]
+            ErrorList =  misc:expect_prop_value(<<"ErrorList">>, Info),
+            Errors = [{calendar:now_to_datetime(
+                         misc:epoch_to_time(misc:expect_prop_value(<<"Time">>, Error))),
+                       misc:expect_prop_value(<<"ErrorMsg">>, Error)}
+                      || {Error} <- ErrorList],
+
+            [{Id, Stats, Errors}, Acc]
     end.
 
 all_local_replication_infos() ->
