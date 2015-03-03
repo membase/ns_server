@@ -104,6 +104,8 @@ init_logging() ->
 
 do_init_logging() ->
     {ok, Dir} = application:get_env(ns_server, error_logger_mf_dir),
+
+    ok = misc:mkdir_p(Dir),
     ok = convert_disk_log_files(Dir),
 
     ok = ns_server:start_disk_sink(babysitter_sink, ?BABYSITTER_LOG_FILENAME),
