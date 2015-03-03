@@ -1237,10 +1237,17 @@
                       </div>
                       <div class="row">
                         <label><span>Target log directory:</span><input name="log_path" class="archive_path_field" id="js_archive_path_field">
-                        <i class="err-log_path error-container"></i></label>
+                        </label><i class="err-log_path error-container"></i>
                       </div>
                       <div class="row">
-                        <label><span>Log rotation time interval:</span><input name="rotate_interval" style="width:2.5em;"> <i class="err-rotate_interval error-container"></i></label>
+                        <label><span>Log rotation time interval:</span><input name="rotate_interval" type="number" id="js_rotate_interval" style="width:4em;"></label>
+                        <select name="rotate_interval_unit">
+                          <option value="seconds">Seconds</option>
+                          <option value="minutes">Minutes</option>
+                          <option value="hours">Hours</option>
+                          <option value="days">Days</option>
+                        </select>
+                        <i class="err-rotate_interval error-container"></i>
                       </div>
                     </div>
                     <div class="save_cancel">

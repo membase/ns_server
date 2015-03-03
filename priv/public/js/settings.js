@@ -1548,6 +1548,7 @@ var AuditSetupSection = {
     self.auditEnabled = $("#js_audit_enabled");
     self.auditSetupFormSubmit = $("#js_audit_setup_form_submit");
     self.auditArchivePathField = $("#js_archive_path_field");
+    self.auditRotateIntervalFiled = $("#js_rotate_interval");
     var spinner;
 
     self.auditArchivePathField.bind('input', function () {
@@ -1570,6 +1571,14 @@ var AuditSetupSection = {
         self.formValidation.pause();
         SettingsSection.renderErrors({errors:null}, self.auditSetupForm);
       }
+    });
+
+    self.auditRotateIntervalFiled.bind('keypress', function (evt){
+      var charCode = evt.which ? evt.which : event.keyCode;
+      if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+        return false;
+      }
+      return true;
     });
 
     self.showSpinnerCell.subscribeValue(function (val) {
@@ -1604,16 +1613,38 @@ var AuditSetupSection = {
       }
     });
   },
+  formatTimeUnit: function (unit) {
+    switch (unit) {
+      case 'seconds': return 1;
+      case 'minutes': return 60;
+      case 'hours': return 60 * 60;
+      case 'days': return 60 * 60 * 24;
+    }
+  },
+  formatRotateInterval: function (interval) {
+    var self = AuditSetupSection;
+    return _.chain(['days', 'hours', 'minutes', 'seconds']).map(function (unit) {
+      return [interval / self.formatTimeUnit(unit), unit];
+    }).find(function (value) {
+      return value[0] % 1 === 0;
+    }).value();
+  },
   getForm: function () {
     var self = AuditSetupSection;
     var formData = $.deparam(serializeForm(self.auditSetupForm));
     if (!formData["auditd_enabled"]) {
       formData["auditd_enabled"] = "false";
+    } else {
+      formData["rotate_interval"] = formData["rotate_interval"] * self.formatTimeUnit(formData["rotate_interval_unit"]);
+      delete formData["rotate_interval_unit"];
     }
     return $.param(formData);
   },
   fillForm: function (settings) {
     var self = this;
+    var formattedInterval = self.formatRotateInterval(settings["rotate_interval"]);
+    settings["rotate_interval"] = formattedInterval[0];
+    settings["rotate_interval_unit"] = formattedInterval[1];
     setFormValues(self.auditSetupForm, settings);
     if (!DAL.cells.isROAdminCell.value) {
       self.auditEnabled.change();
@@ -1624,6 +1655,7 @@ var AuditSetupSection = {
     var self = this;
     self.formValidation.pause();
     self.settingsCell.setValue(undefined);
+
     $.ajax({
       type: "POST",
       url: "/settings/audit",
