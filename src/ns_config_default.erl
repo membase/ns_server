@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {3, 2}.
+    {4, 0}.
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),
@@ -473,8 +473,8 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {3,0,99}} |
              upgrade_config_from_3_0_2_to_3_0_99(Config)];
         {value, {3,0,99}} ->
-            [{set, {node, node(), config_version}, {3,2}} |
-             upgrade_config_from_3_0_99_to_3_2(Config)]
+            [{set, {node, node(), config_version}, {4,0}} |
+             upgrade_config_from_3_0_99_to_4_0(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -783,11 +783,11 @@ do_upgrade_config_from_3_0_2_to_3_0_99(Config, DefaultConfig) ->
      {set, JTKey, DefaultJsonTemplateConfig},
      {set, PortServersKey, DefaultPortServers}].
 
-upgrade_config_from_3_0_99_to_3_2(Config) ->
-    ?log_info("Upgrading config from 3.0.99 to 3.2"),
-    do_upgrade_config_from_3_0_99_to_3_2(Config, default()).
+upgrade_config_from_3_0_99_to_4_0(Config) ->
+    ?log_info("Upgrading config from 3.0.99 to 4.0"),
+    do_upgrade_config_from_3_0_99_to_4_0(Config, default()).
 
-do_upgrade_config_from_3_0_99_to_3_2(Config, DefaultConfig) ->
+do_upgrade_config_from_3_0_99_to_4_0(Config, DefaultConfig) ->
     MCDefaultsK = {node, node(), memcached_defaults},
     {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
 
@@ -1173,7 +1173,7 @@ upgrade_3_0_2_to_3_0_99_test() ->
                   {set, {node, _, port_servers}, port_servers_cfg}],
                  do_upgrade_config_from_3_0_2_to_3_0_99(Cfg, Default)).
 
-upgrade_3_0_99_to_3_2_test() ->
+upgrade_3_0_99_to_4_0_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
              [{some_key, some_value}]},
@@ -1194,7 +1194,7 @@ upgrade_3_0_99_to_3_2_test() ->
                                                {audit_file, audit_file_path}]},
                   {set, {node, _, memcached_config}, {[{some_key, some_value},
                                                        {audit_file, audit_file}]}}],
-                 do_upgrade_config_from_3_0_99_to_3_2(Cfg, Default)).
+                 do_upgrade_config_from_3_0_99_to_4_0(Cfg, Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).

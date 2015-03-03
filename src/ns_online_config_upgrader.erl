@@ -21,7 +21,7 @@
 -export([upgrade_config/1]).
 
 upgrade_config(NewVersion) ->
-    true = (NewVersion =< [3, 2]),
+    true = (NewVersion =< [4, 0]),
 
     ok = ns_config:upgrade_config_explicitly(
            fun (Config) ->
@@ -44,7 +44,7 @@ do_upgrade_config(Config, FinalVersion) ->
              upgrade_config_from_2_5_to_3_0(Config)];
         {value, [3, 0]} ->
             ?log_info("Performing online config upgrade to 3.2 version"),
-            [{set, cluster_compat_version, [3, 2]}]
+            [{set, cluster_compat_version, [4, 0]}]
     end.
 
 upgrade_config_from_2_0_to_2_5(Config) ->
