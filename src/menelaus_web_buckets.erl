@@ -1040,12 +1040,25 @@ interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
 
 validate_with_missing(GivenValue, DefaultValue, IsNew, Fn) ->
     case Fn(GivenValue) of
-        {error, _, _} ->
-            case IsNew andalso DefaultValue =/= undefined of
-                true ->
-                    {ok, _, _} = Fn(DefaultValue);
-                false ->
-                    ignore
+        {error, _, _} = Error ->
+            %% Parameter validation functions return error when GivenValue
+            %% is undefined or was set to an invalid value.
+            %% If the user did not pass any value for the parameter
+            %% (given value is undefined) during bucket create and DefaultValue is
+            %% available then use it. If this is not bucket create or if
+            %% DefaultValue is not available then ignore the error.
+            %% If the user passed some invalid value during either bucket create or
+            %% edit then return error to the user.
+            case GivenValue of
+                undefined ->
+                    case IsNew andalso DefaultValue =/= undefined of
+                        true ->
+                            {ok, _, _} = Fn(DefaultValue);
+                        false ->
+                            ignore
+                    end;
+                _Other ->
+                    Error
             end;
         {ok, _, _} = RV -> RV
     end.
