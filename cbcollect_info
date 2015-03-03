@@ -456,6 +456,7 @@ def make_product_task(guts, initargs_path, options):
         LinuxTask("Manifest file", "cat '%s/manifest.xml'" % root),
         AllOsTask("Couchbase config", "", literal = read_guts(guts, "ns_config")),
         AllOsTask("Couchbase static config", "", literal = read_guts(guts, "static_config")),
+        AllOsTask("Raw ns_log", "", literal = read_guts(guts, "ns_log")),
         # TODO: just gather those in python
         WindowsTask("Memcached logs",
                     "cd " + winquote_path(read_guts(guts, "memcached_logs_path")) + " && " +

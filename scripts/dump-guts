@@ -591,9 +591,12 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     BucketTypePairs = [{Name, search_config(Props, type, undefined)} || {Name, Props} <- BucketConfigs],
     BucketNames = [Name || {Name, _} <- BucketTypePairs],
     MCDBucketNames = [Name || {Name, memcached} <- BucketTypePairs],
+
     NSLogPath = search_config(search_config_for_node(NSConfig, Node, ns_log, []),
                               filename,
                               ""),
+    NSLog = (catch read_ns_log(NSLogPath)),
+
     Pairs = [{ns_config, iolist_to_binary(io_lib:format("~p", [sanitize_config(NSConfig)]))},
              {static_config, iolist_to_binary(io_lib:format("~p", [StaticTerms]))},
              {couch_inis, confget(#config.couch_inis)},
@@ -606,6 +609,7 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
              {buckets, string:join(BucketNames, ",")},
              {memcached_buckets, string:join(MCDBucketNames, ",")},
              {ns_log_path, NSLogPath},
+             {ns_log, iolist_to_binary(io_lib:format("~p", [NSLog]))},
              {log_path, search_config(StaticTerms, error_logger_mf_dir, "")},
              {memcached_admin, MCDAdmin},
              {memcached_pass, MCDPass},
@@ -621,6 +625,11 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
 
     %% not sure why but output to tty is sometimes truncated otherwise
     timer:sleep(100).
+
+read_ns_log(Path) ->
+    {ok, B} = file:read_file(Path),
+    B1 = zlib:uncompress(B),
+    binary_to_term(B1).
 
 binarify_output_item(Binary) when is_binary(Binary) -> Binary;
 binarify_output_item(Atom) when is_atom(Atom) -> atom_to_binary(Atom, latin1);
