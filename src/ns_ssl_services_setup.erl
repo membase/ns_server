@@ -318,8 +318,20 @@ restart_ssl_services() ->
     %% to shutdown us.
     %%
     %% We're not trapping exits and that makes this interaction safe.
-    ok = ns_ssl_services_sup:restart_ssl_service(),
-    ok = ns_couchdb_api:restart_capi_ssl_service(),
+    case ns_ssl_services_sup:restart_ssl_service() of
+        ok ->
+            ok;
+        {error, not_running} ->
+            ?log_info("Did not restart ssl rest service because it wasn't running"),
+            ok
+    end,
+    case ns_couchdb_api:restart_capi_ssl_service() of
+        ok ->
+            ok;
+        {error, not_running} ->
+            ?log_info("Did not restart capi ssl service because is wasn't running"),
+            ok
+    end,
     restart_xdcr_proxy(),
     ok = ns_memcached:connect_and_send_isasl_refresh().
 

@@ -84,5 +84,9 @@ child_specs() ->
     ].
 
 restart_capi_ssl_service() ->
-    {ok, _} = restartable:restart(?MODULE, ns_capi_ssl_service),
-    ok.
+    case restartable:restart(?MODULE, ns_capi_ssl_service) of
+        {ok, _} ->
+            ok;
+        Error ->
+            Error
+    end.

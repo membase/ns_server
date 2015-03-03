@@ -16,8 +16,12 @@ init([]) ->
           child_specs()}}.
 
 restart_ssl_service() ->
-    {ok, _} = restartable:restart(?MODULE, ns_rest_ssl_service),
-    ok.
+    case restartable:restart(?MODULE, ns_rest_ssl_service) of
+        {ok, _} ->
+            ok;
+        Error ->
+            Error
+    end.
 
 child_specs() ->
     [{ns_ssl_services_setup,
