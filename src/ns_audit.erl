@@ -198,14 +198,32 @@ prepare(Req, Params) ->
 
 put(Code, Req, Params) ->
     Body = prepare(Req, Params),
-
-    ?log_debug("Audit ~p: ~p", [Code, Body]),
-    EncodedBody = ejson:encode({Body}),
-
-    ns_memcached_sockets_pool:executing_on_socket(
-      fun (Sock) ->
-              ok = mc_client_binary:audit_put(Sock, code(Code), EncodedBody)
+    proc_lib:spawn_link(
+      fun () ->
+              ?log_debug("Audit ~p: ~p", [Code, Body]),
+              EncodedBody = ejson:encode({Body}),
+              send_to_memcached(Code, EncodedBody, 1)
       end).
+
+send_to_memcached(Code, EncodedBody, Iteration) ->
+    case (catch ns_memcached_sockets_pool:executing_on_socket(
+                  fun (Sock) ->
+                          mc_client_binary:audit_put(Sock, code(Code), EncodedBody)
+                  end)) of
+        ok ->
+            ok;
+        Error ->
+            case Iteration of
+                21 ->
+                    ?log_error("Audit put call ~p with body ~p failed with error ~p",
+                               [Code, EncodedBody, Error]);
+                _ ->
+                    ?log_debug("Audit put call ~p with body ~p failed with error ~p. Retrying in 1s. Iteration ~p",
+                               [Code, EncodedBody, Error, Iteration]),
+                    timer:sleep(1000),
+                    send_to_memcached(Code, EncodedBody, Iteration + 1)
+            end
+    end.
 
 login_success(Req) ->
     put(login_success, Req, [{role, menelaus_auth:get_role(Req)}]).
