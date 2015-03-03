@@ -1298,14 +1298,10 @@ build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr) ->
                   end,
             KV3 = case Bucket of
                       undefined ->
-                          case [capi_utils:capi_url_bin(WantENode, <<"/">>, LocalAddr),
-                                capi_utils:capi_url_bin({ssl, WantENode}, <<"/">>, LocalAddr)] of
-                              [undefined, undefined] -> KV2;
-                              [CapiURL, CapiSSLURL] ->
-                                  [{couchApiBase, CapiURL},
-                                   {couchApiBaseHTTPS, CapiSSLURL}
-                                   | KV2]
-                          end;
+                          [{Key, URL} || {Key, Node} <- [{couchApiBase, WantENode},
+                                                         {couchApiBaseHTTPS, {ssl, WantENode}}],
+                                         URL <- [capi_utils:capi_url_bin(Node, <<"/">>, LocalAddr)],
+                                         URL =/= undefined] ++ KV2;
                       _ ->
                           Replication = case ns_bucket:get_bucket(Bucket, Config) of
                                             not_present -> 0.0;
