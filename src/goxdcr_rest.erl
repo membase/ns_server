@@ -112,7 +112,10 @@ query_goxdcr(Fun, Method, Path, Timeout) ->
                     Fun(ejson:decode(Body))
             end;
         _ ->
-            erlang:throw({unsuccesful_goxdcr_call, RV})
+            erlang:throw({unsuccesful_goxdcr_call,
+                          {method, Method},
+                          {path, Path},
+                          {response,  RV}})
     end.
 
 process_doc({Props}) ->
