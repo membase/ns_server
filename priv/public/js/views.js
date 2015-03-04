@@ -1637,7 +1637,7 @@ var ViewsSection = {
         return callback("conflict", "already_exists", "Spatial Function with given name already exists");
       }
       spatial[spatialName] = spatialDef ||
-          "function (doc) {\n  if (doc.geometry) {\n    emit(doc.geometry, null);\n  }\n}";
+          "function (doc) {\n  if (doc.geometry) {\n    emit([doc.geometry], null);\n  }\n}";
 
       $('#spatial_code_errors').text('').attr('title','');
 
