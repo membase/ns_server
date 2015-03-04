@@ -27,7 +27,7 @@ start_link_xdcr() ->
     proc_lib:start_link(erlang, apply, [fun start_loop/1, [xdcr]]).
 
 start_link(Bucket) ->
-    single_bucket_sup:ignore_if_not_couchbase_bucket(
+    ns_bucket_sup:ignore_if_not_couchbase_bucket(
       Bucket,
       fun (_) ->
               proc_lib:start_link(erlang, apply, [fun start_loop/1, [Bucket]])

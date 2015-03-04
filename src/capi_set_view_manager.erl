@@ -153,7 +153,7 @@ change_vbucket_states(#state{bucket = Bucket,
     do_apply_vbucket_states(SetName, Active, Passive, MainCleanup, Replica, ReplicaCleanup, PauseVBuckets, UnpauseVBuckets, State).
 
 start_link_remote(Node, Bucket) ->
-    single_bucket_sup:ignore_if_not_couchbase_bucket(
+    ns_bucket_sup:ignore_if_not_couchbase_bucket(
       Bucket,
       fun (BucketConfig) ->
               ReplicationSrvr = erlang:whereis(doc_replication_srv:proxy_server_name(Bucket)),

@@ -19,8 +19,7 @@
 
 -include("ns_common.hrl").
 
--export([start_link/1, init/1,
-         ignore_if_not_couchbase_bucket/2]).
+-export([start_link/1, init/1]).
 
 
 start_link(BucketName) ->
@@ -64,16 +63,3 @@ init([BucketName]) ->
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},
           child_specs(BucketName)}}.
-
-ignore_if_not_couchbase_bucket(BucketName, Body) ->
-    case ns_bucket:get_bucket(BucketName) of
-        not_present ->
-            ignore;
-        {ok, BucketConfig} ->
-            case proplists:get_value(type, BucketConfig) of
-                memcached ->
-                    ignore;
-                _ ->
-                    Body(BucketConfig)
-            end
-    end.

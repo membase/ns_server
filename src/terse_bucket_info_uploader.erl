@@ -21,7 +21,7 @@
 -export([start_link/1]).
 
 start_link(BucketName) ->
-    single_bucket_sup:ignore_if_not_couchbase_bucket(
+    ns_bucket_sup:ignore_if_not_couchbase_bucket(
       BucketName,
       fun (_) ->
               Name = list_to_atom("terse_bucket_info_uploader-" ++ BucketName),

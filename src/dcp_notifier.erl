@@ -32,7 +32,7 @@
 -export([init/2, handle_packet/5, handle_call/4, handle_cast/3]).
 
 start_link(Bucket) ->
-    single_bucket_sup:ignore_if_not_couchbase_bucket(
+    ns_bucket_sup:ignore_if_not_couchbase_bucket(
       Bucket,
       fun (_) ->
               dcp_proxy:start_link(notifier,

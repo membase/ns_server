@@ -22,6 +22,7 @@
 -include("ns_common.hrl").
 
 -export([start_link/0, subscribe_on_config_events/0]).
+-export([ignore_if_not_couchbase_bucket/2]).
 
 -export([init/1]).
 
@@ -30,6 +31,18 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
+ignore_if_not_couchbase_bucket(BucketName, Body) ->
+    case ns_bucket:get_bucket(BucketName) of
+        not_present ->
+            ignore;
+        {ok, BucketConfig} ->
+            case proplists:get_value(type, BucketConfig) of
+                memcached ->
+                    ignore;
+                _ ->
+                    Body(BucketConfig)
+            end
+    end.
 
 %% supervisor callbacks
 
