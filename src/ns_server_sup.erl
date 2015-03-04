@@ -202,7 +202,7 @@ child_specs() ->
      {xdcr_dcp_sockets_pool, {xdcr_dcp_sockets_pool, start_link, []},
       permanent, 1000, worker, []},
 
-     {ns_bucket_worker_sup, {ns_bucket_worker_sup, start_link, [single_bucket_sup]},
+     {ns_bucket_worker_sup, {ns_bucket_worker_sup, start_link, []},
       permanent, infinity, supervisor, [ns_bucket_worker_sup]},
 
      {system_stats_collector, {system_stats_collector, start_link, []},
