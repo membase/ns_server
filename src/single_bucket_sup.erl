@@ -24,31 +24,8 @@
 
 
 start_link(BucketName) ->
-    ParentPid = self(),
-    {ok, erlang:spawn_link(
-           fun () ->
-                   erlang:process_flag(trap_exit, true),
-                   Name = list_to_atom(atom_to_list(?MODULE) ++ "-" ++ BucketName),
-                   {ok, Pid} = supervisor:start_link({local, Name},
-                                                     ?MODULE, [BucketName]),
-                   top_loop(ParentPid, Pid, BucketName)
-           end)}.
-
-top_loop(ParentPid, Pid, BucketName) ->
-    receive
-        {'EXIT', Pid, Reason} ->
-            ?log_debug("per-bucket supervisor for ~p died with reason ~p~n",
-                       [BucketName, Reason]),
-            exit(Reason);
-        {'EXIT', _, Reason} = X ->
-            ?log_debug("Delegating exit ~p to child supervisor: ~p~n", [X, Pid]),
-            exit(Pid, Reason),
-            top_loop(ParentPid, Pid, BucketName);
-        X ->
-            ?log_debug("Delegating ~p to child supervisor: ~p~n", [X, Pid]),
-            Pid ! X,
-            top_loop(ParentPid, Pid, BucketName)
-    end.
+    Name = list_to_atom(atom_to_list(?MODULE) ++ "-" ++ BucketName),
+    supervisor:start_link({local, Name}, ?MODULE, [BucketName]).
 
 child_specs(BucketName) ->
     [{{docs_sup, BucketName},
