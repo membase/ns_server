@@ -132,7 +132,7 @@ process_repl_info({Info}, Acc) ->
             Acc;
         {StatsList} ->
             Id = misc:expect_prop_value(<<"Id">>, Info),
-            Stats = [{list_to_atom(binary_to_list(K)), list_to_integer(binary_to_list(V))} ||
+            Stats = [{list_to_atom(binary_to_list(K)), V} ||
                         {K, V} <- StatsList],
             ErrorList =  misc:expect_prop_value(<<"ErrorList">>, Info),
             Errors = [{calendar:now_to_datetime(
