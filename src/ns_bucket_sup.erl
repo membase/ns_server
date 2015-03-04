@@ -78,7 +78,7 @@ update_childs(Buckets) ->
                           true = is_tuple(Tuple),
                           ?log_debug("Starting new child: ~p~n",
                                      [Tuple]),
-                          supervisor:start_child(?MODULE, Tuple)
+                          {ok, _} = supervisor:start_child(?MODULE, Tuple)
                   end, ToStart),
     lists:foreach(fun (StopId) ->
                           Tuple = lists:keyfind(StopId, 1, OldSpecs),
@@ -92,9 +92,9 @@ update_childs(Buckets) ->
                                                  timeout_diag_logger:log_diagnostics(slow_bucket_stop)
                                          end),
                           try
-                              supervisor:terminate_child(?MODULE, StopId)
+                              ok = supervisor:terminate_child(?MODULE, StopId)
                           after
                               diag_handler:disarm_timeout(TimeoutPid)
                           end,
-                          supervisor:delete_child(?MODULE, StopId)
+                          ok = supervisor:delete_child(?MODULE, StopId)
                   end, ToStop).
