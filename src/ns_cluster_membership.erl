@@ -222,7 +222,8 @@ filter_out_non_kv_nodes(Nodes, Config) ->
           kv <- ns_cluster_membership:node_services(Config, N)].
 
 should_run_service(Config, Service, Node) ->
-    case ns_cluster_membership:get_cluster_membership(Node, Config) =:= active  of
+    case menelaus_web:is_system_provisioned()
+        andalso ns_cluster_membership:get_cluster_membership(Node, Config) =:= active  of
         false -> false;
         true ->
             Svcs = ns_cluster_membership:node_services(Config, Node),
