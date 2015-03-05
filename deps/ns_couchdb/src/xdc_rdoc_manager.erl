@@ -28,7 +28,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {ddoc_replicator :: pid(),
+-record(state, {rdoc_replicator :: pid(),
                 rep_manager :: pid(),
                 local_docs = [] :: [#doc{}]}).
 
@@ -75,7 +75,7 @@ init({Replicator, ReplicationSrvr, RepManager}) ->
     ?log_debug("Loaded the following docs:~n~p", [Docs]),
     gen_server:enter_loop(?MODULE, [],
                           #state{local_docs=Docs,
-                                 ddoc_replicator = Replicator,
+                                 rdoc_replicator = Replicator,
                                  rep_manager = RepManager}).
 
 handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
@@ -92,7 +92,7 @@ handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
     try
         ?log_debug("Writing interactively saved ddoc ~p", [Doc]),
         NewState = save_doc(NewDoc, State),
-        NewState#state.ddoc_replicator ! {replicate_change, NewDoc},
+        NewState#state.rdoc_replicator ! {replicate_change, NewDoc},
         {reply, ok, NewState}
     catch throw:{invalid_design_doc, _} = Error ->
             ?log_debug("Document validation failed: ~p", [Error]),
@@ -145,7 +145,7 @@ handle_cast({replicated_update, #doc{id=Id, rev=Rev}=Doc}, State) ->
 
 
 handle_info(replicate_newnodes_docs, #state{local_docs = Docs} = State) ->
-    State#state.ddoc_replicator ! {replicate_newnodes_docs, Docs},
+    State#state.rdoc_replicator ! {replicate_newnodes_docs, Docs},
     {noreply, State}.
 
 terminate(_Reason, _State) ->
