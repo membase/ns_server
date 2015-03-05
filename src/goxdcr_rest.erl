@@ -191,7 +191,7 @@ get_replications_with_remote_info(BucketName) ->
                       {ok, {RemoteClusterUUID, RemoteBucket}} =
                           remote_clusters_info:parse_remote_bucket_reference(Targ),
                       ClusterName = proplists:get_value(RemoteClusterUUID, RemoteClusters, <<"unknown">>),
-                      [{Id, ClusterName, RemoteBucket} | Acc];
+                      [{Id, binary_to_list(ClusterName), RemoteBucket} | Acc];
                   _ ->
                       Acc
               end
