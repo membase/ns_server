@@ -391,22 +391,12 @@ maybe_define_group(DDocId,
     try
         ok = ?csv_call(define_group, mapreduce_view, SetName, DDocId, [Params])
     catch
-        throw:{not_found, deleted} ->
-            %% The document has been deleted but we still think it's
-            %% alive. Eventually we will get a notification from master db
-            %% watcher and delete it from a list of design documents.
-            ok;
         throw:view_already_defined ->
             already_defined
     end,
     try
         ok = ?csv_call(define_group, spatial_view, SetName, DDocId, [Params])
     catch
-        throw:{not_found, deleted} ->
-            %% The document has been deleted but we still think it's
-            %% alive. Eventually we will get a notification from master db
-            %% watcher and delete it from a list of design documents.
-            ok;
         throw:view_already_defined ->
             already_defined
     end.
@@ -474,11 +464,6 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
         end
 
     catch
-        throw:{not_found, deleted} ->
-            %% The document has been deleted but we still think it's
-            %% alive. Eventually we will get a notification from master db
-            %% watcher and delete it from a list of design documents.
-            ok;
         T:E ->
             Stack = erlang:get_stacktrace(),
             Exc = [T, E, Stack],
