@@ -670,7 +670,12 @@ var Abortarium = {
 
 function serializeForm(f, modifiers) {
   f = $(f);
-  var array = f.serializeArray();
+  var array = f.find(":input").not(
+    '.dynamic_under-32 .only-when-32 :input,' +
+    '.dynamic_under-30 .only-when-30 :input,' +
+    '.dynamic_under-25 .only-when-25 :input,' +
+    '.dynamic_under-40 .only-when-40 :input,' +
+    '.dynamic_is-40 .not-when-40 :input').serializeArray();
   var seenKeys = {};
   array = _.filter(array.reverse(), function (pair) {
     if (seenKeys[pair.name]) {

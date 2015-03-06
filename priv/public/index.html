@@ -2205,17 +2205,21 @@
       <label><span>Max parallel main index tasks per node</span><input maxlength="5" style="width:1.5em;" name="maxParallelIndexers"></label>
       <label><span>Max parallel replica index tasks per node</span><input maxlength="5" style="width:1.5em;" name="maxParallelReplicaIndexers"></label>
       <label><span>Maximum Bucket Count</span><input maxlength="3" style="width:1.5em;" name="maxBucketCount"></label>
-      <label><span>XDCR Max Replications per Bucket</span><input maxlength="3" style="width:1.5em;" name="xdcrMaxConcurrentReps"></label>
+      <label class="not-when-40"><span>XDCR Max Replications per Bucket</span><input maxlength="5" style="width:1.5em;" name="xdcrMaxConcurrentReps"></label>
+      <label class="only-when-40"><span>XDCR Source Nozzles per Node</span><input maxlength="5" style="width:1.5em;" name="xdcrSourceNozzlePerNode"></label>
+      <label class="only-when-40"><span>XDCR Target Nozzles per Node</span><input maxlength="5" style="width:1.5em;" name="xdcrTargetNozzlePerNode"></label>
       <label><span>XDCR Checkpoint Interval</span><input maxlength="5" style="width:2.5em;" name="xdcrCheckpointInterval"></label>
       <label><span>XDCR Batch Count</span><input maxlength="5" style="width:2.5em;" name="xdcrWorkerBatchSize"></label>
       <label><span>XDCR Batch Size (kB)</span><input maxlength="6" style="width:2.5em;" name="xdcrDocBatchSizeKb"></label>
       <label><span>XDCR Failure Retry Interval</span><input maxlength="3" style="width:1.5em;" name="xdcrFailureRestartInterval"></label>
+      <label class="only-when-40"><span>XDCR Statistics Collection Interval</span><input maxlength="5" style="width:1.5em;" name="xdcrStatsInterval"></label>
+      <label class="only-when-40"><span>XDCR Logging Level</span><input maxlength="5" style="width:1.5em;" name="xdcrLogLevel"></label>
       <label><span>XDCR Optimistic Replication Threshold</span><input maxlength="6" style="width:2.5em;" name="xdcrOptimisticReplicationThreshold"></label>
 
       <label><span>Simultaneous REST requests limit</span><input maxlength="6" style="width:2.5em;" name="restRequestLimit"></label>
       <label><span>Simultaneous CAPI requests limit</span><input maxlength="6" style="width:2.5em;" name="capiRequestLimit"></label>
       <label><span>Drop requests after this much memory is used (MiB)</span><input maxlength="6" style="width:2.5em;" name="dropRequestMemoryThresholdMiB"></label>
-      <label><span>XDCR anticipatory delay (ms)</span><input maxlength="6" style="width:2.5em;" name="xdcrAnticipatoryDelay"></label>
+      <label class="not-when-40"><span>XDCR anticipatory delay (ms)</span><input maxlength="6" style="width:2.5em;" name="xdcrAnticipatoryDelay"></label>
     </fieldset>
     <div class="save_cancel">
       <button class="save_button float_right" type="submit">Save</button>
@@ -2562,15 +2566,25 @@
 <div class="xdcr_advaced_settings dialog" id="js_per_xdcr_settings_dialog" title="Advanced settings">
   <form>
     <div>
-      <div>
+      <div class="not-when-40">
         <label for="per_max_concurrent_reps">XDCR Max Replications per Bucket:</label>
         <input type="text" id="per_max_concurrent_reps" name="maxConcurrentReps">
         <i class="error js_error js_maxConcurrentReps"></i>
       </div>
-      <div>
-        <label for="per_worker_processes">XDCR workers per Replication:</label>
-        <input type="text" id="per_worker_processes" name="workerProcesses">
+      <div class="not-when-40">
+        <label for="per_worker_processes_setting">XDCR workers per Replication:</label>
+        <input type="text" id="per_worker_processes_setting" name="workerProcesses">
         <i class="error js_error js_workerProcesses"></i>
+      </div>
+      <div class="only-when-40">
+        <label for="per_source_nozzle_per_node">XDCR Source Nozzles per Node:</label>
+        <input type="text" id="per_source_nozzle_per_node" name="sourceNozzlePerNode">
+        <i class="error js_error js_sourceNozzlePerNode"></i>
+      </div>
+      <div class="only-when-40">
+        <label for="rep_target_nozzle_per_node">XDCR Target Nozzles per Node:</label>
+        <input type="text" id="rep_target_nozzle_per_node" name="targetNozzlePerNode">
+        <i class="error js_error js_targetNozzlePerNode"></i>
       </div>
       <div>
         <label for="per_checkpoint_interval">XDCR Checkpoint Interval:</label>
@@ -2596,6 +2610,16 @@
         <label for="per_optimistic_replication_threshold">XDCR Optimistic Replication Threshold:</label>
         <input type="text" id="per_optimistic_replication_threshold" name="optimisticReplicationThreshold">
         <i class="error js_error js_optimisticReplicationThreshold"></i>
+      </div>
+      <div class="only-when-40">
+        <label for="per_statistics_collection_interval">XDCR Statistics Collection Interval:</label>
+        <input type="text" id="per_statistics_collection_interval" name="statsInterval">
+        <i class="error js_error js_statisticsCollectionInterval"></i>
+      </div>
+      <div class="only-when-40">
+        <label for="per_logging_level">XDCR Logging Level:</label>
+        <input type="text" id="per_logging_level" name="logLevel">
+        <i class="error js_error js_loggingLevel"></i>
       </div>
     </div>
     <div class="save_cancel clearfix">
@@ -3113,15 +3137,25 @@
               <option value="xmem" selected="selected">Version 2</option>
             </select>
           </div>
-          <div>
+          <div class="not-when-40">
             <label for="max_concurrent_reps">XDCR Max Replications per Bucket:</label>
             <input type="text" id="max_concurrent_reps" name="maxConcurrentReps">
             <i class="error js_error js_maxConcurrentReps"></i>
           </div>
-          <div>
+          <div class="not-when-40">
             <label for="worker_processes_setting">XDCR workers per Replication:</label>
             <input type="text" id="worker_processes_setting" name="workerProcesses">
             <i class="error js_error js_workerProcesses"></i>
+          </div>
+          <div class="only-when-40">
+            <label for="source_nozzle_per_node">XDCR Source Nozzles per Node:</label>
+            <input type="text" id="source_nozzle_per_node" name="sourceNozzlePerNode">
+            <i class="error js_error js_sourceNozzlePerNode"></i>
+          </div>
+          <div class="only-when-40">
+            <label for="target_nozzle_per_node">XDCR Target Nozzles per Node:</label>
+            <input type="text" id="target_nozzle_per_node" name="targetNozzlePerNode">
+            <i class="error js_error js_targetNozzlePerNode"></i>
           </div>
           <div>
             <label for="checkpoint_interval">XDCR Checkpoint Interval:</label>
@@ -3147,6 +3181,16 @@
             <label for="optimistic_replication_threshold">XDCR Optimistic Replication Threshold:</label>
             <input type="text" id="optimistic_replication_threshold" name="optimisticReplicationThreshold">
             <i class="error js_error js_optimisticReplicationThreshold"></i>
+          </div>
+          <div class="only-when-40">
+            <label for="statistics_collection_interval">XDCR Statistics Collection Interval:</label>
+            <input type="text" id="statistics_collection_interval" name="statsInterval">
+            <i class="error js_error js_statisticsCollectionInterval"></i>
+          </div>
+          <div class="only-when-40">
+            <label for="logging_level">XDCR Logging Level:</label>
+            <input type="text" id="logging_level" name="logLevel">
+            <i class="error js_error js_loggingLevel"></i>
           </div>
         </div>
       </fieldset>
