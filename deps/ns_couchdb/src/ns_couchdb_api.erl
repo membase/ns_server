@@ -191,7 +191,7 @@ handle_rpc({set_vbucket_states, BucketName, WantedVBuckets, RebalanceVBuckets}) 
                                              WantedVBuckets,
                                              RebalanceVBuckets);
 handle_rpc({reset_master_vbucket, BucketName}) ->
-    capi_set_view_manager:reset_master_vbucket(BucketName);
+    capi_ddoc_manager:reset_master_vbucket(BucketName);
 
 handle_rpc({get_design_doc_signatures, Bucket}) ->
     capi_utils:get_design_doc_signatures(Bucket);
@@ -199,7 +199,7 @@ handle_rpc({get_design_doc_signatures, Bucket}) ->
 handle_rpc({foreach_doc, xdcr, Fun, Timeout}) ->
     xdc_rdoc_manager:foreach_doc(Fun, Timeout);
 handle_rpc({foreach_doc, Bucket, Fun, Timeout}) ->
-    capi_set_view_manager:foreach_doc(Bucket, Fun, Timeout);
+    capi_ddoc_manager:foreach_doc(Bucket, Fun, Timeout);
 
 handle_rpc({update_doc, xdcr, Doc}) ->
     xdc_rdoc_manager:update_doc(Doc);
@@ -210,7 +210,7 @@ handle_rpc({update_doc, Bucket, #doc{id = <<"_local/", _/binary>>} = Doc}) ->
               ok = couch_db:update_doc(DB, Doc)
       end);
 handle_rpc({update_doc, Bucket, Doc}) ->
-    capi_set_view_manager:update_doc(Bucket, Doc);
+    capi_ddoc_manager:update_doc(Bucket, Doc);
 
 handle_rpc({get_doc, xdcr, Id}) ->
     xdc_rdoc_manager:get_doc(Id);

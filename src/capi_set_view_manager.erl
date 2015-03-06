@@ -25,8 +25,8 @@
 
 %% API
 -export([set_vbucket_states/3,
-         wait_index_updated/2, initiate_indexing/1, reset_master_vbucket/1,
-         get_safe_purge_seqs/1, foreach_doc/3, update_doc/2]).
+         wait_index_updated/2, initiate_indexing/1,
+         get_safe_purge_seqs/1]).
 
 -include("couch_db.hrl").
 -include_lib("couch_set_view/include/couch_set_view.hrl").
@@ -37,8 +37,7 @@
                 num_vbuckets :: non_neg_integer(),
                 use_replica_index :: boolean(),
                 wanted_states :: [missing | active | replica],
-                rebalance_states :: [rebalance_vbucket_state()],
-                ddoc_replicator :: pid()}).
+                rebalance_states :: [rebalance_vbucket_state()]}).
 
 set_vbucket_states(Bucket, WantedStates, RebalanceStates) ->
     gen_server:call(server(Bucket), {set_vbucket_states, WantedStates, RebalanceStates}, infinity).
@@ -48,18 +47,6 @@ wait_index_updated(Bucket, VBucket) ->
 
 initiate_indexing(Bucket) ->
     gen_server:call(server(Bucket), initiate_indexing, infinity).
-
-reset_master_vbucket(Bucket) ->
-    gen_server:call(server(Bucket), reset_master_vbucket, infinity).
-
--spec foreach_doc(ext_bucket_name(),
-                  fun ((#doc{}) -> any()),
-                  non_neg_integer() | infinity) -> [{binary(), any()}].
-foreach_doc(Bucket, Fun, Timeout) ->
-    gen_server:call(server(Bucket), {foreach_doc, Fun}, Timeout).
-
-update_doc(Bucket, Doc) ->
-    gen_server:call(server(Bucket), {interactive_update, Doc}, infinity).
 
 -define(csv_call_all(Call, Bucket, DDocId, RestArgs),
         ok = ?csv_call(Call, mapreduce_view, Bucket, DDocId, RestArgs),
@@ -156,61 +143,41 @@ start_link_remote(Node, Bucket) ->
     ns_bucket_sup:ignore_if_not_couchbase_bucket(
       Bucket,
       fun (BucketConfig) ->
-              ReplicationSrvr = erlang:whereis(doc_replication_srv:proxy_server_name(Bucket)),
-              Replicator = erlang:whereis(doc_replicator:server_name(Bucket)),
-
-              true = is_pid(ReplicationSrvr),
-              true = is_pid(Replicator),
-
               UseReplicaIndex = (proplists:get_value(replica_index, BucketConfig) =/= false),
               VBucketsCount = proplists:get_value(num_vbuckets, BucketConfig),
 
               misc:start_link(Node, misc, turn_into_gen_server,
                               [{local, server(Bucket)},
                                ?MODULE,
-                               {Bucket, Replicator, ReplicationSrvr,
-                                UseReplicaIndex, VBucketsCount}, []])
+                               {Bucket, UseReplicaIndex, VBucketsCount}, []])
       end).
 
-init({Bucket, Replicator, ReplicationSrvr, UseReplicaIndex, NumVBuckets}) ->
+init({Bucket, UseReplicaIndex, NumVBuckets}) ->
     Self = self(),
-
-    ns_couchdb_api:register_doc_manager(Replicator),
-    ns_couchdb_api:register_doc_manager(ReplicationSrvr),
-
-    %% Update myself whenever the config changes (rebalance)
-    ns_pubsub:subscribe_link(
-      ns_config_events,
-      fun ({buckets, _}, _) ->
-              Self ! replicate_newnodes_docs;
-          (_, _) ->
-              ok
-      end,
-      empty),
-
-    Self ! replicate_newnodes_docs,
-
     proc_lib:init_ack({ok, Self}),
 
     ok = misc:wait_for_local_name(couch_server, 10000),
 
     wait_for_bucket_to_start(Bucket, 0),
 
-    {ok, Db} = open_local_db(Bucket),
-    Docs = try
-               {ok, ADocs} = couch_db:get_design_docs(Db, deleted_also),
-               ADocs
-           after
-               ok = couch_db:close(Db)
-           end,
+    {_, Docs} =
+        capi_ddoc_manager:subscribe_link(
+          Bucket,
+          fun (Event) ->
+                  case Event of
+                      {suspend, _} ->
+                          ok = gen_server:call(Self, Event, infinity);
+                      {resume, _, _} ->
+                          Self ! Event
+                  end
+          end),
 
     State = #state{bucket=Bucket,
                    local_docs = Docs,
                    num_vbuckets = NumVBuckets,
                    use_replica_index=UseReplicaIndex,
                    wanted_states = [],
-                   rebalance_states = [],
-                   ddoc_replicator = Replicator},
+                   rebalance_states = []},
 
     [maybe_define_group(DDocId, State)
      || DDocId <- get_live_ddoc_ids(State)],
@@ -259,42 +226,6 @@ handle_call(initiate_indexing, _From, State) ->
              couch_set_view:trigger_update(spatial_view, BinBucket, DDocId, 0)
      end || DDocId <- DDocIds],
     {reply, ok, State};
-handle_call({interactive_update, #doc{id=Id}=Doc}, _From, State) ->
-    #state{local_docs=Docs}=State,
-    Rand = crypto:rand_uniform(0, 16#100000000),
-    RandBin = <<Rand:32/integer>>,
-    {NewRev, FoundType} =
-        case lists:keyfind(Id, #doc.id, Docs) of
-            false ->
-                {{1, RandBin}, missing};
-            #doc{rev = {Pos, _DiskRev}, deleted=Deleted} ->
-                FoundType0 = case Deleted of
-                                 true ->
-                                     deleted;
-                                 false ->
-                                     existent
-                             end,
-                {{Pos + 1, RandBin}, FoundType0}
-        end,
-
-    case Doc#doc.deleted andalso FoundType =/= existent of
-        true ->
-            {reply, {not_found, FoundType}, State};
-        false ->
-            NewDoc = Doc#doc{rev=NewRev},
-            try
-                ?log_debug("Writing interactively saved ddoc ~p", [Doc]),
-                NewState = save_doc(NewDoc, State),
-                NewState#state.ddoc_replicator ! {replicate_change, NewDoc},
-                {reply, ok, NewState}
-            catch throw:{invalid_design_doc, _} = Error ->
-                    ?log_debug("Document validation failed: ~p", [Error]),
-                    {reply, Error, State}
-            end
-    end;
-handle_call({foreach_doc, Fun}, _From, #state{local_docs = Docs} = State) ->
-    Res = [{Id, (catch Fun(Doc))} || #doc{id = Id} = Doc <- Docs],
-    {reply, Res, State};
 handle_call({set_vbucket_states, WantedStates, RebalanceStates}, _From,
             State) ->
     State2 = State#state{wanted_states = WantedStates,
@@ -306,62 +237,34 @@ handle_call({set_vbucket_states, WantedStates, RebalanceStates}, _From,
             change_vbucket_states(State2),
             {reply, ok, State2}
     end;
+handle_call({suspend, Ref}, From, #state{local_docs = Docs} = State) ->
+    gen_server:reply(From, ok),
 
-handle_call(reset_master_vbucket, _From, #state{bucket = Bucket,
-                                                local_docs = LocalDocs} = State) ->
-    MasterVBucket = iolist_to_binary([Bucket, <<"/master">>]),
-    {ok, master_db_deletion} = {couch_server:delete(MasterVBucket, []), master_db_deletion},
-    {ok, MasterDB} = open_local_db(Bucket),
-    ok = couch_db:close(MasterDB),
-    [save_doc(Doc, State) || Doc <- LocalDocs],
-    {reply, ok, State}.
-
-handle_cast({replicated_update, #doc{id=Id, rev=Rev}=Doc}, State) ->
-    %% this is replicated from another node in the cluster. We only accept it
-    %% if it doesn't exist or the rev is higher than what we have.
-    #state{local_docs=Docs} = State,
-    Proceed = case lists:keyfind(Id, #doc.id, Docs) of
-                  false ->
-                      true;
-                  #doc{rev = DiskRev} when Rev > DiskRev ->
-                      true;
-                  _ ->
-                      false
-              end,
-    if Proceed ->
-            ?log_debug("Writing replicated ddoc ~p", [Doc]),
-            {noreply, save_doc(Doc, State)};
-       true ->
-            {noreply, State}
-    end.
-
-aggregate_update_ddoc_messages(DDocId, Deleted) ->
     receive
-        {update_ddoc, DDocId, NewDeleted} ->
-            aggregate_update_ddoc_messages(DDocId, NewDeleted)
-    after 0 ->
-            Deleted
+        {resume, Ref, #doc{id = DDocId,
+                           deleted = Deleted} = Doc} ->
+            ?log_info("Processing ddoc update: id ~s, deleted ~p",
+                      [DDocId, Deleted]),
+
+            NewDocs = lists:keystore(DDocId, #doc.id, Docs, Doc),
+            NewState = State#state{local_docs = NewDocs},
+
+            case Deleted of
+                false ->
+                    %% we need to redefine set view whenever document changes;
+                    %% but previous group for current value of design document
+                    %% can still be alive; thus using maybe_define_group
+                    maybe_define_group(DDocId, NewState),
+                    change_vbucket_states(NewState);
+                true ->
+                    ok
+            end,
+
+            {noreply, NewState}
     end.
 
-handle_info(replicate_newnodes_docs, #state{local_docs = Docs,
-                                            ddoc_replicator = Replicator} = State) ->
-    Replicator ! {replicate_newnodes_docs, Docs},
-    {noreply, State};
-handle_info({update_ddoc, DDocId, Deleted0}, State) ->
-    Deleted = aggregate_update_ddoc_messages(DDocId, Deleted0),
-    ?log_info("Processing update_ddoc ~s (~p)", [DDocId, Deleted]),
-    case Deleted of
-        false ->
-            %% we need to redefine set view whenever document changes; but
-            %% previous group for current value of design document can
-            %% still be alive; thus using maybe_define_group
-            maybe_define_group(DDocId, State),
-            change_vbucket_states(State),
-            State;
-        true ->
-            ok
-    end,
-    {noreply, State};
+handle_cast(Request, State) ->
+    {stop, {unexpected_cast, Request}, State}.
 
 handle_info(Info, State) ->
     ?log_info("Ignoring unexpected message: ~p", [Info]),
@@ -485,26 +388,6 @@ apply_index_states(SetName, DDocId, Active, Passive, Cleanup,
                     erlang:raise(T, E, Stack)
             end
     end.
-
-open_local_db(Bucket) ->
-    MasterVBucket = iolist_to_binary([Bucket, <<"/master">>]),
-    case couch_db:open(MasterVBucket, []) of
-        {ok, Db} ->
-            {ok, Db};
-        {not_found, _} ->
-            couch_db:create(MasterVBucket, [])
-    end.
-
-save_doc(#doc{id = Id} = Doc,
-         #state{bucket=Bucket, local_docs=Docs}=State) ->
-    {ok, Db} = open_local_db(Bucket),
-    try
-        ok = couch_db:update_doc(Db, Doc)
-    after
-        ok = couch_db:close(Db)
-    end,
-    self() ! {update_ddoc, Id, Doc#doc.deleted},
-    State#state{local_docs = lists:keystore(Id, #doc.id, Docs, Doc)}.
 
 do_wait_index_updated({Pid, _} = From, VBucket,
                       ParentPid, #state{bucket = Bucket} = State) ->
