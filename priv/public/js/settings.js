@@ -1615,7 +1615,6 @@ var AuditSetupSection = {
   },
   formatTimeUnit: function (unit) {
     switch (unit) {
-      case 'seconds': return 1;
       case 'minutes': return 60;
       case 'hours': return 60 * 60;
       case 'days': return 60 * 60 * 24;
@@ -1623,11 +1622,21 @@ var AuditSetupSection = {
   },
   formatRotateInterval: function (interval) {
     var self = AuditSetupSection;
-    return _.chain(['days', 'hours', 'minutes', 'seconds']).map(function (unit) {
+    var pairs = _.chain(['days', 'hours', 'minutes']).map(function (unit) {
       return [interval / self.formatTimeUnit(unit), unit];
-    }).find(function (value) {
+    });
+
+    var integerPair = pairs.find(function (value) {
       return value[0] % 1 === 0;
     }).value();
+
+    if (integerPair) {
+      return integerPair;
+    } else {
+      var defaultPair = pairs.value()[3];
+      defaultPair[0] = Math.round(defaultPair[0]);
+      return defaultPair;
+    }
   },
   getForm: function () {
     var self = AuditSetupSection;
