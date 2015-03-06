@@ -1418,8 +1418,6 @@ input[type=number].size {width:4em;}
 .dynamic_under-32 .only-when-32 {display: none!important;}
 .dynamic_under-30 .only-when-30 {display: none!important;}
 .dynamic_under-25 .only-when-25 {display: none!important;}
-.dynamic_under-40 .only-when-40 {display: none!important;}
-.dynamic_is-40 .not-when-40 {display: none!important;}
 .dynamic_roadmin-mode .when-roadmin-avoid-me {display: none!important;}
 .dynamic_roadmin-mode .when-roadmin-hide-me {visibility: hidden!important;}
 
