@@ -500,6 +500,13 @@ def make_product_task(guts, initargs_path, options):
                       "prev-vbucket", "vbucket", "vbucket-details",
                       "warmup"]],
 
+        [AllOsTask("memcached mcstat %s" % kind,
+                   flatten(["mcstat", "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
+                            "-u", read_guts(guts, "memcached_admin"),
+                            "-P", read_guts(guts, "memcached_pass"), kind]),
+                   log_file="stats.log")
+         for kind in ["connections"]],
+
         [AllOsTask("ddocs for %s (%s)" % (bucket, path),
                    ["couch_dbdump", path],
                    log_file = "ddocs.log")
