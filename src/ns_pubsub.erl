@@ -126,10 +126,19 @@ do_subscribe_link(Name, Fun, State, Parent) ->
             unsubscribe ->
                 normal;
             {'gen_event_EXIT', Handler, Reason} ->
-                case Reason =:= normal orelse Reason =:= shutdown of
-                    true ->
-                        normal;
-                    false ->
+                case Reason of
+                    normal ->
+                        %% normal means that our handler got removed; we
+                        %% obviously don't expect this to happen
+                        {handler_removed_unexpectedly, Name};
+                    shutdown ->
+                        %% gen_event is shutting down; we don't want the
+                        %% subscriber to ignore this;
+                        ?log_debug("gen_event ~p is shutting down. "
+                                   "Propagating to the subscriber ~p.",
+                                   [Name, Parent]),
+                        {gen_event_shutdown, Name};
+                    _ ->
                         {handler_crashed, Name, Reason}
                 end;
             {'EXIT', Parent, Reason} ->
@@ -281,7 +290,7 @@ test_shutdown() ->
               exit(EventMgr, shutdown),
 
               receive
-                  {'EXIT', Subscription, normal} ->
+                  {'EXIT', Subscription, {gen_event_shutdown, ?EVENTS}} ->
                       ok
               after
                   1000 ->
