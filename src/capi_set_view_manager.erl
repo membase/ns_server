@@ -173,7 +173,6 @@ start_link_remote(Node, Bucket) ->
       end).
 
 init({Bucket, Replicator, ReplicationSrvr, UseReplicaIndex, NumVBuckets}) ->
-    process_flag(trap_exit, true),
     Self = self(),
 
     ns_couchdb_api:register_doc_manager(Replicator),
@@ -233,13 +232,7 @@ wait_for_bucket_to_start(Bucket, Time) ->
                     ?log_error("Engine for bucket ~p didn't start in ~p ms. Exit.", [Bucket, Time]),
                     exit(RV);
                 _ ->
-                    receive
-                        {'EXIT', Pid, Reason} ->
-                            ?log_debug("Received exit from ~p with reason ~p", [Pid, Reason]),
-                            exit(Reason)
-                    after 500 ->
-                            ok
-                    end,
+                    timer:sleep(500),
 
                     Time1 = Time + 500,
                     ?log_debug("Waiting for engine to start. Bucket: ~p, Wait time: ~p ms.",
@@ -369,10 +362,6 @@ handle_info({update_ddoc, DDocId, Deleted0}, State) ->
             ok
     end,
     {noreply, State};
-
-handle_info({'EXIT', Pid, Reason}, State) ->
-    ?views_error("Linked process ~p died unexpectedly: ~p", [Pid, Reason]),
-    {stop, {linked_process_died, Pid, Reason}, State};
 
 handle_info(Info, State) ->
     ?log_info("Ignoring unexpected message: ~p", [Info]),
