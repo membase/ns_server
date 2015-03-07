@@ -118,15 +118,23 @@ query_goxdcr(Fun, Method, Path, Timeout) ->
                           {response,  RV}})
     end.
 
+get_from_goxdcr(Fun, Path, Timeout) ->
+    case ns_cluster_membership:get_cluster_membership(node(), ns_config:latest_config_marker()) of
+        active ->
+            query_goxdcr(Fun, "GET", Path, Timeout);
+        _ ->
+            []
+    end.
+
 process_doc({Props}) ->
     [{list_to_atom(binary_to_list(Key)), Value} ||
         {Key, Value} <- Props,
         interesting_doc_key(Key)].
 
 find_all_replication_docs(Timeout) ->
-    query_goxdcr(fun (Json) ->
-                         [process_doc(Doc) || Doc <- Json]
-                 end, "GET", "/pools/default/replications", Timeout).
+    get_from_goxdcr(fun (Json) ->
+                            [process_doc(Doc) || Doc <- Json]
+                    end, "/pools/default/replications", Timeout).
 
 
 process_repl_info({Info}, Acc) ->
@@ -147,19 +155,19 @@ process_repl_info({Info}, Acc) ->
     end.
 
 all_local_replication_infos() ->
-    query_goxdcr(fun (Json) ->
-                         lists:foldl(fun (Info, Acc) ->
-                                             process_repl_info(Info, Acc)
-                                     end, [], Json)
-                 end, "GET", "/pools/default/replicationInfos", 30000).
+    get_from_goxdcr(fun (Json) ->
+                            lists:foldl(fun (Info, Acc) ->
+                                                process_repl_info(Info, Acc)
+                                        end, [], Json)
+                    end, "/pools/default/replicationInfos", 30000).
 
 delete_all_replications(Bucket) ->
     query_goxdcr("DELETE", "/pools/default/replications/" ++ mochiweb_util:quote_plus(Bucket), 30000).
 
 grab_stats(Bucket) ->
-    query_goxdcr(fun ({Json}) ->
-                         [{Id, Stats} || {Id, {Stats}} <- Json]
-                 end, "GET", "/stats/buckets/" ++ mochiweb_util:quote_plus(Bucket), 30000).
+    get_from_goxdcr(fun ({Json}) ->
+                            [{Id, Stats} || {Id, {Stats}} <- Json]
+                    end, "/stats/buckets/" ++ mochiweb_util:quote_plus(Bucket), 30000).
 
 stats(Bucket) ->
     try grab_stats(Bucket) of
@@ -175,12 +183,12 @@ get_replications_with_remote_info(BucketName) ->
     BucketNameBin = list_to_binary(BucketName),
 
     RemoteClusters =
-        query_goxdcr(
+        get_from_goxdcr(
           fun (Json) ->
                   [{misc:expect_prop_value(<<"uuid">>, Cluster),
                     misc:expect_prop_value(<<"name">>, Cluster)}
                    || {Cluster} <- Json]
-          end, "GET", "/pools/default/remoteClusters", 30000),
+          end, "/pools/default/remoteClusters", 30000),
 
     lists:foldl(
       fun (Props, Acc) ->
