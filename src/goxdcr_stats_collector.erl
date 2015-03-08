@@ -30,15 +30,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {bucket, known_reps}).
-
 start_link(Bucket) ->
     gen_server:start_link(?MODULE, Bucket, []).
 
 init(Bucket) ->
     ns_pubsub:subscribe_link(ns_tick_event),
-    {ok, #state{bucket = Bucket,
-                known_reps = ordsets:new()}}.
+    {ok, Bucket}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -68,7 +65,7 @@ get_stats(Bucket) ->
             []
     end.
 
-handle_info({tick, TS0}, #state{bucket = Bucket} = State) ->
+handle_info({tick, TS0}, Bucket) ->
     TS = latest_tick(TS0, 0),
     Stats = get_stats(Bucket),
 
@@ -78,7 +75,7 @@ handle_info({tick, TS0}, #state{bucket = Bucket} = State) ->
                      {stats, "@goxdcr-" ++ Bucket,
                       #stat_entry{timestamp = TS,
                                   values = RepStats}}),
-    {noreply, maybe_query_reps_info(Stats, State)};
+    {noreply, Bucket};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -105,19 +102,3 @@ transform_stats(Stats) ->
                   {<<"replication_docs_rep_queue">>, TotalDocsRepQueue}],
 
     lists:sort(lists:append([GlobalList | RepStats])).
-
-maybe_query_reps_info(Stats, #state{bucket = Bucket,
-                                    known_reps = KnownReps} = State) ->
-    Reps = ordsets:from_list([Id || {Id, _} <- Stats]),
-    NewReps =
-        case ordsets:is_subset(Reps, KnownReps) of
-            true ->
-                KnownReps;
-            false ->
-                ?log_debug("Unknown replications ~p were found. Retrieve remote cluster info from goxdcr",
-                           [ordsets:subtract(Reps, KnownReps)]),
-                RepInfos = goxdcr_rest:get_replications_with_remote_info(Bucket),
-                goxdcr_status_keeper:store_replications(Bucket, RepInfos),
-                ordsets:from_list([Id || {Id, _, _} <- RepInfos])
-        end,
-    State#state{known_reps = NewReps}.

@@ -57,8 +57,6 @@ child_specs(BucketName) ->
       permanent, 1000, worker, [stats_archiver]},
      {{stats_reader, BucketName}, {stats_reader, start_link, [BucketName]},
       permanent, 1000, worker, [stats_reader]},
-     {{goxdcr_status_keeper, BucketName}, {goxdcr_status_keeper, start_link, [BucketName]},
-      permanent, 1000, worker, [goxdcr_status_keeper]},
      {{goxdcr_stats_collector, BucketName}, {goxdcr_stats_collector, start_link, [BucketName]},
       permanent, 1000, worker, [goxdcr_stats_collector]},
      {{goxdcr_stats_archiver, BucketName}, {stats_archiver, start_link, ["@goxdcr-" ++ BucketName]},

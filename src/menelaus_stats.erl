@@ -516,7 +516,7 @@ computed_stats_lazy_proplist("@goxdcr-"++BucketName) ->
     %% compute a list of per replication XDC stats
     Reps = case cluster_compat_mode:is_goxdcr_enabled() of
                true ->
-                   goxdcr_status_keeper:get_replications(BucketName, 2000);
+                   goxdcr_rest:get_replications(BucketName);
                false ->
                    []
            end,
@@ -966,7 +966,7 @@ couchbase_goxdcr_stats_descriptions(BucketId) ->
     end.
 
 do_couchbase_goxdcr_stats_descriptions(BucketId) ->
-    Reps = goxdcr_status_keeper:get_replications_with_remote_info(BucketId, 2000),
+    Reps = goxdcr_rest:get_replications_with_remote_info(BucketId),
     lists:map(fun ({Id, RemoteClusterName, RemoteBucket}) ->
                       Prefix = <<"replications/", Id/binary,"/">>,
 
