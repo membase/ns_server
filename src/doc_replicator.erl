@@ -90,7 +90,7 @@ replicate_change_to_node(ServerName, Node, Doc) ->
     gen_server:cast({ServerName, Node}, {replicated_update, Doc}).
 
 get_remote_nodes(xdcr) ->
-    ns_node_disco:nodes_wanted() -- [node()];
+    ns_node_disco:nodes_actual_other();
 get_remote_nodes(Bucket) ->
     case ns_bucket:get_bucket_light(Bucket) of
         {ok, Conf} ->
