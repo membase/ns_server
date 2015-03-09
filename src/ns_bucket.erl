@@ -37,6 +37,7 @@
          get_bucket/2,
          get_bucket_names/0,
          get_bucket_names/1,
+         get_bucket_names/2,
          couchbase_bucket_exists/1,
          get_buckets/0,
          get_buckets/1,
@@ -267,7 +268,10 @@ get_bucket_names() ->
     proplists:get_keys(BucketConfigs).
 
 get_bucket_names(Type) ->
-    [Name || {Name, Config} <- get_buckets(),
+    get_bucket_names(Type, get_buckets()).
+
+get_bucket_names(Type, BucketConfigs) ->
+    [Name || {Name, Config} <- BucketConfigs,
              proplists:get_value(type, Config) == Type].
 
 get_buckets() ->
