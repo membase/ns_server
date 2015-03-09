@@ -121,10 +121,10 @@ notify_cbauth(Label, Info) ->
     Method = "AuthCacheSvc.UpdateDB",
     try json_rpc_connection:perform_call(Label, Method, Info) of
         {error, <<"rpc: can't find method ", _/binary>>} ->
-            ?log_debug("Rpc connection doesn't implement ~p", [Method]),
+            ?log_debug("Rpc connection ~p doesn't implement ~p", [Label, Method]),
             {error, method_not_found};
         {error, Error} ->
-            ?log_error("Error returned from go component ~p", [Error]),
+            ?log_error("Error returned from go component ~p: ~p", [Label, Error]),
             {error, Error};
         {ok, true} ->
             ok
