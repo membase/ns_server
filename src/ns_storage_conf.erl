@@ -424,7 +424,8 @@ delete_disk_buckets_databases_loop(Pred, [Bucket | Rest]) ->
 %% is rpc called by older nodes; so we must keep this name unchanged
 delete_unused_buckets_db_files() ->
     Config = ns_config:get(),
-    BucketNames = ns_bucket:node_bucket_names(node(), ns_bucket:get_buckets(Config)),
+    BucketNames = ns_bucket:node_bucket_names_of_type(node(), membase,
+                                                      ns_bucket:get_buckets(Config)),
     delete_disk_buckets_databases(
       fun (Bucket) ->
               RV = not(lists:member(Bucket, BucketNames)),
