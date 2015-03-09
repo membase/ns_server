@@ -522,7 +522,7 @@
                 </ul>-->
               </div>
               <div class="analytics_graph_main">
-                <h2 class="current-graph-name js_current-graph-name"></h2>
+                <h2 class="current-graph-name js_current-graph-name">??</h2>
                 <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
                 <div id="analytics_main_graph_grid">
                   <div id="js_analytics_main_graph" class="analytics_main_graph"></div>
@@ -596,7 +596,7 @@
         <div id="js_buckets" class="buckets" style="display:none">
           <h1>Data Buckets</h1>
           <div class="shadow_box" id="couchbase_buckets">
-            <div id="manage_buckets_top_bar" class="header_2">
+            <div class="js_manage_buckets_top_bar header_2">
               <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
               <div class="right" style="overflow:hidden;">
                 <button class="button_200 create-bucket-button when-roadmin-hide-me casper_buckets_new_data_bucket" style="float:right;">Create New Data Bucket</button>
@@ -607,7 +607,7 @@
           </div>
 
           <div class="shadow_box" id="memcached_buckets" style="display:none">
-            <div id="manage_buckets_top_bar" class="header_2">
+            <div class="js_manage_buckets_top_bar header_2">
               <h4 style="float:left">Memcached Buckets</h4>
               <div class="right">
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
@@ -1210,7 +1210,7 @@
                       </label>
                     </div>
                     <div class="save_cancel when-roadmin-hide-me">
-                        <button class="save_button float_right casper_settings_create_accaunt" type="submit" id="sample_buckets_settings_btn">Create</button>
+                        <button class="save_button float_right casper_settings_create_accaunt" type="submit">Create</button>
                     </div>
                   </form>
                   <div id="js_account_delete" class="account_delete sub_section">
@@ -1597,7 +1597,7 @@
                     <span>Edit Document</span>
                   </a>
                 </span>
-                <div class="ellipsis documents_notice"></div>
+                <span class="ellipsis documents_notice" style="display: block;"></span>
                </h3>
               <div id="sample_documents_container" class="sample_documents stats"></div>
             </div>
@@ -1622,7 +1622,7 @@
                     <a id="save_view_as" class="btn_1 casper_views_save_view_as_popup"><span>Save As...</span></a>
                     <a id="just_save_view" class="btn_1"><span>Save</span></a>
                   </span>
-                  <div id="view_code_errors" class="ellipsis"></div>
+                  <span id="view_code_errors" class="ellipsis" style="display: block;"></span>
                 </h3>
                 <div class="stats">
                   <table class="list"><tbody><tr>
@@ -1647,7 +1647,7 @@
                     <a id="save_spatial_as" class="btn_1"><span>Save As...</span></a>
                     <a id="just_save_spatial" class="btn_1"><span>Save</span></a>
                   </span>
-                  <div id="spatial_code_errors" class="ellipsis"></div>
+                  <span id="spatial_code_errors" class="ellipsis" style="display: block;"></span>
                 </h3>
                 <div class="stats">
                   <table class="list"><tbody><tr>
@@ -2352,7 +2352,7 @@
           <label>Set the bucket disk I/O priority:</label>
           <div class="with_radiogroup">
             <div>
-              <input type="radio" name="threadsNumber" value="3" checked="true" id="low_threads_number">
+              <input type="radio" name="threadsNumber" value="3" checked="checked" id="low_threads_number">
               <label for="low_threads_number">Low (default)</label>
             </div>
             <div>
@@ -3357,7 +3357,7 @@
             <br class="clear" />
           </div>
           <div>
-            <label for="services_password_input">Services:</label>
+            <label>Services:</label>
             <div style="display: inline;">
               <input type="checkbox" class="inp" name="services" value="kv" id="wizard_join_servers_data_checkbox" checked/>
               <label class="label" for="wizard_join_servers_data_checkbox" style="text-align: left; width: 45px;">Data</label>
@@ -3481,7 +3481,7 @@
           <label>Set the bucket disk I/O priority:</label>
           <div class="with_radiogroup">
             <div>
-              <input type="radio" name="threadsNumber" value="3" checked="true" id="low_threads_number_init">
+              <input type="radio" name="threadsNumber" value="3" checked="checked" id="low_threads_number_init">
               <label for="low_threads_number_init">Low (default)</label>
             </div>
             <div>
