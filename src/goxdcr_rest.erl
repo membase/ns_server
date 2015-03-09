@@ -122,7 +122,12 @@ query_goxdcr(Fun, Method, Path, Timeout) ->
 get_from_goxdcr(Fun, Path, Timeout) ->
     case ns_cluster_membership:get_cluster_membership(node(), ns_config:latest_config_marker()) of
         active ->
-            query_goxdcr(Fun, "GET", Path, Timeout);
+            try
+                query_goxdcr(Fun, "GET", Path, Timeout)
+            catch error:{badmatch, {error, {econnrefused, _}}} ->
+                    ?log_debug("Goxdcr is temporary not available. Return empty list."),
+                    []
+            end;
         _ ->
             []
     end.
