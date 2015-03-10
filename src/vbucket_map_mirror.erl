@@ -79,6 +79,26 @@ submit_full_reset() ->
                                    ets:delete_all_objects(vbucket_map_mirror)
                            end).
 
+compute_and_cache_map(BucketName) ->
+    case ets:lookup(vbucket_map_mirror, BucketName) of
+        [] ->
+            case ns_bucket:get_bucket(BucketName) of
+                {ok, BucketConfig} ->
+                    case proplists:get_value(map, BucketConfig) of
+                        undefined ->
+                            no_map;
+                        Map ->
+                            NodeToVBuckets = compute_map_to_vbuckets_dict(Map),
+                            ets:insert(vbucket_map_mirror, {BucketName, NodeToVBuckets}),
+                            NodeToVBuckets
+                    end;
+                not_present ->
+                    not_present
+            end;
+        [{_, Dict}] ->
+            Dict
+    end.
+
 compute_map_to_vbuckets_dict(Map) ->
     {_, NodeToVBuckets0} =
         lists:foldl(fun ([undefined | _], {Idx, Dict}) ->
@@ -98,24 +118,7 @@ call_compute_map(BucketName) ->
     work_queue:submit_sync_work(
       vbucket_map_mirror,
       fun () ->
-              case ets:lookup(vbucket_map_mirror, BucketName) of
-                  [] ->
-                      case ns_bucket:get_bucket(BucketName) of
-                          {ok, BucketConfig} ->
-                              case proplists:get_value(map, BucketConfig) of
-                                  undefined ->
-                                      no_map;
-                                  Map ->
-                                      NodeToVBuckets = compute_map_to_vbuckets_dict(Map),
-                                      ets:insert(vbucket_map_mirror, {BucketName, NodeToVBuckets}),
-                                      NodeToVBuckets
-                              end;
-                          not_present ->
-                              not_present
-                      end;
-                  [{_, Dict}] ->
-                      Dict
-              end
+              compute_and_cache_map(BucketName)
       end).
 
 -spec node_vbuckets_dict_or_not_present(bucket_name()) ->
