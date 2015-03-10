@@ -80,7 +80,11 @@
          past_vbucket_maps/1,
          config_to_map_options/1,
          needs_upgrade_to_dcp/1,
-         needs_rebalance/3]).
+         needs_rebalance/3,
+         bucket_view_nodes/1,
+         bucket_view_nodes/2,
+         bucket_config_view_nodes/1,
+         bucket_config_view_nodes/2]).
 
 
 %%%===================================================================
@@ -932,6 +936,30 @@ is_compatible_past_map(Nodes, BucketConfig, Map) ->
                                               MapOpts, History, [trivial]),
 
     lists:member(Map, Matching).
+
+bucket_view_nodes(Bucket) ->
+    bucket_view_nodes(Bucket, ns_config:latest_config_marker()).
+
+bucket_view_nodes(Bucket, Config) ->
+    case ns_bucket:get_bucket(Bucket, Config) of
+        {ok, BucketConfig} ->
+            bucket_config_view_nodes(BucketConfig, Config);
+        not_present ->
+            []
+    end.
+
+bucket_config_view_nodes(BucketConfig) ->
+    bucket_config_view_nodes(BucketConfig, ns_config:latest_config_marker()).
+
+bucket_config_view_nodes(BucketConfig, Config) ->
+    case bucket_type(BucketConfig) of
+        membase ->
+            BucketNodes = ns_bucket:bucket_nodes(BucketConfig),
+            NonKVNodes = ns_cluster_membership:non_kv_active_nodes(Config),
+            lists:usort(NonKVNodes ++ BucketNodes);
+        memcached ->
+            []
+    end.
 
 %%
 %% Internal functions
