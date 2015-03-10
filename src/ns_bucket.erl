@@ -33,7 +33,6 @@
          get_bucket/1,
          get_bucket_with_vclock/1,
          get_bucket_with_vclock/2,
-         get_bucket_light/1,
          get_bucket/2,
          get_bucket_names/0,
          get_bucket_names/1,
@@ -197,30 +196,6 @@ get_bucket_with_vclock(Bucket) ->
         not_present ->
             RV;
         {ok, _, _} ->
-            RV;
-        _ ->
-            erlang:error({get_bucket_failed, RV})
-    end.
-
-
-get_bucket_light(Bucket) ->
-    RV = ns_config:eval(
-           fun (#config{dynamic=[PList]}) ->
-                   {_, V} = lists:keyfind(buckets, 1, PList),
-                   BucketsPList = case V of
-                                      [{'_vclock', _}, {configs, X}] -> X;
-                                      [{configs, X}] -> X
-                                  end,
-                   case lists:keyfind(Bucket, 1, BucketsPList) of
-                       false -> not_present;
-                       {_, BucketConfig} ->
-                           {ok, lists:keydelete(map, 1, BucketConfig)}
-                   end
-           end),
-    case RV of
-        not_present ->
-            RV;
-        {ok, _} ->
             RV;
         _ ->
             erlang:error({get_bucket_failed, RV})

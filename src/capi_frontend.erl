@@ -147,7 +147,7 @@ is_bucket_accessible(BucketTuple, MochiReq) ->
 
 verify_bucket_auth(#httpd{mochi_req=MochiReq}, BucketName) ->
     ListBucketName = ?b2l(BucketName),
-    BucketConfig = case ns_bucket:get_bucket_light(ListBucketName) of
+    BucketConfig = case ns_bucket:get_bucket(ListBucketName) of
                        not_present ->
                            throw({not_found, missing});
                        {ok, X} -> X

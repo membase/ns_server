@@ -1369,7 +1369,7 @@ get_bucket(BucketName, Config) ->
     end.
 
 bucket_exists(BucketName) ->
-    case ns_bucket:get_bucket_light(binary_to_list(BucketName)) of
+    case ns_bucket:get_bucket(binary_to_list(BucketName)) of
         {ok, Config} ->
             (ns_bucket:bucket_type(Config) =:= membase) andalso
                 lists:member(node(), ns_bucket:bucket_nodes(Config));
