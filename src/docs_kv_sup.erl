@@ -1,5 +1,5 @@
 %% @author Couchbase <info@couchbase.com>
-%% @copyright 2014 Couchbase, Inc.
+%% @copyright 2015 Couchbase, Inc.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--module(docs_sup).
+-module(docs_kv_sup).
 
 -behavior(supervisor).
 
@@ -34,13 +34,11 @@ child_specs(BucketName) ->
     [{wait_for_net_kernel,
       {remote_monitors, wait_for_net_kernel, []},
       transient, brutal_kill, worker, []},
-     {doc_replicator,
-      {doc_replicator, start_link, [BucketName]},
-      permanent, 1000, worker, [doc_replicator]},
-     {doc_replication_srv,
-      {doc_replication_srv, start_link, [BucketName]},
-      permanent, 1000, worker, [doc_replication_srv]},
-     {capi_ddoc_manager_sup,
-      {capi_ddoc_manager_sup, start_link_remote,
+     {capi_set_view_manager,
+      {capi_set_view_manager, start_link_remote,
        [ns_node_disco:couchdb_node(), BucketName]},
-      permanent, infinity, supervisor, [capi_ddoc_manager_sup]}].
+      permanent, 1000, worker, []},
+     {couch_stats_reader,
+      {couch_stats_reader, start_link_remote,
+       [ns_node_disco:couchdb_node(), BucketName]},
+      permanent, 1000, worker, []}].

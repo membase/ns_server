@@ -101,15 +101,17 @@ init([Bucket, Replicator, ReplicationSrv]) ->
     EventManager = whereis(event_manager(Bucket)),
     true = is_pid(EventManager) andalso is_process_alive(EventManager),
 
-    %% Update myself whenever the config changes (rebalance)
     ns_pubsub:subscribe_link(
       ns_config_events,
-      fun ({buckets, _}, _) ->
+      fun ({buckets, _}) ->
               Self ! replicate_newnodes_docs;
-          (_, _) ->
+          ({{node, _, membership}, _}) ->
+              Self ! replicate_newnodes_docs;
+          ({{node, _, services}, _}) ->
+              Self ! replicate_newnodes_docs;
+          (_) ->
               ok
-      end,
-      empty),
+      end),
 
     Self ! replicate_newnodes_docs,
 

@@ -1,5 +1,5 @@
 %% @author Couchbase <info@couchbase.com>
-%% @copyright 2011 Couchbase, Inc.
+%% @copyright 2015 Couchbase, Inc.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--module(single_bucket_sup).
+-module(single_bucket_kv_sup).
 
 -behaviour(supervisor).
 
@@ -27,9 +27,8 @@ start_link(BucketName) ->
     supervisor:start_link({local, Name}, ?MODULE, [BucketName]).
 
 child_specs(BucketName) ->
-    [{{docs_sup, BucketName},
-      {docs_sup, start_link, [BucketName]},
-      permanent, infinity, supervisor, [docs_sup]},
+    [{{docs_kv_sup, BucketName}, {docs_kv_sup, start_link, [BucketName]},
+      permanent, infinity, supervisor, [docs_kv_sup]},
      {{ns_memcached_sup, BucketName}, {ns_memcached_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [ns_memcached_sup]},
      {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},

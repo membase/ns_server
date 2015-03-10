@@ -57,35 +57,63 @@ init([]) ->
 
 %% Internal functions
 
-ns_config_event_handler_body({buckets, RawBuckets}) ->
-    Buckets = ns_bucket:node_bucket_names(ns_node_disco:ns_server_node(),
-                                          proplists:get_value(configs, RawBuckets, [])),
-    work_queue:submit_work(ns_bucket_worker,
-                           fun () ->
-                                   update_childs(Buckets)
-                           end);
+ns_config_event_handler_body({buckets, _}) ->
+    submit_update();
+ns_config_event_handler_body({node, Node, membership}) when Node =:= node() ->
+    submit_update();
+ns_config_event_handler_body({node, Node, services}) when Node =:= node() ->
+    submit_update();
 ns_config_event_handler_body(_) ->
     ok.
+
+submit_update() ->
+    work_queue:submit_work(ns_bucket_worker, fun update_children/0).
 
 subscribe_on_config_events() ->
     Pid = ns_pubsub:subscribe_link(
             ns_config_events,
             fun ns_config_event_handler_body/1),
-    ns_config_event_handler_body({buckets, [{configs, ns_bucket:get_buckets()}]}),
+    submit_update(),
     {ok, Pid}.
 
-update_childs(Buckets) ->
+update_children() ->
+    Config = ns_config:get(),
+    Buckets = ns_bucket:get_buckets(Config),
+
+    IsNonKVNode = ns_cluster_membership:is_active_non_kv_node(node(), Config),
+
     NewSpecs = lists:flatmap(
-                 fun (Bucket) ->
-                         [{{per_bucket_sup, Bucket},
-                           {single_bucket_sup, start_link, [Bucket]},
-                           permanent, infinity, supervisor, [single_bucket_sup]}]
+                 fun ({Bucket, BucketConfig}) ->
+                         BucketNodes = ns_bucket:bucket_nodes(BucketConfig),
+                         HaveBucket = lists:member(node(), BucketNodes),
+
+                         Sups0 =
+                             case HaveBucket of
+                                 true ->
+                                     [{{single_bucket_kv_sup, Bucket},
+                                       {single_bucket_kv_sup, start_link, [Bucket]},
+                                       permanent, infinity, supervisor, [single_bucket_kv_sup]}];
+                                 false ->
+                                     []
+                             end,
+
+                         case IsNonKVNode orelse HaveBucket of
+                             true ->
+                                 [{{docs_sup, Bucket},
+                                   {docs_sup, start_link, [Bucket]},
+                                   permanent, infinity, supervisor, [docs_sup]}
+                                  | Sups0];
+                             false ->
+                                 [] = Sups0
+                         end
                  end, Buckets),
+
     NewIds = [element(1, X) || X <- NewSpecs],
     OldSpecs = supervisor:which_children(?MODULE),
     RunningIds = [element(1, X) || X <- OldSpecs],
     ToStart = NewIds -- RunningIds,
     ToStop = (RunningIds -- NewIds) -- [?SUBSCRIPTION_SPEC_NAME],
+
     lists:foreach(fun (StartId) ->
                           Tuple = lists:keyfind(StartId, 1, NewSpecs),
                           true = is_tuple(Tuple),
@@ -93,6 +121,7 @@ update_childs(Buckets) ->
                                      [Tuple]),
                           {ok, _} = supervisor:start_child(?MODULE, Tuple)
                   end, ToStart),
+
     lists:foreach(fun (StopId) ->
                           Tuple = lists:keyfind(StopId, 1, OldSpecs),
                           true = is_tuple(Tuple),

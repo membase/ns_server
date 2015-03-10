@@ -92,11 +92,12 @@ replicate_change_to_node(ServerName, Node, Doc) ->
 get_remote_nodes(xdcr) ->
     ns_node_disco:nodes_actual_other();
 get_remote_nodes(Bucket) ->
-    case ns_bucket:get_bucket(Bucket) of
-        {ok, Conf} ->
-            proplists:get_value(servers, Conf) -- [node()];
-        not_present ->
-            []
+    case ns_bucket:bucket_view_nodes(Bucket) of
+        [] ->
+            [];
+        ViewNodes ->
+            LiveOtherNodes = ns_node_disco:nodes_actual_other(),
+            ordsets:intersection(LiveOtherNodes, ViewNodes)
     end.
 
 nodeup_monitoring_loop(Parent) ->

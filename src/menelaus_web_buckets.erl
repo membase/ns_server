@@ -1301,9 +1301,7 @@ basic_bucket_params_screening_test() ->
 -endif.
 
 handle_ddocs_list(PoolId, BucketName, Req) ->
-    {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
-    FoundBucket = ns_bucket:bucket_type(BucketConfig) =:= membase
-        andalso lists:member(node(), ns_bucket:bucket_nodes(BucketConfig)),
+    FoundBucket = lists:member(node(), ns_bucket:bucket_view_nodes(BucketName)),
     case FoundBucket of
         true ->
             do_handle_ddocs_list(PoolId, BucketName, Req);

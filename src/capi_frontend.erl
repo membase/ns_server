@@ -64,7 +64,7 @@ continue_do_db_req(#httpd{user_ctx=UserCtx,
     case VBucket of
         undefined ->
             case lists:member(ns_node_disco:ns_server_node(),
-                              couch_util:get_value(servers, BucketConfig)) of
+                              ns_bucket:bucket_config_view_nodes(BucketConfig)) of
                 true ->
                     %% undefined #db fields indicate bucket database
                     Db = #db{user_ctx = UserCtx, name = BucketName},
