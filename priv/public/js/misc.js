@@ -671,7 +671,6 @@ var Abortarium = {
 function serializeForm(f, modifiers) {
   f = $(f);
   var array = f.find(":input").not(
-    '.dynamic_under-32 .only-when-32 :input,' +
     '.dynamic_under-30 .only-when-30 :input,' +
     '.dynamic_under-25 .only-when-25 :input,' +
     '.dynamic_under-40 .only-when-40 :input,' +

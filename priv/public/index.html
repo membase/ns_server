@@ -1012,9 +1012,9 @@
                   <li><a id="settings_auto_failover" class="casper_settings_auto_failover">Auto-Failover</a></li>
                   <li><a id="settings_alerts" class="casper_settings_alerts">Alerts</a></li>
                   <li><a id="settings_compaction" class="casper_settings_compaction">Auto-Compaction</a></li>
-                  <li class="when-enterprise only-when-32"><a id="ldap_setup">LDAP Auth Setup</a></li>
+                  <li class="when-enterprise only-when-40"><a id="ldap_setup">LDAP Auth Setup</a></li>
                   <li class="when-roadmin-avoid-me"><a id="account_management" class="casper_settings_account_management">Account Management</a></li>
-                  <li class="when-enterprise only-when-32"><a id="audit">Audit</a></li>
+                  <li class="when-enterprise only-when-40"><a id="audit">Audit</a></li>
                   <li class="tab_right"><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
                 </ul>
               </div>
@@ -1150,7 +1150,7 @@
                     </button>
                   </div>
                 </form></div>
-                <div id="js_ldap_setup_container" class="ldap_setup_container only-when-32 when-enterprise">
+                <div id="js_ldap_setup_container" class="ldap_setup_container only-when-40 when-enterprise">
                   <h2>LDAP Auth</h2>
                   <div class="sub_section">
                     <p>Integrate with a directory server such as Active Directory or LDAP using the LDAP protocol. Users in LDAP can be mapped to Full-Admin / Read-Only Admin in Couchbase.</p>
@@ -1226,7 +1226,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="audit_container when-enterprise only-when-32" id="js_audit_setup_container">
+                <div class="audit_container when-enterprise only-when-40" id="js_audit_setup_container">
                   <h2>Audit Configuration</h2>
                   <p class="sub_section">Auditing keeps track of important admin events occurring in Couchbase. Keeping track and persisting these events is essential for any secured environment and provides evidence for suspicious/malicious activity in Couchbase.</p>
                   <form id="js_audit_setup_form">

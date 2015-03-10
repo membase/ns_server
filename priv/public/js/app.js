@@ -1490,12 +1490,10 @@ $(function () {
   function updateVisibleStuff() {
     var version25 = encodeCompatVersion(2, 5);
     var version30 = encodeCompatVersion(3, 0);
-    var version32 = encodeCompatVersion(3, 2);
     var version40 = encodeCompatVersion(4, 0);
 
     $('body').toggleClass('dynamic_under-25', lastCompatVersion < version25);
     $('body').toggleClass('dynamic_under-30', lastCompatVersion < version30);
-    $('body').toggleClass('dynamic_under-32', lastCompatVersion < version32);
     $('body').toggleClass('dynamic_under-40', lastCompatVersion < version40);
     $('body').toggleClass('dynamic_is-40', lastCompatVersion >= version40);
   }
