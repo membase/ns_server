@@ -161,8 +161,17 @@ do_consider_switching_compat_mode(Config, CurrentVersion) ->
                 AnotherVersion ->
                     case is_enabled_at(AnotherVersion, CurrentVersion) of
                         true ->
-                            do_switch_compat_mode(AnotherVersion, NodesWanted),
-                            changed;
+                            case goxdcr_upgrade:maybe_upgrade(CurrentVersion,
+                                                              AnotherVersion,Config, NodesWanted) of
+                                ok ->
+                                    do_switch_compat_mode(AnotherVersion, NodesWanted),
+                                    changed;
+                                _ ->
+                                    ?log_error("Refusing to upgrade the compat "
+                                               "version from ~p to ~p due to failure of goxdcr upgrade"
+                                               "~nNodesWanted: ~p~nNodeInfos: ~p",
+                                               [CurrentVersion, AnotherVersion, NodesWanted, NodeInfos])
+                            end;
                         false ->
                             ?log_error("Refusing to downgrade the compat "
                                        "version from ~p to ~p."

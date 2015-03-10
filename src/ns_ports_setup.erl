@@ -4,7 +4,8 @@
 
 -export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
-         restart_xdcr_proxy/0, sync/0, create_erl_node_spec/4]).
+         restart_xdcr_proxy/0, sync/0, create_erl_node_spec/4,
+         create_goxdcr_upgrade_spec/1]).
 
 %% referenced by config
 -export([omit_missing_mcd_ports/2]).
@@ -300,29 +301,45 @@ goxdcr_spec(Config) ->
         false ->
             [];
         true ->
-            AdminPort = "-sourceKVAdminPort=" ++
-                integer_to_list(misc:node_rest_port(Config, node())),
-            XdcrRestPort = "-xdcrRestPort=" ++
-                integer_to_list(ns_config:search(Config, {node, node(), xdcr_rest_port}, 9998)),
-            IsEnterprise = "-isEnterprise=" ++ atom_to_list(menelaus_web:is_enterprise()),
-
-            Args0 = [AdminPort, XdcrRestPort, IsEnterprise],
-
-            UpstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}, undefined),
-            Args =
-                case UpstreamPort of
-                    undefined ->
-                        Args0;
-                    _ ->
-                        LocalProxyPort = "-localProxyPort=" ++ integer_to_list(UpstreamPort),
-                        [LocalProxyPort | Args0]
-                end,
-
-            [{'goxdcr', Cmd, Args,
-              [use_stdio, exit_status, stderr_to_stdout, stream,
-               {log, ?GOXDCR_LOG_FILENAME},
-               {env, build_cbauth_env_vars(Config, goxdcr)}]}]
+            create_goxdcr_spec(Config, Cmd, false)
     end.
+
+create_goxdcr_spec(Config, Cmd, Upgrade) ->
+    AdminPort = "-sourceKVAdminPort=" ++
+        integer_to_list(misc:node_rest_port(Config, node())),
+    XdcrRestPort = "-xdcrRestPort=" ++
+        integer_to_list(ns_config:search(Config, {node, node(), xdcr_rest_port}, 9998)),
+    IsEnterprise = "-isEnterprise=" ++ atom_to_list(menelaus_web:is_enterprise()),
+
+    Args0 = [AdminPort, XdcrRestPort, IsEnterprise],
+
+    Args1 = case Upgrade of
+                true ->
+                    ["-isConvert=true" | Args0];
+                false ->
+                    Args0
+            end,
+
+    UpstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}, undefined),
+    Args =
+        case UpstreamPort of
+            undefined ->
+                Args1;
+            _ ->
+                LocalProxyPort = "-localProxyPort=" ++ integer_to_list(UpstreamPort),
+                [LocalProxyPort | Args1]
+        end,
+
+    [{'goxdcr', Cmd, Args,
+      [use_stdio, exit_status, stderr_to_stdout, stream,
+       {log, ?GOXDCR_LOG_FILENAME},
+       {env, build_cbauth_env_vars(Config, goxdcr)}]}].
+
+create_goxdcr_upgrade_spec(Config) ->
+    Cmd = find_executable("goxdcr"),
+    true = Cmd =/= false,
+    [Spec] = create_goxdcr_spec(Config, Cmd, true),
+    Spec.
 
 index_node_spec(Config) ->
     case ns_cluster_membership:should_run_service(Config, index, node()) of

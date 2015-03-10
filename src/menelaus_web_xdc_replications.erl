@@ -26,7 +26,9 @@
 -export([handle_create_replication/1, handle_cancel_replication/2,
          handle_replication_settings/2, handle_replication_settings_post/2,
          handle_global_replication_settings/1,
-         handle_global_replication_settings_post/1]).
+         handle_global_replication_settings_post/1,
+         build_replication_settings/1,
+         build_global_replication_settings/0]).
 
 -type replication_type() :: 'one-time' | continuous.
 
@@ -104,11 +106,12 @@ do_handle_replication_settings(XID, Req) ->
               handle_replication_settings_body(RepDoc, Req)
       end).
 
-handle_replication_settings_body(RepDoc, Req) ->
+build_replication_settings(RepDoc) ->
     SettingsRaw = xdc_settings:extract_per_replication_settings(RepDoc),
-    Settings = [{key_to_request_key(K), format_setting_value(K, V)} || {K, V} <- SettingsRaw],
-    Json = {struct, Settings},
-    menelaus_util:reply_json(Req, Json, 200).
+    [{key_to_request_key(K), format_setting_value(K, V)} || {K, V} <- SettingsRaw].
+
+handle_replication_settings_body(RepDoc, Req) ->
+    menelaus_util:reply_json(Req, {build_replication_settings(RepDoc)}, 200).
 
 format_setting_value(socket_options, V) -> {V};
 format_setting_value(_K, V) -> V.
@@ -157,10 +160,12 @@ handle_global_replication_settings(Req) ->
             goxdcr_rest:proxy(Req)
     end.
 
-do_handle_global_replication_settings(Req) ->
+build_global_replication_settings() ->
     SettingsRaw = xdc_settings:get_all_global_settings(),
-    Settings = [{key_to_request_key(K), format_setting_value(K, V)} || {K, V} <- SettingsRaw],
-    menelaus_util:reply_json(Req, {struct, Settings}, 200).
+    [{key_to_request_key(K), format_setting_value(K, V)} || {K, V} <- SettingsRaw].
+
+do_handle_global_replication_settings(Req) ->
+    menelaus_util:reply_json(Req, {build_global_replication_settings()}, 200).
 
 handle_global_replication_settings_post(Req) ->
     case cluster_compat_mode:is_goxdcr_enabled() of

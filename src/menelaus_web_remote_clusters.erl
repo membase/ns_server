@@ -27,7 +27,8 @@
          handle_remote_clusters/1,
          handle_remote_clusters_post/1,
          handle_remote_cluster_update/2,
-         handle_remote_cluster_delete/2]).
+         handle_remote_cluster_delete/2,
+         build_remote_cluster_info/2]).
 
 get_remote_clusters() ->
     case ns_config:search(remote_clusters) of
@@ -49,28 +50,35 @@ cas_remote_clusters(Old, NewUnsorted) ->
         {throw, mismatch, _} -> mismatch
     end.
 
-build_remote_cluster_info(KV) ->
+build_remote_cluster_info(KV, Upgrade) ->
     Name = misc:expect_prop_value(name, KV),
     Deleted = proplists:get_value(deleted, KV, false),
-    URI = menelaus_util:bin_concat_path(["pools", "default", "remoteClusters", Name]),
     MaybeCert = case proplists:get_value(cert, KV) of
                     undefined -> [];
                     Cert -> [{demandEncryption, true},
                              {certificate, Cert}]
                 end,
-    {struct, [{name, list_to_binary(Name)},
-              {uri, URI},
-              {validateURI, iolist_to_binary([URI, <<"?just_validate=1">>])},
-              {hostname, list_to_binary(misc:expect_prop_value(hostname, KV))},
-              {username, list_to_binary(misc:expect_prop_value(username, KV))},
-              {uuid, misc:expect_prop_value(uuid, KV)},
-              {deleted, Deleted}] ++ MaybeCert}.
+    {[{name, list_to_binary(Name)},
+      {hostname, list_to_binary(misc:expect_prop_value(hostname, KV))},
+      {username, list_to_binary(misc:expect_prop_value(username, KV))},
+      {uuid, misc:expect_prop_value(uuid, KV)},
+      {deleted, Deleted}] ++
+         case Upgrade of
+             false ->
+                 URI = menelaus_util:bin_concat_path(["pools", "default", "remoteClusters", Name]),
+                 [{uri, URI},
+                  {validateURI, iolist_to_binary([URI, <<"?just_validate=1">>])}];
+             true ->
+                 [{password, list_to_binary(misc:expect_prop_value(password, KV))}]
+         end ++ MaybeCert}.
 
 handle_remote_clusters(Req) ->
     case cluster_compat_mode:is_goxdcr_enabled() of
         false ->
             RemoteClusters = get_remote_clusters(),
-            JSON = lists:map(fun build_remote_cluster_info/1, RemoteClusters),
+            JSON = lists:map(fun (KV) ->
+                                     build_remote_cluster_info(KV, false)
+                             end, RemoteClusters),
             menelaus_util:reply_json(Req, JSON);
         true ->
             goxdcr_rest:proxy(Req)
@@ -110,7 +118,7 @@ do_handle_remote_clusters_post(Req, Params, JustValidate, TriesLeft) ->
                                     ns_audit:xdcr_create_cluster_ref(Req, FinalKVList),
 
                                     menelaus_util:reply_json(Req,
-                                                             build_remote_cluster_info(FinalKVList));
+                                                             build_remote_cluster_info(FinalKVList, false));
                                 _ ->
                                     do_handle_remote_clusters_post(Req, Params,
                                                                    JustValidate, TriesLeft-1)
@@ -312,7 +320,7 @@ do_handle_remote_cluster_update_found_this(Id, OldCluster, Req, Params, JustVali
                                     end,
 
                                     menelaus_util:reply_json(
-                                      Req, build_remote_cluster_info(FinalKVList));
+                                      Req, build_remote_cluster_info(FinalKVList, false));
                                 _ ->
                                     do_handle_remote_cluster_update(Id, Req, Params,
                                                                     JustValidate, TriesLeft-1)

@@ -43,8 +43,8 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, cluster_compat_version, [3, 0]} |
              upgrade_config_from_2_5_to_3_0(Config)];
         {value, [3, 0]} ->
-            ?log_info("Performing online config upgrade to 3.2 version"),
-            [{set, cluster_compat_version, [4, 0]}]
+            [{set, cluster_compat_version, [4, 0]} |
+             upgrade_config_from_3_0_to_4_0(Config)]
     end.
 
 upgrade_config_from_2_0_to_2_5(Config) ->
@@ -55,6 +55,10 @@ upgrade_config_from_2_5_to_3_0(Config) ->
     ?log_info("Performing online config upgrade to 3.0 version"),
     delete_unwanted_per_node_keys(Config) ++
         ns_config_auth:upgrade(Config).
+
+upgrade_config_from_3_0_to_4_0(Config) ->
+    ?log_info("Performing online config upgrade to 4.0 version"),
+    goxdcr_upgrade:config_upgrade(Config).
 
 delete_unwanted_per_node_keys(Config) ->
     NodesWanted = ns_node_disco:nodes_wanted(Config),
