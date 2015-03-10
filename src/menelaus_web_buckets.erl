@@ -842,13 +842,8 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                    end
                            end;
                        sasl ->
-                           SaslPassword = proplists:get_value("saslPassword", Params, ""),
-                           case validate_bucket_password(SaslPassword) of
-                               ok ->
-                                   {ok, sasl_password, SaslPassword};
-                               {error, Error} ->
-                                   {error, saslPassword, Error}
-                           end
+                           validate_with_missing(proplists:get_value("saslPassword", Params), "",
+                                                 IsNew, fun validate_bucket_password/1)
                    end,
                    parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params),
                                             BucketConfig),
@@ -962,7 +957,17 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
 
-validate_bucket_password(Password) ->
+validate_bucket_password(undefined) ->
+    {error, saslPassword, <<"Bucket password is undefined">>};
+validate_bucket_password(SaslPassword) ->
+    case do_validate_bucket_password(SaslPassword) of
+        ok ->
+            {ok, sasl_password, SaslPassword};
+        {error, Error} ->
+            {error, saslPassword, Error}
+    end.
+
+do_validate_bucket_password(Password) ->
     case lists:all(
            fun (C) ->
                    C > 32 andalso C =/= 127
