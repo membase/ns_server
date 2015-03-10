@@ -98,23 +98,23 @@ call_compute_map(BucketName) ->
     work_queue:submit_sync_work(
       vbucket_map_mirror,
       fun () ->
-              case ns_bucket:get_bucket(BucketName) of
-                  {ok, BucketConfig} ->
-                      case proplists:get_value(map, BucketConfig) of
-                          undefined ->
-                              no_map;
-                          Map ->
-                              case ets:lookup(vbucket_map_mirror, BucketName) of
-                                  [] ->
+              case ets:lookup(vbucket_map_mirror, BucketName) of
+                  [] ->
+                      case ns_bucket:get_bucket(BucketName) of
+                          {ok, BucketConfig} ->
+                              case proplists:get_value(map, BucketConfig) of
+                                  undefined ->
+                                      no_map;
+                                  Map ->
                                       NodeToVBuckets = compute_map_to_vbuckets_dict(Map),
                                       ets:insert(vbucket_map_mirror, {BucketName, NodeToVBuckets}),
-                                      NodeToVBuckets;
-                                  [{_, Dict}] ->
-                                      Dict
-                              end
+                                      NodeToVBuckets
+                              end;
+                          not_present ->
+                              not_present
                       end;
-                  not_present ->
-                      not_present
+                  [{_, Dict}] ->
+                      Dict
               end
       end).
 
