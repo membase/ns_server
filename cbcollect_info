@@ -491,9 +491,10 @@ def make_product_task(guts, initargs_path, options):
                       "goxdcr.log", "query.log", "projector.log", "indexer.log"]],
 
         [AllOsTask("memcached stats %s" % kind,
+
                    flatten(["cbstats", "-a", "127.0.0.1:%s" % read_guts(guts, "memcached_port"), kind, "-b", read_guts(guts, "memcached_admin"), "-p", read_guts(guts, "memcached_pass")]),
                    log_file="stats.log")
-         for kind in ["all", "checkpoint", "config", "dispatcher",
+         for kind in ["all", "checkpoint", "config", ["dispatcher", "logs"],
                       "workload", "runtimes", "scheduler", "kvstore", "kvtimings",
                       "tap", "tapagg", "dcp", "dcpagg", "timings",
                       ["raw", "memory"], ["raw", "allocator"],
