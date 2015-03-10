@@ -115,10 +115,10 @@ build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
     %% NOTE: there's potential inconsistency here between BucketConfig
     %% and (potentially more up-to-date) vbuckets dict. Given that
     %% nodes list is mostly informational I find it ok.
-    Dict = case vbucket_map_mirror:node_vbuckets_dict_or_not_present(BucketName) of
-               not_present -> dict:new();
-               no_map -> dict:new();
-               DV -> DV
+    Dict = case vbucket_map_mirror:node_vbuckets_dict(BucketName) of
+               {ok, DV} -> DV;
+               {error, not_present} -> dict:new();
+               {error, no_map} -> dict:new()
            end,
     BucketUUID = proplists:get_value(uuid, BucketConfig),
     add_couch_api_base_loop(Nodes, BucketName, BucketUUID, LocalAddr, F, Dict, [], []).

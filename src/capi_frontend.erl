@@ -100,7 +100,7 @@ continue_do_db_req(#httpd{user_ctx=UserCtx,
 
 find_node_with_vbuckets(BucketBin) ->
     Bucket = erlang:binary_to_list(BucketBin),
-    VBucketsDict = vbucket_map_mirror:node_vbuckets_dict(Bucket),
+    VBucketsDict = vbucket_map_mirror:must_node_vbuckets_dict(Bucket),
     Nodes = dict:fetch_keys(VBucketsDict),
     Len = erlang:length(Nodes),
     case Len of

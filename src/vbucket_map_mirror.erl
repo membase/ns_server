@@ -39,7 +39,7 @@
 -include("ns_common.hrl").
 
 -export([start_link/0,
-         node_vbuckets_dict/1, node_vbuckets_dict_or_not_present/1,
+         must_node_vbuckets_dict/1, node_vbuckets_dict/1,
          node_to_inner_capi_base_url/3, submit_full_reset/0,
          node_to_capi_base_url/2]).
 
@@ -86,17 +86,17 @@ compute_and_cache_map(BucketName) ->
                 {ok, BucketConfig} ->
                     case proplists:get_value(map, BucketConfig) of
                         undefined ->
-                            no_map;
+                            {error, no_map};
                         Map ->
                             NodeToVBuckets = compute_map_to_vbuckets_dict(Map),
                             ets:insert(vbucket_map_mirror, {BucketName, NodeToVBuckets}),
-                            NodeToVBuckets
+                            {ok, NodeToVBuckets}
                     end;
                 not_present ->
-                    not_present
+                    {error, not_present}
             end;
         [{_, Dict}] ->
-            Dict
+            {ok, Dict}
     end.
 
 compute_map_to_vbuckets_dict(Map) ->
@@ -121,22 +121,22 @@ call_compute_map(BucketName) ->
               compute_and_cache_map(BucketName)
       end).
 
--spec node_vbuckets_dict_or_not_present(bucket_name()) ->
-                                               dict() | no_map | not_present.
-node_vbuckets_dict_or_not_present(BucketName) ->
+-spec node_vbuckets_dict(bucket_name()) ->
+                                {ok, dict()} | {error, no_map | not_present}.
+node_vbuckets_dict(BucketName) ->
     case ets:lookup(vbucket_map_mirror, BucketName) of
         [] ->
             call_compute_map(BucketName);
         [{_, Dict}] ->
-            Dict
+            {ok, Dict}
     end.
 
-node_vbuckets_dict(BucketName) ->
-    case node_vbuckets_dict_or_not_present(BucketName) of
-        Atom when is_atom(Atom) ->
-            erlang:error({node_vbuckets_dict_failed, Atom});
-        RV ->
-            RV
+must_node_vbuckets_dict(BucketName) ->
+    case node_vbuckets_dict(BucketName) of
+        {ok, Dict} ->
+            Dict;
+        {error, Error} ->
+            erlang:error({node_vbuckets_dict_failed, BucketName, Error})
     end.
 
 call_compute_node_base_url(Node, User, Password) ->

@@ -59,7 +59,7 @@ design_doc_view_loop(Mod, Req, DbName, DDocId, ViewName, VBucketsDict,
         throw:{error, set_view_outdated} ->
             ?views_debug("Got `set_view_outdated` error. Retrying."),
             timer:sleep(?RETRY_INTERVAL),
-            NewVBucketsDict = vbucket_map_mirror:node_vbuckets_dict(?b2l(DbName)),
+            NewVBucketsDict = vbucket_map_mirror:must_node_vbuckets_dict(?b2l(DbName)),
             design_doc_view_loop(Mod, Req, DbName, DDocId, ViewName,
                                  NewVBucketsDict, Attempt - 1)
     end.
@@ -98,7 +98,7 @@ run_on_subset_according_to_stats(Bucket) ->
 
 
 do_handle_view_req(Mod, Req, DbName, DDocName, ViewName) ->
-    VBucketsDict = vbucket_map_mirror:node_vbuckets_dict(binary_to_list(DbName)),
+    VBucketsDict = vbucket_map_mirror:must_node_vbuckets_dict(binary_to_list(DbName)),
     case dict:find(ns_node_disco:ns_server_node(), VBucketsDict) of
         error ->
             capi_frontend:send_no_active_vbuckets(Req, DbName);

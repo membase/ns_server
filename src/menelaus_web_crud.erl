@@ -74,7 +74,7 @@ do_handle_list(Req, _Bucket, _Params, 0) ->
       {struct, [{error, <<"max_retry">>},
                 {reason, <<"could not get consistent vbucket map">>}]}, 503);
 do_handle_list(Req, Bucket, {Skip, Limit, Params}, N) ->
-    NodeVBuckets = dict:to_list(vbucket_map_mirror:node_vbuckets_dict(Bucket)),
+    NodeVBuckets = dict:to_list(vbucket_map_mirror:must_node_vbuckets_dict(Bucket)),
 
     case build_keys_heap(Bucket, NodeVBuckets, Params) of
         {ok, Heap} ->
