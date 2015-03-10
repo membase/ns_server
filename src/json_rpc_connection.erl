@@ -148,7 +148,7 @@ handle_call({call, Name, EJsonArg}, From, #state{counter = Counter,
               {id, Counter},
               {method, NameB}
               | MaybeParams]},
-    ?log_debug("sending jsonrpc call:~p", [EJSON]),
+    ?log_debug("sending jsonrpc call:~p", [ns_config_log:sanitize(EJSON)]),
     ok = gen_tcp:send(Sock, [ejson:encode(EJSON) | <<"\n">>]),
     ets:insert(IdToCaller, {Counter, From}),
     {noreply, State#state{counter = Counter + 1}}.
