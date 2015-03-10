@@ -176,31 +176,8 @@ couchbase_bucket_exists(Bucket) ->
             false
     end.
 
-get_bucket_with_config_record(Bucket, #config{dynamic=[PList]}) ->
-    {_, V} = lists:keyfind(buckets, 1, PList),
-    BucketsPList = case V of
-                       [{'_vclock', _}, {configs, X}] -> X;
-                       [{configs, X}] -> X
-                   end,
-    case lists:keyfind(Bucket, 1, BucketsPList) of
-        false -> not_present;
-        {_, BucketConfig} ->
-            {ok, BucketConfig}
-    end.
-
 get_bucket(Bucket) ->
-    RV = ns_config:eval(
-           fun (Cfg) ->
-                   get_bucket_with_config_record(Bucket, Cfg)
-           end),
-    case RV of
-        not_present ->
-            RV;
-        {ok, _} ->
-            RV;
-        _ ->
-            erlang:error({get_bucket_failed, RV})
-    end.
+    get_bucket(Bucket, ns_config:latest_config_marker()).
 
 get_bucket_with_vclock(Bucket, Config) ->
     {value, [{configs, AllBuckets}], BucketVC} = ns_config:search_with_vclock(Config, buckets),
@@ -275,7 +252,7 @@ get_bucket_names(Type, BucketConfigs) ->
              proplists:get_value(type, Config) == Type].
 
 get_buckets() ->
-    get_buckets(ns_config:get()).
+    get_buckets(ns_config:latest_config_marker()).
 
 get_buckets(Config) ->
     ns_config:search_prop(Config, buckets, configs, []).
