@@ -41,6 +41,8 @@
 -export([supported_services/0,
          default_services/0,
          node_services/2,
+         non_kv_active_nodes/0,
+         non_kv_active_nodes/1,
          filter_out_non_kv_nodes/1,
          filter_out_non_kv_nodes/2,
          should_run_service/3,
@@ -213,6 +215,13 @@ node_services(Config, Node) ->
         {value, Value} ->
             Value
     end.
+
+non_kv_active_nodes() ->
+    non_kv_active_nodes(ns_config:latest_config_marker()).
+
+non_kv_active_nodes(Config) ->
+    ActiveNodes = ns_cluster_membership:active_nodes(Config),
+    [N || N <- ActiveNodes, not lists:member(kv, node_services(Config, N))].
 
 filter_out_non_kv_nodes(Nodes) ->
     filter_out_non_kv_nodes(Nodes, ns_config:latest_config_marker()).
