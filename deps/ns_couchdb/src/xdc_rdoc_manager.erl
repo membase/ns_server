@@ -109,7 +109,11 @@ handle_call({get_doc, Id}, _From, #state{local_docs = Docs} = State) ->
                 Doc = couch_doc:with_ejson_body(Doc0),
                 {ok, Doc}
         end,
-    {reply, R, State}.
+    {reply, R, State};
+handle_call(get_all_docs, _From, #state{local_docs = Docs} = State) ->
+    {reply, Docs, State};
+handle_call(sync, _From, State) ->
+    {reply, ok, State}.
 
 save_doc(#doc{id = Id} = Doc,
          #state{local_docs = Docs,

@@ -45,6 +45,10 @@ start_proxy_loop(Bucket) ->
 
 proxy_loop(DocMgr) ->
     receive
+        {'$gen_call', From, SyncMsg} ->
+            RV = gen_server:call(DocMgr, SyncMsg, infinity),
+            gen_server:reply(From, RV),
+            proxy_loop(DocMgr);
         Msg ->
             DocMgr ! Msg,
             proxy_loop(DocMgr)

@@ -53,7 +53,13 @@ upgrade(Config, Nodes) ->
 
 
 do_upgrade(Config, Nodes) ->
+    %% this will make sure that goxdcr_upgrade is propagated everywhere
+    %% and xdcr rest api is blocked on all nodes
     sync_config(Nodes),
+
+    %% this will make sure that our node has latest replications
+    ?log_debug("Pull replication docs from other nodes synchronously."),
+    ok = doc_replicator:pull_docs(xdcr, Nodes -- [ns_node_disco:ns_server_node()]),
 
     Json = build_json(),
     ?log_debug("Starting goxdcr upgrade with the following configuration: ~p", [Json]),

@@ -21,7 +21,7 @@
 -include("ns_common.hrl").
 -include("couch_db.hrl").
 
--export([start_link/1, start_link_xdcr/0, server_name/1]).
+-export([start_link/1, start_link_xdcr/0, server_name/1, pull_docs/2]).
 
 start_link_xdcr() ->
     proc_lib:start_link(erlang, apply, [fun start_loop/1, [xdcr]]).
@@ -74,6 +74,8 @@ loop(Bucket, ServerName, RemoteNodes) ->
                             D <- Docs]
                 end,
                 AllNodes;
+            {'$gen_call', From, {pull_docs, Nodes}} ->
+                gen_server:reply(From, handle_pull_docs(ServerName, Nodes));
             {'DOWN', _Ref, _Type, {Server, RemoteNode}, Error} ->
                 ?log_warning("Remote server node ~p process down: ~p",
                              [{Server, RemoteNode}, Error]),
@@ -109,6 +111,24 @@ nodeup_monitoring_loop(Parent) ->
             ok
     end,
     nodeup_monitoring_loop(Parent).
+
+handle_pull_docs(ServerName, Nodes) ->
+    Timeout = ns_config:read_key_fast(goxdcr_upgrade_timeout, 60000),
+    {RVs, BadNodes} = misc:safe_multi_call(Nodes, ServerName, get_all_docs, Timeout),
+    case BadNodes of
+        [] ->
+            lists:foreach(
+              fun ({_N, Docs}) ->
+                      [gen_server:cast(ServerName, {replicated_update, Doc}) ||
+                          Doc <- Docs]
+              end, RVs),
+            gen_server:call(ServerName, sync, Timeout);
+        _ ->
+            {error, {bad_nodes, BadNodes}}
+    end.
+
+pull_docs(xdcr, Nodes) ->
+    gen_server:call(server_name(xdcr) , {pull_docs, Nodes}, infinity).
 
 server_name(xdcr) ->
     list_to_atom("xdcr_" ++ ?MODULE_STRING);
