@@ -620,7 +620,7 @@
                 <th></th>
                 <th></th>
                 <th></th>
-                <th>Nodes</th>
+                <th colspan="2">Data Nodes</th>
                 <th colspan="2">Item Count</th>
                 <th>Ops/sec</th>
                 <th colspan="2" class="disk_fetch">Disk Fetches/sec</th>
@@ -633,7 +633,7 @@
                 <th class="last"></th>
               </tr>
               <!-- {% if (!rows.length) { %} -->
-              <tr><td colspan="18" style="padding:15px">No buckets currently defined! Click "Create New Data Bucket" above to create one.</td></tr>
+              <tr><td colspan="19" style="padding:15px">No buckets currently defined! Click "Create New Data Bucket" above to create one.</td></tr>
               <!-- {% } %} -->
               <!-- {% $.each(rows, function () { %} -->
               <tr class="{%= this.bucketTypeName.toLowerCase() %}">
@@ -641,7 +641,7 @@
                   <a class="disable-if-stale bucket" href="#visitBucket={%= h(encodeURIComponent(this.name)) %}" title="Show Bucket info"><span class="expander closed casper_buckets_bucket_details"></span></a>
                   <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}" href="#sec=analytics&statsBucket={%= h(encodeURIComponent(this.uri)) %}">{%= h(this.name) %}</a>
                 </td>
-                <td>
+                <td colspan="2">
                   <span id="{%= h(this.name) %}_health" class="health_graph"></span>
                   {%= this.nodes.length %}
                 </td>
@@ -670,7 +670,7 @@
                 </td>
               </tr>
               <tr>
-                <td colspan="18" class="settings-placeholder">
+                <td colspan="19" class="settings-placeholder">
                   {%= BucketsSection.renderBucketDetails(this) %}
                 </td>
               </tr>
