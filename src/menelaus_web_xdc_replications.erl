@@ -33,12 +33,10 @@
 -type replication_type() :: 'one-time' | continuous.
 
 handle_create_replication(Req) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        false ->
-            do_handle_create_replication(Req);
-        true ->
-            goxdcr_rest:proxy(Req)
-    end.
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_create_replication(Req)
+      end, Req).
 
 do_handle_create_replication(Req) ->
     Params = Req:parse_post(),
@@ -75,12 +73,10 @@ do_handle_create_replication(Req) ->
     end.
 
 handle_cancel_replication(XID, Req) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        false ->
-            do_handle_cancel_replication(XID, Req);
-        true ->
-            goxdcr_rest:proxy(Req, "/controller/cancelXDCR/" ++ XID)
-    end.
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_cancel_replication(XID, Req)
+      end, Req, "/controller/cancelXDCR/" ++ XID).
 
 do_handle_cancel_replication(XID, Req) ->
     case xdc_rdoc_api:delete_replicator_doc(XID) of
@@ -92,12 +88,10 @@ do_handle_cancel_replication(XID, Req) ->
     end.
 
 handle_replication_settings(XID, Req) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        false ->
-            do_handle_replication_settings(XID, Req);
-        true ->
-            goxdcr_rest:proxy(Req)
-    end.
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_replication_settings(XID, Req)
+      end, Req).
 
 do_handle_replication_settings(XID, Req) ->
     with_replicator_doc(
@@ -117,12 +111,10 @@ format_setting_value(socket_options, V) -> {V};
 format_setting_value(_K, V) -> V.
 
 handle_replication_settings_post(XID, Req) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        false ->
-            do_handle_replication_settings_post(XID, Req);
-        true ->
-            goxdcr_rest:proxy(Req)
-    end.
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_replication_settings_post(XID, Req)
+      end, Req).
 
 do_handle_replication_settings_post(XID, Req) ->
     with_replicator_doc(
@@ -153,12 +145,10 @@ do_handle_replication_settings_post(XID, Req) ->
       end).
 
 handle_global_replication_settings(Req) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        false ->
-            do_handle_global_replication_settings(Req);
-        true ->
-            goxdcr_rest:proxy(Req)
-    end.
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_global_replication_settings(Req)
+      end, Req).
 
 build_global_replication_settings() ->
     SettingsRaw = xdc_settings:get_all_global_settings(),
@@ -168,12 +158,10 @@ do_handle_global_replication_settings(Req) ->
     menelaus_util:reply_json(Req, {build_global_replication_settings()}, 200).
 
 handle_global_replication_settings_post(Req) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        false ->
-            do_handle_global_replication_settings_post(Req);
-        true ->
-            goxdcr_rest:proxy(Req)
-    end.
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_global_replication_settings_post(Req)
+      end, Req).
 
 do_handle_global_replication_settings_post(Req) ->
     Params = Req:parse_post(),

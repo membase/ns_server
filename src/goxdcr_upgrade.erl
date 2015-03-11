@@ -20,7 +20,8 @@
 -include("ns_common.hrl").
 
 -export([maybe_upgrade/4,
-         config_upgrade/1]).
+         config_upgrade/1,
+         updates_allowed/0]).
 
 maybe_upgrade(undefined, _, _, _) ->
     %% this happens during the cluster initialization. no upgrade needed
@@ -142,4 +143,12 @@ sync_config(Nodes) ->
             ale:error(?USER_LOGGER, "Got problems trying to replicate goxdcr config update~n~p",
                       [{T,E,erlang:get_stacktrace()}]),
             throw({error, sync_config})
+    end.
+
+updates_allowed() ->
+    case ns_config:search(goxdcr_upgrade) of
+        {value, started} ->
+            false;
+        false ->
+            true
     end.

@@ -19,8 +19,8 @@
 -module(goxdcr_rest).
 -include("ns_common.hrl").
 
--export([proxy/1,
-         proxy/2,
+-export([proxy_or/2,
+         proxy_or/3,
          send/2,
          find_all_replication_docs/1,
          all_local_replication_infos/0,
@@ -68,9 +68,6 @@ special_auth_headers() ->
                                  ns_config_auth:get_user(special),
                                  ns_config_auth:get_password(special)).
 
-proxy(MochiReq) ->
-    proxy(MochiReq, MochiReq:get(raw_path)).
-
 proxy(MochiReq, Path) ->
     Headers = convert_headers(MochiReq),
     Body = case MochiReq:recv_body() of
@@ -80,6 +77,22 @@ proxy(MochiReq, Path) ->
                    B
            end,
     MochiReq:respond(send(MochiReq, MochiReq:get(method), Path, Headers, Body)).
+
+proxy_or(Fun, Req) ->
+    proxy_or(Fun, Req, Req:get(raw_path)).
+
+proxy_or(Fun, Req, Path) ->
+    case (Req:get(method) =:= 'GET') orelse goxdcr_upgrade:updates_allowed() of
+        false ->
+            menelaus_util:reply_json(Req, {[{"_", <<"Not allowed during cluster upgrade.">>}]}, 503);
+        true ->
+            case cluster_compat_mode:is_goxdcr_enabled() of
+                false ->
+                    Fun();
+                true ->
+                    proxy(Req, Path)
+            end
+    end.
 
 send(MochiReq, Body) ->
     Headers = convert_headers(MochiReq),
