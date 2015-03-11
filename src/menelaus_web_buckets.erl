@@ -678,7 +678,7 @@ parse_bucket_params(Ctx, Params) ->
         {_, {ok, _, _} = X} -> X;
         {false, {errors, Errors, Summaries, OKs}} ->
             {errors, perform_warnings_validation(Ctx, OKs, Errors), Summaries};
-	{true, {errors, Errors, Summaries, _}} ->
+        {true, {errors, Errors, Summaries, _}} ->
             {errors, Errors, Summaries}
     end.
 
