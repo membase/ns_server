@@ -167,6 +167,11 @@ handle_call(reset_master_vbucket, _From, #state{bucket = Bucket,
                                                 local_docs = LocalDocs} = State) ->
     MasterVBucket = master_vbucket(Bucket),
     ok = couch_server:delete(MasterVBucket, []),
+
+    %% recreate the master db (for the case when there're no design documents)
+    {ok, MasterDB} = open_local_db(Bucket),
+    ok = couch_db:close(MasterDB),
+
     [save_doc(Doc, State) || Doc <- LocalDocs],
     {reply, ok, State}.
 
