@@ -95,6 +95,8 @@ interesting_doc_key(<<"target">>) ->
     true;
 interesting_doc_key(<<"continuous">>) ->
     true;
+interesting_doc_key(<<"pauseRequested">>) ->
+    true;
 interesting_doc_key(_) ->
     false.
 
