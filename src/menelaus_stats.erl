@@ -523,10 +523,10 @@ computed_stats_lazy_proplist("@goxdcr-"++BucketName) ->
     lists:flatmap(fun (Id) ->
                           Prefix = <<"replications/", Id/binary,"/">>,
 
-                          PercentCompleteness = Z2(<<Prefix/binary, "docs_checked">>,
+                          PercentCompleteness = Z2(<<Prefix/binary, "docs_processed">>,
                                                    <<Prefix/binary, "changes_left">>,
-                                                   fun (Checked, Left) ->
-                                                           try (100 * Checked) / (Checked + Left)
+                                                   fun (Processed, Left) ->
+                                                           try (100 * Processed) / (Processed + Left)
                                                            catch error:badarith -> 0
                                                            end
                                                    end),
@@ -981,28 +981,23 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary,"changes_left">>},
                                           {desc,<<"Number of mutations to be replicated to other clusters "
                                                   "(measured from per-replication stat changes_left)">>}]},
-                                 {struct,[{title,<<"outbound XDCR mutations replicated">>},
-                                          {name,<<Prefix/binary,"docs_written">>},
-                                          {desc,<<"Number of mutations that have already replicated to other clusters "
-                                                  "(measured from per-replication stat docs_written)">>}]},
-                                 {struct,[{title,<<"outbound XDCR mutations filtered">>},
-                                          {name,<<Prefix/binary,"docs_filtered">>},
-                                          {desc,<<"Number of mutations that have been filtered out and have not been replicated to other clusters "
-                                                  "(measured from per-replication stat docs_filtered)">>}]},
                                  {struct,[{title,<<"percent completed">>},
                                           {maxY, 100},
                                           {name,<<Prefix/binary, "percent_completeness">>},
                                           {desc,<<"Percentage of checked items out of all checked and to-be-replicated items "
                                                   "(measured from per-replication stat percent_completeness)">>}]},
-                                 {struct,[{isBytes,true},
-                                          {title,<<"data replicated">>},
-                                          {name,<<Prefix/binary,"data_replicated">>},
-                                          {desc,<<"The total size (in bytes) of mutations replicated"
-                                                  "(measured from per-replication stat data_replicated)">>}]},
+                                 {struct,[{title,<<"outbound XDCR mutations filtered">>},
+                                          {name,<<Prefix/binary,"docs_filtered">>},
+                                          {desc,<<"Number of mutations that have been filtered out and have not been replicated to other clusters "
+                                                  "(measured from per-replication stat docs_filtered)">>}]},
+                                 {struct,[{title,<<"XDCR mutations failed conflict resolution on source">>},
+                                          {name,<<Prefix/binary,"docs_failed_cr_source">>},
+                                          {desc,<<"Number of mutations that failed conflict resolution on the source side and hence have not been replicated to other clusters "
+                                                  "(measured from per-replication stat docs_failed_cr_source)">>}]},
                                  {struct,[{title,<<"mutation replication rate">>},
                                           {name,<<Prefix/binary,"rate_replicated">>},
                                           {desc,<<"Rate of replication in terms of number of replicated mutations per second "
-                                                  "(measured from per-replication stat rate_replication)">>}]},
+                                                  "(measured from per-replication stat rate_replicated)">>}]},
                                  {struct,[{isBytes,true},
                                           {title,<<"data replication rate">>},
                                           {name,<<Prefix/binary,"bandwidth_usage">>},
@@ -1022,28 +1017,9 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary, "wtavg_docs_latency">>},
                                           {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
                                                   "(measured from per-replication stat wtavg_docs_latency)">>}]},
-                                 {struct,[{title,<<"Number of document in replication queue">>},
-                                          {name,<<Prefix/binary, "docs_rep_queue">>},
-                                          {desc,<<"The number of documents in the replication queue "
-                                                  "(measured from per-replication stat docs_rep_queue)">>}]},
-                                 {struct,[{isBytes,true},
-                                          {title,<<"size of replication queue">>},
-                                          {name,<<Prefix/binary, "size_rep_queue">>},
-                                          {desc,<<"The total size (in bytes) of all documents in the replication queue "
-                                                  "(measured from per-replication stat size_rep_queue)">>}]},
-                                 {struct,[{title,<<"Number of checkpoints">>},
-                                          {name,<<Prefix/binary,"num_checkpoints">>},
-                                          {desc,<<"Number of completed checkpoints "
-                                                  "(measured from per-replication stat num_checkpoints)">>}]},
-                                 {struct,[{title,<<"Number of failed checkpoints">>},
-                                          {name,<<Prefix/binary, "num_failedckpts">>},
-                                          {desc,<<"Number of failed checkpoints "
-                                                  "(measured from per-replication stat num_failedckpts)">>}]},
-                                 {struct,[{title,<<"time commiting checkpoints">>},
-                                          {name,<<Prefix/binary, "time_committing">>},
-                                          {desc,<<"Average time, in ms, spent in commiting checkpoints "
-                                                  "(measured from per-replication stat time_committing)">>}]}
-                                ]}]}
+                                 {struct,[{title,<<"doc receival rate">>},
+                                          {name,<<Prefix/binary,"rate_received_from_dcp">>},
+                                          {desc,<<"Rate of mutations received from dcp in terms of number of mutations per second ">>}]}]}]}
               end, Reps).
 
 
