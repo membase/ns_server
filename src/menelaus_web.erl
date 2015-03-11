@@ -538,6 +538,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_metakv:handle_post/1};
                          ["_log"] ->
                              {auth, fun handle_log_post/1};
+                         ["_goxdcr", "regexpValidation"] ->
+                             {auth, fun menelaus_web_xdc_replications:handle_regexp_validation/1};
                          ["logClientError"] -> {auth,
                                                 fun (R) ->
                                                         User = menelaus_auth:extract_auth_user(R),

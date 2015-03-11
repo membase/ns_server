@@ -28,7 +28,8 @@
          handle_global_replication_settings/1,
          handle_global_replication_settings_post/1,
          build_replication_settings/1,
-         build_global_replication_settings/0]).
+         build_global_replication_settings/0,
+         handle_regexp_validation/1]).
 
 -type replication_type() :: 'one-time' | continuous.
 
@@ -485,3 +486,9 @@ update_rdoc_replication_settings(#doc{body={Props}} = RepDoc, Params) ->
         _ ->
             {error, Errors}
     end.
+
+handle_regexp_validation(Req) ->
+    goxdcr_rest:proxy_or(
+      fun () ->
+              menelaus_util:reply_not_found(Req)
+      end, Req, "/controller/regexpValidation").
