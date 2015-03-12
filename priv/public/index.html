@@ -1886,7 +1886,7 @@
             <thead>
               <tr>
                 <th>Bucket</th>
-                <th>Node</th>
+                <th style="width: 200px;">Node</th>
                 <th>Index Name</th>
                 <th>Definition</th>
                 <th>Status</th>
@@ -1897,12 +1897,12 @@
               {% if (rows.length) { %}
                 {% _.each(rows, function (row) { %}
                   <tr>
-                    <td>{%= h(row.bucket) %}</td>
-                    <td>{%= h(row.hostname) %}</td>
-                    <td>{%= h(row.index) %}</td>
-                    <td>{%= h(row.definition || "TODO") %}</td>
-                    <td>{%= h(row.status || "TODO") %}</td>
-                    <td>{%= h(row.progress || "TODO") %}</td>
+                    <td class="ellipsis" title="{%= h(row.bucket) %}">{%= h(row.bucket) %}</td>
+                    <td class="ellipsis" title="{%= h(row.hostname) %}">{%= h(row.hostname) %}</td>
+                    <td class="ellipsis" title="{%= h(row.index) %}">{%= h(row.index) %}</td>
+                    <td class="ellipsis" title="{%= h(row.definition) %}">{%= h(row.definition || "TODO") %}</td>
+                    <td class="ellipsis" title="{%= h(row.status) %}">{%= h(row.status || "TODO") %}</td>
+                    <td class="ellipsis" title="{%= h(row.bucket) %}">{%= h(row.progress || "TODO") %}</td>
                   </tr>
                 {% }); %}
               {% } %}
@@ -1923,7 +1923,7 @@
               {% if (rows.length) { %}
                 {% _.each(rows, function (row) { %}
                   <tr>
-                    <td>{%= h(row.hostname) %}</td>
+                    <td class="ellipsis" title="{%= h(row.hostname) %}">{%= h(row.hostname) %}</td>
                     <td>{%= h(row.currentQuota) %}</td>
                     <td>{%= h(row.pendingQuota) %}</td>
                   </tr>
