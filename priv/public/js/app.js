@@ -1053,7 +1053,7 @@ $(function () {
       if ('sessionStorage' in window && window.sessionStorage.reloadCause) {
         var text = "Browser client XHR failure encountered. (age: "
           + ((new Date()).valueOf() - sessionStorage.reloadTStamp)+")  Diagnostic info:\n";
-        postClientErrorReport(text + window.sessionStorage.reloadCause);
+        $.ajax({type: 'POST', url: "/logClientError", data: text + window.sessionStorage.reloadCause});
         delete window.sessionStorage.reloadCause;
         delete window.sessionStorage.reloadTStamp;
       }
