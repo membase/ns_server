@@ -495,7 +495,7 @@ var DAL = {
       n.ejectPossible = !detailsAreStale && !n.pendingEject;
       n.failoverPossible = !detailsAreStale && (n.clusterMembership !== 'inactiveFailed');
       n.reAddPossible = !detailsAreStale && (n.clusterMembership === 'inactiveFailed' && n.status !== 'unhealthy');
-      n.deltaRecoveryPossible = !detailsAreStale && compatVersion && (compatVersion >= compat30) && ($.inArray(n.services, "kv") >= 0);
+      n.deltaRecoveryPossible = !detailsAreStale && compatVersion && (compatVersion >= compat30) && ($.inArray("kv", n.services) >= 0);
 
       var nodeClass = '';
       if (n.clusterMembership === 'inactiveFailed') {
