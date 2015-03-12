@@ -1905,6 +1905,8 @@
                     <td class="ellipsis" title="{%= h(row.bucket) %}">{%= h(row.progress || "TODO") %}</td>
                   </tr>
                 {% }); %}
+              {% } else { %}
+                <tr><td colspan="6" style="text-align: center;">There are no indexes currently.</td></tr>
               {% } %}
             </tbody>
           </table>
@@ -1928,6 +1930,8 @@
                     <td>{%= h(row.pendingQuota) %}</td>
                   </tr>
                 {% }); %}
+              {% } else { %}
+                <tr><td colspan="3" style="text-align: center;">There are no index nodes currently.</td></tr>
               {% } %}
             </tbody>
           </table>
