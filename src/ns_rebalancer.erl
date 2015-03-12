@@ -1078,7 +1078,7 @@ drop_old_2i_indexes(KeepNodes) ->
                       || {N, RV} <- Oks,
                          RV =/= ok]
                 ++ RPCErrors
-                ++ [{N, timeout} || N <- Downs],
+                ++ [{N, node_down} || N <- Downs],
             case Errors of
                 [] ->
                     ?rebalance_debug("Cleanup succeeded: ~p", [Oks]),
