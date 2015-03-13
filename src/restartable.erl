@@ -26,7 +26,7 @@ start_link(MFA, Shutdown) ->
 spec({Id, MFA, Restart, Shutdown, Type, Modules}) ->
     {Id,
      {restartable, start_link, [MFA, Shutdown]},
-     Restart, Shutdown, Type, Modules}.
+     Restart, 86400000, Type, Modules}.
 
 restart(Pid) ->
     gen_server:call(Pid, restart, infinity).
