@@ -2025,6 +2025,7 @@
                 <col class="protocol">
                 <col class="from">
                 <col class="to">
+                <col class="filter">
                 <col class="status">
                 <col class="when">
               </colgroup>
@@ -2034,6 +2035,7 @@
                   <th>Protocol</th>
                   <th>From</th>
                   <th>To</th>
+                  <th>Filtered</th>
                   <th>Status</th>
                   <th>When</th>
                   <th></th>
@@ -2045,6 +2047,7 @@
                   <td>{%= h(r.protocol) %}</td>
                   <td style="color:#777">this cluster</td>
                   <td>{%= h(r.to) %}</td>
+                  <td title="{%= h(r.filterExpression) %}"><input type="checkbox" disabled {%= r.filterExpression ? "checked" : "" %}></td>
                   <td class="replication_status_cell">
                     <span>{%= V.formatReplicationStatus(r) %}</span>
                   </td>
@@ -2056,7 +2059,7 @@
                 </tr>
                 <!-- {% }); %} -->
                 <!-- {% } else { %} -->
-                <tr><td colspan="8" style="text-align:center">There are no
+                <tr><td colspan="9" style="text-align:center">There are no
                 replications currently in progress.</td></tr>
                 <!-- {% } %} -->
               </tbody>
@@ -3111,6 +3114,10 @@
           <li><label for="replication_from_bucket">Bucket:</label>
             <select name="fromBucket" id="replication_from_bucket" style="width: 154px;"></select>
           </li>
+          <li class="advanced_filtering only-when-40 when-enterprise">
+            <label for="js_xdcr_advaced_filtering_btn">Enable Advanced filtering:</lable>
+            <input id="js_xdcr_advaced_filtering_btn" type="checkbox">
+          </li>
         </ul>
       </fieldset>
       <fieldset style="float:left;width:250px;">
@@ -3126,6 +3133,46 @@
             <!-- TODO: this needs to become a select box like the one above -->
           </li>
         </ul>
+      </fieldset>
+      <fieldset class="xdcr_advaced_filtering xdcr_advaced_settings only-when-40 when-enterprise" id="js_xdcr_advaced_filtering" style="clear:both;">
+        <div id="js_xdcr_advaced_filtering_container" class="xdcr_advaced_filtering_container" style="display:none;">
+          <div id="js_match_indicator" class="match_indicator">
+            <span class="no_match">No Match</span>
+            <span class="loading">...</span>
+            <span class="match">Match</span>
+          </div>
+          <div>
+            <label for="js_filter_expression" class="filter_expression_label">Filter Expression:</label>
+            <a class="tooltip text_11" style="line-height:20px;"><span>What's this?</span>
+              <span class="tooltip_msg" style="width:222px;"><span>
+                The filter expression is a regular expression against which the keys of documents are tested. If the key matches the document will be replicated; otherwise the document won’t be replicated. You may test your filter expression against a number of sample candidate keys in the provided text boxes.
+              </span></span>
+            </a>
+            <div style="position: relative;">
+              <pre id="js_filter_expression" class="test_key_result filter_expression" contenteditable="true" spellcheck="false" name="filterExpression"></pre>
+            </div>
+            <i class="error js_error js_filterExpression" style="display: block;clear:both;"></i>
+          </div>
+          <div class="js_test_keys test_keys">
+            <label for="xdcr_advaced_settings_type">Test Keys:</label>
+            <div class="js_test_key_wrapper test_key_wrapper">
+              <span>1.</span>
+              <pre class="js_test_key_result test_key_result" contenteditable="true" spellcheck="false"></pre>
+            </div>
+            <div class="js_test_key_wrapper test_key_wrapper">
+              <span>2.</span>
+              <pre class="js_test_key_result test_key_result" contenteditable="true" spellcheck="false"></pre>
+            </div>
+            <div class="js_test_key_wrapper test_key_wrapper">
+              <span>3.</span>
+              <pre class="js_test_key_result test_key_result" contenteditable="true" spellcheck="false"></pre>
+            </div>
+            <div class="js_test_key_wrapper test_key_wrapper">
+              <span>4.</span>
+              <pre class="js_test_key_result test_key_result" contenteditable="true" spellcheck="false"></pre>
+            </div>
+          </div>
+        </div>
       </fieldset>
       <fieldset class="xdcr_advaced_settings" id="js_xdcr_advaced_settings" style="clear:both;">
         <legend id="js_xdcr_advaced_settings_btn">Advanced settings:</legend>

@@ -85,6 +85,193 @@ var ReplicationForm = mkClass({
         rb.append('<option>' + escapeHTML(bucket.name) + '</option>');
       });
     });
+
+    var advacedXDCRFiltering = jQuery("#js_xdcr_advaced_filtering");
+    var testKeyResult = self.testKeyResult = jQuery('.js_test_key_result', advacedXDCRFiltering);
+    var testKeyFocus = jQuery('.js_test_key_focus', advacedXDCRFiltering);
+    var advancedXDCRFilteringContainer = self.advancedXDCRFilteringContainer = jQuery("#js_xdcr_advaced_filtering_container");
+    var advancedXDCRFilteringBtn = self.advancedXDCRFilteringBtn = jQuery("#js_xdcr_advaced_filtering_btn");
+    var regExpField = jQuery('#js_filter_expression');
+    var matchIndicator = jQuery('#js_match_indicator');
+    var regexpValidation;
+    self.validateTestKey = validateTestKey;
+    function sanitize(html) {
+      return jQuery('<pre/>').text(html).html();
+    }
+    function validateOnOverLimit(field, name) {
+      if (getStringBytes(field.text()) > 2500) {
+        ReplicationsSection.showXDCRErrors({
+          filterExpression: name + ' should not have size more than 2.5kb'
+        }, advancedXDCRFilteringContainer);
+        return false;
+      }
+      return true;
+    }
+    function validateTestKeysOnOverlimit() {
+      var rv = true;
+      testKeyResult.each(function () {
+        rv = validateOnOverLimit(jQuery(this), 'Test key');
+      });
+      return rv;
+    }
+    function getTestKeys() {
+      return testKeyResult.map(function() {
+        return jQuery(this).text();
+      });
+    }
+    function getReqexValue() {
+      return regExpField.text();
+    }
+    var spinnerTimeout;
+    function clearSpinnerTimeout() {
+      if (spinnerTimeout) {
+        clearTimeout(spinnerTimeout);
+      }
+    }
+    function enableSpinnerTimeout() {
+      spinnerTimeout = setTimeout(function() {
+        matchIndicator.removeClass('dynamic_match').addClass('dynamic_spinner');
+      }, 500);
+    }
+    function validateTestKey() {
+      if (!getReqexValue()) {
+        matchIndicator.removeClass('dynamic_match');
+        return;
+      }
+      var noMatch = true;
+      clearSpinnerTimeout();
+      enableSpinnerTimeout();
+      regexpValidation && regexpValidation.abort();
+      regexpValidation = jQuery.ajax({
+        type: 'POST',
+        data: {
+          expression: getReqexValue(),
+          keys: JSON.stringify(getTestKeys().filter(function (idx, val) {return !!val;}).get())
+        },
+        url: '/_goxdcr/regexpValidation',
+        dataType: 'json',
+        complete: function () {
+          clearSpinnerTimeout();
+          matchIndicator.removeClass('dynamic_spinner').toggleClass('dynamic_match', !noMatch);
+        },
+        success: function (data) {
+          jQuery.each(data, function (key, pairs) {
+            if (key === "") {
+              return;
+            }
+            var result = "";
+            var fullSetOfPairs = [];
+            _.sortBy(pairs, 'startIndex');
+            if (pairs[0] && pairs[0].startIndex != 0) {
+              fullSetOfPairs.push({
+                startIndex: 0,
+                endIndex: pairs[0].startIndex
+              });
+            }
+            jQuery.each(pairs, function (index, pair) {
+              if (pair.endIndex === pair.startIndex) {
+                return true;
+              }
+              pair.backlight = true;
+              fullSetOfPairs.push(pair);
+              var next = pairs[index + 1];
+              if (next) {
+                if (pair.endIndex !== next.startIndex) {
+                  fullSetOfPairs.push({
+                    startIndex: pair.endIndex,
+                    endIndex: next.startIndex
+                  });
+                }
+              } else {
+                fullSetOfPairs.push({
+                  startIndex: pair.endIndex,
+                  endIndex: key.length
+                });
+              }
+            });
+            jQuery.each(fullSetOfPairs, function (index, pair) {
+              var textPart = key.substring(pair.startIndex, pair.endIndex);
+              textPart = sanitize(textPart);
+              if (pair.backlight) {
+                result += '<span>' + textPart + '</span>';
+              } else {
+                result += textPart;
+              }
+            });
+            var target = testKeyResult.filter(function () {
+              return jQuery(this).text() === key;
+            });
+            if (result) {
+              noMatch = false;
+              jQuery(target).each(function () {
+                target = jQuery(this);
+                if (!target.is(":focus")) {
+                  target.addClass('dynamic_hightlight');
+                  target.empty().html(result);
+                }
+              });
+            }
+          });
+        },
+        error: function (xhr) {
+          ReplicationsSection.showXDCRErrors({
+            filterExpression: xhr.responseText
+          }, advancedXDCRFilteringContainer);
+        }
+      });
+    }
+    function clearFromNewLine(jqElement) {
+      var value = jqElement.text();
+      jqElement.empty().text(value);
+    }
+    function contentEditableUsableTab(event) {
+      //IE inserts tabulation in contenteditable tag instead of make focus on next element,
+      //absolutely unfriendly when you have no mouse
+      //but after text have selected and tabulation pressed it behaves like other browser
+      //unfortunately works only when input has text
+      if (event.keyCode == 9) {
+        document.execCommand('selectAll', true, null);
+      }
+    }
+    var throttled = _.throttle(validateTestKey, 500);
+    var previousReqex;
+    regExpField.keyup(function () {
+      if (previousReqex === getReqexValue()) {
+        return;
+      }
+      previousReqex = getReqexValue();
+      ReplicationsSection.hideXDCRErrors(advancedXDCRFilteringContainer);
+      if (!validateOnOverLimit(regExpField, 'Regex')) {
+        return;
+      }
+      localStorage.setItem('mn_xdcr_regex', getReqexValue());
+      testKeyResult.removeClass('dynamic_hightlight');
+      throttled();
+    }).keydown(contentEditableUsableTab).blur(function () {
+      clearFromNewLine(jQuery(this));
+    });
+    testKeyResult.blur(function () {
+      clearFromNewLine(jQuery(this));
+      var testKeyValue = jQuery(this).text();
+      jQuery(this).empty().text(testKeyValue); //new line auto removing
+      if (!validateTestKeysOnOverlimit()) {
+        return;
+      }
+      localStorage.setItem('mn_xdcr_testKeys', JSON.stringify(getTestKeys().get()));
+      validateTestKey();
+    }).focus(function () {
+      jQuery(this).removeClass('dynamic_hightlight');
+    }).keydown(contentEditableUsableTab);
+    advancedXDCRFilteringBtn.click(function (e) {
+      advancedXDCRFilteringContainer.toggle();
+    });
+    try {
+      regExpField.text(localStorage.getItem('mn_xdcr_regex'));
+      var maybeTestKeys = JSON.parse(localStorage.getItem('mn_xdcr_testKeys'));
+      jQuery(maybeTestKeys).each(function (index, key) {
+        testKeyResult.eq(index).text(key);
+      });
+    } catch (_e) {}
   },
   maybeEnabeXDCRFormValidation: function () {
     var self = this;
@@ -96,6 +283,8 @@ var ReplicationForm = mkClass({
     var self = this;
 
     self.advancedSettingsContainer.hide();
+    self.advancedXDCRFilteringContainer.hide();
+    self.advancedXDCRFilteringBtn.attr('checked', false);
     self.advacedXDCRSettings.find("select option[value=xmem]").boolAttr('selected', true);
 
     self.closeCallback = callback;
@@ -110,7 +299,12 @@ var ReplicationForm = mkClass({
       });
       showDialog('create_replication_dialog', {
         position: { my: "center top", at: "center bottom", of: $("#headerNav") },
+        open: function () {
+          self.validateTestKey();
+        },
         onHide: function () {
+          ReplicationsSection.hideXDCRErrors(self.advancedXDCRFilteringContainer);
+          self.testKeyResult.removeClass('dynamic_hightlight');
           self.advacedXDCRSvalidator.pause();
           ReplicationsSection.hideXDCRErrors(self.advacedXDCRSettings);
         }
@@ -139,7 +333,15 @@ var ReplicationForm = mkClass({
       return;
     }
     var spinner = overlayWithSpinner(self.dialog, null, "Creating replication...");
-    var formValues = serializeForm(self.form);
+    var isEnterprise = DAL.cells.isEnterpriseCell.value;
+    var formValues;
+    if (isEnterprise && self.advancedXDCRFilteringBtn.attr('checked') === 'checked') {
+      formValues = $.deparam(serializeForm(self.form));
+      formValues.filterExpression = jQuery('#js_filter_expression').text();
+      formValues = $.param(formValues);
+    } else {
+      formValues = serializeForm(self.form);
+    }
     self.showErrors(false);
     jsonPostWithErrors(URI, formValues, function (data, status, errorObject) {
       spinner.remove();
@@ -318,7 +520,8 @@ function mkReplicationSectionCell(ns, currentXDCRSettingsURI, tasksProgressCell,
         when: replication.continuous ? "on change" : "one time sync",
         errors: replication.errors,
         cancelURI: replication.cancelURI,
-        settingsURI: replication.settingsURI
+        settingsURI: replication.settingsURI,
+        filterExpression: replication.filterExpression
       }
     });
   });

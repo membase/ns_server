@@ -344,6 +344,10 @@ var DAL = {
       $("body").addClass('dynamic_enterprise-mode').removeClass('dynamic_community-mode');
       $("#switch_support_forums").attr('href', 'http://support.couchbase.com');
     } else {
+      if (isEnterprise === false) {
+        localStorage.removeItem('mn_xdcr_regex');
+        localStorage.removeItem('mn_xdcr_testKeys');
+      }
       $("body").addClass('dynamic_community-mode').removeClass('dynamic_enterprise-mode');
       $("#switch_support_forums").attr('href', 'http://www.couchbase.com/communities/');
     }
