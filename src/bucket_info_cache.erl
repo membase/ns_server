@@ -114,39 +114,34 @@ build_ports(Node, Config) ->
      {direct, ns_config:search_node_prop(Node, Config, memcached, port)}].
 
 build_services(Node, Config, EnabledServices) ->
-    GetSSLPort = fun (ConfigKey, JKey) ->
-                         case ns_config:search_node(Node, Config, ConfigKey) of
-                             {value, Value} when Value =/= undefined ->
-                                 [{JKey, Value}];
-                             _ ->
-                                 []
-                         end
-                 end,
+    GetPort = fun (ConfigKey, JKey) ->
+                      case ns_config:search_node(Node, Config, ConfigKey) of
+                          {value, Value} when Value =/= undefined ->
+                              [{JKey, Value}];
+                          _ ->
+                              []
+                      end
+              end,
+
+    GetPortFromProp = fun (ConfigKey, ConfigSubKey, JKey) ->
+                              case ns_config:search_node_prop(Node, Config, ConfigKey, ConfigSubKey) of
+                                  undefined ->
+                                      [];
+                                  Port ->
+                                      [{JKey, Port}]
+                              end
+                      end,
 
     OptServices =
         [case S of
              kv ->
-                 KVCapiSSL = GetSSLPort(ssl_capi_port, capiSSL),
-
-                 {value, CapiPort} = ns_config:search_node(Node, Config, capi_port),
-                 KVCapiPorts = [{capi, CapiPort} | KVCapiSSL],
-
-                 KVSSL = case ns_config:search_node_prop(Node, Config, memcached, ssl_port) of
-                             undefined ->
-                                 KVCapiPorts;
-                             SslPort ->
-                                 [{kvSSL, SslPort} | KVCapiPorts]
-                         end,
-                 KVProj = case ns_config:search(Config, {node, Node, projector_port}, undefined) of
-                              undefined ->
-                                  KVSSL;
-                              ProjPort ->
-                                  [{projector, ProjPort} | KVSSL]
-                          end,
-                 [{kv, ns_config:search_node_prop(Node, Config, memcached, port)}
-                  | KVProj];
+                 GetPort(ssl_capi_port, capiSSL) ++
+                     GetPort(capi_port, capi) ++
+                     GetPortFromProp(memcached, ssl_port, kvSSL) ++
+                     GetPort(projector_port, projector) ++
+                     GetPortFromProp(memcached, port, kv);
              moxi ->
-                 [{moxi, ns_config:search_node_prop(Node, Config, moxi, port)}];
+                 GetPortFromProp(moxi, port, moxi);
              n1ql ->
                  [{n1ql, ns_config:search(Config, {node, Node, query_port}, undefined)}];
              index ->
@@ -160,7 +155,7 @@ build_services(Node, Config, EnabledServices) ->
                  ]
          end || S <- EnabledServices],
 
-    MgmtSSL = GetSSLPort(ssl_rest_port, mgmtSSL),
+    MgmtSSL = GetPort(ssl_rest_port, mgmtSSL),
     [{mgmt, misc:node_rest_port(Config, Node)}
      | lists:append([MgmtSSL | OptServices])].
 

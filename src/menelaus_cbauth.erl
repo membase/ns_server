@@ -137,8 +137,15 @@ notify_cbauth(Label, Info) ->
     end.
 
 build_node_info(N, Config) ->
-    Services = bucket_info_cache:build_services(N, Config,
-                                                ns_cluster_membership:node_services(Config, N)),
+    build_node_info(N, ns_config:search_node_prop(N, Config, memcached, admin_user), Config).
+
+build_node_info(_N, undefined, _Config) ->
+    undefined;
+build_node_info(N, User, Config) ->
+    Services = bucket_info_cache:build_services(
+                 N, Config,
+                 ns_cluster_membership:node_services(Config, N)),
+
     {_, Host} = misc:node_name_host(N),
     Local = case node() of
                 N ->
@@ -147,8 +154,7 @@ build_node_info(N, Config) ->
                     []
             end,
     {[{host, erlang:list_to_binary(Host)},
-      {admin_user,
-       erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_user))},
+      {admin_user, erlang:list_to_binary(User)},
       {admin_pass,
        erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_pass))},
       {ports, [Port || {_Key, Port} <- Services]}] ++ Local}.
@@ -177,8 +183,14 @@ build_cred_info(Role) ->
 
 build_auth_info() ->
     Config = ns_config:get(),
-    Nodes =
-        [build_node_info(N, Config) || N <- ns_node_disco:nodes_wanted()],
+    Nodes = lists:foldl(fun (Node, Acc) ->
+                                case build_node_info(Node, Config) of
+                                    undefined ->
+                                        Acc;
+                                    Info ->
+                                        [Info | Acc]
+                                end
+                        end, [], ns_node_disco:nodes_wanted()),
 
     TokenURL = io_lib:format("http://127.0.0.1:~w/_cbauth", [misc:node_rest_port(Config, node())]),
 
