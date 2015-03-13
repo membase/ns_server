@@ -84,12 +84,12 @@ update_replication(RepId, RepDoc) ->
     case [Child || {_, Id, _} = Child <- get_replications(), Id =:= RepId] of
         [] ->
             start_replication(RepDoc);
-        [{_, _, Pid} = Child] ->
+        [{Bucket, RepId, Pid}] ->
             R = xdc_replication:update_replication(Pid, RepDoc),
             case R of
                 restart_needed ->
-                    supervisor:terminate_child(?MODULE, Child),
-                    supervisor:delete_child(?MODULE, Child),
+                    supervisor:terminate_child(?MODULE, {Bucket, RepId}),
+                    supervisor:delete_child(?MODULE, {Bucket, RepId}),
                     start_replication(RepDoc);
                 ok ->
                     {ok, Pid}
