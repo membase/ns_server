@@ -86,7 +86,8 @@ is_index_pausing_on() ->
 
 is_goxdcr_enabled() ->
     is_cluster_sherlock() andalso
-        ns_config:read_key_fast(goxdcr_enabled, true).
+        ns_config:read_key_fast(goxdcr_enabled, true) andalso
+        not ns_config:read_key_fast({node, node(), stop_xdcr}, false).
 
 get_replication_topology() ->
     ns_config:read_key_fast(replication_topology, star).

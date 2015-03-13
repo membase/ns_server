@@ -93,18 +93,40 @@ latest_errors() ->
 init(_) ->
     proc_lib:init_ack({ok, self()}),
 
+    Self = self(),
+
+    ns_pubsub:subscribe_link(
+      ns_config_events,
+      fun ({{node, Node, stop_xdcr}, true}) when node() =:= Node ->
+              Self ! stop_xdcr;
+          (_) ->
+              ok
+      end),
+
     DocMgr = ns_couchdb_api:wait_for_doc_manager(),
 
-    IdDocList = xdc_rdoc_manager:foreach_doc(
-                  DocMgr,
-                  fun (#doc{deleted = true}) ->
-                          undefined;
-                      (Doc) ->
-                          Doc
-                  end, infinity),
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            case ns_config:read_key_fast({node, node(), stop_xdcr}, false) of
+                true ->
+                    ?xdcr_info("Stop was requested by goxdcr upgrade"),
+                    ns_config:delete({node, node(), stop_xdcr}),
+                    ok;
+                false ->
+                    IdDocList = xdc_rdoc_manager:foreach_doc(
+                                  DocMgr,
+                                  fun (#doc{deleted = true}) ->
+                                          undefined;
+                                      (Doc) ->
+                                          Doc
+                                  end, infinity),
 
-    [process_update(couch_doc:with_ejson_body(D)) || {_Id, D} <- IdDocList,
-                                                     D =/= undefined],
+                    [process_update(couch_doc:with_ejson_body(D)) || {_Id, D} <- IdDocList,
+                                                                     D =/= undefined]
+            end;
+        true ->
+            ok
+    end,
 
     gen_server:enter_loop(?MODULE, [], []).
 
@@ -118,7 +140,19 @@ handle_cast(Msg, State) ->
     {stop, {error, {unexpected_cast, Msg}}, State}.
 
 handle_info({rep_db_update, Doc}, State) ->
-    process_update(couch_doc:with_ejson_body(Doc)),
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            process_update(couch_doc:with_ejson_body(Doc));
+        true ->
+            ?xdcr_debug("Ignoring updated doc ~p since old xdcr is disabled", [Doc]),
+            ok
+    end,
+    {noreply, State};
+
+handle_info(stop_xdcr, State) ->
+    ?xdcr_info("Stop was requested by goxdcr upgrade"),
+    xdc_replication_sup:stop_all_replications(),
+    ns_config:delete({node, node(), stop_xdcr}),
     {noreply, State};
 
 handle_info(Msg, State) ->
