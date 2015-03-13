@@ -139,9 +139,8 @@ build_services(Node, Config, EnabledServices) ->
                      GetPort(capi_port, capi) ++
                      GetPortFromProp(memcached, ssl_port, kvSSL) ++
                      GetPort(projector_port, projector) ++
-                     GetPortFromProp(memcached, port, kv);
-             moxi ->
-                 GetPortFromProp(moxi, port, moxi);
+                     GetPortFromProp(memcached, port, kv) ++
+                     GetPortFromProp(moxi, port, moxi);
              n1ql ->
                  [{n1ql, ns_config:search(Config, {node, Node, query_port}, undefined)}];
              index ->
