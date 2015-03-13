@@ -296,8 +296,7 @@ goxdcr_spec(Config) ->
     Cmd = find_executable("goxdcr"),
 
     case cluster_compat_mode:is_goxdcr_enabled() andalso
-        Cmd =/= false andalso
-        ns_cluster_membership:get_cluster_membership(node(), Config) =:= active of
+        Cmd =/= false of
         false ->
             [];
         true ->
