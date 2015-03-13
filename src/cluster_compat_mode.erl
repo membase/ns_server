@@ -85,9 +85,12 @@ is_index_pausing_on() ->
         (not ns_config:read_key_fast(index_pausing_disabled, false)).
 
 is_goxdcr_enabled() ->
+    is_goxdcr_enabled(ns_config:latest_config_marker()).
+
+is_goxdcr_enabled(Config) ->
     is_cluster_sherlock() andalso
-        ns_config:read_key_fast(goxdcr_enabled, true) andalso
-        not ns_config:read_key_fast({node, node(), stop_xdcr}, false).
+        ns_config:search(Config, goxdcr_enabled, true) andalso
+        (not ns_config:search(Config, {node, node(), stop_xdcr}, false)).
 
 get_replication_topology() ->
     ns_config:read_key_fast(replication_topology, star).
