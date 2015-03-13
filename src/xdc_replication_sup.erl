@@ -38,7 +38,8 @@ start_replication(#rep{id = Id, source = SourceBucket} = Rep) ->
             },
     ?xdcr_info("start bucket replicator using spec: ~p.", [Spec]),
     xdc_rep_utils:init_replication_stats(Id),
-    supervisor:start_child(?MODULE, Spec).
+    RV = supervisor:start_child(?MODULE, Spec),
+    ok = element(1, RV).
 
 -spec get_replications() -> [{Bucket :: binary(), Id :: binary(), pid()}].
 get_replications() ->
@@ -81,7 +82,7 @@ stop_all_replications() ->
 
 stop_child({{_, Id} = ChildId, _, _, _} = Child) ->
     ?xdcr_debug("Found matching child to stop: ~p", [Child]),
-    supervisor:terminate_child(?MODULE, ChildId),
+    ok = supervisor:terminate_child(?MODULE, ChildId),
     xdc_rep_utils:cleanup_replication_stats(Id),
     ok = supervisor:delete_child(?MODULE, ChildId).
 
@@ -93,8 +94,8 @@ update_replication(RepId, RepDoc) ->
             R = xdc_replication:update_replication(Pid, RepDoc),
             case R of
                 restart_needed ->
-                    supervisor:terminate_child(?MODULE, {Bucket, RepId}),
-                    supervisor:delete_child(?MODULE, {Bucket, RepId}),
+                    ok = supervisor:terminate_child(?MODULE, {Bucket, RepId}),
+                    ok = supervisor:delete_child(?MODULE, {Bucket, RepId}),
                     start_replication(RepDoc);
                 ok ->
                     {ok, Pid}
