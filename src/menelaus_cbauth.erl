@@ -178,7 +178,7 @@ build_cred_info(Role) ->
 build_auth_info() ->
     Config = ns_config:get(),
     Nodes =
-        [build_node_info(N, Config) || N <- ns_cluster_membership:active_nodes(Config)],
+        [build_node_info(N, Config) || N <- ns_node_disco:nodes_wanted()],
 
     TokenURL = io_lib:format("http://127.0.0.1:~w/_cbauth", [misc:node_rest_port(Config, node())]),
 
