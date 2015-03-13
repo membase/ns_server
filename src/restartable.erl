@@ -108,8 +108,7 @@ shutdown_child(Pid, Shutdown) ->
                 {kill, killed, infinity};
             _ ->
                 true = is_integer(Shutdown) orelse (Shutdown =:= infinity),
-                R = {shutdown, restart},
-                {R, R, Shutdown}
+                {shutdown, shutdown, Shutdown}
         end,
 
     exit(Pid, Reason),
