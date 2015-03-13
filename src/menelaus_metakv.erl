@@ -31,6 +31,8 @@ handle_post(Req) ->
             handle_set_post(Req, Params);
         "delete" ->
             handle_delete_post(Req, Params);
+        "recursive_delete" ->
+            handle_recursive_delete_post(Req, Params);
         "iterate" ->
             handle_iterate_post(Req, Params)
     end.
@@ -122,6 +124,27 @@ handle_set_post(Req, Params) ->
 
 handle_delete_post(Req, Params) ->
     handle_mutate(Req, Params, ?DELETED_MARKER).
+
+handle_recursive_delete_post(Req, Params) ->
+    ?log_debug("handle_recursive_delete_post: ~p ~n", [Params]),
+    Path = list_to_binary(proplists:get_value("path", Params)),
+    Filter = mk_config_filter(Path),
+    RV = ns_config:run_txn(
+            fun (Cfg, SetFn) ->
+                KeysToDelete = [K || {K, V} <- hd(Cfg), Filter(K),
+                                    ns_config:strip_metadata(V) =/= ?DELETED_MARKER],
+                NewCfg = lists:foldl(fun (K, Cfg) -> SetFn(K, ?DELETED_MARKER, Cfg) end,
+                                     Cfg, KeysToDelete),
+                {commit, NewCfg}
+            end),
+    case RV of
+        {commit, _} ->
+            ?log_debug("Recursively deleted children of ~s~n", [Path]),
+            menelaus_util:reply(Req, 200);
+        retry_needed ->
+            ?log_debug("Recursive deletion failed for children of ~s~n", [Path]),
+            menelaus_util:reply(Req, 409)
+    end.
 
 mk_config_filter(Path) ->
     PathL = size(Path),
