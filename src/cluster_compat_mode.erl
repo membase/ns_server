@@ -31,7 +31,8 @@
          is_cluster_30/0,
          is_cluster_sherlock/0,
          sherlock_compat_mode_string/0,
-         is_goxdcr_enabled/0]).
+         is_goxdcr_enabled/0,
+         is_goxdcr_enabled/1]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
