@@ -175,6 +175,7 @@ loop(Req, AppRoot) ->
         Type:What ->
             Report = ["web request failed",
                       {path, Req:get(path)},
+                      {method, Req:get(method)},
                       {type, Type}, {what, What},
                       {trace, erlang:get_stacktrace()}], % todo: find a way to enable this for field info gathering
             ?log_error("Server error during processing: ~p", [Report]),
