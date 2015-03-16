@@ -68,6 +68,7 @@ get_old_vclock(Cfg, K) ->
     end.
 
 handle_mutate(Req, Params, Value) ->
+    Start = os:timestamp(),
     Path = list_to_binary(proplists:get_value("path", Params)),
     Rev = case proplists:get_value("rev", Params) of
               undefined ->
@@ -114,7 +115,8 @@ handle_mutate(Req, Params, Value) ->
         {abort, mismatch} ->
             menelaus_util:reply(Req, 409);
         commit ->
-            ?log_debug("updated ~s to hold ~s", [Path, Value]),
+            ElapsedTime = timer:now_diff(os:timestamp(), Start) div 1000,
+            ?log_debug("Updated ~s to hold ~s~n. Elapsed time:~p ms ~n", [Path, Value, ElapsedTime]),
             menelaus_util:reply(Req, 200)
     end.
 
