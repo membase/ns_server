@@ -229,6 +229,9 @@ child_specs() ->
      {query_stats_collector, {query_stats_collector, start_link, []},
       permanent, 1000, worker, []},
 
+     {goxdcr_status_keeper, {goxdcr_status_keeper, start_link, []},
+      permanent, 1000, worker, [goxdcr_status_keeper]},
+
      {index_stats_sup, {index_stats_sup, start_link, []},
       permanent, infinity, supervisor, []},
 

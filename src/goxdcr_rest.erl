@@ -26,8 +26,7 @@
          all_local_replication_infos/0,
          delete_all_replications/1,
          stats/1,
-         get_replications/1,
-         get_replications_with_remote_info/1]).
+         get_replications_with_remote_info/0]).
 
 get_rest_port() ->
     ns_config:read_key_fast({node, node(), xdcr_rest_port}, 9998).
@@ -200,15 +199,7 @@ stats(Bucket) ->
             []
     end.
 
-get_replications(BucketName) ->
-    BucketNameBin = list_to_binary(BucketName),
-    AllDocs = find_all_replication_docs(30000),
-    [misc:expect_prop_value(id, Props) || Props <- AllDocs,
-                                          misc:expect_prop_value(source, Props) =:= BucketNameBin].
-
-get_replications_with_remote_info(BucketName) ->
-    BucketNameBin = list_to_binary(BucketName),
-
+get_replications_with_remote_info() ->
     RemoteClusters =
         get_from_goxdcr(
           fun (Json) ->
@@ -219,15 +210,11 @@ get_replications_with_remote_info(BucketName) ->
 
     lists:foldl(
       fun (Props, Acc) ->
-              case misc:expect_prop_value(source, Props) of
-                  BucketNameBin ->
-                      Id = misc:expect_prop_value(id, Props),
-                      Targ = misc:expect_prop_value(target, Props),
-                      {ok, {RemoteClusterUUID, RemoteBucket}} =
-                          remote_clusters_info:parse_remote_bucket_reference(Targ),
-                      ClusterName = proplists:get_value(RemoteClusterUUID, RemoteClusters, <<"unknown">>),
-                      [{Id, binary_to_list(ClusterName), RemoteBucket} | Acc];
-                  _ ->
-                      Acc
-              end
+              BucketName = binary_to_list(misc:expect_prop_value(source, Props)),
+              Id = misc:expect_prop_value(id, Props),
+              Target = misc:expect_prop_value(target, Props),
+              {ok, {RemoteClusterUUID, RemoteBucket}} =
+                  remote_clusters_info:parse_remote_bucket_reference(Target),
+              ClusterName = proplists:get_value(RemoteClusterUUID, RemoteClusters, <<"unknown">>),
+              [{Id, BucketName, binary_to_list(ClusterName), RemoteBucket} | Acc]
       end, [], find_all_replication_docs(30000)).
