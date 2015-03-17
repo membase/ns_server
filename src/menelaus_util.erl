@@ -28,6 +28,7 @@
 -endif.
 
 -export([redirect_permanently/2,
+         respond/2,
          reply/2,
          reply/3,
          reply_ok/3,
@@ -149,14 +150,14 @@ reply(Req, Code) ->
     reply_inner(Req, [], Code).
 
 reply_inner(Req, Body, Code, ExtraHeaders) ->
-    Peer = Req:get(peer),
-    Resp = Req:respond({Code, extend_server_headers(ExtraHeaders), Body}),
-    ?log_web_hit(Peer, Req, Resp),
-    Resp.
+    respond(Req, {Code, extend_server_headers(ExtraHeaders), Body}).
 
 reply_inner(Req, Body, Code) ->
+    respond(Req, {Code, server_headers(), Body}).
+
+respond(Req, RespTuple) ->
     Peer = Req:get(peer),
-    Resp = Req:respond({Code, server_headers(), Body}),
+    Resp = Req:respond(RespTuple),
     ?log_web_hit(Peer, Req, Resp),
     Resp.
 

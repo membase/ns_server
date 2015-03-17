@@ -75,7 +75,7 @@ proxy(MochiReq, Path) ->
                B ->
                    B
            end,
-    MochiReq:respond(send(MochiReq, MochiReq:get(method), Path, Headers, Body)).
+    menelaus_util:respond(MochiReq, send(MochiReq, MochiReq:get(method), Path, Headers, Body)).
 
 proxy_or(Fun, Req) ->
     proxy_or(Fun, Req, Req:get(raw_path)).
