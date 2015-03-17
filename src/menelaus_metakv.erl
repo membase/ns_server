@@ -135,7 +135,7 @@ handle_recursive_delete_post(Req, Params) ->
             fun (Cfg, SetFn) ->
                 KeysToDelete = [K || {K, V} <- hd(Cfg), Filter(K),
                                     ns_config:strip_metadata(V) =/= ?DELETED_MARKER],
-                NewCfg = lists:foldl(fun (K, Cfg) -> SetFn(K, ?DELETED_MARKER, Cfg) end,
+                NewCfg = lists:foldl(fun (K, AccCfg) -> SetFn(K, ?DELETED_MARKER, AccCfg) end,
                                      Cfg, KeysToDelete),
                 {commit, NewCfg}
             end),
