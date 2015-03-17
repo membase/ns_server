@@ -22,7 +22,7 @@
 
 -include("ns_common.hrl").
 
--export([memory_quota/0, change_memory_quota/1,
+-export([memory_quota/0,
          setup_disk_storage_conf/2,
          storage_conf/1, storage_conf_from_node_status/1,
          query_storage_conf/0,
@@ -114,9 +114,6 @@ read_path_from_conf(Config, Node, Key, SubKey) ->
             end
     end.
 
-
-change_memory_quota(NewMemQuotaMB) when is_integer(NewMemQuotaMB) ->
-    ns_config:set(memory_quota, NewMemQuotaMB).
 
 %% @doc sets db and index path of this node.
 %%

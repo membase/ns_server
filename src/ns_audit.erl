@@ -36,7 +36,7 @@
          disk_storage_conf/4,
          rename_node/3,
          setup_node_services/3,
-         change_memory_quota/2,
+         cluster_settings/3,
          add_group/2,
          delete_group/2,
          update_group/2,
@@ -89,7 +89,7 @@ code(rename_node) ->
     8207;
 code(setup_node_services) ->
     8208;
-code(change_memory_quota) ->
+code(cluster_settings) ->
     8209;
 code(add_group) ->
     8210;
@@ -314,8 +314,8 @@ setup_node_services(Req, Node, Services) ->
     put(setup_node_services, Req, [{node, Node},
                                    {services, {list, Services}}]).
 
-change_memory_quota(Req, Quota) ->
-    put(change_memory_quota, Req, [{quota, Quota}]).
+cluster_settings(Req, Quota, ClusterName) ->
+    put(cluster_settings, Req, [{memory_quota, Quota}, {cluster_name, ClusterName}]).
 
 add_group(Req, Group) ->
     put(add_group, Req, [{group_name, proplists:get_value(name, Group)},

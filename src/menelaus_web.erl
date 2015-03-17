@@ -1915,7 +1915,7 @@ handle_read_only_user_reset(Req) ->
             end
     end.
 
-memory_quota_validation(Req, MemoryQuota) ->
+memory_quota_validation(MemoryQuota) ->
     case MemoryQuota of
        undefined -> ok;
        X ->
@@ -1923,12 +1923,7 @@ memory_quota_validation(Req, MemoryQuota) ->
                ns_storage_conf:allowed_node_quota_range(),
            case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
                {ok, Number} ->
-                   {ok, fun () ->
-                                ok = ns_storage_conf:change_memory_quota(Number),
-                                %% TODO: that should
-                                %% really be a cluster setting
-                                ns_audit:change_memory_quota(Req, Number)
-                        end};
+                   {ok, Number};
                invalid -> {memoryQuota, <<"The RAM Quota value must be a number.">>};
                too_small ->
                    {memoryQuota,
@@ -1953,41 +1948,32 @@ handle_visual_internal_settings_post(Req) ->
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     MemoryQuota = proplists:get_value("memoryQuota", Params),
     TabName = proplists:get_value("tabName", Params, ""),
-    Results = [memory_quota_validation(Req, MemoryQuota)],
-    case {ValidateOnly, lists:filter(fun(ok) -> false;
-                                        ({ok, _}) -> false;
-                                        (_) -> true
-                                     end, Results)} of
-        {false, []} ->
-            ok = ns_config:set(internal_visual_settings, [{tabName, erlang:list_to_binary(TabName)}]),
-            lists:foreach(fun ({ok, CommitF}) -> CommitF();
-                              (_) -> ok
-                          end, Results),
+    case {ValidateOnly, memory_quota_validation(MemoryQuota)} of
+        {false, {ok, Quota}} ->
+            ok = ns_config:set(
+                   [{internal_visual_settings, [{tabName, erlang:list_to_binary(TabName)}]},
+                    {memory_quota, Quota}]),
+            ns_audit:cluster_settings(Req, Quota, TabName),
             reply(Req, 200);
-        {true, []} ->
+        {true, {ok, _Quota}} ->
             reply_json(Req, {struct, [{errors, null}]}, 200);
-        {_, Errs} ->
-            reply_json(Req, {struct, [{errors, {struct, Errs}}]}, 400)
+        {_, Error} ->
+            reply_json(Req, {struct, [{errors, {struct, [Error]}}]}, 400)
     end.
 
 handle_pool_settings(_PoolId, Req) ->
     Params = Req:parse_post(),
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     MemoryQuota = proplists:get_value("memoryQuota", Params),
-    Results = [memory_quota_validation(Req, MemoryQuota)],
-    case {ValidateOnly, lists:filter(fun(ok) -> false;
-                                        ({ok, _}) -> false;
-                                        (_) -> true
-                                     end, Results)} of
-        {false, []} ->
-            lists:foreach(fun ({ok, CommitF}) -> CommitF();
-                              (_) -> ok
-                          end, Results),
+    case {ValidateOnly, memory_quota_validation(MemoryQuota)} of
+        {false, {ok, Quota}} ->
+            ok = ns_config:set([{memory_quota, Quota}]),
+            ns_audit:cluster_settings(Req, Quota, undefined),
             reply(Req, 200);
-        {true, []} ->
+        {true, {ok, _Quota}} ->
             reply_json(Req, {struct, [{errors, null}]}, 200);
-        {_, Errs} ->
-            reply_json(Req, {struct, [{errors, {struct, Errs}}]}, 400)
+        {_, Error} ->
+            reply_json(Req, {struct, [{errors, {struct, [Error]}}]}, 400)
     end.
 
 handle_settings_web(Req) ->

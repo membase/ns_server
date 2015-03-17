@@ -293,17 +293,18 @@
       },
       {
           "id" : 8209,
-          "name" : "change memory quota",
-          "description" : "The memory quota for the cluster was changed",
+          "name" : "change cluster settings",
+          "description" : "Cluster settings were changed",
           "sync" : false,
           "enabled" : true,
           "mandatory_fields" : {
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
-              "remote" : {"ip" : "", "port" : 1},
-              "quota" : 1
+              "memory_quota" : 1,
+              "remote" : {"ip" : "", "port" : 1}
           },
           "optional_fields" : {
+              "cluster_name" : "",
               "sessionid" : ""
           }
       },
