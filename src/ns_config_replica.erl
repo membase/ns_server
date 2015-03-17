@@ -20,7 +20,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, get/3, get_compressed/3]).
+-export([start_link/1, get_compressed/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -41,10 +41,6 @@
 %%--------------------------------------------------------------------
 start_link(RegName) ->
     gen_server:start_link(RegName, ?MODULE, [], []).
-
--spec get(term(), node(), timeout()) -> [{term(), term()}].
-get(Name, Node, Timeout) ->
-    gen_server:call({Name, Node}, get, Timeout).
 
 -spec get_compressed(term(), node(), timeout()) -> binary().
 get_compressed(Name, Node, Timeout) ->
@@ -84,9 +80,6 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call(get_compressed, _From, State) ->
     RV = zlib:compress(term_to_binary(ns_config:get_kv_list())),
-    {reply, RV, State};
-handle_call(get, _From, State) ->
-    RV = ns_config:get_kv_list(),
     {reply, RV, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
