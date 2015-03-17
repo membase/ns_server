@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-VBMAP_PATH = File.join(File.dirname(__FILE__), "../priv/i386-linux-vbmap")
+VBMAP_PATH = File.join(File.dirname(__FILE__), "../deps/gocode/bin/vbmap")
 # VBMAP_PATH = File.join(File.dirname(__FILE__), "../deps/vbmap/vbmap")
 
 $no_diag = true

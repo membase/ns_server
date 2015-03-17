@@ -39,13 +39,3 @@ dataclean distclean test docs dialyzer dialyzer_obsessive:
 # assuming exuberant-ctags
 TAGS:
 	ctags -eR .
-
-
-
-GO_PREBUILDS := vbmap generate_cert gozip goport
-GO_PREBUILD_TARGETS := $(patsubst %, prebuild_%, $(GO_PREBUILDS))
-
-$(GO_PREBUILD_TARGETS): prebuild_%:
-	cd deps/$* && CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -a -ldflags "-B 0x$$(sed -e 's/-//g' /proc/sys/kernel/random/uuid)" -o ../../priv/i386-linux-$*
-	cd deps/$* && CGO_ENABLED=0 GOOS=darwin GOARCH=386 go build -a -o ../../priv/i386-darwin-$*
-	cd deps/$* && CGO_ENABLED=0 GOOS=windows GOARCH=386 go build -a -o ../../priv/i386-win32-$*.exe

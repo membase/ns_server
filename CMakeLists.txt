@@ -148,8 +148,6 @@ ADD_DEPENDENCIES (ns_dialyzer_obsessive ns_server)
 #
 INSTALL (DIRECTORY ebin DESTINATION "${INST_LIBDIR}/ns_server")
 INSTALL (DIRECTORY priv/public DESTINATION "${INST_LIBDIR}/ns_server/priv")
-INSTALL (PROGRAMS priv/i386-linux-godu priv/i386-win32-godu.exe
-  DESTINATION "${INST_LIBDIR}/ns_server/priv")
 
 INSTALL (PROGRAMS cbbrowse_logs cbcollect_info cbreset_password DESTINATION bin)
 INSTALL (PROGRAMS scripts/cbdump-config scripts/dump-guts DESTINATION bin)

@@ -1,3 +1,0 @@
-SET (GOPORT_SRCS main.go)
-
-GoBuild (TARGET ns_goport OUTPUT goport SOURCES ${GOPORT_SRCS} INSTALL_PATH bin)

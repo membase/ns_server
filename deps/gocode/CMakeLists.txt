@@ -1,0 +1,19 @@
+GoInstall (TARGET vbmap PACKAGE vbmap
+  GOPATH "${CMAKE_CURRENT_SOURCE_DIR}"
+  INSTALL_PATH bin)
+
+GoInstall (TARGET ns_gozip PACKAGE gozip
+  GOPATH "${CMAKE_CURRENT_SOURCE_DIR}"
+  INSTALL_PATH bin)
+
+GoInstall (TARGET ns_goport PACKAGE goport
+  GOPATH "${CMAKE_CURRENT_SOURCE_DIR}"
+  INSTALL_PATH bin)
+
+GoInstall (TARGET ns_generate_cert PACKAGE generate_cert
+  GOPATH "${CMAKE_CURRENT_SOURCE_DIR}"
+  INSTALL_PATH bin)
+
+GoInstall (TARGET ns_godu PACKAGE godu
+  GOPATH "${CMAKE_CURRENT_SOURCE_DIR}"
+  INSTALL_PATH bin/priv)

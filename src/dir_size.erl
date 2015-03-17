@@ -28,17 +28,9 @@
 godu_name() ->
     case erlang:system_info(system_architecture) of
         "win32" ->
-            "i386-win32-godu.exe";
-        "x86_64-pc-linux-gnu" ->
-            "i386-linux-godu";
-        "x86_64-unknown-linux-gnu" ->
-            "i386-linux-godu";
-        "i" ++ [_ | "86-pc-linux-gnu"] ->
-            "i386-linux-godu";
-        "i" ++ [_ | "86-unknown-linux-gnu"] ->
-            "i386-linux-godu";
+            "godu.exe";
         _ ->
-            undefined
+            "godu"
     end.
 
 start_link() ->
@@ -67,7 +59,7 @@ get_slow(Dir) ->
     filelib:fold_files(Dir, ".*", true, Fn, 0).
 
 init(ProgramName) ->
-    DuPath = menelaus_deps:local_path(["priv", ProgramName], ?MODULE),
+    DuPath = path_config:component_path(bin, filename:join("priv", ProgramName)),
     Port = erlang:open_port({spawn_executable, DuPath},
                             [stream, {args, []},
                              binary, eof, use_stdio]),
