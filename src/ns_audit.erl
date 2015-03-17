@@ -157,9 +157,9 @@ now_to_iso8601(Now = {_, _, Microsecs}) ->
                   [YYYY, MM, DD, Hour, Min, Sec, Microsecs div 1000]) ++ Offset.
 
 get_user_id(anonymous) ->
-    anonymous;
+    undefined;
 get_user_id(undefined) ->
-    anonymous;
+    undefined;
 get_user_id(User) ->
     {[{source, ns_server}, {user, to_binary(User)}]}.
 
