@@ -22,6 +22,7 @@
 
 -export([apply_auth/3,
          apply_ro_auth/3,
+         apply_auth_bucket/5,
          require_auth/1,
          filter_accessible_buckets/2,
          is_bucket_accessible/3,
@@ -209,6 +210,15 @@ apply_auth_any_bucket(Req, F, Args) ->
             end
     end.
 
+store_bucket_auth(Req, Auth) ->
+    {User, Role} = case Auth of
+                       {UserX, _} ->
+                           {UserX, bucket};
+                       undefined ->
+                           {anonymous, anonymous}
+                   end,
+    store_user_info(Req, User, Role, undefined).
+
 %% Checks if given credentials allow access to any SASL-auth
 %% bucket.
 check_auth_any_bucket(Req, UserPassword) ->
@@ -220,11 +230,55 @@ check_auth_any_bucket(Req, UserPassword) ->
             case lists:any(bucket_auth_fun(UserPassword, true),
                            Buckets) of
                 true ->
-                    {User, Role} = case UserPassword of
-                                       {UserX, _} -> {UserX, bucket};
-                                       undefined -> {anonymous, anonymous}
-                                   end,
-                    {true, store_user_info(Req, User, Role, undefined)};
+                    {true, store_bucket_auth(Req, UserPassword)};
+                false ->
+                    false
+            end
+    end.
+
+apply_auth_bucket(Req, F, Args, BucketId, ReadOnlyOk) ->
+    case ns_bucket:get_bucket(BucketId) of
+        {ok, BucketConf} ->
+            case Req:get_header_value("ns_server-ui") of
+                "yes" ->
+                    case ReadOnlyOk of
+                        true ->
+                            apply_ro_auth(Req, F, Args);
+                        false ->
+                            apply_auth(Req, F, Args)
+                    end;
+                _ ->
+                    Auth = extract_auth(Req),
+                    case check_auth_bucket(Req, Auth, {BucketId, BucketConf}, ReadOnlyOk) of
+                        {true, NewReq} ->
+                            menelaus_web_buckets:checking_bucket_uuid(
+                              NewReq, BucketConf,
+                              fun () ->
+                                      apply(F, Args ++ [NewReq])
+                              end);
+                        false ->
+                            menelaus_auth:require_auth(Req)
+                    end
+            end;
+        not_present ->
+            menelaus_util:reply_not_found(Req)
+    end.
+
+check_auth_bucket(Req, Auth, BucketTuple, ReadOnlyOk) ->
+    RV = case ReadOnlyOk of
+             true ->
+                 check_read_only_auth(Req, Auth);
+             false ->
+                 check_admin_auth(Req, Auth)
+         end,
+    case RV of
+        {true, _NewReq} ->
+            RV;
+        false ->
+            F = bucket_auth_fun(Auth, ReadOnlyOk),
+            case F(BucketTuple) of
+                true ->
+                    {true, store_bucket_auth(Req, Auth)};
                 false ->
                     false
             end

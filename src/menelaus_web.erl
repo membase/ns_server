@@ -640,24 +640,8 @@ handle_uilogout(Req) ->
     end,
     menelaus_auth:complete_uilogout(Req).
 
-auth_bucket(Req, F, [ArgPoolId, ArgBucketId | RestArgs], ReadOnlyOk) ->
-    case ns_bucket:get_bucket(ArgBucketId) of
-        {ok, BucketConf} ->
-            case menelaus_auth:is_bucket_accessible({ArgBucketId, BucketConf}, Req, ReadOnlyOk) of
-                true ->
-                    menelaus_web_buckets:checking_bucket_uuid(
-                      Req, BucketConf,
-                      fun () ->
-                              FArgs = [ArgPoolId, ArgBucketId] ++
-                                  RestArgs ++ [Req],
-                              apply(F, FArgs)
-                      end);
-                _ ->
-                    menelaus_auth:require_auth(Req)
-            end;
-        not_present ->
-            reply_not_found(Req)
-    end.
+auth_bucket(Req, F, [_PoolId, BucketId | _] = Args, ReadOnlyOk) ->
+    menelaus_auth:apply_auth_bucket(Req, fun check_uuid/3, [F, Args], BucketId, ReadOnlyOk).
 
 auth(Req, F, Args) ->
     menelaus_auth:apply_auth(Req, fun check_uuid/3, [F, Args]).
