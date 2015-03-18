@@ -901,12 +901,7 @@ aggregate_stat_kv_pairs([{AK, AV} = APair | ARest] = A,
             NewAcc = [{AK, aggregate_values(AK, AV, BV)} | Acc],
             aggregate_stat_kv_pairs(ARest, BRest, NewAcc);
         _ when AK < BK ->
-            case AV of
-                undefined ->
-                    aggregate_stat_kv_pairs(ARest, B, [{AK, 0} | Acc]);
-                _ ->
-                    aggregate_stat_kv_pairs(ARest, B, [APair | Acc])
-            end;
+            aggregate_stat_kv_pairs(ARest, B, [APair | Acc]);
         _ ->
             aggregate_stat_kv_pairs(A, BRest, Acc)
     end.
@@ -920,7 +915,7 @@ aggregate_stat_kv_pairs_test() ->
                  aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
                                          [{a, 2}, {b, undefined}, {ba, 123}],
                                          [])),
-    ?assertEqual([{a, 3}, {b, 0}, {c, 1}, {d,1}],
+    ?assertEqual([{a, 3}, {b, undefined}, {c, 1}, {d,1}],
                  aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
                                          [{a, 2}, {c,0}, {d, undefined}, {e,1}],
                                          [])),
