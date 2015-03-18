@@ -236,11 +236,13 @@ handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
     index_status_keeper:update(NumConnections, Indexes),
     BucketStats = aggregate_index_stats([{B, K, V} || {{B, _, _} = K, V} <- Stats]),
     PerBucketStats = misc:keygroup(1, BucketStats),
-    [gen_event:notify(ns_stats_event,
-                      {stats, "@index-"++binary_to_list(B),
-                       #stat_entry{timestamp = TS,
-                                   values = [{format_k(K), V} || {_, K, V} <- S]}})
-     || {B, S} <- PerBucketStats],
+    [begin
+         Values = lists:keysort(1, [{format_k(K), V} || {_, K, V} <- S]),
+         gen_event:notify(ns_stats_event,
+                          {stats, "@index-"++binary_to_list(B),
+                           #stat_entry{timestamp = TS,
+                                       values = Values}})
+     end || {B, S} <- PerBucketStats],
     {noreply, #state{prev_counters = NewCounters,
                      prev_ts = TS}};
 handle_info(_Info, State) ->
