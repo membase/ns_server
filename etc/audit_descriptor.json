@@ -215,11 +215,11 @@
           "enabled" : true,
           "mandatory_fields" : {
               "timestamp" : "",
-              "real_userid" : {"source" : "", "user" : ""},
               "remote" : {"ip" : "", "port" : 1},
               "bucket_name" : ""
           },
           "optional_fields" : {
+              "real_userid" : {"source" : "", "user" : ""},
               "sessionid" : ""
           }
       },
