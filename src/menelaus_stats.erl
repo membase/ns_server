@@ -1906,7 +1906,7 @@ serve_ui_stats(Req) ->
     case proplists:get_value("statName", Params) of
         undefined ->
             serve_aggregated_ui_stats(Req, Params);
-         StatName ->
+        StatName ->
             serve_specific_ui_stats(Req, StatName, Params)
     end.
 
