@@ -889,12 +889,12 @@ aggregate_values(Key, AV, BV) ->
             end
     end.
 
-aggregate_stat_kv_pairs([], _BValues, Acc) ->
-    lists:reverse(Acc);
+aggregate_stat_kv_pairs([], BPairs, Acc) ->
+    lists:reverse(Acc, BPairs);
 aggregate_stat_kv_pairs(APairs, [], Acc) ->
     lists:reverse(Acc, APairs);
 aggregate_stat_kv_pairs([{AK, AV} = APair | ARest] = A,
-                        [{BK, BV} | BRest] = B,
+                        [{BK, BV} = BPair | BRest] = B,
                         Acc) ->
     case AK of
         BK ->
@@ -903,19 +903,19 @@ aggregate_stat_kv_pairs([{AK, AV} = APair | ARest] = A,
         _ when AK < BK ->
             aggregate_stat_kv_pairs(ARest, B, [APair | Acc]);
         _ ->
-            aggregate_stat_kv_pairs(A, BRest, Acc)
+            aggregate_stat_kv_pairs(A, BRest, [BPair | Acc])
     end.
 
 aggregate_stat_kv_pairs_test() ->
-    ?assertEqual([{a, 3}, {b, undefined}, {c, 1}, {d,1}],
+    ?assertEqual([{a, 3}, {b, undefined}, {c, 1}, {d,1}, {e, 1}],
                  aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
                                          [{a, 2}, {b, undefined}, {d, undefined}, {e,1}],
                                          [])),
-    ?assertEqual([{a, 3}, {b, undefined}, {c, 1}, {d,1}],
+    ?assertEqual([{a, 3}, {b, undefined}, {ba, 123}, {c, 1}, {d,1}],
                  aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
                                          [{a, 2}, {b, undefined}, {ba, 123}],
                                          [])),
-    ?assertEqual([{a, 3}, {b, undefined}, {c, 1}, {d,1}],
+    ?assertEqual([{a, 3}, {b, undefined}, {c, 1}, {d,1}, {e, 1}],
                  aggregate_stat_kv_pairs([{a, 1}, {b, undefined}, {c,1}, {d, 1}],
                                          [{a, 2}, {c,0}, {d, undefined}, {e,1}],
                                          [])),
