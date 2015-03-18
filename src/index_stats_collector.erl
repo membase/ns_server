@@ -25,6 +25,7 @@
 
 %% API
 -export([start_link/0]).
+-export([per_index_stat/2, global_index_stat/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -62,8 +63,9 @@ latest_tick(TS, NumDropped) ->
             TS
     end.
 
--define(I_GAUGES, [disk_size]).
--define(I_COUNTERS, [num_requests]).
+-define(I_GAUGES, [disk_size, data_size, num_docs_pending, items_count]).
+-define(I_COUNTERS, [num_requests, num_rows_returned, num_docs_indexed,
+                     scan_bytes_read, total_scan_duration]).
 
 %% do_recognize_name(<<"needs_restart">> = K) ->
 %%     {gauge, K};
@@ -249,9 +251,15 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 format_k({_Bucket, Index, Metric}) ->
-    iolist_to_binary([<<"index/">>, Index, "/", Metric]);
+    per_index_stat(Index, Metric);
 format_k(Metric) when is_binary(Metric) ->
-    iolist_to_binary([<<"index/">>, Metric]).
+    global_index_stat(Metric).
+
+per_index_stat(Index, Metric) ->
+    iolist_to_binary([<<"index/">>, Index, $/, Metric]).
+
+global_index_stat(StatName) ->
+    iolist_to_binary([<<"index/">>, StatName]).
 
 terminate(_Reason, _State) ->
     ok.

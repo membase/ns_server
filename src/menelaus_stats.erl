@@ -36,6 +36,9 @@
 
 -export([serve_ui_stats/1]).
 
+-import(index_stats_collector,
+        [per_index_stat/2, global_index_stat/1]).
+
 %% External API
 bucket_disk_usage(BucketName) ->
     {_, _, _, _, DiskUsed, _}
@@ -507,8 +510,49 @@ computed_stats_lazy_proplist("@query") ->
      {<<"query_avg_svc_time">>, QueryAvgServiceTime},
      {<<"query_avg_response_size">>, QueryAvgResultSize},
      {<<"query_avg_result_count">>, QueryAvgResultCount}];
-computed_stats_lazy_proplist("@index-"++_) ->
-    [];
+computed_stats_lazy_proplist("@index-"++BucketId) ->
+    Z2 = fun (StatNameA, StatNameB, Combiner) ->
+                 {Combiner, [StatNameA, StatNameB]}
+         end,
+
+    lists:flatmap(
+      fun (Index) ->
+              AvgItemSize = Z2(per_index_stat(Index, <<"data_size">>),
+                               per_index_stat(Index, <<"items_count">>),
+                               fun (DataSize, Count) ->
+                                       try
+                                           DataSize / Count
+                                       catch
+                                           error:badarith ->
+                                               0
+                                       end
+                               end),
+
+              Fragmentation = Z2(per_index_stat(Index, <<"disk_size">>),
+                                 per_index_stat(Index, <<"data_size">>),
+                                 fun (DiskSize, DataSize) ->
+                                         try
+                                             100 * (DiskSize - DataSize) / DiskSize
+                                         catch error:badarith ->
+                                                 0
+                                         end
+                                 end),
+
+              AvgScanLatency = Z2(per_index_stat(Index, <<"total_scan_duration">>),
+                                  per_index_stat(Index, <<"num_rows_returned">>),
+                                  fun (ScanDuration, NumRows) ->
+                                          try
+                                              ScanDuration / NumRows
+                                          catch
+                                              error:badarith ->
+                                                  0
+                                          end
+                                  end),
+
+              [{per_index_stat(Index, <<"avg_item_size">>), AvgItemSize},
+               {per_index_stat(Index, <<"fragmentation">>), Fragmentation},
+               {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency}]
+      end, get_indexes(BucketId));
 computed_stats_lazy_proplist("@goxdcr-"++BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
@@ -1156,24 +1200,45 @@ do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
                 XNodes ->
                     XNodes
             end,
-    NIs = ns_doctor:get_nodes(),
-    AllIndexes0 =
-        [case dict:find(N, NIs) of
-             error -> [];
-             {ok, NI} ->
-                 Indexes = proplists:get_value(indexes, proplists:get_value(index_status, NI, []), []),
-                 proplists:get_value(list_to_binary(BucketId), Indexes, [])
-         end || N <- Nodes],
-    AllIndexes = lists:usort(lists:append(AllIndexes0)),
+    AllIndexes = do_get_indexes(BucketId, Nodes),
     [{struct, [{blockName, <<"Index Stats: ", Id/binary>>},
                {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
-                [{struct,[{isBytes, true},
-                          {title, <<"Disk Size">>},
-                          {name, iolist_to_binary([<<"index/">>, Id, <<"/disk_size">>])},
-                          {desc, <<"TBD">>}]},
-                 {struct, [{title, <<"Scans/sec">>},
-                           {name, iolist_to_binary([<<"index/">>, Id, <<"/num_requests">>])},
+                [{struct, [{title, <<"Scans/sec">>},
+                           {name, per_index_stat(Id, <<"num_rows_returned">>)},
+                           {desc, <<"TBD">>}]},
+                 {struct, [{isBytes, true},
+                           {title, <<"Disk Size">>},
+                           {name, per_index_stat(Id, <<"disk_size">>)},
+                           {desc, <<"TBD">>}]},
+                 {struct, [{isBytes, true},
+                           {title, <<"Data Size">>},
+                           {name, per_index_stat(Id, <<"data_size">>)},
+                           {desc, <<"TBD">>}]},
+                 {struct, [{title, <<"Total Items Remaining Count">>},
+                           {name, per_index_stat(Id, <<"num_docs_pending">>)},
+                           {desc, <<"TBD">>}]},
+                 {struct, [{title, <<"Drain Rate Items/sec">>},
+                           {name, per_index_stat(Id, <<"num_docs_indexed">>)},
+                           {desc, <<"TBD">>}]},
+                 {struct, [{title, <<"Total Items Count">>},
+                           {name, per_index_stat(Id, <<"items_count">>)},
+                           {desc, <<"TBD">>}]},
+                 {struct, [{isBytes, true},
+                           {title, <<"Average Item Size">>},
+                           {name, per_index_stat(Id, <<"avg_item_size">>)},
+                           {desc, <<"TBD">>}]},
+                 {struct, [{title, <<"% Fragmentation">>},
+                           {name, per_index_stat(Id, <<"fragmentation">>)},
+                           {desc, <<"TBD">>}]},
+                 {struct, [{title, <<"Requests/sec">>},
+                           {name, per_index_stat(Id, <<"num_requests">>)},
+                           {desc, <<"TBD">>}]},
+                 {struct, [{title, <<"Bytes returned/sec">>},
+                           {name, per_index_stat(Id, <<"scan_bytes_returned">>)},
+                           {desc, <<"TBD">>}]},
+                 {struct, [{title, <<"Average Scan Latency">>},
+                           {name, per_index_stat(Id, <<"avg_scan_latency">>)},
                            {desc, <<"TBD">>}]}]}]}
      || Id <- AllIndexes].
 
@@ -1348,12 +1413,19 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                               false ->
                                   [];
                               _ ->
-                                  [{struct, [{title, <<"Index Disk Size">>},
-                                             {name, <<"index/disk_size">>},
+                                  [{struct, [{isBytes, true},
+                                             {title, <<"Index Data Size">>},
+                                             {name, global_index_stat(<<"data_size">>)},
+                                             {desc, <<"TBD">>}]},
+                                   {struct, [{title, <<"Index Disk Size">>},
+                                             {name, global_index_stat(<<"disk_size">>)},
                                              {desc, <<"TBD">>},
                                              {isBytes, true}]},
+                                   {struct, [{title, <<"Index Fragmentation %">>},
+                                             {name, global_index_stat(<<"fragmentation">>)},
+                                             {desc, <<"TBD">>}]},
                                    {struct, [{title, <<"Index Scans/sec">>},
-                                             {name, <<"index/num_requests">>},
+                                             {name, global_index_stat(<<"num_rows_returned">>)},
                                              {desc, <<"TBD">>}]}]
                           end)
              ]}]},
@@ -2106,3 +2178,21 @@ output_ui_stats(Req, Stats, Directory, Wnd, Bucket, StatName, NewHaveStamp, Extr
          {specificStatName, StatName},
          {lastTStamp, {NewHaveStamp}} | Extra],
     menelaus_util:reply_json(Req, {J}).
+
+get_indexes(BucketId) ->
+    simple_memoize({indexes, BucketId},
+                   fun () ->
+                           Nodes = bucket_nodes("@index-" ++ BucketId),
+                           do_get_indexes(BucketId, Nodes)
+                   end, 5000).
+
+do_get_indexes(BucketId, Nodes) ->
+    NIs = ns_doctor:get_nodes(),
+    AllIndexes =
+        [case dict:find(N, NIs) of
+             error -> [];
+             {ok, NI} ->
+                 Indexes = proplists:get_value(indexes, proplists:get_value(index_status, NI, []), []),
+                 proplists:get_value(list_to_binary(BucketId), Indexes, [])
+         end || N <- Nodes],
+    lists:usort(lists:append(AllIndexes)).
