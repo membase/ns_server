@@ -156,10 +156,16 @@ now_to_iso8601(Now = {_, _, Microsecs}) ->
     io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",
                   [YYYY, MM, DD, Hour, Min, Sec, Microsecs div 1000]) ++ Offset.
 
-get_user_id(undefined) ->
+get_user_id(undefined, undefined) ->
     undefined;
-get_user_id(User) ->
-    {[{source, ns_server}, {user, to_binary(User)}]}.
+get_user_id(User, Source) ->
+    {[{source, case to_binary(Source) of
+                   <<"builtin">> ->
+                       <<"ns_server">>;
+                   BSource ->
+                       BSource
+               end},
+      {user, to_binary(User)}]}.
 
 get_remote(Req) ->
     Socket = Req:get(socket),
@@ -183,7 +189,7 @@ prepare(Req, Params) ->
             undefined ->
                 {undefined, undefined, undefined};
             _ ->
-                {get_user_id(menelaus_auth:get_user(Req)),
+                {get_user_id(menelaus_auth:get_user(Req), menelaus_auth:get_source(Req)),
                  menelaus_auth:get_token(Req),
                  get_remote(Req)}
         end,
