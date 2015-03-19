@@ -221,7 +221,7 @@ store_bucket_auth(Req, Auth) ->
                        {UserX, _} ->
                            {UserX, bucket};
                        undefined ->
-                           {anonymous, anonymous}
+                           {undefined, undefined}
                    end,
     store_user_info(Req, User, Role, builtin, undefined).
 

@@ -156,8 +156,6 @@ now_to_iso8601(Now = {_, _, Microsecs}) ->
     io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",
                   [YYYY, MM, DD, Hour, Min, Sec, Microsecs div 1000]) ++ Offset.
 
-get_user_id(anonymous) ->
-    undefined;
 get_user_id(undefined) ->
     undefined;
 get_user_id(User) ->
@@ -183,7 +181,7 @@ prepare(Req, Params) ->
     {User, Token, Remote} =
         case Req of
             undefined ->
-                {anonymous, undefined, undefined};
+                {undefined, undefined, undefined};
             _ ->
                 {get_user_id(menelaus_auth:get_user(Req)),
                  menelaus_auth:get_token(Req),
