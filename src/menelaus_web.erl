@@ -625,8 +625,8 @@ handle_uilogin(Req) ->
     User = proplists:get_value("user", Params),
     Password = proplists:get_value("password", Params),
     case menelaus_auth:verify_login_creds(User, Password) of
-        {ok, Role, _Src} ->
-            menelaus_auth:complete_uilogin(Req, User, Role);
+        {ok, Role, Src} ->
+            menelaus_auth:complete_uilogin(Req, User, Role, Src);
         false ->
             menelaus_auth:reject_uilogin(Req, User)
     end.

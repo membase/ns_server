@@ -34,7 +34,7 @@
          is_under_admin/1,
          is_read_only_auth/1,
          extract_ui_auth_token/1,
-         complete_uilogin/3,
+         complete_uilogin/4,
          reject_uilogin/2,
          complete_uilogout/1,
          maybe_refresh_token/1,
@@ -42,6 +42,7 @@
          get_user/1,
          get_token/1,
          get_role/1,
+         get_source/1,
          validate_request/1,
          verify_login_creds/2]).
 
@@ -143,14 +144,14 @@ kill_auth_cookie(Req) ->
     {Name, Content} = mochiweb_cookies:cookie(ui_auth_cookie_name(Req), "", Options),
     {Name, Content ++ "; expires=Thu, 01 Jan 1970 00:00:00 GMT"}.
 
-complete_uilogin(Req, User, Role) ->
-    Token = menelaus_ui_auth:generate_token({User, Role}),
+complete_uilogin(Req, User, Role, Src) ->
+    Token = menelaus_ui_auth:generate_token({User, Role, Src}),
     CookieHeader = generate_auth_cookie(Req, Token),
-    ns_audit:login_success(store_user_info(Req, User, Role, Token)),
+    ns_audit:login_success(store_user_info(Req, User, Role, Src, Token)),
     menelaus_util:reply(Req, 200, [CookieHeader]).
 
 reject_uilogin(Req, User) ->
-    ns_audit:login_failure(store_user_info(Req, User, undefined, undefined)),
+    ns_audit:login_failure(store_user_info(Req, User, undefined, undefined, undefined)),
     menelaus_util:reply(Req, 400).
 
 complete_uilogout(Req) ->
@@ -173,14 +174,16 @@ maybe_refresh_token(Req) ->
 validate_request(Req) ->
     undefined = Req:get_header_value("menelaus_auth-user"),
     undefined = Req:get_header_value("menelaus_auth-role"),
-    undefined = Req:get_header_value("menelaus_auth-token").
+    undefined = Req:get_header_value("menelaus_auth-token"),
+    undefined = Req:get_header_value("menelaus_auth-source").
 
-store_user_info(Req, User, Role, Token) ->
+store_user_info(Req, User, Role, Source, Token) ->
     Headers = Req:get(headers),
     H1 = mochiweb_headers:enter("menelaus_auth-user", User, Headers),
     H2 = mochiweb_headers:enter("menelaus_auth-role", Role, H1),
     H3 = mochiweb_headers:enter("menelaus_auth-token", Token, H2),
-    mochiweb_request:new(Req:get(socket), Req:get(method), Req:get(raw_path), Req:get(version), H3).
+    H4 = mochiweb_headers:enter("menelaus_auth-source", Source, H3),
+    mochiweb_request:new(Req:get(socket), Req:get(method), Req:get(raw_path), Req:get(version), H4).
 
 get_user(Req) ->
     Req:get_header_value("menelaus_auth-user").
@@ -190,6 +193,9 @@ get_token(Req) ->
 
 get_role(Req) ->
     Req:get_header_value("menelaus_auth-role").
+
+get_source(Req) ->
+    Req:get_header_value("menelaus_auth-source").
 
 %% applies given function F if current credentials allow access to at
 %% least single SASL-auth bucket. So admin credentials and bucket
@@ -217,7 +223,7 @@ store_bucket_auth(Req, Auth) ->
                        undefined ->
                            {anonymous, anonymous}
                    end,
-    store_user_info(Req, User, Role, undefined).
+    store_user_info(Req, User, Role, builtin, undefined).
 
 %% Checks if given credentials allow access to any SASL-auth
 %% bucket.
@@ -286,7 +292,7 @@ check_auth_bucket(Req, Auth, BucketTuple, ReadOnlyOk) ->
 
 check_auth(Auth) ->
     case check_admin_auth_int(Auth) of
-        {true, _User, _Token} ->
+        {true, _User, _Source, _Token} ->
             true;
         false ->
             false
@@ -294,8 +300,8 @@ check_auth(Auth) ->
 
 check_admin_auth(Req, Auth) ->
     case check_admin_auth_int(Auth) of
-        {true, User, Token} ->
-            {true, store_user_info(Req, User, admin, Token)};
+        {true, User, Source, Token} ->
+            {true, store_user_info(Req, User, admin, Source, Token)};
         false ->
             false
     end.
@@ -303,35 +309,35 @@ check_admin_auth(Req, Auth) ->
 %% checks if given credentials are admin credentials
 check_admin_auth_int({token, Token}) ->
     case menelaus_ui_auth:check(Token) of
-        {ok, {User, admin}} ->
-            {true, User, Token};
+        {ok, {User, admin, Source}} ->
+            {true, User, Source, Token};
         _ ->
             % An undefined user means no login/password auth check.
             case ns_config_auth:get_user(admin) of
                 undefined ->
-                    {true, undefined, Token};
+                    {true, undefined, undefined, Token};
                 _ ->
                     false
             end
     end;
 check_admin_auth_int({User, Password}) ->
     case check_user_creds(admin, User, Password) of
-        true ->
-            {true, User, undefined};
+        {true, Source} ->
+            {true, User, Source, undefined};
         false ->
             false
     end;
 check_admin_auth_int(undefined) ->
     case ns_config_auth:get_user(admin) of
         undefined ->
-            {true, undefined, undefined};
+            {true, undefined, undefined, undefined};
         _ ->
             false
     end.
 
 is_read_only_auth(Auth) ->
     case check_read_only_auth(Auth) of
-        {true, _, _} ->
+        {true, _, _, _} ->
             true;
         false ->
             false
@@ -339,23 +345,23 @@ is_read_only_auth(Auth) ->
 
 check_read_only_auth(Req, Auth) ->
     case check_read_only_auth(Auth) of
-        {true, User, Token} ->
-            {true, store_user_info(Req, User, ro_admin, Token)};
+        {true, User, Source, Token} ->
+            {true, store_user_info(Req, User, ro_admin, Source, Token)};
         false ->
             check_admin_auth(Req, Auth)
     end.
 
 check_read_only_auth({token, Token}) ->
     case menelaus_ui_auth:check(Token) of
-        {ok, {User, ro_admin}} ->
-            {true, User, Token};
+        {ok, {User, ro_admin, Source}} ->
+            {true, User, Source, Token};
         _ ->
             false
     end;
 check_read_only_auth({User, Password}) ->
     case check_user_creds(ro_admin, User, Password) of
-        true ->
-            {true, User, undefined};
+        {true, Source} ->
+            {true, User, Source, undefined};
         false ->
             false
     end;
@@ -503,7 +509,17 @@ check_saslauthd_auth(User, Password) ->
     end.
 
 check_user_creds(Role, User, Password) ->
-    ns_config_auth:authenticate(Role, User, Password) orelse check_saslauthd_auth(User, Password) =:= Role.
+    case ns_config_auth:authenticate(Role, User, Password) of
+        true ->
+            {true, builtin};
+        false ->
+            case check_saslauthd_auth(User, Password) =:= Role of
+                true ->
+                    {true, saslauthd};
+                false ->
+                    false
+            end
+    end.
 
 verify_login_creds(User, Password) ->
     case ns_config_auth:authenticate(admin, User, Password) of
