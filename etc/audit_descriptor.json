@@ -43,7 +43,7 @@
               "real_userid" : {"source" : "", "user" : ""},
               "remote" : {"ip" : "", "port" : 1},
               "role" : "",
-              "userid" : {"source" : "", "user" : ""}
+              "userid" : ""
           },
           "optional_fields" : {
               "sessionid" : ""
@@ -58,7 +58,7 @@
           "mandatory_fields" : {
               "timestamp" : "",
               "role" : "",
-              "userid" : {"source" : "", "user" : ""}
+              "userid" : ""
           },
           "optional_fields" : {
               "real_userid" : {"source" : "", "user" : ""},
@@ -76,7 +76,7 @@
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
               "remote" : {"ip" : "", "port" : 1},
-              "user" : {"source" : "", "user" : ""},
+              "user" : "",
               "node" : "",
               "groupUUID" : "",
               "hostname" : "",

@@ -231,11 +231,11 @@ login_failure(Req) ->
 
 delete_user(Req, User, Role) ->
     put(delete_user, Req, [{role, Role},
-                           {userid, get_user_id(User)}]).
+                           {userid, User}]).
 
 password_change(Req, User, Role) ->
     put(password_change, Req, [{role, Role},
-                               {userid, get_user_id(User)}]).
+                               {userid, User}]).
 
 add_node(Req, Hostname, Port, User, GroupUUID, Services, Node) ->
     put(add_node, Req, [{node, Node},
@@ -243,7 +243,7 @@ add_node(Req, Hostname, Port, User, GroupUUID, Services, Node) ->
                         {hostname, Hostname},
                         {port, Port},
                         {services, {list, Services}},
-                        {user, get_user_id(User)}]).
+                        {user, User}]).
 
 remove_node(Req, Node) ->
     put(remove_node, Req, [{node, Node}]).
