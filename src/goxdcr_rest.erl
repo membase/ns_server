@@ -167,14 +167,12 @@ process_repl_info({Info}, Acc) ->
                        misc:expect_prop_value(<<"ErrorMsg">>, Error)}
                       || {Error} <- ErrorList],
 
-            [{Id, Stats, Errors}, Acc]
+            [{Id, Stats, Errors} | Acc]
     end.
 
 all_local_replication_infos() ->
     get_from_goxdcr(fun (Json) ->
-                            lists:foldl(fun (Info, Acc) ->
-                                                process_repl_info(Info, Acc)
-                                        end, [], Json)
+                            lists:foldl(fun process_repl_info/2, [], Json)
                     end, "/pools/default/replicationInfos", 30000).
 
 grab_stats(Bucket) ->
