@@ -24,7 +24,6 @@
          send/2,
          find_all_replication_docs/1,
          all_local_replication_infos/0,
-         delete_all_replications/1,
          stats/1,
          get_replications_with_remote_info/0]).
 
@@ -112,9 +111,6 @@ interesting_doc_key(<<"pauseRequested">>) ->
 interesting_doc_key(_) ->
     false.
 
-query_goxdcr(Method, Path, Timeout) ->
-    query_goxdcr(fun (_) -> ok end, Method, Path, Timeout).
-
 query_goxdcr(Fun, Method, Path, Timeout) ->
     RV = {Code, _Headers, Body} =
         send_with_timeout(Method, Path, special_auth_headers(), [], Timeout),
@@ -180,9 +176,6 @@ all_local_replication_infos() ->
                                                 process_repl_info(Info, Acc)
                                         end, [], Json)
                     end, "/pools/default/replicationInfos", 30000).
-
-delete_all_replications(Bucket) ->
-    query_goxdcr("DELETE", "/pools/default/replications/" ++ mochiweb_util:quote_plus(Bucket), 30000).
 
 grab_stats(Bucket) ->
     get_from_goxdcr(fun ({Json}) ->

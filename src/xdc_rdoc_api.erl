@@ -126,7 +126,7 @@ find_all_replication_docs_body(Doc0) ->
 delete_all_replications(Bucket) ->
     case cluster_compat_mode:is_goxdcr_enabled() of
         true ->
-            goxdcr_rest:delete_all_replications(Bucket);
+            ok;
         false ->
             XDCRDocs = find_all_replication_docs(),
             lists:foreach(
