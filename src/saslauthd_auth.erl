@@ -15,11 +15,17 @@
 %%
 -module(saslauthd_auth).
 
+-include("ns_common.hrl").
+
 -export([verify_creds/2]).
 
 verify_creds(Username, Password) ->
-    {ok, Resp} = json_rpc_connection:perform_call('saslauthd-saslauthd-port', "SASLDAuth.Check",
-                                                  {[{user, list_to_binary(Username)},
-                                                    {pwd, list_to_binary(Password)}]}),
-
-    Resp =:= true.
+    case json_rpc_connection:perform_call('saslauthd-saslauthd-port', "SASLDAuth.Check",
+                                          {[{user, list_to_binary(Username)},
+                                            {pwd, list_to_binary(Password)}]}) of
+        {ok, Resp} ->
+            Resp =:= true;
+        {error, ErrorMsg} = Error ->
+            ?log_error("Revrpc to saslauthd returned error: ~p", [ErrorMsg]),
+            Error
+    end.

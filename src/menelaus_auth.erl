@@ -47,8 +47,7 @@
          verify_login_creds/2]).
 
 -export([build_saslauthd_auth_settings/0,
-         set_saslauthd_auth_settings/1,
-         check_saslauthd_auth/2]).
+         set_saslauthd_auth_settings/1]).
 
 %% External API
 
@@ -483,16 +482,13 @@ check_saslauthd_auth(User, Password) ->
         false ->
             false;
         true ->
-            {_, Admins} = lists:keyfind(admins, 1, LDAPCfg),
-            {_, RoAdmins} = lists:keyfind(roAdmins, 1, LDAPCfg),
-            UserB = list_to_binary(User),
-            IsAdmin = is_list(Admins) andalso lists:member(UserB, Admins),
-            IsRoAdmin = is_list(RoAdmins) andalso lists:member(UserB, RoAdmins),
-            Authed = saslauthd_auth:verify_creds(User, Password),
-            case Authed of
-                false ->
-                    false;
+            case saslauthd_auth:verify_creds(User, Password) of
                 true ->
+                    {_, Admins} = lists:keyfind(admins, 1, LDAPCfg),
+                    {_, RoAdmins} = lists:keyfind(roAdmins, 1, LDAPCfg),
+                    UserB = list_to_binary(User),
+                    IsAdmin = is_list(Admins) andalso lists:member(UserB, Admins),
+                    IsRoAdmin = is_list(RoAdmins) andalso lists:member(UserB, RoAdmins),
                     if
                         IsAdmin ->
                             admin;
@@ -504,7 +500,9 @@ check_saslauthd_auth(User, Password) ->
                             ro_admin;
                         true ->
                             false
-                    end
+                    end;
+                Other ->
+                    Other
             end
     end.
 
@@ -536,7 +534,9 @@ verify_login_creds(User, Password) ->
                         ro_admin ->
                             {ok, ro_admin, saslauthd};
                         false ->
-                            false
+                            false;
+                        {error, Error} ->
+                            {error, Error}
                     end
             end
     end.

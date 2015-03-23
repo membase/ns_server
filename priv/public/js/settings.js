@@ -1850,6 +1850,9 @@ var LDAPSetupSection = {
         }
         self.ldapValidateFormResult.text(text);
       },
+      error: function (jqXhr) {
+        self.ldapValidateFormResult.text("Error: " + jqXhr.responseText);
+      },
       complete: function () {
         spinner.remove();
         spinner = undefined;

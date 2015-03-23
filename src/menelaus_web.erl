@@ -627,7 +627,7 @@ handle_uilogin(Req) ->
     case menelaus_auth:verify_login_creds(User, Password) of
         {ok, Role, Src} ->
             menelaus_auth:complete_uilogin(Req, User, Role, Src);
-        false ->
+        _ ->
             menelaus_auth:reject_uilogin(Req, User)
     end.
 
@@ -3630,6 +3630,8 @@ handle_validate_saslauthd_creds_post(Req) ->
     JR = case VRV of
              {ok, ro_admin, _} -> roAdmin;
              {ok, admin, _} -> fullAdmin;
+             {error, Error} ->
+                 erlang:throw({web_exception, 400, Error, []});
              _ -> none
          end,
     Src = case VRV of
