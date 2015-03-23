@@ -64,6 +64,7 @@
          validate_dir/2,
          validate_integer/2,
          validate_range/4,
+         validate_range/5,
          validate_unsupported_params/1,
          validate_has_params/1,
          execute_if_validated/3]).
@@ -498,7 +499,14 @@ validate_integer(Name, {OutList, _, _} = State) ->
             end
     end.
 
-validate_range(Name, Min, Max, {_, InList, _} = State) ->
+validate_range(Name, Min, Max, State) ->
+    ErrorFun = fun (NameArg, MinArg, MaxArg) ->
+                       io_lib:format("The value of ~p must be in range from ~p to ~p",
+                                     [NameArg, MinArg, MaxArg])
+               end,
+    validate_range(Name, Min, Max, ErrorFun, State).
+
+validate_range(Name, Min, Max, ErrorFun, {_, InList, _} = State) ->
     Value = proplists:get_value(Name, InList),
     case Value of
         undefined ->
@@ -508,8 +516,7 @@ validate_range(Name, Min, Max, {_, InList, _} = State) ->
                 true ->
                     State;
                 false ->
-                    return_error(Name, io_lib:format("The value of ~p must be in range from ~p to ~p",
-                                                     [Name, Min, Max]), State)
+                    return_error(Name, ErrorFun(Name, Min, Max), State)
             end
     end.
 
