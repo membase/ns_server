@@ -238,7 +238,7 @@ start_rebalance(KnownNodes, EjectNodes, DeltaRecoveryBuckets) ->
       ?SERVER, {maybe_start_rebalance, KnownNodes, EjectNodes, DeltaRecoveryBuckets}).
 
 -spec start_graceful_failover(node()) ->
-                                     ok | in_progress | in_recovery |
+                                     ok | in_progress | in_recovery | non_kv_node |
                                      not_graceful | unknown_node | last_node.
 start_graceful_failover(Node) ->
     wait_for_orchestrator(),

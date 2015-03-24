@@ -972,6 +972,13 @@ start_link_graceful_failover(Node) ->
     proc_lib:start_link(erlang, apply, [fun run_graceful_failover/1, [Node]]).
 
 run_graceful_failover(Node) ->
+    %% No graceful failovers for non KV node
+    case ns_cluster_membership:is_active_non_kv_node(Node) of
+        true ->
+            erlang:exit(non_kv_node);
+        false ->
+            ok
+    end,
     case check_failover_possible(Node) of
         ok ->
             ok;
