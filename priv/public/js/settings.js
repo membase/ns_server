@@ -51,7 +51,7 @@ var SettingsSection = {
     if (val!==undefined  && DAL.cells.mode.value==='settings') {
       rootNode.find('.error-container.active').empty().removeClass('active');
       rootNode.find('input.invalid').removeClass('invalid');
-      if (val.errors===null) {
+      if ($.isEmptyObject(val.errors)) {
         rootNode.find('.save_button').removeAttr('disabled');
       } else {
         // Show error messages on all input fields that contain one
