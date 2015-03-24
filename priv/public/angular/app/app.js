@@ -116,6 +116,13 @@ angular.module('mnSettingsAutoCompaction', [
 angular.module('mnSettingsAutoCompactionService', [
   'mnHttp'
 ]);
+angular.module('mnSettingsAudit', [
+  'mnSettingsAuditService',
+  'mnHelper'
+]);
+angular.module('mnSettingsAuditService', [
+  'mnHttp'
+]);
 
 
 angular.module('mnServers', [
@@ -228,6 +235,7 @@ angular.module('app', [
   'mnSettingsNotifications',
   'mnSettingsAlerts',
   'mnSettingsAutoCompaction',
+  'mnSettingsAudit',
   'mnServers',
   'mnOverview',
   'mnBuckets',

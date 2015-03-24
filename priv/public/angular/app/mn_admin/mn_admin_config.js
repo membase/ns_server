@@ -179,5 +179,15 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
           return mnSettingsAutoCompactionService.getAutoCompaction();
         }
       }
+    })
+    .state('app.admin.settings.audit', {
+      url: '/audit',
+      controller: 'mnSettingsAuditController',
+      templateUrl: 'mn_admin/mn_settings/audit/mn_settings_audit.html',
+      resolve: {
+        auditSettings: function (mnSettingsAuditService) {
+          return mnSettingsAuditService.getAuditSettings();
+        }
+      }
     });
 });

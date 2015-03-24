@@ -1,0 +1,38 @@
+<div class="audit_container when-enterprise only-when-40" mn-spinner="viewLoading">
+  <h2>Audit Configuration</h2>
+  <p class="sub_section">
+    Auditing keeps track of important admin events occurring in Couchbase. Keeping track and persisting these events is essential for any secured environment and provides evidence for suspicious/malicious activity in Couchbase.
+  </p>
+  <form ng-submit="submit()">
+    <div class="sub_section" style="margin-right:0;">
+      <div class="row">
+        <label>
+          <span>Enable:</span>
+          <input type="checkbox" ng-model="state.auditdEnabled">
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          <span>Target log directory:</span>
+          <input ng-model="state.logPath" ng-disabled="!state.auditdEnabled" class="archive_path_field">
+        </label>
+        <i ng-if="errors.logPath" class="error-container">{{ errors.logPath }}</i>
+      </div>
+      <div class="row">
+        <label>
+          <span>Log rotation time interval:</span>
+          <input ng-model="state.rotateInterval" ng-disabled="!state.auditdEnabled" type="number" style="width:67px;">
+        </label>
+        <select ng-model="state.rotateUnit" ng-disabled="!state.auditdEnabled" style="width:75px;">
+          <option value="minutes">Minutes</option>
+          <option value="hours">Hours</option>
+          <option value="days">Days</option>
+        </select>
+        <i ng-if="errors.rotateInterval" class="error-container">{{ errors.rotateInterval }}</i>
+      </div>
+    </div>
+    <div class="save_cancel">
+      <button ng-disabled="!!errors" class="save_button float_right">Save</button>
+    </div>
+  </form>
+</div>

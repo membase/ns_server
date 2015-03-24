@@ -1450,6 +1450,11 @@ input[type=number].size {width:4em;}
 .for_upload {line-height: 30px; padding-left: 5px;}
 .for_upload label {display: inline-block; width: 200px;}
 
+.audit_container label {display: inline-block;}
+.audit_container span {width: 150px;display: inline-block; vertical-align: middle;}
+.audit_container .row {margin: 10px 0;}
+.archive_path_field {width: 390px;}
+
 .global_alerts_container {width: 1060px; margin: 0 auto;}
 
 #js_collect_information .controls {text-align: right; height: 30px; padding-right: 10px; margin-top: -40px; padding-bottom: 10px; margin-left: 300px;}
