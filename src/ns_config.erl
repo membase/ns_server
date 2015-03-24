@@ -209,12 +209,12 @@ run_txn_loop(Body, RetriesLeft) ->
     case Body(Cfg, SetFun) of
         {commit, [NewCfg]} ->
             case cas_local_config(NewCfg, hd(Cfg)) of
-                true -> {commit, NewCfg};
+                true -> {commit, [NewCfg]};
                 false -> run_txn_loop(Body, RetriesLeft - 1)
             end;
         {commit, [NewCfg], Extra} ->
             case cas_local_config(NewCfg, hd(Cfg)) of
-                true -> {commit, NewCfg, Extra};
+                true -> {commit, [NewCfg], Extra};
                 false -> run_txn_loop(Body, RetriesLeft - 1)
             end;
         {abort, _} = AbortRV ->
