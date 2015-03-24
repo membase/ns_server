@@ -67,6 +67,8 @@
          validate_range/5,
          validate_unsupported_params/1,
          validate_has_params/1,
+         validate_memory_quota/2,
+         validate_any_value/2,
          execute_if_validated/3]).
 
 %% used by parse_validate_number
@@ -529,6 +531,36 @@ validate_has_params({[], InList, Errors}) ->
     {[], InList, [{<<"_">>, <<"Request should have form parameters">>} | Errors]};
 validate_has_params(State) ->
     State.
+
+validate_memory_quota(Name, {_, InList, _} = State) ->
+    MemoryQuota = proplists:get_value(Name, InList),
+    case MemoryQuota of
+       undefined ->
+            State;
+       _ ->
+            {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun} =
+                ns_storage_conf:allowed_node_quota_range(),
+            if
+                MemoryQuota < MinMemoryMB ->
+                    return_error(Name,
+                                 ["The RAM Quota value is too small.", QuotaErrorDetailsFun()],
+                                 State);
+                MemoryQuota > MaxMemoryMB ->
+                    return_error(Name,
+                                 ["The RAM Quota value is too large.", QuotaErrorDetailsFun()],
+                                 State);
+                true ->
+                    State
+            end
+   end.
+
+validate_any_value(Name, {OutList, _, _} = State) ->
+    case lists:keyfind(atom_to_list(Name), 1, OutList) of
+        false ->
+            State;
+        {_, Value} ->
+            return_value(Name, Value, State)
+    end.
 
 execute_if_validated(Fun, Req, {_, Values, Errors}) ->
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",

@@ -90,6 +90,8 @@
          validate_range/5,
          validate_unsupported_params/1,
          validate_has_params/1,
+         validate_memory_quota/2,
+         validate_any_value/2,
          execute_if_validated/3]).
 
 -define(AUTO_FAILLOVER_MIN_TIMEOUT, 30).
@@ -1890,48 +1892,31 @@ handle_read_only_user_reset(Req) ->
             end
     end.
 
-memory_quota_validation(MemoryQuota) ->
-    case MemoryQuota of
-       undefined -> ok;
-       X ->
-           {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun} =
-               ns_storage_conf:allowed_node_quota_range(),
-           case parse_validate_number(X, MinMemoryMB, MaxMemoryMB) of
-               {ok, Number} ->
-                   {ok, Number};
-               invalid -> {memoryQuota, <<"The RAM Quota value must be a number.">>};
-               too_small ->
-                   {memoryQuota,
-                    list_to_binary("The RAM Quota value is too small." ++ QuotaErrorDetailsFun())};
-               too_large ->
-                   {memoryQuota,
-                    list_to_binary("The RAM Quota value is too large." ++ QuotaErrorDetailsFun())}
-           end
-   end.
-
 get_cluster_name() ->
     get_cluster_name(ns_config:latest_config_marker()).
 
 get_cluster_name(Config) ->
     ns_config:search(Config, cluster_name, "").
 
+validate_pool_settings_post(Args) ->
+    R0 = validate_has_params({Args, [], []}),
+    R1 = validate_integer(memoryQuota, R0),
+    R2 = validate_memory_quota(memoryQuota, R1),
+    R3 = validate_any_value(clusterName, R2),
+    validate_unsupported_params(R3).
+
 handle_pool_settings_post(Req) ->
-    Params = Req:parse_post(),
-    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
-    MemoryQuota = proplists:get_value("memoryQuota", Params),
-    ClusterName = proplists:get_value("clusterName", Params, get_cluster_name()),
-    case {ValidateOnly, memory_quota_validation(MemoryQuota)} of
-        {false, {ok, Quota}} ->
-            ok = ns_config:set(
-                   [{cluster_name, ClusterName},
-                    {memory_quota, Quota}]),
-            ns_audit:cluster_settings(Req, Quota, ClusterName),
-            reply(Req, 200);
-        {true, {ok, _Quota}} ->
-            reply_json(Req, {struct, [{errors, null}]}, 200);
-        {_, Error} ->
-            reply_json(Req, {struct, [{errors, {struct, [Error]}}]}, 400)
-    end.
+    execute_if_validated(
+      fun (Values) ->
+              Quota = proplists:get_value(memoryQuota, Values, ns_storage_conf:memory_quota()),
+              ClusterName = proplists:get_value(clusterName, Values, get_cluster_name()),
+
+              ok = ns_config:set(
+                     [{cluster_name, ClusterName},
+                      {memory_quota, Quota}]),
+              ns_audit:cluster_settings(Req, Quota, ClusterName),
+              reply(Req, 200)
+      end, Req, validate_pool_settings_post(Req:parse_post())).
 
 handle_settings_web(Req) ->
     reply_json(Req, build_settings_web()).
