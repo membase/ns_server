@@ -202,5 +202,7 @@ build_auth_info() ->
 handle_cbauth_post(Req) ->
     Role = menelaus_auth:get_role(Req),
     User = menelaus_auth:get_user(Req),
+    Source = menelaus_auth:get_source(Req),
     menelaus_util:reply_json(Req, {[{role, erlang:list_to_binary(Role)},
-                                    {user, erlang:list_to_binary(User)}]}).
+                                    {user, erlang:list_to_binary(User)},
+                                    {source, erlang:list_to_binary(Source)}]}).
