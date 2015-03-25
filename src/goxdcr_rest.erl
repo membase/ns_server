@@ -108,8 +108,15 @@ interesting_doc_key(<<"continuous">>) ->
     true;
 interesting_doc_key(<<"pauseRequested">>) ->
     true;
+interesting_doc_key(<<"filter_expression">>) ->
+    true;
 interesting_doc_key(_) ->
     false.
+
+convert_doc_key(<<"filter_expression">>) ->
+    filterExpression;
+convert_doc_key(Key) ->
+    list_to_atom(binary_to_list(Key)).
 
 query_goxdcr(Fun, Method, Path, Timeout) ->
     RV = {Code, _Headers, Body} =
@@ -143,7 +150,7 @@ get_from_goxdcr(Fun, Path, Timeout) ->
     end.
 
 process_doc({Props}) ->
-    [{list_to_atom(binary_to_list(Key)), Value} ||
+    [{convert_doc_key(Key), Value} ||
         {Key, Value} <- Props,
         interesting_doc_key(Key)].
 
