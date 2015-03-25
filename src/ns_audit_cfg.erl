@@ -34,16 +34,25 @@ string_key(descriptors_path) ->
 string_key(_) ->
     false.
 
-updatable_key(auditd_enabled) ->
-    true;
-updatable_key(rotate_interval) ->
-    true;
-updatable_key(rotate_size) ->
-    true;
-updatable_key(log_path) ->
-    true;
-updatable_key(_) ->
-    false.
+key_api_to_config(auditdEnabled) ->
+    auditd_enabled;
+key_api_to_config(rotateInterval) ->
+    rotate_interval;
+key_api_to_config(rotateSize) ->
+    rotate_size;
+key_api_to_config(logPath) ->
+    log_path.
+
+key_config_to_api(auditd_enabled) ->
+    auditdEnabled;
+key_config_to_api(rotate_interval) ->
+    rotateInterval;
+key_config_to_api(rotate_size) ->
+    rotateSize;
+key_config_to_api(log_path) ->
+    logPath;
+key_config_to_api(_) ->
+    undefined.
 
 is_notable_config_key(audit) ->
     true;
@@ -59,10 +68,7 @@ get_global() ->
     gen_server:call(?MODULE, get_global).
 
 set_global(KVList) ->
-    true = lists:any(fun({K, _}) ->
-                             updatable_key(K)
-                     end, KVList),
-    ns_config:set_sub(audit, KVList).
+    ns_config:set_sub(audit, [{key_api_to_config(ApiK), V} || {ApiK, V} <- KVList]).
 
 init([]) ->
     {Global, Local} = read_config(),
@@ -84,7 +90,14 @@ init([]) ->
     {ok, {Global, Local}}.
 
 handle_call(get_global, _From, {Global, _Local} = State) ->
-    {reply, [{K, V} || {K, V} <- Global, updatable_key(K)], State}.
+    {reply, lists:foldl(fun ({K, V}, Acc) ->
+                                case key_config_to_api(K) of
+                                    undefined ->
+                                        Acc;
+                                    ApiK ->
+                                        [{ApiK, V} | Acc]
+                                end
+                        end, [], Global), State}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.

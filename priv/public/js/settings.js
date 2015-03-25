@@ -1641,19 +1641,19 @@ var AuditSetupSection = {
   getForm: function () {
     var self = AuditSetupSection;
     var formData = $.deparam(serializeForm(self.auditSetupForm));
-    if (!formData["auditd_enabled"]) {
-      formData["auditd_enabled"] = "false";
+    if (!formData["auditdEnabled"]) {
+      formData["auditdEnabled"] = "false";
     } else {
-      formData["rotate_interval"] = formData["rotate_interval"] * self.formatTimeUnit(formData["rotate_interval_unit"]);
-      delete formData["rotate_interval_unit"];
+      formData["rotateInterval"] = formData["rotateInterval"] * self.formatTimeUnit(formData["rotateIntervalUnit"]);
+      delete formData["rotateIntervalUnit"];
     }
     return $.param(formData);
   },
   fillForm: function (settings) {
     var self = this;
-    var formattedInterval = self.formatRotateInterval(settings["rotate_interval"]);
-    settings["rotate_interval"] = formattedInterval[0];
-    settings["rotate_interval_unit"] = formattedInterval[1];
+    var formattedInterval = self.formatRotateInterval(settings["rotateInterval"]);
+    settings["rotateInterval"] = formattedInterval[0];
+    settings["rotateIntervalUnit"] = formattedInterval[1];
     setFormValues(self.auditSetupForm, settings);
     if (!DAL.cells.isROAdminCell.value) {
       self.auditEnabled.change();
