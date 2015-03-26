@@ -67,9 +67,9 @@ latest_tick(TS, NumDropped) ->
 -define(I_COUNTERS, [num_requests, num_rows_returned, num_docs_indexed,
                      scan_bytes_read, total_scan_duration]).
 
-%% do_recognize_name(<<"needs_restart">> = K) ->
-%%     {gauge, K};
-do_recognize_name(<<"num_connections">> = _K) ->
+do_recognize_name(<<"needs_restart">>) ->
+    {gauge, index_needs_restart};
+do_recognize_name(<<"num_connections">>) ->
     {gauge, index_num_connections};
 do_recognize_name(K) ->
     case binary:split(K, <<":">>, [global]) of
@@ -235,7 +235,8 @@ handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
                         Acc
                 end, [], Stats),
     NumConnections = proplists:get_value(index_num_connections, Stats, 0),
-    index_status_keeper:update(NumConnections, Indexes),
+    NeedsRestart = proplists:get_value(index_needs_restart, Stats, false),
+    index_status_keeper:update(NumConnections, NeedsRestart, Indexes),
     BucketStats = aggregate_index_stats([{B, K, V} || {{B, _, _} = K, V} <- Stats]),
     PerBucketStats = misc:keygroup(1, BucketStats),
     [begin
