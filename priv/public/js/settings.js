@@ -72,20 +72,14 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
   }).name("isClusterTabCell");
   ns.isClusterTabCell.equality = _.isEqual;
 
-  ns.visualInternalSettingsUriCell = Cell.compute(function (v) {
-    return v.need(poolDetailsCell).visualSettingsUri;
-  }).name("visualInternalSettingsUriCell");
-
-  ns.visualInternalSettingsCell = Cell.compute(function (v) {
-    return future.get({url: v.need(ns.visualInternalSettingsUriCell)});
-  }).name("visualInternalSettingsCell");
-  ns.visualInternalSettingsCell.equality = _.isEqual;
+  ns.clusterNameCell = Cell.compute(function (v) {
+    return v.need(poolDetailsCell).clusterName;
+  }).name("clusterNameCell");
 
   ns.allClusterSectionSettingsCell = Cell.compute(function (v) {
     var currentPool = v.need(poolDetailsCell);
     var isCluster = v.need(ns.isClusterTabCell);
     var ram = currentPool.storageTotals.ram;
-    var visualInternalSettings = v.need(ns.visualInternalSettingsCell);
     var nNodes = 0;
     $.each(currentPool.nodes, function(n, node) {
       if (node.clusterMembership === "active") {
@@ -95,7 +89,7 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
     var ramPerNode = Math.floor(ram.total/nNodes);
 
     return isCluster ? {
-      tabName: visualInternalSettings.tabName,
+      clusterName: currentPool.clusterName,
       totalRam: Math.floor(ramPerNode/Math.Mi),
       memoryQuota: Math.floor(ram.quotaTotalPerNode/Math.Mi),
       maxRamMegs: Math.max(Math.floor(ramPerNode/Math.Mi) - 1024, Math.floor(ramPerNode * 4 / (5 * Math.Mi)))
@@ -128,7 +122,7 @@ var ClusterSection = {
       $(this).text($(this).text() === "Show" ? "Hide" : "Show");
     });
 
-    var clusterSettingsFormValidator = setupFormValidation(clusterSettingsForm, "/internalSettings/visual?just_validate=1",
+    var clusterSettingsFormValidator = setupFormValidation(clusterSettingsForm, "/pools/default?just_validate=1",
       function (_status, errors) {
         SettingsSection.renderErrors(errors, clusterSettingsForm);
     }, function () {
@@ -169,27 +163,27 @@ var ClusterSection = {
       }
     });
 
-    self.visualInternalSettingsCell.subscribeValue(function (visualInternalSettings) {
-      if (!visualInternalSettings) {
-        return;
+    self.clusterNameCell.subscribeValue(function (clusterName) {
+      if (!DAL.version || clusterName === undefined) {
+          return;
       }
+
       var parsedVersion = DAL.parseVersion(DAL.version);
-      var tabName = $.trim(visualInternalSettings.tabName);
       var reallyOriginalTabName = originalTitle + " (" + parsedVersion[0] + ")";
-      document.title = tabName ? (reallyOriginalTabName + ' - ' + tabName) : reallyOriginalTabName;
-      clusterNameContainer.text(tabName).attr('title', tabName);
+      document.title = clusterName ? (reallyOriginalTabName + ' - ' + clusterName) : reallyOriginalTabName;
+      clusterNameContainer.text(clusterName).attr('title', clusterName);
     });
 
     clusterSettingsForm.submit(function (e) {
       e.preventDefault();
       var spinner = overlayWithSpinner(container);
       $.ajax({
-        url: "/internalSettings/visual",
+        url: "/pools/default",
         type: 'POST',
         data: $.deparam(serializeForm(clusterSettingsForm)),
         success: function () {
           poolDetailsCell.recalculate();
-          self.visualInternalSettingsCell.recalculate();
+          self.clusterNameCell.recalculate();
         },
         error: function (jqXhr) {
           SettingsSection.renderErrors(JSON.parse(jqXhr.responseText), clusterSettingsForm);
