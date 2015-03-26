@@ -102,6 +102,15 @@ handle_call(get_global, _From, {Global, _Local} = State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+handle_info(notify_memcached, State) ->
+    misc:flush(notify_memcached),
+    ?log_debug("Instruct memcached to reload audit config"),
+    ok = ns_memcached_sockets_pool:executing_on_socket(
+           fun (Sock) ->
+                   mc_client_binary:audit_config_reload(Sock)
+           end),
+    {noreply, State};
+
 handle_info(update_audit_json, {OldGlobal, OldLocal}) ->
     misc:flush(update_audit_json),
     {Global, Local} = read_config(),
@@ -141,26 +150,7 @@ write_audit_json(Params) ->
                      end, CompleteParams),
     Bytes = ejson:encode({Json}),
     ok = misc:atomic_write_file(Path, Bytes),
-    case should_update_memcached() of
-        true ->
-            ?log_debug("Instruct memcached to reload audit.json"),
-            ns_memcached_sockets_pool:executing_on_socket(
-              fun (Sock) ->
-                      ok = mc_client_binary:audit_config_reload(Sock)
-              end);
-        false ->
-            ?log_debug("Memcached is not started yet. No audit reload is performed."),
-            ok
-    end.
-
-should_update_memcached() ->
-    try ns_ports_setup:sync() of
-        _ ->
-            true
-    catch
-        exit:{noproc, _} ->
-            false
-    end.
+    self() ! notify_memcached.
 
 read_config() ->
     {case ns_config:search(audit) of

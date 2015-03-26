@@ -146,9 +146,6 @@ child_specs() ->
       permanent, infinity, supervisor,
       [menelaus_sup]},
 
-     {ns_audit_cfg, {ns_audit_cfg, start_link, []},
-      {permanent, 4}, 1000, worker, []},
-
      %% Note: cert and private key files are set up as part of
      %% menelaus_sup. So ns_ports_setup needs to go after it.
      {ns_ports_setup, {ns_ports_setup, start, []},
@@ -156,6 +153,9 @@ child_specs() ->
 
      {ns_memcached_sockets_pool, {ns_memcached_sockets_pool, start_link, []},
       permanent, 1000, worker, []},
+
+     {ns_audit_cfg, {ns_audit_cfg, start_link, []},
+      {permanent, 4}, 1000, worker, []},
 
      {memcached_config_mgr, {memcached_config_mgr, start_link, []},
       {permanent, 4}, 1000, worker, []},
