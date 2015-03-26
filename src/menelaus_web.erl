@@ -334,8 +334,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth_ro, fun handle_settings_audit/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings/1};
-                         ["internalSettings", "visual"] ->
-                             {auth_ro, fun handle_visual_internal_settings/1};
                          ["nodes", NodeId] ->
                              {auth_ro, fun handle_node/2, [NodeId]};
                          ["nodes", "self", "xdcrSSLPorts"] ->
@@ -428,11 +426,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun handle_validate_saslauthd_creds_post/1};
                          ["internalSettings"] ->
                              {auth, fun handle_internal_settings_post/1};
-                         ["internalSettings", "visual"] ->
-                             {auth, fun handle_visual_internal_settings_post/1};
                          ["pools", "default"] ->
-                             {auth, fun handle_pool_settings/2,
-                              ["default"]};
+                             {auth, fun handle_pool_settings_post/1};
                          ["controller", "ejectNode"] ->
                              {auth, fun handle_eject_post/1};
                          ["controller", "addNode"] ->
@@ -1132,8 +1127,6 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
 
     TasksURI = bin_concat_path(["pools", Id, "tasks"],
                                [{"v", ns_doctor:get_tasks_version()}]),
-    VisualSettingsV0 = erlang:phash2(ns_config:search(Config, internal_visual_settings)),
-    VisualSettingsV = list_to_binary(integer_to_list(VisualSettingsV0)),
 
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
@@ -1159,7 +1152,6 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                                                   build_auto_compaction_settings(ACSettings)
                                           end},
                  {tasks, {struct, [{uri, TasksURI}]}},
-                 {visualSettingsUri, <<"/internalSettings/visual?v=", VisualSettingsV/binary>>},
                  {counters, {struct, ns_cluster:counters()}}],
 
     PropList1 = case cluster_compat_mode:is_cluster_25() of
@@ -1175,7 +1167,8 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
             for_ui ->
                 StorageTotals = [ {Key, {struct, StoragePList}}
                                   || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
-                [{storageTotals, {struct, StorageTotals}},
+                [{clusterName, list_to_binary(get_cluster_name())},
+                 {storageTotals, {struct, StorageTotals}},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()}
                  | PropList1];
@@ -1916,41 +1909,23 @@ memory_quota_validation(MemoryQuota) ->
            end
    end.
 
-handle_visual_internal_settings(Req) ->
-    Config = ns_config:get(),
-    reply_json(Req, {struct, case ns_config:search(Config, internal_visual_settings) of
-                                 {value, InternalVisualSettings} ->
-                                    InternalVisualSettings;
-                                 _ ->
-                                    [{tabName, <<"">>}]
-                              end}).
+get_cluster_name() ->
+    get_cluster_name(ns_config:latest_config_marker()).
 
-handle_visual_internal_settings_post(Req) ->
+get_cluster_name(Config) ->
+    ns_config:search(Config, cluster_name, "").
+
+handle_pool_settings_post(Req) ->
     Params = Req:parse_post(),
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     MemoryQuota = proplists:get_value("memoryQuota", Params),
-    TabName = proplists:get_value("tabName", Params, ""),
+    ClusterName = proplists:get_value("clusterName", Params, get_cluster_name()),
     case {ValidateOnly, memory_quota_validation(MemoryQuota)} of
         {false, {ok, Quota}} ->
             ok = ns_config:set(
-                   [{internal_visual_settings, [{tabName, erlang:list_to_binary(TabName)}]},
+                   [{cluster_name, ClusterName},
                     {memory_quota, Quota}]),
-            ns_audit:cluster_settings(Req, Quota, TabName),
-            reply(Req, 200);
-        {true, {ok, _Quota}} ->
-            reply_json(Req, {struct, [{errors, null}]}, 200);
-        {_, Error} ->
-            reply_json(Req, {struct, [{errors, {struct, [Error]}}]}, 400)
-    end.
-
-handle_pool_settings(_PoolId, Req) ->
-    Params = Req:parse_post(),
-    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
-    MemoryQuota = proplists:get_value("memoryQuota", Params),
-    case {ValidateOnly, memory_quota_validation(MemoryQuota)} of
-        {false, {ok, Quota}} ->
-            ok = ns_config:set([{memory_quota, Quota}]),
-            ns_audit:cluster_settings(Req, Quota, undefined),
+            ns_audit:cluster_settings(Req, Quota, ClusterName),
             reply(Req, 200);
         {true, {ok, _Quota}} ->
             reply_json(Req, {struct, [{errors, null}]}, 200);

@@ -97,7 +97,7 @@ is_interesting_to_watchers({server_groups, _}) -> true;
 is_interesting_to_watchers({ns_node_disco_events, _NodesBefore, _NodesAfter}) -> true;
 is_interesting_to_watchers({autocompaction, _}) -> true;
 is_interesting_to_watchers({cluster_compat_version, _}) -> true;
-is_interesting_to_watchers({internal_visual_settings, _}) -> true;
+is_interesting_to_watchers({cluster_name, _}) -> true;
 is_interesting_to_watchers(_) -> false.
 
 handle_event({{node, Node, rest}, _}, State) when Node =:= node() ->

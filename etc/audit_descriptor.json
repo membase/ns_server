@@ -301,10 +301,10 @@
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
               "memory_quota" : 1,
+              "cluster_name" : "",
               "remote" : {"ip" : "", "port" : 1}
           },
           "optional_fields" : {
-              "cluster_name" : "",
               "sessionid" : ""
           }
       },
