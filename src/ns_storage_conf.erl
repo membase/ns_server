@@ -44,7 +44,7 @@
 
 
 memory_quota() ->
-    memory_quota(ns_config:get()).
+    memory_quota(ns_config:latest_config_marker()).
 
 memory_quota(Config) ->
     {value, RV} = ns_config:search(Config, memory_quota),
@@ -92,7 +92,7 @@ this_node_ixdir() ->
 
 -spec this_node_logdir() -> {ok, string()} | {error, any()}.
 this_node_logdir() ->
-    logdir(ns_config:get(), node()).
+    logdir(ns_config:latest_config_marker(), node()).
 
 -spec logdir(any(), atom()) -> {ok, string()} | {error, any()}.
 logdir(Config, Node) ->
@@ -491,10 +491,10 @@ this_node_memory_data() ->
 
 allowed_node_quota_range() ->
     MemoryData = this_node_memory_data(),
-    allowed_node_quota_range(ns_config:get(), MemoryData, 1024).
+    allowed_node_quota_range(ns_config:latest_config_marker(), MemoryData, 1024).
 
 allowed_node_quota_range(MemoryData) ->
-    allowed_node_quota_range(ns_config:get(), MemoryData, 1024).
+    allowed_node_quota_range(ns_config:latest_config_marker(), MemoryData, 1024).
 
 %% when validating memory size versus cluster quota we use less strict
 %% rules so that clusters upgraded from 1.6.0 are able to join
