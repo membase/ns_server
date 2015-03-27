@@ -342,6 +342,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {done, handle_node_self_xdcr_ssl_ports(Req)};
                          ["indexStatus"] ->
                              {auth_ro, fun handle_index_status/1};
+                         ["settings", "indexes"] ->
+                             {auth_ro, fun menelaus_web_indexes:handle_settings_get/1};
                          ["diag"] ->
                              {auth, fun diag_handler:handle_diag/1, []};
                          ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
@@ -528,6 +530,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_mcd_settings:handle_node_post/2, [Node]};
                          ["pools", "default", "settings", "memcached", "node", Node, "_restart"] ->
                              {auth, fun menelaus_web_mcd_settings:handle_node_restart/2, [Node]};
+                         ["settings", "indexes"] ->
+                             {auth, fun menelaus_web_indexes:handle_settings_post/1};
                          ["_cbauth"] ->
                              {auth_ro, fun menelaus_cbauth:handle_cbauth_post/1};
                          ["_metakv"] ->

@@ -94,14 +94,8 @@ fetch_settings_json(Config) ->
 build_settings_json(Props) ->
     build_settings_json(Props, dict:new()).
 
-build_settings_json(Props, CurrentDict) ->
-    Known = known_settings(),
-    NewDict =
-        lists:foldl(
-          fun ({Key, Value}, Acc) ->
-                  {_, Lens, _} = lists:keyfind(Key, 1, Known),
-                  lens_set(Value, Lens, Acc)
-          end, CurrentDict, Props),
+build_settings_json(Props, Dict) ->
+    NewDict = lens_set_many(known_settings(), Props, Dict),
     ejson:encode({dict:to_list(NewDict)}).
 
 decode_settings_json(JSON) ->
@@ -122,15 +116,12 @@ populate_ets_table(JSON) ->
 
 do_populate_ets_table(JSON) ->
     Dict = decode_settings_json(JSON),
-    lists:foreach(
-      fun ({Key, Lens, _}) ->
-              ets:insert(?MODULE, {Key, lens_get(Lens, Dict)})
-      end, known_settings()),
-
+    ets:insert(?MODULE, lens_get_many(known_settings(), Dict)),
     erlang:put(prev_json, JSON).
 
 known_settings() ->
-    [{memoryQuota, id_lens(<<"indexer.settings.memory_quota">>), 256}].
+    [{memoryQuota, id_lens(<<"indexer.settings.memory_quota">>), 256},
+     {generalSettings, general_settings_lens(), general_settings_defaults()}].
 
 default_settings() ->
     [{UIKey, Default} || {UIKey, _, Default} <- known_settings()].
@@ -144,8 +135,46 @@ id_lens(Key) ->
           end,
     {Get, Set}.
 
+indexer_threads_lens() ->
+    Key = <<"indexer.settings.max_cpu_percent">>,
+    Get = fun (Dict) ->
+                  dict:fetch(Key, Dict) div 100
+          end,
+    Set = fun (Value, Dict) ->
+                  dict:store(Key, Value * 100, Dict)
+          end,
+    {Get, Set}.
+
+general_settings_lens_props() ->
+    [{indexerThreads, indexer_threads_lens(), 4},
+     {memorySnapshotInterval, id_lens(<<"indexer.settings.inmemory_snapshot.interval">>), 200},
+     {stableSnapshotInterval, id_lens(<<"indexer.settings.persisted_snapshot.interval">>), 30000},
+     {maxRollbackPoints, id_lens(<<"indexer.settings.recovery.max_rollbacks">>), 5}].
+
+general_settings_lens_get(Dict) ->
+    lens_get_many(general_settings_lens_props(), Dict).
+
+general_settings_lens_set(Values, Dict) ->
+    lens_set_many(general_settings_lens_props(), Values, Dict).
+
+general_settings_lens() ->
+    {fun general_settings_lens_get/1, fun general_settings_lens_set/2}.
+
+general_settings_defaults() ->
+    [{Key, Default} || {Key, _, Default} <- general_settings_lens_props()].
+
 lens_get({Get, _}, Dict) ->
     Get(Dict).
 
+lens_get_many(Lenses, Dict) ->
+    [{Key, lens_get(L, Dict)} || {Key, L, _} <- Lenses].
+
 lens_set(Value, {_, Set}, Dict) ->
     Set(Value, Dict).
+
+lens_set_many(Lenses, Values, Dict) ->
+    lists:foldl(
+      fun ({Key, Value}, Acc) ->
+              {Key, L, _} = lists:keyfind(Key, 1, Lenses),
+              lens_set(Value, L, Acc)
+      end, Dict, Values).
