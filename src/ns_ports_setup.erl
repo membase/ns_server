@@ -247,7 +247,7 @@ query_node_spec(Config) ->
             Command = path_config:component_path(bin, "cbq-engine"),
             DataStoreArg = "--datastore=http://127.0.0.1:" ++ integer_to_list(RestPort),
             CnfgStoreArg = "--configstore=http://127.0.0.1:" ++ integer_to_list(RestPort),
-            HttpArg = "--http=:" ++ integer_to_list(ns_config:search(Config, {node, node(), query_port}, 8093)),
+            HttpArg = "--http=:" ++ integer_to_list(query_rest:get_query_port(Config, node())),
             Spec = {'query', Command,
                     [DataStoreArg, HttpArg, CnfgStoreArg],
                     [use_stdio, exit_status, stderr_to_stdout, stream,

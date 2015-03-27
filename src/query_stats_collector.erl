@@ -141,35 +141,6 @@ massage_stats([{K, V} | Rest], AccGauges, AccCounters) ->
             massage_stats(Rest, [{NewK, V} | AccGauges], AccCounters)
     end.
 
-get_stats() ->
-    case ns_cluster_membership:should_run_service(ns_config:latest_config_marker(), n1ql, node()) of
-        true ->
-            do_get_stats();
-        false ->
-            []
-    end.
-
-do_get_stats() ->
-    Port = ns_config:search(ns_config:latest_config_marker(), {node, node(), query_port}, 8093),
-    URL = iolist_to_binary(io_lib:format("http://127.0.0.1:~B/admin/stats", [Port])),
-    User = ns_config_auth:get_user(special),
-    Pwd = ns_config_auth:get_password(special),
-    Headers = menelaus_rest:add_basic_auth([], User, Pwd),
-    RV = lhttpc:request(binary_to_list(URL), "GET", Headers, [], 30000, []),
-    case RV of
-        {ok, {{200, _}, _Headers, BodyRaw}} ->
-            case (catch ejson:decode(BodyRaw)) of
-                {[_|_] = Stats} ->
-                    Stats;
-                Err ->
-                    ?log_error("Failed to parse query stats: ~p", [Err]),
-                    []
-            end;
-        _ ->
-            ?log_error("Ignoring. Failed to grab stats: ~p", [RV]),
-            []
-    end.
-
 diff_counters(_InvTSDiff, [], _PrevCounters, Acc) ->
     lists:reverse(Acc);
 diff_counters(InvTSDiff, [{K, V} | RestCounters] = Counters, PrevCounters, Acc) ->
@@ -185,7 +156,7 @@ diff_counters(InvTSDiff, [{K, V} | RestCounters] = Counters, PrevCounters, Acc) 
     end.
 
 grab_stats(PrevCounters, TSDiff) ->
-    {StatsGauges, StatsCounters0} = massage_stats(get_stats(), [], []),
+    {StatsGauges, StatsCounters0} = massage_stats(query_rest:get_stats(), [], []),
     StatsCounters = lists:sort(StatsCounters0),
     Stats0 = diff_counters(1000.0 / TSDiff, StatsCounters, PrevCounters, []),
     Stats = lists:merge(Stats0, lists:sort(StatsGauges)),
