@@ -1025,6 +1025,10 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary, "percent_completeness">>},
                                           {desc,<<"Percentage of checked items out of all checked and to-be-replicated items "
                                                   "(measured from per-replication stat percent_completeness)">>}]},
+                                 {struct,[{title,<<"outbound XDCR mutations replicated">>},
+                                          {name,<<Prefix/binary,"docs_written">>},
+                                          {desc,<<"Number of mutations that have been replicated to other clusters "
+                                                  "(measured from per-replication stat docs_written)">>}]},
                                  {struct,[{title,<<"outbound XDCR mutations filtered">>},
                                           {name,<<Prefix/binary,"docs_filtered">>},
                                           {desc,<<"Number of mutations that have been filtered out and have not been replicated to other clusters "
