@@ -29,13 +29,10 @@
 
 -export([handle_logs/1,
          build_logs/1,
-         handle_alerts/1,
          parse_settings_alerts_post/1,
          build_alerts_json/1]).
 
--export([get_alert_config/0,
-         set_alert_config/1,
-         alert_key/2,
+-export([alert_key/2,
          category_bin/1]).
 
 -import(menelaus_util,
@@ -73,9 +70,6 @@
 
 handle_logs(Req) ->
     reply_json(Req, {struct, [{list, build_logs(Req:parse_qs())}]}).
-
-handle_alerts(Req) ->
-    reply_json(Req, {struct, [{list, build_alerts(Req:parse_qs())}]}).
 
 
 %% @doc Parse alert setting that were posted. Return either the parsed
@@ -295,19 +289,6 @@ category_bin(warn) -> <<"warning">>;
 category_bin(crit) -> <<"critical">>;
 category_bin(_)    -> <<"info">>.
 
-build_alerts(Params) ->
-    {MinTStamp, Limit} = common_params(Params),
-    AlertConfig = get_alert_config(),
-    Alerts = proplists:get_value(alerts, AlertConfig, []),
-    LogEntries = ns_log:recent(),
-    LogEntries2 = lists:filter(
-                    fun(#log_entry{module = Module,
-                                   code = Code}) ->
-                            lists:member(alert_key(Module, Code), Alerts)
-                    end,
-                    LogEntries),
-    build_log_structs(LogEntries2, MinTStamp, Limit).
-
 % The defined alert_key() responses are...
 %
 %  server_down
@@ -332,13 +313,6 @@ alert_key(menelaus_web, Code) -> menelaus_web:alert_key(Code);
 alert_key(ns_cluster, Code) -> ns_cluster:alert_key(Code);
 alert_key(auto_failover, Code) -> auto_failover:alert_key(Code);
 alert_key(_Module, _Code) -> all.
-
-get_alert_config() ->
-    {value, X} = ns_config:search(ns_config:get(), email_alerts),
-    X.
-
-set_alert_config(AlertConfig) ->
-    ns_config:set(email_alerts, AlertConfig).
 
 common_params(Params) ->
     MinTStamp = case proplists:get_value("sinceTime", Params) of

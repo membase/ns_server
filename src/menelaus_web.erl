@@ -309,8 +309,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth_ro, fun handle_node_statuses/1};
                          ["logs"] ->
                              {auth_ro, fun menelaus_alert:handle_logs/1};
-                         ["alerts"] ->
-                             {auth_ro, fun menelaus_alert:handle_alerts/1};
                          ["settings", "web"] ->
                              {auth_ro, fun handle_settings_web/1};
                          ["settings", "alerts"] ->
