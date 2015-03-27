@@ -248,8 +248,17 @@ query_node_spec(Config) ->
             DataStoreArg = "--datastore=http://127.0.0.1:" ++ integer_to_list(RestPort),
             CnfgStoreArg = "--configstore=http://127.0.0.1:" ++ integer_to_list(RestPort),
             HttpArg = "--http=:" ++ integer_to_list(query_rest:get_query_port(Config, node())),
+
+            HttpsArgs = case query_rest:get_ssl_query_port(Config, node()) of
+                            undefined ->
+                                [];
+                            Port ->
+                                ["--https=:" ++ integer_to_list(Port),
+                                 "--certfile=" ++ ns_ssl_services_setup:ssl_cert_key_path(),
+                                 "--keyfile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
+                        end,
             Spec = {'query', Command,
-                    [DataStoreArg, HttpArg, CnfgStoreArg],
+                    [DataStoreArg, HttpArg, CnfgStoreArg] ++ HttpsArgs,
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {env, build_cbauth_env_vars(Config, 'cbq-engine')},
                      {log, ?QUERY_LOG_FILENAME}]},

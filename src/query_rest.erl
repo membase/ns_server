@@ -21,10 +21,14 @@
 -include("ns_common.hrl").
 
 -export([get_query_port/2,
+         get_ssl_query_port/2,
          get_stats/0]).
 
 get_query_port(Config, Node) ->
     ns_config:search(Config, {node, Node, query_port}, undefined).
+
+get_ssl_query_port(Config, Node) ->
+    ns_config:search(Config, {node, Node, ssl_query_port}, undefined).
 
 get_stats() ->
     case ns_cluster_membership:should_run_service(ns_config:latest_config_marker(), n1ql, node()) of
