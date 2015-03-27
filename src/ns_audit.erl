@@ -36,7 +36,7 @@
          disk_storage_conf/4,
          rename_node/3,
          setup_node_services/3,
-         cluster_settings/3,
+         cluster_settings/4,
          add_group/2,
          delete_group/2,
          update_group/2,
@@ -318,8 +318,10 @@ setup_node_services(Req, Node, Services) ->
     put(setup_node_services, Req, [{node, Node},
                                    {services, {list, Services}}]).
 
-cluster_settings(Req, Quota, ClusterName) ->
-    put(cluster_settings, Req, [{memory_quota, Quota}, {cluster_name, ClusterName}]).
+cluster_settings(Req, Quota, IndexQuota, ClusterName) ->
+    put(cluster_settings, Req, [{memory_quota, Quota},
+                                {index_memory_quota, IndexQuota},
+                                {cluster_name, ClusterName}]).
 
 add_group(Req, Group) ->
     put(add_group, Req, [{group_name, proplists:get_value(name, Group)},

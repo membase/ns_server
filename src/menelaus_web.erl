@@ -1899,14 +1899,25 @@ get_cluster_name() ->
 get_cluster_name(Config) ->
     ns_config:search(Config, cluster_name, "").
 
-validate_pool_settings_post(Args) ->
+validate_pool_settings_post(IsSherlock, Args) ->
     R0 = validate_has_params({Args, [], []}),
     R1 = validate_integer(memoryQuota, R0),
     R2 = validate_memory_quota(memoryQuota, R1),
     R3 = validate_any_value(clusterName, R2),
-    validate_unsupported_params(R3).
+
+    R5 = case IsSherlock of
+             true ->
+                 R4 = validate_integer(indexMemoryQuota, R3),
+                 validate_range(indexMemoryQuota, 256, 100000, R4);
+             false ->
+                 R3
+         end,
+
+    validate_unsupported_params(R5).
 
 handle_pool_settings_post(Req) ->
+    IsSherlock = cluster_compat_mode:is_cluster_sherlock(),
+
     execute_if_validated(
       fun (Values) ->
               Quota = proplists:get_value(memoryQuota, Values, ns_storage_conf:memory_quota()),
@@ -1915,9 +1926,23 @@ handle_pool_settings_post(Req) ->
               ok = ns_config:set(
                      [{cluster_name, ClusterName},
                       {memory_quota, Quota}]),
-              ns_audit:cluster_settings(Req, Quota, ClusterName),
+
+              case IsSherlock of
+                  true ->
+                      CurrentIndexQuota = index_settings_manager:get(memoryQuota),
+                      true = (CurrentIndexQuota =/= undefined),
+
+                      IndexQuota = proplists:get_value(indexMemoryQuota, Values, CurrentIndexQuota),
+                      {ok, _} = index_settings_manager:update(memoryQuota, IndexQuota),
+
+                      %% I could make index_memory_quota an optional field,
+                      %% but I don't want to bother with this
+                      ns_audit:cluster_settings(Req, Quota, IndexQuota, ClusterName);
+                  false ->
+                      ok
+              end,
               reply(Req, 200)
-      end, Req, validate_pool_settings_post(Req:parse_post())).
+      end, Req, validate_pool_settings_post(IsSherlock, Req:parse_post())).
 
 handle_settings_web(Req) ->
     reply_json(Req, build_settings_web()).
@@ -2318,6 +2343,17 @@ build_full_node_info(Node, LocalAddr) ->
     StorageConf = ns_storage_conf:storage_conf_from_node_status(NodeStatus),
     R = {struct, storage_conf_to_json(StorageConf)},
     DiskData = proplists:get_value(disk_data, NodeStatus, []),
+
+    MaybeIndexQuota = case cluster_compat_mode:is_cluster_sherlock() of
+                          true ->
+                              IndexQuota = index_settings_manager:get(memoryQuota),
+                              true = (IndexQuota =/= undefined),
+
+                              [{indexMemoryQuota, IndexQuota}];
+                          false ->
+                              []
+                      end,
+
     Fields = [{availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
                                                             {sizeKBytes, SizeKBytes},
                                                             {usagePercent, UsagePercent}]}
@@ -2325,7 +2361,7 @@ build_full_node_info(Node, LocalAddr) ->
               {memoryQuota, ns_storage_conf:memory_quota()},
               {storageTotals, {struct, [{Type, {struct, PropList}}
                                         || {Type, PropList} <- ns_storage_conf:nodes_storage_info([Node])]}},
-              {storage, R}] ++ KV,
+              {storage, R}] ++ MaybeIndexQuota ++ KV,
     {struct, lists:filter(fun (X) -> X =/= undefined end,
                                    Fields)}.
 
