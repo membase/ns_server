@@ -235,6 +235,9 @@ child_specs() ->
      {index_stats_sup, {index_stats_sup, start_link, []},
       permanent, infinity, supervisor, []},
 
+     {index_settings_manager, {index_settings_manager, start_link, []},
+      permanent, 1000, worker, [index_settings_manager]},
+
      {compaction_daemon, {compaction_daemon, start_link, []},
       permanent, 1000, worker, [compaction_daemon]},
 

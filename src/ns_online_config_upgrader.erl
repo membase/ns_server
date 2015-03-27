@@ -58,7 +58,8 @@ upgrade_config_from_2_5_to_3_0(Config) ->
 
 upgrade_config_from_3_0_to_4_0(Config) ->
     ?log_info("Performing online config upgrade to 4.0 version"),
-    goxdcr_upgrade:config_upgrade(Config).
+    goxdcr_upgrade:config_upgrade(Config) ++
+        index_settings_manager:config_upgrade().
 
 delete_unwanted_per_node_keys(Config) ->
     NodesWanted = ns_node_disco:nodes_wanted(Config),

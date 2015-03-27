@@ -1,0 +1,151 @@
+%% @author Couchbase <info@couchbase.com>
+%% @copyright 2015 Couchbase, Inc.
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%      http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+%%
+-module(index_settings_manager).
+
+-define(INDEX_CONFIG_KEY, {metakv, <<"/indexing/settings/config">>}).
+
+-export([start_link/0,
+         get/1, get/2,
+         update/1, update/2,
+         config_upgrade/0]).
+
+start_link() ->
+    work_queue:start_link(?MODULE, fun init/0).
+
+get(Key) ->
+    index_settings_manager:get(Key, undefined).
+
+get(Key, Default) when is_atom(Key) ->
+    case ets:lookup(?MODULE, Key) of
+        [{Key, Value}] ->
+            Value;
+        [] ->
+            Default
+    end.
+
+update(Props) ->
+    work_queue:submit_sync_work(
+      ?MODULE,
+      fun () ->
+              do_update(Props)
+      end).
+
+update(Key, Value) ->
+    update([{Key, Value}]).
+
+config_upgrade() ->
+    [{set, ?INDEX_CONFIG_KEY, build_settings_json(default_settings())}].
+
+%% internal
+init() ->
+    ets:new(?MODULE, [named_table, set, protected]),
+    ns_pubsub:subscribe_link(ns_config_events,
+                             fun ({?INDEX_CONFIG_KEY, JSON}, Pid) ->
+                                     submit_config_update(Pid, JSON);
+                                 (_, Pid) ->
+                                     Pid
+                             end, self()),
+    populate_ets_table().
+
+submit_config_update(Pid, JSON) ->
+    work_queue:submit_work(
+      Pid,
+      fun () ->
+              populate_ets_table(JSON)
+      end).
+
+do_update(Props) ->
+    RV = ns_config:run_txn(
+           fun (Config, SetFn) ->
+                   JSON = fetch_settings_json(Config),
+                   Current = decode_settings_json(JSON),
+
+                   New = build_settings_json(Props, Current),
+                   {commit, SetFn(?INDEX_CONFIG_KEY, New, Config), New}
+           end),
+
+    case RV of
+        {commit, _, NewJSON} ->
+            populate_ets_table(NewJSON),
+            {ok, ets:tab2list(?MODULE)};
+        _ ->
+            RV
+    end.
+
+fetch_settings_json() ->
+    fetch_settings_json(ns_config:latest_config_marker()).
+
+fetch_settings_json(Config) ->
+    ns_config:search(Config, ?INDEX_CONFIG_KEY, <<"{}">>).
+
+build_settings_json(Props) ->
+    build_settings_json(Props, dict:new()).
+
+build_settings_json(Props, CurrentDict) ->
+    Known = known_settings(),
+    NewDict =
+        lists:foldl(
+          fun ({Key, Value}, Acc) ->
+                  {_, Lens, _} = lists:keyfind(Key, 1, Known),
+                  lens_set(Value, Lens, Acc)
+          end, CurrentDict, Props),
+    ejson:encode({dict:to_list(NewDict)}).
+
+decode_settings_json(JSON) ->
+    {Props} = ejson:decode(JSON),
+    dict:from_list(Props).
+
+populate_ets_table() ->
+    JSON = fetch_settings_json(),
+    populate_ets_table(JSON).
+
+populate_ets_table(JSON) ->
+    case erlang:get(prev_json) =:= JSON of
+        true ->
+            ok;
+        false ->
+            do_populate_ets_table(JSON)
+    end.
+
+do_populate_ets_table(JSON) ->
+    Dict = decode_settings_json(JSON),
+    lists:foreach(
+      fun ({Key, Lens, _}) ->
+              ets:insert(?MODULE, {Key, lens_get(Lens, Dict)})
+      end, known_settings()),
+
+    erlang:put(prev_json, JSON).
+
+known_settings() ->
+    [{memoryQuota, id_lens(<<"indexer.settings.memory_quota">>), 256}].
+
+default_settings() ->
+    [{UIKey, Default} || {UIKey, _, Default} <- known_settings()].
+
+id_lens(Key) ->
+    Get = fun (Dict) ->
+                  dict:fetch(Key, Dict)
+          end,
+    Set = fun (Value, Dict) ->
+                  dict:store(Key, Value, Dict)
+          end,
+    {Get, Set}.
+
+lens_get({Get, _}, Dict) ->
+    Get(Dict).
+
+lens_set(Value, {_, Set}, Dict) ->
+    Set(Value, Dict).
