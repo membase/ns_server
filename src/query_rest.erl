@@ -22,7 +22,8 @@
 
 -export([get_query_port/2,
          get_ssl_query_port/2,
-         get_stats/0]).
+         get_stats/0,
+         maybe_refresh_cert/0]).
 
 get_query_port(Config, Node) ->
     ns_config:search(Config, {node, Node, query_port}, undefined).
@@ -63,3 +64,26 @@ send(Method, Path, Timeout) ->
     {ok, {{Code, _}, RespHeaders, RespBody}} =
         lhttpc:request(URL, Method, Headers, [], Timeout, []),
     {Code, RespHeaders, RespBody}.
+
+refresh_cert() ->
+    ?log_debug("Tell cbq-engine to refresh ssl certificate"),
+    try send("POST", "/admin/ssl_cert", 30000) of
+        {200, _Headers, _Body} ->
+            ok
+    catch
+        error:{badmatch, {error, {econnrefused, _}}} ->
+            ?log_debug("Failed to notify cbq-engine because it is not started yet. This is usually normal")
+    end.
+
+maybe_refresh_cert() ->
+    case ns_cluster_membership:should_run_service(ns_config:latest_config_marker(), n1ql, node()) of
+        true ->
+            case get_ssl_query_port(ns_config:latest_config_marker(), node()) of
+                undefined ->
+                    ok;
+                _ ->
+                    refresh_cert()
+            end;
+        false->
+            ok
+    end.

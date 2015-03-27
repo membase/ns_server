@@ -227,6 +227,7 @@ init([]) ->
     %% cert and pkey to xdcr proxy. So we just attempt to restart it
     %% on every init
     restart_xdcr_proxy(),
+    query_rest:maybe_refresh_cert(),
 
     gen_server:enter_loop(?MODULE, [],
                           build_state(CertPEM, PKeyPEM, Compat30, Node)).
@@ -348,6 +349,7 @@ restart_ssl_services() ->
             ok
     end,
     restart_xdcr_proxy(),
+    query_rest:maybe_refresh_cert(),
     ok = ns_memcached:connect_and_send_isasl_refresh().
 
 restart_xdcr_proxy() ->
