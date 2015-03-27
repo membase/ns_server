@@ -155,6 +155,12 @@ default() ->
      {{node, node(), query_port},
       misc:get_env_default(query_port, 8093)},
 
+     {{node, node(), ssl_query_port},
+      case IsEnterprise of
+          true -> misc:get_env_default(ssl_query_port, 18093);
+          _ -> undefined
+      end},
+
      {{node, node(), projector_port},
       misc:get_env_default(projector_port, 9999)},
 
