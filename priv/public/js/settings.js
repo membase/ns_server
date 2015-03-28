@@ -47,12 +47,14 @@ var SettingsSection = {
   },
   onLeave: function () {
   },
-  renderErrors: function(val, rootNode) {
-    if (val!==undefined  && DAL.cells.mode.value==='settings') {
+  renderErrors: function(val, rootNode, saveButton, disableSaveButton) {
+    if (val!==undefined) {
       rootNode.find('.error-container.active').empty().removeClass('active');
       rootNode.find('input.invalid').removeClass('invalid');
       if ($.isEmptyObject(val.errors)) {
-        rootNode.find('.save_button').removeAttr('disabled');
+        if (!disableSaveButton) {
+          (saveButton || rootNode.find('.save_button')).removeAttr('disabled');
+        }
       } else {
         // Show error messages on all input fields that contain one
         $.each(val.errors, function(name, message) {
@@ -60,7 +62,7 @@ var SettingsSection = {
             .prev('textarea, input').addClass('invalid');
         });
         // Disable the save button
-        rootNode.find('.save_button').attr('disabled', 'disabled');
+        (saveButton || rootNode.find('.save_button')).attr('disabled', 'disabled');
       }
     }
   }
@@ -76,29 +78,50 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
     return v.need(poolDetailsCell).clusterName;
   }).name("clusterNameCell");
 
-  ns.allClusterSectionSettingsCell = Cell.compute(function (v) {
-    var currentPool = v.need(poolDetailsCell);
-    var isCluster = v.need(ns.isClusterTabCell);
-    var ram = currentPool.storageTotals.ram;
-    var nNodes = 0;
-    $.each(currentPool.nodes, function(n, node) {
-      if (node.clusterMembership === "active") {
-        nNodes++;
-      }
-    });
-    var ramPerNode = Math.floor(ram.total/nNodes);
+  ns.indexesSettingsCell = Cell.compute(function (v) {
+    return future.get({url: "settings/indexes"});
+  }).name("indexesSettingsCell");
 
-    return isCluster ? {
-      clusterName: currentPool.clusterName,
-      totalRam: Math.floor(ramPerNode/Math.Mi),
-      memoryQuota: Math.floor(ram.quotaTotalPerNode/Math.Mi),
-      maxRamMegs: Math.max(Math.floor(ramPerNode/Math.Mi) - 1024, Math.floor(ramPerNode * 4 / (5 * Math.Mi)))
-    } : null;
+  ns.allClusterSectionSettingsCell = Cell.compute(function (v) {
+    if (!v.need(ns.isClusterTabCell)) {
+      return;
+    }
+    var indexesSettings = v.need(ns.indexesSettingsCell);
+    var currentPool = v.need(poolDetailsCell);
+    if (!currentPool || !indexesSettings) {
+      return;
+    }
+    var clusterQuotaSettings = ns.prepareClusterQuotaSettings(currentPool);
+    clusterQuotaSettings.prefix = 'cluster_settings';
+    clusterQuotaSettings.clusterName = currentPool.clusterName;
+
+    return _.extend(indexesSettings, clusterQuotaSettings);
   }).name("allClusterSectionSettingsCell");
   ns.allClusterSectionSettingsCell.equality = _.isEqual;
 }
 
 var ClusterSection = {
+  prepareClusterQuotaSettings: function (currentPool) {
+    var nNodes = 0;
+    var ram = currentPool.storageTotals.ram;
+    $.each(currentPool.nodes, function(n, node) {
+      if (node.clusterMembership === "active") {
+        nNodes++;
+      }
+    });
+
+    var ramPerNode = Math.floor(ram.total/nNodes/Math.Mi);
+    var minMemorySize = Math.max(256, Math.floor(ram.quotaUsedPerNode / Math.Mi));
+
+    return {
+      minMemorySize: minMemorySize,
+      totalMemorySize: ramPerNode,
+      maxMemorySize: Math.floor(ramPerNode / 100 * 80),
+      memoryQuota: Math.floor(ram.quotaTotalPerNode/Math.Mi),
+      indexMemoryQuota: currentPool.indexMemoryQuota || 256,
+      isServicesControllsAvailable: false
+    };
+  },
   init: function () {
     var self = this;
     var poolDetailsCell = DAL.cells.currentPoolDetailsCell;
@@ -108,29 +131,39 @@ var ClusterSection = {
 
     var container = $("#js_cluster_settings_container");
     var clusterSettingsForm = $("#js_cluster_public_settings_form");
-    var totalRamCont = $("#js_cluster_settings_total_ram");
-    var maxRamCont = $("#js_ram-max-size");
-    var outlineTag = $("#js_outline_tag");
     var certArea = $("#js-about-cert-area");
     var hideShowCertAreaButton = $("#js_show_hide_cert_area");
     var certAreaWrapperArea = $("#js_about-cert-area_wrapper")
     var clusterNameContainer = $("#js_tab_name");
     var originalTitle = document.title;
+    var onlyClusterSettingsForm = $('.js_cluster_settings_fields');
+    var indexesSettingsForm = $(".js_index_settings_section");
 
     hideShowCertAreaButton.click(function () {
       $("#js_about-cert-area_wrapper").toggle();
       $(this).text($(this).text() === "Show" ? "Hide" : "Show");
     });
 
-    var clusterSettingsFormValidator = setupFormValidation(clusterSettingsForm, "/pools/default?just_validate=1",
-      function (_status, errors) {
-        SettingsSection.renderErrors(errors, clusterSettingsForm);
-    }, function () {
-      return serializeForm(clusterSettingsForm);
-    });
+    var validationErrors = {};
+    var saveClusterButton = $('.save_button', clusterSettingsForm);
+
+    function setupClusterSettingsValidation(form, url) {
+      return setupFormValidation(form, url,
+        function (_status, errors) {
+          validationErrors[url] = errors.errors && !$.isEmptyObject(errors.errors);
+          SettingsSection.renderErrors(errors, form, saveClusterButton, _.some(_.values(validationErrors)));
+      }, function () {
+        return serializeForm(form);
+      });
+    }
+
+    var clusterSettingsFormValidator = setupClusterSettingsValidation(onlyClusterSettingsForm, "/pools/default?just_validate=1");
+    var indexesSettingsFormValidator = setupClusterSettingsValidation(indexesSettingsForm, "/settings/indexes?just_validate=1");
+
 
     function enableDisableValidation(enable) {
       clusterSettingsFormValidator[enable ? 'unpause' : 'pause']();
+      indexesSettingsFormValidator[enable ? 'unpause' : 'pause']();
     }
 
     function setCertificate(certificate) {
@@ -165,7 +198,7 @@ var ClusterSection = {
 
     self.clusterNameCell.subscribeValue(function (clusterName) {
       if (!DAL.version || clusterName === undefined) {
-          return;
+        return;
       }
 
       var parsedVersion = DAL.parseVersion(DAL.version);
@@ -174,23 +207,24 @@ var ClusterSection = {
       clusterNameContainer.text(clusterName).attr('title', clusterName);
     });
 
+    var memoryQuoataWidget;
+
     clusterSettingsForm.submit(function (e) {
       e.preventDefault();
       var spinner = overlayWithSpinner(container);
-      $.ajax({
-        url: "/pools/default",
+      jQuery.when(memoryQuoataWidget.tryToSaveMemoryQuota(serializeForm(onlyClusterSettingsForm)), $.ajax({
+        url: "/settings/indexes",
         type: 'POST',
-        data: $.deparam(serializeForm(clusterSettingsForm)),
-        success: function () {
-          poolDetailsCell.recalculate();
-          self.clusterNameCell.recalculate();
+        data: serializeForm(indexesSettingsForm),
+        error: function () {
+          SettingsSection.renderErrors(JSON.parse(jqXhr.responseText), indexesSettingsForm);
         },
-        error: function (jqXhr) {
-          SettingsSection.renderErrors(JSON.parse(jqXhr.responseText), clusterSettingsForm);
-        },
-        complete: function () {
-          spinner.remove();
-        }
+        success: function () {}
+      })).done(function () {
+        poolDetailsCell.recalculate();
+        self.clusterNameCell.recalculate();
+      }).always(function () {
+        spinner.remove();
       });
 
       return false;
@@ -204,11 +238,20 @@ var ClusterSection = {
       if (!settings) {
         return;
       }
-      maxRamCont.text(settings.maxRamMegs);
+
+      memoryQuoataWidget = new MemoryQuotaSettingsWidget(settings, $('#js_cluster_quota_settings'));
       setFormValues(clusterSettingsForm, settings);
-      totalRamCont.text(settings.totalRam);
       enableDisableValidation(!isROAdminCell.value);
     });
+
+    var spinner;
+    Cell.subscribeMultipleValues(function (settings, isClusterTab) {
+      if (isClusterTab && !settings) {
+        spinner = overlayWithSpinner(container);
+      } else {
+        spinner && spinner.remove();
+      }
+    }, self.allClusterSectionSettingsCell, self.isClusterTabCell);
 
     Cell.subscribeMultipleValues(function (isClusterTab, isROAdmin) {
       if (!isClusterTab || isROAdmin) {

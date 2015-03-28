@@ -591,19 +591,18 @@ var SetupWizard = {
     cluster: function (node, pagePrefix, opt) {
       var dialog = $('#init_cluster_dialog');
       var resourcesObserver;
+      var newClusterFormBlock = $(".js_start_new_cluster_block");
+      var memoryQuotaWidget;
 
       $('#join-cluster').click(function (e) {
         $('.js_login-credentials').slideDown();
-        $('.js_start_new_cluster_block').slideUp();
+        newClusterFormBlock.slideUp();
         $('#init_cluster_dialog_memory_errors_container').slideUp();
       });
       $('#no-join-cluster').click(function (e) {
-        $('.js_start_new_cluster_block').slideDown();
+        newClusterFormBlock.slideDown();
         $('.js_login-credentials').slideUp();
       });
-
-      ServersSection.notifyAboutServicesBestPractice($('.js_start_new_cluster_block'));
-      ServersSection.notifyAboutServicesBestPractice($('.js_login-credentials'));
 
       // we return function signaling that we're not yet ready to show
       // our page of wizard (no data to display in the form), but will
@@ -649,12 +648,21 @@ var SetupWizard = {
           var storageTotals = data.storageTotals;
 
           var totalRAMMegs = Math.floor(storageTotals.ram.total/Math.Mi);
+          var quota = Math.floor(storageTotals.ram.quotaTotal / Math.Mi);
+          var ramMaxMegs = Math.floor(totalRAMMegs / 100 * 80);
 
-          dialog.find('[name=dynamic-ram-quota]').val(Math.floor(storageTotals.ram.quotaTotal / Math.Mi));
-          dialog.find('.ram-total-size').text(totalRAMMegs + ' MB');
-          var ramMaxMegs = Math.max(totalRAMMegs - 1024,
-                                    Math.floor(storageTotals.ram.total * 4 / (5 * Math.Mi)));
-          dialog.find('.ram-max-size').text(ramMaxMegs);
+          memoryQuotaWidget = new MemoryQuotaSettingsWidget({
+            minMemorySize: 256,
+            memoryQuota: quota,
+            indexMemoryQuota: data.indexMemoryQuota,
+            isServicesControllsAvailable: true,
+            maxMemorySize: ramMaxMegs,
+            totalMemorySize: totalRAMMegs,
+            prefix: 'cluster_memory_wizard_settings'
+          }, $('#js_start_new_cluster_memory_quoata_cont'));
+
+          ServersSection.notifyAboutServicesBestPractice(newClusterFormBlock);
+          ServersSection.notifyAboutServicesBestPractice($('.js_login-credentials'));
 
           var firstResource = data.storage.hdd[0];
 
@@ -743,8 +751,7 @@ var SetupWizard = {
         var dbPath = dialog.find('[name=db_path]').val();
         var ixPath = dialog.find('[name=index_path]').val();
         var hostname = dialog.find('[name=hostname]').val();
-        var memoryQuota  = dialog.find('[name=dynamic-ram-quota]').val() || "none";
-        var services = ServersSection.getCheckedServices($('.js_start_new_cluster_block'));
+        var services = ServersSection.getCheckedServices(newClusterFormBlock);
 
         var pathErrorsContainer = dialog.find('.init_cluster_dialog_errors_container');
         var hostnameErrorsContainer = $('#init_cluster_dialog_hostname_errors_container');
@@ -756,7 +763,6 @@ var SetupWizard = {
 
         var diskParams = $.param({path: dbPath, index_path: ixPath});
         var hostnameParams = $.param({hostname: hostname});
-        var memoryQuotaParams = $.param({memoryQuota: memoryQuota});
         var servicesParams = $.param({services: services});
         var ajaxOptions = {dataType: 'text'}; //because with dataType json jQuery returning “parsererror”
 
@@ -765,7 +771,7 @@ var SetupWizard = {
             if ($('#no-join-cluster')[0].checked) {
               jQuery.when(
                 jsonPostWithErrors("/node/controller/setupServices", servicesParams, maybeShowServicesErrors, ajaxOptions),
-                jsonPostWithErrors('/pools/default', memoryQuotaParams, maybeShowMemoryQuotaErrors, ajaxOptions)
+                memoryQuotaWidget.tryToSaveMemoryQuota()
               ).done(function () {
                 BucketsSection.refreshBuckets();
                 SetupWizard.show("sample_buckets");
@@ -796,8 +802,7 @@ var SetupWizard = {
 
         function maybeShowMemoryQuotaErrors(data, status, errObject) {
           if (status !== 'success') {
-            memoryErrorsContainer.text(errObject.errors.memoryQuota);
-            memoryErrorsContainer.show();
+            SettingsSection.renderErrors(errObject, $('.js_start_new_cluster_block'));
           }
         }
 

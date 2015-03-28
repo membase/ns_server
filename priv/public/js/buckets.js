@@ -200,6 +200,8 @@ var BucketDetailsDialog = mkClass({
 
     this.onSuccess = options.onSuccess || function () {
       hideDialog(this.dialogID);
+      DAL.cells.currentPoolDetailsCell.setValue(undefined);
+      DAL.cells.currentPoolDetailsCell.invalidate();
     };
 
     this.doCreateBucket = options.doCreateBucket || function (uri, form, callback) {

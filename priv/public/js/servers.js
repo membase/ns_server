@@ -496,10 +496,11 @@ var ServersSection = {
     this.postAndReload(uri, "");
   },
   notifyAboutServicesBestPractice: function (form) {
-    $("input[name=services]", form).unbind('change').change(function (e) {
+    $("input[name=services]", form).unbind('change.notifyAboutServicesBestPractice')
+      .bind('change.notifyAboutServicesBestPractice',function (e) {
       $(".init_cluster_service_per_node_warning", form).toggle(
         $("input[name=services]:checked", form).length > 1);
-    }).change();
+    }).trigger('change.notifyAboutServicesBestPractice');
   },
   getCheckedServices: function (context) {
     return $("[name=services]:checked", context).map(function () {

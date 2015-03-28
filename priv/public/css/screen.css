@@ -454,6 +454,16 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .certificate_section .edit_btn {border:none;float:none;margin:3px 0pt 3px 0;font-size: 10px;line-height:21px;display:inline-block;}
 .certificate_section .about-cert-area_wrapper {overflow: hidden; z-index: 1;position: relative; display: none;}
 
+.settings .cluster_settings_container .index_settings_section label {width: 170px}
+.cluster_quota_settings {font-size: 13px;line-height: 23px;}
+.cluster_quota_settings .error-container {font-size: 11px; line-height: 14px; margin: 0 0 5px 0;}
+.cluster_quota_settings input[type="number"],
+.index_settings_section input[type="number"] {width:78px!important;}
+.index_settings_section .row,
+.cluster_quota_settings .row {margin: 5px 0;}
+.cluster_quota_settings label {width:111px; display: inline-block;}
+.memory_quota_dialog label {width: 130px;}
+
 /* update notification styles */
 #notifications_container .item {padding:13px;}
 #notifications_container .save_button {float:right;}
@@ -668,23 +678,23 @@ body.init_cluster #init_cluster_dialog {background:none; background-color:#eee; 
 body.init_cluster #init_cluster_dialog p.pad_10 {color:#444245; font-family:Verdana, Helvetica, Sans-Serif; font-size:10pt; font-weight:lighter; margin-left:85px; margin-right:85px;}
 body.init_cluster #init_cluster_dialog div.join_cluster_dialog_errors_container {color:#ff0000; display:none; margin-left:85px; width:500px;}
 
-#init_cluster_form {padding: 0; margin-top: 20px; margin-bottom: 20px;}
-#init_cluster_form > div > div {margin-left:85px;}
-#init_cluster_form div label {display:inline-block;white-space:nowrap;}
-#init_cluster_form input {font-size:13px;border:1px solid #ccd3d7;padding:3px;vertical-align: middle;}
-#init_cluster_form .memory-quota {overflow:hidden;margin-left: 20px;}
-#init_cluster_form .memory-quota label{width:170px;}
-#init_cluster_form .login-credentials label{width:100px;}
-#init_cluster_form .memory-quota input {width:60px;vertical-align:middle;}
-#init_cluster_form .login-credentials {display:none; margin-right: 85px;}
-#init_cluster_form .login-credentials > div {margin-top: 10px;}
 
-.init_block .start_new_cluster_block > div {margin-left: 20px;}
-.init_block .start_new_cluster_block .warning {display:none;margin: 10px 30px 10px 0;}
-.init_cluster_service_per_node_warning {display:none;color:#ec5223;font-size:11px;margin: 10px 40px 10px 0;padding: 0; line-height: 15px;}
-
+.init_cluster_form .login-credentials {display:none; margin-right: 85px;}
+.init_block .init_cluster_form .warning {display: none;}
+.init_cluster_service_per_node_warning {display:none;color:#ec5223;font-size:11px; line-height: 15px;}
+.init_block .error-container {font-size: 11px; color: #ec5223!important;}
+.init_block .init_cluster_service_per_node_warning,
+.init_block .init_cluster_form .warning {margin: 0; padding-bottom: 10px;}
+.init_block .start_new_cluster_block label {width: 129px; display: inline-block;}
+.init_block .start_new_cluster_block input[type="number"] {width: 65px;}
+.init_block .login-credentials label {width: 100px; display: inline-block;}
+.init_block .wizard_services {display: inline;}
+.init_block .wizard_services label {text-align: left; width: 45px;vertical-align: middle;}
+.init_block .wizard_services input {vertical-align: middle;}
+.init_block .login-credentials,
+.init_block .start_new_cluster_block {margin-left: 85px; line-height: 28px;}
 .init_block .warning {clear:both;display:block;line-height:15px; margin: 20px 0 0; font-size: 11px; padding: 0;}
-.init_block .ram-total-size {line-height: 25px;}
+
 
 body.init_secure #init_secure_dialog {background:none #eee;display:block; padding-bottom:-50px;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
 body.init_secure #init_secure_dialog p.pad_10 {margin-left:85px;margin-right:85px;}

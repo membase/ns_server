@@ -1150,6 +1150,58 @@ Cell.mapAllKeys = function (itemsCell, itemKeyFunction, valueFunction) {
   });
 }
 
+var MemoryQuotaSettingsWidget = mkClass({
+  initialize: function (options, container) {
+    var self = this;
+    container.empty();
+    renderTemplate('js_memory_quota_settings_widget', options, container[0]);
+    self.options = options;
+    self.container = container;
+    self.memoryQuotaFileds = $('.js_ram_quota', container);
+    self.memoryTotalField = $('.js_per_server_total', container);
+    self.memoryServicesFlag = $('.js_service_flag', container);
+    if (options.isServicesControllsAvailable) {
+      self.memoryServicesFlag.each(function (index, flag) {
+        jQuery(flag).change(function () {
+          self.memoryQuotaFileds.eq(index).prop('disabled', !$(this).attr('checked'));
+          self.computePerServerTotalQuota();
+        }).change();
+      });
+    }
+    self.memoryQuotaFileds.keyup(function () {
+      self.computePerServerTotalQuota(container);
+    }).keyup();
+  },
+  computePerServerTotalQuota: function (root) {
+    var self = this;
+    var val = _.reduce(self.memoryQuotaFileds.not(':disabled').map(function () {
+      return parseFloat(this.value) || 0;
+    }).get(), function (memo, num) {
+      return memo + num;
+    }, 0);
+    self.memoryTotalField.text(val);
+  },
+  tryToSaveMemoryQuota: function (params) {
+    var self = this;
+    var memoryQuotaParams = params || serializeForm(self.container);
+    if (self.options.isServicesControllsAvailable) {
+      memoryQuotaParams = $.deparam(memoryQuotaParams);
+      delete memoryQuotaParams.services;
+      memoryQuotaParams = $.param(memoryQuotaParams);
+    }
+
+    return $.ajax({
+      url: "/pools/default",
+      type: 'POST',
+      data: memoryQuotaParams,
+      success: function () {},
+      error: function (jqXhr) {
+        SettingsSection.renderErrors(JSON.parse(jqXhr.responseText), self.container);
+      }
+    });
+  }
+});
+
 var MultiDrawersWidget = mkClass({
   mandatoryOptions: "hashFragmentParam template elementKey listCell".split(" "),
   initialize: function (options) {

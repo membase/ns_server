@@ -1018,39 +1018,81 @@
               <div class="panes clearfix">
                 <div id="js_cluster_settings_container" class="cluster_settings_container">
                   <form id="js_cluster_public_settings_form" class="cluster_settings_form">
-                    <h2>
-                      Configure Cluster
-                    </h2>
-                    <div class="sub_section">
-                      <label>Cluster Name:</label>
-                      <input type="text" name="clusterName" maxlength="256">
-                      <span>(0 — 256 chars)</span>
-                    </div>
-                    <div class="certificate_section">
-                      <h3>Certificate:</h3>
+                    <div class="js_cluster_settings_fields">
+                      <h2>
+                        Configure Cluster
+                      </h2>
                       <div class="sub_section">
-                        <p>
-                          Self-signed SSL certificate is deployed across the cluster on each nodes.
-                        </p>
-                        <p>
-                          <a id="js_show_hide_cert_area">Show</a> certificate.
-                        </p>
-                        <div class="about-cert-area_wrapper" id="js_about-cert-area_wrapper">
-                          <textarea id="js-about-cert-area" readonly="readonly"></textarea>
-                          <div></div>
-                          <div onclick="regenerateCertificate();" class="edit_btn when-roadmin-avoid-me">Regenerate</div>
-                          <span style="color:red;display:inline;margin-left:5px;font-size:11px;">* Clicking 'Regenerate' will immediately generate new certificate for the cluster</span>
+                        <label>Cluster Name:</label>
+                        <input type="text" name="clusterName" maxlength="256">
+                        <span>(0 — 256 chars)</span>
+                      </div>
+                      <div class="certificate_section">
+                        <h3>Certificate:</h3>
+                        <div class="sub_section">
+                          <p>
+                            Self-signed SSL certificate is deployed across the cluster on each nodes.
+                          </p>
+                          <p>
+                            <a id="js_show_hide_cert_area">Show</a> certificate.
+                          </p>
+                          <div class="about-cert-area_wrapper" id="js_about-cert-area_wrapper">
+                            <textarea id="js-about-cert-area" readonly="readonly"></textarea>
+                            <div></div>
+                            <div onclick="regenerateCertificate();" class="edit_btn when-roadmin-avoid-me">Regenerate</div>
+                            <span style="color:red;display:inline;margin-left:5px;font-size:11px;">* Clicking 'Regenerate' will immediately generate new certificate for the cluster</span>
+                          </div>
                         </div>
                       </div>
+                      <h2>Cluster RAM Quota</h2>
+                      <div class="sub_section cluster_quota_settings" id="js_cluster_quota_settings">
+                      </div>
                     </div>
-                    <h3>Cluster RAM Quota:</h3>
-                    <div class="sub_section">
+                    <h2>Index Settings</h2>
+                    <div class="sub_section index_settings_section js_index_settings_section">
                       <div class="row">
-                        <label>RAM Available:</label><span style="vertical-align:middle;"><span id="js_cluster_settings_total_ram"></span> MB</span>
+                        <label for="index_settings_thread">Indexer Threads:</label>
+                        <input type="number" name="indexerThreads" id="index_settings_thread">
+                        <span>(used to be Indexer CPU)</span>
+                        <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
+                          <span class="tooltip_msg text_11" style="width:310px;"><span>
+                            Number of dedicated threads the indexer uses. On multi-core machines increasing this number will increase the amount of CPU available to the indexer. Defaults to 4.
+                          </span></span>
+                        </a>
+                        <span class="error-container err-indexerThreads"></span>
                       </div>
                       <div class="row">
-                        <label for="cluster_settings_ram_quota">Per Server RAM Quota:</label><input type="text" class="focusme" id="cluster_settings_ram_quota" name="memoryQuota" style="width:58px;"><span style="vertical-align:middle;"> MB (256 MB — <span id="js_ram-max-size"></span> MB)</span>
-                        <div class="error-container err-memoryQuota"></div>
+                        <label for="in_memory_snapshot">In Memory Snapshot Interval:</label>
+                        <input type="number" name="memorySnapshotInterval" id="in_memory_snapshot">
+                        <span>(ms)</span>
+                        <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
+                          <span class="tooltip_msg text_11" style="width:310px;"><span>
+                            Specifies the frequency of in-memory snapshots. This determines
+                            the earliest possibility of a scan seeing a given KV mutation.
+                          </span></span>
+                        </a>
+                        <span class="error-container err-memorySnapshotInterval"></span>
+                      </div>
+                      <div class="row">
+                        <label for="in_memory_snapshot">Stable Snapshot Interval:</label>
+                        <input type="number" name="stableSnapshotInterval" id="in_memory_snapshot">
+                        <span>(sec)</span>
+                        <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
+                          <span class="tooltip_msg text_11" style="width:310px;"><span>
+                            Specifies the frequency of persisted snapshots for recovery.
+                          </span></span>
+                        </a>
+                        <span class="error-container err-stableSnapshotInterval"></span>
+                      </div>
+                      <div class="row">
+                        <label for="in_memory_snapshot">Max Rollback Points:</label>
+                        <input type="number" name="maxRollbackPoints" id="in_memory_snapshot">
+                        <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
+                          <span class="tooltip_msg text_11" style="width:310px;"><span>
+                            The maximum number of committed rollback points.
+                          </span></span>
+                        </a>
+                        <span class="error-container err-maxRollbackPoints"></span>
                       </div>
                     </div>
                     <div class="save_cancel when-roadmin-hide-me">
@@ -3328,47 +3370,19 @@
     be inherited by all servers subsequently joining the cluster, so please set
     appropriately.
     </p>
-    <form id="init_cluster_form" class="form block"><input type="submit" style="width:0px; height: 0px; border: 0; padding: 0 0; margin: 0 0;display:none;">
+    <form id="init_cluster_form" class="form block init_cluster_form"><input type="submit" style="width:0px; height: 0px; border: 0; padding: 0 0; margin: 0 0;display:none;">
       <div>
          <h3><label>
             <input type="radio" name="join_cluster" id="no-join-cluster" checked />
             Start a new cluster.
          </label></h3>
          <div class="start_new_cluster_block js_start_new_cluster_block">
-            <label>Services:</label>
-            <a class="tooltip text_11"><span>What's this?</span>
-              <span class="tooltip_msg" style="width:350px;"><span>
-                Check the appropriate boxes to enable the identified services on the server node
-              </span></span>
-            </a>
             <div class="init_cluster_service_per_node_warning">
               Warning: Not recommended to have >1 Service per node in a production environment.
             </div>
             <div class="warning pat_10" id="init_cluster_dialog_memory_errors_container"></div>
             <div class="warning pat_10" id="init_cluster_service_errors_container"></div>
-            <div title="Data has to be set for the first node in a new cluster">
-              <input type="checkbox" class="inp" name="services" value="kv" id="wizard_setup_data_checkbox" checked disabled/>
-              <label class="label" style="text-align: left;">Data</label>
-              <div class="memory-quota">
-                <div>
-                  <label>RAM Available: </label>
-                  <span class="ram-total-size"></span>
-                </div>
-                <div>
-                  <label for="init_dynamic_ram_quota">Per Server RAM Quota:</label>
-                  <input type="text" class="focusme" id="init_dynamic_ram_quota" name="dynamic-ram-quota" value="" />
-                  <span>MB (256 MB &mdash; <span class="ram-max-size"></span> MB)</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <input type="checkbox" class="inp" name="services" value="n1ql" id="wizard_setup_n1ql_checkbox" />
-              <label class="label" for="wizard_setup_n1ql_checkbox" style="text-align: left;">Query</label>
-            </div>
-            <div>
-              <input type="checkbox" class="inp" name="services" value="index" id="wizard_setup_index_checkbox" />
-              <label class="label" for="wizard_setup_index_checkbox" style="text-align: left;">Index</label>
-            </div>
+            <div id="js_start_new_cluster_memory_quoata_cont"></div>
          </div>
       </div>
       <div>
@@ -3708,6 +3722,48 @@
       <p class="info_text">{%= h(text) %}</p>
     </div>
 </div>
+</script>
+<script type="text/html" id="js_memory_quota_settings_widget_template">
+  <div class="row">
+    <div class="error-container err-memoryQuota"></div>
+    <div class="error-container err-indexMemoryQuota"></div>
+  </div>
+  <div class="row">
+    <label>RAM Available: </label>
+    <span class="ram-total-size">{%= h(totalMemorySize) %} MB</span>
+  </div>
+  {% if (isServicesControllsAvailable) { %}
+    <div class="row">
+      <label>Services:</label>
+      <div class="wizard_services">
+        <input type="checkbox" class="js_service_flag" name="services" value="kv" id="{%= prefix %}_kv_checkbox" checked disabled />
+        <label class="label" for="{%= prefix %}_kv_checkbox">Data</label>
+        <input type="checkbox" class="js_service_flag" name="services" value="index" id="{%= prefix %}_index_checkbox" />
+        <label class="label" for="{%= prefix %}_index_checkbox">Index</label>
+        <input type="checkbox" class="js_service_flag" name="services" value="n1ql" id="{%= prefix %}_n1ql_checkbox" />
+        <label class="label" for="{%= prefix %}_n1ql_checkbox">Query</label>
+      </div>
+      <a class="tooltip text_11"><span>What&#39;s this?</span>
+        <span class="tooltip_msg" style="width:350px;"><span>
+          Check the appropriate boxes to enable the identified services on the server node
+        </span></span>
+      </a>
+    </div>
+  {% } %}
+  <div class="memory-quota row">
+    <label for="{%= prefix %}_kv_ram_quota">Data RAM Quota:</label>
+    <input type="number" class="focusme js_ram_quota" id="{%= prefix %}_kv_ram_quota" name="memoryQuota" value="{%= h(memoryQuota) %}" />
+    <span>MB (min {%= minMemorySize %} MB)</span>
+  </div>
+  <div class="memory-quota row">
+    <label for="{%= prefix %}_index_ram_quota">Index RAM Quota:</label>
+    <input type="number" class="js_ram_quota" id="{%= prefix %}_index_ram_quota" name="indexMemoryQuota" value="{%= h(indexMemoryQuota) %}" />
+    <span>MB (min {%= minMemorySize %} MB)</span>
+  </div>
+  <div class="row">
+    <label>Total Per Server:</label>
+    <span><span class="js_per_server_total"></span> MB (must be &lt;= <span class="js_max_ram_size">{%= h(maxMemorySize) %}</span> MB) </span>
+  </div>
 </script>
 
 <!--[if IE]><script language="javascript" type="text/javascript" src="js/excanvas.min.js"></script><![endif]-->
