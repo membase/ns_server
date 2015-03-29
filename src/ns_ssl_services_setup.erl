@@ -350,7 +350,7 @@ restart_ssl_services() ->
     end,
     restart_xdcr_proxy(),
     query_rest:maybe_refresh_cert(),
-    ok = ns_memcached:connect_and_send_isasl_refresh().
+    ok = ns_memcached:connect_and_send_ssl_certs_refresh().
 
 restart_xdcr_proxy() ->
     case (catch ns_ports_setup:restart_xdcr_proxy()) of
