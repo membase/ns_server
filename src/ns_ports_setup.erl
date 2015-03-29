@@ -54,8 +54,12 @@ restart_memcached() ->
     ok.
 
 restart_xdcr_proxy() ->
-    {ok, _} = restart_port_by_name(xdcr_proxy),
-    ok.
+    case restart_port_by_name(xdcr_proxy) of
+        {ok, _} ->
+            ok;
+        Error ->
+            Error
+    end.
 
 restart_port_by_name(Name) ->
     rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, restart_port_by_name, [Name]).
