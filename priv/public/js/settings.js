@@ -1249,6 +1249,10 @@ var AutoCompactionSection = {
   init: function () {
     var self = this;
 
+    _.each(["database", "index", "view"], function (name) {
+      renderTemplate('js_fragmentation_settings', {name: name}, $("#js_"+name+"_fragmentation_settings")[0])
+    });
+
     var allSettingsCell = Cell.compute(function (v) {
       if (v.need(SettingsSection.tabs) != 'settings_compaction') {
         return;
@@ -1373,6 +1377,7 @@ var AutoCompactionSection = {
       "databaseFragmentationThreshold[percentage]",
       "viewFragmentationThreshold[size]",
       "viewFragmentationThreshold[percentage]",
+      "indexFragmentationThreshold[percentage]",
       "allowedTimePeriod[fromHour]",
       "allowedTimePeriod[fromMinute]",
       "allowedTimePeriod[toHour]",
@@ -1384,7 +1389,7 @@ var AutoCompactionSection = {
       }
       if (values[key] &&
           (key === 'databaseFragmentationThreshold[size]' ||
-           key === 'viewFragmentationThreshold[size]')) {
+           key === 'viewFragmentationThreshold[size]' )) {
         values[key] = Math.round(values[key] / 1024 / 1024);
       }
       if (isFinite(values[key]) &&
@@ -1494,7 +1499,7 @@ var AutoCompactionSection = {
     this.container.find('[name="' + field + '"]')[error ? 'addClass' : 'removeClass']('invalid');
   },
   onValidationResult: (function () {
-    var knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] viewFragmentationThreshold[size] databaseFragmentationThreshold[size] allowedTimePeriod purgeInterval').split(' ');
+    var knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] viewFragmentationThreshold[size] indexFragmentationThreshold[percentage] databaseFragmentationThreshold[size] allowedTimePeriod purgeInterval').split(' ');
     _.each(('to from').split(' '), function (p1) {
       _.each(('Hour Minute').split(' '), function (p2) {
         knownFields.push('allowedTimePeriod[' + p1 + p2 + ']');

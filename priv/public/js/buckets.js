@@ -150,8 +150,10 @@ function setAutoCompactionSettingsFields(form, initValues) {
 
   var dbInput = form.find('[name="databaseFragmentationThreshold[size]"]');
   var viewInput = form.find('[name="viewFragmentationThreshold[size]"]');
+  var indexInput = form.find('[name="indexFragmentationThreshold[size]"]');
   var dbPercInput = form.find('[name="databaseFragmentationThreshold[percentage]"]');
   var viewPercInput = form.find('[name="viewFragmentationThreshold[percentage]"]');
+  var indexPercInput = form.find('[name="indexFragmentationThreshold[percentage]"]');
   var allowedTimeInputs = form.find('[name^=allowedTimePeriod]');
 
   function observeFunction() {
@@ -179,6 +181,10 @@ var BucketDetailsDialog = mkClass({
 
     this.isNew = isNew;
     this.initValues = initValues;
+
+    _.each(["database", "index", "view"], function (name) {
+      renderTemplate('js_fragmentation_settings', {name: name}, $("#js_"+name+"_fragmentation_bucket_settings")[0])
+    });
 
     initValues.ramQuotaMB = BytestoMB(initValues.quota.rawRAM);
 
