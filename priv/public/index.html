@@ -1451,6 +1451,10 @@
         </div>
 
         <div id="js_views" class="views" style="display:none">
+          <div class="only-when-non-kv-node">
+            Views are not supported on this server node as it does not have a Data service. You may access views functionality on any Data service node in the cluster, such as: <a id="js_healthy_kv_node_link" target="_blank"></a>
+          </div>
+          <div class="only-when-kv-node">
           <h1 style="clear:both;overflow:hidden">
             <span style="float:left"><select id="views_bucket_select"></select> &gt; <a href="#visitSec=views">Views</a>
               <span class="when-inside-view">
@@ -1879,6 +1883,7 @@
             </div>
 
           </div>
+        </div>
         </div>
 
         <script id="js_indexes_list_template" type="text/html">

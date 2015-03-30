@@ -1449,6 +1449,8 @@ input[type=number].size {width:4em;}
 .replication_control.dynamic_spinner,
 
 
+.dynamic_non-kv-node .only-when-kv-node {display: none!important;}
+.dynamic_kv-node .only-when-non-kv-node {display: none!important;}
 .dynamic_enterprise-mode .when-community {display: none!important;}
 .dynamic_community-mode .when-enterprise {display: none!important;}
 .dynamic_under-30 .only-when-30 {display: none!important;}

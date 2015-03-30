@@ -828,6 +828,22 @@ var ViewsSection = {
     });
   },
   init: function () {
+    DAL.cells.doesNodeContainKeyValueServiceCell.subscribeValue(function (value) {
+      if (value === true) {
+        ViewsSection.doInit();
+      }
+      if (value === false) {
+        var healthyKVNodeLink = jQuery("#js_healthy_kv_node_link");
+        DAL.cells.healthyKVNodeLinkCell.subscribeValue(function (value) {
+          if (value) {
+            healthyKVNodeLink.text(value).attr("href", value);
+          }
+        });
+      }
+      jQuery("body").toggleClass('dynamic_non-kv-node', !value).toggleClass('dynamic_kv-node', value);
+    });
+  },
+  doInit: function () {
     var self = this;
     var views = $('#js_views');
 
@@ -2259,11 +2275,17 @@ var ViewsSection = {
     });
   },
   onEnter: function () {
+    if (!this.allDDocsURLCell) {
+      return;
+    }
     this.allDDocsURLCell.setValue(undefined);
     this.allDDocsURLCell.recalculate();
     this.onLeave();
   },
   onLeave: function () {
+    if (!this.rawDDocIdCell) {
+      return;
+    }
     this.rawDDocIdCell.setValue(undefined);
     this.pageNumberCell.setValue(undefined);
     this.rawViewNameCell.setValue(undefined);

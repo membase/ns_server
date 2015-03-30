@@ -532,6 +532,19 @@ var DAL = {
     pendingEject = _.without(pendingEject, node);
     cell.invalidate();
   };
+  DAL.cells.healthyKVNodeLinkCell = Cell.computeEager(function (v) {
+    var details = v.need(DAL.cells.currentPoolDetailsCell);
+    var kvNode = _.find(details.nodes, function (node) {
+      return node.status === "healthy" && _.indexOf(node.services, "kv") > -1;
+    });
+
+    if (kvNode) {
+      var hostnameAndPort = kvNode.hostname.split(':');
+      var protocol = window.location.protocol;
+      return protocol + "//" + (protocol === "https:" ? hostnameAndPort[0] + ":" + kvNode.ports.httpsMgmt : kvNode.hostname);
+    }
+  }).name('healthyKVNodeLinkCell');
+  DAL.cells.healthyKVNodeLinkCell.equality = _.isEqual;
   DAL.cells.mayRebalanceWithoutSampleLoadingCell = Cell.computeEager(function (v) {
     var details = v.need(DAL.cells.currentPoolDetailsCell);
     var isRebalancing = details && details.rebalanceStatus !== 'none';
@@ -645,6 +658,15 @@ var DAL = {
 
     return thisNode;
   });
+
+  DAL.cells.doesNodeContainKeyValueServiceCell = Cell.computeEager(function (v) {
+    var thisNode = v(thisNodeCell);
+    if (!thisNode) {
+      return;
+    }
+    return _.indexOf(thisNode.services, "kv") > -1;
+  }).name("doesNodeContainKeyValueServiceCell");
+  DAL.cells.doesNodeContainKeyValueServiceCell.equality = _.isEqual;
 
   var capiBaseCell = DAL.cells.capiBase = Cell.computeEager(function (v) {
     var thisNode = v(thisNodeCell);
