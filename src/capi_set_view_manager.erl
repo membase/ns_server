@@ -241,8 +241,12 @@ handle_call({suspend, Ref}, From, #state{local_docs = Docs} = State) ->
     gen_server:reply(From, ok),
 
     receive
-        {resume, Ref, #doc{id = DDocId,
-                           deleted = Deleted} = Doc} ->
+        {resume, Ref, {error, #doc{id = DDocId}, Error}} ->
+            ?log_info("Resume operation after unsuccessful update: id ~s, error: ~p",
+                      [DDocId, Error]),
+            {noreply, State};
+        {resume, Ref, {ok, #doc{id = DDocId,
+                                deleted = Deleted} = Doc}} ->
             ?log_info("Processing ddoc update: id ~s, deleted ~p",
                       [DDocId, Deleted]),
 

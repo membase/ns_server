@@ -251,13 +251,22 @@ save_doc(#doc{id = Id} = Doc,
     Ref = make_ref(),
     gen_event:sync_notify(EventManager, {suspend, Ref}),
 
+    try
+        do_save_doc(Doc, Bucket),
+        gen_event:sync_notify(EventManager, {resume, Ref, {ok, Doc}})
+    catch
+        T:E ->
+            ?log_debug("Saving of document ~p for bucket ~p failed with ~p:~p~nStack trace: ~p",
+                       [Id, Bucket, T, E, erlang:get_stacktrace()]),
+            gen_event:sync_notify(EventManager, {resume, Ref, {error, Doc, E}}),
+            throw(E)
+    end,
+    State#state{local_docs = lists:keystore(Id, #doc.id, Docs, Doc)}.
+
+do_save_doc(Doc, Bucket) ->
     {ok, Db} = open_local_db(Bucket),
     try
         ok = couch_db:update_doc(Db, Doc)
     after
         ok = couch_db:close(Db)
-    end,
-
-    gen_event:sync_notify(EventManager, {resume, Ref, Doc}),
-
-    State#state{local_docs = lists:keystore(Id, #doc.id, Docs, Doc)}.
+    end.
