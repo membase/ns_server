@@ -115,9 +115,9 @@ massage_stats([{K, V} | Rest], AccGauges, AccCounters) ->
         undefined ->
             massage_stats(Rest, AccGauges, AccCounters);
         {counter, NewK} ->
-            massage_stats(Rest, AccGauges, [{NewK, list_to_integer(binary_to_list(V))} | AccCounters]);
+            massage_stats(Rest, AccGauges, [{NewK, V} | AccCounters]);
         {gauge, NewK} ->
-            massage_stats(Rest, [{NewK, list_to_integer(binary_to_list(V))} | AccGauges], AccCounters)
+            massage_stats(Rest, [{NewK, V} | AccGauges], AccCounters)
     end.
 
 get_stats() ->
