@@ -159,6 +159,16 @@ find_all_replication_docs(Timeout) ->
                             [process_doc(Doc) || Doc <- Json]
                     end, "/pools/default/replications", Timeout).
 
+process_repl_error(Error) ->
+    {{Year, Month, Day}, {Hour, Minute, Second}} =
+        Time = calendar:universal_time_to_local_time(
+                 calendar:now_to_datetime(
+                   misc:epoch_to_time(misc:expect_prop_value(<<"Time">>, Error)))),
+    TimeFormatted = io_lib:format("~4.10.0B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B ",
+                                  [Year, Month, Day, Hour, Minute, Second]),
+    TimeBin = iolist_to_binary(TimeFormatted),
+    Message = misc:expect_prop_value(<<"ErrorMsg">>, Error),
+    {Time, <<TimeBin/binary, Message/binary>>}.
 
 process_repl_info({Info}, Acc) ->
     case misc:expect_prop_value(<<"StatsMap">>, Info) of
@@ -169,10 +179,7 @@ process_repl_info({Info}, Acc) ->
             Stats = [{list_to_atom(binary_to_list(K)), V} ||
                         {K, V} <- StatsList],
             ErrorList =  misc:expect_prop_value(<<"ErrorList">>, Info),
-            Errors = [{calendar:now_to_datetime(
-                         misc:epoch_to_time(misc:expect_prop_value(<<"Time">>, Error))),
-                       misc:expect_prop_value(<<"ErrorMsg">>, Error)}
-                      || {Error} <- ErrorList],
+            Errors = [process_repl_error(Error) || {Error} <- ErrorList],
 
             [{Id, Stats, Errors} | Acc]
     end.
