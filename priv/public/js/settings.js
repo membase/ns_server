@@ -93,6 +93,7 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
     }
     var clusterQuotaSettings = ns.prepareClusterQuotaSettings(currentPool);
     clusterQuotaSettings.prefix = 'cluster_settings';
+    clusterQuotaSettings.showKVMemoryQuota = true;
     clusterQuotaSettings.clusterName = currentPool.clusterName;
 
     return _.extend(indexesSettings, clusterQuotaSettings);

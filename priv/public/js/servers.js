@@ -565,34 +565,48 @@ var ServersSection = {
 
       var confirmed;
 
-      $('#join_cluster_dialog').addClass('overlayed')
-        .dialog('option', 'closeOnEscape', false);
-      showDialog('add_confirmation_dialog', {
-        closeOnEscape: false,
-        eventBindings: [['.save_button', 'click', function (e) {
-          e.preventDefault();
-          confirmed = true;
-          hideDialog('add_confirmation_dialog');
+      $('#join_cluster_dialog').addClass('overlayed').dialog('option', 'closeOnEscape', false);
 
-          $('#join_cluster_dialog_errors_container').empty();
-          var overlay = overlayWithSpinner($($i('join_cluster_dialog')));
-          var uri = $("#js_servers_group_select").val() || self.poolDetails.value.controllers.addNode.uri;
+      $('#join_cluster_dialog_errors_container').empty();
+      var overlay = overlayWithSpinner($($i('join_cluster_dialog')));
+      var uri = $("#js_servers_group_select").val() || self.poolDetails.value.controllers.addNode.uri;
 
-          self.poolDetails.setValue(undefined);
+      self.poolDetails.setValue(undefined);
 
-          jsonPostWithErrors(uri, $.param(errorsOrData), function (data, status) {
-            self.poolDetails.invalidate();
+      jsonPostWithErrors(uri, $.param(errorsOrData), function (data, status) {
+        self.poolDetails.invalidate();
+        if (status != 'success') {
+          overlay.remove();
+          renderTemplate('join_cluster_dialog_errors', data);
+        } else {
+          self.poolDetails.getValue(function (poolData) {
+            var indexNodesCount = 0;
+            var indexExists = _.each(poolData.nodes, function (node) {
+              indexNodesCount += (_.indexOf(node.services, 'index') > -1);
+            });
             overlay.remove();
-            if (status != 'success') {
-              renderTemplate('join_cluster_dialog_errors', data)
-            } else {
-              hideDialog('join_cluster_dialog');
+            hideDialog('join_cluster_dialog');
+            if (indexNodesCount === 1 && errorsOrData.services.indexOf('index') > -1) {
+              var settings = ClusterSection.prepareClusterQuotaSettings(poolData);
+              settings.prefix = 'add_node_memory_quota';
+              settings.showKVMemoryQuota = errorsOrData.services.indexOf('kv') > -1;
+              var memoryQuotaWidget = new MemoryQuotaSettingsWidget(settings, $('#js_add_node_memory_quota_holder'));
+              showDialog('js_memory_quota_dialog', {
+                closeOnEscape: false,
+                eventBindings: [['form', 'submit', function (e) {
+                  e.preventDefault();
+                  var overlay = overlayWithSpinner($('#js_memory_quota_dialog'));
+                  memoryQuotaWidget.tryToSaveMemoryQuota().done(function () {
+                    hideDialog('js_memory_quota_dialog');
+                    self.poolDetails.setValue(undefined);
+                    self.poolDetails.invalidate();
+                  }).always(function () {
+                    overlay.remove();
+                  });
+                }]]
+              });
             }
-          })
-        }]],
-        onHide: function () {
-          $('#join_cluster_dialog').removeClass('overlayed')
-            .dialog('option', 'closeOnEscape', true);
+          });
         }
       });
     });

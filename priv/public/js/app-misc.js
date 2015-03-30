@@ -1168,9 +1168,11 @@ var MemoryQuotaSettingsWidget = mkClass({
         }).change();
       });
     }
-    self.memoryQuotaFileds.keyup(function () {
-      self.computePerServerTotalQuota(container);
-    }).keyup();
+    if (options.showKVMemoryQuota) {
+      self.memoryQuotaFileds.keyup(function () {
+        self.computePerServerTotalQuota(container);
+      }).keyup();
+    }
   },
   computePerServerTotalQuota: function (root) {
     var self = this;

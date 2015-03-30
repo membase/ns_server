@@ -326,16 +326,54 @@ var SetupWizard = {
       }
 
       DAL.performLogin(data.user, data.password, function (status) {
-        overlay.remove();
         if (status == "success") {
-          displayNotice('This server has been associated with the cluster and will join on the next rebalance operation.');
+          $.ajax({
+            type: "GET",
+            url: 'pools/default',
+            success: function (poolData) {
+              var indexNodesCount = 0;
+              var indexExists = _.each(poolData.nodes, function (node) {
+                indexNodesCount += (_.indexOf(node.services, 'index') > -1);
+              });
+              if (indexNodesCount === 1 && data.services.indexOf('index') > -1) {
+                SetupWizard.show('setting_memory_quota', {poolData: poolData, selectedServices: data.services});
+              } else {
+                DAL.tryNoAuthLogin();
+                displayNotice('This server has been associated with the cluster and will join on the next rebalance operation.');
+              }
+            },
+            error: function () {
+              reloadApp();
+            },
+            complete: function () {
+              overlay.remove();
+            }
+          });
         } else {
           reloadApp();
         }
-      });
+      }, !!'doNotRedirectOnOverviewPage');
     });
   },
   pages: {
+    setting_memory_quota: function (node, pagePrefix, options) {
+      var parent = $('#' + pagePrefix + '_dialog');
+      var form = $('form', parent);
+      var settings = ClusterSection.prepareClusterQuotaSettings(options.poolData);
+      settings.prefix = 'wizard_join_cluster_quota';
+      settings.showKVMemoryQuota = options.selectedServices.indexOf('kv') > -1;
+      var memoryQuotaWidget = new MemoryQuotaSettingsWidget(settings, $('#js_join_wizard_cluster_quota'));
+      form.submit(function (event) {
+        event.preventDefault();
+        var overlay = overlayWithSpinner(form, '#EEE');
+        memoryQuotaWidget.tryToSaveMemoryQuota().done(function () {
+          DAL.tryNoAuthLogin();
+          displayNotice('This server has been associated with the cluster and will join on the next rebalance operation.');
+        }).always(function () {
+          overlay.remove();
+        });
+      });
+    },
     bucket_dialog: function (node, pagePrefix, opt) {
       var spinner;
       var timeout = setTimeout(function () {
@@ -656,6 +694,7 @@ var SetupWizard = {
             memoryQuota: quota,
             indexMemoryQuota: data.indexMemoryQuota,
             isServicesControllsAvailable: true,
+            showKVMemoryQuota: true,
             maxMemorySize: ramMaxMegs,
             totalMemorySize: totalRAMMegs,
             prefix: 'cluster_memory_wizard_settings'

@@ -439,7 +439,6 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .settings p {line-height: 20px;}
 .settings .warning {font-size: 11px;}
 .settings .error-container {font-size: 11px;}
-.settings .cluster_settings_container .row label {width: 140px;}
 .settings p {margin: 10px 0;}
 .settings input {vertical-align: middle;}
 
@@ -601,7 +600,6 @@ body.auth #cluster_state_id, body.init_welcome #cluster_state_id {font-style:ita
 .join_cluster_dialog_services {margin-left: 90px;}
 .join_cluster_dialog_services input {border: 0; margin-right: 0;}
 .join_cluster_dialog_services input, .join_cluster_dialog_services label {vertical-align: middle;}
-#join_cluster_dialog_errors_container {padding-left: 40px;}
 
 .active_tooltip {z-index: 2;}
 .active_tooltip span.tooltip_msg {display:block;}
@@ -646,9 +644,9 @@ span.tooltip {color:#0095D6;cursor:pointer;}
 .ie8 #init_block .pad {border:1px solid #837C7B}
 
 /* wizard page show/hide init_block and cluster */
-body.init_welcome, body.init_cluster, body.init_resources, body.init_secure, body.init_bucket_dialog, body.init_update_notifications, body.init_sample_buckets  {background:#F0EEE7}
-body.init_welcome #init_block, body.init_cluster #init_block, body.init_resources #init_block, body.init_secure #init_block, body.init_bucket_dialog #init_block, body.init_update_notifications #init_block, body.init_sample_buckets #init_block { display: block; }
-body.init_welcome #container, body.init_cluster #container, body.init_resources #container, body.init_secure #container, body.init_bucket_dialog #container, body.init_update_notifications #container, body.init_sample_buckets #container { display: none; }
+body.init_welcome, body.init_cluster, body.init_resources, body.init_secure, body.init_bucket_dialog, body.init_update_notifications, body.init_sample_buckets,  body.init_setting_memory_quota{background:#F0EEE7}
+body.init_welcome #init_block, body.init_cluster #init_block, body.init_resources #init_block, body.init_secure #init_block, body.init_bucket_dialog #init_block, body.init_update_notifications #init_block, body.init_sample_buckets #init_block, body.init_setting_memory_quota #init_block { display: block; }
+body.init_welcome #container, body.init_cluster #container, body.init_resources #container, body.init_secure #container, body.init_bucket_dialog #container, body.init_update_notifications #container, body.init_sample_buckets #container, body.init_setting_memory_quota #container{ display: none; }
 body.init_welcome #init_welcome_dialog {width: 703px;display: block;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999;background-color: white;height: 470px;position:relative}
 body.init_welcome #init_welcome_dialog .pad-header {margin:0 auto;width: 266px; margin: 0 auto; padding-top: 75px;}
 body.init_welcome #init_welcome_dialog .version {color: #837c7b;display: inline-block;vertical-align: middle;margin-right: 10px;}
@@ -704,7 +702,7 @@ body.init_secure #init_secure_dialog form > div label {display:inline-block;widt
 body.init_secure #init_secure_dialog form > div input {padding:3px; border:1px solid #ccd3d7;}
 body.init_secure #init_secure_dialog form > .config-bottom {overflow:hidden;margin:25px auto 0 -8px;}
 
-.init_block #init_bucket_dialog {padding-bottom:-50px;background:none #eee;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
+.init_block #init_bucket_dialog, #init_setting_memory_quota_dialog {padding-bottom:-50px;background:none #eee;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
 
 .init_block #init_bucket_dialog .save_cancel button {margin:2px 0 0 20px;}
 
@@ -1170,6 +1168,9 @@ span.staleness-notice, .staleness-notice { font-size: 12px!important; display: n
 .darker_block.dynamic_server_resources { display: none; }
 .dynamic_with_server_resources .darker_block.dynamic_server_resources { display: block; }
 
+body.init_setting_memory_quota #init_setting_memory_quota_dialog {display: block;}
+.init_setting_memory_quota .cluster_quota_settings {margin: 10px 85px;}
+.init_setting_memory_quota .cluster_quota_settings label{display: inline-block; width: 130px;}
 /* update notifications page in the startup wizard */
 body.init_update_notifications #init_update_notifications_dialog {display:block}
 .init_block .warn {font-size: 11px; line-height: 15px; list-style: none; margin-left: 70px;}

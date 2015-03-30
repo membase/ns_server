@@ -2684,10 +2684,23 @@
   </form>
 </div>
 
+<div class="dialog memory_quota_dialog" id="js_memory_quota_dialog" style="width: 450px;" title="Set RAM Quota">
+  <form class="cluster_quota_settings">
+    <div class="inner_wrap" id="js_add_node_memory_quota_holder">
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Set Quota</button>
+    </div>
+  </form>
+</div>
+
 
 <div class="dialog join_cluster join_cluster_dialog" id="join_cluster_dialog" title="Add Server">
   <!-- Join cluster -->
-  <p class="warning pat_10" id="join_cluster_dialog_errors_container"></p>
+  <p class="warning pat_10" style="padding-right: 20px;" id="join_cluster_dialog_errors_container"></p>
+  <p class="warning pat_10" style="padding: 0 20px;">
+    <strong>Warning</strong> – Adding a server to this cluster means all data on that server will be removed.
+  </p>
   <script id="join_cluster_dialog_errors_template" type="text/html">
     <!-- {% _.each(rows, function (e) { %} -->
     <strong>Attention</strong> - {%= h(e) %}<br>
@@ -2738,11 +2751,11 @@
           <input type="checkbox" class="inp" name="services" value="kv" id="add_servers_data_checkbox" />
           <label class="label" for="add_servers_data_checkbox" style="text-align: left; width: 45px;">Data</label>
 
-          <input type="checkbox" class="inp" name="services" value="n1ql" id="add_servers_n1ql_checkbox" />
-          <label class="label" for="add_servers_n1ql_checkbox" style="text-align: left; width: 45px;">Query</label>
-
           <input type="checkbox" class="inp" name="services" value="index" id="add_servers_index_checkbox" />
           <label class="label" for="add_servers_index_checkbox" style="text-align: left; width: 45px;">Index</label>
+
+          <input type="checkbox" class="inp" name="services" value="n1ql" id="add_servers_n1ql_checkbox" />
+          <label class="label" for="add_servers_n1ql_checkbox" style="text-align: left; width: 45px;">Query</label>
 
           <a class="tooltip text_11"><span>What's this?</span>
             <span class="tooltip_msg" style="width:350px;"><span>
@@ -2793,21 +2806,6 @@
   </div>
 </div>
 <!-- END eject confirmation dialog -->
-<!--  add confirmation dialog -->
-<div class="dialog" id="add_confirmation_dialog" title="Confirm Server Addition">
-  <div class="content">
-    <div class="pas_20">
-      <div class="warning pat_20">
-        <strong>Warning</strong> – Adding a server to this cluster means all data on that server will be removed.
-      </div>
-    </div>
-    <div class="right save_cancel pas_20 footer_bg">
-      <button type="submit" class="save_button float_right">Add Server</button>
-      <a class="close cancel_button float_right">Cancel</a>
-    </div>
-  </div>
-</div>
-<!-- END add confirmation dialog -->
 
 <!-- failover confirmation dialog -->
 <div class="dialog" id="failover_confirmation_dialog" title="Confirm Node Fail Over">
@@ -3394,7 +3392,7 @@
           <div class="init_cluster_service_per_node_warning">
             Warning: Not recommended to have >1 Service per node in a production environment.
           </div>
-          <p class="warning pat_10 join_cluster_dialog_errors_container" style="margin: 10px 30px 10px 0;"></p>
+          <p class="warning pat_10 join_cluster_dialog_errors_container"></p>
           <div>
             <label for="clusterMemberHostIp">IP Address:</label>
             <input type="text" class="inp" name="hostname" id="clusterMemberHostIp" value="" />
@@ -3412,15 +3410,15 @@
           </div>
           <div>
             <label>Services:</label>
-            <div style="display: inline;">
+            <div  class="wizard_services">
               <input type="checkbox" class="inp" name="services" value="kv" id="wizard_join_servers_data_checkbox" checked/>
-              <label class="label" for="wizard_join_servers_data_checkbox" style="text-align: left; width: 45px;">Data</label>
-
-              <input type="checkbox" class="inp" name="services" value="n1ql" id="wizard_join_setup_n1ql_checkbox" />
-              <label class="label" for="wizard_join_setup_n1ql_checkbox" style="text-align: left; width: 45px;">Query</label>
+              <label class="label" for="wizard_join_servers_data_checkbox">Data</label>
 
               <input type="checkbox" class="inp" name="services" value="index" id="wizard_join_setup_index_checkbox" />
-              <label class="label" for="wizard_join_setup_index_checkbox" style="text-align: left; width: 45px;">Index</label>
+              <label class="label" for="wizard_join_setup_index_checkbox">Index</label>
+
+              <input type="checkbox" class="inp" name="services" value="n1ql" id="wizard_join_setup_n1ql_checkbox" />
+              <label class="label" for="wizard_join_setup_n1ql_checkbox">Query</label>
             </div>
             <a class="tooltip text_11"><span>What's this?</span>
               <span class="tooltip_msg" style="width:350px;"><span>
@@ -3569,6 +3567,18 @@
     </div></form>
   </div>
   <!-- END init_bucket_block -->
+
+  <div class="pad" id="init_setting_memory_quota_dialog"><form>
+    <div class="config-top">
+      <h1>Set RAM Quota</h1>
+      <h2>Step <span class="current-step">5</span> of 5</h2>
+    </div>
+    <h2 class="question">Set RAM Quota</h2>
+    <div id="js_join_wizard_cluster_quota" class="cluster_quota_settings"></div>
+    <div class="config-bottom">
+      <button name="next" value="Next" class="submit next direction-button" type="submit">Set Quota</button>
+    </div>
+  </form></div>
 
   <div class="pad" id="init_update_notifications_dialog"><form>
     <div class="config-top">
@@ -3750,20 +3760,24 @@
       </a>
     </div>
   {% } %}
+  {% if (showKVMemoryQuota) { %}
   <div class="memory-quota row">
     <label for="{%= prefix %}_kv_ram_quota">Data RAM Quota:</label>
     <input type="number" class="focusme js_ram_quota" id="{%= prefix %}_kv_ram_quota" name="memoryQuota" value="{%= h(memoryQuota) %}" />
     <span>MB (min {%= minMemorySize %} MB)</span>
   </div>
+  {% } %}
   <div class="memory-quota row">
     <label for="{%= prefix %}_index_ram_quota">Index RAM Quota:</label>
     <input type="number" class="js_ram_quota" id="{%= prefix %}_index_ram_quota" name="indexMemoryQuota" value="{%= h(indexMemoryQuota) %}" />
-    <span>MB (min {%= minMemorySize %} MB)</span>
+    <span>MB (min 256 MB)</span>
   </div>
+  {% if (showKVMemoryQuota) { %}
   <div class="row">
     <label>Total Per Server:</label>
     <span><span class="js_per_server_total"></span> MB (must be &lt;= <span class="js_max_ram_size">{%= h(maxMemorySize) %}</span> MB) </span>
   </div>
+  {% } %}
 </script>
 
 <!--[if IE]><script language="javascript" type="text/javascript" src="js/excanvas.min.js"></script><![endif]-->

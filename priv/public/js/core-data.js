@@ -241,7 +241,7 @@ var DAL = {
 
     return rv;
   },
-  performLogin: function (login, password, callback) {
+  performLogin: function (login, password, callback, doNotRedirectOnOverviewPage) {
     $.ajax({
       type: 'POST',
       url: "/uilogin",
@@ -256,7 +256,7 @@ var DAL = {
       if (status != 'success') {
         return callback(status, data);
       }
-      if (!DAL.tryNoAuthLogin()) {
+      if (!doNotRedirectOnOverviewPage && !DAL.tryNoAuthLogin()) {
         // this should be impossible
         reloadApp();
         return;
