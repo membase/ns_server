@@ -45,7 +45,6 @@
          build_nodes_info_fun/3,
          build_full_node_info/2,
          handle_streaming/3,
-         is_system_provisioned/0,
          maybe_cleanup_old_buckets/0,
          find_node_hostname/2,
          build_auto_compaction_settings/1,
@@ -835,7 +834,7 @@ handle_pools(Req) ->
                {uri, <<"/pools/default?uuid=", UUID/binary>>},
                {streamingUri, <<"/poolsStreaming/default?uuid=", UUID/binary>>}]}],
     EffectivePools =
-        case is_system_provisioned() of
+        case ns_config_auth:is_system_provisioned() of
             true -> Pools;
             _ -> []
         end,
@@ -1000,7 +999,7 @@ assert_is_sherlock() ->
 % ]}
 
 check_and_handle_pool_info(Id, Req) ->
-    case is_system_provisioned() of
+    case ns_config_auth:is_system_provisioned() of
         true ->
             handle_pool_info(Id, Req);
         _ ->
@@ -1478,7 +1477,7 @@ handle_join(Req) ->
     %%                    clusterMemberPort=8091&
     %%                    user=admin&password=admin123
     %%
-    case is_system_provisioned() of
+    case ns_config_auth:is_system_provisioned() of
         true ->
             Msg = <<"Node is already provisioned. To join use controller/addNode api of the cluster">>,
             reply_json(Req, [Msg], 400);
@@ -2077,12 +2076,8 @@ handle_settings_auto_failover_reset_count(Req) ->
     ns_audit:reset_auto_failover_count(Req),
     reply(Req, 200).
 
-%% true if system is correctly provisioned
-is_system_provisioned() ->
-    ns_config_auth:get_user(admin) =/= undefined.
-
 maybe_cleanup_old_buckets() ->
-    case is_system_provisioned() of
+    case ns_config_auth:is_system_provisioned() of
         true ->
             ok;
         false ->
@@ -2452,7 +2447,7 @@ handle_node_settings_post(Node, Req) ->
         _ -> ok
     end,
 
-    case is_system_provisioned() andalso DbPath =/= DefaultDbPath of
+    case ns_config_auth:is_system_provisioned() andalso DbPath =/= DefaultDbPath of
         true ->
             %% MB-7344: we had 1.8.1 instructions allowing that. And
             %% 2.0 works very differently making that original
@@ -2512,7 +2507,7 @@ handle_node_settings_post(Node, Req) ->
 
 handle_setup_services_post(Req) ->
     Params = Req:parse_post(),
-    case is_system_provisioned() of
+    case ns_config_auth:is_system_provisioned() of
         true ->
             reply_text(Req, <<"cannot change node services after cluster is provisioned">>, 400);
         _ ->

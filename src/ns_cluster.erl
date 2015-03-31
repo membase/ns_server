@@ -484,7 +484,7 @@ rename_node_in_config(Old, New) ->
 
 
 check_add_possible(Body) ->
-    case menelaus_web:is_system_provisioned() of
+    case ns_config_auth:is_system_provisioned() of
         false -> {error, system_not_provisioned,
                   <<"Adding nodes to not provisioned nodes is not allowed.">>,
                   system_not_provisioned};

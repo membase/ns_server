@@ -26,7 +26,8 @@
          credentials_changed/3,
          unset_credentials/1,
          upgrade/1,
-         get_creds/1]).
+         get_creds/1,
+         is_system_provisioned/0]).
 
 get_key(admin) ->
     rest_creds;
@@ -49,6 +50,16 @@ set_credentials_old(admin, User, Password) ->
                                 [{User, [{password, Password}]}]}]);
 set_credentials_old(ro_admin, User, Password) ->
     ns_config:set(read_only_user_creds, {User, {password, Password}}).
+
+is_system_provisioned() ->
+    case ns_config:search(get_key(admin)) of
+        {value, {_U, _}} ->
+            true;
+        {value, [{creds, [{_U, _}|_]}]} ->
+            true;
+        _ ->
+            false
+    end.
 
 get_user(special) ->
     "@";

@@ -211,7 +211,7 @@ open_replicator_db() ->
 %% make sure the replication db exists in couchdb
 %% and it is not a leftover from the previous installation
 open_or_create_replicator_db() ->
-    case menelaus_web:is_system_provisioned() of
+    case ns_config_auth:is_system_provisioned() of
         true ->
             ok;
         false ->
