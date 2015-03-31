@@ -236,7 +236,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth) ->
                   false ->
                       [{autoCompactionSettings, false} | Suffix2];
                   _ ->
-                      [{autoCompactionSettings, menelaus_web:build_auto_compaction_settings(ACSettings)},
+                      [{autoCompactionSettings, menelaus_web:build_bucket_auto_compaction_settings(ACSettings)},
                        {purgeInterval, case proplists:get_value(purge_interval, BucketConfig) of
                                            undefined -> compaction_api:get_purge_interval(global);
                                            PurgeInterval -> PurgeInterval

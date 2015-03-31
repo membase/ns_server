@@ -121,7 +121,8 @@ do_populate_ets_table(JSON) ->
 
 known_settings() ->
     [{memoryQuota, id_lens(<<"indexer.settings.memory_quota">>), 256},
-     {generalSettings, general_settings_lens(), general_settings_defaults()}].
+     {generalSettings, general_settings_lens(), general_settings_defaults()},
+     {compaction, compaction_lens(), compaction_defaults()}].
 
 default_settings() ->
     [{UIKey, Default} || {UIKey, _, Default} <- known_settings()].
@@ -162,6 +163,55 @@ general_settings_lens() ->
 
 general_settings_defaults() ->
     [{Key, Default} || {Key, _, Default} <- general_settings_lens_props()].
+
+compaction_interval_default() ->
+    [{from_hour, 0},
+     {to_hour, 0},
+     {from_minute, 0},
+     {to_minute, 0}].
+
+compaction_interval_lens() ->
+    Get = fun (_Dict) ->
+                  unused
+          end,
+    Set = fun (Values0, Dict) ->
+                  Values =
+                      case Values0 of
+                          [] ->
+                              compaction_interval_default();
+                          _ ->
+                              Values0
+                      end,
+
+                  {_, FromHour} = lists:keyfind(from_hour, 1, Values),
+                  {_, ToHour} = lists:keyfind(to_hour, 1, Values),
+                  {_, FromMinute} = lists:keyfind(from_minute, 1, Values),
+                  {_, ToMinute} = lists:keyfind(to_minute, 1, Values),
+
+                  Key = <<"indexer.settings.compaction.interval">>,
+                  Value = iolist_to_binary(
+                            io_lib:format("~2.10.0b:~2.10.0b,~2.10.0b:~2.10.0b",
+                                          [FromHour, FromMinute, ToHour, ToMinute])),
+
+                  dict:store(Key, Value, Dict)
+          end,
+    {Get, Set}.
+
+compaction_lens_props() ->
+    [{fragmentation, id_lens(<<"indexer.settings.compaction.min_frag">>), 30},
+     {interval, compaction_interval_lens(), compaction_interval_default()}].
+
+compaction_lens_get(Dict) ->
+    lens_get_many(compaction_lens_props(), Dict).
+
+compaction_lens_set(Values, Dict) ->
+    lens_set_many(compaction_lens_props(), Values, Dict).
+
+compaction_lens() ->
+    {fun compaction_lens_get/1, fun compaction_lens_set/2}.
+
+compaction_defaults() ->
+    [{Key, Default} || {Key, _, Default} <- compaction_lens_props()].
 
 lens_get({Get, _}, Dict) ->
     Get(Dict).

@@ -47,8 +47,7 @@
          handle_streaming/3,
          maybe_cleanup_old_buckets/0,
          find_node_hostname/2,
-         build_auto_compaction_settings/1,
-         parse_validate_auto_compaction_settings/1,
+         build_bucket_auto_compaction_settings/1,
          parse_validate_bucket_auto_compaction_settings/1,
          is_enterprise/0,
          is_xdcr_over_ssl_allowed/0,
@@ -1151,12 +1150,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                  {stopRebalanceUri, <<"/controller/stopRebalance?uuid=", UUID/binary>>},
                  {nodeStatusesUri, <<"/nodeStatuses">>},
                  {maxBucketCount, ns_config:read_key_fast(max_bucket_count, 10)},
-                 {autoCompactionSettings, case ns_config:search(Config, autocompaction) of
-                                              false ->
-                                                  build_auto_compaction_settings([]);
-                                              {value, ACSettings} ->
-                                                  build_auto_compaction_settings(ACSettings)
-                                          end},
+                 {autoCompactionSettings, build_global_auto_compaction_settings(Config)},
                  {tasks, {struct, [{uri, TasksURI}]}},
                  {counters, {struct, ns_cluster:counters()}},
                  {memoryQuota, ns_storage_conf:memory_quota(Config)}],
@@ -1188,7 +1182,32 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
 
     {struct, PropList}.
 
-build_auto_compaction_settings(Settings) ->
+build_global_auto_compaction_settings() ->
+    build_global_auto_compaction_settings(ns_config:latest_config_marker()).
+
+build_global_auto_compaction_settings(Config) ->
+    Extra = case cluster_compat_mode:is_cluster_sherlock() of
+                true ->
+                    IndexCompaction = index_settings_manager:get(compaction),
+                    true = (IndexCompaction =/= undefined),
+                    {_, Fragmentation} = lists:keyfind(fragmentation, 1, IndexCompaction),
+                    [{indexFragmentationThreshold,
+                      {struct, [{percentage, Fragmentation}]}}];
+                false ->
+                    []
+            end,
+
+    case ns_config:search(Config, autocompaction) of
+        false ->
+            do_build_auto_compaction_settings([], Extra);
+        {value, ACSettings} ->
+            do_build_auto_compaction_settings(ACSettings, Extra)
+    end.
+
+build_bucket_auto_compaction_settings(Settings) ->
+    do_build_auto_compaction_settings(Settings, []).
+
+do_build_auto_compaction_settings(Settings, Extra) ->
     PropFun = fun ({JSONName, CfgName}) ->
                       case proplists:get_value(CfgName, Settings) of
                           undefined -> [];
@@ -1205,7 +1224,7 @@ build_auto_compaction_settings(Settings) ->
               | case proplists:get_value(allowed_time_period, Settings) of
                     undefined -> [];
                     V -> [{allowedTimePeriod, build_auto_compaction_allowed_time_period(V)}]
-                end] ++ DBAndView}.
+                end] ++ DBAndView ++ Extra}.
 
 build_auto_compaction_allowed_time_period(AllowedTimePeriod) ->
     {struct, [{JSONName, proplists:get_value(CfgName, AllowedTimePeriod)}
@@ -2991,14 +3010,15 @@ handle_diag_vbuckets(Req) ->
 
 handle_set_autocompaction(Req) ->
     Params = Req:parse_post(),
-    SettingsRV = parse_validate_auto_compaction_settings(Params),
+    IsSherlock = cluster_compat_mode:is_cluster_sherlock(),
+    SettingsRV = parse_validate_auto_compaction_settings(Params, IsSherlock),
     ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
     case {ValidateOnly, SettingsRV} of
         {_, {errors, Errors}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
-        {true, {ok, _ACSettings, _}} ->
+        {true, {ok, _ACSettings, _, _}} ->
             reply_json(Req, {struct, [{errors, {struct, []}}]}, 200);
-        {false, {ok, ACSettings, MaybePurgeInterval}} ->
+        {false, {ok, ACSettings, MaybePurgeInterval, MaybeIndex}} ->
             ns_config:set(autocompaction, ACSettings),
             case MaybePurgeInterval of
                 [{purge_interval, PurgeInterval}] ->
@@ -3011,7 +3031,25 @@ handle_set_autocompaction(Req) ->
                 [] ->
                     ok
             end,
-            ns_audit:modify_compaction_settings(Req, ACSettings ++ MaybePurgeInterval),
+
+            case IsSherlock of
+                true ->
+                    AllowedPeriod = proplists:get_value(allowed_time_period, ACSettings, []),
+                    Fragmentation =
+                        case MaybeIndex of
+                            [] ->
+                                [];
+                            _ ->
+                                [{fragmentation, misc:expect_prop_value(index_fragmentation_percentage, MaybeIndex)}]
+                        end,
+
+                    {ok, _} = index_settings_manager:update(compaction,
+                                                            [{interval, AllowedPeriod}] ++ Fragmentation);
+                false ->
+                    ok
+            end,
+
+            ns_audit:modify_compaction_settings(Req, ACSettings ++ MaybePurgeInterval ++ MaybeIndex),
             reply_json(Req, [], 200)
     end.
 
@@ -3069,7 +3107,7 @@ parse_validate_boolean_field(JSONName, CfgName, Params) ->
         _ -> [{error, JSONName, iolist_to_binary(io_lib:format("~s is invalid", [JSONName]))}]
     end.
 
-parse_validate_auto_compaction_settings(Params) ->
+parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
     PercResults = lists:flatmap(mk_number_field_validator(2, 100, Params),
                                 [{"databaseFragmentationThreshold[percentage]",
                                   db_fragmentation_percentage,
@@ -3084,6 +3122,17 @@ parse_validate_auto_compaction_settings(Params) ->
                                  {"viewFragmentationThreshold[size]",
                                   view_fragmentation_size,
                                   "view fragmentation size"}]),
+
+    IndexResults =
+        case ExpectIndex of
+            true ->
+                PercValidator = mk_number_field_validator(2, 100, Params),
+                PercValidator({"indexFragmentationThreshold[percentage]",
+                               index_fragmentation_percentage,
+                               "index fragmentation"});
+            false ->
+                []
+        end,
 
     ParallelResult = case parse_validate_boolean_field("parallelDBAndViewCompaction", parallel_db_and_view_compaction, Params) of
                          [] -> [{error, "parallelDBAndViewCompaction", <<"parallelDBAndViewCompaction is missing">>}];
@@ -3104,9 +3153,9 @@ parse_validate_auto_compaction_settings(Params) ->
                         end,
     PurgeIntervalResults = (mk_number_field_validator(0.04, 60, Params, list_to_float))({"purgeInterval", purge_interval, "metadata purge interval"}),
 
-    Errors0 = [{iolist_to_binary(Field), Msg} || {error, Field, Msg} <- PercResults ++ ParallelResult ++ PeriodTimeResults
-                                                     ++ SizeResults
-                                                     ++ PurgeIntervalResults],
+    Errors0 = [{iolist_to_binary(Field), Msg} ||
+                  {error, Field, Msg} <- lists:append([PercResults, ParallelResult, PeriodTimeResults,
+                                                       SizeResults, PurgeIntervalResults, IndexResults])],
     BadFields = lists:sort(["databaseFragmentationThreshold",
                             "viewFragmentationThreshold"]),
     Errors = case ordsets:intersection(lists:sort(proplists:get_keys(Params)),
@@ -3137,8 +3186,11 @@ parse_validate_auto_compaction_settings(Params) ->
                     _ -> [{allowed_time_period, [{F, V} || {ok, F, V} <- PeriodTimeResults]}
                           | MainFields]
                 end,
-            {ok, AllFields, [{F, V} || {ok, F, V} <- PurgeIntervalResults]};
-        _ -> {errors, Errors}
+            MaybePurgeResults = [{F, V} || {ok, F, V} <- PurgeIntervalResults],
+            MaybeIndexResults = [{F, V} || {ok, F, V} <- IndexResults],
+            {ok, AllFields, MaybePurgeResults, MaybeIndexResults};
+        _ ->
+            {errors, Errors}
     end.
 
 parse_validate_bucket_auto_compaction_settings(Params) ->
@@ -3147,16 +3199,16 @@ parse_validate_bucket_auto_compaction_settings(Params) ->
         [{error, F, V}] -> {errors, [{F, V}]};
         [{ok, _, false}] -> false;
         [{ok, _, true}] ->
-            parse_validate_auto_compaction_settings(Params)
+            case parse_validate_auto_compaction_settings(Params, false) of
+                {ok, AllFields, MaybePurge, _} ->
+                    {ok, AllFields, MaybePurge};
+                Error ->
+                    Error
+            end
     end.
 
 handle_settings_auto_compaction(Req) ->
-    JSON = [{autoCompactionSettings, case ns_config:search(autocompaction) of
-                                         false ->
-                                             build_auto_compaction_settings([]);
-                                         {value, ACSettings} ->
-                                             build_auto_compaction_settings(ACSettings)
-                                     end},
+    JSON = [{autoCompactionSettings, build_global_auto_compaction_settings()},
             {purgeInterval, compaction_api:get_purge_interval(global)}],
     reply_json(Req, {struct, JSON}, 200).
 
@@ -3432,14 +3484,18 @@ do_handle_set_recovery_type(Req, Type, Params) ->
 -ifdef(EUNIT).
 
 basic_parse_validate_auto_compaction_settings_test() ->
-    {ok, Stuff0, []} = parse_validate_auto_compaction_settings([{"databaseFragmentationThreshold[percentage]", "10"},
-                                                                {"viewFragmentationThreshold[percentage]", "20"},
-                                                                {"parallelDBAndViewCompaction", "false"},
-                                                                {"allowedTimePeriod[fromHour]", "0"},
-                                                                {"allowedTimePeriod[fromMinute]", "1"},
-                                                                {"allowedTimePeriod[toHour]", "2"},
-                                                                {"allowedTimePeriod[toMinute]", "3"},
-                                                                {"allowedTimePeriod[abortOutside]", "false"}]),
+    {ok, Stuff0, [],
+     [{index_fragmentation_percentage, 43}]} =
+        parse_validate_auto_compaction_settings([{"databaseFragmentationThreshold[percentage]", "10"},
+                                                 {"viewFragmentationThreshold[percentage]", "20"},
+                                                 {"indexFragmentationThreshold[size]", "42"},
+                                                 {"indexFragmentationThreshold[percentage]", "43"},
+                                                 {"parallelDBAndViewCompaction", "false"},
+                                                 {"allowedTimePeriod[fromHour]", "0"},
+                                                 {"allowedTimePeriod[fromMinute]", "1"},
+                                                 {"allowedTimePeriod[toHour]", "2"},
+                                                 {"allowedTimePeriod[toMinute]", "3"},
+                                                 {"allowedTimePeriod[abortOutside]", "false"}], true),
     Stuff1 = lists:sort(Stuff0),
     ?assertEqual([{allowed_time_period, [{from_hour, 0},
                                          {to_hour, 2},
@@ -3503,7 +3559,8 @@ extra_field_parse_validate_auto_compaction_settings_test() ->
                                                                 {"allowedTimePeriod[fromMinute]", "1"},
                                                                 {"allowedTimePeriod[toHour]", "2"},
                                                                 {"allowedTimePeriod[toMinute]", "3"},
-                                                                {"allowedTimePeriod[abortOutside]", "false"}]),
+                                                                {"allowedTimePeriod[abortOutside]", "false"}],
+                                                               false),
     ?assertEqual([{<<"_">>, <<"Got unsupported fields: databaseFragmentationThreshold and viewFragmentationThreshold">>}],
                  Stuff0),
 
@@ -3513,7 +3570,8 @@ extra_field_parse_validate_auto_compaction_settings_test() ->
                                                                 {"allowedTimePeriod[fromMinute]", "1"},
                                                                 {"allowedTimePeriod[toHour]", "2"},
                                                                 {"allowedTimePeriod[toMinute]", "3"},
-                                                                {"allowedTimePeriod[abortOutside]", "false"}]),
+                                                                {"allowedTimePeriod[abortOutside]", "false"}],
+                                                               true),
     ?assertEqual([{<<"_">>, <<"Got unsupported fields: databaseFragmentationThreshold">>}],
                  Stuff1),
     ok.
