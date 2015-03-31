@@ -33,7 +33,7 @@
          delete_old_2i_indexes/0,
          setup_db_and_ix_paths/0]).
 
--export([cluster_storage_info/0, cluster_storage_info/1, nodes_storage_info/1]).
+-export([cluster_storage_info/0, nodes_storage_info/1]).
 
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
          default_memory_quota/1,
@@ -279,9 +279,6 @@ nodes_storage_info(NodeNames) ->
 %% usedByData - amount of this resource used by our data
 cluster_storage_info() ->
     nodes_storage_info(ns_cluster_membership:active_nodes()).
-
-cluster_storage_info(NodesInfos) ->
-    do_cluster_storage_info(NodesInfos).
 
 extract_subprop(NodeInfos, Key, SubKey) ->
     [proplists:get_value(SubKey, proplists:get_value(Key, NodeInfo, [])) ||
