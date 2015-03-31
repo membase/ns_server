@@ -158,6 +158,8 @@ now_to_iso8601(Now = {_, _, Microsecs}) ->
 
 get_user_id(undefined, undefined) ->
     undefined;
+get_user_id(User, "undefined") ->
+    to_binary(User);
 get_user_id(User, Source) ->
     {[{source, case to_binary(Source) of
                    <<"builtin">> ->

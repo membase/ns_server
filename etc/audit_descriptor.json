@@ -26,7 +26,7 @@
           "enabled" : true,
           "mandatory_fields" : {
               "timestamp" : "",
-              "real_userid" : {"source" : "", "user" : ""},
+              "real_userid" : "",
               "remote" : {"ip" : "", "port" : 1}
           },
           "optional_fields" : {
