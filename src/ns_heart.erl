@@ -260,24 +260,47 @@ grab_latest_stats(Bucket) ->
             []
     end.
 
+add_interesting_index_stats(BucketName, BucketStats) ->
+    IndexStats = grab_latest_stats("@index-" ++ BucketName),
+
+    DataSizeKey = index_stats_collector:global_index_stat(<<"data_size">>),
+    DiskSizeKey = index_stats_collector:global_index_stat(<<"disk_size">>),
+
+    DataSize = proplists:get_value(DataSizeKey, IndexStats, 0),
+    DiskSize = proplists:get_value(DiskSizeKey, IndexStats, 0),
+    orddict:store(index_disk_size, DiskSize,
+                  orddict:store(index_data_size, DataSize, BucketStats)).
+
 current_status_slow_inner() ->
     [SystemStats, ProcessesStats] =
         [grab_latest_stats(PseudoBucket) || PseudoBucket <- ["@system", "@system-processes"]],
 
     BucketNames = ns_bucket:node_bucket_names(node()),
 
-    PerBucketInterestingStats =
-        lists:foldl(fun (BucketName, Acc) ->
-                            Values = grab_latest_stats(BucketName),
-                            InterestingValues = lists:filter(fun is_interesting_stat/1, Values),
-                            [{BucketName, InterestingValues} | Acc]
-                    end, [], BucketNames),
-
     IndexStatus = try index_status_keeper:get(2000)
                   catch T:E ->
                           ?log_debug("ignoring failure to get index status: ~p~n~p", [{T, E}, erlang:get_stacktrace()]),
                           []
                   end,
+
+    Indexes = proplists:get_value(indexes, IndexStatus, []),
+    IndexBuckets = sets:from_list([binary_to_list(B) || {B, _} <- Indexes]),
+
+    PerBucketInterestingStats =
+        lists:foldl(fun (BucketName, Acc) ->
+                            Values = grab_latest_stats(BucketName),
+                            InterestingValues0 = lists:filter(fun is_interesting_stat/1, Values),
+
+                            InterestingValues =
+                                case sets:is_element(BucketName, IndexBuckets) of
+                                    true ->
+                                        add_interesting_index_stats(BucketName, InterestingValues0);
+                                    false ->
+                                        InterestingValues0
+                                end,
+
+                            [{BucketName, InterestingValues} | Acc]
+                    end, [], BucketNames),
 
     InterestingStats =
         lists:foldl(fun ({BucketName, InterestingValues}, Acc) ->
