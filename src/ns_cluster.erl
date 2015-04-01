@@ -165,7 +165,7 @@ handle_call({change_address, Address}, _From, State) ->
 handle_cast(leave, State) ->
     ?cluster_log(0001, "Node ~p is leaving cluster.", [node()]),
 
-    create_marker(leave_marker_path()),
+    misc:create_marker(leave_marker_path()),
 
     %% first thing we do is stopping nearly everything
     ok = ns_server_cluster_sup:stop_ns_server(),
@@ -235,13 +235,13 @@ handle_cast(leave, State) ->
     ?cluster_debug("Leaving cluster", []),
     timer:sleep(1000),
 
-    create_marker(start_marker_path()),
-    remove_marker(leave_marker_path()),
+    misc:create_marker(start_marker_path()),
+    misc:remove_marker(leave_marker_path()),
 
     {ok, _} = ns_server_cluster_sup:start_ns_server(),
     ns_ports_setup:restart_memcached(),
 
-    remove_marker(start_marker_path()),
+    misc:remove_marker(start_marker_path()),
 
     {noreply, State};
 handle_cast(retry_start_after_leave, State) ->
@@ -257,7 +257,7 @@ handle_cast(retry_start_after_leave, State) ->
 
     ns_ports_setup:restart_memcached(),
 
-    remove_marker(start_marker_path()),
+    misc:remove_marker(start_marker_path()),
 
     {noreply, State}.
 
@@ -268,7 +268,7 @@ handle_info(Msg, State) ->
 
 
 init([]) ->
-    case marker_exists(leave_marker_path()) of
+    case misc:marker_exists(leave_marker_path()) of
         true ->
             ?log_info("Found marker of in-flight cluster leave. "
                       "Looks like previous leave procedure crashed. "
@@ -278,7 +278,7 @@ init([]) ->
             %% to terminate ns_server_sup is going to cause deadlock
             gen_server:cast(self(), leave);
         false ->
-            case marker_exists(start_marker_path()) of
+            case misc:marker_exists(start_marker_path()) of
                 true ->
                     ?log_info("Found marker ~p. "
                               "Looks like we failed to restart ns_server after leave. "
@@ -1019,23 +1019,6 @@ perform_actual_join(RemoteNode, NewCookie) ->
             ?cluster_error("Failed to join cluster because of: ~p",
                            [Status2]),
             Status2
-    end.
-
-create_marker(Path) ->
-    ok = misc:write_file(Path, <<"">>).
-
-remove_marker(Path) ->
-    ok = file:delete(Path).
-
-marker_exists(Path) ->
-    case file:read_file_info(Path) of
-        {ok, _} ->
-            true;
-        {error, enoent} ->
-            false;
-        Other ->
-            ?cluster_error("Unexpected error when reading marker ~p: ~p", [Path, Other]),
-            exit({failed_to_read_marker, Path, Other})
     end.
 
 leave_marker_path() ->

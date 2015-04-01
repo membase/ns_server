@@ -1712,3 +1712,20 @@ mkdir_p(Path) ->
         Error ->
             Error
     end.
+
+create_marker(Path) ->
+    ok = misc:write_file(Path, <<"">>).
+
+remove_marker(Path) ->
+    ok = file:delete(Path).
+
+marker_exists(Path) ->
+    case file:read_file_info(Path) of
+        {ok, _} ->
+            true;
+        {error, enoent} ->
+            false;
+        Other ->
+            ?log_error("Unexpected error when reading marker ~p: ~p", [Path, Other]),
+            exit({failed_to_read_marker, Path, Other})
+    end.
