@@ -1890,12 +1890,12 @@
           <table class="list align_text" style="width:100%">
             <thead>
               <tr>
-                <th>Bucket</th>
-                <th style="width: 200px;">Node</th>
-                <th>Index Name</th>
-                <th>Definition</th>
-                <th>Status</th>
-                <th>Build Progress</th>
+                <th data-sortby="bucket"><i></i><span>Bucket</span></th>
+                <th data-sortby="hostname" style="width: 200px;"><i></i><span>Node</span></th>
+                <th data-sortby="index"><i></i><span>Index Name</span></th>
+                <th data-sortby="definition"><i></i><span>Definition</span></th>
+                <th data-sortby="status"><i></i><span>Status</span></th>
+                <th data-sortby="progress"><i></i><span>Build Progress</span></th>
               </tr>
             </thead>
             <tbody>
@@ -1907,7 +1907,7 @@
                     <td class="ellipsis" title="{%= h(row.index) %}">{%= h(row.index) %}</td>
                     <td class="ellipsis" title="{%= h(row.definition) %}">{%= h(row.definition || "TODO") %}</td>
                     <td class="ellipsis" title="{%= h(row.status) %}">{%= h(row.status || "TODO") %}</td>
-                    <td class="ellipsis" title="{%= h(row.bucket) %}">{%= h(row.progress || "TODO") %}</td>
+                    <td class="ellipsis" title="{%= h(row.progress) %}">{%= h(row.progress || "TODO") %}</td>
                   </tr>
                 {% }); %}
               {% } else { %}
@@ -1949,7 +1949,7 @@
               <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
             </div>
             <div>
-              <div id="js_indexes_list_container" class="servers_list"></div>
+              <div id="js_indexes_list_container" class="servers_list indexes_list_container"></div>
             </div>
           </div>
         </div>
