@@ -39,10 +39,13 @@
 
 -behavior(gen_server).
 
--record(state, {cert,
-                pkey,
-                compat_30,
-                node}).
+-record(state, {cert_state,
+                reload_state}).
+
+-record(cert_state, {cert,
+                     pkey,
+                     compat_30,
+                     node}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -202,13 +205,13 @@ sync_local_cert_and_pkey_change() ->
     ns_config:sync_announcements(),
     ok = gen_server:call(?MODULE, ping, infinity).
 
-build_state(CertPEM, PKeyPEM, Compat30, Node) ->
-    BaseState = #state{cert = CertPEM,
-                       pkey = PKeyPEM,
-                       compat_30 = Compat30},
+build_cert_state(CertPEM, PKeyPEM, Compat30, Node) ->
+    BaseState = #cert_state{cert = CertPEM,
+                            pkey = PKeyPEM,
+                            compat_30 = Compat30},
     case Compat30 of
         true ->
-            BaseState#state{node = Node};
+            BaseState#cert_state{node = Node};
         false ->
             BaseState
     end.
@@ -221,16 +224,10 @@ init([]) ->
     Compat30 = cluster_compat_mode:is_cluster_30(),
     Node = node(),
     save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node),
-    proc_lib:init_ack({ok, Self}),
-
-    %% it's possible that we crashed somehow and not passed updated
-    %% cert and pkey to xdcr proxy. So we just attempt to restart it
-    %% on every init
-    restart_xdcr_proxy(),
-    query_rest:maybe_refresh_cert(),
-
-    gen_server:enter_loop(?MODULE, [],
-                          build_state(CertPEM, PKeyPEM, Compat30, Node)).
+    RetrySvc = all_services() -- [ssl_service],
+    Self ! notify_services,
+    {ok, #state{cert_state = build_cert_state(CertPEM, PKeyPEM, Compat30, Node),
+                reload_state = RetrySvc}}.
 
 format_status(_Opt, [_PDict, _State]) ->
     {}.
@@ -257,23 +254,50 @@ handle_call(_, _From, State) ->
 handle_cast(_, State) ->
     {noreply, State}.
 
-handle_info(cert_and_pkey_changed, OldState) ->
+handle_info(cert_and_pkey_changed, #state{cert_state = OldCertState} = State) ->
     misc:flush(cert_and_pkey_changed),
     {CertPEM, PKeyPEM} = ns_server_cert:cluster_cert_and_pkey_pem(),
     Compat30 = cluster_compat_mode:is_cluster_30(),
     Node = node(),
-    NewState = build_state(CertPEM, PKeyPEM, Compat30, Node),
-    case OldState =:= NewState of
+    NewCertState = build_cert_state(CertPEM, PKeyPEM, Compat30, Node),
+    case OldCertState =:= NewCertState of
         true ->
-            {noreply, OldState};
+            {noreply, State};
         false ->
             ?log_info("Got certificate and pkey change"),
             save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node),
             ?log_info("Wrote new pem file"),
-            restart_ssl_services(),
-            ?log_info("Restarted all ssl services"),
-            {noreply, NewState}
+            self() ! notify_services,
+            {noreply, #state{cert_state = NewCertState,
+                             reload_state = all_services()}}
     end;
+handle_info(notify_services, #state{reload_state = []} = State) ->
+    misc:flush(notify_services),
+    {noreply, State};
+handle_info(notify_services, #state{reload_state = Reloads} = State) ->
+    misc:flush(notify_services),
+    RVs = misc:parallel_map(fun notify_service/1, Reloads, 60000),
+    ResultPairs = lists:zip(RVs, Reloads),
+    {Good, Bad} = lists:foldl(fun ({ok, Svc}, {AccGood, AccBad}) ->
+                                      {[Svc | AccGood], AccBad};
+                                  (ErrorPair, {AccGood, AccBad}) ->
+                                      {AccGood, [ErrorPair | AccBad]}
+                              end, {[], []}, ResultPairs),
+    case Good of
+        [] ->
+            ok;
+        _ ->
+            ?log_debug("Succesfully notified services ~p", [Good])
+    end,
+    case Bad of
+        [] ->
+            ok;
+        _ ->
+            ?log_debug("Failed to notify some services. Will retry in 5 sec, ~p", [Bad]),
+            timer:send_after(5000, notify_services)
+    end,
+    {noreply, State#state{reload_state = [Svc || {_, Svc} <- Bad]}};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -328,7 +352,10 @@ save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node) ->
 
     ok = ssl_manager:clear_pem_cache().
 
-restart_ssl_services() ->
+all_services() ->
+    [ssl_service, capi_ssl_service, xdcr_proxy, query_svc, memcached].
+
+notify_service(ssl_service) ->
     %% NOTE: We're going to talk to our supervisor so if we do it
     %% synchronously there's chance of deadlock if supervisor is about
     %% to shutdown us.
@@ -340,21 +367,18 @@ restart_ssl_services() ->
         {error, not_running} ->
             ?log_info("Did not restart ssl rest service because it wasn't running"),
             ok
-    end,
+    end;
+notify_service(capi_ssl_service) ->
     case ns_couchdb_api:restart_capi_ssl_service() of
         ok ->
             ok;
         {error, not_running} ->
             ?log_info("Did not restart capi ssl service because is wasn't running"),
             ok
-    end,
-    restart_xdcr_proxy(),
-    query_rest:maybe_refresh_cert(),
-    ok = ns_memcached:connect_and_send_ssl_certs_refresh().
-
-restart_xdcr_proxy() ->
-    case (catch ns_ports_setup:restart_xdcr_proxy()) of
-        ok -> ok;
-        Err ->
-            ?log_debug("Xdcr proxy restart failed. But that's usually normal. ~p", [Err])
-    end.
+    end;
+notify_service(xdcr_proxy) ->
+    ns_ports_setup:restart_xdcr_proxy();
+notify_service(query_svc) ->
+    query_rest:maybe_refresh_cert();
+notify_service(memcached) ->
+    ns_memcached:connect_and_send_ssl_certs_refresh().
