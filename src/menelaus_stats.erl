@@ -528,15 +528,22 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                                        end
                                end),
 
+              ComputeFragmentation =
+                  fun (DiskSize, DataSize) ->
+                          try
+                              100 * (DiskSize - DataSize) / DiskSize
+                          catch error:badarith ->
+                                  0
+                          end
+                  end,
+
               Fragmentation = Z2(per_index_stat(Index, <<"disk_size">>),
                                  per_index_stat(Index, <<"data_size">>),
-                                 fun (DiskSize, DataSize) ->
-                                         try
-                                             100 * (DiskSize - DataSize) / DiskSize
-                                         catch error:badarith ->
-                                                 0
-                                         end
-                                 end),
+                                 ComputeFragmentation),
+
+              GlobalFragmentation = Z2(global_index_stat(<<"disk_size">>),
+                                       global_index_stat(<<"data_size">>),
+                                       ComputeFragmentation),
 
               AvgScanLatency = Z2(per_index_stat(Index, <<"total_scan_duration">>),
                                   per_index_stat(Index, <<"num_rows_returned">>),
@@ -551,7 +558,8 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
 
               [{per_index_stat(Index, <<"avg_item_size">>), AvgItemSize},
                {per_index_stat(Index, <<"fragmentation">>), Fragmentation},
-               {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency}]
+               {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency},
+               {global_index_stat(<<"fragmentation">>), GlobalFragmentation}]
       end, get_indexes(BucketId));
 computed_stats_lazy_proplist("@goxdcr-"++BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
