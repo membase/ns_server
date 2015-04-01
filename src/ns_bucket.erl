@@ -134,7 +134,7 @@ config_string(BucketName) ->
                          misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
                        proplists:get_value(
                          ht_locks, BucketConfig,
-                         misc:getenv_int("MEMBASE_HT_LOCKS", 5)),
+                         misc:getenv_int("MEMBASE_HT_LOCKS", 47)),
                        proplists:get_value(
                          tap_noop_interval, BucketConfig,
                          misc:getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)),
