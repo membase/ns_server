@@ -2227,7 +2227,7 @@
       <label><span>XDCR Batch Count</span><input maxlength="5" style="width:2.5em;" name="xdcrWorkerBatchSize"></label>
       <label><span>XDCR Batch Size (kB)</span><input maxlength="6" style="width:2.5em;" name="xdcrDocBatchSizeKb"></label>
       <label><span>XDCR Failure Retry Interval</span><input maxlength="3" style="width:1.5em;" name="xdcrFailureRestartInterval"></label>
-      <label class="when-goxdcr-enabled"><span>XDCR Statistics Collection Interval</span><input maxlength="5" style="width:1.5em;" name="xdcrStatsInterval"></label>
+      <label class="when-goxdcr-enabled"><span>XDCR Statistics Collection Interval (ms)</span><input maxlength="5" style="width:1.5em;" name="xdcrStatsInterval"></label>
       <label class="when-goxdcr-enabled"><span>XDCR Logging Level</span><input maxlength="5" style="width:1.5em;" name="xdcrLogLevel"></label>
       <label><span>XDCR Optimistic Replication Threshold</span><input maxlength="6" style="width:2.5em;" name="xdcrOptimisticReplicationThreshold"></label>
 
@@ -2587,7 +2587,7 @@
         <i class="error js_error js_optimisticReplicationThreshold"></i>
       </div>
       <div class="when-goxdcr-enabled">
-        <label for="per_statistics_collection_interval">XDCR Statistics Collection Interval:</label>
+        <label for="per_statistics_collection_interval">XDCR Statistics Collection Interval (ms):</label>
         <input type="text" id="per_statistics_collection_interval" name="statsInterval">
         <i class="error js_error js_statsInterval"></i>
       </div>
@@ -3201,7 +3201,7 @@
             <i class="error js_error js_optimisticReplicationThreshold"></i>
           </div>
           <div class="when-goxdcr-enabled">
-            <label for="statistics_collection_interval">XDCR Statistics Collection Interval:</label>
+            <label for="statistics_collection_interval">XDCR Statistics Collection Interval (ms):</label>
             <input type="text" id="statistics_collection_interval" name="statsInterval">
             <i class="error js_error js_statsInterval"></i>
           </div>
