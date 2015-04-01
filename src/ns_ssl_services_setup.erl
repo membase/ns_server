@@ -185,6 +185,9 @@ memcached_cert_path() ->
 memcached_key_path() ->
     filename:join(path_config:component_path(data, "config"), "memcached-key.pem").
 
+marker_path() ->
+    filename:join(path_config:component_path(data, "config"), "reload_marker").
+
 check_local_cert_and_pkey(ClusterCertPEM, Node) ->
     true = is_binary(ClusterCertPEM),
     try
@@ -224,8 +227,13 @@ init([]) ->
     Compat30 = cluster_compat_mode:is_cluster_30(),
     Node = node(),
     save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node),
-    RetrySvc = all_services() -- [ssl_service],
-    Self ! notify_services,
+    RetrySvc = case misc:marker_exists(marker_path()) of
+                   true ->
+                       Self ! notify_services,
+                       all_services() -- [ssl_service];
+                   false ->
+                       []
+               end,
     {ok, #state{cert_state = build_cert_state(CertPEM, PKeyPEM, Compat30, Node),
                 reload_state = RetrySvc}}.
 
@@ -265,6 +273,7 @@ handle_info(cert_and_pkey_changed, #state{cert_state = OldCertState} = State) ->
             {noreply, State};
         false ->
             ?log_info("Got certificate and pkey change"),
+            misc:create_marker(marker_path()),
             save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node),
             ?log_info("Wrote new pem file"),
             self() ! notify_services,
@@ -291,6 +300,7 @@ handle_info(notify_services, #state{reload_state = Reloads} = State) ->
     end,
     case Bad of
         [] ->
+            misc:remove_marker(marker_path()),
             ok;
         _ ->
             ?log_debug("Failed to notify some services. Will retry in 5 sec, ~p", [Bad]),
