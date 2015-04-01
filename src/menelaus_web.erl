@@ -340,7 +340,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["nodes", "self", "xdcrSSLPorts"] ->
                              {done, handle_node_self_xdcr_ssl_ports(Req)};
                          ["indexStatus"] ->
-                             {auth_ro, fun handle_index_status/1};
+                             {auth_ro, fun menelaus_web_indexes:handle_index_status/1};
                          ["settings", "indexes"] ->
                              {auth_ro, fun menelaus_web_indexes:handle_settings_get/1};
                          ["diag"] ->
@@ -2419,22 +2419,6 @@ handle_node_self_xdcr_ssl_ports(Req) ->
                                       {httpsMgmt, RESTSSL},
                                       {httpsCAPI, CapiSSL}]})
     end.
-
-handle_index_status(Req) ->
-    NIs = dict:to_list(ns_doctor:get_nodes()),
-    Config = ns_config:get(),
-    LocalAddr = menelaus_util:local_addr(Req),
-    Indexes =
-        [{Hostname, Bucket, Idx}
-         || {Node, NI} <- NIs,
-            Hostname <- [list_to_binary(build_node_hostname(Config, Node, LocalAddr))],
-            {Bucket, Indexes} <- proplists:get_value(indexes, proplists:get_value(index_status, NI, []), []),
-            Idx <- Indexes],
-    J = [{[{hostname, Hostname},
-           {bucket, Bucket},
-           {index, Idx}]}
-         || {Hostname, Bucket, Idx} <- Indexes],
-    reply_json(Req, J).
 
 handle_cluster_certificate(Req) ->
     {Cert, _} = ns_server_cert:cluster_cert_and_pkey_pem(),
