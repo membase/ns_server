@@ -251,29 +251,26 @@ current_status_slow(TS) ->
     system_stats_collector:add_histo(status_latency, Diff),
     [{status_latency, Diff} | Status0].
 
+grab_latest_stats(Bucket) ->
+    case catch stats_reader:latest(minute, node(), Bucket) of
+        {ok, #stat_entry{values = Values}} ->
+            Values;
+        Error ->
+            ?log_debug("Ignoring failure to grab ~p stats:~n~p~n", [Bucket, Error]),
+            []
+    end.
+
 current_status_slow_inner() ->
     [SystemStats, ProcessesStats] =
-        [begin
-             case catch stats_reader:latest("minute", node(), PseudoBucket) of
-                 {ok, StatsRec} -> StatsRec#stat_entry.values;
-                 CrapSys ->
-                     ?log_debug("Ignoring failure to grab ~p stats:~n~p~n", [PseudoBucket, CrapSys]),
-                     []
-             end
-         end || PseudoBucket <- ["@system", "@system-processes"]],
+        [grab_latest_stats(PseudoBucket) || PseudoBucket <- ["@system", "@system-processes"]],
 
     BucketNames = ns_bucket:node_bucket_names(node()),
 
     PerBucketInterestingStats =
         lists:foldl(fun (BucketName, Acc) ->
-                            case catch stats_reader:latest(minute, node(), BucketName) of
-                                {ok, #stat_entry{values = Values}} ->
-                                    InterestingValues = lists:filter(fun is_interesting_stat/1, Values),
-                                    [{BucketName, InterestingValues} | Acc];
-                                Crap ->
-                                    ?log_debug("Ignoring failure to get stats for bucket: ~p:~n~p~n", [BucketName, Crap]),
-                                    Acc
-                            end
+                            Values = grab_latest_stats(BucketName),
+                            InterestingValues = lists:filter(fun is_interesting_stat/1, Values),
+                            [{BucketName, InterestingValues} | Acc]
                     end, [], BucketNames),
 
     IndexStatus = try index_status_keeper:get(2000)
