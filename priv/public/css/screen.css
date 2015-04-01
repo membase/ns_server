@@ -1403,7 +1403,7 @@ input[type=number].size {width:4em;}
 .dialog .inner_wrap {padding: 20px 20px 10px;}
 .add_group_form .warning {padding-bottom: 10px; text-align: right; padding-right: 10px; }
 
-.xdcr_advaced_settings label {width: 246px; font-size: 12px; text-align: left; margin-left: 15px;}
+.xdcr_advaced_settings label {width: 266px; font-size: 12px; text-align: left; margin-left: 15px;}
 .xdcr_advaced_settings_container {display: none;}
 .xdcr_advaced_settings {line-height: 33px;}
 .xdcr_advaced_settings input {width: 50px;}
