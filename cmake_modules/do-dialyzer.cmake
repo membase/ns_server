@@ -23,7 +23,10 @@ ENDIF (NOT EXISTS "${COUCHBASE_PLT}")
 
 # Compute list of .beam files
 FILE (GLOB beamfiles RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" ebin/*.beam)
-STRING (REGEX REPLACE "ebin/(couch_log|couch_api_wrap(_httpc)?).beam\;?" "" beamfiles "${beamfiles}")
+STRING (REGEX REPLACE "ebin/(couch_api_wrap(_httpc)?).beam\;?" "" beamfiles "${beamfiles}")
+
+FILE (GLOB couchdb_beamfiles RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" deps/ns_couchdb/ebin/*.beam)
+STRING (REGEX REPLACE "deps/ns_couchdb/ebin/couch_log.beam\;?" "" couchdb_beamfiles "${couchdb_beamfiles}")
 
 # If you update the dialyzer command, please also update this echo
 # command so it displays what is invoked. Yes, this is annoying.
@@ -36,7 +39,7 @@ EXECUTE_PROCESS (COMMAND "${CMAKE_COMMAND}" -E echo
   ${_couchdb_bin_dir}/src/mapreduce
   deps/ns_babysitter/ebin
   deps/ns_ssl_proxy/ebin
-  deps/ns_couchdb/ebin)
+  ${couchdb_beamfiles})
 EXECUTE_PROCESS (RESULT_VARIABLE _failure
   COMMAND dialyzer --plt "${COUCHBASE_PLT}" ${DIALYZER_FLAGS}
   --apps ${beamfiles}
@@ -46,7 +49,7 @@ EXECUTE_PROCESS (RESULT_VARIABLE _failure
   ${_couchdb_bin_dir}/src/mapreduce
   deps/ns_babysitter/ebin
   deps/ns_ssl_proxy/ebin
-  deps/ns_couchdb/ebin)
+  ${couchdb_beamfiles})
 IF (_failure)
   MESSAGE (FATAL_ERROR "failed running dialyzer")
 ENDIF (_failure)
