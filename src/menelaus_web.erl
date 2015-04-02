@@ -1154,7 +1154,8 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                                                   build_auto_compaction_settings(ACSettings)
                                           end},
                  {tasks, {struct, [{uri, TasksURI}]}},
-                 {counters, {struct, ns_cluster:counters()}}],
+                 {counters, {struct, ns_cluster:counters()}},
+                 {memoryQuota, ns_storage_conf:memory_quota(Config)}],
 
     PropList1 = case cluster_compat_mode:is_cluster_25() of
                     true ->

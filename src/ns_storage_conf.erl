@@ -23,6 +23,7 @@
 -include("ns_common.hrl").
 
 -export([memory_quota/0,
+         memory_quota/1,
          setup_disk_storage_conf/2,
          storage_conf/1, storage_conf_from_node_status/1,
          query_storage_conf/0,
