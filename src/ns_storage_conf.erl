@@ -304,11 +304,9 @@ get_total_buckets_ram_quota(Config) ->
 do_cluster_storage_info([]) -> [];
 do_cluster_storage_info(NodeInfos) ->
     Config = ns_config:get(),
-    AllNodes = ordsets:intersection(lists:sort(ns_node_disco:nodes_actual_proper()),
-                                    lists:sort(proplists:get_keys(NodeInfos))),
-    AllNodesSize = length(AllNodes),
+    NodesCount = length(NodeInfos),
     RAMQuotaUsedPerNode = get_total_buckets_ram_quota(Config),
-    RAMQuotaUsed = RAMQuotaUsedPerNode * AllNodesSize,
+    RAMQuotaUsed = RAMQuotaUsedPerNode * NodesCount,
 
     RAMQuotaTotalPerNode =
         case memory_quota(Config) of
@@ -335,7 +333,7 @@ do_cluster_storage_info(NodeInfos) ->
                          BucketsDiskUsage),
 
     [{ram, [{total, lists:sum(extract_subprop(StorageInfos, ram, total))},
-            {quotaTotal, RAMQuotaTotalPerNode * AllNodesSize},
+            {quotaTotal, RAMQuotaTotalPerNode * NodesCount},
             {quotaUsed, RAMQuotaUsed},
             {used, RAMUsed},
             {usedByData, BucketsRAMUsage},
