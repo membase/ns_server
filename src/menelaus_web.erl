@@ -2313,10 +2313,6 @@ handle_node(_PoolId, Node, Req) ->
 
 build_full_node_info(Node, LocalAddr) ->
     {struct, KV} = (build_nodes_info_fun(true, normal, LocalAddr))(Node, undefined),
-    MemQuota = case ns_storage_conf:memory_quota() of
-                   undefined -> <<"">>;
-                   Y    -> Y
-               end,
     NodeStatus = ns_doctor:get_node(Node),
     StorageConf = ns_storage_conf:storage_conf_from_node_status(NodeStatus),
     R = {struct, storage_conf_to_json(StorageConf)},
@@ -2325,7 +2321,7 @@ build_full_node_info(Node, LocalAddr) ->
                                                             {sizeKBytes, SizeKBytes},
                                                             {usagePercent, UsagePercent}]}
                                                   || {Path, SizeKBytes, UsagePercent} <- DiskData]}]}},
-              {memoryQuota, MemQuota},
+              {memoryQuota, ns_storage_conf:memory_quota()},
               {storageTotals, {struct, [{Type, {struct, PropList}}
                                         || {Type, PropList} <- ns_storage_conf:nodes_storage_info([Node])]}},
               {storage, R}] ++ KV,
