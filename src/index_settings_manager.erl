@@ -18,12 +18,16 @@
 -define(INDEX_CONFIG_KEY, {metakv, <<"/indexing/settings/config">>}).
 
 -export([start_link/0,
+         start_link_event_manager/0,
          get/1, get/2,
          update/1, update/2,
          config_upgrade/0]).
 
 start_link() ->
     work_queue:start_link(?MODULE, fun init/0).
+
+start_link_event_manager() ->
+    gen_event:start_link({local, index_settings_events}).
 
 get(Key) ->
     index_settings_manager:get(Key, undefined).
@@ -116,7 +120,21 @@ populate_ets_table(JSON) ->
 
 do_populate_ets_table(JSON) ->
     Dict = decode_settings_json(JSON),
-    ets:insert(?MODULE, lens_get_many(known_settings(), Dict)),
+    NotFound = make_ref(),
+
+    lists:foreach(
+      fun ({Key, NewValue}) ->
+              OldValue = index_settings_manager:get(Key, NotFound),
+              case OldValue =:= NewValue of
+                  true ->
+                      ok;
+                  false ->
+                      ets:insert(?MODULE, {Key, NewValue}),
+                      gen_event:notify(index_settings_events,
+                                       {index_settings_events, Key, NewValue})
+              end
+      end, lens_get_many(known_settings(), Dict)),
+
     erlang:put(prev_json, JSON).
 
 known_settings() ->

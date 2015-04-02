@@ -1152,16 +1152,17 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                  {maxBucketCount, ns_config:read_key_fast(max_bucket_count, 10)},
                  {autoCompactionSettings, build_global_auto_compaction_settings(Config)},
                  {tasks, {struct, [{uri, TasksURI}]}},
-                 {counters, {struct, ns_cluster:counters()}},
-                 {memoryQuota, ns_storage_conf:memory_quota(Config)}],
+                 {counters, {struct, ns_cluster:counters()}}],
 
-    PropList1 = case cluster_compat_mode:is_cluster_25() of
+    PropList1 = build_memory_quota_info(Config) ++ PropList0,
+
+    PropList2 = case cluster_compat_mode:is_cluster_25() of
                     true ->
                         GroupsV = erlang:phash2(ns_config:search(Config, server_groups)),
                         [{serverGroupsUri, <<"/pools/default/serverGroups?v=", (list_to_binary(integer_to_list(GroupsV)))/binary>>}
-                         | PropList0];
+                         | PropList1];
                     _ ->
-                        PropList0
+                        PropList1
                 end,
     PropList =
         case InfoLevel of
@@ -1172,12 +1173,12 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                  {storageTotals, {struct, StorageTotals}},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()}
-                 | PropList1];
+                 | PropList2];
             normal ->
                 StorageTotals = [ {Key, {struct, StoragePList}}
                   || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
-                [{storageTotals, {struct, StorageTotals}} | PropList1];
-            _ -> PropList1
+                [{storageTotals, {struct, StorageTotals}} | PropList2];
+            _ -> PropList2
         end,
 
     {struct, PropList}.
@@ -2367,26 +2368,30 @@ build_full_node_info(Node, LocalAddr) ->
     R = {struct, storage_conf_to_json(StorageConf)},
     DiskData = proplists:get_value(disk_data, NodeStatus, []),
 
-    MaybeIndexQuota = case cluster_compat_mode:is_cluster_sherlock() of
-                          true ->
-                              IndexQuota = index_settings_manager:get(memoryQuota),
-                              true = (IndexQuota =/= undefined),
-
-                              [{indexMemoryQuota, IndexQuota}];
-                          false ->
-                              []
-                      end,
-
     Fields = [{availableStorage, {struct, [{hdd, [{struct, [{path, list_to_binary(Path)},
                                                             {sizeKBytes, SizeKBytes},
                                                             {usagePercent, UsagePercent}]}
                                                   || {Path, SizeKBytes, UsagePercent} <- DiskData]}]}},
-              {memoryQuota, ns_storage_conf:memory_quota()},
               {storageTotals, {struct, [{Type, {struct, PropList}}
                                         || {Type, PropList} <- ns_storage_conf:nodes_storage_info([Node])]}},
-              {storage, R}] ++ MaybeIndexQuota ++ KV,
+              {storage, R}] ++ KV ++ build_memory_quota_info(),
     {struct, lists:filter(fun (X) -> X =/= undefined end,
                                    Fields)}.
+
+build_memory_quota_info() ->
+    build_memory_quota_info(ns_config:latest_config_marker()).
+
+build_memory_quota_info(Config) ->
+    Props = [{memoryQuota, ns_storage_conf:memory_quota(Config)}],
+    case cluster_compat_mode:is_cluster_sherlock() of
+        true ->
+            IndexQuota = index_settings_manager:get(memoryQuota),
+            true = (IndexQuota =/= undefined),
+
+            [{indexMemoryQuota, IndexQuota} | Props];
+        false ->
+            Props
+    end.
 
 % S = [{ssd, []},
 %      {hdd, [[{path, /some/nice/disk/path}, {quotaMb, 1234}, {state, ok}],

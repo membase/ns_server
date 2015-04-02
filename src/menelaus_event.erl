@@ -48,30 +48,39 @@ start_link() ->
                                                             simple_events_handler),
                                   gen_event:add_sup_handler(buckets_events,
                                                             {?MODULE, buckets_events},
+                                                            simple_events_handler),
+                                  gen_event:add_sup_handler(index_settings_events,
+                                                            {?MODULE, index_settings_events},
                                                             simple_events_handler)
                           end).
 
 register_watcher(Pid) ->
-    gen_event:call(ns_config_events,
-                   {?MODULE, ns_config_events},
-                   {register_watcher, Pid}),
-    gen_event:call(ns_node_disco_events,
-                   {?MODULE, ns_node_disco_events},
-                   {register_watcher, Pid}),
-    gen_event:call(buckets_events,
-                   {?MODULE, buckets_events},
-                   {register_watcher, Pid}).
+    ok = gen_event:call(ns_config_events,
+                        {?MODULE, ns_config_events},
+                        {register_watcher, Pid}),
+    ok = gen_event:call(ns_node_disco_events,
+                        {?MODULE, ns_node_disco_events},
+                        {register_watcher, Pid}),
+    ok = gen_event:call(buckets_events,
+                        {?MODULE, buckets_events},
+                        {register_watcher, Pid}),
+    ok = gen_event:call(index_settings_events,
+                        {?MODULE, index_settings_events},
+                        {register_watcher, Pid}).
 
 unregister_watcher(Pid) ->
-    gen_event:call(ns_config_events,
-                   {?MODULE, ns_config_events},
-                   {unregister_watcher, Pid}),
-    gen_event:call(ns_node_disco_events,
-                   {?MODULE, ns_node_disco_events},
-                   {unregister_watcher, Pid}),
-    gen_event:call(buckets_events,
-                   {?MODULE, buckets_events},
-                   {unregister_watcher, Pid}).
+    ok = gen_event:call(ns_config_events,
+                        {?MODULE, ns_config_events},
+                        {unregister_watcher, Pid}),
+    ok = gen_event:call(ns_node_disco_events,
+                        {?MODULE, ns_node_disco_events},
+                        {unregister_watcher, Pid}),
+    ok = gen_event:call(buckets_events,
+                        {?MODULE, buckets_events},
+                        {unregister_watcher, Pid}),
+    ok = gen_event:call(index_settings_events,
+                        {?MODULE, index_settings_events},
+                        {unregister_watcher, Pid}).
 
 %% Implementation
 
@@ -99,6 +108,7 @@ is_interesting_to_watchers({autocompaction, _}) -> true;
 is_interesting_to_watchers({cluster_compat_version, _}) -> true;
 is_interesting_to_watchers({cluster_name, _}) -> true;
 is_interesting_to_watchers({memory_quota, _}) -> true;
+is_interesting_to_watchers({index_settings_events, memoryQuota, _}) -> true;
 is_interesting_to_watchers(_) -> false.
 
 handle_event({{node, Node, rest}, _}, State) when Node =:= node() ->
