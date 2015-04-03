@@ -26,6 +26,7 @@
 /tmp/version_num.tmp
 TAGS
 bin
+cluster_run_n_*
 deps/mochiweb/ebin/*
 ebin
 ebucketmigrator
