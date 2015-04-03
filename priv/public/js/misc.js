@@ -670,7 +670,7 @@ var Abortarium = {
 
 function serializeForm(f, modifiers) {
   f = $(f);
-  var array = f.serializeArray();
+  var array = $(":input", f).serializeArray();
   var seenKeys = {};
   array = _.filter(array.reverse(), function (pair) {
     if (seenKeys[pair.name]) {
