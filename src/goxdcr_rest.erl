@@ -59,7 +59,16 @@ send_with_timeout(Method, Path, Headers, Body, Timeout) ->
 
     {ok, {{Code, _}, RespHeaders, RespBody}} =
         lhttpc:request(URL, Method, Headers, Body, Timeout, []),
-    {Code, RespHeaders, RespBody}.
+
+    SafeRespHeaders = lists:filter(fun is_safe_response_header/1, RespHeaders),
+    {Code, SafeRespHeaders, RespBody}.
+
+is_safe_response_header({"Content-Length", _}) ->
+    false;
+is_safe_response_header({"Transfer-Encoding", _}) ->
+    false;
+is_safe_response_header(_) ->
+    true.
 
 special_auth_headers() ->
     menelaus_rest:add_basic_auth([{"Accept", "application/json"}],
