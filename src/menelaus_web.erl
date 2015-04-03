@@ -1167,16 +1167,16 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
     PropList =
         case InfoLevel of
             for_ui ->
-                StorageTotals = [ {Key, {struct, StoragePList}}
-                                  || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
+                StorageTotals = [{Key, {struct, StoragePList}}
+                                 || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
                 [{clusterName, list_to_binary(get_cluster_name())},
                  {storageTotals, {struct, StorageTotals}},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()}
                  | PropList2];
             normal ->
-                StorageTotals = [ {Key, {struct, StoragePList}}
-                  || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
+                StorageTotals = [{Key, {struct, StoragePList}}
+                                 || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
                 [{storageTotals, {struct, StorageTotals}} | PropList2];
             _ -> PropList2
         end,
