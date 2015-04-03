@@ -1172,7 +1172,8 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                 [{clusterName, list_to_binary(get_cluster_name())},
                  {storageTotals, {struct, StorageTotals}},
                  {balanced, ns_cluster_membership:is_balanced()},
-                 {failoverWarnings, ns_bucket:failover_warnings()}
+                 {failoverWarnings, ns_bucket:failover_warnings()},
+                 {goxdcrEnabled, cluster_compat_mode:is_goxdcr_enabled(Config)}
                  | PropList2];
             normal ->
                 StorageTotals = [{Key, {struct, StoragePList}}
