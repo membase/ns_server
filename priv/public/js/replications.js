@@ -98,10 +98,13 @@ var ReplicationForm = mkClass({
     function sanitize(html) {
       return jQuery('<pre/>').text(html).html();
     }
+    function doValidateOnOverLimit(text) {
+      return getStringBytes(text) > 250;
+    }
     function validateOnOverLimit(field, name) {
-      if (getStringBytes(field.text()) > 2500) {
+      if (doValidateOnOverLimit(field.text())) {
         ReplicationsSection.showXDCRErrors({
-          filterExpression: name + ' should not have size more than 2.5kb'
+          filterExpression: name + ' should not have size more than 250 bytes'
         }, advancedXDCRFilteringContainer);
         return false;
       }
@@ -109,8 +112,8 @@ var ReplicationForm = mkClass({
     }
     function validateTestKeysOnOverlimit() {
       var rv = true;
-      testKeyResult.each(function () {
-        rv = validateOnOverLimit(jQuery(this), 'Test key');
+      $.each(testKeyResult, function (index, testKey) {
+        return rv = validateOnOverLimit(jQuery(testKey), 'Test key');
       });
       return rv;
     }
@@ -119,7 +122,7 @@ var ReplicationForm = mkClass({
         return jQuery(this).text();
       });
     }
-    function getReqexValue() {
+    function getRegexValue() {
       return regExpField.text();
     }
     var spinnerTimeout;
@@ -133,19 +136,23 @@ var ReplicationForm = mkClass({
         matchIndicator.removeClass('dynamic_match').addClass('dynamic_spinner');
       }, 500);
     }
+    function cancelXhr() {
+      clearSpinnerTimeout();
+      regexpValidation && regexpValidation.abort();
+    }
     function validateTestKey() {
-      if (!getReqexValue()) {
+      cancelXhr();
+      ReplicationsSection.hideXDCRErrors(advancedXDCRFilteringContainer);
+      if (!getRegexValue() || !validateTestKeysOnOverlimit() || !validateOnOverLimit(regExpField, 'Regex')) {
         matchIndicator.removeClass('dynamic_match');
         return;
       }
       var noMatch = true;
-      clearSpinnerTimeout();
       enableSpinnerTimeout();
-      regexpValidation && regexpValidation.abort();
       regexpValidation = jQuery.ajax({
         type: 'POST',
         data: {
-          expression: getReqexValue(),
+          expression: getRegexValue(),
           keys: JSON.stringify(getTestKeys().filter(function (idx, val) {return !!val;}).get())
         },
         url: '/_goxdcr/regexpValidation',
@@ -224,6 +231,20 @@ var ReplicationForm = mkClass({
       var value = jqElement.text();
       jqElement.empty().text(value);
     }
+    function sanitizeOnPast(e) {
+      var clipboardData = (e.originalEvent || e).clipboardData || window.clipboardData;
+      try {
+        var text = clipboardData.getData('text/plain');
+        window.document.execCommand('insertText', false, text);
+      } catch (_e) {
+        var text = clipboardData.getData('Text');
+        try {
+          document.selection.createRange().pasteHTML(text);
+        } catch (_e) {
+          document.execCommand('InsertHTML', false, text);
+        }
+      }
+    }
     function contentEditableUsableTab(event) {
       //IE inserts tabulation in contenteditable tag instead of make focus on next element,
       //absolutely unfriendly when you have no mouse
@@ -234,34 +255,30 @@ var ReplicationForm = mkClass({
       }
     }
     var throttled = _.throttle(validateTestKey, 500);
-    var previousReqex;
+    var previousRegex;
     regExpField.keyup(function () {
-      if (previousReqex === getReqexValue()) {
+      var currentRegex = getRegexValue();
+      if (previousRegex === currentRegex) {
         return;
       }
-      previousReqex = getReqexValue();
-      ReplicationsSection.hideXDCRErrors(advancedXDCRFilteringContainer);
-      if (!validateOnOverLimit(regExpField, 'Regex')) {
-        return;
+      previousRegex = currentRegex;
+      if (!doValidateOnOverLimit(currentRegex)) {
+        localStorage.setItem('mn_xdcr_regex', currentRegex);
       }
-      localStorage.setItem('mn_xdcr_regex', getReqexValue());
       testKeyResult.removeClass('dynamic_hightlight');
       throttled();
     }).keydown(contentEditableUsableTab).blur(function () {
       clearFromNewLine(jQuery(this));
-    });
+    }).bind('paste', sanitizeOnPast);
     testKeyResult.blur(function () {
       clearFromNewLine(jQuery(this));
-      var testKeyValue = jQuery(this).text();
-      jQuery(this).empty().text(testKeyValue); //new line auto removing
-      if (!validateTestKeysOnOverlimit()) {
-        return;
+      if (!doValidateOnOverLimit(jQuery(this).text())) {
+        localStorage.setItem('mn_xdcr_testKeys', JSON.stringify(getTestKeys().get()));
       }
-      localStorage.setItem('mn_xdcr_testKeys', JSON.stringify(getTestKeys().get()));
       validateTestKey();
     }).focus(function () {
       jQuery(this).removeClass('dynamic_hightlight');
-    }).keydown(contentEditableUsableTab);
+    }).keydown(contentEditableUsableTab).bind('paste', sanitizeOnPast);
     advancedXDCRFilteringBtn.click(function (e) {
       advancedXDCRFilteringContainer.toggle();
     });

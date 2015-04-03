@@ -1431,7 +1431,7 @@ input[type=number].size {width:4em;}
 .test_keys .test_key_wrapper {position: relative; line-height: 0; margin-bottom: 10px;}
 .test_keys .test_key_wrapper > span {font-size: 12px; line-height: 28px; float: left; display: block;}
 .xdcr_advaced_filtering_container {position: relative;}
-.xdcr_advaced_filtering_container .test_key_result {overflow: hidden; margin-left: 15px; width: 495px; min-height: 18px; font-size: 13px; padding: 4px; line-height: 18px; font-family: Arial; background: #fff; border:1px solid #ccd2d6; color: #222222;
+.xdcr_advaced_filtering_container div > .test_key_result {overflow: hidden; margin-left: 15px; width: 495px; min-height: 18px; font-size: 13px; padding: 4px; line-height: 18px; font-family: Arial; background: #fff; border:1px solid #ccd2d6; color: #222222;
   -ms-word-break: break-all;
   word-break: break-all;
   word-break: break-word;
