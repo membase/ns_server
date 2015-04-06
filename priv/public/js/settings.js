@@ -1676,7 +1676,7 @@ var AuditSetupSection = {
     if (integerPair) {
       return integerPair;
     } else {
-      var defaultPair = pairs.value()[3];
+      var defaultPair = pairs.value()[2];
       defaultPair[0] = Math.round(defaultPair[0]);
       return defaultPair;
     }
