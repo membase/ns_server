@@ -1428,6 +1428,8 @@ input[type=number].size {width:4em;}
 .match_indicator .loading,
 .match_indicator .match  {display: none;}
 
+.dynamic_ldap_disabled .only-when_ldap_enabled {display: none!important;}
+
 .test_keys .test_key_wrapper {position: relative; line-height: 0; margin-bottom: 10px;}
 .test_keys .test_key_wrapper > span {font-size: 12px; line-height: 28px; float: left; display: block;}
 .xdcr_advaced_filtering_container {position: relative;}

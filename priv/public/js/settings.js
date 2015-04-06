@@ -1756,6 +1756,13 @@ function ldapSetupSectionCells(ns, tabs, sectionCell) {
 
 var LDAPSetupSection = {
   init: function () {
+      Cell.subscribeMultipleValues(function (isLDAPEnabled, isEnterprise) {
+      if (isLDAPEnabled === true  && isEnterprise === true) {
+        LDAPSetupSection.doInit();
+      }
+    }, DAL.cells.isLDAPEnabledCell, DAL.cells.isEnterpriseCell);
+  },
+  doInit: function () {
     var self = LDAPSetupSection;
     ldapSetupSectionCells(self, SettingsSection.tabs, DAL.cells.mode);
 

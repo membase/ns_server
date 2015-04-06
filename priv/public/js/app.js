@@ -160,6 +160,9 @@ var ThePage = {
       $('body').toggleClass('dynamic_goxdcr_disabled', !val);
       $('body').toggleClass('dynamic_goxdcr_enabled', val);
     });
+    DAL.cells.isLDAPEnabledCell.subscribeValue(function (val) {
+      $('body').toggleClass('dynamic_ldap_disabled', !val);
+    });
 
     DAL.cells.mode.subscribeValue(function (sec) {
       $('.currentNav').removeClass('currentNav');

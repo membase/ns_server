@@ -1009,7 +1009,7 @@
                   <li><a id="settings_auto_failover" class="casper_settings_auto_failover">Auto-Failover</a></li>
                   <li><a id="settings_alerts" class="casper_settings_alerts">Alerts</a></li>
                   <li><a id="settings_compaction" class="casper_settings_compaction">Auto-Compaction</a></li>
-                  <li class="when-enterprise only-when-40"><a id="ldap_setup">LDAP Auth Setup</a></li>
+                  <li class="when-enterprise only-when-40 only-when_ldap_enabled"><a id="ldap_setup">LDAP Auth Setup</a></li>
                   <li class="when-roadmin-avoid-me"><a id="account_management" class="casper_settings_account_management">Account Management</a></li>
                   <li class="when-enterprise only-when-40"><a id="audit">Audit</a></li>
                   <li class="tab_right"><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
@@ -1167,7 +1167,7 @@
                     </button>
                   </div>
                 </form></div>
-                <div id="js_ldap_setup_container" class="ldap_setup_container only-when-40 when-enterprise">
+                <div id="js_ldap_setup_container" class="ldap_setup_container only-when-40 when-enterprise only-when_ldap_enabled">
                   <h2>LDAP Auth</h2>
                   <div class="sub_section">
                     <p>Integrate with a directory server such as Active Directory or LDAP using the LDAP protocol. Users in LDAP can be mapped to Full-Admin / Read-Only Admin in Couchbase.</p>

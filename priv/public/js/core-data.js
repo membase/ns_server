@@ -343,6 +343,10 @@ var DAL = {
     return v.need(cells.currentPoolDetailsCell).goxdcrEnabled;
   });
   cells.isGoXDCREnabledCell.isEqual = _.isEqual;
+  cells.isLDAPEnabledCell = Cell.compute(function (v) {
+    return v.need(cells.currentPoolDetailsCell).ldapEnabled;
+  });
+  cells.isLDAPEnabledCell.isEqual = _.isEqual;
   cells.isEnterpriseCell.subscribeValue(function (isEnterprise) {
     if (isEnterprise) {
       $("body").addClass('dynamic_enterprise-mode').removeClass('dynamic_community-mode');
