@@ -386,7 +386,10 @@ running_nodes(Module) ->
 % For example, returns "test" instead of "test@myhost.com".
 %
 node_name_short() ->
-    [NodeName | _] = string:tokens(atom_to_list(node()), "@"),
+    node_name_short(node()).
+
+node_name_short(Node) ->
+    [NodeName | _] = string:tokens(atom_to_list(Node), "@"),
     NodeName.
 
 % Node is an atom like some_name@host.foo.bar.com

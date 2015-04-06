@@ -98,7 +98,13 @@ create_ns_couchdb_spec() ->
       ns_couchdb, [{ns_server_node, node()}], "NS_COUCHDB_ENV_ARGS", ErlangArgs).
 
 start_couchdb_node() ->
-    ns_port_server:start_link_named(ns_couchdb_port, fun () -> create_ns_couchdb_spec() end).
+    ns_port_server:start_link_named(
+      ns_couchdb_port,
+      fun () ->
+              ShortName = misc:node_name_short(ns_node_disco:couchdb_node()),
+              ok = misc:wait_for_nodename(ShortName),
+              create_ns_couchdb_spec()
+      end).
 
 wait_link_to_couchdb_node() ->
     proc_lib:start_link(erlang, apply, [fun start_wait_link_to_couchdb_node/0, []]).
