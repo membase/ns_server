@@ -60,10 +60,20 @@ init() ->
                              fun ({?INDEX_CONFIG_KEY, JSON}, Pid) ->
                                      submit_config_update(Pid, JSON),
                                      Pid;
+                                 ({cluster_compat_version, _}, Pid) ->
+                                     submit_full_refresh(Pid),
+                                     Pid;
                                  (_, Pid) ->
                                      Pid
                              end, self()),
     populate_ets_table().
+
+submit_full_refresh(Pid) ->
+    work_queue:submit_work(
+      Pid,
+      fun () ->
+              populate_ets_table()
+      end).
 
 submit_config_update(Pid, JSON) ->
     work_queue:submit_work(
@@ -112,7 +122,8 @@ populate_ets_table() ->
     populate_ets_table(JSON).
 
 populate_ets_table(JSON) ->
-    case erlang:get(prev_json) =:= JSON of
+    case not cluster_compat_mode:is_cluster_sherlock()
+        orelse erlang:get(prev_json) =:= JSON of
         true ->
             ok;
         false ->
