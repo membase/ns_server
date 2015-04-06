@@ -58,7 +58,8 @@ init() ->
     ets:new(?MODULE, [named_table, set, protected]),
     ns_pubsub:subscribe_link(ns_config_events,
                              fun ({?INDEX_CONFIG_KEY, JSON}, Pid) ->
-                                     submit_config_update(Pid, JSON);
+                                     submit_config_update(Pid, JSON),
+                                     Pid;
                                  (_, Pid) ->
                                      Pid
                              end, self()),
