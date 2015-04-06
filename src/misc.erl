@@ -1729,3 +1729,26 @@ marker_exists(Path) ->
             ?log_error("Unexpected error when reading marker ~p: ~p", [Path, Other]),
             exit({failed_to_read_marker, Path, Other})
     end.
+
+is_free_nodename(ShortName) ->
+    {ok, Names} = erl_epmd:names({127,0,0,1}),
+    not lists:keymember(ShortName, 1, Names).
+
+wait_for_nodename(ShortName) ->
+    wait_for_nodename(ShortName, 5).
+
+wait_for_nodename(ShortName, Attempts) ->
+    case is_free_nodename(ShortName) of
+        true ->
+            ok;
+        false ->
+            case Attempts of
+                0 ->
+                    {error, duplicate_name};
+                _ ->
+                    ?log_info("Short name ~s is still occupied. "
+                              "Will try again after a bit", [ShortName]),
+                    timer:sleep(500),
+                    wait_for_nodename(ShortName, Attempts - 1)
+            end
+    end.
