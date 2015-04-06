@@ -142,12 +142,6 @@ child_specs() ->
      {master_activity_events_keeper, {master_activity_events_keeper, start_link, []},
       permanent, brutal_kill, worker, dynamic},
 
-     {menelaus, {menelaus_sup, start_link, []},
-      permanent, infinity, supervisor,
-      [menelaus_sup]},
-
-     %% Note: cert and private key files are set up as part of
-     %% menelaus_sup. So ns_ports_setup needs to go after it.
      {ns_ports_setup, {ns_ports_setup, start, []},
       {permanent, 4}, brutal_kill, worker, []},
 
@@ -245,5 +239,9 @@ child_specs() ->
       {permanent, 4}, 86400000, worker, [compaction_new_daemon]},
 
      {cluster_logs_sup, {cluster_logs_sup, start_link, []},
-      permanent, infinity, supervisor, []}
+      permanent, infinity, supervisor, []},
+
+     {menelaus, {menelaus_sup, start_link, []},
+      permanent, infinity, supervisor,
+      [menelaus_sup]}
     ].
