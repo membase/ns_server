@@ -244,7 +244,7 @@ handle_cast(leave, State) ->
     misc:remove_marker(start_marker_path()),
 
     {noreply, State};
-handle_cast(retry_start_after_leave, State) ->
+handle_cast(retry_start_ns_server, State) ->
     case ns_server_cluster_sup:start_ns_server() of
         {ok, _} ->
             ok;
@@ -252,7 +252,7 @@ handle_cast(retry_start_after_leave, State) ->
             ?log_warning("ns_server is already running. Ignoring."),
             ok;
         Other ->
-            exit({failed_to_start_ns_server_after_leave, Other})
+            exit({failed_to_start_ns_server, Other})
     end,
 
     ns_ports_setup:restart_memcached(),
@@ -281,9 +281,10 @@ init([]) ->
             case misc:marker_exists(start_marker_path()) of
                 true ->
                     ?log_info("Found marker ~p. "
-                              "Looks like we failed to restart ns_server after leave. "
+                              "Looks like we failed to restart ns_server "
+                              "after leaving or joining a cluster. "
                               "Will try again.", [start_marker_path()]),
-                    gen_server:cast(self(), retry_start_after_leave);
+                    gen_server:cast(self(), retry_start_ns_server);
                 false ->
                     ok
             end
@@ -961,6 +962,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
     %% let ns_memcached know that we don't need to preserve data at all
     ns_config:set(i_am_a_dead_man, true),
     %% Pull the rug out from under the app
+    misc:create_marker(start_marker_path()),
     ok = ns_server_cluster_sup:stop_ns_server(),
     ns_log:delete_log(),
     Status = try
@@ -998,6 +1000,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
 
             ?cluster_error("Error during join: ~p", [{Type, Error, Stack}]),
             {ok, _} = ns_server_cluster_sup:start_ns_server(),
+            misc:remove_marker(start_marker_path()),
 
             erlang:raise(Type, Error, Stack)
     end,
@@ -1008,7 +1011,9 @@ perform_actual_join(RemoteNode, NewCookie) ->
                       {error, start_cluster_failed,
                        <<"Failed to start ns_server cluster processes back. Logs might have more details.">>,
                        E};
-                  _ -> Status
+                  {ok, _} ->
+                      misc:remove_marker(start_marker_path()),
+                      Status
               end,
     case Status2 of
         {ok, _} ->
