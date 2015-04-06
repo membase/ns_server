@@ -1,16 +1,17 @@
 angular.module('mnSettingsCluster').controller('mnSettingsClusterController',
-  function ($scope, mnSettingsClusterService, nodes, poolDefault, defaultCertificate, getVisulaSettings, mnHelper) {
+  function ($scope, mnSettingsClusterService, nodes, poolDefault, defaultCertificate, mnHelper) {
     $scope.focusMe = true;
 
     $scope.formData = {};
-    $scope.formData.tabName = getVisulaSettings.data.tabName;
+    $scope.formData.clusterName = poolDefault.clusterName;
     $scope.formData.memoryQuota = getInMegs(poolDefault.storageTotals.ram.quotaTotalPerNode);
     $scope.totalRam = getInMegs(nodes.ramTotalPerActiveNode);
     $scope.maxRamMegs = Math.max(getInMegs(nodes.ramTotalPerActiveNode) - 1024, Math.floor(nodes.ramTotalPerActiveNode * 4 / (5 * Math.Mi)));
     setCertificate(defaultCertificate.data);
 
     var liveValidation = _.debounce(function () {
-      mnSettingsClusterService.visualInternalSettingsValidation($scope.formData).error(setError).success(setError);
+      var promise = mnSettingsClusterService.clusterSettingsValidation($scope.formData);
+      mnHelper.promiseHelper($scope, promise).catchErrorsFromSuccess();
     }, 500);
 
     $scope.$watch('formData.memoryQuota', liveValidation);
@@ -18,17 +19,16 @@ angular.module('mnSettingsCluster').controller('mnSettingsClusterController',
     function setCertificate(certificate) {
       $scope.certificate = certificate;
     }
-    function setError(response) {
-      $scope.errors = response.errors;
-    }
+
     function getInMegs(value) {
       return Math.floor(value / Math.Mi);
     }
 
     $scope.saveVisualInternalSettings = function () {
-      var promise = mnSettingsClusterService.saveVisualInternalSettings($scope.formData).error(setError);
+      var promise = mnSettingsClusterService.saveClusterSettings($scope.formData);
       mnHelper
         .promiseHelper($scope, promise)
+        .catchErrorsFromSuccess()
         .showSpinner('settingsClusterLoaded')
         .reloadState();
     };

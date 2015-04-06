@@ -103,9 +103,6 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
         defaultCertificate: function (mnSettingsClusterService) {
           return mnSettingsClusterService.getDefaultCertificate();
         },
-        getVisulaSettings: function (mnSettingsClusterService) {
-          return mnSettingsClusterService.getVisulaSettings();
-        },
         nodes: function (mnServersService) {
           return mnServersService.getNodes();
         },
