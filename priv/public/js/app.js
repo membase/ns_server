@@ -701,6 +701,7 @@ var SetupWizard = {
             indexMemoryQuota: data.indexMemoryQuota,
             isServicesControllsAvailable: true,
             showKVMemoryQuota: true,
+            showIndexMemoryQuota: true,
             showTotalPerNode: true,
             maxMemorySize: ramMaxMegs,
             totalMemorySize: totalRAMMegs,
@@ -1529,6 +1530,9 @@ $(function () {
 
 (function () {
   var lastCompatVersion;
+  var version25 = encodeCompatVersion(2, 5);
+  var version30 = encodeCompatVersion(3, 0);
+  var version40 = encodeCompatVersion(4, 0);
 
   DAL.cells.compatVersion.subscribeValue(function (value) {
     if (value === undefined) {
@@ -1538,11 +1542,11 @@ $(function () {
     updateVisibleStuff();
   });
 
-  function updateVisibleStuff() {
-    var version25 = encodeCompatVersion(2, 5);
-    var version30 = encodeCompatVersion(3, 0);
-    var version40 = encodeCompatVersion(4, 0);
+  DAL.cells.is40СompatibleCell = Cell.compute(function (v) {
+    return v.need(DAL.cells.compatVersion) >= version40;
+  });
 
+  function updateVisibleStuff() {
     $('body').toggleClass('dynamic_under-25', lastCompatVersion < version25);
     $('body').toggleClass('dynamic_under-30', lastCompatVersion < version30);
     $('body').toggleClass('dynamic_under-40', lastCompatVersion < version40);

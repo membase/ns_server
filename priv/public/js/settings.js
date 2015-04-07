@@ -68,7 +68,7 @@ var SettingsSection = {
   }
 };
 
-function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCell) {
+function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCell, is40СompatibleCell) {
   ns.isClusterTabCell = Cell.compute(function (v) {
     return v.need(settingTabCell) === "cluster" && v.need(sectionCell) === "settings";
   }).name("isClusterTabCell");
@@ -79,7 +79,7 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
   }).name("clusterNameCell");
 
   ns.indexesSettingsCell = Cell.compute(function (v) {
-    return future.get({url: "settings/indexes"});
+    return v.need(is40СompatibleCell) ? future.get({url: "settings/indexes"}) : null;
   }).name("indexesSettingsCell");
 
   ns.allClusterSectionSettingsCell = Cell.compute(function (v) {
@@ -88,7 +88,7 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
     }
     var indexesSettings = v.need(ns.indexesSettingsCell);
     var currentPool = v.need(poolDetailsCell);
-    if (!currentPool || !indexesSettings) {
+    if (!currentPool) {
       return;
     }
     var clusterQuotaSettings = ns.prepareClusterQuotaSettings(currentPool);
@@ -97,7 +97,12 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
     clusterQuotaSettings.showTotalPerNode = false;
     clusterQuotaSettings.clusterName = currentPool.clusterName;
 
-    return _.extend(indexesSettings, clusterQuotaSettings);
+    if (!indexesSettings) {
+      clusterQuotaSettings.showIndexMemoryQuota = false;
+      return clusterQuotaSettings;
+    } else {
+      return _.extend(indexesSettings, clusterQuotaSettings);
+    }
   }).name("allClusterSectionSettingsCell");
   ns.allClusterSectionSettingsCell.equality = _.isEqual;
 }
@@ -116,6 +121,7 @@ var ClusterSection = {
     var minMemorySize = Math.max(256, Math.floor(ram.quotaUsedPerNode / Math.Mi));
 
     return {
+      showIndexMemoryQuota: true,
       minMemorySize: minMemorySize,
       totalMemorySize: ramPerNode,
       maxMemorySize: Math.floor(ramPerNode / 100 * 80),
@@ -129,7 +135,7 @@ var ClusterSection = {
     var poolDetailsCell = DAL.cells.currentPoolDetailsCell;
     var isROAdminCell = DAL.cells.isROAdminCell;
 
-    makeClusterSectionCells(self, DAL.cells.mode, poolDetailsCell, SettingsSection.tabs);
+    makeClusterSectionCells(self, DAL.cells.mode, poolDetailsCell, SettingsSection.tabs, DAL.cells.is40СompatibleCell);
 
     var container = $("#js_cluster_settings_container");
     var clusterSettingsForm = $("#js_cluster_public_settings_form");
@@ -161,11 +167,13 @@ var ClusterSection = {
 
     var clusterSettingsFormValidator = setupClusterSettingsValidation(onlyClusterSettingsForm, "/pools/default?just_validate=1");
     var indexesSettingsFormValidator = setupClusterSettingsValidation(indexesSettingsForm, "/settings/indexes?just_validate=1");
+    clusterSettingsFormValidator.pause();
+    indexesSettingsFormValidator.pause();
 
 
-    function enableDisableValidation(enable) {
+    function enableDisableValidation(enable, is40) {
       clusterSettingsFormValidator[enable ? 'unpause' : 'pause']();
-      indexesSettingsFormValidator[enable ? 'unpause' : 'pause']();
+      indexesSettingsFormValidator[is40 && enable ? 'unpause' : 'pause']();
     }
 
     function setCertificate(certificate) {
@@ -211,10 +219,8 @@ var ClusterSection = {
 
     var memoryQuoataWidget;
 
-    clusterSettingsForm.submit(function (e) {
-      e.preventDefault();
-      var spinner = overlayWithSpinner(container);
-      jQuery.when(memoryQuoataWidget.tryToSaveMemoryQuota(serializeForm(onlyClusterSettingsForm)), $.ajax({
+    function saveIndexesSettings() {
+      return $.ajax({
         url: "/settings/indexes",
         type: 'POST',
         data: serializeForm(indexesSettingsForm),
@@ -222,7 +228,17 @@ var ClusterSection = {
           SettingsSection.renderErrors(JSON.parse(jqXhr.responseText), indexesSettingsForm);
         },
         success: function () {}
-      })).done(function () {
+      });
+    }
+
+    clusterSettingsForm.submit(function (e) {
+      e.preventDefault();
+      var spinner = overlayWithSpinner(container);
+      var queries = [memoryQuoataWidget.tryToSaveMemoryQuota(serializeForm(onlyClusterSettingsForm))];
+      if (DAL.cells.is40СompatibleCell.value) {
+        queries.push(saveIndexesSettings());
+      }
+      jQuery.when.apply(jQuery, queries).done(function () {
         poolDetailsCell.recalculate();
         self.clusterNameCell.recalculate();
       }).always(function () {
@@ -243,7 +259,6 @@ var ClusterSection = {
 
       memoryQuoataWidget = new MemoryQuotaSettingsWidget(settings, $('#js_cluster_quota_settings'));
       setFormValues(clusterSettingsForm, settings);
-      enableDisableValidation(!isROAdminCell.value);
     });
 
     var spinner;
@@ -255,11 +270,9 @@ var ClusterSection = {
       }
     }, self.allClusterSectionSettingsCell, self.isClusterTabCell);
 
-    Cell.subscribeMultipleValues(function (isClusterTab, isROAdmin) {
-      if (!isClusterTab || isROAdmin) {
-        enableDisableValidation(false);
-      }
-    }, self.isClusterTabCell, isROAdminCell);
+    Cell.subscribeMultipleValues(function (isClusterTab, isROAdmin, is40) {
+      enableDisableValidation(isClusterTab && !isROAdmin, is40);
+    }, self.isClusterTabCell, isROAdminCell, DAL.cells.is40СompatibleCell);
   }
 };
 

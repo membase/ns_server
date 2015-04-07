@@ -1048,8 +1048,8 @@
                       <div class="sub_section cluster_quota_settings" id="js_cluster_quota_settings">
                       </div>
                     </div>
-                    <h2>Index Settings</h2>
-                    <div class="sub_section index_settings_section js_index_settings_section">
+                    <h2 class="only-when-40">Index Settings</h2>
+                    <div class="sub_section index_settings_section js_index_settings_section only-when-40">
                       <div class="row">
                         <label for="index_settings_thread">Indexer Threads:</label>
                         <input type="number" name="indexerThreads" id="index_settings_thread">
@@ -1113,8 +1113,8 @@
                     </div>
                     <h3>Database Fragmentation</h3>
                     <div class="sub_section" id="js_database_fragmentation_settings"></div>
-                    <h3>Index Fragmentation</h3>
-                    <div class="sub_section" id="js_index_fragmentation_settings"></div>
+                    <h3 class="only-when-40">Index Fragmentation</h3>
+                    <div class="sub_section only-when-40" id="js_index_fragmentation_settings"></div>
                     <h3>View Fragmentation</h3>
                     <div class="sub_section" id="js_view_fragmentation_settings"></div>
                     <h3>Time Interval</h3>
@@ -3771,11 +3771,13 @@
     <span>MB (min {%= minMemorySize %} MB)</span>
   </div>
   {% } %}
+  {% if (showIndexMemoryQuota) { %}
   <div class="memory-quota row">
     <label for="{%= prefix %}_index_ram_quota">Index RAM Quota:</label>
     <input type="number" class="js_ram_quota" id="{%= prefix %}_index_ram_quota" name="indexMemoryQuota" value="{%= h(indexMemoryQuota) %}" />
     <span>MB (min 256 MB)</span>
   </div>
+  {% } %}
   {% if (showTotalPerNode) { %}
   <div class="row">
     <label>Total Per Server:</label>
