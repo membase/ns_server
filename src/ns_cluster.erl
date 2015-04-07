@@ -149,7 +149,18 @@ handle_call({complete_join, NodeKVList}, _From, State) ->
     ?cluster_debug("handling complete_join(~p)", [NodeKVList]),
     RV = do_complete_join(NodeKVList),
     ?cluster_debug("complete_join(~p) -> ~p", [NodeKVList, RV]),
-    {reply, RV, State};
+
+    case RV of
+        %% we failed to start ns_server back; we don't want to stay in this
+        %% state, so perform_actual_join has created a marker file indicating
+        %% that somebody needs to attempt to start ns_server back; usually
+        %% this somebody is ns_cluster:init; so to let it do its job we need
+        %% to restart ns_cluster; note that we still reply to the caller
+        {error, start_cluster_failed, _, _} ->
+            {stop, start_cluster_failed, RV, State};
+        _ ->
+            {reply, RV, State}
+    end;
 
 handle_call({change_address, Address}, _From, State) ->
     ?cluster_info("Changing address to ~p due to client request", [Address]),
