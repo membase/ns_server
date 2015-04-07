@@ -339,6 +339,10 @@ var DAL = {
 (function (cells) {
   cells.isEnterpriseCell = new Cell();
   cells.isEnterpriseCell.isEqual = _.isEqual;
+  cells.isGoXDCREnabledCell = Cell.compute(function (v) {
+    return v.need(cells.currentPoolDetailsCell).goxdcrEnabled;
+  });
+  cells.isGoXDCREnabledCell.isEqual = _.isEqual;
   cells.isEnterpriseCell.subscribeValue(function (isEnterprise) {
     if (isEnterprise) {
       $("body").addClass('dynamic_enterprise-mode').removeClass('dynamic_community-mode');

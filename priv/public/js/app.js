@@ -156,6 +156,11 @@ var ThePage = {
 
     initAlertsSubscriber();
 
+    DAL.cells.isGoXDCREnabledCell.subscribeValue(function (val) {
+      $('body').toggleClass('dynamic_goxdcr_disabled', !val);
+      $('body').toggleClass('dynamic_goxdcr_enabled', val);
+    });
+
     DAL.cells.mode.subscribeValue(function (sec) {
       $('.currentNav').removeClass('currentNav');
       $('.switch_' + sec).parent('li').addClass('currentNav');
@@ -1541,7 +1546,6 @@ $(function () {
     $('body').toggleClass('dynamic_under-25', lastCompatVersion < version25);
     $('body').toggleClass('dynamic_under-30', lastCompatVersion < version30);
     $('body').toggleClass('dynamic_under-40', lastCompatVersion < version40);
-    $('body').toggleClass('dynamic_is-40', lastCompatVersion >= version40);
   }
 
 

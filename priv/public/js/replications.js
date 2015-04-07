@@ -351,8 +351,9 @@ var ReplicationForm = mkClass({
     }
     var spinner = overlayWithSpinner(self.dialog, null, "Creating replication...");
     var isEnterprise = DAL.cells.isEnterpriseCell.value;
+    var isGoXDCREnabled = DAL.cells.isGoXDCREnabledCell.value;
     var formValues;
-    if (isEnterprise && self.advancedXDCRFilteringBtn.attr('checked') === 'checked') {
+    if (isGoXDCREnabled && isEnterprise && self.advancedXDCRFilteringBtn.attr('checked') === 'checked') {
       formValues = $.deparam(serializeForm(self.form));
       formValues.filterExpression = jQuery('#js_filter_expression').text();
       formValues = $.param(formValues);
