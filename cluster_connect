@@ -11,6 +11,7 @@ def usage():
             -n <number of nodes>\n\
             -T <services to run. kv if unspecified> (eg: n0:kv,n1:index+n1ql)\n\
             -s <memory size (min 256) default: 256\n\
+            -I <index memory size> default: 256\n\
             -t <bucket type> (membase, memcached) default: membase\n\
             -r <num replicas> (max 3) default: 1 (Only for membase buckets!)\n\
             -i (don't index replicas) default: replica index enabled\n\
@@ -27,7 +28,7 @@ class PasswordManager(urllib2.HTTPPasswordMgr):
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:iS:T:")
+        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:iS:T:I:")
     except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -35,6 +36,7 @@ def main():
     nodes = 0
     buckettype = "membase"
     memsize = 256
+    indexmemsize = 256
     replicas = 1
     replica_index = True
     start_index = 0
@@ -48,6 +50,8 @@ def main():
             buckettype = a
         elif o == "-s":
             memsize = a
+        elif o == "-I":
+            indexmemsize = a
         elif o == "-r":
             replicas = a
         elif o == "-i":
@@ -86,7 +90,8 @@ def main():
     o.open("http://127.0.0.1:{0}/node/controller/setupServices".format(base_port),
            "services={0}".format(",".join(services))).read()
     o.open("http://127.0.0.1:{0}/pools/default".format(base_port),
-           "memoryQuota=" + str(memsize)).read()
+           "memoryQuota=" + str(memsize) +
+           "&indexMemoryQuota=" + str(indexmemsize)).read()
     o.open("http://127.0.0.1:{0}/pools/default/buckets".format(base_port),
            "name=default" +
            "&authType=sasl" +
