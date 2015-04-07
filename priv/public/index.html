@@ -3772,7 +3772,7 @@
     <input type="number" class="js_ram_quota" id="{%= prefix %}_index_ram_quota" name="indexMemoryQuota" value="{%= h(indexMemoryQuota) %}" />
     <span>MB (min 256 MB)</span>
   </div>
-  {% if (showKVMemoryQuota) { %}
+  {% if (showTotalPerNode) { %}
   <div class="row">
     <label>Total Per Server:</label>
     <span><span class="js_per_server_total"></span> MB (must be &lt;= <span class="js_max_ram_size">{%= h(maxMemorySize) %}</span> MB) </span>

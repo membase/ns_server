@@ -594,6 +594,7 @@ var ServersSection = {
               var settings = ClusterSection.prepareClusterQuotaSettings(poolData);
               settings.prefix = 'add_node_memory_quota';
               settings.showKVMemoryQuota = errorsOrData.services.indexOf('kv') > -1;
+              settings.showTotalPerNode = settings.showKVMemoryQuota;
               var memoryQuotaWidget = new MemoryQuotaSettingsWidget(settings, $('#js_add_node_memory_quota_holder'));
               showDialog('js_memory_quota_dialog', {
                 closeOnEscape: false,

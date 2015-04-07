@@ -362,6 +362,7 @@ var SetupWizard = {
       var settings = ClusterSection.prepareClusterQuotaSettings(options.poolData);
       settings.prefix = 'wizard_join_cluster_quota';
       settings.showKVMemoryQuota = options.selectedServices.indexOf('kv') > -1;
+      settings.showTotalPerNode = settings.showKVMemoryQuota;
       var memoryQuotaWidget = new MemoryQuotaSettingsWidget(settings, $('#js_join_wizard_cluster_quota'));
       form.submit(function (event) {
         event.preventDefault();
@@ -695,6 +696,7 @@ var SetupWizard = {
             indexMemoryQuota: data.indexMemoryQuota,
             isServicesControllsAvailable: true,
             showKVMemoryQuota: true,
+            showTotalPerNode: true,
             maxMemorySize: ramMaxMegs,
             totalMemorySize: totalRAMMegs,
             prefix: 'cluster_memory_wizard_settings'

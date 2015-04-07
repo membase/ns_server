@@ -1164,17 +1164,19 @@ var MemoryQuotaSettingsWidget = mkClass({
       self.memoryServicesFlag.each(function (index, flag) {
         jQuery(flag).change(function () {
           self.memoryQuotaFileds.eq(index).prop('disabled', !$(this).attr('checked'));
-          self.computePerServerTotalQuota();
+          if (options.showTotalPerNode) {
+            self.computePerServerTotalQuota();
+          }
         }).change();
       });
     }
-    if (options.showKVMemoryQuota) {
+    if (options.showTotalPerNode) {
       self.memoryQuotaFileds.keyup(function () {
-        self.computePerServerTotalQuota(container);
+        self.computePerServerTotalQuota();
       }).keyup();
     }
   },
-  computePerServerTotalQuota: function (root) {
+  computePerServerTotalQuota: function () {
     var self = this;
     var val = _.reduce(self.memoryQuotaFileds.not(':disabled').map(function () {
       return parseFloat(this.value) || 0;
