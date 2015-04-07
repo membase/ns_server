@@ -1247,7 +1247,7 @@ do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
                            {name, per_index_stat(Id, <<"num_requests">>)},
                            {desc, <<"TBD">>}]},
                  {struct, [{title, <<"Bytes returned/sec">>},
-                           {name, per_index_stat(Id, <<"scan_bytes_returned">>)},
+                           {name, per_index_stat(Id, <<"scan_bytes_read">>)},
                            {desc, <<"TBD">>}]},
                  {struct, [{title, <<"Average Scan Latency">>},
                            {name, per_index_stat(Id, <<"avg_scan_latency">>)},
