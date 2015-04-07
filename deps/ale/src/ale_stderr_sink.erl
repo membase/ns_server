@@ -26,7 +26,7 @@
 
 -include("ale.hrl").
 
--record(state, {}).
+-record(state, { port :: port() }).
 
 start_link(Name) ->
     start_link(Name, []).
@@ -38,10 +38,13 @@ meta() ->
     [{type, preformatted}].
 
 init([_Opts]) ->
-    {ok, #state{}}.
+    process_flag(trap_exit, true),
+
+    Port = open_port({fd, 2, 2}, [out, binary]),
+    {ok, #state{port = Port}}.
 
 handle_call({log, Msg}, _From, State) ->
-    RV = do_log(Msg),
+    RV = do_log(Msg, State),
     {reply, RV, State};
 
 handle_call(sync, _From, State) ->
@@ -53,6 +56,8 @@ handle_call(Request, _From, State) ->
 handle_cast(Msg, State) ->
     {stop, {unexpected_cast, Msg}, State}.
 
+handle_info({'EXIT', Port, Reason}, #state{port = Port} = State) ->
+    {stop, {stderr_port_died, Reason}, State};
 handle_info(Info, State) ->
     {stop, {unexpected_info, Info}, State}.
 
@@ -62,5 +67,6 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-do_log(Msg) ->
-    file:write(standard_error, Msg).
+do_log(Msg, #state{port = Port}) when is_binary(Msg) ->
+    erlang:port_command(Port, Msg),
+    ok.
