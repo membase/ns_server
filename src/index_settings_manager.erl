@@ -15,6 +15,8 @@
 %%
 -module(index_settings_manager).
 
+-include("ns_common.hrl").
+
 -define(INDEX_CONFIG_KEY, {metakv, <<"/indexing/settings/config">>}).
 
 -export([start_link/0,
@@ -150,7 +152,7 @@ do_populate_ets_table(JSON) ->
     erlang:put(prev_json, JSON).
 
 known_settings() ->
-    [{memoryQuota, id_lens(<<"indexer.settings.memory_quota">>), 256},
+    [{memoryQuota, memory_quota_lens(), 256},
      {generalSettings, general_settings_lens(), general_settings_defaults()},
      {compaction, compaction_lens(), compaction_defaults()}].
 
@@ -163,6 +165,17 @@ id_lens(Key) ->
           end,
     Set = fun (Value, Dict) ->
                   dict:store(Key, Value, Dict)
+          end,
+    {Get, Set}.
+
+memory_quota_lens() ->
+    Key = <<"indexer.settings.memory_quota">>,
+
+    Get = fun (Dict) ->
+                  dict:fetch(Key, Dict) div ?MIB
+          end,
+    Set = fun (Value, Dict) ->
+                  dict:store(Key, Value * ?MIB, Dict)
           end,
     {Get, Set}.
 
