@@ -27,6 +27,10 @@ angular.module('mnHelper').factory('mnHelper',
       function closeModal() {
         modalInstance.close();
       }
+      function extractErrors(resp) {
+        var errors = resp.data && resp.data.errors || resp.data;
+        return _.isEmpty(errors) ? false : errors;
+      }
       return {
         getPromise: function () {
           return promise;
@@ -51,6 +55,13 @@ angular.module('mnHelper').factory('mnHelper',
           promise.then(null, hideSpinner);
           return this;
         },
+        catchErrorsFromSuccess: function (name) {
+          name && setErrorsName(name);
+          promise.then(function (resp) {
+            errorsCtrl(extractErrors(resp));
+          });
+          return this;
+        },
         showSpinner: function (name) {
           name && setSpinnerName(name);
           spinnerCtrl(true);
@@ -60,7 +71,7 @@ angular.module('mnHelper').factory('mnHelper',
         catchErrors: function (name) {
           name && setErrorsName(name);
           promise.then(removeErrors, function (resp) {
-            errorsCtrl(resp.data);
+            errorsCtrl(extractErrors(resp));
           });
           return this;
         },
