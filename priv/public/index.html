@@ -2744,7 +2744,7 @@
     <fieldset>
       <legend>Services</legend>
       <div class="pat_10 init_cluster_service_per_node_warning">
-        Warning: Not recommended to have >1 Service per node in a production environment.
+        Warning: Not recommended to have more than one service per node in a production environment.
       </div>
       <ul class="join_cluster_dialog_services">
         <li>
@@ -3376,7 +3376,7 @@
          </label></h3>
          <div class="start_new_cluster_block js_start_new_cluster_block">
             <div class="init_cluster_service_per_node_warning">
-              Warning: Not recommended to have >1 Service per node in a production environment.
+              Warning: Not recommended to have more than one service per node in a production environment.
             </div>
             <div class="warning pat_10" id="init_cluster_dialog_memory_errors_container"></div>
             <div class="warning pat_10" id="init_cluster_service_errors_container"></div>
@@ -3390,7 +3390,7 @@
         </label></h3>
         <div class="login-credentials js_login-credentials">
           <div class="init_cluster_service_per_node_warning">
-            Warning: Not recommended to have >1 Service per node in a production environment.
+            Warning: Not recommended to have more than one service per node in a production environment.
           </div>
           <p class="warning pat_10 join_cluster_dialog_errors_container"></p>
           <div>
@@ -3775,7 +3775,7 @@
   {% if (showTotalPerNode) { %}
   <div class="row">
     <label>Total Per Server:</label>
-    <span><span class="js_per_server_total"></span> MB (must be &lt;= <span class="js_max_ram_size">{%= h(maxMemorySize) %}</span> MB) </span>
+    <span><span class="js_per_server_total"></span> MB (must be less than <span class="js_max_ram_size">{%= h(maxMemorySize) %}</span> MB) </span>
   </div>
   {% } %}
 </script>
