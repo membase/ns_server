@@ -335,11 +335,28 @@ parse_aggregate_dcp_stats(AggDcp) ->
     ViewsStats = extract_agg_dcp_stats([{K, V} || {<<"mapreduce_view:", K/binary>>, V} <- AggDcp]),
     TotalStats = extract_agg_dcp_stats([{K, V} || {<<":total:", K/binary>>, V} <- AggDcp]),
 
-    OtherStats = calc_dcp_other_stats(ReplicaStats, XdcrStats, ViewsStats, TotalStats),
+    IndexStatsRaw =
+        lists:filtermap(
+          fun ({<<"proj-", Rest/binary>>, V}) ->
+                  case binary:split(Rest, <<":">>) of
+                      [_, Key] ->
+                          {true, {Key, V}};
+                      _ ->
+                          %% not expected but let's handle it
+                          false
+                  end;
+              (_) ->
+                  false
+          end, AggDcp),
+
+    IndexStats = extract_agg_dcp_stats(IndexStatsRaw),
+
+    OtherStats = calc_dcp_other_stats(ReplicaStats, XdcrStats, ViewsStats, IndexStats, TotalStats),
 
     lists:append([dcp_stream_stats_to_kvlist(<<"ep_dcp_replica_">>, ReplicaStats),
                   dcp_stream_stats_to_kvlist(<<"ep_dcp_xdcr_">>, XdcrStats),
                   dcp_stream_stats_to_kvlist(<<"ep_dcp_views_">>, ViewsStats),
+                  dcp_stream_stats_to_kvlist(<<"ep_dcp_2i_">>, IndexStats),
                   dcp_stream_stats_to_kvlist(<<"ep_dcp_other_">>, OtherStats)]).
 
 maybe_adjust_data_size(DataSize, DiskSize, MinFileSize) ->

@@ -268,6 +268,11 @@
         ep_dcp_views_producer_count,
         ep_dcp_views_total_backlog_size,
 
+        ep_dcp_2i_count,
+        ep_dcp_2i_items_remaining,
+        ep_dcp_2i_producer_count,
+        ep_dcp_2i_total_backlog_size,
+
         ep_dcp_other_count,
         ep_dcp_other_items_remaining,
         ep_dcp_other_producer_count,
@@ -285,6 +290,10 @@
         ep_dcp_views_items_sent,
         ep_dcp_views_total_bytes,
         ep_dcp_views_backoff,
+
+        ep_dcp_2i_items_sent,
+        ep_dcp_2i_total_bytes,
+        ep_dcp_2i_backoff,
 
         ep_dcp_other_items_sent,
         ep_dcp_other_total_bytes,
@@ -364,8 +373,12 @@ dcp_stream_stats_to_kvlist(Prefix, Record) ->
      ?DEFINE_TO_KVLIST(backoff)].
 -undef(DEFINE_TO_KVLIST).
 
--define(DEFINE_FORMULA(N), N = D#dcp_stream_stats.N - (A#dcp_stream_stats.N + B#dcp_stream_stats.N + C#dcp_stream_stats.N)).
-calc_dcp_other_stats(A, B, C, D) ->
+-define(DEFINE_FORMULA(N), N =
+            E#dcp_stream_stats.N -
+            (A#dcp_stream_stats.N + B#dcp_stream_stats.N +
+                 C#dcp_stream_stats.N + D#dcp_stream_stats.N)).
+
+calc_dcp_other_stats(A, B, C, D, E) ->
     #dcp_stream_stats{?DEFINE_FORMULA(count),
                       ?DEFINE_FORMULA(items_remaining),
                       ?DEFINE_FORMULA(items_sent),

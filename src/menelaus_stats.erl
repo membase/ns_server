@@ -727,6 +727,17 @@ computed_stats_lazy_proplist(BucketName) ->
                       end,
                       Reps),
 
+    Views2iStats =
+        [{Key, Z2(ViewKey, IndexKey, fun (A, B) -> A + B end)} ||
+            {Key, ViewKey, IndexKey} <-
+                [{<<"ep_dcp_views+2i_count">>, ep_dcp_views_count, ep_dcp_2i_count},
+                 {<<"ep_dcp_views+2i_items_remaining">>, ep_dcp_views_items_remaining, ep_dcp_2i_items_remaining},
+                 {<<"ep_dcp_views+2i_producer_count">>, ep_dcp_views_producer_count, ep_dcp_2i_producer_count},
+                 {<<"ep_dcp_views+2i_total_backlog_size">>, ep_dcp_views_total_backlog_size, ep_dcp_2i_total_backlog_size},
+                 {<<"ep_dcp_views+2i_items_sent">>, ep_dcp_views_items_sent, ep_dcp_2i_items_sent},
+                 {<<"ep_dcp_views+2i_total_bytes">>, ep_dcp_views_total_bytes, ep_dcp_2i_total_bytes},
+                 {<<"ep_dcp_views+2i_backoff">>, ep_dcp_views_backoff, ep_dcp_2i_backoff}]],
+
     [{<<"couch_total_disk_size">>, TotalDisk},
      {<<"couch_docs_fragmentation">>, DocsFragmentation},
      {<<"couch_views_fragmentation">>, ViewsFragmentation},
@@ -742,7 +753,7 @@ computed_stats_lazy_proplist(BucketName) ->
      {<<"vb_pending_resident_items_ratio">>, PendingResRate},
      {<<"avg_disk_update_time">>, AverageDiskUpdateTime},
      {<<"avg_disk_commit_time">>, AverageCommitTime},
-     {<<"avg_bg_wait_time">>, AverageBgWait}] ++ XDCAllRepStats
+     {<<"avg_bg_wait_time">>, AverageBgWait}] ++ Views2iStats ++ XDCAllRepStats
         ++ computed_stats_lazy_proplist("@query").
 
 %% converts list of samples to proplist of stat values.
@@ -1675,7 +1686,7 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
      {struct,[{blockName,<<"DCP Queues">>},
               {extraCSSClasses,<<"dynamic_closed">>},
               {columns,
-               [<<"Replication">>,<<"XDCR">>,<<"Views">>,<<"Other">>]},
+               [<<"Replication">>,<<"XDCR">>,<<"Views/Indexes">>,<<"Other">>]},
               {stats,
                [{struct,[{title,<<"DCP connections">>},
                          {name,<<"ep_dcp_replica_count">>},
@@ -1684,8 +1695,8 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                          {name,<<"ep_dcp_xdcr_count">>},
                          {desc,<<"Number of internal xdcr DCP connections in this bucket (measured from ep_dcp_xdcr_count)">>}]},
                 {struct,[{title,<<"DCP connections">>},
-                         {name,<<"ep_dcp_views_count">>},
-                         {desc,<<"Number of internal views DCP connections in this bucket (measured from ep_dcp_views_count)">>}]},
+                         {name,<<"ep_dcp_views+2i_count">>},
+                         {desc,<<"Number of internal views/indexes DCP connections in this bucket (measured from ep_dcp_views_count + ep_dcp_2i_count)">>}]},
                 {struct,[{title,<<"DCP connections">>},
                          {name,<<"ep_dcp_other_count">>},
                          {desc,<<"Number of other DCP connections in this bucket (measured from ep_dcp_other_count)">>}]},
@@ -1696,8 +1707,8 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                          {name,<<"ep_dcp_xdcr_producer_count">>},
                          {desc,<<"Number of xdcr senders for this bucket (measured from ep_dcp_xdcr_producer_count)">>}]},
                 {struct,[{title,<<"DCP senders">>},
-                         {name,<<"ep_dcp_views_producer_count">>},
-                         {desc,<<"Number of views senders for this bucket (measured from ep_dcp_views_producer_count)">>}]},
+                         {name,<<"ep_dcp_views+2i_producer_count">>},
+                         {desc,<<"Number of views/indexes senders for this bucket (measured from ep_dcp_views_producer_count + ep_dcp_2i_producer_count)">>}]},
                 {struct,[{title,<<"DCP senders">>},
                          {name,<<"ep_dcp_other_producer_count">>},
                          {desc,<<"Number of other senders for this bucket (measured from ep_dcp_other_producer_count)">>}]},
@@ -1708,8 +1719,8 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                          {name,<<"ep_dcp_xdcr_items_remaining">>},
                          {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_xdcr_items_remaining)">>}]},
                 {struct,[{title,<<"items remaining">>},
-                         {name,<<"ep_dcp_views_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_views_items_remaining)">>}]},
+                         {name,<<"ep_dcp_views+2i_items_remaining">>},
+                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_views_items_remaining + ep_dcp_2i_items_remaining)">>}]},
                 {struct,[{title,<<"items remaining">>},
                          {name,<<"ep_dcp_other_items_remaining">>},
                          {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_other_items_remaining)">>}]},
@@ -1720,8 +1731,8 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                          {name,<<"ep_dcp_xdcr_items_sent">>},
                          {desc,<<"Number of items per second being sent for a producer for this bucket (measured from ep_dcp_xdcr_items_sent)">>}]},
                 {struct,[{title,<<"drain rate items/sec">>},
-                         {name,<<"ep_dcp_views_items_sent">>},
-                         {desc,<<"Number of items per second being sent for a producer for this bucket (measured from ep_dcp_views_items_sent)">>}]},
+                         {name,<<"ep_dcp_views+2i_items_sent">>},
+                         {desc,<<"Number of items per second being sent for a producer for this bucket (measured from ep_dcp_views_items_sent + ep_dcp_views_items_sent)">>}]},
                 {struct,[{title,<<"drain rate items/sec">>},
                          {name,<<"ep_dcp_other_items_sent">>},
                          {desc,<<"Number of items per second being sent for a producer for this bucket (measured from ep_dcp_other_items_sent)">>}]},
@@ -1732,8 +1743,8 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                          {name,<<"ep_dcp_xdcr_total_bytes">>},
                          {desc,<<"Number of bytes per second being sent for xdcr DCP connections for this bucket (measured from ep_dcp_xdcr_total_bytes)">>}]},
                 {struct,[{title,<<"drain rate bytes/sec">>},
-                         {name,<<"ep_dcp_views_total_bytes">>},
-                         {desc,<<"Number of bytes per second being sent for views DCP connections for this bucket (measured from ep_dcp_views_total_bytes)">>}]},
+                         {name,<<"ep_dcp_views+2i_total_bytes">>},
+                         {desc,<<"Number of bytes per second being sent for views/indexes DCP connections for this bucket (measured from ep_dcp_views_total_bytes + ep_dcp_2i_total_bytes)">>}]},
                 {struct,[{title,<<"drain rate bytes/sec">>},
                          {name,<<"ep_dcp_other_total_bytes">>},
                          {desc,<<"Number of bytes per second being sent for other DCP connections for this bucket (measured from ep_dcp_other_total_bytes)">>}]},
@@ -1744,8 +1755,8 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                           {name, <<"ep_dcp_xdcr_backoff">>},
                           {desc,<<"Number of backoffs for xdcr DCP connections">>}]},
                 {struct, [{title, <<"backoffs/sec">>},
-                          {name, <<"ep_dcp_views_backoff">>},
-                          {desc,<<"Number of backoffs for views DCP connections">>}]},
+                          {name, <<"ep_dcp_views+2i_backoff">>},
+                          {desc,<<"Number of backoffs for views/indexes DCP connections">>}]},
                 {struct, [{title, <<"backoffs/sec">>},
                           {name, <<"ep_dcp_other_backoff">>},
                           {desc,<<"Number of backoffs for other DCP connections">>}]}
