@@ -321,7 +321,7 @@ get_samples_for_stat(BucketName, StatName, ForNodes, ClientTStamp, Window) ->
     {[lists:map(StatExtractor, NodeSamples) || {_, NodeSamples} <- AllNodesSamples], Nodes}.
 
 get_samples_from_one_of_kind([Kind | RestKinds], StatName, ClientTStamp, Window) ->
-    ForNodes = bucket_nodes(Kind),
+    ForNodes = section_nodes(Kind),
     RV = {Samples, _} = get_samples_for_stat(Kind, StatName, ForNodes, ClientTStamp, Window),
     case RestKinds =/= [] andalso are_samples_undefined(Samples) of
         true ->
@@ -413,15 +413,15 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
       end, ListOfLists),
     [hd(ets:lookup(ETS, T)) || #stat_entry{timestamp = T} <- MainSamples].
 
-bucket_nodes("@system") ->
+section_nodes("@system") ->
     ns_cluster_membership:actual_active_nodes();
-bucket_nodes("@query") ->
+section_nodes("@query") ->
     ns_cluster_membership:n1ql_active_nodes(ns_config:latest_config_marker());
-bucket_nodes("@index-"++_) ->
+section_nodes("@index-"++_) ->
     ns_cluster_membership:index_active_nodes(ns_config:latest_config_marker());
-bucket_nodes("@goxdcr-"++Bucket) ->
+section_nodes("@goxdcr-"++Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket);
-bucket_nodes(Bucket) ->
+section_nodes(Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket).
 
 is_persistent("@query") ->
@@ -434,12 +434,12 @@ is_persistent(BucketName) ->
     ns_bucket:is_persistent(BucketName).
 
 grab_system_aggregate_op_stats(all, ClientTStamp, Window) ->
-    grab_aggregate_op_stats("@system", bucket_nodes("@system"), ClientTStamp, Window);
+    grab_aggregate_op_stats("@system", section_nodes("@system"), ClientTStamp, Window);
 grab_system_aggregate_op_stats([Node], ClientTStamp, Window) ->
     grab_aggregate_op_stats("@system", [Node], ClientTStamp, Window).
 
 grab_aggregate_op_stats(Bucket, all, ClientTStamp, Window) ->
-    grab_aggregate_op_stats(Bucket, bucket_nodes(Bucket), ClientTStamp, Window);
+    grab_aggregate_op_stats(Bucket, section_nodes(Bucket), ClientTStamp, Window);
 grab_aggregate_op_stats(Bucket, Nodes, ClientTStamp, Window) ->
     {_MainNode, MainSamples, Replies} =
         menelaus_stats_gatherer:gather_stats(Bucket, Nodes, ClientTStamp, Window),
@@ -1219,7 +1219,7 @@ couchbase_index_stats_descriptions(BucketId, AddIndex) ->
 do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
     Nodes = case AddIndex of
                 all ->
-                    bucket_nodes("@index-" ++ BucketId);
+                    section_nodes("@index-" ++ BucketId);
                 XNodes ->
                     XNodes
             end,
@@ -2025,7 +2025,7 @@ serve_aggregated_ui_stats(Req, Params) ->
             end,
     BS = grab_ui_stats(Bucket, Nodes, HaveStamp, Wnd),
     GoXDCRStats = [{<<"@goxdcr">>, {grab_ui_stats("@goxdcr-" ++ Bucket, Nodes, HaveStamp, Wnd)}}],
-    QNodes = bucket_nodes("@query"),
+    QNodes = section_nodes("@query"),
     HaveQuery = case Nodes of
                     all ->
                         QNodes =/= [];
@@ -2040,7 +2040,7 @@ serve_aggregated_ui_stats(Req, Params) ->
                           QS = grab_ui_stats("@query", Nodes, HaveStamp, Wnd),
                           [{<<"@query">>, {QS}} | GoXDCRStats]
                   end,
-    INodes = bucket_nodes("@index-" ++ Bucket),
+    INodes = section_nodes("@index-" ++ Bucket),
     HaveIndexBool  = case Nodes of
                          all ->
                              INodes =/= [];
@@ -2203,7 +2203,7 @@ output_ui_stats(Req, Stats, Directory, Wnd, Bucket, StatName, NewHaveStamp, Extr
 get_indexes(BucketId) ->
     simple_memoize({indexes, BucketId},
                    fun () ->
-                           Nodes = bucket_nodes("@index-" ++ BucketId),
+                           Nodes = section_nodes("@index-" ++ BucketId),
                            do_get_indexes(BucketId, Nodes)
                    end, 5000).
 
