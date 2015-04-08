@@ -34,13 +34,10 @@ godu_name() ->
     end.
 
 start_link() ->
-    case godu_name() of
-        undefined ->
-            ignore;
-        Name ->
-            ?log_info("Starting quick version of dir_size with program name: ~s", [Name]),
-            gen_server:start_link({local, ?MODULE}, ?MODULE, Name, [])
-    end.
+    Name = godu_name(),
+
+    ?log_info("Starting quick version of dir_size with program name: ~s", [Name]),
+    gen_server:start_link({local, ?MODULE}, ?MODULE, Name, []).
 
 get(Dir) ->
     case erlang:whereis(?MODULE) of
