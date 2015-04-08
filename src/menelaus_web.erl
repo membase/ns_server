@@ -271,7 +271,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "buckets", "@query", "nodes", NodeId, "stats"] ->
                              {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
                               ["default", "@query", NodeId]};
-                         ["pools", "default", "buckets", "@goxdcr" ++ _ = Id, "nodes", NodeId, "stats"] ->
+                         ["pools", "default", "buckets", "@goxdcr-" ++ _ = Id, "nodes", NodeId, "stats"] ->
                              {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
                               ["default", Id, NodeId]};
                          ["pools", "default", "buckets", Id, "nodes", NodeId, "stats"] ->
