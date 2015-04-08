@@ -249,8 +249,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "buckets", Id, "localRandomKey"] ->
                              {auth_bucket, fun menelaus_web_buckets:handle_local_random_key/3,
                               ["default", Id]};
-                         ["pools", "default", "buckets", "@query", "statsDirectory"] ->
-                             {auth_ro, fun menelaus_stats:serve_stats_directory/3, ["default", "@query"]};
                          ["pools", "default", "buckets", Id, "statsDirectory"] ->
                              {auth_bucket, fun menelaus_stats:serve_stats_directory/3,
                               ["default", Id]};
@@ -264,9 +262,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "bs", BucketName] ->
                              {auth_bucket, fun serve_streaming_short_bucket_info/3,
                               ["default", BucketName]};
-                         ["pools", "default", "buckets", "@query", "nodes"] ->
-                             {auth_ro, fun handle_bucket_node_list/3,
-                              ["default", "@query"]};
                          ["pools", "default", "buckets", Id, "nodes"] ->
                              {auth_bucket, fun handle_bucket_node_list/3,
                               ["default", Id]};
@@ -282,9 +277,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "buckets", Id, "nodes", NodeId, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_node_stats/4,
                               ["default", Id, NodeId]};
-                         ["pools", "default", "buckets", "@query", "stats", StatName] ->
-                             {auth_ro, fun menelaus_stats:handle_specific_stat_for_buckets/4,
-                              ["default", "@query", StatName]};
                          ["pools", "default", "buckets", Id, "stats", StatName] ->
                              {auth_bucket, fun menelaus_stats:handle_specific_stat_for_buckets/4,
                               ["default", Id, StatName]};

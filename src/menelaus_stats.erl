@@ -1892,8 +1892,6 @@ server_resources_stats_description() ->
                 {title,<<"streaming wakeups/sec">>},
                 {desc,<<"Rate of streaming request wakeups on port 8091">>}]}]}].
 
-base_stats_directory("@query", _, _) ->
-    couchbase_query_stats_descriptions();
 base_stats_directory(BucketId, AddQuery, AddIndex) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
     Base = case ns_bucket:bucket_type(BucketConfig) of
