@@ -1,5 +1,5 @@
 angular.module('mnSettingsClusterService').factory('mnSettingsClusterService',
-  function (mnHttp) {
+  function (mnHttp, $q, mnServersService, mnPoolDefault) {
     var mnSettingsClusterService = {};
 
 
@@ -30,6 +30,32 @@ angular.module('mnSettingsClusterService').factory('mnSettingsClusterService',
         },
         data: data,
         url: '/pools/default'
+      });
+    };
+
+    function getInMegs(value) {
+      return Math.floor(value / Math.Mi);
+    }
+
+    mnSettingsClusterService.getClusterState = function () {
+      return $q.all([
+        mnSettingsClusterService.getDefaultCertificate(),
+        mnServersService.getNodes(),
+        mnPoolDefault.get()
+      ]).then(function (resp) {
+        var certificate = resp[0].data;
+        var nodes = resp[1];
+        var poolDefault = resp[2];
+
+        return {
+          clusterSettings: {
+            clusterName: poolDefault.clusterName,
+            memoryQuota: getInMegs(poolDefault.storageTotals.ram.quotaTotalPerNode)
+          },
+          certificate: certificate,
+          totalRam: getInMegs(nodes.ramTotalPerActiveNode),
+          maxRamMegs: Math.max(getInMegs(nodes.ramTotalPerActiveNode) - 1024, Math.floor(nodes.ramTotalPerActiveNode * 4 / (5 * Math.Mi)))
+        };
       });
     };
 

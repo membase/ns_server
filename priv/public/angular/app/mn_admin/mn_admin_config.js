@@ -140,14 +140,8 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
       controller: 'mnSettingsClusterController',
       templateUrl: 'mn_admin/mn_settings/cluster/mn_settings_cluster.html',
       resolve: {
-        defaultCertificate: function (mnSettingsClusterService) {
-          return mnSettingsClusterService.getDefaultCertificate();
-        },
-        nodes: function (mnServersService) {
-          return mnServersService.getNodes();
-        },
-        poolDefault: function (mnPoolDefault) {
-          return mnPoolDefault.getFresh();
+        clusterState: function (mnSettingsClusterService) {
+          return mnSettingsClusterService.getClusterState();
         }
       }
     })
