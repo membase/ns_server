@@ -68,9 +68,9 @@ latest_tick(TS, NumDropped) ->
                      scan_bytes_read, total_scan_duration]).
 
 do_recognize_name(<<"needs_restart">>) ->
-    {gauge, index_needs_restart};
+    {status, index_needs_restart};
 do_recognize_name(<<"num_connections">>) ->
-    {gauge, index_num_connections};
+    {status, index_num_connections};
 do_recognize_name(K) ->
     case binary:split(K, <<":">>, [global]) of
         [Bucket, Index, Metric] ->
@@ -108,16 +108,18 @@ recognize_name(K) ->
             end
     end.
 
-massage_stats([], AccGauges, AccCounters) ->
-    {AccGauges, AccCounters};
-massage_stats([{K, V} | Rest], AccGauges, AccCounters) ->
+massage_stats([], AccGauges, AccCounters, AccStatus) ->
+    {AccGauges, AccCounters, AccStatus};
+massage_stats([{K, V} | Rest], AccGauges, AccCounters, AccStatus) ->
     case recognize_name(K) of
         undefined ->
-            massage_stats(Rest, AccGauges, AccCounters);
+            massage_stats(Rest, AccGauges, AccCounters, AccStatus);
         {counter, NewK} ->
-            massage_stats(Rest, AccGauges, [{NewK, V} | AccCounters]);
+            massage_stats(Rest, AccGauges, [{NewK, V} | AccCounters], AccStatus);
         {gauge, NewK} ->
-            massage_stats(Rest, [{NewK, V} | AccGauges], AccCounters)
+            massage_stats(Rest, [{NewK, V} | AccGauges], AccCounters, AccStatus);
+        {status, NewK} ->
+            massage_stats(Rest, AccGauges, AccCounters, [{NewK, V} | AccStatus])
     end.
 
 get_stats() ->
@@ -164,11 +166,11 @@ diff_counters(InvTSDiff, [{K, V} | RestCounters] = Counters, PrevCounters, Acc) 
     end.
 
 grab_stats(PrevCounters, TSDiff) ->
-    {StatsGauges, StatsCounters0} = massage_stats(get_stats(), [], []),
+    {StatsGauges, StatsCounters0, Status} = massage_stats(get_stats(), [], [], []),
     StatsCounters = lists:sort(StatsCounters0),
     Stats0 = diff_counters(1000.0 / TSDiff, StatsCounters, PrevCounters, []),
     Stats = lists:merge(Stats0, lists:sort(StatsGauges)),
-    {Stats, StatsCounters}.
+    {Stats, StatsCounters, Status}.
 
 aggregate_index_stats([]) ->
     [];
@@ -215,7 +217,7 @@ aggregate_index_stats_test() ->
 handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
                                 prev_ts = PrevTS}) ->
     TS = latest_tick(TS0, 0),
-    {Stats, NewCounters} = grab_stats(PrevCounters, TS - PrevTS),
+    {Stats, NewCounters, Status} = grab_stats(PrevCounters, TS - PrevTS),
     Indexes = lists:foldl(
                 fun ({{B, I, _K}, _V}, Acc) ->
                         case Acc of
@@ -234,8 +236,8 @@ handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
                     ({_K, _V}, Acc) ->
                         Acc
                 end, [], Stats),
-    NumConnections = proplists:get_value(index_num_connections, Stats, 0),
-    NeedsRestart = proplists:get_value(index_needs_restart, Stats, false),
+    NumConnections = proplists:get_value(index_num_connections, Status, 0),
+    NeedsRestart = proplists:get_value(index_needs_restart, Status, false),
     index_status_keeper:update(NumConnections, NeedsRestart, Indexes),
     BucketStats = aggregate_index_stats([{B, K, V} || {{B, _, _} = K, V} <- Stats]),
     PerBucketStats = misc:keygroup(1, BucketStats),
