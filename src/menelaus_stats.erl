@@ -1172,7 +1172,7 @@ do_couchbase_replication_stats_descriptions(BucketId) ->
                                           {desc,<<"Rate of doc checks per second ">>}]},
 
                                  %% third row
-                                 {struct,[{title,<<"meta batches per sec">>},
+                                 {struct,[{title,<<"meta batches per sec.">>},
                                           {name,<<Prefix/binary, "meta_latency_wt">>},
                                           {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster "
                                                   "(measured from per-replication stat wtavg_meta_latency)">>}]},
@@ -1180,7 +1180,7 @@ do_couchbase_replication_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary, "wtavg_meta_latency">>},
                                           {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster "
                                                   "(measured from per-replication stat wtavg_meta_latency)">>}]},
-                                 {struct,[{title,<<"docs batches per sec">>},
+                                 {struct,[{title,<<"docs batches per sec.">>},
                                           {name,<<Prefix/binary, "docs_latency_wt">>},
                                           {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
                                                   "(measured from per-replication stat wtavg_docs_latency)">>}]},
@@ -1189,12 +1189,12 @@ do_couchbase_replication_stats_descriptions(BucketId) ->
                                           {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
                                                   "(measured from per-replication stat wtavg_docs_latency)">>}]},
                                  %% fourth row
-                                 {struct, [{title, <<"wakeups per sec">>},
+                                 {struct, [{title, <<"wakeups per sec.">>},
                                            {name, <<Prefix/binary, "wakeups_rate">>},
                                            {desc, <<"Rate of XDCR vbucket replicator wakeups">>}]},
-                                 {struct, [{title, <<"XDCR vb reps per sec">>},
+                                 {struct, [{title, <<"XDCR vb reps per sec.">>},
                                            {name, <<Prefix/binary, "worker_batches_rate">>},
-                                           {desc, <<"Rate at which XDCR vbucket replicators replicates batches per sec">>}]},
+                                           {desc, <<"Rate at which XDCR vbucket replicators replicates batches per second">>}]},
                                  {struct, [{title, <<"% time spent vb reps">>},
                                            {maxY, 100},
                                            {name, <<Prefix/binary, "utilization">>},
