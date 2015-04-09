@@ -1065,7 +1065,7 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
                                {extraCSSClasses,<<"dynamic_closed">>},
                                {stats,
                                 [
-                                 {struct,[{title,<<"outbound XDCR mutations">>},
+                                 {struct,[{title,<<"mutations">>},
                                           {name,<<Prefix/binary,"changes_left">>},
                                           {desc,<<"Number of mutations to be replicated to other clusters "
                                                   "(measured from per-replication stat changes_left)">>}]},
@@ -1074,15 +1074,15 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary, "percent_completeness">>},
                                           {desc,<<"Percentage of checked items out of all checked and to-be-replicated items "
                                                   "(measured from per-replication stat percent_completeness)">>}]},
-                                 {struct,[{title,<<"outbound XDCR mutations replicated">>},
+                                 {struct,[{title,<<"mutations replicated">>},
                                           {name,<<Prefix/binary,"docs_written">>},
                                           {desc,<<"Number of mutations that have been replicated to other clusters "
                                                   "(measured from per-replication stat docs_written)">>}]},
-                                 {struct,[{title,<<"outbound XDCR mutations filtered">>},
+                                 {struct,[{title,<<"mutations filtered">>},
                                           {name,<<Prefix/binary,"docs_filtered">>},
                                           {desc,<<"Number of mutations that have been filtered out and have not been replicated to other clusters "
                                                   "(measured from per-replication stat docs_filtered)">>}]},
-                                 {struct,[{title,<<"XDCR mutations failed conflict resolution on source">>},
+                                 {struct,[{title,<<"mutations failed resolution">>},
                                           {name,<<Prefix/binary,"docs_failed_cr_source">>},
                                           {desc,<<"Number of mutations that failed conflict resolution on the source side and hence have not been replicated to other clusters "
                                                   "(measured from per-replication stat docs_failed_cr_source)">>}]},
@@ -1137,7 +1137,7 @@ do_couchbase_replication_stats_descriptions(BucketId) ->
                                {extraCSSClasses,<<"dynamic_closed">>},
                                {stats,
                                 [%% first row
-                                 {struct,[{title,<<"outbound XDCR mutations">>},
+                                 {struct,[{title,<<"mutations">>},
                                           {name,<<Prefix/binary,"changes_left">>},
                                           {desc,<<"Number of mutations to be replicated to other clusters "
                                                   "(measured from per-replication stat changes_left)">>}]},
@@ -1268,13 +1268,13 @@ do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
                            {title, <<"Data Size">>},
                            {name, per_index_stat(Id, <<"data_size">>)},
                            {desc, <<"Actual data size consumed by the index">>}]},
-                 {struct, [{title, <<"Total Items Remaining Count">>},
+                 {struct, [{title, <<"Total Items Remaining">>},
                            {name, per_index_stat(Id, <<"num_docs_pending">>)},
                            {desc, <<"Number of documents pending to be indexed">>}]},
                  {struct, [{title, <<"Drain Rate Items/sec">>},
                            {name, per_index_stat(Id, <<"num_docs_indexed">>)},
                            {desc, <<"Number of documents indexed by the indexer per second">>}]},
-                 {struct, [{title, <<"Total Items Count">>},
+                 {struct, [{title, <<"Total Items">>},
                            {name, per_index_stat(Id, <<"items_count">>)},
                            {desc, <<"Current total number of documents in the index">>}]},
                  {struct, [{isBytes, true},
