@@ -172,26 +172,40 @@ grab_stats(PrevCounters, TSDiff) ->
     Stats = lists:merge(Stats0, lists:sort(StatsGauges)),
     {Stats, StatsCounters, Status}.
 
-aggregate_index_stats([]) ->
-    [];
-aggregate_index_stats([{B, {_B, _I, K}, V} = Triple | Rest]) ->
-    [Triple | aggregate_index_stats_loop(B, [{B, K, V}], Rest)].
+aggregate_index_stats(Stats) ->
+    do_aggregate_index_stats(Stats, []).
 
-aggregate_index_stats_loop(B, Acc, [{B2, {_B, _I, K}, V} = Triple | Rest] = List) ->
-    case B =:= B2 of
-        true ->
-            Acc2 = case lists:keyfind(K, 2, Acc) of
-                       false ->
-                           [{B, K, V} | Acc];
-                       {_B, _K, AccV} ->
-                           lists:keyreplace(K, 2, Acc, {B, K, AccV + V})
-                   end,
-            [Triple | aggregate_index_stats_loop(B, Acc2, Rest)];
-        false ->
-            lists:reverse(Acc) ++ aggregate_index_stats(List)
-    end;
-aggregate_index_stats_loop(_B, Acc, []) ->
-    lists:reverse(Acc).
+do_aggregate_index_stats([], Acc) ->
+    Acc;
+do_aggregate_index_stats([{{Bucket, _, _}, _} | _] = Stats, Acc) ->
+    {BucketStats, RestStats} = aggregate_index_bucket_stats(Bucket, Stats),
+    do_aggregate_index_stats(RestStats, [{Bucket, BucketStats} | Acc]).
+
+aggregate_index_bucket_stats(Bucket, Stats) ->
+    do_aggregate_index_bucket_stats([], Bucket, Stats).
+
+do_aggregate_index_bucket_stats(Acc, _, []) ->
+    {finalize_index_bucket_stats(Acc), []};
+do_aggregate_index_bucket_stats(Acc, Bucket, [{{Bucket, Index, Name}, V} | Rest]) ->
+    Global = global_index_stat(Name),
+    PerIndex = per_index_stat(Index, Name),
+
+    Acc1 =
+        case lists:keyfind(Global, 1, Acc) of
+            false ->
+                [{Global, V} | Acc];
+            {_, OldV} ->
+                lists:keyreplace(Global, 1, Acc, {Global, OldV + V})
+        end,
+
+    Acc2 = [{PerIndex, V} | Acc1],
+
+    do_aggregate_index_bucket_stats(Acc2, Bucket, Rest);
+do_aggregate_index_bucket_stats(Acc, _, Stats) ->
+    {finalize_index_bucket_stats(Acc), Stats}.
+
+finalize_index_bucket_stats(Acc) ->
+    lists:keysort(1, Acc).
 
 aggregate_index_stats_test() ->
     In = [{{<<"a">>, <<"idx1">>, <<"m1">>}, 1},
@@ -200,19 +214,25 @@ aggregate_index_stats_test() ->
           {{<<"b">>, <<"idx2">>, <<"m2">>}, 4},
           {{<<"b">>, <<"idx3">>, <<"m1">>}, 5},
           {{<<"b">>, <<"idx3">>, <<"m2">>}, 6}],
-    In1 = [{B, K, V} || {{B, _, _} = K, V} <- In],
-    Out = aggregate_index_stats(In1),
-    ?assertEqual([{<<"a">>, {<<"a">>, <<"idx1">>, <<"m1">>}, 1},
-                  {<<"a">>, {<<"a">>, <<"idx1">>, <<"m2">>}, 2},
-                  {<<"a">>, <<"m1">>, 1},
-                  {<<"a">>, <<"m2">>, 2},
-                  {<<"b">>, {<<"b">>, <<"idx2">>, <<"m1">>}, 3},
-                  {<<"b">>, {<<"b">>, <<"idx2">>, <<"m2">>}, 4},
-                  {<<"b">>, {<<"b">>, <<"idx3">>, <<"m1">>}, 5},
-                  {<<"b">>, {<<"b">>, <<"idx3">>, <<"m2">>}, 6},
-                  {<<"b">>, <<"m1">>, 3+5},
-                  {<<"b">>, <<"m2">>, 4+6}],
-                 Out).
+    Out = aggregate_index_stats(In),
+
+    AStats0 = [{<<"index/idx1/m1">>, 1},
+               {<<"index/idx1/m2">>, 2},
+               {<<"index/m1">>, 1},
+               {<<"index/m2">>, 2}],
+    BStats0 = [{<<"index/idx2/m1">>, 3},
+               {<<"index/idx2/m2">>, 4},
+               {<<"index/idx3/m1">>, 5},
+               {<<"index/idx3/m2">>, 6},
+               {<<"index/m1">>, 3+5},
+               {<<"index/m2">>, 4+6}],
+
+    AStats = lists:keysort(1, AStats0),
+    BStats = lists:keysort(1, BStats0),
+
+    ?assertEqual(Out,
+                 [{<<"b">>, BStats},
+                  {<<"a">>, AStats}]).
 
 handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
                                 prev_ts = PrevTS}) ->
@@ -239,24 +259,19 @@ handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
     NumConnections = proplists:get_value(index_num_connections, Status, 0),
     NeedsRestart = proplists:get_value(index_needs_restart, Status, false),
     index_status_keeper:update(NumConnections, NeedsRestart, Indexes),
-    BucketStats = aggregate_index_stats([{B, K, V} || {{B, _, _} = K, V} <- Stats]),
-    PerBucketStats = misc:keygroup(1, BucketStats),
-    [begin
-         Values = lists:keysort(1, [{format_k(K), V} || {_, K, V} <- S]),
-         gen_event:notify(ns_stats_event,
-                          {stats, "@index-"++binary_to_list(B),
-                           #stat_entry{timestamp = TS,
-                                       values = Values}})
-     end || {B, S} <- PerBucketStats],
+
+    lists:foreach(
+      fun ({Bucket, BucketStats}) ->
+              gen_event:notify(ns_stats_event,
+                               {stats, "@index-"++binary_to_list(Bucket),
+                                #stat_entry{timestamp = TS,
+                                            values = BucketStats}})
+      end, aggregate_index_stats(Stats)),
+
     {noreply, #state{prev_counters = NewCounters,
                      prev_ts = TS}};
 handle_info(_Info, State) ->
     {noreply, State}.
-
-format_k({_Bucket, Index, Metric}) ->
-    per_index_stat(Index, Metric);
-format_k(Metric) when is_binary(Metric) ->
-    global_index_stat(Metric).
 
 per_index_stat(Index, Metric) ->
     iolist_to_binary([<<"index/">>, Index, $/, Metric]).
