@@ -40,7 +40,7 @@ start_link() ->
 
 init([]) ->
     ns_pubsub:subscribe_link(ns_tick_event),
-    ets:new(index_stats_collector_names, [private, named_table]),
+    ets:new(index_stats_collector_names, [protected, named_table]),
     {ok, #state{}}.
 
 handle_call(_Request, _From, State) ->
