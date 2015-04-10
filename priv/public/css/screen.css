@@ -1416,7 +1416,7 @@ input[type=number].size {width:4em;}
 .xdcr_advaced_filtering label {width: auto;}
 .advanced_filtering label{ width: auto; margin-left: 15px;}
 .advanced_filtering label, .advanced_filtering input {vertical-align: middle;}
-.match_indicator {background-color: #999; color: #fff; font-size: 10px; text-align: center; line-height: 20px; position: absolute; width: 54px; height: 20px; top: 7px; right: 2px;}
+.match_indicator {background-color: #ffbd44; color: #fff; font-size: 10px; text-align: center; line-height: 20px; position: absolute; width: 64px; height: 20px; top: 7px; right: 2px;}
 .match_indicator.dynamic_match {background-color: green;}
 .match_indicator .no_match,
 .match_indicator.dynamic_match .match,
