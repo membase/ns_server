@@ -32,7 +32,13 @@
          terminate/2, code_change/3]).
 
 -record(state, {prev_counters = [],
-                prev_ts = 0}).
+                prev_ts = 0,
+                default_stats,
+                buckets}).
+
+-define(I_GAUGES, [disk_size, data_size, num_docs_pending, items_count]).
+-define(I_COUNTERS, [num_requests, num_rows_returned, num_docs_indexed,
+                     scan_bytes_read, total_scan_duration]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -41,7 +47,23 @@ start_link() ->
 init([]) ->
     ns_pubsub:subscribe_link(ns_tick_event),
     ets:new(index_stats_collector_names, [protected, named_table]),
-    {ok, #state{}}.
+
+    Self = self(),
+    ns_pubsub:subscribe_link(
+      ns_config_events,
+      fun ({buckets, BucketConfigs}) ->
+              Self ! {buckets, ns_bucket:get_bucket_names(membase, BucketConfigs)};
+          (_) ->
+              ok
+      end),
+
+    Buckets = lists:map(fun list_to_binary/1, ns_bucket:get_bucket_names(membase)),
+    Defaults = [{global_index_stat(atom_to_binary(Stat, latin1)), 0}
+                || Stat <- ?I_GAUGES ++ ?I_COUNTERS],
+
+
+    {ok, #state{buckets = Buckets,
+                default_stats = Defaults}}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -62,10 +84,6 @@ latest_tick(TS, NumDropped) ->
             end,
             TS
     end.
-
--define(I_GAUGES, [disk_size, data_size, num_docs_pending, items_count]).
--define(I_COUNTERS, [num_requests, num_rows_returned, num_docs_indexed,
-                     scan_bytes_read, total_scan_duration]).
 
 do_recognize_name(<<"needs_restart">>) ->
     {status, index_needs_restart};
@@ -172,17 +190,21 @@ grab_stats(PrevCounters, TSDiff) ->
     Stats = lists:merge(Stats0, lists:sort(StatsGauges)),
     {Stats, StatsCounters, Status}.
 
-aggregate_index_stats(Stats) ->
-    do_aggregate_index_stats(Stats, []).
+aggregate_index_stats(Stats, Buckets, Defaults) ->
+    do_aggregate_index_stats(Stats, Buckets, Defaults, []).
 
-do_aggregate_index_stats([], Acc) ->
-    Acc;
-do_aggregate_index_stats([{{Bucket, _, _}, _} | _] = Stats, Acc) ->
-    {BucketStats, RestStats} = aggregate_index_bucket_stats(Bucket, Stats),
-    do_aggregate_index_stats(RestStats, [{Bucket, BucketStats} | Acc]).
+do_aggregate_index_stats([], Buckets, Defaults, Acc) ->
+    [{B, Defaults} || B <- Buckets] ++ Acc;
+do_aggregate_index_stats([{{Bucket, _, _}, _} | _] = Stats,
+                         Buckets, Defaults, Acc) ->
+    {BucketStats, RestStats} = aggregate_index_bucket_stats(Bucket, Stats, Defaults),
 
-aggregate_index_bucket_stats(Bucket, Stats) ->
-    do_aggregate_index_bucket_stats([], Bucket, Stats).
+    OtherBuckets = lists:delete(Bucket, Buckets),
+    do_aggregate_index_stats(RestStats, OtherBuckets, Defaults,
+                             [{Bucket, BucketStats} | Acc]).
+
+aggregate_index_bucket_stats(Bucket, Stats, Defaults) ->
+    do_aggregate_index_bucket_stats(Defaults, Bucket, Stats).
 
 do_aggregate_index_bucket_stats(Acc, _, []) ->
     {finalize_index_bucket_stats(Acc), []};
@@ -214,7 +236,7 @@ aggregate_index_stats_test() ->
           {{<<"b">>, <<"idx2">>, <<"m2">>}, 4},
           {{<<"b">>, <<"idx3">>, <<"m1">>}, 5},
           {{<<"b">>, <<"idx3">>, <<"m2">>}, 6}],
-    Out = aggregate_index_stats(In),
+    Out = aggregate_index_stats(In, [], []),
 
     AStats0 = [{<<"index/idx1/m1">>, 1},
                {<<"index/idx1/m2">>, 2},
@@ -235,7 +257,9 @@ aggregate_index_stats_test() ->
                   {<<"a">>, AStats}]).
 
 handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
-                                prev_ts = PrevTS}) ->
+                                prev_ts = PrevTS,
+                                buckets = KnownBuckets,
+                                default_stats = Defaults} = State) ->
     TS = latest_tick(TS0, 0),
     {Stats, NewCounters, Status} = grab_stats(PrevCounters, TS - PrevTS),
     Indexes = lists:foldl(
@@ -266,10 +290,13 @@ handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
                                {stats, "@index-"++binary_to_list(Bucket),
                                 #stat_entry{timestamp = TS,
                                             values = BucketStats}})
-      end, aggregate_index_stats(Stats)),
+      end, aggregate_index_stats(Stats, KnownBuckets, Defaults)),
 
-    {noreply, #state{prev_counters = NewCounters,
-                     prev_ts = TS}};
+    {noreply, State#state{prev_counters = NewCounters,
+                          prev_ts = TS}};
+handle_info({buckets, NewBuckets}, State) ->
+    NewBuckets1 = lists:map(fun list_to_binary/1, NewBuckets),
+    {noreply, State#state{buckets = NewBuckets1}};
 handle_info(_Info, State) ->
     {noreply, State}.
 
