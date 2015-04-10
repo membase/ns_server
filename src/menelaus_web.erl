@@ -2433,10 +2433,14 @@ handle_node_self_xdcr_ssl_ports(Req) ->
     end.
 
 handle_cluster_certificate(Req) ->
+    assert_is_enterprise(),
+
     {Cert, _} = ns_server_cert:cluster_cert_and_pkey_pem(),
     reply_ok(Req, "text/plain", Cert).
 
 handle_regenerate_certificate(Req) ->
+    assert_is_enterprise(),
+
     ns_server_cert:generate_and_set_cert_and_pkey(),
     ns_ssl_services_setup:sync_local_cert_and_pkey_change(),
     ?log_info("Completed certificate regeneration"),
