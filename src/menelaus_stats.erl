@@ -545,52 +545,54 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                  {Combiner, [StatNameA, StatNameB]}
          end,
 
-    lists:flatmap(
-      fun (Index) ->
-              AvgItemSize = Z2(per_index_stat(Index, <<"data_size">>),
-                               per_index_stat(Index, <<"items_count">>),
-                               fun (DataSize, Count) ->
-                                       try
-                                           DataSize / Count
-                                       catch
-                                           error:badarith ->
-                                               0
-                                       end
-                               end),
 
-              ComputeFragmentation =
-                  fun (DiskSize, DataSize) ->
-                          try
-                              100 * (DiskSize - DataSize) / DiskSize
-                          catch error:badarith ->
-                                  0
-                          end
-                  end,
+    ComputeFragmentation =
+        fun (DiskSize, DataSize) ->
+                try
+                    100 * (DiskSize - DataSize) / DiskSize
+                catch error:badarith ->
+                        0
+                end
+        end,
 
-              Fragmentation = Z2(per_index_stat(Index, <<"disk_size">>),
-                                 per_index_stat(Index, <<"data_size">>),
-                                 ComputeFragmentation),
 
-              GlobalFragmentation = Z2(global_index_stat(<<"disk_size">>),
-                                       global_index_stat(<<"data_size">>),
-                                       ComputeFragmentation),
+    GlobalFragmentation = Z2(global_index_stat(<<"disk_size">>),
+                             global_index_stat(<<"data_size">>),
+                             ComputeFragmentation),
 
-              AvgScanLatency = Z2(per_index_stat(Index, <<"total_scan_duration">>),
-                                  per_index_stat(Index, <<"num_rows_returned">>),
-                                  fun (ScanDuration, NumRows) ->
-                                          try
-                                              ScanDuration / NumRows
-                                          catch
-                                              error:badarith ->
-                                                  0
-                                          end
-                                  end),
+    [{global_index_stat(<<"fragmentation">>), GlobalFragmentation}] ++
+        lists:flatmap(
+          fun (Index) ->
+                  AvgItemSize = Z2(per_index_stat(Index, <<"data_size">>),
+                                   per_index_stat(Index, <<"items_count">>),
+                                   fun (DataSize, Count) ->
+                                           try
+                                               DataSize / Count
+                                           catch
+                                               error:badarith ->
+                                                   0
+                                           end
+                                   end),
 
-              [{per_index_stat(Index, <<"avg_item_size">>), AvgItemSize},
-               {per_index_stat(Index, <<"fragmentation">>), Fragmentation},
-               {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency},
-               {global_index_stat(<<"fragmentation">>), GlobalFragmentation}]
-      end, get_indexes(BucketId));
+                  Fragmentation = Z2(per_index_stat(Index, <<"disk_size">>),
+                                     per_index_stat(Index, <<"data_size">>),
+                                     ComputeFragmentation),
+
+                  AvgScanLatency = Z2(per_index_stat(Index, <<"total_scan_duration">>),
+                                      per_index_stat(Index, <<"num_rows_returned">>),
+                                      fun (ScanDuration, NumRows) ->
+                                              try
+                                                  ScanDuration / NumRows
+                                              catch
+                                                  error:badarith ->
+                                                      0
+                                              end
+                                      end),
+
+                  [{per_index_stat(Index, <<"avg_item_size">>), AvgItemSize},
+                   {per_index_stat(Index, <<"fragmentation">>), Fragmentation},
+                   {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency}]
+          end, get_indexes(BucketId));
 computed_stats_lazy_proplist("@goxdcr-"++BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
