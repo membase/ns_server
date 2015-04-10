@@ -33,7 +33,8 @@
          sherlock_compat_mode_string/0,
          is_enterprise/0,
          is_goxdcr_enabled/0,
-         is_goxdcr_enabled/1]).
+         is_goxdcr_enabled/1,
+         is_ldap_enabled/0]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
@@ -96,6 +97,11 @@ is_goxdcr_enabled(Config) ->
     is_cluster_sherlock() andalso
         ns_config:search(Config, goxdcr_enabled, true) andalso
         (not ns_config:search(Config, {node, node(), stop_xdcr}, false)).
+
+is_ldap_enabled() ->
+    is_cluster_sherlock() andalso is_enterprise() andalso
+        ns_config:search(ns_config:latest_config_marker(),
+                         {node, node(), ldap_enabled}, false).
 
 get_replication_topology() ->
     ns_config:read_key_fast(replication_topology, star).

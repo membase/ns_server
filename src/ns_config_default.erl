@@ -53,8 +53,8 @@ detect_enterprise_version_test() ->
     true = detect_enterprise_version(<<"1.8.0r-9-ga083a1e-enterprise">>),
     true = not detect_enterprise_version(<<"1.8.0r-9-ga083a1e-comm">>).
 
-is_forced_enterprise() ->
-    case os:getenv("FORCE_ENTERPRISE") of
+is_forced(EnvVar) ->
+    case os:getenv(EnvVar) of
         false ->
             false;
         "0" ->
@@ -70,8 +70,14 @@ init_is_enterprise() ->
         true ->
             true;
         _ ->
-            is_forced_enterprise()
+            is_forced("FORCE_ENTERPRISE")
     end.
+
+init_ldap_enabled() ->
+    IsForced = is_forced("FORCE_LDAP"),
+    IsLinux = os:type() =:= {unix, linux},
+
+    IsForced orelse IsLinux.
 
 default() ->
     ensure_data_dir(),
@@ -94,6 +100,7 @@ default() ->
     ok = misc:mkdir_p(BreakpadMinidumpDir),
 
     IsEnterprise = init_is_enterprise(),
+    LdapEnabled = init_ldap_enabled(),
 
     {AuditGlobalLogs, AuditLocalLogs} =
         case misc:get_env_default(path_audit_log, []) of
@@ -105,6 +112,7 @@ default() ->
 
     [{directory, path_config:component_path(data, "config")},
      {{node, node(), is_enterprise}, IsEnterprise},
+     {{node, node(), ldap_enabled}, LdapEnabled},
      {index_aware_rebalance_disabled, false},
      {max_bucket_count, 10},
      {autocompaction, [{database_fragmentation_threshold, {30, undefined}},

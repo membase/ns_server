@@ -1166,7 +1166,8 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                  {storageTotals, {struct, StorageTotals}},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()},
-                 {goxdcrEnabled, cluster_compat_mode:is_goxdcr_enabled(Config)}
+                 {goxdcrEnabled, cluster_compat_mode:is_goxdcr_enabled(Config)},
+                 {ldapEnabled, cluster_compat_mode:is_ldap_enabled()}
                  | PropList2];
             normal ->
                 StorageTotals = [{Key, {struct, StoragePList}}
