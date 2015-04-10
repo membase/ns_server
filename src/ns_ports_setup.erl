@@ -322,7 +322,7 @@ create_goxdcr_spec(Config, Cmd, Upgrade) ->
         integer_to_list(misc:node_rest_port(Config, node())),
     XdcrRestPort = "-xdcrRestPort=" ++
         integer_to_list(ns_config:search(Config, {node, node(), xdcr_rest_port}, 9998)),
-    IsEnterprise = "-isEnterprise=" ++ atom_to_list(menelaus_web:is_enterprise()),
+    IsEnterprise = "-isEnterprise=" ++ atom_to_list(cluster_compat_mode:is_enterprise()),
 
     Args0 = [AdminPort, XdcrRestPort, IsEnterprise],
 

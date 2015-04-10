@@ -49,7 +49,6 @@
          find_node_hostname/2,
          build_bucket_auto_compaction_settings/1,
          parse_validate_bucket_auto_compaction_settings/1,
-         is_enterprise/0,
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
          assert_is_sherlock/0]).
@@ -841,7 +840,7 @@ handle_pools(Req) ->
     reply_json(Req,{struct, [{pools, EffectivePools},
                              {isAdminCreds, Admin},
                              {isROAdminCreds, ReadOnlyAdmin},
-                             {isEnterprise, is_enterprise()},
+                             {isEnterprise, cluster_compat_mode:is_enterprise()},
                              {settings,
                               {struct,
                                [{<<"maxParallelIndexers">>,
@@ -956,14 +955,11 @@ get_uuid() ->
 handle_versions(Req) ->
     reply_json(Req, {struct, menelaus_web_cache:versions_response()}).
 
-is_enterprise() ->
-    ns_config:read_key_fast({node, node(), is_enterprise}, false).
-
 is_xdcr_over_ssl_allowed() ->
-    is_enterprise() andalso cluster_compat_mode:is_cluster_25().
+    cluster_compat_mode:is_enterprise() andalso cluster_compat_mode:is_cluster_25().
 
 assert_is_enterprise() ->
-    case is_enterprise() of
+    case cluster_compat_mode:is_enterprise() of
         true ->
             ok;
         _ ->
