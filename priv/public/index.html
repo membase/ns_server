@@ -2234,7 +2234,14 @@
       <label><span>XDCR Batch Size (kB)</span><input maxlength="6" style="width:2.5em;" name="xdcrDocBatchSizeKb"></label>
       <label><span>XDCR Failure Retry Interval</span><input maxlength="3" style="width:1.5em;" name="xdcrFailureRestartInterval"></label>
       <label class="when-goxdcr-enabled"><span>XDCR Statistics Collection Interval (ms)</span><input maxlength="5" style="width:1.5em;" name="xdcrStatsInterval"></label>
-      <label class="when-goxdcr-enabled"><span>XDCR Logging Level</span><input maxlength="5" style="width:1.5em;" name="xdcrLogLevel"></label>
+      <label class="when-goxdcr-enabled"><span>XDCR Logging Level</span>
+      <select name="xdcrLogLevel">
+          <option value="Info">Info</option>
+          <option value="Debug">Debug</option>
+          <option value="Trace">Trace</option>
+          <option value="Error">Error</option>
+        </select>
+        </label>
       <label><span>XDCR Optimistic Replication Threshold</span><input maxlength="6" style="width:2.5em;" name="xdcrOptimisticReplicationThreshold"></label>
 
       <label><span>Simultaneous REST requests limit</span><input maxlength="6" style="width:2.5em;" name="restRequestLimit"></label>
@@ -2609,7 +2616,12 @@
       </div>
       <div class="when-goxdcr-enabled">
         <label for="per_logging_level">XDCR Logging Level:</label>
-        <input type="text" id="per_logging_level" name="logLevel">
+        <select name="logLevel" id="per_logging_level">
+          <option value="Info">Info</option>
+          <option value="Debug">Debug</option>
+          <option value="Trace">Trace</option>
+          <option value="Error">Error</option>
+        </select>
         <i class="error js_error js_logLevel"></i>
       </div>
     </div>
@@ -3233,7 +3245,12 @@
           </div>
           <div class="when-goxdcr-enabled">
             <label for="logging_level">XDCR Logging Level:</label>
-            <input type="text" id="logging_level" name="logLevel">
+            <select name="logLevel" id="logging_level">
+              <option value="Info">Info</option>
+              <option value="Debug">Debug</option>
+              <option value="Trace">Trace</option>
+              <option value="Error">Error</option>
+            </select>
             <i class="error js_error js_logLevel"></i>
           </div>
         </div>
