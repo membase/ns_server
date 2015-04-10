@@ -980,6 +980,18 @@ assert_is_sherlock() ->
                           []})
     end.
 
+assert_is_ldap_enabled() ->
+    case cluster_compat_mode:is_ldap_enabled() of
+        true ->
+            ok;
+        false ->
+            erlang:throw({web_exception,
+                          400,
+                          "This http API endpoint is only supported in enterprise edition "
+                          "running on GNU/Linux",
+                          []})
+    end.
+
 % {"default", [
 %   {port, 11211},
 %   {buckets, [
@@ -3591,8 +3603,7 @@ hostname_parsing_test() ->
 -endif.
 
 handle_saslauthd_auth_settings(Req) ->
-    assert_is_enterprise(),
-    assert_is_sherlock(),
+    assert_is_ldap_enabled(),
 
     reply_json(Req, {menelaus_auth:build_saslauthd_auth_settings()}).
 
@@ -3644,8 +3655,7 @@ parse_validate_saslauthd_settings(Params) ->
     end.
 
 handle_saslauthd_auth_settings_post(Req) ->
-    assert_is_enterprise(),
-    assert_is_sherlock(),
+    assert_is_ldap_enabled(),
 
     case parse_validate_saslauthd_settings(Req:parse_post()) of
         {ok, Props} ->
@@ -3656,8 +3666,7 @@ handle_saslauthd_auth_settings_post(Req) ->
     end.
 
 handle_validate_saslauthd_creds_post(Req) ->
-    assert_is_enterprise(),
-    assert_is_sherlock(),
+    assert_is_ldap_enabled(),
 
     Params = Req:parse_post(),
     VRV = menelaus_auth:verify_login_creds(proplists:get_value("user", Params, ""),
