@@ -40,7 +40,7 @@ def main():
     replicas = 1
     replica_index = True
     start_index = 0
-    deploy = {}
+    deploy = ['kv']
 
     data_base_path = os.getcwd() + "/data"
     for o, a in opts:
@@ -59,11 +59,20 @@ def main():
         elif o == "-S":
             start_index = int(a)
         elif o == "-T":
-            plan = dict(e.split(':') for e in a.replace(' ','').split(','))
-            deploy = dict([(k, v.split('+')) for k, v in plan.items()])
+            plan = a.replace(' ','').split(',')
+
+            if len(plan) == 1 and len(plan[0].split(':')) == 1:
+                deploy = plan[0].split('+')
+            else:
+                plan = dict(e.split(':') for e in plan)
+                deploy = dict([(k, v.split('+')) for k, v in plan.items()])
         else:
             usage()
             sys.exit()
+
+    if isinstance(deploy, list):
+        services = deploy
+        deploy = dict(("n%d" % i, services[:]) for i in xrange(nodes))
 
     deploy["n0"] = deploy.get("n0", []) + ["kv"]
     if nodes == 0 or buckettype not in valid_bucket_types or \
