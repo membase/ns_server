@@ -48,7 +48,12 @@
                      node}).
 
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    case cluster_compat_mode:is_enterprise() of
+        true ->
+            gen_server:start_link({local, ?MODULE}, ?MODULE, [], []);
+        false ->
+            ignore
+    end.
 
 start_link_capi_service() ->
     case ns_config:search_node(ns_node_disco:ns_server_node(),
