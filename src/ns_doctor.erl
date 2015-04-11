@@ -100,6 +100,9 @@ handle_config_event({recovery_status, NewValue}, {RebalanceState, RecoveryState}
             ok
     end,
     {RebalanceState, NewState};
+handle_config_event({nodes_wanted, _} = Msg, State) ->
+    ns_doctor ! Msg,
+    State;
 handle_config_event(_, State) ->
     State.
 
@@ -161,7 +164,18 @@ handle_info(log, #state{nodes=NodeDict} = State) ->
     ?doctor_debug("Current node statuses:~n~p",
                   [lists:sort(dict:to_list(NodeDict))]),
     {noreply, State};
+handle_info({nodes_wanted, NewNodes0}, #state{nodes=Statuses} = State) ->
+    NewNodes = lists:sort(NewNodes0),
+    CurrentNodes = lists:sort(dict:fetch_keys(Statuses)),
+    ToRemove = ordsets:subtract(CurrentNodes, NewNodes),
 
+    NewStatuses =
+        lists:foldl(
+          fun (Node, Acc) ->
+                  dict:erase(Node, Acc)
+          end, Statuses, ToRemove),
+
+    {noreply, State#state{nodes=NewStatuses}};
 handle_info(Info, State) ->
     ?doctor_warning("Unexpected message ~p in state", [Info]),
     {noreply, State}.
