@@ -51,7 +51,8 @@ init([]) ->
     Self = self(),
     ns_pubsub:subscribe_link(
       ns_config_events,
-      fun ({buckets, BucketConfigs}) ->
+      fun ({buckets, Buckets}) ->
+              BucketConfigs = proplists:get_value(configs, Buckets, []),
               Self ! {buckets, ns_bucket:get_bucket_names(membase, BucketConfigs)};
           (_) ->
               ok
