@@ -198,13 +198,13 @@ var ClusterSection = {
       });
     }
 
-    self.isClusterTabCell.subscribeValue(function (isClusterTab) {
-      if (isClusterTab) {
+    Cell.subscribeMultipleValues(function (isClusterTab, isEnterprise) {
+      if (isClusterTab && isEnterprise) {
         getCertificate();
         certAreaWrapperArea.hide();
         hideShowCertAreaButton.text("Show");
       }
-    });
+    }, self.isClusterTabCell, DAL.cells.isEnterpriseCell);
 
     self.clusterNameCell.subscribeValue(function (clusterName) {
       if (!DAL.version || clusterName === undefined) {
