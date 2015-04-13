@@ -159,23 +159,13 @@ get_stats() ->
     end.
 
 do_get_stats() ->
-    Port = ns_config:search(ns_config:latest_config_marker(), {node, node(), indexer_http_port}, 9102),
-    URL = lists:flatten(io_lib:format("http://127.0.0.1:~B/stats", [Port])),
-    User = ns_config_auth:get_user(special),
-    Pwd = ns_config_auth:get_password(special),
-    Headers = menelaus_rest:add_basic_auth([], User, Pwd),
-    RV = rest_utils:request(indexer, URL, "GET", Headers, [], 30000),
-    case RV of
-        {ok, {{200, _}, _Headers, BodyRaw}} ->
-            case (catch ejson:decode(BodyRaw)) of
-                {[_|_] = Stats} ->
-                    Stats;
-                Err ->
-                    ?log_error("Failed to parse query stats: ~p", [Err]),
-                    []
-            end;
-        _ ->
-            ?log_error("Ignoring. Failed to grab stats: ~p", [RV]),
+    case index_rest:get_json("stats") of
+        {ok, {[_|_] = Stats}} ->
+            Stats;
+        {ok, Other} ->
+            ?log_error("Got invalid stats response:~n~p", [Other]),
+            [];
+        {error, _} ->
             []
     end.
 
