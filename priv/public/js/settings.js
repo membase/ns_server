@@ -196,8 +196,6 @@ var ClusterSection = {
       });
     }
 
-    enableDisableValidation(false);
-
     self.isClusterTabCell.subscribeValue(function (isClusterTab) {
       if (isClusterTab) {
         getCertificate();
@@ -270,9 +268,12 @@ var ClusterSection = {
       }
     }, self.allClusterSectionSettingsCell, self.isClusterTabCell);
 
-    Cell.subscribeMultipleValues(function (isClusterTab, isROAdmin, is40) {
+    Cell.subscribeMultipleValues(function (isClusterTab, isROAdmin, is40, allClusterSectionSettings) {
+      if (isClusterTab === undefined || isROAdmin === undefined || is40 === undefined || allClusterSectionSettings === undefined) {
+        return;
+      }
       enableDisableValidation(isClusterTab && !isROAdmin, is40);
-    }, self.isClusterTabCell, isROAdminCell, DAL.cells.is40СompatibleCell);
+    }, self.isClusterTabCell, isROAdminCell, DAL.cells.is40СompatibleCell, self.allClusterSectionSettingsCell);
   }
 };
 
