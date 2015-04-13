@@ -3096,13 +3096,8 @@
 
 <!-- Create Replication -->
 <div class="dialog join_cluster create_replication_dialog" id="create_replication_dialog" title="Create Replication" style="width:600px">
-  <div class="warning pat_10" id="create_replication_dialog_errors_container" style="line-height: 18px;"></div>
-  <script id="create_replication_dialog_errors_template" type="text/html">
-    <!-- {% _.each(rows, function (e) { %} -->
-    <strong>Attention</strong> - {%= h(e) %}<br>
-    <!-- {% }); %} -->
-  </script>
   <form>
+    <span class="error error-container err-_" style="margin: 10px 0;"></span>
     <fieldset>
       <fieldset style="float:left;width:230px;">
         <legend>Replicate changes from:</legend>
@@ -3112,6 +3107,7 @@
           </li>
           <li><label for="replication_from_bucket" style="text-align:left;margin-left:15px;width:51px;">Bucket:</label>
             <select name="fromBucket" id="replication_from_bucket" style="width: 154px;"></select>
+            <span class="error error-container err-fromBucket" style="margin: 10px 0;text-align: right;"></span>
           </li>
           <li class="advanced_filtering when-goxdcr-enabled when-enterprise">
             <label for="js_xdcr_advaced_filtering_btn">Enable Advanced filtering:</label>
@@ -3126,9 +3122,11 @@
             <select name="toCluster" id="replication_to_cluster" style="width: 154px;">
               <option>remote cluster list</option>
             </select>
+            <span class="error error-container err-toCluster" style="margin: 10px 0;text-align: right;"></span>
           </li>
           <li><label for="replication_to_bucket">Bucket:</label>
             <input name="toBucket" id="replication_to_bucket" type="text" />
+            <span class="error error-container err-toBucket" style="margin: 10px 0;text-align: right;"></span>
             <!-- TODO: this needs to become a select box like the one above -->
           </li>
         </ul>

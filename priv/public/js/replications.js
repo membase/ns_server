@@ -307,7 +307,7 @@ var ReplicationForm = mkClass({
     self.closeCallback = callback;
     ReplicationsModel.remoteClustersListCell.getValue(function (remoteClusters) {
       self.fillClustersSelect(remoteClusters);
-      self.showErrors(false);
+      SettingsSection.renderErrors({}, self.form);
       setFormValues(self.form, {
         fromBucket: '',
         toBucket: '',
@@ -360,13 +360,13 @@ var ReplicationForm = mkClass({
     } else {
       formValues = serializeForm(self.form);
     }
-    self.showErrors(false);
+    SettingsSection.renderErrors({}, self.form);
     jsonPostWithErrors(URI, formValues, function (data, status, errorObject) {
       spinner.remove();
       if (status == 'success') {
         self.close();
       } else {
-        self.showErrors(errorObject || data);
+        SettingsSection.renderErrors(errorObject || data, self.form, null, null, true);
       }
     });
   },
@@ -379,17 +379,6 @@ var ReplicationForm = mkClass({
       option.attr('value', remoteCluster.name);
       toClusterSelect.append(option);
     });
-  },
-  showErrors: function (errors) {
-    var container = $('#create_replication_dialog_errors_container').need(1);
-    if (!errors) {
-      container.html('');
-      return;
-    }
-    if ((errors instanceof Object) && errors.errors) {
-      errors = _.values(errors.errors).sort();
-    }
-    renderTemplate('create_replication_dialog_errors', errors);
   }
 });
 

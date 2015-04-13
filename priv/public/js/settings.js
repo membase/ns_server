@@ -47,12 +47,12 @@ var SettingsSection = {
   },
   onLeave: function () {
   },
-  renderErrors: function(val, rootNode, saveButton, disableSaveButton) {
+  renderErrors: function(val, rootNode, saveButton, enableSaveButton, doNotDisableSaveButton) {
     if (val!==undefined) {
       rootNode.find('.error-container.active').empty().removeClass('active');
       rootNode.find('input.invalid').removeClass('invalid');
       if ($.isEmptyObject(val.errors)) {
-        if (!disableSaveButton) {
+        if (enableSaveButton) {
           (saveButton || rootNode.find('.save_button')).removeAttr('disabled');
         }
       } else {
@@ -62,7 +62,9 @@ var SettingsSection = {
             .prev('textarea, input').addClass('invalid');
         });
         // Disable the save button
-        (saveButton || rootNode.find('.save_button')).attr('disabled', 'disabled');
+        if (!doNotDisableSaveButton) {
+          (saveButton || rootNode.find('.save_button')).attr('disabled', 'disabled');
+        }
       }
     }
   }
@@ -159,7 +161,7 @@ var ClusterSection = {
       return setupFormValidation(form, url,
         function (_status, errors) {
           validationErrors[url] = errors.errors && !$.isEmptyObject(errors.errors);
-          SettingsSection.renderErrors(errors, form, saveClusterButton, _.some(_.values(validationErrors)));
+          SettingsSection.renderErrors(errors, form, saveClusterButton, !_.some(_.values(validationErrors)));
       }, function () {
         return serializeForm(form);
       });
