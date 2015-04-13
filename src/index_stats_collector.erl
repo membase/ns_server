@@ -86,6 +86,19 @@ latest_tick(TS, NumDropped) ->
             TS
     end.
 
+find_type(_, []) ->
+    not_found;
+find_type(Name, [{Type, Metrics} | Rest]) ->
+    MaybeMetric = [Name || M <- Metrics,
+                           atom_to_binary(M, latin1) =:= Name],
+
+    case MaybeMetric of
+        [_] ->
+            Type;
+        _ ->
+            find_type(Name, Rest)
+    end.
+
 do_recognize_name(<<"needs_restart">>) ->
     {status, index_needs_restart};
 do_recognize_name(<<"num_connections">>) ->
@@ -93,18 +106,14 @@ do_recognize_name(<<"num_connections">>) ->
 do_recognize_name(K) ->
     case binary:split(K, <<":">>, [global]) of
         [Bucket, Index, Metric] ->
-            MaybeGauge = [Metric || NK <- ?I_GAUGES,
-                                    NKT <- [atom_to_binary(NK, latin1)],
-                                    NKT =:= Metric],
-            MaybeCounter = [Metric || NK <- ?I_COUNTERS,
-                                      NKT <- [atom_to_binary(NK, latin1)],
-                                      NKT =:= Metric],
-            case {MaybeGauge, MaybeCounter} of
-                {[], []} -> undefined;
-                {[Metric], []} ->
-                    {gauge, {Bucket, Index, Metric}};
-                {[], [Metric]} ->
-                    {counter, {Bucket, Index, Metric}}
+            Type = find_type(Metric, [{gauge, ?I_GAUGES},
+                                      {counter, ?I_COUNTERS}]),
+
+            case Type of
+                not_found ->
+                    undefined;
+                _ ->
+                    {Type, {Bucket, Index, Metric}}
             end;
         _ ->
             undefined
