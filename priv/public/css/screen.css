@@ -442,6 +442,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .settings p {margin: 10px 0;}
 .settings input {vertical-align: middle;}
 
+.cluster_settings_container {position: relative;}
 .cluster_settings_container .list_button {float: none; margin-left: 283px;}
 .cluster_settings_container label,
 .cluster_settings_container input {-moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}

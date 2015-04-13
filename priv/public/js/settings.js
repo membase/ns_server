@@ -264,7 +264,7 @@ var ClusterSection = {
     var spinner;
     Cell.subscribeMultipleValues(function (settings, isClusterTab) {
       if (isClusterTab && !settings) {
-        spinner = overlayWithSpinner(container);
+        spinner = overlayWithSpinner(container, '#eeeeef', '', false, true);
       } else {
         spinner && spinner.remove();
       }

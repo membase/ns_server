@@ -264,36 +264,47 @@ function getRealBackgroundColor(jq) {
   }
 }
 
-function overlayWithSpinner(jq, backgroundColor, text, zIndex) {
+function overlayWithSpinner(jq, backgroundColor, text, zIndex, append) {
   if (_.isString(jq))
     jq = $(jq);
-  var height = jq.height();
-  var width = jq.width();
   var html = $(SpinnerHTML, document);
   if (text !== undefined) {
     html.find('span').text(text);
   }
-  var pos = jq.position();
-  var newStyle = {
-    width: width+'px',
-    height: height+'px',
-    lineHeight: (height+20)+'px',
-    'margin-top': jq.css('margin-top'),
-    'margin-bottom': jq.css('margin-bottom'),
-    'margin-left': jq.css('margin-left'),
-    'margin-right': jq.css('margin-right'),
-    'padding-top': jq.css('padding-top'),
-    'padding-bottom': jq.css('padding-bottom'),
-    'padding-left': jq.css('padding-left'),
-    'padding-right': jq.css('padding-right'),
-    'border-width-top': jq.css('border-width-top'),
-    'border-width-bottom': jq.css('border-width-bottom'),
-    'border-width-left': jq.css('border-width-left'),
-    'border-width-right': jq.css('border-width-right'),
-    position: 'absolute',
-    'z-index': zIndex || '9999',
-    top: pos.top + 'px',
-    left: pos.left + 'px'
+  if (append) {
+    var newStyle = {
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      position: 'absolute',
+      'z-index': zIndex || '9999'
+    };
+  } else {
+    var pos = jq.position();
+    var height = jq.height();
+    var width = jq.width();
+    var newStyle = {
+      width: width+'px',
+      height: height+'px',
+      lineHeight: (height+20)+'px',
+      'margin-top': jq.css('margin-top'),
+      'margin-bottom': jq.css('margin-bottom'),
+      'margin-left': jq.css('margin-left'),
+      'margin-right': jq.css('margin-right'),
+      'padding-top': jq.css('padding-top'),
+      'padding-bottom': jq.css('padding-bottom'),
+      'padding-left': jq.css('padding-left'),
+      'padding-right': jq.css('padding-right'),
+      'border-width-top': jq.css('border-width-top'),
+      'border-width-bottom': jq.css('border-width-bottom'),
+      'border-width-left': jq.css('border-width-left'),
+      'border-width-right': jq.css('border-width-right'),
+      position: 'absolute',
+      'z-index': zIndex || '9999',
+      top: pos.top + 'px',
+      left: pos.left + 'px'
+    }
   }
   if (jq.css('position') == 'fixed') {
     newStyle.position = 'fixed';
@@ -307,8 +318,12 @@ function overlayWithSpinner(jq, backgroundColor, text, zIndex) {
   }
   _.each(newStyle, function (value, key) {
     html.css(key, value);
-  })
-  jq.after(html);
+  });
+  if (append) {
+    jq.append(html);
+  } else {
+    jq.after(html);
+  }
 
   return {
     remove: function () {
