@@ -252,7 +252,7 @@ current_status_slow(TS) ->
     [{status_latency, Diff} | Status0].
 
 grab_latest_stats(Bucket) ->
-    case catch stats_reader:latest(minute, node(), Bucket) of
+    case catch stats_archiver:latest_sample(Bucket, minute) of
         {ok, #stat_entry{values = Values}} ->
             Values;
         Error ->
