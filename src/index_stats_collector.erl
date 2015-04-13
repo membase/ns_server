@@ -151,11 +151,11 @@ get_stats() ->
 
 do_get_stats() ->
     Port = ns_config:search(ns_config:latest_config_marker(), {node, node(), indexer_http_port}, 9102),
-    URL = iolist_to_binary(io_lib:format("http://127.0.0.1:~B/stats", [Port])),
+    URL = lists:flatten(io_lib:format("http://127.0.0.1:~B/stats", [Port])),
     User = ns_config_auth:get_user(special),
     Pwd = ns_config_auth:get_password(special),
     Headers = menelaus_rest:add_basic_auth([], User, Pwd),
-    RV = rest_utils:request(indexer, binary_to_list(URL), "GET", Headers, [], 30000),
+    RV = rest_utils:request(indexer, URL, "GET", Headers, [], 30000),
     case RV of
         {ok, {{200, _}, _Headers, BodyRaw}} ->
             case (catch ejson:decode(BodyRaw)) of
