@@ -155,7 +155,7 @@ do_get_stats() ->
     User = ns_config_auth:get_user(special),
     Pwd = ns_config_auth:get_password(special),
     Headers = menelaus_rest:add_basic_auth([], User, Pwd),
-    RV = lhttpc:request(binary_to_list(URL), "GET", Headers, [], 30000, []),
+    RV = rest_utils:request(indexer, binary_to_list(URL), "GET", Headers, [], 30000),
     case RV of
         {ok, {{200, _}, _Headers, BodyRaw}} ->
             case (catch ejson:decode(BodyRaw)) of

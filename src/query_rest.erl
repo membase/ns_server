@@ -62,7 +62,7 @@ send(Method, Path, Timeout) ->
     Pwd = ns_config_auth:get_password(special),
     Headers = menelaus_rest:add_basic_auth([], User, Pwd),
     {ok, {{Code, _}, RespHeaders, RespBody}} =
-        lhttpc:request(URL, Method, Headers, [], Timeout, []),
+        rest_utils:request(query, URL, Method, Headers, [], Timeout),
     {Code, RespHeaders, RespBody}.
 
 refresh_cert() ->

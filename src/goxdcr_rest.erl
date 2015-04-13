@@ -58,7 +58,7 @@ send_with_timeout(Method, Path, Headers, Body, Timeout) ->
     URL = "http://127.0.0.1:" ++ integer_to_list(get_rest_port()) ++ Path,
 
     {ok, {{Code, _}, RespHeaders, RespBody}} =
-        lhttpc:request(URL, Method, Headers, Body, Timeout, []),
+        rest_utils:request(goxdcr, URL, Method, Headers, Body, Timeout),
 
     SafeRespHeaders = lists:filter(fun is_safe_response_header/1, RespHeaders),
     {Code, SafeRespHeaders, RespBody}.
