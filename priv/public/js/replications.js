@@ -418,7 +418,7 @@ function showXDCRErrors(id) {
   genericDialog({
     buttons: {ok: true},
     header: "XDCR errors",
-    textHTML: "<ul>" + _.map(elements, function (anError) {return "<li>" + escapeHTML(anError) + "</li>"}).join('') + "</ul>"
+    textHTML: "<ul class=\"break-word\">" + _.map(elements, function (anError) {return "<li>" + escapeHTML(anError) + "</li>"}).join('') + "</ul>"
   });
 }
 

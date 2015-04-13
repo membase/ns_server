@@ -263,7 +263,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .ongoing_replications_list .status {width: 125px;}
 .ongoing_replications_list .when {width: 95px;}
 .ongoing_replications_list td {-ms-word-break:break-all;word-break:break-all;word-break:break-word;-webkit-hyphens:auto;-moz-hyphens:auto;hyphens:auto;}
-
+.break-word {-ms-word-break:break-all;word-break:break-all;word-break:break-word;-webkit-hyphens:auto;-moz-hyphens:auto;hyphens:auto;}
 .darker_block ul.col_headers {overflow:hidden;margin-right:5px;color:#999;font-weight:bold;padding-top:3px}
 .darker_block ul.col_headers li{width:25%;display:block;float:left;text-align:center;text-transform:uppercase}
 .darker_block ul.col_headers li:last-child{color:#808080}
