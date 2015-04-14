@@ -122,7 +122,7 @@ var ServersSection = {
     nodes.sort(this.hostnameComparator);
     var emptyProgress = {progress: 0};
     _.each(nodes, function (n) {
-      if (_.indexOf(n.services, "index") > -1 && n.services.length === 1) {
+      if (_.indexOf(n.services, "kv") === -1) {
         $($i(n.otpNode.replace('@', '-'))).find('.re_add_button, .eject_server, .failover_server, .remove_from_list').addClass('dynamic_disabled');
         return;
       }
