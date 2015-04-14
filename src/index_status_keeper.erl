@@ -20,18 +20,20 @@
 -behavior(gen_server).
 
 %% API
--export([start_link/0, update/3, get/1]).
+-export([start_link/0, update/2, get/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-define(REFRESH_INTERVAL,
+        ns_config:get_timeout(index_status_keeper_refresh, 5000)).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-update(NumConnections, NeedsRestart, Indexes) ->
-    gen_server:cast(?MODULE, {update, NumConnections, NeedsRestart, Indexes}).
+update(NumConnections, NeedsRestart) ->
+    gen_server:cast(?MODULE, {update, NumConnections, NeedsRestart}).
 
 get(Timeout) ->
     gen_server:call(?MODULE, get, Timeout).
@@ -39,14 +41,17 @@ get(Timeout) ->
 -record(state, {num_connections,
                 indexes,
 
+                pending_refresh,
                 restarter_pid}).
 
 init([]) ->
     process_flag(trap_exit, true),
 
+    self() ! refresh,
     {ok, #state{num_connections = 0,
                 indexes = [],
 
+                pending_refresh = false,
                 restarter_pid = undefined}}.
 
 
@@ -55,9 +60,8 @@ handle_call(get, _From, State) ->
              {indexes, State#state.indexes}],
      State}.
 
-handle_cast({update, NumConnections, NeedsRestart, Indexes}, State) ->
-    NewState0 = State#state{num_connections = NumConnections,
-                            indexes = Indexes},
+handle_cast({update, NumConnections, NeedsRestart}, State) ->
+    NewState0 = State#state{num_connections = NumConnections},
     NewState = case NeedsRestart of
                    true ->
                        maybe_restart_indexer(NewState0);
@@ -67,6 +71,8 @@ handle_cast({update, NumConnections, NeedsRestart, Indexes}, State) ->
 
     {noreply, NewState}.
 
+handle_info(refresh, State) ->
+    {noreply, maybe_refresh(need_refresh(State))};
 handle_info({'EXIT', Pid, Reason}, #state{restarter_pid = Pid} = State) ->
     case Reason of
         normal ->
@@ -74,7 +80,7 @@ handle_info({'EXIT', Pid, Reason}, #state{restarter_pid = Pid} = State) ->
         _ ->
             ?log_error("Failed to restart the indexer: ~p", [Reason])
     end,
-    {noreply, State#state{restarter_pid = undefined}};
+    {noreply, maybe_refresh(State#state{restarter_pid = undefined})};
 handle_info(Msg, State) ->
     ?log_debug("Ignoring unknown msg: ~p", [Msg]),
     {noreply, State}.
@@ -110,3 +116,57 @@ restart_indexer(#state{restarter_pid = undefined} = State) ->
             end),
 
     State#state{restarter_pid = Pid}.
+
+need_refresh(State) ->
+    State#state{pending_refresh = true}.
+
+maybe_refresh(#state{pending_refresh = false} = State) ->
+    State;
+maybe_refresh(#state{restarter_pid = Pid} = State) when Pid =/= undefined ->
+    State;
+maybe_refresh(State) ->
+    NewState =
+        case grab_status() of
+            {ok, Status} ->
+                State#state{indexes = Status};
+            {error, _} ->
+                State
+        end,
+
+    erlang:send_after(?REFRESH_INTERVAL, self(), refresh),
+    NewState#state{pending_refresh = false}.
+
+grab_status() ->
+    case index_rest:get_json("getIndexStatus") of
+        {ok, {[_|_] = Status}} ->
+            process_status(Status);
+        {ok, Other} ->
+            ?log_error("Got invalid status from the indexer:~n~p", [Other]),
+            {error, bad_status};
+        Error ->
+            Error
+    end.
+
+process_status(Status) ->
+    case lists:keyfind(<<"code">>, 1, Status) of
+        {_, <<"success">>} ->
+            {_, Indexes} = lists:keyfind(<<"status">>, 1, Status),
+            {ok, process_indexes(Indexes)};
+        _ ->
+            ?log_error("Indexer returned unsuccessful status:~n~p", [Status]),
+            {error, bad_status}
+    end.
+
+process_indexes(Indexes) ->
+    lists:map(
+      fun ({Index}) ->
+              {_, Name} = lists:keyfind(<<"name">>, 1, Index),
+              {_, Bucket} = lists:keyfind(<<"bucket">>, 1, Index),
+              {_, IndexStatus} = lists:keyfind(<<"status">>, 1, Index),
+              {_, Definition} = lists:keyfind(<<"definition">>, 1, Index),
+
+              [{bucket, Bucket},
+               {index, Name},
+               {status, IndexStatus},
+               {definition, Definition}]
+      end, Indexes).

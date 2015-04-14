@@ -66,17 +66,32 @@ supported_settings() ->
      {maxRollbackPoints, 1, NearInfinity}].
 
 handle_index_status(Req) ->
-    NIs = dict:to_list(ns_doctor:get_nodes()),
     Config = ns_config:get(),
     LocalAddr = menelaus_util:local_addr(Req),
+    Indexes0 =
+        lists:flatmap(
+          fun ({Node, NodeInfo}) ->
+                  Hostname0 = menelaus_web:build_node_hostname(Config, Node, LocalAddr),
+                  Hostname = list_to_binary(Hostname0),
+                  IndexStatus = proplists:get_value(index_status, NodeInfo, []),
+                  NodeIndexes = proplists:get_value(indexes, IndexStatus, []),
+
+                  [{[{hostname, Hostname} | Props]} || Props <- NodeIndexes]
+          end, dict:to_list(ns_doctor:get_nodes())),
+
+    GetSortKey =
+        fun ({Index}) ->
+                {_, Hostname} = lists:keyfind(hostname, 1, Index),
+                {_, Bucket} = lists:keyfind(bucket, 1, Index),
+                {_, IndexName} = lists:keyfind(index, 1, Index),
+
+                {Hostname, Bucket, IndexName}
+        end,
+
     Indexes =
-        [{Hostname, Bucket, Idx}
-         || {Node, NI} <- NIs,
-            Hostname <- [list_to_binary(menelaus_web:build_node_hostname(Config, Node, LocalAddr))],
-            {Bucket, Indexes} <- proplists:get_value(indexes, proplists:get_value(index_status, NI, []), []),
-            Idx <- Indexes],
-    J = [{[{hostname, Hostname},
-           {bucket, Bucket},
-           {index, Idx}]}
-         || {Hostname, Bucket, Idx} <- Indexes],
-    reply_json(Req, J).
+        lists:sort(
+          fun (A, B) ->
+                  GetSortKey(A) =< GetSortKey(B)
+          end, Indexes0),
+
+    reply_json(Req, Indexes).

@@ -262,27 +262,9 @@ handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
                                 default_stats = Defaults} = State) ->
     TS = latest_tick(TS0, 0),
     {Stats, NewCounters, Status} = grab_stats(PrevCounters, TS - PrevTS),
-    Indexes = lists:foldl(
-                fun ({{B, I, _K}, _V}, Acc) ->
-                        case Acc of
-                            %% B is bound already
-                            [{B, BL} | RestAcc] ->
-                                case BL of
-                                    %% I is bound already
-                                    [I | _] ->
-                                        Acc;
-                                    _ ->
-                                        [{B, [I | BL]} | RestAcc]
-                                end;
-                            _ ->
-                                [{B, [I]} | Acc]
-                        end;
-                    ({_K, _V}, Acc) ->
-                        Acc
-                end, [], Stats),
     NumConnections = proplists:get_value(index_num_connections, Status, 0),
     NeedsRestart = proplists:get_value(index_needs_restart, Status, false),
-    index_status_keeper:update(NumConnections, NeedsRestart, Indexes),
+    index_status_keeper:update(NumConnections, NeedsRestart),
 
     lists:foreach(
       fun ({Bucket, BucketStats}) ->
