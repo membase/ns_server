@@ -25,8 +25,9 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    Childs =
-        [{index_stats_childs_sup, {supervisor, start_link, [{local, index_stats_childs_sup}, ?MODULE, child]},
+    Children =
+        [{index_stats_children_sup,
+          {supervisor, start_link, [{local, index_stats_children_sup}, ?MODULE, child]},
           permanent, infinity, supervisor, []},
          {index_stats_worker, {erlang, apply, [fun start_link_worker/0, []]},
           permanent, 1000, worker, []},
@@ -37,7 +38,7 @@ init([]) ->
     {ok, {{one_for_all,
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},
-          Childs}};
+          Children}};
 init(child) ->
     {ok, {{one_for_one,
            misc:get_env_default(max_r, 3),
@@ -54,12 +55,13 @@ handle_cfg_event(Event) ->
         false ->
             ok;
         true ->
-            work_queue:submit_work(index_stats_worker, fun refresh_childs/0)
+            work_queue:submit_work(index_stats_worker, fun refresh_children/0)
     end.
 
-compute_wanted_childs(Config) ->
+compute_wanted_children(Config) ->
     case ns_cluster_membership:should_run_service(Config, index, node()) of
-        false -> [];
+        false ->
+            [];
         true ->
             BucketCfgs = ns_bucket:get_buckets(Config),
             BucketNames = [Name || {Name, BConfig} <- BucketCfgs,
@@ -69,26 +71,26 @@ compute_wanted_childs(Config) ->
                            Mod <- [stats_archiver, stats_reader]])
     end.
 
-refresh_childs() ->
-    RunningChilds0 = [Id || {Id, _Child, _Type, _Modules} <- supervisor:which_children(index_stats_childs_sup)],
-    RunningChilds = lists:sort(RunningChilds0),
-    WantedChilds = compute_wanted_childs(ns_config:get()),
-    ToStart = ordsets:subtract(WantedChilds, RunningChilds),
-    ToStop = ordsets:subtract(RunningChilds, WantedChilds),
+refresh_children() ->
+    RunningChildren0 = [Id || {Id, _, _, _} <- supervisor:which_children(index_stats_children_sup)],
+    RunningChildren = lists:sort(RunningChildren0),
+    WantedChildren = compute_wanted_children(ns_config:get()),
+    ToStart = ordsets:subtract(WantedChildren, RunningChildren),
+    ToStop = ordsets:subtract(RunningChildren, WantedChildren),
     [start_new_child(Mod, Name) || {Mod, Name} <- ToStart],
     [stop_child({Mod, Name}) || {Mod, Name} <- ToStop],
     ok.
 
 start_new_child(Mod, Name) when Mod =:= stats_archiver; Mod =:= stats_reader ->
     {ok, _Pid} = supervisor:start_child(
-                   index_stats_childs_sup,
+                   index_stats_children_sup,
                    {{Mod, Name},
                     {Mod, start_link, ["@index-" ++ Name]},
                     permanent, 1000, worker, []}).
 
 stop_child(Id) ->
-    ok = supervisor:terminate_child(index_stats_childs_sup, Id),
-    ok = supervisor:delete_child(index_stats_childs_sup, Id).
+    ok = supervisor:terminate_child(index_stats_children_sup, Id),
+    ok = supervisor:delete_child(index_stats_children_sup, Id).
 
 start_link_worker() ->
     RV = {ok, _} = work_queue:start_link(
@@ -96,5 +98,5 @@ start_link_worker() ->
                      fun () ->
                              ns_pubsub:subscribe_link(ns_config_events, fun handle_cfg_event/1)
                      end),
-    work_queue:submit_work(index_stats_worker, fun refresh_childs/0),
+    work_queue:submit_work(index_stats_worker, fun refresh_children/0),
     RV.
