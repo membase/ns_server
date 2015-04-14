@@ -316,6 +316,7 @@ var ReplicationForm = mkClass({
       });
       showDialog('create_replication_dialog', {
         position: { my: "center top", at: "center bottom", of: $("#headerNav") },
+        dialogClass: "absolute-positioned-dialog",
         open: function () {
           self.validateTestKey();
         },
