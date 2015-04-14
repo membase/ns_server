@@ -243,8 +243,7 @@ var ClusterSection = {
       });
     }
 
-    clusterSettingsForm.submit(function (e) {
-      e.preventDefault();
+    function onOk() {
       var spinner = overlayWithSpinner(container, '#eeeeef', '', false, true);
       var queries = [memoryQuoataWidget.tryToSaveMemoryQuota(serializeForm(onlyClusterSettingsForm))];
       if (DAL.cells.is40СompatibleCell.value) {
@@ -255,7 +254,26 @@ var ClusterSection = {
       }).always(function () {
         spinner.remove();
       });
+    }
 
+    clusterSettingsForm.submit(function (e) {
+      e.preventDefault();
+      var memoryQuota = serializeForm(onlyClusterSettingsForm);
+      var memoryQuotaParams = $.deparam(memoryQuota);
+      var initialMemoryQuota = self.allClusterSectionSettingsCell.value.indexMemoryQuota;
+      if (DAL.cells.is40СompatibleCell.value && memoryQuotaParams.indexMemoryQuota != initialMemoryQuota) {
+        genericDialog({
+        buttons: {ok: true, cancel: true},
+        text: 'Attention - changing the Index RAM Quota requires indexer restart.',
+        callback: function (e, name, instance) {
+          instance.close();
+          if (name == 'ok') {
+            onOk();
+          }
+        }});
+      } else {
+        onOk();
+      }
       return false;
     });
 
