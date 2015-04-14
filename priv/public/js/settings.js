@@ -1871,7 +1871,7 @@ var LDAPSetupSection = {
       settings[key] = [];
       settings.deftype = key;
     } else {
-      settings[key].join("\n");
+      settings[key] = settings[key].join("\n");
     }
   },
   fillForm: function (settings) {
