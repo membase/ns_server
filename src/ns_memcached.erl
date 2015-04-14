@@ -1538,7 +1538,7 @@ perform_checkpoint_commit_for_xdcr(Bucket, VBucketId, Timeout) ->
 do_perform_checkpoint_commit_for_xdcr(Sock, VBucketId, Timeout) ->
     case Timeout of
         infinity -> ok;
-        _ -> timer2:kill_after(Timeout)
+        _ -> timer2:exit_after(Timeout, timeout)
     end,
     StatsKey = iolist_to_binary(io_lib:format("vbucket-seqno ~B", [VBucketId])),
     SeqnoKey = iolist_to_binary(io_lib:format("vb_~B:high_seqno", [VBucketId])),
