@@ -72,8 +72,7 @@ compute_wanted_childs(Config) ->
 refresh_childs() ->
     RunningChilds0 = [Id || {Id, _Child, _Type, _Modules} <- supervisor:which_children(index_stats_childs_sup)],
     RunningChilds = lists:sort(RunningChilds0),
-    WantedChilds0 = compute_wanted_childs(ns_config:get()),
-    WantedChilds = ordsets:union(WantedChilds0, ["@index"]),
+    WantedChilds = compute_wanted_childs(ns_config:get()),
     ToStart = ordsets:subtract(WantedChilds, RunningChilds),
     ToStop = ordsets:subtract(RunningChilds, WantedChilds),
     [start_new_child(Mod, Name) || {Mod, Name} <- ToStart],
