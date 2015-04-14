@@ -27,7 +27,8 @@ blockquote:before, blockquote:after, q:before, q:after {
 textarea {overflow:auto;}
 input, textarea {margin:0;padding:3px;font-size:13px;border:1px solid #ccd3d7;}
 input[type=image] {border:none}
-input[type=number] {width:2em;}
+input[type=number] {width:40px;}
+input[type=number].size {width: 70px;}
 input[disabled=disabled], input[disabled=true], input[disabled] {background-color: #eeeeef;}
 input[type=radio], input[type=checkbox] {border:none}
 ::-webkit-input-placeholder {color:#999}
@@ -1095,7 +1096,6 @@ input.view_name{width:20em;padding:5px}
 .bucket_details .cache_metadata_block {margin-top: 10px;}
 .bucket_details input, .bucket_details select {vertical-align: middle;}
 .bucket_details input[type="radio"] {margin-top: 2px;}
-.bucket_details input[type=number] {width: 3em;}
 .bucket_details .bucket-icon label {width: 100px;}
 .bucket_details .bucket-icon .error-container.active {display: inline-block;}
 .bucket_details .for-ram-quota input {width: 50px;}
@@ -1283,12 +1283,9 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 .docs_title {float:left;}
 .documents_details .docs_title {margin-right:10px; width: 650px;}
 
-input[type=number].size {width:4em;}
 
 @media screen and (-webkit-min-device-pixel-ratio:0) {
     /* Safari/Chrome CSS here*/
-    input[type=number] {width:3em;}
-    input[type=number].size {width:5em;}
     .bucket_details form > fieldset{padding-top:10px}
 }
 
