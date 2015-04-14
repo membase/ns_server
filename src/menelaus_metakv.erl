@@ -39,9 +39,12 @@ handle_post(Req) ->
 
 handle_get_post(Req, Params) ->
     Path = list_to_binary(proplists:get_value("path", Params)),
-    case ns_config:search_with_vclock(ns_config:get(), {metakv, Path}) of
+    case metakv:get(Path) of
         false ->
             menelaus_util:reply_json(Req, {[]});
+        {value, Val0} ->
+            Val = base64:encode(Val0),
+            menelaus_util:reply_json(Req, {[{value, Val}]});
         {value, Val0, VC} ->
             case Val0 =:= ?DELETED_MARKER of
                 true ->
@@ -51,19 +54,6 @@ handle_get_post(Req, Params) ->
                     Val = base64:encode(Val0),
                     menelaus_util:reply_json(Req, {[{rev, Rev},
                                                     {value, Val}]})
-            end
-    end.
-
-get_old_vclock(Cfg, K) ->
-    case ns_config:search_with_vclock(Cfg, K) of
-        false ->
-            missing;
-        {value, OldV, OldVC} ->
-            case OldV of
-                ?DELETED_MARKER ->
-                    missing;
-                _ ->
-                    OldVC
             end
     end.
 
@@ -82,42 +72,23 @@ handle_mutate(Req, Params, Value) ->
                   XRevB = list_to_binary(XRev),
                   binary_to_term(XRevB)
           end,
-    K = {metakv, Path},
-    RV = work_queue:submit_sync_work(
-           menelaus_metakv_worker,
-           fun () ->
-                   case Rev =:= undefined of
-                       true ->
-                           ns_config:set(K, Value),
-                           commit;
-                       false ->
-                           RV = ns_config:run_txn(
-                                  fun (Cfg, SetFn) ->
-                                          OldVC = get_old_vclock(Cfg, K),
-                                          case Rev =:= OldVC of
-                                              true ->
-                                                  {commit, SetFn(K, Value, Cfg)};
-                                              false ->
-                                                  {abort, mismatch}
-                                          end
-                                  end),
-                           case RV of
-                               {commit, _} ->
-                                   %% don't send whole config back
-                                   %% from worker
-                                   commit;
-                               _ ->
-                                   RV
-                           end
-                   end
-           end),
-    case RV of
-        {abort, mismatch} ->
-            menelaus_util:reply(Req, 409);
-        commit ->
+    case metakv:mutate(Path, Value, Rev) of
+        ok ->
             ElapsedTime = timer:now_diff(os:timestamp(), Start) div 1000,
-            ?log_debug("Updated ~s to hold ~s~n. Elapsed time:~p ms ~n", [Path, Value, ElapsedTime]),
-            menelaus_util:reply(Req, 200)
+            %% TODO: Do not display sensitive values.
+            ?log_debug("Updated ~p to hold ~p~n. Elapsed time:~p ms.~n",
+                       [Path, Value, ElapsedTime]),
+            menelaus_util:reply(Req, 200);
+        Error ->
+            %% TODO: Discuss with Aliaksey.
+            %% Error will be one of: flush_failed, retry_needed,
+            %% {abort, mismatch}. Earlier we returned 409 error
+            %% only for {abort, mismatch}.
+            %% OK to return 409 for flush_failed and retry_needed
+            %% as well?
+            ?log_debug("Failed to update ~p with error ~p.~n",
+                       [Path, Error]),
+            menelaus_util:reply(Req, 409)
     end.
 
 handle_set_post(Req, Params) ->
@@ -130,41 +101,19 @@ handle_delete_post(Req, Params) ->
 handle_recursive_delete_post(Req, Params) ->
     ?log_debug("handle_recursive_delete_post: ~p ~n", [Params]),
     Path = list_to_binary(proplists:get_value("path", Params)),
-    Filter = mk_config_filter(Path),
-    RV = ns_config:run_txn(
-            fun (Cfg, SetFn) ->
-                KeysToDelete = [K || {K, V} <- hd(Cfg), Filter(K),
-                                    ns_config:strip_metadata(V) =/= ?DELETED_MARKER],
-                NewCfg = lists:foldl(fun (K, AccCfg) -> SetFn(K, ?DELETED_MARKER, AccCfg) end,
-                                     Cfg, KeysToDelete),
-                {commit, NewCfg}
-            end),
-    case RV of
-        {commit, _} ->
-            ?log_debug("Recursively deleted children of ~s~n", [Path]),
+    case metakv:delete_matching(Path) of
+        ok ->
+            ?log_debug("Recursively deleted children of ~p~n", [Path]),
             menelaus_util:reply(Req, 200);
-        retry_needed ->
-            ?log_debug("Recursive deletion failed for children of ~s~n", [Path]),
+        Error ->
+            ?log_debug("Recursive deletion failed for ~p with error ~p.~n",
+                       [Path, Error]),
             menelaus_util:reply(Req, 409)
-    end.
-
-mk_config_filter(Path) ->
-    PathL = size(Path),
-    fun ({metakv, K}) when is_binary(K) ->
-            case K of
-                <<Path:PathL/binary, _/binary>> ->
-                    true;
-                _ ->
-                    false
-            end;
-        (_K) ->
-            false
     end.
 
 handle_iterate_post(Req, Params) ->
     Path = list_to_binary(proplists:get_value("path", Params)),
     Continuous = erlang:list_to_existing_atom(proplists:get_value("continuous", Params, "false")),
-    Filter = mk_config_filter(Path),
     Self = self(),
     HTTPRes = menelaus_util:reply_ok(Req, "application/json; charset=utf-8", chunked),
     ?log_debug("Starting iteration of ~s. Continuous = ~s", [Path, Continuous]),
@@ -183,13 +132,15 @@ handle_iterate_post(Req, Params) ->
         false ->
             ok
     end,
-    KV = ns_config:get_kv_list(),
-    [output_kv(HTTPRes, K, V) || {K, V} <- KV,
-                                 Filter(K),
-                                 ns_config:strip_metadata(V) =/= ?DELETED_MARKER],
+    KV = metakv:iterate_matching(Path),
+    lists:foreach(
+      fun({K, V}) ->
+              output_kv(HTTPRes, K, V)
+      end,
+      KV),
     case Continuous of
         true ->
-            iterate_loop(HTTPRes, Filter);
+            iterate_loop(HTTPRes, Path);
         false ->
             HTTPRes:write_chunk("")
     end.
@@ -207,13 +158,26 @@ output_kv(HTTPRes, {metakv, K}, V0) ->
     ?log_debug("Sent ~s rev: ~s", [K, Rev]),
     HTTPRes:write_chunk(ejson:encode({[{rev, Rev},
                                        {path, K},
-                                       {value, Value}]})).
+                                       {value, Value}]}));
 
-iterate_loop(HTTPRes, Filter) ->
+%% Keys (e.g. XDCR ckpt) stored in simple-store do not have metakv tag
+%% and revisions.
+output_kv(HTTPRes, K, V) ->
+    ?log_debug("Sent ~s", [K]),
+    HTTPRes:write_chunk(ejson:encode({[{rev, null},
+                                       {path, K},
+                                       {value, base64:encode(V)}]})).
+iterate_loop(HTTPRes, Path) ->
     receive
         {config, KVs} ->
-            [output_kv(HTTPRes, K, V) || {K, V} <- KVs, Filter(K)],
-            iterate_loop(HTTPRes, Filter);
+            KV = metakv:iterate_matching(Path, KVs),
+            lists:foreach(
+              fun({K, V}) ->
+                      output_kv(HTTPRes, K, V)
+              end,
+              KV),
+            iterate_loop(HTTPRes, Path);
         _ ->
             erlang:exit(normal)
     end.
+
