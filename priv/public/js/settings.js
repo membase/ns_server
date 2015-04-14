@@ -81,13 +81,22 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
   }).name("clusterNameCell");
 
   ns.indexesSettingsCell = Cell.compute(function (v) {
-    return v.need(is40СompatibleCell) ? future.get({url: "settings/indexes"}) : null;
+    if (v.need(ns.isClusterTabCell)) {
+      return v.need(is40СompatibleCell) ? future.get({url: "settings/indexes"}) : null;
+    }
   }).name("indexesSettingsCell");
+  ns.indexesSettingsCell.equality = _.isEqual;
+
+  ns.spinnerNeededCell = Cell.compute(function (v) {
+    return !(v(ns.indexesSettingsCell) && v(poolDetailsCell));
+  }).name("spinnerNeededCell");
+  ns.spinnerNeededCell.equality = _.isEqual;
+
+  ns.validationNeededCell = Cell.compute(function (v) {
+    return v.need(ns.isClusterTabCell) && !v.need(DAL.cells.isROAdminCell);
+  }).name("validationNeededCell");
 
   ns.allClusterSectionSettingsCell = Cell.compute(function (v) {
-    if (!v.need(ns.isClusterTabCell)) {
-      return;
-    }
     var indexesSettings = v.need(ns.indexesSettingsCell);
     var currentPool = v.need(poolDetailsCell);
     if (!currentPool) {
@@ -176,6 +185,9 @@ var ClusterSection = {
     function enableDisableValidation(enable, is40) {
       clusterSettingsFormValidator[enable ? 'unpause' : 'pause']();
       indexesSettingsFormValidator[is40 && enable ? 'unpause' : 'pause']();
+      if (!enable) {
+        SettingsSection.renderErrors({errors:null}, clusterSettingsForm);
+      }
     }
 
     function setCertificate(certificate) {
@@ -233,14 +245,13 @@ var ClusterSection = {
 
     clusterSettingsForm.submit(function (e) {
       e.preventDefault();
-      var spinner = overlayWithSpinner(container);
+      var spinner = overlayWithSpinner(container, '#eeeeef', '', false, true);
       var queries = [memoryQuoataWidget.tryToSaveMemoryQuota(serializeForm(onlyClusterSettingsForm))];
       if (DAL.cells.is40СompatibleCell.value) {
         queries.push(saveIndexesSettings());
       }
       jQuery.when.apply(jQuery, queries).done(function () {
         poolDetailsCell.recalculate();
-        self.clusterNameCell.recalculate();
       }).always(function () {
         spinner.remove();
       });
@@ -262,20 +273,17 @@ var ClusterSection = {
     });
 
     var spinner;
-    Cell.subscribeMultipleValues(function (settings, isClusterTab) {
-      if (isClusterTab && !settings) {
+    self.spinnerNeededCell.subscribeValue(function (spinnerNeeded) {
+      if (spinnerNeeded) {
         spinner = overlayWithSpinner(container, '#eeeeef', '', false, true);
       } else {
         spinner && spinner.remove();
       }
-    }, self.allClusterSectionSettingsCell, self.isClusterTabCell);
+    });
 
-    Cell.subscribeMultipleValues(function (isClusterTab, isROAdmin, is40, allClusterSectionSettings) {
-      if (isClusterTab === undefined || isROAdmin === undefined || is40 === undefined || allClusterSectionSettings === undefined) {
-        return;
-      }
-      enableDisableValidation(isClusterTab && !isROAdmin, is40);
-    }, self.isClusterTabCell, isROAdminCell, DAL.cells.is40СompatibleCell, self.allClusterSectionSettingsCell);
+    Cell.subscribeMultipleValues(function (validationNeeded, is40) {
+      enableDisableValidation(validationNeeded, is40);
+    }, self.validationNeededCell, self.indexesSettingsCell);
   }
 };
 
