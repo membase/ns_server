@@ -30,10 +30,6 @@ init([]) ->
           {supervisor, start_link, [{local, index_stats_children_sup}, ?MODULE, child]},
           permanent, infinity, supervisor, []},
          {index_stats_worker, {erlang, apply, [fun start_link_worker/0, []]},
-          permanent, 1000, worker, []},
-         {index_status_keeper, {index_status_keeper, start_link, []},
-          permanent, 1000, worker, []},
-         {index_stats_collector, {index_stats_collector, start_link, []},
           permanent, 1000, worker, []}],
     {ok, {{one_for_all,
            misc:get_env_default(max_r, 3),
@@ -46,6 +42,8 @@ init(child) ->
           []}}.
 
 is_notable_event({buckets, _}) ->
+    true;
+is_notable_event({{node, Node, membership}, _}) when Node =:= node() ->
     true;
 is_notable_event(_) ->
     false.
@@ -63,12 +61,17 @@ compute_wanted_children(Config) ->
         false ->
             [];
         true ->
+            StaticChildren = [index_status_keeper, index_stats_collector],
+
             BucketCfgs = ns_bucket:get_buckets(Config),
             BucketNames = [Name || {Name, BConfig} <- BucketCfgs,
                                    lists:keyfind(type, 1, BConfig) =:= {type, membase}],
-            lists:sort([{Mod, Name}
-                        || Name <- BucketNames,
-                           Mod <- [stats_archiver, stats_reader]])
+            PerBucketChildren =
+                [{Mod, Name}
+                 || Name <- BucketNames,
+                    Mod <- [stats_archiver, stats_reader]],
+
+            lists:sort(StaticChildren ++ PerBucketChildren)
     end.
 
 refresh_children() ->
@@ -77,16 +80,18 @@ refresh_children() ->
     WantedChildren = compute_wanted_children(ns_config:get()),
     ToStart = ordsets:subtract(WantedChildren, RunningChildren),
     ToStop = ordsets:subtract(RunningChildren, WantedChildren),
-    [start_new_child(Mod, Name) || {Mod, Name} <- ToStart],
-    [stop_child({Mod, Name}) || {Mod, Name} <- ToStop],
+    lists:foreach(fun stop_child/1, ToStop),
+    lists:foreach(fun start_child/1, ToStart),
     ok.
 
-start_new_child(Mod, Name) when Mod =:= stats_archiver; Mod =:= stats_reader ->
-    {ok, _Pid} = supervisor:start_child(
-                   index_stats_children_sup,
-                   {{Mod, Name},
-                    {Mod, start_link, ["@index-" ++ Name]},
-                    permanent, 1000, worker, []}).
+child_spec({Mod, Name}) when Mod =:= stats_archiver; Mod =:= stats_reader ->
+    {{Mod, Name}, {Mod, start_link, ["@index-" ++ Name]},
+     permanent, 1000, worker, []};
+child_spec(Mod) ->
+    {Mod, {Mod, start_link, []}, permanent, 1000, worker, []}.
+
+start_child(Id) ->
+    {ok, _Pid} = supervisor:start_child(index_stats_children_sup, child_spec(Id)).
 
 stop_child(Id) ->
     ok = supervisor:terminate_child(index_stats_children_sup, Id),
