@@ -241,6 +241,14 @@ child_specs() ->
      {cluster_logs_sup, {cluster_logs_sup, start_link, []},
       permanent, infinity, supervisor, []},
 
+     {xdcr_ckpt_store,
+      {simple_store, start_link, [?XDCR_CHECKPOINT_STORE]},
+      permanent, 1000, worker, []},
+
+     {metakv_worker,
+      {work_queue, start_link, [metakv_worker]},
+      permanent, 1000, worker, []},
+
      {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
       [menelaus_sup]}

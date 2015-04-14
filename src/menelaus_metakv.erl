@@ -114,6 +114,17 @@ handle_recursive_delete_post(Req, Params) ->
 handle_iterate_post(Req, Params) ->
     Path = list_to_binary(proplists:get_value("path", Params)),
     Continuous = erlang:list_to_existing_atom(proplists:get_value("continuous", Params, "false")),
+    %% Return error if Continuous is true while iterating Checkpoints
+    case misc:is_prefix(?XDCR_CHECKPOINT_PATTERN, Path) andalso Continuous of
+        false ->
+            handle_iterate(Req, Path, Continuous);
+        true ->
+            ?log_debug("Continuous should not be set to true while iterating on XDCR Checkpoints.~n"),
+            %% Return http error - 405: Method Not Allowed
+            menelaus_util:reply(Req, 405)
+    end.
+
+handle_iterate(Req, Path, Continuous) ->
     Self = self(),
     HTTPRes = menelaus_util:reply_ok(Req, "application/json; charset=utf-8", chunked),
     ?log_debug("Starting iteration of ~s. Continuous = ~s", [Path, Continuous]),

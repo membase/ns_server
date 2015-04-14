@@ -91,15 +91,11 @@ init([]) ->
                      {hot_keys_keeper, start_link, []},
                      permanent, 5000, worker, dynamic},
 
-    MetaKVWorker = {menelaus_metakv_worker,
-                    {work_queue, start_link, [menelaus_metakv_worker]},
-                    permanent, 1000, worker, []},
-
     CBAuth = {menelaus_cbauth,
               {menelaus_cbauth, start_link, []},
               permanent, 1000, worker, dynamic},
 
-    Processes = [UIAuth, Cache, StatsGatherer, RpcEvents, MetaKVWorker, Web, WebEvent, HotKeysKeeper, Alerts,
+    Processes = [UIAuth, Cache, StatsGatherer, RpcEvents, Web, WebEvent, HotKeysKeeper, Alerts,
                  CBAuth],
     {ok, {{one_for_one, 10, 10}, Processes}}.
 

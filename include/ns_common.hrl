@@ -175,4 +175,11 @@
 
 -define(UI_AUTH_EXPIRATION_SECONDS, 600).
 
+%% XDCR_CHECKPOINT_STORE is the name of the simple-store where
+%% metakv stores XDCR checkpoints.
+-define(XDCR_CHECKPOINT_STORE, xdcr_ckpt_data).
+
+%% Pattern used to identify XDCR checkpoints.
+-define(XDCR_CHECKPOINT_PATTERN, list_to_binary("/ckpt/")).
+
 -endif.

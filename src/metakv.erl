@@ -29,7 +29,12 @@
 %% Exported APIs
 
 get(Key) ->
-    ns_config:search_with_vclock(ns_config:get(), {metakv, Key}).
+    case which_store(Key) of
+        simple_store ->
+            simple_store_get(Key);
+        ns_config ->
+            ns_config:search_with_vclock(ns_config:get(), {metakv, Key})
+    end.
 
 set(Key, Value) ->
     mutate(Key, Value, undefined).
@@ -43,15 +48,31 @@ delete(Key) ->
 %% Create, update or delete the specified key.
 %% For delete, Value is set to ?DELETED_MARKER.
 mutate(Key, Value, Rev) ->
-    ns_config_mutation(Key, Value, Rev).
+    case which_store(Key) of
+        simple_store ->
+            %% Simple store does not support revisions.
+            simple_store_mutation(Key, Value);
+        ns_config ->
+            ns_config_mutation(Key, Value, Rev)
+    end.
 
 %% Delete key with the matching prefix
 delete_matching(KeyPrefix) ->
-    ns_config_delete_matching(KeyPrefix).
+    case which_store(KeyPrefix) of
+        simple_store ->
+            simple_store:delete_matching(?XDCR_CHECKPOINT_STORE, KeyPrefix);
+        ns_config ->
+            ns_config_delete_matching(KeyPrefix)
+    end.
 
 %% Read keys from appropriate store and return KVs that match the prefix
 iterate_matching(KeyPrefix) ->
-    ns_config_iterate_matching(KeyPrefix).
+    case which_store(KeyPrefix) of
+        simple_store ->
+            simple_store:iterate_matching(?XDCR_CHECKPOINT_STORE, KeyPrefix);
+        ns_config ->
+            ns_config_iterate_matching(KeyPrefix)
+    end.
 
 %% User has passed the full KV list, we need to return KVs that match the
 %% prefix.
@@ -59,6 +80,42 @@ iterate_matching(KeyPrefix, KVList) ->
     matching_kvs(KeyPrefix, KVList).
 
 %% Internal
+
+%% Currently, we have only two storage options:
+%% 1. simple store for XDCR checkpoints.
+%% 2. ns_config for everything else.
+%%
+%% Today, metakv uses simple store only for XDCR checkpoints.
+%% In future, if simple_store has other metakv consumers,
+%% then this module will need to take that into account.
+%% Note, non-metakv consumers can use simple-store directly by using
+%% the APIs in simple_store module.
+
+which_store(Key) ->
+    case misc:is_prefix(?XDCR_CHECKPOINT_PATTERN, Key) of
+        true ->
+            simple_store;
+        _ ->
+            ns_config
+    end.
+
+%% Simple Store related functions
+
+simple_store_get(K) ->
+    case simple_store:get(?XDCR_CHECKPOINT_STORE, K) of
+        false ->
+            false;
+        V ->
+            {value, V}
+    end.
+
+simple_store_mutation(Key, Value) ->
+    case Value =:= ?DELETED_MARKER of
+        true ->
+            simple_store:delete(?XDCR_CHECKPOINT_STORE, Key);
+        false ->
+            simple_store:set(?XDCR_CHECKPOINT_STORE, Key, Value)
+    end.
 
 %% NS Config related functions
 
