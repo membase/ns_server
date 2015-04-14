@@ -150,8 +150,12 @@ grab_status() ->
 process_status(Status) ->
     case lists:keyfind(<<"code">>, 1, Status) of
         {_, <<"success">>} ->
-            {_, Indexes} = lists:keyfind(<<"status">>, 1, Status),
-            {ok, process_indexes(Indexes)};
+            case lists:keyfind(<<"status">>, 1, Status) of
+                false ->
+                    {ok, []};
+                {_, Indexes} ->
+                    {ok, process_indexes(Indexes)}
+            end;
         _ ->
             ?log_error("Indexer returned unsuccessful status:~n~p", [Status]),
             {error, bad_status}
