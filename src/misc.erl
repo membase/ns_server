@@ -1757,3 +1757,12 @@ wait_for_nodename(ShortName, Attempts) ->
                     wait_for_nodename(ShortName, Attempts - 1)
             end
     end.
+
+is_prefix(KeyPattern, K) ->
+    KPL = size(KeyPattern),
+    case K of
+        <<KeyPattern:KPL/binary, _/binary>> ->
+            true;
+        _ ->
+            false
+    end.
