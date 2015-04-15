@@ -737,6 +737,14 @@ def main():
                 erldir,
                 os.environ['PATH']]
         os.environ['PATH'] = ':'.join(path)
+
+        library_path = [os.path.join(options.root, 'lib')]
+
+        current_library_path = os.environ.get('LD_LIBRARY_PATH')
+        if current_library_path is not None:
+            library_path.append(current_library_path)
+
+        os.environ['LD_LIBRARY_PATH'] = ':'.join(library_path)
     elif os.name == 'nt':
       path = [mydir, erldir, os.environ['PATH']]
       os.environ['PATH'] = ';'.join(path)
