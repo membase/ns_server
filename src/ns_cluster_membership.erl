@@ -47,6 +47,7 @@
          is_active_non_kv_node/2,
          filter_out_non_kv_nodes/1,
          filter_out_non_kv_nodes/2,
+         should_run_service/2,
          should_run_service/3,
          service_active_nodes/2,
          n1ql_active_nodes/1,
@@ -239,6 +240,9 @@ filter_out_non_kv_nodes(Nodes) ->
 filter_out_non_kv_nodes(Nodes, Config) ->
     [N || N <- Nodes,
           kv <- ns_cluster_membership:node_services(Config, N)].
+
+should_run_service(Service, Node) ->
+    should_run_service(ns_config:latest_config_marker(), Service, Node).
 
 should_run_service(Config, Service, Node) ->
     case ns_config_auth:is_system_provisioned()

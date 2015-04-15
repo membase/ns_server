@@ -277,12 +277,7 @@ current_status_slow_inner() ->
 
     BucketNames = ns_bucket:node_bucket_names(node()),
 
-    IndexStatus = try index_status_keeper:get(2000)
-                  catch T:E ->
-                          ?log_debug("ignoring failure to get index status: ~p~n~p", [{T, E}, erlang:get_stacktrace()]),
-                          []
-                  end,
-
+    IndexStatus = grab_index_status(),
     Indexes = proplists:get_value(indexes, IndexStatus, []),
     IndexBuckets = sets:from_list([binary_to_list(B) || {B, _} <- Indexes]),
 
@@ -365,6 +360,19 @@ current_status_slow_inner() ->
          {index_status, IndexStatus},
          {cluster_compatibility_version, ClusterCompatVersion}
          | element(2, ns_info:basic_info())] ++ MaybeMeminfo.
+
+grab_index_status() ->
+    case ns_cluster_membership:should_run_service(index, node()) of
+        true ->
+            try index_status_keeper:get(2000)
+            catch T:E ->
+                    ?log_debug("ignoring failure to get index status: ~p~n~p",
+                               [{T, E}, erlang:get_stacktrace()]),
+                    []
+            end;
+        false ->
+            []
+    end.
 
 %% undefined is "used" shortly after node is initialized and when
 %% there's no compat mode yet
