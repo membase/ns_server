@@ -39,6 +39,7 @@
 -define(I_GAUGES, [disk_size, data_size, num_docs_pending, items_count]).
 -define(I_COUNTERS, [num_requests, num_rows_returned, num_docs_indexed,
                      scan_bytes_read, total_scan_duration]).
+-define(I_STATUSES, [build_progress]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -107,7 +108,8 @@ do_recognize_name(K) ->
     case binary:split(K, <<":">>, [global]) of
         [Bucket, Index, Metric] ->
             Type = find_type(Metric, [{gauge, ?I_GAUGES},
-                                      {counter, ?I_COUNTERS}]),
+                                      {counter, ?I_COUNTERS},
+                                      {status, ?I_STATUSES}]),
 
             case Type of
                 not_found ->

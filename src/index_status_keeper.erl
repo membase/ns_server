@@ -49,22 +49,40 @@ init([]) ->
 
     self() ! refresh,
     {ok, #state{num_connections = 0,
-                indexes = [],
+                indexes = dict:new(),
 
                 pending_refresh = false,
                 restarter_pid = undefined}}.
 
 
 handle_call(get, _From, State) ->
+    Indexes = [V || {_, V} <- dict:to_list(State#state.indexes)],
+
     {reply, [{num_connections, State#state.num_connections},
-             {indexes, State#state.indexes}],
+             {indexes, Indexes}],
      State}.
 
-handle_cast({update, Status}, State) ->
+handle_cast({update, Status}, #state{indexes = Indexes} = State) ->
     NumConnections = proplists:get_value(index_num_connections, Status, 0),
     NeedsRestart = proplists:get_value(index_needs_restart, Status, false),
 
-    NewState0 = State#state{num_connections = NumConnections},
+    {NumConnections, NeedsRestart, NewIndexes} =
+        lists:foldl(
+          fun ({Key, Value}, {AccConn, AccRestart, AccIndexes}) ->
+                  case Key of
+                      index_num_connections ->
+                          {Value, AccRestart, AccIndexes};
+                      index_needs_restart ->
+                          {AccConn, Value, AccIndexes};
+                      {Bucket, Index, <<"build_progress">>} ->
+                          AccIndexes1 = update_build_progress(Bucket, Index,
+                                                              Value, AccIndexes),
+                          {AccConn, AccRestart, AccIndexes1}
+                  end
+          end, {0, false, Indexes}, Status),
+
+    NewState0 = State#state{num_connections = NumConnections,
+                            indexes = NewIndexes},
     NewState = case NeedsRestart of
                    true ->
                        maybe_restart_indexer(NewState0);
@@ -153,12 +171,15 @@ grab_status() ->
 process_status(Status) ->
     case lists:keyfind(<<"code">>, 1, Status) of
         {_, <<"success">>} ->
-            case lists:keyfind(<<"status">>, 1, Status) of
-                false ->
-                    {ok, []};
-                {_, Indexes} ->
-                    {ok, process_indexes(Indexes)}
-            end;
+            RawIndexes =
+                case lists:keyfind(<<"status">>, 1, Status) of
+                    false ->
+                        [];
+                    {_, V} ->
+                        V
+                end,
+
+            {ok, dict:from_list(process_indexes(RawIndexes))};
         _ ->
             ?log_error("Indexer returned unsuccessful status:~n~p", [Status]),
             {error, bad_status}
@@ -172,8 +193,24 @@ process_indexes(Indexes) ->
               {_, IndexStatus} = lists:keyfind(<<"status">>, 1, Index),
               {_, Definition} = lists:keyfind(<<"definition">>, 1, Index),
 
-              [{bucket, Bucket},
-               {index, Name},
-               {status, IndexStatus},
-               {definition, Definition}]
+              Props = [{bucket, Bucket},
+                       {index, Name},
+                       {status, IndexStatus},
+                       {definition, Definition}],
+              Key = {Bucket, Name},
+
+              {Key, Props}
       end, Indexes).
+
+update_build_progress(Bucket, Index, Value, Dict) ->
+    try
+        dict:update({Bucket, Index},
+                    fun (Props) ->
+                            lists:keystore(progress, 1, Props,
+                                           {progress, Value})
+                    end, Dict)
+    catch
+        error:badarg ->
+            %% key is not present; ignore
+            Dict
+    end.
