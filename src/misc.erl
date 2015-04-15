@@ -1315,9 +1315,11 @@ init([X | Rest]) ->
 %% Get an item from from a dict, if it doesnt exist return default
 -spec dict_get(term(), dict(), term()) -> term().
 dict_get(Key, Dict, Default) ->
-    case dict:is_key(Key, Dict) of
-        true -> dict:fetch(Key, Dict);
-        false -> Default
+    case dict:find(Key, Dict) of
+        {ok, Value} ->
+            Value;
+        error ->
+            Default
     end.
 
 %% Parse version of the form 1.7.0r_252_g1e1c2c0 or 1.7.0r-252-g1e1c2c0 into a
