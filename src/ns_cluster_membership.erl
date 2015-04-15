@@ -51,6 +51,7 @@
          should_run_service/3,
          service_active_nodes/2,
          n1ql_active_nodes/1,
+         index_active_nodes/0,
          index_active_nodes/1]).
 
 active_nodes() ->
@@ -260,6 +261,9 @@ service_active_nodes(Config, Service) ->
 
 n1ql_active_nodes(Config) ->
     service_active_nodes(Config, n1ql).
+
+index_active_nodes() ->
+    index_active_nodes(ns_config:latest_config_marker()).
 
 index_active_nodes(Config) ->
     service_active_nodes(Config, index).
