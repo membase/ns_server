@@ -262,9 +262,7 @@ handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
                                 default_stats = Defaults} = State) ->
     TS = latest_tick(TS0, 0),
     {Stats, NewCounters, Status} = grab_stats(PrevCounters, TS - PrevTS),
-    NumConnections = proplists:get_value(index_num_connections, Status, 0),
-    NeedsRestart = proplists:get_value(index_needs_restart, Status, false),
-    index_status_keeper:update(NumConnections, NeedsRestart),
+    index_status_keeper:update(Status),
 
     lists:foreach(
       fun ({Bucket, BucketStats}) ->

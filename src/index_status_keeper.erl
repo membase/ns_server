@@ -20,7 +20,7 @@
 -behavior(gen_server).
 
 %% API
--export([start_link/0, update/2, get/1]).
+-export([start_link/0, update/1, get/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -32,8 +32,8 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-update(NumConnections, NeedsRestart) ->
-    gen_server:cast(?MODULE, {update, NumConnections, NeedsRestart}).
+update(Status) ->
+    gen_server:cast(?MODULE, {update, Status}).
 
 get(Timeout) ->
     gen_server:call(?MODULE, get, Timeout).
@@ -60,7 +60,10 @@ handle_call(get, _From, State) ->
              {indexes, State#state.indexes}],
      State}.
 
-handle_cast({update, NumConnections, NeedsRestart}, State) ->
+handle_cast({update, Status}, State) ->
+    NumConnections = proplists:get_value(index_num_connections, Status, 0),
+    NeedsRestart = proplists:get_value(index_needs_restart, Status, false),
+
     NewState0 = State#state{num_connections = NumConnections},
     NewState = case NeedsRestart of
                    true ->
