@@ -109,6 +109,10 @@ sanitize(Config) ->
                                         {stop, {cert_and_pkey, [VClock|{Cert, <<"*****">>}]}};
                                     {cert_and_pkey, {Cert, _PKey}} ->
                                         {stop, {cert_and_pkey, {Cert, <<"*****">>}}};
+                                    {{metakv, K}, [VClock|{?METAKV_SENSITIVE, _V}]} ->
+                                        {stop, {{metakv, K}, [VClock|{?METAKV_SENSITIVE, <<"*****">>}]}};
+                                    {{metakv, K}, {?METAKV_SENSITIVE, _V}} ->
+                                        {stop, {{metakv, K}, {?METAKV_SENSITIVE, <<"*****">>}}};
                                     _ ->
                                         {continue, T}
                                 end
