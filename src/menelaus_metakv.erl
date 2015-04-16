@@ -72,22 +72,18 @@ handle_mutate(Req, Params, Value) ->
                   XRevB = list_to_binary(XRev),
                   binary_to_term(XRevB)
           end,
-    case metakv:mutate(Path, Value, Rev) of
+    Sensitive = proplists:get_value("sensitive", Params) =:= "true",
+    case metakv:mutate(Path, Value,
+                        [{rev, Rev}, {?METAKV_SENSITIVE, Sensitive}]) of
         ok ->
             ElapsedTime = timer:now_diff(os:timestamp(), Start) div 1000,
-            %% TODO: Do not display sensitive values.
-            ?log_debug("Updated ~p to hold ~p~n. Elapsed time:~p ms.~n",
-                       [Path, Value, ElapsedTime]),
+            %% Values are already displayed by ns_config_log and simple_store.
+            %% ns_config_log is smart enough to not log sensitive values
+            %% and simple_store does not store senstive values.
+            ?log_debug("Updated ~p. Elapsed time:~p ms.~n", [Path, ElapsedTime]),
             menelaus_util:reply(Req, 200);
         Error ->
-            %% TODO: Discuss with Aliaksey.
-            %% Error will be one of: flush_failed, retry_needed,
-            %% {abort, mismatch}. Earlier we returned 409 error
-            %% only for {abort, mismatch}.
-            %% OK to return 409 for flush_failed and retry_needed
-            %% as well?
-            ?log_debug("Failed to update ~p with error ~p.~n",
-                       [Path, Error]),
+            ?log_debug("Failed to update ~p with error ~p.~n", [Path, Error]),
             menelaus_util:reply(Req, 409)
     end.
 
@@ -157,7 +153,7 @@ handle_iterate(Req, Path, Continuous) ->
     end.
 
 output_kv(HTTPRes, {metakv, K}, V0) ->
-    V = ns_config:strip_metadata(V0),
+    V = metakv:strip_sensitive(ns_config:strip_metadata(V0)),
     VC = ns_config:extract_vclock(V0),
     Rev0 = base64:encode(erlang:term_to_binary(VC)),
     {Rev, Value} = case V of

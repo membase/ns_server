@@ -182,4 +182,9 @@
 %% Pattern used to identify XDCR checkpoints.
 -define(XDCR_CHECKPOINT_PATTERN, list_to_binary("/ckpt/")).
 
+%% Metakv tag for values storing sensitive information
+%% If this tag is changed to something else, then do not forget
+%% to change its value in ns_server/scripts/dump-guts as well.
+-define(METAKV_SENSITIVE, metakv_sensitive).
+
 -endif.

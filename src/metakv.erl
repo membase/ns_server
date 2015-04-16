@@ -23,8 +23,9 @@
          set/2, set/3,
          delete/1,
          delete_matching/1,
-         mutate/3,
-         iterate_matching/1, iterate_matching/2]).
+         mutate/2, mutate/3,
+         iterate_matching/1, iterate_matching/2,
+         strip_sensitive/1]).
 
 %% Exported APIs
 
@@ -33,27 +34,30 @@ get(Key) ->
         simple_store ->
             simple_store_get(Key);
         ns_config ->
-            ns_config:search_with_vclock(ns_config:get(), {metakv, Key})
+            ns_config_get(Key)
     end.
 
 set(Key, Value) ->
-    mutate(Key, Value, undefined).
+    mutate(Key, Value).
 
-set(Key, Value, Rev) ->
-    mutate(Key, Value, Rev).
+set(Key, Value, Params) ->
+    mutate(Key, Value, Params).
 
 delete(Key) ->
-    mutate(Key, ?DELETED_MARKER, undefined).
+    mutate(Key, ?DELETED_MARKER).
 
 %% Create, update or delete the specified key.
 %% For delete, Value is set to ?DELETED_MARKER.
-mutate(Key, Value, Rev) ->
+mutate(Key, Value) ->
+    mutate(Key, Value, []).
+
+mutate(Key, Value, Params) ->
     case which_store(Key) of
         simple_store ->
-            %% Simple store does not support revisions.
+            %% Today, Simple store does not support revisions and other params.
             simple_store_mutation(Key, Value);
         ns_config ->
-            ns_config_mutation(Key, Value, Rev)
+            ns_config_mutation(Key, Value, Params)
     end.
 
 %% Delete key with the matching prefix
@@ -119,22 +123,44 @@ simple_store_mutation(Key, Value) ->
 
 %% NS Config related functions
 
-ns_config_mutation(Key, Value, Rev) ->
+ns_config_get(Key) ->
+    case ns_config:search_with_vclock(ns_config:get(), {metakv, Key}) of
+        false ->
+            false;
+        {value, Val, VC} ->
+            {value, strip_sensitive(Val), VC}
+    end.
+
+ns_config_mutation(Key, Value, Params) ->
+    Rev = proplists:get_value(rev, Params),
+    Sensitive = proplists:get_value(?METAKV_SENSITIVE, Params),
     K = {metakv, Key},
     work_queue:submit_sync_work(
       metakv_worker,
       fun () ->
               case Rev =:= undefined of
                   true ->
-                      ns_config:set(K, Value),
+                      %% If key does not exist, then update_key will
+                      %% set the value to DefaultValue.
+                      DefaultValue = add_sensitive(Sensitive, undefined, Value),
+                      ns_config:update_key(K,
+                                           fun (OldValue) ->
+                                               add_sensitive(Sensitive,
+                                                             OldValue, Value)
+                                           end,
+                                           DefaultValue),
                       ok;
                   false ->
                       RV = ns_config:run_txn(
                              fun (Cfg, SetFn) ->
-                                     OldVC = get_old_vclock(Cfg, K),
+                                     OldData = ns_config:search_with_vclock(Cfg, K),
+                                     OldValue = get_old_value(OldData),
+                                     NewValue = add_sensitive(Sensitive,
+                                                              OldValue, Value),
+                                     OldVC = get_old_vclock(OldData),
                                      case Rev =:= OldVC of
                                          true ->
-                                             {commit, SetFn(K, Value, Cfg)};
+                                             {commit, SetFn(K, NewValue, Cfg)};
                                          false ->
                                              {abort, mismatch}
                                      end
@@ -150,8 +176,54 @@ ns_config_mutation(Key, Value, Rev) ->
               end
       end).
 
-get_old_vclock(Cfg, K) ->
-    case ns_config:search_with_vclock(Cfg, K) of
+%% Add sensitive tag to a value that is sensitive and return the new value.
+%%
+%% If user is deleting the entry then don't care whether it is senstive or not.
+add_sensitive(_, _, ?DELETED_MARKER) ->
+    ?DELETED_MARKER;
+
+%% If Key does not exist (OldValue is undefined) or was previously deleted,
+%% then add sensitive tag based on what the user passed in Sensitive.
+%% Otherwise, if key already exists, then carry forward its sensitive value
+%% irrespective of what user passed in Sensitive.
+add_sensitive(Sensitive, ?DELETED_MARKER, NewValue) ->
+    check_sensitive(Sensitive, NewValue);
+
+add_sensitive(Sensitive, undefined, NewValue) ->
+    check_sensitive(Sensitive, NewValue);
+
+add_sensitive(_, OldValue, NewValue) ->
+    case OldValue of
+        {?METAKV_SENSITIVE, _} ->
+            {?METAKV_SENSITIVE, NewValue};
+        _ ->
+            NewValue
+    end.
+
+check_sensitive(Sensitive, NewValue) ->
+    case Sensitive of
+        true ->
+            {?METAKV_SENSITIVE, NewValue};
+        _ ->
+            NewValue
+    end.
+
+%% Strip senstive tag from the value
+strip_sensitive({?METAKV_SENSITIVE, Value}) ->
+    Value;
+strip_sensitive(Value) ->
+    Value.
+
+get_old_value(OldData) ->
+    case OldData of
+        {value, OldV, _OldVC} ->
+            OldV;
+        false ->
+            undefined
+    end.
+
+get_old_vclock(OldData) ->
+    case OldData of
         false ->
             missing;
         {value, OldV, OldVC} ->
