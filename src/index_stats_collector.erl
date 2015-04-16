@@ -161,7 +161,7 @@ get_stats() ->
     end.
 
 do_get_stats() ->
-    case index_rest:get_json("stats") of
+    case index_rest:get_json("stats?async=true") of
         {ok, {[_|_] = Stats}} ->
             Stats;
         {ok, Other} ->
