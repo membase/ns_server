@@ -521,7 +521,15 @@ def make_product_task(guts, initargs_path, options):
         [UnixTask("moxi stats (port %s)" % port,
                   "echo stats proxy | nc 127.0.0.1 %s" % port,
                   log_file="stats.log")
-         for port in correct_split(read_guts(guts, "moxi_ports"), ",")]
+         for port in correct_split(read_guts(guts, "moxi_ports"), ",")],
+
+        [AllOsTask("mctimings",
+                   ["mctimings",
+                    "-u", read_guts(guts, "memcached_admin"),
+                    "-P", read_guts(guts, "memcached_pass"),
+                    "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
+                    "-v"],
+                   log_file="stats.log")]
         ]
 
     _tasks = flatten(_tasks)
