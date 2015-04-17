@@ -149,7 +149,8 @@ do_diag_per_node() ->
      {master_events, (catch master_activity_events_keeper:get_history())},
      {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
      {active_buckets, ActiveBuckets},
-     {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))}].
+     {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))},
+     {system_info, (catch grab_system_info())}].
 
 do_diag_per_node_binary() ->
     work_queue:submit_sync_work(
@@ -249,7 +250,8 @@ collect_diag_per_node_binary_body(Reply) ->
     Reply(ets_tables, (catch grab_all_ets_tables())),
     Reply(couchdb_ets_tables, (catch grab_couchdb_ets_tables())),
     Reply(internal_settings, (catch menelaus_web:build_internal_settings_kvs())),
-    Reply(logging, (catch ale:capture_logging_diagnostics())).
+    Reply(logging, (catch ale:capture_logging_diagnostics())),
+    Reply(system_info, (catch grab_system_info())).
 
 grab_babysitter_process_infos() ->
     rpc:call(ns_server:get_babysitter_node(), ?MODULE, grab_process_infos, [], 5000).
@@ -693,6 +695,79 @@ diagnosing_timeouts(Body) ->
             timeout_diag_logger:log_diagnostics(X),
             exit(X)
     end.
+
+grab_system_info() ->
+    Allocators = [temp_alloc,
+                  eheap_alloc,
+                  binary_alloc,
+                  ets_alloc,
+                  driver_alloc,
+                  sl_alloc,
+                  ll_alloc,
+                  fix_alloc,
+                  std_alloc,
+                  sys_alloc,
+                  mseg_alloc],
+
+    Kinds = lists:flatten(
+              [allocated_areas,
+               allocator,
+               alloc_util_allocators,
+
+               [[{allocator, A},
+                 {allocator_sizes, A}] || A <- Allocators],
+
+               [{cpu_topology, T} || T <- [defined, detected, used]],
+
+               build_type,
+               c_compiler_used,
+               check_io,
+               compat_rel,
+               creation,
+               debug_compiled,
+               dist,
+               dist_buf_busy_limit,
+               dist_ctrl,
+               driver_version,
+               dynamic_trace,
+               dynamic_trace_probes,
+               elib_malloc,
+               ets_limit,
+               fullsweep_after,
+               garbage_collection,
+               heap_sizes,
+               heap_type,
+               kernel_poll,
+               logical_processors,
+               logical_processors_available,
+               logical_processors_online,
+               machine,
+               min_heap_size,
+               min_bin_vheap_size,
+               modified_timing_level,
+               multi_scheduling,
+               multi_scheduling_blockers,
+               otp_release,
+               port_count,
+               port_limit,
+               process_count,
+               process_limit,
+               scheduler_bind_type,
+               scheduler_bindings,
+               scheduler_id,
+               schedulers,
+               schedulers_online,
+               smp_support,
+               system_version,
+               system_architecture,
+               threads,
+               thread_pool_size,
+               trace_control_word,
+               update_cpu_info,
+               version,
+               wordsize]),
+
+    [{K, (catch erlang:system_info(K))} || K <- Kinds].
 
 -ifdef(EUNIT).
 
