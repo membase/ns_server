@@ -189,6 +189,14 @@ create_erl_node_spec(Type, Args, EnvArgsVar, ErlangArgs) ->
     {Type, ErlPath, AllArgs, Options}.
 
 per_bucket_moxi_specs(Config) ->
+    case ns_cluster_membership:should_run_service(Config, kv, node()) of
+        true ->
+            do_per_bucket_moxi_specs(Config);
+        false ->
+            []
+    end.
+
+do_per_bucket_moxi_specs(Config) ->
     BucketConfigs = ns_bucket:get_buckets(Config),
     RestPort = ns_config:search_node_prop(Config, rest, port),
     Command = path_config:component_path(bin, "moxi"),
@@ -498,6 +506,14 @@ do_run_via_goport({Name, Cmd, Args, Opts}) ->
     {Name, GoportPath, [], Opts1}.
 
 moxi_spec(Config) ->
+    case ns_cluster_membership:should_run_service(Config, kv, node()) of
+        true ->
+            do_moxi_spec(Config);
+        false ->
+            []
+    end.
+
+do_moxi_spec(Config) ->
     Spec = {moxi, path_config:component_path(bin, "moxi"),
             ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=1024,downstream_conn_max=4,"
                     "connect_max_errors=5,connect_retry_interval=30000,"
