@@ -230,17 +230,17 @@ per_bucket_moxi_specs(Config) ->
 dynamic_children() ->
     Config = ns_config:get(),
 
-    {value, PortServers} = ns_config:search_node(Config, port_servers),
+    Specs = [memcached_spec(Config),
+             moxi_spec(Config),
+             run_via_goport(kv_node_projector_spec(Config)),
+             run_via_goport(index_node_spec(Config)),
+             run_via_goport(query_node_spec(Config)),
+             saslauthd_port_spec(Config),
+             run_via_goport(goxdcr_spec(Config)),
+             per_bucket_moxi_specs(Config),
+             maybe_create_ssl_proxy_spec(Config)],
 
-    MaybeSSLProxySpec = maybe_create_ssl_proxy_spec(Config),
-
-    [expand_args(NCAO) || NCAO <- PortServers] ++
-        run_via_goport(kv_node_projector_spec(Config)) ++
-        run_via_goport(index_node_spec(Config)) ++
-        run_via_goport(query_node_spec(Config)) ++
-        saslauthd_port_spec(Config) ++
-        run_via_goport(goxdcr_spec(Config)) ++
-        per_bucket_moxi_specs(Config) ++ MaybeSSLProxySpec.
+    lists:flatten(Specs).
 
 query_node_spec(Config) ->
     case ns_cluster_membership:should_run_service(Config, n1ql, node()) of
@@ -414,8 +414,7 @@ saslauthd_port_spec(Config) ->
             []
     end.
 
-expand_args({Name, Cmd, ArgsIn, OptsIn}) ->
-    Config = ns_config:get(),
+expand_args({Name, Cmd, ArgsIn, OptsIn}, Config) ->
     %% Expand arguments
     Args0 = lists:map(fun ({Format, Keys}) ->
                               format(Config, Name, Format, Keys);
@@ -497,3 +496,57 @@ do_run_via_goport({Name, Cmd, Args, Opts}) ->
 
     Opts1 = lists:keystore(env, 1, Opts, {env, Env1}),
     {Name, GoportPath, [], Opts1}.
+
+moxi_spec(Config) ->
+    Spec = {moxi, path_config:component_path(bin, "moxi"),
+            ["-Z", {"port_listen=~B,default_bucket_name=default,downstream_max=1024,downstream_conn_max=4,"
+                    "connect_max_errors=5,connect_retry_interval=30000,"
+                    "connect_timeout=400,"
+                    "auth_timeout=100,cycle=200,"
+                    "downstream_conn_queue_timeout=200,"
+                    "downstream_timeout=5000,wait_queue_timeout=200",
+                    [port]},
+             "-z", {"url=http://127.0.0.1:~B/pools/default/saslBucketsStreaming",
+                    [{misc, this_node_rest_port, []}]},
+             "-p", "0",
+             "-Y", "y",
+             "-O", "stderr",
+             {"~s", [verbosity]}
+            ],
+            [{env, [{"EVENT_NOSELECT", "1"},
+                    {"MOXI_SASL_PLAIN_USR", {"~s", [{ns_moxi_sup, rest_user, []}]}},
+                    {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}}
+                   ]},
+             use_stdio, exit_status,
+             stderr_to_stdout,
+             stream]
+           },
+
+    [expand_args(Spec, Config)].
+
+memcached_spec(Config) ->
+    Spec = {memcached, path_config:component_path(bin, "memcached"),
+            ["-C", {"~s", [{memcached, config_path}]}],
+            [{env, [{"EVENT_NOSELECT", "1"},
+                    %% NOTE: bucket engine keeps this number of top keys
+                    %% per top-keys-shard. And number of shards is hard-coded to 8
+                    %%
+                    %% So with previous setting of 100 we actually got 800
+                    %% top keys every time. Even if we need just 10.
+                    %%
+                    %% See hot_keys_keeper.erl TOP_KEYS_NUMBER constant
+                    %%
+                    %% Because of that heavy sharding we cannot ask for
+                    %% very small number, which would defeat usefulness
+                    %% LRU-based top-key maintenance in memcached. 5 seems
+                    %% not too small number which means that we'll deal
+                    %% with 40 top keys.
+                    {"MEMCACHED_TOP_KEYS", "5"},
+                    {"ISASL_PWFILE", {"~s", [{isasl, path}]}}]},
+             use_stdio,
+             stderr_to_stdout, exit_status,
+             port_server_dont_start,
+             stream]
+           },
+
+    [expand_args(Spec, Config)].
