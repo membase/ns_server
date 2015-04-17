@@ -549,7 +549,7 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
     ComputeFragmentation =
         fun (DiskSize, DataSize) ->
                 try
-                    100 * (DiskSize - DataSize) / DiskSize
+                    100 * max(0, (DiskSize - DataSize)) / DiskSize
                 catch error:badarith ->
                         0
                 end
