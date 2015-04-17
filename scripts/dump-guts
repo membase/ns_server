@@ -592,6 +592,14 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     BucketNames = [Name || {Name, _} <- BucketTypePairs],
     MCDBucketNames = [Name || {Name, memcached} <- BucketTypePairs],
 
+    MoxiConfig = search_config_for_node(NSConfig, Node, moxi, []),
+    MoxiPort = search_config(MoxiConfig, port, undefined),
+    PerBucketMoxiPorts = [P || {B, Props} <- BucketConfigs,
+                               P <- [proplists:get_value(moxi_port, Props)]],
+
+    MoxiPorts = [integer_to_list(P) || P <- [MoxiPort | PerBucketMoxiPorts],
+                                       is_integer(P)],
+
     NSLogPath = search_config(search_config_for_node(NSConfig, Node, ns_log, []),
                               filename,
                               ""),
@@ -606,6 +614,7 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
              {idx_dir, IdxDir},
              {rest_port, RestPort},
              {memcached_port, MCDPort},
+             {moxi_ports, string:join(MoxiPorts, ",")},
              {buckets, string:join(BucketNames, ",")},
              {memcached_buckets, string:join(MCDBucketNames, ",")},
              {ns_log_path, NSLogPath},
