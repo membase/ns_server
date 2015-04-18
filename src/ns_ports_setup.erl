@@ -471,18 +471,12 @@ memcached_force_killer_fn(_, State) ->
     State.
 
 omit_missing_mcd_ports(Interfaces, MCDParams) ->
-    ExpandedPorts = misc:rewrite(
-                      fun ({port, PortName}) when is_atom(PortName) ->
-                              {stop, {port, proplists:get_value(PortName, MCDParams)}};
-                          (_Other) ->
-                              continue
-                      end, Interfaces),
-    Ports = [Obj || Obj <- ExpandedPorts,
-                    case Obj of
-                        {PortProps} ->
-                            proplists:get_value(port, PortProps) =/= undefined
-                    end],
-    memcached_config_mgr:expand_memcached_config(Ports, MCDParams).
+    Expanded = memcached_config_mgr:expand_memcached_config(Interfaces, MCDParams),
+    [Obj || Obj <- Expanded,
+            case Obj of
+                {Props} ->
+                    proplists:get_value(port, Props) =/= undefined
+            end].
 
 run_via_goport(Specs) ->
     lists:map(fun do_run_via_goport/1, Specs).
