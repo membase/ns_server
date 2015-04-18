@@ -25,7 +25,7 @@
 -export([expand_memcached_config/2]).
 
 %% referenced from ns_config_default
--export([get_minidump_dir/2]).
+-export([get_minidump_dir/2, omit_missing_mcd_ports/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -300,3 +300,11 @@ expand_memcached_config(Verbatim, _Params) ->
 
 get_minidump_dir([], Params) ->
     list_to_binary(proplists:get_value(breakpad_minidump_dir_path, Params,  proplists:get_value(log_path, Params))).
+
+omit_missing_mcd_ports(Interfaces, MCDParams) ->
+    Expanded = memcached_config_mgr:expand_memcached_config(Interfaces, MCDParams),
+    [Obj || Obj <- Expanded,
+            case Obj of
+                {Props} ->
+                    proplists:get_value(port, Props) =/= undefined
+            end].

@@ -280,7 +280,7 @@ default() ->
      {{node, node(), memcached_config},
       {[
         {interfaces,
-         {ns_ports_setup, omit_missing_mcd_ports,
+         {memcached_config_mgr, omit_missing_mcd_ports,
           [
            {[{host, <<"*">>},
              {port, port},

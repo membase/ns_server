@@ -7,9 +7,6 @@
          restart_xdcr_proxy/0, sync/0, create_erl_node_spec/4,
          create_goxdcr_upgrade_spec/1]).
 
-%% referenced by config
--export([omit_missing_mcd_ports/2]).
-
 start() ->
     proc_lib:start_link(?MODULE, setup_body_tramp, []).
 
@@ -469,14 +466,6 @@ memcached_force_killer_fn({{node, Node, membership}, NewMembership}, PrevMembers
 
 memcached_force_killer_fn(_, State) ->
     State.
-
-omit_missing_mcd_ports(Interfaces, MCDParams) ->
-    Expanded = memcached_config_mgr:expand_memcached_config(Interfaces, MCDParams),
-    [Obj || Obj <- Expanded,
-            case Obj of
-                {Props} ->
-                    proplists:get_value(port, Props) =/= undefined
-            end].
 
 run_via_goport(Specs) ->
     lists:map(fun do_run_via_goport/1, Specs).
