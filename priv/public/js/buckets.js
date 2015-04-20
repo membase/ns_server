@@ -182,7 +182,7 @@ var BucketDetailsDialog = mkClass({
     this.isNew = isNew;
     this.initValues = initValues;
 
-    _.each(["database", "index", "view"], function (name) {
+    _.each(["database", "view"], function (name) {
       renderTemplate('js_fragmentation_settings', {name: name}, $("#js_"+name+"_fragmentation_bucket_settings")[0])
     });
 
