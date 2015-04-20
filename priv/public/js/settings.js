@@ -52,7 +52,7 @@ var SettingsSection = {
       rootNode.find('.error-container.active').empty().removeClass('active');
       rootNode.find('input.invalid').removeClass('invalid');
       if ($.isEmptyObject(val.errors)) {
-        if (enableSaveButton) {
+        if (enableSaveButton === true || enableSaveButton === undefined) {
           (saveButton || rootNode.find('.save_button')).removeAttr('disabled');
         }
       } else {

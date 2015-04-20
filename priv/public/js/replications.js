@@ -367,7 +367,7 @@ var ReplicationForm = mkClass({
       if (status == 'success') {
         self.close();
       } else {
-        SettingsSection.renderErrors(errorObject || data, self.form, null, null, true);
+        SettingsSection.renderErrors(errorObject || data, self.form, undefined, undefined, true);
       }
     });
   },
