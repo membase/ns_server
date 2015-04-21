@@ -3664,6 +3664,7 @@ handle_saslauthd_auth_settings_post(Req) ->
     case parse_validate_saslauthd_settings(Req:parse_post()) of
         {ok, Props} ->
             menelaus_auth:set_saslauthd_auth_settings(Props),
+            ns_audit:setup_ldap(Req, Props),
             handle_saslauthd_auth_settings(Req);
         {errors, Errors} ->
             reply_json(Req, {Errors}, 400)

@@ -603,6 +603,24 @@
           "optional_fields" : {
               "sessionid" : ""
           }
+      },
+      {
+          "id" : 8227,
+          "name" : "setup ldap",
+          "description" : "LDAP Auth settings were modified",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "enabled" : false,
+              "admins" : "",
+              "ro_admins" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
       }
     ]
 }

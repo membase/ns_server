@@ -52,7 +52,8 @@
          reset_auto_failover_count/1,
          alerts/2,
          modify_compaction_settings/2,
-         regenerate_certificate/1
+         regenerate_certificate/1,
+         setup_ldap/2
         ]).
 
 code(login_success) ->
@@ -124,7 +125,9 @@ code(disable_cluster_alerts) ->
 code(modify_compaction_settings) ->
     8225;
 code(regenerate_certificate) ->
-    8226.
+    8226;
+code(setup_ldap) ->
+    8227.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -428,3 +431,14 @@ modify_compaction_settings(Req, Settings) ->
 
 regenerate_certificate(Req) ->
     put(regenerate_certificate, Req, []).
+
+build_ldap_users(asterisk) ->
+    default;
+build_ldap_users(List) ->
+    {list, List}.
+
+setup_ldap(Req, Props) ->
+    put(setup_ldap, Req,
+        [{enabled, misc:expect_prop_value(enabled, Props)},
+         {admins, build_ldap_users(misc:expect_prop_value(admins, Props))},
+         {ro_admins, build_ldap_users(misc:expect_prop_value(roAdmins, Props))}]).
