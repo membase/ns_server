@@ -692,7 +692,7 @@ body.init_cluster #init_cluster_dialog div.join_cluster_dialog_errors_container 
 .init_block .wizard_services label {text-align: left; width: 45px;vertical-align: middle;}
 .init_block .wizard_services input {vertical-align: middle;}
 .init_block .login-credentials,
-.init_block .start_new_cluster_block {margin-left: 85px; line-height: 28px;}
+.init_block .start_new_cluster_block {margin-left: 85px; margin-right: 85px; line-height: 28px;}
 .init_block .warning {clear:both;display:block;line-height:15px; margin: 20px 0 0; font-size: 11px; padding: 0;}
 
 
@@ -1170,7 +1170,7 @@ span.staleness-notice, .staleness-notice { font-size: 12px!important; display: n
 .dynamic_with_server_resources .darker_block.dynamic_server_resources { display: block; }
 
 body.init_setting_memory_quota #init_setting_memory_quota_dialog {display: block;}
-.init_setting_memory_quota .cluster_quota_settings {margin: 10px 85px;}
+.init_setting_memory_quota .cluster_quota_settings {margin-left: 85px; margin-right: 85px;}
 .init_setting_memory_quota .cluster_quota_settings label{display: inline-block; width: 130px;}
 /* update notifications page in the startup wizard */
 body.init_update_notifications #init_update_notifications_dialog {display:block}
