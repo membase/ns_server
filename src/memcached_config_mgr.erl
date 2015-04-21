@@ -173,7 +173,7 @@ apply_changed_memcached_config(DifferentConfig, State) ->
                     {noreply, State};
                 _ ->
                     ?log_debug("will auto-restart memcached"),
-                    {ok, _} = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, restart_port_by_name, [memcached]),
+                    ok = ns_ports_setup:restart_memcached(),
                     ale:info(?USER_LOGGER, "auto-restarted memcached for config change"),
                     {stop, {shutdown, restarting_memcached}, State}
             end
