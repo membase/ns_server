@@ -970,7 +970,7 @@ get_dcp_docs_estimate(Sock, VBucket, ConnName) ->
                                   {AccEstimate, AccChkItems, V};
                               (_, _, Acc) ->
                                   Acc
-                          end, {0, 0, <<"unknown">>}).
+                          end, {0, 0, <<"does_not_exist">>}).
 
 -spec get_mass_dcp_docs_estimate(port(), [vbucket_id()]) ->
                                         {ok, [{non_neg_integer(), non_neg_integer(), binary()}]}.
