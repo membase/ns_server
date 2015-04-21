@@ -2239,13 +2239,17 @@ get_indexes(BucketId) ->
                            do_get_indexes(BucketId, Nodes)
                    end, 5000).
 
-do_get_indexes(BucketId, Nodes) ->
+do_get_indexes(BucketId0, Nodes) ->
     NIs = ns_doctor:get_nodes(),
+    BucketId = list_to_binary(BucketId0),
+
     AllIndexes =
         [case dict:find(N, NIs) of
              error -> [];
              {ok, NI} ->
                  Indexes = proplists:get_value(indexes, proplists:get_value(index_status, NI, []), []),
-                 proplists:get_value(list_to_binary(BucketId), Indexes, [])
+                 [Name || I <- Indexes,
+                          proplists:get_value(bucket, I) =:= BucketId,
+                          {index, Name} <- [lists:keyfind(index, 1, I)]]
          end || N <- Nodes],
     lists:usort(lists:append(AllIndexes)).
