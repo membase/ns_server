@@ -109,52 +109,43 @@ handle_recursive_delete_post(Req, Params) ->
 
 handle_iterate_post(Req, Params) ->
     Path = list_to_binary(proplists:get_value("path", Params)),
-    Continuous = erlang:list_to_existing_atom(proplists:get_value("continuous", Params, "false")),
-    %% Return error if Continuous is true while iterating Checkpoints
-    case misc:is_prefix(?XDCR_CHECKPOINT_PATTERN, Path) andalso Continuous of
-        false ->
-            handle_iterate(Req, Path, Continuous);
+    Continuous = proplists:get_value("continuous", Params, "false") =:= "true",
+    case Continuous =/= true orelse metakv:check_continuous_allowed(Path) of
         true ->
-            ?log_debug("Continuous should not be set to true while iterating on XDCR Checkpoints.~n"),
+            handle_iterate(Req, Path, Continuous);
+        false ->
             %% Return http error - 405: Method Not Allowed
             menelaus_util:reply(Req, 405)
     end.
 
 handle_iterate(Req, Path, Continuous) ->
-    Self = self(),
     HTTPRes = menelaus_util:reply_ok(Req, "application/json; charset=utf-8", chunked),
     ?log_debug("Starting iteration of ~s. Continuous = ~s", [Path, Continuous]),
     case Continuous of
         true ->
-            ok = mochiweb_socket:setopts(Req:get(socket), [{active, true}]),
-            ns_pubsub:subscribe_link(
-              ns_config_events,
-              fun ([_|_] = KVs) ->
-                      %% we receive kvlist events because they include
-                      %% vclocks
-                      Self ! {config, KVs};
-                  (_) ->
-                      ok
-              end);
+            ok = mochiweb_socket:setopts(Req:get(socket), [{active, true}]);
         false ->
             ok
     end,
-    KV = metakv:iterate_matching(Path),
-    lists:foreach(
-      fun({K, V}) ->
-              output_kv(HTTPRes, K, V)
-      end,
-      KV),
+    RV = metakv:iterate_matching(Path, Continuous,
+                                 fun({K, V, VC}) ->
+                                         output_kv(HTTPRes, K, V, VC);
+                                    ({K, V}) ->
+                                         output_kv(HTTPRes, K, V, undefined)
+                                 end),
     case Continuous of
         true ->
-            iterate_loop(HTTPRes, Path);
+            RV;
         false ->
             HTTPRes:write_chunk("")
     end.
 
-output_kv(HTTPRes, {metakv, K}, V0) ->
-    V = metakv:strip_sensitive(ns_config:strip_metadata(V0)),
-    VC = ns_config:extract_vclock(V0),
+output_kv(HTTPRes, K, V, undefined) ->
+    ?log_debug("Sent ~s", [K]),
+    HTTPRes:write_chunk(ejson:encode({[{rev, null},
+                                       {path, K},
+                                       {value, base64:encode(V)}]}));
+output_kv(HTTPRes, K, V, VC) ->
     Rev0 = base64:encode(erlang:term_to_binary(VC)),
     {Rev, Value} = case V of
                        ?DELETED_MARKER ->
@@ -165,26 +156,5 @@ output_kv(HTTPRes, {metakv, K}, V0) ->
     ?log_debug("Sent ~s rev: ~s", [K, Rev]),
     HTTPRes:write_chunk(ejson:encode({[{rev, Rev},
                                        {path, K},
-                                       {value, Value}]}));
-
-%% Keys (e.g. XDCR ckpt) stored in simple-store do not have metakv tag
-%% and revisions.
-output_kv(HTTPRes, K, V) ->
-    ?log_debug("Sent ~s", [K]),
-    HTTPRes:write_chunk(ejson:encode({[{rev, null},
-                                       {path, K},
-                                       {value, base64:encode(V)}]})).
-iterate_loop(HTTPRes, Path) ->
-    receive
-        {config, KVs} ->
-            KV = metakv:iterate_matching(Path, KVs),
-            lists:foreach(
-              fun({K, V}) ->
-                      output_kv(HTTPRes, K, V)
-              end,
-              KV),
-            iterate_loop(HTTPRes, Path);
-        _ ->
-            erlang:exit(normal)
-    end.
+                                       {value, Value}]})).
 

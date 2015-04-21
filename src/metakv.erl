@@ -24,8 +24,8 @@
          delete/1,
          delete_matching/1,
          mutate/2, mutate/3,
-         iterate_matching/1, iterate_matching/2,
-         strip_sensitive/1]).
+         iterate_matching/1, iterate_matching/2, iterate_matching/3,
+         check_continuous_allowed/1]).
 
 %% Exported APIs
 
@@ -81,7 +81,27 @@ iterate_matching(KeyPrefix) ->
 %% User has passed the full KV list, we need to return KVs that match the
 %% prefix.
 iterate_matching(KeyPrefix, KVList) ->
-    matching_kvs(KeyPrefix, KVList).
+    ns_config_matching_kvs(KeyPrefix, KVList).
+
+%% Read keys from appropriate store and run the Callback function on
+%% KVs that match the prefix
+iterate_matching(KeyPrefix, Continuous, Callback) ->
+    case which_store(KeyPrefix) of
+        simple_store ->
+            simple_store_iterate_matching(KeyPrefix, Callback);
+        ns_config ->
+            ns_config_iterate_matching(KeyPrefix, Continuous, Callback)
+    end.
+
+%% Simple store does not support continuous iteration
+check_continuous_allowed(Key) ->
+    case which_store(Key) of
+        simple_store ->
+            ?log_debug("Continuous should not be set to true while iterating on XDCR Checkpoints.~n"),
+            false;
+        ns_config ->
+            true
+    end.
 
 %% Internal
 
@@ -120,6 +140,14 @@ simple_store_mutation(Key, Value) ->
         false ->
             simple_store:set(?XDCR_CHECKPOINT_STORE, Key, Value)
     end.
+
+simple_store_iterate_matching(KeyPrefix, Callback) ->
+    KVs = simple_store:iterate_matching(?XDCR_CHECKPOINT_STORE, KeyPrefix),
+    lists:foreach(
+      fun({K, V}) ->
+              Callback({K, V})
+      end,
+      KVs).
 
 %% NS Config related functions
 
@@ -269,14 +297,61 @@ mk_config_filter(KeyBin) ->
     end.
 
 ns_config_iterate_matching(Key) ->
-    KVs = matching_kvs(Key, ns_config:get_kv_list()),
+    KVs = ns_config_matching_kvs(Key, ns_config:get_kv_list()),
     %% This function gets called during first iteration of
     %% menelaus_metakv:handle_iterate(). Skip deleted entries for
     %% the first iteration. This will retain the behaviour as it existed
     %% before this code was moved here from menelaus_metakv.erl.
     [{K, V} || {K, V} <- KVs, ns_config:strip_metadata(V) =/= ?DELETED_MARKER].
 
-matching_kvs(Key, KVList) ->
+ns_config_iterate_matching(Key, Continuous, Callback) ->
+    Self = self(),
+    case Continuous of
+        true ->
+            ns_pubsub:subscribe_link(
+              ns_config_events,
+              fun ([_|_] = KVs) ->
+                      %% we receive kvlist events because they include
+                      %% vclocks
+                      Self ! {config, KVs};
+                  (_) ->
+                      ok
+              end);
+        false ->
+            ok
+    end,
+    KV = ns_config_iterate_matching(Key),
+    lists:foreach(
+      fun({{metakv, K}, V0}) ->
+              VC = ns_config:extract_vclock(V0),
+              V = strip_sensitive(ns_config:strip_metadata(V0)),
+              Callback({K, V, VC})
+      end,
+      KV),
+    case Continuous of
+        true ->
+            ns_config_iterate_loop(Key, Callback);
+        false ->
+            ok
+    end.
+
+ns_config_iterate_loop(Key, Callback) ->
+    receive
+        {config, KVs} ->
+            KV = ns_config_matching_kvs(Key, KVs),
+            lists:foreach(
+              fun({{metakv, K}, V0}) ->
+                      VC = ns_config:extract_vclock(V0),
+                      V = strip_sensitive(ns_config:strip_metadata(V0)),
+                      Callback({K, V, VC})
+              end,
+              KV),
+            ns_config_iterate_loop(Key, Callback);
+        _ ->
+            erlang:exit(normal)
+    end.
+
+ns_config_matching_kvs(Key, KVList) ->
     Filter = mk_config_filter(Key),
     %% This function gets called during subsequent iteration of
     %% menelaus_metakv:handle_iterate(). Do not skip deleted entries.
