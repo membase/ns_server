@@ -466,8 +466,7 @@ validate_boolean(Name, {OutList, _, _} = State) ->
         undefined ->
             State;
         _ ->
-            return_error(Name, io_lib:format("The value of ~p must be true or false",
-                                             [Name]), State)
+            return_error(Name, "The value must be true or false", State)
     end.
 
 validate_dir(Name, {OutList, _, _} = State) ->
@@ -480,8 +479,7 @@ validate_dir(Name, {OutList, _, _} = State) ->
                 true ->
                     return_value(Name, Value, State);
                 false ->
-                    return_error(Name, io_lib:format("The value of ~p must be a valid directory",
-                                                     [Name]), State)
+                    return_error(Name, "The value must be a valid directory", State)
             end
     end.
 
@@ -496,15 +494,14 @@ validate_integer(Name, {OutList, _, _} = State) ->
                 true ->
                     return_value(Name, Int, State);
                 false ->
-                    return_error(Name, io_lib:format("The value of ~p must be integer",
-                                                     [Name]), State)
+                    return_error(Name, "The value must be an integer", State)
             end
     end.
 
 validate_range(Name, Min, Max, State) ->
-    ErrorFun = fun (NameArg, MinArg, MaxArg) ->
-                       io_lib:format("The value of ~p must be in range from ~p to ~p",
-                                     [NameArg, MinArg, MaxArg])
+    ErrorFun = fun (_NameArg, MinArg, MaxArg) ->
+                       io_lib:format("The value must be in range from ~p to ~p",
+                                     [MinArg, MaxArg])
                end,
     validate_range(Name, Min, Max, ErrorFun, State).
 
