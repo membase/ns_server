@@ -76,7 +76,7 @@ init([]) ->
                 ok = misc:atomic_write_file(McdConfigPath, WantedMcdConfig),
                 ?log_debug("wrote memcached config to ~s. Will activate memcached port server",
                            [McdConfigPath]),
-                ok = gen_server:call(Pid, activate, infinity),
+                ok = ns_port_server:activate(Pid),
                 ?log_debug("activated memcached port server"),
                 WantedMcdConfig;
             _ ->
@@ -227,7 +227,7 @@ get_memcached_config_path() ->
     Path.
 
 read_current_memcached_config(McdPortServer) ->
-    case gen_server:call(McdPortServer, is_active, infinity) of
+    case ns_port_server:is_active(McdPortServer) of
         true ->
             FilePath = get_memcached_config_path(),
             PrevFilePath = FilePath ++ ".prev",

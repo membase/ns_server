@@ -20,7 +20,8 @@
 -include("ns_common.hrl").
 
 %% API
--export([start_link/1, start_link_named/2]).
+-export([start_link/1, start_link_named/2,
+         is_active/1, activate/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -56,10 +57,16 @@
 start_link(Fun) ->
     gen_server:start_link(?MODULE,
                           Fun, []).
-
 start_link_named(Name, Fun) ->
     gen_server:start_link({local, Name}, ?MODULE, Fun, []).
 
+is_active(Pid) ->
+    gen_server:call(Pid, is_active, infinity).
+
+activate(Pid) ->
+    gen_server:call(Pid, activate, infinity).
+
+%% gen_server callbacks
 init(Fun) ->
     {Name, _Cmd, _Args, Opts} = Params = Fun(),
     process_flag(trap_exit, true), % Make sure terminate gets called
