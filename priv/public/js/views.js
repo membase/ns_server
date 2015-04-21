@@ -2351,6 +2351,8 @@ var SpatialFilter = Filter({
   items: {
     stale: true,
     bbox: true,
+    startRange: true,
+    endRange: true,
     connectionTimeout: true
   }
 });

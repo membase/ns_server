@@ -1694,6 +1694,14 @@
                         <label for="{%= prefix %}_filter_bbox">bbox</label>
                         <input id="{%= prefix %}_filter_bbox" name="bbox" type="text">
                       </div><!--{% }%}-->
+                      <!--{% if (items.startRange) {%}--><div>
+                        <label for="{%= prefix %}_filter_start_range">start_range</label>
+                        <input id="{%= prefix %}_filter_start_range" name="start_range" type="text">
+                      </div><!--{% }%}-->
+                      <!--{% if (items.endRange) {%}--><div>
+                        <label for="{%= prefix %}_filter_end_range">end_range</label>
+                        <input id="{%= prefix %}_filter_end_range" name="end_range" type="text">
+                      </div><!--{% }%}-->
                       <!--{% if (items.descending) {%}--><div>
                         <label for="{%= prefix %}_filter_descending">descending</label>
                         <input id="{%= prefix %}_filter_descending" name="descending" type="checkbox">
