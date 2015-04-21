@@ -1189,6 +1189,10 @@ var ViewsSection = {
         var targ = {rows: {lackOfValue: true}};
       }
       renderTemplate('spatial_results', targ);
+      $('.sample-document-link').click(function (e) {
+        e.preventDefault();
+        self.sampleDocumentIdCell.setValue($(this).attr('data-sample-doc-id'));
+      });
     });
 
     (function () {

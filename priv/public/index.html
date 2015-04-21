@@ -1890,9 +1890,9 @@
                     <td class="keycol">
                         <div class="key">{%= h(JSON.stringify(r.key)) %}</div>
                         {% if (h(r.id) !== "undefined") { %}
-                          <a class="id">{%= h(r.id) %}</a>
+                          <a class="id ellipsis sample-document-link" data-sample-doc-id="{%= h(r.id) %}" href="#">{%= h(r.id) %}</a>
                         {% } else { %}
-                          <div class="id">{%= h(r.id) %}</div>
+                          <div class="id ellipsis">{%= h(r.id) %}</div>
                         {% } %}
                     </td>
                     <td>{%= h(JSON.stringify(r.geometry)) %}</td>
