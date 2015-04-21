@@ -1178,6 +1178,7 @@ var ViewsSection = {
       $('.sample-document-link').click(function (e) {
         e.preventDefault();
         self.sampleDocumentIdCell.setValue($(this).attr('data-sample-doc-id'));
+        $('html, body').animate({scrollTop:0}, 0);
       });
     });
 
@@ -1192,6 +1193,7 @@ var ViewsSection = {
       $('.sample-document-link').click(function (e) {
         e.preventDefault();
         self.sampleDocumentIdCell.setValue($(this).attr('data-sample-doc-id'));
+        $('html, body').animate({scrollTop:0}, 0);
       });
     });
 
