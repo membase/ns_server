@@ -161,15 +161,16 @@ build_node_info(N, User, Config) ->
 
 build_buckets_info() ->
     Buckets = ns_bucket:get_buckets(),
-    {lists:map(fun ({BucketName, BucketProps}) ->
-                       {erlang:list_to_binary(BucketName),
-                        case proplists:get_value(auth_type, BucketProps) of
-                            sasl ->
-                                erlang:list_to_binary(proplists:get_value(sasl_password, BucketProps));
-                            none ->
-                                <<"">>
-                        end}
-               end, Buckets)}.
+    lists:map(fun ({BucketName, BucketProps}) ->
+                      {[{name, erlang:list_to_binary(BucketName)},
+                        {password,
+                         case proplists:get_value(auth_type, BucketProps) of
+                             sasl ->
+                                 erlang:list_to_binary(proplists:get_value(sasl_password, BucketProps));
+                             none ->
+                                 <<"">>
+                         end}]}
+              end, Buckets).
 
 build_cred_info(Role) ->
     case ns_config_auth:get_creds(Role) of
