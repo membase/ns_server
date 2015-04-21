@@ -140,7 +140,7 @@ wait_for_data_move_loop([Node | Rest], Bucket, Partition, DoneLimit) ->
 
 wait_for_data_move_on_one_node(Iterations, Connection, Bucket, Partition, DoneLimit) ->
     case ns_memcached:get_dcp_docs_estimate(Bucket, Partition, Connection) of
-        {ok, {_, _, <<"unknown">>}} ->
+        {ok, {_, _, <<"does_not_exist">>}} ->
             undefined;
         {ok, {N, _, _}} when N < DoneLimit ->
             ok;
