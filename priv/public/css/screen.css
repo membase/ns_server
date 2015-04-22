@@ -29,7 +29,8 @@ input, textarea {margin:0;padding:3px;font-size:13px;border:1px solid #ccd3d7;}
 input[type=image] {border:none}
 input[type=number] {width:40px;}
 input[type=number].size {width: 70px;}
-input[disabled=disabled], input[disabled=true], input[disabled] {background-color: #eeeeef;}
+input[disabled=disabled], input[disabled=true], input[disabled],
+textarea[disabled=disabled], textarea[disabled=true], textarea[disabled] {background-color: #eeeeef;}
 input[type=radio], input[type=checkbox] {border:none}
 ::-webkit-input-placeholder {color:#999}
 :-moz-placeholder{color:#999 !important}
