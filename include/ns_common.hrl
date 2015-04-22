@@ -72,6 +72,7 @@
 -define(REPORTS_LOG_FILENAME, "reports.log").
 -define(XDCR_TRACE_LOG_FILENAME, "xdcr_trace.log").
 -define(ACCESS_LOG_FILENAME, "http_access.log").
+-define(INT_ACCESS_LOG_FILENAME, "http_access_internal.log").
 -define(GOXDCR_LOG_FILENAME, "goxdcr.log").
 -define(QUERY_LOG_FILENAME, "query.log").
 -define(PROJECTOR_LOG_FILENAME, "projector.log").

@@ -134,16 +134,25 @@ reply_json(Req, Body, Code) ->
 reply_json(Req, Body, Code, ExtraHeaders) ->
     reply_inner(Req, encode_json(Body), Code, [{"Content-Type", "application/json"} | ExtraHeaders]).
 
+log_web_hit(Peer, Req, Resp) ->
+    Level = case menelaus_auth:extract_auth(Req) of
+                {"@", _} ->
+                    debug;
+                 _ ->
+                    info
+            end,
+    ale:xlog(?ACCESS_LOGGER, Level, {Peer, Req, Resp}, "", []).
+
 reply_ok(Req, ContentType, Body) ->
     Peer = Req:get(peer),
     Resp = Req:ok({ContentType, server_headers(), Body}),
-    ?log_web_hit(Peer, Req, Resp),
+    log_web_hit(Peer, Req, Resp),
     Resp.
 
 reply_ok(Req, ContentType, Body, ExtraHeaders) ->
     Peer = Req:get(peer),
     Resp = Req:ok({ContentType, extend_server_headers(ExtraHeaders), Body}),
-    ?log_web_hit(Peer, Req, Resp),
+    log_web_hit(Peer, Req, Resp),
     Resp.
 
 reply(Req, Code, ExtraHeaders) ->
@@ -161,7 +170,7 @@ reply_inner(Req, Body, Code) ->
 respond(Req, RespTuple) ->
     Peer = Req:get(peer),
     Resp = Req:respond(RespTuple),
-    ?log_web_hit(Peer, Req, Resp),
+    log_web_hit(Peer, Req, Resp),
     Resp.
 
 extend_server_headers(ExtraHeaders) ->
@@ -204,7 +213,7 @@ serve_file(Req, File, Root) ->
 serve_file(Req, File, Root, ExtraHeaders) ->
     Peer = Req:get(peer),
     Resp = Req:serve_file(File, Root, ExtraHeaders),
-    ?log_web_hit(Peer, Req, Resp),
+    log_web_hit(Peer, Req, Resp),
     Resp.
 
 expect_config(Key) ->

@@ -161,6 +161,7 @@ do_init_logging() ->
     ok = start_disk_sink(disk_reports, ?REPORTS_LOG_FILENAME),
     ok = start_disk_sink(xdcr_trace, ?XDCR_TRACE_LOG_FILENAME),
     ok = start_disk_sink(disk_access, ?ACCESS_LOG_FILENAME),
+    ok = start_disk_sink(disk_access_int, ?INT_ACCESS_LOG_FILENAME),
 
     ok = start_sink(ns_log, ns_log_sink, []),
 
@@ -178,7 +179,7 @@ do_init_logging() ->
     ok = ale:start_logger(?XDCR_TRACE_LOGGER, get_loglevel(?XDCR_TRACE_LOGGER),
                           xdcr_trace_log_formatter),
 
-    ok = ale:start_logger(?ACCESS_LOGGER, info, menelaus_access_log_formatter),
+    ok = ale:start_logger(?ACCESS_LOGGER, debug, menelaus_access_log_formatter),
 
     OverrideLoglevels = [{?STATS_LOGGER, warn},
                          {?NS_DOCTOR_LOGGER, warn}],
@@ -218,7 +219,8 @@ do_init_logging() ->
 
     ok = ale:add_sink(?XDCR_TRACE_LOGGER, xdcr_trace, debug),
 
-    ok = ale:add_sink(?ACCESS_LOGGER, disk_access, get_loglevel(?ACCESS_LOGGER)),
+    ok = ale:add_sink(?ACCESS_LOGGER, disk_access, info),
+    ok = ale:add_sink(?ACCESS_LOGGER, disk_access_int, debug),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->

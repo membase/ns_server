@@ -14,5 +14,3 @@
                  {menelaus_web, Code}, Msg, Args)).
 
 -define(MENELAUS_WEB_LOG(Code, Msg), ?MENELAUS_WEB_LOG(Code, Msg, [])).
-
--define(log_web_hit(Peer, Req, Resp), ale:xlog(?ACCESS_LOGGER, info, {Peer, Req, Resp}, "", [])).
