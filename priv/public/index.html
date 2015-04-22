@@ -2232,9 +2232,7 @@
       <label class="when-goxdcr-disabled"><span>XDCR Max Replications per Bucket</span><input maxlength="5" style="width:1.5em;" name="xdcrMaxConcurrentReps"></label>
       <label class="when-goxdcr-enabled"><span>XDCR Source Nozzles per Node</span><input maxlength="5" style="width:1.5em;" name="xdcrSourceNozzlePerNode"></label>
       <label class="when-goxdcr-enabled"><span>XDCR Target Nozzles per Node</span><input maxlength="5" style="width:1.5em;" name="xdcrTargetNozzlePerNode"></label>
-      <label class="when-goxdcr-enabled"><span>XDCR Max Expected Replication Lag (ms)</span><input maxlength="5" style="width:2.5em;" name="xdcrMaxExpectedReplicationLag"></label>
       <label><span>XDCR Checkpoint Interval</span><input maxlength="5" style="width:2.5em;" name="xdcrCheckpointInterval"></label>
-      <label class="when-goxdcr-enabled"><span>XDCR Timeout Percentage Cap</span><input maxlength="5" style="width:2.5em;" name="xdcrTimeoutPercentageCap"></label>
       <label><span>XDCR Batch Count</span><input maxlength="5" style="width:2.5em;" name="xdcrWorkerBatchSize"></label>
       <label><span>XDCR Batch Size (kB)</span><input maxlength="6" style="width:2.5em;" name="xdcrDocBatchSizeKb"></label>
       <label><span>XDCR Failure Retry Interval</span><input maxlength="3" style="width:1.5em;" name="xdcrFailureRestartInterval"></label>
@@ -2577,20 +2575,10 @@
         <input type="text" id="rep_target_nozzle_per_node" name="targetNozzlePerNode">
         <i class="error js_error js_targetNozzlePerNode"></i>
       </div>
-      <div class="when-goxdcr-enabled">
-        <label for="max_replication_lag_setting">XDCR Max Expected Replication Lag (ms):</label>
-        <input type="text" id="max_replication_lag" name="maxExpectedReplicationLag">
-        <i class="error js_error js_maxExpectedReplicationLag"></i>
-      </div>
       <div>
         <label for="per_checkpoint_interval">XDCR Checkpoint Interval:</label>
         <input type="text" id="per_checkpoint_interval" name="checkpointInterval">
         <i class="error js_error js_checkpointInterval"></i>
-      </div>
-      <div class="when-goxdcr-enabled">
-        <label for="timeout_perc_cap">XDCR Timeout Percentage Cap:</label>
-        <input type="text" id="timeout_perc_cap" name="timeoutPercentageCap">
-        <i class="error js_error js_timeoutPercentageCap"></i>
       </div>
       <div>
         <label for="per_worker_batch_size">XDCR Batch Count:</label>
@@ -3204,20 +3192,10 @@
             <input type="text" id="target_nozzle_per_node" name="targetNozzlePerNode">
             <i class="error js_error js_targetNozzlePerNode"></i>
           </div>
-          <div class="when-goxdcr-enabled">
-            <label for="max_replication_lag_setting">XDCR Max Expected Replication Lag (ms):</label>
-            <input type="text" id="max_replication_lag" name="maxExpectedReplicationLag">
-            <i class="error js_error js_maxExpectedReplicationLag"></i>
-          </div>
           <div>
             <label for="checkpoint_interval">XDCR Checkpoint Interval:</label>
             <input type="text" id="checkpoint_interval" name="checkpointInterval">
             <i class="error js_error js_checkpointInterval"></i>
-          </div>
-          <div class="when-goxdcr-enabled">
-            <label for="timeout_perc_cap">XDCR Timeout Percentage Cap:</label>
-            <input type="text" id="timeout_perc_cap" name="timeoutPercentageCap">
-            <i class="error js_error js_timeoutPercentageCap"></i>
           </div>
           <div>
             <label for="worker_batch_size">XDCR Batch Count:</label>
