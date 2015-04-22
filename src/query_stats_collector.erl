@@ -15,8 +15,6 @@
 %%
 -module(query_stats_collector).
 
--include_lib("eunit/include/eunit.hrl").
-
 -behaviour(gen_server).
 
 -include("ns_common.hrl").
