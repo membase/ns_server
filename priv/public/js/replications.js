@@ -713,7 +713,7 @@ var ReplicationsSection = {
     }
   },
   submitRemoteCluster: function (uri, form) {
-    var spinner = overlayWithSpinner(form);
+    var spinner = overlayWithSpinner($('#create_cluster_reference_dialog'));
     var formValues = $.deparam(serializeForm(form));
     if ($.trim(formValues.certificate) === ReplicationsSection.encriptionTextAreaDefaultValue || !formValues.demandEncryption) {
       formValues.certificate = "";
