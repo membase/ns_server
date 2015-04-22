@@ -323,7 +323,6 @@ var LogsSection = {
         showResultViewBtn.hide();
         cancelCollectBtn.toggle(isCurrentlyRunning);
         startNewCollectBtn.toggle(!isCurrentlyRunning);
-        collectForm[0].reset();
       } else {
         collectInfoStartNewView.show();
         collectResultView.hide();
@@ -348,8 +347,13 @@ var LogsSection = {
         allNodeBoxes = $('input', selectNodesListCont);
         allActiveNodeBoxes.change(maybeDisableSaveBtn);
         collectFromRadios.eq(0).attr('checked', true).trigger('change');
-        uploadToCouchbase.attr('checked', false).trigger('change');
+        uploadToCouchbase.trigger('change');
         maybeDisableSaveBtn();
+        DAL.cells.isEnterpriseCell.getValue(function (isEnterprise) {
+          if (isEnterprise && !uploadToHost.val()) {
+            uploadToHost.val('s3.amazonaws.com/cb-customers');
+          }
+        });
       });
     }
 
@@ -357,12 +361,6 @@ var LogsSection = {
       if (!isCollectionInfoTab) {
         hideResultButtons();
         showResultViewBtn.hide();
-      }
-    });
-
-    DAL.cells.isEnterpriseCell.subscribeValue(function (isEnterprise) {
-      if (isEnterprise) {
-        uploadToHost.val('s3.amazonaws.com/cb-customers');
       }
     });
 
