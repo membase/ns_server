@@ -72,19 +72,7 @@ grab_all_xdcr_checkpoints(BucketName, Timeout) ->
     rpc:call(ns_node_disco:couchdb_node(), erlang, apply, [Fn, []]).
 
 grab_all_goxdcr_checkpoints() ->
-    Checkpoints =
-        ns_config:fold(
-          fun ({metakv, Path}, Value, Acc) ->
-                  case Path of
-                      <<"/ckpt/", _/binary>> ->
-                          [{Path, Value} | Acc];
-                      _ ->
-                          Acc
-                  end;
-              (_, _, Acc) ->
-                  Acc
-          end, [], ns_config:get()),
-    {json, {struct, Checkpoints}}.
+    {json, {struct, metakv:iterate_matching(?XDCR_CHECKPOINT_PATTERN)}}.
 
 shutdown_nicely() ->
     ns_babysitter_bootstrap:remote_stop(ns_server:get_babysitter_node()).
