@@ -1371,7 +1371,7 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 #view_details .results_block .list {table-layout:fixed;}
 
 .ldap_setup_container .sub_section > label {display: block;padding-bottom: 10px;}
-.ldap_setup_container .sub_section > label span {width: 120px; display: inline-block;}
+.ldap_setup_container .sub_section > label > span {width: 120px; display: inline-block;}
 .ldap_setup_container textarea {width: 250px; height: 100px;}
 .ldap_setup_container .textarea_label span {vertical-align: top;}
 .ldap_setup_container .radio_set label {margin-right: 12px;}

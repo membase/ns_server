@@ -1176,8 +1176,18 @@
                     <form id="js_ldap_setup_form" autocomplete="off">
                       <div class="sub_section" style="margin-right:0;">
                         <label><span>Enable:</span><input type="checkbox" name="enabled" value="true" id="js_ldap_enabled"></label>
-                        <label class="textarea_label"><span>Read-Only Admins:</span><textarea name="roAdmins"></textarea></label>
-                        <label class="textarea_label"><span>Full Admins:</span><textarea name="admins"></textarea></label>
+                        <label class="textarea_label"><span>Read-Only Admins:</span><textarea name="roAdmins"></textarea>
+                          <a class="text_11 tooltip" style="vertical-align: top;"><span>What's this?</span>
+                            <span class="tooltip_msg"><span>
+                                UIDs must be in ASCII and must be new line separated.
+                            </span></span>
+                          </a></label>
+                        <label class="textarea_label"><span>Full Admins:</span><textarea name="admins"></textarea>
+                          <a class="text_11 tooltip" style="vertical-align: top;"><span>What's this?</span>
+                            <span class="tooltip_msg"><span>
+                                UIDs must be in ASCII and must be new line separated.
+                            </span></span>
+                          </a></label>
                         <label style="display: inline-block;"><span>Default:</span></label>
                         <span class="radio_set">
                           <label><input type="radio" value="roAdmins" name="deftype"><span>Read-only</span></label>
