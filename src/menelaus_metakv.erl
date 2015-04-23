@@ -83,7 +83,8 @@ handle_mutate(Req, Params, Value) ->
             ?log_debug("Updated ~p. Elapsed time:~p ms.", [Path, ElapsedTime]),
             menelaus_util:reply(Req, 200);
         Error ->
-            ?log_debug("Failed to update ~p with error ~p.", [Path, Error]),
+            ?log_debug("Failed to update ~p (rev ~p) with error ~p.",
+                       [Path, Rev, Error]),
             menelaus_util:reply(Req, 409)
     end.
 
