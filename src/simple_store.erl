@@ -76,7 +76,7 @@ iterate_matching(StoreName, KeyPattern) ->
       fun ({Key, Value}, Acc) ->
               case misc:is_prefix(KeyPattern, Key) of
                   true ->
-                      ?log_debug("Returning Key ~p. ~n", [Key]),
+                      ?log_debug("Returning Key ~p.", [Key]),
                       [{Key, Value} | Acc];
                   false ->
                       Acc
@@ -111,7 +111,7 @@ init(StoreName) ->
         true ->
             ok;
         false ->
-            ?log_debug("Creating Table:~p ~n", [StoreName]),
+            ?log_debug("Creating Table: ~p", [StoreName]),
             ets:new(StoreName, [named_table, set, protected]),
             ok
     end.
@@ -125,13 +125,13 @@ do_work(StoreName, Fun, Args) ->
 
 %% Update the ETS table and schedule a flush to the file.
 update_store(StoreName, [Key, Value]) ->
-    ?log_debug("Updating data ~p in table ~p. ~n", [[{Key, Value}], StoreName]),
+    ?log_debug("Updating data ~p in table ~p.", [[{Key, Value}], StoreName]),
     ets:insert(StoreName, [{Key, Value}]),
     schedule_flush(StoreName, ?FLUSH_RETRIES).
 
 %% Delete from the ETS table and schedule a flush to the file.
 delete_from_store(StoreName, [Key]) ->
-    ?log_debug("Deleting key ~p in table ~p. ~n", [Key, StoreName]),
+    ?log_debug("Deleting key ~p in table ~p.", [Key, StoreName]),
     ets:delete(StoreName, Key),
     schedule_flush(StoreName, ?FLUSH_RETRIES).
 
@@ -140,7 +140,7 @@ del_matching(StoreName, [KeyPattern]) ->
       fun ({Key, _}, _) ->
               case misc:is_prefix(KeyPattern, Key) of
                   true ->
-                      ?log_debug("Deleting Key ~p. ~n", [Key]),
+                      ?log_debug("Deleting Key ~p.", [Key]),
                       ets:delete(StoreName, Key);
                   false ->
                       ok
@@ -150,7 +150,7 @@ del_matching(StoreName, [KeyPattern]) ->
 
 %% Nothing can be done if we failed to flush repeatedly.
 schedule_flush(StoreName, 0) ->
-    ?log_debug("Tried to flush table ~p ~p times but failed. Giving up.~n",
+    ?log_debug("Tried to flush table ~p ~p times but failed. Giving up.",
                [StoreName, ?FLUSH_RETRIES]),
     exit(flush_failed);
 
@@ -159,7 +159,7 @@ schedule_flush(StoreName, 0) ->
 schedule_flush(StoreName, NumRetries) ->
     case erlang:get(flush_pending) of
         true ->
-            ?log_debug("Flush is already pending.~n"),
+            ?log_debug("Flush is already pending."),
             ok;
         false ->
             erlang:put(flush_pending, true),
@@ -168,7 +168,7 @@ schedule_flush(StoreName, NumRetries) ->
                                           fun () ->
                                                   flush_table(StoreName, NumRetries)
                                           end]),
-            ?log_debug("Successfully scheduled a flush to the file.~n"),
+            ?log_debug("Successfully scheduled a flush to the file."),
             ok
     end.
 
@@ -177,12 +177,12 @@ flush_table(StoreName, NumRetries) ->
     %% Reset flush pending.
     erlang:put(flush_pending, false),
     FilePath = path_config:component_path(data, get_file_name(StoreName)),
-    ?log_debug("Persisting Table ~p to file ~p. ~n", [StoreName, FilePath]),
+    ?log_debug("Persisting Table ~p to file ~p.", [StoreName, FilePath]),
     case ets:tab2file(StoreName, FilePath, [{extended_info, [object_count]}]) of
         ok ->
             ok;
         {error, Error} ->
-            ?log_debug("Failed to persist table ~p to file ~p with error ~p. ~n",
+            ?log_debug("Failed to persist table ~p to file ~p with error ~p.",
                        [StoreName, FilePath, Error]),
             %% Reschedule another flush.
             schedule_flush(StoreName, NumRetries - 1)

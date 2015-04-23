@@ -80,10 +80,10 @@ handle_mutate(Req, Params, Value) ->
             %% Values are already displayed by ns_config_log and simple_store.
             %% ns_config_log is smart enough to not log sensitive values
             %% and simple_store does not store senstive values.
-            ?log_debug("Updated ~p. Elapsed time:~p ms.~n", [Path, ElapsedTime]),
+            ?log_debug("Updated ~p. Elapsed time:~p ms.", [Path, ElapsedTime]),
             menelaus_util:reply(Req, 200);
         Error ->
-            ?log_debug("Failed to update ~p with error ~p.~n", [Path, Error]),
+            ?log_debug("Failed to update ~p with error ~p.", [Path, Error]),
             menelaus_util:reply(Req, 409)
     end.
 
@@ -95,14 +95,14 @@ handle_delete_post(Req, Params) ->
     handle_mutate(Req, Params, ?DELETED_MARKER).
 
 handle_recursive_delete_post(Req, Params) ->
-    ?log_debug("handle_recursive_delete_post: ~p ~n", [Params]),
+    ?log_debug("handle_recursive_delete_post: ~p", [Params]),
     Path = list_to_binary(proplists:get_value("path", Params)),
     case metakv:delete_matching(Path) of
         ok ->
-            ?log_debug("Recursively deleted children of ~p~n", [Path]),
+            ?log_debug("Recursively deleted children of ~p", [Path]),
             menelaus_util:reply(Req, 200);
         Error ->
-            ?log_debug("Recursive deletion failed for ~p with error ~p.~n",
+            ?log_debug("Recursive deletion failed for ~p with error ~p.",
                        [Path, Error]),
             menelaus_util:reply(Req, 409)
     end.
