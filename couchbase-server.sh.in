@@ -15,6 +15,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+SOFTWARE_VERSION="@PRODUCT_VERSION@"
+if [ x"${SOFTWARE_VERSION}" = "x" ]
+then
+   SOFTWARE_VERSION="unsupported developer build"
+fi
+
+ENTERPRISE=`echo @BUILD_ENTERPRISE@ | tr '[:upper:]' '[:lower:]'`
+
+if [ x"${ENTERPRISE}" = "xtrue" ]
+then
+   SOFTWARE_VERSION="${SOFTWARE_VERSION} (EE)"
+else
+   SOFTWARE_VERSION="${SOFTWARE_VERSION} (CE)"
+fi
+
 PATH="@PREFIX@/bin":$PATH
 export PATH
 
@@ -173,25 +188,60 @@ _stop() {
     return $errcode
 }
 
+usage() {
+cat <<EOF
+couchbase-server is a script to start/stop the Couchbase server.
+
+Usage: $0 [options]
+
+  Special options:
+     --help, -h     Print this help text
+     --version, -v  Print software Version
+     -k             Stop couchbase Server
+
+All other options and arguments will be passed to the Couchbase
+server and should NOT be used unless you know what you're doing.
+
+EOF
+}
+
 _parse_options () {
+    # the getopt lack support for longopts..
+    if [ "$1" == "--version" ]
+    then
+       echo "Couchbase Server ${SOFTWARE_VERSION}"
+       exit 0
+    fi
+
+    if [ "$1" == "--help" ]
+    then
+       usage
+       exit 0
+    fi
+
     # set +e
-    options=`getopt k $*`
-    if [ ! $? -eq 0 ]; then
-        return 1
-    fi
-    # set -e
-    eval set -- $options
-    if [ "-k" = "$1" ]; then
-        KILL=true;
-    fi
+    while getopts "kvh" opt
+    do
+       case $opt in
+       k)
+         _stop
+	 exit $?
+         ;;
+       v)
+         echo "Couchbase Server ${SOFTWARE_VERSION}"
+         exit 0
+         ;;
+       h)
+         usage
+         exit 0
+         ;;
+       *)
+         break
+         ;;
+       esac
+    done
 
-    shift
-
-    if [ x"$KILL" = "xtrue" ]; then
-        _stop
-    else
-        _start $*
-    fi
+    _start $*
 }
 
 _parse_options $*
