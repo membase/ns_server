@@ -19,8 +19,6 @@
 
 -include("ns_common.hrl").
 
--behaviour(gen_server).
-
 -define(LOG_FREQ, 100).     % Dump every n collections to the log
 -define(WIDTH, 30).         % Width of the key part of the formatted logs
 
@@ -29,28 +27,20 @@
 
 -export([format_stats/1, log_stats/3]).
 
--record(state, {bucket,
-                last_plain_counters,
-                last_tap_counters,
-                last_dcp_counters,
-                last_timings_counters,
-                count = ?LOG_FREQ,
-                last_ts,
-                min_files_size = undefined}).
+%% callbacks
+-export([init/1, handle_info/2, grab_stats/1, process_stats/5]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2,
-         handle_info/2, terminate/2, code_change/3]).
+-record(state, {bucket,
+                logged_ts = 0,
+                min_files_size = undefined}).
 
 -define(NEED_TAP_STREAM_STATS_CODE, 1).
 -include("ns_stats.hrl").
 
 start_link(Bucket) ->
-    gen_server:start_link(?MODULE, Bucket, []).
+    base_stats_collector:start_link(?MODULE, Bucket).
 
 init(Bucket) ->
-    ns_pubsub:subscribe_link(ns_tick_event),
-
     Self = self(),
     ns_pubsub:subscribe_link(
       ns_config_events,
@@ -64,12 +54,6 @@ init(Bucket) ->
 
     {ok, #state{bucket=Bucket}}.
 
-handle_call(Request, _From, State) ->
-    {stop, {unhandled, Request}, State}.
-
-handle_cast(Msg, State) ->
-    {stop, {unhandled, Msg}, State}.
-
 interesting_timing_key(<<"disk_update_", _/binary>>) -> true;
 interesting_timing_key(<<"disk_commit_", _/binary>>) -> true;
 interesting_timing_key(<<"bg_wait_", _/binary>>) -> true;
@@ -80,7 +64,7 @@ prefilter_timings(RawTimings) ->
     [KV || {K, _} = KV <- RawTimings,
            interesting_timing_key(K)].
 
-grab_all_stats(Bucket) ->
+grab_stats(#state{bucket=Bucket}) ->
     {ok, PlainStats} = ns_memcached:stats(Bucket),
     CouchStats = case (catch ns_couchdb_api:fetch_couch_stats(Bucket)) of
                      {ok, CS} -> CS;
@@ -117,43 +101,23 @@ grab_all_stats(Bucket) ->
 
     {PlainStats, TapStats, DcpStats, Timings, CouchStats, XDCStats}.
 
-handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
-    GrabFreq = misc:get_env_default(grab_stats_every_n_ticks, 1),
-    GrabNow = 0 =:= (State#state.count rem GrabFreq),
-    case GrabNow of
-        true ->
-            try grab_all_stats(Bucket) of
-                GrabbedStats ->
-                    TS1 = latest_tick(TS),
-                    State1 = process_grabbed_stats(TS1, GrabbedStats, State),
-                    PlainStats = element(1, GrabbedStats),
-                    State2 = maybe_log_stats(TS1, State1, PlainStats),
-                    {noreply, State2}
-            catch T:E ->
-                    ?stats_error("Exception in stats collector: ~p~n",
-                                 [{T,E, erlang:get_stacktrace()}]),
-                    {noreply, State#state{count = State#state.count + 1}}
-            end;
-        false ->
-            {noreply, State#state{count = State#state.count + 1}}
-    end;
 handle_info(config_changed, State) ->
     {noreply, State#state{min_files_size = undefined}};
 handle_info(_Msg, State) -> % Don't crash on delayed responses to calls
     {noreply, State}.
 
-maybe_log_stats(TS, State, RawStats) ->
-    OldCount = State#state.count,
-    case OldCount  >= ?LOG_FREQ of
+maybe_log_stats(TS, #state{logged_ts = LoggedTS,
+                           bucket = Bucket} = State, RawStats) ->
+    case TS - LoggedTS >= ?LOG_FREQ * 1000 of
         true ->
             case misc:get_env_default(dont_log_stats, false) of
                 false ->
-                    log_stats(TS, State#state.bucket, RawStats);
+                    log_stats(TS, Bucket, RawStats);
                 _ -> ok
             end,
-            State#state{count = 1};
+            State#state{logged_ts = TS};
         false ->
-            State#state{count = OldCount + 1}
+            State
     end.
 
 log_stats(TS, Bucket, RawStats) ->
@@ -175,15 +139,15 @@ get_min_files_size(Bucket) ->
 
     MinFileSize * length(ns_bucket:all_node_vbuckets(BucketConfig)).
 
-process_grabbed_stats(TS,
-                      {PlainStats, TapStats, DcpStats, Timings, CouchStats, XDCStats},
-                      #state{bucket = Bucket,
-                             last_plain_counters = LastPlainCounters,
-                             last_tap_counters = LastTapCounters,
-                             last_dcp_counters = LastDcpCounters,
-                             last_timings_counters = LastTimingsCounters,
-                             last_ts = LastTS,
-                             min_files_size = MinFilesSize0} = State) ->
+
+process_stats(TS, Stats, undefined, LastTS, State) ->
+    process_stats(TS, Stats, {undefined, undefined, undefined, undefined}, LastTS, State);
+process_stats(TS,
+              {PlainStats, TapStats, DcpStats, Timings, CouchStats, XDCStats},
+              {LastPlainCounters, LastTapCounters, LastDcpCounters, LastTimingsCounters},
+              LastTS,
+              #state{bucket = Bucket,
+                     min_files_size = MinFilesSize0} = State) ->
     MinFilesSize = case MinFilesSize0 of
                        undefined ->
                            get_min_files_size(Bucket);
@@ -197,28 +161,22 @@ process_grabbed_stats(TS,
     {DcpValues, DcpCounters} = parse_dcpagg_stats(TS, DcpStats, LastTS, LastDcpCounters),
     {TimingValues, TimingsCounters} = parse_timings(TS, Timings, LastTS, LastTimingsCounters),
     %% Don't send event with undefined values
-    case lists:member(undefined, [LastTapCounters, LastTapCounters, LastDcpCounters, LastTimingsCounters]) of
-        false ->
-            Values = lists:merge([PlainValues, TapValues, DcpValues, TimingValues, CouchStats, XDCValues]),
-            Entry = #stat_entry{timestamp = TS,
-                                values = Values},
-            gen_event:notify(ns_stats_event, {stats, Bucket, Entry});
-        true ->
-            ok
-    end,
-    State#state{last_plain_counters = PlainCounters,
-                last_tap_counters = TapCounters,
-                last_dcp_counters = DcpCounters,
-                last_timings_counters = TimingsCounters,
-                last_ts = TS,
-                min_files_size = MinFilesSize}.
+    Stats =
+        case lists:member(undefined,
+                          [LastTapCounters, LastTapCounters, LastDcpCounters, LastTimingsCounters]) of
+            false ->
+                Values = lists:merge(
+                           [PlainValues, TapValues, DcpValues, TimingValues, CouchStats, XDCValues]),
+                [{Bucket, Values}];
+            true ->
+                []
+        end,
 
-terminate(_Reason, _State) ->
-    ok.
+    NewState = maybe_log_stats(TS, State, PlainStats),
 
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
+    {Stats,
+     {PlainCounters, TapCounters, DcpCounters, TimingsCounters},
+     NewState#state{min_files_size = MinFilesSize}}.
 
 %% Internal functions
 transform_xdc_stats_loop([], Acc, TotalChangesLeft) -> {Acc, TotalChangesLeft};
@@ -245,22 +203,6 @@ format_stats(Stats) ->
            K -> [K, lists:duplicate(erlang:max(1, ?WIDTH - byte_size(K)), $\s),
                  couch_util:to_binary(V), $\n]
        end || {K0, V} <- lists:sort(Stats)]).
-
-latest_tick(TS) ->
-    latest_tick(TS, 0).
-
-latest_tick(TS, NumDropped) ->
-    receive
-        {tick, TS1} ->
-            latest_tick(TS1, NumDropped + 1)
-    after 0 ->
-            if NumDropped > 0 ->
-                    ?stats_warning("Dropped ~b ticks", [NumDropped]);
-               true ->
-                    ok
-            end,
-            TS
-    end.
 
 translate_stat(bytes) -> % memcached calls it bytes
     mem_used;

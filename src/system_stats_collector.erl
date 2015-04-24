@@ -19,8 +19,6 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--behaviour(gen_server).
-
 -include("ns_common.hrl").
 
 -include("ns_stats.hrl").
@@ -30,19 +28,16 @@
 %% API
 -export([start_link/0]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+%% callbacks
+-export([init/1, grab_stats/1, process_stats/5]).
 
 -export([increment_counter/2, get_ns_server_stats/0, set_counter/2,
          add_histo/2,
          cleanup_stale_epoch_histos/0, log_system_stats/1,
          stale_histo_epoch_cleaner/0]).
 
--record(state, {port, prev_sample}).
-
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    base_stats_collector:start_link({local, ?MODULE}, ?MODULE, []).
 
 
 init([]) ->
@@ -60,28 +55,17 @@ init([]) ->
                       [stream, use_stdio, exit_status,
                        binary, eof, {arg0, lists:flatten(io_lib:format("portsigar for ~s", [node()]))}]) of
             X ->
-                ns_pubsub:subscribe_link(ns_tick_event),
                 X
         catch error:enoent ->
                 ale:error(?USER_LOGGER, "~s is missing. Will not collect system-level stats", [Path]),
                 undefined
         end,
     spawn_ale_stats_collector(),
-    {ok, #state{port = Port}}.
-
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-flush_ticks(Acc) ->
-    receive
-        {tick, _} ->
-            flush_ticks(Acc+1)
-    after 0 ->
-            Acc
+    case Port of
+        undefined ->
+            {no_collecting, Port};
+        _ ->
+            {ok, Port}
     end.
 
 recv_data(Port) ->
@@ -282,52 +266,37 @@ log_system_stats(TS) ->
 
     stats_collector:log_stats(TS, "@system", lists:keymerge(1, NSServerStats, NSCouchDbStats)).
 
-handle_info({tick, TS}, #state{port = Port, prev_sample = PrevSample}) ->
-    case flush_ticks(0) of
-        0 -> ok;
-        N -> ?stats_warning("lost ~p ticks", [N])
-    end,
+grab_stats(Port) ->
     port_command(Port, <<0:32/native>>),
-    Binary = recv_data(Port),
-    {{Stats0, ProcStats}, NewPrevSample} = unpack_data(Binary, PrevSample),
-    case Stats0 of
-        undefined ->
-            ok;
-        _ ->
-            Stats = lists:sort(Stats0),
-            Stats2 = add_ets_stats(Stats),
-            case ets:update_counter(ns_server_system_stats, log_counter, {2, 1, ?ETS_LOG_INTVL, 0}) of
-                0 ->
-                    log_system_stats(TS);
-                _ ->
-                    ok
-            end,
-            gen_event:notify(ns_stats_event,
-                             {stats, "@system", #stat_entry{timestamp = TS,
-                                                            values = Stats2}})
-    end,
+    recv_data(Port).
 
-    case ProcStats of
-        undefined ->
-            ok;
-        _ ->
-            gen_event:notify(ns_stats_event,
-                             {stats, "@system-processes",
-                              #stat_entry{timestamp = TS,
-                                          values = ProcStats}})
-    end,
+process_stats(TS, Binary, PrevSample, _, State) ->
+    {{Stats0, ProcStats}, NewPrevSample} = unpack_data(Binary, PrevSample),
+    RetStats =
+        case Stats0 of
+            undefined ->
+                [];
+            _ ->
+                Stats = lists:sort(Stats0),
+                Stats2 = add_ets_stats(Stats),
+                case ets:update_counter(ns_server_system_stats, log_counter, {2, 1, ?ETS_LOG_INTVL, 0}) of
+                    0 ->
+                        log_system_stats(TS);
+                    _ ->
+                        ok
+                end,
+                [{"@system", Stats2}]
+        end ++
+        case ProcStats of
+            undefined ->
+                [];
+            _ ->
+                [{"@system-processes", ProcStats}]
+        end,
 
     update_merger_rates(),
     sample_ns_memcached_queues(),
-    {noreply, #state{port = Port, prev_sample = NewPrevSample}};
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-terminate(_Reason, _State) ->
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {RetStats, NewPrevSample, State}.
 
 increment_counter(Name, By) ->
     (catch do_increment_counter(Name, By)).

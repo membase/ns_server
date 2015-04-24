@@ -15,8 +15,6 @@
 %%
 -module(goxdcr_stats_collector).
 
--behaviour(gen_server).
-
 -include("ns_common.hrl").
 
 -include("ns_stats.hrl").
@@ -24,38 +22,16 @@
 %% API
 -export([start_link/1]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+%% callbacks
+-export([init/1, grab_stats/1, process_stats/5]).
 
 start_link(Bucket) ->
-    gen_server:start_link(?MODULE, Bucket, []).
+    base_stats_collector:start_link(?MODULE, Bucket).
 
 init(Bucket) ->
-    ns_pubsub:subscribe_link(ns_tick_event),
     {ok, Bucket}.
 
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-latest_tick(TS, NumDropped) ->
-    receive
-        {tick, TS1} ->
-            latest_tick(TS1, NumDropped + 1)
-    after 0 ->
-            if NumDropped > 0 ->
-                    ?stats_warning("Dropped ~b ticks", [NumDropped]);
-               true ->
-                    ok
-            end,
-            TS
-    end.
-
-get_stats(Bucket) ->
+grab_stats(Bucket) ->
     case cluster_compat_mode:is_goxdcr_enabled() of
         true ->
             goxdcr_rest:stats(Bucket);
@@ -63,40 +39,21 @@ get_stats(Bucket) ->
             []
     end.
 
-handle_info({tick, TS0}, Bucket) ->
-    TS = latest_tick(TS0, 0),
-    Stats = get_stats(Bucket),
-
-    RepStats = transform_stats(Stats),
-
-    gen_event:notify(ns_stats_event,
-                     {stats, "@xdcr-" ++ Bucket,
-                      #stat_entry{timestamp = TS,
-                                  values = RepStats}}),
-    {noreply, Bucket};
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-terminate(_Reason, _State) ->
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-transform_stats_loop([], Acc, TotalChangesLeft, TotalDocsRepQueue) ->
+process_stats_loop([], Acc, TotalChangesLeft, TotalDocsRepQueue) ->
     {Acc, TotalChangesLeft, TotalDocsRepQueue};
-transform_stats_loop([In | T], Reps, TotalChangesLeft, TotalDocsRepQueue) ->
+process_stats_loop([In | T], Reps, TotalChangesLeft, TotalDocsRepQueue) ->
     {RepID, RepStats} = In,
     PerRepStats = [{iolist_to_binary([<<"replications/">>, RepID, <<"/">>, StatK]),
                     StatV} || {StatK, StatV} <- RepStats, is_number(StatV)],
     NewTotalChangesLeft = TotalChangesLeft + proplists:get_value(<<"changes_left">>, RepStats, 0),
     NewTotalDocsRepQueue = TotalDocsRepQueue + proplists:get_value(<<"docs_rep_queue">>, RepStats, 0),
-    transform_stats_loop(T, [PerRepStats | Reps], NewTotalChangesLeft, NewTotalDocsRepQueue).
+    process_stats_loop(T, [PerRepStats | Reps], NewTotalChangesLeft, NewTotalDocsRepQueue).
 
-transform_stats(Stats) ->
-    {RepStats, TotalChangesLeft, TotalDocsRepQueue} = transform_stats_loop(Stats, [], 0, 0),
+process_stats(_TS, Stats, _PrevCounters, _PrevTS, Bucket) ->
+    {RepStats, TotalChangesLeft, TotalDocsRepQueue} = process_stats_loop(Stats, [], 0, 0),
 
     GlobalList = [{<<"replication_changes_left">>, TotalChangesLeft},
                   {<<"replication_docs_rep_queue">>, TotalDocsRepQueue}],
 
-    lists:sort(lists:append([GlobalList | RepStats])).
+    {[{"@xdcr-" ++ Bucket, lists:sort(lists:append([GlobalList | RepStats]))}],
+     undefined, Bucket}.
