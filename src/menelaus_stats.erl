@@ -1259,9 +1259,9 @@ do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
     [{struct, [{blockName, <<"Index Stats: ", Id/binary>>},
                {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
-                [{struct, [{title, <<"scans/sec">>},
+                [{struct, [{title, <<"items scanned/sec">>},
                            {name, per_index_stat(Id, <<"num_rows_returned">>)},
-                           {desc, <<"Number of index items served by the indexer per second">>}]},
+                           {desc, <<"Number of index items scanned by the indexer per second">>}]},
                  {struct, [{isBytes, true},
                            {title, <<"disk size">>},
                            {name, per_index_stat(Id, <<"disk_size">>)},
@@ -1479,9 +1479,9 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                                    {struct, [{title, <<"index fragmentation %">>},
                                              {name, global_index_stat(<<"fragmentation">>)},
                                              {desc, <<"Percentage fragmentation of the index">>}]},
-                                   {struct, [{title, <<"index scans/sec">>},
+                                   {struct, [{title, <<"index scanned/sec">>},
                                              {name, global_index_stat(<<"num_rows_returned">>)},
-                                             {desc, <<"Number of index items served by the indexer per second">>}]}]
+                                             {desc, <<"Number of index items scanned by the indexer per second">>}]}]
                           end)
              ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
