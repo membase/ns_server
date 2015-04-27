@@ -269,7 +269,7 @@ query_node_spec(Config) ->
             Spec = {'query', Command,
                     [DataStoreArg, HttpArg, CnfgStoreArg] ++ HttpsArgs,
                     [use_stdio, exit_status, stderr_to_stdout, stream,
-                     {env, build_cbauth_env_vars(Config, 'cbq-engine')},
+                     {env, build_go_env_vars(Config, 'cbq-engine')},
                      {log, ?QUERY_LOG_FILENAME}]},
 
             [Spec]
@@ -307,7 +307,7 @@ kv_node_projector_spec(Config) ->
                     [ProjLogArg, KvListArg, AdminPortArg, ClusterArg],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?PROJECTOR_LOG_FILENAME},
-                     {env, build_cbauth_env_vars(Config, projector)}]},
+                     {env, build_go_env_vars(Config, projector)}]},
             [Spec]
     end.
 
@@ -351,7 +351,7 @@ create_goxdcr_spec(Config, Cmd, Upgrade) ->
     [{'goxdcr', Cmd, Args,
       [use_stdio, exit_status, stderr_to_stdout, stream,
        {log, ?GOXDCR_LOG_FILENAME},
-       {env, build_cbauth_env_vars(Config, goxdcr)}]}].
+       {env, build_go_env_vars(Config, goxdcr)}]}].
 
 create_goxdcr_upgrade_spec(Config) ->
     Cmd = find_executable("goxdcr"),
@@ -394,9 +394,12 @@ index_node_spec(Config) ->
                      ],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?INDEXER_LOG_FILENAME},
-                     {env, build_cbauth_env_vars(Config, index)}]},
+                     {env, build_go_env_vars(Config, index)}]},
             [Spec]
     end.
+
+build_go_env_vars(Config, RPCService) ->
+    [{"GOTRACEBACK", "crash"} | build_cbauth_env_vars(Config, RPCService)].
 
 build_cbauth_env_vars(Config, RPCService) ->
     true = (RPCService =/= undefined),
@@ -416,7 +419,7 @@ saslauthd_port_spec(Config) ->
         true ->
             [{saslauthd_port, Cmd, [],
               [use_stdio, exit_status, stderr_to_stdout, stream,
-               {env, build_cbauth_env_vars(Config, saslauthd)}]}];
+               {env, build_go_env_vars(Config, saslauthd)}]}];
         _ ->
             []
     end.
