@@ -449,6 +449,12 @@ sample_ns_memcached_queues() ->
     ok.
 
 get_histo_bin(Value) when Value =< 0 -> 0;
+get_histo_bin(Value) when Value > 64000000 -> infinity;
+get_histo_bin(Value) when Value > 32000000 -> 64000000;
+get_histo_bin(Value) when Value > 16000000 -> 32000000;
+get_histo_bin(Value) when Value > 8000000 -> 16000000;
+get_histo_bin(Value) when Value > 4000000 -> 8000000;
+get_histo_bin(Value) when Value > 2000000 -> 4000000;
 get_histo_bin(Value) when Value > 1000000 -> 2000000;
 get_histo_bin(Value) ->
     Step = if
