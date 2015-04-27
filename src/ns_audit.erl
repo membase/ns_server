@@ -56,6 +56,8 @@
          setup_ldap/2
         ]).
 
+-export([stats/0]).
+
 code(login_success) ->
     8192;
 code(login_failure) ->
@@ -233,6 +235,12 @@ send_to_memcached(Code, EncodedBody, Iteration) ->
                     send_to_memcached(Code, EncodedBody, Iteration + 1)
             end
     end.
+
+stats() ->
+    ns_memcached_sockets_pool:executing_on_socket(
+      fun (Sock) ->
+              mc_binary:quick_stats(Sock, <<"audit">>, fun mc_binary:quick_stats_append/3, [])
+      end).
 
 login_success(Req) ->
     put(login_success, Req, [{role, menelaus_auth:get_role(Req)}]).

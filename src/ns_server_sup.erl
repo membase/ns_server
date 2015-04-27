@@ -238,6 +238,15 @@ child_specs() ->
      {query_stats_collector, {query_stats_collector, start_link, []},
       permanent, 1000, worker, []},
 
+     {{stats_archiver, "@global"}, {stats_archiver, start_link, ["@global"]},
+      permanent, 1000, worker, [stats_archiver]},
+
+     {{stats_reader, "@global"}, {stats_reader, start_link, ["@global"]},
+      permanent, 1000, worker, [stats_reader]},
+
+     {global_stats_collector, {global_stats_collector, start_link, []},
+      permanent, 1000, worker, [global_stats_collector]},
+
      {goxdcr_status_keeper, {goxdcr_status_keeper, start_link, []},
       permanent, 1000, worker, [goxdcr_status_keeper]},
 
