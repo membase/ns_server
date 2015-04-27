@@ -16,7 +16,6 @@ angular.module('mnSettingsAuditService').factory('mnSettingsAuditService',
       if (validateOnly) {
         params.just_validate = 1;
       }
-
       return mnHttp({
         method: 'POST',
         url: '/settings/audit',
@@ -26,13 +25,11 @@ angular.module('mnSettingsAuditService').factory('mnSettingsAuditService',
     };
 
     function pack(data) {
-      result = {
-        rotateInterval: data.rotateInterval * formatTimeUnit(data.rotateUnit),
-        rotateSize: data.rotateSize,
+      var result = {
         auditdEnabled: data.auditdEnabled
       };
-
-      if (data.logPath) {
+      if (data.auditdEnabled) {
+        result.rotateInterval = data.rotateInterval * formatTimeUnit(data.rotateUnit);
         result.logPath = data.logPath;
       }
       return result;
@@ -57,6 +54,7 @@ angular.module('mnSettingsAuditService').factory('mnSettingsAuditService',
         data.rotateInterval /= 60;
         data.rotateUnit = 'minutes';
       }
+      data.logPath = data.logPath || "";
       return data;
     }
 

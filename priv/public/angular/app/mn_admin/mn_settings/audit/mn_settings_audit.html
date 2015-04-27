@@ -3,7 +3,7 @@
   <p class="sub_section">
     Auditing keeps track of important admin events occurring in Couchbase. Keeping track and persisting these events is essential for any secured environment and provides evidence for suspicious/malicious activity in Couchbase.
   </p>
-  <form ng-submit="submit()">
+  <form ng-submit="submit()" name="auditForm">
     <div class="sub_section" style="margin-right:0;">
       <div class="row">
         <label>
@@ -32,7 +32,7 @@
       </div>
     </div>
     <div class="save_cancel">
-      <button ng-disabled="!!errors" class="save_button float_right">Save</button>
+      <button ng-disabled="!!errors || auditForm.$pristine" class="save_button float_right">Save</button>
     </div>
   </form>
 </div>
