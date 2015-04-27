@@ -401,12 +401,14 @@ index_node_spec(Config) ->
 build_cbauth_env_vars(Config, RPCService) ->
     true = (RPCService =/= undefined),
     RestPort = misc:node_rest_port(Config, node()),
+    User = mochiweb_util:quote_plus(ns_config_auth:get_user(special)),
+    Password = mochiweb_util:quote_plus(ns_config_auth:get_password(special)),
 
-    [{"NS_SERVER_CBAUTH_URL", "http://127.0.0.1:" ++ integer_to_list(RestPort) ++ "/_cbauth"},
-     {"NS_SERVER_CBAUTH_USER", ns_config_auth:get_user(special)},
-     {"NS_SERVER_CBAUTH_PWD", ns_config_auth:get_password(special)},
-     {"NS_SERVER_CBAUTH_RPC_URL", ("http://127.0.0.1:" ++ integer_to_list(RestPort)
-                                   ++ "/" ++ atom_to_list(RPCService))}].
+    URL0 = io_lib:format("http://~s:~s@127.0.0.1:~b/~s",
+                         [User, Password, RestPort, RPCService]),
+    URL = lists:flatten(URL0),
+
+    [{"CBAUTH_REVRPC_URL", URL}].
 
 saslauthd_port_spec(Config) ->
     Cmd = find_executable("saslauthd-port"),
