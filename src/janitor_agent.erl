@@ -1109,20 +1109,21 @@ save_flushseq(BucketName, ConfigFlushSeq) ->
     misc:atomic_write_file(flushseq_file_path(BucketName), Cont).
 
 do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId) ->
-  case ns_memcached:wait_for_checkpoint_persistence(Bucket, VBucket, CheckpointId) of
-      ok -> ok;
-      {memcached_error, etmpfail, _} ->
-          ?rebalance_debug("Got etmpfail waiting for checkpoint persistence. Will try again"),
-          do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId)
-  end.
+    case ns_memcached:wait_for_checkpoint_persistence(Bucket, VBucket, CheckpointId) of
+        ok -> ok;
+        {memcached_error, etmpfail, _} ->
+            ?rebalance_debug("Got etmpfail waiting for checkpoint persistence. Will try again"),
+            do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId)
+    end.
 
 do_wait_seqno_persisted(Bucket, VBucket, SeqNo) ->
-  case ns_memcached:wait_for_seqno_persistence(Bucket, VBucket, SeqNo) of
-      ok -> ok;
-      {memcached_error, etmpfail, _} ->
-          ?rebalance_debug("Got etmpfail waiting for seq no persistence. Will try again"),
-          do_wait_seqno_persisted(Bucket, VBucket, SeqNo)
-  end.
+    case ns_memcached:wait_for_seqno_persistence(Bucket, VBucket, SeqNo) of
+        ok ->
+            ok;
+        {memcached_error, etmpfail, _} ->
+            ?rebalance_debug("Got etmpfail waiting for seq no persistence. Will try again"),
+            do_wait_seqno_persisted(Bucket, VBucket, SeqNo)
+    end.
 
 maybe_prime_replicators(#state{replicators_primed = true}) ->
     false;
