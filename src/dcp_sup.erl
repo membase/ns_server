@@ -23,7 +23,7 @@
 
 -export([start_link/1, init/1]).
 
--export([get_actual_replications/1, set_desired_replications/2, nuke/1]).
+-export([get_actual_replications/1, set_desired_replications/2, nuke/1, get_replicator_pid/2]).
 
 start_link(Bucket) ->
     supervisor:start_link({local, server_name(Bucket)}, ?MODULE, []).
@@ -65,6 +65,14 @@ get_producer_nodes(Bucket) ->
     catch exit:{noproc, _} ->
             not_running
     end.
+
+get_replicator_pid(Bucket, Partition) ->
+    Children = supervisor:which_children(server_name(Bucket)),
+    [{_, Pid, _, _} | _] =
+        lists:dropwhile(fun ({Node, _, _, _}) ->
+                                not lists:member(Partition, dcp_replicator:get_partitions(Node, Bucket))
+                        end, Children),
+    Pid.
 
 build_child_spec(ProducerNode, Bucket) ->
     {ProducerNode,
