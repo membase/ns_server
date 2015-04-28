@@ -29,7 +29,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/1, get_actual_replications/1, set_desired_replications/2]).
+-export([start_link/1, get_actual_replications/1, set_desired_replications/2, get_replicator_pid/2]).
 
 start_link(Bucket) ->
     gen_server:start_link({local, server_name(Bucket)}, ?MODULE,
@@ -48,6 +48,10 @@ get_actual_replications(Bucket) ->
     catch exit:{noproc, _} ->
             not_running
     end.
+
+-spec get_replicator_pid(bucket_name(), vbucket_id()) -> pid().
+get_replicator_pid(Bucket, Partition) ->
+    gen_server:call(server_name(Bucket), {get_replicator_pid, Partition}, infinity).
 
 set_desired_replications(Bucket, DesiredReps) ->
     NeededNodes = [Node || {Node, [_|_]} <- DesiredReps],
@@ -76,4 +80,17 @@ handle_call({manage_replicators, NeededNodes}, _From, Bucket) ->
 handle_call(get_actual_replications, _From, Bucket) ->
     Reps = lists:sort([{Node, dcp_replicator:get_partitions(Node, Bucket)} ||
                           {Node, _, _, _} <- dcp_sup:get_children(Bucket)]),
-    {reply, Reps, Bucket}.
+    {reply, Reps, Bucket};
+handle_call({get_replicator_pid, Partition}, _From, Bucket) ->
+    ChildrenTail =
+        lists:dropwhile(fun ({Node, _, _, _}) ->
+                                not lists:member(Partition,
+                                                 dcp_replicator:get_partitions(Node, Bucket))
+                        end, dcp_sup:get_children(Bucket)),
+    RV = case ChildrenTail of
+             [{_, Pid, _, _} | _] ->
+                 Pid;
+             _ ->
+                 undefined
+         end,
+    {reply, RV, Bucket}.
