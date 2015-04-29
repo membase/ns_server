@@ -700,6 +700,7 @@ var SetupWizard = {
 
           memoryQuotaWidget = new MemoryQuotaSettingsWidget({
             minMemorySize: 256,
+            roAdmin: false,
             memoryQuota: quota,
             indexMemoryQuota: data.indexMemoryQuota,
             isServicesControllsAvailable: true,

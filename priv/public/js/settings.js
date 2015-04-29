@@ -107,6 +107,7 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
     clusterQuotaSettings.showKVMemoryQuota = true;
     clusterQuotaSettings.showTotalPerNode = false;
     clusterQuotaSettings.clusterName = currentPool.clusterName;
+    clusterQuotaSettings.roAdmin = v.need(DAL.cells.isROAdminCell);
 
     if (!indexesSettings) {
       clusterQuotaSettings.showIndexMemoryQuota = false;
@@ -132,6 +133,7 @@ var ClusterSection = {
     var minMemorySize = Math.max(256, Math.floor(ram.quotaUsedPerNode / Math.Mi));
 
     return {
+      roAdmin: false,
       showIndexMemoryQuota: true,
       minMemorySize: minMemorySize,
       totalMemorySize: ramPerNode,

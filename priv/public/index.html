@@ -3793,7 +3793,7 @@
   {% if (showKVMemoryQuota) { %}
   <div class="memory-quota row">
     <label for="{%= prefix %}_kv_ram_quota">Data RAM Quota:</label>
-    <input type="number" class="focusme js_ram_quota" id="{%= prefix %}_kv_ram_quota" name="memoryQuota" value="{%= h(memoryQuota) %}" />
+    <input type="number" class="focusme js_ram_quota" id="{%= prefix %}_kv_ram_quota" name="memoryQuota" value="{%= h(memoryQuota) %}" {%= roAdmin ? "disabled" : "" %} />
     <span>MB (min {%= minMemorySize %} MB)</span>
     <a class="tooltip text_11"><span>What&#39;s this?</span>
       <span class="tooltip_msg" style="width:150px;"><span>
@@ -3806,7 +3806,7 @@
   {% if (showIndexMemoryQuota) { %}
   <div class="memory-quota row">
     <label for="{%= prefix %}_index_ram_quota">Index RAM Quota:</label>
-    <input type="number" class="js_ram_quota" id="{%= prefix %}_index_ram_quota" name="indexMemoryQuota" value="{%= h(indexMemoryQuota) %}" />
+    <input type="number" class="js_ram_quota" id="{%= prefix %}_index_ram_quota" name="indexMemoryQuota" value="{%= h(indexMemoryQuota) %}" {%= roAdmin ? "disabled" : "" %} />
     <span>MB (min 256 MB)</span>
     <a class="tooltip text_11"><span>What&#39;s this?</span>
       <span class="tooltip_msg" style="width:150px;"><span>
