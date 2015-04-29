@@ -95,6 +95,8 @@ grab_process_info(Pid) ->
                                     heap_size,
                                     total_heap_size,
                                     links,
+                                    monitors,
+                                    monitored_by,
                                     memory,
                                     message_queue_len,
                                     reductions,
