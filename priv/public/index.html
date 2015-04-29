@@ -3795,6 +3795,11 @@
     <label for="{%= prefix %}_kv_ram_quota">Data RAM Quota:</label>
     <input type="number" class="focusme js_ram_quota" id="{%= prefix %}_kv_ram_quota" name="memoryQuota" value="{%= h(memoryQuota) %}" />
     <span>MB (min {%= minMemorySize %} MB)</span>
+    <a class="tooltip text_11"><span>What&#39;s this?</span>
+      <span class="tooltip_msg" style="width:150px;"><span>
+        Main memory allocation amount for data service per node.
+      </span></span>
+    </a>
     <span class="error-container err-memoryQuota"></span>
   </div>
   {% } %}
@@ -3803,6 +3808,11 @@
     <label for="{%= prefix %}_index_ram_quota">Index RAM Quota:</label>
     <input type="number" class="js_ram_quota" id="{%= prefix %}_index_ram_quota" name="indexMemoryQuota" value="{%= h(indexMemoryQuota) %}" />
     <span>MB (min 256 MB)</span>
+    <a class="tooltip text_11"><span>What&#39;s this?</span>
+      <span class="tooltip_msg" style="width:150px;"><span>
+        Main memory allocation amount for index service per node.
+      </span></span>
+    </a>
     <span class="error-container err-indexMemoryQuota"></span>
   </div>
   {% } %}
