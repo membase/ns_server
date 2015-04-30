@@ -179,12 +179,12 @@ unpack_data(Bin, PrevSample) ->
 
     {{NowSamplesGlobal, NowSamplesProcs}, {RawStatsGlobal, PrevSampleProcs1}}.
 
-unpack_processes(Bin, PrevSamples) ->
-    do_unpack_processes(Bin, {[], PrevSamples}).
+unpack_processes(Bin, PrevSample) ->
+    do_unpack_processes(Bin, {[], []}, PrevSample).
 
-do_unpack_processes(Bin, Acc) when size(Bin) =:= 0 ->
+do_unpack_processes(Bin, Acc, _) when size(Bin) =:= 0 ->
     Acc;
-do_unpack_processes(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
+do_unpack_processes(Bin, {NewSampleAcc, NewPrevSampleAcc} = Acc, PrevSample) ->
     <<Name0:60/binary,
       CpuUtilization:32/native,
       Pid:64/native,
@@ -204,9 +204,9 @@ do_unpack_processes(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
         _ ->
             PidBinary = list_to_binary(integer_to_list(Pid)),
 
-            OldMinorFaults = proc_stat(Name, PidBinary, minor_faults, PrevSampleAcc, 0),
-            OldMajorFaults = proc_stat(Name, PidBinary, major_faults, PrevSampleAcc, 0),
-            OldPageFaults = proc_stat(Name, PidBinary, page_faults, PrevSampleAcc, 0),
+            OldMinorFaults = proc_stat(Name, PidBinary, minor_faults, PrevSample, 0),
+            OldMajorFaults = proc_stat(Name, PidBinary, major_faults, PrevSample, 0),
+            OldPageFaults = proc_stat(Name, PidBinary, page_faults, PrevSample, 0),
 
             MinorFaultsDiff = MinorFaults - OldMinorFaults,
             MajorFaultsDiff = MajorFaults - OldMajorFaults,
@@ -225,13 +225,14 @@ do_unpack_processes(Bin, {NewSampleAcc, PrevSampleAcc} = Acc) ->
                  {proc_stat_name(Name, PidBinary, major_faults_raw), MajorFaults},
                  {proc_stat_name(Name, PidBinary, page_faults_raw), PageFaults}],
 
-            PrevSample1 = [{proc_stat_name(Name, PidBinary, major_faults), MajorFaults},
-                           {proc_stat_name(Name, PidBinary, minor_faults), MinorFaults},
-                           {proc_stat_name(Name, PidBinary, page_faults), PageFaults}
-                           | PrevSampleAcc],
+            NewPrevSampleAcc1 =
+                [{proc_stat_name(Name, PidBinary, major_faults), MajorFaults},
+                 {proc_stat_name(Name, PidBinary, minor_faults), MinorFaults},
+                 {proc_stat_name(Name, PidBinary, page_faults), PageFaults}
+                 | NewPrevSampleAcc],
 
-            Acc1 = {NewSample ++ NewSampleAcc, PrevSample1},
-            do_unpack_processes(Rest, Acc1)
+            Acc1 = {NewSample ++ NewSampleAcc, NewPrevSampleAcc1},
+            do_unpack_processes(Rest, Acc1, PrevSample)
     end.
 
 extract_string(Bin) ->
