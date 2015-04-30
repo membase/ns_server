@@ -664,13 +664,14 @@ do_add_node_engaged(NodeKVList, Auth, GroupUUID, Services) ->
 
 check_can_add_node(NodeKVList, Services) ->
     JoineeClusterCompatVersion = expect_json_property_integer(<<"clusterCompatibility">>, NodeKVList),
+    JoineeNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
+
     MyCompatVersion = misc:expect_prop_value(cluster_compatibility_version, dict:fetch(node(), ns_doctor:get_nodes())),
     case JoineeClusterCompatVersion =:= MyCompatVersion of
         true -> case expect_json_property_binary(<<"version">>, NodeKVList) of
                     <<"1.",_/binary>> = Version ->
                         {error, incompatible_cluster_version,
-                         iolist_to_binary(io_lib:format("Joining ~s node to this cluster is not supported. " ++
-                                                        "Upgrade node to Couchbase Server version 2 or greater and retry.", [Version])),
+                         ns_error_messages:too_old_version_error(JoineeNode, Version),
                          incompatible_cluster_version};
                     _ ->
                         check_can_add_node_with_services(NodeKVList, Services)
@@ -678,7 +679,7 @@ check_can_add_node(NodeKVList, Services) ->
         false -> {error, incompatible_cluster_version,
                   ns_error_messages:incompatible_cluster_version_error(MyCompatVersion,
                                                                        JoineeClusterCompatVersion,
-                                                                       expect_json_property_atom(<<"otpNode">>, NodeKVList)),
+                                                                       JoineeNode),
                   {incompatible_cluster_version, MyCompatVersion, JoineeClusterCompatVersion}}
     end.
 
@@ -839,20 +840,30 @@ do_engage_cluster(NodeKVList) ->
 
 do_engage_cluster_check_compatibility(NodeKVList) ->
     Version = expect_json_property_binary(<<"version">>, NodeKVList),
-    MaybeError = case Version of
-                     <<"1.",_/binary>> = Version ->
-                         {error, incompatible_cluster_version,
-                          iolist_to_binary(io_lib:format("Joining ~s cluster is not supported. " ++
-                                                         "Upgrade node to Couchbase Server version 2 or greater and retry.", [Version])),
-                          incompatible_cluster_version};
-                     _ ->
-                         ok
-                 end,
-    case MaybeError of
-        ok ->
-            do_engage_cluster_inner(NodeKVList);
+    Node = expect_json_property_atom(<<"otpNode">>, NodeKVList),
+
+    case Version of
+        <<"1.",_/binary>> ->
+            {error, incompatible_cluster_version,
+             ns_error_messages:too_old_version_error(Node, Version),
+             incompatible_cluster_version};
         _ ->
-            MaybeError
+            do_engage_cluster_check_compat_version(Node, Version, NodeKVList)
+    end.
+
+do_engage_cluster_check_compat_version(Node, Version, NodeKVList) ->
+    ActualCompatibility = expect_json_property_integer(<<"clusterCompatibility">>, NodeKVList),
+    MinSupportedCompatVersion = cluster_compat_mode:min_supported_compat_version(),
+    MinSupportedCompatibility =
+        ns_heart:effective_cluster_compat_version_for(MinSupportedCompatVersion),
+
+    case ActualCompatibility < MinSupportedCompatibility of
+        true ->
+            {error, incompatible_cluster_version,
+             ns_error_messages:too_old_version_error(Node, Version),
+             incompatible_cluster_version};
+        false ->
+            do_engage_cluster_inner(NodeKVList)
     end.
 
 do_engage_cluster_inner(NodeKVList) ->

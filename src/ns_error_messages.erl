@@ -20,6 +20,7 @@
          engage_cluster_json_error/1,
          bad_memory_size_error/2,
          incompatible_cluster_version_error/3,
+         too_old_version_error/2,
          verify_otp_connectivity_port_error/2,
          verify_otp_connectivity_connection_error/4,
          unsupported_services_error/2]).
@@ -121,6 +122,16 @@ incompatible_cluster_version_error(MyVersion, OtherVersion, OtherNode) ->
                                          " because of cluster version compatibility mismatch (~p =/= ~p).",
                                          [OtherNode, MyVersion, OtherVersion]))
     end.
+
+too_old_version_error(Node, Version) ->
+    MinSupported0 = lists:map(fun integer_to_list/1,
+                              cluster_compat_mode:min_supported_compat_version()),
+    MinSupported = string:join(MinSupported0, "."),
+    Msg = io_lib:format("Joining ~s node ~s is not supported. "
+                        "Upgrade node to Couchbase Server "
+                        "version ~s or greater and retry.",
+                        [Version, Node, MinSupported]),
+    iolist_to_binary(Msg).
 
 verify_otp_connectivity_port_error(OtpNode, _Port) ->
     list_to_binary(io_lib:format("Failed to obtain otp port from erlang port mapper for node ~p."

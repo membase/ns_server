@@ -34,7 +34,8 @@
          is_enterprise/0,
          is_goxdcr_enabled/0,
          is_goxdcr_enabled/1,
-         is_ldap_enabled/0]).
+         is_ldap_enabled/0,
+         min_supported_compat_version/0]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
@@ -48,6 +49,9 @@ get_compat_version() ->
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.0
 supported_compat_version() ->
     [4, 0].
+
+min_supported_compat_version() ->
+    [2, 5].
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.1+
 %%
