@@ -23,7 +23,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([do_diag_per_node/0, do_diag_per_node_binary/0,
+-export([do_diag_per_node_binary/0,
          handle_diag/1,
          handle_sasl_logs/1, handle_sasl_logs/2,
          handle_diag_ale/1,
@@ -135,24 +135,6 @@ log_all_tap_and_checkpoint_stats() ->
 
 task_status_all() ->
     local_tasks:all() ++ ns_couchdb_api:get_tasks().
-
-do_diag_per_node() ->
-    ActiveBuckets = ns_memcached:active_buckets(),
-    [{version, ns_info:version()},
-     {manifest, manifest()},
-     {config, ns_config_log:sanitize(ns_config:get_kv_list())},
-     {basic_info, element(2, ns_info:basic_info())},
-     {processes, grab_process_infos()},
-     {babysitter_processes, (catch grab_babysitter_process_infos())},
-     {couchdb_processes, (catch grab_couchdb_process_infos())},
-     {memory, memsup:get_memory_data()},
-     {disk, (catch ns_disksup:get_disk_data())},
-     {active_tasks, task_status_all()},
-     {master_events, (catch master_activity_events_keeper:get_history())},
-     {ns_server_stats, (catch system_stats_collector:get_ns_server_stats())},
-     {active_buckets, ActiveBuckets},
-     {tap_stats, (catch grab_all_tap_and_checkpoint_stats(4000))},
-     {system_info, (catch grab_system_info())}].
 
 do_diag_per_node_binary() ->
     work_queue:submit_sync_work(
@@ -326,19 +308,8 @@ handle_diag(Req) ->
 grab_per_node_diag(Nodes) ->
     {Results0, BadNodes} = rpc:multicall(Nodes,
                                          ?MODULE, do_diag_per_node_binary, [], 45000),
-    {OldNodeResults, Results1} =
-        lists:partition(
-          fun ({_Node, {badrpc, {'EXIT', R}}}) ->
-                  misc:is_undef_exit(?MODULE, do_diag_per_node_binary, [], R);
-              (_) ->
-                  false
-          end,
-          lists:zip(lists:subtract(Nodes, BadNodes), Results0)),
-
-    OldNodes = [N || {N, _} <- OldNodeResults],
-    Results = [{N, diag_failed} || N <- BadNodes] ++ Results1,
-
-    {Results, OldNodes}.
+    Results1 = lists:zip(lists:subtract(Nodes, BadNodes), Results0),
+    [{N, diag_failed} || N <- BadNodes] ++ Results1.
 
 handle_just_diag(Req, Extra) ->
     Resp = menelaus_util:reply_ok(Req, "text/plain; charset=utf-8", chunked, Extra),
@@ -366,10 +337,8 @@ handle_just_diag(Req, Extra) ->
                 "0" -> ns_node_disco:nodes_actual();
                 _ -> [node()]
             end,
-    {Results, OldNodes} = grab_per_node_diag(Nodes),
-
+    Results = grab_per_node_diag(Nodes),
     handle_per_node_just_diag(Resp, Results),
-    handle_per_node_just_diag_old_nodes(Resp, OldNodes),
 
     Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
                          ns_bucket:get_buckets()),
@@ -408,15 +377,6 @@ handle_per_node_just_diag(Resp, [{Node, DiagBinary} | Results]) ->
            end,
     do_handle_per_node_just_diag(Resp, Node, Diag),
     handle_per_node_just_diag(Resp, Results).
-
-handle_per_node_just_diag_old_nodes(_Resp, []) ->
-    erlang:garbage_collect();
-handle_per_node_just_diag_old_nodes(Resp, [Node | Nodes]) ->
-    erlang:garbage_collect(),
-
-    PerNodeDiag = rpc:call(Node, ?MODULE, do_diag_per_node, [], 20000),
-    do_handle_per_node_just_diag(Resp, Node, PerNodeDiag),
-    handle_per_node_just_diag_old_nodes(Resp, Nodes).
 
 do_handle_per_node_just_diag(Resp, Node, Failed) when not is_list(Failed) ->
     write_chunk_format(Resp, "per_node_diag(~p) = ~p~n~n~n", [Node, Failed]);
