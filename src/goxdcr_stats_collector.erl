@@ -72,7 +72,7 @@ handle_info({tick, TS0}, Bucket) ->
     RepStats = transform_stats(Stats),
 
     gen_event:notify(ns_stats_event,
-                     {stats, "@goxdcr-" ++ Bucket,
+                     {stats, "@xdcr-" ++ Bucket,
                       #stat_entry{timestamp = TS,
                                   values = RepStats}}),
     {noreply, Bucket};

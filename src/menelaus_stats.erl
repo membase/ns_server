@@ -348,7 +348,7 @@ get_samples_from_one_of_kind([Kind | RestKinds], StatName, ClientTStamp, Window)
 
 get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window) ->
     get_samples_from_one_of_kind(["@system", "@query", "@index-" ++ BucketName,
-                                  "@goxdcr-" ++ BucketName, BucketName],
+                                  "@xdcr-" ++ BucketName, BucketName],
                                  StatName, ClientTStamp, Window).
 
 build_response_for_specific_stat(BucketName, StatName, Params, LocalAddr) ->
@@ -435,7 +435,7 @@ section_nodes("@query") ->
     ns_cluster_membership:n1ql_active_nodes(ns_config:latest_config_marker());
 section_nodes("@index-"++_) ->
     ns_cluster_membership:index_active_nodes(ns_config:latest_config_marker());
-section_nodes("@goxdcr-"++Bucket) ->
+section_nodes("@xdcr-"++Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket);
 section_nodes(Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket).
@@ -444,7 +444,7 @@ is_persistent("@query") ->
     false;
 is_persistent("@index-"++_) ->
     false;
-is_persistent("@goxdcr-"++_) ->
+is_persistent("@xdcr-"++_) ->
     false;
 is_persistent(BucketName) ->
     ns_bucket:is_persistent(BucketName).
@@ -458,7 +458,7 @@ section_exists("@query") ->
     true;
 section_exists("@index-"++Bucket) ->
     bucket_exists(Bucket);
-section_exists("@goxdcr-"++Bucket) ->
+section_exists("@xdcr-"++Bucket) ->
     bucket_exists(Bucket);
 section_exists(Bucket) ->
     bucket_exists(Bucket).
@@ -593,7 +593,7 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                    {per_index_stat(Index, <<"fragmentation">>), Fragmentation},
                    {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency}]
           end, get_indexes(BucketId));
-computed_stats_lazy_proplist("@goxdcr-"++BucketName) ->
+computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
          end,
@@ -2067,7 +2067,7 @@ serve_aggregated_ui_stats(Req, Params) ->
                     end
             end,
     BS = grab_ui_stats(Bucket, Nodes, HaveStamp, Wnd),
-    GoXDCRStats = [{<<"@goxdcr">>, {grab_ui_stats("@goxdcr-" ++ Bucket, Nodes, HaveStamp, Wnd)}}],
+    GoXDCRStats = [{<<"@xdcr">>, {grab_ui_stats("@xdcr-" ++ Bucket, Nodes, HaveStamp, Wnd)}}],
     QNodes = section_nodes("@query"),
     HaveQuery = case Nodes of
                     all ->
