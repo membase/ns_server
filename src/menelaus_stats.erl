@@ -714,50 +714,56 @@ computed_stats_lazy_proplist(BucketName) ->
                                end
                        end),
 
-    %% compute a list of per replication XDC stats
-    Reps = xdc_replication_sup:get_replications(list_to_binary(BucketName)),
     XDCAllRepStats =
-        lists:flatmap(fun ({Id, _Pid}) ->
-                              Prefix = <<"replications/", Id/binary,"/">>,
+        case cluster_compat_mode:is_goxdcr_enabled() of
+            true ->
+                [];
+            false ->
+                %% compute a list of per replication XDC stats
+                Reps = xdc_replication_sup:get_replications(list_to_binary(BucketName)),
+                lists:flatmap(
+                  fun ({Id, _Pid}) ->
+                          Prefix = <<"replications/", Id/binary,"/">>,
 
-                              WtAvgMetaLatency = Z2(<<Prefix/binary, "meta_latency_aggr">>,
-                                                    <<Prefix/binary, "meta_latency_wt">>,
-                                                    fun (Total, Count) ->
-                                                            try Total / Count
-                                                            catch error:badarith -> 0
-                                                            end
-                                                    end),
+                          WtAvgMetaLatency = Z2(<<Prefix/binary, "meta_latency_aggr">>,
+                                                <<Prefix/binary, "meta_latency_wt">>,
+                                                fun (Total, Count) ->
+                                                        try Total / Count
+                                                        catch error:badarith -> 0
+                                                        end
+                                                end),
 
-                              WtAvgDocsLatency = Z2(<<Prefix/binary, "docs_latency_aggr">>,
-                                                    <<Prefix/binary, "docs_latency_wt">>,
-                                                    fun (Total, Count) ->
-                                                            try Total / Count
-                                                            catch error:badarith -> 0
-                                                            end
-                                                    end),
+                          WtAvgDocsLatency = Z2(<<Prefix/binary, "docs_latency_aggr">>,
+                                                <<Prefix/binary, "docs_latency_wt">>,
+                                                fun (Total, Count) ->
+                                                        try Total / Count
+                                                        catch error:badarith -> 0
+                                                        end
+                                                end),
 
-                              PercentCompleteness = Z2(<<Prefix/binary, "docs_checked">>,
-                                                       <<Prefix/binary, "changes_left">>,
-                                                       fun (Checked, Left) ->
-                                                               try (100 * Checked) / (Checked + Left)
-                                                               catch error:badarith -> 0
-                                                               end
-                                                       end),
+                          PercentCompleteness = Z2(<<Prefix/binary, "docs_checked">>,
+                                                   <<Prefix/binary, "changes_left">>,
+                                                   fun (Checked, Left) ->
+                                                           try (100 * Checked) / (Checked + Left)
+                                                           catch error:badarith -> 0
+                                                           end
+                                                   end),
 
-                              Utilization = Z2(<<Prefix/binary, "time_working_rate">>,
-                                               <<Prefix/binary, "max_vbreps">>,
-                                               fun (Rate, Max) ->
-                                                       try 100 * Rate / Max
-                                                       catch error:badarith -> 0
-                                                       end
-                                               end),
+                          Utilization = Z2(<<Prefix/binary, "time_working_rate">>,
+                                           <<Prefix/binary, "max_vbreps">>,
+                                           fun (Rate, Max) ->
+                                                   try 100 * Rate / Max
+                                                   catch error:badarith -> 0
+                                                   end
+                                           end),
 
-                              [{<<Prefix/binary, "wtavg_meta_latency">>, WtAvgMetaLatency},
-                               {<<Prefix/binary, "wtavg_docs_latency">>, WtAvgDocsLatency},
-                               {<<Prefix/binary, "percent_completeness">>, PercentCompleteness},
-                               {<<Prefix/binary, "utilization">>, Utilization}]
-                      end,
-                      Reps),
+                          [{<<Prefix/binary, "wtavg_meta_latency">>, WtAvgMetaLatency},
+                           {<<Prefix/binary, "wtavg_docs_latency">>, WtAvgDocsLatency},
+                           {<<Prefix/binary, "percent_completeness">>, PercentCompleteness},
+                           {<<Prefix/binary, "utilization">>, Utilization}]
+                  end,
+                  Reps)
+        end,
 
     Views2iStats =
         [{Key, Z2(ViewKey, IndexKey, fun (A, B) -> A + B end)} ||
@@ -1118,10 +1124,15 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
 
 
 couchbase_replication_stats_descriptions(BucketId) ->
-    simple_memoize({stats_directory_xdcr, BucketId},
-                   fun () ->
-                           do_couchbase_replication_stats_descriptions(BucketId)
-                   end, 5000).
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        true ->
+            [];
+        false ->
+            simple_memoize({stats_directory_xdcr, BucketId},
+                           fun () ->
+                                   do_couchbase_replication_stats_descriptions(BucketId)
+                           end, 5000)
+    end.
 
 do_couchbase_replication_stats_descriptions(BucketId) ->
     Reps = xdc_replication_sup:get_replications(list_to_binary(BucketId)),

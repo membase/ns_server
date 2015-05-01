@@ -101,11 +101,20 @@ grab_all_stats(Bucket) ->
                       prefilter_timings(ValuesK);
                   {memcached_error, key_enoent, _} -> []
               end,
-    XDCStats = case xdc_rep_manager:stats(Bucket) of
-                  Reps when is_list(Reps) -> Reps;
-                  Err -> ?log_info("Failed fetching XDCR stats:~n~p", [Err]),
-                         []
-                 end,
+    XDCStats =
+        case cluster_compat_mode:is_goxdcr_enabled() of
+            true ->
+                disabled;
+            false ->
+                case xdc_rep_manager:stats(Bucket) of
+                    Reps when is_list(Reps) ->
+                        Reps;
+                    Err ->
+                        ?log_info("Failed fetching XDCR stats:~n~p", [Err]),
+                        []
+                end
+        end,
+
     {PlainStats, TapStats, DcpStats, Timings, CouchStats, XDCStats}.
 
 handle_info({tick, TS}, #state{bucket=Bucket} = State) ->
@@ -220,6 +229,8 @@ transform_xdc_stats_loop([In | T], Reps, TotalChangesLeft) ->
     NewTotalChangesLeft = TotalChangesLeft + proplists:get_value(changes_left, RepStats, 0),
     transform_xdc_stats_loop(T, [PerRepStats | Reps], NewTotalChangesLeft).
 
+transform_xdc_stats(disabled) ->
+    [];
 transform_xdc_stats(XDCStats) ->
     {RepStats, TotalChangesLeft} = transform_xdc_stats_loop(XDCStats, [], 0),
 
