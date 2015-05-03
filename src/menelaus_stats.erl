@@ -2067,7 +2067,8 @@ serve_aggregated_ui_stats(Req, Params) ->
                     end
             end,
     BS = grab_ui_stats(Bucket, Nodes, HaveStamp, Wnd),
-    GoXDCRStats = [{<<"@xdcr">>, {grab_ui_stats("@xdcr-" ++ Bucket, Nodes, HaveStamp, Wnd)}}],
+    GoXDCRStats = [{iolist_to_binary([<<"@xdcr-">>, Bucket]),
+                    {grab_ui_stats("@xdcr-" ++ Bucket, Nodes, HaveStamp, Wnd)}}],
     QNodes = section_nodes("@query"),
     HaveQuery = case Nodes of
                     all ->
