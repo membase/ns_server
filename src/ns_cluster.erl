@@ -855,7 +855,7 @@ do_engage_cluster_check_compat_version(Node, Version, NodeKVList) ->
     ActualCompatibility = expect_json_property_integer(<<"clusterCompatibility">>, NodeKVList),
     MinSupportedCompatVersion = cluster_compat_mode:min_supported_compat_version(),
     MinSupportedCompatibility =
-        ns_heart:effective_cluster_compat_version_for(MinSupportedCompatVersion),
+        cluster_compat_mode:effective_cluster_compat_version_for(MinSupportedCompatVersion),
 
     case ActualCompatibility < MinSupportedCompatibility of
         true ->

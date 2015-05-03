@@ -908,8 +908,8 @@ handle_engage_cluster2(Req) ->
             %% 127.0.0.1 (joiner) and bounced.
             {struct, Result} = build_full_node_info(node(), "127.0.0.1"),
             {_, _} = CompatTuple = lists:keyfind(<<"clusterCompatibility">>, 1, NodeKVList),
-            ThreeXCompat = ns_heart:effective_cluster_compat_version_for(
-                            cluster_compat_mode:supported_compat_version()),
+            ThreeXCompat = cluster_compat_mode:effective_cluster_compat_version_for(
+                             cluster_compat_mode:supported_compat_version()),
             ResultWithCompat =
                 case CompatTuple of
                     {_, V} when V < ThreeXCompat ->
@@ -1411,7 +1411,7 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
                 end, PortsKV0, PortKeys),
 
     RV = [{hostname, list_to_binary(HostName)},
-          {clusterCompatibility, ns_heart:effective_cluster_compat_version()},
+          {clusterCompatibility, cluster_compat_mode:effective_cluster_compat_version()},
           {version, list_to_binary(Version)},
           {os, list_to_binary(OS)},
           {ports, {struct, PortsKV}},

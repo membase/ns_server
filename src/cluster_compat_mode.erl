@@ -35,7 +35,9 @@
          is_goxdcr_enabled/0,
          is_goxdcr_enabled/1,
          is_ldap_enabled/0,
-         min_supported_compat_version/0]).
+         min_supported_compat_version/0,
+         effective_cluster_compat_version/0,
+         effective_cluster_compat_version_for/1]).
 
 %% NOTE: this is rpc:call-ed by mb_master
 -export([supported_compat_version/0, mb_master_advertised_version/0]).
@@ -263,3 +265,13 @@ post_force_compat_version() ->
     [erlang:exit(whereis(list_to_atom(Name)), diepls)
      || ("ns_memcached-" ++ _) = Name <- Names],
     ok.
+
+%% undefined is "used" shortly after node is initialized and when
+%% there's no compat mode yet
+effective_cluster_compat_version_for(undefined) ->
+    1;
+effective_cluster_compat_version_for([VersionMaj, VersionMin] = _CompatVersion) ->
+    VersionMaj * 16#10000 + VersionMin.
+
+effective_cluster_compat_version() ->
+    effective_cluster_compat_version_for(get_compat_version()).
