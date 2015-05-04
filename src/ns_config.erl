@@ -1254,18 +1254,8 @@ latest_config_marker() ->
 
 -ifdef(EUNIT).
 
-setup_path_config() ->
-    ets:new(path_config_override, [public, named_table, {read_concurrency, true}]),
-    [ets:insert(path_config_override, {K, "."}) || K <- [path_config_tmpdir, path_config_datadir,
-                                                         path_config_bindir, path_config_libdir,
-                                                         path_config_etcdir]].
-
-teardown_path_config() ->
-    ets:delete(path_config_override).
-
 do_setup() ->
     mock_gen_server:start_link({local, ?MODULE}),
-    setup_path_config(),
     ok.
 
 shutdown_process(Name) ->
@@ -1282,7 +1272,6 @@ shutdown_process(Name) ->
     erlang:process_flag(trap_exit, OldWaitFlag).
 
 do_teardown(_V) ->
-    teardown_path_config(),
     shutdown_process(?MODULE),
     ok.
 
@@ -1485,7 +1474,6 @@ setup_with_saver() ->
     {ok, _} = gen_event:start_link({local, ns_config_events}),
     {ok, _} = gen_event:start_link({local, ns_config_events_local}),
     Parent = self(),
-    setup_path_config(),
     %% we don't want to kill this process when ns_config server dies,
     %% but we wan't to kill ns_config process when this process dies
     proc_lib:start(
@@ -1520,7 +1508,6 @@ kill_and_wait(Pid) ->
     end.
 
 teardown_with_saver(_) ->
-    teardown_path_config(),
     kill_and_wait(whereis(ns_config)),
     kill_and_wait(whereis(ns_config_events)),
     kill_and_wait(whereis(ns_config_events_local)),

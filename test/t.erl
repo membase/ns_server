@@ -55,8 +55,26 @@ fake_loggers() ->
       end,
       ?LOGGERS).
 
+setup_paths() ->
+    Prefix = config(prefix_dir),
+    BinDir = filename:join(Prefix, "bin"),
+
+    Root = config(root_dir),
+    TmpDir = filename:join(Root, "tmp"),
+    file:make_dir(TmpDir),
+
+    ets:new(path_config_override, [named_table, set, public]),
+    ets:insert_new(path_config_override, {path_config_bindir, BinDir}),
+    ets:insert_new(path_config_override, {path_config_tmpdir, TmpDir}),
+
+    [ets:insert(path_config_override, {K, TmpDir})
+     || K <- [path_config_tmpdir, path_config_datadir,
+              path_config_libdir, path_config_etcdir]],
+    ok.
+
 start_with_coverage() ->
     fake_loggers(),
+    setup_paths(),
 
     cover:compile_beam_directory(config(ebin_dir)),
     Modules = cover:modules(),
@@ -74,6 +92,7 @@ start_with_coverage() ->
 
 start_without_coverage() ->
     fake_loggers(),
+    setup_paths(),
 
     io:format("Running tests without coverage~n", []),
     Ext = code:objfile_extension(),
@@ -101,7 +120,7 @@ config(cov_dir) ->
     filename:absname(filename:join([config(root_dir), "coverage"]));
 
 config(root_dir) ->
-    filename:dirname(config(test_dir));
+    filename:absname(filename:dirname(config(test_dir)));
 
 config(ebin_dir) ->
     filename:absname(filename:join([config(root_dir), "ebin"]));
@@ -110,7 +129,7 @@ config(src_dir) ->
     filename:absname(filename:join([config(root_dir), "src"]));
 
 config(test_dir) ->
-    filename:dirname(?FILE);
+    filename:absname(filename:dirname(?FILE));
 
 config(priv_dir) ->
     case init:get_argument(priv_dir) of
@@ -120,5 +139,14 @@ config(priv_dir) ->
             Root = config(test_dir),
             filename:absname(
               filename:join([Root, "log", atom_to_list(node())]))
-    end.
+    end;
 
+config(prefix_dir) ->
+    case init:get_argument(prefix_dir) of
+        {ok, [[Prefix]]} ->
+            Prefix;
+        _ ->
+            Root = config(root_dir),
+            filename:absname(
+              filename:join([Root, "..", "install"]))
+    end.

@@ -50,14 +50,6 @@ all_test_() ->
        ?_test(test_search_prop_config())},
       {"test_search_node",
        ?_test(test_search_node())},
-      %% {"test_merge_config_static",
-      %%  ?_test(test_merge_config_static())},
-      %% {"test_merge_config_dynamic",
-      %%  ?_test(test_merge_config_dynamic())},
-      %% {"test_merge_config_ver",
-      %%  ?_test(test_merge_config_ver())},
-      %% {"test_merge_config_timestamps",
-      %%  ?_test(test_merge_config_timestamps())},
       {"test_bin_persist",
        ?_test(test_bin_persist())},
       {"test_load_config_improper",
@@ -315,10 +307,6 @@ test_svc() ->
     end.
 
 do_test_svc() ->
-    ets:new(path_config_override, [public, named_table, {read_concurrency, true}]),
-    [ets:insert(path_config_override, {K, "."}) || K <- [path_config_tmpdir, path_config_datadir,
-                                                         path_config_bindir, path_config_libdir,
-                                                         path_config_etcdir]],
     OldFlag = process_flag(trap_exit, true),
     CP = data_file(),
     D = test_dir(),
