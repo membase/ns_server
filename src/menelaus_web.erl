@@ -1680,12 +1680,18 @@ handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd, Services) ->
                      end,
 
 
-                 %% TODO: gracefully handle 404 from addNodeV2 endpoint
-                 menelaus_rest:json_request_hilevel(post,
-                                                    {OtherHost, OtherPort, Endpoint,
-                                                     "application/x-www-form-urlencoded",
-                                                     mochiweb_util:urlencode(Payload)},
-                                                    {OtherUser, OtherPswd});
+                 RestRV = menelaus_rest:json_request_hilevel(post,
+                                                             {OtherHost, OtherPort,
+                                                              Endpoint,
+                                                              "application/x-www-form-urlencoded",
+                                                              mochiweb_util:urlencode(Payload)},
+                                                             {OtherUser, OtherPswd}),
+                 case RestRV of
+                     {error, What, _M, {bad_status, 404, Msg}} ->
+                         {error, What, <<"Node attempting to join an older cluster. Some of the selected services are not available.">>, {bad_status, 404, Msg}};
+                     Other ->
+                         Other
+                 end;
              X -> X
          end,
 
