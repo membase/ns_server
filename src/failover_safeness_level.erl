@@ -275,9 +275,7 @@ outgoing_replications_started(BucketName, Map, Node, NodeStatuses) ->
     ReplicaOkP =
         fun (ReplicaNode) ->
                 %% NOTE: this includes all replicated vbuckets not just active vbuckets
-                ExpectedVBuckets =
-                    ns_bucket:replicated_vbuckets(Map, Node, ReplicaNode,
-                                                  cluster_compat_mode:get_replication_topology()),
+                ExpectedVBuckets = ns_bucket:replicated_vbuckets(Map, Node, ReplicaNode),
                 ReplicaInfo = ns_doctor:get_node(ReplicaNode, NodeStatuses),
                 AllIncomingConfs = proplists:get_value(incoming_replications_conf_hashes, ReplicaInfo, []),
                 IncomingConfsAllNodes = proplists:get_value(BucketName, AllIncomingConfs, []),

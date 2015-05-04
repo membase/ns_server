@@ -60,7 +60,6 @@
          recovery_status/0,
          recovery_map/2,
          is_recovery_running/0,
-         set_replication_topology/1,
          run_cleanup/1,
          ensure_janitor_run/1,
          start_graceful_failover/1]).
@@ -180,9 +179,8 @@ needs_rebalance() ->
 
 -spec needs_rebalance([atom(), ...]) -> boolean().
 needs_rebalance(Nodes) ->
-    Topology = cluster_compat_mode:get_replication_topology(),
     lists:any(fun ({_, BucketConfig}) ->
-                      ns_bucket:needs_rebalance(BucketConfig, Nodes, Topology)
+                      ns_bucket:needs_rebalance(BucketConfig, Nodes)
               end,
               ns_bucket:get_buckets()).
 
@@ -308,13 +306,6 @@ is_recovery_running() ->
         _ ->
             false
     end.
-
--spec set_replication_topology(chain | star) ->
-                                      ok | rebalance_running | in_recovery.
-set_replication_topology(Topology) ->
-    wait_for_orchestrator(),
-    gen_fsm:sync_send_event(?SERVER,
-                            {set_replication_topology, Topology}, infinity).
 
 %%
 %% gen_fsm callbacks
@@ -844,19 +835,6 @@ idle({start_recovery, Bucket}, {FromPid, _} = _From,
         throw:E ->
             {reply, E, idle, State}
     end;
-idle({set_replication_topology, Topology}, _From, State) ->
-    CurrentTopology = cluster_compat_mode:get_replication_topology(),
-    case CurrentTopology =:= Topology of
-        true ->
-            ok;
-        false ->
-            ale:info(?USER_LOGGER, "Switching replication topology from ~s to ~s",
-                     [CurrentTopology, Topology]),
-            ns_config:set(replication_topology, Topology),
-            ns_config:sync_announcements(),
-            lists:foreach(fun request_janitor_run/1, ns_bucket:get_bucket_names())
-    end,
-    {reply, ok, idle, State};
 idle({ensure_janitor_run, BucketName}, From, State) ->
     do_request_janitor_run({BucketName, [From]}, idle, State).
 

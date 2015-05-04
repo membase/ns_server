@@ -33,8 +33,8 @@
          generate_initial_map/1,
          start_link_rebalance/5,
          run_mover/7,
-         unbalanced/3,
-         map_options_changed/2,
+         unbalanced/2,
+         map_options_changed/1,
          eject_nodes/1,
          maybe_cleanup_old_buckets/1,
          get_delta_recovery_nodes/2,
@@ -175,10 +175,9 @@ failover(Bucket, BucketConfig, Node) ->
 
 generate_vbucket_map_options(KeepNodes, BucketConfig) ->
     Config = ns_config:get(),
-    ReplicationTopology = cluster_compat_mode:get_replication_topology(),
-    generate_vbucket_map_options(KeepNodes, BucketConfig, ReplicationTopology, Config).
+    generate_vbucket_map_options(KeepNodes, BucketConfig, Config).
 
-generate_vbucket_map_options(KeepNodes, BucketConfig, ReplicationTopology, Config) ->
+generate_vbucket_map_options(KeepNodes, BucketConfig, Config) ->
     Tags = case ns_config:search(Config, server_groups) of
                false ->
                    undefined;
@@ -215,8 +214,7 @@ generate_vbucket_map_options(KeepNodes, BucketConfig, ReplicationTopology, Confi
            end,
 
     Opts0 = ns_bucket:config_to_map_options(BucketConfig),
-    misc:update_proplist(Opts0, [{replication_topology, ReplicationTopology},
-                                 {tags, Tags}]).
+    misc:update_proplist(Opts0, [{tags, Tags}]).
 
 generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
     Opts = generate_vbucket_map_options(KeepNodes, BucketConfig),
@@ -530,7 +528,7 @@ run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForw
             exit(stopped)
     end.
 
-unbalanced(Map, Topology, BucketConfig) ->
+unbalanced(Map, BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig, []),
     NumServers = length(Servers),
 
@@ -543,26 +541,9 @@ unbalanced(Map, Topology, BucketConfig) ->
                     lists:sublist(Chain, NumServers))
           end, Map),
 
-    R orelse case Topology of
-                 chain ->
-                     unbalanced_chain(Map, Servers);
-                 star ->
-                     unbalanced_star(Map, Servers)
-             end.
+    R orelse do_unbalanced(Map, Servers).
 
-%% @doc Determine if a particular bucket is unbalanced. Returns true
-%% iff the max vbucket count in any class on any server is >2 more
-%% than the min.
--spec unbalanced_chain(vbucket_map(), [atom()]) -> boolean().
-unbalanced_chain(Map, Servers) ->
-    lists:any(fun (Histogram) ->
-                      case [N || {_, N} <- Histogram] of
-                          [] -> false;
-                          Counts -> lists:max(Counts) - lists:min(Counts) > 2
-                      end
-              end, histograms(Map, Servers)).
-
-unbalanced_star(Map, Servers) ->
+do_unbalanced(Map, Servers) ->
     {Masters, Replicas} =
         lists:foldl(
           fun ([M | R], {AccM, AccR}) ->
@@ -590,12 +571,12 @@ unbalanced_star(Map, Servers) ->
               Counts =/= [] andalso lists:max(Counts) - lists:min(Counts) > 1
       end, [MastersCounts, ReplicasCounts]).
 
-map_options_changed(Topology, BucketConfig) ->
+map_options_changed(BucketConfig) ->
     Config = ns_config:get(),
 
     Servers = proplists:get_value(servers, BucketConfig, []),
 
-    Opts = generate_vbucket_map_options(Servers, BucketConfig, Topology, Config),
+    Opts = generate_vbucket_map_options(Servers, BucketConfig, Config),
     OptsHash = proplists:get_value(map_opts_hash, BucketConfig),
     case OptsHash of
         undefined ->
@@ -625,26 +606,6 @@ eject_nodes(Nodes) ->
                           ns_cluster:leave(N)
                   end, LeaveNodes).
 
-
-%% for each replication turn in Map returns list of pairs {node(),
-%% integer()} representing histogram of occurences of nodes in this
-%% replication turn. Missing Servers are represented with counts of 0.
-%% Nodes that are not present in Servers are ignored.
-histograms(Map, Servers) ->
-    Histograms = [lists:keydelete(
-                    undefined, 1,
-                    misc:uniqc(
-                      lists:sort(
-                        [N || N<-L,
-                              lists:member(N, Servers)]))) ||
-                     L <- misc:rotate(Map)],
-    lists:map(fun (H) ->
-                      Missing = [{N, 0} || N <- Servers,
-                                           not lists:keymember(N, 1, H)],
-                      Missing ++ H
-              end, Histograms).
-
-
 run_verify_replication(Bucket, Nodes, Map) ->
     Pid = proc_lib:spawn_link(?MODULE, verify_replication, [Bucket, Nodes, Map]),
     ?log_debug("Spawned verify_replication worker: ~p", [Pid]),
@@ -660,7 +621,7 @@ run_verify_replication(Bucket, Nodes, Map) ->
     end.
 
 verify_replication(Bucket, Nodes, Map) ->
-    ExpectedReplicators0 = ns_bucket:map_to_replicas(Map, cluster_compat_mode:get_replication_topology()),
+    ExpectedReplicators0 = ns_bucket:map_to_replicas(Map),
     ExpectedReplicators = lists:sort(ExpectedReplicators0),
 
     {ActualReplicators, BadNodes} = janitor_agent:get_src_dst_vbucket_replications(Bucket, Nodes),

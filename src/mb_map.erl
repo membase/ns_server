@@ -33,8 +33,7 @@
          run_rebalance_counts_experiment/0,
          find_matching_past_maps/4,
          find_matching_past_maps/5,
-         is_trivially_compatible_past_map/5,
-         score_maps/3, best_map/2]).
+         is_trivially_compatible_past_map/5]).
 
 
 -export([counts/1]). % for testing
@@ -73,9 +72,11 @@ promote_replicas_for_graceful_failover_for_chain(Chain, RemoveNode) ->
                    end,
     ChangedChain ++ Undefineds.
 
-vbucket_movements_rec(AccMasters, AccReplicas, AccRest, [], []) ->
-    {AccMasters, AccReplicas, AccRest};
-vbucket_movements_rec(AccMasters, AccReplicas, AccRest, [[MasterSrc|_] = SrcChain | RestSrcChains], [[MasterDst|RestDst] | RestDstChains]) ->
+vbucket_movements_rec(AccMasters, AccReplicas, [], []) ->
+    {AccMasters, AccReplicas};
+vbucket_movements_rec(AccMasters, AccReplicas,
+                      [[MasterSrc|_] = SrcChain | RestSrcChains],
+                      [[MasterDst|RestDst] | RestDstChains]) ->
     true = (MasterDst =/= undefined),
     AccMasters2 = case MasterSrc =:= MasterDst of
                       true ->
@@ -83,26 +84,15 @@ vbucket_movements_rec(AccMasters, AccReplicas, AccRest, [[MasterSrc|_] = SrcChai
                       false ->
                           AccMasters+1
                   end,
-    BetterReplicas  = case SrcChain of
-                          [_] ->
-                              SrcChain;
-                          [MasterSrc, FirstSrcReplica | _RestSrc] ->
-                              [MasterSrc, FirstSrcReplica]
-                      end,
-    AccReplicas2 = case RestDst =:= [] orelse hd(RestDst) =:= undefined orelse lists:member(hd(RestDst), BetterReplicas) of
-                       true ->
-                           AccReplicas;
-                       false ->
-                           AccReplicas+1
-                   end,
-    AccRest2 = lists:foldl(
-                 fun (DstNode, Acc) ->
-                         case DstNode =:= undefined orelse lists:member(DstNode, SrcChain) of
-                             true -> Acc;
-                             false -> Acc+1
-                         end
-                 end, AccRest, RestDst),
-    vbucket_movements_rec(AccMasters2, AccReplicas2, AccRest2, RestSrcChains, RestDstChains).
+    AccReplicas2 =
+        lists:foldl(
+          fun (DstNode, Acc) ->
+                  case DstNode =:= undefined orelse lists:member(DstNode, SrcChain) of
+                      true -> Acc;
+                      false -> Acc+1
+                  end
+          end, AccReplicas, RestDst),
+    vbucket_movements_rec(AccMasters2, AccReplicas2, RestSrcChains, RestDstChains).
 
 %% returns 'score' for difference between Src and Dst map. It's a
 %% triple. First element is number of takeovers (regardless if from
@@ -114,11 +104,7 @@ vbucket_movements_rec(AccMasters, AccReplicas, AccRest, [[MasterSrc|_] = SrcChai
 %% future first replica is past master of first replica we think it
 %% won't require backfill.
 vbucket_movements(Src, Dst) ->
-    vbucket_movements_rec(0, 0, 0, Src, Dst).
-
-vbucket_movements_star(Src, Dst) ->
-    {Takeovers, _, ReplicaChanges} = vbucket_movements(Src, Dst),
-    {Takeovers, ReplicaChanges}.
+    vbucket_movements_rec(0, 0, Src, Dst).
 
 map_nodes_set(Map) ->
     lists:foldl(
@@ -133,11 +119,6 @@ map_nodes_set(Map) ->
                         end
                 end, Acc, Chain)
       end, sets:new(), Map).
-
-matching_renamings(KeepNodesSet, CurrentMap, CandidateMap, Trivial) ->
-    matching_renamings_with_tags(KeepNodesSet,
-                                 {CurrentMap, undefined},
-                                 {CandidateMap, undefined}, Trivial).
 
 matching_renamings_with_tags(KeepNodesSet, {CurrentMap, CurrentTags0},
                              {CandidateMap, CandidateTags0}, Trivial) ->
@@ -321,21 +302,19 @@ matching_renamings_same_vbuckets_count(KeepNodesSet, CurrentTags,
 %%
 
 generate_map(Map, Nodes, Options) ->
-    Topology = proplists:get_value(replication_topology, Options, chain),
     Tags = proplists:get_value(tags, Options),
     NumReplicas = length(hd(Map)) - 1,
 
-    UseOldCode = Topology =:= chain
-        orelse (Tags =:= undefined andalso NumReplicas =< 1),
+    UseOldCode = (Tags =:= undefined) andalso (NumReplicas =< 1),
 
     case UseOldCode of
         true ->
-            generate_map_chain(Map, Nodes, Options);
+            generate_map_old(Map, Nodes, Options);
         false ->
-            generate_map_star(Map, Nodes, Options)
+            generate_map_new(Map, Nodes, Options)
     end.
 
-is_compatible_past_star_map(OptionsPast0, OptionsNow0, NumReplicas) ->
+is_compatible_past_map(OptionsPast0, OptionsNow0, NumReplicas) ->
     OptionsPast = lists:keydelete(tags, 1, OptionsPast0),
     OptionsNow = lists:keydelete(tags, 1, OptionsNow0),
 
@@ -352,7 +331,7 @@ is_compatible_past_star_map(OptionsPast0, OptionsNow0, NumReplicas) ->
                 NumReplicas =:= 1
     end.
 
-generate_map_star(Map, Nodes, Options) ->
+generate_map_new(Map, Nodes, Options) ->
     KeepNodes = lists:sort(Nodes),
     MapsHistory = proplists:get_value(maps_history, Options, []),
 
@@ -362,7 +341,7 @@ generate_map_star(Map, Nodes, Options) ->
     Tags = proplists:get_value(tags, Options),
 
     MapsFromPast0 = find_matching_past_maps(Nodes, Map, Options, MapsHistory),
-    MapsFromPast = score_maps(Map, Options, MapsFromPast0),
+    MapsFromPast = score_maps(Map, MapsFromPast0),
     ?log_debug("Scores for past maps:~n~p", [[S || {_, S} <- MapsFromPast]]),
 
     GeneratedMaps0 =
@@ -374,7 +353,7 @@ generate_map_star(Map, Nodes, Options) ->
                _ <- lists:seq(1, 3)] ||
               ShuffledNodes <- [misc:shuffle(KeepNodes) || _ <- lists:seq(1, 3)]]),
 
-    GeneratedMaps = score_maps(Map, Options, GeneratedMaps0),
+    GeneratedMaps = score_maps(Map, GeneratedMaps0),
     ?log_debug("Scores for generated maps:~n~p", [[S || {_, S} <- GeneratedMaps]]),
 
     AllMaps = sets:to_list(sets:from_list(GeneratedMaps ++ MapsFromPast)),
@@ -388,27 +367,24 @@ generate_map_star(Map, Nodes, Options) ->
                 lists:keymember(BestMap, 1, GeneratedMaps)]),
     BestMap.
 
-map_scores_less({_, ScoreA}, {_, ScoreB}) ->
-    {element(1, ScoreA) + element(2, ScoreA), element(3, ScoreA)} < {element(1, ScoreB) + element(2, ScoreB), element(3, ScoreB)}.
-
-generate_map_chain(Map, Nodes, Options) ->
+generate_map_old(Map, Nodes, Options) ->
     KeepNodes = lists:sort(Nodes),
     MapsHistory = proplists:get_value(maps_history, Options, []),
 
     NaturalMap = balance(Map, KeepNodes, Options),
-    [NaturalMapScore] = score_maps(Map, Options, [NaturalMap]),
+    [NaturalMapScore] = score_maps(Map, [NaturalMap]),
 
     ?log_debug("Natural map score: ~p", [element(2, NaturalMapScore)]),
 
     RndMap1 = balance(Map, misc:shuffle(Nodes), Options),
     RndMap2 = balance(Map, misc:shuffle(Nodes), Options),
 
-    AllRndMapScores = [RndMap1Score, RndMap2Score] = score_maps(Map, Options, [RndMap1, RndMap2]),
+    AllRndMapScores = [RndMap1Score, RndMap2Score] = score_maps(Map, [RndMap1, RndMap2]),
 
     ?log_debug("Rnd maps scores: ~p, ~p", [S || {_, S} <- AllRndMapScores]),
 
     MapsFromPast0 = find_matching_past_maps(Nodes, Map, Options, MapsHistory),
-    MapsFromPast = score_maps(Map, Options, MapsFromPast0),
+    MapsFromPast = score_maps(Map, MapsFromPast0),
 
     AllMaps = sets:to_list(sets:from_list([NaturalMapScore, RndMap1Score, RndMap2Score | MapsFromPast])),
 
@@ -562,7 +538,6 @@ find_matching_past_maps(Nodes, Map, MapOptions, History) ->
     find_matching_past_maps(Nodes, Map, MapOptions, History, []).
 
 find_matching_past_maps(Nodes, Map, MapOptions, History, Options) ->
-    Topology = proplists:get_value(replication_topology, MapOptions, chain),
     Options1 = lists:sort(lists:keydelete(maps_history, 1, MapOptions)),
     NodesSet = sets:from_list(Nodes),
     %% consider only trivial renamings for the following definition of
@@ -575,20 +550,9 @@ find_matching_past_maps(Nodes, Map, MapOptions, History, Options) ->
     %%  still reside on the same (but possibly different) tag after tag
     %%  renaming.
     Trivial = proplists:get_value(trivial, Options, false),
-    do_find_matching_past_maps(Topology, NodesSet, Map,
-                               Options1, History, Trivial).
+    do_find_matching_past_maps(NodesSet, Map, Options1, History, Trivial).
 
-do_find_matching_past_maps(chain, NodesSet, Map, Options, History, Trivial) ->
-    lists:flatmap(fun ({PastMap, NonHistoryOptions0}) ->
-                          NonHistoryOptions = lists:sort(NonHistoryOptions0),
-                          case NonHistoryOptions =:= Options of
-                              true ->
-                                  matching_renamings(NodesSet, Map, PastMap, Trivial);
-                              false ->
-                                  []
-                          end
-                  end, History);
-do_find_matching_past_maps(star, NodesSet, Map, Options, History, Trivial) ->
+do_find_matching_past_maps(NodesSet, Map, Options, History, Trivial) ->
     NumReplicas = length(hd(Map)) - 1,
     Tags = proplists:get_value(tags, Options),
 
@@ -597,7 +561,7 @@ do_find_matching_past_maps(star, NodesSet, Map, Options, History, Trivial) ->
                           PastTags = proplists:get_value(tags, NonHistoryOptions),
 
                           Compatible =
-                              is_compatible_past_star_map(NonHistoryOptions, Options, NumReplicas),
+                              is_compatible_past_map(NonHistoryOptions, Options, NumReplicas),
                           case Compatible of
                               true ->
                                   matching_renamings_with_tags(NodesSet, {Map, Tags},
@@ -607,28 +571,15 @@ do_find_matching_past_maps(star, NodesSet, Map, Options, History, Trivial) ->
                           end
                   end, History).
 
-score_maps(CurrentMap, Options, Maps) ->
-    Topology = proplists:get_value(replication_topology, Options, chain),
-    do_score_maps(Topology, CurrentMap, Maps).
-
-do_score_maps(chain, CurrentMap, Maps) ->
-    [{M, vbucket_movements(CurrentMap, M)} || M <- Maps];
-do_score_maps(star, CurrentMap, Maps) ->
-    [{M, vbucket_movements_star(CurrentMap, M)} || M <- Maps].
+score_maps(CurrentMap, Maps) ->
+    [{M, vbucket_movements(CurrentMap, M)} || M <- Maps].
 
 best_map(Options, Maps) ->
-    Topology = proplists:get_value(replication_topology, Options, chain),
     History = proplists:get_value(maps_history, Options, []),
 
-    Less0 =
-        case Topology of
-            chain ->
-                fun map_scores_less/2;
-            star ->
-                fun ({_, X}, {_, Y}) ->
-                        X < Y
-                end
-        end,
+    Less0 = fun ({_, X}, {_, Y}) ->
+                    X < Y
+            end,
 
     Less = fun (X, Y) ->
                   case {Less0(X, Y), Less0(Y, X)} of
@@ -1049,7 +1000,7 @@ do_failover_and_rebalance_back_trial(NodesCount, FailoverIndex, VBucketCount, Re
     Nodes = testnodes(NodesCount),
     InitialMap = lists:duplicate(VBucketCount, lists:duplicate(ReplicaCount+1, undefined)),
     SlavesOptions = [{max_slaves, 10}],
-    FirstMap = generate_map(InitialMap, Nodes, SlavesOptions),
+    FirstMap = generate_map_old(InitialMap, Nodes, SlavesOptions),
     true = is_balanced(FirstMap, Nodes, SlavesOptions),
     FailedNode = lists:nth(FailoverIndex, Nodes),
     FailoverMap = promote_replicas(FirstMap, [FailedNode]),
@@ -1060,8 +1011,8 @@ do_failover_and_rebalance_back_trial(NodesCount, FailoverIndex, VBucketCount, Re
     ?assertEqual(NodesCount, length(lists:usort(LiveNodes)) + 1),
     false = is_balanced(FailoverMap, LiveNodes, SlavesOptions),
     true = (lists:sort(LiveNodes) =:= lists:sort(sets:to_list(map_nodes_set(FailoverMap)))),
-    RebalanceBackMap = generate_map(FailoverMap, Nodes, [{maps_history, [{FirstMap, SlavesOptions}]} | SlavesOptions]),
-    true = (RebalanceBackMap =/= generate_map(FailoverMap, Nodes, [{maps_history, [{FirstMap, lists:keyreplace(max_slaves, 1, SlavesOptions, {max_slaves, 3})}]} | SlavesOptions])),
+    RebalanceBackMap = generate_map_old(FailoverMap, Nodes, [{maps_history, [{FirstMap, SlavesOptions}]} | SlavesOptions]),
+    true = (RebalanceBackMap =/= generate_map_old(FailoverMap, Nodes, [{maps_history, [{FirstMap, lists:keyreplace(max_slaves, 1, SlavesOptions, {max_slaves, 3})}]} | SlavesOptions])),
     ?assertEqual(FirstMap, RebalanceBackMap).
 
 failover_and_rebalance_back_one_replica_test() ->
@@ -1079,8 +1030,8 @@ do_replace_nodes_rebalance_trial(NodesCount, RemoveIndexes, AddIndexes, VBucketC
     ReplacementNodes = Nodes -- RemovedNodes,
     InitialMap = lists:duplicate(VBucketCount, lists:duplicate(ReplicaCount+1, undefined)),
     SlavesOptions = [{max_slaves, 10}],
-    FirstMap = generate_map(InitialMap, InitialNodes, SlavesOptions),
-    ReplaceMap = generate_map(FirstMap, ReplacementNodes, [{maps_history, [{FirstMap, SlavesOptions}]} | SlavesOptions]),
+    FirstMap = generate_map_old(InitialMap, InitialNodes, SlavesOptions),
+    ReplaceMap = generate_map_old(FirstMap, ReplacementNodes, [{maps_history, [{FirstMap, SlavesOptions}]} | SlavesOptions]),
     ?log_debug("FirstMap:~n~p~nReplaceMap:~n~p~n", [FirstMap, ReplaceMap]),
     %% we expect all change to be just some rename (i.e. mapping
     %% from/to) RemovedNodes to AddedNodes. We can find it by finding

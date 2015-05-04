@@ -568,21 +568,9 @@ spawn_ebucketmigrator_mover(Bucket, VBucket, SrcNode, DstNode) ->
 
 %% @private
 %% @doc {Src, Dst} pairs from a chain with unmapped nodes filtered out.
-pairs(Chain) ->
-    case cluster_compat_mode:get_replication_topology() of
-        star ->
-            pairs_star(Chain);
-        chain ->
-            pairs_chain(Chain)
-    end.
-
-pairs_chain(Chain) ->
-    [Pair || {Src, Dst} = Pair <- misc:pairs(Chain), Src /= undefined,
-             Dst /= undefined].
-
-pairs_star([undefined | _]) ->
+pairs([undefined | _]) ->
     [];
-pairs_star([Master | Replicas]) ->
+pairs([Master | Replicas]) ->
     [{Master, R} || R <- Replicas, R =/= undefined].
 
 %% @private

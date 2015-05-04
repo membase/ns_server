@@ -25,7 +25,6 @@
          is_index_pausing_on/0,
          rebalance_ignore_view_compactions/0,
          check_is_progress_tracking_supported/0,
-         get_replication_topology/0,
          is_node_compatible/2,
          split_live_nodes_by_version/1,
          is_cluster_30/0,
@@ -108,9 +107,6 @@ is_ldap_enabled() ->
     is_cluster_sherlock() andalso is_enterprise() andalso
         ns_config:search(ns_config:latest_config_marker(),
                          {node, node(), ldap_enabled}, false).
-
-get_replication_topology() ->
-    ns_config:read_key_fast(replication_topology, star).
 
 get_compat_version_three_elements() ->
     case get_compat_version() of

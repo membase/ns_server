@@ -60,8 +60,7 @@ graphviz(Bucket) ->
                               [I, Color, Node, node_vbuckets(I, Node, States, Map)]) ||
                     {I, {Node, Color}} <- misc:enumerate(NodeColors)],
 
-    Replicants0 = ns_bucket:map_to_replicas(Map, cluster_compat_mode:get_replication_topology()),
-    Replicants = lists:sort(Replicants0),
+    Replicants = lists:sort(ns_bucket:map_to_replicas(Map)),
     {Replicators, FailedNodes} = janitor_agent:get_src_dst_vbucket_replications(Bucket, Nodes),
     case FailedNodes of
         [] -> ok;

@@ -461,8 +461,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                          ["controller", "resetAlerts"] ->
                              {auth, fun handle_reset_alerts/1};
-                         ["controller", "setReplicationTopology"] ->
-                             {auth, fun handle_set_replication_topology/1};
                          ["controller", "regenerateCertificate"] ->
                              {auth, fun handle_regenerate_certificate/1};
                          ["controller", "startLogsCollection"] ->
@@ -3057,25 +3055,6 @@ handle_set_autocompaction(Req) ->
 
             ns_audit:modify_compaction_settings(Req, ACSettings ++ MaybePurgeInterval ++ MaybeIndex),
             reply_json(Req, [], 200)
-    end.
-
-handle_set_replication_topology(Req) ->
-    Params = Req:parse_post(),
-    TopologyString = proplists:get_value("topology", Params),
-    case lists:member(TopologyString, ["star", "chain"]) of
-        true ->
-            Topology = list_to_atom(TopologyString),
-            RV = ns_orchestrator:set_replication_topology(Topology),
-            case RV of
-                ok ->
-                    reply(Req, 200);
-                rebalance_running ->
-                    reply_text(Req, "Rebalance running.", 503);
-                in_recovery ->
-                    reply_text(Req, "Cluster is in recovery mode.", 503)
-            end;
-        false ->
-            reply_text(Req, "topology must be either \"star\" or \"chain\"", 400)
     end.
 
 mk_number_field_validator_error_maker(JSONName, Msg, Args) ->

@@ -48,10 +48,8 @@
          json_map_with_full_config/3,
          live_bucket_nodes/1,
          live_bucket_nodes_from_config/1,
-         map_to_replicas/2,
-         map_to_replicas_chain/1,
-         map_to_replicas_star/1,
-         replicated_vbuckets/4,
+         map_to_replicas/1,
+         replicated_vbuckets/3,
          maybe_get_bucket/2,
          moxi_port/1,
          name_conflict/1,
@@ -80,7 +78,7 @@
          past_vbucket_maps/1,
          config_to_map_options/1,
          needs_upgrade_to_dcp/1,
-         needs_rebalance/3,
+         needs_rebalance/2,
          bucket_view_nodes/1,
          bucket_view_nodes/2,
          bucket_config_view_nodes/1,
@@ -270,7 +268,7 @@ raw_ram_quota(Bucket) ->
 -define(FS_SOFT_REBALANCE_NEEDED, 1).
 -define(FS_OK, 0).
 
-bucket_failover_safety(BucketConfig, ActiveNodes, LiveNodes, Topology) ->
+bucket_failover_safety(BucketConfig, ActiveNodes, LiveNodes) ->
     ReplicaNum = ns_bucket:num_replicas(BucketConfig),
     case ReplicaNum of
         %% if replica count for bucket is 0 we cannot failover at all
@@ -303,7 +301,7 @@ bucket_failover_safety(BucketConfig, ActiveNodes, LiveNodes, Topology) ->
                                 ?FS_HARD_NODES_NEEDED
                         end;
                     true ->
-                        case needs_rebalance(BucketConfig, ActiveNodes, Topology) of
+                        case needs_rebalance(BucketConfig, ActiveNodes) of
                             true ->
                                 ?FS_SOFT_REBALANCE_NEEDED;
                             false ->
@@ -321,12 +319,12 @@ bucket_failover_safety(BucketConfig, ActiveNodes, LiveNodes, Topology) ->
             {BaseSafety, ExtraSafety}
     end.
 
-failover_safety_rec(?FS_HARD_NODES_NEEDED, _ExtraSafety, _, _ActiveNodes, _LiveNodes, _Topology) ->
+failover_safety_rec(?FS_HARD_NODES_NEEDED, _ExtraSafety, _, _ActiveNodes, _LiveNodes) ->
     {?FS_HARD_NODES_NEEDED, ok};
-failover_safety_rec(BaseSafety, ExtraSafety, [], _ActiveNodes, _LiveNodes, _Topology) ->
+failover_safety_rec(BaseSafety, ExtraSafety, [], _ActiveNodes, _LiveNodes) ->
     {BaseSafety, ExtraSafety};
-failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], ActiveNodes, LiveNodes, Topology) ->
-    {ThisBaseSafety, ThisExtraSafety} = bucket_failover_safety(BucketConfig, ActiveNodes, LiveNodes, Topology),
+failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], ActiveNodes, LiveNodes) ->
+    {ThisBaseSafety, ThisExtraSafety} = bucket_failover_safety(BucketConfig, ActiveNodes, LiveNodes),
     NewBaseSafety = case BaseSafety < ThisBaseSafety of
                         true -> ThisBaseSafety;
                         _ -> BaseSafety
@@ -338,7 +336,7 @@ failover_safety_rec(BaseSafety, ExtraSafety, [BucketConfig | RestConfigs], Activ
                              ok
                      end,
     failover_safety_rec(NewBaseSafety, NewExtraSafety,
-                        RestConfigs, ActiveNodes, LiveNodes, Topology).
+                        RestConfigs, ActiveNodes, LiveNodes).
 
 -spec failover_warnings() -> [failoverNeeded | rebalanceNeeded | hardNodesNeeded | softNodesNeeded].
 failover_warnings() ->
@@ -353,8 +351,7 @@ failover_warnings() ->
                               [C || {_, C} <- get_buckets(Config),
                                     membase =:= bucket_type(C)],
                               ActiveNodes,
-                              LiveNodes,
-                              cluster_compat_mode:get_replication_topology()),
+                              LiveNodes),
     BaseSafety = case BaseSafety0 of
                      ?FS_HARD_NODES_NEEDED -> hardNodesNeeded;
                      ?FS_FAILOVER_NEEDED -> failoverNeeded;
@@ -364,25 +361,7 @@ failover_warnings() ->
                  end,
     [S || S <- [BaseSafety, ExtraSafety], S =/= ok].
 
-map_to_replicas(Map, ReplicationTopology) ->
-    case ReplicationTopology of
-        chain ->
-            map_to_replicas_chain(Map);
-        star ->
-            map_to_replicas_star(Map)
-    end.
-
-map_to_replicas_chain(Map) ->
-    map_to_replicas_chain(Map, 0, []).
-
-map_to_replicas_chain([], _, Replicas) ->
-    lists:append(Replicas);
-map_to_replicas_chain([Chain|Rest], V, Replicas) ->
-    Pairs = [{Src, Dst, V} || {Src, Dst} <- misc:pairs(Chain),
-                            Src /= undefined andalso Dst /= undefined],
-    map_to_replicas_chain(Rest, V+1, [Pairs|Replicas]).
-
-map_to_replicas_star(Map) ->
+map_to_replicas(Map) ->
     lists:foldr(
       fun ({VBucket, [Master | Replicas]}, Acc) ->
               case Master of
@@ -396,8 +375,8 @@ map_to_replicas_star(Map) ->
 
 %% returns _sorted_ list of vbuckets that are replicated from SrcNode
 %% to DstNode according to given Map.
-replicated_vbuckets(Map, SrcNode, DstNode, Topology) ->
-    VBuckets = [V || {S, D, V} <- map_to_replicas(Map, Topology),
+replicated_vbuckets(Map, SrcNode, DstNode) ->
+    VBuckets = [V || {S, D, V} <- map_to_replicas(Map),
                      S =:= SrcNode, DstNode =:= D],
     lists:sort(VBuckets).
 
@@ -639,6 +618,7 @@ new_bucket_default_params(membase) ->
      {num_vbuckets, NumVBuckets},
      {num_replicas, 1},
      {ram_quota, 0},
+     {replication_topology, star},
      {servers, []}];
 new_bucket_default_params(memcached) ->
     Nodes = ns_cluster_membership:filter_out_non_kv_nodes(ns_cluster_membership:active_nodes()),
@@ -874,7 +854,8 @@ all_node_vbuckets(BucketConfig) ->
         lists:member(Node, VBuckets)].
 
 config_to_map_options(Config) ->
-    [{max_slaves, proplists:get_value(max_slaves, Config, 10)}].
+    [{max_slaves, proplists:get_value(max_slaves, Config, 10)},
+     {replication_topology, proplists:get_value(replication_topology, Config, star)}].
 
 update_vbucket_map_history(Map, SanifiedOptions) ->
     History = past_vbucket_maps(),
@@ -909,7 +890,7 @@ past_vbucket_maps(Config) ->
         false -> []
     end.
 
-needs_rebalance(BucketConfig, Nodes, Topology) ->
+needs_rebalance(BucketConfig, Nodes) ->
     Servers = proplists:get_value(servers, BucketConfig, []),
     case proplists:get_value(type, BucketConfig) of
         membase ->
@@ -921,8 +902,8 @@ needs_rebalance(BucketConfig, Nodes, Topology) ->
                     Map =:= undefined orelse
                         ns_bucket:needs_upgrade_to_dcp(BucketConfig) orelse
                         lists:sort(Nodes) =/= lists:sort(Servers) orelse
-                        ns_rebalancer:map_options_changed(Topology, BucketConfig) orelse
-                        (ns_rebalancer:unbalanced(Map, Topology, BucketConfig) andalso
+                        ns_rebalancer:map_options_changed(BucketConfig) orelse
+                        (ns_rebalancer:unbalanced(Map, BucketConfig) andalso
                          not is_compatible_past_map(Nodes, BucketConfig, Map))
             end;
         memcached ->

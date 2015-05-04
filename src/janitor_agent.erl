@@ -233,32 +233,11 @@ apply_new_bucket_config_with_timeout(Bucket, Rebalancer, Servers,
                   _ -> Timeout0
               end,
     true = (Rebalancer =:= undefined orelse is_pid(Rebalancer)),
-    case cluster_compat_mode:get_replication_topology() of
-        star ->
-            apply_new_bucket_config_star(Bucket, Rebalancer, Servers,
-                                         NewBucketConfig, IgnoredVBuckets, Timeout);
-        chain ->
-            apply_new_bucket_config_chain(Bucket, Rebalancer, Servers,
-                                          NewBucketConfig, IgnoredVBuckets, Timeout)
-    end.
+    apply_new_bucket_config(Bucket, Rebalancer, Servers,
+                            NewBucketConfig, IgnoredVBuckets, Timeout).
 
-apply_new_bucket_config_chain(Bucket, Rebalancer, Servers,
-                              NewBucketConfig, IgnoredVBuckets, Timeout) ->
-    RV1 = gen_server:multi_call(Servers, server_name(Bucket),
-                                get_apply_new_config_call(Rebalancer, NewBucketConfig, IgnoredVBuckets),
-                                Timeout),
-    case process_apply_config_rv(Bucket, RV1, apply_new_config) of
-        ok ->
-            RV2 = gen_server:multi_call(Servers, server_name(Bucket),
-                                        {apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
-                                        Timeout),
-            process_apply_config_rv(Bucket, RV2, apply_new_config_replicas_phase);
-        Other ->
-            Other
-    end.
-
-apply_new_bucket_config_star(Bucket, Rebalancer, Servers,
-                             NewBucketConfig, IgnoredVBuckets, Timeout) ->
+apply_new_bucket_config(Bucket, Rebalancer, Servers,
+                        NewBucketConfig, IgnoredVBuckets, Timeout) ->
     Map = proplists:get_value(map, NewBucketConfig),
     true = (Map =/= undefined),
     NumVBuckets = proplists:get_value(num_vbuckets, NewBucketConfig),
@@ -724,7 +703,7 @@ handle_call({apply_new_config, Caller, NewBucketConfig, IgnoredVBuckets}, _From,
 
     %% before changing vbucket states (i.e. activating or killing
     %% vbuckets) we must stop replications into those vbuckets
-    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas_chain(Map),
+    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas(Map),
                                         Dst =:= node()],
     WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
                           || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
@@ -744,7 +723,7 @@ handle_call({apply_new_config_replicas_phase, NewBucketConfig, IgnoredVBuckets},
     true = (Map =/= undefined),
     %% TODO: unignore ignored vbuckets
     [] = IgnoredVBuckets,
-    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas_chain(Map),
+    WantedReplicas = [{Src, VBucket} || {Src, Dst, VBucket} <- ns_bucket:map_to_replicas(Map),
                                         Dst =:= node()],
     WantedReplications = [{Src, [VB || {_, VB} <- Pairs]}
                           || {Src, Pairs} <- misc:keygroup(1, lists:sort(WantedReplicas))],
