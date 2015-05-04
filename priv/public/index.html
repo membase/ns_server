@@ -2814,20 +2814,35 @@
   </div>
 </div>
 
+<script id="eject_confirmation_dialog_template" type="text/html">
+  <p>Warning! Removing this node will:</p>
+  <ul style="margin:15px;">
+  {% if (isThereIndex) { %}
+    <li>Remove indexes from the cluster and may cause queries to fail</li>
+  {% } %}
+  {% if (isLastIndex) { %}
+    <li>Remove the last index node from the cluster so new indexes can’t be created</li>
+  {% } %}
+  {% if (isLastQuery) { %}
+    <li>Remove the last query node from the cluster so queries can’t be run</li>
+  {% } %}
+  {% if (isKv) { %}
+    <li>Reduce cache capacity across all data buckets</li>
+  {% } %}
+  </ul>
+  <p>Are you sure you want to remove this server?</p>
+</script>
+
 
 <!--  eject confirmation dialog -->
-<div class="dialog" id="eject_confirmation_dialog" title="Confirm Server Removal">
-  <div class="lbox">
-    <div class="content">
-      <div class="pas_20">
-        <div class="warning pat_20">
-          <strong>Warning</strong> – Removing this server from the cluster will reduce cache capacity across all data buckets. Are you sure you want to remove this server?
-        </div>
-      </div>
-      <div class="right save_cancel pas_20 footer_bg">
-        <button type="submit" class="save_button float_right">Remove</button>
-        <a class="close casper_close_eject_confirmation_dialog float_right">Cancel</a>
-      </div>
+<div class="dialog" id="eject_confirmation_dialog" title="Confirm Server Removal" style="width: 600px;">
+  <div class="content">
+    <div class="pas_20">
+      <div class="warning pat_20" id="eject_confirmation_dialog_container"></div>
+    </div>
+    <div class="right save_cancel pas_20 footer_bg">
+      <button type="submit" class="save_button float_right">Remove</button>
+      <a class="close casper_close_eject_confirmation_dialog float_right">Cancel</a>
     </div>
   </div>
 </div>

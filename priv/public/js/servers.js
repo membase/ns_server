@@ -576,13 +576,9 @@ var ServersSection = {
           renderTemplate('join_cluster_dialog_errors', data);
         } else {
           self.poolDetails.getValue(function (poolData) {
-            var indexNodesCount = 0;
-            var indexExists = _.each(poolData.nodes, function (node) {
-              indexNodesCount += (_.indexOf(node.services, 'index') > -1);
-            });
             overlay.remove();
             hideDialog('join_cluster_dialog');
-            if (indexNodesCount === 1 && errorsOrData.services.indexOf('index') > -1) {
+            if (ServersSection.isOnlyOneNodeWithService(poolData.nodes, errorsOrData, 'index')) {
               var settings = ClusterSection.prepareClusterQuotaSettings(poolData);
               settings.prefix = 'add_node_memory_quota';
               settings.showKVMemoryQuota = errorsOrData.services.indexOf('kv') > -1;
@@ -648,10 +644,39 @@ var ServersSection = {
       return;
     }
 
-    showDialogHijackingSave("eject_confirmation_dialog", ".save_button", function () {
-      self.pendingEject.push(node);
-      self.reDraw();
+    $.ajax({
+      url: 'indexStatus',
+      type: 'GET',
+      success: afterSend
     });
+
+    function afterSend(resp) {
+      var warningFlags = {
+        isLastIndex: ServersSection.isOnlyOneNodeWithService(ServersSection.allNodes, node, 'index'),
+        isLastQuery: ServersSection.isOnlyOneNodeWithService(ServersSection.allNodes, node, 'n1ql'),
+        isThereIndex: !!_.find(resp, function (index) {
+          return _.indexOf(index.hosts, hostname) > -1;
+        }),
+        isKv: _.indexOf(node.services, 'kv') > -1
+      };
+      if (_.some(_.values(warningFlags))) {
+        renderTemplate("eject_confirmation_dialog", warningFlags);
+        showDialogHijackingSave("eject_confirmation_dialog", ".save_button", function () {
+          self.pendingEject.push(node);
+          self.reDraw();
+        });
+      } else {
+        self.pendingEject.push(node);
+        self.reDraw();
+      }
+    }
+  },
+  isOnlyOneNodeWithService: function (nodes, node, service) {
+    var nodesCount = 0;
+    var indexExists = _.each(nodes, function (node) {
+      nodesCount += (_.indexOf(node.services, service) > -1);
+    });
+    return nodesCount === 1 && (_.isArray(node.services) ? _.indexOf(node.services, service) > -1 : node.services.indexOf(service) > -1);
   },
   failoverNode: function (hostname) {
     var self = this;

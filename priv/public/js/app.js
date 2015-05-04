@@ -339,11 +339,7 @@ var SetupWizard = {
             type: "GET",
             url: 'pools/default',
             success: function (poolData) {
-              var indexNodesCount = 0;
-              var indexExists = _.each(poolData.nodes, function (node) {
-                indexNodesCount += (_.indexOf(node.services, 'index') > -1);
-              });
-              if (indexNodesCount === 1 && data.services.indexOf('index') > -1) {
+              if (ServersSection.isOnlyOneNodeWithService(poolData.nodes, data, 'index')) {
                 SetupWizard.show('setting_memory_quota', {poolData: poolData, selectedServices: data.services});
               } else {
                 DAL.tryNoAuthLogin();
