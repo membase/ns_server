@@ -1393,6 +1393,8 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 .account_management_container .errors {color: red;}
 .account_management_container h3 {margin: 20px 24px 15px 24px;}
 .account_delete {padding-bottom: 28px;}
+.xdcr_errors {font-size: 11px; line-height: 14px;}
+.xdcr_errors li {padding-bottom: 15px;}
 
 .reset_roadmin_form {font-size: 14px; width: 320px;}
 .reset_roadmin_form .errors {display: block; color: red; padding-bottom: 10px;}
