@@ -22,12 +22,6 @@ angular.module('mnServersService').factory('mnServersService',
       $scope.services = {
         kv: true
       };
-
-      $scope.$watch(function () {
-        return mnHelper.checkboxesToList($scope.services);
-      }, function (services) {
-        $scope.servicesWarning = services.length > 1;
-      }, true);
     };
 
     mnServersService.reAddNode = function (data) {

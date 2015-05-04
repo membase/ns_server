@@ -712,9 +712,6 @@ var SetupWizard = {
             prefix: 'cluster_memory_wizard_settings'
           }, $('#js_start_new_cluster_memory_quoata_cont'));
 
-          ServersSection.notifyAboutServicesBestPractice(newClusterFormBlock);
-          ServersSection.notifyAboutServicesBestPractice($('.js_login-credentials'));
-
           var firstResource = data.storage.hdd[0];
 
           var dbPath;

@@ -674,7 +674,6 @@ body.init_resources #init_resources_dialog {background:none; background-color:#e
 
 .init_block .start_new_cluster_block > div {margin-left: 20px;}
 .init_block .start_new_cluster_block .warning {margin: 10px 30px 10px 0;}
-.init_cluster_service_per_node_warning {color:#ec5223;font-size:11px;margin: 10px 40px 10px 0;padding: 0; line-height: 15px;}
 
 .init_block .warning {clear:both;display:block;line-height:15px; margin: 20px 0 0; font-size: 11px; padding: 0;}
 .init_block .ram-total-size {line-height: 25px;}

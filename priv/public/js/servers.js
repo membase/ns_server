@@ -499,13 +499,6 @@ var ServersSection = {
 
     this.postAndReload(uri, "");
   },
-  notifyAboutServicesBestPractice: function (form) {
-    $("input[name=services]", form).unbind('change.notifyAboutServicesBestPractice')
-      .bind('change.notifyAboutServicesBestPractice',function (e) {
-      $(".init_cluster_service_per_node_warning", form).toggle(
-        $("input[name=services]:checked", form).length > 1);
-    }).trigger('change.notifyAboutServicesBestPractice');
-  },
   getCheckedServices: function (context) {
     return $("[name=services]:checked", context).map(function () {
       return this.value;
@@ -552,7 +545,6 @@ var ServersSection = {
     dialog.find(".when-groups").toggle(!!DAL.cells.groupsAvailableCell.value);
     dialog.find("[name=services]").prop("checked", false);
     dialog.find("[name=services][value=kv]").prop("checked", true);
-    ServersSection.notifyAboutServicesBestPractice(dialog);
 
     showDialog('join_cluster_dialog', {
       onHide: function () {
