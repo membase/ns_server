@@ -399,7 +399,15 @@ index_node_spec(Config) ->
     end.
 
 build_go_env_vars(Config, RPCService) ->
-    [{"GOTRACEBACK", "crash"} | build_cbauth_env_vars(Config, RPCService)].
+    GoTraceBack =
+        case os:getenv("GOTRACEBACK") of
+            false ->
+                "crash";
+            V ->
+                V
+        end,
+
+    [{"GOTRACEBACK", GoTraceBack} | build_cbauth_env_vars(Config, RPCService)].
 
 build_cbauth_env_vars(Config, RPCService) ->
     true = (RPCService =/= undefined),
