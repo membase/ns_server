@@ -50,7 +50,8 @@ start(Label, InetSock) ->
     {ok, Pid}.
 
 perform_call(Label, Name, EJsonArg, Timeout) ->
-    KV = gen_server:call(label_to_name(Label), {call, Name, EJsonArg}, Timeout),
+    EJsonArgThunk = fun () -> EJsonArg end,
+    KV = gen_server:call(label_to_name(Label), {call, Name, EJsonArgThunk}, Timeout),
     case lists:keyfind(<<"result">>, 1, KV) of
         false ->
             {_, Error} = lists:keyfind(<<"error">>, 1, KV),
@@ -127,9 +128,11 @@ handle_info(Msg, State) ->
     ?log_debug("Unknown msg: ~p", [Msg]),
     {noreply, State}.
 
-handle_call({call, Name, EJsonArg}, From, #state{counter = Counter,
-                                                 id_to_caller_tid = IdToCaller,
-                                                 sock = Sock} = State) ->
+handle_call({call, Name, EJsonArgThunk}, From, #state{counter = Counter,
+                                                      id_to_caller_tid = IdToCaller,
+                                                      sock = Sock} = State) ->
+    EJsonArg = EJsonArgThunk(),
+
     NameB = if
                 is_list(Name) ->
                     list_to_binary(Name);
