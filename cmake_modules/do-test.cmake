@@ -19,6 +19,7 @@ EXECUTE_PROCESS(COMMAND "${CMAKE_COMMAND}" -E echo
   "${ERL_EXECUTABLE}"
   -pa ./ebin ${ebindirs} "${COUCHDB_BIN_DIR}/src/couchdb"
   -pa "${COUCHDB_BIN_DIR}/src/mochiweb"
+  -pa "${COUCHDB_BIN_DIR}/src/ejson"
   -noshell -kernel error_logger silent -shutdown_time 10000
   -eval "\"application:start(sasl).\""
   -eval "\"case t:${TEST_TARGET}() of ok -> init:stop(); _ -> init:stop(1) end.\"")
@@ -27,6 +28,7 @@ EXECUTE_PROCESS(RESULT_VARIABLE _failure
   COMMAND "${ERL_EXECUTABLE}"
   -pa ./ebin ${ebindirs} "${COUCHDB_BIN_DIR}/src/couchdb"
   -pa "${COUCHDB_BIN_DIR}/src/mochiweb"
+  -pa "${COUCHDB_BIN_DIR}/src/ejson"
   -noshell -kernel error_logger silent -shutdown_time 10000
   -eval "application:start(sasl)."
   -eval "case t:${TEST_TARGET}() of ok -> init:stop(); _ -> init:stop(1) end.")
