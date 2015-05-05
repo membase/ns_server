@@ -793,10 +793,7 @@ handle_call({wait_seqno_persisted, VBucket, SeqNo},
                fun () ->
                        ?rebalance_debug("Going to wait for persistence of seqno ~B in vbucket ~B",
                                         [SeqNo, VBucket]),
-                       Replicator = dcp_sup:get_replicator_pid(Bucket, VBucket),
-                       erlang:link(Replicator),
                        ok = do_wait_seqno_persisted(Bucket, VBucket, SeqNo),
-                       erlang:unlink(Replicator),
                        ?rebalance_debug("Done waiting for persistence of seqno ~B in vbucket ~B",
                                         [SeqNo, VBucket]),
                        ok
