@@ -201,7 +201,7 @@ compute_missing_vbuckets(Map) ->
 
 -ifdef(EUNIT).
 
--define(NUM_TEST_ATTEMPTS, 500).
+-define(NUM_TEST_ATTEMPTS, 200).
 -define(MAX_NUM_SERVERS, 50).
 
 compute_recovery_map_test_() ->
