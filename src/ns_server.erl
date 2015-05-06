@@ -244,7 +244,7 @@ start_sink(Name, Module, Args) ->
 start_disk_sink(Name, FileName) ->
     {ok, Dir} = application:get_env(ns_server, error_logger_mf_dir),
     PerSinkOpts = misc:get_env_default(ns_server, list_to_atom("disk_sink_opts_" ++ atom_to_list(Name)), []),
-    DiskSinkOpts = PerSinkOpts ++ misc:get_env_default(disk_sink_opts, []),
+    DiskSinkOpts = PerSinkOpts ++ misc:get_env_default(ns_server, disk_sink_opts, []),
 
     Path = filename:join(Dir, FileName),
     start_sink(Name, ale_disk_sink, [Path, DiskSinkOpts]).

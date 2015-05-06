@@ -73,7 +73,7 @@ get_config_path() ->
     case application:get_env(ns_server, config_path) of
         {ok, V} -> V;
         _ ->
-             erlang:error("config_path parameter for ns_server application is missing!")
+            erlang:error("config_path parameter for ns_server application is missing!")
     end.
 
 setup_static_config() ->
