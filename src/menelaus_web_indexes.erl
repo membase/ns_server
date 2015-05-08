@@ -66,28 +66,23 @@ supported_settings() ->
      {maxRollbackPoints, 1, NearInfinity}].
 
 handle_index_status(Req) ->
-    Config = ns_config:get(),
-    LocalAddr = menelaus_util:local_addr(Req),
     NodeInfos = ns_doctor:get_nodes(),
     Indexes0 =
         lists:flatmap(
           fun (Node) ->
                   NodeInfo = misc:dict_get(Node, NodeInfos, []),
-                  Hostname0 = menelaus_web:build_node_hostname(Config, Node, LocalAddr),
-                  Hostname = list_to_binary(Hostname0),
                   IndexStatus = proplists:get_value(index_status, NodeInfo, []),
-                  NodeIndexes = proplists:get_value(indexes, IndexStatus, []),
-
-                  [{[{hostname, Hostname} | Props]} || Props <- NodeIndexes]
+                  Indexes = proplists:get_value(indexes, IndexStatus, []),
+                  [{Props} || Props <- Indexes]
           end, ns_cluster_membership:index_active_nodes()),
 
     GetSortKey =
         fun ({Index}) ->
-                {_, Hostname} = lists:keyfind(hostname, 1, Index),
+                {_, Hosts} = lists:keyfind(hosts, 1, Index),
                 {_, Bucket} = lists:keyfind(bucket, 1, Index),
                 {_, IndexName} = lists:keyfind(index, 1, Index),
 
-                {Hostname, Bucket, IndexName}
+                {Hosts, Bucket, IndexName}
         end,
 
     Indexes =

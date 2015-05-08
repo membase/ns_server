@@ -1927,7 +1927,7 @@
             <thead>
               <tr>
                 <th data-sortby="bucket"><i></i><span>Bucket</span></th>
-                <th data-sortby="hostname" style="width: 200px;"><i></i><span>Node</span></th>
+                <th data-sortby="hosts" style="width: 200px;"><i></i><span>Node</span></th>
                 <th data-sortby="index"><i></i><span>Index Name</span></th>
                 <th data-sortby="definition"><i></i><span>Definition</span></th>
                 <th data-sortby="status"><i></i><span>Status</span></th>
@@ -1939,7 +1939,7 @@
                 {% _.each(rows, function (row) { %}
                   <tr>
                     <td class="ellipsis" title="{%= h(row.bucket) %}">{%= h(row.bucket) %}</td>
-                    <td class="ellipsis" title="{%= h(row.hostname) %}">{%= h(row.hostname) %}</td>
+                    <td class="ellipsis" title="{%= h(row.hosts[0]) %}">{%= h(row.hosts[0]) %}</td>
                     <td class="ellipsis" title="{%= h(row.index) %}">{%= h(row.index) %}</td>
                     <td class="ellipsis" title="{%= h(row.definition) %}">{%= h(row.definition) %}</td>
                     <td class="ellipsis" title="{%= h(row.status) %}">{%= h(row.status) %}</td>

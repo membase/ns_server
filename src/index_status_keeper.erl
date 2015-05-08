@@ -177,12 +177,14 @@ process_indexes(Indexes) ->
               {_, IndexStatus} = lists:keyfind(<<"status">>, 1, Index),
               {_, Definition} = lists:keyfind(<<"definition">>, 1, Index),
               {_, Completion} = lists:keyfind(<<"completion">>, 1, Index),
+              {_, Hosts} = lists:keyfind(<<"hosts">>, 1, Index),
 
               Props = [{bucket, Bucket},
                        {index, Name},
                        {status, IndexStatus},
                        {definition, Definition},
-                       {progress, Completion}],
+                       {progress, Completion},
+                       {hosts, Hosts}],
               Key = {Bucket, Name},
 
               {Key, Props}

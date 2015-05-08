@@ -29,7 +29,7 @@ function createIndexesSectionCells(ns, modeCell, indexesTableSortByCell, indexes
     var sortBy = v.need(indexesTableSortByCell);
     var sortDescending = v.need(indexesTableSortDescendingCell);
     if (indexes[0] && !indexes[0][sortBy]) {
-      sortBy = "hostname";
+      sortBy = "hosts";
     }
     var rv = {
       list: indexes,
@@ -60,7 +60,7 @@ var IndexesSection = {
       indexesTableSortDescendingCell
     );
     prepareTemplateForCell('js_indexes_list', self.indexesCell);
-    var headers
+    var headers;
     self.sortedIndexesCell.subscribeValue(function (config) {
       if (!config) {
         return;
@@ -82,7 +82,7 @@ var IndexesSection = {
     });
     self.isAtIndexesTabCell.subscribeValue(function (isIndexesTab) {
       if (isIndexesTab) {
-        !indexesTableSortByCell.value && indexesTableSortByCell.setValue("hostname");
+        !indexesTableSortByCell.value && indexesTableSortByCell.setValue("hosts");
         !indexesTableSortDescendingCell.value && indexesTableSortDescendingCell.setValue("false");
       }
     })
