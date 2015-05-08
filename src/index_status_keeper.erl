@@ -62,27 +62,11 @@ handle_call(get, _From, State) ->
              {indexes, Indexes}],
      State}.
 
-handle_cast({update, Status}, #state{indexes = Indexes} = State) ->
+handle_cast({update, Status}, State) ->
     NumConnections = proplists:get_value(index_num_connections, Status, 0),
     NeedsRestart = proplists:get_value(index_needs_restart, Status, false),
 
-    {NumConnections, NeedsRestart, NewIndexes} =
-        lists:foldl(
-          fun ({Key, Value}, {AccConn, AccRestart, AccIndexes}) ->
-                  case Key of
-                      index_num_connections ->
-                          {Value, AccRestart, AccIndexes};
-                      index_needs_restart ->
-                          {AccConn, Value, AccIndexes};
-                      {Bucket, Index, <<"build_progress">>} ->
-                          AccIndexes1 = update_build_progress(Bucket, Index,
-                                                              Value, AccIndexes),
-                          {AccConn, AccRestart, AccIndexes1}
-                  end
-          end, {0, false, Indexes}, Status),
-
-    NewState0 = State#state{num_connections = NumConnections,
-                            indexes = NewIndexes},
+    NewState0 = State#state{num_connections = NumConnections},
     NewState = case NeedsRestart of
                    true ->
                        maybe_restart_indexer(NewState0);
@@ -192,25 +176,14 @@ process_indexes(Indexes) ->
               {_, Bucket} = lists:keyfind(<<"bucket">>, 1, Index),
               {_, IndexStatus} = lists:keyfind(<<"status">>, 1, Index),
               {_, Definition} = lists:keyfind(<<"definition">>, 1, Index),
+              {_, Completion} = lists:keyfind(<<"completion">>, 1, Index),
 
               Props = [{bucket, Bucket},
                        {index, Name},
                        {status, IndexStatus},
-                       {definition, Definition}],
+                       {definition, Definition},
+                       {progress, Completion}],
               Key = {Bucket, Name},
 
               {Key, Props}
       end, Indexes).
-
-update_build_progress(Bucket, Index, Value, Dict) ->
-    try
-        dict:update({Bucket, Index},
-                    fun (Props) ->
-                            lists:keystore(progress, 1, Props,
-                                           {progress, Value})
-                    end, Dict)
-    catch
-        error:badarg ->
-            %% key is not present; ignore
-            Dict
-    end.
