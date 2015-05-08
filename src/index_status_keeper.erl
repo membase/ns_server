@@ -20,7 +20,7 @@
 -behavior(gen_server).
 
 %% API
--export([start_link/0, update/1, get/1]).
+-export([start_link/0, update/1, get_status/1, get_indexes/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -35,8 +35,11 @@ start_link() ->
 update(Status) ->
     gen_server:cast(?MODULE, {update, Status}).
 
-get(Timeout) ->
-    gen_server:call(?MODULE, get, Timeout).
+get_status(Timeout) ->
+    gen_server:call(?MODULE, get_status, Timeout).
+
+get_indexes() ->
+    gen_server:call(?MODULE, get_indexes).
 
 -record(state, {num_connections,
                 indexes,
@@ -49,18 +52,16 @@ init([]) ->
 
     self() ! refresh,
     {ok, #state{num_connections = 0,
-                indexes = dict:new(),
+                indexes = [],
 
                 pending_refresh = false,
                 restarter_pid = undefined}}.
 
-
-handle_call(get, _From, State) ->
-    Indexes = [V || {_, V} <- dict:to_list(State#state.indexes)],
-
-    {reply, [{num_connections, State#state.num_connections},
-             {indexes, Indexes}],
-     State}.
+handle_call(get_indexes, _From, #state{indexes = Indexes} = State) ->
+    {reply, Indexes, State};
+handle_call(get_status, _From,
+            #state{num_connections = NumConnections} = State) ->
+    {reply, [{num_connections, NumConnections}], State}.
 
 handle_cast({update, Status}, State) ->
     NumConnections = proplists:get_value(index_num_connections, Status, 0),
@@ -163,7 +164,7 @@ process_status(Status) ->
                         V
                 end,
 
-            {ok, dict:from_list(process_indexes(RawIndexes))};
+            {ok, process_indexes(RawIndexes)};
         _ ->
             ?log_error("Indexer returned unsuccessful status:~n~p", [Status]),
             {error, bad_status}
@@ -179,13 +180,10 @@ process_indexes(Indexes) ->
               {_, Completion} = lists:keyfind(<<"completion">>, 1, Index),
               {_, Hosts} = lists:keyfind(<<"hosts">>, 1, Index),
 
-              Props = [{bucket, Bucket},
-                       {index, Name},
-                       {status, IndexStatus},
-                       {definition, Definition},
-                       {progress, Completion},
-                       {hosts, Hosts}],
-              Key = {Bucket, Name},
-
-              {Key, Props}
+              [{bucket, Bucket},
+               {index, Name},
+               {status, IndexStatus},
+               {definition, Definition},
+               {progress, Completion},
+               {hosts, Hosts}]
       end, Indexes).

@@ -66,29 +66,7 @@ supported_settings() ->
      {maxRollbackPoints, 1, NearInfinity}].
 
 handle_index_status(Req) ->
-    NodeInfos = ns_doctor:get_nodes(),
-    Indexes0 =
-        lists:flatmap(
-          fun (Node) ->
-                  NodeInfo = misc:dict_get(Node, NodeInfos, []),
-                  IndexStatus = proplists:get_value(index_status, NodeInfo, []),
-                  Indexes = proplists:get_value(indexes, IndexStatus, []),
-                  [{Props} || Props <- Indexes]
-          end, ns_cluster_membership:index_active_nodes()),
-
-    GetSortKey =
-        fun ({Index}) ->
-                {_, Hosts} = lists:keyfind(hosts, 1, Index),
-                {_, Bucket} = lists:keyfind(bucket, 1, Index),
-                {_, IndexName} = lists:keyfind(index, 1, Index),
-
-                {Hosts, Bucket, IndexName}
-        end,
-
-    Indexes =
-        lists:sort(
-          fun (A, B) ->
-                  GetSortKey(A) =< GetSortKey(B)
-          end, Indexes0),
+    Indexes0 = index_status_keeper:get_indexes(),
+    Indexes = [{Props} || Props <- Indexes0],
 
     reply_json(Req, Indexes).

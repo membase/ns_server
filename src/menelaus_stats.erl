@@ -2252,16 +2252,19 @@ get_indexes(BucketId) ->
                    end, 5000).
 
 do_get_indexes(BucketId0, Nodes) ->
-    NIs = ns_doctor:get_nodes(),
-    BucketId = list_to_binary(BucketId0),
-
-    AllIndexes =
-        [case dict:find(N, NIs) of
-             error -> [];
-             {ok, NI} ->
-                 Indexes = proplists:get_value(indexes, proplists:get_value(index_status, NI, []), []),
-                 [Name || I <- Indexes,
-                          proplists:get_value(bucket, I) =:= BucketId,
-                          {index, Name} <- [lists:keyfind(index, 1, I)]]
+    WantedHosts0 =
+        [begin
+             {_, Host} = misc:node_name_host(N),
+             Port = misc:node_rest_port(N),
+             iolist_to_binary([Host, $:, integer_to_list(Port)])
          end || N <- Nodes],
-    lists:usort(lists:append(AllIndexes)).
+    WantedHosts = lists:usort(WantedHosts0),
+
+    BucketId = list_to_binary(BucketId0),
+    [begin
+         {index, Name} = lists:keyfind(index, 1, I),
+         Name
+     end || I <- index_status_keeper:get_indexes(),
+            proplists:get_value(bucket, I) =:= BucketId,
+            not(ordsets:is_disjoint(WantedHosts,
+                                    lists:usort(proplists:get_value(hosts, I))))].
