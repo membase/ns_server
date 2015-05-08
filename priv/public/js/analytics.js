@@ -93,6 +93,9 @@ var StatsModel = {};
     }
 
     function onLoopData(value) {
+      if (value === mark404) {
+        return;
+      }
       if (prevValue) {
         value = maybeApplyDelta(prevValue, value);
       }
