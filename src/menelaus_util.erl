@@ -136,7 +136,7 @@ reply_json(Req, Body, Code, ExtraHeaders) ->
 
 log_web_hit(Peer, Req, Resp) ->
     Level = case menelaus_auth:extract_auth(Req) of
-                {"@", _} ->
+                {[$@ | _], _} ->
                     debug;
                  _ ->
                     info

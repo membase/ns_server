@@ -130,7 +130,7 @@ credentials_changed_old(admin, User, Password) ->
             true
     end.
 
-authenticate(admin, "@" = User, Password) ->
+authenticate(admin, [$@ | _] = User, Password) ->
     Password =:= ns_config:search_node_prop('latest-config-marker', memcached, admin_pass)
         orelse authenticate_non_special(admin, User, Password);
 authenticate(Role, User, Password) ->
