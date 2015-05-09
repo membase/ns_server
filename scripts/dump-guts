@@ -598,7 +598,7 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
 
     MoxiConfig = search_config_for_node(NSConfig, Node, moxi, []),
     MoxiPort = search_config(MoxiConfig, port, undefined),
-    PerBucketMoxiPorts = [P || {B, Props} <- BucketConfigs,
+    PerBucketMoxiPorts = [P || {_, Props} <- BucketConfigs,
                                P <- [proplists:get_value(moxi_port, Props)]],
 
     MoxiPorts = [integer_to_list(P) || P <- [MoxiPort | PerBucketMoxiPorts],
