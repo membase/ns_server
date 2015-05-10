@@ -181,8 +181,6 @@ func main() {
 		log.Fatalf("couldn't get stdin: %s", err.Error())
 	}
 
-	go stdinWatcher(cmd, stdin, gracefulShutdown)
-
 	cmd.Stdout = th
 	cmd.Stderr = th
 
@@ -190,6 +188,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("couldn't start %s: %s", cmd.Path, err.Error())
 	}
+
+	go stdinWatcher(cmd, stdin, gracefulShutdown)
 
 	err = cmd.Wait()
 	if err != nil {
