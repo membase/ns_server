@@ -174,6 +174,7 @@ process_status(Status) ->
 process_indexes(Indexes) ->
     lists:map(
       fun ({Index}) ->
+              {_, Id} = lists:keyfind(<<"defnId">>, 1, Index),
               {_, Name} = lists:keyfind(<<"name">>, 1, Index),
               {_, Bucket} = lists:keyfind(<<"bucket">>, 1, Index),
               {_, IndexStatus} = lists:keyfind(<<"status">>, 1, Index),
@@ -181,7 +182,8 @@ process_indexes(Indexes) ->
               {_, Completion} = lists:keyfind(<<"completion">>, 1, Index),
               {_, Hosts} = lists:keyfind(<<"hosts">>, 1, Index),
 
-              [{bucket, Bucket},
+              [{id, Id},
+               {bucket, Bucket},
                {index, Name},
                {status, IndexStatus},
                {definition, Definition},
