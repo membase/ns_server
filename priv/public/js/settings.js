@@ -260,23 +260,38 @@ var ClusterSection = {
 
     clusterSettingsForm.submit(function (e) {
       e.preventDefault();
-      var memoryQuota = serializeForm(onlyClusterSettingsForm);
-      var memoryQuotaParams = $.deparam(memoryQuota);
-      var initialMemoryQuota = self.allClusterSectionSettingsCell.value.indexMemoryQuota;
-      if (DAL.cells.is40СompatibleCell.value && memoryQuotaParams.indexMemoryQuota != initialMemoryQuota) {
-        genericDialog({
-        buttons: {ok: true, cancel: true},
-        text: 'Attention - changing the Index RAM Quota requires indexer restart.',
-        callback: function (e, name, instance) {
-          instance.close();
-          if (name == 'ok') {
-            onOk();
+      if (DAL.cells.is40СompatibleCell.value) {
+        $.ajax({
+          url: 'indexStatus',
+          type: 'GET',
+          success: function (resp) {
+            if (resp && resp.length) {
+              var memoryQuota = serializeForm(onlyClusterSettingsForm);
+              var memoryQuotaParams = $.deparam(memoryQuota);
+              var initialMemoryQuota = self.allClusterSectionSettingsCell.value.indexMemoryQuota;
+              if (memoryQuotaParams.indexMemoryQuota != initialMemoryQuota) {
+                genericDialog({
+                  buttons: {ok: true, cancel: true},
+                  header: 'Confirm Indexer Memory Quota Change',
+                  textHTML: '<p class="warning">Warning: changing the index memory quota will cause the index processes to be restarted and will make indexes briefly temporarily unavailable. Are you sure you wish to continue?</p>',
+                  callback: function (e, name, instance) {
+                    instance.close();
+                    if (name == 'ok') {
+                      onOk();
+                    }
+                  }
+                });
+              } else {
+                onOk();
+              }
+            } else {
+              onOk();
+            }
           }
-        }});
-      } else {
+        });
+      }  else {
         onOk();
       }
-      return false;
     });
 
     isROAdminCell.subscribeValue(function (isROAdmin) {
