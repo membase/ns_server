@@ -25,7 +25,7 @@ function createIndexesSectionCells(ns, modeCell, indexesTableSortByCell, indexes
     return future.get({url: "/indexStatus"});
   }).name("indexesCell");
   ns.sortedIndexesCell = Cell.compute(function (v) {
-    var indexes = v.need(ns.indexesCell);
+    var indexes = _.clone(v.need(ns.indexesCell));
     var sortBy = v.need(indexesTableSortByCell);
     var sortDescending = v.need(indexesTableSortDescendingCell);
     if (indexes[0] && !indexes[0][sortBy]) {
@@ -48,6 +48,9 @@ function createIndexesSectionCells(ns, modeCell, indexesTableSortByCell, indexes
   ns.sortedIndexesCell.equality = function (a, b) {return false;};
 }
 var IndexesSection = {
+  renderIndexDetails: function (item) {
+    return IndexesSection.indexDetails.renderItemDetails(item);
+  },
   init: function () {
     var self = IndexesSection;
     var indexesListContainer = $("#js_indexes_list_container");
@@ -60,14 +63,32 @@ var IndexesSection = {
       indexesTableSortDescendingCell
     );
     prepareTemplateForCell('js_indexes_list', self.indexesCell);
-    var headers;
+    self.indexDetails = new MultiDrawersWidget({
+      hashFragmentParam: 'openedIndexes',
+      template: 'index_details',
+      elementKey: 'id',
+      placeholderCSS: '#js_indexes .details-placeholder',
+      actionLink: 'openIndex',
+      detailsCellMaker: function (info) {
+        return Cell.compute(function (v) {
+          return info;
+        });
+      },
+      actionLinkCallback: function () {},
+      listCell: Cell.compute(function (v) {
+        return v.need(IndexesSection.sortedIndexesCell).list;
+      }),
+      aroundRendering: function (originalRender, cell, container) {
+        originalRender();
+        $(container).closest('tr').prev().find('.expander').toggleClass('closed', !cell.interested.value);
+      }
+    });
     self.sortedIndexesCell.subscribeValue(function (config) {
       if (!config) {
         return;
       }
       renderTemplate('js_indexes_list', config.list);
-      headers = $("[data-sortby]", indexesListContainer);
-      headers.click(function () {
+      $("[data-sortby]", indexesListContainer).click(function () {
         var header = jQuery(this);
         var sortBy = header.data("sortby");
         if (sortBy === indexesTableSortByCell.value) {

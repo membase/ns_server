@@ -1525,7 +1525,12 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 
 .query_notice {position: absolute; width: 670px; left: 100px; top: 3px;}
 
-.indexes_list_container thead th {
+.indexes_list_container .row td {height: 33px; vertical-align: middle;}
+.indexes_list_container .with_expander_button a {position: absolute; left: 10px;}
+.indexes_list_container .with_expander_button {padding-left: 35px;}
+.indexes_list_container .list thead th.dynamic_active {color: #4d4d4d;}
+.indexes_list_container .list thead th {
+  color: #A4A4A4;
   cursor: pointer;
   -webkit-user-select: none;  /* Chrome all / Safari all */
   -moz-user-select: none;     /* Firefox all */

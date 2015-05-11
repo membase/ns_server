@@ -1926,33 +1926,50 @@
           <table class="list align_text" style="width:100%">
             <thead>
               <tr>
-                <th data-sortby="bucket"><i></i><span>Bucket</span></th>
-                <th data-sortby="hosts" style="width: 200px;"><i></i><span>Node</span></th>
-                <th data-sortby="index"><i></i><span>Index Name</span></th>
-                <th data-sortby="definition"><i></i><span>Definition</span></th>
-                <th data-sortby="status"><i></i><span>Status</span></th>
-                <th data-sortby="progress"><i></i><span>Build Progress</span></th>
+                <th data-sortby="bucket" style="width: 200px;">Bucket</th>
+                <th data-sortby="hosts" style="width: 400px;">Node</th>
+                <th data-sortby="index" style="width: 200px;">Index Name</th>
+                <th data-sortby="status">Status</th>
+                <th data-sortby="progress">Build Progress</th>
               </tr>
             </thead>
             <tbody>
               {% if (rows.length) { %}
                 {% _.each(rows, function (row) { %}
-                  <tr>
-                    <td class="ellipsis" title="{%= h(row.bucket) %}">{%= h(row.bucket) %}</td>
+                  <tr class="row">
+                    <td class="ellipsis with_expander_button" title="{%= h(row.bucket) %}">
+                      <a href="#openIndex={%= h(row.id) %}"><ins class="expander closed"></ins></a>
+                      <span style="ve">{%= h(row.bucket) %}</span>
+                    </td>
                     <td class="ellipsis" title="{%= h(row.hosts[0]) %}">{%= h(row.hosts[0]) %}</td>
                     <td class="ellipsis" title="{%= h(row.index) %}">{%= h(row.index) %}</td>
-                    <td class="ellipsis" title="{%= h(row.definition) %}">{%= h(row.definition) %}</td>
                     <td class="ellipsis" title="{%= h(row.status) %}">{%= h(row.status) %}</td>
                     <td class="ellipsis" title="{%= h(row.progress) %}">
                       {%= (row.progress !== undefined) ? h(row.progress + "%") : "" %}
                     </td>
                   </tr>
+                  <tr>
+                    <td colspan="5" class="details-placeholder" style="display:none;">
+                      {%= IndexesSection.renderIndexDetails(row) %}
+                    </td>
+                  </tr>
                 {% }); %}
               {% } else { %}
-                <tr><td colspan="6" style="text-align: center;">There are no indexes currently.</td></tr>
+                <tr><td colspan="5" style="text-align: center;">There are no indexes currently.</td></tr>
               {% } %}
             </tbody>
           </table>
+        </script>
+        <script id="index_details_template" type="text/html">
+          <div class="gong_rb">
+          <table class="properties_table">
+            <tbody>
+              <tr>
+                  <td>Definition: <span>{%= definition %}</span></td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
         </script>
 
         <script id="js_index_nodes_list_template" type="text/html">
@@ -1981,9 +1998,9 @@
         </script>
 
         <div id="js_indexes" class="indexes" style="display:none">
-          <h1>Indexes</h1>
           <div class="shadow_box">
             <div class="header_2">
+              <h4 style="float:left;line-height:34px;">Indexes</h4>
               <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
             </div>
             <div>

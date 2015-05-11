@@ -1260,7 +1260,7 @@ var MultiDrawersWidget = mkClass({
         var interested = Cell.compute(function (v) {
           if (v.need(IOCenter.staleness))
             return false;
-          return _.include(v(openedNamesCell) || [], key);
+          return _.include(v(openedNamesCell) || [], key.toString());
         });
 
         var rv = Cell.compute(function (v) {
