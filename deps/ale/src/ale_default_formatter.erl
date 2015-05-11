@@ -36,11 +36,10 @@ format_msg(#log_info{logger=Logger,
                       [atom_to_list(RegName), erlang:pid_to_list(Pid)]
               end,
 
+    BaseHdr = io_lib:format("[~s:~s,", [Logger, LogLevel]),
+    TimeHdr = io_lib:format("~B-~2.10.0B-~2.10.0BT~B:~2.10.0B:~2.10.0B.~3.10.0B,",
+                            [Year, Month, Day, Hour, Minute, Second, Millis]),
+    HdrWithTime = [BaseHdr | TimeHdr],
     Header =
-        io_lib:format("[~s:~s,"
-                      "~B-~2.10.0B-~2.10.0BT~B:~2.10.0B:~2.10.0B.~3.10.0B,"
-                      "~s:~s:~s:~s:~B]",
-                      [Logger, LogLevel,
-                       Year, Month, Day, Hour, Minute, Second, Millis,
-                       Node, Process, M, F, L]),
+        [HdrWithTime | io_lib:format("~s:~s:~s:~s:~B]", [Node, Process, M, F, L])],
     [Header, UserMsg, "\n"].
