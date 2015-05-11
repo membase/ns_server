@@ -28,6 +28,7 @@
 
 -define(REFRESH_INTERVAL,
         ns_config:get_timeout(index_status_keeper_refresh, 5000)).
+-define(WORKER, index_status_keeper_worker).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -44,18 +45,13 @@ get_indexes() ->
 -record(state, {num_connections,
                 indexes,
 
-                pending_refresh,
-                restarter_pid}).
+                restart_pending}).
 
 init([]) ->
-    process_flag(trap_exit, true),
-
     self() ! refresh,
     {ok, #state{num_connections = 0,
                 indexes = [],
-
-                pending_refresh = false,
-                restarter_pid = undefined}}.
+                restart_pending = false}}.
 
 handle_call(get_indexes, _From, #state{indexes = Indexes} = State) ->
     {reply, Indexes, State};
@@ -75,35 +71,36 @@ handle_cast({update, Status}, State) ->
                        NewState0
                end,
 
-    {noreply, NewState}.
+    {noreply, NewState};
+handle_cast({refresh_done, Status}, State) ->
+    NewState =
+        case Status of
+            failed ->
+                State;
+            _ ->
+                State#state{indexes = Status}
+        end,
+
+    erlang:send_after(?REFRESH_INTERVAL, self(), refresh),
+    {noreply, NewState};
+handle_cast(restart_done, #state{restart_pending = true} = State) ->
+    {noreply, State#state{restart_pending = false}}.
 
 handle_info(refresh, State) ->
-    {noreply, maybe_refresh(need_refresh(State))};
-handle_info({'EXIT', Pid, Reason}, #state{restarter_pid = Pid} = State) ->
-    case Reason of
-        normal ->
-            ?log_info("Restarted the indexer successfully");
-        _ ->
-            ?log_error("Failed to restart the indexer: ~p", [Reason])
-    end,
-    {noreply, maybe_refresh(State#state{restarter_pid = undefined})};
+    refresh_status(),
+    {noreply, State};
 handle_info(Msg, State) ->
     ?log_debug("Ignoring unknown msg: ~p", [Msg]),
     {noreply, State}.
 
-terminate(_Reason, #state{restarter_pid = MaybePid}) ->
-    case MaybePid of
-        undefined ->
-            ok;
-        _ ->
-            misc:wait_for_process(MaybePid, infinity)
-    end.
+terminate(_Reason, _State) ->
+    ok.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %% internal
-maybe_restart_indexer(#state{restarter_pid = undefined} = State) ->
+maybe_restart_indexer(#state{restart_pending = false} = State) ->
     case ns_config:read_key_fast(dont_restart_indexer, false) of
         true ->
             State;
@@ -113,34 +110,38 @@ maybe_restart_indexer(#state{restarter_pid = undefined} = State) ->
 maybe_restart_indexer(State) ->
     State.
 
-restart_indexer(#state{restarter_pid = undefined} = State) ->
-    ?log_info("Restarting the indexer"),
+restart_indexer(#state{restart_pending = false} = State) ->
+    Self = self(),
+    work_queue:submit_work(
+      ?WORKER,
+      fun () ->
+              ?log_info("Restarting the indexer"),
 
-    Pid = proc_lib:spawn_link(
-            fun () ->
-                    {ok, _} = ns_ports_setup:restart_port_by_name(indexer)
-            end),
+              case ns_ports_setup:restart_port_by_name(indexer) of
+                  {ok, _} ->
+                      ?log_info("Restarted the indexer successfully");
+                  Error ->
+                      ?log_error("Failed to restart the indexer: ~p", [Error])
+              end,
 
-    State#state{restarter_pid = Pid}.
+              gen_server:cast(Self, restart_done)
+      end),
 
-need_refresh(State) ->
-    State#state{pending_refresh = true}.
+    State#state{restart_pending = true}.
 
-maybe_refresh(#state{pending_refresh = false} = State) ->
-    State;
-maybe_refresh(#state{restarter_pid = Pid} = State) when Pid =/= undefined ->
-    State;
-maybe_refresh(State) ->
-    NewState =
-        case grab_status() of
-            {ok, Status} ->
-                State#state{indexes = Status};
-            {error, _} ->
-                State
-        end,
-
-    erlang:send_after(?REFRESH_INTERVAL, self(), refresh),
-    NewState#state{pending_refresh = false}.
+refresh_status() ->
+    Self = self(),
+    work_queue:submit_work(
+      ?WORKER,
+      fun () ->
+              Status = case grab_status() of
+                           {ok, S} ->
+                               S;
+                           {error, _} ->
+                               failed
+                       end,
+              gen_server:cast(Self, {refresh_done, Status})
+      end).
 
 grab_status() ->
     case index_rest:get_json("getIndexStatus") of

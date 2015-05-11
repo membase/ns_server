@@ -61,7 +61,7 @@ compute_wanted_children(Config) ->
         false ->
             [];
         true ->
-            StaticChildren = [index_status_keeper, index_stats_collector],
+            StaticChildren = [index_status_keeper_sup, index_stats_collector],
 
             BucketCfgs = ns_bucket:get_buckets(Config),
             BucketNames = [Name || {Name, BConfig} <- BucketCfgs,
@@ -87,6 +87,8 @@ refresh_children() ->
 child_spec({Mod, Name}) when Mod =:= stats_archiver; Mod =:= stats_reader ->
     {{Mod, Name}, {Mod, start_link, ["@index-" ++ Name]},
      permanent, 1000, worker, []};
+child_spec(Mod) when Mod =:= index_status_keeper_sup ->
+    {Mod, {Mod, start_link, []}, permanent, infinity, supervisor, []};
 child_spec(Mod) ->
     {Mod, {Mod, start_link, []}, permanent, 1000, worker, []}.
 
