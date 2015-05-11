@@ -119,7 +119,10 @@ maybe_notify_cbauth(#state{rpc_processes = Processes,
 
 notify_cbauth(Label, Info) ->
     Method = "AuthCacheSvc.UpdateDB",
-    try json_rpc_connection:perform_call(Label, Method, Info) of
+    SpecialUser = ns_config_auth:get_user(special) ++ erlang:atom_to_list(Label),
+    NewInfo = {[{specialUser, erlang:list_to_binary(SpecialUser)} | Info]},
+
+    try json_rpc_connection:perform_call(Label, Method, NewInfo) of
         {error, <<"rpc: can't find method ", _/binary>>} ->
             ?log_debug("Rpc connection ~p doesn't implement ~p", [Label, Method]),
             {error, method_not_found};
@@ -195,10 +198,10 @@ build_auth_info() ->
 
     TokenURL = io_lib:format("http://127.0.0.1:~w/_cbauth", [misc:node_rest_port(Config, node())]),
 
-    {[{nodes, Nodes},
-      {buckets, build_buckets_info()},
-      {tokenCheckURL, iolist_to_binary(TokenURL)}
-      | (build_cred_info(admin) ++ build_cred_info(ro_admin))]}.
+    [{nodes, Nodes},
+     {buckets, build_buckets_info()},
+     {tokenCheckURL, iolist_to_binary(TokenURL)}
+     | (build_cred_info(admin) ++ build_cred_info(ro_admin))].
 
 handle_cbauth_post(Req) ->
     Role = menelaus_auth:get_role(Req),
