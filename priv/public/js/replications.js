@@ -786,10 +786,19 @@ var ReplicationsSection = {
         type: 'DELETE',
         url: remoteCluster.uri,
         success: ajaxCallback,
-        errors: ajaxCallback
+        error: ajaxCallback
       });
 
-      function ajaxCallback() {
+      function ajaxCallback(xhr, statusMessage) {
+        if (statusMessage === "error") {
+          genericDialog({
+            buttons: {ok: true},
+            header: "Delete Cluster Reference Error",
+            textHTML: _.reduce(JSON.parse(xhr.responseText), function (memo, value) {
+              return memo + "<p class=\"warning\">" + value + "</p>";
+            }, "")
+          });
+        }
         ReplicationsModel.refreshReplications();
       }
     }
