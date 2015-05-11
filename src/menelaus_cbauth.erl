@@ -175,10 +175,10 @@ build_buckets_info() ->
                          end}]}
               end, Buckets).
 
-build_cred_info(Role) ->
+build_cred_info(Name, Role) ->
     case ns_config_auth:get_creds(Role) of
         {User, Salt, Mac} ->
-            [{Role, {[{user, erlang:list_to_binary(User)},
+            [{Name, {[{user, erlang:list_to_binary(User)},
                       {salt, base64:encode(Salt)},
                       {mac, base64:encode(Mac)}]}}];
         undefined ->
@@ -201,7 +201,7 @@ build_auth_info() ->
     [{nodes, Nodes},
      {buckets, build_buckets_info()},
      {tokenCheckURL, iolist_to_binary(TokenURL)}
-     | (build_cred_info(admin) ++ build_cred_info(ro_admin))].
+     | (build_cred_info(admin, admin) ++ build_cred_info(roAdmin, ro_admin))].
 
 handle_cbauth_post(Req) ->
     Role = menelaus_auth:get_role(Req),
