@@ -261,6 +261,7 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .ongoing_replications_list .protocol {width: 80px;}
 .ongoing_replications_list .from {width: 100px;}
 .ongoing_replications_list .to {width: 300px;}
+.dynamic_community-mode .ongoing_replications_list .to {width: 370px;}
 .ongoing_replications_list .filter {width: 70px;}
 .ongoing_replications_list .status {width: 125px;}
 .ongoing_replications_list .when {width: 95px;}
