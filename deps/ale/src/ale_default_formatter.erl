@@ -26,9 +26,6 @@ format_msg(#log_info{logger=Logger,
                      time=Time,
                      pid=Pid, registered_name=RegName,
                      node=Node} = _Info, UserMsg) ->
-    {{Year, Month, Day}, {Hour, Minute, Second}} =
-        calendar:now_to_local_time(Time),
-    Millis = erlang:element(3, Time) div 1000,
     Process = case RegName of
                   undefined ->
                       erlang:pid_to_list(Pid);
@@ -37,9 +34,28 @@ format_msg(#log_info{logger=Logger,
               end,
 
     BaseHdr = io_lib:format("[~s:~s,", [Logger, LogLevel]),
-    TimeHdr = io_lib:format("~B-~2.10.0B-~2.10.0BT~B:~2.10.0B:~2.10.0B.~3.10.0B,",
-                            [Year, Month, Day, Hour, Minute, Second, Millis]),
-    HdrWithTime = [BaseHdr | TimeHdr],
+    HdrWithTime = [BaseHdr | get_time_hdr(Time)],
     Header =
         [HdrWithTime | io_lib:format("~s:~s:~s:~s:~B]", [Node, Process, M, F, L])],
     [Header, UserMsg, "\n"].
+
+%% Return formatted header with Time information
+get_time_hdr(Time) ->
+    LocalTime = calendar:now_to_local_time(Time),
+    UTCTime = calendar:now_to_universal_time(Time),
+
+    {{Year, Month, Day}, {Hour, Minute, Second}} = LocalTime,
+    Millis = erlang:element(3, Time) div 1000,
+    TimeHdr0 = io_lib:format("~B-~2.10.0B-~2.10.0BT~2.10.0B:~2.10.0B:~2.10.0B.~3.10.0B",
+                             [Year, Month, Day, Hour, Minute, Second, Millis]),
+    [TimeHdr0 | get_timezone_hdr(LocalTime, UTCTime)].
+
+
+%% Format and return offset of local time zone w.r.t UTC
+get_timezone_hdr(LocalTime, UTCTime) ->
+    case ale_utils:get_timezone_offset(LocalTime, UTCTime) of
+        utc ->
+            "Z,";
+        {Sign, DiffH, DiffM} ->
+            io_lib:format("~s~2.10.0B:~2.10.0B,", [Sign, DiffH, DiffM])
+    end.
