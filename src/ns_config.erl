@@ -1860,6 +1860,12 @@ mock_timestamp(Body) ->
         ok = mock:expects(calendar, now_to_local_time,
                           fun (_) -> true end,
                           fun (_, _) -> erlang:localtime() end, 16#ffffffff),
+        ok = mock:expects(calendar, now_to_universal_time,
+                          fun (_) -> true end,
+                          fun (_, _) -> erlang:universaltime() end, 16#ffffffff),
+        ok = mock:expects(calendar, seconds_to_time,
+                          fun (_) -> true end,
+                          fun (_, _) -> {0, 0, 0} end, 16#ffffffff),
 
         Body()
     after
