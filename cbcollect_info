@@ -720,6 +720,9 @@ def main():
                       help="specifies customer name for upload")
     parser.add_option("--ticket", dest="upload_ticket", type='ticket',
                       help="specifies support ticket number for upload")
+    parser.add_option("--bypass-sensitive-data", dest="bypass_sensitive_data",
+                      action="store_true", default=False,
+                      help="do not collect sensitive data")
     options, args = parser.parse_args()
 
     if len(args) != 1:
