@@ -123,3 +123,26 @@ intersperse(_X, [H]) ->
     [H];
 intersperse(X, [H | T]) ->
     [H, X | intersperse(X, T)].
+
+
+%% Return offset of local time zone w.r.t UTC
+get_timezone_offset(LocalTime, UTCTime) ->
+    %% Do the calculations in terms of # of seconds
+    DiffInSecs = calendar:datetime_to_gregorian_seconds(LocalTime) -
+        calendar:datetime_to_gregorian_seconds(UTCTime),
+    case DiffInSecs =:= 0 of
+        true ->
+            %% UTC
+            utc;
+        false ->
+            %% Convert back to hours and minutes
+            {DiffH, DiffM, _ } = calendar:seconds_to_time(abs(DiffInSecs)),
+            case DiffInSecs < 0 of
+                true ->
+                    %% Time Zone behind UTC
+                    {"-", DiffH, DiffM};
+                false ->
+                    %% Time Zone ahead of UTC
+                    {"+", DiffH, DiffM}
+            end
+    end.
