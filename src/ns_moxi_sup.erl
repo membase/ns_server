@@ -29,4 +29,4 @@ rest_pass() ->
 
 %% used by moxi entry in port_servers config
 rest_user() ->
-    ns_config_auth:get_user(special).
+    ns_config_auth:get_user(special) ++ "moxi".
