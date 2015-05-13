@@ -418,7 +418,7 @@ function showXDCRErrors(id) {
   elements = JSON.parse(text);
   genericDialog({
     buttons: {ok: true},
-    header: "XDCR errors",
+    header: "XDCR Errors",
     textHTML: "<ul class=\"xdcr_errors break-word\">" + _.map(elements, function (anError) {return "<li>" + escapeHTML(anError) + "</li>"}).join('') + "</ul>"
   });
 }
@@ -823,7 +823,7 @@ var ReplicationsSection = {
 
     function askDeleteConfirmation(cancelURI) {
       genericDialog({
-        header: "Confirm delete",
+        header: "Confirm Delete",
         text: "Please, confirm deleting this replication",
         callback: function (e, name, instance) {
           instance.close();

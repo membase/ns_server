@@ -669,7 +669,7 @@ var UpdatesNotificationsSection = {
         error: function() {
           genericDialog({
             buttons: {ok: true},
-            header: 'Unable to save settings',
+            header: 'Unable to Save Settings',
             textHTML: 'An error occured, update notifications settings were' +
               ' not saved.'
           });
@@ -958,7 +958,7 @@ var AutoFailoverSection = {
         error: function() {
           genericDialog({
             buttons: {ok: true},
-            header: 'Unable to save settings',
+            header: 'Unable to Save Settings',
             textHTML: 'An error occured, auto-failover settings were ' +
               'not saved.'
           });
@@ -983,7 +983,7 @@ var AutoFailoverSection = {
         error: function() {
           genericDialog({
             buttons: {ok: true},
-            header: 'Unable to reset the auto-failover quota',
+            header: 'Unable to Reset the Auto-Failover Quota',
             textHTML: 'An error occured, auto-failover quota was not reset.'
           });
         }
@@ -1158,7 +1158,7 @@ var EmailAlertsSection = {
         error: function() {
           genericDialog({
             buttons: {ok: true},
-            header: 'Unable to save settings',
+            header: 'Unable to Save Settings',
             textHTML: 'An error occured, alerts settings were not saved.'
           });
         }
@@ -1739,7 +1739,7 @@ var AutoCompactionSection = {
         self.errorsCell.setValue(errorObject);
         if (simpleErrors && simpleErrors.length) {
           genericDialog({buttons: {ok: true, cancel: false},
-                         header: "Failed To Save Auto-Compaction Settings",
+                         header: "Failed to Save Auto-Compaction Settings",
                          text: simpleErrors.join(' and ')});
         }
       }

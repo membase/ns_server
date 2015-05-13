@@ -467,7 +467,7 @@ var BucketDetailsDialog = mkClass({
       self.errorsCell.setValue(errorObject);
       if (simpleErrors && simpleErrors.length) {
         genericDialog({buttons: {ok: true, cancel: false},
-                       header: self.isNew ? "Failed To Create Bucket" : "Failed to Update Bucket",
+                       header: self.isNew ? "Failed to Create Bucket" : "Failed to Update Bucket",
                        text: simpleErrors.join(' and ')
                       });
       }
@@ -1124,7 +1124,7 @@ var BucketsSection = {
 
     if (!flushURL) {
       genericDialog({buttons: {ok: true, cancel: false},
-                     header: "Flush not supported",
+                     header: "Flush Not Supported",
                      text: "Flush operation is seemingly not supported for this bucket"});
       return;
     }
@@ -1136,7 +1136,7 @@ var BucketsSection = {
       if (status !== 'success') {
         var errorMessage = (data && data.length) ? data.join(' and ') : "Unknown error happened";
         genericDialog({buttons: {ok: true, cancel: false},
-                       header: "Failed To Flush Bucket",
+                       header: "Failed to Flush Bucket",
                        text: errorMessage});
       }
       self.refreshBuckets(function() {
@@ -1177,7 +1177,7 @@ var BucketsSection = {
         if (status !== 'success') {
           var errorMessage = (data && data.length) ? data.join(' and ') : "Unknown error happened";
           genericDialog({buttons: {ok: true, cancel: false},
-                         header: "Failed To Delete Bucket",
+                         header: "Failed to Delete Bucket",
                          text: errorMessage});
         }
       });

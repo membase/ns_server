@@ -613,7 +613,7 @@ var SetupWizard = {
                 var errReason = errorObject && errorObject.reason || simpleErrors.join(' and ');
                 genericDialog({
                   buttons: {ok: true},
-                  header: "Failed To Create Bucket",
+                  header: "Failed to Create Bucket",
                   textHTML: errReason
                 });
               }
