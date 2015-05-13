@@ -142,6 +142,21 @@ child_specs() ->
      {master_activity_events_keeper, {master_activity_events_keeper, start_link, []},
       permanent, brutal_kill, worker, dynamic},
 
+     {xdcr_ckpt_store,
+      {simple_store, start_link, [?XDCR_CHECKPOINT_STORE]},
+      permanent, 1000, worker, []},
+
+     {metakv_worker,
+      {work_queue, start_link, [metakv_worker]},
+      permanent, 1000, worker, []},
+
+     {menelaus, {menelaus_sup, start_link, []},
+      permanent, infinity, supervisor,
+      [menelaus_sup]},
+
+     %% Note: many of the processes started by ns_ports_setup try to connect
+     %% to ns_server rest port for various reasons. So ns_ports_setup needs to
+     %% go after menelaus_sup.
      {ns_ports_setup, {ns_ports_setup, start, []},
       {permanent, 4}, brutal_kill, worker, []},
 
@@ -239,17 +254,5 @@ child_specs() ->
       {permanent, 4}, 86400000, worker, [compaction_new_daemon]},
 
      {cluster_logs_sup, {cluster_logs_sup, start_link, []},
-      permanent, infinity, supervisor, []},
-
-     {xdcr_ckpt_store,
-      {simple_store, start_link, [?XDCR_CHECKPOINT_STORE]},
-      permanent, 1000, worker, []},
-
-     {metakv_worker,
-      {work_queue, start_link, [metakv_worker]},
-      permanent, 1000, worker, []},
-
-     {menelaus, {menelaus_sup, start_link, []},
-      permanent, infinity, supervisor,
-      [menelaus_sup]}
+      permanent, infinity, supervisor, []}
     ].
