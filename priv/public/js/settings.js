@@ -1860,7 +1860,7 @@ var AuditSetupSection = {
 
     self.settingsCell.subscribeValue(function (settings) {
       if (settings) {
-        self.fillForm(settings);
+        self.fillForm(_.clone(settings));
         self.formValidation.unpause();
       }
     });
@@ -2054,7 +2054,7 @@ var LDAPSetupSection = {
 
     self.settingsCell.subscribeValue(function (settings) {
       if (settings) {
-        self.fillForm(settings);
+        self.fillForm(_.clone(settings));
       }
     });
   },
