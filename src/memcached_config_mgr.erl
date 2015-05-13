@@ -114,7 +114,9 @@ find_port_pid_loop(Tries, Delay) when Tries > 0 ->
     RV = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, find_port, [memcached]),
     case RV of
         Pid when is_pid(Pid) ->
-            supervisor_cushion:child_pid(Pid);
+            Pid1 = supervisor_cushion:child_pid(Pid),
+            ?log_debug("Found memcached port ~p", [Pid1]),
+            Pid1;
         Other ->
             ?log_debug("Failed to obtain memcached port pid (~p). Will retry", [Other]),
             timer:sleep(Delay),
