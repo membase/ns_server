@@ -388,14 +388,9 @@ var UpdatesNotificationsSection = {
       return !!v(statsInfoCell);
     });
 
-    var modeDefined = Cell.compute(function (v) {
-      v.need(DAL.cells.mode);
-      return true;
-    });
-
-    var phEnabled = Cell.compute(function(v) {
+    var phEnabled = Cell.compute(function (v) {
       // only make the GET request when we are logged in
-      v.need(modeDefined);
+      v.need(DAL.cells.modeDefined);
       return future.get({url: "/settings/stats"});
     });
     self.phEnabled = phEnabled;
@@ -403,7 +398,7 @@ var UpdatesNotificationsSection = {
     phEnabled.keepValueDuringAsync = true;
 
     self.hasUpdatesCell = Cell.computeEager(function (v) {
-      if (!v(modeDefined)) {
+      if (!v(DAL.cells.modeDefined)) {
         return;
       }
       var enabled = v.need(phEnabled);
@@ -721,14 +716,9 @@ var AutoFailoverSection = {
   init: function () {
     var self = this;
 
-    var modeDefined = Cell.compute(function (v) {
-      v.need(DAL.cells.mode);
-      return true;
-    });
-
     this.autoFailoverEnabled = Cell.compute(function(v) {
       // only make the GET request when we are logged in
-      v.need(modeDefined);
+      v.need(DAL.cells.modeDefined);
       return future.get({url: "/settings/autoFailover"});
     });
     var autoFailoverEnabled = this.autoFailoverEnabled;
@@ -878,13 +868,8 @@ var EmailAlertsSection = {
   init: function () {
     var self = this;
 
-    var modeDefined = Cell.compute(function (v) {
-      v.need(DAL.cells.mode);
-      return true;
-    });
-
     this.emailAlertsEnabled = Cell.compute(function(v) {
-      v.need(modeDefined);
+      v.need(DAL.cells.modeDefined);
       return future.get({url: "/settings/alerts"});
     });
     var emailAlertsEnabled = this.emailAlertsEnabled;

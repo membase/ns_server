@@ -347,6 +347,10 @@ var DAL = {
     return v.need(cells.currentPoolDetailsCell).ldapEnabled;
   });
   cells.isLDAPEnabledCell.isEqual = _.isEqual;
+  cells.modeDefined = Cell.compute(function (v) {
+    v.need(DAL.cells.mode);
+    return true;
+  });
   cells.isEnterpriseCell.subscribeValue(function (isEnterprise) {
     if (isEnterprise) {
       $("body").addClass('dynamic_enterprise-mode').removeClass('dynamic_community-mode');
