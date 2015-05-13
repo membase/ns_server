@@ -822,10 +822,13 @@ def main():
         runner.run(task)
 
     # Collect breakpad crash dumps.
-    for dump in glob.glob(os.path.join(read_guts(guts,
-                                       "memcached_breakpad_minidump_dir"),
-                          "*.dmp")):
-        runner.collect_file(dump)
+    if options.bypass_sensitive_data:
+        log("Bypassing Sensitive Data: Breakpad crash dumps")
+    else:
+        for dump in glob.glob(os.path.join(read_guts(guts,
+                                                     "memcached_breakpad_minidump_dir"),
+                                           "*.dmp")):
+            runner.collect_file(dump)
 
     if zip_node.split("@")[-1] == "127.0.0.1":
         zip_node = '@'.join(zip_node.split("@")[:-1] + [find_primary_addr("127.0.0.1")])
