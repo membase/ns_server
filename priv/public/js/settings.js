@@ -88,7 +88,7 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
   ns.indexesSettingsCell.equality = _.isEqual;
 
   ns.spinnerNeededCell = Cell.compute(function (v) {
-    return !(v(ns.indexesSettingsCell) && v(poolDetailsCell));
+    return !(v(ns.indexesSettingsCell) !== undefined && v(poolDetailsCell));
   }).name("spinnerNeededCell");
   ns.spinnerNeededCell.equality = _.isEqual;
 
@@ -184,9 +184,9 @@ var ClusterSection = {
     indexesSettingsFormValidator.pause();
 
 
-    function enableDisableValidation(enable, is40) {
+    function enableDisableValidation(enable, indexSettings) {
       clusterSettingsFormValidator[enable ? 'unpause' : 'pause']();
-      indexesSettingsFormValidator[is40 && enable ? 'unpause' : 'pause']();
+      indexesSettingsFormValidator[indexSettings && enable ? 'unpause' : 'pause']();
       if (!enable) {
         SettingsSection.renderErrors({errors:null}, clusterSettingsForm);
       }
@@ -316,8 +316,8 @@ var ClusterSection = {
       }
     });
 
-    Cell.subscribeMultipleValues(function (validationNeeded, is40) {
-      enableDisableValidation(validationNeeded, is40);
+    Cell.subscribeMultipleValues(function (validationNeeded, indexSettings) {
+      enableDisableValidation(validationNeeded, indexSettings);
     }, self.validationNeededCell, self.indexesSettingsCell);
   }
 };
