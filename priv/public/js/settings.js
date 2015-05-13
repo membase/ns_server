@@ -323,48 +323,146 @@ var ClusterSection = {
 };
 
 var UpdatesNotificationsSection = {
-  buildPhoneHomeThingy: function (statsInfo) {
-    var numMembase = 0;
-    for (var i in statsInfo.buckets) {
-      if (statsInfo.buckets[i].bucketType == "membase")
-        numMembase++;
+  buildPhoneHomeThingy: function (source) {
+    var pool = source.pool;
+    var perBucketStats = source.perBucketStats;
+    var bucketsList = source.bucketsList;
+
+    function getAvgPerItem(items, filter) {
+      var avgs = [];
+      _.each(items, function (item, key) {
+        if (filter(key)) {
+          avgs.push(nullsLessSum(item, true));
+        }
+      });
+      return avgs;
     }
-    var nodeStats = {
-      os: [],
-      uptime: [],
-      istats: []
-    };
-    for(i in statsInfo.pool.nodes) {
-      nodeStats.os.push(statsInfo.pool.nodes[i].os);
-      nodeStats.uptime.push(statsInfo.pool.nodes[i].uptime);
-      nodeStats.istats.push(statsInfo.pool.nodes[i].interestingStats);
+    function precision(val) {
+      return Number(val.toFixed(5))
     }
+
+    function getHourFromWeek(value) {
+      return value / 11520 * 60;
+    }
+
+    function calculateAvgWeekAndHour(stats, name, avg) {
+      var weekName = name + "_last_week";
+      var hourName = name + "_last_hour";
+      if (stats.istats[weekName].length) {
+        stats.istats[weekName] = nullsLessSum(stats.istats[weekName], avg);
+        stats.istats[hourName] = getHourFromWeek(stats.istats[weekName]);
+        stats.istats[weekName] = precision(stats.istats[weekName]);
+        stats.istats[hourName] = precision(stats.istats[hourName]);
+      } else {
+        stats.istats[weekName] = 0;
+        stats.istats[hourName] = 0;
+      }
+    }
+
+    function setPerBucketStat(stats, name, value) {
+      if (value) {
+        var weekName = name + "_last_week";
+        stats.istats[weekName] = stats.istats[weekName].concat(value);
+      }
+    }
+
     var stats = {
       version: DAL.version,
       componentsVersion: DAL.componentsVersion,
       uuid: DAL.uuid,
-      numNodes: statsInfo.pool.nodes.length,
+      numNodes: pool.nodes.length, //Total number of nodes
+      isEnterpriseEdition: source.isEnterpriseEdition,
+      adminAuditEnabled: source.adminAuditEnabled,
+      adminLDAPEnabled : source.adminLDAPEnabled,
       ram: {
-        total: statsInfo.pool.storageTotals.ram.total,
-        quotaTotal: statsInfo.pool.storageTotals.ram.quotaTotal,
-        quotaUsed: statsInfo.pool.storageTotals.ram.quotaUsed
+        total: pool.storageTotals.ram.total, //Total RAM available across all nodes
+        quotaTotal: pool.storageTotals.ram.quotaTotal, //Per server data RAM quota
+        quotaUsed: pool.storageTotals.ram.quotaUsed,
+        indexMemoryQuota: MBtoBytes(pool.indexMemoryQuota) //Per server index RAM quota
       },
       hdd: {
-        total: statsInfo.pool.storageTotals.hdd.total,
-        quotaTotal: statsInfo.pool.storageTotals.hdd.quotaTotal,
-        used: statsInfo.pool.storageTotals.hdd.used,
-        usedByData: statsInfo.pool.storageTotals.hdd.usedByData
+        total: pool.storageTotals.hdd.total, //Total GB disk available across all nodes
+        quotaTotal: pool.storageTotals.hdd.quotaTotal,
+        used: pool.storageTotals.hdd.used, //Total GB disk storage used
+        usedByData: pool.storageTotals.hdd.usedByData
       },
-      buckets: {
-        total: statsInfo.buckets.length,
-        membase: numMembase,
-        memcached: statsInfo.buckets.length - numMembase
+      buckets: { //Number of buckets
+        total: bucketsList.length,
+        membase: bucketsList.byType.membase.length,
+        memcached: bucketsList.byType.memcached.length
       },
-      counters: statsInfo.pool.counters,
-      nodes: nodeStats,
+      counters: pool.counters,
+      nodes: {
+        os: [],
+        uptime: [],
+        istats: [],
+        services: {} //Services running and counts
+      },
+      istats: {
+        avg_ops_last_week: [], // Average ops / sec last week
+        avg_cmd_set_last_week: [], // Average sets / sec last week
+        avg_query_requests_last_week: [], //Average N1QL queries / sec last week
+        total_avg_view_accesses_last_week: [], //Average view reads / sec last week
+        total_avg_index_num_rows_returned_last_week: [], //Average scans/sec last week
+        total_ddocs: 0, //Number of total design docs
+        total_views: 0, //Number of total views
+        total_indexes: 0, //Number of total indexes
+        total_curr_items_tot: 0 //Total number of items across all buckets
+      },
       browser: navigator.userAgent
     };
 
+    for(i in pool.nodes) {
+      stats.nodes.os.push(pool.nodes[i].os);
+      stats.nodes.uptime.push(pool.nodes[i].uptime);
+      stats.nodes.istats.push(pool.nodes[i].interestingStats);
+      var servicesContainerName = pool.nodes[i].services.sort().join(',');
+      if (!stats.nodes.services[servicesContainerName]) {
+        stats.nodes.services[servicesContainerName] = 0;
+      }
+      stats.nodes.services[servicesContainerName] ++;
+    }
+
+    _.each(perBucketStats, function (value, bucketName) {
+      var ddocs = value.ddocs;
+      if (ddocs && ddocs.rows) {
+        stats.istats.total_ddocs += ddocs.rows.length;
+        _.each(ddocs.rows, function (row) {
+          stats.istats.total_views += _.keys(row.doc.json.views).length;
+        });
+      }
+      var statsInfo = value.stats;
+      if (statsInfo) {
+        var bucketStats = statsInfo.stats[bucketName];
+        var indexStats = statsInfo.stats["@index-" + bucketName];
+        var queriesStats = statsInfo.stats["@query"];
+        var avgNumRowsReturnedPerIndex = getAvgPerItem(indexStats, function (key) {
+          key = key.split("/");
+          return key.length === 3 && key[2] === "num_rows_returned" && key[0] === "index";
+        });
+        var avgViewAccessesPerView = getAvgPerItem(bucketStats, function (key) {
+          key = key.split("/");
+          return key.length === 3 && key[2] === "accesses" && key[0] === "views";
+        });
+
+        setPerBucketStat(stats, "avg_ops", bucketStats.ops);
+        setPerBucketStat(stats, "avg_cmd_set", bucketStats.cmd_set);
+        setPerBucketStat(stats, "total_avg_view_accesses", bucketStats && avgViewAccessesPerView);
+        setPerBucketStat(stats, "total_avg_index_num_rows_returned", indexStats && avgNumRowsReturnedPerIndex);
+
+        stats.istats.avg_query_requests_last_week = (queriesStats && queriesStats.query_requests) || []; //is not per bucket
+
+        stats.istats.total_curr_items_tot += bucketStats.curr_items_tot ? bucketStats.curr_items_tot[bucketStats.curr_items_tot.length - 1] : 0;
+      }
+    });
+    if (source.indexStatus) {
+      stats.istats.total_indexes = source.indexStatus.length;
+    }
+    calculateAvgWeekAndHour(stats, "avg_ops", true);
+    calculateAvgWeekAndHour(stats, "avg_cmd_set", true);
+    calculateAvgWeekAndHour(stats, "avg_query_requests", true);
+    calculateAvgWeekAndHour(stats, "total_avg_view_accesses");
+    calculateAvgWeekAndHour(stats, "total_avg_index_num_rows_returned");
     return stats;
   },
   launchMissiles: function (statsInfo, launchID) {
@@ -391,13 +489,79 @@ var UpdatesNotificationsSection = {
   init: function () {
     var self = this;
 
+    var perBucketFuturesCell = Cell.compute(function (v) {
+      var bucketList = v.need(DAL.cells.bucketsListCell);
+      var rv = {};
+      _.each(bucketList, function (bucket) {
+        rv[bucket.name] = {};
+        rv[bucket.name].statsFuturesCell = Cell.compute(function () {
+          return future.get({
+            url: '/_uistats',
+            data: {
+              bucket: bucket.name,
+              zoom: 'week'
+            }
+          });
+        });
+        rv[bucket.name].ddocsFuturesCell = Cell.compute(function () {
+          return future.get({
+            url: '/pools/default/buckets/' + encodeURIComponent(bucket.name) + '/ddocs'
+          });
+        });
+      });
+      return rv;
+    });
+    perBucketFuturesCell.equality = _.isEqual;
+
+    var perBucketStatsCell = Cell.compute(function (v) {
+      var bucketsFutures = v.need(perBucketFuturesCell);
+      var rv = {};
+      _.each(bucketsFutures, function (value, bucketName) {
+        rv[bucketName] = {
+          stats: v.need(value.statsFuturesCell),
+          ddocs: v(value.ddocsFuturesCell) //could be error: "no_ddocs_service"
+        };
+      });
+      return rv;
+    });
+    perBucketStatsCell.delegateInvalidationMethods(perBucketFuturesCell);
+
+    var isAuditEnableSettingsCell = Cell.compute(function (v) {
+      return v.need(DAL.cells.isEnterpriseCell) && future.get({url: "/settings/audit"}, function (val) {
+        return val.auditdEnabled;
+      });
+    });
+    var isLDAPEnabledCell = Cell.compute(function (v) {
+      return v.need(DAL.cells.isLDAPEnabledCell) && future.get({url: "/settings/saslauthdAuth"}, function (val) {
+        return val.enabled;
+      });
+    })
+    var indexStatus = Cell.compute(function (v) {
+      return v.need(DAL.cells.is40СompatibleCell) && future.get({url: "indexStatus"});
+    });
+
+    DAL.cells.bucketsListCell.subscribeValue(function () {
+      isAuditEnableSettingsCell.recalculate();
+      isLDAPEnabledCell.recalculate();
+      indexStatus.recalculate();
+    });
+
     // All the infos that are needed to send out the statistics
     var statsInfoCell = Cell.computeEager(function (v) {
       return {
         pool: v.need(DAL.cells.currentPoolDetailsCell),
-        buckets: v.need(DAL.cells.bucketsListCell)
+        perBucketStats: v.need(perBucketStatsCell),
+        bucketsList: v.need(DAL.cells.bucketsListCell),
+        isEnterpriseEdition: v.need(DAL.cells.isEnterpriseCell),
+        indexStatus: v.need(indexStatus),
+        adminAuditEnabled: v.need(isAuditEnableSettingsCell),
+        adminLDAPEnabled : v.need(isLDAPEnabledCell)
       };
     });
+    statsInfoCell.delegateInvalidationMethods(isAuditEnableSettingsCell);
+    statsInfoCell.delegateInvalidationMethods(isLDAPEnabledCell);
+    statsInfoCell.delegateInvalidationMethods(indexStatus);
+
 
     var haveStatsInfo = Cell.computeEager(function (v) {
       return !!v(statsInfoCell);

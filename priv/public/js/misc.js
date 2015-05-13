@@ -1088,3 +1088,17 @@ function getStringBytes(countMe) {
     return escapedStrLength;
   }
 }
+
+function nullsLessSum(array, average) {
+  if (!array) {
+    return 0;
+  }
+  array = _.without(array, null);
+  if (!array.length) {
+    return 0;
+  }
+  var rv = _.reduce(array, function (memo, num) {
+    return memo + num;
+  }, 0);
+  return average ? rv / array.length : rv;
+}
