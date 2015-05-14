@@ -489,12 +489,12 @@ var DAL = {
 
     allNodes = _.uniq(active.concat(pending));
 
-    var reallyActive = _.select(active, function (n) {
-      return n.clusterMembership === 'active' && !n.pendingEject;
+    var reallyActiveData = _.select(active, function (n) {
+      return n.clusterMembership === 'active' && !n.pendingEject && _.indexOf(n.services, "kv") > -1;
     });
 
-    if (reallyActive.length == 1) {
-      reallyActive[0].lastActive = true;
+    if (reallyActiveData.length == 1) {
+      reallyActiveData[0].lastActiveData = true;
     }
 
     _.each(allNodes, function (n) {
@@ -523,7 +523,7 @@ var DAL = {
       } else if (n.status === 'warmup') {
         nodeClass = 'server_warmup';
       }
-      if (n.lastActive) {
+      if (n.lastActiveData) {
         nodeClass += ' last-active';
       }
       n.nodeClass = nodeClass;
