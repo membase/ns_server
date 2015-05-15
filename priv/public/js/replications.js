@@ -240,9 +240,16 @@ var ReplicationForm = mkClass({
         try {
           document.selection.createRange().pasteHTML(text);
         } catch (_e) {
-          document.execCommand('InsertHTML', false, text);
+          try {
+            document.execCommand('InsertHTML', false, text);
+          } catch (_e) {
+            // if the getting text from clipboard fails we short-circuit return to allow
+            // the browser handle the paste natively (i.e. we don't call preventDefault().)
+            return;
+          }
         }
       }
+      e.preventDefault();
     }
     function contentEditableUsableTab(event) {
       //IE inserts tabulation in contenteditable tag instead of make focus on next element,
