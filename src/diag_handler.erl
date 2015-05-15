@@ -274,11 +274,9 @@ grab_all_ets_tables() ->
 
 diag_format_timestamp(EpochMilliseconds) ->
     SecondsRaw = trunc(EpochMilliseconds/1000),
-    AsNow = {SecondsRaw div 1000000, SecondsRaw rem 1000000, 0},
-    %% not sure about local time here
-    {{YYYY, MM, DD}, {Hour, Min, Sec}} = calendar:now_to_local_time(AsNow),
-    io_lib:format("~4.4.0w-~2.2.0w-~2.2.0w ~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",
-                  [YYYY, MM, DD, Hour, Min, Sec, EpochMilliseconds rem 1000]).
+    MicroSecs = (EpochMilliseconds rem 1000) * 1000,
+    AsNow = {SecondsRaw div 1000000, SecondsRaw rem 1000000, MicroSecs},
+    ale_default_formatter:format_time(AsNow).
 
 generate_diag_filename() ->
     {{YYYY, MM, DD}, {Hour, Min, Sec}} = calendar:now_to_local_time(now()),
