@@ -176,11 +176,10 @@ var ReplicationForm = mkClass({
               });
             }
             jQuery.each(pairs, function (index, pair) {
-              if (pair.endIndex === pair.startIndex) {
-                return true;
+              if (pair.endIndex !== pair.startIndex) {
+                pair.backlight = true;
+                fullSetOfPairs.push(pair);
               }
-              pair.backlight = true;
-              fullSetOfPairs.push(pair);
               var next = pairs[index + 1];
               if (next) {
                 if (pair.endIndex !== next.startIndex) {
