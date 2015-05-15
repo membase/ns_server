@@ -16,7 +16,8 @@
 -module(ale_default_formatter).
 
 %% API
--export([format_msg/2]).
+-export([format_msg/2,
+         format_time/1]).
 
 -include("ale.hrl").
 
@@ -34,13 +35,13 @@ format_msg(#log_info{logger=Logger,
               end,
 
     BaseHdr = io_lib:format("[~s:~s,", [Logger, LogLevel]),
-    HdrWithTime = [BaseHdr | get_time_hdr(Time)],
+    HdrWithTime = [BaseHdr | format_time(Time)],
     Header =
         [HdrWithTime | io_lib:format("~s:~s:~s:~s:~B]", [Node, Process, M, F, L])],
     [Header, UserMsg, "\n"].
 
 %% Return formatted header with Time information
-get_time_hdr(Time) ->
+format_time(Time) ->
     LocalTime = calendar:now_to_local_time(Time),
     UTCTime = calendar:now_to_universal_time(Time),
 
