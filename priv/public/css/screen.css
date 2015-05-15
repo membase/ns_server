@@ -1407,7 +1407,7 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 .xdcr_advaced_settings_container {display: none;}
 .xdcr_advaced_settings {line-height: 33px;}
 .xdcr_advaced_settings input {width: 50px;}
-.create_replication_dialog .error {font-size: 12px; font-style: normal; color: red; display: block; line-height: 12px; margin-left: 30px;}
+.create_replication_dialog .error, .xdcr_advaced_settings .error{font-size: 12px; font-style: normal; color: red; display: block; line-height: 12px; margin-left: 30px;}
 .xdcr_advaced_settings .dynamic_error {border-color: red;}
 .xdcr_advaced_settings.dialog {width: 400px;}
 .xdcr_advaced_settings legend {cursor: pointer; color: #2ea6db;}
