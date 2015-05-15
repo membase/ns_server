@@ -1416,7 +1416,7 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 .xdcr_advaced_filtering label {width: auto;}
 .advanced_filtering label{ width: auto; margin-left: 15px;}
 .advanced_filtering label, .advanced_filtering input {vertical-align: middle;}
-.match_indicator {background-color: #ffbd44; color: #fff; font-size: 10px; text-align: center; line-height: 20px; position: absolute; width: 64px; height: 20px; top: 7px; right: 2px;}
+.match_indicator {background-color: #ffbd44; color: #fff; font-size: 10px; text-align: center; line-height: 21px; position: absolute; width: 64px; height: 21px; top: 3px; right: 3px;}
 .match_indicator.dynamic_match {background-color: green;}
 .match_indicator .no_match,
 .match_indicator.dynamic_match .match,
@@ -1430,6 +1430,7 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 
 .dynamic_ldap_disabled .only-when_ldap_enabled {display: none!important;}
 
+.xdcr_advaced_filtering_container .test_keys .test_key_result {padding-right: 70px; width: 429px;}
 .test_keys .test_key_wrapper {position: relative; line-height: 0; margin-bottom: 10px;}
 .test_keys .test_key_wrapper > span {font-size: 12px; line-height: 28px; float: left; display: block;}
 .xdcr_advaced_filtering_container {position: relative;}
