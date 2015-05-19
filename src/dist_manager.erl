@@ -26,7 +26,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--export([adjust_my_address/2, read_address_config/0, save_address_config/1,
+-export([adjust_my_address/3, read_address_config/0, save_address_config/1,
          ip_config_path/0, using_user_supplied_address/0, reset_address/0]).
 
 -record(state, {self_started,
@@ -188,11 +188,11 @@ decode_status({ok, _Pid}) ->
 decode_status({error, {{already_started, _Pid}, _Stack}}) ->
     false.
 
--spec adjust_my_address(string(), boolean()) ->
+-spec adjust_my_address(string(), boolean(), fun()) ->
                                net_restarted | not_self_started | nothing |
                                {address_save_failed, term()}.
-adjust_my_address(MyIP, UserSupplied) ->
-    gen_server:call(?MODULE, {adjust_my_address, MyIP, UserSupplied}).
+adjust_my_address(MyIP, UserSupplied, OnRename) ->
+    gen_server:call(?MODULE, {adjust_my_address, MyIP, UserSupplied, OnRename}).
 
 %% Bring up distributed erlang.
 bringup(MyIP, UserSupplied) ->
@@ -219,12 +219,13 @@ bringup(MyIP, UserSupplied) ->
 teardown() ->
     ok = net_kernel:stop().
 
-do_adjust_address(MyIP, UserSupplied, State = #state{my_ip = MyOldIP}) ->
+do_adjust_address(MyIP, UserSupplied, OnRename, State = #state{my_ip = MyOldIP}) ->
     {NewState, Status} =
         case MyOldIP of
             MyIP ->
                 {State#state{user_supplied = UserSupplied}, nothing};
             _ ->
+                OnRename(),
                 Cookie = erlang:get_cookie(),
                 teardown(),
                 ?log_info("Adjusted IP to ~p", [MyIP]),
@@ -251,20 +252,20 @@ do_adjust_address(MyIP, UserSupplied, State = #state{my_ip = MyOldIP}) ->
     end.
 
 
-handle_call({adjust_my_address, _, _}, _From,
+handle_call({adjust_my_address, _, _, _}, _From,
             #state{self_started = false} = State) ->
     {reply, not_self_started, State};
-handle_call({adjust_my_address, "127.0.0.1", true = _UserSupplied}, From, State) ->
-    handle_call({adjust_my_address, "127.0.0.1", false}, From, State);
-handle_call({adjust_my_address, _MyIP, false = _UserSupplied}, _From,
+handle_call({adjust_my_address, "127.0.0.1", true = _UserSupplied, OnRename}, From, State) ->
+    handle_call({adjust_my_address, "127.0.0.1", false, OnRename}, From, State);
+handle_call({adjust_my_address, _MyIP, false = _UserSupplied, _}, _From,
             #state{user_supplied = true} = State) ->
     {reply, nothing, State};
-handle_call({adjust_my_address, MyOldIP, UserSupplied}, _From,
+handle_call({adjust_my_address, MyOldIP, UserSupplied, _}, _From,
             #state{my_ip = MyOldIP, user_supplied = UserSupplied} = State) ->
     {reply, nothing, State};
-handle_call({adjust_my_address, MyIP, UserSupplied}, _From,
+handle_call({adjust_my_address, MyIP, UserSupplied, OnRename}, _From,
             State) ->
-    do_adjust_address(MyIP, UserSupplied, State);
+    do_adjust_address(MyIP, UserSupplied, OnRename, State);
 
 handle_call(using_user_supplied_address, _From,
             #state{user_supplied = UserSupplied} = State) ->
