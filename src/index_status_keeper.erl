@@ -54,10 +54,11 @@ init([]) ->
                 restart_pending = false}}.
 
 handle_call(get_indexes, _From, #state{indexes = Indexes} = State) ->
-    {reply, Indexes, State};
+    {reply, {ok, Indexes}, State};
 handle_call(get_status, _From,
             #state{num_connections = NumConnections} = State) ->
-    {reply, [{num_connections, NumConnections}], State}.
+    Status = [{num_connections, NumConnections}],
+    {reply, {ok, Status}, State}.
 
 handle_cast({update, Status}, State) ->
     NumConnections = proplists:get_value(index_num_connections, Status, 0),

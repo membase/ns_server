@@ -362,7 +362,9 @@ current_status_slow_inner() ->
 grab_index_status() ->
     case ns_cluster_membership:should_run_service(index, node()) of
         true ->
-            try index_status_keeper:get_status(2000)
+            try
+                {ok, Status} = index_status_keeper:get_status(2000),
+                Status
             catch T:E ->
                     ?log_debug("ignoring failure to get index status: ~p~n~p",
                                [{T, E}, erlang:get_stacktrace()]),
