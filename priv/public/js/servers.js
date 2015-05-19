@@ -394,16 +394,11 @@ var ServersSection = {
       return handler.call(this, e);
     }
   },
-  renderUsage: function (e, totals, withQuotaTotal) {
+  renderUsage: function (e, totals, withQuotaTotal, isQueryOnlyNode) {
     var options = {
       topAttrs: {'class': "usage-block"},
       topRight: ['Total', ViewHelpers.formatMemSize(totals.total)],
       items: [
-        {name: 'In Use',
-         value: totals.usedByData,
-         attrs: {style: 'background-color:#00BCE9'},
-         tdAttrs: {style: "color:#1878A2;"}
-        },
         {name: 'Other Data',
          value: totals.used - totals.usedByData,
          attrs: {style:"background-color:#FDC90D"},
@@ -413,7 +408,15 @@ var ServersSection = {
       ],
       markers: []
     };
-    if (withQuotaTotal) {
+    if (!isQueryOnlyNode) {
+      options.items.unshift({
+        name: 'In Use',
+        value: totals.usedByData,
+        attrs: {style: 'background-color:#00BCE9'},
+        tdAttrs: {style: "color:#1878A2;"}
+      });
+    }
+    if (withQuotaTotal && !isQueryOnlyNode) {
       options.topLeft = ['Couchbase Quota', ViewHelpers.formatMemSize(totals.quotaTotal)];
       options.markers.push({value: totals.quotaTotal,
                             attrs: {style: "background-color:#E43A1B;"}});

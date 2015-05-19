@@ -463,7 +463,7 @@
             <h3>Memory</h3>
             <div class="info_block">
               <span class="dynamic_ram">Dynamic RAM:</span>
-              <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.ram, true)}) %}</div>
+              <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.ram, true, (_.indexOf(services, 'n1ql') > -1 && services.length === 1)) }) %}</div>
             </div>
             <h3>Disk Storage</h3>
             <div class="info_block">
