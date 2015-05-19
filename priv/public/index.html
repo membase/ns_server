@@ -460,7 +460,7 @@
             <!-- {% } %}-->
             {%= tmpl("js_warm_up_tmpl")({thisWarmupTasks: thisNodeWarmupTasks}) %}
 
-            <h3>Memory Cache</h3>
+            <h3>Memory</h3>
             <div class="info_block">
               <span class="dynamic_ram">Dynamic RAM:</span>
               <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.ram, true)}) %}</div>
