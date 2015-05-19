@@ -254,5 +254,8 @@ child_specs() ->
       {permanent, 4}, 86400000, worker, [compaction_new_daemon]},
 
      {cluster_logs_sup, {cluster_logs_sup, start_link, []},
-      permanent, infinity, supervisor, []}
+      permanent, infinity, supervisor, []},
+
+     {remote_api, {remote_api, start_link, []},
+      permanent, 1000, worker, [remote_api]}
     ].
