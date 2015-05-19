@@ -469,7 +469,12 @@
             <div class="info_block">
               <span class="disk_storage">
                 <span>Disk One: </span>
-                  <span class="path" title="{%= h(storage.hdd[0].path) %}">{%= h(V.ellipsisiseOnLeft(storage.hdd[0].path || "", 25))  %}</span>
+                  <!-- {% if (storage.hdd[0].path) { %} -->
+                    <span class="path" title="{%= h(storage.hdd[0].path) %}">data: {%= h(V.ellipsisiseOnLeft(storage.hdd[0].path || "", 25))  %}</span>
+                  <!-- {% } %}-->
+                  <!-- {% if (storage.hdd[0].index_path) { %} -->
+                    <span class="path" title="{%= h(storage.hdd[0].index_path) %}">index: {%= h(V.ellipsisiseOnLeft(storage.hdd[0].index_path || "", 25))  %}</span>
+                  <!-- {% } %}-->
               </span>
               <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.hdd)}) %}</div>
             </div>
