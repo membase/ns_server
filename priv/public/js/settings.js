@@ -540,14 +540,27 @@ var UpdatesNotificationsSection = {
       return v.need(DAL.cells.is40СompatibleCell) && future.get({url: "indexStatus"});
     });
 
-    DAL.cells.bucketsListCell.subscribeValue(function () {
+    var phEnabled = Cell.compute(function (v) {
+      // only make the GET request when we are logged in
+      v.need(DAL.cells.modeDefined);
+      return future.get({url: "/settings/stats"});
+    });
+
+    Cell.subscribeMultipleValues(function (enabled) {
+      if (!(enabled && enabled.sendStats)) {
+        return;
+      }
       isAuditEnableSettingsCell.recalculate();
       isLDAPEnabledCell.recalculate();
       indexStatus.recalculate();
-    });
+    }, phEnabled, DAL.cells.bucketsListCell);
 
     // All the infos that are needed to send out the statistics
-    var statsInfoCell = Cell.computeEager(function (v) {
+    var statsInfoCell = Cell.compute(function (v) {
+      var enabled = v.need(phEnabled);
+      if (!(enabled && enabled.sendStats)) {
+        return;
+      }
       return {
         pool: v.need(DAL.cells.currentPoolDetailsCell),
         perBucketStats: v.need(perBucketStatsCell),
@@ -565,12 +578,6 @@ var UpdatesNotificationsSection = {
 
     var haveStatsInfo = Cell.computeEager(function (v) {
       return !!v(statsInfoCell);
-    });
-
-    var phEnabled = Cell.compute(function (v) {
-      // only make the GET request when we are logged in
-      v.need(DAL.cells.modeDefined);
-      return future.get({url: "/settings/stats"});
     });
     self.phEnabled = phEnabled;
     phEnabled.equality = _.isEqual;
