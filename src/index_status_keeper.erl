@@ -236,6 +236,10 @@ get_source() ->
 
 is_notable({{node, _, membership}, _}) ->
     true;
+is_notable({nodes_wanted, _}) ->
+    true;
+is_notable({rest_creds, _}) ->
+    true;
 is_notable(_) ->
     false.
 
