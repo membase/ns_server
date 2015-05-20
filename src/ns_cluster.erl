@@ -445,15 +445,19 @@ maybe_rename(NewAddr, UserSupplied) ->
     OldName = node(),
     misc:executing_on_new_process(
       fun () ->
-              %% prevent node disco events while we're in the middle
-              %% of renaming
-              ns_node_disco:register_node_renaming_txn(self()),
+              Self = self(),
 
-              %% prevent breaking remote monitors while we're in the middle
-              %% of renaming
-              remote_monitors:register_node_renaming_txn(self()),
+              OnRename = fun() ->
+                                 %% prevent node disco events while we're in the middle
+                                 %% of renaming
+                                 ns_node_disco:register_node_renaming_txn(Self),
 
-              case dist_manager:adjust_my_address(NewAddr, UserSupplied) of
+                                 %% prevent breaking remote monitors while we're in the middle
+                                 %% of renaming
+                                 remote_monitors:register_node_renaming_txn(Self)
+                         end,
+
+              case dist_manager:adjust_my_address(NewAddr, UserSupplied, OnRename) of
                   nothing ->
                       ?cluster_debug("Not renaming node.", []),
                       not_renamed;
