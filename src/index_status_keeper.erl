@@ -45,13 +45,18 @@ get_indexes() ->
 -record(state, {num_connections,
                 indexes,
 
-                restart_pending}).
+                restart_pending,
+                source :: local | {remote, [node()], non_neg_integer()}}).
 
 init([]) ->
     self() ! refresh,
+
+    ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/2, self()),
+
     {ok, #state{num_connections = 0,
                 indexes = [],
-                restart_pending = false}}.
+                restart_pending = false,
+                source = get_source()}}.
 
 handle_call(get_indexes, _From, #state{indexes = Indexes} = State) ->
     {reply, {ok, Indexes}, State};
@@ -60,7 +65,7 @@ handle_call(get_status, _From,
     Status = [{num_connections, NumConnections}],
     {reply, {ok, Status}, State}.
 
-handle_cast({update, Status}, State) ->
+handle_cast({update, Status}, #state{source = local} = State) ->
     NumConnections = proplists:get_value(index_num_connections, Status, 0),
     NeedsRestart = proplists:get_value(index_needs_restart, Status, false),
 
@@ -73,6 +78,9 @@ handle_cast({update, Status}, State) ->
                end,
 
     {noreply, NewState};
+handle_cast({update, _}, State) ->
+    ?log_warning("Got unexpected status update when source is not local. Ignoring."),
+    {noreply, State};
 handle_cast({refresh_done, Status}, State) ->
     NewState =
         case Status of
@@ -85,10 +93,13 @@ handle_cast({refresh_done, Status}, State) ->
     erlang:send_after(?REFRESH_INTERVAL, self(), refresh),
     {noreply, NewState};
 handle_cast(restart_done, #state{restart_pending = true} = State) ->
-    {noreply, State#state{restart_pending = false}}.
+    {noreply, State#state{restart_pending = false}};
+handle_cast(notable_config_change, State) ->
+    misc:flush(notable_config_change),
+    {noreply, State#state{source = get_source()}}.
 
 handle_info(refresh, State) ->
-    refresh_status(),
+    refresh_status(State),
     {noreply, State};
 handle_info(Msg, State) ->
     ?log_debug("Ignoring unknown msg: ~p", [Msg]),
@@ -111,7 +122,8 @@ maybe_restart_indexer(#state{restart_pending = false} = State) ->
 maybe_restart_indexer(State) ->
     State.
 
-restart_indexer(#state{restart_pending = false} = State) ->
+restart_indexer(#state{restart_pending = false,
+                       source = local} = State) ->
     Self = self(),
     work_queue:submit_work(
       ?WORKER,
@@ -130,12 +142,12 @@ restart_indexer(#state{restart_pending = false} = State) ->
 
     State#state{restart_pending = true}.
 
-refresh_status() ->
+refresh_status(State) ->
     Self = self(),
     work_queue:submit_work(
       ?WORKER,
       fun () ->
-              Status = case grab_status() of
+              Status = case grab_status(State) of
                            {ok, S} ->
                                S;
                            {error, _} ->
@@ -144,7 +156,7 @@ refresh_status() ->
               gen_server:cast(Self, {refresh_done, Status})
       end).
 
-grab_status() ->
+grab_status(#state{source = local}) ->
     case index_rest:get_json("getIndexStatus") of
         {ok, {[_|_] = Status}} ->
             process_status(Status);
@@ -153,6 +165,26 @@ grab_status() ->
             {error, bad_status};
         Error ->
             Error
+    end;
+grab_status(#state{source = {remote, Nodes, NodesCount}}) ->
+    case Nodes of
+        [] ->
+            {ok, []};
+        _ ->
+            Node = lists:nth(random:uniform(NodesCount), Nodes),
+
+            try remote_api:get_indexes(Node) of
+                {ok, _} = R ->
+                    R;
+                Error ->
+                    ?log_error("Couldn't get indexes from node ~p: ~p", [Node, Error]),
+                    {error, failed}
+            catch
+                T:E ->
+                    ?log_error("Got exception while getting indexes from node ~p: ~p",
+                               [Node, {T, E}]),
+                    {error, failed}
+            end
     end.
 
 process_status(Status) ->
@@ -191,3 +223,27 @@ process_indexes(Indexes) ->
                {progress, Completion},
                {hosts, Hosts}]
       end, Indexes).
+
+get_source() ->
+    Config = ns_config:get(),
+    case ns_cluster_membership:should_run_service(Config, index, ns_node_disco:ns_server_node()) of
+        true ->
+            local;
+        false ->
+            IndexNodes = ns_cluster_membership:index_active_nodes(Config),
+            {remote, IndexNodes, length(IndexNodes)}
+    end.
+
+is_notable({{node, Node, membership}, _}) when Node =:= node() ->
+    true;
+is_notable(_) ->
+    false.
+
+handle_config_event(Event, Pid) ->
+    case is_notable(Event) of
+        true ->
+            gen_server:cast(Pid, notable_config_change);
+        false ->
+            ok
+    end,
+    Pid.
