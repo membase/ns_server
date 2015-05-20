@@ -234,7 +234,7 @@ get_source() ->
             {remote, IndexNodes, length(IndexNodes)}
     end.
 
-is_notable({{node, Node, membership}, _}) when Node =:= node() ->
+is_notable({{node, _, membership}, _}) ->
     true;
 is_notable(_) ->
     false.
