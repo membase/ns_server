@@ -38,6 +38,10 @@ function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
     status = xhr.status;
   } catch (e) {}
 
+  if (status === 0) {
+    return;
+  }
+
   try {
     readyState = xhr.readyState;
   } catch (e) {}
