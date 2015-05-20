@@ -414,14 +414,8 @@ index_node_spec(Config) ->
     end.
 
 build_go_env_vars(Config, RPCService) ->
-    GoTraceBack =
-        case os:getenv("GOTRACEBACK") of
-            false ->
-                "crash";
-            V ->
-                V
-        end,
-
+    GoTraceBack0 = ns_config:search(ns_config:latest_config_marker(), gotraceback, <<>>),
+    GoTraceBack = binary_to_list(GoTraceBack0),
     [{"GOTRACEBACK", GoTraceBack} | build_cbauth_env_vars(Config, RPCService)].
 
 build_cbauth_env_vars(Config, RPCService) ->

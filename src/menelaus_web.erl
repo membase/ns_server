@@ -3220,6 +3220,9 @@ internal_settings_conf() ->
                                        end
                                end
                        end,
+    GetString = fun (SV) ->
+                        {ok, list_to_binary(string:strip(SV))}
+                end,
 
     [{index_aware_rebalance_disabled, indexAwareRebalanceDisabled, false, GetBool},
      {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false, GetBool},
@@ -3233,7 +3236,8 @@ internal_settings_conf() ->
      {{request_limit, rest}, restRequestLimit, undefined, GetNumberOrEmpty(0, 99999, {ok, undefined})},
      {{request_limit, capi}, capiRequestLimit, undefined, GetNumberOrEmpty(0, 99999, {ok, undefined})},
      {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, undefined,
-      GetNumberOrEmpty(0, 99999, {ok, undefined})}] ++
+      GetNumberOrEmpty(0, 99999, {ok, undefined})},
+     {gotraceback, gotraceback, <<>>, GetString}] ++
         case cluster_compat_mode:is_goxdcr_enabled() of
             false ->
                 [{{xdcr, max_concurrent_reps}, xdcrMaxConcurrentReps, 32, GetNumber(1, 256)},
