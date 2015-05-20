@@ -51,6 +51,8 @@ short_description(overhead) ->
     "metadata overhead warning";
 short_description(disk) ->
     "approaching full disk warning";
+short_description(audit_dropped_events) ->
+    "audit write failure";
 short_description(Other) ->
     %% this case is needed for tests to work
     couch_util:to_list(Other).
@@ -65,7 +67,10 @@ errors(ep_item_commit_failed) ->
 errors(overhead) ->
     "Metadata overhead warning. Over  ~p% of RAM allocated to bucket  \"~s\" on node \"~s\" is taken up by keys and metadata.";
 errors(disk) ->
-    "Approaching full disk warning. Usage of disk \"~s\" on node \"~s\" is around ~p%.".
+    "Approaching full disk warning. Usage of disk \"~s\" on node \"~s\" is around ~p%.";
+errors(audit_dropped_events) ->
+    "Audit Write Failure. Attempt to write to audit log on node \"~s\" was unsuccessful".
+
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -185,7 +190,8 @@ handle_info(_Info, State) ->
 do_handle_check_alerts_info(#state{history=Hist, opaque=Opaque}) ->
     BucketNames = ordsets:intersection(lists:sort(ns_memcached:active_buckets()),
                                        lists:sort(ns_bucket:node_bucket_names(node()))),
-    RawPairs = [{Name, stats_reader:latest(minute, node(), Name, 1)} || Name <- BucketNames],
+    AllNames = ["@global" | BucketNames],
+    RawPairs = [{Name, stats_reader:latest(minute, node(), Name, 1)} || Name <- AllNames],
     Stats = [{Name, OrdDict}
              || {Name, {ok, [#stat_entry{values = OrdDict}|_]}} <- RawPairs],
     check_alerts(Opaque, Hist, Stats).
@@ -209,7 +215,7 @@ start_timer() ->
 %% @doc global checks for any server specific problems locally then
 %% broadcast alerts to clients connected to any particular node
 global_checks() ->
-    [oom, ip, write_fail, overhead, disk].
+    [oom, ip, write_fail, overhead, disk, audit_write_fail].
 
 %% @doc fires off various checks
 check_alerts(Opaque, Hist, Stats) ->
@@ -283,6 +289,10 @@ check(overhead, Opaque, _History, Stats) ->
 check(write_fail, Opaque, _History, Stats) ->
     check_stat_increased(Stats, ep_item_commit_failed, Opaque);
 
+%% @doc check for write failures in audit log
+check(audit_write_fail, Opaque, _History, Stats) ->
+    check_global_stat_increased(Stats, audit_dropped_events, Opaque);
+
 %% @doc check for any oom errors an any bucket
 check(oom, Opaque, _History, Stats) ->
     check_stat_increased(Stats, ep_oom_errors, Opaque).
@@ -334,6 +344,22 @@ check_stat_increased(Stats, StatName, Opaque) ->
             dict:store(StatName, New, Opaque)
     end.
 
+check_global_stat_increased(Stats, StatName, Opaque) ->
+    New = fetch_bucket_stat(Stats, "@global", StatName),
+    case dict:is_key(StatName, Opaque) of
+        false ->
+            dict:store(StatName, New, Opaque);
+        true ->
+            Old = dict:fetch(StatName, Opaque),
+            case New > Old of
+                false ->
+                    ok;
+                true ->
+                    {_Sname, Host} = misc:node_name_host(node()),
+                    global_alert(StatName, fmt_to_bin(errors(StatName), [Host]))
+            end,
+            dict:store(StatName, New, Opaque)
+    end.
 
 %% @doc check that I can listen on the current host
 -spec can_listen(string()) -> boolean().
@@ -364,7 +390,8 @@ stat_increased(New, Old) ->
 fetch_buckets_stat(Stats, StatName) ->
     dict:from_list(
       [{Bucket, fetch_bucket_stat(Stats, Bucket, StatName)}
-       || {Bucket, _OrdDict} <- Stats]
+       || {Bucket, _OrdDict} <- Stats,
+          Bucket =/= "@global"]
      ).
 
 
@@ -436,7 +463,7 @@ maybe_send_out_email_alert({Key0, Node}, Message) ->
     end.
 
 alert_keys() ->
-    [ip, disk, overhead, ep_oom_errors, ep_item_commit_failed].
+    [ip, disk, overhead, ep_oom_errors, ep_item_commit_failed, audit_dropped_events].
 
 %% Cant currently test the alert timeouts as would need to mock
 %% calls to the archiver
