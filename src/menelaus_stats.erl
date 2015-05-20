@@ -2261,10 +2261,11 @@ do_get_indexes(BucketId0, Nodes) ->
     WantedHosts = lists:usort(WantedHosts0),
 
     BucketId = list_to_binary(BucketId0),
+    {ok, Indexes} = index_status_keeper:get_indexes(),
     [begin
          {index, Name} = lists:keyfind(index, 1, I),
          Name
-     end || I <- index_status_keeper:get_indexes(),
+     end || I <- Indexes,
             proplists:get_value(bucket, I) =:= BucketId,
             not(ordsets:is_disjoint(WantedHosts,
                                     lists:usort(proplists:get_value(hosts, I))))].
