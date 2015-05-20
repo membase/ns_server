@@ -28,9 +28,6 @@ function createIndexesSectionCells(ns, modeCell, indexesTableSortByCell, indexes
     var indexes = _.clone(v.need(ns.indexesCell));
     var sortBy = v.need(indexesTableSortByCell);
     var sortDescending = v.need(indexesTableSortDescendingCell);
-    if (indexes[0] && !indexes[0][sortBy]) {
-      sortBy = "hosts";
-    }
     var rv = {
       list: indexes,
       descending: sortDescending,
@@ -55,6 +52,7 @@ var IndexesSection = {
     var self = IndexesSection;
     var indexesListContainer = $("#js_indexes_list_container");
     var indexesTableSortByCell = new Cell();
+    indexesTableSortByCell.setValue("hosts");
     var indexesTableSortDescendingCell = new Cell();
     createIndexesSectionCells(
       IndexesSection,
@@ -88,18 +86,7 @@ var IndexesSection = {
         return;
       }
       renderTemplate('js_indexes_list', config.list);
-      $("[data-sortby]", indexesListContainer).click(function () {
-        var header = jQuery(this);
-        var sortBy = header.data("sortby");
-        if (sortBy === indexesTableSortByCell.value) {
-          indexesTableSortDescendingCell.setValue(config.descending === "true" ? "false" : "true");
-        } else {
-          indexesTableSortDescendingCell.setValue("false");
-        }
-        indexesTableSortByCell.setValue(sortBy);
-      });
-      indexesListContainer.toggleClass("dynamic_descending", config.descending === "true");
-      $("[data-sortby=" + config.sortBy + "]", indexesListContainer).addClass("dynamic_active");
+      activateSortableControls(indexesListContainer, indexesTableSortByCell, indexesTableSortDescendingCell);
     });
     self.isAtIndexesTabCell.subscribeValue(function (isIndexesTab) {
       if (isIndexesTab) {

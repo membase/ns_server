@@ -248,10 +248,10 @@
             </colgroup>
             <tbody>
               <tr>
-                <th class="node_name" style="text-align:left;">Server Node Name</th>
+                <th class="node_name" style="text-align:left;" data-sortby="hostname">Server Node Name</th>
                 <th></th>
-                <th style='{%= isGroupRaw ? "text-align: center!important;" : "width: 0px;" %}'>{%= isGroupRaw ? "Group" : " " %}</th>
-                <th >Services</th>
+                <th style='{%= isGroupRaw ? "text-align: center!important;" : "width: 0px;" %}' data-sortby="group">{%= isGroupRaw ? "Group" : " " %}</th>
+                <th data-sortby="services">Services</th>
                 <th>RAM Usage</th>
                 <th>Swap Usage</th>
                 <th>CPU Usage</th>

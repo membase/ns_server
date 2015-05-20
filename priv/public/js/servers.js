@@ -45,8 +45,8 @@ var ServersSection = {
     var inRecovery = this.inRecoveryModeCell.value;
     var loadingSamples = this.isLoadingSamplesCell.value;
 
-    var pending = this.pending;
-    var active = this.active;
+    var pending = _.clone(this.pending);
+    var active = _.clone(this.active);
 
     this.serversQ.find('.add_button').toggle(!!(details && !rebalancing));
     this.serversQ.find('.stop_recovery_button').toggle(!!inRecovery);
@@ -69,6 +69,15 @@ var ServersSection = {
       return;
 
     if (active.length) {
+      var sortBy = this.serversTableSortByCell.value;
+      var sortDescending = this.serversTableSortDescendingCell.value;
+      active.sort(mkComparatorByProp(sortBy, naturalSort));
+      pending.sort(mkComparatorByProp(sortBy, naturalSort));
+      if (sortDescending === "true") {
+        active.reverse();
+        pending.reverse();
+      }
+
       renderTemplate('manage_server_list', {
         rows: active,
         expandingAllowed: !IOCenter.staleness.value,
@@ -80,6 +89,9 @@ var ServersSection = {
         expandingAllowed: true,
         isGroupRaw: !!active[0].group
       }, $i('pending_server_list_container'));
+
+      activateSortableControls($("#active_server_list_container"), this.serversTableSortByCell, this.serversTableSortDescendingCell);
+      activateSortableControls($("#pending_server_list_container"), this.serversTableSortByCell, this.serversTableSortDescendingCell);
     }
 
     if (rebalancing) {
@@ -274,6 +286,9 @@ var ServersSection = {
     });
 
     self.serversCell = DAL.cells.serversCell;
+    self.serversTableSortByCell = new Cell();
+    self.serversTableSortByCell.setValue('hostname');
+    self.serversTableSortDescendingCell = new Cell();
 
     var groupsSelector = $("#js_servers_group_select");
     Cell.subscribeMultipleValues(function (groups, enabled) {
@@ -322,7 +337,7 @@ var ServersSection = {
 
     Cell.subscribeMultipleValues(function () {
       self.refreshEverything();
-    }, self.serversCell, self.inRecoveryModeCell, self.isLoadingSamplesCell, DAL.cells.mayRebalanceWithoutSampleLoadingCell);
+    }, self.serversCell, self.inRecoveryModeCell, self.isLoadingSamplesCell, DAL.cells.mayRebalanceWithoutSampleLoadingCell, self.serversTableSortByCell, self.serversTableSortDescendingCell);
 
     Cell.subscribeMultipleValues(function (currentSection, isSampleLoading, mayRebalanceWithoutSampleLoading) {
       if (currentSection !== "servers") {

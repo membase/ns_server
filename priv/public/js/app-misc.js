@@ -735,6 +735,21 @@ function extendHTMLAttrs(attrs1, attrs2) {
   return attrs1;
 }
 
+function activateSortableControls(listContainer, sortedByCell, sortDescCell) {
+  $("[data-sortby]", listContainer).click(function () {
+    var header = jQuery(this);
+    var sortBy = header.data("sortby");
+    if (sortBy === sortedByCell.value) {
+      sortDescCell.setValue(sortDescCell.value === "true" ? "false" : "true");
+    } else {
+      sortDescCell.setValue("false");
+    }
+    sortedByCell.setValue(sortBy);
+  });
+  listContainer.toggleClass("dynamic_descending", sortDescCell.value === "true");
+  $("[data-sortby=" + sortedByCell.value + "]", listContainer).addClass("dynamic_active");
+}
+
 function usageGaugeHTML(options) {
   var items = options.items;
   var values = _.map(options.items, function (item) {
