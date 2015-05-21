@@ -69,9 +69,6 @@ start_ns_server() ->
 
 %% @doc Stop ns_server and couchdb
 stop_ns_server() ->
-    %% ports need to be shut down before stopping ns_server to avoid errors
-    %% in go components when menelaus disappears
-    ns_ports_setup:shutdown_ports(),
     supervisor:terminate_child(?MODULE, ns_server_nodes_sup).
 
 restart_ns_server() ->
