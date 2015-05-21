@@ -1105,6 +1105,10 @@ var EmailAlertsSection = {
           label: 'Writing data to disk for a specific bucket has failed',
           enabled: $.inArray('ep_item_commit_failed', val.alerts)!==-1,
           value: 'ep_item_commit_failed'
+        },{
+          label: 'Writing event to audit log has failed',
+          enabled: $.inArray('audit_dropped_events', val.alerts)!==-1,
+          value: 'audit_dropped_events'
         }];
 
         renderTemplate('email_alerts', val, $i('email_alerts_container'));
