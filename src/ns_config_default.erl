@@ -353,9 +353,9 @@ default() ->
                        {host, "localhost"},
                        {port, 25},
                        {encrypt, false}]},
-       {alerts, [auto_failover_node,auto_failover_maximum_reached,
-                 auto_failover_other_nodes_down,auto_failover_cluster_too_small,ip,
-                 disk,overhead,ep_oom_errors,ep_item_commit_failed, audit_dropped_events]}
+       {alerts, [auto_failover_node, auto_failover_maximum_reached,
+                 auto_failover_other_nodes_down, auto_failover_cluster_too_small, ip,
+                 disk, overhead, ep_oom_errors, ep_item_commit_failed, audit_dropped_events]}
       ]},
      {alert_limits, [
        %% Maximum percentage of overhead compared to max bucket size (%)
