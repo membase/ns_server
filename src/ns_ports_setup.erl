@@ -88,8 +88,8 @@ children_loop_continue(Children, Sup) ->
             gen_server:reply(From, ok),
             children_loop(Children, Sup);
         {remote_monitor_down, Sup, unpaused} ->
-            ?log_debug("Remote monitor ~p was unpaused after node name change. Restart loop.", [Sup]),
-            set_children_and_loop(dynamic_children(), undefined);
+            ?log_debug("Remote monitor ~p was unpaused after node name change. Restart.", [Sup]),
+            erlang:exit(shutdown);
         {remote_monitor_down, Sup, Reason} ->
             ?log_debug("ns_child_ports_sup ~p died on babysitter node with ~p. Restart.", [Sup, Reason]),
             erlang:error({child_ports_sup_died, Sup, Reason});
