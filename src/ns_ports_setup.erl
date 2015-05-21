@@ -5,16 +5,13 @@
 -export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
          restart_xdcr_proxy/0, sync/0, create_erl_node_spec/4,
-         create_goxdcr_upgrade_spec/1, shutdown_ports/0]).
+         create_goxdcr_upgrade_spec/1]).
 
 start() ->
     proc_lib:start_link(?MODULE, setup_body_tramp, []).
 
 sync() ->
     gen_server:call(?MODULE, sync, infinity).
-
-shutdown_ports() ->
-    gen_server:call(?MODULE, shutdown_ports, infinity).
 
 %% ns_config announces full list as well which we don't need
 is_useless_event(List) when is_list(List) ->
@@ -41,8 +38,8 @@ setup_body() ->
                                              []
                                      end
                              end),
-    Children = dynamic_children(normal),
-    set_children_and_loop(Children, undefined, normal).
+    Children = dynamic_children(),
+    set_children_and_loop(Children, undefined).
 
 %% rpc:called (2.0.2+) after any bucket is deleted
 restart_moxi() ->
@@ -64,7 +61,7 @@ restart_xdcr_proxy() ->
 restart_port_by_name(Name) ->
     rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, restart_port_by_name, [Name]).
 
-set_children(Children, Sup) ->
+set_children_and_loop(Children, Sup) ->
     Pid = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, set_dynamic_children, [Children]),
     case Sup of
         undefined ->
@@ -78,31 +75,21 @@ set_children(Children, Sup) ->
                        [Sup, Pid]),
             erlang:error(child_ports_sup_died)
     end,
-    Pid.
+    children_loop(Children, Pid).
 
-set_children_and_loop(Children, Sup, Status) ->
-    NewSup = set_children(Children, Sup),
-    children_loop(Children, NewSup, Status).
+children_loop(Children, Sup) ->
+    proc_lib:hibernate(erlang, apply, [fun children_loop_continue/2, [Children, Sup]]).
 
-children_loop(Children, Sup, Status) ->
-    proc_lib:hibernate(erlang, apply, [fun children_loop_continue/3, [Children, Sup, Status]]).
-
-children_loop_continue(Children, Sup, Status) ->
+children_loop_continue(Children, Sup) ->
     receive
-        {'$gen_call', From, shutdown_ports} ->
-            ?log_debug("Send shutdown to all ports"),
-            NewChildren = [],
-            NewSup = set_children(NewChildren, Sup),
-            gen_server:reply(From, ok),
-            children_loop(NewChildren, NewSup, Status);
         check_children_update ->
-            do_children_loop_continue(Children, Sup, Status);
+            do_children_loop_continue(Children, Sup);
         {'$gen_call', From, sync} ->
             gen_server:reply(From, ok),
-            children_loop(Children, Sup, Status);
+            children_loop(Children, Sup);
         {remote_monitor_down, Sup, unpaused} ->
             ?log_debug("Remote monitor ~p was unpaused after node name change. Restart loop.", [Sup]),
-            set_children_and_loop(dynamic_children(Status), undefined, Status);
+            set_children_and_loop(dynamic_children(), undefined);
         {remote_monitor_down, Sup, Reason} ->
             ?log_debug("ns_child_ports_sup ~p died on babysitter node with ~p. Restart.", [Sup, Reason]),
             erlang:error({child_ports_sup_died, Sup, Reason});
@@ -112,7 +99,7 @@ children_loop_continue(Children, Sup, Status) ->
             erlang:error(expected_some_message)
     end.
 
-do_children_loop_continue(Children, Sup, Status) ->
+do_children_loop_continue(Children, Sup) ->
     %% this sets bound on frequency of checking of port_servers
     %% configuration updates. NOTE: this thing also depends on other
     %% config variables. Particularly moxi's environment variables
@@ -120,11 +107,11 @@ do_children_loop_continue(Children, Sup, Status) ->
     %% change
     timer:sleep(50),
     misc:flush(check_children_update),
-    case dynamic_children(Status) of
+    case dynamic_children() of
         Children ->
-            children_loop(Children, Sup, Status);
+            children_loop(Children, Sup);
         NewChildren ->
-            set_children_and_loop(NewChildren, Sup, Status)
+            set_children_and_loop(NewChildren, Sup)
     end.
 
 maybe_create_ssl_proxy_spec(Config) ->
@@ -245,9 +232,7 @@ do_per_bucket_moxi_specs(Config) ->
               end
       end, [], BucketConfigs).
 
-dynamic_children(shutdown) ->
-    [];
-dynamic_children(normal) ->
+dynamic_children() ->
     Config = ns_config:get(),
 
     Specs = [memcached_spec(Config),
