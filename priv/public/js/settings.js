@@ -527,13 +527,13 @@ var UpdatesNotificationsSection = {
     perBucketStatsCell.delegateInvalidationMethods(perBucketFuturesCell);
 
     var isAuditEnableSettingsCell = Cell.compute(function (v) {
-      return v.need(DAL.cells.isEnterpriseCell) && future.get({url: "/settings/audit"}, function (val) {
-        return val.auditdEnabled;
+      return v.need(DAL.cells.isEnterpriseCell) && v.need(DAL.cells.is40СompatibleCell) && future.get({url: "/settings/audit"}, function (val) {
+        return val && val.auditdEnabled;
       });
     });
     var isLDAPEnabledCell = Cell.compute(function (v) {
       return v.need(DAL.cells.isLDAPEnabledCell) && future.get({url: "/settings/saslauthdAuth"}, function (val) {
-        return val.enabled;
+        return val && val.enabled;
       });
     })
     var indexStatus = Cell.compute(function (v) {
