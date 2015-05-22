@@ -217,7 +217,9 @@ bringup(MyIP, UserSupplied) ->
 
 %% Tear down distributed erlang.
 teardown() ->
-    ok = net_kernel:stop().
+    ok = net_kernel:stop(),
+    ?log_debug("Node = ~p after net_kernel:stop()", [node()]),
+    ok.
 
 do_adjust_address(MyIP, UserSupplied, OnRename, State = #state{my_ip = MyOldIP}) ->
     {NewState, Status} =
