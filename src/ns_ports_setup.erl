@@ -301,10 +301,9 @@ kv_node_projector_spec(Config) ->
             ClusterArg = "127.0.0.1:" ++ integer_to_list(RestPort),
             KvListArg = "-kvaddrs=127.0.0.1:" ++ integer_to_list(LocalMemcachedPort),
             AdminPortArg = "-adminport=:" ++ integer_to_list(ProjectorPort),
-            ProjLogArg = "-debug=true",
 
             Spec = {'projector', ProjectorCmd,
-                    [ProjLogArg, KvListArg, AdminPortArg, ClusterArg],
+                    [KvListArg, AdminPortArg, ClusterArg],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?PROJECTOR_LOG_FILENAME},
                      {env, build_go_env_vars(Config, projector)}]},
@@ -381,7 +380,6 @@ index_node_spec(Config) ->
 
             Spec = {'indexer', IndexerCmd,
                     [
-                         "-log=2",
                          "-vbuckets=" ++ integer_to_list(NumVBuckets),
                          "-cluster=127.0.0.1:" ++ integer_to_list(RestPort),
                          "-adminPort=" ++ integer_to_list(AdminPort),
