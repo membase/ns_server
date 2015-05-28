@@ -581,7 +581,7 @@ var ServersSection = {
           self.poolDetails.getValue(function (poolData) {
             overlay.remove();
             hideDialog('join_cluster_dialog');
-            if (ServersSection.isOnlyOneActiveNodeWithService(poolData.nodes, errorsOrData, 'index')) {
+            if (ServersSection.isOnlyOneNodeWithService(poolData.nodes, errorsOrData, 'index')) {
               var settings = ClusterSection.prepareClusterQuotaSettings(poolData);
               settings.prefix = 'add_node_memory_quota';
               settings.showKVMemoryQuota = errorsOrData.services.indexOf('kv') > -1;
@@ -674,12 +674,19 @@ var ServersSection = {
       }
     }
   },
+  isOnlyOneNodeWithService: function (nodes, node, service) {
+    var nodesCount = 0;
+    var indexExists = _.each(nodes, function (node) {
+      nodesCount += (_.indexOf(node.services, service) > -1);
+    });
+    return nodesCount === 1 && node.services.indexOf(service) > -1;
+  },
   isOnlyOneActiveNodeWithService: function (nodes, node, service) {
     var nodesCount = 0;
     var indexExists = _.each(nodes, function (node) {
       nodesCount += node.clusterMembership === 'active' && !node.pendingEject && (_.indexOf(node.services, service) > -1);
     });
-    return nodesCount === 1 && (_.isArray(node.services) ? _.indexOf(node.services, service) > -1 : node.services.indexOf(service) > -1);
+    return nodesCount === 1 && _.indexOf(node.services, service) > -1;
   },
   failoverNode: function (hostname) {
     var self = this;
