@@ -692,14 +692,15 @@ get_db_size_info(Bucket, VBucket) ->
 maybe_compact_vbucket(BucketName, {VBucket, DbName},
                       Config, Force, Options) ->
     Bucket = binary_to_list(BucketName),
-    SizeInfo = get_db_size_info(Bucket, VBucket),
+    {DataSize, FileSize} = SizeInfo = get_db_size_info(Bucket, VBucket),
 
     Force orelse vbucket_needs_compaction(SizeInfo, Config) orelse exit(normal),
 
     %% effectful
     ensure_can_db_compact(DbName, SizeInfo),
 
-    ?log_info("Compacting `~s' (~p)", [DbName, Options]),
+    ?log_info("Compacting '~s', DataSize = ~p, FileSize = ~p, Options = ~p",
+              [DbName, DataSize, FileSize, Options]),
     Ret = ns_memcached:compact_vbucket(Bucket, VBucket, Options),
     ?log_info("Compaction of ~p has finished with ~p", [DbName, Ret]),
     Ret.
