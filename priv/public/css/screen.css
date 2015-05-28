@@ -1460,7 +1460,7 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 .replication_control {display: inline-block; text-align: center; vertical-align: middle; margin:0 4px; cursor: pointer; width: 18px; height: 18px; background-image: url('../images/pause_play.png'); background-repeat: no-repeat; }
 .replication_control.dynamic_paused {background-position: 0 0;}
 .replication_control.dynamic_running {background-position: 0 -18px;}
-.replication_control.dynamic_spinner,
+.replication_control.dynamic_spinner {background: url('../images/spinner/spinner_gr_nav.gif') no-repeat 50% 50% transparent; border: 0; width: 18px; height: 18px; cursor: default;}
 
 
 .dynamic_non-kv-node .only-when-kv-node {display: none!important;}
