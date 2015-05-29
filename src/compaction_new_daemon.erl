@@ -834,23 +834,11 @@ spawn_view_index_compactor(BucketName, DDocId,
       fun () ->
               ViewName = view_name(BucketName, DDocId, Kind, Type),
 
-              DoCompact =
-                  case Force of
-                      true ->
-                          ?log_info("Forceful compaction of view ~s requested",
-                                    [ViewName]),
-                          true;
-                      false ->
-                          view_needs_compaction(BucketName, DDocId, Kind, Type, Config)
-                  end,
-
-              DoCompact orelse exit(normal),
+              Force orelse view_needs_compaction(BucketName, DDocId, Kind, Type, Config)
+                  orelse exit(normal),
 
               %% effectful
               ensure_can_view_compact(BucketName, DDocId, Kind, Type),
-
-              ?log_info("Compacting indexes for ~s", [ViewName]),
-              process_flag(trap_exit, true),
 
               TriggerType = case Force of
                                 true ->
@@ -858,6 +846,9 @@ spawn_view_index_compactor(BucketName, DDocId,
                                 false ->
                                     scheduled
                             end,
+
+              ?log_info("Compacting indexes for ~s. Compaction is ~p", [ViewName, TriggerType]),
+              process_flag(trap_exit, true),
 
               InitialStatus = [{original_target, OriginalTarget},
                                {trigger_type, TriggerType}],
@@ -872,27 +863,30 @@ do_spawn_view_index_compactor(Parent, BucketName, DDocId, Kind, Type, InitialSta
     Compactor = start_view_index_compactor(BucketName, DDocId,
                                            Kind, Type, InitialStatus),
     CompactorRef = erlang:monitor(process, Compactor),
+    CompactorInfo = {Compactor, BucketName, DDocId, Kind, Type},
+    ?log_debug("Spawned view index compactor ~p", [CompactorInfo]),
 
     receive
         {'EXIT', Parent, Reason} = Exit ->
-            ?log_debug("Got exit signal from parent: ~p", [Exit]),
-
+            ?log_debug("Got exit signal from parent: ~p. Will cancel compactor ~p",
+                       [Exit, CompactorInfo]),
             erlang:demonitor(CompactorRef),
             ok = ns_couchdb_api:cancel_view_compact(BucketName, DDocId, Kind, Type),
             exit(Reason);
         {'DOWN', CompactorRef, process, Compactor, normal} ->
             ok;
         {'DOWN', CompactorRef, process, Compactor, noproc} ->
-            exit({index_compactor_died_too_soon,
-                  BucketName, DDocId, Kind, Type});
+            exit({index_compactor_died_too_soon, CompactorInfo});
         {'DOWN', CompactorRef, process, Compactor, Reason}
           when Reason =:= shutdown;
                Reason =:= {updater_died, shutdown};
                Reason =:= {updated_died, noproc};
                Reason =:= {updater_died, {updater_error, shutdown}} ->
+            ?log_debug("Compactor ~p exited with reason ~p, Will retry", [CompactorInfo, Reason]),
             do_spawn_view_index_compactor(Parent, BucketName,
                                           DDocId, Kind, Type, InitialStatus);
         {'DOWN', CompactorRef, process, Compactor, Reason} ->
+            ?log_debug("Compactor ~p exited with reason ~p, Will exit", [CompactorInfo, Reason]),
             exit(Reason)
     end.
 
@@ -900,10 +894,15 @@ start_view_index_compactor(BucketName, DDocId, Kind, Type, InitialStatus) ->
     case ns_couchdb_api:start_view_compact(BucketName, DDocId, Kind, Type, InitialStatus) of
         {ok, Pid} ->
             Pid;
-        {error, initial_build} ->
-            exit(normal);
-        {error, empty_group} ->
-            exit(normal)
+        {error, Error} ->
+            ?log_debug("Compactor ~p was not created. Reason: ~p",
+                       [{BucketName, DDocId, Kind, Type}, Error]),
+            case Error of
+                initial_build ->
+                    exit(normal);
+                empty_group ->
+                    exit(normal)
+            end
     end.
 
 bucket_needs_compaction(BucketName, NumVBuckets,
