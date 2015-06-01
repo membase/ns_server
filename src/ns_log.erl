@@ -60,7 +60,7 @@ crash_consumption_loop_tramp() ->
     misc:delaying_crash(1000, fun crash_consumption_loop/0).
 
 crash_consumption_loop() ->
-    {Name, Node, Status, Messages} = ns_crash_log:consume_oldest_message_from_inside_ns_server(),
+    {Name, Status, Messages} = ns_crash_log:consume_oldest_message_from_inside_ns_server(),
     LogLevel = case Status of
                  0 ->
                      debug;
@@ -68,9 +68,8 @@ crash_consumption_loop() ->
                      info
              end,
     ale:log(?USER_LOGGER, LogLevel,
-            "Service '~p' running on node ~p exited with status ~p. Restarting. "
-            "Messages: ~s",
-            [Name, Node, Status, Messages]),
+            "Service '~p' exited with status ~p. Restarting. Messages: ~s",
+            [Name, Status, Messages]),
     crash_consumption_loop().
 
 
