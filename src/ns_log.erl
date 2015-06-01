@@ -68,7 +68,7 @@ crash_consumption_loop() ->
                      info
              end,
     ale:log(?USER_LOGGER, LogLevel,
-            "Port server ~p on node ~p exited with status ~p. Restarting. "
+            "Service '~p' running on node ~p exited with status ~p. Restarting. "
             "Messages: ~s",
             [Name, Node, Status, Messages]),
     crash_consumption_loop().
