@@ -217,7 +217,19 @@ bringup(MyIP, UserSupplied) ->
 
 %% Tear down distributed erlang.
 teardown() ->
-    ok = net_kernel:stop().
+    misc:executing_on_new_process(
+      fun () ->
+              Node = node(),
+              ok = net_kernel:monitor_nodes(true, [nodedown_reason]),
+              ok = net_kernel:stop(),
+
+              receive
+                  {nodedown, DownNode, Info} = Msg when DownNode =:= Node ->
+                      ?log_debug("Got nodedown msg ~p after terminating net kernel",
+                                 [Msg]),
+                      ok
+              end
+      end).
 
 do_adjust_address(MyIP, UserSupplied, OnRename, State = #state{my_ip = MyOldIP}) ->
     {NewState, Status} =
