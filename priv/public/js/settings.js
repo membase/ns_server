@@ -428,7 +428,8 @@ var UpdatesNotificationsSection = {
       if (ddocs && ddocs.rows) {
         stats.istats.total_ddocs += ddocs.rows.length;
         _.each(ddocs.rows, function (row) {
-          stats.istats.total_views += _.keys(row.doc.json.views).length;
+          stats.istats.total_views += _.keys(row.doc.json.views || {}).length;
+          stats.istats.total_views += _.keys(row.doc.json.spatial || {}).length;
         });
       }
       var statsInfo = value.stats;
