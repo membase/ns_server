@@ -243,14 +243,17 @@ check(disk, Opaque, _History, _Stats) ->
 
     UsedPre = [ns_storage_conf:this_node_dbdir(),
                ns_storage_conf:this_node_ixdir(),
-               ns_storage_conf:this_node_logdir()],
+               ns_storage_conf:this_node_logdir(),
+               ns_audit_cfg:get_log_path()],
     UsedFiles = [X || {ok, X} <- UsedPre],
 
+    RealPaths = [misc:realpath(File, "/") || File <- UsedFiles],
+
     UsedMountsTmp =
-        [begin {ok, RealFile} = misc:realpath(File, "/"),
-               {ok, Mnt} = ns_storage_conf:extract_disk_stats_for_path(Mounts, RealFile),
+        [begin {ok, Mnt} = ns_storage_conf:extract_disk_stats_for_path(Mounts, RealFile),
                Mnt
-         end || File <- UsedFiles],
+         end || {ok, RealFile} <- RealPaths],
+
     UsedMounts = sets:to_list(sets:from_list(UsedMountsTmp)),
     {value, Config} = ns_config:search(alert_limits),
     MaxDiskUsed = proplists:get_value(max_disk_used, Config),

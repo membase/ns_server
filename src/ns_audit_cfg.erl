@@ -25,7 +25,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/0, get_global/0, set_global/1, default_audit_json_path/0]).
+-export([start_link/0, get_global/0, set_global/1, default_audit_json_path/0, get_log_path/0]).
 
 string_key(log_path) ->
     true;
@@ -133,7 +133,23 @@ default_audit_json_path() ->
     filename:join(path_config:component_path(data, "config"), "audit.json").
 
 audit_json_path() ->
-    ns_config:search_node_prop(node(), 'latest-config-marker', memcached, audit_file).
+    ns_config:search_node_prop(ns_config:latest_config_marker(), memcached, audit_file).
+
+is_enabled() ->
+    ns_config:search_node_prop(ns_config:latest_config_marker(), audit, auditd_enabled, false).
+
+get_log_path() ->
+    case is_enabled() of
+        false ->
+            undefined;
+        true ->
+            case ns_config:search_node_prop(ns_config:latest_config_marker(), audit, log_path) of
+                undefined ->
+                    undefined;
+                Path ->
+                    {ok, misc:absname(Path)}
+            end
+    end.
 
 write_audit_json(Params) ->
     Path = audit_json_path(),
