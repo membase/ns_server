@@ -224,7 +224,7 @@ teardown() ->
               ok = net_kernel:stop(),
 
               receive
-                  {nodedown, DownNode, Info} = Msg when DownNode =:= Node ->
+                  {nodedown, DownNode, _Info} = Msg when DownNode =:= Node ->
                       ?log_debug("Got nodedown msg ~p after terminating net kernel",
                                  [Msg]),
                       ok
