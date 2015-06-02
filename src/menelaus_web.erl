@@ -90,6 +90,7 @@
          validate_has_params/1,
          validate_memory_quota/2,
          validate_any_value/2,
+         validate_by_fun/3,
          execute_if_validated/3]).
 
 -define(AUTO_FAILLOVER_MIN_TIMEOUT, 30).
@@ -3741,9 +3742,17 @@ validate_settings_audit(Args) ->
                    io_lib:format("The value of ~p must be in range from 15 minutes to 7 days",
                                  [Name])
            end, R2),
-    R4 = validate_integer(rotateSize, R3),
-    R5 = validate_range(rotateSize, 0, 500*1024*1024, R4),
-    validate_unsupported_params(R5).
+    R4 = validate_by_fun(fun (Value) ->
+                                 case Value rem 60 of
+                                     0 ->
+                                         ok;
+                                     _ ->
+                                         {error, "Value must not be a fraction of minute"}
+                                 end
+                         end, rotateInterval, R3),
+    R5 = validate_integer(rotateSize, R4),
+    R6 = validate_range(rotateSize, 0, 500*1024*1024, R5),
+    validate_unsupported_params(R6).
 
 handle_settings_audit_post(Req) ->
     assert_is_enterprise(),
