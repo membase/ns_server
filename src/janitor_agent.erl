@@ -884,12 +884,13 @@ handle_call_via_servant({FromPid, _Tag}, State, Req, Body) ->
                          end),
     {reply, {Pid, Tag}, State}.
 
-handle_cast({apply_vbucket_state_reply, ReplyPid, Reply},
+handle_cast({apply_vbucket_state_reply, ReplyPid, Call, Reply},
             #state{apply_vbucket_states_queue = Q,
                    apply_vbucket_states_worker = WorkerPid} = State) ->
     case ReplyPid =:= WorkerPid of
         true ->
-            ?log_debug("Got reply from apply_vbucket_states_worker: ~p", [Reply]),
+            ?log_debug("Got reply to call ~p from apply_vbucket_states_worker: ~p",
+                       [Call, Reply]),
             {{value, From}, NewQ} = queue:out(Q),
             gen_server:reply(From, Reply),
             {noreply, State#state{apply_vbucket_states_queue = NewQ}};
@@ -1132,7 +1133,7 @@ apply_vbucket_states_worker_loop() ->
     receive
         {Parent, Call, State} ->
             Reply = handle_apply_vbucket_state(Call, State),
-            gen_server:cast(Parent, {apply_vbucket_state_reply, self(), Reply}),
+            gen_server:cast(Parent, {apply_vbucket_state_reply, self(), Call, Reply}),
             apply_vbucket_states_worker_loop()
     end.
 
