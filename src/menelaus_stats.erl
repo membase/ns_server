@@ -589,9 +589,16 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                                               end
                                       end),
 
+                  AllPendingDocs = Z2(per_index_stat(Index, <<"num_docs_pending">>),
+                                      per_index_stat(Index, <<"num_docs_queued">>),
+                                      fun (Pending, Queued) ->
+                                              Pending + Queued
+                                      end),
+
                   [{per_index_stat(Index, <<"avg_item_size">>), AvgItemSize},
                    {per_index_stat(Index, <<"fragmentation">>), Fragmentation},
-                   {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency}]
+                   {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency},
+                   {per_index_stat(Index, <<"num_docs_pending+queued">>), AllPendingDocs}]
           end, get_indexes(BucketId));
 computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
@@ -1282,7 +1289,7 @@ do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
                            {name, per_index_stat(Id, <<"data_size">>)},
                            {desc, <<"Actual data size consumed by the index">>}]},
                  {struct, [{title, <<"total items remaining">>},
-                           {name, per_index_stat(Id, <<"num_docs_pending">>)},
+                           {name, per_index_stat(Id, <<"num_docs_pending+queued">>)},
                            {desc, <<"Number of documents pending to be indexed">>}]},
                  {struct, [{title, <<"drain rate items/sec">>},
                            {name, per_index_stat(Id, <<"num_docs_indexed">>)},

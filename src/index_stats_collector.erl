@@ -31,7 +31,8 @@
 -record(state, {default_stats,
                 buckets}).
 
--define(I_GAUGES, [disk_size, data_size, num_docs_pending, items_count]).
+-define(I_GAUGES, [disk_size, data_size, num_docs_pending, num_docs_queued,
+                   items_count]).
 -define(I_COUNTERS, [num_requests, num_rows_returned, num_docs_indexed,
                      scan_bytes_read, total_scan_duration]).
 
