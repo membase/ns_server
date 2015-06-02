@@ -1766,3 +1766,19 @@ is_prefix(KeyPattern, K) ->
         _ ->
             false
     end.
+
+%% works like string:rchr but for binaries; note that unlike everything else
+%% in erlang binaries use zero-based indexing
+binary_rchr(Binary, Chr) ->
+    Len = erlang:byte_size(Binary),
+    do_binary_rchr(Binary, Chr, Len).
+
+do_binary_rchr(_, _, 0) ->
+    -1;
+do_binary_rchr(Binary, Chr, Ix) ->
+    case binary:at(Binary, Ix - 1) =:= Chr of
+        true ->
+            Ix - 1;
+        false ->
+            do_binary_rchr(Binary, Chr, Ix - 1)
+    end.

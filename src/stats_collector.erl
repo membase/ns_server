@@ -291,12 +291,14 @@ parse_aggregate_dcp_stats(AggDcp) ->
     IndexStatsRaw =
         lists:filtermap(
           fun ({<<"proj-", Rest/binary>>, V}) ->
-                  case binary:split(Rest, <<":">>) of
-                      [_, Key] ->
-                          {true, {Key, V}};
-                      _ ->
-                          %% not expected but let's handle it
-                          false
+                  case misc:binary_rchr(Rest, $:) of
+                      -1 ->
+                          false;
+                      Ix ->
+                          %% note that binary:part(B, byte_size(B), 0) returns <<>>
+                          KeyIx = Ix + 1,
+                          Key = binary:part(Rest, KeyIx, erlang:byte_size(Rest) - KeyIx),
+                          {true, {Key, V}}
                   end;
               (_) ->
                   false
