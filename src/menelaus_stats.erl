@@ -1303,7 +1303,7 @@ do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
                            {desc, <<"Average size of each index item">>}]},
                  {struct, [{title, <<"% fragmentation">>},
                            {name, per_index_stat(Id, <<"fragmentation">>)},
-                           {desc, <<"Percentage fragmentation of the index">>}]},
+                           {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less than a hundred kB, the static overhead of the index disk file will inflate the index fragmentation percentage">>}]},
                  {struct, [{title, <<"requests/sec">>},
                            {name, per_index_stat(Id, <<"num_requests">>)},
                            {desc, <<"Number of requests served by the indexer per second">>}]},
@@ -1496,7 +1496,7 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                                              {isBytes, true}]},
                                    {struct, [{title, <<"index fragmentation %">>},
                                              {name, global_index_stat(<<"fragmentation">>)},
-                                             {desc, <<"Percentage fragmentation of the index">>}]},
+                                             {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less than a hundred kB, the static overhead of the index disk file will inflate the index fragmentation percentage">>}]},
                                    {struct, [{title, <<"index scanned/sec">>},
                                              {name, global_index_stat(<<"num_rows_returned">>)},
                                              {desc, <<"Number of index items scanned by the indexer per second">>}]}]
