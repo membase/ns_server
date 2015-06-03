@@ -528,7 +528,12 @@ search_node_prop(Config, Key, SubKey, DefaultSubVal) ->
 search_node_prop(Node, Config, Key, SubKey, DefaultSubVal) ->
     case search_node(Node, Config, Key) of
         {value, PropList} ->
-            proplists:get_value(SubKey, PropList, DefaultSubVal);
+            case proplists:lookup(SubKey, PropList) of
+                none ->
+                    search_prop(Config, Key, SubKey, DefaultSubVal);
+                {SubKey, Val} ->
+                    Val
+            end;
         false ->
             DefaultSubVal
     end.
