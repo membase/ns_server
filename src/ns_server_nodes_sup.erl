@@ -47,10 +47,6 @@ init([]) ->
 
 child_specs() ->
     [
-     {setup_node_names,
-      {ns_server, setup_node_names, []},
-      transient, brutal_kill, worker, []},
-
      {remote_monitors, {remote_monitors, start_link, []},
       permanent, 1000, worker, []},
 

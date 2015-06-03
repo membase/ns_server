@@ -209,6 +209,7 @@ bringup(MyIP, UserSupplied) ->
     net_kernel:set_net_ticktime(misc:get_env_default(set_net_ticktime, 60)),
 
     ok = configure_net_kernel(),
+    ns_server:setup_node_names(),
 
     erlang:set_cookie(ns_node_disco:couchdb_node(), ns_server:get_babysitter_cookie()),
 

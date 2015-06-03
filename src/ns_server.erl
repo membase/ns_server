@@ -257,9 +257,7 @@ setup_node_names() ->
     Babysitter = list_to_atom("babysitter_of_" ++ Name ++ "@127.0.0.1"),
     Couchdb = list_to_atom("couchdb_" ++ Name ++ "@127.0.0.1"),
     application:set_env(ns_server, ns_couchdb_node, Couchdb),
-    application:set_env(ns_server, babysitter_node, Babysitter),
-    erlang:set_cookie(Couchdb, get_babysitter_cookie()),
-    ignore.
+    application:set_env(ns_server, babysitter_node, Babysitter).
 
 get_babysitter_cookie() ->
     case os:getenv("NS_SERVER_BABYSITTER_COOKIE") of
