@@ -143,9 +143,9 @@ angular.module('mnHelper').factory('mnHelper',
       };
     };
 
-    mnHelper.initializeDetailsHashObserver = function ($scope, hashKey) {
+    mnHelper.initializeDetailsHashObserver = function ($scope, hashKey, stateName) {
       function getOpenedServers() {
-        var value = $location.search()[hashKey];
+        var value = $stateParams[hashKey];
         return value ? _.isArray(value) ? value : [value] : [];
       }
       $scope.isDetailsOpened = function (hashValue) {
@@ -153,11 +153,14 @@ angular.module('mnHelper').factory('mnHelper',
       };
       $scope.toggleDetails = function (hashValue) {
         var currentlyOpened = getOpenedServers();
+        var stateParams = {};
         if ($scope.isDetailsOpened(hashValue)) {
-          $location.search(hashKey, _.difference(currentlyOpened, [hashValue]));
+          stateParams[hashKey] = _.difference(currentlyOpened, [hashValue]);
+          $state.go(stateName, stateParams, {notify: false});
         } else {
           currentlyOpened.push(hashValue);
-          $location.search(hashKey, currentlyOpened);
+          stateParams[hashKey] = currentlyOpened;
+          $state.go(stateName, stateParams, {notify: false});
         }
       };
     };

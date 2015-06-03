@@ -59,7 +59,7 @@ angular.module('mnServers').controller('mnServersController',
       }).value();
     }
 
-    mnHelper.initializeDetailsHashObserver($scope, 'openedServers');
+    mnHelper.initializeDetailsHashObserver($scope, 'openedServers', 'app.admin.servers');
 
     $scope.ejectServer = function (node) {
       $modal.open({

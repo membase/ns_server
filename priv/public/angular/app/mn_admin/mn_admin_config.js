@@ -46,7 +46,7 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
       }
     })
     .state('app.admin.buckets', {
-      url: '/buckets',
+      url: '/buckets?openedBucket',
       views: {
         "": {
           controller: 'mnBucketsController',
@@ -64,7 +64,7 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
       }
     })
     .state('app.admin.servers', {
-      url: '/servers/:list',
+      url: '/servers/:list?openedServers',
       params: {
         list: {
           value: 'active'
