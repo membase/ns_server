@@ -2480,11 +2480,37 @@ angular.module('mnPlot', [
     };
   }
 
+  function plotSmallGraph(config) {
+    var yaxis = {min:0, ticks:0, autoscaleMargin: 0.04};
+    if (config.maxY) {
+      yaxis.max = config.maxY;
+    }
+    var plotSeries = buildPlotSeries(config.data, config.timestamp, config.breakInterval, config.timeOffset).plotSeries;
+    return {
+      plotSeries: _.map(plotSeries, function (plotData) {
+        return {
+          color: config.isSelected ? '#e2f1f9' : '#d95e28',
+          shadowSize: 3,
+          data: plotData
+        }
+      }),
+      plotOptions: {
+        xaxis: {
+          ticks: 0,
+          autoscaleMargin: 0.04,
+          min: config.now - config.zoomMillis,
+          max: config.now
+        },
+        yaxis: yaxis,
+        grid: {show:false}
+      }};
+  }
 
   return {
     restrict: 'A',
     scope: {
       mnPlotConfig: '=',
+      isSmallGraph: '@'
     },
     link: function ($scope, $element) {
       var plot;
@@ -2492,12 +2518,12 @@ angular.module('mnPlot', [
         jQuery($element).removeData("plot");
         plot = null;
       });
+      var plotFun = ($scope.isSmallGraph === 'true') ? plotSmallGraph : plotStatGraph;
       $scope.$watch('mnPlotConfig', function (config) {
         if (!config) {
           return;
         }
-
-        var plotData = plotStatGraph(config);
+        var plotData = plotFun(config);
         plot = jQuery.plot($element, plotData.plotSeries, plotData.plotOptions);
       }, true);
     }
