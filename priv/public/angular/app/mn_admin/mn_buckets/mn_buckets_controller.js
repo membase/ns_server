@@ -29,4 +29,5 @@ angular.module('mnBuckets').controller('mnBucketsController',
       scope: $scope,
       onUpdate: applyBuckets
     });
+    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

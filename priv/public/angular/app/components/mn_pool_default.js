@@ -2,15 +2,15 @@ angular.module('mnPoolDefault').factory('mnPoolDefault',
   function (mnHttp, $cacheFactory, $q, mnPools) {
     var mnPoolDefault = {};
 
-    mnPoolDefault.get = function () {
+    mnPoolDefault.get = function (params) {
       return $q.all([
-        mnHttp({
+        mnHttp(_.extend({
           method: 'GET',
           url: '/pools/default?waitChange=0',
           responseType: 'json',
           cache: true,
           timeout: 30000
-        }),
+        }, params)),
         mnPools.get()
       ]).then(function (resp) {
         var poolDefault = resp[0].data;
@@ -26,8 +26,8 @@ angular.module('mnPoolDefault').factory('mnPoolDefault',
       return this;
     };
 
-    mnPoolDefault.getFresh = function () {
-      return mnPoolDefault.clearCache().get();
+    mnPoolDefault.getFresh = function (params) {
+      return mnPoolDefault.clearCache().get(params);
     };
 
     return mnPoolDefault;

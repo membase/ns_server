@@ -85,4 +85,5 @@ angular.module('mnViews').controller('mnViewsController',
       row.disableCompact = true;
       mnCompaction.registerAsTriggeredAndPost(row.controllers.compact).then(poll.reload);
     };
+    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

@@ -46,4 +46,6 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
       scope: $scope,
       onUpdate: applyState
     });
+
+    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

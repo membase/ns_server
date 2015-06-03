@@ -11,12 +11,12 @@ angular.module('mnTasksDetails').factory('mnTasksDetails',
     //   sawRebalanceRunning = true;
     // }
 
-    mnTasksDetails.get = function () {
-      return mnHttp({
+    mnTasksDetails.get = function (params) {
+      return mnHttp(_.extend({
         url: '/pools/default/tasks',
         method: 'GET',
         cache: true
-      }).then(function (resp) {
+      }, params)).then(function (resp) {
         var rv = {};
         var tasks = resp.data;
 
@@ -55,8 +55,8 @@ angular.module('mnTasksDetails').factory('mnTasksDetails',
       return this;
     };
 
-    mnTasksDetails.getFresh = function () {
-      return mnTasksDetails.clearCache().get();
+    mnTasksDetails.getFresh = function (params) {
+      return mnTasksDetails.clearCache().get(params);
     };
 
     return mnTasksDetails;

@@ -1,5 +1,5 @@
 angular.module('mnHelper').factory('mnHelper',
-  function ($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService) {
+  function ($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, mnHttp) {
     var mnHelper = {};
 
 
@@ -100,6 +100,17 @@ angular.module('mnHelper').factory('mnHelper',
         .showErrorsSensitiveSpinner()
         .closeFinally()
         .reloadState();
+    };
+
+    mnHelper.cancelCurrentStateHttpOnScopeDestroy = function ($scope) {
+      $scope.$on("$destroy", function () {
+        mnHttp.cancelDefaults();
+      });
+    };
+    mnHelper.cancelAllHttpOnScopeDestroy = function ($scope) {
+      $scope.$on("$destroy", function () {
+        mnHttp.cancelAll();
+      });
     };
 
     function createPromiseHelperShortcuts(name) {

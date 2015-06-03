@@ -8,4 +8,5 @@ angular.module('mnSettingsNotifications').controller('mnSettingsNotificationsCon
         .catchGlobalErrors('An error occured, update notifications settings were not saved.')
         .reloadState();
     };
+    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

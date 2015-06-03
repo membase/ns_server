@@ -35,6 +35,7 @@ angular.module('mnSettingsAlerts').controller('mnSettingsAlertsController',
         .catchErrors()
         .reloadState();
     }
+    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   }).filter('alertsLabel', function (knownAlerts) {
   return function (name) {
     switch (name) {

@@ -27,11 +27,13 @@ angular.module('mnAdmin').controller('mnAdminController',
     mnHelper.setupLongPolling({
       methodToCall: function () {
         return $q.all([
-          mnTasksDetails.getFresh(),
-          mnPoolDefault.getFresh()
+          mnTasksDetails.getFresh({httpGroup: 'globals'}),
+          mnPoolDefault.getFresh({httpGroup: 'globals'})
         ]);
       },
       scope: $scope,
       onUpdate: applyTasks
     });
+
+    mnHelper.cancelAllHttpOnScopeDestroy($scope);
   });

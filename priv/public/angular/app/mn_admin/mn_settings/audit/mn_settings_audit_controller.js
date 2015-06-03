@@ -16,4 +16,5 @@ angular.module('mnSettingsAudit').controller('mnSettingsAuditController',
         .showSpinner()
         .reloadState();
     };
+    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
 });

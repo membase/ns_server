@@ -1,5 +1,5 @@
 angular.module('mnOverview').controller('mnOverviewController',
-  function ($scope, $interval, nodes, buckets, mnOverviewService) {
+  function ($scope, $interval, nodes, buckets, mnOverviewService, mnHelper) {
     function scopeApplyer(method) {
       return function callee() {
         method().then(_.partial(_.extend, $scope));
@@ -19,4 +19,5 @@ angular.module('mnOverview').controller('mnOverviewController',
       $interval.cancel(getStatsId);
       $interval.cancel(overviewId);
     });
+    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });
