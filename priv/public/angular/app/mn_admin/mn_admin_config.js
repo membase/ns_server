@@ -48,6 +48,11 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider, $
       params: {
         type: {
           value: 'development'
+        },
+        viewsBucket: {
+          value: function (mnBucketsService) {
+            return mnBucketsService.getDefaultBucket();
+          }
         }
       },
       templateUrl: 'mn_admin/mn_views/mn_views.html',
