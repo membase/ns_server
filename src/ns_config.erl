@@ -520,6 +520,8 @@ search_prop(Config, Key, SubKey, DefaultSubVal) ->
             DefaultSubVal
     end.
 
+search_node_prop('latest-config-marker', Key, SubKey, DefaultSubVal) ->
+    search_node_prop(node(), 'latest-config-marker', Key, SubKey, DefaultSubVal);
 search_node_prop(Node, Config, Key, SubKey) when is_atom(Node) ->
     search_node_prop(Node, Config, Key, SubKey, undefined);
 search_node_prop(Config, Key, SubKey, DefaultSubVal) ->
