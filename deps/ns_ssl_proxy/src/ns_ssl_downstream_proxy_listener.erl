@@ -43,7 +43,8 @@ init() ->
                      {versions, ['tlsv1', 'tlsv1.1', 'tlsv1.2']},
                      {certfile, CertFile},
                      {keyfile, PrivateKeyFile},
-                     {cacertfile, CACertFile}]) of
+                     {cacertfile, CACertFile},
+                     {dh, ns_ssl_services_setup:dh_params_der()}]) of
         {ok, Sock} ->
             proc_lib:init_ack({ok, self()}),
             accept_loop(Sock);
