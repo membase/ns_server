@@ -1134,7 +1134,7 @@ merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
                      %% that it overwrites the remote one
                      Bounce0 = (Key =:= uuid) orelse (not Cluster30),
                      IsSafeKey = (Key =:= membership) orelse (Key =:= rest)
-                         orelse (Key =:= capi_port),
+                         orelse (Key =:= capi_port) orelse (Key =:= services),
 
                      Bounce = Bounce0 andalso not IsSafeKey,
 
