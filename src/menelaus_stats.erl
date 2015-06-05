@@ -432,9 +432,9 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
 section_nodes("@system") ->
     ns_cluster_membership:actual_active_nodes();
 section_nodes("@query") ->
-    ns_cluster_membership:n1ql_active_nodes(ns_config:latest_config_marker());
+    ns_cluster_membership:n1ql_active_nodes(ns_config:latest_config_marker(), actual);
 section_nodes("@index-"++_) ->
-    ns_cluster_membership:index_active_nodes(ns_config:latest_config_marker());
+    ns_cluster_membership:index_active_nodes(ns_config:latest_config_marker(), actual);
 section_nodes("@xdcr-"++Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket);
 section_nodes(Bucket) ->

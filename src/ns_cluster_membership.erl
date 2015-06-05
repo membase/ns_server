@@ -49,10 +49,8 @@
          filter_out_non_kv_nodes/2,
          should_run_service/2,
          should_run_service/3,
-         service_active_nodes/2,
-         n1ql_active_nodes/1,
-         index_active_nodes/0,
-         index_active_nodes/1]).
+         n1ql_active_nodes/2,
+         index_active_nodes/2]).
 
 active_nodes() ->
     active_nodes(ns_config:get()).
@@ -254,16 +252,19 @@ should_run_service(Config, Service, Node) ->
             lists:member(Service, Svcs)
     end.
 
-service_active_nodes(Config, Service) ->
-    [N || N <- ns_cluster_membership:active_nodes(Config),
-          ServiceC <- ns_cluster_membership:node_services(Config, N),
+service_active_nodes(Config, Service, Status) ->
+    AllNodes = case Status of
+                   actual ->
+                       actual_active_nodes(Config);
+                   all ->
+                       active_nodes(Config)
+               end,
+    [N || N <- AllNodes,
+          ServiceC <- node_services(Config, N),
           ServiceC =:= Service].
 
-n1ql_active_nodes(Config) ->
-    service_active_nodes(Config, n1ql).
+n1ql_active_nodes(Config, Status) ->
+    service_active_nodes(Config, n1ql, Status).
 
-index_active_nodes() ->
-    index_active_nodes(ns_config:latest_config_marker()).
-
-index_active_nodes(Config) ->
-    service_active_nodes(Config, index).
+index_active_nodes(Config, Status) ->
+    service_active_nodes(Config, index, Status).
