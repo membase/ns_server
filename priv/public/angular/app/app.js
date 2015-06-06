@@ -124,6 +124,14 @@ angular.module('mnSettingsAuditService', [
   'mnHttp'
 ]);
 
+angular.module('mnAnalytics', [
+  'mnAnalyticsService',
+  'mnHelper'
+]);
+angular.module('mnAnalyticsService', [
+  'mnHttp',
+  'mnBucketsService'
+]);
 
 angular.module('mnServers', [
   'mnPoolDefault',
@@ -237,6 +245,7 @@ angular.module('app', [
   'mnSettingsAutoCompaction',
   'mnSettingsAudit',
   'mnServers',
+  'mnAnalytics',
   'mnOverview',
   'mnBuckets',
   'mnBucketsDetailsDialogService',

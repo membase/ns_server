@@ -21,4 +21,11 @@ angular.module('app').constant('bucketsFormConfiguration', {
   'overhead',
   'ep_oom_errors',
   'ep_item_commit_failed'
-]);
+]).constant('timeUnitToSeconds', {
+  minute: 60,
+  hour: 3600,
+  day: 86400,
+  week: 691200,
+  month: 2678400,
+  year: 31622400
+});

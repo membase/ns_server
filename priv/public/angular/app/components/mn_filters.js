@@ -26,6 +26,87 @@ angular.module('mnFilters')
     };
   })
 
+  .filter('mnCloneOnlyData', function () {
+    return function (data) {
+      return JSON.parse(JSON.stringify(data));
+    };
+  })
+
+  .filter('mnParseHttpDate', function () {
+    var rfc1123RE = /^\s*[a-zA-Z]+, ([0-9][0-9]) ([a-zA-Z]+) ([0-9]{4,4}) ([0-9]{2,2}):([0-9]{2,2}):([0-9]{2,2}) GMT\s*$/m;
+    var rfc850RE = /^\s*[a-zA-Z]+, ([0-9][0-9])-([a-zA-Z]+)-([0-9]{2,2}) ([0-9]{2,2}):([0-9]{2,2}):([0-9]{2,2}) GMT\s*$/m;
+    var asctimeRE = /^\s*[a-zA-Z]+ ([a-zA-Z]+) ((?:[0-9]| )[0-9]) ([0-9]{2,2}):([0-9]{2,2}):([0-9]{2,2}) ([0-9]{4,4})\s*$/m;
+
+    var monthDict = {};
+
+    (function () {
+      var monthNames = ["January", "February", "March", "April", "May", "June",
+                        "July", "August", "September", "October", "November", "December"];
+
+      for (var i = monthNames.length-1; i >= 0; i--) {
+        var name = monthNames[i];
+        var shortName = name.substring(0, 3);
+        monthDict[name] = i;
+        monthDict[shortName] = i;
+      }
+    })();
+
+    var badDateException;
+    (function () {
+      try {
+        throw {};
+      } catch (e) {
+        badDateException = e;
+      }
+    })();
+    function parseMonth(month) {
+      var number = monthDict[month];
+      if (number === undefined)
+        throw badDateException;
+      return number;
+    }
+
+    function doParseHTTPDate(date) {
+      var match;
+      if ((match = rfc1123RE.exec(date)) || (match = rfc850RE.exec(date))) {
+        var day = parseInt(match[1], 10);
+        var month = parseMonth(match[2]);
+        var year = parseInt(match[3], 10);
+
+        var hour = parseInt(match[4], 10);
+        var minute = parseInt(match[5], 10);
+        var second = parseInt(match[6], 10);
+
+        return new Date(Date.UTC(year, month, day, hour, minute, second));
+      } else if ((match = asctimeRE.exec(date))) {
+        var month = parseMonth(match[1]);
+        var day = parseInt(match[2], 10);
+
+        var hour = parseInt(match[3], 10);
+        var minute = parseInt(match[4], 10);
+        var second = parseInt(match[5], 10);
+
+        var year = parseInt(match[6], 10);
+
+        return new Date(Date.UTC(year, month, day, hour, minute, second));
+      } else {
+        throw badDateException;
+      }
+    }
+
+    return function (date, badDate) {
+      try {
+        return doParseHTTPDate(date);
+      } catch (e) {
+        if (e === badDateException) {
+          console.log("Cannot parse http date!!!: ", date);
+          return badDate || (new Date());
+        }
+        throw e;
+      }
+    }
+  })
+
   .filter('mnPrepareQuantity', function () {
     return function (value, K) {
       K = K || 1024;

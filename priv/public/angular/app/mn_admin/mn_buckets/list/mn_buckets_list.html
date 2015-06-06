@@ -29,8 +29,8 @@
         <a class="disable-if-stale bucket" ng-click="toggleDetails(bucket.name)" title="Show Bucket info">
           <span class="expander casper_buckets_bucket_details" ng-class="{closed:!isDetailsOpened(bucket.name)}"></span>
         </a>
-        <a class="disable-if-stale" title="View Analytics for {%= h(this.name) %}"
-          href="#sec=analytics&statsBucket={%= h(encodeURIComponent(this.uri)) %}"
+        <a class="disable-if-stale" title="View Analytics for {{ bucket.name }}"
+          ui-sref="app.admin.analytics.list.graph({analyticsBucket: bucket.name })"
           >{{bucket.name}}</a>
       </td>
       <td>

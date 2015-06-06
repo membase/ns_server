@@ -122,15 +122,25 @@ angular.module('mnHelper').factory('mnHelper',
 
     mnHelper.setupLongPolling = function (config) {
       var cycleId;
+      var previousResult;
       function cycle() {
-        $q.all([
-          config.methodToCall(),
-          mnTasksDetails.get()
-        ]).then(function (result) {
-          var tasks = result[1];
+        var queries = [config.methodToCall(previousResult)];
+        if (!config.extractRefreshPeriod) {
+          queries.push(mnTasksDetails.get());
+        }
+        $q.all(queries).then(function (result) {
           var rv = result[0];
-          var recommendedRefreshPeriod = (_.chain(tasks.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
-          cycleId = $timeout(cycle, recommendedRefreshPeriod || 20000);
+          var tasks = result[1];
+          previousResult = rv;
+          var recommendedRefreshPeriod = 20000;
+          if (tasks) {
+            recommendedRefreshPeriod = (_.chain(tasks.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
+          } else {
+            if (config.extractRefreshPeriod) {
+              recommendedRefreshPeriod = config.extractRefreshPeriod(rv);
+            }
+          }
+          cycleId = $timeout(cycle, recommendedRefreshPeriod);
           return rv;
         }).then(config.onUpdate);
       }

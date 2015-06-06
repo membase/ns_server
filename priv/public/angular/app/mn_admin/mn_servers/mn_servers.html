@@ -83,7 +83,8 @@
                   {{node.hostname}}
                 </span>
                 <a ng-if="!node.isNodeInactiveFaied &amp;&amp; !node.isNodeUnhealthy"
-                   title="{{'View Analytics for ' + node.hostname}}">
+                   title="{{'View Analytics for ' + node.hostname}}"
+                   ui-sref="app.admin.analytics.list.graph({statsHostname: node.hostname})">
                   {{node.hostname | mnStripPortHTML:serversState.allNodes}}
                 </a>
               </td>

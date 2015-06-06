@@ -3,14 +3,12 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider, $
   function valToString(val) {
     return val != null ? val.toString() : val;
   }
-  function regexpMatches(val) {
-    return this.pattern.test(val);
-  }
   $urlMatcherFactoryProvider.type("string", {
     encode: valToString,
     decode: valToString,
-    is: regexpMatches,
-    pattern: /[^/]*/
+    is: function (val) {
+      return (/[^/]*/).test(val);
+    }
   });
 
   $stateProvider
@@ -42,6 +40,48 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider, $
           return mnBucketsService.getBucketsByType();
         }
       }
+    })
+    .state('app.admin.analytics', {
+      abstract: true,
+      url: '/analytics?statsHostname&analyticsBucket&zoom&specificStat',
+      params: {
+        zoom: {
+          value: 'minute'
+        },
+        analyticsBucket: {
+          value: function (mnBucketsService) {
+            return mnBucketsService.getDefaultBucket();
+          }
+        }
+      },
+      controller: 'mnAnalyticsController',
+      templateUrl: 'mn_admin/mn_analytics/mn_analytics.html',
+      resolve: {
+        analyticsStats: function (mnAnalyticsService, $stateParams) {
+          return mnAnalyticsService.getStats({$stateParams: $stateParams});
+        }
+      }
+    })
+    .state('app.admin.analytics.list', {
+      abstract: true,
+      url: '?openedStatsBlock',
+      params: {
+        openedStatsBlock: {
+          array: true
+        }
+      },
+      controller: 'mnAnalyticsListController',
+      templateUrl: 'mn_admin/mn_analytics/mn_analytics_list.html'
+    })
+    .state('app.admin.analytics.list.graph', {
+      url: '/:graph',
+      params: {
+        graph: {
+          value: 'ops'
+        }
+      },
+      controller: 'mnAnalyticsListGraphController',
+      templateUrl: 'mn_admin/mn_analytics/mn_analytics_list_graph.html'
     })
     .state('app.admin.views', {
       url: '/views/:type?viewsBucket',

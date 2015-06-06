@@ -1,0 +1,49 @@
+angular.module('mnAnalytics', [
+  'mnHelper',
+  'mnHttp',
+  'mnAnalyticsService',
+  'ui.router'
+]).controller('mnAnalyticsController',
+  function ($scope, mnAnalyticsService, analyticsStats, mnHelper, $state, mnHttp) {
+    function applyBuckets(state) {
+      $scope.state = state;
+    }
+    applyBuckets(analyticsStats);
+
+    $scope.$watch('state.bucketsNames.selected', function (selectedBucket) {
+      selectedBucket && selectedBucket !== $state.params.analyticsBucket && $state.go('app.admin.analytics.list.graph', {
+        analyticsBucket: selectedBucket
+      });
+    });
+
+    if (!$state.params.specificStat) {
+      $scope.$watch('state.nodesNames.selected', function (selectedHostname) {
+        selectedHostname && selectedHostname !== $state.params.statsHostname && $state.go('app.admin.analytics.list.graph', {
+          statsHostname: selectedHostname.indexOf("All Server Nodes") > -1 ? undefined : selectedHostname
+        });
+      });
+    }
+
+    $scope.computeOps = function (key) {
+      return Math.round(key.ops * 100.0) / 100.0;
+    };
+
+
+    if (!analyticsStats.isEmptyState) {
+      mnHelper.setupLongPolling({
+        methodToCall: function (previousResult) {
+          return mnAnalyticsService.getStats({
+            $stateParams: $state.params,
+            previousResult: previousResult
+          });
+        },
+        scope: $scope,
+        onUpdate: applyBuckets,
+        extractRefreshPeriod: function (response) {
+          return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
+        }
+      });
+    }
+
+    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
+  });

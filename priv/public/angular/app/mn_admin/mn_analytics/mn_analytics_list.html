@@ -1,0 +1,48 @@
+<div class="shadow_box" style="width:780px;">
+  <div class="section">
+    <ui-view></ui-view>
+    <div id="js_stats_container">
+      <div
+        ng-repeat="block in state.statsDirectoryBlocks track by block.blockName"
+        ng-class="{dynamic_withtotal: block.withTotal, dynamic_closed: !isDetailsOpened(block.blockName)}"
+        class="darker_block js_darker_block">
+        <h3 class="block-expander js_block-expander" ng-click="toggleDetails(block.blockName)"><ins></ins>{{block.blockName}}</h3>
+        <span class="query_notice" ng-if="block.blockName === 'Query'"><span class="i">i</span> Metrics for Query are not per bucket and will not change if bucket dropdown above is changed</span>
+        <div class="stats js_stats">
+          <ul class="col_headers" ng-if="block.columns">
+            <li ng-repeat="columnName in block.columns">{{ columnName }}</li>
+          </ul>
+          <div class="js_analytics-small-graph analytics-small-graph"
+            ng-class="{dynamic_dim: statInfo.missing}"
+            ng-if="isDetailsOpened(block.blockName)"
+            ng-repeat="statInfo in block.stats track by statInfo.name"
+            ui-sref-active="dynamic_selected">
+            <div
+              ui-sref="app.admin.analytics.list.graph({graph: statInfo.name})"
+              >
+              <div
+                class="small_graph_block"
+                mn-plot mn-plot-config="statInfo.config"
+                is-small-graph="true"
+                id="js_small_graph_block"
+                style="width: 168px; height: 36px;"></div>
+              <span class="small_graph_label">
+                <span class="value" id="js_small_graph_value">{{statInfo.config.value}}</span><span class="label-text"> {{statInfo.title}}</span>
+              </span>
+            </div>
+            <ins class="right-arrow js_right-arrow">
+              <ul class="js_inner">
+                <li>
+                  <a ng-show="!state.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: '@' + state.nodesNames[1], specificStat: statInfo.name})">show by server</a>
+                  <a ng-show="state.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: 'ops', statsHostname: statInfo.title, specificStat: null})">show this server</a>
+                </li>
+              </ul>
+            </ins>
+            <div class="graph_tooltip" ng-if="statInfo.desc"><span>{{statInfo.desc}}</span></div>
+          </div>
+          <div class="clear"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- shadow_box -->
