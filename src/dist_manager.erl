@@ -192,7 +192,7 @@ decode_status({error, {{already_started, _Pid}, _Stack}}) ->
                                net_restarted | not_self_started | nothing |
                                {address_save_failed, term()}.
 adjust_my_address(MyIP, UserSupplied, OnRename) ->
-    gen_server:call(?MODULE, {adjust_my_address, MyIP, UserSupplied, OnRename}).
+    gen_server:call(?MODULE, {adjust_my_address, MyIP, UserSupplied, OnRename}, infinity).
 
 %% Bring up distributed erlang.
 bringup(MyIP, UserSupplied) ->
