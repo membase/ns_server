@@ -748,7 +748,7 @@ do_init(Config) ->
     ets:delete_all_objects(ns_config_ets_dup),
     (catch ets:new(ns_config_announces_counter, [set, named_table])),
     ets:insert_new(ns_config_announces_counter, {changes_counter, 0}),
-    UpgradedConfig = upgrade_config(Config),
+    UpgradedConfig = (Config#config.upgrade_config_fun)(Config),
     InitialState =
         if
             UpgradedConfig =/= Config ->
@@ -767,7 +767,8 @@ init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
             do_init(Config#config{init = Init,
-                                  saver_mfa = {?MODULE, save_config_sync, []}});
+                                  saver_mfa = {?MODULE, save_config_sync, []},
+                                  upgrade_config_fun = fun upgrade_config/1});
         Error ->
             {stop, Error}
     end;
@@ -777,6 +778,7 @@ init({pull_from_node, Node} = Init) ->
     Cfg = #config{dynamic = [KVList],
                   policy_mod = ns_config_default,
                   saver_mfa = {?MODULE, do_not_save_config, []},
+                  upgrade_config_fun = fun upgrade_config/1,
                   init = Init},
     do_init(Cfg);
 init([ConfigPath, PolicyMod]) ->
@@ -1492,6 +1494,7 @@ setup_with_saver() ->
                                          {{local_changes_count, testuuid}, []}]],
                              policy_mod = ns_config_default,
                              saver_mfa = {?MODULE, send_config, [save_config_target]},
+                             upgrade_config_fun = fun upgrade_config/1,
                              uuid = testuuid},
                {ok, _} = ns_config:start_link({with_state, Cfg}),
                MRef = erlang:monitor(process, Parent),
