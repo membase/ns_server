@@ -778,7 +778,7 @@ init({pull_from_node, Node} = Init) ->
     Cfg = #config{dynamic = [KVList],
                   policy_mod = ns_config_default,
                   saver_mfa = {?MODULE, do_not_save_config, []},
-                  upgrade_config_fun = fun upgrade_config/1,
+                  upgrade_config_fun = fun (C) -> C end,
                   init = Init},
     do_init(Cfg);
 init([ConfigPath, PolicyMod]) ->
