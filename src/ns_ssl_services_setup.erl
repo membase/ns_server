@@ -143,12 +143,26 @@ dh_params_der() ->
 supported_versions() ->
     ['tlsv1.1', 'tlsv1.2'].
 
+low_security_ciphers() ->
+    %% The list can be obtained as follows:
+    %%
+    %%   openssl ciphers LOW | tr ':' '\n'
+    %%
+    %% Then openssl cipher strings can be converted to erlang suite
+    %% definitions as follows:
+    %%
+    %%   ssl:suite_definition(ssl_cipher:openssl_suite("EDH-RSA-DES-CBC-SHA")).
+    %%
+    %% Note that erlang doesn't know the majority of ciphers returned by
+    %% openssl.
+    [{dhe_rsa,des_cbc,sha},{rsa,des_cbc,sha}].
+
 supported_ciphers() ->
     case application:get_env(ssl_ciphers) of
         {ok, Ciphers} ->
             Ciphers;
         undefined ->
-            ssl:cipher_suites()
+            ssl:cipher_suites() -- low_security_ciphers()
     end.
 
 ssl_server_opts() ->
