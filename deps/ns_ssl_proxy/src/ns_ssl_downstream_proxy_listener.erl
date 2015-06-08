@@ -44,7 +44,8 @@ init() ->
                      {keyfile, PrivateKeyFile},
                      {cacertfile, CACertFile},
                      {versions, ns_ssl_services_setup:supported_versions()},
-                     {dh, ns_ssl_services_setup:dh_params_der()}]) of
+                     {dh, ns_ssl_services_setup:dh_params_der()},
+                     {ciphers, ns_ssl_services_setup:supported_ciphers()}]) of
         {ok, Sock} ->
             proc_lib:init_ack({ok, self()}),
             accept_loop(Sock);

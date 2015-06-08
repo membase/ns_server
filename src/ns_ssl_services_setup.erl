@@ -12,7 +12,7 @@
          sync_local_cert_and_pkey_change/0]).
 
 %% used by ssl proxy
--export([dh_params_der/0, supported_versions/0]).
+-export([dh_params_der/0, supported_versions/0, supported_ciphers/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -143,13 +143,22 @@ dh_params_der() ->
 supported_versions() ->
     ['tlsv1.1', 'tlsv1.2'].
 
+supported_ciphers() ->
+    case application:get_env(ssl_ciphers) of
+        {ok, Ciphers} ->
+            Ciphers;
+        undefined ->
+            ssl:cipher_suites()
+    end.
+
 ssl_server_opts() ->
     Path = ssl_cert_key_path(),
     [{keyfile, Path},
      {certfile, Path},
      {versions, supported_versions()},
      {cacertfile, ssl_cacert_key_path()},
-     {dh, dh_params_der()}].
+     {dh, dh_params_der()},
+     {ciphers, supported_ciphers()}].
 
 start_link_rest_service() ->
     Config0 = menelaus_web:webconfig(),

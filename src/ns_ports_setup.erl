@@ -109,6 +109,7 @@ create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort) ->
                           "dont_suppress_stderr_logger" -> true;
                           "loglevel_" ++ _ -> true;
                           "disk_sink_opts" -> true;
+                          "ssl_ciphers" -> true;
                           _ -> false
                       end],
     EnvArgs = [{upstream_port, UpstreamPort},
