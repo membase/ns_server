@@ -141,7 +141,7 @@ dh_params_der() ->
       229,171,2,1,2>>.
 
 supported_versions() ->
-    ['tlsv1', 'tlsv1.1', 'tlsv1.2'].
+    ['tlsv1.1', 'tlsv1.2'].
 
 ssl_server_opts() ->
     Path = ssl_cert_key_path(),
