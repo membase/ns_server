@@ -12,7 +12,7 @@
          sync_local_cert_and_pkey_change/0]).
 
 %% used by ssl proxy
--export([dh_params_der/0]).
+-export([dh_params_der/0, supported_versions/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -140,11 +140,14 @@ dh_params_der() ->
       9,135,41,60,75,4,202,133,173,72,6,69,167,89,112,174,40,
       229,171,2,1,2>>.
 
+supported_versions() ->
+    ['tlsv1', 'tlsv1.1', 'tlsv1.2'].
+
 ssl_server_opts() ->
     Path = ssl_cert_key_path(),
     [{keyfile, Path},
      {certfile, Path},
-     {versions, ['tlsv1', 'tlsv1.1', 'tlsv1.2']},
+     {versions, supported_versions()},
      {cacertfile, ssl_cacert_key_path()},
      {dh, dh_params_der()}].
 
