@@ -293,6 +293,8 @@ def make_os_tasks():
         LinuxTask("Kernel modules", "lsmod"),
         LinuxTask("Distro version", "cat /etc/redhat-release"),
         LinuxTask("Distro version", "lsb_release -a"),
+        LinuxTask("Distro version", "cat /etc/SuSE-release"),
+        LinuxTask("Distro version", "cat /etc/issue"),
         LinuxTask("Installed software", "rpm -qa"),
         # NOTE: AFAIK columns _was_ necessary, but it doesn't appear to be
         # required anymore. I.e. dpkg -l correctly detects stdout as not a
