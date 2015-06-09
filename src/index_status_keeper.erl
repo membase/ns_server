@@ -49,9 +49,12 @@ get_indexes() ->
                 source :: local | {remote, [node()], non_neg_integer()}}).
 
 init([]) ->
-    self() ! refresh,
+    Self = self(),
 
-    ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/2, self()),
+    Self ! refresh,
+
+    ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/2, Self),
+    ns_pubsub:subscribe_link(ns_node_disco_events, fun handle_node_disco_event/2, Self),
 
     {ok, #state{num_connections = 0,
                 indexes = [],
@@ -94,8 +97,8 @@ handle_cast({refresh_done, Status}, State) ->
     {noreply, NewState};
 handle_cast(restart_done, #state{restart_pending = true} = State) ->
     {noreply, State#state{restart_pending = false}};
-handle_cast(notable_config_change, State) ->
-    misc:flush(notable_config_change),
+handle_cast(notable_event, State) ->
+    misc:flush(notable_event),
     {noreply, State#state{source = get_source()}}.
 
 handle_info(refresh, State) ->
@@ -230,7 +233,7 @@ get_source() ->
         true ->
             local;
         false ->
-            IndexNodes = ns_cluster_membership:index_active_nodes(Config, all),
+            IndexNodes = ns_cluster_membership:index_active_nodes(Config, actual),
             {remote, IndexNodes, length(IndexNodes)}
     end.
 
@@ -246,7 +249,16 @@ is_notable(_) ->
 handle_config_event(Event, Pid) ->
     case is_notable(Event) of
         true ->
-            gen_server:cast(Pid, notable_config_change);
+            gen_server:cast(Pid, notable_event);
+        false ->
+            ok
+    end,
+    Pid.
+
+handle_node_disco_event(Event, Pid) ->
+    case Event of
+        {ns_node_disco_events, _NodesOld, _NodesNew} ->
+            gen_server:cast(Pid, notable_event);
         false ->
             ok
     end,
