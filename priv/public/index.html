@@ -1521,7 +1521,8 @@
                 </li>
               </ul>
               <div class="create_view">
-                <a class="button_200 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup"><span>Create Development View</span></a>
+                <a class="btn_1 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup" style="float: right"><span>Create Development View</span></a>
+                <a class="btn_1 btn_create_spatial when-in-dev when-roadmin-hide-me casper_views_create_view_popup" style="float: right; margin-right: 5px;"><span>Create Development Spatial View</span></a>
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
               </div>
             </div>
@@ -1591,10 +1592,21 @@
                 <td colspan="3" class="when-roadmin-hide-me">
                   <a class="list_button when-in-prod casper_views_copy_to_dev" href="#copyDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Copy to Dev</span></a>
                   <a class="list_button when-in-dev {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
+                  <!--{% if (ddoc.json.views && !_.isEmpty(ddoc.json.views) &&  (!ddoc.json.spatial || _.isEmpty(ddoc.json.spatial)) ) { %}-->
                   <a class="list_button when-in-dev casper_views_add_view_popup" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
-                  <a class="list_button when-in-dev casper_views_add_spatial_popup" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
+                  <!-- {% } %} -->
+                  <!--{% if (ddoc.json.spatial && !_.isEmpty(ddoc.json.spatial) &&  (!ddoc.json.views || _.isEmpty(ddoc.json.views)) ) { %}-->
+                    <a class="list_button when-in-dev casper_views_add_spatial_popup" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
+                  <!-- {% } %} -->
+                  <!--{% if (!ddoc.json.spatial && !ddoc.json.views || _.isEmpty(ddoc.json.spatial) && _.isEmpty(ddoc.json.views)) { %}-->
+                    <a class="list_button when-in-dev casper_views_add_view_popup" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
+                    <a class="list_button when-in-dev casper_views_add_spatial_popup" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
+                  <!-- {% } %} -->
                   <a class="list_button casper_views_delete_popup" href="#deleteDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Delete</span></a>
                   <button class="list_button {%= ViewsSection.maybeDisabledCompactButtonAttr(ddoc)%} {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" onclick="ViewsSection.compactDDoc({%= h(JSON.stringify(ddoc.meta.id)) %}, this);"><span>Compact</span></button>
+                  <!--{% if (ddoc.json.spatial && ddoc.json.views && !_.isEmpty(ddoc.json.spatial) && !_.isEmpty(ddoc.json.views)) { %}-->
+                    <div class="warning" style="overflow: hidden; margin-top:4px;">No new views can be added to this document. Delete either mapreduce or spatial views first.</div>
+                  <!-- {% } %} -->
                 </td>
               </tr>
               <!-- {% if (_.size(ddoc.json.viewInfos) < 1 && _.size(ddoc.json.spatialInfos) < 1) { %} -->

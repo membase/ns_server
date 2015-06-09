@@ -892,6 +892,7 @@ var ViewsSection = {
     self.spatialEditor = CodeMirror.fromTextArea(spatialcodeFun[0], codeMirrorOpts);
 
     var btnCreate = $('.btn_create', views);
+    var btnCreateSpatial = $('.btn_create_spatial', views);
     var viewsBucketSelect = $('#views_bucket_select');
     var viewsViewSelect = $('#views_view_select');
     var viewsList = $('#views_list');
@@ -920,6 +921,7 @@ var ViewsSection = {
     }).name("canCreateDDocCell");
     self.canCreateDDocCell.subscribeValue(function (val) {
       btnCreate[val ? 'removeClass' : 'addClass']('dynamic_disabled');
+      btnCreateSpatial[val ? 'removeClass' : 'addClass']('dynamic_disabled');
     });
 
     Cell.subscribeMultipleValues(function (sec, tabsVal, spatialVal, viewsVal, subset, intPageFull, intPage, builder) {
@@ -971,6 +973,14 @@ var ViewsSection = {
       }
       e.preventDefault();
       ViewsSection.startCreateView();
+    });
+
+    btnCreateSpatial.bind('click', function (e) {
+      if (btnCreateSpatial.hasClass('dynamic_disabled')) {
+        return;
+      }
+      e.preventDefault();
+      ViewsSection.startCreateSpatial();
     });
 
     viewsViewSelect.bindListCell(self.populateViewsDropboxCell, {
