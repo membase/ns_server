@@ -642,7 +642,7 @@ do_handle_call({get_keys, VBuckets, Params}, _From, State) ->
     case RV of
         {ok, _}  ->
             {reply, RV, State};
-        {error, {memecached_error, _}} ->
+        {memcached_error, _} ->
             %% we take special care to leave the socket in the sane state in
             %% case of expected memcached errors (think rebalance)
             {reply, RV, State};
