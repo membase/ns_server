@@ -135,7 +135,12 @@ diff_counters(InvTSDiff, [{K, V} | RestCounters] = Counters, PrevCounters, Acc) 
     case PrevCounters of
         %% NOTE: K is bound
         [{K, OldV} | RestPrev] ->
-            D = (V - OldV) * InvTSDiff,
+            D = case (V - OldV) * InvTSDiff of
+                    Res when Res < 0 ->
+                        0;
+                    Res ->
+                        Res
+                end,
             diff_counters(InvTSDiff, RestCounters, RestPrev, [{K, D} | Acc]);
         [{PrevK, _} | RestPrev] when PrevK < K ->
             diff_counters(InvTSDiff, Counters, RestPrev, Acc);
