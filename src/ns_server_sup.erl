@@ -150,6 +150,9 @@ child_specs() ->
       {work_queue, start_link, [metakv_worker]},
       permanent, 1000, worker, []},
 
+     {index_settings_sup, {index_settings_sup, start_link, []},
+      permanent, infinity, supervisor, [index_settings_sup]},
+
      {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
       [menelaus_sup]},
@@ -252,9 +255,6 @@ child_specs() ->
 
      {index_stats_sup, {index_stats_sup, start_link, []},
       permanent, infinity, supervisor, []},
-
-     {index_settings_sup, {index_settings_sup, start_link, []},
-      permanent, infinity, supervisor, [index_settings_sup]},
 
      {compaction_daemon, {compaction_daemon, start_link, []},
       permanent, 1000, worker, [compaction_daemon]},
