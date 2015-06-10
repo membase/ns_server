@@ -112,27 +112,12 @@ massage_stats([{K, V} | Rest], AccGauges, AccCounters) ->
             massage_stats(Rest, [{NewK, V} | AccGauges], AccCounters)
     end.
 
-diff_counters(_InvTSDiff, [], _PrevCounters, Acc) ->
-    lists:reverse(Acc);
-diff_counters(InvTSDiff, [{K, V} | RestCounters] = Counters, PrevCounters, Acc) ->
-    case PrevCounters of
-        %% NOTE: K is bound
-        [{K, OldV} | RestPrev] ->
-            D = (V - OldV) * InvTSDiff,
-            diff_counters(InvTSDiff, RestCounters, RestPrev, [{K, D} | Acc]);
-        [{PrevK, _} | RestPrev] when PrevK < K->
-            diff_counters(InvTSDiff, Counters, RestPrev, Acc);
-        _ ->
-            diff_counters(InvTSDiff, RestCounters, PrevCounters, [{K, 0} | Acc])
-    end.
-
 grab_stats([]) ->
     query_rest:get_stats().
 
 process_stats(TS, GrabbedStats, PrevCounters, PrevTS, []) ->
-    TSDiff = TS - PrevTS,
-    {StatsGauges, StatsCounters0} = massage_stats(GrabbedStats, [], []),
-    StatsCounters = lists:sort(StatsCounters0),
-    Stats0 = diff_counters(1000.0 / TSDiff, StatsCounters, PrevCounters, []),
-    Stats = lists:merge(Stats0, lists:sort(StatsGauges)),
-    {[{"@query", Stats}], StatsCounters, []}.
+    {Gauges, Counters} = massage_stats(GrabbedStats, [], []),
+    {Stats, SortedCounters} =
+        base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS),
+
+    {[{"@query", Stats}], SortedCounters, []}.

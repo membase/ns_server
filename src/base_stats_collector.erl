@@ -28,6 +28,9 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+%% helpers
+-export([calculate_counters/5]).
+
 -record(state, {module,
                 impl_state,
                 count = 0,
@@ -125,3 +128,24 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+diff_counters(_InvTSDiff, [], _PrevCounters, Acc) ->
+    lists:reverse(Acc);
+diff_counters(InvTSDiff, [{K, V} | RestCounters] = Counters, PrevCounters, Acc) ->
+    case PrevCounters of
+        %% NOTE: K is bound
+        [{K, OldV} | RestPrev] ->
+            D = (V - OldV) * InvTSDiff,
+            diff_counters(InvTSDiff, RestCounters, RestPrev, [{K, D} | Acc]);
+        [{PrevK, _} | RestPrev] when PrevK < K ->
+            diff_counters(InvTSDiff, Counters, RestPrev, Acc);
+        _ ->
+            diff_counters(InvTSDiff, RestCounters, PrevCounters, [{K, 0} | Acc])
+    end.
+
+calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS) ->
+    TSDiff = TS - PrevTS,
+
+    SortedCounters = lists:sort(Counters),
+    NewCounters = diff_counters(1000.0 / TSDiff, SortedCounters, PrevCounters, []),
+    {lists:merge(NewCounters, lists:sort(Gauges)), SortedCounters}.

@@ -143,34 +143,18 @@ get_stats() ->
             []
     end.
 
-diff_counters(_InvTSDiff, [], _PrevCounters, Acc) ->
-    lists:reverse(Acc);
-diff_counters(InvTSDiff, [{K, V} | RestCounters] = Counters, PrevCounters, Acc) ->
-    case PrevCounters of
-        %% NOTE: K is bound
-        [{K, OldV} | RestPrev] ->
-            D = (V - OldV) * InvTSDiff,
-            diff_counters(InvTSDiff, RestCounters, RestPrev, [{K, D} | Acc]);
-        [{PrevK, _} | RestPrev] when PrevK < K->
-            diff_counters(InvTSDiff, Counters, RestPrev, Acc);
-        _ ->
-            diff_counters(InvTSDiff, RestCounters, PrevCounters, [{K, 0} | Acc])
-    end.
-
 process_stats(TS, GrabbedStats, PrevCounters, PrevTS, #state{buckets = KnownBuckets,
                                                              default_stats = Defaults} = State) ->
-    TSDiff = TS - PrevTS,
-    {StatsGauges, StatsCounters0, Status} = massage_stats(GrabbedStats, [], [], []),
-    index_status_keeper:update(Status),
+    {Gauges, Counters, Status} = massage_stats(GrabbedStats, [], [], []),
+    {Stats, SortedCounters} =
+        base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS),
 
-    StatsCounters = lists:sort(StatsCounters0),
-    Stats0 = diff_counters(1000.0 / TSDiff, StatsCounters, PrevCounters, []),
-    Stats = lists:merge(Stats0, lists:sort(StatsGauges)),
+    index_status_keeper:update(Status),
 
     AggregatedStats =
         [{"@index-"++binary_to_list(Bucket), Values} ||
             {Bucket, Values} <- aggregate_index_stats(Stats, KnownBuckets, Defaults)],
-    {AggregatedStats, StatsCounters, State}.
+    {AggregatedStats, SortedCounters, State}.
 
 aggregate_index_stats(Stats, Buckets, Defaults) ->
     do_aggregate_index_stats(Stats, Buckets, Defaults, []).
