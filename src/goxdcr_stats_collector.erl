@@ -39,21 +39,56 @@ grab_stats(Bucket) ->
             []
     end.
 
-process_stats_loop([], Acc, TotalChangesLeft, TotalDocsRepQueue) ->
-    {Acc, TotalChangesLeft, TotalDocsRepQueue};
-process_stats_loop([In | T], Reps, TotalChangesLeft, TotalDocsRepQueue) ->
-    {RepID, RepStats} = In,
-    PerRepStats = [{iolist_to_binary([<<"replications/">>, RepID, <<"/">>, StatK]),
-                    StatV} || {StatK, StatV} <- RepStats, is_number(StatV)],
-    NewTotalChangesLeft = TotalChangesLeft + proplists:get_value(<<"changes_left">>, RepStats, 0),
-    NewTotalDocsRepQueue = TotalDocsRepQueue + proplists:get_value(<<"docs_rep_queue">>, RepStats, 0),
-    process_stats_loop(T, [PerRepStats | Reps], NewTotalChangesLeft, NewTotalDocsRepQueue).
+is_counter(<<"docs_filtered">>) ->
+    true;
+is_counter(_) ->
+    false.
 
-process_stats(_TS, Stats, _PrevCounters, _PrevTS, Bucket) ->
-    {RepStats, TotalChangesLeft, TotalDocsRepQueue} = process_stats_loop(Stats, [], 0, 0),
+build_stat_key(RepID, StatK) ->
+    iolist_to_binary([<<"replications/">>, RepID, <<"/">>, StatK]).
+
+massage_rep_stats(_RepID, [], AccGauges, AccCounters, ChangesLeft, DocsRepQueue) ->
+    {AccGauges, AccCounters, ChangesLeft, DocsRepQueue};
+massage_rep_stats(RepID, [{K, V} | Rest], AccGauges, AccCounters, ChangesLeft, DocsRepQueue) ->
+    {NewChangesLeft, NewDocsRepQueue} =
+        case K of
+            <<"changes_left">> ->
+                {V, DocsRepQueue};
+            <<"docs_rep_queue">> ->
+                {ChangesLeft, V};
+            _ ->
+                {ChangesLeft, DocsRepQueue}
+        end,
+    NewPair = {build_stat_key(RepID, K), V},
+    case is_counter(K) of
+        true ->
+            massage_rep_stats(RepID, Rest, AccGauges, [NewPair | AccCounters],
+                              NewChangesLeft, NewDocsRepQueue);
+        false ->
+            massage_rep_stats(RepID, Rest, [NewPair | AccGauges], AccCounters,
+                              NewChangesLeft, NewDocsRepQueue)
+    end.
+
+process_stats_loop([], Gauges, Counters, TotalChangesLeft, TotalDocsRepQueue) ->
+    {Gauges, Counters, TotalChangesLeft, TotalDocsRepQueue};
+process_stats_loop([{RepID, RepStats} | T], Gauges, Counters, TotalChangesLeft, TotalDocsRepQueue) ->
+    {PerRepGauges, PerRepCounters, ChangesLeft, DocsRepQueue} =
+        massage_rep_stats(RepID, RepStats, [], [], 0, 0),
+
+    NewTotalChangesLeft = TotalChangesLeft + ChangesLeft,
+    NewTotalDocsRepQueue = TotalDocsRepQueue + DocsRepQueue,
+    process_stats_loop(T, PerRepGauges ++ Gauges, PerRepCounters ++ Counters,
+                       NewTotalChangesLeft, NewTotalDocsRepQueue).
+
+process_stats(TS, Stats, PrevCounters, PrevTS, Bucket) ->
+    {Gauges, Counters, TotalChangesLeft, TotalDocsRepQueue} =
+        process_stats_loop(Stats, [], [], 0, 0),
+
+    {RepStats, SortedCounters} =
+        base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS),
 
     GlobalList = [{<<"replication_changes_left">>, TotalChangesLeft},
                   {<<"replication_docs_rep_queue">>, TotalDocsRepQueue}],
 
-    {[{"@xdcr-" ++ Bucket, lists:sort(lists:append([GlobalList | RepStats]))}],
-     undefined, Bucket}.
+    {[{"@xdcr-" ++ Bucket, lists:sort(GlobalList ++ RepStats)}],
+     SortedCounters, Bucket}.

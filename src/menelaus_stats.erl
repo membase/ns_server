@@ -1093,9 +1093,9 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary,"docs_processed">>},
                                           {desc,<<"Number of mutations that have been replicated to other clusters "
                                                   "(measured from per-replication stat docs_processed)">>}]},
-                                 {struct,[{title,<<"mutations filtered">>},
+                                 {struct,[{title,<<"mutations filtered per sec.">>},
                                           {name,<<Prefix/binary,"docs_filtered">>},
-                                          {desc,<<"Number of mutations that have been filtered out and have not been replicated to other clusters "
+                                          {desc,<<"Number of mutations per second that have been filtered out and have not been replicated to other clusters "
                                                   "(measured from per-replication stat docs_filtered)">>}]},
                                  {struct,[{title,<<"mutations failed resolution">>},
                                           {name,<<Prefix/binary,"docs_failed_cr_source">>},
