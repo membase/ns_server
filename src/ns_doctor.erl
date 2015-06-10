@@ -27,7 +27,7 @@
          code_change/3]).
 %% API
 -export([get_nodes/0, get_node/1, get_node/2,
-         get_tasks_version/0, build_tasks_list/3]).
+         get_tasks_version/0, build_tasks_list/2]).
 
 -record(state, {
           nodes :: dict(),
@@ -208,10 +208,10 @@ get_node(Node) ->
 get_tasks_version() ->
     gen_server:call(?MODULE, get_tasks_version).
 
-build_tasks_list(NodeNeededP, PoolId, RebStatusTimeout) ->
+build_tasks_list(PoolId, RebStatusTimeout) ->
     NodesDict = gen_server:call(?MODULE, get_nodes),
     AllRepDocs = xdc_rdoc_api:find_all_replication_docs(),
-    do_build_tasks_list(NodesDict, NodeNeededP, PoolId, AllRepDocs, RebStatusTimeout).
+    do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout).
 
 %% Internal functions
 
@@ -577,17 +577,12 @@ pick_latest_cluster_collect_task(AllNodeTasks) ->
     end.
 
 
-do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs, RebStatusTimeout) ->
+do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
     AllNodeTasks =
         dict:fold(
           fun (Node, NodeInfo, Acc) ->
-                  case NeedNodeP(Node) of
-                      true ->
-                          NodeTasks = proplists:get_value(local_tasks, NodeInfo, []),
-                          [{Node, NodeTasks} | Acc];
-                      false ->
-                          Acc
-                  end
+                  NodeTasks = proplists:get_value(local_tasks, NodeInfo, []),
+                  [{Node, NodeTasks} | Acc]
           end, [], NodesDict),
 
     AllRawTasks = lists:append([Ts || {_N, Ts} <- AllNodeTasks]),

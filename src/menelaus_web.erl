@@ -2806,11 +2806,7 @@ handle_tasks(PoolId, Req) ->
     end.
 
 do_handle_tasks(PoolId, Req, RebTimeout) ->
-    NodesSet = sets:from_list(ns_node_disco:nodes_wanted()),
-    JSON = ns_doctor:build_tasks_list(
-             fun (Node) ->
-                     sets:is_element(Node, NodesSet)
-             end, PoolId, RebTimeout),
+    JSON = ns_doctor:build_tasks_list(PoolId, RebTimeout),
     reply_json(Req, JSON, 200).
 
 handle_reset_alerts(Req) ->
