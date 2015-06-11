@@ -850,17 +850,19 @@ samples_to_proplists(Samples, BucketName) ->
                  end, ExtraStats)
         ++ orddict:to_list(Dict).
 
-join_samples(A, B) ->
-    lists:reverse(join_samples(A, B, [])).
+join_samples(A, B, Count) ->
+    join_samples(lists:reverse(A), lists:reverse(B), [], Count).
 
-join_samples([A | _] = ASamples, [B | TailB], Acc) when A#stat_entry.timestamp > B#stat_entry.timestamp ->
-    join_samples(ASamples, TailB, Acc);
-join_samples([A | TailA], [B | _] = BSamples, Acc) when A#stat_entry.timestamp < B#stat_entry.timestamp ->
-    join_samples(TailA, BSamples, Acc);
-join_samples([A | TailA], [B | TailB], Acc) ->
+join_samples([A | _] = ASamples, [B | TailB], Acc, Count) when A#stat_entry.timestamp < B#stat_entry.timestamp ->
+    join_samples(ASamples, TailB, Acc, Count);
+join_samples([A | TailA], [B | _] = BSamples, Acc, Count) when A#stat_entry.timestamp > B#stat_entry.timestamp ->
+    join_samples(TailA, BSamples, Acc, Count);
+join_samples(_, _, Acc, 0) ->
+    Acc;
+join_samples([A | TailA], [B | TailB], Acc, Count) ->
     NewAcc = [A#stat_entry{values = A#stat_entry.values ++ B#stat_entry.values} | Acc],
-    join_samples(TailA, TailB, NewAcc);
-join_samples(_, _, Acc) ->
+    join_samples(TailA, TailB, NewAcc, Count - 1);
+join_samples(_, _, Acc, _) ->
     Acc.
 
 join_samples_test() ->
@@ -899,22 +901,25 @@ join_samples_test() ->
                            {key1, 5},
                            {key2, 6}]}],
 
-    ?assertEqual(R1, join_samples(A, B)),
-    ?assertEqual(R2, join_samples(B, A)).
+    ?assertEqual(R1, join_samples(A, B, 2)),
+    ?assertEqual(R2, join_samples(B, A, 2)),
+    ?assertEqual(tl(R2), join_samples(B, A, 1)).
+
 
 build_bucket_stats_ops_response(Nodes, BucketName, Params, WithSystemStats) ->
-    {ClientTStamp, {Step, _, Count} = Window} = parse_stats_params(Params),
+    {ClientTStamp, {Step, Period, Count} = Window} = parse_stats_params(Params),
 
-    BucketRawSamples = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
     Samples = case WithSystemStats of
                   true ->
-                      SystemRawSamples = grab_system_aggregate_op_stats(Nodes, ClientTStamp, Window),
+                      W1 = {Step, Period, Count + 1},
+                      BucketRawSamples = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, W1),
+                      SystemRawSamples = grab_system_aggregate_op_stats(Nodes, ClientTStamp, W1),
 
                       %% this will throw out all samples with timestamps that are not present
                       %% in both BucketRawSamples and SystemRawSamples
-                      join_samples(BucketRawSamples, SystemRawSamples);
+                      join_samples(BucketRawSamples, SystemRawSamples, Count);
                   false ->
-                      BucketRawSamples
+                      grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window)
               end,
 
     StatsPropList = samples_to_proplists(Samples, BucketName),
