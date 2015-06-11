@@ -35,7 +35,10 @@
                                 couch_views_actual_disk_size,
                                 couch_views_disk_size,
                                 couch_views_data_size,
-                                per_ddoc_stats :: [per_ddoc_stats()]}).
+                                couch_spatial_disk_size,
+                                couch_spatial_data_size,
+                                views_per_ddoc_stats :: [per_ddoc_stats()],
+                                spatial_per_ddoc_stats :: [per_ddoc_stats()]}).
 
 
 %% API
@@ -111,9 +114,9 @@ fetch_stats(Bucket) ->
     [{_, CouchStats}] = ets:lookup(server(Bucket), stuff),
     {ok, CouchStats}.
 
-views_collection_loop_iteration(BinBucket, NameToStatsETS,  DDocId, MinFileSize) ->
+views_collection_loop_iteration(Mod, BinBucket, NameToStatsETS,  DDocId, MinFileSize) ->
     case (catch couch_set_view:get_group_data_size(
-                  mapreduce_view, BinBucket, DDocId)) of
+                  Mod, BinBucket, DDocId)) of
         {ok, PList} ->
             {_, Signature} = lists:keyfind(signature, 1, PList),
             case ets:lookup(NameToStatsETS, Signature) of
@@ -132,10 +135,10 @@ views_collection_loop_iteration(BinBucket, NameToStatsETS,  DDocId, MinFileSize)
             ?log_debug("Get group info (~s/~s) failed:~n~p", [BinBucket, DDocId, Why])
     end.
 
-collect_view_stats(BinBucket, DDocIdList, MinFileSize) ->
+collect_view_stats(Mod, BinBucket, DDocIdList, MinFileSize) ->
     NameToStatsETS = ets:new(ok, []),
     try
-        [views_collection_loop_iteration(BinBucket, NameToStatsETS, DDocId, MinFileSize)
+        [views_collection_loop_iteration(Mod, BinBucket, NameToStatsETS, DDocId, MinFileSize)
          || DDocId <- DDocIdList],
         ets:tab2list(NameToStatsETS)
     after
@@ -162,8 +165,11 @@ grab_couch_stats(Bucket, MinFileSize) ->
     BinBucket = ?l2b(Bucket),
 
     DDocIdList = capi_utils:fetch_ddoc_ids(BinBucket),
-    ViewStats = collect_view_stats(BinBucket, DDocIdList, MinFileSize),
+    ViewStats = collect_view_stats(mapreduce_view, BinBucket, DDocIdList, MinFileSize),
     {ViewsDiskSize, ViewsDataSize} = aggregate_view_stats_loop(0, 0, ViewStats),
+
+    SpatialStats = collect_view_stats(spatial_view, BinBucket, DDocIdList, MinFileSize),
+    {SpatialDiskSize, SpatialDataSize} = aggregate_view_stats_loop(0, 0, SpatialStats),
 
     {ok, CouchDir} = ns_storage_conf:this_node_dbdir(),
     {ok, ViewRoot} = ns_storage_conf:this_node_ixdir(),
@@ -175,7 +181,10 @@ grab_couch_stats(Bucket, MinFileSize) ->
                            couch_views_actual_disk_size = ViewsActualDiskSize,
                            couch_views_disk_size = ViewsDiskSize,
                            couch_views_data_size = ViewsDataSize,
-                           per_ddoc_stats = lists:sort(ViewStats)}.
+                           couch_spatial_disk_size = SpatialDiskSize,
+                           couch_spatial_data_size = SpatialDataSize,
+                           views_per_ddoc_stats = lists:sort(ViewStats),
+                           spatial_per_ddoc_stats = lists:sort(SpatialStats)}.
 
 find_not_less_sig(Sig, [{CandidateSig, _, _, _} | RestViewStatsTuples] = VS) ->
     case CandidateSig < Sig of
@@ -207,64 +216,92 @@ build_basic_couch_stats(CouchStats) ->
     #ns_server_couch_stats{couch_docs_actual_disk_size = DocsActualDiskSize,
                            couch_views_actual_disk_size = ViewsActualDiskSize,
                            couch_views_disk_size = ViewsDiskSize,
-                           couch_views_data_size = ViewsDataSize} = CouchStats,
+                           couch_views_data_size = ViewsDataSize,
+                           couch_spatial_disk_size = SpatialDiskSize,
+                           couch_spatial_data_size = SpatialDataSize} = CouchStats,
     [{couch_docs_actual_disk_size, DocsActualDiskSize},
      {couch_views_actual_disk_size, ViewsActualDiskSize},
      {couch_views_disk_size, ViewsDiskSize},
-     {couch_views_data_size, ViewsDataSize}].
+     {couch_views_data_size, ViewsDataSize},
+     {couch_spatial_disk_size, SpatialDiskSize},
+     {couch_spatial_data_size, SpatialDataSize}].
 
-parse_couch_stats(_TS, CouchStats, undefined = _LastTS, _, _) ->
-    Basic = build_basic_couch_stats(CouchStats),
-    {lists:sort([{couch_views_ops, 0.0} | Basic]), []};
-parse_couch_stats(TS, CouchStats, LastTS, LastViewsStats0, MinFileSize) ->
-    BasicThings = build_basic_couch_stats(CouchStats),
-    #ns_server_couch_stats{per_ddoc_stats = ViewStats} = CouchStats,
-    LastViewsStats = case LastViewsStats0 of
-                         undefined -> [];
-                         _ -> LastViewsStats0
-                     end,
+parse_per_ddoc_stats(Prefix, TS, Stats, LastTS, LastStats0, MinFileSize) ->
+    LastStats = case LastStats0 of
+                    undefined ->
+                        [];
+                    _ ->
+                        LastStats0
+                end,
     TSDelta = TS - LastTS,
     WithDiffedOps =
         case TSDelta > 0 of
             true ->
-                diff_view_accesses_loop(TSDelta, LastViewsStats, ViewStats);
+                diff_view_accesses_loop(TSDelta, LastStats, Stats);
             false ->
-                [{Sig, DiskS, DataS, 0} || {Sig, DiskS, DataS, _} <- ViewStats]
+                [{Sig, DiskS, DataS, 0} || {Sig, DiskS, DataS, _} <- Stats]
         end,
     AggregatedOps = lists:sum([Ops || {_, _, _, Ops} <- WithDiffedOps]),
-    LL = [begin
-              DiskKey = iolist_to_binary([<<"views/">>, Sig, <<"/disk_size">>]),
-              DataKey = iolist_to_binary([<<"views/">>, Sig, <<"/data_size">>]),
-              OpsKey = iolist_to_binary([<<"views/">>, Sig, <<"/accesses">>]),
-              DataS = maybe_adjust_data_size(DataS0, DiskS, MinFileSize),
+    ProcessedStats =
+        [begin
+             DiskKey = iolist_to_binary([Prefix, Sig, <<"/disk_size">>]),
+             DataKey = iolist_to_binary([Prefix, Sig, <<"/data_size">>]),
+             OpsKey = iolist_to_binary([Prefix, Sig, <<"/accesses">>]),
+             DataS = maybe_adjust_data_size(DataS0, DiskS, MinFileSize),
 
-              [{DiskKey, DiskS},
-               {DataKey, DataS},
-               {OpsKey, OpsSec}]
-          end || {Sig, DiskS, DataS0, OpsSec} <- WithDiffedOps],
-    {lists:sort(lists:append([[{couch_views_ops, AggregatedOps}], BasicThings | LL])),
-     ViewStats}.
+             [{DiskKey, DiskS},
+              {DataKey, DataS},
+              {OpsKey, OpsSec}]
+         end || {Sig, DiskS, DataS0, OpsSec} <- WithDiffedOps],
+    {AggregatedOps, lists:append(ProcessedStats)}.
+
+parse_couch_stats(_TS, CouchStats, undefined = _LastTS, _, _) ->
+    Basic = build_basic_couch_stats(CouchStats),
+    {lists:sort([{couch_views_ops, 0.0} | [{couch_spatial_ops, 0.0} | Basic]]), {[], []}};
+parse_couch_stats(TS, CouchStats, LastTS, {LastViewsStats, LastSpatialStats}, MinFileSize) ->
+    BasicThings = build_basic_couch_stats(CouchStats),
+    #ns_server_couch_stats{views_per_ddoc_stats = ViewsStats,
+                           spatial_per_ddoc_stats = SpatialStats} = CouchStats,
+    {ViewsAggregatedOps, ViewsProcessedStats} =
+        parse_per_ddoc_stats(<<"views/">>, TS, ViewsStats, LastTS, LastViewsStats, MinFileSize),
+    {SpatialAggregatedOps, SpatialProcessedStats} =
+        parse_per_ddoc_stats(<<"spatial/">>, TS, SpatialStats, LastTS, LastSpatialStats, MinFileSize),
+
+    {lists:sort(lists:append([[{couch_views_ops, ViewsAggregatedOps},
+                               {couch_spatial_ops, SpatialAggregatedOps}],
+                              BasicThings, ViewsProcessedStats, SpatialProcessedStats])),
+     {ViewsStats, SpatialStats}}.
 
 %% Tests
+-ifdef(EUNIT).
 
 basic_parse_couch_stats_test() ->
     CouchStatsRecord = #ns_server_couch_stats{couch_docs_actual_disk_size = 1,
                                               couch_views_actual_disk_size = 2,
                                               couch_views_disk_size = 5,
                                               couch_views_data_size = 6,
-                                              per_ddoc_stats = [{<<"a">>, 8, 9, 10},
-                                                                {<<"b">>, 11, 12, 13}]},
+                                              couch_spatial_disk_size = 3,
+                                              couch_spatial_data_size = 4,
+                                              views_per_ddoc_stats = [{<<"a">>, 8, 9, 10},
+                                                                      {<<"b">>, 11, 12, 13}],
+                                              spatial_per_ddoc_stats = [{<<"c">>, 20, 21, 22}]},
     ExpectedOut1Pre = [{couch_docs_actual_disk_size, 1},
                        {couch_views_actual_disk_size, 2},
                        {couch_views_disk_size, 5},
                        {couch_views_data_size, 6},
-                       {couch_views_ops, 0.0}]
+                       {couch_spatial_disk_size, 3},
+                       {couch_spatial_data_size, 4},
+                       {couch_views_ops, 0.0},
+                       {couch_spatial_ops, 0.0}]
         ++ [{<<"views/a/disk_size">>, 8},
             {<<"views/a/data_size">>, 9},
             {<<"views/a/accesses">>, 0.0},
             {<<"views/b/disk_size">>, 11},
             {<<"views/b/data_size">>, 12},
-            {<<"views/b/accesses">>, 0.0}],
+            {<<"views/b/accesses">>, 0.0},
+            {<<"spatial/c/disk_size">>, 20},
+            {<<"spatial/c/data_size">>, 24},
+            {<<"spatial/c/accesses">>, 0.0}],
     ExpectedOut1 = lists:sort([{K, V} || {K, V} <- ExpectedOut1Pre,
                                          not is_binary(K)]),
     ExpectedOut2 = lists:sort(ExpectedOut1Pre),
@@ -272,6 +309,9 @@ basic_parse_couch_stats_test() ->
     ?debugFmt("Got first result~n~p~n~p", [Out1, State1]),
     {Out2, State2} = parse_couch_stats(2000, CouchStatsRecord, 1000, State1, 0),
     ?debugFmt("Got second result~n~p~n~p", [Out2, State2]),
-    ?assertEqual(CouchStatsRecord#ns_server_couch_stats.per_ddoc_stats, State2),
+    ?assertEqual({CouchStatsRecord#ns_server_couch_stats.views_per_ddoc_stats,
+                  CouchStatsRecord#ns_server_couch_stats.spatial_per_ddoc_stats}, State2),
     ?assertEqual(ExpectedOut1, Out1),
     ?assertEqual(ExpectedOut2, Out2).
+
+-endif.
