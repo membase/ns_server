@@ -1229,16 +1229,19 @@ couchbase_view_stats_descriptions(BucketId) ->
                    end, 5000).
 
 do_couchbase_view_stats_descriptions(BucketId) ->
-    DictBySig = ns_couchdb_api:get_design_doc_signatures(BucketId),
+    {MapReduceSignatures, SpatialSignatures} = ns_couchdb_api:get_design_doc_signatures(BucketId),
+    do_couchbase_view_stats_descriptions(MapReduceSignatures, <<"views/">>, <<"Mapreduce View Stats">>) ++
+        do_couchbase_view_stats_descriptions(SpatialSignatures, <<"spatial/">>, <<"Spatial View Stats">>).
 
+do_couchbase_view_stats_descriptions(DictBySig, KeyPrefix, Title) ->
     dict:fold(
       fun(Sig, DDocIds0, Stats) ->
-              Prefix = <<"views/", Sig/binary,"/">>,
+              Prefix = <<KeyPrefix/binary, Sig/binary,"/">>,
               DDocIds = lists:sort(DDocIds0),
               Ids = iolist_to_binary([hd(DDocIds) |
                                       [[?SPACE_CHAR | Id]
                                        || Id <- tl(DDocIds)]]),
-              MyStats = {struct,[{blockName,<<"View Stats: ",Ids/binary>>},
+              MyStats = {struct,[{blockName,<<Title/binary, ": ", Ids/binary>>},
                                  {extraCSSClasses,<<"dynamic_closed">>},
                                  {columns,
                                   [<<"Data">>,<<"Disk">>,<<"Read Ops">>]},

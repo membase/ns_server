@@ -194,7 +194,8 @@ handle_rpc({reset_master_vbucket, BucketName}) ->
     capi_ddoc_manager:reset_master_vbucket(BucketName);
 
 handle_rpc({get_design_doc_signatures, Bucket}) ->
-    capi_utils:get_design_doc_signatures(Bucket);
+    {capi_utils:get_design_doc_signatures(mapreduce_view, Bucket),
+     capi_utils:get_design_doc_signatures(spatial_view, Bucket)};
 
 handle_rpc({foreach_doc, xdcr, Fun, Timeout}) ->
     xdc_rdoc_manager:foreach_doc(Fun, Timeout);

@@ -179,8 +179,8 @@ full_live_ddocs(Bucket, Timeout) ->
     [V || {_Id, V} <- RVs,
           V =/= Ref].
 
--spec get_design_doc_signatures(bucket_name() | binary()) -> dict().
-get_design_doc_signatures(BucketId) ->
+-spec get_design_doc_signatures(mapreduce_view | spatial_view, bucket_name() | binary()) -> dict().
+get_design_doc_signatures(Mod, BucketId) ->
     DesignDocIds = try
                        fetch_ddoc_ids(BucketId)
                    catch
@@ -192,7 +192,7 @@ get_design_doc_signatures(BucketId) ->
     lists:foldl(
       fun (DDocId, BySig) ->
               {ok, Signature} = couch_set_view:get_group_signature(
-                                  mapreduce_view, list_to_binary(BucketId),
+                                  Mod, list_to_binary(BucketId),
                                   DDocId),
               dict:append(Signature, DDocId, BySig)
       end, dict:new(), DesignDocIds).
