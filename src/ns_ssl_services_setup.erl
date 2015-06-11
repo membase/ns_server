@@ -27,7 +27,7 @@
          sync_local_cert_and_pkey_change/0]).
 
 %% used by ssl proxy
--export([dh_params_der/0]).
+-export([dh_params_der/0, supported_versions/0, supported_ciphers/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -166,13 +166,39 @@ dh_params_der() ->
       9,135,41,60,75,4,202,133,173,72,6,69,167,89,112,174,40,
       229,171,2,1,2>>.
 
+supported_versions() ->
+    ['tlsv1.1', 'tlsv1.2'].
+
+low_security_ciphers() ->
+    %% The list can be obtained as follows:
+    %%
+    %%   openssl ciphers LOW | tr ':' '\n'
+    %%
+    %% Then openssl cipher strings can be converted to erlang suite
+    %% definitions as follows:
+    %%
+    %%   ssl:suite_definition(ssl_cipher:openssl_suite("EDH-RSA-DES-CBC-SHA")).
+    %%
+    %% Note that erlang doesn't know the majority of ciphers returned by
+    %% openssl.
+    [{dhe_rsa,des_cbc,sha},{rsa,des_cbc,sha}].
+
+supported_ciphers() ->
+    case application:get_env(ssl_ciphers) of
+        {ok, Ciphers} ->
+            Ciphers;
+        undefined ->
+            ssl:cipher_suites() -- low_security_ciphers()
+    end.
+
 ssl_server_opts() ->
     Path = ssl_cert_key_path(),
     [{keyfile, Path},
      {certfile, Path},
-     {versions, ['tlsv1', 'tlsv1.1', 'tlsv1.2']},
+     {versions, supported_versions()},
      {cacertfile, ssl_cacert_key_path()},
-     {dh, dh_params_der()}].
+     {dh, dh_params_der()},
+     {ciphers, supported_ciphers()}].
 
 start_link_rest_service() ->
     Config0 = menelaus_web:webconfig(),

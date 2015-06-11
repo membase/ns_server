@@ -156,6 +156,7 @@ create_erl_node_spec(Type, Args, EnvArgsVar, ErlangArgs) ->
                           "dont_suppress_stderr_logger" -> true;
                           "loglevel_" ++ _ -> true;
                           "disk_sink_opts" -> true;
+                          "ssl_ciphers" -> true;
                           _ -> false
                       end],
     EnvArgs = Args ++ EnvArgsTail,
