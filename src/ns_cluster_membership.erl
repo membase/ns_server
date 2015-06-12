@@ -43,6 +43,7 @@
          node_services/2,
          non_kv_active_nodes/0,
          non_kv_active_nodes/1,
+         service_active_nodes/3,
          is_active_non_kv_node/1,
          is_active_non_kv_node/2,
          filter_out_non_kv_nodes/1,

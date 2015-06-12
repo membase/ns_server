@@ -19,12 +19,21 @@
 
 -include("ns_common.hrl").
 
--export([process_frame/3,
-         init_state/1]).
+-export([process_frame/4,
+         init_state/1,
+         service_failover_min_node_count/1]).
 
 %% number of frames where node that we think is down needs to be down
 %% _alone_ in order to trigger autofailover
 -define(DOWN_GRACE_PERIOD, 2).
+
+%% Auto-failover is possible for a service only if the number of nodes
+%% in the cluster running that service is greater than the count specified
+%% below.
+%% E.g. to auto-failover kv (data) service, cluster needs atleast 3 data nodes.
+-define(AUTO_FAILOVER_KV_NODE_COUNT, 2).
+-define(AUTO_FAILOVER_INDEX_NODE_COUNT, 1).
+-define(AUTO_FAILOVER_N1QL_NODE_COUNT, 1).
 
 -record(node_state, {
           name :: term(),
@@ -107,7 +116,7 @@ increment_down_state(NodeState, DownNodes, BigState, NodesChanged) ->
     end.
 
 
-process_frame(Nodes, DownNodes, State) ->
+process_frame(Nodes, DownNodes, State, SvcConfig) ->
     SortedNodes = ordsets:from_list(Nodes),
     SortedDownNodes = ordsets:from_list(DownNodes),
 
@@ -146,19 +155,8 @@ process_frame(Nodes, DownNodes, State) ->
     {Actions, DownStates2} =
         case DownStates of
             [#node_state{state = failover, name = Node}] ->
-                ClusterSize = length(Nodes),
-                case ClusterSize > 2 of
-                    true ->
-                        %% doing failover
-                        {[{failover, Node}], DownStates};
-                    false ->
-                        case State#state.mailed_too_small_cluster =:= SortedNodes of
-                            true ->
-                                {[], DownStates};
-                            false ->
-                                {[{mail_too_small, Node}], DownStates}
-                        end
-                end;
+                ServiceAction = should_failover_node(State, Node, SvcConfig),
+                {ServiceAction, DownStates};
             [#node_state{state = nearly_down}] -> {[], DownStates};
             Else ->
                 case HasNearlyDown of
@@ -184,7 +182,7 @@ process_frame(Nodes, DownNodes, State) ->
     NewState = State#state{
                  nodes_states = lists:umerge(UpStates, DownStates2),
                  mailed_too_small_cluster = case Actions of
-                                                [{mail_too_small, _}] -> SortedNodes;
+                                                [{mail_too_small, _, SvcNodes, _}] -> SvcNodes;
                                                 _ -> State#state.mailed_too_small_cluster
                                             end
                 },
@@ -195,33 +193,154 @@ process_frame(Nodes, DownNodes, State) ->
     end,
     {Actions, NewState}.
 
+%% Decide whether to failover the node based on the services running
+%% on the node.
+should_failover_node(State, Node, SvcConfig) ->
+    %% Find what services are running on the node
+    {NodeName, _ID} = Node,
+    NodeSvc = get_node_services(NodeName, SvcConfig, []),
+    %% Is this a dedicated node running only one service or collocated
+    %% node running multiple services?
+    case length(NodeSvc) of
+        1 ->
+            %% Only one service running on this node, so follow its
+            %% auto-failover policy.
+            should_failover_service(State, SvcConfig, hd(NodeSvc), Node);
+        _ ->
+            %% Node is running multiple services.
+            should_failover_colocated_node(State, SvcConfig, NodeSvc, Node)
+    end.
+
+get_node_services(_, [], Acc) ->
+    Acc;
+get_node_services(NodeName, [ServiceInfo | Rest], Acc) ->
+    {Service, {_, {nodes, NodesList}}} = ServiceInfo,
+    case lists:member(NodeName, NodesList) of
+        true ->
+            get_node_services(NodeName, Rest, [Service | Acc]);
+        false ->
+            get_node_services(NodeName, Rest,  Acc)
+    end.
+
+
+should_failover_colocated_node(State, SvcConfig, NodeSvc, Node) ->
+    %% Is data one of the services running on the node?
+    %% If yes, then we give preference to its auto-failover policy
+    %% otherwise we treat all other servcies equally.
+    case lists:member(kv, NodeSvc) of
+        true ->
+            should_failover_service(State, SvcConfig, kv, Node);
+        false ->
+            should_failover_colocated_service(State, SvcConfig, NodeSvc, Node)
+    end.
+
+%% Iterate through all services running on this node and check if
+%% each of those services can be failed over.
+%% Auto-failover the node only if ok to auto-failover all the services running
+%% on the node.
+should_failover_colocated_service(_, _, [], Node) ->
+    [{failover, Node}];
+should_failover_colocated_service(State, SvcConfig, [Service | Rest], Node) ->
+    %% OK to auto-failover this service? If yes, then go to the next one.
+    case should_failover_service(State, SvcConfig, Service, Node) of
+        [{failover, Node}] ->
+            should_failover_colocated_service(State, SvcConfig, Rest, Node);
+        Else ->
+            Else
+    end.
+
+should_failover_service(State, SvcConfig, Service, Node) ->
+    %% Check whether auto-failover is disabled for the service.
+    case is_failover_disabled_for_service(SvcConfig, Service) of
+        false ->
+            should_failover_service_policy(State, SvcConfig, Service, Node);
+        true ->
+            ?log_debug("Auto-failover for ~p service is disabled.~n",
+                       [Service]),
+            []
+    end.
+
+is_failover_disabled_for_service(SvcConfig, Service) ->
+    {{disable_auto_failover, V}, _} = proplists:get_value(Service, SvcConfig),
+    V.
+
+%% Determine whether to failover the service based on
+%% how many nodes in the cluster are running the same service and
+%% whether that count is above the the minimum required by the service.
+should_failover_service_policy(State, SvcConfig, Service, Node) ->
+    {_, {nodes, SvcNodes}} = proplists:get_value(Service, SvcConfig),
+    SvcNodeCount = length(SvcNodes),
+    case SvcNodeCount > service_failover_min_node_count(Service) of
+        true ->
+            %% doing failover
+            [{failover, Node}];
+        false ->
+            case State#state.mailed_too_small_cluster =:= SvcNodes of
+                true ->
+                    [];
+                false ->
+                    %% TODO:
+                    %% Translate "Service" for user_log consumption
+                    %% e.g. translate "kv" to "data"
+                    [{mail_too_small, Service, SvcNodes, Node}]
+            end
+    end.
+
+%% Helper to get the minimum node count.
+service_failover_min_node_count(kv) ->
+    ?AUTO_FAILOVER_KV_NODE_COUNT;
+service_failover_min_node_count(index) ->
+    ?AUTO_FAILOVER_INDEX_NODE_COUNT;
+service_failover_min_node_count(n1ql) ->
+    ?AUTO_FAILOVER_N1QL_NODE_COUNT.
 
 -ifdef(EUNIT).
 
-process_frame_no_action(0, _Nodes, _DownNodes, State) ->
+process_frame_no_action(0, _Nodes, _DownNodes, State, _SvcConfig) ->
     State;
-process_frame_no_action(Times, Nodes, DownNodes, State) ->
-    {[], NewState} = process_frame(Nodes, DownNodes, State),
-    process_frame_no_action(Times-1, Nodes, DownNodes, NewState).
+process_frame_no_action(Times, Nodes, DownNodes, State, SvcConfig) ->
+    {[], NewState} = process_frame(Nodes, DownNodes, State, SvcConfig),
+    process_frame_no_action(Times-1, Nodes, DownNodes, NewState, SvcConfig).
 
-basic_1_test() ->
+build_svc_config([], _, _, Acc) ->
+    Acc;
+build_svc_config([Service | Rest], AutoFailoverDisabled, Nodes, Acc) ->
+    PerSvcCfg = {Service, {{disable_auto_failover, AutoFailoverDisabled},
+                           {nodes, Nodes}}},
+    build_svc_config(Rest, AutoFailoverDisabled, Nodes, [PerSvcCfg | Acc]).
+
+attach_uuid(Nodes) ->
+    lists:map(fun(X) -> {X, list_to_binary(atom_to_list(X))} end, Nodes).
+
+basic_kv_1_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [], State0),
-    State2 = process_frame_no_action(4, [a,b,c], [b], State1),
-    {[{failover, b}], _} = process_frame([a,b,c], [b], State2).
+    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    Nodes = attach_uuid([a,b,c]),
+    DownNode = attach_uuid([b]),
+    {[], State1} = process_frame(Nodes, [], State0, SvcConfig),
+    State2 = process_frame_no_action(4, Nodes, DownNode, State1, SvcConfig),
+    DN = hd(DownNode),
+    {[{failover, DN}], _} = process_frame(Nodes, DownNode, State2, SvcConfig).
 
-basic_2_test() ->
+basic_kv_2_test() ->
     State0 = init_state(4+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [b], State0),
-    State2 = process_frame_no_action(4, [a,b,c], [b], State1),
-    {[{failover, b}], _} = process_frame([a,b,c], [b], State2).
+    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    Nodes = attach_uuid([a,b,c]),
+    DownNode = attach_uuid([b]),
+    {[], State1} = process_frame(Nodes, DownNode, State0, SvcConfig),
+    State2 = process_frame_no_action(4, Nodes, DownNode, State1, SvcConfig),
+    DN = hd(DownNode),
+    {[{failover, DN}], _} = process_frame(Nodes, DownNode, State2, SvcConfig).
 
 min_size_test_body(Threshold) ->
     State0 = init_state(Threshold+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b], [b], State0),
-    State2 = process_frame_no_action(Threshold, [a,b], [b], State1),
-    {[{mail_too_small, _}], State3} = process_frame([a,b], [b], State2),
-    process_frame_no_action(30, [a,b], [b], State3).
+    SvcConfig = build_svc_config([kv], false, [a,b], []),
+    Nodes = attach_uuid([a,b]),
+    DownNode = attach_uuid([b]),
+    {[], State1} = process_frame(Nodes, DownNode, State0, SvcConfig),
+    State2 = process_frame_no_action(Threshold, Nodes, DownNode, State1, SvcConfig),
+    {[{mail_too_small, _, _, _}], State3} = process_frame(Nodes, DownNode, State2, SvcConfig),
+    process_frame_no_action(30, Nodes, DownNode, State3, SvcConfig).
 
 min_size_test() ->
     min_size_test_body(2),
@@ -230,44 +349,67 @@ min_size_test() ->
 
 min_size_and_increasing_test() ->
     State = min_size_test_body(2),
-    State2 = process_frame_no_action(3, [a,b,c], [b], State),
-    {[{failover, b}], _} = process_frame([a,b,c], [b], State2).
+    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    Nodes = attach_uuid([a,b,c]),
+    DownNode = attach_uuid([b]),
+    State2 = process_frame_no_action(3, Nodes, DownNode, State, SvcConfig),
+    DN = hd(DownNode),
+    {[{failover, DN}], _} = process_frame(Nodes, DownNode, State2, SvcConfig).
 
 other_down_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [b], State0),
-    State2 = process_frame_no_action(3, [a,b,c], [b], State1),
-    {[{mail_down_warning, _}], State3} = process_frame([a,b,c], [b,c], State2),
-    State4 = process_frame_no_action(1, [a,b,c], [b], State3),
-    {[{failover, b}], _} = process_frame([a,b,c], [b], State4),
-    {[], State5} = process_frame([a,b,c],[b,c], State4),
-    State6 = process_frame_no_action(1, [a,b,c], [b], State5),
-    {[{failover, b}], _} = process_frame([a,b,c],[b], State6).
+    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    Nodes = attach_uuid([a,b,c]),
+    DownNode1 = attach_uuid([b]),
+    {[], State1} = process_frame(Nodes, DownNode1, State0, SvcConfig),
+    State2 = process_frame_no_action(3, Nodes, DownNode1, State1, SvcConfig),
+    DownNode2 = attach_uuid([b, c]),
+    {[{mail_down_warning, _}], State3} = process_frame(Nodes, DownNode2, State2, SvcConfig),
+    State4 = process_frame_no_action(1, Nodes, DownNode1, State3, SvcConfig),
+    DN = hd(DownNode1),
+    {[{failover, DN}], _} = process_frame(Nodes, DownNode1, State4, SvcConfig),
+    {[], State5} = process_frame(Nodes, DownNode2, State4, SvcConfig),
+    State6 = process_frame_no_action(1, Nodes, DownNode1, State5, SvcConfig),
+    {[{failover, DN}], _} = process_frame(Nodes, DownNode1, State6, SvcConfig).
 
 two_down_at_same_time_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    State1 = process_frame_no_action(2, [a,b,c,d], [b,c], State0),
-    {[{mail_down_warning, b}, {mail_down_warning, c}], _} =
-        process_frame([a,b,c,d], [b,c], State1).
+    SvcConfig = build_svc_config([kv], false, [a,b,c,d], []),
+    Nodes = attach_uuid([a,b,c,d]),
+    DownNode2 = attach_uuid([b, c]),
+    State1 = process_frame_no_action(2, Nodes, DownNode2, State0, SvcConfig),
+    [B, C] = DownNode2,
+    {[{mail_down_warning, B}, {mail_down_warning, C}], _} =
+        process_frame(Nodes, DownNode2, State1, SvcConfig).
 
 multiple_mail_down_warning_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [b], State0),
-    State2 = process_frame_no_action(2, [a,b,c], [b], State1),
-    {[{mail_down_warning, b}], State3} = process_frame([a,b,c], [b,c], State2),
-    % Make sure not every tick sends out a message
-    State4 = process_frame_no_action(1, [a,b,c], [b,c], State3),
-    {[{mail_down_warning, c}], _} = process_frame([a,b,c], [b,c], State4).
+    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    Nodes = attach_uuid([a,b,c]),
+    DownNode1 = attach_uuid([b]),
+    {[], State1} = process_frame(Nodes, DownNode1, State0, SvcConfig),
+    State2 = process_frame_no_action(2, Nodes, DownNode1, State1, SvcConfig),
+    DownNode2 = attach_uuid([b, c]),
+    [B, C] = DownNode2,
+    {[{mail_down_warning, B}], State3} = process_frame(Nodes, DownNode2, State2, SvcConfig),
+    %% Make sure not every tick sends out a message
+    State4 = process_frame_no_action(1, Nodes, DownNode2, State3, SvcConfig),
+    {[{mail_down_warning, C}], _} = process_frame(Nodes, DownNode2, State4, SvcConfig).
 
-% Test if mail_down_warning is sent again if node was up in between
+%% Test if mail_down_warning is sent again if node was up in between
 mail_down_warning_down_up_down_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    {[], State1} = process_frame([a,b,c], [b], State0),
-    State2 = process_frame_no_action(2, [a,b,c], [b], State1),
-    {[{mail_down_warning, b}], State3} = process_frame([a,b,c], [b,c], State2),
-    % Node is up again
-    State4 = process_frame_no_action(1, [a,b,c], [], State3),
-    State5 = process_frame_no_action(2, [a,b,c], [b], State4),
-    {[{mail_down_warning, b}], _} = process_frame([a,b,c], [b,c], State5).
+    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    Nodes = attach_uuid([a,b,c]),
+    DownNode1 = attach_uuid([b]),
+    {[], State1} = process_frame(Nodes, DownNode1, State0, SvcConfig),
+    State2 = process_frame_no_action(2, Nodes, DownNode1, State1, SvcConfig),
+    DN = hd(DownNode1),
+    DownNode2 = attach_uuid([b, c]),
+    {[{mail_down_warning, DN}], State3} = process_frame(Nodes, DownNode2, State2, SvcConfig),
+    %% Node is up again
+    State4 = process_frame_no_action(1, Nodes, [], State3, SvcConfig),
+    State5 = process_frame_no_action(2, Nodes, DownNode1, State4, SvcConfig),
+    {[{mail_down_warning, DN}], _} = process_frame(Nodes, DownNode2, State5, SvcConfig).
 
 -endif.
