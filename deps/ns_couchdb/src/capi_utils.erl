@@ -165,6 +165,9 @@ full_live_ddocs(Bucket) ->
     full_live_ddocs(Bucket, infinity).
 
 full_live_ddocs(Bucket, Timeout) ->
+    full_live_ddocs(Bucket, Timeout, fun (Doc) -> Doc end).
+
+full_live_ddocs(Bucket, Timeout, Fun) ->
     Ref = make_ref(),
     RVs = ns_couchdb_api:foreach_doc(
             Bucket,
@@ -173,16 +176,29 @@ full_live_ddocs(Bucket, Timeout) ->
                         #doc{deleted = true} ->
                             Ref;
                         _ ->
-                            Doc
+                            Fun(Doc)
                     end
             end, Timeout),
     [V || {_Id, V} <- RVs,
           V =/= Ref].
 
+fetch_ddoc_ids_for_mod(Mod, BucketId) ->
+    Key = case Mod of
+              mapreduce_view ->
+                  <<"views">>;
+              spatial_view ->
+                  <<"spatial">>
+          end,
+    Pairs = full_live_ddocs(BucketId, infinity,
+                            fun (#doc{id = Id, body = {Fields}}) ->
+                                    {Id, couch_util:get_value(Key, Fields, {[]})}
+                            end),
+    [Id || {Id, Views} <- Pairs, Views =/= {[]}].
+
 -spec get_design_doc_signatures(mapreduce_view | spatial_view, bucket_name() | binary()) -> dict().
 get_design_doc_signatures(Mod, BucketId) ->
     DesignDocIds = try
-                       fetch_ddoc_ids(BucketId)
+                       fetch_ddoc_ids_for_mod(Mod, BucketId)
                    catch
                        exit:{noproc, _} ->
                            []
