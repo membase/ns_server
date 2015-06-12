@@ -2099,7 +2099,17 @@
                   <td>{%= h(r.protocol) %}</td>
                   <td style="color:#777">this cluster</td>
                   <td>{%= h(r.to) %}</td>
-                  <td class="when-enterprise" title="{%= h(r.filterExpression) %}"><input type="checkbox" disabled {%= r.filterExpression ? "checked" : "" %}></td>
+                  <td class="when-enterprise">
+                    {% if (r.filterExpression) { %}
+                      <a class="tooltip text_11"><span>Yes</span>
+                        <span class="tooltip_msg break-word" style="width:200px;"><span>
+                          {%= r.filterExpression %}
+                        </span></span>
+                      </a>
+                    {% } else { %}
+                      No
+                    {% } %}
+                  </td>
                   <td class="replication_status_cell">
                     <span>{%= V.formatReplicationStatus(r) %}</span>
                   </td>
