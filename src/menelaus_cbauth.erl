@@ -83,6 +83,8 @@ handle_cast({Msg, Label, Pid}, #state{rpc_processes = Processes,
     NewProcesses = case notify_cbauth(Label, Info) of
                        {error, method_not_found} ->
                            Processes;
+                       {error, dead} ->
+                           Processes;
                        _ ->
                            case lists:keyfind(Label, 2, Processes) of
                                false ->
