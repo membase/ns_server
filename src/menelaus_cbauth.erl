@@ -136,7 +136,11 @@ notify_cbauth(Label, Info) ->
             ok
     catch exit:{noproc, _} ->
             ?log_debug("Process for label ~p is already dead", [Label]),
-            {error, noproc}
+            {error, dead};
+          exit:{Reason, _} ->
+            ?log_debug("Process for label ~p has exited during the call with reason ~p",
+                       [Label, Reason]),
+            {error, dead}
     end.
 
 build_node_info(N, Config) ->
