@@ -100,7 +100,8 @@ grab_process_info(Pid) ->
                                     memory,
                                     message_queue_len,
                                     reductions,
-                                    trap_exit]),
+                                    trap_exit,
+                                    current_location]),
     Backtrace = proplists:get_value(backtrace, PureInfo),
     NewBacktrace = sanitize_backtrace(Backtrace),
     lists:keyreplace(backtrace, 1, PureInfo, {backtrace, NewBacktrace}).
