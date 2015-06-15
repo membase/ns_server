@@ -419,8 +419,10 @@ per_service_config([Service | Rest], Config, Acc) ->
     %% Get list of all nodes running the service.
     SvcNodes = ns_cluster_membership:service_active_nodes(Config, Service, all),
 
-    %% TODO: Is auto-failover for the service disabled?
-    PerServiceConfig = {Service, {{disable_auto_failover, false},
+    %% Is auto-failover for the service disabled?
+    ServiceKey = {auto_failover_disabled, Service},
+    AutoFailoverDisabled = ns_config:search(Config, ServiceKey, false),
+    PerServiceConfig = {Service, {{disable_auto_failover, AutoFailoverDisabled},
                                   {nodes, SvcNodes}}},
     per_service_config(Rest, Config, [PerServiceConfig | Acc]).
 
