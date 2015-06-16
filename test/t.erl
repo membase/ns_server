@@ -125,9 +125,6 @@ config(root_dir) ->
 config(ebin_dir) ->
     filename:absname(filename:join([config(root_dir), "ebin"]));
 
-config(src_dir) ->
-    filename:absname(filename:join([config(root_dir), "src"]));
-
 config(test_dir) ->
     filename:absname(filename:dirname(?FILE));
 
