@@ -96,24 +96,23 @@ start_without_coverage() ->
 
     io:format("Running tests without coverage~n", []),
     Ext = code:objfile_extension(),
-    Dir = config(ebin_dir),
     Wildcard = case os:getenv("T_WILDCARD") of
                    false -> "*";
                    X -> X
                end,
-    Files = filelib:wildcard(Wildcard, Dir),
-    BeamFileNames =
-        lists:filter(fun (File) ->
-                             case filename:extension(File) of
-                                 Ext -> true;
-                                 _ -> false
-                             end
-                     end,
-                     Files),
+    FullWildcard =
+        case lists:member($/, Wildcard) of
+            true ->
+                Wildcard ++ ".beam";
+            false ->
+                filename:join(["**", "ebin", Wildcard]) ++ ".beam"
+        end,
+    Files = filelib:wildcard(FullWildcard, config(root_dir)),
     Modules = lists:map(fun(BFN) ->
                                 list_to_atom(filename:basename(BFN, Ext))
                         end,
-                        BeamFileNames),
+                        Files),
+
     eunit:test(Modules, [verbose]).
 
 config(cov_dir) ->
