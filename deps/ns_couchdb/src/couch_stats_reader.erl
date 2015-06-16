@@ -300,7 +300,7 @@ basic_parse_couch_stats_test() ->
             {<<"views/b/data_size">>, 12},
             {<<"views/b/accesses">>, 0.0},
             {<<"spatial/c/disk_size">>, 20},
-            {<<"spatial/c/data_size">>, 24},
+            {<<"spatial/c/data_size">>, 21},
             {<<"spatial/c/accesses">>, 0.0}],
     ExpectedOut1 = lists:sort([{K, V} || {K, V} <- ExpectedOut1Pre,
                                          not is_binary(K)]),
