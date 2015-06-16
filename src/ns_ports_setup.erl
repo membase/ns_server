@@ -59,10 +59,10 @@ restart_xdcr_proxy() ->
     end.
 
 restart_port_by_name(Name) ->
-    rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, restart_port_by_name, [Name]).
+    ns_ports_manager:restart_port_by_name(ns_server:get_babysitter_node(), Name).
 
 set_children_and_loop(Children, Sup) ->
-    Pid = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, set_dynamic_children, [Children]),
+    Pid = ns_ports_manager:set_dynamic_children(ns_server:get_babysitter_node(), Children),
     case Sup of
         undefined ->
             {is_pid, true, Pid} = {is_pid, erlang:is_pid(Pid), Pid},
@@ -464,8 +464,7 @@ memcached_force_killer_fn({{node, Node, membership}, NewMembership}, PrevMembers
         false ->
             ok;
         _ ->
-            RV = rpc:call(ns_server:get_babysitter_node(),
-                          ns_child_ports_sup, send_command, [memcached, <<"die!\n">>]),
+            RV = ns_ports_manager:send_command(ns_server:get_babysitter_node(), memcached, <<"die!\n">>),
             ?log_info("Sent force death command to own memcached: ~p", [RV])
     end,
     NewMembership;

@@ -22,7 +22,7 @@
          create_ns_server_supervisor_spec/0]).
 
 -export([init/1, launch_port/1, terminate_port/1,
-         restart_port/1, restart_port_by_name/1,
+         restart_port/1,
          current_ports/0, find_port/1]).
 
 -include("ns_common.hrl").
@@ -51,7 +51,8 @@ find_port(PortName) ->
 
 do_send_command(PortName, Command) ->
     Pid = find_port(PortName),
-    Pid ! {send_to_port, Command}.
+    Pid ! {send_to_port, Command},
+    {ok, Pid}.
 
 -spec set_dynamic_children([any()]) -> pid().
 set_dynamic_children(NCAOs) ->
@@ -115,13 +116,6 @@ terminate_port(Id) ->
 restart_port(Id) ->
     ?log_info("restarting port: ~p", [Id]),
     {ok, _} = restartable:restart(?MODULE, Id).
-
-restart_port_by_name(Name) ->
-    Id = lists:keyfind(Name, 1, current_ports()),
-    case Id of
-        _ when Id =/= false ->
-            restart_port(Id)
-    end.
 
 current_ports() ->
     % Children will look like...

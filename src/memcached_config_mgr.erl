@@ -111,7 +111,7 @@ is_notable_config_key(_) ->
     false.
 
 find_port_pid_loop(Tries, Delay) when Tries > 0 ->
-    RV = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, find_port, [memcached]),
+    RV = ns_ports_manager:find_port(ns_server:get_babysitter_node(), memcached),
     case RV of
         Pid when is_pid(Pid) ->
             Pid1 = supervisor_cushion:child_pid(Pid),
