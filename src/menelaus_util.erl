@@ -69,6 +69,7 @@
          validate_has_params/1,
          validate_memory_quota/2,
          validate_any_value/2,
+         validate_any_value/3,
          validate_by_fun/3,
          execute_if_validated/3]).
 
@@ -563,12 +564,15 @@ validate_memory_quota(Name, State) ->
                             end
                     end, Name, State).
 
-validate_any_value(Name, {OutList, _, _} = State) ->
+validate_any_value(Name, State) ->
+    validate_any_value(Name, State, fun (X) -> X end).
+
+validate_any_value(Name, {OutList, _, _} = State, Convert) ->
     case lists:keyfind(atom_to_list(Name), 1, OutList) of
         false ->
             State;
         {_, Value} ->
-            return_value(Name, Value, State)
+            return_value(Name, Convert(Value), State)
     end.
 
 execute_if_validated(Fun, Req, {_, Values, Errors}) ->

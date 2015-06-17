@@ -193,7 +193,8 @@ general_settings_lens_props() ->
     [{indexerThreads, indexer_threads_lens(), 4},
      {memorySnapshotInterval, id_lens(<<"indexer.settings.inmemory_snapshot.interval">>), 200},
      {stableSnapshotInterval, id_lens(<<"indexer.settings.persisted_snapshot.interval">>), 30000},
-     {maxRollbackPoints, id_lens(<<"indexer.settings.recovery.max_rollbacks">>), 5}].
+     {maxRollbackPoints, id_lens(<<"indexer.settings.recovery.max_rollbacks">>), 5},
+     {logLevel, id_lens(<<"indexer.settings.log_level">>), <<"debug">>}].
 
 general_settings_lens_get(Dict) ->
     lens_get_many(general_settings_lens_props(), Dict).
