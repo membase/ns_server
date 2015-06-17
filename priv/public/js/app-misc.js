@@ -1174,9 +1174,9 @@ var MemoryQuotaSettingsWidget = mkClass({
     self.container = container;
     self.memoryQuotaFileds = $('.js_ram_quota', container);
     self.memoryTotalField = $('.js_per_server_total', container);
-    self.memoryServicesFlag = $('.js_service_flag', container);
+    self.serviceFlags = $('.js_service_flag', container);
     if (options.isServicesControllsAvailable) {
-      self.memoryServicesFlag.each(function (index, flag) {
+      self.serviceFlags.each(function (index, flag) {
         jQuery(flag).change(function () {
           self.memoryQuotaFileds.eq(index).prop('disabled', !$(this).attr('checked'));
           if (options.showTotalPerNode) {
@@ -1190,6 +1190,9 @@ var MemoryQuotaSettingsWidget = mkClass({
         self.computePerServerTotalQuota();
       }).keyup();
     }
+  },
+  selectAllServices: function () {
+    this.serviceFlags.prop('checked', true).change();
   },
   computePerServerTotalQuota: function () {
     var self = this;

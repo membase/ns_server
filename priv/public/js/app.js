@@ -708,6 +708,8 @@ var SetupWizard = {
             prefix: 'cluster_memory_wizard_settings'
           }, $('#js_start_new_cluster_memory_quoata_cont'));
 
+          memoryQuotaWidget.selectAllServices();
+
           var firstResource = data.storage.hdd[0];
 
           var dbPath;
