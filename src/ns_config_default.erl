@@ -248,11 +248,7 @@ default() ->
                       _ -> undefined
                   end},
        {admin_user, "_admin"},
-       %% Note that this is not actually the password that is being used; as
-       %% part of upgrading config from 2.2 to 2.3 version it's replaced by
-       %% unique per-node password. I didn't put it here because default()
-       %% supposed to be a pure function.
-       {admin_pass, ""},
+       {admin_pass, binary_to_list(couch_uuids:random())},
        {bucket_engine, path_config:component_path(lib, "memcached/bucket_engine.so")},
        {engines,
         [{membase,
