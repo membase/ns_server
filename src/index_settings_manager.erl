@@ -20,16 +20,12 @@
 -define(INDEX_CONFIG_KEY, {metakv, <<"/indexing/settings/config">>}).
 
 -export([start_link/0,
-         start_link_event_manager/0,
          get/1, get/2,
          update/1, update/2,
          config_upgrade/0]).
 
 start_link() ->
     work_queue:start_link(?MODULE, fun init/0).
-
-start_link_event_manager() ->
-    gen_event:start_link({local, index_settings_events}).
 
 get(Key) ->
     index_settings_manager:get(Key, undefined).
@@ -144,8 +140,8 @@ do_populate_ets_table(JSON) ->
                       ok;
                   false ->
                       ets:insert(?MODULE, {Key, NewValue}),
-                      gen_event:notify(index_settings_events,
-                                       {index_settings_events, Key, NewValue})
+                      gen_event:notify(index_events,
+                                       {index_settings_change, Key, NewValue})
               end
       end, lens_get_many(known_settings(), Dict)),
 

@@ -49,8 +49,8 @@ start_link() ->
                                   gen_event:add_sup_handler(buckets_events,
                                                             {?MODULE, buckets_events},
                                                             simple_events_handler),
-                                  gen_event:add_sup_handler(index_settings_events,
-                                                            {?MODULE, index_settings_events},
+                                  gen_event:add_sup_handler(index_events,
+                                                            {?MODULE, index_events},
                                                             simple_events_handler)
                           end).
 
@@ -64,8 +64,8 @@ register_watcher(Pid) ->
     ok = gen_event:call(buckets_events,
                         {?MODULE, buckets_events},
                         {register_watcher, Pid}),
-    ok = gen_event:call(index_settings_events,
-                        {?MODULE, index_settings_events},
+    ok = gen_event:call(index_events,
+                        {?MODULE, index_events},
                         {register_watcher, Pid}).
 
 unregister_watcher(Pid) ->
@@ -78,8 +78,8 @@ unregister_watcher(Pid) ->
     ok = gen_event:call(buckets_events,
                         {?MODULE, buckets_events},
                         {unregister_watcher, Pid}),
-    ok = gen_event:call(index_settings_events,
-                        {?MODULE, index_settings_events},
+    ok = gen_event:call(index_events,
+                        {?MODULE, index_events},
                         {unregister_watcher, Pid}).
 
 %% Implementation
@@ -108,7 +108,7 @@ is_interesting_to_watchers({autocompaction, _}) -> true;
 is_interesting_to_watchers({cluster_compat_version, _}) -> true;
 is_interesting_to_watchers({cluster_name, _}) -> true;
 is_interesting_to_watchers({memory_quota, _}) -> true;
-is_interesting_to_watchers({index_settings_events, memoryQuota, _}) -> true;
+is_interesting_to_watchers({index_settings_change, memoryQuota, _}) -> true;
 is_interesting_to_watchers({goxdcr_enabled, _}) -> true;
 is_interesting_to_watchers({{node, _, stop_xdcr}, _}) -> true;
 is_interesting_to_watchers(_) -> false.

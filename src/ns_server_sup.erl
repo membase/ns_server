@@ -150,8 +150,9 @@ child_specs() ->
       {work_queue, start_link, [metakv_worker]},
       permanent, 1000, worker, []},
 
-     {index_settings_sup, {index_settings_sup, start_link, []},
-      permanent, infinity, supervisor, [index_settings_sup]},
+     {index_events,
+      {gen_event, start_link, [{local, index_events}]},
+      permanent, brutal_kill, worker, dynamic},
 
      {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
@@ -252,6 +253,9 @@ child_specs() ->
 
      {goxdcr_status_keeper, {goxdcr_status_keeper, start_link, []},
       permanent, 1000, worker, [goxdcr_status_keeper]},
+
+     {index_settings_manager, {index_settings_manager, start_link, []},
+      permanent, 1000, worker, [index_settings_manager]},
 
      {index_stats_sup, {index_stats_sup, start_link, []},
       permanent, infinity, supervisor, []},
