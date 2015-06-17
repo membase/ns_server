@@ -190,7 +190,8 @@ fetch_ddoc_ids_for_mod(Mod, BucketId) ->
                   <<"spatial">>
           end,
     Pairs = full_live_ddocs(BucketId, infinity,
-                            fun (#doc{id = Id, body = {Fields}}) ->
+                            fun (DDoc) ->
+                                    #doc{id = Id, body = {Fields}} = couch_doc:with_ejson_body(DDoc),
                                     {Id, couch_util:get_value(Key, Fields, {[]})}
                             end),
     [Id || {Id, Views} <- Pairs, Views =/= {[]}].
