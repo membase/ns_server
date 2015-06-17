@@ -31,6 +31,7 @@
 
 -record(state, {
           nodes :: dict(),
+          nodes_wanted :: [node()],
           tasks_hash_nodes :: undefined | dict(),
           tasks_hash :: undefined | integer(),
           tasks_version :: undefined | string()
@@ -64,7 +65,8 @@ init([]) ->
             timer2:send_interval(?LOG_INTERVAL, log);
         _ -> ok
     end,
-    {ok, #state{nodes=dict:new()}}.
+    {ok, #state{nodes=dict:new(),
+                nodes_wanted=ns_node_disco:nodes_wanted()}}.
 
 handle_recovery_status_change(not_running, {running, _Bucket, _UUID}) ->
     {not_running, true};
@@ -131,17 +133,15 @@ handle_call(get_nodes, _From, #state{nodes=Nodes} = State) ->
     {reply, Nodes1, State}.
 
 
-handle_cast({heartbeat, Name, Status}, State) ->
-    Nodes = update_status(Name, Status, State#state.nodes),
-    NewState0 = State#state{nodes=Nodes},
-    NewState = maybe_refresh_tasks_version(NewState0),
-    case NewState0#state.tasks_hash =/= NewState#state.tasks_hash of
+handle_cast({heartbeat, Node, Status},
+            #state{nodes_wanted = NodesWanted} = State)->
+    case lists:member(Node, NodesWanted) of
         true ->
-            gen_event:notify(buckets_events, {significant_buckets_change, Name});
-        _ ->
-            ok
-    end,
-    {noreply, NewState};
+            {noreply, process_heartbeat(Node, Status, State)};
+        false ->
+            ?log_debug("Ignoring heartbeat from an unknown node ~p", [Node]),
+            {noreply, State}
+    end;
 
 handle_cast(Msg, State) ->
     ?doctor_warning("Unexpected cast: ~p", [Msg]),
@@ -175,7 +175,8 @@ handle_info({nodes_wanted, NewNodes0}, #state{nodes=Statuses} = State) ->
                   dict:erase(Node, Acc)
           end, Statuses, ToRemove),
 
-    {noreply, State#state{nodes=NewStatuses}};
+    {noreply, State#state{nodes=NewStatuses,
+                          nodes_wanted=NewNodes}};
 handle_info(Info, State) ->
     ?doctor_warning("Unexpected message ~p in state", [Info]),
     {noreply, State}.
@@ -808,3 +809,15 @@ build_recovery_task(PoolId) ->
                        {commitVBucketURI, CommitURI},
                        {recoveryStatusURI, RecoveryStatusURI}]}]
     end.
+
+process_heartbeat(Node, Status, State) ->
+    Nodes = update_status(Node, Status, State#state.nodes),
+    NewState0 = State#state{nodes=Nodes},
+    NewState = maybe_refresh_tasks_version(NewState0),
+    case NewState0#state.tasks_hash =/= NewState#state.tasks_hash of
+        true ->
+            gen_event:notify(buckets_events, {significant_buckets_change, Node});
+        _ ->
+            ok
+    end,
+    NewState.
