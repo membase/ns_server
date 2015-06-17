@@ -161,7 +161,7 @@ handle_call({interactive_update, #doc{id = Id} = Doc}, _From,
             end
     end;
 handle_call({foreach_doc, Fun}, _From, #state{local_docs = Docs} = State) ->
-    Res = [{Id, (catch Fun(Doc))} || #doc{id = Id} = Doc <- Docs],
+    Res = [{Id, Fun(Doc)} || #doc{id = Id} = Doc <- Docs],
     {reply, Res, State};
 handle_call(reset_master_vbucket, _From, #state{bucket = Bucket,
                                                 local_docs = LocalDocs} = State) ->
