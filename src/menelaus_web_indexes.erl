@@ -86,7 +86,7 @@ integer_settings() ->
      {maxRollbackPoints, 1, NearInfinity}].
 
 handle_index_status(Req) ->
-    {ok, Indexes0} = index_status_keeper:get_indexes(),
+    {ok, Indexes0, _} = index_status_keeper:get_indexes(),
     Indexes = [{Props} || Props <- Indexes0],
 
     reply_json(Req, Indexes).

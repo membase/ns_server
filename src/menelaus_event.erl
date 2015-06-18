@@ -109,6 +109,7 @@ is_interesting_to_watchers({cluster_compat_version, _}) -> true;
 is_interesting_to_watchers({cluster_name, _}) -> true;
 is_interesting_to_watchers({memory_quota, _}) -> true;
 is_interesting_to_watchers({index_settings_change, memoryQuota, _}) -> true;
+is_interesting_to_watchers({indexes_change, _}) -> true;
 is_interesting_to_watchers({goxdcr_enabled, _}) -> true;
 is_interesting_to_watchers({{node, _, stop_xdcr}, _}) -> true;
 is_interesting_to_watchers(_) -> false.

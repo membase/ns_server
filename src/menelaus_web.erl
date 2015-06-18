@@ -1137,6 +1137,9 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
     TasksURI = bin_concat_path(["pools", Id, "tasks"],
                                [{"v", ns_doctor:get_tasks_version()}]),
 
+    {ok, IndexesVersion0} = index_status_keeper:get_indexes_version(),
+    IndexesVersion = list_to_binary(integer_to_list(IndexesVersion0)),
+
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
                  {alertsSilenceURL,
@@ -1156,7 +1159,8 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                  {maxBucketCount, ns_config:read_key_fast(max_bucket_count, 10)},
                  {autoCompactionSettings, build_global_auto_compaction_settings(Config)},
                  {tasks, {struct, [{uri, TasksURI}]}},
-                 {counters, {struct, ns_cluster:counters()}}],
+                 {counters, {struct, ns_cluster:counters()}},
+                 {indexStatusURI, <<"/indexStatus?v=", IndexesVersion/binary>>}],
 
     PropList1 = build_memory_quota_info(Config) ++ PropList0,
 

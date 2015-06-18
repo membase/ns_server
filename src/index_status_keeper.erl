@@ -20,7 +20,8 @@
 -behavior(gen_server).
 
 %% API
--export([start_link/0, update/1, get_status/1, get_indexes/0]).
+-export([start_link/0, update/1, get_status/1,
+         get_indexes/0, get_indexes_version/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -42,8 +43,13 @@ get_status(Timeout) ->
 get_indexes() ->
     gen_server:call(?MODULE, get_indexes).
 
+get_indexes_version() ->
+    gen_server:call(?MODULE, get_indexes_version).
+
 -record(state, {num_connections,
+
                 indexes,
+                indexes_version,
 
                 restart_pending,
                 source :: local | {remote, [node()], non_neg_integer()}}).
@@ -56,13 +62,18 @@ init([]) ->
     ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/2, Self),
     ns_pubsub:subscribe_link(ns_node_disco_events, fun handle_node_disco_event/2, Self),
 
-    {ok, #state{num_connections = 0,
-                indexes = [],
-                restart_pending = false,
-                source = get_source()}}.
+    State = #state{num_connections = 0,
+                   restart_pending = false,
+                   source = get_source()},
 
-handle_call(get_indexes, _From, #state{indexes = Indexes} = State) ->
-    {reply, {ok, Indexes}, State};
+    {ok, set_indexes([], State)}.
+
+handle_call(get_indexes, _From, #state{indexes = Indexes,
+                                       indexes_version = Version} = State) ->
+    {reply, {ok, Indexes, Version}, State};
+handle_call(get_indexes_version, _From,
+            #state{indexes_version = Version} = State) ->
+    {reply, {ok, Version}, State};
 handle_call(get_status, _From,
             #state{num_connections = NumConnections} = State) ->
     Status = [{num_connections, NumConnections}],
@@ -90,7 +101,7 @@ handle_cast({refresh_done, Status}, State) ->
             failed ->
                 State;
             _ ->
-                State#state{indexes = Status}
+                set_indexes(Status, State)
         end,
 
     erlang:send_after(?REFRESH_INTERVAL, self(), refresh),
@@ -263,3 +274,15 @@ handle_node_disco_event(Event, Pid) ->
             ok
     end,
     Pid.
+
+set_indexes(Indexes, #state{indexes_version = OldVersion} = State) ->
+    Version = erlang:phash2(Indexes),
+
+    case Version =:= OldVersion of
+        true ->
+            State;
+        false ->
+            gen_event:notify(index_events, {indexes_change, Version}),
+            State#state{indexes = Indexes,
+                        indexes_version = Version}
+    end.
