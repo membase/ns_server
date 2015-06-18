@@ -188,8 +188,14 @@ grab_status(#state{source = {remote, Nodes, NodesCount}}) ->
             Node = lists:nth(random:uniform(NodesCount), Nodes),
 
             try remote_api:get_indexes(Node) of
-                {ok, _} = R ->
-                    R;
+                {ok, Indexes, _Version} ->
+                    %% note that we're going to recompute the version instead
+                    %% of using the one from the remote node; that's because
+                    %% the version should be completely opaque; if we were to
+                    %% use it, that would imply that we assume the same
+                    %% algorithm for generation of the versions on all the
+                    %% nodes
+                    {ok, Indexes};
                 Error ->
                     ?log_error("Couldn't get indexes from node ~p: ~p", [Node, Error]),
                     {error, failed}
