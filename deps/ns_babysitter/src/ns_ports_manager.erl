@@ -73,7 +73,7 @@ handle_call({restart_port_by_name, Name}, _From, State) ->
     Id = lists:keyfind(Name, 1, ns_child_ports_sup:current_ports()),
     RV = case Id of
              false ->
-                 ?log_debug("Port ~p is not found. Nothing to restart"),
+                 ?log_debug("Port ~p is not found. Nothing to restart", [Name]),
                  {ok, not_found};
              _ ->
                  ns_child_ports_sup:restart_port(Id)
