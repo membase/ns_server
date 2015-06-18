@@ -1992,7 +1992,7 @@ var ViewsSection = {
       var spinner = overlayWithSpinner(dialog);
       ViewsSection.doSaveSpatial(dbURL, "_design/dev_" + ddocName, spatialName, false, function (status, error, reason) {
         var closeDialog = false;
-        if (status == "conflict") {
+        if (status != "ok") {
           warning.text(reason);
           warning.show();
         } else {
