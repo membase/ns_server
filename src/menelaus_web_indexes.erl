@@ -89,4 +89,4 @@ handle_index_status(Req) ->
     {ok, Indexes0, _} = index_status_keeper:get_indexes(),
     Indexes = [{Props} || Props <- Indexes0],
 
-    reply_json(Req, Indexes).
+    reply_json(Req, {[{indexes, Indexes}]}).

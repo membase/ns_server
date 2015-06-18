@@ -21,12 +21,15 @@ function createIndexesSectionCells(ns, modeCell, indexesTableSortByCell, indexes
   ns.indexURICell = Cell.compute(function (v) {
     return v.need(DAL.cells.currentPoolDetailsCell).indexStatusURI;
   }).name('indexURICell');
-  ns.indexesCell = Cell.compute(function (v) {
+  ns.rawIndexesCell = Cell.compute(function (v) {
     if (!v.need(ns.isAtIndexesTabCell)) {
       return;
     }
     var uri = v.need(ns.indexURICell);
     return future.get({url: uri});
+  }).name("rawIndexesCell");
+  ns.indexesCell = Cell.compute(function (v) {
+    return v.need(ns.rawIndexesCell).indexes;
   }).name("indexesCell");
   ns.sortedIndexesCell = Cell.compute(function (v) {
     var indexes = _.clone(v.need(ns.indexesCell));
