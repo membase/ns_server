@@ -18,11 +18,15 @@ function createIndexesSectionCells(ns, modeCell, indexesTableSortByCell, indexes
   ns.isAtIndexesTabCell = Cell.compute(function (v) {
     return v.need(modeCell) === "indexes";
   }).name('isAtIndexesTabCell');
+  ns.indexURICell = Cell.compute(function (v) {
+    return v.need(DAL.cells.currentPoolDetailsCell).indexStatusURI;
+  }).name('indexURICell');
   ns.indexesCell = Cell.compute(function (v) {
     if (!v.need(ns.isAtIndexesTabCell)) {
       return;
     }
-    return future.get({url: "/indexStatus"});
+    var uri = v.need(ns.indexURICell);
+    return future.get({url: uri});
   }).name("indexesCell");
   ns.sortedIndexesCell = Cell.compute(function (v) {
     var indexes = _.clone(v.need(ns.indexesCell));
