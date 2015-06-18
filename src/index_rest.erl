@@ -19,7 +19,7 @@
 
 -export([get_json/1]).
 
--define(TIMEOUT, ns_config:get_timeout(index_rest_request, 30000)).
+-define(TIMEOUT, ns_config:get_timeout(index_rest_request, 10000)).
 
 get_json(Path) ->
     Port = ns_config:read_key_fast({node, node(), indexer_http_port}, 9102),
