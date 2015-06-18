@@ -30,7 +30,7 @@ get_json(Path) ->
 
     Headers = menelaus_rest:add_basic_auth([], User, Pwd),
 
-    RV = rest_utils:request(indexer, URL, "GET", Headers, [], 30000),
+    RV = rest_utils:request(indexer, URL, "GET", Headers, [], ?TIMEOUT),
     case RV of
         {ok, {{200, _}, _Headers, BodyRaw}} ->
             try
