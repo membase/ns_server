@@ -86,7 +86,18 @@ integer_settings() ->
      {maxRollbackPoints, 1, NearInfinity}].
 
 handle_index_status(Req) ->
-    {ok, Indexes0, _} = index_status_keeper:get_indexes(),
+    {ok, Indexes0, Stale, _} = index_status_keeper:get_indexes(),
     Indexes = [{Props} || Props <- Indexes0],
 
-    reply_json(Req, {[{indexes, Indexes}]}).
+    Warnings =
+        case Stale of
+            true ->
+                Msg = <<"We are having troubles communicating to the indexer process. "
+                        "The information might be stale.">>,
+                [Msg];
+            false ->
+                []
+        end,
+
+    reply_json(Req, {[{indexes, Indexes},
+                      {warnings, Warnings}]}).
