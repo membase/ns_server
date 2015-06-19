@@ -2017,7 +2017,16 @@
           </table>
         </script>
 
+        <script id="js_index_warnings_template" type="text/html">
+          {% _.each(warnings, function (message) { %}
+            <div class="warning_message">
+              Warning: {%= h(message) %}
+            </div>
+          {% }); %}
+        </script>
+
         <div id="js_indexes" class="indexes" style="display:none">
+          <div id="js_index_warnings_container"></div>
           <div class="shadow_box">
             <div class="header_2">
               <h4 style="float:left;line-height:34px;">Indexes</h4>

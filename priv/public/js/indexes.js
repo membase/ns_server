@@ -31,6 +31,9 @@ function createIndexesSectionCells(ns, modeCell, indexesTableSortByCell, indexes
   ns.indexesCell = Cell.compute(function (v) {
     return v.need(ns.rawIndexesCell).indexes;
   }).name("indexesCell");
+  ns.indexWarningsCell = Cell.compute(function (v) {
+    return v.need(ns.rawIndexesCell).warnings;
+  }).name("indexWarningsCell");
   ns.sortedIndexesCell = Cell.compute(function (v) {
     var indexes = _.clone(v.need(ns.indexesCell));
     var sortBy = v.need(indexesTableSortByCell);
@@ -67,6 +70,9 @@ var IndexesSection = {
       indexesTableSortByCell,
       indexesTableSortDescendingCell
     );
+    self.indexWarningsCell.subscribeValue(function (warnings) {
+      renderTemplate('js_index_warnings', {warnings: warnings});
+    });
     prepareTemplateForCell('js_indexes_list', self.indexesCell);
     self.indexDetails = new MultiDrawersWidget({
       hashFragmentParam: 'openedIndexes',
