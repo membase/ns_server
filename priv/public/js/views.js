@@ -1600,7 +1600,7 @@ var ViewsSection = {
       });
     });
   },
-  doViewSave: function (dbURL, ddocId, viewName, viewDef, callback) {
+  doViewSave: function (dbURL, ddocId, viewName, viewDef, callback, isSpatial) {
     var ddocURL = buildDocURL(dbURL, ddocId);
     var overwriteConfirmed;
     var viewsLimitConfirmed;
@@ -1612,11 +1612,12 @@ var ViewsSection = {
     function withDoc(ddoc) {
       if (!ddoc) {
         ddoc = {meta: {id: ddocId},
-                json: {views: {}}};
+                json: {}};
       }
-      var views = ddoc.json.views || (ddoc.json.views = {});
+      var key = isSpatial ? "spatial" : "views";
+      var views = ddoc.json[key] || (ddoc.json[key] = {});
       if (views[viewName] && !overwriteConfirmed) {
-        return callback("error", "already_exists", "View with given name already exists", function () {
+        return callback("error", "already_exists", (!isSpatial ? "View" : "Spatial Function") + " with given name already exists", function () {
           overwriteConfirmed = true;
           begin();
         });
@@ -1626,12 +1627,10 @@ var ViewsSection = {
           begin();
         });
       }
-      views[viewName] = viewDef || {
-        map:'function (doc, meta) {'
-          + '\n  emit(meta.id, null);'
-          + '\n}'
-      }
-      $('#view_code_errors').text('').attr('title','');
+
+      views[viewName] = viewDef || (!isSpatial ? {map: 'function (doc, meta) {\n  emit(meta.id, null);\n}'} : "function (doc) {\n  if (doc.geometry) {\n    emit([doc.geometry], null);\n  }\n}")
+
+      $(!isSpatial ? '#view_code_errors' : '#spatial_code_errors').text('').attr('title','');
       couchReq('PUT',
                ddocURL,
                ddoc.json,
@@ -1652,111 +1651,10 @@ var ViewsSection = {
                });
     }
   },
-  doSaveSpatial: function (dbURL, ddocId, spatialName, overwriteConfirmed,
-      callback, spatialDef) {
-    var ddocURL = buildDocURL(dbURL, ddocId);
-    return begin();
-    function begin() {
-      couchGet(ddocURL, withDoc);
-    }
-    function withDoc(ddoc) {
-      if (!ddoc) {
-          ddoc = {meta: {id: ddocId},
-                  json: {views: {}}};
-      }
-      var spatial = ddoc.json.spatial || (ddoc.json.spatial = {});
-      if (spatial[spatialName] && !overwriteConfirmed) {
-        return callback("conflict", "already_exists", "Spatial Function with given name already exists");
-      }
-      spatial[spatialName] = spatialDef ||
-          "function (doc) {\n  if (doc.geometry) {\n    emit([doc.geometry], null);\n  }\n}";
-
-      $('#spatial_code_errors').text('').attr('title','');
-
-      couchReq('PUT',
-               ddocURL,
-               ddoc.json,
-               function () {
-                 callback("ok");
-               },
-               function (error, status, unexpected) {
-                 if (status == 409) {
-                   return begin();
-                 }
-                 if (status == 400) {
-                   callback("error", error.error, error.reason, function () {
-                     BUG("this is not expected");
-                   });
-                   return;
-                 }
-                 return unexpected();
-               });
-    }
+  startRemoveSpatial: function (pseudoLink) {
+    return ViewsSection.startRemoveView(pseudoLink, true);
   },
-  startCreateView: function (ddocId) {
-    var dbURL = ViewsSection.dbURLCell.value;
-    if (!dbURL) {
-      return;
-    }
-    var dialog = $('#copy_view_dialog');
-    var warning = dialog.find('.warning').hide();
-    dialog.find('[name=designdoc_name], [name=view_name]').val('');
-    var ddocNameInput = dialog.find('[name=designdoc_name]').need(1);
-    ddocNameInput.prop('disabled', !!ddocId);
-    if (ddocId) {
-      ddocNameInput.val(this.cutOffDesignPrefix(ddocId));
-    }
-    showDialog(dialog, {
-      title: 'Create Development View',
-      closeOnEscape: false,
-      eventBindings: [['.save_button', 'click', function (e) {
-        e.preventDefault();
-        startSaving(ddocNameInput.val(), dialog.find('[name=view_name]').val());
-      }]]
-    });
-    return;
-
-    function startSaving(ddocName, viewName) {
-      if (!ddocName || !viewName) {
-        warning.text("Design Document and View names cannot be empty").show();
-        return;
-      }
-      var modal = new ModalAction();
-      var spinner = overlayWithSpinner(dialog);
-      return ViewsSection.doViewSave(dbURL, "_design/dev_" + ddocName, viewName, undefined, saveCallback);
-
-      function saveCallback(status, error, reason, continueSaving) {
-        if (error == 'confirm_views_limit') {
-          return ViewsSection.displayViewsLimitConfirmation(function (e, name, instance) {
-            modal.finish();
-            instance.close();
-            if (name == 'ok') {
-              modal = new ModalAction();
-              return continueSaving();
-            }
-            spinner.remove();
-          });
-        }
-
-        var closeDialog = false;
-        if (status != "ok") {
-          warning.text(reason);
-          warning.show();
-        } else {
-          closeDialog = true;
-        }
-        modal.finish();
-        spinner.remove();
-        if (closeDialog) {
-          ddocNameInput.prop('disabled', false);
-          hideDialog(dialog);
-          ViewsSection.allDDocsCell.recalculate();
-          ViewsSection.modeTabs.setValue("development");
-        }
-      }
-    }
-  },
-  doRemoveView: function (ddocURL, viewName, callback) {
+  doRemoveView: function (ddocURL, viewName, callback, isSpatial) {
     return begin();
     function begin() {
       couchGet(ddocURL, withDoc);
@@ -1765,7 +1663,8 @@ var ViewsSection = {
       if (!ddoc) {
         return;
       }
-      var views = ddoc.json.views || (ddoc.json.views = {});
+      var key = isSpatial ? "spatial" : "views";
+      var views = ddoc.json[key] || (ddoc.json[key] = {});
       if (!views[viewName]) {
         return;
       }
@@ -1784,36 +1683,42 @@ var ViewsSection = {
                });
     }
   },
-  startRemoveView: function (pseudoLink) {
-    return unbuildViewPseudoLink(pseudoLink, this.doStartRemoveView, this);
+  startRemoveView: function (pseudoLink, isSpatial) {
+    return unbuildViewPseudoLink(pseudoLink, this.doStartRemoveView(isSpatial), this);
   },
-  doStartRemoveView: function (bucketName, ddocId, type, viewName) {
-    var self = this;
-    self.withBucketAndDDoc(bucketName, ddocId, function (ddocURL, ddoc) {
-      genericDialog({text: "Deleting this view will result in the index " +
-        "for this Design Document to be regenerated when next requested. " +
-        "Are you sure you want to delete this view from this Design Document?",
-                     callback: function (e, name, instance) {
-                       instance.close();
-                       if (name === 'ok') {
-                         performRemove();
-                       }
-                     }});
+  doStartRemoveView: function (isSpatial) {
+    return function (bucketName, ddocId, type, viewName) {
+      var viewTitle = isSpatial ? "Spatial Function" : "view";
+      var self = this;
+      self.withBucketAndDDoc(bucketName, ddocId, function (ddocURL, ddoc) {
+        genericDialog({text: "Deleting this " + viewTitle + " will result in the index " +
+          "for this Design Document to be regenerated when next requested. " +
+          "Are you sure you want to delete this " + viewTitle + " from this Design Document?",
+                       callback: function (e, name, instance) {
+                         instance.close();
+                         if (name === 'ok') {
+                           performRemove();
+                         }
+                       }});
 
-      function performRemove() {
-        self.allDDocsCell.setValue(undefined);
-        self.doRemoveView(ddocURL, viewName, function () {
-          self.allDDocsCell.recalculate();
-        });
-      }
-    });
+        function performRemove() {
+          self.allDDocsCell.setValue(undefined);
+          self.doRemoveView(ddocURL, viewName, function () {
+            self.allDDocsCell.recalculate();
+          }, isSpatial);
+        }
+      });
+    }
   },
-  startViewSaveAs: function () {
+  startSpatialSaveAs: function (e) {
+    return ViewsSection.startViewSaveAs(e, true);
+  },
+  startViewSaveAs: function (e, isSpatial) {
     var self = this;
     var dialog = $('#copy_view_dialog');
     var warning = dialog.find('.warning').hide();
 
-    self.rawForDoSaveAsView.getValue(function (args) {
+    self[isSpatial ? "rawForSpatialDoSaveAs" : "rawForDoSaveAsView" ].getValue(function (args) {
       begin.apply(self, args);
     });
 
@@ -1845,7 +1750,7 @@ var ViewsSection = {
 
     function startSaving(dbURL, ddoc, viewName, newDDocName, newViewName) {
       if (!newDDocName || !newViewName) {
-        warning.text('Both Design Document name and view name need to be specified').show();
+        warning.text('Both Design Document name and ' + (isSpatial ? 'Spatial Function' : 'view') + ' name need to be specified').show();
         return;
       }
 
@@ -1854,24 +1759,31 @@ var ViewsSection = {
 
       var newId = "_design/dev_" + newDDocName;
 
-      var mapCode = self.mapEditor.getValue();
-      var reduceCode = self.reduceEditor.getValue();
+      var mapCode = self[isSpatial ? "spatialEditor" : "mapEditor"].getValue();
+      var view;
+      if (!isSpatial) {
+        view = ddoc.json.views[viewName];
+        if (!view) {
+          BUG();
+        }
+        view = _.clone(view);
+        view.map = mapCode;
 
-      var view = ddoc.json.views[viewName];
-      if (!view) BUG();
-      view = _.clone(view);
-      view.map = mapCode;
-      if (reduceCode) {
-        view.reduce = reduceCode;
+        var reduceCode = self.reduceEditor.getValue();
+        if (reduceCode) {
+          view.reduce = reduceCode;
+        } else {
+          delete view.reduce;
+        }
       } else {
-        delete view.reduce;
+        view = mapCode
       }
 
       saveView(dbURL, newId, newViewName, view, ddoc.meta.id === newId && newViewName === viewName);
     }
 
     function saveView(dbURL, ddocId, viewName, view, sameDoc) {
-      return ViewsSection.doViewSave(dbURL, ddocId, viewName, view, callback);
+      return ViewsSection.doViewSave(dbURL, ddocId, viewName, view, callback, isSpatial);
 
       function callback(arg, error, reason, continueSaving) {
         if (arg === 'ok') {
@@ -1882,7 +1794,7 @@ var ViewsSection = {
           if (sameDoc) {
             return continueSaving();
           }
-          return genericDialog({text: "Please, confirm overwriting exiting view.",
+          return genericDialog({text: "Please, confirm overwriting exiting " + (isSpatial ? "Spatial Function" : "view") + ".",
                                 closeOnEscape: false,
                                 callback: function (e, name, instance) {
                                   if (name == 'ok') {
@@ -1916,7 +1828,7 @@ var ViewsSection = {
       spinner.remove();
       hideDialog(dialog);
       self.rawDDocIdCell.setValue(ddocId);
-      self.rawViewNameCell.setValue(viewName);
+      self[isSpatial ? "rawSpatialNameCell" : "rawViewNameCell"].setValue(viewName);
       self.allDDocsCell.recalculate();
     }
   },
@@ -1932,30 +1844,39 @@ var ViewsSection = {
       }
     });
   },
-  saveView: function () {
+  saveSpatial: function (e) {
+    return ViewsSection.saveView(e, true);
+  },
+  saveView: function (e, isSpatial) {
     var self = this;
     var dialog = $('#copy_view_dialog');
     var warning = dialog.find('.warning').hide();
 
-    self.rawForDoSaveView.getValue(function (args) {
+    self[!isSpatial ? "rawForDoSaveView" : "rawForSpatialDoSave"].getValue(function (args) {
       begin.apply(self, args);
     });
 
     return;
 
     function begin(dbURL, currentView, ddoc, viewName) {
-      var mapCode = self.mapEditor.getValue();
-      var reduceCode = self.reduceEditor.getValue();
-      var changed = (currentView.map !== mapCode) || ((currentView.reduce || "") !== reduceCode);
-
-      currentView = _.clone(currentView);
-      currentView.map = mapCode;
-      if (reduceCode) {
-        currentView.reduce = reduceCode;
+      var mapCode = self[isSpatial ? "spatialEditor" : "mapEditor"].getValue();
+      var changed;
+      if (!isSpatial) {
+        var reduceCode = self.reduceEditor.getValue();
+        changed = (currentView.map !== mapCode) || ((currentView.reduce || "") !== reduceCode);
+        currentView = _.clone(currentView);
+        currentView.map = mapCode;
+        if (reduceCode) {
+          currentView.reduce = reduceCode;
+        } else {
+          delete currentView.reduce;
+        }
       } else {
-        delete currentView.reduce;
+        changed = (currentView !== mapCode);
+        currentView = mapCode;
       }
-      return ViewsSection.doViewSave(dbURL, ddoc.meta.id, viewName, currentView, saveCallback);
+
+      return ViewsSection.doViewSave(dbURL, ddoc.meta.id, viewName, currentView, saveCallback, isSpatial);
 
       function saveCallback(status, error, reason, continueSaving) {
         if (error === 'confirm_views_limit' || error === 'already_exists') {
@@ -1963,7 +1884,7 @@ var ViewsSection = {
         }
 
         if (status !== "ok") {
-          $('#view_code_errors').text(reason).attr('title', reason);
+          $(!isSpatial ? '#view_code_errors' : "spatial_code_errors").text(reason).attr('title', reason);
         } else {
           self.allDDocsCell.recalculate();
         }
@@ -1971,12 +1892,16 @@ var ViewsSection = {
     }
   },
   startCreateSpatial: function (ddocId) {
+    return ViewsSection.startCreateView(ddocId, true);
+  },
+  startCreateView: function (ddocId, isSpatial) {
     var dbURL = ViewsSection.dbURLCell.value;
     if (!dbURL) {
       return;
     }
     var dialog = $('#copy_view_dialog');
     var warning = dialog.find('.warning').hide();
+    var title = isSpatial ? "Spatial Function" : "View";
     dialog.find('[name=designdoc_name], [name=view_name]').val('');
     var ddocNameInput = dialog.find('[name=designdoc_name]').need(1);
     ddocNameInput.prop('disabled', !!ddocId);
@@ -1984,23 +1909,37 @@ var ViewsSection = {
       ddocNameInput.val(this.cutOffDesignPrefix(ddocId));
     }
     showDialog(dialog, {
-      title: 'Create Development Spatial Function',
+      title: 'Create Development ' + title,
       closeOnEscape: false,
       eventBindings: [['.save_button', 'click', function (e) {
         e.preventDefault();
         startSaving(ddocNameInput.val(), dialog.find('[name=view_name]').val());
       }]]
     });
+    return;
 
-    function startSaving(ddocName, spatialName) {
-      if (!ddocName || !spatialName) {
-        warning.text("Design Document and Spatial Function names cannot be empty").show();
+    function startSaving(ddocName, viewName) {
+      if (!ddocName || !viewName) {
+        warning.text("Design Document and " + title + " names cannot be empty").show();
         return;
       }
-      // TODO: maybe other validation
       var modal = new ModalAction();
       var spinner = overlayWithSpinner(dialog);
-      ViewsSection.doSaveSpatial(dbURL, "_design/dev_" + ddocName, spatialName, false, function (status, error, reason) {
+      return ViewsSection.doViewSave(dbURL, "_design/dev_" + ddocName, viewName, undefined, saveCallback, isSpatial);
+
+      function saveCallback(status, error, reason, continueSaving) {
+        if (error == 'confirm_views_limit') {
+          return ViewsSection.displayViewsLimitConfirmation(function (e, name, instance) {
+            modal.finish();
+            instance.close();
+            if (name == 'ok') {
+              modal = new ModalAction();
+              return continueSaving();
+            }
+            spinner.remove();
+          });
+        }
+
         var closeDialog = false;
         if (status != "ok") {
           warning.text(reason);
@@ -2015,180 +1954,6 @@ var ViewsSection = {
           hideDialog(dialog);
           ViewsSection.allDDocsCell.recalculate();
           ViewsSection.modeTabs.setValue("development");
-        }
-      });
-    }
-  },
-  doRemoveSpatial: function (ddocURL, spatialName, callback) {
-    return begin();
-    function begin() {
-      couchGet(ddocURL, withDoc);
-    }
-    function withDoc(ddoc) {
-      if (!ddoc) {
-        return;
-      }
-      var spatial = ddoc.json.spatial || (ddoc.json.spatial = {});
-      if (!spatial[spatialName]) {
-        return;
-      }
-      delete spatial[spatialName];
-      couchReq('PUT',
-               ddocURL,
-               ddoc.json,
-               function () {
-                 callback();
-               },
-               function (error, status, unexpected) {
-                 if (status == 409) {
-                   return begin();
-                 }
-                 return unexpected();
-               });
-    }
-  },
-  startRemoveSpatial: function (pseudoLink) {
-    return unbuildViewPseudoLink(pseudoLink, this.doStartRemoveSpatial, this);
-  },
-  doStartRemoveSpatial: function (bucketName, ddocId, type, spatialName) {
-    var self = this;
-    self.withBucketAndDDoc(bucketName, ddocId, function (ddocURL, ddoc) {
-      genericDialog({text: "Deleting this Spatial Function will result in the index" +
-        "for this Design Document to be regenerated when next requested. " +
-        "Are you sure you want to delete this Spatial Function from this Design Document?",
-                     callback: function (e, name, instance) {
-                       instance.close();
-                       if (name === 'ok') {
-                         performRemove();
-                       }
-                     }});
-
-      function performRemove() {
-        self.allDDocsCell.setValue(undefined);
-        self.doRemoveSpatial(ddocURL, spatialName, function () {
-          self.allDDocsCell.recalculate();
-        });
-      }
-    });
-  },
-  startSpatialSaveAs: function () {
-    var self = this;
-    var dialog = $('#copy_view_dialog');
-    var warning = dialog.find('.warning').hide();
-
-    self.rawForSpatialDoSaveAs.getValue(function (args) {
-      begin.apply(self, args);
-    });
-
-    return;
-
-    function begin(dbURL, ddoc, spatialName) {
-      if (spatialName == null) {
-        return;
-      }
-
-      var form = dialog.find('form');
-
-      setFormValues(form, {
-        'designdoc_name': self.cutOffDesignPrefix(ddoc.meta.id),
-        'view_name': spatialName
-      });
-
-      showDialog(dialog, {
-        eventBindings: [['.save_button', 'click', function (e) {
-          e.preventDefault();
-          var params = $.deparam(serializeForm(form));
-          startSaving(dbURL, ddoc, spatialName, params['designdoc_name'], params['view_name']);
-        }]]
-      });
-    }
-
-    var spinner;
-    var modal;
-
-    function startSaving(dbURL, ddoc, spatialName, newDDocName, newSpatialName) {
-      if (!newDDocName || !newSpatialName) {
-        warning.text('Both Design Document name and Spatial Function name need to be specified').show();
-        return;
-      }
-
-      spinner = overlayWithSpinner(dialog);
-      modal = new ModalAction();
-
-      var newId = "_design/dev_" + newDDocName;
-      var spatialCode = self.spatialEditor.getValue();
-
-      doSaveSpatial(dbURL, newId, newSpatialName, spatialCode, ddoc.meta.id === newId && newSpatialName === spatialName);
-    }
-
-    function doSaveSpatial(dbURL, ddocId, spatialName, spatial, overwriteConfirmed) {
-      return ViewsSection.doSaveSpatial(dbURL, ddocId, spatialName, overwriteConfirmed, callback, spatial);
-
-      function callback(arg, error, reason) {
-        if (arg === "conflict") {
-          return confirmOverwrite(dbURL, ddocId, spatialName, spatial);
-        }
-
-        modal.finish();
-        spinner.remove();
-
-        if (arg == "error") {
-          warning.show().text(reason);
-        } else {
-          saveSucceeded(ddocId, spatialName);
-        }
-      }
-    }
-
-    function confirmOverwrite(dbURL, ddocId, spatialName, spatial) {
-      genericDialog({text: "Please, confirm overwriting exiting Spatial Function.",
-                     closeOnEscape: false,
-                     callback: function (e, name, instance) {
-                       if (name == 'ok') {
-                         return doSaveSpatial(dbURL, ddocId, spatialName, spatial, true);
-                       }
-                       modal.finish();
-                       spinner.remove();
-                     }});
-    }
-
-    function saveSucceeded(ddocId, spatialName) {
-      hideDialog(dialog);
-      self.rawDDocIdCell.setValue(ddocId);
-      self.rawSpatialNameCell.setValue(spatialName);
-      self.allDDocsCell.recalculate();
-    }
-  },
-
-  saveSpatial: function () {
-    var self = this;
-    var dialog = $('#copy_view_dialog');
-    var warning = dialog.find('.warning').hide();
-
-    self.rawForSpatialDoSave.getValue(function (args) {
-      begin.apply(self, args);
-    });
-
-    return;
-
-    function begin(dbURL, currentSpatial, ddoc, spatialName) {
-      var spatialCode = self.spatialEditor.getValue();
-      var changed = (currentSpatial !== spatialCode);
-
-      currentSpatial = _.clone(currentSpatial);
-      currentSpatial = spatialCode;
-      return ViewsSection.doSaveSpatial(dbURL, ddoc.meta.id, spatialName, true,
-        saveCallback, currentSpatial);
-
-      function saveCallback(status, error, reason, continueSaving) {
-        if (error === 'confirm_views_limit' || error === 'already_exists') {
-          return continueSaving();
-        }
-
-        if (status !== "ok") {
-          $('#spatial_code_errors').text(reason).attr('title', reason);
-        } else {
-          self.allDDocsCell.recalculate();
         }
       }
     }
