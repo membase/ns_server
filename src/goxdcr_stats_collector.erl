@@ -34,7 +34,13 @@ init(Bucket) ->
 grab_stats(Bucket) ->
     case cluster_compat_mode:is_goxdcr_enabled() of
         true ->
-            goxdcr_rest:stats(Bucket);
+            Stats = goxdcr_rest:stats(Bucket),
+            case Stats of
+                [] ->
+                    empty_stats;
+                _ ->
+                    Stats
+            end;
         false ->
             []
     end.

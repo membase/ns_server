@@ -87,6 +87,8 @@ handle_info({tick, TS0}, #state{module = Module,
     case Count of
         0 ->
             try Module:grab_stats(ImplState) of
+                empty_stats ->
+                    {noreply, State#state{count = NewCount}};
                 GrabbedStats ->
                     TS = latest_tick(TS0, Module, 0),
                     {Stats, NewCounters, NewImplState} =

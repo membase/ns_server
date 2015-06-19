@@ -1480,38 +1480,42 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                          {name,<<"xdc_ops">>},
                          {desc,<<"Incoming XDCR operations per second for this bucket "
                                  "(measured from xdc_ops)">>}]},
-                {struct,[{title,<<"outbound XDCR mutations">>},
-                         {name,<<"replication_changes_left">>},
-                         {desc,<<"Number of mutations to be replicated to other clusters"
-                                 "(measured from replication_changes_left)">>}]},
                 {struct,[{title,<<"intra-replication queue">>},
                          {name,<<"ep_dcp_replica_items_remaining">>},
                          {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]}
-                | (case AddQuery of
+                | (case display_outbound_xdcr_mutations(BucketId) of
                        true ->
-                           [{struct,[{title,<<"N1QL queries/sec">>},
-                                     {name, <<"query_requests">>},
-                                     {desc, <<"Number of N1QL requests processed per second">>}]}];
-                       _ -> []
-                   end ++ case AddIndex of
-                              false ->
-                                  [];
-                              _ ->
-                                  [{struct, [{isBytes, true},
-                                             {title, <<"index data size">>},
-                                             {name, global_index_stat(<<"data_size">>)},
-                                             {desc, <<"Actual data size consumed by the index">>}]},
-                                   {struct, [{title, <<"index disk size">>},
-                                             {name, global_index_stat(<<"disk_size">>)},
-                                             {desc, <<"Total disk file size consumed by the index">>},
-                                             {isBytes, true}]},
-                                   {struct, [{title, <<"index fragmentation %">>},
-                                             {name, global_index_stat(<<"fragmentation">>)},
-                                             {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less than a hundred kB, the static overhead of the index disk file will inflate the index fragmentation percentage">>}]},
-                                   {struct, [{title, <<"index scanned/sec">>},
-                                             {name, global_index_stat(<<"num_rows_returned">>)},
-                                             {desc, <<"Number of index items scanned by the indexer per second">>}]}]
-                          end)
+                           [{struct,[{title,<<"outbound XDCR mutations">>},
+                                     {name,<<"replication_changes_left">>},
+                                     {desc,<<"Number of mutations to be replicated to other clusters"
+                                             "(measured from replication_changes_left)">>}]}];
+                       false ->
+                           []
+                   end ++ case AddQuery of
+                              true ->
+                                  [{struct,[{title,<<"N1QL queries/sec">>},
+                                            {name, <<"query_requests">>},
+                                            {desc, <<"Number of N1QL requests processed per second">>}]}];
+                              _ -> []
+                          end ++ case AddIndex of
+                                     false ->
+                                         [];
+                                     _ ->
+                                         [{struct, [{isBytes, true},
+                                                    {title, <<"index data size">>},
+                                                    {name, global_index_stat(<<"data_size">>)},
+                                                    {desc, <<"Actual data size consumed by the index">>}]},
+                                          {struct, [{title, <<"index disk size">>},
+                                                    {name, global_index_stat(<<"disk_size">>)},
+                                                    {desc, <<"Total disk file size consumed by the index">>},
+                                                    {isBytes, true}]},
+                                          {struct, [{title, <<"index fragmentation %">>},
+                                                    {name, global_index_stat(<<"fragmentation">>)},
+                                                    {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less than a hundred kB, the static overhead of the index disk file will inflate the index fragmentation percentage">>}]},
+                                          {struct, [{title, <<"index scanned/sec">>},
+                                                    {name, global_index_stat(<<"num_rows_returned">>)},
+                                                    {desc, <<"Number of index items scanned by the indexer per second">>}]}]
+                                 end)
                ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
@@ -1853,6 +1857,13 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                                 {desc,<<"Total XDCR operations per second for this bucket "
                                         "(measured from xdc_ops)">>}]}]}]}].
 
+display_outbound_xdcr_mutations(BucketID) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        true ->
+            goxdcr_status_keeper:get_replications(BucketID) =/= [];
+        false ->
+            true
+    end.
 
 memcached_stats_description() ->
     [{struct,[{blockName,<<"Memcached">>},
