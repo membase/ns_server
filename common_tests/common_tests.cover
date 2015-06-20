@@ -1,3 +1,0 @@
-{levels, details}.
-{incl_dirs_r, ["ebin"]}.
-{excl_mods, [misc, ns_server.app]}.
