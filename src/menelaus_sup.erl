@@ -24,7 +24,9 @@
 -define(START_FAIL, 2).
 
 %% External exports
--export([start_link/0]).
+-export([start_link/0,
+         barrier_spec/1, barrier_notify_spec/1,
+         barrier_start_link/0, barrier_notify/0, barrier_wait/0]).
 
 %% supervisor callbacks
 -export([init/1]).
@@ -55,6 +57,24 @@ start_link() ->
                       [Port, node(), Port])
     end,
     Result.
+
+barrier_spec(Id) ->
+    {Id, {menelaus_sup, barrier_start_link, []},
+     temporary, 1000, worker, [one_shot_barrier]}.
+
+barrier_notify_spec(Id) ->
+    {Id, {menelaus_sup, barrier_notify, []},
+     temporary, 1000, worker, [menelaus_sup]}.
+
+barrier_start_link() ->
+    one_shot_barrier:start_link(menelaus_barrier).
+
+barrier_notify() ->
+    ok = one_shot_barrier:notify(menelaus_barrier),
+    ignore.
+
+barrier_wait() ->
+    ok = one_shot_barrier:wait(menelaus_barrier).
 
 %% @spec init([]) -> SupervisorTree
 %% @doc supervisor callback.

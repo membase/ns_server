@@ -144,6 +144,8 @@ webconfig() ->
     webconfig(ns_config:get()).
 
 loop(Req, AppRoot) ->
+    ok = menelaus_sup:barrier_wait(),
+
     random:seed(os:timestamp()),
 
     try

@@ -267,5 +267,4 @@ child_specs() ->
       permanent, infinity, supervisor, []},
 
      {remote_api, {remote_api, start_link, []},
-      permanent, 1000, worker, [remote_api]}
-    ].
+      permanent, 1000, worker, [remote_api]}].
