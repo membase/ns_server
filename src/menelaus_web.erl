@@ -106,7 +106,7 @@ start_link(Options) ->
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, AppRoot)
            end,
-    case mochiweb_http:start([{loop, Loop} | Options1]) of
+    case mochiweb_http:start_link([{loop, Loop} | Options1]) of
         {ok, Pid} -> {ok, Pid};
         Other ->
             ?MENELAUS_WEB_LOG(?START_FAIL,
