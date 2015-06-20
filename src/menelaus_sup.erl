@@ -67,14 +67,28 @@ barrier_notify_spec(Id) ->
      temporary, 1000, worker, [menelaus_sup]}.
 
 barrier_start_link() ->
-    one_shot_barrier:start_link(menelaus_barrier).
+    when_barrier_enabled(
+      fun () ->
+              one_shot_barrier:start_link(menelaus_barrier)
+      end).
 
 barrier_notify() ->
-    ok = one_shot_barrier:notify(menelaus_barrier),
-    ignore.
+    when_barrier_enabled(
+      fun () ->
+              ok = one_shot_barrier:notify(menelaus_barrier),
+              ignore
+      end).
 
 barrier_wait() ->
     ok = one_shot_barrier:wait(menelaus_barrier).
+
+when_barrier_enabled(Fun) ->
+    case ns_config:read_key_fast(menelaus_barrier_disabled, false) of
+        true ->
+            ignore;
+        false ->
+            Fun()
+    end.
 
 %% @spec init([]) -> SupervisorTree
 %% @doc supervisor callback.
