@@ -10,7 +10,7 @@ IF (NOT EXISTS "${COUCHBASE_PLT}")
     ${_couchdb_bin_dir}/src/snappy ${_couchdb_bin_dir}/src/etap
     # MISSING?  ${_couchdb_bin_dir}/src/ibrowse
     ${_couchdb_bin_dir}/src/lhttpc
-    ${_couchdb_bin_dir}/src/erlang-oauth deps/erlwsh/ebin deps/gen_smtp/ebin)
+    ${_couchdb_bin_dir}/src/erlang-oauth deps/gen_smtp/ebin)
 
   EXECUTE_PROCESS (COMMAND dialyzer --output_plt "${COUCHBASE_PLT}" --build_plt
     --apps compiler crypto erts inets kernel os_mon sasl ssl stdlib xmerl
@@ -18,7 +18,7 @@ IF (NOT EXISTS "${COUCHBASE_PLT}")
     ${_couchdb_bin_dir}/src/snappy ${_couchdb_bin_dir}/src/etap
     # MISSING?  ${_couchdb_bin_dir}/src/ibrowse
     ${_couchdb_bin_dir}/src/lhttpc
-    ${_couchdb_bin_dir}/src/erlang-oauth deps/erlwsh/ebin deps/gen_smtp/ebin)
+    ${_couchdb_bin_dir}/src/erlang-oauth deps/gen_smtp/ebin)
 ENDIF (NOT EXISTS "${COUCHBASE_PLT}")
 
 # Compute list of .beam files

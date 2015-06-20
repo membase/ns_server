@@ -362,8 +362,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun diag_handler:handle_sasl_logs/1, []};
                          ["sasl_logs", LogName] ->
                              {auth, fun diag_handler:handle_sasl_logs/2, [LogName]};
-                         ["erlwsh" | _] ->
-                             {auth, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end, []};
                          ["images" | _] ->
                              {done, menelaus_util:serve_file(Req, Path, AppRoot,
                                                              [{"Cache-Control", "max-age=30000000"}])};
@@ -544,8 +542,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                                                         reply_ok(R, "text/plain", [])
                                                 end};
                          ["diag", "eval"] -> {auth, fun handle_diag_eval/1};
-                         ["erlwsh" | _] ->
-                             {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
                          _ ->
                              ?MENELAUS_WEB_LOG(0001, "Invalid post received: ~p", [Req]),
