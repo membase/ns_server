@@ -1080,8 +1080,8 @@ var EmailAlertsSection = {
                              val.alerts)!==-1,
           value: 'auto_failover_other_nodes_down'
         },{
-          label: 'Node wasn\'t auto-failed-over as the cluster ' +
-            'was too small (less than 3 nodes)',
+          label: 'Node was not auto-failed-over as there are not enough ' +
+            'nodes in the cluster running the same service',
           enabled: $.inArray('auto_failover_cluster_too_small',
                              val.alerts)!==-1,
           value: 'auto_failover_cluster_too_small'

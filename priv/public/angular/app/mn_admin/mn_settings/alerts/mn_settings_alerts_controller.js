@@ -41,7 +41,7 @@ angular.module('mnSettingsAlerts').controller('mnSettingsAlertsController',
       case knownAlerts[0]: return 'Node was auto-failed-over';
       case knownAlerts[1]: return 'Maximum number of auto-failed-over nodes was reached';
       case knownAlerts[2]: return 'Node wasn\'t auto-failed-over as other nodes are down at the same time';
-      case knownAlerts[3]: return 'Node wasn\'t auto-failed-over as the cluster was too small (less than 3 nodes)';
+      case knownAlerts[3]: return 'Node was not auto-failed-over as there are not enough nodes in the cluster running the same service';
       case knownAlerts[4]: return 'Node\'s IP address has changed unexpectedly';
       case knownAlerts[5]: return 'Disk space used for persistent storage has reached at least 90% of capacity';
       case knownAlerts[6]: return 'Metadata overhead is more than 50%';
