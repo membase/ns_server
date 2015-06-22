@@ -21,7 +21,7 @@
 
 -include("ns_common.hrl").
 
--behaviour(supervisor).
+-behaviour(supervisor2).
 
 %% API
 -export([start_link/0, start_couchdb_node/0]).

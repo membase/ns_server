@@ -15,7 +15,7 @@
 %%
 -module(ns_server_sup).
 
--behaviour(supervisor).
+-behaviour(supervisor2).
 
 -include("ns_common.hrl").
 
