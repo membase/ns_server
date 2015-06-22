@@ -1591,7 +1591,9 @@
                 </td>
                 <td colspan="3" class="when-roadmin-hide-me">
                   <a class="list_button when-in-prod casper_views_copy_to_dev" href="#copyDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Copy to Dev</span></a>
+                  <!--{% if (!(ddoc.json.spatial && ddoc.json.views && !_.isEmpty(ddoc.json.spatial) && !_.isEmpty(ddoc.json.views))) { %}-->
                   <a class="list_button when-in-dev {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
+                  <!-- {% } %} -->
                   <!--{% if (ddoc.json.views && !_.isEmpty(ddoc.json.views) &&  (!ddoc.json.spatial || _.isEmpty(ddoc.json.spatial)) ) { %}-->
                   <a class="list_button when-in-dev casper_views_add_view_popup" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
                   <!-- {% } %} -->
