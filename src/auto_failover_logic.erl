@@ -39,8 +39,8 @@
           name :: term(),
           down_counter = 0 :: non_neg_integer(),
           state :: removed|new|half_down|nearly_down|failover|up,
-          % Whether are down_warning for this node was already
-          % mailed or not
+          %% Whether are down_warning for this node was already
+          %% mailed or not
           mailed_down_warning = false :: boolean()
          }).
 
@@ -161,20 +161,20 @@ process_frame(Nodes, DownNodes, State, SvcConfig) ->
             Else ->
                 case HasNearlyDown of
                     true ->
-                        % Return separate events for all nodes that are down,
-                        % which haven't been sent already.
+                        %% Return separate events for all nodes that are down,
+                        %% which haven't been sent already.
                         {Actions2, DownStates3} = lists:foldl(
-                          fun (#node_state{state = nearly_down,
-                                           name = Node,
-                                           mailed_down_warning = false}=S,
-                               {Warnings, DS}) ->
-                                  {[{mail_down_warning, Node}|Warnings],
-                                   [S#node_state{mailed_down_warning = true}|DS]};
-                              %% Warning was already sent
-                              (S, {Warnings, DS}) ->
-                                  {Warnings, [S|DS]}
-                          end, {[], []}, Else),
-                          {lists:reverse(Actions2), lists:reverse(DownStates3)};
+                                                    fun (#node_state{state = nearly_down,
+                                                                     name = Node,
+                                                                     mailed_down_warning = false}=S,
+                                                         {Warnings, DS}) ->
+                                                            {[{mail_down_warning, Node}|Warnings],
+                                                             [S#node_state{mailed_down_warning = true}|DS]};
+                                                        %% Warning was already sent
+                                                        (S, {Warnings, DS}) ->
+                                                            {Warnings, [S|DS]}
+                                                    end, {[], []}, Else),
+                        {lists:reverse(Actions2), lists:reverse(DownStates3)};
                     _ ->
                         {[], DownStates}
                 end

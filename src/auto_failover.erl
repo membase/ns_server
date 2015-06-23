@@ -57,12 +57,12 @@
 
 -record(state, {
           auto_failover_logic_state,
-          % Reference to the ns_tick_event. If it is nil, auto-failover is
-          % disabled.
+          %% Reference to the ns_tick_event. If it is nil, auto-failover is
+          %% disabled.
           tick_ref=nil :: nil | timer:tref(),
-          % Time a node needs to be down until it is automatically failovered
+          %% Time a node needs to be down until it is automatically failovered
           timeout=nil :: nil | integer(),
-          % Counts the number of nodes that were already auto-failovered
+          %% Counts the number of nodes that were already auto-failovered
           count=0 :: non_neg_integer(),
 
           %% Whether we reported to the user autofailover_unsafe condition
@@ -346,7 +346,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc Returns a list of nodes that should be active, but are not running.
 -spec actual_down_nodes(dict(), [atom()], [{atom(), term()}]) -> [atom()].
 actual_down_nodes(NodesDict, NonPendingNodes, Config) ->
-    % Get all buckets
+    %% Get all buckets
     BucketConfigs = ns_bucket:get_buckets(Config),
     actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, erlang:now()).
 
@@ -376,9 +376,9 @@ actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, Now) ->
 -spec make_state_persistent(State::#state{}) -> ok.
 make_state_persistent(State) ->
     Enabled = case State#state.tick_ref of
-        nil -> false;
-        _ -> true
-    end,
+                  nil -> false;
+                  _ -> true
+              end,
     ns_config:set(auto_failover_cfg,
                   [{enabled, Enabled},
                    {timeout, State#state.timeout},
