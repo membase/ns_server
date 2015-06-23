@@ -168,8 +168,8 @@ build_node_info(N, User, Config) ->
        erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_pass))},
       {ports, [Port || {_Key, Port} <- Services]}] ++ Local}.
 
-build_buckets_info() ->
-    Buckets = ns_bucket:get_buckets(),
+build_buckets_info(Config) ->
+    Buckets = ns_bucket:get_buckets(Config),
     lists:map(fun ({BucketName, BucketProps}) ->
                       {[{name, erlang:list_to_binary(BucketName)},
                         {password,
@@ -181,8 +181,8 @@ build_buckets_info() ->
                          end}]}
               end, Buckets).
 
-build_cred_info(Name, Role) ->
-    case ns_config_auth:get_creds(Role) of
+build_cred_info(Config, Name, Role) ->
+    case ns_config_auth:get_creds(Config, Role) of
         {User, Salt, Mac} ->
             [{Name, {[{user, erlang:list_to_binary(User)},
                       {salt, base64:encode(Salt)},
@@ -200,14 +200,14 @@ build_auth_info() ->
                                     Info ->
                                         [Info | Acc]
                                 end
-                        end, [], ns_node_disco:nodes_wanted()),
+                        end, [], ns_node_disco:nodes_wanted(Config)),
 
     TokenURL = io_lib:format("http://127.0.0.1:~w/_cbauth", [misc:node_rest_port(Config, node())]),
 
     [{nodes, Nodes},
-     {buckets, build_buckets_info()},
+     {buckets, build_buckets_info(Config)},
      {tokenCheckURL, iolist_to_binary(TokenURL)}
-     | (build_cred_info(admin, admin) ++ build_cred_info(roAdmin, ro_admin))].
+     | (build_cred_info(Config, admin, admin) ++ build_cred_info(Config, roAdmin, ro_admin))].
 
 handle_cbauth_post(Req) ->
     Role = menelaus_auth:get_role(Req),

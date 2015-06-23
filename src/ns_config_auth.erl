@@ -26,7 +26,7 @@
          credentials_changed/3,
          unset_credentials/1,
          upgrade/1,
-         get_creds/1,
+         get_creds/2,
          is_system_provisioned/0]).
 
 get_key(admin) ->
@@ -97,8 +97,8 @@ get_user_old(ro_admin) ->
 get_password(special) ->
     ns_config:search_node_prop('latest-config-marker', memcached, admin_pass).
 
-get_creds(Role) ->
-    case ns_config:search(get_key(Role)) of
+get_creds(Config, Role) ->
+    case ns_config:search(Config, get_key(Role)) of
         {value, {User, {password, {Salt, Mac}}}} ->
             {User, Salt, Mac};
         _ ->
