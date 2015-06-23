@@ -302,19 +302,19 @@ process_frame_no_action(Times, Nodes, DownNodes, State, SvcConfig) ->
     {[], NewState} = process_frame(Nodes, DownNodes, State, SvcConfig),
     process_frame_no_action(Times-1, Nodes, DownNodes, NewState, SvcConfig).
 
-build_svc_config([], _, _, Acc) ->
-    Acc;
-build_svc_config([Service | Rest], AutoFailoverDisabled, Nodes, Acc) ->
-    PerSvcCfg = {Service, {{disable_auto_failover, AutoFailoverDisabled},
-                           {nodes, Nodes}}},
-    build_svc_config(Rest, AutoFailoverDisabled, Nodes, [PerSvcCfg | Acc]).
+build_svc_config(AllServices, AutoFailoverDisabled, Nodes) ->
+    lists:map(
+      fun (Service) ->
+              {Service, {{disable_auto_failover, AutoFailoverDisabled},
+                         {nodes, Nodes}}}
+      end, AllServices).
 
 attach_uuid(Nodes) ->
     lists:map(fun(X) -> {X, list_to_binary(atom_to_list(X))} end, Nodes).
 
 basic_kv_1_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode = attach_uuid([b]),
     {[], State1} = process_frame(Nodes, [], State0, SvcConfig),
@@ -324,7 +324,7 @@ basic_kv_1_test() ->
 
 basic_kv_2_test() ->
     State0 = init_state(4+?DOWN_GRACE_PERIOD),
-    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode = attach_uuid([b]),
     {[], State1} = process_frame(Nodes, DownNode, State0, SvcConfig),
@@ -334,7 +334,7 @@ basic_kv_2_test() ->
 
 min_size_test_body(Threshold) ->
     State0 = init_state(Threshold+?DOWN_GRACE_PERIOD),
-    SvcConfig = build_svc_config([kv], false, [a,b], []),
+    SvcConfig = build_svc_config([kv], false, [a,b]),
     Nodes = attach_uuid([a,b]),
     DownNode = attach_uuid([b]),
     {[], State1} = process_frame(Nodes, DownNode, State0, SvcConfig),
@@ -349,7 +349,7 @@ min_size_test() ->
 
 min_size_and_increasing_test() ->
     State = min_size_test_body(2),
-    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode = attach_uuid([b]),
     State2 = process_frame_no_action(3, Nodes, DownNode, State, SvcConfig),
@@ -358,7 +358,7 @@ min_size_and_increasing_test() ->
 
 other_down_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode1 = attach_uuid([b]),
     {[], State1} = process_frame(Nodes, DownNode1, State0, SvcConfig),
@@ -374,7 +374,7 @@ other_down_test() ->
 
 two_down_at_same_time_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    SvcConfig = build_svc_config([kv], false, [a,b,c,d], []),
+    SvcConfig = build_svc_config([kv], false, [a,b,c,d]),
     Nodes = attach_uuid([a,b,c,d]),
     DownNode2 = attach_uuid([b, c]),
     State1 = process_frame_no_action(2, Nodes, DownNode2, State0, SvcConfig),
@@ -384,7 +384,7 @@ two_down_at_same_time_test() ->
 
 multiple_mail_down_warning_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode1 = attach_uuid([b]),
     {[], State1} = process_frame(Nodes, DownNode1, State0, SvcConfig),
@@ -399,7 +399,7 @@ multiple_mail_down_warning_test() ->
 %% Test if mail_down_warning is sent again if node was up in between
 mail_down_warning_down_up_down_test() ->
     State0 = init_state(3+?DOWN_GRACE_PERIOD),
-    SvcConfig = build_svc_config([kv], false, [a,b,c], []),
+    SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode1 = attach_uuid([b]),
     {[], State1} = process_frame(Nodes, DownNode1, State0, SvcConfig),

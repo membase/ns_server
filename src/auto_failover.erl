@@ -411,20 +411,17 @@ update_reported_flags_by_actions(Actions, State) ->
 all_services_config(Config) ->
     %% Get list of all supported services
     AllServices = ns_cluster_membership:supported_services(),
-    per_service_config(AllServices, Config, []).
-
-per_service_config([], _, Acc) ->
-    Acc;
-per_service_config([Service | Rest], Config, Acc) ->
-    %% Get list of all nodes running the service.
-    SvcNodes = ns_cluster_membership:service_active_nodes(Config, Service, all),
-
-    %% Is auto-failover for the service disabled?
-    ServiceKey = {auto_failover_disabled, Service},
-    AutoFailoverDisabled = ns_config:search(Config, ServiceKey, false),
-    PerServiceConfig = {Service, {{disable_auto_failover, AutoFailoverDisabled},
-                                  {nodes, SvcNodes}}},
-    per_service_config(Rest, Config, [PerServiceConfig | Acc]).
+    lists:map(
+      fun (Service) ->
+              %% Get list of all nodes running the service.
+              SvcNodes = ns_cluster_membership:service_active_nodes(Config,
+                                                                    Service, all),
+              %% Is auto-failover for the service disabled?
+              ServiceKey = {auto_failover_disabled, Service},
+              AutoFailoverDisabled = ns_config:search(Config, ServiceKey, false),
+              {Service, {{disable_auto_failover, AutoFailoverDisabled},
+                         {nodes, SvcNodes}}}
+      end, AllServices).
 
 attach_node_uuids(Nodes, UUIDDict) ->
     lists:map(
