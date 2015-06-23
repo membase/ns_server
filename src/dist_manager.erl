@@ -29,6 +29,9 @@
 -export([adjust_my_address/3, read_address_config/0, save_address_config/1,
          ip_config_path/0, using_user_supplied_address/0, reset_address/0]).
 
+%% used by babysitter and ns_couchdb
+-export([configure_net_kernel/0]).
+
 -record(state, {self_started,
                 user_supplied,
                 my_ip}).
@@ -205,6 +208,8 @@ bringup(MyIP, UserSupplied) ->
     Rv = decode_status(net_kernel:start([MyNodeName, longnames])),
     net_kernel:set_net_ticktime(misc:get_env_default(set_net_ticktime, 60)),
 
+    ok = configure_net_kernel(),
+
     erlang:set_cookie(ns_node_disco:couchdb_node(), ns_server:get_babysitter_cookie()),
 
     %% Rv can be false in case -name has been passed to erl but we still need
@@ -214,6 +219,12 @@ bringup(MyIP, UserSupplied) ->
     ?log_debug("Attempted to save node name to disk: ~p", [RN]),
 
     #state{self_started = Rv, my_ip = MyIP, user_supplied = UserSupplied}.
+
+configure_net_kernel() ->
+    Verbosity = misc:get_env_default(ns_server, net_kernel_verbosity, 0),
+    RV = net_kernel:verbose(Verbosity),
+    ?log_debug("Set net_kernel vebosity to ~p -> ~p", [Verbosity, RV]),
+    ok.
 
 %% Tear down distributed erlang.
 teardown() ->

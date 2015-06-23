@@ -40,6 +40,9 @@ start(_StartType, _StartArgs) ->
     application:start(ale),
     setup_env(),
     init_logging(),
+
+    ok = dist_manager:configure_net_kernel(),
+
     ?log_info("CouchDB node ~p was initialized for ~p. Cookie: ~p",
               [node(), ns_node_disco:ns_server_node(), erlang:get_cookie()]),
     ns_couchdb_sup:start_link().

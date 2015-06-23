@@ -34,3 +34,5 @@
  [{rotation, [{compress, false},
               {size, 83886080},
               {num_files, 5}]}]}.
+
+{net_kernel_verbosity, 0}.

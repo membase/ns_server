@@ -37,6 +37,8 @@ start(_, _) ->
 
     {have_host, true} = {have_host, ('nonode@nohost' =/= node())},
 
+    ok = dist_manager:configure_net_kernel(),
+
     Cookie =
         case erlang:get_cookie() of
             nocookie ->
