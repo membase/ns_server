@@ -476,11 +476,11 @@ def make_product_task(guts, initargs_path, options):
                  log_file="ini.log"),
 
         AllOsTask("couchbase diags",
-                  ["curl", "-sS",
+                  ["curl", "-sS", "--proxy", "",
                    "-u", '%s:%s' % ("@", read_guts(guts, "memcached_pass")),
                    diag_url],
                   log_file="diag.log",
-                  command_to_print="curl -sS -u %s:***** %s" % (read_guts(guts, "rest_user"), diag_url)),
+                  command_to_print="curl -sS --proxy '' -u %s:***** %s" % (read_guts(guts, "rest_user"), diag_url)),
 
         [AllOsTask("couchbase logs (%s)" % name, "cbbrowse_logs %s" % name,
                    addenv = [("REPORT_DIR", read_guts(guts, "log_path"))],

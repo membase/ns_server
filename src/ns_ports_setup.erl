@@ -242,7 +242,8 @@ do_per_bucket_moxi_specs(Config) ->
                                                    ""),
                       Opts = [use_stdio, stderr_to_stdout,
                               {env, [{"MOXI_SASL_PLAIN_USR", BucketName},
-                                     {"MOXI_SASL_PLAIN_PWD", Passwd}]}],
+                                     {"MOXI_SASL_PLAIN_PWD", Passwd},
+                                     {"http_proxy", ""}]}],
                       [{{moxi, BucketName}, Command, Args, Opts}|Acc]
               end
       end, [], BucketConfigs).
@@ -515,7 +516,8 @@ do_moxi_spec(Config) ->
             ],
             [{env, [{"EVENT_NOSELECT", "1"},
                     {"MOXI_SASL_PLAIN_USR", {"~s", [{ns_moxi_sup, rest_user, []}]}},
-                    {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}}
+                    {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}},
+                    {"http_proxy", ""}
                    ]},
              use_stdio, exit_status,
              stderr_to_stdout,
