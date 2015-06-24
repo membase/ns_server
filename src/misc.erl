@@ -1786,8 +1786,8 @@ do_binary_rchr(Binary, Chr, Ix) ->
 eval(Str,Binding) ->
     {ok,Ts,_} = erl_scan:string(Str),
     Ts1 = case lists:reverse(Ts) of
-	      [{dot,_}|_] -> Ts;
-	      TsR -> lists:reverse([{dot,1} | TsR])
-	  end,
+              [{dot,_}|_] -> Ts;
+              TsR -> lists:reverse([{dot,1} | TsR])
+          end,
     {ok,Expr} = erl_parse:parse_exprs(Ts1),
     erl_eval:exprs(Expr, Binding).
