@@ -2,7 +2,7 @@
 
 -include("ns_common.hrl").
 
--export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
+-export([start/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
          restart_xdcr_proxy/0, sync/0, create_erl_node_spec/4,
          create_goxdcr_upgrade_spec/1]).
@@ -452,26 +452,6 @@ format(Config, Name, Format, Keys) ->
                            (Key) -> ns_config:search_node_prop(Config, Name, Key)
                        end, Keys),
     lists:flatten(io_lib:format(Format, Values)).
-
-start_memcached_force_killer() ->
-    misc:start_event_link(
-      fun () ->
-              CurrentMembership = ns_cluster_membership:get_cluster_membership(node()),
-              ns_pubsub:subscribe_link(ns_config_events, fun memcached_force_killer_fn/2, CurrentMembership)
-      end).
-
-memcached_force_killer_fn({{node, Node, membership}, NewMembership}, PrevMembership) when Node =:= node() ->
-    case NewMembership =:= inactiveFailed andalso PrevMembership =/= inactiveFailed of
-        false ->
-            ok;
-        _ ->
-            RV = ns_ports_manager:send_command(ns_server:get_babysitter_node(), memcached, <<"die!\n">>),
-            ?log_info("Sent force death command to own memcached: ~p", [RV])
-    end,
-    NewMembership;
-
-memcached_force_killer_fn(_, State) ->
-    State.
 
 run_via_goport(Specs) ->
     lists:map(fun do_run_via_goport/1, Specs).
