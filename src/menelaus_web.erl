@@ -2912,7 +2912,7 @@ average_failover_safenesses_rec(Node, NodeInfos, [{BucketName, BucketConfig} | R
     average_failover_safenesses_rec(Node, NodeInfos, RestBuckets, Sum + Level, Count + 1).
 
 handle_diag_eval(Req) ->
-    {value, Value, _} = eshell:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding('Req', Req, erl_eval:new_bindings())),
+    {value, Value, _} = misc:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding('Req', Req, erl_eval:new_bindings())),
     case Value of
         done ->
             ok;

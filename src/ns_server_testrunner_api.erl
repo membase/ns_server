@@ -20,7 +20,7 @@ kill_memcached(Timeout) ->
     end.
 
 eval_string(String) ->
-    {value, Value, _} = eshell:eval(String, erl_eval:new_bindings()),
+    {value, Value, _} = misc:eval(String, erl_eval:new_bindings()),
     Value.
 
 %% without this API we're forced to rpc call into erlang:apply and
