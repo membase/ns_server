@@ -44,16 +44,34 @@
           mailed_down_warning = false :: boolean()
          }).
 
+-record(service_state, {
+          name :: term(),
+          %% List of nodes running this service when the "too small cluster"
+          %% event was generated.
+          mailed_too_small_cluster :: list(),
+          %% Have we already logged the auto_failover_disabled message
+          %% for this service?
+          logged_auto_failover_disabled = false :: boolean()
+         }).
+
 -record(state, {
           nodes_states :: [#node_state{}],
-          mailed_too_small_cluster :: list(),
+          services_state :: [#service_state{}],
           down_threshold :: pos_integer()
          }).
 
 init_state(DownThreshold) ->
     #state{nodes_states = [],
-           mailed_too_small_cluster = [],
+           services_state = init_services_state(),
            down_threshold = DownThreshold - 1 - ?DOWN_GRACE_PERIOD}.
+
+init_services_state() ->
+    lists:map(
+      fun (Service) ->
+              #service_state{name = Service,
+                             mailed_too_small_cluster = [],
+                             logged_auto_failover_disabled = false}
+      end, ns_cluster_membership:supported_services()).
 
 fold_matching_nodes([], NodeStates, Fun, Acc) ->
     lists:foldl(fun (S, A) ->
@@ -181,10 +199,8 @@ process_frame(Nodes, DownNodes, State, SvcConfig) ->
         end,
     NewState = State#state{
                  nodes_states = lists:umerge(UpStates, DownStates2),
-                 mailed_too_small_cluster = case Actions of
-                                                [{mail_too_small, _, SvcNodes, _}] -> SvcNodes;
-                                                _ -> State#state.mailed_too_small_cluster
-                                            end
+                 services_state = update_services_state(Actions,
+                                                        State#state.services_state)
                 },
     case Actions of
         [] -> ok;
@@ -192,6 +208,36 @@ process_frame(Nodes, DownNodes, State, SvcConfig) ->
             ?log_debug("Decided on following actions: ~p", [Actions])
     end,
     {Actions, NewState}.
+
+%% Update mailed_too_small_cluster state
+%% At any time, only one node can have mail_too_small Action.
+update_services_state([{mail_too_small, Svc, SvcNodes, _}], ServicesState) ->
+    MTSFun =
+        fun (S) ->
+                S#service_state{mailed_too_small_cluster = SvcNodes}
+        end,
+    update_services_state_inner(ServicesState, Svc, MTSFun);
+
+%% Update log_auto_failover_disabled state
+%% At any time, only one node can have log_auto_failover_disabled Action.
+update_services_state([{log_auto_failover_disabled, Svc, _}], ServicesState) ->
+    LogAFOFun =
+        fun (S) ->
+                S#service_state{logged_auto_failover_disabled = true}
+        end,
+    update_services_state_inner(ServicesState, Svc, LogAFOFun);
+
+%% Do not update services state for other Actions
+update_services_state(_, ServicesState) ->
+    ServicesState.
+
+update_services_state_inner(ServicesState, Svc, Fun) ->
+    case lists:keyfind(Svc, #service_state.name, ServicesState) of
+        false ->
+            exit(node_running_unknown_service);
+        S ->
+            lists:keyreplace(Svc, #service_state.name, ServicesState, Fun(S))
+    end.
 
 %% Decide whether to failover the node based on the services running
 %% on the node.
@@ -201,11 +247,11 @@ should_failover_node(State, Node, SvcConfig) ->
     NodeSvc = get_node_services(NodeName, SvcConfig, []),
     %% Is this a dedicated node running only one service or collocated
     %% node running multiple services?
-    case length(NodeSvc) of
-        1 ->
+    case NodeSvc of
+        [Service] ->
             %% Only one service running on this node, so follow its
             %% auto-failover policy.
-            should_failover_service(State, SvcConfig, hd(NodeSvc), Node);
+            should_failover_service(State, SvcConfig, Service, Node);
         _ ->
             %% Node is running multiple services.
             should_failover_colocated_node(State, SvcConfig, NodeSvc, Node)
@@ -257,7 +303,17 @@ should_failover_service(State, SvcConfig, Service, Node) ->
         true ->
             ?log_debug("Auto-failover for ~p service is disabled.~n",
                        [Service]),
-            []
+            LogFun =
+                fun (S) ->
+                        S#service_state.logged_auto_failover_disabled =:= false
+                end,
+            case check_if_action_needed(State#state.services_state,
+                                        Service, LogFun) of
+                true ->
+                    [{log_auto_failover_disabled, Service, Node}];
+                false ->
+                    []
+            end
     end.
 
 is_failover_disabled_for_service(SvcConfig, Service) ->
@@ -275,15 +331,34 @@ should_failover_service_policy(State, SvcConfig, Service, Node) ->
             %% doing failover
             [{failover, Node}];
         false ->
-            case State#state.mailed_too_small_cluster =:= SvcNodes of
-                true ->
-                    [];
+            %% Send mail_too_small only if the new set of nodes
+            %% running the service do not match the list of nodes
+            %% when the last time the event was generated for this
+            %% service.
+            MTSFun =
+                fun (S) ->
+                        S#service_state.mailed_too_small_cluster =/= SvcNodes
+                end,
+            case check_if_action_needed(State#state.services_state,
+                                        Service, MTSFun) of
                 false ->
+                    [];
+                true ->
                     %% TODO:
                     %% Translate "Service" for user_log consumption
                     %% e.g. translate "kv" to "data"
                     [{mail_too_small, Service, SvcNodes, Node}]
             end
+    end.
+
+%% Check the existing state of services to decide if need to
+%% take any action.
+check_if_action_needed(ServicesState, Service, ActFun) ->
+    case lists:keyfind(Service, #service_state.name, ServicesState) of
+        false ->
+            exit(node_running_unknown_service);
+        S ->
+            ActFun(S)
     end.
 
 %% Helper to get the minimum node count.

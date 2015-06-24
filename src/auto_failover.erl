@@ -51,6 +51,9 @@
 -define(EVENT_OTHER_NODES_DOWN, 3).
 %% @doc Fired when the cluster gets to small to do a safe auto-failover
 -define(EVENT_CLUSTER_TOO_SMALL, 4).
+%% @doc Fired when a node is not auto-failedover because auto-failover
+%% for one of the services running on the node is disabled.
+-define(EVENT_AUTO_FAILOVER_DISABLED, 5).
 
 %% @doc The time a stats request to a bucket may take (in milliseconds)
 -define(STATS_TIMEOUT, 2000).
@@ -258,7 +261,7 @@ handle_info(tick, State0) ->
                   ?user_log(?EVENT_CLUSTER_TOO_SMALL,
                             "Could not auto-failover node (~p). "
                             "Number of nodes running ~p service is ~p. "
-                            "You need at least ~p nodes.~n",
+                            "You need at least ~p nodes.",
                             [Node, Service, length(SvcNodes),
                              auto_failover_logic:service_failover_min_node_count(Service) + 1]),
                   S;
@@ -268,7 +271,7 @@ handle_info(tick, State0) ->
                           ?user_log(?EVENT_MAX_REACHED,
                                     "Could not auto-failover more nodes (~p). "
                                     "Maximum number of nodes that will be "
-                                    "automatically failovered (1) is reached.~n",
+                                    "automatically failovered (1) is reached.",
                                     [Node]),
                           note_reported(#state.reported_max_reached, S);
                       false ->
@@ -277,8 +280,14 @@ handle_info(tick, State0) ->
               ({mail_down_warning, {Node, _UUID}}, S) ->
                   ?user_log(?EVENT_OTHER_NODES_DOWN,
                             "Could not auto-failover node (~p). "
-                            "There was at least another node down.~n",
+                            "There was at least another node down.",
                             [Node]),
+                  S;
+              ({log_auto_failover_disabled, Service, {Node, _UUID}}, S) ->
+                  ?user_log(?EVENT_AUTO_FAILOVER_DISABLED,
+                            "Could not auto-failover node (~p). "
+                            "Auto-failover for ~p service is disbaled.",
+                            [Node, Service]),
                   S;
               ({failover, {Node, _UUID}}, S) ->
                   case ns_orchestrator:try_autofailover(Node) of
