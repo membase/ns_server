@@ -819,6 +819,7 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
     end,
     gen_event:notify(buckets_events, {stopped, Bucket, Deleting, Reason}),
     ok = gen_tcp:close(Sock),
+    ?log_debug("Terminated."),
     ok.
 
 
