@@ -119,8 +119,32 @@ handle_info({chunk, Chunk}, #state{id_to_caller_tid = IdToCaller} = State) ->
     [{_, From}] = ets:lookup(IdToCaller, Id),
     ets:delete(IdToCaller, Id),
     ?log_debug("got response: ~p", [KV]),
-    gen_server:reply(From, KV),
-    {noreply, State};
+    {RV, NewKV} =
+        case lists:keyfind(<<"error">>, 1, KV) of
+            false ->
+                {ok, KV};
+            {_, Error} ->
+                {RV1, NewError} =
+                    case Error of
+                        <<"rpc: can't find method ", _/binary>> ->
+                            {ok, method_not_found};
+                        <<"rpc: can't find service ", _/binary>> ->
+                            {ok, method_not_found};
+                        <<"rpc: ", _/binary>> ->
+                            ?log_error("Unexpected rpc error: ~p. Die.", [Error]),
+                            {stop, {rpc_error, Error}};
+                        _ ->
+                            {ok, Error}
+                    end,
+                {RV1, lists:keyreplace(<<"error">>, 1, KV, {<<"error">>, NewError})}
+        end,
+    gen_server:reply(From, NewKV),
+    case RV of
+        stop ->
+            {stop, {error, rpc_error}, State};
+        ok ->
+            {noreply, State}
+    end;
 handle_info(socket_closed, State) ->
     ?log_debug("Socket closed"),
     {stop, shutdown, State};

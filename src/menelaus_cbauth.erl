@@ -125,11 +125,7 @@ notify_cbauth(Label, Info) ->
     NewInfo = {[{specialUser, erlang:list_to_binary(SpecialUser)} | Info]},
 
     try json_rpc_connection:perform_call(Label, Method, NewInfo) of
-        {error, <<"rpc: can't find method ", _/binary>>} ->
-            ?log_debug("Rpc connection ~p doesn't implement ~p", [Label, Method]),
-            {error, method_not_found};
-        {error, <<"rpc: can't find service ", _/binary>>} ->
-            ?log_debug("Rpc connection ~p doesn't implement ~p", [Label, Method]),
+        {error, method_not_found} ->
             {error, method_not_found};
         {error, Error} ->
             ?log_error("Error returned from go component ~p: ~p", [Label, Error]),
