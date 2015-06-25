@@ -80,12 +80,10 @@ handle_cast({Msg, Label, Pid}, #state{rpc_processes = Processes,
                _ ->
                    CBAuthInfo
            end,
-    NewProcesses = case notify_cbauth(Label, Info) of
-                       {error, method_not_found} ->
+    NewProcesses = case notify_cbauth(Label, Pid, Info) of
+                       error ->
                            Processes;
-                       {error, dead} ->
-                           Processes;
-                       _ ->
+                       ok ->
                            case lists:keyfind({Label, Pid}, 2, Processes) of
                                false ->
                                    MRef = erlang:monitor(process, Pid),
@@ -115,30 +113,34 @@ maybe_notify_cbauth(#state{rpc_processes = Processes,
         CBAuthInfo ->
             State;
         Info ->
-            [notify_cbauth(Label, Info) || {_, {Label, _}} <- Processes],
+            [notify_cbauth(Label, Pid, Info) || {_, {Label, Pid}} <- Processes],
             State#state{cbauth_info = Info}
     end.
 
-notify_cbauth(Label, Info) ->
+notify_cbauth(Label, Pid, Info) ->
     Method = "AuthCacheSvc.UpdateDB",
     SpecialUser = ns_config_auth:get_user(special) ++ erlang:atom_to_list(Label),
     NewInfo = {[{specialUser, erlang:list_to_binary(SpecialUser)} | Info]},
 
     try json_rpc_connection:perform_call(Label, Method, NewInfo) of
         {error, method_not_found} ->
-            {error, method_not_found};
+            error;
+        {error, {rpc_error, _}} ->
+            error;
         {error, Error} ->
-            ?log_error("Error returned from go component ~p: ~p", [Label, Error]),
-            {error, Error};
+            ?log_error("Error returned from go component ~p: ~p. This shouldn't happen but crash it just in case.",
+                       [Label, Error]),
+            exit(Pid, Error),
+            error;
         {ok, true} ->
             ok
     catch exit:{noproc, _} ->
             ?log_debug("Process for label ~p is already dead", [Label]),
-            {error, dead};
+            error;
           exit:{Reason, _} ->
             ?log_debug("Process for label ~p has exited during the call with reason ~p",
                        [Label, Reason]),
-            {error, dead}
+            error
     end.
 
 build_node_info(N, Config) ->
