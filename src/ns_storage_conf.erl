@@ -325,7 +325,8 @@ do_cluster_storage_info(NodeInfos) ->
 
     BucketsRAMUsage = interesting_stats_total_rec(AllInterestingStats, mem_used, 0),
     BucketsDiskUsage = interesting_stats_total_rec(AllInterestingStats, couch_docs_actual_disk_size, 0)
-        + interesting_stats_total_rec(AllInterestingStats, couch_views_actual_disk_size, 0),
+        + interesting_stats_total_rec(AllInterestingStats, couch_views_actual_disk_size, 0)
+        + interesting_stats_total_rec(AllInterestingStats, couch_spatial_disk_size, 0),
 
     RAMUsed = erlang:max(lists:sum(extract_subprop(StorageInfos, ram, used)),
                          BucketsRAMUsage),

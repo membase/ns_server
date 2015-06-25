@@ -109,8 +109,11 @@ last_membase_sample(BucketName, Nodes) ->
                extract_interesting_stat(ops, Stats) + AccOps,
                extract_interesting_stat(ep_bg_fetched, Stats) + AccFetches,
                extract_interesting_stat(couch_docs_actual_disk_size, Stats) +
+                   extract_interesting_stat(couch_spatial_disk_size, Stats) +
                    extract_interesting_stat(couch_views_actual_disk_size, Stats) + AccDisk,
-               extract_interesting_stat(couch_docs_data_size, Stats) + AccData}
+               extract_interesting_stat(couch_docs_data_size, Stats) +
+                   extract_interesting_stat(couch_views_data_size, Stats) +
+                   extract_interesting_stat(couch_spatial_data_size, Stats) + AccData}
       end, {0, 0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)).
 
 
