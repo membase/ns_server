@@ -38,7 +38,7 @@
 
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
          default_memory_quota/1,
-         allowed_node_quota_max_for_joined_nodes/0,
+         allowed_node_quota_max/0,
          this_node_memory_data/0]).
 
 -export([extract_disk_stats_for_path/2]).
@@ -488,20 +488,17 @@ this_node_memory_data() ->
 
 allowed_node_quota_range() ->
     MemoryData = this_node_memory_data(),
-    allowed_node_quota_range(ns_config:latest_config_marker(), MemoryData, 1024).
+    allowed_node_quota_range(ns_config:latest_config_marker(), MemoryData).
 
 allowed_node_quota_range(MemoryData) ->
-    allowed_node_quota_range(ns_config:latest_config_marker(), MemoryData, 1024).
+    allowed_node_quota_range(ns_config:latest_config_marker(), MemoryData).
 
-%% when validating memory size versus cluster quota we use less strict
-%% rules so that clusters upgraded from 1.6.0 are able to join
-%% homogeneous nodes. See MB-2762
-allowed_node_quota_max_for_joined_nodes() ->
+allowed_node_quota_max() ->
     MemoryData = this_node_memory_data(),
-    {_, MaxMemoryMB, _} = allowed_node_quota_range(undefined, MemoryData, 512),
+    {_, MaxMemoryMB, _} = allowed_node_quota_range(undefined, MemoryData),
     MaxMemoryMB.
 
-allowed_node_quota_range(Config, MemSupData, MinusMegs) ->
+allowed_node_quota_range(Config, MemSupData) ->
     {MaxMemoryBytes0, _, _} = MemSupData,
     MinMemoryMB = case Config of
                       undefined ->
@@ -509,6 +506,8 @@ allowed_node_quota_range(Config, MemSupData, MinusMegs) ->
                       _ ->
                           erlang:max(256, get_total_buckets_ram_quota(Config) div ?MIB)
                   end,
+
+    MinusMegs = misc:get_env_default(quota_min_free_ram, 1024),
 
     MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * ?MIB),
     MaxMemoryMB = lists:max([(MaxMemoryBytes0 div ?MIB) - MinusMegs,
@@ -527,7 +526,7 @@ allowed_node_quota_range(Config, MemSupData, MinusMegs) ->
     {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun}.
 
 default_memory_quota(MemSupData) ->
-    {Min, Max, _} = allowed_node_quota_range(undefined, MemSupData, 1024),
+    {Min, Max, _} = allowed_node_quota_range(undefined, MemSupData),
     {MaxMemoryBytes0, _, _} = MemSupData,
     Value = (MaxMemoryBytes0 * 3) div (5 * ?MIB),
     if Value > Max ->
