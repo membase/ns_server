@@ -59,11 +59,11 @@ extract_stat(StatName, Sample) ->
 get_node_infos(NodeNames) ->
     NodesDict = ns_doctor:get_nodes(),
     lists:foldl(fun (N, A) ->
-                         case dict:find(N, NodesDict) of
-                             {ok, V} -> [{N, V} | A];
-                             _ -> A
-                         end
-                 end, [], NodeNames).
+                        case dict:find(N, NodesDict) of
+                            {ok, V} -> [{N, V} | A];
+                            _ -> A
+                        end
+                end, [], NodeNames).
 
 grab_latest_bucket_stats(BucketName, Nodes) ->
     NodeInfos = get_node_infos(Nodes),
@@ -102,30 +102,30 @@ extract_interesting_buckets(BucketName, NodeInfos) ->
 
 last_membase_sample(BucketName, Nodes) ->
     lists:foldl(
-        fun ({_, Stats},
-             {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData}) ->
-                    {extract_interesting_stat(mem_used, Stats) + AccMem,
-                     extract_interesting_stat(curr_items, Stats) + AccItems,
-                     extract_interesting_stat(ops, Stats) + AccOps,
-                     extract_interesting_stat(ep_bg_fetched, Stats) + AccFetches,
-                     extract_interesting_stat(couch_docs_actual_disk_size, Stats) +
-                       extract_interesting_stat(couch_views_actual_disk_size, Stats) + AccDisk,
-                     extract_interesting_stat(couch_docs_data_size, Stats) + AccData}
-        end, {0, 0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)).
+      fun ({_, Stats},
+           {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData}) ->
+              {extract_interesting_stat(mem_used, Stats) + AccMem,
+               extract_interesting_stat(curr_items, Stats) + AccItems,
+               extract_interesting_stat(ops, Stats) + AccOps,
+               extract_interesting_stat(ep_bg_fetched, Stats) + AccFetches,
+               extract_interesting_stat(couch_docs_actual_disk_size, Stats) +
+                   extract_interesting_stat(couch_views_actual_disk_size, Stats) + AccDisk,
+               extract_interesting_stat(couch_docs_data_size, Stats) + AccData}
+      end, {0, 0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)).
 
 
 
 last_memcached_sample(BucketName, Nodes) ->
     {MemUsed, CurrItems, Ops, CmdGet, GetHits}
-            = lists:foldl(
-                    fun ({_, Stats},
-                         {AccMem, AccItems, AccOps, AccGet, AccGetHits}) ->
-                                {extract_interesting_stat(mem_used, Stats) + AccMem,
-                                 extract_interesting_stat(curr_items, Stats) + AccItems,
-                                 extract_interesting_stat(ops, Stats) + AccOps,
-                                 extract_interesting_stat(cmd_get, Stats) + AccGet,
-                                 extract_interesting_stat(get_hits, Stats) + AccGetHits}
-                    end, {0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)),
+        = lists:foldl(
+            fun ({_, Stats},
+                 {AccMem, AccItems, AccOps, AccGet, AccGetHits}) ->
+                    {extract_interesting_stat(mem_used, Stats) + AccMem,
+                     extract_interesting_stat(curr_items, Stats) + AccItems,
+                     extract_interesting_stat(ops, Stats) + AccOps,
+                     extract_interesting_stat(cmd_get, Stats) + AccGet,
+                     extract_interesting_stat(get_hits, Stats) + AccGetHits}
+            end, {0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)),
 
     {MemUsed, CurrItems, Ops,
      case CmdGet == 0 of
@@ -634,11 +634,11 @@ computed_stats_lazy_proplist(BucketName) ->
                       (Gets, Hits) -> Hits * 100/Gets
                   end),
     EPCacheMissRatio = Z2(ep_bg_fetched, cmd_get,
-                         fun (BGFetches, Gets) ->
-                                 try BGFetches * 100 / Gets
-                                 catch error:badarith -> 0
-                                 end
-                         end),
+                          fun (BGFetches, Gets) ->
+                                  try BGFetches * 100 / Gets
+                                  catch error:badarith -> 0
+                                  end
+                          end),
     ResidentItemsRatio = Z2(ep_num_non_resident, curr_items_tot,
                             fun (NonResident, CurrItems) ->
                                     try (CurrItems - NonResident) * 100 / CurrItems
@@ -670,9 +670,9 @@ computed_stats_lazy_proplist(BucketName) ->
                                   end
                           end),
     TotalDisk = Z2(couch_docs_actual_disk_size, couch_views_actual_disk_size,
-                          fun (Views, Docs) ->
-                                  Views + Docs
-                          end),
+                   fun (Views, Docs) ->
+                           Views + Docs
+                   end),
 
     ResidenceCalculator = fun (NonResident, Total) ->
                                   try (Total - NonResident) * 100 / Total
@@ -691,7 +691,7 @@ computed_stats_lazy_proplist(BucketName) ->
     DocsFragmentation = Z2(couch_docs_data_size, couch_docs_disk_size,
                            Fragmentation),
     ViewsFragmentation = Z2(couch_views_data_size, couch_views_disk_size,
-                           Fragmentation),
+                            Fragmentation),
 
     ActiveResRate = Z2(vb_active_num_non_resident, curr_items,
                        ResidenceCalculator),
@@ -1434,7 +1434,7 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                 {struct,[{name,<<"couch_docs_fragmentation">>},
                          {title,<<"docs fragmentation %">>},
                          {desc,<<"How much fragmented data there is to be compacted compared to real data for the data files in this bucket "
-                                  "(measured from couch_docs_fragmentation)">>}]},
+                                 "(measured from couch_docs_fragmentation)">>}]},
                 {struct,[{isBytes,true},
                          {name,<<"couch_total_disk_size">>},
                          {title,<<"total disk size">>},
@@ -1509,7 +1509,7 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                                              {name, global_index_stat(<<"num_rows_returned">>)},
                                              {desc, <<"Number of index items scanned by the indexer per second">>}]}]
                           end)
-             ]}]},
+               ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
               {columns,
@@ -2224,7 +2224,7 @@ serve_specific_ui_stats(Req, StatName, Params) ->
 
     StatInfos = [{[{title, list_to_binary(maybe_string_hostname_port(H))},
                    {name, list_to_binary("@"++H)}
-                  | RestStatDescProps]}
+                   | RestStatDescProps]}
                  || H <- StringHostnames],
 
     ServeDirectory = {[{value, {[{thisISSpecificStats, true},
