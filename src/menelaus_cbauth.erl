@@ -129,17 +129,17 @@ notify_cbauth(Label, Pid, Info) ->
             error;
         {error, Error} ->
             ?log_error("Error returned from go component ~p: ~p. This shouldn't happen but crash it just in case.",
-                       [Label, Error]),
+                       [{Label, Pid}, Error]),
             exit(Pid, Error),
             error;
         {ok, true} ->
             ok
     catch exit:{noproc, _} ->
-            ?log_debug("Process for label ~p is already dead", [Label]),
+            ?log_debug("Process ~p is already dead", [{Label, Pid}]),
             error;
           exit:{Reason, _} ->
-            ?log_debug("Process for label ~p has exited during the call with reason ~p",
-                       [Label, Reason]),
+            ?log_debug("Process ~p has exited during the call with reason ~p",
+                       [{Label, Pid}, Reason]),
             error
     end.
 
