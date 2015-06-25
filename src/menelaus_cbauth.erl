@@ -86,10 +86,10 @@ handle_cast({Msg, Label, Pid}, #state{rpc_processes = Processes,
                        {error, dead} ->
                            Processes;
                        _ ->
-                           case lists:keyfind(Label, 2, Processes) of
+                           case lists:keyfind({Label, Pid}, 2, Processes) of
                                false ->
                                    MRef = erlang:monitor(process, Pid),
-                                   [{MRef, Label} | Processes];
+                                   [{MRef, {Label, Pid}} | Processes];
                                _ ->
                                    Processes
                            end
@@ -102,7 +102,7 @@ handle_info(maybe_notify_cbauth, State) ->
     {noreply, maybe_notify_cbauth(State)};
 handle_info({'DOWN', MRef, _, Pid, Reason},
             #state{rpc_processes = Processes} = State) ->
-    {value, {MRef, Label}, NewProcesses} = lists:keytake(MRef, 1, Processes),
+    {value, {MRef, {Label, Pid}}, NewProcesses} = lists:keytake(MRef, 1, Processes),
     ?log_debug("Observed json rpc process ~p died with reason ~p", [{Label, Pid}, Reason]),
     {noreply, State#state{rpc_processes = NewProcesses}};
 
@@ -115,7 +115,7 @@ maybe_notify_cbauth(#state{rpc_processes = Processes,
         CBAuthInfo ->
             State;
         Info ->
-            [notify_cbauth(Label, Info) || {_, Label} <- Processes],
+            [notify_cbauth(Label, Info) || {_, {Label, _}} <- Processes],
             State#state{cbauth_info = Info}
     end.
 
