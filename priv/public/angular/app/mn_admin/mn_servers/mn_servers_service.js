@@ -113,8 +113,8 @@ angular.module('mnServersService').factory('mnServersService',
 
     function prepareNode(nodes, tasks, stateParamsNodeType) {
       return _.map(nodes[stateParamsNodeType], function (node) {
-        node.couchDataSize = node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size'];
-        node.couchDiskUsage = node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size'];
+        node.couchDataSize = node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size'] + node.interestingStats['couch_spatial_data_size'];
+        node.couchDiskUsage = node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size'] + node.interestingStats['couch_spatial_disk_size'];
         node.currItems = node.interestingStats['curr_items'];
         node.currVbItems = node.interestingStats['vb_replica_curr_items'];
         node.isDataDiskUsageAvailable = !!(node.couchDataSize || node.couchDiskUsage);

@@ -511,10 +511,12 @@ var DAL = {
       if (interestingStats &&
           ('couch_docs_data_size' in interestingStats) &&
           ('couch_views_data_size' in interestingStats) &&
+          ('couch_spatial_disk_size' in interestingStats) &&
+          ('couch_spatial_data_size' in interestingStats) &&
           ('couch_docs_actual_disk_size' in interestingStats) &&
           ('couch_views_actual_disk_size' in interestingStats)) {
-        n.couchDataSize = interestingStats.couch_docs_data_size + interestingStats.couch_views_data_size;
-        n.couchDiskUsage = interestingStats.couch_docs_actual_disk_size + interestingStats.couch_views_actual_disk_size;
+        n.couchDataSize = interestingStats.couch_docs_data_size + interestingStats.couch_views_data_size + interestingStats.couch_spatial_data_size;
+        n.couchDiskUsage = interestingStats.couch_docs_actual_disk_size + interestingStats.couch_views_actual_disk_size + interestingStats.couch_spatial_disk_size;
       }
 
       n.ejectPossible = !detailsAreStale && !n.pendingEject;
