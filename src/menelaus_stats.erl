@@ -577,10 +577,6 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                                            end
                                    end),
 
-                  Fragmentation = Z2(per_index_stat(Index, <<"disk_size">>),
-                                     per_index_stat(Index, <<"data_size">>),
-                                     ComputeFragmentation),
-
                   AvgScanLatency = Z2(per_index_stat(Index, <<"total_scan_duration">>),
                                       per_index_stat(Index, <<"num_rows_returned">>),
                                       fun (ScanDuration, NumRows) ->
@@ -599,7 +595,6 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                                       end),
 
                   [{per_index_stat(Index, <<"avg_item_size">>), AvgItemSize},
-                   {per_index_stat(Index, <<"fragmentation">>), Fragmentation},
                    {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency},
                    {per_index_stat(Index, <<"num_docs_pending+queued">>), AllPendingDocs}]
           end, get_indexes(BucketId));
@@ -1313,7 +1308,7 @@ do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
                            {name, per_index_stat(Id, <<"avg_item_size">>)},
                            {desc, <<"Average size of each index item">>}]},
                  {struct, [{title, <<"% fragmentation">>},
-                           {name, per_index_stat(Id, <<"fragmentation">>)},
+                           {name, per_index_stat(Id, <<"frag_percent">>)},
                            {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less than a hundred kB, the static overhead of the index disk file will inflate the index fragmentation percentage">>}]},
                  {struct, [{title, <<"requests/sec">>},
                            {name, per_index_stat(Id, <<"num_requests">>)},
