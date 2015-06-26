@@ -51,17 +51,7 @@ start(Label, InetSock) ->
 
 perform_call(Label, Name, EJsonArg, Timeout) ->
     EJsonArgThunk = fun () -> EJsonArg end,
-    KV = gen_server:call(label_to_name(Label), {call, Name, EJsonArgThunk}, Timeout),
-    case lists:keyfind(<<"result">>, 1, KV) of
-        false ->
-            {_, Error} = lists:keyfind(<<"error">>, 1, KV),
-            {error, Error};
-        {_, null} ->
-            {_, Error} = lists:keyfind(<<"error">>, 1, KV),
-            {error, Error};
-        {_, Res} ->
-            {ok, Res}
-    end.
+    gen_server:call(label_to_name(Label), {call, Name, EJsonArgThunk}, Timeout).
 
 perform_call(Label, Name, EJsonArg) ->
     perform_call(Label, Name, EJsonArg, infinity).
@@ -119,26 +109,33 @@ handle_info({chunk, Chunk}, #state{id_to_caller_tid = IdToCaller} = State) ->
     [{_, From}] = ets:lookup(IdToCaller, Id),
     ets:delete(IdToCaller, Id),
     ?log_debug("got response: ~p", [KV]),
-    {RV, NewKV} =
+    {RV, Result} =
         case lists:keyfind(<<"error">>, 1, KV) of
             false ->
-                {ok, KV};
+                {ok, ok};
+            {_, null} ->
+                {ok, ok};
             {_, Error} ->
-                {RV1, NewError} =
-                    case Error of
-                        <<"rpc: can't find method ", _/binary>> ->
-                            {ok, method_not_found};
-                        <<"rpc: can't find service ", _/binary>> ->
-                            {ok, method_not_found};
-                        <<"rpc: ", _/binary>> ->
-                            ?log_error("Unexpected rpc error: ~p. Die.", [Error]),
-                            {stop, {rpc_error, Error}};
-                        _ ->
-                            {ok, Error}
-                    end,
-                {RV1, lists:keyreplace(<<"error">>, 1, KV, {<<"error">>, NewError})}
+                case Error of
+                    <<"rpc: can't find method ", _/binary>> ->
+                        {ok, {error, method_not_found}};
+                    <<"rpc: can't find service ", _/binary>> ->
+                        {ok, {error, method_not_found}};
+                    <<"rpc: ", _/binary>> ->
+                        ?log_error("Unexpected rpc error: ~p. Die.", [Error]),
+                        {stop, {error, {rpc_error, Error}}};
+                    _ ->
+                        {ok, {error, Error}}
+                end
         end,
-    gen_server:reply(From, NewKV),
+    Reply = case Result of
+                ok ->
+                    {_, Res} = lists:keyfind(<<"result">>, 1, KV),
+                    {ok, Res};
+                {error, _} ->
+                    Result
+            end,
+    gen_server:reply(From, Reply),
     case RV of
         stop ->
             {stop, {error, rpc_error}, State};
