@@ -432,6 +432,21 @@ def make_product_task(guts, initargs_path, options):
     if options.single_node_diag:
         diag_url += "&oneNode=1"
 
+
+    from distutils.spawn import find_executable
+
+    lookup_cmd = None
+    for cmd in ["dig", "nslookup", "host"]:
+        if find_executable(cmd) is not None:
+            lookup_cmd = cmd
+            break
+
+    lookup_tasks = []
+    if lookup_cmd is not None:
+        lookup_tasks = [UnixTask("DNS lookup information for %s" % node,
+                                 "%(lookup_cmd)s '%(node)s'" % locals())
+                        for node in correct_split(read_guts(guts, "nodes"), ",")]
+
     _tasks = [
         UnixTask("Directory structure",
                  ["ls", "-lRai", root]),
@@ -535,7 +550,7 @@ def make_product_task(guts, initargs_path, options):
                    log_file="stats.log")]
         ]
 
-    _tasks = flatten(_tasks)
+    _tasks = lookup_tasks + flatten(_tasks)
 
     return _tasks
 

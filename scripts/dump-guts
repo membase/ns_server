@@ -609,6 +609,8 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
                               ""),
     NSLog = (catch read_ns_log(NSLogPath)),
 
+    Nodes = [node_host(N) || N <- search_config(NSConfig, nodes_wanted, [])],
+
     Pairs = [{ns_config, iolist_to_binary(io_lib:format("~p", [sanitize_config(NSConfig)]))},
              {static_config, iolist_to_binary(io_lib:format("~p", [StaticTerms]))},
              {couch_inis, confget(#config.couch_inis)},
@@ -627,7 +629,8 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
              {memcached_admin, MCDAdmin},
              {memcached_pass, MCDPass},
              {memcached_logs_path, MCDLogs},
-             {memcached_breakpad_minidump_dir, PerNodeMDD}],
+             {memcached_breakpad_minidump_dir, PerNodeMDD},
+             {nodes, string:join(Nodes, ",")}],
 
     output([E || {K, V} <- Pairs,
                  E <- [K, V]]),
@@ -643,6 +646,10 @@ read_ns_log(Path) ->
     {ok, B} = file:read_file(Path),
     B1 = zlib:uncompress(B),
     binary_to_term(B1).
+
+node_host(Node) ->
+    [_, Host | _] = string:tokens(atom_to_list(Node), "@"),
+    Host.
 
 binarify_output_item(Binary) when is_binary(Binary) -> Binary;
 binarify_output_item(Atom) when is_atom(Atom) -> atom_to_binary(Atom, latin1);
