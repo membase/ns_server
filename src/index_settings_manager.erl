@@ -188,7 +188,7 @@ indexer_threads_lens() ->
 general_settings_lens_props() ->
     [{indexerThreads, indexer_threads_lens(), 4},
      {memorySnapshotInterval, id_lens(<<"indexer.settings.inmemory_snapshot.interval">>), 200},
-     {stableSnapshotInterval, id_lens(<<"indexer.settings.persisted_snapshot.interval">>), 30000},
+     {stableSnapshotInterval, id_lens(<<"indexer.settings.persisted_snapshot.interval">>), 5000},
      {maxRollbackPoints, id_lens(<<"indexer.settings.recovery.max_rollbacks">>), 5},
      {logLevel, id_lens(<<"indexer.settings.log_level">>), <<"debug">>}].
 
