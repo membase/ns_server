@@ -2528,26 +2528,34 @@ handle_node_settings_post(Node, Req) ->
         Errs -> reply_json(Req, Errs, 400)
     end.
 
-handle_setup_services_post(Req) ->
+validate_setup_services_post(Req) ->
     Params = Req:parse_post(),
     case ns_config_auth:is_system_provisioned() of
         true ->
-            reply_text(Req, <<"cannot change node services after cluster is provisioned">>, 400);
+            {error, <<"cannot change node services after cluster is provisioned">>};
         _ ->
             ServicesString = proplists:get_value("services", Params, ""),
             case parse_validate_services_list(ServicesString) of
                 {ok, Svcs} ->
                     case lists:member(kv, Svcs) of
                         true ->
-                            ns_config:set({node, node(), services}, Svcs),
-                            ns_audit:setup_node_services(Req, node(), Svcs),
-                            reply_text(Req, "", 200);
+                            {ok, Svcs};
                         _ ->
-                            reply_text(Req, "cannot setup first cluster node without kv service", 400)
+                            {error, <<"cannot setup first cluster node without kv service">>}
                     end;
                 {error, Msg} ->
-                    reply_text(Req, Msg, 400)
+                    {error, Msg}
             end
+    end.
+
+handle_setup_services_post(Req) ->
+    case validate_setup_services_post(Req) of
+        {error, Error} ->
+            reply_json(Req, [Error], 400);
+        {ok, Services} ->
+            ns_config:set({node, node(), services}, Services),
+            ns_audit:setup_node_services(Req, node(), Services),
+            reply(Req, 200)
     end.
 
 validate_add_node_params(User, Password) ->
