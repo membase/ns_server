@@ -550,17 +550,17 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
 
 
     ComputeFragmentation =
-        fun (DiskSize, DataSize) ->
+        fun (DiskOverhead, DiskSize) ->
                 try
-                    100 * max(0, (DiskSize - DataSize)) / DiskSize
+                    100 * (DiskOverhead / max(DiskOverhead, DiskSize))
                 catch error:badarith ->
                         0
                 end
         end,
 
 
-    GlobalFragmentation = Z2(global_index_stat(<<"disk_size">>),
-                             global_index_stat(<<"data_size">>),
+    GlobalFragmentation = Z2(global_index_stat(<<"disk_overhead_estimate">>),
+                             global_index_stat(<<"disk_size">>),
                              ComputeFragmentation),
 
     [{global_index_stat(<<"fragmentation">>), GlobalFragmentation}] ++

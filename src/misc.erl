@@ -1322,6 +1322,17 @@ dict_get(Key, Dict, Default) ->
             Default
     end.
 
+%% like dict:update/4 but calls the function on initial value instead of just
+%% storing it in the dict
+dict_update(Key, Fun, Initial, Dict) ->
+    try
+        dict:update(Key, Fun, Dict)
+    catch
+        %% key not found
+        error:badarg ->
+            dict:store(Key, Fun(Initial), Dict)
+    end.
+
 %% Parse version of the form 1.7.0r_252_g1e1c2c0 or 1.7.0r-252-g1e1c2c0 into a
 %% list {[1,7,0],candidate,252}.  1.8.0 introduces a license type suffix,
 %% like: 1.8.0r-25-g1e1c2c0-enterprise.  Note that we should never

@@ -35,6 +35,7 @@
                    items_count, frag_percent]).
 -define(I_COUNTERS, [num_requests, num_rows_returned, num_docs_indexed,
                      scan_bytes_read, total_scan_duration]).
+-define(I_COMPUTED, [disk_overhead_estimate]).
 
 start_link() ->
     base_stats_collector:start_link({local, ?MODULE}, ?MODULE, []).
@@ -54,7 +55,7 @@ init([]) ->
 
     Buckets = lists:map(fun list_to_binary/1, ns_bucket:get_bucket_names(membase)),
     Defaults = [{global_index_stat(atom_to_binary(Stat, latin1)), 0}
-                || Stat <- ?I_GAUGES ++ ?I_COUNTERS],
+                || Stat <- ?I_GAUGES ++ ?I_COUNTERS ++ ?I_COMPUTED],
 
 
     {ok, #state{buckets = Buckets,
@@ -145,7 +146,9 @@ get_stats() ->
 
 process_stats(TS, GrabbedStats, PrevCounters, PrevTS, #state{buckets = KnownBuckets,
                                                              default_stats = Defaults} = State) ->
-    {Gauges, Counters, Status} = massage_stats(GrabbedStats, [], [], []),
+    {Gauges0, Counters, Status} = massage_stats(GrabbedStats, [], [], []),
+    Gauges = compute_disk_overhead_estimates(Gauges0) ++ Gauges0,
+
     {Stats, SortedCounters} =
         base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS),
 
@@ -233,3 +236,55 @@ per_index_stat(Index, Metric) ->
 
 global_index_stat(StatName) ->
     iolist_to_binary([<<"index/">>, StatName]).
+
+compute_disk_overhead_estimates(Stats) ->
+    Dict = lists:foldl(
+             fun ({StatKey, Value}, D) ->
+                     {Bucket, Index, Metric} = StatKey,
+                     Key = {Bucket, Index},
+
+                     case Metric of
+                         <<"frag_percent">> ->
+                             misc:dict_update(
+                               Key,
+                               fun ({_, DiskSize}) ->
+                                       {Value, DiskSize}
+                               end, {undefined, undefined}, D);
+                         <<"disk_size">> ->
+                             misc:dict_update(
+                               Key,
+                               fun ({Frag, _}) ->
+                                       {Frag, Value}
+                               end, {undefined, undefined}, D);
+                         _ ->
+                             D
+                     end
+             end, dict:new(), Stats),
+
+    dict:fold(
+      fun ({Bucket, Index}, {Frag, DiskSize}, Acc) ->
+              if
+                  Frag =/= undefined andalso DiskSize =/= undefined ->
+                      Est = (DiskSize * Frag) div 100,
+                      [{{Bucket, Index, <<"disk_overhead_estimate">>}, Est} | Acc];
+                  true ->
+                      Acc
+              end
+      end, [], Dict).
+
+compute_disk_overhead_estimates_test() ->
+    In = [{{<<"a">>, <<"idx1">>, <<"disk_size">>}, 100},
+          {{<<"a">>, <<"idx1">>, <<"frag_percent">>}, 0},
+          {{<<"b">>, <<"idx2">>, <<"frag_percent">>}, 100},
+          {{<<"b">>, <<"idx2">>, <<"disk_size">>}, 100},
+          {{<<"b">>, <<"idx3">>, <<"disk_size">>}, 100},
+          {{<<"b">>, <<"idx3">>, <<"frag_percent">>}, 50},
+          {{<<"b">>, <<"idx3">>, <<"m">>}, 42}],
+    Out = lists:keysort(1, compute_disk_overhead_estimates(In)),
+
+    Expected0 = [{{<<"a">>, <<"idx1">>, <<"disk_overhead_estimate">>}, 0},
+                 {{<<"b">>, <<"idx2">>, <<"disk_overhead_estimate">>}, 100},
+                 {{<<"b">>, <<"idx3">>, <<"disk_overhead_estimate">>}, 50}],
+    Expected = lists:keysort(1, Expected0),
+
+    ?assertEqual(Expected, Out).
