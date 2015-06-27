@@ -1537,6 +1537,15 @@ parse_validate_services_list_test() ->
     {error, _} = parse_validate_services_list("n1ql,kv,s"),
     ?assertMatch({error, _}, parse_validate_services_list("neeql,kv")).
 
+enforce_topology_limitation(Svcs) ->
+    case ns_cluster:enforce_topology_limitation(
+           Svcs, [[kv], lists:sort(ns_cluster_membership:supported_services())]) of
+        ok ->
+            {ok, Svcs};
+        Error ->
+            Error
+    end.
+
 parse_join_cluster_params(Params, ThisIsJoin) ->
     Version = proplists:get_value("version", Params, "3.0"),
 
@@ -2536,8 +2545,8 @@ validate_setup_services_post(Req) ->
                 {ok, Svcs} ->
                     case lists:member(kv, Svcs) of
                         true ->
-                            {ok, Svcs};
-                        _ ->
+                            enforce_topology_limitation(Svcs);
+                        false ->
                             {error, <<"cannot setup first cluster node without kv service">>}
                     end;
                 {error, Msg} ->
