@@ -1,4 +1,7 @@
-angular.module('mnSettingsCluster').controller('mnSettingsClusterController',
+angular.module('mnSettingsCluster', [
+  'mnSettingsClusterService',
+  'mnHelper'
+]).controller('mnSettingsClusterController',
   function ($scope, mnSettingsClusterService, clusterState, mnHelper) {
     $scope.state = clusterState;
 

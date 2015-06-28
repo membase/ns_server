@@ -1,4 +1,11 @@
-angular.module('mnBucketsDetailsDialogService').factory('mnBucketsDetailsDialogService',
+angular.module('mnBucketsDetailsDialogService', [
+  'mnHttp',
+  'mnFilters',
+  'mnPoolDefault',
+  'mnServersService',
+  'mnBucketsDetailsService',
+  'mnSettingsAutoCompactionService'
+]).factory('mnBucketsDetailsDialogService',
   function (mnHttp, $q, mnBytesToMBFilter, mnCountFilter, mnSettingsAutoCompactionService, mnPoolDefault, mnServersService, bucketsFormConfiguration, mnBucketsDetailsService) {
 
     var mnBucketsDetailsDialogService = {};

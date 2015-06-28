@@ -1,4 +1,8 @@
-angular.module('mnBucketsForm').directive('mnBucketsForm', function (mnHttp, mnBucketsDetailsDialogService, mnBytesToMBFilter, mnCountFilter) {
+angular.module('mnBucketsForm', [
+  'mnHttp',
+  'mnBucketsDetailsService',
+  'mnFilters'
+]).directive('mnBucketsForm', function (mnHttp, mnBucketsDetailsDialogService, mnBytesToMBFilter, mnCountFilter) {
 
   function threadsEvictionWarning(scope, value) {
     var initialValue = scope.bucketConf[value];

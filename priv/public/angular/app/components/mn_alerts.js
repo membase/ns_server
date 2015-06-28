@@ -1,4 +1,4 @@
-angular.module('mnAlertsService').service('mnAlertsService',
+angular.module('mnAlertsService', []).service('mnAlertsService',
   function () {
     var mnAlertsService = {};
 

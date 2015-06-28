@@ -1,4 +1,6 @@
-angular.module('mnBarUsage').directive('mnBarUsage', function (mnFormatMemSizeFilter, mnRescaleForSumFilter, mnCalculatePercentFilter) {
+angular.module('mnBarUsage', [
+  'mnFilters'
+]).directive('mnBarUsage', function (mnFormatMemSizeFilter, mnRescaleForSumFilter, mnCalculatePercentFilter) {
 
   return {
     restrict: 'A',

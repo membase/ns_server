@@ -1,5 +1,6 @@
 angular.module('mnPlot', [
-  'mnJquery'
+  'mnJquery',
+  'mnFilters'
 ]).directive('mnPlot', function (mnPrepareQuantityFilter, mnTruncateTo3DigitsFilter, jQuery) {
 
 /* Javascript plotting library for jQuery, v. 0.6.

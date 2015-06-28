@@ -1,4 +1,8 @@
-angular.module('mnViews').controller('mnViewsController',
+angular.module('mnViews', [
+  'mnViewsService',
+  'mnCompaction',
+  'mnHelper'
+]).controller('mnViewsController',
   function ($scope, $modal, $state, views, mnHelper, mnViewsService, mnCompaction) {
     function applyBuckets(views) {
       $scope.views = views;

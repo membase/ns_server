@@ -1,4 +1,9 @@
-angular.module('mnOverview').controller('mnOverviewController',
+angular.module('mnOverview', [
+  'mnOverviewService',
+  'mnBarUsage',
+  'mnPlot',
+  'mnHelper'
+]).controller('mnOverviewController',
   function ($scope, $interval, nodes, buckets, mnOverviewService, mnHelper) {
     function scopeApplyer(method) {
       return function callee() {

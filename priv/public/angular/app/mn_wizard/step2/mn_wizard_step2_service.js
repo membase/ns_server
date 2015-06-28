@@ -1,4 +1,6 @@
-angular.module('mnWizardStep2Service').factory('mnWizardStep2Service',
+angular.module('mnWizardStep2Service', [
+  'mnHttp'
+]).factory('mnWizardStep2Service',
   function (mnHttp) {
     var mnWizardStep2Service = {};
     var sampleBucketsRAMQuota = 0;

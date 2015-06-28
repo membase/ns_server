@@ -1,4 +1,8 @@
-angular.module('mnXDCR').controller('mnXDCRController',
+angular.module('mnXDCR', [
+  'mnXDCRService',
+  'mnHelper',
+  'mnBucketsService'
+]).controller('mnXDCRController',
   function ($scope, $modal, mnHelper, mnXDCRService, xdcr, mnBucketsService) {
 
     function applyXDCR(xdcr) {

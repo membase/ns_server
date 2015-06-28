@@ -1,4 +1,5 @@
-angular.module('mnWarmupProgress').directive('mnWarmupProgress', function () {
+angular.module('mnWarmupProgress', [
+]).directive('mnWarmupProgress', function () {
   return {
     restrict: 'A',
     scope: {

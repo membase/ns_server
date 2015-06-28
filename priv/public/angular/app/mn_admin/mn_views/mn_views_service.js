@@ -1,4 +1,11 @@
-angular.module('mnViewsService').service('mnViewsService',
+angular.module('mnViewsService', [
+  'mnHttp',
+  'mnTasksDetails',
+  'mnBucketsService',
+  'mnCompaction',
+  'ui.select',
+  'ngSanitize'
+]).service('mnViewsService',
   function (mnHttp, $q, mnTasksDetails, mnBucketsService, mnCompaction) {
     var mnViewsService = {};
     mnViewsService.createDdoc = function (url, ddoc) {

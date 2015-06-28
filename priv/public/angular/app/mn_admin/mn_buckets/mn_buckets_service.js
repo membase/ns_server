@@ -1,4 +1,8 @@
-angular.module('mnBucketsService').factory('mnBucketsService',
+angular.module('mnBucketsService', [
+  'mnHttp',
+  'mnPoolDefault',
+  'mnFilters'
+]).factory('mnBucketsService',
   function (mnHttp, $q, mnPoolDefault, mnTruncateTo3DigitsFilter, mnCalculatePercentFilter) {
     var mnBucketsService = {};
 

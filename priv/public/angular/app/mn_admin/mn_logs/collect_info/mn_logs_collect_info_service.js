@@ -1,4 +1,9 @@
-angular.module('mnLogsCollectInfoService').service('mnLogsCollectInfoService',
+angular.module('mnLogsCollectInfoService', [
+  'mnHttp',
+  'mnServersService',
+  'mnTasksDetails',
+  'mnFilters'
+]).service('mnLogsCollectInfoService',
   function (mnHttp, $q, mnServersService, mnTasksDetails, mnStripPortHTMLFilter) {
     var mnLogsCollectInfoService = {};
 

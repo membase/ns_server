@@ -1,4 +1,17 @@
-angular.module('mnWizard').config(function ($stateProvider) {
+angular.module('mnWizard', [
+  'mnAuthService',
+  'mnServersService',
+  'mnAlertsService',
+  'mnHelper',
+  'ui.router',
+  'mnWizardStep1Service',
+  'mnWizardStep2Service',
+  'mnWizardStep3Service',
+  'mnWizardStep4Service',
+  'mnWizardStep5Service',
+  'mnPoolDefault',
+  'mnSpinner'
+]).config(function ($stateProvider) {
 
   $stateProvider
     .state('app.wizard', {

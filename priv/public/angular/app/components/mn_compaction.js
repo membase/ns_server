@@ -1,4 +1,6 @@
-angular.module('mnCompaction').factory('mnCompaction',
+angular.module('mnCompaction', [
+  'mnHttp'
+]).factory('mnCompaction',
   function ($interval, mnHttp) {
     var mnCompaction = {};
     var startedCompactions = {};

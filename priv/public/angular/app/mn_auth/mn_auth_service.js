@@ -1,4 +1,8 @@
-angular.module('mnAuthService').factory('mnAuthService',
+angular.module('mnAuthService', [
+  'mnHttp',
+  'mnPools',
+  'ui.router'
+]).factory('mnAuthService',
   function (mnHttp, $rootScope, $state, mnPools) {
 
   var mnAuthService = {};

@@ -1,4 +1,6 @@
-angular.module('mnSettingsAlertsService').factory('mnSettingsAlertsService',
+angular.module('mnSettingsAlertsService', [
+  'mnHttp'
+]).factory('mnSettingsAlertsService',
   function (mnHttp, knownAlerts) {
     var mnSettingsAlertsService = {};
 

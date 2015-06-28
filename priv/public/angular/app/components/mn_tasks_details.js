@@ -1,4 +1,6 @@
-angular.module('mnTasksDetails').factory('mnTasksDetails',
+angular.module('mnTasksDetails', [
+  'mnHttp'
+]).factory('mnTasksDetails',
   function (mnHttp, $cacheFactory) {
     var mnTasksDetails = {};
 

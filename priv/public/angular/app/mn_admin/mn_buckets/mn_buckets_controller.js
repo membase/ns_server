@@ -1,5 +1,12 @@
-angular.module('mnBuckets').controller('mnBucketsController',
-  function ($scope, buckets, mnBucketsService, mnHelper, $modal, mnSettingsAutoCompactionService) {
+angular.module('mnBuckets', [
+  'mnHelper',
+  'mnBucketsService',
+  'ui.bootstrap',
+  'mnBucketsDetailsDialogService',
+  'mnBarUsage',
+  'mnBucketsForm'
+]).controller('mnBucketsController',
+  function ($scope, buckets, mnBucketsService, mnHelper, $modal) {
     function applyBuckets(buckets) {
       $scope.buckets = buckets;
     }
@@ -16,7 +23,7 @@ angular.module('mnBuckets').controller('mnBucketsController',
             bucketConf: function (mnBucketsDetailsDialogService) {
               return mnBucketsDetailsDialogService.getNewBucketConf();
             },
-            autoCompactionSettings: function () {
+            autoCompactionSettings: function (mnSettingsAutoCompactionService) {
               return mnSettingsAutoCompactionService.getAutoCompaction();
             }
           }

@@ -1,4 +1,6 @@
-angular.module('mnSettingsAutoFailoverService').factory('mnSettingsAutoFailoverService',
+angular.module('mnSettingsAutoFailoverService', [
+  'mnHttp'
+]).factory('mnSettingsAutoFailoverService',
   function (mnHttp) {
     var mnSettingsAutoFailoverService = {};
 

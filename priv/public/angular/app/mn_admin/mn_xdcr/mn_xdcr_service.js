@@ -1,4 +1,7 @@
-angular.module('mnXDCRService').factory('mnXDCRService',
+angular.module('mnXDCRService', [
+  'mnHttp',
+  'mnTasksDetails'
+]).factory('mnXDCRService',
   function ($q, mnHttp, mnTasksDetails) {
     var mnXDCRService = {};
 

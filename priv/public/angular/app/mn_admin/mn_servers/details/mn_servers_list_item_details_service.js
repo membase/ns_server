@@ -1,4 +1,8 @@
-angular.module('mnServersListItemDetailsService').factory('mnServersListItemDetailsService',
+angular.module('mnServersListItemDetailsService', [
+  'mnTasksDetails',
+  'mnHttp',
+  'mnFilters'
+]).factory('mnServersListItemDetailsService',
   function (mnHttp, $q, mnTasksDetails, mnFormatUptimeFilter, mnFormatMemSizeFilter, mnEllipsisiseOnLeftFilter) {
     var mnServersListItemDetailsService = {};
 

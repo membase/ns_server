@@ -1,4 +1,5 @@
-angular.module('mnLaunchpad').directive('mnLaunchpad', function ($timeout) {
+angular.module('mnLaunchpad', [
+  ]).directive('mnLaunchpad', function ($timeout) {
 
   return {
     scope: {

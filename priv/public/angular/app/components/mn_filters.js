@@ -2,7 +2,7 @@ Math.Ki = 1024;
 Math.Mi = 1048576;
 Math.Gi = 1073741824;
 
-angular.module('mnFilters')
+angular.module('mnFilters', [])
 
   .filter('mnCount', function () {
     return function (count, text) {

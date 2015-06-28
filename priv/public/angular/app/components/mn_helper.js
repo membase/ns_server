@@ -1,4 +1,9 @@
-angular.module('mnHelper').factory('mnHelper',
+angular.module('mnHelper', [
+  'ui.router',
+  'mnTasksDetails',
+  'mnAlertsService',
+  'mnHttp'
+]).factory('mnHelper',
   function ($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, mnHttp) {
     var mnHelper = {};
 

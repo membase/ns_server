@@ -1,4 +1,7 @@
-angular.module('mnSettingsAutoCompactionService').factory('mnSettingsAutoCompactionService',
+angular.module('mnSettingsAutoCompactionService', [
+  'mnHttp',
+  'mnFilters'
+]).factory('mnSettingsAutoCompactionService',
   function (mnHttp, mnBytesToMBFilter, mnMBtoBytesFilter) {
     var mnSettingsAutoCompactionService = {};
 

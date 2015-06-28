@@ -1,9 +1,9 @@
-angular.module('mnHttp').factory('mnHttp',
+angular.module('mnHttp', [
+]).factory('mnHttp',
   function ($http, $q, $timeout) {
     //We need to associate the http with specific scope.
     //This helps prevent pending asynchronous operations from causing side effects after the scope in which they were initiated is destroyed.
     //The simplest way to keep queries organized by the groups. Currenly there are three kind of groups or layres of http queries
-
     //httpGroup:
     //globals - like /pools/default or /pools/default/tasks
     //defaults - tab or section specific queries

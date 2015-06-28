@@ -1,4 +1,7 @@
-angular.module('mnSettingsAutoFailover').controller('mnSettingsAutoFailoverController',
+angular.module('mnSettingsAutoFailover', [
+  'mnSettingsAutoFailoverService',
+  'mnHelper'
+]).controller('mnSettingsAutoFailoverController',
   function ($scope, mnHelper, mnSettingsAutoFailoverService, autoFailoverSettings) {
     $scope.state = autoFailoverSettings.data
     $scope.submit = function () {

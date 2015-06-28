@@ -1,4 +1,5 @@
-angular.module('mnSpinner').directive('mnSpinner', function ($compile, $rootScope) {
+angular.module('mnSpinner', [
+]).directive('mnSpinner', function ($compile, $rootScope) {
 
   return {
     restrict: 'A',

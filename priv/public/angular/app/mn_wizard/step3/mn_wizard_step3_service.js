@@ -1,4 +1,9 @@
-angular.module('mnWizardStep3Service').factory('mnWizardStep3Service',
+angular.module('mnWizardStep3Service', [
+  'mnHttp',
+  'mnWizardStep1Service',
+  'mnWizardStep2Service',
+  'mnFilters'
+]).factory('mnWizardStep3Service',
   function (mnHttp, mnWizardStep2Service, mnWizardStep1Service, mnBytesToMBFilter, bucketsFormConfiguration) {
 
     var mnWizardStep3Service = {};

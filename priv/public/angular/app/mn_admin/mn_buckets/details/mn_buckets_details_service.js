@@ -1,4 +1,10 @@
-angular.module('mnBucketsDetailsService').factory('mnBucketsDetailsService',
+angular.module('mnBucketsDetailsService', [
+  'mnHttp',
+  'mnPoolDefault',
+  'mnTasksDetails',
+  'mnCompaction',
+  'mnFilters'
+]).factory('mnBucketsDetailsService',
   function ($q, mnHttp, mnTasksDetails, mnPoolDefault, mnFormatMemSizeFilter, mnCompaction) {
     var mnBucketsDetailsService = {};
 

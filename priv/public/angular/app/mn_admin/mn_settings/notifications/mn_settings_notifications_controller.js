@@ -1,4 +1,7 @@
-angular.module('mnSettingsNotifications').controller('mnSettingsNotificationsController',
+angular.module('mnSettingsNotifications', [
+  'mnSettingsNotificationsService',
+  'mnHelper'
+]).controller('mnSettingsNotificationsController',
   function ($scope, mnHelper, mnSettingsNotificationsService) {
     $scope.enabled = $scope.updates.sendStats;
     $scope.submit = function () {

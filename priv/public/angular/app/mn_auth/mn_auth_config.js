@@ -1,4 +1,7 @@
-angular.module('mnAuth').config( function ($stateProvider, $httpProvider, $urlRouterProvider) {
+angular.module('mnAuth', [
+  'mnAuthService',
+  'ui.router'
+]).config( function ($stateProvider, $httpProvider, $urlRouterProvider) {
   $httpProvider.interceptors.push(['$q', '$injector', logsOutUserOn401]);
 
   $urlRouterProvider.when('', '/auth');

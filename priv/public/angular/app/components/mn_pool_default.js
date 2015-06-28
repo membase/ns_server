@@ -1,4 +1,7 @@
-angular.module('mnPoolDefault').factory('mnPoolDefault',
+angular.module('mnPoolDefault', [
+  'mnHttp',
+  'mnPools'
+]).factory('mnPoolDefault',
   function (mnHttp, $cacheFactory, $q, mnPools) {
     var mnPoolDefault = {};
 

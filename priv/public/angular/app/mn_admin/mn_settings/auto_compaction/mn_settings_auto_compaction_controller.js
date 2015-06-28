@@ -1,4 +1,8 @@
-angular.module('mnSettingsAutoCompaction').controller('mnSettingsAutoCompactionController',
+angular.module('mnSettingsAutoCompaction', [
+  'mnSettingsAutoCompactionService',
+  'mnHelper',
+  'mnAutoCompactionForm'
+]).controller('mnSettingsAutoCompactionController',
   function($scope, mnHelper, mnSettingsAutoCompactionService, autoCompactionSettings) {
     $scope.autoCompactionSettings = autoCompactionSettings;
     $scope.$watch('autoCompactionSettings', function (autoCompactionSettings) {

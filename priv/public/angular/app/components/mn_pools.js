@@ -1,4 +1,6 @@
-angular.module('mnPools').factory('mnPools',
+angular.module('mnPools', [
+  'mnHttp'
+]).factory('mnPools',
   function (mnHttp, $cacheFactory) {
     var mnPools = {};
 

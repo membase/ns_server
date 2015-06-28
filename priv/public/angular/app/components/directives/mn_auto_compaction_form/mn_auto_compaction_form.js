@@ -1,4 +1,6 @@
-angular.module('mnAutoCompactionForm').directive('mnAutoCompactionForm', function (mnHttp) {
+angular.module('mnAutoCompactionForm', [
+  'mnHttp'
+]).directive('mnAutoCompactionForm', function (mnHttp) {
 
   return {
     restrict: 'A',

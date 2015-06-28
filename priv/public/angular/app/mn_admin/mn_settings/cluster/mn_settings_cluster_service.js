@@ -1,4 +1,8 @@
-angular.module('mnSettingsClusterService').factory('mnSettingsClusterService',
+angular.module('mnSettingsClusterService', [
+  'mnHttp',
+  'mnServersService',
+  'mnPoolDefault'
+]).factory('mnSettingsClusterService',
   function (mnHttp, $q, mnServersService, mnPoolDefault) {
     var mnSettingsClusterService = {};
 

@@ -1,4 +1,7 @@
-angular.module('mnSettingsAudit').controller('mnSettingsAuditController',
+angular.module('mnSettingsAudit', [
+  'mnSettingsAuditService',
+  'mnHelper'
+]).controller('mnSettingsAuditController',
   function ($scope, mnSettingsAuditService, auditSettings, mnHelper) {
     $scope.state = auditSettings;
 

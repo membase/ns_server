@@ -1,4 +1,11 @@
-angular.module('mnServersService').factory('mnServersService',
+angular.module('mnServersService', [
+  'mnTasksDetails',
+  'mnPoolDefault',
+  'mnHelper',
+  'mnSettingsAutoFailoverService',
+  'mnHttp',
+  'ui.router'
+]).factory('mnServersService',
   function (mnHttp, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, $q, $state, $stateParams, mnHelper) {
     var mnServersService = {};
 

@@ -1,4 +1,23 @@
-angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider) {
+angular.module('mnAdmin', [
+  'mnAlertsService',
+  'mnTasksDetails',
+  'mnAuthService',
+  'mnHelper',
+  'mnBuckets',
+  'mnAnalytics',
+  'mnLogs',
+  'mnOverview',
+  'mnServers',
+  'mnSettingsNotifications',
+  'mnSettingsCluster',
+  'mnSettingsAutoFailover',
+  'mnSettingsAutoCompaction',
+  'mnSettingsAudit',
+  'mnSettingsCluster',
+  'mnSettingsAlerts',
+  'mnViews',
+  'mnXDCR'
+]).config(function ($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider) {
 
   function valToString(val) {
     return val != null ? val.toString() : val;
@@ -123,6 +142,16 @@ angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider, $
         "details@app.admin.buckets": {
           templateUrl: 'mn_admin/mn_buckets/details/mn_buckets_details.html',
           controller: 'mnBucketsDetailsController'
+        }
+      }
+    })
+    .state('app.admin.indexes', {
+      url: "/index?openedIndex",
+      controller: "mnIndexesController",
+      templateUrl: "mn_admin/mn_indexes/mn_indexes.html",
+      resolve: {
+        indexesState: function (mnIndexesService) {
+          return mnIndexesService.getIndexesState();
         }
       }
     })

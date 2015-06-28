@@ -1,4 +1,13 @@
-angular.module('mnServers').controller('mnServersController',
+angular.module('mnServers', [
+  'mnPoolDefault',
+  'ui.router',
+  'ui.bootstrap',
+  'mnServersService',
+  'mnHelper',
+  'mnVerticalBar',
+  'mnBarUsage',
+  'mnServersListItemDetailsService'
+]).controller('mnServersController',
   function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, serversState, mnServersService, mnHelper) {
 
     function applyServersState(serversState) {

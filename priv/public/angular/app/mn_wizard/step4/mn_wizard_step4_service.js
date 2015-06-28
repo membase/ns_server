@@ -1,4 +1,6 @@
-angular.module('mnWizardStep4Service').factory('mnWizardStep4Service',
+angular.module('mnWizardStep4Service', [
+  'mnHttp'
+]).factory('mnWizardStep4Service',
   function (mnHttp) {
     var mnWizardStep4Service = {};
 

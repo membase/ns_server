@@ -1,4 +1,8 @@
-angular.module('mnOverviewService').factory('mnOverviewService',
+angular.module('mnOverviewService', [
+  'mnPoolDefault',
+  'mnHttp',
+  'mnFilters'
+]).factory('mnOverviewService',
   function (mnHttp, mnPoolDefault, mnFormatMemSizeFilter) {
 
     var mnOverviewService = {};

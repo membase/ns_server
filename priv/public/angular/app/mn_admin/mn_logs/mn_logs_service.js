@@ -1,4 +1,6 @@
-angular.module('mnLogsService').service('mnLogsService',
+angular.module('mnLogsService', [
+  'mnHttp'
+]).service('mnLogsService',
   function (mnHttp) {
     var mnLogsService = {};
 

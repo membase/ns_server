@@ -1,4 +1,6 @@
-angular.module('mnSettingsAuditService').factory('mnSettingsAuditService',
+angular.module('mnSettingsAuditService', [
+  'mnHttp'
+]).factory('mnSettingsAuditService',
   function (mnHttp) {
     var mnSettingsAuditService = {};
 

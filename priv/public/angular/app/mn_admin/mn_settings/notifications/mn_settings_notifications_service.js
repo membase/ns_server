@@ -1,4 +1,9 @@
-angular.module('mnSettingsNotificationsService').factory('mnSettingsNotificationsService',
+angular.module('mnSettingsNotificationsService', [
+  'mnHttp',
+  'mnPoolDefault',
+  'mnBucketsService',
+  'mnPools'
+]).factory('mnSettingsNotificationsService',
   function (mnHttp, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope) {
     var mnSettingsNotificationsService = {};
 

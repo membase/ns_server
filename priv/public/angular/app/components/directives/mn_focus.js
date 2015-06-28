@@ -1,4 +1,5 @@
-angular.module('mnFocus').directive('mnFocus', function () {
+angular.module('mnFocus', [
+]).directive('mnFocus', function () {
 
   return {
     scope: {

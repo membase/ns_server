@@ -1,4 +1,7 @@
-angular.module('mnSettingsAlerts').controller('mnSettingsAlertsController',
+angular.module('mnSettingsAlerts', [
+  'mnSettingsAlertsService',
+  'mnHelper'
+]).controller('mnSettingsAlertsController',
   function($scope, mnHelper, mnSettingsAlertsService, alertsSettings) {
     $scope.state = alertsSettings;
     function getParams() {

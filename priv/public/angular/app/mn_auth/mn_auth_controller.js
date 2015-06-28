@@ -1,5 +1,5 @@
 angular.module('mnAuth').controller('mnAuthController',
-  function ($scope, mnAuthService, mnHelper, mnPools, $state) {
+  function ($scope, mnAuthService) {
     $scope.loginFailed = false;
 
     function error() {
