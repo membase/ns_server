@@ -225,7 +225,6 @@ collect_diag_per_node_binary_body(Reply) ->
     Reply(memory, memsup:get_memory_data()),
     Reply(disk, (catch ns_disksup:get_disk_data())),
     Reply(active_tasks, task_status_all()),
-    Reply(master_events, (catch master_activity_events_keeper:get_history_raw())),
     Reply(ns_server_stats, (catch system_stats_collector:get_ns_server_stats())),
     Reply(active_buckets, ActiveBuckets),
     Reply(replication_docs, (catch xdc_rdoc_api:find_all_replication_docs(5000))),
@@ -379,31 +378,9 @@ handle_per_node_just_diag(Resp, [{Node, DiagBinary} | Results]) ->
 do_handle_per_node_just_diag(Resp, Node, Failed) when not is_list(Failed) ->
     write_chunk_format(Resp, "per_node_diag(~p) = ~p~n~n~n", [Node, Failed]);
 do_handle_per_node_just_diag(Resp, Node, PerNodeDiag) ->
-    MasterEvents = proplists:get_value(master_events, PerNodeDiag, []),
+    %% NOTE: as of 4.0 we're not collecting master events here; but I'm
+    %% leaving this for mixed clusters
     DiagNoMasterEvents = lists:keydelete(master_events, 1, PerNodeDiag),
-
-    misc:executing_on_new_process(
-      fun () ->
-              write_chunk_format(Resp, "master_events(~p) =~n", [Node]),
-              lists:foreach(
-                fun (Event0) ->
-                        Event = case is_binary(Event0) of
-                                    true ->
-                                        binary_to_term(Event0);
-                                    false ->
-                                        Event0
-                                end,
-                        misc:executing_on_new_process(
-                          fun () ->
-                                  lists:foreach(
-                                    fun (JSON) ->
-                                            write_chunk_format(Resp, "     ~p~n", [JSON])
-                                    end, master_activity_events:event_to_jsons(Event))
-                          end)
-                end, MasterEvents),
-              Resp:write_chunk(<<"\n\n">>)
-      end),
-
     do_handle_per_node_processes(Resp, Node, DiagNoMasterEvents).
 
 get_other_node_processes(Key, PerNodeDiag) ->
