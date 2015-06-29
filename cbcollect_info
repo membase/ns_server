@@ -271,6 +271,14 @@ class UnixTask(SolarisTask, LinuxTask, MacOSXTask):
 class AllOsTask(UnixTask, WindowsTask):
     platforms = UnixTask.platforms + WindowsTask.platforms
 
+def make_curl_task(name, user, password, url, log_file="couchbase.log", base_task=AllOsTask):
+    def make_cmd(pwd):
+        return ["curl", "-sS", "--proxy", "",
+                "-u", "%s:%s" % (user, pwd), url]
+
+    return base_task(name, make_cmd(password), log_file=log_file,
+                     command_to_print=make_cmd("*****"))
+
 def basedir():
     mydir = os.path.dirname(sys.argv[0])
     if mydir == "":
@@ -490,12 +498,11 @@ def make_product_task(guts, initargs_path, options):
                  ["sh", "-c", 'for i in "$@"; do echo "file: $i"; cat "$i"; done', "--"] + read_guts(guts, "couch_inis").split(";"),
                  log_file="ini.log"),
 
-        AllOsTask("couchbase diags",
-                  ["curl", "-sS", "--proxy", "",
-                   "-u", '%s:%s' % ("@", read_guts(guts, "memcached_pass")),
-                   diag_url],
-                  log_file="diag.log",
-                  command_to_print="curl -sS --proxy '' -u %s:***** %s" % (read_guts(guts, "rest_user"), diag_url)),
+        make_curl_task(name="couchbase diags",
+                       user="@",
+                       password=read_guts(guts, "memcached_pass"),
+                       url=diag_url,
+                       log_file="diag.log"),
 
         [AllOsTask("couchbase logs (%s)" % name, "cbbrowse_logs %s" % name,
                    addenv = [("REPORT_DIR", read_guts(guts, "log_path"))],
