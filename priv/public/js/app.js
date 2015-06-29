@@ -854,7 +854,7 @@ var SetupWizard = {
 
         function maybeShowServicesErrors(data, status, errObject) {
           if (status !== 'success') {
-            serviceErrorsContainer.text(errObject.error);
+            serviceErrorsContainer.text(errObject[0]);
             serviceErrorsContainer.show();
           }
         }
