@@ -20,7 +20,7 @@
           </span>
         </div>
         <div>
-          <label for="setup_index_path_input">Indices Path:</label>
+          <label for="setup_index_path_input">Indexes Path:</label>
           <input type="text" name="index_path" ng-model="indexPath">
           <br class="clear" />
         </div>
@@ -35,8 +35,8 @@
             <strong>Attention</strong> - {{error}}<br>
           </div>
         </div>
-        <p class="when-enterprise pad_10" ng-show="isEnterprise">
-          Hint: if you use this server in a production, use different file systems for databases and indices.
+        <p class="when-enterprise" ng-show="isEnterprise">
+          Hint: if you use this server in a production environment, use different file systems for databases and indexes.
         </p>
       </div>
     </div>
