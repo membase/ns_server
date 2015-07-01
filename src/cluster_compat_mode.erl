@@ -96,7 +96,7 @@ is_enterprise() ->
     ns_config:read_key_fast({node, node(), is_enterprise}, false).
 
 is_goxdcr_enabled() ->
-    is_goxdcr_enabled(ns_config:latest_config_marker()).
+    is_goxdcr_enabled(ns_config:latest()).
 
 is_goxdcr_enabled(Config) ->
     is_cluster_sherlock() andalso
@@ -105,7 +105,7 @@ is_goxdcr_enabled(Config) ->
 
 is_ldap_enabled() ->
     is_cluster_sherlock() andalso is_enterprise() andalso
-        ns_config:search(ns_config:latest_config_marker(),
+        ns_config:search(ns_config:latest(),
                          {node, node(), ldap_enabled}, false).
 
 get_compat_version_three_elements() ->

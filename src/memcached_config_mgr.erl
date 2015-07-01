@@ -160,7 +160,7 @@ apply_changed_memcached_config(DifferentConfig, State) ->
         {memcached_error, einval, _} ->
             ?log_debug("Memcached config is not hot-reloadable"),
             RestartMemcached = case ns_config:search_node(node(),
-                                                          ns_config:latest_config_marker(),
+                                                          ns_config:latest(),
                                                           auto_restart_memcached) of
                                    {value, RestartMemcachedBool} ->
                                        true = is_boolean(RestartMemcachedBool),
@@ -224,7 +224,7 @@ hot_reload_config(NewMcdConfig, State, Tries, _LastErr) ->
     end.
 
 get_memcached_config_path() ->
-    Path = ns_config:search_node_prop(ns_config:latest_config_marker(), memcached, config_path),
+    Path = ns_config:search_node_prop(ns_config:latest(), memcached, config_path),
     true = is_list(Path),
     Path.
 

@@ -415,7 +415,7 @@ index_node_spec(Config) ->
     end.
 
 build_go_env_vars(Config, RPCService) ->
-    GoTraceBack0 = ns_config:search(ns_config:latest_config_marker(), gotraceback, <<>>),
+    GoTraceBack0 = ns_config:search(ns_config:latest(), gotraceback, <<>>),
     GoTraceBack = binary_to_list(GoTraceBack0),
     [{"GOTRACEBACK", GoTraceBack} | build_cbauth_env_vars(Config, RPCService)].
 

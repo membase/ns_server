@@ -32,7 +32,7 @@ get_ssl_query_port(Config, Node) ->
     ns_config:search(Config, {node, Node, ssl_query_port}, undefined).
 
 get_stats() ->
-    case ns_cluster_membership:should_run_service(ns_config:latest_config_marker(), n1ql, node()) of
+    case ns_cluster_membership:should_run_service(ns_config:latest(), n1ql, node()) of
         true ->
             do_get_stats();
         false ->
@@ -56,7 +56,7 @@ do_get_stats() ->
     end.
 
 send(Method, Path, Timeout) ->
-    Port =  get_query_port(ns_config:latest_config_marker(), node()),
+    Port =  get_query_port(ns_config:latest(), node()),
     URL = "http://127.0.0.1:" ++ integer_to_list(Port) ++ Path,
     User = ns_config_auth:get_user(special),
     Pwd = ns_config_auth:get_password(special),
@@ -76,9 +76,9 @@ refresh_cert() ->
     end.
 
 maybe_refresh_cert() ->
-    case ns_cluster_membership:should_run_service(ns_config:latest_config_marker(), n1ql, node()) of
+    case ns_cluster_membership:should_run_service(ns_config:latest(), n1ql, node()) of
         true ->
-            case get_ssl_query_port(ns_config:latest_config_marker(), node()) of
+            case get_ssl_query_port(ns_config:latest(), node()) of
                 undefined ->
                     ok;
                 _ ->

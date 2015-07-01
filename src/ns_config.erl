@@ -78,7 +78,7 @@
          fold/3, read_key_fast/2, get_timeout/2, get_global_timeout/2,
          delete/1,
          strip_metadata/1, extract_vclock/1,
-         latest_config_marker/0]).
+         latest/0]).
 
 -export([compute_global_rev/1]).
 
@@ -1258,7 +1258,7 @@ sync_announcements() ->
             ok
     end.
 
-latest_config_marker() ->
+latest() ->
     'latest-config-marker'.
 
 -ifdef(EUNIT).
@@ -1729,7 +1729,7 @@ test_local_changes_count() ->
     ?assertEqual({value, 3}, ns_config:search(d)),
     ?assertEqual({value, 3}, ns_config:search(ns_config:get(), d)),
 
-    ?assertEqual(0, compute_global_rev(ns_config:latest_config_marker())),
+    ?assertEqual(0, compute_global_rev(ns_config:latest())),
     ?assertEqual(0, compute_global_rev(ns_config:get())),
 
     ?assertEqual([], ns_config:read_key_fast({local_changes_count, testuuid}, undefined)),
@@ -1743,7 +1743,7 @@ test_local_changes_count() ->
 
     fail_on_incoming_message(),
 
-    ?assertEqual(1, compute_global_rev(ns_config:latest_config_marker())),
+    ?assertEqual(1, compute_global_rev(ns_config:latest())),
     ?assertEqual(1, compute_global_rev(ns_config:get())),
 
     {value, [], VC} = ns_config:search_with_vclock(ns_config:get(), {local_changes_count, testuuid}),

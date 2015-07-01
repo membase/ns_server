@@ -126,7 +126,7 @@ massage_stats([{K, V} | Rest], AccGauges, AccCounters, AccStatus) ->
     end.
 
 grab_stats(_State) ->
-    case ns_cluster_membership:should_run_service(ns_config:latest_config_marker(), index, node()) of
+    case ns_cluster_membership:should_run_service(ns_config:latest(), index, node()) of
         true ->
             get_stats();
         false ->

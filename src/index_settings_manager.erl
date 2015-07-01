@@ -99,7 +99,7 @@ do_update(Props) ->
     end.
 
 fetch_settings_json() ->
-    fetch_settings_json(ns_config:latest_config_marker()).
+    fetch_settings_json(ns_config:latest()).
 
 fetch_settings_json(Config) ->
     ns_config:search(Config, ?INDEX_CONFIG_KEY, <<"{}">>).

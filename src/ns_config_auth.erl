@@ -80,7 +80,7 @@ get_user_30(Role) ->
     end.
 
 get_user_old(admin) ->
-    case ns_config:search_prop(ns_config:latest_config_marker(), rest_creds, creds, []) of
+    case ns_config:search_prop(ns_config:latest(), rest_creds, creds, []) of
         [] ->
             undefined;
         [{U, _}|_] ->
@@ -95,7 +95,7 @@ get_user_old(ro_admin) ->
     end.
 
 get_password(special) ->
-    ns_config:search_node_prop(ns_config:latest_config_marker(), memcached, admin_pass).
+    ns_config:search_node_prop(ns_config:latest(), memcached, admin_pass).
 
 get_creds(Config, Role) ->
     case ns_config:search(Config, get_key(Role)) of
@@ -122,7 +122,7 @@ credentials_changed_30(Role, User, Password) ->
     end.
 
 credentials_changed_old(admin, User, Password) ->
-    case ns_config:search_prop(ns_config:latest_config_marker(), rest_creds, creds, []) of
+    case ns_config:search_prop(ns_config:latest(), rest_creds, creds, []) of
         [{U, Auth} | _] ->
             P = proplists:get_value(password, Auth, ""),
             User =/= U orelse Password =/= P;
@@ -131,7 +131,7 @@ credentials_changed_old(admin, User, Password) ->
     end.
 
 authenticate(admin, [$@ | _] = User, Password) ->
-    Password =:= ns_config:search_node_prop(ns_config:latest_config_marker(), memcached, admin_pass)
+    Password =:= ns_config:search_node_prop(ns_config:latest(), memcached, admin_pass)
         orelse authenticate_non_special(admin, User, Password);
 authenticate(Role, User, Password) ->
     authenticate_non_special(Role, User, Password).
@@ -145,7 +145,7 @@ authenticate_non_special(Role, User, Password) ->
     end.
 
 authenticate_old(admin, User, Password) ->
-    case ns_config:search_prop(ns_config:latest_config_marker(), rest_creds, creds, []) of
+    case ns_config:search_prop(ns_config:latest(), rest_creds, creds, []) of
         [{User, Auth} | _] ->
             Password =:= proplists:get_value(password, Auth, "");
         [] ->

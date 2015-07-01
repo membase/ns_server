@@ -168,8 +168,8 @@ maybe_connect(State) ->
     State.
 
 connect(Type, ConnName, Node, Bucket) ->
-    Username = ns_config:search_node_prop(Node, ns_config:latest_config_marker(), memcached, admin_user),
-    Password = ns_config:search_node_prop(Node, ns_config:latest_config_marker(), memcached, admin_pass),
+    Username = ns_config:search_node_prop(Node, ns_config:latest(), memcached, admin_user),
+    Password = ns_config:search_node_prop(Node, ns_config:latest(), memcached, admin_pass),
 
     Sock = mc_replication:connect({ns_memcached:host_port(Node), Username, Password, Bucket}),
     ok = dcp_commands:open_connection(Sock, ConnName, Type),

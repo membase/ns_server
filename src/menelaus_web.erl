@@ -1192,7 +1192,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
     {struct, PropList}.
 
 build_global_auto_compaction_settings() ->
-    build_global_auto_compaction_settings(ns_config:latest_config_marker()).
+    build_global_auto_compaction_settings(ns_config:latest()).
 
 build_global_auto_compaction_settings(Config) ->
     Extra = case cluster_compat_mode:is_cluster_sherlock() of
@@ -1932,7 +1932,7 @@ handle_read_only_user_reset(Req) ->
     end.
 
 get_cluster_name() ->
-    get_cluster_name(ns_config:latest_config_marker()).
+    get_cluster_name(ns_config:latest()).
 
 get_cluster_name(Config) ->
     ns_config:search(Config, cluster_name, "").
@@ -2393,7 +2393,7 @@ build_full_node_info(Node, LocalAddr) ->
                                    Fields)}.
 
 build_memory_quota_info() ->
-    build_memory_quota_info(ns_config:latest_config_marker()).
+    build_memory_quota_info(ns_config:latest()).
 
 build_memory_quota_info(Config) ->
     Props = [{memoryQuota, ns_storage_conf:memory_quota(Config)}],
@@ -3434,7 +3434,7 @@ do_handle_set_recovery_type(Req, Type, Params) ->
 
     OtpNodeErrorMsg = <<"invalid node name or node can't be used for delta recovery">>,
 
-    NotKV = not lists:member(kv, ns_cluster_membership:node_services(ns_config:latest_config_marker(), Node)),
+    NotKV = not lists:member(kv, ns_cluster_membership:node_services(ns_config:latest(), Node)),
 
     Errors = lists:flatten(
                [case Type of

@@ -60,7 +60,7 @@ start_link() ->
 
 start_link_capi_service() ->
     case ns_config:search_node(ns_node_disco:ns_server_node(),
-                               ns_config:latest_config_marker(),
+                               ns_config:latest(),
                                ssl_capi_port) of
         {value, SSLPort} when SSLPort =/= undefined ->
             do_start_link_capi_service(SSLPort);

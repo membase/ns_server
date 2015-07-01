@@ -112,8 +112,8 @@ map_settings(SettingNames, Settings) ->
       end, SettingNames).
 
 build_setting_kvs(SettingsKey, ExtraConfigKey) ->
-    {value, McdSettings} = ns_config:search(ns_config:latest_config_marker(), SettingsKey),
-    ExtraSettings = ns_config:search(ns_config:latest_config_marker(), ExtraConfigKey, []),
+    {value, McdSettings} = ns_config:search(ns_config:latest(), SettingsKey),
+    ExtraSettings = ns_config:search(ns_config:latest(), ExtraConfigKey, []),
     map_settings(supported_setting_names(), McdSettings)
         ++ map_settings(supported_extra_setting_names(), ExtraSettings).
 

@@ -133,17 +133,17 @@ default_audit_json_path() ->
     filename:join(path_config:component_path(data, "config"), "audit.json").
 
 audit_json_path() ->
-    ns_config:search_node_prop(ns_config:latest_config_marker(), memcached, audit_file).
+    ns_config:search_node_prop(ns_config:latest(), memcached, audit_file).
 
 is_enabled() ->
-    ns_config:search_node_prop(ns_config:latest_config_marker(), audit, auditd_enabled, false).
+    ns_config:search_node_prop(ns_config:latest(), audit, auditd_enabled, false).
 
 get_log_path() ->
     case is_enabled() of
         false ->
             undefined;
         true ->
-            case ns_config:search_node_prop(ns_config:latest_config_marker(), audit, log_path) of
+            case ns_config:search_node_prop(ns_config:latest(), audit, log_path) of
                 undefined ->
                     undefined;
                 Path ->

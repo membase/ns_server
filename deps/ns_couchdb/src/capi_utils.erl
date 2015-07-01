@@ -26,10 +26,10 @@
 
 %% returns capi port for given node or undefined if node doesn't have CAPI
 compute_capi_port({ssl, Node}) ->
-    ns_config:search(ns_config:latest_config_marker(), {node, Node, ssl_capi_port}, undefined);
+    ns_config:search(ns_config:latest(), {node, Node, ssl_capi_port}, undefined);
 
 compute_capi_port(Node) ->
-    ns_config:search(ns_config:latest_config_marker(), {node, Node, capi_port}, undefined).
+    ns_config:search(ns_config:latest(), {node, Node, capi_port}, undefined).
 
 get_capi_port(Node, Config) ->
     case ns_config:search(Config, {node, Node, capi_port}) of
