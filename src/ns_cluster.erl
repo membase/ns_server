@@ -711,7 +711,7 @@ check_can_add_node_with_services(NodeKVList, Services) ->
             ok;
         _ ->
             {error, incompatible_services,
-             ns_error_messages:unsupported_services_error(Services, Supported),
+             ns_error_messages:unsupported_services_error(Supported, Services),
              incompatible_services}
     end.
 
