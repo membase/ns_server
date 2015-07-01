@@ -136,8 +136,8 @@ failover(Node) ->
 re_failover_possible(NodeString) ->
     case (catch list_to_existing_atom(NodeString)) of
         Node when is_atom(Node) ->
-            RecoveryType = ns_config:search('latest-config-marker', {node, Node, recovery_type}, none),
-            Membership = ns_config:search('latest-config-marker', {node, Node, membership}),
+            RecoveryType = ns_config:search(ns_config:latest_config_marker(), {node, Node, recovery_type}, none),
+            Membership = ns_config:search(ns_config:latest_config_marker(), {node, Node, membership}),
             Ok = (lists:member(Node, ns_node_disco:nodes_wanted())
                   andalso RecoveryType =/= none
                   andalso Membership =:= {value, inactiveAdded}),

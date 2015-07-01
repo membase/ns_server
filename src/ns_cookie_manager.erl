@@ -99,7 +99,7 @@ do_cookie_gen() ->
     end.
 
 do_cookie_get() ->
-    ns_config:search_prop('latest-config-marker', otp, cookie).
+    ns_config:search_prop(ns_config:latest_config_marker(), otp, cookie).
 
 do_cookie_set(Cookie) ->
     X = ns_config:set(otp, [{cookie, Cookie}]),

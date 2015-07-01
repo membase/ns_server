@@ -65,7 +65,7 @@ get_purge_interval(BucketName) ->
     %% settings
     case UseGlobal of
         true ->
-            ns_config:search('latest-config-marker', global_purge_interval,
+            ns_config:search(ns_config:latest_config_marker(), global_purge_interval,
                              ?DEFAULT_DELETIONS_PURGE_INTERVAL);
         false ->
             RawPurgeInterval

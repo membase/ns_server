@@ -121,7 +121,7 @@ nodes_actual_other() ->
     lists:subtract(nodes_actual_proper(), [node()]).
 
 nodes_wanted() ->
-    nodes_wanted('latest-config-marker').
+    nodes_wanted(ns_config:latest_config_marker()).
 
 nodes_wanted(Config) ->
     lists:usort(ns_config:search(Config, nodes_wanted, [])).

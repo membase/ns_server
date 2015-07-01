@@ -873,7 +873,7 @@ update_vbucket_map_history(Map, SanifiedOptions) ->
     ns_config:set(vbucket_map_history, History2).
 
 past_vbucket_maps() ->
-    past_vbucket_maps('latest-config-marker').
+    past_vbucket_maps(ns_config:latest_config_marker()).
 
 past_vbucket_maps(Config) ->
     case ns_config:search(Config, vbucket_map_history) of
