@@ -126,6 +126,7 @@ alert_key(?EVENT_NODE_AUTO_FAILOVERED) -> auto_failover_node;
 alert_key(?EVENT_MAX_REACHED) -> auto_failover_maximum_reached;
 alert_key(?EVENT_OTHER_NODES_DOWN) -> auto_failover_other_nodes_down;
 alert_key(?EVENT_CLUSTER_TOO_SMALL) -> auto_failover_cluster_too_small;
+alert_key(?EVENT_AUTO_FAILOVER_DISABLED) -> auto_failover_disabled;
 alert_key(_) -> all.
 
 %% @doc Returns a list of all alerts that might send out an email notification.
@@ -134,7 +135,8 @@ alert_keys() ->
     [auto_failover_node,
      auto_failover_maximum_reached,
      auto_failover_other_nodes_down,
-     auto_failover_cluster_too_small].
+     auto_failover_cluster_too_small,
+     auto_failover_disabled].
 
 %%
 %% gen_server callbacks
@@ -283,7 +285,7 @@ handle_info(tick, State0) ->
                             "There was at least another node down.",
                             [Node]),
                   S;
-              ({log_auto_failover_disabled, Service, {Node, _UUID}}, S) ->
+              ({mail_auto_failover_disabled, Service, {Node, _UUID}}, S) ->
                   ?user_log(?EVENT_AUTO_FAILOVER_DISABLED,
                             "Could not auto-failover node (~p). "
                             "Auto-failover for ~p service is disbaled.",

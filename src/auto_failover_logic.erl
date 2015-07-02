@@ -218,9 +218,9 @@ update_services_state([{mail_too_small, Svc, SvcNodes, _}], ServicesState) ->
         end,
     update_services_state_inner(ServicesState, Svc, MTSFun);
 
-%% Update log_auto_failover_disabled state
-%% At any time, only one node can have log_auto_failover_disabled Action.
-update_services_state([{log_auto_failover_disabled, Svc, _}], ServicesState) ->
+%% Update mail_auto_failover_disabled state
+%% At any time, only one node can have mail_auto_failover_disabled Action.
+update_services_state([{mail_auto_failover_disabled, Svc, _}], ServicesState) ->
     LogAFOFun =
         fun (S) ->
                 S#service_state{logged_auto_failover_disabled = true}
@@ -310,7 +310,7 @@ should_failover_service(State, SvcConfig, Service, Node) ->
             case check_if_action_needed(State#state.services_state,
                                         Service, LogFun) of
                 true ->
-                    [{log_auto_failover_disabled, Service, Node}];
+                    [{mail_auto_failover_disabled, Service, Node}];
                 false ->
                     []
             end
