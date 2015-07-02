@@ -916,10 +916,7 @@ handle_engage_cluster2(Req) ->
                     _ ->
                         Result
                 end,
-            ResultWithServices =
-                [{supportedServices, ns_cluster_membership:supported_services()}
-                 | ResultWithCompat],
-            reply_json(Req, {struct, ResultWithServices});
+            reply_json(Req, {struct, ResultWithCompat});
         {error, _What, Message, _Nested} ->
             reply_json(Req, [Message], 400)
     end,

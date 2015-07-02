@@ -551,8 +551,9 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
 
 do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
     {struct, NodeInfo} = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
-    Struct = {struct, [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)}
-                       | NodeInfo]},
+    Struct = {struct, [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)},
+                       {<<"requestedServices">>, Services}]
+              ++ NodeInfo},
 
     ?cluster_debug("Posting node info to engage_cluster on ~p:~n~p",
                    [{RemoteAddr, RestPort}, Struct]),
@@ -652,7 +653,7 @@ do_add_node_engaged(NodeKVList, Auth, GroupUUID, Services) ->
     RV = verify_otp_connectivity(OtpNode),
     case RV of
         ok ->
-            case check_can_add_node(NodeKVList, Services) of
+            case check_can_add_node(NodeKVList) of
                 ok ->
                     %% TODO: only add services if possible
                     %% TODO: consider getting list of supported
@@ -666,7 +667,7 @@ do_add_node_engaged(NodeKVList, Auth, GroupUUID, Services) ->
         X -> X
     end.
 
-check_can_add_node(NodeKVList, Services) ->
+check_can_add_node(NodeKVList) ->
     JoineeClusterCompatVersion = expect_json_property_integer(<<"clusterCompatibility">>, NodeKVList),
     JoineeNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
 
@@ -678,41 +679,13 @@ check_can_add_node(NodeKVList, Services) ->
                          ns_error_messages:too_old_version_error(JoineeNode, Version),
                          incompatible_cluster_version};
                     _ ->
-                        check_can_add_node_with_services(NodeKVList, Services)
+                        ok
                 end;
         false -> {error, incompatible_cluster_version,
                   ns_error_messages:incompatible_cluster_version_error(MyCompatVersion,
                                                                        JoineeClusterCompatVersion,
                                                                        JoineeNode),
                   {incompatible_cluster_version, MyCompatVersion, JoineeClusterCompatVersion}}
-    end.
-
-check_can_add_node_with_services(NodeKVList, Services) ->
-    Supported = case lists:keyfind(<<"supportedServices">>, 1, NodeKVList) of
-                    false ->
-                        [atom_to_binary(S, latin1) || S <- ns_cluster_membership:default_services()];
-                    {_, List} ->
-                        case is_list(List) of
-                            false ->
-                                erlang:exit({unexpected_json, not_list, <<"supportedServices">>});
-                            _ ->
-                                case [[] || B <- List, not is_binary(B)] =:= [] of
-                                    false ->
-                                        erlang:exit({unexpected_json, not_list, <<"supportedServices">>});
-                                    true ->
-                                        List
-                                end
-                        end
-                end,
-    RequestedBin = [atom_to_binary(S, latin1) || S <- Services],
-    UnsupportedRequested = RequestedBin -- Supported,
-    case UnsupportedRequested of
-        [] ->
-            ok;
-        _ ->
-            {error, incompatible_services,
-             ns_error_messages:unsupported_services_error(Supported, Services),
-             incompatible_services}
     end.
 
 do_add_node_engaged_inner(NodeKVList, OtpNode, Auth) ->
@@ -867,7 +840,38 @@ do_engage_cluster_check_compat_version(Node, Version, NodeKVList) ->
              ns_error_messages:too_old_version_error(Node, Version),
              incompatible_cluster_version};
         false ->
-            do_engage_cluster_inner(NodeKVList)
+            do_engage_cluster_check_services(NodeKVList)
+    end.
+
+get_list_from_json(Key, KVList, Default) ->
+    case lists:keyfind(Key, 1, KVList) of
+        false ->
+            [atom_to_binary(S, latin1) || S <- Default];
+        {_, List} ->
+            case is_list(List) of
+                false ->
+                    erlang:exit({unexpected_json, not_list, Key});
+                _ ->
+                    case [[] || B <- List, not is_binary(B)] =:= [] of
+                        false ->
+                            erlang:exit({unexpected_json, not_list, Key});
+                        true ->
+                            List
+                    end
+            end
+    end.
+
+do_engage_cluster_check_services(NodeKVList) ->
+    RequestedServices = get_list_from_json(<<"requestedServices">>, NodeKVList,
+                                           ns_cluster_membership:default_services()),
+    SupportedServices = [atom_to_binary(S, latin1) || S <- ns_cluster_membership:supported_services()],
+    case RequestedServices -- SupportedServices of
+        [] ->
+            do_engage_cluster_inner(NodeKVList);
+        _ ->
+            {error, incompatible_services,
+             ns_error_messages:unsupported_services_error(SupportedServices, RequestedServices),
+             incompatible_services}
     end.
 
 do_engage_cluster_inner(NodeKVList) ->
