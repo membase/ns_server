@@ -51,7 +51,8 @@
 
 -export([add_node_to_group/5,
          engage_cluster/1, complete_join/1,
-         check_host_connectivity/1, change_address/1]).
+         check_host_connectivity/1, change_address/1,
+         enforce_topology_limitation/2]).
 
 %% debugging & diagnostic export
 -export([do_change_address/2]).
@@ -861,13 +862,29 @@ get_list_from_json(Key, KVList, Default) ->
             end
     end.
 
+enforce_topology_limitation(Services, SupportedCombinations) ->
+    SortedServices = lists:sort(Services),
+    case cluster_compat_mode:is_enterprise() orelse
+        lists:member(SortedServices, SupportedCombinations) of
+        true ->
+            ok;
+        false ->
+            {error, ns_error_messages:topology_limitation_error()}
+    end.
+
 do_engage_cluster_check_services(NodeKVList) ->
     RequestedServices = get_list_from_json(<<"requestedServices">>, NodeKVList,
                                            ns_cluster_membership:default_services()),
     SupportedServices = [atom_to_binary(S, latin1) || S <- ns_cluster_membership:supported_services()],
     case RequestedServices -- SupportedServices of
         [] ->
-            do_engage_cluster_inner(NodeKVList);
+            case enforce_topology_limitation(RequestedServices,
+                                            [[<<"kv">>], lists:sort(SupportedServices)]) of
+                {error, Msg} ->
+                    {error, incompatible_services, Msg, incompatible_services};
+                ok ->
+                    do_engage_cluster_inner(NodeKVList)
+            end;
         _ ->
             {error, incompatible_services,
              ns_error_messages:unsupported_services_error(SupportedServices, RequestedServices),

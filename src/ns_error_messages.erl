@@ -23,7 +23,8 @@
          too_old_version_error/2,
          verify_otp_connectivity_port_error/2,
          verify_otp_connectivity_connection_error/4,
-         unsupported_services_error/2]).
+         unsupported_services_error/2,
+         topology_limitation_error/0]).
 
 -spec connection_error_message(term(), string(), string() | integer()) -> binary() | undefined.
 connection_error_message({Error, _}, Host, Port) ->
@@ -148,3 +149,6 @@ verify_otp_connectivity_connection_error(Reason, OtpNode, Host, Port) ->
 unsupported_services_error(AvailableServices, RequestedServices) ->
     list_to_binary(io_lib:format("Node doesn't support requested services: ~p. Supported services: ~p",
                                  [RequestedServices, AvailableServices])).
+
+topology_limitation_error() ->
+    <<"Community edition supports either data only nodes or nodes with all services enabled.">>.
