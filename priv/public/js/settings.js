@@ -1086,6 +1086,12 @@ var EmailAlertsSection = {
                              val.alerts)!==-1,
           value: 'auto_failover_cluster_too_small'
         },{
+          label: 'Node was not auto-failed-over as auto-failover ' +
+            'for one or more services running on the node is disabled',
+          enabled: $.inArray('auto_failover_disabled',
+                             val.alerts)!==-1,
+          value: 'auto_failover_disabled'
+        },{
           label: 'Node\'s IP address has changed unexpectedly',
           enabled: $.inArray('ip', val.alerts)!==-1,
           value: 'ip'
