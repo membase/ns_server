@@ -219,7 +219,25 @@ bringup(MyIP, UserSupplied) ->
     RN = save_node(ActualNodeName),
     ?log_debug("Attempted to save node name to disk: ~p", [RN]),
 
+    BabysitterNode = ns_server:get_babysitter_node(),
+    ?log_debug("Waiting for connection to node ~p to be established", [BabysitterNode]),
+    wait_for_node(BabysitterNode, 100, 10),
+
     #state{self_started = Rv, my_ip = MyIP, user_supplied = UserSupplied}.
+
+wait_for_node(Node, _Time, 0) ->
+    ?log_error("Failed to wait for node ~p", [Node]),
+    erlang:exit({error, wait_for_node_failed});
+wait_for_node(Node, Time, Try) ->
+    case net_kernel:connect_node(Node) of
+        true ->
+            ?log_debug("Observed node ~p to come up", [Node]),
+            ok;
+        Ret ->
+            ?log_debug("Node ~p is not accessible yet. (Ret = ~p). Retry in ~p ms.", [Node, Ret, Time]),
+            timer:sleep(Time),
+            wait_for_node(Node, Time, Try - 1)
+    end.
 
 configure_net_kernel() ->
     Verbosity = misc:get_env_default(ns_server, net_kernel_verbosity, 0),
