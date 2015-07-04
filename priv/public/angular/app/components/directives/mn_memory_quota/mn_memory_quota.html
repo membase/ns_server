@@ -1,0 +1,33 @@
+<div class="row">
+  <label>RAM Available: </label>
+  <span class="ram-total-size">{{::config.totalMemorySize}} MB</span>
+</div>
+<div class="row" ng-if="config.isServicesControllsAvailable" mn-services="config">
+</div>
+<div class="memory-quota row" ng-if="config.showKVMemoryQuota">
+  <label for="kv_ram_quota">Data RAM Quota:</label>
+  <input type="number" class="focusme js_ram_quota" id="kv_ram_quota" name="memoryQuota" ng-model="config.memoryQuota" />
+  <span>MB (min {{::config.minMemorySize}} MB)</span>
+  <a class="tooltip text_11"><span>What&#39;s this?</span>
+    <span class="tooltip_msg" style="width:150px;"><span>
+      Main memory allocation amount for data service per node.
+    </span></span>
+  </a>
+  <span class="error-container err-memoryQuota" ng-show="errors.memoryQuota">{{errors.memoryQuota}}</span>
+</div>
+<div class="memory-quota row" ng-if="config.showIndexMemoryQuota">
+  <label for="index_ram_quota">Index RAM Quota:</label>
+  <input type="number" class="js_ram_quota" id="index_ram_quota" name="indexMemoryQuota" ng-model="config.indexMemoryQuota" />
+  <span>MB (min 256 MB)</span>
+  <a class="tooltip text_11"><span>What&#39;s this?</span>
+    <span class="tooltip_msg" style="width:150px;"><span>
+      Main memory allocation amount for index service per node.
+    </span></span>
+  </a>
+  <span class="error-container err-indexMemoryQuota" ng-show="errors.indexMemoryQuota">
+    {{errors.indexMemoryQuota}}</span>
+</div>
+<div class="row" ng-if="config.showTotalPerNode">
+  <label>Total Per Server:</label>
+  <span><span class="js_per_server_total">{{config.memoryQuota + config.indexMemoryQuota}}</span> MB (must be less than <span class="js_max_ram_size">{{::config.maxMemorySize}}</span> MB) </span>
+</div>

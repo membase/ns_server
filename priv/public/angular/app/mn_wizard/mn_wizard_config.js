@@ -9,7 +9,9 @@ angular.module('mnWizard', [
   'mnWizardStep3Service',
   'mnWizardStep4Service',
   'mnWizardStep5Service',
+  'mnMemoryQuota',
   'mnPoolDefault',
+  'mnMemoryQuotaService',
   'mnSpinner'
 ]).config(function ($stateProvider) {
 
