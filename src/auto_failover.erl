@@ -429,7 +429,14 @@ all_services_config(Config) ->
                                                                     Service, all),
               %% Is auto-failover for the service disabled?
               ServiceKey = {auto_failover_disabled, Service},
-              AutoFailoverDisabled = ns_config:search(Config, ServiceKey, false),
+              DV = case Service of
+                       index ->
+                           %% Auto-failover disabled by default for index service.
+                           true;
+                       _ ->
+                           false
+                   end,
+              AutoFailoverDisabled = ns_config:search(Config, ServiceKey, DV),
               {Service, {{disable_auto_failover, AutoFailoverDisabled},
                          {nodes, SvcNodes}}}
       end, AllServices).
