@@ -7,6 +7,17 @@ angular.module('mnWizardStep1Service', [
     var re = /^[A-Z]:\//;
     var preprocessPath;
     var dynamicRamQuota;
+    var joinClusterConfig = {
+      clusterMember: {
+        hostname: "127.0.0.1",
+        username: "Administrator",
+        password: ''
+      },
+      services: {
+        disabled: {kv: false, index: false, n1ql: false},
+        model: {kv: true, index: true, n1ql: true}
+      }
+    };
 
     mnWizardStep1Service.setDynamicRamQuota = function (ramQuota) {
       dynamicRamQuota = ramQuota;
@@ -32,6 +43,14 @@ angular.module('mnWizardStep1Service', [
       return (Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / Math.Mi)) + ' GB';
     }
 
+    mnWizardStep1Service.getJoinClusterConfig = function () {
+      return joinClusterConfig;
+    };
+
+    mnWizardStep1Service.getNewClusterConfig = function () {
+      return getNewClusterConfig;
+    };
+
     mnWizardStep1Service.getSelfConfig = function () {
       return mnHttp({
         method: 'GET',
@@ -49,9 +68,8 @@ angular.module('mnWizardStep1Service', [
           return b.path.length - a.path.length;
         });
 
-        nodeConfig.dynamicRamQuota = Math.floor(ram.quotaTotal / Math.Mi);
         nodeConfig.ramTotalSize = totalRAMMegs;
-        nodeConfig.ramMaxMegs = Math.max(totalRAMMegs - 1024, Math.floor(ram.total * 4 / (5 * Math.Mi)));
+        nodeConfig.ramMaxMegs = Math.floor(totalRAMMegs / 100 * 80);
 
         nodeConfig.hostname = (nodeConfig && nodeConfig['otpNode'].split('@')[1]) || '127.0.0.1';
 
@@ -60,7 +78,6 @@ angular.module('mnWizardStep1Service', [
     };
 
     mnWizardStep1Service.lookup = function (path, availableStorage) {
-
       return updateTotal(path && _.detect(availableStorage, function (info) {
         return preprocessPath(path).substring(0, info.path.length) == info.path;
       }) || {path: "/", sizeKBytes: 0, usagePercent: 0});
@@ -79,14 +96,6 @@ angular.module('mnWizardStep1Service', [
         method: 'POST',
         url: '/node/controller/rename',
         data: {hostname: hostname}
-      });
-    };
-
-    mnWizardStep1Service.postMemory = function (memoryQuota) {
-      return mnHttp({
-        method: 'POST',
-        url: '/pools/default',
-        data: {memoryQuota: memoryQuota}
       });
     };
 
