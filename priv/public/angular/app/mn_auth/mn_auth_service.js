@@ -16,10 +16,6 @@ angular.module('mnAuthService', [
         user: user.username,
         password: user.password
       }
-    }).then(function () {
-      return mnPools.getFresh().then(function () {
-        $state.go('app.admin.overview');
-      });
     });
   };
 

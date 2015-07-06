@@ -108,7 +108,18 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
           }
         } else {
           return postJoinCluster().then(function () {
-            return mnAuthService.login($scope.joinClusterConfig.clusterMember);
+            return mnAuthService.login($scope.joinClusterConfig.clusterMember).then(function () {
+              return mnPoolDefault.getFresh().then(function (poolsDefault) {
+                if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, $scope.joinClusterConfig.services.model, 'index')) {
+                  $state.go('app.wizard.step6');
+                } else {
+                  return mnPools.getFresh().then(function (pools) {
+                    $state.go('app.admin.overview');
+                    mnAlertsService.formatAndSetAlerts('This server has been associated with the cluster and will join on the next rebalance operation.', 'success');
+                  });
+                }
+              });
+            });
           });
         }
       });

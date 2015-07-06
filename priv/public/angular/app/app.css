@@ -456,6 +456,16 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .certificate_section .edit_btn {border:none;float:none;margin:3px 0pt 3px 0;font-size: 10px;line-height:21px;display:inline-block;}
 .certificate_section .about-cert-area_wrapper {overflow: hidden; z-index: 1;position: relative;}
 
+.settings .cluster_settings_container .index_settings_section label {width: 170px}
+.cluster_quota_settings {font-size: 13px;line-height: 23px;}
+.cluster_quota_settings .error-container {font-size: 11px; line-height: 14px; margin: 0 0 5px 0;}
+.cluster_quota_settings input[type="number"],
+.index_settings_section input[type="number"] {width:78px!important;}
+.index_settings_section .row,
+.cluster_quota_settings .row {margin: 5px 0;}
+.cluster_quota_settings label {width:111px; display: inline-block;}
+.memory_quota_dialog label {width: 130px;}
+
 /* update notification styles */
 #notifications_container .item {padding:13px;}
 #notifications_container .save_button {float:right;}
@@ -683,9 +693,8 @@ body.init_resources #init_resources_dialog {background:none; background-color:#e
 #init_secure_dialog form > div input {padding:3px; border:1px solid #ccd3d7;}
 #init_secure_dialog form > .config-bottom {overflow:hidden;margin:25px auto 0 -8px;}
 
-.init_block #init_bucket_dialog {padding-bottom:-50px;background:none #eee;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
-.init_block #init_bucket_dialog form {border:none;font-family:Verdana,Helvetica,sans-serif;}
-.init_block #init_bucket_dialog form > .clearfix:first-child {padding:0 50px 20px;}
+.init_block #init_bucket_dialog, #init_setting_memory_quota_dialog {padding-bottom:-50px;background:none #eee;-moz-box-shadow:0 0 10px #999;-webkit-box-shadow:0 0 10px #999;box-shadow:0 0 10px #999}
+
 .init_block #init_bucket_dialog .save_cancel button {margin:2px 0 0 20px;}
 
 body.init_bucket_dialog #init_bucket_dialog { display: block; }
@@ -1151,6 +1160,9 @@ span.staleness-notice, .staleness-notice { font-size: 12px!important; display: n
 
 .darker_block.dynamic_server_resources { display: none; }
 .dynamic_with_server_resources .darker_block.dynamic_server_resources { display: block; }
+
+.init_setting_memory_quota .cluster_quota_settings {margin-left: 85px; margin-right: 85px;}
+.init_setting_memory_quota .cluster_quota_settings label{display: inline-block; width: 130px;}
 
 /* update notifications page in the startup wizard */
 #init_update_notifications_dialog {display:block}

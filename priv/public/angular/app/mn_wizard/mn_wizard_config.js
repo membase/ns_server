@@ -57,5 +57,14 @@ angular.module('mnWizard', [
     .state('app.wizard.step5', {
       templateUrl: 'mn_wizard/step5/mn_wizard_step5.html',
       controller: 'mnWizardStep5Controller'
+    })
+    .state('app.wizard.step6', {
+      templateUrl: 'mn_wizard/step6/mn_wizard_step6.html',
+      controller: 'mnWizardStep6Controller',
+      resolve: {
+        memoryQuotaConfig: function (mnMemoryQuotaService, mnWizardStep1Service) {
+          return mnMemoryQuotaService.memoryQuotaConfig(mnWizardStep1Service.getJoinClusterConfig().services.model.kv);
+        }
+      }
     });
 });
