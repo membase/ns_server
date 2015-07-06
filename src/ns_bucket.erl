@@ -123,7 +123,6 @@ config_string(BucketName) ->
                       "tap_noop_interval=~B;"
                       "max_size=~B;"
                       "tap_keepalive=~B;dbname=~s;"
-                      "allow_data_loss_during_shutdown=true;"
                       "backend=couchdb;couch_bucket=~s;max_vbuckets=~B;"
                       "alog_path=~s;data_traffic_enabled=false;max_num_workers=~B;"
                       "uuid=~s;item_eviction_policy=~s",
