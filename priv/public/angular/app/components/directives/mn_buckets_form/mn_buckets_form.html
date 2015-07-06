@@ -3,18 +3,18 @@
   <div class="bucket-icon sub_section">
     <div>
       <label>Bucket Name:</label>
-      <input ng-model="bucketConf.name" ng-disabled="canChangeBucketsSettings">
+      <input ng-model="bucketConf.name" ng-disabled="bucketConf.isWizard || !bucketConf.isNew">
       <span class="error-container err-name" ng-show="validationResult.errors.name">{{validationResult.errors.name}}</span>
     </div>
     <div>
       <label>Bucket Type:</label>
       <div class="with_radiogroup">
         <div>
-          <input type="radio" name="bucketType" value="membase" id="bucket_type_membase_init" ng-model="bucketConf.bucketType" ng-disabled="canChangeBucketsSettings">
+          <input type="radio" name="bucketType" value="membase" id="bucket_type_membase_init" ng-model="bucketConf.bucketType" ng-disabled="!bucketConf.isNew">
           <label for="bucket_type_membase_init">Couchbase</label>
         </div>
         <div>
-          <input type="radio" name="bucketType" value="memcached" id="bucket_type_memcached_init" ng-model="bucketConf.bucketType" ng-disabled="canChangeBucketsSettings">
+          <input type="radio" name="bucketType" value="memcached" id="bucket_type_memcached_init" ng-model="bucketConf.bucketType" ng-disabled="!bucketConf.isNew">
           <label for="bucket_type_memcached_init">Memcached</label>
         </div>
       </div>

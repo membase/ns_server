@@ -27,7 +27,7 @@ angular.module('mnBucketsForm', [
     templateUrl: 'components/directives/mn_buckets_form/mn_buckets_form.html',
     controller: function ($scope) {
       $scope.replicaNumberEnabled = $scope.bucketConf.replicaNumber != 0;
-      $scope.canChangeBucketsSettings = !($scope.bucketConf.isNew && !$scope.bucketConf.isWizard);
+      $scope.canChangeBucketsSettings = $scope.bucketConf.isNew;
       $scope.focusMe = true;
 
       $scope.$watch('replicaNumberEnabled', function (isEnabled) {
@@ -35,7 +35,7 @@ angular.module('mnBucketsForm', [
           $scope.bucketConf.replicaNumber = 0;
           $scope.bucketConf.replicaIndex = 0;
         } else {
-          $scope.bucketConf.replicaNumber = 1;
+          $scope.bucketConf.replicaNumber = $scope.bucketConf.replicaNumber || 1;
         }
       });
 
@@ -57,7 +57,8 @@ angular.module('mnBucketsForm', [
           url: bucketConf.uri,
           data: mnBucketsDetailsDialogService.prepareBucketConfigForSaving(bucketConf, autoCompactionSettings),
           params: {
-            just_validate: 1
+            just_validate: 1,
+            ignore_warnings: $scope.bucketConf.ignoreWarnings ? 1 : 0
           }
         })
         .then(mnBucketsDetailsDialogService.adaptValidationResult, mnBucketsDetailsDialogService.adaptValidationResult)

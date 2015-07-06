@@ -12,7 +12,7 @@ angular.module('mnBucketsDetailsDialogService', [
 
     mnBucketsDetailsDialogService.prepareBucketConfigForSaving = function (bucketConf, autoCompactionSettings) {
       var conf = {};
-      angular.forEach(['bucketType', 'ramQuotaMB', 'name', 'evictionPolicy', 'authType', 'saslPassword', 'proxyPort', 'replicaNumber', 'replicaIndex', 'threadsNumber', 'flushEnabled', 'autoCompactionDefined'], function (fieldName) {
+      angular.forEach(['bucketType', 'ramQuotaMB', 'name', 'evictionPolicy', 'authType', 'saslPassword', 'proxyPort', 'replicaNumber', 'replicaIndex', 'threadsNumber', 'flushEnabled', 'autoCompactionDefined', 'otherBucketsRamQuotaMB'], function (fieldName) {
         if (bucketConf[fieldName] !== undefined) {
           conf[fieldName] = bucketConf[fieldName];
         }
@@ -55,7 +55,8 @@ angular.module('mnBucketsDetailsDialogService', [
         var bucketConf = resp.data;
         bucketConf.ramQuotaMB = mnBytesToMBFilter(bucketConf.quota.rawRAM);
         bucketConf.isDefault = bucketConf.name === 'default';
-        bucketConf.flushEnabled = +bucketDetails.flushEnabled;
+        bucketConf.replicaIndex = bucketConf.replicaIndex ? 1 : 0;
+        bucketConf.flushEnabled = (bucketConf.controllers !== undefined && bucketConf.controllers.flush !== undefined) ? 1 : 0;
         return bucketConf;
       });
     };
