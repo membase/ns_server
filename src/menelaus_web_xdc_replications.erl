@@ -77,7 +77,7 @@ handle_cancel_replication(XID, Req) ->
     goxdcr_rest:proxy_or(
       fun () ->
               do_handle_cancel_replication(XID, Req)
-      end, Req, "/controller/cancelXDCR/" ++ XID).
+      end, Req, menelaus_util:concat_url_path(["controller", "cancelXDCR", XID])).
 
 do_handle_cancel_replication(XID, Req) ->
     case xdc_rdoc_api:delete_replicator_doc(XID) of
