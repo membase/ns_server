@@ -1316,7 +1316,7 @@ do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
                  {struct, [{title, <<"bytes returned/sec">>},
                            {name, per_index_stat(Id, <<"scan_bytes_read">>)},
                            {desc, <<"Number of bytes per second read by a scan">>}]},
-                 {struct, [{title, <<"avg scan latency/ns">>},
+                 {struct, [{title, <<"avg scan latency(ns)">>},
                            {name, per_index_stat(Id, <<"avg_scan_latency">>)},
                            {desc, <<"Average time to serve a scan request (nanoseconds)">>}]}]}]}
      || Id <- AllIndexes].
