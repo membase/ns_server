@@ -214,7 +214,8 @@ verify_upgrade(Bucket, BucketConfig) ->
     ns_rebalancer:verify_replication(Bucket, Nodes, Map).
 
 apply_bucket_config(Bucket, BucketConfig, Servers) ->
-    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, 1),
+    Timeout = ns_config:read_key_fast({timeout, dcp_upgrade_query_states_seconds}, 30),
+    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, Timeout),
     case Zombies of
         [] ->
             janitor_agent:apply_new_bucket_config_with_timeout(
