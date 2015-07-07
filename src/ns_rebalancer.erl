@@ -214,7 +214,15 @@ generate_vbucket_map_options(KeepNodes, BucketConfig, Config) ->
            end,
 
     Opts0 = ns_bucket:config_to_map_options(BucketConfig),
-    misc:update_proplist(Opts0, [{tags, Tags}]).
+
+    %% Note that we don't need to have replication_topology here (in fact as
+    %% of today it's still returned by ns_bucket:config_to_map_options/1), but
+    %% these options are used to compute map_opts_hash which in turn is used
+    %% to decide if rebalance is needed. So if we remove this, old nodes will
+    %% wrongly believe that rebalance is needed even when the cluster is
+    %% balanced. See MB-15543 for details.
+    misc:update_proplist(Opts0, [{replication_topology, star},
+                                 {tags, Tags}]).
 
 generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
     Opts = generate_vbucket_map_options(KeepNodes, BucketConfig),
