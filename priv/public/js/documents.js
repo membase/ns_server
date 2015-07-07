@@ -705,8 +705,7 @@ var DocumentsSection = {
             var val = $.trim(createDocInput.val());
             if (val) {
               startSpinner(createDocDialog);
-              var preDefinedDoc = {"click":"to edit",
-                "new in 2.0":"there are no reserved field names"};
+              var preDefinedDoc = { "click": "to edit", "with JSON": "there are no reserved field names" };
               tryCreatingDoc(val, preDefinedDoc);
             } else {
               createDocWarning.text(documentErrors.idEmpty).show();
