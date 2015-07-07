@@ -82,6 +82,8 @@ init_ldap_enabled() ->
 default() ->
     ensure_data_dir(),
     DataDir = get_data_dir(),
+    Services = ns_cluster_membership:supported_services(),
+
     InitQuota = case memsup:get_memory_data() of
                     {_, _, _} = MemData ->
                         ns_storage_conf:default_memory_quota(MemData);
@@ -377,7 +379,8 @@ default() ->
      %% everything is unlimited by default
      {{request_limit, rest}, undefined},
      {{request_limit, capi}, undefined},
-     {drop_request_memory_threshold_mib, undefined}].
+     {drop_request_memory_threshold_mib, undefined},
+     {{node, node(), services}, Services}].
 
 %% Recursively replace all strings in a hierarchy that start
 %% with a given Prefix with a ReplacementPrefix.  For example,
