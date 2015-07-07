@@ -264,7 +264,9 @@ handle_info(tick, State0) ->
                             "Could not auto-failover node (~p). "
                             "Number of nodes running ~p service is ~p. "
                             "You need at least ~p nodes.",
-                            [Node, Service, length(SvcNodes),
+                            [Node,
+                             ns_cluster_membership:user_friendly_service_name(Service),
+                             length(SvcNodes),
                              auto_failover_logic:service_failover_min_node_count(Service) + 1]),
                   S;
               ({_, {Node, _UUID}}, #state{count=1} = S) ->
@@ -289,7 +291,7 @@ handle_info(tick, State0) ->
                   ?user_log(?EVENT_AUTO_FAILOVER_DISABLED,
                             "Could not auto-failover node (~p). "
                             "Auto-failover for ~p service is disbaled.",
-                            [Node, Service]),
+                            [Node, ns_cluster_membership:user_friendly_service_name(Service)]),
                   S;
               ({failover, {Node, _UUID}}, S) ->
                   case ns_orchestrator:try_autofailover(Node) of

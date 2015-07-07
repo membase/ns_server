@@ -51,7 +51,8 @@
          should_run_service/2,
          should_run_service/3,
          n1ql_active_nodes/2,
-         index_active_nodes/2]).
+         index_active_nodes/2,
+         user_friendly_service_name/1]).
 
 active_nodes() ->
     active_nodes(ns_config:get()).
@@ -269,3 +270,10 @@ n1ql_active_nodes(Config, Status) ->
 
 index_active_nodes(Config, Status) ->
     service_active_nodes(Config, index, Status).
+
+user_friendly_service_name(kv) ->
+    data;
+user_friendly_service_name(n1ql) ->
+    query;
+user_friendly_service_name(Service) ->
+    Service.
