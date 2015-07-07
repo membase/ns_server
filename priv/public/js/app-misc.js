@@ -1194,9 +1194,6 @@ var MemoryQuotaSettingsWidget = mkClass({
   selectAllServices: function () {
     this.serviceFlags.prop('checked', true).change();
   },
-  disableAllServices: function () {
-    this.serviceFlags.prop('disabled', true);
-  },
   computePerServerTotalQuota: function () {
     var self = this;
     var val = _.reduce(self.memoryQuotaFileds.not(':disabled').map(function () {

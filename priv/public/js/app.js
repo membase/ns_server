@@ -710,11 +710,6 @@ var SetupWizard = {
 
           memoryQuotaWidget.selectAllServices();
 
-          if (!DAL.cells.isEnterpriseCell.value) {
-            memoryQuotaWidget.disableAllServices();
-            $('.js_login-credentials .js_join_services').prop('disabled', true).prop('checked', true);
-          }
-
           var firstResource = data.storage.hdd[0];
 
           var dbPath;
