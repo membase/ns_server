@@ -271,9 +271,11 @@ class UnixTask(SolarisTask, LinuxTask, MacOSXTask):
 class AllOsTask(UnixTask, WindowsTask):
     platforms = UnixTask.platforms + WindowsTask.platforms
 
-def make_curl_task(name, user, password, url, log_file="couchbase.log", base_task=AllOsTask):
+def make_curl_task(name, user, password, url,
+                   timeout=60, log_file="couchbase.log", base_task=AllOsTask):
     def make_cmd(pwd):
         return ["curl", "-sS", "--proxy", "",
+                "--max-time", str(timeout),
                 "-u", "%s:%s" % (user, pwd), url]
 
     return base_task(name, make_cmd(password), log_file=log_file,
@@ -519,6 +521,7 @@ def make_product_task(guts, initargs_path, options):
         make_curl_task(name="couchbase diags",
                        user="@",
                        password=read_guts(guts, "memcached_pass"),
+                       timeout=600,
                        url=diag_url,
                        log_file="diag.log"),
 
