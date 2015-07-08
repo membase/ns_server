@@ -676,13 +676,6 @@ var SetupWizard = {
               $('.js_login-credentials').show();
           });
 
-          var m = data['memoryQuota'];
-          if (m == null || m == "none") {
-            m = "";
-          }
-
-          dialog.find('[name=quota]').val(m);
-
           data['node'] = data['node'] || node;
 
           var hostname = dialog.find('[name=hostname]');
