@@ -36,6 +36,7 @@ supported_setting_names() ->
     [{maxconn, {int, 1000, ?MAXINT}},
      {dedicated_port_maxconn, {int, 1000, ?MAXINT}},
      {verbosity, {int, 0, ?MAXINT}},
+     {ssl_cipher_list, string},
      {breakpad_enabled, bool},
      {breakpad_minidump_dir_path, string}].
 

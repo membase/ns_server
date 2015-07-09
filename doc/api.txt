@@ -414,6 +414,7 @@ GET /pools/default/serverGroups =>
      | threads): <number>)*
   (breakpad_enabled: <bool>)?
   (breakpad_minidump_dir_path: <string>)?
+  (ssl_cipher_list: <string>)?
 }
 
 
