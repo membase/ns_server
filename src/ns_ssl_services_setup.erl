@@ -262,6 +262,8 @@ build_state(CertPEM, PKeyPEM, Compat30, Node) ->
     end.
 
 init([]) ->
+    ?log_info("Used ssl options:~n~p", [ssl_server_opts()]),
+
     Self = self(),
     ns_pubsub:subscribe_link(ns_config_events, fun config_change_detector_loop/2, Self),
 
