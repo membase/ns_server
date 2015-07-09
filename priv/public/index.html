@@ -1973,7 +1973,7 @@
                   <tr class="row">
                     <td class="ellipsis with_expander_button" title="{%= h(row.bucket) %}">
                       <a href="#openIndex={%= h(row.id) %}"><ins class="expander closed"></ins></a>
-                      <span style="ve">{%= h(row.bucket) %}</span>
+                      <span>{%= h(row.bucket) %}</span>
                     </td>
                     <td class="ellipsis" title="{%= h(row.hosts[0]) %}">{%= h(row.hosts[0]) %}</td>
                     <td class="ellipsis" title="{%= h(row.index) %}">{%= h(row.index) %}</td>
@@ -2004,31 +2004,6 @@
             </tbody>
           </table>
           </div>
-        </script>
-
-        <script id="js_index_nodes_list_template" type="text/html">
-          <table class="list align_text" style="width:100%">
-            <thead>
-              <tr>
-                <th>Node</th>
-                <th>Current RAM Quota</th>
-                <th>RAM Quota on Restart</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% if (rows.length) { %}
-                {% _.each(rows, function (row) { %}
-                  <tr>
-                    <td class="ellipsis" title="{%= h(row.hostname) %}">{%= h(row.hostname) %}</td>
-                    <td>{%= h(row.currentQuota) %}</td>
-                    <td>{%= h(row.pendingQuota) %}</td>
-                  </tr>
-                {% }); %}
-              {% } else { %}
-                <tr><td colspan="3" style="text-align: center;">There are no index nodes currently.</td></tr>
-              {% } %}
-            </tbody>
-          </table>
         </script>
 
         <script id="js_index_warnings_template" type="text/html">
