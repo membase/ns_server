@@ -167,7 +167,22 @@ dh_params_der() ->
       229,171,2,1,2>>.
 
 supported_versions() ->
-    ['tlsv1.1', 'tlsv1.2'].
+    case application:get_env(ssl_versions) of
+        {ok, Versions} ->
+            Versions;
+        undefined ->
+            Patches = proplists:get_value(couchbase_patches,
+                                          ssl:versions(), []),
+            Versions0 = ['tlsv1.1', 'tlsv1.2'],
+
+            case lists:member(tls_padding_check, Patches) of
+                true ->
+                    ['tlsv1' | Versions0];
+                false ->
+                    Versions0
+            end
+    end.
+
 
 low_security_ciphers() ->
     %% The list can be obtained as follows:
@@ -276,6 +291,8 @@ build_cert_state(CertPEM, PKeyPEM, Compat30, Node) ->
     end.
 
 init([]) ->
+    ?log_info("Used ssl options:~n~p", [ssl_server_opts()]),
+
     Self = self(),
     ns_pubsub:subscribe_link(ns_config_events, fun config_change_detector_loop/2, Self),
 
