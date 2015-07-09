@@ -141,7 +141,13 @@ dh_params_der() ->
       229,171,2,1,2>>.
 
 supported_versions() ->
-    ['tlsv1.1', 'tlsv1.2'].
+    case application:get_env(ssl_versions) of
+        {ok, Versions} ->
+            Versions;
+        undefined ->
+            ['tlsv1.1', 'tlsv1.2']
+    end.
+
 
 low_security_ciphers() ->
     %% The list can be obtained as follows:
