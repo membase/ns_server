@@ -1,0 +1,56 @@
+<div id="js_indexes" class="indexes">
+  <div id="js_index_warnings_container">
+    <div class="warning_message" ng-repeat="message in indexesState.warnings">Warning: {{message}}</div>
+  </div>
+  <div class="shadow_box">
+    <div class="header_2">
+      <h4 style="float:left;line-height:34px;">Indexes</h4>
+      <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+    </div>
+    <div>
+      <div id="js_indexes_list_container" class="servers_list indexes_list_container">
+        <table class="list align_text" style="width:100%">
+          <thead>
+            <tr>
+              <th ng-click="setOrder('bucket')" style="width: 200px;" ng-class="{dynamic_active: isOrderBy('bucket')}">Bucket</th>
+              <th ng-click="setOrder('hosts')" style="width: 350px;" ng-class="{dynamic_active: isOrderBy('hosts')}">Node</th>
+              <th ng-click="setOrder('index')" style="width: 200px;" ng-class="{dynamic_active: isOrderBy('index')}">Index Name</th>
+              <th ng-click="setOrder('status')" ng-class="{dynamic_active: isOrderBy('status')}">Status</th>
+              <th ng-click="setOrder('progress')" style="width: 150px;" ng-class="{dynamic_active: isOrderBy('progress')}">Initial Build Progress</th>
+            </tr>
+          </thead>
+          <tbody ng-if="indexesState.indexes.length" ng-repeat="row in indexesState.indexes | orderBy:orderBy:invert">
+            <tr class="row">
+              <td class="ellipsis with_expander_button" title="{{row.bucket}}">
+                <a ng-click="toggleDetails(row.id)"><ins class="expander" ng-class="{closed:!isDetailsOpened(row.id)}"></ins></a>
+                <span>{{row.bucket}}</span>
+              </td>
+              <td class="ellipsis" title="{{row.hosts[0]}}">{{row.hosts[0]}}</td>
+              <td class="ellipsis" title="{{row.index}}">{{row.index}}</td>
+              <td class="ellipsis" title="{{row.status}}">{{row.status}}</td>
+              <td class="ellipsis" title="{{row.progress}}">
+                <span ng-if="row.progress">{{row.progress}} %</span>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="5" class="details-placeholder" ng-if="isDetailsOpened(row.id)" ui-view="details">
+                <div class="gong_rb">
+                  <table class="properties_table">
+                    <tbody>
+                      <tr>
+                          <td>Definition: <span>{{row.definition}}</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+          <tbody ng-if="!indexesState.indexes.length">
+            <tr><td colspan="5" style="text-align: center;">There are no indexes currently.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

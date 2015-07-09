@@ -7,6 +7,7 @@ angular.module('mnAdmin', [
   'mnAnalytics',
   'mnLogs',
   'mnOverview',
+  'mnIndexes',
   'mnServers',
   'mnSettingsNotifications',
   'mnSettingsCluster',
@@ -147,6 +148,11 @@ angular.module('mnAdmin', [
     })
     .state('app.admin.indexes', {
       url: "/index?openedIndex",
+      params: {
+        openedIndex: {
+          array: true
+        }
+      },
       controller: "mnIndexesController",
       templateUrl: "mn_admin/mn_indexes/mn_indexes.html",
       resolve: {
