@@ -16,30 +16,37 @@
 
 -module(menelaus_metakv).
 
--export([handle_post/1]).
+-export([handle_get/2, handle_put/2, handle_delete/2]).
 
 -include("ns_common.hrl").
 -include("ns_config.hrl").
 
-handle_post(Req) ->
-    Params = Req:parse_post(),
-    Method = proplists:get_value("method", Params),
-    case Method of
-        "get" ->
-            handle_get_post(Req, Params);
-        "set" ->
-            handle_set_post(Req, Params);
-        "delete" ->
-            handle_delete_post(Req, Params);
-        "recursive_delete" ->
-            handle_recursive_delete_post(Req, Params);
-        "iterate" ->
-            handle_iterate_post(Req, Params)
+get_key(Path) ->
+    "_metakv" ++ Key = Path,
+    list_to_binary(http_uri:decode(Key)).
+
+is_directory(Key) ->
+    $/ =:= binary:last(Key).
+
+handle_get(Path, Req) ->
+    Key = get_key(Path),
+    case is_directory(Key) of
+        true ->
+            Params = Req:parse_qs(),
+            Continuous = proplists:get_value("feed", Params) =:= "continuous",
+            case {Continuous, metakv:check_continuous_allowed(Key)} of
+                {true, false} ->
+                    %% Return http error - 405: Method Not Allowed
+                    menelaus_util:reply(Req, 405);
+                _ ->
+                    handle_iterate(Req, Key, Continuous)
+            end;
+        false ->
+            handle_normal_get(Req, Key)
     end.
 
-handle_get_post(Req, Params) ->
-    Path = list_to_binary(proplists:get_value("path", Params)),
-    case metakv:get(Path) of
+handle_normal_get(Req, Key) ->
+    case metakv:get(Key) of
         false ->
             menelaus_util:reply_json(Req, {[]});
         {value, Val0} ->
@@ -57,9 +64,8 @@ handle_get_post(Req, Params) ->
             end
     end.
 
-handle_mutate(Req, Params, Value) ->
+handle_mutate(Req, Key, Value, Params) ->
     Start = os:timestamp(),
-    Path = list_to_binary(proplists:get_value("path", Params)),
     Rev = case proplists:get_value("rev", Params) of
               undefined ->
                   case proplists:get_value("create", Params) of
@@ -73,50 +79,52 @@ handle_mutate(Req, Params, Value) ->
                   binary_to_term(XRevB)
           end,
     Sensitive = proplists:get_value("sensitive", Params) =:= "true",
-    case metakv:mutate(Path, Value,
-                        [{rev, Rev}, {?METAKV_SENSITIVE, Sensitive}]) of
+    case metakv:mutate(Key, Value,
+                       [{rev, Rev}, {?METAKV_SENSITIVE, Sensitive}]) of
         ok ->
             ElapsedTime = timer:now_diff(os:timestamp(), Start) div 1000,
             %% Values are already displayed by ns_config_log and simple_store.
             %% ns_config_log is smart enough to not log sensitive values
             %% and simple_store does not store senstive values.
-            ?log_debug("Updated ~p. Elapsed time:~p ms.", [Path, ElapsedTime]),
+            ?log_debug("Updated ~p. Elapsed time:~p ms.", [Key, ElapsedTime]),
             menelaus_util:reply(Req, 200);
         Error ->
             ?log_debug("Failed to update ~p (rev ~p) with error ~p.",
-                       [Path, Rev, Error]),
+                       [Key, Rev, Error]),
             menelaus_util:reply(Req, 409)
     end.
 
-handle_set_post(Req, Params) ->
-    Value = list_to_binary(proplists:get_value("value", Params)),
-    handle_mutate(Req, Params, Value).
+handle_put(Path, Req) ->
+    Key = get_key(Path),
+    case is_directory(Key) of
+        true ->
+            ?log_debug("PUT is not allowed for directories. Key = ~p", [Key]),
+            menelaus_util:reply(Req, 405);
+        false ->
+            Params = Req:parse_post(),
+            Value = list_to_binary(proplists:get_value("value", Params)),
+            handle_mutate(Req, Key, Value, Params)
+    end.
 
-handle_delete_post(Req, Params) ->
-    handle_mutate(Req, Params, ?DELETED_MARKER).
+handle_delete(Path, Req) ->
+    Key = get_key(Path),
+    case is_directory(Key) of
+        true ->
+            handle_recursive_delete(Req, Key);
+        false ->
+            handle_mutate(Req, Key, ?DELETED_MARKER, Req:parse_qs())
+    end.
 
-handle_recursive_delete_post(Req, Params) ->
-    ?log_debug("handle_recursive_delete_post: ~p", [Params]),
-    Path = list_to_binary(proplists:get_value("path", Params)),
-    case metakv:delete_matching(Path) of
+handle_recursive_delete(Req, Key) ->
+    ?log_debug("handle_recursive_delete_post for ~p", [Key]),
+    case metakv:delete_matching(Key) of
         ok ->
-            ?log_debug("Recursively deleted children of ~p", [Path]),
+            ?log_debug("Recursively deleted children of ~p", [Key]),
             menelaus_util:reply(Req, 200);
         Error ->
             ?log_debug("Recursive deletion failed for ~p with error ~p.",
-                       [Path, Error]),
+                       [Key, Error]),
             menelaus_util:reply(Req, 409)
-    end.
-
-handle_iterate_post(Req, Params) ->
-    Path = list_to_binary(proplists:get_value("path", Params)),
-    Continuous = proplists:get_value("continuous", Params, "false") =:= "true",
-    case Continuous =/= true orelse metakv:check_continuous_allowed(Path) of
-        true ->
-            handle_iterate(Req, Path, Continuous);
-        false ->
-            %% Return http error - 405: Method Not Allowed
-            menelaus_util:reply(Req, 405)
     end.
 
 handle_iterate(Req, Path, Continuous) ->
@@ -158,4 +166,3 @@ output_kv(HTTPRes, K, V, VC) ->
     HTTPRes:write_chunk(ejson:encode({[{rev, Rev},
                                        {path, K},
                                        {value, Value}]})).
-

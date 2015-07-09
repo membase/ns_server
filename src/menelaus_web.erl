@@ -369,6 +369,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                                                              [{"Cache-Control", "max-age=30000000"}])};
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
                          ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
+                         ["_metakv" | _] ->
+                             {auth, fun menelaus_metakv:handle_get/2, [Path]};
                          _ ->
                              {done, menelaus_util:serve_file(Req, Path, AppRoot,
                                                              [{"Cache-Control", "max-age=10"}])}
@@ -528,8 +530,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_indexes:handle_settings_post/1};
                          ["_cbauth"] ->
                              {auth_ro, fun menelaus_cbauth:handle_cbauth_post/1};
-                         ["_metakv"] ->
-                             {auth, fun menelaus_metakv:handle_post/1};
                          ["_log"] ->
                              {auth, fun handle_log_post/1};
                          ["_goxdcr", "regexpValidation"] ->
@@ -569,6 +569,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "settings", "memcached", "node", Node, "setting", Name] ->
                              {auth, fun menelaus_web_mcd_settings:handle_node_setting_delete/3, [Node, Name]};
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
+                         ["_metakv" | _] ->
+                             {auth, fun menelaus_metakv:handle_delete/2, [Path]};
                          _ ->
                              ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
                              {done, reply_text(Req, "Method Not Allowed", 405)}
@@ -582,6 +584,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "serverGroups", GroupUUID] ->
                              {auth, fun menelaus_web_groups:handle_server_group_update/2, [GroupUUID]};
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
+                         ["_metakv" | _] ->
+                             {auth, fun menelaus_metakv:handle_put/2, [Path]};
                          _ ->
                              ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
                              {done, reply_text(Req, "Method Not Allowed", 405)}
