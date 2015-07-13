@@ -75,7 +75,8 @@
   <div class="info_block">
     <span class="disk_storage">
       <span>Disk One: </span>
-      <span class="path" title="{{server.details.storageTotals.hdd[0].path}}">{{server.ellipsisPath}}</span>
+      <span class="path" title="{{server.details.storage.hdd[0].path}}" ng-if="!!server.details.storage.hdd[0].path">data: {{server.details.storage.hdd[0].path | mnEllipsisiseOnLeft:25}}</span>
+      <span class="path" title="{{server.details.storage.hdd[0].index_path}}" ng-if="!!server.details.storage.hdd[0].index_path">index: {{server.details.storage.hdd[0].index_path | mnEllipsisiseOnLeft:25}}</span>
     </span>
     <div class="usage-block" mn-bar-usage base-info="server.getDiskStorageConfig"></div>
   </div>

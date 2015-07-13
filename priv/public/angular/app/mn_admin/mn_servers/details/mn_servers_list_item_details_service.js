@@ -3,7 +3,7 @@ angular.module('mnServersListItemDetailsService', [
   'mnHttp',
   'mnFilters'
 ]).factory('mnServersListItemDetailsService',
-  function (mnHttp, $q, mnTasksDetails, mnFormatUptimeFilter, mnFormatMemSizeFilter, mnEllipsisiseOnLeftFilter) {
+  function (mnHttp, $q, mnTasksDetails, mnFormatUptimeFilter, mnFormatMemSizeFilter) {
     var mnServersListItemDetailsService = {};
 
     function getBaseConfig(totals) {
@@ -56,7 +56,6 @@ angular.module('mnServersListItemDetailsService', [
 
         rv.getMemoryCacheConfig = memoryCacheConfig;
         rv.uptime = mnFormatUptimeFilter(details.uptime);
-        rv.ellipsisPath = details.storage.hdd[0] && mnEllipsisiseOnLeftFilter(details.storage.hdd[0].path || "", 25);
 
         var rebalanceTask = tasks.tasksRebalance.status === 'running' && tasks.tasksRebalance;
         rv.detailedProgress = rebalanceTask.detailedProgress && rebalanceTask.detailedProgress.perNode && rebalanceTask.detailedProgress.perNode[node.otpNode];
