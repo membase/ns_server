@@ -372,6 +372,16 @@ angular.module('mnFilters', [])
     }
   })
 
+  .filter('mnFormatServices', function () {
+    return function (service) {
+      switch (service) {
+        case 'kv': return 'Data';
+        case 'n1ql': return 'Query';
+        case 'index': return 'Index';
+      }
+    }
+  })
+
   .filter('mnPrettyVersion', function (parseVersionFilter) {
 
     return function (str, full) {

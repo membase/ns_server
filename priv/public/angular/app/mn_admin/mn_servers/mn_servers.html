@@ -95,9 +95,9 @@
                 <div class="ellipsis" title="{{node.group}}">{{node.group}}</div>
               </td>
               <td style="text-align: left;">
-                <span ng-repeat="service in formatServices(node.services)">
-                  {{service}}
-                </span>
+                <div ng-repeat="service in node.services | orderBy:'toString()'">
+                  {{service | mnFormatServices}}
+                </div>
               </td>
 
               <td class="ram" mn-vertical-bar="" conf="node.ramUsageConf">

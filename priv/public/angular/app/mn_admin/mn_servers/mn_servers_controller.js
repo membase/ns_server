@@ -6,7 +6,8 @@ angular.module('mnServers', [
   'mnHelper',
   'mnVerticalBar',
   'mnBarUsage',
-  'mnServersListItemDetailsService'
+  'mnServersListItemDetailsService',
+  'mnFilters'
 ]).controller('mnServersController',
   function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, serversState, mnServersService, mnHelper) {
 
@@ -58,15 +59,6 @@ angular.module('mnServers', [
           });
       });
     };
-    $scope.formatServices = function (services) {
-      return _.chain(services).map(function (service) {
-        switch (service) {
-          case 'kv': return 'Data';
-          case 'n1ql': return 'N1QL';
-          case 'moxi': return 'Moxi';
-        }
-      }).value();
-    }
 
     mnHelper.initializeDetailsHashObserver($scope, 'openedServers', 'app.admin.servers');
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
