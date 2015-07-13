@@ -1,9 +1,8 @@
 angular.module('mnServersListItemDetailsService', [
   'mnTasksDetails',
-  'mnHttp',
-  'mnFilters'
+  'mnHttp'
 ]).factory('mnServersListItemDetailsService',
-  function (mnHttp, $q, mnTasksDetails, mnFormatUptimeFilter) {
+  function (mnHttp, $q, mnTasksDetails) {
     var mnServersListItemDetailsService = {};
 
     function getBaseConfig(totals) {
@@ -55,7 +54,6 @@ angular.module('mnServersListItemDetailsService', [
         });
 
         rv.getMemoryCacheConfig = memoryCacheConfig;
-        rv.uptime = mnFormatUptimeFilter(details.uptime);
 
         var rebalanceTask = tasks.tasksRebalance.status === 'running' && tasks.tasksRebalance;
         rv.detailedProgress = rebalanceTask.detailedProgress && rebalanceTask.detailedProgress.perNode && rebalanceTask.detailedProgress.perNode[node.otpNode];

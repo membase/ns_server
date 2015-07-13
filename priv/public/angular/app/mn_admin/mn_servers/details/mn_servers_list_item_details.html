@@ -4,7 +4,7 @@
     <table class="properties_table">
       <tr>
           <td>Server Name: <span>{{server.details.hostname}}</span></td>
-          <td>Uptime: <span>{{server.uptime}}</span></td>
+          <td>Uptime: <span>{{server.details.uptime | mnFormatUptime}}</span></td>
           <td>OS: <span>{{server.details.os}}</span></td>
       </tr>
       <tr>
