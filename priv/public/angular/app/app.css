@@ -217,7 +217,6 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .servers .list td.ram {padding-left:5px!important;padding-right:0!important;}
 .servers .list th.node_name {padding-left:14px!important;}
 .servers .servers_icons {padding-right: 21px; text-align: right;}
-.servers .servers_services_wrarning {display: inline-block; width: 21px; height: 20px; background: url('/images/warning_bg_yellow.png') 0 0 no-repeat; }
 
 .vertical_bar {float:left;overflow:hidden;width:1em;height:3em;background:white;border:1px solid #999;border-radius:2px;margin-right:5px}
 .vertical_bar .used{position:relative;background:#00BCE9;}
