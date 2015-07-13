@@ -9,14 +9,14 @@
     </div>
     <div>
       <div id="js_indexes_list_container" class="servers_list indexes_list_container">
-        <table class="list align_text" style="width:100%">
+        <table class="list align_text" style="width:100%" mn-sortable-table="hosts">
           <thead>
             <tr>
-              <th ng-click="setOrder('bucket')" style="width: 200px;" ng-class="{dynamic_active: isOrderBy('bucket')}">Bucket</th>
-              <th ng-click="setOrder('hosts')" style="width: 350px;" ng-class="{dynamic_active: isOrderBy('hosts')}">Node</th>
-              <th ng-click="setOrder('index')" style="width: 200px;" ng-class="{dynamic_active: isOrderBy('index')}">Index Name</th>
-              <th ng-click="setOrder('status')" ng-class="{dynamic_active: isOrderBy('status')}">Status</th>
-              <th ng-click="setOrder('progress')" style="width: 150px;" ng-class="{dynamic_active: isOrderBy('progress')}">Initial Build Progress</th>
+              <th mn-sortable-title="bucket" style="width: 200px;">Bucket</th>
+              <th mn-sortable-title="hosts" style="width: 350px;">Node</th>
+              <th mn-sortable-title="index" style="width: 200px;">Index Name</th>
+              <th mn-sortable-title="status">Status</th>
+              <th mn-sortable-title="progress" style="width: 150px;">Initial Build Progress</th>
             </tr>
           </thead>
           <tbody ng-if="indexesState.indexes.length" ng-repeat="row in indexesState.indexes | orderBy:orderBy:invert">

@@ -1,6 +1,7 @@
 angular.module('mnIndexes', [
   'mnHelper',
-  'mnIndexesService'
+  'mnIndexesService',
+  'mnSortableTable'
 ]).controller('mnIndexesController',
   function ($scope, mnIndexesService, mnHelper, indexesState) {
 
@@ -8,21 +9,6 @@ angular.module('mnIndexes', [
       console.log(indexesState)
       $scope.indexesState = indexesState;
     }
-
-    $scope.isOrderBy = function (orderBy) {
-      return $scope.orderBy === orderBy;
-    };
-
-    $scope.setOrder = function (orderBy) {
-      if (!$scope.isOrderBy(orderBy)) {
-        $scope.invert = false;
-      } else {
-        $scope.invert = !$scope.invert;
-      }
-      $scope.orderBy = orderBy;
-    };
-
-    $scope.setOrder('hosts');
 
     applyIndexesState(indexesState);
 
