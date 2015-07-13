@@ -1,9 +1,8 @@
 angular.module('mnOverviewService', [
   'mnPoolDefault',
-  'mnHttp',
-  'mnFilters'
+  'mnHttp'
 ]).factory('mnOverviewService',
-  function (mnHttp, mnPoolDefault, mnFormatMemSizeFilter) {
+  function (mnHttp, mnPoolDefault) {
 
     var mnOverviewService = {};
 
@@ -117,8 +116,8 @@ angular.module('mnOverviewService', [
 
           var ramOverviewConfig = _.clone(ramOverviewConfigBase, true);
 
-          ramOverviewConfig.topLeft.value = mnFormatMemSizeFilter(bucketsQuota);
-          ramOverviewConfig.topRight.value = mnFormatMemSizeFilter(quotaTotal);
+          ramOverviewConfig.topLeft.value = bucketsQuota;
+          ramOverviewConfig.topRight.value = quotaTotal;
           ramOverviewConfig.items[0].value = usedQuota;
           ramOverviewConfig.items[1].value = bucketsQuota - usedQuota;
           ramOverviewConfig.items[2].value = Math.max(quotaTotal - bucketsQuota, 0);
@@ -157,8 +156,8 @@ angular.module('mnOverviewService', [
 
           var hddOverviewConfig = _.clone(hddOverviewConfigBase, true);
 
-          hddOverviewConfig.topLeft.value = mnFormatMemSizeFilter(free);
-          hddOverviewConfig.topRight.value = mnFormatMemSizeFilter(total);
+          hddOverviewConfig.topLeft.value = free;
+          hddOverviewConfig.topRight.value = total;
           hddOverviewConfig.items[0].value = usedSpace;
           hddOverviewConfig.items[1].value = other;
           hddOverviewConfig.items[2].value = total - other - usedSpace;

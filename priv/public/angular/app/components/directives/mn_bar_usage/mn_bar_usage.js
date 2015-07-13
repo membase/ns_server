@@ -1,6 +1,6 @@
 angular.module('mnBarUsage', [
   'mnFilters'
-]).directive('mnBarUsage', function (mnFormatMemSizeFilter, mnRescaleForSumFilter, mnCalculatePercentFilter) {
+]).directive('mnBarUsage', function (mnRescaleForSumFilter, mnCalculatePercentFilter) {
 
   return {
     restrict: 'A',
@@ -16,13 +16,6 @@ angular.module('mnBarUsage', [
         }
         var sum = 0;
         var newOptions = _.cloneDeep(options);
-        _.each(newOptions.items, function (item, i) {
-          if (item.renderedValue) {
-            return false;
-          } else {
-            item.renderedValue = mnFormatMemSizeFilter(item.value);
-          }
-        });
         var items = newOptions.items;
         var values = _.map(items, function (item) {
           return Math.max(item.value, 0);

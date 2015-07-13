@@ -2,17 +2,16 @@ angular.module('mnBucketsDetailsService', [
   'mnHttp',
   'mnPoolDefault',
   'mnTasksDetails',
-  'mnCompaction',
-  'mnFilters'
+  'mnCompaction'
 ]).factory('mnBucketsDetailsService',
-  function ($q, mnHttp, mnTasksDetails, mnPoolDefault, mnFormatMemSizeFilter, mnCompaction) {
+  function ($q, mnHttp, mnTasksDetails, mnPoolDefault, mnCompaction) {
     var mnBucketsDetailsService = {};
 
     mnBucketsDetailsService.getBucketRamGuageConfig = function (ramSummary) {
       var options = {
         topRight: {
           name: 'Cluster quota',
-          value: mnFormatMemSizeFilter(ramSummary.total)
+          value: ramSummary.total
         },
         items: [{
           name: 'Other Buckets',
@@ -51,7 +50,7 @@ angular.module('mnBucketsDetailsService', [
         });
         options.topLeft = {
           name: 'Total Allocated',
-          value: mnFormatMemSizeFilter(ramSummary.otherBuckets + ramSummary.thisAlloc),
+          value: ramSummary.otherBuckets + ramSummary.thisAlloc,
           itemStyle: {'color': '#e43a1b'}
         };
       }
@@ -65,11 +64,11 @@ angular.module('mnBucketsDetailsService', [
       return {
         topLeft: {
           name: 'Other Data',
-          value: mnFormatMemSizeFilter(otherData)
+          value: otherData
         },
         topRight: {
           name: 'Total Cluster Storage',
-          value: mnFormatMemSizeFilter(total)
+          value: total
         },
         items: [{
           name: null,

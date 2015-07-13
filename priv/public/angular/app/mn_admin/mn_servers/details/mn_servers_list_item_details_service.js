@@ -3,14 +3,14 @@ angular.module('mnServersListItemDetailsService', [
   'mnHttp',
   'mnFilters'
 ]).factory('mnServersListItemDetailsService',
-  function (mnHttp, $q, mnTasksDetails, mnFormatUptimeFilter, mnFormatMemSizeFilter) {
+  function (mnHttp, $q, mnTasksDetails, mnFormatUptimeFilter) {
     var mnServersListItemDetailsService = {};
 
     function getBaseConfig(totals) {
       return {
         topRight: {
           name: 'Total',
-          value: mnFormatMemSizeFilter(totals.total)
+          value: totals.total
         },
         items: [{
           name: 'In Use',
@@ -45,7 +45,7 @@ angular.module('mnServersListItemDetailsService', [
         var memoryCacheConfig = getBaseConfig(details.storageTotals.ram);
         memoryCacheConfig.topLeft = {
           name: 'Couchbase Quota',
-          value: mnFormatMemSizeFilter(details.storageTotals.ram.quotaTotal)
+          value: details.storageTotals.ram.quotaTotal
         };
 
         memoryCacheConfig.markers.push({
