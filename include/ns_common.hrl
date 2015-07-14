@@ -195,4 +195,7 @@
 %% to change its value in ns_server/scripts/dump-guts as well.
 -define(METAKV_SENSITIVE, metakv_sensitive).
 
+-define(MIN_FREE_RAM, misc:get_env_default(quota_min_free_ram, 1024)).
+-define(MIN_FREE_RAM_PERCENT, 80).
+
 -endif.

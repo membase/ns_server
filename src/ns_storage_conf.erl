@@ -495,7 +495,7 @@ allowed_node_quota_range(MemoryData) ->
 
 allowed_node_quota_max() ->
     MemoryData = this_node_memory_data(),
-    {_, MaxMemoryMB, _} = allowed_node_quota_range(undefined, MemoryData),
+    {_, MaxMemoryMB} = allowed_node_quota_range(undefined, MemoryData),
     MaxMemoryMB.
 
 allowed_node_quota_range(Config, MemSupData) ->
@@ -507,26 +507,14 @@ allowed_node_quota_range(Config, MemSupData) ->
                           erlang:max(256, get_total_buckets_ram_quota(Config) div ?MIB)
                   end,
 
-    MinusMegs = misc:get_env_default(quota_min_free_ram, 1024),
+    MinusMegs = ?MIN_FREE_RAM,
 
-    MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * ?MIB),
-    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div ?MIB) - MinusMegs,
-                             MaxMemoryMBPercent]),
-    QuotaErrorDetailsFun =
-        fun () ->
-                case MaxMemoryMB of
-                    MaxMemoryMBPercent ->
-                        io_lib:format(" Quota must be between ~w MB and ~w MB (80% of memory size).",
-                                      [MinMemoryMB, MaxMemoryMB]);
-                    _ ->
-                        io_lib:format(" Quota must be between ~w MB and ~w MB (memory size minus ~w MB).",
-                                      [MinMemoryMB, MaxMemoryMB, MinusMegs])
-                end
-        end,
-    {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun}.
+    MaxMemoryMBPercent = (MaxMemoryBytes0 * ?MIN_FREE_RAM_PERCENT) div (100 * ?MIB),
+    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div ?MIB) - MinusMegs, MaxMemoryMBPercent]),
+    {MinMemoryMB, MaxMemoryMB}.
 
 default_memory_quota(MemSupData) ->
-    {Min, Max, _} = allowed_node_quota_range(undefined, MemSupData),
+    {Min, Max} = allowed_node_quota_range(undefined, MemSupData),
     {MaxMemoryBytes0, _, _} = MemSupData,
     Value = (MaxMemoryBytes0 * 3) div (5 * ?MIB),
     if Value > Max ->
