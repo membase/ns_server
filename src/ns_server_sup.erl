@@ -239,6 +239,13 @@ child_specs() ->
      {{stats_reader, "@query"}, {stats_reader, start_link, ["@query"]},
       permanent, 1000, worker, [stats_reader]},
 
+     %% connection pool that we use when talking to goxdcr/indexer/cbq-engine
+     {rest_lhttpc_pool, {lhttpc_manager, start_link,
+                         [[{name, rest_lhttpc_pool},
+                           {connection_timeout, 120000},
+                           {pool_size, 20}]]},
+      {permanent, 1}, 1000, worker, [lhttpc_manager]},
+
      {query_stats_collector, {query_stats_collector, start_link, []},
       permanent, 1000, worker, []},
 
