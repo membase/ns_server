@@ -49,7 +49,7 @@
 -define(DATA_LOST, 1).
 -define(BAD_REPLICATORS, 2).
 
--define(BUCKETS_SHUTDOWN_WAIT_TIMEOUT, 20000).
+-define(DEFAULT_BUCKETS_SHUTDOWN_WAIT_TIMEOUT, 20000).
 
 -define(REBALANCER_READINESS_WAIT_TIMEOUT, 60000).
 
@@ -283,6 +283,15 @@ local_buckets_shutdown_loop(Ref, CanWait) ->
 
 %% note: this is rpc:multicall-ed
 wait_local_buckets_shutdown_complete() ->
+    ExcessiveBuckets =
+        ns_memcached:active_buckets() -- ns_bucket:node_bucket_names(node()),
+    do_wait_local_buckets_shutdown_complete(ExcessiveBuckets).
+
+do_wait_local_buckets_shutdown_complete([]) ->
+    ok;
+do_wait_local_buckets_shutdown_complete(ExcessiveBuckets) ->
+    Timeout = ns_config:get_global_timeout(buckets_shutdown, ?DEFAULT_BUCKETS_SHUTDOWN_WAIT_TIMEOUT)
+        * length(ExcessiveBuckets),
     misc:executing_on_new_process(
       fun () ->
               Ref = erlang:make_ref(),
@@ -293,7 +302,7 @@ wait_local_buckets_shutdown_complete() ->
                                                           (_) ->
                                                               ok
                                                       end),
-              erlang:send_after(?BUCKETS_SHUTDOWN_WAIT_TIMEOUT, Parent, {Ref, timeout}),
+              erlang:send_after(Timeout, Parent, {Ref, timeout}),
               try
                   local_buckets_shutdown_loop(Ref, true)
               after
