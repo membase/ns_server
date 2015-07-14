@@ -77,6 +77,7 @@
 -define(QUERY_LOG_FILENAME, "query.log").
 -define(PROJECTOR_LOG_FILENAME, "projector.log").
 -define(INDEXER_LOG_FILENAME, "indexer.log").
+-define(METAKV_LOG_FILENAME, "metakv.log").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
@@ -93,12 +94,13 @@
 -define(XDCR_LOGGER, xdcr).
 -define(XDCR_TRACE_LOGGER, xdcr_trace).
 -define(ACCESS_LOGGER, access).
+-define(METAKV_LOGGER, metakv).
 
 -define(LOGGERS, [?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
                   ?NS_DOCTOR_LOGGER, ?STATS_LOGGER,
                   ?REBALANCE_LOGGER, ?CLUSTER_LOGGER,
-                  ?XDCR_LOGGER, ?XDCR_TRACE_LOGGER]).
+                  ?XDCR_LOGGER, ?XDCR_TRACE_LOGGER, ?METAKV_LOGGER]).
 
 -define(NS_COUCHDB_LOGGERS, [?NS_SERVER_LOGGER,
                              ?COUCHDB_LOGGER,
@@ -171,6 +173,9 @@
 
 -define(xdcr_error(Format, Args), ale:error(?XDCR_LOGGER, Format, Args)).
 -define(xdcr_error(Msg), ale:error(?XDCR_LOGGER, Msg)).
+
+-define(metakv_debug(Format, Args), ale:debug(?METAKV_LOGGER, Format, Args)).
+-define(metakv_debug(Msg), ale:debug(?METAKV_LOGGER, Msg)).
 
 -define(i2l(V), integer_to_list(V)).
 

@@ -546,7 +546,8 @@ def make_product_task(guts, initargs_path, options):
                       "stats.log", "babysitter.log", "ssl_proxy.log",
                       "reports.log", "xdcr_trace.log", "http_access.log",
                       "http_access_internal.log", "ns_couchdb.log",
-                      "goxdcr.log", "query.log", "projector.log", "indexer.log"]],
+                      "goxdcr.log", "query.log", "projector.log", "indexer.log",
+                      "metakv.log"]],
 
         [AllOsTask("memcached stats %s" % kind,
 
