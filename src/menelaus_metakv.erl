@@ -48,14 +48,14 @@ handle_get(Path, Req) ->
 handle_normal_get(Req, Key) ->
     case metakv:get(Key) of
         false ->
-            menelaus_util:reply_json(Req, {[]});
+            menelaus_util:reply_json(Req, [], 404);
         {value, Val0} ->
             Val = base64:encode(Val0),
             menelaus_util:reply_json(Req, {[{value, Val}]});
         {value, Val0, VC} ->
             case Val0 =:= ?DELETED_MARKER of
                 true ->
-                    menelaus_util:reply_json(Req, {[]});
+                    menelaus_util:reply_json(Req, [], 404);
                 false ->
                     Rev = base64:encode(erlang:term_to_binary(VC)),
                     Val = base64:encode(Val0),
