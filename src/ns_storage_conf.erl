@@ -38,7 +38,7 @@
 
 -export([allowed_node_quota_range/1, allowed_node_quota_range/0,
          default_memory_quota/1,
-         allowed_node_quota_max/0,
+         allowed_memory_usage_max/0,
          this_node_memory_data/0]).
 
 -export([extract_disk_stats_for_path/2]).
@@ -486,6 +486,8 @@ this_node_memory_data() ->
             {RAMBytes, 0, 0}
     end.
 
+-define(MIN_BUCKET_QUOTA, 256).
+
 allowed_node_quota_range() ->
     MemoryData = this_node_memory_data(),
     allowed_node_quota_range(ns_config:latest(), MemoryData).
@@ -493,34 +495,34 @@ allowed_node_quota_range() ->
 allowed_node_quota_range(MemoryData) ->
     allowed_node_quota_range(ns_config:latest(), MemoryData).
 
-allowed_node_quota_max() ->
-    MemoryData = this_node_memory_data(),
-    {_, MaxMemoryMB} = allowed_node_quota_range(undefined, MemoryData),
-    MaxMemoryMB.
-
 allowed_node_quota_range(Config, MemSupData) ->
-    {MaxMemoryBytes0, _, _} = MemSupData,
-    MinMemoryMB = case Config of
-                      undefined ->
-                          256;
-                      _ ->
-                          erlang:max(256, get_total_buckets_ram_quota(Config) div ?MIB)
-                  end,
+    MinMemoryMB0 = ?MIN_BUCKET_QUOTA,
 
+    MaxMemoryMB = allowed_memory_usage_max(MemSupData),
+    BucketsQuota = get_total_buckets_ram_quota(Config) div ?MIB,
+    MinMemoryMB = erlang:max(MinMemoryMB0, BucketsQuota),
+    {MinMemoryMB, MaxMemoryMB}.
+
+allowed_memory_usage_max() ->
+    MemoryData = this_node_memory_data(),
+    allowed_memory_usage_max(MemoryData).
+
+allowed_memory_usage_max(MemSupData) ->
+    {MaxMemoryBytes0, _, _} = MemSupData,
     MinusMegs = ?MIN_FREE_RAM,
 
     MaxMemoryMBPercent = (MaxMemoryBytes0 * ?MIN_FREE_RAM_PERCENT) div (100 * ?MIB),
     MaxMemoryMB = lists:max([(MaxMemoryBytes0 div ?MIB) - MinusMegs, MaxMemoryMBPercent]),
-    {MinMemoryMB, MaxMemoryMB}.
+    MaxMemoryMB.
 
 default_memory_quota(MemSupData) ->
-    {Min, Max} = allowed_node_quota_range(undefined, MemSupData),
+    Max = allowed_memory_usage_max(MemSupData),
     {MaxMemoryBytes0, _, _} = MemSupData,
     Value = (MaxMemoryBytes0 * 3) div (5 * ?MIB),
     if Value > Max ->
             Max;
-       Value < Min ->
-            Min;
+       Value < ?MIN_BUCKET_QUOTA ->
+            ?MIN_BUCKET_QUOTA;
        true ->
             Value
     end.

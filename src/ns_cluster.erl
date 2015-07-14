@@ -961,7 +961,7 @@ check_memory_size(NodeKVList) ->
                           X when is_integer(X) -> X;
                           _ -> 50
                       end,
-    MaxMemoryMB = ns_storage_conf:allowed_node_quota_max(),
+    MaxMemoryMB = ns_storage_conf:allowed_memory_usage_max(),
     if
         Quota =< MaxMemoryMB + MemoryFuzzyness ->
             ok;
