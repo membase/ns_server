@@ -265,7 +265,7 @@ var ClusterSection = {
           url: 'indexStatus',
           type: 'GET',
           success: function (resp) {
-            if (resp && resp.length) {
+            if (resp && resp.indexes.length) {
               var memoryQuota = serializeForm(onlyClusterSettingsForm);
               var memoryQuotaParams = $.deparam(memoryQuota);
               var initialMemoryQuota = self.allClusterSectionSettingsCell.value.indexMemoryQuota;
@@ -457,7 +457,7 @@ var UpdatesNotificationsSection = {
       }
     });
     if (source.indexStatus) {
-      stats.istats.total_indexes = source.indexStatus.length;
+      stats.istats.total_indexes = source.indexStatus.indexes.length;
     }
     calculateAvgWeekAndHour(stats, "avg_ops", true);
     calculateAvgWeekAndHour(stats, "avg_cmd_set", true);
