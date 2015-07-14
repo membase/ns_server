@@ -327,15 +327,21 @@ update_key(Key, Fun) ->
                         end).
 
 update_key(Key, Fun, Default) ->
-    update_with_changes(fun (Config, UUID) ->
-                                case update_key_inner(Config, UUID, Key, Fun) of
-                                    false ->
-                                        NewConfig = update_config_key(Key, Default, Config, UUID),
-                                        {[hd(NewConfig)], NewConfig};
-                                    V ->
-                                        V
-                                end
-                        end).
+    update_with_changes(
+      fun (Config, UUID) ->
+              case update_key_inner(Config, UUID, Key, Fun) of
+                  false ->
+                      case Default of
+                          ?DELETED_MARKER ->
+                              {[], Config};
+                          _ ->
+                              NewConfig = update_config_key(Key, Default, Config, UUID),
+                              {[hd(NewConfig)], NewConfig}
+                      end;
+                  V ->
+                      V
+              end
+      end).
 
 update_key_inner(Config, UUID, Key, Fun) ->
     case lists:keyfind(Key, 1, Config) of
