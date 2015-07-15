@@ -2903,17 +2903,19 @@ handle_node_statuses(Req) ->
                   Hostname = proplists:get_value(hostname,
                                                  build_node_info(Config, N, InfoNode, LocalAddr)),
                   NewInfoNode = ns_doctor:get_node(N, FreshStatuses),
+                  Dataless = not lists:member(kv, ns_cluster_membership:node_services(Config, N)),
                   V = case proplists:get_bool(down, NewInfoNode) of
                           true ->
                               {struct, [{status, unhealthy},
                                         {otpNode, N},
+                                        {dataless, Dataless},
                                         {replication, average_failover_safenesses(N, OldStatuses, BucketsAll)}]};
                           false ->
                               {struct, [{status, healthy},
                                         {gracefulFailoverPossible,
                                          ns_rebalancer:check_graceful_failover_possible(N, BucketsAll)},
                                         {otpNode, N},
-                                        {dataless, not lists:member(kv, ns_cluster_membership:node_services(Config, N))},
+                                        {dataless, Dataless},
                                         {replication, average_failover_safenesses(N, FreshStatuses, BucketsAll)}]}
                       end,
                   {Hostname, V}
