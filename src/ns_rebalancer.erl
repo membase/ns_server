@@ -381,6 +381,16 @@ start_link_rebalance(KeepNodes, EjectNodes,
                end
        end, []]).
 
+execute_and_be_stop_aware(Fun) ->
+    Pid = erlang:spawn_link(Fun),
+    MRef = erlang:monitor(process, Pid),
+    receive
+        stop ->
+            exit(stopped);
+        {'DOWN', MRef, _, _, _} ->
+            ok
+    end.
+
 rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
           BucketConfigs, DeltaRecoveryBuckets) ->
     do_pre_rebalance_config_sync(KeepNodes),
@@ -435,25 +445,18 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                                                      lists:sort(EjectNodesAll)),
                                   ThisLiveNodes = KeepKVNodes ++ ThisEjected,
                                   ns_bucket:set_servers(BucketName, ThisLiveNodes),
-                                  Pid = erlang:spawn_link(
-                                          fun () ->
-                                                  ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
-                                                  {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
-                                                  case Zombies of
-                                                      [] ->
-                                                          ?rebalance_info("Bucket is ready on all nodes"),
-                                                          ok;
-                                                      _ ->
-                                                          exit({not_all_nodes_are_ready_yet, Zombies})
-                                                  end
-                                          end),
-                                  MRef = erlang:monitor(process, Pid),
-                                  receive
-                                      stop ->
-                                          exit(stopped);
-                                      {'DOWN', MRef, _, _, _} ->
-                                          ok
-                                  end,
+                                  execute_and_be_stop_aware(
+                                    fun () ->
+                                            ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
+                                            {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
+                                            case Zombies of
+                                                [] ->
+                                                    ?rebalance_info("Bucket is ready on all nodes"),
+                                                    ok;
+                                                _ ->
+                                                    exit({not_all_nodes_are_ready_yet, Zombies})
+                                            end
+                                    end),
                                   case ns_janitor:cleanup(BucketName, [{query_states_timeout, 10000},
                                                                        {apply_config_timeout, 300000}]) of
                                       ok -> ok;
