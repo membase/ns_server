@@ -311,19 +311,22 @@ do_wait_local_buckets_shutdown_complete(ExcessiveBuckets) ->
       end).
 
 do_wait_buckets_shutdown(KeepNodes) ->
-    {Good, ReallyBad, FailedNodes} =
-        misc:rpc_multicall_with_plist_result(
-          KeepNodes, ns_rebalancer, wait_local_buckets_shutdown_complete, []),
-    NonOk = [Pair || {_Node, Result} = Pair <- Good,
-                     Result =/= ok],
-    Failures = ReallyBad ++ NonOk ++ [{N, node_was_down} || N <- FailedNodes],
-    case Failures of
-        [] ->
-            ok;
-        _ ->
-            ?rebalance_error("Failed to wait deletion of some buckets on some nodes: ~p~n", [Failures]),
-            exit({buckets_shutdown_wait_failed, Failures})
-    end.
+    execute_and_be_stop_aware(
+      fun () ->
+              {Good, ReallyBad, FailedNodes} =
+                  misc:rpc_multicall_with_plist_result(
+                    KeepNodes, ns_rebalancer, wait_local_buckets_shutdown_complete, []),
+              NonOk = [Pair || {_Node, Result} = Pair <- Good,
+                               Result =/= ok],
+              Failures = ReallyBad ++ NonOk ++ [{N, node_was_down} || N <- FailedNodes],
+              case Failures of
+                  [] ->
+                      ok;
+                  _ ->
+                      ?rebalance_error("Failed to wait deletion of some buckets on some nodes: ~p~n", [Failures]),
+                      exit({buckets_shutdown_wait_failed, Failures})
+              end
+      end).
 
 sanitize(Config) ->
     misc:rewrite_key_value_tuple(sasl_password, "*****", Config).
