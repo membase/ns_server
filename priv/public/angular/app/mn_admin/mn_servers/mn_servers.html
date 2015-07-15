@@ -33,7 +33,7 @@
     </div>
     <div class="panes">
       <div class="servers_list">
-        <table class="list" style="width:100%">
+        <table class="list" style="width:100%" mn-sortable-table="hostname">
           <colgroup>
             <col style="width:19%">
             <col style="width:9%">
@@ -48,10 +48,10 @@
           </colgroup>
           <tbody>
             <tr>
-              <th class="node_name" style="text-align:left;">Server Node Name</th>
+              <th mn-sortable-title="hostname" class="node_name" style="text-align:left;">Server Node Name</th>
               <th></th>
-              <th style='{{ serversState.isGroupsAvailable ? "text-align: center!important;" : "width: 0px;" }}'>{{ serversState.isGroupsAvailable ? "Group" : " " }}</th>
-              <th>Services</th>
+              <th mn-sortable-title="group" style='{{ serversState.isGroupsAvailable ? "text-align: center!important;" : "width: 0px;" }}'>{{ serversState.isGroupsAvailable ? "Group" : " " }}</th>
+              <th mn-sortable-title="services">Services</th>
               <th>RAM Usage</th>
               <th>Swap Usage</th>
               <th>CPU Usage</th>
@@ -60,7 +60,7 @@
               <th></th>
             </tr>
           </tbody>
-          <tbody ng-repeat="node in serversState.currentNodes | orderBy:'hostname' track by node.otpNode">
+          <tbody ng-repeat="node in serversState.currentNodes | orderBy:orderBy:invert track by node.otpNode">
             <tr ng-if="node.isReAddPossible" class="add_back_row when-roadmin-avoid-me">
               <td colspan="10">
                 <span class="add_back_btn" ng-click="reAddNode('full', node.otpNode)"><span>Full Recovery</span></span>
