@@ -80,7 +80,7 @@ handle_call({restart_port_by_name, Name}, _From, State) ->
          end,
     {reply, RV, State};
 handle_call({find_port, Name}, _From, State) ->
-    {reply, ns_child_ports_sup:find_port(Name), State};
+    {reply, (catch ns_child_ports_sup:find_port(Name)), State};
 handle_call({send_command, Name, Command}, _From, State) ->
     ?log_debug("Command ~p is about to be sent to port ~p", [Command, Name]),
     {reply, ns_child_ports_sup:send_command(Name, Command), State};
