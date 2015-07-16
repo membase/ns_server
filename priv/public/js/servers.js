@@ -561,8 +561,7 @@ var ServersSection = {
     dialog.find("input:not([type]), input[type=text], input[type=password]").val('');
     dialog.find('[name=user]').val('Administrator');
     dialog.find(".when-groups").toggle(!!DAL.cells.groupsAvailableCell.value);
-    dialog.find("[name=services]").prop("checked", false);
-    dialog.find("[name=services][value=kv]").prop("checked", true);
+    dialog.find("[name=services]").prop("checked", true);
 
     showDialog('join_cluster_dialog', {
       onHide: function () {
