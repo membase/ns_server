@@ -90,7 +90,7 @@ children_loop(Children, Sup, Status) ->
 children_loop_continue(Children, Sup, Status) ->
     receive
         {'$gen_call', From, shutdown_ports} ->
-            ?log_debug("Send shutdown to all ports"),
+            ?log_debug("Send shutdown to all go ports"),
             NewStatus = shutdown,
             NewChildren = dynamic_children(NewStatus),
             NewSup = set_children(NewChildren, Sup),
@@ -250,7 +250,15 @@ do_per_bucket_moxi_specs(Config) ->
       end, [], BucketConfigs).
 
 dynamic_children(shutdown) ->
-    [];
+    Config = ns_config:get(),
+
+    Specs = [memcached_spec(Config),
+             moxi_spec(Config),
+             saslauthd_port_spec(Config),
+             per_bucket_moxi_specs(Config),
+             maybe_create_ssl_proxy_spec(Config)],
+
+    lists:flatten(Specs);
 dynamic_children(normal) ->
     Config = ns_config:get(),
 
