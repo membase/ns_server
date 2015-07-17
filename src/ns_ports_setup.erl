@@ -91,10 +91,11 @@ children_loop_continue(Children, Sup, Status) ->
     receive
         {'$gen_call', From, shutdown_ports} ->
             ?log_debug("Send shutdown to all ports"),
-            NewChildren = [],
+            NewStatus = shutdown,
+            NewChildren = dynamic_children(NewStatus),
             NewSup = set_children(NewChildren, Sup),
             gen_server:reply(From, ok),
-            children_loop(NewChildren, NewSup, Status);
+            children_loop(NewChildren, NewSup, NewStatus);
         check_children_update ->
             do_children_loop_continue(Children, Sup, Status);
         {'$gen_call', From, sync} ->
