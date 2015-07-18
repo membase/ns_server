@@ -1,5 +1,5 @@
 angular.module('mnBuckets').controller('mnBucketsDetailsDialogController',
-  function ($scope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, $modalInstance) {
+  function ($scope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, mnPromiseHelper, $modalInstance) {
     bucketConf.autoCompactionDefined = !!bucketConf.autoCompactionSettings;
     $scope.bucketConf = bucketConf;
     $scope.autoCompactionSettings = autoCompactionSettings;
@@ -7,8 +7,7 @@ angular.module('mnBuckets').controller('mnBucketsDetailsDialogController',
     $scope.onSubmit = function () {
       var data = mnBucketsDetailsDialogService.prepareBucketConfigForSaving($scope.bucketConf, $scope.autoCompactionSettings);
       var promise = mnBucketsDetailsDialogService.postBuckets(data, $scope.bucketConf.uri);
-      mnHelper
-        .promiseHelper($scope, promise)
+      mnPromiseHelper($scope, promise)
         .showErrorsSensitiveSpinner()
         .prepareErrors(function (resp) {
           resp.data = mnBucketsDetailsDialogService.adaptValidationResult(resp);

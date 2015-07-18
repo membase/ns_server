@@ -1,8 +1,9 @@
 angular.module('mnSettingsAlerts', [
   'mnSettingsAlertsService',
-  'mnHelper'
+  'mnHelper',
+  'mnPromiseHelper'
 ]).controller('mnSettingsAlertsController',
-  function($scope, mnHelper, mnSettingsAlertsService, alertsSettings) {
+  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAlertsService, alertsSettings) {
     $scope.state = alertsSettings;
     function getParams() {
       var params = _.clone($scope.state);
@@ -22,14 +23,14 @@ angular.module('mnSettingsAlerts', [
       params.subject = 'Test email from Couchbase Server';
       params.body = 'This email was sent to you to test the email alert email server settings.';
 
-      mnHelper.promiseHelper($scope, mnSettingsAlertsService.testMail(params))
+      mnPromiseHelper($scope, mnSettingsAlertsService.testMail(params))
         .showSpinner()
         .showGlobalSuccess('Test email was sent successfully!')
         .catchGlobalErrors('An error occurred during sending test email.');
     };
     $scope.submit = function() {
       var params = getParams();
-      mnHelper.promiseHelper($scope, mnSettingsAlertsService.saveAlerts(params))
+      mnPromiseHelper($scope, mnSettingsAlertsService.saveAlerts(params))
         .showErrorsSensitiveSpinner()
         .prepareErrors(function (resp) {
           resp.data = resp.data.errors;

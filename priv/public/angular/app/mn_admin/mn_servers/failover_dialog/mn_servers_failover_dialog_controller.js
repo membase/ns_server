@@ -1,10 +1,9 @@
 angular.module('mnServers').controller('mnServersFailOverDialogController',
-  function ($scope, mnServersService, mnHelper, node, $modalInstance) {
+  function ($scope, mnServersService, mnPromiseHelper, node, $modalInstance) {
     $scope.node = node;
 
     var promise = mnServersService.getNodeStatuses(node.hostname);
-    mnHelper
-      .promiseHelper($scope, promise)
+    mnPromiseHelper($scope, promise)
       .showSpinner()
       .getPromise()
       .then(function (details) {
@@ -19,6 +18,6 @@ angular.module('mnServers').controller('mnServersFailOverDialogController',
 
     $scope.onSubmit = function () {
       var promise = mnServersService.postFailover($scope.failOver, node.otpNode);
-      mnHelper.handleModalAction($scope, promise, $modalInstance);
+      mnPromiseHelper.handleModalAction($scope, promise, $modalInstance);
     };
   });

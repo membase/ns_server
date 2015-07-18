@@ -1,13 +1,14 @@
 angular.module('mnSettingsCluster', [
   'mnSettingsClusterService',
-  'mnHelper'
+  'mnHelper',
+  'mnPromiseHelper'
 ]).controller('mnSettingsClusterController',
-  function ($scope, mnSettingsClusterService, clusterState, mnHelper) {
+  function ($scope, mnSettingsClusterService, clusterState, mnHelper, mnPromiseHelper) {
     $scope.state = clusterState;
 
     var liveValidation = _.debounce(function () {
       var promise = mnSettingsClusterService.clusterSettingsValidation($scope.state.clusterSettings);
-      mnHelper.promiseHelper($scope, promise).catchErrorsFromSuccess();
+      mnPromiseHelper($scope, promise).catchErrorsFromSuccess();
     }, 500);
 
     $scope.$watch('formData.memoryQuota', liveValidation);
@@ -17,8 +18,7 @@ angular.module('mnSettingsCluster', [
         return;
       }
       var promise = mnSettingsClusterService.saveClusterSettings($scope.state.clusterSettings);
-      mnHelper
-        .promiseHelper($scope, promise)
+      mnPromiseHelper($scope, promise)
         .catchErrorsFromSuccess()
         .showSpinner('clusterSettingsLoading')
         .reloadState();
@@ -30,8 +30,7 @@ angular.module('mnSettingsCluster', [
       var promise = mnSettingsClusterService.regenerateCertificate().success(function (certificate) {
         $scope.state.certificate = certificate;
       });
-      mnHelper
-        .promiseHelper($scope, promise)
+      mnPromiseHelper($scope, promise)
         .showSpinner('regenerateCertificateInprogress');
     };
     $scope.toggleCertArea = function () {

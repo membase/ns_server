@@ -4,7 +4,8 @@ angular.module('mnBuckets', [
   'ui.bootstrap',
   'mnBucketsDetailsDialogService',
   'mnBarUsage',
-  'mnBucketsForm'
+  'mnBucketsForm',
+  'mnPromiseHelper'
 ]).controller('mnBucketsController',
   function ($scope, buckets, mnBucketsService, mnHelper, $modal) {
     function applyBuckets(buckets) {

@@ -1,7 +1,7 @@
 angular.module('mnBuckets').controller('mnBucketsFlushDialogController',
-  function ($scope, $modalInstance, bucket, mnHelper, mnBucketsDetailsService) {
+  function ($scope, $modalInstance, bucket, mnPromiseHelper, mnBucketsDetailsService) {
     $scope.doFlush = function () {
       var promise = mnBucketsDetailsService.flushBucket(bucket);
-      mnHelper.handleModalAction($scope, promise, $modalInstance);
+      mnPromiseHelper.handleModalAction($scope, promise, $modalInstance);
     };
   });

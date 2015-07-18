@@ -1,5 +1,5 @@
 angular.module('mnViews').controller('mnViewsCreateDialogController',
-  function ($scope, $modal, mnViewsService, mnHelper, $modalInstance, currentDdocName, isSpatial) {
+  function ($scope, $modal, mnViewsService, mnHelper, mnPromiseHelper, $modalInstance, currentDdocName, isSpatial) {
     $scope.ddoc = {};
     $scope.ddoc.name = currentDdocName && mnViewsService.cutOffDesignPrefix(currentDdocName);
     $scope.doesDdocExist = !!currentDdocName;
@@ -47,6 +47,6 @@ angular.module('mnViews').controller('mnViewsCreateDialogController',
         return createDdoc();
       });
 
-      mnHelper.showSpinner($scope, promise);
+      mnPromiseHelper($scope, promise).showSpinner();
     };
   });

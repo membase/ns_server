@@ -1,5 +1,6 @@
 angular.module('mnLogs', [
-  'mnLogsService'
+  'mnLogsService',
+  'mnPromiseHelper'
 ]).controller('mnLogsController',
   function ($scope, mnHelper, mnLogsService, logs) {
 

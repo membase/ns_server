@@ -1,5 +1,5 @@
 angular.module('mnViews').controller('mnViewsCopyDialogController',
-  function ($scope, $modal, $state, mnViewsService, mnHelper, $modalInstance, currentDdoc) {
+  function ($scope, $modal, $state, mnViewsService, mnPromiseHelper, $modalInstance, currentDdoc) {
     $scope.ddoc = {};
     $scope.ddoc.name = mnViewsService.cutOffDesignPrefix(currentDdoc.meta.id);
     function prepareToCopy(url, ddoc) {
@@ -21,6 +21,6 @@ angular.module('mnViews').controller('mnViewsCopyDialogController',
         }).result.then(copy);
       }, copy);
 
-      mnHelper.showSpinner($scope, promise);
+      mnPromiseHelper($scope, promise).showSpinner();
     };
   });

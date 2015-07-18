@@ -12,7 +12,8 @@ angular.module('mnWizard', [
   'mnMemoryQuota',
   'mnPoolDefault',
   'mnMemoryQuotaService',
-  'mnSpinner'
+  'mnSpinner',
+  'mnPromiseHelper'
 ]).config(function ($stateProvider) {
 
   $stateProvider

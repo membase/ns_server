@@ -1,5 +1,5 @@
 angular.module('mnLogs').controller('mnLogsCollectInfoController',
-  function ($scope, mnHelper, mnLogsCollectInfoService, state, $state, $modal) {
+  function ($scope, mnHelper, mnPromiseHelper, mnLogsCollectInfoService, state, $state, $modal) {
     function applyState(state) {
       $scope.loadingResult = false;
       $scope.state = state;
@@ -28,8 +28,7 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
         delete collect.ticket;
       }
       var promise = mnLogsCollectInfoService.startLogsCollection(collect);
-      mnHelper
-        .promiseHelper($scope, promise)
+      mnPromiseHelper($scope, promise)
         .showSpinner()
         .catchErrors()
         .reloadState()

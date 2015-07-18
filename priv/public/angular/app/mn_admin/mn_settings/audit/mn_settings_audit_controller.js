@@ -1,12 +1,13 @@
 angular.module('mnSettingsAudit', [
   'mnSettingsAuditService',
-  'mnHelper'
+  'mnHelper',
+  'mnPromiseHelper'
 ]).controller('mnSettingsAuditController',
-  function ($scope, mnSettingsAuditService, auditSettings, mnHelper) {
+  function ($scope, mnSettingsAuditService, auditSettings, mnPromiseHelper, mnHelper) {
     $scope.state = auditSettings;
 
     $scope.$watch('state', function (state) {
-      mnHelper.promiseHelper($scope, mnSettingsAuditService.saveAuditSettings(state, true))
+      mnPromiseHelper($scope, mnSettingsAuditService.saveAuditSettings(state, true))
         .catchErrorsFromSuccess();
     }, true);
 
@@ -14,7 +15,7 @@ angular.module('mnSettingsAudit', [
       if ($scope.viewLoading) {
         return;
       }
-      mnHelper.promiseHelper($scope, mnSettingsAuditService.saveAuditSettings($scope.state))
+      mnPromiseHelper($scope, mnSettingsAuditService.saveAuditSettings($scope.state))
         .catchErrorsFromSuccess()
         .showSpinner()
         .reloadState();

@@ -1,5 +1,5 @@
 angular.module('mnXDCR').controller('mnXDCRCreateDialogController',
-  function ($scope, $modalInstance, mnHelper, mnXDCRService, buckets, replicationSettings) {
+  function ($scope, $modalInstance, mnPromiseHelper, mnXDCRService, buckets, replicationSettings) {
     $scope.replication = replicationSettings.data;
     delete $scope.replication.socketOptions;
     $scope.replication.replicationType = "continuous";
@@ -10,8 +10,7 @@ angular.module('mnXDCR').controller('mnXDCRCreateDialogController',
 
     $scope.createReplication = function () {
       var promise = mnXDCRService.postRelication(mnXDCRService.removeExcessSettings($scope.replication));
-      mnHelper
-        .promiseHelper($scope, promise, $modalInstance)
+      mnPromiseHelper($scope, promise, $modalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .closeOnSuccess()

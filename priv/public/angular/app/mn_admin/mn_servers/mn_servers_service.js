@@ -1,12 +1,11 @@
 angular.module('mnServersService', [
   'mnTasksDetails',
   'mnPoolDefault',
-  'mnHelper',
   'mnSettingsAutoFailoverService',
   'mnHttp',
   'ui.router'
 ]).factory('mnServersService',
-  function (mnHttp, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, $q, $state, $stateParams, mnHelper) {
+  function (mnHttp, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, $q, $state, $stateParams) {
     var mnServersService = {};
 
     var pendingEject = [];

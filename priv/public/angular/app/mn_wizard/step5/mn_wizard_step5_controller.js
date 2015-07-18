@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep5Controller',
-  function ($scope, $state, mnPools, mnWizardStep5Service, mnWizardStep2Service, mnAuthService, mnHelper, mnAlertsService) {
+  function ($scope, $state, mnPools, mnWizardStep5Service, mnWizardStep2Service, mnAuthService, mnPromiseHelper, mnAlertsService) {
     $scope.user = {
       username: 'Administrator',
       password: '',
@@ -40,8 +40,7 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
       }
 
       var promise = login($scope.user);
-      mnHelper
-        .promiseHelper($scope, promise)
+      mnPromiseHelper($scope, promise)
         .showErrorsSensitiveSpinner()
         .catchErrors();
     }

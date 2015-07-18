@@ -1,7 +1,8 @@
 angular.module('mnXDCR', [
   'mnXDCRService',
   'mnHelper',
-  'mnBucketsService'
+  'mnBucketsService',
+  'mnPromiseHelper'
 ]).controller('mnXDCRController',
   function ($scope, $modal, mnHelper, mnXDCRService, xdcr, mnBucketsService) {
 

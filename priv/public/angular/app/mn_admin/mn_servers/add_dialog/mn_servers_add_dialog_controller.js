@@ -1,5 +1,5 @@
 angular.module('mnServers').controller('mnServersAddDialogController',
-  function ($scope, $modal, mnServersService, $modalInstance, mnHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
+  function ($scope, $modal, mnServersService, $modalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
     reset();
     $scope.addNodeConfig = {
       services: {
@@ -46,8 +46,7 @@ angular.module('mnServers').controller('mnServersAddDialogController',
 
       var promise = mnServersService.addServer($scope.addNodeConfig.selectedGroup, $scope.addNodeConfig.credentials, servicesList);
 
-      promise = mnHelper
-        .promiseHelper($scope, promise, $modalInstance)
+      promise = mnPromiseHelper($scope, promise, $modalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .closeOnSuccess()
@@ -68,8 +67,7 @@ angular.module('mnServers').controller('mnServersAddDialogController',
           });
         });
 
-      mnHelper
-        .promiseHelper($scope, promise)
+      mnPromiseHelper($scope, promise)
         .reloadState();
     };
   });

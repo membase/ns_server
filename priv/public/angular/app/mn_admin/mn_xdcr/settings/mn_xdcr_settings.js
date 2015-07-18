@@ -1,4 +1,4 @@
-angular.module('mnXDCR').directive('mnXdcrSettings', function (mnHttp) {
+angular.module('mnXDCR').directive('mnXdcrSettings', function (mnHttp, mnPromiseHelper) {
 
   return {
     restrict: 'A',
@@ -10,7 +10,7 @@ angular.module('mnXDCR').directive('mnXdcrSettings', function (mnHttp) {
     templateUrl: 'mn_admin/mn_xdcr/settings/mn_xdcr_settings.html',
     controller: function ($scope) {
       $scope.$watch('settings', function (settings) {
-        mnHelper.promiseHelper($scope, mnHttp({
+        mnPromiseHelper($scope, mnHttp({
           method: 'POST',
           url: '/settings/replications/',
           data: settings,

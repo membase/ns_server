@@ -1,5 +1,5 @@
 angular.module('mnViews').controller('mnViewsDeleteViewDialogController',
-  function ($scope, $modalInstance, mnHelper, mnViewsService, currentDdocName, currentViewName, isSpatial) {
+  function ($scope, $modalInstance, mnPromiseHelper, mnViewsService, currentDdocName, currentViewName, isSpatial) {
     $scope.currentDdocName = currentDdocName;
     $scope.currentViewName = currentViewName;
     $scope.maybeSpatial = isSpatial ? 'Spatial' : '';
@@ -11,6 +11,6 @@ angular.module('mnViews').controller('mnViewsDeleteViewDialogController',
         return mnViewsService.createDdoc(url, presentDdoc);
       });
 
-      mnHelper.handleModalAction($scope, promise, $modalInstance);
+      mnPromiseHelper.handleModalAction($scope, promise, $modalInstance);
     };
   });

@@ -3,6 +3,7 @@ angular.module('mnAdmin', [
   'mnTasksDetails',
   'mnAuthService',
   'mnHelper',
+  'mnPromiseHelper',
   'mnBuckets',
   'mnAnalytics',
   'mnLogs',

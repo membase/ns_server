@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep4Controller',
-  function ($scope, $state, mnWizardStep4Service, pools, mnHelper) {
+  function ($scope, $state, mnWizardStep4Service, pools, mnPromiseHelper) {
 
     $scope.isEnterprise = pools.isEnterprise;
 
@@ -23,8 +23,7 @@ angular.module('mnWizard').controller('mnWizardStep4Controller',
       $scope.register.email && mnWizardStep4Service.postEmail($scope.register);
 
       var promise = mnWizardStep4Service.postStats({sendStats: $scope.sendStats});
-      mnHelper
-        .promiseHelper($scope, promise)
+      mnPromiseHelper($scope, promise)
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .getPromise()

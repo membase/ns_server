@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep1Controller',
-  function ($scope, $state, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper, mnServersService, mnPools, mnPoolDefault, mnAlertsService, mnMemoryQuotaService) {
+  function ($scope, $state, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper, mnServersService, mnPools, mnPoolDefault, mnAlertsService, mnMemoryQuotaService, mnPromiseHelper) {
     $scope.hostname = selfConfig.hostname;
 
     $scope.startNewClusterConfig = {
@@ -42,8 +42,9 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
     function goNext() {
       $state.go('app.wizard.step2');
     }
+
     function addErrorHandler(query, name) {
-      return mnHelper.promiseHelper($scope, query).catchErrors(name + 'Errors').getPromise();
+      return mnPromiseHelper($scope, query).catchErrors(name + 'Errors').getPromise();
     }
     function postMemoryQuota() {
       return addErrorHandler(mnMemoryQuotaService.postMemory({
@@ -121,6 +122,6 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
           });
         }
       });
-      mnHelper.promiseHelper($scope, promise).showErrorsSensitiveSpinner();
+      mnPromiseHelper($scope, promise).showErrorsSensitiveSpinner();
     };
   });

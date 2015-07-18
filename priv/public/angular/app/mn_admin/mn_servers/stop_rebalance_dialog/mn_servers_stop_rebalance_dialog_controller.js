@@ -1,6 +1,6 @@
 angular.module('mnServers').controller('mnServersStopRebalanceDialogController',
-  function ($scope, $modalInstance, mnHelper, mnServersService) {
+  function ($scope, $modalInstance, mnPromiseHelper, mnServersService) {
     $scope.onStopRebalance = function () {
-      mnHelper.handleModalAction($scope, mnServersService.stopRebalance(), $modalInstance);
+      mnPromiseHelper.handleModalAction($scope, mnServersService.stopRebalance(), $modalInstance);
     };
   });
