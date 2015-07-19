@@ -2,9 +2,10 @@ angular.module('mnAnalytics', [
   'mnHelper',
   'mnHttp',
   'mnAnalyticsService',
-  'ui.router'
+  'ui.router',
+  'mnPoll'
 ]).controller('mnAnalyticsController',
-  function ($scope, mnAnalyticsService, analyticsStats, mnHelper, $state, mnHttp) {
+  function ($scope, mnAnalyticsService, analyticsStats, mnHelper, $state, mnHttp, mnPoll) {
     function applyBuckets(state) {
       $scope.state = state;
     }
@@ -30,19 +31,11 @@ angular.module('mnAnalytics', [
 
 
     if (!analyticsStats.isEmptyState) {
-      mnHelper.setupLongPolling({
-        methodToCall: function (previousResult) {
-          return mnAnalyticsService.getStats({
-            $stateParams: $state.params,
-            previousResult: previousResult
-          });
-        },
-        scope: $scope,
-        onUpdate: applyBuckets,
-        extractRefreshPeriod: function (response) {
-          return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
-        }
-      });
+      mnPoll.start($scope, function (previousResult) {
+        return mnAnalyticsService.getStats({$stateParams: $state.params, previousResult: previousResult});
+      }, function (response) {
+        return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
+      }).subscribe(applyBuckets);
     }
 
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);

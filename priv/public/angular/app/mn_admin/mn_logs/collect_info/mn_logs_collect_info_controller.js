@@ -1,5 +1,5 @@
 angular.module('mnLogs').controller('mnLogsCollectInfoController',
-  function ($scope, mnHelper, mnPromiseHelper, mnLogsCollectInfoService, state, $state, $modal) {
+  function ($scope, mnHelper, mnPromiseHelper, mnLogsCollectInfoService, mnPoll, state, $state, $modal) {
     function applyState(state) {
       $scope.loadingResult = false;
       $scope.state = state;
@@ -38,13 +38,11 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
           $state.go('app.admin.logs.collectInfo.result');
         });
     };
-    applyState(state);
 
-    mnHelper.setupLongPolling({
-      methodToCall: mnLogsCollectInfoService.getState,
-      scope: $scope,
-      onUpdate: applyState
-    });
+    applyState(state);
+    mnPoll.start($scope, function () {
+      mnLogsCollectInfoService.getState()
+    }).subscribe(applyState);
 
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

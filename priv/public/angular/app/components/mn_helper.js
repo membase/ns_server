@@ -18,44 +18,6 @@ angular.module('mnHelper', [
       });
     };
 
-    mnHelper.setupLongPolling = function (config) {
-      var cycleId;
-      var previousResult;
-      function cycle() {
-        var queries = [config.methodToCall(previousResult)];
-        if (!config.extractRefreshPeriod) {
-          queries.push(mnTasksDetails.get());
-        }
-        $q.all(queries).then(function (result) {
-          var rv = result[0];
-          var tasks = result[1];
-          previousResult = rv;
-          var recommendedRefreshPeriod = 20000;
-          if (tasks) {
-            recommendedRefreshPeriod = (_.chain(tasks.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
-          } else {
-            if (config.extractRefreshPeriod) {
-              recommendedRefreshPeriod = config.extractRefreshPeriod(rv);
-            }
-          }
-          cycleId = $timeout(cycle, recommendedRefreshPeriod);
-          return rv;
-        }).then(config.onUpdate);
-      }
-      cycle();
-
-      config.scope.$on('$destroy', function () {
-        $timeout.cancel(cycleId);
-      });
-
-      return {
-        reload: function () {
-          $timeout.cancel(cycleId);
-          cycle();
-        }
-      };
-    };
-
     mnHelper.wrapInFunction = function (value) {
       return function () {
         return value;

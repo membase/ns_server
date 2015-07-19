@@ -1,5 +1,5 @@
 angular.module('mnAdmin').controller('mnAdminController',
-  function ($scope, $rootScope, $q, mnHelper, mnPromiseHelper, pools, mnAuthService, tasks, updates, mnTasksDetails, mnAlertsService, mnPoolDefault, launchpadSource, mnSettingsAutoFailoverService) {
+  function ($scope, $rootScope, $q, mnHelper, mnPromiseHelper, pools, mnPoll, mnAuthService, tasks, updates, mnTasksDetails, mnAlertsService, mnPoolDefault, launchpadSource, mnSettingsAutoFailoverService) {
     $scope.launchpadId = pools.launchID;
     $scope.launchpadSource = launchpadSource;
     $scope.updates = updates;
@@ -21,19 +21,14 @@ angular.module('mnAdmin').controller('mnAdminController',
       $scope.tasks = resp[0];
       $rootScope.tabName = resp[1] && resp[1].clusterName;
     }
-
     applyTasks(tasks);
 
-    mnHelper.setupLongPolling({
-      methodToCall: function () {
-        return $q.all([
-          mnTasksDetails.getFresh({httpGroup: 'globals'}),
-          mnPoolDefault.getFresh({httpGroup: 'globals'})
-        ]);
-      },
-      scope: $scope,
-      onUpdate: applyTasks
-    });
+    mnPoll.start($scope, function () {
+      return $q.all([
+        mnTasksDetails.getFresh({httpGroup: 'globals'}),
+        mnPoolDefault.getFresh({httpGroup: 'globals'})
+      ])
+    }).subscribe(applyTasks);
 
     mnHelper.cancelAllHttpOnScopeDestroy($scope);
   });

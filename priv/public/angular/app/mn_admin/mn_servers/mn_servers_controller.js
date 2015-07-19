@@ -10,9 +10,10 @@ angular.module('mnServers', [
   'mnFilters',
   'mnSortableTable',
   'mnServices',
-  'mnMemoryQuotaService'
+  'mnMemoryQuotaService',
+  'mnPoll'
 ]).controller('mnServersController',
-  function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, serversState, mnServersService, mnHelper) {
+  function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, mnPoll, serversState, mnServersService, mnHelper) {
 
     function applyServersState(serversState) {
       $scope.serversState = serversState;
@@ -20,13 +21,9 @@ angular.module('mnServers', [
 
     applyServersState(serversState);
 
-    mnHelper.setupLongPolling({
-      methodToCall: function () {
-        return mnServersService.getServersState($stateParams.list)
-      },
-      scope: $scope,
-      onUpdate: applyServersState
-    });
+    mnPoll.start($scope, function () {
+      return mnServersService.getServersState($stateParams.list);
+    }).subscribe(applyServersState);
 
     $scope.addServer = function () {
       $modal.open({

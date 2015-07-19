@@ -2,9 +2,10 @@ angular.module('mnViews', [
   'mnViewsService',
   'mnCompaction',
   'mnHelper',
-  'mnPromiseHelper'
+  'mnPromiseHelper',
+  'mnPoll'
 ]).controller('mnViewsController',
-  function ($scope, $modal, $state, views, mnHelper, mnViewsService, mnCompaction) {
+  function ($scope, $modal, $state, views, mnHelper, mnViewsService, mnCompaction, mnPoll) {
     function applyBuckets(views) {
       $scope.views = views;
     }
@@ -16,13 +17,9 @@ angular.module('mnViews', [
       });
     });
 
-    var poll = mnHelper.setupLongPolling({
-      methodToCall: function () {
-        return mnViewsService.getViewsState($state.params);
-      },
-      scope: $scope,
-      onUpdate: applyBuckets
-    });
+    var poll = mnPoll.start($scope, function () {
+      return mnViewsService.getViewsState($state.params);
+    }).subscribe(applyBuckets);
 
     $scope.showCreationDialog = function (ddoc, isSpatial) {
       $modal.open({
@@ -88,7 +85,7 @@ angular.module('mnViews', [
 
     $scope.registerCompactionAsTriggeredAndPost = function (row) {
       row.disableCompact = true;
-      mnCompaction.registerAsTriggeredAndPost(row.controllers.compact).then(poll.reload);
+      mnCompaction.registerAsTriggeredAndPost(row.controllers.compact).then(poll.restart);
     };
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

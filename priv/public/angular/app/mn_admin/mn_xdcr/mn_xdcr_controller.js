@@ -2,9 +2,10 @@ angular.module('mnXDCR', [
   'mnXDCRService',
   'mnHelper',
   'mnBucketsService',
-  'mnPromiseHelper'
+  'mnPromiseHelper',
+  'mnPoll'
 ]).controller('mnXDCRController',
-  function ($scope, $modal, mnHelper, mnXDCRService, xdcr, mnBucketsService) {
+  function ($scope, $modal, mnHelper, mnPoll, mnXDCRService, xdcr, mnBucketsService) {
 
     function applyXDCR(xdcr) {
       $scope.xdcr = xdcr;
@@ -12,13 +13,9 @@ angular.module('mnXDCR', [
 
     applyXDCR(xdcr);
 
-    mnHelper.setupLongPolling({
-      methodToCall: function () {
-        return mnXDCRService.getReplicationState();
-      },
-      scope: $scope,
-      onUpdate: applyXDCR
-    });
+    mnPoll.start($scope, function () {
+      return mnXDCRService.getReplicationState();
+    }).subscribe(applyXDCR);
 
     $scope.createClusterReference = function () {
       $modal.open({

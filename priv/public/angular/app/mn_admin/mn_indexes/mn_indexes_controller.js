@@ -1,9 +1,10 @@
 angular.module('mnIndexes', [
   'mnHelper',
   'mnIndexesService',
-  'mnSortableTable'
+  'mnSortableTable',
+  'mnPoll'
 ]).controller('mnIndexesController',
-  function ($scope, mnIndexesService, mnHelper, indexesState) {
+  function ($scope, mnIndexesService, mnHelper, indexesState, mnPoll) {
 
     function applyIndexesState(indexesState) {
       console.log(indexesState)
@@ -12,13 +13,9 @@ angular.module('mnIndexes', [
 
     applyIndexesState(indexesState);
 
-    mnHelper.setupLongPolling({
-      methodToCall: function () {
-        return mnIndexesService.getIndexesState();
-      },
-      scope: $scope,
-      onUpdate: applyIndexesState
-    });
+    mnPoll.start($scope, function () {
+      return mnIndexesService.getIndexesState();
+    }).subscribe(applyIndexesState);
 
     mnHelper.initializeDetailsHashObserver($scope, 'openedIndex', 'app.admin.indexes');
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);

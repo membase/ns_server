@@ -5,9 +5,10 @@ angular.module('mnBuckets', [
   'mnBucketsDetailsDialogService',
   'mnBarUsage',
   'mnBucketsForm',
-  'mnPromiseHelper'
+  'mnPromiseHelper',
+  'mnPoll'
 ]).controller('mnBucketsController',
-  function ($scope, buckets, mnBucketsService, mnHelper, $modal) {
+  function ($scope, buckets, mnBucketsService, mnHelper, mnPoll, $modal) {
     function applyBuckets(buckets) {
       $scope.buckets = buckets;
     }
@@ -32,10 +33,8 @@ angular.module('mnBuckets', [
       });
     };
 
-    mnHelper.setupLongPolling({
-      methodToCall: mnBucketsService.getBucketsState,
-      scope: $scope,
-      onUpdate: applyBuckets
-    });
+    mnPoll.start($scope, function () {
+      return mnBucketsService.getBucketsState();
+    }).subscribe(applyBuckets);
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

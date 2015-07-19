@@ -1,16 +1,14 @@
 angular.module('mnLogs').controller('mnLogsListController',
-  function ($scope, mnHelper, mnLogsService, logs) {
+  function ($scope, mnHelper, mnLogsService, logs, mnPoll) {
     function applyLogs(logs) {
       $scope.logs = logs.data.list;
     }
 
     applyLogs(logs);
 
-    mnHelper.setupLongPolling({
-      methodToCall: mnLogsService.getLogs,
-      scope: $scope,
-      onUpdate: applyLogs
-    });
+    mnPoll.start($scope, function () {
+      return mnLogsService.getLogs();
+    }).subscribe(applyLogs);
 
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
 
