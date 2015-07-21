@@ -1,7 +1,14 @@
 <div id="eject_confirmation_dialog" style="width:711px">
     <h1 class="dialog_corner_radius">Confirm Server Removal</h1>
-    <div class="warning pat_20">
-      <strong>Warning</strong> – Removing this server from the cluster will reduce cache capacity across all data buckets. Are you sure you want to remove this server?
+    <div class="warning pat_20" mn-spinner="viewLoading">
+      <p>Warning! Removing this node will:</p>
+      <ul style="margin:15px;">
+        <li ng-show="warningFlags.isThereIndex">Remove indexes from the cluster and may cause queries to fail</li>
+        <li ng-show="warningFlags.isLastIndex">Remove the last index node from the cluster so new indexes can’t be created</li>
+        <li ng-show="warningFlags.isLastQuery">Remove the last query node from the cluster so queries can’t be run</li>
+        <li ng-show="warningFlags.isKv">Reduce cache capacity across all data buckets</li>
+      </ul>
+      <p>Are you sure you want to remove this server?</p>
     </div>
     <div class="right save_cancel pas_20 footer_bg">
       <button type="submit" class="save_button float_right" ng-click="doEjectServer()">Remove</button>

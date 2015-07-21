@@ -11,9 +11,11 @@ angular.module('mnServers', [
   'mnSortableTable',
   'mnServices',
   'mnMemoryQuotaService',
+  'mnIndexesService',
+  'mnPromiseHelper',
   'mnPoll'
 ]).controller('mnServersController',
-  function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, mnPoll, serversState, mnServersService, mnHelper) {
+  function ($scope, $state, $modal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, serversState, mnServersService, mnHelper) {
 
     function applyServersState(serversState) {
       $scope.serversState = serversState;
@@ -64,12 +66,39 @@ angular.module('mnServers', [
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
 
     $scope.ejectServer = function (node) {
-      $modal.open({
-        templateUrl: '/angular/app/mn_admin/mn_servers/eject_dialog/mn_servers_eject_dialog.html',
-        controller: 'mnServersEjectDialogController',
-        resolve: {
-          node: function () {
-            return node;
+      $q.all([
+        mnIndexesService.getIndexesState(),
+        mnServersService.getNodes()
+      ]).then(function (resp) {
+        var nodes = resp[1];
+        var indexStatus = resp[0];
+        var warnings = {
+          isLastIndex: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'index'),
+          isLastQuery: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'n1ql'),
+          isThereIndex: !!_.find(indexStatus.indexes, function (index) {
+            return _.indexOf(index.hosts, node.hostname) > -1;
+          }),
+          isKv: _.indexOf(node.services, 'kv') > -1
+        };
+        if (_.some(_.values(warnings))) {
+          $modal.open({
+            templateUrl: '/angular/app/mn_admin/mn_servers/eject_dialog/mn_servers_eject_dialog.html',
+            controller: 'mnServersEjectDialogController',
+            resolve: {
+              warnings: function () {
+                return warnings;
+              },
+              node: function () {
+                return node;
+              }
+            }
+          });
+        } else {
+          if (node.isNodeInactiveAdded) {
+            mnServersService.ejectNode({otpNode: node.otpNode});
+          } else {
+            mnServersService.addToPendingEject(node);
+            mnHelper.reloadState();
           }
         }
       });

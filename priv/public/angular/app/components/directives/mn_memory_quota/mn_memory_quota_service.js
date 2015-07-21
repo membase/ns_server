@@ -28,11 +28,12 @@ angular.module('mnMemoryQuotaService', [
     };
 
     mnMemoryQuotaService.isOnlyOneNodeWithService = function (nodes, services, service) {
+
       var nodesCount = 0;
       var indexExists = _.each(nodes, function (node) {
         nodesCount += (_.indexOf(node.services, service) > -1);
       });
-      return nodesCount === 1 && services[service];
+      return nodesCount === 1 && services && (angular.isArray(services) ? (_.indexOf(services, service) > -1) : services[service]);
     };
 
     mnMemoryQuotaService.postMemory = function (data) {
