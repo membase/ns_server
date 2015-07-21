@@ -17,3 +17,7 @@ GoInstall (TARGET ns_generate_cert PACKAGE generate_cert
 GoInstall (TARGET ns_godu PACKAGE godu
   GOPATH "${CMAKE_CURRENT_SOURCE_DIR}"
   INSTALL_PATH bin/priv)
+
+ADD_CUSTOM_TARGET (gocode-clean
+  COMMAND "${CMAKE_COMMAND}" -E remove_directory "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+ADD_DEPENDENCIES (ns_realclean gocode-clean)
