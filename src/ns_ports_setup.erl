@@ -284,6 +284,7 @@ query_node_spec(Config) ->
             DataStoreArg = "--datastore=http://127.0.0.1:" ++ integer_to_list(RestPort),
             CnfgStoreArg = "--configstore=http://127.0.0.1:" ++ integer_to_list(RestPort),
             HttpArg = "--http=:" ++ integer_to_list(query_rest:get_query_port(Config, node())),
+            EntArg = "--enterprise=" ++ atom_to_list(cluster_compat_mode:is_enterprise()),
 
             HttpsArgs = case query_rest:get_ssl_query_port(Config, node()) of
                             undefined ->
@@ -294,7 +295,7 @@ query_node_spec(Config) ->
                                  "--keyfile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
                         end,
             Spec = {'query', Command,
-                    [DataStoreArg, HttpArg, CnfgStoreArg] ++ HttpsArgs,
+                    [DataStoreArg, HttpArg, CnfgStoreArg, EntArg] ++ HttpsArgs,
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {env, build_go_env_vars(Config, 'cbq-engine')},
                      {log, ?QUERY_LOG_FILENAME}]},
