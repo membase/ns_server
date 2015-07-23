@@ -646,6 +646,7 @@ var SetupWizard = {
         newClusterFormBlock.slideDown();
         $('.js_login-credentials').slideUp();
       });
+      $(".js_wizard_services [name='services']").prop("checked", true);
 
       // we return function signaling that we're not yet ready to show
       // our page of wizard (no data to display in the form), but will
