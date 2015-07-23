@@ -562,6 +562,9 @@ var ServersSection = {
     dialog.find('[name=user]').val('Administrator');
     dialog.find(".when-groups").toggle(!!DAL.cells.groupsAvailableCell.value);
     dialog.find("[name=services]").prop("checked", true);
+    if (!DAL.cells.isEnterpriseCell.value) {
+      dialog.find("[value=kv]").prop("disabled", true);
+    }
 
     showDialog('join_cluster_dialog', {
       onHide: function () {

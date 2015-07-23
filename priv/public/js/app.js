@@ -648,6 +648,10 @@ var SetupWizard = {
       });
       $(".js_wizard_services [name='services']").prop("checked", true);
 
+      if (!DAL.cells.isEnterpriseCell.value) {
+        $(".js_wizard_services [value='kv']").prop("disabled", true);
+      }
+
       // we return function signaling that we're not yet ready to show
       // our page of wizard (no data to display in the form), but will
       // be at one point. SetupWizard.show() will call us immediately
