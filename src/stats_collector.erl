@@ -286,25 +286,8 @@ parse_aggregate_dcp_stats(AggDcp) ->
     ReplicaStats = extract_agg_dcp_stats([{K, V} || {<<"replication:", K/binary>>, V} <- AggDcp]),
     XdcrStats = extract_agg_dcp_stats([{K, V} || {<<"xdcr:", K/binary>>, V} <- AggDcp]),
     ViewsStats = extract_agg_dcp_stats([{K, V} || {<<"mapreduce_view:", K/binary>>, V} <- AggDcp]),
+    IndexStats = extract_agg_dcp_stats([{K, V} || {<<"secidx:", K/binary>>, V} <- AggDcp]),
     TotalStats = extract_agg_dcp_stats([{K, V} || {<<":total:", K/binary>>, V} <- AggDcp]),
-
-    IndexStatsRaw =
-        lists:filtermap(
-          fun ({<<"proj-", Rest/binary>>, V}) ->
-                  case misc:binary_rchr(Rest, $:) of
-                      -1 ->
-                          false;
-                      Ix ->
-                          %% note that binary:part(B, byte_size(B), 0) returns <<>>
-                          KeyIx = Ix + 1,
-                          Key = binary:part(Rest, KeyIx, erlang:byte_size(Rest) - KeyIx),
-                          {true, {Key, V}}
-                  end;
-              (_) ->
-                  false
-          end, AggDcp),
-
-    IndexStats = extract_agg_dcp_stats(IndexStatsRaw),
 
     OtherStats = calc_dcp_other_stats(ReplicaStats, XdcrStats, ViewsStats, IndexStats, TotalStats),
 
