@@ -2275,6 +2275,7 @@
       <input type="hidden" name="rebalanceIndexPausingDisabled" value="false">
       <input type="hidden" name="rebalanceIgnoreViewCompactions" value="false">
       <input type="hidden" name="indexAutoFailoverDisabled" value="false">
+      <input type="hidden" name="certUseSha1" value="false">
       <label><span class="cursor_helper" title="When not disabled makes sure indexes are always up-to-date during rebalance">Disable index aware rebalance</span><input type="checkbox" name="indexAwareRebalanceDisabled" value="true"></label>
       <label><span class="cursor_helper" title="Whether index aware rebalance waiting for index up-to-dateness should be disabled. Makes rebalance faster">Disable index waiting during rebalance</span><input type="checkbox" name="rebalanceIndexWaitingDisabled" value="true"></label>
       <label><span class="cursor_helper" title="That's too complex to explain">Disable index pausing during rebalance</span><input type="checkbox" name="rebalanceIndexPausingDisabled" value="true"></label>
@@ -2308,6 +2309,7 @@
       <label><span>Drop requests after this much memory is used (MiB)</span><input maxlength="6" style="width:2.5em;" name="dropRequestMemoryThresholdMiB"></label>
       <label><span>GOTRACEBACK</span><input style="width:2.5em;" name="gotraceback"></label>
       <label class="when-goxdcr-disabled"><span>XDCR anticipatory delay (ms)</span><input maxlength="6" style="width:2.5em;" name="xdcrAnticipatoryDelay"></label>
+      <label><span class="cursor_helper" title="When enabled forces sha1 signature algorithm during ssl certificates generation">Use sha1 in ssl certificates</span><input type="checkbox" name="certUseSha1" value="true"></label>
     </fieldset>
     <div class="save_cancel">
       <button class="save_button float_right" type="submit">Save</button>

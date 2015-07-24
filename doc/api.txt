@@ -375,6 +375,7 @@ GET /internalSettings =>
     "capiRequestLimit": (<:integer> | ""), // unset by default (unlimited)
     "dropRequestMemoryThresholdMiB": (<:integer> | ""), // unset by default (unlimited)
     "restRequestLimit": (<:integer> | ""), // unset by default (unlimited)
+    "certUseSha1": <:bool>, // false by default
 }
 
 NOTE: we'll add/remove some fields over time here. All internal

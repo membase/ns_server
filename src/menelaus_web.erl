@@ -3257,7 +3257,8 @@ internal_settings_conf() ->
      {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, undefined,
       GetNumberOrEmpty(0, 99999, {ok, undefined})},
      {gotraceback, gotraceback, <<>>, GetString},
-     {{auto_failover_disabled, index}, indexAutoFailoverDisabled, true, GetBool}] ++
+     {{auto_failover_disabled, index}, indexAutoFailoverDisabled, true, GetBool},
+     {{cert, use_sha1}, certUseSha1, false, GetBool}] ++
         case cluster_compat_mode:is_goxdcr_enabled() of
             false ->
                 [{{xdcr, max_concurrent_reps}, xdcrMaxConcurrentReps, 32, GetNumber(1, 256)},
