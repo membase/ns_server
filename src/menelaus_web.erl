@@ -371,6 +371,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
                          ["_metakv" | _] ->
                              {auth, fun menelaus_metakv:handle_get/2, [Path]};
+                         ["angular" | _] ->
+                             {done, serve_angular_ui(Req, Path, AppRoot)};
                          _ ->
                              {done, menelaus_util:serve_file(Req, Path, AppRoot,
                                                              [{"Cache-Control", "max-age=10"}])}
@@ -613,6 +615,14 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
             auth_any_bucket(Req, F, Args);
         {auth_check_bucket_uuid, F, Args} ->
             auth_check_bucket_uuid(Req, F, Args)
+    end.
+
+serve_angular_ui(Req, Path, AppRoot) ->
+    case os:getenv("ENABLE_ANGULAR_UI") of
+        "true" ->
+            menelaus_util:serve_file(Req, Path, AppRoot, [{"Cache-Control", "max-age=10"}]);
+        _ ->
+            reply_text(Req, "Not found.", 404)
     end.
 
 handle_uilogin(Req) ->
