@@ -13,9 +13,9 @@ import (
 	"io"
 	"log"
 	"math/big"
+	"net"
 	"os"
 	"time"
-	"net"
 )
 
 func mustNoErr(err error) {
@@ -56,10 +56,10 @@ func derToPKey(octets []byte) (pkey *rsa.PrivateKey) {
 	panic("cannot happen")
 }
 
-var keyLength int = 2048
+var keyLength = 2048
 
 func init() {
-	if (os.Getenv("COUCHBASE_SMALLER_PKEYS") == "1") {
+	if os.Getenv("COUCHBASE_SMALLER_PKEYS") == "1" {
 		keyLength = 1024
 	}
 }
