@@ -652,6 +652,8 @@ var SetupWizard = {
         $(".js_wizard_services [value='kv']").prop("disabled", true);
       }
 
+      ServersSection.bindIndexAndN1qlCheckboxesOnCE(".js_wizard_services");
+
       // we return function signaling that we're not yet ready to show
       // our page of wizard (no data to display in the form), but will
       // be at one point. SetupWizard.show() will call us immediately
@@ -707,6 +709,8 @@ var SetupWizard = {
           }, $('#js_start_new_cluster_memory_quoata_cont'));
 
           memoryQuotaWidget.selectAllServices();
+
+          ServersSection.bindIndexAndN1qlCheckboxesOnCE(".js_start_new_cluster_block");
 
           var firstResource = data.storage.hdd[0];
 

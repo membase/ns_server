@@ -517,6 +517,16 @@ var ServersSection = {
 
     this.postAndReload(uri, "");
   },
+  bindIndexAndN1qlCheckboxesOnCE: function (root) {
+    if (DAL.cells.isEnterpriseCell.value) {
+      return;
+    }
+    $(root + " [name='services']").unbind("change").change(function (e) {
+      e.preventDefault();
+      $(root + " [value=index]").prop("checked", $(this).prop("checked"));
+      $(root + " [value=n1ql]").prop("checked", $(this).prop("checked"));
+    });
+  },
   getCheckedServices: function (context) {
     return $("[name=services]:checked", context).map(function () {
       return this.value;
@@ -565,6 +575,7 @@ var ServersSection = {
     if (!DAL.cells.isEnterpriseCell.value) {
       dialog.find("[value=kv]").prop("disabled", true);
     }
+    ServersSection.bindIndexAndN1qlCheckboxesOnCE("#join_cluster_dialog");
 
     showDialog('join_cluster_dialog', {
       onHide: function () {
