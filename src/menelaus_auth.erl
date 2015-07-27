@@ -31,13 +31,13 @@
          check_auth/1,
          parse_user_password/1,
          is_under_admin/1,
+         is_under_role/2,
          is_read_only_auth/1,
          extract_ui_auth_token/1,
          complete_uilogin/4,
          reject_uilogin/2,
          complete_uilogout/1,
          maybe_refresh_token/1,
-         may_expose_bucket_auth/1,
          get_user/1,
          get_token/1,
          get_role/1,
@@ -458,8 +458,8 @@ bucket_auth_fun(UserPassword, ReadOnlyOk) ->
 is_under_admin(Req) ->
     check_auth(extract_auth(Req)).
 
-may_expose_bucket_auth(Req) ->
-    not is_read_only_auth(extract_auth(Req)).
+is_under_role(Req, Role) when is_atom(Role) ->
+    get_role(Req) =:= atom_to_list(Role).
 
 build_saslauthd_auth_settings() ->
     case ns_config:search(saslauthd_auth_settings) of
