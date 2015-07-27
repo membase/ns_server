@@ -23,7 +23,6 @@
 -export([apply_auth/3,
          apply_ro_auth/3,
          apply_auth_bucket/5,
-         require_auth/1,
          filter_accessible_buckets/2,
          is_bucket_accessible/3,
          apply_auth_any_bucket/3,
