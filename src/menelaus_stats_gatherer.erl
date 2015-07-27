@@ -20,7 +20,9 @@
 
 -behaviour(gen_server).
 
--export([start_link/0, gather_stats/4, invoke_archiver/3]).
+-export([start_link/0,
+         gather_stats/4, gather_stats/5,
+         invoke_archiver/3, invoke_archiver/4]).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -33,17 +35,7 @@ start_link() ->
 gather_stats(_Bucket, [], _ClientTStamp, _Window) ->
     {none, [], []};
 gather_stats(Bucket, Nodes, ClientTStamp, Window) ->
-    FirstNode = case Nodes of
-                    [X] ->
-                        X;
-                    [FN | _] ->
-                        case lists:member(node(), Nodes) of
-                            true ->
-                                node();
-                            _ ->
-                                FN
-                        end
-                end,
+    FirstNode = get_first_node(Nodes),
     case cluster_compat_mode:is_node_compatible(FirstNode, [2, 3, 0]) of
         true ->
             gen_server:call({?MODULE, FirstNode},
@@ -52,7 +44,22 @@ gather_stats(Bucket, Nodes, ClientTStamp, Window) ->
             gather_op_stats(FirstNode, Bucket, Nodes, ClientTStamp, Window)
     end.
 
-gather_op_stats(FirstNode, Bucket, Nodes, ClientTStamp, {_, Period, _} = Window) ->
+gather_stats(_Bucket, [], _ClientTStamp, _Window, _StatList) ->
+    {none, [], []};
+gather_stats(Bucket, Nodes, ClientTStamp, Window, StatList) ->
+    case cluster_compat_mode:is_cluster_watson() of
+        true ->
+            FirstNode = get_first_node(Nodes),
+            gen_server:call({?MODULE, FirstNode},
+                            {gather_stats, Bucket, Nodes, ClientTStamp, Window, StatList}, infinity);
+        false ->
+            gather_stats(Bucket, Nodes, ClientTStamp, Window)
+    end.
+
+gather_op_stats(FirstNode, Bucket, Nodes, ClientTStamp, Window) ->
+    gather_op_stats(FirstNode, Bucket, Nodes, ClientTStamp, Window, all).
+
+gather_op_stats(FirstNode, Bucket, Nodes, ClientTStamp, {_, Period, _} = Window, StatList) ->
     Self = self(),
     Ref = make_ref(),
     Subscription = ns_pubsub:subscribe_link(
@@ -69,7 +76,7 @@ gather_op_stats(FirstNode, Bucket, Nodes, ClientTStamp, {_, Period, _} = Window)
                     minute -> Ref;
                     _ -> []
                 end,
-    try gather_op_stats_body(FirstNode, Bucket, Nodes, ClientTStamp, RefToPass, Window) of
+    try gather_op_stats_body(FirstNode, Bucket, Nodes, ClientTStamp, RefToPass, Window, StatList) of
         Something -> Something
     after
         ns_pubsub:unsubscribe(Subscription),
@@ -78,8 +85,8 @@ gather_op_stats(FirstNode, Bucket, Nodes, ClientTStamp, {_, Period, _} = Window)
     end.
 
 gather_op_stats_body(FirstNode, Bucket, Nodes, ClientTStamp,
-                     Ref, Window) ->
-    case invoke_archiver(Bucket, FirstNode, Window) of
+                     Ref, Window, StatList) ->
+    case invoke_archiver(Bucket, FirstNode, Window, StatList) of
         [] -> {FirstNode, [], []};
         [_] -> {FirstNode, [], []};
         RV ->
@@ -100,7 +107,7 @@ gather_op_stats_body(FirstNode, Bucket, Nodes, ClientTStamp,
                 ClientTStamp when Ref =/= [] ->
                     receive
                         Ref ->
-                            gather_op_stats_body(FirstNode, Bucket, Nodes, ClientTStamp, [], Window)
+                            gather_op_stats_body(FirstNode, Bucket, Nodes, ClientTStamp, [], Window, StatList)
                     after 2000 ->
                             {FirstNode, [], []}
                     end;
@@ -118,19 +125,23 @@ gather_op_stats_body(FirstNode, Bucket, Nodes, ClientTStamp,
                                   [] ->
                                       [];
                                   _ ->
-                                      invoke_archiver(Bucket, OtherNodes, Window)
+                                      invoke_archiver(Bucket, OtherNodes, Window, StatList)
                               end,
 
                     {FirstNode, MainSamples, Replies}
             end
     end.
-
-invoke_archiver(Bucket, NodeS, {Step, Period, Count}) ->
-    RV = case Step of
-             1 ->
-                 catch stats_reader:latest(Period, NodeS, Bucket, Count);
-             _ ->
-                 catch stats_reader:latest(Period, NodeS, Bucket, Step, Count)
+invoke_archiver(Bucket, NodeS, Window) ->
+    invoke_archiver(Bucket, NodeS, Window, all).
+invoke_archiver(Bucket, NodeS, {Step, Period, Count}, StatList) ->
+    RV = case cluster_compat_mode:is_cluster_watson() of
+             true ->
+                 catch stats_reader:latest_specific_stats(Period, NodeS,
+                                                          Bucket, Step,
+                                                          Count, StatList);
+             false ->
+                 catch stats_reader:latest(Period, NodeS, Bucket,
+                                           Step, Count)
          end,
     case is_list(NodeS) of
         true -> [{K, V} || {K, {ok, V}} <- RV];
@@ -162,6 +173,13 @@ handle_call({gather_stats, Bucket, Nodes, ClientTStamp, Window}, From, State) ->
               gen_server:reply(From, RV)
       end),
     {noreply, State};
+handle_call({gather_stats, Bucket, Nodes, ClientTStamp, Window, StatList}, From, State) ->
+    proc_lib:spawn_link(
+      fun () ->
+              RV = gather_op_stats(node(), Bucket, Nodes, ClientTStamp, Window, StatList),
+              gen_server:reply(From, RV)
+      end),
+    {noreply, State};
 handle_call(_, _From, State) ->
     {reply, not_supported, State}.
 
@@ -170,3 +188,20 @@ handle_info(_, State) ->
 
 handle_cast(_, State) ->
     {noreply, State}.
+
+%%%===================================================================
+%%% Internal Functions
+%%%===================================================================
+
+get_first_node(Nodes) ->
+    case Nodes of
+        [X] ->
+            X;
+        [FN | _] ->
+            case lists:member(node(), Nodes) of
+                true ->
+                    node();
+                _ ->
+                    FN
+            end
+    end.
