@@ -2,27 +2,25 @@ angular.module('mnAuth', [
   'mnAuthService',
   'ui.router'
 ]).config( function ($stateProvider, $httpProvider, $urlRouterProvider) {
-  $httpProvider.interceptors.push(['$q', '$injector', logsOutUserOn401]);
+  $httpProvider.interceptors.push(['$q', '$injector', function ($q, $injector) {
+    return {
+      responseError: function (rejection) {
+        if (rejection.status === 401 && rejection.config.url !== "/pools") {
+          var mnPools = $injector.get('mnPools');
+          mnPools.get().then(function (pools) {
+            if (pools.isAuthenticated) {
+              var mnAuthService = $injector.get('mnAuthService');
+              mnAuthService.logout();
+            }
+          });
+        }
+        return $q.reject(rejection);
+      }
+    }
+  }]);
 
   $urlRouterProvider.when('', '/auth');
   $urlRouterProvider.when('/', '/auth');
-
-  function logsOutUserOn401($q, $injector) {
-    return function (promise) {
-      return promise.then(success, error);
-    };
-    function success(response) {
-      return response;
-    };
-    function error(response) {
-      console.log(response)
-      if (response.status === 401) {
-        var mnAuthService = $injector.get('mnAuthService');
-        mnAuthService.logout();
-      }
-      return $q.reject(response);
-    };
-  }
 
   $stateProvider.state('app.auth', {
     templateUrl: 'mn_auth/mn_auth.html',
