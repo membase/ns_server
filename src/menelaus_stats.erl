@@ -171,7 +171,7 @@ handle_overview_stats(PoolId, Req) ->
     Names = lists:sort(menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req)),
     {ClientTStamp, Window} = parse_stats_params([{"zoom", "hour"}]),
     AllSamples = lists:map(fun (Name) ->
-                                   grab_aggregate_op_stats(Name, all, ClientTStamp, Window)
+                                   grab_aggregate_op_stats(Name, all, ClientTStamp, Window, [ops, ep_bg_fetched])
                            end, Names),
     MergedSamples = case AllSamples of
                         [FirstBucketSamples | RestSamples] ->
@@ -474,8 +474,13 @@ grab_system_aggregate_op_stats([Node], ClientTStamp, Window) ->
 grab_aggregate_op_stats(Bucket, all, ClientTStamp, Window) ->
     grab_aggregate_op_stats(Bucket, section_nodes(Bucket), ClientTStamp, Window);
 grab_aggregate_op_stats(Bucket, Nodes, ClientTStamp, Window) ->
+    grab_aggregate_op_stats(Bucket, Nodes, ClientTStamp, Window, all).
+
+grab_aggregate_op_stats(Bucket, all, ClientTStamp, Window, StatList) ->
+    grab_aggregate_op_stats(Bucket, section_nodes(Bucket), ClientTStamp, Window, StatList);
+grab_aggregate_op_stats(Bucket, Nodes, ClientTStamp, Window, StatList) ->
     {_MainNode, MainSamples, Replies} =
-        menelaus_stats_gatherer:gather_stats(Bucket, Nodes, ClientTStamp, Window),
+        menelaus_stats_gatherer:gather_stats(Bucket, Nodes, ClientTStamp, Window, StatList),
     RV = merge_all_samples_normally(MainSamples, [S || {_,S} <- Replies]),
     lists:reverse(RV).
 
