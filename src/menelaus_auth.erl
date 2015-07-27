@@ -28,11 +28,8 @@
          apply_auth_any_bucket/3,
          extract_auth/1,
          extract_auth_user/1,
-         check_auth/1,
          parse_user_password/1,
-         is_under_admin/1,
          is_under_role/2,
-         is_read_only_auth/1,
          extract_ui_auth_token/1,
          complete_uilogin/4,
          reject_uilogin/2,
@@ -454,9 +451,6 @@ bucket_auth_fun(UserPassword, ReadOnlyOk) ->
                     end
             end
     end.
-
-is_under_admin(Req) ->
-    check_auth(extract_auth(Req)).
 
 is_under_role(Req, Role) when is_atom(Role) ->
     get_role(Req) =:= atom_to_list(Role).

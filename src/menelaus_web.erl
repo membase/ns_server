@@ -845,9 +845,8 @@ handle_pools(Req) ->
             true -> Pools;
             _ -> []
         end,
-    Auth = menelaus_auth:extract_auth(Req),
-    ReadOnlyAdmin = menelaus_auth:is_read_only_auth(Auth),
-    Admin = ReadOnlyAdmin orelse menelaus_auth:check_auth(Auth),
+    ReadOnlyAdmin = menelaus_auth:is_under_role(Req, ro_admin),
+    Admin = ReadOnlyAdmin orelse menelaus_auth:is_under_role(Req, admin),
     reply_json(Req,{struct, [{pools, EffectivePools},
                              {isAdminCreds, Admin},
                              {isROAdminCreds, ReadOnlyAdmin},
@@ -1025,7 +1024,7 @@ handle_pool_info(Id, Req) ->
     WaitChangeS = proplists:get_value("waitChange", Query),
     PassedETag = proplists:get_value("etag", Query),
     case WaitChangeS of
-        undefined -> reply_json(Req, build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+        undefined -> reply_json(Req, build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
                                                      normal, LocalAddr));
         _ ->
             WaitChange = list_to_integer(WaitChangeS),
@@ -1035,7 +1034,7 @@ handle_pool_info(Id, Req) ->
     end.
 
 handle_pool_info_wait(Req, Id, LocalAddr, PassedETag) ->
-    Info = build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+    Info = build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
                            stable, LocalAddr),
     ETag = integer_to_list(erlang:phash2(Info)),
     if
@@ -1070,7 +1069,7 @@ handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     %% consume all notifications
     consume_notifications(),
     %% and reply
-    {struct, PList} = build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+    {struct, PList} = build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
                                       for_ui, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     reply_ok(Req, "application/json", menelaus_util:encode_json(Info),
@@ -1438,7 +1437,7 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
 handle_pool_info_streaming(Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     F = fun(InfoLevel) ->
-                build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
                                 InfoLevel, LocalAddr)
         end,
     handle_streaming(F, Req, undefined).
