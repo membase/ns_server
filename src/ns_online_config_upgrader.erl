@@ -21,7 +21,7 @@
 -export([upgrade_config/1]).
 
 upgrade_config(NewVersion) ->
-    true = (NewVersion =< [4, 0]),
+    true = (NewVersion =< ?LATEST_VERSION_NUM),
 
     ok = ns_config:upgrade_config_explicitly(
            fun (Config) ->
@@ -44,7 +44,9 @@ do_upgrade_config(Config, FinalVersion) ->
              upgrade_config_from_2_5_to_3_0(Config)];
         {value, [3, 0]} ->
             [{set, cluster_compat_version, [4, 0]} |
-             upgrade_config_from_3_0_to_4_0(Config)]
+             upgrade_config_from_3_0_to_4_0(Config)];
+        {value, [4, 0]} ->
+            [{set, cluster_compat_version, ?WATSON_VERSION_NUM}]
     end.
 
 upgrade_config_from_2_0_to_2_5(Config) ->

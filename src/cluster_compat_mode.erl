@@ -30,6 +30,7 @@
          is_cluster_30/0,
          is_cluster_40/0,
          compat_mode_string_40/0,
+         is_cluster_watson/0,
          is_enterprise/0,
          is_goxdcr_enabled/0,
          is_goxdcr_enabled/1,
@@ -49,7 +50,7 @@ get_compat_version() ->
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.0
 supported_compat_version() ->
-    [4, 0].
+    ?LATEST_VERSION_NUM.
 
 min_supported_compat_version() ->
     [2, 5].
@@ -59,7 +60,7 @@ min_supported_compat_version() ->
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
-    [4, 0, 0].
+    ?LATEST_VERSION_NUM ++ [0].
 
 check_is_progress_tracking_supported() ->
     are_all_nodes_compatible([2,0,2]).
@@ -83,6 +84,8 @@ is_cluster_40() ->
 
 compat_mode_string_40() ->
     "4.0".
+is_cluster_watson() ->
+    is_enabled(?WATSON_VERSION_NUM).
 
 is_index_aware_rebalance_on() ->
     Disabled = ns_config:read_key_fast(index_aware_rebalance_disabled, false),
