@@ -238,7 +238,7 @@ var ClusterSection = {
         url: "/settings/indexes",
         type: 'POST',
         data: serializeForm(indexesSettingsForm),
-        error: function () {
+        error: function (jqXhr) {
           SettingsSection.renderErrors(JSON.parse(jqXhr.responseText), indexesSettingsForm);
         },
         success: function () {}
