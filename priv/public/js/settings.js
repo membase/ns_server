@@ -57,9 +57,13 @@ var SettingsSection = {
         }
       } else {
         // Show error messages on all input fields that contain one
-        $.each(val.errors, function(name, message) {
-          rootNode.find('.err-'+name).text(message).addClass('active')
-            .prev('textarea, input').addClass('invalid');
+        $.each(val.errors, function (name, message) {
+          var errorCont = rootNode.find('.err-' + name.replace(/\[|\]/g, '-')).text(message).addClass('active');
+          if (errorCont.prev('textarea, input').length) {
+            errorCont.prev('textarea, input').addClass('invalid');
+          } else {
+            rootNode.find('[name="' + name + '"]').addClass('invalid');
+          }
         });
         // Disable the save button
         if (!doNotDisableSaveButton) {
@@ -1531,7 +1535,6 @@ var AutoCompactionSection = {
     settingsCell.delegateInvalidationMethods(allSettingsCell);
     self.settingsCell = settingsCell;
     var errorsCell = self.errorsCell = new Cell();
-    self.errorsCell.subscribeValue($m(self, 'onValidationResult'));
     self.urisCell = new Cell();
     self.formValidationEnabled = new Cell();
     self.formValidationEnabled.setValue(false);
@@ -1554,6 +1557,8 @@ var AutoCompactionSection = {
       var validateURI = uris.validateURI;
       var form = container.find("form");
       formValidation = setupFormValidation(form, validateURI, function (status, errors) {
+        $.isEmptyObject(errors.errors) && (errors.errors = null);
+        SettingsSection.renderErrors(errors, form);
         errorsCell.setValue(errors);
       }, function() {
         return AutoCompactionSection.serializeCompactionForm(form);
@@ -1760,31 +1765,7 @@ var AutoCompactionSection = {
       }
       self.formValidationEnabled.setValue(true);
     }
-  },
-  renderError: function (field, error) {
-    var fieldClass = field.replace(/\[|\]/g, '-');
-    this.container.find('.error-container.err-' + fieldClass).text(error || '')[error ? 'addClass' : 'removeClass']('active');
-    this.container.find('[name="' + field + '"]')[error ? 'addClass' : 'removeClass']('invalid');
-  },
-  onValidationResult: (function () {
-    var knownFields = ('name ramQuotaMB replicaNumber proxyPort databaseFragmentationThreshold[percentage] viewFragmentationThreshold[percentage] viewFragmentationThreshold[size] indexFragmentationThreshold[percentage] databaseFragmentationThreshold[size] allowedTimePeriod purgeInterval').split(' ');
-    _.each(('to from').split(' '), function (p1) {
-      _.each(('Hour Minute').split(' '), function (p2) {
-        knownFields.push('allowedTimePeriod[' + p1 + p2 + ']');
-      });
-    });
-
-    return function (result) {
-      if (!result) {
-        return;
-      }
-      var self = this;
-      var errors = result.errors || {};
-      _.each(knownFields, function (name) {
-        self.renderError(name, errors[name]);
-      });
-    };
-  })()
+  }
 };
 
 function auditSetupSectionCells(ns, tabs, sectionCell) {
