@@ -1707,6 +1707,7 @@ var AutoCompactionSection = {
   METADATA_PURGE_INTERVAL_WARNING: "The Metadata purge interval should always be set to a value that is greater than the indexing or XDCR lag. Are you sure you want to change the metadata purge interval?",
   displayMetadataPurgeIntervalWarning: function (onOk) {
     genericDialog({
+      header: 'Confirm Metadata Purge Interval Change',
       buttons: {ok: true, cancel: true},
       text: AutoCompactionSection.METADATA_PURGE_INTERVAL_WARNING,
       callback: function (e, name, instance) {
