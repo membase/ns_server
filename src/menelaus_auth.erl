@@ -18,6 +18,8 @@
 -module(menelaus_auth).
 -author('Northscale <info@northscale.com>').
 
+-include_lib("eunit/include/eunit.hrl").
+
 -include("ns_common.hrl").
 
 -export([apply_auth/3,
@@ -255,7 +257,7 @@ apply_auth_bucket(Req, F, Args, BucketId, ReadOnlyOk) ->
                                       apply(F, Args ++ [NewReq])
                               end);
                         false ->
-                            menelaus_auth:require_auth(Req)
+                            require_auth(Req)
                     end
             end;
         not_present ->
@@ -486,3 +488,570 @@ verify_login_creds(User, Password) ->
                     end
             end
     end.
+
+-ifdef(EUNIT).
+
+-record(test_data, {admin = undefined,
+                    ro_admin = undefined,
+                    buckets = [],
+                    ldap_users = [],
+                    tokens = []}).
+
+t_seed(Data) ->
+    ets:insert(state, {data, Data}).
+
+t_get_data() ->
+    [{data, Data}] = ets:lookup(state, data),
+    Data.
+
+t_setup() ->
+    Reply =
+        fun ({_, 401, _}, _) ->
+                ets:insert(state, {result, require_auth}),
+                require_auth
+        end,
+
+    ReplyNotFound =
+        fun ({_}, _) ->
+                ets:insert(state, {result, not_found}),
+                not_found
+        end,
+
+
+    GetUser =
+        fun ({admin}, _) ->
+                Data = t_get_data(),
+                Data#test_data.admin
+        end,
+
+    CheckConfig =
+        fun ({admin, User, Password}, _) ->
+                Data = t_get_data(),
+                case Data#test_data.admin of
+                    undefined ->
+                        true;
+                    {User, Password} ->
+                        true;
+                    _ ->
+                        false
+                end;
+            ({ro_admin, User, Password}, _) ->
+                Data = t_get_data(),
+                Data#test_data.ro_admin =:= {User, Password}
+        end,
+
+    CheckLdap =
+        fun ({User, Password}, _) ->
+                Data = t_get_data(),
+                [{ldap_count, C}] = ets:lookup(state, ldap_count),
+                ets:insert(state, {ldap_count, C + 1}),
+                case lists:keyfind({User, Password}, 1, Data#test_data.ldap_users) of
+                    false ->
+                        false;
+                    {{User, Password}, Role} ->
+                        Role
+                end
+        end,
+
+    CheckToken =
+        fun ({Token}, _) ->
+                Data = t_get_data(),
+                case lists:keyfind(Token, 1, Data#test_data.tokens) of
+                    {Token, Ret} ->
+                        {ok, Ret};
+                    false ->
+                        false
+                end
+        end,
+
+    GetBucket =
+        fun ({BucketId}, _) ->
+                Data = t_get_data(),
+                case lists:keyfind(BucketId, 1, Data#test_data.buckets) of
+                    {BucketId, BucketConf} ->
+                        {ok, BucketConf};
+                    false ->
+                        not_present
+                end
+        end,
+
+    GetBuckets =
+        fun ({}, _) ->
+                Data = t_get_data(),
+                Data#test_data.buckets
+        end,
+
+    CheckingBucketUUID =
+        fun ({_Req, _BucketConf, F}, _) ->
+                F()
+        end,
+
+    Tid = ets:new(state, [named_table, public]),
+
+    Funs =
+        [{menelaus_util, reply, 3, Reply},
+         {menelaus_util, reply_not_found, 1, ReplyNotFound},
+         {ns_config_auth, get_user, 1, GetUser},
+         {ns_config_auth, authenticate, 3, CheckConfig},
+         {saslauthd_auth, check, 2, CheckLdap},
+         {menelaus_ui_auth, check, 1, CheckToken},
+         {ns_bucket, get_bucket, 1, GetBucket},
+         {ns_bucket, get_buckets, 0, GetBuckets},
+         {menelaus_web_buckets, checking_bucket_uuid, 3, CheckingBucketUUID}],
+
+    {Tid, lists:foldl(
+            fun ({Module, Name, Arity, Fun}, Mocked) ->
+                    NewMocked =
+                        case lists:keyfind(Module, 1, Mocked) of
+                            false ->
+                                {ok, Pid} = mock:mock(Module),
+                                [{Module, Pid} | Mocked];
+                            _ ->
+                                Mocked
+                        end,
+                    ok = mock:expects(Module, Name, fun (T) -> tuple_size(T) =:= Arity end,
+                                      Fun, {at_least, 0}),
+                    NewMocked
+            end, [], Funs)}.
+
+t_teardown({Tid, Mods}) ->
+    ets:delete(Tid),
+
+    lists:foreach(
+      fun ({Module, Pid}) ->
+              unlink(Pid),
+              exit(Pid, kill),
+              misc:wait_for_process(Pid, infinity),
+
+              code:purge(Module),
+              true = code:delete(Module)
+      end, Mods),
+    ok.
+
+all_test_() ->
+    [{setup, spawn, fun t_setup/0, fun t_teardown/1,
+      [fun test_no_admin_anonymous/0,
+       fun test_no_admin_token/0,
+       fun test_no_admin_basic_auth/0,
+       fun test_admin_auth/0,
+       fun test_ro_admin_auth/0,
+       fun test_any_bucket_anonymous/0,
+       fun test_any_bucket/0,
+       fun test_bucket/0,
+       fun test_filter_accessible_buckets/0,
+       fun test_is_bucket_accessible/0
+      ]}].
+
+t_start(Message, Args) ->
+    ?debugFmt(Message, Args),
+    t_clean().
+
+t_start(Message) ->
+    ?debugMsg(Message),
+    t_clean().
+
+t_clean() ->
+    ets:insert(state, {result, undefined}),
+    ets:insert(state, {ldap_count, 0}).
+
+t_success(_, Req) ->
+    ets:insert(state, {result, {ok, Req}}).
+
+t_print_ldap_count() ->
+    [{ldap_count, C}] = ets:lookup(state, ldap_count),
+    ?debugFmt("ldap server was accessed ~p times~n", [C]).
+
+t_assert_result({User, Role, Source, Token}) ->
+    t_assert_success(User, Role, Source, Token);
+t_assert_result(Result) ->
+    t_print_ldap_count(),
+    ?assertEqual([{result, Result}], ets:lookup(state, result)).
+
+t_assert_success(User, Role, Source, Token) ->
+    t_print_ldap_count(),
+    [{result, {ok, R}}] = ets:lookup(state, result),
+    ?assertEqual({User, Role, Source, Token},
+                 {get_user(R), get_role(R), get_source(R), get_token(R)}).
+
+t_new_request({token, Token}) ->
+    t_new_request([{"ns_server-auth-token", Token}, {"ns_server-ui", "yes"}]);
+t_new_request({User, Password}) ->
+    t_new_request(menelaus_rest:add_basic_auth([], User, Password));
+t_new_request(Headers) ->
+    mochiweb_request:new(
+      undefined, "GET", "/blah", {1, 1}, mochiweb_headers:make(Headers)).
+
+t_assert_ldap(Count) ->
+    ?assertEqual([{ldap_count, Count}], ets:lookup(state, ldap_count)).
+
+t_assert_buckets(Expected, Actual) ->
+    t_print_ldap_count(),
+    ActualNames = [Name || {Name, _} <- Actual],
+    ?assertEqual(lists:sort(Expected), lists:sort(ActualNames)).
+
+t_sample_buckets() ->
+    [{"b_noauth", [{auth_type, none}]},
+     {"b_empty_pass", [{auth_type, sasl}, {sasl_password, ""}]},
+     {"b_auth", [{auth_type, sasl}, {sasl_password, "pwd5"}]}].
+
+t_seed_sample_data() ->
+    t_seed_sample_data(["b_noauth", "b_empty_pass", "b_auth"]).
+
+t_seed_sample_data(BucketNames) ->
+    AllBuckets = t_sample_buckets(),
+    Buckets = [lists:keyfind(Bucket, 1, AllBuckets) ||
+                  Bucket <- BucketNames],
+    t_seed(
+      #test_data{
+         admin = {"Admin", "pwd1"},
+         ro_admin = {"Roadmin", "pwd2"},
+         buckets = Buckets,
+         ldap_users = [{{"Ldapadmin", "pwd3"}, admin},
+                       {{"Ldapro", "pwd4"}, ro_admin}],
+         tokens = [{"admin_token", {"Admin", admin, "builtin"}},
+                   {"ro_admin_token", {"Roadmin", ro_admin, "builtin"}},
+                   {"ldap_admin_token", {"Ldapadmin", admin, "saslauthd"}},
+                   {"ldap_ro_token", {"Ldapro", ro_admin, "saslauthd"}}]
+        }).
+
+test_no_admin_anonymous() ->
+    t_seed(#test_data{}),
+
+    TestAnonAccess =
+        fun (Apply, Msg) ->
+                t_start("Anonymous " ++ Msg ++ " to non initialized cluster is allowed."),
+                Apply(t_new_request([]), fun t_success/2, [none]),
+                t_assert_success("undefined", "admin", "undefined", "undefined"),
+                t_assert_ldap(0)
+        end,
+
+    [TestAnonAccess(Apply, Msg) ||
+        {Apply, Msg} <- [{fun apply_auth/3, "admin access"},
+                         {fun apply_ro_auth/3, "ro admin access"},
+                         {fun apply_auth_any_bucket/3, "access to any bucket"}]],
+
+    t_seed(#test_data{buckets = t_sample_buckets()}),
+
+    TestBucket =
+        fun (BucketId, ReadOnlyOk) ->
+                t_start("Anonymous access to existing bucke in non initialized cluster is allowed. BucketId = ~p, ReadOnlyOk = ~p",
+                       [BucketId, ReadOnlyOk]),
+                apply_auth_bucket(t_new_request([]), fun t_success/2, [none], BucketId, ReadOnlyOk),
+                t_assert_success("undefined", "admin", "undefined", "undefined"),
+                t_assert_ldap(0)
+        end,
+
+    [TestBucket(BucketId, ReadOnlyOk) || BucketId <- ["b_noauth", "b_empty_pass", "b_auth"],
+                                         ReadOnlyOk <- [true, false]].
+
+test_no_admin_token() ->
+    t_seed(
+      #test_data{
+         tokens = [{"admin_token", {"Admin", admin, "builtin"}}]
+        }),
+
+    TestTokenAccess =
+        fun (Name, Fun, {Token, Result}) ->
+                t_start("Token access to non initialized cluster is allowed. Fun = ~p, Token = ~p",
+                       [Name, Token]),
+                Fun(t_new_request({token, Token}), fun t_success/2, [none]),
+                t_assert_result(Result),
+                t_assert_ldap(0)
+        end,
+    [TestTokenAccess(Name, Fun, Args) ||
+        {Name, Fun} <- [{apply_auth, fun apply_auth/3},
+                        {apply_ro_auth, fun apply_ro_auth/3},
+                        {apply_auth_any_bucket, fun apply_auth_any_bucket/3}],
+        Args <- [{"admin_token", {"Admin","admin","builtin","admin_token"}},
+                 {"unknown", {"undefined", "admin", "undefined", "unknown"}}]],
+
+    t_seed(#test_data{buckets = t_sample_buckets()}),
+
+    TestBucket =
+        fun (BucketId, Token, ReadOnlyOk) ->
+                t_start("Token access to existing bucket in non initialized cluster is allowed. Token = ~p, Bucket = ~p, ReadOnlyOk = ~p",
+                       [Token, BucketId, ReadOnlyOk]),
+                apply_auth_bucket(t_new_request({token, Token}), fun t_success/2,
+                                  [none], BucketId, ReadOnlyOk),
+                t_assert_success("undefined", "admin", "undefined", Token),
+                t_assert_ldap(0)
+        end,
+
+    [TestBucket(BucketId, Token, ReadOnlyOk) ||
+        Token <- ["admin_token", "unknown"],
+        BucketId <- ["b_noauth", "b_empty_pass", "b_auth"],
+        ReadOnlyOk <- [true, false]].
+
+test_no_admin_basic_auth() ->
+    t_seed(#test_data{}),
+
+    TestAccess =
+        fun (Name, Fun) ->
+                t_start("Any basic auth access to non initialized cluster is allowed. Fun = ~p",
+                        [Name]),
+                Fun(t_new_request({"user", "pwd"}), fun t_success/2, [none]),
+                t_assert_success("user", "admin", "builtin", "undefined")
+                %%t_assert_ldap(0)
+        end,
+
+    [TestAccess(Name, Fun) ||
+        {Name, Fun} <- [{apply_auth, fun apply_auth/3},
+                        {apply_ro_auth, fun apply_ro_auth/3},
+                        {apply_auth_any_bucket, fun apply_auth_any_bucket/3}]],
+
+    t_start("Access to non existing bucket in non initialized cluster is not allowed."),
+    apply_auth_bucket(t_new_request({"user", "pwd"}), fun t_success/2, [none], "test", true),
+    t_assert_result(not_found),
+    t_assert_ldap(0),
+
+    t_seed(#test_data{buckets = t_sample_buckets()}),
+
+    TestBucket =
+        fun (BucketId, ReadOnlyOk) ->
+                t_start("Basic auth access to existing bucket in non initialized cluster is allowed. Bucket = ~p, ReadOnlyOk = ~p",
+                        [BucketId, ReadOnlyOk]),
+                apply_auth_bucket(t_new_request({"user", "pwd"}), fun t_success/2,
+                                  [none], BucketId, ReadOnlyOk),
+                t_assert_success("user", "admin", "builtin", "undefined")
+                %%t_assert_ldap(0)
+        end,
+
+    [TestBucket(BucketId, ReadOnlyOk) ||
+        BucketId <- ["b_noauth", "b_empty_pass", "b_auth"],
+        ReadOnlyOk <- [true, false]].
+
+test_admin_auth() ->
+    t_seed_sample_data(),
+
+    t_start("Admin access - match."),
+    apply_auth(t_new_request({"Admin", "pwd1"}), fun t_success/2, [none]),
+    t_assert_success("Admin", "admin", "builtin", "undefined"),
+    t_assert_ldap(0),
+
+    t_start("Admin access - no match."),
+    apply_auth(t_new_request({"Admin", "pwd1111"}), fun t_success/2, [none]),
+    t_assert_result(require_auth),
+    t_assert_ldap(1),
+
+    t_start("Admin access - match. LDAP."),
+    apply_auth(t_new_request({"Ldapadmin", "pwd3"}), fun t_success/2, [none]),
+    t_assert_success("Ldapadmin", "admin", "saslauthd", "undefined"),
+    t_assert_ldap(1),
+
+    t_start("Admin access - matched to ro_admin. LDAP."),
+    apply_auth(t_new_request({"Ldapro", "pwd4"}), fun t_success/2, [none]),
+    t_assert_result(require_auth),
+    t_assert_ldap(1).
+
+test_ro_admin_auth() ->
+    t_seed_sample_data(),
+
+    t_start("RO Admin access - match."),
+    apply_ro_auth(t_new_request({"Roadmin", "pwd2"}), fun t_success/2, [none]),
+    t_assert_success("Roadmin", "ro_admin", "builtin", "undefined"),
+    t_assert_ldap(0),
+
+    t_start("RO Admin access - matched to admin."),
+    apply_ro_auth(t_new_request({"Admin", "pwd1"}), fun t_success/2, [none]),
+    t_assert_success("Admin", "admin", "builtin", "undefined"),
+    %%t_assert_ldap(0),
+
+    t_start("RO Admin access - no match."),
+    apply_ro_auth(t_new_request({"someone", "pwd1"}), fun t_success/2, [none]),
+    t_assert_result(require_auth),
+    %% t_assert_ldap(1),
+
+    t_start("RO Admin access - matched to admin. LDAP."),
+    apply_ro_auth(t_new_request({"Ldapadmin", "pwd3"}), fun t_success/2, [none]),
+    t_assert_success("Ldapadmin", "admin", "saslauthd", "undefined"),
+    %%t_assert_ldap(1),
+
+    t_start("RO Admin access - match. LDAP."),
+    apply_ro_auth(t_new_request({"Ldapro", "pwd4"}), fun t_success/2, [none]),
+    t_assert_success("Ldapro", "ro_admin", "saslauthd", "undefined"),
+    t_assert_ldap(1).
+
+test_any_bucket_anonymous() ->
+    t_seed_sample_data(["b_noauth", "b_auth"]),
+
+    t_start("Any bucket anonymous access with no auth."),
+    apply_auth_any_bucket(t_new_request([]), fun t_success/2, [none]),
+    t_assert_success("undefined", "undefined", "builtin", "undefined"),
+    t_assert_ldap(0),
+
+    t_seed_sample_data(["b_empty_pass", "b_auth"]),
+
+    t_start("Any bucket anonymous access with no password."),
+    apply_auth_any_bucket(t_new_request([]), fun t_success/2, [none]),
+    t_assert_success("undefined", "undefined", "builtin", "undefined"),
+    t_assert_ldap(0),
+
+    t_seed(#test_data{admin = {"Admin", "pwd1"}}),
+
+    t_start("Any bucket anonymous access with no buckets."),
+    apply_auth_any_bucket(t_new_request([]), fun t_success/2, [none]),
+    t_assert_result(require_auth),
+    t_assert_ldap(0),
+
+    t_seed_sample_data(["b_auth"]),
+
+    t_start("Any bucket anonymous access with auth bucket."),
+    apply_auth_any_bucket(t_new_request([]), fun t_success/2, [none]),
+    t_assert_result(require_auth),
+    t_assert_ldap(0).
+
+test_any_bucket() ->
+    TestAccess =
+        fun (Buckets, {Auth, _LdapCount, Result}) ->
+                t_seed_sample_data(Buckets),
+
+                t_start("Any bucket access. Buckets = ~p, Auth = ~p", [Buckets, Auth]),
+                apply_auth_any_bucket(t_new_request(Auth), fun t_success/2, [none]),
+                t_assert_result(Result)
+                %%t_assert_ldap(LdapCount)
+        end,
+    [TestAccess(Buckets, Args) ||
+        Buckets <- [["b_auth"], [], ["b_empty_pass", "b_auth"], ["b_noauth", "b_auth"]],
+        Args <- [{{"Admin", "pwd1"}, 0, {"Admin","admin","builtin","undefined"}},
+                 {{"Ldapadmin", "pwd3"}, 1, {"Ldapadmin","admin","saslauthd","undefined"}},
+                 {{"Ldapro", "pwd4"}, 1, {"Ldapro","ro_admin","saslauthd","undefined"}},
+                 {{"Wrong", "wrong"}, 1, require_auth},
+                 {{token, "wrong"}, 0, require_auth},
+                 {{token, "admin_token"}, 0, {"Admin","admin","builtin","admin_token"}},
+                 {{token, "ro_admin_token"}, 0, {"Roadmin","ro_admin","builtin","ro_admin_token"}},
+                 {{token, "ldap_admin_token"}, 0, {"Ldapadmin","admin","saslauthd","ldap_admin_token"}},
+                 {{token, "ldap_ro_token"}, 0, {"Ldapro","ro_admin","saslauthd","ldap_ro_token"}}
+                ]],
+
+    [TestAccess(Buckets, Args) ||
+        Buckets <- [["b_empty_pass", "b_noauth", "b_auth"]],
+        Args <- [{{"b_auth", "pwd5"}, 0, {"b_auth","bucket","builtin","undefined"}},
+                 {{"b_auth", "wrong"}, 1, require_auth},
+                 {{"b_empty_pass", ""}, 0, {"b_empty_pass","bucket","builtin","undefined"}},
+                 {{"b_empty_pass", "wrong"}, 1, require_auth},
+                 {{"b_noauth", ""}, 0, {"b_noauth","bucket","builtin","undefined"}},
+                 {{"b_noauth", "wrong"}, 1, require_auth}
+                ]].
+
+test_bucket() ->
+    t_seed_sample_data(),
+    TestAccess =
+        fun (Bucket, {Auth, ReadOnlyOk, _LdapCount, Result}) ->
+
+                t_start("Bucket access. Bucket = ~p, Auth = ~p, ReadOnlyOk = ~p",
+                        [Bucket, Auth, ReadOnlyOk]),
+                apply_auth_bucket(t_new_request(Auth), fun t_success/2, [none], Bucket, ReadOnlyOk),
+                t_assert_result(Result)
+                %%t_assert_ldap(LdapCount)
+        end,
+
+    [TestAccess(Bucket, Args) ||
+        Bucket <- ["b_empty_pass", "b_noauth", "b_auth"],
+        Args <- [{{"Admin", "pwd1"}, true, 0, {"Admin","admin","builtin","undefined"}},
+                 {{"Admin", "pwd1"}, false, 0, {"Admin","admin","builtin","undefined"}},
+                 {{"Roadmin", "pwd2"}, true, 0, {"Roadmin","ro_admin","builtin","undefined"}},
+                 {{"Roadmin", "pwd2"}, false, 1, require_auth},
+                 {{token, "admin_token"}, true, 0, {"Admin","admin","builtin","admin_token"}},
+                 {{token, "admin_token"}, false, 0, {"Admin","admin","builtin","admin_token"}},
+                 {{token, "ro_admin_token"}, true, 0, {"Roadmin","ro_admin","builtin","ro_admin_token"}},
+                 {{token, "ro_admin_token"}, false, 0, require_auth},
+                 {{token, "wrong_token"}, true, 0, require_auth},
+                 {{token, "wrong_token"}, false, 0, require_auth},
+                 {{"Ldapadmin", "pwd3"}, true, 1, {"Ldapadmin","admin","saslauthd","undefined"}},
+                 {{"Ldapadmin", "pwd3"}, false, 1, {"Ldapadmin","admin","saslauthd","undefined"}},
+                 {{"Ldapro", "pwd4"}, true, 1, {"Ldapro","ro_admin","saslauthd","undefined"}},
+                 {{"Ldapro", "pwd4"}, false, 1, require_auth},
+                 {{"wrong", "wrong"}, true, 1, require_auth},
+                 {{"wrong", "wrong"}, false, 1, require_auth}
+                ]],
+
+    [TestAccess(Bucket, Args) ||
+        Bucket <- ["b_empty_pass", "b_noauth"],
+        Args <- [{[], true, 0, {"undefined","undefined","builtin","undefined"}},
+                 {[], false, 0, {"undefined","undefined","builtin","undefined"}}
+                ]],
+
+    [TestAccess(Bucket, Args) ||
+        Bucket <- ["b_auth"],
+        Args <- [{{"b_auth", "pwd5"}, true, 0, {"b_auth","bucket","builtin","undefined"}},
+                 {{"b_auth", "pwd5"}, false, 0, {"b_auth","bucket","builtin","undefined"}}
+                ]].
+
+test_filter_accessible_buckets() ->
+    t_seed_sample_data(),
+    SampleBuckets = t_sample_buckets(),
+    BucketsAll = [Name || {Name, _} <- SampleBuckets],
+
+    Test =
+        fun ({Auth, Expected, _LdapCount}) ->
+                t_start("Filter accessible buckets. Auth = ~p", [Auth]),
+                Buckets = filter_accessible_buckets(t_sample_buckets(), t_new_request(Auth)),
+                t_assert_buckets(Expected, Buckets)
+                %%t_assert_ldap(LdapCount)
+        end,
+
+    [Test(Args) ||
+        Args <- [{{"Admin", "pwd1"}, BucketsAll, 0},
+                 {{"Roadmin", "pwd2"}, BucketsAll, 0},
+                 {{"Ldapadmin", "pwd3"}, BucketsAll, 1},
+                 {{"Ldapro", "pwd4"}, BucketsAll, 1},
+                 {{token, "admin_token"}, BucketsAll, 0},
+                 {{token, "ro_admin_token"}, BucketsAll, 0},
+                 {{token, "ldap_admin_token"}, BucketsAll, 0},
+                 {{token, "ldap_ro_token"}, BucketsAll, 0},
+                 {{token, "wrong_token"}, [], 0},
+                 %% this contradicts function description:
+                 {[], ["b_empty_pass","b_noauth"], 0},
+                 {{"b_auth", "pwd5"}, ["b_auth"], 0},
+                 {{"b_noauth", ""}, ["b_noauth"], 0},
+                 {{"b_empty_pass", ""}, ["b_empty_pass"], 0},
+                 {{"b_noauth", "pwd"}, [], 1},
+                 {{"b_empty_pass", "pwd"}, [], 1},
+                 {{"b_auth", "wrong"}, [], 1},
+                 {{"wrong", "wrong"}, [], 1}
+                ]].
+
+
+test_is_bucket_accessible() ->
+    t_seed_sample_data(),
+    SampleBuckets = t_sample_buckets(),
+    BucketsAll = [Name || {Name, _} <- SampleBuckets],
+
+    Test =
+        fun (Bucket, Auth, _LdapCount, Expected) ->
+                BucketTuple = lists:keyfind(Bucket, 1, SampleBuckets),
+                t_start("Is bucket accessible. Bucket = ~p, Auth = ~p", [Bucket, Auth]),
+                Result = is_bucket_accessible(BucketTuple, t_new_request(Auth)),
+                t_print_ldap_count(),
+                ?assertEqual(Expected, Result)
+                %%t_assert_ldap(LdapCount)
+        end,
+
+    [Test(Bucket, Auth, LdapCount, Expected) ||
+        Bucket <- BucketsAll,
+        {Auth, LdapCount, Expected} <-
+            [{{"Admin", "pwd1"}, 0, true},
+             {{"Roadmin", "pwd2"}, 1, false},
+             {{"wrong", "wrong"}, 1, false},
+             {{"Ldapadmin", "pwd3"}, 1, true},
+             {{"Ldapro", "pwd4"}, 1, false},
+             {{token, "admin_token"}, 0, true},
+             {{token, "ro_admin_token"}, 0, false},
+             {{token, "wrong_token"}, 0, false}
+            ]],
+
+    [Test(Bucket, Auth, LdapCount, Expected) ||
+        {Bucket, Auth, LdapCount, Expected} <-
+            [{"b_auth", {"b_auth", "pwd5"}, 0, true},
+             {"b_auth", {"b_noauth", ""}, 1, false},
+             {"b_auth", {"wrong", "wrong"}, 1, false},
+             {"b_auth", [], 0, false},
+             {"b_noauth", {"b_noauth", ""}, 0, true},
+             {"b_noauth", [], 0, true},
+             {"b_noauth", {"b_noauth", "pwd"}, 1, false},
+             {"b_empty_pass", {"b_empty_pass", ""}, 0, true},
+             {"b_empty_pass", [], 0, true},
+             {"b_empty_pass", {"b_empty_pass", "pwd"}, 1, false}
+            ]].
+
+-endif.
