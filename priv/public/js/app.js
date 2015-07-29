@@ -400,7 +400,7 @@ var SetupWizard = {
       function prepareInitialData(callback) {
         var data = _.extend({
           uri: '/pools/default/buckets',
-          validateURL: '/pools/default/buckets?just_validate=1&ignore_warnings=1',
+          validateURL: '/pools/default/buckets?just_validate=1',
           bucketType: 'membase',
           authType: 'sasl',
           replicaNumber: 1,
@@ -428,6 +428,7 @@ var SetupWizard = {
           nodeData = arr[0];
           defaultBucketInfo = arr[1];
           if (defaultBucketInfo === missingDefaultBucketMarker) {
+            data.validateURL += "&ignore_warnings=1";
             data = _.extend({
               quota: {
                 rawRAM: nodeData.storageTotals.ram.quotaTotal - nodeData.storageTotals.ram.quotaUsed

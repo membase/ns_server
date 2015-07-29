@@ -424,12 +424,7 @@ extract_bucket_props(BucketId, Props) ->
 
 init_bucket_validation_context(IsNew, BucketName, Req) ->
     ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
-    IgnoreWarnings = case IsNew of
-                         true ->
-                             (proplists:get_value("ignore_warnings", Req:parse_qs()) =:= "1");
-                         false ->
-                             false
-                     end,
+    IgnoreWarnings = (proplists:get_value("ignore_warnings", Req:parse_qs()) =:= "1"),
     init_bucket_validation_context(IsNew, BucketName, ValidateOnly, IgnoreWarnings).
 
 init_bucket_validation_context(IsNew, BucketName, ValidateOnly, IgnoreWarnings) ->
@@ -468,12 +463,13 @@ handle_bucket_update_inner(_BucketId, _Req, _Params, 0) ->
     exit(bucket_update_loop);
 handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
     Ctx = init_bucket_validation_context(false, BucketId, Req),
-    case {Ctx#bv_ctx.validate_only, parse_bucket_params(Ctx, Params)} of
-        {_, {errors, Errors, JSONSummaries}} ->
+    case {Ctx#bv_ctx.validate_only, Ctx#bv_ctx.ignore_warnings,
+          parse_bucket_params(Ctx, Params)} of
+        {_, _, {errors, Errors, JSONSummaries}} ->
             RV = {struct, [{errors, {struct, Errors}},
                            {summaries, {struct, JSONSummaries}}]},
             reply_json(Req, RV, 400);
-        {false, {ok, ParsedProps, _}} ->
+        {false, _, {ok, ParsedProps, _}} ->
             BucketType = proplists:get_value(bucketType, ParsedProps),
             UpdatedProps = extract_bucket_props(BucketId, ParsedProps),
             case ns_orchestrator:update_bucket(BucketType, BucketId, UpdatedProps) of
@@ -488,7 +484,10 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                     %% if this happens then our validation raced, so repeat everything
                     handle_bucket_update_inner(BucketId, Req, Params, Limit-1)
             end;
-        {true, {ok, ParsedProps, JSONSummaries}} ->
+        {true, true, {ok, _, JSONSummaries}} ->
+          reply_json(Req, {struct, [{errors, {struct, []}},
+                                    {summaries, {struct, JSONSummaries}}]}, 200);
+        {true, false, {ok, ParsedProps, JSONSummaries}} ->
             FinalErrors = perform_warnings_validation(Ctx, ParsedProps, []),
             reply_json(Req, {struct, [{errors, {struct, FinalErrors}},
                                       {summaries, {struct, JSONSummaries}}]},
