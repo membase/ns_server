@@ -74,7 +74,7 @@ filter_accessible_buckets(BucketsAll, Req) ->
         "ro_admin" ->
             BucketsAll;
         _ ->
-            F = bucket_auth_fun(UserPassword, true),
+            F = bucket_auth_fun(UserPassword),
             [Bucket || Bucket <- BucketsAll, F(Bucket)]
     end.
 
@@ -83,9 +83,24 @@ filter_accessible_buckets(BucketsAll, Req) ->
 %% buckets are accessible only with admin or bucket credentials.
 -spec is_bucket_accessible({string(), list()}, any()) -> boolean().
 is_bucket_accessible(BucketTuple, Req) ->
-    UserPassword = menelaus_auth:extract_auth(Req),
-    F = bucket_auth_fun(UserPassword, false),
-    F(BucketTuple).
+    Auth = menelaus_auth:extract_auth(Req),
+    case check_admin_auth_int(Auth) of
+        {true, _, _, _} ->
+            true;
+        false ->
+            F = bucket_auth_fun(Auth),
+            case F(BucketTuple) of
+                true ->
+                    true;
+                false ->
+                    case check_ldap_int(Auth, [admin]) of
+                        {true, _, _} ->
+                            true;
+                        false ->
+                            false
+                    end
+            end
+    end.
 
 apply_auth(Req, F, Args) ->
     UserPassword = extract_auth(Req),
@@ -211,9 +226,8 @@ apply_auth_any_bucket(Req, F, Args) ->
             case check_auth_any_bucket(Req, UserPassword) of
                 {true, NewReq} ->
                     apply(F, Args ++ [NewReq]);
-                _ ->
-                    %% this is needed to cover the case when there's no buckets
-                    apply_ro_auth(Req, F, Args)
+                false ->
+                    require_auth(Req)
             end
     end.
 
@@ -228,18 +242,17 @@ store_bucket_auth(Req, Auth) ->
 
 %% Checks if given credentials allow access to any SASL-auth
 %% bucket.
-check_auth_any_bucket(Req, UserPassword) ->
-    case check_read_only_auth(Req, UserPassword) of
+check_auth_any_bucket(Req, Auth) ->
+    case check_read_only_auth_no_ldap(Req, Auth) of
         {true, _NewReq} = RV ->
             RV;
         false ->
             Buckets = ns_bucket:get_buckets(),
-            case lists:any(bucket_auth_fun(UserPassword, true),
-                           Buckets) of
+            case lists:any(bucket_auth_fun(Auth), Buckets) of
                 true ->
-                    {true, store_bucket_auth(Req, UserPassword)};
+                    {true, store_bucket_auth(Req, Auth)};
                 false ->
-                    false
+                    check_ldap(Req, Auth, [ro_admin, admin])
             end
     end.
 
@@ -274,32 +287,38 @@ apply_auth_bucket(Req, F, Args, BucketId, ReadOnlyOk) ->
 check_auth_bucket(Req, Auth, BucketTuple, ReadOnlyOk) ->
     RV = case ReadOnlyOk of
              true ->
-                 check_read_only_auth(Req, Auth);
+                 check_read_only_auth_no_ldap(Req, Auth);
              false ->
-                 check_admin_auth(Req, Auth)
+                 check_admin_auth_no_ldap(Req, Auth)
          end,
     case RV of
         {true, _NewReq} ->
             RV;
         false ->
-            F = bucket_auth_fun(Auth, ReadOnlyOk),
+            F = bucket_auth_fun(Auth),
             case F(BucketTuple) of
                 true ->
                     {true, store_bucket_auth(Req, Auth)};
                 false ->
-                    false
+                    AllowedRoles = case ReadOnlyOk of
+                                       true ->
+                                           [ro_admin, admin];
+                                       false ->
+                                           [admin]
+                                   end,
+                    check_ldap(Req, Auth, AllowedRoles)
             end
     end.
 
-check_auth(Auth) ->
-    case check_admin_auth_int(Auth) of
-        {true, _User, _Source, _Token} ->
-            true;
+check_admin_auth(Req, Auth) ->
+    case check_admin_auth_no_ldap(Req, Auth) of
         false ->
-            false
+            check_ldap(Req, Auth, [admin]);
+        RV ->
+            RV
     end.
 
-check_admin_auth(Req, Auth) ->
+check_admin_auth_no_ldap(Req, Auth) ->
     case check_admin_auth_int(Auth) of
         {true, User, Source, Token} ->
             {true, store_user_info(Req, User, admin, Source, Token)};
@@ -322,9 +341,9 @@ check_admin_auth_int({token, Token}) ->
             end
     end;
 check_admin_auth_int({User, Password}) ->
-    case check_user_creds(admin, User, Password) of
-        {true, Source} ->
-            {true, User, Source, undefined};
+    case ns_config_auth:authenticate(admin, User, Password) of
+        true ->
+            {true, User, builtin, undefined};
         false ->
             false
     end;
@@ -336,37 +355,37 @@ check_admin_auth_int(undefined) ->
             false
     end.
 
-is_read_only_auth(Auth) ->
-    case check_read_only_auth(Auth) of
-        {true, _, _, _} ->
-            true;
+check_read_only_auth(Req, Auth) ->
+    case check_read_only_auth_no_ldap(Req, Auth) of
         false ->
-            false
+            check_ldap(Req, Auth, [ro_admin, admin]);
+        RV ->
+            RV
     end.
 
-check_read_only_auth(Req, Auth) ->
-    case check_read_only_auth(Auth) of
+check_read_only_auth_no_ldap(Req, Auth) ->
+    case check_read_only_auth_int(Auth) of
         {true, User, Source, Token} ->
             {true, store_user_info(Req, User, ro_admin, Source, Token)};
         false ->
-            check_admin_auth(Req, Auth)
+            check_admin_auth_no_ldap(Req, Auth)
     end.
 
-check_read_only_auth({token, Token}) ->
+check_read_only_auth_int({token, Token}) ->
     case menelaus_ui_auth:check(Token) of
         {ok, {User, ro_admin, Source}} ->
             {true, User, Source, Token};
         _ ->
             false
     end;
-check_read_only_auth({User, Password}) ->
-    case check_user_creds(ro_admin, User, Password) of
-        {true, Source} ->
-            {true, User, Source, undefined};
+check_read_only_auth_int({User, Password}) ->
+    case ns_config_auth:authenticate(ro_admin, User, Password) of
+        true ->
+            {true, User, builtin, undefined};
         false ->
             false
     end;
-check_read_only_auth(undefined) ->
+check_read_only_auth_int(undefined) ->
     false.
 
 extract_auth_user(Req) ->
@@ -429,50 +448,47 @@ parse_user(UserPasswordStr) ->
 %%
 %% NOTE: that no-auth buckets are always accessible even without
 %% password at all
-bucket_auth_fun(UserPassword, ReadOnlyOk) ->
-    IsAdmin = case ReadOnlyOk of
-                  true ->
-                      is_read_only_auth(UserPassword) orelse check_auth(UserPassword);
-                  _ ->
-                      check_auth(UserPassword)
-              end,
-    case IsAdmin of
-        true ->
-            fun (_) -> true end;
-        false ->
-            fun({BucketName, BucketProps}) ->
-                    case {proplists:get_value(auth_type, BucketProps),
-                          proplists:get_value(sasl_password, BucketProps),
-                          UserPassword} of
-                        {none, _, undefined} ->
-                            true;
-                        {none, _, {BucketName, ""}} ->
-                            true;
-                        {sasl, "", undefined} ->
-                            true;
-                        {sasl, BucketPassword, {BucketName, BucketPassword}} ->
-                            true;
-                        _ ->
-                            false
-                    end
+bucket_auth_fun(Auth) ->
+    fun ({BucketName, BucketProps}) ->
+            case {proplists:get_value(auth_type, BucketProps),
+                  proplists:get_value(sasl_password, BucketProps),
+                  Auth} of
+                {none, _, undefined} ->
+                    true;
+                {none, _, {BucketName, ""}} ->
+                    true;
+                {sasl, "", undefined} ->
+                    true;
+                {sasl, BucketPassword, {BucketName, BucketPassword}} ->
+                    true;
+                _ ->
+                    false
             end
     end.
 
 is_under_role(Req, Role) when is_atom(Role) ->
     get_role(Req) =:= atom_to_list(Role).
 
-check_user_creds(Role, User, Password) ->
-    case ns_config_auth:authenticate(Role, User, Password) of
-        true ->
-            {true, builtin};
+check_ldap(Req, Auth, AllowedRoles) ->
+    case check_ldap_int(Auth, AllowedRoles) of
+        {true, User, Role} ->
+            {true, store_user_info(Req, User, Role, saslauthd, undefined)};
         false ->
-            case saslauthd_auth:check(User, Password) =:= Role of
-                true ->
-                    {true, saslauthd};
-                false ->
-                    false
-            end
+            false
     end.
+
+check_ldap_int({token, _Token}, _) ->
+    false;
+check_ldap_int({User, Password}, AllowedRoles) ->
+    Role = saslauthd_auth:check(User, Password),
+    case lists:member(Role, AllowedRoles) of
+        true ->
+            {true, User, Role};
+        false ->
+            false
+    end;
+check_ldap_int(undefined, _) ->
+    false.
 
 verify_login_creds(User, Password) ->
     case ns_config_auth:authenticate(admin, User, Password) of
