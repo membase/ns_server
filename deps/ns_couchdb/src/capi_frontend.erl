@@ -133,7 +133,7 @@ send_no_active_vbuckets(CouchReq, Bucket0) ->
 is_bucket_accessible(BucketTuple, MochiReq) ->
     case MochiReq:get_header_value("Capi-Auth-Token") of
         undefined ->
-            menelaus_auth:is_bucket_accessible(BucketTuple, MochiReq, false);
+            menelaus_auth:is_bucket_accessible(BucketTuple, MochiReq);
         Token ->
             %% capi_http_proxy will pass erlang cookie as a token if the originating request
             %% was successfully authenticated by menelaus
