@@ -261,35 +261,25 @@ var ClusterSection = {
     clusterSettingsForm.submit(function (e) {
       e.preventDefault();
       if (DAL.cells.is40СompatibleCell.value) {
-        $.ajax({
-          url: 'indexStatus',
-          type: 'GET',
-          success: function (resp) {
-            if (resp && resp.indexes.length) {
-              var memoryQuota = serializeForm(onlyClusterSettingsForm);
-              var memoryQuotaParams = $.deparam(memoryQuota);
-              var initialMemoryQuota = self.allClusterSectionSettingsCell.value.indexMemoryQuota;
-              if (memoryQuotaParams.indexMemoryQuota != initialMemoryQuota) {
-                genericDialog({
-                  buttons: {ok: true, cancel: true},
-                  header: 'Confirm Indexer Memory Quota Change',
-                  textHTML: '<p class="warning">Warning: changing the index memory quota will cause the index processes to be restarted and will make indexes briefly temporarily unavailable. Are you sure you wish to continue?</p>',
-                  callback: function (e, name, instance) {
-                    instance.close();
-                    if (name == 'ok') {
-                      onOk();
-                    }
-                  }
-                });
-              } else {
+        var memoryQuota = serializeForm(onlyClusterSettingsForm);
+        var memoryQuotaParams = $.deparam(memoryQuota);
+        var initialMemoryQuota = self.allClusterSectionSettingsCell.value.indexMemoryQuota;
+        if (memoryQuotaParams.indexMemoryQuota != initialMemoryQuota) {
+          genericDialog({
+            buttons: {ok: true, cancel: true},
+            header: 'Confirm Indexer Memory Quota Change',
+            textHTML: '<p class="warning">Warning: changing the index memory quota will cause the index processes to be restarted and will make indexes briefly temporarily unavailable. Are you sure you wish to continue?</p>',
+            callback: function (e, name, instance) {
+              instance.close();
+              if (name == 'ok') {
                 onOk();
               }
-            } else {
-              onOk();
             }
-          }
-        });
-      }  else {
+          });
+        } else {
+          onOk();
+        }
+      } else {
         onOk();
       }
     });
