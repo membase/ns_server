@@ -264,11 +264,11 @@ dynamic_children(normal) ->
 
     Specs = [memcached_spec(Config),
              moxi_spec(Config),
-             run_via_goport(kv_node_projector_spec(Config)),
-             run_via_goport(index_node_spec(Config)),
-             run_via_goport(query_node_spec(Config)),
+             run_via_goport(fun kv_node_projector_spec/1, Config),
+             run_via_goport(fun index_node_spec/1, Config),
+             run_via_goport(fun query_node_spec/1, Config),
              saslauthd_port_spec(Config),
-             run_via_goport(goxdcr_spec(Config)),
+             run_via_goport(fun goxdcr_spec/1, Config),
              per_bucket_moxi_specs(Config),
              maybe_create_ssl_proxy_spec(Config)],
 
@@ -479,7 +479,13 @@ format(Config, Name, Format, Keys) ->
                        end, Keys),
     lists:flatten(io_lib:format(Format, Values)).
 
-run_via_goport(Specs) ->
+run_via_goport(SpecFun, Config) ->
+    Specs = case SpecFun(Config) of
+                [] ->
+                    [];
+                [Specs1] ->
+                    [expand_args(Specs1, Config)]
+            end,
     lists:map(fun do_run_via_goport/1, Specs).
 
 do_run_via_goport({Name, Cmd, Args, Opts}) ->
