@@ -34,7 +34,7 @@
 %% @doc Notify the supervisor that the node's name has changed so it
 %% can restart children that care.
 node_name_changed() ->
-    {ok, _} = restartable:restart(?MODULE, ns_doctor),
+    {ok, _} = restartable:restart(?MODULE, ns_doctor_sup),
     {ok, _} = restartable:restart(?MODULE, mb_master),
     ok.
 
@@ -115,8 +115,8 @@ child_specs() ->
       permanent, infinity, supervisor, [ns_heart_sup]},
 
      restartable:spec(
-       {ns_doctor, {ns_doctor, start_link, []},
-        permanent, 1000, worker, [ns_doctor]}),
+       {ns_doctor_sup, {ns_doctor_sup, start_link, []},
+        permanent, infinity, supervisor, [ns_doctor_sup]}),
 
      {remote_clusters_info, {remote_clusters_info, start_link, []},
       permanent, 1000, worker, [remote_servers_info]},

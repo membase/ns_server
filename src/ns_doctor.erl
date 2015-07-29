@@ -27,7 +27,7 @@
          code_change/3]).
 %% API
 -export([get_nodes/0, get_node/1, get_node/2,
-         get_tasks_version/0, build_tasks_list/2]).
+         get_tasks_version/0, build_tasks_list/2, wait_statuses/2]).
 
 -record(state, {
           nodes :: dict(),
@@ -213,6 +213,49 @@ build_tasks_list(PoolId, RebStatusTimeout) ->
     AllRepDocs = xdc_rdoc_api:find_all_replication_docs(),
     do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout).
 
+wait_statuses(Nodes0, Timeout) ->
+    Nodes = lists:usort(Nodes0),
+
+    misc:executing_on_new_process(
+      fun () ->
+              Statuses = gen_server:call(?MODULE, get_nodes),
+              Got = lists:usort(dict:fetch_keys(Statuses)),
+              Missing = ordsets:subtract(Nodes, Got),
+
+              case Missing of
+                  [] ->
+                      {ok, Statuses};
+                  _ ->
+                      TRef = make_ref(),
+                      erlang:send_after(Timeout, self(), TRef),
+
+                      ns_pubsub:subscribe_link(ns_doctor_events),
+                      wait_statuses_loop(Statuses, sets:from_list(Missing), TRef)
+              end
+      end).
+
+wait_statuses_loop(Statuses, Missing, TRef) ->
+    receive
+        TRef ->
+            ?log_error("Couldn't get statuses for ~p", [sets:to_list(Missing)]),
+            {error, timeout};
+        {node_status, Node, Status} ->
+            case sets:is_element(Node, Missing) of
+                true ->
+                    NewStatuses = dict:store(Node, Status, Statuses),
+                    NewMissing = sets:del_element(Node, Missing),
+
+                    case sets:size(NewMissing) =:= 0 of
+                        true ->
+                            {ok, NewStatuses};
+                        false ->
+                            wait_statuses_loop(NewStatuses, NewMissing, TRef)
+                    end;
+                false ->
+                    wait_statuses_loop(Statuses, Missing, TRef)
+            end
+    end.
+
 %% Internal functions
 
 is_significant_buckets_change(OldStatus, NewStatus) ->
@@ -254,6 +297,7 @@ update_status(Name, Status0, Dict) ->
             ok
     end,
 
+    gen_event:notify(ns_doctor_events, {node_status, Name, Status}),
     dict:store(Name, Status, Dict).
 
 annotate_status(Node, Status, Now, LiveNodes) ->
