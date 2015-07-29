@@ -38,7 +38,7 @@
          %% rpc-ed to grab couchdb ets_tables
          grab_all_ets_tables/0]).
 
-% Read the manifest.xml file
+%% Read the manifest.xml file
 manifest() ->
     case file:read_file(filename:join(path_config:component_path(bin, ".."), "manifest.xml")) of
         {ok, C} ->
@@ -119,7 +119,7 @@ grab_all_tap_and_checkpoint_stats(Timeout) ->
     Results = misc:parallel_map(
                 fun ({Bucket, Type}) ->
                         {ok, _} = timer2:kill_after(Timeout),
-                        case ns_memcached:stats(Bucket, Type) of
+                        case get_dcp_ckpt_tap_stats(Bucket, Type) of
                             {ok, V} -> V;
                             Crap -> Crap
                         end
@@ -127,10 +127,27 @@ grab_all_tap_and_checkpoint_stats(Timeout) ->
     {WiB, WiT} = lists:unzip(WorkItems),
     lists:zip3(WiB, WiT, Results).
 
+get_dcp_ckpt_tap_stats(Bucket, Type) ->
+    ns_memcached:raw_stats(
+      node(), Bucket, Type,
+      fun(K = <<"eq_dcpq:replication:", _/binary>>, V, Acc) ->
+              process_dcp_ckpt_tap_stats(K, V, Acc);
+         (<<"eq_dcpq:", _/binary>>, _V, Acc) ->
+              %% Drop all other "eq_dcpq" stats
+              Acc;
+         (K, V, Acc) ->
+              process_dcp_ckpt_tap_stats(K, V, Acc)
+      end, []).
+
+process_dcp_ckpt_tap_stats(K, V, []) ->
+    <<K/binary, ": ", V/binary>>;
+process_dcp_ckpt_tap_stats(K, V, Acc) ->
+    <<Acc/binary, ",", $\n, K/binary, ": ", V/binary>>.
+
 log_all_tap_and_checkpoint_stats() ->
     ?log_info("logging tap & checkpoint stats"),
     [begin
-         ?log_info("~s:~s:~n~p",[Type, Bucket, Values])
+         ?log_info("~s:~s:~n[~s]",[Type, Bucket, Values])
      end || {Bucket, Type, Values} <- grab_all_tap_and_checkpoint_stats()],
     ?log_info("end of logging tap & checkpoint stats").
 
