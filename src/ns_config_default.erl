@@ -341,8 +341,8 @@ default() ->
 
      {{node, node(), ns_log}, [{filename, filename:join(DataDir, ?NS_LOG)}]},
 
-                                                % Modifiers: menelaus
-                                                % Listeners: ? possibly ns_log
+     %% Modifiers: menelaus
+     %% Listeners: ? possibly ns_log
      {email_alerts,
       [{recipients, ["root@localhost"]},
        {sender, "couchbase@localhost"},
