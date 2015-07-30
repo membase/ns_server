@@ -815,8 +815,8 @@ test_no_admin_basic_auth() ->
                 t_start("Any basic auth access to non initialized cluster is allowed. Fun = ~p",
                         [Name]),
                 Fun(t_new_request({"user", "pwd"}), fun t_success/2, [none]),
-                t_assert_success("user", "admin", "builtin", "undefined")
-                %%t_assert_ldap(0)
+                t_assert_success("user", "admin", "builtin", "undefined"),
+                t_assert_ldap(0)
         end,
 
     [TestAccess(Name, Fun) ||
@@ -837,8 +837,8 @@ test_no_admin_basic_auth() ->
                         [BucketId, ReadOnlyOk]),
                 apply_auth_bucket(t_new_request({"user", "pwd"}), fun t_success/2,
                                   [none], BucketId, ReadOnlyOk),
-                t_assert_success("user", "admin", "builtin", "undefined")
-                %%t_assert_ldap(0)
+                t_assert_success("user", "admin", "builtin", "undefined"),
+                t_assert_ldap(0)
         end,
 
     [TestBucket(BucketId, ReadOnlyOk) ||
@@ -879,17 +879,17 @@ test_ro_admin_auth() ->
     t_start("RO Admin access - matched to admin."),
     apply_ro_auth(t_new_request({"Admin", "pwd1"}), fun t_success/2, [none]),
     t_assert_success("Admin", "admin", "builtin", "undefined"),
-    %%t_assert_ldap(0),
+    t_assert_ldap(0),
 
     t_start("RO Admin access - no match."),
     apply_ro_auth(t_new_request({"someone", "pwd1"}), fun t_success/2, [none]),
     t_assert_result(require_auth),
-    %% t_assert_ldap(1),
+    t_assert_ldap(1),
 
     t_start("RO Admin access - matched to admin. LDAP."),
     apply_ro_auth(t_new_request({"Ldapadmin", "pwd3"}), fun t_success/2, [none]),
     t_assert_success("Ldapadmin", "admin", "saslauthd", "undefined"),
-    %%t_assert_ldap(1),
+    t_assert_ldap(1),
 
     t_start("RO Admin access - match. LDAP."),
     apply_ro_auth(t_new_request({"Ldapro", "pwd4"}), fun t_success/2, [none]),
@@ -927,13 +927,13 @@ test_any_bucket_anonymous() ->
 
 test_any_bucket() ->
     TestAccess =
-        fun (Buckets, {Auth, _LdapCount, Result}) ->
+        fun (Buckets, {Auth, LdapCount, Result}) ->
                 t_seed_sample_data(Buckets),
 
                 t_start("Any bucket access. Buckets = ~p, Auth = ~p", [Buckets, Auth]),
                 apply_auth_any_bucket(t_new_request(Auth), fun t_success/2, [none]),
-                t_assert_result(Result)
-                %%t_assert_ldap(LdapCount)
+                t_assert_result(Result),
+                t_assert_ldap(LdapCount)
         end,
     [TestAccess(Buckets, Args) ||
         Buckets <- [["b_auth"], [], ["b_empty_pass", "b_auth"], ["b_noauth", "b_auth"]],
@@ -961,13 +961,13 @@ test_any_bucket() ->
 test_bucket() ->
     t_seed_sample_data(),
     TestAccess =
-        fun (Bucket, {Auth, ReadOnlyOk, _LdapCount, Result}) ->
+        fun (Bucket, {Auth, ReadOnlyOk, LdapCount, Result}) ->
 
                 t_start("Bucket access. Bucket = ~p, Auth = ~p, ReadOnlyOk = ~p",
                         [Bucket, Auth, ReadOnlyOk]),
                 apply_auth_bucket(t_new_request(Auth), fun t_success/2, [none], Bucket, ReadOnlyOk),
-                t_assert_result(Result)
-                %%t_assert_ldap(LdapCount)
+                t_assert_result(Result),
+                t_assert_ldap(LdapCount)
         end,
 
     [TestAccess(Bucket, Args) ||
@@ -1008,15 +1008,15 @@ test_filter_accessible_buckets() ->
     BucketsAll = [Name || {Name, _} <- SampleBuckets],
 
     Test =
-        fun ({Auth, Expected, _LdapCount}) ->
+        fun ({Auth, Expected, LdapCount}) ->
                 t_start("Filter accessible buckets. Auth = ~p", [Auth]),
                 Buckets = apply_auth_any_bucket(
                             t_new_request(Auth),
                             fun (_, NewReq) ->
                                     filter_accessible_buckets(t_sample_buckets(), NewReq)
                             end, [none]),
-                t_assert_buckets(Expected, Buckets)
-                %%t_assert_ldap(LdapCount)
+                t_assert_buckets(Expected, Buckets),
+                t_assert_ldap(LdapCount)
         end,
 
     [Test(Args) ||
@@ -1047,13 +1047,13 @@ test_is_bucket_accessible() ->
     BucketsAll = [Name || {Name, _} <- SampleBuckets],
 
     Test =
-        fun (Bucket, Auth, _LdapCount, Expected) ->
+        fun (Bucket, Auth, LdapCount, Expected) ->
                 BucketTuple = lists:keyfind(Bucket, 1, SampleBuckets),
                 t_start("Is bucket accessible. Bucket = ~p, Auth = ~p", [Bucket, Auth]),
                 Result = is_bucket_accessible(BucketTuple, t_new_request(Auth)),
                 t_print_ldap_count(),
-                ?assertEqual(Expected, Result)
-                %%t_assert_ldap(LdapCount)
+                ?assertEqual(Expected, Result),
+                t_assert_ldap(LdapCount)
         end,
 
     [Test(Bucket, Auth, LdapCount, Expected) ||
