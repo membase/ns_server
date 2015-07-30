@@ -18,14 +18,8 @@
 -module(menelaus_util).
 -author('Northscale <info@northscale.com>').
 
--include_lib("eunit/include/eunit.hrl").
-
 -include("ns_common.hrl").
 -include("menelaus_web.hrl").
-
--ifdef(EUNIT).
--export([test_under_debugger/0, debugger_apply/2]).
--endif.
 
 -export([redirect_permanently/2,
          respond/2,
@@ -44,7 +38,6 @@
          serve_file/4,
          serve_static_file/4,
          parse_boolean/1,
-         expect_config/1,
          get_option/2,
          local_addr/1,
          remote_addr_and_port/1,
@@ -75,14 +68,6 @@
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
-
--export([java_date/0,
-         string_hash/1,
-         my_seed/1]).
-
--export([stateful_map/3,
-         stateful_takewhile/3,
-         low_pass_filter/2]).
 
 %% External API
 
@@ -218,86 +203,9 @@ serve_file(Req, File, Root, ExtraHeaders) ->
     log_web_hit(Peer, Req, Resp),
     Resp.
 
-expect_config(Key) ->
-    {value, RV} = ns_config:search_node(Key),
-    RV.
-
-%% milliseconds since 1970 Jan 1 at UTC
-java_date() ->
-    {MegaSec, Sec, Micros} = erlang:now(),
-    (MegaSec * 1000000 + Sec) * 1000 + (Micros div 1000).
-
-string_hash(String) ->
-    lists:foldl((fun (Val, Acc) -> (Acc * 31 + Val) band 16#0fffffff end),
-                0,
-                String).
-
-my_seed(Number) ->
-    {Number*31, Number*13, Number*113}.
-
-%% applies F to every InList element and current state.
-%% F must return pair of {new list element value, new current state}.
-%% returns pair of {new list, current state}
-full_stateful_map(F, InState, InList) ->
-    {RV, State} = full_stateful_map_rec(F, InState, InList, []),
-    {lists:reverse(RV), State}.
-
-full_stateful_map_rec(_F, State, [], Acc) ->
-    {Acc, State};
-full_stateful_map_rec(F, State, [H|Tail], Acc) ->
-    {Value, NewState} = F(H, State),
-    full_stateful_map_rec(F, NewState, Tail, [Value|Acc]).
-
-%% same as full_stateful_map/3, but discards state and returns only transformed list
-stateful_map(F, InState, InList) ->
-    element(1, full_stateful_map(F, InState, InList)).
-
-low_pass_filter(Alpha, List) ->
-    Beta = 1 - Alpha,
-    F = fun (V, Prev) ->
-                RV = Alpha*V + Beta*Prev,
-                {RV, RV}
-        end,
-    case List of
-        [] -> [];
-        [H|Tail] -> [H | stateful_map(F, H, Tail)]
-    end.
-
--ifdef(EUNIT).
-
-string_hash_test() ->
-    ?assertEqual(string_hash("hi"), $h*31+$i).
-
-debugger_apply(Fun, Args) ->
-    i:im(),
-    {module, _} = i:ii(?MODULE),
-    i:iaa([break]),
-    ok = i:ib(?MODULE, Fun, length(Args)),
-    apply(?MODULE, Fun, Args).
-
-test_under_debugger() ->
-    i:im(),
-    {module, _} = i:ii(?MODULE),
-    i:iaa([init]),
-    eunit:test({spawn, {timeout, infinity, {module, ?MODULE}}}, [verbose]).
-
--endif.
-
 get_option(Option, Options) ->
     {proplists:get_value(Option, Options),
      proplists:delete(Option, Options)}.
-
-stateful_takewhile_rec(_F, [], _State, App) ->
-    App;
-stateful_takewhile_rec(F, [H|Tail], State, App) ->
-    case F(H, State) of
-        {true, NewState} ->
-            stateful_takewhile_rec(F, Tail, NewState, [H|App]);
-        _ -> App
-    end.
-
-stateful_takewhile(F, List, State) ->
-    lists:reverse(stateful_takewhile_rec(F, List, State, [])).
 
 parse_json(Req) ->
     mochijson2:decode(Req:recv_body()).
