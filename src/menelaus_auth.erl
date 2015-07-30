@@ -42,9 +42,6 @@
          validate_request/1,
          verify_login_creds/2]).
 
--export([build_saslauthd_auth_settings/0,
-         set_saslauthd_auth_settings/1]).
-
 %% External API
 
 %% Respond with 401 Auth. required
@@ -455,56 +452,12 @@ bucket_auth_fun(UserPassword, ReadOnlyOk) ->
 is_under_role(Req, Role) when is_atom(Role) ->
     get_role(Req) =:= atom_to_list(Role).
 
-build_saslauthd_auth_settings() ->
-    case ns_config:search(saslauthd_auth_settings) of
-        {value, Settings} ->
-            Settings;
-        false ->
-            [{enabled, false},
-             {admins, []},
-             {roAdmins, []}]
-    end.
-
-set_saslauthd_auth_settings(Settings) ->
-    ns_config:set(saslauthd_auth_settings, Settings).
-
-check_saslauthd_auth(User, Password) ->
-    LDAPCfg = build_saslauthd_auth_settings(),
-    Enabled = ({enabled, true} =:= lists:keyfind(enabled, 1, LDAPCfg)),
-    case Enabled of
-        false ->
-            false;
-        true ->
-            case saslauthd_auth:verify_creds(User, Password) of
-                true ->
-                    {_, Admins} = lists:keyfind(admins, 1, LDAPCfg),
-                    {_, RoAdmins} = lists:keyfind(roAdmins, 1, LDAPCfg),
-                    UserB = list_to_binary(User),
-                    IsAdmin = is_list(Admins) andalso lists:member(UserB, Admins),
-                    IsRoAdmin = is_list(RoAdmins) andalso lists:member(UserB, RoAdmins),
-                    if
-                        IsAdmin ->
-                            admin;
-                        IsRoAdmin ->
-                            ro_admin;
-                        Admins =:= asterisk ->
-                            admin;
-                        RoAdmins =:= asterisk ->
-                            ro_admin;
-                        true ->
-                            false
-                    end;
-                Other ->
-                    Other
-            end
-    end.
-
 check_user_creds(Role, User, Password) ->
     case ns_config_auth:authenticate(Role, User, Password) of
         true ->
             {true, builtin};
         false ->
-            case check_saslauthd_auth(User, Password) =:= Role of
+            case saslauthd_auth:check(User, Password) =:= Role of
                 true ->
                     {true, saslauthd};
                 false ->
@@ -521,7 +474,7 @@ verify_login_creds(User, Password) ->
                 true ->
                     {ok, ro_admin, builtin};
                 false ->
-                    case check_saslauthd_auth(User, Password) of
+                    case saslauthd_auth:check(User, Password) of
                         admin ->
                             {ok, admin, saslauthd};
                         ro_admin ->

@@ -3628,7 +3628,7 @@ hostname_parsing_test() ->
 handle_saslauthd_auth_settings(Req) ->
     assert_is_ldap_enabled(),
 
-    reply_json(Req, {menelaus_auth:build_saslauthd_auth_settings()}).
+    reply_json(Req, {saslauthd_auth:build_settings()}).
 
 extract_user_list(undefined) ->
     asterisk;
@@ -3682,7 +3682,7 @@ handle_saslauthd_auth_settings_post(Req) ->
 
     case parse_validate_saslauthd_settings(Req:parse_post()) of
         {ok, Props} ->
-            menelaus_auth:set_saslauthd_auth_settings(Props),
+            saslauthd_auth:set_settings(Props),
             ns_audit:setup_ldap(Req, Props),
             handle_saslauthd_auth_settings(Req);
         {errors, Errors} ->
