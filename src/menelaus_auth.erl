@@ -68,8 +68,15 @@ require_auth(Req) ->
 %% credentials
 filter_accessible_buckets(BucketsAll, Req) ->
     UserPassword = menelaus_auth:extract_auth(Req),
-    F = bucket_auth_fun(UserPassword, true),
-    [Bucket || Bucket <- BucketsAll, F(Bucket)].
+    case get_role(Req) of
+        "admin" ->
+            BucketsAll;
+        "ro_admin" ->
+            BucketsAll;
+        _ ->
+            F = bucket_auth_fun(UserPassword, true),
+            [Bucket || Bucket <- BucketsAll, F(Bucket)]
+    end.
 
 %% returns true if given bucket is accessible with current
 %% credentials. No auth buckets are always accessible. SASL auth
@@ -684,6 +691,8 @@ t_new_request(Headers) ->
 t_assert_ldap(Count) ->
     ?assertEqual([{ldap_count, Count}], ets:lookup(state, ldap_count)).
 
+t_assert_buckets(Expected, Actual) when is_atom(Actual) ->
+    ?assertEqual(Expected, Actual);
 t_assert_buckets(Expected, Actual) ->
     t_print_ldap_count(),
     ActualNames = [Name || {Name, _} <- Actual],
@@ -985,7 +994,11 @@ test_filter_accessible_buckets() ->
     Test =
         fun ({Auth, Expected, _LdapCount}) ->
                 t_start("Filter accessible buckets. Auth = ~p", [Auth]),
-                Buckets = filter_accessible_buckets(t_sample_buckets(), t_new_request(Auth)),
+                Buckets = apply_auth_any_bucket(
+                            t_new_request(Auth),
+                            fun (_, NewReq) ->
+                                    filter_accessible_buckets(t_sample_buckets(), NewReq)
+                            end, [none]),
                 t_assert_buckets(Expected, Buckets)
                 %%t_assert_ldap(LdapCount)
         end,
@@ -999,16 +1012,16 @@ test_filter_accessible_buckets() ->
                  {{token, "ro_admin_token"}, BucketsAll, 0},
                  {{token, "ldap_admin_token"}, BucketsAll, 0},
                  {{token, "ldap_ro_token"}, BucketsAll, 0},
-                 {{token, "wrong_token"}, [], 0},
+                 {{token, "wrong_token"}, require_auth, 0},
                  %% this contradicts function description:
                  {[], ["b_empty_pass","b_noauth"], 0},
                  {{"b_auth", "pwd5"}, ["b_auth"], 0},
                  {{"b_noauth", ""}, ["b_noauth"], 0},
                  {{"b_empty_pass", ""}, ["b_empty_pass"], 0},
-                 {{"b_noauth", "pwd"}, [], 1},
-                 {{"b_empty_pass", "pwd"}, [], 1},
-                 {{"b_auth", "wrong"}, [], 1},
-                 {{"wrong", "wrong"}, [], 1}
+                 {{"b_noauth", "pwd"}, require_auth, 1},
+                 {{"b_empty_pass", "pwd"}, require_auth, 1},
+                 {{"b_auth", "wrong"}, require_auth, 1},
+                 {{"wrong", "wrong"}, require_auth, 1}
                 ]].
 
 
