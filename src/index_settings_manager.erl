@@ -21,6 +21,7 @@
 
 -export([start_link/0,
          get/1, get/2,
+         get_from_config/3,
          update/1, update/2,
          config_upgrade/0]).
 
@@ -37,6 +38,24 @@ get(Key, Default) when is_atom(Key) ->
         [] ->
             Default
     end.
+
+get_from_config(Config, Key, Default) ->
+    case Config =:= ns_config:latest() of
+        true ->
+            index_settings_manager:get(Key, Default);
+        false ->
+            case ns_config:search(Config, ?INDEX_CONFIG_KEY) of
+                {value, JSON} ->
+                    do_get_from_json(Key, JSON);
+                false ->
+                    Default
+            end
+    end.
+
+do_get_from_json(Key, JSON) ->
+    {_, Lens, _} = lists:keyfind(Key, 1, known_settings()),
+    Settings = decode_settings_json(JSON),
+    lens_get(Lens, Settings).
 
 update(Props) ->
     work_queue:submit_sync_work(
