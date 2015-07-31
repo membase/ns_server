@@ -147,6 +147,27 @@ parallel_map_gather_loop(Ref, Acc, RepliesLeft) ->
             exit(harakiri)
     end.
 
+gather_dir_info(Name) ->
+    case file:list_dir(Name) of
+        {ok, Filenames} ->
+            [gather_link_info(filename:join(Name, N)) || N <- Filenames];
+        Error ->
+            Error
+    end.
+
+gather_link_info(Name) ->
+    case file:read_link_info(Name) of
+        {ok, Info} ->
+            case Info#file_info.type of
+                directory ->
+                    {Name, Info, gather_dir_info(Name)};
+                _ ->
+                    {Name, Info}
+            end;
+        Error ->
+            {Name, Error}
+    end.
+
 rm_rf(Name) when is_list(Name) ->
   case rm_rf_is_dir(Name) of
       {ok, false} ->
@@ -162,7 +183,8 @@ rm_rf(Name) when is_list(Name) ->
                               {error, enoent} ->
                                   ok;
                               Error ->
-                                  ?log_warning("Cannot delete ~p: ~p", [Name, Error]),
+                                  ?log_warning("Cannot delete ~p: ~p~nDir info: ~p",
+                                               [Name, Error, gather_dir_info(Name)]),
                                   Error
                           end;
                       Error ->
