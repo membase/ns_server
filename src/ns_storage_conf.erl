@@ -22,9 +22,7 @@
 
 -include("ns_common.hrl").
 
--export([memory_quota/0,
-         memory_quota/1,
-         setup_disk_storage_conf/2,
+-export([setup_disk_storage_conf/2,
          storage_conf/1, storage_conf_from_node_status/1,
          query_storage_conf/0,
          local_bucket_disk_usage/1,
@@ -43,13 +41,7 @@
 
 -export([extract_disk_stats_for_path/2]).
 
-
-memory_quota() ->
-    memory_quota(ns_config:latest()).
-
-memory_quota(Config) ->
-    {value, RV} = ns_config:search(Config, memory_quota),
-    RV.
+-export([get_memory_quota/1, get_memory_quota/2, get_memory_quota/3]).
 
 setup_db_and_ix_paths() ->
     setup_db_and_ix_paths(ns_couchdb_api:get_db_and_ix_paths()),
@@ -309,8 +301,8 @@ do_cluster_storage_info(NodeInfos) ->
     RAMQuotaUsed = RAMQuotaUsedPerNode * NodesCount,
 
     RAMQuotaTotalPerNode =
-        case memory_quota(Config) of
-            MemQuotaMB when is_integer(MemQuotaMB) ->
+        case get_memory_quota(Config, kv) of
+            {ok, MemQuotaMB} ->
                 MemQuotaMB * ?MIB;
             _ ->
                 0
@@ -525,4 +517,31 @@ default_memory_quota(MemSupData) ->
             ?MIN_BUCKET_QUOTA;
        true ->
             Value
+    end.
+
+get_memory_quota(Service) ->
+    get_memory_quota(ns_config:latest(), Service).
+
+get_memory_quota(Config, kv) ->
+    case ns_config:search(Config, memory_quota) of
+        {value, Quota} ->
+            {ok, Quota};
+        false ->
+            not_found
+    end;
+get_memory_quota(Config, index) ->
+    NotFound = make_ref(),
+    case index_settings_manager:get_from_config(Config, memoryQuota, NotFound) of
+        NotFound ->
+            not_found;
+        Quota ->
+            {ok, Quota}
+    end.
+
+get_memory_quota(Config, Service, Default) ->
+    case get_memory_quota(Config, Service) of
+        {ok, Quota} ->
+            Quota;
+        not_found ->
+            Default
     end.

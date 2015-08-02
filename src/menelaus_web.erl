@@ -1977,7 +1977,8 @@ handle_pool_settings_post(Req) ->
 
     execute_if_validated(
       fun (Values) ->
-              Quota = proplists:get_value(memoryQuota, Values, ns_storage_conf:memory_quota()),
+              {ok, CurrentQuota} = ns_storage_conf:get_memory_quota(kv),
+              Quota = proplists:get_value(memoryQuota, Values, CurrentQuota),
               ClusterName = proplists:get_value(clusterName, Values, get_cluster_name()),
 
               ok = ns_config:set(
@@ -1986,8 +1987,7 @@ handle_pool_settings_post(Req) ->
 
               case IsSherlock of
                   true ->
-                      CurrentIndexQuota = index_settings_manager:get(memoryQuota),
-                      true = (CurrentIndexQuota =/= undefined),
+                      {ok, CurrentIndexQuota} = ns_storage_conf:get_memory_quota(index),
 
                       IndexQuota = proplists:get_value(indexMemoryQuota, Values, CurrentIndexQuota),
                       {ok, _} = index_settings_manager:update(memoryQuota, IndexQuota),
@@ -2415,12 +2415,11 @@ build_memory_quota_info() ->
     build_memory_quota_info(ns_config:latest()).
 
 build_memory_quota_info(Config) ->
-    Props = [{memoryQuota, ns_storage_conf:memory_quota(Config)}],
+    {ok, KvQuota} = ns_storage_conf:get_memory_quota(Config, kv),
+    Props = [{memoryQuota, KvQuota}],
     case cluster_compat_mode:is_cluster_sherlock() of
         true ->
-            IndexQuota = index_settings_manager:get(memoryQuota),
-            true = (IndexQuota =/= undefined),
-
+            {ok, IndexQuota} = ns_storage_conf:get_memory_quota(Config, index),
             [{indexMemoryQuota, IndexQuota} | Props];
         false ->
             Props
