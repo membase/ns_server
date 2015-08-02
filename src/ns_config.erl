@@ -68,7 +68,7 @@
          search_prop_tuple/3, search_prop_tuple/4,
          search_raw/2,
          search_with_vclock/2,
-         run_txn/1,
+         run_txn/1, run_txn_with_config/2,
          clear/0, clear/1,
          proplist_get_value/3,
          merge_kv_pairs/4,
@@ -197,28 +197,41 @@ set(Key, Value) ->
 run_txn(Body) ->
     run_txn_loop(Body, 10).
 
-run_txn_loop(_Body, 0) ->
-    retry_needed;
-run_txn_loop(Body, RetriesLeft) ->
-    FullConfig = ns_config:get(),
+run_txn_with_config(Config, Body) ->
+    run_txn_iter(Config, Body).
+
+run_txn_iter(FullConfig, Body) ->
     UUID = ns_config:uuid(FullConfig),
     Cfg = [get_kv_list_with_config(FullConfig)],
+
     SetFun = fun (Key, Value, Config) ->
                      run_txn_set(Key, Value, Config, UUID)
              end,
+
     case Body(Cfg, SetFun) of
         {commit, [NewCfg]} ->
             case cas_local_config(NewCfg, hd(Cfg)) of
                 true -> {commit, [NewCfg]};
-                false -> run_txn_loop(Body, RetriesLeft - 1)
+                false -> retry_needed
             end;
         {commit, [NewCfg], Extra} ->
             case cas_local_config(NewCfg, hd(Cfg)) of
                 true -> {commit, [NewCfg], Extra};
-                false -> run_txn_loop(Body, RetriesLeft - 1)
+                false -> retry_needed
             end;
         {abort, _} = AbortRV ->
             AbortRV
+    end.
+
+run_txn_loop(_Body, 0) ->
+    retry_needed;
+run_txn_loop(Body, RetriesLeft) ->
+    FullConfig = ns_config:get(),
+    case run_txn_iter(FullConfig, Body) of
+        retry_needed ->
+            run_txn_loop(Body, RetriesLeft -1);
+        Other ->
+            Other
     end.
 
 run_txn_set(Key, Value, [KVList], UUID) ->
