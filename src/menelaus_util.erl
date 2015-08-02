@@ -64,7 +64,10 @@
          validate_any_value/2,
          validate_any_value/3,
          validate_by_fun/3,
-         execute_if_validated/3]).
+         execute_if_validated/3,
+         get_values/1,
+         return_value/3,
+         return_error/3]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
@@ -504,3 +507,6 @@ execute_if_validated(Fun, Req, {_, Values, Errors}) ->
         {false, _} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400)
     end.
+
+get_values({_, Values, _}) ->
+    Values.
