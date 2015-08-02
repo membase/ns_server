@@ -10,3 +10,5 @@
                 }).
 -define(METADATA_VCLOCK, '_vclock').
 -define(DELETED_MARKER, '_deleted').
+
+-type ns_config() :: #config{} | [[term()]] | 'latest-config-marker'.
