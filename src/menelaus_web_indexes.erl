@@ -74,7 +74,7 @@ handle_settings_post(Req) ->
                       {_, NewSettings} = lists:keyfind(generalSettings, 1, NewSettingsAll),
                       reply_json(Req, {NewSettings});
                   retry_needed ->
-                      reply(Req, 409)
+                      erlang:error(exceeded_retries)
               end
       end, Req, validate_settings_post(Req:parse_post())).
 
