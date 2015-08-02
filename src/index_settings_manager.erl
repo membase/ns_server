@@ -23,6 +23,7 @@
          get/1, get/2,
          get_from_config/3,
          update/1, update/2,
+         update_txn/1,
          config_upgrade/0]).
 
 start_link() ->
@@ -67,6 +68,15 @@ update(Props) ->
 update(Key, Value) ->
     update([{Key, Value}]).
 
+update_txn(Props) ->
+    fun (Config, SetFn) ->
+            JSON = fetch_settings_json(Config),
+            Current = decode_settings_json(JSON),
+
+            New = build_settings_json(Props, Current),
+            {commit, SetFn(?INDEX_CONFIG_KEY, New, Config), New}
+    end.
+
 config_upgrade() ->
     [{set, ?INDEX_CONFIG_KEY, build_settings_json(default_settings())}].
 
@@ -100,15 +110,7 @@ submit_config_update(Pid, JSON) ->
       end).
 
 do_update(Props) ->
-    RV = ns_config:run_txn(
-           fun (Config, SetFn) ->
-                   JSON = fetch_settings_json(Config),
-                   Current = decode_settings_json(JSON),
-
-                   New = build_settings_json(Props, Current),
-                   {commit, SetFn(?INDEX_CONFIG_KEY, New, Config), New}
-           end),
-
+    RV = ns_config:run_txn(update_txn(Props)),
     case RV of
         {commit, _, NewJSON} ->
             populate_ets_table(NewJSON),
