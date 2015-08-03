@@ -21,6 +21,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include("ns_common.hrl").
+-include("ns_config.hrl").
 
 -export([setup_disk_storage_conf/2,
          storage_conf/1, storage_conf_from_node_status/1,
@@ -41,7 +42,9 @@
 
 -export([extract_disk_stats_for_path/2]).
 
+-export([check_quotas/3]).
 -export([get_memory_quota/1, get_memory_quota/2, get_memory_quota/3]).
+-export([set_quotas/2]).
 
 setup_db_and_ix_paths() ->
     setup_db_and_ix_paths(ns_couchdb_api:get_db_and_ix_paths()),
@@ -519,6 +522,74 @@ default_memory_quota(MemSupData) ->
             Value
     end.
 
+-type quota_result() :: ok | {error, quota_error()}.
+-type quota_error() ::
+        {total_quota_too_high, node(), Value :: integer(), MaxAllowed :: pos_integer()} |
+        {service_quota_too_low, service(), Value :: integer(), MinRequired :: pos_integer()}.
+-type quotas() :: [{service(), integer()}].
+
+-spec check_quotas([NodeInfo], ns_config(), quotas()) -> quota_result() when
+      NodeInfo :: {node(), [service()], MemoryData :: term()}.
+check_quotas(NodeInfos, Config, Quotas) ->
+    case check_service_quotas(Quotas, Config) of
+        ok ->
+            check_quotas_loop(NodeInfos, Quotas);
+        Error ->
+            Error
+    end.
+
+check_quotas_loop([], _) ->
+    ok;
+check_quotas_loop([{Node, Services, MemoryData} | Rest], Quotas) ->
+    TotalQuota = lists:sum([Q || {S, Q} <- Quotas, lists:member(S, Services)]),
+    case check_node_total_quota(Node, TotalQuota, MemoryData) of
+        ok ->
+            check_quotas_loop(Rest, Quotas);
+        Error ->
+            Error
+    end.
+
+check_node_total_quota(Node, TotalQuota, MemoryData) ->
+    Max = allowed_memory_usage_max(MemoryData),
+    case TotalQuota =< Max of
+        true ->
+            ok;
+        false ->
+            {error, {total_quota_too_high, Node, TotalQuota, Max}}
+    end.
+
+check_service_quotas([], _) ->
+    ok;
+check_service_quotas([{Service, Quota} | Rest], Config) ->
+    case check_service_quota(Service, Quota, Config) of
+        ok ->
+            check_service_quotas(Rest, Config);
+        Error ->
+            Error
+    end.
+
+check_service_quota(kv, Quota, Config) ->
+    MinMemoryMB0 = ?MIN_BUCKET_QUOTA,
+
+    BucketsQuota = get_total_buckets_ram_quota(Config) div ?MIB,
+    MinMemoryMB = erlang:max(MinMemoryMB0, BucketsQuota),
+
+    case Quota >= MinMemoryMB of
+        true ->
+            ok;
+        false ->
+            {error, {service_quota_too_low, kv, Quota, MinMemoryMB}}
+    end;
+check_service_quota(index, Quota, _) ->
+    MinQuota = 256,
+
+    case Quota >= MinQuota of
+        true ->
+            ok;
+        false ->
+            {error, {service_quota_too_low, index, Quota, MinQuota}}
+    end.
+
 get_memory_quota(Service) ->
     get_memory_quota(ns_config:latest(), Service).
 
@@ -545,3 +616,30 @@ get_memory_quota(Config, Service, Default) ->
         not_found ->
             Default
     end.
+
+set_quotas(Config, Quotas) ->
+    RV = ns_config:run_txn_with_config(
+           Config,
+           fun (Cfg, SetFn) ->
+                   NewCfg =
+                       lists:foldl(
+                         fun ({Service, Quota}, Acc) ->
+                                 do_set_memory_quota(Service, Quota, Acc, SetFn)
+                         end, Cfg, Quotas),
+                   {commit, NewCfg}
+           end),
+
+    case RV of
+        {commit, _} ->
+            ok;
+        retry_needed ->
+            retry_needed
+    end.
+
+do_set_memory_quota(kv, Quota, Cfg, SetFn) ->
+    SetFn(memory_quota, Quota, Cfg);
+do_set_memory_quota(index, Quota, Cfg, SetFn) ->
+    Txn = index_settings_manager:update_txn([{memoryQuota, Quota}]),
+
+    {commit, NewCfg, _} = Txn(Cfg, SetFn),
+    NewCfg.
