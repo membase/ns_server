@@ -363,10 +363,11 @@ var SetupWizard = {
     setting_memory_quota: function (node, pagePrefix, options) {
       var parent = $('#' + pagePrefix + '_dialog');
       var form = $('form', parent);
-      var settings = ClusterSection.prepareClusterQuotaSettings(options.poolData);
-      settings.prefix = 'wizard_join_cluster_quota';
-      settings.showKVMemoryQuota = options.selectedServices.indexOf('kv') > -1;
-      settings.showTotalPerNode = settings.showKVMemoryQuota;
+      var settings = ClusterSection.prepareClusterQuotaSettings(
+        'wizard_join_cluster_quota',
+        options.poolData,
+        options.selectedServices.indexOf('kv') > -1
+      );
       var memoryQuotaWidget = new MemoryQuotaSettingsWidget(settings, $('#js_join_wizard_cluster_quota'));
       form.submit(function (event) {
         event.preventDefault();

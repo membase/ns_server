@@ -1185,7 +1185,7 @@ var MemoryQuotaSettingsWidget = mkClass({
         }).change();
       });
     }
-    if (options.showTotalPerNode) {
+    if (options.maxMemorySize) {
       self.memoryQuotaFileds.keyup(function () {
         self.computePerServerTotalQuota();
       }).keyup();

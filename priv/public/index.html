@@ -3868,7 +3868,7 @@
     <span class="error-container err-indexMemoryQuota"></span>
   </div>
   {% } %}
-  {% if (showTotalPerNode) { %}
+  {% if (maxMemorySize) { %}
   <div class="row">
     <label>Total Per Server:</label>
     <span><span class="js_per_server_total"></span> MB (must be less than <span class="js_max_ram_size">{%= h(maxMemorySize) %}</span> MB) </span>

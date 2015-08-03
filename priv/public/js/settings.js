@@ -102,10 +102,7 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
     if (!currentPool) {
       return;
     }
-    var clusterQuotaSettings = ns.prepareClusterQuotaSettings(currentPool);
-    clusterQuotaSettings.prefix = 'cluster_settings';
-    clusterQuotaSettings.showKVMemoryQuota = true;
-    clusterQuotaSettings.showTotalPerNode = false;
+    var clusterQuotaSettings = ns.prepareClusterQuotaSettings('cluster_settings', currentPool, true, false);
     clusterQuotaSettings.clusterName = currentPool.clusterName;
     clusterQuotaSettings.roAdmin = v.need(DAL.cells.isROAdminCell);
 
@@ -120,28 +117,33 @@ function makeClusterSectionCells(ns, sectionCell, poolDetailsCell, settingTabCel
 }
 
 var ClusterSection = {
-  prepareClusterQuotaSettings: function (currentPool) {
-    var nNodes = 0;
+  prepareClusterQuotaSettings: function (prefix, currentPool, showKVMemoryQuota, calculateMaxMemory) {
     var ram = currentPool.storageTotals.ram;
-    $.each(currentPool.nodes, function(n, node) {
-      if (node.clusterMembership === "active") {
-        nNodes++;
-      }
-    });
-
-    var ramPerNode = Math.floor(ram.total/nNodes/Math.Mi);
-    var minMemorySize = Math.max(256, Math.floor(ram.quotaUsedPerNode / Math.Mi));
-
-    return {
+    if (calculateMaxMemory === undefined) {
+      calculateMaxMemory = showKVMemoryQuota;
+    }
+    var rv = {
+      showKVMemoryQuota: showKVMemoryQuota,
+      prefix: prefix,
       roAdmin: false,
       showIndexMemoryQuota: true,
-      minMemorySize: minMemorySize,
+      minMemorySize: Math.max(256, Math.floor(ram.quotaUsedPerNode / Math.Mi)),
       totalMemorySize: false,
-      maxMemorySize: Math.floor(Math.max(ramPerNode * 0.8, ramPerNode - 1024)),
       memoryQuota: Math.floor(ram.quotaTotalPerNode/Math.Mi),
       indexMemoryQuota: currentPool.indexMemoryQuota || 256,
       isServicesControllsAvailable: false
     };
+    if (calculateMaxMemory) {
+      var nNodes = _.pluck(currentPool.nodes, function (node) {
+        return node.clusterMembership === "active";
+      }).length;
+      var ramPerNode = Math.floor(ram.total/nNodes/Math.Mi);
+      rv.maxMemorySize = Math.floor(Math.max(ramPerNode * 0.8, ramPerNode - 1024));
+    } else {
+      rv.maxMemorySize = false;
+    }
+
+    return rv;
   },
   init: function () {
     var self = this;

@@ -610,10 +610,11 @@ var ServersSection = {
             overlay.remove();
             hideDialog('join_cluster_dialog');
             if (ServersSection.isOnlyOneNodeWithService(poolData.nodes, errorsOrData, 'index')) {
-              var settings = ClusterSection.prepareClusterQuotaSettings(poolData);
-              settings.prefix = 'add_node_memory_quota';
-              settings.showKVMemoryQuota = errorsOrData.services.indexOf('kv') > -1;
-              settings.showTotalPerNode = settings.showKVMemoryQuota;
+              var settings = ClusterSection.prepareClusterQuotaSettings(
+                'add_node_memory_quota',
+                poolData,
+                errorsOrData.services.indexOf('kv') > -1
+              );
               var memoryQuotaWidget = new MemoryQuotaSettingsWidget(settings, $('#js_add_node_memory_quota_holder'));
               showDialog('js_memory_quota_dialog', {
                 closeOnEscape: false,
