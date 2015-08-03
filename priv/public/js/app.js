@@ -818,13 +818,14 @@ var SetupWizard = {
           jQuery.when(jsonPostWithErrors('/node/controller/rename', hostnameParams, maybeShowHostnameErrors, ajaxOptions)).done(function () {
             if ($('#no-join-cluster')[0].checked) {
               jQuery.when(
-                jsonPostWithErrors("/node/controller/setupServices", servicesParams, maybeShowServicesErrors, ajaxOptions),
-                memoryQuotaWidget.tryToSaveMemoryQuota()
+                jsonPostWithErrors("/node/controller/setupServices", servicesParams, maybeShowServicesErrors, ajaxOptions)
               ).done(function () {
-                BucketsSection.refreshBuckets();
-                SetupWizard.show("sample_buckets");
-                onLeave();
-              }).always(removeSpinner);
+                jQuery.when(memoryQuotaWidget.tryToSaveMemoryQuota()).done(function () {
+                  BucketsSection.refreshBuckets();
+                  SetupWizard.show("sample_buckets");
+                  onLeave();
+                }).always(removeSpinner);
+              }).fail(removeSpinner);
             } else {
               var deferred = SetupWizard.doClusterJoin();
               if (deferred) {
