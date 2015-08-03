@@ -221,7 +221,7 @@ general_settings_defaults() ->
      {memorySnapshotInterval, 200},
      {stableSnapshotInterval, 5000},
      {maxRollbackPoints, 5},
-     {logLevel, <<"debug">>}].
+     {logLevel, <<"info">>}].
 
 general_settings_lens_get(Dict) ->
     lens_get_many(general_settings_lens_props(), Dict).
