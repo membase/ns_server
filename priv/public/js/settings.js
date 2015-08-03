@@ -137,7 +137,7 @@ var ClusterSection = {
       showIndexMemoryQuota: true,
       minMemorySize: minMemorySize,
       totalMemorySize: ramPerNode,
-      maxMemorySize: Math.floor(ramPerNode / 100 * 80),
+      maxMemorySize: Math.floor(Math.max(ramPerNode * 0.8, ramPerNode - 1024)),
       memoryQuota: Math.floor(ram.quotaTotalPerNode/Math.Mi),
       indexMemoryQuota: currentPool.indexMemoryQuota || 256,
       isServicesControllsAvailable: false

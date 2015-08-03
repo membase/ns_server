@@ -692,7 +692,7 @@ var SetupWizard = {
 
           var totalRAMMegs = Math.floor(storageTotals.ram.total/Math.Mi);
           var quota = Math.floor(storageTotals.ram.quotaTotal / Math.Mi);
-          var ramMaxMegs = Math.floor(totalRAMMegs / 100 * 80);
+          var ramMaxMegs = Math.floor(Math.max(totalRAMMegs * 0.8, totalRAMMegs - 1024));
 
           memoryQuotaWidget = new MemoryQuotaSettingsWidget({
             minMemorySize: 256,
