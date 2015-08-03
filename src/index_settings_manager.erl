@@ -16,6 +16,7 @@
 -module(index_settings_manager).
 
 -include("ns_common.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -define(INDEX_CONFIG_KEY, {metakv, <<"/indexing/settings/config">>}).
 
@@ -54,7 +55,7 @@ get_from_config(Config, Key, Default) ->
     end.
 
 do_get_from_json(Key, JSON) ->
-    {_, Lens, _} = lists:keyfind(Key, 1, known_settings()),
+    {_, Lens} = lists:keyfind(Key, 1, known_settings()),
     Settings = decode_settings_json(JSON),
     lens_get(Lens, Settings).
 
@@ -169,12 +170,14 @@ do_populate_ets_table(JSON) ->
     erlang:put(prev_json, JSON).
 
 known_settings() ->
-    [{memoryQuota, memory_quota_lens(), 256},
-     {generalSettings, general_settings_lens(), general_settings_defaults()},
-     {compaction, compaction_lens(), compaction_defaults()}].
+    [{memoryQuota, memory_quota_lens()},
+     {generalSettings, general_settings_lens()},
+     {compaction, compaction_lens()}].
 
 default_settings() ->
-    [{UIKey, Default} || {UIKey, _, Default} <- known_settings()].
+    [{memoryQuota, 256},
+     {generalSettings, general_settings_defaults()},
+     {compaction, compaction_defaults()}].
 
 id_lens(Key) ->
     Get = fun (Dict) ->
@@ -207,11 +210,18 @@ indexer_threads_lens() ->
     {Get, Set}.
 
 general_settings_lens_props() ->
-    [{indexerThreads, indexer_threads_lens(), 4},
-     {memorySnapshotInterval, id_lens(<<"indexer.settings.inmemory_snapshot.interval">>), 200},
-     {stableSnapshotInterval, id_lens(<<"indexer.settings.persisted_snapshot.interval">>), 5000},
-     {maxRollbackPoints, id_lens(<<"indexer.settings.recovery.max_rollbacks">>), 5},
-     {logLevel, id_lens(<<"indexer.settings.log_level">>), <<"debug">>}].
+    [{indexerThreads, indexer_threads_lens()},
+     {memorySnapshotInterval, id_lens(<<"indexer.settings.inmemory_snapshot.interval">>)},
+     {stableSnapshotInterval, id_lens(<<"indexer.settings.persisted_snapshot.interval">>)},
+     {maxRollbackPoints, id_lens(<<"indexer.settings.recovery.max_rollbacks">>)},
+     {logLevel, id_lens(<<"indexer.settings.log_level">>)}].
+
+general_settings_defaults() ->
+    [{indexerThreads, 4},
+     {memorySnapshotInterval, 200},
+     {stableSnapshotInterval, 5000},
+     {maxRollbackPoints, 5},
+     {logLevel, <<"debug">>}].
 
 general_settings_lens_get(Dict) ->
     lens_get_many(general_settings_lens_props(), Dict).
@@ -221,9 +231,6 @@ general_settings_lens_set(Values, Dict) ->
 
 general_settings_lens() ->
     {fun general_settings_lens_get/1, fun general_settings_lens_set/2}.
-
-general_settings_defaults() ->
-    [{Key, Default} || {Key, _, Default} <- general_settings_lens_props()].
 
 compaction_interval_default() ->
     [{from_hour, 0},
@@ -259,8 +266,12 @@ compaction_interval_lens() ->
     {Get, Set}.
 
 compaction_lens_props() ->
-    [{fragmentation, id_lens(<<"indexer.settings.compaction.min_frag">>), 30},
-     {interval, compaction_interval_lens(), compaction_interval_default()}].
+    [{fragmentation, id_lens(<<"indexer.settings.compaction.min_frag">>)},
+     {interval, compaction_interval_lens()}].
+
+compaction_defaults() ->
+    [{fragmentation, 30},
+     {interval, compaction_interval_default()}].
 
 compaction_lens_get(Dict) ->
     lens_get_many(compaction_lens_props(), Dict).
@@ -271,14 +282,11 @@ compaction_lens_set(Values, Dict) ->
 compaction_lens() ->
     {fun compaction_lens_get/1, fun compaction_lens_set/2}.
 
-compaction_defaults() ->
-    [{Key, Default} || {Key, _, Default} <- compaction_lens_props()].
-
 lens_get({Get, _}, Dict) ->
     Get(Dict).
 
 lens_get_many(Lenses, Dict) ->
-    [{Key, lens_get(L, Dict)} || {Key, L, _} <- Lenses].
+    [{Key, lens_get(L, Dict)} || {Key, L} <- Lenses].
 
 lens_set(Value, {_, Set}, Dict) ->
     Set(Value, Dict).
@@ -286,6 +294,16 @@ lens_set(Value, {_, Set}, Dict) ->
 lens_set_many(Lenses, Values, Dict) ->
     lists:foldl(
       fun ({Key, Value}, Acc) ->
-              {Key, L, _} = lists:keyfind(Key, 1, Lenses),
+              {Key, L} = lists:keyfind(Key, 1, Lenses),
               lens_set(Value, L, Acc)
       end, Dict, Values).
+
+-ifdef(EUNIT).
+defaults_test() ->
+    Keys = fun (L) -> lists:sort([K || {K, _} <- L]) end,
+
+    ?assertEqual(Keys(known_settings()), Keys(default_settings())),
+    ?assertEqual(Keys(compaction_lens_props()), Keys(compaction_defaults())),
+    ?assertEqual(Keys(general_settings_lens_props()),
+                 Keys(general_settings_defaults())).
+-endif.
