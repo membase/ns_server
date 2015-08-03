@@ -84,11 +84,8 @@ default() ->
     DataDir = get_data_dir(),
     Services = ns_cluster_membership:supported_services(),
 
-    InitQuota = case memsup:get_memory_data() of
-                    {_, _, _} = MemData ->
-                        ns_storage_conf:default_memory_quota(MemData);
-                    _ -> undefined
-                end,
+    DefaultQuotas = ns_storage_conf:default_quotas([kv]),
+    {_, KvQuota} = lists:keyfind(kv, 1, DefaultQuotas),
 
     PortMeta = case application:get_env(rest_port) of
                    {ok, _Port} -> local;
@@ -326,7 +323,7 @@ default() ->
         {audit_file, {"~s", [audit_file]}}
        ]}},
 
-     {memory_quota, InitQuota},
+     {memory_quota, KvQuota},
 
      {buckets, [{configs, []}]},
 

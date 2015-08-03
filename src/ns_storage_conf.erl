@@ -46,6 +46,7 @@
 -export([check_this_node_quotas/2]).
 -export([get_memory_quota/1, get_memory_quota/2, get_memory_quota/3]).
 -export([set_quotas/2]).
+-export([default_quotas/1, default_quotas/2]).
 
 setup_db_and_ix_paths() ->
     setup_db_and_ix_paths(ns_couchdb_api:get_db_and_ix_paths()),
@@ -483,6 +484,7 @@ this_node_memory_data() ->
     end.
 
 -define(MIN_BUCKET_QUOTA, 256).
+-define(MIN_INDEX_QUOTA, 256).
 
 allowed_node_quota_range() ->
     MemoryData = this_node_memory_data(),
@@ -582,7 +584,7 @@ check_service_quota(kv, Quota, Config) ->
             {error, {service_quota_too_low, kv, Quota, MinMemoryMB}}
     end;
 check_service_quota(index, Quota, _) ->
-    MinQuota = 256,
+    MinQuota = ?MIN_INDEX_QUOTA,
 
     case Quota >= MinQuota of
         true ->
@@ -655,3 +657,56 @@ do_set_memory_quota(index, Quota, Cfg, SetFn) ->
 
     {commit, NewCfg, _} = Txn(Cfg, SetFn),
     NewCfg.
+
+default_quota(Service, Memory, Max) ->
+    {Min, Quota} = do_default_quota(Service, Memory),
+
+    %% note that this prefers enforcing minimum quota which for very small
+    %% amounts of RAM can result in combined quota be actually larger than RAM
+    %% size; but we don't really support such small machines anyway
+    if Quota < Min ->
+            Min;
+       Quota > Max ->
+            Max;
+       true ->
+            Quota
+    end.
+
+do_default_quota(kv, Memory) ->
+    KvQuota = (Memory * 3) div 5,
+    {?MIN_BUCKET_QUOTA, KvQuota};
+do_default_quota(index, Memory) ->
+    IndexQuota = (Memory * 3) div 5,
+    {?MIN_INDEX_QUOTA, IndexQuota}.
+
+services_ranking() ->
+    [kv, index].
+
+default_quotas(Services) ->
+    %% this is actually bogus, because nodes can be heterogeneous; but that's
+    %% best we can do
+    MemSupData = this_node_memory_data(),
+    default_quotas(Services, MemSupData).
+
+default_quotas(Services, MemSupData) ->
+    {MemoryBytes, _, _} = MemSupData,
+    Memory = MemoryBytes div ?MIB,
+    MemoryMax = allowed_memory_usage_max(MemSupData),
+
+    {_, _, Result} =
+        lists:foldl(
+          fun (Service, {AccMem, AccMax, AccResult} = Acc) ->
+                  case lists:member(Service, Services) of
+                      true ->
+                          Quota = default_quota(Service, AccMem, AccMax),
+                          AccMem1 = AccMem - Quota,
+                          AccMax1 = AccMax - Quota,
+                          AccResult1 = [{Service, Quota} | AccResult],
+
+                          {AccMem1, AccMax1, AccResult1};
+                      false ->
+                          Acc
+                  end
+          end, {Memory, MemoryMax, []}, services_ranking()),
+
+    Result.
