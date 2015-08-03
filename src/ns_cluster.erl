@@ -844,7 +844,11 @@ do_engage_cluster_check_compat_version(Node, Version, NodeKVList) ->
             do_engage_cluster_check_services(NodeKVList)
     end.
 
-get_list_from_json(Key, KVList, Default) ->
+get_requested_services(KVList) ->
+    Default = ns_cluster_membership:default_services(),
+    do_get_requested_services(<<"requestedServices">>, KVList, Default).
+
+do_get_requested_services(Key, KVList, Default) ->
     case lists:keyfind(Key, 1, KVList) of
         false ->
             [atom_to_binary(S, latin1) || S <- Default];
@@ -873,8 +877,7 @@ enforce_topology_limitation(Services, SupportedCombinations) ->
     end.
 
 do_engage_cluster_check_services(NodeKVList) ->
-    RequestedServices = get_list_from_json(<<"requestedServices">>, NodeKVList,
-                                           ns_cluster_membership:default_services()),
+    RequestedServices = get_requested_services(NodeKVList),
     SupportedServices = [atom_to_binary(S, latin1) || S <- ns_cluster_membership:supported_services()],
     case RequestedServices -- SupportedServices of
         [] ->
