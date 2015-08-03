@@ -1191,9 +1191,6 @@ var MemoryQuotaSettingsWidget = mkClass({
       }).keyup();
     }
   },
-  selectAllServices: function () {
-    this.serviceFlags.prop('checked', true).change();
-  },
   computePerServerTotalQuota: function () {
     var self = this;
     var val = _.reduce(self.memoryQuotaFileds.not(':disabled').map(function () {
