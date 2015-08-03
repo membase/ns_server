@@ -35,10 +35,7 @@
 
 -export([cluster_storage_info/0, nodes_storage_info/1]).
 
--export([allowed_node_quota_range/1, allowed_node_quota_range/0,
-         default_memory_quota/1,
-         allowed_memory_usage_max/0,
-         this_node_memory_data/0]).
+-export([this_node_memory_data/0]).
 
 -export([extract_disk_stats_for_path/2]).
 
@@ -483,28 +480,6 @@ this_node_memory_data() ->
             {RAMBytes, 0, 0}
     end.
 
--define(MIN_BUCKET_QUOTA, 256).
--define(MIN_INDEX_QUOTA, 256).
-
-allowed_node_quota_range() ->
-    MemoryData = this_node_memory_data(),
-    allowed_node_quota_range(ns_config:latest(), MemoryData).
-
-allowed_node_quota_range(MemoryData) ->
-    allowed_node_quota_range(ns_config:latest(), MemoryData).
-
-allowed_node_quota_range(Config, MemSupData) ->
-    MinMemoryMB0 = ?MIN_BUCKET_QUOTA,
-
-    MaxMemoryMB = allowed_memory_usage_max(MemSupData),
-    BucketsQuota = get_total_buckets_ram_quota(Config) div ?MIB,
-    MinMemoryMB = erlang:max(MinMemoryMB0, BucketsQuota),
-    {MinMemoryMB, MaxMemoryMB}.
-
-allowed_memory_usage_max() ->
-    MemoryData = this_node_memory_data(),
-    allowed_memory_usage_max(MemoryData).
-
 allowed_memory_usage_max(MemSupData) ->
     {MaxMemoryBytes0, _, _} = MemSupData,
     MinusMegs = ?MIN_FREE_RAM,
@@ -512,18 +487,6 @@ allowed_memory_usage_max(MemSupData) ->
     MaxMemoryMBPercent = (MaxMemoryBytes0 * ?MIN_FREE_RAM_PERCENT) div (100 * ?MIB),
     MaxMemoryMB = lists:max([(MaxMemoryBytes0 div ?MIB) - MinusMegs, MaxMemoryMBPercent]),
     MaxMemoryMB.
-
-default_memory_quota(MemSupData) ->
-    Max = allowed_memory_usage_max(MemSupData),
-    {MaxMemoryBytes0, _, _} = MemSupData,
-    Value = (MaxMemoryBytes0 * 3) div (5 * ?MIB),
-    if Value > Max ->
-            Max;
-       Value < ?MIN_BUCKET_QUOTA ->
-            ?MIN_BUCKET_QUOTA;
-       true ->
-            Value
-    end.
 
 -type quota_result() :: ok | {error, quota_error()}.
 -type quota_error() ::
@@ -570,6 +533,9 @@ check_service_quotas([{Service, Quota} | Rest], Config) ->
         Error ->
             Error
     end.
+
+-define(MIN_BUCKET_QUOTA, 256).
+-define(MIN_INDEX_QUOTA, 256).
 
 check_service_quota(kv, Quota, Config) ->
     MinMemoryMB0 = ?MIN_BUCKET_QUOTA,

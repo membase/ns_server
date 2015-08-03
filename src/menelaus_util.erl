@@ -60,7 +60,6 @@
          validate_range/5,
          validate_unsupported_params/1,
          validate_has_params/1,
-         validate_memory_quota/2,
          validate_any_value/2,
          validate_any_value/3,
          validate_by_fun/3,
@@ -460,31 +459,6 @@ validate_has_params({[], InList, Errors}) ->
     {[], InList, [{<<"_">>, <<"Request should have form parameters">>} | Errors]};
 validate_has_params(State) ->
     State.
-
-validate_memory_quota(Name, State) ->
-    validate_by_fun(
-      fun (MemoryQuota) ->
-              {MinMemoryMB, MaxMemoryMB} = ns_storage_conf:allowed_node_quota_range(),
-              case MemoryQuota >= MinMemoryMB andalso MemoryQuota =< MaxMemoryMB of
-                  true ->
-                      ok;
-                  false ->
-                      Type = if MemoryQuota < MinMemoryMB ->
-                                     "too small";
-                                true ->
-                                     "too large"
-                             end,
-
-                      Msg = io_lib:format(
-                              "The RAM Quota value is ~s. "
-                              "Quota must be between ~w MB and ~w MB. "
-                              "At least ~w MB or ~w% of memory (whichever is smaller) "
-                              "must be left unused.",
-                              [Type, MinMemoryMB, MaxMemoryMB,
-                               ?MIN_FREE_RAM, (100 - ?MIN_FREE_RAM_PERCENT)]),
-                      {error, Msg}
-              end
-      end, Name, State).
 
 validate_any_value(Name, State) ->
     validate_any_value(Name, State, fun (X) -> X end).

@@ -89,7 +89,6 @@
          validate_range/5,
          validate_unsupported_params/1,
          validate_has_params/1,
-         validate_memory_quota/2,
          validate_any_value/2,
          validate_by_fun/3,
          execute_if_validated/3]).
