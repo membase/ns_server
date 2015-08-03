@@ -26,6 +26,7 @@
 
 -include("menelaus_web.hrl").
 -include("ns_common.hrl").
+-include("ns_heart.hrl").
 -include("ns_stats.hrl").
 -include("couch_db.hrl").
 
@@ -1956,50 +1957,150 @@ get_cluster_name() ->
 get_cluster_name(Config) ->
     ns_config:search(Config, cluster_name, "").
 
-validate_pool_settings_post(IsSherlock, Args) ->
+validate_pool_settings_post(Config, IsSherlock, Args) ->
     R0 = validate_has_params({Args, [], []}),
-    R1 = validate_integer(memoryQuota, R0),
-    R2 = validate_memory_quota(memoryQuota, R1),
-    R3 = validate_any_value(clusterName, R2),
+    R1 = validate_any_value(clusterName, R0),
 
-    R5 = case IsSherlock of
+    R2 = validate_memory_quota(Config, IsSherlock, R1),
+    validate_unsupported_params(R2).
+
+validate_memory_quota(Config, IsSherlock, R0) ->
+    R1 = validate_integer(memoryQuota, R0),
+    R2 = case IsSherlock of
              true ->
-                 R4 = validate_integer(indexMemoryQuota, R3),
-                 validate_range(indexMemoryQuota, 256, 100000, R4);
+                 validate_integer(indexMemoryQuota, R1);
              false ->
-                 R3
+                 R1
          end,
 
-    validate_unsupported_params(R5).
+    Values = menelaus_util:get_values(R2),
+
+    NewKvQuota = proplists:get_value(memoryQuota, Values),
+    NewIndexQuota = proplists:get_value(indexMemoryQuota, Values),
+
+    case NewKvQuota =/= undefined orelse NewIndexQuota =/= undefined of
+        true ->
+            {ok, KvQuota} = ns_storage_conf:get_memory_quota(Config, kv),
+            {ok, IndexQuota} = ns_storage_conf:get_memory_quota(Config, index),
+
+            do_validate_memory_quota(Config,
+                                     KvQuota, IndexQuota,
+                                     NewKvQuota, NewIndexQuota, R2);
+        false ->
+            R2
+    end.
+
+do_validate_memory_quota(Config,
+                         KvQuota, IndexQuota, NewKvQuota0, NewIndexQuota0, R0) ->
+    NewKvQuota = misc:default_if_undefined(NewKvQuota0, KvQuota),
+    NewIndexQuota = misc:default_if_undefined(NewIndexQuota0, IndexQuota),
+
+    case {NewKvQuota, NewIndexQuota} =:= {KvQuota, IndexQuota} of
+        true ->
+            R0;
+        false ->
+            do_validate_memory_quota_tail(Config, NewKvQuota, NewIndexQuota, R0)
+    end.
+
+do_validate_memory_quota_tail(Config, KvQuota, IndexQuota, R0) ->
+    Nodes = ns_node_disco:nodes_wanted(Config),
+    {ok, NodeStatuses} = ns_doctor:wait_statuses(Nodes, 3 * ?HEART_BEAT_PERIOD),
+    NodeInfos =
+        lists:map(
+          fun (Node) ->
+                  NodeStatus = dict:fetch(Node, NodeStatuses),
+                  {_, MemoryData} = lists:keyfind(memory_data, 1, NodeStatus),
+                  NodeServices = ns_cluster_membership:node_services(Config, Node),
+                  {Node, NodeServices, MemoryData}
+          end, Nodes),
+
+    Quotas = [{kv, KvQuota},
+              {index, IndexQuota}],
+
+    case ns_storage_conf:check_quotas(NodeInfos, Config, Quotas) of
+        ok ->
+            menelaus_util:return_value(quotas, Quotas, R0);
+        {error, Error} ->
+            {Key, Msg} = quota_error_msg(Error),
+            menelaus_util:return_error(Key, Msg, R0)
+    end.
+
+quota_error_msg({total_quota_too_high, Node, TotalQuota, MaxAllowed}) ->
+    Msg = io_lib:format("Total quota (~bMB) exceeds the maximum allowed quota (~bMB) on node ~p",
+                        [TotalQuota, MaxAllowed, Node]),
+    {'_', Msg};
+quota_error_msg({service_quota_too_low, Service, Quota, MinAllowed}) ->
+    {Key, Details} =
+        case Service of
+            kv ->
+                D = " (current total buckets quota, or at least 256MB)",
+                {memoryQuota, D};
+            index ->
+                {indexMemoryQuota, ""}
+        end,
+
+    Msg = io_lib:format("The ~p service quota (~bMB) cannot be less than ~bMB~s.",
+                        [Service, Quota, MinAllowed, Details]),
+    {Key, Msg}.
 
 handle_pool_settings_post(Req) ->
+    do_handle_pool_settings_post_loop(Req, 10).
+
+do_handle_pool_settings_post_loop(_, 0) ->
+    erlang:error(exceeded_retries);
+do_handle_pool_settings_post_loop(Req, RetriesLeft) ->
+    try
+        do_handle_pool_settings_post(Req)
+    catch
+        throw:retry_needed ->
+            do_handle_pool_settings_post_loop(Req, RetriesLeft - 1)
+    end.
+
+do_handle_pool_settings_post(Req) ->
     IsSherlock = cluster_compat_mode:is_cluster_sherlock(),
+    Config = ns_config:get(),
 
     execute_if_validated(
       fun (Values) ->
-              {ok, CurrentQuota} = ns_storage_conf:get_memory_quota(kv),
-              Quota = proplists:get_value(memoryQuota, Values, CurrentQuota),
-              ClusterName = proplists:get_value(clusterName, Values, get_cluster_name()),
+              do_handle_pool_settings_post_body(Req, Config, IsSherlock, Values)
+      end, Req, validate_pool_settings_post(Config, IsSherlock, Req:parse_post())).
 
-              ok = ns_config:set(
-                     [{cluster_name, ClusterName},
-                      {memory_quota, Quota}]),
+do_handle_pool_settings_post_body(Req, Config, IsSherlock, Values) ->
+    case lists:keyfind(quotas, 1, Values) of
+        {_, Quotas} ->
+            case ns_storage_conf:set_quotas(Config, Quotas) of
+                ok ->
+                    ok;
+                retry_needed ->
+                    throw(retry_needed)
+            end;
+        false ->
+            ok
+    end,
 
-              case IsSherlock of
-                  true ->
-                      {ok, CurrentIndexQuota} = ns_storage_conf:get_memory_quota(index),
+    case lists:keyfind(clusterName, 1, Values) of
+        {_, ClusterName} ->
+            ok = ns_config:set(cluster_name, ClusterName);
+        false ->
+            ok
+    end,
 
-                      IndexQuota = proplists:get_value(indexMemoryQuota, Values, CurrentIndexQuota),
-                      {ok, _} = index_settings_manager:update(memoryQuota, IndexQuota),
+    case IsSherlock of
+        true ->
+            do_audit_cluster_settings(Req);
+        false ->
+            ok
+    end,
 
-                      %% I could make index_memory_quota an optional field,
-                      %% but I don't want to bother with this
-                      ns_audit:cluster_settings(Req, Quota, IndexQuota, ClusterName);
-                  false ->
-                      ok
-              end,
-              reply(Req, 200)
-      end, Req, validate_pool_settings_post(IsSherlock, Req:parse_post())).
+    reply(Req, 200).
+
+do_audit_cluster_settings(Req) ->
+    %% this is obviously raceful, but since it's just audit...
+    {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
+    {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
+    ClusterName = get_cluster_name(),
+
+    ns_audit:cluster_settings(Req, KvQuota, IndexQuota, ClusterName).
 
 handle_settings_web(Req) ->
     reply_json(Req, build_settings_web()).

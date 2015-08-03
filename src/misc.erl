@@ -1824,3 +1824,8 @@ eval(Str,Binding) ->
           end,
     {ok,Expr} = erl_parse:parse_exprs(Ts1),
     erl_eval:exprs(Expr, Binding).
+
+default_if_undefined(undefined, Default) ->
+    Default;
+default_if_undefined(Value, _) ->
+    Value.
