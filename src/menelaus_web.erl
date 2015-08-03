@@ -2658,13 +2658,37 @@ validate_setup_services_post(Req) ->
                 {ok, Svcs} ->
                     case lists:member(kv, Svcs) of
                         true ->
-                            enforce_topology_limitation(Svcs);
+                            case enforce_topology_limitation(Svcs) of
+                                {ok, _} ->
+                                    setup_services_check_quota(Svcs);
+                                Error ->
+                                    Error
+                            end;
                         false ->
                             {error, <<"cannot setup first cluster node without kv service">>}
                     end;
                 {error, Msg} ->
                     {error, Msg}
             end
+    end.
+
+setup_services_check_quota(Services) ->
+    {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
+    {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
+
+    Quotas = [{kv, KvQuota},
+              {index, IndexQuota}],
+
+    case ns_storage_conf:check_this_node_quotas(Services, Quotas) of
+        ok ->
+            {ok, Services};
+        {error, {total_quota_too_high, _, TotalQuota, MaxAllowed}} ->
+            Msg = io_lib:format("insufficient memory to satisfy memory quota "
+                                "for the services "
+                                "(requested quota is ~bMB, "
+                                "maximum allowed quota for the node is ~bMB)",
+                                [TotalQuota, MaxAllowed]),
+            {error, iolist_to_binary(Msg)}
     end.
 
 handle_setup_services_post(Req) ->
