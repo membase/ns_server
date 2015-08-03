@@ -43,6 +43,7 @@
 -export([extract_disk_stats_for_path/2]).
 
 -export([check_quotas/3]).
+-export([check_this_node_quotas/2]).
 -export([get_memory_quota/1, get_memory_quota/2, get_memory_quota/3]).
 -export([set_quotas/2]).
 
@@ -589,6 +590,17 @@ check_service_quota(index, Quota, _) ->
         false ->
             {error, {service_quota_too_low, index, Quota, MinQuota}}
     end.
+
+%% check that the node has enough memory for the quotas; note that we do not
+%% validate service quota values because we expect them to be validated by the
+%% calling side
+-spec check_this_node_quotas([service()], quotas()) -> quota_result().
+check_this_node_quotas(Services, Quotas0) ->
+    Quotas = [{S, Q} || {S, Q} <- Quotas0, lists:member(S, Services)],
+    MemoryData = this_node_memory_data(),
+    TotalQuota = lists:sum([Q || {_, Q} <- Quotas]),
+
+    check_node_total_quota(node(), TotalQuota, MemoryData).
 
 get_memory_quota(Service) ->
     get_memory_quota(ns_config:latest(), Service).
