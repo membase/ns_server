@@ -42,8 +42,13 @@ init([]) ->
     {ok, []}.
 
 update_ns_server_node_name(Node) ->
-    gen_server:cast({ns_config_rep, ns_node_disco:couchdb_node()},
-                    {update_ns_server_node_name, Node}).
+    ok = rpc:call(ns_node_disco:couchdb_node(), erlang, apply,
+                  [fun rpc_handle_update_ns_server_node_name/1, [Node]], 5000).
+
+rpc_handle_update_ns_server_node_name(Node) ->
+    ?log_debug("Update ns_server node name to ~p", [Node]),
+    application:set_env(ns_couchdb, ns_server_node, Node),
+    ok.
 
 schedule_config_pull() ->
     Frequency = 5000 + trunc(random:uniform() * 55000),
@@ -81,10 +86,6 @@ handle_cast({merge_compressed, Blob}, State) ->
             exit(emergency_kill);
         false -> ok
     end,
-    {noreply, State};
-handle_cast({update_ns_server_node_name, Node}, State) ->
-    ?log_debug("Update ns_server node name to ~p", [Node]),
-    application:set_env(ns_couchdb, ns_server_node, Node),
     {noreply, State};
 handle_cast(Msg, State) ->
     ?log_error("Unhandled cast: ~p", [Msg]),
