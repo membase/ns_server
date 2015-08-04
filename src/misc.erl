@@ -1751,6 +1751,9 @@ mkdir_p(Path) ->
             Error
     end.
 
+create_marker(Path, Data) when is_list(Data) ->
+    ok = misc:write_file(Path, list_to_binary(Data)).
+
 create_marker(Path) ->
     ok = misc:write_file(Path, <<"">>).
 
@@ -1761,6 +1764,17 @@ marker_exists(Path) ->
     case file:read_file_info(Path) of
         {ok, _} ->
             true;
+        {error, enoent} ->
+            false;
+        Other ->
+            ?log_error("Unexpected error when reading marker ~p: ~p", [Path, Other]),
+            exit({failed_to_read_marker, Path, Other})
+    end.
+
+read_marker(Path) ->
+    case file:read_file(Path) of
+        {ok, BinaryContents} ->
+            {ok, binary_to_list(BinaryContents)};
         {error, enoent} ->
             false;
         Other ->
