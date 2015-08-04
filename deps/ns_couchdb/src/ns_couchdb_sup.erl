@@ -18,7 +18,9 @@
 
 -module(ns_couchdb_sup).
 
--behaviour(supervisor2).
+%% TODO: replace with supervisor2 when we will figure out how to build
+%% supervisor2 before ns_couchdb_sup
+-behaviour(supervisor).
 
 %% API
 -export([start_link/0, restart_capi_ssl_service/0]).
