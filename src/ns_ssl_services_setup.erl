@@ -36,6 +36,9 @@
 %% state sanitization
 -export([format_status/2]).
 
+%% exported for debugging purposes
+-export([low_security_ciphers/0]).
+
 -import(couch_httpd, [make_arity_1_fun/1,
                       make_arity_2_fun/1,
                       make_arity_3_fun/1]).
@@ -183,20 +186,45 @@ supported_versions() ->
             end
     end.
 
+%% The list is obtained by running the following openssl command:
+%%
+%%   openssl ciphers LOW:RC4 | tr ':' '\n'
+%%
+low_security_ciphers_openssl() ->
+    ["EDH-RSA-DES-CBC-SHA",
+     "EDH-DSS-DES-CBC-SHA",
+     "DH-RSA-DES-CBC-SHA",
+     "DH-DSS-DES-CBC-SHA",
+     "ADH-DES-CBC-SHA",
+     "DES-CBC-SHA",
+     "DES-CBC-MD5",
+     "ECDHE-RSA-RC4-SHA",
+     "ECDHE-ECDSA-RC4-SHA",
+     "AECDH-RC4-SHA",
+     "ADH-RC4-MD5",
+     "ECDH-RSA-RC4-SHA",
+     "ECDH-ECDSA-RC4-SHA",
+     "RC4-SHA",
+     "RC4-MD5",
+     "RC4-MD5",
+     "PSK-RC4-SHA",
+     "EXP-ADH-RC4-MD5",
+     "EXP-RC4-MD5",
+     "EXP-RC4-MD5"].
+
+openssl_cipher_to_erlang(Cipher) ->
+    try ssl:suite_definition(ssl_cipher:openssl_suite(Cipher)) of
+        V ->
+            {ok, V}
+    catch _:_ ->
+            %% erlang is bad at reporting errors here; on R16B03 it just fails
+            %% with function_clause error so I need to catch all here
+            {error, unsupported}
+    end.
 
 low_security_ciphers() ->
-    %% The list can be obtained as follows:
-    %%
-    %%   openssl ciphers LOW | tr ':' '\n'
-    %%
-    %% Then openssl cipher strings can be converted to erlang suite
-    %% definitions as follows:
-    %%
-    %%   ssl:suite_definition(ssl_cipher:openssl_suite("EDH-RSA-DES-CBC-SHA")).
-    %%
-    %% Note that erlang doesn't know the majority of ciphers returned by
-    %% openssl.
-    [{dhe_rsa,des_cbc,sha},{rsa,des_cbc,sha}].
+    Ciphers = low_security_ciphers_openssl(),
+    [EC || C <- Ciphers, {ok, EC} <- [openssl_cipher_to_erlang(C)]].
 
 supported_ciphers() ->
     case application:get_env(ssl_ciphers) of
