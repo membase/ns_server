@@ -181,7 +181,15 @@ init([]) ->
             misc:halt(1)
     end,
 
-    {ok, bringup(Address, UserSupplied)}.
+    State = bringup(Address, UserSupplied),
+    case misc:read_marker(ns_cluster:rename_marker_path()) of
+        {ok, OldNode} ->
+            ?log_debug("Found rename marker. Old Node = ~p", [OldNode]),
+            complete_rename(list_to_atom(OldNode));
+        _ ->
+            ok
+    end,
+    {ok, State}.
 
 %% There are only two valid cases here:
 %% 1. Successfully started
@@ -219,11 +227,13 @@ bringup(MyIP, UserSupplied) ->
     RN = save_node(ActualNodeName),
     ?log_debug("Attempted to save node name to disk: ~p", [RN]),
 
-    BabysitterNode = ns_server:get_babysitter_node(),
-    ?log_debug("Waiting for connection to node ~p to be established", [BabysitterNode]),
-    wait_for_node(BabysitterNode, 100, 10),
+    wait_for_node(ns_server:get_babysitter_node()),
 
     #state{self_started = Rv, my_ip = MyIP, user_supplied = UserSupplied}.
+
+wait_for_node(Node) ->
+    ?log_debug("Waiting for connection to node ~p to be established", [Node]),
+    wait_for_node(Node, 100, 10).
 
 wait_for_node(Node, _Time, 0) ->
     ?log_error("Failed to wait for node ~p", [Node]),
@@ -262,6 +272,7 @@ teardown() ->
       end).
 
 do_adjust_address(MyIP, UserSupplied, OnRename, State = #state{my_ip = MyOldIP}) ->
+    OldNode = node(),
     {NewState, Status} =
         case MyOldIP of
             MyIP ->
@@ -278,12 +289,20 @@ do_adjust_address(MyIP, UserSupplied, OnRename, State = #state{my_ip = MyOldIP})
                         erlang:set_cookie(node(), Cookie);
                     true -> ok
                 end,
+                misc:create_marker(ns_cluster:rename_marker_path(), atom_to_list(OldNode)),
                 {NewState1, net_restarted}
         end,
 
     case save_address_config(NewState) of
         ok ->
             ?log_info("Persisted the address successfully"),
+            case Status of
+                net_restarted ->
+                    master_activity_events:note_name_changed(),
+                    complete_rename(OldNode);
+                _ ->
+                    ok
+            end,
             {reply, Status, NewState};
         {error, Error} ->
             ?log_warning("Failed to persist the address: ~p", [Error]),
@@ -293,6 +312,48 @@ do_adjust_address(MyIP, UserSupplied, OnRename, State = #state{my_ip = MyOldIP})
              State}
     end.
 
+notify_couchdb_node(NewNSServerNodeName) ->
+    %% is_couchdb_node_started is raceful, but if node starts right after is_couchdb_node_started
+    %% and before we try to update, that means that it already started with the correct ns_server
+    %% node name as a parameter
+    case ns_server_nodes_sup:is_couchdb_node_started() of
+        true ->
+            wait_for_node(ns_node_disco:couchdb_node()),
+            ok = ns_couchdb_config_rep:update_ns_server_node_name(NewNSServerNodeName);
+        false ->
+            ?log_debug("Couchdb node is not started. Don't need to notify")
+    end.
+
+complete_rename(OldNode) ->
+    NewNode = node(),
+    case OldNode of
+        NewNode ->
+            ?log_debug("Rename marker exists but node name didn't change. Nothing to do.");
+        _ ->
+            notify_couchdb_node(NewNode),
+            ?log_debug("Renaming node from ~p to ~p.", [OldNode, NewNode]),
+            rename_node_in_config(OldNode, NewNode),
+            ?log_debug("Node ~p has been renamed to ~p.", [OldNode, NewNode])
+    end,
+    misc:remove_marker(ns_cluster:rename_marker_path()).
+
+rename_node_in_config(Old, New) ->
+    ns_config:update(fun ({K, V} = Pair, _) ->
+                             NewK = misc:rewrite_value(Old, New, K),
+                             NewV = misc:rewrite_value(Old, New, V),
+                             if
+                                 NewK =/= K orelse NewV =/= V ->
+                                     ?log_debug("renaming node conf ~p -> ~p:~n  ~p ->~n  ~p",
+                                                [K, NewK, ns_config_log:sanitize(V),
+                                                 ns_config_log:sanitize(NewV)]),
+                                     {NewK, NewV};
+                                 true ->
+                                     Pair
+                             end
+                     end),
+    ns_config:sync_announcements(),
+    ns_config_rep:push(),
+    ns_config_rep:synchronize_remote(ns_node_disco:nodes_actual_other()).
 
 handle_call({adjust_my_address, _, _, _}, _From,
             #state{self_started = false} = State) ->

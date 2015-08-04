@@ -52,7 +52,8 @@
 -export([add_node_to_group/5,
          engage_cluster/1, complete_join/1,
          check_host_connectivity/1, change_address/1,
-         enforce_topology_limitation/2]).
+         enforce_topology_limitation/2,
+         rename_marker_path/0]).
 
 %% debugging & diagnostic export
 -export([do_change_address/2]).
@@ -469,36 +470,10 @@ maybe_rename(NewAddr, UserSupplied) ->
                   {address_save_failed, _} = Error ->
                       Error;
                   net_restarted ->
-                      master_activity_events:note_name_changed(),
-                      NewName = node(),
-
-                      %% update new node name on child couchdb node
-                      ns_couchdb_config_rep:update_ns_server_node_name(NewName),
-
-                      ?cluster_debug("Renaming node from ~p to ~p.", [OldName, NewName]),
-                      rename_node_in_config(OldName, NewName),
+                      ?cluster_debug("Renamed node from ~p to ~p.", [OldName, node()]),
                       renamed
               end
       end).
-
-rename_node_in_config(Old, New) ->
-    ns_config:update(fun ({K, V} = Pair, _) ->
-                             NewK = misc:rewrite_value(Old, New, K),
-                             NewV = misc:rewrite_value(Old, New, V),
-                             if
-                                 NewK =/= K orelse NewV =/= V ->
-                                     ?cluster_debug("renaming node conf ~p -> ~p:~n  ~p ->~n  ~p",
-                                                    [K, NewK, ns_config_log:sanitize(V),
-                                                     ns_config_log:sanitize(NewV)]),
-                                     {NewK, NewV};
-                                 true ->
-                                     Pair
-                             end
-                     end),
-    ns_config:sync_announcements(),
-    ns_config_rep:push(),
-    ns_config_rep:synchronize_remote(ns_node_disco:nodes_actual_other()).
-
 
 check_add_possible(Body) ->
     case ns_config_auth:is_system_provisioned() of
@@ -1104,3 +1079,6 @@ leave_marker_path() ->
 
 start_marker_path() ->
     path_config:component_path(data, "start_marker").
+
+rename_marker_path() ->
+    path_config:component_path(data, "rename_marker").

@@ -24,7 +24,7 @@
 -behaviour(supervisor2).
 
 %% API
--export([start_link/0, start_couchdb_node/0]).
+-export([start_link/0, start_couchdb_node/0, is_couchdb_node_started/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -183,3 +183,6 @@ is_couchdb_node_ready() ->
         _ ->
             false
     end.
+
+is_couchdb_node_started() ->
+    is_pid(erlang:whereis(ns_couchdb_port)).
