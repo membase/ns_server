@@ -157,10 +157,6 @@ a.button_medium {display:block; color:#444245 !important; text-decoration:none !
 .button_medium:hover, .button_medium:focus {background-position:0 -32px; color:#f8eeed !important;}
 .button_medium:active {background-position:0 -64px; color:#e0eff7 !important;}
 
-a.button_200 {display:block; color:#444245 !important; text-decoration:none !important}
-.button_200 {width:200px; height:32px; font-size:14px; border:0px; overflow:visible; background:url(../images/button_gray_200.gif) 0 0 no-repeat; line-height:32px; cursor:pointer; color:#444245; text-align:center; text-decoration:none;}
-/* disabled for beta1 .button_200:hover {background-position:0 -32px; color:#f8eeed !important;}
-.button_200:active {background-position:0 -64px; color:#e0eff7 !important;} */
 
 .header_2 {height:40px; line-height:40px; padding:5px 10px 0 11px; font-size:18px; font-family:Helvetica, Verdana; background:url(../images/bg_h2.gif) 0 100% repeat-x #e3e3e4; font-weight:normal;}
 .header_2 h4{font-weight:normal}
@@ -724,14 +720,14 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .init_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:60px; line-height:65px; font-size:14px; color:#fff; background:url(../images/alert_red.png) 0 0 no-repeat; z-index:1000;}
 .init_block .alert_red .al_text {padding:0 0 0 30px;}
 
-.list_button, .servers .header_2 .btn_1 {display: block; float: right; *float:right !important; margin-top: 2px;margin-left: 5px; text-decoration:none !important;border:0;cursor:pointer;}
-.list_button {height:31px; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000 !important; font-size:14px; text-decoration:none !important; position:relative; }
+.list_button, .servers .header_2 .btn_1 {display: block; float: right; *float:right !important; margin-top: 2px;margin-left: 5px; text-decoration:none !important;cursor:pointer;}
+.list_button {height:31px;border:0; padding:0 3px 0 0; background:url(../images/btn_2_bg.png) 100% -31px no-repeat; color:#000 !important; font-size:14px; text-decoration:none !important; position:relative; }
 .servers .list_button.failover_server.threat_red {color:#f00 !important;font-weight:bold;border: 1px solid #f00;border-radius:5px;-moz-box-shadow: 0 0 3px #f00;-webkit-box-shadow: 0 0 3px #f00;box-shadow:0 0 3px #f00}
 .servers .list_button.failover_server.threat_yellow {color:#E5A800 !important;font-weight:bold;border: 1px solid #fac344;border-radius:5px;-moz-box-shadow: 0 0 3px #fac344;-webkit-box-shadow: 0 0 3px #fac344;box-shadow:0 0 3px #fac344}
 .list_button span {display:block; text-align:center; height:31px; line-height:31px; padding:0 6px 0 10px; background:url(../images/btn_2_bg.png) 0 0 no-repeat;}
 .list_button.dynamic_disabled {background-position:100% -93px; color:#cacbce !important; opacity:0.75 !important;}
 .list_button.dynamic_disabled span {background-position:0 -62px; color:#9E9FA3 !important;}
-.servers .add_button {width:124px;}
+.servers .add_button {width:104px;}
 .servers .rebalance_button {width:115px;}
 
 /* currently unused but keeping for later use
@@ -971,8 +967,22 @@ html body .switcher li a.current {color:#e6e6e6 !important;}
 .tab_right .current {background:url(../images/switcher_bg.png) 100% -32px no-repeat !important;}
 ul.tabs.switcher {height:32px; overflow:visible;}
 
-.btn_1 {display:inline-block; height:31px; border: 0; font-size:14px !important; background:url(../images/btn_1_bg.png) 100% -31px no-repeat; padding:0 4px 0 0 !important; color:#000;cursor:pointer}
-.btn_1 span {/*display:inline-block;*/ display:block; text-align:center; height:31px; padding:0 6px 0 10px; line-height:31px; background:url(../images/btn_1_bg.png) 0 0 no-repeat;color:#000; text-shadow:#bbbfc2 1px 1px;}
+.btn_1 {display: inline-block; height: 29px; border-width: 1px; border-style: solid; border-color: #A9AEB3 #9A9EA1 #5D6061; font-size: 14px !important; padding:0 10px; color: #000; cursor: pointer;
+  /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#d5dadf+0,cfd3d8+3,858789+100 */
+  background: #d5dadf; /* Old browsers */
+  background: -moz-linear-gradient(top,  #d5dadf 0%, #cfd3d8 15%, #858789 100%); /* FF3.6+ */
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#d5dadf), color-stop(3%,#cfd3d8), color-stop(100%,#858789)); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top,  #d5dadf 0%,#cfd3d8 15%,#858789 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top,  #d5dadf 0%,#cfd3d8 15%,#858789 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top,  #d5dadf 0%,#cfd3d8 15%,#858789 100%); /* IE10+ */
+  background: linear-gradient(to bottom,  #d5dadf 0%,#cfd3d8 15%,#858789 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#d5dadf', endColorstr='#858789',GradientType=0 ); /* IE6-9 */
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
+  -webkit-box-shadow: 0 1px 0 0 #f2f2f2;
+  box-shadow: 0 1px 0 0 #f2f2f2;
+}
+.btn_1 span {/*display:inline-block;*/ display:block; text-align:center; height: 29px; line-height: 29px; color:#000; text-shadow:#bbbfc2 1px 1px;}
 .btn_1:hover {text-decoration:none}
 
 /* root element for tabs */
