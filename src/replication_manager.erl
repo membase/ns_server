@@ -127,12 +127,25 @@ handle_call({set_desired_replications, DesiredReps}, _From,
     State1 = State#state{tap_replication_manager = NewTapReplManager},
 
     {Tap, Dcp} = split_replications(DesiredReps, State1),
-    call_replicators(
-      set_desired_replications, [Bucket, Tap],
-      set_desired_replications, [Bucket, Dcp],
-      ReplType),
 
-    {reply, ok, State1#state{desired_replications = DesiredReps}};
+    Callback = fun (TapResult, DcpResult, _) ->
+                       case {TapResult, DcpResult} of
+                           {ok, ok} ->
+                               ok;
+                           _ ->
+                               {error, {set_desired_replications_failed,
+                                        [{tap, TapResult},
+                                         {dcp, DcpResult}]}}
+                       end
+               end,
+
+    RV = call_replicators(
+           set_desired_replications, [Bucket, Tap],
+           set_desired_replications, [Bucket, Dcp],
+           Callback,
+           ReplType),
+
+    {reply, RV, State1#state{desired_replications = DesiredReps}};
 handle_call({change_vbucket_replication, VBucket, NewSrc}, _From, State) ->
     CurrentReps = get_actual_replications_as_list(State),
     CurrentReps0 = [{Node, ordsets:del_element(VBucket, VBuckets)}
@@ -273,11 +286,6 @@ merge_partitions(TapP, DcpP, TapPartitions) ->
     [] = ordsets:intersection(DcpP, TapPartitions) ++
         ordsets:subtract(TapP, TapPartitions),
     lists:sort(TapP ++ DcpP).
-
-call_replicators(TapFun, TapArgs, DcpFun, DcpArgs, ReplType) ->
-    call_replicators(TapFun, TapArgs, DcpFun, DcpArgs,
-                     fun(_, _, _) -> ok end,
-                     ReplType).
 
 call_replicators(TapFun, TapArgs, DcpFun, DcpArgs, MergeCB, ReplType) ->
     case ReplType of
