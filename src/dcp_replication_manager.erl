@@ -53,8 +53,17 @@ set_desired_replications(Bucket, DesiredReps) ->
     NeededNodes = [Node || {Node, [_|_]} <- DesiredReps],
     gen_server:call(server_name(Bucket), {manage_replicators, NeededNodes}, infinity),
 
-    [dcp_replicator:setup_replication(Node, Bucket, Partitions)
-     || {Node, [_|_] = Partitions} <- DesiredReps].
+    Rs = [{Node, dcp_replicator:setup_replication(Node, Bucket, Partitions)}
+          || {Node, [_|_] = Partitions} <- DesiredReps],
+    Bad = [Pair || {_, R} = Pair <- Rs, R =/= ok],
+
+    case Bad of
+        [] ->
+            ok;
+        _ ->
+            ?log_error("Failed to setup some replications:~n~p", [Bad]),
+            {error, {setup_replications_failed, Bad}}
+    end.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
