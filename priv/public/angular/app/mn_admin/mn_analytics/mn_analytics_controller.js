@@ -5,21 +5,14 @@ angular.module('mnAnalytics', [
   'ui.router',
   'mnPoll'
 ]).controller('mnAnalyticsController',
-  function ($scope, mnAnalyticsService, mnHelper, $state, mnHttp, mnPoll, buckets) {
+  function ($scope, mnAnalyticsService, mnHelper, $state, mnHttp, mnPoll) {
 
-    if ($state.params.analyticsBucket) {
-      mnPoll.start($scope, function (previousResult) {
-        return mnAnalyticsService.getStats({$stateParams: $state.params, previousResult: previousResult});
-      }, function (response) {
-        //TODO add error handler
-        return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
-      }).subscribe("state").keepIn();
-    } else {
-      //TODO replace state
-      return $state.go('app.admin.analytics.list.graph', {
-        analyticsBucket: buckets.byType.membase.defaultName
-      });
-    }
+    mnPoll.start($scope, function (previousResult) {
+      return mnAnalyticsService.getStats({$stateParams: $state.params, previousResult: previousResult});
+    }, function (response) {
+      //TODO add error handler
+      return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
+    }).subscribe("state").keepIn();
 
     $scope.$watch('state.bucketsNames.selected', function (selectedBucket) {
       selectedBucket && selectedBucket !== $state.params.analyticsBucket && $state.go('app.admin.analytics.list.graph', {

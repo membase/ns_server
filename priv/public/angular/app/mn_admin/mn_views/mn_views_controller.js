@@ -5,24 +5,17 @@ angular.module('mnViews', [
   'mnPromiseHelper',
   'mnPoll'
 ]).controller('mnViewsController',
-  function ($scope, $modal, $state, buckets, mnHelper, mnViewsService, mnCompaction, mnPoll) {
-
-    if ($state.params.viewsBucket) {
-      $scope.$watch('views.bucketsNames.selected', function (selectedBucket) {
-        selectedBucket && selectedBucket !== $state.params.viewsBucket && $state.go('app.admin.views', {
-          viewsBucket: selectedBucket
-        });
-      });
-    } else {
-      return $state.go('app.admin.views', {
-        viewsBucket: buckets.byType.membase.defaultName
-      });
-    }
-
+  function ($scope, $modal, $state, mnHelper, mnViewsService, mnCompaction, mnPoll) {
 
     var poll = mnPoll.start($scope, function () {
       return mnViewsService.getViewsState($state.params);
     }).subscribe("views").keepIn();
+
+    $scope.$watch('views.bucketsNames.selected', function (selectedBucket) {
+      selectedBucket && selectedBucket !== $state.params.viewsBucket && $state.go('app.admin.views', {
+        viewsBucket: selectedBucket
+      });
+    });
 
     $scope.showCreationDialog = function (ddoc, isSpatial) {
       $modal.open({

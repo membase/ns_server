@@ -44,10 +44,11 @@ angular.module('mnViewsService', [
       return ddoc.meta.id.substring(0, devPrefix.length) == devPrefix;
     }
 
-    function getEmptyViewsState() {
+    function getEmptyViewsState(params) {
       return mnBucketsService.getBucketsByType().then(function (buckets) {
         var rv = {development: [], production: []};
         rv.bucketsNames = buckets ? buckets.byType.membase.names : [];
+        rv.bucketsNames.selected = params.viewsBucket;
         return rv;
       });
     }
@@ -99,8 +100,8 @@ angular.module('mnViewsService', [
         });
       }, function (resp) {
         switch (resp.status) {
-          case 404: return getEmptyViewsState();
-          case 400: return getEmptyViewsState().then(function (emptyState) {
+          case 404: return getEmptyViewsState(params);
+          case 400: return getEmptyViewsState(params).then(function (emptyState) {
             emptyState.ddocsAreInFactMissing = resp.data.error === 'no_ddocs_service';
             return emptyState;
           });
