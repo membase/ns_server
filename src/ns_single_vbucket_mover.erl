@@ -309,7 +309,16 @@ mover_inner_dcp(Parent, Bucket, VBucket,
 
     %% set new master to active state
     set_vbucket_state(Bucket, NewMaster, Parent, VBucket, active,
-                      undefined, undefined).
+                      undefined, undefined),
+
+    %% we're safe if old and new masters are the same; basically our
+    %% replication streams are already established
+    case OldMaster =:= NewMaster of
+        true ->
+            ok;
+        false ->
+            cleanup_old_streams(Bucket, ReplicaNodes, Parent, VBucket)
+    end.
 
 set_vbucket_state(Bucket, Node, RebalancerPid, VBucket,
                   VBucketState, VBucketRebalanceState, ReplicateFrom) ->
@@ -317,6 +326,24 @@ set_vbucket_state(Bucket, Node, RebalancerPid, VBucket,
       fun () ->
               ok = janitor_agent:set_vbucket_state(Bucket, Node, RebalancerPid, VBucket,
                                                    VBucketState, VBucketRebalanceState, ReplicateFrom)
+      end).
+
+%% This ensures that all streams into new set of replicas (either replica
+%% building streams or old replications) are closed. It's needed because
+%% ep-engine doesn't like it when there are two consumer connections for the
+%% same vbucket on a node.
+%%
+%% Note that some of the same streams appear to be cleaned up in
+%% update_replication_post_move, but this is done in unpredictable order
+%% there, so it's still possible to add a stream before the old one is
+%% closed. In addition to that, it's also not enough to just clean up old
+%% replications, because we also create rebalance-specific streams that can
+%% lead to the same problems.
+cleanup_old_streams(Bucket, Nodes, RebalancerPid, VBucket) ->
+    Changes = [{Node, replica, undefined, undefined} || Node <- Nodes],
+    spawn_and_wait(
+      fun () ->
+              ok = janitor_agent:bulk_set_vbucket_state(Bucket, RebalancerPid, VBucket, Changes)
       end).
 
 dcp_takeover(Bucket, Parent, OldMaster, NewMaster, VBucket) ->
