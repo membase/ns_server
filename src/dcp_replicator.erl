@@ -30,7 +30,8 @@
          setup_replication/3,
          takeover/3,
          wait_for_data_move/3,
-         get_docs_estimate/3]).
+         get_docs_estimate/3,
+         get_connections/1]).
 
 -record(state, {proxies,
                 consumer_conn :: pid(),
@@ -167,6 +168,22 @@ get_docs_estimate(Bucket, Partition, ConsumerNode) ->
 
 get_connection_name(ConsumerNode, ProducerNode, Bucket) ->
     "replication:" ++ atom_to_list(ProducerNode) ++ "->" ++ atom_to_list(ConsumerNode) ++ ":" ++ Bucket.
+
+get_connections(Bucket) ->
+    {ok, Connections} =
+        ns_memcached:raw_stats(
+          node(), Bucket, <<"dcp">>,
+          fun(<<"eq_dcpq:replication:", K/binary>>, <<"consumer">>, Acc) ->
+                  case binary:longest_common_suffix([K, <<":type">>]) of
+                      5 ->
+                          ["replication:" ++ binary_to_list(binary:part(K, {0, byte_size(K) - 5})) | Acc];
+                      _ ->
+                          Acc
+                  end;
+             (_, _, Acc) ->
+                  Acc
+          end, []),
+    Connections.
 
 spawn_and_wait(Body) ->
     WorkerPid = spawn_link(

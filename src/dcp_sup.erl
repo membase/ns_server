@@ -77,7 +77,7 @@ nuke(Bucket) ->
                end,
     misc:terminate_and_wait({shutdown, nuke}, Children),
 
-    Connections = get_dcp_connections(Bucket),
+    Connections = dcp_replicator:get_connections(Bucket),
     misc:parallel_map(
       fun (ConnName) ->
               dcp_proxy:nuke_connection(consumer, ConnName, node(), Bucket)
@@ -85,19 +85,3 @@ nuke(Bucket) ->
       Connections,
       infinity),
     Children =/= [] andalso Connections =/= [].
-
-get_dcp_connections(Bucket) ->
-    {ok, Connections} =
-        ns_memcached:raw_stats(
-          node(), Bucket, <<"dcp">>,
-          fun(<<"eq_dcpq:ns_server:", K/binary>>, <<"consumer">>, Acc) ->
-                  case binary:longest_common_suffix([K, <<":type">>]) of
-                      5 ->
-                          ["ns_server:" ++ binary_to_list(binary:part(K, {0, byte_size(K) - 5})) | Acc];
-                      _ ->
-                          Acc
-                  end;
-             (_, _, Acc) ->
-                  Acc
-          end, []),
-    Connections.
