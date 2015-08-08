@@ -103,7 +103,7 @@ angular.module('mnServersService', [
         rv.confirmation = false;
         rv.down = node.status != 'healthy';
         rv.backfill = node.replication < 1;
-        rv.failOver = node.gracefulFailoverPossible ? "startGracefulFailover" : "failOver";
+        rv.failOver = rv.down ? "failOver" : node.gracefulFailoverPossible ? "startGracefulFailover" : "failOver";
         rv.gracefulFailoverPossible = node.gracefulFailoverPossible;
         rv.down && (rv.failOver = 'failOver');
         !rv.backfill && (rv.confirmation = true);

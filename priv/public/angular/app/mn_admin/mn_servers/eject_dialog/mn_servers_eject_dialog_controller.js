@@ -5,14 +5,8 @@ angular.module('mnServers').controller('mnServersEjectDialogController',
     };
     $scope.warningFlags = warnings;
     $scope.doEjectServer = function () {
-      if (node.isNodeInactiveAdded) {
-        mnPromiseHelper.handleModalAction($scope, mnServersService.ejectNode({
-          otpNode: node.otpNode
-        }), $modalInstance);
-      } else {
-        mnServersService.addToPendingEject(node);
-        $modalInstance.close();
-        mnHelper.reloadState();
-      }
+      mnServersService.addToPendingEject(node);
+      $modalInstance.close();
+      mnHelper.reloadState();
     };
   });

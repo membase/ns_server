@@ -61,6 +61,13 @@ angular.module('mnServers', [
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
 
     $scope.ejectServer = function (node) {
+      if (node.isNodeInactiveAdded) {
+        $scope.viewLoading = true;
+        mnServersService.ejectNode({otpNode: node.otpNode});
+        mnHelper.reloadState();
+        return;
+      }
+
       $q.all([
         mnIndexesService.getIndexesState(),
         mnServersService.getNodes()
@@ -89,13 +96,9 @@ angular.module('mnServers', [
             }
           });
         } else {
-          if (node.isNodeInactiveAdded) {
-            mnServersService.ejectNode({otpNode: node.otpNode});
-          } else {
-            mnServersService.addToPendingEject(node);
-            $scope.viewLoading = true;
-            mnHelper.reloadState();
-          }
+          mnServersService.addToPendingEject(node);
+          $scope.viewLoading = true;
+          mnHelper.reloadState();
         }
       });
     };

@@ -14,10 +14,8 @@ angular.module('mnServers').controller('mnServersFailOverDialogController',
         }
       });
 
-      $scope.$watch('failOver', function (failOver) {console.log(failOver)})
-
     $scope.onSubmit = function () {
-      var promise = mnServersService.postFailover($scope.failOver, node.otpNode);
+      var promise = mnServersService.postFailover($scope.status.failOver, node.otpNode);
       mnPromiseHelper.handleModalAction($scope, promise, $modalInstance);
     };
   });
