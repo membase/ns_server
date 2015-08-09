@@ -1,8 +1,9 @@
 angular.module('mnMemoryQuotaService', [
   'mnHttp',
-  'mnPoolDefault'
+  'mnPoolDefault',
+  'mnHelper'
 ]).factory('mnMemoryQuotaService',
-  function (mnHttp, mnPoolDefault) {
+  function (mnHttp, mnPoolDefault, mnHelper) {
     var mnMemoryQuotaService = {};
 
     mnMemoryQuotaService.prepareClusterQuotaSettings = function (currentPool) {
@@ -21,7 +22,7 @@ angular.module('mnMemoryQuotaService', [
         showIndexMemoryQuota: true,
         minMemorySize: minMemorySize,
         totalMemorySize: ramPerNode,
-        maxMemorySize: Math.floor(ramPerNode / 100 * 80),
+        maxMemorySize: mnHelper.calculateMaxMemorySize(ramPerNode),
         memoryQuota: Math.floor(ram.quotaTotalPerNode/Math.Mi),
         indexMemoryQuota: currentPool.indexMemoryQuota || 256
       };

@@ -24,6 +24,10 @@ angular.module('mnHelper', [
       };
     };
 
+    mnHelper.calculateMaxMemorySize = function (totalRAMMegs) {
+      return Math.floor(Math.max(totalRAMMegs * 0.8, totalRAMMegs - 1024));
+    };
+
     mnHelper.initializeDetailsHashObserver = function ($scope, hashKey, stateName) {
       function getHashValue() {
         return $stateParams[hashKey] || [];

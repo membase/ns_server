@@ -1,7 +1,8 @@
 angular.module('mnWizardStep1Service', [
-  'mnHttp'
+  'mnHttp',
+  'mnHelper'
 ]).factory('mnWizardStep1Service',
-  function (mnHttp) {
+  function (mnHttp, mnHelper) {
 
     var mnWizardStep1Service = {};
     var re = /^[A-Z]:\//;
@@ -69,7 +70,7 @@ angular.module('mnWizardStep1Service', [
         });
 
         nodeConfig.ramTotalSize = totalRAMMegs;
-        nodeConfig.ramMaxMegs = Math.floor(totalRAMMegs / 100 * 80);
+        nodeConfig.ramMaxMegs = mnHelper.calculateMaxMemorySize(totalRAMMegs);
 
         nodeConfig.hostname = (nodeConfig && nodeConfig['otpNode'].split('@')[1]) || '127.0.0.1';
 
