@@ -590,6 +590,10 @@ var ServersSection = {
         return;
       }
 
+      if (!DAL.cells.is40СompatibleCell.value) {
+        delete errorsOrData.services;
+      }
+
       var confirmed;
 
       $('#join_cluster_dialog').addClass('overlayed').dialog('option', 'closeOnEscape', false);
