@@ -284,11 +284,11 @@ call_replicators(TapFun, TapArgs, DcpFun, DcpArgs, MergeCB, ReplType) ->
         tap ->
             erlang:apply(tap_replication_manager, TapFun, TapArgs);
         dcp ->
-            erlang:apply(dcp_sup, DcpFun, DcpArgs);
+            erlang:apply(dcp_replication_manager, DcpFun, DcpArgs);
         {dcp, TapPartitions} ->
             MergeCB(
               erlang:apply(tap_replication_manager, TapFun, TapArgs),
-              erlang:apply(dcp_sup, DcpFun, DcpArgs), TapPartitions)
+              erlang:apply(dcp_replication_manager, DcpFun, DcpArgs), TapPartitions)
     end.
 
 get_actual_replications(Bucket, ReplTypeTuple) ->

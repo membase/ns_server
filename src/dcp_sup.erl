@@ -23,7 +23,7 @@
 
 -export([start_link/1, init/1]).
 
--export([get_actual_replications/1, set_desired_replications/2, nuke/1]).
+-export([get_children/1, manage_replicators/2, nuke/1]).
 
 start_link(Bucket) ->
     supervisor:start_link({local, server_name(Bucket)}, ?MODULE, []).
@@ -38,33 +38,8 @@ init([]) ->
            misc:get_env_default(max_t, 10)},
           []}}.
 
-get_actual_replications(Bucket) ->
-    case get_producer_nodes(Bucket) of
-        not_running ->
-            not_running;
-        Nodes ->
-            lists:sort([{Node, dcp_replicator:get_partitions(Node, Bucket)} || Node <- Nodes])
-    end.
-
-set_desired_replications(Bucket, DesiredReps) ->
-    ProducerNodes = get_producer_nodes(Bucket),
-    NeededNodes = [Node || {Node, [_|_]} <- DesiredReps],
-
-    [kill_replicator(Bucket, Node) || Node <- ProducerNodes -- NeededNodes],
-
-    [start_replicator(Bucket, Node) || Node <- NeededNodes -- ProducerNodes],
-
-    [dcp_replicator:setup_replication(Node, Bucket, Partitions)
-     || {Node, [_|_] = Partitions} <- DesiredReps].
-
--spec get_producer_nodes(bucket_name()) -> list() | not_running.
-get_producer_nodes(Bucket) ->
-    try supervisor:which_children(server_name(Bucket)) of
-        RawKids ->
-            [Id || {Id, _Child, _Type, _Mods} <- RawKids]
-    catch exit:{noproc, _} ->
-            not_running
-    end.
+get_children(Bucket) ->
+    supervisor:which_children(server_name(Bucket)).
 
 build_child_spec(ProducerNode, Bucket) ->
     {ProducerNode,
@@ -86,16 +61,20 @@ kill_replicator(Bucket, ProducerNode) ->
     _ = supervisor:terminate_child(server_name(Bucket), ProducerNode),
     ok.
 
-get_children(Bucket) ->
-    try supervisor:which_children(server_name(Bucket)) of
-        RawKids ->
-            [Child || {_, Child, _, _} <- RawKids]
-    catch exit:{noproc, _} ->
-            []
-    end.
+manage_replicators(Bucket, NeededNodes) ->
+    ProducerNodes =  [Node || {Node, _Child, _Type, _Mods} <- get_children(Bucket)],
+
+    [kill_replicator(Bucket, Node) || Node <- ProducerNodes -- NeededNodes],
+
+    [start_replicator(Bucket, Node) || Node <- NeededNodes -- ProducerNodes].
 
 nuke(Bucket) ->
-    Children = get_children(Bucket),
+    Children = try get_children(Bucket) of
+                   RawKids ->
+                       [Child || {_, Child, _, _} <- RawKids]
+               catch exit:{noproc, _} ->
+                       []
+               end,
     misc:terminate_and_wait({shutdown, nuke}, Children),
 
     Connections = get_dcp_connections(Bucket),
