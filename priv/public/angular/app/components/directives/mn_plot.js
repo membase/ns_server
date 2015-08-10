@@ -2269,12 +2269,15 @@ angular.module('mnPlot', [
             plotSeries: plotSeries};
   }
 
-  function plotStatGraph(data, tstamps, options) {
-    options = _.extend({
+  function plotStatGraph(config) {
+    var data = config.stats;
+    var tstamps = config.tstamps;
+    var options = _.extend({
       color: '#1d88ad',
       verticalMargin: 1.15,
       targetPointsCount: 120
-    }, options || {});
+    }, config.options || {});
+
     var timeOffset = options.timeOffset || 0;
     var breakInterval = options.breakInterval || 3.1557e+10;
     var lastSampleTime;
@@ -2494,7 +2497,7 @@ angular.module('mnPlot', [
           return;
         }
 
-        var plotData = plotStatGraph(config.stats, config.tstamps, config.options);
+        var plotData = plotStatGraph(config);
         plot = jQuery.plot($element, plotData.plotSeries, plotData.plotOptions);
       }, true);
     }
