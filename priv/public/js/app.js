@@ -637,6 +637,7 @@ var SetupWizard = {
       var resourcesObserver;
       var newClusterFormBlock = $(".js_start_new_cluster_block");
       var memoryQuotaWidget;
+      var nodeSelf;
 
       $('#join-cluster').click(function (e) {
         $('.js_login-credentials').slideDown();
@@ -685,6 +686,8 @@ var SetupWizard = {
           });
 
           data['node'] = data['node'] || node;
+
+          nodeSelf = data;
 
           var hostname = dialog.find('[name=hostname]');
           hostname.val(data['otpNode'].split('@')[1] || '127.0.0.1');
@@ -813,18 +816,47 @@ var SetupWizard = {
         var servicesParams = $.param({services: services});
         var ajaxOptions = {dataType: 'text'}; //because with dataType json jQuery returning “parsererror”
 
+        function goToNextStep() {
+          BucketsSection.refreshBuckets();
+          SetupWizard.show("sample_buckets");
+          onLeave();
+        }
+
+        function setupServices() {
+          return jsonPostWithErrors("/node/controller/setupServices", servicesParams, maybeShowServicesErrors, ajaxOptions);
+        }
+
+
         jQuery.when(jsonPostWithErrors('/nodes/' + node + '/controller/settings', diskParams, maybeShowDiskErrors, ajaxOptions)).done(function () {
           jQuery.when(jsonPostWithErrors('/node/controller/rename', hostnameParams, maybeShowHostnameErrors, ajaxOptions)).done(function () {
-            if ($('#no-join-cluster')[0].checked) {
-              jQuery.when(
-                jsonPostWithErrors("/node/controller/setupServices", servicesParams, maybeShowServicesErrors, ajaxOptions)
-              ).done(function () {
-                jQuery.when(memoryQuotaWidget.tryToSaveMemoryQuota()).done(function () {
-                  BucketsSection.refreshBuckets();
-                  SetupWizard.show("sample_buckets");
-                  onLeave();
-                }).always(removeSpinner);
-              }).fail(removeSpinner);
+             if ($('#no-join-cluster')[0].checked) {
+              var quotaIsChanged = memoryQuotaWidget.memoryQuotaFileds.eq(0).val() != nodeSelf.memoryQuota ||
+                                  memoryQuotaWidget.memoryQuotaFileds.eq(1).val() != nodeSelf.indexMemoryQuota;
+
+              if (nodeSelf.services.sort().join("") === services.split(',').sort().join("")) {
+                if (quotaIsChanged) {
+                  jQuery.when(memoryQuotaWidget.tryToSaveMemoryQuota()).done(goToNextStep).always(removeSpinner);
+                } else {
+                  goToNextStep();
+                  removeSpinner();
+                }
+              } else {
+                if (quotaIsChanged) {
+                  var hadIndexService = nodeSelf.services.join("").indexOf("index") > -1;
+                  var hasIndexService = services.indexOf("index") > -1;
+                  if (hadIndexService && !hasIndexService) {
+                    jQuery.when(setupServices()).done(function () {
+                      jQuery.when(memoryQuotaWidget.tryToSaveMemoryQuota()).done(goToNextStep).always(removeSpinner);
+                    }).fail(removeSpinner);
+                  } else {
+                    jQuery.when(memoryQuotaWidget.tryToSaveMemoryQuota()).done(function () {
+                      jQuery.when(setupServices()).done(goToNextStep).always(removeSpinner);
+                    }).fail(removeSpinner);
+                  }
+                } else {
+                  jQuery.when(setupServices()).done(goToNextStep).always(removeSpinner);
+                }
+              }
             } else {
               var deferred = SetupWizard.doClusterJoin();
               if (deferred) {
