@@ -1,7 +1,6 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
 
 PROJECT (ns_server)
-LIST (APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 INCLUDE (FindCouchbaseErlang)
 INCLUDE (FindCouchbaseGo)
 
@@ -67,6 +66,8 @@ ADD_CUSTOM_TARGET (ns_realclean
   COMMAND "${CMAKE_COMMAND}" -E remove_directory test/log
   COMMAND "${CMAKE_COMMAND}" -E remove_directory ebin
   COMMAND "${CMAKE_COMMAND}" -E remove_directory docs
+  COMMAND "${CMAKE_COMMAND}" -E remove -f rebar.config
+  COMMAND "${CMAKE_COMMAND}" -E remove -f src/ns_server.app.src
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   VERBATIM)
 ADD_DEPENDENCIES (realclean ns_realclean)
