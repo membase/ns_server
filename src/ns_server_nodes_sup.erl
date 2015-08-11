@@ -21,10 +21,10 @@
 
 -include("ns_common.hrl").
 
--behaviour(supervisor).
+-behaviour(supervisor2).
 
 %% API
--export([start_link/0, start_couchdb_node/0]).
+-export([start_link/0, start_couchdb_node/0, is_couchdb_node_started/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -47,12 +47,12 @@ init([]) ->
 
 child_specs() ->
     [
-     {setup_node_names,
-      {ns_server, setup_node_names, []},
-      transient, brutal_kill, worker, []},
-
      {remote_monitors, {remote_monitors, start_link, []},
       permanent, 1000, worker, []},
+
+     %% needs to be started before ns_ssl_services_sup because ssl endpoint is
+     %% started there
+     menelaus_sup:barrier_spec(menelaus_barrier),
 
      {ns_ssl_services_sup,
       {ns_ssl_services_sup, start_link, []},
@@ -70,7 +70,9 @@ child_specs() ->
       transient, brutal_kill, worker, []},
 
      {ns_server_sup, {ns_server_sup, start_link, []},
-      permanent, infinity, supervisor, [ns_server_sup]}].
+      permanent, infinity, supervisor, [ns_server_sup]},
+
+     menelaus_sup:barrier_notify_spec(menelaus_barrier_notify)].
 
 create_ns_couchdb_spec() ->
     CouchIni = case init:get_argument(couch_ini) of
@@ -181,3 +183,6 @@ is_couchdb_node_ready() ->
         _ ->
             false
     end.
+
+is_couchdb_node_started() ->
+    is_pid(erlang:whereis(ns_couchdb_port)).

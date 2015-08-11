@@ -49,7 +49,7 @@
 -define(DATA_LOST, 1).
 -define(BAD_REPLICATORS, 2).
 
--define(BUCKETS_SHUTDOWN_WAIT_TIMEOUT, 20000).
+-define(DEFAULT_BUCKETS_SHUTDOWN_WAIT_TIMEOUT, 20000).
 
 -define(REBALANCER_READINESS_WAIT_TIMEOUT, 60000).
 
@@ -214,7 +214,15 @@ generate_vbucket_map_options(KeepNodes, BucketConfig, Config) ->
            end,
 
     Opts0 = ns_bucket:config_to_map_options(BucketConfig),
-    misc:update_proplist(Opts0, [{tags, Tags}]).
+
+    %% Note that we don't need to have replication_topology here (in fact as
+    %% of today it's still returned by ns_bucket:config_to_map_options/1), but
+    %% these options are used to compute map_opts_hash which in turn is used
+    %% to decide if rebalance is needed. So if we remove this, old nodes will
+    %% wrongly believe that rebalance is needed even when the cluster is
+    %% balanced. See MB-15543 for details.
+    misc:update_proplist(Opts0, [{replication_topology, star},
+                                 {tags, Tags}]).
 
 generate_vbucket_map(CurrentMap, KeepNodes, BucketConfig) ->
     Opts = generate_vbucket_map_options(KeepNodes, BucketConfig),
@@ -275,6 +283,15 @@ local_buckets_shutdown_loop(Ref, CanWait) ->
 
 %% note: this is rpc:multicall-ed
 wait_local_buckets_shutdown_complete() ->
+    ExcessiveBuckets =
+        ns_memcached:active_buckets() -- ns_bucket:node_bucket_names(node()),
+    do_wait_local_buckets_shutdown_complete(ExcessiveBuckets).
+
+do_wait_local_buckets_shutdown_complete([]) ->
+    ok;
+do_wait_local_buckets_shutdown_complete(ExcessiveBuckets) ->
+    Timeout = ns_config:get_global_timeout(buckets_shutdown, ?DEFAULT_BUCKETS_SHUTDOWN_WAIT_TIMEOUT)
+        * length(ExcessiveBuckets),
     misc:executing_on_new_process(
       fun () ->
               Ref = erlang:make_ref(),
@@ -285,7 +302,7 @@ wait_local_buckets_shutdown_complete() ->
                                                           (_) ->
                                                               ok
                                                       end),
-              erlang:send_after(?BUCKETS_SHUTDOWN_WAIT_TIMEOUT, Parent, {Ref, timeout}),
+              erlang:send_after(Timeout, Parent, {Ref, timeout}),
               try
                   local_buckets_shutdown_loop(Ref, true)
               after
@@ -294,19 +311,22 @@ wait_local_buckets_shutdown_complete() ->
       end).
 
 do_wait_buckets_shutdown(KeepNodes) ->
-    {Good, ReallyBad, FailedNodes} =
-        misc:rpc_multicall_with_plist_result(
-          KeepNodes, ns_rebalancer, wait_local_buckets_shutdown_complete, []),
-    NonOk = [Pair || {_Node, Result} = Pair <- Good,
-                     Result =/= ok],
-    Failures = ReallyBad ++ NonOk ++ [{N, node_was_down} || N <- FailedNodes],
-    case Failures of
-        [] ->
-            ok;
-        _ ->
-            ?rebalance_error("Failed to wait deletion of some buckets on some nodes: ~p~n", [Failures]),
-            exit({buckets_shutdown_wait_failed, Failures})
-    end.
+    execute_and_be_stop_aware(
+      fun () ->
+              {Good, ReallyBad, FailedNodes} =
+                  misc:rpc_multicall_with_plist_result(
+                    KeepNodes, ns_rebalancer, wait_local_buckets_shutdown_complete, []),
+              NonOk = [Pair || {_Node, Result} = Pair <- Good,
+                               Result =/= ok],
+              Failures = ReallyBad ++ NonOk ++ [{N, node_was_down} || N <- FailedNodes],
+              case Failures of
+                  [] ->
+                      ok;
+                  _ ->
+                      ?rebalance_error("Failed to wait deletion of some buckets on some nodes: ~p~n", [Failures]),
+                      exit({buckets_shutdown_wait_failed, Failures})
+              end
+      end).
 
 sanitize(Config) ->
     misc:rewrite_key_value_tuple(sasl_password, "*****", Config).
@@ -364,6 +384,16 @@ start_link_rebalance(KeepNodes, EjectNodes,
                end
        end, []]).
 
+execute_and_be_stop_aware(Fun) ->
+    Pid = erlang:spawn_link(Fun),
+    MRef = erlang:monitor(process, Pid),
+    receive
+        stop ->
+            exit(stopped);
+        {'DOWN', MRef, _, _, _} ->
+            ok
+    end.
+
 rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
           BucketConfigs, DeltaRecoveryBuckets) ->
     do_pre_rebalance_config_sync(KeepNodes),
@@ -418,25 +448,18 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                                                      lists:sort(EjectNodesAll)),
                                   ThisLiveNodes = KeepKVNodes ++ ThisEjected,
                                   ns_bucket:set_servers(BucketName, ThisLiveNodes),
-                                  Pid = erlang:spawn_link(
-                                          fun () ->
-                                                  ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
-                                                  {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
-                                                  case Zombies of
-                                                      [] ->
-                                                          ?rebalance_info("Bucket is ready on all nodes"),
-                                                          ok;
-                                                      _ ->
-                                                          exit({not_all_nodes_are_ready_yet, Zombies})
-                                                  end
-                                          end),
-                                  MRef = erlang:monitor(process, Pid),
-                                  receive
-                                      stop ->
-                                          exit(stopped);
-                                      {'DOWN', MRef, _, _, _} ->
-                                          ok
-                                  end,
+                                  execute_and_be_stop_aware(
+                                    fun () ->
+                                            ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
+                                            {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
+                                            case Zombies of
+                                                [] ->
+                                                    ?rebalance_info("Bucket is ready on all nodes"),
+                                                    ok;
+                                                _ ->
+                                                    exit({not_all_nodes_are_ready_yet, Zombies})
+                                            end
+                                    end),
                                   case ns_janitor:cleanup(BucketName, [{query_states_timeout, 10000},
                                                                        {apply_config_timeout, 300000}]) of
                                       ok -> ok;

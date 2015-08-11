@@ -261,9 +261,11 @@ h1 .nav a {font-size:11px; font-weight:bolder;}
 .ongoing_replications_list .protocol {width: 80px;}
 .ongoing_replications_list .from {width: 100px;}
 .ongoing_replications_list .to {width: 300px;}
+.dynamic_community-mode .ongoing_replications_list .to {width: 370px;}
 .ongoing_replications_list .filter {width: 70px;}
 .ongoing_replications_list .status {width: 125px;}
 .ongoing_replications_list .when {width: 95px;}
+.ongoing_replications_list .tooltip_msg {margin-right: -20px;}
 .ongoing_replications_list td {-ms-word-break:break-all;word-break:break-all;word-break:break-word;-webkit-hyphens:auto;-moz-hyphens:auto;hyphens:auto;}
 .break-word {-ms-word-break:break-all;word-break:break-all;word-break:break-word;-webkit-hyphens:auto;-moz-hyphens:auto;hyphens:auto;}
 .darker_block ul.col_headers {overflow:hidden;margin-right:5px;color:#999;font-weight:bold;padding-top:3px}
@@ -1099,7 +1101,7 @@ input.view_name{width:20em;padding:5px}
 .bucket_details .bucket-icon .error-container.active {display: inline-block;}
 .bucket_details .for-ram-quota input {width: 50px;}
 .bucket_details .replicas_settigns {line-height: 24px;}
-.bucket_details .err-replicaNumber {position: absolute; margin: 7px 85px 0  150px;}
+.bucket_details .err-replicaNumber {position: absolute; margin: 7px 85px 0  150px; width: 444px;}
 .bucket_details .for-ram-quota .gauge-label {overflow: hidden; padding-top: 14px; height: 43px;}
 .bucket_details .for-replica-number {display: inline-block; margin-left: 80px;}
 .bucket_details .tooltip, .init_block .tooltip {margin-left: 10px;}
@@ -1406,7 +1408,7 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 .xdcr_advaced_settings_container {display: none;}
 .xdcr_advaced_settings {line-height: 33px;}
 .xdcr_advaced_settings input {width: 50px;}
-.create_replication_dialog .error {font-size: 12px; font-style: normal; color: red; display: block; line-height: 12px; margin-left: 30px;}
+.create_replication_dialog .error, .xdcr_advaced_settings .error{font-size: 12px; font-style: normal; color: red; display: block; line-height: 12px; margin-left: 30px;}
 .xdcr_advaced_settings .dynamic_error {border-color: red;}
 .xdcr_advaced_settings.dialog {width: 400px;}
 .xdcr_advaced_settings legend {cursor: pointer; color: #2ea6db;}
@@ -1415,7 +1417,7 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 .xdcr_advaced_filtering label {width: auto;}
 .advanced_filtering label{ width: auto; margin-left: 15px;}
 .advanced_filtering label, .advanced_filtering input {vertical-align: middle;}
-.match_indicator {background-color: #ffbd44; color: #fff; font-size: 10px; text-align: center; line-height: 20px; position: absolute; width: 64px; height: 20px; top: 7px; right: 2px;}
+.match_indicator {background-color: #ffbd44; color: #fff; font-size: 10px; text-align: center; line-height: 21px; position: absolute; width: 64px; height: 21px; top: 3px; right: 3px;}
 .match_indicator.dynamic_match {background-color: green;}
 .match_indicator .no_match,
 .match_indicator.dynamic_match .match,
@@ -1429,6 +1431,7 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 
 .dynamic_ldap_disabled .only-when_ldap_enabled {display: none!important;}
 
+.xdcr_advaced_filtering_container .test_keys .test_key_result {padding-right: 70px; width: 429px;}
 .test_keys .test_key_wrapper {position: relative; line-height: 0; margin-bottom: 10px;}
 .test_keys .test_key_wrapper > span {font-size: 12px; line-height: 28px; float: left; display: block;}
 .xdcr_advaced_filtering_container {position: relative;}
@@ -1458,7 +1461,7 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 .replication_control {display: inline-block; text-align: center; vertical-align: middle; margin:0 4px; cursor: pointer; width: 18px; height: 18px; background-image: url('../images/pause_play.png'); background-repeat: no-repeat; }
 .replication_control.dynamic_paused {background-position: 0 0;}
 .replication_control.dynamic_running {background-position: 0 -18px;}
-.replication_control.dynamic_spinner,
+.replication_control.dynamic_spinner {background: url('../images/spinner/spinner_gr_nav.gif') no-repeat 50% 50% transparent; border: 0; width: 18px; height: 18px; cursor: default;}
 
 
 .dynamic_non-kv-node .only-when-kv-node {display: none!important;}
@@ -1528,9 +1531,12 @@ ul.tabs.dev-subset-switcher {padding-top:3px;padding-bottom:3px;padding-left:12p
 .indexes_list_container .row td {height: 33px; vertical-align: middle;}
 .indexes_list_container .with_expander_button a {position: absolute; left: 10px;}
 .indexes_list_container .with_expander_button {padding-left: 35px;}
-.indexes_list_container .list thead th.dynamic_active {color: #4d4d4d;}
-.indexes_list_container .list thead th {
-  color: #A4A4A4;
+.indexes_list_container .list thead th.dynamic_active,
+.servers .servers_list .list th.dynamic_active {color: #4d4d4d;}
+.servers .servers_list .list th,
+.indexes_list_container .list thead th {color: #A4A4A4;}
+.servers .servers_list .list th[data-sortby],
+.indexes_list_container .list thead th[data-sortby] {
   cursor: pointer;
   -webkit-user-select: none;  /* Chrome all / Safari all */
   -moz-user-select: none;     /* Firefox all */

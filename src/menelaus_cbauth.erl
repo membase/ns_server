@@ -80,14 +80,14 @@ handle_cast({Msg, Label, Pid}, #state{rpc_processes = Processes,
                _ ->
                    CBAuthInfo
            end,
-    NewProcesses = case notify_cbauth(Label, Info) of
-                       {error, method_not_found} ->
+    NewProcesses = case notify_cbauth(Label, Pid, Info) of
+                       error ->
                            Processes;
-                       _ ->
-                           case lists:keyfind(Label, 2, Processes) of
+                       ok ->
+                           case lists:keyfind({Label, Pid}, 2, Processes) of
                                false ->
                                    MRef = erlang:monitor(process, Pid),
-                                   [{MRef, Label} | Processes];
+                                   [{MRef, {Label, Pid}} | Processes];
                                _ ->
                                    Processes
                            end
@@ -100,7 +100,7 @@ handle_info(maybe_notify_cbauth, State) ->
     {noreply, maybe_notify_cbauth(State)};
 handle_info({'DOWN', MRef, _, Pid, Reason},
             #state{rpc_processes = Processes} = State) ->
-    {value, {MRef, Label}, NewProcesses} = lists:keytake(MRef, 1, Processes),
+    {value, {MRef, {Label, Pid}}, NewProcesses} = lists:keytake(MRef, 1, Processes),
     ?log_debug("Observed json rpc process ~p died with reason ~p", [{Label, Pid}, Reason]),
     {noreply, State#state{rpc_processes = NewProcesses}};
 
@@ -113,30 +113,34 @@ maybe_notify_cbauth(#state{rpc_processes = Processes,
         CBAuthInfo ->
             State;
         Info ->
-            [notify_cbauth(Label, Info) || {_, Label} <- Processes],
+            [notify_cbauth(Label, Pid, Info) || {_, {Label, Pid}} <- Processes],
             State#state{cbauth_info = Info}
     end.
 
-notify_cbauth(Label, Info) ->
+notify_cbauth(Label, Pid, Info) ->
     Method = "AuthCacheSvc.UpdateDB",
     SpecialUser = ns_config_auth:get_user(special) ++ erlang:atom_to_list(Label),
     NewInfo = {[{specialUser, erlang:list_to_binary(SpecialUser)} | Info]},
 
     try json_rpc_connection:perform_call(Label, Method, NewInfo) of
-        {error, <<"rpc: can't find method ", _/binary>>} ->
-            ?log_debug("Rpc connection ~p doesn't implement ~p", [Label, Method]),
-            {error, method_not_found};
-        {error, <<"rpc: can't find service ", _/binary>>} ->
-            ?log_debug("Rpc connection ~p doesn't implement ~p", [Label, Method]),
-            {error, method_not_found};
+        {error, method_not_found} ->
+            error;
+        {error, {rpc_error, _}} ->
+            error;
         {error, Error} ->
-            ?log_error("Error returned from go component ~p: ~p", [Label, Error]),
-            {error, Error};
+            ?log_error("Error returned from go component ~p: ~p. This shouldn't happen but crash it just in case.",
+                       [{Label, Pid}, Error]),
+            exit(Pid, Error),
+            error;
         {ok, true} ->
             ok
     catch exit:{noproc, _} ->
-            ?log_debug("Process for label ~p is already dead", [Label]),
-            {error, noproc}
+            ?log_debug("Process ~p is already dead", [{Label, Pid}]),
+            error;
+          exit:{Reason, _} ->
+            ?log_debug("Process ~p has exited during the call with reason ~p",
+                       [{Label, Pid}, Reason]),
+            error
     end.
 
 build_node_info(N, Config) ->
@@ -162,8 +166,8 @@ build_node_info(N, User, Config) ->
        erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_pass))},
       {ports, [Port || {_Key, Port} <- Services]}] ++ Local}.
 
-build_buckets_info() ->
-    Buckets = ns_bucket:get_buckets(),
+build_buckets_info(Config) ->
+    Buckets = ns_bucket:get_buckets(Config),
     lists:map(fun ({BucketName, BucketProps}) ->
                       {[{name, erlang:list_to_binary(BucketName)},
                         {password,
@@ -175,8 +179,8 @@ build_buckets_info() ->
                          end}]}
               end, Buckets).
 
-build_cred_info(Name, Role) ->
-    case ns_config_auth:get_creds(Role) of
+build_cred_info(Config, Name, Role) ->
+    case ns_config_auth:get_creds(Config, Role) of
         {User, Salt, Mac} ->
             [{Name, {[{user, erlang:list_to_binary(User)},
                       {salt, base64:encode(Salt)},
@@ -194,14 +198,14 @@ build_auth_info() ->
                                     Info ->
                                         [Info | Acc]
                                 end
-                        end, [], ns_node_disco:nodes_wanted()),
+                        end, [], ns_node_disco:nodes_wanted(Config)),
 
     TokenURL = io_lib:format("http://127.0.0.1:~w/_cbauth", [misc:node_rest_port(Config, node())]),
 
     [{nodes, Nodes},
-     {buckets, build_buckets_info()},
+     {buckets, build_buckets_info(Config)},
      {tokenCheckURL, iolist_to_binary(TokenURL)}
-     | (build_cred_info(admin, admin) ++ build_cred_info(roAdmin, ro_admin))].
+     | (build_cred_info(Config, admin, admin) ++ build_cred_info(Config, roAdmin, ro_admin))].
 
 handle_cbauth_post(Req) ->
     Role = menelaus_auth:get_role(Req),

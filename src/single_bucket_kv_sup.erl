@@ -35,6 +35,8 @@ child_specs(BucketName) ->
       permanent, infinity, supervisor, [ns_vbm_sup]},
      {{dcp_sup, BucketName}, {dcp_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [dcp_sup]},
+     {{dcp_replication_manager, BucketName}, {dcp_replication_manager, start_link, [BucketName]},
+      permanent, 1000, worker, []},
      {{replication_manager, BucketName}, {replication_manager, start_link, [BucketName]},
       permanent, 1000, worker, []},
      {{dcp_notifier, BucketName}, {dcp_notifier, start_link, [BucketName]},

@@ -62,7 +62,7 @@ start_link(Name, Path, Opts) ->
     gen_server:start_link({local, Name}, ?MODULE, [Name, Path, Opts], []).
 
 meta() ->
-    [async,
+    [{async, true},
      {type, preformatted}].
 
 init([Name, Path, Opts]) ->

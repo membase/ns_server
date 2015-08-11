@@ -34,7 +34,7 @@ frequent_crashes_run() ->
                    1000,
                    worker, []},
                   {c2, {erlang, apply, [fun frequent_crashes_child_start_link/1, [frequent_crashes_child_2]]},
-                   {permanent, 0},
+                   {permanent, 1},
                    1000,
                    worker, []}],
     {ok, Sup} = supervisor2:start_link(?MODULE,
@@ -70,6 +70,11 @@ frequent_crashes_run() ->
     timer:sleep(500),
 
     ?assertNotEqual(undefined, find_child(Sup, c1)),
+
+    %% delayed restarts reset the restart counters; this makes it two; the
+    %% next shutdown should delay the restart again
+    sync_shutdown_child(find_child(Sup, c2), die),
+    ?assertNotEqual(undefined, find_child(Sup, c2)),
 
     sync_shutdown_child(find_child(Sup, c1), die1),
     sync_shutdown_child(find_child(Sup, c2), die),

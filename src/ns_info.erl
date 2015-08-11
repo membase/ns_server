@@ -53,7 +53,7 @@ basic_info() ->
       {advertised_version, cluster_compat_mode:mb_master_advertised_version()},
       {system_arch, system_arch()},
       {wall_clock, trunc(WallClockMSecs / 1000)},
-      {memory_data, memsup:get_memory_data()},
+      {memory_data, ns_storage_conf:this_node_memory_data()},
       {disk_data, ns_disksup:get_disk_data()}]}.
 
 system_arch() ->

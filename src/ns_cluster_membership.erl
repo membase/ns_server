@@ -43,16 +43,16 @@
          node_services/2,
          non_kv_active_nodes/0,
          non_kv_active_nodes/1,
+         service_active_nodes/3,
          is_active_non_kv_node/1,
          is_active_non_kv_node/2,
          filter_out_non_kv_nodes/1,
          filter_out_non_kv_nodes/2,
          should_run_service/2,
          should_run_service/3,
-         service_active_nodes/2,
-         n1ql_active_nodes/1,
-         index_active_nodes/0,
-         index_active_nodes/1]).
+         n1ql_active_nodes/2,
+         index_active_nodes/2,
+         user_friendly_service_name/1]).
 
 active_nodes() ->
     active_nodes(ns_config:get()).
@@ -137,8 +137,8 @@ failover(Node) ->
 re_failover_possible(NodeString) ->
     case (catch list_to_existing_atom(NodeString)) of
         Node when is_atom(Node) ->
-            RecoveryType = ns_config:search('latest-config-marker', {node, Node, recovery_type}, none),
-            Membership = ns_config:search('latest-config-marker', {node, Node, membership}),
+            RecoveryType = ns_config:search(ns_config:latest(), {node, Node, recovery_type}, none),
+            Membership = ns_config:search(ns_config:latest(), {node, Node, membership}),
             Ok = (lists:member(Node, ns_node_disco:nodes_wanted())
                   andalso RecoveryType =/= none
                   andalso Membership =:= {value, inactiveAdded}),
@@ -221,7 +221,7 @@ node_services(Config, Node) ->
     end.
 
 non_kv_active_nodes() ->
-    non_kv_active_nodes(ns_config:latest_config_marker()).
+    non_kv_active_nodes(ns_config:latest()).
 
 non_kv_active_nodes(Config) ->
     ActiveNodes = ns_cluster_membership:active_nodes(Config),
@@ -229,21 +229,21 @@ non_kv_active_nodes(Config) ->
 
 
 is_active_non_kv_node(Node) ->
-    is_active_non_kv_node(Node, ns_config:latest_config_marker()).
+    is_active_non_kv_node(Node, ns_config:latest()).
 
 is_active_non_kv_node(Node, Config) ->
     get_cluster_membership(Node, Config) =:= active
         andalso not lists:member(kv, node_services(Config, Node)).
 
 filter_out_non_kv_nodes(Nodes) ->
-    filter_out_non_kv_nodes(Nodes, ns_config:latest_config_marker()).
+    filter_out_non_kv_nodes(Nodes, ns_config:latest()).
 
 filter_out_non_kv_nodes(Nodes, Config) ->
     [N || N <- Nodes,
           kv <- ns_cluster_membership:node_services(Config, N)].
 
 should_run_service(Service, Node) ->
-    should_run_service(ns_config:latest_config_marker(), Service, Node).
+    should_run_service(ns_config:latest(), Service, Node).
 
 should_run_service(Config, Service, Node) ->
     case ns_config_auth:is_system_provisioned()
@@ -254,16 +254,26 @@ should_run_service(Config, Service, Node) ->
             lists:member(Service, Svcs)
     end.
 
-service_active_nodes(Config, Service) ->
-    [N || N <- ns_cluster_membership:active_nodes(Config),
-          ServiceC <- ns_cluster_membership:node_services(Config, N),
+service_active_nodes(Config, Service, Status) ->
+    AllNodes = case Status of
+                   actual ->
+                       actual_active_nodes(Config);
+                   all ->
+                       active_nodes(Config)
+               end,
+    [N || N <- AllNodes,
+          ServiceC <- node_services(Config, N),
           ServiceC =:= Service].
 
-n1ql_active_nodes(Config) ->
-    service_active_nodes(Config, n1ql).
+n1ql_active_nodes(Config, Status) ->
+    service_active_nodes(Config, n1ql, Status).
 
-index_active_nodes() ->
-    index_active_nodes(ns_config:latest_config_marker()).
+index_active_nodes(Config, Status) ->
+    service_active_nodes(Config, index, Status).
 
-index_active_nodes(Config) ->
-    service_active_nodes(Config, index).
+user_friendly_service_name(kv) ->
+    data;
+user_friendly_service_name(n1ql) ->
+    query;
+user_friendly_service_name(Service) ->
+    Service.

@@ -21,10 +21,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include("ns_common.hrl").
+-include("ns_config.hrl").
 
--export([memory_quota/0,
-         memory_quota/1,
-         setup_disk_storage_conf/2,
+-export([setup_disk_storage_conf/2,
          storage_conf/1, storage_conf_from_node_status/1,
          query_storage_conf/0,
          local_bucket_disk_usage/1,
@@ -36,20 +35,15 @@
 
 -export([cluster_storage_info/0, nodes_storage_info/1]).
 
--export([allowed_node_quota_range/1, allowed_node_quota_range/0,
-         default_memory_quota/1,
-         allowed_node_quota_max_for_joined_nodes/0,
-         this_node_memory_data/0]).
+-export([this_node_memory_data/0]).
 
 -export([extract_disk_stats_for_path/2]).
 
-
-memory_quota() ->
-    memory_quota(ns_config:latest_config_marker()).
-
-memory_quota(Config) ->
-    {value, RV} = ns_config:search(Config, memory_quota),
-    RV.
+-export([check_quotas/3]).
+-export([check_this_node_quotas/2]).
+-export([get_memory_quota/1, get_memory_quota/2, get_memory_quota/3]).
+-export([set_quotas/2]).
+-export([default_quotas/1, default_quotas/2]).
 
 setup_db_and_ix_paths() ->
     setup_db_and_ix_paths(ns_couchdb_api:get_db_and_ix_paths()),
@@ -93,7 +87,7 @@ this_node_ixdir() ->
 
 -spec this_node_logdir() -> {ok, string()} | {error, any()}.
 this_node_logdir() ->
-    logdir(ns_config:latest_config_marker(), node()).
+    logdir(ns_config:latest(), node()).
 
 -spec logdir(any(), atom()) -> {ok, string()} | {error, any()}.
 logdir(Config, Node) ->
@@ -309,8 +303,8 @@ do_cluster_storage_info(NodeInfos) ->
     RAMQuotaUsed = RAMQuotaUsedPerNode * NodesCount,
 
     RAMQuotaTotalPerNode =
-        case memory_quota(Config) of
-            MemQuotaMB when is_integer(MemQuotaMB) ->
+        case get_memory_quota(Config, kv) of
+            {ok, MemQuotaMB} ->
                 MemQuotaMB * ?MIB;
             _ ->
                 0
@@ -325,7 +319,8 @@ do_cluster_storage_info(NodeInfos) ->
 
     BucketsRAMUsage = interesting_stats_total_rec(AllInterestingStats, mem_used, 0),
     BucketsDiskUsage = interesting_stats_total_rec(AllInterestingStats, couch_docs_actual_disk_size, 0)
-        + interesting_stats_total_rec(AllInterestingStats, couch_views_actual_disk_size, 0),
+        + interesting_stats_total_rec(AllInterestingStats, couch_views_actual_disk_size, 0)
+        + interesting_stats_total_rec(AllInterestingStats, couch_spatial_disk_size, 0),
 
     RAMUsed = erlang:max(lists:sum(extract_subprop(StorageInfos, ram, used)),
                          BucketsRAMUsage),
@@ -485,54 +480,199 @@ this_node_memory_data() ->
             {RAMBytes, 0, 0}
     end.
 
-allowed_node_quota_range() ->
-    MemoryData = this_node_memory_data(),
-    allowed_node_quota_range(ns_config:latest_config_marker(), MemoryData, 1024).
+allowed_memory_usage_max(MemSupData) ->
+    {MaxMemoryBytes0, _, _} = MemSupData,
+    MinusMegs = ?MIN_FREE_RAM,
 
-allowed_node_quota_range(MemoryData) ->
-    allowed_node_quota_range(ns_config:latest_config_marker(), MemoryData, 1024).
-
-%% when validating memory size versus cluster quota we use less strict
-%% rules so that clusters upgraded from 1.6.0 are able to join
-%% homogeneous nodes. See MB-2762
-allowed_node_quota_max_for_joined_nodes() ->
-    MemoryData = this_node_memory_data(),
-    {_, MaxMemoryMB, _} = allowed_node_quota_range(undefined, MemoryData, 512),
+    MaxMemoryMBPercent = (MaxMemoryBytes0 * ?MIN_FREE_RAM_PERCENT) div (100 * ?MIB),
+    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div ?MIB) - MinusMegs, MaxMemoryMBPercent]),
     MaxMemoryMB.
 
-allowed_node_quota_range(Config, MemSupData, MinusMegs) ->
-    {MaxMemoryBytes0, _, _} = MemSupData,
-    MinMemoryMB = case Config of
-                      undefined ->
-                          256;
-                      _ ->
-                          erlang:max(256, get_total_buckets_ram_quota(Config) div ?MIB)
-                  end,
+-type quota_result() :: ok | {error, quota_error()}.
+-type quota_error() ::
+        {total_quota_too_high, node(), Value :: integer(), MaxAllowed :: pos_integer()} |
+        {service_quota_too_low, service(), Value :: integer(), MinRequired :: pos_integer()}.
+-type quotas() :: [{service(), integer()}].
 
-    MaxMemoryMBPercent = (MaxMemoryBytes0 * 4) div (5 * ?MIB),
-    MaxMemoryMB = lists:max([(MaxMemoryBytes0 div ?MIB) - MinusMegs,
-                             MaxMemoryMBPercent]),
-    QuotaErrorDetailsFun =
-        fun () ->
-                case MaxMemoryMB of
-                    MaxMemoryMBPercent ->
-                        io_lib:format(" Quota must be between ~w MB and ~w MB (80% of memory size).",
-                                      [MinMemoryMB, MaxMemoryMB]);
-                    _ ->
-                        io_lib:format(" Quota must be between ~w MB and ~w MB (memory size minus ~w MB).",
-                                      [MinMemoryMB, MaxMemoryMB, MinusMegs])
-                end
-        end,
-    {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun}.
-
-default_memory_quota(MemSupData) ->
-    {Min, Max, _} = allowed_node_quota_range(undefined, MemSupData, 1024),
-    {MaxMemoryBytes0, _, _} = MemSupData,
-    Value = (MaxMemoryBytes0 * 3) div (5 * ?MIB),
-    if Value > Max ->
-            Max;
-       Value < Min ->
-            Min;
-       true ->
-            Value
+-spec check_quotas([NodeInfo], ns_config(), quotas()) -> quota_result() when
+      NodeInfo :: {node(), [service()], MemoryData :: term()}.
+check_quotas(NodeInfos, Config, Quotas) ->
+    case check_service_quotas(Quotas, Config) of
+        ok ->
+            check_quotas_loop(NodeInfos, Quotas);
+        Error ->
+            Error
     end.
+
+check_quotas_loop([], _) ->
+    ok;
+check_quotas_loop([{Node, Services, MemoryData} | Rest], Quotas) ->
+    TotalQuota = lists:sum([Q || {S, Q} <- Quotas, lists:member(S, Services)]),
+    case check_node_total_quota(Node, TotalQuota, MemoryData) of
+        ok ->
+            check_quotas_loop(Rest, Quotas);
+        Error ->
+            Error
+    end.
+
+check_node_total_quota(Node, TotalQuota, MemoryData) ->
+    Max = allowed_memory_usage_max(MemoryData),
+    case TotalQuota =< Max of
+        true ->
+            ok;
+        false ->
+            {error, {total_quota_too_high, Node, TotalQuota, Max}}
+    end.
+
+check_service_quotas([], _) ->
+    ok;
+check_service_quotas([{Service, Quota} | Rest], Config) ->
+    case check_service_quota(Service, Quota, Config) of
+        ok ->
+            check_service_quotas(Rest, Config);
+        Error ->
+            Error
+    end.
+
+-define(MIN_BUCKET_QUOTA, 256).
+-define(MIN_INDEX_QUOTA, 256).
+
+check_service_quota(kv, Quota, Config) ->
+    MinMemoryMB0 = ?MIN_BUCKET_QUOTA,
+
+    BucketsQuota = get_total_buckets_ram_quota(Config) div ?MIB,
+    MinMemoryMB = erlang:max(MinMemoryMB0, BucketsQuota),
+
+    case Quota >= MinMemoryMB of
+        true ->
+            ok;
+        false ->
+            {error, {service_quota_too_low, kv, Quota, MinMemoryMB}}
+    end;
+check_service_quota(index, Quota, _) ->
+    MinQuota = ?MIN_INDEX_QUOTA,
+
+    case Quota >= MinQuota of
+        true ->
+            ok;
+        false ->
+            {error, {service_quota_too_low, index, Quota, MinQuota}}
+    end.
+
+%% check that the node has enough memory for the quotas; note that we do not
+%% validate service quota values because we expect them to be validated by the
+%% calling side
+-spec check_this_node_quotas([service()], quotas()) -> quota_result().
+check_this_node_quotas(Services, Quotas0) ->
+    Quotas = [{S, Q} || {S, Q} <- Quotas0, lists:member(S, Services)],
+    MemoryData = this_node_memory_data(),
+    TotalQuota = lists:sum([Q || {_, Q} <- Quotas]),
+
+    check_node_total_quota(node(), TotalQuota, MemoryData).
+
+get_memory_quota(Service) ->
+    get_memory_quota(ns_config:latest(), Service).
+
+get_memory_quota(Config, kv) ->
+    case ns_config:search(Config, memory_quota) of
+        {value, Quota} ->
+            {ok, Quota};
+        false ->
+            not_found
+    end;
+get_memory_quota(Config, index) ->
+    NotFound = make_ref(),
+    case index_settings_manager:get_from_config(Config, memoryQuota, NotFound) of
+        NotFound ->
+            not_found;
+        Quota ->
+            {ok, Quota}
+    end.
+
+get_memory_quota(Config, Service, Default) ->
+    case get_memory_quota(Config, Service) of
+        {ok, Quota} ->
+            Quota;
+        not_found ->
+            Default
+    end.
+
+set_quotas(Config, Quotas) ->
+    RV = ns_config:run_txn_with_config(
+           Config,
+           fun (Cfg, SetFn) ->
+                   NewCfg =
+                       lists:foldl(
+                         fun ({Service, Quota}, Acc) ->
+                                 do_set_memory_quota(Service, Quota, Acc, SetFn)
+                         end, Cfg, Quotas),
+                   {commit, NewCfg}
+           end),
+
+    case RV of
+        {commit, _} ->
+            ok;
+        retry_needed ->
+            retry_needed
+    end.
+
+do_set_memory_quota(kv, Quota, Cfg, SetFn) ->
+    SetFn(memory_quota, Quota, Cfg);
+do_set_memory_quota(index, Quota, Cfg, SetFn) ->
+    Txn = index_settings_manager:update_txn([{memoryQuota, Quota}]),
+
+    {commit, NewCfg, _} = Txn(Cfg, SetFn),
+    NewCfg.
+
+default_quota(Service, Memory, Max) ->
+    {Min, Quota} = do_default_quota(Service, Memory),
+
+    %% note that this prefers enforcing minimum quota which for very small
+    %% amounts of RAM can result in combined quota be actually larger than RAM
+    %% size; but we don't really support such small machines anyway
+    if Quota < Min ->
+            Min;
+       Quota > Max ->
+            Max;
+       true ->
+            Quota
+    end.
+
+do_default_quota(kv, Memory) ->
+    KvQuota = (Memory * 3) div 5,
+    {?MIN_BUCKET_QUOTA, KvQuota};
+do_default_quota(index, Memory) ->
+    IndexQuota = (Memory * 3) div 5,
+    {?MIN_INDEX_QUOTA, IndexQuota}.
+
+services_ranking() ->
+    [kv, index].
+
+default_quotas(Services) ->
+    %% this is actually bogus, because nodes can be heterogeneous; but that's
+    %% best we can do
+    MemSupData = this_node_memory_data(),
+    default_quotas(Services, MemSupData).
+
+default_quotas(Services, MemSupData) ->
+    {MemoryBytes, _, _} = MemSupData,
+    Memory = MemoryBytes div ?MIB,
+    MemoryMax = allowed_memory_usage_max(MemSupData),
+
+    {_, _, Result} =
+        lists:foldl(
+          fun (Service, {AccMem, AccMax, AccResult} = Acc) ->
+                  case lists:member(Service, Services) of
+                      true ->
+                          Quota = default_quota(Service, AccMem, AccMax),
+                          AccMem1 = AccMem - Quota,
+                          AccMax1 = AccMax - Quota,
+                          AccResult1 = [{Service, Quota} | AccResult],
+
+                          {AccMem1, AccMax1, AccResult1};
+                      false ->
+                          Acc
+                  end
+          end, {Memory, MemoryMax, []}, services_ranking()),
+
+    Result.

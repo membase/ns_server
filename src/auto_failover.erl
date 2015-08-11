@@ -51,18 +51,21 @@
 -define(EVENT_OTHER_NODES_DOWN, 3).
 %% @doc Fired when the cluster gets to small to do a safe auto-failover
 -define(EVENT_CLUSTER_TOO_SMALL, 4).
+%% @doc Fired when a node is not auto-failedover because auto-failover
+%% for one of the services running on the node is disabled.
+-define(EVENT_AUTO_FAILOVER_DISABLED, 5).
 
 %% @doc The time a stats request to a bucket may take (in milliseconds)
 -define(STATS_TIMEOUT, 2000).
 
 -record(state, {
           auto_failover_logic_state,
-          % Reference to the ns_tick_event. If it is nil, auto-failover is
-          % disabled.
+          %% Reference to the ns_tick_event. If it is nil, auto-failover is
+          %% disabled.
           tick_ref=nil :: nil | timer:tref(),
-          % Time a node needs to be down until it is automatically failovered
+          %% Time a node needs to be down until it is automatically failovered
           timeout=nil :: nil | integer(),
-          % Counts the number of nodes that were already auto-failovered
+          %% Counts the number of nodes that were already auto-failovered
           count=0 :: non_neg_integer(),
 
           %% Whether we reported to the user autofailover_unsafe condition
@@ -123,6 +126,7 @@ alert_key(?EVENT_NODE_AUTO_FAILOVERED) -> auto_failover_node;
 alert_key(?EVENT_MAX_REACHED) -> auto_failover_maximum_reached;
 alert_key(?EVENT_OTHER_NODES_DOWN) -> auto_failover_other_nodes_down;
 alert_key(?EVENT_CLUSTER_TOO_SMALL) -> auto_failover_cluster_too_small;
+alert_key(?EVENT_AUTO_FAILOVER_DISABLED) -> auto_failover_disabled;
 alert_key(_) -> all.
 
 %% @doc Returns a list of all alerts that might send out an email notification.
@@ -131,7 +135,8 @@ alert_keys() ->
     [auto_failover_node,
      auto_failover_maximum_reached,
      auto_failover_other_nodes_down,
-     auto_failover_cluster_too_small].
+     auto_failover_cluster_too_small,
+     auto_failover_disabled].
 
 %%
 %% gen_server callbacks
@@ -244,17 +249,25 @@ handle_info(tick, State0) ->
                   end
           end, dict:new(), Config),
 
+    %% Extract service specfic information from the Config
+    ServicesConfig = all_services_config(Config),
+
     {Actions, LogicState} =
         auto_failover_logic:process_frame(attach_node_uuids(NonPendingNodes, NodeUUIDs),
                                           attach_node_uuids(CurrentlyDown, NodeUUIDs),
-                                          State#state.auto_failover_logic_state),
+                                          State#state.auto_failover_logic_state,
+                                          ServicesConfig),
     NewState =
         lists:foldl(
-          fun ({mail_too_small, {Node, _UUID}}, S) ->
+          fun ({mail_too_small, Service, SvcNodes, {Node, _UUID}}, S) ->
                   ?user_log(?EVENT_CLUSTER_TOO_SMALL,
                             "Could not auto-failover node (~p). "
-                            "Cluster was too small, you need at least 2 other nodes.~n",
-                            [Node]),
+                            "Number of nodes running ~p service is ~p. "
+                            "You need at least ~p nodes.",
+                            [Node,
+                             ns_cluster_membership:user_friendly_service_name(Service),
+                             length(SvcNodes),
+                             auto_failover_logic:service_failover_min_node_count(Service) + 1]),
                   S;
               ({_, {Node, _UUID}}, #state{count=1} = S) ->
                   case should_report(#state.reported_max_reached, S) of
@@ -262,7 +275,7 @@ handle_info(tick, State0) ->
                           ?user_log(?EVENT_MAX_REACHED,
                                     "Could not auto-failover more nodes (~p). "
                                     "Maximum number of nodes that will be "
-                                    "automatically failovered (1) is reached.~n",
+                                    "automatically failovered (1) is reached.",
                                     [Node]),
                           note_reported(#state.reported_max_reached, S);
                       false ->
@@ -271,8 +284,14 @@ handle_info(tick, State0) ->
               ({mail_down_warning, {Node, _UUID}}, S) ->
                   ?user_log(?EVENT_OTHER_NODES_DOWN,
                             "Could not auto-failover node (~p). "
-                            "There was at least another node down.~n",
+                            "There was at least another node down.",
                             [Node]),
+                  S;
+              ({mail_auto_failover_disabled, Service, {Node, _UUID}}, S) ->
+                  ?user_log(?EVENT_AUTO_FAILOVER_DISABLED,
+                            "Could not auto-failover node (~p). "
+                            "Auto-failover for ~p service is disbaled.",
+                            [Node, ns_cluster_membership:user_friendly_service_name(Service)]),
                   S;
               ({failover, {Node, _UUID}}, S) ->
                   case ns_orchestrator:try_autofailover(Node) of
@@ -340,7 +359,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc Returns a list of nodes that should be active, but are not running.
 -spec actual_down_nodes(dict(), [atom()], [{atom(), term()}]) -> [atom()].
 actual_down_nodes(NodesDict, NonPendingNodes, Config) ->
-    % Get all buckets
+    %% Get all buckets
     BucketConfigs = ns_bucket:get_buckets(Config),
     actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, erlang:now()).
 
@@ -370,9 +389,9 @@ actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, Now) ->
 -spec make_state_persistent(State::#state{}) -> ok.
 make_state_persistent(State) ->
     Enabled = case State#state.tick_ref of
-        nil -> false;
-        _ -> true
-    end,
+                  nil -> false;
+                  _ -> true
+              end,
     ns_config:set(auto_failover_cfg,
                   [{enabled, Enabled},
                    {timeout, State#state.timeout},
@@ -398,6 +417,31 @@ update_reported_flags_by_actions(Actions, State) ->
         true ->
             State
     end.
+
+%% Create a list of all services with following info for each service:
+%% - is auto-failover for the service disabled
+%% - list of nodes that are currently running the service.
+all_services_config(Config) ->
+    %% Get list of all supported services
+    AllServices = ns_cluster_membership:supported_services(),
+    lists:map(
+      fun (Service) ->
+              %% Get list of all nodes running the service.
+              SvcNodes = ns_cluster_membership:service_active_nodes(Config,
+                                                                    Service, all),
+              %% Is auto-failover for the service disabled?
+              ServiceKey = {auto_failover_disabled, Service},
+              DV = case Service of
+                       index ->
+                           %% Auto-failover disabled by default for index service.
+                           true;
+                       _ ->
+                           false
+                   end,
+              AutoFailoverDisabled = ns_config:search(Config, ServiceKey, DV),
+              {Service, {{disable_auto_failover, AutoFailoverDisabled},
+                         {nodes, SvcNodes}}}
+      end, AllServices).
 
 attach_node_uuids(Nodes, UUIDDict) ->
     lists:map(

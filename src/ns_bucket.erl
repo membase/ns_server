@@ -123,7 +123,6 @@ config_string(BucketName) ->
                       "tap_noop_interval=~B;"
                       "max_size=~B;"
                       "tap_keepalive=~B;dbname=~s;"
-                      "allow_data_loss_during_shutdown=true;"
                       "backend=couchdb;couch_bucket=~s;max_vbuckets=~B;"
                       "alog_path=~s;data_traffic_enabled=false;max_num_workers=~B;"
                       "uuid=~s;item_eviction_policy=~s",
@@ -178,7 +177,7 @@ couchbase_bucket_exists(Bucket) ->
     end.
 
 get_bucket(Bucket) ->
-    get_bucket(Bucket, ns_config:latest_config_marker()).
+    get_bucket(Bucket, ns_config:latest()).
 
 get_bucket_with_vclock(Bucket, Config) ->
     {value, [{configs, AllBuckets}], BucketVC} = ns_config:search_with_vclock(Config, buckets),
@@ -229,7 +228,7 @@ get_bucket_names(Type, BucketConfigs) ->
              proplists:get_value(type, Config) == Type].
 
 get_buckets() ->
-    get_buckets(ns_config:latest_config_marker()).
+    get_buckets(ns_config:latest()).
 
 get_buckets(Config) ->
     ns_config:search_prop(Config, buckets, configs, []).
@@ -873,7 +872,7 @@ update_vbucket_map_history(Map, SanifiedOptions) ->
     ns_config:set(vbucket_map_history, History2).
 
 past_vbucket_maps() ->
-    past_vbucket_maps('latest-config-marker').
+    past_vbucket_maps(ns_config:latest()).
 
 past_vbucket_maps(Config) ->
     case ns_config:search(Config, vbucket_map_history) of
@@ -919,7 +918,7 @@ is_compatible_past_map(Nodes, BucketConfig, Map) ->
     lists:member(Map, Matching).
 
 bucket_view_nodes(Bucket) ->
-    bucket_view_nodes(Bucket, ns_config:latest_config_marker()).
+    bucket_view_nodes(Bucket, ns_config:latest()).
 
 bucket_view_nodes(Bucket, Config) ->
     case ns_bucket:get_bucket(Bucket, Config) of
@@ -930,7 +929,7 @@ bucket_view_nodes(Bucket, Config) ->
     end.
 
 bucket_config_view_nodes(BucketConfig) ->
-    bucket_config_view_nodes(BucketConfig, ns_config:latest_config_marker()).
+    bucket_config_view_nodes(BucketConfig, ns_config:latest()).
 
 bucket_config_view_nodes(BucketConfig, Config) ->
     case bucket_type(BucketConfig) of

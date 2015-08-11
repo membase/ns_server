@@ -17,7 +17,10 @@
 
 -include("ns_common.hrl").
 
--export([verify_creds/2]).
+-export([build_settings/0,
+         set_settings/1,
+         check/2
+        ]).
 
 verify_creds(Username, Password) ->
     case json_rpc_connection:perform_call('saslauthd-saslauthd-port', "SASLDAuth.Check",
@@ -28,4 +31,48 @@ verify_creds(Username, Password) ->
         {error, ErrorMsg} = Error ->
             ?log_error("Revrpc to saslauthd returned error: ~p", [ErrorMsg]),
             Error
+    end.
+
+build_settings() ->
+    case ns_config:search(saslauthd_auth_settings) of
+        {value, Settings} ->
+            Settings;
+        false ->
+            [{enabled, false},
+             {admins, []},
+             {roAdmins, []}]
+    end.
+
+set_settings(Settings) ->
+    ns_config:set(saslauthd_auth_settings, Settings).
+
+check(User, Password) ->
+    LDAPCfg = build_settings(),
+    Enabled = ({enabled, true} =:= lists:keyfind(enabled, 1, LDAPCfg)),
+    case Enabled of
+        false ->
+            false;
+        true ->
+            case verify_creds(User, Password) of
+                true ->
+                    {_, Admins} = lists:keyfind(admins, 1, LDAPCfg),
+                    {_, RoAdmins} = lists:keyfind(roAdmins, 1, LDAPCfg),
+                    UserB = list_to_binary(User),
+                    IsAdmin = is_list(Admins) andalso lists:member(UserB, Admins),
+                    IsRoAdmin = is_list(RoAdmins) andalso lists:member(UserB, RoAdmins),
+                    if
+                        IsAdmin ->
+                            admin;
+                        IsRoAdmin ->
+                            ro_admin;
+                        Admins =:= asterisk ->
+                            admin;
+                        RoAdmins =:= asterisk ->
+                            ro_admin;
+                        true ->
+                            false
+                    end;
+                Other ->
+                    Other
+            end
     end.

@@ -78,6 +78,7 @@
 -define(CREATE_BUCKET_TIMEOUT, ns_config:get_global_timeout(create_bucket, 5000)).
 -define(RECOVERY_QUERY_STATES_TIMEOUT,
         ns_config:get_global_timeout(recovery_query_states, 5000)).
+-define(JANITOR_INTERVAL, ns_config:read_key_fast(janitor_interval, 10000)).
 
 %% gen_fsm callbacks
 -export([code_change/4,
@@ -318,7 +319,7 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
 init([]) ->
     process_flag(trap_exit, true),
     self() ! janitor,
-    timer2:send_interval(10000, janitor),
+    timer2:send_interval(?JANITOR_INTERVAL, janitor),
 
     try
         consider_switching_compat_mode()

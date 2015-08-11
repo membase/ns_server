@@ -20,7 +20,8 @@
 -behavior(gen_server).
 
 %% API
--export([start_link/0, update/1, get_status/1, get_indexes/0]).
+-export([start_link/0, update/1, get_status/1,
+         get_indexes/0, get_indexes_version/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -29,6 +30,8 @@
 -define(REFRESH_INTERVAL,
         ns_config:get_timeout(index_status_keeper_refresh, 5000)).
 -define(WORKER, index_status_keeper_worker).
+-define(STALE_THRESHOLD,
+        ns_config:read_key_fast(index_status_keeper_stale_threshold, 2)).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -42,24 +45,39 @@ get_status(Timeout) ->
 get_indexes() ->
     gen_server:call(?MODULE, get_indexes).
 
+get_indexes_version() ->
+    gen_server:call(?MODULE, get_indexes_version).
+
 -record(state, {num_connections,
+
                 indexes,
+                indexes_stale :: true | {false, non_neg_integer()},
+                indexes_version,
 
                 restart_pending,
                 source :: local | {remote, [node()], non_neg_integer()}}).
 
 init([]) ->
-    self() ! refresh,
+    Self = self(),
 
-    ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/2, self()),
+    Self ! refresh,
 
-    {ok, #state{num_connections = 0,
-                indexes = [],
-                restart_pending = false,
-                source = get_source()}}.
+    ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/2, Self),
+    ns_pubsub:subscribe_link(ns_node_disco_events, fun handle_node_disco_event/2, Self),
 
-handle_call(get_indexes, _From, #state{indexes = Indexes} = State) ->
-    {reply, {ok, Indexes}, State};
+    State = #state{num_connections = 0,
+                   restart_pending = false,
+                   source = get_source()},
+
+    {ok, set_indexes([], State)}.
+
+handle_call(get_indexes, _From, #state{indexes = Indexes,
+                                       indexes_stale = StaleInfo,
+                                       indexes_version = Version} = State) ->
+    {reply, {ok, Indexes, is_stale(StaleInfo), Version}, State};
+handle_call(get_indexes_version, _From,
+            #state{indexes_version = Version} = State) ->
+    {reply, {ok, Version}, State};
 handle_call(get_status, _From,
             #state{num_connections = NumConnections} = State) ->
     Status = [{num_connections, NumConnections}],
@@ -81,21 +99,23 @@ handle_cast({update, Status}, #state{source = local} = State) ->
 handle_cast({update, _}, State) ->
     ?log_warning("Got unexpected status update when source is not local. Ignoring."),
     {noreply, State};
-handle_cast({refresh_done, Status}, State) ->
+handle_cast({refresh_done, Result}, State) ->
     NewState =
-        case Status of
-            failed ->
-                State;
-            _ ->
-                State#state{indexes = Status}
+        case Result of
+            {ok, Indexes} ->
+                set_indexes(Indexes, State);
+            {stale, Indexes} ->
+                set_stale(Indexes, State);
+            {error, _} ->
+                increment_stale(State)
         end,
 
     erlang:send_after(?REFRESH_INTERVAL, self(), refresh),
     {noreply, NewState};
 handle_cast(restart_done, #state{restart_pending = true} = State) ->
     {noreply, State#state{restart_pending = false}};
-handle_cast(notable_config_change, State) ->
-    misc:flush(notable_config_change),
+handle_cast(notable_event, State) ->
+    misc:flush(notable_event),
     {noreply, State#state{source = get_source()}}.
 
 handle_info(refresh, State) ->
@@ -147,13 +167,7 @@ refresh_status(State) ->
     work_queue:submit_work(
       ?WORKER,
       fun () ->
-              Status = case grab_status(State) of
-                           {ok, S} ->
-                               S;
-                           {error, _} ->
-                               failed
-                       end,
-              gen_server:cast(Self, {refresh_done, Status})
+              gen_server:cast(Self, {refresh_done, grab_status(State)})
       end).
 
 grab_status(#state{source = local}) ->
@@ -174,8 +188,19 @@ grab_status(#state{source = {remote, Nodes, NodesCount}}) ->
             Node = lists:nth(random:uniform(NodesCount), Nodes),
 
             try remote_api:get_indexes(Node) of
-                {ok, _} = R ->
-                    R;
+                {ok, Indexes, Stale, _Version} ->
+                    %% note that we're going to recompute the version instead
+                    %% of using the one from the remote node; that's because
+                    %% the version should be completely opaque; if we were to
+                    %% use it, that would imply that we assume the same
+                    %% algorithm for generation of the versions on all the
+                    %% nodes
+                    case Stale of
+                        true ->
+                            {stale, Indexes};
+                        false ->
+                            {ok, Indexes}
+                    end;
                 Error ->
                     ?log_error("Couldn't get indexes from node ~p: ~p", [Node, Error]),
                     {error, failed}
@@ -230,7 +255,7 @@ get_source() ->
         true ->
             local;
         false ->
-            IndexNodes = ns_cluster_membership:index_active_nodes(Config),
+            IndexNodes = ns_cluster_membership:index_active_nodes(Config, actual),
             {remote, IndexNodes, length(IndexNodes)}
     end.
 
@@ -246,8 +271,65 @@ is_notable(_) ->
 handle_config_event(Event, Pid) ->
     case is_notable(Event) of
         true ->
-            gen_server:cast(Pid, notable_config_change);
+            gen_server:cast(Pid, notable_event);
         false ->
             ok
     end,
     Pid.
+
+handle_node_disco_event(Event, Pid) ->
+    case Event of
+        {ns_node_disco_events, _NodesOld, _NodesNew} ->
+            gen_server:cast(Pid, notable_event);
+        false ->
+            ok
+    end,
+    Pid.
+
+set_indexes(Indexes, #state{indexes_version = OldVersion} = State) ->
+    Version = compute_version(Indexes, false),
+
+    case Version =:= OldVersion of
+        true ->
+            State;
+        false ->
+            notify_change(State#state{indexes = Indexes,
+                                      indexes_stale = {false, 0},
+                                      indexes_version = Version})
+    end.
+
+set_stale(#state{indexes = Indexes} = State) ->
+    Version = compute_version(Indexes, true),
+    notify_change(State#state{indexes_stale = true,
+                              indexes_version = Version}).
+
+set_stale(Indexes, State) ->
+    set_stale(State#state{indexes = Indexes}).
+
+increment_stale(#state{indexes_stale = StaleInfo} = State) ->
+    case StaleInfo of
+        true ->
+            %% we're already stale; no need to do anything
+            State;
+        {false, StaleCount} ->
+            NewStaleCount = StaleCount + 1,
+
+            case NewStaleCount >= ?STALE_THRESHOLD of
+                true ->
+                    set_stale(State);
+                false ->
+                    State#state{indexes_stale = {false, NewStaleCount}}
+            end
+    end.
+
+compute_version(Indexes, IsStale) ->
+    erlang:phash2({Indexes, IsStale}).
+
+notify_change(#state{indexes_version = Version} = State) ->
+    gen_event:notify(index_events, {indexes_change, Version}),
+    State.
+
+is_stale({false, _}) ->
+    false;
+is_stale(true) ->
+    true.

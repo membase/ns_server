@@ -68,7 +68,7 @@
          search_prop_tuple/3, search_prop_tuple/4,
          search_raw/2,
          search_with_vclock/2,
-         run_txn/1,
+         run_txn/1, run_txn_with_config/2,
          clear/0, clear/1,
          proplist_get_value/3,
          merge_kv_pairs/4,
@@ -78,7 +78,7 @@
          fold/3, read_key_fast/2, get_timeout/2, get_global_timeout/2,
          delete/1,
          strip_metadata/1, extract_vclock/1,
-         latest_config_marker/0]).
+         latest/0]).
 
 -export([compute_global_rev/1]).
 
@@ -197,28 +197,41 @@ set(Key, Value) ->
 run_txn(Body) ->
     run_txn_loop(Body, 10).
 
-run_txn_loop(_Body, 0) ->
-    retry_needed;
-run_txn_loop(Body, RetriesLeft) ->
-    FullConfig = ns_config:get(),
+run_txn_with_config(Config, Body) ->
+    run_txn_iter(Config, Body).
+
+run_txn_iter(FullConfig, Body) ->
     UUID = ns_config:uuid(FullConfig),
     Cfg = [get_kv_list_with_config(FullConfig)],
+
     SetFun = fun (Key, Value, Config) ->
                      run_txn_set(Key, Value, Config, UUID)
              end,
+
     case Body(Cfg, SetFun) of
         {commit, [NewCfg]} ->
             case cas_local_config(NewCfg, hd(Cfg)) of
                 true -> {commit, [NewCfg]};
-                false -> run_txn_loop(Body, RetriesLeft - 1)
+                false -> retry_needed
             end;
         {commit, [NewCfg], Extra} ->
             case cas_local_config(NewCfg, hd(Cfg)) of
                 true -> {commit, [NewCfg], Extra};
-                false -> run_txn_loop(Body, RetriesLeft - 1)
+                false -> retry_needed
             end;
         {abort, _} = AbortRV ->
             AbortRV
+    end.
+
+run_txn_loop(_Body, 0) ->
+    retry_needed;
+run_txn_loop(Body, RetriesLeft) ->
+    FullConfig = ns_config:get(),
+    case run_txn_iter(FullConfig, Body) of
+        retry_needed ->
+            run_txn_loop(Body, RetriesLeft -1);
+        Other ->
+            Other
     end.
 
 run_txn_set(Key, Value, [KVList], UUID) ->
@@ -327,15 +340,21 @@ update_key(Key, Fun) ->
                         end).
 
 update_key(Key, Fun, Default) ->
-    update_with_changes(fun (Config, UUID) ->
-                                case update_key_inner(Config, UUID, Key, Fun) of
-                                    false ->
-                                        NewConfig = update_config_key(Key, Default, Config, UUID),
-                                        {[hd(NewConfig)], NewConfig};
-                                    V ->
-                                        V
-                                end
-                        end).
+    update_with_changes(
+      fun (Config, UUID) ->
+              case update_key_inner(Config, UUID, Key, Fun) of
+                  false ->
+                      case Default of
+                          ?DELETED_MARKER ->
+                              {[], Config};
+                          _ ->
+                              NewConfig = update_config_key(Key, Default, Config, UUID),
+                              {[hd(NewConfig)], NewConfig}
+                      end;
+                  V ->
+                      V
+              end
+      end).
 
 update_key_inner(Config, UUID, Key, Fun) ->
     case lists:keyfind(Key, 1, Config) of
@@ -520,6 +539,8 @@ search_prop(Config, Key, SubKey, DefaultSubVal) ->
             DefaultSubVal
     end.
 
+search_node_prop('latest-config-marker', Key, SubKey, DefaultSubVal) ->
+    search_node_prop(node(), 'latest-config-marker', Key, SubKey, DefaultSubVal);
 search_node_prop(Node, Config, Key, SubKey) when is_atom(Node) ->
     search_node_prop(Node, Config, Key, SubKey, undefined);
 search_node_prop(Config, Key, SubKey, DefaultSubVal) ->
@@ -528,7 +549,12 @@ search_node_prop(Config, Key, SubKey, DefaultSubVal) ->
 search_node_prop(Node, Config, Key, SubKey, DefaultSubVal) ->
     case search_node(Node, Config, Key) of
         {value, PropList} ->
-            proplists:get_value(SubKey, PropList, DefaultSubVal);
+            case proplists:lookup(SubKey, PropList) of
+                none ->
+                    search_prop(Config, Key, SubKey, DefaultSubVal);
+                {SubKey, Val} ->
+                    Val
+            end;
         false ->
             DefaultSubVal
     end.
@@ -741,7 +767,7 @@ do_init(Config) ->
     ets:delete_all_objects(ns_config_ets_dup),
     (catch ets:new(ns_config_announces_counter, [set, named_table])),
     ets:insert_new(ns_config_announces_counter, {changes_counter, 0}),
-    UpgradedConfig = upgrade_config(Config),
+    UpgradedConfig = (Config#config.upgrade_config_fun)(Config),
     InitialState =
         if
             UpgradedConfig =/= Config ->
@@ -760,7 +786,8 @@ init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
             do_init(Config#config{init = Init,
-                                  saver_mfa = {?MODULE, save_config_sync, []}});
+                                  saver_mfa = {?MODULE, save_config_sync, []},
+                                  upgrade_config_fun = fun upgrade_config/1});
         Error ->
             {stop, Error}
     end;
@@ -770,6 +797,7 @@ init({pull_from_node, Node} = Init) ->
     Cfg = #config{dynamic = [KVList],
                   policy_mod = ns_config_default,
                   saver_mfa = {?MODULE, do_not_save_config, []},
+                  upgrade_config_fun = fun (C) -> C end,
                   init = Init},
     do_init(Cfg);
 init([ConfigPath, PolicyMod]) ->
@@ -1127,7 +1155,7 @@ merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
                      %% that it overwrites the remote one
                      Bounce0 = (Key =:= uuid) orelse (not Cluster30),
                      IsSafeKey = (Key =:= membership) orelse (Key =:= rest)
-                         orelse (Key =:= capi_port),
+                         orelse (Key =:= capi_port) orelse (Key =:= services),
 
                      Bounce = Bounce0 andalso not IsSafeKey,
 
@@ -1249,7 +1277,7 @@ sync_announcements() ->
             ok
     end.
 
-latest_config_marker() ->
+latest() ->
     'latest-config-marker'.
 
 -ifdef(EUNIT).
@@ -1485,6 +1513,7 @@ setup_with_saver() ->
                                          {{local_changes_count, testuuid}, []}]],
                              policy_mod = ns_config_default,
                              saver_mfa = {?MODULE, send_config, [save_config_target]},
+                             upgrade_config_fun = fun upgrade_config/1,
                              uuid = testuuid},
                {ok, _} = ns_config:start_link({with_state, Cfg}),
                MRef = erlang:monitor(process, Parent),
@@ -1719,7 +1748,7 @@ test_local_changes_count() ->
     ?assertEqual({value, 3}, ns_config:search(d)),
     ?assertEqual({value, 3}, ns_config:search(ns_config:get(), d)),
 
-    ?assertEqual(0, compute_global_rev(ns_config:latest_config_marker())),
+    ?assertEqual(0, compute_global_rev(ns_config:latest())),
     ?assertEqual(0, compute_global_rev(ns_config:get())),
 
     ?assertEqual([], ns_config:read_key_fast({local_changes_count, testuuid}, undefined)),
@@ -1733,7 +1762,7 @@ test_local_changes_count() ->
 
     fail_on_incoming_message(),
 
-    ?assertEqual(1, compute_global_rev(ns_config:latest_config_marker())),
+    ?assertEqual(1, compute_global_rev(ns_config:latest())),
     ?assertEqual(1, compute_global_rev(ns_config:get())),
 
     {value, [], VC} = ns_config:search_with_vclock(ns_config:get(), {local_changes_count, testuuid}),

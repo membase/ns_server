@@ -113,8 +113,8 @@ angular.module('mnServersService').factory('mnServersService',
 
     function prepareNode(nodes, tasks, stateParamsNodeType) {
       return _.map(nodes[stateParamsNodeType], function (node) {
-        node.couchDataSize = node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size'];
-        node.couchDiskUsage = node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size'];
+        node.couchDataSize = node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size'] + node.interestingStats['couch_spatial_data_size'];
+        node.couchDiskUsage = node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size'] + node.interestingStats['couch_spatial_disk_size'];
         node.currItems = node.interestingStats['curr_items'];
         node.currVbItems = node.interestingStats['vb_replica_curr_items'];
         node.isDataDiskUsageAvailable = !!(node.couchDataSize || node.couchDiskUsage);
@@ -259,7 +259,7 @@ angular.module('mnServersService').factory('mnServersService',
           switch (failoverWarning) {
             case 'failoverNeeded': return;
             case 'rebalanceNeeded': return 'Rebalance required, some data is not currently replicated!';
-            case 'hardNodesNeeded': return 'At least two servers are required to provide replication!';
+            case 'hardNodesNeeded': return 'At least two servers with the data service are required to provide replication!';
             case 'softNodesNeeded': return 'Additional active servers required to provide the desired number of replicas!';
             case 'softRebalanceNeeded': return 'Rebalance recommended, some data does not have the desired replicas configuration!';
           }

@@ -147,6 +147,27 @@ parallel_map_gather_loop(Ref, Acc, RepliesLeft) ->
             exit(harakiri)
     end.
 
+gather_dir_info(Name) ->
+    case file:list_dir(Name) of
+        {ok, Filenames} ->
+            [gather_link_info(filename:join(Name, N)) || N <- Filenames];
+        Error ->
+            Error
+    end.
+
+gather_link_info(Name) ->
+    case file:read_link_info(Name) of
+        {ok, Info} ->
+            case Info#file_info.type of
+                directory ->
+                    {Name, Info, gather_dir_info(Name)};
+                _ ->
+                    {Name, Info}
+            end;
+        Error ->
+            {Name, Error}
+    end.
+
 rm_rf(Name) when is_list(Name) ->
   case rm_rf_is_dir(Name) of
       {ok, false} ->
@@ -162,7 +183,8 @@ rm_rf(Name) when is_list(Name) ->
                               {error, enoent} ->
                                   ok;
                               Error ->
-                                  ?log_warning("Cannot delete ~p: ~p", [Name, Error]),
+                                  ?log_warning("Cannot delete ~p: ~p~nDir info: ~p",
+                                               [Name, Error, gather_dir_info(Name)]),
                                   Error
                           end;
                       Error ->
@@ -1322,6 +1344,17 @@ dict_get(Key, Dict, Default) ->
             Default
     end.
 
+%% like dict:update/4 but calls the function on initial value instead of just
+%% storing it in the dict
+dict_update(Key, Fun, Initial, Dict) ->
+    try
+        dict:update(Key, Fun, Dict)
+    catch
+        %% key not found
+        error:badarg ->
+            dict:store(Key, Fun(Initial), Dict)
+    end.
+
 %% Parse version of the form 1.7.0r_252_g1e1c2c0 or 1.7.0r-252-g1e1c2c0 into a
 %% list {[1,7,0],candidate,252}.  1.8.0 introduces a license type suffix,
 %% like: 1.8.0r-25-g1e1c2c0-enterprise.  Note that we should never
@@ -1358,7 +1391,7 @@ this_node_rest_port() ->
     node_rest_port(node()).
 
 node_rest_port(Node) ->
-    node_rest_port(ns_config:latest_config_marker(), Node).
+    node_rest_port(ns_config:latest(), Node).
 
 node_rest_port(Config, Node) ->
     case ns_config:search_node_prop(Node, Config, rest, port_meta, local) of
@@ -1718,6 +1751,9 @@ mkdir_p(Path) ->
             Error
     end.
 
+create_marker(Path, Data) when is_list(Data) ->
+    ok = misc:write_file(Path, list_to_binary(Data)).
+
 create_marker(Path) ->
     ok = misc:write_file(Path, <<"">>).
 
@@ -1728,6 +1764,17 @@ marker_exists(Path) ->
     case file:read_file_info(Path) of
         {ok, _} ->
             true;
+        {error, enoent} ->
+            false;
+        Other ->
+            ?log_error("Unexpected error when reading marker ~p: ~p", [Path, Other]),
+            exit({failed_to_read_marker, Path, Other})
+    end.
+
+read_marker(Path) ->
+    case file:read_file(Path) of
+        {ok, BinaryContents} ->
+            {ok, binary_to_list(BinaryContents)};
         {error, enoent} ->
             false;
         Other ->
@@ -1766,3 +1813,33 @@ is_prefix(KeyPattern, K) ->
         _ ->
             false
     end.
+
+%% works like string:rchr but for binaries; note that unlike everything else
+%% in erlang binaries use zero-based indexing
+binary_rchr(Binary, Chr) ->
+    Len = erlang:byte_size(Binary),
+    do_binary_rchr(Binary, Chr, Len).
+
+do_binary_rchr(_, _, 0) ->
+    -1;
+do_binary_rchr(Binary, Chr, Ix) ->
+    case binary:at(Binary, Ix - 1) =:= Chr of
+        true ->
+            Ix - 1;
+        false ->
+            do_binary_rchr(Binary, Chr, Ix - 1)
+    end.
+
+eval(Str,Binding) ->
+    {ok,Ts,_} = erl_scan:string(Str),
+    Ts1 = case lists:reverse(Ts) of
+              [{dot,_}|_] -> Ts;
+              TsR -> lists:reverse([{dot,1} | TsR])
+          end,
+    {ok,Expr} = erl_parse:parse_exprs(Ts1),
+    erl_eval:exprs(Expr, Binding).
+
+default_if_undefined(undefined, Default) ->
+    Default;
+default_if_undefined(Value, _) ->
+    Value.

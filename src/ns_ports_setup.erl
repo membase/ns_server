@@ -2,16 +2,19 @@
 
 -include("ns_common.hrl").
 
--export([start/0, start_memcached_force_killer/0, setup_body_tramp/0,
+-export([start/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
          restart_xdcr_proxy/0, sync/0, create_erl_node_spec/4,
-         create_goxdcr_upgrade_spec/1]).
+         create_goxdcr_upgrade_spec/1, shutdown_ports/0]).
 
 start() ->
     proc_lib:start_link(?MODULE, setup_body_tramp, []).
 
 sync() ->
     gen_server:call(?MODULE, sync, infinity).
+
+shutdown_ports() ->
+    gen_server:call(?MODULE, shutdown_ports, infinity).
 
 %% ns_config announces full list as well which we don't need
 is_useless_event(List) when is_list(List) ->
@@ -38,8 +41,8 @@ setup_body() ->
                                              []
                                      end
                              end),
-    Children = dynamic_children(),
-    set_children_and_loop(Children, undefined).
+    Children = dynamic_children(normal),
+    set_children_and_loop(Children, undefined, normal).
 
 %% rpc:called (2.0.2+) after any bucket is deleted
 restart_moxi() ->
@@ -59,10 +62,10 @@ restart_xdcr_proxy() ->
     end.
 
 restart_port_by_name(Name) ->
-    rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, restart_port_by_name, [Name]).
+    ns_ports_manager:restart_port_by_name(ns_server:get_babysitter_node(), Name).
 
-set_children_and_loop(Children, Sup) ->
-    Pid = rpc:call(ns_server:get_babysitter_node(), ns_child_ports_sup, set_dynamic_children, [Children]),
+set_children(Children, Sup) ->
+    Pid = ns_ports_manager:set_dynamic_children(ns_server:get_babysitter_node(), Children),
     case Sup of
         undefined ->
             {is_pid, true, Pid} = {is_pid, erlang:is_pid(Pid), Pid},
@@ -75,21 +78,32 @@ set_children_and_loop(Children, Sup) ->
                        [Sup, Pid]),
             erlang:error(child_ports_sup_died)
     end,
-    children_loop(Children, Pid).
+    Pid.
 
-children_loop(Children, Sup) ->
-    proc_lib:hibernate(erlang, apply, [fun children_loop_continue/2, [Children, Sup]]).
+set_children_and_loop(Children, Sup, Status) ->
+    NewSup = set_children(Children, Sup),
+    children_loop(Children, NewSup, Status).
 
-children_loop_continue(Children, Sup) ->
+children_loop(Children, Sup, Status) ->
+    proc_lib:hibernate(erlang, apply, [fun children_loop_continue/3, [Children, Sup, Status]]).
+
+children_loop_continue(Children, Sup, Status) ->
     receive
+        {'$gen_call', From, shutdown_ports} ->
+            ?log_debug("Send shutdown to all go ports"),
+            NewStatus = shutdown,
+            NewChildren = dynamic_children(NewStatus),
+            NewSup = set_children(NewChildren, Sup),
+            gen_server:reply(From, ok),
+            children_loop(NewChildren, NewSup, NewStatus);
         check_children_update ->
-            do_children_loop_continue(Children, Sup);
+            do_children_loop_continue(Children, Sup, Status);
         {'$gen_call', From, sync} ->
             gen_server:reply(From, ok),
-            children_loop(Children, Sup);
+            children_loop(Children, Sup, Status);
         {remote_monitor_down, Sup, unpaused} ->
-            ?log_debug("Remote monitor ~p was unpaused after node name change. Restart.", [Sup]),
-            erlang:exit(shutdown);
+            ?log_debug("Remote monitor ~p was unpaused after node name change. Restart loop.", [Sup]),
+            set_children_and_loop(dynamic_children(Status), undefined, Status);
         {remote_monitor_down, Sup, Reason} ->
             ?log_debug("ns_child_ports_sup ~p died on babysitter node with ~p. Restart.", [Sup, Reason]),
             erlang:error({child_ports_sup_died, Sup, Reason});
@@ -99,7 +113,7 @@ children_loop_continue(Children, Sup) ->
             erlang:error(expected_some_message)
     end.
 
-do_children_loop_continue(Children, Sup) ->
+do_children_loop_continue(Children, Sup, Status) ->
     %% this sets bound on frequency of checking of port_servers
     %% configuration updates. NOTE: this thing also depends on other
     %% config variables. Particularly moxi's environment variables
@@ -107,11 +121,11 @@ do_children_loop_continue(Children, Sup) ->
     %% change
     timer:sleep(50),
     misc:flush(check_children_update),
-    case dynamic_children() of
+    case dynamic_children(Status) of
         Children ->
-            children_loop(Children, Sup);
+            children_loop(Children, Sup, Status);
         NewChildren ->
-            set_children_and_loop(NewChildren, Sup)
+            set_children_and_loop(NewChildren, Sup, Status)
     end.
 
 maybe_create_ssl_proxy_spec(Config) ->
@@ -156,6 +170,8 @@ create_erl_node_spec(Type, Args, EnvArgsVar, ErlangArgs) ->
                           "dont_suppress_stderr_logger" -> true;
                           "loglevel_" ++ _ -> true;
                           "disk_sink_opts" -> true;
+                          "ssl_ciphers" -> true;
+                          "net_kernel_verbosity" -> true;
                           _ -> false
                       end],
     EnvArgs = Args ++ EnvArgsTail,
@@ -227,21 +243,32 @@ do_per_bucket_moxi_specs(Config) ->
                                                    ""),
                       Opts = [use_stdio, stderr_to_stdout,
                               {env, [{"MOXI_SASL_PLAIN_USR", BucketName},
-                                     {"MOXI_SASL_PLAIN_PWD", Passwd}]}],
+                                     {"MOXI_SASL_PLAIN_PWD", Passwd},
+                                     {"http_proxy", ""}]}],
                       [{{moxi, BucketName}, Command, Args, Opts}|Acc]
               end
       end, [], BucketConfigs).
 
-dynamic_children() ->
+dynamic_children(shutdown) ->
     Config = ns_config:get(),
 
     Specs = [memcached_spec(Config),
              moxi_spec(Config),
-             run_via_goport(kv_node_projector_spec(Config)),
-             run_via_goport(index_node_spec(Config)),
-             run_via_goport(query_node_spec(Config)),
              saslauthd_port_spec(Config),
-             run_via_goport(goxdcr_spec(Config)),
+             per_bucket_moxi_specs(Config),
+             maybe_create_ssl_proxy_spec(Config)],
+
+    lists:flatten(Specs);
+dynamic_children(normal) ->
+    Config = ns_config:get(),
+
+    Specs = [memcached_spec(Config),
+             moxi_spec(Config),
+             run_via_goport(fun kv_node_projector_spec/1, Config),
+             run_via_goport(fun index_node_spec/1, Config),
+             run_via_goport(fun query_node_spec/1, Config),
+             saslauthd_port_spec(Config),
+             run_via_goport(fun goxdcr_spec/1, Config),
              per_bucket_moxi_specs(Config),
              maybe_create_ssl_proxy_spec(Config)],
 
@@ -257,6 +284,7 @@ query_node_spec(Config) ->
             DataStoreArg = "--datastore=http://127.0.0.1:" ++ integer_to_list(RestPort),
             CnfgStoreArg = "--configstore=http://127.0.0.1:" ++ integer_to_list(RestPort),
             HttpArg = "--http=:" ++ integer_to_list(query_rest:get_query_port(Config, node())),
+            EntArg = "--enterprise=" ++ atom_to_list(cluster_compat_mode:is_enterprise()),
 
             HttpsArgs = case query_rest:get_ssl_query_port(Config, node()) of
                             undefined ->
@@ -267,7 +295,7 @@ query_node_spec(Config) ->
                                  "--keyfile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
                         end,
             Spec = {'query', Command,
-                    [DataStoreArg, HttpArg, CnfgStoreArg] ++ HttpsArgs,
+                    [DataStoreArg, HttpArg, CnfgStoreArg, EntArg] ++ HttpsArgs,
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {env, build_go_env_vars(Config, 'cbq-engine')},
                      {log, ?QUERY_LOG_FILENAME}]},
@@ -301,10 +329,9 @@ kv_node_projector_spec(Config) ->
             ClusterArg = "127.0.0.1:" ++ integer_to_list(RestPort),
             KvListArg = "-kvaddrs=127.0.0.1:" ++ integer_to_list(LocalMemcachedPort),
             AdminPortArg = "-adminport=:" ++ integer_to_list(ProjectorPort),
-            ProjLogArg = "-debug=true",
 
             Spec = {'projector', ProjectorCmd,
-                    [ProjLogArg, KvListArg, AdminPortArg, ClusterArg],
+                    [KvListArg, AdminPortArg, ClusterArg],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?PROJECTOR_LOG_FILENAME},
                      {env, build_go_env_vars(Config, projector)}]},
@@ -381,7 +408,6 @@ index_node_spec(Config) ->
 
             Spec = {'indexer', IndexerCmd,
                     [
-                         "-log=2",
                          "-vbuckets=" ++ integer_to_list(NumVBuckets),
                          "-cluster=127.0.0.1:" ++ integer_to_list(RestPort),
                          "-adminPort=" ++ integer_to_list(AdminPort),
@@ -399,7 +425,7 @@ index_node_spec(Config) ->
     end.
 
 build_go_env_vars(Config, RPCService) ->
-    GoTraceBack0 = ns_config:search(ns_config:latest_config_marker(), gotraceback, <<>>),
+    GoTraceBack0 = ns_config:search(ns_config:latest(), gotraceback, <<>>),
     GoTraceBack = binary_to_list(GoTraceBack0),
     [{"GOTRACEBACK", GoTraceBack} | build_cbauth_env_vars(Config, RPCService)].
 
@@ -453,28 +479,13 @@ format(Config, Name, Format, Keys) ->
                        end, Keys),
     lists:flatten(io_lib:format(Format, Values)).
 
-start_memcached_force_killer() ->
-    misc:start_event_link(
-      fun () ->
-              CurrentMembership = ns_cluster_membership:get_cluster_membership(node()),
-              ns_pubsub:subscribe_link(ns_config_events, fun memcached_force_killer_fn/2, CurrentMembership)
-      end).
-
-memcached_force_killer_fn({{node, Node, membership}, NewMembership}, PrevMembership) when Node =:= node() ->
-    case NewMembership =:= inactiveFailed andalso PrevMembership =/= inactiveFailed of
-        false ->
-            ok;
-        _ ->
-            RV = rpc:call(ns_server:get_babysitter_node(),
-                          ns_child_ports_sup, send_command, [memcached, <<"die!\n">>]),
-            ?log_info("Sent force death command to own memcached: ~p", [RV])
-    end,
-    NewMembership;
-
-memcached_force_killer_fn(_, State) ->
-    State.
-
-run_via_goport(Specs) ->
+run_via_goport(SpecFun, Config) ->
+    Specs = case SpecFun(Config) of
+                [] ->
+                    [];
+                [Specs1] ->
+                    [expand_args(Specs1, Config)]
+            end,
     lists:map(fun do_run_via_goport/1, Specs).
 
 do_run_via_goport({Name, Cmd, Args, Opts}) ->
@@ -521,7 +532,8 @@ do_moxi_spec(Config) ->
             ],
             [{env, [{"EVENT_NOSELECT", "1"},
                     {"MOXI_SASL_PLAIN_USR", {"~s", [{ns_moxi_sup, rest_user, []}]}},
-                    {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}}
+                    {"MOXI_SASL_PLAIN_PWD", {"~s", [{ns_moxi_sup, rest_pass, []}]}},
+                    {"http_proxy", ""}
                    ]},
              use_stdio, exit_status,
              stderr_to_stdout,

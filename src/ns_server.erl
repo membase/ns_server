@@ -162,6 +162,7 @@ do_init_logging() ->
     ok = start_disk_sink(xdcr_trace, ?XDCR_TRACE_LOG_FILENAME),
     ok = start_disk_sink(disk_access, ?ACCESS_LOG_FILENAME),
     ok = start_disk_sink(disk_access_int, ?INT_ACCESS_LOG_FILENAME),
+    ok = start_disk_sink(disk_metakv, ?METAKV_LOG_FILENAME),
 
     ok = start_sink(ns_log, ns_log_sink, []),
 
@@ -184,7 +185,8 @@ do_init_logging() ->
     OverrideLoglevels = [{?STATS_LOGGER, warn},
                          {?NS_DOCTOR_LOGGER, warn}],
 
-    MainFilesLoggers = AllLoggers -- [?XDCR_LOGGER, ?ERROR_LOGGER, ?XDCR_TRACE_LOGGER],
+    MainFilesLoggers = AllLoggers --
+        [?XDCR_LOGGER, ?ERROR_LOGGER, ?XDCR_TRACE_LOGGER, ?METAKV_LOGGER],
 
     lists:foreach(
       fun (Logger) ->
@@ -222,6 +224,8 @@ do_init_logging() ->
     ok = ale:add_sink(?ACCESS_LOGGER, disk_access, info),
     ok = ale:add_sink(?ACCESS_LOGGER, disk_access_int, debug),
 
+    ok = ale:add_sink(?METAKV_LOGGER, disk_metakv, get_loglevel(?METAKV_LOGGER)),
+
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->
             ok = start_sink(stderr, ale_stderr_sink, []),
@@ -257,9 +261,7 @@ setup_node_names() ->
     Babysitter = list_to_atom("babysitter_of_" ++ Name ++ "@127.0.0.1"),
     Couchdb = list_to_atom("couchdb_" ++ Name ++ "@127.0.0.1"),
     application:set_env(ns_server, ns_couchdb_node, Couchdb),
-    application:set_env(ns_server, babysitter_node, Babysitter),
-    erlang:set_cookie(Couchdb, get_babysitter_cookie()),
-    ignore.
+    application:set_env(ns_server, babysitter_node, Babysitter).
 
 get_babysitter_cookie() ->
     case os:getenv("NS_SERVER_BABYSITTER_COOKIE") of

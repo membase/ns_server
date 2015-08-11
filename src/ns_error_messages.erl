@@ -18,12 +18,13 @@
 -export([decode_json_response_error/3,
          connection_error_message/3,
          engage_cluster_json_error/1,
-         bad_memory_size_error/2,
+         bad_memory_size_error/3,
          incompatible_cluster_version_error/3,
          too_old_version_error/2,
          verify_otp_connectivity_port_error/2,
          verify_otp_connectivity_connection_error/4,
-         unsupported_services_error/2]).
+         unsupported_services_error/2,
+         topology_limitation_error/0]).
 
 -spec connection_error_message(term(), string(), string() | integer()) -> binary() | undefined.
 connection_error_message({Error, _}, Host, Port) ->
@@ -96,11 +97,16 @@ engage_cluster_json_error({unexpected_json, _Where, Field} = _Exc) ->
     list_to_binary(io_lib:format("Cluster join prepare call returned invalid json. "
                                  "Invalid field is ~s.", [Field])).
 
-bad_memory_size_error(ThisMegs, Quota) ->
-    list_to_binary(io_lib:format("This server does not have sufficient memory to"
-                                 ++ " support the cluster quota (Cluster Quota is"
-                                 ++ " ~wMB per node, this server only has ~wMB)!",
-                                 [Quota, ThisMegs])).
+bad_memory_size_error(Services0, TotalQuota, MaxQuota) ->
+    Services1 = lists:sort(Services0),
+    Services = string:join([atom_to_list(S) || S <- Services1], ", "),
+
+    Msg = io_lib:format("This server does not have sufficient memory to "
+                        "support requested memory quota. "
+                        "Total quota is ~bMB (services: ~s), "
+                        "maximum allowed quota for the node is ~bMB.",
+                        [TotalQuota, Services, MaxQuota]),
+    iolist_to_binary(Msg).
 
 incompatible_cluster_version_error(MyVersion, OtherVersion, OtherNode) ->
     case MyVersion > 1 of
@@ -148,3 +154,6 @@ verify_otp_connectivity_connection_error(Reason, OtpNode, Host, Port) ->
 unsupported_services_error(AvailableServices, RequestedServices) ->
     list_to_binary(io_lib:format("Node doesn't support requested services: ~p. Supported services: ~p",
                                  [RequestedServices, AvailableServices])).
+
+topology_limitation_error() ->
+    <<"Community edition supports either data only nodes or nodes with all services enabled.">>.

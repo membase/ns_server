@@ -18,19 +18,26 @@ function createIndexesSectionCells(ns, modeCell, indexesTableSortByCell, indexes
   ns.isAtIndexesTabCell = Cell.compute(function (v) {
     return v.need(modeCell) === "indexes";
   }).name('isAtIndexesTabCell');
-  ns.indexesCell = Cell.compute(function (v) {
+  ns.indexURICell = Cell.compute(function (v) {
+    return v.need(DAL.cells.currentPoolDetailsCell).indexStatusURI;
+  }).name('indexURICell');
+  ns.rawIndexesCell = Cell.compute(function (v) {
     if (!v.need(ns.isAtIndexesTabCell)) {
       return;
     }
-    return future.get({url: "/indexStatus"});
+    var uri = v.need(ns.indexURICell);
+    return future.get({url: uri});
+  }).name("rawIndexesCell");
+  ns.indexesCell = Cell.compute(function (v) {
+    return v.need(ns.rawIndexesCell).indexes;
   }).name("indexesCell");
+  ns.indexWarningsCell = Cell.compute(function (v) {
+    return v.need(ns.rawIndexesCell).warnings;
+  }).name("indexWarningsCell");
   ns.sortedIndexesCell = Cell.compute(function (v) {
     var indexes = _.clone(v.need(ns.indexesCell));
     var sortBy = v.need(indexesTableSortByCell);
     var sortDescending = v.need(indexesTableSortDescendingCell);
-    if (indexes[0] && !indexes[0][sortBy]) {
-      sortBy = "hosts";
-    }
     var rv = {
       list: indexes,
       descending: sortDescending,
@@ -55,6 +62,7 @@ var IndexesSection = {
     var self = IndexesSection;
     var indexesListContainer = $("#js_indexes_list_container");
     var indexesTableSortByCell = new Cell();
+    indexesTableSortByCell.setValue("hosts");
     var indexesTableSortDescendingCell = new Cell();
     createIndexesSectionCells(
       IndexesSection,
@@ -62,6 +70,9 @@ var IndexesSection = {
       indexesTableSortByCell,
       indexesTableSortDescendingCell
     );
+    self.indexWarningsCell.subscribeValue(function (warnings) {
+      renderTemplate('js_index_warnings', {warnings: warnings});
+    });
     prepareTemplateForCell('js_indexes_list', self.indexesCell);
     self.indexDetails = new MultiDrawersWidget({
       hashFragmentParam: 'openedIndexes',
@@ -88,18 +99,7 @@ var IndexesSection = {
         return;
       }
       renderTemplate('js_indexes_list', config.list);
-      $("[data-sortby]", indexesListContainer).click(function () {
-        var header = jQuery(this);
-        var sortBy = header.data("sortby");
-        if (sortBy === indexesTableSortByCell.value) {
-          indexesTableSortDescendingCell.setValue(config.descending === "true" ? "false" : "true");
-        } else {
-          indexesTableSortDescendingCell.setValue("false");
-        }
-        indexesTableSortByCell.setValue(sortBy);
-      });
-      indexesListContainer.toggleClass("dynamic_descending", config.descending === "true");
-      $("[data-sortby=" + config.sortBy + "]", indexesListContainer).addClass("dynamic_active");
+      activateSortableControls(indexesListContainer, indexesTableSortByCell, indexesTableSortDescendingCell);
     });
     self.isAtIndexesTabCell.subscribeValue(function (isIndexesTab) {
       if (isIndexesTab) {

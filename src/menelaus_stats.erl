@@ -59,11 +59,11 @@ extract_stat(StatName, Sample) ->
 get_node_infos(NodeNames) ->
     NodesDict = ns_doctor:get_nodes(),
     lists:foldl(fun (N, A) ->
-                         case dict:find(N, NodesDict) of
-                             {ok, V} -> [{N, V} | A];
-                             _ -> A
-                         end
-                 end, [], NodeNames).
+                        case dict:find(N, NodesDict) of
+                            {ok, V} -> [{N, V} | A];
+                            _ -> A
+                        end
+                end, [], NodeNames).
 
 grab_latest_bucket_stats(BucketName, Nodes) ->
     NodeInfos = get_node_infos(Nodes),
@@ -102,30 +102,33 @@ extract_interesting_buckets(BucketName, NodeInfos) ->
 
 last_membase_sample(BucketName, Nodes) ->
     lists:foldl(
-        fun ({_, Stats},
-             {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData}) ->
-                    {extract_interesting_stat(mem_used, Stats) + AccMem,
-                     extract_interesting_stat(curr_items, Stats) + AccItems,
-                     extract_interesting_stat(ops, Stats) + AccOps,
-                     extract_interesting_stat(ep_bg_fetched, Stats) + AccFetches,
-                     extract_interesting_stat(couch_docs_actual_disk_size, Stats) +
-                       extract_interesting_stat(couch_views_actual_disk_size, Stats) + AccDisk,
-                     extract_interesting_stat(couch_docs_data_size, Stats) + AccData}
-        end, {0, 0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)).
+      fun ({_, Stats},
+           {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData}) ->
+              {extract_interesting_stat(mem_used, Stats) + AccMem,
+               extract_interesting_stat(curr_items, Stats) + AccItems,
+               extract_interesting_stat(ops, Stats) + AccOps,
+               extract_interesting_stat(ep_bg_fetched, Stats) + AccFetches,
+               extract_interesting_stat(couch_docs_actual_disk_size, Stats) +
+                   extract_interesting_stat(couch_spatial_disk_size, Stats) +
+                   extract_interesting_stat(couch_views_actual_disk_size, Stats) + AccDisk,
+               extract_interesting_stat(couch_docs_data_size, Stats) +
+                   extract_interesting_stat(couch_views_data_size, Stats) +
+                   extract_interesting_stat(couch_spatial_data_size, Stats) + AccData}
+      end, {0, 0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)).
 
 
 
 last_memcached_sample(BucketName, Nodes) ->
     {MemUsed, CurrItems, Ops, CmdGet, GetHits}
-            = lists:foldl(
-                    fun ({_, Stats},
-                         {AccMem, AccItems, AccOps, AccGet, AccGetHits}) ->
-                                {extract_interesting_stat(mem_used, Stats) + AccMem,
-                                 extract_interesting_stat(curr_items, Stats) + AccItems,
-                                 extract_interesting_stat(ops, Stats) + AccOps,
-                                 extract_interesting_stat(cmd_get, Stats) + AccGet,
-                                 extract_interesting_stat(get_hits, Stats) + AccGetHits}
-                    end, {0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)),
+        = lists:foldl(
+            fun ({_, Stats},
+                 {AccMem, AccItems, AccOps, AccGet, AccGetHits}) ->
+                    {extract_interesting_stat(mem_used, Stats) + AccMem,
+                     extract_interesting_stat(curr_items, Stats) + AccItems,
+                     extract_interesting_stat(ops, Stats) + AccOps,
+                     extract_interesting_stat(cmd_get, Stats) + AccGet,
+                     extract_interesting_stat(get_hits, Stats) + AccGetHits}
+            end, {0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)),
 
     {MemUsed, CurrItems, Ops,
      case CmdGet == 0 of
@@ -432,9 +435,9 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
 section_nodes("@system") ->
     ns_cluster_membership:actual_active_nodes();
 section_nodes("@query") ->
-    ns_cluster_membership:n1ql_active_nodes(ns_config:latest_config_marker());
+    ns_cluster_membership:n1ql_active_nodes(ns_config:latest(), actual);
 section_nodes("@index-"++_) ->
-    ns_cluster_membership:index_active_nodes(ns_config:latest_config_marker());
+    ns_cluster_membership:index_active_nodes(ns_config:latest(), actual);
 section_nodes("@xdcr-"++Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket);
 section_nodes(Bucket) ->
@@ -547,17 +550,17 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
 
 
     ComputeFragmentation =
-        fun (DiskSize, DataSize) ->
+        fun (DiskOverhead, DiskSize) ->
                 try
-                    100 * max(0, (DiskSize - DataSize)) / DiskSize
+                    100 * (DiskOverhead / max(DiskOverhead, DiskSize))
                 catch error:badarith ->
                         0
                 end
         end,
 
 
-    GlobalFragmentation = Z2(global_index_stat(<<"disk_size">>),
-                             global_index_stat(<<"data_size">>),
+    GlobalFragmentation = Z2(global_index_stat(<<"disk_overhead_estimate">>),
+                             global_index_stat(<<"disk_size">>),
                              ComputeFragmentation),
 
     [{global_index_stat(<<"fragmentation">>), GlobalFragmentation}] ++
@@ -574,10 +577,6 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                                            end
                                    end),
 
-                  Fragmentation = Z2(per_index_stat(Index, <<"disk_size">>),
-                                     per_index_stat(Index, <<"data_size">>),
-                                     ComputeFragmentation),
-
                   AvgScanLatency = Z2(per_index_stat(Index, <<"total_scan_duration">>),
                                       per_index_stat(Index, <<"num_rows_returned">>),
                                       fun (ScanDuration, NumRows) ->
@@ -589,9 +588,15 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                                               end
                                       end),
 
+                  AllPendingDocs = Z2(per_index_stat(Index, <<"num_docs_pending">>),
+                                      per_index_stat(Index, <<"num_docs_queued">>),
+                                      fun (Pending, Queued) ->
+                                              Pending + Queued
+                                      end),
+
                   [{per_index_stat(Index, <<"avg_item_size">>), AvgItemSize},
-                   {per_index_stat(Index, <<"fragmentation">>), Fragmentation},
-                   {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency}]
+                   {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency},
+                   {per_index_stat(Index, <<"num_docs_pending+queued">>), AllPendingDocs}]
           end, get_indexes(BucketId));
 computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
@@ -627,11 +632,11 @@ computed_stats_lazy_proplist(BucketName) ->
                       (Gets, Hits) -> Hits * 100/Gets
                   end),
     EPCacheMissRatio = Z2(ep_bg_fetched, cmd_get,
-                         fun (BGFetches, Gets) ->
-                                 try BGFetches * 100 / Gets
-                                 catch error:badarith -> 0
-                                 end
-                         end),
+                          fun (BGFetches, Gets) ->
+                                  try BGFetches * 100 / Gets
+                                  catch error:badarith -> 0
+                                  end
+                          end),
     ResidentItemsRatio = Z2(ep_num_non_resident, curr_items_tot,
                             fun (NonResident, CurrItems) ->
                                     try (CurrItems - NonResident) * 100 / CurrItems
@@ -663,9 +668,9 @@ computed_stats_lazy_proplist(BucketName) ->
                                   end
                           end),
     TotalDisk = Z2(couch_docs_actual_disk_size, couch_views_actual_disk_size,
-                          fun (Views, Docs) ->
-                                  Views + Docs
-                          end),
+                   fun (Views, Docs) ->
+                           Views + Docs
+                   end),
 
     ResidenceCalculator = fun (NonResident, Total) ->
                                   try (Total - NonResident) * 100 / Total
@@ -684,7 +689,7 @@ computed_stats_lazy_proplist(BucketName) ->
     DocsFragmentation = Z2(couch_docs_data_size, couch_docs_disk_size,
                            Fragmentation),
     ViewsFragmentation = Z2(couch_views_data_size, couch_views_disk_size,
-                           Fragmentation),
+                            Fragmentation),
 
     ActiveResRate = Z2(vb_active_num_non_resident, curr_items,
                        ResidenceCalculator),
@@ -843,17 +848,19 @@ samples_to_proplists(Samples, BucketName) ->
                  end, ExtraStats)
         ++ orddict:to_list(Dict).
 
-join_samples(A, B) ->
-    lists:reverse(join_samples(A, B, [])).
+join_samples(A, B, Count) ->
+    join_samples(lists:reverse(A), lists:reverse(B), [], Count).
 
-join_samples([A | _] = ASamples, [B | TailB], Acc) when A#stat_entry.timestamp > B#stat_entry.timestamp ->
-    join_samples(ASamples, TailB, Acc);
-join_samples([A | TailA], [B | _] = BSamples, Acc) when A#stat_entry.timestamp < B#stat_entry.timestamp ->
-    join_samples(TailA, BSamples, Acc);
-join_samples([A | TailA], [B | TailB], Acc) ->
+join_samples([A | _] = ASamples, [B | TailB], Acc, Count) when A#stat_entry.timestamp < B#stat_entry.timestamp ->
+    join_samples(ASamples, TailB, Acc, Count);
+join_samples([A | TailA], [B | _] = BSamples, Acc, Count) when A#stat_entry.timestamp > B#stat_entry.timestamp ->
+    join_samples(TailA, BSamples, Acc, Count);
+join_samples(_, _, Acc, 0) ->
+    Acc;
+join_samples([A | TailA], [B | TailB], Acc, Count) ->
     NewAcc = [A#stat_entry{values = A#stat_entry.values ++ B#stat_entry.values} | Acc],
-    join_samples(TailA, TailB, NewAcc);
-join_samples(_, _, Acc) ->
+    join_samples(TailA, TailB, NewAcc, Count - 1);
+join_samples(_, _, Acc, _) ->
     Acc.
 
 join_samples_test() ->
@@ -892,22 +899,25 @@ join_samples_test() ->
                            {key1, 5},
                            {key2, 6}]}],
 
-    ?assertEqual(R1, join_samples(A, B)),
-    ?assertEqual(R2, join_samples(B, A)).
+    ?assertEqual(R1, join_samples(A, B, 2)),
+    ?assertEqual(R2, join_samples(B, A, 2)),
+    ?assertEqual(tl(R2), join_samples(B, A, 1)).
+
 
 build_bucket_stats_ops_response(Nodes, BucketName, Params, WithSystemStats) ->
-    {ClientTStamp, {Step, _, Count} = Window} = parse_stats_params(Params),
+    {ClientTStamp, {Step, Period, Count} = Window} = parse_stats_params(Params),
 
-    BucketRawSamples = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window),
     Samples = case WithSystemStats of
                   true ->
-                      SystemRawSamples = grab_system_aggregate_op_stats(Nodes, ClientTStamp, Window),
+                      W1 = {Step, Period, Count + 1},
+                      BucketRawSamples = grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, W1),
+                      SystemRawSamples = grab_system_aggregate_op_stats(Nodes, ClientTStamp, W1),
 
                       %% this will throw out all samples with timestamps that are not present
                       %% in both BucketRawSamples and SystemRawSamples
-                      join_samples(BucketRawSamples, SystemRawSamples);
+                      join_samples(BucketRawSamples, SystemRawSamples, Count);
                   false ->
-                      BucketRawSamples
+                      grab_aggregate_op_stats(BucketName, Nodes, ClientTStamp, Window)
               end,
 
     StatsPropList = samples_to_proplists(Samples, BucketName),
@@ -1086,9 +1096,9 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary,"docs_processed">>},
                                           {desc,<<"Number of mutations that have been replicated to other clusters "
                                                   "(measured from per-replication stat docs_processed)">>}]},
-                                 {struct,[{title,<<"mutations filtered">>},
+                                 {struct,[{title,<<"mutations filtered per sec.">>},
                                           {name,<<Prefix/binary,"docs_filtered">>},
-                                          {desc,<<"Number of mutations that have been filtered out and have not been replicated to other clusters "
+                                          {desc,<<"Number of mutations per second that have been filtered out and have not been replicated to other clusters "
                                                   "(measured from per-replication stat docs_filtered)">>}]},
                                  {struct,[{title,<<"mutations failed resolution">>},
                                           {name,<<Prefix/binary,"docs_failed_cr_source">>},
@@ -1222,16 +1232,19 @@ couchbase_view_stats_descriptions(BucketId) ->
                    end, 5000).
 
 do_couchbase_view_stats_descriptions(BucketId) ->
-    DictBySig = ns_couchdb_api:get_design_doc_signatures(BucketId),
+    {MapReduceSignatures, SpatialSignatures} = ns_couchdb_api:get_design_doc_signatures(BucketId),
+    do_couchbase_view_stats_descriptions(MapReduceSignatures, <<"views/">>, <<"Mapreduce View Stats">>) ++
+        do_couchbase_view_stats_descriptions(SpatialSignatures, <<"spatial/">>, <<"Spatial View Stats">>).
 
+do_couchbase_view_stats_descriptions(DictBySig, KeyPrefix, Title) ->
     dict:fold(
       fun(Sig, DDocIds0, Stats) ->
-              Prefix = <<"views/", Sig/binary,"/">>,
+              Prefix = <<KeyPrefix/binary, Sig/binary,"/">>,
               DDocIds = lists:sort(DDocIds0),
               Ids = iolist_to_binary([hd(DDocIds) |
                                       [[?SPACE_CHAR | Id]
                                        || Id <- tl(DDocIds)]]),
-              MyStats = {struct,[{blockName,<<"View Stats: ",Ids/binary>>},
+              MyStats = {struct,[{blockName,<<Title/binary, ": ", Ids/binary>>},
                                  {extraCSSClasses,<<"dynamic_closed">>},
                                  {columns,
                                   [<<"Data">>,<<"Disk">>,<<"Read Ops">>]},
@@ -1282,30 +1295,30 @@ do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
                            {name, per_index_stat(Id, <<"data_size">>)},
                            {desc, <<"Actual data size consumed by the index">>}]},
                  {struct, [{title, <<"total items remaining">>},
-                           {name, per_index_stat(Id, <<"num_docs_pending">>)},
+                           {name, per_index_stat(Id, <<"num_docs_pending+queued">>)},
                            {desc, <<"Number of documents pending to be indexed">>}]},
                  {struct, [{title, <<"drain rate items/sec">>},
                            {name, per_index_stat(Id, <<"num_docs_indexed">>)},
                            {desc, <<"Number of documents indexed by the indexer per second">>}]},
-                 {struct, [{title, <<"total committed items">>},
+                 {struct, [{title, <<"total indexed items">>},
                            {name, per_index_stat(Id, <<"items_count">>)},
-                           {desc, <<"Current total committed number of documents in the index">>}]},
+                           {desc, <<"Current total indexed document count">>}]},
                  {struct, [{isBytes, true},
                            {title, <<"average item size">>},
                            {name, per_index_stat(Id, <<"avg_item_size">>)},
                            {desc, <<"Average size of each index item">>}]},
                  {struct, [{title, <<"% fragmentation">>},
-                           {name, per_index_stat(Id, <<"fragmentation">>)},
-                           {desc, <<"Percentage fragmentation of the index">>}]},
+                           {name, per_index_stat(Id, <<"frag_percent">>)},
+                           {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less than a hundred kB, the static overhead of the index disk file will inflate the index fragmentation percentage">>}]},
                  {struct, [{title, <<"requests/sec">>},
                            {name, per_index_stat(Id, <<"num_requests">>)},
                            {desc, <<"Number of requests served by the indexer per second">>}]},
                  {struct, [{title, <<"bytes returned/sec">>},
                            {name, per_index_stat(Id, <<"scan_bytes_read">>)},
                            {desc, <<"Number of bytes per second read by a scan">>}]},
-                 {struct, [{title, <<"average scan latency">>},
+                 {struct, [{title, <<"avg scan latency(ns)">>},
                            {name, per_index_stat(Id, <<"avg_scan_latency">>)},
-                           {desc, <<"Average time taken to serve a scan request">>}]}]}]}
+                           {desc, <<"Average time to serve a scan request (nanoseconds)">>}]}]}]}
      || Id <- AllIndexes].
 
 couchbase_query_stats_descriptions() ->
@@ -1318,12 +1331,12 @@ couchbase_query_stats_descriptions() ->
                  {struct, [{title, <<"selects/sec">>},
                            {name, <<"query_selects">>},
                            {desc, <<"Number of N1QL selects processed per second">>}]},
-                 {struct, [{title, <<"request time">>},
+                 {struct, [{title, <<"request time(sec)">>},
                            {name, <<"query_avg_req_time">>},
-                           {desc, <<"Average end to end time to process a query">>}]},
-                 {struct, [{title, <<"service time">>},
+                           {desc, <<"Average end-to-end time to process a query (in seconds)">>}]},
+                 {struct, [{title, <<"service time(sec)">>},
                            {name, <<"query_avg_svc_time">>},
-                           {desc, <<"Average time to execute a query">>}]},
+                           {desc, <<"Average time to execute a query (in seconds)">>}]},
                  {struct, [{title, <<"result size">>},
                            {name, <<"query_avg_response_size">>},
                            {desc, <<"Average size (in bytes) of the data returned by a query">>}]},
@@ -1419,7 +1432,7 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                 {struct,[{name,<<"couch_docs_fragmentation">>},
                          {title,<<"docs fragmentation %">>},
                          {desc,<<"How much fragmented data there is to be compacted compared to real data for the data files in this bucket "
-                                  "(measured from couch_docs_fragmentation)">>}]},
+                                 "(measured from couch_docs_fragmentation)">>}]},
                 {struct,[{isBytes,true},
                          {name,<<"couch_total_disk_size">>},
                          {title,<<"total disk size">>},
@@ -1462,39 +1475,43 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                          {name,<<"xdc_ops">>},
                          {desc,<<"Incoming XDCR operations per second for this bucket "
                                  "(measured from xdc_ops)">>}]},
-                {struct,[{title,<<"outbound XDCR mutations">>},
-                         {name,<<"replication_changes_left">>},
-                         {desc,<<"Number of mutations to be replicated to other clusters"
-                                 "(measured from replication_changes_left)">>}]},
                 {struct,[{title,<<"intra-replication queue">>},
                          {name,<<"ep_dcp_replica_items_remaining">>},
                          {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]}
-                | (case AddQuery of
+                | (case display_outbound_xdcr_mutations(BucketId) of
                        true ->
-                           [{struct,[{title,<<"N1QL queries/sec">>},
-                                     {name, <<"query_requests">>},
-                                     {desc, <<"Number of N1QL requests processed per second">>}]}];
-                       _ -> []
-                   end ++ case AddIndex of
-                              false ->
-                                  [];
-                              _ ->
-                                  [{struct, [{isBytes, true},
-                                             {title, <<"index data size">>},
-                                             {name, global_index_stat(<<"data_size">>)},
-                                             {desc, <<"Actual data size consumed by the index">>}]},
-                                   {struct, [{title, <<"index disk size">>},
-                                             {name, global_index_stat(<<"disk_size">>)},
-                                             {desc, <<"Total disk file size consumed by the index">>},
-                                             {isBytes, true}]},
-                                   {struct, [{title, <<"index fragmentation %">>},
-                                             {name, global_index_stat(<<"fragmentation">>)},
-                                             {desc, <<"Percentage fragmentation of the index">>}]},
-                                   {struct, [{title, <<"index scanned/sec">>},
-                                             {name, global_index_stat(<<"num_rows_returned">>)},
-                                             {desc, <<"Number of index items scanned by the indexer per second">>}]}]
-                          end)
-             ]}]},
+                           [{struct,[{title,<<"outbound XDCR mutations">>},
+                                     {name,<<"replication_changes_left">>},
+                                     {desc,<<"Number of mutations to be replicated to other clusters"
+                                             "(measured from replication_changes_left)">>}]}];
+                       false ->
+                           []
+                   end ++ case AddQuery of
+                              true ->
+                                  [{struct,[{title,<<"N1QL queries/sec">>},
+                                            {name, <<"query_requests">>},
+                                            {desc, <<"Number of N1QL requests processed per second">>}]}];
+                              _ -> []
+                          end ++ case AddIndex of
+                                     false ->
+                                         [];
+                                     _ ->
+                                         [{struct, [{isBytes, true},
+                                                    {title, <<"index data size">>},
+                                                    {name, global_index_stat(<<"data_size">>)},
+                                                    {desc, <<"Actual data size consumed by the index">>}]},
+                                          {struct, [{title, <<"index disk size">>},
+                                                    {name, global_index_stat(<<"disk_size">>)},
+                                                    {desc, <<"Total disk file size consumed by the index">>},
+                                                    {isBytes, true}]},
+                                          {struct, [{title, <<"index fragmentation %">>},
+                                                    {name, global_index_stat(<<"fragmentation">>)},
+                                                    {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less than a hundred kB, the static overhead of the index disk file will inflate the index fragmentation percentage">>}]},
+                                          {struct, [{title, <<"index scanned/sec">>},
+                                                    {name, global_index_stat(<<"num_rows_returned">>)},
+                                                    {desc, <<"Number of index items scanned by the indexer per second">>}]}]
+                                 end)
+               ]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
               {columns,
@@ -1835,6 +1852,13 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                                 {desc,<<"Total XDCR operations per second for this bucket "
                                         "(measured from xdc_ops)">>}]}]}]}].
 
+display_outbound_xdcr_mutations(BucketID) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        true ->
+            goxdcr_status_keeper:get_replications(BucketID) =/= [];
+        false ->
+            true
+    end.
 
 memcached_stats_description() ->
     [{struct,[{blockName,<<"Memcached">>},
@@ -2209,7 +2233,7 @@ serve_specific_ui_stats(Req, StatName, Params) ->
 
     StatInfos = [{[{title, list_to_binary(maybe_string_hostname_port(H))},
                    {name, list_to_binary("@"++H)}
-                  | RestStatDescProps]}
+                   | RestStatDescProps]}
                  || H <- StringHostnames],
 
     ServeDirectory = {[{value, {[{thisISSpecificStats, true},
@@ -2261,7 +2285,7 @@ do_get_indexes(BucketId0, Nodes) ->
     WantedHosts = lists:usort(WantedHosts0),
 
     BucketId = list_to_binary(BucketId0),
-    {ok, Indexes} = index_status_keeper:get_indexes(),
+    {ok, Indexes, _Stale, _Version} = index_status_keeper:get_indexes(),
     [begin
          {index, Name} = lists:keyfind(index, 1, I),
          Name

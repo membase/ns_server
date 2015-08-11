@@ -17,8 +17,6 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--behaviour(gen_server).
-
 -include("ns_common.hrl").
 
 -include("ns_stats.hrl").
@@ -27,25 +25,22 @@
 -export([start_link/0]).
 -export([per_index_stat/2, global_index_stat/1]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+%% callbacks
+-export([init/1, handle_info/2, grab_stats/1, process_stats/5]).
 
--record(state, {prev_counters = [],
-                prev_ts = 0,
-                default_stats,
+-record(state, {default_stats,
                 buckets}).
 
--define(I_GAUGES, [disk_size, data_size, num_docs_pending, items_count]).
+-define(I_GAUGES, [disk_size, data_size, num_docs_pending, num_docs_queued,
+                   items_count, frag_percent]).
 -define(I_COUNTERS, [num_requests, num_rows_returned, num_docs_indexed,
                      scan_bytes_read, total_scan_duration]).
+-define(I_COMPUTED, [disk_overhead_estimate]).
 
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-
+    base_stats_collector:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    ns_pubsub:subscribe_link(ns_tick_event),
     ets:new(index_stats_collector_names, [protected, named_table]),
 
     Self = self(),
@@ -60,31 +55,11 @@ init([]) ->
 
     Buckets = lists:map(fun list_to_binary/1, ns_bucket:get_bucket_names(membase)),
     Defaults = [{global_index_stat(atom_to_binary(Stat, latin1)), 0}
-                || Stat <- ?I_GAUGES ++ ?I_COUNTERS],
+                || Stat <- ?I_GAUGES ++ ?I_COUNTERS ++ ?I_COMPUTED],
 
 
     {ok, #state{buckets = Buckets,
                 default_stats = Defaults}}.
-
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-latest_tick(TS, NumDropped) ->
-    receive
-        {tick, TS1} ->
-            latest_tick(TS1, NumDropped + 1)
-    after 0 ->
-            if NumDropped > 0 ->
-                    ?stats_warning("Dropped ~b ticks", [NumDropped]);
-               true ->
-                    ok
-            end,
-            TS
-    end.
 
 find_type(_, []) ->
     not_found;
@@ -150,15 +125,15 @@ massage_stats([{K, V} | Rest], AccGauges, AccCounters, AccStatus) ->
             massage_stats(Rest, AccGauges, AccCounters, [{NewK, V} | AccStatus])
     end.
 
-get_stats() ->
-    case ns_cluster_membership:should_run_service(ns_config:latest_config_marker(), index, node()) of
+grab_stats(_State) ->
+    case ns_cluster_membership:should_run_service(ns_config:latest(), index, node()) of
         true ->
-            do_get_stats();
+            get_stats();
         false ->
             []
     end.
 
-do_get_stats() ->
+get_stats() ->
     case index_rest:get_json("stats?async=true") of
         {ok, {[_|_] = Stats}} ->
             Stats;
@@ -169,26 +144,20 @@ do_get_stats() ->
             []
     end.
 
-diff_counters(_InvTSDiff, [], _PrevCounters, Acc) ->
-    lists:reverse(Acc);
-diff_counters(InvTSDiff, [{K, V} | RestCounters] = Counters, PrevCounters, Acc) ->
-    case PrevCounters of
-        %% NOTE: K is bound
-        [{K, OldV} | RestPrev] ->
-            D = (V - OldV) * InvTSDiff,
-            diff_counters(InvTSDiff, RestCounters, RestPrev, [{K, D} | Acc]);
-        [{PrevK, _} | RestPrev] when PrevK < K->
-            diff_counters(InvTSDiff, Counters, RestPrev, Acc);
-        _ ->
-            diff_counters(InvTSDiff, RestCounters, PrevCounters, [{K, 0} | Acc])
-    end.
+process_stats(TS, GrabbedStats, PrevCounters, PrevTS, #state{buckets = KnownBuckets,
+                                                             default_stats = Defaults} = State) ->
+    {Gauges0, Counters, Status} = massage_stats(GrabbedStats, [], [], []),
+    Gauges = compute_disk_overhead_estimates(Gauges0) ++ Gauges0,
 
-grab_stats(PrevCounters, TSDiff) ->
-    {StatsGauges, StatsCounters0, Status} = massage_stats(get_stats(), [], [], []),
-    StatsCounters = lists:sort(StatsCounters0),
-    Stats0 = diff_counters(1000.0 / TSDiff, StatsCounters, PrevCounters, []),
-    Stats = lists:merge(Stats0, lists:sort(StatsGauges)),
-    {Stats, StatsCounters, Status}.
+    {Stats, SortedCounters} =
+        base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS),
+
+    index_status_keeper:update(Status),
+
+    AggregatedStats =
+        [{"@index-"++binary_to_list(Bucket), Values} ||
+            {Bucket, Values} <- aggregate_index_stats(Stats, KnownBuckets, Defaults)],
+    {AggregatedStats, SortedCounters, State}.
 
 aggregate_index_stats(Stats, Buckets, Defaults) ->
     do_aggregate_index_stats(Stats, Buckets, Defaults, []).
@@ -256,24 +225,6 @@ aggregate_index_stats_test() ->
                  [{<<"b">>, BStats},
                   {<<"a">>, AStats}]).
 
-handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
-                                prev_ts = PrevTS,
-                                buckets = KnownBuckets,
-                                default_stats = Defaults} = State) ->
-    TS = latest_tick(TS0, 0),
-    {Stats, NewCounters, Status} = grab_stats(PrevCounters, TS - PrevTS),
-    index_status_keeper:update(Status),
-
-    lists:foreach(
-      fun ({Bucket, BucketStats}) ->
-              gen_event:notify(ns_stats_event,
-                               {stats, "@index-"++binary_to_list(Bucket),
-                                #stat_entry{timestamp = TS,
-                                            values = BucketStats}})
-      end, aggregate_index_stats(Stats, KnownBuckets, Defaults)),
-
-    {noreply, State#state{prev_counters = NewCounters,
-                          prev_ts = TS}};
 handle_info({buckets, NewBuckets}, State) ->
     NewBuckets1 = lists:map(fun list_to_binary/1, NewBuckets),
     {noreply, State#state{buckets = NewBuckets1}};
@@ -286,8 +237,54 @@ per_index_stat(Index, Metric) ->
 global_index_stat(StatName) ->
     iolist_to_binary([<<"index/">>, StatName]).
 
-terminate(_Reason, _State) ->
-    ok.
+compute_disk_overhead_estimates(Stats) ->
+    Dict = lists:foldl(
+             fun ({StatKey, Value}, D) ->
+                     {Bucket, Index, Metric} = StatKey,
+                     Key = {Bucket, Index},
 
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+                     case Metric of
+                         <<"frag_percent">> ->
+                             misc:dict_update(
+                               Key,
+                               fun ({_, DiskSize}) ->
+                                       {Value, DiskSize}
+                               end, {undefined, undefined}, D);
+                         <<"disk_size">> ->
+                             misc:dict_update(
+                               Key,
+                               fun ({Frag, _}) ->
+                                       {Frag, Value}
+                               end, {undefined, undefined}, D);
+                         _ ->
+                             D
+                     end
+             end, dict:new(), Stats),
+
+    dict:fold(
+      fun ({Bucket, Index}, {Frag, DiskSize}, Acc) ->
+              if
+                  Frag =/= undefined andalso DiskSize =/= undefined ->
+                      Est = (DiskSize * Frag) div 100,
+                      [{{Bucket, Index, <<"disk_overhead_estimate">>}, Est} | Acc];
+                  true ->
+                      Acc
+              end
+      end, [], Dict).
+
+compute_disk_overhead_estimates_test() ->
+    In = [{{<<"a">>, <<"idx1">>, <<"disk_size">>}, 100},
+          {{<<"a">>, <<"idx1">>, <<"frag_percent">>}, 0},
+          {{<<"b">>, <<"idx2">>, <<"frag_percent">>}, 100},
+          {{<<"b">>, <<"idx2">>, <<"disk_size">>}, 100},
+          {{<<"b">>, <<"idx3">>, <<"disk_size">>}, 100},
+          {{<<"b">>, <<"idx3">>, <<"frag_percent">>}, 50},
+          {{<<"b">>, <<"idx3">>, <<"m">>}, 42}],
+    Out = lists:keysort(1, compute_disk_overhead_estimates(In)),
+
+    Expected0 = [{{<<"a">>, <<"idx1">>, <<"disk_overhead_estimate">>}, 0},
+                 {{<<"b">>, <<"idx2">>, <<"disk_overhead_estimate">>}, 100},
+                 {{<<"b">>, <<"idx3">>, <<"disk_overhead_estimate">>}, 50}],
+    Expected = lists:keysort(1, Expected0),
+
+    ?assertEqual(Expected, Out).

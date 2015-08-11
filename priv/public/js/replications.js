@@ -176,11 +176,10 @@ var ReplicationForm = mkClass({
               });
             }
             jQuery.each(pairs, function (index, pair) {
-              if (pair.endIndex === pair.startIndex) {
-                return true;
+              if (pair.endIndex !== pair.startIndex) {
+                pair.backlight = true;
+                fullSetOfPairs.push(pair);
               }
-              pair.backlight = true;
-              fullSetOfPairs.push(pair);
               var next = pairs[index + 1];
               if (next) {
                 if (pair.endIndex !== next.startIndex) {
@@ -241,9 +240,16 @@ var ReplicationForm = mkClass({
         try {
           document.selection.createRange().pasteHTML(text);
         } catch (_e) {
-          document.execCommand('InsertHTML', false, text);
+          try {
+            document.execCommand('InsertHTML', false, text);
+          } catch (_e) {
+            // if the getting text from clipboard fails we short-circuit return to allow
+            // the browser handle the paste natively (i.e. we don't call preventDefault().)
+            return;
+          }
         }
       }
+      e.preventDefault();
     }
     function contentEditableUsableTab(event) {
       //IE inserts tabulation in contenteditable tag instead of make focus on next element,
@@ -418,7 +424,7 @@ function showXDCRErrors(id) {
   elements = JSON.parse(text);
   genericDialog({
     buttons: {ok: true},
-    header: "XDCR errors",
+    header: "XDCR Errors",
     textHTML: "<ul class=\"xdcr_errors break-word\">" + _.map(elements, function (anError) {return "<li>" + escapeHTML(anError) + "</li>"}).join('') + "</ul>"
   });
 }
@@ -823,7 +829,7 @@ var ReplicationsSection = {
 
     function askDeleteConfirmation(cancelURI) {
       genericDialog({
-        header: "Confirm delete",
+        header: "Confirm Delete",
         text: "Please, confirm deleting this replication",
         callback: function (e, name, instance) {
           instance.close();

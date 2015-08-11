@@ -60,7 +60,7 @@ handle_packet(response, ?DCP_ADD_STREAM, Packet,
               = State, ParentState) ->
     {Header, Body} = mc_binary:decode_packet(Packet),
 
-    {Partition, NewToAdd, NewErrors} = process_add_close_stream_response(Header, ToAdd, Errors),
+    {Partition, NewToAdd, NewErrors} = process_add_stream_response(Header, ToAdd, Errors),
     NewStreamState = StreamState#stream_state{to_add = NewToAdd, errors = NewErrors},
 
     NewState =
@@ -107,7 +107,7 @@ handle_packet(response, ?DCP_CLOSE_STREAM, Packet,
               = State, ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
 
-    {Partition, NewToClose, NewErrors} = process_add_close_stream_response(Header, ToClose, Errors),
+    {Partition, NewToClose, NewErrors} = process_close_stream_response(Header, ToClose, Errors),
     NewStreamState = StreamState#stream_state{to_close = NewToClose, errors = NewErrors},
 
     NewState =
@@ -226,7 +226,7 @@ handle_cast({producer_stream_closed, Packet},
             ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
 
-    {Partition, NewToClose, NewErrors} = process_add_close_stream_response(Header, ToClose, Errors),
+    {Partition, NewToClose, NewErrors} = process_close_stream_response(Header, ToClose, Errors),
     NewStreamState = StreamState#stream_state{to_close_on_producer = NewToClose,
                                               errors = NewErrors},
 
@@ -263,13 +263,14 @@ handle_cast(Msg, State, ParentState) ->
     ?rebalance_warning("Unhandled cast: Msg = ~p, State = ~p", [Msg, State]),
     {noreply, State, ParentState}.
 
-process_add_close_stream_response(Header, PendingPartitions, Errors) ->
+process_stream_response(Header, PendingPartitions, Errors, SuccessPred) ->
     case lists:keytake(Header#mc_header.opaque, 1, PendingPartitions) of
         {value, {Partition} , N} ->
-            case Header#mc_header.status of
-                ?SUCCESS ->
+            Status = Header#mc_header.status,
+            case SuccessPred(Status) of
+                true ->
                     {Partition, N, Errors};
-                Status ->
+                false ->
                     {error, N, [{Status, Partition} | Errors]}
             end;
         false ->
@@ -277,6 +278,31 @@ process_add_close_stream_response(Header, PendingPartitions, Errors) ->
                              [Header#mc_header.opaque, Header, PendingPartitions, Errors]),
             erlang:error({unrecognized_opaque, Header#mc_header.opaque, PendingPartitions})
     end.
+
+allow_success_only(Status) ->
+    Status =:= ?SUCCESS.
+
+process_add_stream_response(Header, PendingPartitions, Errors) ->
+    process_stream_response(Header, PendingPartitions, Errors,
+                            fun allow_success_only/1).
+
+allow_success_enoent(Status) ->
+    Status =:= ?SUCCESS orelse Status =:= ?KEY_ENOENT.
+
+process_close_stream_response(Header, PendingPartitions, Errors) ->
+    %% It's possible that the stream is already closed in the following cases:
+    %%
+    %%   - on the producer and consumer sides, if the vbucket has been moved
+    %%   to a different node from the producer node
+    %%
+    %%   - on the consumer side, if the close stream request that we sent to
+    %%   the producer was processed first by the producer, it sent a
+    %%   notification to the consumer and the consumer processed the
+    %%   notification before handling our close stream request
+    %%
+    %% Because of this we ignore ?KEY_ENOENT errors.
+    process_stream_response(Header, PendingPartitions, Errors,
+                            fun allow_success_enoent/1).
 
 maybe_reply_setup_streams(#state{state = StreamState} = State) ->
     case {StreamState#stream_state.to_add, StreamState#stream_state.to_close,

@@ -82,11 +82,9 @@ init_ldap_enabled() ->
 default() ->
     ensure_data_dir(),
     DataDir = get_data_dir(),
-    InitQuota = case memsup:get_memory_data() of
-                    {_, _, _} = MemData ->
-                        ns_storage_conf:default_memory_quota(MemData);
-                    _ -> undefined
-                end,
+
+    DefaultQuotas = ns_storage_conf:default_quotas([kv]),
+    {_, KvQuota} = lists:keyfind(kv, 1, DefaultQuotas),
 
     PortMeta = case application:get_env(rest_port) of
                    {ok, _Port} -> local;
@@ -234,6 +232,7 @@ default() ->
      {{node, node(), memcached_defaults},
       [{maxconn, 30000},
        {dedicated_port_maxconn, 5000},
+       {ssl_cipher_list, "HIGH"},
        {verbosity, 0},
        {breakpad_enabled, true},
        %% Location that Breakpad should write minidumps upon memcached crash.
@@ -248,11 +247,7 @@ default() ->
                       _ -> undefined
                   end},
        {admin_user, "_admin"},
-       %% Note that this is not actually the password that is being used; as
-       %% part of upgrading config from 2.2 to 2.3 version it's replaced by
-       %% unique per-node password. I didn't put it here because default()
-       %% supposed to be a pure function.
-       {admin_pass, ""},
+       {admin_pass, binary_to_list(couch_uuids:random())},
        {bucket_engine, path_config:component_path(lib, "memcached/bucket_engine.so")},
        {engines,
         [{membase,
@@ -298,6 +293,8 @@ default() ->
                      {cert, list_to_binary(ns_ssl_services_setup:memcached_cert_path())}]}}]}
           ]}},
 
+        {ssl_cipher_list, {"~s", [ssl_cipher_list]}},
+
         {breakpad,
          {[{enabled, breakpad_enabled},
            {minidump_dir, {memcached_config_mgr, get_minidump_dir, []}}]}},
@@ -325,7 +322,7 @@ default() ->
         {audit_file, {"~s", [audit_file]}}
        ]}},
 
-     {memory_quota, InitQuota},
+     {memory_quota, KvQuota},
 
      {buckets, [{configs, []}]},
 
@@ -342,8 +339,8 @@ default() ->
 
      {{node, node(), ns_log}, [{filename, filename:join(DataDir, ?NS_LOG)}]},
 
-                                                % Modifiers: menelaus
-                                                % Listeners: ? possibly ns_log
+     %% Modifiers: menelaus
+     %% Listeners: ? possibly ns_log
      {email_alerts,
       [{recipients, ["root@localhost"]},
        {sender, "couchbase@localhost"},
@@ -353,9 +350,10 @@ default() ->
                        {host, "localhost"},
                        {port, 25},
                        {encrypt, false}]},
-       {alerts, [auto_failover_node,auto_failover_maximum_reached,
-                 auto_failover_other_nodes_down,auto_failover_cluster_too_small,ip,
-                 disk,overhead,ep_oom_errors,ep_item_commit_failed]}
+       {alerts, [auto_failover_node, auto_failover_maximum_reached,
+                 auto_failover_other_nodes_down,
+                 auto_failover_cluster_too_small, auto_failover_disabled,
+                 ip, disk, overhead, ep_oom_errors, ep_item_commit_failed, audit_dropped_events]}
       ]},
      {alert_limits, [
        %% Maximum percentage of overhead compared to max bucket size (%)

@@ -13,9 +13,9 @@ import (
 	"io"
 	"log"
 	"math/big"
+	"net"
 	"os"
 	"time"
-	"net"
 )
 
 func mustNoErr(err error) {
@@ -56,10 +56,10 @@ func derToPKey(octets []byte) (pkey *rsa.PrivateKey) {
 	panic("cannot happen")
 }
 
-var keyLength int = 2048
+var keyLength = 2048
 
 func init() {
-	if (os.Getenv("COUCHBASE_SMALLER_PKEYS") == "1") {
+	if os.Getenv("COUCHBASE_SMALLER_PKEYS") == "1" {
 		keyLength = 1024
 	}
 }
@@ -67,9 +67,12 @@ func init() {
 func main() {
 	var genereateLeaf bool
 	var commonName string
+	var useSha1 bool
 
 	flag.StringVar(&commonName, "common-name", "*", "common name field of certificate (hostname)")
 	flag.BoolVar(&genereateLeaf, "generate-leaf", false, "whether to generate leaf certificat (passing ca cert and pkey via environment variables)")
+
+	flag.BoolVar(&useSha1, "use-sha1", false, "whether to use sha1 instead of default sha256 signature algorithm")
 
 	flag.Parse()
 
@@ -103,6 +106,7 @@ func main() {
 				CommonName: commonName,
 			},
 			KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+			SignatureAlgorithm:    caCert.SignatureAlgorithm,
 			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			BasicConstraintsValid: true,
 		}
@@ -133,6 +137,10 @@ func main() {
 			KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			BasicConstraintsValid: true,
+		}
+
+		if useSha1 {
+			template.SignatureAlgorithm = x509.SHA1WithRSA
 		}
 
 		certDer, err := x509.CreateCertificate(rand.Reader, &template, &template, &pkey.PublicKey, pkey)

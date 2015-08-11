@@ -15,10 +15,6 @@
 %%
 -module(query_stats_collector).
 
--include_lib("eunit/include/eunit.hrl").
-
--behaviour(gen_server).
-
 -include("ns_common.hrl").
 
 -include("ns_stats.hrl").
@@ -26,41 +22,16 @@
 %% API
 -export([start_link/0]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
-
--record(state, {prev_counters = [],
-                prev_ts = 0}).
+%% callbacks
+-export([init/1, grab_stats/1, process_stats/5]).
 
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+     base_stats_collector:start_link({local, ?MODULE}, ?MODULE, []).
 
 
 init([]) ->
-    ns_pubsub:subscribe_link(ns_tick_event),
     ets:new(query_stats_collector_names, [private, named_table]),
-    {ok, #state{}}.
-
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-latest_tick(TS, NumDropped) ->
-    receive
-        {tick, TS1} ->
-            latest_tick(TS1, NumDropped + 1)
-    after 0 ->
-            if NumDropped > 0 ->
-                    ?stats_warning("Dropped ~b ticks", [NumDropped]);
-               true ->
-                    ok
-            end,
-            TS
-    end.
+    {ok, []}.
 
 %% [{<<"active_requests.count">>,0},
 %%  {<<"deletes.count">>,0},
@@ -141,41 +112,12 @@ massage_stats([{K, V} | Rest], AccGauges, AccCounters) ->
             massage_stats(Rest, [{NewK, V} | AccGauges], AccCounters)
     end.
 
-diff_counters(_InvTSDiff, [], _PrevCounters, Acc) ->
-    lists:reverse(Acc);
-diff_counters(InvTSDiff, [{K, V} | RestCounters] = Counters, PrevCounters, Acc) ->
-    case PrevCounters of
-        %% NOTE: K is bound
-        [{K, OldV} | RestPrev] ->
-            D = (V - OldV) * InvTSDiff,
-            diff_counters(InvTSDiff, RestCounters, RestPrev, [{K, D} | Acc]);
-        [{PrevK, _} | RestPrev] when PrevK < K->
-            diff_counters(InvTSDiff, Counters, RestPrev, Acc);
-        _ ->
-            diff_counters(InvTSDiff, RestCounters, PrevCounters, [{K, 0} | Acc])
-    end.
+grab_stats([]) ->
+    query_rest:get_stats().
 
-grab_stats(PrevCounters, TSDiff) ->
-    {StatsGauges, StatsCounters0} = massage_stats(query_rest:get_stats(), [], []),
-    StatsCounters = lists:sort(StatsCounters0),
-    Stats0 = diff_counters(1000.0 / TSDiff, StatsCounters, PrevCounters, []),
-    Stats = lists:merge(Stats0, lists:sort(StatsGauges)),
-    {Stats, StatsCounters}.
+process_stats(TS, GrabbedStats, PrevCounters, PrevTS, []) ->
+    {Gauges, Counters} = massage_stats(GrabbedStats, [], []),
+    {Stats, SortedCounters} =
+        base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS),
 
-handle_info({tick, TS0}, #state{prev_counters = PrevCounters,
-                                prev_ts = PrevTS}) ->
-    TS = latest_tick(TS0, 0),
-    {Stats, NewCounters} = grab_stats(PrevCounters, TS - PrevTS),
-    gen_event:notify(ns_stats_event,
-                     {stats, "@query", #stat_entry{timestamp = TS,
-                                                   values = Stats}}),
-    {noreply, #state{prev_counters = NewCounters,
-                     prev_ts = TS}};
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-terminate(_Reason, _State) ->
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {[{"@query", Stats}], SortedCounters, []}.

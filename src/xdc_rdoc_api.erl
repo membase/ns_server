@@ -27,6 +27,8 @@
          get_full_replicator_doc/1,
          find_all_replication_docs/0,
          find_all_replication_docs/1,
+         find_all_replication_docs_old/0,
+         find_all_replication_docs_old/1,
          all_local_replication_infos/0]).
 
 update_doc(Doc) ->
@@ -89,12 +91,27 @@ find_all_replication_docs(Timeout) ->
         true ->
             goxdcr_rest:find_all_replication_docs(Timeout);
         false ->
-            RVs = ns_couchdb_api:foreach_doc(xdcr, fun find_all_replication_docs_body/1, Timeout),
-            [Doc || {_, Doc} <- RVs,
-                    Doc =/= undefined]
+            do_find_all_replication_docs_old(Timeout)
     end.
 
-find_all_replication_docs_body(Doc0) ->
+find_all_replication_docs_old() ->
+    find_all_replication_docs_old(infinity).
+
+find_all_replication_docs_old(Timeout) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        true ->
+            [];
+        false ->
+            do_find_all_replication_docs_old(Timeout)
+    end.
+
+do_find_all_replication_docs_old(Timeout) ->
+    RVs = ns_couchdb_api:foreach_doc(
+            xdcr, fun do_find_all_replication_docs_body/1, Timeout),
+    [Doc || {_, Doc} <- RVs,
+            Doc =/= undefined].
+
+do_find_all_replication_docs_body(Doc0) ->
     Doc = couch_doc:with_ejson_body(Doc0),
     case Doc of
         #doc{deleted = true} ->

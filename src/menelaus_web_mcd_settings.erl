@@ -36,6 +36,7 @@ supported_setting_names() ->
     [{maxconn, {int, 1000, ?MAXINT}},
      {dedicated_port_maxconn, {int, 1000, ?MAXINT}},
      {verbosity, {int, 0, ?MAXINT}},
+     {ssl_cipher_list, string},
      {breakpad_enabled, bool},
      {breakpad_minidump_dir_path, string}].
 
@@ -112,8 +113,8 @@ map_settings(SettingNames, Settings) ->
       end, SettingNames).
 
 build_setting_kvs(SettingsKey, ExtraConfigKey) ->
-    {value, McdSettings} = ns_config:search(ns_config:latest_config_marker(), SettingsKey),
-    ExtraSettings = ns_config:search(ns_config:latest_config_marker(), ExtraConfigKey, []),
+    {value, McdSettings} = ns_config:search(ns_config:latest(), SettingsKey),
+    ExtraSettings = ns_config:search(ns_config:latest(), ExtraConfigKey, []),
     map_settings(supported_setting_names(), McdSettings)
         ++ map_settings(supported_extra_setting_names(), ExtraSettings).
 

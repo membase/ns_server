@@ -86,6 +86,9 @@ checking_bucket_uuid(Req, BucketConfig, Body) ->
             Body()
     end.
 
+may_expose_bucket_auth(Req) ->
+    not menelaus_auth:is_under_role(Req, ro_admin).
+
 handle_bucket_list(Req) ->
     BucketNames = lists:sort(fun (A,B) -> A =< B end,
                              all_accessible_bucket_names(fakepool, Req)),
@@ -95,7 +98,7 @@ handle_bucket_list(Req) ->
                     _ -> for_ui
                 end,
     BucketsInfo = [build_bucket_info(Name, undefined, InfoLevel, LocalAddr,
-                                     menelaus_auth:may_expose_bucket_auth(Req))
+                                     may_expose_bucket_auth(Req))
                    || Name <- BucketNames],
     reply_json(Req, BucketsInfo).
 
@@ -106,7 +109,7 @@ handle_bucket_info(_PoolId, Id, Req) ->
                 end,
     reply_json(Req, build_bucket_info(Id, undefined, InfoLevel,
                                       menelaus_util:local_addr(Req),
-                                      menelaus_auth:may_expose_bucket_auth(Req))).
+                                      may_expose_bucket_auth(Req))).
 
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
     %% Only list nodes this bucket is mapped to
@@ -368,7 +371,7 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
                                 {just_write, {write, Bin}};
                             _ ->
                                 Info = build_bucket_info(Id, BucketConfig, stable, LocalAddr,
-                                                         menelaus_auth:may_expose_bucket_auth(Req)),
+                                                         may_expose_bucket_auth(Req)),
                                 {just_write, Info}
                         end;
                     not_present ->

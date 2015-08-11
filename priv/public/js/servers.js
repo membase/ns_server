@@ -45,8 +45,8 @@ var ServersSection = {
     var inRecovery = this.inRecoveryModeCell.value;
     var loadingSamples = this.isLoadingSamplesCell.value;
 
-    var pending = this.pending;
-    var active = this.active;
+    var pending = _.clone(this.pending);
+    var active = _.clone(this.active);
 
     this.serversQ.find('.add_button').toggle(!!(details && !rebalancing));
     this.serversQ.find('.stop_recovery_button').toggle(!!inRecovery);
@@ -69,6 +69,15 @@ var ServersSection = {
       return;
 
     if (active.length) {
+      var sortBy = this.serversTableSortByCell.value;
+      var sortDescending = this.serversTableSortDescendingCell.value;
+      active.sort(mkComparatorByProp(sortBy, naturalSort));
+      pending.sort(mkComparatorByProp(sortBy, naturalSort));
+      if (sortDescending === "true") {
+        active.reverse();
+        pending.reverse();
+      }
+
       renderTemplate('manage_server_list', {
         rows: active,
         expandingAllowed: !IOCenter.staleness.value,
@@ -80,6 +89,9 @@ var ServersSection = {
         expandingAllowed: true,
         isGroupRaw: !!active[0].group
       }, $i('pending_server_list_container'));
+
+      activateSortableControls($("#active_server_list_container"), this.serversTableSortByCell, this.serversTableSortDescendingCell);
+      activateSortableControls($("#pending_server_list_container"), this.serversTableSortByCell, this.serversTableSortDescendingCell);
     }
 
     if (rebalancing) {
@@ -274,6 +286,9 @@ var ServersSection = {
     });
 
     self.serversCell = DAL.cells.serversCell;
+    self.serversTableSortByCell = new Cell();
+    self.serversTableSortByCell.setValue('hostname');
+    self.serversTableSortDescendingCell = new Cell();
 
     var groupsSelector = $("#js_servers_group_select");
     Cell.subscribeMultipleValues(function (groups, enabled) {
@@ -306,7 +321,7 @@ var ServersSection = {
           showWarning('Rebalance required, some data is not currently replicated!');
           break;
         case 'hardNodesNeeded':
-          showWarning('At least two servers are required to provide replication!');
+          showWarning('At least two servers with the data service are required to provide replication!');
           break;
         case 'softNodesNeeded':
           showWarning('Additional active servers required to provide the desired number of replicas!');
@@ -322,7 +337,7 @@ var ServersSection = {
 
     Cell.subscribeMultipleValues(function () {
       self.refreshEverything();
-    }, self.serversCell, self.inRecoveryModeCell, self.isLoadingSamplesCell, DAL.cells.mayRebalanceWithoutSampleLoadingCell);
+    }, self.serversCell, self.inRecoveryModeCell, self.isLoadingSamplesCell, DAL.cells.mayRebalanceWithoutSampleLoadingCell, self.serversTableSortByCell, self.serversTableSortDescendingCell);
 
     Cell.subscribeMultipleValues(function (currentSection, isSampleLoading, mayRebalanceWithoutSampleLoading) {
       if (currentSection !== "servers") {
@@ -394,16 +409,11 @@ var ServersSection = {
       return handler.call(this, e);
     }
   },
-  renderUsage: function (e, totals, withQuotaTotal) {
+  renderUsage: function (e, totals, withQuotaTotal, isQueryOnlyNode) {
     var options = {
       topAttrs: {'class': "usage-block"},
       topRight: ['Total', ViewHelpers.formatMemSize(totals.total)],
       items: [
-        {name: 'In Use',
-         value: totals.usedByData,
-         attrs: {style: 'background-color:#00BCE9'},
-         tdAttrs: {style: "color:#1878A2;"}
-        },
         {name: 'Other Data',
          value: totals.used - totals.usedByData,
          attrs: {style:"background-color:#FDC90D"},
@@ -413,7 +423,15 @@ var ServersSection = {
       ],
       markers: []
     };
-    if (withQuotaTotal) {
+    if (!isQueryOnlyNode) {
+      options.items.unshift({
+        name: 'In Use',
+        value: totals.usedByData,
+        attrs: {style: 'background-color:#00BCE9'},
+        tdAttrs: {style: "color:#1878A2;"}
+      });
+    }
+    if (withQuotaTotal && !isQueryOnlyNode) {
       options.topLeft = ['Couchbase Quota', ViewHelpers.formatMemSize(totals.quotaTotal)];
       options.markers.push({value: totals.quotaTotal,
                             attrs: {style: "background-color:#E43A1B;"}});
@@ -499,6 +517,16 @@ var ServersSection = {
 
     this.postAndReload(uri, "");
   },
+  bindIndexAndN1qlCheckboxesOnCE: function (root) {
+    if (DAL.cells.isEnterpriseCell.value) {
+      return;
+    }
+    $(root + " [name='services']").unbind("change").change(function (e) {
+      e.preventDefault();
+      $(root + " [value=index]").prop("checked", $(this).prop("checked"));
+      $(root + " [value=n1ql]").prop("checked", $(this).prop("checked"));
+    });
+  },
   getCheckedServices: function (context) {
     return $("[name=services]:checked", context).map(function () {
       return this.value;
@@ -543,8 +571,11 @@ var ServersSection = {
     dialog.find("input:not([type]), input[type=text], input[type=password]").val('');
     dialog.find('[name=user]').val('Administrator');
     dialog.find(".when-groups").toggle(!!DAL.cells.groupsAvailableCell.value);
-    dialog.find("[name=services]").prop("checked", false);
-    dialog.find("[name=services][value=kv]").prop("checked", true);
+    dialog.find("[name=services]").prop("checked", true);
+    if (!DAL.cells.isEnterpriseCell.value) {
+      dialog.find("[value=kv]").prop("disabled", true);
+    }
+    ServersSection.bindIndexAndN1qlCheckboxesOnCE("#join_cluster_dialog");
 
     showDialog('join_cluster_dialog', {
       onHide: function () {
@@ -557,6 +588,10 @@ var ServersSection = {
       if (errorsOrData.length) {
         renderTemplate('join_cluster_dialog_errors', errorsOrData);
         return;
+      }
+
+      if (!DAL.cells.is40СompatibleCell.value) {
+        delete errorsOrData.services;
       }
 
       var confirmed;
@@ -579,10 +614,11 @@ var ServersSection = {
             overlay.remove();
             hideDialog('join_cluster_dialog');
             if (ServersSection.isOnlyOneNodeWithService(poolData.nodes, errorsOrData, 'index')) {
-              var settings = ClusterSection.prepareClusterQuotaSettings(poolData);
-              settings.prefix = 'add_node_memory_quota';
-              settings.showKVMemoryQuota = errorsOrData.services.indexOf('kv') > -1;
-              settings.showTotalPerNode = settings.showKVMemoryQuota;
+              var settings = ClusterSection.prepareClusterQuotaSettings(
+                'add_node_memory_quota',
+                poolData,
+                errorsOrData.services.indexOf('kv') > -1
+              );
               var memoryQuotaWidget = new MemoryQuotaSettingsWidget(settings, $('#js_add_node_memory_quota_holder'));
               showDialog('js_memory_quota_dialog', {
                 closeOnEscape: false,
@@ -652,9 +688,9 @@ var ServersSection = {
 
     function afterSend(resp) {
       var warningFlags = {
-        isLastIndex: ServersSection.isOnlyOneNodeWithService(ServersSection.allNodes, node, 'index'),
-        isLastQuery: ServersSection.isOnlyOneNodeWithService(ServersSection.allNodes, node, 'n1ql'),
-        isThereIndex: !!_.find(resp, function (index) {
+        isLastIndex: ServersSection.isOnlyOneActiveNodeWithService(ServersSection.allNodes, node, 'index'),
+        isLastQuery: ServersSection.isOnlyOneActiveNodeWithService(ServersSection.allNodes, node, 'n1ql'),
+        isThereIndex: !!_.find(resp.indexes, function (index) {
           return _.indexOf(index.hosts, hostname) > -1;
         }),
         isKv: _.indexOf(node.services, 'kv') > -1
@@ -676,7 +712,14 @@ var ServersSection = {
     var indexExists = _.each(nodes, function (node) {
       nodesCount += (_.indexOf(node.services, service) > -1);
     });
-    return nodesCount === 1 && (_.isArray(node.services) ? _.indexOf(node.services, service) > -1 : node.services.indexOf(service) > -1);
+    return nodesCount === 1 && node.services.indexOf(service) > -1;
+  },
+  isOnlyOneActiveNodeWithService: function (nodes, node, service) {
+    var nodesCount = 0;
+    var indexExists = _.each(nodes, function (node) {
+      nodesCount += node.clusterMembership === 'active' && !node.pendingEject && (_.indexOf(node.services, service) > -1);
+    });
+    return nodesCount === 1 && _.indexOf(node.services, service) > -1;
   },
   failoverNode: function (hostname) {
     var self = this;

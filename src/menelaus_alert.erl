@@ -64,7 +64,8 @@
           alerts=[auto_failover_node,
                   auto_failover_maximum_reached,
                   auto_failover_other_nodes_down,
-                  auto_failover_cluster_too_small
+                  auto_failover_cluster_too_small,
+                  auto_failover_disabled
                  ] :: [atom()]
          }).
 
@@ -304,6 +305,7 @@ category_bin(_)    -> <<"info">>.
 % auto_failover_maximum_reached
 % auto_failover_other_nodes_down
 % auto_failover_cluster_too_small
+% auto_failover_disabled
 
 alert_key(ns_node_disco, 0005) -> server_down;
 alert_key(ns_node_disco, 0014) -> server_unresponsive;

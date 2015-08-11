@@ -142,7 +142,13 @@ build_services(Node, Config, EnabledServices) ->
                      GetPortFromProp(memcached, port, kv) ++
                      GetPortFromProp(moxi, port, moxi);
              n1ql ->
-                 [{n1ql, query_rest:get_query_port(Config, Node)}];
+                 [{n1ql, query_rest:get_query_port(Config, Node)}] ++
+                     case query_rest:get_ssl_query_port(Config, Node) of
+                         undefined ->
+                             [];
+                         Port ->
+                             [{n1qlSSL, Port}]
+                     end;
              index ->
                  [
                   {indexAdmin, ns_config:search(Config, {node, Node, indexer_admin_port}, undefined)},

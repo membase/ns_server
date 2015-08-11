@@ -5,7 +5,10 @@
                  saver_mfa,
                  saver_pid,
                  pending_more_save = false,
-                 uuid
+                 uuid,
+                 upgrade_config_fun
                 }).
 -define(METADATA_VCLOCK, '_vclock').
 -define(DELETED_MARKER, '_deleted').
+
+-type ns_config() :: #config{} | [[term()]] | 'latest-config-marker'.

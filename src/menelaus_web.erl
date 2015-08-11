@@ -26,6 +26,7 @@
 
 -include("menelaus_web.hrl").
 -include("ns_common.hrl").
+-include("ns_heart.hrl").
 -include("ns_stats.hrl").
 -include("couch_db.hrl").
 
@@ -88,8 +89,8 @@
          validate_range/5,
          validate_unsupported_params/1,
          validate_has_params/1,
-         validate_memory_quota/2,
          validate_any_value/2,
+         validate_by_fun/3,
          execute_if_validated/3]).
 
 -define(AUTO_FAILLOVER_MIN_TIMEOUT, 30).
@@ -105,7 +106,7 @@ start_link(Options) ->
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, AppRoot)
            end,
-    case mochiweb_http:start([{loop, Loop} | Options1]) of
+    case mochiweb_http:start_link([{loop, Loop} | Options1]) of
         {ok, Pid} -> {ok, Pid};
         Other ->
             ?MENELAUS_WEB_LOG(?START_FAIL,
@@ -143,6 +144,8 @@ webconfig() ->
     webconfig(ns_config:get()).
 
 loop(Req, AppRoot) ->
+    ok = menelaus_sup:barrier_wait(),
+
     random:seed(os:timestamp()),
 
     try
@@ -361,13 +364,15 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun diag_handler:handle_sasl_logs/1, []};
                          ["sasl_logs", LogName] ->
                              {auth, fun diag_handler:handle_sasl_logs/2, [LogName]};
-                         ["erlwsh" | _] ->
-                             {auth, fun (R) -> erlwsh_web:loop(R, erlwsh_deps:local_path(["priv", "www"])) end, []};
                          ["images" | _] ->
                              {done, menelaus_util:serve_file(Req, Path, AppRoot,
                                                              [{"Cache-Control", "max-age=30000000"}])};
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
                          ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
+                         ["_metakv" | _] ->
+                             {auth, fun menelaus_metakv:handle_get/2, [Path]};
+                         ["angular" | _] ->
+                             {done, serve_angular_ui(Req, Path, AppRoot)};
                          _ ->
                              {done, menelaus_util:serve_file(Req, Path, AppRoot,
                                                              [{"Cache-Control", "max-age=10"}])}
@@ -527,8 +532,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth, fun menelaus_web_indexes:handle_settings_post/1};
                          ["_cbauth"] ->
                              {auth_ro, fun menelaus_cbauth:handle_cbauth_post/1};
-                         ["_metakv"] ->
-                             {auth, fun menelaus_metakv:handle_post/1};
                          ["_log"] ->
                              {auth, fun handle_log_post/1};
                          ["_goxdcr", "regexpValidation"] ->
@@ -543,8 +546,6 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                                                         reply_ok(R, "text/plain", [])
                                                 end};
                          ["diag", "eval"] -> {auth, fun handle_diag_eval/1};
-                         ["erlwsh" | _] ->
-                             {done, erlwsh_web:loop(Req, erlwsh_deps:local_path(["priv", "www"]))};
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
                          _ ->
                              ?MENELAUS_WEB_LOG(0001, "Invalid post received: ~p", [Req]),
@@ -570,6 +571,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "settings", "memcached", "node", Node, "setting", Name] ->
                              {auth, fun menelaus_web_mcd_settings:handle_node_setting_delete/3, [Node, Name]};
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
+                         ["_metakv" | _] ->
+                             {auth, fun menelaus_metakv:handle_delete/2, [Path]};
                          _ ->
                              ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
                              {done, reply_text(Req, "Method Not Allowed", 405)}
@@ -583,6 +586,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "serverGroups", GroupUUID] ->
                              {auth, fun menelaus_web_groups:handle_server_group_update/2, [GroupUUID]};
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
+                         ["_metakv" | _] ->
+                             {auth, fun menelaus_metakv:handle_put/2, [Path]};
                          _ ->
                              ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
                              {done, reply_text(Req, "Method Not Allowed", 405)}
@@ -610,6 +615,14 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
             auth_any_bucket(Req, F, Args);
         {auth_check_bucket_uuid, F, Args} ->
             auth_check_bucket_uuid(Req, F, Args)
+    end.
+
+serve_angular_ui(Req, Path, AppRoot) ->
+    case os:getenv("ENABLE_ANGULAR_UI") of
+        "true" ->
+            menelaus_util:serve_file(Req, Path, AppRoot, [{"Cache-Control", "max-age=10"}]);
+        _ ->
+            reply_text(Req, "Not found.", 404)
     end.
 
 handle_uilogin(Req) ->
@@ -832,9 +845,8 @@ handle_pools(Req) ->
             true -> Pools;
             _ -> []
         end,
-    Auth = menelaus_auth:extract_auth(Req),
-    ReadOnlyAdmin = menelaus_auth:is_read_only_auth(Auth),
-    Admin = ReadOnlyAdmin orelse menelaus_auth:check_auth(Auth),
+    ReadOnlyAdmin = menelaus_auth:is_under_role(Req, ro_admin),
+    Admin = ReadOnlyAdmin orelse menelaus_auth:is_under_role(Req, admin),
     reply_json(Req,{struct, [{pools, EffectivePools},
                              {isAdminCreds, Admin},
                              {isROAdminCreds, ReadOnlyAdmin},
@@ -917,10 +929,7 @@ handle_engage_cluster2(Req) ->
                     _ ->
                         Result
                 end,
-            ResultWithServices =
-                [{supportedServices, ns_cluster_membership:supported_services()}
-                 | ResultWithCompat],
-            reply_json(Req, {struct, ResultWithServices});
+            reply_json(Req, {struct, ResultWithCompat});
         {error, _What, Message, _Nested} ->
             reply_json(Req, [Message], 400)
     end,
@@ -1015,7 +1024,7 @@ handle_pool_info(Id, Req) ->
     WaitChangeS = proplists:get_value("waitChange", Query),
     PassedETag = proplists:get_value("etag", Query),
     case WaitChangeS of
-        undefined -> reply_json(Req, build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+        undefined -> reply_json(Req, build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
                                                      normal, LocalAddr));
         _ ->
             WaitChange = list_to_integer(WaitChangeS),
@@ -1025,7 +1034,7 @@ handle_pool_info(Id, Req) ->
     end.
 
 handle_pool_info_wait(Req, Id, LocalAddr, PassedETag) ->
-    Info = build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+    Info = build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
                            stable, LocalAddr),
     ETag = integer_to_list(erlang:phash2(Info)),
     if
@@ -1060,7 +1069,7 @@ handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     %% consume all notifications
     consume_notifications(),
     %% and reply
-    {struct, PList} = build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+    {struct, PList} = build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
                                       for_ui, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     reply_ok(Req, "application/json", menelaus_util:encode_json(Info),
@@ -1136,6 +1145,9 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
     TasksURI = bin_concat_path(["pools", Id, "tasks"],
                                [{"v", ns_doctor:get_tasks_version()}]),
 
+    {ok, IndexesVersion0} = index_status_keeper:get_indexes_version(),
+    IndexesVersion = list_to_binary(integer_to_list(IndexesVersion0)),
+
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
                  {alertsSilenceURL,
@@ -1155,7 +1167,8 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
                  {maxBucketCount, ns_config:read_key_fast(max_bucket_count, 10)},
                  {autoCompactionSettings, build_global_auto_compaction_settings(Config)},
                  {tasks, {struct, [{uri, TasksURI}]}},
-                 {counters, {struct, ns_cluster:counters()}}],
+                 {counters, {struct, ns_cluster:counters()}},
+                 {indexStatusURI, <<"/indexStatus?v=", IndexesVersion/binary>>}],
 
     PropList1 = build_memory_quota_info(Config) ++ PropList0,
 
@@ -1189,7 +1202,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
     {struct, PropList}.
 
 build_global_auto_compaction_settings() ->
-    build_global_auto_compaction_settings(ns_config:latest_config_marker()).
+    build_global_auto_compaction_settings(ns_config:latest()).
 
 build_global_auto_compaction_settings(Config) ->
     Extra = case cluster_compat_mode:is_cluster_sherlock() of
@@ -1424,7 +1437,7 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
 handle_pool_info_streaming(Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     F = fun(InfoLevel) ->
-                build_pool_info(Id, menelaus_auth:is_under_admin(Req),
+                build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
                                 InfoLevel, LocalAddr)
         end,
     handle_streaming(F, Req, undefined).
@@ -1536,6 +1549,15 @@ parse_validate_services_list_test() ->
     {ok, [kv]} = parse_validate_services_list("kv"),
     {error, _} = parse_validate_services_list("n1ql,kv,s"),
     ?assertMatch({error, _}, parse_validate_services_list("neeql,kv")).
+
+enforce_topology_limitation(Svcs) ->
+    case ns_cluster:enforce_topology_limitation(
+           Svcs, [[kv], lists:sort(ns_cluster_membership:supported_services())]) of
+        ok ->
+            {ok, Svcs};
+        Error ->
+            Error
+    end.
 
 parse_join_cluster_params(Params, ThisIsJoin) ->
     Version = proplists:get_value("version", Params, "3.0"),
@@ -1929,55 +1951,155 @@ handle_read_only_user_reset(Req) ->
     end.
 
 get_cluster_name() ->
-    get_cluster_name(ns_config:latest_config_marker()).
+    get_cluster_name(ns_config:latest()).
 
 get_cluster_name(Config) ->
     ns_config:search(Config, cluster_name, "").
 
-validate_pool_settings_post(IsSherlock, Args) ->
+validate_pool_settings_post(Config, IsSherlock, Args) ->
     R0 = validate_has_params({Args, [], []}),
-    R1 = validate_integer(memoryQuota, R0),
-    R2 = validate_memory_quota(memoryQuota, R1),
-    R3 = validate_any_value(clusterName, R2),
+    R1 = validate_any_value(clusterName, R0),
 
-    R5 = case IsSherlock of
+    R2 = validate_memory_quota(Config, IsSherlock, R1),
+    validate_unsupported_params(R2).
+
+validate_memory_quota(Config, IsSherlock, R0) ->
+    R1 = validate_integer(memoryQuota, R0),
+    R2 = case IsSherlock of
              true ->
-                 R4 = validate_integer(indexMemoryQuota, R3),
-                 validate_range(indexMemoryQuota, 256, 100000, R4);
+                 validate_integer(indexMemoryQuota, R1);
              false ->
-                 R3
+                 R1
          end,
 
-    validate_unsupported_params(R5).
+    Values = menelaus_util:get_values(R2),
+
+    NewKvQuota = proplists:get_value(memoryQuota, Values),
+    NewIndexQuota = proplists:get_value(indexMemoryQuota, Values),
+
+    case NewKvQuota =/= undefined orelse NewIndexQuota =/= undefined of
+        true ->
+            {ok, KvQuota} = ns_storage_conf:get_memory_quota(Config, kv),
+            {ok, IndexQuota} = ns_storage_conf:get_memory_quota(Config, index),
+
+            do_validate_memory_quota(Config,
+                                     KvQuota, IndexQuota,
+                                     NewKvQuota, NewIndexQuota, R2);
+        false ->
+            R2
+    end.
+
+do_validate_memory_quota(Config,
+                         KvQuota, IndexQuota, NewKvQuota0, NewIndexQuota0, R0) ->
+    NewKvQuota = misc:default_if_undefined(NewKvQuota0, KvQuota),
+    NewIndexQuota = misc:default_if_undefined(NewIndexQuota0, IndexQuota),
+
+    case {NewKvQuota, NewIndexQuota} =:= {KvQuota, IndexQuota} of
+        true ->
+            R0;
+        false ->
+            do_validate_memory_quota_tail(Config, NewKvQuota, NewIndexQuota, R0)
+    end.
+
+do_validate_memory_quota_tail(Config, KvQuota, IndexQuota, R0) ->
+    Nodes = ns_node_disco:nodes_wanted(Config),
+    {ok, NodeStatuses} = ns_doctor:wait_statuses(Nodes, 3 * ?HEART_BEAT_PERIOD),
+    NodeInfos =
+        lists:map(
+          fun (Node) ->
+                  NodeStatus = dict:fetch(Node, NodeStatuses),
+                  {_, MemoryData} = lists:keyfind(memory_data, 1, NodeStatus),
+                  NodeServices = ns_cluster_membership:node_services(Config, Node),
+                  {Node, NodeServices, MemoryData}
+          end, Nodes),
+
+    Quotas = [{kv, KvQuota},
+              {index, IndexQuota}],
+
+    case ns_storage_conf:check_quotas(NodeInfos, Config, Quotas) of
+        ok ->
+            menelaus_util:return_value(quotas, Quotas, R0);
+        {error, Error} ->
+            {Key, Msg} = quota_error_msg(Error),
+            menelaus_util:return_error(Key, Msg, R0)
+    end.
+
+quota_error_msg({total_quota_too_high, Node, TotalQuota, MaxAllowed}) ->
+    Msg = io_lib:format("Total quota (~bMB) exceeds the maximum allowed quota (~bMB) on node ~p",
+                        [TotalQuota, MaxAllowed, Node]),
+    {'_', Msg};
+quota_error_msg({service_quota_too_low, Service, Quota, MinAllowed}) ->
+    {Key, Details} =
+        case Service of
+            kv ->
+                D = " (current total buckets quota, or at least 256MB)",
+                {memoryQuota, D};
+            index ->
+                {indexMemoryQuota, ""}
+        end,
+
+    Msg = io_lib:format("The ~p service quota (~bMB) cannot be less than ~bMB~s.",
+                        [Service, Quota, MinAllowed, Details]),
+    {Key, Msg}.
 
 handle_pool_settings_post(Req) ->
+    do_handle_pool_settings_post_loop(Req, 10).
+
+do_handle_pool_settings_post_loop(_, 0) ->
+    erlang:error(exceeded_retries);
+do_handle_pool_settings_post_loop(Req, RetriesLeft) ->
+    try
+        do_handle_pool_settings_post(Req)
+    catch
+        throw:retry_needed ->
+            do_handle_pool_settings_post_loop(Req, RetriesLeft - 1)
+    end.
+
+do_handle_pool_settings_post(Req) ->
     IsSherlock = cluster_compat_mode:is_cluster_sherlock(),
+    Config = ns_config:get(),
 
     execute_if_validated(
       fun (Values) ->
-              Quota = proplists:get_value(memoryQuota, Values, ns_storage_conf:memory_quota()),
-              ClusterName = proplists:get_value(clusterName, Values, get_cluster_name()),
+              do_handle_pool_settings_post_body(Req, Config, IsSherlock, Values)
+      end, Req, validate_pool_settings_post(Config, IsSherlock, Req:parse_post())).
 
-              ok = ns_config:set(
-                     [{cluster_name, ClusterName},
-                      {memory_quota, Quota}]),
+do_handle_pool_settings_post_body(Req, Config, IsSherlock, Values) ->
+    case lists:keyfind(quotas, 1, Values) of
+        {_, Quotas} ->
+            case ns_storage_conf:set_quotas(Config, Quotas) of
+                ok ->
+                    ok;
+                retry_needed ->
+                    throw(retry_needed)
+            end;
+        false ->
+            ok
+    end,
 
-              case IsSherlock of
-                  true ->
-                      CurrentIndexQuota = index_settings_manager:get(memoryQuota),
-                      true = (CurrentIndexQuota =/= undefined),
+    case lists:keyfind(clusterName, 1, Values) of
+        {_, ClusterName} ->
+            ok = ns_config:set(cluster_name, ClusterName);
+        false ->
+            ok
+    end,
 
-                      IndexQuota = proplists:get_value(indexMemoryQuota, Values, CurrentIndexQuota),
-                      {ok, _} = index_settings_manager:update(memoryQuota, IndexQuota),
+    case IsSherlock of
+        true ->
+            do_audit_cluster_settings(Req);
+        false ->
+            ok
+    end,
 
-                      %% I could make index_memory_quota an optional field,
-                      %% but I don't want to bother with this
-                      ns_audit:cluster_settings(Req, Quota, IndexQuota, ClusterName);
-                  false ->
-                      ok
-              end,
-              reply(Req, 200)
-      end, Req, validate_pool_settings_post(IsSherlock, Req:parse_post())).
+    reply(Req, 200).
+
+do_audit_cluster_settings(Req) ->
+    %% this is obviously raceful, but since it's just audit...
+    {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
+    {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
+    ClusterName = get_cluster_name(),
+
+    ns_audit:cluster_settings(Req, KvQuota, IndexQuota, ClusterName).
 
 handle_settings_web(Req) ->
     reply_json(Req, build_settings_web()).
@@ -2390,15 +2512,14 @@ build_full_node_info(Node, LocalAddr) ->
                                    Fields)}.
 
 build_memory_quota_info() ->
-    build_memory_quota_info(ns_config:latest_config_marker()).
+    build_memory_quota_info(ns_config:latest()).
 
 build_memory_quota_info(Config) ->
-    Props = [{memoryQuota, ns_storage_conf:memory_quota(Config)}],
+    {ok, KvQuota} = ns_storage_conf:get_memory_quota(Config, kv),
+    Props = [{memoryQuota, KvQuota}],
     case cluster_compat_mode:is_cluster_sherlock() of
         true ->
-            IndexQuota = index_settings_manager:get(memoryQuota),
-            true = (IndexQuota =/= undefined),
-
+            {ok, IndexQuota} = ns_storage_conf:get_memory_quota(Config, index),
             [{indexMemoryQuota, IndexQuota} | Props];
         false ->
             Props
@@ -2525,26 +2646,58 @@ handle_node_settings_post(Node, Req) ->
         Errs -> reply_json(Req, Errs, 400)
     end.
 
-handle_setup_services_post(Req) ->
+validate_setup_services_post(Req) ->
     Params = Req:parse_post(),
     case ns_config_auth:is_system_provisioned() of
         true ->
-            reply_text(Req, <<"cannot change node services after cluster is provisioned">>, 400);
+            {error, <<"cannot change node services after cluster is provisioned">>};
         _ ->
             ServicesString = proplists:get_value("services", Params, ""),
             case parse_validate_services_list(ServicesString) of
                 {ok, Svcs} ->
                     case lists:member(kv, Svcs) of
                         true ->
-                            ns_config:set({node, node(), services}, Svcs),
-                            ns_audit:setup_node_services(Req, node(), Svcs),
-                            reply_text(Req, "", 200);
-                        _ ->
-                            reply_text(Req, "cannot setup first cluster node without kv service", 400)
+                            case enforce_topology_limitation(Svcs) of
+                                {ok, _} ->
+                                    setup_services_check_quota(Svcs);
+                                Error ->
+                                    Error
+                            end;
+                        false ->
+                            {error, <<"cannot setup first cluster node without kv service">>}
                     end;
                 {error, Msg} ->
-                    reply_text(Req, Msg, 400)
+                    {error, Msg}
             end
+    end.
+
+setup_services_check_quota(Services) ->
+    {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
+    {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
+
+    Quotas = [{kv, KvQuota},
+              {index, IndexQuota}],
+
+    case ns_storage_conf:check_this_node_quotas(Services, Quotas) of
+        ok ->
+            {ok, Services};
+        {error, {total_quota_too_high, _, TotalQuota, MaxAllowed}} ->
+            Msg = io_lib:format("insufficient memory to satisfy memory quota "
+                                "for the services "
+                                "(requested quota is ~bMB, "
+                                "maximum allowed quota for the node is ~bMB)",
+                                [TotalQuota, MaxAllowed]),
+            {error, iolist_to_binary(Msg)}
+    end.
+
+handle_setup_services_post(Req) ->
+    case validate_setup_services_post(Req) of
+        {error, Error} ->
+            reply_json(Req, [Error], 400);
+        {ok, Services} ->
+            ns_config:set({node, node(), services}, Services),
+            ns_audit:setup_node_services(Req, node(), Services),
+            reply(Req, 200)
     end.
 
 validate_add_node_params(User, Password) ->
@@ -2805,11 +2958,7 @@ handle_tasks(PoolId, Req) ->
     end.
 
 do_handle_tasks(PoolId, Req, RebTimeout) ->
-    NodesSet = sets:from_list(ns_node_disco:nodes_wanted()),
-    JSON = ns_doctor:build_tasks_list(
-             fun (Node) ->
-                     sets:is_element(Node, NodesSet)
-             end, PoolId, RebTimeout),
+    JSON = ns_doctor:build_tasks_list(PoolId, RebTimeout),
     reply_json(Req, JSON, 200).
 
 handle_reset_alerts(Req) ->
@@ -2886,17 +3035,19 @@ handle_node_statuses(Req) ->
                   Hostname = proplists:get_value(hostname,
                                                  build_node_info(Config, N, InfoNode, LocalAddr)),
                   NewInfoNode = ns_doctor:get_node(N, FreshStatuses),
+                  Dataless = not lists:member(kv, ns_cluster_membership:node_services(Config, N)),
                   V = case proplists:get_bool(down, NewInfoNode) of
                           true ->
                               {struct, [{status, unhealthy},
                                         {otpNode, N},
+                                        {dataless, Dataless},
                                         {replication, average_failover_safenesses(N, OldStatuses, BucketsAll)}]};
                           false ->
                               {struct, [{status, healthy},
                                         {gracefulFailoverPossible,
                                          ns_rebalancer:check_graceful_failover_possible(N, BucketsAll)},
                                         {otpNode, N},
-                                        {dataless, not lists:member(kv, ns_cluster_membership:node_services(Config, N))},
+                                        {dataless, Dataless},
                                         {replication, average_failover_safenesses(N, FreshStatuses, BucketsAll)}]}
                       end,
                   {Hostname, V}
@@ -2915,7 +3066,7 @@ average_failover_safenesses_rec(Node, NodeInfos, [{BucketName, BucketConfig} | R
     average_failover_safenesses_rec(Node, NodeInfos, RestBuckets, Sum + Level, Count + 1).
 
 handle_diag_eval(Req) ->
-    {value, Value, _} = eshell:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding('Req', Req, erl_eval:new_bindings())),
+    {value, Value, _} = misc:eval(binary_to_list(Req:recv_body()), erl_eval:add_binding('Req', Req, erl_eval:new_bindings())),
     case Value of
         done ->
             ok;
@@ -3237,7 +3388,9 @@ internal_settings_conf() ->
      {{request_limit, capi}, capiRequestLimit, undefined, GetNumberOrEmpty(0, 99999, {ok, undefined})},
      {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, undefined,
       GetNumberOrEmpty(0, 99999, {ok, undefined})},
-     {gotraceback, gotraceback, <<>>, GetString}] ++
+     {gotraceback, gotraceback, <<>>, GetString},
+     {{auto_failover_disabled, index}, indexAutoFailoverDisabled, true, GetBool},
+     {{cert, use_sha1}, certUseSha1, false, GetBool}] ++
         case cluster_compat_mode:is_goxdcr_enabled() of
             false ->
                 [{{xdcr, max_concurrent_reps}, xdcrMaxConcurrentReps, 32, GetNumber(1, 256)},
@@ -3426,7 +3579,7 @@ do_handle_set_recovery_type(Req, Type, Params) ->
 
     OtpNodeErrorMsg = <<"invalid node name or node can't be used for delta recovery">>,
 
-    NotKV = not lists:member(kv, ns_cluster_membership:node_services(ns_config:latest_config_marker(), Node)),
+    NotKV = not lists:member(kv, ns_cluster_membership:node_services(ns_config:latest(), Node)),
 
     Errors = lists:flatten(
                [case Type of
@@ -3598,7 +3751,7 @@ hostname_parsing_test() ->
 handle_saslauthd_auth_settings(Req) ->
     assert_is_ldap_enabled(),
 
-    reply_json(Req, {menelaus_auth:build_saslauthd_auth_settings()}).
+    reply_json(Req, {saslauthd_auth:build_settings()}).
 
 extract_user_list(undefined) ->
     asterisk;
@@ -3652,7 +3805,7 @@ handle_saslauthd_auth_settings_post(Req) ->
 
     case parse_validate_saslauthd_settings(Req:parse_post()) of
         {ok, Props} ->
-            menelaus_auth:set_saslauthd_auth_settings(Props),
+            saslauthd_auth:set_settings(Props),
             ns_audit:setup_ldap(Req, Props),
             handle_saslauthd_auth_settings(Req);
         {errors, Errors} ->
@@ -3741,9 +3894,17 @@ validate_settings_audit(Args) ->
                    io_lib:format("The value of ~p must be in range from 15 minutes to 7 days",
                                  [Name])
            end, R2),
-    R4 = validate_integer(rotateSize, R3),
-    R5 = validate_range(rotateSize, 0, 500*1024*1024, R4),
-    validate_unsupported_params(R5).
+    R4 = validate_by_fun(fun (Value) ->
+                                 case Value rem 60 of
+                                     0 ->
+                                         ok;
+                                     _ ->
+                                         {error, "Value must not be a fraction of minute"}
+                                 end
+                         end, rotateInterval, R3),
+    R5 = validate_integer(rotateSize, R4),
+    R6 = validate_range(rotateSize, 0, 500*1024*1024, R5),
+    validate_unsupported_params(R6).
 
 handle_settings_audit_post(Req) ->
     assert_is_enterprise(),

@@ -27,10 +27,11 @@
          code_change/3]).
 %% API
 -export([get_nodes/0, get_node/1, get_node/2,
-         get_tasks_version/0, build_tasks_list/3]).
+         get_tasks_version/0, build_tasks_list/2, wait_statuses/2]).
 
 -record(state, {
           nodes :: dict(),
+          nodes_wanted :: [node()],
           tasks_hash_nodes :: undefined | dict(),
           tasks_hash :: undefined | integer(),
           tasks_version :: undefined | string()
@@ -64,7 +65,8 @@ init([]) ->
             timer2:send_interval(?LOG_INTERVAL, log);
         _ -> ok
     end,
-    {ok, #state{nodes=dict:new()}}.
+    {ok, #state{nodes=dict:new(),
+                nodes_wanted=ns_node_disco:nodes_wanted()}}.
 
 handle_recovery_status_change(not_running, {running, _Bucket, _UUID}) ->
     {not_running, true};
@@ -131,17 +133,15 @@ handle_call(get_nodes, _From, #state{nodes=Nodes} = State) ->
     {reply, Nodes1, State}.
 
 
-handle_cast({heartbeat, Name, Status}, State) ->
-    Nodes = update_status(Name, Status, State#state.nodes),
-    NewState0 = State#state{nodes=Nodes},
-    NewState = maybe_refresh_tasks_version(NewState0),
-    case NewState0#state.tasks_hash =/= NewState#state.tasks_hash of
+handle_cast({heartbeat, Node, Status},
+            #state{nodes_wanted = NodesWanted} = State)->
+    case lists:member(Node, NodesWanted) of
         true ->
-            gen_event:notify(buckets_events, {significant_buckets_change, Name});
-        _ ->
-            ok
-    end,
-    {noreply, NewState};
+            {noreply, process_heartbeat(Node, Status, State)};
+        false ->
+            ?log_debug("Ignoring heartbeat from an unknown node ~p", [Node]),
+            {noreply, State}
+    end;
 
 handle_cast(Msg, State) ->
     ?doctor_warning("Unexpected cast: ~p", [Msg]),
@@ -175,7 +175,8 @@ handle_info({nodes_wanted, NewNodes0}, #state{nodes=Statuses} = State) ->
                   dict:erase(Node, Acc)
           end, Statuses, ToRemove),
 
-    {noreply, State#state{nodes=NewStatuses}};
+    {noreply, State#state{nodes=NewStatuses,
+                          nodes_wanted=NewNodes}};
 handle_info(Info, State) ->
     ?doctor_warning("Unexpected message ~p in state", [Info]),
     {noreply, State}.
@@ -207,10 +208,53 @@ get_node(Node) ->
 get_tasks_version() ->
     gen_server:call(?MODULE, get_tasks_version).
 
-build_tasks_list(NodeNeededP, PoolId, RebStatusTimeout) ->
+build_tasks_list(PoolId, RebStatusTimeout) ->
     NodesDict = gen_server:call(?MODULE, get_nodes),
     AllRepDocs = xdc_rdoc_api:find_all_replication_docs(),
-    do_build_tasks_list(NodesDict, NodeNeededP, PoolId, AllRepDocs, RebStatusTimeout).
+    do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout).
+
+wait_statuses(Nodes0, Timeout) ->
+    Nodes = lists:usort(Nodes0),
+
+    misc:executing_on_new_process(
+      fun () ->
+              Statuses = gen_server:call(?MODULE, get_nodes),
+              Got = lists:usort(dict:fetch_keys(Statuses)),
+              Missing = ordsets:subtract(Nodes, Got),
+
+              case Missing of
+                  [] ->
+                      {ok, Statuses};
+                  _ ->
+                      TRef = make_ref(),
+                      erlang:send_after(Timeout, self(), TRef),
+
+                      ns_pubsub:subscribe_link(ns_doctor_events),
+                      wait_statuses_loop(Statuses, sets:from_list(Missing), TRef)
+              end
+      end).
+
+wait_statuses_loop(Statuses, Missing, TRef) ->
+    receive
+        TRef ->
+            ?log_error("Couldn't get statuses for ~p", [sets:to_list(Missing)]),
+            {error, timeout};
+        {node_status, Node, Status} ->
+            case sets:is_element(Node, Missing) of
+                true ->
+                    NewStatuses = dict:store(Node, Status, Statuses),
+                    NewMissing = sets:del_element(Node, Missing),
+
+                    case sets:size(NewMissing) =:= 0 of
+                        true ->
+                            {ok, NewStatuses};
+                        false ->
+                            wait_statuses_loop(NewStatuses, NewMissing, TRef)
+                    end;
+                false ->
+                    wait_statuses_loop(Statuses, Missing, TRef)
+            end
+    end.
 
 %% Internal functions
 
@@ -253,6 +297,7 @@ update_status(Name, Status0, Dict) ->
             ok
     end,
 
+    gen_event:notify(ns_doctor_events, {node_status, Name, Status}),
     dict:store(Name, Status, Dict).
 
 annotate_status(Node, Status, Now, LiveNodes) ->
@@ -576,17 +621,12 @@ pick_latest_cluster_collect_task(AllNodeTasks) ->
     end.
 
 
-do_build_tasks_list(NodesDict, NeedNodeP, PoolId, AllRepDocs, RebStatusTimeout) ->
+do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
     AllNodeTasks =
         dict:fold(
           fun (Node, NodeInfo, Acc) ->
-                  case NeedNodeP(Node) of
-                      true ->
-                          NodeTasks = proplists:get_value(local_tasks, NodeInfo, []),
-                          [{Node, NodeTasks} | Acc];
-                      false ->
-                          Acc
-                  end
+                  NodeTasks = proplists:get_value(local_tasks, NodeInfo, []),
+                  [{Node, NodeTasks} | Acc]
           end, [], NodesDict),
 
     AllRawTasks = lists:append([Ts || {_N, Ts} <- AllNodeTasks]),
@@ -808,3 +848,15 @@ build_recovery_task(PoolId) ->
                        {commitVBucketURI, CommitURI},
                        {recoveryStatusURI, RecoveryStatusURI}]}]
     end.
+
+process_heartbeat(Node, Status, State) ->
+    Nodes = update_status(Node, Status, State#state.nodes),
+    NewState0 = State#state{nodes=Nodes},
+    NewState = maybe_refresh_tasks_version(NewState0),
+    case NewState0#state.tasks_hash =/= NewState#state.tasks_hash of
+        true ->
+            gen_event:notify(buckets_events, {significant_buckets_change, Node});
+        _ ->
+            ok
+    end,
+    NewState.

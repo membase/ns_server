@@ -20,7 +20,7 @@
                 consumer_mref = undefined :: undefined | reference()
                }).
 
--type crash() :: {PortName :: atom(), Node :: node(), StatusCode :: integer(), RecentMessages :: string()}.
+-type crash() :: {PortName :: atom(), StatusCode :: integer(), RecentMessages :: string()}.
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -39,8 +39,8 @@ consume_oldest_message_from_inside_ns_server() ->
 
 init([]) ->
     Dir = path_config:component_path(data, "logs"),
-    Path = filename:join(Dir, "crash_log.bin"),
-    ?log_info("crash_log.bin path: ~s", [Path]),
+    Path = filename:join(Dir, "crash_log_v2.bin"),
+    ?log_info("crash_log path: ~s", [Path]),
     ok = filelib:ensure_dir(Path),
     Q = read_crash_log(Path),
     {ok, #state{file_path = Path,

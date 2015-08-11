@@ -95,7 +95,7 @@ loglevel_definitions(LoggerName, LoggerLogLevel, LogLevel, Formatter, Sinks) ->
                           case Enabled of
                               true ->
                                   SinkType = proplists:get_value(type, SinkMeta, preformatted),
-                                  Async = proplists:get_bool(async, SinkMeta),
+                                  Async = proplists:get_value(async, SinkMeta, false),
 
                                   case SinkType of
                                       preformatted ->

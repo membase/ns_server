@@ -735,6 +735,21 @@ function extendHTMLAttrs(attrs1, attrs2) {
   return attrs1;
 }
 
+function activateSortableControls(listContainer, sortedByCell, sortDescCell) {
+  $("[data-sortby]", listContainer).click(function () {
+    var header = jQuery(this);
+    var sortBy = header.data("sortby");
+    if (sortBy === sortedByCell.value) {
+      sortDescCell.setValue(sortDescCell.value === "true" ? "false" : "true");
+    } else {
+      sortDescCell.setValue("false");
+    }
+    sortedByCell.setValue(sortBy);
+  });
+  listContainer.toggleClass("dynamic_descending", sortDescCell.value === "true");
+  $("[data-sortby=" + sortedByCell.value + "]", listContainer).addClass("dynamic_active");
+}
+
 function usageGaugeHTML(options) {
   var items = options.items;
   var values = _.map(options.items, function (item) {
@@ -1159,9 +1174,9 @@ var MemoryQuotaSettingsWidget = mkClass({
     self.container = container;
     self.memoryQuotaFileds = $('.js_ram_quota', container);
     self.memoryTotalField = $('.js_per_server_total', container);
-    self.memoryServicesFlag = $('.js_service_flag', container);
+    self.serviceFlags = $('.js_service_flag', container);
     if (options.isServicesControllsAvailable) {
-      self.memoryServicesFlag.each(function (index, flag) {
+      self.serviceFlags.each(function (index, flag) {
         jQuery(flag).change(function () {
           self.memoryQuotaFileds.eq(index).prop('disabled', !$(this).attr('checked'));
           if (options.showTotalPerNode) {
@@ -1170,7 +1185,7 @@ var MemoryQuotaSettingsWidget = mkClass({
         }).change();
       });
     }
-    if (options.showTotalPerNode) {
+    if (options.maxMemorySize) {
       self.memoryQuotaFileds.keyup(function () {
         self.computePerServerTotalQuota();
       }).keyup();

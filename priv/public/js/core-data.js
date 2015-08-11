@@ -38,6 +38,10 @@ function onUnexpectedXHRError(xhr, xhrStatus, errMsg) {
     status = xhr.status;
   } catch (e) {}
 
+  if (status === 0) {
+    return;
+  }
+
   try {
     readyState = xhr.readyState;
   } catch (e) {}
@@ -139,9 +143,14 @@ var DAL = {
     //   {release version}-{build #}-{Release type or SHA}-{enterprise / community}
     // Example: "1.8.0-9-ga083a1e-enterprise"
     var a = str.split(/[-_]/);
+    if (a.length === 3) {
+      // Example: "1.8.0-9-enterprise"
+      //   {release version}-{build #}-{enterprise / community}
+      a.splice(2, 0, undefined);
+    }
     a[0] = (a[0].match(/[0-9]+\.[0-9]+\.[0-9]+/) || ["0.0.0"])[0];
     a[1] = a[1] || "0";
-    a[2] = a[2] || "unknown";
+    // a[2] = a[2] || "unknown";
     // We append the build # to the release version when we display in the UI so that
     // customers think of the build # as a descriptive piece of the version they're
     // running (which in the case of maintenance packs and one-off's, it is.)
@@ -154,7 +163,7 @@ var DAL = {
     // Example default result: "1.8.0-7 Enterprise Edition (build-7)"
     // Example full result: "1.8.0-7 Enterprise Edition (build-7-g35c9cdd)"
     var suffix = "";
-    if (full) {
+    if (full && a[2]) {
       suffix = '-' + a[2];
     }
     return [a[0], a[3], "Edition", "(build-" + a[1] + suffix + ")"].join(' ');
@@ -489,12 +498,12 @@ var DAL = {
 
     allNodes = _.uniq(active.concat(pending));
 
-    var reallyActive = _.select(active, function (n) {
-      return n.clusterMembership === 'active' && !n.pendingEject;
+    var reallyActiveData = _.select(active, function (n) {
+      return n.clusterMembership === 'active' && !n.pendingEject && _.indexOf(n.services, "kv") > -1;
     });
 
-    if (reallyActive.length == 1) {
-      reallyActive[0].lastActive = true;
+    if (reallyActiveData.length == 1) {
+      reallyActiveData[0].lastActiveData = true;
     }
 
     _.each(allNodes, function (n) {
@@ -502,10 +511,12 @@ var DAL = {
       if (interestingStats &&
           ('couch_docs_data_size' in interestingStats) &&
           ('couch_views_data_size' in interestingStats) &&
+          ('couch_spatial_disk_size' in interestingStats) &&
+          ('couch_spatial_data_size' in interestingStats) &&
           ('couch_docs_actual_disk_size' in interestingStats) &&
           ('couch_views_actual_disk_size' in interestingStats)) {
-        n.couchDataSize = interestingStats.couch_docs_data_size + interestingStats.couch_views_data_size;
-        n.couchDiskUsage = interestingStats.couch_docs_actual_disk_size + interestingStats.couch_views_actual_disk_size;
+        n.couchDataSize = interestingStats.couch_docs_data_size + interestingStats.couch_views_data_size + interestingStats.couch_spatial_data_size;
+        n.couchDiskUsage = interestingStats.couch_docs_actual_disk_size + interestingStats.couch_views_actual_disk_size + interestingStats.couch_spatial_disk_size;
       }
 
       n.ejectPossible = !detailsAreStale && !n.pendingEject;
@@ -523,7 +534,7 @@ var DAL = {
       } else if (n.status === 'warmup') {
         nodeClass = 'server_warmup';
       }
-      if (n.lastActive) {
+      if (n.lastActiveData) {
         nodeClass += ' last-active';
       }
       n.nodeClass = nodeClass;

@@ -51,7 +51,9 @@
 
 -export([add_node_to_group/5,
          engage_cluster/1, complete_join/1,
-         check_host_connectivity/1, change_address/1]).
+         check_host_connectivity/1, change_address/1,
+         enforce_topology_limitation/2,
+         rename_marker_path/0]).
 
 %% debugging & diagnostic export
 -export([do_change_address/2]).
@@ -468,36 +470,10 @@ maybe_rename(NewAddr, UserSupplied) ->
                   {address_save_failed, _} = Error ->
                       Error;
                   net_restarted ->
-                      master_activity_events:note_name_changed(),
-                      NewName = node(),
-
-                      %% update new node name on child couchdb node
-                      ns_couchdb_config_rep:update_ns_server_node_name(NewName),
-
-                      ?cluster_debug("Renaming node from ~p to ~p.", [OldName, NewName]),
-                      rename_node_in_config(OldName, NewName),
+                      ?cluster_debug("Renamed node from ~p to ~p.", [OldName, node()]),
                       renamed
               end
       end).
-
-rename_node_in_config(Old, New) ->
-    ns_config:update(fun ({K, V} = Pair, _) ->
-                             NewK = misc:rewrite_value(Old, New, K),
-                             NewV = misc:rewrite_value(Old, New, V),
-                             if
-                                 NewK =/= K orelse NewV =/= V ->
-                                     ?cluster_debug("renaming node conf ~p -> ~p:~n  ~p ->~n  ~p",
-                                                    [K, NewK, ns_config_log:sanitize(V),
-                                                     ns_config_log:sanitize(NewV)]),
-                                     {NewK, NewV};
-                                 true ->
-                                     Pair
-                             end
-                     end),
-    ns_config:sync_announcements(),
-    ns_config_rep:push(),
-    ns_config_rep:synchronize_remote(ns_node_disco:nodes_actual_other()).
-
 
 check_add_possible(Body) ->
     case ns_config_auth:is_system_provisioned() of
@@ -551,8 +527,9 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
 
 do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
     {struct, NodeInfo} = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
-    Struct = {struct, [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)}
-                       | NodeInfo]},
+    Struct = {struct, [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)},
+                       {<<"requestedServices">>, Services}]
+              ++ NodeInfo},
 
     ?cluster_debug("Posting node info to engage_cluster on ~p:~n~p",
                    [{RemoteAddr, RestPort}, Struct]),
@@ -613,9 +590,12 @@ expect_json_property_atom(PropName, KVList) ->
 
 expect_json_property_integer(PropName, KVList) ->
     RV = expect_json_property_base(PropName, KVList),
-    case is_integer(RV) of
-        true -> RV;
-        _ -> erlang:exit({unexpected_json, not_integer, PropName})
+    expect_integer(PropName, RV).
+
+expect_integer(PropName, Value) ->
+    case is_integer(Value) of
+        true -> Value;
+        false -> erlang:exit({unexpected_json, not_integer, PropName})
     end.
 
 call_port_please(Name, Host) ->
@@ -652,21 +632,21 @@ do_add_node_engaged(NodeKVList, Auth, GroupUUID, Services) ->
     RV = verify_otp_connectivity(OtpNode),
     case RV of
         ok ->
-            case check_can_add_node(NodeKVList, Services) of
+            case check_can_add_node(NodeKVList) of
                 ok ->
                     %% TODO: only add services if possible
                     %% TODO: consider getting list of supported
                     %% services from NodeKVList
                     node_add_transaction(OtpNode, GroupUUID, Services,
                                          fun () ->
-                                                 do_add_node_engaged_inner(NodeKVList, OtpNode, Auth)
+                                                 do_add_node_engaged_inner(NodeKVList, OtpNode, Auth, Services)
                                          end);
                 Error -> Error
             end;
         X -> X
     end.
 
-check_can_add_node(NodeKVList, Services) ->
+check_can_add_node(NodeKVList) ->
     JoineeClusterCompatVersion = expect_json_property_integer(<<"clusterCompatibility">>, NodeKVList),
     JoineeNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
 
@@ -678,7 +658,7 @@ check_can_add_node(NodeKVList, Services) ->
                          ns_error_messages:too_old_version_error(JoineeNode, Version),
                          incompatible_cluster_version};
                     _ ->
-                        check_can_add_node_with_services(NodeKVList, Services)
+                        ok
                 end;
         false -> {error, incompatible_cluster_version,
                   ns_error_messages:incompatible_cluster_version_error(MyCompatVersion,
@@ -687,35 +667,7 @@ check_can_add_node(NodeKVList, Services) ->
                   {incompatible_cluster_version, MyCompatVersion, JoineeClusterCompatVersion}}
     end.
 
-check_can_add_node_with_services(NodeKVList, Services) ->
-    Supported = case lists:keyfind(<<"supportedServices">>, 1, NodeKVList) of
-                    false ->
-                        [atom_to_binary(S, latin1) || S <- ns_cluster_membership:default_services()];
-                    {_, List} ->
-                        case is_list(List) of
-                            false ->
-                                erlang:exit({unexpected_json, not_list, <<"supportedServices">>});
-                            _ ->
-                                case [[] || B <- List, not is_binary(B)] =:= [] of
-                                    false ->
-                                        erlang:exit({unexpected_json, not_list, <<"supportedServices">>});
-                                    true ->
-                                        List
-                                end
-                        end
-                end,
-    RequestedBin = [atom_to_binary(S, latin1) || S <- Services],
-    UnsupportedRequested = RequestedBin -- Supported,
-    case UnsupportedRequested of
-        [] ->
-            ok;
-        _ ->
-            {error, incompatible_services,
-             ns_error_messages:unsupported_services_error(Services, Supported),
-             incompatible_services}
-    end.
-
-do_add_node_engaged_inner(NodeKVList, OtpNode, Auth) ->
+do_add_node_engaged_inner(NodeKVList, OtpNode, Auth, Services) ->
     HostnameRaw = expect_json_property_list(<<"hostname">>, NodeKVList),
     [Hostname, Port] = case string:tokens(HostnameRaw, ":") of
                            [_, _] = Pair -> Pair;
@@ -724,7 +676,8 @@ do_add_node_engaged_inner(NodeKVList, OtpNode, Auth) ->
                        end,
 
     {struct, MyNodeKVList} = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
-    Struct = {struct, [{<<"targetNode">>, OtpNode}
+    Struct = {struct, [{<<"targetNode">>, OtpNode},
+                       {<<"requestedServices">>, Services}
                        | MyNodeKVList]},
 
     ?cluster_debug("Posting the following to complete_join on ~p:~n~p",
@@ -867,10 +820,63 @@ do_engage_cluster_check_compat_version(Node, Version, NodeKVList) ->
              ns_error_messages:too_old_version_error(Node, Version),
              incompatible_cluster_version};
         false ->
-            do_engage_cluster_inner(NodeKVList)
+            do_engage_cluster_check_services(NodeKVList)
     end.
 
-do_engage_cluster_inner(NodeKVList) ->
+get_requested_services(KVList) ->
+    Default = ns_cluster_membership:default_services(),
+    do_get_requested_services(<<"requestedServices">>, KVList, Default).
+
+do_get_requested_services(Key, KVList, Default) ->
+    case lists:keyfind(Key, 1, KVList) of
+        false ->
+            [atom_to_binary(S, latin1) || S <- Default];
+        {_, List} ->
+            case is_list(List) of
+                false ->
+                    erlang:exit({unexpected_json, not_list, Key});
+                _ ->
+                    case [[] || B <- List, not is_binary(B)] =:= [] of
+                        false ->
+                            erlang:exit({unexpected_json, not_list, Key});
+                        true ->
+                            List
+                    end
+            end
+    end.
+
+enforce_topology_limitation(Services, SupportedCombinations) ->
+    SortedServices = lists:sort(Services),
+    case cluster_compat_mode:is_enterprise() orelse
+        lists:member(SortedServices, SupportedCombinations) of
+        true ->
+            ok;
+        false ->
+            {error, ns_error_messages:topology_limitation_error()}
+    end.
+
+do_engage_cluster_check_services(NodeKVList) ->
+    RequestedServices = get_requested_services(NodeKVList),
+    SupportedServices = [atom_to_binary(S, latin1) || S <- ns_cluster_membership:supported_services()],
+    case RequestedServices -- SupportedServices of
+        [] ->
+            case enforce_topology_limitation(RequestedServices,
+                                            [[<<"kv">>], lists:sort(SupportedServices)]) of
+                {error, Msg} ->
+                    {error, incompatible_services, Msg, incompatible_services};
+                ok ->
+                    Services = [binary_to_existing_atom(S, latin1) ||
+                                   S <- RequestedServices],
+
+                    do_engage_cluster_inner(NodeKVList, Services)
+            end;
+        _ ->
+            {error, incompatible_services,
+             ns_error_messages:unsupported_services_error(SupportedServices, RequestedServices),
+             incompatible_services}
+    end.
+
+do_engage_cluster_inner(NodeKVList, Services) ->
     OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
     MaybeTargetHost = proplists:get_value(<<"requestedTargetNodeHostname">>, NodeKVList),
     {_, Host} = misc:node_name_host(OtpNode),
@@ -887,7 +893,7 @@ do_engage_cluster_inner(NodeKVList) ->
 
             case do_engage_cluster_inner_check_address(Address, UserSupplied) of
                 ok ->
-                    do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied);
+                    do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied, Services);
                 Error ->
                     Error
             end;
@@ -917,7 +923,7 @@ do_engage_cluster_inner_check_address(Address, true) ->
             {error, ErrorType, Msg, Error}
     end.
 
-do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied) ->
+do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied, Services) ->
     case do_change_address(Address, UserSupplied) of
         {address_save_failed, Error1} = Nested ->
             Msg = io_lib:format("Could not save address after rename: ~p",
@@ -931,29 +937,41 @@ do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied) ->
             %% 'pollute' cluster's version and cause issues. See
             %% MB-4476 for details.
             ns_cookie_manager:cookie_init(),
-            check_can_join_to(NodeKVList)
+            check_can_join_to(NodeKVList, Services)
     end.
 
-check_memory_size(NodeKVList) ->
-    Quota = expect_json_property_integer(<<"memoryQuota">>, NodeKVList),
-    MemoryFuzzyness = case (catch list_to_integer(os:getenv("MEMBASE_RAM_FUZZYNESS"))) of
-                          X when is_integer(X) -> X;
-                          _ -> 50
-                      end,
-    MaxMemoryMB = ns_storage_conf:allowed_node_quota_max_for_joined_nodes(),
-    if
-        Quota =< MaxMemoryMB + MemoryFuzzyness ->
+check_memory_size(NodeKVList, Services) ->
+    KvQuota = expect_json_property_integer(<<"memoryQuota">>, NodeKVList),
+    IndexQuota =
+        case lists:keyfind(<<"indexMemoryQuota">>, 1, NodeKVList) of
+            {_, V} ->
+                expect_integer(<<"indexMemoryQuota">>, V);
+            false ->
+                undefined
+        end,
+
+    Quotas0 = [{kv, KvQuota}],
+    Quotas =
+        case IndexQuota of
+            undefined ->
+                Quotas0;
+            _ ->
+                [{index, IndexQuota} | Quotas0]
+        end,
+
+    case ns_storage_conf:check_this_node_quotas(Services, Quotas) of
+        ok ->
             ok;
-        true ->
-            ThisMegs = element(1, ns_storage_conf:this_node_memory_data()) div ?MIB,
-            Error = {error, bad_memory_size, [{this, ThisMegs},
-                                              {quota, Quota}]},
+        {error, {total_quota_too_high, _, TotalQuota, MaxQuota}} ->
+            Error = {error, bad_memory_size, [{max, MaxQuota},
+                                              {totalQuota, TotalQuota}]},
             {error, bad_memory_size,
-             ns_error_messages:bad_memory_size_error(ThisMegs, Quota), Error}
+             ns_error_messages:bad_memory_size_error(Services, TotalQuota, MaxQuota),
+             Error}
     end.
 
-check_can_join_to(NodeKVList) ->
-    case check_memory_size(NodeKVList) of
+check_can_join_to(NodeKVList, Services) ->
+    case check_memory_size(NodeKVList, Services) of
         ok -> {ok, ok};
         Error -> Error
     end.
@@ -964,7 +982,11 @@ do_complete_join(NodeKVList) ->
         OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
         OtpCookie = expect_json_property_atom(<<"otpCookie">>, NodeKVList),
         MyNode = expect_json_property_atom(<<"targetNode">>, NodeKVList),
-        case check_can_join_to(NodeKVList) of
+
+        Services0 = get_requested_services(NodeKVList),
+        Services = [binary_to_existing_atom(S, latin1) || S <- Services0],
+
+        case check_can_join_to(NodeKVList, Services) of
             {ok, _} ->
                 case ns_cluster_membership:system_joinable() andalso MyNode =:= node() of
                     false ->
@@ -1057,3 +1079,6 @@ leave_marker_path() ->
 
 start_marker_path() ->
     path_config:component_path(data, "start_marker").
+
+rename_marker_path() ->
+    path_config:component_path(data, "rename_marker").

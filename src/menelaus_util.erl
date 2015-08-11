@@ -18,14 +18,8 @@
 -module(menelaus_util).
 -author('Northscale <info@northscale.com>').
 
--include_lib("eunit/include/eunit.hrl").
-
 -include("ns_common.hrl").
 -include("menelaus_web.hrl").
-
--ifdef(EUNIT).
--export([test_under_debugger/0, debugger_apply/2]).
--endif.
 
 -export([redirect_permanently/2,
          respond/2,
@@ -44,7 +38,6 @@
          serve_file/4,
          serve_static_file/4,
          parse_boolean/1,
-         expect_config/1,
          get_option/2,
          local_addr/1,
          remote_addr_and_port/1,
@@ -67,20 +60,16 @@
          validate_range/5,
          validate_unsupported_params/1,
          validate_has_params/1,
-         validate_memory_quota/2,
          validate_any_value/2,
-         execute_if_validated/3]).
+         validate_any_value/3,
+         validate_by_fun/3,
+         execute_if_validated/3,
+         get_values/1,
+         return_value/3,
+         return_error/3]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
-
--export([java_date/0,
-         string_hash/1,
-         my_seed/1]).
-
--export([stateful_map/3,
-         stateful_takewhile/3,
-         low_pass_filter/2]).
 
 %% External API
 
@@ -216,86 +205,9 @@ serve_file(Req, File, Root, ExtraHeaders) ->
     log_web_hit(Peer, Req, Resp),
     Resp.
 
-expect_config(Key) ->
-    {value, RV} = ns_config:search_node(Key),
-    RV.
-
-%% milliseconds since 1970 Jan 1 at UTC
-java_date() ->
-    {MegaSec, Sec, Micros} = erlang:now(),
-    (MegaSec * 1000000 + Sec) * 1000 + (Micros div 1000).
-
-string_hash(String) ->
-    lists:foldl((fun (Val, Acc) -> (Acc * 31 + Val) band 16#0fffffff end),
-                0,
-                String).
-
-my_seed(Number) ->
-    {Number*31, Number*13, Number*113}.
-
-%% applies F to every InList element and current state.
-%% F must return pair of {new list element value, new current state}.
-%% returns pair of {new list, current state}
-full_stateful_map(F, InState, InList) ->
-    {RV, State} = full_stateful_map_rec(F, InState, InList, []),
-    {lists:reverse(RV), State}.
-
-full_stateful_map_rec(_F, State, [], Acc) ->
-    {Acc, State};
-full_stateful_map_rec(F, State, [H|Tail], Acc) ->
-    {Value, NewState} = F(H, State),
-    full_stateful_map_rec(F, NewState, Tail, [Value|Acc]).
-
-%% same as full_stateful_map/3, but discards state and returns only transformed list
-stateful_map(F, InState, InList) ->
-    element(1, full_stateful_map(F, InState, InList)).
-
-low_pass_filter(Alpha, List) ->
-    Beta = 1 - Alpha,
-    F = fun (V, Prev) ->
-                RV = Alpha*V + Beta*Prev,
-                {RV, RV}
-        end,
-    case List of
-        [] -> [];
-        [H|Tail] -> [H | stateful_map(F, H, Tail)]
-    end.
-
--ifdef(EUNIT).
-
-string_hash_test() ->
-    ?assertEqual(string_hash("hi"), $h*31+$i).
-
-debugger_apply(Fun, Args) ->
-    i:im(),
-    {module, _} = i:ii(?MODULE),
-    i:iaa([break]),
-    ok = i:ib(?MODULE, Fun, length(Args)),
-    apply(?MODULE, Fun, Args).
-
-test_under_debugger() ->
-    i:im(),
-    {module, _} = i:ii(?MODULE),
-    i:iaa([init]),
-    eunit:test({spawn, {timeout, infinity, {module, ?MODULE}}}, [verbose]).
-
--endif.
-
 get_option(Option, Options) ->
     {proplists:get_value(Option, Options),
      proplists:delete(Option, Options)}.
-
-stateful_takewhile_rec(_F, [], _State, App) ->
-    App;
-stateful_takewhile_rec(F, [H|Tail], State, App) ->
-    case F(H, State) of
-        {true, NewState} ->
-            stateful_takewhile_rec(F, Tail, NewState, [H|App]);
-        _ -> App
-    end.
-
-stateful_takewhile(F, List, State) ->
-    lists:reverse(stateful_takewhile_rec(F, List, State, [])).
 
 parse_json(Req) ->
     mochijson2:decode(Req:recv_body()).
@@ -465,6 +377,20 @@ return_error(Name, Error, {OutList, InList, Errors}) ->
     {lists:keydelete(atom_to_list(Name), 1, OutList), InList,
      [{Name, iolist_to_binary(Error)} | Errors]}.
 
+validate_by_fun(Fun, Name, {_, InList, _} = State) ->
+    Value = proplists:get_value(Name, InList),
+    case Value of
+        undefined ->
+            State;
+        _ ->
+            case Fun(Value) of
+                ok ->
+                    State;
+                {error, Error} ->
+                    return_error(Name, Error, State)
+            end
+    end.
+
 validate_boolean(Name, {OutList, _, _} = State) ->
     Value = proplists:get_value(atom_to_list(Name), OutList),
     case Value of
@@ -514,19 +440,15 @@ validate_range(Name, Min, Max, State) ->
                end,
     validate_range(Name, Min, Max, ErrorFun, State).
 
-validate_range(Name, Min, Max, ErrorFun, {_, InList, _} = State) ->
-    Value = proplists:get_value(Name, InList),
-    case Value of
-        undefined ->
-            State;
-        _ ->
-            case (Value >= Min) andalso (Value =< Max) of
-                true ->
-                    State;
-                false ->
-                    return_error(Name, ErrorFun(Name, Min, Max), State)
-            end
-    end.
+validate_range(Name, Min, Max, ErrorFun, State) ->
+    validate_by_fun(fun (Value) ->
+                            case (Value >= Min) andalso (Value =< Max) of
+                                true ->
+                                    ok;
+                                false ->
+                                    {error, ErrorFun(Name, Min, Max)}
+                            end
+                    end, Name, State).
 
 validate_unsupported_params({OutList, InList, Errors}) ->
     NewErrors = [{list_to_binary(Key),
@@ -538,34 +460,15 @@ validate_has_params({[], InList, Errors}) ->
 validate_has_params(State) ->
     State.
 
-validate_memory_quota(Name, {_, InList, _} = State) ->
-    MemoryQuota = proplists:get_value(Name, InList),
-    case MemoryQuota of
-       undefined ->
-            State;
-       _ ->
-            {MinMemoryMB, MaxMemoryMB, QuotaErrorDetailsFun} =
-                ns_storage_conf:allowed_node_quota_range(),
-            if
-                MemoryQuota < MinMemoryMB ->
-                    return_error(Name,
-                                 ["The RAM Quota value is too small.", QuotaErrorDetailsFun()],
-                                 State);
-                MemoryQuota > MaxMemoryMB ->
-                    return_error(Name,
-                                 ["The RAM Quota value is too large.", QuotaErrorDetailsFun()],
-                                 State);
-                true ->
-                    State
-            end
-   end.
+validate_any_value(Name, State) ->
+    validate_any_value(Name, State, fun (X) -> X end).
 
-validate_any_value(Name, {OutList, _, _} = State) ->
+validate_any_value(Name, {OutList, _, _} = State, Convert) ->
     case lists:keyfind(atom_to_list(Name), 1, OutList) of
         false ->
             State;
         {_, Value} ->
-            return_value(Name, Value, State)
+            return_value(Name, Convert(Value), State)
     end.
 
 execute_if_validated(Fun, Req, {_, Values, Errors}) ->
@@ -578,3 +481,6 @@ execute_if_validated(Fun, Req, {_, Values, Errors}) ->
         {false, _} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400)
     end.
+
+get_values({_, Values, _}) ->
+    Values.

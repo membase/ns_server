@@ -21,7 +21,7 @@
       <div class="cnt_holder main_holder">
         <div class="topper_nav">
           <span id="edit-internal-settings-link" class="when-roadmin-avoid-me" style="display:none;"><a onclick="runInternalSettingsDialog();" class="casper_internal_settings_popup">Edit internal settings</a> <b>&bull;</b></span>
-          <a id="switch_support_docs" href="http://www.couchbase.com/redirect/couchbase-server-docs/3.0.0" target="cbdocs">Documentation</a>
+          <a id="switch_support_docs" href="http://docs.couchbase.com/4.0/" target="cbdocs">Documentation</a>
           <b>&bull;</b> <a id="switch_support_forums" href="http://www.couchbase.com/communities/" target="cbforums">Support</a>
           <b>&bull;</b> <a href="javascript:showAbout();">About</a>
           <i class="sign-out-link"><b>&bull;</b> <a href="javascript:ThePage.signOut();">Sign Out</a></i>
@@ -248,10 +248,10 @@
             </colgroup>
             <tbody>
               <tr>
-                <th class="node_name" style="text-align:left;">Server Node Name</th>
+                <th class="node_name" style="text-align:left;" data-sortby="hostname">Server Node Name</th>
                 <th></th>
-                <th style='{%= isGroupRaw ? "text-align: center!important;" : "width: 0px;" %}'>{%= isGroupRaw ? "Group" : " " %}</th>
-                <th >Services</th>
+                <th style='{%= isGroupRaw ? "text-align: center!important;" : "width: 0px;" %}' data-sortby="group">{%= isGroupRaw ? "Group" : " " %}</th>
+                <th data-sortby="services">Services</th>
                 <th>RAM Usage</th>
                 <th>Swap Usage</th>
                 <th>CPU Usage</th>
@@ -460,16 +460,21 @@
             <!-- {% } %}-->
             {%= tmpl("js_warm_up_tmpl")({thisWarmupTasks: thisNodeWarmupTasks}) %}
 
-            <h3>Memory Cache</h3>
+            <h3>Memory</h3>
             <div class="info_block">
               <span class="dynamic_ram">Dynamic RAM:</span>
-              <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.ram, true)}) %}</div>
+              <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.ram, true, (_.indexOf(services, 'n1ql') > -1 && services.length === 1)) }) %}</div>
             </div>
             <h3>Disk Storage</h3>
             <div class="info_block">
               <span class="disk_storage">
                 <span>Disk One: </span>
-                  <span class="path" title="{%= h(storage.hdd[0].path) %}">{%= h(V.ellipsisiseOnLeft(storage.hdd[0].path || "", 25))  %}</span>
+                  <!-- {% if (storage.hdd[0].path) { %} -->
+                    <span class="path" title="{%= h(storage.hdd[0].path) %}">data: {%= h(V.ellipsisiseOnLeft(storage.hdd[0].path || "", 25))  %}</span>
+                  <!-- {% } %}-->
+                  <!-- {% if (storage.hdd[0].index_path) { %} -->
+                    <span class="path" title="{%= h(storage.hdd[0].index_path) %}">index: {%= h(V.ellipsisiseOnLeft(storage.hdd[0].index_path || "", 25))  %}</span>
+                  <!-- {% } %}-->
               </span>
               <div class="usage-block">{%= V.thisElement(function (e) {ServersSection.renderUsage(e, obj.storageTotals.hdd)}) %}</div>
             </div>
@@ -792,6 +797,12 @@
 
         <script id="logs_template" type="text/html">
           <table class="lined_tab">
+            <colgroup>
+              <col style="width: 55%;">
+              <col style="width: 15%;">
+              <col style="width: 15%;">
+              <col style="width: 15%;">
+            </colgroup>
             <thead>
               <tr>
                 <th>Event</th>
@@ -1055,7 +1066,7 @@
                         <input type="number" name="indexerThreads" id="index_settings_thread">
                         <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
                           <span class="tooltip_msg text_11" style="width:310px;"><span>
-                            Number of dedicated threads the indexer uses. On multi-core machines increasing this number will increase the amount of CPU available to the indexer. Defaults to 4.
+                            Number of dedicated threads the indexer uses. On multi-core machines increasing this number will increase the indexer's CPU utilization. Defaults to 4.
                           </span></span>
                         </a>
                         <span class="error-container err-indexerThreads"></span>
@@ -1075,7 +1086,7 @@
                       <div class="row">
                         <label for="in_memory_snapshot">Stable Snapshot Interval:</label>
                         <input type="number" name="stableSnapshotInterval" id="in_memory_snapshot">
-                        <span>(sec)</span>
+                        <span>(ms)</span>
                         <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
                           <span class="tooltip_msg text_11" style="width:310px;"><span>
                             Specifies the frequency of persisted snapshots for recovery.
@@ -1092,6 +1103,21 @@
                           </span></span>
                         </a>
                         <span class="error-container err-maxRollbackPoints"></span>
+                      </div>
+                      <div class="row">
+                        <label for="indexer_log_level">Indexer Log Level:</label>
+                        <select name="logLevel" id="indexer_log_level">
+                          <option value="silent">Silent</option>
+                          <option value="fatal">Fatal</option>
+                          <option value="error">Error</option>
+                          <option value="warn">Warn</option>
+                          <option value="info">Info</option>
+                          <option value="verbose">Verbose</option>
+                          <option value="timing">Timing</option>
+                          <option value="debug">Debug</option>
+                          <option value="trace">Trace</option>
+                        </select>
+                        <span class="error-container err-logLevel"></span>
                       </div>
                     </div>
                     <div class="save_cancel when-roadmin-hide-me">
@@ -1501,7 +1527,8 @@
                 </li>
               </ul>
               <div class="create_view">
-                <a class="button_200 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup"><span>Create Development View</span></a>
+                <a class="btn_1 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup" style="float: right"><span>Create Development View</span></a>
+                <a class="btn_1 btn_create_spatial when-in-dev when-roadmin-hide-me casper_views_create_view_popup" style="float: right; margin-right: 5px;"><span>Create Development Spatial View</span></a>
                 <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
               </div>
             </div>
@@ -1570,11 +1597,24 @@
                 </td>
                 <td colspan="3" class="when-roadmin-hide-me">
                   <a class="list_button when-in-prod casper_views_copy_to_dev" href="#copyDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Copy to Dev</span></a>
+                  <!--{% if (!(ddoc.json.spatial && ddoc.json.views && !_.isEmpty(ddoc.json.spatial) && !_.isEmpty(ddoc.json.views))) { %}-->
                   <a class="list_button when-in-dev {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" href="#publishDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Publish</span></a>
+                  <!-- {% } %} -->
+                  <!--{% if (ddoc.json.views && !_.isEmpty(ddoc.json.views) &&  (!ddoc.json.spatial || _.isEmpty(ddoc.json.spatial)) ) { %}-->
                   <a class="list_button when-in-dev casper_views_add_view_popup" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
-                  <a class="list_button when-in-dev casper_views_add_spatial_popup" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
+                  <!-- {% } %} -->
+                  <!--{% if (ddoc.json.spatial && !_.isEmpty(ddoc.json.spatial) &&  (!ddoc.json.views || _.isEmpty(ddoc.json.views)) ) { %}-->
+                    <a class="list_button when-in-dev casper_views_add_spatial_popup" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
+                  <!-- {% } %} -->
+                  <!--{% if (!ddoc.json.spatial && !ddoc.json.views || _.isEmpty(ddoc.json.spatial) && _.isEmpty(ddoc.json.views)) { %}-->
+                    <a class="list_button when-in-dev casper_views_add_view_popup" href="#addView={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add View</span></a>
+                    <a class="list_button when-in-dev casper_views_add_spatial_popup" href="#addSpatial={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Add Spatial View</span></a>
+                  <!-- {% } %} -->
                   <a class="list_button casper_views_delete_popup" href="#deleteDDoc={%=h(encodeURIComponent(ddoc.meta.id))%}"><span>Delete</span></a>
                   <button class="list_button {%= ViewsSection.maybeDisabledCompactButtonAttr(ddoc)%} {%= ddoc.isEmpty ? 'dynamic_disabled' : ''%}" onclick="ViewsSection.compactDDoc({%= h(JSON.stringify(ddoc.meta.id)) %}, this);"><span>Compact</span></button>
+                  <!--{% if (ddoc.json.spatial && ddoc.json.views && !_.isEmpty(ddoc.json.spatial) && !_.isEmpty(ddoc.json.views)) { %}-->
+                    <div class="warning" style="overflow: hidden; margin-top:4px;">No new views can be added to this document. Delete either mapreduce or spatial views first.</div>
+                  <!-- {% } %} -->
                 </td>
               </tr>
               <!-- {% if (_.size(ddoc.json.viewInfos) < 1 && _.size(ddoc.json.spatialInfos) < 1) { %} -->
@@ -1927,10 +1967,10 @@
             <thead>
               <tr>
                 <th data-sortby="bucket" style="width: 200px;">Bucket</th>
-                <th data-sortby="hosts" style="width: 400px;">Node</th>
+                <th data-sortby="hosts" style="width: 350px;">Node</th>
                 <th data-sortby="index" style="width: 200px;">Index Name</th>
                 <th data-sortby="status">Status</th>
-                <th data-sortby="progress">Build Progress</th>
+                <th data-sortby="progress" style="width: 150px;">Initial Build Progress</th>
               </tr>
             </thead>
             <tbody>
@@ -1939,7 +1979,7 @@
                   <tr class="row">
                     <td class="ellipsis with_expander_button" title="{%= h(row.bucket) %}">
                       <a href="#openIndex={%= h(row.id) %}"><ins class="expander closed"></ins></a>
-                      <span style="ve">{%= h(row.bucket) %}</span>
+                      <span>{%= h(row.bucket) %}</span>
                     </td>
                     <td class="ellipsis" title="{%= h(row.hosts[0]) %}">{%= h(row.hosts[0]) %}</td>
                     <td class="ellipsis" title="{%= h(row.index) %}">{%= h(row.index) %}</td>
@@ -1972,32 +2012,16 @@
           </div>
         </script>
 
-        <script id="js_index_nodes_list_template" type="text/html">
-          <table class="list align_text" style="width:100%">
-            <thead>
-              <tr>
-                <th>Node</th>
-                <th>Current RAM Quota</th>
-                <th>RAM Quota on Restart</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% if (rows.length) { %}
-                {% _.each(rows, function (row) { %}
-                  <tr>
-                    <td class="ellipsis" title="{%= h(row.hostname) %}">{%= h(row.hostname) %}</td>
-                    <td>{%= h(row.currentQuota) %}</td>
-                    <td>{%= h(row.pendingQuota) %}</td>
-                  </tr>
-                {% }); %}
-              {% } else { %}
-                <tr><td colspan="3" style="text-align: center;">There are no index nodes currently.</td></tr>
-              {% } %}
-            </tbody>
-          </table>
+        <script id="js_index_warnings_template" type="text/html">
+          {% _.each(warnings, function (message) { %}
+            <div class="warning_message">
+              Warning: {%= h(message) %}
+            </div>
+          {% }); %}
         </script>
 
         <div id="js_indexes" class="indexes" style="display:none">
+          <div id="js_index_warnings_container"></div>
           <div class="shadow_box">
             <div class="header_2">
               <h4 style="float:left;line-height:34px;">Indexes</h4>
@@ -2072,7 +2096,7 @@
                 <col class="protocol">
                 <col class="from">
                 <col class="to">
-                <col class="filter">
+                <col class="filter when-enterprise">
                 <col class="status">
                 <col class="when">
               </colgroup>
@@ -2082,7 +2106,7 @@
                   <th>Protocol</th>
                   <th>From</th>
                   <th>To</th>
-                  <th>Filtered</th>
+                  <th class="when-enterprise">Filtered</th>
                   <th>Status</th>
                   <th>When</th>
                   <th></th>
@@ -2094,7 +2118,17 @@
                   <td>{%= h(r.protocol) %}</td>
                   <td style="color:#777">this cluster</td>
                   <td>{%= h(r.to) %}</td>
-                  <td title="{%= h(r.filterExpression) %}"><input type="checkbox" disabled {%= r.filterExpression ? "checked" : "" %}></td>
+                  <td class="when-enterprise">
+                    {% if (r.filterExpression) { %}
+                      <a class="tooltip text_11"><span>Yes</span>
+                        <span class="tooltip_msg break-word" style="width:200px;"><span>
+                          {%= r.filterExpression %}
+                        </span></span>
+                      </a>
+                    {% } else { %}
+                      No
+                    {% } %}
+                  </td>
                   <td class="replication_status_cell">
                     <span>{%= V.formatReplicationStatus(r) %}</span>
                   </td>
@@ -2246,10 +2280,13 @@
       <input type="hidden" name="rebalanceIndexWaitingDisabled" value="false">
       <input type="hidden" name="rebalanceIndexPausingDisabled" value="false">
       <input type="hidden" name="rebalanceIgnoreViewCompactions" value="false">
+      <input type="hidden" name="indexAutoFailoverDisabled" value="false">
+      <input type="hidden" name="certUseSha1" value="false">
       <label><span class="cursor_helper" title="When not disabled makes sure indexes are always up-to-date during rebalance">Disable index aware rebalance</span><input type="checkbox" name="indexAwareRebalanceDisabled" value="true"></label>
       <label><span class="cursor_helper" title="Whether index aware rebalance waiting for index up-to-dateness should be disabled. Makes rebalance faster">Disable index waiting during rebalance</span><input type="checkbox" name="rebalanceIndexWaitingDisabled" value="true"></label>
       <label><span class="cursor_helper" title="That's too complex to explain">Disable index pausing during rebalance</span><input type="checkbox" name="rebalanceIndexPausingDisabled" value="true"></label>
       <label><span>Don't compact views during rebalance</span><input type="checkbox" name="rebalanceIgnoreViewCompactions" value="true"></label>
+      <label><span>Do not failover Index service automatically.</span><input type="checkbox" name="indexAutoFailoverDisabled" value="true"></label>
       <label><span>Max in-/out-going backfills per node<br> during rebalance</span><input maxlength="5" style="width:1.5em;" name="rebalanceMovesPerNode"></label>
       <label><span>VBucket moves per node<br>before forced view compaction</span><input maxlength="5" style="width:1.5em;" name="rebalanceMovesBeforeCompaction"></label>
       <label><span>Max parallel main index tasks per node</span><input maxlength="5" style="width:1.5em;" name="maxParallelIndexers"></label>
@@ -2278,6 +2315,7 @@
       <label><span>Drop requests after this much memory is used (MiB)</span><input maxlength="6" style="width:2.5em;" name="dropRequestMemoryThresholdMiB"></label>
       <label><span>GOTRACEBACK</span><input style="width:2.5em;" name="gotraceback"></label>
       <label class="when-goxdcr-disabled"><span>XDCR anticipatory delay (ms)</span><input maxlength="6" style="width:2.5em;" name="xdcrAnticipatoryDelay"></label>
+      <label><span class="cursor_helper" title="When enabled forces sha1 signature algorithm during ssl certificates generation">Use sha1 in ssl certificates</span><input type="checkbox" name="certUseSha1" value="true"></label>
     </fieldset>
     <div class="save_cancel">
       <button class="save_button float_right" type="submit">Save</button>
@@ -2404,7 +2442,7 @@
           <div></div>
           <input type="hidden" name="replicaIndex" value="0">
           <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag">
-          <label for="label_replica_index_flag">Index replicas</label>
+          <label for="label_replica_index_flag">View index replicas</label>
         </div>
       </div><!-- .persistent-only -->
 
@@ -2579,7 +2617,7 @@
   </form>
 </div>
 
-<div class="xdcr_advaced_settings dialog" id="js_per_xdcr_settings_dialog" title="Advanced settings">
+<div class="xdcr_advaced_settings dialog" id="js_per_xdcr_settings_dialog" title="Advanced Settings">
   <form>
     <div>
       <div class="when-goxdcr-disabled">
@@ -2788,7 +2826,7 @@
         </li>
       </ul>
     </fieldset>
-    <fieldset>
+    <fieldset class="only-when-40">
       <legend>Services</legend>
       <ul class="join_cluster_dialog_services">
         <li>
@@ -3163,11 +3201,6 @@
       </fieldset>
       <fieldset class="xdcr_advaced_filtering xdcr_advaced_settings when-goxdcr-enabled when-enterprise" id="js_xdcr_advaced_filtering" style="clear:both;">
         <div id="js_xdcr_advaced_filtering_container" class="xdcr_advaced_filtering_container" style="display:none;">
-          <div id="js_match_indicator" class="match_indicator">
-            <span class="no_match">No Match</span>
-            <span class="loading">...</span>
-            <span class="match">Match</span>
-          </div>
           <div>
             <label for="js_filter_expression" class="filter_expression_label">Filter Expression:</label>
             <a class="tooltip text_11" style="line-height:20px;"><span>What's this?</span>
@@ -3181,22 +3214,14 @@
             <i class="error js_error js_filterExpression" style="display: block;clear:both;margin-top:10px;margin-left:15px;"></i>
           </div>
           <div class="js_test_keys test_keys">
-            <label for="xdcr_advaced_settings_type">Test Keys:</label>
+            <label for="xdcr_advaced_settings_type">Test Key:</label>
             <div class="js_test_key_wrapper test_key_wrapper">
-              <span>1.</span>
               <pre class="js_test_key_result test_key_result" contenteditable="true" spellcheck="false"></pre>
-            </div>
-            <div class="js_test_key_wrapper test_key_wrapper">
-              <span>2.</span>
-              <pre class="js_test_key_result test_key_result" contenteditable="true" spellcheck="false"></pre>
-            </div>
-            <div class="js_test_key_wrapper test_key_wrapper">
-              <span>3.</span>
-              <pre class="js_test_key_result test_key_result" contenteditable="true" spellcheck="false"></pre>
-            </div>
-            <div class="js_test_key_wrapper test_key_wrapper">
-              <span>4.</span>
-              <pre class="js_test_key_result test_key_result" contenteditable="true" spellcheck="false"></pre>
+              <div id="js_match_indicator" class="match_indicator">
+                <span class="no_match">No Match</span>
+                <span class="loading">...</span>
+                <span class="match">Match</span>
+              </div>
             </div>
           </div>
         </div>
@@ -3381,7 +3406,7 @@
         </div>
 
         <div>
-          <label for="setup_index_path_input">Indices Path:</label>
+          <label for="setup_index_path_input">Indexes Path:</label>
           <input type="text" name="index_path"
                  id="setup_index_path_input" />
           <br class="clear" />
@@ -3395,7 +3420,7 @@
       </form>
       <div class="warning init_cluster_dialog_errors_container" style="display:none;"></div>
       <p class="when-enterprise">
-        Hint: if you use this server in a production environment, use different file systems for databases and indices.
+        Hint: if you use this server in a production environment, use different file systems for databases and indexes.
       </p>
     </div>
 
@@ -3466,14 +3491,14 @@
           </div>
           <div>
             <label>Services:</label>
-            <div  class="wizard_services">
+            <div  class="wizard_services js_wizard_services">
               <input type="checkbox" class="inp" name="services" value="kv" id="wizard_join_servers_data_checkbox" checked/>
               <label class="label" for="wizard_join_servers_data_checkbox">Data</label>
 
-              <input type="checkbox" class="inp" name="services" value="index" id="wizard_join_setup_index_checkbox" />
+              <input type="checkbox" class="inp" name="services" value="index" id="wizard_join_setup_index_checkbox" checked/>
               <label class="label" for="wizard_join_setup_index_checkbox">Index</label>
 
-              <input type="checkbox" class="inp" name="services" value="n1ql" id="wizard_join_setup_n1ql_checkbox" />
+              <input type="checkbox" class="inp" name="services" value="n1ql" id="wizard_join_setup_n1ql_checkbox" checked/>
               <label class="label" for="wizard_join_setup_n1ql_checkbox">Query</label>
             </div>
             <a class="tooltip text_11"><span>What's this?</span>
@@ -3579,7 +3604,7 @@
           <div></div>
           <input type="hidden" name="replicaIndex" value="0">
           <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag-init">
-          <label for="label_replica_index_flag-init">Index replicas</label>
+          <label for="label_replica_index_flag-init">View index replicas</label>
         </div>
       </div><!-- .persistent-only -->
 
@@ -3792,19 +3817,22 @@
 </div>
 </script>
 <script type="text/html" id="js_memory_quota_settings_widget_template">
+  <div class="error-container err-_"></div>
+  {% if (totalMemorySize) { %}
   <div class="row">
     <label>RAM Available: </label>
     <span class="ram-total-size">{%= h(totalMemorySize) %} MB</span>
   </div>
+  {% } %}
   {% if (isServicesControllsAvailable) { %}
     <div class="row">
       <label>Services:</label>
       <div class="wizard_services">
         <input type="checkbox" class="js_service_flag" name="services" value="kv" id="{%= prefix %}_kv_checkbox" checked disabled />
         <label class="label" for="{%= prefix %}_kv_checkbox">Data</label>
-        <input type="checkbox" class="js_service_flag" name="services" value="index" id="{%= prefix %}_index_checkbox" />
+        <input type="checkbox" class="js_service_flag" name="services" value="index" id="{%= prefix %}_index_checkbox" checked />
         <label class="label" for="{%= prefix %}_index_checkbox">Index</label>
-        <input type="checkbox" class="js_service_flag" name="services" value="n1ql" id="{%= prefix %}_n1ql_checkbox" />
+        <input type="checkbox" class="js_service_flag" name="services" value="n1ql" id="{%= prefix %}_n1ql_checkbox" checked />
         <label class="label" for="{%= prefix %}_n1ql_checkbox">Query</label>
       </div>
       <a class="tooltip text_11"><span>What&#39;s this?</span>
@@ -3840,7 +3868,7 @@
     <span class="error-container err-indexMemoryQuota"></span>
   </div>
   {% } %}
-  {% if (showTotalPerNode) { %}
+  {% if (maxMemorySize) { %}
   <div class="row">
     <label>Total Per Server:</label>
     <span><span class="js_per_server_total"></span> MB (must be less than <span class="js_max_ram_size">{%= h(maxMemorySize) %}</span> MB) </span>

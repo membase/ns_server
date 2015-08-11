@@ -136,7 +136,6 @@ handle_info(log, State) ->
     {noreply, State1};
 handle_info({_Port, {exit_status, Status}}, State) ->
     ns_crash_log:record_crash({State#state.name,
-                               node(),
                                Status,
                                string:join(ringbuffer:to_list(State#state.messages), "\n")}),
     {stop, {abnormal, Status}, State};

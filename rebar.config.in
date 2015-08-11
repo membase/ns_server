@@ -1,4 +1,5 @@
 {lib_dirs, ["deps"]}.
+{erl_first_files, ["src/supervisor2.erl"]}.
 {erl_opts, [{src_dirs, ["test"]},
             {i, "@COUCHDB_SRC_DIR@/src/couchdb"},
             {i, "@COUCHDB_SRC_DIR@/src"},

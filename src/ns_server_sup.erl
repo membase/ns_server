@@ -15,7 +15,7 @@
 %%
 -module(ns_server_sup).
 
--behaviour(supervisor).
+-behaviour(supervisor2).
 
 -include("ns_common.hrl").
 
@@ -34,7 +34,7 @@
 %% @doc Notify the supervisor that the node's name has changed so it
 %% can restart children that care.
 node_name_changed() ->
-    {ok, _} = restartable:restart(?MODULE, ns_doctor),
+    {ok, _} = restartable:restart(?MODULE, ns_doctor_sup),
     {ok, _} = restartable:restart(?MODULE, mb_master),
     ok.
 
@@ -115,8 +115,8 @@ child_specs() ->
       permanent, infinity, supervisor, [ns_heart_sup]},
 
      restartable:spec(
-       {ns_doctor, {ns_doctor, start_link, []},
-        permanent, 1000, worker, [ns_doctor]}),
+       {ns_doctor_sup, {ns_doctor_sup, start_link, []},
+        permanent, infinity, supervisor, [ns_doctor_sup]}),
 
      {remote_clusters_info, {remote_clusters_info, start_link, []},
       permanent, 1000, worker, [remote_servers_info]},
@@ -150,6 +150,13 @@ child_specs() ->
       {work_queue, start_link, [metakv_worker]},
       permanent, 1000, worker, []},
 
+     {index_events,
+      {gen_event, start_link, [{local, index_events}]},
+      permanent, brutal_kill, worker, dynamic},
+
+     {index_settings_manager, {index_settings_manager, start_link, []},
+      permanent, 1000, worker, [index_settings_manager]},
+
      {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
       [menelaus_sup]},
@@ -168,9 +175,6 @@ child_specs() ->
 
      {memcached_config_mgr, {memcached_config_mgr, start_link, []},
       {permanent, 4}, 1000, worker, []},
-
-     {ns_port_memcached_killer, {ns_ports_setup, start_memcached_force_killer, []},
-      permanent, brutal_kill, worker, []},
 
      {ns_memcached_log_rotator, {ns_memcached_log_rotator, start_link, []},
       permanent, 1000, worker, [ns_memcached_log_rotator]},
@@ -238,14 +242,20 @@ child_specs() ->
      {query_stats_collector, {query_stats_collector, start_link, []},
       permanent, 1000, worker, []},
 
+     {{stats_archiver, "@global"}, {stats_archiver, start_link, ["@global"]},
+      permanent, 1000, worker, [stats_archiver]},
+
+     {{stats_reader, "@global"}, {stats_reader, start_link, ["@global"]},
+      permanent, 1000, worker, [stats_reader]},
+
+     {global_stats_collector, {global_stats_collector, start_link, []},
+      permanent, 1000, worker, [global_stats_collector]},
+
      {goxdcr_status_keeper, {goxdcr_status_keeper, start_link, []},
       permanent, 1000, worker, [goxdcr_status_keeper]},
 
      {index_stats_sup, {index_stats_sup, start_link, []},
       permanent, infinity, supervisor, []},
-
-     {index_settings_sup, {index_settings_sup, start_link, []},
-      permanent, infinity, supervisor, [index_settings_sup]},
 
      {compaction_daemon, {compaction_daemon, start_link, []},
       permanent, 1000, worker, [compaction_daemon]},
@@ -257,5 +267,4 @@ child_specs() ->
       permanent, infinity, supervisor, []},
 
      {remote_api, {remote_api, start_link, []},
-      permanent, 1000, worker, [remote_api]}
-    ].
+      permanent, 1000, worker, [remote_api]}].

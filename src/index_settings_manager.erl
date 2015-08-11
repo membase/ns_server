@@ -16,20 +16,19 @@
 -module(index_settings_manager).
 
 -include("ns_common.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -define(INDEX_CONFIG_KEY, {metakv, <<"/indexing/settings/config">>}).
 
 -export([start_link/0,
-         start_link_event_manager/0,
          get/1, get/2,
+         get_from_config/3,
          update/1, update/2,
+         update_txn/1,
          config_upgrade/0]).
 
 start_link() ->
     work_queue:start_link(?MODULE, fun init/0).
-
-start_link_event_manager() ->
-    gen_event:start_link({local, index_settings_events}).
 
 get(Key) ->
     index_settings_manager:get(Key, undefined).
@@ -42,6 +41,24 @@ get(Key, Default) when is_atom(Key) ->
             Default
     end.
 
+get_from_config(Config, Key, Default) ->
+    case Config =:= ns_config:latest() of
+        true ->
+            index_settings_manager:get(Key, Default);
+        false ->
+            case ns_config:search(Config, ?INDEX_CONFIG_KEY) of
+                {value, JSON} ->
+                    do_get_from_json(Key, JSON);
+                false ->
+                    Default
+            end
+    end.
+
+do_get_from_json(Key, JSON) ->
+    {_, Lens} = lists:keyfind(Key, 1, known_settings()),
+    Settings = decode_settings_json(JSON),
+    lens_get(Lens, Settings).
+
 update(Props) ->
     work_queue:submit_sync_work(
       ?MODULE,
@@ -51,6 +68,15 @@ update(Props) ->
 
 update(Key, Value) ->
     update([{Key, Value}]).
+
+update_txn(Props) ->
+    fun (Config, SetFn) ->
+            JSON = fetch_settings_json(Config),
+            Current = decode_settings_json(JSON),
+
+            New = build_settings_json(Props, Current),
+            {commit, SetFn(?INDEX_CONFIG_KEY, New, Config), New}
+    end.
 
 config_upgrade() ->
     [{set, ?INDEX_CONFIG_KEY, build_settings_json(default_settings())}].
@@ -85,15 +111,7 @@ submit_config_update(Pid, JSON) ->
       end).
 
 do_update(Props) ->
-    RV = ns_config:run_txn(
-           fun (Config, SetFn) ->
-                   JSON = fetch_settings_json(Config),
-                   Current = decode_settings_json(JSON),
-
-                   New = build_settings_json(Props, Current),
-                   {commit, SetFn(?INDEX_CONFIG_KEY, New, Config), New}
-           end),
-
+    RV = ns_config:run_txn(update_txn(Props)),
     case RV of
         {commit, _, NewJSON} ->
             populate_ets_table(NewJSON),
@@ -103,7 +121,7 @@ do_update(Props) ->
     end.
 
 fetch_settings_json() ->
-    fetch_settings_json(ns_config:latest_config_marker()).
+    fetch_settings_json(ns_config:latest()).
 
 fetch_settings_json(Config) ->
     ns_config:search(Config, ?INDEX_CONFIG_KEY, <<"{}">>).
@@ -144,20 +162,22 @@ do_populate_ets_table(JSON) ->
                       ok;
                   false ->
                       ets:insert(?MODULE, {Key, NewValue}),
-                      gen_event:notify(index_settings_events,
-                                       {index_settings_events, Key, NewValue})
+                      gen_event:notify(index_events,
+                                       {index_settings_change, Key, NewValue})
               end
       end, lens_get_many(known_settings(), Dict)),
 
     erlang:put(prev_json, JSON).
 
 known_settings() ->
-    [{memoryQuota, memory_quota_lens(), 256},
-     {generalSettings, general_settings_lens(), general_settings_defaults()},
-     {compaction, compaction_lens(), compaction_defaults()}].
+    [{memoryQuota, memory_quota_lens()},
+     {generalSettings, general_settings_lens()},
+     {compaction, compaction_lens()}].
 
 default_settings() ->
-    [{UIKey, Default} || {UIKey, _, Default} <- known_settings()].
+    [{memoryQuota, 256},
+     {generalSettings, general_settings_defaults()},
+     {compaction, compaction_defaults()}].
 
 id_lens(Key) ->
     Get = fun (Dict) ->
@@ -190,10 +210,18 @@ indexer_threads_lens() ->
     {Get, Set}.
 
 general_settings_lens_props() ->
-    [{indexerThreads, indexer_threads_lens(), 4},
-     {memorySnapshotInterval, id_lens(<<"indexer.settings.inmemory_snapshot.interval">>), 200},
-     {stableSnapshotInterval, id_lens(<<"indexer.settings.persisted_snapshot.interval">>), 30000},
-     {maxRollbackPoints, id_lens(<<"indexer.settings.recovery.max_rollbacks">>), 5}].
+    [{indexerThreads, indexer_threads_lens()},
+     {memorySnapshotInterval, id_lens(<<"indexer.settings.inmemory_snapshot.interval">>)},
+     {stableSnapshotInterval, id_lens(<<"indexer.settings.persisted_snapshot.interval">>)},
+     {maxRollbackPoints, id_lens(<<"indexer.settings.recovery.max_rollbacks">>)},
+     {logLevel, id_lens(<<"indexer.settings.log_level">>)}].
+
+general_settings_defaults() ->
+    [{indexerThreads, 4},
+     {memorySnapshotInterval, 200},
+     {stableSnapshotInterval, 5000},
+     {maxRollbackPoints, 5},
+     {logLevel, <<"info">>}].
 
 general_settings_lens_get(Dict) ->
     lens_get_many(general_settings_lens_props(), Dict).
@@ -203,9 +231,6 @@ general_settings_lens_set(Values, Dict) ->
 
 general_settings_lens() ->
     {fun general_settings_lens_get/1, fun general_settings_lens_set/2}.
-
-general_settings_defaults() ->
-    [{Key, Default} || {Key, _, Default} <- general_settings_lens_props()].
 
 compaction_interval_default() ->
     [{from_hour, 0},
@@ -241,8 +266,12 @@ compaction_interval_lens() ->
     {Get, Set}.
 
 compaction_lens_props() ->
-    [{fragmentation, id_lens(<<"indexer.settings.compaction.min_frag">>), 30},
-     {interval, compaction_interval_lens(), compaction_interval_default()}].
+    [{fragmentation, id_lens(<<"indexer.settings.compaction.min_frag">>)},
+     {interval, compaction_interval_lens()}].
+
+compaction_defaults() ->
+    [{fragmentation, 30},
+     {interval, compaction_interval_default()}].
 
 compaction_lens_get(Dict) ->
     lens_get_many(compaction_lens_props(), Dict).
@@ -253,14 +282,11 @@ compaction_lens_set(Values, Dict) ->
 compaction_lens() ->
     {fun compaction_lens_get/1, fun compaction_lens_set/2}.
 
-compaction_defaults() ->
-    [{Key, Default} || {Key, _, Default} <- compaction_lens_props()].
-
 lens_get({Get, _}, Dict) ->
     Get(Dict).
 
 lens_get_many(Lenses, Dict) ->
-    [{Key, lens_get(L, Dict)} || {Key, L, _} <- Lenses].
+    [{Key, lens_get(L, Dict)} || {Key, L} <- Lenses].
 
 lens_set(Value, {_, Set}, Dict) ->
     Set(Value, Dict).
@@ -268,6 +294,16 @@ lens_set(Value, {_, Set}, Dict) ->
 lens_set_many(Lenses, Values, Dict) ->
     lists:foldl(
       fun ({Key, Value}, Acc) ->
-              {Key, L, _} = lists:keyfind(Key, 1, Lenses),
+              {Key, L} = lists:keyfind(Key, 1, Lenses),
               lens_set(Value, L, Acc)
       end, Dict, Values).
+
+-ifdef(EUNIT).
+defaults_test() ->
+    Keys = fun (L) -> lists:sort([K || {K, _} <- L]) end,
+
+    ?assertEqual(Keys(known_settings()), Keys(default_settings())),
+    ?assertEqual(Keys(compaction_lens_props()), Keys(compaction_defaults())),
+    ?assertEqual(Keys(general_settings_lens_props()),
+                 Keys(general_settings_defaults())).
+-endif.

@@ -26,10 +26,10 @@
 
 %% returns capi port for given node or undefined if node doesn't have CAPI
 compute_capi_port({ssl, Node}) ->
-    ns_config:search('latest-config-marker', {node, Node, ssl_capi_port}, undefined);
+    ns_config:search(ns_config:latest(), {node, Node, ssl_capi_port}, undefined);
 
 compute_capi_port(Node) ->
-    ns_config:search('latest-config-marker', {node, Node, capi_port}, undefined).
+    ns_config:search(ns_config:latest(), {node, Node, capi_port}, undefined).
 
 get_capi_port(Node, Config) ->
     case ns_config:search(Config, {node, Node, capi_port}) of
@@ -165,6 +165,9 @@ full_live_ddocs(Bucket) ->
     full_live_ddocs(Bucket, infinity).
 
 full_live_ddocs(Bucket, Timeout) ->
+    full_live_ddocs(Bucket, Timeout, fun (Doc) -> Doc end).
+
+full_live_ddocs(Bucket, Timeout, Fun) ->
     Ref = make_ref(),
     RVs = ns_couchdb_api:foreach_doc(
             Bucket,
@@ -173,16 +176,30 @@ full_live_ddocs(Bucket, Timeout) ->
                         #doc{deleted = true} ->
                             Ref;
                         _ ->
-                            Doc
+                            Fun(Doc)
                     end
             end, Timeout),
     [V || {_Id, V} <- RVs,
           V =/= Ref].
 
--spec get_design_doc_signatures(bucket_name() | binary()) -> dict().
-get_design_doc_signatures(BucketId) ->
+fetch_ddoc_ids_for_mod(Mod, BucketId) ->
+    Key = case Mod of
+              mapreduce_view ->
+                  <<"views">>;
+              spatial_view ->
+                  <<"spatial">>
+          end,
+    Pairs = full_live_ddocs(BucketId, infinity,
+                            fun (DDoc) ->
+                                    #doc{id = Id, body = {Fields}} = couch_doc:with_ejson_body(DDoc),
+                                    {Id, couch_util:get_value(Key, Fields, {[]})}
+                            end),
+    [Id || {Id, Views} <- Pairs, Views =/= {[]}].
+
+-spec get_design_doc_signatures(mapreduce_view | spatial_view, bucket_name() | binary()) -> dict().
+get_design_doc_signatures(Mod, BucketId) ->
     DesignDocIds = try
-                       fetch_ddoc_ids(BucketId)
+                       fetch_ddoc_ids_for_mod(Mod, BucketId)
                    catch
                        exit:{noproc, _} ->
                            []
@@ -192,7 +209,7 @@ get_design_doc_signatures(BucketId) ->
     lists:foldl(
       fun (DDocId, BySig) ->
               {ok, Signature} = couch_set_view:get_group_signature(
-                                  mapreduce_view, list_to_binary(BucketId),
+                                  Mod, list_to_binary(BucketId),
                                   DDocId),
               dict:append(Signature, DDocId, BySig)
       end, dict:new(), DesignDocIds).

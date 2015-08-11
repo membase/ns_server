@@ -18,6 +18,8 @@
 
 -module(ns_couchdb_sup).
 
+%% TODO: replace with supervisor2 when we will figure out how to build
+%% supervisor2 before ns_couchdb_sup
 -behaviour(supervisor).
 
 %% API
@@ -31,7 +33,7 @@
 %% ===================================================================
 
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor2:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -77,7 +79,7 @@ child_specs() ->
      restartable:spec(
        {ns_capi_ssl_service,
         {ns_ssl_services_setup, start_link_capi_service, []},
-        permanent, 1000, worker, []}),
+        {permanent, 4}, 1000, worker, []}),
 
      {dir_size, {dir_size, start_link, []},
       permanent, 1000, worker, [dir_size]}

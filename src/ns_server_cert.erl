@@ -53,7 +53,13 @@ generate_and_set_cert_and_pkey() ->
 
 generate_cert_and_pkey() ->
     StartTS = os:timestamp(),
-    RV = do_generate_cert_and_pkey([], []),
+    Args = case ns_config:read_key_fast({cert, use_sha1}, false) of
+               true ->
+                   ["--use-sha1"];
+               false ->
+                   []
+           end,
+    RV = do_generate_cert_and_pkey(Args, []),
     EndTS = os:timestamp(),
 
     Diff = timer:now_diff(EndTS, StartTS),

@@ -34,4 +34,6 @@ child_specs() ->
      {child_ns_server_sup, {child_ns_server_sup, start_link, []},
       permanent, infinity, supervisor, []},
      {ns_child_ports_sup, {ns_child_ports_sup, start_link, []},
-      permanent, infinity, supervisor, []}].
+      permanent, infinity, supervisor, []},
+     {ns_ports_manager, {ns_ports_manager, start_link, []},
+      permanent, 1000, worker, []}].

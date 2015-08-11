@@ -97,7 +97,7 @@ iterate_matching(KeyPrefix, Continuous, Callback) ->
 check_continuous_allowed(Key) ->
     case which_store(Key) of
         simple_store ->
-            ?log_debug("Continuous should not be set to true while iterating on XDCR Checkpoints."),
+            ?metakv_debug("Continuous should not be set to true while iterating on XDCR Checkpoints."),
             false;
         ns_config ->
             true

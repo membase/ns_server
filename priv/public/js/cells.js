@@ -1700,6 +1700,9 @@ var TabsCell = mkClass(HashFragmentCell, {
       self.addItem(index, val);
     });
     self.finalizeBuilding();
+    if (this.selectedId === undefined && values.length) {
+      this.interpretState(0);
+    }
   },
   onTabClick: function (event, index) {
     var item = this.idToItems[index];

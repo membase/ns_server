@@ -363,10 +363,11 @@ var SetupWizard = {
     setting_memory_quota: function (node, pagePrefix, options) {
       var parent = $('#' + pagePrefix + '_dialog');
       var form = $('form', parent);
-      var settings = ClusterSection.prepareClusterQuotaSettings(options.poolData);
-      settings.prefix = 'wizard_join_cluster_quota';
-      settings.showKVMemoryQuota = options.selectedServices.indexOf('kv') > -1;
-      settings.showTotalPerNode = settings.showKVMemoryQuota;
+      var settings = ClusterSection.prepareClusterQuotaSettings(
+        'wizard_join_cluster_quota',
+        options.poolData,
+        options.selectedServices.indexOf('kv') > -1
+      );
       var memoryQuotaWidget = new MemoryQuotaSettingsWidget(settings, $('#js_join_wizard_cluster_quota'));
       form.submit(function (event) {
         event.preventDefault();
@@ -613,7 +614,7 @@ var SetupWizard = {
                 var errReason = errorObject && errorObject.reason || simpleErrors.join(' and ');
                 genericDialog({
                   buttons: {ok: true},
-                  header: "Failed To Create Bucket",
+                  header: "Failed to Create Bucket",
                   textHTML: errReason
                 });
               }
@@ -636,6 +637,7 @@ var SetupWizard = {
       var resourcesObserver;
       var newClusterFormBlock = $(".js_start_new_cluster_block");
       var memoryQuotaWidget;
+      var nodeSelf;
 
       $('#join-cluster').click(function (e) {
         $('.js_login-credentials').slideDown();
@@ -646,6 +648,13 @@ var SetupWizard = {
         newClusterFormBlock.slideDown();
         $('.js_login-credentials').slideUp();
       });
+      $(".js_wizard_services [name='services']").prop("checked", true);
+
+      if (!DAL.cells.isEnterpriseCell.value) {
+        $(".js_wizard_services [value='kv']").prop("disabled", true);
+      }
+
+      ServersSection.bindIndexAndN1qlCheckboxesOnCE(".js_wizard_services");
 
       // we return function signaling that we're not yet ready to show
       // our page of wizard (no data to display in the form), but will
@@ -676,14 +685,9 @@ var SetupWizard = {
               $('.js_login-credentials').show();
           });
 
-          var m = data['memoryQuota'];
-          if (m == null || m == "none") {
-            m = "";
-          }
-
-          dialog.find('[name=quota]').val(m);
-
           data['node'] = data['node'] || node;
+
+          nodeSelf = data;
 
           var hostname = dialog.find('[name=hostname]');
           hostname.val(data['otpNode'].split('@')[1] || '127.0.0.1');
@@ -692,7 +696,7 @@ var SetupWizard = {
 
           var totalRAMMegs = Math.floor(storageTotals.ram.total/Math.Mi);
           var quota = Math.floor(storageTotals.ram.quotaTotal / Math.Mi);
-          var ramMaxMegs = Math.floor(totalRAMMegs / 100 * 80);
+          var ramMaxMegs = Math.floor(Math.max(totalRAMMegs * 0.8, totalRAMMegs - 1024));
 
           memoryQuotaWidget = new MemoryQuotaSettingsWidget({
             minMemorySize: 256,
@@ -707,6 +711,8 @@ var SetupWizard = {
             totalMemorySize: totalRAMMegs,
             prefix: 'cluster_memory_wizard_settings'
           }, $('#js_start_new_cluster_memory_quoata_cont'));
+
+          ServersSection.bindIndexAndN1qlCheckboxesOnCE(".js_start_new_cluster_block");
 
           var firstResource = data.storage.hdd[0];
 
@@ -810,17 +816,47 @@ var SetupWizard = {
         var servicesParams = $.param({services: services});
         var ajaxOptions = {dataType: 'text'}; //because with dataType json jQuery returning “parsererror”
 
+        function goToNextStep() {
+          BucketsSection.refreshBuckets();
+          SetupWizard.show("sample_buckets");
+          onLeave();
+        }
+
+        function setupServices() {
+          return jsonPostWithErrors("/node/controller/setupServices", servicesParams, maybeShowServicesErrors, ajaxOptions);
+        }
+
+
         jQuery.when(jsonPostWithErrors('/nodes/' + node + '/controller/settings', diskParams, maybeShowDiskErrors, ajaxOptions)).done(function () {
           jQuery.when(jsonPostWithErrors('/node/controller/rename', hostnameParams, maybeShowHostnameErrors, ajaxOptions)).done(function () {
-            if ($('#no-join-cluster')[0].checked) {
-              jQuery.when(
-                jsonPostWithErrors("/node/controller/setupServices", servicesParams, maybeShowServicesErrors, ajaxOptions),
-                memoryQuotaWidget.tryToSaveMemoryQuota()
-              ).done(function () {
-                BucketsSection.refreshBuckets();
-                SetupWizard.show("sample_buckets");
-                onLeave();
-              }).always(removeSpinner);
+             if ($('#no-join-cluster')[0].checked) {
+              var quotaIsChanged = memoryQuotaWidget.memoryQuotaFileds.eq(0).val() != nodeSelf.memoryQuota ||
+                                  memoryQuotaWidget.memoryQuotaFileds.eq(1).val() != nodeSelf.indexMemoryQuota;
+
+              if (nodeSelf.services.sort().join("") === services.split(',').sort().join("")) {
+                if (quotaIsChanged) {
+                  jQuery.when(memoryQuotaWidget.tryToSaveMemoryQuota()).done(goToNextStep).always(removeSpinner);
+                } else {
+                  goToNextStep();
+                  removeSpinner();
+                }
+              } else {
+                if (quotaIsChanged) {
+                  var hadIndexService = nodeSelf.services.join("").indexOf("index") > -1;
+                  var hasIndexService = services.indexOf("index") > -1;
+                  if (hadIndexService && !hasIndexService) {
+                    jQuery.when(setupServices()).done(function () {
+                      jQuery.when(memoryQuotaWidget.tryToSaveMemoryQuota()).done(goToNextStep).always(removeSpinner);
+                    }).fail(removeSpinner);
+                  } else {
+                    jQuery.when(memoryQuotaWidget.tryToSaveMemoryQuota()).done(function () {
+                      jQuery.when(setupServices()).done(goToNextStep).always(removeSpinner);
+                    }).fail(removeSpinner);
+                  }
+                } else {
+                  jQuery.when(setupServices()).done(goToNextStep).always(removeSpinner);
+                }
+              }
             } else {
               var deferred = SetupWizard.doClusterJoin();
               if (deferred) {
@@ -852,7 +888,7 @@ var SetupWizard = {
 
         function maybeShowServicesErrors(data, status, errObject) {
           if (status !== 'success') {
-            serviceErrorsContainer.text(errObject.error);
+            serviceErrorsContainer.text(errObject[0]);
             serviceErrorsContainer.show();
           }
         }
