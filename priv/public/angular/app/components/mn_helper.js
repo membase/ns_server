@@ -144,21 +144,20 @@ angular.module('mnHelper').factory('mnHelper',
     };
 
     mnHelper.initializeDetailsHashObserver = function ($scope, hashKey, stateName) {
-      function getOpenedServers() {
-        var value = $stateParams[hashKey];
-        return value ? _.isArray(value) ? value : [value] : [];
+      function getHashValue() {
+        return $stateParams[hashKey] || [];
       }
       $scope.isDetailsOpened = function (hashValue) {
-        return _.contains(getOpenedServers(), hashValue);
+        return _.contains(getHashValue(), String(hashValue));
       };
       $scope.toggleDetails = function (hashValue) {
-        var currentlyOpened = getOpenedServers();
+        var currentlyOpened = getHashValue();
         var stateParams = {};
         if ($scope.isDetailsOpened(hashValue)) {
-          stateParams[hashKey] = _.difference(currentlyOpened, [hashValue]);
+          stateParams[hashKey] = _.difference(currentlyOpened, [String(hashValue)]);
           $state.go(stateName, stateParams, {notify: false});
         } else {
-          currentlyOpened.push(hashValue);
+          currentlyOpened.push(String(hashValue));
           stateParams[hashKey] = currentlyOpened;
           $state.go(stateName, stateParams, {notify: false});
         }
