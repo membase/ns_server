@@ -1,4 +1,17 @@
-angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider) {
+angular.module('mnAdmin').config(function ($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider) {
+
+  function valToString(val) {
+    return val != null ? val.toString() : val;
+  }
+  function regexpMatches(val) {
+    return this.pattern.test(val);
+  }
+  $urlMatcherFactoryProvider.type("string", {
+    encode: valToString,
+    decode: valToString,
+    is: regexpMatches,
+    pattern: /[^/]*/
+  });
 
   $stateProvider
     .state('app.admin', {
