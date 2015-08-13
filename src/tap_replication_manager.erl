@@ -184,7 +184,7 @@ change_vbucket_filter(#state{bucket_name = Bucket,
                                                  Args,
                                                  MFA,
                                                  ns_vbm_sup:server_name(Bucket)) of
-        RV -> {ok, RV}
+        {ok, _} = RV -> RV
     catch error:upstream_conn_is_down ->
             ?log_debug("Detected upstream_conn_is_down and going to simply start fresh ebucketmigrator"),
             start_child(State, SrcNode, NewVBuckets),
