@@ -247,46 +247,6 @@ stream_vbucket_inner(Bucket, Vb, FailoverId,
             ?log_debug("Got stop. Dropping socket on the floor")
     end.
 
-
-scan_for_nops(Data, Pos) ->
-    case Data of
-        <<_:Pos/binary, Hdr:(?HEADER_LEN)/binary, _Rest/binary>> ->
-            <<Magic:8, Opcode:8, _:16,
-              _:8, _:8, _:16,
-              BodySize:32,
-              Opaque:32,
-              _:64>> = Hdr,
-            case Magic =:= ?REQ_MAGIC andalso Opcode =:= ?DCP_NOP of
-                true ->
-                    {body_size, 0} = {body_size, BodySize},
-                    {Opaque, Pos + ?HEADER_LEN};
-                false ->
-                    NewPos = Pos + ?HEADER_LEN + BodySize,
-                    case NewPos > erlang:size(Data) of
-                        true ->
-                            Pos;
-                        _ ->
-                            scan_for_nops(Data, NewPos)
-                    end
-            end;
-        _ ->
-            Pos
-    end.
-
-nops_loop(Socket, Data, Pos) ->
-    case scan_for_nops(Data, Pos) of
-        {Opaque, NewPos} ->
-            respond_nop(Socket, Opaque),
-            nops_loop(Socket, Data, NewPos);
-        NewPos ->
-            NewPos
-    end.
-
-respond_nop(Socket, Opaque) ->
-    Packet = #dcp_packet{opcode = ?DCP_NOP,
-                         opaque = Opaque},
-    ok = gen_tcp:send(Socket, encode_res(Packet)).
-
 socket_loop_enter(Socket, Callback, Acc, Data, Consumer) ->
     case Data of
         <<>> ->
@@ -295,37 +255,24 @@ socket_loop_enter(Socket, Callback, Acc, Data, Consumer) ->
             self() ! {tcp, Socket, Data}
     end,
     inet:setopts(Socket, [{active, true}]),
-    socket_loop(Socket, Callback, Acc, <<>>, Consumer).
+    socket_loop(Socket, Callback, Acc, Consumer).
 
-socket_loop(Socket, Callback, Acc, Data, Consumer) ->
+socket_loop(Socket, Callback, Acc, Consumer) ->
     Msg = receive
               XMsg ->
                   XMsg
           end,
     case Msg of
-        {tcp, _Socket, NewData0} ->
-            NewData = case Data of
-                          <<>> ->
-                              NewData0;
-                          _ ->
-                              <<Data/binary, NewData0/binary>>
-                      end,
-            SplitPos = nops_loop(Socket, NewData, 0),
-            <<ScannedData:SplitPos/binary, UnscannedData/binary>> = NewData,
-            case SplitPos =/= 0 of
-                true ->
-                    Consumer ! ScannedData;
-                _ ->
-                    ok
-            end,
-            socket_loop(Socket, Callback, Acc, UnscannedData, Consumer);
+        {tcp, _Socket, NewData} ->
+            Consumer ! NewData,
+            socket_loop(Socket, Callback, Acc, Consumer);
         {tcp_closed, MustSocket} ->
             {tcp_closed_socket, Socket} = {tcp_closed_socket, MustSocket},
             erlang:error(premature_socket_closure);
         ConsumedBytes when is_integer(ConsumedBytes) ->
             ok = gen_tcp:send(Socket, encode_req(#dcp_packet{opcode = ?DCP_WINDOW_UPDATE,
                                                              ext = <<ConsumedBytes:32/big>>})),
-            socket_loop(Socket, Callback, Acc, Data, Consumer);
+            socket_loop(Socket, Callback, Acc, Consumer);
         done ->
             ok = gen_tcp:send(Socket, encode_req(#dcp_packet{opcode = ?DCP_WINDOW_UPDATE,
                                                              ext = <<(?XDCR_DCP_BUFFER_SIZE):32/big>>}));
@@ -486,11 +433,7 @@ consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                     {stop, Acc2} = Callback({stream_end,
                                              SnapshotStart, SnapshotEnd, LastSeenSeqno}, Acc),
                     consumer_loop_exit(Child, done, RestData),
-                    Acc2;
-                #dcp_packet{opcode = ?DCP_NOP} ->
-                    consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
-                                       SnapshotStart, SnapshotEnd, LastSeenSeqno,
-                                       RestData)
+                    Acc2
             end;
         Data ->
             consumer_loop_recv(Child, Callback, Acc, ConsumedSoFar,
