@@ -23,7 +23,7 @@
 
 -export([open_connection/3, add_stream/4, close_stream/3, stream_request/8,
          setup_flow_control/2,
-         process_response/2, format_packet_nicely/1]).
+         process_response/2, format_packet_nicely/1, command_2_atom/1]).
 
 -spec process_response(#mc_header{}, #mc_entry{}) -> any().
 process_response(#mc_header{opcode = ?DCP_ADD_STREAM, status = ?SUCCESS} = Header, Body) ->
