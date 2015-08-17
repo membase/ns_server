@@ -88,7 +88,7 @@
                   {{node.hostname | mnStripPortHTML:serversState.allNodes}}
                 </a>
               </td>
-              <td class="servers_icons  {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" ng-class="{dynamic_lastActive: node.isLastActive}">
+              <td class="servers_icons  {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}" ng-class="{dynamic_lastActive: node.isLastActiveData}">
               </td>
               <td>
                 <div class="ellipsis" title="{{node.group}}">{{node.group}}</div>
@@ -154,12 +154,12 @@
                 class="actions">
                   <a
                     class="list_button eject_server when-roadmin-avoid-me casper_servers_remove_popup"
-                    ng-class="{dynamic_disabled: node.isLastActive || node.isActiveUnhealthy || tasks.inRecoveryMode}"
-                    ng-click="!(node.isLastActive || node.isActiveUnhealthy || tasks.inRecoveryMode) &amp;&amp; ejectServer(node)"><span>Remove</span></a>
+                    ng-class="{dynamic_disabled: node.isLastActiveData || node.isActiveUnhealthy || tasks.inRecoveryMode}"
+                    ng-click="!(node.isLastActiveData || node.isActiveUnhealthy || tasks.inRecoveryMode) &amp;&amp; ejectServer(node)"><span>Remove</span></a>
                   <a
                     class="list_button failover_server when-roadmin-avoid-me casper_servers_failover_popup"
-                    ng-class="{dynamic_disabled: node.isLastActive || tasks.inRecoveryMode}"
-                    ng-click="!(node.isLastActive || tasks.inRecoveryMode) &amp;&amp; failOverNode(node)"><span>Fail Over</span></a>
+                    ng-class="{dynamic_disabled: node.isLastActiveData || tasks.inRecoveryMode}"
+                    ng-click="!(node.isLastActiveData || tasks.inRecoveryMode) &amp;&amp; failOverNode(node)"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
               </td>
             </tr>

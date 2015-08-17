@@ -122,7 +122,7 @@ angular.module('mnServersService', [
         node.isNodeInactiveFaied = node.clusterMembership === 'inactiveFailed';
         node.isNodeInactiveAdded = node.clusterMembership === 'inactiveAdded';
         node.isReAddPossible = node.isNodeInactiveFaied && !node.isNodeUnhealthy;
-        node.isLastActive = nodes.reallyActive.length === 1;
+        node.isLastActiveData = nodes.reallyActiveData.length === 1;
         node.isActiveUnhealthy = stateParamsNodeType === "active" && node.isNodeUnhealthy;
 
         var rebalanceProgress = tasks.tasksRebalance.perNode && tasks.tasksRebalance.perNode[node.otpNode];
@@ -217,6 +217,9 @@ angular.module('mnServersService', [
       }).concat(mnServersService.getPendingEject());
       rv.reallyActive = _.filter(rv.onlyActive, function (node) {
         return !node.pendingEject
+      });
+      rv.reallyActiveData = _.filter(rv.reallyActive, function (node) {
+        return _.indexOf(node.services, "kv") > -1;
       });
       rv.unhealthyActive = _.detect(rv.reallyActive, function (node) {
         return node.status === 'unhealthy';
