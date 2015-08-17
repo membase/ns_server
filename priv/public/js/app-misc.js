@@ -441,7 +441,7 @@ _.extend(ViewHelpers, {
         case 'moxi': return 'Moxi';
         case 'index': return 'Index';
       }
-    }).sort().join('<br>');
+    }).sort();
   },
   formatQuantity: function (value, numberSystem, spacing) {
     if (spacing == null) {

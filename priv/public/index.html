@@ -298,7 +298,7 @@
                 </td>
                 <td><div class="ellipsis" title="{%= s.group %}">{%= h(s.group || "") %}</div></td>
 
-                <td style="text-align: left;">{%= V.formatServices(s.services) %}</td>
+                <td style="text-align: left;">{%= V.formatServices(s.services).join('<br>') %}</td>
 
                 <td class="ram">
                   <!-- {% if ((s.memoryTotal > 0) && isFinite(s.memoryFree)) { %} -->
