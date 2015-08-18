@@ -55,17 +55,11 @@ get_replicator_pid(Bucket, Partition) ->
 
 set_desired_replications(Bucket, DesiredReps) ->
     NeededNodes = [Node || {Node, [_|_]} <- DesiredReps],
-    ProducerNodes = get_producer_nodes(Bucket),
+    gen_server:call(server_name(Bucket), {manage_replicators, NeededNodes}, infinity),
 
-    ToStop = ProducerNodes -- NeededNodes,
-    Rs0 = [{Node, dcp_replicator:setup_replication(Node, Bucket, [])}
-           || Node <- ToStop],
-
-    ok = manage_replicators(Bucket, NeededNodes),
-
-    Rs1 = [{Node, dcp_replicator:setup_replication(Node, Bucket, Partitions)}
-           || {Node, [_|_] = Partitions} <- DesiredReps],
-    Bad = [Pair || {_, R} = Pair <- Rs0 ++ Rs1, R =/= ok],
+    Rs = [{Node, dcp_replicator:setup_replication(Node, Bucket, Partitions)}
+          || {Node, [_|_] = Partitions} <- DesiredReps],
+    Bad = [Pair || {_, R} = Pair <- Rs, R =/= ok],
 
     case Bad of
         [] ->
@@ -74,13 +68,6 @@ set_desired_replications(Bucket, DesiredReps) ->
             ?log_error("Failed to setup some replications:~n~p", [Bad]),
             {error, {setup_replications_failed, Bad}}
     end.
-
-get_producer_nodes(Bucket) ->
-    gen_server:call(server_name(Bucket), get_producer_nodes, infinity).
-
-manage_replicators(Bucket, NeededNodes) ->
-    ok = gen_server:call(server_name(Bucket),
-                         {manage_replicators, NeededNodes}, infinity).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -96,9 +83,6 @@ handle_info(Msg, State) ->
     ?rebalance_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
 
-handle_call(get_producer_nodes, _From, Bucket) ->
-    ProducerNodes = [N || {N, _, _, _} <- dcp_sup:get_children(Bucket)],
-    {reply, ProducerNodes, Bucket};
 handle_call({manage_replicators, NeededNodes}, _From, Bucket) ->
     dcp_sup:manage_replicators(Bucket, NeededNodes),
     {reply, ok, Bucket};

@@ -1575,7 +1575,7 @@ $(function () {
     updateVisibleStuff();
   });
 
-  DAL.cells.is40СompatibleCell = Cell.compute(function (v) {
+  DAL.cells.is40СompatibleCell = Cell.computeEager(function (v) {
     return v.need(DAL.cells.compatVersion) >= version40;
   });
 
