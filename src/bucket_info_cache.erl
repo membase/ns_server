@@ -233,7 +233,7 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
     %% to track changes to node services and set of active nodes. But
     %% for mixed version clusters we want to be serving same revs as
     %% 3.0 nodes.
-    Rev = case cluster_compat_mode:is_cluster_sherlock() of
+    Rev = case cluster_compat_mode:is_cluster_40() of
               true ->
                   ns_config:compute_global_rev(Config);
               false ->

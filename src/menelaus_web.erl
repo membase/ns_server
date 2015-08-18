@@ -52,7 +52,7 @@
          parse_validate_bucket_auto_compaction_settings/1,
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
-         assert_is_sherlock/0]).
+         assert_is_40/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -976,8 +976,8 @@ assert_is_enterprise() ->
                           [{"X-enterprise-edition-needed", 1}]})
     end.
 
-assert_is_sherlock() ->
-    case cluster_compat_mode:is_cluster_sherlock() of
+assert_is_40() ->
+    case cluster_compat_mode:is_cluster_40() of
         true ->
             ok;
         false ->
@@ -1205,7 +1205,7 @@ build_global_auto_compaction_settings() ->
     build_global_auto_compaction_settings(ns_config:latest()).
 
 build_global_auto_compaction_settings(Config) ->
-    Extra = case cluster_compat_mode:is_cluster_sherlock() of
+    Extra = case cluster_compat_mode:is_cluster_40() of
                 true ->
                     IndexCompaction = index_settings_manager:get(compaction),
                     true = (IndexCompaction =/= undefined),
@@ -1588,13 +1588,13 @@ parse_join_cluster_params(Params, ThisIsJoin) ->
     OtherUser = proplists:get_value("user", Params),
     OtherPswd = proplists:get_value("password", Params),
 
-    SherlockVersion = cluster_compat_mode:sherlock_compat_mode_string(),
+    Version40 = cluster_compat_mode:compat_mode_string_40(),
 
     VersionErrors = case Version of
                         "3.0" ->
                             [];
                         %% bound above
-                        SherlockVersion ->
+                        Version40 ->
                             KnownParams = ["hostname", "version", "user", "password", "services"],
                             UnknownParams = [K || {K, _} <- Params,
                                                   not lists:member(K, KnownParams)],
@@ -1616,7 +1616,7 @@ parse_join_cluster_params(Params, ThisIsJoin) ->
                        case parse_validate_services_list(SvcParams) of
                            {ok, Svcs} ->
                                case (Svcs =:= ns_cluster_membership:default_services()
-                                     orelse cluster_compat_mode:is_cluster_sherlock()) of
+                                     orelse cluster_compat_mode:is_cluster_40()) of
                                    true ->
                                        {ok, Svcs};
                                    false ->
@@ -1693,7 +1693,7 @@ handle_join_tail(Req, OtherHost, OtherPort, OtherUser, OtherPswd, Services) ->
                              {BasePayload, "/controller/addNode"};
                          false ->
                              ServicesStr = string:join([erlang:atom_to_list(S) || S <- Services], ","),
-                             SVCPayload = [{"version", cluster_compat_mode:sherlock_compat_mode_string()},
+                             SVCPayload = [{"version", cluster_compat_mode:compat_mode_string_40()},
                                            {"services", ServicesStr}
                                            | BasePayload],
                              {SVCPayload, "/controller/addNodeV2"}
@@ -1956,16 +1956,16 @@ get_cluster_name() ->
 get_cluster_name(Config) ->
     ns_config:search(Config, cluster_name, "").
 
-validate_pool_settings_post(Config, IsSherlock, Args) ->
+validate_pool_settings_post(Config, Is40, Args) ->
     R0 = validate_has_params({Args, [], []}),
     R1 = validate_any_value(clusterName, R0),
 
-    R2 = validate_memory_quota(Config, IsSherlock, R1),
+    R2 = validate_memory_quota(Config, Is40, R1),
     validate_unsupported_params(R2).
 
-validate_memory_quota(Config, IsSherlock, R0) ->
+validate_memory_quota(Config, Is40, R0) ->
     R1 = validate_integer(memoryQuota, R0),
-    R2 = case IsSherlock of
+    R2 = case Is40 of
              true ->
                  validate_integer(indexMemoryQuota, R1);
              false ->
@@ -2056,15 +2056,15 @@ do_handle_pool_settings_post_loop(Req, RetriesLeft) ->
     end.
 
 do_handle_pool_settings_post(Req) ->
-    IsSherlock = cluster_compat_mode:is_cluster_sherlock(),
+    Is40 = cluster_compat_mode:is_cluster_40(),
     Config = ns_config:get(),
 
     execute_if_validated(
       fun (Values) ->
-              do_handle_pool_settings_post_body(Req, Config, IsSherlock, Values)
-      end, Req, validate_pool_settings_post(Config, IsSherlock, Req:parse_post())).
+              do_handle_pool_settings_post_body(Req, Config, Is40, Values)
+      end, Req, validate_pool_settings_post(Config, Is40, Req:parse_post())).
 
-do_handle_pool_settings_post_body(Req, Config, IsSherlock, Values) ->
+do_handle_pool_settings_post_body(Req, Config, Is40, Values) ->
     case lists:keyfind(quotas, 1, Values) of
         {_, Quotas} ->
             case ns_storage_conf:set_quotas(Config, Quotas) of
@@ -2084,7 +2084,7 @@ do_handle_pool_settings_post_body(Req, Config, IsSherlock, Values) ->
             ok
     end,
 
-    case IsSherlock of
+    case Is40 of
         true ->
             do_audit_cluster_settings(Req);
         false ->
@@ -2517,7 +2517,7 @@ build_memory_quota_info() ->
 build_memory_quota_info(Config) ->
     {ok, KvQuota} = ns_storage_conf:get_memory_quota(Config, kv),
     Props = [{memoryQuota, KvQuota}],
-    case cluster_compat_mode:is_cluster_sherlock() of
+    case cluster_compat_mode:is_cluster_40() of
         true ->
             {ok, IndexQuota} = ns_storage_conf:get_memory_quota(Config, index),
             [{indexMemoryQuota, IndexQuota} | Props];
@@ -2978,7 +2978,7 @@ nodes_to_hostnames(Config, Req) ->
 %% Provides a list of nodes for a specific bucket (generally all nodes) with
 %% links to stats for that bucket
 handle_bucket_node_list(_PoolId, BucketName, Req) ->
-    %% NOTE: since sherlock release we're listing all active nodes as
+    %% NOTE: since 4.0 release we're listing all active nodes as
     %% part of our approach for dealing with query stats
     NHs = nodes_to_hostnames(ns_config:get(), Req),
     Servers =
@@ -3165,8 +3165,8 @@ handle_diag_vbuckets(Req) ->
 
 handle_set_autocompaction(Req) ->
     Params = Req:parse_post(),
-    IsSherlock = cluster_compat_mode:is_cluster_sherlock(),
-    SettingsRV = parse_validate_auto_compaction_settings(Params, IsSherlock),
+    Is40 = cluster_compat_mode:is_cluster_40(),
+    SettingsRV = parse_validate_auto_compaction_settings(Params, Is40),
     ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
     case {ValidateOnly, SettingsRV} of
         {_, {errors, Errors}} ->
@@ -3187,7 +3187,7 @@ handle_set_autocompaction(Req) ->
                     ok
             end,
 
-            case IsSherlock of
+            case Is40 of
                 true ->
                     AllowedPeriod = proplists:get_value(allowed_time_period, ACSettings, []),
                     Fragmentation =
@@ -3873,7 +3873,7 @@ handle_log_post(Req) ->
 
 handle_settings_audit(Req) ->
     assert_is_enterprise(),
-    assert_is_sherlock(),
+    assert_is_40(),
 
     Props = ns_audit_cfg:get_global(),
     Json = lists:map(fun ({K, V}) when is_list(V) ->
@@ -3908,7 +3908,7 @@ validate_settings_audit(Args) ->
 
 handle_settings_audit_post(Req) ->
     assert_is_enterprise(),
-    assert_is_sherlock(),
+    assert_is_40(),
 
     Args = Req:parse_post(),
     execute_if_validated(fun (Values) ->
