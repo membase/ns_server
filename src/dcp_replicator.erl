@@ -78,8 +78,20 @@ handle_cast(Msg, State) ->
     ?rebalance_warning("Unhandled cast: ~p" , [Msg]),
     {noreply, State}.
 
-terminate(Reason, #state{proxies = Proxies}) ->
-    dcp_proxy:terminate_and_wait(Reason, Proxies),
+terminate(Reason, #state{proxies = Proxies,
+                         consumer_conn = Consumer}) ->
+    try
+        %% When replicator terminates normally we want to ensure that consumer
+        %% connection are closed first. So if another replicator tries to
+        %% replicate one of the same vbuckets, it doesn't get an EEXIST error.
+        %%
+        %% It's important that we close just the consumer connections. It's
+        %% needed to handle failover properly. That is, we don't want the
+        %% failover time to depend on slow (failed over) producer termination.
+        maybe_shut_consumer(Reason, Consumer)
+    after
+        dcp_proxy:terminate_and_wait(Reason, Proxies)
+    end,
     ok.
 
 handle_info({'EXIT', _Pid, Reason}, State) ->
@@ -213,3 +225,8 @@ spawn_and_wait(Body) ->
             misc:sync_shutdown_many_i_am_trapping_exits([WorkerPid]),
             erlang:error({child_interrupted, ExitMsg})
     end.
+
+maybe_shut_consumer(shutdown, Consumer) ->
+    ok = dcp_consumer_conn:shut_connection(Consumer);
+maybe_shut_consumer(_, _) ->
+    ok.

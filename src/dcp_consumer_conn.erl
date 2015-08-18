@@ -22,7 +22,7 @@
 -include("mc_entry.hrl").
 
 -export([start_link/2,
-         setup_streams/2, takeover/2, maybe_close_stream/2]).
+         setup_streams/2, takeover/2, maybe_close_stream/2, shut_connection/1]).
 
 -export([init/2, handle_packet/5, handle_call/4, handle_cast/3]).
 
@@ -30,7 +30,8 @@
                        to_add :: [vbucket_id()],
                        to_close :: [vbucket_id()],
                        to_close_on_producer :: [vbucket_id()],
-                       errors :: [{non_neg_integer(), vbucket_id()}]
+                       errors :: [{non_neg_integer(), vbucket_id()}],
+                       next_state = idle :: idle | shut
                       }).
 
 -record(takeover_state, {owner :: {pid(), any()},
@@ -41,7 +42,7 @@
                          open_ack = false :: boolean()
                         }).
 
--record(state, {state :: idle | #stream_state{} | #takeover_state{},
+-record(state, {state :: idle | shut | #stream_state{} | #takeover_state{},
                 partitions :: [vbucket_id()]
                }).
 
@@ -147,6 +148,11 @@ handle_packet(response, ?DCP_SET_VBUCKET_STATE, Packet,
             {proxy, State, ParentState}
     end;
 
+handle_packet(Type, OpCode, _, #state{state = shut} = State, _) ->
+    ?log_debug("Ignoring packet ~p in shut state",
+               [{Type, dcp_commands:command_2_atom(OpCode)}]),
+    {block, State};
+
 handle_packet(_, _, _, State, ParentState) ->
     {proxy, State, ParentState}.
 
@@ -196,6 +202,32 @@ handle_call({setup_streams, Partitions}, From,
                                              errors = []
                                             }
                                  }, ParentState}
+    end;
+
+handle_call(shut_connection, From,
+            #state{state = idle,
+                   partitions = Partitions} = State, ParentState) ->
+    ?log_debug("Shutting the connection. Partitions to close:~n~p", [Partitions]),
+
+    case Partitions of
+        [] ->
+            {reply, ok, State#state{state = shut}, ParentState};
+        _ ->
+            Sock = dcp_proxy:get_socket(ParentState),
+
+            lists:foreach(
+              fun (Partition) ->
+                      dcp_commands:close_stream(Sock, Partition, Partition)
+              end, Partitions),
+
+            {noreply, State#state{state = #stream_state{
+                                             owner = From,
+                                             to_add = [],
+                                             to_close = [{P} || P <- Partitions],
+                                             to_close_on_producer = [],
+                                             errors = [],
+                                             next_state = shut
+                                            }}, ParentState}
     end;
 
 handle_call({takeover, Partition}, From, #state{state=idle} = State, ParentState) ->
@@ -317,8 +349,11 @@ maybe_reply_setup_streams(#state{state = StreamState} = State) ->
                 end,
             gen_server:reply(StreamState#stream_state.owner, Reply),
 
-            ?log_debug("Setup stream request completed with ~p.", [Reply]),
-            State#state{state = idle};
+            NextState = StreamState#stream_state.next_state,
+
+            ?log_debug("Setup stream request completed with ~p. Moving to ~p state",
+                       [Reply, NextState]),
+            State#state{state = NextState};
         _ ->
             State
     end.
@@ -337,6 +372,9 @@ maybe_close_stream(Pid, Partition) ->
 
 takeover(Pid, Partition) ->
     gen_server:call(Pid, {takeover, Partition}, infinity).
+
+shut_connection(Pid) ->
+    gen_server:call(Pid, shut_connection, infinity).
 
 add_partition(Partition, #state{partitions = CurrentPartitions} = State) ->
     State#state{partitions = ordsets:add_element(Partition, CurrentPartitions)}.

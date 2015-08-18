@@ -170,7 +170,7 @@ perform_vbucket_filter_change_loop(ThePid, OldState, SentAlready) ->
                        "vbucket change txn body: ~p", [ExitMsg]),
             exit({txn_crashed, ExitMsg});
         {done, RV} ->
-            RV;
+            {ok, RV};
         {'$gen_call', {Pid, _} = From, get_old_state} ->
             case SentAlready of
                 false ->
