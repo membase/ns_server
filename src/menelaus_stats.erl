@@ -2281,11 +2281,16 @@ grab_ui_stats(Kind, Nodes, HaveStamp, Wnd) ->
 %%
 serve_ui_stats(Req) ->
     Params = Req:parse_qs(),
-    case proplists:get_value("statName", Params) of
-        undefined ->
-            serve_aggregated_ui_stats(Req, Params);
-        StatName ->
-            serve_specific_ui_stats(Req, StatName, Params)
+    case lists:member(proplists:get_value("bucket", Params), ns_bucket:get_bucket_names()) of
+        true ->
+            case proplists:get_value("statName", Params) of
+                undefined ->
+                    serve_aggregated_ui_stats(Req, Params);
+                StatName ->
+                    serve_specific_ui_stats(Req, StatName, Params)
+            end;
+        _ ->
+            menelaus_util:reply_not_found(Req)
     end.
 
 extract_ui_stats_params(Params) ->
