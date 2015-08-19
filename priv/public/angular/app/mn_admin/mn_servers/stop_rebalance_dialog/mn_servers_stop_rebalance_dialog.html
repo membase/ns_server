@@ -1,13 +1,14 @@
 <div id="stop_rebalance_confirmation_dialog" style="width: 711px">
   <h1 class="dialog_corner_radius">Confirm Rebalance Stop</h1>
   <div mn-spinner="viewLoading">
-  <div class="warning pat_20">
-    <strong>Warning</strong> – Stopping rebalance is unsafe at this
-    moment since cluster may be in a partitioned state. Continue only if
-    you're perfectly sure that this is not the case.
-  </div>
-  <div class="right save_cancel">
-    <button type="submit" class="save_button float_right" ng-click="onStopRebalance()">Stop</button>
-    <a class="close cancel_button float_right" ng-click="$dismiss()">Cancel</a>
+    <div class="warning pat_20">
+      <strong>Warning</strong> – Stopping rebalance is unsafe at this
+      moment since cluster may be in a partitioned state. Continue only if
+      you're perfectly sure that this is not the case.
+    </div>
+    <div class="right save_cancel">
+      <button type="submit" class="save_button float_right" ng-click="onStopRebalance()">Stop</button>
+      <a class="close cancel_button float_right" ng-click="$dismiss()">Cancel</a>
+    </div>
   </div>
 </div>
