@@ -43,6 +43,8 @@ IF (NOT EXISTS "${COUCHDB_SRC_DIR}/src/couchdb/couch_db.hrl")
   MESSAGE (FATAL_ERROR "Could not find couch_db.hrl; please re-run CMake with "
     "-DCOUCHDB_SRC_DIR=<path/to/couchdb source>")
 ENDIF (NOT EXISTS "${COUCHDB_SRC_DIR}/src/couchdb/couch_db.hrl")
+CONFIGURE_FILE ("${PROJECT_SOURCE_DIR}/rebar.config.in"
+  "${PROJECT_SOURCE_DIR}/rebar.config" @ONLY)
 
 # Other generated files
 SET (all_img_js "${PROJECT_SOURCE_DIR}/priv/public/js/all-images.js")
@@ -51,6 +53,9 @@ ADD_CUSTOM_COMMAND (OUTPUT "${all_img_js}"
   -D "outfile=${all_img_js}"
   -P "${PROJECT_SOURCE_DIR}/cmake_modules/build-all-images.cmake")
 ADD_CUSTOM_TARGET (all_images ALL DEPENDS "${all_img_js}")
+
+CONFIGURE_FILE ("${PROJECT_SOURCE_DIR}/src/ns_server.app.src.in"
+  "${PROJECT_SOURCE_DIR}/src/ns_server.app.src" @ONLY)
 
 FILE (WRITE "${PROJECT_BINARY_DIR}/cluster_run.configuration"
   "prefix=\"${CMAKE_INSTALL_PREFIX}\"\n")
@@ -76,30 +81,13 @@ ADD_CUSTOM_TARGET (ns_dataclean
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   VERBATIM)
 
-SET (ns_server_app_src "${PROJECT_SOURCE_DIR}/src/ns_server.app.src")
-SET (rebar_config "${PROJECT_SOURCE_DIR}/rebar.config")
-ADD_CUSTOM_TARGET (ns_cfg DEPENDS "${ns_server_app_src}" "${rebar_config}")
-ADD_CUSTOM_COMMAND(OUTPUT "${ns_server_app_src}"
-  COMMAND "${CMAKE_COMMAND}" -D "INPUT_FILE=${ns_server_app_src}.in"
-  -D "OUTPUT_FILE=${ns_server_app_src}"
-  -D "SEARCH=NS_SERVER_VERSION"
-  -D "REPLACE=${NS_SERVER_VERSION}"
-  -P "${PROJECT_SOURCE_DIR}/cmake_modules/string-replace.cmake"
-  VERBATIM)
-ADD_CUSTOM_COMMAND(OUTPUT "${rebar_config}"
-  COMMAND "${CMAKE_COMMAND}" -D "INPUT_FILE=${rebar_config}.in"
-  -D "OUTPUT_FILE=${rebar_config}"
-  -D "SEARCH=COUCHDB_SRC_DIR"
-  -D "REPLACE=${COUCHDB_SRC_DIR}"
-  -P "${PROJECT_SOURCE_DIR}/cmake_modules/string-replace.cmake"
-  VERBATIM)
-
 ADD_CUSTOM_TARGET (ns_distclean)
 ADD_DEPENDENCIES (ns_distclean realclean ns_dataclean)
 
+
 ADD_SUBDIRECTORY (deps)
 Rebar (TARGET ns_server NOCLEAN
-  DEPENDS ale mlockall ns_babysitter ns_ssl_proxy gen_smtp ns_couchdb ns_cfg)
+  DEPENDS ale mlockall ns_babysitter ns_ssl_proxy gen_smtp ns_couchdb)
 
 # Test invocation
 ADD_CUSTOM_TARGET (ns_test
@@ -197,3 +185,8 @@ INSTALL (DIRECTORY "${_instdir}/var/" DESTINATION var/lib/couchbase
 INSTALL (DIRECTORY "${_instdir}/var/" DESTINATION var/lib/couchbase/logs
   DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
   GROUP_READ GROUP_WRITE GROUP_EXECUTE)
+
+
+
+
+
