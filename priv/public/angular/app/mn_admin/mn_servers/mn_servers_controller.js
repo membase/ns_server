@@ -8,7 +8,8 @@ angular.module('mnServers', [
   'mnBarUsage',
   'mnServersListItemDetailsService',
   'mnFilters',
-  'mnSortableTable'
+  'mnSortableTable',
+  'mnServices'
 ]).controller('mnServersController',
   function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, serversState, mnServersService, mnHelper) {
 

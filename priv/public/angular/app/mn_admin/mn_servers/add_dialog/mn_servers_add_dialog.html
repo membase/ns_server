@@ -12,7 +12,7 @@
       <ul>
         <li>
           <label class="label" for="add-server-hostname">Server IP Address*:</label>
-          <input type="text" class="inp" name="hostname" id="add-server-hostname" ng-model="newServer.hostname" mn-focus="focusMe" required>
+          <input type="text" class="inp" name="hostname" id="add-server-hostname" ng-model="addNodeConfig.credentials.hostname" mn-focus="focusMe" required>
           <a class="text_11 tooltip"><span>What's this?</span>
             <span class="tooltip_msg"><span>
               This is the hostname or IP address of a server node that you wish to add.
@@ -22,7 +22,7 @@
         <li class="when-groups" ng-if="isGroupsAvailable">
           <label class="label" for="js_servers_group_select">Server Group:</label>
           <select id="js_servers_group_select" class="server_group_select" style="width:157px;" name="group"
-            ng-model="selectedGroup"
+            ng-model="addNodeConfig.selectedGroup"
             ng-options="group.name for group in groups"></select>
         </li>
       </ul>
@@ -36,31 +36,15 @@
       <ul>
         <li>
           <label class="label" for="user_inp">Username:</label>
-          <input type="text" class="inp" name="user" id="user_inp" ng-model="newServer.user">
+          <input type="text" class="inp" name="user" id="user_inp" ng-model="addNodeConfig.credentials.user">
         </li>
         <li>
           <label class="label" for="password_inp">Password:</label>
-          <input type="password" class="inp" name="password" id="password_inp" ng-model="newServer.password">
+          <input type="password" class="inp" name="password" id="password_inp" ng-model="addNodeConfig.credentials.password">
         </li>
       </ul>
     </fieldset>
-    <fieldset>
-      <legend>Services</legend>
-      <ul class="join_cluster_dialog_services">
-        <li>
-          <input type="checkbox" class="inp" name="services" value="kv" ng-model="services.kv"  id="add_servers_data_checkbox" />
-          <label class="label" for="add_servers_data_checkbox" style="text-align: left; width: 45px;">Data</label>
-          <input type="checkbox" class="inp" name="services" value="n1ql" ng-model="services.n1ql"  id="add_servers_n1ql_checkbox" />
-          <label class="label" for="add_servers_n1ql_checkbox" style="text-align: left; width: 45px;">N1QL</label>
-          <input type="checkbox" class="inp" name="services" value="moxi" ng-model="services.moxi"  id="add_servers_moxi_checkbox" />
-          <label class="label" for="add_servers_moxi_checkbox" style="text-align: left; width: 45px;">Moxi</label>
-          <a class="tooltip text_11"><span>What's this?</span>
-            <span class="tooltip_msg" style="width:350px;"><span>
-              What's this?
-            </span></span>
-          </a>
-        </li>
-      </ul>
+    <fieldset mn-services="addNodeConfig" class="services_wrapper">
     </fieldset>
     </fieldset>
     <div class="save_cancel clearfix">

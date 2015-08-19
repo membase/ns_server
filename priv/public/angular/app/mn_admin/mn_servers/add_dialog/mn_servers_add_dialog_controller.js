@@ -1,10 +1,19 @@
 angular.module('mnServers').controller('mnServersAddDialogController',
   function ($scope, mnServersService, $modalInstance, mnHelper, groups) {
     reset();
-    $scope.newServer = {
-      hostname: '',
-      user: 'Administrator',
-      password: ''
+    $scope.addNodeConfig = {
+      services: {
+        model: {
+          kv: true,
+          index: true,
+          n1ql: true
+        }
+      },
+      credentials: {
+        hostname: '',
+        user: 'Administrator',
+        password: ''
+      }
     };
 
     $scope.cancel = function () {
@@ -15,12 +24,10 @@ angular.module('mnServers').controller('mnServersAddDialogController',
       $scope.focusMe = true;
     }
 
-    mnServersService.initializeServices($scope);
-
     $scope.isGroupsAvailable = !!groups;
 
     if ($scope.isGroupsAvailable) {
-      $scope.selectedGroup = groups.groups[0];
+      $scope.addNodeConfig.selectedGroup = groups.groups[0];
       $scope.groups = groups.groups;
     }
 
@@ -29,13 +36,15 @@ angular.module('mnServers').controller('mnServersAddDialogController',
         return;
       }
 
-      form.$setValidity('services', !!mnHelper.checkboxesToList($scope.services).length);
+      var servicesList = mnHelper.checkboxesToList($scope.addNodeConfig.services.model);
+
+      form.$setValidity('services', !!servicesList.length);
 
       if (form.$invalid) {
         return reset();
       }
 
-      var promise = mnServersService.addServer($scope.selectedGroup, $scope.newServer);
+      var promise = mnServersService.addServer($scope.addNodeConfig.selectedGroup, $scope.addNodeConfig.credentials, servicesList);
       mnHelper
         .promiseHelper($scope, promise, $modalInstance)
         .showErrorsSensitiveSpinner()

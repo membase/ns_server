@@ -25,12 +25,6 @@ angular.module('mnServersService', [
       pendingEject = newPendingEject;
     };
 
-    mnServersService.initializeServices = function ($scope) {
-      $scope.services = {
-        kv: true
-      };
-    };
-
     mnServersService.reAddNode = function (data) {
       return mnHttp({
         method: 'POST',
@@ -276,11 +270,11 @@ angular.module('mnServersService', [
       });
     };
 
-    mnServersService.addServer = function (selectedGroup, newServer) {
+    mnServersService.addServer = function (selectedGroup, credentials, servicesList) {
       return mnHttp({
         method: 'POST',
         url: (selectedGroup && selectedGroup.addNodeURI) || '/controller/addNode',
-        data: newServer
+        data: _.extend({}, credentials, {services: servicesList.join(',')})
       });
     };
 

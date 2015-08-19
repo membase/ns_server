@@ -544,7 +544,8 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #add_new_bucket_dialog {position:absolute;}
 #add_new_bucket_dialog form {padding:10px 0 0;}
 
-.join_cluster fieldset legend {text-align:left; font-size:14px; font-weight:normal; margin-bottom: 15px; padding:10px 0 7px; border-bottom:1px solid #dbe3e8;width:100%}
+.join_cluster .services_wrapper .wizard_services {margin-left: 90px;}
+.join_cluster fieldset legend, .join_cluster .services_wrapper > label {text-align:left; font-size:14px; font-weight:normal; margin-bottom: 15px; padding:10px 0 7px; border-bottom:1px solid #dbe3e8;width:100%}
 .join_cluster fieldset legend label {font-size:14px;width:auto!important;}
 .join_cluster label {display:inline-block;width:5em;font-size:12px;text-align:right;}
 #create_cluster_reference_dialog label{width:15em}
@@ -673,14 +674,14 @@ body.init_resources #init_resources_dialog {background:none; background-color:#e
 .init_cluster_form .login-credentials { margin-right: 85px;}
 .init_block .error-container {font-size: 11px; color: #ec5223!important;}
 .init_block .init_cluster_form .warning {margin: 0; padding-bottom: 10px;}
-.init_block .start_new_cluster_block label {width: 129px; display: inline-block;}
-.init_block .start_new_cluster_block input[type="number"] {width: 65px;}
-.init_block .login-credentials label {width: 100px; display: inline-block;}
-.init_block .wizard_services {display: inline;}
-.init_block .wizard_services label {text-align: left; width: 45px;vertical-align: middle;}
-.init_block .wizard_services input {vertical-align: middle;}
+.start_new_cluster_block label {width: 129px; display: inline-block;}
+.start_new_cluster_block input[type="number"] {width: 65px;}
+.login-credentials label {width: 100px; display: inline-block;}
+.wizard_services {display: inline;}
+.wizard_services label {text-align: left; width: 45px;vertical-align: middle;}
+.wizard_services input {vertical-align: middle;}
 .init_block .login-credentials,
-.init_block .start_new_cluster_block {margin-left: 85px; margin-right: 80px; line-height: 28px;}
+.start_new_cluster_block {margin-left: 85px; margin-right: 80px; line-height: 28px;}
 .init_block .warning {clear:both;display:block;line-height:15px; margin: 20px 0 0; font-size: 11px; padding: 0;}
 
 

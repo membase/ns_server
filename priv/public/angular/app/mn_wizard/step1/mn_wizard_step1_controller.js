@@ -2,8 +2,6 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
   function ($scope, $state, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper, mnServersService, mnPools, mnPoolDefault, mnAlertsService, mnMemoryQuotaService) {
     $scope.hostname = selfConfig.hostname;
 
-    mnServersService.initializeServices($scope);
-
     $scope.startNewClusterConfig = {
       maxMemorySize: selfConfig.ramMaxMegs,
       totalMemorySize: selfConfig.ramTotalSize,
