@@ -1,0 +1,11 @@
+<div class="memory_quota_dialog" id="js_memory_quota_dialog" style="width: 475px;">
+  <h1>Set RAM Quota</h1>
+  <form class="cluster_quota_settings" mn-spinner="viewLoading" ng-submit="onSubmit()">
+    <p style="padding: 20px;">As this is the first server node provisioned with an index service, please review and set the per-server index RAM quota. This is one time only: when you add further index server nodes, we will not ask you to review this value again.</p>
+    <div style="margin: 20px;" id="js_add_node_memory_quota_holder" mn-memory-quota="config" errors="errors">
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Set Quota</button>
+    </div>
+  </form>
+</div>

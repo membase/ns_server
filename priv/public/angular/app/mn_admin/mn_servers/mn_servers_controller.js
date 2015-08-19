@@ -9,7 +9,8 @@ angular.module('mnServers', [
   'mnServersListItemDetailsService',
   'mnFilters',
   'mnSortableTable',
-  'mnServices'
+  'mnServices',
+  'mnMemoryQuotaService'
 ]).controller('mnServersController',
   function ($scope, $state, $modal, $interval, $stateParams, $timeout, mnPoolDefault, serversState, mnServersService, mnHelper) {
 

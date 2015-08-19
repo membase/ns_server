@@ -2,7 +2,7 @@
   <label>RAM Available: </label>
   <span class="ram-total-size">{{::config.totalMemorySize}} MB</span>
 </div>
-<div class="row" ng-if="config.isServicesControllsAvailable" mn-services="config">
+<div class="row" ng-if="config.services" mn-services="config">
 </div>
 <div class="memory-quota row" ng-if="config.showKVMemoryQuota">
   <label for="kv_ram_quota">Data RAM Quota:</label>

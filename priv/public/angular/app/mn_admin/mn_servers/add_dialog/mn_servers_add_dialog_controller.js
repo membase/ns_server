@@ -1,5 +1,5 @@
 angular.module('mnServers').controller('mnServersAddDialogController',
-  function ($scope, mnServersService, $modalInstance, mnHelper, groups) {
+  function ($scope, $modal, mnServersService, $modalInstance, mnHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
     reset();
     $scope.addNodeConfig = {
       services: {
@@ -45,11 +45,31 @@ angular.module('mnServers').controller('mnServersAddDialogController',
       }
 
       var promise = mnServersService.addServer($scope.addNodeConfig.selectedGroup, $scope.addNodeConfig.credentials, servicesList);
-      mnHelper
+
+      promise = mnHelper
         .promiseHelper($scope, promise, $modalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .closeOnSuccess()
+        .getPromise()
+        .then(function () {
+          return mnPoolDefault.getFresh().then(function (poolsDefault) {
+            if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, $scope.addNodeConfig.services.model, 'index')) {
+              return $modal.open({
+                templateUrl: '/angular/app/mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
+                controller: 'mnServersMemoryQuotaDialogController',
+                resolve: {
+                  memoryQuotaConfig: function (mnMemoryQuotaService) {
+                    return mnMemoryQuotaService.memoryQuotaConfig($scope.addNodeConfig.services.model.kv)
+                  }
+                }
+              }).result;
+            }
+          });
+        });
+
+      mnHelper
+        .promiseHelper($scope, promise)
         .reloadState();
     };
   });
