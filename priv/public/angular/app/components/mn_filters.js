@@ -99,7 +99,6 @@ angular.module('mnFilters', [])
         return doParseHTTPDate(date);
       } catch (e) {
         if (e === badDateException) {
-          console.log("Cannot parse http date!!!: ", date);
           return badDate || (new Date());
         }
         throw e;
