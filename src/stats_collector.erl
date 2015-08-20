@@ -285,9 +285,12 @@ parse_aggregate_tap_stats(AggTap) ->
 parse_aggregate_dcp_stats(AggDcp) ->
     ReplicaStats = extract_agg_dcp_stats([{K, V} || {<<"replication:", K/binary>>, V} <- AggDcp]),
     XdcrStats = extract_agg_dcp_stats([{K, V} || {<<"xdcr:", K/binary>>, V} <- AggDcp]),
-    ViewsStats = extract_agg_dcp_stats([{K, V} || {<<"mapreduce_view:", K/binary>>, V} <- AggDcp]),
+    MapreduceStats = extract_agg_dcp_stats([{K, V} || {<<"mapreduce_view:", K/binary>>, V} <- AggDcp]),
+    SpatialStats = extract_agg_dcp_stats([{K, V} || {<<"spatial_view:", K/binary>>, V} <- AggDcp]),
     IndexStats = extract_agg_dcp_stats([{K, V} || {<<"secidx:", K/binary>>, V} <- AggDcp]),
     TotalStats = extract_agg_dcp_stats([{K, V} || {<<":total:", K/binary>>, V} <- AggDcp]),
+
+    ViewsStats = add_dcp_stats(MapreduceStats, SpatialStats),
 
     OtherStats = calc_dcp_other_stats(ReplicaStats, XdcrStats, ViewsStats, IndexStats, TotalStats),
 
