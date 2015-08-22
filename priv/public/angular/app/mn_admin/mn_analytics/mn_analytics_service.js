@@ -61,7 +61,7 @@ angular.module('mnAnalyticsService', [
 
     mnAnalyticsService.getStats = function (params) {
       var isSpecificStat = !!params.$stateParams.specificStat;
-      return doGetStats(params).then(function (resp) {
+      return mnAnalyticsService.doGetStats(params).then(function (resp) {
         var queries = [
           mnBucketsService.getBucketsByType(),
           $q.when(resp)
@@ -92,7 +92,7 @@ angular.module('mnAnalyticsService', [
       });
     };
 
-    function doGetStats(params) {
+    mnAnalyticsService.doGetStats = function (params) {
       var reqParams = {
         zoom: params.$stateParams.zoom,
         bucket: params.$stateParams.analyticsBucket

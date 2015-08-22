@@ -70,8 +70,12 @@ angular.module('mnViewsService', [
       });
     }
 
+    mnViewsService.getDdocs = function (viewsBucket) {
+      return mnHttp.get('/pools/default/buckets/' + encodeURIComponent(viewsBucket) + '/ddocs');
+    };
+
     mnViewsService.getViewsState = function (params) {
-      return mnHttp.get('/pools/default/buckets/' + encodeURIComponent(params.viewsBucket) + '/ddocs').then(function (resp) {
+      return mnViewsService.getDdocs(params.viewsBucket).then(function (resp) {
         var ddocs = resp.data;
         return $q.all([
           mnTasksDetails.get(),

@@ -20,7 +20,8 @@ angular.module('mnAdmin', [
   'mnSettingsNotificationsService',
   'mnViews',
   'mnXDCR',
-  'mnPoll'
+  'mnPoll',
+  'mnLaunchpad'
 ]).config(function ($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider) {
 
   function valToString(val) {
