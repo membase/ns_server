@@ -6,26 +6,32 @@ angular.module('mnMemoryQuotaService', [
   function (mnHttp, mnPoolDefault, mnHelper) {
     var mnMemoryQuotaService = {};
 
-    mnMemoryQuotaService.prepareClusterQuotaSettings = function (currentPool) {
-      var nNodes = 0;
+    mnMemoryQuotaService.prepareClusterQuotaSettings = function (currentPool, showKVMemoryQuota, calculateMaxMemory) {
       var ram = currentPool.storageTotals.ram;
-      angular.forEach(currentPool.nodes, function (node) {
-        if (node.clusterMembership === "active") {
-          nNodes++;
-        }
-      });
-
-      var ramPerNode = Math.floor(ram.total/nNodes/Math.Mi);
-      var minMemorySize = Math.max(256, Math.floor(ram.quotaUsedPerNode / Math.Mi));
-
-      return {
+      if (calculateMaxMemory === undefined) {
+        calculateMaxMemory = showKVMemoryQuota;
+      }
+      var rv = {
+        showKVMemoryQuota: showKVMemoryQuota,
+        roAdmin: false,
         showIndexMemoryQuota: true,
-        minMemorySize: minMemorySize,
-        totalMemorySize: ramPerNode,
-        maxMemorySize: mnHelper.calculateMaxMemorySize(ramPerNode),
+        minMemorySize: Math.max(256, Math.floor(ram.quotaUsedPerNode / Math.Mi)),
+        totalMemorySize: false,
         memoryQuota: Math.floor(ram.quotaTotalPerNode/Math.Mi),
-        indexMemoryQuota: currentPool.indexMemoryQuota || 256
+        indexMemoryQuota: currentPool.indexMemoryQuota || 256,
+        isServicesControllsAvailable: false
       };
+      if (calculateMaxMemory) {
+        var nNodes = _.pluck(currentPool.nodes, function (node) {
+          return node.clusterMembership === "active";
+        }).length;
+        var ramPerNode = Math.floor(ram.total/nNodes/Math.Mi);
+        rv.maxMemorySize = mnHelper.calculateMaxMemorySize(ramPerNode);
+      } else {
+        rv.maxMemorySize = false;
+      }
+
+      return rv;
     };
 
     mnMemoryQuotaService.isOnlyOneNodeWithService = function (nodes, services, service) {
@@ -37,20 +43,9 @@ angular.module('mnMemoryQuotaService', [
       return nodesCount === 1 && services && (angular.isArray(services) ? (_.indexOf(services, service) > -1) : services[service]);
     };
 
-    mnMemoryQuotaService.postMemory = function (data) {
-      return mnHttp({
-        method: 'POST',
-        url: '/pools/default',
-        data: data
-      });
-    };
-
-    mnMemoryQuotaService.memoryQuotaConfig = function (showKVMemoryQuota) {
+    mnMemoryQuotaService.memoryQuotaConfig = function (showKVMemoryQuota, calculateMaxMemory) {
       return mnPoolDefault.get().then(function (poolsDefault) {
-        var rv = mnMemoryQuotaService.prepareClusterQuotaSettings(poolsDefault);
-        rv.showKVMemoryQuota = showKVMemoryQuota;
-        rv.showTotalPerNode = rv.showKVMemoryQuota;
-        return rv;
+        return mnMemoryQuotaService.prepareClusterQuotaSettings(poolsDefault, showKVMemoryQuota, calculateMaxMemory);
       });
     };
 

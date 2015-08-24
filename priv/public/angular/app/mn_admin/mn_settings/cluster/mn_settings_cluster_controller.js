@@ -1,28 +1,55 @@
 angular.module('mnSettingsCluster', [
   'mnSettingsClusterService',
   'mnHelper',
-  'mnPromiseHelper'
+  'mnPromiseHelper',
+  'mnMemoryQuota',
+  'mnSpinner'
 ]).controller('mnSettingsClusterController',
-  function ($scope, mnSettingsClusterService, mnHelper, mnPromiseHelper) {
+  function ($scope, $modal, mnSettingsClusterService, mnHelper, mnPromiseHelper) {
 
     mnPromiseHelper($scope, mnSettingsClusterService.getClusterState()).applyToScope("state");
 
-    var liveValidation = _.debounce(function () {
-      var promise = mnSettingsClusterService.clusterSettingsValidation($scope.state.clusterSettings);
-      mnPromiseHelper($scope, promise).catchErrorsFromSuccess();
-    }, 500);
+    $scope.$watch('state.memoryQuotaConfig', _.debounce(function (memoryQuotaConfig) {
+      if (!memoryQuotaConfig) {
+        return;
+      }
+      var promise = mnSettingsClusterService.postPoolsDefault($scope.state.memoryQuotaConfig, true);
+      mnPromiseHelper($scope, promise).catchErrorsFromSuccess("memoryQuotaErrors");
+    }, 500), true);
 
-    $scope.$watch('formData.memoryQuota', liveValidation);
+    $scope.$watch('state.indexSettings', _.debounce(function (indexSettings) {
+      if (!indexSettings) {
+        return;
+      }
+      var promise = mnSettingsClusterService.postIndexSettings($scope.state.indexSettings, true);
+      mnPromiseHelper($scope, promise).catchErrorsFromSuccess("indexSettingsErrors");
+    }, 500), true);
+
+    function saveSettings() {
+      var promise = mnPromiseHelper($scope, mnSettingsClusterService.postPoolsDefault($scope.state.memoryQuotaConfig, false, $scope.state.clusterName))
+        .catchErrors("memoryQuotaErrors")
+        .getPromise()
+        .then(function () {
+          return mnPromiseHelper($scope, mnSettingsClusterService.postIndexSettings($scope.state.indexSettings))
+            .catchErrors("indexSettingsErrors")
+            .getPromise();
+        })
+      mnPromiseHelper($scope, promise)
+        .showSpinner('clusterSettingsLoading')
+        .reloadState();
+    }
 
     $scope.saveVisualInternalSettings = function () {
       if ($scope.clusterSettingsLoading) {
         return;
       }
-      var promise = mnSettingsClusterService.saveClusterSettings($scope.state.clusterSettings);
-      mnPromiseHelper($scope, promise)
-        .catchErrorsFromSuccess()
-        .showSpinner('clusterSettingsLoading')
-        .reloadState();
+      if ($scope.state.initialMemoryQuota != $scope.state.memoryQuotaConfig.indexMemoryQuota) {
+        $modal.open({
+          templateUrl: '/angular/app/mn_admin/mn_settings/cluster/mn_settings_cluster_confirmation_dialog.html'
+        }).result.then(saveSettings);
+      } else {
+        saveSettings();
+      }
     };
     $scope.regenerateCertificate = function () {
       if ($scope.regenerateCertificateInprogress) {

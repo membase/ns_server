@@ -3,7 +3,8 @@ angular.module('mnServersService', [
   'mnPoolDefault',
   'mnSettingsAutoFailoverService',
   'mnHttp',
-  'ui.router'
+  'ui.router',
+  'mnSettingsClusterService'
 ]).factory('mnServersService',
   function (mnHttp, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, $q, $state, $stateParams) {
     var mnServersService = {};

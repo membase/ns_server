@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep1Controller',
-  function ($scope, $state, $q, mnWizardStep1Service, mnAuthService, selfConfig, pools, mnHelper, mnServersService, mnPools, mnPoolDefault, mnAlertsService, mnMemoryQuotaService, mnPromiseHelper) {
+  function ($scope, $state, $q, mnWizardStep1Service, mnSettingsClusterService, mnAuthService, selfConfig, pools, mnHelper, mnServersService, mnPools, mnPoolDefault, mnAlertsService, mnMemoryQuotaService, mnPromiseHelper) {
     $scope.hostname = selfConfig.hostname;
 
     $scope.startNewClusterConfig = {
@@ -13,7 +13,6 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
       isServicesControllsAvailable: true,
       showKVMemoryQuota: true,
       showIndexMemoryQuota: true,
-      showTotalPerNode: true,
       indexMemoryQuota: selfConfig.indexMemoryQuota,
       minMemorySize: 256
     };
@@ -47,10 +46,7 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
       return mnPromiseHelper($scope, query).catchErrors(name + 'Errors').getPromise();
     }
     function postMemoryQuota() {
-      return addErrorHandler(mnMemoryQuotaService.postMemory({
-        memoryQuota: $scope.startNewClusterConfig.memoryQuota,
-        indexMemoryQuota: $scope.startNewClusterConfig.indexMemoryQuota
-      }), "postMemory");
+      return addErrorHandler(mnSettingsClusterService.postPoolsDefault($scope.startNewClusterConfig), "postMemory");
     }
     function postServices() {
       return addErrorHandler(mnServersService.setupServices({

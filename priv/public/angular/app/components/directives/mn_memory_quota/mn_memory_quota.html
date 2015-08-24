@@ -1,5 +1,5 @@
 <div class="error-container err-_" ng-show="errors._">{{errors._}}</div>
-<div class="row">
+<div class="row" ng-if="config.totalMemorySize">
   <label>RAM Available: </label>
   <span class="ram-total-size">{{::config.totalMemorySize}} MB</span>
 </div>
@@ -28,7 +28,7 @@
   <span class="error-container err-indexMemoryQuota" ng-show="errors.indexMemoryQuota">
     {{errors.indexMemoryQuota}}</span>
 </div>
-<div class="row" ng-if="config.showTotalPerNode">
+<div class="row" ng-if="config.maxMemorySize">
   <label>Total Per Server:</label>
   <span><span class="js_per_server_total">{{config.memoryQuota + config.indexMemoryQuota}}</span> MB (must be less than <span class="js_max_ram_size">{{::config.maxMemorySize}}</span> MB) </span>
 </div>

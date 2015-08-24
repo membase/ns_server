@@ -1,9 +1,10 @@
 angular.module('mnSettingsClusterService', [
   'mnHttp',
   'mnServersService',
-  'mnPoolDefault'
+  'mnPoolDefault',
+  'mnMemoryQuotaService'
 ]).factory('mnSettingsClusterService',
-  function (mnHttp, $q, mnServersService, mnPoolDefault) {
+  function (mnHttp, $q, mnServersService, mnPoolDefault, mnMemoryQuotaService) {
     var mnSettingsClusterService = {};
 
 
@@ -19,22 +20,40 @@ angular.module('mnSettingsClusterService', [
         url: '/controller/regenerateCertificate'
       });
     };
-    mnSettingsClusterService.saveClusterSettings = function (data) {
-      return mnHttp({
+    mnSettingsClusterService.postPoolsDefault = function (memoryQuotaConfig, justValidate, clusterName) {
+      var data = {
+        memoryQuota: memoryQuotaConfig.memoryQuota === null ? "" : memoryQuotaConfig.memoryQuota,
+        indexMemoryQuota: memoryQuotaConfig.indexMemoryQuota === null ? "" : memoryQuotaConfig.indexMemoryQuota,
+        clusterName: clusterName
+      }
+      var config = {
         method: 'POST',
         url: '/pools/default',
         data: data
-      });
+      };
+      if (justValidate) {
+        config.params = {
+          just_validate: 1
+        };
+      }
+      return mnHttp(config);
     };
-    mnSettingsClusterService.clusterSettingsValidation = function (data) {
-      return mnHttp({
+    mnSettingsClusterService.getIndexSettings = function () {
+      return mnHttp.get("/settings/indexes");
+    };
+
+    mnSettingsClusterService.postIndexSettings = function (data, justValidate) {
+      var config = {
         method: 'POST',
-        params: {
-          just_validate: 1,
-        },
-        data: data,
-        url: '/pools/default'
-      });
+        url: '/settings/indexes',
+        data: data
+      };
+      if (justValidate) {
+        config.params = {
+          just_validate: 1
+        };
+      }
+      return mnHttp(config);
     };
 
     function getInMegs(value) {
@@ -44,21 +63,21 @@ angular.module('mnSettingsClusterService', [
     mnSettingsClusterService.getClusterState = function () {
       return $q.all([
         mnSettingsClusterService.getDefaultCertificate(),
-        mnServersService.getNodes(),
-        mnPoolDefault.get()
+        mnMemoryQuotaService.memoryQuotaConfig(true, false),
+        mnPoolDefault.get(),
+        mnSettingsClusterService.getIndexSettings()
       ]).then(function (resp) {
         var certificate = resp[0].data;
-        var nodes = resp[1];
+        var memoryQuotaConfig = resp[1];
         var poolDefault = resp[2];
+        var indexSettings = resp[3].data;
 
         return {
-          clusterSettings: {
-            clusterName: poolDefault.clusterName,
-            memoryQuota: getInMegs(poolDefault.storageTotals.ram.quotaTotalPerNode)
-          },
+          initialMemoryQuota: memoryQuotaConfig.indexMemoryQuota,
+          clusterName: poolDefault.clusterName,
+          memoryQuotaConfig: memoryQuotaConfig,
           certificate: certificate,
-          totalRam: getInMegs(nodes.ramTotalPerActiveNode),
-          maxRamMegs: Math.max(getInMegs(nodes.ramTotalPerActiveNode) - 1024, Math.floor(nodes.ramTotalPerActiveNode * 4 / (5 * Math.Mi)))
+          indexSettings: indexSettings
         };
       });
     };

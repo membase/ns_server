@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep6Controller',
-  function ($scope, $state, mnPools, mnPromiseHelper, memoryQuotaConfig, mnMemoryQuotaService) {
+  function ($scope, $state, mnPools, mnPromiseHelper, memoryQuotaConfig, mnSettingsClusterService) {
     $scope.config = memoryQuotaConfig;
 
     function login(user) {
@@ -13,10 +13,7 @@ angular.module('mnWizard').controller('mnWizardStep6Controller',
         return;
       }
 
-      var promise = mnMemoryQuotaService.postMemory({
-        memoryQuota: $scope.config.memoryQuota,
-        indexMemoryQuota: $scope.config.indexMemoryQuota
-      });
+      var promise = mnSettingsClusterService.postPoolsDefault($scope.config);
       mnPromiseHelper($scope, promise)
         .showErrorsSensitiveSpinner()
         .catchErrors()
