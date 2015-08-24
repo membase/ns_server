@@ -19,7 +19,7 @@ angular.module('mnServers', [
 
     mnPoll.start($scope, function () {
       return mnServersService.getServersState($stateParams.list);
-    }).subscribe("serversState").keepIn();
+    }).subscribe("mnServersState").keepIn();
 
     $scope.addServer = function () {
       $modal.open({
@@ -37,7 +37,7 @@ angular.module('mnServers', [
       });
     };
     $scope.postRebalance = function () {
-      mnServersService.postRebalance($scope.serversState.allNodes).then(function () {
+      mnServersService.postRebalance($scope.mnServersState.allNodes).then(function () {
         $state.go('app.admin.servers', {list: 'active'});
         $scope.viewLoading = true;
         mnHelper.reloadState();

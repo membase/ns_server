@@ -6,7 +6,7 @@ angular.module('mnViews').controller('mnViewsCreateDialogController',
     $scope.doesDdocExist = !!currentDdocName;
 
     function getDdocUrl() {
-      return mnViewsService.getDdocUrl($scope.views.bucketsNames.selected, '_design/dev_' + encodeURIComponent($scope.ddoc.name));
+      return mnViewsService.getDdocUrl($scope.mnViewsState.bucketsNames.selected, '_design/dev_' + encodeURIComponent($scope.ddoc.name));
     }
 
     function createDdoc(presentDdoc) {

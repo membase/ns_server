@@ -6,7 +6,7 @@ angular.module('mnIndexes', [
 ]).controller('mnIndexesController',
   function ($scope, mnIndexesService, mnHelper, mnPoll) {
 
-    mnPoll.start($scope, mnIndexesService.getIndexesState).subscribe("indexesState").keepIn();
+    mnPoll.start($scope, mnIndexesService.getIndexesState).subscribe("mnIndexesState").keepIn();
 
     mnHelper.initializeDetailsHashObserver($scope, 'openedIndex', 'app.admin.indexes');
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);

@@ -14,7 +14,7 @@
         </li>
         <li>
           <ul id="js_select_nodes_list_container" class="selected_nodes">
-            <li ng-repeat="node in state.nodes track by node.otpNode">
+            <li ng-repeat="node in mnLogsCollectInfoState.nodes track by node.otpNode">
               <input type="checkbox"
                      name="js-selected-nodes"
                      ng-model="collect.nodes[node.otpNode]"
@@ -23,7 +23,7 @@
                      id="collected_node_list_{{node.otpNode | mnMakeSafeForCSS }}"
                      ng-checked="node.status !== 'unhealthy'"
                      ng-disabled="node.status === 'unhealthy' || collect.from">
-              <label for="collected_node_list_{{node.otpNode | mnMakeSafeForCSS }}">{{ node.hostname | mnStripPortHTML:state.nodes }}</label>
+              <label for="collected_node_list_{{node.otpNode | mnMakeSafeForCSS }}">{{ node.hostname | mnStripPortHTML:mnLogsCollectInfoState.nodes }}</label>
               <span class="icon {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}"></span>
             </li>
           </ul>

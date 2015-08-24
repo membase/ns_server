@@ -4,7 +4,7 @@ angular.module('mnViews').controller('mnViewsDeleteViewDialogController',
     $scope.currentViewName = currentViewName;
     $scope.maybeSpatial = isSpatial ? 'Spatial' : '';
     $scope.doDelete = function () {
-      var url = mnViewsService.getDdocUrl($scope.views.bucketsNames.selected, currentDdocName);
+      var url = mnViewsService.getDdocUrl($scope.mnViewsState.bucketsNames.selected, currentDdocName);
 
       var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
         delete presentDdoc.json[isSpatial ? 'spatial' : 'views'][currentViewName];

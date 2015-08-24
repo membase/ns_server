@@ -7,7 +7,7 @@ angular.module('mnXDCR', [
 ]).controller('mnXDCRController',
   function ($scope, $modal, mnHelper, mnPoll, mnXDCRService, mnBucketsService) {
 
-    mnPoll.start($scope, mnXDCRService.getReplicationState).subscribe("xdcr").keepIn();
+    mnPoll.start($scope, mnXDCRService.getReplicationState).subscribe("mnXdcrState").keepIn();
 
     $scope.createClusterReference = function () {
       $modal.open({

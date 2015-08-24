@@ -36,8 +36,8 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
     };
     mnPoll.start($scope, mnLogsCollectInfoService.getState).subscribe(function (state) {
       $scope.loadingResult = false;
-      $scope.state = state;
-    }).keepIn("collectInfoState");
+      $scope.mnLogsCollectInfoState = state;
+    }).keepIn("mnLogsCollectInfoState");
 
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

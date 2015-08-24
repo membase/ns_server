@@ -1,6 +1,6 @@
 angular.module('mnAnalytics').controller('mnAnalyticsListGraphController',
   function ($scope, $stateParams) {
-    $scope.$watch('state', function (analiticsState) {
+    $scope.$watch('mnAnalyticsState', function (analiticsState) {
       if (!analiticsState || !analiticsState.statsByName) {
         return;
       }

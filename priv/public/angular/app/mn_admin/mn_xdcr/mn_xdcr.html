@@ -20,7 +20,7 @@
               <th></th>
             </tr>
           </thead>
-          <tbody ng-if="xdcr.references.length" ng-repeat="row in xdcr.references | orderBy:'name' track by row.name">
+          <tbody ng-if="mnXdcrState.references.length" ng-repeat="row in mnXdcrState.references | orderBy:'name' track by row.name">
             <tr>
               <td>{{row.name}}</td>
               <td>
@@ -32,7 +32,7 @@
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="!xdcr.references.length">
+          <tbody ng-if="!mnXdcrState.references.length">
             <tr><td colspan="3" style="text-align:center">No cluster references defined. <span class="when-roadmin-avoid-me">Please create one.</span></td></tr>
           </tbody>
         </table>
@@ -46,7 +46,7 @@
       <h3>
         <span class="view_head" style="padding-left: 0">Ongoing Replications</span>
         <span class="buttons">
-          <a ng-show="xdcr.references.length" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="createReplications()">
+          <a ng-show="mnXdcrState.references.length" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="createReplications()">
             <span>Create Replication</span>
           </a>
         </span>
@@ -73,7 +73,7 @@
               <th></th>
             </tr>
           </thead>
-          <tbody ng-if="xdcr.replications.length" ng-repeat="row in xdcr.replications track by row.name">
+          <tbody ng-if="mnXdcrState.replications.length" ng-repeat="row in mnXdcrState.replications track by row.name">
             <tr class="row">
               <td>{{row.source}}</td>
               <td>{{row.protocol}}</td>
@@ -91,7 +91,7 @@
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="!xdcr.replications.length">
+          <tbody ng-if="!mnXdcrState.replications.length">
             <tr><td colspan="8" style="text-align:center">There are no replications currently in progress.</td></tr>
           </tbody>
         </table>

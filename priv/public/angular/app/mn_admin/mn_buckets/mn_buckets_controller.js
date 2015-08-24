@@ -11,10 +11,10 @@ angular.module('mnBuckets', [
   function ($scope, mnBucketsService, mnHelper, mnPoll, $modal) {
 
     $scope.addBucket = function () {
-      mnBucketsService.getBucketsState().then(function (buckets) {
-        $scope.buckets = buckets;
+      mnBucketsService.getBucketsState().then(function (mnBucketsState) {
+        $scope.mnBucketsState = mnBucketsState;
 
-        !buckets.creationWarnings.length && $modal.open({
+        !mnBucketsState.creationWarnings.length && $modal.open({
           templateUrl: '/angular/app/mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
           controller: 'mnBucketsDetailsDialogController',
           resolve: {
@@ -29,7 +29,7 @@ angular.module('mnBuckets', [
       });
     };
 
-    mnPoll.start($scope, mnBucketsService.getBucketsState).subscribe("buckets").keepIn();
+    mnPoll.start($scope, mnBucketsService.getBucketsState).subscribe("mnBucketsState").keepIn();
 
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

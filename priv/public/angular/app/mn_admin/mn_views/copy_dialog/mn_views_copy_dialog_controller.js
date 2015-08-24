@@ -13,7 +13,7 @@ angular.module('mnViews').controller('mnViewsCopyDialogController',
       };
     }
     $scope.onSubmit = function () {
-      var url = mnViewsService.getDdocUrl($scope.views.bucketsNames.selected, "_design/dev_" + $scope.ddoc.name);
+      var url = mnViewsService.getDdocUrl($scope.mnViewsState.bucketsNames.selected, "_design/dev_" + $scope.ddoc.name);
       var copy = prepareToCopy(url, currentDdoc);
       var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
         return $modal.open({

@@ -12,16 +12,16 @@ angular.module('mnAnalytics', [
     }, function (response) {
       //TODO add error handler
       return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
-    }).subscribe("state").keepIn();
+    }).subscribe("mnAnalyticsState").keepIn();
 
-    $scope.$watch('state.bucketsNames.selected', function (selectedBucket) {
+    $scope.$watch('mnAnalyticsState.bucketsNames.selected', function (selectedBucket) {
       selectedBucket && selectedBucket !== $state.params.analyticsBucket && $state.go('app.admin.analytics.list.graph', {
         analyticsBucket: selectedBucket
       });
     });
 
     if (!$state.params.specificStat) {
-      $scope.$watch('state.nodesNames.selected', function (selectedHostname) {
+      $scope.$watch('mnAnalyticsState.nodesNames.selected', function (selectedHostname) {
         selectedHostname && selectedHostname !== $state.params.statsHostname && $state.go('app.admin.analytics.list.graph', {
           statsHostname: selectedHostname.indexOf("All Server Nodes") > -1 ? undefined : selectedHostname
         });

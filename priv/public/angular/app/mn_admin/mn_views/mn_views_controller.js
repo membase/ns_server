@@ -20,15 +20,15 @@ angular.module('mnViews', [
 
     var poll = mnPoll.start($scope, function () {
       return mnViewsService.getViewsState($state.params);
-    }).subscribe("views").keepIn();
+    }).subscribe("mnViewsState").keepIn();
 
     $scope.$watch(function () {
-      return $scope.views && $scope.views.bucketsNames.selected && $scope.views.isDevelopmentViews && !$scope.views.ddocsAreInFactMissing;
+      return $scope.mnViewsState && $scope.mnViewsState.bucketsNames.selected && $scope.mnViewsState.isDevelopmentViews && !$scope.mnViewsState.ddocsAreInFactMissing;
     }, function (showViewCreationButtons) {
       $scope.showViewCreationButtons = showViewCreationButtons;
     });
 
-    $scope.$watch('views.bucketsNames.selected', function (selectedBucket) {
+    $scope.$watch('mnViewsState.bucketsNames.selected', function (selectedBucket) {
       selectedBucket && selectedBucket !== $state.params.viewsBucket && $state.go('app.admin.views', {
         viewsBucket: selectedBucket
       });
@@ -83,7 +83,7 @@ angular.module('mnViews', [
       };
     }
     $scope.publishDdoc = function (ddoc) {
-      var url = mnViewsService.getDdocUrl($scope.views.bucketsNames.selected, "_design/" + mnViewsService.cutOffDesignPrefix(ddoc.meta.id));
+      var url = mnViewsService.getDdocUrl($scope.mnViewsState.bucketsNames.selected, "_design/" + mnViewsService.cutOffDesignPrefix(ddoc.meta.id));
       var publish = prepareToPublish(url, ddoc);
       var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
         $modal.open({

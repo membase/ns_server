@@ -1,66 +1,66 @@
 <div class="collect_result_dialog collect_information_dialog" id="js_collect_result_view" mn-spinner="loadingResult">
   <div class="content" id="js_collect_progress_container">
-    <div id="js_collection_status" class="collection_status dynamic_{{state.status}}">
-      <span>Collection {{state.status}}  {{state.status === 'running' ? '...' : '.'}}</span>
+    <div id="js_collection_status" class="collection_status dynamic_{{mnLogsCollectInfoState.status}}">
+      <span>Collection {{mnLogsCollectInfoState.status}}  {{mnLogsCollectInfoState.status === 'running' ? '...' : '.'}}</span>
     </div>
-    <div ng-if="state.nodesByStatus.started">
+    <div ng-if="mnLogsCollectInfoState.nodesByStatus.started">
       <p>In progress:</p>
       <div class="js_result result">
-        <div ng-repeat="node in state.nodesByStatus.started">{{node.nodeName}}</div>
+        <div ng-repeat="node in mnLogsCollectInfoState.nodesByStatus.started">{{node.nodeName}}</div>
       </div>
     </div>
-    <div ng-if="state.nodesByStatus.starting">
+    <div ng-if="mnLogsCollectInfoState.nodesByStatus.starting">
       <p>Pending:</p>
       <div class="js_result result">
-        <div ng-repeat="node in state.nodesByStatus.starting">{{node.nodeName}}</div>
+        <div ng-repeat="node in mnLogsCollectInfoState.nodesByStatus.starting">{{node.nodeName}}</div>
       </div>
     </div>
-    <div ng-if="state.nodesByStatus.collected">
+    <div ng-if="mnLogsCollectInfoState.nodesByStatus.collected">
       <p class="green">Logs were successfully collected to the following paths:</p>
       <div class="js_result result">
-        <div ng-repeat="node in state.nodesByStatus.collected"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
+        <div ng-repeat="node in mnLogsCollectInfoState.nodesByStatus.collected"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
       </div>
     </div>
-    <div ng-if="state.nodesByStatus.startedUpload">
+    <div ng-if="mnLogsCollectInfoState.nodesByStatus.startedUpload">
       <p class="green">Logs are being uploaded from this paths:</p>
       <div class="js_result result">
-        <div ng-repeat="node in state.nodesByStatus.startedUpload"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
+        <div ng-repeat="node in mnLogsCollectInfoState.nodesByStatus.startedUpload"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
       </div>
     </div>
-    <div ng-if="state.nodesByStatus.startingUpload">
+    <div ng-if="mnLogsCollectInfoState.nodesByStatus.startingUpload">
       <p class="green">Logs are pending upload from this paths:</p>
       <div class="js_result result">
-        <div ng-repeat="node in state.nodesByStatus.startingUpload"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
+        <div ng-repeat="node in mnLogsCollectInfoState.nodesByStatus.startingUpload"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
       </div>
     </div>
-    <div ng-if="state.nodesByStatus.uploaded">
+    <div ng-if="mnLogsCollectInfoState.nodesByStatus.uploaded">
       <p class="green">Logs were successfully uploaded to the following URLs:</p>
       <div class="js_result result">
-        <div ng-repeat="node in state.nodesByStatus.uploaded"><a href="{{node.url}}" target="_blank">{{node.url}}</a></div>
+        <div ng-repeat="node in mnLogsCollectInfoState.nodesByStatus.uploaded"><a href="{{node.url}}" target="_blank">{{node.url}}</a></div>
       </div>
     </div>
-    <div ng-if="state.nodesByStatus.failedUpload">
+    <div ng-if="mnLogsCollectInfoState.nodesByStatus.failedUpload">
       <p class="red">Warning: The following logs were successfully collected but failed to upload. Please manually upload from the following locations:</p>
       <div class="js_result result">
-        <div ng-repeat="node in state.nodesByStatus.failedUpload"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
+        <div ng-repeat="node in mnLogsCollectInfoState.nodesByStatus.failedUpload"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
       </div>
     </div>
-    <div ng-if="state.nodesByStatus.failed">
+    <div ng-if="mnLogsCollectInfoState.nodesByStatus.failed">
       <p class="red">Error: Unable to collect logs from the following nodes:</p>
       <div class="js_result result">
-        <div ng-repeat="node in state.nodesByStatus.failed">{{node.nodeName}}</div>
+        <div ng-repeat="node in mnLogsCollectInfoState.nodesByStatus.failed">{{node.nodeName}}</div>
       </div>
     </div>
-    <div ng-if="state.nodesByStatus.cancelled">
+    <div ng-if="mnLogsCollectInfoState.nodesByStatus.cancelled">
       <p class="red">Cancelled Nodes:</p>
       <div class="js_result result">
-        <div ng-repeat="node in state.nodesByStatus.cancelled">{{node.nodeName}}</div>
+        <div ng-repeat="node in mnLogsCollectInfoState.nodesByStatus.cancelled">{{node.nodeName}}</div>
       </div>
     </div>
-    <div ng-if="state.nodeErrors.length">
+    <div ng-if="mnLogsCollectInfoState.nodeErrors.length">
       <p class="red">Node Errors:</p>
       <div class="js_result result">
-        <div ng-repeat="node in state.nodeErrors"><strong>{{node.nodeName}}</strong> {{node.error}}</div></div>
+        <div ng-repeat="node in mnLogsCollectInfoState.nodeErrors"><strong>{{node.nodeName}}</strong> {{node.error}}</div></div>
       </div>
     </div>
   </div>

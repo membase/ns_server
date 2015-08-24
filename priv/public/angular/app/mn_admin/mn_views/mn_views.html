@@ -4,9 +4,9 @@
 <div id="js_views" class="views" ng-show="isKvNode">
   <h1 style="">
     <span >
-      <ui-select ng-model="views.bucketsNames.selected" theme="selectize" ng-disabled="disabled" style="width: 200px; display: inline-block; vertical-align: middle;">
+      <ui-select ng-model="mnViewsState.bucketsNames.selected" theme="selectize" ng-disabled="disabled" style="width: 200px; display: inline-block; vertical-align: middle;">
         <ui-select-match>{{$select.selected}}</ui-select-match>
-        <ui-select-choices repeat="name in views.bucketsNames | filter: $select.search">
+        <ui-select-choices repeat="name in mnViewsState.bucketsNames | filter: $select.search">
           <span ng-bind-html="name | highlight: $select.search"></span>
         </ui-select-choices>
       </ui-select>
@@ -23,7 +23,7 @@
         </li>
         <li class="tab_right">
           <a class="casper_views_prod_tab" ui-sref="app.admin.views({ type: 'production' })" ui-sref-active="selected">Production Views</a>
-          <span class="badge notify" ng-show="views.production.length"><span id="prod_view_count">{{views.production.length}}</span></span>
+          <span class="badge notify" ng-show="mnViewsState.production.length"><span id="prod_view_count">{{mnViewsState.production.length}}</span></span>
         </li>
       </ul>
       <div class="create_view">
@@ -44,7 +44,7 @@
               <th colspan=2 class="last"></th>
             </tr>
           </thead>
-          <tbody ng-if="!views.bucketsNames.selected && !views.ddocsAreInFactMissing">
+          <tbody ng-if="!mnViewsState.bucketsNames.selected && !mnViewsState.ddocsAreInFactMissing">
             <tr>
               <td colspan="6" class="empty">
                 <span>
@@ -55,22 +55,22 @@
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="views.ddocsAreInFactMissing">
+          <tbody ng-if="mnViewsState.ddocsAreInFactMissing">
             <tr>
               <td colspan="6" class="empty">
                 <span style="line-height:23px">This node doesn't host current bucket yet, so for list of design docs, please, visit different node's UI</span>
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="views.bucketsNames.selected && !views.ddocsAreInFactMissing && !views[views.type].length">
+          <tbody ng-if="mnViewsState.bucketsNames.selected && !mnViewsState.ddocsAreInFactMissing && !mnViewsState[mnViewsState.type].length">
             <tr>
               <td colspan="6" class="empty">
-                <span ng-show="views.isDevelopmentViews" style="line-height:23px">There are currently no Design Documents in Development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
-                <span ng-show="!views.isDevelopmentViews" style="line-height:23px">There are no Design Documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
+                <span ng-show="mnViewsState.isDevelopmentViews" style="line-height:23px">There are currently no Design Documents in Development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
+                <span ng-show="!mnViewsState.isDevelopmentViews" style="line-height:23px">There are no Design Documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
               </td>
             </tr>
           </tbody>
-          <tbody ng-repeat="row in views[views.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="views.rows.length">
+          <tbody ng-repeat="row in mnViewsState[mnViewsState.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="mnViewsState.rows.length">
             <tr>
               <td class="design_doc_name ellipsis">
                 {{row.doc.meta.id}}
@@ -87,20 +87,20 @@
               <td colspan="3" class="when-roadmin-hide-me">
                 <a
                   class="list_button when-in-prod casper_views_copy_to_dev"
-                  ng-show="!views.isDevelopmentViews"
+                  ng-show="!mnViewsState.isDevelopmentViews"
                   ng-click="copyToDev(row.doc)"><span>Copy to Dev</span></a>
 
                 <a
                   class="list_button when-in-dev"
                   ng-class="{dynamic_disabled: row.isEmpty}"
                   ng-click="publishDdoc(row.doc)"
-                  ng-show="views.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views))"><span>Publish</span></a>
+                  ng-show="mnViewsState.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views))"><span>Publish</span></a>
 
                 <a
                   class="list_button when-in-dev casper_views_add_view_popup"
                   ng-click="showCreationDialog(row.doc)"
                   ng-show="
-                    views.isDevelopmentViews &&
+                    mnViewsState.isDevelopmentViews &&
                     ((!row.doc.json.spatial && !row.doc.json.views || _.isEmpty(row.doc.json.spatial) && _.isEmpty(row.doc.json.views)) ||
                     (row.doc.json.views && !_.isEmpty(row.doc.json.views) && (!row.doc.json.spatial || _.isEmpty(row.doc.json.spatial))))"><span>Add View</span></a>
 
@@ -108,7 +108,7 @@
                   class="list_button when-in-dev casper_views_add_spatial_popup"
                   ng-click="showCreationDialog(row.doc, true)"
                   ng-show="
-                    views.isDevelopmentViews &&
+                    mnViewsState.isDevelopmentViews &&
                     ((!row.doc.json.spatial && !row.doc.json.views || _.isEmpty(row.doc.json.spatial) && _.isEmpty(row.doc.json.views)) ||
                     (row.doc.json.spatial && !_.isEmpty(row.doc.json.spatial) &&  (!row.doc.json.views || _.isEmpty(row.doc.json.views))))"><span>Add Spatial View</span></a>
 

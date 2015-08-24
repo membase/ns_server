@@ -23,7 +23,7 @@
         <ul>
           <li><label for="replication_to_cluster">Cluster:</label>
             <select name="toCluster" ng-model="replication.toCluster" id="replication_to_cluster" style="width: 154px;" 
-              ng-options="reference.name as reference.name for reference in xdcr.references">
+              ng-options="reference.name as reference.name for reference in mnXdcrState.references">
             </select>
           </li>
           <li><label for="replication_to_bucket">Bucket:</label>
