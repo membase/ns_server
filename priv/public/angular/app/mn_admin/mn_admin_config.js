@@ -17,6 +17,7 @@ angular.module('mnAdmin', [
   'mnSettingsAudit',
   'mnSettingsCluster',
   'mnSettingsAlerts',
+  'mnSettingsNotificationsService',
   'mnViews',
   'mnXDCR',
   'mnPoll'
@@ -37,31 +38,12 @@ angular.module('mnAdmin', [
     .state('app.admin', {
       abstract: true,
       templateUrl: 'mn_admin/mn_admin.html',
-      controller: 'mnAdminController',
-      resolve: {
-        tasks: function (mnTasksDetails) {
-          return mnTasksDetails.getFresh();
-        },
-        updates: function (mnSettingsNotificationsService) {
-          return mnSettingsNotificationsService.maybeCheckUpdates();
-        },
-        launchpadSource: function (updates, mnSettingsNotificationsService) {
-          return updates.sendStats && mnSettingsNotificationsService.buildPhoneHomeThingy();
-        }
-      }
+      controller: 'mnAdminController'
     })
     .state('app.admin.overview', {
       url: '/overview',
       controller: 'mnOverviewController',
-      templateUrl: 'mn_admin/mn_overview/mn_overview.html',
-      resolve: {
-        nodes: function (mnServersService) {
-          return mnServersService.getNodes();
-        },
-        buckets: function (mnBucketsService) {
-          return mnBucketsService.getBucketsByType();
-        }
-      }
+      templateUrl: 'mn_admin/mn_overview/mn_overview.html'
     })
     .state('app.admin.analytics', {
       abstract: true,
@@ -69,18 +51,13 @@ angular.module('mnAdmin', [
       params: {
         zoom: {
           value: 'minute'
-        },
-        analyticsBucket: {
-          value: function (mnBucketsService) {
-            return mnBucketsService.getDefaultBucket();
-          }
         }
       },
       controller: 'mnAnalyticsController',
       templateUrl: 'mn_admin/mn_analytics/mn_analytics.html',
       resolve: {
-        analyticsStats: function (mnAnalyticsService, $stateParams) {
-          return mnAnalyticsService.getStats({$stateParams: $stateParams});
+        buckets: function (mnBucketsService) {
+          return mnBucketsService.getBucketsByType();
         }
       }
     })
@@ -110,18 +87,13 @@ angular.module('mnAdmin', [
       params: {
         type: {
           value: 'development'
-        },
-        viewsBucket: {
-          value: function (mnBucketsService) {
-            return mnBucketsService.getDefaultBucket();
-          }
         }
       },
       templateUrl: 'mn_admin/mn_views/mn_views.html',
       controller: 'mnViewsController',
       resolve: {
-        views: function (mnViewsService, $stateParams) {
-          return mnViewsService.getViewsState($stateParams);
+        buckets: function (mnBucketsService) {
+          return mnBucketsService.getBucketsByType();
         }
       }
     })
@@ -135,12 +107,7 @@ angular.module('mnAdmin', [
       views: {
         "": {
           controller: 'mnBucketsController',
-          templateUrl: 'mn_admin/mn_buckets/mn_buckets.html',
-          resolve: {
-            buckets: function (mnBucketsService) {
-              return mnBucketsService.getBucketsState();
-            }
-          }
+          templateUrl: 'mn_admin/mn_buckets/mn_buckets.html'
         },
         "details@app.admin.buckets": {
           templateUrl: 'mn_admin/mn_buckets/details/mn_buckets_details.html',
@@ -156,12 +123,7 @@ angular.module('mnAdmin', [
         }
       },
       controller: "mnIndexesController",
-      templateUrl: "mn_admin/mn_indexes/mn_indexes.html",
-      resolve: {
-        indexesState: function (mnIndexesService) {
-          return mnIndexesService.getIndexesState();
-        }
-      }
+      templateUrl: "mn_admin/mn_indexes/mn_indexes.html"
     })
     .state('app.admin.servers', {
       url: '/servers/:list?openedServers',
@@ -176,12 +138,7 @@ angular.module('mnAdmin', [
       views: {
         "" : {
           controller: 'mnServersController',
-          templateUrl: 'mn_admin/mn_servers/mn_servers.html',
-          resolve: {
-            serversState: function (mnServersService, $stateParams) {
-              return mnServersService.getServersState($stateParams.list);
-            }
-          }
+          templateUrl: 'mn_admin/mn_servers/mn_servers.html'
         },
         "details@app.admin.servers": {
           templateUrl: 'mn_admin/mn_servers/details/mn_servers_list_item_details.html',
@@ -192,12 +149,7 @@ angular.module('mnAdmin', [
     .state('app.admin.replications', {
       url: '/replications',
       templateUrl: 'mn_admin/mn_xdcr/mn_xdcr.html',
-      controller: 'mnXDCRController',
-      resolve: {
-        xdcr: function (mnXDCRService) {
-          return mnXDCRService.getReplicationState();
-        }
-      }
+      controller: 'mnXDCRController'
     })
     .state('app.admin.logs', {
       url: '/logs',
@@ -207,23 +159,13 @@ angular.module('mnAdmin', [
     .state('app.admin.logs.list', {
       url: '',
       controller: 'mnLogsListController',
-      templateUrl: 'mn_admin/mn_logs/list/mn_logs_list.html',
-      resolve: {
-        logs: function (mnLogsService) {
-          return mnLogsService.getLogs();
-        }
-      }
+      templateUrl: 'mn_admin/mn_logs/list/mn_logs_list.html'
     })
     .state('app.admin.logs.collectInfo', {
       url: '/collectInfo',
       abstract: true,
       controller: 'mnLogsCollectInfoController',
-      templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
-      resolve: {
-        state: function (mnLogsCollectInfoService) {
-          return mnLogsCollectInfoService.getState();
-        }
-      }
+      templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info.html'
     })
     .state('app.admin.logs.collectInfo.result', {
       url: '/result',
@@ -241,12 +183,7 @@ angular.module('mnAdmin', [
     .state('app.admin.settings.cluster', {
       url: '/cluster',
       controller: 'mnSettingsClusterController',
-      templateUrl: 'mn_admin/mn_settings/cluster/mn_settings_cluster.html',
-      resolve: {
-        clusterState: function (mnSettingsClusterService) {
-          return mnSettingsClusterService.getClusterState();
-        }
-      }
+      templateUrl: 'mn_admin/mn_settings/cluster/mn_settings_cluster.html'
     })
     .state('app.admin.settings.notifications', {
       url: '/notifications',
@@ -256,41 +193,21 @@ angular.module('mnAdmin', [
     .state('app.admin.settings.autoFailover', {
       url: '/autoFailover',
       controller: 'mnSettingsAutoFailoverController',
-      templateUrl: 'mn_admin/mn_settings/auto_failover/mn_settings_auto_failover.html',
-      resolve: {
-        autoFailoverSettings: function (mnSettingsAutoFailoverService) {
-          return mnSettingsAutoFailoverService.getAutoFailoverSettings();
-        }
-      }
+      templateUrl: 'mn_admin/mn_settings/auto_failover/mn_settings_auto_failover.html'
     })
     .state('app.admin.settings.alerts', {
       url: '/alerts',
       controller: 'mnSettingsAlertsController',
-      templateUrl: 'mn_admin/mn_settings/alerts/mn_settings_alerts.html',
-      resolve: {
-        alertsSettings: function (mnSettingsAlertsService) {
-          return mnSettingsAlertsService.getAlerts();
-        }
-      }
+      templateUrl: 'mn_admin/mn_settings/alerts/mn_settings_alerts.html'
     })
     .state('app.admin.settings.autoCompaction', {
       url: '/autoCompaction',
       controller: 'mnSettingsAutoCompactionController',
-      templateUrl: 'mn_admin/mn_settings/auto_compaction/mn_settings_auto_compaction.html',
-      resolve: {
-        autoCompactionSettings: function (mnSettingsAutoCompactionService) {
-          return mnSettingsAutoCompactionService.getAutoCompaction();
-        }
-      }
+      templateUrl: 'mn_admin/mn_settings/auto_compaction/mn_settings_auto_compaction.html'
     })
     .state('app.admin.settings.audit', {
       url: '/audit',
       controller: 'mnSettingsAuditController',
-      templateUrl: 'mn_admin/mn_settings/audit/mn_settings_audit.html',
-      resolve: {
-        auditSettings: function (mnSettingsAuditService) {
-          return mnSettingsAuditService.getAuditSettings();
-        }
-      }
+      templateUrl: 'mn_admin/mn_settings/audit/mn_settings_audit.html'
     });
 });

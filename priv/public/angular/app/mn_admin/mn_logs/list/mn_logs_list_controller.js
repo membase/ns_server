@@ -1,14 +1,9 @@
 angular.module('mnLogs').controller('mnLogsListController',
-  function ($scope, mnHelper, mnLogsService, logs, mnPoll) {
-    function applyLogs(logs) {
+  function ($scope, mnHelper, mnLogsService, mnPoll) {
+
+    mnPoll.start($scope, mnLogsService.getLogs).subscribe(function (logs) {
       $scope.logs = logs.data.list;
-    }
-
-    applyLogs(logs);
-
-    mnPoll.start($scope, function () {
-      return mnLogsService.getLogs();
-    }).subscribe(applyLogs);
+    });
 
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
 

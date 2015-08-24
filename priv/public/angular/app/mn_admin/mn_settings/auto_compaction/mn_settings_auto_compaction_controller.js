@@ -4,13 +4,15 @@ angular.module('mnSettingsAutoCompaction', [
   'mnPromiseHelper',
   'mnAutoCompactionForm'
 ]).controller('mnSettingsAutoCompactionController',
-  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoCompactionService, autoCompactionSettings) {
-    $scope.autoCompactionSettings = autoCompactionSettings;
+  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoCompactionService) {
+    mnPromiseHelper($scope, mnSettingsAutoCompactionService.getAutoCompaction()).applyToScope("autoCompactionSettings");
+
     $scope.$watch('autoCompactionSettings', function (autoCompactionSettings) {
       mnPromiseHelper($scope, mnSettingsAutoCompactionService
         .saveAutoCompaction(autoCompactionSettings, {just_validate: 1}))
         .catchErrors();
     }, true);
+
     $scope.submit = function () {
       if ($scope.viewLoading) {
         return;

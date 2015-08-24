@@ -8,15 +8,11 @@ angular.module('mnBuckets', [
   'mnPromiseHelper',
   'mnPoll'
 ]).controller('mnBucketsController',
-  function ($scope, buckets, mnBucketsService, mnHelper, mnPoll, $modal) {
-    function applyBuckets(buckets) {
-      $scope.buckets = buckets;
-    }
-    applyBuckets(buckets);
+  function ($scope, mnBucketsService, mnHelper, mnPoll, $modal) {
 
     $scope.addBucket = function () {
       mnBucketsService.getBucketsState().then(function (buckets) {
-        applyBuckets(buckets);
+        $scope.buckets = buckets;
 
         !buckets.creationWarnings.length && $modal.open({
           templateUrl: '/angular/app/mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
@@ -33,8 +29,7 @@ angular.module('mnBuckets', [
       });
     };
 
-    mnPoll.start($scope, function () {
-      return mnBucketsService.getBucketsState();
-    }).subscribe(applyBuckets);
+    mnPoll.start($scope, mnBucketsService.getBucketsState).subscribe("buckets");
+
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

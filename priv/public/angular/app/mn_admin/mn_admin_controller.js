@@ -1,11 +1,15 @@
 angular.module('mnAdmin').controller('mnAdminController',
-  function ($scope, $rootScope, $q, mnHelper, mnPromiseHelper, pools, mnPoll, mnAuthService, tasks, updates, mnTasksDetails, mnAlertsService, mnPoolDefault, launchpadSource, mnSettingsAutoFailoverService) {
+  function ($scope, $rootScope, $q, mnHelper, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService) {
     $scope.launchpadId = pools.launchID;
-    $scope.launchpadSource = launchpadSource;
-    $scope.updates = updates;
     $scope.alerts = mnAlertsService.alerts;
     $scope.closeAlert = mnAlertsService.closeAlert;
 
+    mnSettingsNotificationsService.maybeCheckUpdates().then(function (updates) {
+      $scope.updates = updates;
+      return updates.sendStats && mnSettingsNotificationsService.buildPhoneHomeThingy().then(function (launchpadSource) {
+        $scope.launchpadSource = launchpadSource;
+      });
+    });
 
     $scope.logout = function () {
       mnAuthService.logout();
@@ -17,18 +21,15 @@ angular.module('mnAdmin').controller('mnAdminController',
         .reloadState();
     };
 
-    function applyTasks(resp) {
-      $scope.tasks = resp[0];
-      $rootScope.tabName = resp[1] && resp[1].clusterName;
-    }
-    applyTasks(tasks);
-
     mnPoll.start($scope, function () {
       return $q.all([
         mnTasksDetails.getFresh({httpGroup: 'globals'}),
         mnPoolDefault.getFresh({httpGroup: 'globals'})
       ])
-    }).subscribe(applyTasks);
+    }).subscribe(function (resp) {
+      $scope.tasks = resp[0];
+      $rootScope.tabName = resp[1] && resp[1].clusterName;
+    });
 
     mnHelper.cancelAllHttpOnScopeDestroy($scope);
   });

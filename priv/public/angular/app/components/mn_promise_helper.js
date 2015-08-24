@@ -40,11 +40,19 @@ angular.module('mnPromiseHelper', [
         return _.isEmpty(errors) ? false : errors;
       }
       return {
+        applyToScope: function (name) {
+          scope[name] = scope[name] || {};
+          promise.then(function (value) {
+            scope[name] = value;
+          });
+          return this;
+        },
         getPromise: function () {
           return promise;
         },
         reloadState: function () {
           promise.then(function () {
+            spinnerCtrl(true);
             mnHelper.reloadState();
           });
           return this;

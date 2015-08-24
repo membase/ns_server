@@ -3,8 +3,8 @@ angular.module('mnSettingsAlerts', [
   'mnHelper',
   'mnPromiseHelper'
 ]).controller('mnSettingsAlertsController',
-  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAlertsService, alertsSettings) {
-    $scope.state = alertsSettings;
+  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAlertsService) {
+    mnPromiseHelper($scope, mnSettingsAlertsService.getAlerts()).applyToScope("state");
     function getParams() {
       var params = _.clone($scope.state);
       params.alerts = mnHelper.checkboxesToList(params.alerts);

@@ -3,8 +3,10 @@ angular.module('mnSettingsAutoFailover', [
   'mnHelper',
   'mnPromiseHelper'
 ]).controller('mnSettingsAutoFailoverController',
-  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService, autoFailoverSettings) {
-    $scope.state = autoFailoverSettings.data
+  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService) {
+    mnPromiseHelper($scope, mnSettingsAutoFailoverService.getAutoFailoverSettings()).applyToScope(function (autoFailoverSettings) {
+      $scope.state = autoFailoverSettings.data
+    });
     $scope.submit = function () {
       var data = {
         enabled: $scope.state.enabled,

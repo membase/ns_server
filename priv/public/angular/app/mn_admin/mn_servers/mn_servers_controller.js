@@ -15,17 +15,11 @@ angular.module('mnServers', [
   'mnPromiseHelper',
   'mnPoll'
 ]).controller('mnServersController',
-  function ($scope, $state, $modal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, serversState, mnServersService, mnHelper) {
-
-    function applyServersState(serversState) {
-      $scope.serversState = serversState;
-    }
-
-    applyServersState(serversState);
+  function ($scope, $state, $modal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, mnServersService, mnHelper) {
 
     mnPoll.start($scope, function () {
       return mnServersService.getServersState($stateParams.list);
-    }).subscribe(applyServersState);
+    }).subscribe("serversState");
 
     $scope.addServer = function () {
       $modal.open({
@@ -45,6 +39,7 @@ angular.module('mnServers', [
     $scope.postRebalance = function () {
       mnServersService.postRebalance($scope.serversState.allNodes).then(function () {
         $state.go('app.admin.servers', {list: 'active'});
+        $scope.viewLoading = true;
         mnHelper.reloadState();
       });
     };
@@ -98,6 +93,7 @@ angular.module('mnServers', [
             mnServersService.ejectNode({otpNode: node.otpNode});
           } else {
             mnServersService.addToPendingEject(node);
+            $scope.viewLoading = true;
             mnHelper.reloadState();
           }
         }

@@ -3,8 +3,9 @@ angular.module('mnSettingsCluster', [
   'mnHelper',
   'mnPromiseHelper'
 ]).controller('mnSettingsClusterController',
-  function ($scope, mnSettingsClusterService, clusterState, mnHelper, mnPromiseHelper) {
-    $scope.state = clusterState;
+  function ($scope, mnSettingsClusterService, mnHelper, mnPromiseHelper) {
+
+    mnPromiseHelper($scope, mnSettingsClusterService.getClusterState()).applyToScope("state");
 
     var liveValidation = _.debounce(function () {
       var promise = mnSettingsClusterService.clusterSettingsValidation($scope.state.clusterSettings);

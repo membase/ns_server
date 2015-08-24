@@ -1,9 +1,10 @@
 angular.module('mnLogs').controller('mnLogsCollectInfoController',
-  function ($scope, mnHelper, mnPromiseHelper, mnLogsCollectInfoService, mnPoll, state, $state, $modal) {
-    function applyState(state) {
-      $scope.loadingResult = false;
-      $scope.state = state;
-    }
+  function ($scope, mnHelper, mnPromiseHelper, mnLogsCollectInfoService, mnPoll, $state, $modal) {
+    $scope.collect = {
+      nodes: {},
+      from: '*'
+      // uploadHost: 's3.amazonaws.com/cb-customers'
+    };
     $scope.stopCollection = function () {
       $modal.open({
         templateUrl: '/angular/app/mn_admin/mn_logs/collect_info/mn_logs_collect_info_stop_dialog.html'
@@ -13,11 +14,6 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
           $scope.disabledStopCollect = false;
         })
       });
-    };
-    $scope.collect = {
-      nodes: {},
-      from: '*'
-      // uploadHost: 's3.amazonaws.com/cb-customers'
     };
     $scope.submit = function () {
       var collect = _.clone($scope.collect);
@@ -38,11 +34,10 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
           $state.go('app.admin.logs.collectInfo.result');
         });
     };
-
-    applyState(state);
-    mnPoll.start($scope, function () {
-      mnLogsCollectInfoService.getState()
-    }).subscribe(applyState);
+    mnPoll.start($scope, mnLogsCollectInfoService.getState).subscribe(function (state) {
+      $scope.loadingResult = false;
+      $scope.state = state;
+    });
 
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

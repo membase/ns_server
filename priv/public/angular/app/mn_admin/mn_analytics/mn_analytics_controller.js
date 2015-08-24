@@ -5,11 +5,21 @@ angular.module('mnAnalytics', [
   'ui.router',
   'mnPoll'
 ]).controller('mnAnalyticsController',
-  function ($scope, mnAnalyticsService, analyticsStats, mnHelper, $state, mnHttp, mnPoll) {
-    function applyBuckets(state) {
-      $scope.state = state;
+  function ($scope, mnAnalyticsService, mnHelper, $state, mnHttp, mnPoll, buckets) {
+
+    if ($state.params.analyticsBucket) {
+      mnPoll.start($scope, function (previousResult) {
+        return mnAnalyticsService.getStats({$stateParams: $state.params, previousResult: previousResult});
+      }, function (response) {
+        //TODO add error handler
+        return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
+      }).subscribe("state");
+    } else {
+      //TODO replace state
+      return $state.go('app.admin.analytics.list.graph', {
+        analyticsBucket: buckets.byType.membase.defaultName
+      });
     }
-    applyBuckets(analyticsStats);
 
     $scope.$watch('state.bucketsNames.selected', function (selectedBucket) {
       selectedBucket && selectedBucket !== $state.params.analyticsBucket && $state.go('app.admin.analytics.list.graph', {
@@ -28,15 +38,6 @@ angular.module('mnAnalytics', [
     $scope.computeOps = function (key) {
       return Math.round(key.ops * 100.0) / 100.0;
     };
-
-
-    if (!analyticsStats.isEmptyState) {
-      mnPoll.start($scope, function (previousResult) {
-        return mnAnalyticsService.getStats({$stateParams: $state.params, previousResult: previousResult});
-      }, function (response) {
-        return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
-      }).subscribe(applyBuckets);
-    }
 
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

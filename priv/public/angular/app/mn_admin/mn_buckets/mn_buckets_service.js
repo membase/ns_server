@@ -66,12 +66,6 @@ angular.module('mnBucketsService', [
       })
     };
 
-    var defaultName;
-
-    mnBucketsService.getDefaultBucket = function () {
-      return defaultName;
-    };
-
     mnBucketsService.getBucketsByType = function () {
       return mnHttp.get('/pools/default/buckets?basic_stats=true').then(function (resp) {
         var bucketsDetails = resp.data
@@ -82,9 +76,8 @@ angular.module('mnBucketsService', [
           bucketsDetails.byType[bucket.bucketType].push(bucket);
           bucket.isMembase = bucket.bucketType === 'membase';
         });
-        bucketsDetails.byType.membase.names = _.pluck(bucketsDetails.byType.membase, 'name');;
-        defaultName = _.contains(bucketsDetails.byType.membase.names, 'default') ? 'default' : bucketsDetails.byType.membase.names[0] || '';
-        bucketsDetails.byType.membase.defaultName = defaultName;
+        bucketsDetails.byType.membase.names = _.pluck(bucketsDetails.byType.membase, 'name');
+        bucketsDetails.byType.membase.defaultName = _.contains(bucketsDetails.byType.membase.names, 'default') ? 'default' : bucketsDetails.byType.membase.names[0] || '';
         return bucketsDetails;
       });
     };
