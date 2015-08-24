@@ -1,6 +1,6 @@
 angular.module('mnHttp', [
 ]).factory('mnHttp',
-  function ($http, $q, $timeout) {
+  function ($http, $q, $timeout, $httpParamSerializerJQLike) {
     //We need to associate the http with specific scope.
     //This helps prevent pending asynchronous operations from causing side effects after the scope in which they were initiated is destroyed.
     //The simplest way to keep queries organized by the groups. Currenly there are three kind of groups or layres of http queries
@@ -12,35 +12,6 @@ angular.module('mnHttp', [
       globals: {},
       defaults: {}
     };
-    function serialize(rv, data, parentName) {
-      var name;
-      for (name in data) {
-        if (data.hasOwnProperty(name)) {
-          var value = data[name];
-          if (parentName) {
-            name = parentName + '[' + name + ']';
-          }
-          if (angular.isObject(value)) {
-            serialize(rv, value, name);
-          } else {
-            rv.push(encodeURIComponent(name) + "=" + encodeURIComponent(value == null ? "" : value));
-          }
-        }
-      }
-    }
-    function serializeData(data) {
-      if (angular.isString(data)) {
-        return data;
-      }
-      if (!angular.isObject(data)) {
-        return data == null ? "" : data.toString();
-      }
-      var rv = [];
-
-      serialize(rv, data);
-
-      return rv.sort().join("&").replace(/%20/g, "+");
-    }
     function mnHttp(config) {
       var httpGroup = config.httpGroup || "defaults";
       var canceler = $q.defer();
@@ -72,7 +43,7 @@ angular.module('mnHttp', [
             delete config.notForm;
           }
 
-          config.data = serializeData(config.data);
+          config.data = $httpParamSerializerJQLike(config.data);
         break;
       }
       delete config.httpGroup;
