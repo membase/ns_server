@@ -13,7 +13,7 @@ angular.module('mnAnalytics', [
       }, function (response) {
         //TODO add error handler
         return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
-      }).subscribe("state");
+      }).subscribe("state").keepIn();
     } else {
       //TODO replace state
       return $state.go('app.admin.analytics.list.graph', {

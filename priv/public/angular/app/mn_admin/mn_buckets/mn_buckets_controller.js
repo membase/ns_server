@@ -29,7 +29,7 @@ angular.module('mnBuckets', [
       });
     };
 
-    mnPoll.start($scope, mnBucketsService.getBucketsState).subscribe("buckets");
+    mnPoll.start($scope, mnBucketsService.getBucketsState).subscribe("buckets").keepIn();
 
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

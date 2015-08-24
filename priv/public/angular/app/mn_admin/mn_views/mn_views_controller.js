@@ -22,7 +22,7 @@ angular.module('mnViews', [
 
     var poll = mnPoll.start($scope, function () {
       return mnViewsService.getViewsState($state.params);
-    }).subscribe("views");
+    }).subscribe("views").keepIn();
 
     $scope.showCreationDialog = function (ddoc, isSpatial) {
       $modal.open({

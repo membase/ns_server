@@ -3,7 +3,7 @@ angular.module('mnLogs').controller('mnLogsListController',
 
     mnPoll.start($scope, mnLogsService.getLogs).subscribe(function (logs) {
       $scope.logs = logs.data.list;
-    });
+    }).keepIn("logsState");
 
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
 

@@ -2,6 +2,7 @@ angular.module('mnPoll', [
   'mnTasksDetails'
 ]).factory('mnPoll',
   function ($timeout, $q, mnTasksDetails) {
+    var stateKeeper = {};
 
     function poll(request, extractInterval, scope) {
       var deferred;
@@ -33,6 +34,12 @@ angular.module('mnPoll', [
         });
       }
 
+      function subscribe(subscriber, keeper) {
+        deferred.promise.then(null, null, angular.isFunction(subscriber) ? subscriber : function (value) {
+          (keeper || scope)[subscriber] = value;
+        });
+      }
+
       return {
         start: function () {
           deferred = $q.defer();
@@ -50,9 +57,24 @@ angular.module('mnPoll', [
           this.start();
         },
         subscribe: function (subscriber) {
-          deferred.promise.then(null, null, angular.isFunction(subscriber) ? subscriber : function (value) {
-            scope[subscriber] = value;
-          });
+          this.subscriber = subscriber;
+          subscribe(subscriber);
+          return this;
+        },
+        keepIn: function (key) {
+          if (angular.isFunction(this.subscriber) && !angular.isString(key)) {
+            throw new Error("argument \"key\" must have type string");
+          }
+          key = key || this.subscriber;
+          if (stateKeeper[key]) {
+            if (angular.isFunction(this.subscriber)) {
+              this.subscriber(stateKeeper[key]);
+            } else {
+              scope[key] = stateKeeper[key];
+            }
+          }
+
+          subscribe(key, stateKeeper);
           return this;
         }
       };

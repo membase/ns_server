@@ -19,7 +19,7 @@ angular.module('mnServers', [
 
     mnPoll.start($scope, function () {
       return mnServersService.getServersState($stateParams.list);
-    }).subscribe("serversState");
+    }).subscribe("serversState").keepIn();
 
     $scope.addServer = function () {
       $modal.open({
