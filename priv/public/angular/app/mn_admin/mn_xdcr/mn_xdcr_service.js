@@ -12,6 +12,7 @@ angular.module('mnXDCRService', [
       delete settings.pauseRequestedpauseRequested;
       delete settings.retriesPerRequest;
       delete settings.socketOptions;
+      delete settings.enableAdvancedFiltering;
       delete settings.supervisorMaxR;
       delete settings.supervisorMaxT;
       return settings;

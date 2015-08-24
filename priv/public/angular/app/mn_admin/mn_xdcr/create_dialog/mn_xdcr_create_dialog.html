@@ -2,7 +2,7 @@
   <h1>Create Replication</h1>
   <form ng-submit="createReplication()" mn-spinner="viewLoading">
     <div class="warning pat_10" id="create_replication_dialog_errors_container" style="line-height: 18px;">
-      <span ng-repeat="error in errors.errors"><strong>Attention</strong> - {{error}}<br></span>
+      <span ng-show="errors._">{{errors._}}<br></span>
     </div>
     <fieldset>
       <fieldset style="float:left;width:230px;">
@@ -15,6 +15,11 @@
             <select name="fromBucket" ng-model="replication.fromBucket" id="replication_from_bucket" style="width: 154px;"
               ng-options="bucket.name as bucket.name for bucket in buckets">
             </select>
+            <span class="error error-container err-fromBucket" style="margin: 10px 0;text-align: right;" ng-show="errors.fromBucket">{{errors.fromBucket}}</span>
+          </li>
+          <li class="advanced_filtering when-goxdcr-enabled when-enterprise">
+            <label for="js_xdcr_advaced_filtering_btn">Enable Advanced filtering:</label>
+            <input id="js_xdcr_advaced_filtering_btn" type="checkbox" ng-model="replication.enableAdvancedFiltering">
           </li>
         </ul>
       </fieldset>
@@ -25,12 +30,61 @@
             <select name="toCluster" ng-model="replication.toCluster" id="replication_to_cluster" style="width: 154px;" 
               ng-options="reference.name as reference.name for reference in mnXdcrState.references">
             </select>
+            <span class="error error-container err-toCluster" style="margin: 10px 0;text-align: right;" ng-show="errors.toCluster">{{errors.toCluster}}</span>
           </li>
           <li><label for="replication_to_bucket">Bucket:</label>
             <input name="toBucket" ng-model="replication.toBucket" id="replication_to_bucket" type="text" />
+            <span class="error error-container err-toBucket" style="margin: 10px 0;text-align: right;" ng-show="errors.toBucket">{{errors.toBucket}}</span>
             <!-- TODO: this needs to become a select box like the one above -->
           </li>
         </ul>
+      </fieldset>
+      <fieldset class="xdcr_advaced_filtering xdcr_advaced_settings when-goxdcr-enabled when-enterprise" id="js_xdcr_advaced_filtering" style="clear:both;">
+        <div id="js_xdcr_advaced_filtering_container" class="xdcr_advaced_filtering_container" ng-show="replication.enableAdvancedFiltering">
+          <div>
+            <label for="js_filter_expression" class="filter_expression_label">Filter Expression:</label>
+            <a class="tooltip text_11" style="line-height:20px;"><span>What's this?</span>
+              <span class="tooltip_msg" style="width:222px;"><span>
+                The filter expression is a regular expression against which the keys of documents are tested. If the key matches the document will be replicated; otherwise the document won’t be replicated. You may test your filter expression against a number of sample candidate keys in the provided text boxes.
+              </span></span>
+            </a>
+            <div style="position: relative;">
+              <pre
+                id="js_filter_expression"
+                class="test_key_result filter_expression"
+                contenteditable="true"
+                spellcheck="false"
+                name="filterExpression"
+                mn-contenteditable
+                mn-regex="advancedFiltering"
+                ng-model="advancedFiltering.filterExpression"
+              ></pre>
+            </div>
+            <i class="error js_error js_filterExpression" style="display: block;clear:both;margin-top:10px;margin-left:15px;" ng-show="advancedFiltering.filterExpressionError">{{advancedFiltering.filterExpressionError}}</i>
+          </div>
+          <div class="js_test_keys test_keys">
+            <label for="xdcr_advaced_settings_type">Test Key:</label>
+            <div class="js_test_key_wrapper test_key_wrapper">
+              <pre
+                class="js_test_key_result test_key_result"
+                contenteditable="true"
+                spellcheck="false"
+                mn-contenteditable
+                mn-regex-test-key="advancedFiltering"
+                ng-model="advancedFiltering.testKey"
+                ng-class="{dynamic_hightlight: advancedFiltering.hightlightTestKey}"
+              ></pre>
+              <div
+                id="js_match_indicator"
+                class="match_indicator"
+                ng-class="{dynamic_match: !advancedFiltering.filterExpressionError && advancedFiltering.filterExpression && advancedFiltering.isSucceeded, dynamic_spinner: advancedFiltering.dynamicSpinner}">
+                <span class="no_match">No Match</span>
+                <span class="loading">...</span>
+                <span class="match">Match</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </fieldset>
       <fieldset class="xdcr_advaced_settings" id="js_xdcr_advaced_settings" style="clear:both;">
         <legend id="js_xdcr_advaced_settings_btn" ng-click="showAdvancedSettings = !showAdvancedSettings">Advanced settings:</legend>

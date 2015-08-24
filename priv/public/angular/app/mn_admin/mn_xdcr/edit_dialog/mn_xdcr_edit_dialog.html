@@ -1,7 +1,7 @@
-<div class="join_cluster create_replication_dialog" id="create_replication_dialog" style="width:440px">
+<div id="create_replication_dialog" style="width:440px">
   <h1>Advanced settings</h1>
   <form ng-submit="createReplication()" mn-spinner="viewLoading">
-    <div mn-xdcr-settings="settings" class="xdcr_advaced_settings"></div>
+    <div mn-xdcr-settings="settings" class="xdcr_advaced_settings dialog" style="display: block;"></div>
     <div class="save_cancel">
       <button class="save_button float_right replicate-button" type="submit" style="margin-left:12px;">Save</button>
       <a class="close" ng-click="$dismiss()">Cancel</a>

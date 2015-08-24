@@ -3,7 +3,8 @@ angular.module('mnXDCR', [
   'mnHelper',
   'mnBucketsService',
   'mnPromiseHelper',
-  'mnPoll'
+  'mnPoll',
+  'mnRegex'
 ]).controller('mnXDCRController',
   function ($scope, $modal, mnHelper, mnPoll, mnXDCRService, mnBucketsService) {
 

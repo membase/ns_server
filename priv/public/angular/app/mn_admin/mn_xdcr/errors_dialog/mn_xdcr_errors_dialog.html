@@ -1,8 +1,8 @@
-<div class="join_cluster create_replication_dialog" id="create_replication_dialog" style="width:600px">
+<div id="create_replication_dialog" style="width:600px">
   <h1>XDCR Errors</h1>
   <form ng-submit="$dismiss()">
-    <div class="warning pat_10" id="create_replication_dialog_errors_container" style="line-height: 18px;">
-      <span ng-repeat="error in xdcrErrors"><strong>Attention</strong> - {{error}}<br></span>
+    <div class="warning pat_10 xdcr_errors" id="create_replication_dialog_errors_container">
+      <span ng-repeat="error in xdcrErrors"><strong>Attention</strong> - {{error}}</span>
     </div>
     <div class="save_cancel">
       <button class="save_button float_right replicate-button" type="submit" style="margin-left:12px;">OK</button>

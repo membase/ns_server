@@ -1,13 +1,23 @@
 <div>
-  <div>
+  <div class="when-goxdcr-disabled" ng-show="whenGoxdcrDisabled">
     <label for="max_concurrent_reps">XDCR Max Replications per Bucket:</label>
     <input type="text" id="max_concurrent_reps" name="maxConcurrentReps" ng-model="settings.maxConcurrentReps">
     <i class="error js_error js_maxConcurrentReps" ng-show="errors.maxConcurrentReps">{{errors.maxConcurrentReps}}</i>
   </div>
-  <div>
+  <div class="when-goxdcr-disabled" ng-show="whenGoxdcrDisabled">
     <label for="worker_processes_setting">XDCR workers per Replication:</label>
     <input type="text" id="worker_processes_setting" name="workerProcesses" ng-model="settings.workerProcesses">
     <i class="error js_error js_workerProcesses" ng-show="errors.workerProcesses">{{errors.workerProcesses}}</i>
+  </div>
+  <div class="when-goxdcr-enabled" ng-show="whenGoxdcrEnabled">
+    <label for="source_nozzle_per_node">XDCR Source Nozzles per Node:</label>
+    <input type="text" id="source_nozzle_per_node" name="sourceNozzlePerNode" ng-model="settings.sourceNozzlePerNode">
+    <i class="error js_error js_sourceNozzlePerNode" ng-show="errors.sourceNozzlePerNode">{{errors.sourceNozzlePerNode}}</i>
+  </div>
+  <div class="when-goxdcr-enabled" ng-show="whenGoxdcrEnabled">
+    <label for="target_nozzle_per_node">XDCR Target Nozzles per Node:</label>
+    <input type="text" id="target_nozzle_per_node" name="targetNozzlePerNode" ng-model="settings.targetNozzlePerNode">
+    <i class="error js_error js_targetNozzlePerNode" ng-show="errors.targetNozzlePerNode">{{errors.targetNozzlePerNode}}</i>
   </div>
   <div>
     <label for="checkpoint_interval">XDCR Checkpoint Interval:</label>
@@ -33,5 +43,20 @@
     <label for="optimistic_replication_threshold">XDCR Optimistic Replication Threshold:</label>
     <input type="text" id="optimistic_replication_threshold" name="optimisticReplicationThreshold" ng-model="settings.optimisticReplicationThreshold">
     <i class="error js_error js_optimisticReplicationThreshold" ng-show="errors.optimisticReplicationThreshold">{{errors.optimisticReplicationThreshold}}</i>
+  </div>
+  <div class="when-goxdcr-enabled" ng-show="whenGoxdcrEnabled">
+    <label for="statistics_collection_interval">XDCR Statistics Collection Interval (ms):</label>
+    <input type="text" id="statistics_collection_interval" name="statsInterval" ng-model="settings.statsInterval">
+    <i class="error js_error js_statsInterval" ng-show="errors.statsInterval">{{errors.statsInterval}}</i>
+  </div>
+  <div class="when-goxdcr-enabled" ng-show="whenGoxdcrEnabled">
+    <label for="per_logging_level">XDCR Logging Level:</label>
+    <select name="logLevel" id="per_logging_level" ng-model="settings.logLevel">
+      <option value="Info">Info</option>
+      <option value="Debug">Debug</option>
+      <option value="Trace">Trace</option>
+      <option value="Error">Error</option>
+    </select>
+    <i class="error js_error js_logLevel" ng-show="errors.logLevel">{{errors.logLevel}}</i>
   </div>
 </div>
