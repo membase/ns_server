@@ -29,7 +29,7 @@
 
 -export([test/0]).
 
--export([encode_req/1, encode_res/1, decode_packet/1, read_message_loop/2]).
+-export([encode_req/1, encode_res/1, read_message_loop/2]).
 
 encode_req(#dcp_packet{opcode = Opcode,
                        datatype = DT,
@@ -56,48 +56,56 @@ encode_req(#dcp_packet{opcode = Opcode,
 encode_res(Packet) ->
     encode_req(Packet#dcp_packet{vbucket = Packet#dcp_packet.status}).
 
-decode_packet(<<Magic:8, Opcode:8, KeyLen:16,
-                ExtLen:8, DT:8, VB:16,
-                BodyLen:32,
-                Opaque:32,
-                Cas:64, Rest/binary>> = FullBinary) ->
-    case Rest of
-        <<Body:BodyLen/binary, RestRest/binary>> ->
-            <<Ext:ExtLen/binary, KB/binary>> = Body,
-            <<Key0:KeyLen/binary, TrueBody0/binary>> = KB,
-            Key = binary:copy(Key0),
-            TrueBody = binary:copy(TrueBody0),
-            case Magic of
-                ?REQ_MAGIC ->
-                    {req,
-                     #dcp_packet{opcode = Opcode,
-                                 datatype = DT,
-                                 vbucket = VB,
-                                 opaque = Opaque,
-                                 cas = Cas,
-                                 ext = Ext,
-                                 key = Key,
-                                 body = TrueBody},
-                     RestRest,
-                     ?HEADER_LEN + BodyLen};
-                ?RES_MAGIC ->
-                    {res,
-                     #dcp_packet{opcode = Opcode,
-                                 datatype = DT,
-                                 status = VB,
-                                 opaque = Opaque,
-                                 cas = Cas,
-                                 ext = Ext,
-                                 key = Key,
-                                 body = TrueBody},
-                     RestRest,
-                     ?HEADER_LEN + BodyLen}
-            end;
-        _ ->
-            FullBinary
+try_decode_packet(<<Magic:8, Opcode:8, KeyLen:16,
+                    ExtLen:8, DT:8, VB:16,
+                    BodyLen:32,
+                    Opaque:32,
+                    Cas:64, Rest/binary>>) ->
+    case byte_size(Rest) >= BodyLen of
+        true ->
+            decode_packet(Magic, Opcode, KeyLen, ExtLen, DT, VB,
+                          BodyLen, Opaque, Cas, Rest);
+        false ->
+            {need_more_data, ?HEADER_LEN + BodyLen}
     end;
-decode_packet(FullBinary) ->
-    FullBinary.
+try_decode_packet(_) ->
+    {need_more_data, ?HEADER_LEN}.
+
+decode_packet(Magic, Opcode, KeyLen, ExtLen, DT, VB,
+              BodyLen, Opaque, Cas,
+              Data) ->
+    <<Body:BodyLen/binary, Rest/binary>> = Data,
+    <<Ext:ExtLen/binary, KB/binary>> = Body,
+    <<Key0:KeyLen/binary, TrueBody0/binary>> = KB,
+    Key = binary:copy(Key0),
+    TrueBody = binary:copy(TrueBody0),
+
+    case Magic of
+        ?REQ_MAGIC ->
+            {ok, {req,
+                  #dcp_packet{opcode = Opcode,
+                              datatype = DT,
+                              vbucket = VB,
+                              opaque = Opaque,
+                              cas = Cas,
+                              ext = Ext,
+                              key = Key,
+                              body = TrueBody},
+                  Rest,
+                  ?HEADER_LEN + BodyLen}};
+        ?RES_MAGIC ->
+            {ok, {res,
+                  #dcp_packet{opcode = Opcode,
+                              datatype = DT,
+                              status = VB,
+                              opaque = Opaque,
+                              cas = Cas,
+                              ext = Ext,
+                              key = Key,
+                              body = TrueBody},
+                  Rest,
+                  ?HEADER_LEN + BodyLen}}
+    end.
 
 build_stream_request_packet(Vb, Opaque,
                             StartSeqno, EndSeqno, VBUUID,
@@ -119,13 +127,25 @@ unpack_failover_log(Body) ->
     unpack_failover_log_loop(Body, []).
 
 read_message_loop(Socket, Data) ->
-    case decode_packet(Data) of
-        Data ->
-            {ok, MoreData} = gen_tcp:recv(Socket, 0),
-            read_message_loop(Socket, <<Data/binary, MoreData/binary>>);
-        {_Type, _Packet, _RestData, _} = Ok ->
-            Ok
+    do_read_message_loop(Socket, Data, byte_size(Data), 0).
+
+do_read_message_loop(Socket, Data, Len, NeedLen) ->
+    case Len >= NeedLen of
+        true ->
+            case try_decode_packet(Data) of
+                {ok, Packet} ->
+                    Packet;
+                {need_more_data, NewNeedLen} ->
+                    do_read_message_loop_recv_more(Socket, Data, Len, NewNeedLen)
+            end;
+        false ->
+            do_read_message_loop_recv_more(Socket, Data, Len, NeedLen)
     end.
+
+do_read_message_loop_recv_more(Socket, Data, Len, NeedLen) ->
+    {ok, MoreData} = gen_tcp:recv(Socket, 0),
+    do_read_message_loop(Socket, <<Data/binary, MoreData/binary>>,
+                         Len + byte_size(MoreData), NeedLen).
 
 find_high_seqno(Socket, Vb) ->
     StatsKey = iolist_to_binary(io_lib:format("vbucket-seqno ~B", [Vb])),
@@ -285,12 +305,13 @@ enter_consumer_loop(Child, Callback, Acc) ->
         {failover_id, _FailoverUUID, StartSeqno, _, SnapshotStart, SnapshotEnd} = Evt ->
             {ok, Acc2} = Callback(Evt, Acc),
             consumer_loop_recv(Child, Callback, Acc2, 0,
-                               SnapshotStart, SnapshotEnd, StartSeqno, <<>>)
+                               SnapshotStart, SnapshotEnd, StartSeqno,
+                               <<>>, 0, 0)
     end.
 
 consumer_loop_recv(Child, Callback, Acc, ConsumedSoFar0,
                    SnapshotStart, SnapshotEnd, LastSeenSeqno,
-                   PrevData) ->
+                   Data, Len, NeedLen) ->
     ConsumedSoFar =
         case ConsumedSoFar0 >= ?XDCR_DCP_BUFFER_SIZE div 3 of
             true ->
@@ -305,34 +326,37 @@ consumer_loop_recv(Child, Callback, Acc, ConsumedSoFar0,
                 Msg ->
                     consumer_loop_have_msg(Child, Callback, Acc, ConsumedSoFar,
                                            SnapshotStart, SnapshotEnd, LastSeenSeqno,
-                                           PrevData, Msg)
+                                           Data, Len, NeedLen, Msg)
             after ?FORCED_ACK_TIMEOUT ->
                     Child ! ConsumedSoFar,
                     consumer_loop_recv(Child, Callback, Acc, 0,
                                        SnapshotStart, SnapshotEnd, LastSeenSeqno,
-                                       PrevData)
+                                       Data, Len, NeedLen)
             end;
-        _ ->
+        false ->
             receive
                 Msg ->
                     consumer_loop_have_msg(Child, Callback, Acc, ConsumedSoFar,
                                            SnapshotStart, SnapshotEnd, LastSeenSeqno,
-                                           PrevData, Msg)
+                                           Data, Len, NeedLen, Msg)
             end
     end.
 
 consumer_loop_have_msg(Child, Callback, Acc, ConsumedSoFar,
                        SnapshotStart, SnapshotEnd, LastSeenSeqno,
-                       PrevData, Msg) ->
+                       Data, Len, NeedLen, Msg) ->
     case Msg of
         MoreData when is_binary(MoreData) ->
-            NewData = case PrevData of
-                          <<>> -> MoreData;
-                          _ -> <<PrevData/binary, MoreData/binary>>
+            NewData = case Data of
+                          <<>> ->
+                              MoreData;
+                          _ ->
+                              <<Data/binary, MoreData/binary>>
                       end,
+            NewLen = Len + byte_size(MoreData),
             consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                                SnapshotStart, SnapshotEnd, LastSeenSeqno,
-                               NewData);
+                               NewData, NewLen, NeedLen);
         {'EXIT', _From, Reason} = ExitMsg ->
             ?log_debug("Got exit signal: ~p", [ExitMsg]),
             exit(Reason);
@@ -347,9 +371,10 @@ consumer_loop_have_msg(Child, Callback, Acc, ConsumedSoFar,
             case Callback(OtherMsg, Acc) of
                 {ok, Acc2} ->
                     consumer_loop_recv(Child, Callback, Acc2, ConsumedSoFar,
-                                       SnapshotStart, SnapshotEnd, LastSeenSeqno, PrevData);
+                                       SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                                       Data, Len, NeedLen);
                 {stop, RV} ->
-                    consumer_loop_exit(Child, stop, []),
+                    consumer_loop_exit(Child, stop, <<>>),
                     RV
             end
     end.
@@ -380,80 +405,96 @@ consume_aborted_stuff() ->
 
 consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
                    SnapshotStart, SnapshotEnd, LastSeenSeqno,
-                   Data) ->
-    case decode_packet(Data) of
-        {_Type, Packet, RestData, PacketSize} ->
-            case Packet of
-                #dcp_packet{opcode = ?DCP_MUTATION,
-                            datatype = DT,
-                            cas = CAS,
-                            ext = Ext,
-                            key = Key,
-                            body = Body} ->
-                    <<Seq:64, RevSeqno:64, Flags:32, Expiration:32, _/binary>> = Ext,
-                    Rev = {RevSeqno, <<CAS:64, Expiration:32, Flags:32>>},
-                    Doc = #dcp_mutation{id = Key,
-                                        local_seq = Seq,
-                                        rev = Rev,
-                                        body = Body,
-                                        datatype = DT,
-                                        deleted = false,
-                                        snapshot_start_seq = SnapshotStart,
-                                        snapshot_end_seq = SnapshotEnd},
-                    consume_stuff_call_callback(Doc,
-                                                Child, Callback, Acc, ConsumedSoFar + PacketSize,
-                                                SnapshotStart, SnapshotEnd, Seq,
-                                                RestData);
-                #dcp_packet{opcode = ?DCP_SNAPSHOT_MARKER, ext = Ext} ->
-                    <<NewSnapshotStart:64, NewSnapshotEnd:64, _/binary>> = Ext,
-                    consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar + PacketSize,
-                                       NewSnapshotStart, NewSnapshotEnd, LastSeenSeqno,
-                                       RestData);
-                #dcp_packet{opcode = ?DCP_DELETION,
-                            cas = CAS,
-                            ext = Ext,
-                            key = Key} ->
-                    <<Seq:64, RevSeqno:64, _/binary>> = Ext,
-                    %% NOTE: as of now dcp doesn't expose flags of deleted
-                    %% docs
-                    Rev = {RevSeqno, <<CAS:64, 0:32, 0:32>>},
-                    Doc = #dcp_mutation{id = Key,
-                                        local_seq = Seq,
-                                        rev = Rev,
-                                        body = <<>>,
-                                        datatype = 0,
-                                        deleted = true,
-                                        snapshot_start_seq = SnapshotStart,
-                                        snapshot_end_seq = SnapshotEnd},
-                    consume_stuff_call_callback(Doc,
-                                                Child, Callback, Acc, ConsumedSoFar + PacketSize,
-                                                SnapshotStart, SnapshotEnd, Seq,
-                                                RestData);
-                #dcp_packet{opcode = ?DCP_STREAM_END} ->
-                    {stop, Acc2} = Callback({stream_end,
-                                             SnapshotStart, SnapshotEnd, LastSeenSeqno}, Acc),
-                    consumer_loop_exit(Child, done, RestData),
-                    Acc2
+                   Data, Len, NeedLen) ->
+    case Len >= NeedLen of
+        true ->
+            case try_decode_packet(Data) of
+                {ok, {_Type, Packet, RestData, PacketSize}} ->
+                    do_consume_stuff_loop(Child, Callback, Acc,
+                                          ConsumedSoFar + PacketSize,
+                                          SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                                          RestData, Len - PacketSize, 0,
+                                          Packet);
+                {need_more_data, NewNeedLen} ->
+                    consumer_loop_recv(Child, Callback, Acc, ConsumedSoFar,
+                                       SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                                       Data, Len, NewNeedLen)
             end;
-        Data ->
+        false ->
             consumer_loop_recv(Child, Callback, Acc, ConsumedSoFar,
                                SnapshotStart, SnapshotEnd, LastSeenSeqno,
-                               Data)
+                               Data, Len, NeedLen)
     end.
 
--compile({inline, [consume_stuff_call_callback/9]}).
+do_consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
+                      SnapshotStart, SnapshotEnd, LastSeenSeqno,
+                      Data, Len, NeedLen, Packet) ->
+    case Packet of
+        #dcp_packet{opcode = ?DCP_MUTATION,
+                    datatype = DT,
+                    cas = CAS,
+                    ext = Ext,
+                    key = Key,
+                    body = Body} ->
+            <<Seq:64, RevSeqno:64, Flags:32, Expiration:32, _/binary>> = Ext,
+            Rev = {RevSeqno, <<CAS:64, Expiration:32, Flags:32>>},
+            Doc = #dcp_mutation{id = Key,
+                                local_seq = Seq,
+                                rev = Rev,
+                                body = Body,
+                                datatype = DT,
+                                deleted = false,
+                                snapshot_start_seq = SnapshotStart,
+                                snapshot_end_seq = SnapshotEnd},
+            consume_stuff_call_callback(Doc,
+                                        Child, Callback, Acc, ConsumedSoFar,
+                                        SnapshotStart, SnapshotEnd, Seq,
+                                        Data, Len, NeedLen);
+        #dcp_packet{opcode = ?DCP_SNAPSHOT_MARKER, ext = Ext} ->
+            <<NewSnapshotStart:64, NewSnapshotEnd:64, _/binary>> = Ext,
+            consume_stuff_loop(Child, Callback, Acc, ConsumedSoFar,
+                               NewSnapshotStart, NewSnapshotEnd, LastSeenSeqno,
+                               Data, Len, NeedLen);
+        #dcp_packet{opcode = ?DCP_DELETION,
+                    cas = CAS,
+                    ext = Ext,
+                    key = Key} ->
+            <<Seq:64, RevSeqno:64, _/binary>> = Ext,
+            %% NOTE: as of now dcp doesn't expose flags of deleted
+            %% docs
+            Rev = {RevSeqno, <<CAS:64, 0:32, 0:32>>},
+            Doc = #dcp_mutation{id = Key,
+                                local_seq = Seq,
+                                rev = Rev,
+                                body = <<>>,
+                                datatype = 0,
+                                deleted = true,
+                                snapshot_start_seq = SnapshotStart,
+                                snapshot_end_seq = SnapshotEnd},
+            consume_stuff_call_callback(Doc,
+                                        Child, Callback, Acc, ConsumedSoFar,
+                                        SnapshotStart, SnapshotEnd, Seq,
+                                        Data, Len, NeedLen);
+        #dcp_packet{opcode = ?DCP_STREAM_END} ->
+            {stop, Acc2} = Callback({stream_end,
+                                     SnapshotStart, SnapshotEnd, LastSeenSeqno}, Acc),
+            consumer_loop_exit(Child, done, Data),
+            Acc2
+    end.
+
+-compile({inline, [consume_stuff_call_callback/11]}).
 
 consume_stuff_call_callback(Doc, Child, Callback, Acc, ConsumedSoFar,
                             SnapshotStart, SnapshotEnd, Seq,
-                            RestData) ->
+                            Data, Len, NeedLen) ->
     erlang:put(last_doc, Doc),
     case Callback(Doc, Acc) of
         {ok, Acc2} ->
             consume_stuff_loop(Child, Callback, Acc2, ConsumedSoFar,
                                SnapshotStart, SnapshotEnd, Seq,
-                               RestData);
+                               Data, Len, NeedLen);
         {stop, Acc2} ->
-            consumer_loop_exit(Child, stop, []),
+            consumer_loop_exit(Child, stop, <<>>),
             Acc2
     end.
 
