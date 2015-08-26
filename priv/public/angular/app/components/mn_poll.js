@@ -9,6 +9,7 @@ angular.module('mnPoll', [
       var latestResult;
       var stopTimestamp;
       var timeout;
+      var subscribers = [];
 
       function cycle() {
         var timestamp = new Date();
@@ -35,9 +36,21 @@ angular.module('mnPoll', [
       }
 
       function subscribe(subscriber, keeper) {
+        subscribers.push(arguments);
+        doSubscribe(subscriber, keeper);
+      }
+
+      function doSubscribe(subscriber, keeper) {
         deferred.promise.then(null, null, angular.isFunction(subscriber) ? subscriber : function (value) {
           (keeper || scope)[subscriber] = value;
         });
+      }
+
+      function reSubscribe() {
+        _.each(subscribers, function (args) {
+          doSubscribe.apply(this, args);
+        });
+        subscribers = [];
       }
 
       return {
@@ -55,6 +68,7 @@ angular.module('mnPoll', [
         restart: function () {
           this.stop();
           this.start();
+          reSubscribe();
         },
         subscribe: function (subscriber) {
           this.subscriber = subscriber;
