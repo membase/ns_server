@@ -2,7 +2,7 @@ angular.module('mnPromiseHelper', [
   'mnAlertsService',
   'mnHelper'
 ]).factory('mnPromiseHelper',
-  function (mnAlertsService, mnHelper, mnPoll) {
+  function (mnAlertsService, mnHelper, mnPoll, $timeout) {
 
     mnPromiseHelper.handleModalAction = function ($scope, promise, $modalInstance) {
       return mnPromiseHelper($scope, promise, $modalInstance)
@@ -26,6 +26,7 @@ angular.module('mnPromiseHelper', [
       }
       function hideSpinner() {
         spinnerCtrl(false);
+        clearSpinnerTimeout();
       }
       function removeErrors() {
         errorsCtrl(false);
@@ -42,6 +43,25 @@ angular.module('mnPromiseHelper', [
       function extractErrors(resp) {
         var errors = resp.data && resp.data.errors && _.keys(resp.data).length === 1 ? resp.data.errors : resp.data;
         return _.isEmpty(errors) ? false : errors;
+      }
+      var spinnerTimeout;
+      function clearSpinnerTimeout() {
+        if (spinnerTimeout) {
+          $timeout.cancel(spinnerTimeout);
+        }
+      }
+      function enableSpinnerTimeout(timer) {
+        spinnerTimeout = $timeout(function () {
+          spinnerCtrl(true);
+        }, timer);
+      }
+      function maybeHandleSpinnerWithTimer(timer) {
+        if (timer) {
+          enableSpinnerTimeout(timer);
+          scope.$on("$destroy", clearSpinnerTimeout);
+        } else {
+          spinnerCtrl(true);
+        }
       }
       return {
         applyToScope: function (name) {
@@ -73,9 +93,9 @@ angular.module('mnPromiseHelper', [
           promise.then(closeModal);
           return this;
         },
-        showErrorsSensitiveSpinner: function (name) {
+        showErrorsSensitiveSpinner: function (name, timer) {
           name && setSpinnerName(name);
-          spinnerCtrl(true);
+          maybeHandleSpinnerWithTimer(timer);
           promise.then(null, hideSpinner);
           return this;
         },
@@ -86,9 +106,9 @@ angular.module('mnPromiseHelper', [
           });
           return this;
         },
-        showSpinner: function (name) {
+        showSpinner: function (name, timer) {
           name && setSpinnerName(name);
-          spinnerCtrl(true);
+          maybeHandleSpinnerWithTimer(timer);
           promise.then(hideSpinner, hideSpinner);
           return this;
         },
