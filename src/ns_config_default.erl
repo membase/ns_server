@@ -91,19 +91,18 @@ default() ->
                    undefined -> global
                end,
 
-    RawLogDir = path_config:component_path(data, "logs"),
-    ok = misc:mkdir_p(RawLogDir),
-
     BreakpadMinidumpDir = path_config:component_path(data, "crash"),
     ok = misc:mkdir_p(BreakpadMinidumpDir),
 
     IsEnterprise = init_is_enterprise(),
     LdapEnabled = init_ldap_enabled(),
 
+    {ok, LogDir} = application:get_env(ns_server, error_logger_mf_dir),
+
     {AuditGlobalLogs, AuditLocalLogs} =
         case misc:get_env_default(path_audit_log, []) of
             [] ->
-                {[{log_path, RawLogDir}], []};
+                {[{log_path, LogDir}], []};
             Path ->
                 {[], [{log_path, Path}]}
         end,
@@ -260,7 +259,7 @@ default() ->
            {static_config_string, "vb0=true"}]}]},
        {config_path, path_config:default_memcached_config_path()},
        {audit_file, ns_audit_cfg:default_audit_json_path()},
-       {log_path, path_config:component_path(data, "logs")},
+       {log_path, LogDir},
        %% Prefix of the log files within the log path that should be rotated.
        {log_prefix, "memcached.log"},
        %% Number of recent log files to retain.
