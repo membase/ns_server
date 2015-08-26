@@ -20,6 +20,9 @@ angular.module('mnPoolDefault', [
         var pools = resp[1]
         poolDefault.rebalancing = poolDefault.rebalanceStatus !== 'none';
         poolDefault.isGroupsAvailable = !!(pools.isEnterprise && poolDefault.serverGroupsUri);
+        poolDefault.isKvNode =  _.indexOf(_.detect(poolDefault.nodes, function (n) {
+          return n.thisNode;
+        }).services, "kv") > -1;
         return poolDefault;
       });
     };

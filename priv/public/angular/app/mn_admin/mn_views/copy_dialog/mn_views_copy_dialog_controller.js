@@ -4,7 +4,7 @@ angular.module('mnViews').controller('mnViewsCopyDialogController',
     $scope.ddoc.name = mnViewsService.cutOffDesignPrefix(currentDdoc.meta.id);
     function prepareToCopy(url, ddoc) {
       return function () {
-        return mnViewsService.createDdoc(url, ddoc).then(function () {
+        return mnViewsService.createDdoc(url, ddoc.json).then(function () {
           $modalInstance.close();
           $state.go('app.admin.views', {
             type: 'development'
@@ -14,7 +14,7 @@ angular.module('mnViews').controller('mnViewsCopyDialogController',
     }
     $scope.onSubmit = function () {
       var url = mnViewsService.getDdocUrl($scope.views.bucketsNames.selected, "_design/dev_" + $scope.ddoc.name);
-      var copy = prepareToCopy(url, currentDdoc.json);
+      var copy = prepareToCopy(url, currentDdoc);
       var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
         return $modal.open({
           templateUrl: '/angular/app/mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'

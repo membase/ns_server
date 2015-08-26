@@ -107,6 +107,9 @@ angular.module('mnAdmin', [
       templateUrl: 'mn_admin/mn_views/mn_views.html',
       controller: 'mnViewsController',
       resolve: {
+        poolDefault: function (mnPoolDefault) {
+          return mnPoolDefault.get();
+        },
         setDefaultBucketName: setDefaultBucketName("viewsBucket", "app.admin.views")
       }
     })

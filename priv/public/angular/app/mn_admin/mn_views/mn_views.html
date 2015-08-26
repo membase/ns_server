@@ -1,4 +1,7 @@
-<div id="js_views" class="views">
+<div ng-show="!isKvNode">
+  Views are not supported on this server node as it does not have a Data service. You may access views functionality on any Data service node in the cluster, such as: <a id="js_healthy_kv_node_link" href="{{kvNodeLink}}" target="_blank">{{kvNodeLink}}</a>
+</div>
+<div id="js_views" class="views" ng-show="isKvNode">
   <h1 style="">
     <span >
       <ui-select ng-model="views.bucketsNames.selected" theme="selectize" ng-disabled="disabled" style="width: 200px; display: inline-block; vertical-align: middle;">
@@ -24,7 +27,8 @@
         </li>
       </ul>
       <div class="create_view">
-        <a class="button_200 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup" ng-click="showCreationDialog()" ng-show="views.bucketsNames.selected && views.isDevelopmentViews && !views.ddocsAreInFactMissing"><span>Create Development View</span></a>
+        <a class="btn_1 button_200 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup" style="float: right;" ng-click="showMapreduceCreationDialog()" ng-show="showViewCreationButtons"><span>Create Development View</span></a>
+        <a class="btn_1 btn_create_spatial when-in-dev when-roadmin-hide-me casper_views_create_view_popup" style="float: right; margin-right: 5px;" ng-show="showViewCreationButtons" ng-click="showSpatialCreationDialog()"><span>Create Development Spatial View</span></a>
         <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>
@@ -73,7 +77,7 @@
               </td>
               <td class="langv">{{row.doc.language || "javascript"}}</td>
               <td>
-                <div class="indexer_progress" ng-if="row.task">
+                <div class="indexer_progress" ng-if="row.task && row.task.progress">
                   <div class="usage_smallest">
                     <div class="used" style="width: {{row.task.progress}}%"></div>
                   </div>
@@ -81,12 +85,44 @@
                 </div>
               </td>
               <td colspan="3" class="when-roadmin-hide-me">
-                <a ng-show="!views.isDevelopmentViews" class="list_button when-in-prod casper_views_copy_to_dev" ng-click="copyToDev(row.doc)"><span>Copy to Dev</span></a>
-                <a ng-show="views.isDevelopmentViews" class="list_button when-in-dev" ng-class="{dynamic_disabled: row.isEmpty}" ng-click="publishDdoc(row.doc)"><span>Publish</span></a>
-                <a ng-show="views.isDevelopmentViews" class="list_button when-in-dev casper_views_add_view_popup" ng-click="showCreationDialog(row.doc)"><span>Add View</span></a>
-                <a ng-show="views.isDevelopmentViews" class="list_button when-in-dev casper_views_add_spatial_popup" ng-click="showCreationDialog(row.doc, true)"><span>Add Spatial View</span></a>
-                <a class="list_button casper_views_delete_popup" ng-click="showDdocDeletionDialog(row.doc)"><span>Delete</span></a>
+                <a
+                  class="list_button when-in-prod casper_views_copy_to_dev"
+                  ng-show="!views.isDevelopmentViews"
+                  ng-click="copyToDev(row.doc)"><span>Copy to Dev</span></a>
+
+                <a
+                  class="list_button when-in-dev"
+                  ng-class="{dynamic_disabled: row.isEmpty}"
+                  ng-click="publishDdoc(row.doc)"
+                  ng-show="views.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views))"><span>Publish</span></a>
+
+                <a
+                  class="list_button when-in-dev casper_views_add_view_popup"
+                  ng-click="showCreationDialog(row.doc)"
+                  ng-show="
+                    views.isDevelopmentViews &&
+                    ((!row.doc.json.spatial && !row.doc.json.views || _.isEmpty(row.doc.json.spatial) && _.isEmpty(row.doc.json.views)) ||
+                    (row.doc.json.views && !_.isEmpty(row.doc.json.views) && (!row.doc.json.spatial || _.isEmpty(row.doc.json.spatial))))"><span>Add View</span></a>
+
+                <a
+                  class="list_button when-in-dev casper_views_add_spatial_popup"
+                  ng-click="showCreationDialog(row.doc, true)"
+                  ng-show="
+                    views.isDevelopmentViews &&
+                    ((!row.doc.json.spatial && !row.doc.json.views || _.isEmpty(row.doc.json.spatial) && _.isEmpty(row.doc.json.views)) ||
+                    (row.doc.json.spatial && !_.isEmpty(row.doc.json.spatial) &&  (!row.doc.json.views || _.isEmpty(row.doc.json.views))))"><span>Add Spatial View</span></a>
+
+                <a
+                  class="list_button casper_views_delete_popup"
+                  ng-click="showDdocDeletionDialog(row.doc)"><span>Delete</span></a>
+
                 <button class="list_button" ng-class="{dynamic_disabled: row.disableCompact}" ng-click="!row.disableCompact && registerCompactionAsTriggeredAndPost(row)"><span>Compact</span></button>
+
+                <div
+                  class="warning"
+                  style="overflow: hidden; margin-top:4px;"
+                  ng-show="row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)">No new views can be added to this document. Delete either mapreduce or spatial views first.</div>
+
               </td>
             </tr>
             <tr ng-if="row.isEmpty">
@@ -97,8 +133,8 @@
                 <a class="casper_views_view_tab" style="display:block;line-height:33px;" href="{%=h(viewInfo.viewLink)%}">{{key}}</a>
               </td>
               <td>
-                <a class="list_button btn_remove when-roadmin-avoid-me" ng-click="showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
-                <a class="list_button btn_edit" href="{%=h(viewInfo.viewLink)%}"><span>{{ddoc.canEditDoc ? 'Edit' : 'Show' }}</span></a>
+                <a class="list_button btn_remove when-roadmin-avoid-me"  ng-show="row.isDevModeDoc" ng-click="showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
+                <a class="list_button btn_edit" href="{%=h(viewInfo.viewLink)%}"><span>{{row.isDevModeDoc ? 'Edit' : 'Show' }}</span></a>
               </td>
             </tr>
             <tr ng-if="row.containsSpatials" ng-repeat="(key, spatial) in row.doc.json.spatial">
@@ -106,7 +142,8 @@
                 <a href="{%=h(spatialInfo.viewLink)%}">[Spatial] {{key}}</a>
               </td>
               <td>
-                <a class="list_button btn_remove when-roadmin-avoid-me"ng-click="showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
+                <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc" ng-click="showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
+                <a class="list_button btn_edit" href="{%=h(viewInfo.viewLink)%}"><span>{{row.isDevModeDoc ? 'Edit' : 'Show' }}</span></a>
               </td>
             </tr>
           </tbody>

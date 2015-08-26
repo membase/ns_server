@@ -6,27 +6,32 @@ angular.module('mnViewsService', [
   'ui.select',
   'ngSanitize'
 ]).service('mnViewsService',
-  function (mnHttp, $q, mnTasksDetails, mnBucketsService, mnCompaction) {
+  function (mnHttp, $q, $window, mnTasksDetails, mnBucketsService, mnCompaction, mnPoolDefault) {
     var mnViewsService = {};
-    mnViewsService.createDdoc = function (url, ddoc) {
+    function handleCouchRequest(resp) {
+      var data = {
+        json : resp.data,
+        meta : JSON.parse(resp.headers("X-Couchbase-Meta"))
+      };
+      return data;
+    }
+    mnViewsService.createDdoc = function (url, json) {
       return mnHttp({
         method: 'PUT',
         url: url,
-        data: ddoc
-      });
+        data: json
+      }).then(handleCouchRequest);
     };
 
     mnViewsService.getDdocUrl = function (bucket, name) {
-      return '/couchBase/' + bucket + '/' + name;
+      return '/couchBase/' + encodeURIComponent(bucket) + '/' + name;
     };
 
     mnViewsService.getDdoc = function (url) {
       return mnHttp({
         method: 'GET',
         url: url
-      }).then(function (resp) {
-        return resp.data;
-      });
+      }).then(handleCouchRequest);
     };
     mnViewsService.deleteDdoc = function (url) {
       return mnHttp({
@@ -50,6 +55,18 @@ angular.module('mnViewsService', [
         rv.bucketsNames = buckets ? buckets.byType.membase.names : [];
         rv.bucketsNames.selected = params.viewsBucket;
         return rv;
+      });
+    }
+
+    mnViewsService.getKvNodeLink = function () {
+      return mnPoolDefault.get().then(function (poolDefault) {
+        var kvNode = _.find(poolDefault.nodes, function (node) {
+          return node.status === "healthy" && _.indexOf(node.services, "kv") > -1;
+        });
+
+        var hostnameAndPort = kvNode.hostname.split(':');
+        var protocol = $window.location.protocol;
+        return protocol + "//" + (protocol === "https:" ? hostnameAndPort[0] + ":" + kvNode.ports.httpsMgmt : kvNode.hostname);
       });
     }
 
@@ -85,12 +102,11 @@ angular.module('mnViewsService', [
           });
           _.each(ddocs.rows, function (row) {
             row.isDevModeDoc = isDevModeDoc(row.doc);
-            row.canEditDoc = row.isDevModeDoc;
             row.task = (ddocTasks[row.doc.meta.id] || [])[0];
             row.containsViews = !_.isEmpty(row.doc.json.views);
             row.containsSpatials = !_.isEmpty(row.doc.json.spatial);
             row.isEmpty = !row.containsViews && !row.containsSpatials;
-            row.disableCompact = !!(mnCompaction.getStartedCompactions()[row.controllers.compact] || !!row.task || row.isEmpty);
+            row.disableCompact = row.isEmpty || !!(row.task && row.task.type === 'view_compaction') || !!mnCompaction.getStartedCompactions()[row.controllers.compact];
           });
           ddocs.development = _.filter(ddocs.rows, 'isDevModeDoc');
           ddocs.production = _.reject(ddocs.rows, 'isDevModeDoc');

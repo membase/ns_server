@@ -7,8 +7,8 @@ angular.module('mnViews').controller('mnViewsDeleteViewDialogController',
       var url = mnViewsService.getDdocUrl($scope.views.bucketsNames.selected, currentDdocName);
 
       var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
-        delete presentDdoc[isSpatial ? 'spatial' : 'views'][currentViewName];
-        return mnViewsService.createDdoc(url, presentDdoc);
+        delete presentDdoc.json[isSpatial ? 'spatial' : 'views'][currentViewName];
+        return mnViewsService.createDdoc(url, presentDdoc.json);
       });
 
       mnPromiseHelper.handleModalAction($scope, promise, $modalInstance);

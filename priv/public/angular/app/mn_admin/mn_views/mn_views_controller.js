@@ -5,11 +5,28 @@ angular.module('mnViews', [
   'mnPromiseHelper',
   'mnPoll'
 ]).controller('mnViewsController',
-  function ($scope, $modal, $state, mnHelper, mnViewsService, mnCompaction, mnPoll) {
+  function ($scope, $modal, $state, mnHelper, mnViewsService, mnCompaction, mnPoll, poolDefault) {
+
+    $scope.isKvNode = poolDefault.isKvNode;
+    mnViewsService.getKvNodeLink().then(function (kvNodeLink) {
+      $scope.kvNodeLink = kvNodeLink
+    });
+
+    if (!poolDefault.isKvNode) {
+      return;
+    }
+
+    $scope._ = _;
 
     var poll = mnPoll.start($scope, function () {
       return mnViewsService.getViewsState($state.params);
     }).subscribe("views").keepIn();
+
+    $scope.$watch(function () {
+      return $scope.views && $scope.views.bucketsNames.selected && $scope.views.isDevelopmentViews && !$scope.views.ddocsAreInFactMissing;
+    }, function (showViewCreationButtons) {
+      $scope.showViewCreationButtons = showViewCreationButtons;
+    });
 
     $scope.$watch('views.bucketsNames.selected', function (selectedBucket) {
       selectedBucket && selectedBucket !== $state.params.viewsBucket && $state.go('app.admin.views', {
@@ -27,6 +44,12 @@ angular.module('mnViews', [
           isSpatial: mnHelper.wrapInFunction(isSpatial)
         }
       });
+    };
+    $scope.showMapreduceCreationDialog = function () {
+      $scope.showCreationDialog(undefined, false);
+    };
+    $scope.showSpatialCreationDialog = function () {
+      $scope.showCreationDialog(undefined, true);
     };
     $scope.showDdocDeletionDialog = function (ddoc) {
       $modal.open({
@@ -52,7 +75,7 @@ angular.module('mnViews', [
     };
     function prepareToPublish(url, ddoc) {
       return function () {
-        mnViewsService.createDdoc(url, ddoc).then(function () {
+        mnViewsService.createDdoc(url, ddoc.json).then(function () {
           $state.go('app.admin.views', {
             type: 'production'
           });
@@ -61,7 +84,7 @@ angular.module('mnViews', [
     }
     $scope.publishDdoc = function (ddoc) {
       var url = mnViewsService.getDdocUrl($scope.views.bucketsNames.selected, "_design/" + mnViewsService.cutOffDesignPrefix(ddoc.meta.id));
-      var publish = prepareToPublish(url, ddoc.json);
+      var publish = prepareToPublish(url, ddoc);
       var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
         $modal.open({
           templateUrl: '/angular/app/mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
@@ -81,7 +104,9 @@ angular.module('mnViews', [
 
     $scope.registerCompactionAsTriggeredAndPost = function (row) {
       row.disableCompact = true;
-      mnCompaction.registerAsTriggeredAndPost(row.controllers.compact).then(poll.restart);
+      mnCompaction.registerAsTriggeredAndPost(row.controllers.compact).then(function () {
+        poll.restart();
+      });
     };
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

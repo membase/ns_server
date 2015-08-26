@@ -1,5 +1,6 @@
 <div class="view_document_dialog" id="copy_view_dialog" title="Copy View" style="width:30em">
-  <h1>Create Development View</h1>
+  <h1 ng-show="!isSpatial">Create Development View</h1>
+  <h1 ng-show="isSpatial">Create Spatial Development View</h1>
   <form ng-submit="onSubmit(ddocForm)" name="ddocForm" mn-spinner="viewLoading">
     <span class="warning pat_10" ng-show="error">{{error}}</span>
     <span class="warning pat_10" ng-show="
