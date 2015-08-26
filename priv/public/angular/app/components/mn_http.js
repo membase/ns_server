@@ -17,11 +17,23 @@ angular.module('mnHttp', [
       var canceler = $q.defer();
       var timeout = config.timeout;
       config.timeout = canceler.promise;
-      var id = _.uniqueId('http');
+      if (config.cancelPrevious) {
+        var id = config.method + ":" + config.url;
+      } else {
+        var id = _.uniqueId('http');
+      }
       var timeoutID;
+      var isCleared;
       function clear() {
+        if (isCleared) {
+          return;
+        }
+        isCleared = true;
         timeoutID && $timeout.cancel(timeoutID);
         delete pendingQueryCancelers[httpGroup][id];
+      }
+      if (config.cancelPrevious && pendingQueryCancelers[httpGroup][id]) {
+        pendingQueryCancelers[httpGroup][id]();
       }
       pendingQueryCancelers[httpGroup][id] = function () {
         canceler.resolve("cancelled");
@@ -46,6 +58,7 @@ angular.module('mnHttp', [
           config.data = $httpParamSerializerJQLike(config.data);
         break;
       }
+      delete config.cancelPrevious;
       delete config.httpGroup;
       var http = $http(config);
       http.then(clear, clear);
