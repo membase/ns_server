@@ -50,6 +50,10 @@ angular.module('mnPromiseHelper', [
         getPromise: function () {
           return promise;
         },
+        onSuccess: function (cb) {
+          promise.then(cb);
+          return this;
+        },
         reloadState: function () {
           promise.then(function () {
             spinnerCtrl(true);
