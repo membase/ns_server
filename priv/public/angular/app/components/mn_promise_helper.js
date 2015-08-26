@@ -12,10 +12,14 @@ angular.module('mnPromiseHelper', [
     };
 
     function mnPromiseHelper(scope, promise, modalInstance) {
-      var spinnerName = 'viewLoading';
+      var spinnerNameOrFunction = 'viewLoading';
       var errorsNameOrCallback = 'errors';
       function spinnerCtrl(isLoaded) {
-        scope[spinnerName] = isLoaded;
+        if (angular.isFunction(spinnerNameOrFunction)) {
+          spinnerNameOrFunction(isLoaded);
+        } else {
+          scope[spinnerNameOrFunction] = isLoaded;
+        }
       }
       function errorsCtrl(errors) {
         if (angular.isFunction(errorsNameOrCallback)) {
@@ -32,7 +36,7 @@ angular.module('mnPromiseHelper', [
         errorsCtrl(false);
       }
       function setSpinnerName(name) {
-        spinnerName = name;
+        spinnerNameOrFunction = name;
       }
       function setErrorsNameOrCallback(nameOrCallback) {
         errorsNameOrCallback = nameOrCallback;
