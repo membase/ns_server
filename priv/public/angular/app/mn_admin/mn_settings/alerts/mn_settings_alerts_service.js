@@ -5,10 +5,14 @@ angular.module('mnSettingsAlertsService', [
     var mnSettingsAlertsService = {};
 
     mnSettingsAlertsService.testMail = function (params) {
+      params = _.clone(params);
+      params.alerts = params.alerts.join(',');
       return mnHttp.post('/settings/alerts/testEmail', params);
     };
 
     mnSettingsAlertsService.saveAlerts = function (params) {
+      params = _.clone(params);
+      params.alerts = params.alerts.join(',');
       return mnHttp.post('/settings/alerts', params);
     };
 
