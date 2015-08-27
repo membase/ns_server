@@ -100,6 +100,13 @@ angular.module('mnPoll', [
         scope.$on('$destroy', poller.stop);
         poller.start();
         return poller;
+      },
+      cleanCache: function (key) {
+        if (key) {
+          delete stateKeeper[key];
+        } else {
+          stateKeeper = {};
+        }
       }
     };
   });

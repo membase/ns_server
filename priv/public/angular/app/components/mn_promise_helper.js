@@ -2,7 +2,7 @@ angular.module('mnPromiseHelper', [
   'mnAlertsService',
   'mnHelper'
 ]).factory('mnPromiseHelper',
-  function (mnAlertsService, mnHelper) {
+  function (mnAlertsService, mnHelper, mnPoll) {
 
     mnPromiseHelper.handleModalAction = function ($scope, promise, $modalInstance) {
       return mnPromiseHelper($scope, promise, $modalInstance)
@@ -92,6 +92,12 @@ angular.module('mnPromiseHelper', [
           name && setErrorsName(name);
           promise.then(removeErrors, function (resp) {
             errorsCtrl(extractErrors(resp));
+          });
+          return this;
+        },
+        cleanPollCache: function (key) {
+          promise.then(function () {
+            mnPoll.cleanCache(key);
           });
           return this;
         },
