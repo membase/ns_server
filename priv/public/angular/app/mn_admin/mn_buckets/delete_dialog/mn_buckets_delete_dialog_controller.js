@@ -6,6 +6,7 @@ angular.module('mnBuckets').controller('mnBucketsDeleteDialogController',
         .showErrorsSensitiveSpinner()
         .catchGlobalErrors()
         .closeFinally()
+        .cleanPollCache("mnBucketsState")
         .reloadState();
     };
   });
