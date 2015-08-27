@@ -9,11 +9,9 @@ angular.module('mnBuckets').controller('mnBucketsDetailsDialogController',
       var promise = mnBucketsDetailsDialogService.postBuckets(data, $scope.bucketConf.uri);
       mnPromiseHelper($scope, promise)
         .showErrorsSensitiveSpinner()
-        .prepareErrors(function (resp) {
-          resp.data = mnBucketsDetailsDialogService.adaptValidationResult(resp);
-          return resp;
+        .catchErrors(function (result) {
+          $scope.validationResult = result && mnBucketsDetailsDialogService.adaptValidationResult(result);
         })
-        .catchErrors('validationResult')
         .getPromise()
         .then(function (result) {
           if (!result.data) {

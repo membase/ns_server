@@ -23,8 +23,7 @@ angular.module('mnBucketsDetailsDialogService', [
       return conf;
     };
 
-    mnBucketsDetailsDialogService.adaptValidationResult = function (resp) {
-      var result = resp.data;
+    mnBucketsDetailsDialogService.adaptValidationResult = function (result) {
       var ramSummary = result.summaries.ramSummary;
 
       return {

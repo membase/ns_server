@@ -32,10 +32,6 @@ angular.module('mnSettingsAlerts', [
       var params = getParams();
       mnPromiseHelper($scope, mnSettingsAlertsService.saveAlerts(params))
         .showErrorsSensitiveSpinner()
-        .prepareErrors(function (resp) {
-          resp.data = resp.data.errors;
-          return resp;
-        })
         .catchErrors()
         .reloadState();
     }

@@ -13,12 +13,16 @@ angular.module('mnPromiseHelper', [
 
     function mnPromiseHelper(scope, promise, modalInstance) {
       var spinnerName = 'viewLoading';
-      var errorsName = 'errors';
+      var errorsNameOrCallback = 'errors';
       function spinnerCtrl(isLoaded) {
         scope[spinnerName] = isLoaded;
       }
       function errorsCtrl(errors) {
-        scope[errorsName] = errors;
+        if (angular.isFunction(errorsNameOrCallback)) {
+          errorsNameOrCallback(errors);
+        } else {
+          scope[errorsNameOrCallback] = errors;
+        }
       }
       function hideSpinner() {
         spinnerCtrl(false);
@@ -29,8 +33,8 @@ angular.module('mnPromiseHelper', [
       function setSpinnerName(name) {
         spinnerName = name;
       }
-      function setErrorsName(name) {
-        errorsName = name;
+      function setErrorsNameOrCallback(nameOrCallback) {
+        errorsNameOrCallback = nameOrCallback;
       }
       function closeModal() {
         modalInstance.close();
@@ -75,8 +79,8 @@ angular.module('mnPromiseHelper', [
           promise.then(null, hideSpinner);
           return this;
         },
-        catchErrorsFromSuccess: function (name) {
-          name && setErrorsName(name);
+        catchErrorsFromSuccess: function (nameOrCallback) {
+          nameOrCallback && setErrorsNameOrCallback(nameOrCallback);
           promise.then(function (resp) {
             errorsCtrl(extractErrors(resp));
           });
@@ -88,12 +92,8 @@ angular.module('mnPromiseHelper', [
           promise.then(hideSpinner, hideSpinner);
           return this;
         },
-        prepareErrors: function (cb) {
-          promise.then(null, cb);
-          return this
-        },
-        catchErrors: function (name) {
-          name && setErrorsName(name);
+        catchErrors: function (nameOrCallback) {
+          nameOrCallback && setErrorsNameOrCallback(nameOrCallback);
           promise.then(removeErrors, function (resp) {
             errorsCtrl(extractErrors(resp));
           });

@@ -44,6 +44,10 @@ angular.module('mnBucketsForm', [
         threadsEvictionWarning($scope, 'evictionPolicy');
       }
 
+      function adaptValidationResult(resp) {
+        return mnBucketsDetailsDialogService.adaptValidationResult(resp.data);
+      }
+
       $scope.$watch(function () {
         return {
           bucketConf: $scope.bucketConf,
@@ -61,7 +65,7 @@ angular.module('mnBucketsForm', [
             ignore_warnings: $scope.bucketConf.ignoreWarnings ? 1 : 0
           }
         })
-        .then(mnBucketsDetailsDialogService.adaptValidationResult, mnBucketsDetailsDialogService.adaptValidationResult)
+        .then(adaptValidationResult, adaptValidationResult)
         .then(function (result) {
           $scope.validationResult = result;
         });

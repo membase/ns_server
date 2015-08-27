@@ -55,8 +55,8 @@ angular.module('mnViews').controller('mnViewsCreateDialogController',
 
       mnPromiseHelper($scope, promise, $modalInstance)
         .showSpinner()
-        .prepareErrors(function (resp) {
-          $scope.error = resp.data.reason;
+        .catchErrors(function (data) {
+          $scope.error = data && data.reason;
         })
         .reloadState()
         .closeOnSuccess();
