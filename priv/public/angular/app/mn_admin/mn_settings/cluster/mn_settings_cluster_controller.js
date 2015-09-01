@@ -45,7 +45,7 @@ angular.module('mnSettingsCluster', [
       }
       if ($scope.state.initialMemoryQuota != $scope.state.memoryQuotaConfig.indexMemoryQuota) {
         $modal.open({
-          templateUrl: '/angular/app/mn_admin/mn_settings/cluster/mn_settings_cluster_confirmation_dialog.html'
+          templateUrl: 'mn_admin/mn_settings/cluster/mn_settings_cluster_confirmation_dialog.html'
         }).result.then(saveSettings);
       } else {
         saveSettings();

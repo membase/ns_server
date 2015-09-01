@@ -17,7 +17,7 @@ angular.module('mnViews').controller('mnViewsCopyDialogController',
       var copy = prepareToCopy(url, currentDdoc);
       var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
         return $modal.open({
-          templateUrl: '/angular/app/mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
+          templateUrl: 'mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
         }).result.then(copy);
       }, copy);
 

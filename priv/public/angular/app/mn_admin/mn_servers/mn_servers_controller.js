@@ -23,7 +23,7 @@ angular.module('mnServers', [
 
     $scope.addServer = function () {
       $modal.open({
-        templateUrl: '/angular/app/mn_admin/mn_servers/add_dialog/mn_servers_add_dialog.html',
+        templateUrl: 'mn_admin/mn_servers/add_dialog/mn_servers_add_dialog.html',
         controller: 'mnServersAddDialogController',
         resolve: {
           groups: function () {
@@ -51,7 +51,7 @@ angular.module('mnServers', [
         mnHelper.reloadState,
         function (reps) {
           (reps.status === 400) && $modal.open({
-            templateUrl: '/angular/app/mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
+            templateUrl: 'mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
             controller: 'mnServersStopRebalanceDialogController'
           });
       });
@@ -84,7 +84,7 @@ angular.module('mnServers', [
         };
         if (_.some(_.values(warnings))) {
           $modal.open({
-            templateUrl: '/angular/app/mn_admin/mn_servers/eject_dialog/mn_servers_eject_dialog.html',
+            templateUrl: 'mn_admin/mn_servers/eject_dialog/mn_servers_eject_dialog.html',
             controller: 'mnServersEjectDialogController',
             resolve: {
               warnings: function () {
@@ -104,7 +104,7 @@ angular.module('mnServers', [
     };
     $scope.failOverNode = function (node) {
       $modal.open({
-        templateUrl: '/angular/app/mn_admin/mn_servers/failover_dialog/mn_servers_failover_dialog.html',
+        templateUrl: 'mn_admin/mn_servers/failover_dialog/mn_servers_failover_dialog.html',
         controller: 'mnServersFailOverDialogController',
         resolve: {
           node: function () {

@@ -15,7 +15,7 @@ angular.module('mnBuckets', [
         $scope.mnBucketsState = mnBucketsState;
 
         !mnBucketsState.creationWarnings.length && $modal.open({
-          templateUrl: '/angular/app/mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
+          templateUrl: 'mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
           controller: 'mnBucketsDetailsDialogController',
           resolve: {
             bucketConf: function (mnBucketsDetailsDialogService) {

@@ -7,7 +7,7 @@ angular.module('mnBuckets').controller('mnBucketsDetailsController',
     }
     $scope.editBucket = function () {
       $modal.open({
-        templateUrl: '/angular/app/mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
+        templateUrl: 'mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
         controller: 'mnBucketsDetailsDialogController',
         resolve: {
           bucketConf: function () {
@@ -23,7 +23,7 @@ angular.module('mnBuckets').controller('mnBucketsDetailsController',
     };
     $scope.deleteBucket = function (bucket) {
       $modal.open({
-        templateUrl: '/angular/app/mn_admin/mn_buckets/delete_dialog/mn_buckets_delete_dialog.html',
+        templateUrl: 'mn_admin/mn_buckets/delete_dialog/mn_buckets_delete_dialog.html',
         controller: 'mnBucketsDeleteDialogController',
         resolve: {
           bucket: function () {
@@ -34,7 +34,7 @@ angular.module('mnBuckets').controller('mnBucketsDetailsController',
     };
     $scope.flushBucket = function (bucket) {
       $modal.open({
-        templateUrl: '/angular/app/mn_admin/mn_buckets/flush_dialog/mn_buckets_flush_dialog.html',
+        templateUrl: 'mn_admin/mn_buckets/flush_dialog/mn_buckets_flush_dialog.html',
         controller: 'mnBucketsFlushDialogController',
         resolve: {
           bucket: function () {

@@ -37,7 +37,7 @@ angular.module('mnViews', [
     $scope.showCreationDialog = function (ddoc, isSpatial) {
       $modal.open({
         controller: 'mnViewsCreateDialogController',
-        templateUrl: '/angular/app/mn_admin/mn_views/create_dialog/mn_views_create_dialog.html',
+        templateUrl: 'mn_admin/mn_views/create_dialog/mn_views_create_dialog.html',
         scope: $scope,
         resolve: {
           currentDdocName: mnHelper.wrapInFunction(ddoc && ddoc.meta.id),
@@ -54,7 +54,7 @@ angular.module('mnViews', [
     $scope.showDdocDeletionDialog = function (ddoc) {
       $modal.open({
         controller: 'mnViewsDeleteDdocDialogController',
-        templateUrl: '/angular/app/mn_admin/mn_views/delete_ddoc_dialog/mn_views_delete_ddoc_dialog.html',
+        templateUrl: 'mn_admin/mn_views/delete_ddoc_dialog/mn_views_delete_ddoc_dialog.html',
         scope: $scope,
         resolve: {
           currentDdocName: mnHelper.wrapInFunction(ddoc.meta.id)
@@ -64,7 +64,7 @@ angular.module('mnViews', [
     $scope.showViewDeletionDialog = function (ddoc, viewName, isSpatial) {
       $modal.open({
         controller: 'mnViewsDeleteViewDialogController',
-        templateUrl: '/angular/app/mn_admin/mn_views/delete_view_dialog/mn_views_delete_view_dialog.html',
+        templateUrl: 'mn_admin/mn_views/delete_view_dialog/mn_views_delete_view_dialog.html',
         scope: $scope,
         resolve: {
           currentDdocName: mnHelper.wrapInFunction(ddoc.meta.id),
@@ -87,14 +87,14 @@ angular.module('mnViews', [
       var publish = prepareToPublish(url, ddoc);
       var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
         $modal.open({
-          templateUrl: '/angular/app/mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
+          templateUrl: 'mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
         }).result.then(publish);
       }, publish);
     };
     $scope.copyToDev = function (ddoc) {
       $modal.open({
         controller: 'mnViewsCopyDialogController',
-        templateUrl: '/angular/app/mn_admin/mn_views/copy_dialog/mn_views_copy_dialog.html',
+        templateUrl: 'mn_admin/mn_views/copy_dialog/mn_views_copy_dialog.html',
         scope: $scope,
         resolve: {
           currentDdoc: mnHelper.wrapInFunction(ddoc)

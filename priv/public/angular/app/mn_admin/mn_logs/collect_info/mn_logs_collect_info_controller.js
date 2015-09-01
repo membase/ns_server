@@ -7,7 +7,7 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
     };
     $scope.stopCollection = function () {
       $modal.open({
-        templateUrl: '/angular/app/mn_admin/mn_logs/collect_info/mn_logs_collect_info_stop_dialog.html'
+        templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info_stop_dialog.html'
       }).result.then(function () {
         $scope.disabledStopCollect = true;
         mnLogsCollectInfoService.cancelLogsCollection()['finally'](function () {

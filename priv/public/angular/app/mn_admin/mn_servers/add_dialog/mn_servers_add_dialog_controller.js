@@ -55,7 +55,7 @@ angular.module('mnServers').controller('mnServersAddDialogController',
           return mnPoolDefault.getFresh().then(function (poolsDefault) {
             if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, $scope.addNodeConfig.services.model, 'index')) {
               return $modal.open({
-                templateUrl: '/angular/app/mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
+                templateUrl: 'mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
                 controller: 'mnServersMemoryQuotaDialogController',
                 resolve: {
                   memoryQuotaConfig: function (mnMemoryQuotaService) {

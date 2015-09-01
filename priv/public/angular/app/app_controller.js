@@ -14,7 +14,7 @@ angular.module('app').controller('appController',
     });
     $scope.showAboutDialog = function () {
       $modal.open({
-        templateUrl: '/angular/app/mn_about_dialog.html',
+        templateUrl: 'mn_about_dialog.html',
         scope: $scope,
         controller: function ($modalInstance) {
           $scope.cloceAboutDialog = function () {
