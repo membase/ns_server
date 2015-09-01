@@ -35,24 +35,6 @@ angular.module('mnPoll', [
         });
       }
 
-      function subscribe(subscriber, keeper) {
-        subscribers.push(arguments);
-        doSubscribe(subscriber, keeper);
-      }
-
-      function doSubscribe(subscriber, keeper) {
-        deferred.promise.then(null, null, angular.isFunction(subscriber) ? subscriber : function (value) {
-          (keeper || scope)[subscriber] = value;
-        });
-      }
-
-      function reSubscribe() {
-        _.each(subscribers, function (args) {
-          doSubscribe.apply(this, args);
-        });
-        subscribers = [];
-      }
-
       return {
         start: function () {
           deferred = $q.defer();
@@ -65,14 +47,11 @@ angular.module('mnPoll', [
           stopTimestamp = new Date();
           $timeout.cancel(timeout);
         },
-        restart: function () {
-          this.stop();
-          this.start();
-          reSubscribe();
-        },
-        subscribe: function (subscriber) {
+        subscribe: function (subscriber, keeper) {
           this.subscriber = subscriber;
-          subscribe(subscriber);
+          deferred.promise.then(null, null, angular.isFunction(subscriber) ? subscriber : function (value) {
+            (keeper || scope)[subscriber] = value;
+          });
           return this;
         },
         keepIn: function (key) {
@@ -88,7 +67,7 @@ angular.module('mnPoll', [
             }
           }
 
-          subscribe(key, stateKeeper);
+          this.subscribe(key, stateKeeper);
           return this;
         }
       };

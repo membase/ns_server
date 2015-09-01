@@ -5,7 +5,7 @@ angular.module('mnViews', [
   'mnPromiseHelper',
   'mnPoll'
 ]).controller('mnViewsController',
-  function ($scope, $modal, $state, mnHelper, mnViewsService, mnCompaction, mnPoll, poolDefault) {
+  function ($scope, $modal, $state, mnHelper, mnViewsService, mnCompaction, mnPoll, poolDefault, mnPromiseHelper) {
 
     $scope.isKvNode = poolDefault.isKvNode;
     mnViewsService.getKvNodeLink().then(function (kvNodeLink) {
@@ -104,9 +104,8 @@ angular.module('mnViews', [
 
     $scope.registerCompactionAsTriggeredAndPost = function (row) {
       row.disableCompact = true;
-      mnCompaction.registerAsTriggeredAndPost(row.controllers.compact).then(function () {
-        poll.restart();
-      });
+      mnPromiseHelper($scope, mnCompaction.registerAsTriggeredAndPost(row.controllers.compact))
+        .reloadState();
     };
     mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });
