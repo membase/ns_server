@@ -1360,7 +1360,10 @@ couchbase_query_stats_descriptions() ->
                            {desc, <<"Number of queries that take longer than 1000 ms per second">>}]},
                  {struct, [{title, <<"queries > 5000ms">>},
                            {name, <<"query_requests_5000ms">>},
-                           {desc, <<"Number of queries that take longer than 5000 ms per second">>}]}]}]}].
+                           {desc, <<"Number of queries that take longer than 5000 ms per second">>}]},
+                 {struct, [{title, <<"invalid requests/sec">>},
+                           {name, <<"query_invalid_requests">>},
+                           {desc, <<"Number of requests for unsupported endpoints per second, specifically HTTP requests for all endpoints not supported by the query engine. For example, a request for http://localhost:8093/foo will be included. Potentially useful in identifying DOS attacks.">>}]}]}]}].
 
 membase_stats_description(BucketId, AddQuery, AddIndex) ->
     [{struct,[{blockName,<<"Summary">>},

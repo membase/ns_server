@@ -37,6 +37,7 @@ init([]) ->
 %%  {<<"deletes.count">>,0},
 %%  {<<"errors.count">>,0},
 %%  {<<"inserts.count">>,0},
+%%  {<<"invalid_requests.count">>,0},
 %%  {<<"mutations.count">>,0},
 %%  {<<"queued_requests.count">>,0},
 %%  {<<"request_time.count">>,0},
@@ -56,6 +57,7 @@ init([]) ->
 %% doesn't like trying to deal with empty gauges below.
 -define(Q_GAUGES, [active_requests, queued_requests]).
 -define(Q_COUNTERS, [errors,
+                     invalid_requests,
                      request_time,
                      requests,
                      requests_500ms,
