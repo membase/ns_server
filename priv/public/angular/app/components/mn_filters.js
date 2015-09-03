@@ -181,7 +181,7 @@ angular.module('mnFilters', [])
      *
      * Alterations: removed date and hex parsing/sorting
      */
-    function naturalSort(a, b) {
+    return function naturalSort(a, b) {
       var re = /(^-?[0-9]+(\.?[0-9]*)[df]?e?[0-9]?$|^0x[0-9a-f]+$|[0-9]+)/gi,
         sre = /(^[ ]*|[ ]*$)/g,
         ore = /^0/,
