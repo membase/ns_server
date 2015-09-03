@@ -59,7 +59,7 @@ angular.module('mnPromiseHelper', [
           spinnerCtrl(true);
         }, timer);
       }
-      function maybeHandleSpinnerWithTimer(timer) {
+      function maybeHandleSpinnerWithTimer(timer, scope) {
         if (timer) {
           enableSpinnerTimeout(timer);
           scope.$on("$destroy", clearSpinnerTimeout);
@@ -97,9 +97,9 @@ angular.module('mnPromiseHelper', [
           promise.then(closeModal);
           return this;
         },
-        showErrorsSensitiveSpinner: function (name, timer) {
+        showErrorsSensitiveSpinner: function (name, timer, scope) {
           name && setSpinnerName(name);
-          maybeHandleSpinnerWithTimer(timer);
+          maybeHandleSpinnerWithTimer(timer, scope);
           promise.then(null, hideSpinner);
           return this;
         },
@@ -110,9 +110,9 @@ angular.module('mnPromiseHelper', [
           });
           return this;
         },
-        showSpinner: function (name, timer) {
+        showSpinner: function (name, timer, scope) {
           name && setSpinnerName(name);
-          maybeHandleSpinnerWithTimer(timer);
+          maybeHandleSpinnerWithTimer(timer, scope);
           promise.then(hideSpinner, hideSpinner);
           return this;
         },

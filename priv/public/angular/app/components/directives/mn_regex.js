@@ -85,7 +85,7 @@ angular.module('mnRegex', [
       })
       .showSpinner(function (showOrHide) {
         mnRegexScope.dynamicSpinner = showOrHide;
-      }, 500)
+      }, 500, scope)
       .onSuccess(function (result) {
         mnRegexScope.hightlightTestKey = !!result;
         mnRegexScope.isSucceeded = !!result;
