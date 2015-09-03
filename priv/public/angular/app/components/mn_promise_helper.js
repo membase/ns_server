@@ -68,10 +68,9 @@ angular.module('mnPromiseHelper', [
         }
       }
       return {
-        applyToScope: function (name) {
-          scope[name] = scope[name] || {};
-          promise.then(function (value) {
-            scope[name] = value;
+        applyToScope: function (keyOrFunction) {
+          promise.then(angular.isFunction(keyOrFunction) ? keyOrFunction : function (value) {
+            scope[keyOrFunction] = value;
           });
           return this;
         },
