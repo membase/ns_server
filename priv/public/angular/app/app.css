@@ -306,8 +306,6 @@ div.analytics-small-graph > .right-arrow ul li:hover, div.analytics-small-graph 
 .section { border: 1px black solid; }
 
 
-.dialog{display:none}
-
 .alert_warning, .alert_attention, .alert_info {margin-bottom: 9px; list-style-type: none; min-height: 47px;}
 .alert_warning p, .alert_attention p, .alert_info p { clear: both; font-size:11px; color:#626b6c;}
 .alert_warning .time, .alert_attention .time, .alert_info .time { display:block; float:right; color:#626b6c; font-size:11px;}
