@@ -55,8 +55,9 @@ angular.module('mnHttp', [
           } else {
             delete config.notForm;
           }
-
-          config.data = $httpParamSerializerJQLike(config.data);
+          if (!angular.isString(config.data)) {
+            config.data = $httpParamSerializerJQLike(config.data);
+          }
         break;
       }
       delete config.cancelPrevious;
