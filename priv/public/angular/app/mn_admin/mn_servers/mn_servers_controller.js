@@ -13,9 +13,10 @@ angular.module('mnServers', [
   'mnMemoryQuotaService',
   'mnIndexesService',
   'mnPromiseHelper',
+  'mnGroupsService',
   'mnPoll'
 ]).controller('mnServersController',
-  function ($scope, $state, $modal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, mnServersService, mnHelper) {
+  function ($scope, $state, $modal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, mnServersService, mnHelper, mnGroupsService) {
 
     mnPoll.start($scope, function () {
       return mnServersService.getServersState($stateParams.list);
@@ -29,7 +30,7 @@ angular.module('mnServers', [
           groups: function () {
             return mnPoolDefault.get().then(function (poolDefault) {
               if (poolDefault.isGroupsAvailable) {
-                return mnServersService.getGroups();
+                return mnGroupsService.getGroups();
               }
             });
           }

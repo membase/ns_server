@@ -1,0 +1,21 @@
+<div id="js_add_group_dialog" class="dialog" style="width: 331px;">
+  <h1 ng-show="mnGroupsGroupDialogController.isEditMode">Edit Group</h1>
+  <h1 ng-show="!mnGroupsGroupDialogController.isEditMode">Create Group</h1>
+  <form
+    id="js_add_group_form"
+    class="add_group_form"
+    ng-submit="mnGroupsGroupDialogController.onSubmit()"
+    mn-spinner="mnGroupsGroupDialogController.viewLoading">
+    <div class="inner_wrap">
+      <i class="warning js_error_group" ng-show="mnGroupsGroupDialogController.errors.name">
+        name - {{mnGroupsGroupDialogController.errors.name}}
+      </i>
+      <label for="js_new_group_filed" style="width:auto">Group Name:</label>
+      <input type="text" name="group" ng-model="mnGroupsGroupDialogController.groupName" id="js_new_group_filed">
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Create</button>
+      <a class="close casper_close_add_group_dialog" ng-click="$dismiss()">Cancel</a>
+    </div>
+  </form>
+</div>

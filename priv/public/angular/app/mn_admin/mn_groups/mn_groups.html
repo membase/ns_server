@@ -1,0 +1,52 @@
+<div id="js_groups" class="groups when-roadmin-avoid-me">
+  <div class="when-enterprise">
+    <h1>Server Groups</h1>
+    <div
+      class="ellipsis warning_message casper_draggable_server_to"
+      id="js_group_notice"
+      ng-show="mnGroupsController.serverGroupsWarnig">Error: Changes must be saved before deleting the group.</div>
+    <div
+      class="ellipsis warning_message casper_draggable_server_to"
+      ng-show="mnGroupsController.revisionMismatch">Error: Revision mismatch. Changes are not applied. <a ng-click="mnGroupsController.reloadState()">Press to sync</a></div>
+    <div class="shadow_box">
+      <div class="header_2">
+        <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+        <a class="btn_1" ui-sref="app.admin.servers"><span>Server Nodes</span></a>
+        <a
+          id="js_create_group"
+          class="btn_1 casper_groups_create_popup"
+          ng-class="{dynamic_disabled: mnGroupsController.disableAddGroupBtn || mnGroupsController.rebalancing}"
+          ng-click="!mnGroupsController.disableAddGroupBtn && mnGroupsController.createGroup()"
+          ><span>Create Group</span></a>
+        <a
+          id="js_save_groups_changes"
+          class="btn_1 casper_groups_error"
+          ng-class="{dynamic_disabled: mnGroupsController.disableApplyChangesBtn || mnGroupsController.rebalancing}"
+          ng-click="!mnGroupsController.disableApplyChangesBtn && mnGroupsController.applyChanges()"
+          ><span>Apply Changes</span></a>
+      </div>
+      <div class="groups_container" id="js_server_group_container" mn-spinner="viewLoading">
+        <div ng-repeat="group in mnGroupsController.mnGroupsState.groups" class="group_wrapper js_group_wrapper">
+          <div class="head">
+            <a class="btn_1 js_edit_group casper_groups_edit_popup" ng-click="mnGroupsController.createGroup(group)"><span>Rename Group</span></a>
+            <div><h4 class="ellipsis">{{ group.name }}</h4></div>
+          </div>
+          <div class="group_servers js_group_servers">
+            <div
+              ng-repeat="server in group.nodes"
+              mn-drag-and-drop
+              on-item-taken="mnGroupsController.onItemTaken(server.hostname)"
+              on-item-dropped="mnGroupsController.onItemDropped()"
+              on-item-moved="mnGroupsController.onItemMoved()"
+              class="js_draggable_{{server.hostname | mnMakeSafeForCSS}} draggable">
+              <span><span>:::</span>{{ server.hostname | mnStripPortHTML:group.nodes }}</span>
+            </div>
+            <div class="group_is_empty">
+              <span>This group is empty, <a class="js_delete_group casper_groups_remove_popup" ng-click="mnGroupsController.deleteGroup(group)">click to delete</a>.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

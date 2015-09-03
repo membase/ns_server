@@ -10,6 +10,7 @@ angular.module('mnAdmin', [
   'mnOverview',
   'mnIndexes',
   'mnServers',
+  'mnGroups',
   'mnSettingsNotifications',
   'mnSettingsCluster',
   'mnSettingsAutoFailover',
@@ -162,6 +163,12 @@ angular.module('mnAdmin', [
           controller: 'mnServersListItemDetailsController'
         }
       }
+    })
+    .state('app.admin.groups', {
+      url: '/groups',
+      templateUrl: 'mn_admin/mn_groups/mn_groups.html',
+      controller: 'mnGroupsController',
+      controllerAs: 'mnGroupsController'
     })
     .state('app.admin.replications', {
       url: '/replications',

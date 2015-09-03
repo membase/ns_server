@@ -4,9 +4,10 @@ angular.module('mnServersService', [
   'mnSettingsAutoFailoverService',
   'mnHttp',
   'ui.router',
-  'mnSettingsClusterService'
+  'mnSettingsClusterService',
+  'mnGroupsService'
 ]).factory('mnServersService',
-  function (mnHttp, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, $q, $state, $stateParams) {
+  function (mnHttp, mnTasksDetails, mnPoolDefault, mnGroupsService, mnSettingsAutoFailoverService, $q, $state, $stateParams) {
     var mnServersService = {};
 
     var pendingEject = [];
@@ -31,14 +32,6 @@ angular.module('mnServersService', [
         url: '/controller/setRecoveryType',
         data: data
       });
-    };
-    mnServersService.getGroups = function () {
-      return mnHttp({
-        method: 'GET',
-        url: '/pools/default/serverGroups'
-      }).then(function (resp) {
-        return resp.data;
-      })
     };
     mnServersService.setupServices = function (data) {
       return mnHttp({
@@ -233,7 +226,7 @@ angular.module('mnServersService', [
     mnServersService.getNodes = function () {
       return $q.all([
         mnPoolDefault.getFresh(),
-        mnServersService.getGroups()
+        mnGroupsService.getGroups()
       ]).then(prepareNodes);
     };
 
