@@ -47,6 +47,7 @@ angular.module('mnHttp', [
       }
       switch (config.method.toLowerCase()) {
         case 'post':
+        case 'put':
           if (!config.notForm) {
             config.headers = _.extend({
               'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
