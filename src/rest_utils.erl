@@ -21,7 +21,8 @@ request(Type, URL, Method, Headers, Body, Timeout) ->
     system_stats_collector:increment_counter({Type, requests}, 1),
 
     Start = os:timestamp(),
-    RV = lhttpc:request(URL, Method, Headers, Body, Timeout, []),
+    RV = lhttpc:request(URL, Method, Headers, Body, Timeout,
+                        [{pool, rest_lhttpc_pool}]),
     case RV of
         {ok, {{Code, _}, _, _}} ->
             Diff = timer:now_diff(os:timestamp(), Start),

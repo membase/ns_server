@@ -49,6 +49,9 @@
 -define(GET_KEYS_TIMEOUT, ns_config:get_timeout(ns_memcached_get_keys_timeout, 60000)).
 -define(GET_KEYS_OUTER_TIMEOUT, ns_config:get_timeout(ns_memcached_get_keys_outer_timeout, 70000)).
 
+-define(RECBUF, ns_config:read_key_fast({node, node(), ns_memcached_recbuf}, 64 * 1024)).
+-define(SNDBUF, ns_config:read_key_fast({node, node(), ns_memcached_sndbuf}, 64 * 1024)).
+
 -define(CONNECTION_ATTEMPTS, 5).
 
 %% gen_server API
@@ -1272,7 +1275,11 @@ connect(Tries) ->
     Pass = ns_config:search_node_prop(Config, memcached, admin_pass),
     try
         {ok, S} = gen_tcp:connect("127.0.0.1", Port,
-                                  [binary, {packet, 0}, {active, false}]),
+                                  [binary,
+                                   {packet, 0},
+                                   {active, false},
+                                   {recbuf, ?RECBUF},
+                                   {sndbuf, ?SNDBUF}]),
         ok = mc_client_binary:auth(S, {<<"PLAIN">>,
                                        {list_to_binary(User),
                                         list_to_binary(Pass)}}),
