@@ -24,5 +24,4 @@ angular.module('mnSettingsAudit', [
         .showSpinner()
         .reloadState();
     };
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
 });

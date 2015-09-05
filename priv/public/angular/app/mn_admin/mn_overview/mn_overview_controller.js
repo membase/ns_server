@@ -16,5 +16,4 @@ angular.module('mnOverview', [
     mnPromiseHelper($scope, mnServersService.getNodes()).applyToScope("nodes");
     mnPromiseHelper($scope, mnBucketsService.getBucketsByType()).applyToScope("buckets");
 
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

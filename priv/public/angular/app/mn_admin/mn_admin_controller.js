@@ -23,13 +23,12 @@ angular.module('mnAdmin').controller('mnAdminController',
 
     mnPoll.start($scope, function () {
       return $q.all([
-        mnTasksDetails.getFresh({httpGroup: 'globals'}),
-        mnPoolDefault.getFresh({httpGroup: 'globals'})
+        mnTasksDetails.getFresh(),
+        mnPoolDefault.getFresh()
       ])
     }).subscribe(function (resp) {
       $scope.tasks = resp[0];
       $rootScope.tabName = resp[1] && resp[1].clusterName;
     });
 
-    mnHelper.cancelAllHttpOnScopeDestroy($scope);
   });

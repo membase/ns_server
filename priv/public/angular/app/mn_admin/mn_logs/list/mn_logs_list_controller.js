@@ -5,7 +5,6 @@ angular.module('mnLogs').controller('mnLogsListController',
       $scope.logs = logs.data.list;
     }).keepIn("logsState");
 
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
 
   }).filter('moduleCode', function () {
     return function (code) {

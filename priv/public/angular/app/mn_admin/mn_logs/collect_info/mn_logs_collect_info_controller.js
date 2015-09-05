@@ -39,5 +39,4 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
       $scope.mnLogsCollectInfoState = state;
     }).keepIn("mnLogsCollectInfoState");
 
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

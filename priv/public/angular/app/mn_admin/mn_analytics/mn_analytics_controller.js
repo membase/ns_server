@@ -32,5 +32,4 @@ angular.module('mnAnalytics', [
       return Math.round(key.ops * 100.0) / 100.0;
     };
 
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

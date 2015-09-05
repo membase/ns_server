@@ -17,5 +17,4 @@ angular.module('mnSettingsAutoFailover', [
         .catchGlobalErrors('An error occured, auto-failover settings were not saved.')
         .reloadState();
     };
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

@@ -1,19 +1,8 @@
 angular.module('mnHttp', [
 ]).factory('mnHttp',
   function ($http, $q, $timeout, $httpParamSerializerJQLike) {
-    //We need to associate the http with specific scope.
-    //This helps prevent pending asynchronous operations from causing side effects after the scope in which they were initiated is destroyed.
-    //The simplest way to keep queries organized by the groups. Currenly there are three kind of groups or layres of http queries
-    //httpGroup:
-    //globals - like /pools/default or /pools/default/tasks
-    //defaults - tab or section specific queries
-    //modals - queries in modal window (we don't care about this one because modal window could be blocked during async in the future)
-    var pendingQueryCancelers = {
-      globals: {},
-      defaults: {}
-    };
+    var pendingQueryCancelers = {};
     function mnHttp(config) {
-      var httpGroup = config.httpGroup || "defaults";
       var canceler = $q.defer();
       var timeout = config.timeout;
       config.timeout = canceler.promise;
@@ -30,12 +19,12 @@ angular.module('mnHttp', [
         }
         isCleared = true;
         timeoutID && $timeout.cancel(timeoutID);
-        delete pendingQueryCancelers[httpGroup][id];
+        delete pendingQueryCancelers[id];
       }
-      if (config.cancelPrevious && pendingQueryCancelers[httpGroup][id]) {
-        pendingQueryCancelers[httpGroup][id]();
+      if (config.cancelPrevious && pendingQueryCancelers[id]) {
+        pendingQueryCancelers[id]();
       }
-      pendingQueryCancelers[httpGroup][id] = function () {
+      pendingQueryCancelers[id] = function () {
         canceler.resolve("cancelled");
         clear();
       };
@@ -61,22 +50,10 @@ angular.module('mnHttp', [
         break;
       }
       delete config.cancelPrevious;
-      delete config.httpGroup;
       var http = $http(config);
       http.then(clear, clear);
       return http;
     }
-    mnHttp.cancelDefaults = function () {
-      _.forEach(pendingQueryCancelers.defaults, function (canceler) {
-        canceler();
-      });
-    };
-    mnHttp.cancelAll = function () {
-      mnHttp.cancelDefaults();
-      _.forEach(pendingQueryCancelers.globals, function (canceler) {
-        canceler();
-      });
-    };
     function createShortMethods(names) {
       _.each(arguments, function (name) {
         mnHttp[name] = function (url, config) {

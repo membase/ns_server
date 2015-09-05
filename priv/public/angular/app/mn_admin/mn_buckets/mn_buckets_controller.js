@@ -31,5 +31,4 @@ angular.module('mnBuckets', [
 
     mnPoll.start($scope, mnBucketsService.getBucketsState).subscribe("mnBucketsState").keepIn();
 
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

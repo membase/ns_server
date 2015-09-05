@@ -64,5 +64,4 @@ angular.module('mnSettingsCluster', [
     $scope.toggleCertArea = function () {
       $scope.toggleCertAreaFlag = !$scope.toggleCertAreaFlag;
     };
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

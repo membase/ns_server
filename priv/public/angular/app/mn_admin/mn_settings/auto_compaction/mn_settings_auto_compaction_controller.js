@@ -22,5 +22,4 @@ angular.module('mnSettingsAutoCompaction', [
         .catchErrors()
         .reloadState();
     };
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

@@ -107,5 +107,4 @@ angular.module('mnViews', [
       mnPromiseHelper($scope, mnCompaction.registerAsTriggeredAndPost(row.controllers.compact))
         .reloadState();
     };
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

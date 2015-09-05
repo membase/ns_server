@@ -85,5 +85,4 @@ angular.module('mnXDCR', [
     $scope.pausePlayReplication = function (row) {
       mnXDCRService.saveReplicationSettings(row.id, {pauseRequested: row.status !== 'paused'}).then(mnHelper.reloadState);
     };
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
   });

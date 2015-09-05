@@ -9,6 +9,5 @@ angular.module('mnIndexes', [
     mnPoll.start($scope, mnIndexesService.getIndexesState).subscribe("mnIndexesState").keepIn();
 
     mnHelper.initializeDetailsHashObserver($scope, 'openedIndex', 'app.admin.indexes');
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
 
   });

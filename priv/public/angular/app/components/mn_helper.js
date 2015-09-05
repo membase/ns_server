@@ -7,17 +7,6 @@ angular.module('mnHelper', [
   function ($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, mnHttp) {
     var mnHelper = {};
 
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy = function ($scope) {
-      $scope.$on("$destroy", function () {
-        mnHttp.cancelDefaults();
-      });
-    };
-    mnHelper.cancelAllHttpOnScopeDestroy = function ($scope) {
-      $scope.$on("$destroy", function () {
-        mnHttp.cancelAll();
-      });
-    };
-
     mnHelper.wrapInFunction = function (value) {
       return function () {
         return value;

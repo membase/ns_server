@@ -59,7 +59,6 @@ angular.module('mnServers', [
     };
 
     mnHelper.initializeDetailsHashObserver($scope, 'openedServers', 'app.admin.servers');
-    mnHelper.cancelCurrentStateHttpOnScopeDestroy($scope);
 
     $scope.ejectServer = function (node) {
       if (node.isNodeInactiveAdded) {
