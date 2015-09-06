@@ -1,5 +1,6 @@
 angular.module('mnPoll', [
-  'mnTasksDetails'
+  'mnTasksDetails',
+  'mnHttp'
 ]).factory('mnPoll',
   function ($timeout, $q, mnTasksDetails) {
     var stateKeeper = {};
@@ -7,32 +8,46 @@ angular.module('mnPoll', [
     function poll(request, extractInterval, scope) {
       var deferred;
       var latestResult;
-      var stopTimestamp;
+      var isCanceled;
       var timeout;
       var subscribers = [];
 
-      function cycle() {
-        var timestamp = new Date();
-        var queries = [angular.isFunction(request) ? request(latestResult) : request];
-        if (!extractInterval) {
-          queries.push(mnTasksDetails.get());
-        }
-        function isNotOutstanding() {
-          return !stopTimestamp || timestamp >= stopTimestamp;
-        }
-        $q.all(queries).then(function (result) {
-          if (isNotOutstanding()) {
-            latestResult = result[0];
-            var interval;
-            if (!extractInterval) {
-              interval = (_.chain(result[1].tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
-            } else {
-              interval = angular.isFunction(extractInterval) ? extractInterval(latestResult) : extractInterval;
-            }
-            deferred.notify(latestResult);
-            timeout = $timeout(cycle, interval);
+      function call() {
+        var query = angular.isFunction(request) ? request(latestResult) : request;
+        query.then(function (result) {
+          if (isCanceled) {
+            return;
           }
+          latestResult = result;
+          deferred.notify(latestResult);
         });
+        return query;
+      }
+
+      function cycle() {
+        if (extractInterval) {
+          if (angular.isFunction(extractInterval)) {
+            call().then(function (result) {
+              if (isCanceled) {
+                return;
+              }
+              var interval = extractInterval(result);
+              timeout = $timeout(cycle, interval);
+            });
+          } else {
+            timeout = $timeout(cycle, extractInterval);
+            call();
+          }
+        } else {
+          mnTasksDetails.getFresh().then(function (result) {
+            if (isCanceled) {
+              return;
+            }
+            var interval = (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
+            timeout = $timeout(cycle, interval);
+            call();
+          });
+        }
       }
 
       return {
@@ -44,7 +59,7 @@ angular.module('mnPoll', [
           return deferred.promise;
         },
         stop: function () {
-          stopTimestamp = new Date();
+          isCanceled = true;
           $timeout.cancel(timeout);
         },
         subscribe: function (subscriber, keeper) {
