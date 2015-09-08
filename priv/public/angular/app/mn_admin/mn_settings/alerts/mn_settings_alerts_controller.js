@@ -4,7 +4,10 @@ angular.module('mnSettingsAlerts', [
   'mnPromiseHelper'
 ]).controller('mnSettingsAlertsController',
   function ($scope, mnHelper, mnPromiseHelper, mnSettingsAlertsService) {
-    mnPromiseHelper($scope, mnSettingsAlertsService.getAlerts()).applyToScope("state");
+    mnPromiseHelper($scope, mnSettingsAlertsService.getAlerts())
+      .applyToScope("state")
+      .cancelOnScopeDestroy();
+
     function getParams() {
       var params = _.clone($scope.state);
       params.alerts = mnHelper.checkboxesToList(params.alerts);
@@ -26,14 +29,16 @@ angular.module('mnSettingsAlerts', [
       mnPromiseHelper($scope, mnSettingsAlertsService.testMail(params))
         .showSpinner()
         .showGlobalSuccess('Test email was sent successfully!')
-        .catchGlobalErrors('An error occurred during sending test email.');
+        .catchGlobalErrors('An error occurred during sending test email.')
+        .cancelOnScopeDestroy();
     };
     $scope.submit = function() {
       var params = getParams();
       mnPromiseHelper($scope, mnSettingsAlertsService.saveAlerts(params))
         .showErrorsSensitiveSpinner()
         .catchErrors()
-        .reloadState();
+        .reloadState()
+        .cancelOnScopeDestroy();
     }
   }).filter('alertsLabel', function (knownAlerts) {
   return function (name) {

@@ -21,7 +21,9 @@ angular.module('mnViews').controller('mnViewsCreateDialogController',
         };
       }
 
-      return mnViewsService.createDdoc(getDdocUrl(), ddoc.json);
+      return mnPromiseHelper($scope, mnViewsService.createDdoc(getDdocUrl(), ddoc.json))
+        .cancelOnScopeDestroy()
+        .getPromise();
     }
 
     $scope.onSubmit = function (ddocForm) {
@@ -55,6 +57,7 @@ angular.module('mnViews').controller('mnViewsCreateDialogController',
 
       mnPromiseHelper($scope, promise, $modalInstance)
         .showSpinner()
+        .cancelOnScopeDestroy()
         .catchErrors(function (data) {
           $scope.error = data && data.reason;
         })

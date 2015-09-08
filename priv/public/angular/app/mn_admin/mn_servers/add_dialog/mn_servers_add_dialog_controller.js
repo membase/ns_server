@@ -50,21 +50,25 @@ angular.module('mnServers').controller('mnServersAddDialogController',
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .closeOnSuccess()
+        .cancelOnScopeDestroy()
         .getPromise()
         .then(function () {
-          return mnPoolDefault.getFresh().then(function (poolsDefault) {
-            if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, $scope.addNodeConfig.services.model, 'index')) {
-              return $modal.open({
-                templateUrl: 'mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
-                controller: 'mnServersMemoryQuotaDialogController',
-                resolve: {
-                  memoryQuotaConfig: function (mnMemoryQuotaService) {
-                    return mnMemoryQuotaService.memoryQuotaConfig($scope.addNodeConfig.services.model.kv)
+          return mnPromiseHelper($scope, mnPoolDefault.getFresh())
+            .cancelOnScopeDestroy()
+            .getPromise()
+            .then(function (poolsDefault) {
+              if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, $scope.addNodeConfig.services.model, 'index')) {
+                return $modal.open({
+                  templateUrl: 'mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
+                  controller: 'mnServersMemoryQuotaDialogController',
+                  resolve: {
+                    memoryQuotaConfig: function (mnMemoryQuotaService) {
+                      return mnMemoryQuotaService.memoryQuotaConfig($scope.addNodeConfig.services.model.kv)
+                    }
                   }
-                }
-              }).result;
-            }
-          });
+                }).result;
+              }
+            });
         });
 
       mnPromiseHelper($scope, promise)

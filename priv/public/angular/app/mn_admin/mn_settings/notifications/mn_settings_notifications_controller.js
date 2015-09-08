@@ -9,6 +9,7 @@ angular.module('mnSettingsNotifications', [
       mnPromiseHelper($scope, mnSettingsNotificationsService.saveSendStatsFlag($scope.enabled))
         .showErrorsSensitiveSpinner()
         .catchGlobalErrors('An error occured, update notifications settings were not saved.')
-        .reloadState();
+        .reloadState()
+        .cancelOnScopeDestroy();
     };
   });

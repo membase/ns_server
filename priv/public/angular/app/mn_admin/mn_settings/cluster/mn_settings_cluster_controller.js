@@ -7,14 +7,18 @@ angular.module('mnSettingsCluster', [
 ]).controller('mnSettingsClusterController',
   function ($scope, $modal, mnSettingsClusterService, mnHelper, mnPromiseHelper) {
 
-    mnPromiseHelper($scope, mnSettingsClusterService.getClusterState()).applyToScope("state");
+    mnPromiseHelper($scope, mnSettingsClusterService.getClusterState())
+      .applyToScope("state")
+      .cancelOnScopeDestroy();
 
     $scope.$watch('state.memoryQuotaConfig', _.debounce(function (memoryQuotaConfig) {
       if (!memoryQuotaConfig) {
         return;
       }
       var promise = mnSettingsClusterService.postPoolsDefault($scope.state.memoryQuotaConfig, true);
-      mnPromiseHelper($scope, promise).catchErrorsFromSuccess("memoryQuotaErrors");
+      mnPromiseHelper($scope, promise)
+        .catchErrorsFromSuccess("memoryQuotaErrors")
+        .cancelOnScopeDestroy();
     }, 500), true);
 
     $scope.$watch('state.indexSettings', _.debounce(function (indexSettings) {
@@ -22,16 +26,20 @@ angular.module('mnSettingsCluster', [
         return;
       }
       var promise = mnSettingsClusterService.postIndexSettings($scope.state.indexSettings, true);
-      mnPromiseHelper($scope, promise).catchErrorsFromSuccess("indexSettingsErrors");
+      mnPromiseHelper($scope, promise)
+        .catchErrorsFromSuccess("indexSettingsErrors")
+        .cancelOnScopeDestroy();
     }, 500), true);
 
     function saveSettings() {
       var promise = mnPromiseHelper($scope, mnSettingsClusterService.postPoolsDefault($scope.state.memoryQuotaConfig, false, $scope.state.clusterName))
         .catchErrors("memoryQuotaErrors")
+        .cancelOnScopeDestroy()
         .getPromise()
         .then(function () {
           return mnPromiseHelper($scope, mnSettingsClusterService.postIndexSettings($scope.state.indexSettings))
             .catchErrors("indexSettingsErrors")
+            .cancelOnScopeDestroy()
             .getPromise();
         })
       mnPromiseHelper($scope, promise)
@@ -55,11 +63,12 @@ angular.module('mnSettingsCluster', [
       if ($scope.regenerateCertificateInprogress) {
         return;
       }
-      var promise = mnSettingsClusterService.regenerateCertificate().success(function (certificate) {
-        $scope.state.certificate = certificate;
-      });
-      mnPromiseHelper($scope, promise)
-        .showSpinner('regenerateCertificateInprogress');
+      mnPromiseHelper($scope, mnSettingsClusterService.regenerateCertificate())
+        .onSuccess(function (certificate) {
+          $scope.state.certificate = certificate;
+        })
+        .showSpinner('regenerateCertificateInprogress')
+        .cancelOnScopeDestroy();
     };
     $scope.toggleCertArea = function () {
       $scope.toggleCertAreaFlag = !$scope.toggleCertAreaFlag;

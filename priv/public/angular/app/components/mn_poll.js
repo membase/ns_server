@@ -2,15 +2,16 @@ angular.module('mnPoll', [
   'mnTasksDetails',
   'mnHttp'
 ]).factory('mnPoll',
-  function ($timeout, $q, mnTasksDetails) {
+  function ($timeout, $q, mnTasksDetails, mnHttp) {
     var stateKeeper = {};
 
     function poll(request, extractInterval, scope) {
-      var deferred;
+      var deferred = $q.defer();
       var latestResult;
       var isCanceled;
       var timeout;
       var subscribers = [];
+      var cancelOnScopeDestroy = false;
 
       function call() {
         var query = angular.isFunction(request) ? request(latestResult) : request;
@@ -34,9 +35,11 @@ angular.module('mnPoll', [
               var interval = extractInterval(result);
               timeout = $timeout(cycle, interval);
             });
+            cancelOnScopeDestroy && mnHttp.attachPendingQueriesToScope(scope);
           } else {
             timeout = $timeout(cycle, extractInterval);
             call();
+            cancelOnScopeDestroy && mnHttp.attachPendingQueriesToScope(scope);
           }
         } else {
           mnTasksDetails.getFresh().then(function (result) {
@@ -46,14 +49,20 @@ angular.module('mnPoll', [
             var interval = (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
             timeout = $timeout(cycle, interval);
             call();
+            cancelOnScopeDestroy && mnHttp.attachPendingQueriesToScope(scope);
           });
+          cancelOnScopeDestroy && mnHttp.attachPendingQueriesToScope(scope);
         }
       }
 
       return {
-        start: function () {
-          deferred = $q.defer();
+        run: function () {
           cycle();
+          return this;
+        },
+        cancelOnScopeDestroy: function () {
+          cancelOnScopeDestroy = true;
+          return this;
         },
         promise: function () {
           return deferred.promise;
@@ -92,7 +101,6 @@ angular.module('mnPoll', [
       start: function (scope, request, extractInterval) {
         var poller = poll(request, extractInterval, scope);
         scope.$on('$destroy', poller.stop);
-        poller.start();
         return poller;
       },
       cleanCache: function (key) {

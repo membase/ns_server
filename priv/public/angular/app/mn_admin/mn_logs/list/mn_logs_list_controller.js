@@ -1,9 +1,14 @@
 angular.module('mnLogs').controller('mnLogsListController',
   function ($scope, mnHelper, mnLogsService, mnPoll) {
 
-    mnPoll.start($scope, mnLogsService.getLogs).subscribe(function (logs) {
-      $scope.logs = logs.data.list;
-    }).keepIn("logsState");
+    mnPoll
+      .start($scope, mnLogsService.getLogs)
+      .subscribe(function (logs) {
+        $scope.logs = logs.data.list;
+      })
+      .keepIn("logsState")
+      .cancelOnScopeDestroy()
+      .run();
 
 
   }).filter('moduleCode', function () {

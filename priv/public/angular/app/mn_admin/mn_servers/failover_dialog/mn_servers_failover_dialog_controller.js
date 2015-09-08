@@ -5,6 +5,7 @@ angular.module('mnServers').controller('mnServersFailOverDialogController',
     var promise = mnServersService.getNodeStatuses(node.hostname);
     mnPromiseHelper($scope, promise)
       .showSpinner()
+      .cancelOnScopeDestroy()
       .getPromise()
       .then(function (details) {
         if (details) {

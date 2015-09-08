@@ -12,12 +12,12 @@ angular.module('mnBuckets').controller('mnBucketsDetailsDialogController',
         .catchErrors(function (result) {
           $scope.validationResult = result && mnBucketsDetailsDialogService.adaptValidationResult(result);
         })
-        .getPromise()
-        .then(function (result) {
+        .onSuccess(function (result) {
           if (!result.data) {
             $modalInstance.close();
             mnHelper.reloadState();
           }
-        });
+        })
+        .cancelOnScopeDestroy();
     };
   });

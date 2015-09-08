@@ -12,7 +12,8 @@ angular.module('mnSettingsAudit', [
         return;
       }
       mnPromiseHelper($scope, mnSettingsAuditService.saveAuditSettings(state, true))
-        .catchErrorsFromSuccess();
+        .catchErrorsFromSuccess()
+        .cancelOnScopeDestroy();
     }, true);
 
     $scope.submit = function () {
@@ -22,6 +23,7 @@ angular.module('mnSettingsAudit', [
       mnPromiseHelper($scope, mnSettingsAuditService.saveAuditSettings($scope.state))
         .catchErrorsFromSuccess()
         .showSpinner()
-        .reloadState();
+        .reloadState()
+        .cancelOnScopeDestroy();
     };
 });

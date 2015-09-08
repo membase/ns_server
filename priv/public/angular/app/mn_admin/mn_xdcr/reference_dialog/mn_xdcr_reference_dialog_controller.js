@@ -6,6 +6,7 @@ angular.module('mnXDCR').controller('mnXDCRReferenceDialogController',
       mnPromiseHelper($scope, promise, $modalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
+        .cancelOnScopeDestroy()
         .closeOnSuccess()
         .reloadState();
     };

@@ -6,9 +6,14 @@ angular.module('mnXDCR', [
   'mnPoll',
   'mnRegex'
 ]).controller('mnXDCRController',
-  function ($scope, $modal, mnHelper, mnPoll, mnXDCRService, mnBucketsService) {
+  function ($scope, $modal, mnHelper, mnPoll, mnXDCRService, mnBucketsService, mnPromiseHelper) {
 
-    mnPoll.start($scope, mnXDCRService.getReplicationState).subscribe("mnXdcrState").keepIn();
+    mnPoll
+      .start($scope, mnXDCRService.getReplicationState)
+      .subscribe("mnXdcrState")
+      .keepIn()
+      .cancelOnScopeDestroy()
+      .run();
 
     $scope.createClusterReference = function () {
       $modal.open({
@@ -83,6 +88,8 @@ angular.module('mnXDCR', [
       });
     };
     $scope.pausePlayReplication = function (row) {
-      mnXDCRService.saveReplicationSettings(row.id, {pauseRequested: row.status !== 'paused'}).then(mnHelper.reloadState);
+      mnPromiseHelper($scope, mnXDCRService.saveReplicationSettings(row.id, {pauseRequested: row.status !== 'paused'}))
+        .reloadState()
+        .cancelOnScopeDestroy();
     };
   });

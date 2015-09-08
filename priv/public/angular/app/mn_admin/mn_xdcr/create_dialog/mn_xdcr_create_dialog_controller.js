@@ -25,6 +25,7 @@ angular.module('mnXDCR').controller('mnXDCRCreateDialogController',
       var promise = mnXDCRService.postRelication(replication);
       mnPromiseHelper($scope, promise, $modalInstance)
         .showErrorsSensitiveSpinner()
+        .cancelOnScopeDestroy()
         .catchErrors()
         .closeOnSuccess()
         .reloadState();

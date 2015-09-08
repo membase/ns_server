@@ -1,8 +1,9 @@
 angular.module('mnBucketsForm', [
   'mnHttp',
   'mnBucketsDetailsService',
-  'mnFilters'
-]).directive('mnBucketsForm', function (mnHttp, mnBucketsDetailsDialogService, mnBytesToMBFilter, mnCountFilter) {
+  'mnFilters',
+  'mnPromiseHelper'
+]).directive('mnBucketsForm', function (mnHttp, mnBucketsDetailsDialogService, mnBytesToMBFilter, mnCountFilter, mnPromiseHelper) {
 
   function threadsEvictionWarning(scope, value) {
     var initialValue = scope.bucketConf[value];
@@ -56,7 +57,7 @@ angular.module('mnBucketsForm', [
       }, function (values) {
         var bucketConf = values.bucketConf;
         var autoCompactionSettings = values.autoCompactionSettings;
-        mnHttp({
+        mnPromiseHelper($scope, mnHttp({
           method: 'POST',
           url: bucketConf.uri,
           data: mnBucketsDetailsDialogService.prepareBucketConfigForSaving(bucketConf, autoCompactionSettings),
@@ -64,7 +65,9 @@ angular.module('mnBucketsForm', [
             just_validate: 1,
             ignore_warnings: $scope.bucketConf.ignoreWarnings ? 1 : 0
           }
-        })
+        }))
+        .cancelOnScopeDestroy()
+        .getPromise()
         .then(adaptValidationResult, adaptValidationResult)
         .then(function (result) {
           $scope.validationResult = result;

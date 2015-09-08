@@ -4,12 +4,15 @@ angular.module('mnViews').controller('mnViewsCopyDialogController',
     $scope.ddoc.name = mnViewsService.cutOffDesignPrefix(currentDdoc.meta.id);
     function prepareToCopy(url, ddoc) {
       return function () {
-        return mnViewsService.createDdoc(url, ddoc.json).then(function () {
-          $modalInstance.close();
-          $state.go('app.admin.views', {
-            type: 'development'
-          });
-        });
+        return mnPromiseHelper($scope, mnViewsService.createDdoc(url, ddoc.json), $modalInstance)
+          .closeOnSuccess()
+          .cancelOnScopeDestroy()
+          .onSuccess(function () {
+            $state.go('app.admin.views', {
+              type: 'development'
+            });
+          })
+          .getPromise();
       };
     }
     $scope.onSubmit = function () {
@@ -21,6 +24,8 @@ angular.module('mnViews').controller('mnViewsCopyDialogController',
         }).result.then(copy);
       }, copy);
 
-      mnPromiseHelper($scope, promise).showSpinner();
+      mnPromiseHelper($scope, promise)
+        .showSpinner()
+        .cancelOnScopeDestroy();
     };
   });

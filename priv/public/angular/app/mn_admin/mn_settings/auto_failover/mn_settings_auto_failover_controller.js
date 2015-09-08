@@ -4,9 +4,12 @@ angular.module('mnSettingsAutoFailover', [
   'mnPromiseHelper'
 ]).controller('mnSettingsAutoFailoverController',
   function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService) {
-    mnPromiseHelper($scope, mnSettingsAutoFailoverService.getAutoFailoverSettings()).applyToScope(function (autoFailoverSettings) {
-      $scope.state = autoFailoverSettings.data
-    });
+    mnPromiseHelper($scope, mnSettingsAutoFailoverService.getAutoFailoverSettings())
+      .applyToScope(function (autoFailoverSettings) {
+        $scope.state = autoFailoverSettings.data
+      })
+      .cancelOnScopeDestroy();
+
     $scope.submit = function () {
       var data = {
         enabled: $scope.state.enabled,
@@ -15,6 +18,7 @@ angular.module('mnSettingsAutoFailover', [
       mnPromiseHelper($scope, mnSettingsAutoFailoverService.saveAutoFailoverSettings(data))
         .showErrorsSensitiveSpinner()
         .catchGlobalErrors('An error occured, auto-failover settings were not saved.')
-        .reloadState();
+        .reloadState()
+        .cancelOnScopeDestroy();
     };
   });

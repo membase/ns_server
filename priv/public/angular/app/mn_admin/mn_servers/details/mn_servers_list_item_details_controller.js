@@ -1,9 +1,9 @@
 angular.module('mnServers')
   .controller('mnServersListItemDetailsController',
-    function ($scope, mnServersListItemDetailsService) {
+    function ($scope, mnServersListItemDetailsService, mnPromiseHelper) {
       $scope.$watch('node', function () {
-        mnServersListItemDetailsService.getNodeDetails($scope.node).then(function (details) {
-          $scope.server = details;
-        });
+        mnPromiseHelper($scope, mnServersListItemDetailsService.getNodeDetails($scope.node))
+          .applyToScope("server")
+          .cancelOnScopeDestroy();
       });
     });

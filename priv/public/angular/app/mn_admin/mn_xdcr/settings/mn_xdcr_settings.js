@@ -18,7 +18,7 @@ angular.module('mnXDCR').directive('mnXdcrSettings', function (mnHttp, mnPromise
           params: {
             just_validate: 1
           }
-        })).catchErrors();
+        })).catchErrors().cancelOnScopeDestroy();
       }, true);
     }
   };

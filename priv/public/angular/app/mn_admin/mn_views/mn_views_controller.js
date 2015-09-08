@@ -8,9 +8,9 @@ angular.module('mnViews', [
   function ($scope, $modal, $state, mnHelper, mnViewsService, mnCompaction, mnPoll, poolDefault, mnPromiseHelper) {
 
     $scope.isKvNode = poolDefault.isKvNode;
-    mnViewsService.getKvNodeLink().then(function (kvNodeLink) {
-      $scope.kvNodeLink = kvNodeLink
-    });
+    mnPromiseHelper($scope, mnViewsService.getKvNodeLink())
+      .applyToScope("kvNodeLink")
+      .cancelOnScopeDestroy();
 
     if (!poolDefault.isKvNode) {
       return;
@@ -18,9 +18,14 @@ angular.module('mnViews', [
 
     $scope._ = _;
 
-    var poll = mnPoll.start($scope, function () {
-      return mnViewsService.getViewsState($state.params);
-    }).subscribe("mnViewsState").keepIn();
+    mnPoll
+      .start($scope, function () {
+        return mnViewsService.getViewsState($state.params);
+      })
+      .subscribe("mnViewsState")
+      .keepIn()
+      .cancelOnScopeDestroy()
+      .run();
 
     $scope.$watch(function () {
       return $scope.mnViewsState && $scope.mnViewsState.bucketsNames.selected && $scope.mnViewsState.isDevelopmentViews && !$scope.mnViewsState.ddocsAreInFactMissing;
@@ -75,21 +80,25 @@ angular.module('mnViews', [
     };
     function prepareToPublish(url, ddoc) {
       return function () {
-        mnViewsService.createDdoc(url, ddoc.json).then(function () {
-          $state.go('app.admin.views', {
-            type: 'production'
-          });
-        });
+        mnPromiseHelper($scope, mnViewsService.createDdoc(url, ddoc.json))
+          .onSuccess(function () {
+            $state.go('app.admin.views', {
+              type: 'production'
+            });
+          })
+          .cancelOnScopeDestroy();
       };
     }
     $scope.publishDdoc = function (ddoc) {
       var url = mnViewsService.getDdocUrl($scope.mnViewsState.bucketsNames.selected, "_design/" + mnViewsService.cutOffDesignPrefix(ddoc.meta.id));
       var publish = prepareToPublish(url, ddoc);
-      var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
-        $modal.open({
-          templateUrl: 'mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
-        }).result.then(publish);
-      }, publish);
+      mnPromiseHelper($scope, mnViewsService.getDdoc(url))
+        .onSuccess(function (presentDdoc) {
+          $modal.open({
+            templateUrl: 'mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
+          }).result.then(publish);
+        }, publish)
+        .cancelOnScopeDestroy();
     };
     $scope.copyToDev = function (ddoc) {
       $modal.open({
@@ -105,6 +114,7 @@ angular.module('mnViews', [
     $scope.registerCompactionAsTriggeredAndPost = function (row) {
       row.disableCompact = true;
       mnPromiseHelper($scope, mnCompaction.registerAsTriggeredAndPost(row.controllers.compact))
-        .reloadState();
+        .reloadState()
+        .cancelOnScopeDestroy();
     };
   });

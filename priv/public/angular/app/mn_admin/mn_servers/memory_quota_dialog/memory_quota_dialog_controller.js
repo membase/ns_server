@@ -11,6 +11,7 @@ angular.module('mnServers').controller('mnServersMemoryQuotaDialogController',
       mnPromiseHelper($scope, promise, $modalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
+        .cancelOnScopeDestroy()
         .closeOnSuccess()
         .reloadState();
     }

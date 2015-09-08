@@ -10,7 +10,8 @@ angular.module('mnSettingsAutoCompaction', [
     $scope.$watch('autoCompactionSettings', function (autoCompactionSettings) {
       mnPromiseHelper($scope, mnSettingsAutoCompactionService
         .saveAutoCompaction(autoCompactionSettings, {just_validate: 1}))
-        .catchErrors();
+        .catchErrors()
+        .cancelOnScopeDestroy();
     }, true);
 
     $scope.submit = function () {
@@ -20,6 +21,7 @@ angular.module('mnSettingsAutoCompaction', [
       mnPromiseHelper($scope, mnSettingsAutoCompactionService.saveAutoCompaction($scope.autoCompactionSettings))
         .showErrorsSensitiveSpinner()
         .catchErrors()
-        .reloadState();
+        .reloadState()
+        .cancelOnScopeDestroy();
     };
   });

@@ -18,17 +18,22 @@ angular.module('mnAdmin').controller('mnAdminController',
       mnPromiseHelper($scope, mnSettingsAutoFailoverService.resetAutoFailOverCount())
         .showSpinner('resetQuotaLoading')
         .catchGlobalErrors('Unable to reset the auto-failover quota!')
-        .reloadState();
+        .reloadState()
+        .cancelOnScopeDestroy();
     };
 
-    mnPoll.start($scope, function () {
-      return $q.all([
-        mnTasksDetails.getFresh(),
-        mnPoolDefault.getFresh()
-      ])
-    }).subscribe(function (resp) {
-      $scope.tasks = resp[0];
-      $rootScope.tabName = resp[1] && resp[1].clusterName;
-    });
+    mnPoll
+      .start($scope, function () {
+        return $q.all([
+          mnTasksDetails.getFresh(),
+          mnPoolDefault.getFresh()
+        ])
+      })
+      .subscribe(function (resp) {
+        $scope.tasks = resp[0];
+        $rootScope.tabName = resp[1] && resp[1].clusterName;
+      })
+      .cancelOnScopeDestroy()
+      .run();
 
   });

@@ -10,9 +10,11 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
         templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info_stop_dialog.html'
       }).result.then(function () {
         $scope.disabledStopCollect = true;
-        mnLogsCollectInfoService.cancelLogsCollection()['finally'](function () {
-          $scope.disabledStopCollect = false;
-        })
+        mnPromiseHelper($scope, mnLogsCollectInfoService.cancelLogsCollection())
+          .cancelOnScopeDestroy()
+          .getPromise()['finally'](function () {
+            $scope.disabledStopCollect = false;
+          });
       });
     };
     $scope.submit = function () {
@@ -28,15 +30,20 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
         .showSpinner()
         .catchErrors()
         .reloadState()
-        .getPromise()
-        .then(function () {
+        .cancelOnScopeDestroy()
+        .onSuccess(function () {
           $scope.loadingResult = true;
           $state.go('app.admin.logs.collectInfo.result');
         });
     };
-    mnPoll.start($scope, mnLogsCollectInfoService.getState).subscribe(function (state) {
-      $scope.loadingResult = false;
-      $scope.mnLogsCollectInfoState = state;
-    }).keepIn("mnLogsCollectInfoState");
+    mnPoll
+      .start($scope, mnLogsCollectInfoService.getState)
+      .subscribe(function (state) {
+        $scope.loadingResult = false;
+        $scope.mnLogsCollectInfoState = state;
+      })
+      .keepIn("mnLogsCollectInfoState")
+      .cancelOnScopeDestroy()
+      .run();
 
   });

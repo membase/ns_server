@@ -92,7 +92,8 @@ angular.module('mnRegex', [
         if (result) {
           mnRegexScope.testKey = result;
         }
-      });
+      })
+      .cancelOnScopeDestroy();
   };
 
   mnRegexService.validateRegex = function (regex, testKey) {

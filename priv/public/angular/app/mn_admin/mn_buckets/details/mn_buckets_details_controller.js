@@ -1,9 +1,9 @@
 angular.module('mnBuckets').controller('mnBucketsDetailsController',
-  function ($scope, mnBucketsDetailsService, mnSettingsAutoCompactionService, mnCompaction, mnHelper, $modal, mnBytesToMBFilter, mnBucketsDetailsDialogService) {
+  function ($scope, mnBucketsDetailsService, mnPromiseHelper, mnSettingsAutoCompactionService, mnCompaction, mnHelper, $modal, mnBytesToMBFilter, mnBucketsDetailsDialogService) {
     function getBucketsDetails() {
-      mnBucketsDetailsService.getDetails($scope.bucket).then(function (details) {
-        $scope.bucketDetails = details;
-      });
+      mnPromiseHelper($scope, mnBucketsDetailsService.getDetails($scope.bucket))
+        .applyToScope("bucketDetails")
+        .cancelOnScopeDestroy();
     }
     $scope.editBucket = function () {
       $modal.open({
@@ -46,7 +46,9 @@ angular.module('mnBuckets').controller('mnBucketsDetailsController',
 
     $scope.registerCompactionAsTriggeredAndPost = function (url, disableButtonKey) {
       $scope.bucketDetails[disableButtonKey] = true;
-      mnCompaction.registerAsTriggeredAndPost(url).then(getBucketsDetails);
+      mnPromiseHelper($scope, mnCompaction.registerAsTriggeredAndPost(url))
+        .onSuccess(getBucketsDetails)
+        .cancelOnScopeDestroy();
     };
     $scope.$watch('bucket', getBucketsDetails);
   });

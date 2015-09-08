@@ -5,6 +5,7 @@ angular.module('mnXDCR').controller('mnXDCREditDialogController',
       var promise = mnXDCRService.saveReplicationSettings(id, mnXDCRService.removeExcessSettings($scope.settings));
       mnPromiseHelper($scope, promise, $modalInstance)
         .showErrorsSensitiveSpinner()
+        .cancelOnScopeDestroy()
         .catchErrors()
         .closeOnSuccess()
         .reloadState();

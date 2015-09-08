@@ -7,12 +7,17 @@ angular.module('mnAnalytics', [
 ]).controller('mnAnalyticsController',
   function ($scope, mnAnalyticsService, mnHelper, $state, mnHttp, mnPoll) {
 
-    mnPoll.start($scope, function (previousResult) {
-      return mnAnalyticsService.getStats({$stateParams: $state.params, previousResult: previousResult});
-    }, function (response) {
-      //TODO add error handler
-      return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
-    }).subscribe("mnAnalyticsState").keepIn();
+    mnPoll
+      .start($scope, function (previousResult) {
+        return mnAnalyticsService.getStats({$stateParams: $state.params, previousResult: previousResult});
+      }, function (response) {
+        //TODO add error handler
+        return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
+      })
+      .subscribe("mnAnalyticsState")
+      .keepIn()
+      .cancelOnScopeDestroy()
+      .run();
 
     $scope.$watch('mnAnalyticsState.bucketsNames.selected', function (selectedBucket) {
       selectedBucket && selectedBucket !== $state.params.analyticsBucket && $state.go('app.admin.analytics.list.graph', {

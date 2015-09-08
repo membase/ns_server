@@ -33,8 +33,11 @@
       activate();
 
       function applyChanges() {
-        mnGroupsService.applyChanges(vm.mnGroupsState.uri, vm.mnGroupsState.currentGroups)
-          .then(mnHelper.reloadState, function (resp) {
+        mnPromiseHelper($scope, mnGroupsService.applyChanges(vm.mnGroupsState.uri, vm.mnGroupsState.currentGroups))
+          .reloadState()
+          .cancelOnScopeDestroy()
+          .getPromise()
+          .then(null, function (resp) {
             if (resp.status === 409) {
               vm.disableAddGroupBtn = true;
               vm.disableApplyChangesBtn = true;
@@ -75,11 +78,17 @@
       }
 
       function activate() {
-        mnPromiseHelper(vm, mnGroupsService.getGroupsState()).applyToScope("mnGroupsState");
+        mnPromiseHelper(vm, mnGroupsService.getGroupsState())
+          .applyToScope("mnGroupsState")
+          .cancelOnScopeDestroy($scope);
         //after implementing mmAdminController via controllerAs syntax this poll should be removed
-        mnPoll.start($scope, mnPoolDefault.get).subscribe(function (poolDefault) {
-          vm.rebalancing = poolDefault.rebalancing;
-        });
+        mnPoll
+          .start($scope, mnPoolDefault.get)
+          .subscribe(function (poolDefault) {
+            vm.rebalancing = poolDefault.rebalancing;
+          })
+          .cancelOnScopeDestroy()
+          .run();
       }
 
 

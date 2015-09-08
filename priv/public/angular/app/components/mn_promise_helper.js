@@ -1,13 +1,16 @@
 angular.module('mnPromiseHelper', [
   'mnAlertsService',
-  'mnHelper'
+  'mnHelper',
+  'mnPoll',
+  'mnHttp'
 ]).factory('mnPromiseHelper',
-  function (mnAlertsService, mnHelper, mnPoll, $timeout) {
+  function (mnAlertsService, mnHelper, mnPoll, mnHttp, $timeout) {
 
     mnPromiseHelper.handleModalAction = function ($scope, promise, $modalInstance) {
       return mnPromiseHelper($scope, promise, $modalInstance)
         .showErrorsSensitiveSpinner()
         .closeFinally()
+        .cancelOnScopeDestroy()
         .reloadState();
     };
 
@@ -72,6 +75,10 @@ angular.module('mnPromiseHelper', [
           promise.then(angular.isFunction(keyOrFunction) ? keyOrFunction : function (value) {
             scope[keyOrFunction] = value;
           });
+          return this;
+        },
+        cancelOnScopeDestroy: function ($scope) {
+          mnHttp.attachPendingQueriesToScope($scope || scope);
           return this;
         },
         getPromise: function () {

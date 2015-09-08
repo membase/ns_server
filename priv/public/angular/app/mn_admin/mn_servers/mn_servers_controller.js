@@ -16,11 +16,16 @@ angular.module('mnServers', [
   'mnGroupsService',
   'mnPoll'
 ]).controller('mnServersController',
-  function ($scope, $state, $modal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, mnServersService, mnHelper, mnGroupsService) {
+  function ($scope, $state, $modal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper) {
 
-    mnPoll.start($scope, function () {
-      return mnServersService.getServersState($stateParams.list);
-    }).subscribe("mnServersState").keepIn();
+    mnPoll
+      .start($scope, function () {
+        return mnServersService.getServersState($stateParams.list);
+      })
+      .subscribe("mnServersState")
+      .keepIn()
+      .cancelOnScopeDestroy()
+      .run();
 
     $scope.addServer = function () {
       $modal.open({
@@ -38,37 +43,44 @@ angular.module('mnServers', [
       });
     };
     $scope.postRebalance = function () {
-      mnServersService.postRebalance($scope.mnServersState.allNodes).then(function () {
-        $state.go('app.admin.servers', {list: 'active'});
-        $scope.viewLoading = true;
-        mnHelper.reloadState();
-      });
+      mnPromiseHelper($scope, mnServersService.postRebalance($scope.mnServersState.allNodes))
+        .onSuccess(function () {
+          $state.go('app.admin.servers', {list: 'active'});
+          $scope.viewLoading = true;
+        })
+        .reloadState()
+        .cancelOnScopeDestroy();
     };
     $scope.onStopRecovery = function () {
-      mnServersService.stopRecovery($scope.tasks.tasksRecovery.stopURI).then(mnHelper.reloadState)
+      mnPromiseHelper($scope, mnServersService.stopRecovery($scope.tasks.tasksRecovery.stopURI))
+        .reloadState()
+        .cancelOnScopeDestroy();
     };
     $scope.stopRebalance = function () {
-      var request = mnServersService.stopRebalance().then(
-        mnHelper.reloadState,
-        function (reps) {
+      mnPromiseHelper($scope, mnServersService.stopRebalance())
+        .cancelOnScopeDestroy()
+        .reloadState()
+        .getPromise()
+        .then(function (reps) {
           (reps.status === 400) && $modal.open({
             templateUrl: 'mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
             controller: 'mnServersStopRebalanceDialogController'
           });
-      });
+        });
     };
 
     mnHelper.initializeDetailsHashObserver($scope, 'openedServers', 'app.admin.servers');
 
     $scope.ejectServer = function (node) {
       if (node.isNodeInactiveAdded) {
-        $scope.viewLoading = true;
-        mnServersService.ejectNode({otpNode: node.otpNode});
-        mnHelper.reloadState();
+        mnPromiseHelper($scope, mnServersService.ejectNode({otpNode: node.otpNode}))
+          .showSpinner()
+          .reloadState()
+          .cancelOnScopeDestroy();
         return;
       }
 
-      $q.all([
+      var promise = $q.all([
         mnIndexesService.getIndexesState(),
         mnServersService.getNodes()
       ]).then(function (resp) {
@@ -101,6 +113,8 @@ angular.module('mnServers', [
           mnHelper.reloadState();
         }
       });
+
+      mnPromiseHelper($scope, promise).cancelOnScopeDestroy();
     };
     $scope.failOverNode = function (node) {
       $modal.open({
@@ -114,15 +128,19 @@ angular.module('mnServers', [
       });
     };
     $scope.reAddNode = function (type, otpNode) {
-      mnServersService.reAddNode({
+      mnPromiseHelper($scope, mnServersService.reAddNode({
         otpNode: otpNode,
         recoveryType: type
-      }).then(mnHelper.reloadState);
+      }))
+      .reloadState()
+      .cancelOnScopeDestroy();
     };
     $scope.cancelFailOverNode = function (otpNode) {
-      mnServersService.cancelFailOverNode({
+      mnPromiseHelper($scope, mnServersService.cancelFailOverNode({
         otpNode: otpNode
-      }).then(mnHelper.reloadState);
+      }))
+      .reloadState()
+      .cancelOnScopeDestroy();
     };
     $scope.cancelEjectServer = function (node) {
       mnServersService.removeFromPendingEject(node);

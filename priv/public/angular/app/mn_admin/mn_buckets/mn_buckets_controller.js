@@ -8,27 +8,33 @@ angular.module('mnBuckets', [
   'mnPromiseHelper',
   'mnPoll'
 ]).controller('mnBucketsController',
-  function ($scope, mnBucketsService, mnHelper, mnPoll, $modal) {
+  function ($scope, mnBucketsService, mnHelper, mnPromiseHelper, mnPoll, $modal) {
 
     $scope.addBucket = function () {
-      mnBucketsService.getBucketsState().then(function (mnBucketsState) {
-        $scope.mnBucketsState = mnBucketsState;
-
-        !mnBucketsState.creationWarnings.length && $modal.open({
-          templateUrl: 'mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
-          controller: 'mnBucketsDetailsDialogController',
-          resolve: {
-            bucketConf: function (mnBucketsDetailsDialogService) {
-              return mnBucketsDetailsDialogService.getNewBucketConf();
-            },
-            autoCompactionSettings: function (mnSettingsAutoCompactionService) {
-              return mnSettingsAutoCompactionService.getAutoCompaction();
+      mnPromiseHelper($scope, mnBucketsService.getBucketsState())
+        .applyToScope("mnBucketsState")
+        .cancelOnScopeDestroy()
+        .onSuccess(function (mnBucketsState) {
+          !mnBucketsState.creationWarnings.length && $modal.open({
+            templateUrl: 'mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
+            controller: 'mnBucketsDetailsDialogController',
+            resolve: {
+              bucketConf: function (mnBucketsDetailsDialogService) {
+                return mnBucketsDetailsDialogService.getNewBucketConf();
+              },
+              autoCompactionSettings: function (mnSettingsAutoCompactionService) {
+                return mnSettingsAutoCompactionService.getAutoCompaction();
+              }
             }
-          }
+          });
         });
-      });
     };
 
-    mnPoll.start($scope, mnBucketsService.getBucketsState).subscribe("mnBucketsState").keepIn();
+    mnPoll
+      .start($scope, mnBucketsService.getBucketsState)
+      .subscribe("mnBucketsState")
+      .keepIn()
+      .cancelOnScopeDestroy()
+      .run();
 
   });
