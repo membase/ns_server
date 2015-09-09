@@ -48,6 +48,9 @@ angular.module('mnPromiseHelper', [
         modalInstance.close();
       }
       function extractErrors(resp) {
+        if (resp.status === 0) {
+          return false;
+        }
         var errors = resp.data && resp.data.errors && _.keys(resp.data).length === 1 ? resp.data.errors : resp.data || resp ;
         return _.isEmpty(errors) ? false : errors;
       }
