@@ -25,7 +25,7 @@ angular.module('mnAdmin').controller('mnAdminController',
     mnPoll
       .start($scope, function () {
         return $q.all([
-          mnTasksDetails.getFresh(),
+          mnTasksDetails.get(),
           mnPoolDefault.getFresh()
         ])
       })
