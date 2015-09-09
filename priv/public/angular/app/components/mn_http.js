@@ -10,7 +10,7 @@
     var pendingQueryKeeper = [];
 
     mnHttp.attachPendingQueriesToScope = attachPendingQueriesToScope;
-    mnHttp.markAsIndependetOfScope = markAsIndependetOfScope;
+    mnHttp.markAsIndependentOfScope = markAsIndependentOfScope;
 
     createShortMethods('get', 'delete', 'head', 'jsonp');
     createShortMethodsWithData('post', 'put');
@@ -25,7 +25,7 @@
       });
     }
 
-    function markAsIndependetOfScope() {
+    function markAsIndependentOfScope() {
       var queries = getQueriesOfRecentPromise();
       _.forEach(queries, function (query) {
         query.doesNotBelongToScope = true;

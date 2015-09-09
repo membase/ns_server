@@ -80,6 +80,10 @@ angular.module('mnPromiseHelper', [
           });
           return this;
         },
+        independentOfScope: function () {
+          mnHttp.markAsIndependentOfScope();
+          return this;
+        },
         cancelOnScopeDestroy: function ($scope) {
           mnHttp.attachPendingQueriesToScope($scope || scope);
           return this;

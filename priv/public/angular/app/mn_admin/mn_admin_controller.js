@@ -4,12 +4,16 @@ angular.module('mnAdmin').controller('mnAdminController',
     $scope.alerts = mnAlertsService.alerts;
     $scope.closeAlert = mnAlertsService.closeAlert;
 
-    mnSettingsNotificationsService.maybeCheckUpdates().then(function (updates) {
-      $scope.updates = updates;
-      return updates.sendStats && mnSettingsNotificationsService.buildPhoneHomeThingy().then(function (launchpadSource) {
-        $scope.launchpadSource = launchpadSource;
-      });
-    });
+    mnPromiseHelper($scope, mnSettingsNotificationsService.maybeCheckUpdates())
+      .applyToScope("updates")
+      .onSuccess(function (updates) {
+        if (updates.sendStats) {
+          mnPromiseHelper($scope, mnSettingsNotificationsService.buildPhoneHomeThingy())
+            .applyToScope("launchpadSource")
+            .independentOfScope();
+        }
+      })
+      .independentOfScope();
 
     $scope.logout = function () {
       mnAuthService.logout();
