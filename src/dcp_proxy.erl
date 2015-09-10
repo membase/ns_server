@@ -104,7 +104,7 @@ handle_call(Command, From, State = #state{ext_module = ExtModule, ext_state = Ex
             {ReplyType, NewState#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}
     end.
 
-handle_packet(<<Magick:8, Opcode:8, _Rest/binary>> = Packet,
+handle_packet(<<Magic:8, Opcode:8, _Rest/binary>> = Packet,
               State = #state{ext_module = ExtModule, ext_state = ExtState, proxy_to = ProxyTo}) ->
     case (erlang:get(suppress_logging_for_xdcr) =:= true
           orelse suppress_logging(Packet)
@@ -115,7 +115,7 @@ handle_packet(<<Magick:8, Opcode:8, _Rest/binary>> = Packet,
             ?log_debug("Proxy packet: ~s", [dcp_commands:format_packet_nicely(Packet)])
     end,
 
-    Type = case Magick of
+    Type = case Magic of
                ?REQ_MAGIC ->
                    request;
                ?RES_MAGIC ->
