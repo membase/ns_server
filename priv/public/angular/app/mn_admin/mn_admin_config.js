@@ -41,7 +41,7 @@ angular.module('mnAdmin', [
       var deferred = $q.defer();
 
       if (!$stateParams[bucketParamName]) {
-        mnBucketsService.getBucketsByType().then(function (buckets) {
+        mnBucketsService.getBucketsByType(true).then(function (buckets) {
           $stateParams[bucketParamName] = buckets.byType.membase.defaultName;
           $state.go(stateRedirect, $stateParams);
         })["finally"](deferred.reject);

@@ -1,9 +1,10 @@
 angular.module('mnBucketsService', [
   'mnHttp',
   'mnPoolDefault',
-  'mnFilters'
+  'mnFilters',
+  'mnBucketsStats'
 ]).factory('mnBucketsService',
-  function (mnHttp, $q, mnPoolDefault, mnTruncateTo3DigitsFilter, mnCalculatePercentFilter) {
+  function (mnHttp, $q, mnPoolDefault, mnTruncateTo3DigitsFilter, mnCalculatePercentFilter, mnBucketsStats) {
     var mnBucketsService = {};
 
     mnBucketsService.model = {};
@@ -66,8 +67,8 @@ angular.module('mnBucketsService', [
       })
     };
 
-    mnBucketsService.getBucketsByType = function () {
-      return mnHttp.get('/pools/default/buckets?basic_stats=true').then(function (resp) {
+    mnBucketsService.getBucketsByType = function (fromCache) {
+      return mnBucketsStats[fromCache ? "get" : "getFresh"]().then(function (resp) {
         var bucketsDetails = resp.data
         bucketsDetails.byType = {membase: [], memcached: []};
         bucketsDetails.byType.membase.isMembase = true;
