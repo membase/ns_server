@@ -84,7 +84,7 @@
         case 'post':
         case 'put':
           config.headers = config.headers || {};
-          if (config.isNotForm) {
+          if (!config.isNotForm) {
             config.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
             if (!angular.isString(config.data)) {
               config.data = $httpParamSerializerJQLike(config.data);
