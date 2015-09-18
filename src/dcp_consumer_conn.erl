@@ -148,10 +148,10 @@ handle_packet(response, ?DCP_SET_VBUCKET_STATE, Packet,
             {proxy, State, ParentState}
     end;
 
-handle_packet(Type, OpCode, _, #state{state = shut} = State, _) ->
+handle_packet(Type, OpCode, _, #state{state = shut} = State, ParentState) ->
     ?log_debug("Ignoring packet ~p in shut state",
                [{Type, dcp_commands:command_2_atom(OpCode)}]),
-    {block, State};
+    {block, State, ParentState};
 
 handle_packet(_, _, _, State, ParentState) ->
     {proxy, State, ParentState}.
