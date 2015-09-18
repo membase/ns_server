@@ -46,7 +46,7 @@ convert_headers(MochiReq) ->
         undefined ->
             Headers;
         Token ->
-            [{"ns_server-auth-token", Token} | Headers]
+            [{"ns-server-auth-token", Token} | Headers]
     end.
 
 send(MochiReq, Method, Path, Headers, Body) ->
