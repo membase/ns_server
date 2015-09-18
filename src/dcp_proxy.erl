@@ -33,6 +33,7 @@
 
 -record(state, {sock = undefined :: port() | undefined,
                 connect_info,
+                packet_len = undefined,
                 buf = <<>> :: binary(),
                 ext_module,
                 ext_state,
@@ -76,8 +77,8 @@ terminate(_Reason, _State) ->
 handle_info({tcp, Socket, Data}, #state{sock = Socket} = State) ->
     %% Set up the socket to receive another message
     ok = inet:setopts(Socket, [{active, once}]),
-    {noreply, mc_replication:process_data(Data, #state.buf,
-                                          fun handle_packet/2, State), ?HIBERNATE_TIMEOUT};
+
+    {noreply, process_data(Data, State), ?HIBERNATE_TIMEOUT};
 
 handle_info({tcp_closed, Socket}, State) ->
     ?log_debug("Socket ~p was closed. Closing myself. State = ~p", [Socket, State]),
@@ -104,7 +105,7 @@ handle_call(Command, From, State = #state{ext_module = ExtModule, ext_state = Ex
             {ReplyType, NewState#state{ext_state = NewExtState}, ?HIBERNATE_TIMEOUT}
     end.
 
-handle_packet(<<Magick:8, Opcode:8, _Rest/binary>> = Packet,
+handle_packet(<<Magic:8, Opcode:8, _Rest/binary>> = Packet,
               State = #state{ext_module = ExtModule, ext_state = ExtState, proxy_to = ProxyTo}) ->
     case (erlang:get(suppress_logging_for_xdcr) =:= true
           orelse suppress_logging(Packet)
@@ -115,7 +116,7 @@ handle_packet(<<Magick:8, Opcode:8, _Rest/binary>> = Packet,
             ?log_debug("Proxy packet: ~s", [dcp_commands:format_packet_nicely(Packet)])
     end,
 
-    Type = case Magick of
+    Type = case Magic of
                ?REQ_MAGIC ->
                    request;
                ?RES_MAGIC ->
@@ -197,3 +198,28 @@ terminate_and_wait(shutdown, Pairs) ->
 terminate_and_wait(_Reason, Pairs) ->
     [disconnect(Sock) || {_, Sock} <- Pairs],
     misc:terminate_and_wait(kill, [Pid || {Pid, _} <- Pairs]).
+
+process_data(NewData, #state{buf = PrevData,
+                             packet_len = PacketLen} = State) ->
+    Data = <<PrevData/binary, NewData/binary>>,
+    process_data_loop(Data, PacketLen, State).
+
+process_data_loop(Data, undefined, State) ->
+    case Data of
+        <<_Magic:8, _Opcode:8, _KeyLen:16, _ExtLen:8, _DataType:8,
+          _VBucket:16, BodyLen:32, _Opaque:32, _CAS:64, _Rest/binary>> ->
+            process_data_loop(Data, ?HEADER_LEN + BodyLen, State);
+        _ ->
+            State#state{buf = Data,
+                        packet_len = undefined}
+    end;
+process_data_loop(Data, PacketLen, State) ->
+    case byte_size(Data) >= PacketLen of
+        false ->
+            State#state{buf = Data,
+                        packet_len = PacketLen};
+        true ->
+            {Packet, Rest} = split_binary(Data, PacketLen),
+            {ok, NewState} = handle_packet(Packet, State),
+            process_data_loop(Rest, undefined, NewState)
+    end.
