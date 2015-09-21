@@ -557,12 +557,17 @@ def make_product_task(guts, initargs_path, options):
 
                    flatten(["cbstats", "-a", "127.0.0.1:%s" % read_guts(guts, "memcached_port"), kind, "-b", read_guts(guts, "memcached_admin"), "-p", read_guts(guts, "memcached_pass")]),
                    log_file="stats.log")
-         for kind in ["all", "checkpoint", "config", ["dispatcher", "logs"],
-                      "workload", "runtimes", "scheduler", "kvstore", "kvtimings",
-                      "tap", "tapagg", "dcp", "dcpagg", "timings",
-                      ["raw", "memory"], ["raw", "allocator"],
-                      "prev-vbucket", "vbucket", "vbucket-details",
-                      "warmup"]],
+         for kind in ["all", "allocator", "checkpoint", "config",
+                      "dcp", "dcpagg",
+                      ["diskinfo", "detail"], ["dispatcher", "logs"],
+                      "failovers", ["hash", "detail"],
+                      "kvstore", "kvtimings", "memory",
+                      "prev-vbucket",
+                      "runtimes", "scheduler",
+                      "tap", "tapagg",
+                      "timings", "uuid",
+                      "vbucket", "vbucket-details", "vbucket-seqno",
+                      "warmup", "workload"]],
 
         [AllOsTask("memcached mcstat %s" % kind,
                    flatten(["mcstat", "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
