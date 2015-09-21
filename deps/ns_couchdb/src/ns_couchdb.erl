@@ -71,6 +71,7 @@ init_logging() ->
     StdLoggers = [?ALE_LOGGER, ?ERROR_LOGGER],
     Loggers = ?NS_COUCHDB_LOGGERS,
     AllLoggers = Loggers ++ StdLoggers,
+    MainFileLoggers = AllLoggers -- [?COUCHDB_LOGGER, ?MAPREDUCE_ERRORS_LOGGER],
 
     lists:foreach(
       fun (Logger) ->
@@ -98,7 +99,7 @@ init_logging() ->
     lists:foreach(
       fun (Logger) ->
               ok = ale:add_sink(Logger, ns_couchdb_sink, ns_server:get_loglevel(Logger))
-      end, AllLoggers),
+      end, MainFileLoggers),
 
     ok = ale:add_sink(?COUCHDB_LOGGER, disk_couchdb, ns_server:get_loglevel(?COUCHDB_LOGGER)),
     ok = ale:add_sink(?VIEWS_LOGGER, disk_views),
