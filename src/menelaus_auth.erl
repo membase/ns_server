@@ -144,7 +144,7 @@ ui_auth_cookie_name(Req) ->
     end.
 
 extract_ui_auth_token(Req) ->
-    case Req:get_header_value("ns_server-auth-token") of
+    case Req:get_header_value("ns-server-auth-token") of
         undefined ->
             lookup_cookie(Req, ui_auth_cookie_name(Req));
         T ->
@@ -188,37 +188,37 @@ maybe_refresh_token(Req) ->
     end.
 
 validate_request(Req) ->
-    undefined = Req:get_header_value("menelaus_auth-user"),
-    undefined = Req:get_header_value("menelaus_auth-role"),
-    undefined = Req:get_header_value("menelaus_auth-token"),
-    undefined = Req:get_header_value("menelaus_auth-source").
+    undefined = Req:get_header_value("menelaus-auth-user"),
+    undefined = Req:get_header_value("menelaus-auth-role"),
+    undefined = Req:get_header_value("menelaus-auth-token"),
+    undefined = Req:get_header_value("menelaus-auth-source").
 
 store_user_info(Req, User, Role, Source, Token) ->
     Headers = Req:get(headers),
-    H1 = mochiweb_headers:enter("menelaus_auth-user", User, Headers),
-    H2 = mochiweb_headers:enter("menelaus_auth-role", Role, H1),
-    H3 = mochiweb_headers:enter("menelaus_auth-token", Token, H2),
-    H4 = mochiweb_headers:enter("menelaus_auth-source", Source, H3),
+    H1 = mochiweb_headers:enter("menelaus-auth-user", User, Headers),
+    H2 = mochiweb_headers:enter("menelaus-auth-role", Role, H1),
+    H3 = mochiweb_headers:enter("menelaus-auth-token", Token, H2),
+    H4 = mochiweb_headers:enter("menelaus-auth-source", Source, H3),
     mochiweb_request:new(Req:get(socket), Req:get(method), Req:get(raw_path), Req:get(version), H4).
 
 get_user(Req) ->
-    Req:get_header_value("menelaus_auth-user").
+    Req:get_header_value("menelaus-auth-user").
 
 get_token(Req) ->
-    Req:get_header_value("menelaus_auth-token").
+    Req:get_header_value("menelaus-auth-token").
 
 get_role(Req) ->
-    Req:get_header_value("menelaus_auth-role").
+    Req:get_header_value("menelaus-auth-role").
 
 get_source(Req) ->
-    Req:get_header_value("menelaus_auth-source").
+    Req:get_header_value("menelaus-auth-source").
 
 %% applies given function F if current credentials allow access to at
 %% least single SASL-auth bucket. So admin credentials and bucket
 %% credentials works. Other credentials do not allow access. Empty
 %% credentials are not allowed too.
 apply_auth_any_bucket(Req, F, Args) ->
-    case Req:get_header_value("ns_server-ui") of
+    case Req:get_header_value("ns-server-ui") of
         "yes" ->
             apply_ro_auth(Req, F, Args);
         _ ->
@@ -259,7 +259,7 @@ check_auth_any_bucket(Req, Auth) ->
 apply_auth_bucket(Req, F, Args, BucketId, ReadOnlyOk) ->
     case ns_bucket:get_bucket(BucketId) of
         {ok, BucketConf} ->
-            case Req:get_header_value("ns_server-ui") of
+            case Req:get_header_value("ns-server-ui") of
                 "yes" ->
                     case ReadOnlyOk of
                         true ->
@@ -398,7 +398,7 @@ extract_auth_user(Req) ->
 -spec extract_auth(any()) -> {User :: string(), Password :: string()}
                                  | {token, string()} | undefined.
 extract_auth(Req) ->
-    case Req:get_header_value("ns_server-ui") of
+    case Req:get_header_value("ns-server-ui") of
         "yes" ->
             case extract_ui_auth_token(Req) of
                 undefined -> undefined;
@@ -697,7 +697,7 @@ t_assert_success(User, Role, Source, Token) ->
                  {get_user(R), get_role(R), get_source(R), get_token(R)}).
 
 t_new_request({token, Token}) ->
-    t_new_request([{"ns_server-auth-token", Token}, {"ns_server-ui", "yes"}]);
+    t_new_request([{"ns-server-auth-token", Token}, {"ns-server-ui", "yes"}]);
 t_new_request({User, Password}) ->
     t_new_request(menelaus_rest:add_basic_auth([], User, Password));
 t_new_request(Headers) ->
