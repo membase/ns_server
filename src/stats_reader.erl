@@ -29,8 +29,8 @@
 -record(state, {bucket}).
 
 -export([start_link/1,
-         latest/3, latest/4, latest/5]).
-
+         latest/3, latest/4, latest/5,
+         latest_specific_stats/4, latest_specific_stats/5, latest_specific_stats/6]).
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
 
@@ -44,37 +44,49 @@ start_link(Bucket) ->
     gen_server:start_link({local, server(Bucket)}, ?MODULE, Bucket, []).
 
 
+
 %% @doc Get the latest samples for a given interval from the archive
 latest(Period, Node, Bucket) when is_atom(Node) ->
-    gen_server:call({server(Bucket), Node}, {latest, Period});
+    single_node_call(Bucket, Node, {latest, Period});
 latest(Period, Nodes, Bucket) when is_list(Nodes), is_list(Bucket) ->
-    R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                             {latest, Period},
-                                             ?TIMEOUT),
-    log_bad_responses(R),
-    Replies.
+    multi_node_call(Bucket, Nodes, {latest, Period}).
 
 latest(Period, Node, Bucket, N) when is_atom(Node), is_list(Bucket) ->
-    gen_server:call({server(Bucket), Node}, {latest, Period, N});
+    single_node_call(Bucket, Node, {latest, Period, N});
 latest(Period, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
-    R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                             {latest, Period, N},
-                                             ?TIMEOUT),
-    log_bad_responses(R),
-    Replies.
-
+    multi_node_call(Bucket, Nodes, {latest, Period, N}).
 
 latest(Period, Node, Bucket, 1, N) ->
     latest(Period, Node, Bucket, N);
 latest(Period, Node, Bucket, Step, N) when is_atom(Node) ->
-    gen_server:call({server(Bucket), Node}, {latest, Period, Step, N});
+    single_node_call(Bucket, Node, {latest, Period, Step, N});
 latest(Period, Nodes, Bucket, Step, N) when is_list(Nodes) ->
-    R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
-                                             {latest, Period, Step, N},
-                                             ?TIMEOUT),
-    log_bad_responses(R),
-    Replies.
+    multi_node_call(Bucket, Nodes, {latest, Period, Step, N}).
 
+
+%% Get latest values for only the stats specified by the user.
+latest_specific_stats(Period, Node, Bucket, all) ->
+    latest(Period, Node, Bucket);
+latest_specific_stats(Period, Node, Bucket, StatList) when is_atom(Node) ->
+    single_node_call(Bucket, Node,  {latest_specific, Period, StatList});
+latest_specific_stats(Period, Nodes, Bucket, StatList) when is_list(Nodes), is_list(Bucket) ->
+    multi_node_call(Bucket, Nodes,  {latest_specific, Period, StatList}).
+
+latest_specific_stats(Period, Node, Bucket, N, all) ->
+    latest(Period, Node, Bucket, N);
+latest_specific_stats(Period, Node, Bucket, N, StatList) when is_atom(Node), is_list(Bucket) ->
+    single_node_call(Bucket, Node, {latest_specific, Period, N, StatList});
+latest_specific_stats(Period, Nodes, Bucket, N, StatList) when is_list(Nodes), is_list(Bucket) ->
+    multi_node_call(Bucket, Nodes, {latest_specific, Period, N, StatList}).
+
+latest_specific_stats(Period, Node, Bucket, 1, N, StatList) ->
+    latest_specific_stats(Period, Node, Bucket, N, StatList);
+latest_specific_stats(Period, Node, Bucket, Step, N, all) ->
+    latest(Period, Node, Bucket, Step, N);
+latest_specific_stats(Period, Node, Bucket, Step, N, StatList) when is_atom(Node) ->
+    single_node_call(Bucket, Node, {latest_specific, Period, Step, N, StatList});
+latest_specific_stats(Period, Nodes, Bucket, Step, N, StatList) when is_list(Nodes) ->
+    multi_node_call(Bucket, Nodes, {latest_specific, Period, Step, N, StatList}).
 
 %%
 %% gen_server callbacks
@@ -88,23 +100,29 @@ init(Bucket) ->
     {ok, #state{bucket=Bucket}}.
 
 handle_call({latest, Period}, _From, #state{bucket=Bucket} = State) ->
-    Reply = stats_archiver:latest_sample(Bucket, Period),
+    Reply = get_latest_sample(Bucket, Period),
     {reply, Reply, State};
 handle_call({latest, Period, N}, _From, #state{bucket=Bucket} = State) ->
-    Reply = try fetch_latest(Bucket, Period, N) of
-                Result -> Result
-            catch Type:Err ->
-                    {error, {Type, Err}}
-            end,
+    Reply = fetch_latest_sample(Bucket, Period, N),
     {reply, Reply, State};
 handle_call({latest, Period, Step, N}, _From, #state{bucket=Bucket} = State) ->
-    Reply = try resample(Bucket, Period, Step, N) of
-                Result -> Result
-            catch Type:Err ->
-                    {error, {Type, Err}}
-            end,
-    {reply, Reply, State}.
+    Reply = resample_latest_sample(Bucket, Period, Step, N),
+    {reply, Reply, State};
 
+handle_call({latest_specific, Period, StatList}, _From, #state{bucket=Bucket} = State) ->
+    RV = get_latest_sample(Bucket, Period),
+    Reply = extract_stats(StatList, RV),
+    {reply, Reply, State};
+
+handle_call({latest_specific, Period, N, StatList}, _From, #state{bucket=Bucket} = State) ->
+    RV = fetch_latest_sample(Bucket, Period, N),
+    Reply = extract_stats(StatList, RV),
+    {reply, Reply, State};
+
+handle_call({latest_specific, Period, Step, N, StatList}, _From, #state{bucket=Bucket} = State) ->
+    RV = resample_latest_sample(Bucket, Period, Step, N),
+    Reply = extract_stats(StatList, RV),
+    {reply, Reply, State}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -121,6 +139,62 @@ terminate(_Reason, _State) ->
 %%
 %% Internal functions
 %%
+
+single_node_call(Bucket, Node, CallParams) ->
+    gen_server:call({server(Bucket), Node}, CallParams).
+
+multi_node_call(Bucket, Nodes, CallParams) ->
+    R = {Replies, _} = gen_server:multi_call(Nodes, server(Bucket),
+                                             CallParams, ?TIMEOUT),
+    log_bad_responses(R),
+    Replies.
+
+get_latest_sample(Bucket, Period) ->
+    stats_archiver:latest_sample(Bucket, Period).
+
+fetch_latest_sample(Bucket, Period, N) ->
+    try fetch_latest(Bucket, Period, N) of
+        Result -> Result
+    catch Type:Err ->
+            {error, {Type, Err}}
+    end.
+
+resample_latest_sample(Bucket, Period, Step, N) ->
+    try resample(Bucket, Period, Step, N) of
+        Result -> Result
+    catch Type:Err ->
+            {error, {Type, Err}}
+    end.
+
+extract_stats(StatList, {ok, AllStats}) when is_list(AllStats) ->
+    {ok, extract_specific_stats(StatList, AllStats)};
+extract_stats(StatList, {ok, AllStats}) ->
+    [RV] = extract_specific_stats(StatList, [AllStats]),
+    {ok, RV};
+extract_stats(_StatList, Other) ->
+    Other.
+
+%% Extract values for stats specified by the user from AllStats.
+%% AllStats is a list of one or more samples as shown below:
+%%    [{stat_entry, timestamp1,
+%%                  [{stat1,stat1-val},
+%%                   {stat2,stat2-val},
+%%                   {...}|...]},
+%%     {stat_entry, timestamp2,
+%%                  [{stat1,stat1-val},
+%%                   {stat2,stat2-val},
+%%                   {...}|...]},
+%%      ...]
+extract_specific_stats(StatList, AllStats) ->
+    ExtractAllFun = fun (OneSample, AccAll) ->
+                            SV = lists:foldl(
+                                   fun (StatName, Acc) ->
+                                           [{StatName, proplists:get_value(StatName, OneSample#stat_entry.values, undefined)} | Acc]
+                                   end, [], StatList),
+                            [#stat_entry{timestamp = OneSample#stat_entry.timestamp,
+                                         values = SV} | AccAll]
+                    end,
+    lists:reverse(lists:foldl(ExtractAllFun, [], AllStats)).
 
 %% @doc Return the last N records starting with the given key from Tab.
 fetch_latest(Bucket, Period, N) ->
