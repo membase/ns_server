@@ -63,9 +63,10 @@ class Task(object):
     no_header = False
     num_samples = 0
     interval = 0
-    def __init__(self, description, command, **kwargs):
+    def __init__(self, description, command, timeout=None, **kwargs):
         self.description = description
         self.command = command
+        self.timeout = timeout
         self.__dict__.update(kwargs)
 
     def execute(self, fp):
@@ -97,12 +98,36 @@ class Task(object):
             return 127
         p.stdin.close()
 
-        while True:
-            data = p.stdout.read(64 * 1024)
-            if not data:
-                break
+        from threading import Timer, Event
 
-            fp.write(data)
+        timer = None
+        timer_fired = Event()
+
+        if self.timeout is not None and hasattr(p, 'kill'):
+            def on_timeout():
+                p.kill()
+                timer_fired.set()
+
+            timer = Timer(self.timeout, on_timeout)
+            timer.start()
+
+        try:
+            while True:
+                data = p.stdout.read(64 * 1024)
+                if not data:
+                    break
+
+                fp.write(data)
+        finally:
+            if timer is not None:
+                timer.cancel()
+                timer.join()
+
+                # there's a tiny chance that command succeeds just before
+                # timer is fired; that would result in a spurious timeout
+                # message
+                if timer_fired.isSet():
+                    print >> fp, "`%s` timed out after %s seconds" % (self.command, self.timeout)
 
         return p.wait()
 
@@ -272,10 +297,11 @@ def make_curl_task(name, user, password, url,
                    timeout=60, log_file="couchbase.log", base_task=AllOsTask):
     def make_cmd(pwd):
         return ["curl", "-sS", "--proxy", "",
-                "--max-time", str(timeout),
                 "-u", "%s:%s" % (user, pwd), url]
 
-    return base_task(name, make_cmd(password), log_file=log_file,
+    return base_task(name, make_cmd(password),
+                     timeout=timeout,
+                     log_file=log_file,
                      command_to_print=make_cmd("*****"))
 
 def make_query_task(statement, user, password, port):
@@ -407,7 +433,7 @@ def make_os_tasks():
         UnixTask("System log", "cat /var/adm/messages"),
         LinuxTask("Raw /proc/uptime", "cat /proc/uptime"),
         LinuxTask("All logs", "tar cz /var/log/syslog* /var/log/dmesg /var/log/messages* /var/log/daemon* /var/log/debug* /var/log/kern.log* 2>/dev/null",
-                  log_file="syslog.tar.gz", no_header = True),
+                  log_file="syslog.tar.gz", no_header=True),
         LinuxTask("Relevant proc data", "echo %(programs)s | "
                   "xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; cat /proc/$1/status; cat /proc/$1/limits; cat /proc/$1/smaps; cat /proc/$1/numa_maps; cat /proc/$1/task/*/sched; echo' --" % locals()),
         LinuxTask("Processes' environment", "echo %(programs)s | "
@@ -572,7 +598,8 @@ def make_product_task(guts, initargs_path, options):
         [AllOsTask("memcached stats %s" % kind,
 
                    flatten(["cbstats", "-a", "127.0.0.1:%s" % read_guts(guts, "memcached_port"), kind, "-b", read_guts(guts, "memcached_admin"), "-p", read_guts(guts, "memcached_pass")]),
-                   log_file="stats.log")
+                   log_file="stats.log",
+                   timeout=60)
          for kind in ["all", "allocator", "checkpoint", "config",
                       "dcp", "dcpagg",
                       ["diskinfo", "detail"], ["dispatcher", "logs"],
@@ -589,7 +616,8 @@ def make_product_task(guts, initargs_path, options):
                    flatten(["mcstat", "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
                             "-u", read_guts(guts, "memcached_admin"),
                             "-P", read_guts(guts, "memcached_pass"), kind]),
-                   log_file="stats.log")
+                   log_file="stats.log",
+                   timeout=60)
          for kind in ["connections"]],
 
         [AllOsTask("ddocs for %s (%s)" % (bucket, path),
@@ -604,7 +632,8 @@ def make_product_task(guts, initargs_path, options):
 
         [UnixTask("moxi stats (port %s)" % port,
                   "echo stats proxy | nc 127.0.0.1 %s" % port,
-                  log_file="stats.log")
+                  log_file="stats.log",
+                  timeout=60)
          for port in correct_split(read_guts(guts, "moxi_ports"), ",")],
 
         [AllOsTask("mctimings",
@@ -613,7 +642,8 @@ def make_product_task(guts, initargs_path, options):
                     "-P", read_guts(guts, "memcached_pass"),
                     "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
                     "-v"],
-                   log_file="stats.log")]
+                   log_file="stats.log",
+                   timeout=60)]
         ]
 
     _tasks = flatten([lookup_tasks, query_tasks, _tasks])
