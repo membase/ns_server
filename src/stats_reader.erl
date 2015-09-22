@@ -29,8 +29,7 @@
 -record(state, {bucket}).
 
 -export([start_link/1,
-         latest/3, latest/4, latest/5,
-         latest_all/2, latest_all/3, latest_all/4]).
+         latest/3, latest/4, latest/5]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
@@ -65,6 +64,8 @@ latest(Period, Nodes, Bucket, N) when is_list(Nodes), is_list(Bucket) ->
     Replies.
 
 
+latest(Period, Node, Bucket, 1, N) ->
+    latest(Period, Node, Bucket, N);
 latest(Period, Node, Bucket, Step, N) when is_atom(Node) ->
     gen_server:call({server(Bucket), Node}, {latest, Period, Step, N});
 latest(Period, Nodes, Bucket, Step, N) when is_list(Nodes) ->
@@ -73,18 +74,6 @@ latest(Period, Nodes, Bucket, Step, N) when is_list(Nodes) ->
                                              ?TIMEOUT),
     log_bad_responses(R),
     Replies.
-
-
-latest_all(Period, Bucket) ->
-    latest(Period, ns_node_disco:nodes_wanted(), Bucket).
-
-
-latest_all(Period, Bucket, N) ->
-    latest(Period, ns_node_disco:nodes_wanted(), Bucket, N).
-
-
-latest_all(Period, Bucket, Step, N) ->
-    latest(Period, ns_node_disco:nodes_wanted(), Bucket, Step, N).
 
 
 %%
