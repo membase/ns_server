@@ -110,6 +110,14 @@ ADD_CUSTOM_TARGET (ns_test
   VERBATIM)
 ADD_DEPENDENCIES (ns_test ns_server)
 
+ADD_TEST(NAME ns_ui_test
+         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/priv/public/angular
+         COMMAND karma start karma.conf.js --single-run)
+
+# Add custom target allowing folks to easily run the tests via
+# make (and not via directly invoking ctest).
+ADD_CUSTOM_TARGET(ns_ui_test COMMAND ${CMAKE_CTEST_COMMAND} -VV)
+
 # Docs
 ADD_CUSTOM_TARGET (ns_docs COMMAND priv/erldocs ./docs/erldocs
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" VERBATIM)

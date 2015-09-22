@@ -25,7 +25,7 @@ all fail-unless-configured:
 endif
 
 
-.PHONY: test docs
+.PHONY: test ui_test docs
 
 clean clean_all:
 	cd build && $(MAKE) --no-print-directory clean ns_realclean
@@ -33,7 +33,7 @@ clean clean_all:
 install:
 	cd build && $(MAKE) --no-print-directory $@
 
-dataclean distclean test docs dialyzer dialyzer_obsessive:
+dataclean distclean test ui_test docs dialyzer dialyzer_obsessive:
 	cd build && $(MAKE) --no-print-directory ns_$@
 
 # assuming exuberant-ctags
