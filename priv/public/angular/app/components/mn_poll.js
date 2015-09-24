@@ -1,8 +1,8 @@
 angular.module('mnPoll', [
   'mnTasksDetails',
-  'mnHttp'
+  'mnPendingQueryKeeper'
 ]).factory('mnPoll',
-  function ($timeout, $q, mnTasksDetails, mnHttp) {
+  function ($timeout, $q, mnTasksDetails, mnPendingQueryKeeper) {
     var stateKeeper = {};
 
     function poll(request, extractInterval, scope) {
@@ -35,11 +35,11 @@ angular.module('mnPoll', [
               var interval = extractInterval(result);
               timeout = $timeout(cycle, interval);
             });
-            cancelOnScopeDestroy && mnHttp.attachPendingQueriesToScope(scope);
+            cancelOnScopeDestroy && mnPendingQueryKeeper.attachPendingQueriesToScope(scope);
           } else {
             timeout = $timeout(cycle, extractInterval);
             call();
-            cancelOnScopeDestroy && mnHttp.attachPendingQueriesToScope(scope);
+            cancelOnScopeDestroy && mnPendingQueryKeeper.attachPendingQueriesToScope(scope);
           }
         } else {
           mnTasksDetails.getFresh().then(function (result) {
@@ -49,9 +49,9 @@ angular.module('mnPoll', [
             var interval = (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
             timeout = $timeout(cycle, interval);
             call();
-            cancelOnScopeDestroy && mnHttp.attachPendingQueriesToScope(scope);
+            cancelOnScopeDestroy && mnPendingQueryKeeper.attachPendingQueriesToScope(scope);
           });
-          cancelOnScopeDestroy && mnHttp.attachPendingQueriesToScope(scope);
+          cancelOnScopeDestroy && mnPendingQueryKeeper.attachPendingQueriesToScope(scope);
         }
       }
 

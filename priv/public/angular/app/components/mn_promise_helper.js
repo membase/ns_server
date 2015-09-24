@@ -2,9 +2,9 @@ angular.module('mnPromiseHelper', [
   'mnAlertsService',
   'mnHelper',
   'mnPoll',
-  'mnHttp'
+  'mnPendingQueryKeeper'
 ]).factory('mnPromiseHelper',
-  function (mnAlertsService, mnHelper, mnPoll, mnHttp, $timeout) {
+  function (mnAlertsService, mnHelper, mnPoll, mnPendingQueryKeeper, $timeout) {
 
     mnPromiseHelper.handleModalAction = function ($scope, promise, $modalInstance) {
       return mnPromiseHelper($scope, promise, $modalInstance)
@@ -81,11 +81,11 @@ angular.module('mnPromiseHelper', [
           return this;
         },
         independentOfScope: function () {
-          mnHttp.markAsIndependentOfScope();
+          mnPendingQueryKeeper.markAsIndependentOfScope();
           return this;
         },
         cancelOnScopeDestroy: function ($scope) {
-          mnHttp.attachPendingQueriesToScope($scope || scope);
+          mnPendingQueryKeeper.attachPendingQueriesToScope($scope || scope);
           return this;
         },
         getPromise: function () {

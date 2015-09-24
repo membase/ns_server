@@ -2,61 +2,22 @@
   "use strict";
 
   angular
-    .module('mnHttp', [])
+    .module('mnHttp', ["mnPendingQueryKeeper"])
     .factory('mnHttp', mnHttpFactory);
 
-  function mnHttpFactory($http, $q, $timeout, $httpParamSerializerJQLike, $state) {
-
-    var pendingQueryKeeper = [];
-
-    mnHttp.attachPendingQueriesToScope = attachPendingQueriesToScope;
-    mnHttp.markAsIndependentOfScope = markAsIndependentOfScope;
+  function mnHttpFactory($http, $q, $timeout, $httpParamSerializerJQLike, mnPendingQueryKeeper) {
 
     createShortMethods('get', 'delete', 'head', 'jsonp');
     createShortMethodsWithData('post', 'put');
 
     return mnHttp;
 
-    function attachPendingQueriesToScope($scope) {
-      var queries = getQueriesOfRecentPromise();
-      _.forEach(queries, function (query) {
-        query.isAttachedToScope = true;
-        $scope.$on("$destroy", query.canceler);
-      });
-    }
-
-    function markAsIndependentOfScope() {
-      var queries = getQueriesOfRecentPromise();
-      _.forEach(queries, function (query) {
-        query.doesNotBelongToScope = true;
-      });
-    }
-
-    function getQueriesOfRecentPromise() {
-      return _.takeRightWhile(pendingQueryKeeper, function (query) {
-        return !query.isAttachedToScope && !query.doesNotBelongToScope;
-      });
-    }
-
-    function removeQueryInFly(findMe) {
-      _.remove(pendingQueryKeeper, function (pendingQuery) {
-        return pendingQuery === findMe;
-      });
-    }
-
-    function getQueryInFly(config) {
-      return _.find(pendingQueryKeeper, function (inFly) {
-        return inFly.config.method === config.method &&
-               inFly.config.url === config.url;
-      });
-    }
-
     function mnHttp(config) {
       var pendingQuery = {
         config: _.clone(config)
       };
       if (config.method.toLowerCase() === "post" && config.cancelPrevious) {
-        var queryInFly = getQueryInFly(config);
+        var queryInFly = mnPendingQueryKeeper.getQueryInFly(config);
         queryInFly && queryInFly.canceler();
       }
       var canceler = $q.defer();
@@ -70,7 +31,7 @@
         }
         isCleared = true;
         timeoutID && $timeout.cancel(timeoutID);
-        removeQueryInFly(pendingQuery);
+        mnPendingQueryKeeper.removeQueryInFly(pendingQuery);
       }
 
       function cancel(reason) {
@@ -105,7 +66,7 @@
 
       pendingQuery.canceler = cancel("cancelled");
       pendingQuery.httpPromise = http;
-      pendingQueryKeeper.push(pendingQuery);
+      mnPendingQueryKeeper.push(pendingQuery);
 
       return http;
     }
