@@ -78,7 +78,7 @@ angular.module('mnPoll', [
           });
           return this;
         },
-        keepIn: function (key) {
+        keepIn: function (key, keeper) {
           if (angular.isFunction(this.subscriber) && !angular.isString(key)) {
             throw new Error("argument \"key\" must have type string");
           }
@@ -87,7 +87,7 @@ angular.module('mnPoll', [
             if (angular.isFunction(this.subscriber)) {
               this.subscriber(stateKeeper[key]);
             } else {
-              scope[key] = stateKeeper[key];
+              (keeper || scope)[key] = stateKeeper[key];
             }
           }
 
