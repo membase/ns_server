@@ -16,7 +16,9 @@
       var pendingQuery = {
         config: _.clone(config)
       };
-      if (config.method.toLowerCase() === "post" && config.cancelPrevious) {
+      var mnHttpConfig = config.mnHttp || {};
+      delete config.mnHttp;
+      if (config.method.toLowerCase() === "post" && mnHttpConfig.cancelPrevious) {
         var queryInFly = mnPendingQueryKeeper.getQueryInFly(config);
         queryInFly && queryInFly.canceler();
       }
@@ -45,13 +47,11 @@
         case 'post':
         case 'put':
           config.headers = config.headers || {};
-          if (!config.isNotForm) {
+          if (!mnHttpConfig.isNotForm) {
             config.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
             if (!angular.isString(config.data)) {
               config.data = $httpParamSerializerJQLike(config.data);
             }
-          } else {
-            delete config.isNotForm;
           }
         break;
       }

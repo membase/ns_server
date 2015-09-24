@@ -60,7 +60,9 @@
     function createDocument(params, doc) {
       return mnHttp({
         method: "POST",
-        isNotForm: true,
+        mnHttp: {
+          isNotForm: true
+        },
         url: buildDocumentUrl(params),
         data: doc || {
           "click":"to edit",

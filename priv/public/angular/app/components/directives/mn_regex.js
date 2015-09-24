@@ -105,7 +105,9 @@ angular.module('mnRegex', [
     }
     return mnHttp({
       method: 'POST',
-      cancelPrevious: true,
+      mnHttp: {
+        cancelPrevious: true
+      },
       data: {
         expression: regex,
         keys: JSON.stringify([testKey])
