@@ -7,7 +7,13 @@
 </div>
 <div class="memory-quota row" ng-if="config.showKVMemoryQuota">
   <label for="kv_ram_quota">Data RAM Quota:</label>
-  <input type="number" class="focusme js_ram_quota" id="kv_ram_quota" name="memoryQuota" ng-model="config.memoryQuota" />
+  <input
+    type="number"
+    class="focusme js_ram_quota"
+    id="kv_ram_quota"
+    ng-disabled="config.services &&!config.services.model.kv"
+    name="memoryQuota"
+    ng-model="config.memoryQuota" />
   <span>MB (min {{::config.minMemorySize}} MB)</span>
   <a class="tooltip text_11"><span>What&#39;s this?</span>
     <span class="tooltip_msg" style="width:150px;"><span>
@@ -18,7 +24,13 @@
 </div>
 <div class="memory-quota row" ng-if="config.showIndexMemoryQuota">
   <label for="index_ram_quota">Index RAM Quota:</label>
-  <input type="number" class="js_ram_quota" id="index_ram_quota" name="indexMemoryQuota" ng-model="config.indexMemoryQuota" />
+  <input
+    type="number"
+    class="js_ram_quota"
+    id="index_ram_quota"
+    ng-disabled="config.services && !config.services.model.index"
+    name="indexMemoryQuota"
+    ng-model="config.indexMemoryQuota" />
   <span>MB (min 256 MB)</span>
   <a class="tooltip text_11"><span>What&#39;s this?</span>
     <span class="tooltip_msg" style="width:150px;"><span>
