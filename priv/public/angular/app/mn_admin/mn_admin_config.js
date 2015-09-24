@@ -11,6 +11,7 @@ angular.module('mnAdmin', [
   'mnIndexes',
   'mnServers',
   'mnGroups',
+  'mnDocuments',
   'mnSettingsNotifications',
   'mnSettingsCluster',
   'mnSettingsAutoFailover',
@@ -63,6 +64,31 @@ angular.module('mnAdmin', [
       url: '/overview',
       controller: 'mnOverviewController',
       templateUrl: 'mn_admin/mn_overview/mn_overview.html'
+    })
+    .state('app.admin.documents', {
+      abstract: true,
+      templateUrl: 'mn_admin/mn_documents/mn_documents.html',
+      params: {
+        pageLimit: {
+          value: 5
+        },
+        pageNumber: {
+          value: 0
+        },
+        documentsFilter: null
+      },
+      controller: "mnDocumentsController as mnDocumentsController",
+      url: "/documents?documentsBucket&{pageLimit:int}&{pageNumber:int}&documentsFilter"
+    })
+    .state('app.admin.documents.list', {
+      url: "",
+      controller: 'mnDocumentsListController as mnDocumentsListController',
+      templateUrl: 'mn_admin/mn_documents/list/mn_documents_list.html'
+    })
+    .state('app.admin.documents.editing', {
+      url: '/:documentId',
+      controller: 'mnDocumentsEditingController as mnDocumentsEditingController',
+      templateUrl: 'mn_admin/mn_documents/editing/mn_documents_editing.html'
     })
     .state('app.admin.analytics', {
       abstract: true,

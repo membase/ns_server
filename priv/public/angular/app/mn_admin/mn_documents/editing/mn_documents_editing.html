@@ -1,0 +1,48 @@
+
+  <div id="documents_details" class="documents_details">
+    <div class="warning_message documents_notice" ng-show="mnDocumentsEditingController.mnDocumentsEditingState.errors">
+      Error: {{mnDocumentsEditingController.mnDocumentsEditingState.errors.reason}} ({{mnDocumentsEditingController.mnDocumentsEditingState.errors.error }})
+    </div>
+    <div class="warning_message documents_notice" ng-show="mnDocumentsEditingController.areThereWarnings()" ng-messages="mnDocumentsEditingController.mnDocumentsEditingState.editorWarnings">
+      <div ng-message="documentLimitError">Warning: Editing of document with size more than 2.5kb is not allowed</div>
+      <div ng-message="shouldNotBeNull">Warning: JSON object cannot be null</div>
+      <div ng-message="shouldBeAnObject">Warning: JSON should represent an object</div>
+      <div ng-message="shouldNotBeAnArray">Warning: JSON should not be an array</div>
+      <div ng-message="documentIsBase64">Warning: Editing of binary document is not allowed</div>
+      <div ng-message="notFound">Error: not found (Document does not exist)</div>
+    </div>
+    <div class="shadow_box">
+      <div class="header_2 servers_header">
+        <div class="docs_title ellipsis">{{mnDocumentsEditingController.mnDocumentsEditingState.title}}</div>
+        <div class="editing_ctrls when-roadmin-hide-me">
+          <a
+            class="btn_1"
+            ng-class="{dynamic_disabled: mnDocumentsEditingController.isDeleteDisabled()}"
+            ng-click="!mnDocumentsEditingController.isDeleteDisabled() && mnDocumentsEditingController.deleteDocument()"
+            id="doc_delete"><span>Delete</span></a>
+          <a
+            class="btn_1"
+            ng-class="{dynamic_disabled: mnDocumentsEditingController.isSaveAsDisabled()}"
+            ng-click="!mnDocumentsEditingController.isSaveAsDisabled() && mnDocumentsEditingController.saveAsDialog()"
+            id="doc_saveas"><span>Save As...</span></a>
+          <a
+            class="btn_1 btn_save"
+            ng-class="{dynamic_disabled: mnDocumentsEditingController.isSaveDisabled()}"
+            id="doc_save"
+            ng-click="!mnDocumentsEditingController.isSaveDisabled() && mnDocumentsEditingController.save()"><span>Save</span></a>
+          <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+        </div>
+      </div>
+      <div mn-spinner="mnDocumentsEditingController.viewLoading || !mnDocumentsEditingController.mnDocumentsEditingState">
+        <div
+          id="json_doc"
+          spellcheck="false"
+          cols="20"
+          rows="11"
+          ng-model="mnDocumentsEditingController.mnDocumentsEditingState.doc"
+          ui-codemirror="mnDocumentsEditingController.editorOptions"
+          ng-class="{read_only: mnDocumentsEditingController.isEditorDisabled()}"
+          ></div>
+      </div>
+    </div>
+  </div>

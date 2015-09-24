@@ -1318,7 +1318,7 @@ input[type=number].size {width:4em;}
 .filter_container .filters_container{position:relative;background:url(/images/exp_filter.png) no-repeat 0 -58px;width:57px;height:50px;}
 .filter_container .filters_container.open{background-position:0 0;}
 .filter_container .filters_btn{width:100%;height:100%;}
-.filter_container .filters_popup {position:absolute;display:none;z-index:1;top:44px;left:9px;width:355px;padding: 24px 6px 18px 17px;background:#fff;-moz-box-shadow: 0 0 10px #777;-webkit-box-shadow: 0 0 10px #777;box-shadow:0 0 10px #777;-moz-border-radius:0 10px 10px 10px;-webkit-border-radius:0 10px 10px 10px;border-radius:0 10px 10px 10px}
+.filter_container .filters_popup {position:absolute;z-index:1;top:44px;left:9px;width:355px;padding: 24px 6px 18px 17px;background:#fff;-moz-box-shadow: 0 0 10px #777;-webkit-box-shadow: 0 0 10px #777;box-shadow:0 0 10px #777;-moz-border-radius:0 10px 10px 10px;-webkit-border-radius:0 10px 10px 10px;border-radius:0 10px 10px 10px}
 .filter_container .open .filters_popup{display:block;}
 .filter_container .selectBox-inline {height:auto !important;display:table !important;width:172px;text-decoration:none;}
 .filter_container .selectBox-inline a{color:#666;background:none;padding:0;}
@@ -1336,7 +1336,6 @@ input[type=number].size {width:4em;}
 #documents_list .filter_container {margin: -8px -5px -2px -16px;}
 #documents_list .filter_container h2 {font-size:16px;}
 #documents_list_container table {table-layout:fixed;}
-#documents_list_container .spinner {height:350px;line-height:350px;text-align:center}
 .results_block .filter_container {float:left;}
 .results_block .ic_prev_next {overflow:hidden;}
 .clr{display:block;clear:both;height:0;overflow:hidden;}
@@ -1349,7 +1348,7 @@ input[type=number].size {width:4em;}
 .documents_notice {font-size:12px;}
 .empty_docs {text-align:center;height:30px;}
 
-.items_per_list_wrap {float:right;margin:0 35px 0 10px;}
+.items_per_list_wrap {float:right;margin:0 0 0 10px;}
 
 .ellipsis {padding-right:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;-o-text-overflow:ellipsis;}
 
@@ -1514,6 +1513,10 @@ input[type=number].size {width:4em;}
 
 [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {
   display: none !important;
+}
+
+.read_only .CodeMirror .CodeMirror-scroll {
+  background: #f7f7f7;
 }
 
 .indexes_list_container .row td {height: 33px; vertical-align: middle;}

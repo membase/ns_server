@@ -58,7 +58,7 @@
       </td>
       <td colspan="4" class="last" ng-if="buckets.isMembase">
         <a class="list_button disable-if-stale" href="#sec=views&viewsBucket={%= h(this.name) %}"><span>Views</span></a>
-        <a class="list_button when-roadmin-hide-me" href="#sec=documents&viewsBucket={%= encodeURIComponent(this.name) %}&documentsPageNumber=0"><span>Documents</span></a>
+        <a class="list_button when-roadmin-hide-me" ui-sref="app.admin.documents.list({documentsBucket: bucket.name})"><span>Documents</span></a>
       </td>
     </tr>
     <tr ng-if="isDetailsOpened(bucket.name)" ui-view="details"></tr>

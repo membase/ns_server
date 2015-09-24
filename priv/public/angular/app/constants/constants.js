@@ -28,4 +28,6 @@ angular.module('app').constant('bucketsFormConfiguration', {
   week: 691200,
   month: 2678400,
   year: 31622400
-});
+})
+.constant("docsLimit", 1000)
+.constant("docBytesLimit", 2500)
