@@ -21,7 +21,8 @@ angular.module('mnBucketsForm', [
     restrict: 'A',
     scope: {
       bucketConf: '=',
-      autoCompactionSettings: '='
+      autoCompactionSettings: '=',
+      validation: '='
     },
     isolate: false,
     replace: true,
@@ -70,7 +71,7 @@ angular.module('mnBucketsForm', [
         .getPromise()
         .then(adaptValidationResult, adaptValidationResult)
         .then(function (result) {
-          $scope.validationResult = result;
+          $scope.validation.result = result;
         });
       }, true);
     }

@@ -4,7 +4,7 @@
     <div>
       <label>Bucket Name:</label>
       <input ng-model="bucketConf.name" ng-disabled="bucketConf.isWizard || !bucketConf.isNew">
-      <span class="error-container err-name" ng-show="validationResult.errors.name">{{validationResult.errors.name}}</span>
+      <span class="error-container err-name" ng-show="validation.result.errors.name">{{validation.result.errors.name}}</span>
     </div>
     <div>
       <label>Bucket Type:</label>
@@ -24,16 +24,16 @@
   <h2>Memory Size</h2>
   <div class="sub_section" style="margin-right: 0;">
     <div class="for-ram-quota">
-      <div class="usage-block size-gauge for-ram" mn-bar-usage base-info="validationResult.guageConfig" ></div>
+      <div class="usage-block size-gauge for-ram" mn-bar-usage base-info="validation.result.guageConfig" ></div>
       <div class="gauge-label">
         <label for="ram_quota_mb_init">Per Node RAM Quota:</label>
-        <input name="ramQuotaMB" class="focusme" mn-focus="focusMe" ng-class="{invalid: validationResult.errors.ramQuotaMB}" value="30" ng-model="bucketConf.ramQuotaMB">
+        <input name="ramQuotaMB" class="focusme" mn-focus="focusMe" ng-class="{invalid: validation.result.errors.ramQuotaMB}" value="30" ng-model="bucketConf.ramQuotaMB">
         <abbr>MB</abbr>
       </div>
     </div>
-    <div class="error-container err-ramQuotaMB" ng-show="validationResult.errors.ramQuotaMB">{{validationResult.errors.ramQuotaMB}}</div>
-    <p class="memcached-summary when-non-persistent" ng-show="!!validationResult.perNodeMegs">
-       Total bucket size = {{validationResult.totalBucketSize}} MB ({{validationResult.perNodeMegs}} MB x {{validationResult.nodeCount}})
+    <div class="error-container err-ramQuotaMB" ng-show="validation.result.errors.ramQuotaMB">{{validation.result.errors.ramQuotaMB}}</div>
+    <p class="memcached-summary when-non-persistent" ng-show="!!validation.result.perNodeMegs">
+       Total bucket size = {{validation.result.totalBucketSize}} MB ({{validation.result.perNodeMegs}} MB x {{validation.result.nodeCount}})
     </p>
     <div class="cache_metadata_block persistent-only" ng-show="bucketConf.bucketType === 'membase'">
       <label>Cache Metadata:</label>
@@ -100,7 +100,7 @@
         </select>
         <label>Number of replica (backup) copies</label>
       </div>
-      <div class="error-container err-replicaNumber" ng-show="validationResult.errors.replicaNumber">{{validationResult.errors.replicaNumber}}</div>
+      <div class="error-container err-replicaNumber" ng-show="validation.result.errors.replicaNumber">{{validation.result.errors.replicaNumber}}</div>
       <div>
         <input type="checkbox" name="replicaIndex" value="1" id="label_replica_index_flag-init" ng-model="bucketConf.replicaIndex" ng-false-value="0" ng-true-value="1" ng-disabled="!(replicaNumberEnabled && bucketConf.isNew)">
         <label for="label_replica_index_flag-init">View index replicas</label>
@@ -144,7 +144,7 @@
             <label><input type="checkbox" name="autoCompactionDefined" ng-model="bucketConf.autoCompactionDefined" value="true" /> Override the default autocompaction settings?</label>
           </li>
         </ul>
-        <div ng-show="bucketConf.autoCompactionDefined" mn-auto-compaction-form auto-compaction-settings="autoCompactionSettings" validation-errors="validationResult.errors"></div>
+        <div ng-show="bucketConf.autoCompactionDefined" mn-auto-compaction-form auto-compaction-settings="autoCompactionSettings" validation-errors="validation.result.errors"></div>
       </div>
     </div> <!-- .auto_compaction -->
   </div>

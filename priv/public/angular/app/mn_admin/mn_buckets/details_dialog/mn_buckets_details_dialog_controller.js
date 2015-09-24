@@ -3,6 +3,7 @@ angular.module('mnBuckets').controller('mnBucketsDetailsDialogController',
     bucketConf.autoCompactionDefined = !!bucketConf.autoCompactionSettings;
     $scope.bucketConf = bucketConf;
     $scope.autoCompactionSettings = autoCompactionSettings;
+    $scope.validationKeeper = {};
 
     $scope.onSubmit = function () {
       var data = mnBucketsDetailsDialogService.prepareBucketConfigForSaving($scope.bucketConf, $scope.autoCompactionSettings);
