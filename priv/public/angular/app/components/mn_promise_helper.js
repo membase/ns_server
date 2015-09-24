@@ -45,7 +45,7 @@ angular.module('mnPromiseHelper', [
         errorsNameOrCallback = nameOrCallback;
       }
       function closeModal() {
-        modalInstance.close();
+        modalInstance.close(scope);
       }
       function extractErrors(resp) {
         if (resp.status === 0) {
