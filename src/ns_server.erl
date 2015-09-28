@@ -33,12 +33,7 @@ log_pending() ->
             log_pending()
     end.
 
-start(_Type, _Args) ->
-    setup_env(),
-    setup_static_config(),
-    init_logging(),
-
-    {ok, DataDir} = application:get_env(ns_server, path_config_datadir),
+build_initargs() ->
     InitArgs = init:get_arguments(),
     InitArgs1 = [{pid, os:getpid()} | InitArgs],
     InitArgs2 = case file:get_cwd() of
@@ -47,16 +42,26 @@ start(_Type, _Args) ->
                     _ ->
                         InitArgs1
                 end,
-    InitArgs3 =
-        lists:foldl(
-          fun ({App, _, _}, Acc) ->
-                  Env = lists:append([[misc:inspect_term(K),
-                                       misc:inspect_term(V)] ||
-                                         {K, V} <- application:get_all_env(App)]),
-                  dict:append_list(App, Env, Acc)
-          end, dict:from_list(InitArgs2), application:loaded_applications()),
+    InitArgs3 = lists:foldl(
+                  fun ({App, _, _}, Acc) ->
+                          Env = lists:append([[misc:inspect_term(K),
+                                               misc:inspect_term(V)] ||
+                                                 {K, V} <- application:get_all_env(App)]),
+                          dict:append_list(App, Env, Acc)
+                  end, dict:from_list(InitArgs2), application:loaded_applications()),
+    dict:to_list(InitArgs3).
+
+save_initargs() ->
+    {ok, DataDir} = application:get_env(ns_server, path_config_datadir),
     ok = misc:write_file(filename:join(DataDir, "initargs"),
-                         term_to_binary(dict:to_list(InitArgs3))),
+                         term_to_binary(build_initargs())).
+
+start(_Type, _Args) ->
+    setup_env(),
+    setup_static_config(),
+    init_logging(),
+
+    ok = save_initargs(),
 
     %% To initialize logging static config must be setup thus this weird
     %% machinery is required to log messages from setup_static_config().
