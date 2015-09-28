@@ -35,7 +35,9 @@ log_pending() ->
 
 build_initargs() ->
     InitArgs = init:get_arguments(),
-    InitArgs1 = [{pid, os:getpid()} | InitArgs],
+    InitArgs1 = [{pid, os:getpid()},
+                 {code_path, get_code_path()}
+                 | InitArgs],
     InitArgs2 = case file:get_cwd() of
                     {ok, CWD} ->
                         [{cwd, CWD} | InitArgs1];
@@ -47,6 +49,9 @@ build_initargs() ->
                   {App, _, _} <- application:loaded_applications()],
 
     misc:update_proplist(InitArgs2, AppEnvs).
+
+get_code_path() ->
+    [filename:absname(P) || P <- code:get_path()].
 
 save_initargs() ->
     {ok, DataDir} = application:get_env(ns_server, path_config_datadir),
