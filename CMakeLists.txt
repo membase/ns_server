@@ -164,6 +164,7 @@ INSTALL (DIRECTORY priv/public DESTINATION "${INST_LIBDIR}/ns_server/priv")
 
 INSTALL (PROGRAMS cbbrowse_logs cbcollect_info cbreset_password DESTINATION bin)
 INSTALL (PROGRAMS scripts/cbdump-config scripts/dump-guts DESTINATION bin)
+INSTALL (PROGRAMS scripts/escript-wrapper DESTINATION bin)
 
 # Configure custom copies of scripts for installation
 SET (PREFIX "${CMAKE_INSTALL_PREFIX}")
