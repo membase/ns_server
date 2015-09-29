@@ -51,7 +51,12 @@
 
 -define(DEFAULT_BUCKETS_SHUTDOWN_WAIT_TIMEOUT, 20000).
 
--define(REBALANCER_READINESS_WAIT_TIMEOUT, 60000).
+-define(REBALANCER_READINESS_WAIT_TIMEOUT,
+        ns_config:get_global_timeout({ns_rebalancer, readiness}, 60000)).
+-define(REBALANCER_QUERY_STATES_TIMEOUT,
+        ns_config:get_global_timeout({ns_rebalancer, query_states}, 10000)).
+-define(REBALANCER_APPLY_CONFIG_TIMEOUT,
+        ns_config:get_global_timeout({ns_rebalancer, apply_config}, 300000)).
 
 %%
 %% API
@@ -460,8 +465,9 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                                     exit({not_all_nodes_are_ready_yet, Zombies})
                                             end
                                     end),
-                                  case ns_janitor:cleanup(BucketName, [{query_states_timeout, 10000},
-                                                                       {apply_config_timeout, 300000}]) of
+                                  case ns_janitor:cleanup(BucketName,
+                                                          [{query_states_timeout, ?REBALANCER_QUERY_STATES_TIMEOUT},
+                                                           {apply_config_timeout, ?REBALANCER_APPLY_CONFIG_TIMEOUT}]) of
                                       ok -> ok;
                                       {error, _, BadNodes} ->
                                           exit({pre_rebalance_janitor_run_failed, BadNodes})

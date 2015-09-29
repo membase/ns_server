@@ -24,9 +24,9 @@
 -define(NODE_EJECTED, 4).
 -define(NODE_JOIN_FAILED, 5).
 
--define(ADD_NODE_TIMEOUT, 160000).
--define(ENGAGE_TIMEOUT, 30000).
--define(COMPLETE_TIMEOUT, 120000).
+-define(ADD_NODE_TIMEOUT, ns_config:get_global_timeout({ns_cluster, add_node}, 160000)).
+-define(ENGAGE_TIMEOUT, ns_config:get_global_timeout({ns_cluster, engage}, 30000)).
+-define(COMPLETE_TIMEOUT, ns_config:get_global_timeout({ns_cluster, complete}, 120000)).
 
 -define(cluster_log(Code, Fmt, Args),
         ale:xlog(?USER_LOGGER, ns_log_sink:get_loglevel(?MODULE, Code),
