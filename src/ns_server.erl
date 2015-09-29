@@ -42,14 +42,11 @@ build_initargs() ->
                     _ ->
                         InitArgs1
                 end,
-    InitArgs3 = lists:foldl(
-                  fun ({App, _, _}, Acc) ->
-                          Env = lists:append([[misc:inspect_term(K),
-                                               misc:inspect_term(V)] ||
-                                                 {K, V} <- application:get_all_env(App)]),
-                          dict:append_list(App, Env, Acc)
-                  end, dict:from_list(InitArgs2), application:loaded_applications()),
-    dict:to_list(InitArgs3).
+
+    AppEnvs = [{App, application:get_all_env(App)} ||
+                  {App, _, _} <- application:loaded_applications()],
+
+    misc:update_proplist(InitArgs2, AppEnvs).
 
 save_initargs() ->
     {ok, DataDir} = application:get_env(ns_server, path_config_datadir),
