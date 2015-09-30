@@ -226,9 +226,7 @@ class TaskRunner(object):
 
     def zip(self, filename, node):
         """Write all our logs to a zipfile"""
-        exe = "gozip"
-        if sys.platform == 'win32':
-            exe += ".exe"
+        exe = exec_name("gozip")
 
         prefix = "cbcollect_info_%s_%s" % (node, self.start_time)
 
@@ -667,9 +665,7 @@ def get_server_guts(initargs_path):
         log("Couldn't find dump-guts script. Some information will be missing")
         return {}
 
-    escript = "escript"
-    if platform.system() == 'Windows':
-        escript = escript + ".exe"
+    escript = exec_name("escript")
     extra_args = os.getenv("EXTRA_DUMP_GUTS_ARGS")
     args = [escript, dump_guts_path, "--initargs-path", initargs_path]
     if extra_args:
@@ -979,6 +975,11 @@ def find_primary_addr(default = None):
             return default
     finally:
         s.close()
+
+def exec_name(name):
+    if sys.platform == 'win32':
+        name += ".exe"
+    return name
 
 if __name__ == '__main__':
     main()
