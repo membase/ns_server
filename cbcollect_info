@@ -479,6 +479,23 @@ def correct_split(string, splitchar):
         rv = []
     return rv
 
+def make_stats_archives_task(guts, initargs_path):
+    escript = exec_name("escript")
+    escript_wrapper = find_script("escript-wrapper")
+    dump_stats = find_script("dump-stats")
+    stats_dir = read_guts(guts, "stats_dir")
+
+    if dump_stats is None or escript_wrapper is None or not stats_dir:
+        return []
+
+    return AllOsTask("stats archives",
+                     [escript,
+                      escript_wrapper,
+                      "--initargs-path", initargs_path, "--",
+                      dump_stats, stats_dir],
+                     no_header=True,
+                     log_file="stats_archives.json")
+
 def make_product_task(guts, initargs_path, options):
     root = os.path.abspath(os.path.join(initargs_path, "..", "..", "..", ".."))
     dbdir = read_guts(guts, "db_dir")
@@ -641,7 +658,9 @@ def make_product_task(guts, initargs_path, options):
                     "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
                     "-v"],
                    log_file="stats.log",
-                   timeout=60)]
+                   timeout=60)],
+
+        make_stats_archives_task(guts, initargs_path)
         ]
 
     _tasks = flatten([lookup_tasks, query_tasks, _tasks])

@@ -574,6 +574,9 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
                         []
                 end,
 
+    {_, DataDir} = lists:keyfind(path_config_datadir, 1, StaticTerms),
+    StatsDir = filename:join(DataDir, "stats"),
+
     Pairs = QueryPort ++
         [{ns_config, iolist_to_binary(io_lib:format("~p", [sanitize_config(NSConfig)]))},
          {static_config, iolist_to_binary(io_lib:format("~p", [StaticTerms]))},
@@ -594,7 +597,8 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
          {memcached_pass, MCDPass},
          {memcached_logs_path, MCDLogs},
          {memcached_breakpad_minidump_dir, PerNodeMDD},
-         {nodes, string:join(Nodes, ",")}],
+         {nodes, string:join(Nodes, ",")},
+         {stats_dir, StatsDir}],
 
     output([E || {K, V} <- Pairs,
                  E <- [K, V]]),
