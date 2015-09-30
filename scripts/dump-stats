@@ -1,0 +1,84 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+
+%% A script dumping all the stats archives in the passed directory in
+%% json format to stdout.
+
+-mode(compile).
+
+fatal(Msg) ->
+    fatal(Msg, []).
+fatal(Fmt, Args) ->
+    io:format(standard_error, "dump-stats: ~s~n",
+              [io_lib:format(Fmt, Args)]),
+    erlang:halt(1).
+
+make_error(Error) ->
+    {[{status, failed},
+      {error, couch_util:to_binary(Error)}]}.
+
+decode_samples(<<>>) ->
+    {ok, []};
+decode_samples(Binary) ->
+    try
+        {ok, binary_to_term(zlib:uncompress(Binary))}
+    catch
+        T:E ->
+            Stack = erlang:get_stacktrace(),
+            {error, {T, E, Stack}}
+    end.
+
+process_samples(Samples) ->
+    [{[{ts, Ts},
+       {sample, {Sample}}]} || {Ts, {stat_entry, _, Sample}} <- Samples].
+
+read_stats_file(Path) ->
+    case file:read_file(Path) of
+        {ok, Binary} ->
+            case decode_samples(Binary) of
+                {ok, Samples} ->
+                    {[{status, ok},
+                      {samples, process_samples(Samples)}]};
+                {error, Error} ->
+                    make_error(Error)
+            end;
+        {error, Error} ->
+            make_error(Error)
+    end.
+
+read_all_stats(StatsDir) ->
+    RegExp = "^stats_archiver-(.+)\.(minute|hour|day|week|month|year)$",
+    Stats0 =
+        filelib:fold_files(
+          StatsDir, RegExp, false,
+          fun (Path, Acc) ->
+                  FileName = filename:basename(Path),
+                  {match, [Bucket, Period]} =
+                      re:run(FileName, RegExp,
+                             [anchored, {capture, all_but_first, list}]),
+
+                  misc:dict_update(
+                    Bucket,
+                    fun (BucketAcc) ->
+                            [{Period, read_stats_file(Path)} | BucketAcc]
+                    end, [], Acc)
+          end, dict:new()),
+
+    Stats1 =
+        dict:fold(fun (Bucket, Periods, Acc) ->
+                          [{Bucket, {Periods}} | Acc]
+                  end, [], Stats0),
+    {Stats1}.
+
+main([StatsDir]) ->
+    Stats = read_all_stats(StatsDir),
+    try
+        ejson:encode(Stats)
+    of Json ->
+            ok = file:write(standard_io, Json)
+    catch T:E ->
+            Stack = erlang:get_stacktrace(),
+            fatal("failed to encode stats: ~p~n~p", [{T, E}, Stack])
+    end;
+main(_) ->
+    fatal("usage: dump-stats <stats_dir>").
