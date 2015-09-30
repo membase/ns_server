@@ -648,18 +648,18 @@ def make_product_task(guts, initargs_path, options):
 
     return _tasks
 
-def find_dump_guts():
+def find_script(name):
     dirs = [basedir(), os.path.join(basedir(), "scripts")]
     for d in dirs:
-        path = os.path.join(d, "dump-guts")
+        path = os.path.join(d, name)
         if os.path.exists(path):
-            log("Found dump-guts: %s" % path)
+            log("Found %s: %s" % (name, path))
             return path
 
     return None
 
 def get_server_guts(initargs_path):
-    dump_guts_path = find_dump_guts()
+    dump_guts_path = find_script("dump-guts")
 
     if dump_guts_path is None:
         log("Couldn't find dump-guts script. Some information will be missing")
