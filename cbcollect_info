@@ -873,13 +873,13 @@ def main():
     erldir = os.path.join(mydir, 'erlang', 'bin')
     if os.name == 'posix':
         path = [mydir,
+                '/opt/couchbase/bin',
+                erldir,
+                os.environ['PATH'],
                 '/bin',
                 '/sbin',
                 '/usr/bin',
-                '/usr/sbin',
-                '/opt/couchbase/bin',
-                erldir,
-                os.environ['PATH']]
+                '/usr/sbin']
         os.environ['PATH'] = ':'.join(path)
 
         library_path = [os.path.join(options.root, 'lib')]
