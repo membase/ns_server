@@ -1104,7 +1104,7 @@ do_wait_seqno_persisted(Bucket, VBucket, SeqNo) ->
         ok ->
             ok;
         {memcached_error, etmpfail, _} ->
-            ?rebalance_debug("Got etmpfail waiting for seq no persistence. Will try again"),
+            ?rebalance_debug("Got etmpfail while waiting for sequence number ~p to persist for vBucket:~p. Will retry.", [SeqNo, VBucket]),
             do_wait_seqno_persisted(Bucket, VBucket, SeqNo)
     end.
 
