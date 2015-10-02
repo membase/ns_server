@@ -373,6 +373,19 @@ dcp_stream_stats_to_kvlist(Prefix, Record) ->
      ?DEFINE_TO_KVLIST(backoff)].
 -undef(DEFINE_TO_KVLIST).
 
+-define(DEFINE_FORMULA(N), N = A#dcp_stream_stats.N + B#dcp_stream_stats.N).
+
+add_dcp_stats(A, B) ->
+    #dcp_stream_stats{?DEFINE_FORMULA(count),
+                      ?DEFINE_FORMULA(items_remaining),
+                      ?DEFINE_FORMULA(items_sent),
+                      ?DEFINE_FORMULA(producer_count),
+                      ?DEFINE_FORMULA(total_backlog_size),
+                      ?DEFINE_FORMULA(total_bytes),
+                      ?DEFINE_FORMULA(backoff)}.
+
+-undef(DEFINE_FORMULA).
+
 -define(DEFINE_FORMULA(N), N =
             E#dcp_stream_stats.N -
             (A#dcp_stream_stats.N + B#dcp_stream_stats.N +
