@@ -186,58 +186,12 @@ get_initargs(#config{initargs_path = Path}) ->
     end.
 
 get_app_init_arg(InitArgs, App, Flag) ->
-    RV = do_get_app_init_arg(InitArgs, App, atom_to_list(Flag)),
-    try make_term(RV) of
-        V -> {ok, V}
-    catch T:E ->
-            {make_term_error, Flag, RV, T, E, erlang:get_stacktrace()}
-    end.
-
-do_get_app_init_arg([], _App, _Flag) ->
-    undefined;
-do_get_app_init_arg([{App, Args} | Rest], App, Flag) ->
-    case do_get_app_init_arg(Rest, App, Flag) of
-        undefined ->
-            get_app_init_arg_scan_args(Args, Flag);
-        Value ->
-            Value
-    end;
-do_get_app_init_arg([_ | Rest], App, Flag) ->
-    do_get_app_init_arg(Rest, App, Flag).
-
-get_app_init_arg_scan_args([], _Flag) ->
-    undefined;
-get_app_init_arg_scan_args([Flag, Value | Rest], Flag) ->
-    case get_app_init_arg_scan_args(Rest, Flag) of
-        undefined ->
-            Value;
-        Value ->
-            Value
-    end;
-get_app_init_arg_scan_args([_, _ | Rest], Flag) ->
-    get_app_init_arg_scan_args(Rest, Flag);
-get_app_init_arg_scan_args(_, _Flag) ->
-    undefined.
-
-%% (alk) NOTE: the following is stolen from application_controller in
-%% erlang src
-%%
-% Fix some day: eliminate the duplicated code here
-make_term(Str) ->
-    case erl_scan:string(Str) of
-	{ok, Tokens, _} ->
-	    case erl_parse:parse_term(Tokens ++ [{dot, 1}]) of
-		{ok, Term} ->
-		    Term;
-		{error, {_,_M,_Reason}} ->
-		    %% error_logger:format("application_controller: ~s: ~s~n",
-		    %%     		[M:format_error(Reason), Str]),
-		    throw({error, {bad_environment_value, Str}})
-	    end;
-	{error, {_,_M,_Reason}, _} ->
-	    %% error_logger:format("application_controller: ~s: ~s~n",
-	    %%     		[M:format_error(Reason), Str]),
-	    throw({error, {bad_environment_value, Str}})
+    AppEnv = proplists:get_value(App, InitArgs, []),
+    case lists:keyfind(Flag, 1, AppEnv) of
+        false ->
+            {error, not_found};
+        {_, V} ->
+            {ok, V}
     end.
 
 massage_config_with_not_undefined(Config, Field) ->
@@ -620,6 +574,9 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
                         []
                 end,
 
+    {_, DataDir} = lists:keyfind(path_config_datadir, 1, StaticTerms),
+    StatsDir = filename:join(DataDir, "stats"),
+
     Pairs = QueryPort ++
         [{ns_config, iolist_to_binary(io_lib:format("~p", [sanitize_config(NSConfig)]))},
          {static_config, iolist_to_binary(io_lib:format("~p", [StaticTerms]))},
@@ -640,7 +597,8 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
          {memcached_pass, MCDPass},
          {memcached_logs_path, MCDLogs},
          {memcached_breakpad_minidump_dir, PerNodeMDD},
-         {nodes, string:join(Nodes, ",")}],
+         {nodes, string:join(Nodes, ",")},
+         {stats_dir, StatsDir}],
 
     output([E || {K, V} <- Pairs,
                  E <- [K, V]]),

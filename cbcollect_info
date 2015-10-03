@@ -226,9 +226,7 @@ class TaskRunner(object):
 
     def zip(self, filename, node):
         """Write all our logs to a zipfile"""
-        exe = "gozip"
-        if sys.platform == 'win32':
-            exe += ".exe"
+        exe = exec_name("gozip")
 
         prefix = "cbcollect_info_%s_%s" % (node, self.start_time)
 
@@ -294,7 +292,8 @@ class AllOsTask(UnixTask, WindowsTask):
     platforms = UnixTask.platforms + WindowsTask.platforms
 
 def make_curl_task(name, user, password, url,
-                   timeout=60, log_file="couchbase.log", base_task=AllOsTask):
+                   timeout=60, log_file="couchbase.log", base_task=AllOsTask,
+                   **kwargs):
     def make_cmd(pwd):
         return ["curl", "-sS", "--proxy", "",
                 "-u", "%s:%s" % (user, pwd), url]
@@ -302,7 +301,7 @@ def make_curl_task(name, user, password, url,
     return base_task(name, make_cmd(password),
                      timeout=timeout,
                      log_file=log_file,
-                     command_to_print=make_cmd("*****"))
+                     command_to_print=make_cmd("*****"), **kwargs)
 
 def make_query_task(statement, user, password, port):
     url = "http://127.0.0.1:%s/query/service?statement=%s" % (port, urllib.quote(statement))
@@ -481,6 +480,23 @@ def correct_split(string, splitchar):
         rv = []
     return rv
 
+def make_stats_archives_task(guts, initargs_path):
+    escript = exec_name("escript")
+    escript_wrapper = find_script("escript-wrapper")
+    dump_stats = find_script("dump-stats")
+    stats_dir = read_guts(guts, "stats_dir")
+
+    if dump_stats is None or escript_wrapper is None or not stats_dir:
+        return []
+
+    return AllOsTask("stats archives",
+                     [escript,
+                      escript_wrapper,
+                      "--initargs-path", initargs_path, "--",
+                      dump_stats, stats_dir],
+                     no_header=True,
+                     log_file="stats_archives.json")
+
 def make_product_task(guts, initargs_path, options):
     root = os.path.abspath(os.path.join(initargs_path, "..", "..", "..", ".."))
     dbdir = read_guts(guts, "db_dir")
@@ -575,7 +591,8 @@ def make_product_task(guts, initargs_path, options):
                        user="@",
                        password=read_guts(guts, "memcached_pass"),
                        url='http://127.0.0.1:%s/diag/masterEvents?o=1' % read_guts(guts, "rest_port"),
-                       log_file="master_events.log"),
+                       log_file="master_events.log",
+                       no_header=True),
 
         make_curl_task(name="ale configuration",
                        user="@",
@@ -643,33 +660,33 @@ def make_product_task(guts, initargs_path, options):
                     "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
                     "-v"],
                    log_file="stats.log",
-                   timeout=60)]
+                   timeout=60)],
+
+        make_stats_archives_task(guts, initargs_path)
         ]
 
     _tasks = flatten([lookup_tasks, query_tasks, _tasks])
 
     return _tasks
 
-def find_dump_guts():
+def find_script(name):
     dirs = [basedir(), os.path.join(basedir(), "scripts")]
     for d in dirs:
-        path = os.path.join(d, "dump-guts")
+        path = os.path.join(d, name)
         if os.path.exists(path):
-            log("Found dump-guts: %s" % path)
+            log("Found %s: %s" % (name, path))
             return path
 
     return None
 
 def get_server_guts(initargs_path):
-    dump_guts_path = find_dump_guts()
+    dump_guts_path = find_script("dump-guts")
 
     if dump_guts_path is None:
         log("Couldn't find dump-guts script. Some information will be missing")
         return {}
 
-    escript = "escript"
-    if platform.system() == 'Windows':
-        escript = escript + ".exe"
+    escript = exec_name("escript")
     extra_args = os.getenv("EXTRA_DUMP_GUTS_ARGS")
     args = [escript, dump_guts_path, "--initargs-path", initargs_path]
     if extra_args:
@@ -873,13 +890,13 @@ def main():
     erldir = os.path.join(mydir, 'erlang', 'bin')
     if os.name == 'posix':
         path = [mydir,
+                '/opt/couchbase/bin',
+                erldir,
+                os.environ['PATH'],
                 '/bin',
                 '/sbin',
                 '/usr/bin',
-                '/usr/sbin',
-                '/opt/couchbase/bin',
-                erldir,
-                os.environ['PATH']]
+                '/usr/sbin']
         os.environ['PATH'] = ':'.join(path)
 
         library_path = [os.path.join(options.root, 'lib')]
@@ -979,6 +996,11 @@ def find_primary_addr(default = None):
             return default
     finally:
         s.close()
+
+def exec_name(name):
+    if sys.platform == 'win32':
+        name += ".exe"
+    return name
 
 if __name__ == '__main__':
     main()
