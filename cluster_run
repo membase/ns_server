@@ -80,11 +80,7 @@ def os_specific(args, params):
         (soft, hard) = resource.getrlimit(resource.RLIMIT_NOFILE)
         if soft < 2048:
             resource.setrlimit(resource.RLIMIT_NOFILE, (2048, 2048))
-        ## Also, we build stuff in kind of dumb ways, so fix the path.
-        dypath = ("%(pwd)s/../install/lib/memcached:"
-                  "%(pwd)s/../install/lib") % {'pwd': os.getcwd()}
-        params['env'] = {"DYLD_LIBRARY_PATH": dypath,
-                         "ERL_MAX_PORTS": "2048"}
+        params['env'] = {"ERL_MAX_PORTS": "2048"}
         params['env'].update(os.environ)
 
 ebin_path = None
