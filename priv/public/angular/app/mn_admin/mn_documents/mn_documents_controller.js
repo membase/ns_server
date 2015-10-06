@@ -17,15 +17,20 @@
     ])
     .controller("mnDocumentsController", mnDocumentsController);
 
-  function mnDocumentsController($scope, mnDocumentsListService, mnPromiseHelper, $state) {
+  function mnDocumentsController($scope, mnDocumentsListService, mnPoll, $state) {
     var vm = this;
 
     activate();
 
     function activate() {
-      mnPromiseHelper(vm, mnDocumentsListService.populateBucketsSelectBox($state.params))
-        .cancelOnScopeDestroy($scope)
-        .applyToScope("mnDocumentsState");
+      mnPoll
+        .start($scope, function () {
+          return mnDocumentsListService.populateBucketsSelectBox($state.params);
+        })
+        .subscribe("mnDocumentsState", vm)
+        .keepIn(null, vm)
+        .cancelOnScopeDestroy()
+        .run();
     }
 
     $scope.$watch('mnDocumentsController.mnDocumentsState.bucketsNames.selected', function (selectedBucket) {
