@@ -25,10 +25,12 @@
           <div class="filter_container">
             <h2>Documents Filter</h2>
             <div
-              mn-filter="documentsFilter"
+              mn-filter="mnDocumentsListController.filterInitParams"
               items="mnDocumentsListController.filterItems"
               disabled="mnDocumentsListController.isEmptyState()"
-              pass-params="mnDocumentsListController.passParams(params)"></div>
+              on-close="mnDocumentsListController.onFilterClose(params)"
+              on-reset="mnDocumentsListController.onFilterReset()"
+              ></div>
           </div>
         </div>
         <div class="editing_ctrls">

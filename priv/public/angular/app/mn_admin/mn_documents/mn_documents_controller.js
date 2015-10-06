@@ -7,6 +7,7 @@
       "mnDocumentsEditingService",
       "mnPromiseHelper",
       "mnFilter",
+      "mnFilters",
       "ui.router",
       "ui.bootstrap",
       "ui.codemirror",

@@ -5,7 +5,7 @@
     .module("mnDocuments")
     .controller("mnDocumentsListController", mnDocumentsListController);
 
-  function mnDocumentsListController($scope, mnDocumentsListService, $state, $modal, mnPoll) {
+  function mnDocumentsListController($scope, mnDocumentsListService, $state, $modal, mnPoll, removeEmptyValueFilter) {
     var vm = this;
 
     vm.nextPage = nextPage;
@@ -14,9 +14,17 @@
     vm.isNextDisabled = isNextDisabled;
     vm.isEmptyState = isEmptyState;
     vm.lookupSubmit = lookupSubmit;
-    vm.passParams = passParams;
     vm.showCreateDialog = showCreateDialog;
     vm.deleteDocument = deleteDocument;
+    vm.onFilterClose = onFilterClose;
+    vm.onFilterReset = onFilterReset;
+    vm.filterParams = {};
+
+    try {
+      vm.filterInitParams = JSON.parse($state.params.documentsFilter);
+    } catch (e) {
+      vm.filterInitParams = {};
+    }
 
     vm.filterItems = {
       inclusiveEnd: true,
@@ -25,6 +33,10 @@
     };
 
     activate();
+
+    function onFilterReset() {
+      vm.filterInitParams = {};
+    }
 
     function isEmptyState() {
       return !vm.mnDocumentsListState || vm.mnDocumentsListState.isEmptyState;
@@ -46,13 +58,6 @@
     }
     function isNextDisabled() {
       return isEmptyState() || vm.mnDocumentsListState.isNextDisabled;
-    }
-    function passParams(params) {
-      $state.go('app.admin.documents.list', {
-        documentsFilter: _.isEmpty(params) ? null : JSON.stringify(params)
-      }, {
-        notify: false
-      }).then(activate);
     }
     function lookupSubmit(event) {
       event.preventDefault();
@@ -85,6 +90,14 @@
           }
         }
       });
+    }
+    function onFilterClose(params) {
+      params = removeEmptyValueFilter(params);
+      params && $state.go('app.admin.documents.list', {
+        documentsFilter: _.isEmpty(params) ? null : JSON.stringify(params)
+      }, {
+        notify: false
+      }).then(activate);
     }
 
     $scope.$watch('mnDocumentsListController.mnDocumentsListState.pageLimits.selected', function (pageLimit) {

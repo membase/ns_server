@@ -2,17 +2,19 @@
   "use strict";
 
   angular
-    .module("mnFilter", ["ui.router"])
+    .module("mnFilter", [])
     .directive("mnFilter", mnFilterDirective);
 
-  function mnFilterDirective($window, $state) {
+  function mnFilterDirective($window) {
     var mnFilter = {
       restrict: "A",
       scope: {
         items: "=",
-        mnFilter: "@",
+        mnFilter: "=",
         disabled: "=",
-        passParams: "&"
+        onClose: "&",
+        onOpen: "&",
+        onReset: "&"
       },
       templateUrl: "components/directives/mn_filter/mn_filter.html",
       controller: mnFilterController,
@@ -27,7 +29,6 @@
 
       vm.togglePopup = togglePopup;
       vm.stopEvent = stopEvent;
-      vm.reset = reset;
 
       activate();
 
@@ -35,31 +36,20 @@
         $event.stopPropagation();
       }
 
-      function reset() {
-        vm.params = {};
-      }
-
-      function passParams() {
-        vm.passParams({params: _.transform(_.clone(vm.params), function (result, n, key) {
-          if (n === "") {
-            return;
-          }
-          result[key] = n;
-        })});
+      function onClose() {
+        vm.onClose({params: vm.mnFilter});
       }
 
       function togglePopup() {
         vm.showPopup = !vm.showPopup;
+        if (vm.showPopup) {
+          vm.onOpen && vm.onOpen();
+        } else {
+          vm.onClose && onClose();
+        }
       }
 
       function activate() {
-        try {
-          vm.params = JSON.parse($state.params[vm.mnFilter]) || {};
-        } catch (e) {
-          vm.params = {};
-        }
-        $scope.$watch("mnFilterController.params", passParams, true);
-
         angular.element($window).on("click", function () {
           if (vm.showPopup) {
             togglePopup();
