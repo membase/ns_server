@@ -1,40 +1,55 @@
-angular.module('mnViews').controller('mnViewsCreateDialogController',
-  function ($scope, $modal, $q, mnViewsService, mnHelper, mnPromiseHelper, $modalInstance, currentDdocName, isSpatial) {
-    $scope.ddoc = {};
-    $scope.isSpatial = isSpatial;
-    $scope.ddoc.name = currentDdocName && mnViewsService.cutOffDesignPrefix(currentDdocName);
-    $scope.doesDdocExist = !!currentDdocName;
+(function () {
+  "use strict";
+
+  angular
+    .module("mnViews")
+    .controller("mnViewsCreateDialogController", mnViewsCreateDialogController);
+
+  function mnViewsCreateDialogController($scope, $modal, $state, $q, mnViewsListService, mnHelper, mnPromiseHelper, $modalInstance, currentDdoc, viewType) {
+    var vm = this;
+    var isViewsEditingSection = $state.is('app.admin.views.editing.result');
+    vm.ddoc = {};
+    vm.isSpatial = viewType === "spatial";
+    vm.ddoc.name = currentDdoc && mnViewsListService.cutOffDesignPrefix(currentDdoc.meta.id);
+    vm.doesDdocExist = !!currentDdoc;
+    if (isViewsEditingSection) {
+      vm.ddoc.view = $state.params.viewId;
+    }
+    vm.isCopy = isViewsEditingSection;
+    vm.onSubmit = onSubmit;
 
     function getDdocUrl() {
-      return mnViewsService.getDdocUrl($scope.mnViewsState.bucketsNames.selected, '_design/dev_' + encodeURIComponent($scope.ddoc.name));
+      return mnViewsListService.getDdocUrl($state.params.viewsBucket, '_design/dev_' + encodeURIComponent(vm.ddoc.name));
     }
 
     function createDdoc(presentDdoc) {
       var ddoc = presentDdoc || {json: {}};
-      var key = isSpatial ? 'spatial' : 'views';
-      var views = ddoc.json[key] || (ddoc.json[key] = {});
-      if (isSpatial) {
-        views[$scope.ddoc.view] = 'function (doc) {\n  if (doc.geometry) {\n    emit(doc.geometry, null);\n  }\n}'
+      var views = ddoc.json[viewType] || (ddoc.json[viewType] = {});
+      if (vm.isCopy) {
+        views[vm.ddoc.view] = currentDdoc.json[viewType][$state.params.viewId];
       } else {
-        views[$scope.ddoc.view] = {
-          map: 'function (doc, meta) {\n  emit(meta.id, null);\n}'
-        };
+        if (vm.isSpatial) {
+          views[vm.ddoc.view] = 'function (doc) {\n  if (doc.geometry) {\n    emit(doc.geometry, null);\n  }\n}'
+        } else {
+          views[vm.ddoc.view] = {
+            map: 'function (doc, meta) {\n  emit(meta.id, null);\n}'
+          };
+        }
       }
 
-      return mnPromiseHelper($scope, mnViewsService.createDdoc(getDdocUrl(), ddoc.json))
-        .cancelOnScopeDestroy()
+      return mnPromiseHelper(vm, mnViewsListService.createDdoc(getDdocUrl(), ddoc.json))
+        .cancelOnScopeDestroy($scope)
         .getPromise();
     }
 
-    $scope.onSubmit = function (ddocForm) {
-      if (ddocForm.$invalid || $scope.viewLoading) {
+    function onSubmit(ddocForm) {
+      if (ddocForm.$invalid || vm.viewLoading) {
         return;
       }
-      $scope.error = false;
-      var promise = mnViewsService.getDdoc(getDdocUrl()).then(function (presentDdoc) {
-        var key = isSpatial ? 'spatial' : 'views';
-        var views = presentDdoc.json[key] || (presentDdoc.json[key] = {});
-        if (views[$scope.ddoc.view]) {
+      vm.error = false;
+      var promise = mnViewsListService.getDdoc(getDdocUrl()).then(function (presentDdoc) {
+        var views = presentDdoc.json[viewType] || (presentDdoc.json[viewType] = {});
+        if (views[vm.ddoc.view] && !vm.isCopy) {
           return $q.reject({
             data: {
               reason: 'View with given name already exists'
@@ -55,13 +70,13 @@ angular.module('mnViews').controller('mnViewsCreateDialogController',
         return createDdoc();
       });
 
-      mnPromiseHelper($scope, promise, $modalInstance)
+      mnPromiseHelper(vm, promise, $modalInstance)
         .showSpinner()
-        .cancelOnScopeDestroy()
-        .catchErrors(function (data) {
-          $scope.error = data && data.reason;
-        })
+        .cancelOnScopeDestroy($scope)
+        .catchErrors()
         .reloadState()
         .closeOnSuccess();
     };
-  });
+
+  }
+})();

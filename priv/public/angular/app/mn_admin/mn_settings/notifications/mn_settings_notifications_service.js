@@ -4,12 +4,12 @@ angular.module('mnSettingsNotificationsService', [
   'mnBucketsService',
   'mnPools',
   'mnAnalyticsService',
-  'mnViewsService',
+  'mnViewsListService',
   'mnIndexesService',
   'mnSettingsAuditService',
   'mnFilters'
 ]).factory('mnSettingsNotificationsService',
-  function (mnHttp, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsService, mnIndexesService, mnSettingsAuditService, mnMBtoBytesFilter) {
+  function (mnHttp, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnIndexesService, mnSettingsAuditService, mnMBtoBytesFilter) {
     var mnSettingsNotificationsService = {};
 
     function sumWithoutNull(array, average) {
@@ -193,7 +193,7 @@ angular.module('mnSettingsNotificationsService', [
           };
           perBucketQueries.push($q.all([
             mnAnalyticsService.doGetStats(statsParams),
-            mnViewsService.getDdocs(bucket.name)
+            mnViewsListService.getDdocs(bucket.name)
           ]));
         });
 

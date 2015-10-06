@@ -26,10 +26,25 @@ angular.module('mnFilters', [])
     };
   })
 
+  .filter('removeEmptyValue', function () {
+    return function (object) {
+      return _.transform(_.clone(object), function (result, n, key) {
+        if (n === "") {
+          return;
+        }
+        result[key] = n;
+      });
+    };
+  })
+
   .filter('mnCloneOnlyData', function () {
     return function (data) {
       return JSON.parse(JSON.stringify(data));
     };
+  })
+
+  .filter('$httpParamSerializerJQLike', function ($httpParamSerializerJQLike) {
+    return $httpParamSerializerJQLike;
   })
 
   .filter('mnParseHttpDate', function () {

@@ -61,22 +61,24 @@
         </div>
         <div ng-show="mnFilterController.items.reduce">
           <label for="filter_reduce">reduce</label>
-          <div style="display: inline-block">
-            <select id="filter_reduce" name="reduce" ng-model="mnFilterController.mnFilter.reduce" class="selectBox" multiple="multiple">
-              <option value="true">true</option>
-              <option value="false">false</option>
-              <option value="none" selected="selected">none</option>
-            </select>
+          <div style="display: inline-block" class="radio_set">
+            <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.reduce" id="reduce_true" value="true">
+            <label for="reduce_true">true</label>
+            <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.reduce" id="reduce_false" value="false">
+            <label for="reduce_false">false</label>
+            <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.reduce" id="reduce_none" value="">
+            <label for="reduce_none">none</label>
           </div>
         </div>
         <div ng-show="mnFilterController.items.stale">
           <label for="filter_stale">stale</label>
-            <div style="display: inline-block">
-              <select id="filter_stale" name="stale" ng-model="mnFilterController.mnFilter.stale" class="selectBox" multiple="multiple">
-                <option value="false" selected="selected">false</option>
-                <option value="update_after">update_after</option>
-                <option value="ok">ok</option>
-              </select>
+            <div style="display: inline-block" class="radio_set">
+              <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.stale" id="stale_false" value="false">
+              <label for="stale_false">false</label>
+              <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.stale" id="stale_update_after" value="update_after">
+              <label for="stale_update_after">update_after</label>
+              <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.stale" id="stale_ok" value="ok">
+              <label for="stale_ok">ok</label>
             </div>
           </div>
         <div ng-show="mnFilterController.items.connectionTimeout">

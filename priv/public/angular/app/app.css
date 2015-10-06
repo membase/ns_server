@@ -1341,6 +1341,11 @@ input[type=number].size {width:4em;}
 .filter_container .key input[type="text"] {width:166px;color:#000;font-size:14px;background:url(/images/bg_key_inp_text.png) repeat-x;border:1px solid #b3b3b3}
 .filter_container .btn_wrap {overflow:hidden;margin:5px 14px 0 0;}
 
+.filter_container .radio_set label {width: auto;display: inline-block; border: 1px solid #afafaf; padding: 0.2em 0.4em; line-height: 1.5; white-space: nowrap; font-size: 1.1em;}
+.filter_container .radio_set input {display: none;}
+.filter_container .radio_set input:checked + label {background-color: none; color: #0095D6;}
+.filter_container .radio_set label:hover{background: #dadada url(/images/ui-theme/ui-bg_glass_75_dadada_1x400.png) 50% 50% repeat-x;}
+
 
 #documents_list .filter_container {margin: -8px -5px -2px -16px;}
 #documents_list .filter_container h2 {font-size:16px;}
@@ -1365,8 +1370,10 @@ input[type=number].size {width:4em;}
 .sample_documents {position:relative;overflow:hidden;border-bottom:1px solid #ccc  !important;}
 .sample_documents .btn_1 {position:absolute;right:10px;top:10px;}
 
-.sample_documents pre {padding:10px;overflow:auto;padding-bottom:2000px !important;margin-bottom:-2000px;}
+.sample_documents pre {padding:10px;overflow:auto;}
 .sample_documents .json {width:60%;float:left;}
+.sample_documents .CodeMirror {background: transparent;}
+.CodeMirror {z-index: 1}
 
 #view_code_errors, #spatial_code_errors {overflow:hidden;font-size:12px;font-weight:normal;text-transform:none;padding:14px 0 0 12px;}
 
@@ -1444,6 +1451,19 @@ input[type=number].size {width:4em;}
   white-space: -pre-wrap;
   white-space: -o-pre-wrap;
   word-wrap: break-word;}
+.break_all {
+  -ms-word-break: break-all;
+  word-break: break-all;
+  word-break: break-word;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  hyphens: auto;
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -pre-wrap;
+  white-space: -o-pre-wrap;
+  word-wrap: break-word;
+}
 .test_keys .test_key_focus {position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2; font-family:  Arial; margin: 0;}
 .test_keys .dynamic_hightlight span {background: LightSkyBlue;}
 .xdcr_advaced_filtering_container .filter_expression {width: 495px; margin-left: 15px;}

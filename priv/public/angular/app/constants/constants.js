@@ -31,3 +31,4 @@ angular.module('app').constant('bucketsFormConfiguration', {
 })
 .constant("docsLimit", 1000)
 .constant("docBytesLimit", 2500)
+.constant("viewsPerPageLimit", 6)

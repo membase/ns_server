@@ -1,9 +1,19 @@
-angular.module('mnViews').controller('mnViewsDeleteDdocDialogController',
-  function ($scope, $modalInstance, mnViewsService, currentDdocName, mnPromiseHelper) {
-    $scope.currentDdocName = currentDdocName;
-    $scope.doDelete = function () {
-      var url = mnViewsService.getDdocUrl($scope.mnViewsState.bucketsNames.selected, currentDdocName);
-      var promise = mnViewsService.deleteDdoc(url);
-      mnPromiseHelper.handleModalAction($scope, promise, $modalInstance);
-    };
-  });
+(function () {
+  "use strict";
+
+  angular
+    .module("mnViews")
+    .controller("mnViewsDeleteDdocDialogController", mnViewsDeleteDdocDialogController);
+
+  function mnViewsDeleteDdocDialogController($scope, $state, $modalInstance, mnViewsListService, currentDdocName, mnPromiseHelper) {
+    var vm = this;
+    vm.currentDdocName = currentDdocName;
+    vm.doDelete = doDelete;
+
+    function doDelete() {
+      var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, currentDdocName);
+      var promise = mnViewsListService.deleteDdoc(url);
+      mnPromiseHelper.handleModalAction($scope, promise, $modalInstance, vm);
+    }
+  }
+})();

@@ -1,18 +1,28 @@
-angular.module('mnViews').controller('mnViewsDeleteViewDialogController',
-  function ($scope, $modalInstance, mnPromiseHelper, mnViewsService, currentDdocName, currentViewName, isSpatial) {
-    $scope.currentDdocName = currentDdocName;
-    $scope.currentViewName = currentViewName;
-    $scope.maybeSpatial = isSpatial ? 'Spatial' : '';
-    $scope.doDelete = function () {
-      var url = mnViewsService.getDdocUrl($scope.mnViewsState.bucketsNames.selected, currentDdocName);
+(function () {
+  "use strict";
 
-      var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
+  angular
+    .module("mnViews")
+    .controller("mnViewsDeleteViewDialogController", mnViewsDeleteViewDialogController);
+
+  function mnViewsDeleteViewDialogController($scope, $state, $modalInstance, mnPromiseHelper, mnViewsListService, currentDdocName, currentViewName, isSpatial) {
+    var vm = this;
+    vm.currentDdocName = currentDdocName;
+    vm.currentViewName = currentViewName;
+    vm.maybeSpatial = isSpatial ? 'Spatial' : '';
+    vm.doDelete = doDelete;
+
+    function doDelete() {
+      var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, currentDdocName);
+
+      var promise = mnViewsListService.getDdoc(url).then(function (presentDdoc) {
         delete presentDdoc.json[isSpatial ? 'spatial' : 'views'][currentViewName];
-        return mnPromiseHelper($scope, mnViewsService.createDdoc(url, presentDdoc.json))
-          .cancelOnScopeDestroy()
+        return mnPromiseHelper(vm, mnViewsListService.createDdoc(url, presentDdoc.json))
+          .cancelOnScopeDestroy($scope)
           .getPromise();
       });
 
-      mnPromiseHelper.handleModalAction($scope, promise, $modalInstance);
+      mnPromiseHelper.handleModalAction($scope, promise, $modalInstance, vm);
     };
-  });
+  }
+})();

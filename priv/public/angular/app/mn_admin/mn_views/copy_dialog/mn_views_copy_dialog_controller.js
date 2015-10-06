@@ -1,31 +1,42 @@
-angular.module('mnViews').controller('mnViewsCopyDialogController',
-  function ($scope, $modal, $state, mnViewsService, mnPromiseHelper, $modalInstance, currentDdoc) {
-    $scope.ddoc = {};
-    $scope.ddoc.name = mnViewsService.cutOffDesignPrefix(currentDdoc.meta.id);
+(function () {
+  "use strict";
+
+  angular
+    .module("mnViews")
+    .controller("mnViewsCopyDialogController", mnViewsCopyDialogController);
+
+  function mnViewsCopyDialogController($scope, $modal, $state, mnViewsListService, mnPromiseHelper, $modalInstance, currentDdoc) {
+    var vm = this;
+
+    vm.ddoc = {};
+    vm.ddoc.name = mnViewsListService.cutOffDesignPrefix(currentDdoc.meta.id);
+    vm.onSubmit = onSubmit;
+
+    function onSubmit() {
+      var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, "_design/dev_" + encodeURIComponent(vm.ddoc.name));
+      var copy = prepareToCopy(url, currentDdoc);
+      var promise = mnViewsListService.getDdoc(url).then(function (presentDdoc) {
+        return $modal.open({
+          templateUrl: 'mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
+        }).result.then(copy);
+      }, copy);
+
+      mnPromiseHelper(vm, promise)
+        .showSpinner()
+        .cancelOnScopeDestroy($scope);
+    }
     function prepareToCopy(url, ddoc) {
       return function () {
-        return mnPromiseHelper($scope, mnViewsService.createDdoc(url, ddoc.json), $modalInstance)
+        return mnPromiseHelper(vm, mnViewsListService.createDdoc(url, ddoc.json), $modalInstance)
           .closeOnSuccess()
-          .cancelOnScopeDestroy()
+          .cancelOnScopeDestroy($scope)
           .onSuccess(function () {
-            $state.go('app.admin.views', {
+            $state.go('app.admin.views.list', {
               type: 'development'
             });
           })
           .getPromise();
       };
     }
-    $scope.onSubmit = function () {
-      var url = mnViewsService.getDdocUrl($scope.mnViewsState.bucketsNames.selected, "_design/dev_" + $scope.ddoc.name);
-      var copy = prepareToCopy(url, currentDdoc);
-      var promise = mnViewsService.getDdoc(url).then(function (presentDdoc) {
-        return $modal.open({
-          templateUrl: 'mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
-        }).result.then(copy);
-      }, copy);
-
-      mnPromiseHelper($scope, promise)
-        .showSpinner()
-        .cancelOnScopeDestroy();
-    };
-  });
+  }
+})();

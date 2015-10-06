@@ -126,20 +126,39 @@ angular.module('mnAdmin', [
       templateUrl: 'mn_admin/mn_analytics/mn_analytics_list_graph.html'
     })
     .state('app.admin.views', {
-      url: '/views/:type?viewsBucket',
+      abstract: true,
+      url: '/views?viewsBucket',
       params: {
         type: {
           value: 'development'
         }
       },
       templateUrl: 'mn_admin/mn_views/mn_views.html',
-      controller: 'mnViewsController',
-      resolve: {
-        poolDefault: function (mnPoolDefault) {
-          return mnPoolDefault.get();
+      controller: 'mnViewsController as mnViewsController'
+    })
+    .state('app.admin.views.list', {
+      url: "?type",
+      controller: 'mnViewsListController as mnViewsListController',
+      templateUrl: 'mn_admin/mn_views/list/mn_views_list.html'
+    })
+    .state('app.admin.views.editing', {
+      abstract: true,
+      url: '/:documentId/:viewId?{isSpatial:bool}&sampleDocumentId',
+      controller: 'mnViewsEditingController as mnViewsEditingController',
+      templateUrl: 'mn_admin/mn_views/editing/mn_views_editing.html'
+    })
+    .state('app.admin.views.editing.result', {
+      url: '?subset&{pageNumber:int}&viewsParams',
+      params: {
+        full_set: {
+          value: null
         },
-        setDefaultBucketName: setDefaultBucketName("viewsBucket", "app.admin.views")
-      }
+        pageNumber: {
+          value: 0
+        }
+      },
+      controller: 'mnViewsEditingResultController as mnViewsEditingResultController',
+      templateUrl: 'mn_admin/mn_views/editing/mn_views_editing_result.html'
     })
     .state('app.admin.buckets', {
       url: '/buckets?openedBucket',

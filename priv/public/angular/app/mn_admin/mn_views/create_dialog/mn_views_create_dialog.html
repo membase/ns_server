@@ -1,8 +1,9 @@
 <div class="view_document_dialog" id="copy_view_dialog" title="Copy View" style="width:30em">
-  <h1 ng-show="!isSpatial">Create Development View</h1>
-  <h1 ng-show="isSpatial">Create Spatial Development View</h1>
-  <form ng-submit="onSubmit(ddocForm)" name="ddocForm" mn-spinner="viewLoading">
-    <span class="warning pat_10" ng-show="error">{{error}}</span>
+  <h1 ng-show="!mnViewsCreateDialogController.isSpatial && !mnViewsCreateDialogController.isCopy">Create Development View</h1>
+  <h1 ng-show="mnViewsCreateDialogController.isSpatial && !mnViewsCreateDialogController.isCopy">Create Spatial Development View</h1>
+  <h1 ng-show="mnViewsCreateDialogController.isCopy">Copy View</h1>
+  <form ng-submit="mnViewsCreateDialogController.onSubmit(ddocForm)" name="ddocForm" mn-spinner="mnViewsCreateDialogController.viewLoading">
+    <span class="warning pat_10" ng-show="mnViewsCreateDialogController.error.reason">{{mnViewsCreateDialogController.error.reason}}</span>
     <span class="warning pat_10" ng-show="
       (ddocForm.designdoc_name.$dirty && ddocForm.designdoc_name.$error.required) ||
       (ddocForm.view_name.$dirty && ddocForm.view_name.$error.required)">
@@ -13,10 +14,10 @@
        <div style="width:20em; margin: 8px 0; padding: 0 5px; border: 1px solid #CCD3D7;background-color:white;font-size:13px;line-height:normal;">
        <table style="margin:0;padding:0;border:0;width:260px;">
          <tr><td><label for="copy_view_ddoc_name" style="line-height:inherit;">_design/dev_</label></td>
-         <td style="width:2000px;"><input id="copy_view_ddoc_name" name="designdoc_name" style="width:100%;border:0;padding:0;font-family:inherit;color:inherit;" ng-model="ddoc.name" ng-disabled="doesDdocExist" required/></td></tr>
+         <td style="width:2000px;"><input id="copy_view_ddoc_name" name="designdoc_name" style="width:100%;border:0;padding:0;font-family:inherit;color:inherit;" ng-model="mnViewsCreateDialogController.ddoc.name" ng-disabled="mnViewsCreateDialogController.doesDdocExist && !mnViewsCreateDialogController.isCopy" required/></td></tr>
        </table></div>
        <label class="bolder">View Name:</label>
-       <input name="view_name" class="view_name" ng-model="ddoc.view" required />
+       <input name="view_name" class="view_name" ng-model="mnViewsCreateDialogController.ddoc.view" required />
     </div>
     <div class="save_cancel">
       <button class="save_button float_right" type="submit">Save</button>
