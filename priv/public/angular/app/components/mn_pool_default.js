@@ -2,7 +2,7 @@ angular.module('mnPoolDefault', [
   'mnHttp',
   'mnPools'
 ]).factory('mnPoolDefault',
-  function (mnHttp, $cacheFactory, $q, mnPools) {
+  function (mnHttp, $cacheFactory, $q, mnPools, $window) {
     var mnPoolDefault = {};
 
     mnPoolDefault.get = function () {
@@ -20,9 +20,11 @@ angular.module('mnPoolDefault', [
         var pools = resp[1]
         poolDefault.rebalancing = poolDefault.rebalanceStatus !== 'none';
         poolDefault.isGroupsAvailable = !!(pools.isEnterprise && poolDefault.serverGroupsUri);
-        poolDefault.isKvNode =  _.indexOf(_.detect(poolDefault.nodes, function (n) {
+        poolDefault.thisNode = _.detect(poolDefault.nodes, function (n) {
           return n.thisNode;
-        }).services, "kv") > -1;
+        });
+        poolDefault.isKvNode =  _.indexOf(poolDefault.thisNode.services, "kv") > -1;
+        poolDefault.capiBase = $window.location.protocol === "https:" ? poolDefault.thisNode.couchApiBaseHTTPS : poolDefault.thisNode.couchApiBase;
         return poolDefault;
       });
     };
