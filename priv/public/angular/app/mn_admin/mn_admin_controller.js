@@ -1,43 +1,50 @@
-angular.module('mnAdmin').controller('mnAdminController',
-  function ($scope, $rootScope, $q, mnHelper, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService) {
-    $scope.launchpadId = pools.launchID;
-    $scope.alerts = mnAlertsService.alerts;
-    $scope.closeAlert = mnAlertsService.closeAlert;
+(function () {
+  angular.module('mnAdmin').controller('mnAdminController', mnAdminController);
 
-    mnPromiseHelper($scope, mnSettingsNotificationsService.maybeCheckUpdates())
-      .applyToScope("updates")
-      .onSuccess(function (updates) {
-        if (updates.sendStats) {
-          mnPromiseHelper($scope, mnSettingsNotificationsService.buildPhoneHomeThingy())
-            .applyToScope("launchpadSource")
-            .independentOfScope();
-        }
-      })
-      .independentOfScope();
+  function mnAdminController($scope, $rootScope, $q, mnHelper, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService) {
+    var vm = this;
+    vm.launchpadId = pools.launchID;
+    vm.alerts = mnAlertsService.alerts;
+    vm.closeAlert = mnAlertsService.closeAlert;
+    vm.logout = mnAuthService.logout;
+    vm.resetAutoFailOverCount = resetAutoFailOverCount;
 
-    $scope.logout = function () {
-      mnAuthService.logout();
-    };
-    $scope.resetAutoFailOverCount = function () {
-      mnPromiseHelper($scope, mnSettingsAutoFailoverService.resetAutoFailOverCount())
+    activate();
+
+    function resetAutoFailOverCount() {
+      mnPromiseHelper(vm, mnSettingsAutoFailoverService.resetAutoFailOverCount())
         .showSpinner('resetQuotaLoading')
         .catchGlobalErrors('Unable to reset the auto-failover quota!')
         .reloadState()
-        .cancelOnScopeDestroy();
-    };
+        .cancelOnScopeDestroy($scope);
+    }
 
-    mnPoll
-      .start($scope, function () {
-        return $q.all([
-          mnTasksDetails.get(),
-          mnPoolDefault.getFresh()
-        ])
-      })
-      .subscribe(function (resp) {
-        $scope.tasks = resp[0];
-        $rootScope.tabName = resp[1] && resp[1].clusterName;
-      })
-      .cancelOnScopeDestroy()
-      .run();
+    function activate() {
+      mnPromiseHelper(vm, mnSettingsNotificationsService.maybeCheckUpdates())
+        .applyToScope("updates")
+        .onSuccess(function (updates) {
+          if (updates.sendStats) {
+            mnPromiseHelper(vm, mnSettingsNotificationsService.buildPhoneHomeThingy())
+              .applyToScope("launchpadSource")
+              .independentOfScope();
+          }
+        })
+        .independentOfScope();
 
-  });
+      mnPoll
+        .start($scope, function () {
+          return $q.all([
+            mnTasksDetails.get(),
+            mnPoolDefault.getFresh()
+          ]);
+        })
+        .subscribe(function (resp) {
+          vm.tasks = resp[0];
+          $rootScope.tabName = resp[1] && resp[1].clusterName;
+        })
+        .cancelOnScopeDestroy()
+        .run();
+    }
+
+  }
+})();

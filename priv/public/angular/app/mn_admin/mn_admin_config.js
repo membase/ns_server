@@ -58,7 +58,7 @@ angular.module('mnAdmin', [
     .state('app.admin', {
       abstract: true,
       templateUrl: 'mn_admin/mn_admin.html',
-      controller: 'mnAdminController'
+      controller: 'mnAdminController as mnAdminController'
     })
     .state('app.admin.overview', {
       url: '/overview',

@@ -20,7 +20,7 @@
       </p>
       <div id="auto_failover_count_container" style="position: relative; left: auto; top: auto;" class="warning_message" ng-show="state.count > 0">
         A server was automatically failed over
-        <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me" ng-click="resetAutoFailOverCount()" mn-spinner="resetQuotaLoading">
+        <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me" ng-click="mnAdminController.resetAutoFailOverCount()" mn-spinner="mnAdminController.resetQuotaLoading">
           <span>Reset Quota</span>
         </a>
       </div>

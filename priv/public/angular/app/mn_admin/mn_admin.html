@@ -1,5 +1,5 @@
 <div id="container">
-  <div mn-launchpad launchpad-source="launchpadSource" launchpad-id="launchpadId"></div>
+  <div mn-launchpad launchpad-source="mnAdminController.launchpadSource" launchpad-id="mnAdminController.launchpadId"></div>
   <div class="page-header">
     <div class="cnt_holder main_holder">
       <div class="topper_nav">
@@ -20,7 +20,7 @@
         <a href="javascript:showAbout();">
           About
         </a>
-        <i class="sign-out-link"><b>&bull;</b> <a ng-click="logout()">Sign Out</a></i>
+        <i class="sign-out-link"><b>&bull;</b> <a ng-click="mnAdminController.logout()">Sign Out</a></i>
       </div>
       <div class="log_wrap">
         <a href="/index.html"></a>
@@ -58,7 +58,7 @@
         </li>
         <li class="line" ng-class="{currentNav: ('app.admin.settings' | includedByState)}" id="nav_settings_container">
           <a href="#?section=settings" ui-sref="app.admin.settings.cluster" class="switch_settings">Settings
-            <span ng-show="updates.sendStats && !!updates.newVersion" class="badge notify"><span>!</span></span>
+            <span ng-show="mnAdminController.updates.sendStats && !!mnAdminController.updates.newVersion" class="badge notify"><span>!</span></span>
           </a>
           </a>
         </li>
@@ -66,7 +66,7 @@
     </div>
   </div>
   <div class="global_alerts_container">
-    <div alert ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)" dismiss-on-timeout="{{alert.timeout}}">{{alert.msg}}</div>
+    <div alert ng-repeat="alert in mnAdminController.alerts" type="{{alert.type}}" close="mnAdminController.closeAlert($index)" dismiss-on-timeout="{{alert.timeout}}">{{alert.msg}}</div>
   </div>
   <div id="mainContainer" class="main_holder">
     <div id="mainPanel" class="mainPanel" ui-view autoscroll="false"></div>
