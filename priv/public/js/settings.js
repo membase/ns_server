@@ -1717,12 +1717,16 @@ var AutoCompactionSection = {
 
     var data = AutoCompactionSection.serializeCompactionForm(self.container.find("form"));
 
-    var newPurgeInterval = self.container.find("form [name=purgeInterval]").val();
-    if (newPurgeInterval != oldPurgeInterval) {
-      self.displayMetadataPurgeIntervalWarning(continueSaving);
-    } else {
-      continueSaving();
-    }
+    self.errorsCell.getValue(function (errors) {
+      if (!errors || !errors.errors || _.isEmpty(errors.errors)) {
+        var newPurgeInterval = self.container.find("form [name=purgeInterval]").val();
+        if (newPurgeInterval != oldPurgeInterval) {
+          self.displayMetadataPurgeIntervalWarning(continueSaving);
+        } else {
+          continueSaving();
+        }
+      }
+    });
 
     return;
 

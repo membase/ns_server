@@ -298,7 +298,7 @@
                 </td>
                 <td><div class="ellipsis" title="{%= s.group %}">{%= h(s.group || "") %}</div></td>
 
-                <td style="text-align: left;">{%= V.formatServices(s.services) %}</td>
+                <td style="text-align: left;">{%= V.formatServices(s.services).join('<br>') %}</td>
 
                 <td class="ram">
                   <!-- {% if ((s.memoryTotal > 0) && isFinite(s.memoryFree)) { %} -->
@@ -2523,6 +2523,7 @@
 
       <h2>Flush</h2>
       <div class="sub_section">
+        <input type="hidden" name="flushEnabled" value="0">
         <input type="checkbox" class="for-enable-flush" id="for-enable-flush-new" name="flushEnabled" value="1">
         <label for="for-enable-flush-new">Enable</label>
         <a class="tooltip text_11" style="margin-left:30px;"><span>What's this?</span>

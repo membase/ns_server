@@ -58,9 +58,12 @@ basic_info() ->
 
 system_arch() ->
     case erlang:system_info(system_architecture) of
+        % Per bug 607, erlang R13B03 doesn't know it's on a 64-bit windows,
+        % and always reports "win32".
         "win32" ->
-            % Per bug 607, erlang R13B03 doesn't know it's on a 64-bit windows,
-            % and always reports "win32".  So, just report "windows".
-            "windows";
+            case erlang:system_info({wordsize, external}) of
+                4 -> "win32";
+                8 -> "win64"
+            end;
         X -> X
     end.

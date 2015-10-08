@@ -321,12 +321,7 @@ var BucketDetailsDialog = mkClass({
     this.setupDefaultNameReaction(dialog);
 
     var form = dialog.find('form');
-    var validateURL = this.initValues.validateURL;
-    if (validateURL === undefined) {
-      validateURL = this.initValues.uri;
-      validateURL += (this.initValues.uri.match(/\?/)) ? '&': '?';
-      validateURL += 'just_validate=1';
-    }
+    var validateURL = this.getValidateUrl();
 
     var errorsCell = this.errorsCell = new Cell();
     var errorsCellSubscription = errorsCell.subscribeValue($m(this, 'onValidationResult'));
@@ -343,6 +338,15 @@ var BucketDetailsDialog = mkClass({
     );
 
     this.cleanups.push($m(this.formValidator, 'abort'));
+  },
+  getValidateUrl: function () {
+    var validateURL = this.initValues.validateURL;
+    if (validateURL === undefined) {
+      validateURL = this.initValues.uri;
+      validateURL += (this.initValues.uri.match(/\?/)) ? '&': '?';
+      validateURL += 'just_validate=1';
+    }
+    return validateURL;
   },
   observePotentialChangesWithCleanup: function (body) {
     var observer = this.dialog.observePotentialChanges(body);
@@ -511,7 +515,21 @@ var BucketDetailsDialog = mkClass({
 
     self.cleanups.push(self.bindWithCleanup(form, 'submit', function (e) {
       e.preventDefault();
-      self.startSubmit();
+      var url = self.getValidateUrl();
+      jQuery.ajax({
+        type: "POST",
+        dataType: 'json',
+        url: url.indexOf('ignore_warnings') > -1 ? url : url + "&ignore_warnings=1",
+        data: self.getFormValues(form),
+        success: function (resp) {
+          if (!resp || !resp.errors || _.isEmpty(resp.errors)) {
+            self.startSubmit();
+          }
+        },
+        error: function () {
+
+        }
+      });
     }));
   },
   startDialog: function () {

@@ -71,8 +71,16 @@ var ServersSection = {
     if (active.length) {
       var sortBy = this.serversTableSortByCell.value;
       var sortDescending = this.serversTableSortDescendingCell.value;
-      active.sort(mkComparatorByProp(sortBy, naturalSort));
-      pending.sort(mkComparatorByProp(sortBy, naturalSort));
+      if (sortBy == "services") {
+        function sortByServices(a, b) {
+          return naturalSort(ViewHelpers.formatServices(a), ViewHelpers.formatServices(b));
+        }
+        active.sort(mkComparatorByProp(sortBy, sortByServices));
+        pending.sort(mkComparatorByProp(sortBy, sortByServices));
+      } else {
+        active.sort(mkComparatorByProp(sortBy, naturalSort));
+        pending.sort(mkComparatorByProp(sortBy, naturalSort));
+      }
       if (sortDescending === "true") {
         active.reverse();
         pending.reverse();

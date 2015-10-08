@@ -395,7 +395,9 @@ var StatsModel = {};
   });
 
   self.statsNodesCell = Cell.compute(function (v) {
-    return v.need(DAL.cells.serversCell).active;
+    return _.filter(v.need(DAL.cells.serversCell).active, function (node) {
+      return node.clusterMembership !== 'inactiveFailed' && node.status !== 'unhealthy';
+    });
   });
 
   self.hotKeysCell = Cell.computeEager(function (v) {
