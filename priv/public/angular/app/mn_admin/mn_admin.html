@@ -26,9 +26,25 @@
         <a href="/index.html"></a>
       </div>
       <div class="tab_name ellipsis" id="js_tab_name" title="{{tabName}}">{{tabName}}</div>
-      <div id="global_progress" class="closed disable_toggle">
-        <i class="toggle">i</i>
-        <ul id="global_progress_container"></ul>
+      <div
+        id="global_progress"
+        ng-class="{
+          'disable_toggle': !mnAdminController.areThereMoreThenTwoRunningTasks(),
+          'closed': mnAdminController.isProgressBarClosed
+        }"
+        class="closed"
+        ng-show="mnAdminController.tasks.running.length">
+          <i
+            class="toggle"
+            ng-click="mnAdminController.areThereMoreThenTwoRunningTasks() && mnAdminController.toggleProgressBar()">i</i>
+          <ul id="global_progress_container">
+            <li ng-repeat="task in mnAdminController.tasks.running track by task.progress" class="clearfix">
+              <div class="usage_smallest" ng-show="task.type !== 'loadingSampleBucket'">
+                <div class="used" style="width: {{task.progress}}%"></div>
+              </div>
+              <span class="message">{{task | formatProgressMessage}}</span>
+            </li>
+          </ul>
       </div>
     </div>
   </div>

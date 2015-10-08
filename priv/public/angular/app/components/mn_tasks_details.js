@@ -31,6 +31,9 @@ angular.module('mnTasksDetails', [
         rv.isLoadingSamples = !!_.detect(tasks, detectLoadingSamples);
         rv.stopRecoveryURI = rv.tasksRecovery && rv.tasksRecovery.stopURI;
         rv.isSubtypeGraceful = rv.tasksRebalance.subtype === 'gracefulFailover';
+        rv.running = _.filter(tasks, function (task) {
+          return task.status === "running";
+        });
 
         return rv;
       });

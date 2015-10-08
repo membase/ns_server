@@ -37,6 +37,23 @@ angular.module('mnFilters', [])
     };
   })
 
+  .filter('formatProgressMessage', function () {
+    return function (task) {
+      switch (task.type) {
+        case "indexer": return "Indexing " + task.bucket + "/" + task.designDocument;
+        case "view_compaction": return "Compacting index " + task.bucket + "/" + task.designDocument;
+        case "bucket_compaction": return "Compacting bucket " + task.bucket;
+        case "loadingSampleBucket": return "Loading sample: " + task.bucket;
+        case "clusterLogsCollection":
+          var serversCount = (_.keys(task.perNode) || []).length;
+          return "Collecting logs from " + serversCount + " " + (serversCount === 1 ? 'node' : 'nodes');
+        case "rebalance":
+          var serversCount = _.keys((task.perNode || {})).length;
+          return (task.subtype == 'gracefulFailover') ? "Failing over 1 node" : "Rebalancing " + serversCount + " nodes";
+      }
+    };
+  })
+
   .filter('mnCloneOnlyData', function () {
     return function (data) {
       return JSON.parse(JSON.stringify(data));

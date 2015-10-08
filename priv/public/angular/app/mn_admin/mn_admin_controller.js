@@ -8,8 +8,19 @@
     vm.closeAlert = mnAlertsService.closeAlert;
     vm.logout = mnAuthService.logout;
     vm.resetAutoFailOverCount = resetAutoFailOverCount;
+    vm.isProgressBarClosed = true;
+    vm.areThereMoreThenTwoRunningTasks = areThereMoreThenTwoRunningTasks;
+    vm.toggleProgressBar = toggleProgressBar;
 
     activate();
+
+    function areThereMoreThenTwoRunningTasks() {
+      return vm.tasks && vm.tasks.running.length > 1;
+    }
+
+    function toggleProgressBar() {
+      vm.isProgressBarClosed = !vm.isProgressBarClosed;
+    }
 
     function resetAutoFailOverCount() {
       mnPromiseHelper(vm, mnSettingsAutoFailoverService.resetAutoFailOverCount())
