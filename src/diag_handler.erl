@@ -252,22 +252,23 @@ grab_process_infos_loop([P | RestPids], Acc) ->
     NewAcc = [{P, (catch grab_process_info(P))} | Acc],
     grab_process_infos_loop(RestPids, NewAcc).
 
+prepare_ets_table(_Table, failed) ->
+    [];
+prepare_ets_table(xdcr_stats, Content) ->
+    [{xdcr_stats, xdc_rep_utils:sanitize_state(Content)}];
+prepare_ets_table(Table, Content) ->
+    [{Table, ns_config_log:sanitize(Content)}].
+
 grab_all_ets_tables() ->
     lists:flatmap(
       fun (T) ->
-              Contents =
+              Content =
                   try
                       ets:tab2list(T)
                   catch
                       _:_ -> failed
                   end,
-
-              case Contents of
-                  failed ->
-                      [];
-                  _ ->
-                      [{T, ns_config_log:sanitize(Contents)}]
-              end
+              prepare_ets_table(T, Content)
       end, ets:all()).
 
 diag_format_timestamp(EpochMilliseconds) ->
