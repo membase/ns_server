@@ -96,7 +96,7 @@ do_check_opaques(#rep{id = Id,
 do_check_group(TargetRef, StatsSamples) ->
     [#xdcr_vb_stats_sample{httpdb = H,
                            bucket_uuid = UUID} | _] = StatsSamples,
-    ?xdcr_debug("Going to do check for (siblings of) ~s", [xdc_rep_utils:sanitize_url(H#httpdb.url)]),
+    ?xdcr_debug("Going to do check for (siblings of) ~s", [misc:sanitize_url(H#httpdb.url)]),
     ToSignal =
         case xdc_vbucket_rep_ckpt:mass_validate_vbopaque(H, TargetRef, UUID, StatsSamples) of
             BadSamples when is_list(BadSamples) ->
