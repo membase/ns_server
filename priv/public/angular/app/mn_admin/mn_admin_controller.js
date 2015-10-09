@@ -52,6 +52,7 @@
         .subscribe(function (resp) {
           vm.tasks = resp[0];
           $rootScope.tabName = resp[1] && resp[1].clusterName;
+          vm.mnPoolDefault = resp[1];
         })
         .cancelOnScopeDestroy()
         .run();

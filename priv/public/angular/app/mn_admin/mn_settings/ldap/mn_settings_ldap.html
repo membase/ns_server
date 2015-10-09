@@ -1,0 +1,121 @@
+<div
+  class="ldap_setup_container only-when-40 when-enterprise"
+  mn-spinner="mnSettingsLdapController.viewLoading || !mnSettingsLdapController.mnSettingsLdapState">
+  <h2>LDAP Auth</h2>
+  <div class="sub_section">
+    <p>Integrate with a directory server such as Active Directory or LDAP using the LDAP protocol. Users in LDAP can be mapped to Full-Admin / Read-Only Admin in Couchbase.</p>
+  </div>
+  <div style="float:left;">
+    <h3>Setup</h3>
+    <form autocomplete="off">
+      <div class="sub_section" style="margin-right:0;">
+        <span class="error-container err-_" ng-show="mnSettingsLdapController.errors._">
+          {{mnSettingsLdapController.errors._}}
+        </span>
+        <label>
+          <span>Enable:</span>
+          <input
+            type="checkbox"
+            ng-model="mnSettingsLdapController.mnSettingsLdapState.enabled">
+        </label>
+        <label class="textarea_label">
+          <span>Read-Only Admins:</span>
+          <textarea
+            name="roAdmins"
+            ng-model="mnSettingsLdapController.mnSettingsLdapState.roAdmins"
+            ng-disabled="mnSettingsLdapController.isReadOnlyAdminsDisabled()"></textarea>
+            <a class="text_11 tooltip" style="vertical-align: top;"><span>What's this?</span>
+              <span class="tooltip_msg"><span>
+                  UIDs must be in ASCII and must be new line separated.
+              </span></span>
+            </a>
+        </label>
+        <label class="textarea_label">
+          <span>Full Admins:</span>
+          <textarea
+            name="admins"
+            ng-model="mnSettingsLdapController.mnSettingsLdapState.admins"
+            ng-disabled="mnSettingsLdapController.isFullAdminsDisabled()"></textarea>
+            <a class="text_11 tooltip" style="vertical-align: top;"><span>What's this?</span>
+              <span class="tooltip_msg"><span>
+                  UIDs must be in ASCII and must be new line separated.
+              </span></span>
+            </a>
+        </label>
+        <label style="display: inline-block;">
+          <span>Default:</span>
+        </label>
+        <span class="radio_set">
+          <label>
+            <input
+              type="radio"
+              name="deftype"
+              value="roAdmins"
+              ng-model="mnSettingsLdapController.mnSettingsLdapState.default"
+              ng-disabled="mnSettingsLdapController.isRadioDefaultDisabled()">
+            <span>Read-only</span>
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="deftype"
+              value="admins"
+              ng-model="mnSettingsLdapController.mnSettingsLdapState.default"
+              ng-disabled="mnSettingsLdapController.isRadioDefaultDisabled()">
+            <span>Full Admin</span>
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="deftype"
+              value=""
+              ng-model="mnSettingsLdapController.mnSettingsLdapState.default"
+              ng-disabled="mnSettingsLdapController.isRadioDefaultDisabled()">
+            <span>None</span>
+          </label>
+        </span>
+      </div>
+    </form>
+  </div>
+  <div style="overflow: hidden" mn-spinner="mnSettingsLdapController.validateSpinner">
+    <h3>Test</h3>
+    <form ng-submit="mnSettingsLdapController.validate()" autocomplete="off">
+      <div class="sub_section">
+        <label>
+          <span>Username:</span>
+          <input
+            type="text"
+            ng-model="mnSettingsLdapController.test.username"
+            ng-disabled="!mnSettingsLdapController.mnSettingsLdapState.enabled"
+            autocomplete="off"
+            style="width: 150px;">
+        </label>
+        <label>
+          <span>Password:</span>
+          <input
+            type="password"
+            ng-model="mnSettingsLdapController.test.password"
+            ng-disabled="!mnSettingsLdapController.mnSettingsLdapState.enabled"
+            autocomplete="off"
+            style="width: 150px;">
+        </label>
+        <button
+          type="submit"
+          class="edit_btn"
+          ng-disabled="mnSettingsLdapController.isValidateButtonDisabled()">Validate</button>
+          <p ng-show="mnSettingsLdapController.validateErrors">
+            {{mnSettingsLdapController.validateErrors}}
+          </p>
+          <p ng-show="mnSettingsLdapController.validateResult">
+            User {{mnSettingsLdapController.validateResult.test.username}} has {{mnSettingsLdapController.validateResult.role | formatRoleMessage}} access
+            <span ng-show="mnSettingsLdapController.isRecognizedNotViaLdap()">but it is recognized not via LDAP</span>
+          </p>
+      </div>
+    </form>
+  </div>
+  <div class="save_cancel">
+    <button
+      class="save_button float_right"
+      ng-click="mnSettingsLdapController.save()">Save</button>
+  </div>
+</div>

@@ -13,6 +13,7 @@ angular.module('mnAdmin', [
   'mnGroups',
   'mnDocuments',
   'mnSettingsNotifications',
+  'mnSettingsLdap',
   'mnSettingsCluster',
   'mnSettingsAutoFailover',
   'mnSettingsAutoCompaction',
@@ -273,6 +274,11 @@ angular.module('mnAdmin', [
       url: '/autoCompaction',
       controller: 'mnSettingsAutoCompactionController',
       templateUrl: 'mn_admin/mn_settings/auto_compaction/mn_settings_auto_compaction.html'
+    })
+    .state('app.admin.settings.ldap', {
+      url: '/ldap',
+      controller: 'mnSettingsLdapController as mnSettingsLdapController',
+      templateUrl: 'mn_admin/mn_settings/ldap/mn_settings_ldap.html'
     })
     .state('app.admin.settings.audit', {
       url: '/audit',

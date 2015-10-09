@@ -9,6 +9,14 @@
           <li><a id="settings_auto_failover" class="casper_settings_auto_failover" ui-sref="app.admin.settings.autoFailover" ui-sref-active="selected">Auto-Failover</a></li>
           <li><a id="settings_alerts" class="casper_settings_alerts" ui-sref="app.admin.settings.alerts" ui-sref-active="selected">Alerts</a></li>
           <li><a id="settings_compaction" class="casper_settings_compaction" ui-sref="app.admin.settings.autoCompaction" ui-sref-active="selected">Auto-Compaction</a></li>
+          <li
+            class="when-enterprise only-when-40 only-when_ldap_enabled"
+            ng-show="mnAdminController.mnPoolDefault.ldapEnabled">
+              <a
+                id="ldap_setup"
+                ui-sref="app.admin.settings.ldap"
+                ui-sref-active="selected">LDAP Auth Setup</a>
+          </li>
           <li><a id="settings_audit" class="casper_settings_audit" ui-sref="app.admin.settings.audit" ui-sref-active="selected">Audit</a></li>
           <li class="when-roadmin-avoid-me"><a id="account_management" class="casper_settings_account_management">Account Management</a></li>
           <li><a id="settings_sample_buckets" class="casper_settings_sample_buckets">Sample Buckets</a></li>
