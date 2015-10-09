@@ -219,13 +219,14 @@ angular.module('mnSettingsNotificationsService', [
 
     mnSettingsNotificationsService.maybeCheckUpdates = function () {
       return mnSettingsNotificationsService.getSendStatsFlag().then(function (sendStatsData) {
+        sendStatsData.enabled = sendStatsData.sendStats;
         if (!sendStatsData.sendStats) {
           return sendStatsData;
         } else {
           return mnPools.get().then(function (pools) {
             return mnSettingsNotificationsService.getUpdates({
               launchID: pools.launchID,
-              version: pools.version
+              version: pools.implementationVersion
             }).then(function (resp) {
               return _.extend(_.clone(resp.data), sendStatsData);
             }, function (resp) {

@@ -256,7 +256,7 @@ angular.module('mnAdmin', [
     })
     .state('app.admin.settings.notifications', {
       url: '/notifications',
-      controller: 'mnSettingsNotificationsController',
+      controller: 'mnSettingsNotificationsController as mnSettingsNotificationsController',
       templateUrl: 'mn_admin/mn_settings/notifications/mn_settings_notifications.html'
     })
     .state('app.admin.settings.autoFailover', {

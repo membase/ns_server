@@ -1,15 +1,20 @@
-angular.module('mnSettingsNotifications', [
-  'mnSettingsNotificationsService',
-  'mnHelper',
-  'mnPromiseHelper'
-]).controller('mnSettingsNotificationsController',
-  function ($scope, mnHelper, mnPromiseHelper, mnSettingsNotificationsService) {
-    $scope.enabled = $scope.updates.sendStats;
-    $scope.submit = function () {
-      mnPromiseHelper($scope, mnSettingsNotificationsService.saveSendStatsFlag($scope.enabled))
+(function () {
+  angular.module('mnSettingsNotifications', [
+    'mnSettingsNotificationsService',
+    'mnPromiseHelper'
+  ]).controller('mnSettingsNotificationsController', mnSettingsNotificationsController);
+
+  function mnSettingsNotificationsController($scope, mnPromiseHelper, mnSettingsNotificationsService) {
+    var vm = this;
+
+    vm.submit = submit;
+
+    function submit() {
+      mnPromiseHelper(vm, mnSettingsNotificationsService.saveSendStatsFlag($scope.mnAdminController.updates.enabled))
         .showErrorsSensitiveSpinner()
         .catchGlobalErrors('An error occured, update notifications settings were not saved.')
         .reloadState()
-        .cancelOnScopeDestroy();
-    };
-  });
+        .cancelOnScopeDestroy($scope);
+    }
+  }
+})();
