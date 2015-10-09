@@ -22,6 +22,7 @@
 -include_lib("kernel/include/file.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
+-include("remote_clusters_info.hrl").
 
 -export([do_diag_per_node/0, do_diag_per_node_binary/0,
          handle_diag/1,
@@ -256,8 +257,25 @@ prepare_ets_table(_Table, failed) ->
     [];
 prepare_ets_table(xdcr_stats, Content) ->
     [{xdcr_stats, xdc_rep_utils:sanitize_state(Content)}];
+prepare_ets_table(remote_clusters_info, Content) ->
+    [{remote_clusters_info, sanitize_remote_clusters_info(Content)}];
 prepare_ets_table(Table, Content) ->
     [{Table, ns_config_log:sanitize(Content)}].
+
+sanitize_remote_clusters_info(Content) ->
+    misc:rewrite_tuples(
+      fun (#remote_bucket{capi_vbucket_map = CapiVbucketMap} = RemoteBucket) ->
+              {stop, RemoteBucket#remote_bucket{
+                       password = <<"******">>,
+                       capi_vbucket_map =
+                           dict:map(fun (_Key, Urls) ->
+                                            [misc:sanitize_url(Url) || Url <- Urls]
+                                    end, CapiVbucketMap)
+                      }
+              };
+          (T) ->
+              {continue, T}
+      end, Content).
 
 grab_all_ets_tables() ->
     lists:flatmap(
