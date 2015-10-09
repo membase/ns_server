@@ -157,6 +157,8 @@ sanitize_state(State) ->
                                     #xdc_xmem_location{} = Location ->
                                         {stop,
                                          Location#xdc_xmem_location{mcd_loc = "*****"}};
+                                    {url, Url} ->
+                                        {stop, {url, misc:sanitize_url(Url)}};
                                     _ ->
                                         {continue, T}
                                 end

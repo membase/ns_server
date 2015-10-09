@@ -148,9 +148,9 @@ build_no_vbucket_request_base(HttpDB, Bucket, BucketUUID) ->
 
     BodyBase = [{<<"bucket">>, Bucket},
                 {<<"bucketUUID">>, BucketUUID}],
-    {URL, BodyBase, HttpDB}.
+    {{url, URL}, BodyBase, HttpDB}.
 
-send_post(Method, ExtraBody, {BaseURL, BodyBase, HttpDB}) ->
+send_post(Method, ExtraBody, {{url, BaseURL}, BodyBase, HttpDB}) ->
     URL = BaseURL ++ Method,
     Headers = [{"Content-Type", "application/json"}],
     BodyJSON = {BodyBase ++ ExtraBody},
