@@ -255,6 +255,10 @@ grab_process_infos_loop([P | RestPids], Acc) ->
 
 prepare_ets_table(_Table, failed) ->
     [];
+prepare_ets_table(ui_auth_by_token, _Content) ->
+    [{ui_auth_by_token, ["not printed"]}];
+prepare_ets_table(ui_auth_by_expiration, _Content) ->
+    [{ui_auth_by_expiration, ["not printed"]}];
 prepare_ets_table(xdcr_stats, Content) ->
     [{xdcr_stats, xdc_rep_utils:sanitize_state(Content)}];
 prepare_ets_table(remote_clusters_info, Content) ->
