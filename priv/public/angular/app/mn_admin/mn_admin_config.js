@@ -14,6 +14,7 @@ angular.module('mnAdmin', [
   'mnDocuments',
   'mnSettingsNotifications',
   'mnSettingsLdap',
+  'mnSettingsSampleBuckets',
   'mnSettingsCluster',
   'mnSettingsAutoFailover',
   'mnSettingsAutoCompaction',
@@ -279,6 +280,11 @@ angular.module('mnAdmin', [
       url: '/ldap',
       controller: 'mnSettingsLdapController as mnSettingsLdapController',
       templateUrl: 'mn_admin/mn_settings/ldap/mn_settings_ldap.html'
+    })
+    .state('app.admin.settings.sampleBuckets', {
+      url: '/sampleBuckets',
+      controller: 'mnSettingsSampleBucketsController as mnSettingsSampleBucketsController',
+      templateUrl: 'mn_admin/mn_settings/sample_buckets/mn_settings_sample_buckets.html'
     })
     .state('app.admin.settings.audit', {
       url: '/audit',

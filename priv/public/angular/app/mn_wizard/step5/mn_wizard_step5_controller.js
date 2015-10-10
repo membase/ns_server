@@ -1,5 +1,5 @@
 angular.module('mnWizard').controller('mnWizardStep5Controller',
-  function ($scope, $state, mnPools, mnWizardStep5Service, mnWizardStep2Service, mnAuthService, mnPromiseHelper, mnAlertsService) {
+  function ($scope, $state, mnPools, mnSettingsSampleBucketsService, mnWizardStep5Service, mnWizardStep2Service, mnAuthService, mnPromiseHelper, mnAlertsService) {
     $scope.user = {
       username: 'Administrator',
       password: '',
@@ -20,7 +20,7 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
           return mnPools.getFresh().then(function () {
             $state.go('app.admin.overview');
             if (mnWizardStep2Service.isSomeBucketSelected()) {
-              return mnWizardStep2Service.installSampleBuckets().then(null, function (resp) {
+              return mnSettingsSampleBucketsService.installSampleBuckets(mnWizardStep2Service.getSelectedBuckets()).then(null, function (resp) {
                 mnAlertsService.formatAndSetAlerts(resp.data, 'danger');
               });
             }

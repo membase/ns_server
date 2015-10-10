@@ -9,6 +9,7 @@ angular.module('mnWizard', [
   'mnWizardStep3Service',
   'mnWizardStep4Service',
   'mnWizardStep5Service',
+  'mnSettingsSampleBucketsService',
   'mnMemoryQuota',
   'mnPoolDefault',
   'mnMemoryQuotaService',
@@ -38,8 +39,8 @@ angular.module('mnWizard', [
       templateUrl: 'mn_wizard/step2/mn_wizard_step2.html',
       controller: 'mnWizardStep2Controller',
       resolve: {
-        sampleBuckets: function (mnWizardStep2Service) {
-          return mnWizardStep2Service.getSampleBuckets();
+        sampleBuckets: function (mnSettingsSampleBucketsService) {
+          return mnSettingsSampleBucketsService.getSampleBuckets();
         }
       }
     })

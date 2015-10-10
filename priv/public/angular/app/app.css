@@ -504,7 +504,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 #compaction_container {margin-top:24px}
 #compaction_container .tooltip_msg {line-height: 11px; width: 300px;}
 #compaction_container .tooltip {line-height: 12px; margin-left: 10px;}
-#sample_buckets_container .warning_message {display: none; margin-left: -25px;}
+#sample_buckets_container .warning_message {margin-left: -25px;}
 
 #installed_samples a { color: #DD3B2C; }
 

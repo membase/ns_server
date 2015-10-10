@@ -2,40 +2,28 @@ angular.module('mnWizardStep2Service', [
   'mnHttp'
 ]).factory('mnWizardStep2Service',
   function (mnHttp) {
-    var mnWizardStep2Service = {};
-    var sampleBucketsRAMQuota = 0;
+    var mnWizardStep2Service = {
+      setSelected: setSelected,
+      getSelectedBuckets: getSelectedBuckets,
+      getSampleBucketsRAMQuota: getSampleBucketsRAMQuota,
+      isSomeBucketSelected: isSomeBucketSelected
+    };
     var selectedSamples = {};
 
-    mnWizardStep2Service.setSelected = function (selected) {
+    return mnWizardStep2Service;
+
+    function getSelectedBuckets() {
+      return selectedSamples;
+    }
+    function setSelected(selected) {
       selectedSamples = selected;
-      sampleBucketsRAMQuota = _.reduce(selected, function (memo, num) {
+    }
+    function getSampleBucketsRAMQuota() {
+      return _.reduce(selectedSamples, function (memo, num) {
         return memo + Number(num);
       }, 0);
-    };
-
-    mnWizardStep2Service.getSampleBucketsRAMQuota = function () {
-      return sampleBucketsRAMQuota;
-    };
-
-    mnWizardStep2Service.isSomeBucketSelected = function () {
-      return sampleBucketsRAMQuota !== 0;
-    };
-
-    mnWizardStep2Service.getSampleBuckets = function () {
-      return mnHttp({
-        url: '/sampleBuckets',
-        method: 'GET'
-      });
-    };
-
-    mnWizardStep2Service.installSampleBuckets = function () {
-      return mnHttp({
-        url: '/sampleBuckets/install',
-        method: 'POST',
-        timeout: 140000,
-        data: JSON.stringify(_.keys(selectedSamples))
-      });
-    };
-
-    return mnWizardStep2Service;
+    }
+    function isSomeBucketSelected() {
+      return getSampleBucketsRAMQuota() !== 0;
+    }
   });
