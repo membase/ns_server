@@ -22,6 +22,7 @@ angular.module('mnAdmin', [
   'mnSettingsCluster',
   'mnSettingsAlerts',
   'mnSettingsNotificationsService',
+  'mnAccountManagement',
   'mnViews',
   'mnXDCR',
   'mnPoll',
@@ -285,6 +286,11 @@ angular.module('mnAdmin', [
       url: '/sampleBuckets',
       controller: 'mnSettingsSampleBucketsController as mnSettingsSampleBucketsController',
       templateUrl: 'mn_admin/mn_settings/sample_buckets/mn_settings_sample_buckets.html'
+    })
+    .state('app.admin.settings.accountManagement', {
+      url: '/accountManagement',
+      controller: 'mnAccountManagementController as mnAccountManagementController',
+      templateUrl: 'mn_admin/mn_settings/account_management/mn_account_management.html'
     })
     .state('app.admin.settings.audit', {
       url: '/audit',

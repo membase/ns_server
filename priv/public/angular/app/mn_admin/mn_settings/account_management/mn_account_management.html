@@ -1,0 +1,84 @@
+<div
+  class="account_management_container when-roadmin-avoid-me"
+  mn-spinner="mnAccountManagementController.viewLoading">
+  <h2>Read-Only User</h2>
+  <div class="sub_section">
+    <p>This user will have read-only access and
+        cannot make any changes to the system. The user
+        can only view existing servers, buckets, views
+        and monitor stats.</p>
+  </div>
+  <form
+    ng-show="!mnAccountManagementController.roAdminName"
+    id="js_account_management_form"
+    ng-submit="mnAccountManagementController.createUser()"
+    class="account_management_form"
+    name="accountManagementForm"
+    autocomplete="off">
+    <div class="sub_section">
+      <label>
+        <span>Username:</span>
+        <input
+          type="text"
+          ng-model="mnAccountManagementController.creds.username"
+          name="username"
+          maxlength="24"
+          autocomplete="off">
+        <i
+          class="errors js_error_password"
+          ng-show="mnAccountManagementController.errors.username">
+            {{mnAccountManagementController.errors.username}}
+        </i>
+      </label>
+      <label>
+        <span>Password:</span>
+        <input
+          type="password"
+          ng-model="mnAccountManagementController.creds.password"
+          name="password"
+          autocomplete="off">
+        <i
+          class="errors js_error_password"
+          ng-show="mnAccountManagementController.errors.password">
+            {{mnAccountManagementController.errors.password}}
+        </i>
+      </label>
+      <label>
+        <span>Verify Password:</span>
+        <input
+          type="password"
+          name="verifyPassword"
+          autocomplete="off"
+          ng-model="mnAccountManagementController.creds.verifyPassword">
+        <i
+          class="errors js_error_verifyPassword casper_create_roadmin_with_errors"
+          ng-show="mnAccountManagementController.errors.verifyPassword">
+            {{mnAccountManagementController.errors.verifyPassword}}
+        </i>
+      </label>
+    </div>
+    <div class="save_cancel when-roadmin-hide-me">
+        <button class="save_button float_right casper_settings_create_accaunt" type="submit">Create</button>
+    </div>
+  </form>
+  <div
+    id="js_account_delete"
+    ng-show="mnAccountManagementController.roAdminName"
+    class="account_delete sub_section">
+    <p id="js_user_created">User: <span class="js_roadmin_name" style="color:#222;">{{mnAccountManagementController.roAdminName}}</span> created successfully.</p>
+    <div>
+      <span
+        class="list_button casper_settings_account_reset_popup"
+        id="js_reset_acc_btn"
+        ng-click="mnAccountManagementController.resetUserPassword()">
+          <span>Reset Read-Only user Password</span>
+      </span>
+      <span
+        class="list_button casper_settings_account_delete_popup"
+        id="js_delete_acc_btn"
+        ng-click="mnAccountManagementController.deleteUser()">
+          <span>Delete Read-Only User</span>
+      </span>
+    </div>
+  </div>
+</div>
