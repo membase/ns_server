@@ -77,6 +77,12 @@ angular.module('mnPromiseHelper', [
         applyToScope: function (keyOrFunction) {
           promise.then(angular.isFunction(keyOrFunction) ? keyOrFunction : function (value) {
             scope[keyOrFunction] = value;
+          }, function () {
+            if (angular.isFunction(keyOrFunction)) {
+              keyOrFunction(null);
+            } else {
+              delete scope[keyOrFunction];
+            }
           });
           return this;
         },
