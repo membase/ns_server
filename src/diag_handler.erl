@@ -256,18 +256,23 @@ grab_process_infos_loop([P | RestPids], Acc) ->
 prepare_ets_table(_Table, failed) ->
     [];
 prepare_ets_table(Table, {Info, Content}) ->
-    [{{Table, Info}, sanitize_ets_table(Table, Content)}].
+    [{{Table, Info}, sanitize_ets_table(Table, Info, Content)}].
 
-sanitize_ets_table(ui_auth_by_token, _Content) ->
+sanitize_ets_table(ui_auth_by_token, _Info, _Content) ->
     ["not printed"];
-sanitize_ets_table(ui_auth_by_expiration, _Content) ->
+sanitize_ets_table(ui_auth_by_expiration, _Info, _Content) ->
     ["not printed"];
-sanitize_ets_table(xdcr_stats, Content) ->
+sanitize_ets_table(xdcr_stats, _Info, Content) ->
     xdc_rep_utils:sanitize_state(Content);
-sanitize_ets_table(remote_clusters_info, Content) ->
+sanitize_ets_table(remote_clusters_info, _Info, Content) ->
     sanitize_remote_clusters_info(Content);
-sanitize_ets_table(_, Content) ->
-    Content.
+sanitize_ets_table(_, Info, Content) ->
+    case proplists:get_value(name, Info) of
+        ssl_otp_pem_cache ->
+            ["not printed"];
+        _ ->
+            Content
+    end.
 
 sanitize_remote_clusters_info(Content) ->
     misc:rewrite_tuples(
