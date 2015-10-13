@@ -22,6 +22,7 @@
 -include_lib("kernel/include/file.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
+-include("remote_clusters_info.hrl").
 
 -export([do_diag_per_node_binary/0,
          handle_diag/1,
@@ -271,22 +272,52 @@ grab_process_infos_loop([P | RestPids], Acc) ->
 grab_couchdb_ets_tables() ->
     rpc:call(ns_node_disco:couchdb_node(), ?MODULE, grab_all_ets_tables, [], 5000).
 
+prepare_ets_table(_Table, failed) ->
+    [];
+prepare_ets_table(Table, {Info, Content}) ->
+    [{{Table, Info}, sanitize_ets_table(Table, Info, Content)}].
+
+sanitize_ets_table(ui_auth_by_token, _Info, _Content) ->
+    ["not printed"];
+sanitize_ets_table(ui_auth_by_expiration, _Info, _Content) ->
+    ["not printed"];
+sanitize_ets_table(xdcr_stats, _Info, Content) ->
+    xdc_rep_utils:sanitize_state(Content);
+sanitize_ets_table(remote_clusters_info, _Info, Content) ->
+    sanitize_remote_clusters_info(Content);
+sanitize_ets_table(_, Info, Content) ->
+    case proplists:get_value(name, Info) of
+        ssl_otp_pem_cache ->
+            ["not printed"];
+        _ ->
+            Content
+    end.
+
+sanitize_remote_clusters_info(Content) ->
+    misc:rewrite_tuples(
+      fun (#remote_bucket{capi_vbucket_map = CapiVbucketMap} = RemoteBucket) ->
+              {stop, RemoteBucket#remote_bucket{
+                       password = <<"******">>,
+                       capi_vbucket_map =
+                           dict:map(fun (_Key, Urls) ->
+                                            [misc:sanitize_url(Url) || Url <- Urls]
+                                    end, CapiVbucketMap)
+                      }
+              };
+          (T) ->
+              {continue, T}
+      end, Content).
+
 grab_all_ets_tables() ->
     lists:flatmap(
       fun (T) ->
-              Contents =
+              InfoAndContent =
                   try
-                      ets:tab2list(T)
+                      {ets:info(T), ets:tab2list(T)}
                   catch
                       _:_ -> failed
                   end,
-
-              case Contents of
-                  failed ->
-                      [];
-                  _ ->
-                      [{T, ns_config_log:sanitize(Contents)}]
-              end
+              prepare_ets_table(T, InfoAndContent)
       end, ets:all()).
 
 diag_format_timestamp(EpochMilliseconds) ->
@@ -475,8 +506,30 @@ do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
     DiagNoStats = lists:keydelete(stats, 1, PerNodeDiag),
     do_handle_per_node_ets_tables(Resp, Node, DiagNoStats).
 
+print_ets_table(Resp, Node, Key, Table, Info, Values) ->
+    write_chunk_format(Resp, "per_node_~p(~p, ~p) =~n",
+                       [Key, Node, Table]),
+    case Info of
+        [] ->
+            ok;
+        _ ->
+            write_chunk_format(Resp, "  Info: ~p~n", [Info])
+    end,
+    case Values of
+        [] ->
+            ok;
+        _ ->
+            Resp:write_chunk(<<"  Values: \n">>),
+            lists:foreach(
+              fun (Value) ->
+                      write_chunk_format(Resp, "    ~p~n", [Value])
+              end, Values)
+    end,
+    Resp:write_chunk(<<"\n">>).
+
 write_ets_tables(Resp, Node, Key, PerNodeDiag) ->
     EtsTables0 = proplists:get_value(Key, PerNodeDiag, []),
+
     EtsTables = case is_list(EtsTables0) of
                     true ->
                         EtsTables0;
@@ -487,16 +540,10 @@ write_ets_tables(Resp, Node, Key, PerNodeDiag) ->
     misc:executing_on_new_process(
       fun () ->
               lists:foreach(
-                fun ({Table, Values}) ->
-                        write_chunk_format(Resp, "per_node_~p(~p, ~p) =~n",
-                                           [Key, Node, Table]),
-
-                        lists:foreach(
-                          fun (Value) ->
-                                  write_chunk_format(Resp, "     ~p~n", [Value])
-                          end, Values),
-
-                        Resp:write_chunk(<<"\n">>)
+                fun ({{Table, Info}, Values}) ->
+                        print_ets_table(Resp, Node, Key, Table, Info, Values);
+                    ({Table, Values}) ->
+                        print_ets_table(Resp, Node, Key, Table, [], Values)
                 end, EtsTables)
       end),
 

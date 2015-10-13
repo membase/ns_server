@@ -34,10 +34,18 @@ start_link(Socket, upstream) ->
     Pid = proc_lib:spawn_link(?MODULE, start_upstream, [Socket]),
     {ok, Pid}.
 
+sanitize_payload(Payload) ->
+    misc:rewrite_tuples(fun ({<<"password">>, _}) ->
+                                {stop, {password, <<"*****">>}};
+                            (T) ->
+                                {continue, T}
+                        end, Payload).
+
+
 start_upstream(Socket) ->
     KV = ns_ssl:receive_json(Socket, ?CONTROL_PAYLOAD_TIMEOUT),
 
-    ?log_debug("Got payload: ~p", [KV]),
+    ?log_debug("Got payload: ~p", [sanitize_payload(KV)]),
 
     ProxyHost = proplists:get_value(<<"proxyHost">>, KV),
     ProxyPort = proplists:get_value(<<"proxyPort">>, KV),

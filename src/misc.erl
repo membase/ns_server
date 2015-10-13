@@ -941,7 +941,7 @@ rewrite_key_value_tuple_test() ->
 
 sanitize_url(Url) when is_binary(Url) ->
     ?l2b(sanitize_url(?b2l(Url)));
-sanitize_url(Url) ->
+sanitize_url(Url) when is_list(Url) ->
     HostIndex = string:chr(Url, $@),
     case HostIndex of
         0 ->
@@ -955,7 +955,9 @@ sanitize_url(Url) ->
                     string:substr(Url, 1, AfterScheme + 2) ++ "*****" ++
                         string:substr(Url, HostIndex)
             end
-    end.
+    end;
+sanitize_url(Url) ->
+    Url.
 
 sanitize_url_test() ->
     "blah.com/a/b/c" = sanitize_url("blah.com/a/b/c"),
