@@ -378,10 +378,9 @@ start_link_rebalance(KeepNodes, EjectNodes,
                        master_activity_events:note_rebalance_start(
                          self(), KeepNodes, EjectNodes, FailedNodes, DeltaNodes),
 
-                       ok = apply_delta_recovery_buckets(DeltaRecoveryBucketTuples, DeltaNodes),
+                       ok = apply_delta_recovery_buckets(DeltaRecoveryBucketTuples, DeltaNodes, BucketConfigs),
 
                        ok = drop_old_2i_indexes(KeepNodes),
-
                        ns_cluster_membership:activate(KeepNodes),
 
                        rebalance(KeepNodes, EjectNodes, FailedNodes,
@@ -879,13 +878,20 @@ build_delta_recovery_buckets_loop_test() ->
     ?assertEqual([{"b1", conf1, {map, opts}}], build_delta_recovery_buckets_loop(MappedConfigs, ["b1"], [])),
     ?assertEqual([{"b1", conf1, {map, opts}}], build_delta_recovery_buckets_loop([hd(MappedConfigs)], all, [])).
 
-apply_delta_recovery_buckets([], _DeltaNodes) ->
+apply_delta_recovery_buckets([], _DeltaNodes, _CurrentBuckets) ->
     ok;
-apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes) ->
-    lists:foreach(
-      fun ({Bucket, BucketConfig, _}) ->
-              ns_bucket:set_bucket_config(Bucket, BucketConfig)
-      end, DeltaRecoveryBuckets),
+apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes, CurrentBuckets) ->
+    NewBuckets = misc:update_proplist(
+                   CurrentBuckets,
+                   [{Bucket, BucketConfig} ||
+                       {Bucket, BucketConfig, _} <- DeltaRecoveryBuckets]),
+    NodeChanges = [[{{node, N, recovery_type}, none},
+                      {{node, N, failover_vbuckets}, undefined},
+                      {{node, N, membership}, active}] || N <- DeltaNodes],
+    BucketChanges = {buckets, [{configs, NewBuckets}]},
+
+    Changes = lists:flatten([BucketChanges, NodeChanges]),
+    ok = ns_config:set(Changes),
 
     ns_config:sync_announcements(),
     case ns_config_rep:synchronize_remote(DeltaNodes) of
@@ -900,8 +906,7 @@ apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes) ->
               ok = wait_for_bucket(Bucket, DeltaNodes)
       end, DeltaRecoveryBuckets),
 
-    ns_config:set([{{node, N, recovery_type}, none} || N <- DeltaNodes] ++
-                      [{{node, N, failover_vbuckets}, undefined} || N <- DeltaNodes]).
+    ok.
 
 
 wait_for_bucket(Bucket, Nodes) ->
