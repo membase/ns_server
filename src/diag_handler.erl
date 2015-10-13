@@ -255,16 +255,19 @@ grab_process_infos_loop([P | RestPids], Acc) ->
 
 prepare_ets_table(_Table, failed) ->
     [];
-prepare_ets_table(ui_auth_by_token, _Content) ->
-    [{ui_auth_by_token, ["not printed"]}];
-prepare_ets_table(ui_auth_by_expiration, _Content) ->
-    [{ui_auth_by_expiration, ["not printed"]}];
-prepare_ets_table(xdcr_stats, Content) ->
-    [{xdcr_stats, xdc_rep_utils:sanitize_state(Content)}];
-prepare_ets_table(remote_clusters_info, Content) ->
-    [{remote_clusters_info, sanitize_remote_clusters_info(Content)}];
-prepare_ets_table(Table, Content) ->
-    [{Table, ns_config_log:sanitize(Content)}].
+prepare_ets_table(Table, {Info, Content}) ->
+    [{{Table, Info}, sanitize_ets_table(Table, Content)}].
+
+sanitize_ets_table(ui_auth_by_token, _Content) ->
+    ["not printed"];
+sanitize_ets_table(ui_auth_by_expiration, _Content) ->
+    ["not printed"];
+sanitize_ets_table(xdcr_stats, Content) ->
+    xdc_rep_utils:sanitize_state(Content);
+sanitize_ets_table(remote_clusters_info, Content) ->
+    sanitize_remote_clusters_info(Content);
+sanitize_ets_table(_, Content) ->
+    Content.
 
 sanitize_remote_clusters_info(Content) ->
     misc:rewrite_tuples(
@@ -284,13 +287,13 @@ sanitize_remote_clusters_info(Content) ->
 grab_all_ets_tables() ->
     lists:flatmap(
       fun (T) ->
-              Content =
+              InfoAndContent =
                   try
-                      ets:tab2list(T)
+                      {ets:info(T), ets:tab2list(T)}
                   catch
                       _:_ -> failed
                   end,
-              prepare_ets_table(T, Content)
+              prepare_ets_table(T, InfoAndContent)
       end, ets:all()).
 
 diag_format_timestamp(EpochMilliseconds) ->
@@ -524,6 +527,27 @@ do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
     DiagNoStats = lists:keydelete(stats, 1, PerNodeDiag),
     do_handle_per_node_ets_tables(Resp, Node, DiagNoStats).
 
+print_ets_table(Resp, Node, Table, Info, Values) ->
+    write_chunk_format(Resp, "per_node_ets_tables(~p, ~p) =~n",
+                       [Node, Table]),
+    case Info of
+        [] ->
+            ok;
+        _ ->
+            write_chunk_format(Resp, "  Info: ~p~n", [Info])
+    end,
+    case Values of
+        [] ->
+            ok;
+        _ ->
+            Resp:write_chunk(<<"  Values: \n">>),
+            lists:foreach(
+              fun (Value) ->
+                      write_chunk_format(Resp, "    ~p~n", [Value])
+              end, Values)
+    end,
+    Resp:write_chunk(<<"\n">>).
+
 do_handle_per_node_ets_tables(Resp, Node, PerNodeDiag) ->
     EtsTables0 = proplists:get_value(ets_tables, PerNodeDiag, []),
     EtsTables = case is_list(EtsTables0) of
@@ -536,16 +560,10 @@ do_handle_per_node_ets_tables(Resp, Node, PerNodeDiag) ->
     misc:executing_on_new_process(
       fun () ->
               lists:foreach(
-                fun ({Table, Values}) ->
-                        write_chunk_format(Resp, "per_node_ets_tables(~p, ~p) =~n",
-                                           [Node, Table]),
-
-                        lists:foreach(
-                          fun (Value) ->
-                                  write_chunk_format(Resp, "     ~p~n", [Value])
-                          end, Values),
-
-                        Resp:write_chunk(<<"\n">>)
+                fun ({{Table, Info}, Values}) ->
+                        print_ets_table(Resp, Node, Table, Info, Values);
+                    ({Table, Values}) ->
+                        print_ets_table(Resp, Node, Table, [], Values)
                 end, EtsTables)
       end),
 
