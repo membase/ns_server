@@ -1,13 +1,15 @@
 (function () {
   angular.module('mnSettingsNotifications', [
     'mnSettingsNotificationsService',
-    'mnPromiseHelper'
+    'mnPromiseHelper',
+    'mnPoolDefault'
   ]).controller('mnSettingsNotificationsController', mnSettingsNotificationsController);
 
-  function mnSettingsNotificationsController($scope, mnPromiseHelper, mnSettingsNotificationsService) {
+  function mnSettingsNotificationsController($scope, mnPromiseHelper, mnSettingsNotificationsService, mnPoolDefault) {
     var vm = this;
 
     vm.submit = submit;
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
 
     function submit() {
       mnPromiseHelper(vm, mnSettingsNotificationsService.saveSendStatsFlag($scope.mnAdminController.updates.enabled))

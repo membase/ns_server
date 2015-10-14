@@ -4,9 +4,15 @@ angular.module('mnXDCR', [
   'mnBucketsService',
   'mnPromiseHelper',
   'mnPoll',
-  'mnRegex'
+  'mnRegex',
+  'mnPoolDefault'
 ]).controller('mnXDCRController',
-  function ($scope, $modal, mnHelper, mnPoll, mnXDCRService, mnBucketsService, mnPromiseHelper) {
+  function ($scope, $modal, mnHelper, mnPoll, mnPoolDefault, mnXDCRService, mnBucketsService, mnPromiseHelper) {
+
+    //hack for avoiding access to $parent scope from child scope via propery "$parent"
+    //should be removed after implementation of Controller As syntax
+    $scope.mnXDCRController = $scope;
+    $scope.mnPoolDefault = mnPoolDefault.latestValue();
 
     mnPoll
       .start($scope, mnXDCRService.getReplicationState)

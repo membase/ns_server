@@ -1,4 +1,4 @@
-angular.module('mnBuckets').directive('mnBucketsList', function (mnHelper) {
+angular.module('mnBuckets').directive('mnBucketsList', function (mnHelper, mnPoolDefault) {
   return {
     restrict: 'A',
     scope: {
@@ -7,6 +7,7 @@ angular.module('mnBuckets').directive('mnBucketsList', function (mnHelper) {
     isolate: false,
     templateUrl: 'mn_admin/mn_buckets/list/mn_buckets_list.html',
     controller: function ($scope) {
+      $scope.mnPoolDefault = mnPoolDefault.latestValue();
       mnHelper.initializeDetailsHashObserver($scope, 'openedBucket', 'app.admin.buckets');
     }
   };

@@ -19,6 +19,12 @@
     function mnGroupsController($scope, $modal, mnGroupsService, mnPromiseHelper, mnHelper, mnPoll, jQuery, mnMakeSafeForCSSFilter, mnNaturalSortingFilter, $window, mnAlertsService, mnPoolDefault) {
       var vm = this;
 
+      vm.mnPoolDefault = mnPoolDefault.latestValue();
+
+      if (vm.mnPoolDefault.isROAdminCreds) {
+        return;
+      }
+
       vm.createGroup = createGroup;
       vm.deleteGroup = deleteGroup;
       vm.applyChanges = applyChanges;

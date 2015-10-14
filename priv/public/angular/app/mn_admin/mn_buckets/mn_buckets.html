@@ -8,8 +8,8 @@
       <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
       <div class="right" style="overflow:hidden;">
         <button
-          ng-show="!mnBucketsState.creationWarnings.length"
-          class="btn_1 create-bucket-button when-roadmin-hide-me casper_buckets_new_data_bucket"
+          ng-hide="isCreateNewDataBucketDisabled()"
+          class="btn_1 create-bucket-button casper_buckets_new_data_bucket"
           style="float:right;"
           ng-click="addBucket()">
             <span>Create New Data Bucket</span>

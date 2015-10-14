@@ -49,7 +49,11 @@
               <span>Lookup Id</span>
             </button>
           </form>
-          <a class="btn_1 btn_create when-roadmin-avoid-me" ng-class="{dynamic_disabled: mnDocumentsListController.isEmptyState()}" ng-click="!mnDocumentsListController.isEmptyState() && mnDocumentsListController.showCreateDialog()"><span>Create Document</span></a>
+          <a
+            class="btn_1 btn_create when-roadmin-avoid-me"
+            ng-class="{dynamic_disabled: mnDocumentsListController.isEmptyState()}"
+            ng-click="!mnDocumentsListController.isEmptyState() && mnDocumentsListController.showCreateDialog()"
+            ng-hide="mnDocumentsListController.isCreateDocumentDisabled()"><span>Create Document</span></a>
           <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
         </div>
       </div>

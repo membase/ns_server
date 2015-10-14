@@ -5,7 +5,11 @@
       <h3 class="js_block-expander block-expander">
         <ins></ins><span class="view_head">Remote Clusters</span>
         <span class="buttons">
-          <a class="btn_1 when-roadmin-hide-me" id="create_cluster_reference" ng-click="createClusterReference()">
+          <a
+            class="btn_1 when-roadmin-hide-me"
+            id="create_cluster_reference"
+            ng-click="createClusterReference()"
+            ng-hide="mnXDCRController.mnPoolDefault.isROAdminCreds">
             <span>Create Cluster Reference</span>
           </a>
         </span>
@@ -27,13 +31,19 @@
                 <a href="{{ window.location.protocol + '//' + row.hostname + 'index.html#/analytics&amp;statsHostname=' + (row.hostname | encodeURIComponent) }}" target="blank">{{row.hostname}}</a>
               </td>
               <td>
-                <a class="list_button delete-button when-roadmin-avoid-me" ng-click="deleteClusterReference(row)"><span>Delete</span></a>
-                <a class="list_button edit-button when-roadmin-avoid-me" ng-click="editClusterReference(row)"><span>Edit</span></a>
+                <a
+                  class="list_button delete-button when-roadmin-avoid-me"
+                  ng-click="deleteClusterReference(row)"
+                  ng-hide="mnXDCRController.mnPoolDefault.isROAdminCreds"><span>Delete</span></a>
+                <a
+                  class="list_button edit-button when-roadmin-avoid-me"
+                  ng-click="editClusterReference(row)"
+                  ng-hide="mnXDCRController.mnPoolDefault.isROAdminCreds"><span>Edit</span></a>
               </td>
             </tr>
           </tbody>
           <tbody ng-if="!mnXdcrState.references.length">
-            <tr><td colspan="3" style="text-align:center">No cluster references defined. <span class="when-roadmin-avoid-me">Please create one.</span></td></tr>
+            <tr><td colspan="3" style="text-align:center">No cluster references defined. <span class="when-roadmin-avoid-me" ng-hide="mnXDCRController.mnPoolDefault.isROAdminCreds">Please create one.</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -46,7 +56,7 @@
       <h3>
         <span class="view_head" style="padding-left: 0">Ongoing Replications</span>
         <span class="buttons">
-          <a ng-show="mnXdcrState.references.length" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="createReplications()">
+          <a ng-show="mnXdcrState.references.length && !mnXDCRController.mnPoolDefault.isROAdminCreds" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="createReplications()">
             <span>Create Replication</span>
           </a>
         </span>
@@ -98,8 +108,14 @@
               </td>
               <td>{{row.when}}</td>
               <td>
-                <a class="list_button when-roadmin-avoid-me" ng-click="deleteReplication(row)"><span>Delete</span></a>
-                <span class="list_button when-roadmin-avoid-me js_per_xdcr_settings" ng-click="editReplication(row)"><span>Edit</span></span>
+                <a
+                  class="list_button when-roadmin-avoid-me"
+                  ng-click="deleteReplication(row)"
+                  ng-hide="mnXDCRController.mnPoolDefault.isROAdminCreds"><span>Delete</span></a>
+                <span
+                  class="list_button when-roadmin-avoid-me js_per_xdcr_settings"
+                  ng-click="editReplication(row)"
+                  ng-hide="mnXDCRController.mnPoolDefault.isROAdminCreds"><span>Edit</span></span>
               </td>
             </tr>
           </tbody>

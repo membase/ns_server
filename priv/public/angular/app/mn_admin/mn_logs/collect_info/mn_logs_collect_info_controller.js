@@ -1,5 +1,9 @@
 angular.module('mnLogs').controller('mnLogsCollectInfoController',
-  function ($scope, mnHelper, mnPromiseHelper, mnLogsCollectInfoService, mnPoll, $state, $modal) {
+  function ($scope, mnHelper, mnPromiseHelper, mnPoolDefault, mnLogsCollectInfoService, mnPoll, $state, $modal) {
+    $scope.mnPoolDefault = mnPoolDefault.latestValue();
+    if ($scope.mnPoolDefault.isROAdminCreds) {
+      return;
+    }
     $scope.collect = {
       nodes: {},
       from: '*'

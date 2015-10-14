@@ -6,11 +6,12 @@
       "mnAccountManagementService",
       "mnPromiseHelper",
       "mnHelper",
-      "mnSpinner"
+      "mnSpinner",
+      "mnPoolDefault"
     ])
     .controller("mnAccountManagementController", mnAccountManagementController);
 
-  function mnAccountManagementController($scope, $modal, mnAccountManagementService, mnPromiseHelper, mnHelper) {
+  function mnAccountManagementController($scope, $modal, mnAccountManagementService, mnPromiseHelper, mnHelper, mnPoolDefault) {
     var vm = this;
 
     vm.creds = {};
@@ -18,6 +19,11 @@
     vm.createUser = createUser;
     vm.deleteUser = deleteUser;
     vm.resetUserPassword = resetUserPassword;
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
+
+    if (vm.mnPoolDefault.isROAdminCreds) {
+      return;
+    }
 
     activate();
 

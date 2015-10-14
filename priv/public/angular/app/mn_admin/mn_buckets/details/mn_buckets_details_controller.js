@@ -1,10 +1,11 @@
 angular.module('mnBuckets').controller('mnBucketsDetailsController',
-  function ($scope, mnBucketsDetailsService, mnPromiseHelper, mnSettingsAutoCompactionService, mnCompaction, mnHelper, $modal, mnBytesToMBFilter, mnBucketsDetailsDialogService) {
+  function ($scope, mnBucketsDetailsService, mnPoolDefault, mnPromiseHelper, mnSettingsAutoCompactionService, mnCompaction, mnHelper, $modal, mnBytesToMBFilter, mnBucketsDetailsDialogService) {
     function getBucketsDetails() {
       mnPromiseHelper($scope, mnBucketsDetailsService.getDetails($scope.bucket))
         .applyToScope("bucketDetails")
         .cancelOnScopeDestroy();
     }
+    $scope.mnPoolDefault = mnPoolDefault.latestValue();
     $scope.editBucket = function () {
       $modal.open({
         templateUrl: 'mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',

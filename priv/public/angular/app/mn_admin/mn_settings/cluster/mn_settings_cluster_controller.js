@@ -5,11 +5,21 @@ angular.module('mnSettingsCluster', [
   'mnMemoryQuota',
   'mnSpinner'
 ]).controller('mnSettingsClusterController',
-  function ($scope, $modal, mnSettingsClusterService, mnHelper, mnPromiseHelper) {
+  function ($scope, $modal, mnSettingsClusterService, mnHelper, mnPromiseHelper, mnPoolDefault) {
+
 
     mnPromiseHelper($scope, mnSettingsClusterService.getClusterState())
       .applyToScope("state")
       .cancelOnScopeDestroy();
+
+    $scope.mnPoolDefault = mnPoolDefault.latestValue();
+    $scope.toggleCertArea = function () {
+      $scope.toggleCertAreaFlag = !$scope.toggleCertAreaFlag;
+    };
+
+    if ($scope.mnPoolDefault.isROAdminCreds) {
+      return;
+    }
 
     $scope.$watch('state.memoryQuotaConfig', _.debounce(function (memoryQuotaConfig) {
       if (!memoryQuotaConfig) {
@@ -69,8 +79,5 @@ angular.module('mnSettingsCluster', [
         })
         .showSpinner('regenerateCertificateInprogress')
         .cancelOnScopeDestroy();
-    };
-    $scope.toggleCertArea = function () {
-      $scope.toggleCertAreaFlag = !$scope.toggleCertAreaFlag;
     };
   });

@@ -4,6 +4,11 @@ angular.module('mnPoolDefault', [
 ]).factory('mnPoolDefault',
   function (mnHttp, $cacheFactory, $q, mnPools, $window) {
     var mnPoolDefault = {};
+    var latestValue;
+
+    mnPoolDefault.latestValue = function () {
+      return latestValue;
+    };
 
     mnPoolDefault.get = function () {
       return $q.all([
@@ -20,11 +25,13 @@ angular.module('mnPoolDefault', [
         var pools = resp[1]
         poolDefault.rebalancing = poolDefault.rebalanceStatus !== 'none';
         poolDefault.isGroupsAvailable = !!(pools.isEnterprise && poolDefault.serverGroupsUri);
+        poolDefault.isROAdminCreds = pools.isROAdminCreds;
         poolDefault.thisNode = _.detect(poolDefault.nodes, function (n) {
           return n.thisNode;
         });
         poolDefault.isKvNode =  _.indexOf(poolDefault.thisNode.services, "kv") > -1;
         poolDefault.capiBase = $window.location.protocol === "https:" ? poolDefault.thisNode.couchApiBaseHTTPS : poolDefault.thisNode.couchApiBase;
+        latestValue = poolDefault;
         return poolDefault;
       });
     };

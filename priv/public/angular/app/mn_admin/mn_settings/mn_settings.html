@@ -11,15 +11,19 @@
           <li><a id="settings_compaction" class="casper_settings_compaction" ui-sref="app.admin.settings.autoCompaction" ui-sref-active="selected">Auto-Compaction</a></li>
           <li
             class="when-enterprise only-when-40 only-when_ldap_enabled"
-            ng-show="mnAdminController.mnPoolDefault.ldapEnabled">
+            ng-show="mnAdminController.poolDefault.ldapEnabled">
               <a
                 id="ldap_setup"
                 ui-sref="app.admin.settings.ldap"
                 ui-sref-active="selected">LDAP Auth Setup</a>
           </li>
           <li><a id="settings_audit" class="casper_settings_audit" ui-sref="app.admin.settings.audit" ui-sref-active="selected">Audit</a></li>
-          <li class="when-roadmin-avoid-me" ui-sref="app.admin.settings.accountManagement" ui-sref-active="selected">
-            <a id="account_management" class="casper_settings_account_management">Account Management</a>
+          <li
+            class="when-roadmin-avoid-me"
+            ng-hide="mnAdminController.poolDefault.isROAdminCreds"
+            ui-sref="app.admin.settings.accountManagement"
+            ui-sref-active="selected">
+              <a id="account_management" class="casper_settings_account_management">Account Management</a>
           </li>
           <li><a id="settings_sample_buckets" class="casper_settings_sample_buckets" ui-sref="app.admin.settings.sampleBuckets" ui-sref-active="selected">Sample Buckets</a></li>
         </ul>

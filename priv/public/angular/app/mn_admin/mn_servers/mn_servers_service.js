@@ -105,7 +105,7 @@ angular.module('mnServersService', [
       })
     };
 
-    function prepareNode(nodes, tasks, stateParamsNodeType) {
+    function prepareNode(nodes, tasks, stateParamsNodeType, poolDefault) {
       return _.map(nodes[stateParamsNodeType], function (node) {
         node.couchDataSize = node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size'] + node.interestingStats['couch_spatial_data_size'];
         node.couchDiskUsage = node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size'] + node.interestingStats['couch_spatial_disk_size'];
@@ -115,7 +115,7 @@ angular.module('mnServersService', [
         node.isNodeUnhealthy = node.status === 'unhealthy';
         node.isNodeInactiveFaied = node.clusterMembership === 'inactiveFailed';
         node.isNodeInactiveAdded = node.clusterMembership === 'inactiveAdded';
-        node.isReAddPossible = node.isNodeInactiveFaied && !node.isNodeUnhealthy;
+        node.isReAddPossible = node.isNodeInactiveFaied && !node.isNodeUnhealthy && !poolDefault.isROAdminCreds;
         node.isLastActiveData = nodes.reallyActiveData.length === 1;
         node.isActiveUnhealthy = stateParamsNodeType === "active" && node.isNodeUnhealthy;
 
@@ -245,7 +245,7 @@ angular.module('mnServersService', [
         var autoFailoverSettings = results[3];
         rv.allNodes = nodes.allNodes;
         rv.isGroupsAvailable = poolDefault.isGroupsAvailable;
-        rv.currentNodes = prepareNode(nodes, tasks, stateParamsNodeType);
+        rv.currentNodes = prepareNode(nodes, tasks, stateParamsNodeType, poolDefault);
         rv.rebalancing = poolDefault.rebalancing;
         rv.pendingLength = nodes.pending.length;
         rv.mayRebalanceWithoutSampleLoading = !poolDefault.rebalancing && !tasks.inRecoveryMode && (!!nodes.pending.length || !poolDefault.balanced) && !nodes.unhealthyActive;

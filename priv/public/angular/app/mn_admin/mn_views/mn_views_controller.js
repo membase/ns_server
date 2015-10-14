@@ -13,7 +13,8 @@
       'ui.select',
       'ui.router',
       'ui.bootstrap',
-      'ngSanitize'
+      'ngSanitize',
+      'mnPoolDefault'
     ])
     .controller("mnViewsController", mnViewsController);
 

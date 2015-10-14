@@ -19,7 +19,11 @@
         <p ng-if="mnAdminController.updates.info">{{mnAdminController.updates.info}}</p>
       </div>
       <label class="for-enable-replicas">
-        <input type="checkbox" id="notification-updates" ng-model="mnAdminController.updates.enabled">
+        <input
+          type="checkbox"
+          id="notification-updates"
+          ng-model="mnAdminController.updates.enabled"
+          ng-disabled="mnSettingsNotificationsController.mnPoolDefault.isROAdminCreds">
         <span>Enable software update notifications.</span>
         <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
           <span class="tooltip_msg text_11" style="width:310px;"><span>
@@ -33,7 +37,10 @@
       </label>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="submit">Save</button>
+      <button
+        class="save_button float_right"
+        type="submit"
+        ng-hide="mnSettingsNotificationsController.mnPoolDefault.isROAdminCreds">Save</button>
     </div>
   </form>
 </div>

@@ -6,10 +6,13 @@ angular.module('mnBuckets', [
   'mnBarUsage',
   'mnBucketsForm',
   'mnPromiseHelper',
-  'mnPoll'
+  'mnPoll',
+  'mnPoolDefault'
 ]).controller('mnBucketsController',
-  function ($scope, mnBucketsService, mnHelper, mnPromiseHelper, mnPoll, $modal) {
-
+  function ($scope, mnBucketsService, mnHelper, poolDefault, mnPromiseHelper, mnPoll, $modal) {
+    $scope.isCreateNewDataBucketDisabled = function () {
+      return !$scope.mnBucketsState || poolDefault.isROAdminCreds || !!$scope.mnBucketsState.creationWarnings.length;
+    };
     $scope.addBucket = function () {
       mnPromiseHelper($scope, mnBucketsService.getBucketsState())
         .applyToScope("mnBucketsState")

@@ -24,7 +24,7 @@
           Disk I/O priority: <span>{{bucketDetails.threadsNumber === 3 ? 'Low' : 'High'}}</span>
         </div>
       </div>
-      <div class="last when-roadmin-hide-me">
+      <div class="last when-roadmin-hide-me" ng-hide="mnPoolDefault.isROAdminCreds">
         <a class="inner_btn casper_buckets_edit_bucket_popup" ng-click="editBucket(bucketDetails)" >Edit</a>
         <button ng-show="!bucketDetails.showCancel && !bucketDetails.noCompaction" class="inner_btn compact_btn" ng-class="{dynamic_disabled: bucketDetails.disableCompact}" ng-click="!bucketDetails.disableCompact && registerCompactionAsTriggeredAndPost(bucketDetails.controllers.compactAll, 'disableCompact')">
           <span>Compact</span>

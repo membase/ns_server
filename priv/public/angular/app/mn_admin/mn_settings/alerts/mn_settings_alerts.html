@@ -3,7 +3,12 @@
     <h2>Email Alerts</h2>
     <div class="sub_section">
       <label class="for-enable-replicas">
-        <input type="checkbox" id="email_alerts_enabled" ng-model="state.enabled" class="casper_settings_alerts_errors">
+        <input
+          type="checkbox"
+          id="email_alerts_enabled"
+          ng-model="state.enabled"
+          class="casper_settings_alerts_errors"
+          ng-disabled="mnPoolDefault.isROAdminCreds">
         <span>Enable email alerts</span>
       </label>
     </div>
@@ -11,29 +16,29 @@
     <div class="sub_section fields">
       <div class="row">
         <label for="email_alerts_host">Host:</label>
-        <input type="text" id="email_alerts_host" ng-model="state.emailServer.host" ng-disabled="!state.enabled">
+        <input type="text" id="email_alerts_host" ng-model="state.emailServer.host" ng-disabled="isFormElementsDisabled()">
         <label for="email_alerts_port" style="text-align: right;">Port:</label>
-        <input type="text" id="email_alerts_port" ng-model="state.emailServer.port" ng-disabled="!state.enabled">
+        <input type="text" id="email_alerts_port" ng-model="state.emailServer.port" ng-disabled="isFormElementsDisabled()">
         <div class="error-container err-email_port" ng-if="errors.email_port">{{errors.email_port}}</div>
       </div>
       <div class="row">
         <label for="email_alerts_user">Username:</label>
-        <input type="text" id="email_alerts_user" ng-model="state.emailServer.user" ng-disabled="!state.enabled" autocomplete="off">
+        <input type="text" id="email_alerts_user" ng-model="state.emailServer.user" ng-disabled="isFormElementsDisabled()" autocomplete="off">
       </div>
       <div class="row">
         <label for="email_alerts_pass">Password:</label>
-        <input type="password" id="email_alerts_pass" ng-model="state.emailServer.pass" ng-disabled="!state.enabled" autocomplete="off">
+        <input type="password" id="email_alerts_pass" ng-model="state.emailServer.pass" ng-disabled="isFormElementsDisabled()" autocomplete="off">
       </div>
       <div class="row">
         <label for="email_alerts_encrypt">Require TLS:</label>
-        <input type="checkbox" id="email_alerts_encrypt" ng-model="state.emailServer.encrypt" ng-disabled="!state.enabled">
+        <input type="checkbox" id="email_alerts_encrypt" ng-model="state.emailServer.encrypt" ng-disabled="isFormElementsDisabled()">
       </div>
     </div>
     <h3>Email Settings</h3>
     <div class="sub_section fields">
       <div class="row">
         <label for="email_alerts_sender">Sender email:</label>
-        <input type="text" id="email_alerts_sender" ng-model="state.sender" ng-disabled="!state.enabled">
+        <input type="text" id="email_alerts_sender" ng-model="state.sender" ng-disabled="isFormElementsDisabled()">
         <div class="error-container err-sender" ng-if="errors.sender">{{errors.sender}}</div>
       </div>
       <div class="row">
@@ -41,18 +46,21 @@
         <textarea id="email_alerts_recipients" ng-disabled="!state.enabled">{{state.recipients}}</textarea>
         <span style="vertical-align:top;margin:0 5px;line-height:24px">separate addresses with comma "," or spaces " "</span>
         <div class="error-container err-recipients" ng-if="errors.recipients">{{errors.recipients}}</div>
-        <div class="when-roadmin-avoid-me"><button class="edit_btn" id="test_email" ng-click="testEmail()">Test Mail</button> <span>using the settings above</span></div>
+        <div class="when-roadmin-avoid-me" ng-hide="mnPoolDefault.isROAdminCreds">
+          <button class="edit_btn" id="test_email" ng-click="testEmail()">Test Mail</button>
+          <span>using the settings above</span>
+        </div>
       </div>
     </div>
     <h3>Available Alerts</h3>
     <div class="sub_section checkboxes" id="email_alerts_alerts">
       <label ng-repeat="alert in state.knownAlerts">
-        <input type="checkbox" ng-model="state.alerts[alert]" ng-disabled="!state.enabled">
+        <input type="checkbox" ng-model="state.alerts[alert]" ng-disabled="isFormElementsDisabled()">
         <span>{{alert | alertsLabel}}</span>
       </label>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="submit">
+      <button class="save_button float_right" type="submit" ng-hide="mnPoolDefault.isROAdminCreds">
         Save
       </button>
     </div>

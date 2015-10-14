@@ -2,11 +2,17 @@ angular.module('mnSettingsAutoCompaction', [
   'mnSettingsAutoCompactionService',
   'mnHelper',
   'mnPromiseHelper',
-  'mnAutoCompactionForm'
+  'mnAutoCompactionForm',
+  'mnPoolDefault'
 ]).controller('mnSettingsAutoCompactionController',
-  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoCompactionService) {
+  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoCompactionService, mnPoolDefault) {
     mnPromiseHelper($scope, mnSettingsAutoCompactionService.getAutoCompaction()).applyToScope("autoCompactionSettings");
 
+    $scope.mnPoolDefault = mnPoolDefault.latestValue();
+
+    if ($scope.mnPoolDefault.isROAdminCreds) {
+      return;
+    }
     $scope.$watch('autoCompactionSettings', function (autoCompactionSettings) {
       mnPromiseHelper($scope, mnSettingsAutoCompactionService
         .saveAutoCompaction(autoCompactionSettings, {just_validate: 1}))

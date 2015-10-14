@@ -16,6 +16,7 @@
           <span>Enable:</span>
           <input
             type="checkbox"
+            ng-disabled="mnSettingsLdapController.mnPoolDefault.isROAdminCreds"
             ng-model="mnSettingsLdapController.mnSettingsLdapState.enabled">
         </label>
         <label class="textarea_label">
@@ -86,7 +87,7 @@
           <input
             type="text"
             ng-model="mnSettingsLdapController.test.username"
-            ng-disabled="!mnSettingsLdapController.mnSettingsLdapState.enabled"
+            ng-disabled="mnSettingsLdapController.isUserFormDisabled()"
             autocomplete="off"
             style="width: 150px;">
         </label>
@@ -95,7 +96,7 @@
           <input
             type="password"
             ng-model="mnSettingsLdapController.test.password"
-            ng-disabled="!mnSettingsLdapController.mnSettingsLdapState.enabled"
+            ng-disabled="mnSettingsLdapController.isUserFormDisabled()"
             autocomplete="off"
             style="width: 150px;">
         </label>
@@ -116,6 +117,7 @@
   <div class="save_cancel">
     <button
       class="save_button float_right"
-      ng-click="mnSettingsLdapController.save()">Save</button>
+      ng-click="mnSettingsLdapController.save()"
+      ng-hide="mnSettingsLdapController.mnPoolDefault.isROAdminCreds">Save</button>
   </div>
 </div>

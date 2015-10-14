@@ -61,7 +61,12 @@ angular.module('mnAdmin', [
     .state('app.admin', {
       abstract: true,
       templateUrl: 'mn_admin/mn_admin.html',
-      controller: 'mnAdminController as mnAdminController'
+      controller: 'mnAdminController as mnAdminController',
+      resolve: {
+        poolDefault: function (mnPoolDefault) {
+          return mnPoolDefault.get();
+        }
+      }
     })
     .state('app.admin.overview', {
       url: '/overview',
@@ -71,6 +76,11 @@ angular.module('mnAdmin', [
     .state('app.admin.documents', {
       abstract: true,
       templateUrl: 'mn_admin/mn_documents/mn_documents.html',
+      data: {
+        required: {
+          admin: true
+        }
+      },
       params: {
         pageLimit: {
           value: 5
@@ -148,7 +158,12 @@ angular.module('mnAdmin', [
       abstract: true,
       url: '/:documentId/:viewId?{isSpatial:bool}&sampleDocumentId',
       controller: 'mnViewsEditingController as mnViewsEditingController',
-      templateUrl: 'mn_admin/mn_views/editing/mn_views_editing.html'
+      templateUrl: 'mn_admin/mn_views/editing/mn_views_editing.html',
+      data: {
+        required: {
+          admin: true
+        }
+      }
     })
     .state('app.admin.views.editing.result', {
       url: '?subset&{pageNumber:int}&viewsParams',
@@ -216,7 +231,12 @@ angular.module('mnAdmin', [
       url: '/groups',
       templateUrl: 'mn_admin/mn_groups/mn_groups.html',
       controller: 'mnGroupsController',
-      controllerAs: 'mnGroupsController'
+      controllerAs: 'mnGroupsController',
+      data: {
+        required: {
+          admin: true
+        }
+      }
     })
     .state('app.admin.replications', {
       url: '/replications',
@@ -226,7 +246,8 @@ angular.module('mnAdmin', [
     .state('app.admin.logs', {
       url: '/logs',
       abstract: true,
-      templateUrl: 'mn_admin/mn_logs/mn_logs.html'
+      templateUrl: 'mn_admin/mn_logs/mn_logs.html',
+      controller: 'mnLogsController as mnLogsController'
     })
     .state('app.admin.logs.list', {
       url: '',
@@ -237,7 +258,12 @@ angular.module('mnAdmin', [
       url: '/collectInfo',
       abstract: true,
       controller: 'mnLogsCollectInfoController',
-      templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info.html'
+      templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
+      data: {
+        required: {
+          admin: true
+        }
+      }
     })
     .state('app.admin.logs.collectInfo.result', {
       url: '/result',
@@ -290,7 +316,12 @@ angular.module('mnAdmin', [
     .state('app.admin.settings.accountManagement', {
       url: '/accountManagement',
       controller: 'mnAccountManagementController as mnAccountManagementController',
-      templateUrl: 'mn_admin/mn_settings/account_management/mn_account_management.html'
+      templateUrl: 'mn_admin/mn_settings/account_management/mn_account_management.html',
+      data: {
+        required: {
+          admin: true
+        }
+      }
     })
     .state('app.admin.settings.audit', {
       url: '/audit',

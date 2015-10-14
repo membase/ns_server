@@ -34,6 +34,7 @@
             ng-false-value="0"
             ng-true-value="{{bucket.quotaNeeded}}"
             id="setup-sample-{{bucket.name}}"
+            ng-disabled="mnSettingsSampleBucketsController.mnPoolDefault.isROAdminCreds"
             ng-model="mnSettingsSampleBucketsController.selected[bucket.name]">
           <label for="setup-sample-{{bucket.name}}">{{bucket.name}}</label>
         </li>
@@ -44,6 +45,7 @@
     </div>
     <div class="save_cancel when-roadmin-hide-me">
       <button
+        ng-hide="mnSettingsSampleBucketsController.mnPoolDefault.isROAdminCreds"
         class="save_button float_right"
         type="submit"
         id="sample_buckets_settings_btn"

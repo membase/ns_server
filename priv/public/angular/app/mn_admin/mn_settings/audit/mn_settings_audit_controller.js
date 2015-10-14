@@ -1,11 +1,18 @@
 angular.module('mnSettingsAudit', [
   'mnSettingsAuditService',
   'mnHelper',
-  'mnPromiseHelper'
+  'mnPromiseHelper',
+  'mnPoolDefault'
 ]).controller('mnSettingsAuditController',
-  function ($scope, mnSettingsAuditService, mnPromiseHelper, mnHelper) {
+  function ($scope, mnSettingsAuditService, mnPromiseHelper, mnHelper, mnPoolDefault) {
 
     mnPromiseHelper($scope, mnSettingsAuditService.getAuditSettings()).applyToScope("state");
+
+    $scope.mnPoolDefault = mnPoolDefault.latestValue();
+
+    if ($scope.mnPoolDefault.isROAdminCreds) {
+      return;
+    }
 
     $scope.$watch('state', function (state) {
       if (!state) {

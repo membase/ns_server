@@ -1,8 +1,9 @@
 angular.module('mnLogs', [
   'mnLogsService',
   'mnPromiseHelper',
-  'mnPoll'
+  'mnPoll',
+  'mnPoolDefault'
 ]).controller('mnLogsController',
-  function ($scope, mnHelper, mnLogsService, logs) {
-
+  function ($scope, mnHelper, mnLogsService, mnPoolDefault) {
+    $scope.mnPoolDefault = mnPoolDefault.latestValue();
   });

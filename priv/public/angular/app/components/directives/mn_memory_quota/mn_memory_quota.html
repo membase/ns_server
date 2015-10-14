@@ -11,7 +11,7 @@
     type="number"
     class="focusme js_ram_quota"
     id="kv_ram_quota"
-    ng-disabled="config.services &&!config.services.model.kv"
+    ng-disabled="config.services && !config.services.model.kv || mnMemoryQuotaController.mnPoolDefault.isROAdminCreds"
     name="memoryQuota"
     ng-model="config.memoryQuota" />
   <span>MB (min {{::config.minMemorySize}} MB)</span>
@@ -28,7 +28,7 @@
     type="number"
     class="js_ram_quota"
     id="index_ram_quota"
-    ng-disabled="config.services && !config.services.model.index"
+    ng-disabled="config.services && !config.services.model.index || mnMemoryQuotaController.mnPoolDefault.isROAdminCreds"
     name="indexMemoryQuota"
     ng-model="config.indexMemoryQuota" />
   <span>MB (min 256 MB)</span>

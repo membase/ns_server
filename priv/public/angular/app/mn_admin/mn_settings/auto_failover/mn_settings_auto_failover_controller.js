@@ -3,7 +3,14 @@ angular.module('mnSettingsAutoFailover', [
   'mnHelper',
   'mnPromiseHelper'
 ]).controller('mnSettingsAutoFailoverController',
-  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService) {
+  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService, mnPoolDefault) {
+
+    $scope.mnPoolDefault = mnPoolDefault.latestValue();
+
+    $scope.isAutoFailOverDisabled = function () {
+      return ($scope.state && !$scope.state.enabled) || $scope.mnPoolDefault.isROAdminCreds;
+    }
+
     mnPromiseHelper($scope, mnSettingsAutoFailoverService.getAutoFailoverSettings())
       .applyToScope(function (autoFailoverSettings) {
         $scope.state = autoFailoverSettings.data

@@ -5,7 +5,7 @@
     .module("mnViews")
     .controller("mnViewsEditingController", mnViewsEditingController);
 
-  function mnViewsEditingController($scope, $state, $modal, mnHelper, mnViewsEditingService, mnViewsListService, mnPromiseHelper) {
+  function mnViewsEditingController($scope, $state, $modal, mnPoolDefault, mnHelper, mnViewsEditingService, mnViewsListService, mnPromiseHelper) {
     var vm = this;
     var viewsOptions = {
       lineNumbers: true,
@@ -32,7 +32,12 @@
     vm.toggleViews = toggleViews;
     vm.saveAs = saveAs;
     vm.save = save;
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.isFilterOpened = false;
+
+    if (vm.mnPoolDefault.isROAdminCreds) {
+      return;
+    }
 
     activate();
 

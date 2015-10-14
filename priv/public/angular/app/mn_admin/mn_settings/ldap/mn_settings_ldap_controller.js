@@ -7,7 +7,7 @@
     .controller('mnSettingsLdapController', mnSettingsLdapController)
     .filter("formatRoleMessage", formatRoleMessageFilter);
 
-    function mnSettingsLdapController($scope, mnSettingsLdapService, mnPromiseHelper) {
+    function mnSettingsLdapController($scope, mnSettingsLdapService, mnPromiseHelper, mnPoolDefault) {
       var vm = this;
 
       vm.test = {};
@@ -18,23 +18,28 @@
       vm.isRecognizedNotViaLdap = isRecognizedNotViaLdap;
       vm.validate = validate;
       vm.save = save;
+      vm.isUserFormDisabled = isUserFormDisabled;
+      vm.mnPoolDefault = mnPoolDefault.latestValue();
 
       activate();
 
       function isValidateButtonDisabled() {
-        return !vm.test.username || !vm.test.password || !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled;
+        return !vm.test.username || !vm.test.password || !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnPoolDefault.isROAdminCreds;
       }
       function isReadOnlyAdminsDisabled() {
-        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnSettingsLdapState["default"] === "roAdmins";
+        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnSettingsLdapState["default"] === "roAdmins" || vm.mnPoolDefault.isROAdminCreds;
       }
       function isFullAdminsDisabled() {
-        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnSettingsLdapState["default"] === "admins";
+        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnSettingsLdapState["default"] === "admins" || vm.mnPoolDefault.isROAdminCreds;
       }
       function isRadioDefaultDisabled() {
-        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled;
+        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnPoolDefault.isROAdminCreds;
       }
       function isRecognizedNotViaLdap() {
-        return vm.validateResult && vm.validateResult.role !== 'none' && vm.validateResult.source === 'builtin';
+        return (vm.validateResult && vm.validateResult.role !== 'none' && vm.validateResult.source === 'builtin');
+      }
+      function isUserFormDisabled() {
+        return (vm.mnSettingsLdapState && !vm.mnSettingsLdapState.enabled) || vm.mnPoolDefault.isROAdminCreds;
       }
       function validate() {
         if (vm.validateSpinner) {

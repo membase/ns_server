@@ -6,7 +6,7 @@
         <span class="only-when-below-20" style="display:none;">
           NOTE: need all 2.0 nodes to enable 2.0-only features<b>&bull;</b>
         </span>
-        <span id="edit-internal-settings-link" class="when-roadmin-avoid-me" style="display:none;">
+        <span id="edit-internal-settings-link" class="when-roadmin-avoid-me" ng-hide="mnAdminController.poolDefault.isROAdminCreds" style="display:none;">
           <a onclick="runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b>
         </span>
         <a href="http://docs.couchbase.com/couchbase-manual-2.5/" target="cbdocs">

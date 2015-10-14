@@ -1,12 +1,23 @@
 angular.module('mnSettingsAlerts', [
   'mnSettingsAlertsService',
   'mnHelper',
-  'mnPromiseHelper'
+  'mnPromiseHelper',
+  'mnPoolDefault'
 ]).controller('mnSettingsAlertsController',
-  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAlertsService) {
+  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAlertsService, mnPoolDefault) {
     mnPromiseHelper($scope, mnSettingsAlertsService.getAlerts())
       .applyToScope("state")
       .cancelOnScopeDestroy();
+
+    $scope.mnPoolDefault = mnPoolDefault.latestValue();
+
+    $scope.isFormElementsDisabled = function () {
+      return ($scope.state && !$scope.state.enabled) || $scope.mnPoolDefault.isROAdminCreds;
+    };
+
+    if ($scope.mnPoolDefault.isROAdminCreds) {
+      return;
+    }
 
     function getParams() {
       var params = _.clone($scope.state);

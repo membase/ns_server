@@ -1,8 +1,9 @@
 (function () {
   angular.module('mnAdmin').controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $q, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService) {
+  function mnAdminController($scope, $rootScope, $q, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService) {
     var vm = this;
+    vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
     vm.alerts = mnAlertsService.alerts;
     vm.closeAlert = mnAlertsService.closeAlert;

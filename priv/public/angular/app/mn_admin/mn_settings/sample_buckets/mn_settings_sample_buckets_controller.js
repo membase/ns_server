@@ -2,12 +2,13 @@
   "use strict";
 
   angular
-    .module("mnSettingsSampleBuckets", ["mnSettingsSampleBucketsService", "mnPromiseHelper"])
+    .module("mnSettingsSampleBuckets", ["mnSettingsSampleBucketsService", "mnPromiseHelper", "mnPoolDefault"])
     .controller("mnSettingsSampleBucketsController", mnSettingsSampleBucketsController);
 
-  function mnSettingsSampleBucketsController($scope, mnSettingsSampleBucketsService, mnPromiseHelper) {
+  function mnSettingsSampleBucketsController($scope, mnSettingsSampleBucketsService, mnPromiseHelper, mnPoolDefault) {
     var vm = this;
     vm.selected = {};
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.isCreateButtonDisabled = isCreateButtonDisabled;
     vm.installSampleBuckets = installSampleBuckets;
 
