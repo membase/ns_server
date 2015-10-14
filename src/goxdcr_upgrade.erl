@@ -61,10 +61,11 @@ do_upgrade(Config, Nodes) ->
     ?log_debug("Pull replication docs from other nodes synchronously."),
     ok = doc_replicator:pull_docs(xdcr, Nodes -- [ns_node_disco:ns_server_node()]),
 
-    Json = build_json(),
-    ?log_debug("Starting goxdcr upgrade with the following configuration: ~p", [Json]),
+    UpgradeConf = build_upgrade_configuration(),
+    ?log_debug("Starting goxdcr upgrade with the following configuration: ~p",
+               [ns_config_log:sanitize(UpgradeConf)]),
 
-    ok = run_upgrade(Config, Json),
+    ok = run_upgrade(Config, ejson:encode({UpgradeConf})),
     ?log_debug("Goxdcr configuration was successfully upgraded").
 
 config_upgrade(Config) ->
@@ -115,7 +116,7 @@ start_logger(Name, Log) ->
     ok = ale:add_sink(Logger, Sink, debug),
     Logger.
 
-build_json() ->
+build_upgrade_configuration() ->
     RemoteClusters = menelaus_web_remote_clusters:get_remote_clusters(),
     ClustersData = lists:map(fun (KV) ->
                                      menelaus_web_remote_clusters:build_remote_cluster_info(KV, true)
@@ -130,10 +131,9 @@ build_json() ->
 
     GlobalSettings = menelaus_web_xdc_replications:build_global_replication_settings(),
 
-    ejson:encode({[{remoteClusters, ClustersData},
-                   {replicationDocs, RepsData},
-                   {replicationSettings, {GlobalSettings}}
-                  ]}).
+    [{remoteClusters, ClustersData},
+     {replicationDocs, RepsData},
+     {replicationSettings, {GlobalSettings}}].
 
 sync_config(Nodes) ->
     try
