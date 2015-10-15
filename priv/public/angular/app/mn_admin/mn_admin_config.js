@@ -40,23 +40,6 @@ angular.module('mnAdmin', [
     }
   });
 
-  function setDefaultBucketName(bucketParamName, stateRedirect) {
-    return function ($q, $state, mnBucketsService, $stateParams) {
-      var deferred = $q.defer();
-
-      if (!$stateParams[bucketParamName]) {
-        mnBucketsService.getBucketsByType(true).then(function (buckets) {
-          $stateParams[bucketParamName] = buckets.byType.membase.defaultName;
-          $state.go(stateRedirect, $stateParams);
-        })["finally"](deferred.reject);
-      } else {
-        deferred.resolve();
-      }
-
-      return deferred.promise;
-    };
-  }
-
   $stateProvider
     .state('app.admin', {
       abstract: true,
@@ -112,10 +95,7 @@ angular.module('mnAdmin', [
         }
       },
       controller: 'mnAnalyticsController',
-      templateUrl: 'mn_admin/mn_analytics/mn_analytics.html',
-      resolve: {
-        setDefaultBucketName: setDefaultBucketName("analyticsBucket", 'app.admin.analytics.list.graph')
-      }
+      templateUrl: 'mn_admin/mn_analytics/mn_analytics.html'
     })
     .state('app.admin.analytics.list', {
       abstract: true,

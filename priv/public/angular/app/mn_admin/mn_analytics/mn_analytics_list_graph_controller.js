@@ -1,12 +1,13 @@
 angular.module('mnAnalytics').controller('mnAnalyticsListGraphController',
   function ($scope, $stateParams) {
     $scope.$watch('mnAnalyticsState', function (analiticsState) {
-      if (!analiticsState || !analiticsState.statsByName) {
+      if (!analiticsState) {
         return;
       }
 
-      var selectedStat = analiticsState.statsByName[$stateParams.graph];
+      var selectedStat = analiticsState.statsByName && analiticsState.statsByName[$stateParams.graph];
       if (!selectedStat) {
+        $scope.selectedStat = {};
         return;
       }
 

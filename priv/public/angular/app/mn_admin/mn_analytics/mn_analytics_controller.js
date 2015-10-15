@@ -22,6 +22,8 @@ angular.module('mnAnalytics', [
     $scope.$watch('mnAnalyticsState.bucketsNames.selected', function (selectedBucket) {
       selectedBucket && selectedBucket !== $state.params.analyticsBucket && $state.go('app.admin.analytics.list.graph', {
         analyticsBucket: selectedBucket
+      }, {
+        location: !$state.params.viewsBucket ? "replace" : true
       });
     });
 

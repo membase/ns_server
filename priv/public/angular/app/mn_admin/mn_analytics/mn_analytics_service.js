@@ -60,35 +60,38 @@ angular.module('mnAnalyticsService', [
     }
 
     mnAnalyticsService.getStats = function (params) {
-      var isSpecificStat = !!params.$stateParams.specificStat;
-      return mnAnalyticsService.doGetStats(params).then(function (resp) {
-        var queries = [
-          mnBucketsService.getBucketsByType(),
-          $q.when(resp)
-        ];
-        queries.push(isSpecificStat ? $q.when({
-          data: resp.data.directory.value,
-          origTitle: resp.data.directory.origTitle
-        }) : getStatsDirectory(resp.data.directory.url));
+      return mnBucketsService.getBucketsByType(true).then(function (buckets) {
+        params.$stateParams.analyticsBucket = params.$stateParams.analyticsBucket || buckets.byType.membase.defaultName;
+        var isSpecificStat = !!params.$stateParams.specificStat;
+        return mnAnalyticsService.doGetStats(params).then(function (resp) {
+          var queries = [
+            $q.when(buckets),
+            $q.when(resp)
+          ];
+          queries.push(isSpecificStat ? $q.when({
+            data: resp.data.directory.value,
+            origTitle: resp.data.directory.origTitle
+          }) : getStatsDirectory(resp.data.directory.url));
 
-        var rv = $q.all(queries).then(function (data) {
-          return prepareAnaliticsState(data, params);
+          var rv = $q.all(queries).then(function (data) {
+            return prepareAnaliticsState(data, params);
+          });
+          return isSpecificStat ? rv : rv.then(prepareNodesList(params));
+        }, function (resp) {
+          switch (resp.status) {
+            case 404:
+            case 500: //should be removed later
+              var rv = $q.when(buckets).then(function (buckets) {
+                buckets.byType.membase.names.selected = params.$stateParams.analyticsBucket;
+                return {
+                  bucketsNames: buckets.byType.membase.names,
+                  isEmptyState: true
+                };
+              });
+              return isSpecificStat ? rv : rv.then(prepareNodesList(params));
+            case 0: return $q.reject(resp);
+          }
         });
-        return isSpecificStat ? rv : rv.then(prepareNodesList(params));
-      }, function (resp) {
-        switch (resp.status) {
-          case 404:
-          case 500: //should be removed later
-            var rv = mnBucketsService.getBucketsByType().then(function (buckets) {
-              buckets.byType.membase.names.selected = params.$stateParams.analyticsBucket;
-              return {
-                bucketsNames: buckets.byType.membase.names,
-                isEmptyState: true
-              };
-            });
-            return isSpecificStat ? rv : rv.then(prepareNodesList(params));
-          case 0: return $q.reject(resp);
-        }
       });
     };
 
