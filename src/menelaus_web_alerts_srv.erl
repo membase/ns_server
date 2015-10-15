@@ -57,7 +57,7 @@ short_description(Other) ->
 
 %% Error constants
 errors(ip) ->
-    "IP address seems to have changed. Unable to listen on ~p.";
+    "IP address seems to have changed. Unable to listen on ~p. (Underlaying POSIX error code: ~p)";
 errors(ep_oom_errors) ->
     "Hard Out Of Memory Error. Bucket \"~s\" on node ~s is full. All memory allocated to this bucket is used for metadata.";
 errors(ep_item_commit_failed) ->
@@ -223,8 +223,8 @@ check_alerts(Opaque, Hist, Stats) ->
 check(ip, Opaque, _History, _Stats) ->
     {_Name, Host} = misc:node_name_host(node()),
     case can_listen(Host) of
-        false ->
-            global_alert(ip, fmt_to_bin(errors(ip), [node()]));
+        {false, Error} ->
+            global_alert(ip, fmt_to_bin(errors(ip), [node(), Error]));
         true ->
             ok
     end,
@@ -336,17 +336,17 @@ check_stat_increased(Stats, StatName, Opaque) ->
 
 
 %% @doc check that I can listen on the current host
--spec can_listen(string()) -> boolean().
+-spec can_listen(string()) -> true | {false, inet:posix()}.
 can_listen(Host) ->
     case inet:getaddr(Host, inet) of
         {error, Err} ->
             ?log_error("Cannot listen due to ~p from inet:getaddr~n", [Err]),
-            false;
+            {false, Err};
         {ok, IpAddr} ->
             case gen_udp:open(0, [inet, {ip, IpAddr}]) of
                 {error, ListErr} ->
                     ?log_error("gen_udp:open(~p) failed due to ~p", [IpAddr, ListErr]),
-                    false;
+                    {false, ListErr};
                 {ok, Socket} ->
                     gen_udp:close(Socket),
                     true
