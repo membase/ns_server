@@ -46,7 +46,7 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
         $scope.loadingResult = false;
         $scope.mnLogsCollectInfoState = state;
       })
-      .keepIn("mnLogsCollectInfoState")
+      .keepIn("app.admin.logs.collectInfo")
       .cancelOnScopeDestroy()
       .run();
 

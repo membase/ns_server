@@ -2,7 +2,7 @@ angular.module('mnPoll', [
   'mnTasksDetails',
   'mnPendingQueryKeeper'
 ]).factory('mnPoll',
-  function ($timeout, $q, mnTasksDetails, mnPendingQueryKeeper) {
+  function ($timeout, $q, $rootScope, $state, mnTasksDetails, mnPendingQueryKeeper) {
     var stateKeeper = {};
 
     function poll(request, extractInterval, scope) {
@@ -12,6 +12,7 @@ angular.module('mnPoll', [
       var timeout;
       var subscribers = [];
       var cancelOnScopeDestroy = false;
+      var stateChangeStartBind;
 
       function call() {
         var query = angular.isFunction(request) ? request(latestResult) : request;
@@ -55,6 +56,12 @@ angular.module('mnPoll', [
         }
       }
 
+      function subscribe(subscriber, keeper) {
+        deferred.promise.then(null, null, angular.isFunction(subscriber) ? subscriber : function (value) {
+          (keeper || scope)[subscriber] = value;
+        });
+      }
+
       return {
         run: function () {
           cycle();
@@ -68,30 +75,31 @@ angular.module('mnPoll', [
           return deferred.promise;
         },
         stop: function () {
+          stateChangeStartBind && stateChangeStartBind();
           isCanceled = true;
           $timeout.cancel(timeout);
         },
         subscribe: function (subscriber, keeper) {
           this.subscriber = subscriber;
-          deferred.promise.then(null, null, angular.isFunction(subscriber) ? subscriber : function (value) {
-            (keeper || scope)[subscriber] = value;
-          });
+          subscribe(subscriber, keeper);
           return this;
         },
         keepIn: function (key, keeper) {
-          if (angular.isFunction(this.subscriber) && !angular.isString(key)) {
-            throw new Error("argument \"key\" must have type string");
-          }
-          key = key || this.subscriber;
           if (stateKeeper[key]) {
             if (angular.isFunction(this.subscriber)) {
               this.subscriber(stateKeeper[key]);
             } else {
-              (keeper || scope)[key] = stateKeeper[key];
+              (keeper || scope)[this.subscriber] = stateKeeper[key];
             }
           }
 
-          this.subscribe(key, stateKeeper);
+          stateChangeStartBind = $rootScope.$on('$stateChangeStart', function (event, toState) {
+            if (!(toState.name.indexOf(key) > -1)) {
+              delete stateKeeper[key];
+            }
+          });
+
+          subscribe(key, stateKeeper);
           return this;
         }
       };

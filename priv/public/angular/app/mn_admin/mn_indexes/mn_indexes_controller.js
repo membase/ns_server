@@ -9,7 +9,7 @@ angular.module('mnIndexes', [
     mnPoll
       .start($scope, mnIndexesService.getIndexesState)
       .subscribe("mnIndexesState")
-      .keepIn()
+      .keepIn("app.admin.indexes")
       .cancelOnScopeDestroy()
       .run();
 

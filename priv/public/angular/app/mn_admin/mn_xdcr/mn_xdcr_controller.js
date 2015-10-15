@@ -17,7 +17,7 @@ angular.module('mnXDCR', [
     mnPoll
       .start($scope, mnXDCRService.getReplicationState)
       .subscribe("mnXdcrState")
-      .keepIn()
+      .keepIn("app.admin.replications")
       .cancelOnScopeDestroy()
       .run();
 

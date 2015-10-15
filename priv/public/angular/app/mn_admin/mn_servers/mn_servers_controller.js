@@ -45,7 +45,7 @@ angular.module('mnServers', [
         return mnServersService.getServersState($stateParams.list);
       })
       .subscribe("mnServersState")
-      .keepIn()
+      .keepIn("app.admin.servers")
       .cancelOnScopeDestroy()
       .run();
 

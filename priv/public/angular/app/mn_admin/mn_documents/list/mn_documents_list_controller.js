@@ -116,7 +116,7 @@
         }, 10000)
         .subscribe("mnDocumentsListState", vm)
         .cancelOnScopeDestroy()
-        .keepIn(null, vm)
+        .keepIn("app.admin.documents.list", vm)
         .run();
     }
   }

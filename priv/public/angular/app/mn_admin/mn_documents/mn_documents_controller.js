@@ -39,7 +39,7 @@
           return mnDocumentsListService.populateBucketsSelectBox($state.params);
         })
         .subscribe("mnDocumentsState", vm)
-        .keepIn(null, vm)
+        .keepIn("app.admin.documents", vm)
         .cancelOnScopeDestroy()
         .run();
     }

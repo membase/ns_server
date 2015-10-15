@@ -6,7 +6,7 @@ angular.module('mnLogs').controller('mnLogsListController',
       .subscribe(function (logs) {
         $scope.logs = logs.data.list;
       })
-      .keepIn("logsState")
+      .keepIn("app.admin.logs")
       .cancelOnScopeDestroy()
       .run();
 

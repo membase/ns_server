@@ -36,7 +36,7 @@ angular.module('mnBuckets', [
     mnPoll
       .start($scope, mnBucketsService.getBucketsState)
       .subscribe("mnBucketsState")
-      .keepIn()
+      .keepIn("app.admin.buckets")
       .cancelOnScopeDestroy()
       .run();
 

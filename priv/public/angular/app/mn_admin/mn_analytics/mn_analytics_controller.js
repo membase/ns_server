@@ -15,7 +15,7 @@ angular.module('mnAnalytics', [
         return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
       })
       .subscribe("mnAnalyticsState")
-      .keepIn()
+      .keepIn("app.admin.analytics")
       .cancelOnScopeDestroy()
       .run();
 

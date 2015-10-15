@@ -55,7 +55,7 @@
           $rootScope.tabName = resp[1] && resp[1].clusterName;
           vm.mnPoolDefault = resp[1];
         })
-        .keepIn("mnAdminState", vm)
+        .keepIn("app.admin", vm)
         .cancelOnScopeDestroy()
         .run();
     }

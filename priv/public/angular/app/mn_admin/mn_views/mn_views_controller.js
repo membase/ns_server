@@ -37,7 +37,7 @@
             return mnViewsListService.getViewsState($state.params);
           })
           .subscribe("mnViewsState", vm)
-          .keepIn(null, vm)
+          .keepIn("app.admin.views", vm)
           .cancelOnScopeDestroy()
           .run();
       }
