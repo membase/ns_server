@@ -157,7 +157,7 @@ handle_info(acquire_initial_status, #state{nodes=NodeDict} = State) ->
     Nodes = lists:foldl(fun ({Node, Status}, Dict) ->
                                 update_status(Node, Status, Dict)
                         end, NodeDict, Replies),
-    ?doctor_debug("Got initial status ~p~n", [lists:sort(dict:to_list(Nodes))]),
+    ?doctor_debug("Got initial status:~n~p", [lists:sort(dict:to_list(Nodes))]),
     {noreply, State#state{nodes=Nodes}};
 
 handle_info(log, #state{nodes=NodeDict} = State) ->
