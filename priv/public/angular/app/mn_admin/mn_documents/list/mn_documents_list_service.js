@@ -53,6 +53,7 @@
     }
 
     function getDocuments(params) {
+      var getDocumentsParams = {};
       var param;
       try {
         param = JSON.parse(params.documentsFilter) || {};
@@ -63,9 +64,9 @@
       var limit = params.pageLimit;
       var skip = page * limit;
 
-      param.skip = String(skip);
-      param.include_docs = true;
-      param.limit = String(limit + 1);
+      getDocumentsParams.skip = String(skip);
+      getDocumentsParams.include_docs = true;
+      getDocumentsParams.limit = String(limit + 1);
 
       if (param.startkey) {
         param.startkey = JSON.stringify(param.startkey);
@@ -78,7 +79,7 @@
       return mnHttp({
         method: "GET",
         url: "/pools/default/buckets/" + encodeURIComponent(params.documentsBucket) + "/docs",
-        params: param
+        params: _.extend(getDocumentsParams, param)
       });
     }
   }
