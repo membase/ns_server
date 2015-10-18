@@ -14,9 +14,10 @@ angular.module('mnServers', [
   'mnIndexesService',
   'mnPromiseHelper',
   'mnGroupsService',
-  'mnPoll'
+  'mnPoll',
+  'mnPools'
 ]).controller('mnServersController',
-  function ($scope, $state, $modal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper) {
+  function ($scope, $state, $modal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools) {
 
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
 
@@ -25,7 +26,7 @@ angular.module('mnServers', [
     $scope.mnServersController = $scope;
 
     $scope.isServerGroupsDisabled = function () {
-      return !$scope.mnServersState || !$scope.mnServersState.isGroupsAvailable || $scope.mnPoolDefault.isROAdminCreds;
+      return !$scope.mnServersState || !$scope.mnServersState.isGroupsAvailable || $scope.mnPoolDefault.isROAdminCreds || $scope.mnPoolDefault.isEnterprise;
     };
     $scope.isAddServerDisabled = function () {
       return !$scope.mnServersState || $scope.mnServersState.rebalancing || $scope.mnPoolDefault.isROAdminCreds;

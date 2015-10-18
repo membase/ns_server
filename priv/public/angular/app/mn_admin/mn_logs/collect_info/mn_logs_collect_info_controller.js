@@ -7,8 +7,11 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
     $scope.collect = {
       nodes: {},
       from: '*'
-      // uploadHost: 's3.amazonaws.com/cb-customers'
     };
+    if ($scope.mnPoolDefault.isEnterprise) {
+      $scope.collect.uploadHost = 's3.amazonaws.com/cb-customers';
+    }
+
     $scope.stopCollection = function () {
       $modal.open({
         templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info_stop_dialog.html'

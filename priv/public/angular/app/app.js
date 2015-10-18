@@ -10,7 +10,9 @@ angular.module('app', [
     mnPools.get().then(function (pools) {
       if (pools.isAuthenticated) {
         var required = (toState.data && toState.data.required) || {};
-        if (required.admin && pools.isROAdminCreds) {
+        var isOnlyForAdmin = (required.admin && pools.isROAdminCreds);
+        var isOnlyForEnterprise = (required.enterprise && !pools.isEnterprise);
+        if (isOnlyForAdmin || isOnlyForEnterprise) {
           event.preventDefault();
           return $state.go('app.admin.overview');
         }

@@ -61,24 +61,27 @@ angular.module('mnSettingsClusterService', [
     }
 
     mnSettingsClusterService.getClusterState = function () {
-      return $q.all([
-        mnSettingsClusterService.getDefaultCertificate(),
-        mnMemoryQuotaService.memoryQuotaConfig(true, false),
-        mnPoolDefault.get(),
-        mnSettingsClusterService.getIndexSettings()
-      ]).then(function (resp) {
-        var certificate = resp[0].data;
-        var memoryQuotaConfig = resp[1];
-        var poolDefault = resp[2];
-        var indexSettings = resp[3].data;
+      return mnPoolDefault.get().then(function (poolDefault) {
+        var requests = [
+          mnMemoryQuotaService.memoryQuotaConfig(true, false),
+          mnSettingsClusterService.getIndexSettings()
+        ];
+        if (poolDefault.isEnterprise) {
+          requests.push(mnSettingsClusterService.getDefaultCertificate())
+        }
+        return $q.all(requests).then(function (resp) {
+          var certificate = (resp[2] && resp[2].data);
+          var memoryQuotaConfig = resp[0];
+          var indexSettings = resp[1].data;
 
-        return {
-          initialMemoryQuota: memoryQuotaConfig.indexMemoryQuota,
-          clusterName: poolDefault.clusterName,
-          memoryQuotaConfig: memoryQuotaConfig,
-          certificate: certificate,
-          indexSettings: indexSettings
-        };
+          return {
+            initialMemoryQuota: memoryQuotaConfig.indexMemoryQuota,
+            clusterName: poolDefault.clusterName,
+            memoryQuotaConfig: memoryQuotaConfig,
+            certificate: certificate,
+            indexSettings: indexSettings
+          };
+        });
       });
     };
 

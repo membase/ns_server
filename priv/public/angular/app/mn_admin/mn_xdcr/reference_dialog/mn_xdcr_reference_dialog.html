@@ -32,7 +32,7 @@
          <input name="username" ng-model="cluster.username" type="text" /></li>
        <li><label>Password:</label>
          <input name="password" ng-model="cluster.password" type="password" /></li>
-       <li class="when-enterprise only-when-25"><label for="demand_encryption_flag-2">Enable Encryption</label>
+       <li class="when-enterprise only-when-25" ng-show="mnPoolDefault.isEnterprise"><label for="demand_encryption_flag-2">Enable Encryption</label>
         <input name="demandEncryption" ng-model="cluster.encryption" id="demand_encryption_flag-2" type="checkbox" style="vertical-align: middle;">
         <a class="text_11 tooltip"><span>What's this?</span>
            <span class="tooltip_msg" style="width:250px"><span>

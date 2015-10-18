@@ -32,7 +32,6 @@ angular.module('mnSettingsNotificationsService', [
       var pools = source[2];
       var poolsDefault = source[3];
       var indexStatus = source[4];
-      var auditSettings = source[5];
 
       function getAvgPerItem(items, filter) {
         var avgs = [];
@@ -78,7 +77,6 @@ angular.module('mnSettingsNotificationsService', [
         uuid: pools.uuid,
         numNodes: poolsDefault.nodes.length, //Total number of nodes
         isEnterpriseEdition: pools.isEnterprise,
-        adminAuditEnabled: auditSettings.auditdEnabled,
         // adminLDAPEnabled : source.adminLDAPEnabled,
         ram: {
           total: poolsDefault.storageTotals.ram.total,
@@ -172,7 +170,14 @@ angular.module('mnSettingsNotificationsService', [
       calculateAvgWeekAndHour(stats, "total_avg_view_accesses");
       calculateAvgWeekAndHour(stats, "total_avg_index_num_rows_returned");
 
-      return stats;
+      if (pools.isEnterprise) {
+        return mnSettingsAuditService.getAuditSettings().then(function (auditSettings) {
+          stats.adminAuditEnabled = auditSettings.auditdEnabled;
+          return stats;
+        });
+      } else {
+        return stats;
+      }
     }
 
     mnSettingsNotificationsService.buildPhoneHomeThingy = function () {
@@ -202,8 +207,7 @@ angular.module('mnSettingsNotificationsService', [
           $q.all(perBucketQueries),
           $q.when(pools),
           mnPoolDefault.getFresh(),
-          mnIndexesService.getIndexesState(),
-          mnSettingsAuditService.getAuditSettings()
+          mnIndexesService.getIndexesState()
         ]).then(buildPhoneHomeThingy);
       });
     };

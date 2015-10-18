@@ -15,7 +15,7 @@
     <p class="more_info pad_10" ng-show="showWhatThis">
       Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
     </p>
-    <div class="when-community">
+    <div class="when-community" ng-show="!isEnterprise">
       <h2 class="question">Community Updates</h2>
       <p class="pad_10">Please provide your email address to join the community and receive news on coming events.</p>
     </div>

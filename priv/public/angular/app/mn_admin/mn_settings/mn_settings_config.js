@@ -51,7 +51,12 @@
       .state('app.admin.settings.ldap', {
         url: '/ldap',
         controller: 'mnSettingsLdapController as mnSettingsLdapController',
-        templateUrl: 'mn_admin/mn_settings/ldap/mn_settings_ldap.html'
+        templateUrl: 'mn_admin/mn_settings/ldap/mn_settings_ldap.html',
+        data: {
+          required: {
+            enterprise: true
+          }
+        }
       })
       .state('app.admin.settings.sampleBuckets', {
         url: '/sampleBuckets',
@@ -71,7 +76,12 @@
       .state('app.admin.settings.audit', {
         url: '/audit',
         controller: 'mnSettingsAuditController',
-        templateUrl: 'mn_admin/mn_settings/audit/mn_settings_audit.html'
+        templateUrl: 'mn_admin/mn_settings/audit/mn_settings_audit.html',
+        data: {
+          required: {
+            enterprise: true
+          }
+        }
       });
   }
 })();

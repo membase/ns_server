@@ -204,7 +204,8 @@ angular.module('mnAdmin', [
       controllerAs: 'mnGroupsController',
       data: {
         required: {
-          admin: true
+          admin: true,
+          enterprise: true
         }
       }
     })

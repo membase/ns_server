@@ -8,7 +8,7 @@
       <input type="text" name="clusterName" maxlength="256" ng-model="state.clusterName" ng-disabled="mnPoolDefault.isROAdminCreds">
       <span>(0 — 256 chars)</span>
     </div>
-    <div class="certificate_section">
+    <div class="certificate_section" ng-show="state.certificate">
       <h3>Certificate:</h3>
       <div class="sub_section">
         <p>

@@ -6,6 +6,10 @@ angular.module('mnPools', [
 
     var launchID =  (new Date()).valueOf() + '-' + ((Math.random() * 65536) >> 0);
 
+    mnPools.isEnterprise = function isEnterprise() {
+      return mnPools.value && mnPools.value.isEnterprise;
+    };
+
     mnPools.get = function () {
       return mnHttp({
         method: 'GET',
@@ -18,6 +22,7 @@ angular.module('mnPools', [
         pools.isInitialized = !!pools.pools.length;
         pools.isAuthenticated = pools.isAdminCreds && pools.isInitialized;
         pools.launchID = pools.uuid + '-' + launchID;
+        mnPools.value = pools;
         return pools;
       }, function (resp) {
         if (resp.status === 401) {

@@ -17,7 +17,14 @@
                 ui-sref="app.admin.settings.ldap"
                 ui-sref-active="selected">LDAP Auth Setup</a>
           </li>
-          <li><a id="settings_audit" class="casper_settings_audit" ui-sref="app.admin.settings.audit" ui-sref-active="selected">Audit</a></li>
+          <li
+            class="when-enterprise only-when-40"
+            ng-show="mnSettingsController.poolDefault.isEnterprise">
+            <a
+              id="settings_audit"
+              class="casper_settings_audit"
+              ui-sref="app.admin.settings.audit"
+              ui-sref-active="selected">Audit</a></li>
           <li
             class="when-roadmin-avoid-me"
             ng-hide="mnSettingsController.poolDefault.isROAdminCreds"
