@@ -10,7 +10,7 @@ angular.module('mnSettingsAudit', [
 
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
 
-    if ($scope.mnPoolDefault.isROAdminCreds) {
+    if ($scope.mnPoolDefault.value.isROAdminCreds) {
       return;
     }
 

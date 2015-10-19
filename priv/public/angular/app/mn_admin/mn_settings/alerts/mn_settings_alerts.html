@@ -8,7 +8,7 @@
           id="email_alerts_enabled"
           ng-model="state.enabled"
           class="casper_settings_alerts_errors"
-          ng-disabled="mnPoolDefault.isROAdminCreds">
+          ng-disabled="mnPoolDefault.value.isROAdminCreds">
         <span>Enable email alerts</span>
       </label>
     </div>
@@ -46,7 +46,7 @@
         <textarea id="email_alerts_recipients" ng-disabled="!state.enabled">{{state.recipients}}</textarea>
         <span style="vertical-align:top;margin:0 5px;line-height:24px">separate addresses with comma "," or spaces " "</span>
         <div class="error-container err-recipients" ng-if="errors.recipients">{{errors.recipients}}</div>
-        <div class="when-roadmin-avoid-me" ng-hide="mnPoolDefault.isROAdminCreds">
+        <div class="when-roadmin-avoid-me" ng-hide="mnPoolDefault.value.isROAdminCreds">
           <button class="edit_btn" id="test_email" ng-click="testEmail()">Test Mail</button>
           <span>using the settings above</span>
         </div>
@@ -60,7 +60,7 @@
       </label>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="submit" ng-hide="mnPoolDefault.isROAdminCreds">
+      <button class="save_button float_right" type="submit" ng-hide="mnPoolDefault.value.isROAdminCreds">
         Save
       </button>
     </div>

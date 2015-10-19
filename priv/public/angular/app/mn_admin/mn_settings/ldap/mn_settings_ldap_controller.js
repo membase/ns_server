@@ -24,22 +24,22 @@
       activate();
 
       function isValidateButtonDisabled() {
-        return !vm.test.username || !vm.test.password || !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnPoolDefault.isROAdminCreds;
+        return !vm.test.username || !vm.test.password || !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnPoolDefault.value.isROAdminCreds;
       }
       function isReadOnlyAdminsDisabled() {
-        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnSettingsLdapState["default"] === "roAdmins" || vm.mnPoolDefault.isROAdminCreds;
+        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnSettingsLdapState["default"] === "roAdmins" || vm.mnPoolDefault.value.isROAdminCreds;
       }
       function isFullAdminsDisabled() {
-        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnSettingsLdapState["default"] === "admins" || vm.mnPoolDefault.isROAdminCreds;
+        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnSettingsLdapState["default"] === "admins" || vm.mnPoolDefault.value.isROAdminCreds;
       }
       function isRadioDefaultDisabled() {
-        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnPoolDefault.isROAdminCreds;
+        return !vm.mnSettingsLdapState || !vm.mnSettingsLdapState.enabled || vm.mnPoolDefault.value.isROAdminCreds;
       }
       function isRecognizedNotViaLdap() {
         return (vm.validateResult && vm.validateResult.role !== 'none' && vm.validateResult.source === 'builtin');
       }
       function isUserFormDisabled() {
-        return (vm.mnSettingsLdapState && !vm.mnSettingsLdapState.enabled) || vm.mnPoolDefault.isROAdminCreds;
+        return (vm.mnSettingsLdapState && !vm.mnSettingsLdapState.enabled) || vm.mnPoolDefault.value.isROAdminCreds;
       }
       function validate() {
         if (vm.validateSpinner) {

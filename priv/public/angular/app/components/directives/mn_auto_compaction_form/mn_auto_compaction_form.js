@@ -14,7 +14,7 @@ angular.module('mnAutoCompactionForm', [
     templateUrl: 'components/directives/mn_auto_compaction_form/mn_auto_compaction_form.html',
     controller: function ($scope) {
       $scope.mnPoolDefault = mnPoolDefault.latestValue();
-      if ($scope.mnPoolDefault.isROAdminCreds) {
+      if ($scope.mnPoolDefault.value.isROAdminCreds) {
         return;
       }
       $scope.$watch('validationErrors', function (errors) {

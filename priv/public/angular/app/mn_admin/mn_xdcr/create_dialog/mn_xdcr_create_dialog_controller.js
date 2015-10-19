@@ -10,7 +10,7 @@ angular.module('mnXDCR').controller('mnXDCRCreateDialogController',
     $scope.replication.toCluster = $scope.mnXdcrState.references[0].name;
     $scope.advancedFiltering = {};
 
-    if ($scope.mnPoolDefault.isEnterprise) {
+    if ($scope.mnPoolDefault.value.isEnterprise) {
       try {
         $scope.advancedFiltering.filterExpression = $window.localStorage.getItem('mn_xdcr_regex');
         $scope.advancedFiltering.testKey = JSON.parse($window.localStorage.getItem('mn_xdcr_testKeys'))[0];
@@ -21,7 +21,7 @@ angular.module('mnXDCR').controller('mnXDCRCreateDialogController',
 
     $scope.createReplication = function () {
       var replication = mnXDCRService.removeExcessSettings($scope.replication);
-      if ($scope.mnPoolDefault.isEnterprise) {
+      if ($scope.mnPoolDefault.value.isEnterprise) {
         if ($scope.replication.enableAdvancedFiltering) {
           var filterExpression = $scope.advancedFiltering.filterExpression;
         }

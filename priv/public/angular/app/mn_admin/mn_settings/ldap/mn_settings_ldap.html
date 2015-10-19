@@ -16,7 +16,7 @@
           <span>Enable:</span>
           <input
             type="checkbox"
-            ng-disabled="mnSettingsLdapController.mnPoolDefault.isROAdminCreds"
+            ng-disabled="mnSettingsLdapController.mnPoolDefault.value.isROAdminCreds"
             ng-model="mnSettingsLdapController.mnSettingsLdapState.enabled">
         </label>
         <label class="textarea_label">
@@ -118,6 +118,6 @@
     <button
       class="save_button float_right"
       ng-click="mnSettingsLdapController.save()"
-      ng-hide="mnSettingsLdapController.mnPoolDefault.isROAdminCreds">Save</button>
+      ng-hide="mnSettingsLdapController.mnPoolDefault.value.isROAdminCreds">Save</button>
   </div>
 </div>

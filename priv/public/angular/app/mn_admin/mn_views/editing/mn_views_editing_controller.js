@@ -35,7 +35,7 @@
     vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.isFilterOpened = false;
 
-    if (vm.mnPoolDefault.isROAdminCreds) {
+    if (vm.mnPoolDefault.value.isROAdminCreds) {
       return;
     }
 

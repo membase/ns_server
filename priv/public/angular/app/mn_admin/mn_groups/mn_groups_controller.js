@@ -21,7 +21,7 @@
 
       vm.mnPoolDefault = mnPoolDefault.latestValue();
 
-      if (vm.mnPoolDefault.isROAdminCreds) {
+      if (vm.mnPoolDefault.value.isROAdminCreds) {
         return;
       }
 

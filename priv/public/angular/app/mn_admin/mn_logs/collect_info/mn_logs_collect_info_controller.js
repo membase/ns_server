@@ -1,14 +1,14 @@
 angular.module('mnLogs').controller('mnLogsCollectInfoController',
   function ($scope, mnHelper, mnPromiseHelper, mnPoolDefault, mnLogsCollectInfoService, mnPoll, $state, $modal) {
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
-    if ($scope.mnPoolDefault.isROAdminCreds) {
+    if ($scope.mnPoolDefault.value.isROAdminCreds) {
       return;
     }
     $scope.collect = {
       nodes: {},
       from: '*'
     };
-    if ($scope.mnPoolDefault.isEnterprise) {
+    if ($scope.mnPoolDefault.value.isEnterprise) {
       $scope.collect.uploadHost = 's3.amazonaws.com/cb-customers';
     }
 

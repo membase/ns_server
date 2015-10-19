@@ -41,21 +41,21 @@
       return row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)
     }
     function showViewCreationButtons() {
-      return vm.mnViewsListState && $state.params.viewsBucket && vm.mnViewsListState.isDevelopmentViews && !vm.mnViewsListState.ddocsAreInFactMissing && !vm.mnPoolDefault.isROAdminCreds;
+      return vm.mnViewsListState && $state.params.viewsBucket && vm.mnViewsListState.isDevelopmentViews && !vm.mnViewsListState.ddocsAreInFactMissing && !vm.mnPoolDefault.value.isROAdminCreds;
     }
     function showPublishButton(row) {
-      return vm.mnViewsListState.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)) && !vm.mnPoolDefault.isROAdminCreds;
+      return vm.mnViewsListState.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)) && !vm.mnPoolDefault.value.isROAdminCreds;
     }
     function isEmptyView(row) {
       return (!row.doc.json.spatial && !row.doc.json.views || _.isEmpty(row.doc.json.spatial) && _.isEmpty(row.doc.json.views));
     }
     function showCreationButton(row) {
       return vm.mnViewsListState.isDevelopmentViews && (isEmptyView(row) ||
-        (row.doc.json.views && !_.isEmpty(row.doc.json.views) && (!row.doc.json.spatial || _.isEmpty(row.doc.json.spatial)))) && !vm.mnPoolDefault.isROAdminCreds;
+        (row.doc.json.views && !_.isEmpty(row.doc.json.views) && (!row.doc.json.spatial || _.isEmpty(row.doc.json.spatial)))) && !vm.mnPoolDefault.value.isROAdminCreds;
     }
     function showSpatialButton(row) {
       return vm.mnViewsListState.isDevelopmentViews && (isEmptyView(row) ||
-        (row.doc.json.spatial && !_.isEmpty(row.doc.json.spatial) && (!row.doc.json.views || _.isEmpty(row.doc.json.views)))) && !vm.mnPoolDefault.isROAdminCreds;
+        (row.doc.json.spatial && !_.isEmpty(row.doc.json.spatial) && (!row.doc.json.views || _.isEmpty(row.doc.json.views)))) && !vm.mnPoolDefault.value.isROAdminCreds;
     }
 
     function showMapreduceCreationDialog() {

@@ -8,14 +8,14 @@
         id="48099acb-df16-4e1e-9949-2aaccfeb9e41"
         ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentageFlag"
         class="check-for-databaseFragmentationThresholdPercentage"
-        ng-disabled="mnPoolDefault.isROAdminCreds">
+        ng-disabled="mnPoolDefault.value.isROAdminCreds">
       <input
         type="number"
         id="decaebe7-bb14-4c1f-9bb1-70ceb7fb2e43"
         ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentage"
         name="databaseFragmentationThreshold_percentage_"
         ng-class="{invalid: errors.databaseFragmentationThreshold_percentage_}"
-        ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.percentageFlag || mnPoolDefault.isROAdminCreds"> %
+        ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.percentageFlag || mnPoolDefault.value.isROAdminCreds"> %
       <span class="error-container err-databaseFragmentationThreshold-percentage-" ng-show="errors.databaseFragmentationThreshold_percentage_">{{errors.databaseFragmentationThreshold_percentage_}}</span>
     </p>
     <p class="row">
@@ -23,14 +23,14 @@
         type="checkbox"
         class="check-for-databaseFragmentationThresholdSize"
         ng-model="autoCompactionSettings.databaseFragmentationThreshold.sizeFlag"
-        ng-disabled="mnPoolDefault.isROAdminCreds">
+        ng-disabled="mnPoolDefault.value.isROAdminCreds">
       <input
         type="number"
         id="settings-db-compaction-size"
         name="databaseFragmentationThreshold_size_"
         ng-model="autoCompactionSettings.databaseFragmentationThreshold.size"
         ng-class="{invalid: errors.databaseFragmentationThreshold_size_}"
-        ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.sizeFlag || mnPoolDefault.isROAdminCreds" class="size"> MB
+        ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.sizeFlag || mnPoolDefault.value.isROAdminCreds" class="size"> MB
       <span class="error-container err-databaseFragmentationThreshold-size-" ng-show="errors.databaseFragmentationThreshold_size_">{{errors.databaseFragmentationThreshold_size_}}</span>
     </p>
   </div>
@@ -42,14 +42,14 @@
         type="checkbox"
         id="0a2cb7a3-84b7-4822-bf32-87d3e192926a"
         ng-model="autoCompactionSettings.viewFragmentationThreshold.percentageFlag"
-        ng-disabled="mnPoolDefault.isROAdminCreds"
+        ng-disabled="mnPoolDefault.value.isROAdminCreds"
         class="check-for-viewFragmentationThresholdPercentage" />
       <input
         id="8e49a092-3108-46ed-b5c3-9b95c4ceda6f"
         ng-model="autoCompactionSettings.viewFragmentationThreshold.percentage"
         name="viewFragmentationThreshold_percentage_"
         ng-class="{invalid: errors.viewFragmentationThreshold_percentage_}"
-        ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.percentageFlag || mnPoolDefault.isROAdminCreds"
+        ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.percentageFlag || mnPoolDefault.value.isROAdminCreds"
         type="number"> %
       <span class="error-container err-viewFragmentationThreshold-percentage-" ng-show="errors.viewFragmentationThreshold_percentage_">{{errors.viewFragmentationThreshold_percentage_}}</span>
     </p>
@@ -57,7 +57,7 @@
       <input
         type="checkbox"
         class="check-for-viewFragmentationThresholdSize"
-        ng-disabled="mnPoolDefault.isROAdminCreds"
+        ng-disabled="mnPoolDefault.value.isROAdminCreds"
         ng-model="autoCompactionSettings.viewFragmentationThreshold.sizeFlag">
       <input
         type="number"
@@ -65,7 +65,7 @@
         ng-model="autoCompactionSettings.viewFragmentationThreshold.size"
         name="viewFragmentationThreshold_size_"
         ng-class="{invalid: errors.viewFragmentationThreshold_size_}"
-        ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.sizeFlag || mnPoolDefault.isROAdminCreds"
+        ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.sizeFlag || mnPoolDefault.value.isROAdminCreds"
         class="size"> MB
       <span class="error-container err-viewFragmentationThreshold-size-" ng-show="errors.viewFragmentationThreshold_size_">{{errors.viewFragmentationThreshold_size_}}</span>
     </p>
@@ -76,7 +76,7 @@
       <input
         type="checkbox"
         id="f5962927-16af-4eb6-802c-86fe6c3a238d"
-        ng-disabled="mnPoolDefault.isROAdminCreds"
+        ng-disabled="mnPoolDefault.value.isROAdminCreds"
         class="check-for-allowedTimePeriod"
         ng-model="autoCompactionSettings.allowedTimePeriodFlag"/>
       <label for="f5962927-16af-4eb6-802c-86fe6c3a238d">Set the time interval for when compaction is allowed to run</label>
@@ -86,7 +86,7 @@
       <input
         id="8a786bbb-e9df-46d4-8733-2993ae0c2b95"
         name="allowedTimePeriod_fromHour_"
-        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || mnPoolDefault.isROAdminCreds"
+        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || mnPoolDefault.value.isROAdminCreds"
         ng-model="autoCompactionSettings.allowedTimePeriod.fromHour"
         ng-class="{invalid: errors.allowedTimePeriod_fromHour_}"
         type="number"
@@ -95,7 +95,7 @@
         placeholder="HH" /> :
       <input
         name="allowedTimePeriod_fromMinute_"
-        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || mnPoolDefault.isROAdminCreds"
+        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || mnPoolDefault.value.isROAdminCreds"
         ng-model="autoCompactionSettings.allowedTimePeriod.fromMinute"
         ng-class="{invalid: errors.allowedTimePeriod_fromMinute_}"
         type="number"
@@ -111,12 +111,12 @@
         placeholder="HH"
         ng-class="{invalid: errors.allowedTimePeriod_toHour_}"
         ng-model="autoCompactionSettings.allowedTimePeriod.toHour"
-        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || mnPoolDefault.isROAdminCreds" /> :
+        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || mnPoolDefault.value.isROAdminCreds" /> :
       <input
         name="allowedTimePeriod_toMinute_"
         ng-class="{invalid: errors.allowedTimePeriod_toMinute_}"
         ng-model="autoCompactionSettings.allowedTimePeriod.toMinute"
-        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || mnPoolDefault.isROAdminCreds"
+        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || mnPoolDefault.value.isROAdminCreds"
         type="number"
         min="0"
         max="59"
@@ -133,7 +133,7 @@
         type="checkbox"
         ng-class="{invalid: errors.allowedTimePeriod_abortOutside_}"
         ng-model="autoCompactionSettings.allowedTimePeriod.abortOutside"
-        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || mnPoolDefault.isROAdminCreds"
+        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || mnPoolDefault.value.isROAdminCreds"
         name="allowedTimePeriod_abortOutside_"
         value="true" />
       <label for="302bc9f8-0a98-4963-85a4-5670ab8f1c25">Abort compaction if run time exceeds the set time interval</label>
@@ -143,7 +143,7 @@
       <input
         id="f6fb6488-c05a-4baa-88f7-27032da6600b"
         type="checkbox"
-        ng-disabled="mnPoolDefault.isROAdminCreds"
+        ng-disabled="mnPoolDefault.value.isROAdminCreds"
         name="parallelDBAndViewCompaction"
         ng-class="{invalid: errors.parallelDBAndViewCompaction}"
         ng-model="autoCompactionSettings.parallelDBAndViewCompaction"
@@ -157,7 +157,7 @@
     <div class="row">
       <label for="fc68aaf1-9519-4eeb-ba28-3daa042aae22">Set the frequency of metadata purge interval:</label>
       <input
-        ng-disabled="mnPoolDefault.isROAdminCreds"
+        ng-disabled="mnPoolDefault.value.isROAdminCreds"
         ng-model="autoCompactionSettings.purgeInterval"
         ng-class="{invalid: errors.purgeInterval}"
         id="fc68aaf1-9519-4eeb-ba28-3daa042aae22"

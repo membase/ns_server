@@ -17,7 +17,7 @@
             </select>
             <span class="error error-container err-fromBucket" style="margin: 10px 0;text-align: right;" ng-show="errors.fromBucket">{{errors.fromBucket}}</span>
           </li>
-          <li class="advanced_filtering when-goxdcr-enabled when-enterprise" ng-show="mnPoolDefault.isEnterpreise">
+          <li class="advanced_filtering when-goxdcr-enabled when-enterprise" ng-show="mnPoolDefault.value.isEnterpreise">
             <label for="js_xdcr_advaced_filtering_btn">Enable Advanced filtering:</label>
             <input id="js_xdcr_advaced_filtering_btn" type="checkbox" ng-model="replication.enableAdvancedFiltering">
           </li>
@@ -39,7 +39,7 @@
           </li>
         </ul>
       </fieldset>
-      <fieldset class="xdcr_advaced_filtering xdcr_advaced_settings when-goxdcr-enabled when-enterprise" id="js_xdcr_advaced_filtering" style="clear:both;" ng-show="mnPoolDefault.isEnterpreise">
+      <fieldset class="xdcr_advaced_filtering xdcr_advaced_settings when-goxdcr-enabled when-enterprise" id="js_xdcr_advaced_filtering" style="clear:both;" ng-show="mnPoolDefault.value.isEnterpreise">
         <div id="js_xdcr_advaced_filtering_container" class="xdcr_advaced_filtering_container" ng-show="replication.enableAdvancedFiltering">
           <div>
             <label for="js_filter_expression" class="filter_expression_label">Filter Expression:</label>

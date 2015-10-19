@@ -26,19 +26,19 @@ angular.module('mnServers', [
     $scope.mnServersController = $scope;
 
     $scope.isServerGroupsDisabled = function () {
-      return !$scope.mnServersState || !$scope.mnServersState.isGroupsAvailable || $scope.mnPoolDefault.isROAdminCreds || $scope.mnPoolDefault.isEnterprise;
+      return !$scope.mnServersState || !$scope.mnServersState.isGroupsAvailable || $scope.mnPoolDefault.value.isROAdminCreds || $scope.mnPoolDefault.value.isEnterprise;
     };
     $scope.isAddServerDisabled = function () {
-      return !$scope.mnServersState || $scope.mnServersState.rebalancing || $scope.mnPoolDefault.isROAdminCreds;
+      return !$scope.mnServersState || $scope.mnServersState.rebalancing || $scope.mnPoolDefault.value.isROAdminCreds;
     };
     $scope.isRebalanceDisabled = function () {
-      return !$scope.mnServersState || !$scope.mnServersState.mayRebalance || $scope.mnPoolDefault.isROAdminCreds;
+      return !$scope.mnServersState || !$scope.mnServersState.mayRebalance || $scope.mnPoolDefault.value.isROAdminCreds;
     };
     $scope.stopRebalanceDisabled = function () {
-      return !$scope.mnAdminController.tasks || !$scope.mnAdminController.tasks.inRebalance || $scope.mnPoolDefault.isROAdminCreds;
+      return !$scope.mnAdminController.tasks || !$scope.mnAdminController.tasks.inRebalance || $scope.mnPoolDefault.value.isROAdminCreds;
     };
     $scope.stopRecoveryDisabled = function () {
-      return !$scope.mnAdminController.tasks || !$scope.mnAdminController.tasks.inRecoveryMode || $scope.mnPoolDefault.isROAdminCreds;
+      return !$scope.mnAdminController.tasks || !$scope.mnAdminController.tasks.inRecoveryMode || $scope.mnPoolDefault.value.isROAdminCreds;
     };
 
     mnPoll

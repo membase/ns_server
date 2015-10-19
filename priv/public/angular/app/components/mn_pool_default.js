@@ -4,10 +4,10 @@ angular.module('mnPoolDefault', [
 ]).factory('mnPoolDefault',
   function (mnHttp, $cacheFactory, $q, mnPools, $window) {
     var mnPoolDefault = {};
-    var latestValue;
+    var latest = {};
 
     mnPoolDefault.latestValue = function () {
-      return latestValue;
+      return latest;
     };
 
     mnPoolDefault.get = function () {
@@ -32,7 +32,7 @@ angular.module('mnPoolDefault', [
         });
         poolDefault.isKvNode =  _.indexOf(poolDefault.thisNode.services, "kv") > -1;
         poolDefault.capiBase = $window.location.protocol === "https:" ? poolDefault.thisNode.couchApiBaseHTTPS : poolDefault.thisNode.couchApiBase;
-        latestValue = poolDefault;
+        latest.value = poolDefault;
         return poolDefault;
       });
     };

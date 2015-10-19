@@ -17,7 +17,7 @@ angular.module('mnSettingsCluster', [
       $scope.toggleCertAreaFlag = !$scope.toggleCertAreaFlag;
     };
 
-    if ($scope.mnPoolDefault.isROAdminCreds) {
+    if ($scope.mnPoolDefault.value.isROAdminCreds) {
       return;
     }
 

@@ -23,7 +23,7 @@
           type="checkbox"
           id="notification-updates"
           ng-model="mnAdminController.updates.enabled"
-          ng-disabled="mnSettingsNotificationsController.mnPoolDefault.isROAdminCreds">
+          ng-disabled="mnSettingsNotificationsController.mnPoolDefault.value.isROAdminCreds">
         <span>Enable software update notifications.</span>
         <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
           <span class="tooltip_msg text_11" style="width:310px;"><span>
@@ -40,7 +40,7 @@
       <button
         class="save_button float_right"
         type="submit"
-        ng-hide="mnSettingsNotificationsController.mnPoolDefault.isROAdminCreds">Save</button>
+        ng-hide="mnSettingsNotificationsController.mnPoolDefault.value.isROAdminCreds">Save</button>
     </div>
   </form>
 </div>

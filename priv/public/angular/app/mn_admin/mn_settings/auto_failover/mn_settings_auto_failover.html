@@ -7,7 +7,7 @@
           type="checkbox"
           id="auto_failover_enabled"
           ng-model="state.enabled"
-          ng-disabled="mnPoolDefault.isROAdminCreds">
+          ng-disabled="mnPoolDefault.value.isROAdminCreds">
         <span>Enable auto-failover</span>
       </label>
       <p>
@@ -28,7 +28,7 @@
       </p>
       <div id="auto_failover_count_container" style="position: relative; left: auto; top: auto;" class="warning_message" ng-show="state.count > 0">
         A server was automatically failed over
-        <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me" ng-hide="mnPoolDefault.isROAdminCreds" ng-click="mnAdminController.resetAutoFailOverCount()" mn-spinner="mnAdminController.resetQuotaLoading">
+        <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me" ng-hide="mnPoolDefault.value.isROAdminCreds" ng-click="mnAdminController.resetAutoFailOverCount()" mn-spinner="mnAdminController.resetQuotaLoading">
           <span>Reset Quota</span>
         </a>
       </div>
@@ -36,7 +36,7 @@
   </div>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="button" ng-hide="mnPoolDefault.isROAdminCreds">Save</button>
+      <button class="save_button float_right" type="button" ng-hide="mnPoolDefault.value.isROAdminCreds">Save</button>
     </div>
   </form>
 </div>

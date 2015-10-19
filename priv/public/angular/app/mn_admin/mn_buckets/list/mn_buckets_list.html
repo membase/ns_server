@@ -60,7 +60,7 @@
         <a class="list_button disable-if-stale" ui-sref="app.admin.views.list({viewsBucket: bucket.name})"><span>Views</span></a>
         <a
           class="list_button when-roadmin-hide-me"
-          ng-hide="mnPoolDefault.isROAdminCreds"
+          ng-hide="mnPoolDefault.value.isROAdminCreds"
           ui-sref="app.admin.documents.list({documentsBucket: bucket.name})"><span>Documents</span></a>
       </td>
     </tr>
