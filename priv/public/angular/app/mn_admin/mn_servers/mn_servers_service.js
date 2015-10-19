@@ -252,15 +252,6 @@ angular.module('mnServersService', [
         rv.mayRebalance = rv.mayRebalanceWithoutSampleLoading && !tasks.isLoadingSamples;
         rv.showWarningMessage = rv.mayRebalanceWithoutSampleLoading && tasks.isLoadingSamples;
         rv.showPendingBadge = !rv.rebalancing && rv.pendingLength;
-        rv.failoverWarnings = _.map(poolDefault.failoverWarnings, function (failoverWarning) {
-          switch (failoverWarning) {
-            case 'failoverNeeded': return;
-            case 'rebalanceNeeded': return 'Rebalance required, some data is not currently replicated!';
-            case 'hardNodesNeeded': return 'At least two servers with the data service are required to provide replication!';
-            case 'softNodesNeeded': return 'Additional active servers required to provide the desired number of replicas!';
-            case 'softRebalanceNeeded': return 'Rebalance recommended, some data does not have the desired replicas configuration!';
-          }
-        });
         rv.autoFailoverSettingsCount = autoFailoverSettings.data.count;
         return rv;
       });

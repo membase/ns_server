@@ -1,7 +1,10 @@
 <div id="js_servers" class="servers" data-ng-class="{'rebalancing': mnServersState.rebalancing}">
   <h1>Servers</h1>
-  <div class="warning_message failover_warning" data-ng-repeat="warning in mnServersState.failoverWarnings" ng-if="warning">
-    <span ng-show="warning">Fail Over Warning: <span class="warning-text">{{warning}}</span></span>
+  <div
+    class="warning_message failover_warning"
+    ng-repeat="warning in mnPoolDefault.failoverWarnings"
+    ng-show="warning && warning != 'failoverNeeded'">
+      <span>Fail Over Warning: <span class="warning-text">{{warning | formatFailoverWarnings}}</span></span>
   </div>
   <div class="warning_message" style="color:red;" id="js_rebalance_during_sample_load" ng-show="mnServersState.showWarningMessage">
     Warning: Rebalance is not available until data loading is completed!
