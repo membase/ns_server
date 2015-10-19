@@ -4,7 +4,8 @@ angular.module('mnSpinner', [
   return {
     restrict: 'A',
     scope: {
-      mnSpinner: '='
+      mnSpinner: '=',
+      minHeight: '@'
     },
     compile: function ($element) {
       var scope = $rootScope.$new();
@@ -14,6 +15,7 @@ angular.module('mnSpinner', [
       return function link($scope) {
         $scope.$watch('mnSpinner', function (mnSpinner) {
           scope.viewLoading = !!mnSpinner;
+          $element.css({'min-height': (scope.viewLoading && $scope.minHeight) ? $scope.minHeight : ""});
         });
 
         $scope.$on('$destroy', function () {
