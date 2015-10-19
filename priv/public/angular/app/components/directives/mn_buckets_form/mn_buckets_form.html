@@ -95,8 +95,7 @@
       <input type="checkbox" id="for-enable-replicas-init" class="js_for-enable-replicas" ng-model="replicaNumberEnabled">
       <label for="for-enable-replicas-init">Enable</label>
       <div class="for-replica-number" ng-if="replicaNumberEnabled">
-        <select name="replicaNumber" ng-model="bucketConf.replicaNumber">
-          <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        <select name="replicaNumber" ng-model="bucketConf.replicaNumber" ng-options="number for number in [1,2,3]">
         </select>
         <label>Number of replica (backup) copies</label>
       </div>
