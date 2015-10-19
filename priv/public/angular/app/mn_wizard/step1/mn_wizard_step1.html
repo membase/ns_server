@@ -1,4 +1,4 @@
-<div class="pad" id="init_cluster_dialog" mn-spinner="viewLoading">
+<div class="pad" id="init_cluster_dialog" mn-spinner="viewLoading || !selfConfig">
   <div class="config-top">
     <h1>Configure Server</h1>
     <h2>Step <span class="current-step">1</span> of 5</h2>
@@ -9,7 +9,7 @@
       <div class="disk_setup_block">
         <div>
           <label for="setup_db_path_input">Databases Path:</label>
-          <input type="text" name="db_path" ng-model="dbPath">
+          <input type="text" name="db_path" ng-model="dbPath" ng-change="onDbPathChange()">
           <br class="clear" />
         </div>
         <div>
@@ -20,7 +20,7 @@
         </div>
         <div>
           <label for="setup_index_path_input">Indexes Path:</label>
-          <input type="text" name="index_path" ng-model="indexPath">
+          <input type="text" name="index_path" ng-model="indexPath" ng-change="onIndexPathChange()">
           <br class="clear" />
         </div>
         <div>

@@ -1,4 +1,4 @@
-angular.module('app').config(function ($httpProvider, $stateProvider, $urlRouterProvider) {
+angular.module('app').config(function ($httpProvider, $stateProvider, $urlRouterProvider, $provide) {
   $httpProvider.defaults.headers.common['invalid-auth-response'] = 'on';
   $httpProvider.defaults.headers.common['Cache-Control'] = 'no-cache';
   $httpProvider.defaults.headers.common['Pragma'] = 'no-cache';

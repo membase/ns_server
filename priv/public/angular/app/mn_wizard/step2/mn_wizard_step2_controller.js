@@ -1,6 +1,8 @@
 angular.module('mnWizard').controller('mnWizardStep2Controller',
-  function ($scope, mnWizardStep2Service, sampleBuckets) {
+  function ($scope, mnWizardStep2Service, mnPromiseHelper, mnSettingsSampleBucketsService) {
     $scope.selected = {};
     $scope.$watch('selected', mnWizardStep2Service.setSelected, true);
-    $scope.sampleBuckets = sampleBuckets.data;
+    mnPromiseHelper($scope, mnSettingsSampleBucketsService.getSampleBuckets())
+      .cancelOnScopeDestroy()
+      .applyToScope("sampleBuckets");
   });

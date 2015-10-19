@@ -33,7 +33,7 @@
           rebalance: false,
           maxBucketCount: false
         };
-        var sampleBuckets = resp[0].data;
+        var sampleBuckets = resp[0];
         var poolDefault = resp[1];
         var tasks = resp[2];
         var buckets = resp[3];
@@ -65,6 +65,8 @@
       return mnHttp({
         url: '/sampleBuckets',
         method: 'GET'
+      }).then(function (resp) {
+        return resp.data;
       });
     }
     function installSampleBuckets(selectedSamples) {
