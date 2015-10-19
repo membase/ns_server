@@ -22,12 +22,12 @@ angular.module('mnWizardStep3Service', [
         return bucketConf;
       }, function () {
         var bucketConf = _.clone(bucketsFormConfiguration);
+        bucketConf.ignoreWarnings = true;
         bucketConf.name = 'default';
         bucketConf.isNew = true;
         bucketConf.ramQuotaMB =  mnWizardStep1Service.getDynamicRamQuota() - mnBytesToMBFilter(mnWizardStep2Service.getSampleBucketsRAMQuota())
         return bucketConf
       }).then(function (bucketConf) {
-        bucketConf.ignoreWarnings = true;
         bucketConf.otherBucketsRamQuotaMB = mnBytesToMBFilter(mnWizardStep2Service.getSampleBucketsRAMQuota());
         bucketConf.isWizard = true;
         return bucketConf;
