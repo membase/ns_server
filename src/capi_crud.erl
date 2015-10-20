@@ -25,6 +25,8 @@
 
 -export([get/3, set/3, delete/2]).
 
+-export([is_valid_json/1]).
+
 -spec open_doc(#db{}, binary(), list()) -> any().
 open_doc(#db{name = Name}, DocId, Options) ->
     get(Name, DocId, Options).
@@ -83,11 +85,28 @@ continue_get(Bucket, DocId, VBucket, Entry, RetriesLeft) ->
                 true ->
                     %% GET above could only 'see' live item
                     0 = (MetaFlags band ?GET_META_ITEM_DELETED_FLAG),
-                    Doc0 = couch_doc:from_binary(DocId, Entry#mc_entry.data, true),
-                    {ok, Doc0#doc{rev = Rev}};
+                    Value = Entry#mc_entry.data,
+                    ContentMeta = case is_valid_json(Value) of
+                                      true -> ?CONTENT_META_JSON;
+                                      false -> ?CONTENT_META_INVALID_JSON
+                                  end,
+                    {ok, #doc{id = DocId, body = Value, rev = Rev,
+                              content_meta = ContentMeta}};
                 false ->
                     get_inner(Bucket, DocId, VBucket, RetriesLeft-1)
             end;
         _ ->
             get_inner(Bucket, DocId, VBucket, RetriesLeft-1)
+    end.
+
+
+-spec is_valid_json(Data :: binary()) -> boolean().
+is_valid_json(<<>>) ->
+    false;
+is_valid_json(Data) ->
+    %% Docs should accept any JSON value, not just objs and arrays
+    %% (this would be anything that is acceptable as a value in an array)
+    case ejson:validate([<<"[">>, Data, <<"]">>]) of
+        ok -> true;
+        _ -> false
     end.

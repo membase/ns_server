@@ -20,7 +20,6 @@
 -include("ns_common.hrl").
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
--include("couch_db.hrl").
 
 -export([bin/1, recv/2, recv/3, send/4, encode/3, quick_stats/4,
          quick_stats/5, quick_stats_append/3,
@@ -512,7 +511,7 @@ retrieve_values(Sock, TRef, KeysAndVBuckets) ->
 
                   case Status of
                       ?SUCCESS ->
-                          {[{K, annotate_value(K, Data)} | AccKV], AccMissing};
+                          {[{K, annotate_value(Data)} | AccKV], AccMissing};
                       ?KEY_ENOENT ->
                           {AccKV, AccMissing + 1};
                       _ ->
@@ -522,13 +521,12 @@ retrieve_values(Sock, TRef, KeysAndVBuckets) ->
           end, {[], 0}, KeysAndVBuckets),
     {lists:reverse(KVs), Missing}.
 
-annotate_value(Key, Value) ->
-    Doc = couch_doc:from_binary(Key, Value, true),
 
-    case Doc#doc.content_meta of
-        ?CONTENT_META_JSON ->
+annotate_value(Value) ->
+    case capi_crud:is_valid_json(Value) of
+        true ->
             {json, Value};
-        _ ->
+        false ->
             Value1 = case Value of
                          <<Stripped:128/binary, _/binary>> ->
                              Stripped;
