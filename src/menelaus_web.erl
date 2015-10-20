@@ -28,7 +28,6 @@
 -include("ns_common.hrl").
 -include("ns_heart.hrl").
 -include("ns_stats.hrl").
--include("couch_db.hrl").
 -include("rbac.hrl").
 
 -ifdef(EUNIT).
@@ -2659,7 +2658,7 @@ reset_admin_password(generated) ->
     Password = gen_password(8),
     case reset_admin_password(Password) of
         {ok, Message} ->
-            {ok, ?l2b(io_lib:format("~s New password is ~s", [?b2l(Message), Password]))};
+            {ok, list_to_binary(io_lib:format("~s New password is ~s", [binary_to_list(Message), Password]))};
         Err ->
             Err
     end;
@@ -2684,7 +2683,7 @@ reset_admin_password(Password) ->
         _ ->
             ok = ns_config_auth:set_credentials(admin, User, Password),
             ns_audit:password_change(undefined, {User, admin}),
-            {ok, ?l2b(io_lib:format("Password for user ~s was successfully replaced.", [User]))}
+            {ok, list_to_binary(io_lib:format("Password for user ~s was successfully replaced.", [User]))}
     end.
 
 -ifdef(EUNIT).

@@ -2,13 +2,11 @@
 
 -export([vbucket_from_id/2, vbucket_from_id_fastforward/2]).
 
--include("couch_db.hrl").
-
 %% Given a key, map it to a vbucket by hashing the key, then
 %% lookup the server that owns the vbucket.
 -spec vbucket_from_id(string() | binary(), binary()) -> {integer(), atom()}.
 vbucket_from_id(Bucket, Id) when is_binary(Bucket) ->
-    vbucket_from_id(?b2l(Bucket), Id);
+    vbucket_from_id(binary_to_list(Bucket), Id);
 
 vbucket_from_id(Bucket, Id) ->
     {ok, Config} = ns_bucket:get_bucket(Bucket),
@@ -20,7 +18,7 @@ vbucket_from_id(Bucket, Id) ->
 -spec vbucket_from_id_fastforward(string() | binary(), binary()) ->
     {integer(), atom()} | ffmap_not_found.
 vbucket_from_id_fastforward(Bucket, Id) when is_binary(Bucket) ->
-    vbucket_from_id_fastforward(?b2l(Bucket), Id);
+    vbucket_from_id_fastforward(binary_to_list(Bucket), Id);
 
 vbucket_from_id_fastforward(Bucket, Id) ->
     {ok, Config} = ns_bucket:get_bucket(Bucket),

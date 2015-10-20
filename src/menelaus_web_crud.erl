@@ -15,7 +15,6 @@
 -module(menelaus_web_crud).
 
 -include("ns_common.hrl").
--include("couch_db.hrl").
 
 -export([handle_list/2,
          handle_get/3,
@@ -223,7 +222,7 @@ attempt(DbName, DocId, Mod, Fun, Args, [Node | Rest]) ->
     end;
 
 attempt(DbName, DocId, Mod, Fun, Args, plain_map) ->
-    {_, Node} = cb_util:vbucket_from_id(?b2l(DbName), DocId),
+    {_, Node} = cb_util:vbucket_from_id(binary_to_list(DbName), DocId),
     case rpc:call(Node, Mod, Fun, Args) of
         not_my_vbucket ->
             attempt(DbName, DocId, Mod, Fun, Args, fast_forward);
@@ -233,7 +232,7 @@ attempt(DbName, DocId, Mod, Fun, Args, plain_map) ->
 
 attempt(DbName, DocId, Mod, Fun, Args, fast_forward) ->
     R =
-        case cb_util:vbucket_from_id_fastforward(?b2l(DbName), DocId) of
+        case cb_util:vbucket_from_id_fastforward(binary_to_list(DbName), DocId) of
             ffmap_not_found ->
                 next_attempt;
             {_, Node} ->
@@ -247,7 +246,7 @@ attempt(DbName, DocId, Mod, Fun, Args, fast_forward) ->
 
     case R of
         next_attempt ->
-            Nodes = case ns_bucket:get_bucket(?b2l(DbName)) of
+            Nodes = case ns_bucket:get_bucket(binary_to_list(DbName)) of
                         {ok, BC} ->
                             ns_bucket:bucket_nodes(BC);
                         not_present ->

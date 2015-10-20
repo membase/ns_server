@@ -37,7 +37,6 @@
 -include("ns_common.hrl").
 -include_lib("kernel/include/file.hrl").
 -include_lib("eunit/include/eunit.hrl").
--include("couch_db.hrl").
 
 -define(FNV_OFFSET_BASIS, 2166136261).
 -define(FNV_PRIME,        16777619).
@@ -1000,7 +999,7 @@ rewrite_key_value_tuple_test() ->
     X1 = [{a_string, xxx}, {"b string", 4, {a, x, y}, {a, xxx}, {a, xxx}}].
 
 sanitize_url(Url) when is_binary(Url) ->
-    ?l2b(sanitize_url(?b2l(Url)));
+    list_to_binary(sanitize_url(binary_to_list(Url)));
 sanitize_url(Url) when is_list(Url) ->
     HostIndex = string:chr(Url, $@),
     case HostIndex of

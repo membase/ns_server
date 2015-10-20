@@ -21,7 +21,6 @@
 -behaviour(gen_fsm).
 
 -include("ns_common.hrl").
--include("couch_db.hrl").
 
 %% API
 -export([start_link/0,

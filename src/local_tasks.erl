@@ -37,7 +37,6 @@
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
--include("couch_db.hrl").
 -include("ns_common.hrl").
 
 -define(set(L, K, V), lists:keystore(K, 1, L, {K, V})).
@@ -120,7 +119,7 @@ handle_call({add_task, TaskProps}, {From, _}, Server) ->
     end;
 handle_call(all, _, Server) ->
     All = [
-        [{pid, ?l2b(pid_to_list(Pid))} | TaskProps]
+        [{pid, list_to_binary(pid_to_list(Pid))} | TaskProps]
         ||
         {Pid, TaskProps} <- ets:tab2list(?MODULE)
     ],

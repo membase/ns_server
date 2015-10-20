@@ -3,7 +3,6 @@
 -include("ns_common.hrl").
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
--include("couch_db.hrl").
 -include("xdcr_dcp_streamer.hrl").
 
 -export([find_missing_revs/4, bulk_set_metas/4]).
