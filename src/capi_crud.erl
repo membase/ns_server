@@ -19,27 +19,10 @@
 -include("couch_db.hrl").
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
--include("ns_common.hrl").
-
--export([open_doc/3, update_doc/3]).
 
 -export([get/3, set/3, delete/2]).
 
 -export([is_valid_json/1]).
-
--spec open_doc(#db{}, binary(), list()) -> any().
-open_doc(#db{name = Name}, DocId, Options) ->
-    get(Name, DocId, Options).
-
-update_doc(#db{name = Name}, #doc{id = DocId, deleted = true}, _Options) ->
-    delete(Name, DocId);
-
-update_doc(#db{name = Name}, #doc{id = DocId, body = Body}, _Options) when is_binary(Body) ->
-    set(Name, DocId, Body);
-
-update_doc(#db{name = Name}, #doc{id = DocId}=Doc, _Options) ->
-    {Body, _Meta} = couch_doc:to_raw_json_binary_views(Doc),
-    set(Name, DocId, Body).
 
 %% TODO: handle tmp failures here. E.g. during warmup
 handle_mutation_rv(#mc_header{status = ?SUCCESS} = _Header, _Entry) ->
