@@ -159,12 +159,11 @@ encode_doc({Key, undefined}) ->
 encode_doc({Key, Value}) ->
     Doc = case Value of
               {binary, V} ->
-                  couch_doc:from_binary(Key, V, false);
+                  {base64, base64:encode(V)};
               {json, V} ->
-                  couch_doc:from_binary(Key, V, true)
+                  {json, mochijson2:decode(V)}
           end,
-    {struct, [{id, Key},
-              {doc, capi_utils:couch_doc_to_mochi_json(Doc)}]}.
+    {struct, [{id, Key}, {doc, {struct, [Doc]}}]}.
 
 do_get(BucketId, DocId) ->
     BinaryBucketId = list_to_binary(BucketId),
