@@ -1,9 +1,7 @@
-<div ng-show="!mnViewsController.mnViewsState" mn-spinner="!mnViewsController.mnViewsState" style="height: 400px;">
+<div ng-if="!mnViewsController.mnPoolDefault.value.isKvNode">
+  Views are not supported on this server node as it does not have a Data service. You may access views functionality on any Data service node in the cluster, such as: <a id="js_healthy_kv_node_link" href="{{::mnViewsController.kvNodeLink()}}" target="_blank">{{::mnViewsController.getKvNodeLink()}}</a>
 </div>
-<div ng-show="mnViewsController.mnViewsState.kvNodeLink">
-  Views are not supported on this server node as it does not have a Data service. You may access views functionality on any Data service node in the cluster, such as: <a id="js_healthy_kv_node_link" href="{{mnViewsController.mnViewsState.kvNodeLink}}" target="_blank">{{mnViewsController.mnViewsState.kvNodeLink}}</a>
-</div>
-<div ng-if="mnViewsController.mnViewsState.bucketsNames" id="js_views" class="views">
+<div ng-if="mnViewsController.mnPoolDefault.value.isKvNode" id="js_views" class="views">
   <h1 style="float:left;">
     <span >
       <ui-select ng-model="mnViewsController.mnViewsState.bucketsNames.selected" theme="selectize" style="width: 200px; display: inline-block; vertical-align: middle;">

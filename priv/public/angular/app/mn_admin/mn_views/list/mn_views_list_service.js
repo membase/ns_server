@@ -17,12 +17,13 @@
       getDdoc: getDdoc,
       deleteDdoc: deleteDdoc,
       cutOffDesignPrefix: cutOffDesignPrefix,
-      getViewsState: getViewsState,
+      getKvNodeLink: getKvNodeLink,
       getDdocs: getDdocs,
       getViewsListState: getViewsListState,
       getDdocsByType: getDdocsByType,
       getTasksOfCurrentBucket: getTasksOfCurrentBucket,
-      isDevModeDoc: isDevModeDoc
+      isDevModeDoc: isDevModeDoc,
+      prepareBucketsDropdownData: prepareBucketsDropdownData
     };
 
     return mnViewsListService;
@@ -77,24 +78,16 @@
         return rv;
       });
     }
-    function getViewsState(params) {
-      return mnPoolDefault.get().then(function (poolDefault) {
-        if (!poolDefault.isKvNode) {
-          var kvNode = _.find(poolDefault.nodes, function (node) {
-            return node.status === "healthy" && _.indexOf(node.services, "kv") > -1;
-          });
-
-          var hostnameAndPort = kvNode.hostname.split(':');
-          var protocol = $window.location.protocol;
-          var kvNodeLink = protocol + "//" + (protocol === "https:" ? hostnameAndPort[0] + ":" + kvNode.ports.httpsMgmt : kvNode.hostname);
-
-          return {
-            kvNodeLink: kvNodeLink
-          };
-        } else {
-          return prepareBucketsDropdownData(params, true);
-        }
+    function getKvNodeLink(nodes) {
+      var kvNode = _.find(nodes, function (node) {
+        return node.status === "healthy" && _.indexOf(node.services, "kv") > -1;
       });
+
+      var hostnameAndPort = kvNode.hostname.split(':');
+      var protocol = $window.location.protocol;
+      var kvNodeLink = protocol + "//" + (protocol === "https:" ? hostnameAndPort[0] + ":" + kvNode.ports.httpsMgmt : kvNode.hostname);
+
+      return kvNodeLink;
     }
     function getDdocs(viewsBucket) {
       return mnHttp.get('/pools/default/buckets/' + encodeURIComponent(viewsBucket) + '/ddocs');

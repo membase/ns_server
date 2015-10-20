@@ -18,11 +18,20 @@
     ])
     .controller("mnViewsController", mnViewsController);
 
-    function mnViewsController($scope, $state, mnPoll, mnViewsListService) {
+    function mnViewsController($scope, $state, mnPoll, $q, mnViewsListService, mnPoolDefault) {
 
       var vm = this;
+      vm.getKvNodeLink = getKvNodeLink;
+      vm.mnPoolDefault = mnPoolDefault.latestValue();
 
+      if (!vm.mnPoolDefault.value.isKvNode) {
+        return;
+      }
       activate();
+
+      function getKvNodeLink() {
+        return mnViewsListService.getKvNodeLink(vm.mnPoolDefault.value.nodes);
+      }
 
       function activate() {
         $scope.$watch('mnViewsController.mnViewsState.bucketsNames.selected', function (selectedBucket) {
@@ -34,7 +43,7 @@
         });
         mnPoll
           .start($scope, function () {
-            return mnViewsListService.getViewsState($state.params);
+            return mnViewsListService.prepareBucketsDropdownData($state.params, true);
           })
           .subscribe("mnViewsState", vm)
           .keepIn("app.admin.views", vm)
