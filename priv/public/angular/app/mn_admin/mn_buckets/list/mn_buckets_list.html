@@ -7,8 +7,9 @@
     <th>Nodes</th>
     <th colspan="2">Item Count</th>
     <th>Ops/sec</th>
-    <th colspan="2" ng-if="buckets.isMembase">Disk Fetches/sec</th>
-    <th colspan="2" ng-if="buckets.isMemcached">Hit Ratio</th>
+    <th colspan="2" ng-show="!buckets"></th>
+    <th colspan="2" ng-show="buckets.isMembase">Disk Fetches/sec</th>
+    <th colspan="2" ng-show="buckets.isMemcached">Hit Ratio</th>
     <th colspan="2">RAM/Quota Usage</th>
     <th colspan="2">Data/Disk Usage</th>
     <th></th>

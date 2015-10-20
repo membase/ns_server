@@ -17,7 +17,7 @@
         <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>
-    <div id="bucket_list_container">
+    <div id="bucket_list_container" mn-spinner="!mnBucketsState" min-height="91px">
       <div mn-buckets-list buckets="mnBucketsState.byType.membase"></div>
     </div>
   </div>
@@ -28,7 +28,7 @@
         <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>
-    <div id="memcached_bucket_list_container">
+    <div id="memcached_bucket_list_container" mn-spinner="!mnBucketsState" min-height="91px">
       <div mn-buckets-list buckets="mnBucketsState.byType.memcached"></div>
     </div>
   </div>

@@ -7,7 +7,8 @@ angular.module('mnBuckets', [
   'mnBucketsForm',
   'mnPromiseHelper',
   'mnPoll',
-  'mnPoolDefault'
+  'mnPoolDefault',
+  'mnSpinner'
 ]).controller('mnBucketsController',
   function ($scope, mnBucketsService, mnHelper, poolDefault, mnPromiseHelper, mnPoll, $modal) {
     $scope.isCreateNewDataBucketDisabled = function () {
