@@ -49,20 +49,6 @@ angular.module('mnBucketsService', [
           bucket.healthStats = [h.healthy || 0, h.warmup || 0, h.unhealthy || 0];
         });
 
-        var warnings = [];
-        var totals = poolsDefault.storageTotals;
-        if (poolsDefault.rebalancing) {
-          warnings.push('Cannot create buckets while rebalance is running.');
-        }
-        if (totals.ram.quotaTotal == totals.ram.quotaUsed) {
-          warnings.push('Cluster memory fully allocated. Delete some buckets or change bucket sizes to make RAM available for additional buckets.');
-        }
-        if (bucketsDetails.length >= poolsDefault.maxBucketCount) {
-          warnings.push('Maximum number of buckets has been reached.\n\nFor optimal performance, no more than ' + poolsDefault.maxBucketCount + ' buckets are allowed.');
-        }
-
-        bucketsDetails.creationWarnings = warnings;
-
         return bucketsDetails;
       })
     };

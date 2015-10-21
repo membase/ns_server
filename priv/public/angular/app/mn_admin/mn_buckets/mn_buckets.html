@@ -1,7 +1,9 @@
 <divv id="js_buckets" class="buckets">
   <h1>Data Buckets</h1>
-  <div class="warning_message" data-ng-repeat="warning in mnBucketsState.creationWarnings" ng-if="warning">
-    <span ng-show="warning">Attention: <span class="warning-text">{{warning}}</span></span>
+  <div class="warning_message" ng-show="areThereCreationWarnings()">
+    <span ng-show="isBucketCreationWarning()">Attention: <span class="warning-text">Cannot create buckets while rebalance is running.</span></span>
+    <span ng-show="isBucketFullyAllocatedWarning()">Attention: <span class="warning-text">Cluster memory fully allocated. Delete some buckets or change bucket sizes to make RAM available for additional buckets.</span></span>
+    <span ng-show="isMaxBucketCountWarning()">Attention: <span class="warning-text">Maximum number of buckets has been reached. <br>For optimal performance, no more than {{maxBucketCount}} buckets are allowed.</span></span>
   </div>
   <div class="shadow_box" id="couchbase_buckets">
     <div id="manage_buckets_top_bar" class="header_2">
