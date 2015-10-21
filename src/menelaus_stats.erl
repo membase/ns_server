@@ -267,36 +267,56 @@ handle_specific_stat_for_buckets(_PoolId, BucketName, StatName, Req) ->
       Req,
       build_response_for_specific_stat(BucketName, StatName, Params, menelaus_util:local_addr(Req))).
 
+%% Function to extract a simple stat from a list of stats.
 build_simple_stat_extractor(StatAtom, StatBinary) ->
     fun (#stat_entry{timestamp = TS, values = VS}) ->
-            V = case orddict:find(StatAtom, VS) of
-                    error ->
+            V = case dict_safe_fetch(StatAtom, VS, undefined) of
+                    undefined ->
                         dict_safe_fetch(StatBinary, VS, undefined);
-                    {ok, V1} ->
+                    V1 ->
                         V1
                 end,
 
             {TS, V}
     end.
 
+%% Function to extract a raw stat from a list of stats.
 build_raw_stat_extractor(StatBinary) ->
     fun (#stat_entry{timestamp = TS, values = VS}) ->
             {TS, dict_safe_fetch(StatBinary, VS, undefined)}
     end.
 
-build_stat_extractor(BucketName, StatName) ->
+%%
+%% Some stats are computed using other stats.
+%% Stats used in the computation are gathered and the ComputeFun is then
+%% applied on them to extract the relevant stat.
+%%
+build_computed_stat_extractor(ComputeFun, Stats) ->
+    fun (#stat_entry{timestamp = TS, values = VS}) ->
+            Args = [dict_safe_fetch(Name, VS, undefined) || Name <- Stats],
+            case lists:member(undefined, Args) of
+                true ->
+                    {TS, undefined};
+                _ ->
+                    {TS, erlang:apply(ComputeFun, Args)}
+            end
+    end.
+%%
+%% For the specified StatName, build the list of stats that need to be gathered
+%% and the function to extract them.
+%% E.g. for a computed stat, vb_active_resident_items_ratio, it will return
+%% following:
+%%      {[vb_active_num_non_resident, curr_items], <extractor_function>}.
+%%
+build_stat_list_and_extractor(BucketName, StatName) ->
     ExtraStats = computed_stats_lazy_proplist(BucketName),
-    StatBinary = list_to_binary(StatName),
+    build_stat_list_and_extractor_inner(ExtraStats, StatName).
 
+build_stat_list_and_extractor_inner(ExtraStats, StatName) ->
+    StatBinary = list_to_binary(StatName),
     case lists:keyfind(StatBinary, 1, ExtraStats) of
         {_K, {F, Meta}} ->
-            fun (#stat_entry{timestamp = TS, values = VS}) ->
-                    Args = [dict_safe_fetch(Name, VS, undefined) || Name <- Meta],
-                    case lists:member(undefined, Args) of
-                        true -> {TS, undefined};
-                        _ -> {TS, erlang:apply(F, Args)}
-                    end
-            end;
+            {Meta, build_computed_stat_extractor(F, Meta)};
         false ->
             Stat = try
                        {ok, list_to_existing_atom(StatName)}
@@ -307,9 +327,11 @@ build_stat_extractor(BucketName, StatName) ->
 
             case Stat of
                 {ok, StatAtom} ->
-                    build_simple_stat_extractor(StatAtom, StatBinary);
+                    {[StatAtom, StatBinary],
+                     build_simple_stat_extractor(StatAtom, StatBinary)};
                 error ->
-                    build_raw_stat_extractor(StatBinary)
+                    {[StatBinary],
+                     build_raw_stat_extractor(StatBinary)}
             end
     end.
 
@@ -328,16 +350,30 @@ are_samples_undefined(Samples) ->
                                 end, List)
               end, Samples).
 
+%%
+%% Earlier we were gathering all stats from all nodes even if we are
+%% interested in only one or some of them.
+%% To optimize, we will gather only the stats as specified by the StatName.
+%%
+
 get_samples_for_stat(BucketName, StatName, ForNodes, ClientTStamp, Window) ->
-    StatExtractor = build_stat_extractor(BucketName, StatName),
+    {GatherStats, StatExtractor} = build_stat_list_and_extractor(BucketName,
+                                                                 StatName),
 
+    {AllNodesSamples, Nodes} = gather_needed_stats(BucketName, ForNodes,
+                                                   ClientTStamp, Window,
+                                                   GatherStats),
+    {[lists:map(StatExtractor, NodeSamples) ||
+         {_, NodeSamples} <- AllNodesSamples], Nodes}.
+
+gather_needed_stats(BucketName, ForNodes, ClientTStamp, Window, GatherStats) ->
     {MainNode, MainSamples, RestSamplesRaw}
-        = menelaus_stats_gatherer:gather_stats(BucketName, ForNodes, ClientTStamp, Window),
-
+        = menelaus_stats_gatherer:gather_stats(BucketName, ForNodes,
+                                               ClientTStamp, Window,
+                                               GatherStats),
     Nodes = [MainNode | [N || {N, _} <- RestSamplesRaw]],
     AllNodesSamples = [{MainNode, lists:reverse(MainSamples)} | RestSamplesRaw],
-
-    {[lists:map(StatExtractor, NodeSamples) || {_, NodeSamples} <- AllNodesSamples], Nodes}.
+    {AllNodesSamples, Nodes}.
 
 get_samples_from_one_of_kind([Kind | RestKinds], StatName, ClientTStamp, Window) ->
     ForNodes = section_nodes(Kind),
