@@ -5,7 +5,8 @@ angular.module('mnXDCR', [
   'mnPromiseHelper',
   'mnPoll',
   'mnRegex',
-  'mnPoolDefault'
+  'mnPoolDefault',
+  'mnSpinner'
 ]).controller('mnXDCRController',
   function ($scope, $modal, mnHelper, mnPoll, mnPoolDefault, mnXDCRService, mnBucketsService, mnPromiseHelper) {
 

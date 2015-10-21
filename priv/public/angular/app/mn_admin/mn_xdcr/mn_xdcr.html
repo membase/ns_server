@@ -15,7 +15,7 @@
         </span>
       </h3>
 
-      <div class="stats" id="cluster_reference_list_container">
+      <div class="stats" id="cluster_reference_list_container" mn-spinner="!mnXdcrState" min-height="66px">
         <table class="list casper_remout_cluster_container" style="width:100%">
           <thead>
             <tr>
@@ -54,7 +54,7 @@
   <div id="ongoing_replications" class="shadow_box">
     <div class="darker_block" style="font-size:13px;">
       <h3>
-        <span class="view_head" style="padding-left: 0">Ongoing Replications</span>
+        <span class="view_head" style="padding-left: 0;padding-bottom: 7px;">Ongoing Replications</span>
         <span class="buttons">
           <a ng-show="mnXdcrState.references.length && !mnXDCRController.mnPoolDefault.value.isROAdminCreds" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="createReplications()">
             <span>Create Replication</span>
@@ -62,7 +62,7 @@
         </span>
       </h3>
 
-      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container">
+      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container" mn-spinner="!mnXdcrState" min-height="66px">
         <table class="list" style="width:100%">
           <colgroup>
             <col class="bucket">
