@@ -23,6 +23,7 @@
     vm.showMatchingWarning = showMatchingWarning;
     vm.getInitialViewsFilterParams = getInitialViewsFilterParams;
     vm.mnPoolDefault = mnPoolDefault.latestValue();
+    vm.isDevelopmentViews = $state.params.type === 'development';
 
     activate();
 
@@ -41,20 +42,20 @@
       return row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)
     }
     function showViewCreationButtons() {
-      return vm.mnViewsListState && $state.params.viewsBucket && vm.mnViewsListState.isDevelopmentViews && !vm.mnViewsListState.ddocsAreInFactMissing && !vm.mnPoolDefault.value.isROAdminCreds;
+      return vm.mnViewsListState && $state.params.viewsBucket && vm.isDevelopmentViews && !vm.mnViewsListState.ddocsAreInFactMissing && !vm.mnPoolDefault.value.isROAdminCreds;
     }
     function showPublishButton(row) {
-      return vm.mnViewsListState.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)) && !vm.mnPoolDefault.value.isROAdminCreds;
+      return vm.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)) && !vm.mnPoolDefault.value.isROAdminCreds;
     }
     function isEmptyView(row) {
       return (!row.doc.json.spatial && !row.doc.json.views || _.isEmpty(row.doc.json.spatial) && _.isEmpty(row.doc.json.views));
     }
     function showCreationButton(row) {
-      return vm.mnViewsListState.isDevelopmentViews && (isEmptyView(row) ||
+      return vm.isDevelopmentViews && (isEmptyView(row) ||
         (row.doc.json.views && !_.isEmpty(row.doc.json.views) && (!row.doc.json.spatial || _.isEmpty(row.doc.json.spatial)))) && !vm.mnPoolDefault.value.isROAdminCreds;
     }
     function showSpatialButton(row) {
-      return vm.mnViewsListState.isDevelopmentViews && (isEmptyView(row) ||
+      return vm.isDevelopmentViews && (isEmptyView(row) ||
         (row.doc.json.spatial && !_.isEmpty(row.doc.json.spatial) && (!row.doc.json.views || _.isEmpty(row.doc.json.views)))) && !vm.mnPoolDefault.value.isROAdminCreds;
     }
 
@@ -139,6 +140,10 @@
         .cancelOnScopeDestroy($scope);
     }
     function activate() {
+      if (!$state.params.viewsBucket) {
+        vm.mnViewsListState = {};
+        return;
+      }
       mnPoll
         .start($scope, function () {
           return mnViewsListService.getViewsListState($state.params);

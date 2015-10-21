@@ -72,7 +72,7 @@
       });
     }
     function getEmptyViewsState(params) {
-      return prepareBucketsDropdownData(params).then(function (rv) {
+      return prepareBucketsDropdownData(params, true).then(function (rv) {
         rv.development = [];
         rv.production = [];
         return rv;
@@ -138,7 +138,6 @@
     function getViewsListState(params) {
       return getDdocsByType(params.viewsBucket).then(function (ddocs) {
         ddocs.type = params.type;
-        ddocs.isDevelopmentViews = params.type === 'development';
         return getTasksOfCurrentBucket(params).then(function (ddocTasks) {
           _.each(ddocs.rows, function (row) {
             row.isDevModeDoc = isDevModeDoc(row.doc.meta.id);

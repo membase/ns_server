@@ -24,7 +24,7 @@
     </div>
   </div>
   <div class="panes">
-    <div class="views_list" >
+    <div class="views_list" mn-spinner="!mnViewsListController.mnViewsListState">
       <table class="list">
         <thead>
           <tr>
@@ -35,7 +35,7 @@
             <th colspan=2 class="last"></th>
           </tr>
         </thead>
-        <tbody mn-spinner="!mnViewsController.mnViewsState">
+        <tbody>
           <tr ng-if="!mnViewsController.mnViewsState.bucketsNames.selected && !mnViewsListController.mnViewsListState.ddocsAreInFactMissing">
             <td colspan="6" class="empty">
               <span>
@@ -52,8 +52,8 @@
           </tr>
           <tr ng-if="mnViewsController.mnViewsState.bucketsNames.selected && !mnViewsListController.mnViewsListState.ddocsAreInFactMissing && !mnViewsListController.mnViewsListState[mnViewsListController.mnViewsListState.type].length">
             <td colspan="6" class="empty">
-              <span ng-show="mnViewsListController.mnViewsListState.isDevelopmentViews" style="line-height:23px">There are currently no Design Documents in Development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
-              <span ng-show="!mnViewsListController.mnViewsListState.isDevelopmentViews" style="line-height:23px">There are no Design Documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
+              <span ng-show="mnViewsListController.isDevelopmentViews" style="line-height:23px">There are currently no Design Documents in Development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
+              <span ng-show="!mnViewsListController.isDevelopmentViews" style="line-height:23px">There are no Design Documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
             </td>
           </tr>
           <tr ng-repeat-start="row in mnViewsListController.mnViewsListState[mnViewsListController.mnViewsListState.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="mnViewsListController.mnViewsListState.rows.length">
@@ -72,7 +72,7 @@
             <td colspan="3" class="when-roadmin-hide-me" style="height: 33px;">
               <a
                 class="list_button when-in-prod casper_views_copy_to_dev"
-                ng-show="!mnViewsListController.mnViewsListState.isDevelopmentViews"
+                ng-show="!mnViewsListController.isDevelopmentViews"
                 ng-click="mnViewsListController.copyToDev(row.doc)"><span>Copy to Dev</span></a>
 
               <a
