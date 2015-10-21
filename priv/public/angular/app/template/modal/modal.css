@@ -30,3 +30,4 @@
           transition: opacity .0s linear;}
 .modal.in {opacity: 1}
 .modal-backdrop.in {opacity: 0.5}
+.modal-backdrop {position: fixed;}
