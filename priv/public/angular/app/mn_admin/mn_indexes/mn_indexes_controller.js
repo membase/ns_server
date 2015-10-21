@@ -2,7 +2,8 @@ angular.module('mnIndexes', [
   'mnHelper',
   'mnIndexesService',
   'mnSortableTable',
-  'mnPoll'
+  'mnPoll',
+  'mnSpinner'
 ]).controller('mnIndexesController',
   function ($scope, mnIndexesService, mnHelper, mnPoll) {
 
