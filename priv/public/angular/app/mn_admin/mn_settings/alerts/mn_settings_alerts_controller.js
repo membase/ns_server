@@ -12,7 +12,7 @@ angular.module('mnSettingsAlerts', [
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
 
     $scope.isFormElementsDisabled = function () {
-      return ($scope.state && !$scope.state.enabled) || $scope.mnPoolDefault.value.isROAdminCreds;
+      return !$scope.state || !$scope.state.enabled || $scope.mnPoolDefault.value.isROAdminCreds;
     };
 
     if ($scope.mnPoolDefault.value.isROAdminCreds) {
