@@ -37,7 +37,7 @@ angular.module('mnBucketsForm', [
           $scope.bucketConf.replicaNumber = 0;
           $scope.bucketConf.replicaIndex = 0;
         } else {
-          $scope.bucketConf.replicaNumber = $scope.bucketConf.replicaNumber || 1;
+          $scope.bucketConf.replicaNumber = Number($scope.bucketConf.replicaNumber) || 1;
         }
       });
 
