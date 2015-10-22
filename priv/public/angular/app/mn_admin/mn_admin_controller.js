@@ -1,7 +1,7 @@
 (function () {
   angular.module('mnAdmin').controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $q, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService) {
+  function mnAdminController($scope, $rootScope, $q, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -12,6 +12,7 @@
     vm.isProgressBarClosed = true;
     vm.areThereMoreThenTwoRunningTasks = areThereMoreThenTwoRunningTasks;
     vm.toggleProgressBar = toggleProgressBar;
+    vm.filterTasks = filterTasks;
 
     activate();
 
@@ -21,6 +22,10 @@
 
     function toggleProgressBar() {
       vm.isProgressBarClosed = !vm.isProgressBarClosed;
+    }
+
+    function filterTasks(runningTasks) {
+      return _.filter(runningTasks, formatProgressMessageFilter);
     }
 
     function resetAutoFailOverCount() {

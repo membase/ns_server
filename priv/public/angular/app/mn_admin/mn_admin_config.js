@@ -16,7 +16,8 @@ angular.module('mnAdmin', [
   'mnViews',
   'mnXDCR',
   'mnPoll',
-  'mnLaunchpad'
+  'mnLaunchpad',
+  'mnFilters'
 ]).config(function ($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider) {
 
   function valToString(val) {
