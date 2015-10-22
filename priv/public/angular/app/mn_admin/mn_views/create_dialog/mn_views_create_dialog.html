@@ -3,7 +3,7 @@
   <h1 ng-show="mnViewsCreateDialogController.isSpatial && !mnViewsCreateDialogController.isCopy">Create Spatial Development View</h1>
   <h1 ng-show="mnViewsCreateDialogController.isCopy">Copy View</h1>
   <form ng-submit="mnViewsCreateDialogController.onSubmit(ddocForm)" name="ddocForm" mn-spinner="mnViewsCreateDialogController.viewLoading">
-    <span class="warning pat_10" ng-show="mnViewsCreateDialogController.error.reason">{{mnViewsCreateDialogController.error.reason}}</span>
+    <span class="warning pat_10" ng-show="mnViewsCreateDialogController.errors.reason">{{mnViewsCreateDialogController.errors.reason}}</span>
     <span class="warning pat_10" ng-show="
       (ddocForm.designdoc_name.$dirty && ddocForm.designdoc_name.$error.required) ||
       (ddocForm.view_name.$dirty && ddocForm.view_name.$error.required)">
