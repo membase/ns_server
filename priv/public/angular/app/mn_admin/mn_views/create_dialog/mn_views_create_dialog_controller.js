@@ -58,7 +58,7 @@
         }
         if (_.keys(views).length >= 10) {
           return $modal.open({
-            templateUrl: 'mn_admin/mn_views/confirm_dialog/mn_views_confirm_limit_dialog.html'
+            templateUrl: 'mn_admin/mn_views/confirm_dialogs/mn_views_confirm_limit_dialog.html'
           }).result.then(function () {
             return createDdoc(presentDdoc);
           }, function () {
