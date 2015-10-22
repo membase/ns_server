@@ -6,19 +6,23 @@ angular.module('mnSettingsAutoCompaction', [
   'mnPoolDefault'
 ]).controller('mnSettingsAutoCompactionController',
   function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoCompactionService, mnPoolDefault) {
-    mnPromiseHelper($scope, mnSettingsAutoCompactionService.getAutoCompaction()).applyToScope("autoCompactionSettings");
+    mnPromiseHelper($scope, mnSettingsAutoCompactionService.getAutoCompaction())
+      .applyToScope("autoCompactionSettings")
+      .onSuccess(activate);
 
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
 
     if ($scope.mnPoolDefault.value.isROAdminCreds) {
       return;
     }
-    $scope.$watch('autoCompactionSettings', function (autoCompactionSettings) {
-      mnPromiseHelper($scope, mnSettingsAutoCompactionService
-        .saveAutoCompaction(autoCompactionSettings, {just_validate: 1}))
-        .catchErrors()
-        .cancelOnScopeDestroy();
-    }, true);
+    function activate() {
+      $scope.$watch('autoCompactionSettings', function (autoCompactionSettings) {
+        mnPromiseHelper($scope, mnSettingsAutoCompactionService
+          .saveAutoCompaction(autoCompactionSettings, {just_validate: 1}))
+          .catchErrors()
+          .cancelOnScopeDestroy();
+      }, true);
+    }
 
     $scope.submit = function () {
       if ($scope.viewLoading) {
