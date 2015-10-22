@@ -8,7 +8,7 @@
 .dialog_main_wrapper .dialog_inner_content {color: #222222; font-family: Verdana, Arial, sans-serif; font-size: 18px;}
 .dialog_main_wrapper .dialog_ {
   margin: 25px; /*should be the same as box show above*/
-  background: #fff; position: relative;
+  background: #EEEEEF; position: relative;
   box-shadow: 0 5px 25px #222; -moz-box-shadow: 0 5px 25px #222; -webkit-box-shadow: 0 5px 25px #222; -o-box-shadow: 0 5px 25px #222; -ms-box-shadow: 0 5px 25px #222; -khtml-box-shadow: 0 5px 25px #222;
 }
 .dialog_main_wrapper .dialog_ h1 {
