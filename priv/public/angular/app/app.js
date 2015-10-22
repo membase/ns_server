@@ -2,11 +2,14 @@ angular.module('app', [
   'mnAdmin',
   'mnAuth',
   'mnWizard'
-]).run(function ($rootScope, $state, $urlRouter, mnPools) {
+]).run(function ($rootScope, $state, $urlRouter, mnPools, $modalStack) {
   $rootScope.$on('$stateChangeError', function (event, toState, toParams, fromState, fromParams, error) {
     throw new Error(error.message);
   });
   $rootScope.$on('$stateChangeStart', function (event, toState) {
+    if ($modalStack.getTop()) {
+      event.preventDefault();
+    }
     mnPools.get().then(function (pools) {
       if (pools.isAuthenticated) {
         var required = (toState.data && toState.data.required) || {};

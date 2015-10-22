@@ -36,7 +36,6 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
       mnPromiseHelper($scope, promise)
         .showSpinner()
         .catchErrors()
-        .reloadState()
         .cancelOnScopeDestroy()
         .onSuccess(function () {
           $scope.loadingResult = true;

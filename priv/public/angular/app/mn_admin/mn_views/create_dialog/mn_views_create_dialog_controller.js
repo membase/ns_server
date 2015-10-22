@@ -74,8 +74,8 @@
         .showSpinner()
         .cancelOnScopeDestroy($scope)
         .catchErrors()
-        .reloadState()
-        .closeOnSuccess();
+        .closeOnSuccess()
+        .reloadState();
     };
 
   }

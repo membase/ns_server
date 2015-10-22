@@ -24,8 +24,8 @@
               .catchErrors(function (data) {
                 vm.error = data && data.reason;
               })
-              .reloadState()
               .closeOnSuccess()
+              .reloadState()
               .getPromise();
           } else {
             vm.error = resp.data && resp.data.reason;
