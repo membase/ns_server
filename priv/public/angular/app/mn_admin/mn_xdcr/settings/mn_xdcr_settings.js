@@ -8,8 +8,8 @@ angular.module('mnXDCR').directive('mnXdcrSettings', function (mnHttp, mnPromise
     isolate: false,
     replace: true,
     templateUrl: 'mn_admin/mn_xdcr/settings/mn_xdcr_settings.html',
-    controller: function ($scope) {
-      $scope.whenGoxdcrEnabled = true; //this flag is a fake, should be replaced in near future
+    controller: function ($scope, mnPoolDefault) {
+      $scope.mnPoolDefault = mnPoolDefault.latestValue();
       $scope.$watch('settings', function (settings) {
         mnPromiseHelper($scope, mnHttp({
           method: 'POST',

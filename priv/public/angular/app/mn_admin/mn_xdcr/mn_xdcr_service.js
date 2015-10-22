@@ -1,21 +1,23 @@
 angular.module('mnXDCRService', [
   'mnHttp',
-  'mnTasksDetails'
+  'mnTasksDetails',
+  'mnPoolDefault'
 ]).factory('mnXDCRService',
-  function ($q, mnHttp, mnTasksDetails) {
+  function ($q, mnHttp, mnTasksDetails, mnPoolDefault) {
     var mnXDCRService = {};
 
     mnXDCRService.removeExcessSettings = function (settings) {
-      delete settings.connectionTimeout;
-      delete settings.httpConnections;
-      delete settings.pauseRequested;
-      delete settings.pauseRequestedpauseRequested;
-      delete settings.retriesPerRequest;
-      delete settings.socketOptions;
-      delete settings.enableAdvancedFiltering;
-      delete settings.supervisorMaxR;
-      delete settings.supervisorMaxT;
-      return settings;
+      var neededProperties = ["replicationType", "optimisticReplicationThreshold", "failureRestartInterval", "docBatchSizeKb", "workerBatchSize", "checkpointInterval", "type", "toBucket", "toCluster", "fromBucket"];
+      if (mnPoolDefault.latestValue().value.goxdcrEnabled) {
+        neededProperties = neededProperties.concat(["sourceNozzlePerNode", "targetNozzlePerNode", "statsInterval", "logLevel"]);
+      } else {
+        neededProperties = neededProperties.concat(["maxConcurrentReps", "workerProcesses"]);
+      }
+      var rv = {};
+      angular.forEach(neededProperties,  function (key) {
+        rv[key] = settings[key];
+      });
+      return rv;
     };
 
     mnXDCRService.saveClusterReference = function (cluster, name) {
