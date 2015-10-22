@@ -49,7 +49,7 @@
               vm.disableApplyChangesBtn = true;
               vm.revisionMismatch = true;
             } else {
-              mnAlertsService.formatAndSetAlerts(resp.data, 'danger', timeout);
+              mnAlertsService.formatAndSetAlerts(resp.data, 'error', timeout);
             }
           });
       }

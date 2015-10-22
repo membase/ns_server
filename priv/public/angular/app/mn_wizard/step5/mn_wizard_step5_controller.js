@@ -21,7 +21,7 @@ angular.module('mnWizard').controller('mnWizardStep5Controller',
             $state.go('app.admin.overview');
             if (mnWizardStep2Service.isSomeBucketSelected()) {
               return mnSettingsSampleBucketsService.installSampleBuckets(mnWizardStep2Service.getSelectedBuckets()).then(null, function (resp) {
-                mnAlertsService.formatAndSetAlerts(resp.data, 'danger');
+                mnAlertsService.formatAndSetAlerts(resp.data, 'error');
               });
             }
           });

@@ -150,7 +150,7 @@ angular.module('mnPromiseHelper', [
         },
         catchGlobalErrors: function (errorMessage, timeout) {
           promise.then(null, function (resp) {
-            mnAlertsService.formatAndSetAlerts(errorMessage || resp.data, 'danger', timeout);
+            mnAlertsService.formatAndSetAlerts(errorMessage || resp.data, 'error', timeout);
           });
           return this;
         },
