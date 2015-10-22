@@ -1,28 +1,28 @@
-<div mn-spinner="mnSettingsNotificationsController.viewLoading || !mnAdminController.updates" class="notifications-updates">
+<div mn-spinner="mnSettingsNotificationsController.viewLoading || !mnSettingsNotificationsController.updates" class="notifications-updates">
   <h2>Update Notifications</h2>
   <form ng-submit="mnSettingsNotificationsController.submit()">
     <div class="sub_section" >
       <p>You are running version {{implementationVersion | mnPrettyVersion}}.</p>
-      <div ng-if="mnAdminController.updates.sendStats">
-        <p ng-if="mnAdminController.updates.newVersion === undefined" class="warning"><strong>Warning</strong> – There was a problem with retreiving the update information.</p>
-        <p ng-if="mnAdminController.updates.newVersion === false">No updates available.</p>
-        <p ng-if="mnAdminController.updates.newVersion">A new version ({{mnAdminController.updates.newVersion}}) is available:</p>
-        <ul ng-if="mnAdminController.updates.newVersion">
+      <div ng-if="mnSettingsNotificationsController.updates.sendStats">
+        <p ng-if="mnSettingsNotificationsController.updates.newVersion === undefined" class="warning"><strong>Warning</strong> – There was a problem with retreiving the update information.</p>
+        <p ng-if="mnSettingsNotificationsController.updates.newVersion === false">No updates available.</p>
+        <p ng-if="mnSettingsNotificationsController.updates.newVersion">A new version ({{mnSettingsNotificationsController.updates.newVersion}}) is available:</p>
+        <ul ng-if="mnSettingsNotificationsController.updates.newVersion">
           <li>
-            <a href="{{mnAdminController.updates.links.release}}">Release notes</a>
+            <a href="{{mnSettingsNotificationsController.updates.links.release}}">Release notes</a>
           </li>
           <li>
-            <a href="{{mnAdminController.updates.links.download}}">Download</a>
+            <a href="{{mnSettingsNotificationsController.updates.links.download}}">Download</a>
             the new version
           </li>
         </ul>
-        <p ng-if="mnAdminController.updates.info">{{mnAdminController.updates.info}}</p>
+        <p ng-if="mnSettingsNotificationsController.updates.info">{{mnSettingsNotificationsController.updates.info}}</p>
       </div>
       <label class="for-enable-replicas">
         <input
           type="checkbox"
           id="notification-updates"
-          ng-model="mnAdminController.updates.enabled"
+          ng-model="mnSettingsNotificationsController.updates.enabled"
           ng-disabled="mnSettingsNotificationsController.mnPoolDefault.value.isROAdminCreds">
         <span>Enable software update notifications.</span>
         <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>

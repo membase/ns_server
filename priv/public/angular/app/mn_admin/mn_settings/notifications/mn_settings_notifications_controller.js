@@ -11,6 +11,13 @@
     vm.submit = submit;
     vm.mnPoolDefault = mnPoolDefault.latestValue();
 
+    activate();
+
+    function activate() {
+      mnPromiseHelper(vm, mnSettingsNotificationsService.maybeCheckUpdates())
+        .applyToScope("updates");
+    }
+
     function submit() {
       mnPromiseHelper(vm, mnSettingsNotificationsService.saveSendStatsFlag($scope.mnAdminController.updates.enabled))
         .showErrorsSensitiveSpinner()
