@@ -324,13 +324,13 @@ handle_call(Event, _From, State) ->
 
 handle_info(compact_kv, #state{kv_compaction=CompactionState} = State) ->
     {noreply, State#state{kv_compaction=
-                              process_scheduler_message(CompactionState)}};
+                              process_scheduler_message(compact_kv, CompactionState)}};
 handle_info(compact_master, #state{master_compaction=CompactionState} = State) ->
     {noreply, State#state{master_compaction=
-                              process_scheduler_message(CompactionState)}};
+                              process_scheduler_message(compact_master, CompactionState)}};
 handle_info(compact_views, #state{views_compaction=CompactionState} = State) ->
     {noreply, State#state{views_compaction=
-                              process_scheduler_message(CompactionState)}};
+                              process_scheduler_message(compact_views, CompactionState)}};
 handle_info({'DOWN', MRef, _, _, _}, #state{view_compaction_inhibited_ref=MRef,
                                             view_compaction_inhibited_bucket=BinBucket}=State) ->
     ?log_debug("Looks like vbucket mover inhibiting view compaction for for bucket \"~s\" is dead."
@@ -1231,9 +1231,9 @@ init_scheduled_compaction(CheckInterval, Message, Fun) ->
                       scheduler=compaction_scheduler:init(CheckInterval, Message),
                       compactor_fun = Fun}.
 
-process_scheduler_message(#compaction_state{buckets_to_compact=Buckets0,
-                                            scheduler=Scheduler,
-                                            compactor_pid=undefined} = State) ->
+process_scheduler_message(Msg, #compaction_state{buckets_to_compact=Buckets0,
+                                                 scheduler=Scheduler,
+                                                 compactor_pid=undefined} = State) ->
     Buckets =
         case Buckets0 of
             [] ->
@@ -1245,11 +1245,11 @@ process_scheduler_message(#compaction_state{buckets_to_compact=Buckets0,
 
     case Buckets of
         [] ->
-            ?log_debug("No buckets to compact. Rescheduling compaction."),
+            ?log_debug("No buckets to compact for ~p. Rescheduling compaction.", [Msg]),
             State#compaction_state{scheduler=compaction_scheduler:schedule_next(Scheduler)};
         _ ->
-            ?log_debug("Starting compaction for the following buckets: ~n~p",
-                       [Buckets]),
+            ?log_debug("Starting compaction (~p) for the following buckets: ~n~p",
+                       [Msg, Buckets]),
             NewState1 = State#compaction_state{buckets_to_compact=Buckets,
                                                scheduler=
                                                    compaction_scheduler:start_now(Scheduler)},

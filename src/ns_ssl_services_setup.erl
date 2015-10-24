@@ -397,14 +397,14 @@ handle_info(notify_services, #state{reload_state = Reloads} = State) ->
         [] ->
             ok;
         _ ->
-            ?log_debug("Succesfully notified services ~p", [Good])
+            ?log_info("Succesfully notified services ~p", [Good])
     end,
     case Bad of
         [] ->
             misc:remove_marker(marker_path()),
             ok;
         _ ->
-            ?log_debug("Failed to notify some services. Will retry in 5 sec, ~p", [Bad]),
+            ?log_info("Failed to notify some services. Will retry in 5 sec, ~p", [Bad]),
             timer:send_after(5000, notify_services)
     end,
     {noreply, State#state{reload_state = [Svc || {_, Svc} <- Bad]}};
