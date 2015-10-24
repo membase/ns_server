@@ -36,7 +36,7 @@ init(BucketName) ->
 refresh_cluster_config(BucketName) ->
     case bucket_info_cache:terse_bucket_info(BucketName) of
         {ok, JSON} ->
-            ok = ns_memcached:set_cluster_config(BucketName, JSON);
+            ns_memcached:set_cluster_config(BucketName, JSON);
         not_present ->
             ?log_debug("Bucket ~s is dead", [BucketName]),
             ok;
