@@ -57,8 +57,8 @@ schedule_next(#state{start_ts=StartTs0,
         case Diff < CheckInterval of
             true ->
                 RepeatIn = (CheckInterval - Diff),
-                ?log_debug("Finished compaction too soon. Next run will be in ~ps",
-                           [RepeatIn]),
+                ?log_debug("Finished compaction for ~p too soon. Next run will be in ~ps",
+                           [Message, RepeatIn]),
                 {ok, NewTRef} = timer2:send_after(RepeatIn * 1000, Message),
                 State#state{timer_ref=NewTRef};
             false ->
