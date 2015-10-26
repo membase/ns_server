@@ -203,7 +203,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                  Method when Method =:= 'GET'; Method =:= 'HEAD' ->
                      case PathTokens of
                          [] ->
-                             {done, redirect_permanently("/index.html", Req)};
+                             {done, redirect_permanently("/ui/index.html", Req)};
                          ["versions"] ->
                              {done, handle_versions(Req)};
                          ["pools"] ->
@@ -357,6 +357,13 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "tasks"] ->
                              {auth_ro, fun handle_tasks/2, ["default"]};
                          ["index.html"] ->
+                             {done, redirect_permanently("/ui/index.html", Req)};
+                         ["ui", "index.html"] ->
+                              {done, menelaus_util:serve_static_file(
+                                      Req, {AppRoot, Path},
+                                      "text/html; charset=utf8",
+                                      [{"Cache-Control", "must-revalidate"}])};
+                         ["classic-index.html"] ->
                              {done, menelaus_util:serve_static_file(
                                       Req, {AppRoot, Path},
                                       "text/html; charset=utf8",

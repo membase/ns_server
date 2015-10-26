@@ -1,0 +1,99 @@
+<div id="container">
+  <div mn-launchpad launchpad-source="mnAdminController.launchpadSource" launchpad-id="mnAdminController.launchpadId"></div>
+  <div class="page-header">
+    <div class="cnt_holder main_holder">
+      <div class="topper_nav">
+        <span class="only-when-below-20" style="display:none;">
+          NOTE: need all 2.0 nodes to enable 2.0-only features<b>&bull;</b>
+        </span>
+        <span id="edit-internal-settings-link" class="when-roadmin-avoid-me" ng-hide="mnAdminController.poolDefault.isROAdminCreds" style="display:none;">
+          <a onclick="runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b>
+        </span>
+        <a href="/classic-index.html" target="_self">
+          Classic UI
+        </a>
+        <b>&bull;</b>
+        <a href="http://docs.couchbase.com/couchbase-manual-2.5/" target="cbdocs">
+          Documentation
+        </a>
+        <b>&bull;</b>
+        <a href="http://www.couchbase.com/communities/" target="cbforums">
+          Support
+        </a>
+        <b>&bull;</b>
+        <a href="javascript:showAbout();">
+          About
+        </a>
+        <i class="sign-out-link"><b>&bull;</b> <a ng-click="mnAdminController.logout()">Sign Out</a></i>
+      </div>
+      <div class="log_wrap">
+        <a href="/index.html"></a>
+      </div>
+      <div class="tab_name ellipsis" id="js_tab_name" title="{{tabName}}">{{tabName}}</div>
+      <div
+        id="global_progress"
+        ng-class="{
+          'disable_toggle': !mnAdminController.areThereMoreThenTwoRunningTasks(),
+          'closed': mnAdminController.isProgressBarClosed
+        }"
+        class="closed"
+        ng-show="mnAdminController.filterTasks(mnAdminController.tasks.running).length">
+          <i
+            class="toggle"
+            ng-click="mnAdminController.areThereMoreThenTwoRunningTasks() && mnAdminController.toggleProgressBar()">i</i>
+          <ul id="global_progress_container">
+            <li ng-repeat="task in mnAdminController.filterTasks(mnAdminController.tasks.running)" class="clearfix">
+              <div class="usage_smallest" ng-show="task.type !== 'loadingSampleBucket'">
+                <div class="used" style="width: {{task.progress}}%"></div>
+              </div>
+              <span class="message">{{task | formatProgressMessage}}</span>
+            </li>
+          </ul>
+      </div>
+    </div>
+  </div>
+  <div id="headerNav">
+    <div class="contents">
+      <ul>
+        <li class="line" ui-sref-active="currentNav">
+          <a class="switch_overview" ui-sref="app.admin.overview">Cluster Overview</a>
+        </li>
+        <li class="line" ui-sref-active="currentNav">
+          <a class="switch_servers" ui-sref="app.admin.servers">Server Nodes</a>
+        </li>
+        <li class="line" ui-sref-active="currentNav">
+          <a class="switch_buckets" ui-sref="app.admin.buckets">Data Buckets</a>
+        </li>
+        <li class="line" ui-sref-active="currentNav">
+          <a class="switch_views" ui-sref="app.admin.views.list">Views</a>
+        </li>
+        <li class="line" ui-sref-active="currentNav">
+          <a class="switch_views" ui-sref="app.admin.indexes">Index</a>
+        </li>
+        <li class="line" ui-sref-active="currentNav">
+          <a class="switch_replications" ui-sref="app.admin.replications">XDCR</a>
+        </li>
+        <li class="line" ng-class="{currentNav: ('app.admin.logs' | includedByState)}">
+          <a class="switch_log" ui-sref="app.admin.logs.list">Log</a>
+        </li>
+        <li class="line" ng-class="{currentNav: ('app.admin.settings' | includedByState)}" id="nav_settings_container">
+          <a href="#?section=settings" ui-sref="app.admin.settings.cluster" class="switch_settings">Settings
+            <span ng-show="mnAdminController.updates.sendStats && !!mnAdminController.updates.newVersion" class="badge notify"><span>!</span></span>
+          </a>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div class="global_alerts_container">
+    <div alert ng-repeat="alert in mnAdminController.alerts" type="{{alert.type}}" close="mnAdminController.closeAlert($index)" dismiss-on-timeout="{{alert.timeout}}">{{alert.msg}}</div>
+  </div>
+  <div id="mainContainer" class="main_holder">
+    <div id="mainPanel" class="mainPanel" ui-view autoscroll="false"></div>
+  </div>
+  <div class="page-footer">
+    <div class="main_holder">
+      <h1>Copyright &copy; 2015 <a href="http://couchbase.com" target="_blank">Couchbase, Inc.</a> All rights reserved.</h1>
+    </div>
+  </div>
+</div>
