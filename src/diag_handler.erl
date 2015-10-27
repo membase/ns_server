@@ -266,6 +266,8 @@ sanitize_ets_table(xdcr_stats, _Info, Content) ->
     xdc_rep_utils:sanitize_state(Content);
 sanitize_ets_table(remote_clusters_info, _Info, Content) ->
     sanitize_remote_clusters_info(Content);
+sanitize_ets_table(ns_config_ets_dup, _Info, Content) ->
+    ns_config_log:sanitize(Content);
 sanitize_ets_table(_, Info, Content) ->
     case proplists:get_value(name, Info) of
         ssl_otp_pem_cache ->
