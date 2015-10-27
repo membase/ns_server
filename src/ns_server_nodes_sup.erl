@@ -54,6 +54,13 @@ child_specs() ->
      %% started there
      menelaus_sup:barrier_spec(menelaus_barrier),
 
+     %% connection pool that we use when talking to goxdcr/indexer/cbq-engine
+     {rest_lhttpc_pool, {lhttpc_manager, start_link,
+                         [[{name, rest_lhttpc_pool},
+                           {connection_timeout, 120000},
+                           {pool_size, 20}]]},
+      {permanent, 1}, 1000, worker, [lhttpc_manager]},
+
      {ns_ssl_services_sup,
       {ns_ssl_services_sup, start_link, []},
       permanent, infinity, supervisor, []},
