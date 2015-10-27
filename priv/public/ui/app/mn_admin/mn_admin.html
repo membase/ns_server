@@ -80,7 +80,9 @@
           <a href="#?section=settings" ui-sref="app.admin.settings.cluster" class="switch_settings">Settings
             <span ng-show="mnAdminController.updates.sendStats && !!mnAdminController.updates.newVersion" class="badge notify"><span>!</span></span>
           </a>
-          </a>
+        </li>
+        <li ng-repeat="config in mnAdminController.pluggableUiConfigs | filter:{plugIn: 'adminTab'}" class="line" ui-sref-active="currentNav">
+          <a ui-sref="{{ config.state }}">{{ config.name }}</a>
         </li>
       </ul>
     </div>

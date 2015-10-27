@@ -1,7 +1,6 @@
 (function () {
   angular.module('mnAdmin').controller('mnAdminController', mnAdminController);
-
-  function mnAdminController($scope, $rootScope, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter) {
+  function mnAdminController($scope, $rootScope, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPluggableUiRegistry) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -13,6 +12,8 @@
     vm.areThereMoreThenTwoRunningTasks = areThereMoreThenTwoRunningTasks;
     vm.toggleProgressBar = toggleProgressBar;
     vm.filterTasks = filterTasks;
+
+    vm.pluggableUiConfigs = mnPluggableUiRegistry.getConfigs();
 
     activate();
 

@@ -33,6 +33,9 @@
               <a id="account_management" class="casper_settings_account_management">Account Management</a>
           </li>
           <li><a id="settings_sample_buckets" class="casper_settings_sample_buckets" ui-sref="app.admin.settings.sampleBuckets" ui-sref-active="selected">Sample Buckets</a></li>
+          <li ng-repeat="config in mnAdminController.pluggableUiConfigs | filter:{plugIn: 'settingsTab'}">
+              <a ui-sref="{{ config.state }}" ui-sref-active="selected">{{ config.name }}</a>
+          </li>
         </ul>
       </div>
       <div class="panes clearfix" ui-view="">
