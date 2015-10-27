@@ -255,7 +255,8 @@ get_source() ->
         true ->
             local;
         false ->
-            IndexNodes = ns_cluster_membership:index_active_nodes(Config, actual),
+            IndexNodes =
+                ns_cluster_membership:service_active_nodes(Config, index, actual),
             {remote, IndexNodes, length(IndexNodes)}
     end.
 

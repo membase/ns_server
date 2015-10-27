@@ -50,8 +50,6 @@
          filter_out_non_kv_nodes/2,
          should_run_service/2,
          should_run_service/3,
-         n1ql_active_nodes/2,
-         index_active_nodes/2,
          user_friendly_service_name/1]).
 
 active_nodes() ->
@@ -264,12 +262,6 @@ service_active_nodes(Config, Service, Status) ->
     [N || N <- AllNodes,
           ServiceC <- node_services(Config, N),
           ServiceC =:= Service].
-
-n1ql_active_nodes(Config, Status) ->
-    service_active_nodes(Config, n1ql, Status).
-
-index_active_nodes(Config, Status) ->
-    service_active_nodes(Config, index, Status).
 
 user_friendly_service_name(kv) ->
     data;
