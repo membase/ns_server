@@ -383,12 +383,53 @@ get_samples_from_one_of_kind([Kind | RestKinds], StatName, ClientTStamp, Window)
     end.
 
 get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window) ->
-    get_samples_from_one_of_kind(["@system",
-                                  "@query",
-                                  "@index-" ++ BucketName,
-                                  "@fts-" ++ BucketName,
-                                  "@xdcr-" ++ BucketName,
-                                  BucketName], StatName, ClientTStamp, Window).
+    SearchList = get_stats_search_order(StatName, BucketName),
+    get_samples_from_one_of_kind(SearchList, StatName, ClientTStamp, Window).
+
+%% List of different types of stats
+kinds_list(BucketName) ->
+    ["@system", BucketName, "@query", "@index-" ++ BucketName,
+     "@fts-" ++ BucketName, "@xdcr-" ++ BucketName].
+
+%% For many stats, their kind can be identified by their prefix.
+get_possible_kind(StatName, BucketName) ->
+    case StatName of
+        "query_" ++ _Rest ->
+            "@query";
+        "replication" ++ _Rest ->
+            "@xdcr-" ++ BucketName;
+        "index" ++ _Rest ->
+            "@index-" ++ BucketName;
+        "fts" ++ _Rest ->
+            "@fts-" ++ BucketName;
+        "views" ++ _Rest ->
+            BucketName;
+        "spatial" ++ _Rest ->
+            BucketName;
+        "vb_" ++ _Rest ->
+            BucketName;
+        "ep_" ++ _Rest ->
+            BucketName;
+        _ ->
+            kind_not_found
+    end.
+
+%%
+%% Optimize the search order based on the stat prefix.
+%% E.g. if a stat is query_..., then search for it in
+%% query related stats first.
+%%
+get_stats_search_order(StatName, BucketName) ->
+    Kind = get_possible_kind(StatName, BucketName),
+    case Kind of
+        kind_not_found ->
+            %% Some stats do not have standard prefix.
+            %% In that case, we use the default search order.
+            kinds_list(BucketName);
+        _ ->
+            %% Move "Kind" to beginning of the search list.
+            [Kind | lists:delete(Kind, kinds_list(BucketName))]
+    end.
 
 build_response_for_specific_stat(BucketName, StatName, Params, LocalAddr) ->
     {ClientTStamp, {Step, _, Count} = Window} =
