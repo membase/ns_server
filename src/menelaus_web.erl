@@ -103,8 +103,9 @@ start_link() ->
 
 start_link(Options) ->
     {AppRoot, Options1} = get_option(approot, Options),
+    Plugins = menelaus_pluggable_ui:find_plugins(),
     Loop = fun (Req) ->
-                   ?MODULE:loop(Req, AppRoot)
+                   ?MODULE:loop(Req, {AppRoot, Plugins})
            end,
     case mochiweb_http:start_link([{loop, Loop} | Options1]) of
         {ok, Pid} -> {ok, Pid};
@@ -143,7 +144,7 @@ webconfig(Config) ->
 webconfig() ->
     webconfig(ns_config:get()).
 
-loop(Req, AppRoot) ->
+loop(Req, {_AppRoot, Plugins}=Config) ->
     ok = menelaus_sup:barrier_wait(),
 
     random:seed(os:timestamp()),
@@ -155,14 +156,14 @@ loop(Req, AppRoot) ->
         {Path, _, _} = mochiweb_util:urlsplit_path(RawPath),
         PathTokens = lists:map(fun mochiweb_util:unquote/1, string:tokens(Path, "/")),
 
-        case is_throttled_request(PathTokens) of
+        case is_throttled_request(PathTokens, Plugins) of
             false ->
-                loop_inner(Req, AppRoot, Path, PathTokens);
+                loop_inner(Req, Config, Path, PathTokens);
             true ->
                 request_throttler:request(
                   rest,
                   fun () ->
-                          loop_inner(Req, AppRoot, Path, PathTokens)
+                          loop_inner(Req, Config, Path, PathTokens)
                   end,
                   fun (_Error, Reason) ->
                           Retry = integer_to_list(random:uniform(10)),
@@ -185,19 +186,23 @@ loop(Req, AppRoot) ->
             reply_json(Req, [list_to_binary("Unexpected server error, request logged.")], 500)
     end.
 
-is_throttled_request(["internalSettings"]) ->
+is_throttled_request(["internalSettings"], _Plugins) ->
     false;
-is_throttled_request(["diag" | _]) ->
+is_throttled_request(["diag" | _], _Plugins) ->
     false;
-is_throttled_request(["couchBase" | _]) ->      % this get's throttled as capi request
+is_throttled_request(["couchBase" | _], _Plugins) ->      % this get's throttled as capi request
     false;
 %% this gets throttled via capi too
-is_throttled_request(["pools", _, "buckets", _BucketId, "docs"]) ->
+is_throttled_request(["pools", _, "buckets", _BucketId, "docs"], _Plugins) ->
     false;
-is_throttled_request(_) ->
+is_throttled_request([RestPrefix | _], Plugins) ->
+    %% Requests for pluggable UI is not throttled here.
+    %% If necessary it is done in the service node.
+    not menelaus_pluggable_ui:is_plugin(RestPrefix, Plugins);
+is_throttled_request(_, _Plugins) ->
     true.
 
-loop_inner(Req, AppRoot, Path, PathTokens) ->
+loop_inner(Req, {AppRoot, Plugins}, Path, PathTokens) ->
     menelaus_auth:validate_request(Req),
     Action = case Req:get(method) of
                  Method when Method =:= 'GET'; Method =:= 'HEAD' ->
@@ -383,9 +388,24 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
                          ["_metakv" | _] ->
                              {auth, fun menelaus_metakv:handle_get/2, [Path]};
-                         _ ->
-                             {done, menelaus_util:serve_file(Req, Path, AppRoot,
-                                                             [{"Cache-Control", "max-age=10"}])}
+                         [RestPrefix, "ui" | _] ->
+                             {done, menelaus_pluggable_ui:maybe_serve_file(
+                                      RestPrefix, Plugins, Req,
+                                      nth_path_tail(Path, 2))};
+                         [RestPrefix | _] ->
+                             case menelaus_pluggable_ui:is_plugin(RestPrefix, Plugins) of
+                                 true ->
+                                     {auth,
+                                      fun (PReq) ->
+                                              menelaus_pluggable_ui:proxy_req(
+                                                RestPrefix, drop_rest_prefix(Path),
+                                                Plugins, PReq)
+                                      end};
+                                 false ->
+                                     {done, menelaus_util:serve_file(
+                                              Req, Path, AppRoot,
+                                              [{"Cache-Control", "max-age=10"}])}
+                             end
                      end;
                  'POST' ->
                      case PathTokens of
@@ -557,9 +577,19 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                                                 end};
                          ["diag", "eval"] -> {auth, fun handle_diag_eval/1};
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
-                         _ ->
-                             ?MENELAUS_WEB_LOG(0001, "Invalid post received: ~p", [Req]),
-                             {done, reply_not_found(Req)}
+                         [RestPrefix | _] ->
+                             case menelaus_pluggable_ui:is_plugin(RestPrefix, Plugins) of
+                                 true ->
+                                     {auth,
+                                      fun (PReq) ->
+                                              menelaus_pluggable_ui:proxy_req(
+                                                RestPrefix, drop_rest_prefix(Path),
+                                                Plugins, PReq)
+                                      end};
+                                 false ->
+                                     ?MENELAUS_WEB_LOG(0001, "Invalid post received: ~p", [Req]),
+                                     {done, reply_not_found(Req)}
+                             end
                      end;
                  'DELETE' ->
                      case PathTokens of
@@ -583,9 +613,19 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
                          ["_metakv" | _] ->
                              {auth, fun menelaus_metakv:handle_delete/2, [Path]};
-                         _ ->
-                             ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
-                             {done, reply_text(Req, "Method Not Allowed", 405)}
+                         [RestPrefix | _] ->
+                             case menelaus_pluggable_ui:is_plugin(RestPrefix, Plugins) of
+                                 true ->
+                                     {auth,
+                                      fun (PReq) ->
+                                              menelaus_pluggable_ui:proxy_req(
+                                                RestPrefix, drop_rest_prefix(Path),
+                                                Plugins, PReq)
+                                      end};
+                                 false ->
+                                     ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p", [Req, PathTokens]),
+                                     {done, reply_text(Req, "Method Not Allowed", 405)}
+                             end
                      end;
                  'PUT' = Method ->
                      case PathTokens of
@@ -598,9 +638,19 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
                          ["_metakv" | _] ->
                              {auth, fun menelaus_metakv:handle_put/2, [Path]};
-                         _ ->
-                             ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
-                             {done, reply_text(Req, "Method Not Allowed", 405)}
+                         [RestPrefix | _] ->
+                             case menelaus_pluggable_ui:is_plugin(RestPrefix, Plugins) of
+                                 true ->
+                                     {auth,
+                                      fun (PReq) ->
+                                              menelaus_pluggable_ui:proxy_req(
+                                                RestPrefix, drop_rest_prefix(Path),
+                                                Plugins, PReq)
+                                      end};
+                                 false ->
+                                     ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
+                                     {done, reply_text(Req, "Method Not Allowed", 405)}
+                             end
                      end;
                  "RPCCONNECT" ->
                      {auth, fun json_rpc_connection:handle_rpc_connect/1};
@@ -3926,3 +3976,18 @@ handle_settings_audit_post(Req) ->
                                  ns_audit_cfg:set_global(Values),
                                  reply(Req, 200)
                          end, Req, validate_settings_audit(Args)).
+
+nth_path_tail(Path, N) when N > 0 ->
+    nth_path_tail(path_tail(Path), N-1);
+nth_path_tail(Path, 0) ->
+    Path.
+
+path_tail([$/|[$/|_] = Path]) ->
+    path_tail(Path);
+path_tail([$/|Path]) ->
+    Path;
+path_tail([_|Rest]) ->
+    path_tail(Rest).
+
+drop_rest_prefix(Path) ->
+    [$/ | path_tail(Path)].
