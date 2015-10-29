@@ -2840,6 +2840,9 @@
           <input type="checkbox" class="inp" name="services" value="n1ql" id="add_servers_n1ql_checkbox" />
           <label class="label" for="add_servers_n1ql_checkbox" style="text-align: left; width: 45px;">Query</label>
 
+          <input type="checkbox" class="inp" name="services" value="fts" id="add_servers_fts_checkbox" />
+          <label class="label" for="add_servers_fts_checkbox" style="text-align: left; width: 45px;">Full Text</label>
+
           <a class="tooltip text_11"><span>What's this?</span>
             <span class="tooltip_msg" style="width:350px;"><span>
               Each service represents a unique workload. Please check the service you want to enable on this node.
@@ -2882,6 +2885,9 @@
   {% } %}
   {% if (isLastQuery) { %}
     <li>Remove the last query node from the cluster so queries can’t be run</li>
+  {% } %}
+  {% if (isLastFullText) { %}
+    <li>Remove the last full text node from the cluster so full text indexes can’t be created</li>
   {% } %}
   {% if (isKv) { %}
     <li>Reduce cache capacity across all data buckets</li>
@@ -3501,6 +3507,9 @@
 
               <input type="checkbox" class="inp" name="services" value="n1ql" id="wizard_join_setup_n1ql_checkbox" checked/>
               <label class="label" for="wizard_join_setup_n1ql_checkbox">Query</label>
+
+              <input type="checkbox" class="inp" name="services" value="fts" id="wizard_join_setup_fts_checkbox" checked/>
+              <label class="label" for="wizard_join_setup_fts_checkbox">Full Text</label>
             </div>
             <a class="tooltip text_11"><span>What's this?</span>
               <span class="tooltip_msg" style="width:350px;"><span>
@@ -3835,6 +3844,8 @@
         <label class="label" for="{%= prefix %}_index_checkbox">Index</label>
         <input type="checkbox" class="js_service_flag" name="services" value="n1ql" id="{%= prefix %}_n1ql_checkbox" checked />
         <label class="label" for="{%= prefix %}_n1ql_checkbox">Query</label>
+        <input type="checkbox" class="js_service_flag" name="services" value="fts" id="{%= prefix %}_fts_checkbox" checked />
+        <label class="label" for="{%= prefix %}_fts_checkbox">Full Text</label>
       </div>
       <a class="tooltip text_11"><span>What&#39;s this?</span>
         <span class="tooltip_msg" style="width:350px;"><span>

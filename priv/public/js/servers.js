@@ -698,6 +698,7 @@ var ServersSection = {
       var warningFlags = {
         isLastIndex: ServersSection.isOnlyOneActiveNodeWithService(ServersSection.allNodes, node, 'index'),
         isLastQuery: ServersSection.isOnlyOneActiveNodeWithService(ServersSection.allNodes, node, 'n1ql'),
+        isLastFullText: ServersSection.isOnlyOneActiveNodeWithService(ServersSection.allNodes, node, 'fts'),
         isThereIndex: !!_.find(resp.indexes, function (index) {
           return _.indexOf(index.hosts, hostname) > -1;
         }),

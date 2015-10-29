@@ -686,7 +686,7 @@ body.init_cluster #init_cluster_dialog div.join_cluster_dialog_errors_container 
 .init_block .start_new_cluster_block input[type="number"] {width: 65px;}
 .init_block .login-credentials label {width: 100px; display: inline-block;}
 .init_block .wizard_services {display: inline;}
-.init_block .wizard_services label {text-align: left; width: 45px;vertical-align: middle;}
+.init_block .wizard_services label {text-align: left;width: 45px;vertical-align: middle;white-space: nowrap;}
 .init_block .wizard_services input {vertical-align: middle;}
 .init_block .login-credentials,
 .init_block .start_new_cluster_block {margin-left: 85px; margin-right: 85px; line-height: 28px;}
