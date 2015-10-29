@@ -80,6 +80,7 @@
 -define(PROJECTOR_LOG_FILENAME, "projector.log").
 -define(INDEXER_LOG_FILENAME, "indexer.log").
 -define(METAKV_LOG_FILENAME, "metakv.log").
+-define(FTS_LOG_FILENAME, "fts.log").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).

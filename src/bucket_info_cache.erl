@@ -157,7 +157,9 @@ build_services(Node, Config, EnabledServices) ->
                   {indexStreamInit, ns_config:search(Config, {node, Node, indexer_stinit_port}, undefined)},
                   {indexStreamCatchup, ns_config:search(Config, {node, Node, indexer_stcatchup_port}, undefined)},
                   {indexStreamMaint, ns_config:search(Config, {node, Node, indexer_stmaint_port}, undefined)}
-                 ]
+                 ];
+             fts ->
+                 [{fts, ns_config:search(Config, {node, Node, fts_http_port}, undefined)}]
          end || S <- EnabledServices],
 
     MgmtSSL = GetPort(ssl_rest_port, mgmtSSL),

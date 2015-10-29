@@ -4,12 +4,12 @@ import os, sys, getopt, urllib2, urllib, json
 from urllib2 import HTTPError
 
 valid_bucket_types = ["membase", "memcached"]
-valid_service_types = {"kv", "n1ql", "index"}
+valid_service_types = {"kv", "n1ql", "index", "fts"}
 
 def usage():
     print "usage: \n\
             -n <number of nodes>\n\
-            -T <services to run. kv if unspecified> (eg: n0:kv,n1:index+n1ql)\n\
+            -T <services to run. kv if unspecified> (eg: n0:kv,n1:index+n1ql+fts)\n\
             -s <memory size (min 256) default: 256\n\
             -I <index memory size> default: 256\n\
             -t <bucket type> (membase, memcached) default: membase\n\

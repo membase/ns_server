@@ -270,7 +270,8 @@ dynamic_children(normal) ->
              saslauthd_port_spec(Config),
              run_via_goport(fun goxdcr_spec/1, Config),
              per_bucket_moxi_specs(Config),
-             maybe_create_ssl_proxy_spec(Config)],
+             maybe_create_ssl_proxy_spec(Config),
+             run_via_goport(fun fts_spec/1, Config)],
 
     lists:flatten(Specs).
 
@@ -568,3 +569,31 @@ memcached_spec(Config) ->
            },
 
     [expand_args(Spec, Config)].
+
+fts_spec(Config) ->
+    FtCmd = find_executable("cbft"),
+    case FtCmd =/= false andalso
+        ns_cluster_membership:should_run_service(Config, fts, node()) of
+        false ->
+            [];
+        _ ->
+            NsRestPort = misc:node_rest_port(Config, node()),
+            FtRestPort = ns_config:search(Config, {node, node(), fts_http_port}, 9110),
+            {ok, IdxDir} = ns_storage_conf:this_node_ixdir(),
+            FTSIdxDir = filename:join(IdxDir, "@fts"),
+            ok = misc:ensure_writable_dir(FTSIdxDir),
+            {_, Host} = misc:node_name_host(node()),
+
+            Spec = {fts, FtCmd,
+                    [
+                     "-cfg=metakv",
+                     "-server=http://127.0.0.1:" ++ integer_to_list(NsRestPort),
+                     "-bindHttp=" ++ io_lib:format("~s:~b", [Host, FtRestPort]),
+                     "-dataDir=" ++ FTSIdxDir,
+                     "-extra=" ++ io_lib:format("~s:~b", [Host, NsRestPort])
+                    ],
+                    [use_stdio, exit_status, stderr_to_stdout, stream,
+                     {log, ?FTS_LOG_FILENAME},
+                     {env, build_go_env_vars(Config, fts)}]},
+            [Spec]
+    end.
