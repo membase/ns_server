@@ -38,7 +38,7 @@
             class="toggle"
             ng-click="mnAdminController.areThereMoreThenTwoRunningTasks() && mnAdminController.toggleProgressBar()">i</i>
           <ul id="global_progress_container">
-            <li ng-repeat="task in mnAdminController.filterTasks(mnAdminController.tasks.running) track by task.progress" class="clearfix">
+            <li ng-repeat="task in mnAdminController.filterTasks(mnAdminController.tasks.running)" class="clearfix">
               <div class="usage_smallest" ng-show="task.type !== 'loadingSampleBucket'">
                 <div class="used" style="width: {{task.progress}}%"></div>
               </div>
