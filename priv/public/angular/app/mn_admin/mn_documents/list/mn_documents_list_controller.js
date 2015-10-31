@@ -117,7 +117,7 @@
         .subscribe("mnDocumentsListState", vm)
         .cancelOnScopeDestroy()
         .keepIn("app.admin.documents.list", vm)
-        .run();
+        .cycle();
     }
   }
 })();

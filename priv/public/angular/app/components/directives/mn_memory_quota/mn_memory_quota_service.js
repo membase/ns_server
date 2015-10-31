@@ -44,7 +44,7 @@ angular.module('mnMemoryQuotaService', [
     };
 
     mnMemoryQuotaService.memoryQuotaConfig = function (showKVMemoryQuota, calculateMaxMemory) {
-      return mnPoolDefault.get().then(function (poolsDefault) {
+      return mnPoolDefault.getFresh().then(function (poolsDefault) {
         return mnMemoryQuotaService.prepareClusterQuotaSettings(poolsDefault, showKVMemoryQuota, calculateMaxMemory);
       });
     };

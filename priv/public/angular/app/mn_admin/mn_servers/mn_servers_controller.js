@@ -26,7 +26,7 @@ angular.module('mnServers', [
     $scope.mnServersController = $scope;
 
     $scope.isServerGroupsDisabled = function () {
-      return !$scope.mnServersState || !$scope.mnServersState.isGroupsAvailable || $scope.mnPoolDefault.value.isROAdminCreds || $scope.mnPoolDefault.value.isEnterprise;
+      return !$scope.mnServersState || !$scope.mnServersState.isGroupsAvailable || $scope.mnPoolDefault.value.isROAdminCreds || !$scope.mnPoolDefault.value.isEnterprise;
     };
     $scope.isAddServerDisabled = function () {
       return !$scope.mnServersState || $scope.mnServersState.rebalancing || $scope.mnPoolDefault.value.isROAdminCreds;
@@ -35,10 +35,10 @@ angular.module('mnServers', [
       return !$scope.mnServersState || !$scope.mnServersState.mayRebalance || $scope.mnPoolDefault.value.isROAdminCreds;
     };
     $scope.stopRebalanceDisabled = function () {
-      return !$scope.mnAdminController.tasks || !$scope.mnAdminController.tasks.inRebalance || $scope.mnPoolDefault.value.isROAdminCreds;
+      return !$scope.mnServersState || !$scope.mnServersState.tasks.inRebalance || $scope.mnPoolDefault.value.isROAdminCreds;
     };
     $scope.stopRecoveryDisabled = function () {
-      return !$scope.mnAdminController.tasks || !$scope.mnAdminController.tasks.inRecoveryMode || $scope.mnPoolDefault.value.isROAdminCreds;
+      return !$scope.mnServersState || !$scope.mnServersState.tasks.inRecoveryMode || $scope.mnPoolDefault.value.isROAdminCreds;
     };
 
     mnPoll
@@ -48,7 +48,7 @@ angular.module('mnServers', [
       .subscribe("mnServersState")
       .keepIn("app.admin.servers")
       .cancelOnScopeDestroy()
-      .run();
+      .cycle();
 
     $scope.addServer = function () {
       $modal.open({
@@ -56,7 +56,7 @@ angular.module('mnServers', [
         controller: 'mnServersAddDialogController',
         resolve: {
           groups: function () {
-            return mnPoolDefault.get().then(function (poolDefault) {
+            return mnPoolDefault.getFresh().then(function (poolDefault) {
               if (poolDefault.isGroupsAvailable) {
                 return mnGroupsService.getGroups();
               }

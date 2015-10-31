@@ -9,14 +9,18 @@ angular.module('mnPoolDefault', [
     mnPoolDefault.latestValue = function () {
       return latest;
     };
-
-    mnPoolDefault.get = function () {
+    mnPoolDefault.get = function (params, cache) {
+      params = params || {waitChange: 0};
+      if (cache === undefined) {
+        cache = true;
+      }
       return $q.all([
         mnHttp({
           method: 'GET',
-          url: '/pools/default?waitChange=0',
+          url: '/pools/default',
           responseType: 'json',
-          cache: true,
+          params: params,
+          cache: cache,
           timeout: 30000
         }),
         mnPools.get()
@@ -42,8 +46,9 @@ angular.module('mnPoolDefault', [
       return this;
     };
 
-    mnPoolDefault.getFresh = function () {
-      return mnPoolDefault.clearCache().get();
+    mnPoolDefault.getFresh = function (params) {
+      params = params || {waitChange: 0};
+      return mnPoolDefault.clearCache().get(params);
     };
 
     return mnPoolDefault;

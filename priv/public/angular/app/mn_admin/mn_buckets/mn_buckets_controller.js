@@ -53,6 +53,6 @@ angular.module('mnBuckets', [
       .subscribe("mnBucketsState")
       .keepIn("app.admin.buckets")
       .cancelOnScopeDestroy()
-      .run();
+      .cycle();
 
   });

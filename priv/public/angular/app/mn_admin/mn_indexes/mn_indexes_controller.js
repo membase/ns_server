@@ -12,7 +12,7 @@ angular.module('mnIndexes', [
       .subscribe("mnIndexesState")
       .keepIn("app.admin.indexes")
       .cancelOnScopeDestroy()
-      .run();
+      .cycle();
 
     mnHelper.initializeDetailsHashObserver($scope, 'openedIndex', 'app.admin.indexes');
 

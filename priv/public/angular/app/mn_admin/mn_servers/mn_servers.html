@@ -14,8 +14,8 @@
     <a
       class="auto_failover_count_reset edit_btn when-roadmin-hide-me"
       ng-hide="mnPoolDefault.value.isROAdminCreds"
-      ng-click="mnAdminController.resetAutoFailOverCount()"
-      mn-spinner="mnAdminController.resetQuotaLoading">
+      ng-click="mnServersState.resetAutoFailOverCount()"
+      mn-spinner="mnServersState.resetQuotaLoading">
       <span>Reset Quota</span>
     </a>
   </div>
@@ -39,8 +39,8 @@
         class="stop_rebalance_button btn_1 when-roadmin-hide-me"
         ng-hide="stopRebalanceDisabled()"
         ng-click="stopRebalance()">
-        <span ng-show="mnAdminController.tasks.isSubtypeGraceful">Stop Fail Over</span>
-        <span ng-show="!mnAdminController.tasks.isSubtypeGraceful">Stop Rebalance</span>
+        <span ng-show="mnServersState.tasks.isSubtypeGraceful">Stop Fail Over</span>
+        <span ng-show="!mnServersState.tasks.isSubtypeGraceful">Stop Rebalance</span>
       </a>
       <a
         class="stop_recovery_button btn_1 when-roadmin-hide-me"
@@ -143,54 +143,54 @@
                 {{node.currItems || 0 | mnFormatQuantity:1000:' ' }}/<br>{{node.currVbItems || 0 | mnFormatQuantity:1000:' ' }}
               </td>
               <td
-                ng-if="mnAdminController.tasks.inRebalance &amp;&amp; mnAdminController.tasks.tasksRebalance.status === 'running'"
+                ng-if="mnServersState.tasks.inRebalance &amp;&amp; mnServersState.tasks.tasksRebalance.status === 'running'"
                 class="actions">
                   <span class="usage_info">{{node.rebalanceProgress | mnTruncateTo3Digits}} % Complete</span>
                   <span class="server_usage"><span style="width: {{node.rebalanceProgress | mnTruncateTo3Digits}}%"></span></span>
               </td>
               <td
-                ng-if="!mnAdminController.tasks.inRebalance &amp;&amp; node.isNodeInactiveAdded &amp;&amp; node.recoveryType === 'none'"
+                ng-if="!mnServersState.tasks.inRebalance &amp;&amp; node.isNodeInactiveAdded &amp;&amp; node.recoveryType === 'none'"
                 class="actions with_state_message">
                   <span class="state_message">Pending Add</span>
                   <a
                     ng-hide="mnServersController.mnPoolDefault.value.isROAdminCreds"
                     class="list_button btn_cancel eject_server when-roadmin-avoid-me"
-                    ng-class="{dynamic_disabled: mnAdminController.tasks.inRecoveryMode}"
-                    ng-click="!mnAdminController.tasks.inRecoveryMode &amp;&amp; ejectServer(node)"><span>Cancel</span></a>
+                    ng-class="{dynamic_disabled: mnServersState.tasks.inRecoveryMode}"
+                    ng-click="!mnServersState.tasks.inRecoveryMode &amp;&amp; ejectServer(node)"><span>Cancel</span></a>
               </td>
               <td
-                ng-if="!mnAdminController.tasks.inRebalance &amp;&amp; node.isNodeInactiveAdded &amp;&amp; node.recoveryType !== 'none'"
+                ng-if="!mnServersState.tasks.inRebalance &amp;&amp; node.isNodeInactiveAdded &amp;&amp; node.recoveryType !== 'none'"
                 class="actions with_state_message">
                   <span class="state_message">Pending {{node.recoveryType}} recovery</span>
                   <a
                     ng-hide="mnServersController.mnPoolDefault.value.isROAdminCreds"
                     class="list_button btn_cancel eject_server when-roadmin-avoid-me"
-                    ng-class="{dynamic_disabled: mnAdminController.tasks.inRecoveryMode}"
-                    ng-click="!mnAdminController.tasks.inRecoveryMode &amp;&amp; cancelFailOverNode(node.otpNode)"><span>Cancel</span></a>
+                    ng-class="{dynamic_disabled: mnServersState.tasks.inRecoveryMode}"
+                    ng-click="!mnServersState.tasks.inRecoveryMode &amp;&amp; cancelFailOverNode(node.otpNode)"><span>Cancel</span></a>
               </td>
               <td
-                ng-if="!mnAdminController.tasks.inRebalance &amp;&amp; !node.isNodeInactiveAdded &amp;&amp; node.pendingEject"
+                ng-if="!mnServersState.tasks.inRebalance &amp;&amp; !node.isNodeInactiveAdded &amp;&amp; node.pendingEject"
                 class="actions with_state_message">
                   <span class="state_message">Pending Removal</span>
                   <a
                     ng-hide="mnServersController.mnPoolDefault.value.isROAdminCreds"
                     class="list_button btn_cancel remove_from_list when-roadmin-avoid-me"
-                    ng-class="{dynamic_disabled: mnAdminController.tasks.inRecoveryMode}"
-                    ng-click="!mnAdminController.tasks.inRecoveryMode &amp;&amp; cancelEjectServer(node)"><span>Cancel</span></a>
+                    ng-class="{dynamic_disabled: mnServersState.tasks.inRecoveryMode}"
+                    ng-click="!mnServersState.tasks.inRecoveryMode &amp;&amp; cancelEjectServer(node)"><span>Cancel</span></a>
               </td>
               <td
-                ng-if="!mnAdminController.tasks.inRebalance &amp;&amp; !node.isNodeInactiveAdded &amp;&amp; !node.pendingEject"
+                ng-if="!mnServersState.tasks.inRebalance &amp;&amp; !node.isNodeInactiveAdded &amp;&amp; !node.pendingEject"
                 class="actions">
                   <a
                     ng-hide="mnServersController.mnPoolDefault.value.isROAdminCreds"
                     class="list_button eject_server when-roadmin-avoid-me casper_servers_remove_popup"
-                    ng-class="{dynamic_disabled: node.isLastActiveData || node.isActiveUnhealthy || mnAdminController.tasks.inRecoveryMode}"
-                    ng-click="!(node.isLastActiveData || node.isActiveUnhealthy || mnAdminController.tasks.inRecoveryMode) &amp;&amp; ejectServer(node)"><span>Remove</span></a>
+                    ng-class="{dynamic_disabled: node.isLastActiveData || node.isActiveUnhealthy || mnServersState.tasks.inRecoveryMode}"
+                    ng-click="!(node.isLastActiveData || node.isActiveUnhealthy || mnServersState.tasks.inRecoveryMode) &amp;&amp; ejectServer(node)"><span>Remove</span></a>
                   <a
                     ng-hide="mnServersController.mnPoolDefault.value.isROAdminCreds"
                     class="list_button failover_server when-roadmin-avoid-me casper_servers_failover_popup"
-                    ng-class="{dynamic_disabled: node.isLastActiveData || mnAdminController.tasks.inRecoveryMode}"
-                    ng-click="!(node.isLastActiveData || mnAdminController.tasks.inRecoveryMode) &amp;&amp; failOverNode(node)"><span>Fail Over</span></a>
+                    ng-class="{dynamic_disabled: node.isLastActiveData || mnServersState.tasks.inRecoveryMode}"
+                    ng-click="!(node.isLastActiveData || mnServersState.tasks.inRecoveryMode) &amp;&amp; failOverNode(node)"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
               </td>
             </tr>

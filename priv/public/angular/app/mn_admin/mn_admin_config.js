@@ -38,7 +38,7 @@ angular.module('mnAdmin', [
       controller: 'mnAdminController as mnAdminController',
       resolve: {
         poolDefault: function (mnPoolDefault) {
-          return mnPoolDefault.get();
+          return mnPoolDefault.getFresh();
         }
       }
     })

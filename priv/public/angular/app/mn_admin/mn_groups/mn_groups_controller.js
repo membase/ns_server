@@ -94,7 +94,7 @@
             vm.rebalancing = poolDefault.rebalancing;
           })
           .cancelOnScopeDestroy()
-          .run();
+          .cycle();
       }
 
 

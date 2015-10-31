@@ -151,7 +151,7 @@
         .subscribe("mnViewsListState", vm)
         .keepIn("app.admin.views.list", vm)
         .cancelOnScopeDestroy()
-        .run();
+        .cycle();
     }
   }
 })();

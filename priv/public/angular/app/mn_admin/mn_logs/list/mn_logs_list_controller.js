@@ -8,7 +8,7 @@ angular.module('mnLogs').controller('mnLogsListController',
       })
       .keepIn("app.admin.logs")
       .cancelOnScopeDestroy()
-      .run();
+      .cycle();
 
 
   }).filter('moduleCode', function () {

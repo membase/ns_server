@@ -61,7 +61,7 @@ angular.module('mnSettingsClusterService', [
     }
 
     mnSettingsClusterService.getClusterState = function () {
-      return mnPoolDefault.get().then(function (poolDefault) {
+      return mnPoolDefault.getFresh().then(function (poolDefault) {
         var requests = [
           mnMemoryQuotaService.memoryQuotaConfig(true, false),
           mnSettingsClusterService.getIndexSettings()

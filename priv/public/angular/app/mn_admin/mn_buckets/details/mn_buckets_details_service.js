@@ -118,7 +118,7 @@ angular.module('mnBucketsDetailsService', [
       return $q.all([
         mnBucketsDetailsService.doGetDetails(bucket),
         mnTasksDetails.get(),
-        mnPoolDefault.get()
+        mnPoolDefault.getFresh()
       ]).then(function (resp) {
         var details = resp[0].data;
         var tasks = resp[1];

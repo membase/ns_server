@@ -1,7 +1,7 @@
 (function () {
   angular.module('mnAdmin').controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $q, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter) {
+  function mnAdminController($scope, $rootScope, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -48,22 +48,32 @@
         })
         .independentOfScope();
 
-      mnPoll
-        .start($scope, function () {
-          return $q.all([
-            mnTasksDetails.get(),
-            mnPoolDefault.getFresh()
-          ]);
-        })
-        .subscribe(function (resp) {
-          vm.tasks = resp[0];
-          $rootScope.tabName = resp[1] && resp[1].clusterName;
-          vm.mnPoolDefault = resp[1];
-        })
-        .keepIn("app.admin", vm)
-        .cancelOnScopeDestroy()
-        .run();
-    }
+      mnPoll.startEtagBased($scope, function (previous) {
+        return mnPoolDefault.get({
+          etag: previous ? previous.etag : "",
+          waitChange: 10000
+        }, false);
+      }).subscribe(function (resp, previous) {
+        $rootScope.tabName = resp.clusterName;
+        if (previous && previous.tasks.uri != resp.tasks.uri) {
+          $rootScope.$broadcast("taskUriChanged");
+        }
+      })
+      .cancelOnScopeDestroy()
+      .cycle();
 
+      $rootScope.$on("taskUriChanged", runTasks);
+      runTasks();
+
+      var poller;
+      function runTasks() {
+        poller && poller.stop();
+        poller = mnPoll.start($scope, mnTasksDetails.get)
+          .subscribe("tasks", vm)
+          .keepIn("app.admin", vm)
+          .cancelOnScopeDestroy()
+          .cycle();
+      }
+    }
   }
 })();

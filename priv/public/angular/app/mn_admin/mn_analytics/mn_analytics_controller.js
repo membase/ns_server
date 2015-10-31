@@ -17,7 +17,7 @@ angular.module('mnAnalytics', [
       .subscribe("mnAnalyticsState")
       .keepIn("app.admin.analytics")
       .cancelOnScopeDestroy()
-      .run();
+      .cycle();
 
     $scope.$watch('mnAnalyticsState.bucketsNames.selected', function (selectedBucket) {
       selectedBucket && selectedBucket !== $state.params.analyticsBucket && $state.go('app.admin.analytics.list.graph', {

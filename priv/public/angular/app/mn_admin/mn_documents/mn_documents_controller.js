@@ -41,7 +41,7 @@
         .subscribe("mnDocumentsState", vm)
         .keepIn("app.admin.documents", vm)
         .cancelOnScopeDestroy()
-        .run();
+        .cycle();
     }
   }
 })();

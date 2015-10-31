@@ -20,7 +20,7 @@ angular.module('mnXDCR', [
       .subscribe("mnXdcrState")
       .keepIn("app.admin.replications")
       .cancelOnScopeDestroy()
-      .run();
+      .cycle();
 
     $scope.createClusterReference = function () {
       $modal.open({

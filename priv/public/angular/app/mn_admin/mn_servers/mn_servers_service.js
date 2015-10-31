@@ -233,7 +233,7 @@ angular.module('mnServersService', [
     mnServersService.getServersState = function (stateParamsNodeType) {
       return $q.all([
         mnServersService.getNodes(),
-        mnPoolDefault.get(),
+        mnPoolDefault.getFresh(),
         mnTasksDetails.get(),
         mnSettingsAutoFailoverService.getAutoFailoverSettings()
       ]).then(function (results) {
@@ -243,6 +243,7 @@ angular.module('mnServersService', [
         var nodes = results[0];
         var tasks = results[2];
         var autoFailoverSettings = results[3];
+        rv.tasks = tasks;
         rv.allNodes = nodes.allNodes;
         rv.isGroupsAvailable = poolDefault.isGroupsAvailable;
         rv.currentNodes = prepareNode(nodes, tasks, stateParamsNodeType, poolDefault);

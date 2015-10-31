@@ -54,7 +54,6 @@ angular.module('mnServers').controller('mnServersAddDialogController',
         .getPromise()
         .then(function () {
           return mnPromiseHelper($scope, mnPoolDefault.getFresh())
-            .cancelOnScopeDestroy()
             .getPromise()
             .then(function (poolsDefault) {
               if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, $scope.addNodeConfig.services.model, 'index')) {

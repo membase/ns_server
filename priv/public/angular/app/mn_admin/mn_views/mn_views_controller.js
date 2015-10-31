@@ -48,7 +48,7 @@
           .subscribe("mnViewsState", vm)
           .keepIn("app.admin.views", vm)
           .cancelOnScopeDestroy()
-          .run();
+          .cycle();
       }
     }
 })();

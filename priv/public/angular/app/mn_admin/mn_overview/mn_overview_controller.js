@@ -14,12 +14,12 @@ angular.module('mnOverview', [
       .start($scope, mnOverviewService.getStats, 3000)
       .subscribe("mnOverviewStats")
       .cancelOnScopeDestroy()
-      .run();
+      .cycle();
     mnPoll
       .start($scope, mnOverviewService.getOverviewConfig, 3000)
       .subscribe("mnOverviewConfig")
       .cancelOnScopeDestroy()
-      .run();
+      .cycle();
 
     mnPromiseHelper($scope, mnServersService.getNodes())
       .applyToScope("nodes")

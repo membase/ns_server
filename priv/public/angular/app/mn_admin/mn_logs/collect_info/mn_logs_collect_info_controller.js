@@ -50,6 +50,6 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
       })
       .keepIn("app.admin.logs.collectInfo")
       .cancelOnScopeDestroy()
-      .run();
+      .cycle();
 
   });
