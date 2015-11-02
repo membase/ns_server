@@ -17,31 +17,43 @@
 
 -include("ns_common.hrl").
 
--export([get_json/1]).
+-export([get_json/2, get_port_name/1]).
 
--define(TIMEOUT, ns_config:get_timeout(index_rest_request, 10000)).
+get_timeout(index) ->
+    ns_config:get_timeout(index_rest_request, 10000);
+get_timeout(fts) ->
+    ns_config:get_timeout(fts_rest_request, 10000).
 
-get_json(Path) ->
-    Port = ns_config:read_key_fast({node, node(), indexer_http_port}, 9102),
-    URL = lists:flatten(io_lib:format("http://127.0.0.1:~B/~s", [Port, Path])),
+get_port(index) ->
+    ns_config:read_key_fast({node, node(), indexer_http_port}, 9102);
+get_port(fts) ->
+    ns_config:read_key_fast({node, node(), fts_http_port}, 9110).
+
+get_port_name(index) ->
+    indexer;
+get_port_name(fts) ->
+    fts.
+
+get_json(Type, Path) ->
+    URL = lists:flatten(io_lib:format("http://127.0.0.1:~B/~s", [get_port(Type), Path])),
 
     User = ns_config_auth:get_user(special),
     Pwd = ns_config_auth:get_password(special),
 
     Headers = menelaus_rest:add_basic_auth([], User, Pwd),
 
-    RV = rest_utils:request(indexer, URL, "GET", Headers, [], ?TIMEOUT),
+    RV = rest_utils:request(get_port_name(Type), URL, "GET", Headers, [], get_timeout(Type)),
     case RV of
         {ok, {{200, _}, _Headers, BodyRaw}} ->
             try
                 {ok, ejson:decode(BodyRaw)}
             catch
                 T:E ->
-                    ?log_error("Received bad json in response from ~s: ~p",
-                               [URL, {T, E}]),
+                    ?log_error("Received bad json in response from (~p) ~s: ~p",
+                               [Type, URL, {T, E}]),
                     {error, bad_json}
             end;
         _ ->
-            ?log_error("Request to ~s failed: ~p", [URL, RV]),
+            ?log_error("Request to (~p) ~s failed: ~p", [Type, URL, RV]),
             {error, RV}
     end.

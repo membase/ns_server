@@ -134,7 +134,7 @@ grab_stats(_State) ->
     end.
 
 get_stats() ->
-    case index_rest:get_json("stats?async=true") of
+    case index_rest:get_json(index, "stats?async=true") of
         {ok, {[_|_] = Stats}} ->
             Stats;
         {ok, Other} ->

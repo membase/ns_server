@@ -171,7 +171,7 @@ refresh_status(State) ->
       end).
 
 grab_status(#state{source = local}) ->
-    case index_rest:get_json("getIndexStatus") of
+    case index_rest:get_json(index, "getIndexStatus") of
         {ok, {[_|_] = Status}} ->
             process_status(Status);
         {ok, Other} ->
