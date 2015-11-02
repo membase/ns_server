@@ -522,6 +522,13 @@ sanitize_config(Config) ->
                            end
                    end, Config).
 
+find_port(NSConfig, Node, ConfigKey, DefaultPort) ->
+    Port = search_config_for_node(NSConfig, Node, ConfigKey, DefaultPort),
+    {ConfigKey, integer_to_list(Port)}.
+
+find_ports(NSConfig, Node, Services, Candidates) ->
+    [find_port(NSConfig, Node, ConfigKey, DefaultPort)
+     || {Service, ConfigKey, DefaultPort} <- Candidates, lists:member(Service, Services)].
 
 main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     Cookie = search_config(search_config(NSConfig, otp, []),
@@ -566,18 +573,14 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     Nodes = [node_host(N) || N <- search_config(NSConfig, nodes_wanted, [])],
 
     Services = search_config_for_node(NSConfig, Node, services, [kv]),
-    QueryPort = case lists:member(n1ql, Services) of
-                    true ->
-                        Port = search_config_for_node(NSConfig, Node, query_port, 8093),
-                        [{query_port, integer_to_list(Port)}];
-                    false ->
-                        []
-                end,
+
+    Candidates = [{n1ql, query_port, 8093}, {index, indexer_http_port, 9102}],
+    OtherPorts = find_ports(NSConfig, Node, Services, Candidates),
 
     {_, DataDir} = lists:keyfind(path_config_datadir, 1, StaticTerms),
     StatsDir = filename:join(DataDir, "stats"),
 
-    Pairs = QueryPort ++
+    Pairs = OtherPorts ++
         [{ns_config, iolist_to_binary(io_lib:format("~p", [sanitize_config(NSConfig)]))},
          {static_config, iolist_to_binary(io_lib:format("~p", [StaticTerms]))},
          {couch_inis, confget(#config.couch_inis)},
