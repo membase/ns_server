@@ -36,9 +36,6 @@
 
 -export([serve_ui_stats/1]).
 
--import(index_stats_collector,
-        [per_index_stat/2, global_index_stat/1]).
-
 %% External API
 bucket_disk_usage(BucketName) ->
     {_, _, _, _, DiskUsed, _}
@@ -544,6 +541,11 @@ parse_stats_params(Params) ->
                     end,
     {ClientTStamp, {Step, Period, Count}}.
 
+global_index_stat(StatName) ->
+    index_stats_collector:global_index_stat(index, StatName).
+
+per_index_stat(Index, Metric) ->
+    index_stats_collector:per_index_stat(index, Index, Metric).
 
 computed_stats_lazy_proplist("@system") ->
     [];

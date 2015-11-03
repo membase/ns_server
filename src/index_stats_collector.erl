@@ -22,26 +22,49 @@
 -include("ns_stats.hrl").
 
 %% API
--export([start_link/0]).
--export([per_index_stat/2, global_index_stat/1]).
+-export([start_link/1]).
+-export([per_index_stat/3, global_index_stat/2, prefix/1]).
 
 %% callbacks
 -export([init/1, handle_info/2, grab_stats/1, process_stats/5]).
 
--record(state, {default_stats,
+-record(state, {type :: index | fts,
+                default_stats,
                 buckets}).
 
--define(I_GAUGES, [disk_size, data_size, num_docs_pending, num_docs_queued,
-                   items_count, frag_percent]).
--define(I_COUNTERS, [num_requests, num_rows_returned, num_docs_indexed,
-                     scan_bytes_read, total_scan_duration]).
--define(I_COMPUTED, [disk_overhead_estimate]).
+server_name(Type) ->
+    list_to_atom(?MODULE_STRING "-" ++ atom_to_list(Type)).
 
-start_link() ->
-    base_stats_collector:start_link({local, ?MODULE}, ?MODULE, []).
+ets_name(Type) ->
+    list_to_atom(?MODULE_STRING "_names-" ++ atom_to_list(Type)).
 
-init([]) ->
-    ets:new(index_stats_collector_names, [protected, named_table]),
+get_gauges(index) ->
+    [disk_size, data_size, num_docs_pending, num_docs_queued,
+     items_count, frag_percent];
+get_gauges(fts) ->
+    [doc_count, num_pindexes].
+
+get_counters(index) ->
+    [num_requests, num_rows_returned, num_docs_indexed,
+     scan_bytes_read, total_scan_duration];
+get_counters(fts) ->
+    [timer_batch_execute_count, timer_batch_merge_count, timer_batch_store_count,
+     timer_iterator_next_count, timer_iterator_seek_count, timer_iterator_seek_first_count,
+     timer_reader_get_count, timer_reader_iterator_count, timer_writer_delete_count,
+     timer_writer_get_count, timer_writer_iterator_count, timer_writer_set_count,
+     timer_opaque_set_count, timer_rollback_count, timer_data_update_count,
+     timer_data_delete_count, timer_snapshot_start_count, timer_opaque_get_count].
+
+get_computed(index) ->
+    [disk_overhead_estimate];
+get_computed(fts) ->
+    [].
+
+start_link(Type) ->
+    base_stats_collector:start_link({local, server_name(Type)}, ?MODULE, Type).
+
+init(Type) ->
+    ets:new(ets_name(Type), [protected, named_table]),
 
     Self = self(),
     ns_pubsub:subscribe_link(
@@ -54,11 +77,12 @@ init([]) ->
       end),
 
     Buckets = lists:map(fun list_to_binary/1, ns_bucket:get_bucket_names(membase)),
-    Defaults = [{global_index_stat(atom_to_binary(Stat, latin1)), 0}
-                || Stat <- ?I_GAUGES ++ ?I_COUNTERS ++ ?I_COMPUTED],
+    Defaults = [{global_index_stat(Type, atom_to_binary(Stat, latin1)), 0}
+                || Stat <- get_gauges(Type) ++ get_counters(Type) ++ get_computed(Type)],
 
 
-    {ok, #state{buckets = Buckets,
+    {ok, #state{type = Type,
+                buckets = Buckets,
                 default_stats = Defaults}}.
 
 find_type(_, []) ->
@@ -74,15 +98,15 @@ find_type(Name, [{Type, Metrics} | Rest]) ->
             find_type(Name, Rest)
     end.
 
-do_recognize_name(<<"needs_restart">>) ->
+do_recognize_name(_IndexType, <<"needs_restart">>) ->
     {status, index_needs_restart};
-do_recognize_name(<<"num_connections">>) ->
+do_recognize_name(_IndexType, <<"num_connections">>) ->
     {status, index_num_connections};
-do_recognize_name(K) ->
+do_recognize_name(IndexType, K) ->
     case binary:split(K, <<":">>, [global]) of
         [Bucket, Index, Metric] ->
-            Type = find_type(Metric, [{gauge, ?I_GAUGES},
-                                      {counter, ?I_COUNTERS}]),
+            Type = find_type(Metric, [{gauge, get_gauges(IndexType)},
+                                      {counter, get_counters(IndexType)}]),
 
             case Type of
                 not_found ->
@@ -94,92 +118,107 @@ do_recognize_name(K) ->
             undefined
     end.
 
-recognize_name(K) ->
-    case ets:lookup(index_stats_collector_names, K) of
+recognize_name(IndexType, Ets, K) ->
+    case ets:lookup(Ets, K) of
         [{K, Type, NewK}] ->
             {Type, NewK};
         [{K, undefined}] ->
             undefined;
         [] ->
-            case do_recognize_name(K) of
+            case do_recognize_name(IndexType, K) of
                 undefined ->
-                    ets:insert(index_stats_collector_names, {K, undefined}),
+                    ets:insert(Ets, {K, undefined}),
                     undefined;
                 {Type, NewK} ->
-                    ets:insert(index_stats_collector_names, {K, Type, NewK}),
+                    ets:insert(Ets, {K, Type, NewK}),
                     {Type, NewK}
             end
     end.
 
-massage_stats([], AccGauges, AccCounters, AccStatus) ->
+massage_stats(_Type, _Ets, [], AccGauges, AccCounters, AccStatus) ->
     {AccGauges, AccCounters, AccStatus};
-massage_stats([{K, V} | Rest], AccGauges, AccCounters, AccStatus) ->
-    case recognize_name(K) of
+massage_stats(Type, Ets, [{K, V} | Rest], AccGauges, AccCounters, AccStatus) ->
+    case recognize_name(Type, Ets, K) of
         undefined ->
-            massage_stats(Rest, AccGauges, AccCounters, AccStatus);
+            massage_stats(Type, Ets, Rest, AccGauges, AccCounters, AccStatus);
         {counter, NewK} ->
-            massage_stats(Rest, AccGauges, [{NewK, V} | AccCounters], AccStatus);
+            massage_stats(Type, Ets, Rest, AccGauges, [{NewK, V} | AccCounters], AccStatus);
         {gauge, NewK} ->
-            massage_stats(Rest, [{NewK, V} | AccGauges], AccCounters, AccStatus);
+            massage_stats(Type, Ets, Rest, [{NewK, V} | AccGauges], AccCounters, AccStatus);
         {status, NewK} ->
-            massage_stats(Rest, AccGauges, AccCounters, [{NewK, V} | AccStatus])
+            massage_stats(Type, Ets, Rest, AccGauges, AccCounters, [{NewK, V} | AccStatus])
     end.
 
-grab_stats(_State) ->
-    case ns_cluster_membership:should_run_service(ns_config:latest(), index, node()) of
+grab_stats(#state{type = Type}) ->
+    case ns_cluster_membership:should_run_service(ns_config:latest(), Type, node()) of
         true ->
-            get_stats();
+            get_stats(Type);
         false ->
             []
     end.
 
-get_stats() ->
-    case index_rest:get_json(index, "stats?async=true") of
+do_get_stats(index) ->
+    index_rest:get_json(index, "stats?async=true");
+do_get_stats(fts) ->
+    index_rest:get_json(fts, "api/nsstats").
+
+get_stats(Type) ->
+    case do_get_stats(Type) of
         {ok, {[_|_] = Stats}} ->
             Stats;
         {ok, Other} ->
-            ?log_error("Got invalid stats response:~n~p", [Other]),
+            ?log_error("Got invalid stats response for ~p:~n~p", [Type, Other]),
             [];
         {error, _} ->
             []
     end.
 
-process_stats(TS, GrabbedStats, PrevCounters, PrevTS, #state{buckets = KnownBuckets,
+compute_gauges(index, Gauges0) ->
+    compute_disk_overhead_estimates(Gauges0);
+compute_gauges(fts, _) ->
+    [].
+
+prefix(Type) ->
+    "@" ++ atom_to_list(Type) ++ "-".
+
+process_stats(TS, GrabbedStats, PrevCounters, PrevTS, #state{type = Type,
+                                                             buckets = KnownBuckets,
                                                              default_stats = Defaults} = State) ->
-    {Gauges0, Counters, Status} = massage_stats(GrabbedStats, [], [], []),
-    Gauges = compute_disk_overhead_estimates(Gauges0) ++ Gauges0,
+    {Gauges0, Counters, Status} = massage_stats(Type, ets_name(Type), GrabbedStats, [], [], []),
+    Gauges = compute_gauges(Type, Gauges0) ++ Gauges0,
 
     {Stats, SortedCounters} =
         base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS),
 
-    index_status_keeper:update(index, Status),
+    index_status_keeper:update(Type, Status),
 
+    Prefix = prefix(Type),
     AggregatedStats =
-        [{"@index-"++binary_to_list(Bucket), Values} ||
-            {Bucket, Values} <- aggregate_index_stats(Stats, KnownBuckets, Defaults)],
+        [{Prefix ++ binary_to_list(Bucket), Values} ||
+            {Bucket, Values} <- aggregate_index_stats(Type, Stats, KnownBuckets, Defaults)],
     {AggregatedStats, SortedCounters, State}.
 
-aggregate_index_stats(Stats, Buckets, Defaults) ->
-    do_aggregate_index_stats(Stats, Buckets, Defaults, []).
+aggregate_index_stats(Type, Stats, Buckets, Defaults) ->
+    do_aggregate_index_stats(Type, Stats, Buckets, Defaults, []).
 
-do_aggregate_index_stats([], Buckets, Defaults, Acc) ->
+do_aggregate_index_stats(_Type, [], Buckets, Defaults, Acc) ->
     [{B, Defaults} || B <- Buckets] ++ Acc;
-do_aggregate_index_stats([{{Bucket, _, _}, _} | _] = Stats,
+do_aggregate_index_stats(Type, [{{Bucket, _, _}, _} | _] = Stats,
                          Buckets, Defaults, Acc) ->
-    {BucketStats, RestStats} = aggregate_index_bucket_stats(Bucket, Stats, Defaults),
+    {BucketStats, RestStats} = aggregate_index_bucket_stats(Type, Bucket, Stats, Defaults),
 
     OtherBuckets = lists:delete(Bucket, Buckets),
-    do_aggregate_index_stats(RestStats, OtherBuckets, Defaults,
+    do_aggregate_index_stats(Type, RestStats, OtherBuckets, Defaults,
                              [{Bucket, BucketStats} | Acc]).
 
-aggregate_index_bucket_stats(Bucket, Stats, Defaults) ->
-    do_aggregate_index_bucket_stats(Defaults, Bucket, Stats).
+aggregate_index_bucket_stats(Type, Bucket, Stats, Defaults) ->
+    do_aggregate_index_bucket_stats(Type, Defaults, Bucket, Stats).
 
-do_aggregate_index_bucket_stats(Acc, _, []) ->
+do_aggregate_index_bucket_stats(_Type, Acc, _, []) ->
     {finalize_index_bucket_stats(Acc), []};
-do_aggregate_index_bucket_stats(Acc, Bucket, [{{Bucket, Index, Name}, V} | Rest]) ->
-    Global = global_index_stat(Name),
-    PerIndex = per_index_stat(Index, Name),
+do_aggregate_index_bucket_stats(Type, Acc, Bucket, [{{Bucket, Index, Name}, V} | Rest]) ->
+    Global = global_index_stat(Type, Name),
+    PerIndex = per_index_stat(Type, Index, Name),
 
     Acc1 =
         case lists:keyfind(Global, 1, Acc) of
@@ -191,8 +230,8 @@ do_aggregate_index_bucket_stats(Acc, Bucket, [{{Bucket, Index, Name}, V} | Rest]
 
     Acc2 = [{PerIndex, V} | Acc1],
 
-    do_aggregate_index_bucket_stats(Acc2, Bucket, Rest);
-do_aggregate_index_bucket_stats(Acc, _, Stats) ->
+    do_aggregate_index_bucket_stats(Type, Acc2, Bucket, Rest);
+do_aggregate_index_bucket_stats(_Type, Acc, _, Stats) ->
     {finalize_index_bucket_stats(Acc), Stats}.
 
 finalize_index_bucket_stats(Acc) ->
@@ -205,7 +244,7 @@ aggregate_index_stats_test() ->
           {{<<"b">>, <<"idx2">>, <<"m2">>}, 4},
           {{<<"b">>, <<"idx3">>, <<"m1">>}, 5},
           {{<<"b">>, <<"idx3">>, <<"m2">>}, 6}],
-    Out = aggregate_index_stats(In, [], []),
+    Out = aggregate_index_stats(index, In, [], []),
 
     AStats0 = [{<<"index/idx1/m1">>, 1},
                {<<"index/idx1/m2">>, 2},
@@ -231,11 +270,11 @@ handle_info({buckets, NewBuckets}, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-per_index_stat(Index, Metric) ->
-    iolist_to_binary([<<"index/">>, Index, $/, Metric]).
+per_index_stat(Type, Index, Metric) ->
+    iolist_to_binary([atom_to_list(Type), <<"/">>, Index, $/, Metric]).
 
-global_index_stat(StatName) ->
-    iolist_to_binary([<<"index/">>, StatName]).
+global_index_stat(Type, StatName) ->
+    iolist_to_binary([atom_to_list(Type), <<"/">>, StatName]).
 
 compute_disk_overhead_estimates(Stats) ->
     Dict = lists:foldl(
