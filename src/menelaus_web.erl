@@ -247,6 +247,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", Id]};
                          ["pools", "default", "buckets", "@index-" ++ _ = Id, "stats"] ->
                              {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", Id]};
+                         ["pools", "default", "buckets", "@fts-" ++ _ = Id, "stats"] ->
+                             {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", Id]};
                          ["pools", "default", "buckets", Id, "stats"] ->
                              {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
                               ["default", Id]};
@@ -279,6 +281,9 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                              {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
                               ["default", Id, NodeId]};
                          ["pools", "default", "buckets", "@index-" ++ _ = Id, "nodes", NodeId, "stats"] ->
+                             {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
+                              ["default", Id, NodeId]};
+                         ["pools", "default", "buckets", "@fts-" ++ _ = Id, "nodes", NodeId, "stats"] ->
                              {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
                               ["default", Id, NodeId]};
                          ["pools", "default", "buckets", Id, "nodes", NodeId, "stats"] ->

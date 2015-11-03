@@ -383,9 +383,12 @@ get_samples_from_one_of_kind([Kind | RestKinds], StatName, ClientTStamp, Window)
     end.
 
 get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window) ->
-    get_samples_from_one_of_kind(["@system", "@query", "@index-" ++ BucketName,
-                                  "@xdcr-" ++ BucketName, BucketName],
-                                 StatName, ClientTStamp, Window).
+    get_samples_from_one_of_kind(["@system",
+                                  "@query",
+                                  "@index-" ++ BucketName,
+                                  "@fts-" ++ BucketName,
+                                  "@xdcr-" ++ BucketName,
+                                  BucketName], StatName, ClientTStamp, Window).
 
 build_response_for_specific_stat(BucketName, StatName, Params, LocalAddr) ->
     {ClientTStamp, {Step, _, Count} = Window} =
@@ -471,6 +474,8 @@ section_nodes("@query") ->
     ns_cluster_membership:service_active_nodes(ns_config:latest(), n1ql, actual);
 section_nodes("@index-"++_) ->
     ns_cluster_membership:service_active_nodes(ns_config:latest(), index, actual);
+section_nodes("@fts-"++_) ->
+    ns_cluster_membership:service_active_nodes(ns_config:latest(), fts, actual);
 section_nodes("@xdcr-"++Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket);
 section_nodes(Bucket) ->
@@ -479,6 +484,8 @@ section_nodes(Bucket) ->
 is_persistent("@query") ->
     false;
 is_persistent("@index-"++_) ->
+    false;
+is_persistent("@fts-"++_) ->
     false;
 is_persistent("@xdcr-"++_) ->
     false;
@@ -493,6 +500,8 @@ section_exists("@system") ->
 section_exists("@query") ->
     true;
 section_exists("@index-"++Bucket) ->
+    bucket_exists(Bucket);
+section_exists("@fts-"++Bucket) ->
     bucket_exists(Bucket);
 section_exists("@xdcr-"++Bucket) ->
     bucket_exists(Bucket);
@@ -546,6 +555,12 @@ global_index_stat(StatName) ->
 
 per_index_stat(Index, Metric) ->
     index_stats_collector:per_index_stat(index, Index, Metric).
+
+global_fts_stat(StatName) ->
+    index_stats_collector:global_index_stat(fts, StatName).
+
+per_fts_stat(Index, Metric) ->
+    index_stats_collector:per_index_stat(fts, Index, Metric).
 
 computed_stats_lazy_proplist("@system") ->
     [];
@@ -640,7 +655,9 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                   [{per_index_stat(Index, <<"avg_item_size">>), AvgItemSize},
                    {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency},
                    {per_index_stat(Index, <<"num_docs_pending+queued">>), AllPendingDocs}]
-          end, get_indexes(BucketId));
+          end, get_indexes(index, BucketId));
+computed_stats_lazy_proplist("@fts-"++_BucketId) ->
+    [];
 computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
@@ -1322,7 +1339,7 @@ do_couchbase_index_stats_descriptions(BucketId, IndexNodes) ->
                 XNodes ->
                     XNodes
             end,
-    AllIndexes = do_get_indexes(BucketId, Nodes),
+    AllIndexes = do_get_indexes(index, BucketId, Nodes),
     [{struct, [{blockName, <<"Index Stats: ", Id/binary>>},
                {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
@@ -1362,6 +1379,87 @@ do_couchbase_index_stats_descriptions(BucketId, IndexNodes) ->
                  {struct, [{title, <<"avg scan latency(ns)">>},
                            {name, per_index_stat(Id, <<"avg_scan_latency">>)},
                            {desc, <<"Average time to serve a scan request (nanoseconds)">>}]}]}]}
+     || Id <- AllIndexes].
+
+couchbase_fts_stats_descriptions(_, []) ->
+    [];
+couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
+    simple_memoize({stats_directory_fts, BucketId, FtsNodes},
+                   fun () ->
+                           do_couchbase_fts_stats_descriptions(BucketId, FtsNodes)
+                   end, 5000).
+
+do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
+    Nodes = case FtsNodes of
+                all ->
+                    section_nodes("@fts-" ++ BucketId);
+                XNodes ->
+                    XNodes
+            end,
+    AllIndexes = do_get_indexes(fts, BucketId, Nodes),
+    [{struct, [{blockName, <<"Full Text Search Stats: ", Id/binary>>},
+               {extraCSSClasses, <<"dynamic_closed">>},
+               {stats,
+                [{struct, [{title, <<"items">>},
+                           {name, per_fts_stat(Id, <<"doc_count">>)},
+                           {desc, <<"Number of documents">>}]},
+                 {struct, [{title, <<"pindexes">>},
+                           {name, per_fts_stat(Id, <<"num_pindexes">>)},
+                           {desc, <<"Number of PIndexes">>}]},
+                 {struct, [{title, <<"batch executes/sec">>},
+                           {name, per_fts_stat(Id, <<"timer_batch_execute_count">>)},
+                           {desc, <<"Number of batch execute ops">>}]},
+                 {struct, [{title, <<"batch merges/sec">>},
+                           {name, per_fts_stat(Id, <<"timer_batch_merge_count">>)},
+                           {desc, <<"Number of batch merge ops">>}]},
+                 {struct, [{title, <<"batch stores/sec">>},
+                           {name, per_fts_stat(Id, <<"timer_batch_store_count">>)},
+                           {desc, <<"Number of batch store ops">>}]},
+                 {struct, [{title, <<"iterator nexts/sec">>},
+                           {name, per_fts_stat(Id, <<"timer_iterator_next_count">>)},
+                           {desc, <<"Number of iterator next ops">>}]},
+                 {struct, [{title, <<"iterator seeks/sec">>},
+                           {name, per_fts_stat(Id, <<"timer_iterator_seek_count">>)},
+                           {desc, <<"Number of iterator seek ops">>}]},
+                 {struct, [{title, <<"iterator seek-firsts/sec">>},
+                           {name, per_fts_stat(Id, <<"timer_iterator_seek_first_count">>)},
+                           {desc, <<"Number of iterator seek first ops">>}]},
+                 {struct, [{title, <<"reader gets/sec">>},
+                           {name, per_fts_stat(Id, <<"timer_reader_get_count">>)},
+                           {desc, <<"Number of reader get ops">>}]},
+                 {struct, [{title, <<"reader iterators/sec">>},
+                           {name, per_fts_stat(Id, <<"timer_reader_iterator_count">>)},
+                           {desc, <<"Number of reader iterator ops">>}]},
+                 {struct, [{title, <<"writer deletes/sec">>},
+                           {name, per_fts_stat(Id, <<"timer_writer_delete_count">>)},
+                           {desc, <<"Number of writer delete ops">>}]},
+                 {struct, [{title, <<"writer gets/sec">>},
+                           {name, per_fts_stat(Id, <<"timer_writer_get_count">>)},
+                           {desc, <<"Number of writer gets/sec">>}]},
+                 {struct, [{title, <<"writer iterator count">>},
+                           {name, per_fts_stat(Id, <<"timer_writer_iterator_count">>)},
+                           {desc, <<"Number of writer iterators/sec">>}]},
+                 {struct, [{title, <<"writer set count">>},
+                           {name, per_fts_stat(Id, <<"timer_writer_set_count">>)},
+                           {desc, <<"Number of writer sets/sec">>}]},
+                 {struct, [{title, <<"opaque set count">>},
+                           {name, per_fts_stat(Id, <<"timer_opaque_set_count">>)},
+                           {desc, <<"Number of opaque sets/sec">>}]},
+                 {struct, [{title, <<"opaque get count">>},
+                           {name, per_fts_stat(Id, <<"timer_opaque_get_count">>)},
+                           {desc, <<"Number of opaque gets/sec">>}]},
+                 {struct, [{title, <<"data update count">>},
+                           {name, per_fts_stat(Id, <<"timer_data_update_count">>)},
+                           {desc, <<"Number of data updates/sec">>}]},
+                 {struct, [{title, <<"data delete count">>},
+                           {name, per_fts_stat(Id, <<"timer_data_delete_count">>)},
+                           {desc, <<"Number of data deletes/sec">>}]},
+                 {struct, [{title, <<"snapshot start count">>},
+                           {name, per_fts_stat(Id, <<"timer_snapshot_start_count">>)},
+                           {desc, <<"Number of snapshot starts/sec">>}]},
+                 {struct, [{title, <<"rollback count">>},
+                           {name, per_fts_stat(Id, <<"timer_rollback_count">>)},
+                           {desc, <<"Number of rollbacks/sec">>}]}]}]}
      || Id <- AllIndexes].
 
 couchbase_query_stats_descriptions() ->
@@ -1433,7 +1531,23 @@ membase_index_stats_description(_) ->
                {name, global_index_stat(<<"num_rows_returned">>)},
                {desc, <<"Number of index items scanned by the indexer per second">>}]}].
 
-membase_stats_description(BucketId, AddQuery, IndexNodes) ->
+membase_fts_stats_description([]) ->
+    [];
+membase_fts_stats_description(_) ->
+    [{struct, [{title, <<"fts reader gets/sec">>},
+               {name, global_fts_stat(<<"timer_reader_get_count">>)},
+               {desc, <<"Number of fts reader get ops per second">>}]},
+     {struct, [{title, <<"fts iterator nexts/sec">>},
+               {name, global_fts_stat(<<"timer_iterator_next_count">>)},
+               {desc, <<"Number of fts iterator next ops per second">>}]},
+     {struct, [{title, <<"fts batch executes/sec">>},
+               {name, global_fts_stat(<<"timer_batch_execute_count">>)},
+               {desc, <<"Number of fts batch execute ops per second">>}]},
+     {struct, [{title, <<"fts writer sets/sec">>},
+               {name, global_fts_stat(<<"timer_writer_set_count">>)},
+               {desc, <<"Number of fts writer set ops per second">>}]}].
+
+membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
     [{struct,[{blockName,<<"Summary">>},
               {stats,
                [{struct,[{title,<<"ops per second">>},
@@ -1559,9 +1673,10 @@ membase_stats_description(BucketId, AddQuery, IndexNodes) ->
                            []
                    end ++
                        membase_query_stats_description(AddQuery) ++
-                       membase_index_stats_description(IndexNodes)
+                       membase_index_stats_description(IndexNodes) ++
+                       membase_fts_stats_description(FtsNodes)
                   )]}]},
-     {struct,[{blockName,<<"vBucket Resources">>},
+    {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
               {columns,
                [<<"Active">>,<<"Replica">>,<<"Pending">>,<<"Total">>]},
@@ -1872,6 +1987,7 @@ membase_stats_description(BucketId, AddQuery, IndexNodes) ->
                ]}]}]
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_index_stats_descriptions(BucketId, IndexNodes)
+        ++ couchbase_fts_stats_descriptions(BucketId, FtsNodes)
         ++ couchbase_replication_stats_descriptions(BucketId)
         ++ couchbase_goxdcr_stats_descriptions(BucketId)
         ++ case AddQuery of
@@ -2008,10 +2124,10 @@ server_resources_stats_description() ->
                 {title,<<"streaming wakeups/sec">>},
                 {desc,<<"Rate of streaming request wakeups on port 8091">>}]}]}].
 
-base_stats_directory(BucketId, AddQuery, IndexNodes) ->
+base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
     Base = case ns_bucket:bucket_type(BucketConfig) of
-               membase -> membase_stats_description(BucketId, AddQuery, IndexNodes);
+               membase -> membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes);
                memcached -> memcached_stats_description()
            end,
     [{struct, server_resources_stats_description()} | Base].
@@ -2033,8 +2149,9 @@ serve_stats_directory(_PoolId, BucketId, Req) ->
     Params = Req:parse_qs(),
     AddQuery = proplists:get_value("addq", Params, "") =/= "",
     IndexNodes = parse_add_index_param("addi", Params),
+    FtsNodes = parse_add_index_param("addf", Params),
 
-    BaseDescription = base_stats_directory(BucketId, AddQuery, IndexNodes),
+    BaseDescription = base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes),
     Prefix = menelaus_util:concat_url_path(["pools", "default", "buckets", BucketId, "stats"]),
     Desc = [{struct, add_specific_stats_url(BD, Prefix)} || {struct, BD} <- BaseDescription],
     menelaus_util:reply_json(Req, {struct, [{blocks, Desc}]}).
@@ -2171,14 +2288,17 @@ serve_aggregated_ui_stats(Req, Params) ->
     {_, IndexNodes, IStats} =
         maybe_grab_stats("@index-" ++ Bucket, Nodes, HaveStamp, Wnd, QStats),
 
+    {_, FtsNodes, FStats} =
+        maybe_grab_stats("@fts-" ++ Bucket, Nodes, HaveStamp, Wnd, IStats),
+
     Stats = [{list_to_binary(Bucket), {BS}},
              {<<"@system">>, {SS}}
-             | IStats],
+             | FStats],
     NewHaveStamp = [case proplists:get_value(timestamp, S) of
                         [] -> {Name, 0};
                         L -> {Name, lists:last(L)}
                     end || {Name, {S}} <- Stats],
-    StatsDirectoryV = erlang:phash2(base_stats_directory(Bucket, HaveQuery, IndexNodes)),
+    StatsDirectoryV = erlang:phash2(base_stats_directory(Bucket, HaveQuery, IndexNodes, FtsNodes)),
     DirAddQ = case HaveQuery of
                   true ->
                       [{addq, <<"1">>}];
@@ -2188,10 +2308,14 @@ serve_aggregated_ui_stats(Req, Params) ->
     DirAddI = case IndexNodes of
                   [] -> DirAddQ;
                   _ ->
-                      NodesJSON = iolist_to_binary(ejson:encode(IndexNodes)),
-                      [{addi, NodesJSON} | DirAddQ]
+                      [{addi, iolist_to_binary(ejson:encode(IndexNodes))} | DirAddQ]
               end,
-    DirQS = [{v, integer_to_list(StatsDirectoryV)} | DirAddI],
+    DirAddF = case FtsNodes of
+                  [] -> DirAddI;
+                  _ ->
+                      [{addf, iolist_to_binary(ejson:encode(FtsNodes))} | DirAddI]
+              end,
+    DirQS = [{v, integer_to_list(StatsDirectoryV)} | DirAddF],
     DirURL = "/pools/default/buckets/" ++ menelaus_util:concat_url_path([Bucket, "statsDirectory"], DirQS),
 
     [{hot_keys, HKs0}] = build_bucket_stats_hks_response(Bucket),
@@ -2213,7 +2337,7 @@ serve_specific_ui_stats(Req, StatName, Params) ->
     {Bucket, HaveStamp, Wnd} = extract_ui_stats_params(Params),
     ClientTStamp = proplists:get_value(<<"perNode">>, HaveStamp),
 
-    FullDirectory = base_stats_directory(Bucket, true, all),
+    FullDirectory = base_stats_directory(Bucket, true, all, all),
     StatNameB = list_to_binary(StatName),
     MaybeStatDesc = [Desc
                      || Block <- FullDirectory,
@@ -2310,14 +2434,14 @@ output_ui_stats(Req, Stats, Directory, Wnd, Bucket, StatName, NewHaveStamp, Extr
          {lastTStamp, {NewHaveStamp}} | Extra],
     menelaus_util:reply_json(Req, {J}).
 
-get_indexes(BucketId) ->
-    simple_memoize({indexes, BucketId},
+get_indexes(Type, BucketId) ->
+    simple_memoize({indexes, Type, BucketId},
                    fun () ->
-                           Nodes = section_nodes("@index-" ++ BucketId),
-                           do_get_indexes(BucketId, Nodes)
+                           Nodes = section_nodes(index_stats_collector:prefix(Type) ++ BucketId),
+                           do_get_indexes(Type, BucketId, Nodes)
                    end, 5000).
 
-do_get_indexes(BucketId0, Nodes) ->
+do_get_indexes(Type, BucketId0, Nodes) ->
     WantedHosts0 =
         [begin
              {_, Host} = misc:node_name_host(N),
@@ -2327,7 +2451,7 @@ do_get_indexes(BucketId0, Nodes) ->
     WantedHosts = lists:usort(WantedHosts0),
 
     BucketId = list_to_binary(BucketId0),
-    {ok, Indexes, _Stale, _Version} = index_status_keeper:get_indexes(index),
+    {ok, Indexes, _Stale, _Version} = index_status_keeper:get_indexes(Type),
     [begin
          {index, Name} = lists:keyfind(index, 1, I),
          Name
