@@ -1307,16 +1307,16 @@ do_couchbase_view_stats_descriptions(DictBySig, KeyPrefix, Title) ->
               [MyStats|Stats]
       end, [], DictBySig).
 
-couchbase_index_stats_descriptions(_, false) ->
+couchbase_index_stats_descriptions(_, []) ->
     [];
-couchbase_index_stats_descriptions(BucketId, AddIndex) ->
-    simple_memoize({stats_directory_index, BucketId, AddIndex},
+couchbase_index_stats_descriptions(BucketId, IndexNodes) ->
+    simple_memoize({stats_directory_index, BucketId, IndexNodes},
                    fun () ->
-                           do_couchbase_index_stats_descriptions(BucketId, AddIndex)
+                           do_couchbase_index_stats_descriptions(BucketId, IndexNodes)
                    end, 5000).
 
-do_couchbase_index_stats_descriptions(BucketId, AddIndex) ->
-    Nodes = case AddIndex of
+do_couchbase_index_stats_descriptions(BucketId, IndexNodes) ->
+    Nodes = case IndexNodes of
                 all ->
                     section_nodes("@index-" ++ BucketId);
                 XNodes ->
@@ -1408,7 +1408,32 @@ couchbase_query_stats_descriptions() ->
                            {name, <<"query_invalid_requests">>},
                            {desc, <<"Number of requests for unsupported endpoints per second, specifically HTTP requests for all endpoints not supported by the query engine. For example, a request for http://localhost:8093/foo will be included. Potentially useful in identifying DOS attacks.">>}]}]}]}].
 
-membase_stats_description(BucketId, AddQuery, AddIndex) ->
+membase_query_stats_description(false) ->
+    [];
+membase_query_stats_description(true) ->
+    [{struct,[{title,<<"N1QL queries/sec">>},
+              {name, <<"query_requests">>},
+              {desc, <<"Number of N1QL requests processed per second">>}]}].
+
+membase_index_stats_description([]) ->
+    [];
+membase_index_stats_description(_) ->
+    [{struct, [{isBytes, true},
+               {title, <<"index data size">>},
+               {name, global_index_stat(<<"data_size">>)},
+               {desc, <<"Actual data size consumed by the index">>}]},
+     {struct, [{title, <<"index disk size">>},
+               {name, global_index_stat(<<"disk_size">>)},
+               {desc, <<"Total disk file size consumed by the index">>},
+               {isBytes, true}]},
+     {struct, [{title, <<"index fragmentation %">>},
+               {name, global_index_stat(<<"fragmentation">>)},
+               {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less than a hundred kB, the static overhead of the index disk file will inflate the index fragmentation percentage">>}]},
+     {struct, [{title, <<"index scanned/sec">>},
+               {name, global_index_stat(<<"num_rows_returned">>)},
+               {desc, <<"Number of index items scanned by the indexer per second">>}]}].
+
+membase_stats_description(BucketId, AddQuery, IndexNodes) ->
     [{struct,[{blockName,<<"Summary">>},
               {stats,
                [{struct,[{title,<<"ops per second">>},
@@ -1532,32 +1557,10 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                                              "(measured from replication_changes_left)">>}]}];
                        false ->
                            []
-                   end ++ case AddQuery of
-                              true ->
-                                  [{struct,[{title,<<"N1QL queries/sec">>},
-                                            {name, <<"query_requests">>},
-                                            {desc, <<"Number of N1QL requests processed per second">>}]}];
-                              _ -> []
-                          end ++ case AddIndex of
-                                     false ->
-                                         [];
-                                     _ ->
-                                         [{struct, [{isBytes, true},
-                                                    {title, <<"index data size">>},
-                                                    {name, global_index_stat(<<"data_size">>)},
-                                                    {desc, <<"Actual data size consumed by the index">>}]},
-                                          {struct, [{title, <<"index disk size">>},
-                                                    {name, global_index_stat(<<"disk_size">>)},
-                                                    {desc, <<"Total disk file size consumed by the index">>},
-                                                    {isBytes, true}]},
-                                          {struct, [{title, <<"index fragmentation %">>},
-                                                    {name, global_index_stat(<<"fragmentation">>)},
-                                                    {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less than a hundred kB, the static overhead of the index disk file will inflate the index fragmentation percentage">>}]},
-                                          {struct, [{title, <<"index scanned/sec">>},
-                                                    {name, global_index_stat(<<"num_rows_returned">>)},
-                                                    {desc, <<"Number of index items scanned by the indexer per second">>}]}]
-                                 end)
-               ]}]},
+                   end ++
+                       membase_query_stats_description(AddQuery) ++
+                       membase_index_stats_description(IndexNodes)
+                  )]}]},
      {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
               {columns,
@@ -1868,7 +1871,7 @@ membase_stats_description(BucketId, AddQuery, AddIndex) ->
                           {desc,<<"Number of backoffs for other DCP connections">>}]}
                ]}]}]
         ++ couchbase_view_stats_descriptions(BucketId)
-        ++ couchbase_index_stats_descriptions(BucketId, AddIndex)
+        ++ couchbase_index_stats_descriptions(BucketId, IndexNodes)
         ++ couchbase_replication_stats_descriptions(BucketId)
         ++ couchbase_goxdcr_stats_descriptions(BucketId)
         ++ case AddQuery of
@@ -2005,29 +2008,33 @@ server_resources_stats_description() ->
                 {title,<<"streaming wakeups/sec">>},
                 {desc,<<"Rate of streaming request wakeups on port 8091">>}]}]}].
 
-base_stats_directory(BucketId, AddQuery, AddIndex) ->
+base_stats_directory(BucketId, AddQuery, IndexNodes) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
     Base = case ns_bucket:bucket_type(BucketConfig) of
-               membase -> membase_stats_description(BucketId, AddQuery, AddIndex);
+               membase -> membase_stats_description(BucketId, AddQuery, IndexNodes);
                memcached -> memcached_stats_description()
            end,
     [{struct, server_resources_stats_description()} | Base].
 
+parse_add_index_param(Param, Params) ->
+    case proplists:get_value(Param, Params) of
+        undefined ->
+            [];
+        AddIndexX ->
+            case ejson:decode(AddIndexX) of
+                <<"all">> ->
+                    all;
+                AddIndexDecoded ->
+                    [binary_to_existing_atom(N, latin1) || N <- AddIndexDecoded]
+            end
+    end.
+
 serve_stats_directory(_PoolId, BucketId, Req) ->
     Params = Req:parse_qs(),
     AddQuery = proplists:get_value("addq", Params, "") =/= "",
-    AddIndex = case proplists:get_value("addi", Params) of
-                   undefined ->
-                       false;
-                   AddIndexX ->
-                       case ejson:decode(AddIndexX) of
-                           <<"all">> ->
-                               all;
-                           AddIndexDecoded ->
-                               [binary_to_existing_atom(N, latin1) || N <- AddIndexDecoded]
-                       end
-               end,
-    BaseDescription = base_stats_directory(BucketId, AddQuery, AddIndex),
+    IndexNodes = parse_add_index_param("addi", Params),
+
+    BaseDescription = base_stats_directory(BucketId, AddQuery, IndexNodes),
     Prefix = menelaus_util:concat_url_path(["pools", "default", "buckets", BucketId, "stats"]),
     Desc = [{struct, add_specific_stats_url(BD, Prefix)} || {struct, BD} <- BaseDescription],
     menelaus_util:reply_json(Req, {struct, [{blocks, Desc}]}).
@@ -2125,6 +2132,22 @@ extract_ui_stats_params(Params) ->
     Wnd = {Step, Period, 60},
     {Bucket, HaveStamp, Wnd}.
 
+maybe_grab_stats(Section, Nodes, HaveStamp, Wnd, Stats) ->
+    SectionNodes = section_nodes(Section),
+    Grab = case Nodes of
+               all ->
+                   SectionNodes =/= [];
+               [_|_] ->
+                   (Nodes -- SectionNodes) =/= Nodes
+           end,
+    case Grab of
+        false ->
+            {false, [], Stats};
+        true ->
+            Res = grab_ui_stats(Section, Nodes, HaveStamp, Wnd),
+            {true, Nodes, [{list_to_binary(Section), {Res}} | Stats]}
+    end.
+
 serve_aggregated_ui_stats(Req, Params) ->
     {Bucket, HaveStamp, Wnd} = extract_ui_stats_params(Params),
     Nodes = case proplists:get_value("node", Params, all) of
@@ -2137,62 +2160,35 @@ serve_aggregated_ui_stats(Req, Params) ->
                     end
             end,
     BS = grab_ui_stats(Bucket, Nodes, HaveStamp, Wnd),
+    SS = grab_ui_stats("@system", Nodes, HaveStamp, Wnd),
+
     GoXDCRStats = [{iolist_to_binary([<<"@xdcr-">>, Bucket]),
                     {grab_ui_stats("@xdcr-" ++ Bucket, Nodes, HaveStamp, Wnd)}}],
-    QNodes = section_nodes("@query"),
-    HaveQuery = case Nodes of
-                    all ->
-                        QNodes =/= [];
-                    [_|_] ->
-                        (Nodes -- QNodes) =/= Nodes
-                end,
-    SS = grab_ui_stats("@system", Nodes, HaveStamp, Wnd),
-    MaybeQStats = case HaveQuery of
-                      false ->
-                          GoXDCRStats;
-                      true ->
-                          QS = grab_ui_stats("@query", Nodes, HaveStamp, Wnd),
-                          [{<<"@query">>, {QS}} | GoXDCRStats]
-                  end,
-    INodes = section_nodes("@index-" ++ Bucket),
-    HaveIndexBool  = case Nodes of
-                         all ->
-                             INodes =/= [];
-                         _ ->
-                             (Nodes -- INodes) =/= Nodes
-                     end,
-    HaveIndex = case HaveIndexBool of
-                    true ->
-                        Nodes;
-                    false ->
-                        false
-                end,
-    MaybeIStats = case HaveIndex of
-                      false ->
-                          MaybeQStats;
-                      _ ->
-                          IS = grab_ui_stats("@index-" ++ Bucket, Nodes, HaveStamp, Wnd),
-                          [{iolist_to_binary([<<"@index-">>, Bucket]), {IS}}
-                           | MaybeQStats]
-                  end,
+
+    {HaveQuery, _, QStats} =
+        maybe_grab_stats("@query", Nodes, HaveStamp, Wnd, GoXDCRStats),
+
+    {_, IndexNodes, IStats} =
+        maybe_grab_stats("@index-" ++ Bucket, Nodes, HaveStamp, Wnd, QStats),
+
     Stats = [{list_to_binary(Bucket), {BS}},
              {<<"@system">>, {SS}}
-             | MaybeIStats],
+             | IStats],
     NewHaveStamp = [case proplists:get_value(timestamp, S) of
                         [] -> {Name, 0};
                         L -> {Name, lists:last(L)}
                     end || {Name, {S}} <- Stats],
-    StatsDirectoryV = erlang:phash2(base_stats_directory(Bucket, HaveQuery, HaveIndex)),
+    StatsDirectoryV = erlang:phash2(base_stats_directory(Bucket, HaveQuery, IndexNodes)),
     DirAddQ = case HaveQuery of
                   true ->
                       [{addq, <<"1">>}];
-                  _ ->
+                  false ->
                       []
               end,
-    DirAddI = case HaveIndex of
-                  false -> DirAddQ;
+    DirAddI = case IndexNodes of
+                  [] -> DirAddQ;
                   _ ->
-                      NodesJSON = iolist_to_binary(ejson:encode(Nodes)),
+                      NodesJSON = iolist_to_binary(ejson:encode(IndexNodes)),
                       [{addi, NodesJSON} | DirAddQ]
               end,
     DirQS = [{v, integer_to_list(StatsDirectoryV)} | DirAddI],
