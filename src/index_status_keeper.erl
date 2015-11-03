@@ -20,8 +20,8 @@
 -behavior(gen_server).
 
 %% API
--export([start_link/0, update/1, get_status/1,
-         get_indexes/0, get_indexes_version/0]).
+-export([start_link/1, update/2, get_status/2,
+         get_indexes/1, get_indexes_version/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -33,22 +33,26 @@
 -define(STALE_THRESHOLD,
         ns_config:read_key_fast(index_status_keeper_stale_threshold, 2)).
 
-start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+server_name(Type) ->
+    list_to_atom(?MODULE_STRING "-" ++ atom_to_list(Type)).
 
-update(Status) ->
-    gen_server:cast(?MODULE, {update, Status}).
+start_link(Type) ->
+    gen_server:start_link({local, server_name(Type)}, ?MODULE, Type, []).
 
-get_status(Timeout) ->
-    gen_server:call(?MODULE, get_status, Timeout).
+update(Type, Status) ->
+    gen_server:cast(server_name(Type), {update, Status}).
 
-get_indexes() ->
-    gen_server:call(?MODULE, get_indexes).
+get_status(Type, Timeout) ->
+    gen_server:call(server_name(Type), get_status, Timeout).
 
-get_indexes_version() ->
-    gen_server:call(?MODULE, get_indexes_version).
+get_indexes(Type) ->
+    gen_server:call(server_name(Type), get_indexes).
 
--record(state, {num_connections,
+get_indexes_version(Type) ->
+    gen_server:call(server_name(Type), get_indexes_version).
+
+-record(state, {type :: index | fts,
+                num_connections,
 
                 indexes,
                 indexes_stale :: true | {false, non_neg_integer()},
@@ -57,7 +61,7 @@ get_indexes_version() ->
                 restart_pending,
                 source :: local | {remote, [node()], non_neg_integer()}}).
 
-init([]) ->
+init(Type) ->
     Self = self(),
 
     Self ! refresh,
@@ -65,9 +69,10 @@ init([]) ->
     ns_pubsub:subscribe_link(ns_config_events, fun handle_config_event/2, Self),
     ns_pubsub:subscribe_link(ns_node_disco_events, fun handle_node_disco_event/2, Self),
 
-    State = #state{num_connections = 0,
+    State = #state{type = Type,
+                   num_connections = 0,
                    restart_pending = false,
-                   source = get_source()},
+                   source = get_source(Type)},
 
     {ok, set_indexes([], State)}.
 
@@ -114,9 +119,9 @@ handle_cast({refresh_done, Result}, State) ->
     {noreply, NewState};
 handle_cast(restart_done, #state{restart_pending = true} = State) ->
     {noreply, State#state{restart_pending = false}};
-handle_cast(notable_event, State) ->
+handle_cast(notable_event, #state{type = Type} = State) ->
     misc:flush(notable_event),
-    {noreply, State#state{source = get_source()}}.
+    {noreply, State#state{source = get_source(Type)}}.
 
 handle_info(refresh, State) ->
     refresh_status(State),
@@ -142,19 +147,20 @@ maybe_restart_indexer(#state{restart_pending = false} = State) ->
 maybe_restart_indexer(State) ->
     State.
 
-restart_indexer(#state{restart_pending = false,
+restart_indexer(#state{type = Type,
+                       restart_pending = false,
                        source = local} = State) ->
     Self = self(),
     work_queue:submit_work(
       ?WORKER,
       fun () ->
-              ?log_info("Restarting the indexer"),
+              ?log_info("Restarting the ~p", [Type]),
 
-              case ns_ports_setup:restart_port_by_name(indexer) of
+              case ns_ports_setup:restart_port_by_name(index_rest:get_port_name(Type)) of
                   {ok, _} ->
-                      ?log_info("Restarted the indexer successfully");
+                      ?log_info("Restarted the ~p successfully", [Type]);
                   Error ->
-                      ?log_error("Failed to restart the indexer: ~p", [Error])
+                      ?log_error("Failed to restart the ~p: ~p", [Type, Error])
               end,
 
               gen_server:cast(Self, restart_done)
@@ -170,24 +176,35 @@ refresh_status(State) ->
               gen_server:cast(Self, {refresh_done, grab_status(State)})
       end).
 
-grab_status(#state{source = local}) ->
-    case index_rest:get_json(index, "getIndexStatus") of
+get_remote_indexes(#state{type = index}, Node) ->
+    remote_api:get_indexes(Node);
+get_remote_indexes(#state{type = fts}, Node) ->
+    remote_api:get_fts_indexes(Node).
+
+get_local_status_path(index) ->
+    "getIndexStatus";
+get_local_status_path(fts) ->
+    "api/nsstatus".
+
+grab_status(#state{type = Type,
+                   source = local}) ->
+    case index_rest:get_json(Type, get_local_status_path(Type)) of
         {ok, {[_|_] = Status}} ->
-            process_status(Status);
+            process_status(Type, Status);
         {ok, Other} ->
-            ?log_error("Got invalid status from the indexer:~n~p", [Other]),
+            ?log_error("Got invalid status from the ~p:~n~p", [Type, Other]),
             {error, bad_status};
         Error ->
             Error
     end;
-grab_status(#state{source = {remote, Nodes, NodesCount}}) ->
+grab_status(#state{source = {remote, Nodes, NodesCount}} = State) ->
     case Nodes of
         [] ->
             {ok, []};
         _ ->
             Node = lists:nth(random:uniform(NodesCount), Nodes),
 
-            try remote_api:get_indexes(Node) of
+            try get_remote_indexes(State, Node) of
                 {ok, Indexes, Stale, _Version} ->
                     %% note that we're going to recompute the version instead
                     %% of using the one from the remote node; that's because
@@ -212,7 +229,7 @@ grab_status(#state{source = {remote, Nodes, NodesCount}}) ->
             end
     end.
 
-process_status(Status) ->
+process_status(Type, Status) ->
     case lists:keyfind(<<"code">>, 1, Status) of
         {_, <<"success">>} ->
             RawIndexes =
@@ -223,40 +240,50 @@ process_status(Status) ->
                         V
                 end,
 
-            {ok, process_indexes(RawIndexes)};
+            {ok, process_indexes(Type, RawIndexes)};
         _ ->
             ?log_error("Indexer returned unsuccessful status:~n~p", [Status]),
             {error, bad_status}
     end.
 
-process_indexes(Indexes) ->
+get_mapping(index) ->
+    [{id, <<"defnId">>},
+     {index, <<"name">>},
+     {bucket, <<"bucket">>},
+     {status, <<"status">>},
+     {definition, <<"definition">>},
+     {progress, <<"completion">>},
+     {hosts, <<"hosts">>}];
+get_mapping(fts) ->
+    [{[index, id], <<"name">>},
+     {bucket, <<"bucket">>},
+     {status, <<"status">>},
+     {progress, <<"completion">>},
+     {hosts, <<"hosts">>}].
+
+process_indexes(Type, Indexes) ->
+    KeysMappingAtomToBin = get_mapping(Type),
     lists:map(
       fun ({Index}) ->
-              {_, Id} = lists:keyfind(<<"defnId">>, 1, Index),
-              {_, Name} = lists:keyfind(<<"name">>, 1, Index),
-              {_, Bucket} = lists:keyfind(<<"bucket">>, 1, Index),
-              {_, IndexStatus} = lists:keyfind(<<"status">>, 1, Index),
-              {_, Definition} = lists:keyfind(<<"definition">>, 1, Index),
-              {_, Completion} = lists:keyfind(<<"completion">>, 1, Index),
-              {_, Hosts} = lists:keyfind(<<"hosts">>, 1, Index),
-
-              [{id, Id},
-               {bucket, Bucket},
-               {index, Name},
-               {status, IndexStatus},
-               {definition, Definition},
-               {progress, Completion},
-               {hosts, Hosts}]
+              lists:foldl(fun ({Key, BinKey}, Acc) when is_atom(Key) ->
+                                  {_, Val} = lists:keyfind(BinKey, 1, Index),
+                                  [{Key, Val} | Acc];
+                              ({ListOfKeys, BinKey}, Acc) when is_list(ListOfKeys) ->
+                                  {_, Val} = lists:keyfind(BinKey, 1, Index),
+                                  lists:foldl(fun (Key, Acc1) ->
+                                                      [{Key, Val} | Acc1]
+                                              end, Acc, ListOfKeys)
+                          end, [], KeysMappingAtomToBin)
       end, Indexes).
 
-get_source() ->
+get_source(Type) ->
     Config = ns_config:get(),
-    case ns_cluster_membership:should_run_service(Config, index, ns_node_disco:ns_server_node()) of
+    case ns_cluster_membership:should_run_service(Config, Type, ns_node_disco:ns_server_node()) of
         true ->
             local;
         false ->
             IndexNodes =
-                ns_cluster_membership:service_active_nodes(Config, index, actual),
+                ns_cluster_membership:service_active_nodes(Config, Type, actual),
             {remote, IndexNodes, length(IndexNodes)}
     end.
 
@@ -326,8 +353,9 @@ increment_stale(#state{indexes_stale = StaleInfo} = State) ->
 compute_version(Indexes, IsStale) ->
     erlang:phash2({Indexes, IsStale}).
 
-notify_change(#state{indexes_version = Version} = State) ->
-    gen_event:notify(index_events, {indexes_change, Version}),
+notify_change(#state{type = Type,
+                     indexes_version = Version} = State) ->
+    gen_event:notify(index_events, {indexes_change, Type, Version}),
     State.
 
 is_stale({false, _}) ->

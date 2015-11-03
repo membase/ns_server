@@ -1135,7 +1135,7 @@ do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
     TasksURI = bin_concat_path(["pools", Id, "tasks"],
                                [{"v", ns_doctor:get_tasks_version()}]),
 
-    {ok, IndexesVersion0} = index_status_keeper:get_indexes_version(),
+    {ok, IndexesVersion0} = index_status_keeper:get_indexes_version(index),
     IndexesVersion = list_to_binary(integer_to_list(IndexesVersion0)),
 
     PropList0 = [{name, list_to_binary(Id)},

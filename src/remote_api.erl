@@ -23,7 +23,7 @@
 -define(DEFAULT_TIMEOUT, ns_config:get_timeout(remote_api_default, 10000)).
 
 %% remote calls
--export([get_indexes/1]).
+-export([get_indexes/1, get_fts_indexes/1]).
 
 %% gen_server callbacks and functions
 -export([start_link/0]).
@@ -36,6 +36,10 @@
 get_indexes(Node) ->
     do_call(Node, get_indexes).
 
+%% introduced in watson
+get_fts_indexes(Node) ->
+    do_call(Node, get_fts_indexes).
+
 %% gen_server callbacks and functions
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -44,7 +48,9 @@ init([]) ->
     {ok, {}}.
 
 handle_call(get_indexes, _From, State) ->
-    {reply, index_status_keeper:get_indexes(), State};
+    {reply, index_status_keeper:get_indexes(index), State};
+handle_call(get_fts_indexes, _From, State) ->
+    {reply, index_status_keeper:get_indexes(fts), State};
 handle_call(Request, {Pid, _} = _From, State) ->
     ?log_warning("Got unknown call ~p from ~p (node ~p)", [Request, Pid, node(Pid)]),
     {reply, unhandled, State}.
