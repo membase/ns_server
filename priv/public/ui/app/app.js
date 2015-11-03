@@ -1,10 +1,22 @@
 angular.module('app', [
   'mnAdmin',
   'mnAuth',
-  'mnWizard'
-]).run(function ($rootScope, $state, $urlRouter, mnPools, $modalStack) {
+  'mnWizard',
+  'mnExceptionReporter'
+]).run(function ($rootScope, $state, $urlRouter, mnPools, $modalStack, $window, $exceptionHandler) {
+  var originalOnerror = $window.onerror;
+  $window.onerror = function (message, url, lineNumber, columnNumber, exception) {
+    $exceptionHandler({
+      message: message,
+      fileName: url,
+      lineNumber: lineNumber,
+      columnNumber: columnNumber,
+      stack: exception.stack
+    });
+    originalOnerror && originalOnerror.apply($window, Array.prototype.slice.call(arguments));
+  };
   $rootScope.$on('$stateChangeError', function (event, toState, toParams, fromState, fromParams, error) {
-    throw new Error(error.message);
+    $exceptionHandler(error);
   });
   $rootScope.$on('$stateChangeStart', function (event, toState) {
     if ($modalStack.getTop()) {
