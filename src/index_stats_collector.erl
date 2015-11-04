@@ -158,9 +158,13 @@ grab_stats(#state{type = Type}) ->
     end.
 
 do_get_stats(index) ->
-    index_rest:get_json(index, "stats?async=true");
+    index_rest:get_json(index, "stats?async=true",
+                        ns_config:read_key_fast({node, node(), index_http_port}, 9102),
+                        ns_config:get_timeout(index_rest_request, 10000));
 do_get_stats(fts) ->
-    index_rest:get_json(fts, "api/nsstats").
+    index_rest:get_json(fts, "api/nsstats",
+                        ns_config:read_key_fast({node, node(), fts_http_port}, 9110),
+                        ns_config:get_timeout(fts_rest_request, 10000)).
 
 get_stats(Type) ->
     case do_get_stats(Type) of

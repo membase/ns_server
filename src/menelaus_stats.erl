@@ -655,7 +655,7 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                   [{per_index_stat(Index, <<"avg_item_size">>), AvgItemSize},
                    {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency},
                    {per_index_stat(Index, <<"num_docs_pending+queued">>), AllPendingDocs}]
-          end, get_indexes(index, BucketId));
+          end, get_indexes(indexer_gsi, BucketId));
 computed_stats_lazy_proplist("@fts-"++_BucketId) ->
     [];
 computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
@@ -1339,7 +1339,7 @@ do_couchbase_index_stats_descriptions(BucketId, IndexNodes) ->
                 XNodes ->
                     XNodes
             end,
-    AllIndexes = do_get_indexes(index, BucketId, Nodes),
+    AllIndexes = do_get_indexes(indexer_gsi, BucketId, Nodes),
     [{struct, [{blockName, <<"Index Stats: ", Id/binary>>},
                {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
@@ -1396,7 +1396,7 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
                 XNodes ->
                     XNodes
             end,
-    AllIndexes = do_get_indexes(fts, BucketId, Nodes),
+    AllIndexes = do_get_indexes(indexer_fts, BucketId, Nodes),
     [{struct, [{blockName, <<"Full Text Search Stats: ", Id/binary>>},
                {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
@@ -2434,14 +2434,14 @@ output_ui_stats(Req, Stats, Directory, Wnd, Bucket, StatName, NewHaveStamp, Extr
          {lastTStamp, {NewHaveStamp}} | Extra],
     menelaus_util:reply_json(Req, {J}).
 
-get_indexes(Type, BucketId) ->
-    simple_memoize({indexes, Type, BucketId},
+get_indexes(Indexer, BucketId) ->
+    simple_memoize({indexes, Indexer:get_type(), BucketId},
                    fun () ->
-                           Nodes = section_nodes(index_stats_collector:prefix(Type) ++ BucketId),
-                           do_get_indexes(Type, BucketId, Nodes)
+                           Nodes = section_nodes(index_stats_collector:prefix(Indexer:get_type()) ++ BucketId),
+                           do_get_indexes(Indexer, BucketId, Nodes)
                    end, 5000).
 
-do_get_indexes(Type, BucketId0, Nodes) ->
+do_get_indexes(Indexer, BucketId0, Nodes) ->
     WantedHosts0 =
         [begin
              {_, Host} = misc:node_name_host(N),
@@ -2451,7 +2451,7 @@ do_get_indexes(Type, BucketId0, Nodes) ->
     WantedHosts = lists:usort(WantedHosts0),
 
     BucketId = list_to_binary(BucketId0),
-    {ok, Indexes, _Stale, _Version} = index_status_keeper:get_indexes(Type),
+    {ok, Indexes, _Stale, _Version} = index_status_keeper:get_indexes(Indexer),
     [begin
          {index, Name} = lists:keyfind(index, 1, I),
          Name

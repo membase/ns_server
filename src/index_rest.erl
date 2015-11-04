@@ -17,32 +17,17 @@
 
 -include("ns_common.hrl").
 
--export([get_json/2, get_port_name/1]).
+-export([get_json/4]).
 
-get_timeout(index) ->
-    ns_config:get_timeout(index_rest_request, 10000);
-get_timeout(fts) ->
-    ns_config:get_timeout(fts_rest_request, 10000).
-
-get_port(index) ->
-    ns_config:read_key_fast({node, node(), indexer_http_port}, 9102);
-get_port(fts) ->
-    ns_config:read_key_fast({node, node(), fts_http_port}, 9110).
-
-get_port_name(index) ->
-    indexer;
-get_port_name(fts) ->
-    fts.
-
-get_json(Type, Path) ->
-    URL = lists:flatten(io_lib:format("http://127.0.0.1:~B/~s", [get_port(Type), Path])),
+get_json(Type, Path, Port, Timeout) ->
+    URL = lists:flatten(io_lib:format("http://127.0.0.1:~B/~s", [Port, Path])),
 
     User = ns_config_auth:get_user(special),
     Pwd = ns_config_auth:get_password(special),
 
     Headers = menelaus_rest:add_basic_auth([], User, Pwd),
 
-    RV = rest_utils:request(get_port_name(Type), URL, "GET", Headers, [], get_timeout(Type)),
+    RV = rest_utils:request(Type, URL, "GET", Headers, [], Timeout),
     case RV of
         {ok, {{200, _}, _Headers, BodyRaw}} ->
             try
