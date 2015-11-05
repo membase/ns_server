@@ -39,7 +39,8 @@
 
 -record(cfg_handler_state, {
           rebalance_state,
-          recovery_state
+          recovery_state,
+          buckets
          }).
 
 -define(doctor_debug(Msg), ale:debug(?NS_DOCTOR_LOGGER, Msg)).
@@ -109,6 +110,17 @@ handle_config_event({recovery_status, NewValue},
             State#cfg_handler_state{recovery_state = NewState};
         false ->
             ok
+    end;
+handle_config_event({buckets, Buckets},
+                    #cfg_handler_state{buckets = KnownBuckets} = State) ->
+    BucketConfigs = proplists:get_value(configs, Buckets, []),
+    BucketNames = lists:sort([Name || {Name, _} <- BucketConfigs]),
+    case BucketNames =:= KnownBuckets of
+        true ->
+            State;
+        false ->
+            ns_doctor ! significant_change,
+            State#cfg_handler_state{buckets = BucketNames}
     end;
 handle_config_event({nodes_wanted, _} = Msg, State) ->
     ns_doctor ! Msg,
@@ -219,7 +231,8 @@ get_tasks_version() ->
 build_tasks_list(PoolId, RebStatusTimeout) ->
     NodesDict = gen_server:call(?MODULE, get_nodes),
     AllRepDocs = xdc_rdoc_api:find_all_replication_docs(),
-    do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout).
+    Buckets = ns_bucket:get_bucket_names(),
+    do_build_tasks_list(NodesDict, PoolId, AllRepDocs, Buckets, RebStatusTimeout).
 
 wait_statuses(Nodes0, Timeout) ->
     Nodes = lists:usort(Nodes0),
@@ -331,13 +344,17 @@ maybe_refresh_tasks_version(State) ->
     TasksHash =
         dict:fold(
           fun (TaskNode, NodeInfo, Hash) ->
-                  compute_local_tasks_hash(TaskNode, NodeInfo, Hash)
+                  Hash1 = compute_local_tasks_hash(TaskNode, NodeInfo, Hash),
+                  ActiveBuckets = proplists:get_value(active_buckets, NodeInfo, []),
+                  add_hash({active_buckets, TaskNode, ActiveBuckets}, Hash1)
           end, new_hash(), Nodes),
 
+    Buckets = ns_bucket:get_bucket_names(),
     RebalanceStatus = ns_config:read_key_fast(rebalance_status_uuid, undefined),
     RecoveryStatus = ns_orchestrator:is_recovery_running(),
 
-    FinalHash = final_hash(add_hash({RebalanceStatus, RecoveryStatus}, TasksHash)),
+    FinalHash = final_hash(add_hash({Buckets,
+                                     RebalanceStatus, RecoveryStatus}, TasksHash)),
     case FinalHash =:= State#state.tasks_hash of
         true ->
             %% hash did not change, only nodes. Cool
@@ -630,7 +647,7 @@ pick_latest_cluster_collect_task(AllNodeTasks) ->
     end.
 
 
-do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
+do_build_tasks_list(NodesDict, PoolId, AllRepDocs, Buckets, RebStatusTimeout) ->
     AllNodeTasks =
         dict:fold(
           fun (Node, NodeInfo, Acc) ->
@@ -673,10 +690,11 @@ do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
     CollectTask = pick_latest_cluster_collect_task(AllNodeTasks),
     RebalanceTask = build_rebalance_task(RebStatusTimeout),
     RecoveryTask = build_recovery_task(PoolId),
+    OrphanBucketsTasks = build_orphan_buckets_tasks(Buckets, NodesDict),
 
     Tasks0 = lists:append([CompactionAndIndexingTasks, XDCRTasks,
                            SampleBucketTasks, WarmupTasks, CollectTask,
-                           RebalanceTask, RecoveryTask]),
+                           RebalanceTask, RecoveryTask, OrphanBucketsTasks]),
 
     Tasks1 =
         lists:sort(
@@ -790,6 +808,33 @@ do_build_rebalance_task(Timeout) ->
                end]
     end.
 
+build_orphan_buckets_tasks(Buckets, NodesDict) ->
+    Orphans =
+        dict:fold(
+          fun (Node, NodeInfo, Acc) ->
+                  NodeBuckets = proplists:get_value(active_buckets, NodeInfo, []),
+                  case NodeBuckets -- Buckets of
+                      [] ->
+                          Acc;
+                      NodeOrphans ->
+                          lists:foldl(
+                            fun (Bucket, D) ->
+                                    misc:dict_update(Bucket,
+                                                     fun (Nodes) ->
+                                                             [Node | Nodes]
+                                                     end, [], D)
+                            end, Acc, NodeOrphans)
+                  end
+          end, dict:new(), NodesDict),
+    dict:fold(
+      fun (Bucket, BucketNodes, Acc) ->
+              Task = [{type, orphanBucket},
+                      {bucket, list_to_binary(Bucket)},
+                      {nodes, lists:usort(BucketNodes)},
+                      {recommendedRefreshPeriod, 2.0}],
+              [Task | Acc]
+      end, [], Orphans).
+
 get_detailed_progress() ->
     case ns_rebalance_observer:get_detailed_progress() of
         {ok, GlobalDetails, PerNode} ->
@@ -808,6 +853,8 @@ task_type(Task) ->
 
 task_priority(recovery) ->
     0;
+task_priority(orphanBucket) ->
+    0;
 task_priority(rebalance) ->
     1;
 task_priority(xdcr) ->
@@ -824,7 +871,8 @@ task_priority(_) ->
 task_name(Task, xdcr) ->
     proplists:get_value(id, Task);
 task_name(Task, Type)
-  when Type =:= indexer; Type =:= bucket_compaction; Type =:= view_compaction ->
+  when Type =:= indexer; Type =:= bucket_compaction;
+       Type =:= view_compaction; Type =:= orphanBucket ->
     Bucket = proplists:get_value(bucket, Task),
     true = (Bucket =/= undefined),
 
