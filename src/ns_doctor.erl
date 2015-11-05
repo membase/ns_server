@@ -650,21 +650,26 @@ do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
                   end
           end, dict:new(), AllRawTasks),
 
-    PreRebalanceTasks0 = dict:fold(fun ({xdcr, _}, _, Acc) -> Acc;
-                                       (Signature, Value, Acc) ->
-                                           Value1 = task_operation(finalize, Signature, Value),
-                                           FinalValue = task_maybe_add_cancel_uri(Signature, Value1, PoolId),
-                                           [FinalValue | Acc]
-                                   end, [], TasksDict),
+    CompactionAndIndexingTasks =
+        dict:fold(fun ({xdcr, _}, _, Acc) -> Acc;
+                      (Signature, Value, Acc) ->
+                          Value1 = task_operation(finalize, Signature, Value),
+                          FinalValue = task_maybe_add_cancel_uri(Signature, Value1, PoolId),
+                          [FinalValue | Acc]
+                  end, [], TasksDict),
 
     XDCRTasks = build_xdcr_tasks(TasksDict, AllRepDocs),
     SampleBucketTasks = build_sample_buckets_tasks(AllRawTasks),
     WarmupTasks = build_warmup_tasks(AllRawTasks),
-    MaybeCollectTask = pick_latest_cluster_collect_task(AllNodeTasks),
+    CollectTask = pick_latest_cluster_collect_task(AllNodeTasks),
+    RebalanceTask = build_rebalance_task(RebStatusTimeout),
+    RecoveryTask = build_recovery_task(PoolId),
 
-    PreRebalanceTasks1 = SampleBucketTasks ++ WarmupTasks ++ XDCRTasks ++ PreRebalanceTasks0 ++ MaybeCollectTask,
+    Tasks0 = lists:append([CompactionAndIndexingTasks, XDCRTasks,
+                           SampleBucketTasks, WarmupTasks, CollectTask,
+                           RebalanceTask, RecoveryTask]),
 
-    PreRebalanceTasks2 =
+    Tasks1 =
         lists:sort(
           fun (A, B) ->
                   TypeA = task_type(A),
@@ -673,16 +678,9 @@ do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
                   PrioA = task_priority(TypeA),
                   PrioB = task_priority(TypeB),
                   {PrioA, task_name(A, TypeA)} =< {PrioB, task_name(B, TypeB)}
-          end, PreRebalanceTasks1),
+          end, Tasks0),
 
-    PreRebalanceTasks = [{struct, V} || V <- PreRebalanceTasks2],
-
-    RebalanceTask0 = build_rebalance_task(RebStatusTimeout),
-    RebalanceTask = {struct, RebalanceTask0},
-
-    MaybeRecoveryTask = build_recovery_task(PoolId),
-
-    MaybeRecoveryTask ++ [RebalanceTask | PreRebalanceTasks].
+    [{struct, V} || V <- Tasks1].
 
 build_xdcr_tasks(TasksDict, AllRepDocs) ->
     [begin
@@ -741,6 +739,10 @@ build_warmup_tasks(AllRawTasks) ->
     [[{status, running} | KV] || KV <- WarmupTasks0].
 
 build_rebalance_task(Timeout) ->
+    Task = do_build_rebalance_task(Timeout),
+    [Task].
+
+do_build_rebalance_task(Timeout) ->
     case (catch ns_orchestrator:rebalance_progress_full(Timeout)) of
         {running, PerNode} ->
             DetailedProgress = get_detailed_progress(),
@@ -795,16 +797,20 @@ task_type(Task) ->
     {type, Type} = lists:keyfind(type, 1, Task),
     Type.
 
-task_priority(xdcr) ->
+task_priority(recovery) ->
     0;
-task_priority(indexer) ->
+task_priority(rebalance) ->
     1;
-task_priority(bucket_compaction) ->
+task_priority(xdcr) ->
     2;
-task_priority(view_compaction) ->
+task_priority(indexer) ->
     3;
+task_priority(bucket_compaction) ->
+    4;
+task_priority(view_compaction) ->
+    5;
 task_priority(_) ->
-    4.
+    6.
 
 task_name(Task, xdcr) ->
     proplists:get_value(id, Task);
@@ -847,14 +853,14 @@ build_recovery_task(PoolId) ->
                   ["pools", PoolId, "buckets", Bucket, "recoveryStatus"],
                   [{recovery_uuid, RecoveryUUID}]),
 
-            [{struct, [{type, recovery},
-                       {bucket, list_to_binary(Bucket)},
-                       {uuid, RecoveryUUID},
-                       {recommendedRefreshPeriod, 10.0},
+            [[{type, recovery},
+              {bucket, list_to_binary(Bucket)},
+              {uuid, RecoveryUUID},
+              {recommendedRefreshPeriod, 10.0},
 
-                       {stopURI, StopURI},
-                       {commitVBucketURI, CommitURI},
-                       {recoveryStatusURI, RecoveryStatusURI}]}]
+              {stopURI, StopURI},
+              {commitVBucketURI, CommitURI},
+              {recoveryStatusURI, RecoveryStatusURI}]]
     end.
 
 process_heartbeat(Node, Status, State) ->
