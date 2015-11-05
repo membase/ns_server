@@ -657,61 +657,9 @@ do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
                                            [FinalValue | Acc]
                                    end, [], TasksDict),
 
-    XDCRTasks = [begin
-                     {_, Id} = lists:keyfind(id, 1, Doc0),
-                     Sig = {xdcr, Id},
-                     {type, Type0} = lists:keyfind(type, 1, Doc0),
-                     Type = case Type0 of
-                                <<"xdc">> ->
-                                    capi;
-                                <<"xdc-xmem">> ->
-                                    xmem
-                            end,
-
-                     Doc1 = lists:keydelete(type, 1, Doc0),
-                     Doc2 = [{replicationType, Type} | Doc1],
-                     Doc3 =
-                         case dict:find(Sig, TasksDict) of
-                             {ok, Value} ->
-                                 PList = finalize_xcdr_plist(Value),
-                                 Status =
-                                     case (proplists:get_bool(pauseRequested, Doc2)
-                                           andalso proplists:get_value(maxVBReps, PList) =:= 0) of
-                                         true ->
-                                             paused;
-                                         _ ->
-                                             running
-                                     end,
-                                 [{status, Status} | Doc2] ++ PList;
-                             _ ->
-                                 [{status, notRunning}, {type, xdcr} | Doc2]
-                         end,
-
-                     CancelURI = menelaus_util:bin_concat_path(["controller", "cancelXDCR", Id]),
-                     SettingsURI = menelaus_util:bin_concat_path(["settings", "replications", Id]),
-
-                     [{cancelURI, CancelURI},
-                      {settingsURI, SettingsURI} | Doc3]
-                 end || Doc0 <- AllRepDocs],
-
-    SampleBucketTasks0 = lists:filter(fun (RawTask) ->
-                                              case lists:keyfind(type, 1, RawTask) of
-                                                  {_, loadingSampleBucket} -> true;
-                                                  _ -> false
-                                              end
-                                      end, AllRawTasks),
-    SampleBucketTasks = [[{status, running} | KV]
-                         || KV <- SampleBucketTasks0],
-
-    WarmupTasks0 = lists:filter(fun (RawTask) ->
-                                        case lists:keyfind(type, 1, RawTask) of
-                                            {_, warming_up} -> true;
-                                            _ -> false
-                                        end
-                                end, AllRawTasks),
-    WarmupTasks = [[{status, running} | KV]
-                   || KV <- WarmupTasks0],
-
+    XDCRTasks = build_xdcr_tasks(TasksDict, AllRepDocs),
+    SampleBucketTasks = build_sample_buckets_tasks(AllRawTasks),
+    WarmupTasks = build_warmup_tasks(AllRawTasks),
     MaybeCollectTask = pick_latest_cluster_collect_task(AllNodeTasks),
 
     PreRebalanceTasks1 = SampleBucketTasks ++ WarmupTasks ++ XDCRTasks ++ PreRebalanceTasks0 ++ MaybeCollectTask,
@@ -727,48 +675,107 @@ do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
 
     PreRebalanceTasks = [{struct, V} || V <- PreRebalanceTasks2],
 
-    RebalanceTask0 =
-        case (catch ns_orchestrator:rebalance_progress_full(RebStatusTimeout)) of
-            {running, PerNode} ->
-                DetailedProgress = get_detailed_progress(),
-
-                Subtype = case ns_config:search(rebalancer_pid) =:= ns_config:search(graceful_failover_pid) of
-                              true ->
-                                  gracefulFailover;
-                              _ ->
-                                  rebalance
-                          end,
-
-                [{type, rebalance},
-                 {subtype, Subtype},
-                 {recommendedRefreshPeriod, 0.25},
-                 {status, running},
-                 {progress, case lists:foldl(fun ({_, Progress}, {Total, Count}) ->
-                                                     {Total + Progress, Count + 1}
-                                             end, {0, 0}, PerNode) of
-                                {_, 0} -> 0;
-                                {TotalRebalanceProgress, RebalanceNodesCount} ->
-                                    TotalRebalanceProgress * 100.0 / RebalanceNodesCount
-                            end},
-                 {perNode,
-                  {struct, [{Node, {struct, [{progress, Progress * 100}]}}
-                            || {Node, Progress} <- PerNode]}},
-                 {detailedProgress, DetailedProgress}];
-            FullProgress ->
-                [{type, rebalance},
-                 {status, notRunning},
-                 {statusIsStale, FullProgress =/= not_running},
-                 {masterRequestTimedOut, misc:is_timeout_exit(FullProgress)}
-                 | case ns_config:search(rebalance_status) of
-                       {value, {none, ErrorMessage}} ->
-                           [{errorMessage, iolist_to_binary(ErrorMessage)}];
-                       _ -> []
-                   end]
-        end,
+    RebalanceTask0 = build_rebalance_task(RebStatusTimeout),
     RebalanceTask = {struct, RebalanceTask0},
+
     MaybeRecoveryTask = build_recovery_task(PoolId),
 
     MaybeRecoveryTask ++ [RebalanceTask | PreRebalanceTasks].
+
+build_xdcr_tasks(TasksDict, AllRepDocs) ->
+    [begin
+         {_, Id} = lists:keyfind(id, 1, Doc0),
+         Sig = {xdcr, Id},
+         {type, Type0} = lists:keyfind(type, 1, Doc0),
+         Type = case Type0 of
+                    <<"xdc">> ->
+                        capi;
+                    <<"xdc-xmem">> ->
+                        xmem
+                end,
+
+         Doc1 = lists:keydelete(type, 1, Doc0),
+         Doc2 = [{replicationType, Type} | Doc1],
+         Doc3 =
+             case dict:find(Sig, TasksDict) of
+                 {ok, Value} ->
+                     PList = finalize_xcdr_plist(Value),
+                     Status =
+                         case (proplists:get_bool(pauseRequested, Doc2)
+                               andalso proplists:get_value(maxVBReps, PList) =:= 0) of
+                             true ->
+                                 paused;
+                             _ ->
+                                 running
+                         end,
+                     [{status, Status} | Doc2] ++ PList;
+                 _ ->
+                     [{status, notRunning}, {type, xdcr} | Doc2]
+             end,
+
+         CancelURI = menelaus_util:bin_concat_path(["controller", "cancelXDCR", Id]),
+         SettingsURI = menelaus_util:bin_concat_path(["settings", "replications", Id]),
+
+         [{cancelURI, CancelURI},
+          {settingsURI, SettingsURI} | Doc3]
+     end || Doc0 <- AllRepDocs].
+
+build_sample_buckets_tasks(AllRawTasks) ->
+    SampleBucketTasks0 = lists:filter(fun (RawTask) ->
+                                              case lists:keyfind(type, 1, RawTask) of
+                                                  {_, loadingSampleBucket} -> true;
+                                                  _ -> false
+                                              end
+                                      end, AllRawTasks),
+    [[{status, running} | KV] || KV <- SampleBucketTasks0].
+
+build_warmup_tasks(AllRawTasks) ->
+    WarmupTasks0 = lists:filter(fun (RawTask) ->
+                                        case lists:keyfind(type, 1, RawTask) of
+                                            {_, warming_up} -> true;
+                                            _ -> false
+                                        end
+                                end, AllRawTasks),
+    [[{status, running} | KV] || KV <- WarmupTasks0].
+
+build_rebalance_task(Timeout) ->
+    case (catch ns_orchestrator:rebalance_progress_full(Timeout)) of
+        {running, PerNode} ->
+            DetailedProgress = get_detailed_progress(),
+
+            Subtype = case ns_config:search(rebalancer_pid) =:= ns_config:search(graceful_failover_pid) of
+                          true ->
+                              gracefulFailover;
+                          _ ->
+                              rebalance
+                      end,
+
+            [{type, rebalance},
+             {subtype, Subtype},
+             {recommendedRefreshPeriod, 0.25},
+             {status, running},
+             {progress, case lists:foldl(fun ({_, Progress}, {Total, Count}) ->
+                                                 {Total + Progress, Count + 1}
+                                         end, {0, 0}, PerNode) of
+                            {_, 0} -> 0;
+                            {TotalRebalanceProgress, RebalanceNodesCount} ->
+                                TotalRebalanceProgress * 100.0 / RebalanceNodesCount
+                        end},
+             {perNode,
+              {struct, [{Node, {struct, [{progress, Progress * 100}]}}
+                        || {Node, Progress} <- PerNode]}},
+             {detailedProgress, DetailedProgress}];
+        FullProgress ->
+            [{type, rebalance},
+             {status, notRunning},
+             {statusIsStale, FullProgress =/= not_running},
+             {masterRequestTimedOut, misc:is_timeout_exit(FullProgress)}
+             | case ns_config:search(rebalance_status) of
+                   {value, {none, ErrorMessage}} ->
+                       [{errorMessage, iolist_to_binary(ErrorMessage)}];
+                   _ -> []
+               end]
+    end.
 
 get_detailed_progress() ->
     case ns_rebalance_observer:get_detailed_progress() of
