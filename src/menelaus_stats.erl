@@ -2255,7 +2255,9 @@ maybe_grab_stats(Section, Nodes, HaveStamp, Wnd, Stats) ->
                all ->
                    SectionNodes =/= [];
                [_|_] ->
-                   (Nodes -- SectionNodes) =/= Nodes
+                   lists:any(fun (Node) ->
+                                     lists:member(Node, Nodes)
+                             end, SectionNodes)
            end,
     case Grab of
         false ->
