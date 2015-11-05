@@ -667,10 +667,12 @@ do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
     PreRebalanceTasks2 =
         lists:sort(
           fun (A, B) ->
-                  PrioA = task_priority(A),
-                  PrioB = task_priority(B),
-                  {PrioA, task_name(A, PrioA)} =<
-                      {PrioB, task_name(B, PrioB)}
+                  TypeA = task_type(A),
+                  TypeB = task_type(B),
+
+                  PrioA = task_priority(TypeA),
+                  PrioB = task_priority(TypeB),
+                  {PrioA, task_name(A, TypeA)} =< {PrioB, task_name(B, TypeB)}
           end, PreRebalanceTasks1),
 
     PreRebalanceTasks = [{struct, V} || V <- PreRebalanceTasks2],
@@ -789,33 +791,32 @@ get_detailed_progress() ->
             {struct, []}
     end.
 
-task_priority(Task) ->
-    Type = proplists:get_value(type, Task),
-    {true, Task} = {(Type =/= undefined), Task},
-    {true, Task} = {(Type =/= false), Task},
-    type_priority(Type).
+task_type(Task) ->
+    {type, Type} = lists:keyfind(type, 1, Task),
+    Type.
 
-type_priority(xdcr) ->
+task_priority(xdcr) ->
     0;
-type_priority(indexer) ->
+task_priority(indexer) ->
     1;
-type_priority(bucket_compaction) ->
+task_priority(bucket_compaction) ->
     2;
-type_priority(view_compaction) ->
+task_priority(view_compaction) ->
     3;
-type_priority(_) ->
+task_priority(_) ->
     4.
 
-task_name(Task, 0) -> %% NOTE: 0 is priority of xdcr type
+task_name(Task, xdcr) ->
     proplists:get_value(id, Task);
-task_name(_Task, 4) -> %% NOTE: 4 is priority of unknown type
-    undefined;
-task_name(Task, _Prio) ->
+task_name(Task, Type)
+  when Type =:= indexer; Type =:= bucket_compaction; Type =:= view_compaction ->
     Bucket = proplists:get_value(bucket, Task),
     true = (Bucket =/= undefined),
 
     MaybeDDoc = proplists:get_value(designDocument, Task),
-    {Bucket, MaybeDDoc}.
+    {Bucket, MaybeDDoc};
+task_name(_Task, _Type) ->
+    undefined.
 
 get_node(Node, NodeStatuses) ->
     case dict:find(Node, NodeStatuses) of
