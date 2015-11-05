@@ -531,12 +531,13 @@ def make_product_task(guts, initargs_path, options):
 
         query_tasks = [make("SELECT * FROM system:datastores"),
                        make("SELECT * FROM system:namespaces"),
-                       make("SELECT * FROM system:keyspaces")]
+                       make("SELECT * FROM system:keyspaces"),
+                       make("SELECT * FROM system:indexes")]
 
     index_tasks = []
     index_port = read_guts(guts, "indexer_http_port")
     if index_port:
-        url='http://127.0.0.1:%s/getIndexStatus' % index
+        url='http://127.0.0.1:%s/getIndexStatus' % index_port
         index_tasks = [make_curl_task(name="Index definitions are: ",
                           user="@", password=read_guts(guts, "memcached_pass"), url=url)]
 
