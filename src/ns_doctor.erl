@@ -320,65 +320,66 @@ maybe_refresh_tasks_version(#state{nodes = Nodes,
     State;
 maybe_refresh_tasks_version(State) ->
     Nodes = State#state.nodes,
-    TasksHashesSet =
+    TasksHash =
         dict:fold(
-          fun (TaskNode, NodeInfo, Set) ->
-                  lists:foldl(
-                    fun (Task, Set0) ->
-                            case proplists:get_value(type, Task) of
-                                indexer ->
-                                    sets:add_element(erlang:phash2(
-                                                       {indexer,
-                                                        lists:keyfind(design_documents, 1, Task),
-                                                        lists:keyfind(set, 1, Task)}),
-                                                     Set0);
-                                view_compaction ->
-                                    sets:add_element(erlang:phash2(
-                                                       {view_compaction,
-                                                        lists:keyfind(design_documents, 1, Task),
-                                                        lists:keyfind(set, 1, Task)}),
-                                                     Set0);
-                                bucket_compaction ->
-                                    sets:add_element(
-                                      erlang:phash2({bucket_compaction,
-                                                     lists:keyfind(bucket, 1, Task)}),
-                                      Set0);
-                                loadingSampleBucket ->
-                                    sets:add_element(erlang:phash2(Task), Set0);
-                                xdcr ->
-                                    sets:add_element(
-                                      erlang:phash2(lists:keyfind(id, 1, Task)),
-                                      Set0);
-                                warming_up ->
-                                    sets:add_element(
-                                      erlang:phash2({warming_up,
-                                                     lists:keyfind(bucket, 1, Task)}),
-                                      Set0);
-                                cluster_logs_collect ->
-                                    sets:add_element(
-                                      erlang:phash2({cluster_logs_collect,
-                                                     TaskNode,
-                                                     lists:keydelete(perNode, 1, Task)}),
-                                      Set0);
-                                _ ->
-                                    Set0
-                            end
-                    end, Set, proplists:get_value(local_tasks, NodeInfo, []))
-          end, sets:new(), Nodes),
-    TasksRebalanceAndRecoveryHash = erlang:phash2({erlang:phash2(TasksHashesSet),
-                                                   ns_config:read_key_fast(rebalance_status_uuid,
-                                                                           undefined),
-                                                   ns_orchestrator:is_recovery_running()}),
-    case TasksRebalanceAndRecoveryHash =:= State#state.tasks_hash of
+          fun (TaskNode, NodeInfo, Hash) ->
+                  compute_local_tasks_hash(TaskNode, NodeInfo, Hash)
+          end, new_hash(), Nodes),
+
+    RebalanceStatus = ns_config:read_key_fast(rebalance_status_uuid, undefined),
+    RecoveryStatus = ns_orchestrator:is_recovery_running(),
+
+    FinalHash = final_hash(add_hash({RebalanceStatus, RecoveryStatus}, TasksHash)),
+    case FinalHash =:= State#state.tasks_hash of
         true ->
             %% hash did not change, only nodes. Cool
             State#state{tasks_hash_nodes = Nodes};
         _ ->
             %% hash changed. Generate new version
             State#state{tasks_hash_nodes = Nodes,
-                        tasks_hash = TasksRebalanceAndRecoveryHash,
-                        tasks_version = integer_to_list(TasksRebalanceAndRecoveryHash)}
+                        tasks_hash = FinalHash,
+                        tasks_version = integer_to_list(FinalHash)}
     end.
+
+new_hash() ->
+    sets:new().
+
+add_hash(Term, HashSet) ->
+    sets:add_element(erlang:phash2(Term), HashSet).
+
+final_hash(HashSet) ->
+    erlang:phash2(HashSet).
+
+compute_local_tasks_hash(TaskNode, NodeInfo, Hash) ->
+    lists:foldl(
+      fun (Task, Acc) ->
+              case proplists:get_value(type, Task) of
+                  indexer ->
+                      add_hash({indexer,
+                                lists:keyfind(design_documents, 1, Task),
+                                lists:keyfind(set, 1, Task)}, Acc);
+                  view_compaction ->
+                      add_hash({view_compaction,
+                                lists:keyfind(design_documents, 1, Task),
+                                lists:keyfind(set, 1, Task)}, Acc);
+                  bucket_compaction ->
+                      add_hash({bucket_compaction,
+                                lists:keyfind(bucket, 1, Task)}, Acc);
+                  loadingSampleBucket ->
+                      add_hash(Task, Acc);
+                  xdcr ->
+                      add_hash(lists:keyfind(id, 1, Task), Acc);
+                  warming_up ->
+                      add_hash({warming_up,
+                                lists:keyfind(bucket, 1, Task)}, Acc);
+                  cluster_logs_collect ->
+                      add_hash({cluster_logs_collect,
+                                TaskNode,
+                                lists:keydelete(perNode, 1, Task)}, Acc);
+                  _ ->
+                      Acc
+              end
+      end, Hash, proplists:get_value(local_tasks, NodeInfo, [])).
 
 task_operation(extract, Indexer, RawTask)
   when Indexer =:= indexer ->
