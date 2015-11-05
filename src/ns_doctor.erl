@@ -37,6 +37,11 @@
           tasks_version :: undefined | string()
          }).
 
+-record(cfg_handler_state, {
+          rebalance_state,
+          recovery_state
+         }).
+
 -define(doctor_debug(Msg), ale:debug(?NS_DOCTOR_LOGGER, Msg)).
 -define(doctor_debug(Fmt, Args), ale:debug(?NS_DOCTOR_LOGGER, Fmt, Args)).
 
@@ -59,7 +64,8 @@ init([]) ->
     erlang:process_flag(priority, high),
     self() ! acquire_initial_status,
     ns_pubsub:subscribe_link(ns_config_events,
-                             fun handle_config_event/2, {undefined, undefined}),
+                             fun handle_config_event/2,
+                             #cfg_handler_state{}),
     case misc:get_env_default(dont_log_stats, false) of
         false ->
             timer2:send_interval(?LOG_INTERVAL, log);
@@ -85,23 +91,25 @@ handle_recovery_status_change(not_running, not_running) ->
 handle_recovery_status_change(New, undefined) ->
     {New, true}.
 
-handle_config_event({rebalance_status_uuid, NewValue}, {RebalanceState, RecoveryState}) ->
+handle_config_event({rebalance_status_uuid, NewValue},
+                    #cfg_handler_state{rebalance_state = RebalanceState} = State) ->
     case NewValue of
         RebalanceState ->
-            ok;
+            State;
         _ ->
-            ns_doctor ! significant_change
-    end,
-    {NewValue, RecoveryState};
-handle_config_event({recovery_status, NewValue}, {RebalanceState, RecoveryState}) ->
+            ns_doctor ! significant_change,
+            State#cfg_handler_state{rebalance_state = NewValue}
+    end;
+handle_config_event({recovery_status, NewValue},
+                    #cfg_handler_state{recovery_state = RecoveryState} = State) ->
     {NewState, Changed} = handle_recovery_status_change(NewValue, RecoveryState),
     case Changed of
         true ->
-            ns_doctor ! significant_change;
+            ns_doctor ! significant_change,
+            State#cfg_handler_state{recovery_state = NewState};
         false ->
             ok
-    end,
-    {RebalanceState, NewState};
+    end;
 handle_config_event({nodes_wanted, _} = Msg, State) ->
     ns_doctor ! Msg,
     State;
