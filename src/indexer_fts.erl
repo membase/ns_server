@@ -17,7 +17,9 @@
 
 -export([start_keeper/0, get_indexes/0]).
 
--export([get_type/0, get_remote_indexes/1, get_local_status/0, restart/0, get_status_mapping/0]).
+-export([get_type/0, get_remote_indexes/1, get_local_status/0, restart/0, get_status_mapping/0,
+         get_gauges/0, get_counters/0, get_computed/0, grab_stats/0, prefix/0,
+         per_index_stat/2, global_index_stat/1, compute_gauges/1]).
 
 get_indexes() ->
     index_status_keeper:get_indexes(?MODULE).
@@ -49,3 +51,32 @@ get_status_mapping() ->
 
 start_keeper() ->
     index_status_keeper:start_link(?MODULE).
+
+get_gauges() ->
+    [doc_count, num_pindexes].
+
+get_counters() ->
+    [timer_batch_execute_count, timer_batch_merge_count, timer_batch_store_count,
+     timer_iterator_next_count, timer_iterator_seek_count, timer_iterator_seek_first_count,
+     timer_reader_get_count, timer_reader_iterator_count, timer_writer_delete_count,
+     timer_writer_get_count, timer_writer_iterator_count, timer_writer_set_count,
+     timer_opaque_set_count, timer_rollback_count, timer_data_update_count,
+     timer_data_delete_count, timer_snapshot_start_count, timer_opaque_get_count].
+
+get_computed() ->
+    [].
+
+grab_stats() ->
+    index_rest:get_json(fts, "api/nsstats", get_port(), get_timeout()).
+
+prefix() ->
+    "@" ++ atom_to_list(get_type()) ++ "-".
+
+per_index_stat(Index, Metric) ->
+    iolist_to_binary([atom_to_list(get_type()), <<"/">>, Index, $/, Metric]).
+
+global_index_stat(StatName) ->
+    iolist_to_binary([atom_to_list(get_type()), <<"/">>, StatName]).
+
+compute_gauges(_Gauges) ->
+    [].

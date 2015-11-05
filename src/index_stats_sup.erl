@@ -58,18 +58,18 @@ handle_cfg_event(Event) ->
             work_queue:submit_work(index_stats_worker, fun refresh_children/0)
     end.
 
-compute_wanted_children(Type, Config) ->
-    case ns_cluster_membership:should_run_service(Config, Type, node()) of
+compute_wanted_children(Indexer, Config) ->
+    case ns_cluster_membership:should_run_service(Config, Indexer:get_type(), node()) of
         false ->
             [];
         true ->
-            StaticChildren = [{Type, index_stats_collector}],
+            StaticChildren = [{Indexer, index_stats_collector}],
 
             BucketCfgs = ns_bucket:get_buckets(Config),
             BucketNames = [Name || {Name, BConfig} <- BucketCfgs,
                                    lists:keyfind(type, 1, BConfig) =:= {type, membase}],
             PerBucketChildren =
-                [{Type, Mod, Name}
+                [{Indexer, Mod, Name}
                  || Name <- BucketNames,
                     Mod <- [stats_archiver, stats_reader]],
 
@@ -80,18 +80,19 @@ refresh_children() ->
     RunningChildren0 = [Id || {Id, _, _, _} <- supervisor:which_children(index_stats_children_sup)],
     RunningChildren = lists:sort(RunningChildren0),
     Config = ns_config:get(),
-    WantedChildren = compute_wanted_children(fts, Config) ++ compute_wanted_children(index, Config),
+    WantedChildren = compute_wanted_children(indexer_fts, Config) ++
+        compute_wanted_children(indexer_gsi, Config),
     ToStart = ordsets:subtract(WantedChildren, RunningChildren),
     ToStop = ordsets:subtract(RunningChildren, WantedChildren),
     lists:foreach(fun stop_child/1, ToStop),
     lists:foreach(fun start_child/1, ToStart),
     ok.
 
-child_spec({Type, Mod, Name}) when Mod =:= stats_archiver; Mod =:= stats_reader ->
-    {{Type, Mod, Name}, {Mod, start_link, [index_stats_collector:prefix(Type) ++ Name]},
+child_spec({Indexer, Mod, Name}) when Mod =:= stats_archiver; Mod =:= stats_reader ->
+    {{Indexer, Mod, Name}, {Mod, start_link, [Indexer:prefix() ++ Name]},
      permanent, 1000, worker, []};
-child_spec({Type, Mod}) ->
-    {{Type, Mod}, {Mod, start_link, [Type]}, permanent, 1000, worker, []}.
+child_spec({Indexer, Mod}) ->
+    {{Indexer, Mod}, {Mod, start_link, [Indexer]}, permanent, 1000, worker, []}.
 
 start_child(Id) ->
     {ok, _Pid} = supervisor:start_child(index_stats_children_sup, child_spec(Id)).

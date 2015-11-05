@@ -551,16 +551,16 @@ parse_stats_params(Params) ->
     {ClientTStamp, {Step, Period, Count}}.
 
 global_index_stat(StatName) ->
-    index_stats_collector:global_index_stat(index, StatName).
+    indexer_gsi:global_index_stat(StatName).
 
 per_index_stat(Index, Metric) ->
-    index_stats_collector:per_index_stat(index, Index, Metric).
+    indexer_gsi:per_index_stat(Index, Metric).
 
 global_fts_stat(StatName) ->
-    index_stats_collector:global_index_stat(fts, StatName).
+    indexer_fts:global_index_stat(StatName).
 
 per_fts_stat(Index, Metric) ->
-    index_stats_collector:per_index_stat(fts, Index, Metric).
+    indexer_fts:per_index_stat(Index, Metric).
 
 computed_stats_lazy_proplist("@system") ->
     [];
@@ -2437,7 +2437,7 @@ output_ui_stats(Req, Stats, Directory, Wnd, Bucket, StatName, NewHaveStamp, Extr
 get_indexes(Indexer, BucketId) ->
     simple_memoize({indexes, Indexer:get_type(), BucketId},
                    fun () ->
-                           Nodes = section_nodes(index_stats_collector:prefix(Indexer:get_type()) ++ BucketId),
+                           Nodes = section_nodes(Indexer:prefix() ++ BucketId),
                            do_get_indexes(Indexer, BucketId, Nodes)
                    end, 5000).
 
