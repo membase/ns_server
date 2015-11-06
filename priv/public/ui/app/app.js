@@ -3,7 +3,7 @@ angular.module('app', [
   'mnAuth',
   'mnWizard',
   'mnExceptionReporter'
-]).run(function ($rootScope, $state, $urlRouter, mnPools, $modalStack, $window, $exceptionHandler) {
+]).run(function ($rootScope, $state, $urlRouter, mnPools, $uibModalStack, $window, $exceptionHandler) {
   var originalOnerror = $window.onerror;
   $window.onerror = function (message, url, lineNumber, columnNumber, exception) {
     $exceptionHandler({
@@ -19,7 +19,7 @@ angular.module('app', [
     $exceptionHandler(error);
   });
   $rootScope.$on('$stateChangeStart', function (event, toState) {
-    if ($modalStack.getTop()) {
+    if ($uibModalStack.getTop()) {
       event.preventDefault();
     }
     mnPools.get().then(function (pools) {

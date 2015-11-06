@@ -17,7 +17,7 @@ angular.module('mnServers', [
   'mnPoll',
   'mnPools'
 ]).controller('mnServersController',
-  function ($scope, $state, $modal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools) {
+  function ($scope, $state, $uibModal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools) {
 
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
 
@@ -51,7 +51,7 @@ angular.module('mnServers', [
       .cycle();
 
     $scope.addServer = function () {
-      $modal.open({
+      $uibModal.open({
         templateUrl: 'app/mn_admin/mn_servers/add_dialog/mn_servers_add_dialog.html',
         controller: 'mnServersAddDialogController',
         resolve: {
@@ -85,7 +85,7 @@ angular.module('mnServers', [
         .reloadState()
         .getPromise()
         .then(function (reps) {
-          (reps.status === 400) && $modal.open({
+          (reps.status === 400) && $uibModal.open({
             templateUrl: 'app/mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
             controller: 'mnServersStopRebalanceDialogController'
           });
@@ -118,7 +118,7 @@ angular.module('mnServers', [
           isKv: _.indexOf(node.services, 'kv') > -1
         };
         if (_.some(_.values(warnings))) {
-          $modal.open({
+          $uibModal.open({
             templateUrl: 'app/mn_admin/mn_servers/eject_dialog/mn_servers_eject_dialog.html',
             controller: 'mnServersEjectDialogController',
             resolve: {
@@ -140,7 +140,7 @@ angular.module('mnServers', [
       mnPromiseHelper($scope, promise).cancelOnScopeDestroy();
     };
     $scope.failOverNode = function (node) {
-      $modal.open({
+      $uibModal.open({
         templateUrl: 'app/mn_admin/mn_servers/failover_dialog/mn_servers_failover_dialog.html',
         controller: 'mnServersFailOverDialogController',
         resolve: {

@@ -5,7 +5,7 @@ angular.module('mnSettingsCluster', [
   'mnMemoryQuota',
   'mnSpinner'
 ]).controller('mnSettingsClusterController',
-  function ($scope, $modal, mnSettingsClusterService, mnHelper, mnPromiseHelper, mnPoolDefault) {
+  function ($scope, $uibModal, mnSettingsClusterService, mnHelper, mnPromiseHelper, mnPoolDefault) {
 
 
     mnPromiseHelper($scope, mnSettingsClusterService.getClusterState())
@@ -62,7 +62,7 @@ angular.module('mnSettingsCluster', [
         return;
       }
       if ($scope.state.initialMemoryQuota != $scope.state.memoryQuotaConfig.indexMemoryQuota) {
-        $modal.open({
+        $uibModal.open({
           templateUrl: 'app/mn_admin/mn_settings/cluster/mn_settings_cluster_confirmation_dialog.html'
         }).result.then(saveSettings);
       } else {

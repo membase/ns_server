@@ -5,7 +5,7 @@
     .module('mnGroups')
     .controller('mnGroupsGroupDialogController', mnGroupsGroupDialogController);
 
-  function mnGroupsGroupDialogController($scope, $modalInstance, mnGroupsService, mnPromiseHelper, group) {
+  function mnGroupsGroupDialogController($scope, $uibModalInstance, mnGroupsService, mnPromiseHelper, group) {
     var vm = this;
 
     vm.isEditMode = !!group;
@@ -19,7 +19,7 @@
 
       var promise = vm.isEditMode ? mnGroupsService.updateGroup(vm.groupName, group.uri) :
                                     mnGroupsService.createGroup(vm.groupName);
-      mnPromiseHelper(vm, promise, $modalInstance)
+      mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .catchGlobalErrors()
         .closeOnSuccess()

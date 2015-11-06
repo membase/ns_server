@@ -1,5 +1,5 @@
 angular.module('mnBuckets').controller('mnBucketsDetailsDialogController',
-  function ($scope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, mnPromiseHelper, $modalInstance) {
+  function ($scope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, mnPromiseHelper, $uibModalInstance) {
     bucketConf.autoCompactionDefined = !!bucketConf.autoCompactionSettings;
     $scope.bucketConf = bucketConf;
     $scope.autoCompactionSettings = autoCompactionSettings;
@@ -15,7 +15,7 @@ angular.module('mnBuckets').controller('mnBucketsDetailsDialogController',
         })
         .onSuccess(function (result) {
           if (!result.data) {
-            $modalInstance.close();
+            $uibModalInstance.close();
             mnHelper.reloadState();
           }
         })

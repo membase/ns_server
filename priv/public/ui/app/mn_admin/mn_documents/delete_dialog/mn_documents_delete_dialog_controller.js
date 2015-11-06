@@ -5,7 +5,7 @@
     .module("mnDocuments")
     .controller("mnDocumentsDeleteDialogController", mnDocumentsDeleteDialogController);
 
-  function mnDocumentsDeleteDialogController($scope, mnDocumentsEditingService, $state, documentId, $modalInstance, mnPromiseHelper) {
+  function mnDocumentsDeleteDialogController($scope, mnDocumentsEditingService, $state, documentId, $uibModalInstance, mnPromiseHelper) {
     var vm = this;
     vm.onSubmit = onSubmit;
 
@@ -14,7 +14,7 @@
         documentsBucket: $state.params.documentsBucket,
         documentId: documentId
       });
-      mnPromiseHelper.handleModalAction($scope, promise, $modalInstance);
+      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance);
     }
   }
 })();

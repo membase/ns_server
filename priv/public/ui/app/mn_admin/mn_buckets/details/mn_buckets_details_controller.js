@@ -1,5 +1,5 @@
 angular.module('mnBuckets').controller('mnBucketsDetailsController',
-  function ($scope, mnBucketsDetailsService, mnPoolDefault, mnPromiseHelper, mnSettingsAutoCompactionService, mnCompaction, mnHelper, $modal, mnBytesToMBFilter, mnBucketsDetailsDialogService) {
+  function ($scope, mnBucketsDetailsService, mnPoolDefault, mnPromiseHelper, mnSettingsAutoCompactionService, mnCompaction, mnHelper, $uibModal, mnBytesToMBFilter, mnBucketsDetailsDialogService) {
     function getBucketsDetails() {
       mnPromiseHelper($scope, mnBucketsDetailsService.getDetails($scope.bucket))
         .applyToScope("bucketDetails")
@@ -7,7 +7,7 @@ angular.module('mnBuckets').controller('mnBucketsDetailsController',
     }
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
     $scope.editBucket = function () {
-      $modal.open({
+      $uibModal.open({
         templateUrl: 'app/mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
         controller: 'mnBucketsDetailsDialogController',
         resolve: {
@@ -23,7 +23,7 @@ angular.module('mnBuckets').controller('mnBucketsDetailsController',
       });
     };
     $scope.deleteBucket = function (bucket) {
-      $modal.open({
+      $uibModal.open({
         templateUrl: 'app/mn_admin/mn_buckets/delete_dialog/mn_buckets_delete_dialog.html',
         controller: 'mnBucketsDeleteDialogController',
         resolve: {
@@ -34,7 +34,7 @@ angular.module('mnBuckets').controller('mnBucketsDetailsController',
       });
     };
     $scope.flushBucket = function (bucket) {
-      $modal.open({
+      $uibModal.open({
         templateUrl: 'app/mn_admin/mn_buckets/flush_dialog/mn_buckets_flush_dialog.html',
         controller: 'mnBucketsFlushDialogController',
         resolve: {

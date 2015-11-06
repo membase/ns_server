@@ -1,5 +1,5 @@
 angular.module('mnXDCR').controller('mnXDCRCreateDialogController',
-  function ($scope, $modalInstance, $timeout, $window, mnPromiseHelper, mnPoolDefault, mnXDCRService, buckets, replicationSettings, mnRegexService) {
+  function ($scope, $uibModalInstance, $timeout, $window, mnPromiseHelper, mnPoolDefault, mnXDCRService, buckets, replicationSettings, mnRegexService) {
     $scope.replication = replicationSettings.data;
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
     delete $scope.replication.socketOptions;
@@ -28,7 +28,7 @@ angular.module('mnXDCR').controller('mnXDCRCreateDialogController',
         replication.filterExpression = filterExpression;
       }
       var promise = mnXDCRService.postRelication(replication);
-      mnPromiseHelper($scope, promise, $modalInstance)
+      mnPromiseHelper($scope, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .cancelOnScopeDestroy()
         .catchErrors()

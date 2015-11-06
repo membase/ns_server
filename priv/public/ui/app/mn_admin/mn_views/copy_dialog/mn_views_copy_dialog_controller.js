@@ -5,7 +5,7 @@
     .module("mnViews")
     .controller("mnViewsCopyDialogController", mnViewsCopyDialogController);
 
-  function mnViewsCopyDialogController($scope, $modal, $state, mnViewsListService, mnPromiseHelper, $modalInstance, currentDdoc) {
+  function mnViewsCopyDialogController($scope, $uibModal, $state, mnViewsListService, mnPromiseHelper, $uibModalInstance, currentDdoc) {
     var vm = this;
 
     vm.ddoc = {};
@@ -16,7 +16,7 @@
       var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, "_design/dev_" + encodeURIComponent(vm.ddoc.name));
       var copy = prepareToCopy(url, currentDdoc);
       var promise = mnViewsListService.getDdoc(url).then(function (presentDdoc) {
-        return $modal.open({
+        return $uibModal.open({
           templateUrl: 'app/mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
         }).result.then(copy);
       }, copy);
@@ -27,7 +27,7 @@
     }
     function prepareToCopy(url, ddoc) {
       return function () {
-        return mnPromiseHelper(vm, mnViewsListService.createDdoc(url, ddoc.json), $modalInstance)
+        return mnPromiseHelper(vm, mnViewsListService.createDdoc(url, ddoc.json), $uibModalInstance)
           .closeOnSuccess()
           .cancelOnScopeDestroy($scope)
           .onSuccess(function () {

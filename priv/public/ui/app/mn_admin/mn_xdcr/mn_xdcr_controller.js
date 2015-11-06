@@ -8,7 +8,7 @@ angular.module('mnXDCR', [
   'mnPoolDefault',
   'mnSpinner'
 ]).controller('mnXDCRController',
-  function ($scope, $modal, mnHelper, mnPoll, mnPoolDefault, mnXDCRService, mnBucketsService, mnPromiseHelper) {
+  function ($scope, $uibModal, mnHelper, mnPoll, mnPoolDefault, mnXDCRService, mnBucketsService, mnPromiseHelper) {
 
     //hack for avoiding access to $parent scope from child scope via propery "$parent"
     //should be removed after implementation of Controller As syntax
@@ -23,7 +23,7 @@ angular.module('mnXDCR', [
       .cycle();
 
     $scope.createClusterReference = function () {
-      $modal.open({
+      $uibModal.open({
         controller: 'mnXDCRReferenceDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/reference_dialog/mn_xdcr_reference_dialog.html',
         scope: $scope,
@@ -33,7 +33,7 @@ angular.module('mnXDCR', [
       });
     };
     $scope.deleteClusterReference = function (row) {
-      $modal.open({
+      $uibModal.open({
         controller: 'mnXDCRDeleteReferenceDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/delete_reference_dialog/mn_xdcr_delete_reference_dialog.html',
         scope: $scope,
@@ -43,7 +43,7 @@ angular.module('mnXDCR', [
       });
     };
     $scope.editClusterReference = function (reference) {
-      $modal.open({
+      $uibModal.open({
         controller: 'mnXDCRReferenceDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/reference_dialog/mn_xdcr_reference_dialog.html',
         scope: $scope,
@@ -53,7 +53,7 @@ angular.module('mnXDCR', [
       });
     };
     $scope.createReplications = function () {
-      $modal.open({
+      $uibModal.open({
         controller: 'mnXDCRCreateDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/create_dialog/mn_xdcr_create_dialog.html',
         scope: $scope,
@@ -65,7 +65,7 @@ angular.module('mnXDCR', [
     };
     $scope.showReplicationErrors = function (row) {
       $scope.xdcrErrors = row.errors;
-      $modal.open({
+      $uibModal.open({
         templateUrl: 'app/mn_admin/mn_xdcr/errors_dialog/mn_xdcr_errors_dialog.html',
         scope: $scope
       }).result['finally'](function () {
@@ -73,7 +73,7 @@ angular.module('mnXDCR', [
       });
     };
     $scope.deleteReplication = function (row) {
-      $modal.open({
+      $uibModal.open({
         controller: 'mnXDCRDeleteDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/delete_dialog/mn_xdcr_delete_dialog.html',
         scope: $scope,
@@ -83,7 +83,7 @@ angular.module('mnXDCR', [
       });
     };
     $scope.editReplication = function (row) {
-      $modal.open({
+      $uibModal.open({
         controller: 'mnXDCREditDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/edit_dialog/mn_xdcr_edit_dialog.html',
         scope: $scope,

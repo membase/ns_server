@@ -5,7 +5,7 @@
     .module("mnDocuments")
     .controller("mnDocumentsListController", mnDocumentsListController);
 
-  function mnDocumentsListController($scope, mnDocumentsListService, $state, $modal, mnPoll, removeEmptyValueFilter) {
+  function mnDocumentsListController($scope, mnDocumentsListService, $state, $uibModal, mnPoll, removeEmptyValueFilter) {
     var vm = this;
 
     vm.nextPage = nextPage;
@@ -70,7 +70,7 @@
       return false;
     }
     function deleteDocument(documentId) {
-      return $modal.open({
+      return $uibModal.open({
         controller: 'mnDocumentsDeleteDialogController as mnDocumentsDeleteDialogController',
         templateUrl: 'app/mn_admin/mn_documents/delete_dialog/mn_documents_delete_dialog.html',
         resolve: {
@@ -81,7 +81,7 @@
       });
     }
     function showCreateDialog() {
-      return $modal.open({
+      return $uibModal.open({
         controller: 'mnDocumentsCreateDialogController as mnDocumentsCreateDialogController',
         templateUrl: 'app/mn_admin/mn_documents/create_dialog/mn_documents_create_dialog.html',
         resolve: {

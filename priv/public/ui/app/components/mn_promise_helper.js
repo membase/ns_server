@@ -6,8 +6,8 @@ angular.module('mnPromiseHelper', [
 ]).factory('mnPromiseHelper',
   function (mnAlertsService, mnHelper, mnPoll, mnPendingQueryKeeper, $timeout) {
 
-    mnPromiseHelper.handleModalAction = function ($scope, promise, $modalInstance, vm) {
-      return mnPromiseHelper(vm || $scope, promise, $modalInstance)
+    mnPromiseHelper.handleModalAction = function ($scope, promise, $uibModalInstance, vm) {
+      return mnPromiseHelper(vm || $scope, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .closeFinally()
         .cancelOnScopeDestroy($scope)

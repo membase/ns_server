@@ -1,5 +1,5 @@
 angular.module('mnServers').controller('mnServersFailOverDialogController',
-  function ($scope, mnServersService, mnPromiseHelper, node, $modalInstance) {
+  function ($scope, mnServersService, mnPromiseHelper, node, $uibModalInstance) {
     $scope.node = node;
 
     var promise = mnServersService.getNodeStatuses(node.hostname);
@@ -11,12 +11,12 @@ angular.module('mnServers').controller('mnServersFailOverDialogController',
         if (details) {
           $scope.status = details;
         } else {
-          $modalInstance.close();
+          $uibModalInstance.close();
         }
       });
 
     $scope.onSubmit = function () {
       var promise = mnServersService.postFailover($scope.status.failOver, node.otpNode);
-      mnPromiseHelper.handleModalAction($scope, promise, $modalInstance);
+      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance);
     };
   });

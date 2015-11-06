@@ -5,7 +5,7 @@
     .module("mnViews")
     .controller("mnViewsListController", mnViewsListController);
 
-  function mnViewsListController($scope, $state, $modal, mnPoolDefault, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoll) {
+  function mnViewsListController($scope, $state, $uibModal, mnPoolDefault, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoll) {
     var vm = this;
 
     vm.showCreationDialog = showCreationDialog;
@@ -67,7 +67,7 @@
     }
 
     function showCreationDialog(ddoc, isSpatial) {
-      $modal.open({
+      $uibModal.open({
         controller: 'mnViewsCreateDialogController as mnViewsCreateDialogController',
         templateUrl: 'app/mn_admin/mn_views/create_dialog/mn_views_create_dialog.html',
         scope: $scope,
@@ -78,7 +78,7 @@
       });
     }
     function showDdocDeletionDialog(ddoc) {
-      $modal.open({
+      $uibModal.open({
         controller: 'mnViewsDeleteDdocDialogController as mnViewsDeleteDdocDialogController',
         templateUrl: 'app/mn_admin/mn_views/delete_ddoc_dialog/mn_views_delete_ddoc_dialog.html',
         scope: $scope,
@@ -88,7 +88,7 @@
       });
     }
     function showViewDeletionDialog(ddoc, viewName, isSpatial) {
-      $modal.open({
+      $uibModal.open({
         controller: 'mnViewsDeleteViewDialogController as mnViewsDeleteViewDialogController',
         templateUrl: 'app/mn_admin/mn_views/delete_view_dialog/mn_views_delete_view_dialog.html',
         scope: $scope,
@@ -118,13 +118,13 @@
         .cancelOnScopeDestroy($scope)
         .getPromise()
         .then(function (presentDdoc) {
-          $modal.open({
+          $uibModal.open({
             templateUrl: 'app/mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
           }).result.then(publish);
         }, publish);
     }
     function copyToDev(ddoc) {
-      $modal.open({
+      $uibModal.open({
         controller: 'mnViewsCopyDialogController as mnViewsCopyDialogController',
         templateUrl: 'app/mn_admin/mn_views/copy_dialog/mn_views_copy_dialog.html',
         scope: $scope,

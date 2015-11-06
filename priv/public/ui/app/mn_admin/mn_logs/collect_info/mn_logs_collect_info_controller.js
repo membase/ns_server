@@ -1,5 +1,5 @@
 angular.module('mnLogs').controller('mnLogsCollectInfoController',
-  function ($scope, mnHelper, mnPromiseHelper, mnPoolDefault, mnLogsCollectInfoService, mnPoll, $state, $modal) {
+  function ($scope, mnHelper, mnPromiseHelper, mnPoolDefault, mnLogsCollectInfoService, mnPoll, $state, $uibModal) {
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
     if ($scope.mnPoolDefault.value.isROAdminCreds) {
       return;
@@ -13,7 +13,7 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
     }
 
     $scope.stopCollection = function () {
-      $modal.open({
+      $uibModal.open({
         templateUrl: 'app/mn_admin/mn_logs/collect_info/mn_logs_collect_info_stop_dialog.html'
       }).result.then(function () {
         $scope.disabledStopCollect = true;

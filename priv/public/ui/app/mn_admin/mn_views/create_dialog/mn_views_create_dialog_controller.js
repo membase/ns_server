@@ -5,7 +5,7 @@
     .module("mnViews")
     .controller("mnViewsCreateDialogController", mnViewsCreateDialogController);
 
-  function mnViewsCreateDialogController($scope, $modal, $state, $q, mnViewsListService, mnHelper, mnPromiseHelper, $modalInstance, currentDdoc, viewType) {
+  function mnViewsCreateDialogController($scope, $uibModal, $state, $q, mnViewsListService, mnHelper, mnPromiseHelper, $uibModalInstance, currentDdoc, viewType) {
     var vm = this;
     var isViewsEditingSection = $state.is('app.admin.views.editing.result');
     vm.ddoc = {};
@@ -57,12 +57,12 @@
           });
         }
         if (_.keys(views).length >= 10) {
-          return $modal.open({
+          return $uibModal.open({
             templateUrl: 'app/mn_admin/mn_views/confirm_dialogs/mn_views_confirm_limit_dialog.html'
           }).result.then(function () {
             return createDdoc(presentDdoc);
           }, function () {
-            $modalInstance.close();
+            $uibModalInstance.close();
           });
         }
         return createDdoc(presentDdoc);
@@ -70,7 +70,7 @@
         return createDdoc();
       });
 
-      mnPromiseHelper(vm, promise, $modalInstance)
+      mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
         .cancelOnScopeDestroy($scope)
         .catchErrors()

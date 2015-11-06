@@ -1,5 +1,5 @@
 angular.module('app').controller('appController',
-  function ($scope, $templateCache, $http, $modal, $rootScope, $location, pools, parseVersionFilter) {
+  function ($scope, $templateCache, $http, $uibModal, $rootScope, $location, pools, parseVersionFilter) {
 
     _.each(angularTemplatesList, function (url) {
       $http.get(url, {cache: $templateCache});
@@ -13,12 +13,12 @@ angular.module('app').controller('appController',
       $rootScope.mnTitle = (version ? '(' + version[0] + ')' : '') + (tabName ? '-' + tabName : '');
     });
     $scope.showAboutDialog = function () {
-      $modal.open({
+      $uibModal.open({
         templateUrl: 'app/mn_about_dialog.html',
         scope: $scope,
-        controller: function ($modalInstance) {
+        controller: function ($uibModalInstance) {
           $scope.cloceAboutDialog = function () {
-            $modalInstance.dismiss('cancel');
+            $uibModalInstance.dismiss('cancel');
           };
         }
       });

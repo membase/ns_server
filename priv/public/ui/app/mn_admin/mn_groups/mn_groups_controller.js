@@ -16,7 +16,7 @@
     ])
     .controller('mnGroupsController', mnGroupsController);
 
-    function mnGroupsController($scope, $modal, mnGroupsService, mnPromiseHelper, mnHelper, mnPoll, jQuery, mnMakeSafeForCSSFilter, mnNaturalSortingFilter, $window, mnAlertsService, mnPoolDefault) {
+    function mnGroupsController($scope, $uibModal, mnGroupsService, mnPromiseHelper, mnHelper, mnPoll, jQuery, mnMakeSafeForCSSFilter, mnNaturalSortingFilter, $window, mnAlertsService, mnPoolDefault) {
       var vm = this;
 
       vm.mnPoolDefault = mnPoolDefault.latestValue();
@@ -59,7 +59,7 @@
         var currentGroups = vm.mnGroupsState.currentGroups;
 
         if (_.isEqual(initialGroups, currentGroups)) {
-          return $modal.open({
+          return $uibModal.open({
             templateUrl: 'app/mn_admin/mn_groups/delete_dialog/mn_groups_delete_dialog.html',
             controller: 'mnGroupsDeleteDialogController as mnGroupsDeleteDialogController',
             resolve: {
@@ -74,7 +74,7 @@
       }
 
       function createGroup(group) {
-        return $modal.open({
+        return $uibModal.open({
           templateUrl: 'app/mn_admin/mn_groups/group_dialog/mn_groups_group_dialog.html',
           controller: 'mnGroupsGroupDialogController as mnGroupsGroupDialogController',
           resolve: {

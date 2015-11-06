@@ -5,7 +5,7 @@
     .module("mnDocuments")
     .controller("mnDocumentsEditingController", mnDocumentsEditingController);
 
-  function mnDocumentsEditingController($scope, $state, $modal, mnDocumentsEditingService, mnPromiseHelper) {
+  function mnDocumentsEditingController($scope, $state, $uibModal, mnDocumentsEditingService, mnPromiseHelper) {
     var vm = this;
     var editorOptions = {
       lineNumbers: true,
@@ -46,7 +46,7 @@
       });
     }
     function deleteDocument(documentId) {
-      return $modal.open({
+      return $uibModal.open({
         controller: 'mnDocumentsDeleteDialogController as mnDocumentsDeleteDialogController',
         templateUrl: 'app/mn_admin/mn_documents/delete_dialog/mn_documents_delete_dialog.html',
         resolve: {
@@ -59,7 +59,7 @@
       });
     }
     function saveAsDialog() {
-      return $modal.open({
+      return $uibModal.open({
         controller: 'mnDocumentsCreateDialogController as mnDocumentsCreateDialogController',
         templateUrl: 'app/mn_admin/mn_documents/create_dialog/mn_documents_create_dialog.html',
         resolve: {

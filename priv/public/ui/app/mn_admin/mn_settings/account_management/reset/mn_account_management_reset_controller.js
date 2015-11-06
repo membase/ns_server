@@ -5,7 +5,7 @@
     .module('mnAccountManagement')
     .controller('mnAccountManagementResetController', mnAccountManagementResetController);
 
-  function mnAccountManagementResetController($scope, $modalInstance, mnAccountManagementService, mnPromiseHelper) {
+  function mnAccountManagementResetController($scope, $uibModalInstance, mnAccountManagementService, mnPromiseHelper) {
     var vm = this;
 
     vm.onSubmit = onSubmit;
@@ -16,7 +16,7 @@
       }
 
       var promise = mnAccountManagementService.resetReadOnlyAdmin(vm.password);
-      mnPromiseHelper(vm, promise, $modalInstance)
+      mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
         .cancelOnScopeDestroy($scope)
         .catchErrors()

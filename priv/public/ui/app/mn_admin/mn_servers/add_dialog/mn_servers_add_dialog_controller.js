@@ -1,5 +1,5 @@
 angular.module('mnServers').controller('mnServersAddDialogController',
-  function ($scope, $modal, mnServersService, $modalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
+  function ($scope, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
     reset();
     $scope.addNodeConfig = {
       services: {
@@ -17,7 +17,7 @@ angular.module('mnServers').controller('mnServersAddDialogController',
     };
 
     $scope.cancel = function () {
-      $modalInstance.dismiss('cancel');
+      $uibModalInstance.dismiss('cancel');
     };
 
     function reset() {
@@ -46,7 +46,7 @@ angular.module('mnServers').controller('mnServersAddDialogController',
 
       var promise = mnServersService.addServer($scope.addNodeConfig.selectedGroup, $scope.addNodeConfig.credentials, servicesList);
 
-      promise = mnPromiseHelper($scope, promise, $modalInstance)
+      promise = mnPromiseHelper($scope, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .closeOnSuccess()
@@ -57,7 +57,7 @@ angular.module('mnServers').controller('mnServersAddDialogController',
             .getPromise()
             .then(function (poolsDefault) {
               if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, $scope.addNodeConfig.services.model, 'index')) {
-                return $modal.open({
+                return $uibModal.open({
                   templateUrl: 'app/mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
                   controller: 'mnServersMemoryQuotaDialogController',
                   resolve: {

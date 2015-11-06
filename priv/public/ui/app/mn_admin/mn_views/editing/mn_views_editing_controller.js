@@ -5,7 +5,7 @@
     .module("mnViews")
     .controller("mnViewsEditingController", mnViewsEditingController);
 
-  function mnViewsEditingController($scope, $state, $modal, mnPoolDefault, mnHelper, mnViewsEditingService, mnViewsListService, mnPromiseHelper) {
+  function mnViewsEditingController($scope, $state, $uibModal, mnPoolDefault, mnHelper, mnViewsEditingService, mnViewsListService, mnPromiseHelper) {
     var vm = this;
     var viewsOptions = {
       lineNumbers: true,
@@ -81,7 +81,7 @@
     }
     function saveAs(e) {
       e.stopImmediatePropagation();
-      $modal.open({
+      $uibModal.open({
         controller: 'mnViewsCreateDialogController as mnViewsCreateDialogController',
         templateUrl: 'app/mn_admin/mn_views/create_dialog/mn_views_create_dialog.html',
         scope: $scope,

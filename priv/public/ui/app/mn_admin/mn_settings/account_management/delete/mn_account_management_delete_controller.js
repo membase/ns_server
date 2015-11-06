@@ -5,7 +5,7 @@
     .module('mnAccountManagement')
     .controller('mnAccountManagementDeleteController', mnAccountManagementDeleteController);
 
-  function mnAccountManagementDeleteController($scope, $modalInstance, mnAccountManagementService, mnPromiseHelper, name) {
+  function mnAccountManagementDeleteController($scope, $uibModalInstance, mnAccountManagementService, mnPromiseHelper, name) {
     var vm = this;
 
     vm.name = name;
@@ -17,7 +17,7 @@
       }
 
       var promise = mnAccountManagementService.deleteReadOnlyAdmin();
-      mnPromiseHelper(vm, promise, $modalInstance)
+      mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
         .cancelOnScopeDestroy($scope)
         .catchGlobalErrors()

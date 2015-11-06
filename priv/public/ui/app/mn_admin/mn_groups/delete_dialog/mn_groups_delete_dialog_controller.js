@@ -5,7 +5,7 @@
     .module('mnGroups')
     .controller('mnGroupsDeleteDialogController', mnGroupsDeleteDialogController);
 
-  function mnGroupsDeleteDialogController($scope, $modalInstance, mnGroupsService, mnPromiseHelper, group) {
+  function mnGroupsDeleteDialogController($scope, $uibModalInstance, mnGroupsService, mnPromiseHelper, group) {
     var vm = this;
 
     vm.onSubmit = onSubmit;
@@ -16,7 +16,7 @@
       }
 
       var promise = mnGroupsService.deleteGroup(group.uri);
-      mnPromiseHelper(vm, promise, $modalInstance)
+      mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
         .catchErrors()
         .closeFinally()

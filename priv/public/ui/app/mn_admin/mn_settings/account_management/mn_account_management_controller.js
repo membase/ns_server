@@ -11,7 +11,7 @@
     ])
     .controller("mnAccountManagementController", mnAccountManagementController);
 
-  function mnAccountManagementController($scope, $modal, mnAccountManagementService, mnPromiseHelper, mnHelper, mnPoolDefault) {
+  function mnAccountManagementController($scope, $uibModal, mnAccountManagementService, mnPromiseHelper, mnHelper, mnPoolDefault) {
     var vm = this;
 
     vm.creds = {};
@@ -28,7 +28,7 @@
     activate();
 
     function deleteUser() {
-      return $modal.open({
+      return $uibModal.open({
         templateUrl: 'app/mn_admin/mn_settings/account_management/delete/mn_account_management_delete.html',
         controller: 'mnAccountManagementDeleteController as mnAccountManagementDeleteController',
         resolve: {
@@ -37,7 +37,7 @@
       });
     }
     function resetUserPassword() {
-      return $modal.open({
+      return $uibModal.open({
         templateUrl: 'app/mn_admin/mn_settings/account_management/reset/mn_account_management_reset.html',
         controller: 'mnAccountManagementResetController as mnAccountManagementResetController'
       });

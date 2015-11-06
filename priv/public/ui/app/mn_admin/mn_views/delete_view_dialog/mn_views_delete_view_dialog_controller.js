@@ -5,7 +5,7 @@
     .module("mnViews")
     .controller("mnViewsDeleteViewDialogController", mnViewsDeleteViewDialogController);
 
-  function mnViewsDeleteViewDialogController($scope, $state, $modalInstance, mnPromiseHelper, mnViewsListService, currentDdocName, currentViewName, isSpatial) {
+  function mnViewsDeleteViewDialogController($scope, $state, $uibModalInstance, mnPromiseHelper, mnViewsListService, currentDdocName, currentViewName, isSpatial) {
     var vm = this;
     vm.currentDdocName = currentDdocName;
     vm.currentViewName = currentViewName;
@@ -22,7 +22,7 @@
           .getPromise();
       });
 
-      mnPromiseHelper.handleModalAction($scope, promise, $modalInstance, vm);
+      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance, vm);
     };
   }
 })();

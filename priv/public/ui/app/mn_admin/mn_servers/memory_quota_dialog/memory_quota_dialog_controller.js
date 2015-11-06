@@ -1,5 +1,5 @@
 angular.module('mnServers').controller('mnServersMemoryQuotaDialogController',
-  function ($scope, $modalInstance, mnSettingsClusterService, memoryQuotaConfig, mnPromiseHelper) {
+  function ($scope, $uibModalInstance, mnSettingsClusterService, memoryQuotaConfig, mnPromiseHelper) {
     $scope.config = memoryQuotaConfig;
 
     $scope.onSubmit = function () {
@@ -8,7 +8,7 @@ angular.module('mnServers').controller('mnServersMemoryQuotaDialogController',
       }
 
       var promise = mnSettingsClusterService.postPoolsDefault($scope.config);
-      mnPromiseHelper($scope, promise, $modalInstance)
+      mnPromiseHelper($scope, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .cancelOnScopeDestroy()
