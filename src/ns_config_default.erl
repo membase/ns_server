@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {4, 0}.
+    list_to_tuple(?WATSON_VERSION_NUM).
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),
@@ -250,7 +250,6 @@ default() ->
                   end},
        {admin_user, "_admin"},
        {admin_pass, binary_to_list(couch_uuids:random())},
-       {bucket_engine, path_config:component_path(lib, "memcached/bucket_engine.so")},
        {engines,
         [{membase,
           [{engine, path_config:component_path(lib, "memcached/ep.so")},
@@ -314,13 +313,10 @@ default() ->
                       [log_cyclesize, log_sleeptime, log_path, log_prefix]}}]}
          ]},
 
-        {engine,
-         {[{module, list_to_binary(
-                      path_config:component_path(lib, "memcached/bucket_engine.so"))},
-           {config, {"admin=~s;default_bucket_name=default;auto_create=false",
-                     [admin_user]}}]}},
+        {admin, {"~s", [admin_user]}},
 
         {verbosity, verbosity},
+
         {audit_file, {"~s", [audit_file]}}
        ]}},
 
@@ -417,6 +413,9 @@ upgrade_config(Config) ->
         {value, {3,0,99}} ->
             [{set, {node, node(), config_version}, {4,0}} |
              upgrade_config_from_3_0_99_to_4_0(Config)];
+        {value, {4,0}} ->
+            [{set, {node, node(), config_version}, CurrentVersion} |
+             upgrade_config_from_4_0_to_watson()];
         V0 ->
             OldVersion =
                 case V0 of
@@ -546,6 +545,15 @@ do_upgrade_config_from_3_0_99_to_4_0(Config, DefaultConfig) ->
      {set, McdKey, NewMcdConfig},
      {set, JTKey, {NewJsonTemplateConfig}}].
 
+upgrade_config_from_4_0_to_watson() ->
+    DefaultConfig = default(),
+    do_upgrade_config_from_4_0_to_watson(DefaultConfig).
+
+do_upgrade_config_from_4_0_to_watson(DefaultConfig) ->
+    Key = {node, node(), memcached_config},
+    {value, McdConfig} = ns_config:search([DefaultConfig], Key),
+    [{set, Key, McdConfig}].
+
 upgrade_2_3_0_to_3_0_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
@@ -625,6 +633,14 @@ upgrade_3_0_99_to_4_0_test() ->
                   {set, {node, _, memcached_config}, {[{some_key, some_value},
                                                        {audit_file, audit_file}]}}],
                  do_upgrade_config_from_3_0_99_to_4_0(Cfg, Default)).
+
+upgrade_4_0_to_watson_test() ->
+    Default = [{{node, node(), memcached_config}, memcached_config},
+               {{node, node(), memcached}, memcached},
+               {{node, node(), memcached_defaults}, memcached_defaults}],
+
+    ?assertMatch([{set, {node, _, memcached_config}, memcached_config}],
+                 do_upgrade_config_from_4_0_to_watson(Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
