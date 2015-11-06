@@ -609,6 +609,7 @@ body.auth #cluster_state_id, body.init_welcome #cluster_state_id {font-style:ita
 .active_tooltip span.tooltip_msg {display:block;}
 .tooltip {position:relative; display:inline-block; text-decoration:none !important;}
 .tooltip:hover span:first-child {text-decoration:underline;}
+.tooltip:hover .tooltip_msg {display:block;}
 .tooltip .tooltip_msg {display:none; position:absolute; width:150px; padding:6px 0 0 0; right:0px; top:14px; background:url(/images/tooltip_bg.gif) 100% 0 no-repeat; z-index:10; line-height: 11px; cursor: default;}
 .wider_tooltip.tooltip .tooltip_msg {width:200px; background-image:url(/images/tooltip_bg_777777.png);}
 .wider_tooltip.tooltip .tooltip_msg span { background:none #777777; font-size:10pt;}
