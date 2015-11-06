@@ -53,7 +53,8 @@
          alerts/2,
          modify_compaction_settings/2,
          regenerate_certificate/1,
-         setup_ldap/2
+         setup_ldap/2,
+         internal_settings/2
         ]).
 
 -export([stats/0]).
@@ -129,7 +130,9 @@ code(modify_compaction_settings) ->
 code(regenerate_certificate) ->
     8226;
 code(setup_ldap) ->
-    8227.
+    8227;
+code(internal_settings) ->
+    8228.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -180,6 +183,13 @@ get_remote(Req) ->
     {[{ip, to_binary(inet_parse:ntoa(Host))},
       {port, Port}]}.
 
+key_to_binary(A) when is_list(A) ->
+    iolist_to_binary(A);
+key_to_binary(A) when is_tuple(A) ->
+    iolist_to_binary(io_lib:format("~p", [A]));
+key_to_binary(A) ->
+    A.
+
 prepare_list(List) ->
     lists:foldl(
       fun ({_Key, undefined}, Acc) ->
@@ -187,7 +197,7 @@ prepare_list(List) ->
           ({_Key, "undefined"}, Acc) ->
               Acc;
           ({Key, Value}, Acc) ->
-              [{Key, to_binary(Value)} | Acc]
+              [{key_to_binary(Key), to_binary(Value)} | Acc]
       end, [], List).
 
 prepare(Req, Params) ->
@@ -450,3 +460,6 @@ setup_ldap(Req, Props) ->
         [{enabled, misc:expect_prop_value(enabled, Props)},
          {admins, build_ldap_users(misc:expect_prop_value(admins, Props))},
          {ro_admins, build_ldap_users(misc:expect_prop_value(roAdmins, Props))}]).
+
+internal_settings(Req, Settings) ->
+    put(internal_settings, Req, [{settings, {prepare_list(Settings)}}]).

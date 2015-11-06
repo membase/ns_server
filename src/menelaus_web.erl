@@ -3455,7 +3455,13 @@ handle_internal_settings_post(Req) ->
 
     case Errors of
         [] ->
-            ns_config:set(ToSet),
+            case ToSet of
+                [] ->
+                    ok;
+                _ ->
+                    ns_config:set(ToSet),
+                    ns_audit:internal_settings(Req, ToSet)
+            end,
 
             case NotFound of
                 [] ->

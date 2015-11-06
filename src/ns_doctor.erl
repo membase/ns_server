@@ -37,6 +37,12 @@
           tasks_version :: undefined | string()
          }).
 
+-record(cfg_handler_state, {
+          rebalance_state,
+          recovery_state,
+          buckets
+         }).
+
 -define(doctor_debug(Msg), ale:debug(?NS_DOCTOR_LOGGER, Msg)).
 -define(doctor_debug(Fmt, Args), ale:debug(?NS_DOCTOR_LOGGER, Fmt, Args)).
 
@@ -59,7 +65,8 @@ init([]) ->
     erlang:process_flag(priority, high),
     self() ! acquire_initial_status,
     ns_pubsub:subscribe_link(ns_config_events,
-                             fun handle_config_event/2, {undefined, undefined}),
+                             fun handle_config_event/2,
+                             #cfg_handler_state{}),
     case misc:get_env_default(dont_log_stats, false) of
         false ->
             timer2:send_interval(?LOG_INTERVAL, log);
@@ -85,23 +92,36 @@ handle_recovery_status_change(not_running, not_running) ->
 handle_recovery_status_change(New, undefined) ->
     {New, true}.
 
-handle_config_event({rebalance_status_uuid, NewValue}, {RebalanceState, RecoveryState}) ->
+handle_config_event({rebalance_status_uuid, NewValue},
+                    #cfg_handler_state{rebalance_state = RebalanceState} = State) ->
     case NewValue of
         RebalanceState ->
-            ok;
+            State;
         _ ->
-            ns_doctor ! significant_change
-    end,
-    {NewValue, RecoveryState};
-handle_config_event({recovery_status, NewValue}, {RebalanceState, RecoveryState}) ->
+            ns_doctor ! significant_change,
+            State#cfg_handler_state{rebalance_state = NewValue}
+    end;
+handle_config_event({recovery_status, NewValue},
+                    #cfg_handler_state{recovery_state = RecoveryState} = State) ->
     {NewState, Changed} = handle_recovery_status_change(NewValue, RecoveryState),
     case Changed of
         true ->
-            ns_doctor ! significant_change;
+            ns_doctor ! significant_change,
+            State#cfg_handler_state{recovery_state = NewState};
         false ->
             ok
-    end,
-    {RebalanceState, NewState};
+    end;
+handle_config_event({buckets, Buckets},
+                    #cfg_handler_state{buckets = KnownBuckets} = State) ->
+    BucketConfigs = proplists:get_value(configs, Buckets, []),
+    BucketNames = lists:sort([Name || {Name, _} <- BucketConfigs]),
+    case BucketNames =:= KnownBuckets of
+        true ->
+            State;
+        false ->
+            ns_doctor ! significant_change,
+            State#cfg_handler_state{buckets = BucketNames}
+    end;
 handle_config_event({nodes_wanted, _} = Msg, State) ->
     ns_doctor ! Msg,
     State;
@@ -211,7 +231,8 @@ get_tasks_version() ->
 build_tasks_list(PoolId, RebStatusTimeout) ->
     NodesDict = gen_server:call(?MODULE, get_nodes),
     AllRepDocs = xdc_rdoc_api:find_all_replication_docs(),
-    do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout).
+    Buckets = ns_bucket:get_bucket_names(),
+    do_build_tasks_list(NodesDict, PoolId, AllRepDocs, Buckets, RebStatusTimeout).
 
 wait_statuses(Nodes0, Timeout) ->
     Nodes = lists:usort(Nodes0),
@@ -320,65 +341,70 @@ maybe_refresh_tasks_version(#state{nodes = Nodes,
     State;
 maybe_refresh_tasks_version(State) ->
     Nodes = State#state.nodes,
-    TasksHashesSet =
+    TasksHash =
         dict:fold(
-          fun (TaskNode, NodeInfo, Set) ->
-                  lists:foldl(
-                    fun (Task, Set0) ->
-                            case proplists:get_value(type, Task) of
-                                indexer ->
-                                    sets:add_element(erlang:phash2(
-                                                       {indexer,
-                                                        lists:keyfind(design_documents, 1, Task),
-                                                        lists:keyfind(set, 1, Task)}),
-                                                     Set0);
-                                view_compaction ->
-                                    sets:add_element(erlang:phash2(
-                                                       {view_compaction,
-                                                        lists:keyfind(design_documents, 1, Task),
-                                                        lists:keyfind(set, 1, Task)}),
-                                                     Set0);
-                                bucket_compaction ->
-                                    sets:add_element(
-                                      erlang:phash2({bucket_compaction,
-                                                     lists:keyfind(bucket, 1, Task)}),
-                                      Set0);
-                                loadingSampleBucket ->
-                                    sets:add_element(erlang:phash2(Task), Set0);
-                                xdcr ->
-                                    sets:add_element(
-                                      erlang:phash2(lists:keyfind(id, 1, Task)),
-                                      Set0);
-                                warming_up ->
-                                    sets:add_element(
-                                      erlang:phash2({warming_up,
-                                                     lists:keyfind(bucket, 1, Task)}),
-                                      Set0);
-                                cluster_logs_collect ->
-                                    sets:add_element(
-                                      erlang:phash2({cluster_logs_collect,
-                                                     TaskNode,
-                                                     lists:keydelete(perNode, 1, Task)}),
-                                      Set0);
-                                _ ->
-                                    Set0
-                            end
-                    end, Set, proplists:get_value(local_tasks, NodeInfo, []))
-          end, sets:new(), Nodes),
-    TasksRebalanceAndRecoveryHash = erlang:phash2({erlang:phash2(TasksHashesSet),
-                                                   ns_config:read_key_fast(rebalance_status_uuid,
-                                                                           undefined),
-                                                   ns_orchestrator:is_recovery_running()}),
-    case TasksRebalanceAndRecoveryHash =:= State#state.tasks_hash of
+          fun (TaskNode, NodeInfo, Hash) ->
+                  Hash1 = compute_local_tasks_hash(TaskNode, NodeInfo, Hash),
+                  ActiveBuckets = proplists:get_value(active_buckets, NodeInfo, []),
+                  add_hash({active_buckets, TaskNode, ActiveBuckets}, Hash1)
+          end, new_hash(), Nodes),
+
+    Buckets = ns_bucket:get_bucket_names(),
+    RebalanceStatus = ns_config:read_key_fast(rebalance_status_uuid, undefined),
+    RecoveryStatus = ns_orchestrator:is_recovery_running(),
+
+    FinalHash = final_hash(add_hash({Buckets,
+                                     RebalanceStatus, RecoveryStatus}, TasksHash)),
+    case FinalHash =:= State#state.tasks_hash of
         true ->
             %% hash did not change, only nodes. Cool
             State#state{tasks_hash_nodes = Nodes};
         _ ->
             %% hash changed. Generate new version
             State#state{tasks_hash_nodes = Nodes,
-                        tasks_hash = TasksRebalanceAndRecoveryHash,
-                        tasks_version = integer_to_list(TasksRebalanceAndRecoveryHash)}
+                        tasks_hash = FinalHash,
+                        tasks_version = integer_to_list(FinalHash)}
     end.
+
+new_hash() ->
+    sets:new().
+
+add_hash(Term, HashSet) ->
+    sets:add_element(erlang:phash2(Term), HashSet).
+
+final_hash(HashSet) ->
+    erlang:phash2(HashSet).
+
+compute_local_tasks_hash(TaskNode, NodeInfo, Hash) ->
+    lists:foldl(
+      fun (Task, Acc) ->
+              case proplists:get_value(type, Task) of
+                  indexer ->
+                      add_hash({indexer,
+                                lists:keyfind(design_documents, 1, Task),
+                                lists:keyfind(set, 1, Task)}, Acc);
+                  view_compaction ->
+                      add_hash({view_compaction,
+                                lists:keyfind(design_documents, 1, Task),
+                                lists:keyfind(set, 1, Task)}, Acc);
+                  bucket_compaction ->
+                      add_hash({bucket_compaction,
+                                lists:keyfind(bucket, 1, Task)}, Acc);
+                  loadingSampleBucket ->
+                      add_hash(Task, Acc);
+                  xdcr ->
+                      add_hash(lists:keyfind(id, 1, Task), Acc);
+                  warming_up ->
+                      add_hash({warming_up,
+                                lists:keyfind(bucket, 1, Task)}, Acc);
+                  cluster_logs_collect ->
+                      add_hash({cluster_logs_collect,
+                                TaskNode,
+                                lists:keydelete(perNode, 1, Task)}, Acc);
+                  _ ->
+                      Acc
+              end
+      end, Hash, proplists:get_value(local_tasks, NodeInfo, [])).
 
 task_operation(extract, Indexer, RawTask)
   when Indexer =:= indexer ->
@@ -621,7 +647,7 @@ pick_latest_cluster_collect_task(AllNodeTasks) ->
     end.
 
 
-do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
+do_build_tasks_list(NodesDict, PoolId, AllRepDocs, Buckets, RebStatusTimeout) ->
     AllNodeTasks =
         dict:fold(
           fun (Node, NodeInfo, Acc) ->
@@ -650,125 +676,164 @@ do_build_tasks_list(NodesDict, PoolId, AllRepDocs, RebStatusTimeout) ->
                   end
           end, dict:new(), AllRawTasks),
 
-    PreRebalanceTasks0 = dict:fold(fun ({xdcr, _}, _, Acc) -> Acc;
-                                       (Signature, Value, Acc) ->
-                                           Value1 = task_operation(finalize, Signature, Value),
-                                           FinalValue = task_maybe_add_cancel_uri(Signature, Value1, PoolId),
-                                           [FinalValue | Acc]
-                                   end, [], TasksDict),
+    CompactionAndIndexingTasks =
+        dict:fold(fun ({xdcr, _}, _, Acc) -> Acc;
+                      (Signature, Value, Acc) ->
+                          Value1 = task_operation(finalize, Signature, Value),
+                          FinalValue = task_maybe_add_cancel_uri(Signature, Value1, PoolId),
+                          [FinalValue | Acc]
+                  end, [], TasksDict),
 
-    XDCRTasks = [begin
-                     {_, Id} = lists:keyfind(id, 1, Doc0),
-                     Sig = {xdcr, Id},
-                     {type, Type0} = lists:keyfind(type, 1, Doc0),
-                     Type = case Type0 of
-                                <<"xdc">> ->
-                                    capi;
-                                <<"xdc-xmem">> ->
-                                    xmem
-                            end,
+    XDCRTasks = build_xdcr_tasks(TasksDict, AllRepDocs),
+    SampleBucketTasks = build_sample_buckets_tasks(AllRawTasks),
+    WarmupTasks = build_warmup_tasks(AllRawTasks),
+    CollectTask = pick_latest_cluster_collect_task(AllNodeTasks),
+    RebalanceTask = build_rebalance_task(RebStatusTimeout),
+    RecoveryTask = build_recovery_task(PoolId),
+    OrphanBucketsTasks = build_orphan_buckets_tasks(Buckets, NodesDict),
 
-                     Doc1 = lists:keydelete(type, 1, Doc0),
-                     Doc2 = [{replicationType, Type} | Doc1],
-                     Doc3 =
-                         case dict:find(Sig, TasksDict) of
-                             {ok, Value} ->
-                                 PList = finalize_xcdr_plist(Value),
-                                 Status =
-                                     case (proplists:get_bool(pauseRequested, Doc2)
-                                           andalso proplists:get_value(maxVBReps, PList) =:= 0) of
-                                         true ->
-                                             paused;
-                                         _ ->
-                                             running
-                                     end,
-                                 [{status, Status} | Doc2] ++ PList;
+    Tasks0 = lists:append([CompactionAndIndexingTasks, XDCRTasks,
+                           SampleBucketTasks, WarmupTasks, CollectTask,
+                           RebalanceTask, RecoveryTask, OrphanBucketsTasks]),
+
+    Tasks1 =
+        lists:sort(
+          fun (A, B) ->
+                  TypeA = task_type(A),
+                  TypeB = task_type(B),
+
+                  PrioA = task_priority(TypeA),
+                  PrioB = task_priority(TypeB),
+                  {PrioA, task_name(A, TypeA)} =< {PrioB, task_name(B, TypeB)}
+          end, Tasks0),
+
+    [{struct, V} || V <- Tasks1].
+
+build_xdcr_tasks(TasksDict, AllRepDocs) ->
+    [begin
+         {_, Id} = lists:keyfind(id, 1, Doc0),
+         Sig = {xdcr, Id},
+         {type, Type0} = lists:keyfind(type, 1, Doc0),
+         Type = case Type0 of
+                    <<"xdc">> ->
+                        capi;
+                    <<"xdc-xmem">> ->
+                        xmem
+                end,
+
+         Doc1 = lists:keydelete(type, 1, Doc0),
+         Doc2 = [{replicationType, Type} | Doc1],
+         Doc3 =
+             case dict:find(Sig, TasksDict) of
+                 {ok, Value} ->
+                     PList = finalize_xcdr_plist(Value),
+                     Status =
+                         case (proplists:get_bool(pauseRequested, Doc2)
+                               andalso proplists:get_value(maxVBReps, PList) =:= 0) of
+                             true ->
+                                 paused;
                              _ ->
-                                 [{status, notRunning}, {type, xdcr} | Doc2]
+                                 running
                          end,
+                     [{status, Status} | Doc2] ++ PList;
+                 _ ->
+                     [{status, notRunning}, {type, xdcr} | Doc2]
+             end,
 
-                     CancelURI = menelaus_util:bin_concat_path(["controller", "cancelXDCR", Id]),
-                     SettingsURI = menelaus_util:bin_concat_path(["settings", "replications", Id]),
+         CancelURI = menelaus_util:bin_concat_path(["controller", "cancelXDCR", Id]),
+         SettingsURI = menelaus_util:bin_concat_path(["settings", "replications", Id]),
 
-                     [{cancelURI, CancelURI},
-                      {settingsURI, SettingsURI} | Doc3]
-                 end || Doc0 <- AllRepDocs],
+         [{cancelURI, CancelURI},
+          {settingsURI, SettingsURI} | Doc3]
+     end || Doc0 <- AllRepDocs].
 
+build_sample_buckets_tasks(AllRawTasks) ->
     SampleBucketTasks0 = lists:filter(fun (RawTask) ->
                                               case lists:keyfind(type, 1, RawTask) of
                                                   {_, loadingSampleBucket} -> true;
                                                   _ -> false
                                               end
                                       end, AllRawTasks),
-    SampleBucketTasks = [[{status, running} | KV]
-                         || KV <- SampleBucketTasks0],
+    [[{status, running} | KV] || KV <- SampleBucketTasks0].
 
+build_warmup_tasks(AllRawTasks) ->
     WarmupTasks0 = lists:filter(fun (RawTask) ->
                                         case lists:keyfind(type, 1, RawTask) of
                                             {_, warming_up} -> true;
                                             _ -> false
                                         end
                                 end, AllRawTasks),
-    WarmupTasks = [[{status, running} | KV]
-                   || KV <- WarmupTasks0],
+    [[{status, running} | KV] || KV <- WarmupTasks0].
 
-    MaybeCollectTask = pick_latest_cluster_collect_task(AllNodeTasks),
+build_rebalance_task(Timeout) ->
+    Task = do_build_rebalance_task(Timeout),
+    [Task].
 
-    PreRebalanceTasks1 = SampleBucketTasks ++ WarmupTasks ++ XDCRTasks ++ PreRebalanceTasks0 ++ MaybeCollectTask,
+do_build_rebalance_task(Timeout) ->
+    case (catch ns_orchestrator:rebalance_progress_full(Timeout)) of
+        {running, PerNode} ->
+            DetailedProgress = get_detailed_progress(),
 
-    PreRebalanceTasks2 =
-        lists:sort(
-          fun (A, B) ->
-                  PrioA = task_priority(A),
-                  PrioB = task_priority(B),
-                  {PrioA, task_name(A, PrioA)} =<
-                      {PrioB, task_name(B, PrioB)}
-          end, PreRebalanceTasks1),
+            Subtype = case ns_config:search(rebalancer_pid) =:= ns_config:search(graceful_failover_pid) of
+                          true ->
+                              gracefulFailover;
+                          _ ->
+                              rebalance
+                      end,
 
-    PreRebalanceTasks = [{struct, V} || V <- PreRebalanceTasks2],
+            [{type, rebalance},
+             {subtype, Subtype},
+             {recommendedRefreshPeriod, 0.25},
+             {status, running},
+             {progress, case lists:foldl(fun ({_, Progress}, {Total, Count}) ->
+                                                 {Total + Progress, Count + 1}
+                                         end, {0, 0}, PerNode) of
+                            {_, 0} -> 0;
+                            {TotalRebalanceProgress, RebalanceNodesCount} ->
+                                TotalRebalanceProgress * 100.0 / RebalanceNodesCount
+                        end},
+             {perNode,
+              {struct, [{Node, {struct, [{progress, Progress * 100}]}}
+                        || {Node, Progress} <- PerNode]}},
+             {detailedProgress, DetailedProgress}];
+        FullProgress ->
+            [{type, rebalance},
+             {status, notRunning},
+             {statusIsStale, FullProgress =/= not_running},
+             {masterRequestTimedOut, misc:is_timeout_exit(FullProgress)}
+             | case ns_config:search(rebalance_status) of
+                   {value, {none, ErrorMessage}} ->
+                       [{errorMessage, iolist_to_binary(ErrorMessage)}];
+                   _ -> []
+               end]
+    end.
 
-    RebalanceTask0 =
-        case (catch ns_orchestrator:rebalance_progress_full(RebStatusTimeout)) of
-            {running, PerNode} ->
-                DetailedProgress = get_detailed_progress(),
-
-                Subtype = case ns_config:search(rebalancer_pid) =:= ns_config:search(graceful_failover_pid) of
-                              true ->
-                                  gracefulFailover;
-                              _ ->
-                                  rebalance
-                          end,
-
-                [{type, rebalance},
-                 {subtype, Subtype},
-                 {recommendedRefreshPeriod, 0.25},
-                 {status, running},
-                 {progress, case lists:foldl(fun ({_, Progress}, {Total, Count}) ->
-                                                     {Total + Progress, Count + 1}
-                                             end, {0, 0}, PerNode) of
-                                {_, 0} -> 0;
-                                {TotalRebalanceProgress, RebalanceNodesCount} ->
-                                    TotalRebalanceProgress * 100.0 / RebalanceNodesCount
-                            end},
-                 {perNode,
-                  {struct, [{Node, {struct, [{progress, Progress * 100}]}}
-                            || {Node, Progress} <- PerNode]}},
-                 {detailedProgress, DetailedProgress}];
-            FullProgress ->
-                [{type, rebalance},
-                 {status, notRunning},
-                 {statusIsStale, FullProgress =/= not_running},
-                 {masterRequestTimedOut, misc:is_timeout_exit(FullProgress)}
-                 | case ns_config:search(rebalance_status) of
-                       {value, {none, ErrorMessage}} ->
-                           [{errorMessage, iolist_to_binary(ErrorMessage)}];
-                       _ -> []
-                   end]
-        end,
-    RebalanceTask = {struct, RebalanceTask0},
-    MaybeRecoveryTask = build_recovery_task(PoolId),
-
-    MaybeRecoveryTask ++ [RebalanceTask | PreRebalanceTasks].
+build_orphan_buckets_tasks(Buckets, NodesDict) ->
+    Orphans =
+        dict:fold(
+          fun (Node, NodeInfo, Acc) ->
+                  NodeBuckets = proplists:get_value(active_buckets, NodeInfo, []),
+                  case NodeBuckets -- Buckets of
+                      [] ->
+                          Acc;
+                      NodeOrphans ->
+                          lists:foldl(
+                            fun (Bucket, D) ->
+                                    misc:dict_update(Bucket,
+                                                     fun (Nodes) ->
+                                                             [Node | Nodes]
+                                                     end, [], D)
+                            end, Acc, NodeOrphans)
+                  end
+          end, dict:new(), NodesDict),
+    dict:fold(
+      fun (Bucket, BucketNodes, Acc) ->
+              Task = [{type, orphanBucket},
+                      {bucket, list_to_binary(Bucket)},
+                      {nodes, lists:usort(BucketNodes)},
+                      {recommendedRefreshPeriod, 2.0}],
+              [Task | Acc]
+      end, [], Orphans).
 
 get_detailed_progress() ->
     case ns_rebalance_observer:get_detailed_progress() of
@@ -782,33 +847,39 @@ get_detailed_progress() ->
             {struct, []}
     end.
 
-task_priority(Task) ->
-    Type = proplists:get_value(type, Task),
-    {true, Task} = {(Type =/= undefined), Task},
-    {true, Task} = {(Type =/= false), Task},
-    type_priority(Type).
+task_type(Task) ->
+    {type, Type} = lists:keyfind(type, 1, Task),
+    Type.
 
-type_priority(xdcr) ->
+task_priority(recovery) ->
     0;
-type_priority(indexer) ->
+task_priority(orphanBucket) ->
+    0;
+task_priority(rebalance) ->
     1;
-type_priority(bucket_compaction) ->
+task_priority(xdcr) ->
     2;
-type_priority(view_compaction) ->
+task_priority(indexer) ->
     3;
-type_priority(_) ->
-    4.
+task_priority(bucket_compaction) ->
+    4;
+task_priority(view_compaction) ->
+    5;
+task_priority(_) ->
+    6.
 
-task_name(Task, 0) -> %% NOTE: 0 is priority of xdcr type
+task_name(Task, xdcr) ->
     proplists:get_value(id, Task);
-task_name(_Task, 4) -> %% NOTE: 4 is priority of unknown type
-    undefined;
-task_name(Task, _Prio) ->
+task_name(Task, Type)
+  when Type =:= indexer; Type =:= bucket_compaction;
+       Type =:= view_compaction; Type =:= orphanBucket ->
     Bucket = proplists:get_value(bucket, Task),
     true = (Bucket =/= undefined),
 
     MaybeDDoc = proplists:get_value(designDocument, Task),
-    {Bucket, MaybeDDoc}.
+    {Bucket, MaybeDDoc};
+task_name(_Task, _Type) ->
+    undefined.
 
 get_node(Node, NodeStatuses) ->
     case dict:find(Node, NodeStatuses) of
@@ -839,14 +910,14 @@ build_recovery_task(PoolId) ->
                   ["pools", PoolId, "buckets", Bucket, "recoveryStatus"],
                   [{recovery_uuid, RecoveryUUID}]),
 
-            [{struct, [{type, recovery},
-                       {bucket, list_to_binary(Bucket)},
-                       {uuid, RecoveryUUID},
-                       {recommendedRefreshPeriod, 10.0},
+            [[{type, recovery},
+              {bucket, list_to_binary(Bucket)},
+              {uuid, RecoveryUUID},
+              {recommendedRefreshPeriod, 10.0},
 
-                       {stopURI, StopURI},
-                       {commitVBucketURI, CommitURI},
-                       {recoveryStatusURI, RecoveryStatusURI}]}]
+              {stopURI, StopURI},
+              {commitVBucketURI, CommitURI},
+              {recoveryStatusURI, RecoveryStatusURI}]]
     end.
 
 process_heartbeat(Node, Status, State) ->
