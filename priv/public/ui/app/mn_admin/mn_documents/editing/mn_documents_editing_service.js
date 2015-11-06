@@ -64,10 +64,7 @@
           isNotForm: true
         },
         url: buildDocumentUrl(params),
-        data: doc || {
-          "click":"to edit",
-          "new in 2.0":"there are no reserved field names"
-        }
+        data: doc || { "click": "to edit", "with JSON": "there are no reserved field names" }
       });
     }
     function getDocument(params) {
