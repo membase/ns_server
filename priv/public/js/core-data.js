@@ -796,6 +796,13 @@ var DAL = {
           return !!v.need(tasksRebalanceCell);
         }).name("inRebalanceCell");
 
+  DAL.cells.isOrphanBucketTaskCell = Cell.computeEager(function (v) {
+    var tasks = v.need(tasksProgressCell);
+    return !!_.detect(tasks, function (taskInfo) {
+      return taskInfo.type === "orphanBucket";
+    });
+  }).name("isOrphanBucketTaskCell");
+
   var inRecoveryModeCell = DAL.cells.inRecoveryModeCell =
         Cell.computeEager(function (v) {
           return !!v.need(tasksRecoveryCell);

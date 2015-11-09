@@ -51,7 +51,7 @@ var ServersSection = {
     this.serversQ.find('.add_button').toggle(!!(details && !rebalancing));
     this.serversQ.find('.stop_recovery_button').toggle(!!inRecovery);
 
-    var mayRebalance = DAL.cells.mayRebalanceWithoutSampleLoadingCell.value && !loadingSamples;
+    var mayRebalance = DAL.cells.mayRebalanceWithoutSampleLoadingCell.value && !loadingSamples && !DAL.cells.isOrphanBucketTaskCell.value
 
     var rebalanceButton = this.serversQ.find('.rebalance_button').toggle(!!details);
     rebalanceButton.toggleClass('dynamic_disabled', !mayRebalance);
