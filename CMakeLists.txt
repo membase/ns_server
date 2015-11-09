@@ -102,21 +102,21 @@ Rebar (TARGET ns_server NOCLEAN
   DEPENDS ale mlockall ns_babysitter ns_ssl_proxy gen_smtp ns_couchdb ns_cfg)
 
 # Test invocation
-ADD_CUSTOM_TARGET (ns_test
-  "${CMAKE_COMMAND}" -D "ERL_EXECUTABLE=${ERL_EXECUTABLE}"
-  -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
-  -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-test.cmake"
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  VERBATIM)
-ADD_DEPENDENCIES (ns_test ns_server)
+ADD_TEST(NAME ns_test
+  COMMAND "${CMAKE_COMMAND}" -D "ERL_EXECUTABLE=${ERL_EXECUTABLE}"
+       -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
+       -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-test.cmake"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
-ADD_TEST(NAME ns_ui_test
-         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/priv/public/angular
-         COMMAND karma start karma.conf.js --single-run)
+# Also create a custom target
+ADD_CUSTOM_TARGET (ns_test COMMAND ${CMAKE_CTEST_COMMAND} -VV -R ns_test)
+ADD_DEPENDENCIES (ns_test ns_server)
 
 # Add custom target allowing folks to easily run the tests via
 # make (and not via directly invoking ctest).
-ADD_CUSTOM_TARGET(ns_ui_test COMMAND ${CMAKE_CTEST_COMMAND} -VV)
+ADD_CUSTOM_TARGET(ns_ui_test COMMAND karma start karma.conf.js --single-run
+         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/priv/public/ui)
+
 
 # Docs
 ADD_CUSTOM_TARGET (ns_docs COMMAND priv/erldocs ./docs/erldocs
