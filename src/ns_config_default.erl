@@ -91,7 +91,7 @@ default() ->
                    undefined -> global
                end,
 
-    BreakpadMinidumpDir = path_config:component_path(data, "crash"),
+    BreakpadMinidumpDir = path_config:minidump_dir(),
     ok = misc:mkdir_p(BreakpadMinidumpDir),
 
     IsEnterprise = init_is_enterprise(),
