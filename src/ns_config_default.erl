@@ -94,7 +94,7 @@ default() ->
     RawLogDir = path_config:component_path(data, "logs"),
     ok = misc:mkdir_p(RawLogDir),
 
-    BreakpadMinidumpDir = path_config:component_path(data, "crash"),
+    BreakpadMinidumpDir = path_config:minidump_dir(),
     ok = misc:mkdir_p(BreakpadMinidumpDir),
 
     IsEnterprise = init_is_enterprise(),

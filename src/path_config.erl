@@ -16,7 +16,7 @@
 -module(path_config).
 
 -export([component_path/1, component_path/2,
-         tempfile/2, tempfile/3]).
+         tempfile/2, tempfile/3, minidump_dir/0]).
 
 %% used by ns_config_default
 -export([default_memcached_config_path/0]).
@@ -69,3 +69,6 @@ tempfile(Prefix, Suffix) ->
 
 default_memcached_config_path() ->
     filename:join(component_path(data, "config"), "memcached.json").
+
+minidump_dir() ->
+    path_config:component_path(data, "crash").
