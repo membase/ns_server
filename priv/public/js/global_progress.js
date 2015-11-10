@@ -84,6 +84,10 @@
     return '<li class="clearfix"><span class="message">Loading sample: ' + escapeHTML(obj.bucket) + '&nbsp;</span></li>';
   }
 
+  render.orphanBucket = function (obj) {
+    return '<li class="clearfix"><span class="message">Orphan bucket: ' + escapeHTML(obj.bucket) + '&nbsp;</span></li>';
+  }
+
 
   progressWrapper.find('.toggle').bind('click', function() {
     if (!progressWrapper.is('.disable_toggle')) {

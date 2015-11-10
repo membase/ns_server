@@ -831,6 +831,7 @@ build_orphan_buckets_tasks(Buckets, NodesDict) ->
               Task = [{type, orphanBucket},
                       {bucket, list_to_binary(Bucket)},
                       {nodes, lists:usort(BucketNodes)},
+                      {status, running},
                       {recommendedRefreshPeriod, 2.0}],
               [Task | Acc]
       end, [], Orphans).
