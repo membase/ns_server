@@ -33,7 +33,7 @@
     };
   }
 
-  function mnServersController($scope, $state, $uibModal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoll, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools) {
+  function mnServersController($scope, $state, $uibModal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoller, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools) {
     var vm = this;
     vm.mnPoolDefault = mnPoolDefault.latestValue();
 
@@ -78,14 +78,14 @@
 
     function activate() {
       mnHelper.initializeDetailsHashObserver(vm, 'openedServers', 'app.admin.servers');
-      mnPoll
-        .start($scope, function () {
+      vm.poller = new mnPoller($scope, function () {
           return mnServersService.getServersState($stateParams.list);
         })
         .subscribe("mnServersState", vm)
         .keepIn("app.admin.servers", vm)
         .cancelOnScopeDestroy()
-        .cycle();
+        .cycle()
+        .showSpinner(vm);
     }
 
     var ramUsageConf = {};
@@ -205,40 +205,45 @@
             });
           }
         }
+      }).result.then(function () {
+        vm.poller.reload(vm).showSpinner(vm);
       });
     }
     function postRebalance() {
       mnPromiseHelper(vm, mnServersService.postRebalance(vm.mnServersState.nodes.allNodes))
         .onSuccess(function () {
           $state.go('app.admin.servers', {list: 'active'});
-          vm.viewLoading = true;
         })
-        .reloadState()
-        .cancelOnScopeDestroy($scope);
+        .cancelOnScopeDestroy($scope)
+        .reloadAndSwitchOnPoller(vm)
+        .showSpinner(null, 50, $scope);
     }
     function onStopRecovery() {
       mnPromiseHelper(vm, mnServersService.stopRecovery(vm.mnServersState.tasks.tasksRecovery.stopURI))
-        .reloadState()
-        .cancelOnScopeDestroy($scope);
+        .cancelOnScopeDestroy($scope)
+        .reloadAndSwitchOnPoller(vm)
+        .showSpinner(null, 50, $scope);
     }
     function stopRebalance() {
       mnPromiseHelper(vm, mnServersService.stopRebalance())
         .cancelOnScopeDestroy($scope)
-        .reloadState()
-        .getPromise()
-        .then(function (resp) {
+        .onSuccess(function (resp) {
           (resp === 400) && $uibModal.open({
             templateUrl: 'app/mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
             controller: 'mnServersStopRebalanceDialogController as mnServersStopRebalanceDialogController'
+          }).result.then(function () {
+            vm.poller.reload(vm).showSpinner(vm);
           });
-        });
+        })
+        .reloadAndSwitchOnPoller(vm)
+        .showSpinner(null, 50, $scope);
     }
     function ejectServer(node) {
       if (isNodeInactiveAdded(node)) {
         mnPromiseHelper(vm, mnServersService.ejectNode({otpNode: node.otpNode}))
-          .showSpinner()
-          .reloadState()
-          .cancelOnScopeDestroy($scope);
+          .cancelOnScopeDestroy($scope)
+          .reloadAndSwitchOnPoller(vm)
+          .showSpinner(null, 50, $scope);
         return;
       }
 
@@ -268,11 +273,12 @@
                 return node;
               }
             }
+          }).result.then(function () {
+            vm.poller.reload(vm).showSpinner(vm);
           });
         } else {
           mnServersService.addToPendingEject(node);
-          vm.viewLoading = true;
-          mnHelper.reloadState();
+          vm.poller.reload(vm).showSpinner(vm);
         }
       });
 
@@ -287,26 +293,30 @@
             return node;
           }
         }
+      }).result.then(function () {
+        vm.poller.reload(vm).showSpinner(vm);
       });
     }
     function reAddNode(type, otpNode) {
-      mnPromiseHelper($scope, mnServersService.reAddNode({
+      mnPromiseHelper(vm, mnServersService.reAddNode({
         otpNode: otpNode,
         recoveryType: type
       }))
-      .reloadState()
-      .cancelOnScopeDestroy($scope);
+      .cancelOnScopeDestroy($scope)
+      .reloadAndSwitchOnPoller(vm)
+      .showSpinner(null, 50, $scope);
     }
     function cancelFailOverNode(otpNode) {
-      mnPromiseHelper($scope, mnServersService.cancelFailOverNode({
+      mnPromiseHelper(vm, mnServersService.cancelFailOverNode({
         otpNode: otpNode
       }))
-      .reloadState()
-      .cancelOnScopeDestroy($scope);
+      .cancelOnScopeDestroy($scope)
+      .reloadAndSwitchOnPoller(vm)
+      .showSpinner(null, 50, $scope);
     }
     function cancelEjectServer(node) {
       mnServersService.removeFromPendingEject(node);
-      mnHelper.reloadState();
+      vm.poller.reload(vm).showSpinner(vm);
     }
   }
 })();

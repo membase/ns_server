@@ -8,15 +8,15 @@ angular.module('mnOverview', [
   'mnPromiseHelper',
   'mnPoll'
 ]).controller('mnOverviewController',
-  function ($scope, mnServersService, mnBucketsService, mnOverviewService, mnHelper, mnPoll, mnPromiseHelper) {
+  function ($scope, mnServersService, mnBucketsService, mnOverviewService, mnHelper, mnPoller, mnPromiseHelper) {
 
-    mnPoll
-      .start($scope, mnOverviewService.getStats, 3000)
+    new mnPoller($scope, mnOverviewService.getStats)
+      .setExtractInterval(3000)
       .subscribe("mnOverviewStats")
       .cancelOnScopeDestroy()
       .cycle();
-    mnPoll
-      .start($scope, mnOverviewService.getOverviewConfig, 3000)
+    new mnPoller($scope, mnOverviewService.getOverviewConfig)
+      .setExtractInterval(3000)
       .subscribe("mnOverviewConfig")
       .cancelOnScopeDestroy()
       .cycle();

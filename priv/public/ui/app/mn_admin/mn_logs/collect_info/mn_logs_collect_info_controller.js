@@ -1,5 +1,5 @@
 angular.module('mnLogs').controller('mnLogsCollectInfoController',
-  function ($scope, mnHelper, mnPromiseHelper, mnPoolDefault, mnLogsCollectInfoService, mnPoll, $state, $uibModal) {
+  function ($scope, mnHelper, mnPromiseHelper, mnPoolDefault, mnLogsCollectInfoService, mnPoller, $state, $uibModal) {
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
     if ($scope.mnPoolDefault.value.isROAdminCreds) {
       return;
@@ -42,8 +42,7 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
           $state.go('app.admin.logs.collectInfo.result');
         });
     };
-    mnPoll
-      .start($scope, mnLogsCollectInfoService.getState)
+    new mnPoller($scope, mnLogsCollectInfoService.getState)
       .subscribe(function (state) {
         $scope.loadingResult = false;
         $scope.mnLogsCollectInfoState = state;

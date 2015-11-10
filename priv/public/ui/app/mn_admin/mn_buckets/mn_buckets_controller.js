@@ -10,7 +10,7 @@ angular.module('mnBuckets', [
   'mnPoolDefault',
   'mnSpinner'
 ]).controller('mnBucketsController',
-  function ($scope, mnBucketsService, mnHelper, mnPoolDefault, mnPromiseHelper, mnPoll, $uibModal) {
+  function ($scope, mnBucketsService, mnHelper, mnPoolDefault, mnPromiseHelper, mnPoller, $uibModal) {
     var poolDefault = mnPoolDefault.latestValue();
     $scope.isCreateNewDataBucketDisabled = function () {
       return !$scope.mnBucketsState || poolDefault.value.isROAdminCreds || $scope.areThereCreationWarnings();
@@ -48,8 +48,7 @@ angular.module('mnBuckets', [
         });
     };
 
-    mnPoll
-      .start($scope, mnBucketsService.getBucketsState)
+    new mnPoller($scope, mnBucketsService.getBucketsState)
       .subscribe("mnBucketsState")
       .keepIn("app.admin.buckets")
       .cancelOnScopeDestroy()

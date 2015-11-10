@@ -6,7 +6,10 @@
     vm.onStopRebalance = onStopRebalance;
 
     function onStopRebalance() {
-      mnPromiseHelper.handleModalAction($scope, mnServersService.stopRebalance(), $uibModalInstance, vm);
+      mnPromiseHelper(vm, mnServersService.stopRebalance(), $uibModalInstance)
+        .showErrorsSensitiveSpinner()
+        .closeFinally()
+        .cancelOnScopeDestroy($scope);
     }
   }
 })();

@@ -11,7 +11,6 @@
       function doEjectServer() {
         mnServersService.addToPendingEject(node);
         $uibModalInstance.close();
-        mnHelper.reloadState();
       };
     }
 })();

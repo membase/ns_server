@@ -5,10 +5,9 @@ angular.module('mnIndexes', [
   'mnPoll',
   'mnSpinner'
 ]).controller('mnIndexesController',
-  function ($scope, mnIndexesService, mnHelper, mnPoll) {
+  function ($scope, mnIndexesService, mnHelper, mnPoller) {
 
-    mnPoll
-      .start($scope, mnIndexesService.getIndexesState)
+    new mnPoller($scope, mnIndexesService.getIndexesState)
       .subscribe("mnIndexesState")
       .keepIn("app.admin.indexes")
       .cancelOnScopeDestroy()

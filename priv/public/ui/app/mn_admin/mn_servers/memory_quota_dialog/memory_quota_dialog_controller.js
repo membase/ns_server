@@ -19,8 +19,7 @@
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .cancelOnScopeDestroy($scope)
-        .closeOnSuccess()
-        .reloadState();
+        .closeOnSuccess();
     }
   }
 })();

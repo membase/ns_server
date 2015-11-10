@@ -1,6 +1,7 @@
 (function () {
   angular.module('mnAdmin').controller('mnAdminController', mnAdminController);
-  function mnAdminController($scope, $rootScope, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoll, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPluggableUiRegistry) {
+
+  function mnAdminController($scope, $rootScope, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPluggableUiRegistry) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -49,7 +50,7 @@
         })
         .independentOfScope();
 
-      mnPoll.startEtagBased($scope, function (previous) {
+      new mnEtagPoller($scope, function (previous) {
         return mnPoolDefault.get({
           etag: previous ? previous.etag : "",
           waitChange: 10000
@@ -69,7 +70,7 @@
       var poller;
       function runTasks() {
         poller && poller.stop();
-        poller = mnPoll.start($scope, mnTasksDetails.get)
+        poller = new mnPoller($scope, mnTasksDetails.get)
           .subscribe("tasks", vm)
           .keepIn("app.admin", vm)
           .cancelOnScopeDestroy()

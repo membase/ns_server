@@ -5,12 +5,12 @@ angular.module('mnAnalytics', [
   'ui.router',
   'mnPoll'
 ]).controller('mnAnalyticsController',
-  function ($scope, mnAnalyticsService, mnHelper, $state, mnHttp, mnPoll) {
+  function ($scope, mnAnalyticsService, mnHelper, $state, mnHttp, mnPoller) {
 
-    mnPoll
-      .start($scope, function (previousResult) {
+    new mnPoller($scope, function (previousResult) {
         return mnAnalyticsService.getStats({$stateParams: $state.params, previousResult: previousResult});
-      }, function (response) {
+      })
+      .setExtractInterval(function (response) {
         //TODO add error handler
         return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
       })

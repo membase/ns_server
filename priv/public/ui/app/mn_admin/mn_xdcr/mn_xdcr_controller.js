@@ -8,15 +8,14 @@ angular.module('mnXDCR', [
   'mnPoolDefault',
   'mnSpinner'
 ]).controller('mnXDCRController',
-  function ($scope, $uibModal, mnHelper, mnPoll, mnPoolDefault, mnXDCRService, mnBucketsService, mnPromiseHelper) {
+  function ($scope, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnBucketsService, mnPromiseHelper) {
 
     //hack for avoiding access to $parent scope from child scope via propery "$parent"
     //should be removed after implementation of Controller As syntax
     $scope.mnXDCRController = $scope;
     $scope.mnPoolDefault = mnPoolDefault.latestValue();
 
-    mnPoll
-      .start($scope, mnXDCRService.getReplicationState)
+    new mnPoller($scope, mnXDCRService.getReplicationState)
       .subscribe("mnXdcrState")
       .keepIn("app.admin.replications")
       .cancelOnScopeDestroy()

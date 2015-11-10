@@ -1,10 +1,9 @@
 angular.module('mnPromiseHelper', [
   'mnAlertsService',
   'mnHelper',
-  'mnPoll',
   'mnPendingQueryKeeper'
 ]).factory('mnPromiseHelper',
-  function (mnAlertsService, mnHelper, mnPoll, mnPendingQueryKeeper, $timeout) {
+  function (mnAlertsService, mnHelper, mnPendingQueryKeeper, $timeout) {
 
     mnPromiseHelper.handleModalAction = function ($scope, promise, $uibModalInstance, vm) {
       return mnPromiseHelper(vm || $scope, promise, $uibModalInstance)
@@ -101,6 +100,12 @@ angular.module('mnPromiseHelper', [
           promise.then(cb);
           return this;
         },
+        reloadAndSwitchOnPoller: function (vm) {
+          return mnPromiseHelper(scope, promise.then(function () {
+            vm.poller.reload(vm)
+            return vm.poller.doCallPromise;
+          }), modalInstance);
+        },
         reloadState: function () {
           promise.then(function () {
             spinnerCtrl(true);
@@ -139,12 +144,6 @@ angular.module('mnPromiseHelper', [
           nameOrCallback && setErrorsNameOrCallback(nameOrCallback);
           promise.then(removeErrors, function (resp) {
             errorsCtrl(extractErrors(resp));
-          });
-          return this;
-        },
-        cleanPollCache: function (key) {
-          promise.then(function () {
-            mnPoll.cleanCache(key);
           });
           return this;
         },

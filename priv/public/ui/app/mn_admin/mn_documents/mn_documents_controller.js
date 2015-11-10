@@ -17,7 +17,7 @@
     ])
     .controller("mnDocumentsController", mnDocumentsController);
 
-  function mnDocumentsController($scope, mnPoolDefault, mnDocumentsListService, mnPoll, $state) {
+  function mnDocumentsController($scope, mnPoolDefault, mnDocumentsListService, mnPoller, $state) {
     var vm = this;
 
     vm.mnPoolDefault = mnPoolDefault.latestValue();
@@ -34,8 +34,7 @@
           pageNumber: 0
         });
       });
-      mnPoll
-        .start($scope, function () {
+      new mnPoller($scope, function () {
           return mnDocumentsListService.populateBucketsSelectBox($state.params);
         })
         .subscribe("mnDocumentsState", vm)

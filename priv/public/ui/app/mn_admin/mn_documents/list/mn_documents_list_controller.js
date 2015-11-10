@@ -5,7 +5,7 @@
     .module("mnDocuments")
     .controller("mnDocumentsListController", mnDocumentsListController);
 
-  function mnDocumentsListController($scope, mnDocumentsListService, $state, $uibModal, mnPoll, removeEmptyValueFilter) {
+  function mnDocumentsListController($scope, mnDocumentsListService, $state, $uibModal, mnPoller, removeEmptyValueFilter) {
     var vm = this;
 
     vm.nextPage = nextPage;
@@ -110,10 +110,10 @@
 
     function activate() {
       poller && poller.stop();
-      poller = mnPoll
-        .start($scope, function () {
+      poller = new mnPoller($scope, function () {
           return mnDocumentsListService.getDocumentsListState($state.params);
-        }, 10000)
+        })
+        .setExtractInterval(10000)
         .subscribe("mnDocumentsListState", vm)
         .cancelOnScopeDestroy()
         .keepIn("app.admin.documents.list", vm)

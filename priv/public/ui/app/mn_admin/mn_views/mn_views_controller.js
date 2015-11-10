@@ -18,7 +18,7 @@
     ])
     .controller("mnViewsController", mnViewsController);
 
-    function mnViewsController($scope, $state, mnPoll, $q, mnViewsListService, mnPoolDefault) {
+    function mnViewsController($scope, $state, mnPoller, $q, mnViewsListService, mnPoolDefault) {
 
       var vm = this;
       vm.getKvNodeLink = getKvNodeLink;
@@ -41,8 +41,7 @@
             location: !$state.params.viewsBucket ? "replace" : true
           });
         });
-        mnPoll
-          .start($scope, function () {
+        new mnPoller($scope, function () {
             return mnViewsListService.prepareBucketsDropdownData($state.params, true);
           })
           .subscribe("mnViewsState", vm)

@@ -71,9 +71,6 @@
               }
             });
         });
-
-      mnPromiseHelper(vm, promise)
-        .reloadState();
     };
   }
 })();

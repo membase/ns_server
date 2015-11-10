@@ -5,7 +5,7 @@
     .module("mnViews")
     .controller("mnViewsListController", mnViewsListController);
 
-  function mnViewsListController($scope, $state, $uibModal, mnPoolDefault, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoll) {
+  function mnViewsListController($scope, $state, $uibModal, mnPoolDefault, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoller) {
     var vm = this;
 
     vm.showCreationDialog = showCreationDialog;
@@ -144,8 +144,7 @@
         vm.mnViewsListState = {};
         return;
       }
-      mnPoll
-        .start($scope, function () {
+      new mnPoller($scope, function () {
           return mnViewsListService.getViewsListState($state.params);
         })
         .subscribe("mnViewsListState", vm)

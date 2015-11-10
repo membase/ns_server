@@ -1,8 +1,7 @@
 angular.module('mnLogs').controller('mnLogsListController',
-  function ($scope, mnHelper, mnLogsService, mnPoll) {
+  function ($scope, mnHelper, mnLogsService, mnPoller) {
 
-    mnPoll
-      .start($scope, mnLogsService.getLogs)
+    new mnPoller($scope, mnLogsService.getLogs)
       .subscribe(function (logs) {
         $scope.logs = logs.data.list;
       })

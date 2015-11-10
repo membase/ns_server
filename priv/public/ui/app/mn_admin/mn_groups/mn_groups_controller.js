@@ -16,7 +16,7 @@
     ])
     .controller('mnGroupsController', mnGroupsController);
 
-    function mnGroupsController($scope, $uibModal, mnGroupsService, mnPromiseHelper, mnHelper, mnPoll, jQuery, mnMakeSafeForCSSFilter, mnNaturalSortingFilter, $window, mnAlertsService, mnPoolDefault) {
+    function mnGroupsController($scope, $uibModal, mnGroupsService, mnPromiseHelper, mnHelper, mnPoller, jQuery, mnMakeSafeForCSSFilter, mnNaturalSortingFilter, $window, mnAlertsService, mnPoolDefault) {
       var vm = this;
 
       vm.mnPoolDefault = mnPoolDefault.latestValue();
@@ -88,8 +88,7 @@
           .applyToScope("mnGroupsState")
           .cancelOnScopeDestroy($scope);
         //after implementing mmAdminController via controllerAs syntax this poll should be removed
-        mnPoll
-          .start($scope, mnPoolDefault.get)
+        new mnPoller($scope, mnPoolDefault.get)
           .subscribe(function (poolDefault) {
             vm.rebalancing = poolDefault.rebalancing;
           })
