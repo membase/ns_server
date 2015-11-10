@@ -1,28 +1,26 @@
-angular.module('mnSpinner', [
-]).directive('mnSpinner', function ($compile, $rootScope) {
+(function () {
+  angular
+    .module('mnSpinner', [])
+    .directive('mnSpinner', mnSpinnerDirective);
 
-  return {
-    restrict: 'A',
-    scope: {
-      mnSpinner: '=',
-      minHeight: '@'
-    },
-    compile: function ($element) {
-      var scope = $rootScope.$new();
-      $element.append($compile("<div class=\"spinner\" ng-show=\"viewLoading\"></div>")(scope));
-      $element.addClass('spinner_wrap');
-
-      return function link($scope) {
-        $scope.$watch('mnSpinner', function (mnSpinner) {
-          scope.viewLoading = !!mnSpinner;
-          $element.css({'min-height': (scope.viewLoading && $scope.minHeight) ? $scope.minHeight : ""});
-        });
-
-        $scope.$on('$destroy', function () {
-          scope.$destroy();
-          scope = null;
-        });
+    function mnSpinnerDirective($compile) {
+      var directive = {
+        restrict: 'A',
+        scope: {
+          mnSpinner: '=',
+          minHeight: '@'
+        },
+        link: link
       };
+      return directive;
+
+      function link($scope, $element) {
+        $element.append($compile("<div class=\"spinner\" ng-show=\"mnSpinner\"></div>")($scope));
+        $element.addClass('spinner_wrap');
+
+        $scope.$watch('mnSpinner', function (mnSpinner) {
+          $element.css({'min-height': (!!mnSpinner && $scope.minHeight) ? $scope.minHeight : ""});
+        });
+      }
     }
-  };
-});
+})();
