@@ -34,10 +34,15 @@ angular.module('mnTasksDetails', [
         rv.running = _.filter(tasks, function (task) {
           return task.status === "running";
         });
+        rv.isOrphanBucketTask = !!_.detect(tasks, detectOrphanBucketTask);
 
         return rv;
       });
     };
+
+    function detectOrphanBucketTask(taskInfo) {
+      return taskInfo.type === "orphanBucket";
+    }
 
     function detectRecoveryTasks(taskInfo) {
       return taskInfo.type === "recovery";

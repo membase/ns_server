@@ -250,7 +250,7 @@ angular.module('mnServersService', [
         rv.rebalancing = poolDefault.rebalancing;
         rv.pendingLength = nodes.pending.length;
         rv.mayRebalanceWithoutSampleLoading = !poolDefault.rebalancing && !tasks.inRecoveryMode && (!!nodes.pending.length || !poolDefault.balanced) && !nodes.unhealthyActive;
-        rv.mayRebalance = rv.mayRebalanceWithoutSampleLoading && !tasks.isLoadingSamples;
+        rv.mayRebalance = rv.mayRebalanceWithoutSampleLoading && !tasks.isLoadingSampless && !tasks.isOrphanBucketTask;
         rv.showWarningMessage = rv.mayRebalanceWithoutSampleLoading && tasks.isLoadingSamples;
         rv.showPendingBadge = !rv.rebalancing && rv.pendingLength;
         rv.autoFailoverSettingsCount = autoFailoverSettings.data.count;

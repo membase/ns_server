@@ -44,6 +44,7 @@ angular.module('mnFilters', [])
         case "view_compaction": return "Compacting index " + task.bucket + "/" + task.designDocument;
         case "bucket_compaction": return "Compacting bucket " + task.bucket;
         case "loadingSampleBucket": return "Loading sample: " + task.bucket;
+        case "orphanBucket": return "Orphan bucket: " + task.bucket;
         case "clusterLogsCollection":
           var serversCount = (_.keys(task.perNode) || []).length;
           return "Collecting logs from " + serversCount + " " + (serversCount === 1 ? 'node' : 'nodes');
