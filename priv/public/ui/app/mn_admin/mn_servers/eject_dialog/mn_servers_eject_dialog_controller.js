@@ -1,12 +1,17 @@
-angular.module('mnServers').controller('mnServersEjectDialogController',
-  function ($scope, $uibModalInstance, node, warnings, mnHelper, mnPromiseHelper, mnServersService) {
-    $scope.cancel = function () {
-      $uibModalInstance.dismiss('cancel');
-    };
-    $scope.warningFlags = warnings;
-    $scope.doEjectServer = function () {
-      mnServersService.addToPendingEject(node);
-      $uibModalInstance.close();
-      mnHelper.reloadState();
-    };
-  });
+(function () {
+  angular
+    .module('mnServers')
+    .controller('mnServersEjectDialogController', mnServersEjectDialogController);
+
+    function mnServersEjectDialogController($scope, $uibModalInstance, node, warnings, mnHelper, mnPromiseHelper, mnServersService) {
+      var vm = this;
+      vm.warningFlags = warnings;
+      vm.doEjectServer = doEjectServer;
+
+      function doEjectServer() {
+        mnServersService.addToPendingEject(node);
+        $uibModalInstance.close();
+        mnHelper.reloadState();
+      };
+    }
+})();

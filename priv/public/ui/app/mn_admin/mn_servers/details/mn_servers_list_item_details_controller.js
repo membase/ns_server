@@ -1,9 +1,13 @@
-angular.module('mnServers')
-  .controller('mnServersListItemDetailsController',
-    function ($scope, mnServersListItemDetailsService, mnPromiseHelper) {
-      $scope.$watch('node', function () {
-        mnPromiseHelper($scope, mnServersListItemDetailsService.getNodeDetails($scope.node))
+(function () {
+  angular.module('mnServers')
+    .controller('mnServersListItemDetailsController', mnServersListItemDetailsController)
+
+    function mnServersListItemDetailsController($scope, mnServersListItemDetailsService, mnPromiseHelper) {
+      var vm = this;
+      $scope.$watch('this.node', function (node) {
+        mnPromiseHelper(vm, mnServersListItemDetailsService.getNodeDetails(node))
           .applyToScope("server")
-          .cancelOnScopeDestroy();
+          .cancelOnScopeDestroy($scope);
       });
-    });
+    }
+})();

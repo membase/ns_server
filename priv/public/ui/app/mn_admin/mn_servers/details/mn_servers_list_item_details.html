@@ -1,14 +1,17 @@
-<td colspan="10" class="settings-placeholder" mn-spinner="!server.getMemoryCacheConfig || !server.getDiskStorageConfig">
+<td
+  colspan="10"
+  class="settings-placeholder"
+  mn-spinner="!mnServersListItemDetailsController.server.getMemoryCacheConfig || !mnServersListItemDetailsController.server.getDiskStorageConfig">
 <div class="first gong_rb">
   <div class="pad">
     <table class="properties_table">
       <tr>
-          <td>Server Name: <span>{{server.details.hostname}}</span></td>
-          <td>Uptime: <span>{{server.details.uptime | mnFormatUptime}}</span></td>
-          <td>OS: <span>{{server.details.os}}</span></td>
+          <td>Server Name: <span>{{mnServersListItemDetailsController.server.details.hostname}}</span></td>
+          <td>Uptime: <span>{{mnServersListItemDetailsController.server.details.uptime | mnFormatUptime}}</span></td>
+          <td>OS: <span>{{mnServersListItemDetailsController.server.details.os}}</span></td>
       </tr>
       <tr>
-        <td colspan="3">Version: <span>{{server.details.version | mnPrettyVersion:true}}</span></td>
+        <td colspan="3">Version: <span>{{mnServersListItemDetailsController.server.details.version | mnPrettyVersion:true}}</span></td>
       </tr>
     </table>
   </div>
@@ -18,67 +21,77 @@
   <div class="side side_4"></div>
 </div>
 <div class="additional_server_info">
-    <h3 ng-if="server.detailedProgress">Rebalance Progress</h3>
-    <p ng-if="server.detailedProgress.bucket">
+    <h3 ng-if="mnServersListItemDetailsController.server.detailedProgress">Rebalance Progress</h3>
+    <p ng-if="mnServersListItemDetailsController.server.detailedProgress.bucket">
       <span>Bucket:</span>
-      {{server.detailedProgress.bucket}}
-      ({{server.detailedProgress.bucketNumber}} out of {{server.detailedProgress.bucketsCount}})
+      {{mnServersListItemDetailsController.server.detailedProgress.bucket}}
+      ({{mnServersListItemDetailsController.server.detailedProgress.bucketNumber}} out of {{mnServersListItemDetailsController.server.detailedProgress.bucketsCount}})
     </p>
-    <div class="rebalance_progress" ng-if="server.detailedProgress">
-      <div ng-if="server.detailedProgress.outgoing">
+    <div class="rebalance_progress" ng-if="mnServersListItemDetailsController.server.detailedProgress">
+      <div ng-if="mnServersListItemDetailsController.server.detailedProgress.outgoing">
         <p class="direction">Data being transferred out</p>
         <p>
           <span>Total number of keys to be transferred:</span>
-          {{ server.detailedProgress.outgoing.docsTotal }}
+          {{ mnServersListItemDetailsController.server.detailedProgress.outgoing.docsTotal }}
         </p>
         <p>
           <span>Estimated number of keys transferred:</span>
-          {{ server.detailedProgress.outgoing.docsTransferred }}
+          {{ mnServersListItemDetailsController.server.detailedProgress.outgoing.docsTransferred }}
         </p>
         <p>
           <span>
             Number of Active# vBuckets and Replica# vBuckets to transfer:
           </span>
-          Active#-{{ server.detailedProgress.outgoing.activeVBucketsLeft }}
-          Replica#-{{ server.detailedProgress.outgoing.replicaVBucketsLeft }}
+          Active#-{{ mnServersListItemDetailsController.server.detailedProgress.outgoing.activeVBucketsLeft }}
+          Replica#-{{ mnServersListItemDetailsController.server.detailedProgress.outgoing.replicaVBucketsLeft }}
         </p>
       </div>
 
-      <div ng-if="server.detailedProgress.ingoing">
+      <div ng-if="mnServersListItemDetailsController.server.detailedProgress.ingoing">
         <p class="direction">Data being transferred in</p>
         <p>
           <span>Total number of keys to be transferred:</span>
-          {{ server.detailedProgress.ingoing.docsTotal }}
+          {{ mnServersListItemDetailsController.server.detailedProgress.ingoing.docsTotal }}
         </p>
         <p>
           <span>Estimated number of keys transferred:</span>
-          {{ server.detailedProgress.ingoing.docsTransferred }}
+          {{ mnServersListItemDetailsController.server.detailedProgress.ingoing.docsTransferred }}
         </p>
         <p>
           <span>
             Number of Active# vBuckets and Replica# vBuckets to transfer:
           </span>
-          Active#-{{ server.detailedProgress.ingoing.activeVBucketsLeft }}
-          Replica#-{{ server.detailedProgress.ingoing.replicaVBucketsLeft }}
+          Active#-{{ mnServersListItemDetailsController.server.detailedProgress.ingoing.activeVBucketsLeft }}
+          Replica#-{{ mnServersListItemDetailsController.server.detailedProgress.ingoing.replicaVBucketsLeft }}
         </p>
       </div>
 
     </div>
-    <div ng-if="server.warmUpTasks.length" mn-warmup-progress warm-up-tasks="server.warmUpTasks" sort-by="bucket"></div>
+    <div ng-if="mnServersListItemDetailsController.server.warmUpTasks.length" mn-warmup-progress warm-up-tasks="mnServersListItemDetailsController.server.warmUpTasks" sort-by="bucket"></div>
 
   <h3>Memory</h3>
   <div class="info_block">
     <span class="dynamic_ram">Dynamic RAM:</span>
-    <div class="usage-block" mn-bar-usage base-info="server.getMemoryCacheConfig"></div>
+    <div class="usage-block" mn-bar-usage base-info="mnServersListItemDetailsController.server.getMemoryCacheConfig"></div>
   </div>
   <h3>Disk Storage</h3>
   <div class="info_block">
     <span class="disk_storage">
       <span>Disk One: </span>
-      <span class="path" title="{{server.details.storage.hdd[0].path}}" ng-if="!!server.details.storage.hdd[0].path">data: {{server.details.storage.hdd[0].path | mnEllipsisiseOnLeft:25}}</span>
-      <span class="path" title="{{server.details.storage.hdd[0].index_path}}" ng-if="!!server.details.storage.hdd[0].index_path">index: {{server.details.storage.hdd[0].index_path | mnEllipsisiseOnLeft:25}}</span>
+      <span
+        class="path"
+        title="{{mnServersListItemDetailsController.server.details.storage.hdd[0].path}}"
+        ng-if="!!mnServersListItemDetailsController.server.details.storage.hdd[0].path">
+          data: {{mnServersListItemDetailsController.server.details.storage.hdd[0].path | mnEllipsisiseOnLeft:25}}
+      </span>
+      <span
+        class="path"
+        title="{{mnServersListItemDetailsController.server.details.storage.hdd[0].index_path}}"
+        ng-if="!!mnServersListItemDetailsController.server.details.storage.hdd[0].index_path">
+          index: {{mnServersListItemDetailsController.server.details.storage.hdd[0].index_path | mnEllipsisiseOnLeft:25}}
+      </span>
     </span>
-    <div class="usage-block" mn-bar-usage base-info="server.getDiskStorageConfig"></div>
+    <div class="usage-block" mn-bar-usage base-info="mnServersListItemDetailsController.server.getDiskStorageConfig"></div>
   </div>
 </div><!-- additional_server_info -->
 </td>

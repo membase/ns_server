@@ -190,12 +190,12 @@ angular.module('mnAdmin', [
       },
       views: {
         "" : {
-          controller: 'mnServersController',
+          controller: 'mnServersController as mnServersController',
           templateUrl: 'app/mn_admin/mn_servers/mn_servers.html'
         },
         "details@app.admin.servers": {
           templateUrl: 'app/mn_admin/mn_servers/details/mn_servers_list_item_details.html',
-          controller: 'mnServersListItemDetailsController'
+          controller: 'mnServersListItemDetailsController as mnServersListItemDetailsController'
         }
       }
     })

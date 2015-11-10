@@ -1,22 +1,39 @@
-angular.module('mnServers').controller('mnServersFailOverDialogController',
-  function ($scope, mnServersService, mnPromiseHelper, node, $uibModalInstance) {
-    $scope.node = node;
+(function () {
+  angular
+    .module('mnServers')
+    .controller('mnServersFailOverDialogController', mnServersFailOverDialogController);
 
-    var promise = mnServersService.getNodeStatuses(node.hostname);
-    mnPromiseHelper($scope, promise)
-      .showSpinner()
-      .cancelOnScopeDestroy()
-      .getPromise()
-      .then(function (details) {
-        if (details) {
-          $scope.status = details;
-        } else {
-          $uibModalInstance.close();
-        }
-      });
+  function mnServersFailOverDialogController($scope, mnServersService, mnPromiseHelper, node, $uibModalInstance) {
+    var vm = this;
 
-    $scope.onSubmit = function () {
-      var promise = mnServersService.postFailover($scope.status.failOver, node.otpNode);
-      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance);
-    };
-  });
+    vm.node = node;
+    vm.onSubmit = onSubmit;
+    vm.isFailOverBtnDisabled = isFailOverBtnDisabled;
+
+    activate();
+
+    function isFailOverBtnDisabled() {
+      return !vm.status || !vm.status.confirmation &&
+             (vm.status.failOver === 'failOver') &&
+            !(vm.status.down && !vm.status.backfill) && !vm.status.dataless;
+    }
+
+    function onSubmit() {
+      var promise = mnServersService.postFailover(vm.status.failOver, node.otpNode);
+      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance, vm);
+    }
+    function activate() {
+      mnPromiseHelper(vm, mnServersService.getNodeStatuses(node.hostname))
+        .showSpinner()
+        .cancelOnScopeDestroy($scope)
+        .getPromise()
+        .then(function (details) {
+          if (details) {
+            vm.status = details;
+          } else {
+            $uibModalInstance.close();
+          }
+        });
+    }
+  }
+})();

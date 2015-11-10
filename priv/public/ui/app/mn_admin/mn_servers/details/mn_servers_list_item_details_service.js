@@ -1,9 +1,15 @@
-angular.module('mnServersListItemDetailsService', [
-  'mnTasksDetails',
-  'mnHttp'
-]).factory('mnServersListItemDetailsService',
-  function (mnHttp, $q, mnTasksDetails) {
-    var mnServersListItemDetailsService = {};
+(function () {
+  angular.module('mnServersListItemDetailsService', [
+    'mnTasksDetails',
+    'mnHttp'
+  ]).factory('mnServersListItemDetailsService', mnServersListItemDetailsFactory);
+
+  function mnServersListItemDetailsFactory(mnHttp, $q, mnTasksDetails) {
+    var mnServersListItemDetailsService = {
+      getNodeDetails: getNodeDetails
+    };
+
+    return mnServersListItemDetailsService;
 
     function getBaseConfig(totals) {
       return {
@@ -31,7 +37,7 @@ angular.module('mnServersListItemDetailsService', [
       };
     }
 
-    mnServersListItemDetailsService.getNodeDetails = function (node) {
+    function getNodeDetails(node) {
       return $q.all([
         mnHttp({method: 'GET', url: '/nodes/' + encodeURIComponent(node.otpNode)}),
         mnTasksDetails.get()
@@ -65,7 +71,6 @@ angular.module('mnServersListItemDetailsService', [
         rv.details = details;
         return rv;
       });
-    };
-
-    return mnServersListItemDetailsService;
-  });
+    }
+  }
+})();

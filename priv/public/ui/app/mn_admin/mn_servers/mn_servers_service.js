@@ -1,79 +1,99 @@
-angular.module('mnServersService', [
-  'mnTasksDetails',
-  'mnPoolDefault',
-  'mnSettingsAutoFailoverService',
-  'mnHttp',
-  'ui.router',
-  'mnSettingsClusterService',
-  'mnGroupsService'
-]).factory('mnServersService',
-  function (mnHttp, mnTasksDetails, mnPoolDefault, mnGroupsService, mnSettingsAutoFailoverService, $q, $state, $stateParams) {
-    var mnServersService = {};
+(function () {
+  angular.module('mnServersService', [
+    'mnTasksDetails',
+    'mnPoolDefault',
+    'mnSettingsAutoFailoverService',
+    'mnHttp',
+    'ui.router',
+    'mnSettingsClusterService',
+    'mnGroupsService'
+  ]).factory('mnServersService', mnServersFactory);
 
+  function mnServersFactory(mnHttp, mnTasksDetails, mnPoolDefault, mnGroupsService, mnSettingsAutoFailoverService, $q, $state, $stateParams) {
     var pendingEject = [];
 
-    mnServersService.addToPendingEject = function (node) {
-      pendingEject.push(node);
-    };
-    mnServersService.removeFromPendingEject = function (node) {
-      node.pendingEject = false;
-      _.remove(pendingEject, {'hostname': node.hostname});
-    };
-    mnServersService.getPendingEject = function () {
-      return pendingEject;
-    };
-    mnServersService.setPendingEject = function (newPendingEject) {
-      pendingEject = newPendingEject;
+    var mnServersService = {
+      addToPendingEject: addToPendingEject,
+      removeFromPendingEject: removeFromPendingEject,
+      getPendingEject: getPendingEject,
+      setPendingEject: setPendingEject,
+      reAddNode: reAddNode,
+      setupServices: setupServices,
+      cancelFailOverNode: cancelFailOverNode,
+      stopRebalance: stopRebalance,
+      stopRecovery: stopRecovery,
+      postFailover: postFailover,
+      ejectNode: ejectNode,
+      postRebalance: postRebalance,
+      getNodeStatuses: getNodeStatuses,
+      getNodes: getNodes,
+      getServersState: getServersState,
+      addServer: addServer
     };
 
-    mnServersService.reAddNode = function (data) {
+    return mnServersService;
+
+    function addToPendingEject(node) {
+      pendingEject.push(node);
+    }
+    function removeFromPendingEject(node) {
+      node.pendingEject = false;
+      _.remove(pendingEject, {'hostname': node.hostname});
+    }
+    function getPendingEject() {
+      return pendingEject;
+    }
+    function setPendingEject(newPendingEject) {
+      pendingEject = newPendingEject;
+    }
+    function reAddNode(data) {
       return mnHttp({
         method: 'POST',
         url: '/controller/setRecoveryType',
         data: data
       });
-    };
-    mnServersService.setupServices = function (data) {
+    }
+    function setupServices(data) {
       return mnHttp({
         method: 'POST',
         url: '/node/controller/setupServices',
         data: data
       });
-    };
-    mnServersService.cancelFailOverNode = function (data) {
+    }
+    function cancelFailOverNode(data) {
       return mnHttp({
         method: 'POST',
         url: '/controller/reFailOver',
         data: data
       });
-    };
-    mnServersService.stopRebalance = function () {
+    }
+    function stopRebalance() {
       return mnHttp({
         method: 'POST',
         url: '/controller/stopRebalance'
       });
-    };
-    mnServersService.stopRecovery = function (url) {
+    }
+    function stopRecovery(url) {
       return mnHttp({
         method: 'POST',
         url: url
       });
-    };
-    mnServersService.postFailover = function (type, otpNode) {
+    }
+    function postFailover(type, otpNode) {
       return mnHttp({
         method: 'POST',
         url: '/controller/' + type,
         data: {otpNode: otpNode}
       });
-    };
-    mnServersService.ejectNode = function (data) {
+    }
+    function ejectNode(data) {
       return mnHttp({
         method: 'POST',
         url: '/controller/ejectNode',
         data: data
       });
-    };
-    mnServersService.postRebalance = function (allNodes) {
+    }
+    function postRebalance(allNodes) {
       return mnHttp({
         method: 'POST',
         url: '/controller/rebalance',
@@ -82,8 +102,8 @@ angular.module('mnServersService', [
           ejectedNodes: _.pluck(mnServersService.getPendingEject(), 'otpNode').join(',')
         }
       });
-    };
-    mnServersService.getNodeStatuses = function (hostname) {
+    }
+    function getNodeStatuses(hostname) {
       return mnHttp({
         method: 'GET',
         url: '/nodeStatuses'
@@ -103,134 +123,82 @@ angular.module('mnServersService', [
         !rv.backfill && (rv.confirmation = true);
         return rv;
       })
-    };
-
-    function prepareNode(nodes, tasks, stateParamsNodeType, poolDefault) {
-      return _.map(nodes[stateParamsNodeType], function (node) {
-        node.couchDataSize = node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size'] + node.interestingStats['couch_spatial_data_size'];
-        node.couchDiskUsage = node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size'] + node.interestingStats['couch_spatial_disk_size'];
-        node.currItems = node.interestingStats['curr_items'];
-        node.currVbItems = node.interestingStats['vb_replica_curr_items'];
-        node.isDataDiskUsageAvailable = !!(node.couchDataSize || node.couchDiskUsage);
-        node.isNodeUnhealthy = node.status === 'unhealthy';
-        node.isNodeInactiveFaied = node.clusterMembership === 'inactiveFailed';
-        node.isNodeInactiveAdded = node.clusterMembership === 'inactiveAdded';
-        node.isReAddPossible = node.isNodeInactiveFaied && !node.isNodeUnhealthy && !poolDefault.isROAdminCreds;
-        node.isLastActiveData = nodes.reallyActiveData.length === 1;
-        node.isActiveUnhealthy = stateParamsNodeType === "active" && node.isNodeUnhealthy;
-
-        var rebalanceProgress = tasks.tasksRebalance.perNode && tasks.tasksRebalance.perNode[node.otpNode];
-        node.rebalanceProgress = rebalanceProgress ? rebalanceProgress.progress : 0 ;
-
-        var total = node.memoryTotal;
-        var free = node.memoryFree;
-
-        node.ramUsageConf = {
-          exist: (total > 0) && _.isFinite(free),
-          height: (total - free) / total * 100,
-          top: 105 - ((total - free) / total * 100),
-          value: (total - free) / total * 100
-        };
-
-        var swapTotal = node.systemStats.swap_total;
-        var swapUsed = node.systemStats.swap_used;
-        node.swapUsageConf = {
-          exist: swapTotal > 0 && _.isFinite(swapUsed),
-          height: swapUsed / swapTotal * 100,
-          top: 105 - (swapUsed / swapTotal * 100),
-          value: (swapUsed / swapTotal) * 100
-        };
-
-        var cpuRate = node.systemStats.cpu_utilization_rate;
-        node.cpuUsageConf = {
-          exist: _.isFinite(cpuRate),
-          height: Math.floor(cpuRate * 100) / 100,
-          top: 105 - (Math.floor(cpuRate * 100) / 100),
-          value: Math.floor(cpuRate * 100) / 100
-        };
-
-        return node;
-      });
     }
-
-    function prepareNodes(responses) {
-      var groups = responses[1].groups;
-      var poolDefault = responses[0];
-      var nodes = poolDefault.nodes;
-
-      if (poolDefault.isGroupsAvailable) {
-        var hostnameToGroup = {};
-
-        _.each(groups, function (group) {
-          _.each(group.nodes, function (node) {
-            hostnameToGroup[node.hostname] = group;
-          });
-        });
-
-        nodes = _.map(nodes, function (n) {
-          n = _.clone(n);
-          var group = hostnameToGroup[n.hostname];
-          if (group) {
-            n.group = group.name;
-          }
-          return n;
-        });
-      }
-
-      var stillActualEject = [];
-
-      _.each(mnServersService.getPendingEject(), function (node) {
-        var original = _.detect(nodes, function (n) {
-          return n.otpNode == node.otpNode;
-        });
-        if (!original || original.clusterMembership === 'inactiveAdded') {
-          return;
-        }
-        stillActualEject.push(original);
-        original.pendingEject = true;
-      });
-
-      mnServersService.setPendingEject(stillActualEject);
-
-      var rv = {};
-
-      rv.allNodes = nodes;
-
-      rv.failedOver = _.filter(nodes, function (node) {
-        return node.clusterMembership === 'inactiveFailed';
-      });
-      rv.onlyActive = _.filter(nodes, function (node) {
-        return node.clusterMembership === 'active';
-      });
-      rv.active = rv.failedOver.concat(rv.onlyActive);
-      rv.down = _.filter(nodes, function (node) {
-        return node.status !== 'healthy';
-      });
-      rv.pending = _.filter(nodes, function (node) {
-        return node.clusterMembership !== 'active';
-      }).concat(mnServersService.getPendingEject());
-      rv.reallyActive = _.filter(rv.onlyActive, function (node) {
-        return !node.pendingEject
-      });
-      rv.reallyActiveData = _.filter(rv.reallyActive, function (node) {
-        return _.indexOf(node.services, "kv") > -1;
-      });
-      rv.unhealthyActive = _.detect(rv.reallyActive, function (node) {
-        return node.status === 'unhealthy';
-      });
-      rv.ramTotalPerActiveNode = poolDefault.storageTotals.ram.total / rv.onlyActive.length;
-
-      return rv;
-    };
-
-    mnServersService.getNodes = function () {
+    function getNodes() {
       return $q.all([
         mnPoolDefault.getFresh(),
         mnGroupsService.getGroups()
-      ]).then(prepareNodes);
-    };
+      ]).then(function (responses) {
+        var groups = responses[1].groups;
+        var poolDefault = responses[0];
+        var nodes = poolDefault.nodes;
 
-    mnServersService.getServersState = function (stateParamsNodeType) {
+        if (poolDefault.isGroupsAvailable) {
+          var hostnameToGroup = {};
+
+          _.each(groups, function (group) {
+            _.each(group.nodes, function (node) {
+              hostnameToGroup[node.hostname] = group;
+            });
+          });
+
+          nodes = _.map(nodes, function (n) {
+            n = _.clone(n);
+            var group = hostnameToGroup[n.hostname];
+            if (group) {
+              n.group = group.name;
+            }
+            return n;
+          });
+        }
+
+        var stillActualEject = [];
+
+        _.each(mnServersService.getPendingEject(), function (node) {
+          var original = _.detect(nodes, function (n) {
+            return n.otpNode == node.otpNode;
+          });
+          if (!original || original.clusterMembership === 'inactiveAdded') {
+            return;
+          }
+          stillActualEject.push(original);
+          original.pendingEject = true;
+        });
+
+        mnServersService.setPendingEject(stillActualEject);
+
+        var rv = {};
+
+        rv.allNodes = nodes;
+
+        rv.failedOver = _.filter(nodes, function (node) {
+          return node.clusterMembership === 'inactiveFailed';
+        });
+        rv.onlyActive = _.filter(nodes, function (node) {
+          return node.clusterMembership === 'active';
+        });
+        rv.active = rv.failedOver.concat(rv.onlyActive);
+        rv.down = _.filter(nodes, function (node) {
+          return node.status !== 'healthy';
+        });
+        rv.pending = _.filter(nodes, function (node) {
+          return node.clusterMembership !== 'active';
+        }).concat(mnServersService.getPendingEject());
+        rv.reallyActive = _.filter(rv.onlyActive, function (node) {
+          return !node.pendingEject
+        });
+        rv.reallyActiveData = _.filter(rv.reallyActive, function (node) {
+          return _.indexOf(node.services, "kv") > -1;
+        });
+        rv.unhealthyActive = _.detect(rv.reallyActive, function (node) {
+          return node.status === 'unhealthy';
+        });
+        rv.ramTotalPerActiveNode = poolDefault.storageTotals.ram.total / rv.onlyActive.length;
+
+        return rv;
+      });
+    }
+    function getServersState(stateParamsNodeType) {
       return $q.all([
         mnServersService.getNodes(),
         mnPoolDefault.getFresh(),
@@ -244,9 +212,9 @@ angular.module('mnServersService', [
         var tasks = results[2];
         var autoFailoverSettings = results[3];
         rv.tasks = tasks;
-        rv.allNodes = nodes.allNodes;
+        rv.nodes = nodes;
         rv.isGroupsAvailable = poolDefault.isGroupsAvailable;
-        rv.currentNodes = prepareNode(nodes, tasks, stateParamsNodeType, poolDefault);
+        rv.currentNodes = nodes[stateParamsNodeType];
         rv.rebalancing = poolDefault.rebalancing;
         rv.pendingLength = nodes.pending.length;
         rv.mayRebalanceWithoutSampleLoading = !poolDefault.rebalancing && !tasks.inRecoveryMode && (!!nodes.pending.length || !poolDefault.balanced) && !nodes.unhealthyActive;
@@ -256,15 +224,14 @@ angular.module('mnServersService', [
         rv.autoFailoverSettingsCount = autoFailoverSettings.data.count;
         return rv;
       });
-    };
-
-    mnServersService.addServer = function (selectedGroup, credentials, servicesList) {
+    }
+    function addServer(selectedGroup, credentials, servicesList) {
       return mnHttp({
         method: 'POST',
         url: (selectedGroup && selectedGroup.addNodeURI) || '/controller/addNode',
         data: _.extend({}, credentials, {services: servicesList.join(',')})
       });
-    };
+    }
+  }
+})();
 
-    return mnServersService;
-  });

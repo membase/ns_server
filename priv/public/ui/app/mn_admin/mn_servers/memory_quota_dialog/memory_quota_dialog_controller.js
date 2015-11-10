@@ -1,18 +1,26 @@
-angular.module('mnServers').controller('mnServersMemoryQuotaDialogController',
-  function ($scope, $uibModalInstance, mnSettingsClusterService, memoryQuotaConfig, mnPromiseHelper) {
-    $scope.config = memoryQuotaConfig;
+(function () {
+  angular
+    .module('mnServers')
+    .controller('mnServersMemoryQuotaDialogController', mnServersMemoryQuotaDialogController);
 
-    $scope.onSubmit = function () {
-      if ($scope.viewLoading) {
+  function mnServersMemoryQuotaDialogController($scope, $uibModalInstance, mnSettingsClusterService, memoryQuotaConfig, mnPromiseHelper) {
+    var vm = this;
+    vm.config = memoryQuotaConfig;
+
+    vm.onSubmit = onSubmit;
+
+    function onSubmit() {
+      if (vm.viewLoading) {
         return;
       }
 
-      var promise = mnSettingsClusterService.postPoolsDefault($scope.config);
-      mnPromiseHelper($scope, promise, $uibModalInstance)
+      var promise = mnSettingsClusterService.postPoolsDefault(vm.config);
+      mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
-        .cancelOnScopeDestroy()
+        .cancelOnScopeDestroy($scope)
         .closeOnSuccess()
         .reloadState();
     }
-  });
+  }
+})();

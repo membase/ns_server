@@ -1,7 +1,10 @@
-angular.module('mnServers').controller('mnServersAddDialogController',
-  function ($scope, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
-    reset();
-    $scope.addNodeConfig = {
+(function () {
+  angular.module('mnServers').controller('mnServersAddDialogController', mnServersAddDialogController)
+
+  function mnServersAddDialogController($scope, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
+    var vm = this;
+
+    vm.addNodeConfig = {
       services: {
         model: {
           kv: true,
@@ -15,28 +18,27 @@ angular.module('mnServers').controller('mnServersAddDialogController',
         password: ''
       }
     };
+    vm.isGroupsAvailable = !!groups;
+    vm.onSubmit = onSubmit;
+    if (vm.isGroupsAvailable) {
+      vm.addNodeConfig.selectedGroup = groups.groups[0];
+      vm.groups = groups.groups;
+    }
 
-    $scope.cancel = function () {
-      $uibModalInstance.dismiss('cancel');
-    };
+    activate();
 
+    function activate() {
+      reset();
+    }
     function reset() {
-      $scope.focusMe = true;
+      vm.focusMe = true;
     }
-
-    $scope.isGroupsAvailable = !!groups;
-
-    if ($scope.isGroupsAvailable) {
-      $scope.addNodeConfig.selectedGroup = groups.groups[0];
-      $scope.groups = groups.groups;
-    }
-
-    $scope.onSubmit = function (form) {
-      if ($scope.viewLoading) {
+    function onSubmit(form) {
+      if (vm.viewLoading) {
         return;
       }
 
-      var servicesList = mnHelper.checkboxesToList($scope.addNodeConfig.services.model);
+      var servicesList = mnHelper.checkboxesToList(vm.addNodeConfig.services.model);
 
       form.$setValidity('services', !!servicesList.length);
 
@@ -44,25 +46,25 @@ angular.module('mnServers').controller('mnServersAddDialogController',
         return reset();
       }
 
-      var promise = mnServersService.addServer($scope.addNodeConfig.selectedGroup, $scope.addNodeConfig.credentials, servicesList);
+      var promise = mnServersService.addServer(vm.addNodeConfig.selectedGroup, vm.addNodeConfig.credentials, servicesList);
 
-      promise = mnPromiseHelper($scope, promise, $uibModalInstance)
+      promise = mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .closeOnSuccess()
-        .cancelOnScopeDestroy()
+        .cancelOnScopeDestroy($scope)
         .getPromise()
         .then(function () {
-          return mnPromiseHelper($scope, mnPoolDefault.getFresh())
+          return mnPromiseHelper(vm, mnPoolDefault.getFresh())
             .getPromise()
             .then(function (poolsDefault) {
-              if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, $scope.addNodeConfig.services.model, 'index')) {
+              if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.addNodeConfig.services.model, 'index')) {
                 return $uibModal.open({
                   templateUrl: 'app/mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
-                  controller: 'mnServersMemoryQuotaDialogController',
+                  controller: 'mnServersMemoryQuotaDialogController as mnServersMemoryQuotaDialogController',
                   resolve: {
                     memoryQuotaConfig: function (mnMemoryQuotaService) {
-                      return mnMemoryQuotaService.memoryQuotaConfig($scope.addNodeConfig.services.model.kv)
+                      return mnMemoryQuotaService.memoryQuotaConfig(vm.addNodeConfig.services.model.kv)
                     }
                   }
                 }).result;
@@ -70,7 +72,9 @@ angular.module('mnServers').controller('mnServersAddDialogController',
             });
         });
 
-      mnPromiseHelper($scope, promise)
+      mnPromiseHelper(vm, promise)
         .reloadState();
     };
-  });
+  }
+})();
+
