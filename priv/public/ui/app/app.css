@@ -683,7 +683,7 @@ body.init_resources #init_resources_dialog {background:none; background-color:#e
 .start_new_cluster_block input[type="number"] {width: 65px;}
 .login-credentials label {width: 100px; display: inline-block;}
 .wizard_services {display: inline;}
-.wizard_services label {text-align: left; width: 45px;vertical-align: middle;}
+.wizard_services label {text-align: left; width: 60px;vertical-align: middle;}
 .wizard_services input {vertical-align: middle;}
 .init_block .login-credentials,
 .start_new_cluster_block {margin-left: 85px; margin-right: 80px; line-height: 28px;}
