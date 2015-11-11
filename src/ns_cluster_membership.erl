@@ -40,14 +40,13 @@
 
 -export([supported_services/0,
          default_services/0,
+         node_services/1,
          node_services/2,
          service_active_nodes/1,
          service_active_nodes/2,
          service_actual_nodes/2,
          service_nodes/2,
          service_nodes/3,
-         is_active_non_kv_node/1,
-         is_active_non_kv_node/2,
          should_run_service/2,
          should_run_service/3,
          user_friendly_service_name/1]).
@@ -210,6 +209,9 @@ supported_services() ->
 default_services() ->
     [kv].
 
+node_services(Node) ->
+    node_services(ns_config:latest(), Node).
+
 node_services(Config, Node) ->
     case ns_config:search(Config, {node, Node, services}) of
         false ->
@@ -217,13 +219,6 @@ node_services(Config, Node) ->
         {value, Value} ->
             Value
     end.
-
-is_active_non_kv_node(Node) ->
-    is_active_non_kv_node(Node, ns_config:latest()).
-
-is_active_non_kv_node(Node, Config) ->
-    get_cluster_membership(Node, Config) =:= active
-        andalso not lists:member(kv, node_services(Config, Node)).
 
 should_run_service(Service, Node) ->
     should_run_service(ns_config:latest(), Service, Node).

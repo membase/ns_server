@@ -956,11 +956,11 @@ start_link_graceful_failover(Node) ->
 
 run_graceful_failover(Node) ->
     %% No graceful failovers for non KV node
-    case ns_cluster_membership:is_active_non_kv_node(Node) of
+    case lists:member(kv, ns_cluster_membership:node_services(Node)) of
         true ->
-            erlang:exit(non_kv_node);
+            ok;
         false ->
-            ok
+            erlang:exit(non_kv_node)
     end,
     case check_failover_possible(Node) of
         ok ->
