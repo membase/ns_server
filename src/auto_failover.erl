@@ -290,7 +290,7 @@ handle_info(tick, State0) ->
               ({mail_auto_failover_disabled, Service, {Node, _UUID}}, S) ->
                   ?user_log(?EVENT_AUTO_FAILOVER_DISABLED,
                             "Could not auto-failover node (~p). "
-                            "Auto-failover for ~s service is disbaled.",
+                            "Auto-failover for ~s service is disabled.",
                             [Node, ns_cluster_membership:user_friendly_service_name(Service)]),
                   S;
               ({failover, {Node, _UUID}}, S) ->
