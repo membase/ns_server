@@ -142,7 +142,7 @@ populate_ets_table() ->
     populate_ets_table(JSON).
 
 populate_ets_table(JSON) ->
-    case not cluster_compat_mode:is_cluster_sherlock()
+    case not cluster_compat_mode:is_cluster_40()
         orelse erlang:get(prev_json) =:= JSON of
         true ->
             ok;

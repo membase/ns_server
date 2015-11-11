@@ -29,7 +29,7 @@
          execute_if_validated/3]).
 
 handle_settings_get(Req) ->
-    menelaus_web:assert_is_sherlock(),
+    menelaus_web:assert_is_40(),
 
     Settings = index_settings_manager:get(generalSettings),
     true = (Settings =/= undefined),
@@ -65,7 +65,7 @@ validate_loglevel(State) ->
       end, logLevel, State1).
 
 handle_settings_post(Req) ->
-    menelaus_web:assert_is_sherlock(),
+    menelaus_web:assert_is_40(),
 
     execute_if_validated(
       fun (Values) ->

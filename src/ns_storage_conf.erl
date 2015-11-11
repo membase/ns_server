@@ -443,7 +443,7 @@ delete_unused_buckets_db_files() ->
 %% NOTE: rpc-called remotely from ns_rebalancer prior to activating
 %% new nodes at the start of rebalance.
 %%
-%% Since sherlock compat mode.
+%% Since 4.0 compat mode.
 delete_old_2i_indexes() ->
     {ok, IxDir} = this_node_ixdir(),
     Dir = filename:join(IxDir, "@2i"),

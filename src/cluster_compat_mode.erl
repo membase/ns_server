@@ -28,8 +28,8 @@
          is_node_compatible/2,
          split_live_nodes_by_version/1,
          is_cluster_30/0,
-         is_cluster_sherlock/0,
-         sherlock_compat_mode_string/0,
+         is_cluster_40/0,
+         compat_mode_string_40/0,
          is_enterprise/0,
          is_goxdcr_enabled/0,
          is_goxdcr_enabled/1,
@@ -78,10 +78,10 @@ is_cluster_30() ->
 is_cluster_25() ->
     is_enabled([2, 5]).
 
-is_cluster_sherlock() ->
+is_cluster_40() ->
     is_enabled([4, 0]).
 
-sherlock_compat_mode_string() ->
+compat_mode_string_40() ->
     "4.0".
 
 is_index_aware_rebalance_on() ->
@@ -99,12 +99,12 @@ is_goxdcr_enabled() ->
     is_goxdcr_enabled(ns_config:latest()).
 
 is_goxdcr_enabled(Config) ->
-    is_cluster_sherlock() andalso
+    is_cluster_40() andalso
         ns_config:search(Config, goxdcr_enabled, true) andalso
         (not ns_config:search(Config, {node, node(), stop_xdcr}, false)).
 
 is_ldap_enabled() ->
-    is_cluster_sherlock() andalso is_enterprise() andalso
+    is_cluster_40() andalso is_enterprise() andalso
         ns_config:search(ns_config:latest(),
                          {node, node(), ldap_enabled}, false).
 

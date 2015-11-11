@@ -295,7 +295,7 @@ build_bucket_capabilities(BucketConfig) ->
             membase ->
                 case cluster_compat_mode:is_cluster_30() of
                     true ->
-                        MaybeDCP = case cluster_compat_mode:is_cluster_sherlock() of
+                        MaybeDCP = case cluster_compat_mode:is_cluster_40() of
                                        true ->
                                            [dcp];
                                        false ->

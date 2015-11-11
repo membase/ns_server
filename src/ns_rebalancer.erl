@@ -1065,7 +1065,7 @@ check_failover_possible(Node) ->
     end.
 
 drop_old_2i_indexes(KeepNodes) ->
-    case cluster_compat_mode:is_cluster_sherlock() of
+    case cluster_compat_mode:is_cluster_40() of
         false ->
             ok;
         true ->
