@@ -28,6 +28,7 @@
          split_live_nodes_by_version/1,
          is_cluster_30/0,
          is_cluster_40/0,
+         is_cluster_41/0,
          compat_mode_string_40/0,
          is_enterprise/0,
          is_goxdcr_enabled/0,
@@ -48,7 +49,7 @@ get_compat_version() ->
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.0
 supported_compat_version() ->
-    [4, 0].
+    [4, 1].
 
 min_supported_compat_version() ->
     [2, 5].
@@ -58,7 +59,7 @@ min_supported_compat_version() ->
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
-    [4, 0, 0].
+    [4, 1, 0].
 
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
     false;
@@ -76,6 +77,9 @@ is_cluster_25() ->
 
 is_cluster_40() ->
     is_enabled([4, 0]).
+
+is_cluster_41() ->
+    is_enabled([4, 1]).
 
 compat_mode_string_40() ->
     "4.0".
