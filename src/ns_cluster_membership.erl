@@ -264,8 +264,8 @@ service_active_nodes(Config, Service, Status) ->
           ServiceC =:= Service].
 
 user_friendly_service_name(kv) ->
-    data;
+    "data";
 user_friendly_service_name(n1ql) ->
-    query;
+    "query";
 user_friendly_service_name(Service) ->
-    Service.
+    atom_to_list(Service).
