@@ -426,6 +426,48 @@ activate_services(KeepNodes) ->
             ok
     end.
 
+get_service_eject_delay(Service) ->
+    Default =
+        case Service of
+            n1ql ->
+                20000;
+            _ ->
+                0
+        end,
+
+    ns_config:get_global_timeout({eject_delay, Service}, Default).
+
+maybe_delay_eject_nodes(StartTS, EjectNodes) ->
+    case cluster_compat_mode:is_cluster_41() of
+        true ->
+            do_maybe_delay_eject_nodes(StartTS, EjectNodes);
+        false ->
+            ok
+    end.
+
+do_maybe_delay_eject_nodes(_StartTS, []) ->
+    ok;
+do_maybe_delay_eject_nodes(StartTS, EjectNodes) ->
+    EjectedServices =
+        ordsets:union([ordsets:from_list(ns_cluster_membership:node_services(N))
+                       || N <- EjectNodes]),
+    Delay = lists:max([get_service_eject_delay(S) || S <- EjectedServices]),
+    Now = os:timestamp(),
+    SinceStart = max(0, timer:now_diff(Now, StartTS) div 1000),
+
+    DelayLeft = Delay - SinceStart,
+    case DelayLeft > 0 of
+        true ->
+            execute_and_be_stop_aware(
+              fun () ->
+                      ?log_info("Waiting ~pms (full delay ~pms) before ejecting nodes:~n~p",
+                                [DelayLeft, Delay, EjectNodes]),
+                      timer:sleep(DelayLeft)
+              end);
+        false ->
+            ok
+    end.
+
 execute_and_be_stop_aware(Fun) ->
     Pid = erlang:spawn_link(Fun),
     MRef = erlang:monitor(process, Pid),
@@ -461,6 +503,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     end,
 
     ok = activate_services(KeepNodes),
+    StartTS = os:timestamp(),
+
     {ok, RebalanceObserver} = ns_rebalance_observer:start_link(length(BucketConfigs)),
 
     %% Eject failed nodes first so they don't cause trouble
@@ -526,6 +570,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     ns_config:sync_announcements(),
     ns_config_rep:push(),
     ok = ns_config_rep:synchronize_remote(KeepNodes),
+
+    maybe_delay_eject_nodes(StartTS, EjectNodes),
     eject_nodes(EjectNodes).
 
 
