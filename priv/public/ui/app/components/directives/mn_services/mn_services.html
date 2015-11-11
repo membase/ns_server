@@ -2,10 +2,12 @@
 <div class="wizard_services">
   <input type="checkbox" class="js_service_flag" name="services" value="kv" id="kv_service" ng-model="config.services.model.kv" ng-disabled="config.services.disabled.kv || !isEnterprise" />
   <label class="label" for="kv_service">Data</label>
-  <input type="checkbox" class="js_service_flag" name="services" value="index" id="index_service" ng-change="onChange(config.services.model.index, 'n1ql')" ng-model="config.services.model.index" ng-disabled="config.services.disabled.index" />
+  <input type="checkbox" class="js_service_flag" name="services" value="index" id="index_service" ng-change="onChange(config.services.model.index, 'index')" ng-model="config.services.model.index" ng-disabled="config.services.disabled.index" />
   <label class="label" for="index_service">Index</label>
-  <input type="checkbox" class="js_service_flag" name="services" value="n1ql" id="n1ql_service" ng-change="onChange(config.services.model.n1ql, 'index')" ng-model="config.services.model.n1ql" ng-disabled="config.services.disabled.n1ql" />
+  <input type="checkbox" class="js_service_flag" name="services" value="n1ql" id="n1ql_service" ng-change="onChange(config.services.model.n1ql, 'n1ql')" ng-model="config.services.model.n1ql" ng-disabled="config.services.disabled.n1ql" />
   <label class="label" for="n1ql_service">Query</label>
+  <input type="checkbox" class="js_service_flag" name="services" value="fts" id="fts_service" ng-change="onChange(config.services.model.fts, 'fts')" ng-model="config.services.model.fts" ng-disabled="config.services.disabled.fts" />
+  <label class="label" for="n1ql_service">FTS</label>
 </div>
 <a class="tooltip text_11"><span>What&#39;s this?</span>
   <span class="tooltip_msg" style="width:350px;"><span>
