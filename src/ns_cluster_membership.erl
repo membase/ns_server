@@ -42,6 +42,8 @@
          default_services/0,
          set_service_map/2,
          get_service_map/2,
+         node_active_services/1,
+         node_active_services/2,
          node_services/1,
          node_services/2,
          service_active_nodes/1,
@@ -224,6 +226,14 @@ get_service_map(Config, kv) ->
 get_service_map(Config, Service) ->
     ns_config:search(Config, {service_map, Service}, []).
 
+node_active_services(Node) ->
+    node_active_services(ns_config:latest(), Node).
+
+node_active_services(Config, Node) ->
+    AllServices = node_services(Config, Node),
+    [S || S <- AllServices,
+          lists:member(Node, service_active_nodes(Config, S))].
+
 node_services(Node) ->
     node_services(ns_config:latest(), Node).
 
@@ -250,13 +260,21 @@ should_run_service(Config, Service, Node) ->
 service_active_nodes(Service) ->
     service_active_nodes(ns_config:latest(), Service).
 
+%% just like get_service_map/2, but returns all nodes having a service if the
+%% cluster is not 4.1 yet
 service_active_nodes(Config, Service) ->
-    Nodes = active_nodes(Config),
-    service_nodes(Config, Nodes, Service).
+    case cluster_compat_mode:is_cluster_41(Config) of
+        true ->
+            get_service_map(Config, Service);
+        false ->
+            ActiveNodes = active_nodes(Config),
+            service_nodes(Config, ActiveNodes, Service)
+    end.
 
 service_actual_nodes(Config, Service) ->
-    Nodes = actual_active_nodes(Config),
-    service_nodes(Config, Nodes, Service).
+    ActualNodes = ordsets:from_list(actual_active_nodes(Config)),
+    ServiceActiveNodes = ordsets:from_list(service_active_nodes(Config, Service)),
+    ordsets:intersection(ActualNodes, ServiceActiveNodes).
 
 service_nodes(Nodes, Service) ->
     service_nodes(ns_config:latest(), Nodes, Service).

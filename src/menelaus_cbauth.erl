@@ -151,7 +151,7 @@ build_node_info(_N, undefined, _Config) ->
 build_node_info(N, User, Config) ->
     Services = bucket_info_cache:build_services(
                  N, Config,
-                 ns_cluster_membership:node_services(Config, N)),
+                 ns_cluster_membership:node_active_services(Config, N)),
 
     {_, Host} = misc:node_name_host(N),
     Local = case node() of

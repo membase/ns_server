@@ -173,7 +173,7 @@ maybe_build_ext_hostname(Node) ->
 build_nodes_ext([] = _Nodes, _Config, NodesExtAcc) ->
     lists:reverse(NodesExtAcc);
 build_nodes_ext([Node | RestNodes], Config, NodesExtAcc) ->
-    Services = ns_cluster_membership:node_services(Config, Node),
+    Services = ns_cluster_membership:node_active_services(Config, Node),
     NI1 = maybe_build_ext_hostname(Node),
     NI2 = case Node =:= node() of
               true ->
