@@ -40,6 +40,8 @@
 
 -export([supported_services/0,
          default_services/0,
+         set_service_map/2,
+         get_service_map/2,
          node_services/1,
          node_services/2,
          service_active_nodes/1,
@@ -208,6 +210,19 @@ supported_services() ->
 
 default_services() ->
     [kv].
+
+set_service_map(kv, _Nodes) ->
+    %% kv is special; it's dealt with using different set of functions
+    ok;
+set_service_map(Service, Nodes) ->
+    ns_config:set({service_map, Service}, Nodes).
+
+get_service_map(Config, kv) ->
+    %% kv is special; just return active kv nodes
+    ActiveNodes = active_nodes(Config),
+    service_nodes(Config, ActiveNodes, kv);
+get_service_map(Config, Service) ->
+    ns_config:search(Config, {service_map, Service}, []).
 
 node_services(Node) ->
     node_services(ns_config:latest(), Node).

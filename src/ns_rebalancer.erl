@@ -40,7 +40,8 @@
          verify_replication/3,
          start_link_graceful_failover/1,
          generate_vbucket_map_options/2,
-         check_failover_possible/1]).
+         check_failover_possible/1,
+         activate_services/1]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
@@ -74,6 +75,8 @@ orchestrate_failover(Node) ->
 %% @doc Fail a node. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
 failover(Node) ->
+    ok = failover_services(Node),
+
     FailoverVBuckets =
         lists:foldl(
           fun (Bucket, Acc) ->
@@ -98,6 +101,27 @@ failover(Node) ->
     end,
 
     ok.
+
+failover_services(Node) ->
+    case cluster_compat_mode:is_cluster_41() of
+        true ->
+            Config = ns_config:get(),
+            AllServices = ns_cluster_membership:supported_services(),
+            lists:foreach(
+              fun (Service) ->
+                      Map = ns_cluster_membership:get_service_map(Config, Service),
+                      NewMap = lists:delete(Node, Map),
+
+                      case Map =:= NewMap of
+                          true ->
+                              ok;
+                          false ->
+                              ok = ns_cluster_membership:set_service_map(Service, NewMap)
+                      end
+              end, AllServices);
+        false ->
+            ok
+    end.
 
 get_failover_vbuckets(Config, Node) ->
     ns_config:search(Config, {node, Node, failover_vbuckets}, []).
@@ -387,6 +411,21 @@ start_link_rebalance(KeepNodes, EjectNodes,
                end
        end, []]).
 
+activate_services(KeepNodes) ->
+    Config = ns_config:get(),
+
+    case cluster_compat_mode:is_cluster_41(Config) of
+        true ->
+            AllServices = ns_cluster_membership:supported_services(),
+            lists:foreach(
+              fun (Service) ->
+                      ServiceNodes = ns_cluster_membership:service_nodes(KeepNodes, Service),
+                      ok = ns_cluster_membership:set_service_map(Service, ServiceNodes)
+              end, AllServices);
+        false ->
+            ok
+    end.
+
 execute_and_be_stop_aware(Fun) ->
     Pid = erlang:spawn_link(Fun),
     MRef = erlang:monitor(process, Pid),
@@ -421,6 +460,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
             exit(Error)
     end,
 
+    ok = activate_services(KeepNodes),
     {ok, RebalanceObserver} = ns_rebalance_observer:start_link(length(BucketConfigs)),
 
     %% Eject failed nodes first so they don't cause trouble
