@@ -26,8 +26,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([failover/1,
-         orchestrate_failover/1,
+-export([orchestrate_failover/1,
          check_graceful_failover_possible/2,
          validate_autofailover/1,
          generate_initial_map/1,
