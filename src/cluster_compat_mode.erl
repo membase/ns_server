@@ -29,6 +29,7 @@
          is_cluster_30/0,
          is_cluster_40/0,
          is_cluster_41/0,
+         is_cluster_41/1,
          compat_mode_string_40/0,
          is_enterprise/0,
          is_goxdcr_enabled/0,
@@ -45,7 +46,10 @@
 
 
 get_compat_version() ->
-    ns_config:read_key_fast(cluster_compat_version, undefined).
+    get_compat_version(ns_config:latest()).
+
+get_compat_version(Config) ->
+    ns_config:search(Config, cluster_compat_version, undefined).
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.0
 supported_compat_version() ->
@@ -67,7 +71,10 @@ is_enabled_at(ClusterVersion, FeatureVersion) ->
     ClusterVersion >= FeatureVersion.
 
 is_enabled(FeatureVersion) ->
-    is_enabled_at(get_compat_version(), FeatureVersion).
+    is_enabled(ns_config:latest(), FeatureVersion).
+
+is_enabled(Config, FeatureVersion) ->
+    is_enabled_at(get_compat_version(Config), FeatureVersion).
 
 is_cluster_30() ->
     is_enabled([3, 0]).
@@ -79,7 +86,10 @@ is_cluster_40() ->
     is_enabled([4, 0]).
 
 is_cluster_41() ->
-    is_enabled([4, 1]).
+    is_cluster_41(ns_config:latest()).
+
+is_cluster_41(Config) ->
+    is_enabled(Config, [4, 1]).
 
 compat_mode_string_40() ->
     "4.0".
