@@ -16,6 +16,7 @@
 -module(menelaus_pluggable_ui).
 
 -export([find_plugins/0,
+         inject_index_fragments/3,
          is_plugin/2,
          proxy_req/4,
          maybe_serve_file/4]).
@@ -24,6 +25,8 @@
 
 -define(CONFIG_DIR, etc).
 -define(PLUGIN_FILE_PATTERN, "pluggable-ui-*.json").
+-define(INDEX_FRAGMENT, <<"index.frag.html">>).
+-define(INDEX_MARKER, <<"<!-- Inject index-frag.html file content for Pluggable UI components here -->">>).
 -define(TIMEOUT, 60000).
 -define(PART_SIZE, 100000).
 -define(WINDOW_SIZE, 5).
@@ -44,11 +47,14 @@ find_plugins() ->
     read_and_validate_plugin_specs(SpecFiles).
 
 find_plugin_spec_files() ->
-    filelib:wildcard(filename:join(path_config:component_path(?CONFIG_DIR),
-                                   ?PLUGIN_FILE_PATTERN)).
+    lists:sort(
+      filelib:wildcard(
+        filename:join(
+          path_config:component_path(?CONFIG_DIR),
+          ?PLUGIN_FILE_PATTERN))).
 
 read_and_validate_plugin_specs(SpecFiles) ->
-    lists:foldl(fun read_and_validate_plugin_spec/2, [], SpecFiles).
+    lists:foldr(fun read_and_validate_plugin_spec/2, [], SpecFiles).
 
 read_and_validate_plugin_spec(File, Acc) ->
     {ok, Bin} = file:read_file(File),
@@ -272,3 +278,50 @@ find_plugin_by_prefix(Prefix, Plugins) ->
 
 find_plugin(Prefix, Plugins, KeyPos) ->
     lists:keyfind(Prefix, KeyPos, Plugins).
+
+
+%%% =============================================================
+%%%
+inject_index_fragments(AppRoot, Path, Plugins) ->
+    inject_index_fragments(filename:join(AppRoot, Path), Plugins).
+
+inject_index_fragments(File, Plugins) ->
+    {ok, Index} = file:read_file(File),
+    [Head, Tail] = split_index(Index),
+    [Head, index_fragments(Plugins), Tail].
+
+split_index(Bin) ->
+    binary:split(Bin, ?INDEX_MARKER).
+
+index_fragments(Plugins) ->
+    [index_fragment(P) || P <- Plugins].
+
+index_fragment(#plugin{name = Service, doc_root = DocRoot}) ->
+    File = filename:join(DocRoot, ?INDEX_FRAGMENT),
+    Fragment = get_index_fragment(Service, File,
+                                     file:read_file(File)),
+    create_service_block(Service, Fragment).
+
+get_index_fragment(_Service, _File, {ok, Bin}) ->
+    Bin;
+get_index_fragment(Service, File, {error, Reason}) ->
+    Msg = lists:flatten(io_lib:format(
+                          "Failed to read ~s for service ~p, reason '~p'",
+                          [File, Service, Reason])),
+    ?log_error(Msg),
+    html_comment(Msg).
+
+create_service_block(Service, Bin) ->
+    SBin = atom_to_binary(Service, latin1),
+    [start_of_fragment(SBin),
+     Bin,
+     end_of_fragment(SBin)].
+
+start_of_fragment(Service) ->
+    html_comment([<<"Beginning of index.frag.html for service ">>, Service]).
+
+end_of_fragment(Service) ->
+    html_comment([<<"End of index.frag.html for service ">>, Service]).
+
+html_comment(Content) ->
+    [<<"<!-- ">>, Content, <<" -->\n">>].

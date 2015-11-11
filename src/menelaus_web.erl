@@ -364,9 +364,11 @@ loop_inner(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                          ["index.html"] ->
                              {done, redirect_permanently("/ui/index.html", Req)};
                          ["ui", "index.html"] ->
-                              {done, menelaus_util:serve_static_file(
-                                      Req, {AppRoot, Path},
+                             {done, menelaus_util:reply_ok(
+                                      Req,
                                       "text/html; charset=utf8",
+                                      menelaus_pluggable_ui:inject_index_fragments(
+                                        AppRoot, Path, Plugins),
                                       [{"Cache-Control", "must-revalidate"}])};
                          ["classic-index.html"] ->
                              {done, menelaus_util:serve_static_file(
