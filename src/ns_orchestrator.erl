@@ -175,7 +175,8 @@ try_autofailover(Node) ->
 
 -spec needs_rebalance() -> boolean().
 needs_rebalance() ->
-    needs_rebalance(ns_cluster_membership:filter_out_non_kv_nodes(ns_node_disco:nodes_wanted())).
+    KvNodes = ns_cluster_membership:service_nodes(ns_node_disco:nodes_wanted(), kv),
+    needs_rebalance(KvNodes).
 
 
 -spec needs_rebalance([atom(), ...]) -> boolean().
@@ -773,7 +774,8 @@ idle({start_recovery, Bucket}, {FromPid, _} = _From,
         end,
 
         FailedOverNodes = [N || {N, inactiveFailed} <- ns_cluster_membership:get_nodes_cluster_membership()],
-        Servers = ns_cluster_membership:filter_out_non_kv_nodes(ns_node_disco:nodes_wanted() -- FailedOverNodes),
+        Servers0 = ns_node_disco:nodes_wanted() -- FailedOverNodes,
+        Servers = ns_cluster_membership:service_nodes(Servers0, kv),
         BucketConfig = misc:update_proplist(BucketConfig0, [{servers, Servers}]),
         ns_cluster_membership:activate(Servers),
         ns_config:sync_announcements(),

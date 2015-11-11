@@ -353,7 +353,7 @@ start_link_rebalance(KeepNodes, EjectNodes,
     proc_lib:start_link(
       erlang, apply,
       [fun () ->
-               KVKeep = ns_cluster_membership:filter_out_non_kv_nodes(KeepNodes),
+               KVKeep = ns_cluster_membership:service_nodes(KeepNodes, kv),
                case KVKeep =:= [] of
                    true ->
                        proc_lib:init_ack({error, no_kv_nodes_left}),
@@ -409,8 +409,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     EjectNodes = EjectNodesAll -- [node()],
     FailedNodes = FailedNodesAll -- [node()],
 
-    KeepKVNodes = ns_cluster_membership:filter_out_non_kv_nodes(KeepNodes),
-    LiveKVNodes = ns_cluster_membership:filter_out_non_kv_nodes(KeepNodes ++ EjectNodesAll),
+    KeepKVNodes = ns_cluster_membership:service_nodes(KeepNodes, kv),
+    LiveKVNodes = ns_cluster_membership:service_nodes(KeepNodes ++ EjectNodesAll, kv),
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [sanitize(BucketConfigs)]),
 
@@ -1040,7 +1040,7 @@ check_failover_possible(Node) ->
         ActiveNodes ->
             case lists:member(Node, ActiveNodes) of
                 true ->
-                    case ns_cluster_membership:filter_out_non_kv_nodes(ActiveNodes) of
+                    case ns_cluster_membership:service_nodes(ActiveNodes, kv) of
                         %% Node is bound
                         [Node] ->
                             last_node;
