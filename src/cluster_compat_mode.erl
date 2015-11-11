@@ -24,7 +24,6 @@
          is_index_aware_rebalance_on/0,
          is_index_pausing_on/0,
          rebalance_ignore_view_compactions/0,
-         check_is_progress_tracking_supported/0,
          is_node_compatible/2,
          split_live_nodes_by_version/1,
          is_cluster_30/0,
@@ -60,9 +59,6 @@ min_supported_compat_version() ->
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
     [4, 0, 0].
-
-check_is_progress_tracking_supported() ->
-    are_all_nodes_compatible([2,0,2]).
 
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
     false;
@@ -129,16 +125,6 @@ is_node_compatible(Node, Version) ->
                               proplists:get_value(advertised_version, Status, [])
                       end,
             NodeVer >= Version
-    end.
-
-are_all_nodes_compatible(Version) ->
-    case is_enabled_at(get_compat_version_three_elements(), Version) of
-        true ->
-            true;
-        _ ->
-            lists:all(fun (N) ->
-                              is_node_compatible(N, Version)
-                      end, ns_node_disco:nodes_wanted())
     end.
 
 split_live_nodes_by_version(Version) ->

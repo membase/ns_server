@@ -421,13 +421,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
             exit(Error)
     end,
 
-    RebalanceObserver = case cluster_compat_mode:check_is_progress_tracking_supported() of
-                            true ->
-                                {ok, X} = ns_rebalance_observer:start_link(length(BucketConfigs)),
-                                X;
-                            _ ->
-                                undefined
-                        end,
+    {ok, RebalanceObserver} = ns_rebalance_observer:start_link(length(BucketConfigs)),
 
     %% Eject failed nodes first so they don't cause trouble
     eject_nodes(FailedNodes),
@@ -485,14 +479,9 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                           end
                   end, misc:enumerate(BucketConfigs, 0)),
 
-    case RebalanceObserver of
-        undefined ->
-            ok;
-        _Pid ->
-            unlink(RebalanceObserver),
-            exit(RebalanceObserver, shutdown),
-            misc:wait_for_process(RebalanceObserver, infinity)
-    end,
+    unlink(RebalanceObserver),
+    exit(RebalanceObserver, shutdown),
+    misc:wait_for_process(RebalanceObserver, infinity),
 
     ns_config:sync_announcements(),
     ns_config_rep:push(),
