@@ -41,7 +41,8 @@
 -export([supported_services/0,
          default_services/0,
          node_services/2,
-         service_active_nodes/3,
+         service_active_nodes/2,
+         service_actual_nodes/2,
          is_active_non_kv_node/1,
          is_active_non_kv_node/2,
          filter_out_non_kv_nodes/1,
@@ -242,14 +243,19 @@ should_run_service(Config, Service, Node) ->
             lists:member(Service, Svcs)
     end.
 
-service_active_nodes(Config, Service, Status) ->
-    AllNodes = case Status of
-                   actual ->
-                       actual_active_nodes(Config);
-                   all ->
-                       active_nodes(Config)
-               end,
-    [N || N <- AllNodes,
+service_active_nodes(Service) ->
+    service_active_nodes(ns_config:latest(), Service).
+
+service_active_nodes(Config, Service) ->
+    Nodes = active_nodes(Config),
+    service_nodes(Config, Nodes, Service).
+
+service_actual_nodes(Config, Service) ->
+    Nodes = actual_active_nodes(Config),
+    service_nodes(Config, Nodes, Service).
+
+service_nodes(Config, Nodes, Service) ->
+    [N || N <- Nodes,
           ServiceC <- node_services(Config, N),
           ServiceC =:= Service].
 
