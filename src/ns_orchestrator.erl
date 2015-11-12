@@ -175,14 +175,23 @@ try_autofailover(Node) ->
 
 -spec needs_rebalance() -> boolean().
 needs_rebalance() ->
-    KvNodes = ns_cluster_membership:service_nodes(ns_node_disco:nodes_wanted(), kv),
-    needs_rebalance(KvNodes).
+    NodesWanted = ns_node_disco:nodes_wanted(),
+    ServicesNeedRebalance =
+        lists:any(fun (S) ->
+                          service_needs_rebalance(S, NodesWanted)
+                  end, ns_cluster_membership:supported_services()),
+    ServicesNeedRebalance orelse kv_needs_rebalance(NodesWanted).
 
+service_needs_rebalance(Service, NodesWanted) ->
+    ServiceNodes = ns_cluster_membership:service_nodes(NodesWanted, Service),
+    ActiveServiceNodes = ns_cluster_membership:service_active_nodes(Service),
+    lists:sort(ServiceNodes) =/= lists:sort(ActiveServiceNodes).
 
--spec needs_rebalance([atom(), ...]) -> boolean().
-needs_rebalance(Nodes) ->
+-spec kv_needs_rebalance([node(), ...]) -> boolean().
+kv_needs_rebalance(NodesWanted) ->
+    KvNodes = ns_cluster_membership:service_nodes(NodesWanted, kv),
     lists:any(fun ({_, BucketConfig}) ->
-                      ns_bucket:needs_rebalance(BucketConfig, Nodes)
+                      ns_bucket:needs_rebalance(BucketConfig, KvNodes)
               end,
               ns_bucket:get_buckets()).
 
