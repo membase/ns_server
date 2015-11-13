@@ -295,11 +295,11 @@ handle_cast(Msg, State, ParentState) ->
     ?rebalance_warning("Unhandled cast: Msg = ~p, State = ~p", [Msg, State]),
     {noreply, State, ParentState}.
 
-process_stream_response(Header, PendingPartitions, Errors, SuccessPred) ->
+process_stream_response(Header, PendingPartitions, Errors, Type) ->
     case lists:keytake(Header#mc_header.opaque, 1, PendingPartitions) of
         {value, {Partition} , N} ->
             Status = Header#mc_header.status,
-            case SuccessPred(Status) of
+            case is_successful_stream_response(Type, Status) of
                 true ->
                     {Partition, N, Errors};
                 false ->
@@ -311,17 +311,9 @@ process_stream_response(Header, PendingPartitions, Errors, SuccessPred) ->
             erlang:error({unrecognized_opaque, Header#mc_header.opaque, PendingPartitions})
     end.
 
-allow_success_only(Status) ->
-    Status =:= ?SUCCESS.
-
-process_add_stream_response(Header, PendingPartitions, Errors) ->
-    process_stream_response(Header, PendingPartitions, Errors,
-                            fun allow_success_only/1).
-
-allow_success_enoent(Status) ->
-    Status =:= ?SUCCESS orelse Status =:= ?KEY_ENOENT.
-
-process_close_stream_response(Header, PendingPartitions, Errors) ->
+is_successful_stream_response(add_stream, Status) ->
+    Status =:= ?SUCCESS;
+is_successful_stream_response(close_stream, Status) ->
     %% It's possible that the stream is already closed in the following cases:
     %%
     %%   - on the producer and consumer sides, if the vbucket has been moved
@@ -333,8 +325,13 @@ process_close_stream_response(Header, PendingPartitions, Errors) ->
     %%   notification before handling our close stream request
     %%
     %% Because of this we ignore ?KEY_ENOENT errors.
-    process_stream_response(Header, PendingPartitions, Errors,
-                            fun allow_success_enoent/1).
+    Status =:= ?SUCCESS orelse Status =:= ?KEY_ENOENT.
+
+process_add_stream_response(Header, PendingPartitions, Errors) ->
+    process_stream_response(Header, PendingPartitions, Errors, add_stream).
+
+process_close_stream_response(Header, PendingPartitions, Errors) ->
+    process_stream_response(Header, PendingPartitions, Errors, close_stream).
 
 maybe_reply_setup_streams(#state{state = StreamState} = State) ->
     case {StreamState#stream_state.to_add, StreamState#stream_state.to_close,
