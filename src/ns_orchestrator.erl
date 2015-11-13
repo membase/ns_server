@@ -180,15 +180,15 @@ needs_rebalance() ->
         lists:any(fun (S) ->
                           service_needs_rebalance(S, NodesWanted)
                   end, ns_cluster_membership:supported_services()),
-    ServicesNeedRebalance orelse kv_needs_rebalance(NodesWanted).
+    ServicesNeedRebalance orelse buckets_need_rebalance(NodesWanted).
 
 service_needs_rebalance(Service, NodesWanted) ->
     ServiceNodes = ns_cluster_membership:service_nodes(NodesWanted, Service),
     ActiveServiceNodes = ns_cluster_membership:service_active_nodes(Service),
     lists:sort(ServiceNodes) =/= lists:sort(ActiveServiceNodes).
 
--spec kv_needs_rebalance([node(), ...]) -> boolean().
-kv_needs_rebalance(NodesWanted) ->
+-spec buckets_need_rebalance([node(), ...]) -> boolean().
+buckets_need_rebalance(NodesWanted) ->
     KvNodes = ns_cluster_membership:service_nodes(NodesWanted, kv),
     lists:any(fun ({_, BucketConfig}) ->
                       ns_bucket:needs_rebalance(BucketConfig, KvNodes)
