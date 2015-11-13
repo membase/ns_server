@@ -159,12 +159,12 @@ angular.module('mnAdmin', [
       },
       views: {
         "": {
-          controller: 'mnBucketsController',
+          controller: 'mnBucketsController as mnBucketsController',
           templateUrl: 'app/mn_admin/mn_buckets/mn_buckets.html'
         },
         "details@app.admin.buckets": {
           templateUrl: 'app/mn_admin/mn_buckets/details/mn_buckets_details.html',
-          controller: 'mnBucketsDetailsController'
+          controller: 'mnBucketsDetailsController as mnBucketsDetailsController'
         }
       }
     })

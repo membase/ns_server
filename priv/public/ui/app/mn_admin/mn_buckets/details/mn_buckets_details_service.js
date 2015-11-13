@@ -1,13 +1,23 @@
-angular.module('mnBucketsDetailsService', [
-  'mnHttp',
-  'mnPoolDefault',
-  'mnTasksDetails',
-  'mnCompaction'
-]).factory('mnBucketsDetailsService',
-  function ($q, mnHttp, mnTasksDetails, mnPoolDefault, mnCompaction) {
-    var mnBucketsDetailsService = {};
+(function () {
+  angular.module('mnBucketsDetailsService', [
+    'mnHttp',
+    'mnPoolDefault',
+    'mnTasksDetails',
+    'mnCompaction'
+  ]).factory('mnBucketsDetailsService', mnBucketsDetailsServiceFcatory);
 
-    mnBucketsDetailsService.getBucketRamGuageConfig = function (ramSummary) {
+  function mnBucketsDetailsServiceFcatory($q, mnHttp, mnTasksDetails, mnPoolDefault, mnCompaction) {
+    var mnBucketsDetailsService = {
+      getBucketRamGuageConfig: getBucketRamGuageConfig,
+      deleteBucket: deleteBucket,
+      flushBucket: flushBucket,
+      doGetDetails: doGetDetails,
+      getDetails: getDetails
+    };
+
+    return mnBucketsDetailsService;
+
+    function getBucketRamGuageConfig(ramSummary) {
       var options = {
         topRight: {
           name: 'Cluster quota',
@@ -55,8 +65,7 @@ angular.module('mnBucketsDetailsService', [
         };
       }
       return options;
-    };
-
+    }
 
     function getGuageConfig(total, thisBucket, otherBuckets, otherData) {
       var free = total - otherData - thisBucket - otherBuckets;
@@ -94,27 +103,25 @@ angular.module('mnBucketsDetailsService', [
       };
     }
 
-    mnBucketsDetailsService.deleteBucket = function (bucket) {
+    function deleteBucket(bucket) {
       return mnHttp({
         method: 'DELETE',
         url: bucket.uri
       });
-    };
-    mnBucketsDetailsService.flushBucket = function (bucket) {
+    }
+    function flushBucket(bucket) {
       return mnHttp({
         method: 'POST',
         url: bucket.controllers.flush
       });
-    };
-
-    mnBucketsDetailsService.doGetDetails = function (bucket) {
+    }
+    function doGetDetails(bucket) {
       return mnHttp({
         method: 'GET',
         url: bucket.uri + "&basic_stats=true"
       });
-    };
-
-    mnBucketsDetailsService.getDetails = function (bucket) {
+    }
+    function getDetails(bucket) {
       return $q.all([
         mnBucketsDetailsService.doGetDetails(bucket),
         mnTasksDetails.get(),
@@ -170,6 +177,6 @@ angular.module('mnBucketsDetailsService', [
 
         return details;
       });
-    };
-    return mnBucketsDetailsService;
-  });
+    }
+  }
+})();

@@ -1,13 +1,17 @@
 <div class="bucket_details" id="bucket_details_dialog" style="width: 748px">
-  <h1 class="dialog_corner_radius" ng-show="bucketConf.isNew">Create Bucket</h1>
-  <h1 class="dialog_corner_radius" ng-show="!bucketConf.isNew">Configure Bucket</h1>
-  <div mn-spinner="viewLoading || !validationKeeper.result">
-    <form ng-submit="onSubmit()">
-      <div mn-buckets-form bucket-conf="bucketConf" validation="validationKeeper" auto-compaction-settings="autoCompactionSettings"></div>
+  <h1 class="dialog_corner_radius" ng-show="mnBucketsDetailsDialogController.bucketConf.isNew">Create Bucket</h1>
+  <h1 class="dialog_corner_radius" ng-show="!mnBucketsDetailsDialogController.bucketConf.isNew">Configure Bucket</h1>
+  <div mn-spinner="mnBucketsDetailsDialogController.viewLoading || !mnBucketsDetailsDialogController.validationKeeper.result">
+    <form ng-submit="mnBucketsDetailsDialogController.onSubmit()">
+      <div
+        mn-buckets-form
+        bucket-conf="mnBucketsDetailsDialogController.bucketConf"
+        validation="mnBucketsDetailsDialogController.validationKeeper"
+        auto-compaction-settings="mnBucketsDetailsDialogController.autoCompactionSettings"></div>
       <div class="save_cancel">
         <button class="save_button float_right" type="submit">
-          <span ng-show="bucketConf.isNew">Create</span>
-          <span ng-show="!bucketConf.isNew">Save</span>
+          <span ng-show="mnBucketsDetailsDialogController.bucketConf.isNew">Create</span>
+          <span ng-show="!mnBucketsDetailsDialogController.bucketConf.isNew">Save</span>
         </button>
         <a class="close" ng-click="$dismiss()">Cancel</a>
       </div>

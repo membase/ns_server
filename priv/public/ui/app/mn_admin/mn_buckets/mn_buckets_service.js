@@ -1,15 +1,21 @@
-angular.module('mnBucketsService', [
-  'mnHttp',
-  'mnPoolDefault',
-  'mnFilters',
-  'mnBucketsStats'
-]).factory('mnBucketsService',
-  function (mnHttp, $q, mnPoolDefault, mnTruncateTo3DigitsFilter, mnCalculatePercentFilter, mnBucketsStats) {
-    var mnBucketsService = {};
+(function () {
+  angular.module('mnBucketsService', [
+    'mnHttp',
+    'mnPoolDefault',
+    'mnFilters',
+    'mnBucketsStats'
+  ]).factory('mnBucketsService', mnBucketsServiceFactory);
 
-    mnBucketsService.model = {};
+  function mnBucketsServiceFactory(mnHttp, $q, mnPoolDefault, mnTruncateTo3DigitsFilter, mnCalculatePercentFilter, mnBucketsStats) {
+    var mnBucketsService = {
+      model: {},
+      getBucketsState: getBucketsState,
+      getBucketsByType: getBucketsByType
+    };
 
-    mnBucketsService.getBucketsState = function () {
+    return mnBucketsService;
+
+    function getBucketsState() {
       return $q.all([
         mnPoolDefault.getFresh(),
         mnBucketsService.getBucketsByType()
@@ -51,9 +57,8 @@ angular.module('mnBucketsService', [
 
         return bucketsDetails;
       })
-    };
-
-    mnBucketsService.getBucketsByType = function (fromCache) {
+    }
+    function getBucketsByType(fromCache) {
       return mnBucketsStats[fromCache ? "get" : "getFresh"]().then(function (resp) {
         var bucketsDetails = resp.data
         bucketsDetails.byType = {membase: [], memcached: []};
@@ -67,7 +72,6 @@ angular.module('mnBucketsService', [
         bucketsDetails.byType.membase.defaultName = _.contains(bucketsDetails.byType.membase.names, 'default') ? 'default' : bucketsDetails.byType.membase.names[0] || '';
         return bucketsDetails;
       });
-    };
-
-    return mnBucketsService;
-  });
+    }
+  }
+})();

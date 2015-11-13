@@ -1,17 +1,22 @@
-angular.module('mnBuckets').controller('mnBucketsDetailsDialogController',
-  function ($scope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, mnPromiseHelper, $uibModalInstance) {
-    bucketConf.autoCompactionDefined = !!bucketConf.autoCompactionSettings;
-    $scope.bucketConf = bucketConf;
-    $scope.autoCompactionSettings = autoCompactionSettings;
-    $scope.validationKeeper = {};
+(function () {
+  angular.module('mnBuckets').controller('mnBucketsDetailsDialogController', mnBucketsDetailsDialogController);
 
-    $scope.onSubmit = function () {
-      var data = mnBucketsDetailsDialogService.prepareBucketConfigForSaving($scope.bucketConf, $scope.autoCompactionSettings);
-      var promise = mnBucketsDetailsDialogService.postBuckets(data, $scope.bucketConf.uri);
-      mnPromiseHelper($scope, promise)
+  function mnBucketsDetailsDialogController($scope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, mnPromiseHelper, $uibModalInstance) {
+    var vm = this;
+    bucketConf.autoCompactionDefined = !!bucketConf.autoCompactionSettings;
+    vm.bucketConf = bucketConf;
+    vm.autoCompactionSettings = autoCompactionSettings;
+    vm.validationKeeper = {};
+    vm.onSubmit = onSubmit;
+
+    function onSubmit() {
+      var data = mnBucketsDetailsDialogService.prepareBucketConfigForSaving(vm.bucketConf, vm.autoCompactionSettings);
+      var promise = mnBucketsDetailsDialogService.postBuckets(data, vm.bucketConf.uri);
+
+      mnPromiseHelper(vm, promise)
         .showErrorsSensitiveSpinner()
         .catchErrors(function (result) {
-          $scope.validationResult = result && mnBucketsDetailsDialogService.adaptValidationResult(result);
+          vm.validationResult = result && mnBucketsDetailsDialogService.adaptValidationResult(result);
         })
         .onSuccess(function (result) {
           if (!result.data) {
@@ -19,6 +24,7 @@ angular.module('mnBuckets').controller('mnBucketsDetailsDialogController',
             mnHelper.reloadState();
           }
         })
-        .cancelOnScopeDestroy();
+        .cancelOnScopeDestroy($scope);
     };
-  });
+  }
+})();

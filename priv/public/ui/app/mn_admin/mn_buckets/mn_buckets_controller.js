@@ -1,41 +1,56 @@
-angular.module('mnBuckets', [
-  'mnHelper',
-  'mnBucketsService',
-  'ui.bootstrap',
-  'mnBucketsDetailsDialogService',
-  'mnBarUsage',
-  'mnBucketsForm',
-  'mnPromiseHelper',
-  'mnPoll',
-  'mnPoolDefault',
-  'mnSpinner'
-]).controller('mnBucketsController',
-  function ($scope, mnBucketsService, mnHelper, mnPoolDefault, mnPromiseHelper, mnPoller, $uibModal) {
+(function () {
+  angular.module('mnBuckets', [
+    'mnHelper',
+    'mnBucketsService',
+    'ui.bootstrap',
+    'mnBucketsDetailsDialogService',
+    'mnBarUsage',
+    'mnBucketsForm',
+    'mnPromiseHelper',
+    'mnPoll',
+    'mnPoolDefault',
+    'mnSpinner'
+  ]).controller('mnBucketsController', mnBucketsController);
+
+  function mnBucketsController($scope, mnBucketsService, mnHelper, mnPoolDefault, mnPromiseHelper, mnPoller, $uibModal) {
+    var vm = this;
+
     var poolDefault = mnPoolDefault.latestValue();
-    $scope.isCreateNewDataBucketDisabled = function () {
-      return !$scope.mnBucketsState || poolDefault.value.isROAdminCreds || $scope.areThereCreationWarnings();
-    };
-    $scope.isBucketCreationWarning = function () {
+
+    vm.isCreateNewDataBucketDisabled = isCreateNewDataBucketDisabled;
+    vm.isBucketCreationWarning = isBucketCreationWarning;
+    vm.isBucketFullyAllocatedWarning = isBucketFullyAllocatedWarning;
+    vm.isMaxBucketCountWarning = isMaxBucketCountWarning;
+    vm.areThereCreationWarnings = areThereCreationWarnings;
+    vm.addBucket = addBucket;
+
+    vm.maxBucketCount = poolDefault.value.maxBucketCount;
+
+    activate();
+
+    function isCreateNewDataBucketDisabled() {
+      return !vm.mnBucketsState || poolDefault.value.isROAdminCreds || areThereCreationWarnings();
+    }
+    function isBucketCreationWarning() {
       return poolDefault.value.rebalancing;
-    };
-    $scope.isBucketFullyAllocatedWarning = function () {
+    }
+    function isBucketFullyAllocatedWarning() {
       return poolDefault.value.storageTotals.ram.quotaTotal === poolDefault.value.storageTotals.ram.quotaUsed;
-    };
-    $scope.isMaxBucketCountWarning = function () {
-      return ($scope.mnBucketsState || []).length >= poolDefault.value.maxBucketCount;
-    };
-    $scope.areThereCreationWarnings = function () {
-      return $scope.isMaxBucketCountWarning() || $scope.isBucketFullyAllocatedWarning() || $scope.isBucketCreationWarning();
-    };
-    $scope.maxBucketCount = poolDefault.value.maxBucketCount;
-    $scope.addBucket = function () {
-      mnPromiseHelper($scope, mnBucketsService.getBucketsState())
+    }
+    function isMaxBucketCountWarning() {
+      return (vm.mnBucketsState || []).length >= poolDefault.value.maxBucketCount;
+    }
+    function areThereCreationWarnings() {
+      return isMaxBucketCountWarning() || isBucketFullyAllocatedWarning() || isBucketCreationWarning();
+    }
+    function addBucket() {
+      mnPromiseHelper(vm, mnBucketsService.getBucketsState())
         .applyToScope("mnBucketsState")
-        .cancelOnScopeDestroy()
+        .cancelOnScopeDestroy($scope)
         .onSuccess(function (mnBucketsState) {
-          !$scope.areThereCreationWarnings() && $uibModal.open({
+          !areThereCreationWarnings() && $uibModal.open({
             templateUrl: 'app/mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
-            controller: 'mnBucketsDetailsDialogController',
+            controller: 'mnBucketsDetailsDialogController as mnBucketsDetailsDialogController',
             resolve: {
               bucketConf: function (mnBucketsDetailsDialogService) {
                 return mnBucketsDetailsDialogService.getNewBucketConf();
@@ -46,12 +61,13 @@ angular.module('mnBuckets', [
             }
           });
         });
-    };
-
-    new mnPoller($scope, mnBucketsService.getBucketsState)
-      .subscribe("mnBucketsState")
-      .keepIn("app.admin.buckets")
+    }
+    function activate() {
+      new mnPoller($scope, mnBucketsService.getBucketsState)
+      .subscribe("mnBucketsState", vm)
+      .keepIn("app.admin.buckets", vm)
       .cancelOnScopeDestroy()
       .cycle();
-
-  });
+    }
+  }
+})();

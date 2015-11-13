@@ -1,16 +1,32 @@
-angular.module('mnBucketsDetailsDialogService', [
-  'mnHttp',
-  'mnFilters',
-  'mnPoolDefault',
-  'mnServersService',
-  'mnBucketsDetailsService',
-  'mnSettingsAutoCompactionService'
-]).factory('mnBucketsDetailsDialogService',
-  function (mnHttp, $q, mnBytesToMBFilter, mnCountFilter, mnSettingsAutoCompactionService, mnPoolDefault, mnServersService, bucketsFormConfiguration, mnBucketsDetailsService) {
+(function () {
+  angular.module('mnBucketsDetailsDialogService', [
+    'mnHttp',
+    'mnFilters',
+    'mnPoolDefault',
+    'mnServersService',
+    'mnBucketsDetailsService',
+    'mnSettingsAutoCompactionService'
+  ]).factory('mnBucketsDetailsDialogService', mnBucketsDetailsDialogServiceFactory);
 
-    var mnBucketsDetailsDialogService = {};
+  function mnBucketsDetailsDialogServiceFactory(mnHttp, $q, mnBytesToMBFilter, mnCountFilter, mnSettingsAutoCompactionService, mnPoolDefault, mnServersService, bucketsFormConfiguration, mnBucketsDetailsService) {
+    var mnBucketsDetailsDialogService = {
+      prepareBucketConfigForSaving: prepareBucketConfigForSaving,
+      adaptValidationResult: adaptValidationResult,
+      getNewBucketConf: getNewBucketConf,
+      reviewBucketConf: reviewBucketConf,
+      postBuckets: postBuckets
+    };
 
-    mnBucketsDetailsDialogService.prepareBucketConfigForSaving = function (bucketConf, autoCompactionSettings) {
+    return mnBucketsDetailsDialogService;
+
+    function postBuckets(data, uri) {
+      return mnHttp({
+        data: data,
+        method: 'POST',
+        url: uri
+      });
+    }
+    function prepareBucketConfigForSaving(bucketConf, autoCompactionSettings) {
       var conf = {};
       angular.forEach(['bucketType', 'ramQuotaMB', 'name', 'evictionPolicy', 'authType', 'saslPassword', 'proxyPort', 'replicaNumber', 'replicaIndex', 'threadsNumber', 'flushEnabled', 'autoCompactionDefined', 'otherBucketsRamQuotaMB'], function (fieldName) {
         if (bucketConf[fieldName] !== undefined) {
@@ -21,9 +37,8 @@ angular.module('mnBucketsDetailsDialogService', [
         _.extend(conf, mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings));
       }
       return conf;
-    };
-
-    mnBucketsDetailsDialogService.adaptValidationResult = function (result) {
+    }
+    function adaptValidationResult(result) {
       var ramSummary = result.summaries.ramSummary;
 
       return {
@@ -33,9 +48,8 @@ angular.module('mnBucketsDetailsDialogService', [
         guageConfig: mnBucketsDetailsService.getBucketRamGuageConfig(ramSummary),
         errors: result.errors
       };
-    };
-
-    mnBucketsDetailsDialogService.getNewBucketConf = function () {
+    }
+    function getNewBucketConf() {
       return $q.all([
         mnServersService.getNodes(),
         mnPoolDefault.getFresh()
@@ -47,9 +61,8 @@ angular.module('mnBucketsDetailsDialogService', [
         bucketConf.ramQuotaMB = mnBytesToMBFilter(Math.floor((totals.ram.quotaTotal - totals.ram.quotaUsed) / activeServersLength));
         return bucketConf;
       });
-    };
-
-    mnBucketsDetailsDialogService.reviewBucketConf = function (bucketDetails) {
+    }
+    function reviewBucketConf(bucketDetails) {
       return mnBucketsDetailsService.doGetDetails(bucketDetails).then(function (resp) {
         var bucketConf = resp.data;
         bucketConf.ramQuotaMB = mnBytesToMBFilter(bucketConf.quota.rawRAM);
@@ -58,15 +71,6 @@ angular.module('mnBucketsDetailsDialogService', [
         bucketConf.flushEnabled = (bucketConf.controllers !== undefined && bucketConf.controllers.flush !== undefined) ? 1 : 0;
         return bucketConf;
       });
-    };
-
-    mnBucketsDetailsDialogService.postBuckets = function (data, uri) {
-      return mnHttp({
-        data: data,
-        method: 'POST',
-        url: uri
-      });
-    };
-
-    return mnBucketsDetailsDialogService;
-  });
+    }
+  }
+})();

@@ -1,11 +1,11 @@
 <div id="eject_confirmation_dialog" style="width:711px">
     <h1 class="dialog_corner_radius">Flushing</h1>
-    <div mn-spinner="viewLoading">
+    <div mn-spinner="mnBucketsFlushDialogController.viewLoading">
       <div class="warning pat_20">
         <strong>Warning</strong> – Flushing this bucket will result in complete data loss for this bucket. Are you sure you want to flush it?
       </div>
       <div class="right save_cancel pas_20 footer_bg">
-        <button type="submit" class="save_button float_right" ng-click="doFlush()">Flush</button>
+        <button type="submit" class="save_button float_right" ng-click="mnBucketsFlushDialogController.doFlush()">Flush</button>
         <a class="close casper_close_eject_confirmation_dialog float_right" ng-click="$dismiss()">Cancel</a>
       </div>
     </div>
