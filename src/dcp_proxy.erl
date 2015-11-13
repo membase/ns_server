@@ -29,7 +29,7 @@
 
 -export([start_link/6, maybe_connect/1, connect_proxies/2, nuke_connection/4, terminate_and_wait/2]).
 
--export([get_socket/1, get_partner/1]).
+-export([get_socket/1, get_partner/1, get_conn_name/1, get_bucket/1]).
 
 -record(state, {sock = undefined :: port() | undefined,
                 connect_info,
@@ -61,6 +61,14 @@ get_socket(State) ->
 
 get_partner(State) ->
     State#state.partner.
+
+get_conn_name(State) ->
+    {_, ConnName, _, _} = State#state.connect_info,
+    ConnName.
+
+get_bucket(State) ->
+    {_, _, _, Bucket} = State#state.connect_info,
+    Bucket.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
