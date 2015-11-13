@@ -587,7 +587,7 @@ perform_warnings_validation(Ctx, ParsedProps, Errors) ->
 num_replicas_warnings_validation(_Ctx, undefined) ->
     [];
 num_replicas_warnings_validation(Ctx, NReplicas) ->
-    ActiveCount = length(ns_cluster_membership:filter_out_non_kv_nodes(ns_cluster_membership:active_nodes())),
+    ActiveCount = length(ns_cluster_membership:service_active_nodes(kv)),
     Warnings =
         if
             ActiveCount =< NReplicas ->
@@ -1134,7 +1134,7 @@ parse_validate_other_buckets_ram_quota(Value) ->
     end.
 
 extended_cluster_storage_info() ->
-    [{nodesCount, length(ns_cluster_membership:filter_out_non_kv_nodes(ns_cluster_membership:active_nodes()))}
+    [{nodesCount, length(ns_cluster_membership:service_active_nodes(kv))}
      | ns_storage_conf:cluster_storage_info()].
 
 

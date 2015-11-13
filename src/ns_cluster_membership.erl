@@ -40,14 +40,17 @@
 
 -export([supported_services/0,
          default_services/0,
+         set_service_map/2,
+         get_service_map/2,
+         node_active_services/1,
+         node_active_services/2,
+         node_services/1,
          node_services/2,
-         non_kv_active_nodes/0,
-         non_kv_active_nodes/1,
-         service_active_nodes/3,
-         is_active_non_kv_node/1,
-         is_active_non_kv_node/2,
-         filter_out_non_kv_nodes/1,
-         filter_out_non_kv_nodes/2,
+         service_active_nodes/1,
+         service_active_nodes/2,
+         service_actual_nodes/2,
+         service_nodes/2,
+         service_nodes/3,
          should_run_service/2,
          should_run_service/3,
          user_friendly_service_name/1]).
@@ -210,6 +213,30 @@ supported_services() ->
 default_services() ->
     [kv].
 
+set_service_map(kv, _Nodes) ->
+    %% kv is special; it's dealt with using different set of functions
+    ok;
+set_service_map(Service, Nodes) ->
+    ns_config:set({service_map, Service}, Nodes).
+
+get_service_map(Config, kv) ->
+    %% kv is special; just return active kv nodes
+    ActiveNodes = active_nodes(Config),
+    service_nodes(Config, ActiveNodes, kv);
+get_service_map(Config, Service) ->
+    ns_config:search(Config, {service_map, Service}, []).
+
+node_active_services(Node) ->
+    node_active_services(ns_config:latest(), Node).
+
+node_active_services(Config, Node) ->
+    AllServices = node_services(Config, Node),
+    [S || S <- AllServices,
+          lists:member(Node, service_active_nodes(Config, S))].
+
+node_services(Node) ->
+    node_services(ns_config:latest(), Node).
+
 node_services(Config, Node) ->
     case ns_config:search(Config, {node, Node, services}) of
         false ->
@@ -217,28 +244,6 @@ node_services(Config, Node) ->
         {value, Value} ->
             Value
     end.
-
-non_kv_active_nodes() ->
-    non_kv_active_nodes(ns_config:latest()).
-
-non_kv_active_nodes(Config) ->
-    ActiveNodes = ns_cluster_membership:active_nodes(Config),
-    [N || N <- ActiveNodes, not lists:member(kv, node_services(Config, N))].
-
-
-is_active_non_kv_node(Node) ->
-    is_active_non_kv_node(Node, ns_config:latest()).
-
-is_active_non_kv_node(Node, Config) ->
-    get_cluster_membership(Node, Config) =:= active
-        andalso not lists:member(kv, node_services(Config, Node)).
-
-filter_out_non_kv_nodes(Nodes) ->
-    filter_out_non_kv_nodes(Nodes, ns_config:latest()).
-
-filter_out_non_kv_nodes(Nodes, Config) ->
-    [N || N <- Nodes,
-          kv <- ns_cluster_membership:node_services(Config, N)].
 
 should_run_service(Service, Node) ->
     should_run_service(ns_config:latest(), Service, Node).
@@ -252,14 +257,30 @@ should_run_service(Config, Service, Node) ->
             lists:member(Service, Svcs)
     end.
 
-service_active_nodes(Config, Service, Status) ->
-    AllNodes = case Status of
-                   actual ->
-                       actual_active_nodes(Config);
-                   all ->
-                       active_nodes(Config)
-               end,
-    [N || N <- AllNodes,
+service_active_nodes(Service) ->
+    service_active_nodes(ns_config:latest(), Service).
+
+%% just like get_service_map/2, but returns all nodes having a service if the
+%% cluster is not 4.1 yet
+service_active_nodes(Config, Service) ->
+    case cluster_compat_mode:is_cluster_41(Config) of
+        true ->
+            get_service_map(Config, Service);
+        false ->
+            ActiveNodes = active_nodes(Config),
+            service_nodes(Config, ActiveNodes, Service)
+    end.
+
+service_actual_nodes(Config, Service) ->
+    ActualNodes = ordsets:from_list(actual_active_nodes(Config)),
+    ServiceActiveNodes = ordsets:from_list(service_active_nodes(Config, Service)),
+    ordsets:intersection(ActualNodes, ServiceActiveNodes).
+
+service_nodes(Nodes, Service) ->
+    service_nodes(ns_config:latest(), Nodes, Service).
+
+service_nodes(Config, Nodes, Service) ->
+    [N || N <- Nodes,
           ServiceC <- node_services(Config, N),
           ServiceC =:= Service].
 

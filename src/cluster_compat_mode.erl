@@ -24,12 +24,13 @@
          is_index_aware_rebalance_on/0,
          is_index_pausing_on/0,
          rebalance_ignore_view_compactions/0,
-         check_is_progress_tracking_supported/0,
          is_node_compatible/2,
          split_live_nodes_by_version/1,
          is_cluster_30/0,
          is_cluster_40/0,
          compat_mode_string_40/0,
+         is_cluster_41/0,
+         is_cluster_41/1,
          is_cluster_watson/0,
          is_enterprise/0,
          is_goxdcr_enabled/0,
@@ -46,7 +47,10 @@
 
 
 get_compat_version() ->
-    ns_config:read_key_fast(cluster_compat_version, undefined).
+    get_compat_version(ns_config:latest()).
+
+get_compat_version(Config) ->
+    ns_config:search(Config, cluster_compat_version, undefined).
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.0
 supported_compat_version() ->
@@ -62,16 +66,16 @@ min_supported_compat_version() ->
 mb_master_advertised_version() ->
     ?LATEST_VERSION_NUM ++ [0].
 
-check_is_progress_tracking_supported() ->
-    are_all_nodes_compatible([2,0,2]).
-
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
     false;
 is_enabled_at(ClusterVersion, FeatureVersion) ->
     ClusterVersion >= FeatureVersion.
 
 is_enabled(FeatureVersion) ->
-    is_enabled_at(get_compat_version(), FeatureVersion).
+    is_enabled(ns_config:latest(), FeatureVersion).
+
+is_enabled(Config, FeatureVersion) ->
+    is_enabled_at(get_compat_version(Config), FeatureVersion).
 
 is_cluster_30() ->
     is_enabled([3, 0]).
@@ -82,8 +86,15 @@ is_cluster_25() ->
 is_cluster_40() ->
     is_enabled([4, 0]).
 
+is_cluster_41() ->
+    is_cluster_41(ns_config:latest()).
+
+is_cluster_41(Config) ->
+    is_enabled(Config, [4, 1]).
+
 compat_mode_string_40() ->
     "4.0".
+
 is_cluster_watson() ->
     is_enabled(?WATSON_VERSION_NUM).
 
@@ -132,16 +143,6 @@ is_node_compatible(Node, Version) ->
                               proplists:get_value(advertised_version, Status, [])
                       end,
             NodeVer >= Version
-    end.
-
-are_all_nodes_compatible(Version) ->
-    case is_enabled_at(get_compat_version_three_elements(), Version) of
-        true ->
-            true;
-        _ ->
-            lists:all(fun (N) ->
-                              is_node_compatible(N, Version)
-                      end, ns_node_disco:nodes_wanted())
     end.
 
 split_live_nodes_by_version(Version) ->

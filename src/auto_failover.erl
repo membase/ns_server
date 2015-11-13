@@ -290,7 +290,7 @@ handle_info(tick, State0) ->
               ({mail_auto_failover_disabled, Service, {Node, _UUID}}, S) ->
                   ?user_log(?EVENT_AUTO_FAILOVER_DISABLED,
                             "Could not auto-failover node (~p). "
-                            "Auto-failover for ~s service is disbaled.",
+                            "Auto-failover for ~s service is disabled.",
                             [Node, ns_cluster_membership:user_friendly_service_name(Service)]),
                   S;
               ({failover, {Node, _UUID}}, S) ->
@@ -427,8 +427,7 @@ all_services_config(Config) ->
     lists:map(
       fun (Service) ->
               %% Get list of all nodes running the service.
-              SvcNodes = ns_cluster_membership:service_active_nodes(Config,
-                                                                    Service, all),
+              SvcNodes = ns_cluster_membership:service_active_nodes(Config, Service),
               %% Is auto-failover for the service disabled?
               ServiceKey = {auto_failover_disabled, Service},
               DV = case Service of

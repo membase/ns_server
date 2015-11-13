@@ -471,11 +471,11 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
 section_nodes("@system") ->
     ns_cluster_membership:actual_active_nodes();
 section_nodes("@query") ->
-    ns_cluster_membership:service_active_nodes(ns_config:latest(), n1ql, actual);
+    ns_cluster_membership:service_actual_nodes(ns_config:latest(), n1ql);
 section_nodes("@index-"++_) ->
-    ns_cluster_membership:service_active_nodes(ns_config:latest(), index, actual);
+    ns_cluster_membership:service_actual_nodes(ns_config:latest(), index);
 section_nodes("@fts-"++_) ->
-    ns_cluster_membership:service_active_nodes(ns_config:latest(), fts, actual);
+    ns_cluster_membership:service_actual_nodes(ns_config:latest(), fts);
 section_nodes("@xdcr-"++Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket);
 section_nodes(Bucket) ->

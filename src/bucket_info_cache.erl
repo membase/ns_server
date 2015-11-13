@@ -78,6 +78,12 @@ cleaner_loop({{node, _, membership}, _Value}, State) ->
 cleaner_loop({cluster_compat_version, _Value}, State) ->
     submit_full_reset(),
     State;
+cleaner_loop({{node, _, services}, _Value}, State) ->
+    submit_full_reset(),
+    State;
+cleaner_loop({{service_map, _}, _Value}, State) ->
+    submit_full_reset(),
+    State;
 cleaner_loop(_, Cleaner) ->
     Cleaner.
 
@@ -175,7 +181,7 @@ maybe_build_ext_hostname(Node) ->
 build_nodes_ext([] = _Nodes, _Config, NodesExtAcc) ->
     lists:reverse(NodesExtAcc);
 build_nodes_ext([Node | RestNodes], Config, NodesExtAcc) ->
-    Services = ns_cluster_membership:node_services(Config, Node),
+    Services = ns_cluster_membership:node_active_services(Config, Node),
     NI1 = maybe_build_ext_hostname(Node),
     NI2 = case Node =:= node() of
               true ->

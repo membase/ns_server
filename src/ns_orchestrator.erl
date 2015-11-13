@@ -175,13 +175,23 @@ try_autofailover(Node) ->
 
 -spec needs_rebalance() -> boolean().
 needs_rebalance() ->
-    needs_rebalance(ns_cluster_membership:filter_out_non_kv_nodes(ns_node_disco:nodes_wanted())).
+    NodesWanted = ns_node_disco:nodes_wanted(),
+    ServicesNeedRebalance =
+        lists:any(fun (S) ->
+                          service_needs_rebalance(S, NodesWanted)
+                  end, ns_cluster_membership:supported_services()),
+    ServicesNeedRebalance orelse kv_needs_rebalance(NodesWanted).
 
+service_needs_rebalance(Service, NodesWanted) ->
+    ServiceNodes = ns_cluster_membership:service_nodes(NodesWanted, Service),
+    ActiveServiceNodes = ns_cluster_membership:service_active_nodes(Service),
+    lists:sort(ServiceNodes) =/= lists:sort(ActiveServiceNodes).
 
--spec needs_rebalance([atom(), ...]) -> boolean().
-needs_rebalance(Nodes) ->
+-spec kv_needs_rebalance([node(), ...]) -> boolean().
+kv_needs_rebalance(NodesWanted) ->
+    KvNodes = ns_cluster_membership:service_nodes(NodesWanted, kv),
     lists:any(fun ({_, BucketConfig}) ->
-                      ns_bucket:needs_rebalance(BucketConfig, Nodes)
+                      ns_bucket:needs_rebalance(BucketConfig, KvNodes)
               end,
               ns_bucket:get_buckets()).
 
@@ -773,9 +783,11 @@ idle({start_recovery, Bucket}, {FromPid, _} = _From,
         end,
 
         FailedOverNodes = [N || {N, inactiveFailed} <- ns_cluster_membership:get_nodes_cluster_membership()],
-        Servers = ns_cluster_membership:filter_out_non_kv_nodes(ns_node_disco:nodes_wanted() -- FailedOverNodes),
+        Servers0 = ns_node_disco:nodes_wanted() -- FailedOverNodes,
+        Servers = ns_cluster_membership:service_nodes(Servers0, kv),
         BucketConfig = misc:update_proplist(BucketConfig0, [{servers, Servers}]),
         ns_cluster_membership:activate(Servers),
+        ok = ns_rebalancer:activate_services(Servers),
         ns_config:sync_announcements(),
         FromPidNode = erlang:node(FromPid),
         SyncServers = Servers -- [FromPidNode] ++ [FromPidNode],

@@ -259,8 +259,7 @@ get_source(Indexer) ->
         true ->
             local;
         false ->
-            IndexNodes =
-                ns_cluster_membership:service_active_nodes(Config, Indexer:get_type(), actual),
+            IndexNodes = ns_cluster_membership:service_actual_nodes(Config, Indexer:get_type()),
             {remote, IndexNodes, length(IndexNodes)}
     end.
 

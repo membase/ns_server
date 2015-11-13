@@ -80,31 +80,21 @@ update_children() ->
     Config = ns_config:get(),
     Buckets = ns_bucket:get_buckets(Config),
 
-    IsNonKVNode = ns_cluster_membership:is_active_non_kv_node(node(), Config),
-
     NewSpecs = lists:flatmap(
                  fun ({Bucket, BucketConfig}) ->
                          BucketNodes = ns_bucket:bucket_nodes(BucketConfig),
                          HaveBucket = lists:member(node(), BucketNodes),
 
-                         Sups0 =
-                             case HaveBucket of
-                                 true ->
-                                     [{{single_bucket_kv_sup, Bucket},
-                                       {single_bucket_kv_sup, start_link, [Bucket]},
-                                       permanent, infinity, supervisor, [single_bucket_kv_sup]}];
-                                 false ->
-                                     []
-                             end,
-
-                         case IsNonKVNode orelse HaveBucket of
+                         case HaveBucket of
                              true ->
                                  [{{docs_sup, Bucket},
                                    {docs_sup, start_link, [Bucket]},
-                                   permanent, infinity, supervisor, [docs_sup]}
-                                  | Sups0];
+                                   permanent, infinity, supervisor, [docs_sup]},
+                                  {{single_bucket_kv_sup, Bucket},
+                                   {single_bucket_kv_sup, start_link, [Bucket]},
+                                   permanent, infinity, supervisor, [single_bucket_kv_sup]}];
                              false ->
-                                 [] = Sups0
+                                 []
                          end
                  end, Buckets),
 

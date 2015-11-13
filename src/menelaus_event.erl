@@ -112,6 +112,8 @@ is_interesting_to_watchers({index_settings_change, memoryQuota, _}) -> true;
 is_interesting_to_watchers({indexes_change, _, _}) -> true;
 is_interesting_to_watchers({goxdcr_enabled, _}) -> true;
 is_interesting_to_watchers({{node, _, stop_xdcr}, _}) -> true;
+is_interesting_to_watchers({{node, _, services}, _}) -> true;
+is_interesting_to_watchers({{service_map, _}, _}) -> true;
 is_interesting_to_watchers(_) -> false.
 
 handle_event({{node, Node, rest}, _}, State) when Node =:= node() ->

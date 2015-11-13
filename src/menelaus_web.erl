@@ -790,8 +790,7 @@ validate_post_sample_buckets(Samples) ->
     end.
 
 check_quota(Samples) ->
-
-    NodesCount = length(ns_cluster_membership:filter_out_non_kv_nodes(ns_cluster_membership:active_nodes())),
+    NodesCount = length(ns_cluster_membership:service_active_nodes(kv)),
     StorageInfo = ns_storage_conf:cluster_storage_info(),
     RamQuotas = proplists:get_value(ram, StorageInfo),
     QuotaUsed = proplists:get_value(quotaUsed, RamQuotas),
@@ -2698,6 +2697,10 @@ handle_setup_services_post(Req) ->
             reply_json(Req, [Error], 400);
         {ok, Services} ->
             ns_config:set({node, node(), services}, Services),
+            lists:foreach(
+              fun (S) ->
+                      ok = ns_cluster_membership:set_service_map(S, [node()])
+              end, Services),
             ns_audit:setup_node_services(Req, node(), Services),
             reply(Req, 200)
     end.

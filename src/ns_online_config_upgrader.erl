@@ -46,6 +46,9 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, cluster_compat_version, [4, 0]} |
              upgrade_config_from_3_0_to_4_0(Config)];
         {value, [4, 0]} ->
+            [{set, cluster_compat_version, [4, 1]} |
+             upgrade_config_from_4_0_to_4_1(Config)];
+        {value, [4, 1]} ->
             [{set, cluster_compat_version, ?WATSON_VERSION_NUM}]
     end.
 
@@ -62,6 +65,10 @@ upgrade_config_from_3_0_to_4_0(Config) ->
     ?log_info("Performing online config upgrade to 4.0 version"),
     goxdcr_upgrade:config_upgrade(Config) ++
         index_settings_manager:config_upgrade().
+
+upgrade_config_from_4_0_to_4_1(Config) ->
+    ?log_info("Performing online config upgrade to 4.1 version"),
+    create_service_maps(Config, [n1ql, index]).
 
 delete_unwanted_per_node_keys(Config) ->
     NodesWanted = ns_node_disco:nodes_wanted(Config),
@@ -84,3 +91,9 @@ create_server_groups(Config) ->
     [{set, server_groups, [[{uuid, <<"0">>},
                             {name, <<"Group 1">>},
                             {nodes, Nodes}]]}].
+
+create_service_maps(Config, Services) ->
+    ActiveNodes = ns_cluster_membership:active_nodes(Config),
+    Maps = [{S, ns_cluster_membership:service_nodes(Config, ActiveNodes, S)} ||
+                S <- Services],
+    [{set, {service_map, Service}, Map} || {Service, Map} <- Maps].

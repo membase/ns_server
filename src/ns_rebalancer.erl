@@ -26,8 +26,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([failover/1,
-         orchestrate_failover/1,
+-export([orchestrate_failover/1,
          check_graceful_failover_possible/2,
          validate_autofailover/1,
          generate_initial_map/1,
@@ -41,7 +40,8 @@
          verify_replication/3,
          start_link_graceful_failover/1,
          generate_vbucket_map_options/2,
-         check_failover_possible/1]).
+         check_failover_possible/1,
+         activate_services/1]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
@@ -75,6 +75,8 @@ orchestrate_failover(Node) ->
 %% @doc Fail a node. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
 failover(Node) ->
+    ok = failover_services(Node),
+
     FailoverVBuckets =
         lists:foldl(
           fun (Bucket, Acc) ->
@@ -99,6 +101,27 @@ failover(Node) ->
     end,
 
     ok.
+
+failover_services(Node) ->
+    case cluster_compat_mode:is_cluster_41() of
+        true ->
+            Config = ns_config:get(),
+            AllServices = ns_cluster_membership:supported_services(),
+            lists:foreach(
+              fun (Service) ->
+                      Map = ns_cluster_membership:get_service_map(Config, Service),
+                      NewMap = lists:delete(Node, Map),
+
+                      case Map =:= NewMap of
+                          true ->
+                              ok;
+                          false ->
+                              ok = ns_cluster_membership:set_service_map(Service, NewMap)
+                      end
+              end, AllServices);
+        false ->
+            ok
+    end.
 
 get_failover_vbuckets(Config, Node) ->
     ns_config:search(Config, {node, Node, failover_vbuckets}, []).
@@ -354,7 +377,7 @@ start_link_rebalance(KeepNodes, EjectNodes,
     proc_lib:start_link(
       erlang, apply,
       [fun () ->
-               KVKeep = ns_cluster_membership:filter_out_non_kv_nodes(KeepNodes),
+               KVKeep = ns_cluster_membership:service_nodes(KeepNodes, kv),
                case KVKeep =:= [] of
                    true ->
                        proc_lib:init_ack({error, no_kv_nodes_left}),
@@ -388,6 +411,63 @@ start_link_rebalance(KeepNodes, EjectNodes,
                end
        end, []]).
 
+activate_services(KeepNodes) ->
+    Config = ns_config:get(),
+
+    case cluster_compat_mode:is_cluster_41(Config) of
+        true ->
+            AllServices = ns_cluster_membership:supported_services(),
+            lists:foreach(
+              fun (Service) ->
+                      ServiceNodes = ns_cluster_membership:service_nodes(KeepNodes, Service),
+                      ok = ns_cluster_membership:set_service_map(Service, ServiceNodes)
+              end, AllServices);
+        false ->
+            ok
+    end.
+
+get_service_eject_delay(Service) ->
+    Default =
+        case Service of
+            n1ql ->
+                20000;
+            _ ->
+                0
+        end,
+
+    ns_config:get_global_timeout({eject_delay, Service}, Default).
+
+maybe_delay_eject_nodes(StartTS, EjectNodes) ->
+    case cluster_compat_mode:is_cluster_41() of
+        true ->
+            do_maybe_delay_eject_nodes(StartTS, EjectNodes);
+        false ->
+            ok
+    end.
+
+do_maybe_delay_eject_nodes(_StartTS, []) ->
+    ok;
+do_maybe_delay_eject_nodes(StartTS, EjectNodes) ->
+    EjectedServices =
+        ordsets:union([ordsets:from_list(ns_cluster_membership:node_services(N))
+                       || N <- EjectNodes]),
+    Delay = lists:max([get_service_eject_delay(S) || S <- EjectedServices]),
+    Now = os:timestamp(),
+    SinceStart = max(0, timer:now_diff(Now, StartTS) div 1000),
+
+    DelayLeft = Delay - SinceStart,
+    case DelayLeft > 0 of
+        true ->
+            execute_and_be_stop_aware(
+              fun () ->
+                      ?log_info("Waiting ~pms (full delay ~pms) before ejecting nodes:~n~p",
+                                [DelayLeft, Delay, EjectNodes]),
+                      timer:sleep(DelayLeft)
+              end);
+        false ->
+            ok
+    end.
+
 execute_and_be_stop_aware(Fun) ->
     Pid = erlang:spawn_link(Fun),
     MRef = erlang:monitor(process, Pid),
@@ -410,8 +490,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     EjectNodes = EjectNodesAll -- [node()],
     FailedNodes = FailedNodesAll -- [node()],
 
-    KeepKVNodes = ns_cluster_membership:filter_out_non_kv_nodes(KeepNodes),
-    LiveKVNodes = ns_cluster_membership:filter_out_non_kv_nodes(KeepNodes ++ EjectNodesAll),
+    KeepKVNodes = ns_cluster_membership:service_nodes(KeepNodes, kv),
+    LiveKVNodes = ns_cluster_membership:service_nodes(KeepNodes ++ EjectNodesAll, kv),
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [sanitize(BucketConfigs)]),
 
@@ -422,13 +502,10 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
             exit(Error)
     end,
 
-    RebalanceObserver = case cluster_compat_mode:check_is_progress_tracking_supported() of
-                            true ->
-                                {ok, X} = ns_rebalance_observer:start_link(length(BucketConfigs)),
-                                X;
-                            _ ->
-                                undefined
-                        end,
+    ok = activate_services(KeepNodes),
+    StartTS = os:timestamp(),
+
+    {ok, RebalanceObserver} = ns_rebalance_observer:start_link(length(BucketConfigs)),
 
     %% Eject failed nodes first so they don't cause trouble
     eject_nodes(FailedNodes),
@@ -486,18 +563,15 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                           end
                   end, misc:enumerate(BucketConfigs, 0)),
 
-    case RebalanceObserver of
-        undefined ->
-            ok;
-        _Pid ->
-            unlink(RebalanceObserver),
-            exit(RebalanceObserver, shutdown),
-            misc:wait_for_process(RebalanceObserver, infinity)
-    end,
+    unlink(RebalanceObserver),
+    exit(RebalanceObserver, shutdown),
+    misc:wait_for_process(RebalanceObserver, infinity),
 
     ns_config:sync_announcements(),
     ns_config_rep:push(),
     ok = ns_config_rep:synchronize_remote(KeepNodes),
+
+    maybe_delay_eject_nodes(StartTS, EjectNodes),
     eject_nodes(EjectNodes).
 
 
@@ -968,11 +1042,11 @@ start_link_graceful_failover(Node) ->
 
 run_graceful_failover(Node) ->
     %% No graceful failovers for non KV node
-    case ns_cluster_membership:is_active_non_kv_node(Node) of
+    case lists:member(kv, ns_cluster_membership:node_services(Node)) of
         true ->
-            erlang:exit(non_kv_node);
+            ok;
         false ->
-            ok
+            erlang:exit(non_kv_node)
     end,
     case check_failover_possible(Node) of
         ok ->
@@ -1052,7 +1126,7 @@ check_failover_possible(Node) ->
         ActiveNodes ->
             case lists:member(Node, ActiveNodes) of
                 true ->
-                    case ns_cluster_membership:filter_out_non_kv_nodes(ActiveNodes) of
+                    case ns_cluster_membership:service_nodes(ActiveNodes, kv) of
                         %% Node is bound
                         [Node] ->
                             last_node;
