@@ -147,7 +147,7 @@
               </td>
               <td
                 class="servers_icons  {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}"
-                ng-class="{dynamic_lastActive: mnServersController.isLastActiveData()}">
+                ng-class="{dynamic_lastActive: mnServersController.isLastActiveData(node)}">
               </td>
               <td>
                 <div class="ellipsis" title="{{node.group}}">{{node.group}}</div>
@@ -217,13 +217,13 @@
                   <a
                     ng-hide="mnServersController.mnPoolDefault.value.isROAdminCreds"
                     class="list_button eject_server when-roadmin-avoid-me casper_servers_remove_popup"
-                    ng-class="{dynamic_disabled: mnServersController.disableRemoveBtn()}"
-                    ng-click="!mnServersController.disableRemoveBtn() && mnServersController.ejectServer(node)"><span>Remove</span></a>
+                    ng-class="{dynamic_disabled: mnServersController.disableRemoveBtn(node)}"
+                    ng-click="!mnServersController.disableRemoveBtn(node) && mnServersController.ejectServer(node)"><span>Remove</span></a>
                   <a
                     ng-hide="mnServersController.mnPoolDefault.value.isROAdminCreds"
                     class="list_button failover_server when-roadmin-avoid-me casper_servers_failover_popup"
-                    ng-class="{dynamic_disabled: mnServersController.isFailOverDisabled()}"
-                    ng-click="!mnServersController.isFailOverDisabled() && mnServersController.failOverNode(node)"><span>Fail Over</span></a>
+                    ng-class="{dynamic_disabled: mnServersController.isFailOverDisabled(node)}"
+                    ng-click="!mnServersController.isFailOverDisabled(node) && mnServersController.failOverNode(node)"><span>Fail Over</span></a>
                   <span class="failed_over_message">Failed Over: Pending Removal</span>
               </td>
             </tr>

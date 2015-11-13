@@ -119,11 +119,11 @@
       cpuUsageConf.value = Math.floor(cpuRate * 100) / 100;
       return cpuUsageConf;
     }
-    function isFailOverDisabled() {
-      return isLastActiveData() || vm.mnServersState.tasks.inRecoveryMode;
+    function isFailOverDisabled(node) {
+      return isLastActiveData(node) || vm.mnServersState.tasks.inRecoveryMode;
     }
     function disableRemoveBtn(node) {
-      return isLastActiveData() || isActiveUnhealthy(node) || vm.mnServersState.tasks.inRecoveryMode;
+      return isLastActiveData(node) || isActiveUnhealthy(node) || vm.mnServersState.tasks.inRecoveryMode;
     }
     function showFailedOverControls(node) {
       return !vm.mnServersState.tasks.inRebalance && !isNodeInactiveAdded(node) && !node.pendingEject;
@@ -143,8 +143,8 @@
     function isReAddPossible(node) {
       return isNodeInactiveFaied(node) && !isNodeUnhealthy(node) && !vm.mnPoolDefault.value.isROAdminCreds;
     }
-    function isLastActiveData() {
-      return vm.mnServersState.nodes.reallyActiveData.length === 1;
+    function isLastActiveData(node) {
+      return vm.mnServersState.nodes.reallyActiveData.length === 1 && (node.services.indexOf("kv") > -1);
     }
     function couchDataSize(node) {
       return node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size'] + node.interestingStats['couch_spatial_data_size'];
