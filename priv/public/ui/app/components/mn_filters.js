@@ -427,6 +427,7 @@ angular.module('mnFilters', [])
         case 'kv': return 'Data';
         case 'n1ql': return 'Query';
         case 'index': return 'Index';
+        case 'fts': return 'Full Text';
       }
     }
   })
