@@ -3,10 +3,10 @@
     <ui-view></ui-view>
     <div id="js_stats_container">
       <div
-        ng-repeat="block in mnAnalyticsState.statsDirectoryBlocks track by block.blockName"
-        ng-class="{dynamic_withtotal: block.withTotal, dynamic_closed: !isDetailsOpened(block.blockName)}"
+        ng-repeat="block in mnAnalyticsController.mnAnalyticsState.statsDirectoryBlocks track by block.blockName"
+        ng-class="{dynamic_withtotal: block.withTotal, dynamic_closed: !mnAnalyticsListController.isDetailsOpened(block.blockName)}"
         class="darker_block js_darker_block">
-        <h3 class="block-expander js_block-expander" ng-click="toggleDetails(block.blockName)"><ins></ins>{{block.blockName}}</h3>
+        <h3 class="block-expander js_block-expander" ng-click="mnAnalyticsListController.toggleDetails(block.blockName)"><ins></ins>{{block.blockName}}</h3>
         <span class="query_notice" ng-if="block.blockName === 'Query'"><span class="i">i</span> Metrics for Query are not per bucket and will not change if bucket dropdown above is changed</span>
         <div class="stats js_stats">
           <ul class="col_headers" ng-if="block.columns">
@@ -14,7 +14,7 @@
           </ul>
           <div class="js_analytics-small-graph analytics-small-graph"
             ng-class="{dynamic_dim: statInfo.missing}"
-            ng-if="isDetailsOpened(block.blockName)"
+            ng-if="mnAnalyticsListController.isDetailsOpened(block.blockName)"
             ng-repeat="statInfo in block.stats track by statInfo.name"
             ui-sref-active="dynamic_selected">
             <div
@@ -33,8 +33,8 @@
             <ins class="right-arrow js_right-arrow">
               <ul class="js_inner">
                 <li>
-                  <a ng-show="!mnAnalyticsState.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: '@' + mnAnalyticsState.nodesNames[1], specificStat: statInfo.name})">show by server</a>
-                  <a ng-show="mnAnalyticsState.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: 'ops', statsHostname: statInfo.title, specificStat: null})">show this server</a>
+                  <a ng-show="!mnAnalyticsController.mnAnalyticsState.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: '@' + mnAnalyticsController.mnAnalyticsState.nodesNames[1], specificStat: statInfo.name})">show by server</a>
+                  <a ng-show="mnAnalyticsController.mnAnalyticsState.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: 'ops', statsHostname: statInfo.title, specificStat: null})">show this server</a>
                 </li>
               </ul>
             </ins>

@@ -1,20 +1,41 @@
 <div id="js_analytics" class="analytics">
   <span class="block nav float_right configure_view"></span>
   <h1>
-    <span class="js_when-normal-stats" ng-show="!mnAnalyticsState.isSpecificStats">DATA BUCKETS: </span>
-    <span class="js_when-specific-stats" ng-show="mnAnalyticsState.isSpecificStats"><em class="js_specific-stat-description">{{mnAnalyticsState.origTitle}}</em> for bucket: </span>
-    <ui-select ng-model="mnAnalyticsState.bucketsNames.selected" theme="selectize" ng-disabled="disabled" style="width: 200px; display: inline-block; vertical-align: middle;">
-      <ui-select-match>{{$select.selected}}</ui-select-match>
-      <ui-select-choices repeat="name in mnAnalyticsState.bucketsNames | filter: $select.search">
-        <span ng-bind-html="name | highlight: $select.search"></span>
-      </ui-select-choices>
-    </ui-select>
-    <span class="js_when-normal-stats" ng-if="!mnAnalyticsState.isSpecificStats"> on <ui-select ng-model="mnAnalyticsState.nodesNames.selected" theme="selectize" ng-disabled="disabled" style="width: 200px; display: inline-block; vertical-align: middle;">
+    <span
+      class="js_when-normal-stats"
+      ng-show="!mnAnalyticsController.mnAnalyticsState.isSpecificStats">
+        DATA BUCKETS:
+    </span>
+    <span
+      class="js_when-specific-stats"
+      ng-show="mnAnalyticsController.mnAnalyticsState.isSpecificStats">
+        <em class="js_specific-stat-description">{{mnAnalyticsController.mnAnalyticsState.origTitle}}</em> for bucket:
+    </span>
+    <ui-select
+      ng-model="mnAnalyticsController.mnAnalyticsState.bucketsNames.selected"
+      theme="selectize"
+      ng-disabled="disabled"
+      style="width: 200px; display: inline-block; vertical-align: middle;">
         <ui-select-match>{{$select.selected}}</ui-select-match>
-        <ui-select-choices repeat="name in mnAnalyticsState.nodesNames | filter: $select.search">
+        <ui-select-choices repeat="name in mnAnalyticsController.mnAnalyticsState.bucketsNames | filter: $select.search">
           <span ng-bind-html="name | highlight: $select.search"></span>
         </ui-select-choices>
-      </ui-select></span>
+    </ui-select>
+    <span
+      class="js_when-normal-stats"
+      ng-if="!mnAnalyticsController.mnAnalyticsState.isSpecificStats">
+        on
+      <ui-select
+        ng-model="mnAnalyticsController.mnAnalyticsState.nodesNames.selected"
+        theme="selectize"
+        ng-disabled="disabled"
+        style="width: 200px; display: inline-block; vertical-align: middle;">
+          <ui-select-match>{{$select.selected}}</ui-select-match>
+          <ui-select-choices repeat="name in mnAnalyticsController.mnAnalyticsState.nodesNames | filter: $select.search">
+            <span ng-bind-html="name | highlight: $select.search"></span>
+          </ui-select-choices>
+      </ui-select>
+    </span>
   </h1>
   <div id="js_date_slider_container" class="date_slider_container">
     <div class="time_mode_wrap">
@@ -27,7 +48,7 @@
     </div>
   </div>
   <ui-view></ui-view>
-  <div class="shadow_box" style="width:780px;" ng-if="!mnAnalyticsState.isSpecificStats">
+  <div class="shadow_box" style="width:780px;" ng-if="!mnAnalyticsController.mnAnalyticsState.isSpecificStats">
     <div class="section" id="js_top_keys_block">
       <h2 class="header_2">
         TOP KEYS
@@ -41,9 +62,9 @@
           </tr>
         </thead>
         <tbody>
-          <tr ng-repeat="key in mnAnalyticsState.stats.hot_keys">
+          <tr ng-repeat="key in mnAnalyticsController.mnAnalyticsState.stats.hot_keys">
             <td style="max-width:600px;word-wrap:break-word">{{key.name}}</td>
-            <td>{{ computeOps(key) }}</td>
+            <td>{{ mnAnalyticsController.computeOps(key) }}</td>
           </tr>
         </tbody>
       </table>

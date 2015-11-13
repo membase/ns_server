@@ -1,23 +1,34 @@
-angular.module('mnAnalytics').controller('mnAnalyticsListGraphController',
-  function ($scope, $stateParams) {
-    $scope.$watch('mnAnalyticsState', function (analiticsState) {
-      if (!analiticsState) {
+(function () {
+  angular.module('mnAnalytics').controller('mnAnalyticsListGraphController', mnAnalyticsListGraphController);
+
+  function mnAnalyticsListGraphController($scope, $stateParams) {
+    var vm = this;
+    var selectedStat;
+
+    activate();
+
+    function activate() {
+      $scope.$watch('mnAnalyticsController.mnAnalyticsState', watchOnAnalyticsState);
+      $scope.$on('$destroy', onScopeDestroy);
+    }
+    function onScopeDestroy() {
+      selectedStat && (selectedStat.config.isSelected = false);
+    }
+    function watchOnAnalyticsState(analyticsState) {
+      if (!analyticsState) {
         return;
       }
 
-      var selectedStat = analiticsState.statsByName && analiticsState.statsByName[$stateParams.graph];
+      selectedStat = analyticsState.statsByName && analyticsState.statsByName[$stateParams.graph];
       if (!selectedStat) {
-        $scope.selectedStat = {};
+        vm.selectedStat = {};
         return;
       }
 
       // notify plot of small graphs about selection
       selectedStat.config.isSelected = true;
-      $scope.$on('$destroy', function () {
-        selectedStat.config.isSelected = false;
-      });
 
-      selectedStat.visiblePeriod = Math.ceil(Math.min(selectedStat.config.zoomMillis, analiticsState.stats.serverDate - selectedStat.config.timestamp[0]) / 1000);
+      selectedStat.visiblePeriod = Math.ceil(Math.min(selectedStat.config.zoomMillis, analyticsState.stats.serverDate - selectedStat.config.timestamp[0]) / 1000);
       selectedStat.graphConfig = {
         stats: selectedStat.config.data,
         tstamps: selectedStat.config.timestamp,
@@ -32,6 +43,7 @@ angular.module('mnAnalytics').controller('mnAnalyticsListGraphController',
           isBytes: selectedStat.config.isBytes
         }
       };
-      $scope.selectedStat = selectedStat;
-    });
-  });
+      vm.selectedStat = selectedStat;
+    }
+  }
+})();

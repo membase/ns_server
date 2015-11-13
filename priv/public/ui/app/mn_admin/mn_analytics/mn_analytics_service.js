@@ -1,11 +1,18 @@
-angular.module('mnAnalyticsService', [
-  'mnHttp',
-  'mnBucketsService',
-  'mnServersService',
-  'mnFilters'
-]).factory('mnAnalyticsService',
-  function (mnHttp, $q, mnBucketsService, mnServersService, mnCloneOnlyDataFilter, mnFormatQuantityFilter, mnParseHttpDateFilter, timeUnitToSeconds) {
-    var mnAnalyticsService = {};
+(function () {
+  angular.module('mnAnalyticsService', [
+    'mnHttp',
+    'mnBucketsService',
+    'mnServersService',
+    'mnFilters'
+  ]).factory('mnAnalyticsService', mnAnalyticsServiceFactory);
+
+  function mnAnalyticsServiceFactory(mnHttp, $q, mnBucketsService, mnServersService, mnCloneOnlyDataFilter, mnFormatQuantityFilter, mnParseHttpDateFilter, timeUnitToSeconds) {
+    var mnAnalyticsService = {
+      getStats: getStats,
+      doGetStats: doGetStats
+    };
+
+    return mnAnalyticsService;
 
     function restoreOpsBlock(prevSamples, samples, keepCount) {
       var prevTS = prevSamples.timestamp;
@@ -33,7 +40,6 @@ angular.module('mnAnalyticsService', [
       }
       return newSamples;
     }
-
     function maybeApplyDelta(prevValue, value) {
       var stats = value.stats;
       var prevStats = prevValue.stats || {};
@@ -45,7 +51,6 @@ angular.module('mnAnalyticsService', [
       }
       return value;
     }
-
     function prepareNodesList(params) {
       return function (analiticsState) {
         return mnServersService.getNodes().then(function (nodes) {
@@ -58,8 +63,7 @@ angular.module('mnAnalyticsService', [
         });
       }
     }
-
-    mnAnalyticsService.getStats = function (params) {
+    function getStats(params) {
       return mnBucketsService.getBucketsByType(true).then(function (buckets) {
         params.$stateParams.analyticsBucket = params.$stateParams.analyticsBucket || buckets.byType.membase.defaultName;
         var isSpecificStat = !!params.$stateParams.specificStat;
@@ -93,9 +97,8 @@ angular.module('mnAnalyticsService', [
           }
         });
       });
-    };
-
-    mnAnalyticsService.doGetStats = function (params) {
+    }
+    function doGetStats(params) {
       var reqParams = {
         zoom: params.$stateParams.zoom,
         bucket: params.$stateParams.analyticsBucket
@@ -114,14 +117,12 @@ angular.module('mnAnalyticsService', [
         params: reqParams
       });
     }
-
     function getStatsDirectory(url) {
       return mnHttp({
         url: url,
         method: 'GET'
       });
     }
-
     function prepareAnaliticsState(data, params) {
       var stats = mnCloneOnlyDataFilter(data[1].data);
       var statDesc = mnCloneOnlyDataFilter(data[2].data);
@@ -182,6 +183,5 @@ angular.module('mnAnalyticsService', [
 
       return rv;
     }
-
-    return mnAnalyticsService;
-  });
+  }
+})();

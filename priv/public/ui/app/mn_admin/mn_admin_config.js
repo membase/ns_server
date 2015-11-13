@@ -86,7 +86,7 @@ angular.module('mnAdmin', [
           value: 'minute'
         }
       },
-      controller: 'mnAnalyticsController',
+      controller: 'mnAnalyticsController as mnAnalyticsController',
       templateUrl: 'app/mn_admin/mn_analytics/mn_analytics.html'
     })
     .state('app.admin.analytics.list', {
@@ -97,7 +97,7 @@ angular.module('mnAdmin', [
           array: true
         }
       },
-      controller: 'mnAnalyticsListController',
+      controller: 'mnAnalyticsListController as mnAnalyticsListController',
       templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list.html'
     })
     .state('app.admin.analytics.list.graph', {
@@ -107,7 +107,7 @@ angular.module('mnAdmin', [
           value: 'ops'
         }
       },
-      controller: 'mnAnalyticsListGraphController',
+      controller: 'mnAnalyticsListGraphController as mnAnalyticsListGraphController',
       templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list_graph.html'
     })
     .state('app.admin.views', {
