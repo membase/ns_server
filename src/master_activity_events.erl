@@ -64,7 +64,8 @@
          note_dcp_close_stream/5,
          note_dcp_add_stream_response/7,
          note_dcp_close_stream_response/7,
-         note_dcp_set_vbucket_state/4
+         note_dcp_set_vbucket_state/4,
+         note_set_service_map/2
         ]).
 
 -export([stream_events/2]).
@@ -227,6 +228,9 @@ note_dcp_close_stream_response(Bucket, ConnName, VBucket, Opaque, Side, Status, 
 
 note_dcp_set_vbucket_state(Bucket, ConnName, VBucket, State) ->
     submit_cast({dcp_set_vbucket_state, Bucket, ConnName, VBucket, State, self()}).
+
+note_set_service_map(Service, Nodes) ->
+    submit_cast({set_service_map, Service, Nodes}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -794,6 +798,12 @@ event_to_jsons({TS, dcp_set_vbucket_state, Bucket, ConnName, VBucket, State, Pid
                                   {state, State},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, set_service_map, Service, Nodes}) ->
+    [[{nodes, Nodes} |
+      format_simple_plist_as_json([{type, setServiceMap},
+                                   {ts, misc:time_to_epoch_int(TS)},
+                                   {service, Service}])]];
 
 event_to_jsons(Event) ->
     ?log_warning("Got unknown kind of event: ~p", [Event]),

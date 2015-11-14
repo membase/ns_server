@@ -217,6 +217,7 @@ set_service_map(kv, _Nodes) ->
     %% kv is special; it's dealt with using different set of functions
     ok;
 set_service_map(Service, Nodes) ->
+    master_activity_events:note_set_service_map(Service, Nodes),
     ns_config:set({service_map, Service}, Nodes).
 
 get_service_map(Config, kv) ->
