@@ -386,6 +386,9 @@ handle_info(notify_services, #state{reload_state = []} = State) ->
     {noreply, State};
 handle_info(notify_services, #state{reload_state = Reloads} = State) ->
     misc:flush(notify_services),
+
+    ?log_debug("Going to notify following services: ~p", [Reloads]),
+
     RVs = misc:parallel_map(fun notify_service/1, Reloads, 60000),
     ResultPairs = lists:zip(RVs, Reloads),
     {Good, Bad} = lists:foldl(fun ({ok, Svc}, {AccGood, AccBad}) ->
@@ -466,7 +469,18 @@ save_cert_pkey(CertPEM, PKeyPEM, Compat30, Node) ->
 all_services() ->
     [ssl_service, capi_ssl_service, xdcr_proxy, query_svc, memcached].
 
-notify_service(ssl_service) ->
+notify_service(Service) ->
+    RV = (catch do_notify_service(Service)),
+    case RV of
+        ok ->
+            ?log_info("Successfully notified service ~p", [Service]);
+        Other ->
+            ?log_warning("Failed to notify service ~p: ~p", [Service, Other])
+    end,
+
+    RV.
+
+do_notify_service(ssl_service) ->
     %% NOTE: We're going to talk to our supervisor so if we do it
     %% synchronously there's chance of deadlock if supervisor is about
     %% to shutdown us.
@@ -479,7 +493,7 @@ notify_service(ssl_service) ->
             ?log_info("Did not restart ssl rest service because it wasn't running"),
             ok
     end;
-notify_service(capi_ssl_service) ->
+do_notify_service(capi_ssl_service) ->
     case ns_couchdb_api:restart_capi_ssl_service() of
         ok ->
             ok;
@@ -487,9 +501,9 @@ notify_service(capi_ssl_service) ->
             ?log_info("Did not restart capi ssl service because is wasn't running"),
             ok
     end;
-notify_service(xdcr_proxy) ->
+do_notify_service(xdcr_proxy) ->
     ns_ports_setup:restart_xdcr_proxy();
-notify_service(query_svc) ->
+do_notify_service(query_svc) ->
     query_rest:maybe_refresh_cert();
-notify_service(memcached) ->
+do_notify_service(memcached) ->
     ns_memcached:connect_and_send_ssl_certs_refresh().
