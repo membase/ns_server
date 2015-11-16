@@ -389,7 +389,10 @@ handle_info(notify_services, #state{reload_state = Reloads} = State) ->
 
     ?log_debug("Going to notify following services: ~p", [Reloads]),
 
-    RVs = misc:parallel_map(fun notify_service/1, Reloads, 60000),
+    RVs = diag_handler:diagnosing_timeouts(
+            fun () ->
+                    misc:parallel_map(fun notify_service/1, Reloads, 60000)
+            end),
     ResultPairs = lists:zip(RVs, Reloads),
     {Good, Bad} = lists:foldl(fun ({ok, Svc}, {AccGood, AccBad}) ->
                                       {[Svc | AccGood], AccBad};
