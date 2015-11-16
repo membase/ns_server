@@ -696,10 +696,17 @@ disarm_timeout(Pid) ->
     Pid ! done.
 
 diagnosing_timeouts(Body) ->
+    OnTimeout = fun (Error) ->
+                        timeout_diag_logger:log_diagnostics(Error),
+                        exit(Error)
+                end,
+
     try Body()
-    catch exit:{timeout, _} = X ->
-            timeout_diag_logger:log_diagnostics(X),
-            exit(X)
+    catch
+        exit:{timeout, _} = Error ->
+            OnTimeout(Error);
+        exit:timeout = Error ->
+            OnTimeout(Error)
     end.
 
 grab_system_info() ->
