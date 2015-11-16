@@ -71,7 +71,7 @@ loop(Parent, Child, MFA, Shutdown) ->
             ?log_debug("Restarting child ~p~n"
                        "  MFA: ~p~n"
                        "  Shutdown policy: ~p~n"
-                       "  Caller: ~p~n",
+                       "  Caller: ~p",
                        [Child, MFA, Shutdown, From]),
 
             shutdown_child(Child, Shutdown),
