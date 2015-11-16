@@ -338,8 +338,8 @@ init([]) ->
     {ok, #state{cert_state = build_cert_state(CertPEM, PKeyPEM, Compat30, Node),
                 reload_state = RetrySvc}}.
 
-format_status(_Opt, [_PDict, _State]) ->
-    {}.
+format_status(_Opt, [_PDict, #state{cert_state = CertState} = State]) ->
+    State#state{cert_state = CertState#cert_state{pkey = <<"sanitized">>}}.
 
 config_change_detector_loop({cert_and_pkey, _}, Parent) ->
     Parent ! cert_and_pkey_changed,
