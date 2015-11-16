@@ -27,7 +27,8 @@ start() ->
             _ -> ok
         end,
 
-        Apps = [ale, crypto, ssl, lhttpc, inets, sasl, os_mon, ns_server],
+        Apps = [ale, asn1, crypto, public_key, ssl,
+                lhttpc, inets, sasl, os_mon, ns_server],
         lists:foreach(
           fun (App) ->
                   ok = application:start(App, permanent)
