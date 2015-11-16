@@ -37,7 +37,12 @@ start() ->
     application:start(ns_couchdb, permanent).
 
 start(_StartType, _StartArgs) ->
-    application:start(ale),
+    Apps = [ale, asn1, crypto, public_key, ssl],
+    lists:foreach(
+      fun (App) ->
+              ok = application:start(App, permanent)
+      end, Apps),
+
     setup_env(),
     init_logging(),
 
