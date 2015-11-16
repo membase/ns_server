@@ -1,46 +1,90 @@
 <div class="join_cluster create_replication_dialog" id="create_replication_dialog" style="width:600px">
   <h1>Create Replication</h1>
-  <form ng-submit="createReplication()" mn-spinner="viewLoading">
+  <form
+    ng-submit="mnXDCRCreateDialogController.createReplication()"
+    mn-spinner="mnXDCRCreateDialogController.viewLoading">
     <div class="warning pat_10" id="create_replication_dialog_errors_container" style="line-height: 18px;">
-      <span ng-show="errors._">{{errors._}}<br></span>
+      <span ng-show="mnXDCRCreateDialogController.errors._">{{mnXDCRCreateDialogController.errors._}}<br></span>
     </div>
     <fieldset>
       <fieldset style="float:left;width:230px;">
         <legend>Replicate changes from:</legend>
         <ul>
-          <li><label>Cluster:</label>
+          <li>
+            <label>Cluster:</label>
             <span style="font-size: 0.7em;font-weight: bold;margin-left: 0.2em;">this cluster</span>
           </li>
-          <li><label for="replication_from_bucket">Bucket:</label>
-            <select name="fromBucket" ng-model="replication.fromBucket" id="replication_from_bucket" style="width: 154px;"
-              ng-options="bucket.name as bucket.name for bucket in buckets">
+          <li>
+            <label for="replication_from_bucket">Bucket:</label>
+            <select
+              name="fromBucket"
+              ng-model="mnXDCRCreateDialogController.replication.fromBucket"
+              id="replication_from_bucket"
+              style="width: 154px;"
+              ng-options="bucket.name as bucket.name for bucket in mnXDCRCreateDialogController.buckets">
             </select>
-            <span class="error error-container err-fromBucket" style="margin: 10px 0;text-align: right;" ng-show="errors.fromBucket">{{errors.fromBucket}}</span>
+            <span
+              class="error error-container err-fromBucket"
+              style="margin: 10px 0;text-align: right;"
+              ng-show="mnXDCRCreateDialogController.errors.fromBucket">
+                {{mnXDCRCreateDialogController.errors.fromBucket}}
+            </span>
           </li>
-          <li class="advanced_filtering when-goxdcr-enabled when-enterprise" ng-show="mnPoolDefault.value.isEnterpreise && mnPoolDefault.value.goxdcrEnabled">
-            <label for="js_xdcr_advaced_filtering_btn">Enable Advanced filtering:</label>
-            <input id="js_xdcr_advaced_filtering_btn" type="checkbox" ng-model="replication.enableAdvancedFiltering">
+          <li
+            class="advanced_filtering when-goxdcr-enabled when-enterprise"
+            ng-show="mnXDCRCreateDialogController.mnPoolDefault.value.isEnterprise && mnXDCRCreateDialogController.mnPoolDefault.value.goxdcrEnabled">
+              <label for="js_xdcr_advaced_filtering_btn">Enable Advanced filtering:</label>
+              <input
+                id="js_xdcr_advaced_filtering_btn"
+                type="checkbox"
+                ng-model="mnXDCRCreateDialogController.replication.enableAdvancedFiltering">
           </li>
         </ul>
       </fieldset>
       <fieldset style="float:left;width:250px;">
         <legend>To:</legend>
         <ul>
-          <li><label for="replication_to_cluster">Cluster:</label>
-            <select name="toCluster" ng-model="replication.toCluster" id="replication_to_cluster" style="width: 154px;" 
-              ng-options="reference.name as reference.name for reference in mnXdcrState.references">
+          <li>
+            <label for="replication_to_cluster">Cluster:</label>
+            <select
+              name="toCluster"
+              ng-model="mnXDCRCreateDialogController.replication.toCluster"
+              id="replication_to_cluster" style="width: 154px;"
+              ng-options="reference.name as reference.name for reference in mnXDCRController.mnXdcrState.references">
             </select>
-            <span class="error error-container err-toCluster" style="margin: 10px 0;text-align: right;" ng-show="errors.toCluster">{{errors.toCluster}}</span>
+            <span
+              class="error error-container err-toCluster"
+              style="margin: 10px 0;text-align: right;"
+              ng-show="mnXDCRCreateDialogController.errors.toCluster">
+                {{mnXDCRCreateDialogController.errors.toCluster}}
+            </span>
           </li>
-          <li><label for="replication_to_bucket">Bucket:</label>
-            <input name="toBucket" ng-model="replication.toBucket" id="replication_to_bucket" type="text" />
-            <span class="error error-container err-toBucket" style="margin: 10px 0;text-align: right;" ng-show="errors.toBucket">{{errors.toBucket}}</span>
+          <li>
+            <label for="replication_to_bucket">Bucket:</label>
+            <input
+              name="toBucket"
+              ng-model="mnXDCRCreateDialogController.replication.toBucket"
+              id="replication_to_bucket"
+              type="text">
+            <span
+              class="error error-container err-toBucket"
+              style="margin: 10px 0;text-align: right;"
+              ng-show="mnXDCRCreateDialogController.errors.toBucket">
+                {{mnXDCRCreateDialogController.errors.toBucket}}
+            </span>
             <!-- TODO: this needs to become a select box like the one above -->
           </li>
         </ul>
       </fieldset>
-      <fieldset class="xdcr_advaced_filtering xdcr_advaced_settings when-goxdcr-enabled when-enterprise" id="js_xdcr_advaced_filtering" style="clear:both;" ng-show="mnPoolDefault.value.isEnterpreise && mnPoolDefault.value.goxdcrEnabled">
-        <div id="js_xdcr_advaced_filtering_container" class="xdcr_advaced_filtering_container" ng-show="replication.enableAdvancedFiltering">
+      <fieldset
+        class="xdcr_advaced_filtering xdcr_advaced_settings when-goxdcr-enabled when-enterprise"
+        id="js_xdcr_advaced_filtering"
+        style="clear:both;"
+        ng-show="mnXDCRCreateDialogController.mnPoolDefault.value.isEnterprise && mnXDCRCreateDialogController.mnPoolDefault.value.goxdcrEnabled">
+        <div
+          id="js_xdcr_advaced_filtering_container"
+          class="xdcr_advaced_filtering_container"
+          ng-show="mnXDCRCreateDialogController.replication.enableAdvancedFiltering">
           <div>
             <label for="js_filter_expression" class="filter_expression_label">Filter Expression:</label>
             <a class="tooltip text_11" style="line-height:20px;"><span>What's this?</span>
@@ -56,11 +100,16 @@
                 spellcheck="false"
                 name="filterExpression"
                 mn-contenteditable
-                mn-regex="advancedFiltering"
-                ng-model="advancedFiltering.filterExpression"
+                mn-regex="mnXDCRCreateDialogController.advancedFiltering"
+                ng-model="mnXDCRCreateDialogController.advancedFiltering.filterExpression"
               ></pre>
             </div>
-            <i class="error js_error js_filterExpression" style="display: block;clear:both;margin-top:10px;margin-left:15px;" ng-show="advancedFiltering.filterExpressionError">{{advancedFiltering.filterExpressionError}}</i>
+            <i
+              class="error js_error js_filterExpression"
+              style="display: block;clear:both;margin-top:10px;margin-left:15px;"
+              ng-show="mnXDCRCreateDialogController.advancedFiltering.filterExpressionError">
+                {{mnXDCRCreateDialogController.advancedFiltering.filterExpressionError}}
+            </i>
           </div>
           <div class="js_test_keys test_keys">
             <label for="xdcr_advaced_settings_type">Test Key:</label>
@@ -70,14 +119,14 @@
                 contenteditable="true"
                 spellcheck="false"
                 mn-contenteditable
-                mn-regex-test-key="advancedFiltering"
-                ng-model="advancedFiltering.testKey"
-                ng-class="{dynamic_hightlight: advancedFiltering.hightlightTestKey}"
+                mn-regex-test-key="mnXDCRCreateDialogController.advancedFiltering"
+                ng-model="mnXDCRCreateDialogController.advancedFiltering.testKey"
+                ng-class="{dynamic_hightlight: mnXDCRCreateDialogController.advancedFiltering.hightlightTestKey}"
               ></pre>
               <div
                 id="js_match_indicator"
                 class="match_indicator"
-                ng-class="{dynamic_match: !advancedFiltering.filterExpressionError && advancedFiltering.filterExpression && advancedFiltering.isSucceeded, dynamic_spinner: advancedFiltering.dynamicSpinner}">
+                ng-class="{dynamic_match: !mnXDCRCreateDialogController.advancedFiltering.filterExpressionError && mnXDCRCreateDialogController.advancedFiltering.filterExpression && mnXDCRCreateDialogController.advancedFiltering.isSucceeded, dynamic_spinner: mnXDCRCreateDialogController.advancedFiltering.dynamicSpinner}">
                 <span class="no_match">No Match</span>
                 <span class="loading">...</span>
                 <span class="match">Match</span>
@@ -87,16 +136,23 @@
         </div>
       </fieldset>
       <fieldset class="xdcr_advaced_settings" id="js_xdcr_advaced_settings" style="clear:both;">
-        <legend id="js_xdcr_advaced_settings_btn" ng-click="showAdvancedSettings = !showAdvancedSettings">Advanced settings:</legend>
-        <div id="js_xdcr_advaced_settings_container" class="xdcr_advaced_settings_container" ng-show="showAdvancedSettings">
+        <legend
+          id="js_xdcr_advaced_settings_btn"
+          ng-click="mnXDCRCreateDialogController.showAdvancedSettings = !mnXDCRCreateDialogController.showAdvancedSettings">
+            Advanced settings:
+        </legend>
+        <div
+          id="js_xdcr_advaced_settings_container"
+          class="xdcr_advaced_settings_container"
+          ng-show="mnXDCRCreateDialogController.showAdvancedSettings">
           <div>
             <label for="xdcr_advaced_settings_type">XDCR Protocol:</label>
-            <select id="xdcr_advaced_settings_type" ng-model="replication.type" name="type">
+            <select id="xdcr_advaced_settings_type" ng-model="mnXDCRCreateDialogController.replication.type" name="type">
               <option value="capi">Version 1</option>
               <option value="xmem">Version 2</option>
             </select>
           </div>
-          <div mn-xdcr-settings="replication"></div>
+          <div mn-xdcr-settings="mnXDCRCreateDialogController.replication"></div>
         </div>
       </fieldset>
     </fieldset>

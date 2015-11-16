@@ -1,7 +1,17 @@
-angular.module('mnXDCR').controller('mnXDCRDeleteDialogController',
-  function ($scope, $uibModalInstance, mnPromiseHelper, mnXDCRService, id) {
-    $scope.deleteReplication = function () {
+(function () {
+  "use strict";
+
+  angular.module('mnXDCR').controller('mnXDCRDeleteDialogController', mnXDCRDeleteDialogController);
+
+  function mnXDCRDeleteDialogController($scope, $uibModalInstance, mnPromiseHelper, mnXDCRService, id) {
+    var vm = this;
+
+    vm.deleteReplication = deleteReplication;
+
+    function deleteReplication() {
       var promise = mnXDCRService.deleteReplication(id);
-      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance);
-    };
-  });
+      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance, vm);
+    }
+  }
+})();
+

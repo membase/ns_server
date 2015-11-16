@@ -1,25 +1,39 @@
-angular.module('mnXDCR').directive('mnXdcrSettings', function (mnHttp, mnPromiseHelper) {
+(function () {
+  "use strict";
 
-  return {
-    restrict: 'A',
-    scope: {
-      settings: '=mnXdcrSettings'
-    },
-    isolate: false,
-    replace: true,
-    templateUrl: 'app/mn_admin/mn_xdcr/settings/mn_xdcr_settings.html',
-    controller: function ($scope, mnPoolDefault) {
-      $scope.mnPoolDefault = mnPoolDefault.latestValue();
-      $scope.$watch('settings', function (settings) {
-        mnPromiseHelper($scope, mnHttp({
-          method: 'POST',
-          url: '/settings/replications/',
-          data: settings,
-          params: {
-            just_validate: 1
-          }
-        })).catchErrors().cancelOnScopeDestroy();
-      }, true);
+  angular
+    .module('mnXDCR')
+    .directive('mnXdcrSettings', mnXdcrSettingsDirective);
+
+    function mnXdcrSettingsDirective(mnHttp, mnPromiseHelper) {
+      var mnXdcrSettings = {
+        restrict: 'A',
+        scope: {
+          settings: '=mnXdcrSettings'
+        },
+        isolate: false,
+        replace: true,
+        templateUrl: 'app/mn_admin/mn_xdcr/settings/mn_xdcr_settings.html',
+        controller: controller,
+        controllerAs: "mnXdcrSettingsController",
+        bindToController: true
+      };
+
+      return mnXdcrSettings;
+
+      function controller($scope, mnPoolDefault) {
+        var vm = this;
+        vm.mnPoolDefault = mnPoolDefault.latestValue();
+        $scope.$watch('mnXdcrSettingsController.settings', function (settings) {
+          mnPromiseHelper(vm, mnHttp({
+            method: 'POST',
+            url: '/settings/replications/',
+            data: settings,
+            params: {
+              just_validate: 1
+            }
+          })).catchErrors().cancelOnScopeDestroy($scope);
+        }, true);
+      }
     }
-  };
-});
+})();

@@ -1,59 +1,73 @@
-angular.module('mnXDCR', [
-  'mnXDCRService',
-  'mnHelper',
-  'mnBucketsService',
-  'mnPromiseHelper',
-  'mnPoll',
-  'mnRegex',
-  'mnPoolDefault',
-  'mnSpinner'
-]).controller('mnXDCRController',
-  function ($scope, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnBucketsService, mnPromiseHelper) {
+(function () {
+  "use strict";
 
-    //hack for avoiding access to $parent scope from child scope via propery "$parent"
-    //should be removed after implementation of Controller As syntax
-    $scope.mnXDCRController = $scope;
-    $scope.mnPoolDefault = mnPoolDefault.latestValue();
+  angular.module('mnXDCR', [
+    'mnXDCRService',
+    'mnHelper',
+    'mnBucketsService',
+    'mnPromiseHelper',
+    'mnPoll',
+    'mnRegex',
+    'mnPoolDefault',
+    'mnSpinner'
+  ]).controller('mnXDCRController', mnXDCRController);
 
-    new mnPoller($scope, mnXDCRService.getReplicationState)
-      .subscribe("mnXdcrState")
-      .keepIn("app.admin.replications")
+  function mnXDCRController($scope, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnBucketsService, mnPromiseHelper) {
+    var vm = this;
+
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
+
+    vm.createClusterReference = createClusterReference;
+    vm.deleteClusterReference = deleteClusterReference;
+    vm.editClusterReference = editClusterReference;
+    vm.showReplicationErrors = showReplicationErrors;
+    vm.deleteReplication = deleteReplication;
+    vm.editReplication = editReplication;
+    vm.pausePlayReplication = pausePlayReplication;
+    vm.createReplications = createReplications;
+
+    activate();
+
+    function activate() {
+      new mnPoller($scope, mnXDCRService.getReplicationState)
+      .subscribe("mnXdcrState", vm)
+      .keepIn("app.admin.replications", vm)
       .cancelOnScopeDestroy()
       .cycle();
-
-    $scope.createClusterReference = function () {
+    }
+    function createClusterReference() {
       $uibModal.open({
-        controller: 'mnXDCRReferenceDialogController',
+        controller: 'mnXDCRReferenceDialogController as mnXDCRReferenceDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/reference_dialog/mn_xdcr_reference_dialog.html',
         scope: $scope,
         resolve: {
           reference: mnHelper.wrapInFunction()
         }
       });
-    };
-    $scope.deleteClusterReference = function (row) {
+    }
+    function deleteClusterReference(row) {
       $uibModal.open({
-        controller: 'mnXDCRDeleteReferenceDialogController',
+        controller: 'mnXDCRDeleteReferenceDialogController as mnXDCRDeleteReferenceDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/delete_reference_dialog/mn_xdcr_delete_reference_dialog.html',
         scope: $scope,
         resolve: {
           name: mnHelper.wrapInFunction(row.name)
         }
       });
-    };
-    $scope.editClusterReference = function (reference) {
+    }
+    function editClusterReference(reference) {
       $uibModal.open({
-        controller: 'mnXDCRReferenceDialogController',
+        controller: 'mnXDCRReferenceDialogController as mnXDCRReferenceDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/reference_dialog/mn_xdcr_reference_dialog.html',
         scope: $scope,
         resolve: {
           reference: mnHelper.wrapInFunction(reference)
         }
       });
-    };
-    $scope.createReplications = function () {
+    }
+    function createReplications() {
       $uibModal.open({
-        controller: 'mnXDCRCreateDialogController',
+        controller: 'mnXDCRCreateDialogController as mnXDCRCreateDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/create_dialog/mn_xdcr_create_dialog.html',
         scope: $scope,
         resolve: {
@@ -61,29 +75,29 @@ angular.module('mnXDCR', [
           replicationSettings: mnHelper.wrapInFunction(mnXDCRService.getReplicationSettings())
         }
       });
-    };
-    $scope.showReplicationErrors = function (row) {
-      $scope.xdcrErrors = row.errors;
+    }
+    function showReplicationErrors(row) {
+      vm.xdcrErrors = row.errors;
       $uibModal.open({
         templateUrl: 'app/mn_admin/mn_xdcr/errors_dialog/mn_xdcr_errors_dialog.html',
         scope: $scope
       }).result['finally'](function () {
-        delete $scope.xdcrErrors;
+        delete vm.xdcrErrors;
       });
-    };
-    $scope.deleteReplication = function (row) {
+    }
+    function deleteReplication(row) {
       $uibModal.open({
-        controller: 'mnXDCRDeleteDialogController',
+        controller: 'mnXDCRDeleteDialogController as mnXDCRDeleteDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/delete_dialog/mn_xdcr_delete_dialog.html',
         scope: $scope,
         resolve: {
           id: mnHelper.wrapInFunction(row.id)
         }
       });
-    };
-    $scope.editReplication = function (row) {
+    }
+    function editReplication(row) {
       $uibModal.open({
-        controller: 'mnXDCREditDialogController',
+        controller: 'mnXDCREditDialogController as mnXDCREditDialogController',
         templateUrl: 'app/mn_admin/mn_xdcr/edit_dialog/mn_xdcr_edit_dialog.html',
         scope: $scope,
         resolve: {
@@ -92,10 +106,11 @@ angular.module('mnXDCR', [
           globalSettings: mnHelper.wrapInFunction(mnXDCRService.getReplicationSettings())
         }
       });
-    };
-    $scope.pausePlayReplication = function (row) {
-      mnPromiseHelper($scope, mnXDCRService.saveReplicationSettings(row.id, {pauseRequested: row.status !== 'paused'}))
+    }
+    function pausePlayReplication(row) {
+      mnPromiseHelper(vm, mnXDCRService.saveReplicationSettings(row.id, {pauseRequested: row.status !== 'paused'}))
         .reloadState()
-        .cancelOnScopeDestroy();
+        .cancelOnScopeDestroy($scope);
     };
-  });
+  }
+})();

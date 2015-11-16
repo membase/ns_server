@@ -1,12 +1,27 @@
-angular.module('mnXDCRService', [
-  'mnHttp',
-  'mnTasksDetails',
-  'mnPoolDefault'
-]).factory('mnXDCRService',
-  function ($q, mnHttp, mnTasksDetails, mnPoolDefault) {
-    var mnXDCRService = {};
+(function () {
+  "use strict";
 
-    mnXDCRService.removeExcessSettings = function (settings) {
+  angular.module('mnXDCRService', [
+    'mnHttp',
+    'mnTasksDetails',
+    'mnPoolDefault'
+  ]).factory('mnXDCRService', mnXDCRServiceFactory);
+
+  function mnXDCRServiceFactory($q, mnHttp, mnTasksDetails, mnPoolDefault) {
+    var mnXDCRService = {
+      removeExcessSettings: removeExcessSettings,
+      saveClusterReference: saveClusterReference,
+      deleteClusterReference: deleteClusterReference,
+      deleteReplication: deleteReplication,
+      getReplicationSettings: getReplicationSettings,
+      saveReplicationSettings: saveReplicationSettings,
+      postRelication: postRelication,
+      getReplicationState: getReplicationState
+    };
+
+    return mnXDCRService;
+
+    function removeExcessSettings(settings) {
       var neededProperties = ["replicationType", "optimisticReplicationThreshold", "failureRestartInterval", "docBatchSizeKb", "workerBatchSize", "checkpointInterval", "type", "toBucket", "toCluster", "fromBucket"];
       if (mnPoolDefault.latestValue().value.goxdcrEnabled) {
         neededProperties = neededProperties.concat(["sourceNozzlePerNode", "targetNozzlePerNode", "statsInterval", "logLevel"]);
@@ -18,36 +33,29 @@ angular.module('mnXDCRService', [
         rv[key] = settings[key];
       });
       return rv;
-    };
-
-    mnXDCRService.saveClusterReference = function (cluster, name) {
+    }
+    function saveClusterReference(cluster, name) {
       cluster = _.clone(cluster);
       cluster.hostname && !cluster.hostname.split(":")[1] && (cluster.hostname += ":8091");
       !cluster.encription && (cluster.certificate = '');
       return mnHttp.post('/pools/default/remoteClusters' + (name ? ("/" + encodeURIComponent(name)) : ""), cluster);
-    };
-
-    mnXDCRService.deleteClusterReference = function (name) {
+    }
+    function deleteClusterReference(name) {
       return mnHttp.delete('/pools/default/remoteClusters/' + encodeURIComponent(name));
-    };
-
-    mnXDCRService.deleteReplication = function (id) {
+    }
+    function deleteReplication(id) {
       return mnHttp.delete('/controller/cancelXDCR/' + encodeURIComponent(id));
-    };
-
-    mnXDCRService.getReplicationSettings = function (id) {
+    }
+    function getReplicationSettings(id) {
       return mnHttp.get("/settings/replications" + (id ? ("/" + encodeURIComponent(id)) : ""));
-    };
-
-    mnXDCRService.saveReplicationSettings = function (id, settings) {
+    }
+    function saveReplicationSettings(id, settings) {
       return mnHttp.post("/settings/replications/" + encodeURIComponent(id), settings);
-    };
-
-    mnXDCRService.postRelication = function (settings) {
+    }
+    function postRelication(settings) {
       return mnHttp.post("/controller/createReplication", settings);
-    };
-
-    mnXDCRService.getReplicationState = function () {
+    }
+    function getReplicationState() {
       return $q.all([
         mnTasksDetails.get(),
         mnHttp.get('/pools/default/remoteClusters')
@@ -106,7 +114,6 @@ angular.module('mnXDCRService', [
           replications: replications
         };
       });
-    };
-
-    return mnXDCRService;
-  });
+    }
+  }
+})();

@@ -1,38 +1,49 @@
-angular.module('mnXDCR').controller('mnXDCRCreateDialogController',
-  function ($scope, $uibModalInstance, $timeout, $window, mnPromiseHelper, mnPoolDefault, mnXDCRService, buckets, replicationSettings, mnRegexService) {
-    $scope.replication = replicationSettings.data;
-    $scope.mnPoolDefault = mnPoolDefault.latestValue();
-    delete $scope.replication.socketOptions;
-    $scope.replication.replicationType = "continuous";
-    $scope.replication.type = "xmem";
-    $scope.buckets = buckets.byType.membase;
-    $scope.replication.fromBucket = $scope.buckets[0].name;
-    $scope.replication.toCluster = $scope.mnXdcrState.references[0].name;
-    $scope.advancedFiltering = {};
+(function () {
+  "use strict";
 
-    if ($scope.mnPoolDefault.value.isEnterprise) {
-      try {
-        $scope.advancedFiltering.filterExpression = $window.localStorage.getItem('mn_xdcr_regex');
-        $scope.advancedFiltering.testKey = JSON.parse($window.localStorage.getItem('mn_xdcr_testKeys'))[0];
-      } catch (e) {}
+  angular
+    .module('mnXDCR')
+    .controller('mnXDCRCreateDialogController', mnXDCRCreateDialogController);
 
-      mnRegexService.handleValidateRegex($scope, $scope.advancedFiltering);
-    }
+    function mnXDCRCreateDialogController($scope, $uibModalInstance, $timeout, $window, mnPromiseHelper, mnPoolDefault, mnXDCRService, buckets, replicationSettings, mnRegexService) {
+      var vm = this;
 
-    $scope.createReplication = function () {
-      var replication = mnXDCRService.removeExcessSettings($scope.replication);
-      if ($scope.mnPoolDefault.value.isEnterprise) {
-        if ($scope.replication.enableAdvancedFiltering) {
-          var filterExpression = $scope.advancedFiltering.filterExpression;
-        }
-        replication.filterExpression = filterExpression;
+      vm.replication = replicationSettings.data;
+      vm.mnPoolDefault = mnPoolDefault.latestValue();
+      delete vm.replication.socketOptions;
+      vm.replication.replicationType = "continuous";
+      vm.replication.type = "xmem";
+      vm.buckets = buckets.byType.membase;
+      vm.replication.fromBucket = vm.buckets[0].name;
+      vm.replication.toCluster = $scope.mnXDCRController.mnXdcrState.references[0].name;
+      vm.advancedFiltering = {};
+      vm.createReplication = createReplication;
+
+      if (vm.mnPoolDefault.value.isEnterprise) {
+        try {
+          vm.advancedFiltering.filterExpression = $window.localStorage.getItem('mn_xdcr_regex');
+          vm.advancedFiltering.testKey = JSON.parse($window.localStorage.getItem('mn_xdcr_testKeys'))[0];
+        } catch (e) {}
+
+        mnRegexService.handleValidateRegex($scope, vm.advancedFiltering);
       }
-      var promise = mnXDCRService.postRelication(replication);
-      mnPromiseHelper($scope, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
-        .cancelOnScopeDestroy()
-        .catchErrors()
-        .closeOnSuccess()
-        .reloadState();
-    };
-  });
+
+      function createReplication() {
+        var replication = mnXDCRService.removeExcessSettings(vm.replication);
+        if (vm.mnPoolDefault.value.isEnterprise) {
+          if (vm.replication.enableAdvancedFiltering) {
+            var filterExpression = vm.advancedFiltering.filterExpression;
+          }
+          replication.filterExpression = filterExpression;
+        }
+        var promise = mnXDCRService.postRelication(replication);
+        mnPromiseHelper(vm, promise, $uibModalInstance)
+          .showErrorsSensitiveSpinner()
+          .cancelOnScopeDestroy($scope)
+          .catchErrors()
+          .closeOnSuccess()
+          .reloadState();
+      };
+    }
+})();
+

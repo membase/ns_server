@@ -214,7 +214,7 @@ angular.module('mnAdmin', [
     .state('app.admin.replications', {
       url: '/replications',
       templateUrl: 'app/mn_admin/mn_xdcr/mn_xdcr.html',
-      controller: 'mnXDCRController'
+      controller: 'mnXDCRController as mnXDCRController'
     })
     .state('app.admin.logs', {
       url: '/logs',

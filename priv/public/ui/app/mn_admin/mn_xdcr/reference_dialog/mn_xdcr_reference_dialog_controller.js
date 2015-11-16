@@ -1,14 +1,24 @@
-angular.module('mnXDCR').controller('mnXDCRReferenceDialogController',
-  function ($scope, $uibModalInstance, mnPromiseHelper, mnXDCRService, reference, mnPoolDefault) {
-    $scope.cluster = reference ? _.clone(reference) : {username: 'Administrator'};
-    $scope.mnPoolDefault = mnPoolDefault.latestValue();
-    $scope.createClusterReference = function () {
-      var promise = mnXDCRService.saveClusterReference($scope.cluster, reference && reference.name);
-      mnPromiseHelper($scope, promise, $uibModalInstance)
+(function () {
+  "use strict";
+
+  angular.module('mnXDCR').controller('mnXDCRReferenceDialogController', mnXDCRReferenceDialogController);
+
+  function mnXDCRReferenceDialogController($scope, $uibModalInstance, mnPromiseHelper, mnXDCRService, reference, mnPoolDefault) {
+    var vm = this;
+
+    vm.cluster = reference ? _.clone(reference) : {username: 'Administrator'};
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
+    vm.createClusterReference = createClusterReference;
+
+    function createClusterReference() {
+      var promise = mnXDCRService.saveClusterReference(vm.cluster, reference && reference.name);
+      mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
-        .cancelOnScopeDestroy()
+        .cancelOnScopeDestroy($scope)
         .closeOnSuccess()
         .reloadState();
     };
-  });
+  }
+})();
+

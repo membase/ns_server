@@ -2,7 +2,7 @@
   <h1>XDCR Errors</h1>
   <form ng-submit="$dismiss()">
     <div class="warning pat_10 xdcr_errors" id="create_replication_dialog_errors_container">
-      <span ng-repeat="error in xdcrErrors"><strong>Attention</strong> - {{error}}</span>
+      <span ng-repeat="error in mnXDCRController.xdcrErrors"><strong>Attention</strong> - {{error}}</span>
     </div>
     <div class="save_cancel">
       <button class="save_button float_right replicate-button" type="submit" style="margin-left:12px;">OK</button>

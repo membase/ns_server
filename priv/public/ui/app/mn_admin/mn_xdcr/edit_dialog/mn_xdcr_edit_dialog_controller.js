@@ -1,13 +1,22 @@
-angular.module('mnXDCR').controller('mnXDCREditDialogController',
-  function ($scope, $uibModalInstance, mnPromiseHelper, mnXDCRService, currentSettings, globalSettings, id) {
-    $scope.settings = _.extend({}, globalSettings.data, currentSettings.data);
-    $scope.createReplication = function () {
-      var promise = mnXDCRService.saveReplicationSettings(id, mnXDCRService.removeExcessSettings($scope.settings));
-      mnPromiseHelper($scope, promise, $uibModalInstance)
+(function () {
+  "use strict";
+
+  angular.module('mnXDCR').controller('mnXDCREditDialogController', mnXDCREditDialogController);
+
+  function mnXDCREditDialogController($scope, $uibModalInstance, mnPromiseHelper, mnXDCRService, currentSettings, globalSettings, id) {
+    var vm = this;
+
+    vm.settings = _.extend({}, globalSettings.data, currentSettings.data);
+    vm.createReplication = createReplication;
+
+    function createReplication() {
+      var promise = mnXDCRService.saveReplicationSettings(id, mnXDCRService.removeExcessSettings(vm.settings));
+      mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
-        .cancelOnScopeDestroy()
+        .cancelOnScopeDestroy($scope)
         .catchErrors()
         .closeOnSuccess()
         .reloadState();
     };
-  });
+  }
+})();
