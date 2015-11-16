@@ -90,11 +90,14 @@ loop(Parent, Child, MFA, Shutdown) ->
             loop(Parent, Child, MFA, Shutdown)
     end.
 
-start_child({M, F, A}) ->
+start_child({M, F, A} = MFA) ->
     RV = erlang:apply(M, F, A),
     case RV of
         {ok, Child} ->
-            assert_linked(Child);
+            assert_linked(Child),
+            ?log_debug("Started child process ~p~n"
+                       "  MFA: ~p",
+                       [Child, MFA]);
         _ ->
             ok
     end,
@@ -114,6 +117,7 @@ shutdown_child(Pid, Shutdown) ->
     exit(Pid, Reason),
     case misc:wait_for_process(Pid, Timeout) of
         ok ->
+            ?log_debug("Successfully terminated process ~p", [Pid]),
             consume_exit_msg(Pid, ExpectedReason);
         {error, timeout} ->
             true = (Reason =/= kill),
