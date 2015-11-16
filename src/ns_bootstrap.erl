@@ -22,22 +22,16 @@ start() ->
     try
         %% Check disk space every minute instead of every 30
         application:set_env(os_mon, disk_space_check_interval, 1),
-        ok = application:start(ale),
-        ok = application:start(crypto),
-        ok = ssl:start(permanent),
-        ok = application:start(lhttpc),
-        %% inets is needed for httpc which we still use occasionally
-        ok = inets:start(),
-
-        %% sasl is required to start os_mon; later we just disable default
-        %% sasl report handler in cb_init_loggers
-        ok = application:start(sasl),
-        ok = application:start(os_mon),
         case erlang:system_info(system_architecture) of
             "win32" -> inet_db:set_lookup([native, file]);
             _ -> ok
         end,
-        ok = application:start(ns_server, permanent)
+
+        Apps = [ale, crypto, ssl, lhttpc, inets, sasl, os_mon, ns_server],
+        lists:foreach(
+          fun (App) ->
+                  ok = application:start(App, permanent)
+          end, Apps)
     catch T:E ->
             timer:sleep(500),
             erlang:T(E)
