@@ -521,16 +521,14 @@ remove_trailing_whitespace(X) ->
 
 %% Wait for a process.
 
-wait_for_process(Pid, Timeout) ->
-    Me = self(),
-    Signal = make_ref(),
-    spawn(fun() ->
-                  erlang:monitor(process, Pid),
-                  erlang:monitor(process, Me),
-                  receive _ -> Me ! Signal end
-          end),
-    receive Signal -> ok
-    after Timeout -> {error, timeout}
+wait_for_process(PidOrName, Timeout) ->
+    MRef = erlang:monitor(process, PidOrName),
+    receive
+        {'DOWN', MRef, process, _, _Reason} ->
+            ok
+    after Timeout ->
+            erlang:demonitor(MRef, [flush]),
+            {error, timeout}
     end.
 
 wait_for_process_test_() ->
