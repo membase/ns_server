@@ -1,13 +1,20 @@
-angular.module('mnLogsService', [
-  'mnHttp',
-  'mnLogsCollectInfoService'
-]).service('mnLogsService',
-  function (mnHttp) {
-    var mnLogsService = {};
+(function () {
+  "use strict";
 
-    mnLogsService.getLogs = function () {
-      return mnHttp.get('/logs');
+  angular.module('mnLogsService', [
+    'mnHttp',
+    'mnLogsCollectInfoService'
+  ]).service('mnLogsService', mnLogsServiceFactory);
+
+  function mnLogsServiceFactory(mnHttp) {
+    var mnLogsService = {
+      getLogs: getLogs
     };
 
     return mnLogsService;
-  });
+
+    function getLogs() {
+      return mnHttp.get('/logs');
+    }
+  }
+})();

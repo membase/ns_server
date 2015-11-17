@@ -1,20 +1,29 @@
-angular.module('mnLogsCollectInfoService', [
-  'mnHttp',
-  'mnServersService',
-  'mnTasksDetails',
-  'mnFilters'
-]).service('mnLogsCollectInfoService',
-  function (mnHttp, $q, mnServersService, mnTasksDetails, mnStripPortHTMLFilter) {
-    var mnLogsCollectInfoService = {};
+(function () {
+  "use strict";
 
-    mnLogsCollectInfoService.startLogsCollection = function (collect) {
+  angular.module('mnLogsCollectInfoService', [
+    'mnHttp',
+    'mnServersService',
+    'mnTasksDetails',
+    'mnFilters'
+  ]).service('mnLogsCollectInfoService', mnLogsCollectInfoServiceFactory);
+
+  function mnLogsCollectInfoServiceFactory(mnHttp, $q, mnServersService, mnTasksDetails, mnStripPortHTMLFilter) {
+    var mnLogsCollectInfoService = {
+      startLogsCollection: startLogsCollection,
+      cancelLogsCollection: cancelLogsCollection,
+      getState: getState
+    };
+
+    return mnLogsCollectInfoService;
+
+    function startLogsCollection(collect) {
       return mnHttp.post('/controller/startLogsCollection', collect);
-    };
-    mnLogsCollectInfoService.cancelLogsCollection = function () {
+    }
+    function cancelLogsCollection() {
       return mnHttp.post('/controller/cancelLogsCollection');
-    };
-
-    mnLogsCollectInfoService.getState = function () {
+    }
+    function getState() {
       return $q.all([
         mnServersService.getNodes(),
         mnTasksDetails.get()
@@ -72,7 +81,6 @@ angular.module('mnLogsCollectInfoService', [
 
         return task
       });
-    };
-
-    return mnLogsCollectInfoService;
-  });
+    }
+  }
+})();

@@ -1,31 +1,54 @@
-angular.module('mnLogs').controller('mnLogsCollectInfoController',
-  function ($scope, mnHelper, mnPromiseHelper, mnPoolDefault, mnLogsCollectInfoService, mnPoller, $state, $uibModal) {
-    $scope.mnPoolDefault = mnPoolDefault.latestValue();
-    if ($scope.mnPoolDefault.value.isROAdminCreds) {
+(function () {
+  "use strict";
+
+  angular
+    .module('mnLogs')
+    .controller('mnLogsCollectInfoController', mnLogsCollectInfoController);
+
+  function mnLogsCollectInfoController($scope, mnHelper, mnPromiseHelper, mnPoolDefault, mnLogsCollectInfoService, mnPoller, $state, $uibModal) {
+    var vm = this;
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
+    vm.stopCollection = stopCollection;
+    vm.submit = submit;
+
+    activate();
+
+    if (vm.mnPoolDefault.value.isROAdminCreds) {
       return;
     }
-    $scope.collect = {
+    vm.collect = {
       nodes: {},
       from: '*'
     };
-    if ($scope.mnPoolDefault.value.isEnterprise) {
-      $scope.collect.uploadHost = 's3.amazonaws.com/cb-customers';
+    if (vm.mnPoolDefault.value.isEnterprise) {
+      vm.collect.uploadHost = 's3.amazonaws.com/cb-customers';
     }
 
-    $scope.stopCollection = function () {
+    function activate() {
+      new mnPoller($scope, mnLogsCollectInfoService.getState)
+      .subscribe(function (state) {
+        vm.loadingResult = false;
+        vm.mnLogsCollectInfoState = state;
+      })
+      .keepIn("app.admin.logs.collectInfo", vm)
+      .cancelOnScopeDestroy()
+      .cycle();
+    }
+
+    function stopCollection() {
       $uibModal.open({
         templateUrl: 'app/mn_admin/mn_logs/collect_info/mn_logs_collect_info_stop_dialog.html'
       }).result.then(function () {
-        $scope.disabledStopCollect = true;
-        mnPromiseHelper($scope, mnLogsCollectInfoService.cancelLogsCollection())
-          .cancelOnScopeDestroy()
+        vm.disabledStopCollect = true;
+        mnPromiseHelper(vm, mnLogsCollectInfoService.cancelLogsCollection())
+          .cancelOnScopeDestroy($scope)
           .getPromise()['finally'](function () {
-            $scope.disabledStopCollect = false;
+            vm.disabledStopCollect = false;
           });
       });
-    };
-    $scope.submit = function () {
-      var collect = _.clone($scope.collect);
+    }
+    function submit() {
+      var collect = _.clone(vm.collect);
       collect.nodes = !collect.from ? mnHelper.checkboxesToList(collect.nodes).join(',') : '*';
       if (!collect.upload) {
         delete collect.uploadHost;
@@ -33,22 +56,14 @@ angular.module('mnLogs').controller('mnLogsCollectInfoController',
         delete collect.ticket;
       }
       var promise = mnLogsCollectInfoService.startLogsCollection(collect);
-      mnPromiseHelper($scope, promise)
+      mnPromiseHelper(vm, promise)
         .showSpinner()
         .catchErrors()
-        .cancelOnScopeDestroy()
+        .cancelOnScopeDestroy($scope)
         .onSuccess(function () {
-          $scope.loadingResult = true;
+          vm.loadingResult = true;
           $state.go('app.admin.logs.collectInfo.result');
         });
-    };
-    new mnPoller($scope, mnLogsCollectInfoService.getState)
-      .subscribe(function (state) {
-        $scope.loadingResult = false;
-        $scope.mnLogsCollectInfoState = state;
-      })
-      .keepIn("app.admin.logs.collectInfo")
-      .cancelOnScopeDestroy()
-      .cycle();
-
-  });
+    }
+  }
+})();

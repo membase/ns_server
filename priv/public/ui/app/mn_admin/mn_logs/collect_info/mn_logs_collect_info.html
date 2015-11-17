@@ -1,8 +1,26 @@
-<div ng-show="!mnPoolDefault.value.isROAdminCreds" id="js_collect_information" class="when-roadmin-avoid-me">
+<div
+  ng-show="!mnLogsCollectInfoController.mnPoolDefault.value.isROAdminCreds"
+  id="js_collect_information"
+  class="when-roadmin-avoid-me">
   <div class="controls">
-    <a id="js_start_new_info" class="btn_1" ng-show="!('app.admin.logs.collectInfo.form' | isState)"  ui-sref="app.admin.logs.collectInfo.form"><span>Start New Collection</span></a>
-    <a id="js_cancel_collect_info" class="btn_1" ng-show="mnLogsCollectInfoState.status === 'running'" ng-click="stopCollection()" ng-disabled="disabledStopCollect"><span>Stop Collection</span></a>
-    <a id="js_previous_result_btn" class="btn_1" ng-show="mnLogsCollectInfoState.status !== 'idle' && !('app.admin.logs.collectInfo.result' | isState)" ui-sref="app.admin.logs.collectInfo.result"><span>Show Collection Progress</span></a>
+    <a
+      id="js_start_new_info"
+      class="btn_1"
+      ng-show="!('app.admin.logs.collectInfo.form' | isState)"
+      ui-sref="app.admin.logs.collectInfo.form"><span>Start New Collection</span>
+    </a>
+    <a
+      id="js_cancel_collect_info"
+      class="btn_1"
+      ng-show="mnLogsCollectInfoController.mnLogsCollectInfoState.status === 'running'"
+      ng-click="mnLogsCollectInfoController.stopCollection()"
+      ng-disabled="mnLogsCollectInfoController.disabledStopCollect"><span>Stop Collection</span>
+    </a>
+    <a
+      id="js_previous_result_btn"
+      class="btn_1"
+      ng-show="mnLogsCollectInfoController.mnLogsCollectInfoState.status !== 'idle' && !('app.admin.logs.collectInfo.result' | isState)"
+      ui-sref="app.admin.logs.collectInfo.result"><span>Show Collection Progress</span></a>
   </div>
   <div ui-view></div>
 </div>

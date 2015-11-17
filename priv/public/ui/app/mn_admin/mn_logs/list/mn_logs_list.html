@@ -1,4 +1,4 @@
-<div id="logs_container" mn-spinner="!logs" min-height="100px">
+<div id="logs_container" mn-spinner="!mnLogsListController.logs" min-height="100px">
 <table class="lined_tab">
   <colgroup>
     <col style="width: 55%;">
@@ -15,7 +15,7 @@
     </tr>
   </thead>
   <tbody>
-    <tr ng-repeat="row in logs | orderBy:'serverTime':true">
+    <tr ng-repeat="row in mnLogsListController.logs | orderBy:'serverTime':true">
       <td style="white-space: pre-wrap;">{{row.text}}</td>
       <td>{{row.module}} {{row.code | moduleCode }}</td>
       <td>{{row.node}}</td>

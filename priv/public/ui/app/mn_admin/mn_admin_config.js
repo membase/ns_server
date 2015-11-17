@@ -224,13 +224,13 @@ angular.module('mnAdmin', [
     })
     .state('app.admin.logs.list', {
       url: '',
-      controller: 'mnLogsListController',
+      controller: 'mnLogsListController as mnLogsListController',
       templateUrl: 'app/mn_admin/mn_logs/list/mn_logs_list.html'
     })
     .state('app.admin.logs.collectInfo', {
       url: '/collectInfo',
       abstract: true,
-      controller: 'mnLogsCollectInfoController',
+      controller: 'mnLogsCollectInfoController as mnLogsCollectInfoController',
       templateUrl: 'app/mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
       data: {
         required: {
