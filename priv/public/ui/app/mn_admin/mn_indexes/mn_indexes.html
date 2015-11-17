@@ -1,13 +1,13 @@
 <div id="js_indexes" class="indexes">
   <div id="js_index_warnings_container">
-    <div class="warning_message" ng-repeat="message in mnIndexesState.warnings">Warning: {{message}}</div>
+    <div class="warning_message" ng-repeat="message in mnIndexesController.mnIndexesState.warnings">Warning: {{message}}</div>
   </div>
   <div class="shadow_box">
     <div class="header_2">
       <h4 style="float:left;line-height:34px;">Indexes</h4>
       <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
     </div>
-    <div mn-spinner="!mnIndexesState">
+    <div mn-spinner="!mnIndexesController.mnIndexesState">
       <div id="js_indexes_list_container" class="servers_list indexes_list_container">
         <table class="list align_text" style="width:100%" mn-sortable-table="hosts">
           <thead>
@@ -19,10 +19,10 @@
               <th mn-sortable-title="progress" style="width: 150px;">Initial Build Progress</th>
             </tr>
           </thead>
-          <tbody ng-if="mnIndexesState.indexes.length" ng-repeat="row in mnIndexesState.indexes | orderBy:orderBy:invert">
+          <tbody ng-if="mnIndexesController.mnIndexesState.indexes.length" ng-repeat="row in mnIndexesController.mnIndexesState.indexes | orderBy:orderBy:invert">
             <tr class="row">
               <td class="ellipsis with_expander_button" title="{{row.bucket}}">
-                <a ng-click="toggleDetails(row.id)"><ins class="expander" ng-class="{closed:!isDetailsOpened(row.id)}"></ins></a>
+                <a ng-click="mnIndexesController.toggleDetails(row.id)"><ins class="expander" ng-class="{closed:!mnIndexesController.isDetailsOpened(row.id)}"></ins></a>
                 <span>{{row.bucket}}</span>
               </td>
               <td class="ellipsis" title="{{row.hosts[0]}}">{{row.hosts[0]}}</td>
@@ -33,7 +33,7 @@
               </td>
             </tr>
             <tr>
-              <td colspan="5" class="details-placeholder" ng-if="isDetailsOpened(row.id)" ui-view="details">
+              <td colspan="5" class="details-placeholder" ng-if="mnIndexesController.isDetailsOpened(row.id)" ui-view="details">
                 <div class="gong_rb">
                   <table class="properties_table">
                     <tbody>
@@ -46,7 +46,7 @@
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="!mnIndexesState.indexes.length">
+          <tbody ng-if="!mnIndexesController.mnIndexesState.indexes.length">
             <tr><td colspan="5" style="text-align: center;">There are no indexes currently.</td></tr>
           </tbody>
         </table>

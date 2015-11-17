@@ -175,7 +175,7 @@ angular.module('mnAdmin', [
           array: true
         }
       },
-      controller: "mnIndexesController",
+      controller: "mnIndexesController as mnIndexesController",
       templateUrl: "app/mn_admin/mn_indexes/mn_indexes.html"
     })
     .state('app.admin.servers', {
