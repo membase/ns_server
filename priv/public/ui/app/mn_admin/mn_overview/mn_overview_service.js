@@ -1,10 +1,16 @@
-angular.module('mnOverviewService', [
-  'mnPoolDefault',
-  'mnHttp'
-]).factory('mnOverviewService',
-  function (mnHttp, mnPoolDefault) {
+(function () {
+  "use strict"
+  angular.module('mnOverviewService', [
+    'mnPoolDefault',
+    'mnHttp'
+  ]).factory('mnOverviewService', mnOverviewServiceFactory);
 
-    var mnOverviewService = {};
+  function mnOverviewServiceFactory(mnHttp, mnPoolDefault) {
+
+    var mnOverviewService = {
+      getStats: getStats,
+      getOverviewConfig: getOverviewConfig
+    };
 
     var processPlotOptions = function (plotOptions, plotDatas) {
       var firstData = plotDatas[0];
@@ -67,7 +73,9 @@ angular.module('mnOverviewService', [
       }]
     };
 
-    mnOverviewService.getStats = function () {
+    return mnOverviewService;
+
+    function getStats() {
       return mnHttp({
         url: '/pools/default/overviewStats',
         method: "GET"
@@ -101,9 +109,8 @@ angular.module('mnOverviewService', [
           }
         };
       });
-    };
-
-    mnOverviewService.getOverviewConfig = function () {
+    }
+    function getOverviewConfig() {
       return mnPoolDefault.getFresh().then(function (poolsDetails) {
         var details = poolsDetails;
         var rv = {};
@@ -168,7 +175,6 @@ angular.module('mnOverviewService', [
 
         return rv;
       });
-    };
-
-    return mnOverviewService;
-  });
+    }
+  }
+})();
