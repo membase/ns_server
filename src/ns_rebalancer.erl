@@ -419,8 +419,20 @@ activate_services(KeepNodes) ->
             AllServices = ns_cluster_membership:supported_services(),
             lists:foreach(
               fun (Service) ->
-                      ServiceNodes = ns_cluster_membership:service_nodes(KeepNodes, Service),
-                      ok = ns_cluster_membership:set_service_map(Service, ServiceNodes)
+                      ServiceNodes0 = ns_cluster_membership:service_nodes(KeepNodes, Service),
+                      ServiceNodes = lists:sort(ServiceNodes0),
+
+                      CurrentNodes0 = ns_cluster_membership:get_service_map(Config, Service),
+                      CurrentNodes = lists:sort(CurrentNodes0),
+
+                      case CurrentNodes =:= ServiceNodes of
+                          true ->
+                              ok;
+                          false ->
+                              ?rebalance_info("Updating service map for ~p:~n~p",
+                                              [Service, ServiceNodes]),
+                              ok = ns_cluster_membership:set_service_map(Service, ServiceNodes)
+                      end
               end, AllServices);
         false ->
             ok

@@ -61,7 +61,8 @@ handle_packet(response, ?DCP_ADD_STREAM, Packet,
               = State, ParentState) ->
     {Header, Body} = mc_binary:decode_packet(Packet),
 
-    {Partition, NewToAdd, NewErrors} = process_add_stream_response(Header, ToAdd, Errors),
+    {Partition, NewToAdd, NewErrors} =
+        process_add_stream_response(Header, ToAdd, Errors, ParentState),
     NewStreamState = StreamState#stream_state{to_add = NewToAdd, errors = NewErrors},
 
     NewState =
@@ -108,7 +109,8 @@ handle_packet(response, ?DCP_CLOSE_STREAM, Packet,
               = State, ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
 
-    {Partition, NewToClose, NewErrors} = process_close_stream_response(Header, ToClose, Errors),
+    {Partition, NewToClose, NewErrors} =
+        process_close_stream_response(Header, ToClose, Errors, consumer, ParentState),
     NewStreamState = StreamState#stream_state{to_close = NewToClose, errors = NewErrors},
 
     NewState =
@@ -130,6 +132,8 @@ handle_packet(response, ?DCP_SET_VBUCKET_STATE, Packet,
 
     case {Header#mc_header.opaque, Header#mc_header.status} of
         {Opaque, ?SUCCESS} ->
+            note_set_vbucket_state(Partition, VbState, ParentState),
+
             ?rebalance_debug("Partition ~p changed status to ~p",
                              [Partition, mc_client_binary:vbucket_state_to_atom(VbState)]),
             case VbState of
@@ -178,15 +182,15 @@ handle_call({setup_streams, Partitions}, From,
         {[], []} ->
             {reply, ok, State, ParentState};
         _ ->
-            StartStreamRequests = lists:map(fun (Partition) ->
-                                                    dcp_commands:add_stream(Sock, Partition,
-                                                                            Partition, add),
-                                                    {Partition}
-                                            end, StreamsToStart),
+            StartStreamRequests =
+                lists:map(fun (Partition) ->
+                                  add_stream(Sock, Partition, Partition, add, ParentState),
+                                  {Partition}
+                          end, StreamsToStart),
 
             StopStreamRequests = lists:map(fun (Partition) ->
                                                    Producer = dcp_proxy:get_partner(ParentState),
-                                                   dcp_commands:close_stream(Sock, Partition, Partition),
+                                                   close_stream(Sock, Partition, Partition, ParentState),
                                                    gen_server:cast(Producer, {close_stream, Partition}),
                                                    {Partition}
                                            end, StreamsToStop),
@@ -217,7 +221,7 @@ handle_call(shut_connection, From,
 
             lists:foreach(
               fun (Partition) ->
-                      dcp_commands:close_stream(Sock, Partition, Partition)
+                      close_stream(Sock, Partition, Partition, ParentState)
               end, Partitions),
 
             {noreply, State#state{state = #stream_state{
@@ -236,7 +240,7 @@ handle_call({takeover, Partition}, From, #state{state=idle} = State, ParentState
         true ->
             {reply, {error, takeover_on_open_stream_is_not_allowed}, State, ParentState};
         false ->
-            dcp_commands:add_stream(Sock, Partition, Partition, takeover),
+            add_stream(Sock, Partition, Partition, takeover, ParentState),
             {noreply, State#state{state = #takeover_state{
                                              owner = From,
                                              state = requested,
@@ -258,7 +262,8 @@ handle_cast({producer_stream_closed, Packet},
             ParentState) ->
     {Header, _Body} = mc_binary:decode_packet(Packet),
 
-    {Partition, NewToClose, NewErrors} = process_close_stream_response(Header, ToClose, Errors),
+    {Partition, NewToClose, NewErrors} =
+        process_close_stream_response(Header, ToClose, Errors, producer, ParentState),
     NewStreamState = StreamState#stream_state{to_close_on_producer = NewToClose,
                                               errors = NewErrors},
 
@@ -295,11 +300,16 @@ handle_cast(Msg, State, ParentState) ->
     ?rebalance_warning("Unhandled cast: Msg = ~p, State = ~p", [Msg, State]),
     {noreply, State, ParentState}.
 
-process_stream_response(Header, PendingPartitions, Errors, SuccessPred) ->
+process_stream_response(Header, PendingPartitions, Errors, Type, Side, ParentState) ->
     case lists:keytake(Header#mc_header.opaque, 1, PendingPartitions) of
-        {value, {Partition} , N} ->
+        {value, {Partition}, N} ->
             Status = Header#mc_header.status,
-            case SuccessPred(Status) of
+            Success = is_successful_stream_response(Type, Status),
+
+            note_stream_response(Type, Partition, Partition, Side,
+                                 Status, Success, ParentState),
+
+            case Success of
                 true ->
                     {Partition, N, Errors};
                 false ->
@@ -311,17 +321,9 @@ process_stream_response(Header, PendingPartitions, Errors, SuccessPred) ->
             erlang:error({unrecognized_opaque, Header#mc_header.opaque, PendingPartitions})
     end.
 
-allow_success_only(Status) ->
-    Status =:= ?SUCCESS.
-
-process_add_stream_response(Header, PendingPartitions, Errors) ->
-    process_stream_response(Header, PendingPartitions, Errors,
-                            fun allow_success_only/1).
-
-allow_success_enoent(Status) ->
-    Status =:= ?SUCCESS orelse Status =:= ?KEY_ENOENT.
-
-process_close_stream_response(Header, PendingPartitions, Errors) ->
+is_successful_stream_response(add_stream, Status) ->
+    Status =:= ?SUCCESS;
+is_successful_stream_response(close_stream, Status) ->
     %% It's possible that the stream is already closed in the following cases:
     %%
     %%   - on the producer and consumer sides, if the vbucket has been moved
@@ -333,8 +335,15 @@ process_close_stream_response(Header, PendingPartitions, Errors) ->
     %%   notification before handling our close stream request
     %%
     %% Because of this we ignore ?KEY_ENOENT errors.
+    Status =:= ?SUCCESS orelse Status =:= ?KEY_ENOENT.
+
+process_add_stream_response(Header, PendingPartitions, Errors, ParentState) ->
     process_stream_response(Header, PendingPartitions, Errors,
-                            fun allow_success_enoent/1).
+                            add_stream, consumer, ParentState).
+
+process_close_stream_response(Header, PendingPartitions, Errors, Side, ParentState) ->
+    process_stream_response(Header, PendingPartitions, Errors,
+                            close_stream, Side, ParentState).
 
 maybe_reply_setup_streams(#state{state = StreamState} = State) ->
     case {StreamState#stream_state.to_add, StreamState#stream_state.to_close,
@@ -387,3 +396,41 @@ get_partitions(#state{partitions = CurrentPartitions}) ->
 
 has_partition(Partition, #state{partitions = CurrentPartitions}) ->
     ordsets:is_element(Partition, CurrentPartitions).
+
+add_stream(Sock, Partition, Opaque, Type, ParentState) ->
+    dcp_commands:add_stream(Sock, Partition, Opaque, Type),
+
+    Bucket = dcp_proxy:get_bucket(ParentState),
+    ConnName = dcp_proxy:get_conn_name(ParentState),
+
+    master_activity_events:note_dcp_add_stream(Bucket, ConnName,
+                                               Partition, Opaque, Type, consumer).
+
+close_stream(Sock, Partition, Opaque, ParentState) ->
+    dcp_commands:close_stream(Sock, Partition, Opaque),
+
+    Bucket = dcp_proxy:get_bucket(ParentState),
+    ConnName = dcp_proxy:get_conn_name(ParentState),
+
+    master_activity_events:note_dcp_close_stream(Bucket, ConnName,
+                                                 Partition, Opaque, consumer).
+
+note_stream_response(Type, Partition, Opaque, Side, Status, Success, ParentState) ->
+    NoteFun = get_note_stream_response_fun(Type),
+
+    Bucket = dcp_proxy:get_bucket(ParentState),
+    ConnName = dcp_proxy:get_conn_name(ParentState),
+
+    NoteFun(Bucket, ConnName, Partition, Opaque, Side, Status, Success).
+
+get_note_stream_response_fun(add_stream) ->
+    fun master_activity_events:note_dcp_add_stream_response/7;
+get_note_stream_response_fun(close_stream) ->
+    fun master_activity_events:note_dcp_close_stream_response/7.
+
+note_set_vbucket_state(Partition, RawVbState, ParentState) ->
+    Bucket = dcp_proxy:get_bucket(ParentState),
+    ConnName = dcp_proxy:get_conn_name(ParentState),
+    VbState = mc_client_binary:vbucket_state_to_atom(RawVbState),
+
+    master_activity_events:note_dcp_set_vbucket_state(Bucket, ConnName, Partition, VbState).

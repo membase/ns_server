@@ -58,7 +58,14 @@
          event_to_formatted_iolist/1,
          format_some_history/1,
          note_vbucket_upgraded_to_dcp/2,
-         note_bucket_upgraded_to_dcp/1
+         note_bucket_upgraded_to_dcp/1,
+         note_dcp_replicator_start/5,
+         note_dcp_add_stream/6,
+         note_dcp_close_stream/5,
+         note_dcp_add_stream_response/7,
+         note_dcp_close_stream_response/7,
+         note_dcp_set_vbucket_state/4,
+         note_set_service_map/2
         ]).
 
 -export([stream_events/2]).
@@ -196,6 +203,34 @@ note_vbucket_upgraded_to_dcp(Bucket, VBucket) ->
 
 note_bucket_upgraded_to_dcp(Bucket) ->
     submit_cast({note_bucket_upgraded_to_dcp, Bucket}).
+
+note_dcp_replicator_start(Bucket, ConnName, ProducerNode, ConsumerConn, ProducerConn) ->
+    Pid = self(),
+    submit_cast({dcp_replicator_start,
+                 Bucket, ConnName, ProducerNode, ConsumerConn, ProducerConn, Pid}),
+    master_activity_events_pids_watcher:observe_fate_of(
+      Pid, {dcp_replicator_terminate,
+            Bucket, ConnName, ProducerNode, ConsumerConn, ProducerConn}).
+
+note_dcp_add_stream(Bucket, ConnName, VBucket, Opaque, Type, Side) ->
+    submit_cast({dcp_add_stream, Bucket, ConnName, VBucket, Opaque, Type, Side, self()}).
+
+note_dcp_close_stream(Bucket, ConnName, VBucket, Opaque, Side) ->
+    submit_cast({dcp_close_stream, Bucket, ConnName, VBucket, Opaque, Side, self()}).
+
+note_dcp_add_stream_response(Bucket, ConnName, VBucket, Opaque, Side, Status, Success) ->
+    submit_cast({dcp_add_stream_response,
+                 Bucket, ConnName, VBucket, Opaque, Side, Status, Success, self()}).
+
+note_dcp_close_stream_response(Bucket, ConnName, VBucket, Opaque, Side, Status, Success) ->
+    submit_cast({dcp_close_stream_response,
+                 Bucket, ConnName, VBucket, Opaque, Side, Status, Success, self()}).
+
+note_dcp_set_vbucket_state(Bucket, ConnName, VBucket, State) ->
+    submit_cast({dcp_set_vbucket_state, Bucket, ConnName, VBucket, State, self()}).
+
+note_set_service_map(Service, Nodes) ->
+    submit_cast({set_service_map, Service, Nodes}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -676,6 +711,99 @@ event_to_jsons({TS, note_bucket_upgraded_to_dcp, BucketName}) ->
     [format_simple_plist_as_json([{type, bucketUpgradedToDCP},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName}])];
+
+event_to_jsons({TS, dcp_replicator_start,
+                Bucket, ConnName, ProducerNode, ConsumerConn, ProducerConn, Pid}) ->
+    [format_simple_plist_as_json([{type, dcpReplicatorStart},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, Bucket},
+                                  {connectionName, ConnName},
+                                  {pid, Pid},
+                                  {consumerConn, ConsumerConn},
+                                  {producerConn, ProducerConn},
+                                  {producerNode, ProducerNode},
+                                  {consumerNode, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, dcp_replicator_terminate,
+                Bucket, ConnName, ProducerNode, ConsumerConn, ProducerConn, Pid,
+                Reason}) ->
+    [format_simple_plist_as_json([{type, dcpReplicatorTerminate},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, Bucket},
+                                  {connectionName, ConnName},
+                                  {pid, Pid},
+                                  {consumerConn, ConsumerConn},
+                                  {producerConn, ProducerConn},
+                                  {reason, Reason},
+                                  {producerNode, ProducerNode},
+                                  {consumerNode, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, dcp_add_stream, Bucket, ConnName, VBucket, Opaque, Type, Side, Pid}) ->
+    [format_simple_plist_as_json([{type, dcpAddStream},
+                                  {side, Side},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, Bucket},
+                                  {connectionName, ConnName},
+                                  {vbucket, VBucket},
+                                  {opaque, Opaque},
+                                  {streamType, Type},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, dcp_close_stream, Bucket, ConnName, VBucket, Opaque, Side, Pid}) ->
+    [format_simple_plist_as_json([{type, dcpCloseStream},
+                                  {side, Side},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, Bucket},
+                                  {connectionName, ConnName},
+                                  {vbucket, VBucket},
+                                  {opaque, Opaque},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, DcpCloseAddResponse,
+                Bucket, ConnName, VBucket, Opaque, Side, Status, Success, Pid})
+  when DcpCloseAddResponse =:= dcp_add_stream_response;
+       DcpCloseAddResponse =:= dcp_close_stream_response ->
+
+    Type =
+        case DcpCloseAddResponse of
+            dcp_add_stream_response ->
+                dcpAddStreamResponse;
+            dcp_close_stream_response ->
+                dcpCloseStreamResponse
+        end,
+
+    HumanStatus = mc_client_binary:map_status(Status),
+
+    [format_simple_plist_as_json([{type, Type},
+                                  {side, Side},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, Bucket},
+                                  {connectionName, ConnName},
+                                  {vbucket, VBucket},
+                                  {opaque, Opaque},
+                                  {status, HumanStatus},
+                                  {rawStatus, Status},
+                                  {success, Success},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, dcp_set_vbucket_state, Bucket, ConnName, VBucket, State, Pid}) ->
+    [format_simple_plist_as_json([{type, dcpSetVbucketState},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, Bucket},
+                                  {connectionName, ConnName},
+                                  {vbucket, VBucket},
+                                  {state, State},
+                                  {pid, Pid},
+                                  {node, maybe_get_pids_node(Pid)}])];
+
+event_to_jsons({TS, set_service_map, Service, Nodes}) ->
+    [[{nodes, Nodes} |
+      format_simple_plist_as_json([{type, setServiceMap},
+                                   {ts, misc:time_to_epoch_int(TS)},
+                                   {service, Service}])]];
 
 event_to_jsons(Event) ->
     ?log_warning("Got unknown kind of event: ~p", [Event]),

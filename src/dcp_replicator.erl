@@ -53,6 +53,10 @@ init({ProducerNode, Bucket}) ->
     Proxies = dcp_proxy:connect_proxies(ConsumerConn, ProducerConn),
 
     ?log_debug("initiated new dcp replication with consumer side: ~p and producer side: ~p", [ConsumerConn, ProducerConn]),
+
+    master_activity_events:note_dcp_replicator_start(Bucket, ConnName,
+                                                     ProducerNode, ConsumerConn, ProducerConn),
+
     {ok, #state{
             proxies = Proxies,
             consumer_conn = ConsumerConn,

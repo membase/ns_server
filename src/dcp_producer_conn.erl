@@ -47,9 +47,18 @@ handle_call(Msg, _From, State, ParentState) ->
     {reply, refused, State, ParentState}.
 
 handle_cast({close_stream, Partition}, State, ParentState) ->
-    dcp_commands:close_stream(dcp_proxy:get_socket(ParentState), Partition, Partition),
+    close_stream(Partition, Partition, ParentState),
     {noreply, State, ParentState};
 
 handle_cast(Msg, State, ParentState) ->
     ?rebalance_warning("Unhandled cast: Msg = ~p, State = ~p", [Msg, State]),
     {noreply, State, ParentState}.
+
+close_stream(Partition, Opaque, ParentState) ->
+    Sock = dcp_proxy:get_socket(ParentState),
+    Bucket = dcp_proxy:get_bucket(ParentState),
+    ConnName = dcp_proxy:get_conn_name(ParentState),
+
+    dcp_commands:close_stream(Sock, Partition, Opaque),
+    master_activity_events:note_dcp_close_stream(Bucket, ConnName,
+                                                 Partition, Opaque, producer).
