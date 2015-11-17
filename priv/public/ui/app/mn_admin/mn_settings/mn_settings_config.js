@@ -25,7 +25,7 @@
       })
       .state('app.admin.settings.cluster', {
         url: '/cluster',
-        controller: 'mnSettingsClusterController',
+        controller: 'mnSettingsClusterController as mnSettingsClusterController',
         templateUrl: 'app/mn_admin/mn_settings/cluster/mn_settings_cluster.html'
       })
       .state('app.admin.settings.notifications', {

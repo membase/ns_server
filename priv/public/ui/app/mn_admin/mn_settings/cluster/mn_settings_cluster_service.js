@@ -1,26 +1,38 @@
-angular.module('mnSettingsClusterService', [
-  'mnHttp',
-  'mnServersService',
-  'mnPoolDefault',
-  'mnMemoryQuotaService'
-]).factory('mnSettingsClusterService',
-  function (mnHttp, $q, mnServersService, mnPoolDefault, mnMemoryQuotaService) {
-    var mnSettingsClusterService = {};
+(function () {
+  "use strict";
 
+  angular.module('mnSettingsClusterService', [
+    'mnHttp',
+    'mnServersService',
+    'mnPoolDefault',
+    'mnMemoryQuotaService'
+  ]).factory('mnSettingsClusterService', mnSettingsClusterServiceFactory);
 
-    mnSettingsClusterService.getDefaultCertificate = function () {
+  function mnSettingsClusterServiceFactory(mnHttp, $q, mnServersService, mnPoolDefault, mnMemoryQuotaService) {
+    var mnSettingsClusterService = {
+      getDefaultCertificate: getDefaultCertificate,
+      regenerateCertificate: regenerateCertificate,
+      postPoolsDefault: postPoolsDefault,
+      getIndexSettings: getIndexSettings,
+      postIndexSettings: postIndexSettings,
+      getClusterState: getClusterState
+    };
+
+    return mnSettingsClusterService;
+
+    function getDefaultCertificate() {
       return mnHttp({
         method: 'GET',
         url: '/pools/default/certificate'
       });
-    };
-    mnSettingsClusterService.regenerateCertificate = function () {
+    }
+    function regenerateCertificate() {
       return mnHttp({
         method: 'POST',
         url: '/controller/regenerateCertificate'
       });
-    };
-    mnSettingsClusterService.postPoolsDefault = function (memoryQuotaConfig, justValidate, clusterName) {
+    }
+    function postPoolsDefault(memoryQuotaConfig, justValidate, clusterName) {
       var data = {
         memoryQuota: memoryQuotaConfig.memoryQuota === null ? "" : memoryQuotaConfig.memoryQuota,
         indexMemoryQuota: memoryQuotaConfig.indexMemoryQuota === null ? "" : memoryQuotaConfig.indexMemoryQuota,
@@ -37,12 +49,11 @@ angular.module('mnSettingsClusterService', [
         };
       }
       return mnHttp(config);
-    };
-    mnSettingsClusterService.getIndexSettings = function () {
+    }
+    function getIndexSettings() {
       return mnHttp.get("/settings/indexes");
-    };
-
-    mnSettingsClusterService.postIndexSettings = function (data, justValidate) {
+    }
+    function postIndexSettings(data, justValidate) {
       var config = {
         method: 'POST',
         url: '/settings/indexes',
@@ -54,13 +65,11 @@ angular.module('mnSettingsClusterService', [
         };
       }
       return mnHttp(config);
-    };
-
+    }
     function getInMegs(value) {
       return Math.floor(value / Math.Mi);
     }
-
-    mnSettingsClusterService.getClusterState = function () {
+    function getClusterState() {
       return mnPoolDefault.getFresh().then(function (poolDefault) {
         var requests = [
           mnMemoryQuotaService.memoryQuotaConfig(true, false),
@@ -84,6 +93,5 @@ angular.module('mnSettingsClusterService', [
         });
       });
     };
-
-    return mnSettingsClusterService;
-});
+  }
+})();

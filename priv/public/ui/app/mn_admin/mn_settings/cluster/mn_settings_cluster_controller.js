@@ -1,83 +1,93 @@
-angular.module('mnSettingsCluster', [
-  'mnSettingsClusterService',
-  'mnHelper',
-  'mnPromiseHelper',
-  'mnMemoryQuota',
-  'mnSpinner'
-]).controller('mnSettingsClusterController',
-  function ($scope, $uibModal, mnSettingsClusterService, mnHelper, mnPromiseHelper, mnPoolDefault) {
+(function () {
+  "use strict";
 
+  angular.module('mnSettingsCluster', [
+    'mnSettingsClusterService',
+    'mnHelper',
+    'mnPromiseHelper',
+    'mnMemoryQuota',
+    'mnSpinner'
+  ]).controller('mnSettingsClusterController', mnSettingsClusterController);
 
-    mnPromiseHelper($scope, mnSettingsClusterService.getClusterState())
-      .applyToScope("state")
-      .cancelOnScopeDestroy();
+  function mnSettingsClusterController($scope, $uibModal, mnSettingsClusterService, mnHelper, mnPromiseHelper, mnPoolDefault) {
+    var vm = this;
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
+    vm.toggleCertArea = toggleCertArea;
+    vm.saveVisualInternalSettings = saveVisualInternalSettings;
+    vm.regenerateCertificate = regenerateCertificate;
 
-    $scope.mnPoolDefault = mnPoolDefault.latestValue();
-    $scope.toggleCertArea = function () {
-      $scope.toggleCertAreaFlag = !$scope.toggleCertAreaFlag;
-    };
+    activate();
 
-    if ($scope.mnPoolDefault.value.isROAdminCreds) {
+    if (vm.mnPoolDefault.value.isROAdminCreds) {
       return;
     }
 
-    $scope.$watch('state.memoryQuotaConfig', _.debounce(function (memoryQuotaConfig) {
+    $scope.$watch('mnSettingsClusterController.state.memoryQuotaConfig', _.debounce(function (memoryQuotaConfig) {
       if (!memoryQuotaConfig) {
         return;
       }
-      var promise = mnSettingsClusterService.postPoolsDefault($scope.state.memoryQuotaConfig, true);
-      mnPromiseHelper($scope, promise)
+      var promise = mnSettingsClusterService.postPoolsDefault(vm.state.memoryQuotaConfig, true);
+      mnPromiseHelper(vm, promise)
         .catchErrorsFromSuccess("memoryQuotaErrors")
-        .cancelOnScopeDestroy();
+        .cancelOnScopeDestroy($scope);
     }, 500), true);
 
-    $scope.$watch('state.indexSettings', _.debounce(function (indexSettings) {
+    $scope.$watch('mnSettingsClusterController.state.indexSettings', _.debounce(function (indexSettings) {
       if (!indexSettings) {
         return;
       }
-      var promise = mnSettingsClusterService.postIndexSettings($scope.state.indexSettings, true);
-      mnPromiseHelper($scope, promise)
+      var promise = mnSettingsClusterService.postIndexSettings(vm.state.indexSettings, true);
+      mnPromiseHelper(vm, promise)
         .catchErrorsFromSuccess("indexSettingsErrors")
-        .cancelOnScopeDestroy();
+        .cancelOnScopeDestroy($scope);
     }, 500), true);
 
     function saveSettings() {
-      var promise = mnPromiseHelper($scope, mnSettingsClusterService.postPoolsDefault($scope.state.memoryQuotaConfig, false, $scope.state.clusterName))
+      var promise = mnPromiseHelper(vm, mnSettingsClusterService.postPoolsDefault(vm.state.memoryQuotaConfig, false, vm.state.clusterName))
         .catchErrors("memoryQuotaErrors")
-        .cancelOnScopeDestroy()
+        .cancelOnScopeDestroy($scope)
         .getPromise()
         .then(function () {
-          return mnPromiseHelper($scope, mnSettingsClusterService.postIndexSettings($scope.state.indexSettings))
+          return mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.state.indexSettings))
             .catchErrors("indexSettingsErrors")
-            .cancelOnScopeDestroy()
+            .cancelOnScopeDestroy($scope)
             .getPromise();
         })
-      mnPromiseHelper($scope, promise)
+      mnPromiseHelper(vm, promise)
         .showSpinner('clusterSettingsLoading')
         .reloadState();
     }
-
-    $scope.saveVisualInternalSettings = function () {
-      if ($scope.clusterSettingsLoading) {
+    function saveVisualInternalSettings() {
+      if (vm.clusterSettingsLoading) {
         return;
       }
-      if ($scope.state.initialMemoryQuota != $scope.state.memoryQuotaConfig.indexMemoryQuota) {
+      if (vm.state.initialMemoryQuota != vm.state.memoryQuotaConfig.indexMemoryQuota) {
         $uibModal.open({
           templateUrl: 'app/mn_admin/mn_settings/cluster/mn_settings_cluster_confirmation_dialog.html'
         }).result.then(saveSettings);
       } else {
         saveSettings();
       }
-    };
-    $scope.regenerateCertificate = function () {
-      if ($scope.regenerateCertificateInprogress) {
+    }
+    function regenerateCertificate() {
+      if (vm.regenerateCertificateInprogress) {
         return;
       }
-      mnPromiseHelper($scope, mnSettingsClusterService.regenerateCertificate())
+      mnPromiseHelper(vm, mnSettingsClusterService.regenerateCertificate())
         .onSuccess(function (certificate) {
-          $scope.state.certificate = certificate;
+          vm.state.certificate = certificate;
         })
         .showSpinner('regenerateCertificateInprogress')
-        .cancelOnScopeDestroy();
-    };
-  });
+        .cancelOnScopeDestroy($scope);
+    }
+    function activate() {
+      mnPromiseHelper(vm, mnSettingsClusterService.getClusterState())
+        .applyToScope("state")
+        .cancelOnScopeDestroy($scope);
+    }
+    function toggleCertArea() {
+      vm.toggleCertAreaFlag = !vm.toggleCertAreaFlag;
+    }
+  }
+})();
+
