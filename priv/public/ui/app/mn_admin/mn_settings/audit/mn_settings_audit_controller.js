@@ -1,36 +1,46 @@
-angular.module('mnSettingsAudit', [
-  'mnSettingsAuditService',
-  'mnHelper',
-  'mnPromiseHelper',
-  'mnPoolDefault'
-]).controller('mnSettingsAuditController',
-  function ($scope, mnSettingsAuditService, mnPromiseHelper, mnHelper, mnPoolDefault) {
+(function () {
+  "use strict";
 
-    mnPromiseHelper($scope, mnSettingsAuditService.getAuditSettings()).applyToScope("state");
+  angular.module('mnSettingsAudit', [
+    'mnSettingsAuditService',
+    'mnHelper',
+    'mnPromiseHelper',
+    'mnPoolDefault'
+  ]).controller('mnSettingsAuditController', mnSettingsAuditController);
 
-    $scope.mnPoolDefault = mnPoolDefault.latestValue();
+  function mnSettingsAuditController($scope, mnSettingsAuditService, mnPromiseHelper, mnHelper, mnPoolDefault) {
+    var vm = this;
 
-    if ($scope.mnPoolDefault.value.isROAdminCreds) {
-      return;
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
+    vm.submit = submit;
+
+    activate();
+
+    function activate() {
+      mnPromiseHelper(vm, mnSettingsAuditService.getAuditSettings())
+        .applyToScope("state");
+
+      if (!vm.mnPoolDefault.value.isROAdminCreds) {
+        $scope.$watch('mnSettingsAuditController.state', watchOnState, true);
+      }
     }
-
-    $scope.$watch('state', function (state) {
+    function watchOnState(state) {
       if (!state) {
         return;
       }
-      mnPromiseHelper($scope, mnSettingsAuditService.saveAuditSettings(state, true))
+      mnPromiseHelper(vm, mnSettingsAuditService.saveAuditSettings(state, true))
         .catchErrorsFromSuccess()
-        .cancelOnScopeDestroy();
-    }, true);
-
-    $scope.submit = function () {
+        .cancelOnScopeDestroy($scope);
+    }
+    function submit() {
       if ($scope.viewLoading) {
         return;
       }
-      mnPromiseHelper($scope, mnSettingsAuditService.saveAuditSettings($scope.state))
+      mnPromiseHelper(vm, mnSettingsAuditService.saveAuditSettings(vm.state))
         .catchErrorsFromSuccess()
         .showSpinner()
         .reloadState()
-        .cancelOnScopeDestroy();
+        .cancelOnScopeDestroy($scope);
     };
-});
+  }
+})();

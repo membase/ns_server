@@ -75,7 +75,7 @@
       })
       .state('app.admin.settings.audit', {
         url: '/audit',
-        controller: 'mnSettingsAuditController',
+        controller: 'mnSettingsAuditController as mnSettingsAuditController',
         templateUrl: 'app/mn_admin/mn_settings/audit/mn_settings_audit.html',
         data: {
           required: {

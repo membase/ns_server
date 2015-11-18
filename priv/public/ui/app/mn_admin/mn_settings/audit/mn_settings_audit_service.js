@@ -1,19 +1,27 @@
-angular.module('mnSettingsAuditService', [
-  'mnHttp'
-]).factory('mnSettingsAuditService',
-  function (mnHttp) {
-    var mnSettingsAuditService = {};
+(function () {
+  "use strict";
 
-    mnSettingsAuditService.getAuditSettings = function () {
+  angular.module('mnSettingsAuditService', [
+    'mnHttp'
+  ]).factory('mnSettingsAuditService', mnSettingsAuditServiceFactory);
+
+  function mnSettingsAuditServiceFactory(mnHttp) {
+    var mnSettingsAuditService = {
+      getAuditSettings: getAuditSettings,
+      saveAuditSettings: saveAuditSettings
+    };
+
+    return mnSettingsAuditService;
+
+    function getAuditSettings() {
       return mnHttp({
         method: 'GET',
         url: '/settings/audit'
       }).then(function(resp) {
         return unpack(resp.data);
       });
-    };
-
-    mnSettingsAuditService.saveAuditSettings = function (data, validateOnly) {
+    }
+    function saveAuditSettings(data, validateOnly) {
       var params = {};
       if (validateOnly) {
         params.just_validate = 1;
@@ -24,8 +32,7 @@ angular.module('mnSettingsAuditService', [
         params: params,
         data: pack(data)
       });
-    };
-
+    }
     function pack(data) {
       var result = {
         auditdEnabled: data.auditdEnabled
@@ -36,7 +43,6 @@ angular.module('mnSettingsAuditService', [
       }
       return result;
     }
-
     function formatTimeUnit(unit) {
       switch (unit) {
         case 'minutes': return 60;
@@ -44,7 +50,6 @@ angular.module('mnSettingsAuditService', [
         case 'days': return 86400;
       }
     }
-
     function unpack(data) {
       if (data.rotateInterval % 86400 == 0) {
         data.rotateInterval /= 86400;
@@ -59,6 +64,5 @@ angular.module('mnSettingsAuditService', [
       data.logPath = data.logPath || "";
       return data;
     }
-
-    return mnSettingsAuditService;
-});
+  }
+})();
