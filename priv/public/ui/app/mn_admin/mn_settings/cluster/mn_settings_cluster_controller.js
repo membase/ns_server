@@ -75,7 +75,7 @@
       }
       mnPromiseHelper(vm, mnSettingsClusterService.regenerateCertificate())
         .onSuccess(function (certificate) {
-          vm.state.certificate = certificate;
+          vm.state.certificate = certificate.data;
         })
         .showSpinner('regenerateCertificateInprogress')
         .cancelOnScopeDestroy($scope);
