@@ -1,22 +1,30 @@
-angular.module('mnSettingsAlertsService', [
-  'mnHttp'
-]).factory('mnSettingsAlertsService',
-  function (mnHttp, knownAlerts) {
-    var mnSettingsAlertsService = {};
+(function () {
+  "use strict";
 
-    mnSettingsAlertsService.testMail = function (params) {
+  angular.module('mnSettingsAlertsService', [
+    'mnHttp'
+  ]).factory('mnSettingsAlertsService', mnSettingsAlertsService);
+
+  function mnSettingsAlertsService(mnHttp, knownAlerts) {
+    var mnSettingsAlertsService = {
+      testMail: testMail,
+      saveAlerts: saveAlerts,
+      getAlerts: getAlerts
+    };
+
+    return mnSettingsAlertsService;
+
+    function testMail(params) {
       params = _.clone(params);
       params.alerts = params.alerts.join(',');
       return mnHttp.post('/settings/alerts/testEmail', params);
-    };
-
-    mnSettingsAlertsService.saveAlerts = function (params) {
+    }
+    function saveAlerts(params) {
       params = _.clone(params);
       params.alerts = params.alerts.join(',');
       return mnHttp.post('/settings/alerts', params);
-    };
-
-    mnSettingsAlertsService.getAlerts = function () {
+    }
+    function getAlerts() {
       return mnHttp.get('/settings/alerts').then(function (resp) {
         var val = _.clone(resp.data);
         val.recipients = val.recipients.join('\n');
@@ -26,7 +34,6 @@ angular.module('mnSettingsAlertsService', [
 
         return val;
       });
-    };
-
-    return mnSettingsAlertsService;
-});
+    }
+  }
+})();

@@ -40,7 +40,7 @@
       })
       .state('app.admin.settings.alerts', {
         url: '/alerts',
-        controller: 'mnSettingsAlertsController',
+        controller: 'mnSettingsAlertsController as mnSettingsAlertsController',
         templateUrl: 'app/mn_admin/mn_settings/alerts/mn_settings_alerts.html'
       })
       .state('app.admin.settings.autoCompaction', {
