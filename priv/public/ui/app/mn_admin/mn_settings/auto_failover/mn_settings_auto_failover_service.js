@@ -1,30 +1,37 @@
-angular.module('mnSettingsAutoFailoverService', [
-  'mnHttp'
-]).factory('mnSettingsAutoFailoverService',
-  function (mnHttp) {
-    var mnSettingsAutoFailoverService = {};
+(function () {
+  "use strict";
 
-    mnSettingsAutoFailoverService.resetAutoFailOverCount = function () {
+  angular.module('mnSettingsAutoFailoverService', [
+    'mnHttp'
+  ]).factory('mnSettingsAutoFailoverService', mnSettingsAutoFailoverServiceFactory);
+
+  function mnSettingsAutoFailoverServiceFactory(mnHttp) {
+    var mnSettingsAutoFailoverService = {
+      resetAutoFailOverCount: resetAutoFailOverCount,
+      getAutoFailoverSettings: getAutoFailoverSettings,
+      saveAutoFailoverSettings: saveAutoFailoverSettings
+    };
+
+    return mnSettingsAutoFailoverService;
+
+    function resetAutoFailOverCount() {
       return mnHttp({
         method: 'POST',
         url: '/settings/autoFailover/resetCount'
       });
-    };
-
-    mnSettingsAutoFailoverService.getAutoFailoverSettings = function () {
+    }
+    function getAutoFailoverSettings() {
       return mnHttp({
         method: 'GET',
         url: "/settings/autoFailover"
       });
-    };
-
-    mnSettingsAutoFailoverService.saveAutoFailoverSettings = function (autoFailoverSettings) {
+    }
+    function saveAutoFailoverSettings(autoFailoverSettings) {
       return mnHttp({
         method: 'POST',
         url: "/settings/autoFailover",
         data: autoFailoverSettings
       });
-    };
-
-    return mnSettingsAutoFailoverService;
-});
+    }
+  }
+})();

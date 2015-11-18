@@ -1,13 +1,13 @@
-<div mn-spinner="viewLoading || !state" class="auto_failover">
+<div mn-spinner="mnSettingsAutoFailoverController.viewLoading || !mnSettingsAutoFailoverController.state" class="auto_failover">
   <h2>Auto-Failover</h2>
-  <form ng-submit="submit()">
+  <form ng-submit="mnSettingsAutoFailoverController.submit()">
     <div class="sub_section">
       <label class="for-enable-replicas casper_settings_auto_failover_enabled">
         <input
           type="checkbox"
           id="auto_failover_enabled"
-          ng-model="state.enabled"
-          ng-disabled="mnPoolDefault.value.isROAdminCreds">
+          ng-model="mnSettingsAutoFailoverController.state.enabled"
+          ng-disabled="mnSettingsAutoFailoverController.mnPoolDefault.value.isROAdminCreds">
         <span>Enable auto-failover</span>
       </label>
       <p>
@@ -17,8 +17,8 @@
         <input
           type="text"
           id="auto_failover_timeout"
-          ng-model="state.timeout"
-          ng-disabled="isAutoFailOverDisabled()">
+          ng-model="mnSettingsAutoFailoverController.state.timeout"
+          ng-disabled="mnSettingsAutoFailoverController.isAutoFailOverDisabled()">
         <span class="error-container err-timeout"></span>
         <a class="text_11 tooltip casper_settings_auto_failover_timeout_tooltip"><span>What's this?</span>
           <span class="tooltip_msg"><span>
@@ -26,15 +26,22 @@
           </span></span>
         </a>
       </p>
-      <div id="auto_failover_count_container" style="position: relative; left: auto; top: auto;" class="warning_message" ng-show="state.count > 0">
+      <div
+        id="auto_failover_count_container"
+        style="position: relative; left: auto; top: auto;"
+        class="warning_message"
+        ng-show="mnSettingsAutoFailoverController.state.count > 0">
         A server was automatically failed over
-        <a class="auto_failover_count_reset edit_btn when-roadmin-hide-me" ng-hide="mnPoolDefault.value.isROAdminCreds" ng-click="mnAdminController.resetAutoFailOverCount()" mn-spinner="mnAdminController.resetQuotaLoading">
+        <a
+          class="auto_failover_count_reset edit_btn when-roadmin-hide-me"
+          ng-hide="mnSettingsAutoFailoverController.mnPoolDefault.value.isROAdminCreds"
+          ng-click="mnAdminController.resetAutoFailOverCount()" mn-spinner="mnAdminController.resetQuotaLoading">
           <span>Reset Quota</span>
         </a>
       </div>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="submit" ng-hide="mnPoolDefault.value.isROAdminCreds">Save</button>
+      <button class="save_button float_right" type="submit" ng-hide="mnSettingsAutoFailoverController.mnPoolDefault.value.isROAdminCreds">Save</button>
     </div>
   </form>
 </div>

@@ -35,7 +35,7 @@
       })
       .state('app.admin.settings.autoFailover', {
         url: '/autoFailover',
-        controller: 'mnSettingsAutoFailoverController',
+        controller: 'mnSettingsAutoFailoverController as mnSettingsAutoFailoverController',
         templateUrl: 'app/mn_admin/mn_settings/auto_failover/mn_settings_auto_failover.html'
       })
       .state('app.admin.settings.alerts', {

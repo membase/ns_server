@@ -1,31 +1,41 @@
-angular.module('mnSettingsAutoFailover', [
-  'mnSettingsAutoFailoverService',
-  'mnHelper',
-  'mnPromiseHelper'
-]).controller('mnSettingsAutoFailoverController',
-  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService, mnPoolDefault) {
+(function () {
+  "use strict";
 
-    $scope.mnPoolDefault = mnPoolDefault.latestValue();
+  angular.module('mnSettingsAutoFailover', [
+    'mnSettingsAutoFailoverService',
+    'mnHelper',
+    'mnPromiseHelper'
+  ]).controller('mnSettingsAutoFailoverController', mnSettingsAutoFailoverController);
 
-    $scope.isAutoFailOverDisabled = function () {
-      return !$scope.state || !$scope.state.enabled || $scope.mnPoolDefault.value.isROAdminCreds;
+  function mnSettingsAutoFailoverController($scope, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService, mnPoolDefault) {
+    var vm = this;
+
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
+    vm.isAutoFailOverDisabled = isAutoFailOverDisabled;
+    vm.submit = submit;
+
+    activate();
+
+    function activate() {
+      mnPromiseHelper(vm, mnSettingsAutoFailoverService.getAutoFailoverSettings())
+        .applyToScope(function (autoFailoverSettings) {
+          vm.state = autoFailoverSettings.data;
+        })
+        .cancelOnScopeDestroy($scope);
     }
-
-    mnPromiseHelper($scope, mnSettingsAutoFailoverService.getAutoFailoverSettings())
-      .applyToScope(function (autoFailoverSettings) {
-        $scope.state = autoFailoverSettings.data
-      })
-      .cancelOnScopeDestroy();
-
-    $scope.submit = function () {
+    function isAutoFailOverDisabled() {
+      return !vm.state || !vm.state.enabled || vm.mnPoolDefault.value.isROAdminCreds;
+    }
+    function submit() {
       var data = {
-        enabled: $scope.state.enabled,
-        timeout: $scope.state.timeout
+        enabled: vm.state.enabled,
+        timeout: vm.state.timeout
       };
-      mnPromiseHelper($scope, mnSettingsAutoFailoverService.saveAutoFailoverSettings(data))
+      mnPromiseHelper(vm, mnSettingsAutoFailoverService.saveAutoFailoverSettings(data))
         .showErrorsSensitiveSpinner()
         .catchGlobalErrors('An error occured, auto-failover settings were not saved.')
         .reloadState()
-        .cancelOnScopeDestroy();
+        .cancelOnScopeDestroy($scope);
     };
-  });
+  }
+})();
