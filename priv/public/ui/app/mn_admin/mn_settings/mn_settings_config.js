@@ -45,7 +45,7 @@
       })
       .state('app.admin.settings.autoCompaction', {
         url: '/autoCompaction',
-        controller: 'mnSettingsAutoCompactionController',
+        controller: 'mnSettingsAutoCompactionController as mnSettingsAutoCompactionController',
         templateUrl: 'app/mn_admin/mn_settings/auto_compaction/mn_settings_auto_compaction.html'
       })
       .state('app.admin.settings.ldap', {

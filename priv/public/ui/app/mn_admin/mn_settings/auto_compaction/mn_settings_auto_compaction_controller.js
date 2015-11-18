@@ -1,37 +1,44 @@
-angular.module('mnSettingsAutoCompaction', [
-  'mnSettingsAutoCompactionService',
-  'mnHelper',
-  'mnPromiseHelper',
-  'mnAutoCompactionForm',
-  'mnPoolDefault'
-]).controller('mnSettingsAutoCompactionController',
-  function ($scope, mnHelper, mnPromiseHelper, mnSettingsAutoCompactionService, mnPoolDefault) {
-    mnPromiseHelper($scope, mnSettingsAutoCompactionService.getAutoCompaction())
-      .applyToScope("autoCompactionSettings")
-      .onSuccess(activate);
+(function () {
+  "use strict";
 
-    $scope.mnPoolDefault = mnPoolDefault.latestValue();
+  angular.module('mnSettingsAutoCompaction', [
+    'mnSettingsAutoCompactionService',
+    'mnHelper',
+    'mnPromiseHelper',
+    'mnAutoCompactionForm',
+    'mnPoolDefault'
+  ]).controller('mnSettingsAutoCompactionController', mnSettingsAutoCompactionController);
 
-    if ($scope.mnPoolDefault.value.isROAdminCreds) {
-      return;
-    }
+  function mnSettingsAutoCompactionController($scope, mnHelper, mnPromiseHelper, mnSettingsAutoCompactionService, mnPoolDefault) {
+    var vm = this;
+
+    vm.submit = submit;
+    vm.mnPoolDefault = mnPoolDefault.latestValue();
+
+    activate();
+
     function activate() {
-      $scope.$watch('autoCompactionSettings', function (autoCompactionSettings) {
-        mnPromiseHelper($scope, mnSettingsAutoCompactionService
-          .saveAutoCompaction(autoCompactionSettings, {just_validate: 1}))
-          .catchErrors()
-          .cancelOnScopeDestroy();
-      }, true);
+      mnPromiseHelper(vm, mnSettingsAutoCompactionService.getAutoCompaction())
+        .applyToScope("autoCompactionSettings")
+        .onSuccess(function () {
+          $scope.$watch('mnSettingsAutoCompactionController.autoCompactionSettings', watchOnAutoCompactionSettings, true);
+        });
     }
-
-    $scope.submit = function () {
-      if ($scope.viewLoading) {
+    function watchOnAutoCompactionSettings(autoCompactionSettings) {
+      mnPromiseHelper(vm, mnSettingsAutoCompactionService
+        .saveAutoCompaction(autoCompactionSettings, {just_validate: 1}))
+          .catchErrors()
+          .cancelOnScopeDestroy($scope);
+    }
+    function submit() {
+      if (vm.viewLoading) {
         return;
       }
-      mnPromiseHelper($scope, mnSettingsAutoCompactionService.saveAutoCompaction($scope.autoCompactionSettings))
+      mnPromiseHelper(vm, mnSettingsAutoCompactionService.saveAutoCompaction(vm.autoCompactionSettings))
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .reloadState()
-        .cancelOnScopeDestroy();
-    };
-  });
+        .cancelOnScopeDestroy($scope);
+    }
+  }
+})();

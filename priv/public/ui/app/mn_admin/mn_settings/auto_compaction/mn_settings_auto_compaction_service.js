@@ -1,9 +1,20 @@
-angular.module('mnSettingsAutoCompactionService', [
-  'mnHttp',
-  'mnFilters'
-]).factory('mnSettingsAutoCompactionService',
-  function (mnHttp, mnBytesToMBFilter, mnMBtoBytesFilter) {
-    var mnSettingsAutoCompactionService = {};
+(function () {
+  "use strict";
+
+  angular.module('mnSettingsAutoCompactionService', [
+    'mnHttp',
+    'mnFilters'
+  ]).factory('mnSettingsAutoCompactionService', mnSettingsAutoCompactionServiceFactory);
+
+  function mnSettingsAutoCompactionServiceFactory(mnHttp, mnBytesToMBFilter, mnMBtoBytesFilter) {
+    var mnSettingsAutoCompactionService = {
+      prepareSettingsForView: prepareSettingsForView,
+      prepareSettingsForSaving: prepareSettingsForSaving,
+      getAutoCompaction: getAutoCompaction,
+      saveAutoCompaction: saveAutoCompaction
+    };
+
+    return mnSettingsAutoCompactionService;
 
     function prepareValuesForView(holder) {
       angular.forEach(['size', 'percentage'], function (fieldName) {
@@ -15,8 +26,7 @@ angular.module('mnSettingsAutoCompactionService', [
         }
       });
     }
-
-    mnSettingsAutoCompactionService.prepareSettingsForView = function (settings) {
+    function prepareSettingsForView(settings) {
       var acSettings = settings.autoCompactionSettings;
       prepareValuesForView(acSettings.databaseFragmentationThreshold);
       prepareValuesForView(acSettings.viewFragmentationThreshold);
@@ -30,8 +40,7 @@ angular.module('mnSettingsAutoCompactionService', [
         fromHour: ''
       });
       return acSettings;
-    };
-
+    }
     function prepareVluesForSaving(holder) {
       angular.forEach(['size', 'percentage'], function (fieldName) {
         if (!holder[fieldName + 'Flag']) {
@@ -41,8 +50,7 @@ angular.module('mnSettingsAutoCompactionService', [
         }
       });
     }
-
-    mnSettingsAutoCompactionService.prepareSettingsForSaving = function (acSettings) {
+    function prepareSettingsForSaving(acSettings) {
       if (!acSettings) {
         return acSettings;
       }
@@ -59,14 +67,13 @@ angular.module('mnSettingsAutoCompactionService', [
       delete acSettings.databaseFragmentationThreshold.percentageFlag;
       delete acSettings.allowedTimePeriodFlag;
       return acSettings;
-    };
-
-    mnSettingsAutoCompactionService.getAutoCompaction = function () {
+    }
+    function getAutoCompaction() {
       return mnHttp.get('/settings/autoCompaction').then(function (resp) {
         return mnSettingsAutoCompactionService.prepareSettingsForView(resp.data);
       });
-    };
-    mnSettingsAutoCompactionService.saveAutoCompaction = function (autoCompactionSettings, params) {
+    }
+    function saveAutoCompaction(autoCompactionSettings, params) {
       var params = {};
       return mnHttp({
         method: 'POST',
@@ -74,7 +81,6 @@ angular.module('mnSettingsAutoCompactionService', [
         params: params || {},
         data: mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings)
       });
-    };
-
-    return mnSettingsAutoCompactionService;
-});
+    }
+  }
+})();
