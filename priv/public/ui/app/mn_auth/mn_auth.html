@@ -9,21 +9,42 @@
     </div>
   </div>
   <div class="pad">
-    <div class="alert_red" id="auth_failed_message" ng-if="loginFailed">
+    <div class="alert_red" id="auth_failed_message" ng-if="mnAuthController.loginFailed">
       <div class="al_text">
         Login failed. Try again.
       </div>
     </div>
-    <form id="login_form" class="form block" autocomplete="off" novalidate="" ng-submit="submit()">
+    <form
+      id="login_form"
+      class="form block"
+      autocomplete="off"
+      novalidate=""
+      ng-submit="mnAuthController.submit()">
       <fieldset>
         <ul>
           <li>
             <label for="login_inp">Username:</label>
-            <input ng-model="user.username" name="username" id="login_inp" type="text" class="inp" maxlength="24" autocomplete="off" required>
+            <input
+              ng-model="mnAuthController.user.username"
+              name="username"
+              id="login_inp"
+              type="text"
+              class="inp"
+              maxlength="24"
+              autocomplete="off"
+              required>
           </li>
           <li>
             <label for="password2_inp">Password:</label>
-            <input ng-model="user.password" name="password" id="password2_inp" type="password" class="inp" maxlength="24" autocomplete="off" required>
+            <input
+            ng-model="mnAuthController.user.password"
+            name="password"
+            id="password2_inp"
+            type="password"
+            class="inp"
+            maxlength="24"
+            autocomplete="off"
+            required>
           </li>
         </ul>
         <input type="submit" value="Sign In" class="submit">

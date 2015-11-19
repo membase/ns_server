@@ -1,36 +1,41 @@
-angular.module('mnAuthService', [
-  'mnHttp',
-  'mnPools',
-  'ui.router'
-]).factory('mnAuthService',
-  function (mnHttp, $rootScope, $state, mnPools) {
+(function () {
+  "use strict";
 
-  var mnAuthService = {};
+  angular.module('mnAuthService', [
+    'mnHttp',
+    'mnPools',
+    'ui.router'
+  ]).factory('mnAuthService', mnAuthServiceFactory);
 
-  mnAuthService.login = function (user) {
-    user = user || {};
-    return mnHttp({
-      method: 'POST',
-      url: '/uilogin',
-      data: {
-        user: user.username,
-        password: user.password
-      }
-    });
-  };
+  function mnAuthServiceFactory(mnHttp, $rootScope, $state, mnPools) {
+    var mnAuthService = {
+      login: login,
+      logout: logout
+    };
 
-  mnAuthService.logout = function () {
-    return mnHttp({
-      method: 'POST',
-      url: "/uilogout"
-    }).then(function () {
-      return mnPools.getFresh().then(function () {
-        $state.go('app.auth');
+    return mnAuthService;
+
+    function login(user) {
+      user = user || {};
+      return mnHttp({
+        method: 'POST',
+        url: '/uilogin',
+        data: {
+          user: user.username,
+          password: user.password
+        }
       });
-    });
-  };
-
-  return mnAuthService;
-});
-
+    }
+    function logout() {
+      return mnHttp({
+        method: 'POST',
+        url: "/uilogout"
+      }).then(function () {
+        return mnPools.getFresh().then(function () {
+          $state.go('app.auth');
+        });
+      });
+    }
+  }
+})();
 
