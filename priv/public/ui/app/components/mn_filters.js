@@ -1,7 +1,3 @@
-Math.Ki = 1024;
-Math.Mi = 1048576;
-Math.Gi = 1073741824;
-
 angular.module('mnFilters', [])
 
   .filter('mnCount', function () {
@@ -366,15 +362,15 @@ angular.module('mnFilters', [])
     };
   })
 
-  .filter('mnMBtoBytes', function () {
+  .filter('mnMBtoBytes', function (IEC) {
     return function (MB) {
-      return MB * Math.Mi;
+      return MB * IEC.Mi;
     };
   })
 
-  .filter('mnBytesToMB', function () {
+  .filter('mnBytesToMB', function (IEC) {
     return function (bytes) {
-      return Math.floor(bytes / Math.Mi);
+      return Math.floor(bytes / IEC.Mi);
     };
   })
 

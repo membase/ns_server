@@ -8,7 +8,7 @@
     'mnMemoryQuotaService'
   ]).factory('mnSettingsClusterService', mnSettingsClusterServiceFactory);
 
-  function mnSettingsClusterServiceFactory(mnHttp, $q, mnServersService, mnPoolDefault, mnMemoryQuotaService) {
+  function mnSettingsClusterServiceFactory(mnHttp, $q, mnServersService, mnPoolDefault, mnMemoryQuotaService, IEC) {
     var mnSettingsClusterService = {
       getDefaultCertificate: getDefaultCertificate,
       regenerateCertificate: regenerateCertificate,
@@ -67,7 +67,7 @@
       return mnHttp(config);
     }
     function getInMegs(value) {
-      return Math.floor(value / Math.Mi);
+      return Math.floor(value / IEC.Mi);
     }
     function getClusterState() {
       return mnPoolDefault.getFresh().then(function (poolDefault) {

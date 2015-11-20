@@ -6,7 +6,7 @@
     'mnHelper'
   ]).factory('mnWizardStep1Service', mnWizardStep1ServiceFactory);
 
-  function mnWizardStep1ServiceFactory(mnHttp, mnHelper) {
+  function mnWizardStep1ServiceFactory(mnHttp, mnHelper, IEC) {
     var mnWizardStep1Service = {
       setDynamicRamQuota: setDynamicRamQuota,
       getDynamicRamQuota: getDynamicRamQuota,
@@ -56,7 +56,7 @@
       return preprocessPathStandard(p);
     }
     function updateTotal(pathResource) {
-      return (Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / Math.Mi)) + ' GB';
+      return (Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / IEC.Mi)) + ' GB';
     }
     function getJoinClusterConfig() {
       return joinClusterConfig;
@@ -72,7 +72,7 @@
       }).then(function (resp) {
         var nodeConfig = resp.data;
         var ram = nodeConfig.storageTotals.ram;
-        var totalRAMMegs = Math.floor(ram.total / Math.Mi);
+        var totalRAMMegs = Math.floor(ram.total / IEC.Mi);
         preprocessPath = nodeConfig.os === 'windows' ? preprocessPathForWindows : preprocessPathStandard;
         nodeConfig.preprocessedAvailableStorage = _.map(_.clone(nodeConfig.availableStorage.hdd, true), function (storage) {
           storage.path = preprocessPath(storage.path);
