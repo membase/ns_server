@@ -218,6 +218,7 @@ def usage():
     sys.exit("Usage: {0} [--nodes=N] [--dont-rename] [--dont-start] "
              "[--interactive] [--static-cookie] [--start-index=N] "
              "[--static-cookie] [--host=H] [--loglevel=L] "
+             "[--pluggable-config=File] "
              "[ns_server args]".format(sys.argv[0]))
 
 def find_primary_addr():
@@ -238,7 +239,7 @@ def main():
                                            "dont-rename", "interactive",
                                            "static-cookie", "dont-start",
                                            "host=", "loglevel=",
-                                           "prepend-extras"])
+                                           "prepend-extras", "pluggable-config="])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -254,6 +255,7 @@ def main():
     prepend_extras = False
     host = "127.0.0.1"
     loglevel = 'debug'
+    pluggable_config = []
 
     for o, a in optlist:
         if o in ("--nodes", "-n"):
@@ -277,6 +279,8 @@ def main():
             loglevel = a
         elif o == "--prepend-extras":
             prepend_extras = True
+        elif o == "--pluggable-config":
+            pluggable_config.append(a)
         else:
             assert False, "unhandled options"
 
@@ -340,6 +344,10 @@ def main():
         print "Valid log levels are the following: %s" % ', '.join(LOGLEVELS)
         sys.exit(1)
     extra_args += ["-ns_server", "loglevel_stderr", loglevel]
+
+    if pluggable_config:
+        extra_args += ["-ns_server", "ui_plugins",
+                        quote_string_for_erl(','.join(pluggable_config))]
 
     nodes = start_cluster(num_nodes, start_index, host, extra_args, prepend_args)
 

@@ -46,15 +46,33 @@ find_plugins() ->
     SpecFiles = find_plugin_spec_files(),
     read_and_validate_plugin_specs(SpecFiles).
 
+%% The plugin files passed via the command line are processed first so it is
+%% possible to override the standard files.
 find_plugin_spec_files() ->
+    find_plugin_spec_files_from_env() ++ find_plugin_spec_files_std().
+
+%% The plugin files from the standard configuration dir are sorted to get a
+%% well defined order when loading the files.
+find_plugin_spec_files_std() ->
     lists:sort(
       filelib:wildcard(
         filename:join(
           path_config:component_path(?CONFIG_DIR),
           ?PLUGIN_FILE_PATTERN))).
 
+%% The plugin files passed via the command line are not sorted, so it is
+%% possible to change the order of then in case there are any strange
+%% dependencies. This is just expected to be done during development.
+find_plugin_spec_files_from_env() ->
+    case application:get_env(ns_server, ui_plugins) of
+        {ok, Raw} ->
+            string:tokens(Raw, ",");
+        _ ->
+            []
+    end.
+
 read_and_validate_plugin_specs(SpecFiles) ->
-    lists:foldr(fun read_and_validate_plugin_spec/2, [], SpecFiles).
+    lists:foldl(fun read_and_validate_plugin_spec/2, [], SpecFiles).
 
 read_and_validate_plugin_spec(File, Acc) ->
     {ok, Bin} = file:read_file(File),
