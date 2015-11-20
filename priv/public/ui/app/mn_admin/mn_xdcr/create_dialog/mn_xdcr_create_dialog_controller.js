@@ -16,16 +16,16 @@
       vm.buckets = buckets.byType.membase;
       vm.replication.fromBucket = vm.buckets[0].name;
       vm.replication.toCluster = $scope.mnXDCRController.mnXdcrState.references[0].name;
-      vm.advancedFiltering = {};
+      vm.advancedFiltering = mnRegexService.getProperties();
       vm.createReplication = createReplication;
 
       if (vm.mnPoolDefault.value.isEnterprise) {
         try {
-          vm.advancedFiltering.filterExpression = $window.localStorage.getItem('mn_xdcr_regex');
-          vm.advancedFiltering.testKey = JSON.parse($window.localStorage.getItem('mn_xdcr_testKeys'))[0];
+          mnRegexService.setProperty("filterExpression", $window.localStorage.getItem('mn_xdcr_regex'));
+          mnRegexService.setProperty("testKey", JSON.parse($window.localStorage.getItem('mn_xdcr_testKeys'))[0]);
         } catch (e) {}
 
-        mnRegexService.handleValidateRegex($scope, vm.advancedFiltering);
+        mnRegexService.handleValidateRegex($scope);
       }
 
       function createReplication() {

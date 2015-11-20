@@ -1,11 +1,21 @@
-angular.module('mnContenteditable', [
-]).directive('mnContenteditable', function ($sce) {
+(function () {
+  "use strict";
 
-  return {
-    restrict: 'A', // only activate on element attribute
-    priority: 0,
-    require: '?ngModel',
-    link: function(scope, element, attrs, ngModel) {
+  angular
+    .module('mnContenteditable', [])
+    .directive('mnContenteditable', mnContenteditableDirective);
+
+  function mnContenteditableDirective($sce) {
+    var mnContenteditable = {
+      restrict: 'A', // only activate on element attribute
+      priority: 0,
+      require: '?ngModel',
+      link: link
+    };
+
+    return mnContenteditable;
+
+    function link(scope, element, attrs, ngModel) {
       if (!ngModel) {
         return;
       } // do nothing if no ng-model
@@ -66,5 +76,5 @@ angular.module('mnContenteditable', [
         ngModel.$setViewValue(element.text());
       }
     }
-  };
-});
+  }
+})();

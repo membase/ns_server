@@ -1,3 +1,8 @@
+(function () {
+    "use strict";
+    var insertSteps;
+    var i;
+
 angular.module('mnPlot', [
   'mnJquery',
   'mnFilters'
@@ -2530,3 +2535,4 @@ angular.module('mnPlot', [
     }
   };
 });
+})();

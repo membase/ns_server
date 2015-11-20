@@ -1,11 +1,21 @@
-angular.module('mnFocus', [
-]).directive('mnFocus', function () {
+(function () {
+  "use strict";
 
-  return {
-    scope: {
-      mnFocus: "="
-    },
-    link: function ($scope, $element, $attrs) {
+  angular
+    .module('mnFocus', [])
+    .directive('mnFocus', mnFocusDirective);
+
+  function mnFocusDirective() {
+    var mnFocus = {
+      scope: {
+        mnFocus: "="
+      },
+      link: link
+    };
+
+    return mnFocus;
+
+    function link($scope, $element, $attrs) {
       $scope.$watch('mnFocus', function (focus) {
         focus && $element[0].focus();
       });
@@ -17,5 +27,5 @@ angular.module('mnFocus', [
 
       $scope.mnFocus = true;
     }
-  };
-});
+  }
+})();

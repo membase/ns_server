@@ -1,33 +1,44 @@
-angular.module('mnBucketsForm', [
-  'mnHttp',
-  'mnBucketsDetailsService',
-  'mnFilters',
-  'mnPromiseHelper'
-]).directive('mnBucketsForm', function (mnHttp, mnBucketsDetailsDialogService, mnBytesToMBFilter, mnCountFilter, mnPromiseHelper) {
+(function () {
+  "use strict";
 
-  function threadsEvictionWarning(scope, value) {
-    var initialValue = scope.bucketConf[value];
-    scope.$watch('bucketConf.' + value, function (newValue) {
-      if (initialValue != newValue) {
-        scope[value + 'Warning'] = 'Changing ' + (value === 'evictionPolicy' ? 'eviction policy' : 'bucket priority')  +
-                                   ' will restart the bucket. This will lead to closing all open connections and some downtime';
-      } else {
-        scope[value + 'Warning'] = ''
-      }
-    });
-  }
+  angular
+    .module('mnBucketsForm', [
+      'mnHttp',
+      'mnBucketsDetailsService',
+      'mnFilters',
+      'mnPromiseHelper'
+    ])
+    .directive('mnBucketsForm', mnBucketsFormDirective);
 
-  return {
-    restrict: 'A',
-    scope: {
-      bucketConf: '=',
-      autoCompactionSettings: '=',
-      validation: '='
-    },
-    isolate: false,
-    replace: true,
-    templateUrl: 'app/components/directives/mn_buckets_form/mn_buckets_form.html',
-    controller: function ($scope) {
+  function mnBucketsFormDirective(mnHttp, mnBucketsDetailsDialogService, mnBytesToMBFilter, mnCountFilter, mnPromiseHelper) {
+
+    var mnBucketsForm = {
+      restrict: 'A',
+      scope: {
+        bucketConf: '=',
+        autoCompactionSettings: '=',
+        validation: '='
+      },
+      isolate: false,
+      replace: true,
+      templateUrl: 'app/components/directives/mn_buckets_form/mn_buckets_form.html',
+      controller: controller
+    };
+
+    return mnBucketsForm;
+
+    function threadsEvictionWarning(scope, value) {
+      var initialValue = scope.bucketConf[value];
+      scope.$watch('bucketConf.' + value, function (newValue) {
+        if (initialValue != newValue) {
+          scope[value + 'Warning'] = 'Changing ' + (value === 'evictionPolicy' ? 'eviction policy' : 'bucket priority')  +
+                                     ' will restart the bucket. This will lead to closing all open connections and some downtime';
+        } else {
+          scope[value + 'Warning'] = ''
+        }
+      });
+    }
+    function controller($scope) {
       $scope.replicaNumberEnabled = $scope.bucketConf.replicaNumber != 0;
       $scope.canChangeBucketsSettings = $scope.bucketConf.isNew;
       $scope.focusMe = true;
@@ -75,5 +86,5 @@ angular.module('mnBucketsForm', [
         });
       }, true);
     }
-  };
-});
+  }
+})();

@@ -1,13 +1,23 @@
-angular.module('mnDragAndDrop', [
-]).directive('mnDragAndDrop', function ($document, $window) {
+(function () {
+  "use strict";
 
-  return {
-    scope: {
-      onItemTaken: '&',
-      onItemDropped: '&',
-      onItemMoved: '&'
-    },
-    link: function ($scope, $element, $attrs) {
+  angular
+    .module('mnDragAndDrop', [])
+    .directive('mnDragAndDrop', mnDragAndDropDirective);
+
+  function mnDragAndDropDirective($document, $window) {
+    var mnDragAndDrop = {
+      scope: {
+        onItemTaken: '&',
+        onItemDropped: '&',
+        onItemMoved: '&'
+      },
+      link: link
+    };
+
+    return mnDragAndDrop;
+
+    function link($scope, $element, $attrs) {
       var draggedObject;
       var startX;
       var startY;
@@ -60,5 +70,5 @@ angular.module('mnDragAndDrop', [
         draggedObject = null;
       }
     }
-  };
-});
+  }
+})();

@@ -1,23 +1,34 @@
-angular.module('mnHelper', [
-  'ui.router',
-  'mnTasksDetails',
-  'mnAlertsService',
-  'mnHttp'
-]).factory('mnHelper',
-  function ($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, mnHttp) {
-    var mnHelper = {};
+(function () {
+  "use strict";
 
-    mnHelper.wrapInFunction = function (value) {
+  angular.module('mnHelper', [
+    'ui.router',
+    'mnTasksDetails',
+    'mnAlertsService',
+    'mnHttp'
+  ]).factory('mnHelper', mnHelperFactory);
+
+  function mnHelperFactory($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, mnHttp) {
+    var mnHelper = {
+      wrapInFunction: wrapInFunction,
+      calculateMaxMemorySize: calculateMaxMemorySize,
+      initializeDetailsHashObserver: initializeDetailsHashObserver,
+      checkboxesToList: checkboxesToList,
+      reloadApp: reloadApp,
+      reloadState: reloadState
+    };
+
+    return mnHelper;
+
+    function wrapInFunction(value) {
       return function () {
         return value;
       };
-    };
-
-    mnHelper.calculateMaxMemorySize = function (totalRAMMegs) {
+    }
+    function calculateMaxMemorySize(totalRAMMegs) {
       return Math.floor(Math.max(totalRAMMegs * 0.8, totalRAMMegs - 1024));
-    };
-
-    mnHelper.initializeDetailsHashObserver = function ($scope, hashKey, stateName) {
+    }
+    function initializeDetailsHashObserver($scope, hashKey, stateName) {
       function getHashValue() {
         return $stateParams[hashKey] || [];
       }
@@ -36,19 +47,15 @@ angular.module('mnHelper', [
           $state.go(stateName, stateParams, {notify: false});
         }
       };
-    };
-
-    mnHelper.checkboxesToList = function (object) {
+    }
+    function checkboxesToList(object) {
       return _.chain(object).pick(angular.identity).keys().value();
-    };
-
-    mnHelper.reloadApp = function () {
+    }
+    function reloadApp() {
       $window.location.reload();
-    };
-
-    mnHelper.reloadState = function () {
+    }
+    function reloadState() {
       $state.transitionTo($state.current, $stateParams, {reload: true, inherit: true, notify: true});
-    };
-
-    return mnHelper;
-  });
+    }
+  }
+})();

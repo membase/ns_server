@@ -1,18 +1,29 @@
-angular.module('mnAutoCompactionForm', [
-  'mnHttp',
-  'mnPoolDefault'
-]).directive('mnAutoCompactionForm', function (mnHttp, mnPoolDefault) {
+(function () {
+  "use strict";
 
-  return {
-    restrict: 'A',
-    scope: {
-      autoCompactionSettings: '=',
-      validationErrors: '='
-    },
-    isolate: false,
-    replace: true,
-    templateUrl: 'app/components/directives/mn_auto_compaction_form/mn_auto_compaction_form.html',
-    controller: function ($scope) {
+  angular
+    .module('mnAutoCompactionForm', [
+      'mnHttp',
+      'mnPoolDefault'
+    ])
+    .directive('mnAutoCompactionForm', mnAutoCompactionFormDirective);
+
+  function mnAutoCompactionFormDirective(mnHttp, mnPoolDefault) {
+    var mnAutoCompactionForm = {
+      restrict: 'A',
+      scope: {
+        autoCompactionSettings: '=',
+        validationErrors: '='
+      },
+      isolate: false,
+      replace: true,
+      templateUrl: 'app/components/directives/mn_auto_compaction_form/mn_auto_compaction_form.html',
+      controller: controller
+    };
+
+    return mnAutoCompactionForm;
+
+    function controller($scope) {
       $scope.mnPoolDefault = mnPoolDefault.latestValue();
       if ($scope.mnPoolDefault.value.isROAdminCreds) {
         return;
@@ -24,5 +35,5 @@ angular.module('mnAutoCompactionForm', [
         $scope.errors = $scope.validationErrors;
       });
     }
-  };
-});
+  }
+})();

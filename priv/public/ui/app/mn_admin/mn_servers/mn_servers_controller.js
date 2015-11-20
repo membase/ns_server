@@ -33,8 +33,9 @@
     };
   }
 
-  function mnServersController($scope, $state, $uibModal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoller, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools) {
+  function mnServersController($scope, $state, $uibModal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoller, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools, mnSortableTable) {
     var vm = this;
+    vm.sortableTableProperties = mnSortableTable.get();
     vm.mnPoolDefault = mnPoolDefault.latestValue();
 
     vm.isServerGroupsDisabled = isServerGroupsDisabled;

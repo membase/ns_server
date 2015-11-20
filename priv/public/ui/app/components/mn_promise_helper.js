@@ -1,21 +1,136 @@
-angular.module('mnPromiseHelper', [
-  'mnAlertsService',
-  'mnHelper',
-  'mnPendingQueryKeeper'
-]).factory('mnPromiseHelper',
-  function (mnAlertsService, mnHelper, mnPendingQueryKeeper, $timeout) {
+(function () {
+  "use strict";
 
-    mnPromiseHelper.handleModalAction = function ($scope, promise, $uibModalInstance, vm) {
+  angular.module('mnPromiseHelper', [
+    'mnAlertsService',
+    'mnHelper',
+    'mnPendingQueryKeeper'
+  ]).factory('mnPromiseHelper', mnPromiseHelperFactory);
+
+  function mnPromiseHelperFactory(mnAlertsService, mnHelper, mnPendingQueryKeeper, $timeout) {
+
+    mnPromiseHelper.handleModalAction = handleModalAction;
+
+    return mnPromiseHelper;
+
+    function handleModalAction($scope, promise, $uibModalInstance, vm) {
       return mnPromiseHelper(vm || $scope, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .closeFinally()
         .cancelOnScopeDestroy($scope)
         .reloadState();
-    };
+    }
 
     function mnPromiseHelper(scope, promise, modalInstance) {
       var spinnerNameOrFunction = 'viewLoading';
       var errorsNameOrCallback = 'errors';
+      var spinnerTimeout;
+      var promiseHelper = {
+        applyToScope: applyToScope,
+        independentOfScope: independentOfScope,
+        cancelOnScopeDestroy: cancelOnScopeDestroy,
+        getPromise: getPromise,
+        onSuccess: onSuccess,
+        reloadAndSwitchOnPoller: reloadAndSwitchOnPoller,
+        reloadState: reloadState,
+        closeFinally: closeFinally,
+        closeOnSuccess: closeOnSuccess,
+        showErrorsSensitiveSpinner: showErrorsSensitiveSpinner,
+        catchErrorsFromSuccess: catchErrorsFromSuccess,
+        showSpinner: showSpinner,
+        catchErrors: catchErrors,
+        catchGlobalErrors: catchGlobalErrors,
+        showGlobalSuccess: showGlobalSuccess
+      }
+
+      return promiseHelper;
+
+      function independentOfScope() {
+        mnPendingQueryKeeper.markAsIndependentOfScope();
+        return this;
+      }
+      function cancelOnScopeDestroy($scope) {
+        mnPendingQueryKeeper.attachPendingQueriesToScope($scope || scope);
+        return this;
+      }
+      function getPromise() {
+        return promise;
+      }
+      function onSuccess(cb) {
+        promise.then(cb);
+        return this;
+      }
+      function reloadAndSwitchOnPoller(vm) {
+        return mnPromiseHelper(scope, promise.then(function () {
+          vm.poller.reload(vm)
+          return vm.poller.doCallPromise;
+        }), modalInstance);
+      }
+      function reloadState() {
+        promise.then(function () {
+          spinnerCtrl(true);
+          mnHelper.reloadState();
+        });
+        return this;
+      }
+      function closeFinally() {
+        promise['finally'](closeModal);
+        return this;
+      }
+      function closeOnSuccess() {
+        promise.then(closeModal);
+        return this;
+      }
+      function showErrorsSensitiveSpinner(name, timer, scope) {
+        name && setSpinnerName(name);
+        maybeHandleSpinnerWithTimer(timer, scope);
+        promise.then(null, hideSpinner);
+        return this;
+      }
+      function catchErrorsFromSuccess(nameOrCallback) {
+        nameOrCallback && setErrorsNameOrCallback(nameOrCallback);
+        promise.then(function (resp) {
+          errorsCtrl(extractErrors(resp));
+        });
+        return this;
+      }
+      function showSpinner(name, timer, scope) {
+        name && setSpinnerName(name);
+        maybeHandleSpinnerWithTimer(timer, scope);
+        promise.then(hideSpinner, hideSpinner);
+        return this;
+      }
+      function catchErrors(nameOrCallback) {
+        nameOrCallback && setErrorsNameOrCallback(nameOrCallback);
+        promise.then(removeErrors, function (resp) {
+          errorsCtrl(extractErrors(resp));
+        });
+        return this;
+      }
+      function catchGlobalErrors(errorMessage, timeout) {
+        promise.then(null, function (resp) {
+          mnAlertsService.formatAndSetAlerts(errorMessage || resp.data, 'error', timeout);
+        });
+        return this;
+      }
+      function showGlobalSuccess(successMessage, timeout) {
+        promise.then(function (resp) {
+          mnAlertsService.formatAndSetAlerts(successMessage || resp.data, 'success', timeout);
+        });
+        return this;
+      }
+      function applyToScope(keyOrFunction) {
+        promise.then(angular.isFunction(keyOrFunction) ? keyOrFunction : function (value) {
+          scope[keyOrFunction] = value;
+        }, function () {
+          if (angular.isFunction(keyOrFunction)) {
+            keyOrFunction(null);
+          } else {
+            delete scope[keyOrFunction];
+          }
+        });
+        return this;
+      }
       function spinnerCtrl(isLoaded) {
         if (angular.isFunction(spinnerNameOrFunction)) {
           spinnerNameOrFunction(isLoaded);
@@ -53,7 +168,6 @@ angular.module('mnPromiseHelper', [
         var errors = resp.data && resp.data.errors && _.keys(resp.data).length === 1 ? resp.data.errors : resp.data || resp ;
         return _.isEmpty(errors) ? false : errors;
       }
-      var spinnerTimeout;
       function clearSpinnerTimeout() {
         if (spinnerTimeout) {
           $timeout.cancel(spinnerTimeout);
@@ -72,95 +186,6 @@ angular.module('mnPromiseHelper', [
           spinnerCtrl(true);
         }
       }
-      return {
-        applyToScope: function (keyOrFunction) {
-          promise.then(angular.isFunction(keyOrFunction) ? keyOrFunction : function (value) {
-            scope[keyOrFunction] = value;
-          }, function () {
-            if (angular.isFunction(keyOrFunction)) {
-              keyOrFunction(null);
-            } else {
-              delete scope[keyOrFunction];
-            }
-          });
-          return this;
-        },
-        independentOfScope: function () {
-          mnPendingQueryKeeper.markAsIndependentOfScope();
-          return this;
-        },
-        cancelOnScopeDestroy: function ($scope) {
-          mnPendingQueryKeeper.attachPendingQueriesToScope($scope || scope);
-          return this;
-        },
-        getPromise: function () {
-          return promise;
-        },
-        onSuccess: function (cb) {
-          promise.then(cb);
-          return this;
-        },
-        reloadAndSwitchOnPoller: function (vm) {
-          return mnPromiseHelper(scope, promise.then(function () {
-            vm.poller.reload(vm)
-            return vm.poller.doCallPromise;
-          }), modalInstance);
-        },
-        reloadState: function () {
-          promise.then(function () {
-            spinnerCtrl(true);
-            mnHelper.reloadState();
-          });
-          return this;
-        },
-        closeFinally: function () {
-          promise['finally'](closeModal);
-          return this;
-        },
-        closeOnSuccess: function () {
-          promise.then(closeModal);
-          return this;
-        },
-        showErrorsSensitiveSpinner: function (name, timer, scope) {
-          name && setSpinnerName(name);
-          maybeHandleSpinnerWithTimer(timer, scope);
-          promise.then(null, hideSpinner);
-          return this;
-        },
-        catchErrorsFromSuccess: function (nameOrCallback) {
-          nameOrCallback && setErrorsNameOrCallback(nameOrCallback);
-          promise.then(function (resp) {
-            errorsCtrl(extractErrors(resp));
-          });
-          return this;
-        },
-        showSpinner: function (name, timer, scope) {
-          name && setSpinnerName(name);
-          maybeHandleSpinnerWithTimer(timer, scope);
-          promise.then(hideSpinner, hideSpinner);
-          return this;
-        },
-        catchErrors: function (nameOrCallback) {
-          nameOrCallback && setErrorsNameOrCallback(nameOrCallback);
-          promise.then(removeErrors, function (resp) {
-            errorsCtrl(extractErrors(resp));
-          });
-          return this;
-        },
-        catchGlobalErrors: function (errorMessage, timeout) {
-          promise.then(null, function (resp) {
-            mnAlertsService.formatAndSetAlerts(errorMessage || resp.data, 'error', timeout);
-          });
-          return this;
-        },
-        showGlobalSuccess: function (successMessage, timeout) {
-          promise.then(function (resp) {
-            mnAlertsService.formatAndSetAlerts(successMessage || resp.data, 'success', timeout);
-          });
-          return this;
-        }
-      };
     }
-
-    return mnPromiseHelper;
-  });
+  }
+})();

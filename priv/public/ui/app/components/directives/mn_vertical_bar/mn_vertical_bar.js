@@ -1,12 +1,19 @@
-angular.module('mnVerticalBar', [
-]).directive('mnVerticalBar', function () {
+(function () {
+  "use strict";
 
-  return {
-    restrict: 'A',
-    scope: {
-      conf: '='
-    },
-    isolate: false,
-    templateUrl: 'app/components/directives/mn_vertical_bar/mn_vertical_bar.html'
-  };
-});
+  angular
+    .module('mnVerticalBar', [])
+    .directive('mnVerticalBar', mnVerticalBarDirective);
+
+  function mnVerticalBarDirective() {
+    var mnVerticalBar = {
+      restrict: 'A',
+      scope: {
+        conf: '='
+      },
+      isolate: false,
+      templateUrl: 'app/components/directives/mn_vertical_bar/mn_vertical_bar.html'
+    };
+    return mnVerticalBar;
+  }
+})();

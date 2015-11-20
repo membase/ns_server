@@ -1,15 +1,27 @@
-angular.module('mnBarUsage', [
-  'mnFilters'
-]).directive('mnBarUsage', function (mnRescaleForSumFilter, mnCalculatePercentFilter) {
+(function () {
+  "use strict";
 
-  return {
-    restrict: 'A',
-    scope: {
-      baseInfo: '=',
-    },
-    isolate: false,
-    templateUrl: 'app/components/directives/mn_bar_usage/mn_bar_usage.html',
-    controller: function ($scope) {
+  angular
+    .module('mnBarUsage', [
+      'mnFilters'
+    ])
+    .directive('mnBarUsage', mnBarUsageDirective);
+
+  function mnBarUsageDirective(mnRescaleForSumFilter, mnCalculatePercentFilter) {
+
+    var mnBarUsage = {
+      restrict: 'A',
+      scope: {
+        baseInfo: '=',
+      },
+      isolate: false,
+      templateUrl: 'app/components/directives/mn_bar_usage/mn_bar_usage.html',
+      controller: controller
+    };
+
+    return mnBarUsage;
+
+    function controller($scope) {
       $scope.$watch('baseInfo', function (options) {
         if (!options) {
           return;
@@ -52,5 +64,5 @@ angular.module('mnBarUsage', [
         $scope.config = newOptions;
       }, true);
     }
-  };
-});
+  }
+})();

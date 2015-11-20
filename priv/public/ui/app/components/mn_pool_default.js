@@ -1,15 +1,26 @@
-angular.module('mnPoolDefault', [
-  'mnHttp',
-  'mnPools'
-]).factory('mnPoolDefault',
-  function (mnHttp, $cacheFactory, $q, mnPools, $window) {
-    var mnPoolDefault = {};
-    var latest = {};
+(function () {
+  "use strict";
 
-    mnPoolDefault.latestValue = function () {
-      return latest;
+  angular.module('mnPoolDefault', [
+    'mnHttp',
+    'mnPools'
+  ]).factory('mnPoolDefault', mnPoolDefaultFactory);
+
+  function mnPoolDefaultFactory(mnHttp, $cacheFactory, $q, mnPools, $window) {
+    var latest = {};
+    var mnPoolDefault = {
+      latestValue: latestValue,
+      get: get,
+      clearCache: clearCache,
+      getFresh: getFresh
     };
-    mnPoolDefault.get = function (params, cache) {
+
+    return mnPoolDefault;
+
+    function latestValue() {
+      return latest;
+    }
+    function get(params, cache) {
       params = params || {waitChange: 0};
       if (cache === undefined) {
         cache = true;
@@ -39,17 +50,14 @@ angular.module('mnPoolDefault', [
         latest.value = poolDefault;
         return poolDefault;
       });
-    };
-
-    mnPoolDefault.clearCache = function () {
+    }
+    function clearCache() {
       $cacheFactory.get('$http').remove('/pools/default?waitChange=0');
       return this;
-    };
-
-    mnPoolDefault.getFresh = function (params) {
+    }
+    function getFresh(params) {
       params = params || {waitChange: 0};
       return mnPoolDefault.clearCache().get(params);
-    };
-
-    return mnPoolDefault;
-  });
+    }
+  }
+})();

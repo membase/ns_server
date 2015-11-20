@@ -1,13 +1,23 @@
-angular.module('mnServices', [
-]).directive('mnServices', function (mnPools) {
+(function () {
+  "use strict";
 
-  return {
-    restrict: 'A',
-    scope: {
-      config: '=mnServices'
-    },
-    templateUrl: 'app/components/directives/mn_services/mn_services.html',
-    controller: function ($scope) {
+  angular
+    .module('mnServices', [])
+    .directive('mnServices', mnServicesDirective);
+
+  function mnServicesDirective(mnPools) {
+    var mnServices = {
+      restrict: 'A',
+      scope: {
+        config: '=mnServices'
+      },
+      templateUrl: 'app/components/directives/mn_services/mn_services.html',
+      controller: controller
+    };
+
+    return mnServices;
+
+    function controller($scope) {
       mnPools.get().then(function (pool) {
         $scope.isEnterprise = pool.isEnterprise;
         $scope.onChange = function (value, model) {
@@ -17,5 +27,5 @@ angular.module('mnServices', [
         };
       });
     }
-  };
-});
+  }
+})();

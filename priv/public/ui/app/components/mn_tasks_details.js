@@ -1,8 +1,18 @@
-angular.module('mnTasksDetails', [
-  'mnHttp'
-]).factory('mnTasksDetails',
-  function (mnHttp, $cacheFactory) {
-    var mnTasksDetails = {};
+(function () {
+  "use strict";
+
+  angular.module('mnTasksDetails', [
+    'mnHttp'
+  ]).factory('mnTasksDetails', mnTasksDetailsFactory);
+
+  function mnTasksDetailsFactory(mnHttp, $cacheFactory) {
+    var mnTasksDetails = {
+      get: get,
+      clearCache: clearCache,
+      getFresh: getFresh
+    };
+
+    return mnTasksDetails;
 
     // if (!rv.rebalancing) {
     //   if (sawRebalanceRunning && task.errorMessage) {
@@ -13,7 +23,7 @@ angular.module('mnTasksDetails', [
     //   sawRebalanceRunning = true;
     // }
 
-    mnTasksDetails.get = function () {
+    function get() {
       return mnHttp({
         url: '/pools/default/tasks',
         method: 'GET',
@@ -60,14 +70,13 @@ angular.module('mnTasksDetails', [
       return task.type === 'warming_up' && task.status === 'running';
     }
 
-    mnTasksDetails.clearCache = function () {
+    function clearCache() {
       $cacheFactory.get('$http').remove('/pools/default/tasks');
       return this;
-    };
+    }
 
-    mnTasksDetails.getFresh = function () {
+    function getFresh() {
       return mnTasksDetails.clearCache().get();
-    };
-
-    return mnTasksDetails;
-  });
+    }
+  }
+})();

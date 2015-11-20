@@ -1,6 +1,34 @@
-angular.module('mnFilters', [])
+(function () {
+  "use strict";
 
-  .filter('mnCount', function () {
+  angular
+    .module('mnFilters', [])
+    .filter('mnCount', mnCount)
+    .filter('removeEmptyValue', removeEmptyValue)
+    .filter('formatProgressMessage', formatProgressMessage)
+    .filter('mnCloneOnlyData', mnCloneOnlyData)
+    .filter('$httpParamSerializerJQLike', httpParamSerializerJQLike)
+    .filter('mnParseHttpDate', mnParseHttpDate)
+    .filter('mnPrepareQuantity', mnPrepareQuantity)
+    .filter('mnCalculatePercent', mnCalculatePercent)
+    .filter('mnEllipsisiseOnLeft', mnEllipsisiseOnLeft)
+    .filter('mnRescaleForSum', mnRescaleForSum)
+    .filter('mnNaturalSorting', mnNaturalSorting)
+    .filter('mnMakeSafeForCSS', mnMakeSafeForCSS)
+    .filter('mnStripPortHTML', mnStripPortHTML)
+    .filter('mnTruncateTo3Digits', mnTruncateTo3Digits)
+    .filter('mnFormatQuantity', mnFormatQuantity)
+    .filter('mnFormatMemSize', mnFormatMemSize)
+    .filter('mnFormatUptime', mnFormatUptime)
+    .filter('mnMBtoBytes', mnMBtoBytes)
+    .filter('mnBytesToMB', mnBytesToMB)
+    .filter('parseVersion', parseVersion)
+    .filter('getStringBytes', getStringBytes)
+    .filter('mnFormatServices', mnFormatServices)
+    .filter('mnPrettyVersion', mnPrettyVersion)
+    .filter('encodeURIComponent', encodeURIComponentFilter);
+
+  function mnCount() {
     return function (count, text) {
       if (count == null) {
         return '?' + text + '(s)';
@@ -20,9 +48,8 @@ angular.module('mnFilters', [])
       }
       return [String(count), ' ', text].join('');
     };
-  })
-
-  .filter('removeEmptyValue', function () {
+  }
+  function removeEmptyValue() {
     return function (object) {
       return _.transform(_.clone(object), function (result, n, key) {
         if (n === "") {
@@ -31,9 +58,8 @@ angular.module('mnFilters', [])
         result[key] = n;
       });
     };
-  })
-
-  .filter('formatProgressMessage', function () {
+  }
+  function formatProgressMessage() {
     return function (task) {
       switch (task.type) {
         case "indexer": return "Indexing " + task.bucket + "/" + task.designDocument;
@@ -49,19 +75,16 @@ angular.module('mnFilters', [])
           return (task.subtype == 'gracefulFailover') ? "Failing over 1 node" : "Rebalancing " + serversCount + " nodes";
       }
     };
-  })
-
-  .filter('mnCloneOnlyData', function () {
+  }
+  function mnCloneOnlyData() {
     return function (data) {
       return JSON.parse(JSON.stringify(data));
     };
-  })
-
-  .filter('$httpParamSerializerJQLike', function ($httpParamSerializerJQLike) {
+  }
+  function httpParamSerializerJQLike($httpParamSerializerJQLike) {
     return $httpParamSerializerJQLike;
-  })
-
-  .filter('mnParseHttpDate', function () {
+  }
+  function mnParseHttpDate() {
     var rfc1123RE = /^\s*[a-zA-Z]+, ([0-9][0-9]) ([a-zA-Z]+) ([0-9]{4,4}) ([0-9]{2,2}):([0-9]{2,2}):([0-9]{2,2}) GMT\s*$/m;
     var rfc850RE = /^\s*[a-zA-Z]+, ([0-9][0-9])-([a-zA-Z]+)-([0-9]{2,2}) ([0-9]{2,2}):([0-9]{2,2}):([0-9]{2,2}) GMT\s*$/m;
     var asctimeRE = /^\s*[a-zA-Z]+ ([a-zA-Z]+) ((?:[0-9]| )[0-9]) ([0-9]{2,2}):([0-9]{2,2}):([0-9]{2,2}) ([0-9]{4,4})\s*$/m;
@@ -94,7 +117,6 @@ angular.module('mnFilters', [])
         throw badDateException;
       return number;
     }
-
     function doParseHTTPDate(date) {
       var match;
       if ((match = rfc1123RE.exec(date)) || (match = rfc850RE.exec(date))) {
@@ -133,9 +155,8 @@ angular.module('mnFilters', [])
         throw e;
       }
     }
-  })
-
-  .filter('mnPrepareQuantity', function () {
+  }
+  function mnPrepareQuantity() {
     return function (value, K) {
       K = K || 1024;
 
@@ -157,15 +178,13 @@ angular.module('mnFilters', [])
 
       return t;
     };
-  })
-
-  .filter('mnCalculatePercent', function () {
+  }
+  function mnCalculatePercent() {
     return function (value, total) {
       return (value * 100 / total) >> 0;
     };
-  })
-
-  .filter('mnEllipsisiseOnLeft', function () {
+  }
+  function mnEllipsisiseOnLeft() {
     return function (text, length) {
       if (length <= 3) {
         // asking for stupidly short length will cause this to do
@@ -177,9 +196,8 @@ angular.module('mnFilters', [])
       }
       return text;
     };
-  })
-
-  .filter('mnRescaleForSum', function () {
+  }
+  function mnRescaleForSum() {
     // proportionaly rescales values so that their sum is equal to given
     // number. Output values need to be integers. This particular
     // algorithm tries to minimize total rounding error. The basic approach
@@ -200,9 +218,8 @@ angular.module('mnFilters', [])
       }
       return outputValues;
     };
-  })
-
-  .filter('mnNaturalSorting', function () {
+  }
+  function mnNaturalSorting() {
      /*
      * Natural Sort algorithm for Javascript - Version 0.6 - Released under MIT license
      * Author: Jim Palmer (based on chunking idea from Dave Koelle)
@@ -259,9 +276,8 @@ angular.module('mnFilters', [])
 
       return collection;
     };
-  })
-
-  .filter('mnMakeSafeForCSS', function () {
+  }
+  function mnMakeSafeForCSS() {
     return function (name) {
       return name.replace(/[^a-z0-9]/g, function (s) {
         var c = s.charCodeAt(0);
@@ -270,9 +286,8 @@ angular.module('mnFilters', [])
         return '__' + ('000' + c.toString(16)).slice(-4);
       });
     };
-  })
-
-  .filter('mnStripPortHTML', function () {
+  }
+  function mnStripPortHTML() {
     var cachedAllServers;
     var cachedIsStripping;
     var strippingRE = /:8091$/;
@@ -299,9 +314,8 @@ angular.module('mnFilters', [])
       }
       return value;
     };
-  })
-
-  .filter('mnTruncateTo3Digits', function () {
+  }
+  function mnTruncateTo3Digits() {
     return function (value, leastScale, roundMethod) {
       if (!value) {
         return 0;
@@ -313,9 +327,8 @@ angular.module('mnFilters', [])
       scale = 100 / scale;
       return Math[roundMethod || "round"](value*scale)/scale;
     };
-  })
-
-  .filter('mnFormatQuantity', function (mnPrepareQuantityFilter, mnTruncateTo3DigitsFilter) {
+  }
+  function mnFormatQuantity(mnPrepareQuantityFilter, mnTruncateTo3DigitsFilter) {
     return function (value, numberSystem, spacing) {
       if (!value && !_.isNumber(value)) {
         return value;
@@ -330,15 +343,13 @@ angular.module('mnFilters', [])
       var t = mnPrepareQuantityFilter(value, numberSystem);
       return [mnTruncateTo3DigitsFilter(value/t[0], undefined, "floor"), spacing, t[1]].join('');
     };
-  })
-
-  .filter('mnFormatMemSize', function (mnFormatQuantityFilter) {
+  }
+  function mnFormatMemSize(mnFormatQuantityFilter) {
     return function (value) {
       return mnFormatQuantityFilter(value, null, ' ');
     };
-  })
-
-  .filter('mnFormatUptime', function () {
+  }
+  function mnFormatUptime() {
     return function (seconds, precision) {
       precision = precision || 8;
 
@@ -360,21 +371,18 @@ angular.module('mnFilters', [])
       });
       return rv.join(', ');
     };
-  })
-
-  .filter('mnMBtoBytes', function (IEC) {
+  }
+  function mnMBtoBytes(IEC) {
     return function (MB) {
       return MB * IEC.Mi;
     };
-  })
-
-  .filter('mnBytesToMB', function (IEC) {
+  }
+  function mnBytesToMB(IEC) {
     return function (bytes) {
       return Math.floor(bytes / IEC.Mi);
     };
-  })
-
-  .filter('parseVersion', function () {
+  }
+  function parseVersion() {
     return function (str) {
       if (!str) {
         return;
@@ -398,9 +406,8 @@ angular.module('mnFilters', [])
       a[3] = (a[3] && (a[3].substr(0, 1).toUpperCase() + a[3].substr(1))) || "DEV";
       return a; // Example result: ["1.8.0-9", "9", "ga083a1e", "Enterprise"]
     }
-  })
-
-  .filter('getStringBytes', function () {
+  }
+  function getStringBytes() {
     return function (countMe) {
       if (!_.isString(countMe)) {
         return 0;
@@ -415,9 +422,8 @@ angular.module('mnFilters', [])
         return escapedStrLength;
       }
     }
-  })
-
-  .filter('mnFormatServices', function () {
+  }
+  function mnFormatServices() {
     return function (service) {
       switch (service) {
         case 'kv': return 'Data';
@@ -426,9 +432,8 @@ angular.module('mnFilters', [])
         case 'fts': return 'Full Text';
       }
     }
-  })
-
-  .filter('mnPrettyVersion', function (parseVersionFilter) {
+  }
+  function mnPrettyVersion(parseVersionFilter) {
 
     return function (str, full) {
       if (!str) {
@@ -443,8 +448,8 @@ angular.module('mnFilters', [])
       }
       return [a[0], a[3], "Edition", "(build-" + a[1] + suffix + ")"].join(' ');
     };
-  })
-
-  .filter('encodeURIComponent', function () {
+  }
+  function encodeURIComponentFilter() {
     return encodeURIComponent;
-  });
+  }
+})();

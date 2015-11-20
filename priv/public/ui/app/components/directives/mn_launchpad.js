@@ -1,12 +1,22 @@
-angular.module('mnLaunchpad', [
-  ]).directive('mnLaunchpad', function ($timeout) {
+(function () {
+  "use strict";
 
-  return {
-    scope: {
-      launchpadSource: "=",
-      launchpadId: "="
-    },
-    link: function ($scope, $element, $attrs) {
+  angular
+    .module('mnLaunchpad', [])
+    .directive('mnLaunchpad', mnLaunchpadDirective);
+
+  function mnLaunchpadDirective($timeout) {
+    var mnLaunchpad = {
+      scope: {
+        launchpadSource: "=",
+        launchpadId: "="
+      },
+      link: link
+    }
+
+    return mnLaunchpad;
+
+    function link($scope, $element, $attrs) {
       $scope.$watch('launchpadSource', function (launchpadSource) {
         if (!launchpadSource) {
           return;
@@ -28,5 +38,5 @@ angular.module('mnLaunchpad', [
         }, 30000);
       });
     }
-  };
-});
+  }
+})();

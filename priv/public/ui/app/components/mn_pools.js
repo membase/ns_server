@@ -1,16 +1,26 @@
-angular.module('mnPools', [
-  'mnHttp'
-]).factory('mnPools',
-  function (mnHttp, $cacheFactory) {
-    var mnPools = {};
+(function () {
+  "use strict";
+
+  angular.module('mnPools', [
+    'mnHttp'
+  ]).factory('mnPools', mnPoolsFactory);
+
+  function mnPoolsFactory(mnHttp, $cacheFactory) {
+    var mnPools = {
+      isEnterprise: isEnterprise,
+      get: get,
+      clearCache: clearCache,
+      getFresh: getFresh
+    };
 
     var launchID =  (new Date()).valueOf() + '-' + ((Math.random() * 65536) >> 0);
 
-    mnPools.isEnterprise = function isEnterprise() {
-      return mnPools.value && mnPools.value.isEnterprise;
-    };
+    return mnPools;
 
-    mnPools.get = function () {
+    function isEnterprise() {
+      return mnPools.value && mnPools.value.isEnterprise;
+    }
+    function get() {
       return mnHttp({
         method: 'GET',
         url: '/pools',
@@ -29,17 +39,13 @@ angular.module('mnPools', [
           return {isInitialized: true, isAuthenticated: false};
         }
       });
-    };
-
-
-    mnPools.clearCache = function () {
+    }
+    function clearCache() {
       $cacheFactory.get('$http').remove('/pools');
       return this;
-    };
-
-    mnPools.getFresh = function () {
+    }
+    function getFresh() {
       return mnPools.clearCache().get();
-    };
-
-    return mnPools;
-  });
+    }
+  }
+})();

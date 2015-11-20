@@ -1,26 +1,38 @@
-angular.module('mnCompaction', [
-  'mnHttp'
-]).factory('mnCompaction',
-  function ($interval, mnHttp) {
-    var mnCompaction = {};
+(function () {
+  "use strict";
+
+  angular.module('mnCompaction', [
+    'mnHttp'
+  ]).factory('mnCompaction', mnCompactionFactory);
+
+  function mnCompactionFactory($interval, mnHttp) {
     var startedCompactions = {};
+    var mnCompaction = {
+      registerAsTriggered: registerAsTriggered,
+      registerAsTriggeredAndPost: registerAsTriggeredAndPost,
+      getStartedCompactions: getStartedCompactions,
+      canCompact: canCompact
+    };
 
-    $interval(function () {
-      _.each(startedCompactions, mayBeExpired);
-    }, 2000);
+    activate();
 
+    return mnCompaction;
+
+    function activate() {
+      $interval(function () {
+        _.each(startedCompactions, mayBeExpired);
+      }, 2000);
+    }
     function now() {
       return new Date().valueOf();
     }
-
     function mayBeExpired(desc, key) {
       if (desc.staredAt < now()) {
         desc.undoBody();
         delete startedCompactions[key];
       }
     }
-
-    mnCompaction.registerAsTriggered = function (url, undoBody) {
+    function registerAsTriggered(url, undoBody) {
       if (startedCompactions[url]) {
         mayBeExpired(startedCompactions[url], url);
       } else {
@@ -30,21 +42,17 @@ angular.module('mnCompaction', [
           staredAt: now() + 10000
         };
       }
-    };
-
-    mnCompaction.registerAsTriggeredAndPost = function (url, undoBody) {
+    }
+    function registerAsTriggeredAndPost(url, undoBody) {
       mnCompaction.registerAsTriggered(url, undoBody);
       return mnHttp.post(url);
-    };
-
-    mnCompaction.getStartedCompactions = function () {
+    }
+    function getStartedCompactions() {
       return startedCompactions;
-    };
-
-    mnCompaction.canCompact = function (url) {
+    }
+    function canCompact(url) {
       var desc = startedCompactions[url];
       return desc ? desc.staredAt <= now() : true;
-    };
-
-    return mnCompaction;
-  });
+    }
+  }
+})();
