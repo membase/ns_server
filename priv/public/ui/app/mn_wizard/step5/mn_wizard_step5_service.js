@@ -1,10 +1,18 @@
-angular.module('mnWizardStep5Service', [
-  'mnHttp'
-]).factory('mnWizardStep5Service',
-  function (mnHttp) {
-    var mnWizardStep5Service = {};
+(function () {
+  "use strict";
 
-    mnWizardStep5Service.postAuth = function (user) {
+  angular.module('mnWizardStep5Service', [
+    'mnHttp'
+  ]).factory('mnWizardStep5Service', mnWizardStep5ServiceFactory);
+
+  function mnWizardStep5ServiceFactory(mnHttp) {
+    var mnWizardStep5Service = {
+      postAuth: postAuth
+    };
+
+    return mnWizardStep5Service;
+
+    function postAuth(user) {
       var data = _.clone(user);
       delete data.verifyPassword;
       data.port = "SAME";
@@ -14,7 +22,6 @@ angular.module('mnWizardStep5Service', [
         url: '/settings/web',
         data: data
       });
-    };
-
-    return mnWizardStep5Service;
-  });
+    }
+  }
+})();

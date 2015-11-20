@@ -1,10 +1,23 @@
-angular.module('mnWizardStep1Service', [
-  'mnHttp',
-  'mnHelper'
-]).factory('mnWizardStep1Service',
-  function (mnHttp, mnHelper) {
+(function () {
+  "use strict";
 
-    var mnWizardStep1Service = {};
+  angular.module('mnWizardStep1Service', [
+    'mnHttp',
+    'mnHelper'
+  ]).factory('mnWizardStep1Service', mnWizardStep1ServiceFactory);
+
+  function mnWizardStep1ServiceFactory(mnHttp, mnHelper) {
+    var mnWizardStep1Service = {
+      setDynamicRamQuota: setDynamicRamQuota,
+      getDynamicRamQuota: getDynamicRamQuota,
+      getJoinClusterConfig: getJoinClusterConfig,
+      getNewClusterConfig: getNewClusterConfig,
+      getSelfConfig: getSelfConfig,
+      postDiskStorage: postDiskStorage,
+      postHostname: postHostname,
+      postJoinCluster: postJoinCluster,
+      lookup: lookup
+    };
     var re = /^[A-Z]:\//;
     var preprocessPath;
     var dynamicRamQuota;
@@ -20,12 +33,14 @@ angular.module('mnWizardStep1Service', [
       }
     };
 
-    mnWizardStep1Service.setDynamicRamQuota = function (ramQuota) {
+    return mnWizardStep1Service;
+
+    function setDynamicRamQuota(ramQuota) {
       dynamicRamQuota = ramQuota;
-    };
-    mnWizardStep1Service.getDynamicRamQuota = function () {
+    }
+    function getDynamicRamQuota() {
       return dynamicRamQuota;
-    };
+    }
 
     function preprocessPathStandard(p) {
       if (p.charAt(p.length-1) != '/') {
@@ -43,16 +58,13 @@ angular.module('mnWizardStep1Service', [
     function updateTotal(pathResource) {
       return (Math.floor(pathResource.sizeKBytes * (100 - pathResource.usagePercent) / 100 / Math.Mi)) + ' GB';
     }
-
-    mnWizardStep1Service.getJoinClusterConfig = function () {
+    function getJoinClusterConfig() {
       return joinClusterConfig;
-    };
-
-    mnWizardStep1Service.getNewClusterConfig = function () {
+    }
+    function getNewClusterConfig() {
       return getNewClusterConfig;
-    };
-
-    mnWizardStep1Service.getSelfConfig = function () {
+    }
+    function getSelfConfig() {
       return mnHttp({
         method: 'GET',
         url: '/nodes/self',
@@ -76,38 +88,33 @@ angular.module('mnWizardStep1Service', [
 
         return nodeConfig;
       });
-    };
-
-    mnWizardStep1Service.lookup = function (path, availableStorage) {
+    }
+    function lookup(path, availableStorage) {
       return updateTotal(path && _.detect(availableStorage, function (info) {
         return preprocessPath(path).substring(0, info.path.length) == info.path;
       }) || {path: "/", sizeKBytes: 0, usagePercent: 0});
-    };
-
-    mnWizardStep1Service.postDiskStorage = function (config) {
+    }
+    function postDiskStorage(config) {
       return mnHttp({
         method: 'POST',
         url: '/nodes/self/controller/settings',
         data: config
       });
-    };
-
-    mnWizardStep1Service.postHostname = function (hostname) {
+    }
+    function postHostname(hostname) {
       return mnHttp({
         method: 'POST',
         url: '/node/controller/rename',
         data: {hostname: hostname}
       });
-    };
-
-    mnWizardStep1Service.postJoinCluster = function (clusterMember) {
+    }
+    function postJoinCluster(clusterMember) {
       clusterMember.user = clusterMember.username;
       return mnHttp({
         method: 'POST',
         url: '/node/controller/doJoinCluster',
         data: clusterMember
       });
-    };
-
-    return mnWizardStep1Service;
-  });
+    }
+  }
+})();

@@ -1,40 +1,57 @@
-<div class="pad" id="init_cluster_dialog" mn-spinner="viewLoading || !selfConfig">
+<div
+  class="pad"
+  id="init_cluster_dialog"
+  mn-spinner="mnWizardStep1Controller.viewLoading || !mnWizardStep1Controller.selfConfig">
   <div class="config-top">
     <h1>Configure Server</h1>
     <h2>Step <span class="current-step">1</span> of 5</h2>
   </div>
-  <form ng-submit="onSubmit()">
+  <form ng-submit="mnWizardStep1Controller.onSubmit()">
     <div>
       <h2 class="question">Configure Disk Storage</h2>
       <div class="disk_setup_block">
         <div>
           <label for="setup_db_path_input">Databases Path:</label>
-          <input type="text" name="db_path" ng-model="dbPath" ng-change="onDbPathChange()">
+          <input
+            type="text"
+            name="db_path"
+            ng-model="mnWizardStep1Controller.dbPath"
+            ng-change="mnWizardStep1Controller.onDbPathChange()">
           <br class="clear" />
         </div>
         <div>
           <label>Free:</label>
-          <span style="font-size:10pt; margin-left:5px; line-height: 25px;" class="total-db-size">
-            {{dbPathTotal}}
+          <span
+            style="font-size:10pt; margin-left:5px; line-height: 25px;"
+            class="total-db-size">
+            {{mnWizardStep1Controller.dbPathTotal}}
           </span>
         </div>
         <div>
           <label for="setup_index_path_input">Indexes Path:</label>
-          <input type="text" name="index_path" ng-model="indexPath" ng-change="onIndexPathChange()">
-          <br class="clear" />
+          <input
+            type="text"
+            name="index_path"
+            ng-model="mnWizardStep1Controller.indexPath"
+            ng-change="mnWizardStep1Controller.onIndexPathChange()">
+          <br class="clear">
         </div>
         <div>
           <label>Free:</label>
-          <span style="font-size:10pt; margin-left:5px; line-height: 25px;" class="total-index-size">
-            {{indexPathTotal}}
+          <span
+            style="font-size:10pt; margin-left:5px; line-height: 25px;"
+            class="total-index-size">
+            {{mnWizardStep1Controller.indexPathTotal}}
           </span>
         </div>
-        <div class="warning init_cluster_dialog_errors_container" ng-if="postDiskStorageErrors">
-          <div ng-repeat="error in postDiskStorageErrors">
+        <div
+          class="warning init_cluster_dialog_errors_container"
+          ng-if="mnWizardStep1Controller.postDiskStorageErrors">
+          <div ng-repeat="error in mnWizardStep1Controller.postDiskStorageErrors">
             <strong>Attention</strong> - {{error}}<br>
           </div>
         </div>
-        <p class="when-enterprise" ng-show="isEnterprise">
+        <p class="when-enterprise" ng-show="mnWizardStep1Controller.isEnterprise">
           Hint: if you use this server in a production environment, use different file systems for databases and indexes.
         </p>
       </div>
@@ -43,10 +60,16 @@
     <h2 class="question">Configure Server Hostname</h2>
     <div class="hostname_setup_block">
       <label for="setup_hostname">Hostname:</label>
-      <input type="text" name="hostname" ng-model="hostname" />
-      <br class="clear" />
-      <div class="warning pat_10" id="init_cluster_dialog_hostname_errors_container" ng-if="postHostnameErrors[0]">
-        {{postHostnameErrors[0]}}
+      <input
+        type="text"
+        name="hostname"
+        ng-model="mnWizardStep1Controller.hostname">
+      <br class="clear">
+      <div
+        class="warning pat_10"
+          id="init_cluster_dialog_hostname_errors_container"
+          ng-if="mnWizardStep1Controller.postHostnameErrors[0]">
+        {{mnWizardStep1Controller.postHostnameErrors[0]}}
       </div>
     </div>
 
@@ -68,45 +91,85 @@
       </p>
       <div id="init_cluster_form" class="form block init_cluster_form">
         <div>
-          <h3><label>
-            <input type="radio" ng-model="joinCluster" value="no" name="joinCluster" id="no-join-cluster">
-             Start a new cluster.
-          </label></h3>
-          <div class="start_new_cluster_block js_start_new_cluster_block" ng-if="isJoinCluster('no')">
-            <div class="warning pat_10" ng-show="!!setupServicesErrors[0]">
-              {{setupServicesErrors[0]}}
+          <h3>
+            <label>
+              <input
+                type="radio"
+                ng-model="mnWizardStep1Controller.joinCluster"
+                value="no"
+                name="joinCluster"
+                id="no-join-cluster">
+              Start a new cluster.
+            </label>
+          </h3>
+          <div
+            class="start_new_cluster_block js_start_new_cluster_block"
+            ng-if="mnWizardStep1Controller.isJoinCluster('no')">
+            <div
+              class="warning pat_10"
+              ng-show="!!mnWizardStep1Controller.setupServicesErrors[0]">
+              {{mnWizardStep1Controller.setupServicesErrors[0]}}
             </div>
-            <div mn-memory-quota="startNewClusterConfig" errors="postMemoryErrors">
+            <div
+              mn-memory-quota="mnWizardStep1Controller.startNewClusterConfig"
+              errors="mnWizardStep1Controller.postMemoryErrors">
             </div>
           </div>
         </div>
         <div name="joinClusterForm" ng-form novalidate>
-          <h3><label>
-            <input type="radio" ng-model="joinCluster" value="ok" name="joinCluster" id="join-cluster"  >
-            Join a cluster now.
-          </label></h3>
-          <div class="login-credentials" ng-if="isJoinCluster('ok')">
-            <p class="warning pat_10 join_cluster_dialog_errors_container" ng-if="postJoinClusterErrors" style="margin: 10px 30px 10px 0px; display: block;">
-              <span ng-repeat="error in postJoinClusterErrors">
+          <h3>
+            <label>
+              <input
+                type="radio"
+                ng-model="mnWizardStep1Controller.joinCluster"
+                value="ok"
+                name="joinCluster"
+                id="join-cluster">
+              Join a cluster now.
+            </label>
+          </h3>
+          <div
+            class="login-credentials"
+            ng-if="mnWizardStep1Controller.isJoinCluster('ok')">
+            <p
+              class="warning pat_10 join_cluster_dialog_errors_container"
+              ng-if="mnWizardStep1Controller.postJoinClusterErrors"
+              style="margin: 10px 30px 10px 0px; display: block;">
+              <span ng-repeat="error in mnWizardStep1Controller.postJoinClusterErrors">
                 <strong>Attention</strong> - {{error}}
               </span>
             </p>
             <div>
               <label for="clusterMemberHostIp">IP Address:</label>
-              <input type="text" class="inp" name="hostname" id="clusterMemberHostIp" ng-model="joinClusterConfig.clusterMember.hostname" />
-              <br class="clear" />
+              <input
+                type="text"
+                class="inp"
+                name="hostname"
+                id="clusterMemberHostIp"
+                ng-model="mnWizardStep1Controller.joinClusterConfig.clusterMember.hostname">
+              <br class="clear">
             </div>
             <div>
               <label for="join_user_input">Username:</label>
-              <input type="text" class="inp" name="user" id="join_user_input" ng-model="joinClusterConfig.clusterMember.username" />
-              <br class="clear"  />
+              <input
+                type="text"
+                class="inp"
+                name="user"
+                id="join_user_input"
+                ng-model="mnWizardStep1Controller.joinClusterConfig.clusterMember.username">
+              <br class="clear">
             </div>
             <div>
               <label for="join_password_input">Password:</label>
-              <input type="password" class="inp" name="password" ng-model="joinClusterConfig.clusterMember.password" id="join_password_input" />
-              <br class="clear" />
+              <input
+                type="password"
+                class="inp"
+                name="password"
+                ng-model="mnWizardStep1Controller.joinClusterConfig.clusterMember.password"
+                id="join_password_input">
+              <br class="clear">
             </div>
-            <div mn-services="joinClusterConfig">
+            <div mn-services="mnWizardStep1Controller.joinClusterConfig">
             </div>
           </div>
         </div>

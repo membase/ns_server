@@ -1,17 +1,29 @@
 <div
   class="pad bucket_details"
   id="init_bucket_dialog"
-  mn-spinner="!bucketConf || !validationKeeper.result || viewLoading"
+  mn-spinner="!mnWizardStep3Controller.bucketConf || !mnWizardStep3Controller.validationKeeper.result || mnWizardStep3Controller.viewLoading"
   min-height="833px">
   <div class="config-top">
     <h1>Create Default Bucket</h1>
     <h2>Step <i class="current-step">3</i> of 5</h2>
   </div>
-  <form ng-submit="onSubmit()">
-    <div mn-buckets-form bucket-conf="bucketConf" validation="validationKeeper" ng-if="bucketConf"></div>
+  <form ng-submit="mnWizardStep3Controller.onSubmit()">
+    <div
+      mn-buckets-form
+      bucket-conf="mnWizardStep3Controller.bucketConf"
+      validation="mnWizardStep3Controller.validationKeeper"
+      ng-if="mnWizardStep3Controller.bucketConf"></div>
     <div class="config-bottom">
-      <button name="finish" class="submit finish direction-button" type="submit">Next</button>
-      <button name="back" class="submit back direction-button" id="step-init-bucket-back" type="button" ui-sref="app.wizard.step2">Back</button>
+      <button
+        name="finish"
+        class="submit finish direction-button"
+        type="submit">Next</button>
+      <button
+        name="back"
+        class="submit back direction-button"
+        id="step-init-bucket-back"
+        type="button"
+        ui-sref="app.wizard.step2">Back</button>
     </div>
   </form>
 </div>

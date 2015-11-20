@@ -1,87 +1,100 @@
-angular.module('mnWizard').controller('mnWizardStep1Controller',
-  function ($scope, $state, $q, mnWizardStep1Service, mnSettingsClusterService, mnAuthService, pools, mnHelper, mnServersService, mnPools, mnPoolDefault, mnAlertsService, mnMemoryQuotaService, mnPromiseHelper) {
+(function () {
+  "use strict";
+  angular
+    .module('mnWizard')
+    .controller('mnWizardStep1Controller', mnWizardStep1Controller);
 
-    mnPromiseHelper($scope, mnWizardStep1Service.getSelfConfig())
-      .cancelOnScopeDestroy()
-      .onSuccess(function (selfConfig) {
-        $scope.selfConfig = selfConfig;
-        $scope.startNewClusterConfig = {
-          maxMemorySize: selfConfig.ramMaxMegs,
-          totalMemorySize: selfConfig.ramTotalSize,
-          memoryQuota: selfConfig.memoryQuota,
-          services: {
-            disabled: {kv: true, index: false, n1ql: false, fts: false},
-            model: {kv: true, index: true, n1ql: true, fts: true}
-          },
-          isServicesControllsAvailable: true,
-          showKVMemoryQuota: true,
-          showIndexMemoryQuota: true,
-          indexMemoryQuota: selfConfig.indexMemoryQuota,
-          minMemorySize: 256
-        };
-        $scope.hostname = selfConfig.hostname;
-        $scope.dbPath = selfConfig.storage.hdd[0].path;
-        $scope.indexPath = selfConfig.storage.hdd[0].index_path;
-        $scope.onDbPathChange();
-        $scope.onIndexPathChange();
-      });
+  function mnWizardStep1Controller($scope, $state, $q, mnWizardStep1Service, mnSettingsClusterService, mnAuthService, pools, mnHelper, mnServersService, mnPools, mnPoolDefault, mnAlertsService, mnMemoryQuotaService, mnPromiseHelper) {
+    var vm = this;
 
-    $scope.joinClusterConfig = mnWizardStep1Service.getJoinClusterConfig();
-    $scope.joinCluster = 'no';
-    $scope.isEnterprise = pools.isEnterprise;
+    vm.joinClusterConfig = mnWizardStep1Service.getJoinClusterConfig();
+    vm.joinCluster = 'no';
+    vm.isEnterprise = pools.isEnterprise;
 
-    $scope.$watch('startNewClusterConfig.memoryQuota', mnWizardStep1Service.setDynamicRamQuota);
+    vm.onDbPathChange = onDbPathChange;
+    vm.onIndexPathChange = onIndexPathChange;
+    vm.isJoinCluster = isJoinCluster;
+    vm.onSubmit = onSubmit;
 
-    $scope.onDbPathChange = function () {
-      $scope.dbPathTotal = mnWizardStep1Service.lookup($scope.dbPath, $scope.selfConfig.preprocessedAvailableStorage);
-    };
-    $scope.onIndexPathChange = function () {
-      $scope.indexPathTotal = mnWizardStep1Service.lookup($scope.indexPath, $scope.selfConfig.preprocessedAvailableStorage);
-    };
+    activate();
 
-    $scope.isJoinCluster = function (value) {
-      return $scope.joinCluster === value;
-    };
+    function activate() {
+      $scope.$watch('mnWizardStep1Controller.startNewClusterConfig.memoryQuota', mnWizardStep1Service.setDynamicRamQuota);
 
+      mnPromiseHelper(vm, mnWizardStep1Service.getSelfConfig())
+        .cancelOnScopeDestroy($scope)
+        .onSuccess(function (selfConfig) {
+          vm.selfConfig = selfConfig;
+          vm.startNewClusterConfig = {
+            maxMemorySize: selfConfig.ramMaxMegs,
+            totalMemorySize: selfConfig.ramTotalSize,
+            memoryQuota: selfConfig.memoryQuota,
+            services: {
+              disabled: {kv: true, index: false, n1ql: false, fts: false},
+              model: {kv: true, index: true, n1ql: true, fts: true}
+            },
+            isServicesControllsAvailable: true,
+            showKVMemoryQuota: true,
+            showIndexMemoryQuota: true,
+            indexMemoryQuota: selfConfig.indexMemoryQuota,
+            minMemorySize: 256
+          };
+          vm.hostname = selfConfig.hostname;
+          vm.dbPath = selfConfig.storage.hdd[0].path;
+          vm.indexPath = selfConfig.storage.hdd[0].index_path;
+          vm.onDbPathChange();
+          vm.onIndexPathChange();
+        });
+    }
+
+    function onDbPathChange() {
+      vm.dbPathTotal = mnWizardStep1Service.lookup(vm.dbPath, vm.selfConfig.preprocessedAvailableStorage);
+    }
+    function onIndexPathChange() {
+      vm.indexPathTotal = mnWizardStep1Service.lookup(vm.indexPath, vm.selfConfig.preprocessedAvailableStorage);
+    }
+    function isJoinCluster(value) {
+      return vm.joinCluster === value;
+    }
     function goNext() {
       $state.go('app.wizard.step2');
     }
-
     function addErrorHandler(query, name) {
-      return mnPromiseHelper($scope, query).catchErrors(name + 'Errors').getPromise();
+      return mnPromiseHelper(vm, query)
+        .catchErrors(name + 'Errors')
+        .getPromise();
     }
     function postMemoryQuota() {
-      return addErrorHandler(mnSettingsClusterService.postPoolsDefault($scope.startNewClusterConfig), "postMemory");
+      return addErrorHandler(mnSettingsClusterService.postPoolsDefault(vm.startNewClusterConfig), "postMemory");
     }
     function postServices() {
       return addErrorHandler(mnServersService.setupServices({
-        services: mnHelper.checkboxesToList($scope.startNewClusterConfig.services.model).join(',')
+        services: mnHelper.checkboxesToList(vm.startNewClusterConfig.services.model).join(',')
       }), "setupServices");
     }
     function postDiskStorage() {
       return addErrorHandler(mnWizardStep1Service.postDiskStorage({
-        path: $scope.dbPath,
-        index_path: $scope.indexPath
+        path: vm.dbPath,
+        index_path: vm.indexPath
       }), "postDiskStorage");
     }
     function postJoinCluster() {
-      var data = _.clone($scope.joinClusterConfig.clusterMember);
-      data.services = mnHelper.checkboxesToList($scope.joinClusterConfig.services.model).join(',');
+      var data = _.clone(vm.joinClusterConfig.clusterMember);
+      data.services = mnHelper.checkboxesToList(vm.joinClusterConfig.services.model).join(',');
       return addErrorHandler(mnWizardStep1Service.postJoinCluster(data), "postJoinCluster");
     }
-
-    $scope.onSubmit = function (e) {
-      if ($scope.viewLoading) {
+    function onSubmit(e) {
+      if (vm.viewLoading) {
         return;
       }
 
       var promise = postDiskStorage().then(function () {
-        return addErrorHandler(mnWizardStep1Service.postHostname($scope.hostname), "postHostname");
+        return addErrorHandler(mnWizardStep1Service.postHostname(vm.hostname), "postHostname");
       }).then(function () {
-        if ($scope.isJoinCluster('no')) {
-          var newClusterParams = $scope.startNewClusterConfig;
-          var quotaIsChanged = newClusterParams.memoryQuota != $scope.selfConfig.memoryQuota || newClusterParams.indexMemoryQuota != $scope.selfConfig.indexMemoryQuota;
-          var hadServicesString = $scope.selfConfig.services.sort().join("");
+        if (vm.isJoinCluster('no')) {
+          var newClusterParams = vm.startNewClusterConfig;
+          var quotaIsChanged = newClusterParams.memoryQuota != vm.selfConfig.memoryQuota || newClusterParams.indexMemoryQuota != vm.selfConfig.indexMemoryQuota;
+          var hadServicesString = vm.selfConfig.services.sort().join("");
           var hasServicesString = mnHelper.checkboxesToList(newClusterParams.services.model).sort().join("");
           if (hadServicesString === hasServicesString) {
             if (quotaIsChanged) {
@@ -108,9 +121,9 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
           }
         } else {
           return postJoinCluster().then(function () {
-            return mnAuthService.login($scope.joinClusterConfig.clusterMember).then(function () {
+            return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
               return mnPoolDefault.getFresh().then(function (poolsDefault) {
-                if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, $scope.joinClusterConfig.services.model, 'index')) {
+                if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.joinClusterConfig.services.model, 'index')) {
                   $state.go('app.wizard.step6');
                 } else {
                   return mnPools.getFresh().then(function (pools) {
@@ -123,6 +136,7 @@ angular.module('mnWizard').controller('mnWizardStep1Controller',
           });
         }
       });
-      mnPromiseHelper($scope, promise).showErrorsSensitiveSpinner();
+      mnPromiseHelper(vm, promise).showErrorsSensitiveSpinner();
     };
-  });
+  }
+})();

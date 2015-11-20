@@ -1,14 +1,23 @@
-angular.module('mnWizardStep3Service', [
-  'mnHttp',
-  'mnWizardStep1Service',
-  'mnWizardStep2Service',
-  'mnFilters'
-]).factory('mnWizardStep3Service',
-  function (mnHttp, mnWizardStep2Service, mnWizardStep1Service, mnBytesToMBFilter, bucketsFormConfiguration) {
+(function () {
+  "use strict";
 
-    var mnWizardStep3Service = {};
+  angular.module('mnWizardStep3Service', [
+    'mnHttp',
+    'mnWizardStep1Service',
+    'mnWizardStep2Service',
+    'mnFilters'
+  ]).factory('mnWizardStep3Service', mnWizardStep3ServiceFactory);
 
-    mnWizardStep3Service.getWizardBucketConf = function () {
+  function mnWizardStep3ServiceFactory(mnHttp, mnWizardStep2Service, mnWizardStep1Service, mnBytesToMBFilter, bucketsFormConfiguration) {
+
+    var mnWizardStep3Service = {
+      getWizardBucketConf: getWizardBucketConf,
+      postBuckets: postBuckets
+    };
+
+    return mnWizardStep3Service;
+
+    function getWizardBucketConf() {
       return mnHttp({
         method: 'GET',
         url: '/pools/default/buckets/default'
@@ -32,15 +41,14 @@ angular.module('mnWizardStep3Service', [
         bucketConf.isWizard = true;
         return bucketConf;
       })
-    };
+    }
 
-    mnWizardStep3Service.postBuckets = function (data) {
+    function postBuckets(data) {
       return mnHttp({
         data: data,
         method: 'POST',
         url: data.uri
       });
-    };
-
-    return mnWizardStep3Service;
-  });
+    }
+  }
+})();

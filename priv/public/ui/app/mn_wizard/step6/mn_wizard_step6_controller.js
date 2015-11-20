@@ -1,24 +1,34 @@
-angular.module('mnWizard').controller('mnWizardStep6Controller',
-  function ($scope, $state, mnPools, mnPromiseHelper, memoryQuotaConfig, mnSettingsClusterService) {
-    $scope.config = memoryQuotaConfig;
+(function () {
+  "use strict";
 
-    function login(user) {
-      return mnPools.getFresh().then(function () {
-        $state.go('app.admin.overview');
-      });
-    }
+  angular
+    .module('mnWizard')
+    .controller('mnWizardStep6Controller', mnWizardStep6Controller);
 
-    $scope.onSubmit = function () {
-      if ($scope.viewLoading) {
-        return;
+    function mnWizardStep6Controller($scope, $state, mnPools, mnPromiseHelper, memoryQuotaConfig, mnSettingsClusterService) {
+      var vm = this;
+
+      vm.config = memoryQuotaConfig;
+      vm.onSubmit = onSubmit;
+
+      function login(user) {
+        return mnPools.getFresh().then(function () {
+          $state.go('app.admin.overview');
+        });
       }
 
-      var promise = mnSettingsClusterService.postPoolsDefault($scope.config);
-      mnPromiseHelper($scope, promise)
-        .showErrorsSensitiveSpinner()
-        .catchErrors()
-        .showGlobalSuccess('This server has been associated with the cluster and will join on the next rebalance operation.')
-        .getPromise()
-        .then(login)
+      function onSubmit() {
+        if (vm.viewLoading) {
+          return;
+        }
+
+        var promise = mnSettingsClusterService.postPoolsDefault(vm.config);
+        mnPromiseHelper(vm, promise)
+          .showErrorsSensitiveSpinner()
+          .catchErrors()
+          .showGlobalSuccess('This server has been associated with the cluster and will join on the next rebalance operation.')
+          .getPromise()
+          .then(login);
+      }
     }
-  });
+})();

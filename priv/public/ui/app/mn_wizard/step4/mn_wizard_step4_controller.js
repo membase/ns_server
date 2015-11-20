@@ -1,34 +1,42 @@
-angular.module('mnWizard').controller('mnWizardStep4Controller',
-  function ($scope, $state, mnWizardStep4Service, pools, mnPromiseHelper) {
+(function () {
+  "use strict";
 
-    $scope.isEnterprise = pools.isEnterprise;
+  angular
+    .module('mnWizard')
+    .controller('mnWizardStep4Controller', mnWizardStep4Controller);
 
-    $scope.register = {
-      version: '',
-      email: '',
-      firstname: '',
-      lastname: '',
-      company: '',
-      agree: true,
-      version: pools.implementationVersion || 'unknown'
-    };
+    function mnWizardStep4Controller($scope, $state, mnWizardStep4Service, pools, mnPromiseHelper) {
+      var vm = this;
 
-    $scope.sendStats = true;
+      vm.isEnterprise = pools.isEnterprise;
+      vm.sendStats = true;
+      vm.onSubmit = onSubmit;
 
-    $scope.onSubmit = function () {
-      if ($scope.form.$invalid || $scope.viewLoading) {
-        return;
-      }
+      vm.register = {
+        version: '',
+        email: '',
+        firstname: '',
+        lastname: '',
+        company: '',
+        agree: true,
+        version: pools.implementationVersion || 'unknown'
+      };
 
-      $scope.register.email && mnWizardStep4Service.postEmail($scope.register);
+      function onSubmit() {
+        if (vm.form.$invalid || vm.viewLoading) {
+          return;
+        }
 
-      var promise = mnWizardStep4Service.postStats({sendStats: $scope.sendStats});
-      mnPromiseHelper($scope, promise)
-        .showErrorsSensitiveSpinner()
-        .catchErrors()
-        .getPromise()
-        .then(function () {
-          $state.go('app.wizard.step5');
-        });
-    };
-  });
+        vm.register.email && mnWizardStep4Service.postEmail(vm.register);
+
+        var promise = mnWizardStep4Service.postStats({sendStats: vm.sendStats});
+        mnPromiseHelper(vm, promise)
+          .showErrorsSensitiveSpinner()
+          .catchErrors()
+          .getPromise()
+          .then(function () {
+            $state.go('app.wizard.step5');
+          });
+      };
+    }
+})();

@@ -1,10 +1,19 @@
-angular.module('mnWizardStep4Service', [
-  'mnHttp'
-]).factory('mnWizardStep4Service',
-  function (mnHttp) {
-    var mnWizardStep4Service = {};
+(function () {
+  "use strict";
 
-    mnWizardStep4Service.postEmail = function (register) {
+  angular.module('mnWizardStep4Service', [
+    'mnHttp'
+  ]).factory('mnWizardStep4Service', mnWizardStep4ServiceFactory);
+
+  function mnWizardStep4ServiceFactory(mnHttp) {
+    var mnWizardStep4Service = {
+      postEmail: postEmail,
+      postStats: postStats
+    };
+
+    return mnWizardStep4Service;
+
+    function postEmail(register) {
       var params = _.clone(register);
       delete params.agree;
       params.callback = 'JSON_CALLBACK';
@@ -14,16 +23,13 @@ angular.module('mnWizardStep4Service', [
         url: 'http://ph.couchbase.net/email',
         params: params
       });
-    };
-
-
-    mnWizardStep4Service.postStats = function (data) {
+    }
+    function postStats(data) {
       return mnHttp({
         method: 'POST',
         url: '/settings/stats',
         data: data
       });
-    };
-
-    return mnWizardStep4Service;
-  });
+    }
+  }
+})();

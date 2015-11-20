@@ -1,7 +1,11 @@
-angular.module('mnWizardStep2Service', [
-  'mnHttp'
-]).factory('mnWizardStep2Service',
-  function (mnHttp) {
+(function () {
+  "use strict";
+
+  angular.module('mnWizardStep2Service', [
+    'mnHttp'
+  ]).factory('mnWizardStep2Service', mnWizardStep2ServiceFactory);
+
+  function mnWizardStep2ServiceFactory(mnHttp) {
     var mnWizardStep2Service = {
       setSelected: setSelected,
       getSelectedBuckets: getSelectedBuckets,
@@ -26,4 +30,5 @@ angular.module('mnWizardStep2Service', [
     function isSomeBucketSelected() {
       return getSampleBucketsRAMQuota() !== 0;
     }
-  });
+  }
+})();
