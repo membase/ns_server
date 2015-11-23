@@ -160,7 +160,12 @@ handle_arguments(Arguments) ->
                               AccArgs1 = [FlagStr | Values] ++ AccArgs,
                               {AccArgs1, AccEnv};
                           _ ->
-                              AccEnv1 = [{Flag, application:get_all_env(Flag)} | AccEnv],
+                              AccEnv1 = case lists:keymember(Flag, 1, AccEnv) of
+                                            false ->
+                                                [{Flag, application:get_all_env(Flag)} | AccEnv];
+                                            true ->
+                                                AccEnv
+                                        end,
                               {AccArgs, AccEnv1}
                       end
               end
