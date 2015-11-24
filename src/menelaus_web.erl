@@ -367,7 +367,7 @@ loop_inner(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                              {done, menelaus_util:reply_ok(
                                       Req,
                                       "text/html; charset=utf8",
-                                      menelaus_pluggable_ui:inject_index_fragments(
+                                      menelaus_pluggable_ui:inject_head_fragments(
                                         AppRoot, Path, Plugins),
                                       [{"Cache-Control", "must-revalidate"}])};
                          ["classic-index.html"] ->
