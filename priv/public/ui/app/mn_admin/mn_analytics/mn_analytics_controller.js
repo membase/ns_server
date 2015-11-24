@@ -1,11 +1,15 @@
 (function () {
-  angular.module('mnAnalytics', [
-    'mnHelper',
-    'mnHttp',
-    'mnAnalyticsService',
-    'ui.router',
-    'mnPoll'
-  ]).controller('mnAnalyticsController', mnAnalyticsController);
+  "use strict";
+
+  angular
+    .module('mnAnalytics', [
+      'mnHelper',
+      'mnHttp',
+      'mnAnalyticsService',
+      'ui.router',
+      'mnPoll'
+    ])
+    .controller('mnAnalyticsController', mnAnalyticsController);
 
   function mnAnalyticsController($scope, mnAnalyticsService, mnHelper, $state, mnHttp, mnPoller) {
     var vm = this;

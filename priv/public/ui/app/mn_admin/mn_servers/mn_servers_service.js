@@ -1,13 +1,17 @@
 (function () {
-  angular.module('mnServersService', [
-    'mnTasksDetails',
-    'mnPoolDefault',
-    'mnSettingsAutoFailoverService',
-    'mnHttp',
-    'ui.router',
-    'mnSettingsClusterService',
-    'mnGroupsService'
-  ]).factory('mnServersService', mnServersFactory);
+  "use strict";
+
+  angular
+    .module('mnServersService', [
+      'mnTasksDetails',
+      'mnPoolDefault',
+      'mnSettingsAutoFailoverService',
+      'mnHttp',
+      'ui.router',
+      'mnSettingsClusterService',
+      'mnGroupsService'
+    ])
+    .factory('mnServersService', mnServersFactory);
 
   function mnServersFactory(mnHttp, mnTasksDetails, mnPoolDefault, mnGroupsService, mnSettingsAutoFailoverService, $q, $state, $stateParams) {
     var pendingEject = [];

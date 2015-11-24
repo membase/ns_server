@@ -1,4 +1,6 @@
 (function () {
+  "use strict";
+
   angular
     .module('mnSettingsLdapService', ["mnHttp"])
     .factory("mnSettingsLdapService", mnSettingsLdapFactory);

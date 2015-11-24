@@ -1,10 +1,14 @@
 (function () {
-  angular.module('mnAnalyticsService', [
-    'mnHttp',
-    'mnBucketsService',
-    'mnServersService',
-    'mnFilters'
-  ]).factory('mnAnalyticsService', mnAnalyticsServiceFactory);
+  "use strict";
+
+  angular
+    .module('mnAnalyticsService', [
+      'mnHttp',
+      'mnBucketsService',
+      'mnServersService',
+      'mnFilters'
+    ])
+    .factory('mnAnalyticsService', mnAnalyticsServiceFactory);
 
   function mnAnalyticsServiceFactory(mnHttp, $q, mnBucketsService, mnServersService, mnCloneOnlyDataFilter, mnFormatQuantityFilter, mnParseHttpDateFilter, timeUnitToSeconds) {
     var mnAnalyticsService = {

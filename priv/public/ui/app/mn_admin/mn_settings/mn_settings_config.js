@@ -1,18 +1,22 @@
 (function () {
-  angular.module('mnSettings', [
-    'mnSettingsNotifications',
-    'mnSettingsLdap',
-    'mnSettingsSampleBuckets',
-    'mnSettingsCluster',
-    'mnSettingsAutoFailover',
-    'mnSettingsAutoCompaction',
-    'mnSettingsAudit',
-    'mnSettingsCluster',
-    'mnSettingsAlerts',
-    'mnSettingsNotificationsService',
-    'mnAccountManagement',
-    'ui.router'
-  ]).config(mnSettingsConfig);
+  "use strict";
+
+  angular
+    .module('mnSettings', [
+      'mnSettingsNotifications',
+      'mnSettingsLdap',
+      'mnSettingsSampleBuckets',
+      'mnSettingsCluster',
+      'mnSettingsAutoFailover',
+      'mnSettingsAutoCompaction',
+      'mnSettingsAudit',
+      'mnSettingsCluster',
+      'mnSettingsAlerts',
+      'mnSettingsNotificationsService',
+      'mnAccountManagement',
+      'ui.router'
+    ])
+    .config(mnSettingsConfig);
 
   function mnSettingsConfig($stateProvider) {
 

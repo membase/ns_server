@@ -1,9 +1,13 @@
 (function () {
-  angular.module('mnSettingsNotifications', [
-    'mnSettingsNotificationsService',
-    'mnPromiseHelper',
-    'mnPoolDefault'
-  ]).controller('mnSettingsNotificationsController', mnSettingsNotificationsController);
+  "use strict";
+
+  angular
+    .module('mnSettingsNotifications', [
+      'mnSettingsNotificationsService',
+      'mnPromiseHelper',
+      'mnPoolDefault'
+    ])
+    .controller('mnSettingsNotificationsController', mnSettingsNotificationsController);
 
   function mnSettingsNotificationsController($scope, mnPromiseHelper, mnSettingsNotificationsService, mnPoolDefault, pools) {
     var vm = this;

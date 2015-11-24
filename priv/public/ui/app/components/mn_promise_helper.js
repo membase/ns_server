@@ -1,11 +1,13 @@
 (function () {
   "use strict";
 
-  angular.module('mnPromiseHelper', [
-    'mnAlertsService',
-    'mnHelper',
-    'mnPendingQueryKeeper'
-  ]).factory('mnPromiseHelper', mnPromiseHelperFactory);
+  angular
+    .module('mnPromiseHelper', [
+      'mnAlertsService',
+      'mnHelper',
+      'mnPendingQueryKeeper'
+    ])
+    .factory('mnPromiseHelper', mnPromiseHelperFactory);
 
   function mnPromiseHelperFactory(mnAlertsService, mnHelper, mnPendingQueryKeeper, $timeout) {
 

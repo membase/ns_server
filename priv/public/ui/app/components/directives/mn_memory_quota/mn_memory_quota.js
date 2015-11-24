@@ -1,10 +1,12 @@
 (function () {
   "use strict";
 
-  angular.module('mnMemoryQuota', [
-    'mnServices',
-    'mnPoolDefault'
-  ]).directive('mnMemoryQuota', mnMemoryQuotaDirective);
+  angular
+    .module('mnMemoryQuota', [
+      'mnServices',
+      'mnPoolDefault'
+    ])
+    .directive('mnMemoryQuota', mnMemoryQuotaDirective);
 
    function mnMemoryQuotaDirective(mnPoolDefault) {
     var mnMemoryQuota = {

@@ -1,5 +1,8 @@
 (function () {
-  angular.module('mnServers')
+  "use strict";
+
+  angular
+    .module('mnServers')
     .controller('mnServersListItemDetailsController', mnServersListItemDetailsController)
 
     function mnServersListItemDetailsController($scope, mnServersListItemDetailsService, mnPromiseHelper) {

@@ -1,9 +1,11 @@
 (function () {
   "use strict";
 
-  angular.module('mnSettingsAlertsService', [
-    'mnHttp'
-  ]).factory('mnSettingsAlertsService', mnSettingsAlertsService);
+  angular
+    .module('mnSettingsAlertsService', [
+      'mnHttp'
+    ])
+    .factory('mnSettingsAlertsService', mnSettingsAlertsService);
 
   function mnSettingsAlertsService(mnHttp, knownAlerts) {
     var mnSettingsAlertsService = {

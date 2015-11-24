@@ -1,9 +1,11 @@
 (function () {
   "use strict";
 
-  angular.module('mnCompaction', [
-    'mnHttp'
-  ]).factory('mnCompaction', mnCompactionFactory);
+  angular
+    .module('mnCompaction', [
+      'mnHttp'
+    ])
+    .factory('mnCompaction', mnCompactionFactory);
 
   function mnCompactionFactory($interval, mnHttp) {
     var startedCompactions = {};

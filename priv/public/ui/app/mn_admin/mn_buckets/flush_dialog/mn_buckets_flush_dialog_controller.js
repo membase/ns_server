@@ -1,5 +1,9 @@
 (function () {
-  angular.module('mnBuckets').controller('mnBucketsFlushDialogController', mnBucketsFlushDialogController);
+  "use strict";
+
+  angular
+    .module('mnBuckets')
+    .controller('mnBucketsFlushDialogController', mnBucketsFlushDialogController);
 
   function mnBucketsFlushDialogController($scope, $uibModalInstance, bucket, mnPromiseHelper, mnBucketsDetailsService) {
     var vm = this;

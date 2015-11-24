@@ -1,25 +1,29 @@
 (function () {
-  angular.module('mnServers', [
-    'mnPoolDefault',
-    'ui.router',
-    'ui.bootstrap',
-    'mnServersService',
-    'mnHelper',
-    'mnVerticalBar',
-    'mnBarUsage',
-    'mnServersListItemDetailsService',
-    'mnFilters',
-    'mnSortableTable',
-    'mnServices',
-    'mnSpinner',
-    'ngMessages',
-    'mnMemoryQuotaService',
-    'mnIndexesService',
-    'mnPromiseHelper',
-    'mnGroupsService',
-    'mnPoll',
-    'mnPools'
-  ]).controller('mnServersController', mnServersController)
+  "use strict";
+
+  angular
+    .module('mnServers', [
+      'mnPoolDefault',
+      'ui.router',
+      'ui.bootstrap',
+      'mnServersService',
+      'mnHelper',
+      'mnVerticalBar',
+      'mnBarUsage',
+      'mnServersListItemDetailsService',
+      'mnFilters',
+      'mnSortableTable',
+      'mnServices',
+      'mnSpinner',
+      'ngMessages',
+      'mnMemoryQuotaService',
+      'mnIndexesService',
+      'mnPromiseHelper',
+      'mnGroupsService',
+      'mnPoll',
+      'mnPools'
+    ])
+    .controller('mnServersController', mnServersController)
     .filter("formatFailoverWarnings", formatFailoverWarnings);
 
   function formatFailoverWarnings() {

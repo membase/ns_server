@@ -1,5 +1,9 @@
 (function () {
-  angular.module('mnAnalytics').controller('mnAnalyticsListGraphController', mnAnalyticsListGraphController);
+  "use strict";
+
+  angular
+    .module('mnAnalytics')
+    .controller('mnAnalyticsListGraphController', mnAnalyticsListGraphController);
 
   function mnAnalyticsListGraphController($scope, $stateParams) {
     var vm = this;

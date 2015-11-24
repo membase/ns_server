@@ -1,12 +1,14 @@
 (function () {
   "use strict";
 
-  angular.module('mnHelper', [
-    'ui.router',
-    'mnTasksDetails',
-    'mnAlertsService',
-    'mnHttp'
-  ]).factory('mnHelper', mnHelperFactory);
+  angular
+    .module('mnHelper', [
+      'ui.router',
+      'mnTasksDetails',
+      'mnAlertsService',
+      'mnHttp'
+    ])
+    .factory('mnHelper', mnHelperFactory);
 
   function mnHelperFactory($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, mnHttp) {
     var mnHelper = {

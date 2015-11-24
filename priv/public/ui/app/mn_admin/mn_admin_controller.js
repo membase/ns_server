@@ -1,5 +1,9 @@
 (function () {
-  angular.module('mnAdmin').controller('mnAdminController', mnAdminController);
+  "use strict";
+
+  angular
+    .module('mnAdmin')
+    .controller('mnAdminController', mnAdminController);
 
   function mnAdminController($scope, $rootScope, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPluggableUiRegistry) {
     var vm = this;

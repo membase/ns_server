@@ -1,9 +1,11 @@
 (function () {
   "use strict";
 
-  angular.module('mnPools', [
-    'mnHttp'
-  ]).factory('mnPools', mnPoolsFactory);
+  angular
+    .module('mnPools', [
+      'mnHttp'
+    ])
+    .factory('mnPools', mnPoolsFactory);
 
   function mnPoolsFactory(mnHttp, $cacheFactory) {
     var mnPools = {

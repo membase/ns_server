@@ -1,9 +1,12 @@
 (function () {
   "use strict"
-  angular.module('mnOverviewService', [
-    'mnPoolDefault',
-    'mnHttp'
-  ]).factory('mnOverviewService', mnOverviewServiceFactory);
+
+  angular
+    .module('mnOverviewService', [
+      'mnPoolDefault',
+      'mnHttp'
+    ])
+    .factory('mnOverviewService', mnOverviewServiceFactory);
 
   function mnOverviewServiceFactory(mnHttp, mnPoolDefault) {
 

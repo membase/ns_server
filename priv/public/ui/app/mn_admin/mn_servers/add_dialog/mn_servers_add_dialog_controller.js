@@ -1,5 +1,9 @@
 (function () {
-  angular.module('mnServers').controller('mnServersAddDialogController', mnServersAddDialogController)
+  "use strict";
+
+  angular
+    .module('mnServers')
+    .controller('mnServersAddDialogController', mnServersAddDialogController)
 
   function mnServersAddDialogController($scope, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
     var vm = this;

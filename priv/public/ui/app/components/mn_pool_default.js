@@ -1,10 +1,12 @@
 (function () {
   "use strict";
 
-  angular.module('mnPoolDefault', [
-    'mnHttp',
-    'mnPools'
-  ]).factory('mnPoolDefault', mnPoolDefaultFactory);
+  angular
+    .module('mnPoolDefault', [
+      'mnHttp',
+      'mnPools'
+    ])
+    .factory('mnPoolDefault', mnPoolDefaultFactory);
 
   function mnPoolDefaultFactory(mnHttp, $cacheFactory, $q, mnPools, $window) {
     var latest = {};

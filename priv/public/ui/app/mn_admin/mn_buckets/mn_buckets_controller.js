@@ -1,16 +1,20 @@
 (function () {
-  angular.module('mnBuckets', [
-    'mnHelper',
-    'mnBucketsService',
-    'ui.bootstrap',
-    'mnBucketsDetailsDialogService',
-    'mnBarUsage',
-    'mnBucketsForm',
-    'mnPromiseHelper',
-    'mnPoll',
-    'mnPoolDefault',
-    'mnSpinner'
-  ]).controller('mnBucketsController', mnBucketsController);
+  "use strict";
+
+  angular
+    .module('mnBuckets', [
+      'mnHelper',
+      'mnBucketsService',
+      'ui.bootstrap',
+      'mnBucketsDetailsDialogService',
+      'mnBarUsage',
+      'mnBucketsForm',
+      'mnPromiseHelper',
+      'mnPoll',
+      'mnPoolDefault',
+      'mnSpinner'
+    ])
+    .controller('mnBucketsController', mnBucketsController);
 
   function mnBucketsController($scope, mnBucketsService, mnHelper, mnPoolDefault, mnPromiseHelper, mnPoller, $uibModal) {
     var vm = this;

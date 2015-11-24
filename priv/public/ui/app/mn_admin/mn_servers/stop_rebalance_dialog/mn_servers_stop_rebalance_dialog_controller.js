@@ -1,5 +1,9 @@
 (function () {
-  angular.module('mnServers').controller('mnServersStopRebalanceDialogController', mnServersStopRebalanceDialogController)
+  "use strict";
+
+  angular
+    .module('mnServers')
+    .controller('mnServersStopRebalanceDialogController', mnServersStopRebalanceDialogController)
 
   function mnServersStopRebalanceDialogController($scope, $uibModalInstance, mnPromiseHelper, mnServersService) {
     var vm = this;

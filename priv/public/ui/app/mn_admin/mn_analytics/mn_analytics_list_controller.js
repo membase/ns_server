@@ -1,5 +1,9 @@
 (function () {
-  angular.module('mnAnalytics').controller('mnAnalyticsListController', mnAnalyticsListController);
+  "use strict";
+
+  angular
+    .module('mnAnalytics')
+    .controller('mnAnalyticsListController', mnAnalyticsListController);
 
   function mnAnalyticsListController(mnHelper) {
     var vm = this;
