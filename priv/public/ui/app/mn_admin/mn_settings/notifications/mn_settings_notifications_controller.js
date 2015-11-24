@@ -5,11 +5,12 @@
     'mnPoolDefault'
   ]).controller('mnSettingsNotificationsController', mnSettingsNotificationsController);
 
-  function mnSettingsNotificationsController($scope, mnPromiseHelper, mnSettingsNotificationsService, mnPoolDefault) {
+  function mnSettingsNotificationsController($scope, mnPromiseHelper, mnSettingsNotificationsService, mnPoolDefault, pools) {
     var vm = this;
 
     vm.submit = submit;
     vm.mnPoolDefault = mnPoolDefault.latestValue();
+    vm.implementationVersion = pools.implementationVersion;
 
     activate();
 

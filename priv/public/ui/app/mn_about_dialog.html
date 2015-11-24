@@ -2,14 +2,14 @@
   <h1 class="dialog_corner_radius">About Couchbase Server</h1>
   <div class="dialog_inner_content">
     <p>
-      Version: {{implementationVersion | mnPrettyVersion}}
+      Version: {{showAboutDialogController.implementationVersion | mnPrettyVersion}}
     </p>
     <p>
       Cluster State ID: <em>Please login to view your Cluster State ID.</em>
     </p>
   </div>
   <div class="config-bottom">
-    <button class="direction-button" ng-click="cloceAboutDialog()">
+    <button class="direction-button" ng-click="$dismiss()">
       Close
     </button>
   </div>

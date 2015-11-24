@@ -2,7 +2,7 @@
   <h2>Update Notifications</h2>
   <form ng-submit="mnSettingsNotificationsController.submit()">
     <div class="sub_section" >
-      <p>You are running version {{implementationVersion | mnPrettyVersion}}.</p>
+      <p>You are running version {{mnSettingsNotificationsController.implementationVersion | mnPrettyVersion}}.</p>
       <div ng-if="mnSettingsNotificationsController.updates.sendStats">
         <p ng-if="mnSettingsNotificationsController.updates.newVersion === undefined" class="warning"><strong>Warning</strong> – There was a problem with retreiving the update information.</p>
         <p ng-if="mnSettingsNotificationsController.updates.newVersion === false">No updates available.</p>
