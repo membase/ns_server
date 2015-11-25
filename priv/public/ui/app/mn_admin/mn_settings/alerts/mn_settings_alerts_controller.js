@@ -18,11 +18,13 @@
         case knownAlerts[1]: return 'Maximum number of auto-failed-over nodes was reached';
         case knownAlerts[2]: return 'Node wasn\'t auto-failed-over as other nodes are down at the same time';
         case knownAlerts[3]: return 'Node was not auto-failed-over as there are not enough nodes in the cluster running the same service';
-        case knownAlerts[4]: return 'Node\'s IP address has changed unexpectedly';
-        case knownAlerts[5]: return 'Disk space used for persistent storage has reached at least 90% of capacity';
-        case knownAlerts[6]: return 'Metadata overhead is more than 50%';
-        case knownAlerts[7]: return 'Bucket memory on a node is entirely used for metadata';
-        case knownAlerts[8]: return 'Writing data to disk for a specific bucket has failed';
+        case knownAlerts[4]: return 'Node was not auto-failed-over as auto-failover for one or more services running on the node is disabled';
+        case knownAlerts[5]: return 'Node\'s IP address has changed unexpectedly';
+        case knownAlerts[6]: return 'Disk space used for persistent storage has reached at least 90% of capacity';
+        case knownAlerts[7]: return 'Metadata overhead is more than 50%';
+        case knownAlerts[8]: return 'Bucket memory on a node is entirely used for metadata';
+        case knownAlerts[9]: return 'Writing data to disk for a specific bucket has failed';
+        case knownAlerts[10]: return 'Writing event to audit log has failed';
       }
     };
   }

@@ -21,11 +21,13 @@
       'auto_failover_maximum_reached',
       'auto_failover_other_nodes_down',
       'auto_failover_cluster_too_small',
+      'auto_failover_disabled',
       'ip',
       'disk',
       'overhead',
       'ep_oom_errors',
-      'ep_item_commit_failed'
+      'ep_item_commit_failed',
+      'audit_dropped_events'
     ])
     .constant('timeUnitToSeconds', {
       minute: 60,
