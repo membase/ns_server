@@ -57,6 +57,7 @@ terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
 
 is_interesting({{node, _, services}, _}) -> true;
+is_interesting({{service_map, _}, _}) -> true;
 is_interesting({{node, _, membership}, _}) -> true;
 is_interesting({{node, _, memcached}, _}) -> true;
 is_interesting({{node, _, capi_port}, _}) -> true;
