@@ -8,7 +8,7 @@
     'mnExceptionReporter'
   ]).run(appRun);
 
-  function appRun($rootScope, $state, $urlRouter, mnPools, $uibModalStack, $window, $exceptionHandler) {
+  function appRun($rootScope, $state, $urlRouter, mnPools, $uibModalStack, $window, $exceptionHandler, $http, $templateCache) {
     var originalOnerror = $window.onerror;
 
     $window.onerror = onError;
@@ -16,6 +16,9 @@
     $rootScope.$on('$stateChangeStart', onStateChangeStart);
     $rootScope.$on('$locationChangeSuccess', onLocationChangeSuccess);
     $urlRouter.listen();
+    angular.forEach(angularTemplatesList, function (url) {
+      $http.get(url, {cache: $templateCache});
+    });
 
     function onError(message, url, lineNumber, columnNumber, exception) {
       $exceptionHandler({

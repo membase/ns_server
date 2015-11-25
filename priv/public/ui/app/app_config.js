@@ -15,7 +15,6 @@
       url: '',
       abstract: true,
       template: '<div ui-view="" />',
-      controller: 'appController as appController',
       resolve: {
         pools: function (mnPools) {
           return mnPools.get();

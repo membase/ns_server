@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPluggableUiRegistry) {
+  function mnAdminController($scope, $rootScope, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -60,7 +60,11 @@
           waitChange: 10000
         }, false);
       }).subscribe(function (resp, previous) {
-        $rootScope.tabName = resp.clusterName;
+        vm.tabName = resp.clusterName;
+
+        var version = parseVersionFilter(pools.implementationVersion);
+        $rootScope.mnTitle = (version ? '(' + version[0] + ')' : '') + (vm.tabName ? '-' + vm.tabName : '');
+
         if (previous && previous.tasks.uri != resp.tasks.uri) {
           $rootScope.$broadcast("taskUriChanged");
         }

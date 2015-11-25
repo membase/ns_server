@@ -18,14 +18,16 @@
     'mnMemoryQuotaService',
     'mnSettingsClusterService',
     'mnSpinner',
-    'mnPromiseHelper'
+    'mnPromiseHelper',
+    'mnFilters'
   ]).config(mnWizardConfig);
 
   function mnWizardConfig($stateProvider) {
     $stateProvider
       .state('app.wizard', {
         abstract: true,
-        templateUrl: 'app/mn_wizard/mn_wizard.html'
+        templateUrl: 'app/mn_wizard/mn_wizard.html',
+        controller: "mnWizardWelcomeController as mnWizardWelcomeController"
       })
       .state('app.wizard.welcome', {
         templateUrl: 'app/mn_wizard/welcome/mn_wizard_welcome.html'
