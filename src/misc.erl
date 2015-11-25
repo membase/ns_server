@@ -1843,3 +1843,6 @@ default_if_undefined(undefined, Default) ->
     Default;
 default_if_undefined(Value, _) ->
     Value.
+
+pretty_version(ListOfInts) when is_list(ListOfInts) ->
+    string:join([integer_to_list(I) || I <- ListOfInts], ".").

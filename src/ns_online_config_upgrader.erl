@@ -49,7 +49,8 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, cluster_compat_version, [4, 1]} |
              upgrade_config_from_4_0_to_4_1(Config)];
         {value, [4, 1]} ->
-            [{set, cluster_compat_version, ?WATSON_VERSION_NUM}]
+            [{set, cluster_compat_version, ?WATSON_VERSION_NUM} |
+             upgrade_config_from_4_1_to_watson(Config)]
     end.
 
 upgrade_config_from_2_0_to_2_5(Config) ->
@@ -69,6 +70,11 @@ upgrade_config_from_3_0_to_4_0(Config) ->
 upgrade_config_from_4_0_to_4_1(Config) ->
     ?log_info("Performing online config upgrade to 4.1 version"),
     create_service_maps(Config, [n1ql, index]).
+
+upgrade_config_from_4_1_to_watson(Config) ->
+    ?log_info("Performing online config upgrade to ~s version",
+              [misc:pretty_version(?WATSON_VERSION_NUM)]),
+    create_service_maps(Config, [fts]).
 
 delete_unwanted_per_node_keys(Config) ->
     NodesWanted = ns_node_disco:nodes_wanted(Config),
