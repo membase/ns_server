@@ -117,7 +117,7 @@
         if (!node) {
           return
         }
-        var rv = {}
+        var rv = _.clone(node);
         rv.confirmation = false;
         rv.down = node.status != 'healthy';
         rv.backfill = node.replication < 1;

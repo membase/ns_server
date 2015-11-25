@@ -4,7 +4,7 @@
     <div mn-spinner="mnServersFailOverDialogController.viewLoading">
       <div class="pas_20">
         <div class="failover_warning pat_20">
-          <div ng-show="!mnServersFailOverDialogController.status.down">
+          <div ng-show="!mnServersFailOverDialogController.status.down && !mnServersFailOverDialogController.status.dataless">
             <h2>Fail Over Options</h2>
             <label>
               <input
@@ -57,7 +57,7 @@
               to avoid any loss of data. Please confirm Failover.
             </div>
           </div>
-          <div ng-show="mnServersFailOverDialogController.status.down">
+          <div ng-show="mnServersFailOverDialogController.status.down && !mnServersFailOverDialogController.status.dataless">
             <div
               class="warning"
               ng-show="mnServersFailOverDialogController.status.backfill">
