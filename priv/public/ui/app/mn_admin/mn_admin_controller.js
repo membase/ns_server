@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry) {
+  function mnAdminController($scope, $rootScope, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -19,6 +19,7 @@
     vm.filterTasks = filterTasks;
 
     vm.pluggableUiConfigs = mnPluggableUiRegistry.getConfigs();
+    vm.showAboutDialog = mnAboutDialogService.showAboutDialog;
 
     activate();
 

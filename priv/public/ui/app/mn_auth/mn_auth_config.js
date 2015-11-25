@@ -3,7 +3,8 @@
 
   angular.module('mnAuth', [
     'mnAuthService',
-    'ui.router'
+    'ui.router',
+    'mnAboutDialog'
   ]).config(mnAuthConfig);
 
   function mnAuthConfig($stateProvider, $httpProvider, $urlRouterProvider) {

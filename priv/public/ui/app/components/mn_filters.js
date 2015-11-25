@@ -26,7 +26,29 @@
     .filter('getStringBytes', getStringBytes)
     .filter('mnFormatServices', mnFormatServices)
     .filter('mnPrettyVersion', mnPrettyVersion)
-    .filter('encodeURIComponent', encodeURIComponentFilter);
+    .filter('encodeURIComponent', encodeURIComponentFilter)
+    .filter('mnIntegerToString', mnIntegerToString);
+
+
+  var basedigits = "0123456789ABCDEF";
+  function mnIntegerToString() {
+    return function (number, base) {
+      var rv = [];
+      var sign = '';
+      if (number < 0) {
+        sign = '-';
+        number = -number;
+      }
+      do {
+        var r = number % base;
+        number = (number / base) >> 0;
+        rv.push(basedigits.charAt(r));
+      } while (number != 0);
+      rv.push(sign);
+      rv.reverse();
+      return rv.join('');
+    }
+  }
 
   function mnCount() {
     return function (count, text) {

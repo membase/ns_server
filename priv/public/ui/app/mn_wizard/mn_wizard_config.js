@@ -19,7 +19,8 @@
     'mnSettingsClusterService',
     'mnSpinner',
     'mnPromiseHelper',
-    'mnFilters'
+    'mnFilters',
+    'mnAboutDialog'
   ]).config(mnWizardConfig);
 
   function mnWizardConfig($stateProvider) {
