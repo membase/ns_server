@@ -269,6 +269,8 @@ is_notable({nodes_wanted, _}) ->
     true;
 is_notable({rest_creds, _}) ->
     true;
+is_notable({{service_map, index}, _}) ->
+    true;
 is_notable(_) ->
     false.
 
