@@ -74,7 +74,7 @@
         </label>
         <div ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">
           <label for="js_bucket_details_sasl_password">Enter password:</label>
-          <input type="password" name="saslPassword" id="js_bucket_details_sasl_password" ng-model="bucketConf.saslPassword" ng-disabled="bucketConf.authType !== 'sasl'" value="">
+          <input type="password" name="saslPassword" id="js_bucket_details_sasl_password" ng-model="bucketConf.saslPassword" ng-disabled="bucketConf.authType !== 'sasl'" value="" mn-autocomplete-off>
           <div class="error-container err-saslPassword" ng-show="validation.result.errors.saslPassword">
             {{validation.result.errors.saslPassword}}
           </div>

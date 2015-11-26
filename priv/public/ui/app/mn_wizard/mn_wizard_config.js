@@ -5,6 +5,7 @@
     'mnAuthService',
     'mnServersService',
     'mnAlertsService',
+    'mnAutocompleteOff',
     'mnHelper',
     'ui.router',
     'mnWizardStep1Service',

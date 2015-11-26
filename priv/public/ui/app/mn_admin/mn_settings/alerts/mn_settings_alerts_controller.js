@@ -5,7 +5,8 @@
     .module('mnSettingsAlerts', [
       'mnSettingsAlertsService',
       'mnHelper',
-      'mnPromiseHelper'
+      'mnPromiseHelper',
+      'mnAutocompleteOff'
     ])
     .controller('mnSettingsAlertsController', mnSettingsAlertsController)
     .filter('alertsLabel', alertsLabelFilter);

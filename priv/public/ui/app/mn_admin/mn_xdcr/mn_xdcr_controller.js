@@ -7,6 +7,7 @@
     'mnBucketsService',
     'mnPromiseHelper',
     'mnPoll',
+    'mnAutocompleteOff',
     'mnRegex',
     'mnPoolDefault',
     'mnSpinner'

@@ -6,7 +6,8 @@
       "mnInternalRolesService",
       "mnPromiseHelper",
       "mnHelper",
-      "mnSpinner"
+      "mnSpinner",
+      "mnAutocompleteOff"
     ])
     .controller("mnInternalRolesController", mnInternalRolesController);
 

@@ -5,6 +5,8 @@
     .module('mnBucketsForm', [
       'mnFocus',
       'mnBucketsDetailsService',
+      'mnFilters',
+      'mnAutocompleteOff',
       'mnPromiseHelper',
       'mnBarUsage'
     ])

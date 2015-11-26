@@ -4,7 +4,8 @@
   angular.module('mnAuth', [
     'mnAuthService',
     'ui.router',
-    'mnAboutDialog'
+    'mnAboutDialog',
+    'mnAutocompleteOff'
   ]).config(mnAuthConfig);
 
   function mnAuthConfig($stateProvider, $httpProvider, $urlRouterProvider) {

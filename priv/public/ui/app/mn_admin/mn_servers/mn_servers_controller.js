@@ -5,6 +5,7 @@
     .module('mnServers', [
       'mnPoolDefault',
       'ui.router',
+      'mnAutocompleteOff',
       'ui.bootstrap',
       'mnServersService',
       'mnHelper',

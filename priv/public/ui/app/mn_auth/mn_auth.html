@@ -17,7 +17,6 @@
     <form
       id="login_form"
       class="form block"
-      autocomplete="off"
       novalidate=""
       ng-submit="authCtl.submit()">
       <fieldset>
@@ -31,7 +30,6 @@
               type="text"
               class="inp"
               maxlength="24"
-              autocomplete="off"
               required>
           </li>
           <li>
@@ -43,7 +41,7 @@
             type="password"
             class="inp"
             maxlength="24"
-            autocomplete="off"
+            mn-autocomplete-off
             required>
           </li>
         </ul>
