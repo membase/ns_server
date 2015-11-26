@@ -5,7 +5,8 @@
     'mnAdmin',
     'mnAuth',
     'mnWizard',
-    'mnExceptionReporter'
+    'mnExceptionReporter',
+    'ui.bootstrap'
   ]).run(appRun);
 
   function appRun($rootScope, $state, $urlRouter, mnPools, $uibModalStack, $window, $exceptionHandler, $http, $templateCache) {
