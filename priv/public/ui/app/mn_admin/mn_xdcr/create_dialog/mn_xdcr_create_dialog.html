@@ -51,6 +51,9 @@
               ng-model="mnXDCRCreateDialogController.replication.toCluster"
               id="replication_to_cluster" style="width: 154px;"
               ng-options="reference.name as reference.name for reference in mnXDCRController.mnXdcrState.references">
+              <option value="" disabled selected style="display: none;">
+                Pick remote cluster
+              </option>
             </select>
             <span
               class="error error-container err-toCluster"

@@ -15,7 +15,6 @@
       vm.replication.type = "xmem";
       vm.buckets = buckets.byType.membase;
       vm.replication.fromBucket = vm.buckets[0].name;
-      vm.replication.toCluster = $scope.mnXDCRController.mnXdcrState.references[0].name;
       vm.advancedFiltering = mnRegexService.getProperties();
       vm.createReplication = createReplication;
 
