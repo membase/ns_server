@@ -19,6 +19,7 @@
     vm.onFilterClose = onFilterClose;
     vm.onFilterReset = onFilterReset;
     vm.filterParams = {};
+    vm.onSelectPageLimits = onSelectPageLimits;
 
     try {
       vm.filterInitParams = JSON.parse($state.params.documentsFilter);
@@ -99,12 +100,13 @@
         notify: false
       }).then(activate);
     }
-
-    $scope.$watch('mnDocumentsListController.mnDocumentsListState.pageLimits.selected', function (pageLimit) {
-      pageLimit && pageLimit !== $state.params.pageLimit && $state.go('app.admin.documents.list', {
-        pageLimit: pageLimit
+    function onSelectPageLimits(pageLimit) {
+      _.defer(function () { //in order to set selected item into ng-model before state.go
+        $state.go('app.admin.documents.list', {
+          pageLimit: pageLimit
+        });
       });
-    });
+    }
 
     var poller;
 

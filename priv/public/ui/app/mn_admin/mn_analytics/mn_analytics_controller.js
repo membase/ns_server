@@ -15,6 +15,8 @@
     var vm = this;
 
     vm.computeOps = computeOps;
+    vm.onSelectBucket = onSelectBucket;
+    vm.onSelectNode = onSelectNode;
 
     activate();
 
@@ -30,22 +32,19 @@
       .keepIn("app.admin.analytics", vm)
       .cancelOnScopeDestroy()
       .cycle();
-
-      $scope.$watch('mnAnalyticsController.mnAnalyticsState.bucketsNames.selected', watchOnSelectedBucket);
-      if (!$state.params.specificStat) {
-        $scope.$watch('mnAnalyticsController.mnAnalyticsState.nodesNames.selected', watchOnSelectedNode);
-      }
     }
-    function watchOnSelectedBucket(selectedBucket) {
-      selectedBucket && selectedBucket !== $state.params.analyticsBucket && $state.go('app.admin.analytics.list.graph', {
-        analyticsBucket: selectedBucket
-      }, {
-        location: !$state.params.viewsBucket ? "replace" : true
+    function onSelectBucket(selectedBucket) {
+      _.defer(function () { //in order to set selected item into ng-model before state.go
+        $state.go('app.admin.analytics.list.graph', {
+          analyticsBucket: selectedBucket
+        });
       });
     }
-    function watchOnSelectedNode(selectedHostname) {
-      selectedHostname && selectedHostname !== $state.params.statsHostname && $state.go('app.admin.analytics.list.graph', {
-        statsHostname: selectedHostname.indexOf("All Server Nodes") > -1 ? undefined : selectedHostname
+    function onSelectNode(selectedHostname) {
+      _.defer(function () { //in order to set selected item into ng-model before state.go
+        $state.go('app.admin.analytics.list.graph', {
+          statsHostname: selectedHostname.indexOf("All Server Nodes") > -1 ? undefined : selectedHostname
+        });
       });
     }
     function computeOps(key) {

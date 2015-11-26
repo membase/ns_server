@@ -15,6 +15,7 @@
       ng-model="mnAnalyticsController.mnAnalyticsState.bucketsNames.selected"
       theme="selectize"
       ng-disabled="disabled"
+      on-select="mnAnalyticsController.onSelectBucket($item)"
       style="width: 200px; display: inline-block; vertical-align: middle;">
         <ui-select-match>{{$select.selected}}</ui-select-match>
         <ui-select-choices repeat="name in mnAnalyticsController.mnAnalyticsState.bucketsNames | filter: $select.search">
@@ -29,6 +30,7 @@
         ng-model="mnAnalyticsController.mnAnalyticsState.nodesNames.selected"
         theme="selectize"
         ng-disabled="disabled"
+        on-select="mnAnalyticsController.onSelectNode($item)"
         style="width: 200px; display: inline-block; vertical-align: middle;">
           <ui-select-match>{{$select.selected}}</ui-select-match>
           <ui-select-choices repeat="name in mnAnalyticsController.mnAnalyticsState.nodesNames | filter: $select.search">

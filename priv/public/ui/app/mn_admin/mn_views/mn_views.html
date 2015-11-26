@@ -4,7 +4,11 @@
 <div ng-if="mnViewsController.mnPoolDefault.value.isKvNode" id="js_views" class="views">
   <h1 style="float:left;">
     <span >
-      <ui-select ng-model="mnViewsController.mnViewsState.bucketsNames.selected" theme="selectize" style="width: 200px; display: inline-block; vertical-align: middle;">
+      <ui-select
+        ng-model="mnViewsController.mnViewsState.bucketsNames.selected"
+        on-select="mnViewsController.onSelectBucket($item)"
+        theme="selectize"
+        style="width: 200px; display: inline-block; vertical-align: middle;">
         <ui-select-match>{{$select.selected}}</ui-select-match>
         <ui-select-choices repeat="name in mnViewsController.mnViewsState.bucketsNames | filter: $select.search">
           <span ng-bind-html="name | highlight: $select.search"></span>

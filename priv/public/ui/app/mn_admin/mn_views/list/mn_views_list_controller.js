@@ -35,6 +35,7 @@
         full_set: null,
         isSpatial: isSpatial,
         documentId: row.doc.meta.id,
+        viewsBucket: $state.params.viewsBucket,
         viewsParams: JSON.stringify(mnViewsEditingService.getInitialViewsFilterParams(isSpatial))
       };
     }
@@ -140,10 +141,6 @@
         .cancelOnScopeDestroy($scope);
     }
     function activate() {
-      if (!$state.params.viewsBucket) {
-        vm.mnViewsListState = {};
-        return;
-      }
       new mnPoller($scope, function () {
           return mnViewsListService.getViewsListState($state.params);
         })

@@ -134,8 +134,17 @@
         return rv;
       });
     }
-
     function getViewsListState(params) {
+      if (params.viewsBucket) {
+        return doGetViewsListState(params);
+      } else {
+        return mnBucketsService.getBucketsByType(true).then(function (buckets) {
+          params.viewsBucket = buckets.byType.membase.defaultName;
+          return doGetViewsListState(params);
+        })
+      }
+    }
+    function doGetViewsListState(params) {
       return getDdocsByType(params.viewsBucket).then(function (ddocs) {
         ddocs.type = params.type;
         return getTasksOfCurrentBucket(params).then(function (ddocTasks) {

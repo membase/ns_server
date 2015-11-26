@@ -29,6 +29,7 @@
     vm.toggleSampleDocument = toggleSampleDocument;
     vm.isViewsEditorControllsDisabled = isViewsEditorControllsDisabled;
     vm.isPreviewRandomDisabled = isPreviewRandomDisabled;
+    vm.onSelectViewName = onSelectViewName;
     vm.toggleViews = toggleViews;
     vm.saveAs = saveAs;
     vm.save = save;
@@ -112,19 +113,19 @@
         .cancelOnScopeDestroy($scope)
         .reloadState();
     }
+    function onSelectViewName(selected) {
+      $state.go('app.admin.views.editing.result', {
+        viewId: selected.viewId,
+        isSpatial: selected.isSpatial,
+        documentId: selected.documentId
+      });
+    }
 
     function activate() {
       $scope.$watch(isViewsEditorControllsDisabled, function (isDisabled) {
         viewsOptions.readOnly = isDisabled ? 'nocursor' : false;
         viewsOptions.matchBrackets = !isDisabled;
         vm.viewsOptions = viewsOptions;
-      });
-      $scope.$watch('mnViewsEditingController.mnViewsEditingState.viewsNames.selected', function (selected) {
-        selected && !isViewPathTheSame($state.params, selected) && $state.go('app.admin.views.editing.result', {
-          viewId: selected.viewId,
-          isSpatial: selected.isSpatial,
-          documentId: selected.documentId
-        });
       });
       return mnPromiseHelper(vm, mnViewsEditingService.getViewsEditingState($state.params))
         .applyToScope("mnViewsEditingState")

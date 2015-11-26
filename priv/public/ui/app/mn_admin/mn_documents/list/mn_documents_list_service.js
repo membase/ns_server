@@ -37,6 +37,7 @@
     }
 
     function getDocumentsListState(params) {
+      params.pageLimit = params.pageLimit || 5;
       return getDocuments(params).then(function (resp) {
         return getListState(resp.data, params);
       }, function (resp) {

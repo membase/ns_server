@@ -22,6 +22,7 @@
 
       var vm = this;
       vm.getKvNodeLink = getKvNodeLink;
+      vm.onSelectBucket = onSelectBucket;
       vm.mnPoolDefault = mnPoolDefault.latestValue();
 
       if (!vm.mnPoolDefault.value.isKvNode) {
@@ -32,15 +33,13 @@
       function getKvNodeLink() {
         return mnViewsListService.getKvNodeLink(vm.mnPoolDefault.value.nodes);
       }
+      function onSelectBucket(selectedBucket) {
+        _.defer(function () { //in order to set selected into ng-model before state.go
+          $state.go('app.admin.views.list', {viewsBucket: selectedBucket});
+        });
+      }
 
       function activate() {
-        $scope.$watch('mnViewsController.mnViewsState.bucketsNames.selected', function (selectedBucket) {
-          selectedBucket && selectedBucket !== $state.params.viewsBucket && $state.go('app.admin.views.list', {
-            viewsBucket: selectedBucket
-          }, {
-            location: !$state.params.viewsBucket ? "replace" : true
-          });
-        });
         new mnPoller($scope, function () {
             return mnViewsListService.prepareBucketsDropdownData($state.params, true);
           })

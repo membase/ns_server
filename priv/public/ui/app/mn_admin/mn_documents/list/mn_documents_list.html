@@ -1,6 +1,6 @@
 <div class="doc_header" style="margin-top:-50px;">
   <div class="items_per_list_wrap">
-    <ui-select ng-model="mnDocumentsListController.mnDocumentsListState.pageLimits.selected" theme="selectize" style="width: 80px; display: inline-block; vertical-align: middle;">
+    <ui-select ng-model="mnDocumentsListController.mnDocumentsListState.pageLimits.selected" theme="selectize" on-select="mnDocumentsListController.onSelectPageLimits($item)" style="width: 80px; display: inline-block; vertical-align: middle;">
       <ui-select-match>{{$select.selected}}</ui-select-match>
       <ui-select-choices repeat="name in mnDocumentsListController.mnDocumentsListState.pageLimits | filter: $select.search">
         <span ng-bind-html="name | highlight: $select.search"></span>

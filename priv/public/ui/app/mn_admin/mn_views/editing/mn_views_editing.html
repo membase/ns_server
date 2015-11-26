@@ -2,7 +2,11 @@
   <h1 style="float: left;">
     <span>
       &gt;
-      <ui-select ng-model="mnViewsEditingController.mnViewsEditingState.viewsNames.selected" theme="selectize" style="width: 200px; display: inline-block; vertical-align: middle;">
+      <ui-select
+        on-select="mnViewsEditingController.onSelectViewName($item)"
+        ng-model="mnViewsEditingController.mnViewsEditingState.viewsNames.selected"
+        theme="selectize"
+        style="width: 200px; display: inline-block; vertical-align: middle;">
         <ui-select-match>{{$select.selected.name}}</ui-select-match>
         <ui-select-choices
           style="max-height: 400px; overflow: auto;"

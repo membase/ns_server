@@ -1,7 +1,11 @@
 <div id="js_documents" class="documents" ng-if="!mnDocumentsController.mnPoolDefault.value.isROAdminCreds">
   <div class="doc_header">
     <div class="wrap">
-      <ui-select ng-model="mnDocumentsController.mnDocumentsState.bucketsNames.selected" theme="selectize" style="width: 200px; display: inline-block; vertical-align: middle;">
+      <ui-select
+        on-select="mnDocumentsController.onSelectBucketName($item)"
+        ng-model="mnDocumentsController.mnDocumentsState.bucketsNames.selected"
+        theme="selectize"
+        style="width: 200px; display: inline-block; vertical-align: middle;">
         <ui-select-match>{{$select.selected}}</ui-select-match>
         <ui-select-choices repeat="name in mnDocumentsController.mnDocumentsState.bucketsNames | filter: $select.search">
           <span ng-bind-html="name | highlight: $select.search"></span>
