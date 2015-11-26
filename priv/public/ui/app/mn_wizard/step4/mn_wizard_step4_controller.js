@@ -18,11 +18,13 @@
         firstname: '',
         lastname: '',
         company: '',
-        agree: true,
         version: pools.implementationVersion || 'unknown'
       };
 
       function onSubmit() {
+        if (pools.isEnterprise) {
+          vm.form.agree.$setValidity('required', !!vm.register.agree);
+        }
         if (vm.form.$invalid || vm.viewLoading) {
           return;
         }
