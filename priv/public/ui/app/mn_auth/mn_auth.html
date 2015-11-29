@@ -2,14 +2,14 @@
   <div class="page-header">
     <div class="cnt_holder main_holder">
       <div class="topper_nav">
-        <a ng-click="mnAuthController.showAboutDialog()">
+        <a ng-click="authCtl.showAboutDialog()">
           About
         </a>
       </div>
     </div>
   </div>
   <div class="pad">
-    <div class="alert_red" id="auth_failed_message" ng-if="mnAuthController.loginFailed">
+    <div class="alert_red" id="auth_failed_message" ng-if="authCtl.loginFailed">
       <div class="al_text">
         Login failed. Try again.
       </div>
@@ -19,13 +19,13 @@
       class="form block"
       autocomplete="off"
       novalidate=""
-      ng-submit="mnAuthController.submit()">
+      ng-submit="authCtl.submit()">
       <fieldset>
         <ul>
           <li>
             <label for="login_inp">Username:</label>
             <input
-              ng-model="mnAuthController.user.username"
+              ng-model="authCtl.user.username"
               name="username"
               id="login_inp"
               type="text"
@@ -37,7 +37,7 @@
           <li>
             <label for="password2_inp">Password:</label>
             <input
-            ng-model="mnAuthController.user.password"
+            ng-model="authCtl.user.password"
             name="password"
             id="password2_inp"
             type="password"

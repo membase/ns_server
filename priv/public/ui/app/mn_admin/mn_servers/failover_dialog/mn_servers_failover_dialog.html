@@ -1,38 +1,38 @@
 <div id="failover_confirmation_dialog" style="width:711px">
-  <h1 class="dialog_corner_radius">Confirm Node Fail Over for {{mnServersFailOverDialogController.node.hostname}}</h1>
+  <h1 class="dialog_corner_radius">Confirm Node Fail Over for {{serversFailOverDialogCtl.node.hostname}}</h1>
   <div>
-    <div mn-spinner="mnServersFailOverDialogController.viewLoading">
+    <div mn-spinner="serversFailOverDialogCtl.viewLoading">
       <div class="pas_20">
         <div class="failover_warning pat_20">
-          <div ng-show="!mnServersFailOverDialogController.status.down && !mnServersFailOverDialogController.status.dataless">
+          <div ng-show="!serversFailOverDialogCtl.status.down && !serversFailOverDialogCtl.status.dataless">
             <h2>Fail Over Options</h2>
             <label>
               <input
                 type="radio"
                 name="failOver"
-                ng-model="mnServersFailOverDialogController.status.failOver"
+                ng-model="serversFailOverDialogCtl.status.failOver"
                 value="startGracefulFailover"
-                ng-disabled="!mnServersFailOverDialogController.status.gracefulFailoverPossible">
+                ng-disabled="!serversFailOverDialogCtl.status.gracefulFailoverPossible">
                   <span>Graceful Fail Over (default).</span>
             </label>
             <label>
               <input
                 type="radio"
                 name="failOver"
-                ng-model="mnServersFailOverDialogController.status.failOver"
+                ng-model="serversFailOverDialogCtl.status.failOver"
                 value="failOver">
                   <span>Hard Fail Over - If you use hard failover option on a functioning node it may result in data loss. This is because failover will immediately remove the node from the cluster and any data that has not yet been replicated to other nodes may be permanently lost if it had not been persisted to disk.</span>
             </label>
             <div
               class="warning js_gracefull_failover_message"
               style="margin-bottom: 15px;"
-              ng-if="!mnServersFailOverDialogController.status.gracefulFailoverPossible">
+              ng-if="!serversFailOverDialogCtl.status.gracefulFailoverPossible">
                 <strong>Attention</strong> – Graceful fail over option is not available either because node is unreachable or replica vbucket cannot be activated gracefully.
             </div>
             <div
               class="warning js_warning"
               style="margin-top: 15px;"
-              ng-show="mnServersFailOverDialogController.status.backfill && (mnServersFailOverDialogController.status.failOver === 'failOver')">
+              ng-show="serversFailOverDialogCtl.status.backfill && (serversFailOverDialogCtl.status.failOver === 'failOver')">
                 <strong>Attention</strong> – A significant amount of data stored on this node
                   does not yet have replica (backup) copies! Failing over the node now will
                   irrecoverably lose that data when the incomplete replica is
@@ -43,24 +43,24 @@
                 <input
                   type="checkbox"
                   name="confirmation"
-                  ng-model="mnServersFailOverDialogController.status.confirmation">
+                  ng-model="serversFailOverDialogCtl.status.confirmation">
                     Please confirm Failover.
               </label>
             </div>
             <div
               class="warning js_warning"
               style="margin-top: 15px;"
-              ng-show="!mnServersFailOverDialogController.status.backfill && (mnServersFailOverDialogController.status.failOver === 'failOver')">
+              ng-show="!serversFailOverDialogCtl.status.backfill && (serversFailOverDialogCtl.status.failOver === 'failOver')">
               <strong>Warning</strong> – Failing over the node will remove it from the cluster and activate a replica.
               Operations currently in flight and not yet replicated, will be lost. Rebalancing will be required
               to add the node back into the cluster. Consider using "Remove from Cluster" and rebalancing instead of Failover,
               to avoid any loss of data. Please confirm Failover.
             </div>
           </div>
-          <div ng-show="mnServersFailOverDialogController.status.down && !mnServersFailOverDialogController.status.dataless">
+          <div ng-show="serversFailOverDialogCtl.status.down && !serversFailOverDialogCtl.status.dataless">
             <div
               class="warning"
-              ng-show="mnServersFailOverDialogController.status.backfill">
+              ng-show="serversFailOverDialogCtl.status.backfill">
                 <strong>Attention</strong> – There are not replica (backup) copies of all data
                 on this node! Failing over the node now will irrecoverably
                 lose that data when the incomplete replica is activated and
@@ -71,15 +71,15 @@
                 <input
                   type="checkbox"
                   name="confirmation"
-                  ng-model="mnServersFailOverDialogController.status.confirmation"> Please confirm Failover.</label>
+                  ng-model="serversFailOverDialogCtl.status.confirmation"> Please confirm Failover.</label>
             </div>
-            <div class="warning" ng-show="!mnServersFailOverDialogController.status.backfill">
+            <div class="warning" ng-show="!serversFailOverDialogCtl.status.backfill">
               <strong>Warning</strong> – Failing over the node will remove it from the cluster and activate a replica.
               Operations not replicated before the node became unresponsive, will be lost.
               Rebalancing will be required to add the node back into the cluster. Please confirm Failover.
             </div>
           </div>
-          <div class="failover_warning pat_20" ng-if="mnServersFailOverDialogController.status.dataless">
+          <div class="failover_warning pat_20" ng-if="serversFailOverDialogCtl.status.dataless">
             <div class="warning">
               <strong>Note</strong> – Failing over this node (which has no data) will remove it from the cluster.
               Rebalancing will be required to add the node back into the cluster. Please confirm Failover.
@@ -91,9 +91,9 @@
         <button
           type="submit"
           class="save_button float_right"
-          ng-click="mnServersFailOverDialogController.onSubmit()"
+          ng-click="serversFailOverDialogCtl.onSubmit()"
           ng-model="button"
-          ng-disabled="mnServersFailOverDialogController.isFailOverBtnDisabled()">Fail Over</button>
+          ng-disabled="serversFailOverDialogCtl.isFailOverBtnDisabled()">Fail Over</button>
         <a class="close casper_close_failover_confirmation_dialog cancel_button float_right" ng-click="$dismiss()">Cancel</a>
       </div>
     </div>

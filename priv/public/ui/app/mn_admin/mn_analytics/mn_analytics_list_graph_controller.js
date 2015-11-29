@@ -12,7 +12,7 @@
     activate();
 
     function activate() {
-      $scope.$watch('mnAnalyticsController.mnAnalyticsState', watchOnAnalyticsState);
+      $scope.$watch('analyticsCtl.mnAnalyticsState', watchOnAnalyticsState);
       $scope.$on('$destroy', onScopeDestroy);
     }
     function onScopeDestroy() {

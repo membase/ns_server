@@ -3,17 +3,18 @@
   <form
     id="js_reset_roadmin_form"
     class="reset_roadmin_form"
-    ng-submit="mnAccountManagementResetController.onSubmit()">
+    ng-submit="accountManagementResetCtl.onSubmit()">
     <div class="inner_wrap">
       <i
         class="errors js_error_password"
-        ng-show="mnAccountManagementResetController.errors.password">
-        {{mnAccountManagementResetController.errors.password}}
+        ng-show="accountManagementResetCtl.errors.password">
+        {{accountManagementResetCtl.errors.password}}
       </i>
       <label for="new_roa_pass" style="width:auto">New Password:</label>
       <input
         type="password"
         name="password"
+        mn-autocomplete-off
         ng-model="mnAccountManagementResetController.password"
         id="new_roa_pass">
     </div>

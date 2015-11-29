@@ -1,12 +1,12 @@
 <div class="view_document_dialog" id="copy_designdoc_dialog" style="width:30em">
   <h1>Copy Design Document</h1>
-  <form ng-submit="mnViewsCopyDialogController.onSubmit()" mn-spinner="mnViewsCopyDialogController.viewLoading">
+  <form ng-submit="viewsCopyDialogCtl.onSubmit()" mn-spinner="viewsCopyDialogCtl.viewLoading">
     <div class="clearfix">
       <label for="copy_ddoc_ddoc_name" class="bolder">Document Name:</label>
       <div style="width:20em; margin: 8px 0; padding: 0 5px; border: 1px solid #CCD3D7;background-color:white;font-size:13px;line-height:normal;">
       <table style="margin:0;padding:0;border:0;width:260px;">
         <tr><td><label for="copy_ddoc_ddoc_name" style="line-height:inherit;">_design/dev_</label></td>
-        <td style="width:2000px;"><input id="copy_ddoc_ddoc_name" name="ddoc_name" ng-model="mnViewsCopyDialogController.ddoc.name" style="width:100%;border:0;padding:0;font-family:inherit;color:inherit;"></td></tr>
+        <td style="width:2000px;"><input id="copy_ddoc_ddoc_name" name="ddoc_name" ng-model="viewsCopyDialogCtl.ddoc.name" style="width:100%;border:0;padding:0;font-family:inherit;color:inherit;"></td></tr>
       </table></div>
        <p><strong>NOTE:</strong> Development Mode (_design/dev_) provides the opportunity to edit and test
        your map/reduce views against a subset of data&mdash;without overloading the cluster.</p>

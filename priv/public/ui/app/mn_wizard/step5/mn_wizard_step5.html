@@ -1,7 +1,7 @@
 <div
   class="pad"
   id="init_secure_dialog"
-  mn-spinner="mnWizardStep5Controller.viewLoading">
+  mn-spinner="wizardStep5Ctl.viewLoading">
   <div class="config-top">
     <h1>Configure Server</h1>
     <h2>Step <span class="current-step">5</span> of 5</h2>
@@ -15,29 +15,28 @@
   <form
     id="init_secure_form"
     class="form block"
-    autocomplete="off"
-    name="mnWizardStep5Controller.form"
+    name="wizardStep5Ctl.form"
     novalidate
-    ng-submit="mnWizardStep5Controller.onSubmit()">
+    ng-submit="wizardStep5Ctl.onSubmit()">
     <div
       class="warn"
       id="update_notifications_errors_container"
-      ng-show="mnWizardStep5Controller.form.$invalid">
-      <div ng-show="mnWizardStep5Controller.form.$error.equals">
+      ng-show="wizardStep5Ctl.form.$invalid">
+      <div ng-show="wizardStep5Ctl.form.$error.equals">
         'Password' and 'Verify Password' do not match
       </div>
-      <div ng-show="mnWizardStep5Controller.form.password.$error.minlength">
+      <div ng-show="wizardStep5Ctl.form.password.$error.minlength">
         A password of at least six characters is required
       </div>
-      <div ng-show="mnWizardStep5Controller.form.password.$error.maxlength || mnWizardStep5Controller.form.username.$error.maxlength">
+      <div ng-show="wizardStep5Ctl.form.password.$error.maxlength || wizardStep5Ctl.form.username.$error.maxlength">
         Maximum 24 characters exceeded
       </div>
-      <div ng-show="mnWizardStep5Controller.form.username.$error.required">
+      <div ng-show="wizardStep5Ctl.form.username.$error.required">
         Username is required
       </div>
     </div>
-    <div class="warn" id="update_notifications_errors_container" ng-show="mnWizardStep5Controller.errors">
-      <div ng-repeat="error in mnWizardStep5Controller.errors">{{error}}</div>
+    <div class="warn" id="update_notifications_errors_container" ng-show="wizardStep5Ctl.errors">
+      <div ng-repeat="error in wizardStep5Ctl.errors">{{error}}</div>
     </div>
     <div class="username-input input" style="margin-top: 20px;">
       <label for="secure-username">Username:</label>
@@ -48,7 +47,7 @@
         value="Administrator"
         id="secure-username"
         ng-maxlength="24"
-        ng-model="mnWizardStep5Controller.user.username"
+        ng-model="wizardStep5Ctl.user.username"
         required>
     </div>
     <div class="password-input input">
@@ -56,14 +55,14 @@
       <input
         type="password"
         name="password"
-        ng-model="mnWizardStep5Controller.user.password"
+        ng-model="wizardStep5Ctl.user.password"
         class="inp focusme"
         id="secure-password"
         ng-minlength="6"
         ng-maxlength="24"
         required
-        autocomplete="off"
-        mn-focus="mnWizardStep5Controller.focusMe">
+        mn-autocomplete-off
+        mn-focus="wizardStep5Ctl.focusMe">
     </div>
     <div class="password-input-verify input">
       <label for="secure-password">Verify Password:</label>
@@ -73,8 +72,8 @@
         class="inp"
         id="secure-password-verify"
         maxlength="24"
-        autocomplete="off"
-        ng-model="mnWizardStep5Controller.user.verifyPassword"/>
+        mn-autocomplete-off
+        ng-model="wizardStep5Ctl.user.verifyPassword"/>
     </div>
     <div class="config-bottom">
       <button

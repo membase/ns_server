@@ -15,7 +15,7 @@
     activate();
 
     function activate() {
-      $scope.$watch("mnSettingsSampleBucketsController.selected", function (selected) {
+      $scope.$watch("settingsSampleBucketsCtl.selected", function (selected) {
         mnPromiseHelper(vm, mnSettingsSampleBucketsService.getSampleBucketsState(selected))
           .cancelOnScopeDestroy($scope)
           .showSpinner()

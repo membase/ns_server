@@ -1,7 +1,7 @@
 <div
   class="pad"
   id="init_sample_buckets_dialog"
-  mn-spinner="!mnWizardStep2Controller.sampleBuckets"
+  mn-spinner="!wizardStep2Ctl.sampleBuckets"
   min-height="387px">
   <form>
     <div class="config-top">
@@ -15,19 +15,19 @@
     <h3>Available Samples</h3>
     <ul id="setup_available_samples">
       <li
-        ng-repeat="bucket in mnWizardStep2Controller.sampleBuckets"
+        ng-repeat="bucket in wizardStep2Ctl.sampleBuckets"
         ng-if="!bucket.installed">
         <input
           type="checkbox"
           ng-false-value="0"
           ng-true-value="{{bucket.quotaNeeded}}"
           id="setup-sample-{{bucket.name}}"
-          ng-model="mnWizardStep2Controller.selected[bucket.name]">
+          ng-model="wizardStep2Ctl.selected[bucket.name]">
         <label for="setup-sample-{{bucket.name}}">
           {{bucket.name}}
         </label>
       </li>
-      <li ng-if="!mnWizardStep2Controller.sampleBuckets.length">There are no samples available to install.</li>
+      <li ng-if="!wizardStep2Ctl.sampleBuckets.length">There are no samples available to install.</li>
     </ul>
     <div class="config-bottom">
       <button
@@ -36,7 +36,7 @@
         class="submit next direction-button"
         id="step-4-next"
         type="submit"
-        mn-focus="mnWizardStep2Controller.focusMe"
+        mn-focus="wizardStep2Ctl.focusMe"
         ui-sref="app.wizard.step3">Next</button>
       <button
         name="back"

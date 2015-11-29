@@ -19,7 +19,7 @@
     activate();
 
     function activate() {
-      $scope.$watch('mnWizardStep1Controller.startNewClusterConfig.memoryQuota', mnWizardStep1Service.setDynamicRamQuota);
+      $scope.$watch('wizardStep1Ctl.startNewClusterConfig.memoryQuota', mnWizardStep1Service.setDynamicRamQuota);
 
       mnPromiseHelper(vm, mnWizardStep1Service.getSelfConfig())
         .cancelOnScopeDestroy($scope)

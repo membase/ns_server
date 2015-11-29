@@ -1,38 +1,38 @@
 <td colspan="18" class="settings-placeholder"
-  mn-spinner="!mnBucketsDetailsController.bucketDetails.ramConfig || (mnBucketsDetailsController.bucketDetails.isMembase && !mnBucketsDetailsController.bucketDetails.hddConfig)">
+  mn-spinner="!bucketsDetailsCtl.bucketDetails.ramConfig || (bucketsDetailsCtl.bucketDetails.isMembase && !bucketsDetailsCtl.bucketDetails.hddConfig)">
   <div class="gong_rb">
     <div class="pad">
       <div style="width:800px;float:left;">
         <div>
           Access Control:
           <span>
-            {{mnBucketsDetailsController.bucketDetails.authType === 'none' ? 'Port' : mnBucketsDetailsController.bucketDetails.name === 'default' ? 'None' : 'Authentication'}}
-            {{mnBucketsDetailsController.bucketDetails.authType === 'none' ? ': ' + mnBucketsDetailsController.bucketDetails.proxyPort : ''}}
+            {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? 'Port' : bucketsDetailsCtl.bucketDetails.name === 'default' ? 'None' : 'Authentication'}}
+            {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? ': ' + bucketsDetailsCtl.bucketDetails.proxyPort : ''}}
           </span>
         </div>
-        <div ng-if="mnBucketsDetailsController.bucketDetails.isMembase">
-          Replicas: <span>{{mnBucketsDetailsController.bucketDetails.replicaNumber != 0 ? (mnBucketsDetailsController.bucketDetails.replicaNumber | mnCount:'replica copy') : 'disabled'}}</span>
+        <div ng-if="bucketsDetailsCtl.bucketDetails.isMembase">
+          Replicas: <span>{{bucketsDetailsCtl.bucketDetails.replicaNumber != 0 ? (bucketsDetailsCtl.bucketDetails.replicaNumber | mnCount:'replica copy') : 'disabled'}}</span>
         </div>
-        <div ng-if="mnBucketsDetailsController.bucketDetails.isMembase">
-          Compaction: <span class="bucket_progress_container" data-name="{{mnBucketsDetailsController.bucketDetails.name}}">
-          {{mnBucketsDetailsController.bucketDetails.thisBucketCompactionTask ? mnBucketsDetailsController.bucketDetails.thisBucketCompactionTask.progress + "% complete" : "Not active"}}
+        <div ng-if="bucketsDetailsCtl.bucketDetails.isMembase">
+          Compaction: <span class="bucket_progress_container" data-name="{{bucketsDetailsCtl.bucketDetails.name}}">
+          {{bucketsDetailsCtl.bucketDetails.thisBucketCompactionTask ? bucketsDetailsCtl.bucketDetails.thisBucketCompactionTask.progress + "% complete" : "Not active"}}
           </span>
         </div>
-        <div ng-if="mnBucketsDetailsController.bucketDetails.isMembase">
-          Cache Metadata: <span>{{mnBucketsDetailsController.bucketDetails.evictionPolicy === "valueOnly" ? 'Value Ejection' : 'Full Ejection'}}</span>
+        <div ng-if="bucketsDetailsCtl.bucketDetails.isMembase">
+          Cache Metadata: <span>{{bucketsDetailsCtl.bucketDetails.evictionPolicy === "valueOnly" ? 'Value Ejection' : 'Full Ejection'}}</span>
         </div>
-        <div ng-if="mnBucketsDetailsController.bucketDetails.isMembase">
-          Disk I/O priority: <span>{{mnBucketsDetailsController.bucketDetails.threadsNumber === 3 ? 'Low' : 'High'}}</span>
+        <div ng-if="bucketsDetailsCtl.bucketDetails.isMembase">
+          Disk I/O priority: <span>{{bucketsDetailsCtl.bucketDetails.threadsNumber === 3 ? 'Low' : 'High'}}</span>
         </div>
       </div>
-      <div class="last when-roadmin-hide-me" ng-hide="mnBucketsDetailsController.mnPoolDefault.value.isROAdminCreds">
-        <a class="inner_btn casper_buckets_edit_bucket_popup" ng-click="mnBucketsDetailsController.editBucket(mnBucketsDetailsController.bucketDetails)" >Edit</a>
-        <button ng-show="!mnBucketsDetailsController.bucketDetails.showCancel && !mnBucketsDetailsController.bucketDetails.noCompaction" class="inner_btn compact_btn" ng-class="{dynamic_disabled: mnBucketsDetailsController.bucketDetails.disableCompact}" ng-click="!mnBucketsDetailsController.bucketDetails.disableCompact && mnBucketsDetailsController.registerCompactionAsTriggeredAndPost(mnBucketsDetailsController.bucketDetails.controllers.compactAll, 'disableCompact')">
+      <div class="last when-roadmin-hide-me" ng-hide="bucketsDetailsCtl.mnPoolDefault.value.isROAdminCreds">
+        <a class="inner_btn casper_buckets_edit_bucket_popup" ng-click="bucketsDetailsCtl.editBucket(bucketsDetailsCtl.bucketDetails)" >Edit</a>
+        <button ng-show="!bucketsDetailsCtl.bucketDetails.showCancel && !bucketsDetailsCtl.bucketDetails.noCompaction" class="inner_btn compact_btn" ng-class="{dynamic_disabled: bucketsDetailsCtl.bucketDetails.disableCompact}" ng-click="!bucketsDetailsCtl.bucketDetails.disableCompact && bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.bucketDetails.controllers.compactAll, 'disableCompact')">
           <span>Compact</span>
         </button>
-        <button  ng-show="mnBucketsDetailsController.bucketDetails.showCancel" class="inner_btn cancel_compact_btn " ng-class="{dynamic_disabled: mnBucketsDetailsController.bucketDetails.disableCancel}" ng-click="!mnBucketsDetailsController.bucketDetails.disableCancel && mnBucketsDetailsController.registerCompactionAsTriggeredAndPost(mnBucketsDetailsController.bucketDetails.thisBucketCompactionTask.cancelURI, 'disableCancel')"><span>Cancel</span></button>
-        <button class="inner_btn " ng-click="mnBucketsDetailsController.deleteBucket(mnBucketsDetailsController.bucketDetails)"><span>Delete</span></button>
-        <button ng-show="mnBucketsDetailsController.bucketDetails.flushEnabled" class="inner_btn " ng-click="mnBucketsDetailsController.flushBucket(mnBucketsDetailsController.bucketDetails)" ><span>Flush</span></button>
+        <button  ng-show="bucketsDetailsCtl.bucketDetails.showCancel" class="inner_btn cancel_compact_btn " ng-class="{dynamic_disabled: bucketsDetailsCtl.bucketDetails.disableCancel}" ng-click="!bucketsDetailsCtl.bucketDetails.disableCancel && bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.bucketDetails.thisBucketCompactionTask.cancelURI, 'disableCancel')"><span>Cancel</span></button>
+        <button class="inner_btn " ng-click="bucketsDetailsCtl.deleteBucket(bucketsDetailsCtl.bucketDetails)"><span>Delete</span></button>
+        <button ng-show="bucketsDetailsCtl.bucketDetails.flushEnabled" class="inner_btn " ng-click="bucketsDetailsCtl.flushBucket(bucketsDetailsCtl.bucketDetails)" ><span>Flush</span></button>
       </div>
     </div>
     <div class="side side_1"></div>
@@ -42,32 +42,32 @@
   </div>
 
   <div class="additional_server_info bucket_details_info">
-    <div ng-if="mnBucketsDetailsController.bucketDetails.warmUpTasks.length" mn-warmup-progress warm-up-tasks="mnBucketsDetailsController.bucketDetails.warmUpTasks" sort-by="hostname"></div>
+    <div ng-if="bucketsDetailsCtl.bucketDetails.warmUpTasks.length" mn-warmup-progress warm-up-tasks="bucketsDetailsCtl.bucketDetails.warmUpTasks" sort-by="hostname"></div>
 
     <h2>Cache Size</h2>
     <div class="dynamic_ram">
       <label class="for-hdd-quota">
         <span>Dynamic RAM Quota:</span>
-        <span>{{mnBucketsDetailsController.bucketDetails.quota.rawRAM | mnFormatQuantity}}</span>
+        <span>{{bucketsDetailsCtl.bucketDetails.quota.rawRAM | mnFormatQuantity}}</span>
         <abbr></abbr>
       </label>
     </div>
-    <div class="usage-block for-ram" mn-bar-usage base-info="mnBucketsDetailsController.bucketDetails.ramConfig"></div>
+    <div class="usage-block for-ram" mn-bar-usage base-info="bucketsDetailsCtl.bucketDetails.ramConfig"></div>
 
-    <div ng-if="mnBucketsDetailsController.bucketDetails.hddConfig">
+    <div ng-if="bucketsDetailsCtl.bucketDetails.hddConfig">
       <h2>Storage Size</h2>
       <div class="disk_storage">
         <label class="for-hdd-quota" style="padding:0;">
           <span>Persistence Enabled:</span>
           <span>Yes</span><br>
           <span>Disk Usage:</span>
-          <span>{{mnBucketsDetailsController.bucketDetails.basicStats.diskUsed | mnFormatQuantity}}</span><br>
+          <span>{{bucketsDetailsCtl.bucketDetails.basicStats.diskUsed | mnFormatQuantity}}</span><br>
           <span>Data Usage:</span>
-          <span>{{mnBucketsDetailsController.bucketDetails.basicStats.dataUsed | mnFormatQuantity}}</span>
+          <span>{{bucketsDetailsCtl.bucketDetails.basicStats.dataUsed | mnFormatQuantity}}</span>
           <abbr></abbr>
         </label>
       </div>
-      <div class="usage-block for-hdd" mn-bar-usage base-info="mnBucketsDetailsController.bucketDetails.hddConfig"></div>
+      <div class="usage-block for-hdd" mn-bar-usage base-info="bucketsDetailsCtl.bucketDetails.hddConfig"></div>
     </div>
 
   </div>

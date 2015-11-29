@@ -1,11 +1,11 @@
 <div
   id="js_cluster_settings_container"
   class="cluster_settings_container"
-  mn-spinner="!mnSettingsClusterController.state || mnSettingsClusterController.clusterSettingsLoading">
+  mn-spinner="!settingsClusterCtl.state || settingsClusterCtl.clusterSettingsLoading">
   <form
     id="js_cluster_public_settings_form"
     class="cluster_settings_form"
-    ng-submit="mnSettingsClusterController.saveVisualInternalSettings()">
+    ng-submit="settingsClusterCtl.saveVisualInternalSettings()">
     <h2>
       Configure Cluster
     </h2>
@@ -15,53 +15,53 @@
         type="text"
         name="clusterName"
         maxlength="256"
-        ng-model="mnSettingsClusterController.state.clusterName"
-        ng-disabled="mnSettingsClusterController.mnPoolDefault.value.isROAdminCreds">
+        ng-model="settingsClusterCtl.state.clusterName"
+        ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds">
       <span>(0 — 256 chars)</span>
     </div>
-    <div class="certificate_section" ng-show="mnSettingsClusterController.state.certificate">
+    <div class="certificate_section" ng-show="settingsClusterCtl.state.certificate">
       <h3>Certificate:</h3>
       <div class="sub_section">
         <p>
           Self-signed SSL certificate is deployed across the cluster on each nodes.
         </p>
         <p>
-          <a id="js_show_hide_cert_area" ng-click="mnSettingsClusterController.toggleCertArea()">{{mnSettingsClusterController.toggleCertAreaFlag ? 'Hide' : 'Show'}}</a> certificate.
+          <a id="js_show_hide_cert_area" ng-click="settingsClusterCtl.toggleCertArea()">{{settingsClusterCtl.toggleCertAreaFlag ? 'Hide' : 'Show'}}</a> certificate.
         </p>
         <div
           class="about-cert-area_wrapper"
           id="js_about-cert-area_wrapper"
-          ng-show="mnSettingsClusterController.toggleCertAreaFlag"
-          mn-spinner="mnSettingsClusterController.regenerateCertificateInprogress">
+          ng-show="settingsClusterCtl.toggleCertAreaFlag"
+          mn-spinner="settingsClusterCtl.regenerateCertificateInprogress">
           <textarea
             id="js-about-cert-area"
             readonly="readonly"
-            ng-model="mnSettingsClusterController.state.certificate"
-            ng-disbled="mnSettingsClusterController.mnPoolDefault.value.isROAdminCreds"></textarea>
+            ng-model="settingsClusterCtl.state.certificate"
+            ng-disbled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"></textarea>
           <div></div>
           <div
-            ng-click="mnSettingsClusterController.regenerateCertificate();"
+            ng-click="settingsClusterCtl.regenerateCertificate();"
             class="edit_btn when-roadmin-avoid-me"
-            ng-hide="mnSettingsClusterController.mnPoolDefault.value.isROAdminCreds">Regenerate</div>
+            ng-hide="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds">Regenerate</div>
           <span
             style="color:red;display:inline;margin-left:5px;font-size:11px;"
-            ng-hide="mnSettingsClusterController.mnPoolDefault.value.isROAdminCreds">* Clicking 'Regenerate' will immediately generate new certificate for the cluster</span>
+            ng-hide="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds">* Clicking 'Regenerate' will immediately generate new certificate for the cluster</span>
         </div>
       </div>
     </div>
     <h2>Cluster RAM Quota</h2>
     <div
       class="sub_section cluster_quota_settings"
-      mn-memory-quota="mnSettingsClusterController.state.memoryQuotaConfig"
-      errors="mnSettingsClusterController.memoryQuotaErrors"></div>
+      mn-memory-quota="settingsClusterCtl.state.memoryQuotaConfig"
+      errors="settingsClusterCtl.memoryQuotaErrors"></div>
     <h2 class="only-when-40">Index Settings</h2>
     <div class="sub_section index_settings_section js_index_settings_section only-when-40">
       <div class="row">
         <label for="index_settings_thread">Indexer Threads:</label>
         <input
           type="number"
-          ng-model="mnSettingsClusterController.state.indexSettings.indexerThreads"
-          ng-disabled="mnSettingsClusterController.mnPoolDefault.value.isROAdminCreds"
+          ng-model="settingsClusterCtl.state.indexSettings.indexerThreads"
+          ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"
           name="indexerThreads"
           id="index_settings_thread">
         <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
@@ -71,16 +71,16 @@
         </a>
         <span
           class="error-container err-indexerThreads"
-          ng-show="mnSettingsClusterController.indexSettingsErrors.indexerThreads">
-            {{mnSettingsClusterController.indexSettingsErrors.indexerThreads}}
+          ng-show="settingsClusterCtl.indexSettingsErrors.indexerThreads">
+            {{settingsClusterCtl.indexSettingsErrors.indexerThreads}}
         </span>
       </div>
       <div class="row">
         <label for="in_memory_snapshot">In Memory Snapshot Interval:</label>
         <input
           type="number"
-          ng-model="mnSettingsClusterController.state.indexSettings.memorySnapshotInterval"
-          ng-disabled="mnSettingsClusterController.mnPoolDefault.value.isROAdminCreds"
+          ng-model="settingsClusterCtl.state.indexSettings.memorySnapshotInterval"
+          ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"
           name="memorySnapshotInterval"
           id="in_memory_snapshot">
         <span>(ms)</span>
@@ -92,16 +92,16 @@
         </a>
         <span
           class="error-container err-memorySnapshotInterval"
-          ng-show="mnSettingsClusterController.indexSettingsErrors.memorySnapshotInterval">
-            {{mnSettingsClusterController.indexSettingsErrors.memorySnapshotInterval}}
+          ng-show="settingsClusterCtl.indexSettingsErrors.memorySnapshotInterval">
+            {{settingsClusterCtl.indexSettingsErrors.memorySnapshotInterval}}
         </span>
       </div>
       <div class="row">
         <label for="in_memory_snapshot">Stable Snapshot Interval:</label>
         <input
           type="number"
-          ng-model="mnSettingsClusterController.state.indexSettings.stableSnapshotInterval"
-          ng-disabled="mnSettingsClusterController.mnPoolDefault.value.isROAdminCreds"
+          ng-model="settingsClusterCtl.state.indexSettings.stableSnapshotInterval"
+          ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"
           name="stableSnapshotInterval"
           id="in_memory_snapshot">
         <span>(ms)</span>
@@ -112,16 +112,16 @@
         </a>
         <span
           class="error-container err-stableSnapshotInterval"
-          ng-show="mnSettingsClusterController.indexSettingsErrors.stableSnapshotInterval">
-            {{mnSettingsClusterController.indexSettingsErrors.stableSnapshotInterval}}
+          ng-show="settingsClusterCtl.indexSettingsErrors.stableSnapshotInterval">
+            {{settingsClusterCtl.indexSettingsErrors.stableSnapshotInterval}}
         </span>
       </div>
       <div class="row">
         <label for="in_memory_snapshot">Max Rollback Points:</label>
         <input
           type="number"
-          ng-model="mnSettingsClusterController.state.indexSettings.maxRollbackPoints"
-          ng-disabled="mnSettingsClusterController.mnPoolDefault.value.isROAdminCreds"
+          ng-model="settingsClusterCtl.state.indexSettings.maxRollbackPoints"
+          ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"
           name="maxRollbackPoints"
           id="in_memory_snapshot">
         <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
@@ -131,15 +131,15 @@
         </a>
         <span
           class="error-container err-maxRollbackPoints"
-          ng-show="mnSettingsClusterController.indexSettingsErrors.maxRollbackPoints">
-            {{mnSettingsClusterController.indexSettingsErrors.maxRollbackPoints}}
+          ng-show="settingsClusterCtl.indexSettingsErrors.maxRollbackPoints">
+            {{settingsClusterCtl.indexSettingsErrors.maxRollbackPoints}}
         </span>
       </div>
       <div class="row">
         <label for="indexer_log_level">Indexer Log Level:</label>
         <select
-          ng-model="mnSettingsClusterController.state.indexSettings.logLevel"
-          ng-disabled="mnSettingsClusterController.mnPoolDefault.value.isROAdminCreds"
+          ng-model="settingsClusterCtl.state.indexSettings.logLevel"
+          ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"
           name="logLevel"
           id="indexer_log_level">
           <option value="silent">Silent</option>
@@ -154,13 +154,13 @@
         </select>
         <span
           class="error-container err-logLevel"
-          ng-show="mnSettingsClusterController.indexSettingsErrors.logLevel">
-            {{mnSettingsClusterController.indexSettingsErrors.logLevel}}
+          ng-show="settingsClusterCtl.indexSettingsErrors.logLevel">
+            {{settingsClusterCtl.indexSettingsErrors.logLevel}}
         </span>
       </div>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="submit" ng-hide="mnSettingsClusterController.mnPoolDefault.value.isROAdminCreds" ng-disabled="!!mnSettingsClusterController.indexSettingsErrors || !!mnSettingsClusterController.memoryQuotaErrors">
+      <button class="save_button float_right" type="submit" ng-hide="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds" ng-disabled="!!settingsClusterCtl.indexSettingsErrors || !!settingsClusterCtl.memoryQuotaErrors">
         Save
       </button>
     </div>

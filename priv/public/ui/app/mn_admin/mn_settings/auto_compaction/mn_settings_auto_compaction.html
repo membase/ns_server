@@ -1,7 +1,7 @@
 <div id="compaction_container">
   <form
-    ng-submit="mnSettingsAutoCompactionController.submit()"
-    mn-spinner="mnSettingsAutoCompactionController.viewLoading || !mnSettingsAutoCompactionController.autoCompactionSettings">
+    ng-submit="settingsAutoCompactionCtl.submit()"
+    mn-spinner="settingsAutoCompactionCtl.viewLoading || !settingsAutoCompactionCtl.autoCompactionSettings">
     <div class="auto_compaction persistent-only">
       <h2>Auto-Compaction</h2>
       <div class="sub_section">
@@ -9,14 +9,14 @@
       </div>
       <div
         mn-auto-compaction-form
-        auto-compaction-settings="mnSettingsAutoCompactionController.autoCompactionSettings"
-        validation-errors="mnSettingsAutoCompactionController.errors"></div>
+        auto-compaction-settings="settingsAutoCompactionCtl.autoCompactionSettings"
+        validation-errors="settingsAutoCompactionCtl.errors"></div>
     </div> <!-- .auto_compaction -->
     <div class="save_cancel when-roadmin-hide-me">
       <button
         class="save_button float_right"
         type="submit"
-        ng-hide="mnSettingsAutoCompactionController.mnPoolDefault.value.isROAdminCreds">
+        ng-hide="settingsAutoCompactionCtl.mnPoolDefault.value.isROAdminCreds">
         Save
       </button>
     </div>

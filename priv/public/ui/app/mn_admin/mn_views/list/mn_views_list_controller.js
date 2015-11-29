@@ -69,7 +69,7 @@
 
     function showCreationDialog(ddoc, isSpatial) {
       $uibModal.open({
-        controller: 'mnViewsCreateDialogController as mnViewsCreateDialogController',
+        controller: 'mnViewsCreateDialogController as viewsCreateDialogCtl',
         templateUrl: 'app/mn_admin/mn_views/create_dialog/mn_views_create_dialog.html',
         scope: $scope,
         resolve: {
@@ -80,7 +80,7 @@
     }
     function showDdocDeletionDialog(ddoc) {
       $uibModal.open({
-        controller: 'mnViewsDeleteDdocDialogController as mnViewsDeleteDdocDialogController',
+        controller: 'mnViewsDeleteDdocDialogController as viewsDeleteDdocDialogCtl',
         templateUrl: 'app/mn_admin/mn_views/delete_ddoc_dialog/mn_views_delete_ddoc_dialog.html',
         scope: $scope,
         resolve: {
@@ -90,7 +90,7 @@
     }
     function showViewDeletionDialog(ddoc, viewName, isSpatial) {
       $uibModal.open({
-        controller: 'mnViewsDeleteViewDialogController as mnViewsDeleteViewDialogController',
+        controller: 'mnViewsDeleteViewDialogController as viewsDeleteViewDialogCtl',
         templateUrl: 'app/mn_admin/mn_views/delete_view_dialog/mn_views_delete_view_dialog.html',
         scope: $scope,
         resolve: {
@@ -126,7 +126,7 @@
     }
     function copyToDev(ddoc) {
       $uibModal.open({
-        controller: 'mnViewsCopyDialogController as mnViewsCopyDialogController',
+        controller: 'mnViewsCopyDialogController as viewsCopyDialogCtl',
         templateUrl: 'app/mn_admin/mn_views/copy_dialog/mn_views_copy_dialog.html',
         scope: $scope,
         resolve: {

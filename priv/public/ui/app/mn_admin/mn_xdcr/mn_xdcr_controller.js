@@ -37,7 +37,7 @@
     }
     function createClusterReference() {
       $uibModal.open({
-        controller: 'mnXDCRReferenceDialogController as mnXDCRReferenceDialogController',
+        controller: 'mnXDCRReferenceDialogController as xdcrReferenceDialogCtl',
         templateUrl: 'app/mn_admin/mn_xdcr/reference_dialog/mn_xdcr_reference_dialog.html',
         scope: $scope,
         resolve: {
@@ -47,7 +47,7 @@
     }
     function deleteClusterReference(row) {
       $uibModal.open({
-        controller: 'mnXDCRDeleteReferenceDialogController as mnXDCRDeleteReferenceDialogController',
+        controller: 'mnXDCRDeleteReferenceDialogController as xdcrDeleteReferenceDialogCtl',
         templateUrl: 'app/mn_admin/mn_xdcr/delete_reference_dialog/mn_xdcr_delete_reference_dialog.html',
         scope: $scope,
         resolve: {
@@ -57,7 +57,7 @@
     }
     function editClusterReference(reference) {
       $uibModal.open({
-        controller: 'mnXDCRReferenceDialogController as mnXDCRReferenceDialogController',
+        controller: 'mnXDCRReferenceDialogController as xdcrReferenceDialogCtl',
         templateUrl: 'app/mn_admin/mn_xdcr/reference_dialog/mn_xdcr_reference_dialog.html',
         scope: $scope,
         resolve: {
@@ -67,7 +67,7 @@
     }
     function createReplications() {
       $uibModal.open({
-        controller: 'mnXDCRCreateDialogController as mnXDCRCreateDialogController',
+        controller: 'mnXDCRCreateDialogController as xdcrCreateDialogCtl',
         templateUrl: 'app/mn_admin/mn_xdcr/create_dialog/mn_xdcr_create_dialog.html',
         scope: $scope,
         resolve: {
@@ -87,7 +87,7 @@
     }
     function deleteReplication(row) {
       $uibModal.open({
-        controller: 'mnXDCRDeleteDialogController as mnXDCRDeleteDialogController',
+        controller: 'mnXDCRDeleteDialogController as xdcrDeleteDialogCtl',
         templateUrl: 'app/mn_admin/mn_xdcr/delete_dialog/mn_xdcr_delete_dialog.html',
         scope: $scope,
         resolve: {
@@ -97,7 +97,7 @@
     }
     function editReplication(row) {
       $uibModal.open({
-        controller: 'mnXDCREditDialogController as mnXDCREditDialogController',
+        controller: 'mnXDCREditDialogController as xdcrEditDialogCtl',
         templateUrl: 'app/mn_admin/mn_xdcr/edit_dialog/mn_xdcr_edit_dialog.html',
         scope: $scope,
         resolve: {

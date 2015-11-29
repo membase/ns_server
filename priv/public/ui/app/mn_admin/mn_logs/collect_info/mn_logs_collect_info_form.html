@@ -1,10 +1,10 @@
 <div
   class="collect_information_dialog"
   id="js_collect_info_start_new_view"
-  mn-spinner="mnLogsCollectInfoController.viewLoading">
+  mn-spinner="logsCollectInfoCtl.viewLoading">
   <form
     id="js_collect_info_form"
-    ng-submit="mnLogsCollectInfoController.submit()"
+    ng-submit="logsCollectInfoCtl.submit()"
     name="collectForm">
     <div class="content">
       <h2>Select Nodes</h2>
@@ -15,7 +15,7 @@
             type="radio"
             name="from"
             value="*"
-            ng-model="mnLogsCollectInfoController.collect.from"
+            ng-model="logsCollectInfoCtl.collect.from"
             id="all_nodes_radio"
             checked="checked">
           <label for="all_nodes_radio">All nodes</label>
@@ -25,23 +25,23 @@
             type="radio"
             name="from"
             value=""
-            ng-model="mnLogsCollectInfoController.collect.from"
+            ng-model="logsCollectInfoCtl.collect.from"
             id="selected_nodes_radio">
           <label for="selected_nodes_radio">Selected nodes:</label>
         </li>
         <li>
           <ul id="js_select_nodes_list_container" class="selected_nodes">
-            <li ng-repeat="node in mnLogsCollectInfoController.mnLogsCollectInfoState.nodes track by node.otpNode">
+            <li ng-repeat="node in logsCollectInfoCtl.mnLogsCollectInfoState.nodes track by node.otpNode">
               <input
                 type="checkbox"
                 name="js-selected-nodes"
-                ng-model="mnLogsCollectInfoController.collect.nodes[node.otpNode]"
-                ng-init="mnLogsCollectInfoController.collect.nodes[node.otpNode] = true"
+                ng-model="logsCollectInfoCtl.collect.nodes[node.otpNode]"
+                ng-init="logsCollectInfoCtl.collect.nodes[node.otpNode] = true"
                 value="{{node.otpNode}}"
                 id="collected_node_list_{{node.otpNode | mnMakeSafeForCSS }}"
                 ng-checked="node.status !== 'unhealthy'"
-                ng-disabled="node.status === 'unhealthy' || mnLogsCollectInfoController.collect.from">
-              <label for="collected_node_list_{{node.otpNode | mnMakeSafeForCSS }}">{{ node.hostname | mnStripPortHTML:mnLogsCollectInfoController.mnLogsCollectInfoState.nodes }}</label>
+                ng-disabled="node.status === 'unhealthy' || logsCollectInfoCtl.collect.from">
+              <label for="collected_node_list_{{node.otpNode | mnMakeSafeForCSS }}">{{ node.hostname | mnStripPortHTML:logsCollectInfoCtl.mnLogsCollectInfoState.nodes }}</label>
               <span class="icon {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}"></span>
             </li>
           </ul>
@@ -54,63 +54,63 @@
           id="js_generalCollectInfo_error"
           class="js_error_container"
           style="display:block;margin:0 0 10px 0; line-height: 13px;"
-          ng-show="mnLogsCollectInfoController.errors._">{{mnLogsCollectInfoController.errors._}}</div>
+          ng-show="logsCollectInfoCtl.errors._">{{logsCollectInfoCtl.errors._}}</div>
         <div>
           <label for="js_upload_to_cb">Upload to Couchbase:</label>
           <input
             id="js_upload_to_cb"
             name="upload"
-            ng-model="mnLogsCollectInfoController.collect.upload"
+            ng-model="logsCollectInfoCtl.collect.upload"
             value="true"
             type="checkbox">
-          <div id="js_upload_error" class="js_error_container" ng-show="mnLogsCollectInfoController.errors.upload">{{mnLogsCollectInfoController.errors.upload}}</div>
+          <div id="js_upload_error" class="js_error_container" ng-show="logsCollectInfoCtl.errors.upload">{{logsCollectInfoCtl.errors.upload}}</div>
         </div>
         <div>
           <label for="js_uploadHost_input">Upload to host:</label>
           <input
             id="js_uploadHost_input"
             name="uploadHost"
-            ng-model="mnLogsCollectInfoController.collect.uploadHost"
+            ng-model="logsCollectInfoCtl.collect.uploadHost"
             type="text"
-            ng-disabled="!mnLogsCollectInfoController.collect.upload"
+            ng-disabled="!logsCollectInfoCtl.collect.upload"
             required>
           <div
             id="js_uploadHost_error"
             class="js_error_container"
-            ng-show="mnLogsCollectInfoController.errors.uploadHost">{{mnLogsCollectInfoController.errors.uploadHost}}</div>
+            ng-show="logsCollectInfoCtl.errors.uploadHost">{{logsCollectInfoCtl.errors.uploadHost}}</div>
           <div
             class="js_error_container"
-            ng-show="mnLogsCollectInfoController.collect.upload && collectForm.uploadHost.$error.required">upload host field must be given if upload is selected</div>
+            ng-show="logsCollectInfoCtl.collect.upload && collectForm.uploadHost.$error.required">upload host field must be given if upload is selected</div>
         </div>
         <div>
           <label for="js_customer_input">Customer name:</label>
           <input
             id="js_customer_input"
             name="customer"
-            ng-model="mnLogsCollectInfoController.collect.customer"
+            ng-model="logsCollectInfoCtl.collect.customer"
             type="text"
-            ng-disabled="!mnLogsCollectInfoController.collect.upload"
+            ng-disabled="!logsCollectInfoCtl.collect.upload"
             required>
           <div
             id="js_customer_error"
             class="js_error_container"
-            ng-show="mnLogsCollectInfoController.errors.customer">{{mnLogsCollectInfoController.errors.customer}}</div>
+            ng-show="logsCollectInfoCtl.errors.customer">{{logsCollectInfoCtl.errors.customer}}</div>
           <div
             class="js_error_container"
-            ng-show="mnLogsCollectInfoController.collect.upload && collectForm.customer.$error.required">customer field must be given if upload is selected</div>
+            ng-show="logsCollectInfoCtl.collect.upload && collectForm.customer.$error.required">customer field must be given if upload is selected</div>
         </div>
         <div>
           <label for="js_ticket_input">Ticket Number (optional):</label>
           <input
             id="js_ticket_input"
             name="ticket"
-            ng-model="mnLogsCollectInfoController.collect.ticket"
+            ng-model="logsCollectInfoCtl.collect.ticket"
             type="text"
-            ng-disabled="!mnLogsCollectInfoController.collect.upload">
+            ng-disabled="!logsCollectInfoCtl.collect.upload">
           <div
             id="js_ticket_error"
             class="js_error_container"
-            ng-show="mnLogsCollectInfoController.errors.ticket">{{mnLogsCollectInfoController.errors.ticket}}</div>
+            ng-show="logsCollectInfoCtl.errors.ticket">{{logsCollectInfoCtl.errors.ticket}}</div>
         </div>
       </div>
     </div>
@@ -118,7 +118,7 @@
       <button
         class="save_button float_right js_save_button"
         type="submit"
-        ng-disabled="mnLogsCollectInfoController.collect.nodes.length">Collect</button>
+        ng-disabled="logsCollectInfoCtl.collect.nodes.length">Collect</button>
     </div>
   </form>
 </div>

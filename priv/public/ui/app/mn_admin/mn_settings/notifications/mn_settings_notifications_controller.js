@@ -24,7 +24,7 @@
     }
 
     function submit() {
-      mnPromiseHelper(vm, mnSettingsNotificationsService.saveSendStatsFlag($scope.mnAdminController.updates.enabled))
+      mnPromiseHelper(vm, mnSettingsNotificationsService.saveSendStatsFlag($scope.adminCtl.updates.enabled))
         .showErrorsSensitiveSpinner()
         .catchGlobalErrors('An error occured, update notifications settings were not saved.')
         .reloadState()

@@ -1,12 +1,12 @@
 <div
   class="pad"
   id="init_cluster_dialog"
-  mn-spinner="mnWizardStep1Controller.viewLoading || !mnWizardStep1Controller.selfConfig">
+  mn-spinner="wizardStep1Ctl.viewLoading || !wizardStep1Ctl.selfConfig">
   <div class="config-top">
     <h1>Configure Server</h1>
     <h2>Step <span class="current-step">1</span> of 5</h2>
   </div>
-  <form ng-submit="mnWizardStep1Controller.onSubmit()">
+  <form ng-submit="wizardStep1Ctl.onSubmit()">
     <div>
       <h2 class="question">Configure Disk Storage</h2>
       <div class="disk_setup_block">
@@ -15,8 +15,8 @@
           <input
             type="text"
             name="db_path"
-            ng-model="mnWizardStep1Controller.dbPath"
-            ng-change="mnWizardStep1Controller.onDbPathChange()">
+            ng-model="wizardStep1Ctl.dbPath"
+            ng-change="wizardStep1Ctl.onDbPathChange()">
           <br class="clear" />
         </div>
         <div>
@@ -24,7 +24,7 @@
           <span
             style="font-size:10pt; margin-left:5px; line-height: 25px;"
             class="total-db-size">
-            {{mnWizardStep1Controller.dbPathTotal}}
+            {{wizardStep1Ctl.dbPathTotal}}
           </span>
         </div>
         <div>
@@ -32,8 +32,8 @@
           <input
             type="text"
             name="index_path"
-            ng-model="mnWizardStep1Controller.indexPath"
-            ng-change="mnWizardStep1Controller.onIndexPathChange()">
+            ng-model="wizardStep1Ctl.indexPath"
+            ng-change="wizardStep1Ctl.onIndexPathChange()">
           <br class="clear">
         </div>
         <div>
@@ -41,17 +41,17 @@
           <span
             style="font-size:10pt; margin-left:5px; line-height: 25px;"
             class="total-index-size">
-            {{mnWizardStep1Controller.indexPathTotal}}
+            {{wizardStep1Ctl.indexPathTotal}}
           </span>
         </div>
         <div
           class="warning init_cluster_dialog_errors_container"
-          ng-if="mnWizardStep1Controller.postDiskStorageErrors">
-          <div ng-repeat="error in mnWizardStep1Controller.postDiskStorageErrors">
+          ng-if="wizardStep1Ctl.postDiskStorageErrors">
+          <div ng-repeat="error in wizardStep1Ctl.postDiskStorageErrors">
             <strong>Attention</strong> - {{error}}<br>
           </div>
         </div>
-        <p class="when-enterprise" ng-show="mnWizardStep1Controller.isEnterprise">
+        <p class="when-enterprise" ng-show="wizardStep1Ctl.isEnterprise">
           Hint: if you use this server in a production environment, use different file systems for databases and indexes.
         </p>
       </div>
@@ -63,13 +63,13 @@
       <input
         type="text"
         name="hostname"
-        ng-model="mnWizardStep1Controller.hostname">
+        ng-model="wizardStep1Ctl.hostname">
       <br class="clear">
       <div
         class="warning pat_10"
           id="init_cluster_dialog_hostname_errors_container"
-          ng-if="mnWizardStep1Controller.postHostnameErrors[0]">
-        {{mnWizardStep1Controller.postHostnameErrors[0]}}
+          ng-if="wizardStep1Ctl.postHostnameErrors[0]">
+        {{wizardStep1Ctl.postHostnameErrors[0]}}
       </div>
     </div>
 
@@ -95,7 +95,7 @@
             <label>
               <input
                 type="radio"
-                ng-model="mnWizardStep1Controller.joinCluster"
+                ng-model="wizardStep1Ctl.joinCluster"
                 value="no"
                 name="joinCluster"
                 id="no-join-cluster">
@@ -104,15 +104,15 @@
           </h3>
           <div
             class="start_new_cluster_block js_start_new_cluster_block"
-            ng-if="mnWizardStep1Controller.isJoinCluster('no')">
+            ng-if="wizardStep1Ctl.isJoinCluster('no')">
             <div
               class="warning pat_10"
-              ng-show="!!mnWizardStep1Controller.setupServicesErrors[0]">
-              {{mnWizardStep1Controller.setupServicesErrors[0]}}
+              ng-show="!!wizardStep1Ctl.setupServicesErrors[0]">
+              {{wizardStep1Ctl.setupServicesErrors[0]}}
             </div>
             <div
-              mn-memory-quota="mnWizardStep1Controller.startNewClusterConfig"
-              errors="mnWizardStep1Controller.postMemoryErrors">
+              mn-memory-quota="wizardStep1Ctl.startNewClusterConfig"
+              errors="wizardStep1Ctl.postMemoryErrors">
             </div>
           </div>
         </div>
@@ -121,7 +121,7 @@
             <label>
               <input
                 type="radio"
-                ng-model="mnWizardStep1Controller.joinCluster"
+                ng-model="wizardStep1Ctl.joinCluster"
                 value="ok"
                 name="joinCluster"
                 id="join-cluster">
@@ -130,12 +130,12 @@
           </h3>
           <div
             class="login-credentials"
-            ng-if="mnWizardStep1Controller.isJoinCluster('ok')">
+            ng-if="wizardStep1Ctl.isJoinCluster('ok')">
             <p
               class="warning pat_10 join_cluster_dialog_errors_container"
-              ng-if="mnWizardStep1Controller.postJoinClusterErrors"
+              ng-if="wizardStep1Ctl.postJoinClusterErrors"
               style="margin: 10px 30px 10px 0px; display: block;">
-              <span ng-repeat="error in mnWizardStep1Controller.postJoinClusterErrors">
+              <span ng-repeat="error in wizardStep1Ctl.postJoinClusterErrors">
                 <strong>Attention</strong> - {{error}}
               </span>
             </p>
@@ -146,7 +146,7 @@
                 class="inp"
                 name="hostname"
                 id="clusterMemberHostIp"
-                ng-model="mnWizardStep1Controller.joinClusterConfig.clusterMember.hostname">
+                ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.hostname">
               <br class="clear">
             </div>
             <div>
@@ -156,7 +156,7 @@
                 class="inp"
                 name="user"
                 id="join_user_input"
-                ng-model="mnWizardStep1Controller.joinClusterConfig.clusterMember.username">
+                ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.username">
               <br class="clear">
             </div>
             <div>
@@ -165,11 +165,12 @@
                 type="password"
                 class="inp"
                 name="password"
-                ng-model="mnWizardStep1Controller.joinClusterConfig.clusterMember.password"
+                mn-autocomplete-off
+                ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.password"
                 id="join_password_input">
               <br class="clear">
             </div>
-            <div mn-services="mnWizardStep1Controller.joinClusterConfig">
+            <div mn-services="wizardStep1Ctl.joinClusterConfig">
             </div>
           </div>
         </div>

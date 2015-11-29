@@ -15,7 +15,7 @@
         replace: true,
         templateUrl: 'app/mn_admin/mn_xdcr/settings/mn_xdcr_settings.html',
         controller: controller,
-        controllerAs: "mnXdcrSettingsController",
+        controllerAs: "xdcrSettingsCtl",
         bindToController: true
       };
 
@@ -24,7 +24,7 @@
       function controller($scope, mnPoolDefault) {
         var vm = this;
         vm.mnPoolDefault = mnPoolDefault.latestValue();
-        $scope.$watch('mnXdcrSettingsController.settings', function (settings) {
+        $scope.$watch('xdcrSettingsCtl.settings', function (settings) {
           mnPromiseHelper(vm, mnHttp({
             method: 'POST',
             url: '/settings/replications/',

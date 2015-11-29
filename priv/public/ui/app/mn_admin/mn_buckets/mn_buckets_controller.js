@@ -55,7 +55,7 @@
           } else {
             !areThereCreationWarnings() && $uibModal.open({
               templateUrl: 'app/mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
-              controller: 'mnBucketsDetailsDialogController as mnBucketsDetailsDialogController',
+              controller: 'mnBucketsDetailsDialogController as bucketsDetailsDialogCtl',
               resolve: {
                 bucketConf: function (mnBucketsDetailsDialogService) {
                   return mnBucketsDetailsDialogService.getNewBucketConf();

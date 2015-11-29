@@ -30,7 +30,7 @@
     function deleteUser() {
       return $uibModal.open({
         templateUrl: 'app/mn_admin/mn_settings/account_management/delete/mn_account_management_delete.html',
-        controller: 'mnAccountManagementDeleteController as mnAccountManagementDeleteController',
+        controller: 'mnAccountManagementDeleteController as accountManagementDeleteCtl',
         resolve: {
           name: mnHelper.wrapInFunction(vm.roAdminName)
         }
@@ -39,7 +39,7 @@
     function resetUserPassword() {
       return $uibModal.open({
         templateUrl: 'app/mn_admin/mn_settings/account_management/reset/mn_account_management_reset.html',
-        controller: 'mnAccountManagementResetController as mnAccountManagementResetController'
+        controller: 'mnAccountManagementResetController as accountManagementResetCtl'
       });
     }
     function createUser() {

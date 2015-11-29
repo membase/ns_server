@@ -21,7 +21,7 @@
       mnPromiseHelper(vm, mnSettingsAutoCompactionService.getAutoCompaction())
         .applyToScope("autoCompactionSettings")
         .onSuccess(function () {
-          $scope.$watch('mnSettingsAutoCompactionController.autoCompactionSettings', watchOnAutoCompactionSettings, true);
+          $scope.$watch('settingsAutoCompactionCtl.autoCompactionSettings', watchOnAutoCompactionSettings, true);
         });
     }
     function watchOnAutoCompactionSettings(autoCompactionSettings) {

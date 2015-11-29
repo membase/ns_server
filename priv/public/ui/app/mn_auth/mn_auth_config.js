@@ -13,7 +13,7 @@
     $urlRouterProvider.when('/', '/auth');
     $stateProvider.state('app.auth', {
       templateUrl: 'app/mn_auth/mn_auth.html',
-      controller: 'mnAuthController as mnAuthController'
+      controller: 'mnAuthController as authCtl'
     });
 
     function interceptorOf401($q, $injector) {

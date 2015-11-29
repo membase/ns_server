@@ -6,25 +6,25 @@
       </li>
       <li class="tab_right">
         <a class="casper_views_prod_tab" ui-sref="app.admin.views.list({ type: 'production' })" ui-sref-active="selected">Production Views</a>
-        <span class="badge notify" ng-show="mnViewsListController.mnViewsListState.production.length"><span id="prod_view_count">{{mnViewsListController.mnViewsListState.production.length}}</span></span>
+        <span class="badge notify" ng-show="viewsListCtl.mnViewsListState.production.length"><span id="prod_view_count">{{viewsListCtl.mnViewsListState.production.length}}</span></span>
       </li>
     </ul>
     <div class="create_view">
       <a
         class="btn_1 button_200 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup"
         style="float: right;"
-        ng-click="mnViewsListController.showMapreduceCreationDialog()"
-        ng-show="mnViewsListController.showViewCreationButtons()"><span>Create Development View</span></a>
+        ng-click="viewsListCtl.showMapreduceCreationDialog()"
+        ng-show="viewsListCtl.showViewCreationButtons()"><span>Create Development View</span></a>
       <a
         class="btn_1 btn_create_spatial when-in-dev when-roadmin-hide-me casper_views_create_view_popup"
         style="float: right; margin-right: 5px;"
-        ng-show="mnViewsListController.showViewCreationButtons()"
-        ng-click="mnViewsListController.showSpatialCreationDialog()"><span>Create Development Spatial View</span></a>
+        ng-show="viewsListCtl.showViewCreationButtons()"
+        ng-click="viewsListCtl.showSpatialCreationDialog()"><span>Create Development Spatial View</span></a>
       <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
     </div>
   </div>
   <div class="panes">
-    <div class="views_list" mn-spinner="!mnViewsListController.mnViewsListState">
+    <div class="views_list" mn-spinner="!viewsListCtl.mnViewsListState">
       <table class="list">
         <thead>
           <tr>
@@ -36,7 +36,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr ng-if="!mnViewsController.mnViewsState.bucketsNames.selected && !mnViewsListController.mnViewsListState.ddocsAreInFactMissing">
+          <tr ng-if="!viewsCtl.mnViewsState.bucketsNames.selected && !viewsListCtl.mnViewsListState.ddocsAreInFactMissing">
             <td colspan="6" class="empty">
               <span>
                 No buckets currently defined! Go to
@@ -45,18 +45,18 @@
               </span>
             </td>
           </tr>
-          <tr ng-if="mnViewsListController.mnViewsListState.ddocsAreInFactMissing">
+          <tr ng-if="viewsListCtl.mnViewsListState.ddocsAreInFactMissing">
             <td colspan="6" class="empty">
               <span style="line-height:23px">This node doesn't host current bucket yet, so for list of design docs, please, visit different node's UI</span>
             </td>
           </tr>
-          <tr ng-if="mnViewsController.mnViewsState.bucketsNames.selected && !mnViewsListController.mnViewsListState.ddocsAreInFactMissing && !mnViewsListController.mnViewsListState[mnViewsListController.mnViewsListState.type].length">
+          <tr ng-if="viewsCtl.mnViewsState.bucketsNames.selected && !viewsListCtl.mnViewsListState.ddocsAreInFactMissing && !viewsListCtl.mnViewsListState[viewsListCtl.mnViewsListState.type].length">
             <td colspan="6" class="empty">
-              <span ng-show="mnViewsListController.isDevelopmentViews" style="line-height:23px">There are currently no Design Documents in Development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
-              <span ng-show="!mnViewsListController.isDevelopmentViews" style="line-height:23px">There are no Design Documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
+              <span ng-show="viewsListCtl.isDevelopmentViews" style="line-height:23px">There are currently no Design Documents in Development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
+              <span ng-show="!viewsListCtl.isDevelopmentViews" style="line-height:23px">There are no Design Documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
             </td>
           </tr>
-          <tr ng-repeat-start="row in mnViewsListController.mnViewsListState[mnViewsListController.mnViewsListState.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="mnViewsListController.mnViewsListState.rows.length">
+          <tr ng-repeat-start="row in viewsListCtl.mnViewsListState[viewsListCtl.mnViewsListState.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="viewsListCtl.mnViewsListState.rows.length">
             <td class="design_doc_name ellipsis">
               {{row.doc.meta.id}}
             </td>
@@ -72,40 +72,40 @@
             <td colspan="3" class="when-roadmin-hide-me" style="height: 33px;">
               <a
                 class="list_button when-in-prod casper_views_copy_to_dev"
-                ng-show="!mnViewsListController.isDevelopmentViews"
-                ng-click="mnViewsListController.copyToDev(row.doc)"><span>Copy to Dev</span></a>
+                ng-show="!viewsListCtl.isDevelopmentViews"
+                ng-click="viewsListCtl.copyToDev(row.doc)"><span>Copy to Dev</span></a>
 
               <a
                 class="list_button when-in-dev"
                 ng-class="{dynamic_disabled: row.isEmpty}"
-                ng-click="mnViewsListController.publishDdoc(row.doc)"
-                ng-show="mnViewsListController.showPublishButton(row)"><span>Publish</span></a>
+                ng-click="viewsListCtl.publishDdoc(row.doc)"
+                ng-show="viewsListCtl.showPublishButton(row)"><span>Publish</span></a>
 
               <a
                 class="list_button when-in-dev casper_views_add_view_popup"
-                ng-click="mnViewsListController.showCreationDialog(row.doc)"
-                ng-show="mnViewsListController.showCreationButton(row)"><span>Add View</span></a>
+                ng-click="viewsListCtl.showCreationDialog(row.doc)"
+                ng-show="viewsListCtl.showCreationButton(row)"><span>Add View</span></a>
 
               <a
                 class="list_button when-in-dev casper_views_add_spatial_popup"
-                ng-click="mnViewsListController.showCreationDialog(row.doc, true)"
-                ng-show="mnViewsListController.showSpatialButton(row)"><span>Add Spatial View</span></a>
+                ng-click="viewsListCtl.showCreationDialog(row.doc, true)"
+                ng-show="viewsListCtl.showSpatialButton(row)"><span>Add Spatial View</span></a>
 
               <a
                 class="list_button casper_views_delete_popup"
-                ng-hide="mnViewsListController.mnPoolDefault.value.isROAdminCreds"
-                ng-click="mnViewsListController.showDdocDeletionDialog(row.doc)"><span>Delete</span></a>
+                ng-hide="viewsListCtl.mnPoolDefault.value.isROAdminCreds"
+                ng-click="viewsListCtl.showDdocDeletionDialog(row.doc)"><span>Delete</span></a>
 
               <button
                 class="list_button"
                 ng-class="{dynamic_disabled: row.disableCompact}"
-                ng-hide="mnViewsListController.mnPoolDefault.value.isROAdminCreds"
-                ng-click="!row.disableCompact && mnViewsListController.registerCompactionAsTriggeredAndPost(row)"><span>Compact</span></button>
+                ng-hide="viewsListCtl.mnPoolDefault.value.isROAdminCreds"
+                ng-click="!row.disableCompact && viewsListCtl.registerCompactionAsTriggeredAndPost(row)"><span>Compact</span></button>
 
               <div
                 class="warning"
                 style="overflow: hidden; margin-top:4px;"
-                ng-show="mnViewsListController.showMatchingWarning(row)">No new views can be added to this document. Delete either mapreduce or spatial views first.</div>
+                ng-show="viewsListCtl.showMatchingWarning(row)">No new views can be added to this document. Delete either mapreduce or spatial views first.</div>
 
             </td>
           </tr>
@@ -117,20 +117,20 @@
               <a
                 class="casper_views_view_tab"
                 style="display:block;line-height:33px;"
-                ui-sref="app.admin.views.editing.result(mnViewsListController.getInitialViewsFilterParams(key, row, false))">{{key}}</a>
+                ui-sref="app.admin.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">{{key}}</a>
             </td>
             <td>
-              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc && !mnViewsListController.mnPoolDefault.value.isROAdminCreds" ng-click="mnViewsListController.showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ui-sref="app.admin.views.editing.result(mnViewsListController.getInitialViewsFilterParams(key, row, false))"><span>{{(row.isDevModeDoc && !mnViewsListController.mnPoolDefault.value.isROAdminCreds) ? 'Edit' : 'Show' }}</span></a>
+              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
+              <a class="list_button btn_edit" ui-sref="app.admin.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))"><span>{{(row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds) ? 'Edit' : 'Show' }}</span></a>
             </td>
           </tr>
           <tr ng-repeat-end="" ng-if="row.containsSpatials" ng-repeat="(key, spatial) in row.doc.json.spatial">
             <td class="view_name ellipsis" colspan="5">
-              <a ui-sref="app.admin.views.editing.result(mnViewsListController.getInitialViewsFilterParams(key, row, true))">[Spatial] {{key}}</a>
+              <a ui-sref="app.admin.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">[Spatial] {{key}}</a>
             </td>
             <td>
-              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc && !mnViewsListController.mnPoolDefault.value.isROAdminCreds" ng-click="mnViewsListController.showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ui-sref="app.admin.views.editing.result(mnViewsListController.getInitialViewsFilterParams(key, row, true))"><span>{{(row.isDevModeDoc && !mnViewsListController.mnPoolDefault.value.isROAdminCreds) ? 'Edit' : 'Show' }}</span></a>
+              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
+              <a class="list_button btn_edit" ui-sref="app.admin.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))"><span>{{(row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds) ? 'Edit' : 'Show' }}</span></a>
             </td>
           </tr>
         </tbody>

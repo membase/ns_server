@@ -1,10 +1,10 @@
 <div class="join_cluster" id="create_cluster_reference_dialog" title="Create Cluster Reference" style="width:500px">
   <h1>Create Cluster Reference</h1>
   <form
-    ng-submit="mnXDCRReferenceDialogController.createClusterReference()"
-    mn-spinner="mnXDCRReferenceDialogController.viewLoading">
+    ng-submit="xdcrReferenceDialogCtl.createClusterReference()"
+    mn-spinner="xdcrReferenceDialogCtl.viewLoading">
     <div class="warning pat_10" id="create_cluster_reference_dialog_errors_container">
-      <span ng-repeat="error in mnXDCRReferenceDialogController.errors"><strong>Attention</strong> - {{error}}<br></span>
+      <span ng-repeat="error in xdcrReferenceDialogCtl.errors"><strong>Attention</strong> - {{error}}<br></span>
     </div>
     <fieldset>
       <ul>
@@ -12,7 +12,7 @@
           <label for="cluster_reference_name">Cluster Name:</label>
           <input
             name="name"
-            ng-model="mnXDCRReferenceDialogController.cluster.name"
+            ng-model="xdcrReferenceDialogCtl.cluster.name"
             id="cluster_reference_name"
             type="text">
         </li>
@@ -20,7 +20,7 @@
           <label for="cluster_reference_hostname">IP/hostname:</label>
           <input
             name="hostname"
-            ng-model="mnXDCRReferenceDialogController.cluster.hostname"
+            ng-model="xdcrReferenceDialogCtl.cluster.hostname"
             id="cluster_reference_hostname"
             type="text">
           <a class="text_11 tooltip"><span>What's this?</span>
@@ -46,23 +46,23 @@
           <label>Username:</label>
           <input
             name="username"
-            ng-model="mnXDCRReferenceDialogController.cluster.username"
+            ng-model="xdcrReferenceDialogCtl.cluster.username"
             type="text">
         </li>
         <li>
           <label>Password:</label>
           <input
             name="password"
-            ng-model="mnXDCRReferenceDialogController.cluster.password"
+            ng-model="xdcrReferenceDialogCtl.cluster.password"
             type="password">
         </li>
         <li
           class="when-enterprise only-when-25"
-          ng-show="mnXDCRReferenceDialogController.mnPoolDefault.value.isEnterprise">
+          ng-show="xdcrReferenceDialogCtl.mnPoolDefault.value.isEnterprise">
             <label for="demand_encryption_flag-2">Enable Encryption</label>
             <input
               name="demandEncryption"
-              ng-model="mnXDCRReferenceDialogController.cluster.encryption"
+              ng-model="xdcrReferenceDialogCtl.cluster.encryption"
               id="demand_encryption_flag-2"
               type="checkbox"
               style="vertical-align: middle;">
@@ -76,8 +76,8 @@
      <textarea
       id="ssh_key_area-2"
       name="certificate"
-      ng-show="mnXDCRReferenceDialogController.cluster.encryption"
-      ng-model="mnXDCRReferenceDialogController.cluster.certificate"
+      ng-show="xdcrReferenceDialogCtl.cluster.encryption"
+      ng-model="xdcrReferenceDialogCtl.cluster.certificate"
       placeholder="Copy paste the Certificate information from Remote Cluster here. You can find the certificate information on Couchbase Admin UI under Settings -> Cluster tab."
       style="font-size:10px;width:100%;margin:0;padding:0;min-height:20em;">
      </textarea>

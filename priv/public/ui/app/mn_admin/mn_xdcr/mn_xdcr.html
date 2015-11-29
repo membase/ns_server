@@ -8,14 +8,14 @@
           <a
             class="btn_1 when-roadmin-hide-me"
             id="create_cluster_reference"
-            ng-click="mnXDCRController.createClusterReference()"
-            ng-hide="mnXDCRController.mnPoolDefault.value.isROAdminCreds">
+            ng-click="xdcrCtl.createClusterReference()"
+            ng-hide="xdcrCtl.mnPoolDefault.value.isROAdminCreds">
             <span>Create Cluster Reference</span>
           </a>
         </span>
       </h3>
 
-      <div class="stats" id="cluster_reference_list_container" mn-spinner="!mnXDCRController.mnXdcrState" min-height="66px">
+      <div class="stats" id="cluster_reference_list_container" mn-spinner="!xdcrCtl.mnXdcrState" min-height="66px">
         <table class="list casper_remout_cluster_container" style="width:100%">
           <thead>
             <tr>
@@ -24,7 +24,7 @@
               <th></th>
             </tr>
           </thead>
-          <tbody ng-if="mnXDCRController.mnXdcrState.references.length" ng-repeat="row in mnXDCRController.mnXdcrState.references | orderBy:'name' track by row.name">
+          <tbody ng-if="xdcrCtl.mnXdcrState.references.length" ng-repeat="row in xdcrCtl.mnXdcrState.references | orderBy:'name' track by row.name">
             <tr>
               <td>{{row.name}}</td>
               <td>
@@ -33,17 +33,17 @@
               <td>
                 <a
                   class="list_button delete-button when-roadmin-avoid-me"
-                  ng-click="mnXDCRController.deleteClusterReference(row)"
-                  ng-hide="mnXDCRController.mnPoolDefault.value.isROAdminCreds"><span>Delete</span></a>
+                  ng-click="xdcrCtl.deleteClusterReference(row)"
+                  ng-hide="xdcrCtl.mnPoolDefault.value.isROAdminCreds"><span>Delete</span></a>
                 <a
                   class="list_button edit-button when-roadmin-avoid-me"
-                  ng-click="mnXDCRController.editClusterReference(row)"
-                  ng-hide="mnXDCRController.mnPoolDefault.value.isROAdminCreds"><span>Edit</span></a>
+                  ng-click="xdcrCtl.editClusterReference(row)"
+                  ng-hide="xdcrCtl.mnPoolDefault.value.isROAdminCreds"><span>Edit</span></a>
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="!mnXDCRController.mnXdcrState.references.length">
-            <tr><td colspan="3" style="text-align:center">No cluster references defined. <span class="when-roadmin-avoid-me" ng-hide="mnXDCRController.mnPoolDefault.value.isROAdminCreds">Please create one.</span></td></tr>
+          <tbody ng-if="!xdcrCtl.mnXdcrState.references.length">
+            <tr><td colspan="3" style="text-align:center">No cluster references defined. <span class="when-roadmin-avoid-me" ng-hide="xdcrCtl.mnPoolDefault.value.isROAdminCreds">Please create one.</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -57,20 +57,20 @@
         <span class="view_head" style="padding-left: 0;padding-bottom: 7px;">Ongoing Replications</span>
         <span class="buttons">
           <a
-            ng-show="mnXDCRController.mnXdcrState.references.length && !mnXDCRController.mnPoolDefault.value.isROAdminCreds" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="mnXDCRController.createReplications()">
+            ng-show="xdcrCtl.mnXdcrState.references.length && !xdcrCtl.mnPoolDefault.value.isROAdminCreds" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="xdcrCtl.createReplications()">
             <span>Create Replication</span>
           </a>
         </span>
       </h3>
 
-      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container" mn-spinner="!mnXDCRController.mnXdcrState" min-height="66px">
+      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container" mn-spinner="!xdcrCtl.mnXdcrState" min-height="66px">
         <table class="list" style="width:100%">
           <colgroup>
             <col class="bucket">
             <col class="protocol">
             <col class="from">
             <col class="to">
-            <col class="filter when-enterprise" ng-show="mnXDCRController.mnPoolDefault.value.isEnterprise">
+            <col class="filter when-enterprise" ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise">
             <col class="status">
             <col class="when">
           </colgroup>
@@ -80,19 +80,19 @@
               <th>Protocol</th>
               <th>From</th>
               <th>To</th>
-              <th class="when-enterprise" ng-show="mnXDCRController.mnPoolDefault.value.isEnterprise">Filtered</th>
+              <th class="when-enterprise" ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise">Filtered</th>
               <th>Status</th>
               <th>When</th>
               <th></th>
             </tr>
           </thead>
-          <tbody ng-if="mnXDCRController.mnXdcrState.replications.length" ng-repeat="row in mnXDCRController.mnXdcrState.replications track by row.name">
+          <tbody ng-if="xdcrCtl.mnXdcrState.replications.length" ng-repeat="row in xdcrCtl.mnXdcrState.replications track by row.name">
             <tr class="row">
               <td>{{row.source}}</td>
               <td>{{row.protocol}}</td>
               <td style="color:#777">this cluster</td>
               <td>{{row.to}}</td>
-              <td class="when-enterprise" ng-show="mnXDCRController.mnPoolDefault.value.isEnterprise">
+              <td class="when-enterprise" ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise">
                 <span ng-show="row.filterExpression">
                   <a class="tooltip text_11"><span>Yes</span>
                     <span class="tooltip_msg break-word" style="width:200px;"><span>
@@ -104,23 +104,23 @@
               </td>
               <td class="replication_status_cell">
                 <span>{{row.humanStatus}}</span>
-                <span ng-show="row.status !== 'notRunning'" class="only-when-30 js_replication_control replication_control dynamic_{{row.status}}" ng-click="row.status !== 'spinner' && mnXDCRController.pausePlayReplication(row)"></span>
-                <a ng-show="row.errors.length" ng-click="mnXDCRController.showReplicationErrors(row)">Last {{row.errors.length | mnCount:'error'}}</a>
+                <span ng-show="row.status !== 'notRunning'" class="only-when-30 js_replication_control replication_control dynamic_{{row.status}}" ng-click="row.status !== 'spinner' && xdcrCtl.pausePlayReplication(row)"></span>
+                <a ng-show="row.errors.length" ng-click="xdcrCtl.showReplicationErrors(row)">Last {{row.errors.length | mnCount:'error'}}</a>
               </td>
               <td>{{row.when}}</td>
               <td>
                 <a
                   class="list_button when-roadmin-avoid-me"
-                  ng-click="mnXDCRController.deleteReplication(row)"
-                  ng-hide="mnXDCRController.mnPoolDefault.value.isROAdminCreds"><span>Delete</span></a>
+                  ng-click="xdcrCtl.deleteReplication(row)"
+                  ng-hide="xdcrCtl.mnPoolDefault.value.isROAdminCreds"><span>Delete</span></a>
                 <span
                   class="list_button when-roadmin-avoid-me js_per_xdcr_settings"
-                  ng-click="mnXDCRController.editReplication(row)"
-                  ng-hide="mnXDCRController.mnPoolDefault.value.isROAdminCreds"><span>Edit</span></span>
+                  ng-click="xdcrCtl.editReplication(row)"
+                  ng-hide="xdcrCtl.mnPoolDefault.value.isROAdminCreds"><span>Edit</span></span>
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="!mnXDCRController.mnXdcrState.replications.length">
+          <tbody ng-if="!xdcrCtl.mnXdcrState.replications.length">
             <tr><td colspan="8" style="text-align:center">There are no replications currently in progress.</td></tr>
           </tbody>
         </table>

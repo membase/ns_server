@@ -42,7 +42,7 @@
       .state('app.admin', {
         abstract: true,
         templateUrl: 'app/mn_admin/mn_admin.html',
-        controller: 'mnAdminController as mnAdminController',
+        controller: 'mnAdminController as adminCtl',
         resolve: {
           poolDefault: function (mnPoolDefault) {
             return mnPoolDefault.getFresh();
@@ -51,7 +51,7 @@
       })
       .state('app.admin.overview', {
         url: '/overview',
-        controller: 'mnOverviewController as mnOverviewController',
+        controller: 'mnOverviewController as overviewCtl',
         templateUrl: 'app/mn_admin/mn_overview/mn_overview.html'
       })
       .state('app.admin.documents', {
@@ -71,17 +71,17 @@
           },
           documentsFilter: null
         },
-        controller: "mnDocumentsController as mnDocumentsController",
+        controller: "mnDocumentsController as documentsCtl",
         url: "/documents?documentsBucket&{pageLimit:int}&{pageNumber:int}&documentsFilter"
       })
       .state('app.admin.documents.list', {
         url: "",
-        controller: 'mnDocumentsListController as mnDocumentsListController',
+        controller: 'mnDocumentsListController as documentsListCtl',
         templateUrl: 'app/mn_admin/mn_documents/list/mn_documents_list.html'
       })
       .state('app.admin.documents.editing', {
         url: '/:documentId',
-        controller: 'mnDocumentsEditingController as mnDocumentsEditingController',
+        controller: 'mnDocumentsEditingController as documentsEditingCtl',
         templateUrl: 'app/mn_admin/mn_documents/editing/mn_documents_editing.html'
       })
       .state('app.admin.analytics', {
@@ -92,7 +92,7 @@
             value: 'minute'
           }
         },
-        controller: 'mnAnalyticsController as mnAnalyticsController',
+        controller: 'mnAnalyticsController as analyticsCtl',
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics.html'
       })
       .state('app.admin.analytics.list', {
@@ -103,7 +103,7 @@
             array: true
           }
         },
-        controller: 'mnAnalyticsListController as mnAnalyticsListController',
+        controller: 'mnAnalyticsListController as analyticsListCtl',
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list.html'
       })
       .state('app.admin.analytics.list.graph', {
@@ -113,7 +113,7 @@
             value: 'ops'
           }
         },
-        controller: 'mnAnalyticsListGraphController as mnAnalyticsListGraphController',
+        controller: 'mnAnalyticsListGraphController as analyticsListGraphCtl',
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list_graph.html'
       })
       .state('app.admin.views', {
@@ -125,17 +125,17 @@
           }
         },
         templateUrl: 'app/mn_admin/mn_views/mn_views.html',
-        controller: 'mnViewsController as mnViewsController'
+        controller: 'mnViewsController as viewsCtl'
       })
       .state('app.admin.views.list', {
         url: "?type",
-        controller: 'mnViewsListController as mnViewsListController',
+        controller: 'mnViewsListController as viewsListCtl',
         templateUrl: 'app/mn_admin/mn_views/list/mn_views_list.html'
       })
       .state('app.admin.views.editing', {
         abstract: true,
         url: '/:documentId/:viewId?{isSpatial:bool}&sampleDocumentId',
-        controller: 'mnViewsEditingController as mnViewsEditingController',
+        controller: 'mnViewsEditingController as viewsEditingCtl',
         templateUrl: 'app/mn_admin/mn_views/editing/mn_views_editing.html',
         data: {
           required: {
@@ -153,7 +153,7 @@
             value: 0
           }
         },
-        controller: 'mnViewsEditingResultController as mnViewsEditingResultController',
+        controller: 'mnViewsEditingResultController as viewsEditingResultCtl',
         templateUrl: 'app/mn_admin/mn_views/editing/mn_views_editing_result.html'
       })
       .state('app.admin.buckets', {
@@ -165,12 +165,12 @@
         },
         views: {
           "": {
-            controller: 'mnBucketsController as mnBucketsController',
+            controller: 'mnBucketsController as bucketsCtl',
             templateUrl: 'app/mn_admin/mn_buckets/mn_buckets.html'
           },
           "details@app.admin.buckets": {
             templateUrl: 'app/mn_admin/mn_buckets/details/mn_buckets_details.html',
-            controller: 'mnBucketsDetailsController as mnBucketsDetailsController'
+            controller: 'mnBucketsDetailsController as bucketsDetailsCtl'
           }
         }
       })
@@ -181,7 +181,7 @@
             array: true
           }
         },
-        controller: "mnIndexesController as mnIndexesController",
+        controller: "mnIndexesController as indexesCtl",
         templateUrl: "app/mn_admin/mn_indexes/mn_indexes.html"
       })
       .state('app.admin.servers', {
@@ -196,20 +196,19 @@
         },
         views: {
           "" : {
-            controller: 'mnServersController as mnServersController',
+            controller: 'mnServersController as serversCtl',
             templateUrl: 'app/mn_admin/mn_servers/mn_servers.html'
           },
           "details@app.admin.servers": {
             templateUrl: 'app/mn_admin/mn_servers/details/mn_servers_list_item_details.html',
-            controller: 'mnServersListItemDetailsController as mnServersListItemDetailsController'
+            controller: 'mnServersListItemDetailsController as serversListItemDetailsCtl'
           }
         }
       })
       .state('app.admin.groups', {
         url: '/groups',
         templateUrl: 'app/mn_admin/mn_groups/mn_groups.html',
-        controller: 'mnGroupsController',
-        controllerAs: 'mnGroupsController',
+        controller: 'mnGroupsController as groupsCtl',
         data: {
           required: {
             admin: true,
@@ -220,23 +219,23 @@
       .state('app.admin.replications', {
         url: '/replications',
         templateUrl: 'app/mn_admin/mn_xdcr/mn_xdcr.html',
-        controller: 'mnXDCRController as mnXDCRController'
+        controller: 'mnXDCRController as xdcrCtl'
       })
       .state('app.admin.logs', {
         url: '/logs',
         abstract: true,
         templateUrl: 'app/mn_admin/mn_logs/mn_logs.html',
-        controller: 'mnLogsController as mnLogsController'
+        controller: 'mnLogsController as logsCtl'
       })
       .state('app.admin.logs.list', {
         url: '',
-        controller: 'mnLogsListController as mnLogsListController',
+        controller: 'mnLogsListController as logsListCtl',
         templateUrl: 'app/mn_admin/mn_logs/list/mn_logs_list.html'
       })
       .state('app.admin.logs.collectInfo', {
         url: '/collectInfo',
         abstract: true,
-        controller: 'mnLogsCollectInfoController as mnLogsCollectInfoController',
+        controller: 'mnLogsCollectInfoController as logsCollectInfoCtl',
         templateUrl: 'app/mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
         data: {
           required: {

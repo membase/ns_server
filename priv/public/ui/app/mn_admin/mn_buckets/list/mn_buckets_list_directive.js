@@ -14,7 +14,7 @@
       isolate: false,
       templateUrl: 'app/mn_admin/mn_buckets/list/mn_buckets_list.html',
       controller: controller,
-      controllerAs: "mnBucketsList",
+      controllerAs: "bucketsListCtl",
       bindToController: true
     };
 

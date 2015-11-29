@@ -3,12 +3,12 @@
     <img class="logo" src="/images/couchbase_2.0.2.png" alt="Couchbase logo">
   </div>
   <div id="init_welcome_form" class="clearfix">
-    <div class="version">{{mnWizardWelcomeController.implementationVersion | mnPrettyVersion}}</div>
+    <div class="version">{{wizardWelcomeCtl.implementationVersion | mnPrettyVersion}}</div>
     <button mn-focus="focusMe" class="setup" data-ui-sref="app.wizard.step1">Setup</button>
   </div>
   <div class="welcome-footer">
     Copyright &copy; 2015 Couchbase, Inc. All Rights Reserved
     <a href="http://www.couchbase.com/contact" id="welcome-footer-contact" target="_blank" tabindex="2">Contact</a>
-    <a ng-click="mnWizardWelcomeController.showAboutDialog()" tabindex="3">About</a>
+    <a ng-click="wizardWelcomeCtl.showAboutDialog()" tabindex="3">About</a>
   </div>
 </div>

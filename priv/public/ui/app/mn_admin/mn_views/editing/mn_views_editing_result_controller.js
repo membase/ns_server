@@ -54,8 +54,8 @@
     }
 
     function generateViewHref() {
-      return $scope.mnViewsEditingController.mnViewsEditingState &&
-            ($scope.mnViewsEditingController.mnViewsEditingState.capiBase +
+      return $scope.viewsEditingCtl.mnViewsEditingState &&
+            ($scope.viewsEditingCtl.mnViewsEditingState.capiBase +
               mnViewsEditingService.buildViewUrl($state.params) +
               mnViewsEditingService.getFilterParamsAsString());
     }
@@ -90,10 +90,10 @@
       $state.go('app.admin.views.editing.result', {
         viewsParams: JSON.stringify(params)
       });
-      $scope.mnViewsEditingController.isFilterOpened = false;
+      $scope.viewsEditingCtl.isFilterOpened = false;
     }
     function onFilterOpen() {
-      $scope.mnViewsEditingController.isFilterOpened = true;
+      $scope.viewsEditingCtl.isFilterOpened = true;
     }
     function activate() {
       mnPromiseHelper(vm, mnViewsEditingService.getViewResult($state.params))

@@ -1,5 +1,5 @@
 <div
-  ng-show="!mnLogsCollectInfoController.mnPoolDefault.value.isROAdminCreds"
+  ng-show="!logsCollectInfoCtl.mnPoolDefault.value.isROAdminCreds"
   id="js_collect_information"
   class="when-roadmin-avoid-me">
   <div class="controls">
@@ -12,14 +12,14 @@
     <a
       id="js_cancel_collect_info"
       class="btn_1"
-      ng-show="mnLogsCollectInfoController.mnLogsCollectInfoState.status === 'running'"
-      ng-click="mnLogsCollectInfoController.stopCollection()"
-      ng-disabled="mnLogsCollectInfoController.disabledStopCollect"><span>Stop Collection</span>
+      ng-show="logsCollectInfoCtl.mnLogsCollectInfoState.status === 'running'"
+      ng-click="logsCollectInfoCtl.stopCollection()"
+      ng-disabled="logsCollectInfoCtl.disabledStopCollect"><span>Stop Collection</span>
     </a>
     <a
       id="js_previous_result_btn"
       class="btn_1"
-      ng-show="mnLogsCollectInfoController.mnLogsCollectInfoState.status !== 'idle' && !('app.admin.logs.collectInfo.result' | isState)"
+      ng-show="logsCollectInfoCtl.mnLogsCollectInfoState.status !== 'idle' && !('app.admin.logs.collectInfo.result' | isState)"
       ui-sref="app.admin.logs.collectInfo.result"><span>Show Collection Progress</span></a>
   </div>
   <div ui-view></div>

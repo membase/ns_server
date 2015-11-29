@@ -200,7 +200,7 @@
     function addServer() {
       $uibModal.open({
         templateUrl: 'app/mn_admin/mn_servers/add_dialog/mn_servers_add_dialog.html',
-        controller: 'mnServersAddDialogController as mnServersAddDialogController',
+        controller: 'mnServersAddDialogController as serversAddDialogCtl',
         resolve: {
           groups: function () {
             return mnPoolDefault.getFresh().then(function (poolDefault) {
@@ -235,7 +235,7 @@
         .onSuccess(function (resp) {
           (resp === 400) && $uibModal.open({
             templateUrl: 'app/mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
-            controller: 'mnServersStopRebalanceDialogController as mnServersStopRebalanceDialogController'
+            controller: 'mnServersStopRebalanceDialogController as serversStopRebalanceDialogCtl'
           }).result.then(function () {
             vm.poller.reload(vm).showSpinner(vm);
           });
@@ -269,7 +269,7 @@
         if (_.some(_.values(warnings))) {
           $uibModal.open({
             templateUrl: 'app/mn_admin/mn_servers/eject_dialog/mn_servers_eject_dialog.html',
-            controller: 'mnServersEjectDialogController as mnServersEjectDialogController',
+            controller: 'mnServersEjectDialogController as serversEjectDialogCtl',
             resolve: {
               warnings: function () {
                 return warnings;
@@ -292,7 +292,7 @@
     function failOverNode(node) {
       $uibModal.open({
         templateUrl: 'app/mn_admin/mn_servers/failover_dialog/mn_servers_failover_dialog.html',
-        controller: 'mnServersFailOverDialogController as mnServersFailOverDialogController',
+        controller: 'mnServersFailOverDialogController as serversFailOverDialogCtl',
         resolve: {
           node: function () {
             return node;

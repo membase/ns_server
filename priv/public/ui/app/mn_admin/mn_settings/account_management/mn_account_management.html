@@ -1,7 +1,7 @@
 <div
-  ng-show="!mnAccountManagementController.mnPoolDefault.value.isROAdminCreds"
+  ng-show="!accountManagementCtl.mnPoolDefault.value.isROAdminCreds"
   class="account_management_container when-roadmin-avoid-me"
-  mn-spinner="mnAccountManagementController.viewLoading">
+  mn-spinner="accountManagementCtl.viewLoading">
   <h2>Read-Only User</h2>
   <div class="sub_section">
     <p>This user will have read-only access and
@@ -10,9 +10,9 @@
         and monitor stats.</p>
   </div>
   <form
-    ng-show="!mnAccountManagementController.roAdminName"
+    ng-show="!accountManagementCtl.roAdminName"
     id="js_account_management_form"
-    ng-submit="mnAccountManagementController.createUser()"
+    ng-submit="accountManagementCtl.createUser()"
     class="account_management_form"
     name="accountManagementForm"
     autocomplete="off">
@@ -21,27 +21,27 @@
         <span>Username:</span>
         <input
           type="text"
-          ng-model="mnAccountManagementController.creds.username"
+          ng-model="accountManagementCtl.creds.username"
           name="username"
           maxlength="24"
           autocomplete="off">
         <i
           class="errors js_error_password"
-          ng-show="mnAccountManagementController.errors.username">
-            {{mnAccountManagementController.errors.username}}
+          ng-show="accountManagementCtl.errors.username">
+            {{accountManagementCtl.errors.username}}
         </i>
       </label>
       <label>
         <span>Password:</span>
         <input
           type="password"
-          ng-model="mnAccountManagementController.creds.password"
+          ng-model="accountManagementCtl.creds.password"
           name="password"
           autocomplete="off">
         <i
           class="errors js_error_password"
-          ng-show="mnAccountManagementController.errors.password">
-            {{mnAccountManagementController.errors.password}}
+          ng-show="accountManagementCtl.errors.password">
+            {{accountManagementCtl.errors.password}}
         </i>
       </label>
       <label>
@@ -49,12 +49,12 @@
         <input
           type="password"
           name="verifyPassword"
-          autocomplete="off"
-          ng-model="mnAccountManagementController.creds.verifyPassword">
+          mn-autocomplete-off
+          ng-model="accountManagementCtl.creds.verifyPassword">
         <i
           class="errors js_error_verifyPassword casper_create_roadmin_with_errors"
-          ng-show="mnAccountManagementController.errors.verifyPassword">
-            {{mnAccountManagementController.errors.verifyPassword}}
+          ng-show="accountManagementCtl.errors.verifyPassword">
+            {{accountManagementCtl.errors.verifyPassword}}
         </i>
       </label>
     </div>
@@ -64,20 +64,20 @@
   </form>
   <div
     id="js_account_delete"
-    ng-show="mnAccountManagementController.roAdminName"
+    ng-show="accountManagementCtl.roAdminName"
     class="account_delete sub_section">
-    <p id="js_user_created">User: <span class="js_roadmin_name" style="color:#222;">{{mnAccountManagementController.roAdminName}}</span> created successfully.</p>
+    <p id="js_user_created">User: <span class="js_roadmin_name" style="color:#222;">{{accountManagementCtl.roAdminName}}</span> created successfully.</p>
     <div>
       <span
         class="list_button casper_settings_account_reset_popup"
         id="js_reset_acc_btn"
-        ng-click="mnAccountManagementController.resetUserPassword()">
+        ng-click="accountManagementCtl.resetUserPassword()">
           <span>Reset Read-Only user Password</span>
       </span>
       <span
         class="list_button casper_settings_account_delete_popup"
         id="js_delete_acc_btn"
-        ng-click="mnAccountManagementController.deleteUser()">
+        ng-click="accountManagementCtl.deleteUser()">
           <span>Delete Read-Only User</span>
       </span>
     </div>

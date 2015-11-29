@@ -21,7 +21,7 @@
         .applyToScope("state");
 
       if (!vm.mnPoolDefault.value.isROAdminCreds) {
-        $scope.$watch('mnSettingsAuditController.state', watchOnState, true);
+        $scope.$watch('settingsAuditCtl.state', watchOnState, true);
       }
     }
     function watchOnState(state) {

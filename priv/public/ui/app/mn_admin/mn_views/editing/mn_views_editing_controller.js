@@ -83,7 +83,7 @@
     function saveAs(e) {
       e.stopImmediatePropagation();
       $uibModal.open({
-        controller: 'mnViewsCreateDialogController as mnViewsCreateDialogController',
+        controller: 'mnViewsCreateDialogController as viewsCreateDialogCtl',
         templateUrl: 'app/mn_admin/mn_views/create_dialog/mn_views_create_dialog.html',
         scope: $scope,
         resolve: {

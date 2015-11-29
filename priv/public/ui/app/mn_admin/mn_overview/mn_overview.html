@@ -7,17 +7,17 @@
       cluster; displaying cached information!</span>Cluster
     </div>
     <div class="section" id="overview_clusters_block">
-      <div class="item ram-item" mn-spinner="!mnOverviewController.mnOverviewConfig.ramOverviewConfig">
+      <div class="item ram-item" mn-spinner="!overviewCtl.mnOverviewConfig.ramOverviewConfig">
         <div class="label">
           <strong>RAM Overview</strong>
         </div>
-        <div class="line_cnt usage-block usage_biggest" mn-bar-usage base-info="mnOverviewController.mnOverviewConfig.ramOverviewConfig"></div>
+        <div class="line_cnt usage-block usage_biggest" mn-bar-usage base-info="overviewCtl.mnOverviewConfig.ramOverviewConfig"></div>
       </div>
-      <div class="item disk-item" mn-spinner="!mnOverviewController.mnOverviewConfig.hddOverviewConfig">
+      <div class="item disk-item" mn-spinner="!overviewCtl.mnOverviewConfig.hddOverviewConfig">
         <div class="label">
           <strong>Disk Overview</strong>
         </div>
-        <div class="line_cnt usage-block usage_biggest" mn-bar-usage base-info="mnOverviewController.mnOverviewConfig.hddOverviewConfig"></div>
+        <div class="line_cnt usage-block usage_biggest" mn-bar-usage base-info="overviewCtl.mnOverviewConfig.hddOverviewConfig"></div>
       </div>
     </div>
   </div>
@@ -26,17 +26,17 @@
     <div class="hdr">
       <span class="staleness-notice">Difficulties communicating
       with the cluster; displaying cached information!</span>
-      Buckets <span>(<span class="buckets-number">{{mnOverviewController.buckets.length || '0'}}</span> active)</span>
+      Buckets <span>(<span class="buckets-number">{{overviewCtl.buckets.length || '0'}}</span> active)</span>
     </div>
     <div class="section">
       <div class="item">
-        <div class="graph_main" mn-spinner="!mnOverviewController.mnOverviewStats.opsGraphConfig" style="margin: 0;">
+        <div class="graph_main" mn-spinner="!overviewCtl.mnOverviewStats.opsGraphConfig" style="margin: 0;">
           <span class="graph_info_label">Operations per second</span>
-          <div id="overview_ops_graph" class="graph" mn-plot mn-plot-config="mnOverviewController.mnOverviewStats.opsGraphConfig"></div>
+          <div id="overview_ops_graph" class="graph" mn-plot mn-plot-config="overviewCtl.mnOverviewStats.opsGraphConfig"></div>
         </div>
-        <div class="graph_main" mn-spinner="!mnOverviewController.mnOverviewStats.readsGraphConfig">
+        <div class="graph_main" mn-spinner="!overviewCtl.mnOverviewStats.readsGraphConfig">
           <span class="graph_info_label">Disk fetches per second</span>
-          <div id="overview_reads_graph" class="graph" mn-plot mn-plot-config="mnOverviewController.mnOverviewStats.readsGraphConfig"></div>
+          <div id="overview_reads_graph" class="graph" mn-plot mn-plot-config="overviewCtl.mnOverviewStats.readsGraphConfig"></div>
         </div>
         <div class="no_stats_marker">
           <span class="with_buckets">Waiting for samples...</span>
@@ -54,29 +54,29 @@
     <div class="section" id="overview_servers_block">
       <div class="item ovf">
         <div class="actservers">
-          <h3>Active Servers: <span id="active-servers-count">{{mnOverviewController.nodes.active.length || '0'}}</span></h3>
+          <h3>Active Servers: <span id="active-servers-count">{{overviewCtl.nodes.active.length || '0'}}</span></h3>
         </div>
         <ul>
-          <li class="fail" ng-class="{'is-zero':!mnOverviewController.nodes.failedOver.length}">
+          <li class="fail" ng-class="{'is-zero':!overviewCtl.nodes.failedOver.length}">
             <span class="when-non-zero">
-              <a ui-sref="app.admin.servers({list: 'pending'})">Servers Failed Over: <span class="failed-over-count">{{mnOverviewController.nodes.failedOver.length}}</span></a>
+              <a ui-sref="app.admin.servers({list: 'pending'})">Servers Failed Over: <span class="failed-over-count">{{overviewCtl.nodes.failedOver.length}}</span></a>
               <span class="badge">
-                <span class="failed-over-count">{{mnOverviewController.nodes.failedOver.length}}</span>
+                <span class="failed-over-count">{{overviewCtl.nodes.failedOver.length}}</span>
               </span>
             </span>
             <span class="when-zero">Servers Failed Over: 0</span>
           </li>
-          <li class="down" ng-class="{'is-zero':!mnOverviewController.nodes.down.length}">
+          <li class="down" ng-class="{'is-zero':!overviewCtl.nodes.down.length}">
             <span class="when-non-zero">
-              <a  ui-sref="app.admin.servers">Servers Down: <span class="down-count">{{mnOverviewController.nodes.down.length}}</span></a>
-              <span class="badge"><span class="down-count">{{mnOverviewController.nodes.down.length}}</span></span>
+              <a  ui-sref="app.admin.servers">Servers Down: <span class="down-count">{{overviewCtl.nodes.down.length}}</span></a>
+              <span class="badge"><span class="down-count">{{overviewCtl.nodes.down.length}}</span></span>
             </span>
             <span class="when-zero">Servers Down: 0</span>
           </li>
-          <li class="pending" ng-class="{'is-zero':!mnOverviewController.nodes.pending.length}">
+          <li class="pending" ng-class="{'is-zero':!overviewCtl.nodes.pending.length}">
             <span class="when-non-zero">
-              <a ui-sref="app.admin.servers({list: 'pending'})">Servers Pending Rebalance: <span class="pending-count">{{mnOverviewController.nodes.pending.length}}</span></a>
-              <span class="badge"><span class="pending-count">{{mnOverviewController.nodes.pending.length}}</span></span>
+              <a ui-sref="app.admin.servers({list: 'pending'})">Servers Pending Rebalance: <span class="pending-count">{{overviewCtl.nodes.pending.length}}</span></a>
+              <span class="badge"><span class="pending-count">{{overviewCtl.nodes.pending.length}}</span></span>
             </span>
             <span class="when-zero">Servers Pending Rebalance: 0</span>
           </li>

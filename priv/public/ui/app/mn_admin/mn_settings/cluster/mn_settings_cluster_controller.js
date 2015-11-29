@@ -22,7 +22,7 @@
       return;
     }
 
-    $scope.$watch('mnSettingsClusterController.state.memoryQuotaConfig', _.debounce(function (memoryQuotaConfig) {
+    $scope.$watch('settingsClusterCtl.state.memoryQuotaConfig', _.debounce(function (memoryQuotaConfig) {
       if (!memoryQuotaConfig) {
         return;
       }
@@ -32,7 +32,7 @@
         .cancelOnScopeDestroy($scope);
     }, 500), true);
 
-    $scope.$watch('mnSettingsClusterController.state.indexSettings', _.debounce(function (indexSettings) {
+    $scope.$watch('settingsClusterCtl.state.indexSettings', _.debounce(function (indexSettings) {
       if (!indexSettings) {
         return;
       }

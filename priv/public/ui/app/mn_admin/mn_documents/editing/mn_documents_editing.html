@@ -1,9 +1,9 @@
 
   <div id="documents_details" class="documents_details">
-    <div class="warning_message documents_notice" ng-show="mnDocumentsEditingController.mnDocumentsEditingState.errors">
-      Error: {{mnDocumentsEditingController.mnDocumentsEditingState.errors.reason}} ({{mnDocumentsEditingController.mnDocumentsEditingState.errors.error }})
+    <div class="warning_message documents_notice" ng-show="documentsEditingCtl.mnDocumentsEditingState.errors">
+      Error: {{documentsEditingCtl.mnDocumentsEditingState.errors.reason}} ({{documentsEditingCtl.mnDocumentsEditingState.errors.error }})
     </div>
-    <div class="warning_message documents_notice" ng-show="mnDocumentsEditingController.areThereWarnings()" ng-messages="mnDocumentsEditingController.mnDocumentsEditingState.editorWarnings">
+    <div class="warning_message documents_notice" ng-show="documentsEditingCtl.areThereWarnings()" ng-messages="documentsEditingCtl.mnDocumentsEditingState.editorWarnings">
       <div ng-message="documentLimitError">Warning: Editing of document with size more than 2.5kb is not allowed</div>
       <div ng-message="shouldNotBeNull">Warning: JSON object cannot be null</div>
       <div ng-message="shouldBeAnObject">Warning: JSON should represent an object</div>
@@ -13,35 +13,35 @@
     </div>
     <div class="shadow_box">
       <div class="header_2 servers_header">
-        <div class="docs_title ellipsis">{{mnDocumentsEditingController.mnDocumentsEditingState.title}}</div>
+        <div class="docs_title ellipsis">{{documentsEditingCtl.mnDocumentsEditingState.title}}</div>
         <div class="editing_ctrls when-roadmin-hide-me">
           <a
             class="btn_1"
-            ng-class="{dynamic_disabled: mnDocumentsEditingController.isDeleteDisabled()}"
-            ng-click="!mnDocumentsEditingController.isDeleteDisabled() && mnDocumentsEditingController.deleteDocument()"
+            ng-class="{dynamic_disabled: documentsEditingCtl.isDeleteDisabled()}"
+            ng-click="!documentsEditingCtl.isDeleteDisabled() && documentsEditingCtl.deleteDocument()"
             id="doc_delete"><span>Delete</span></a>
           <a
             class="btn_1"
-            ng-class="{dynamic_disabled: mnDocumentsEditingController.isSaveAsDisabled()}"
-            ng-click="!mnDocumentsEditingController.isSaveAsDisabled() && mnDocumentsEditingController.saveAsDialog()"
+            ng-class="{dynamic_disabled: documentsEditingCtl.isSaveAsDisabled()}"
+            ng-click="!documentsEditingCtl.isSaveAsDisabled() && documentsEditingCtl.saveAsDialog()"
             id="doc_saveas"><span>Save As...</span></a>
           <a
             class="btn_1 btn_save"
-            ng-class="{dynamic_disabled: mnDocumentsEditingController.isSaveDisabled()}"
+            ng-class="{dynamic_disabled: documentsEditingCtl.isSaveDisabled()}"
             id="doc_save"
-            ng-click="!mnDocumentsEditingController.isSaveDisabled() && mnDocumentsEditingController.save()"><span>Save</span></a>
+            ng-click="!documentsEditingCtl.isSaveDisabled() && documentsEditingCtl.save()"><span>Save</span></a>
           <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
         </div>
       </div>
-      <div mn-spinner="mnDocumentsEditingController.viewLoading || !mnDocumentsEditingController.mnDocumentsEditingState">
+      <div mn-spinner="documentsEditingCtl.viewLoading || !documentsEditingCtl.mnDocumentsEditingState">
         <div
           id="json_doc"
           spellcheck="false"
           cols="20"
           rows="11"
-          ng-model="mnDocumentsEditingController.mnDocumentsEditingState.doc"
-          ui-codemirror="mnDocumentsEditingController.editorOptions"
-          ng-class="{read_only: mnDocumentsEditingController.isEditorDisabled()}"
+          ng-model="documentsEditingCtl.mnDocumentsEditingState.doc"
+          ui-codemirror="documentsEditingCtl.editorOptions"
+          ng-class="{read_only: documentsEditingCtl.isEditorDisabled()}"
           ></div>
       </div>
     </div>

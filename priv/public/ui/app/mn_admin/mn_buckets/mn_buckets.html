@@ -1,36 +1,36 @@
 <divv id="js_buckets" class="buckets">
   <h1>Data Buckets</h1>
-  <div class="warning_message" ng-show="mnBucketsController.areThereCreationWarnings()">
-    <span ng-show="mnBucketsController.isBucketCreationWarning()">Attention: <span class="warning-text">Cannot create buckets while rebalance is running.</span></span>
-    <span ng-show="mnBucketsController.isMaxBucketCountWarning()">Attention: <span class="warning-text">Maximum number of buckets has been reached. <br>For optimal performance, no more than {{maxBucketCount}} buckets are allowed.</span></span>
+  <div class="warning_message" ng-show="bucketsCtl.areThereCreationWarnings()">
+    <span ng-show="bucketsCtl.isBucketCreationWarning()">Attention: <span class="warning-text">Cannot create buckets while rebalance is running.</span></span>
+    <span ng-show="bucketsCtl.isMaxBucketCountWarning()">Attention: <span class="warning-text">Maximum number of buckets has been reached. <br>For optimal performance, no more than {{maxBucketCount}} buckets are allowed.</span></span>
   </div>
   <div class="shadow_box" id="couchbase_buckets">
     <div id="manage_buckets_top_bar" class="header_2">
       <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
       <div class="right" style="overflow:hidden;">
         <button
-          ng-hide="mnBucketsController.isCreateNewDataBucketDisabled()"
+          ng-hide="bucketsCtl.isCreateNewDataBucketDisabled()"
           class="btn_1 create-bucket-button casper_buckets_new_data_bucket"
           style="float:right;"
-          ng-click="mnBucketsController.addBucket()">
+          ng-click="bucketsCtl.addBucket()">
             <span>Create New Data Bucket</span>
         </a>
         <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>
-    <div id="bucket_list_container" mn-spinner="!mnBucketsController.mnBucketsState" min-height="91px">
-      <div mn-buckets-list buckets="mnBucketsController.mnBucketsState.byType.membase"></div>
+    <div id="bucket_list_container" mn-spinner="!bucketsCtl.mnBucketsState" min-height="91px">
+      <div mn-buckets-list buckets="bucketsCtl.mnBucketsState.byType.membase"></div>
     </div>
   </div>
-  <div class="shadow_box" id="memcached_buckets" ng-if="mnBucketsController.mnBucketsState.byType.memcached.length">
+  <div class="shadow_box" id="memcached_buckets" ng-if="bucketsCtl.mnBucketsState.byType.memcached.length">
     <div id="manage_buckets_top_bar" class="header_2">
       <h4 style="float:left">Memcached Buckets</h4>
       <div class="right">
         <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>
-    <div id="memcached_bucket_list_container" mn-spinner="!mnBucketsController.mnBucketsState" min-height="91px">
-      <div mn-buckets-list buckets="mnBucketsController.mnBucketsState.byType.memcached"></div>
+    <div id="memcached_bucket_list_container" mn-spinner="!bucketsCtl.mnBucketsState" min-height="91px">
+      <div mn-buckets-list buckets="bucketsCtl.mnBucketsState.byType.memcached"></div>
     </div>
   </div>
 </div>

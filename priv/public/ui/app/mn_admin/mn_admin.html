@@ -1,12 +1,12 @@
 <div id="container">
-  <div mn-launchpad launchpad-source="mnAdminController.launchpadSource" launchpad-id="mnAdminController.launchpadId"></div>
+  <div mn-launchpad launchpad-source="adminCtl.launchpadSource" launchpad-id="adminCtl.launchpadId"></div>
   <div class="page-header">
     <div class="cnt_holder main_holder">
       <div class="topper_nav">
         <span class="only-when-below-20" style="display:none;">
           NOTE: need all 2.0 nodes to enable 2.0-only features<b>&bull;</b>
         </span>
-        <span id="edit-internal-settings-link" class="when-roadmin-avoid-me" ng-hide="mnAdminController.poolDefault.isROAdminCreds" style="display:none;">
+        <span id="edit-internal-settings-link" class="when-roadmin-avoid-me" ng-hide="adminCtl.poolDefault.isROAdminCreds" style="display:none;">
           <a onclick="runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b>
         </span>
         <a href="/classic-index.html" target="_self">
@@ -17,32 +17,32 @@
           Documentation
         </a>
         <b>&bull;</b>
-        <a href="{{mnAdminController.poolDefault.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
+        <a href="{{adminCtl.poolDefault.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
           Support
         </a>
         <b>&bull;</b>
-        <a ng-click="mnAdminController.showAboutDialog()">
+        <a ng-click="adminCtl.showAboutDialog()">
           About
         </a>
-        <i class="sign-out-link"><b>&bull;</b> <a ng-click="mnAdminController.logout()">Sign Out</a></i>
+        <i class="sign-out-link"><b>&bull;</b> <a ng-click="adminCtl.logout()">Sign Out</a></i>
       </div>
       <div class="log_wrap">
         <a href="/index.html"></a>
       </div>
-      <div class="tab_name ellipsis" id="js_tab_name" title="{{mnAdminController.tabName}}">{{mnAdminController.tabName}}</div>
+      <div class="tab_name ellipsis" id="js_tab_name" title="{{adminCtl.tabName}}">{{adminCtl.tabName}}</div>
       <div
         id="global_progress"
         ng-class="{
-          'disable_toggle': !mnAdminController.areThereMoreThenTwoRunningTasks(),
-          'closed': mnAdminController.isProgressBarClosed
+          'disable_toggle': !adminCtl.areThereMoreThenTwoRunningTasks(),
+          'closed': adminCtl.isProgressBarClosed
         }"
         class="closed"
-        ng-show="mnAdminController.filterTasks(mnAdminController.tasks.running).length">
+        ng-show="adminCtl.filterTasks(adminCtl.tasks.running).length">
           <i
             class="toggle"
-            ng-click="mnAdminController.areThereMoreThenTwoRunningTasks() && mnAdminController.toggleProgressBar()">i</i>
+            ng-click="adminCtl.areThereMoreThenTwoRunningTasks() && adminCtl.toggleProgressBar()">i</i>
           <ul id="global_progress_container">
-            <li ng-repeat="task in mnAdminController.filterTasks(mnAdminController.tasks.running)" class="clearfix">
+            <li ng-repeat="task in adminCtl.filterTasks(adminCtl.tasks.running)" class="clearfix">
               <div class="usage_smallest" ng-show="task.type !== 'loadingSampleBucket' && task.type !== 'orphanBucket'">
                 <div class="used" style="width: {{task.progress}}%"></div>
               </div>
@@ -78,17 +78,17 @@
         </li>
         <li class="line" ng-class="{currentNav: ('app.admin.settings' | includedByState)}" id="nav_settings_container">
           <a href="#?section=settings" ui-sref="app.admin.settings.cluster" class="switch_settings">Settings
-            <span ng-show="mnAdminController.updates.sendStats && !!mnAdminController.updates.newVersion" class="badge notify"><span>!</span></span>
+            <span ng-show="adminCtl.updates.sendStats && !!adminCtl.updates.newVersion" class="badge notify"><span>!</span></span>
           </a>
         </li>
-        <li ng-repeat="config in mnAdminController.pluggableUiConfigs | filter:{plugIn: 'adminTab'}" class="line" ui-sref-active="currentNav">
+        <li ng-repeat="config in adminCtl.pluggableUiConfigs | filter:{plugIn: 'adminTab'}" class="line" ui-sref-active="currentNav">
           <a ui-sref="{{ config.state }}">{{ config.name }}</a>
         </li>
       </ul>
     </div>
   </div>
   <div class="global_alerts_container">
-    <div uib-alert ng-repeat="alert in mnAdminController.alerts" type="{{alert.type}}" close="mnAdminController.closeAlert($index)" dismiss-on-timeout="{{alert.timeout}}">{{alert.msg}}</div>
+    <div uib-alert ng-repeat="alert in adminCtl.alerts" type="{{alert.type}}" close="adminCtl.closeAlert($index)" dismiss-on-timeout="{{alert.timeout}}">{{alert.msg}}</div>
   </div>
   <div id="mainContainer" class="main_holder">
     <div id="mainPanel" class="mainPanel" ui-view autoscroll="false"></div>

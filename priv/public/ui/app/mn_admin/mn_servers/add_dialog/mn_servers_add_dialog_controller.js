@@ -65,7 +65,7 @@
               if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.addNodeConfig.services.model, 'index')) {
                 return $uibModal.open({
                   templateUrl: 'app/mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
-                  controller: 'mnServersMemoryQuotaDialogController as mnServersMemoryQuotaDialogController',
+                  controller: 'mnServersMemoryQuotaDialogController as serversMemoryQuotaDialogCtl',
                   resolve: {
                     memoryQuotaConfig: function (mnMemoryQuotaService) {
                       return mnMemoryQuotaService.memoryQuotaConfig(vm.addNodeConfig.services.model.kv)

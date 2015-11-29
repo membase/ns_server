@@ -3,30 +3,30 @@
     <h2>Filter Results</h2>
     <div
       class="filters_container"
-      mn-filter="mnViewsEditingResultController.filterParams"
-      items="mnViewsEditingResultController.filterItems"
-      disabled="mnViewsEditingResultController.isEmptyState()"
-      on-close="mnViewsEditingResultController.onFilterClose(params)"
-      on-reset="mnViewsEditingResultController.onFilterReset()"
-      on-open="mnViewsEditingResultController.onFilterOpen()">
+      mn-filter="viewsEditingResultCtl.filterParams"
+      items="viewsEditingResultCtl.filterItems"
+      disabled="viewsEditingResultCtl.isEmptyState()"
+      on-close="viewsEditingResultCtl.onFilterClose(params)"
+      on-reset="viewsEditingResultCtl.onFilterReset()"
+      on-open="viewsEditingResultCtl.onFilterOpen()">
     </div>
-    <a href="{{mnViewsEditingResultController.generateViewHref()}}" target="_blank">{{mnViewsEditingResultController.getFilterParamsAsString()}}</a>
+    <a href="{{viewsEditingResultCtl.generateViewHref()}}" target="_blank">{{viewsEditingResultCtl.getFilterParamsAsString()}}</a>
   </div>
     <span class="ic_prev_next">
       <a
         class="arr_prev"
-        ng-class="{dynamic_disabled: mnViewsEditingResultController.isPrevDisabled()}"
-        ng-click="!mnViewsEditingResultController.isPrevDisabled() && mnViewsEditingResultController.prevPage()"
+        ng-class="{dynamic_disabled: viewsEditingResultCtl.isPrevDisabled()}"
+        ng-click="!viewsEditingResultCtl.isPrevDisabled() && viewsEditingResultCtl.prevPage()"
         ></a>
       <a
         class="arr_next"
-        ng-class="{dynamic_disabled: mnViewsEditingResultController.isNextDisabled()}"
-        ng-click="!mnViewsEditingResultController.isNextDisabled() && mnViewsEditingResultController.nextPage()"></a>
+        ng-class="{dynamic_disabled: viewsEditingResultCtl.isNextDisabled()}"
+        ng-click="!viewsEditingResultCtl.isNextDisabled() && viewsEditingResultCtl.nextPage()"></a>
     </span>
     <div class="clr"></div>
     <div class="shadow_box">
       <div style="height:38px;">
-        <ul class="tabs dev-subset-switcher when-in-dev" ng-show="mnViewsEditingController.mnViewsEditingState.isDevelopmentDocument">
+        <ul class="tabs dev-subset-switcher when-in-dev" ng-show="viewsEditingCtl.mnViewsEditingState.isDevelopmentDocument">
           <li class="tab_left">
             <a
               class="subset_dev"
@@ -39,52 +39,52 @@
               ui-sref="app.admin.views.editing.result({full_set: 'true'})">Full Cluster Data Set</a></li>
         </ul>
       </div>
-      <div id="view_results_container" class="content c_result" mn-spinner="mnViewsEditingResultController.viewLoading">
-        <div style="height: 373px;" ng-show="mnViewsEditingResultController.viewLoading"></div>
-        <table class="list align_text" style="width:100%" ng-show="mnViewsEditingResultController.errors">
+      <div id="view_results_container" class="content c_result" mn-spinner="viewsEditingResultCtl.viewLoading">
+        <div style="height: 373px;" ng-show="viewsEditingResultCtl.viewLoading"></div>
+        <table class="list align_text" style="width:100%" ng-show="viewsEditingResultCtl.errors">
           <tr>
             <th class="keycol">Errors</th>
             <th></th>
           </tr>
           <tbody class="list_errors">
             <tr>
-              <td colspan="{{ !mnViewsEditingResultController.errors.showBtn ? 2 : 1 }}">
-                <div><span class="label">from:</span> <span>{{ mnViewsEditingController.mnViewsEditingState.capiBase + mnViewsEditingResultController.errors.from }}</span></div>
-                <div><span class="label">reason:</span> <span>{{ mnViewsEditingResultController.errors.error }} {{ mnViewsEditingResultController.errors.reason ? "(" + mnViewsEditingResultController.errors.reason + ")" : "" }}</span></div>
+              <td colspan="{{ !viewsEditingResultCtl.errors.showBtn ? 2 : 1 }}">
+                <div><span class="label">from:</span> <span>{{ viewsEditingCtl.mnViewsEditingState.capiBase + viewsEditingResultCtl.errors.from }}</span></div>
+                <div><span class="label">reason:</span> <span>{{ viewsEditingResultCtl.errors.error }} {{ viewsEditingResultCtl.errors.reason ? "(" + viewsEditingResultCtl.errors.reason + ")" : "" }}</span></div>
               </td>
               <td ng-if="r.showBtn">
-                <a class="list_button buttontn_remove" ng-click="mnViewsEditingResultController.activate()"><span>
+                <a class="list_button buttontn_remove" ng-click="viewsEditingResultCtl.activate()"><span>
                   Run Query Again
                 </span></a>
               </td>
             </tr>
           </tbody>
         </table>
-        <table ng-show="!mnViewsEditingResultController.errors && !mnViewsEditingResultController.viewLoading" class="list align_text" style="width:100%" >
+        <table ng-show="!viewsEditingResultCtl.errors && !viewsEditingResultCtl.viewLoading" class="list align_text" style="width:100%" >
           <tr>
             <th class="keycol">Key</th>
-            <th class="keycol" ng-if="mnViewsEditingController.isSpatial">Geometry</th>
+            <th class="keycol" ng-if="viewsEditingCtl.isSpatial">Geometry</th>
             <th>Value</th>
           </tr>
-          <tbody ng-if="!mnViewsEditingResultController.mnViewsResultState.rows.lackOfValue && mnViewsEditingResultController.mnViewsResultState.rows.length" ng-repeat="r in mnViewsEditingResultController.mnViewsResultState.rows">
+          <tbody ng-if="!viewsEditingResultCtl.mnViewsResultState.rows.lackOfValue && viewsEditingResultCtl.mnViewsResultState.rows.length" ng-repeat="r in viewsEditingResultCtl.mnViewsResultState.rows">
             <tr>
               <td class="keycol">
                 <div class="key ellipsis" title="{{ r.key | json }}">{{ r.key | json}}</div>
-                <a ng-show="r.id !== 'undefined'" class="id ellipsis sample-document-link" ng-click="mnViewsEditingResultController.loadSampleDocument(r.id)">{{ r.id }}</a>
+                <a ng-show="r.id !== 'undefined'" class="id ellipsis sample-document-link" ng-click="viewsEditingResultCtl.loadSampleDocument(r.id)">{{ r.id }}</a>
                 <div ng-show="r.id === undefined" class="id ellipsis">undefined</div>
               </td>
-              <td ng-if="mnViewsEditingController.isSpatial">{{r.geometry === undefined ? 'undfined' : (r.geometry | json)}}</td>
+              <td ng-if="viewsEditingCtl.isSpatial">{{r.geometry === undefined ? 'undfined' : (r.geometry | json)}}</td>
               <td class="ellipsis"><pre class="break_all">{{r.value === undefined ? 'undfined' : (r.value | json)}}</pre></td>
             </tr>
           </tbody>
-          <tbody ng-show="!mnViewsEditingResultController.mnViewsResultState">
+          <tbody ng-show="!viewsEditingResultCtl.mnViewsResultState">
             <tr>
-              <td colspan="{{mnViewsEditingController.isSpatial ? 3 : 2}}" style="text-align:center">To see the results of this view, click "Show Results" above.</td>
+              <td colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}" style="text-align:center">To see the results of this view, click "Show Results" above.</td>
             </tr>
           </tbody>
           <tbody>
-            <tr ng-show="mnViewsEditingResultController.mnViewsResultState && !mnViewsEditingResultController.mnViewsResultState.rows.length && !mnViewsEditingResultController.errors">
-              <td colspan="{{mnViewsEditingController.isSpatial ? 3 : 2}}" style="text-align:center">The results of this view is empty.</td>
+            <tr ng-show="viewsEditingResultCtl.mnViewsResultState && !viewsEditingResultCtl.mnViewsResultState.rows.length && !viewsEditingResultCtl.errors">
+              <td colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}" style="text-align:center">The results of this view is empty.</td>
             </tr>
           </tbody>
         </table>

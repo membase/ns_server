@@ -1,13 +1,13 @@
 <div class="dialog join_cluster" id="create_document_dialog" title="Create Document" style="width:400px">
   <h1>Create Document</h1>
   <div mn-spinner="viewLoading">
-    <span class="warning pat_10" ng-show="mnDocumentsCreateDialogController.error">{{mnDocumentsCreateDialogController.error}}</span>
-    <form ng-submit="mnDocumentsCreateDialogController.onSubmit()">
+    <span class="warning pat_10" ng-show="documentsCreateDialogCtl.error">{{documentsCreateDialogCtl.error}}</span>
+    <form ng-submit="documentsCreateDialogCtl.onSubmit()">
       <fieldset style="padding-top:10px">
         <ul>
           <li>
             <label for="new_doc_id" style="width:auto">Document ID:</label>
-            <input type="text" name="id" id="new_doc_id" ng-model="mnDocumentsCreateDialogController.documentId" />
+            <input type="text" name="id" id="new_doc_id" ng-model="documentsCreateDialogCtl.documentId" />
           </li>
         </ul>
       </fieldset>
