@@ -1578,3 +1578,7 @@ input[type=number].size {width:4em;}
 .indexes_list_container thead th i {margin-right: 5px; display: inline-block; width: 0; height: 0; line-height: 0; border-style: solid; border-width: 0 4px 6px; border-color: transparent transparent #ced5d9 transparent;}
 .indexes_list_container thead th.dynamic_active i {border-bottom-color: #4d4d4d;}
 .indexes_list_container.dynamic_descending thead th.dynamic_active i {border-bottom-color: transparent; border-top-color: #4d4d4d; border-width: 6px 4px 0;}
+
+.ui-select-container .ui-select-match {white-space: nowrap;}
+.ui-select-container .ui-select-choices-row.disabled {background: #fff; cursor: default; text-decoration: none;}
+.ui-select-container .ui-select-choices-row.disabled a {color: #666; font-weight: bold; cursor: default; text-decoration: none;}
