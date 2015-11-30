@@ -305,7 +305,7 @@ loop_inner(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                          ["pools", "default", "serverGroups"] ->
                              {auth_ro, fun menelaus_web_groups:handle_server_groups/1};
                          ["pools", "default", "certificate"] ->
-                             {done, handle_cluster_certificate(Req)};
+                             {done, menelaus_web_cert:handle_cluster_certificate(Req)};
                          ["pools", "default", "settings", "memcached", "global"] ->
                              {auth, fun menelaus_web_mcd_settings:handle_global_get/1};
                          ["pools", "default", "settings", "memcached", "effective", Node] ->
@@ -500,7 +500,7 @@ loop_inner(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                          ["controller", "resetAlerts"] ->
                              {auth, fun handle_reset_alerts/1};
                          ["controller", "regenerateCertificate"] ->
-                             {auth, fun handle_regenerate_certificate/1};
+                             {auth, fun menelaus_web_cert:handle_regenerate_certificate/1};
                          ["controller", "startLogsCollection"] ->
                              {auth, fun menelaus_web_cluster_logs:handle_start_collect_logs/1};
                          ["controller", "cancelLogsCollection"] ->
@@ -2613,21 +2613,6 @@ handle_node_self_xdcr_ssl_ports(Req) ->
                                       {httpsMgmt, RESTSSL},
                                       {httpsCAPI, CapiSSL}]})
     end.
-
-handle_cluster_certificate(Req) ->
-    assert_is_enterprise(),
-
-    {Cert, _} = ns_server_cert:cluster_cert_and_pkey_pem(),
-    reply_ok(Req, "text/plain", Cert).
-
-handle_regenerate_certificate(Req) ->
-    assert_is_enterprise(),
-
-    ns_server_cert:generate_and_set_cert_and_pkey(),
-    ns_ssl_services_setup:sync_local_cert_and_pkey_change(),
-    ?log_info("Completed certificate regeneration"),
-    ns_audit:regenerate_certificate(Req),
-    handle_cluster_certificate(Req).
 
 -spec handle_node_settings_post(string() | atom(), any()) -> no_return().
 handle_node_settings_post("self", Req)            -> handle_node_settings_post(node(), Req);
