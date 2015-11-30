@@ -277,9 +277,12 @@ handle_call({uninhibit_view_compaction, BinBucketName, MRef}, From,
                              #compaction_state{compactor_pid = CompactorPid,
                                                scheduler = Scheduler} = CompactionState
                         } = State) ->
+    erlang:demonitor(MRef, [flush]),
+
     case ddoc_names(BinBucketName) of
         [] ->
-            {reply, ok, State#state{view_compaction_inhibited_bucket = undefined,
+            {reply, ok, State#state{view_compaction_inhibited_ref = undefined,
+                                    view_compaction_inhibited_bucket = undefined,
                                     view_compaction_uninhibit_requested_waiter = undefined,
                                     view_compaction_uninhibit_requested = false,
                                     view_compaction_uninhibit_started = false}};
@@ -299,7 +302,7 @@ handle_call({uninhibit_view_compaction, BinBucketName, MRef}, From,
                     _ ->
                         State#state{view_compaction_uninhibit_started = false}
                 end,
-            erlang:demonitor(State#state.view_compaction_inhibited_ref),
+
             {noreply, NewState#state{view_compaction_uninhibit_requested_waiter = From,
                                      view_compaction_inhibited_ref = undefined,
                                      view_compaction_uninhibit_requested = true,
