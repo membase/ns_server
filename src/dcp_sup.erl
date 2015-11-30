@@ -71,11 +71,14 @@ manage_replicators(Bucket, NeededNodes) ->
 nuke(Bucket) ->
     Children = try get_children(Bucket) of
                    RawKids ->
-                       [Child || {_, Child, _, _} <- RawKids]
+                       [{ProducerNode, Pid} || {ProducerNode, Pid, _, _} <- RawKids]
                catch exit:{noproc, _} ->
                        []
                end,
-    misc:terminate_and_wait({shutdown, nuke}, Children),
+
+    ?log_debug("Nuking DCP replicators for bucket ~p:~n~p",
+               [Bucket, Children]),
+    misc:terminate_and_wait({shutdown, nuke}, [Pid || {_, Pid} <- Children]),
 
     Connections = dcp_replicator:get_connections(Bucket),
     misc:parallel_map(
