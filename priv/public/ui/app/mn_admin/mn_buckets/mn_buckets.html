@@ -18,19 +18,19 @@
         <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>
-    <div id="bucket_list_container" mn-spinner="!bucketsCtl.mnBucketsState" min-height="91px">
-      <div mn-buckets-list buckets="bucketsCtl.mnBucketsState.byType.membase"></div>
+    <div id="bucket_list_container" mn-spinner="!bucketsCtl.state" min-height="91px">
+      <div mn-buckets-list buckets="bucketsCtl.state.byType.membase"></div>
     </div>
   </div>
-  <div class="shadow_box" id="memcached_buckets" ng-if="bucketsCtl.mnBucketsState.byType.memcached.length">
+  <div class="shadow_box" id="memcached_buckets" ng-if="bucketsCtl.state.byType.memcached.length">
     <div id="manage_buckets_top_bar" class="header_2">
       <h4 style="float:left">Memcached Buckets</h4>
       <div class="right">
         <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>
-    <div id="memcached_bucket_list_container" mn-spinner="!bucketsCtl.mnBucketsState" min-height="91px">
-      <div mn-buckets-list buckets="bucketsCtl.mnBucketsState.byType.memcached"></div>
+    <div id="memcached_bucket_list_container" mn-spinner="!bucketsCtl.state" min-height="91px">
+      <div mn-buckets-list buckets="bucketsCtl.state.byType.memcached"></div>
     </div>
   </div>
 </div>

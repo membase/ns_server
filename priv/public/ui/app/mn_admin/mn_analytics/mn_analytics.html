@@ -3,37 +3,37 @@
   <h1>
     <span
       class="js_when-normal-stats"
-      ng-show="!analyticsCtl.mnAnalyticsState.isSpecificStats">
+      ng-show="!analyticsCtl.state.isSpecificStats">
         DATA BUCKETS:
     </span>
     <span
       class="js_when-specific-stats"
-      ng-show="analyticsCtl.mnAnalyticsState.isSpecificStats">
-        <em class="js_specific-stat-description">{{analyticsCtl.mnAnalyticsState.origTitle}}</em> for bucket:
+      ng-show="analyticsCtl.state.isSpecificStats">
+        <em class="js_specific-stat-description">{{analyticsCtl.state.origTitle}}</em> for bucket:
     </span>
     <ui-select
-      ng-model="analyticsCtl.mnAnalyticsState.bucketsNames.selected"
+      ng-model="analyticsCtl.state.bucketsNames.selected"
       theme="selectize"
       ng-disabled="disabled"
       on-select="analyticsCtl.onSelectBucket($item)"
       style="width: 200px; display: inline-block; vertical-align: middle;">
         <ui-select-match>{{$select.selected}}</ui-select-match>
-        <ui-select-choices repeat="name in analyticsCtl.mnAnalyticsState.bucketsNames | filter: $select.search">
+        <ui-select-choices repeat="name in analyticsCtl.state.bucketsNames | filter: $select.search">
           <span ng-bind-html="name | highlight: $select.search"></span>
         </ui-select-choices>
     </ui-select>
     <span
       class="js_when-normal-stats"
-      ng-if="!analyticsCtl.mnAnalyticsState.isSpecificStats">
+      ng-if="!analyticsCtl.state.isSpecificStats">
         on
       <ui-select
-        ng-model="analyticsCtl.mnAnalyticsState.nodesNames.selected"
+        ng-model="analyticsCtl.state.nodesNames.selected"
         theme="selectize"
         ng-disabled="disabled"
         on-select="analyticsCtl.onSelectNode($item)"
         style="width: 200px; display: inline-block; vertical-align: middle;">
           <ui-select-match>{{$select.selected}}</ui-select-match>
-          <ui-select-choices repeat="name in analyticsCtl.mnAnalyticsState.nodesNames | filter: $select.search">
+          <ui-select-choices repeat="name in analyticsCtl.state.nodesNames | filter: $select.search">
             <span ng-bind-html="name | highlight: $select.search"></span>
           </ui-select-choices>
       </ui-select>
@@ -50,7 +50,7 @@
     </div>
   </div>
   <ui-view></ui-view>
-  <div class="shadow_box" style="width:780px;" ng-if="!analyticsCtl.mnAnalyticsState.isSpecificStats">
+  <div class="shadow_box" style="width:780px;" ng-if="!analyticsCtl.state.isSpecificStats">
     <div class="section" id="js_top_keys_block">
       <h2 class="header_2">
         TOP KEYS
@@ -64,7 +64,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr ng-repeat="key in analyticsCtl.mnAnalyticsState.stats.hot_keys">
+          <tr ng-repeat="key in analyticsCtl.state.stats.hot_keys">
             <td style="max-width:600px;word-wrap:break-word">{{key.name}}</td>
             <td>{{ analyticsCtl.computeOps(key) }}</td>
           </tr>

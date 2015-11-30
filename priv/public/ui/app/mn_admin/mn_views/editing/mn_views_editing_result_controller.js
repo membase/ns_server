@@ -54,8 +54,8 @@
     }
 
     function generateViewHref() {
-      return $scope.viewsEditingCtl.mnViewsEditingState &&
-            ($scope.viewsEditingCtl.mnViewsEditingState.capiBase +
+      return $scope.viewsEditingCtl.state &&
+            ($scope.viewsEditingCtl.state.capiBase +
               mnViewsEditingService.buildViewUrl($state.params) +
               mnViewsEditingService.getFilterParamsAsString());
     }
@@ -78,13 +78,13 @@
       });
     }
     function isEmptyState() {
-      return !vm.mnViewsResultState || vm.mnViewsResultState.isEmptyState;
+      return !vm.state || vm.state.isEmptyState;
     }
     function isPrevDisabled() {
       return isEmptyState() || vm.viewLoading || $state.params.pageNumber <= 0;
     }
     function isNextDisabled() {
-      return isEmptyState() || vm.viewLoading || !vm.mnViewsResultState.rows || vm.mnViewsResultState.rows.length < viewsPerPageLimit || $state.params.pageNumber >= 15;
+      return isEmptyState() || vm.viewLoading || !vm.state.rows || vm.state.rows.length < viewsPerPageLimit || $state.params.pageNumber >= 15;
     }
     function onFilterClose(params) {
       $state.go('app.admin.views.editing.result', {
@@ -99,7 +99,7 @@
       mnPromiseHelper(vm, mnViewsEditingService.getViewResult($state.params))
         .showSpinner()
         .catchErrors()
-        .applyToScope("mnViewsResultState")
+        .applyToScope("state")
         .cancelOnScopeDestroy($scope);
     }
   }

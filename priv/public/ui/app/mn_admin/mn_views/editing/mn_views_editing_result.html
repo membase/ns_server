@@ -26,7 +26,7 @@
     <div class="clr"></div>
     <div class="shadow_box">
       <div style="height:38px;">
-        <ul class="tabs dev-subset-switcher when-in-dev" ng-show="viewsEditingCtl.mnViewsEditingState.isDevelopmentDocument">
+        <ul class="tabs dev-subset-switcher when-in-dev" ng-show="viewsEditingCtl.state.isDevelopmentDocument">
           <li class="tab_left">
             <a
               class="subset_dev"
@@ -49,7 +49,7 @@
           <tbody class="list_errors">
             <tr>
               <td colspan="{{ !viewsEditingResultCtl.errors.showBtn ? 2 : 1 }}">
-                <div><span class="label">from:</span> <span>{{ viewsEditingCtl.mnViewsEditingState.capiBase + viewsEditingResultCtl.errors.from }}</span></div>
+                <div><span class="label">from:</span> <span>{{ viewsEditingCtl.state.capiBase + viewsEditingResultCtl.errors.from }}</span></div>
                 <div><span class="label">reason:</span> <span>{{ viewsEditingResultCtl.errors.error }} {{ viewsEditingResultCtl.errors.reason ? "(" + viewsEditingResultCtl.errors.reason + ")" : "" }}</span></div>
               </td>
               <td ng-if="r.showBtn">
@@ -66,7 +66,7 @@
             <th class="keycol" ng-if="viewsEditingCtl.isSpatial">Geometry</th>
             <th>Value</th>
           </tr>
-          <tbody ng-if="!viewsEditingResultCtl.mnViewsResultState.rows.lackOfValue && viewsEditingResultCtl.mnViewsResultState.rows.length" ng-repeat="r in viewsEditingResultCtl.mnViewsResultState.rows">
+          <tbody ng-if="!viewsEditingResultCtl.state.rows.lackOfValue && viewsEditingResultCtl.state.rows.length" ng-repeat="r in viewsEditingResultCtl.state.rows">
             <tr>
               <td class="keycol">
                 <div class="key ellipsis" title="{{ r.key | json }}">{{ r.key | json}}</div>
@@ -77,13 +77,13 @@
               <td class="ellipsis"><pre class="break_all">{{r.value === undefined ? 'undfined' : (r.value | json)}}</pre></td>
             </tr>
           </tbody>
-          <tbody ng-show="!viewsEditingResultCtl.mnViewsResultState">
+          <tbody ng-show="!viewsEditingResultCtl.state">
             <tr>
               <td colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}" style="text-align:center">To see the results of this view, click "Show Results" above.</td>
             </tr>
           </tbody>
           <tbody>
-            <tr ng-show="viewsEditingResultCtl.mnViewsResultState && !viewsEditingResultCtl.mnViewsResultState.rows.length && !viewsEditingResultCtl.errors">
+            <tr ng-show="viewsEditingResultCtl.state && !viewsEditingResultCtl.state.rows.length && !viewsEditingResultCtl.errors">
               <td colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}" style="text-align:center">The results of this view is empty.</td>
             </tr>
           </tbody>

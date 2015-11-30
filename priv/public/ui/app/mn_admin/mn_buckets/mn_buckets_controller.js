@@ -32,23 +32,23 @@
     activate();
 
     function isCreateNewDataBucketDisabled() {
-      return !vm.mnBucketsState || poolDefault.value.isROAdminCreds || areThereCreationWarnings();
+      return !vm.state || poolDefault.value.isROAdminCreds || areThereCreationWarnings();
     }
     function isBucketCreationWarning() {
       return poolDefault.value.rebalancing;
     }
     function isMaxBucketCountWarning() {
-      return (vm.mnBucketsState || []).length >= poolDefault.value.maxBucketCount;
+      return (vm.state || []).length >= poolDefault.value.maxBucketCount;
     }
     function areThereCreationWarnings() {
       return isMaxBucketCountWarning() || isBucketCreationWarning();
     }
     function addBucket() {
       mnPromiseHelper(vm, mnBucketsService.getBucketsState())
-        .applyToScope("mnBucketsState")
+        .applyToScope("state")
         .cancelOnScopeDestroy($scope)
-        .onSuccess(function (mnBucketsState) {
-          if (mnBucketsState.isFullyAlloc) {
+        .onSuccess(function (state) {
+          if (state.isFullyAlloc) {
             $uibModal.open({
               templateUrl: 'app/mn_admin/mn_buckets/mn_bucket_full_dialog.html'
             });
@@ -70,7 +70,7 @@
     }
     function activate() {
       new mnPoller($scope, mnBucketsService.getBucketsState)
-      .subscribe("mnBucketsState", vm)
+      .subscribe("state", vm)
       .keepIn("app.admin.buckets", vm)
       .cancelOnScopeDestroy()
       .cycle();

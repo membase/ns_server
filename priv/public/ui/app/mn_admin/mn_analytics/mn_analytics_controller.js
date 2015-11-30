@@ -28,7 +28,7 @@
         //TODO add error handler
         return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
       })
-      .subscribe("mnAnalyticsState", vm)
+      .subscribe("state", vm)
       .keepIn("app.admin.analytics", vm)
       .cancelOnScopeDestroy()
       .cycle();

@@ -86,7 +86,7 @@
       vm.poller = new mnPoller($scope, function () {
           return mnServersService.getServersState($stateParams.list);
         })
-        .subscribe("mnServersState", vm)
+        .subscribe("state", vm)
         .keepIn("app.admin.servers", vm)
         .cancelOnScopeDestroy()
         .cycle()
@@ -125,16 +125,16 @@
       return cpuUsageConf;
     }
     function isFailOverDisabled(node) {
-      return isLastActiveData(node) || vm.mnServersState.tasks.inRecoveryMode;
+      return isLastActiveData(node) || vm.state.tasks.inRecoveryMode;
     }
     function disableRemoveBtn(node) {
-      return isLastActiveData(node) || isActiveUnhealthy(node) || vm.mnServersState.tasks.inRecoveryMode;
+      return isLastActiveData(node) || isActiveUnhealthy(node) || vm.state.tasks.inRecoveryMode;
     }
     function showFailedOverControls(node) {
-      return !vm.mnServersState.tasks.inRebalance && !isNodeInactiveAdded(node) && !node.pendingEject;
+      return !vm.state.tasks.inRebalance && !isNodeInactiveAdded(node) && !node.pendingEject;
     }
     function showPendingRemovalControls(node) {
-      return !vm.mnServersState.tasks.inRebalance && !isNodeInactiveAdded(node) && node.pendingEject;
+      return !vm.state.tasks.inRebalance && !isNodeInactiveAdded(node) && node.pendingEject;
     }
     function isNodeInactiveAdded(node) {
       return node.clusterMembership === 'inactiveAdded';
@@ -149,7 +149,7 @@
       return isNodeInactiveFaied(node) && !isNodeUnhealthy(node) && !vm.mnPoolDefault.value.isROAdminCreds;
     }
     function isLastActiveData(node) {
-      return vm.mnServersState.nodes.reallyActiveData.length === 1 && (node.services.indexOf("kv") > -1);
+      return vm.state.nodes.reallyActiveData.length === 1 && (node.services.indexOf("kv") > -1);
     }
     function couchDataSize(node) {
       return node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size'] + node.interestingStats['couch_spatial_data_size'];
@@ -161,14 +161,14 @@
       return !!(couchDataSize(node) || couchDiskUsage(node));
     }
     function getRebalanceProgress(node) {
-      return vm.mnServersState.tasks.tasksRebalance.perNode && vm.mnServersState.tasks.tasksRebalance.perNode[node.otpNode]
-           ? vm.mnServersState.tasks.tasksRebalance.perNode[node.otpNode].progress : 0 ;
+      return vm.state.tasks.tasksRebalance.perNode && vm.state.tasks.tasksRebalance.perNode[node.otpNode]
+           ? vm.state.tasks.tasksRebalance.perNode[node.otpNode].progress : 0 ;
     }
     function isActiveUnhealthy(node) {
       return $state.params.type === "active" && isNodeUnhealthy(node);
     }
     function showPendingRecoveryControls(node) {
-      return !vm.mnServersState.tasks.inRebalance && isNodeInactiveAdded(node) && node.recoveryType !== 'none'
+      return !vm.state.tasks.inRebalance && isNodeInactiveAdded(node) && node.recoveryType !== 'none'
     }
     function showInactiveNodeHostname(node) {
       return isNodeInactiveFaied(node) && !isNodeUnhealthy(node);
@@ -177,25 +177,25 @@
       return !isNodeInactiveFaied(node) && !isNodeUnhealthy(node);
     }
     function showRebalanceProgressPerItem() {
-      return vm.mnServersState.tasks.inRebalance && vm.mnServersState.tasks.tasksRebalance.status === 'running';
+      return vm.state.tasks.inRebalance && vm.state.tasks.tasksRebalance.status === 'running';
     }
     function showPendingAddControls(node) {
-      return !vm.mnServersState.tasks.inRebalance && isNodeInactiveAdded(node) && node.recoveryType === 'none';
+      return !vm.state.tasks.inRebalance && isNodeInactiveAdded(node) && node.recoveryType === 'none';
     }
     function isServerGroupsDisabled() {
-      return !vm.mnServersState || !vm.mnServersState.isGroupsAvailable || vm.mnPoolDefault.value.isROAdminCreds || !vm.mnPoolDefault.value.isEnterprise;
+      return !vm.state || !vm.state.isGroupsAvailable || vm.mnPoolDefault.value.isROAdminCreds || !vm.mnPoolDefault.value.isEnterprise;
     }
     function isAddServerDisabled() {
-      return !vm.mnServersState || vm.mnServersState.rebalancing || vm.mnPoolDefault.value.isROAdminCreds;
+      return !vm.state || vm.state.rebalancing || vm.mnPoolDefault.value.isROAdminCreds;
     }
     function isRebalanceDisabled() {
-      return !vm.mnServersState || !vm.mnServersState.mayRebalance || vm.mnPoolDefault.value.isROAdminCreds;
+      return !vm.state || !vm.state.mayRebalance || vm.mnPoolDefault.value.isROAdminCreds;
     }
     function stopRebalanceDisabled() {
-      return !vm.mnServersState || !vm.mnServersState.tasks.inRebalance || vm.mnPoolDefault.value.isROAdminCreds;
+      return !vm.state || !vm.state.tasks.inRebalance || vm.mnPoolDefault.value.isROAdminCreds;
     }
     function stopRecoveryDisabled() {
-      return !vm.mnServersState || !vm.mnServersState.tasks.inRecoveryMode || vm.mnPoolDefault.value.isROAdminCreds;
+      return !vm.state || !vm.state.tasks.inRecoveryMode || vm.mnPoolDefault.value.isROAdminCreds;
     }
     function addServer() {
       $uibModal.open({
@@ -215,7 +215,7 @@
       });
     }
     function postRebalance() {
-      mnPromiseHelper(vm, mnServersService.postRebalance(vm.mnServersState.nodes.allNodes))
+      mnPromiseHelper(vm, mnServersService.postRebalance(vm.state.nodes.allNodes))
         .onSuccess(function () {
           $state.go('app.admin.servers', {list: 'active'});
         })
@@ -224,7 +224,7 @@
         .showSpinner(null, 50, $scope);
     }
     function onStopRecovery() {
-      mnPromiseHelper(vm, mnServersService.stopRecovery(vm.mnServersState.tasks.tasksRecovery.stopURI))
+      mnPromiseHelper(vm, mnServersService.stopRecovery(vm.state.tasks.tasksRecovery.stopURI))
         .cancelOnScopeDestroy($scope)
         .reloadAndSwitchOnPoller(vm)
         .showSpinner(null, 50, $scope);

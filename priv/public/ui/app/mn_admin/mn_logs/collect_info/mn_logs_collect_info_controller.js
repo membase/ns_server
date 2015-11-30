@@ -28,7 +28,7 @@
       new mnPoller($scope, mnLogsCollectInfoService.getState)
       .subscribe(function (state) {
         vm.loadingResult = false;
-        vm.mnLogsCollectInfoState = state;
+        vm.state = state;
       })
       .keepIn("app.admin.logs.collectInfo", vm)
       .cancelOnScopeDestroy()

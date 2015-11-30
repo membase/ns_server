@@ -3,11 +3,11 @@
     <div class="wrap">
       <ui-select
         on-select="documentsCtl.onSelectBucketName($item)"
-        ng-model="documentsCtl.mnDocumentsState.bucketsNames.selected"
+        ng-model="documentsCtl.state.bucketsNames.selected"
         theme="selectize"
         style="width: 200px; display: inline-block; vertical-align: middle;">
         <ui-select-match>{{$select.selected}}</ui-select-match>
-        <ui-select-choices repeat="name in documentsCtl.mnDocumentsState.bucketsNames | filter: $select.search">
+        <ui-select-choices repeat="name in documentsCtl.state.bucketsNames | filter: $select.search">
           <span ng-bind-html="name | highlight: $select.search"></span>
         </ui-select-choices>
       </ui-select>

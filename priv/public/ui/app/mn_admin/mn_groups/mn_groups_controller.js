@@ -39,7 +39,7 @@
       activate();
 
       function applyChanges() {
-        mnPromiseHelper($scope, mnGroupsService.applyChanges(vm.mnGroupsState.uri, vm.mnGroupsState.currentGroups))
+        mnPromiseHelper($scope, mnGroupsService.applyChanges(vm.state.uri, vm.state.currentGroups))
           .reloadState()
           .cancelOnScopeDestroy()
           .getPromise()
@@ -55,8 +55,8 @@
       }
 
       function deleteGroup(group) {
-        var initialGroups = vm.mnGroupsState.initialGroups;
-        var currentGroups = vm.mnGroupsState.currentGroups;
+        var initialGroups = vm.state.initialGroups;
+        var currentGroups = vm.state.currentGroups;
 
         if (_.isEqual(initialGroups, currentGroups)) {
           return $uibModal.open({
@@ -85,7 +85,7 @@
 
       function activate() {
         mnPromiseHelper(vm, mnGroupsService.getGroupsState())
-          .applyToScope("mnGroupsState")
+          .applyToScope("state")
           .cancelOnScopeDestroy($scope);
         //after implementing mmAdminController via controllerAs syntax this poll should be removed
         new mnPoller($scope, mnPoolDefault.get)
@@ -135,7 +135,7 @@
 
         var takenDomElementIndex = jQuery(takenDomElement).index();
 
-        var currentGroups = vm.mnGroupsState.currentGroups;
+        var currentGroups = vm.state.currentGroups;
         var takenFromGroup = currentGroups[jQuery(takenGroupDomElement).index()].nodes;
         var takenServer = takenFromGroup[takenDomElementIndex];
         var recipientGroup = currentGroups[jQuery(recipientDomElement).index()].nodes;
@@ -149,7 +149,7 @@
         takenFromGroup.splice(takenDomElementIndex, 1);
 
 
-        vm.disableApplyChangesBtn = _.isEqual(currentGroups, vm.mnGroupsState.initialGroups);
+        vm.disableApplyChangesBtn = _.isEqual(currentGroups, vm.state.initialGroups);
         vm.disableAddGroupBtn = false;
         vm.serverGroupsWarnig = false;
         $scope.$apply();
@@ -174,7 +174,7 @@
         if (takenGroupDomElement === recipientDomElement) {
           jQuery(takenDomElement).after(placeholder);
         } else {
-          var currentGroups = vm.mnGroupsState.currentGroups;
+          var currentGroups = vm.state.currentGroups;
           var takenFromGroup = currentGroups[jQuery(takenGroupDomElement).index()].nodes;
           var takenServer = takenFromGroup[jQuery(takenDomElement).index()];
           var recipientGroup = _.cloneDeep(currentGroups[jQuery(recipientDomElement).index()].nodes);

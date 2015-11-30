@@ -43,7 +43,7 @@
         new mnPoller($scope, function () {
             return mnViewsListService.prepareBucketsDropdownData($state.params, true);
           })
-          .subscribe("mnViewsState", vm)
+          .subscribe("state", vm)
           .keepIn("app.admin.views", vm)
           .cancelOnScopeDestroy()
           .cycle();

@@ -45,7 +45,7 @@
     function goToDocumentsSection(e) {
       e.stopImmediatePropagation();
       $state.go("app.admin.documents.editing", {
-        documentId: vm.mnViewsEditingState.sampleDocument.meta.id,
+        documentId: vm.state.sampleDocument.meta.id,
         documentsBucket: $state.params.viewsBucket
       });
     }
@@ -56,26 +56,26 @@
       vm.isViewsClosed = !vm.isViewsClosed;
     }
     function isEditDocumentDisabled() {
-      return awaitingSampleDocument() || !vm.mnViewsEditingState.sampleDocument || vm.mnViewsEditingState.isEmptyState;
+      return awaitingSampleDocument() || !vm.state.sampleDocument || vm.state.isEmptyState;
     }
     function isPreviewRandomDisabled() {
-      return awaitingSampleDocument() || vm.mnViewsEditingState.isEmptyState;
+      return awaitingSampleDocument() || vm.state.isEmptyState;
     }
     function isViewsEditorControllsDisabled() {
-      return awaitingViews() || vm.mnViewsEditingState.isEmptyState || !vm.mnViewsEditingState.isDevelopmentDocument;
+      return awaitingViews() || vm.state.isEmptyState || !vm.state.isDevelopmentDocument;
     }
     function awaitingSampleDocument() {
-      return !vm.mnViewsEditingState || vm.mnViewsEditingState.sampleDocumentLoading;
+      return !vm.state || vm.state.sampleDocumentLoading;
     }
     function awaitingViews() {
-      return !vm.mnViewsEditingState || vm.mnViewsEditingState.viewsLoading;
+      return !vm.state || vm.state.viewsLoading;
     }
     function isViewPathTheSame(current, selected) {
       return current.viewId === selected.viewId && current.isSpatial === selected.isSpatial && current.documentId === selected.documentId;
     }
     function previewRandomDocument(e) {
       e && e.stopImmediatePropagation && e.stopImmediatePropagation();
-      mnPromiseHelper(vm.mnViewsEditingState, mnViewsEditingService.prepareRandomDocument($state.params))
+      mnPromiseHelper(vm.state, mnViewsEditingService.prepareRandomDocument($state.params))
         .showSpinner("sampleDocumentLoading")
         .applyToScope("sampleDocument")
         .cancelOnScopeDestroy($scope);
@@ -87,7 +87,7 @@
         templateUrl: 'app/mn_admin/mn_views/create_dialog/mn_views_create_dialog.html',
         scope: $scope,
         resolve: {
-          currentDdoc: mnHelper.wrapInFunction(vm.mnViewsEditingState.currentDocument.doc),
+          currentDdoc: mnHelper.wrapInFunction(vm.state.currentDocument.doc),
           viewType: mnHelper.wrapInFunction($state.params.isSpatial ? "spatial" : "views")
         }
       }).result.then(function (vm) {
@@ -106,8 +106,8 @@
     }
     function save(e) {
       e.stopImmediatePropagation();
-      var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, vm.mnViewsEditingState.currentDocument.doc.meta.id)
-      mnPromiseHelper(vm.mnViewsEditingState, mnViewsListService.createDdoc(url, vm.mnViewsEditingState.currentDocument.doc.json))
+      var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, vm.state.currentDocument.doc.meta.id)
+      mnPromiseHelper(vm.state, mnViewsListService.createDdoc(url, vm.state.currentDocument.doc.json))
         .catchErrors("viewsError")
         .showSpinner("viewsLoading")
         .cancelOnScopeDestroy($scope)
@@ -128,7 +128,7 @@
         vm.viewsOptions = viewsOptions;
       });
       return mnPromiseHelper(vm, mnViewsEditingService.getViewsEditingState($state.params))
-        .applyToScope("mnViewsEditingState")
+        .applyToScope("state")
         .cancelOnScopeDestroy($scope);
     }
   }

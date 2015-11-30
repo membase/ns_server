@@ -19,7 +19,7 @@
         mnPromiseHelper(vm, mnSettingsSampleBucketsService.getSampleBucketsState(selected))
           .cancelOnScopeDestroy($scope)
           .showSpinner()
-          .applyToScope("mnSettingsSampleBucketsState");
+          .applyToScope("state");
       }, true);
     }
 
@@ -31,9 +31,9 @@
     }
 
     function isCreateButtonDisabled() {
-      return vm.viewLoading || vm.mnSettingsSampleBucketsState &&
-             (_.chain(vm.mnSettingsSampleBucketsState.warnings).values().some().value() ||
-             !vm.mnSettingsSampleBucketsState.available.length) ||
+      return vm.viewLoading || vm.state &&
+             (_.chain(vm.state.warnings).values().some().value() ||
+             !vm.state.available.length) ||
              !_.keys(_.pick(vm.selected, _.identity)).length;
     }
 

@@ -30,7 +30,7 @@
 
     function activate() {
       new mnPoller($scope, mnXDCRService.getReplicationState)
-      .subscribe("mnXdcrState", vm)
+      .subscribe("state", vm)
       .keepIn("app.admin.replications", vm)
       .cancelOnScopeDestroy()
       .cycle();

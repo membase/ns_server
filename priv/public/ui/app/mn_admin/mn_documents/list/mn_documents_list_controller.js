@@ -40,25 +40,25 @@
     }
 
     function isEmptyState() {
-      return !vm.mnDocumentsListState || vm.mnDocumentsListState.isEmptyState;
+      return !vm.state || vm.state.isEmptyState;
     }
     function nextPage() {
       $state.go('app.admin.documents.list', {
-        pageNumber: vm.mnDocumentsListState.pageNumber + 1
+        pageNumber: vm.state.pageNumber + 1
       });
     }
     function prevPage() {
-      var prevPage = vm.mnDocumentsListState.pageNumber - 1;
+      var prevPage = vm.state.pageNumber - 1;
       prevPage = prevPage < 0 ? 0 : prevPage;
       $state.go('app.admin.documents.list', {
         pageNumber: prevPage
       });
     }
     function isPrevDisabled() {
-      return isEmptyState() || vm.mnDocumentsListState.pageNumber === 0;
+      return isEmptyState() || vm.state.pageNumber === 0;
     }
     function isNextDisabled() {
-      return isEmptyState() || vm.mnDocumentsListState.isNextDisabled;
+      return isEmptyState() || vm.state.isNextDisabled;
     }
     function lookupSubmit(event) {
       event.preventDefault();
@@ -116,7 +116,7 @@
           return mnDocumentsListService.getDocumentsListState($state.params);
         })
         .setExtractInterval(10000)
-        .subscribe("mnDocumentsListState", vm)
+        .subscribe("state", vm)
         .cancelOnScopeDestroy()
         .keepIn("app.admin.documents.list", vm)
         .cycle();

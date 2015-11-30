@@ -18,7 +18,7 @@
       mnHelper.initializeDetailsHashObserver(vm, 'openedIndex', 'app.admin.indexes');
 
       new mnPoller($scope, mnIndexesService.getIndexesState)
-      .subscribe("mnIndexesState", vm)
+      .subscribe("state", vm)
       .keepIn("app.admin.indexes", vm)
       .cancelOnScopeDestroy()
       .cycle();

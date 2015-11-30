@@ -1,6 +1,6 @@
 <div
   class="ldap_setup_container only-when-40 when-enterprise"
-  mn-spinner="settingsLdapCtl.viewLoading || !settingsLdapCtl.mnSettingsLdapState">
+  mn-spinner="settingsLdapCtl.viewLoading || !settingsLdapCtl.state">
   <h2>LDAP Auth</h2>
   <div class="sub_section">
     <p>Integrate with a directory server such as Active Directory or LDAP using the LDAP protocol. Users in LDAP can be mapped to Full-Admin / Read-Only Admin in Couchbase.</p>
@@ -17,13 +17,13 @@
           <input
             type="checkbox"
             ng-disabled="settingsLdapCtl.mnPoolDefault.value.isROAdminCreds"
-            ng-model="settingsLdapCtl.mnSettingsLdapState.enabled">
+            ng-model="settingsLdapCtl.state.enabled">
         </label>
         <label class="textarea_label">
           <span>Read-Only Admins:</span>
           <textarea
             name="roAdmins"
-            ng-model="settingsLdapCtl.mnSettingsLdapState.roAdmins"
+            ng-model="settingsLdapCtl.state.roAdmins"
             ng-disabled="settingsLdapCtl.isReadOnlyAdminsDisabled()"></textarea>
             <a class="text_11 tooltip" style="vertical-align: top;"><span>What's this?</span>
               <span class="tooltip_msg"><span>
@@ -35,7 +35,7 @@
           <span>Full Admins:</span>
           <textarea
             name="admins"
-            ng-model="settingsLdapCtl.mnSettingsLdapState.admins"
+            ng-model="settingsLdapCtl.state.admins"
             ng-disabled="settingsLdapCtl.isFullAdminsDisabled()"></textarea>
             <a class="text_11 tooltip" style="vertical-align: top;"><span>What's this?</span>
               <span class="tooltip_msg"><span>
@@ -52,7 +52,7 @@
               type="radio"
               name="deftype"
               value="roAdmins"
-              ng-model="settingsLdapCtl.mnSettingsLdapState.default"
+              ng-model="settingsLdapCtl.state.default"
               ng-disabled="settingsLdapCtl.isRadioDefaultDisabled()">
             <span>Read-only</span>
           </label>
@@ -61,7 +61,7 @@
               type="radio"
               name="deftype"
               value="admins"
-              ng-model="settingsLdapCtl.mnSettingsLdapState.default"
+              ng-model="settingsLdapCtl.state.default"
               ng-disabled="settingsLdapCtl.isRadioDefaultDisabled()">
             <span>Full Admin</span>
           </label>
@@ -70,7 +70,7 @@
               type="radio"
               name="deftype"
               value=""
-              ng-model="settingsLdapCtl.mnSettingsLdapState.default"
+              ng-model="settingsLdapCtl.state.default"
               ng-disabled="settingsLdapCtl.isRadioDefaultDisabled()">
             <span>None</span>
           </label>

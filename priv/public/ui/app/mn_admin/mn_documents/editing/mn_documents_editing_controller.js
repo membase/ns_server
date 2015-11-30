@@ -30,7 +30,7 @@
     vm.save = save;
 
     function save() {
-      mnPromiseHelper(vm, mnDocumentsEditingService.createDocument($state.params, vm.mnDocumentsEditingState.doc))
+      mnPromiseHelper(vm, mnDocumentsEditingService.createDocument($state.params, vm.state.doc))
         .cancelOnScopeDestroy($scope)
         .showSpinner()
         .catchErrors();
@@ -51,7 +51,7 @@
         templateUrl: 'app/mn_admin/mn_documents/delete_dialog/mn_documents_delete_dialog.html',
         resolve: {
           documentId: function () {
-            return vm.mnDocumentsEditingState.title;
+            return vm.state.title;
           }
         }
       }).result.then(function () {
@@ -64,7 +64,7 @@
         templateUrl: 'app/mn_admin/mn_documents/create_dialog/mn_documents_create_dialog.html',
         resolve: {
           doc: function () {
-            return vm.mnDocumentsEditingState.doc;
+            return vm.state.doc;
           }
         }
       }).result.then(function (resp) {
@@ -77,54 +77,54 @@
       return history.redo == 0 && history.undo == 1;
     }
     function areThereWarnings() {
-      return vm.mnDocumentsEditingState && _.chain(vm.mnDocumentsEditingState.editorWarnings).values().some().value();
+      return vm.state && _.chain(vm.state.editorWarnings).values().some().value();
     }
     function areThereErrors() {
-      return !!vm.mnDocumentsEditingState.errors || areThereWarnings();
+      return !!vm.state.errors || areThereWarnings();
     }
     function isEditorDisabled() {
-      return !vm.mnDocumentsEditingState ||
-             (vm.mnDocumentsEditingState.editorWarnings &&
-             (vm.mnDocumentsEditingState.editorWarnings.notFound ||
-              vm.mnDocumentsEditingState.editorWarnings.documentIsBase64 ||
-              vm.mnDocumentsEditingState.editorWarnings.documentLimitError));
+      return !vm.state ||
+             (vm.state.editorWarnings &&
+             (vm.state.editorWarnings.notFound ||
+              vm.state.editorWarnings.documentIsBase64 ||
+              vm.state.editorWarnings.documentLimitError));
 
     }
     function isDeleteDisabled() {
-      return !vm.mnDocumentsEditingState ||
+      return !vm.state ||
               vm.viewLoading ||
-             (vm.mnDocumentsEditingState.editorWarnings && vm.mnDocumentsEditingState.editorWarnings.notFound);
+             (vm.state.editorWarnings && vm.state.editorWarnings.notFound);
     }
     function isSaveAsDisabled() {
-      return !vm.mnDocumentsEditingState ||
+      return !vm.state ||
               vm.viewLoading ||
               areThereErrors();
     }
     function isSaveDisabled() {
-      return !vm.mnDocumentsEditingState ||
+      return !vm.state ||
               vm.viewLoading ||
              !vm.isDocumentChanged ||
              areThereErrors();
     }
     function onDocValueUpdate(json) {
-      vm.mnDocumentsEditingState.errors = null;
-      vm.mnDocumentsEditingState.editorWarnings = {
+      vm.state.errors = null;
+      vm.state.editorWarnings = {
         documentLimitError: mnDocumentsEditingService.isJsonOverLimited(json)
       };
 
-      if (!vm.mnDocumentsEditingState.editorWarnings.documentLimitError) {
+      if (!vm.state.editorWarnings.documentLimitError) {
         try {
           var parsedJSON = JSON.parse(json);
         } catch (error) {
-          vm.mnDocumentsEditingState.errors = {
+          vm.state.errors = {
             reason: error.message,
             error: "Invalid document"
           };
           return false;
         }
-        vm.mnDocumentsEditingState.editorWarnings["shouldNotBeNull"] = _.isNull(parsedJSON);
-        vm.mnDocumentsEditingState.editorWarnings["shouldBeAnObject"] = !_.isObject(parsedJSON);
-        vm.mnDocumentsEditingState.editorWarnings["shouldNotBeAnArray"] = _.isArray(parsedJSON);
+        vm.state.editorWarnings["shouldNotBeNull"] = _.isNull(parsedJSON);
+        vm.state.editorWarnings["shouldBeAnObject"] = !_.isObject(parsedJSON);
+        vm.state.editorWarnings["shouldNotBeAnArray"] = _.isArray(parsedJSON);
       }
 
       return areThereWarnings() ? false : parsedJSON;
@@ -136,7 +136,7 @@
         vm.editorOptions = editorOptions;
       });
       return mnPromiseHelper(vm, mnDocumentsEditingService.getDocumentsEditingState($state.params))
-        .applyToScope("mnDocumentsEditingState")
+        .applyToScope("state")
         .cancelOnScopeDestroy($scope)
         .getPromise();
     }

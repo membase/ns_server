@@ -6,7 +6,7 @@
       </li>
       <li class="tab_right">
         <a class="casper_views_prod_tab" ui-sref="app.admin.views.list({ type: 'production' })" ui-sref-active="selected">Production Views</a>
-        <span class="badge notify" ng-show="viewsListCtl.mnViewsListState.production.length"><span id="prod_view_count">{{viewsListCtl.mnViewsListState.production.length}}</span></span>
+        <span class="badge notify" ng-show="viewsListCtl.state.production.length"><span id="prod_view_count">{{viewsListCtl.state.production.length}}</span></span>
       </li>
     </ul>
     <div class="create_view">
@@ -24,7 +24,7 @@
     </div>
   </div>
   <div class="panes">
-    <div class="views_list" mn-spinner="!viewsListCtl.mnViewsListState">
+    <div class="views_list" mn-spinner="!viewsListCtl.state">
       <table class="list">
         <thead>
           <tr>
@@ -36,7 +36,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr ng-if="!viewsCtl.mnViewsState.bucketsNames.selected && !viewsListCtl.mnViewsListState.ddocsAreInFactMissing">
+          <tr ng-if="!viewsCtl.state.bucketsNames.selected && !viewsListCtl.state.ddocsAreInFactMissing">
             <td colspan="6" class="empty">
               <span>
                 No buckets currently defined! Go to
@@ -45,18 +45,18 @@
               </span>
             </td>
           </tr>
-          <tr ng-if="viewsListCtl.mnViewsListState.ddocsAreInFactMissing">
+          <tr ng-if="viewsListCtl.state.ddocsAreInFactMissing">
             <td colspan="6" class="empty">
               <span style="line-height:23px">This node doesn't host current bucket yet, so for list of design docs, please, visit different node's UI</span>
             </td>
           </tr>
-          <tr ng-if="viewsCtl.mnViewsState.bucketsNames.selected && !viewsListCtl.mnViewsListState.ddocsAreInFactMissing && !viewsListCtl.mnViewsListState[viewsListCtl.mnViewsListState.type].length">
+          <tr ng-if="viewsCtl.state.bucketsNames.selected && !viewsListCtl.state.ddocsAreInFactMissing && !viewsListCtl.state[viewsListCtl.state.type].length">
             <td colspan="6" class="empty">
               <span ng-show="viewsListCtl.isDevelopmentViews" style="line-height:23px">There are currently no Design Documents in Development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
               <span ng-show="!viewsListCtl.isDevelopmentViews" style="line-height:23px">There are no Design Documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
             </td>
           </tr>
-          <tr ng-repeat-start="row in viewsListCtl.mnViewsListState[viewsListCtl.mnViewsListState.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="viewsListCtl.mnViewsListState.rows.length">
+          <tr ng-repeat-start="row in viewsListCtl.state[viewsListCtl.state.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="viewsListCtl.state.rows.length">
             <td class="design_doc_name ellipsis">
               {{row.doc.meta.id}}
             </td>

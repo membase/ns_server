@@ -15,7 +15,7 @@
         </span>
       </h3>
 
-      <div class="stats" id="cluster_reference_list_container" mn-spinner="!xdcrCtl.mnXdcrState" min-height="66px">
+      <div class="stats" id="cluster_reference_list_container" mn-spinner="!xdcrCtl.state" min-height="66px">
         <table class="list casper_remout_cluster_container" style="width:100%">
           <thead>
             <tr>
@@ -24,7 +24,7 @@
               <th></th>
             </tr>
           </thead>
-          <tbody ng-if="xdcrCtl.mnXdcrState.references.length" ng-repeat="row in xdcrCtl.mnXdcrState.references | orderBy:'name' track by row.name">
+          <tbody ng-if="xdcrCtl.state.references.length" ng-repeat="row in xdcrCtl.state.references | orderBy:'name' track by row.name">
             <tr>
               <td>{{row.name}}</td>
               <td>
@@ -42,7 +42,7 @@
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="!xdcrCtl.mnXdcrState.references.length">
+          <tbody ng-if="!xdcrCtl.state.references.length">
             <tr><td colspan="3" style="text-align:center">No cluster references defined. <span class="when-roadmin-avoid-me" ng-hide="xdcrCtl.mnPoolDefault.value.isROAdminCreds">Please create one.</span></td></tr>
           </tbody>
         </table>
@@ -57,13 +57,13 @@
         <span class="view_head" style="padding-left: 0;padding-bottom: 7px;">Ongoing Replications</span>
         <span class="buttons">
           <a
-            ng-show="xdcrCtl.mnXdcrState.references.length && !xdcrCtl.mnPoolDefault.value.isROAdminCreds" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="xdcrCtl.createReplications()">
+            ng-show="xdcrCtl.state.references.length && !xdcrCtl.mnPoolDefault.value.isROAdminCreds" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="xdcrCtl.createReplications()">
             <span>Create Replication</span>
           </a>
         </span>
       </h3>
 
-      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container" mn-spinner="!xdcrCtl.mnXdcrState" min-height="66px">
+      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container" mn-spinner="!xdcrCtl.state" min-height="66px">
         <table class="list" style="width:100%">
           <colgroup>
             <col class="bucket">
@@ -86,7 +86,7 @@
               <th></th>
             </tr>
           </thead>
-          <tbody ng-if="xdcrCtl.mnXdcrState.replications.length" ng-repeat="row in xdcrCtl.mnXdcrState.replications track by row.name">
+          <tbody ng-if="xdcrCtl.state.replications.length" ng-repeat="row in xdcrCtl.state.replications track by row.name">
             <tr class="row">
               <td>{{row.source}}</td>
               <td>{{row.protocol}}</td>
@@ -120,7 +120,7 @@
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="!xdcrCtl.mnXdcrState.replications.length">
+          <tbody ng-if="!xdcrCtl.state.replications.length">
             <tr><td colspan="8" style="text-align:center">There are no replications currently in progress.</td></tr>
           </tbody>
         </table>

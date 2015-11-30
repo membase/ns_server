@@ -1,8 +1,8 @@
 <div class="doc_header" style="margin-top:-50px;">
   <div class="items_per_list_wrap">
-    <ui-select ng-model="documentsListCtl.mnDocumentsListState.pageLimits.selected" theme="selectize" on-select="documentsListCtl.onSelectPageLimits($item)" style="width: 80px; display: inline-block; vertical-align: middle;">
+    <ui-select ng-model="documentsListCtl.state.pageLimits.selected" theme="selectize" on-select="documentsListCtl.onSelectPageLimits($item)" style="width: 80px; display: inline-block; vertical-align: middle;">
       <ui-select-match>{{$select.selected}}</ui-select-match>
-      <ui-select-choices repeat="name in documentsListCtl.mnDocumentsListState.pageLimits | filter: $select.search">
+      <ui-select-choices repeat="name in documentsListCtl.state.pageLimits | filter: $select.search">
         <span ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>
@@ -12,12 +12,12 @@
     <a class="arr_next" ng-class="{dynamic_disabled: documentsListCtl.isNextDisabled()}" ng-click="!documentsListCtl.isNextDisabled() && documentsListCtl.nextPage()"></a>
   </div>
   <div class="docs_info">
-    Current page: <span class="docs_crnt_pg">{{documentsListCtl.mnDocumentsListState.pageNumber + 1}}</span>
+    Current page: <span class="docs_crnt_pg">{{documentsListCtl.state.pageNumber + 1}}</span>
   </div>
 </div>
 <div id="documents_list">
-    <div class="warning_message documents_notice" ng-show="documentsListCtl.mnDocumentsListState.docs.errors[0]">
-      Error: {{documentsListCtl.mnDocumentsListState.docs.errors[0].reason}} ({{documentsListCtl.mnDocumentsListState.docs.errors[0].error }})
+    <div class="warning_message documents_notice" ng-show="documentsListCtl.state.docs.errors[0]">
+      Error: {{documentsListCtl.state.docs.errors[0].reason}} ({{documentsListCtl.state.docs.errors[0].error }})
     </div>
     <div class="shadow_box">
       <div class="header_2 servers_header">
@@ -58,7 +58,7 @@
         </div>
       </div>
 
-      <div id="documents_list_container" mn-spinner="!documentsListCtl.mnDocumentsListState">
+      <div id="documents_list_container" mn-spinner="!documentsListCtl.state">
         <table class="list" style="width:100%">
           <thead>
             <tr>
@@ -74,7 +74,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="align_text" ng-repeat="r in documentsListCtl.mnDocumentsListState.docs.rows" ng-show="documentsListCtl.mnDocumentsListState.docs.rows.length">
+            <tr class="align_text" ng-repeat="r in documentsListCtl.state.docs.rows" ng-show="documentsListCtl.state.docs.rows.length">
               <td class="key ellipsis" colspan="6">
                 <a ui-sref="app.admin.documents.editing({documentId: r.id})">{{ r.key }}</a>
               </td>
@@ -83,7 +83,7 @@
                 <a  class="list_button btn_edit" ui-sref="app.admin.documents.editing({documentId: r.id})"><span>Edit Document</span></a>
               </td>
             </tr>
-            <tr ng-if="!documentsListCtl.mnDocumentsListState.docs.rows.length">
+            <tr ng-if="!documentsListCtl.state.docs.rows.length">
               <td colspan="9" class="empty_docs">
                 There are currently no documents in this bucket {{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}
               </td>

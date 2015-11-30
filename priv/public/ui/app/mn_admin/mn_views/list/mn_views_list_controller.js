@@ -43,7 +43,7 @@
       return row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)
     }
     function showViewCreationButtons() {
-      return vm.mnViewsListState && $state.params.viewsBucket && vm.isDevelopmentViews && !vm.mnViewsListState.ddocsAreInFactMissing && !vm.mnPoolDefault.value.isROAdminCreds;
+      return vm.state && $state.params.viewsBucket && vm.isDevelopmentViews && !vm.state.ddocsAreInFactMissing && !vm.mnPoolDefault.value.isROAdminCreds;
     }
     function showPublishButton(row) {
       return vm.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)) && !vm.mnPoolDefault.value.isROAdminCreds;
@@ -144,7 +144,7 @@
       new mnPoller($scope, function () {
           return mnViewsListService.getViewsListState($state.params);
         })
-        .subscribe("mnViewsListState", vm)
+        .subscribe("state", vm)
         .keepIn("app.admin.views.list", vm)
         .cancelOnScopeDestroy()
         .cycle();

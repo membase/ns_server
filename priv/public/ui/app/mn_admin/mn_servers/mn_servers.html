@@ -1,4 +1,4 @@
-<div id="js_servers" class="servers" data-ng-class="{'rebalancing': serversCtl.mnServersState.rebalancing}">
+<div id="js_servers" class="servers" data-ng-class="{'rebalancing': serversCtl.state.rebalancing}">
   <h1>Servers</h1>
   <div
     class="warning_message failover_warning"
@@ -10,19 +10,19 @@
     class="warning_message"
     style="color:red;"
     id="js_rebalance_during_sample_load"
-    ng-show="serversCtl.mnServersState.showWarningMessage">
+    ng-show="serversCtl.state.showWarningMessage">
       Warning: Rebalance is not available until data loading is completed!
   </div>
   <div
     id="auto_failover_count_container"
     class="warning_message"
-    ng-show="serversCtl.mnServersState.autoFailoverSettingsCount > 0">
+    ng-show="serversCtl.state.autoFailoverSettingsCount > 0">
       A server was automatically failed over
     <a
       class="auto_failover_count_reset edit_btn when-roadmin-hide-me"
       ng-hide="serversCtl.mnPoolDefault.value.isROAdminCreds"
-      ng-click="serversCtl.mnServersState.resetAutoFailOverCount()"
-      mn-spinner="serversCtl.mnServersState.resetQuotaLoading">
+      ng-click="serversCtl.state.resetAutoFailOverCount()"
+      mn-spinner="serversCtl.state.resetQuotaLoading">
       <span>Reset Quota</span>
     </a>
   </div>
@@ -46,8 +46,8 @@
         class="stop_rebalance_button btn_1 when-roadmin-hide-me"
         ng-hide="serversCtl.stopRebalanceDisabled()"
         ng-click="serversCtl.stopRebalance()">
-        <span ng-show="serversCtl.mnServersState.tasks.isSubtypeGraceful">Stop Fail Over</span>
-        <span ng-show="!serversCtl.mnServersState.tasks.isSubtypeGraceful">Stop Rebalance</span>
+        <span ng-show="serversCtl.state.tasks.isSubtypeGraceful">Stop Fail Over</span>
+        <span ng-show="!serversCtl.state.tasks.isSubtypeGraceful">Stop Rebalance</span>
       </a>
       <a
         class="stop_recovery_button btn_1 when-roadmin-hide-me"
@@ -66,8 +66,8 @@
             ui-sref-active="selected">Pending Rebalance</a>
             <span
               class="badge"
-              data-ng-show="serversCtl.mnServersState.showPendingBadge"><span>
-                {{serversCtl.mnServersState.pendingLength}}
+              data-ng-show="serversCtl.state.showPendingBadge"><span>
+                {{serversCtl.state.pendingLength}}
               </span>
             </span>
         </li>
@@ -82,7 +82,7 @@
           <colgroup>
             <col style="width:19%">
             <col style="width:9%">
-            <col style='{%= serversCtl.mnServersState.isGroupsAvailable ? "width: 7%;" : "width: 0px;" %}'>
+            <col style='{%= serversCtl.state.isGroupsAvailable ? "width: 7%;" : "width: 0px;" %}'>
             <col style="width:7%">
             <col style="width:8%">
             <col style="width:8%">
@@ -95,7 +95,7 @@
             <tr>
               <th mn-sortable-title="hostname" class="node_name" style="text-align:left;">Server Node Name</th>
               <th></th>
-              <th mn-sortable-title="group" style='{{ serversCtl.mnServersState.isGroupsAvailable ? "text-align: center!important;" : "width: 0px;" }}'>{{ serversCtl.mnServersState.isGroupsAvailable ? "Group" : " " }}</th>
+              <th mn-sortable-title="group" style='{{ serversCtl.state.isGroupsAvailable ? "text-align: center!important;" : "width: 0px;" }}'>{{ serversCtl.state.isGroupsAvailable ? "Group" : " " }}</th>
               <th mn-sortable-title="services">Services</th>
               <th>RAM Usage</th>
               <th>Swap Usage</th>
@@ -105,7 +105,7 @@
               <th></th>
             </tr>
           </tbody>
-          <tbody ng-repeat="node in serversCtl.mnServersState.currentNodes | orderBy:serversCtl.sortableTableProperties.orderBy:serversCtl.sortableTableProperties.invert track by node.otpNode">
+          <tbody ng-repeat="node in serversCtl.state.currentNodes | orderBy:serversCtl.sortableTableProperties.orderBy:serversCtl.sortableTableProperties.invert track by node.otpNode">
             <tr
               ng-if="serversCtl.isReAddPossible(node)"
               class="add_back_row when-roadmin-avoid-me">
@@ -134,7 +134,7 @@
                     <ins class="expander" ng-class="{closed: !serversCtl.isDetailsOpened(node.hostname)}"></ins>
                 </a>
                 <span ng-if="serversCtl.showInactiveNodeHostname(node)">
-                  {{node.hostname | mnStripPortHTML:serversCtl.mnServersState.nodes.allNodes}}
+                  {{node.hostname | mnStripPortHTML:serversCtl.state.nodes.allNodes}}
                 </span>
                 <span ng-if="serversCtl.isNodeUnhealthy(node)">
                   {{node.hostname}}
@@ -142,7 +142,7 @@
                 <a ng-if="serversCtl.showActiveNodeHostname(node)"
                    title="{{'View Analytics for ' + node.hostname}}"
                    ui-sref="app.admin.analytics.list.graph({statsHostname: node.hostname})">
-                  {{node.hostname | mnStripPortHTML:serversCtl.mnServersState.nodes.allNodes}}
+                  {{node.hostname | mnStripPortHTML:serversCtl.state.nodes.allNodes}}
                 </a>
               </td>
               <td
@@ -188,8 +188,8 @@
                   <a
                     ng-hide="serversCtl.mnPoolDefault.value.isROAdminCreds"
                     class="list_button btn_cancel eject_server when-roadmin-avoid-me"
-                    ng-class="{dynamic_disabled: serversCtl.mnServersState.tasks.inRecoveryMode}"
-                    ng-click="!serversCtl.mnServersState.tasks.inRecoveryMode && serversCtl.ejectServer(node)"><span>Cancel</span></a>
+                    ng-class="{dynamic_disabled: serversCtl.state.tasks.inRecoveryMode}"
+                    ng-click="!serversCtl.state.tasks.inRecoveryMode && serversCtl.ejectServer(node)"><span>Cancel</span></a>
               </td>
               <td
                 ng-if="serversCtl.showPendingRecoveryControls(node)"
@@ -198,8 +198,8 @@
                   <a
                     ng-hide="serversCtl.mnPoolDefault.value.isROAdminCreds"
                     class="list_button btn_cancel eject_server when-roadmin-avoid-me"
-                    ng-class="{dynamic_disabled: serversCtl.mnServersState.tasks.inRecoveryMode}"
-                    ng-click="!serversCtl.mnServersState.tasks.inRecoveryMode && serversCtl.cancelFailOverNode(node.otpNode)"><span>Cancel</span></a>
+                    ng-class="{dynamic_disabled: serversCtl.state.tasks.inRecoveryMode}"
+                    ng-click="!serversCtl.state.tasks.inRecoveryMode && serversCtl.cancelFailOverNode(node.otpNode)"><span>Cancel</span></a>
               </td>
               <td
                 ng-if="serversCtl.showPendingRemovalControls(node)"
@@ -208,8 +208,8 @@
                   <a
                     ng-hide="serversCtl.mnPoolDefault.value.isROAdminCreds"
                     class="list_button btn_cancel remove_from_list when-roadmin-avoid-me"
-                    ng-class="{dynamic_disabled: serversCtl.mnServersState.tasks.inRecoveryMode}"
-                    ng-click="!serversCtl.mnServersState.tasks.inRecoveryMode && serversCtl.cancelEjectServer(node)"><span>Cancel</span></a>
+                    ng-class="{dynamic_disabled: serversCtl.state.tasks.inRecoveryMode}"
+                    ng-click="!serversCtl.state.tasks.inRecoveryMode && serversCtl.cancelEjectServer(node)"><span>Cancel</span></a>
               </td>
               <td
                 ng-if="serversCtl.showFailedOverControls(node)"
@@ -231,7 +231,7 @@
             </tr>
           </tbody>
 
-          <tbody ng-if="!serversCtl.mnServersState.currentNodes.length">
+          <tbody ng-if="!serversCtl.state.currentNodes.length">
             <tr class="server_row rebalance_empty">
               <td colspan="10">There are no servers pending rebalance.</td>
             </tr>
