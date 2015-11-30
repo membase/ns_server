@@ -23,6 +23,7 @@
     vm.viewId = $state.params.viewId;
     vm.previewRandomDocument = previewRandomDocument;
     vm.awaitingSampleDocument = awaitingSampleDocument;
+    vm.onReduceChange = onReduceChange;
     vm.awaitingViews = awaitingViews;
     vm.goToDocumentsSection = goToDocumentsSection;
     vm.isEditDocumentDisabled = isEditDocumentDisabled;
@@ -103,6 +104,11 @@
           });
         }
       });
+    }
+    function onReduceChange(view) {
+      if (view.reduce === "") {
+        delete view.reduce;
+      }
     }
     function save(e) {
       e.stopImmediatePropagation();

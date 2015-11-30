@@ -125,6 +125,7 @@
                 rows="11"
                 class="reduce"
                 id="viewcode_reduce"
+                ng-change="viewsEditingCtl.onReduceChange(viewsEditingCtl.state.currentDocument.doc.json.views[viewsEditingCtl.viewId])"
                 ng-model="viewsEditingCtl.state.currentDocument.doc.json.views[viewsEditingCtl.viewId].reduce"
                 ui-codemirror="viewsEditingCtl.viewsOptions"
                 ></textarea>
