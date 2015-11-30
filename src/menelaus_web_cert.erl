@@ -25,8 +25,36 @@
 handle_cluster_certificate(Req) ->
     menelaus_web:assert_is_enterprise(),
 
-    {Cert, _} = ns_server_cert:cluster_cert_and_pkey_pem(),
+    case proplists:get_value("extended", Req:parse_qs()) of
+        "true" ->
+            handle_cluster_certificate_extended(Req);
+        _ ->
+            handle_cluster_certificate_simple(Req)
+    end.
+
+handle_cluster_certificate_simple(Req) ->
+    Cert = case ns_server_cert:cluster_ca() of
+               {GeneratedCert, _} ->
+                   GeneratedCert;
+               {UploadedCAProps, _, _} ->
+                   proplists:get_value(pem, UploadedCAProps)
+           end,
     menelaus_util:reply_ok(Req, "text/plain", Cert).
+
+handle_cluster_certificate_extended(Req) ->
+    Res = case ns_server_cert:cluster_ca() of
+              {GeneratedCert, _} ->
+                  [{type, generated},
+                   {pem, GeneratedCert}];
+              {UploadedCAProps, _, _} ->
+                  [{type, uploaded} | UploadedCAProps]
+          end,
+    CertJson = lists:map(fun ({K, V}) when is_list(V) ->
+                                 {K, list_to_binary(V)};
+                             (Pair) ->
+                                 Pair
+                         end, Res),
+    menelaus_util:reply_json(Req, {[{cert, {CertJson}}]}).
 
 handle_regenerate_certificate(Req) ->
     menelaus_web:assert_is_enterprise(),
@@ -35,4 +63,4 @@ handle_regenerate_certificate(Req) ->
     ns_ssl_services_setup:sync_local_cert_and_pkey_change(),
     ?log_info("Completed certificate regeneration"),
     ns_audit:regenerate_certificate(Req),
-    handle_cluster_certificate(Req).
+    handle_cluster_certificate_simple(Req).
