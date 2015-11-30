@@ -21,7 +21,10 @@
     'mnLaunchpad',
     'mnFilters',
     'mnPluggableUiRegistry',
-    'mnAboutDialog'
+    'mnAboutDialog',
+    'mnInternalSettings',
+    'ui.router',
+    'ui.bootstrap'
   ]).config(mnAdminConfig);
 
   function mnAdminConfig($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider) {

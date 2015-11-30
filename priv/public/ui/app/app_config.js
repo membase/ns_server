@@ -14,7 +14,13 @@
     $uibModalProvider.options.backdrop = 'static';
 
     $stateProvider.state('app', {
-      url: '',
+      url: '?{enableInternalSettings:bool}',
+      params: {
+        enableInternalSettings: {
+          value: null,
+          squash: true
+        }
+      },
       abstract: true,
       template: '<div ui-view="" />',
       resolve: {

@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -21,7 +21,17 @@
     vm.pluggableUiConfigs = mnPluggableUiRegistry.getConfigs();
     vm.showAboutDialog = mnAboutDialogService.showAboutDialog;
 
+    vm.enableInternalSettings = $state.params.enableInternalSettings;
+    vm.runInternalSettingsDialog = runInternalSettingsDialog;
+
     activate();
+
+    function runInternalSettingsDialog() {
+      $uibModal.open({
+        templateUrl: "app/mn_admin/mn_internal_settings/mn_internal_settings.html",
+        controller: "mnInternalSettingsController as internalSettingsCtl"
+      });
+    }
 
     function areThereMoreThenTwoRunningTasks() {
       return vm.tasks && vm.tasks.running.length > 1;

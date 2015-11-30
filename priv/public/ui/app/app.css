@@ -1074,6 +1074,7 @@ input.view_name{width:20em;padding:5px}
 .internal_settings_dialog .cursor_helper {cursor: help;}
 .internal_settings_dialog input[type="checkbox"] {position: relative; top: 2px;}
 .internal_settings_dialog form {border-top: 1px solid #dfdfe0;}
+.internal_settings_dialog input {width: 50px!important;}
 
 .bucket_details_info h2 {margin: 0 0 10px; padding: 5px 0 7px; color: #5391BA; font-size: 15px; font-weight: bold; border-bottom: 1px solid #bbbdbf; clear: both;}
 .bucket_details_info .size-gauge {overflow:hidden;position:relative;top:-6px;line-height:24px;}
