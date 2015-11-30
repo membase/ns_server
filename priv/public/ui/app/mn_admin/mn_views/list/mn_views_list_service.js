@@ -140,8 +140,12 @@
       } else {
         return mnBucketsService.getBucketsByType(true).then(function (buckets) {
           params.viewsBucket = buckets.byType.membase.defaultName;
-          return doGetViewsListState(params);
-        })
+          if (!params.viewsBucket) {
+            return getEmptyViewsState(params);
+          } else {
+            return doGetViewsListState(params);
+          }
+        });
       }
     }
     function doGetViewsListState(params) {
