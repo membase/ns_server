@@ -30,16 +30,15 @@
     </div>
     <div class="section">
       <div class="item">
-        <div class="graph_main" mn-spinner="!overviewCtl.mnOverviewStats.opsGraphConfig" style="margin: 0;">
+        <div class="graph_main" ng-show="overviewCtl.buckets.length" mn-spinner="!overviewCtl.mnOverviewStats.opsGraphConfig" style="margin: 0;">
           <span class="graph_info_label">Operations per second</span>
           <div id="overview_ops_graph" class="graph" mn-plot mn-plot-config="overviewCtl.mnOverviewStats.opsGraphConfig"></div>
         </div>
-        <div class="graph_main" mn-spinner="!overviewCtl.mnOverviewStats.readsGraphConfig">
+        <div class="graph_main" ng-show="overviewCtl.buckets.length" mn-spinner="!overviewCtl.mnOverviewStats.readsGraphConfig">
           <span class="graph_info_label">Disk fetches per second</span>
           <div id="overview_reads_graph" class="graph" mn-plot mn-plot-config="overviewCtl.mnOverviewStats.readsGraphConfig"></div>
         </div>
-        <div class="no_stats_marker">
-          <span class="with_buckets">Waiting for samples...</span>
+        <div ng-show="!overviewCtl.buckets.length">
           <span class="without_buckets">No buckets currently defined! Go to <a ui-sref="app.admin.buckets">Manage Buckets</a> to create some.</span>
         </div>
       </div>
