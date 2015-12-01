@@ -118,11 +118,11 @@ handle_cast({refresh_done, Result}, State) ->
     erlang:send_after(?REFRESH_INTERVAL, self(), refresh),
     {noreply, NewState};
 handle_cast(restart_done, #state{restart_pending = true} = State) ->
-    {noreply, State#state{restart_pending = false}};
-handle_cast(notable_event, #state{indexer = Indexer} = State) ->
-    misc:flush(notable_event),
-    {noreply, State#state{source = get_source(Indexer)}}.
+    {noreply, State#state{restart_pending = false}}.
 
+handle_info(notable_event, #state{indexer = Indexer} = State) ->
+    misc:flush(notable_event),
+    {noreply, State#state{source = get_source(Indexer)}};
 handle_info(refresh, State) ->
     refresh_status(State),
     {noreply, State};
@@ -274,10 +274,13 @@ is_notable({{service_map, index}, _}) ->
 is_notable(_) ->
     false.
 
+notify_notable(Pid) ->
+    Pid ! notable_event.
+
 handle_config_event(Event, Pid) ->
     case is_notable(Event) of
         true ->
-            gen_server:cast(Pid, notable_event);
+            notify_notable(Pid);
         false ->
             ok
     end,
@@ -286,7 +289,7 @@ handle_config_event(Event, Pid) ->
 handle_node_disco_event(Event, Pid) ->
     case Event of
         {ns_node_disco_events, _NodesOld, _NodesNew} ->
-            gen_server:cast(Pid, notable_event);
+            notify_notable(Pid);
         false ->
             ok
     end,
