@@ -78,8 +78,7 @@
         <label for="email_alerts_sender" style="vertical-align:top;">Recipients:</label>
         <textarea
           id="email_alerts_recipients"
-          ng-disabled="!settingsAlertsCtl.state.enabled">
-            {{settingsAlertsCtl.state.recipients}}
+          ng-disabled="!settingsAlertsCtl.state.enabled">{{settingsAlertsCtl.state.recipients}}
         </textarea>
         <span style="vertical-align:top;margin:0 5px;line-height:24px">separate addresses with comma "," or spaces " "</span>
         <div
