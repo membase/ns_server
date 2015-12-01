@@ -400,7 +400,8 @@ loop_inner(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                                      {auth,
                                       fun (PReq) ->
                                               menelaus_pluggable_ui:proxy_req(
-                                                RestPrefix, drop_rest_prefix(Path),
+                                                RestPrefix,
+                                                drop_rest_prefix(Req:get(raw_path)),
                                                 Plugins, PReq)
                                       end};
                                  false ->
@@ -585,7 +586,8 @@ loop_inner(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                                      {auth,
                                       fun (PReq) ->
                                               menelaus_pluggable_ui:proxy_req(
-                                                RestPrefix, drop_rest_prefix(Path),
+                                                RestPrefix,
+                                                drop_rest_prefix(Req:get(raw_path)),
                                                 Plugins, PReq)
                                       end};
                                  false ->
@@ -621,7 +623,8 @@ loop_inner(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                                      {auth,
                                       fun (PReq) ->
                                               menelaus_pluggable_ui:proxy_req(
-                                                RestPrefix, drop_rest_prefix(Path),
+                                                RestPrefix,
+                                                drop_rest_prefix(Req:get(raw_path)),
                                                 Plugins, PReq)
                                       end};
                                  false ->
@@ -646,7 +649,8 @@ loop_inner(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                                      {auth,
                                       fun (PReq) ->
                                               menelaus_pluggable_ui:proxy_req(
-                                                RestPrefix, drop_rest_prefix(Path),
+                                                RestPrefix,
+                                                drop_rest_prefix(Req:get(raw_path)),
                                                 Plugins, PReq)
                                       end};
                                  false ->
@@ -3991,5 +3995,5 @@ path_tail([$/|Path]) ->
 path_tail([_|Rest]) ->
     path_tail(Rest).
 
-drop_rest_prefix(Path) ->
+drop_rest_prefix("/" ++ Path) ->
     [$/ | path_tail(Path)].
