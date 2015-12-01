@@ -24,7 +24,8 @@
          verify_otp_connectivity_port_error/2,
          verify_otp_connectivity_connection_error/4,
          unsupported_services_error/2,
-         topology_limitation_error/0]).
+         topology_limitation_error/0,
+         cert_validation_error_message/1]).
 
 -spec connection_error_message(term(), string(), string() | integer()) -> binary() | undefined.
 connection_error_message({Error, _}, Host, Port) ->
@@ -157,3 +158,14 @@ unsupported_services_error(AvailableServices, RequestedServices) ->
 
 topology_limitation_error() ->
     <<"Community edition supports either data only nodes or nodes with all services enabled.">>.
+
+cert_validation_error_message(empty_cert) ->
+    <<"Certificate should not be empty">>;
+cert_validation_error_message(not_valid_at_this_time) ->
+    <<"Certificate is not valid at this time">>;
+cert_validation_error_message(malformed_cert) ->
+    <<"Malformed certificate">>;
+cert_validation_error_message(non_cert_entries) ->
+    <<"Certificate contains malformed entries.">>;
+cert_validation_error_message(too_many_entries) ->
+    <<"Only one certificate per request is allowed.">>.

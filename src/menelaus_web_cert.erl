@@ -20,7 +20,8 @@
 -include("ns_common.hrl").
 
 -export([handle_cluster_certificate/1,
-         handle_regenerate_certificate/1]).
+         handle_regenerate_certificate/1,
+         handle_upload_cluster_ca/1]).
 
 handle_cluster_certificate(Req) ->
     menelaus_web:assert_is_enterprise(),
@@ -64,3 +65,22 @@ handle_regenerate_certificate(Req) ->
     ?log_info("Completed certificate regeneration"),
     ns_audit:regenerate_certificate(Req),
     handle_cluster_certificate_simple(Req).
+
+reply_error(Req, Error) ->
+    menelaus_util:reply_json(
+      Req, {[{error, ns_error_messages:cert_validation_error_message(Error)}]}, 400).
+
+handle_upload_cluster_ca(Req) ->
+    menelaus_web:assert_is_enterprise(),
+
+    case Req:recv_body() of
+        undefined ->
+            reply_error(Req, empty_cert);
+        PemEncodedCA ->
+            case ns_server_cert:set_cluster_ca(PemEncodedCA) of
+                ok ->
+                    handle_cluster_certificate_extended(Req);
+                {error, Error} ->
+                    reply_error(Req, Error)
+            end
+    end.
