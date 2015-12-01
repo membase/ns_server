@@ -230,10 +230,16 @@
       });
     }
     function addServer(selectedGroup, credentials, servicesList) {
+      credentials = _.clone(credentials);
+      if (!credentials['user'] || !credentials['password']) {
+        credentials['user'] = '';
+        credentials['password'] = '';
+      }
+      credentials.services = servicesList.join(',');
       return mnHttp({
         method: 'POST',
         url: (selectedGroup && selectedGroup.addNodeURI) || '/controller/addNode',
-        data: _.extend({}, credentials, {services: servicesList.join(',')})
+        data: credentials
       });
     }
   }
