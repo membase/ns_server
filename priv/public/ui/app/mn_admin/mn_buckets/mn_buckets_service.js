@@ -55,6 +55,8 @@
           bucket.healthStats = [h.healthy || 0, h.warmup || 0, h.unhealthy || 0];
         });
 
+        bucketsDetails.isFullyAlloc = poolsDefault.storageTotals.ram.quotaTotal === poolsDefault.storageTotals.ram.quotaUsed;
+
         return bucketsDetails;
       })
     }

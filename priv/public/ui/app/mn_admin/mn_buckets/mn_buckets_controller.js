@@ -23,7 +23,6 @@
 
     vm.isCreateNewDataBucketDisabled = isCreateNewDataBucketDisabled;
     vm.isBucketCreationWarning = isBucketCreationWarning;
-    vm.isBucketFullyAllocatedWarning = isBucketFullyAllocatedWarning;
     vm.isMaxBucketCountWarning = isMaxBucketCountWarning;
     vm.areThereCreationWarnings = areThereCreationWarnings;
     vm.addBucket = addBucket;
@@ -38,32 +37,35 @@
     function isBucketCreationWarning() {
       return poolDefault.value.rebalancing;
     }
-    function isBucketFullyAllocatedWarning() {
-      return poolDefault.value.storageTotals.ram.quotaTotal === poolDefault.value.storageTotals.ram.quotaUsed;
-    }
     function isMaxBucketCountWarning() {
       return (vm.mnBucketsState || []).length >= poolDefault.value.maxBucketCount;
     }
     function areThereCreationWarnings() {
-      return isMaxBucketCountWarning() || isBucketFullyAllocatedWarning() || isBucketCreationWarning();
+      return isMaxBucketCountWarning() || isBucketCreationWarning();
     }
     function addBucket() {
       mnPromiseHelper(vm, mnBucketsService.getBucketsState())
         .applyToScope("mnBucketsState")
         .cancelOnScopeDestroy($scope)
         .onSuccess(function (mnBucketsState) {
-          !areThereCreationWarnings() && $uibModal.open({
-            templateUrl: 'app/mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
-            controller: 'mnBucketsDetailsDialogController as mnBucketsDetailsDialogController',
-            resolve: {
-              bucketConf: function (mnBucketsDetailsDialogService) {
-                return mnBucketsDetailsDialogService.getNewBucketConf();
-              },
-              autoCompactionSettings: function (mnSettingsAutoCompactionService) {
-                return mnSettingsAutoCompactionService.getAutoCompaction();
+          if (mnBucketsState.isFullyAlloc) {
+            $uibModal.open({
+              templateUrl: 'app/mn_admin/mn_buckets/mn_bucket_full_dialog.html'
+            });
+          } else {
+            !areThereCreationWarnings() && $uibModal.open({
+              templateUrl: 'app/mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
+              controller: 'mnBucketsDetailsDialogController as mnBucketsDetailsDialogController',
+              resolve: {
+                bucketConf: function (mnBucketsDetailsDialogService) {
+                  return mnBucketsDetailsDialogService.getNewBucketConf();
+                },
+                autoCompactionSettings: function (mnSettingsAutoCompactionService) {
+                  return mnSettingsAutoCompactionService.getAutoCompaction();
+                }
               }
-            }
-          });
+            });
+          }
         });
     }
     function activate() {
