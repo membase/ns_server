@@ -26,7 +26,7 @@
           ><span>Apply Changes</span></a>
       </div>
       <div class="groups_container" id="js_server_group_container" mn-spinner="viewLoading">
-        <div ng-repeat="group in groupsCtl.state.groups" class="group_wrapper js_group_wrapper">
+        <div ng-repeat="group in groupsCtl.state.groups | orderBy:'name'" class="group_wrapper js_group_wrapper">
           <div class="head">
             <a class="btn_1 js_edit_group casper_groups_edit_popup" ng-click="groupsCtl.createGroup(group)"><span>Rename Group</span></a>
             <div><h4 class="ellipsis">{{ group.name }}</h4></div>
