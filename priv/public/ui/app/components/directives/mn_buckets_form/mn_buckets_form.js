@@ -4,6 +4,7 @@
   angular
     .module('mnBucketsForm', [
       'mnHttp',
+      'mnFocus',
       'mnBucketsDetailsService',
       'mnFilters',
       'mnPromiseHelper'
@@ -41,7 +42,11 @@
     function controller($scope) {
       $scope.replicaNumberEnabled = $scope.bucketConf.replicaNumber != 0;
       $scope.canChangeBucketsSettings = $scope.bucketConf.isNew;
-      $scope.focusMe = true;
+      $scope.focusMe = {
+        name: !($scope.bucketConf.isWizard || !$scope.bucketConf.isNew),
+        quota: ($scope.bucketConf.isWizard || !$scope.bucketConf.isNew)
+      };
+
 
       $scope.$watch('replicaNumberEnabled', function (isEnabled) {
         if (!isEnabled) {

@@ -20,6 +20,7 @@
     'mnSpinner',
     'mnPromiseHelper',
     'mnFilters',
+    'mnFocus',
     'mnAboutDialog'
   ]).config(mnWizardConfig);
 

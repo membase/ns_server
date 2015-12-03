@@ -11,6 +11,7 @@
     type="number"
     class="focusme js_ram_quota"
     id="kv_ram_quota"
+    mn-focus
     ng-disabled="config.services && !config.services.model.kv || mnMemoryQuotaController.mnPoolDefault.value.isROAdminCreds"
     name="memoryQuota"
     ng-model="config.memoryQuota" />

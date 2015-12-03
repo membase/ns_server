@@ -21,6 +21,7 @@
       'mnPromiseHelper',
       'mnGroupsService',
       'mnPoll',
+      'mnFocus',
       'mnPools'
     ])
     .controller('mnServersController', mnServersController)

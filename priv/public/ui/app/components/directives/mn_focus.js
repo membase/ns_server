@@ -8,7 +8,7 @@
   function mnFocusDirective() {
     var mnFocus = {
       scope: {
-        mnFocus: "="
+        mnFocus: "=?"
       },
       link: link
     };
@@ -22,10 +22,8 @@
 
       $element.bind('blur', function () {
         $scope.mnFocus = false;
-        $scope.$apply();
       });
-
-      $scope.mnFocus = true;
+      $scope.mnFocus = $scope.mnFocus === undefined ? true : $scope.mnFocus;
     }
   }
 })();

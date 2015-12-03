@@ -4,6 +4,7 @@
   angular
     .module('mnMemoryQuota', [
       'mnServices',
+      'mnFocus',
       'mnPoolDefault'
     ])
     .directive('mnMemoryQuota', mnMemoryQuotaDirective);
