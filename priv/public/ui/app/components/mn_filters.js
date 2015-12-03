@@ -27,9 +27,14 @@
     .filter('mnFormatServices', mnFormatServices)
     .filter('mnPrettyVersion', mnPrettyVersion)
     .filter('encodeURIComponent', encodeURIComponentFilter)
+    .filter('mnTrustAsHtml', mnTrustAsHtml)
     .filter('mnIntegerToString', mnIntegerToString);
 
-
+  function mnTrustAsHtml($sce) {
+    return function (html) {
+      return $sce.trustAsHtml(html);
+    };
+  }
   var basedigits = "0123456789ABCDEF";
   function mnIntegerToString() {
     return function (number, base) {

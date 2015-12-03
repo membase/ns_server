@@ -34,11 +34,10 @@ input[type=radio], input[type=checkbox] {border:none}
 :-moz-placeholder{color:#999 !important}
 html, body {height: 100%;}
 
-/* note: .list here increases specifity w.r.t. .list .key rule */
-.list code.key, code.key { color: #333; font-weight: bold; font-size: 12px;}
-code.string { color: #393; }
-code.number, code.boolean { color: #339; }
-code.null { color: #666; }
+.json-key { color: #333; font-weight: bold; font-size: 12px;}
+.json-string { color: #393; }
+.json-number, .json-boolean { color: #339; }
+.json-null { color: #666; }
 
 a {color:#0095d6; cursor:pointer; text-decoration:none; outline:none;}
 a:link {color:#2ea6db}

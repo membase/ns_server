@@ -57,11 +57,13 @@
         <pre
           class="json"
           style="z-index:1;position:relative;height: 300px;oveflow: scroll;"
-          ng-if="!viewsEditingCtl.state.sampleDocument.warnings">{{viewsEditingCtl.state.sampleDocument.json | json}}</pre>
+          ng-if="!viewsEditingCtl.state.sampleDocument.warnings"
+          ng-bind-html="viewsEditingCtl.state.sampleDocument.json | prettyJson:2 | mnTrustAsHtml"></pre>
         <pre
           class="meta"
           style="z-index:1;position:relative;height: 300px;oveflow: scroll;"
-          ng-if="!viewsEditingCtl.state.sampleDocument.warnings">{{viewsEditingCtl.state.sampleDocument.meta | json}}</pre>
+          ng-if="!viewsEditingCtl.state.sampleDocument.warnings"
+          ng-bind-html="viewsEditingCtl.state.sampleDocument.meta | prettyJson:2 | mnTrustAsHtml" ></pre>
         <pre
           style="text-align:center;"
           ng-show="viewsEditingCtl.state.sampleDocument.warnings"
