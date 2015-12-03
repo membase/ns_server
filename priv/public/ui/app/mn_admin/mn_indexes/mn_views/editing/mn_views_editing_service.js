@@ -172,7 +172,7 @@
 
     function getViewsEditingState(params) {
       return mnHttp({
-        method: "GET",
+        method: "HEAD",
         url: "/couchBase/" + buildViewUrl(params)
       }).then(function () {
         return $q.all([
