@@ -72,6 +72,7 @@ reply_error(Req, Error) ->
 
 handle_upload_cluster_ca(Req) ->
     menelaus_web:assert_is_enterprise(),
+    menelaus_web:assert_is_watson(),
 
     case Req:recv_body() of
         undefined ->

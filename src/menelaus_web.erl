@@ -52,7 +52,8 @@
          parse_validate_bucket_auto_compaction_settings/1,
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
-         assert_is_40/0]).
+         assert_is_40/0,
+         assert_is_watson/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -1028,6 +1029,17 @@ assert_is_enterprise() ->
 
 assert_is_40() ->
     case cluster_compat_mode:is_cluster_40() of
+        true ->
+            ok;
+        false ->
+            erlang:throw({web_exception,
+                          400,
+                          "This http API endpoint isn't supported in mixed version clusters",
+                          []})
+    end.
+
+assert_is_watson() ->
+    case cluster_compat_mode:is_cluster_watson() of
         true ->
             ok;
         false ->
