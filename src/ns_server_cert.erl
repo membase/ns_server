@@ -18,7 +18,6 @@
 -include("ns_common.hrl").
 
 -export([cluster_cert_and_pkey_pem/0,
-         generate_cert_and_pkey/0,
          do_generate_cert_and_pkey/2,
          validate_cert/1,
          generate_and_set_cert_and_pkey/0]).
