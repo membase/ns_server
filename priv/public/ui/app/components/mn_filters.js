@@ -280,28 +280,6 @@
         if (oFxNcL > oFyNcL) return 1;
       }
       return 0;
-    }
-
-    return function (collection, valueTransformer) {
-      if (!_.isArray(collection)) {
-        return;
-      }
-      var valueTransformerType = typeof valueTransformer;
-      var originValueTransformer = valueTransformer;
-      function mayBeDot(value) {
-        return valueTransformerType === 'string' ? value[originValueTransformer] : value;
-      }
-      function defaultValueTransformer(natural, a, b) {
-        return natural(mayBeDot(a), mayBeDot(b));
-      }
-
-      valueTransformer = _.partial(
-        valueTransformerType === 'function' ? originValueTransformer : defaultValueTransformer
-      , naturalSort);
-
-      collection.sort(valueTransformer);
-
-      return collection;
     };
   }
   function mnMakeSafeForCSS() {
