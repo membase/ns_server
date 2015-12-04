@@ -13,7 +13,8 @@
         model: {
           kv: true,
           index: true,
-          n1ql: true
+          n1ql: true,
+          fts: true
         }
       },
       credentials: {
