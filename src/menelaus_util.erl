@@ -63,6 +63,7 @@
          validate_any_value/2,
          validate_any_value/3,
          validate_by_fun/3,
+         validate_required/2,
          execute_if_validated/3,
          get_values/1,
          return_value/3,
@@ -469,6 +470,14 @@ validate_any_value(Name, {OutList, _, _} = State, Convert) ->
             State;
         {_, Value} ->
             return_value(Name, Convert(Value), State)
+    end.
+
+validate_required(Name, {OutList, _, _} = State) ->
+    case lists:keyfind(atom_to_list(Name), 1, OutList) of
+        false ->
+            return_error(Name, "The value must be supplied", State);
+        _ ->
+            State
     end.
 
 execute_if_validated(Fun, Req, {_, Values, Errors}) ->
