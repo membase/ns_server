@@ -33,7 +33,10 @@
       mnPromiseHelper(vm, mnDocumentsEditingService.createDocument($state.params, vm.state.doc))
         .cancelOnScopeDestroy($scope)
         .showSpinner()
-        .catchErrors();
+        .catchErrors()
+        .onSuccess(function () {
+          vm.isDocumentChanged = false;
+        });
     }
     function codemirrorLoaded(cm) {
       activate().then(function (resp) {
