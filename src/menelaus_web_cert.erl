@@ -21,7 +21,8 @@
 
 -export([handle_cluster_certificate/1,
          handle_regenerate_certificate/1,
-         handle_upload_cluster_ca/1]).
+         handle_upload_cluster_ca/1,
+         handle_reload_node_certificate/1]).
 
 handle_cluster_certificate(Req) ->
     menelaus_web:assert_is_enterprise(),
@@ -84,4 +85,16 @@ handle_upload_cluster_ca(Req) ->
                 {error, Error} ->
                     reply_error(Req, Error)
             end
+    end.
+
+handle_reload_node_certificate(Req) ->
+    menelaus_web:assert_is_enterprise(),
+    menelaus_web:assert_is_watson(),
+
+    case ns_server_cert:apply_certificate_chain_from_inbox() of
+        ok ->
+            menelaus_util:reply(Req, 200);
+        {error, Error} ->
+            menelaus_util:reply_json(
+              Req, ns_error_messages:reload_node_certificate_error(Error), 400)
     end.

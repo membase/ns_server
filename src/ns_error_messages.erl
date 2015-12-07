@@ -25,7 +25,8 @@
          verify_otp_connectivity_connection_error/4,
          unsupported_services_error/2,
          topology_limitation_error/0,
-         cert_validation_error_message/1]).
+         cert_validation_error_message/1,
+         reload_node_certificate_error/1]).
 
 -spec connection_error_message(term(), string(), string() | integer()) -> binary() | undefined.
 connection_error_message({Error, _}, Host, Port) ->
@@ -169,3 +170,12 @@ cert_validation_error_message(non_cert_entries) ->
     <<"Certificate contains malformed entries.">>;
 cert_validation_error_message(too_many_entries) ->
     <<"Only one certificate per request is allowed.">>.
+
+reload_node_certificate_error(no_cluster_ca) ->
+    <<"Cluster CA needs to be set before setting node certificate.">>;
+reload_node_certificate_error({bad_cert, {Error, Subject}}) ->
+    list_to_binary(io_lib:format("Certificate validation error: ~p. Certificate: ~p", [Error, Subject]));
+reload_node_certificate_error({read_pkey, Reason}) ->
+    list_to_binary(io_lib:format("Unable to read private key file. Reason: ~p", [Reason]));
+reload_node_certificate_error({read_chain, Reason}) ->
+    list_to_binary(io_lib:format("Unable to read certificate chain file. Reason: ~p", [Reason])).

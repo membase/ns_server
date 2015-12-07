@@ -432,6 +432,8 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                      [NodeId]};
                 ["node", "controller", "setupServices"] ->
                     {auth, fun handle_setup_services_post/1};
+                ["node", "controller", "reloadCertificate"] ->
+                    {auth, fun menelaus_web_cert:handle_reload_node_certificate/1};
                 ["settings", "web"] ->
                     {auth, fun handle_settings_web_post/1};
                 ["settings", "alerts"] ->
