@@ -24,7 +24,8 @@
          ssl_cacert_key_path/0,
          memcached_cert_path/0,
          memcached_key_path/0,
-         sync_local_cert_and_pkey_change/0]).
+         sync_local_cert_and_pkey_change/0,
+         set_node_certificate_chain/4]).
 
 %% used by ssl proxy
 -export([dh_params_der/0, supported_versions/0, supported_ciphers/0]).
@@ -287,6 +288,15 @@ memcached_key_path() ->
 marker_path() ->
     filename:join(path_config:component_path(data, "config"), "reload_marker").
 
+user_set_cert_path() ->
+    filename:join(path_config:component_path(data, "config"), "user-set-cert.pem").
+
+user_set_key_path() ->
+    filename:join(path_config:component_path(data, "config"), "user-set-key.pem").
+
+user_set_ca_chain_path() ->
+    filename:join(path_config:component_path(data, "config"), "user-set-ca.pem").
+
 check_local_cert_and_pkey(ClusterCertPEM, Node) ->
     true = is_binary(ClusterCertPEM),
     try
@@ -306,6 +316,9 @@ do_check_local_cert_and_pkey(ClusterCertPEM, Node) ->
 sync_local_cert_and_pkey_change() ->
     ns_config:sync_announcements(),
     ok = gen_server:call(?MODULE, ping, infinity).
+
+set_node_certificate_chain(Props, CAChain, Cert, PKey) ->
+    gen_server:call(?MODULE, {set_node_certificate_chain, Props, CAChain, Cert, PKey}, infinity).
 
 build_cert_state(CertPEM, PKeyPEM, Compat30, Node) ->
     BaseState = #cert_state{cert = CertPEM,
@@ -354,7 +367,15 @@ config_change_detector_loop({{node, _Node, capi_port}, _}, Parent) ->
 config_change_detector_loop(_OtherEvent, Parent) ->
     Parent.
 
+handle_call({set_node_certificate_chain, Props, CAChain, Cert, PKey}, _From, State) ->
+    ns_config:delete({node, node(), cert}),
 
+    ok = misc:atomic_write_file(user_set_ca_chain_path(), CAChain),
+    ok = misc:atomic_write_file(user_set_cert_path(), Cert),
+    ok = misc:atomic_write_file(user_set_key_path(), PKey),
+
+    ns_config:set({node, node(), cert}, Props),
+    {reply, ok, State};
 handle_call(ping, _From, State) ->
     {reply, ok, State};
 handle_call(_, _From, State) ->
