@@ -3,16 +3,27 @@
 
   angular
     .module('mnHttp', ["mnPendingQueryKeeper"])
-    .factory('mnHttp', mnHttpFactory);
+    .factory('mnHttpInterceptor', mnHttpFactory)
+    .config(function ($httpProvider) {
+      $httpProvider.interceptors.push('mnHttpInterceptor');
+    });
 
-  function mnHttpFactory($http, $q, $timeout, $httpParamSerializerJQLike, mnPendingQueryKeeper) {
+  function mnHttpFactory(mnPendingQueryKeeper, $q, $httpParamSerializerJQLike, $timeout) {
+    var myHttpInterceptor = {
+      request: request,
+      response: response
+    };
 
-    createShortMethods('get', 'delete', 'head', 'jsonp');
-    createShortMethodsWithData('post', 'put');
+    return myHttpInterceptor;
 
-    return mnHttp;
-
-    function mnHttp(config) {
+    function request(config) {
+      if (config.url.indexOf(".html") !== -1 || config.doNotIntercept) {
+        return config;
+      } else {
+        return intercept(config);
+      }
+    }
+    function intercept(config) {
       var pendingQuery = {
         config: _.clone(config)
       };
@@ -57,40 +68,24 @@
       }
 
       config.timeout = canceler.promise;
-      var http = $http(config);
-      http.then(clear, clear);
+      config.clear = clear;
+
+      pendingQuery.canceler = cancel("cancelled");
+      mnPendingQueryKeeper.push(pendingQuery);
 
       if (timeout) {
         timeoutID = $timeout(cancel("timeout"), timeout);
       }
 
-      pendingQuery.canceler = cancel("cancelled");
-      pendingQuery.httpPromise = http;
-      mnPendingQueryKeeper.push(pendingQuery);
-
-      return http;
+      return config;
     }
 
-    function createShortMethods(names) {
-      _.each(arguments, function (name) {
-        mnHttp[name] = function (url, config) {
-          return mnHttp(_.extend(config || {}, {
-            method: name,
-            url: url
-          }));
-        };
-      });
-    }
-    function createShortMethodsWithData(name) {
-      _.each(arguments, function (name) {
-        mnHttp[name] = function (url, data, config) {
-          return mnHttp(_.extend(config || {}, {
-            method: name,
-            url: url,
-            data: data
-          }));
-        };
-      });
+    function response(response) {
+      if (response.config.clear && angular.isFunction(response.config.clear)) {
+        response.config.clear();
+        delete response.config.clear;
+      }
+      return response;
     }
   }
 

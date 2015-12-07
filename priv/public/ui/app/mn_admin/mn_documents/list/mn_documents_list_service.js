@@ -2,10 +2,10 @@
   "use strict";
 
   angular
-    .module("mnDocumentsListService", ["mnHttp", "mnBucketsService"])
+    .module("mnDocumentsListService", ["mnBucketsService"])
     .factory("mnDocumentsListService", mnDocumentsListFactory);
 
-  function mnDocumentsListFactory(mnHttp, $q, mnBucketsService, docsLimit) {
+  function mnDocumentsListFactory($http, $q, mnBucketsService, docsLimit) {
     var mnDocumentsListService = {
       getDocumentsListState: getDocumentsListState,
       populateBucketsSelectBox: populateBucketsSelectBox
@@ -76,7 +76,7 @@
         param.endkey = JSON.stringify(param.endkey);
       }
 
-      return mnHttp({
+      return $http({
         method: "GET",
         url: "/pools/default/buckets/" + encodeURIComponent(params.documentsBucket) + "/docs",
         params: param

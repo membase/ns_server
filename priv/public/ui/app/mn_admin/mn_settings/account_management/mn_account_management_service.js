@@ -2,10 +2,10 @@
   "use strict";
 
   angular
-    .module("mnAccountManagementService", ["mnHttp"])
+    .module("mnAccountManagementService", [])
     .factory("mnAccountManagementService", mnAccountManagementFactory);
 
-  function mnAccountManagementFactory(mnHttp, $q) {
+  function mnAccountManagementFactory($http, $q) {
     var mnAccountManagementService = {
       getAccountManagmentState: getAccountManagmentState,
       postReadOnlyAdminName: postReadOnlyAdminName,
@@ -15,7 +15,7 @@
     return mnAccountManagementService;
 
     function resetReadOnlyAdmin(password) {
-      return mnHttp({
+      return $http({
         method: "PUT",
         url: "/settings/readOnlyUser",
         data: {password: password}
@@ -27,13 +27,13 @@
       });
     }
     function deleteReadOnlyAdmin() {
-      return mnHttp({
+      return $http({
         method: "DELETE",
         url: "/settings/readOnlyUser"
       });
     }
     function getReadOnlyAdminName() {
-      return mnHttp({
+      return $http({
         method: "GET",
         url: "/settings/readOnlyAdminName"
       });
@@ -48,7 +48,7 @@
           }
         });
       } else {
-        return mnHttp({
+        return $http({
           method: "POST",
           url: "/settings/readOnlyUser",
           data: {

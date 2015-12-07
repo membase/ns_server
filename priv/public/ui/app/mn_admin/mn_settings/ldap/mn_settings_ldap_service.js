@@ -2,10 +2,10 @@
   "use strict";
 
   angular
-    .module('mnSettingsLdapService', ["mnHttp"])
+    .module('mnSettingsLdapService', [])
     .factory("mnSettingsLdapService", mnSettingsLdapFactory);
 
-    function mnSettingsLdapFactory(mnHttp) {
+    function mnSettingsLdapFactory($http) {
       var mnSettingsLdapService = {
         getSaslauthdAuth: getSaslauthdAuth,
         postSaslauthdAuth: postSaslauthdAuth,
@@ -32,7 +32,7 @@
       }
 
       function validateCredentials(user) {
-        return mnHttp({
+        return $http({
           method: "POST",
           url: "/validateCredentials",
           data: user
@@ -48,7 +48,7 @@
         pack(state, "admins");
         pack(state, "roAdmins");
         delete state["default"];
-        return mnHttp({
+        return $http({
           method: "POST",
           url: "/settings/saslauthdAuth",
           data: state
@@ -56,7 +56,7 @@
       }
 
       function getSaslauthdAuth() {
-        return mnHttp({
+        return $http({
           method: "GET",
           url: "/settings/saslauthdAuth"
         }).then(function (resp) {

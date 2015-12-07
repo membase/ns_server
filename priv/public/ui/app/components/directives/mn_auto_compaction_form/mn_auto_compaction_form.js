@@ -3,12 +3,11 @@
 
   angular
     .module('mnAutoCompactionForm', [
-      'mnHttp',
       'mnPoolDefault'
     ])
     .directive('mnAutoCompactionForm', mnAutoCompactionFormDirective);
 
-  function mnAutoCompactionFormDirective(mnHttp, mnPoolDefault) {
+  function mnAutoCompactionFormDirective($http, mnPoolDefault) {
     var mnAutoCompactionForm = {
       restrict: 'A',
       scope: {

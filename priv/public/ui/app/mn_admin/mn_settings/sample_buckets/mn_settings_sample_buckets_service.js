@@ -3,7 +3,6 @@
 
   angular
     .module("mnSettingsSampleBucketsService", [
-      "mnHttp",
       "mnPoolDefault",
       "mnTasksDetails",
       "mnBucketsService",
@@ -11,7 +10,7 @@
     ])
     .factory("mnSettingsSampleBucketsService", mnSettingsSampleBucketsFactory);
 
-  function mnSettingsSampleBucketsFactory(mnHttp, $q, mnPoolDefault, mnTasksDetails, mnBucketsService, mnServersService) {
+  function mnSettingsSampleBucketsFactory($http, $q, mnPoolDefault, mnTasksDetails, mnBucketsService, mnServersService) {
     var mnSettingsSampleBucketsService = {
       getSampleBuckets: getSampleBuckets,
       installSampleBuckets: installSampleBuckets,
@@ -62,7 +61,7 @@
       });
     }
     function getSampleBuckets() {
-      return mnHttp({
+      return $http({
         url: '/sampleBuckets',
         method: 'GET'
       }).then(function (resp) {
@@ -70,7 +69,7 @@
       });
     }
     function installSampleBuckets(selectedSamples) {
-      return mnHttp({
+      return $http({
         url: '/sampleBuckets/install',
         method: 'POST',
         timeout: 140000,

@@ -4,14 +4,13 @@
   angular
     .module('mnAnalytics', [
       'mnHelper',
-      'mnHttp',
       'mnAnalyticsService',
       'ui.router',
       'mnPoll'
     ])
     .controller('mnAnalyticsController', mnAnalyticsController);
 
-  function mnAnalyticsController($scope, mnAnalyticsService, mnHelper, $state, mnHttp, mnPoller) {
+  function mnAnalyticsController($scope, mnAnalyticsService, mnHelper, $state, $http, mnPoller) {
     var vm = this;
 
     vm.computeOps = computeOps;

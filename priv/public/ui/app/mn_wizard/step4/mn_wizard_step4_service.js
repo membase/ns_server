@@ -2,10 +2,9 @@
   "use strict";
 
   angular.module('mnWizardStep4Service', [
-    'mnHttp'
   ]).factory('mnWizardStep4Service', mnWizardStep4ServiceFactory);
 
-  function mnWizardStep4ServiceFactory(mnHttp) {
+  function mnWizardStep4ServiceFactory($http) {
     var mnWizardStep4Service = {
       postEmail: postEmail,
       postStats: postStats
@@ -18,14 +17,14 @@
       delete params.agree;
       params.callback = 'JSON_CALLBACK';
 
-      return mnHttp({
+      return $http({
         method: 'JSONP',
         url: 'http://ph.couchbase.net/email',
         params: params
       });
     }
     function postStats(data) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/settings/stats',
         data: data

@@ -2,11 +2,10 @@
   "use strict";
 
   angular.module('mnLogsService', [
-    'mnHttp',
     'mnLogsCollectInfoService'
   ]).service('mnLogsService', mnLogsServiceFactory);
 
-  function mnLogsServiceFactory(mnHttp) {
+  function mnLogsServiceFactory($http) {
     var mnLogsService = {
       getLogs: getLogs
     };
@@ -14,7 +13,7 @@
     return mnLogsService;
 
     function getLogs() {
-      return mnHttp.get('/logs');
+      return $http.get('/logs');
     }
   }
 })();

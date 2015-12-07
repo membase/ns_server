@@ -6,14 +6,13 @@
       'mnTasksDetails',
       'mnPoolDefault',
       'mnSettingsAutoFailoverService',
-      'mnHttp',
       'ui.router',
       'mnSettingsClusterService',
       'mnGroupsService'
     ])
     .factory('mnServersService', mnServersFactory);
 
-  function mnServersFactory(mnHttp, mnTasksDetails, mnPoolDefault, mnGroupsService, mnSettingsAutoFailoverService, $q, $state, $stateParams) {
+  function mnServersFactory($http, mnTasksDetails, mnPoolDefault, mnGroupsService, mnSettingsAutoFailoverService, $q, $state, $stateParams) {
     var pendingEject = [];
 
     var mnServersService = {
@@ -51,54 +50,54 @@
       pendingEject = newPendingEject;
     }
     function reAddNode(data) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/controller/setRecoveryType',
         data: data
       });
     }
     function setupServices(data) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/node/controller/setupServices',
         data: data
       });
     }
     function cancelFailOverNode(data) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/controller/reFailOver',
         data: data
       });
     }
     function stopRebalance() {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/controller/stopRebalance'
       });
     }
     function stopRecovery(url) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: url
       });
     }
     function postFailover(type, otpNode) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/controller/' + type,
         data: {otpNode: otpNode}
       });
     }
     function ejectNode(data) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/controller/ejectNode',
         data: data
       });
     }
     function postRebalance(allNodes) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/controller/rebalance',
         data: {
@@ -108,7 +107,7 @@
       });
     }
     function getNodeStatuses(hostname) {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: '/nodeStatuses'
       }).then(function (resp) {
@@ -236,7 +235,7 @@
         credentials['password'] = '';
       }
       credentials.services = servicesList.join(',');
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: (selectedGroup && selectedGroup.addNodeURI) || '/controller/addNode',
         data: credentials

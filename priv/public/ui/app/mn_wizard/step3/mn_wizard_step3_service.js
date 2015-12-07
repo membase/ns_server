@@ -2,13 +2,12 @@
   "use strict";
 
   angular.module('mnWizardStep3Service', [
-    'mnHttp',
     'mnWizardStep1Service',
     'mnWizardStep2Service',
     'mnFilters'
   ]).factory('mnWizardStep3Service', mnWizardStep3ServiceFactory);
 
-  function mnWizardStep3ServiceFactory(mnHttp, mnWizardStep2Service, mnWizardStep1Service, mnBytesToMBFilter, bucketsFormConfiguration) {
+  function mnWizardStep3ServiceFactory($http, mnWizardStep2Service, mnWizardStep1Service, mnBytesToMBFilter, bucketsFormConfiguration) {
 
     var mnWizardStep3Service = {
       getWizardBucketConf: getWizardBucketConf,
@@ -18,7 +17,7 @@
     return mnWizardStep3Service;
 
     function getWizardBucketConf() {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: '/pools/default/buckets/default'
       }).then(function (resp) {
@@ -44,7 +43,7 @@
     }
 
     function postBuckets(data) {
-      return mnHttp({
+      return $http({
         data: data,
         method: 'POST',
         url: data.uri

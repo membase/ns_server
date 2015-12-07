@@ -2,11 +2,10 @@
   "use strict";
 
   angular.module('mnWizardStep1Service', [
-    'mnHttp',
     'mnHelper'
   ]).factory('mnWizardStep1Service', mnWizardStep1ServiceFactory);
 
-  function mnWizardStep1ServiceFactory(mnHttp, mnHelper, IEC) {
+  function mnWizardStep1ServiceFactory($http, mnHelper, IEC) {
     var mnWizardStep1Service = {
       setDynamicRamQuota: setDynamicRamQuota,
       getDynamicRamQuota: getDynamicRamQuota,
@@ -65,7 +64,7 @@
       return getNewClusterConfig;
     }
     function getSelfConfig() {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: '/nodes/self',
         responseType: 'json'
@@ -95,14 +94,14 @@
       }) || {path: "/", sizeKBytes: 0, usagePercent: 0});
     }
     function postDiskStorage(config) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/nodes/self/controller/settings',
         data: config
       });
     }
     function postHostname(hostname) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/node/controller/rename',
         data: {hostname: hostname}
@@ -110,7 +109,7 @@
     }
     function postJoinCluster(clusterMember) {
       clusterMember.user = clusterMember.username;
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/node/controller/doJoinCluster',
         data: clusterMember

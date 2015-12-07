@@ -2,12 +2,11 @@
   "use strict";
 
   angular.module('mnAuthService', [
-    'mnHttp',
     'mnPools',
     'ui.router'
   ]).factory('mnAuthService', mnAuthServiceFactory);
 
-  function mnAuthServiceFactory(mnHttp, $rootScope, $state, mnPools) {
+  function mnAuthServiceFactory($http, $rootScope, $state, mnPools) {
     var mnAuthService = {
       login: login,
       logout: logout
@@ -17,7 +16,7 @@
 
     function login(user) {
       user = user || {};
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/uilogin',
         data: {
@@ -27,7 +26,7 @@
       });
     }
     function logout() {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: "/uilogout"
       }).then(function () {

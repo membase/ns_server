@@ -1,10 +1,9 @@
 (function () {
   angular.module('mnServersListItemDetailsService', [
-    'mnTasksDetails',
-    'mnHttp'
+    'mnTasksDetails'
   ]).factory('mnServersListItemDetailsService', mnServersListItemDetailsFactory);
 
-  function mnServersListItemDetailsFactory(mnHttp, $q, mnTasksDetails) {
+  function mnServersListItemDetailsFactory($http, $q, mnTasksDetails) {
     var mnServersListItemDetailsService = {
       getNodeDetails: getNodeDetails
     };
@@ -39,7 +38,7 @@
 
     function getNodeDetails(node) {
       return $q.all([
-        mnHttp({method: 'GET', url: '/nodes/' + encodeURIComponent(node.otpNode)}),
+        $http({method: 'GET', url: '/nodes/' + encodeURIComponent(node.otpNode)}),
         mnTasksDetails.get()
       ]).then(function (resp) {
         var rv = {};

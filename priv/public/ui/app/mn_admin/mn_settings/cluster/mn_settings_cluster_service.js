@@ -2,13 +2,12 @@
   "use strict";
 
   angular.module('mnSettingsClusterService', [
-    'mnHttp',
     'mnServersService',
     'mnPoolDefault',
     'mnMemoryQuotaService'
   ]).factory('mnSettingsClusterService', mnSettingsClusterServiceFactory);
 
-  function mnSettingsClusterServiceFactory(mnHttp, $q, mnServersService, mnPoolDefault, mnMemoryQuotaService, IEC) {
+  function mnSettingsClusterServiceFactory($http, $q, mnServersService, mnPoolDefault, mnMemoryQuotaService, IEC) {
     var mnSettingsClusterService = {
       getDefaultCertificate: getDefaultCertificate,
       regenerateCertificate: regenerateCertificate,
@@ -21,13 +20,13 @@
     return mnSettingsClusterService;
 
     function getDefaultCertificate() {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: '/pools/default/certificate'
       });
     }
     function regenerateCertificate() {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/controller/regenerateCertificate'
       });
@@ -48,10 +47,10 @@
           just_validate: 1
         };
       }
-      return mnHttp(config);
+      return $http(config);
     }
     function getIndexSettings() {
-      return mnHttp.get("/settings/indexes");
+      return $http.get("/settings/indexes");
     }
     function postIndexSettings(data, justValidate) {
       var config = {
@@ -64,7 +63,7 @@
           just_validate: 1
         };
       }
-      return mnHttp(config);
+      return $http(config);
     }
     function getInMegs(value) {
       return Math.floor(value / IEC.Mi);

@@ -5,6 +5,7 @@
     'mnAdmin',
     'mnAuth',
     'mnWizard',
+    'mnHttp',
     'mnExceptionReporter',
     'ui.bootstrap'
   ]).run(appRun);

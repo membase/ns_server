@@ -3,14 +3,13 @@
 
   angular
     .module('mnAnalyticsService', [
-      'mnHttp',
       'mnBucketsService',
       'mnServersService',
       'mnFilters'
     ])
     .factory('mnAnalyticsService', mnAnalyticsServiceFactory);
 
-  function mnAnalyticsServiceFactory(mnHttp, $q, mnBucketsService, mnServersService, mnCloneOnlyDataFilter, mnFormatQuantityFilter, mnParseHttpDateFilter, timeUnitToSeconds) {
+  function mnAnalyticsServiceFactory($http, $q, mnBucketsService, mnServersService, mnCloneOnlyDataFilter, mnFormatQuantityFilter, mnParseHttpDateFilter, timeUnitToSeconds) {
     var mnAnalyticsService = {
       getStats: getStats,
       doGetStats: doGetStats
@@ -115,14 +114,14 @@
       if (params.previousResult && !params.previousResult.isEmptyState) {
         reqParams.haveTStamp = params.previousResult.stats.lastTStamp;
       }
-      return mnHttp({
+      return $http({
         url: '/_uistats',
         method: 'GET',
         params: reqParams
       });
     }
     function getStatsDirectory(url) {
-      return mnHttp({
+      return $http({
         url: url,
         method: 'GET'
       });

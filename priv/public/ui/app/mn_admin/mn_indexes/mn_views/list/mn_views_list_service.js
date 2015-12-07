@@ -3,14 +3,13 @@
 
   angular
     .module("mnViewsListService", [
-      'mnHttp',
       'mnTasksDetails',
       'mnBucketsService',
       'mnCompaction'
     ])
     .factory("mnViewsListService", mnViewsListFactory);
 
-  function mnViewsListFactory(mnHttp, $q, $window, mnTasksDetails, mnBucketsService, mnCompaction, mnPoolDefault) {
+  function mnViewsListFactory($http, $q, $window, mnTasksDetails, mnBucketsService, mnCompaction, mnPoolDefault) {
     var mnViewsListService = {
       createDdoc: createDdoc,
       getDdocUrl: getDdocUrl,
@@ -36,7 +35,7 @@
       return data;
     }
     function createDdoc(url, json) {
-      return mnHttp({
+      return $http({
         method: 'PUT',
         url: url,
         data: json,
@@ -49,13 +48,13 @@
       return '/couchBase/' + encodeURIComponent(bucket) + '/' + name;
     }
     function getDdoc(url) {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: url
       }).then(handleCouchRequest);
     }
     function deleteDdoc(url) {
-      return mnHttp({
+      return $http({
         method: 'DELETE',
         url: url
       });
@@ -90,7 +89,7 @@
       return kvNodeLink;
     }
     function getDdocs(viewsBucket) {
-      return mnHttp.get('/pools/default/buckets/' + encodeURIComponent(viewsBucket) + '/ddocs');
+      return $http.get('/pools/default/buckets/' + encodeURIComponent(viewsBucket) + '/ddocs');
     }
     function isDevModeDoc(id) {
       var devPrefix = "_design/dev_";

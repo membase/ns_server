@@ -2,10 +2,9 @@
   "use strict";
 
   angular.module('mnWizardStep2Service', [
-    'mnHttp'
   ]).factory('mnWizardStep2Service', mnWizardStep2ServiceFactory);
 
-  function mnWizardStep2ServiceFactory(mnHttp) {
+  function mnWizardStep2ServiceFactory($http) {
     var mnWizardStep2Service = {
       setSelected: setSelected,
       getSelectedBuckets: getSelectedBuckets,

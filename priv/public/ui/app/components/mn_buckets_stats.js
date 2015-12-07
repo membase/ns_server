@@ -2,10 +2,10 @@
   "use strict";
 
   angular
-    .module("mnBucketsStats", ["mnHttp"])
+    .module("mnBucketsStats", [])
     .factory("mnBucketsStats", mnBucketsFactory);
 
-  function mnBucketsFactory(mnHttp, $cacheFactory) {
+  function mnBucketsFactory($http, $cacheFactory) {
     var mnBucketsStats = {
       get: get,
       clearCache: clearCache,
@@ -15,7 +15,7 @@
     return mnBucketsStats;
 
     function get() {
-      return mnHttp.get('/pools/default/buckets?basic_stats=true');
+      return $http.get('/pools/default/buckets?basic_stats=true');
     }
 
     function clearCache() {

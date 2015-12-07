@@ -3,11 +3,10 @@
 
   angular
     .module('mnGroupsService', [
-      'mnHttp'
     ])
     .factory('mnGroupsService', mnGroupsService);
 
-  function mnGroupsService(mnHttp) {
+  function mnGroupsService($http) {
     var mnGroupsService = {
       getGroups: getGroups,
       getGroupsState: getGroupsState,
@@ -20,7 +19,7 @@
     return mnGroupsService;
 
     function applyChanges(url, groups) {
-      return mnHttp({
+      return $http({
         method: "PUT",
         url: url,
         data: JSON.stringify({"groups": groups})
@@ -28,14 +27,14 @@
     }
 
     function deleteGroup(url) {
-      return mnHttp({
+      return $http({
         method: "DELETE",
         url: url
       })
     }
 
     function updateGroup(groupName, url) {
-      return mnHttp({
+      return $http({
         method: "PUT",
         url: url,
         data: {
@@ -45,7 +44,7 @@
     }
 
     function createGroup(groupName) {
-      return mnHttp({
+      return $http({
         method: "POST",
         url: "/pools/default/serverGroups",
         data: {
@@ -59,7 +58,7 @@
     }
 
     function getGroups() {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: '/pools/default/serverGroups'
       }).then(function (resp) {

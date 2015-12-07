@@ -1,12 +1,11 @@
 (function () {
   angular.module('mnBucketsDetailsService', [
-    'mnHttp',
     'mnPoolDefault',
     'mnTasksDetails',
     'mnCompaction'
   ]).factory('mnBucketsDetailsService', mnBucketsDetailsServiceFcatory);
 
-  function mnBucketsDetailsServiceFcatory($q, mnHttp, mnTasksDetails, mnPoolDefault, mnCompaction) {
+  function mnBucketsDetailsServiceFcatory($q, $http, mnTasksDetails, mnPoolDefault, mnCompaction) {
     var mnBucketsDetailsService = {
       getBucketRamGuageConfig: getBucketRamGuageConfig,
       deleteBucket: deleteBucket,
@@ -104,19 +103,19 @@
     }
 
     function deleteBucket(bucket) {
-      return mnHttp({
+      return $http({
         method: 'DELETE',
         url: bucket.uri
       });
     }
     function flushBucket(bucket) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: bucket.controllers.flush
       });
     }
     function doGetDetails(bucket) {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: bucket.uri + "&basic_stats=true"
       });

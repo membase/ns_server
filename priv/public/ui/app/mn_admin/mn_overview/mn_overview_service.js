@@ -3,12 +3,11 @@
 
   angular
     .module('mnOverviewService', [
-      'mnPoolDefault',
-      'mnHttp'
+      'mnPoolDefault'
     ])
     .factory('mnOverviewService', mnOverviewServiceFactory);
 
-  function mnOverviewServiceFactory(mnHttp, mnPoolDefault) {
+  function mnOverviewServiceFactory($http, mnPoolDefault) {
 
     var mnOverviewService = {
       getStats: getStats,
@@ -79,7 +78,7 @@
     return mnOverviewService;
 
     function getStats() {
-      return mnHttp({
+      return $http({
         url: '/pools/default/overviewStats',
         method: "GET"
       }).then(function (statsResponse) {

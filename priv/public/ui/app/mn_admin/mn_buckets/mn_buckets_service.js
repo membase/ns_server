@@ -1,12 +1,11 @@
 (function () {
   angular.module('mnBucketsService', [
-    'mnHttp',
     'mnPoolDefault',
     'mnFilters',
     'mnBucketsStats'
   ]).factory('mnBucketsService', mnBucketsServiceFactory);
 
-  function mnBucketsServiceFactory(mnHttp, $q, mnPoolDefault, mnTruncateTo3DigitsFilter, mnCalculatePercentFilter, mnBucketsStats) {
+  function mnBucketsServiceFactory($http, $q, mnPoolDefault, mnTruncateTo3DigitsFilter, mnCalculatePercentFilter, mnBucketsStats) {
     var mnBucketsService = {
       model: {},
       getBucketsState: getBucketsState,

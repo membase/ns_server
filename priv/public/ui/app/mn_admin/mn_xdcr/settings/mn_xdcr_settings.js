@@ -5,7 +5,7 @@
     .module('mnXDCR')
     .directive('mnXdcrSettings', mnXdcrSettingsDirective);
 
-    function mnXdcrSettingsDirective(mnHttp, mnPromiseHelper) {
+    function mnXdcrSettingsDirective($http, mnPromiseHelper) {
       var mnXdcrSettings = {
         restrict: 'A',
         scope: {
@@ -25,7 +25,7 @@
         var vm = this;
         vm.mnPoolDefault = mnPoolDefault.latestValue();
         $scope.$watch('xdcrSettingsCtl.settings', function (settings) {
-          mnPromiseHelper(vm, mnHttp({
+          mnPromiseHelper(vm, $http({
             method: 'POST',
             url: '/settings/replications/',
             data: settings,

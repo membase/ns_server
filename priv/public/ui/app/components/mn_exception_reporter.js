@@ -42,7 +42,7 @@
       // so delay report sending
       if (error) {
         _.delay(function () {
-          $injector.get("mnHttp")({
+          $injector.get("$http")({
             method: "POST",
             url: "/logClientError",
             data: error.join("")

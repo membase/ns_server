@@ -2,10 +2,9 @@
   "use strict";
 
   angular.module('mnTasksDetails', [
-    'mnHttp'
   ]).factory('mnTasksDetails', mnTasksDetailsFactory);
 
-  function mnTasksDetailsFactory(mnHttp, $cacheFactory) {
+  function mnTasksDetailsFactory($http, $cacheFactory) {
     var mnTasksDetails = {
       get: get,
       clearCache: clearCache,
@@ -24,7 +23,7 @@
     // }
 
     function get() {
-      return mnHttp({
+      return $http({
         url: '/pools/default/tasks',
         method: 'GET',
         cache: true

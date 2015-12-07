@@ -2,11 +2,10 @@
   "use strict";
 
   angular.module('mnSettingsAutoCompactionService', [
-    'mnHttp',
     'mnFilters'
   ]).factory('mnSettingsAutoCompactionService', mnSettingsAutoCompactionServiceFactory);
 
-  function mnSettingsAutoCompactionServiceFactory(mnHttp, mnBytesToMBFilter, mnMBtoBytesFilter) {
+  function mnSettingsAutoCompactionServiceFactory($http, mnBytesToMBFilter, mnMBtoBytesFilter) {
     var mnSettingsAutoCompactionService = {
       prepareSettingsForView: prepareSettingsForView,
       prepareSettingsForSaving: prepareSettingsForSaving,
@@ -69,13 +68,13 @@
       return acSettings;
     }
     function getAutoCompaction() {
-      return mnHttp.get('/settings/autoCompaction').then(function (resp) {
+      return $http.get('/settings/autoCompaction').then(function (resp) {
         return mnSettingsAutoCompactionService.prepareSettingsForView(resp.data);
       });
     }
     function saveAutoCompaction(autoCompactionSettings, params) {
       var params = {};
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/controller/setAutoCompaction',
         params: params || {},

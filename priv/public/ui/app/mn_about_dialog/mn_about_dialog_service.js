@@ -3,7 +3,6 @@
 
   angular
     .module("mnAboutDialogService", [
-      "mnHttp",
       "mnBucketsService",
       "mnPools",
       "ui.bootstrap",
@@ -12,7 +11,7 @@
     ])
     .factory("mnAboutDialogService", mnAboutDialogFactory);
 
-  function mnAboutDialogFactory(mnHttp, $q, $uibModal, mnPools, mnBucketsService, mnIntegerToStringFilter, mnPoolDefault) {
+  function mnAboutDialogFactory($http, $q, $uibModal, mnPools, mnBucketsService, mnIntegerToStringFilter, mnPoolDefault) {
     var mnAboutDialogService = {
       getState: getState,
       showAboutDialog: showAboutDialog
@@ -67,7 +66,7 @@
             };
           });
         } else {
-          return mnHttp({
+          return $http({
             url: "/versions",
             method: "GET"
           }).then(function (resp) {

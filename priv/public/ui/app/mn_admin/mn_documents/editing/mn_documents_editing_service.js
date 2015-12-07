@@ -2,10 +2,10 @@
   "use strict";
 
   angular
-    .module("mnDocumentsEditingService", ["mnHttp", "mnBucketsService", "mnFilters"])
+    .module("mnDocumentsEditingService", ["mnBucketsService", "mnFilters"])
     .factory("mnDocumentsEditingService", mnDocumentsEditingFactory);
 
-  function mnDocumentsEditingFactory(mnHttp, mnBucketsService, $q, getStringBytesFilter, docBytesLimit) {
+  function mnDocumentsEditingFactory($http, mnBucketsService, $q, getStringBytesFilter, docBytesLimit) {
     var mnDocumentsEditingService = {
       getDocument: getDocument,
       createDocument: createDocument,
@@ -52,13 +52,13 @@
     }
 
     function deleteDocument(params) {
-      return mnHttp({
+      return $http({
         method: "DELETE",
         url: buildDocumentUrl(params)
       });
     }
     function createDocument(params, doc) {
-      return mnHttp({
+      return $http({
         method: "POST",
         mnHttp: {
           isNotForm: true
@@ -71,7 +71,7 @@
       if (!params.documentId) {
         return $q.reject({data: {reason: "Document ID cannot be empty"}});
       }
-      return mnHttp({
+      return $http({
         method: "GET",
         url: buildDocumentUrl(params)
       });

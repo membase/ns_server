@@ -3,11 +3,10 @@
 
   angular
     .module('mnCompaction', [
-      'mnHttp'
     ])
     .factory('mnCompaction', mnCompactionFactory);
 
-  function mnCompactionFactory($interval, mnHttp) {
+  function mnCompactionFactory($interval, $http) {
     var startedCompactions = {};
     var mnCompaction = {
       registerAsTriggered: registerAsTriggered,
@@ -47,7 +46,7 @@
     }
     function registerAsTriggeredAndPost(url, undoBody) {
       mnCompaction.registerAsTriggered(url, undoBody);
-      return mnHttp.post(url);
+      return $http.post(url);
     }
     function getStartedCompactions() {
       return startedCompactions;

@@ -1,6 +1,5 @@
 (function () {
   angular.module('mnBucketsDetailsDialogService', [
-    'mnHttp',
     'mnFilters',
     'mnPoolDefault',
     'mnServersService',
@@ -8,7 +7,7 @@
     'mnSettingsAutoCompactionService'
   ]).factory('mnBucketsDetailsDialogService', mnBucketsDetailsDialogServiceFactory);
 
-  function mnBucketsDetailsDialogServiceFactory(mnHttp, $q, mnBytesToMBFilter, mnCountFilter, mnSettingsAutoCompactionService, mnPoolDefault, mnServersService, bucketsFormConfiguration, mnBucketsDetailsService) {
+  function mnBucketsDetailsDialogServiceFactory($http, $q, mnBytesToMBFilter, mnCountFilter, mnSettingsAutoCompactionService, mnPoolDefault, mnServersService, bucketsFormConfiguration, mnBucketsDetailsService) {
     var mnBucketsDetailsDialogService = {
       prepareBucketConfigForSaving: prepareBucketConfigForSaving,
       adaptValidationResult: adaptValidationResult,
@@ -20,7 +19,7 @@
     return mnBucketsDetailsDialogService;
 
     function postBuckets(data, uri) {
-      return mnHttp({
+      return $http({
         data: data,
         method: 'POST',
         url: uri

@@ -7,12 +7,12 @@ describe('mnHttp', function () {
     callback = jasmine.createSpy('callback');
   });
 
-  it('should have the right methods', inject(function (mnHttp) {
-    var methods = ['get', 'delete', 'head', 'jsonp', 'post', 'put'];
+  it('should have the right methods', inject(function (mnHttpInterceptor) {
+    var methods = ['request', 'response'];
     angular.forEach(methods, function (method) {
-      expect(mnHttp[method]).toEqual(jasmine.any(Function));
+      expect(mnHttpInterceptor[method]).toEqual(jasmine.any(Function));
     });
-    expect(mnHttp).toEqual(jasmine.any(Function));
+    expect(mnHttpInterceptor).toEqual(jasmine.any(Object));
   }));
 
   it('should pass correct configuration into $http', function () {
@@ -24,29 +24,21 @@ describe('mnHttp', function () {
     //5. if isNotForm is true then application/x-www-form-urlencoded header should not be passed into http
     //6. mnHttp property does not reach $http
     //7. configuration remained intact for mnPendingQueryKeeper.push
-    var fakePromise = {
-      then: function () {}
-    };
-    var $http = jasmine.createSpy('$http').and.callFake(function () {
-      return fakePromise
-    });
 
-    module(function ($provide) {
-      $provide.value('$http', $http);
-    });
-
-    inject(function (mnHttp, $q, mnPendingQueryKeeper) {
+    inject(function ($http, $q, mnHttpInterceptor, mnPendingQueryKeeper) {
       spyOn(mnPendingQueryKeeper, "push");
-      mnHttp.get("/url", {
+      expect(mnHttpInterceptor.request({
+        url: '/url',
+        method: "GET",
         httpConfig: "httpConfig",
         mnHttp: {
           deleteMe: true
         }
-      });
-      expect($http).toHaveBeenCalledWith({
+      })).toEqual({
         httpConfig: 'httpConfig',
-        method: 'get',
+        method: 'GET',
         url: '/url',
+        clear: jasmine.any(Function),
         timeout: $q.defer().promise
       });
       expect(mnPendingQueryKeeper.push).toHaveBeenCalledWith({
@@ -55,55 +47,60 @@ describe('mnHttp', function () {
           mnHttp: {
             deleteMe: true
           },
-          method: 'get',
+          method: 'GET',
           url: '/url'
         },
-        canceler: jasmine.any(Function),
-        httpPromise: fakePromise
+        canceler: jasmine.any(Function)
       });
-      mnHttp.post("/url", {
-        data: "data"
-      }, {
+      expect(mnHttpInterceptor.request({
+        url: '/url',
+        method: "POST",
+        data: {
+          data: "data"
+        },
         httpConfig: "httpConfig",
         mnHttp: {
           deleteMe: true
         }
-      });
-      expect($http).toHaveBeenCalledWith({
+      })).toEqual({
         httpConfig: 'httpConfig',
-        method: 'post',
+        method: 'POST',
         url: '/url',
         data: 'data=data',
         headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-        timeout: $q.defer().promise
+        timeout: $q.defer().promise,
+        clear: jasmine.any(Function)
       });
-      mnHttp.put("/url", "doNotSerializeMe", {
+      expect(mnHttpInterceptor.request({
+        url: '/url',
+        method: "PUT",
+        data: "doNotSerializeMe",
         httpConfig: "httpConfig",
         mnHttp: {
           isNotForm: true
         }
-      });
-      expect($http).toHaveBeenCalledWith({
+      })).toEqual({
         httpConfig: 'httpConfig',
-        method: 'put',
+        method: 'PUT',
         url: '/url',
         headers: {},
         data: 'doNotSerializeMe',
-        timeout: $q.defer().promise
+        timeout: $q.defer().promise,
+        clear: jasmine.any(Function)
       });
     });
   });
 
-  it("should cancel previous post request in case new with same configuration and flag cancelPrevious is coming", inject(function (mnHttp, $httpBackend, $rootScope, mnPendingQueryKeeper) {
+  it("should cancel previous post request in case new with same configuration and flag cancelPrevious is coming", inject(function ($http, $httpBackend, $rootScope, mnPendingQueryKeeper) {
     $httpBackend.expect('POST', '/url').respond(200);
     $httpBackend.expect('POST', '/url').respond(200);
 
     spyOn(mnPendingQueryKeeper, "getQueryInFly").and.callThrough();
-    mnHttp.post("/url", undefined, {mnHttp: {cancelPrevious: true}}).catch(function (response) {
+    $http.post("/url", undefined, {mnHttp: {cancelPrevious: true}}).catch(function (response) {
       expect(response.status).toBe(0);
       callback();
     });
-    mnHttp.post("/url", undefined, {mnHttp: {cancelPrevious: true}});
+    $http.post("/url", undefined, {mnHttp: {cancelPrevious: true}});
     $httpBackend.flush();
 
     expect(mnPendingQueryKeeper.getQueryInFly.calls.count()).toBe(2);
@@ -112,21 +109,24 @@ describe('mnHttp', function () {
     $httpBackend.verifyNoOutstandingRequest();
   }));
 
-  it("should cancel request by timeout in case timeout was passed", inject(function (mnHttp, $httpBackend, $timeout) {
-    $httpBackend.expect('GET', '/url').respond(200);
-    mnHttp.get("/url", {timeout: 10000}).catch(function (response) {
-      expect(response.status).toBe(0);
+  it("should cancel request by timeout in case timeout was passed", inject(function (mnHttpInterceptor, $timeout) {
+    var config = mnHttpInterceptor.request({
+      url: '/url',
+      method: "GET",
+      timeout: 10000
+    });
+
+    config.timeout.then(function (reason) {
+      expect(reason).toBe("timeout");
       callback();
     });
 
     $timeout.flush(10000);
 
     expect(callback).toHaveBeenCalled();
-    $httpBackend.verifyNoOutstandingExpectation();
-    $httpBackend.verifyNoOutstandingRequest();
   }));
 
-  it("should be cleared properly", inject(function (mnHttp, $timeout, $httpBackend, mnPendingQueryKeeper) {
+  it("should be cleared properly", inject(function ($http, $timeout, $httpBackend, mnPendingQueryKeeper) {
     //in this test we check that protective logic (isCleared) works correctly in case we cancel previous query
     //without protective logic timeout.cancel and removeQueryInFly will be called 3 times
     spyOn(mnPendingQueryKeeper, "removeQueryInFly").and.callThrough();
@@ -134,12 +134,28 @@ describe('mnHttp', function () {
     $httpBackend.expect('POST', '/url').respond(200);
 
     spyOn($timeout, "cancel").and.callThrough();
-    mnHttp.post("/url", undefined, {timeout: 10000, mnHttp: {cancelPrevious: true}});
-    mnHttp.post("/url", undefined, {timeout: 10000, mnHttp: {cancelPrevious: true}});
+    $http.post("/url", undefined, {timeout: 10000, mnHttp: {cancelPrevious: true}});
+    $http.post("/url", undefined, {timeout: 10000, mnHttp: {cancelPrevious: true}});
     $httpBackend.flush();
 
     expect($timeout.cancel.calls.count()).toBe(2);
     expect(mnPendingQueryKeeper.removeQueryInFly.calls.count()).toBe(2);
+
+    $httpBackend.verifyNoOutstandingExpectation();
+    $httpBackend.verifyNoOutstandingRequest();
+  }));
+
+  it("should not be intercepted if appropriate flag was passed or if url has extansion .html", inject(function ($http, $timeout, $httpBackend, mnPendingQueryKeeper) {
+    $httpBackend.expect('POST', '/url.html').respond(200);
+    $httpBackend.expect('POST', '/url').respond(200);
+
+    spyOn(mnPendingQueryKeeper, "push").and.callThrough();
+
+    $http.post("/url.html", undefined, {});
+    $http.post("/url", undefined, {doNotIntercept: true});
+
+    $httpBackend.flush();
+    expect(mnPendingQueryKeeper.push).not.toHaveBeenCalled();
 
     $httpBackend.verifyNoOutstandingExpectation();
     $httpBackend.verifyNoOutstandingRequest();

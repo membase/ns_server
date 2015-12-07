@@ -2,10 +2,9 @@
   "use strict";
 
   angular.module('mnSettingsAuditService', [
-    'mnHttp'
   ]).factory('mnSettingsAuditService', mnSettingsAuditServiceFactory);
 
-  function mnSettingsAuditServiceFactory(mnHttp) {
+  function mnSettingsAuditServiceFactory($http) {
     var mnSettingsAuditService = {
       getAuditSettings: getAuditSettings,
       saveAuditSettings: saveAuditSettings
@@ -14,7 +13,7 @@
     return mnSettingsAuditService;
 
     function getAuditSettings() {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: '/settings/audit'
       }).then(function(resp) {
@@ -26,7 +25,7 @@
       if (validateOnly) {
         params.just_validate = 1;
       }
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/settings/audit',
         params: params,

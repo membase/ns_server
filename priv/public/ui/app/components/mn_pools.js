@@ -3,11 +3,10 @@
 
   angular
     .module('mnPools', [
-      'mnHttp'
     ])
     .factory('mnPools', mnPoolsFactory);
 
-  function mnPoolsFactory(mnHttp, $cacheFactory) {
+  function mnPoolsFactory($http, $cacheFactory) {
     var mnPools = {
       isEnterprise: isEnterprise,
       get: get,
@@ -23,7 +22,7 @@
       return mnPools.value && mnPools.value.isEnterprise;
     }
     function get() {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: '/pools',
         cache: true,

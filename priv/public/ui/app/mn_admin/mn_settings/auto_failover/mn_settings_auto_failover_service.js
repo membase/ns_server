@@ -2,10 +2,9 @@
   "use strict";
 
   angular.module('mnSettingsAutoFailoverService', [
-    'mnHttp'
   ]).factory('mnSettingsAutoFailoverService', mnSettingsAutoFailoverServiceFactory);
 
-  function mnSettingsAutoFailoverServiceFactory(mnHttp) {
+  function mnSettingsAutoFailoverServiceFactory($http) {
     var mnSettingsAutoFailoverService = {
       resetAutoFailOverCount: resetAutoFailOverCount,
       getAutoFailoverSettings: getAutoFailoverSettings,
@@ -15,19 +14,19 @@
     return mnSettingsAutoFailoverService;
 
     function resetAutoFailOverCount() {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/settings/autoFailover/resetCount'
       });
     }
     function getAutoFailoverSettings() {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: "/settings/autoFailover"
       });
     }
     function saveAutoFailoverSettings(autoFailoverSettings) {
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: "/settings/autoFailover",
         data: autoFailoverSettings

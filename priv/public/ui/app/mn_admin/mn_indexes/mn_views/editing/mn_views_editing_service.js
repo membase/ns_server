@@ -2,10 +2,10 @@
   "use strict";
 
   angular
-    .module("mnViewsEditingService", ["mnHttp", "mnViewsListService", "mnDocumentsEditingService", "mnViewsListService", "mnFilters"])
+    .module("mnViewsEditingService", ["mnViewsListService", "mnDocumentsEditingService", "mnViewsListService", "mnFilters"])
     .factory("mnViewsEditingService", mnViewsEditingFactory);
 
-  function mnViewsEditingFactory(mnHttp, $state, mnViewsListService, mnDocumentsEditingService, $q, removeEmptyValueFilter, $httpParamSerializerJQLike, mnPoolDefault, viewsPerPageLimit) {
+  function mnViewsEditingFactory($http, $state, mnViewsListService, mnDocumentsEditingService, $q, removeEmptyValueFilter, $httpParamSerializerJQLike, mnPoolDefault, viewsPerPageLimit) {
     var mnViewsEditingService = {
       getViewsEditingState: getViewsEditingState,
       prepareRandomDocument: prepareRandomDocument,
@@ -43,7 +43,7 @@
     }
 
     function getRandomKey(viewsBucket) {
-      return mnHttp({
+      return $http({
         method: "GET",
         url: "/pools/default/buckets/" + encodeURIComponent(viewsBucket) + "/localRandomKey"
       });
@@ -64,7 +64,7 @@
       return filterParams;
     }
     function getViewResult(params) {
-      return mnHttp({
+      return $http({
         method: "GET",
         url: "/couchBase/" + buildViewUrl(params),
         params: removeEmptyValueFilter(getFilterParams(params)),
@@ -171,7 +171,7 @@
     }
 
     function getViewsEditingState(params) {
-      return mnHttp({
+      return $http({
         method: "HEAD",
         url: "/couchBase/" + buildViewUrl(params)
       }).then(function () {

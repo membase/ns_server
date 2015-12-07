@@ -3,12 +3,11 @@
 
   angular
     .module('mnPoolDefault', [
-      'mnHttp',
       'mnPools'
     ])
     .factory('mnPoolDefault', mnPoolDefaultFactory);
 
-  function mnPoolDefaultFactory(mnHttp, $cacheFactory, $q, mnPools, $window) {
+  function mnPoolDefaultFactory($http, $cacheFactory, $q, mnPools, $window) {
     var latest = {};
     var mnPoolDefault = {
       latestValue: latestValue,
@@ -28,7 +27,7 @@
         cache = true;
       }
       return $q.all([
-        mnHttp({
+        $http({
           method: 'GET',
           url: '/pools/default',
           responseType: 'json',

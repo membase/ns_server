@@ -2,10 +2,9 @@
   "use strict";
 
   angular.module('mnWizardStep5Service', [
-    'mnHttp'
   ]).factory('mnWizardStep5Service', mnWizardStep5ServiceFactory);
 
-  function mnWizardStep5ServiceFactory(mnHttp) {
+  function mnWizardStep5ServiceFactory($http) {
     var mnWizardStep5Service = {
       postAuth: postAuth
     };
@@ -17,7 +16,7 @@
       delete data.verifyPassword;
       data.port = "SAME";
 
-      return mnHttp({
+      return $http({
         method: 'POST',
         url: '/settings/web',
         data: data

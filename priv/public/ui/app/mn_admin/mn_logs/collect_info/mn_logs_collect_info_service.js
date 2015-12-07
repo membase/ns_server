@@ -2,13 +2,12 @@
   "use strict";
 
   angular.module('mnLogsCollectInfoService', [
-    'mnHttp',
     'mnServersService',
     'mnTasksDetails',
     'mnFilters'
   ]).service('mnLogsCollectInfoService', mnLogsCollectInfoServiceFactory);
 
-  function mnLogsCollectInfoServiceFactory(mnHttp, $q, mnServersService, mnTasksDetails, mnStripPortHTMLFilter) {
+  function mnLogsCollectInfoServiceFactory($http, $q, mnServersService, mnTasksDetails, mnStripPortHTMLFilter) {
     var mnLogsCollectInfoService = {
       startLogsCollection: startLogsCollection,
       cancelLogsCollection: cancelLogsCollection,
@@ -18,10 +17,10 @@
     return mnLogsCollectInfoService;
 
     function startLogsCollection(collect) {
-      return mnHttp.post('/controller/startLogsCollection', collect);
+      return $http.post('/controller/startLogsCollection', collect);
     }
     function cancelLogsCollection() {
-      return mnHttp.post('/controller/cancelLogsCollection');
+      return $http.post('/controller/cancelLogsCollection');
     }
     function getState() {
       return $q.all([

@@ -11,7 +11,7 @@
     .directive('mnRegexTestKey', mnRegexTestKeyDirective)
     .factory('mnRegexService', mnRegexFactory);
 
-  function mnRegexFactory(mnHttp, getStringBytesFilter, mnPromiseHelper, $q) {
+  function mnRegexFactory($http, getStringBytesFilter, mnPromiseHelper, $q) {
     var properties = {
       hightlightTestKey: null,
       testKey: null,
@@ -66,7 +66,7 @@
       if (mnRegexService.doValidateOnOverLimit(testKey)) {
         return $q.reject('Test key should not have size more than 250 bytes');
       }
-      return mnHttp({
+      return $http({
         method: 'POST',
         mnHttp: {
           cancelPrevious: true

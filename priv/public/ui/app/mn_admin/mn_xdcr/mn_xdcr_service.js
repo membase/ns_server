@@ -2,12 +2,11 @@
   "use strict";
 
   angular.module('mnXDCRService', [
-    'mnHttp',
     'mnTasksDetails',
     'mnPoolDefault'
   ]).factory('mnXDCRService', mnXDCRServiceFactory);
 
-  function mnXDCRServiceFactory($q, mnHttp, mnTasksDetails, mnPoolDefault) {
+  function mnXDCRServiceFactory($q, $http, mnTasksDetails, mnPoolDefault) {
     var mnXDCRService = {
       removeExcessSettings: removeExcessSettings,
       saveClusterReference: saveClusterReference,
@@ -38,27 +37,27 @@
       cluster = _.clone(cluster);
       cluster.hostname && !cluster.hostname.split(":")[1] && (cluster.hostname += ":8091");
       !cluster.encription && (cluster.certificate = '');
-      return mnHttp.post('/pools/default/remoteClusters' + (name ? ("/" + encodeURIComponent(name)) : ""), cluster);
+      return $http.post('/pools/default/remoteClusters' + (name ? ("/" + encodeURIComponent(name)) : ""), cluster);
     }
     function deleteClusterReference(name) {
-      return mnHttp.delete('/pools/default/remoteClusters/' + encodeURIComponent(name));
+      return $http.delete('/pools/default/remoteClusters/' + encodeURIComponent(name));
     }
     function deleteReplication(id) {
-      return mnHttp.delete('/controller/cancelXDCR/' + encodeURIComponent(id));
+      return $http.delete('/controller/cancelXDCR/' + encodeURIComponent(id));
     }
     function getReplicationSettings(id) {
-      return mnHttp.get("/settings/replications" + (id ? ("/" + encodeURIComponent(id)) : ""));
+      return $http.get("/settings/replications" + (id ? ("/" + encodeURIComponent(id)) : ""));
     }
     function saveReplicationSettings(id, settings) {
-      return mnHttp.post("/settings/replications/" + encodeURIComponent(id), settings);
+      return $http.post("/settings/replications/" + encodeURIComponent(id), settings);
     }
     function postRelication(settings) {
-      return mnHttp.post("/controller/createReplication", settings);
+      return $http.post("/controller/createReplication", settings);
     }
     function getReplicationState() {
       return $q.all([
         mnTasksDetails.get(),
-        mnHttp.get('/pools/default/remoteClusters')
+        $http.get('/pools/default/remoteClusters')
       ]).then(function (resp) {
         var tasks = resp[0];
         var allReferences = resp[1].data;

@@ -5,12 +5,11 @@
     .module('mnHelper', [
       'ui.router',
       'mnTasksDetails',
-      'mnAlertsService',
-      'mnHttp'
+      'mnAlertsService'
     ])
     .factory('mnHelper', mnHelperFactory);
 
-  function mnHelperFactory($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, mnHttp) {
+  function mnHelperFactory($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, $http) {
     var mnHelper = {
       wrapInFunction: wrapInFunction,
       calculateMaxMemorySize: calculateMaxMemorySize,

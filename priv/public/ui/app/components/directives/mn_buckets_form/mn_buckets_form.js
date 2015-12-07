@@ -3,7 +3,6 @@
 
   angular
     .module('mnBucketsForm', [
-      'mnHttp',
       'mnFocus',
       'mnBucketsDetailsService',
       'mnFilters',
@@ -11,7 +10,7 @@
     ])
     .directive('mnBucketsForm', mnBucketsFormDirective);
 
-  function mnBucketsFormDirective(mnHttp, mnBucketsDetailsDialogService, mnBytesToMBFilter, mnCountFilter, mnPromiseHelper) {
+  function mnBucketsFormDirective($http, mnBucketsDetailsDialogService, mnBytesToMBFilter, mnCountFilter, mnPromiseHelper) {
 
     var mnBucketsForm = {
       restrict: 'A',
@@ -74,7 +73,7 @@
       }, function (values) {
         var bucketConf = values.bucketConf;
         var autoCompactionSettings = values.autoCompactionSettings;
-        mnPromiseHelper($scope, mnHttp({
+        mnPromiseHelper($scope, $http({
           method: 'POST',
           url: bucketConf.uri,
           data: mnBucketsDetailsDialogService.prepareBucketConfigForSaving(bucketConf, autoCompactionSettings),

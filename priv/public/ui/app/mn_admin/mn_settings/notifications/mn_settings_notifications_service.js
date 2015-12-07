@@ -1,5 +1,4 @@
 angular.module('mnSettingsNotificationsService', [
-  'mnHttp',
   'mnPoolDefault',
   'mnBucketsService',
   'mnPools',
@@ -9,7 +8,7 @@ angular.module('mnSettingsNotificationsService', [
   'mnSettingsAuditService',
   'mnFilters'
 ]).factory('mnSettingsNotificationsService',
-  function (mnHttp, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnGsiService, mnSettingsAuditService, mnMBtoBytesFilter) {
+  function ($http, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnGsiService, mnSettingsAuditService, mnMBtoBytesFilter) {
     var mnSettingsNotificationsService = {};
 
     function sumWithoutNull(array, average) {
@@ -213,7 +212,7 @@ angular.module('mnSettingsNotificationsService', [
     };
 
     mnSettingsNotificationsService.getUpdates = function (data) {
-      return mnHttp({
+      return $http({
         method: 'JSONP',
         url: 'http://ph.couchbase.net/v2',
         timeout: 8000,
@@ -242,10 +241,10 @@ angular.module('mnSettingsNotificationsService', [
     };
 
     mnSettingsNotificationsService.saveSendStatsFlag = function (flag) {
-      return mnHttp.post("/settings/stats", {sendStats: flag});
+      return $http.post("/settings/stats", {sendStats: flag});
     };
     mnSettingsNotificationsService.getSendStatsFlag = function () {
-      return mnHttp.get("/settings/stats").then(function (resp) {
+      return $http.get("/settings/stats").then(function (resp) {
         return resp.data;
       });
     };

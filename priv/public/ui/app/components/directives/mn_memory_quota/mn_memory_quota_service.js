@@ -3,13 +3,12 @@
 
   angular
     .module('mnMemoryQuotaService', [
-      'mnHttp',
       'mnPoolDefault',
       'mnHelper'
     ])
     .factory('mnMemoryQuotaService', mnMemoryQuotaServiceFactory);
 
-  function mnMemoryQuotaServiceFactory(mnHttp, mnPoolDefault, mnHelper, IEC) {
+  function mnMemoryQuotaServiceFactory($http, mnPoolDefault, mnHelper, IEC) {
     var mnMemoryQuotaService = {
       prepareClusterQuotaSettings: prepareClusterQuotaSettings,
       isOnlyOneNodeWithService: isOnlyOneNodeWithService,

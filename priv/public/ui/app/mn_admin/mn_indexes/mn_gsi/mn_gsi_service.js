@@ -2,10 +2,9 @@
   "use strict";
 
   angular.module('mnGsiService', [
-    'mnHttp',
   ]).factory('mnGsiService', mnGsiServiceFactory);
 
-  function mnGsiServiceFactory(mnHttp) {
+  function mnGsiServiceFactory($http) {
     var mnGsiService = {
       getIndexesState: getIndexesState
     };
@@ -13,7 +12,7 @@
     return mnGsiService;
 
     function getIndexesState() {
-      return mnHttp({
+      return $http({
         method: 'GET',
         url: '/indexStatus'
       }).then(function (resp) {
