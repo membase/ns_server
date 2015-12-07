@@ -60,7 +60,7 @@ init(Indexer) ->
 
     {ok, #state{indexer = Indexer,
                 buckets = Buckets,
-                default_stats = Defaults}}.
+                default_stats = finalize_index_bucket_stats(Defaults)}}.
 
 find_type(_, []) ->
     not_found;
