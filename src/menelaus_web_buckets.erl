@@ -485,8 +485,8 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                     handle_bucket_update_inner(BucketId, Req, Params, Limit-1)
             end;
         {true, true, {ok, _, JSONSummaries}} ->
-          reply_json(Req, {struct, [{errors, {struct, []}},
-                                    {summaries, {struct, JSONSummaries}}]}, 200);
+            reply_json(Req, {struct, [{errors, {struct, []}},
+                                      {summaries, {struct, JSONSummaries}}]}, 200);
         {true, false, {ok, ParsedProps, JSONSummaries}} ->
             FinalErrors = perform_warnings_validation(Ctx, ParsedProps, []),
             reply_json(Req, {struct, [{errors, {struct, FinalErrors}},
