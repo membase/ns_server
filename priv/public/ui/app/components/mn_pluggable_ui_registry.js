@@ -3,22 +3,14 @@
 
   angular
     .module('mnPluggableUiRegistry', [])
-    .factory('mnPluggableUiRegistry', mnPluggableUiRegistryFactory);
+    .provider('mnPluggableUiRegistry', mnPluggableUiRegistryProvider);
 
-  function mnPluggableUiRegistryFactory() {
+  function mnPluggableUiRegistryProvider() {
     var _configs = [];
-    return {
-      getConfigs: getConfigs,
-      registerConfig: registerConfig
-    };
 
-    /**
-     * Returns a list of the registered plugabble UI configs.
-     * @returns {Array}
-     */
-    function getConfigs() {
-      return _configs;
-    }
+    this.registerConfig = registerConfig;
+    this.$get = mnPluggableUiRegistryFactory;
+
     /**
      * Registers a UI component config with the pluggable UI registry service so that the
      * component can be displayed in the UI.
@@ -41,6 +33,21 @@
      */
     function registerConfig(config) {
       _configs.push(config);
+    }
+
+    function mnPluggableUiRegistryFactory() {
+
+      return {
+        getConfigs: getConfigs
+      };
+
+      /**
+       * Returns a list of the registered plugabble UI configs.
+       * @returns {Array}
+       */
+      function getConfigs() {
+        return _configs;
+      }
     }
   }
 }());
