@@ -3,13 +3,15 @@
 
   angular.module('mnIndexes', [
     'mnViews',
-    'mnGsi'
+    'mnGsi',
+    'mnPluggableUiRegistry'
   ]).config(mnIndexesConfig);
 
   function mnIndexesConfig($stateProvider) {
     $stateProvider
       .state('app.admin.indexes', {
         abstract: true,
+        controller: "mnIndexesController as indexesCtl",
         templateUrl: "app/mn_admin/mn_indexes/mn_indexes.html"
       })
       .state('app.admin.indexes.views', {
