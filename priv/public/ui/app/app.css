@@ -89,11 +89,10 @@ a.dynamic_disabled{text-decoration:none;cursor:default;}
 #container {background-color:#fff;position:absolute;width:100%;min-width:960px;min-height:100%;overflow: hidden;}
 #mainContainer {position:relative;width:1060px;left:12%;margin-top:15px;padding:0 0 220px;}
 .main_holder {position:relative; margin:auto; left:0px !important;}
-.cnt_holder {width:960px; position:relative; margin: 0 auto;}
-.log_wrap {float: left;}
-.log_wrap a {display: block; width: 109px; height: 60px; background: url(/images/couchbase_small_2.0.2.png) no-repeat 50% 50%;}
+.cnt_holder {width: 1060px; height: 42px; position:relative; margin: 0 auto;}
+.logo_wrap {float: left; display: block;padding-top:3px;}
 .tab_name {overflow: hidden; font-size: 30px; font-weight: normal; line-height: 60px; text-align: center;}
-.page-header {background:url('/images/header_bg.png') 0 bottom repeat-x;height:60px;}
+.page-header {background:url('/images/header_bg.png') 0 bottom repeat-x;height:42px;}
 
 #headerNav {clear:both;height:50px;background:url('/images/navigation_bg.png') repeat-x;}
 #headerNav .contents{width:915px;margin:auto;}
