@@ -16,7 +16,6 @@
     'mnGroups',
     'mnDocuments',
     'mnSettings',
-    'mnViews',
     'mnXDCR',
     'mnPoll',
     'mnLaunchpad',
@@ -116,46 +115,6 @@
         controller: 'mnAnalyticsListGraphController as analyticsListGraphCtl',
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list_graph.html'
       })
-      .state('app.admin.views', {
-        abstract: true,
-        url: '/views?viewsBucket',
-        params: {
-          type: {
-            value: 'development'
-          }
-        },
-        templateUrl: 'app/mn_admin/mn_views/mn_views.html',
-        controller: 'mnViewsController as viewsCtl'
-      })
-      .state('app.admin.views.list', {
-        url: "?type",
-        controller: 'mnViewsListController as viewsListCtl',
-        templateUrl: 'app/mn_admin/mn_views/list/mn_views_list.html'
-      })
-      .state('app.admin.views.editing', {
-        abstract: true,
-        url: '/:documentId/:viewId?{isSpatial:bool}&sampleDocumentId',
-        controller: 'mnViewsEditingController as viewsEditingCtl',
-        templateUrl: 'app/mn_admin/mn_views/editing/mn_views_editing.html',
-        data: {
-          required: {
-            admin: true
-          }
-        }
-      })
-      .state('app.admin.views.editing.result', {
-        url: '?subset&{pageNumber:int}&viewsParams',
-        params: {
-          full_set: {
-            value: null
-          },
-          pageNumber: {
-            value: 0
-          }
-        },
-        controller: 'mnViewsEditingResultController as viewsEditingResultCtl',
-        templateUrl: 'app/mn_admin/mn_views/editing/mn_views_editing_result.html'
-      })
       .state('app.admin.buckets', {
         url: '/buckets?openedBucket',
         params: {
@@ -173,16 +132,6 @@
             controller: 'mnBucketsDetailsController as bucketsDetailsCtl'
           }
         }
-      })
-      .state('app.admin.indexes', {
-        url: "/index?openedIndex",
-        params: {
-          openedIndex: {
-            array: true
-          }
-        },
-        controller: "mnIndexesController as indexesCtl",
-        templateUrl: "app/mn_admin/mn_indexes/mn_indexes.html"
       })
       .state('app.admin.servers', {
         url: '/servers/:list?openedServers',

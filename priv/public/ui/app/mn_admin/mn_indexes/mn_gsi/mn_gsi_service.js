@@ -1,16 +1,16 @@
 (function () {
   "use strict";
 
-  angular.module('mnIndexesService', [
+  angular.module('mnGsiService', [
     'mnHttp',
-  ]).factory('mnIndexesService', mnIndexesServiceFactory);
+  ]).factory('mnGsiService', mnGsiServiceFactory);
 
-  function mnIndexesServiceFactory(mnHttp) {
-    var mnIndexesService = {
+  function mnGsiServiceFactory(mnHttp) {
+    var mnGsiService = {
       getIndexesState: getIndexesState
     };
 
-    return mnIndexesService;
+    return mnGsiService;
 
     function getIndexesState() {
       return mnHttp({

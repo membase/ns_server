@@ -61,7 +61,7 @@
         <span ng-show="!bucketsListCtl.buckets.isMembase">N/A</span>
       </td>
       <td colspan="4" class="last" ng-if="bucketsListCtl.buckets.isMembase">
-        <a class="list_button disable-if-stale" ui-sref="app.admin.views.list({viewsBucket: bucket.name})"><span>Views</span></a>
+        <a class="list_button disable-if-stale" ui-sref="app.admin.indexes.views.list({viewsBucket: bucket.name})"><span>Views</span></a>
         <a
           class="list_button when-roadmin-hide-me"
           ng-hide="bucketsListCtl.mnPoolDefault.value.isROAdminCreds"

@@ -17,7 +17,7 @@
       var copy = prepareToCopy(url, currentDdoc);
       var promise = mnViewsListService.getDdoc(url).then(function (presentDdoc) {
         return $uibModal.open({
-          templateUrl: 'app/mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
+          templateUrl: 'app/mn_admin/mn_indexes/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
         }).result.then(copy);
       }, copy);
 
@@ -31,7 +31,7 @@
           .closeOnSuccess()
           .cancelOnScopeDestroy($scope)
           .onSuccess(function () {
-            $state.go('app.admin.views.list', {
+            $state.go('app.admin.indexes.views.list', {
               type: 'development'
             });
           })

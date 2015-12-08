@@ -7,7 +7,7 @@
 
   function mnViewsCreateDialogController($scope, $uibModal, $state, $q, mnViewsListService, mnHelper, mnPromiseHelper, $uibModalInstance, currentDdoc, viewType) {
     var vm = this;
-    var isViewsEditingSection = $state.is('app.admin.views.editing.result');
+    var isViewsEditingSection = $state.is('app.admin.indexes.views.editing.result');
     vm.ddoc = {};
     vm.isSpatial = viewType === "spatial";
     vm.ddoc.name = currentDdoc && mnViewsListService.cutOffDesignPrefix(currentDdoc.meta.id);
@@ -58,7 +58,7 @@
         }
         if (_.keys(views).length >= 10) {
           return $uibModal.open({
-            templateUrl: 'app/mn_admin/mn_views/confirm_dialogs/mn_views_confirm_limit_dialog.html'
+            templateUrl: 'app/mn_admin/mn_indexes/mn_views/confirm_dialogs/mn_views_confirm_limit_dialog.html'
           }).result.then(function () {
             return createDdoc(presentDdoc);
           }, function () {

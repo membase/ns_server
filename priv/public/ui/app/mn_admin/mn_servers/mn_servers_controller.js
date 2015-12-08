@@ -17,7 +17,7 @@
       'mnSpinner',
       'ngMessages',
       'mnMemoryQuotaService',
-      'mnIndexesService',
+      'mnGsiService',
       'mnPromiseHelper',
       'mnGroupsService',
       'mnPoll',
@@ -37,7 +37,7 @@
     };
   }
 
-  function mnServersController($scope, $state, $uibModal, $q, $interval, mnMemoryQuotaService, mnIndexesService, $stateParams, $timeout, mnPoolDefault, mnPoller, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools, mnSortableTable) {
+  function mnServersController($scope, $state, $uibModal, $q, $interval, mnMemoryQuotaService, mnGsiService, $stateParams, $timeout, mnPoolDefault, mnPoller, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools, mnSortableTable) {
     var vm = this;
     vm.sortableTableProperties = mnSortableTable.get();
     vm.mnPoolDefault = mnPoolDefault.latestValue();
@@ -253,7 +253,7 @@
       }
 
       var promise = $q.all([
-        mnIndexesService.getIndexesState(),
+        mnGsiService.getIndexesState(),
         mnServersService.getNodes()
       ]).then(function (resp) {
         var nodes = resp[1];

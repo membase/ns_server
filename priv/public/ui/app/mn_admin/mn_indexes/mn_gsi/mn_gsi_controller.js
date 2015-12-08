@@ -1,15 +1,15 @@
 (function () {
   "use strict";
 
-  angular.module('mnIndexes', [
+  angular.module('mnGsi', [
     'mnHelper',
-    'mnIndexesService',
+    'mnGsiService',
     'mnSortableTable',
     'mnPoll',
     'mnSpinner'
-  ]).controller('mnIndexesController', mnIndexesController);
+  ]).controller('mnGsiController', mnGsiController);
 
-  function mnIndexesController($scope, mnIndexesService, mnHelper, mnPoller) {
+  function mnGsiController($scope, mnGsiService, mnHelper, mnPoller) {
     var vm = this;
 
     activate();
@@ -17,7 +17,7 @@
     function activate() {
       mnHelper.initializeDetailsHashObserver(vm, 'openedIndex', 'app.admin.indexes');
 
-      new mnPoller($scope, mnIndexesService.getIndexesState)
+      new mnPoller($scope, mnGsiService.getIndexesState)
       .subscribe("state", vm)
       .keepIn("app.admin.indexes", vm)
       .cancelOnScopeDestroy()

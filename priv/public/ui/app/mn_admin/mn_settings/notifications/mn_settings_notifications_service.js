@@ -5,11 +5,11 @@ angular.module('mnSettingsNotificationsService', [
   'mnPools',
   'mnAnalyticsService',
   'mnViewsListService',
-  'mnIndexesService',
+  'mnGsiService',
   'mnSettingsAuditService',
   'mnFilters'
 ]).factory('mnSettingsNotificationsService',
-  function (mnHttp, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnIndexesService, mnSettingsAuditService, mnMBtoBytesFilter) {
+  function (mnHttp, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnGsiService, mnSettingsAuditService, mnMBtoBytesFilter) {
     var mnSettingsNotificationsService = {};
 
     function sumWithoutNull(array, average) {
@@ -207,7 +207,7 @@ angular.module('mnSettingsNotificationsService', [
           $q.all(perBucketQueries),
           $q.when(pools),
           mnPoolDefault.getFresh(),
-          mnIndexesService.getIndexesState()
+          mnGsiService.getIndexesState()
         ]).then(buildPhoneHomeThingy);
       });
     };

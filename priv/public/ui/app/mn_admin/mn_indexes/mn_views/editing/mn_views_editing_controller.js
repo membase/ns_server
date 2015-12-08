@@ -84,7 +84,7 @@
       e.stopImmediatePropagation();
       $uibModal.open({
         controller: 'mnViewsCreateDialogController as viewsCreateDialogCtl',
-        templateUrl: 'app/mn_admin/mn_views/create_dialog/mn_views_create_dialog.html',
+        templateUrl: 'app/mn_admin/mn_indexes/mn_views/create_dialog/mn_views_create_dialog.html',
         scope: $scope,
         resolve: {
           currentDdoc: mnHelper.wrapInFunction(vm.state.currentDocument.doc),
@@ -97,7 +97,7 @@
           viewId: vm.ddoc.view
         };
         if (!isViewPathTheSame($state.params, selected)) {
-          $state.go('app.admin.views.editing.result', {
+          $state.go('app.admin.indexes.views.editing.result', {
             viewId: selected.viewId,
             documentId: selected.documentId
           });
@@ -114,7 +114,7 @@
         .reloadState();
     }
     function onSelectViewName(selected) {
-      $state.go('app.admin.views.editing.result', {
+      $state.go('app.admin.indexes.views.editing.result', {
         viewId: selected.viewId,
         isSpatial: selected.isSpatial,
         documentId: selected.documentId

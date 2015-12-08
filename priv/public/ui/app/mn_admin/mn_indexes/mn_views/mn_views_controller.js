@@ -35,7 +35,7 @@
       }
       function onSelectBucket(selectedBucket) {
         _.defer(function () { //in order to set selected into ng-model before state.go
-          $state.go('app.admin.views.list', {viewsBucket: selectedBucket});
+          $state.go('app.admin.indexes.views.list', {viewsBucket: selectedBucket});
         });
       }
 
@@ -44,7 +44,7 @@
             return mnViewsListService.prepareBucketsDropdownData($state.params, true);
           })
           .subscribe("state", vm)
-          .keepIn("app.admin.views", vm)
+          .keepIn("app.admin.indexes.views", vm)
           .cancelOnScopeDestroy()
           .cycle();
       }

@@ -2,10 +2,10 @@
   <div class="header_2">
     <ul class="tabs switcher">
       <li class="tab_left">
-        <a ui-sref="app.admin.views.list({ type: 'development' })" ui-sref-active="selected">Development Views</a>
+        <a ui-sref="app.admin.indexes.views.list({ type: 'development' })" ui-sref-active="selected">Development Views</a>
       </li>
       <li class="tab_right">
-        <a class="casper_views_prod_tab" ui-sref="app.admin.views.list({ type: 'production' })" ui-sref-active="selected">Production Views</a>
+        <a class="casper_views_prod_tab" ui-sref="app.admin.indexes.views.list({ type: 'production' })" ui-sref-active="selected">Production Views</a>
         <span class="badge notify" ng-show="viewsListCtl.state.production.length"><span id="prod_view_count">{{viewsListCtl.state.production.length}}</span></span>
       </li>
     </ul>
@@ -117,20 +117,20 @@
               <a
                 class="casper_views_view_tab"
                 style="display:block;line-height:33px;"
-                ui-sref="app.admin.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">{{key}}</a>
+                ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">{{key}}</a>
             </td>
             <td>
               <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ui-sref="app.admin.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))"><span>{{(row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds) ? 'Edit' : 'Show' }}</span></a>
+              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))"><span>{{(row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds) ? 'Edit' : 'Show' }}</span></a>
             </td>
           </tr>
           <tr ng-repeat-end="" ng-if="row.containsSpatials" ng-repeat="(key, spatial) in row.doc.json.spatial">
             <td class="view_name ellipsis" colspan="5">
-              <a ui-sref="app.admin.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">[Spatial] {{key}}</a>
+              <a ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">[Spatial] {{key}}</a>
             </td>
             <td>
               <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ui-sref="app.admin.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))"><span>{{(row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds) ? 'Edit' : 'Show' }}</span></a>
+              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))"><span>{{(row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds) ? 'Edit' : 'Show' }}</span></a>
             </td>
           </tr>
         </tbody>

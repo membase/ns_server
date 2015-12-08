@@ -108,6 +108,11 @@ a.dynamic_disabled{text-decoration:none;cursor:default;}
 .mainPanel {font-size:12px;/* Helvetica;*/}
 .mainPanel > div.dynamic_active {display: block;}
 
+.second-level-nav {font-size: 16px; padding-bottom: 20px;}
+.second-level-nav li {display: inline-block; padding: 0px 10px 5px;}
+.second-level-nav li a.selected {text-decoration: underline; color: #0095d6;}
+.second-level-nav li a {color: #2ea6DB;}
+
 .page-footer {position:absolute;bottom:-2px;width:100%;height:96px;background:url('/images/footer_bg.png') repeat-x;}
 .page-footer h1 {width:500px;padding:32px 0 0 15px;font:normal 11pt Verdana;color:#97979A;text-transform:none;}
 .page-footer a {color:#00A6DE;text-decoration:none;}

@@ -70,7 +70,7 @@
     function showCreationDialog(ddoc, isSpatial) {
       $uibModal.open({
         controller: 'mnViewsCreateDialogController as viewsCreateDialogCtl',
-        templateUrl: 'app/mn_admin/mn_views/create_dialog/mn_views_create_dialog.html',
+        templateUrl: 'app/mn_admin/mn_indexes/mn_views/create_dialog/mn_views_create_dialog.html',
         scope: $scope,
         resolve: {
           currentDdoc: mnHelper.wrapInFunction(ddoc),
@@ -81,7 +81,7 @@
     function showDdocDeletionDialog(ddoc) {
       $uibModal.open({
         controller: 'mnViewsDeleteDdocDialogController as viewsDeleteDdocDialogCtl',
-        templateUrl: 'app/mn_admin/mn_views/delete_ddoc_dialog/mn_views_delete_ddoc_dialog.html',
+        templateUrl: 'app/mn_admin/mn_indexes/mn_views/delete_ddoc_dialog/mn_views_delete_ddoc_dialog.html',
         scope: $scope,
         resolve: {
           currentDdocName: mnHelper.wrapInFunction(ddoc.meta.id)
@@ -91,7 +91,7 @@
     function showViewDeletionDialog(ddoc, viewName, isSpatial) {
       $uibModal.open({
         controller: 'mnViewsDeleteViewDialogController as viewsDeleteViewDialogCtl',
-        templateUrl: 'app/mn_admin/mn_views/delete_view_dialog/mn_views_delete_view_dialog.html',
+        templateUrl: 'app/mn_admin/mn_indexes/mn_views/delete_view_dialog/mn_views_delete_view_dialog.html',
         scope: $scope,
         resolve: {
           currentDdocName: mnHelper.wrapInFunction(ddoc.meta.id),
@@ -104,7 +104,7 @@
       return function () {
         return mnPromiseHelper(vm, mnViewsListService.createDdoc(url, ddoc.json))
           .onSuccess(function () {
-            $state.go('app.admin.views.list', {
+            $state.go('app.admin.indexes.views.list', {
               type: 'production'
             });
           })
@@ -120,14 +120,14 @@
         .getPromise()
         .then(function (presentDdoc) {
           $uibModal.open({
-            templateUrl: 'app/mn_admin/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
+            templateUrl: 'app/mn_admin/mn_indexes/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
           }).result.then(publish);
         }, publish);
     }
     function copyToDev(ddoc) {
       $uibModal.open({
         controller: 'mnViewsCopyDialogController as viewsCopyDialogCtl',
-        templateUrl: 'app/mn_admin/mn_views/copy_dialog/mn_views_copy_dialog.html',
+        templateUrl: 'app/mn_admin/mn_indexes/mn_views/copy_dialog/mn_views_copy_dialog.html',
         scope: $scope,
         resolve: {
           currentDdoc: mnHelper.wrapInFunction(ddoc)
@@ -145,7 +145,7 @@
           return mnViewsListService.getViewsListState($state.params);
         })
         .subscribe("state", vm)
-        .keepIn("app.admin.views.list", vm)
+        .keepIn("app.admin.indexes.views.list", vm)
         .cancelOnScopeDestroy()
         .cycle();
     }

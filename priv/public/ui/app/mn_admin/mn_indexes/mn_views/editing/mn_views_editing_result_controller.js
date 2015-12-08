@@ -61,19 +61,19 @@
     }
 
     function nextPage() {
-      $state.go('app.admin.views.editing.result', {
+      $state.go('app.admin.indexes.views.editing.result', {
         pageNumber: $state.params.pageNumber + 1
       });
     }
     function prevPage() {
       var prevPage = $state.params.pageNumber - 1;
       prevPage = prevPage < 0 ? 0 : prevPage;
-      $state.go('app.admin.views.editing.result', {
+      $state.go('app.admin.indexes.views.editing.result', {
         pageNumber: prevPage
       });
     }
     function loadSampleDocument(id) {
-      $state.go('app.admin.views.editing.result', {
+      $state.go('app.admin.indexes.views.editing.result', {
         sampleDocumentId: id
       });
     }
@@ -87,7 +87,7 @@
       return isEmptyState() || vm.viewLoading || !vm.state.rows || vm.state.rows.length < viewsPerPageLimit || $state.params.pageNumber >= 15;
     }
     function onFilterClose(params) {
-      $state.go('app.admin.views.editing.result', {
+      $state.go('app.admin.indexes.views.editing.result', {
         viewsParams: JSON.stringify(params)
       });
       $scope.viewsEditingCtl.isFilterOpened = false;
