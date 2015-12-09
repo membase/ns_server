@@ -90,6 +90,8 @@
           class="when-roadmin-avoid-me"
           ng-hide="settingsAlertsCtl.mnPoolDefault.value.isROAdminCreds">
           <button
+            type="button"
+            ng-disabled="!settingsAlertsCtl.state.enabled"
             class="edit_btn"
             id="test_email"
             ng-click="settingsAlertsCtl.testEmail()">Test Mail</button>
