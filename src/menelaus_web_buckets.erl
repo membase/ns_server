@@ -97,8 +97,9 @@ handle_bucket_list(Req) ->
                     undefined -> normal;
                     _ -> for_ui
                 end,
+    SkipMap = proplists:get_value("skipMap", Req:parse_qs()) =:= "true",
     BucketsInfo = [build_bucket_info(Name, undefined, InfoLevel, LocalAddr,
-                                     may_expose_bucket_auth(Req))
+                                     may_expose_bucket_auth(Req), SkipMap)
                    || Name <- BucketNames],
     reply_json(Req, BucketsInfo).
 
@@ -107,9 +108,10 @@ handle_bucket_info(_PoolId, Id, Req) ->
                     undefined -> normal;
                     _ -> for_ui
                 end,
+    SkipMap = proplists:get_value("skipMap", Req:parse_qs()) =:= "true",
     reply_json(Req, build_bucket_info(Id, undefined, InfoLevel,
                                       menelaus_util:local_addr(Req),
-                                      may_expose_bucket_auth(Req))).
+                                      may_expose_bucket_auth(Req), SkipMap)).
 
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
     %% Only list nodes this bucket is mapped to
@@ -156,10 +158,13 @@ add_couch_api_base(BucketName, BucketUUID, KV, Node, LocalAddr) ->
             [{couchApiBaseHTTPS, CapiSSLBucketUrl} | KV1]
     end.
 
-build_bucket_info(Id, undefined, InfoLevel, LocalAddr, MayExposeAuth) ->
+build_bucket_info(Id, undefined, InfoLevel, LocalAddr, MayExposeAuth,
+                  SkipMap) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Id),
-    build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth);
-build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth) ->
+    build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
+                      SkipMap);
+build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
+                  SkipMap) ->
     Nodes = build_bucket_node_infos(Id, BucketConfig, InfoLevel, LocalAddr),
     StatsUri = bin_concat_path(["pools", "default", "buckets", Id, "stats"]),
     StatsDirectoryUri = iolist_to_binary([StatsUri, <<"Directory">>]),
@@ -215,9 +220,14 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth) ->
     %% how Enyim decides to use ketama
     Suffix1 = case BucketType of
                   membase ->
-                      [{vBucketServerMap, ns_bucket:json_map_from_config(
-                                            LocalAddr, BucketConfig)} |
-                       Suffix];
+                      case SkipMap of
+                          false ->
+                              [{vBucketServerMap, ns_bucket:json_map_from_config(
+                                                    LocalAddr, BucketConfig)} |
+                               Suffix];
+                          _ ->
+                              Suffix
+                      end;
                   memcached ->
                       Suffix
               end,
@@ -371,7 +381,7 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
                                 {just_write, {write, Bin}};
                             _ ->
                                 Info = build_bucket_info(Id, BucketConfig, stable, LocalAddr,
-                                                         may_expose_bucket_auth(Req)),
+                                                         may_expose_bucket_auth(Req), false),
                                 {just_write, Info}
                         end;
                     not_present ->
