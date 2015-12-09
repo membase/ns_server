@@ -19,8 +19,7 @@
 
 -include_lib("public_key/include/public_key.hrl").
 
--export([cluster_cert_and_pkey_pem/0,
-         do_generate_cert_and_pkey/2,
+-export([do_generate_cert_and_pkey/2,
          validate_cert/1,
          generate_and_set_cert_and_pkey/0,
          cluster_ca/0,
@@ -56,14 +55,6 @@ cluster_ca() ->
                 _ ->
                     Pair
             end
-    end.
-
-cluster_cert_and_pkey_pem() ->
-    case cluster_ca() of
-        {_, _} = Pair ->
-            Pair;
-        {_, Cert, Key} ->
-            {Cert, Key}
     end.
 
 generate_and_set_cert_and_pkey() ->
