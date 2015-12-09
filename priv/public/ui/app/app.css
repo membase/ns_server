@@ -1546,7 +1546,7 @@ input[type=number].size {width:4em;}
 
 .query_notice {position: absolute; width: 670px; left: 100px; top: 3px;}
 
-.global_alerts_container {width: 1060px; margin: 20px; auto;}
+.global_alerts_container {width: 1060px;}
 
 #js_collect_information .controls {text-align: right; height: 30px; padding-right: 10px; margin-top: -40px; padding-bottom: 10px; margin-left: 300px;}
 

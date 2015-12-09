@@ -87,9 +87,6 @@
       </ul>
     </div>
   </div>
-  <div class="global_alerts_container">
-    <div uib-alert ng-repeat="alert in adminCtl.alerts" type="{{alert.type}}" close="adminCtl.closeAlert($index)" dismiss-on-timeout="{{alert.timeout}}">{{alert.msg}}</div>
-  </div>
   <div id="mainContainer" class="main_holder">
     <div id="mainPanel" class="mainPanel" ui-view autoscroll="false"></div>
   </div>

@@ -5,12 +5,10 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnAlertsService, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
-    vm.alerts = mnAlertsService.alerts;
-    vm.closeAlert = mnAlertsService.closeAlert;
     vm.logout = mnAuthService.logout;
     vm.resetAutoFailOverCount = resetAutoFailOverCount;
     vm.isProgressBarClosed = true;

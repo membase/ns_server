@@ -1,3 +1,6 @@
+<div class="global_alerts_container">
+  <div uib-alert ng-repeat="alert in overviewCtl.alerts" type="{{alert.type}}" close="overviewCtl.closeAlert($index)" dismiss-on-timeout="{{alert.timeout}}">{{alert.msg}}</div>
+</div>
 <div id="js_overview" class="overview">
   <h1>Cluster Overview</h1>
   <div id="notice_container"></div>

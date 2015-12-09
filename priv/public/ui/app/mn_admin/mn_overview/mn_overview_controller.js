@@ -9,11 +9,15 @@
     'mnServersService',
     'mnBucketsService',
     'mnPromiseHelper',
-    'mnPoll'
+    'mnPoll',
+    'ui.bootstrap'
   ]).controller('mnOverviewController', mnOverviewController);
 
-  function mnOverviewController($scope, mnServersService, mnBucketsService, mnOverviewService, mnHelper, mnPoller, mnPromiseHelper) {
+  function mnOverviewController($scope, mnServersService, mnBucketsService, mnOverviewService, mnHelper, mnPoller, mnAlertsService, mnPromiseHelper) {
     var vm = this;
+
+    vm.alerts = mnAlertsService.alerts;
+    vm.closeAlert = mnAlertsService.closeAlert;
 
     activate();
 
