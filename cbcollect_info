@@ -403,6 +403,7 @@ def make_os_tasks():
         WindowsTask("Network status", "netstat -ano"),
         AllOsTask("Network routing table", "netstat -rn"),
         LinuxTask("Network socket statistics", "ss -an"),
+        LinuxTask("Extended socket statistics", "ss -an --info --processes"),
         UnixTask("Arp cache", "arp -na"),
         LinuxTask("Iptables dump", "iptables-save"),
         UnixTask("Raw /etc/hosts", "cat /etc/hosts"),
