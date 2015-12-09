@@ -111,13 +111,13 @@
       }
       function catchGlobalErrors(errorMessage, timeout) {
         promise.then(null, function (resp) {
-          mnAlertsService.formatAndSetAlerts(errorMessage || resp.data, 'error', timeout);
+          mnAlertsService.showAlertInPopup(errorMessage || extractErrors(resp.data), 'error', timeout);
         });
         return this;
       }
       function showGlobalSuccess(successMessage, timeout) {
         promise.then(function (resp) {
-          mnAlertsService.formatAndSetAlerts(successMessage || resp.data, 'success', timeout);
+          mnAlertsService.showAlertInPopup(successMessage || resp.data, 'success', timeout);
         });
         return this;
       }

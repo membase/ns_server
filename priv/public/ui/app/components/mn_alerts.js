@@ -2,21 +2,31 @@
   "use strict";
 
   angular
-    .module('mnAlertsService', [])
+    .module('mnAlertsService', ['ui.bootstrap'])
     .service('mnAlertsService', mnAlertsServiceFactory);
 
-  function mnAlertsServiceFactory() {
+  function mnAlertsServiceFactory($uibModal, $rootScope) {
     var alerts = [];
     var mnAlertsService = {
       setAlert: setAlert,
       setAlerts: setAlerts,
       formatAndSetAlerts: formatAndSetAlerts,
+      showAlertInPopup: showAlertInPopup,
       closeAlert: closeAlert,
       alerts: alerts
     };
 
     return mnAlertsService;
 
+    function showAlertInPopup(message, title) {
+      var scope = $rootScope.$new();
+      scope.message = message;
+      scope.title = title;
+      return $uibModal.open({
+        scope: scope,
+        templateUrl: "app/components/mn_alerts_popup_message.html"
+      }).result;
+    }
     function setAlert(type, message) {
       alerts.push({type: type, msg: message});
     }
