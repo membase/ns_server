@@ -492,7 +492,7 @@ get_replica_and_backfill_nodes(MasterNode, [NewMasterNode|_] = NewChain) ->
 set_initial_vbucket_state(Bucket, Parent, VBucket, SrcNode, ReplicaNodes, JustBackfillNodes) ->
     Changes = [{Replica, replica, undefined, SrcNode}
                || Replica <- ReplicaNodes]
-        ++ [{FutureMaster, replica, passive, SrcNode}
+        ++ [{FutureMaster, pending, passive, SrcNode}
             || FutureMaster <- JustBackfillNodes],
     spawn_and_wait(
       fun () ->
