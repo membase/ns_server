@@ -24,6 +24,7 @@
     vm.previewRandomDocument = previewRandomDocument;
     vm.awaitingSampleDocument = awaitingSampleDocument;
     vm.onReduceChange = onReduceChange;
+    vm.setReduceValue = setReduceValue;
     vm.awaitingViews = awaitingViews;
     vm.goToDocumentsSection = goToDocumentsSection;
     vm.isEditDocumentDisabled = isEditDocumentDisabled;
@@ -104,6 +105,9 @@
           });
         }
       });
+    }
+    function setReduceValue(value) {
+      vm.state.currentDocument.doc.json.views[vm.viewId].reduce = value;
     }
     function onReduceChange(view) {
       if (view.reduce === "") {

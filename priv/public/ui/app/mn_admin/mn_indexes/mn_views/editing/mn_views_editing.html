@@ -119,7 +119,10 @@
             </td>
             <td class="splitter grippie"></td>
             <td class="code reduce" style="text-align: left;" ng-if="!viewsEditingCtl.isSpatial">
-              <label for="viewcode_reduce">Reduce<span class="when-in-dev"> (<span id="built_in_reducers">built in: <a>_count</a>, <a>_sum</a>, <a>_stats</a></span>)</span></label>
+              <label for="viewcode_reduce">Reduce<span class="when-in-dev"> (<span id="built_in_reducers">built in:
+              <a ng-click="viewsEditingCtl.setReduceValue('_count')">_count</a>,
+              <a ng-click="viewsEditingCtl.setReduceValue('_sum')">_sum</a>,
+              <a ng-click="viewsEditingCtl.setReduceValue('_stats')">_stats</a></span>)</span></label>
               <textarea
                 placeholder="(optional)"
                 spellcheck="false"
