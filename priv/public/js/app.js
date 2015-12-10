@@ -1435,6 +1435,7 @@ function initAlertsCells(ns, poolDetailsCell) {
         break;
       }
     }
+
     var rv = (i == oldStampedAlerts.length) ? _.clone(oldStampedAlerts) : [];
     _.each(newRawAlerts.slice(rv.length), function (msg) {
       rv.push([new Date(), msg]);

@@ -24,7 +24,8 @@
     'mnAboutDialog',
     'mnInternalSettings',
     'ui.router',
-    'ui.bootstrap'
+    'ui.bootstrap',
+    'mnPoorMansAlerts'
   ]).config(mnAdminConfig);
 
   function mnAdminConfig($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider) {

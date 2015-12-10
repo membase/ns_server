@@ -14,9 +14,13 @@
     $uibModalProvider.options.backdrop = 'static';
 
     $stateProvider.state('app', {
-      url: '?{enableInternalSettings:bool}',
+      url: '?{enableInternalSettings:bool}&{disablePoorMansAlerts:bool}',
       params: {
         enableInternalSettings: {
+          value: null,
+          squash: true
+        },
+        disablePoorMansAlerts: {
           value: null,
           squash: true
         }
