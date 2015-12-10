@@ -54,7 +54,8 @@
          modify_compaction_settings/2,
          regenerate_certificate/1,
          setup_ldap/2,
-         internal_settings/2
+         internal_settings/2,
+         upload_cluster_ca/3
         ]).
 
 -export([stats/0]).
@@ -132,7 +133,9 @@ code(regenerate_certificate) ->
 code(setup_ldap) ->
     8227;
 code(internal_settings) ->
-    8228.
+    8228;
+code(upload_cluster_ca) ->
+    8229.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -142,7 +145,7 @@ to_binary(A) ->
     A.
 
 now_to_iso8601(Now = {_, _, Microsecs}) ->
-    {{YYYY, MM, DD}, {Hour, Min, Sec}} = LocalNow = calendar:now_to_local_time(Now),
+    LocalNow = calendar:now_to_local_time(Now),
 
     UTCSec = calendar:datetime_to_gregorian_seconds(calendar:now_to_universal_time(Now)),
     LocSec = calendar:datetime_to_gregorian_seconds(LocalNow),
@@ -161,6 +164,9 @@ now_to_iso8601(Now = {_, _, Microsecs}) ->
                              end,
                 io_lib:format("~s~2.2.0w:~2.2.0w", [OffsetSign, abs(OffsetHrs), OffsetMin])
         end,
+    format_iso8601(LocalNow, Microsecs, Offset).
+
+format_iso8601({{YYYY, MM, DD}, {Hour, Min, Sec}}, Microsecs, Offset) ->
     io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",
                   [YYYY, MM, DD, Hour, Min, Sec, Microsecs div 1000]) ++ Offset.
 
@@ -463,3 +469,8 @@ setup_ldap(Req, Props) ->
 
 internal_settings(Req, Settings) ->
     put(internal_settings, Req, [{settings, {prepare_list(Settings)}}]).
+
+upload_cluster_ca(Req, Subject, Expires) ->
+    ExpiresDateTime = calendar:gregorian_seconds_to_datetime(Expires),
+    put(upload_cluster_ca, Req, [{subject, Subject},
+                                 {expires, format_iso8601(ExpiresDateTime, 0, "Z")}]).

@@ -239,7 +239,7 @@ set_cluster_ca(CA) ->
                    end),
             case RV of
                 {commit, _} ->
-                    ok;
+                    {ok, Props};
                 retry_needed ->
                     erlang:error(exceeded_retries)
             end;

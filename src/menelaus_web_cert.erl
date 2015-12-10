@@ -80,7 +80,10 @@ handle_upload_cluster_ca(Req) ->
             reply_error(Req, empty_cert);
         PemEncodedCA ->
             case ns_server_cert:set_cluster_ca(PemEncodedCA) of
-                ok ->
+                {ok, Props} ->
+                    ns_audit:upload_cluster_ca(Req,
+                                               proplists:get_value(subject, Props),
+                                               proplists:get_value(expires, Props)),
                     handle_cluster_certificate_extended(Req);
                 {error, Error} ->
                     reply_error(Req, Error)
