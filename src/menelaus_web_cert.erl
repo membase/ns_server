@@ -95,7 +95,10 @@ handle_reload_node_certificate(Req) ->
     menelaus_web:assert_is_watson(),
 
     case ns_server_cert:apply_certificate_chain_from_inbox() of
-        ok ->
+        {ok, Props} ->
+            ns_audit:reload_node_certificate(Req,
+                                             proplists:get_value(subject, Props),
+                                             proplists:get_value(expires, Props)),
             menelaus_util:reply(Req, 200);
         {error, Error} ->
             menelaus_util:reply_json(

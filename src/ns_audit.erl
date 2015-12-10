@@ -55,7 +55,8 @@
          regenerate_certificate/1,
          setup_ldap/2,
          internal_settings/2,
-         upload_cluster_ca/3
+         upload_cluster_ca/3,
+         reload_node_certificate/3
         ]).
 
 -export([stats/0]).
@@ -135,7 +136,9 @@ code(setup_ldap) ->
 code(internal_settings) ->
     8228;
 code(upload_cluster_ca) ->
-    8229.
+    8229;
+code(reload_node_certificate) ->
+    8230.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -474,3 +477,8 @@ upload_cluster_ca(Req, Subject, Expires) ->
     ExpiresDateTime = calendar:gregorian_seconds_to_datetime(Expires),
     put(upload_cluster_ca, Req, [{subject, Subject},
                                  {expires, format_iso8601(ExpiresDateTime, 0, "Z")}]).
+
+reload_node_certificate(Req, Subject, Expires) ->
+    ExpiresDateTime = calendar:gregorian_seconds_to_datetime(Expires),
+    put(reload_node_certificate, Req, [{subject, Subject},
+                                       {expires, format_iso8601(ExpiresDateTime, 0, "Z")}]).
