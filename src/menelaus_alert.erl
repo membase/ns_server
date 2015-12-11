@@ -244,10 +244,6 @@ build_logs(Params) ->
     {MinTStamp, Limit} = common_params(Params),
     build_log_structs(ns_log:recent(), MinTStamp, Limit).
 
-format_server_time({{YYYY, MM, DD}, {Hour, Min, Sec}}, MicroSecs) ->
-    io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0wZ",
-                  [YYYY, MM, DD, Hour, Min, Sec, MicroSecs div 1000]).
-
 build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
     LogEntries = lists:filter(fun(#log_entry{tstamp = TStamp}) ->
                                       misc:time_to_epoch_ms_int(TStamp) > MinTStamp
@@ -275,8 +271,8 @@ build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
                                      {tstamp, misc:time_to_epoch_ms_int(TStamp)},
                                      {shortText, list_to_binary(CodeString)},
                                      {text, list_to_binary(S)},
-                                     {serverTime, list_to_binary(
-                                                    format_server_time(ServerTime, MicroSecs))}
+                                     {serverTime, menelaus_util:format_server_time(
+                                                    ServerTime, MicroSecs)}
                                     ]} | Acc];
                       _ -> Acc
                   end

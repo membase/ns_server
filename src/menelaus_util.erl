@@ -67,7 +67,8 @@
          execute_if_validated/3,
          get_values/1,
          return_value/3,
-         return_error/3]).
+         return_error/3,
+         format_server_time/2]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
@@ -493,3 +494,8 @@ execute_if_validated(Fun, Req, {_, Values, Errors}) ->
 
 get_values({_, Values, _}) ->
     Values.
+
+format_server_time({{YYYY, MM, DD}, {Hour, Min, Sec}}, MicroSecs) ->
+    list_to_binary(
+      io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0wZ",
+                    [YYYY, MM, DD, Hour, Min, Sec, MicroSecs div 1000])).
