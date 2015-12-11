@@ -20,7 +20,6 @@
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
-        .cancelOnScopeDestroy($scope)
         .closeOnSuccess();
     }
   }

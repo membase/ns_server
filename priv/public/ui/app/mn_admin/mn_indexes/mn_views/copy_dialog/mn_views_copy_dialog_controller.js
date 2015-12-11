@@ -23,13 +23,12 @@
 
       mnPromiseHelper(vm, promise)
         .showSpinner()
-        .cancelOnScopeDestroy($scope);
+        ;
     }
     function prepareToCopy(url, ddoc) {
       return function () {
         return mnPromiseHelper(vm, mnViewsListService.createDdoc(url, ddoc.json), $uibModalInstance)
           .closeOnSuccess()
-          .cancelOnScopeDestroy($scope)
           .onSuccess(function () {
             $state.go('app.admin.indexes.views.list', {
               type: 'development'

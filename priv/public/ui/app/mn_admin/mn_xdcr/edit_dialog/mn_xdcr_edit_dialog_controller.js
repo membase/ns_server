@@ -13,7 +13,6 @@
       var promise = mnXDCRService.saveReplicationSettings(id, mnXDCRService.removeExcessSettings(vm.settings));
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
-        .cancelOnScopeDestroy($scope)
         .catchErrors()
         .closeOnSuccess()
         .reloadState();

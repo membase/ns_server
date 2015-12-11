@@ -46,7 +46,6 @@
           })
           .subscribe("state", vm)
           .keepIn("app.admin.indexes.views", vm)
-          .cancelOnScopeDestroy()
           .cycle();
       }
     }

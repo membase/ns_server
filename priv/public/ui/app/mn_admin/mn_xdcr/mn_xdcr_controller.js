@@ -32,7 +32,6 @@
       new mnPoller($scope, mnXDCRService.getReplicationState)
       .subscribe("state", vm)
       .keepIn("app.admin.replications", vm)
-      .cancelOnScopeDestroy()
       .cycle();
     }
     function createClusterReference() {
@@ -109,8 +108,7 @@
     }
     function pausePlayReplication(row) {
       mnPromiseHelper(vm, mnXDCRService.saveReplicationSettings(row.id, {pauseRequested: row.status !== 'paused'}))
-        .reloadState()
-        .cancelOnScopeDestroy($scope);
+        .reloadState();
     };
   }
 })();

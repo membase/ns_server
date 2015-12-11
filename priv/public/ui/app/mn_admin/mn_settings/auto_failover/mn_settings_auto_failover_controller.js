@@ -20,8 +20,7 @@
       mnPromiseHelper(vm, mnSettingsAutoFailoverService.getAutoFailoverSettings())
         .applyToScope(function (autoFailoverSettings) {
           vm.state = autoFailoverSettings.data;
-        })
-        .cancelOnScopeDestroy($scope);
+        });
     }
     function isAutoFailOverDisabled() {
       return !vm.state || !vm.state.enabled || vm.mnPoolDefault.value.isROAdminCreds;
@@ -34,8 +33,7 @@
       mnPromiseHelper(vm, mnSettingsAutoFailoverService.saveAutoFailoverSettings(data))
         .showErrorsSensitiveSpinner()
         .catchGlobalErrors('An error occured, auto-failover settings were not saved.')
-        .reloadState()
-        .cancelOnScopeDestroy($scope);
+        .reloadState();
     };
   }
 })();

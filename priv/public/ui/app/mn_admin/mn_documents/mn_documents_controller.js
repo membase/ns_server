@@ -44,7 +44,6 @@
         })
         .subscribe("state", vm)
         .keepIn("app.admin.documents", vm)
-        .cancelOnScopeDestroy()
         .cycle();
     }
   }

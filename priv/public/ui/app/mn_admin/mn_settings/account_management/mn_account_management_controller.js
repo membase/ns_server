@@ -48,18 +48,15 @@
       }
 
       mnPromiseHelper(vm, mnAccountManagementService.postReadOnlyAdminName(vm.creds, true))
-        .cancelOnScopeDestroy($scope)
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .onSuccess(function () {
           mnPromiseHelper(vm, mnAccountManagementService.postReadOnlyAdminName(vm.creds))
-            .cancelOnScopeDestroy($scope)
             .reloadState();
         });
     }
     function activate() {
       mnPromiseHelper(vm, mnAccountManagementService.getAccountManagmentState())
-        .cancelOnScopeDestroy($scope)
         .showSpinner()
         .applyToScope("roAdminName");
     }

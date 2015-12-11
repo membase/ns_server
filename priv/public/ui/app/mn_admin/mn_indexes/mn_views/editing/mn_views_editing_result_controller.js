@@ -99,8 +99,7 @@
       mnPromiseHelper(vm, mnViewsEditingService.getViewResult($state.params))
         .showSpinner()
         .catchErrors()
-        .applyToScope("state")
-        .cancelOnScopeDestroy($scope);
+        .applyToScope("state");
     }
   }
 })();

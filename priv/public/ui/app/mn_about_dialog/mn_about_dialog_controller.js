@@ -16,8 +16,7 @@
     function activate() {
       mnPromiseHelper(vm, mnAboutDialogService.getState())
         .showSpinner()
-        .applyToScope("state")
-        .cancelOnScopeDestroy($scope);
+        .applyToScope("state");
     }
   }
 })();

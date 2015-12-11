@@ -20,8 +20,7 @@
       }
       function getBucketsDetails() {
         mnPromiseHelper(vm, mnBucketsDetailsService.getDetails($scope.bucket))
-          .applyToScope("bucketDetails")
-          .cancelOnScopeDestroy($scope);
+          .applyToScope("bucketDetails");
       }
       function editBucket() {
         $uibModal.open({
@@ -64,8 +63,7 @@
       function registerCompactionAsTriggeredAndPost(url, disableButtonKey) {
         vm.bucketDetails[disableButtonKey] = true;
         mnPromiseHelper(vm, mnCompaction.registerAsTriggeredAndPost(url))
-          .onSuccess(getBucketsDetails)
-          .cancelOnScopeDestroy($scope);
+          .onSuccess(getBucketsDetails);
       };
     }
 })();

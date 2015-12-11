@@ -89,7 +89,6 @@
         })
         .subscribe("state", vm)
         .keepIn("app.admin.servers", vm)
-        .cancelOnScopeDestroy()
         .cycle()
         .showSpinner(vm);
     }
@@ -220,19 +219,16 @@
         .onSuccess(function () {
           $state.go('app.admin.servers', {list: 'active'});
         })
-        .cancelOnScopeDestroy($scope)
         .reloadAndSwitchOnPoller(vm)
         .showSpinner(null, 50, $scope);
     }
     function onStopRecovery() {
       mnPromiseHelper(vm, mnServersService.stopRecovery(vm.state.tasks.tasksRecovery.stopURI))
-        .cancelOnScopeDestroy($scope)
         .reloadAndSwitchOnPoller(vm)
         .showSpinner(null, 50, $scope);
     }
     function stopRebalance() {
       mnPromiseHelper(vm, mnServersService.stopRebalance())
-        .cancelOnScopeDestroy($scope)
         .onSuccess(function (resp) {
           (resp === 400) && $uibModal.open({
             templateUrl: 'app/mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
@@ -247,7 +243,6 @@
     function ejectServer(node) {
       if (isNodeInactiveAdded(node)) {
         mnPromiseHelper(vm, mnServersService.ejectNode({otpNode: node.otpNode}))
-          .cancelOnScopeDestroy($scope)
           .reloadAndSwitchOnPoller(vm)
           .showSpinner(null, 50, $scope);
         return;
@@ -288,7 +283,7 @@
         }
       });
 
-      mnPromiseHelper(vm, promise).cancelOnScopeDestroy($scope);
+      mnPromiseHelper(vm, promise);
     }
     function failOverNode(node) {
       $uibModal.open({
@@ -308,7 +303,6 @@
         otpNode: otpNode,
         recoveryType: type
       }))
-      .cancelOnScopeDestroy($scope)
       .reloadAndSwitchOnPoller(vm)
       .showSpinner(null, 50, $scope);
     }
@@ -316,7 +310,6 @@
       mnPromiseHelper(vm, mnServersService.cancelFailOverNode({
         otpNode: otpNode
       }))
-      .cancelOnScopeDestroy($scope)
       .reloadAndSwitchOnPoller(vm)
       .showSpinner(null, 50, $scope);
     }

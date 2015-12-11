@@ -117,7 +117,6 @@
         })
         .setExtractInterval(10000)
         .subscribe("state", vm)
-        .cancelOnScopeDestroy()
         .keepIn("app.admin.documents.list", vm)
         .cycle();
     }

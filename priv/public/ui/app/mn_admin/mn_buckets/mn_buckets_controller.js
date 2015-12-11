@@ -46,7 +46,6 @@
     function addBucket() {
       mnPromiseHelper(vm, mnBucketsService.getBucketsState())
         .applyToScope("state")
-        .cancelOnScopeDestroy($scope)
         .onSuccess(function (state) {
           if (state.isFullyAlloc) {
             $uibModal.open({
@@ -72,7 +71,6 @@
       new mnPoller($scope, mnBucketsService.getBucketsState)
       .subscribe("state", vm)
       .keepIn("app.admin.buckets", vm)
-      .cancelOnScopeDestroy()
       .cycle();
     }
   }

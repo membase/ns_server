@@ -82,7 +82,6 @@
             ignore_warnings: $scope.bucketConf.ignoreWarnings ? 1 : 0
           }
         }))
-        .cancelOnScopeDestroy()
         .getPromise()
         .then(adaptValidationResult, adaptValidationResult)
         .then(function (result) {

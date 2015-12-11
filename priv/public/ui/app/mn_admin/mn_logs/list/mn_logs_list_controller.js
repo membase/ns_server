@@ -17,7 +17,6 @@
         vm.logs = logs.data.list;
       })
       .keepIn("app.admin.logs", vm)
-      .cancelOnScopeDestroy()
       .cycle();
     }
   }

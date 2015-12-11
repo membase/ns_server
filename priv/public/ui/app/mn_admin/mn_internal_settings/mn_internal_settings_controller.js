@@ -23,15 +23,13 @@
       }
       mnPromiseHelper(vm, mnInternalSettingsService.save(vm.state))
         .showSpinner()
-        .catchErrors()
-        .cancelOnScopeDestroy($scope);
+        .catchErrors();
     }
 
     function activate() {
       mnPromiseHelper(vm, mnInternalSettingsService.getState())
         .showSpinner()
-        .applyToScope("state")
-        .cancelOnScopeDestroy($scope);
+        .applyToScope("state");
     }
   }
 })();

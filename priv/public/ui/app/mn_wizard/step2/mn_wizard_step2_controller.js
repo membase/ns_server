@@ -16,7 +16,6 @@
 
     function activate() {
       mnPromiseHelper(vm, mnSettingsSampleBucketsService.getSampleBuckets())
-        .cancelOnScopeDestroy($scope)
         .applyToScope("sampleBuckets");
     }
   }

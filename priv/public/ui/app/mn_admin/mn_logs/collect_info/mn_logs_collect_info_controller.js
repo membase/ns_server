@@ -31,7 +31,6 @@
         vm.state = state;
       })
       .keepIn("app.admin.logs.collectInfo", vm)
-      .cancelOnScopeDestroy()
       .cycle();
     }
 
@@ -41,7 +40,6 @@
       }).result.then(function () {
         vm.disabledStopCollect = true;
         mnPromiseHelper(vm, mnLogsCollectInfoService.cancelLogsCollection())
-          .cancelOnScopeDestroy($scope)
           .getPromise()['finally'](function () {
             vm.disabledStopCollect = false;
           });
@@ -59,7 +57,6 @@
       mnPromiseHelper(vm, promise)
         .showSpinner()
         .catchErrors()
-        .cancelOnScopeDestroy($scope)
         .onSuccess(function () {
           vm.loadingResult = true;
           $state.go('app.admin.logs.collectInfo.result');

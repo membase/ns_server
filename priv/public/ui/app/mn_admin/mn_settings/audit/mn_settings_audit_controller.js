@@ -29,8 +29,7 @@
         return;
       }
       mnPromiseHelper(vm, mnSettingsAuditService.saveAuditSettings(state, true))
-        .catchErrorsFromSuccess()
-        .cancelOnScopeDestroy($scope);
+        .catchErrorsFromSuccess();
     }
     function submit() {
       if ($scope.viewLoading) {
@@ -39,8 +38,7 @@
       mnPromiseHelper(vm, mnSettingsAuditService.saveAuditSettings(vm.state))
         .catchErrorsFromSuccess()
         .showSpinner()
-        .reloadState()
-        .cancelOnScopeDestroy($scope);
+        .reloadState();
     };
   }
 })();

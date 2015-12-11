@@ -27,7 +27,6 @@
     function activate() {
       mnPromiseHelper(vm, mnServersService.getNodeStatuses(node.hostname))
         .showSpinner()
-        .cancelOnScopeDestroy($scope)
         .getPromise()
         .then(function (details) {
           if (details) {

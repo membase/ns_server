@@ -27,8 +27,7 @@
             $uibModalInstance.close();
             mnHelper.reloadState();
           }
-        })
-        .cancelOnScopeDestroy($scope);
+        });
     };
   }
 })();

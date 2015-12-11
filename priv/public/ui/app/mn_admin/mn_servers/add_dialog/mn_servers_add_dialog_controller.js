@@ -57,7 +57,6 @@
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .closeOnSuccess()
-        .cancelOnScopeDestroy($scope)
         .getPromise()
         .then(function () {
           return mnPromiseHelper(vm, mnPoolDefault.getFresh())

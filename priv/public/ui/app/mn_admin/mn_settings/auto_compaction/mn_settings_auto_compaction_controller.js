@@ -27,8 +27,7 @@
     function watchOnAutoCompactionSettings(autoCompactionSettings) {
       mnPromiseHelper(vm, mnSettingsAutoCompactionService
         .saveAutoCompaction(autoCompactionSettings, {just_validate: 1}))
-          .catchErrors()
-          .cancelOnScopeDestroy($scope);
+          .catchErrors();
     }
     function submit() {
       if (vm.viewLoading) {
@@ -37,8 +36,7 @@
       mnPromiseHelper(vm, mnSettingsAutoCompactionService.saveAutoCompaction(vm.autoCompactionSettings))
         .showErrorsSensitiveSpinner()
         .catchErrors()
-        .reloadState()
-        .cancelOnScopeDestroy($scope);
+        .reloadState();
     }
   }
 })();

@@ -52,8 +52,7 @@
         mnPromiseHelper(vm, mnSettingsLdapService.validateCredentials(test))
           .catchErrors("validateErrors")
           .showSpinner("validateSpinner")
-          .applyToScope("validateResult")
-          .cancelOnScopeDestroy($scope);
+          .applyToScope("validateResult");
       }
       function save() {
         if (vm.viewLoading) {
@@ -62,13 +61,11 @@
         mnPromiseHelper(vm, mnSettingsLdapService.postSaslauthdAuth(vm.state))
           .showErrorsSensitiveSpinner()
           .catchErrors()
-          .reloadState()
-          .cancelOnScopeDestroy($scope);
+          .reloadState();
       }
       function activate() {
         mnPromiseHelper(vm, mnSettingsLdapService.getSaslauthdAuth())
-          .applyToScope("state")
-          .cancelOnScopeDestroy($scope);
+          .applyToScope("state");
       }
     }
     function formatRoleMessageFilter() {

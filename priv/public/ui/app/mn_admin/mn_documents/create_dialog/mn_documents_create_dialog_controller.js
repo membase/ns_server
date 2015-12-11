@@ -20,7 +20,6 @@
         }, function (resp) {
           if (resp.status >= 400 && resp.status < 500) {
             return mnPromiseHelper(vm, mnDocumentsEditingService.createDocument(newDocumentParams, doc), $uibModalInstance)
-              .cancelOnScopeDestroy($scope)
               .catchErrors(function (data) {
                 vm.error = data && data.reason;
               })
@@ -32,7 +31,6 @@
           }
         });
       mnPromiseHelper($scope, promise, $uibModalInstance)
-        .cancelOnScopeDestroy()
         .showSpinner();
     }
   }

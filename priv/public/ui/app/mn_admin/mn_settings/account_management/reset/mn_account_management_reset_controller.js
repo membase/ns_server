@@ -18,7 +18,6 @@
       var promise = mnAccountManagementService.resetReadOnlyAdmin(vm.password);
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
-        .cancelOnScopeDestroy($scope)
         .catchErrors()
         .closeOnSuccess()
         .reloadState();

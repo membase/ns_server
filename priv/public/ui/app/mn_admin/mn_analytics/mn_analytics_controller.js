@@ -29,7 +29,6 @@
       })
       .subscribe("state", vm)
       .keepIn("app.admin.analytics", vm)
-      .cancelOnScopeDestroy()
       .cycle();
     }
     function onSelectBucket(selectedBucket) {

@@ -17,7 +17,6 @@
     function activate() {
       $scope.$watch("settingsSampleBucketsCtl.selected", function (selected) {
         mnPromiseHelper(vm, mnSettingsSampleBucketsService.getSampleBucketsState(selected))
-          .cancelOnScopeDestroy($scope)
           .showSpinner()
           .applyToScope("state");
       }, true);
@@ -26,7 +25,6 @@
     function installSampleBuckets() {
       mnPromiseHelper(vm, mnSettingsSampleBucketsService.installSampleBuckets(vm.selected))
         .showErrorsSensitiveSpinner()
-        .cancelOnScopeDestroy($scope)
         .reloadState();
     }
 

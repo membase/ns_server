@@ -38,7 +38,6 @@
         var promise = mnXDCRService.postRelication(replication);
         mnPromiseHelper(vm, promise, $uibModalInstance)
           .showErrorsSensitiveSpinner()
-          .cancelOnScopeDestroy($scope)
           .catchErrors()
           .closeOnSuccess()
           .reloadState();

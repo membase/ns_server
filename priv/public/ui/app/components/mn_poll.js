@@ -29,7 +29,6 @@
         }
         self.cycle();
       });
-      self.cancelOnScopeDestroyFlag && mnPendingQueryKeeper.attachPendingQueriesToScope(self.scope);
     }
   }
 
@@ -38,7 +37,6 @@
 
     function Poller(scope, request) {
       this.deferred = $q.defer();
-      this.cancelOnScopeDestroyFlag = false;
       this.request = request;
       this.scope = scope;
 
@@ -57,7 +55,6 @@
     Poller.prototype.doCycle = doCycle;
     Poller.prototype.stop = stop;
     Poller.prototype.subscribe = subscribe;
-    Poller.prototype.cancelOnScopeDestroy = cancelOnScopeDestroy;
     Poller.prototype.keepIn = keepIn;
     Poller.prototype.showSpinner = showSpinner;
     Poller.prototype.reload = reload;
@@ -106,11 +103,9 @@
             var interval = self.extractInterval(result);
             self.timeout = $timeout(self.doCycle.bind(self), interval);
           });
-          self.cancelOnScopeDestroyFlag && mnPendingQueryKeeper.attachPendingQueriesToScope(self.scope);
         } else {
           self.timeout = $timeout(self.doCycle.bind(self), self.extractInterval);
           self.doCallPromise = self.doCall();
-          self.cancelOnScopeDestroyFlag && mnPendingQueryKeeper.attachPendingQueriesToScope(self.scope);
         }
       } else {
         self.doCallPromise = mnTasksDetails.getFresh().then(function (result) {
@@ -119,16 +114,9 @@
           }
           var interval = (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
           self.timeout = $timeout(self.doCycle.bind(self), interval);
-          var promise = self.doCall();
-          self.cancelOnScopeDestroyFlag && mnPendingQueryKeeper.attachPendingQueriesToScope(self.scope);
-          return promise;
+          return self.doCall();
         });
-        self.cancelOnScopeDestroyFlag && mnPendingQueryKeeper.attachPendingQueriesToScope(self.scope);
       }
-      return this;
-    }
-    function cancelOnScopeDestroy() {
-      this.cancelOnScopeDestroyFlag = true;
       return this;
     }
     function stop() {

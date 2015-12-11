@@ -15,8 +15,7 @@
 
     function activate() {
       mnPromiseHelper(vm, mnWizardStep3Service.getWizardBucketConf())
-        .applyToScope("bucketConf")
-        .cancelOnScopeDestroy($scope);
+        .applyToScope("bucketConf");
     }
     function onSubmit() {
       var promise = mnWizardStep3Service.postBuckets(vm.bucketConf);

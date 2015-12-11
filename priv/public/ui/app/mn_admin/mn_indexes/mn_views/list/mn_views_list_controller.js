@@ -108,7 +108,6 @@
               type: 'production'
             });
           })
-          .cancelOnScopeDestroy($scope)
           .getPromise();
       };
     }
@@ -116,7 +115,6 @@
       var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, "_design/" + mnViewsListService.cutOffDesignPrefix(ddoc.meta.id));
       var publish = prepareToPublish(url, ddoc);
       mnPromiseHelper(vm, mnViewsListService.getDdoc(url))
-        .cancelOnScopeDestroy($scope)
         .getPromise()
         .then(function (presentDdoc) {
           $uibModal.open({
@@ -137,8 +135,7 @@
     function registerCompactionAsTriggeredAndPost(row) {
       row.disableCompact = true;
       mnPromiseHelper(vm, mnCompaction.registerAsTriggeredAndPost(row.controllers.compact))
-        .reloadState()
-        .cancelOnScopeDestroy($scope);
+        .reloadState();
     }
     function activate() {
       new mnPoller($scope, function () {
@@ -146,7 +143,6 @@
         })
         .subscribe("state", vm)
         .keepIn("app.admin.indexes.views.list", vm)
-        .cancelOnScopeDestroy()
         .cycle();
     }
   }

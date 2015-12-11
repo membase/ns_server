@@ -17,9 +17,7 @@
 
       var promise = mnViewsListService.getDdoc(url).then(function (presentDdoc) {
         delete presentDdoc.json[isSpatial ? 'spatial' : 'views'][currentViewName];
-        return mnPromiseHelper(vm, mnViewsListService.createDdoc(url, presentDdoc.json))
-          .cancelOnScopeDestroy($scope)
-          .getPromise();
+        return mnViewsListService.createDdoc(url, presentDdoc.json);
       });
 
       mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance, vm);

@@ -37,9 +37,7 @@
         }
       }
 
-      return mnPromiseHelper(vm, mnViewsListService.createDdoc(getDdocUrl(), ddoc.json))
-        .cancelOnScopeDestroy($scope)
-        .getPromise();
+      return mnViewsListService.createDdoc(getDdocUrl(), ddoc.json);
     }
 
     function onSubmit(ddocForm) {
@@ -72,7 +70,7 @@
 
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
-        .cancelOnScopeDestroy($scope)
+        
         .catchErrors()
         .closeOnSuccess()
         .reloadState();

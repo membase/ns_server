@@ -32,7 +32,7 @@
             params: {
               just_validate: 1
             }
-          })).catchErrors().cancelOnScopeDestroy($scope);
+          })).catchErrors();
         }, true);
       }
     }

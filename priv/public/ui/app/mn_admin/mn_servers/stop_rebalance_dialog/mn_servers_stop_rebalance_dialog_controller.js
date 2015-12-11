@@ -12,8 +12,7 @@
     function onStopRebalance() {
       mnPromiseHelper(vm, mnServersService.stopRebalance(), $uibModalInstance)
         .showErrorsSensitiveSpinner()
-        .closeFinally()
-        .cancelOnScopeDestroy($scope);
+        .closeFinally();
     }
   }
 })();

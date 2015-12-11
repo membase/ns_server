@@ -56,8 +56,7 @@
           if (result) {
             properties.testKey = result;
           }
-        })
-        .cancelOnScopeDestroy();
+        });
     }
     function validateRegex(regex, testKey) {
       if (mnRegexService.doValidateOnOverLimit(regex)) {

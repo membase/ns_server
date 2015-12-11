@@ -47,8 +47,7 @@
       mnPromiseHelper(vm, mnSettingsAutoFailoverService.resetAutoFailOverCount())
         .showSpinner('resetQuotaLoading')
         .catchGlobalErrors('Unable to reset the auto-failover quota!')
-        .reloadState()
-        .cancelOnScopeDestroy($scope);
+        .reloadState();
     }
 
     function activate() {
@@ -57,11 +56,9 @@
         .onSuccess(function (updates) {
           if (updates.sendStats) {
             mnPromiseHelper(vm, mnSettingsNotificationsService.buildPhoneHomeThingy())
-              .applyToScope("launchpadSource")
-              .independentOfScope();
+              .applyToScope("launchpadSource");
           }
-        })
-        .independentOfScope();
+        });
 
       new mnEtagPoller($scope, function (previous) {
         return mnPoolDefault.get({
@@ -78,7 +75,6 @@
           $rootScope.$broadcast("taskUriChanged");
         }
       })
-      .cancelOnScopeDestroy()
       .cycle();
 
       $rootScope.$on("taskUriChanged", runTasks);
@@ -90,7 +86,6 @@
         poller = new mnPoller($scope, mnTasksDetails.get)
           .subscribe("tasks", vm)
           .keepIn("app.admin", vm)
-          .cancelOnScopeDestroy()
           .cycle();
       }
     }

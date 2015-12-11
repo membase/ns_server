@@ -43,13 +43,11 @@
       mnPromiseHelper(vm, mnSettingsAlertsService.saveAlerts(params))
         .showErrorsSensitiveSpinner()
         .catchErrors()
-        .reloadState()
-        .cancelOnScopeDestroy($scope);
+        .reloadState();
     }
     function activate() {
       mnPromiseHelper(vm, mnSettingsAlertsService.getAlerts())
-        .applyToScope("state")
-        .cancelOnScopeDestroy($scope);
+        .applyToScope("state");
     }
     function testEmail() {
       var params = getParams();
@@ -59,8 +57,7 @@
       mnPromiseHelper(vm, mnSettingsAlertsService.testMail(params))
         .showSpinner()
         .showGlobalSuccess('Test email was sent successfully!')
-        .catchGlobalErrors('An error occurred during sending test email.')
-        .cancelOnScopeDestroy($scope);
+        .catchGlobalErrors('An error occurred during sending test email.');
     }
     function isFormElementsDisabled() {
       return !vm.state || !vm.state.enabled || vm.mnPoolDefault.value.isROAdminCreds;

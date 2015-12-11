@@ -4,12 +4,11 @@
   angular
     .module('mnPromiseHelper', [
       'mnAlertsService',
-      'mnHelper',
-      'mnPendingQueryKeeper'
+      'mnHelper'
     ])
     .factory('mnPromiseHelper', mnPromiseHelperFactory);
 
-  function mnPromiseHelperFactory(mnAlertsService, mnHelper, mnPendingQueryKeeper, $timeout) {
+  function mnPromiseHelperFactory(mnAlertsService, mnHelper, $timeout) {
 
     mnPromiseHelper.handleModalAction = handleModalAction;
 
@@ -19,7 +18,6 @@
       return mnPromiseHelper(vm || $scope, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .closeFinally()
-        .cancelOnScopeDestroy($scope)
         .reloadState();
     }
 
@@ -29,8 +27,6 @@
       var spinnerTimeout;
       var promiseHelper = {
         applyToScope: applyToScope,
-        independentOfScope: independentOfScope,
-        cancelOnScopeDestroy: cancelOnScopeDestroy,
         getPromise: getPromise,
         onSuccess: onSuccess,
         reloadAndSwitchOnPoller: reloadAndSwitchOnPoller,
@@ -47,14 +43,6 @@
 
       return promiseHelper;
 
-      function independentOfScope() {
-        mnPendingQueryKeeper.markAsIndependentOfScope();
-        return this;
-      }
-      function cancelOnScopeDestroy($scope) {
-        mnPendingQueryKeeper.attachPendingQueriesToScope($scope || scope);
-        return this;
-      }
       function getPromise() {
         return promise;
       }

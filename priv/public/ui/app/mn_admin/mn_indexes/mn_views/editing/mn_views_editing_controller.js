@@ -79,8 +79,7 @@
       e && e.stopImmediatePropagation && e.stopImmediatePropagation();
       mnPromiseHelper(vm.state, mnViewsEditingService.prepareRandomDocument($state.params))
         .showSpinner("sampleDocumentLoading")
-        .applyToScope("sampleDocument")
-        .cancelOnScopeDestroy($scope);
+        .applyToScope("sampleDocument");
     }
     function saveAs(e) {
       e.stopImmediatePropagation();
@@ -120,7 +119,6 @@
       mnPromiseHelper(vm.state, mnViewsListService.createDdoc(url, vm.state.currentDocument.doc.json))
         .catchErrors("viewsError")
         .showSpinner("viewsLoading")
-        .cancelOnScopeDestroy($scope)
         .reloadState();
     }
     function onSelectViewName(selected) {
@@ -138,8 +136,7 @@
         vm.viewsOptions = viewsOptions;
       });
       return mnPromiseHelper(vm, mnViewsEditingService.getViewsEditingState($state.params))
-        .applyToScope("state")
-        .cancelOnScopeDestroy($scope);
+        .applyToScope("state");
     }
   }
 })();

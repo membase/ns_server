@@ -22,7 +22,6 @@
       $scope.$watch('wizardStep1Ctl.startNewClusterConfig.memoryQuota', mnWizardStep1Service.setDynamicRamQuota);
 
       mnPromiseHelper(vm, mnWizardStep1Service.getSelfConfig())
-        .cancelOnScopeDestroy($scope)
         .onSuccess(function (selfConfig) {
           vm.selfConfig = selfConfig;
           vm.startNewClusterConfig = {

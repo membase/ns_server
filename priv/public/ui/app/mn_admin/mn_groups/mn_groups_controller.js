@@ -41,7 +41,6 @@
       function applyChanges() {
         mnPromiseHelper($scope, mnGroupsService.applyChanges(vm.state.uri, vm.state.currentGroups))
           .reloadState()
-          .cancelOnScopeDestroy()
           .getPromise()
           .then(null, function (resp) {
             if (resp.status === 409) {
@@ -86,13 +85,12 @@
       function activate() {
         mnPromiseHelper(vm, mnGroupsService.getGroupsState())
           .applyToScope("state")
-          .cancelOnScopeDestroy($scope);
+          ;
         //after implementing mmAdminController via controllerAs syntax this poll should be removed
         new mnPoller($scope, mnPoolDefault.get)
           .subscribe(function (poolDefault) {
             vm.rebalancing = poolDefault.rebalancing;
           })
-          .cancelOnScopeDestroy()
           .cycle();
       }
 

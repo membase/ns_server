@@ -25,20 +25,16 @@
       new mnPoller($scope, mnOverviewService.getStats)
         .setExtractInterval(3000)
         .subscribe("mnOverviewStats", vm)
-        .cancelOnScopeDestroy()
         .cycle();
       new mnPoller($scope, mnOverviewService.getOverviewConfig)
         .setExtractInterval(3000)
         .subscribe("mnOverviewConfig", vm)
-        .cancelOnScopeDestroy()
         .cycle();
 
       mnPromiseHelper(vm, mnServersService.getNodes())
-        .applyToScope("nodes")
-        .cancelOnScopeDestroy($scope);
+        .applyToScope("nodes");
       mnPromiseHelper(vm, mnBucketsService.getBucketsByType())
-        .applyToScope("buckets")
-        .cancelOnScopeDestroy($scope);
+        .applyToScope("buckets");
     }
   }
 })();

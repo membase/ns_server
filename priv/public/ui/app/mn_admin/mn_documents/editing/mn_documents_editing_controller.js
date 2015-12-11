@@ -31,7 +31,6 @@
 
     function save() {
       mnPromiseHelper(vm, mnDocumentsEditingService.createDocument($state.params, vm.state.doc))
-        .cancelOnScopeDestroy($scope)
         .showSpinner()
         .catchErrors()
         .onSuccess(function () {
@@ -140,7 +139,6 @@
       });
       return mnPromiseHelper(vm, mnDocumentsEditingService.getDocumentsEditingState($state.params))
         .applyToScope("state")
-        .cancelOnScopeDestroy($scope)
         .getPromise();
     }
   }

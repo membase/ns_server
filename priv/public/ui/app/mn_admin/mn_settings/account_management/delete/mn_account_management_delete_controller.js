@@ -19,7 +19,6 @@
       var promise = mnAccountManagementService.deleteReadOnlyAdmin();
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
-        .cancelOnScopeDestroy($scope)
         .catchGlobalErrors()
         .closeFinally()
         .reloadState();

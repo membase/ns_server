@@ -28,8 +28,7 @@
       }
       var promise = mnSettingsClusterService.postPoolsDefault(vm.state.memoryQuotaConfig, true);
       mnPromiseHelper(vm, promise)
-        .catchErrorsFromSuccess("memoryQuotaErrors")
-        .cancelOnScopeDestroy($scope);
+        .catchErrorsFromSuccess("memoryQuotaErrors");
     }, 500), true);
 
     $scope.$watch('settingsClusterCtl.state.indexSettings', _.debounce(function (indexSettings) {
@@ -38,19 +37,16 @@
       }
       var promise = mnSettingsClusterService.postIndexSettings(vm.state.indexSettings, true);
       mnPromiseHelper(vm, promise)
-        .catchErrorsFromSuccess("indexSettingsErrors")
-        .cancelOnScopeDestroy($scope);
+        .catchErrorsFromSuccess("indexSettingsErrors");
     }, 500), true);
 
     function saveSettings() {
       var promise = mnPromiseHelper(vm, mnSettingsClusterService.postPoolsDefault(vm.state.memoryQuotaConfig, false, vm.state.clusterName))
         .catchErrors("memoryQuotaErrors")
-        .cancelOnScopeDestroy($scope)
         .getPromise()
         .then(function () {
           return mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.state.indexSettings))
             .catchErrors("indexSettingsErrors")
-            .cancelOnScopeDestroy($scope)
             .getPromise();
         })
       mnPromiseHelper(vm, promise)
@@ -77,13 +73,11 @@
         .onSuccess(function (certificate) {
           vm.state.certificate = certificate.data;
         })
-        .showSpinner('regenerateCertificateInprogress')
-        .cancelOnScopeDestroy($scope);
+        .showSpinner('regenerateCertificateInprogress');
     }
     function activate() {
       mnPromiseHelper(vm, mnSettingsClusterService.getClusterState())
-        .applyToScope("state")
-        .cancelOnScopeDestroy($scope);
+        .applyToScope("state");
     }
     function toggleCertArea() {
       vm.toggleCertAreaFlag = !vm.toggleCertAreaFlag;
