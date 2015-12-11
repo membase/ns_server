@@ -71,6 +71,7 @@
       config.clear = clear;
 
       pendingQuery.canceler = cancel("cancelled");
+      pendingQuery.group = mnHttpConfig.group;
       mnPendingQueryKeeper.push(pendingQuery);
 
       if (timeout) {

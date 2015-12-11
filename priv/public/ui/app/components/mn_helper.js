@@ -9,7 +9,7 @@
     ])
     .factory('mnHelper', mnHelperFactory);
 
-  function mnHelperFactory($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, $http) {
+  function mnHelperFactory($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, $http, mnPendingQueryKeeper) {
     var mnHelper = {
       wrapInFunction: wrapInFunction,
       calculateMaxMemorySize: calculateMaxMemorySize,
@@ -56,6 +56,7 @@
       $window.location.reload();
     }
     function reloadState() {
+      mnPendingQueryKeeper.cancelAllQueries();
       $state.transitionTo($state.current, $stateParams, {reload: true, inherit: true, notify: true});
     }
   }

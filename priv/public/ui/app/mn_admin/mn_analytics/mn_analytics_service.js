@@ -101,7 +101,7 @@
         });
       });
     }
-    function doGetStats(params) {
+    function doGetStats(params, mnHttpParams) {
       var reqParams = {
         zoom: params.$stateParams.zoom,
         bucket: params.$stateParams.analyticsBucket
@@ -117,7 +117,8 @@
       return $http({
         url: '/_uistats',
         method: 'GET',
-        params: reqParams
+        params: reqParams,
+        mnHttp: mnHttpParams
       });
     }
     function getStatsDirectory(url) {

@@ -44,19 +44,19 @@
     }
 
     function resetAutoFailOverCount() {
-      mnPromiseHelper(vm, mnSettingsAutoFailoverService.resetAutoFailOverCount())
+      mnPromiseHelper(vm, mnSettingsAutoFailoverService.resetAutoFailOverCount({group: "global"}))
         .showSpinner('resetQuotaLoading')
         .catchGlobalErrors('Unable to reset the auto-failover quota!')
         .reloadState();
     }
 
     function activate() {
-      mnPromiseHelper(vm, mnSettingsNotificationsService.maybeCheckUpdates())
+      mnPromiseHelper(vm, mnSettingsNotificationsService.maybeCheckUpdates({group: "global"}))
         .applyToScope("updates")
         .onSuccess(function (updates) {
           if (updates.sendStats) {
-            mnPromiseHelper(vm, mnSettingsNotificationsService.buildPhoneHomeThingy())
-              .applyToScope("launchpadSource");
+            mnPromiseHelper(vm, mnSettingsNotificationsService.buildPhoneHomeThingy({group: "global"}))
+              .applyToScope("launchpadSource")
           }
         });
 
@@ -64,7 +64,7 @@
         return mnPoolDefault.get({
           etag: previous ? previous.etag : "",
           waitChange: 10000
-        }, false);
+        }, {group: "global"});
       }).subscribe(function (resp, previous) {
         vm.tabName = resp.clusterName;
 
@@ -83,10 +83,12 @@
       var poller;
       function runTasks() {
         poller && poller.stop();
-        poller = new mnPoller($scope, mnTasksDetails.get)
-          .subscribe("tasks", vm)
-          .keepIn("app.admin", vm)
-          .cycle();
+        poller = new mnPoller($scope, function () {
+          return mnTasksDetails.get({group: "global"});
+        })
+        .subscribe("tasks", vm)
+        .keepIn("app.admin", vm)
+        .cycle();
       }
     }
   }

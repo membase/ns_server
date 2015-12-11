@@ -21,11 +21,12 @@
     function isEnterprise() {
       return mnPools.value && mnPools.value.isEnterprise;
     }
-    function get() {
+    function get(mnHttpParams) {
       return $http({
         method: 'GET',
         url: '/pools',
         cache: true,
+        mnHttp: mnHttpParams,
         requestType: 'json'
       }).then(function (resp) {
         var pools = resp.data;

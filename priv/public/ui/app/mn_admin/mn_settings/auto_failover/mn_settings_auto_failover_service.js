@@ -13,10 +13,11 @@
 
     return mnSettingsAutoFailoverService;
 
-    function resetAutoFailOverCount() {
+    function resetAutoFailOverCount(mnHttpParams) {
       return $http({
         method: 'POST',
-        url: '/settings/autoFailover/resetCount'
+        url: '/settings/autoFailover/resetCount',
+        mnHttp: mnHttpParams
       });
     }
     function getAutoFailoverSettings() {

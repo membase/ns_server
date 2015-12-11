@@ -14,8 +14,12 @@
 
     return mnBucketsStats;
 
-    function get() {
-      return $http.get('/pools/default/buckets?basic_stats=true');
+    function get(mnHttpParams) {
+      return $http({
+        method: "GET",
+        url: '/pools/default/buckets?basic_stats=true',
+        mnHttp: mnHttpParams
+      });
     }
 
     function clearCache() {
@@ -23,8 +27,8 @@
       return this;
     }
 
-    function getFresh() {
-      return mnBucketsStats.clearCache().get();
+    function getFresh(mnHttpParams) {
+      return mnBucketsStats.clearCache().get(mnHttpParams);
     }
   }
 })();

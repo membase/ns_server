@@ -22,11 +22,12 @@
     //   sawRebalanceRunning = true;
     // }
 
-    function get() {
+    function get(mnHttpParams) {
       return $http({
         url: '/pools/default/tasks',
         method: 'GET',
-        cache: true
+        cache: true,
+        mnHttp: mnHttpParams
       }).then(function (resp) {
         var rv = {};
         var tasks = resp.data;

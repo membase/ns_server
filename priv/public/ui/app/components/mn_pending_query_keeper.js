@@ -11,8 +11,23 @@
     return {
       getQueryInFly: getQueryInFly,
       removeQueryInFly: removeQueryInFly,
-      push: push
+      push: push,
+      cancelTabsSpecificQueries: cancelTabsSpecificQueries,
+      cancelAllQueries: cancelAllQueries
     };
+
+    function cancelAllQueries() {
+      angular.forEach(pendingQueryKeeper, function (query) {
+        query.canceler();
+      });
+    }
+    function cancelTabsSpecificQueries() {
+      angular.forEach(pendingQueryKeeper, function (query) {
+        if (query.group !== "global") {
+          query.canceler();
+        }
+      });
+    }
 
     function removeQueryInFly(findMe) {
       _.remove(pendingQueryKeeper, function (pendingQuery) {

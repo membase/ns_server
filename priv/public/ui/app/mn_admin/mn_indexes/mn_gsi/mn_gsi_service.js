@@ -11,10 +11,11 @@
 
     return mnGsiService;
 
-    function getIndexesState() {
+    function getIndexesState(mnHttpParams) {
       return $http({
         method: 'GET',
-        url: '/indexStatus'
+        url: '/indexStatus',
+        mnHttp: mnHttpParams
       }).then(function (resp) {
         return resp.data;
       });

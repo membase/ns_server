@@ -10,7 +10,7 @@
     'ui.bootstrap'
   ]).run(appRun);
 
-  function appRun($rootScope, $state, $urlRouter, mnPools, $uibModalStack, $window, $exceptionHandler, $http, $templateCache) {
+  function appRun($rootScope, $state, $urlRouter, mnPools, $uibModalStack, $window, $exceptionHandler, $http, $templateCache, mnPendingQueryKeeper) {
     var originalOnerror = $window.onerror;
 
     $window.onerror = onError;
@@ -35,9 +35,14 @@
     function onStateChangeError(event, toState, toParams, fromState, fromParams, error) {
       $exceptionHandler(error);
     }
-    function onStateChangeStart(event, toState) {
+    function onStateChangeStart(event, toState, toParams, fromState, fromParams, error) {
       if ($uibModalStack.getTop()) {
-        event.preventDefault();
+        return event.preventDefault();
+      }
+      if (fromState.name.indexOf('app.admin') > -1 && toState.name.indexOf('app.admin') === -1) {
+        mnPendingQueryKeeper.cancelAllQueries();
+      } else {
+        mnPendingQueryKeeper.cancelTabsSpecificQueries();
       }
       mnPools.get().then(function (pools) {
         if (pools.isAuthenticated) {

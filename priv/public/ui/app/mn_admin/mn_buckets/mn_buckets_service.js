@@ -59,8 +59,8 @@
         return bucketsDetails;
       })
     }
-    function getBucketsByType(fromCache) {
-      return mnBucketsStats[fromCache ? "get" : "getFresh"]().then(function (resp) {
+    function getBucketsByType(fromCache, mnHttpParams) {
+      return mnBucketsStats[fromCache ? "get" : "getFresh"](mnHttpParams).then(function (resp) {
         var bucketsDetails = resp.data
         bucketsDetails.byType = {membase: [], memcached: []};
         bucketsDetails.byType.membase.isMembase = true;

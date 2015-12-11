@@ -21,13 +21,14 @@
     function latestValue() {
       return latest;
     }
-    function get(params, cache) {
+    function get(params, mnHttpParams) {
       params = params || {waitChange: 0};
       if (cache === undefined) {
         cache = true;
       }
       return $q.all([
         $http({
+          mnHttp: mnHttpParams,
           method: 'GET',
           url: '/pools/default',
           responseType: 'json',
@@ -35,7 +36,7 @@
           cache: cache,
           timeout: 30000
         }),
-        mnPools.get()
+        mnPools.get(mnHttpParams)
       ]).then(function (resp) {
         var poolDefault = resp[0].data;
         var pools = resp[1]

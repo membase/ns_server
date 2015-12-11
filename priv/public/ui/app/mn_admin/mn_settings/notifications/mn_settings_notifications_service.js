@@ -179,10 +179,10 @@ angular.module('mnSettingsNotificationsService', [
       }
     }
 
-    mnSettingsNotificationsService.buildPhoneHomeThingy = function () {
+    mnSettingsNotificationsService.buildPhoneHomeThingy = function (mnHttpParams) {
       return $q.all([
-        mnBucketsService.getBucketsByType(),
-        mnPools.get()
+        mnBucketsService.getBucketsByType(false, mnHttpParams),
+        mnPools.get(mnHttpParams)
       ]).then(function (resp) {
         var buckets = resp[0];
         var pools = resp[1];
@@ -196,8 +196,8 @@ angular.module('mnSettingsNotificationsService', [
             }
           };
           perBucketQueries.push($q.all([
-            mnAnalyticsService.doGetStats(statsParams),
-            mnViewsListService.getDdocs(bucket.name)
+            mnAnalyticsService.doGetStats(statsParams, mnHttpParams),
+            mnViewsListService.getDdocs(bucket.name, mnHttpParams)
           ]));
         });
 
@@ -205,32 +205,33 @@ angular.module('mnSettingsNotificationsService', [
           $q.when(buckets),
           $q.all(perBucketQueries),
           $q.when(pools),
-          mnPoolDefault.getFresh(),
-          mnGsiService.getIndexesState()
+          mnPoolDefault.getFresh(undefined, mnHttpParams),
+          mnGsiService.getIndexesState(mnHttpParams)
         ]).then(buildPhoneHomeThingy);
       });
     };
 
-    mnSettingsNotificationsService.getUpdates = function (data) {
+    mnSettingsNotificationsService.getUpdates = function (data, mnHttpParams) {
       return $http({
         method: 'JSONP',
+        mnHttp: mnHttpParams,
         url: 'http://ph.couchbase.net/v2',
         timeout: 8000,
         params: {launchID: data.launchID, version: data.version, callback: 'JSON_CALLBACK'}
       });
     };
 
-    mnSettingsNotificationsService.maybeCheckUpdates = function () {
-      return mnSettingsNotificationsService.getSendStatsFlag().then(function (sendStatsData) {
+    mnSettingsNotificationsService.maybeCheckUpdates = function (mnHttpParams) {
+      return mnSettingsNotificationsService.getSendStatsFlag(mnHttpParams).then(function (sendStatsData) {
         sendStatsData.enabled = sendStatsData.sendStats;
         if (!sendStatsData.sendStats) {
           return sendStatsData;
         } else {
-          return mnPools.get().then(function (pools) {
+          return mnPools.get(mnHttpParams).then(function (pools) {
             return mnSettingsNotificationsService.getUpdates({
               launchID: pools.launchID,
               version: pools.implementationVersion
-            }).then(function (resp) {
+            }, mnHttpParams).then(function (resp) {
               return _.extend(_.clone(resp.data), sendStatsData);
             }, function (resp) {
               return sendStatsData;
@@ -243,8 +244,12 @@ angular.module('mnSettingsNotificationsService', [
     mnSettingsNotificationsService.saveSendStatsFlag = function (flag) {
       return $http.post("/settings/stats", {sendStats: flag});
     };
-    mnSettingsNotificationsService.getSendStatsFlag = function () {
-      return $http.get("/settings/stats").then(function (resp) {
+    mnSettingsNotificationsService.getSendStatsFlag = function (mnHttpParams) {
+      return $http({
+        method: "GET",
+        url: "/settings/stats",
+        mnHttp: mnHttpParams
+      }).then(function (resp) {
         return resp.data;
       });
     };

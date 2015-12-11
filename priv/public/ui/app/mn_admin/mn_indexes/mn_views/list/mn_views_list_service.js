@@ -88,8 +88,12 @@
 
       return kvNodeLink;
     }
-    function getDdocs(viewsBucket) {
-      return $http.get('/pools/default/buckets/' + encodeURIComponent(viewsBucket) + '/ddocs');
+    function getDdocs(viewsBucket, mnHttpParams) {
+      return $http({
+        method: "GET",
+        url: '/pools/default/buckets/' + encodeURIComponent(viewsBucket) + '/ddocs',
+        mnHttp: mnHttpParams
+      });
     }
     function isDevModeDoc(id) {
       var devPrefix = "_design/dev_";
