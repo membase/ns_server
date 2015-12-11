@@ -64,8 +64,13 @@ handle_cluster_certificate_extended(Req) ->
                 {[{type, generated},
                   {pem, GeneratedCert}], []};
             {UploadedCAProps, _, _} ->
+                NewProps = lists:map(fun ({expires, UTCSeconds}) ->
+                                             {expires, format_time(UTCSeconds)};
+                                         (Pair) ->
+                                             Pair
+                                     end, UploadedCAProps),
                 Warnings = ns_server_cert:get_warnings(UploadedCAProps),
-                {[{type, uploaded} | UploadedCAProps],
+                {[{type, uploaded} | NewProps],
                  [{translate_warning(Pair)} || Pair <- Warnings]}
           end,
     CertJson = lists:map(fun ({K, V}) when is_list(V) ->
