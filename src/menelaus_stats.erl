@@ -2146,7 +2146,7 @@ server_resources_stats_description() ->
                 {title,<<"free RAM">>},
                 {desc,<<"Amount of RAM available on this server">>}]},
        {struct,[{name,<<"cpu_utilization_rate">>},
-                {title,<<"CPU utilization %">>},
+                {title,<<"Max CPU utilization %">>},
                 {desc,<<"Percentage of CPU in use across all available cores on this server">>},
                 {maxY,100}]},
        {struct,[{name,<<"curr_connections">>},
