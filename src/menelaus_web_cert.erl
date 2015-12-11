@@ -43,20 +43,38 @@ handle_cluster_certificate_simple(Req) ->
            end,
     menelaus_util:reply_ok(Req, "text/plain", Cert).
 
+format_time(UTCSeconds) ->
+    LocalTime = calendar:universal_time_to_local_time(
+                  calendar:gregorian_seconds_to_datetime(UTCSeconds)),
+    menelaus_util:format_server_time(LocalTime, 0).
+
+warning_props({expires_soon, UTCSeconds}) ->
+    [{message, ns_error_messages:node_certificate_warning(expires_soon)},
+     {expires, format_time(UTCSeconds)}];
+warning_props(Warning) ->
+    [{message, ns_error_messages:node_certificate_warning(Warning)}].
+
+translate_warning({Node, Warning}) ->
+    [{node, Node} | warning_props(Warning)].
+
 handle_cluster_certificate_extended(Req) ->
-    Res = case ns_server_cert:cluster_ca() of
-              {GeneratedCert, _} ->
-                  [{type, generated},
-                   {pem, GeneratedCert}];
-              {UploadedCAProps, _, _} ->
-                  [{type, uploaded} | UploadedCAProps]
+    {Cert, WarningsJson} =
+        case ns_server_cert:cluster_ca() of
+            {GeneratedCert, _} ->
+                {[{type, generated},
+                  {pem, GeneratedCert}], []};
+            {UploadedCAProps, _, _} ->
+                Warnings = ns_server_cert:get_warnings(UploadedCAProps),
+                {[{type, uploaded} | UploadedCAProps],
+                 [{translate_warning(Pair)} || Pair <- Warnings]}
           end,
     CertJson = lists:map(fun ({K, V}) when is_list(V) ->
                                  {K, list_to_binary(V)};
                              (Pair) ->
                                  Pair
-                         end, Res),
-    menelaus_util:reply_json(Req, {[{cert, {CertJson}}]}).
+                         end, Cert),
+    menelaus_util:reply_json(Req, {[{cert, {CertJson}},
+                                    {warnings, WarningsJson}]}).
 
 handle_regenerate_certificate(Req) ->
     menelaus_web:assert_is_enterprise(),

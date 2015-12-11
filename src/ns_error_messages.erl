@@ -26,7 +26,8 @@
          unsupported_services_error/2,
          topology_limitation_error/0,
          cert_validation_error_message/1,
-         reload_node_certificate_error/1]).
+         reload_node_certificate_error/1,
+         node_certificate_warning/1]).
 
 -spec connection_error_message(term(), string(), string() | integer()) -> binary() | undefined.
 connection_error_message({Error, _}, Host, Port) ->
@@ -179,3 +180,10 @@ reload_node_certificate_error({read_pkey, Reason}) ->
     list_to_binary(io_lib:format("Unable to read private key file. Reason: ~p", [Reason]));
 reload_node_certificate_error({read_chain, Reason}) ->
     list_to_binary(io_lib:format("Unable to read certificate chain file. Reason: ~p", [Reason])).
+
+node_certificate_warning(mismatch) ->
+    <<"Certificate is not signed with cluster CA.">>;
+node_certificate_warning(expired) ->
+    <<"Certificate is expired.">>;
+node_certificate_warning(expires_soon) ->
+    <<"Certificate will expire soon.">>.

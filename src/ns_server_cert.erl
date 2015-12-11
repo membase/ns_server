@@ -25,7 +25,8 @@
          cluster_ca/0,
          set_cluster_ca/1,
          apply_certificate_chain_from_inbox/0,
-         apply_certificate_chain_from_inbox/1]).
+         apply_certificate_chain_from_inbox/1,
+         get_warnings/1]).
 
 inbox_chain_path() ->
     filename:join(path_config:component_path(data, "inbox"), "chain.pem").
@@ -342,3 +343,38 @@ apply_certificate_chain_from_inbox(ClusterCA) ->
         {error, Reason} ->
             {error, {read_chain, Reason}}
     end.
+
+get_warnings(CAProps) ->
+    ClusterCA = proplists:get_value(pem, CAProps),
+    false = ClusterCA =:= undefined,
+
+    VerifiedWith = erlang:md5(ClusterCA),
+
+    Config = ns_config:get(),
+    Nodes = ns_node_disco:nodes_wanted(Config),
+
+    lists:foldl(
+      fun (Node, Acc) ->
+              case ns_config:search(Config, {node, Node, cert}) of
+                  {value, Props} ->
+                      case proplists:get_value(verified_with, Props) of
+                          VerifiedWith ->
+                              Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+                              WarningDays = ns_config:read_key_fast(cert_exp_warning_days, 7),
+                              WarningThreshold = Now + WarningDays * 24 * 60 * 60,
+
+                              case proplists:get_value(expires, Props) of
+                                  A when is_integer(A) andalso A =< Now ->
+                                      [{Node, expired} | Acc];
+                                  A when  is_integer(A) andalso A =< WarningThreshold ->
+                                      [{Node, {expires_soon, A}} | Acc];
+                                  A when is_integer(A) ->
+                                      Acc
+                              end;
+                          false ->
+                              [{Node, mismatch} | Acc]
+                      end;
+                  false ->
+                      [{Node, mismatch} | Acc]
+              end
+      end, [], Nodes).
