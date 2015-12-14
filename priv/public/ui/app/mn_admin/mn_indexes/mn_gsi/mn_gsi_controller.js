@@ -15,11 +15,11 @@
     activate();
 
     function activate() {
-      mnHelper.initializeDetailsHashObserver(vm, 'openedIndex', 'app.admin.indexes');
+      mnHelper.initializeDetailsHashObserver(vm, 'openedIndex', 'app.admin.indexes.gsi');
 
       new mnPoller($scope, mnGsiService.getIndexesState)
       .subscribe("state", vm)
-      .keepIn("app.admin.indexes", vm)
+      .keepIn("app.admin.indexes.gsi", vm)
       .cycle();
     }
   }
