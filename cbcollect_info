@@ -674,9 +674,10 @@ def make_product_task(guts, initargs_path, options):
                     "-u", read_guts(guts, "memcached_admin"),
                     "-P", read_guts(guts, "memcached_pass"),
                     "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
-                    "-v"],
+                    "-v"] + stat,
                    log_file="stats.log",
-                   timeout=60)],
+                   timeout=60)
+         for stat in ([], ["subdoc_execute"])],
 
         make_stats_archives_task(guts, initargs_path)
         ]
