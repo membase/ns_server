@@ -19,12 +19,12 @@
         items: [{
           name: 'In Use',
           value: totals.usedByData,
-          itemStyle: {'background-color': '#00BCE9'},
+          itemStyle: {'background-color': '#00BCE9', 'z-index': 3},
           labelStyle: {'color': '#1878A2', 'text-align': 'left'}
         }, {
           name: 'Other Data',
           value: totals.used - totals.usedByData,
-          itemStyle: {"background-color": "#FDC90D"},
+          itemStyle: {"background-color": "#FDC90D", 'z-index': 2},
           labelStyle: {"color": "#C19710",  'text-align': 'center'}
         }, {
           name: 'Free',
