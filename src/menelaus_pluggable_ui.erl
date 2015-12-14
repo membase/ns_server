@@ -37,7 +37,7 @@
 -record(plugin, { name            :: service_name(),
                   proxy_strategy  :: proxy_strategy(),
                   rest_api_prefix :: rest_api_prefix(),
-                  doc_root        :: binary()}).
+                  doc_root        :: string()}).
 -type plugin()  :: #plugin{}.
 -type plugins() :: [plugin()].
 
@@ -85,6 +85,9 @@ validate_plugin_spec(KVs, Plugins) ->
     ProxyStrategy = decode_proxy_strategy(get_element(<<"proxy-strategy">>,
                                                       KVs)),
     RestApiPrefix = binary_to_list(get_element(<<"rest-api-prefix">>, KVs)),
+    %% DocRoot has to be a list in order for mochiweb to be able to guess
+    %% the MIME type.
+    DocRoot = binary_to_list(get_element(<<"doc-root">>, KVs)),
     case {valid_service(ServiceName),
           find_plugin_by_prefix(RestApiPrefix, Plugins)} of
         {true, false} ->
@@ -93,7 +96,7 @@ validate_plugin_spec(KVs, Plugins) ->
             [#plugin{name = ServiceName,
                      proxy_strategy = ProxyStrategy,
                      rest_api_prefix = RestApiPrefix,
-                     doc_root = get_element(<<"doc-root">>, KVs)} | Plugins];
+                     doc_root = DocRoot} | Plugins];
         {true, #plugin{}} ->
             ?log_info("Pluggable UI specification for ~p not loaded, "
                       "duplicate REST API prefix ~p~n",
@@ -256,7 +259,7 @@ send_server_error(Req, Msg) ->
 %%%
 maybe_serve_file(RestPrefix, Plugins, Req, Path) ->
     case doc_root(RestPrefix, Plugins) of
-        DocRoot when is_binary(DocRoot) ->
+        DocRoot when is_list(DocRoot) ->
             menelaus_util:serve_file(Req,
                                      Path,
                                      DocRoot,
