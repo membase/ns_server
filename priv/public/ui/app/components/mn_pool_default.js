@@ -23,9 +23,6 @@
     }
     function get(params, mnHttpParams) {
       params = params || {waitChange: 0};
-      if (cache === undefined) {
-        cache = true;
-      }
       return $q.all([
         $http({
           mnHttp: mnHttpParams,
@@ -33,7 +30,6 @@
           url: '/pools/default',
           responseType: 'json',
           params: params,
-          cache: cache,
           timeout: 30000
         }),
         mnPools.get(mnHttpParams)
