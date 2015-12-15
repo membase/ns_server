@@ -55,7 +55,6 @@
     Poller.prototype.doCycle = doCycle;
     Poller.prototype.stop = stop;
     Poller.prototype.subscribe = subscribe;
-    Poller.prototype.keepIn = keepIn;
     Poller.prototype.showSpinner = showSpinner;
     Poller.prototype.reload = reload;
 
@@ -68,7 +67,6 @@
     function reload(vm) {
       this.stop();
       this.isCanceled = false;
-      this.key && this.keepIn(this.key, vm);
       this.doCycle();
       return this;
     }
@@ -135,28 +133,6 @@
         (keeper || self.scope)[subscriber] = value;
         self.latestResult = value;
       });
-      return self;
-    }
-    function keepIn(key, vm) {
-      var self = this;
-      self.key = key;
-      self.cache = $cacheFactory.get("stateKeeper").get(key);
-      if (self.cache) {
-        if (angular.isFunction(self.subscriber)) {
-          self.subscriber(self.cache);
-        } else {
-          (vm || self.scope)[self.subscriber] = self.cache;
-        }
-      }
-
-      self.stateChangeStartBind = $rootScope.$on('$stateChangeStart', function (event, toState) {
-        if (!(toState.name.indexOf(key) > -1)) {
-          $cacheFactory.get("stateKeeper").remove(key);
-        } else {
-          $cacheFactory.get("stateKeeper").put(key, self.latestResult);
-        }
-      });
-
       return self;
     }
   }

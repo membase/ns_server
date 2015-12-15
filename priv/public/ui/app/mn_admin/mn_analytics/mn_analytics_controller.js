@@ -28,7 +28,6 @@
         return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
       })
       .subscribe("state", vm)
-      .keepIn("app.admin.analytics", vm)
       .cycle();
     }
     function onSelectBucket(selectedBucket) {

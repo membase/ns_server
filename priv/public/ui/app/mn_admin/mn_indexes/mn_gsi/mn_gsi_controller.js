@@ -19,7 +19,6 @@
 
       new mnPoller($scope, mnGsiService.getIndexesState)
       .subscribe("state", vm)
-      .keepIn("app.admin.indexes.gsi", vm)
       .cycle();
     }
   }

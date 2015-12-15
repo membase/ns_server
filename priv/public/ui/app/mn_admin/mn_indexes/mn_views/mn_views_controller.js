@@ -45,7 +45,6 @@
             return mnViewsListService.prepareBucketsDropdownData($state.params, true);
           })
           .subscribe("state", vm)
-          .keepIn("app.admin.indexes.views", vm)
           .cycle();
       }
     }

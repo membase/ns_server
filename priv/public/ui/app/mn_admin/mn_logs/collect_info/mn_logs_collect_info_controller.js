@@ -30,7 +30,6 @@
         vm.loadingResult = false;
         vm.state = state;
       })
-      .keepIn("app.admin.logs.collectInfo", vm)
       .cycle();
     }
 

@@ -16,7 +16,6 @@
       .subscribe(function (logs) {
         vm.logs = logs.data.list;
       })
-      .keepIn("app.admin.logs", vm)
       .cycle();
     }
   }

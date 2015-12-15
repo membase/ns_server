@@ -88,7 +88,6 @@
           return mnServersService.getServersState($stateParams.list);
         })
         .subscribe("state", vm)
-        .keepIn("app.admin.servers", vm)
         .cycle()
         .showSpinner(vm);
     }

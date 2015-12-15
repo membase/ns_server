@@ -70,7 +70,6 @@
     function activate() {
       new mnPoller($scope, mnBucketsService.getBucketsState)
       .subscribe("state", vm)
-      .keepIn("app.admin.buckets", vm)
       .cycle();
     }
   }

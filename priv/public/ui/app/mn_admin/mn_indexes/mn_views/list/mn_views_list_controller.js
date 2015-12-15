@@ -142,7 +142,6 @@
           return mnViewsListService.getViewsListState($state.params);
         })
         .subscribe("state", vm)
-        .keepIn("app.admin.indexes.views.list", vm)
         .cycle();
     }
   }

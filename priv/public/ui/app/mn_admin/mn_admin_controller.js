@@ -91,7 +91,6 @@
           return mnTasksDetails.get({group: "global"});
         })
         .subscribe("tasks", vm)
-        .keepIn("app.admin", vm)
         .cycle();
       }
     }

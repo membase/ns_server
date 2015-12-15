@@ -31,7 +31,6 @@
     function activate() {
       new mnPoller($scope, mnXDCRService.getReplicationState)
       .subscribe("state", vm)
-      .keepIn("app.admin.replications", vm)
       .cycle();
     }
     function createClusterReference() {
