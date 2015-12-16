@@ -538,7 +538,7 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     RestPort = extract_rest_port(NSConfig, Node),
     MCDConfig = search_config_for_node(NSConfig, Node, memcached, []),
     MCDDefaults = search_config_for_node(NSConfig, Node, memcached_defaults, []),
-    MCDPort = search_config(MCDConfig, port, ""),
+    MCDPort = search_config(MCDConfig, dedicated_port, ""),
     MCDAdmin = search_config(MCDConfig, admin_user, ""),
     MCDPass = search_config(MCDConfig, admin_pass, ""),
     MCDLogs = search_config(MCDConfig, log_path, ""),
@@ -724,4 +724,3 @@ parse_couch_ini_file(IniBin) ->
                   end
           end, {"", []}, Lines),
     {ok, ParsedIniValues}.
-
