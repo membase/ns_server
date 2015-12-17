@@ -37,7 +37,7 @@
 -record(plugin, { name            :: service_name(),
                   proxy_strategy  :: proxy_strategy(),
                   rest_api_prefix :: rest_api_prefix(),
-                  doc_root        :: string()}).
+                  doc_root        :: {multiple_roots, [string()]} | string()}).
 -type plugin()  :: #plugin{}.
 -type plugins() :: [plugin()].
 
@@ -85,9 +85,7 @@ validate_plugin_spec(KVs, Plugins) ->
     ProxyStrategy = decode_proxy_strategy(get_element(<<"proxy-strategy">>,
                                                       KVs)),
     RestApiPrefix = binary_to_list(get_element(<<"rest-api-prefix">>, KVs)),
-    %% DocRoot has to be a list in order for mochiweb to be able to guess
-    %% the MIME type.
-    DocRoot = binary_to_list(get_element(<<"doc-root">>, KVs)),
+    DocRoot = decode_docroot(get_element(<<"doc-root">>, KVs)),
     case {valid_service(ServiceName),
           find_plugin_by_prefix(RestApiPrefix, Plugins)} of
         {true, false} ->
@@ -118,6 +116,14 @@ get_element(Key, KVs) ->
 
 decode_proxy_strategy(<<"local">>) ->
     local.
+
+%% When run from cluster_run doc-root may be a list of directories.
+%% DocRoot has to be a list in order for mochiweb to be able to guess
+%% the MIME type.
+decode_docroot(Roots) when is_list(Roots) ->
+    {multiple_roots, [decode_docroot(Root) || Root <- Roots]};
+decode_docroot(Root) ->
+    binary_to_list(Root).
 
 %%% =============================================================
 %%%
@@ -252,10 +258,9 @@ send_server_error(Req, Msg) ->
 maybe_serve_file(RestPrefix, Plugins, Req, Path) ->
     case doc_root(RestPrefix, Plugins) of
         DocRoot when is_list(DocRoot) ->
-            menelaus_util:serve_file(Req,
-                                     Path,
-                                     DocRoot,
-                                     [{"Cache-Control", "max-age=10"}]);
+            serve_file(Req, Path, DocRoot);
+        {multiple_roots, DocRoots} ->
+            serve_file_multiple_roots(Req, Path, DocRoots);
         undefined ->
             menelaus_util:reply_not_found(Req)
     end.
@@ -267,6 +272,23 @@ doc_root(RestPrefix, Plugins) ->
         false ->
             undefined
     end.
+
+serve_file_multiple_roots(Req, Path, [DocRoot]) ->
+    serve_file(Req, Path, DocRoot);
+serve_file_multiple_roots(Req, Path, [DocRoot | DocRoots]) ->
+    File = filename:join(DocRoot, Path),
+    case filelib:is_regular(File) of
+        true ->
+            serve_file(Req, Path, DocRoot);
+        false ->
+            serve_file_multiple_roots(Req, Path, DocRoots)
+    end.
+
+serve_file(Req, Path, DocRoot) ->
+    menelaus_util:serve_file(Req,
+                             Path,
+                             DocRoot,
+                             [{"Cache-Control", "max-age=10"}]).
 
 %%% =============================================================
 %%%
