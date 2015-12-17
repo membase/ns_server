@@ -25,7 +25,7 @@
         ]).
 
 verify_creds(Username, Password) ->
-    case json_rpc_connection:perform_call('saslauthd-saslauthd-port', "SASLDAuth.Check",
+    case json_rpc_connection:perform_call("saslauthd-saslauthd-port", "SASLDAuth.Check",
                                           {[{user, list_to_binary(Username)},
                                             {password, list_to_binary(Password)}]}) of
         {ok, Resp} ->

@@ -37,8 +37,8 @@
 
 label_to_name(Pid) when is_pid(Pid) ->
     Pid;
-label_to_name(Label) ->
-    list_to_atom(?PREFIX ++ atom_to_list(Label)).
+label_to_name(Label) when is_list(Label)  ->
+    list_to_atom(?PREFIX ++ Label).
 
 start(Label, InetSock) ->
     {ok, Pid} = gen_server:start(?MODULE, {self(), Label}, []),
@@ -63,7 +63,7 @@ handle_rpc_connect(Req) ->
     "/" ++ Path = Req:get(path),
     Sock = Req:get(socket),
     menelaus_util:reply(Req, 200),
-    {ok, _} = json_rpc_connection:start(list_to_atom(Path), Sock),
+    {ok, _} = json_rpc_connection:start(Path, Sock),
     erlang:exit(normal).
 
 
@@ -94,8 +94,7 @@ reannounce() ->
                       case atom_to_list(Name) of
                           ?PREFIX ++ Label ->
                               gen_event:notify(json_rpc_events,
-                                               {needs_update, list_to_existing_atom(Label),
-                                                whereis(Name)});
+                                               {needs_update, Label, whereis(Name)});
                           _ ->
                               ok
                       end

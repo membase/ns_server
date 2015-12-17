@@ -120,7 +120,7 @@ maybe_notify_cbauth(#state{rpc_processes = Processes,
 
 notify_cbauth(Label, Pid, Info) ->
     Method = "AuthCacheSvc.UpdateDB",
-    SpecialUser = ns_config_auth:get_user(special) ++ erlang:atom_to_list(Label),
+    SpecialUser = ns_config_auth:get_user(special) ++ Label,
     NewInfo = {[{specialUser, erlang:list_to_binary(SpecialUser)} | Info]},
 
     try json_rpc_connection:perform_call(Label, Method, NewInfo) of
