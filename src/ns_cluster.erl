@@ -90,8 +90,27 @@ engage_cluster(NodeKVList) ->
             {error, self_join,
              <<"Joining node to itself is not allowed.">>, {self_join, MyNode}};
         _ ->
-            gen_server:call(?MODULE, {engage_cluster, NodeKVList}, ?ENGAGE_TIMEOUT)
+            engage_cluster_not_to_self(NodeKVList)
     end.
+
+engage_cluster_not_to_self(NodeKVList) ->
+    case proplists:get_value(<<"clusterCA">>, NodeKVList) of
+        undefined ->
+            call_engage_cluster(NodeKVList);
+        ClusterCA ->
+            case ns_server_cert:apply_certificate_chain_from_inbox(ClusterCA) of
+                ok ->
+                    call_engage_cluster(NodeKVList);
+                {error, Error} ->
+                    Message =
+                        iolist_to_binary(["Error applying node certificate. ",
+                                           ns_error_messages:reload_node_certificate_error(Error)]),
+                    {error, apply_cert, Message, {apply_cert, Error}}
+            end
+    end.
+
+call_engage_cluster(NodeKVList) ->
+    gen_server:call(?MODULE, {engage_cluster, NodeKVList}, ?ENGAGE_TIMEOUT).
 
 complete_join(NodeKVList) ->
     gen_server:call(?MODULE, {complete_join, NodeKVList}, ?COMPLETE_TIMEOUT).
@@ -527,16 +546,24 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
 
 do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
     {struct, NodeInfo} = menelaus_web:build_full_node_info(node(), "127.0.0.1"),
-    Struct = {struct, [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)},
-                       {<<"requestedServices">>, Services}]
-              ++ NodeInfo},
+    Props = [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)},
+             {<<"requestedServices">>, Services}]
+        ++ NodeInfo,
+
+    Props1 =
+        case ns_server_cert:cluster_ca() of
+            {CAProps, _, _} ->
+                [{<<"clusterCA">>, proplists:get_value(pem, CAProps)} | Props];
+            _ ->
+                Props
+        end,
 
     ?cluster_debug("Posting node info to engage_cluster on ~p:~n~p",
-                   [{RemoteAddr, RestPort}, Struct]),
+                   [{RemoteAddr, RestPort}, {Props1}]),
     RV = menelaus_rest:json_request_hilevel(post,
                                             {RemoteAddr, RestPort, "/engageCluster2",
                                              "application/json",
-                                             mochijson2:encode(Struct)},
+                                             mochijson2:encode({Props1})},
                                             Auth),
     ?cluster_debug("Reply from engage_cluster on ~p:~n~p",
                    [{RemoteAddr, RestPort}, RV]),
