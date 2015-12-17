@@ -122,31 +122,19 @@ decode_proxy_strategy(<<"local">>) ->
 %%% =============================================================
 %%%
 proxy_req(RestPrefix, Path, Plugins, Req) ->
-    Service = prefix_to_service(RestPrefix, Plugins),
-    case address_and_port_for(Service, Plugins) of
-        HostPort when is_tuple(HostPort) ->
-            do_proxy_req(HostPort, Path, Req);
-        Error ->
-            server_error(Req, Service, Error)
-    end.
-
-address_and_port_for(Service, Plugins) ->
-    case proxy_strategy(Service, Plugins) of
+    case find_plugin_by_prefix(RestPrefix, Plugins) of
+        #plugin{name = Service, proxy_strategy = ProxyStrategy} ->
+            case address_and_port_for(Service, ProxyStrategy) of
+                HostPort when is_tuple(HostPort) ->
+                    do_proxy_req(HostPort, Path, Req);
+                Error ->
+                    server_error(Req, Service, Error)
+            end;
         false ->
-            undefined;
-        {found, ProxyStrategy} ->
-            pick_address_and_port_for(Service, ProxyStrategy)
+            server_error(Req, RestPrefix, unknown_service)
     end.
 
-proxy_strategy(Service, Plugins) ->
-    case find_plugin_by_name(Service, Plugins) of
-        #plugin{proxy_strategy = ProxyStrategy} ->
-            {found, ProxyStrategy};
-        false ->
-            false
-    end.
-
-pick_address_and_port_for(Service, local) ->
+address_and_port_for(Service, local) ->
     case ns_cluster_membership:should_run_service(Service, node()) of
         true ->
             address_and_port(Service, node());
@@ -250,6 +238,10 @@ stream_body(Pid, Resp) ->
 server_error(Req, Service, service_not_running) ->
     Msg = list_to_binary("Service " ++ atom_to_list(Service)
                          ++ " not running on this node"),
+    send_server_error(Req, Msg);
+server_error(Req, Service, unknown_service) ->
+    Msg = list_to_binary("Service " ++ atom_to_list(Service)
+                         ++ " not supported"),
     send_server_error(Req, Msg).
 
 send_server_error(Req, Msg) ->
@@ -286,13 +278,6 @@ is_plugin(Prefix, Plugins) ->
         _ ->
             false
     end.
-
-prefix_to_service(Prefix, Plugins) ->
-    #plugin{name = Service} = find_plugin_by_prefix(Prefix, Plugins),
-    Service.
-
-find_plugin_by_name(Name, Plugins) ->
-    find_plugin(Name, Plugins, #plugin.name).
 
 find_plugin_by_prefix(Prefix, Plugins) ->
     find_plugin(Prefix, Plugins, #plugin.rest_api_prefix).
