@@ -39,8 +39,13 @@ init([]) ->
     json_rpc_connection:reannounce(),
     {ok, #state{}}.
 
-json_rpc_event(Event) ->
-    ok = gen_server:cast(?MODULE, Event).
+json_rpc_event({_, Label, _} = Event) ->
+    case is_cbauth_connection(Label) of
+        true ->
+            ok = gen_server:cast(?MODULE, Event);
+        false ->
+            ok
+    end.
 
 node_disco_event(_Event) ->
     ?MODULE ! maybe_notify_cbauth.
@@ -214,3 +219,6 @@ handle_cbauth_post(Req) ->
     menelaus_util:reply_json(Req, {[{role, admin},
                                     {user, erlang:list_to_binary(User)},
                                     {source, menelaus_auth:get_advertised_source(Source)}]}).
+
+is_cbauth_connection(Label) ->
+    lists:suffix("-cbauth", Label).
