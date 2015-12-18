@@ -204,462 +204,464 @@ is_throttled_request([?PLUGGABLE_UI | _]) ->
 is_throttled_request(_) ->
     true.
 
-loop_inner(Req, {AppRoot, Plugins}, Path, PathTokens) ->
+get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
+    case Req:get(method) of
+        Method when Method =:= 'GET'; Method =:= 'HEAD' ->
+            case PathTokens of
+                [] ->
+                    {done, redirect_permanently("/ui/index.html", Req)};
+                ["versions"] ->
+                    {done, handle_versions(Req)};
+                ["pools"] ->
+                    {auth_any_bucket, fun handle_pools/1};
+                ["pools", "default"] ->
+                    {auth_any_bucket, fun check_and_handle_pool_info/2, ["default"]};
+                %% NOTE: see MB-10859. Our docs used to
+                %% recommend doing this which due to old
+                %% code's leniency worked just like
+                %% /pools/default. So temporarily we allow
+                %% /pools/nodes to be alias for
+                %% /pools/default
+                ["pools", "nodes"] ->
+                    {auth_any_bucket, fun check_and_handle_pool_info/2, ["default"]};
+                ["pools", "default", "overviewStats"] ->
+                    {auth_ro, fun menelaus_stats:handle_overview_stats/2, ["default"]};
+                ["_uistats"] ->
+                    {auth_ro, fun menelaus_stats:serve_ui_stats/1};
+                ["poolsStreaming", "default"] ->
+                    {auth_any_bucket, fun handle_pool_info_streaming/2, ["default"]};
+                ["pools", "default", "buckets"] ->
+                    {auth_any_bucket, fun menelaus_web_buckets:handle_bucket_list/1, []};
+                ["pools", "default", "saslBucketsStreaming"] ->
+                    {auth, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2,
+                     ["default"]};
+                ["pools", "default", "buckets", Id] ->
+                    {auth_bucket, fun menelaus_web_buckets:handle_bucket_info/3,
+                     ["default", Id]};
+                ["pools", "default", "bucketsStreaming", Id] ->
+                    {auth_bucket, fun menelaus_web_buckets:handle_bucket_info_streaming/3,
+                     ["default", Id]};
+                ["pools", "default", "buckets", Id, "ddocs"] ->
+                    {auth_bucket, fun menelaus_web_buckets:handle_ddocs_list/3, ["default", Id]};
+                ["pools", "default", "buckets", Id, "docs"] ->
+                    {auth, fun menelaus_web_crud:handle_list/2, [Id]};
+                ["pools", "default", "buckets", Id, "docs", DocId] ->
+                    {auth, fun menelaus_web_crud:handle_get/3, [Id, DocId]};
+                ["pools", "default", "buckets", "@query", "stats"] ->
+                    {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", "@query"]};
+                ["pools", "default", "buckets", "@xdcr-" ++ _ = Id, "stats"] ->
+                    {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", Id]};
+                ["pools", "default", "buckets", "@index-" ++ _ = Id, "stats"] ->
+                    {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", Id]};
+                ["pools", "default", "buckets", "@fts-" ++ _ = Id, "stats"] ->
+                    {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", Id]};
+                ["pools", "default", "buckets", Id, "stats"] ->
+                    {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
+                     ["default", Id]};
+                ["pools", "default", "buckets", Id, "localRandomKey"] ->
+                    {auth_bucket, fun menelaus_web_buckets:handle_local_random_key/3,
+                     ["default", Id]};
+                ["pools", "default", "buckets", Id, "statsDirectory"] ->
+                    {auth_bucket, fun menelaus_stats:serve_stats_directory/3,
+                     ["default", Id]};
+                ["pools", "default", "nodeServices"] ->
+                    {auth_any_bucket, fun serve_node_services/1, []};
+                ["pools", "default", "nodeServicesStreaming"] ->
+                    {auth_any_bucket, fun serve_node_services_streaming/1, []};
+                ["pools", "default", "b", BucketName] ->
+                    {auth_bucket, fun serve_short_bucket_info/3,
+                     ["default", BucketName]};
+                ["pools", "default", "bs", BucketName] ->
+                    {auth_bucket, fun serve_streaming_short_bucket_info/3,
+                     ["default", BucketName]};
+                ["pools", "default", "buckets", Id, "nodes"] ->
+                    {auth_bucket, fun handle_bucket_node_list/3,
+                     ["default", Id]};
+                ["pools", "default", "buckets", Id, "nodes", NodeId] ->
+                    {auth_bucket, fun handle_bucket_node_info/4,
+                     ["default", Id, NodeId]};
+                ["pools", "default", "buckets", "@query", "nodes", NodeId, "stats"] ->
+                    {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
+                     ["default", "@query", NodeId]};
+                ["pools", "default", "buckets", "@xdcr-" ++ _ = Id, "nodes", NodeId, "stats"] ->
+                    {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
+                     ["default", Id, NodeId]};
+                ["pools", "default", "buckets", "@index-" ++ _ = Id, "nodes", NodeId, "stats"] ->
+                    {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
+                     ["default", Id, NodeId]};
+                ["pools", "default", "buckets", "@fts-" ++ _ = Id, "nodes", NodeId, "stats"] ->
+                    {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
+                     ["default", Id, NodeId]};
+                ["pools", "default", "buckets", Id, "nodes", NodeId, "stats"] ->
+                    {auth_bucket, fun menelaus_stats:handle_bucket_node_stats/4,
+                     ["default", Id, NodeId]};
+                ["pools", "default", "buckets", Id, "stats", StatName] ->
+                    {auth_bucket, fun menelaus_stats:handle_specific_stat_for_buckets/4,
+                     ["default", Id, StatName]};
+                ["pools", "default", "buckets", Id, "recoveryStatus"] ->
+                    {auth, fun menelaus_web_recovery:handle_recovery_status/3,
+                     ["default", Id]};
+                ["pools", "default", "remoteClusters"] ->
+                    {auth_ro, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
+                ["pools", "default", "serverGroups"] ->
+                    {auth_ro, fun menelaus_web_groups:handle_server_groups/1};
+                ["pools", "default", "certificate"] ->
+                    {done, menelaus_web_cert:handle_cluster_certificate(Req)};
+                ["pools", "default", "settings", "memcached", "global"] ->
+                    {auth, fun menelaus_web_mcd_settings:handle_global_get/1};
+                ["pools", "default", "settings", "memcached", "effective", Node] ->
+                    {auth, fun menelaus_web_mcd_settings:handle_effective_get/2, [Node]};
+                ["pools", "default", "settings", "memcached", "node", Node] ->
+                    {auth, fun menelaus_web_mcd_settings:handle_node_get/2, [Node]};
+                ["pools", "default", "settings", "memcached", "node", Node, "setting", Name] ->
+                    {auth, fun menelaus_web_mcd_settings:handle_node_setting_get/3, [Node, Name]};
+                ["nodeStatuses"] ->
+                    {auth_ro, fun handle_node_statuses/1};
+                ["logs"] ->
+                    {auth_ro, fun menelaus_alert:handle_logs/1};
+                ["settings", "web"] ->
+                    {auth_ro, fun handle_settings_web/1};
+                ["settings", "alerts"] ->
+                    {auth_ro, fun handle_settings_alerts/1};
+                ["settings", "stats"] ->
+                    {auth_ro, fun handle_settings_stats/1};
+                ["settings", "autoFailover"] ->
+                    {auth_ro, fun handle_settings_auto_failover/1};
+                ["settings", "maxParallelIndexers"] ->
+                    {auth_ro, fun handle_settings_max_parallel_indexers/1};
+                ["settings", "viewUpdateDaemon"] ->
+                    {auth_ro, fun handle_settings_view_update_daemon/1};
+                ["settings", "autoCompaction"] ->
+                    {auth_ro, fun handle_settings_auto_compaction/1};
+                ["settings", "readOnlyAdminName"] ->
+                    {auth_ro, fun handle_settings_read_only_admin_name/1};
+                ["settings", "replications"] ->
+                    {auth_ro, fun menelaus_web_xdc_replications:handle_global_replication_settings/1};
+                ["settings", "replications", XID] ->
+                    {auth_ro, fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]};
+                ["settings", "saslauthdAuth"] ->
+                    {auth_ro, fun handle_saslauthd_auth_settings/1};
+                ["settings", "audit"] ->
+                    {auth_ro, fun handle_settings_audit/1};
+                ["internalSettings"] ->
+                    {auth, fun handle_internal_settings/1};
+                ["nodes", NodeId] ->
+                    {auth_ro, fun handle_node/2, [NodeId]};
+                ["nodes", "self", "xdcrSSLPorts"] ->
+                    {done, handle_node_self_xdcr_ssl_ports(Req)};
+                ["indexStatus"] ->
+                    {auth_ro, fun menelaus_web_indexes:handle_index_status/1};
+                ["settings", "indexes"] ->
+                    {auth_ro, fun menelaus_web_indexes:handle_settings_get/1};
+                ["diag"] ->
+                    {auth, fun diag_handler:handle_diag/1, []};
+                ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
+                ["diag", "ale"] -> {auth, fun diag_handler:handle_diag_ale/1};
+                ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
+                ["pools", "default", "rebalanceProgress"] ->
+                    {auth_ro, fun handle_rebalance_progress/2, ["default"]};
+                ["pools", "default", "tasks"] ->
+                    {auth_ro, fun handle_tasks/2, ["default"]};
+                ["index.html"] ->
+                    {done, redirect_permanently("/ui/index.html", Req)};
+                ["ui", "index.html"] ->
+                    {done, menelaus_util:reply_ok(
+                             Req,
+                             "text/html; charset=utf8",
+                             menelaus_pluggable_ui:inject_head_fragments(
+                               AppRoot, Path, Plugins),
+                             [{"Cache-Control", "must-revalidate"}])};
+                ["classic-index.html"] ->
+                    {done, menelaus_util:serve_static_file(
+                             Req, {AppRoot, Path},
+                             "text/html; charset=utf8",
+                             [{"Cache-Control", "must-revalidate"}])};
+                ["dot", Bucket] ->
+                    {auth, fun handle_dot/2, [Bucket]};
+                ["dotsvg", Bucket] ->
+                    {auth, fun handle_dotsvg/2, [Bucket]};
+                ["sasl_logs"] ->
+                    {auth, fun diag_handler:handle_sasl_logs/1, []};
+                ["sasl_logs", LogName] ->
+                    {auth, fun diag_handler:handle_sasl_logs/2, [LogName]};
+                ["images" | _] ->
+                    {done, menelaus_util:serve_file(Req, Path, AppRoot,
+                                                    [{"Cache-Control", "max-age=30000000"}])};
+                ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
+                ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
+                ["_metakv" | _] ->
+                    {auth, fun menelaus_metakv:handle_get/2, [Path]};
+                [?PLUGGABLE_UI, "ui", RestPrefix | _] ->
+                    {done, menelaus_pluggable_ui:maybe_serve_file(
+                             RestPrefix, Plugins, Req,
+                             nth_path_tail(Path, 3))};
+
+                [?PLUGGABLE_UI, RestPrefix | _] ->
+                    {auth_any_bucket,
+                     fun (PReq) ->
+                             menelaus_pluggable_ui:proxy_req(
+                               RestPrefix,
+                               drop_rest_prefix(Req:get(raw_path)),
+                               Plugins, PReq)
+                     end};
+                _ ->
+                    {done, menelaus_util:serve_file(
+                             Req, Path, AppRoot,
+                             [{"Cache-Control", "max-age=10"}])}
+            end;
+        'POST' ->
+            case PathTokens of
+                ["uilogin"] ->
+                    {done, handle_uilogin(Req)};
+                ["uilogout"] ->
+                    {done, handle_uilogout(Req)};
+                ["sampleBuckets", "install"] ->
+                    {auth, fun handle_post_sample_buckets/1};
+                ["engageCluster2"] ->
+                    {auth, fun handle_engage_cluster2/1};
+                ["completeJoin"] ->
+                    {auth, fun handle_complete_join/1};
+                ["node", "controller", "doJoinCluster"] ->
+                    {auth, fun handle_join/1};
+                ["node", "controller", "doJoinClusterV2"] ->
+                    {auth, fun handle_join/1};
+                ["node", "controller", "rename"] ->
+                    {auth, fun handle_node_rename/1};
+                ["nodes", NodeId, "controller", "settings"] ->
+                    {auth, fun handle_node_settings_post/2,
+                     [NodeId]};
+                ["node", "controller", "setupServices"] ->
+                    {auth, fun handle_setup_services_post/1};
+                ["settings", "web"] ->
+                    {auth, fun handle_settings_web_post/1};
+                ["settings", "alerts"] ->
+                    {auth, fun handle_settings_alerts_post/1};
+                ["settings", "alerts", "testEmail"] ->
+                    {auth, fun handle_settings_alerts_send_test_email/1};
+                ["settings", "stats"] ->
+                    {auth, fun handle_settings_stats_post/1};
+                ["settings", "autoFailover"] ->
+                    {auth, fun handle_settings_auto_failover_post/1};
+                ["settings", "autoFailover", "resetCount"] ->
+                    {auth, fun handle_settings_auto_failover_reset_count/1};
+                ["settings", "maxParallelIndexers"] ->
+                    {auth, fun handle_settings_max_parallel_indexers_post/1};
+                ["settings", "viewUpdateDaemon"] ->
+                    {auth, fun handle_settings_view_update_daemon_post/1};
+                ["settings", "readOnlyUser"] ->
+                    {auth, fun handle_settings_read_only_user_post/1};
+                ["settings", "replications"] ->
+                    {auth, fun menelaus_web_xdc_replications:handle_global_replication_settings_post/1};
+                ["settings", "replications", XID] ->
+                    {auth, fun menelaus_web_xdc_replications:handle_replication_settings_post/2, [XID]};
+                ["settings", "saslauthdAuth"] ->
+                    {auth, fun handle_saslauthd_auth_settings_post/1};
+                ["settings", "audit"] ->
+                    {auth, fun handle_settings_audit_post/1};
+                ["validateCredentials"] ->
+                    {auth, fun handle_validate_saslauthd_creds_post/1};
+                ["internalSettings"] ->
+                    {auth, fun handle_internal_settings_post/1};
+                ["pools", "default"] ->
+                    {auth, fun handle_pool_settings_post/1};
+                ["controller", "ejectNode"] ->
+                    {auth, fun handle_eject_post/1};
+                ["controller", "addNode"] ->
+                    {auth, fun handle_add_node/1};
+                ["controller", "addNodeV2"] ->
+                    {auth, fun handle_add_node/1};
+                ["pools", "default", "serverGroups", UUID, "addNode"] ->
+                    {auth, fun handle_add_node_to_group/2, [UUID]};
+                ["pools", "default", "serverGroups", UUID, "addNodeV2"] ->
+                    {auth, fun handle_add_node_to_group/2, [UUID]};
+                ["controller", "failOver"] ->
+                    {auth, fun handle_failover/1};
+                ["controller", "startGracefulFailover"] ->
+                    {auth, fun handle_start_graceful_failover/1};
+                ["controller", "rebalance"] ->
+                    {auth, fun handle_rebalance/1};
+                ["controller", "reAddNode"] ->
+                    {auth, fun handle_re_add_node/1};
+                ["controller", "reFailOver"] ->
+                    {auth, fun handle_re_failover/1};
+                ["controller", "stopRebalance"] ->
+                    {auth, fun handle_stop_rebalance/1};
+                ["controller", "setRecoveryType"] ->
+                    {auth, fun handle_set_recovery_type/1};
+                ["controller", "setAutoCompaction"] ->
+                    {auth, fun handle_set_autocompaction/1};
+                ["controller", "createReplication"] ->
+                    {auth, fun menelaus_web_xdc_replications:handle_create_replication/1};
+                ["controller", "cancelXDCR", XID] ->
+                    {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
+                ["controller", "cancelXCDR", XID] ->
+                    {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
+                ["controller", "resetAlerts"] ->
+                    {auth, fun handle_reset_alerts/1};
+                ["controller", "regenerateCertificate"] ->
+                    {auth, fun menelaus_web_cert:handle_regenerate_certificate/1};
+                ["controller", "uploadClusterCA"] ->
+                    {auth, fun menelaus_web_cert:handle_upload_cluster_ca/1};
+                ["controller", "startLogsCollection"] ->
+                    {auth, fun menelaus_web_cluster_logs:handle_start_collect_logs/1};
+                ["controller", "cancelLogsCollection"] ->
+                    {auth, fun menelaus_web_cluster_logs:handle_cancel_collect_logs/1};
+                ["pools", "default", "buckets", Id] ->
+                    {auth_check_bucket_uuid, fun menelaus_web_buckets:handle_bucket_update/3,
+                     ["default", Id]};
+                ["pools", "default", "buckets"] ->
+                    {auth, fun menelaus_web_buckets:handle_bucket_create/2,
+                     ["default"]};
+                ["pools", "default", "buckets", Id, "docs", DocId] ->
+                    {auth, fun menelaus_web_crud:handle_post/3, [Id, DocId]};
+                ["pools", "default", "buckets", Id, "controller", "doFlush"] ->
+                    {auth_bucket_mutate,
+                     fun menelaus_web_buckets:handle_bucket_flush/3, ["default", Id]};
+                ["pools", "default", "buckets", Id, "controller", "compactBucket"] ->
+                    {auth_check_bucket_uuid,
+                     fun menelaus_web_buckets:handle_compact_bucket/3, ["default", Id]};
+                ["pools", "default", "buckets", Id, "controller", "unsafePurgeBucket"] ->
+                    {auth_check_bucket_uuid,
+                     fun menelaus_web_buckets:handle_purge_compact_bucket/3, ["default", Id]};
+                ["pools", "default", "buckets", Id, "controller", "cancelBucketCompaction"] ->
+                    {auth_check_bucket_uuid,
+                     fun menelaus_web_buckets:handle_cancel_bucket_compaction/3, ["default", Id]};
+                ["pools", "default", "buckets", Id, "controller", "compactDatabases"] ->
+                    {auth_check_bucket_uuid,
+                     fun menelaus_web_buckets:handle_compact_databases/3, ["default", Id]};
+                ["pools", "default", "buckets", Id, "controller", "cancelDatabasesCompaction"] ->
+                    {auth_check_bucket_uuid,
+                     fun menelaus_web_buckets:handle_cancel_databases_compaction/3, ["default", Id]};
+                ["pools", "default", "buckets", Id, "controller", "startRecovery"] ->
+                    {auth, fun menelaus_web_recovery:handle_start_recovery/3, ["default", Id]};
+                ["pools", "default", "buckets", Id, "controller", "stopRecovery"] ->
+                    {auth, fun menelaus_web_recovery:handle_stop_recovery/3, ["default", Id]};
+                ["pools", "default", "buckets", Id, "controller", "commitVBucket"] ->
+                    {auth, fun menelaus_web_recovery:handle_commit_vbucket/3, ["default", Id]};
+                ["pools", "default", "buckets", Id,
+                 "ddocs", DDocId, "controller", "compactView"] ->
+                    {auth_check_bucket_uuid,
+                     fun menelaus_web_buckets:handle_compact_view/4, ["default", Id, DDocId]};
+                ["pools", "default", "buckets", Id,
+                 "ddocs", DDocId, "controller", "cancelViewCompaction"] ->
+                    {auth_check_bucket_uuid,
+                     fun menelaus_web_buckets:handle_cancel_view_compaction/4, ["default", Id, DDocId]};
+                ["pools", "default", "buckets", Id,
+                 "ddocs", DDocId, "controller", "setUpdateMinChanges"] ->
+                    {auth_check_bucket_uuid,
+                     fun menelaus_web_buckets:handle_set_ddoc_update_min_changes/4, ["default", Id, DDocId]};
+                ["pools", "default", "remoteClusters"] ->
+                    {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
+                ["pools", "default", "remoteClusters", Id] ->
+                    {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_update/2, [Id]};
+                ["pools", "default", "serverGroups"] ->
+                    {auth, fun menelaus_web_groups:handle_server_groups_post/1};
+                ["pools", "default", "settings", "memcached", "global"] ->
+                    {auth, fun menelaus_web_mcd_settings:handle_global_post/1};
+                ["pools", "default", "settings", "memcached", "node", Node] ->
+                    {auth, fun menelaus_web_mcd_settings:handle_node_post/2, [Node]};
+                ["pools", "default", "settings", "memcached", "node", Node, "_restart"] ->
+                    {auth, fun menelaus_web_mcd_settings:handle_node_restart/2, [Node]};
+                ["settings", "indexes"] ->
+                    {auth, fun menelaus_web_indexes:handle_settings_post/1};
+                ["_cbauth"] ->
+                    {auth_ro, fun menelaus_cbauth:handle_cbauth_post/1};
+                ["_log"] ->
+                    {auth, fun handle_log_post/1};
+                ["_goxdcr", "regexpValidation"] ->
+                    {auth, fun menelaus_web_xdc_replications:handle_regexp_validation/1};
+                ["logClientError"] -> {auth,
+                                       fun (R) ->
+                                               User = menelaus_auth:extract_auth_user(R),
+                                               ?MENELAUS_WEB_LOG(?UI_SIDE_ERROR_REPORT,
+                                                                 "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
+                                                                 [User, node(),
+                                                                  Req:get_header_value("user-agent"), binary_to_list(R:recv_body())]),
+                                               reply_ok(R, "text/plain", [])
+                                       end};
+                ["diag", "eval"] -> {auth, fun handle_diag_eval/1};
+                ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
+                [?PLUGGABLE_UI, RestPrefix | _] ->
+                    {auth_any_bucket,
+                     fun (PReq) ->
+                             menelaus_pluggable_ui:proxy_req(
+                               RestPrefix,
+                               drop_rest_prefix(Req:get(raw_path)),
+                               Plugins, PReq)
+                     end};
+                _ ->
+                    ?MENELAUS_WEB_LOG(0001, "Invalid post received: ~p", [Req]),
+                    {done, reply_not_found(Req)}
+            end;
+        'DELETE' ->
+            case PathTokens of
+                ["pools", "default", "buckets", Id] ->
+                    {auth_check_bucket_uuid,
+                     fun menelaus_web_buckets:handle_bucket_delete/3, ["default", Id]};
+                ["pools", "default", "remoteClusters", Id] ->
+                    {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
+                ["pools", "default", "buckets", Id, "docs", DocId] ->
+                    {auth, fun menelaus_web_crud:handle_delete/3, [Id, DocId]};
+                ["controller", "cancelXCDR", XID] ->
+                    {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
+                ["controller", "cancelXDCR", XID] ->
+                    {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
+                ["settings", "readOnlyUser"] ->
+                    {auth, fun handle_read_only_user_delete/1};
+                ["pools", "default", "serverGroups", GroupUUID] ->
+                    {auth, fun menelaus_web_groups:handle_server_group_delete/2, [GroupUUID]};
+                ["pools", "default", "settings", "memcached", "node", Node, "setting", Name] ->
+                    {auth, fun menelaus_web_mcd_settings:handle_node_setting_delete/3, [Node, Name]};
+                ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
+                ["_metakv" | _] ->
+                    {auth, fun menelaus_metakv:handle_delete/2, [Path]};
+                [?PLUGGABLE_UI, RestPrefix | _] ->
+                    {auth_any_bucket,
+                     fun (PReq) ->
+                             menelaus_pluggable_ui:proxy_req(
+                               RestPrefix,
+                               drop_rest_prefix(Req:get(raw_path)),
+                               Plugins, PReq)
+                     end};
+                _ ->
+                    ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p",
+                                      [Req, PathTokens]),
+                    {done, reply_text(Req, "Method Not Allowed", 405)}
+            end;
+        'PUT' = Method ->
+            case PathTokens of
+                ["settings", "readOnlyUser"] ->
+                    {auth, fun handle_read_only_user_reset/1};
+                ["pools", "default", "serverGroups"] ->
+                    {auth, fun menelaus_web_groups:handle_server_groups_put/1};
+                ["pools", "default", "serverGroups", GroupUUID] ->
+                    {auth, fun menelaus_web_groups:handle_server_group_update/2, [GroupUUID]};
+                ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
+                ["_metakv" | _] ->
+                    {auth, fun menelaus_metakv:handle_put/2, [Path]};
+                [?PLUGGABLE_UI, RestPrefix | _] ->
+                    {auth_any_bucket,
+                     fun (PReq) ->
+                             menelaus_pluggable_ui:proxy_req(
+                               RestPrefix,
+                               drop_rest_prefix(Req:get(raw_path)),
+                               Plugins, PReq)
+                     end};
+                _ ->
+                    ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
+                    {done, reply_text(Req, "Method Not Allowed", 405)}
+            end;
+        "RPCCONNECT" ->
+            {auth, fun json_rpc_connection:handle_rpc_connect/1};
+
+        _ ->
+            ?MENELAUS_WEB_LOG(0004, "Invalid request received: ~p", [Req]),
+            {done, reply_text(Req, "Method Not Allowed", 405)}
+    end.
+
+loop_inner(Req, Info, Path, PathTokens) ->
     menelaus_auth:validate_request(Req),
-    Action = case Req:get(method) of
-                 Method when Method =:= 'GET'; Method =:= 'HEAD' ->
-                     case PathTokens of
-                         [] ->
-                             {done, redirect_permanently("/ui/index.html", Req)};
-                         ["versions"] ->
-                             {done, handle_versions(Req)};
-                         ["pools"] ->
-                             {auth_any_bucket, fun handle_pools/1};
-                         ["pools", "default"] ->
-                             {auth_any_bucket, fun check_and_handle_pool_info/2, ["default"]};
-                         %% NOTE: see MB-10859. Our docs used to
-                         %% recommend doing this which due to old
-                         %% code's leniency worked just like
-                         %% /pools/default. So temporarily we allow
-                         %% /pools/nodes to be alias for
-                         %% /pools/default
-                         ["pools", "nodes"] ->
-                             {auth_any_bucket, fun check_and_handle_pool_info/2, ["default"]};
-                         ["pools", "default", "overviewStats"] ->
-                             {auth_ro, fun menelaus_stats:handle_overview_stats/2, ["default"]};
-                         ["_uistats"] ->
-                             {auth_ro, fun menelaus_stats:serve_ui_stats/1};
-                         ["poolsStreaming", "default"] ->
-                             {auth_any_bucket, fun handle_pool_info_streaming/2, ["default"]};
-                         ["pools", "default", "buckets"] ->
-                             {auth_any_bucket, fun menelaus_web_buckets:handle_bucket_list/1, []};
-                         ["pools", "default", "saslBucketsStreaming"] ->
-                             {auth, fun menelaus_web_buckets:handle_sasl_buckets_streaming/2,
-                              ["default"]};
-                         ["pools", "default", "buckets", Id] ->
-                             {auth_bucket, fun menelaus_web_buckets:handle_bucket_info/3,
-                              ["default", Id]};
-                         ["pools", "default", "bucketsStreaming", Id] ->
-                             {auth_bucket, fun menelaus_web_buckets:handle_bucket_info_streaming/3,
-                              ["default", Id]};
-                         ["pools", "default", "buckets", Id, "ddocs"] ->
-                             {auth_bucket, fun menelaus_web_buckets:handle_ddocs_list/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id, "docs"] ->
-                             {auth, fun menelaus_web_crud:handle_list/2, [Id]};
-                         ["pools", "default", "buckets", Id, "docs", DocId] ->
-                             {auth, fun menelaus_web_crud:handle_get/3, [Id, DocId]};
-                         ["pools", "default", "buckets", "@query", "stats"] ->
-                             {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", "@query"]};
-                         ["pools", "default", "buckets", "@xdcr-" ++ _ = Id, "stats"] ->
-                             {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", Id]};
-                         ["pools", "default", "buckets", "@index-" ++ _ = Id, "stats"] ->
-                             {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", Id]};
-                         ["pools", "default", "buckets", "@fts-" ++ _ = Id, "stats"] ->
-                             {auth_ro, fun menelaus_stats:handle_stats_section/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id, "stats"] ->
-                             {auth_bucket, fun menelaus_stats:handle_bucket_stats/3,
-                              ["default", Id]};
-                         ["pools", "default", "buckets", Id, "localRandomKey"] ->
-                             {auth_bucket, fun menelaus_web_buckets:handle_local_random_key/3,
-                              ["default", Id]};
-                         ["pools", "default", "buckets", Id, "statsDirectory"] ->
-                             {auth_bucket, fun menelaus_stats:serve_stats_directory/3,
-                              ["default", Id]};
-                         ["pools", "default", "nodeServices"] ->
-                             {auth_any_bucket, fun serve_node_services/1, []};
-                         ["pools", "default", "nodeServicesStreaming"] ->
-                             {auth_any_bucket, fun serve_node_services_streaming/1, []};
-                         ["pools", "default", "b", BucketName] ->
-                             {auth_bucket, fun serve_short_bucket_info/3,
-                              ["default", BucketName]};
-                         ["pools", "default", "bs", BucketName] ->
-                             {auth_bucket, fun serve_streaming_short_bucket_info/3,
-                              ["default", BucketName]};
-                         ["pools", "default", "buckets", Id, "nodes"] ->
-                             {auth_bucket, fun handle_bucket_node_list/3,
-                              ["default", Id]};
-                         ["pools", "default", "buckets", Id, "nodes", NodeId] ->
-                             {auth_bucket, fun handle_bucket_node_info/4,
-                              ["default", Id, NodeId]};
-                         ["pools", "default", "buckets", "@query", "nodes", NodeId, "stats"] ->
-                             {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
-                              ["default", "@query", NodeId]};
-                         ["pools", "default", "buckets", "@xdcr-" ++ _ = Id, "nodes", NodeId, "stats"] ->
-                             {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
-                              ["default", Id, NodeId]};
-                         ["pools", "default", "buckets", "@index-" ++ _ = Id, "nodes", NodeId, "stats"] ->
-                             {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
-                              ["default", Id, NodeId]};
-                         ["pools", "default", "buckets", "@fts-" ++ _ = Id, "nodes", NodeId, "stats"] ->
-                             {auth_ro, fun menelaus_stats:handle_stats_section_for_node/4,
-                              ["default", Id, NodeId]};
-                         ["pools", "default", "buckets", Id, "nodes", NodeId, "stats"] ->
-                             {auth_bucket, fun menelaus_stats:handle_bucket_node_stats/4,
-                              ["default", Id, NodeId]};
-                         ["pools", "default", "buckets", Id, "stats", StatName] ->
-                             {auth_bucket, fun menelaus_stats:handle_specific_stat_for_buckets/4,
-                              ["default", Id, StatName]};
-                         ["pools", "default", "buckets", Id, "recoveryStatus"] ->
-                             {auth, fun menelaus_web_recovery:handle_recovery_status/3,
-                              ["default", Id]};
-                         ["pools", "default", "remoteClusters"] ->
-                             {auth_ro, fun menelaus_web_remote_clusters:handle_remote_clusters/1};
-                         ["pools", "default", "serverGroups"] ->
-                             {auth_ro, fun menelaus_web_groups:handle_server_groups/1};
-                         ["pools", "default", "certificate"] ->
-                             {done, menelaus_web_cert:handle_cluster_certificate(Req)};
-                         ["pools", "default", "settings", "memcached", "global"] ->
-                             {auth, fun menelaus_web_mcd_settings:handle_global_get/1};
-                         ["pools", "default", "settings", "memcached", "effective", Node] ->
-                             {auth, fun menelaus_web_mcd_settings:handle_effective_get/2, [Node]};
-                         ["pools", "default", "settings", "memcached", "node", Node] ->
-                             {auth, fun menelaus_web_mcd_settings:handle_node_get/2, [Node]};
-                         ["pools", "default", "settings", "memcached", "node", Node, "setting", Name] ->
-                             {auth, fun menelaus_web_mcd_settings:handle_node_setting_get/3, [Node, Name]};
-                         ["nodeStatuses"] ->
-                             {auth_ro, fun handle_node_statuses/1};
-                         ["logs"] ->
-                             {auth_ro, fun menelaus_alert:handle_logs/1};
-                         ["settings", "web"] ->
-                             {auth_ro, fun handle_settings_web/1};
-                         ["settings", "alerts"] ->
-                             {auth_ro, fun handle_settings_alerts/1};
-                         ["settings", "stats"] ->
-                             {auth_ro, fun handle_settings_stats/1};
-                         ["settings", "autoFailover"] ->
-                             {auth_ro, fun handle_settings_auto_failover/1};
-                         ["settings", "maxParallelIndexers"] ->
-                             {auth_ro, fun handle_settings_max_parallel_indexers/1};
-                         ["settings", "viewUpdateDaemon"] ->
-                             {auth_ro, fun handle_settings_view_update_daemon/1};
-                         ["settings", "autoCompaction"] ->
-                             {auth_ro, fun handle_settings_auto_compaction/1};
-                         ["settings", "readOnlyAdminName"] ->
-                             {auth_ro, fun handle_settings_read_only_admin_name/1};
-                         ["settings", "replications"] ->
-                             {auth_ro, fun menelaus_web_xdc_replications:handle_global_replication_settings/1};
-                         ["settings", "replications", XID] ->
-                             {auth_ro, fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]};
-                         ["settings", "saslauthdAuth"] ->
-                             {auth_ro, fun handle_saslauthd_auth_settings/1};
-                         ["settings", "audit"] ->
-                             {auth_ro, fun handle_settings_audit/1};
-                         ["internalSettings"] ->
-                             {auth, fun handle_internal_settings/1};
-                         ["nodes", NodeId] ->
-                             {auth_ro, fun handle_node/2, [NodeId]};
-                         ["nodes", "self", "xdcrSSLPorts"] ->
-                             {done, handle_node_self_xdcr_ssl_ports(Req)};
-                         ["indexStatus"] ->
-                             {auth_ro, fun menelaus_web_indexes:handle_index_status/1};
-                         ["settings", "indexes"] ->
-                             {auth_ro, fun menelaus_web_indexes:handle_settings_get/1};
-                         ["diag"] ->
-                             {auth, fun diag_handler:handle_diag/1, []};
-                         ["diag", "vbuckets"] -> {auth, fun handle_diag_vbuckets/1};
-                         ["diag", "ale"] -> {auth, fun diag_handler:handle_diag_ale/1};
-                         ["diag", "masterEvents"] -> {auth, fun handle_diag_master_events/1};
-                         ["pools", "default", "rebalanceProgress"] ->
-                             {auth_ro, fun handle_rebalance_progress/2, ["default"]};
-                         ["pools", "default", "tasks"] ->
-                             {auth_ro, fun handle_tasks/2, ["default"]};
-                         ["index.html"] ->
-                             {done, redirect_permanently("/ui/index.html", Req)};
-                         ["ui", "index.html"] ->
-                             {done, menelaus_util:reply_ok(
-                                      Req,
-                                      "text/html; charset=utf8",
-                                      menelaus_pluggable_ui:inject_head_fragments(
-                                        AppRoot, Path, Plugins),
-                                      [{"Cache-Control", "must-revalidate"}])};
-                         ["classic-index.html"] ->
-                             {done, menelaus_util:serve_static_file(
-                                      Req, {AppRoot, Path},
-                                      "text/html; charset=utf8",
-                                      [{"Cache-Control", "must-revalidate"}])};
-                         ["dot", Bucket] ->
-                             {auth, fun handle_dot/2, [Bucket]};
-                         ["dotsvg", Bucket] ->
-                             {auth, fun handle_dotsvg/2, [Bucket]};
-                         ["sasl_logs"] ->
-                             {auth, fun diag_handler:handle_sasl_logs/1, []};
-                         ["sasl_logs", LogName] ->
-                             {auth, fun diag_handler:handle_sasl_logs/2, [LogName]};
-                         ["images" | _] ->
-                             {done, menelaus_util:serve_file(Req, Path, AppRoot,
-                                                             [{"Cache-Control", "max-age=30000000"}])};
-                         ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
-                         ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
-                         ["_metakv" | _] ->
-                             {auth, fun menelaus_metakv:handle_get/2, [Path]};
-                         [?PLUGGABLE_UI, "ui", RestPrefix | _] ->
-                             {done, menelaus_pluggable_ui:maybe_serve_file(
-                                      RestPrefix, Plugins, Req,
-                                      nth_path_tail(Path, 3))};
-
-                         [?PLUGGABLE_UI, RestPrefix | _] ->
-                             {auth_any_bucket,
-                              fun (PReq) ->
-                                      menelaus_pluggable_ui:proxy_req(
-                                        RestPrefix,
-                                        drop_rest_prefix(Req:get(raw_path)),
-                                        Plugins, PReq)
-                              end};
-                         _ ->
-                             {done, menelaus_util:serve_file(
-                                      Req, Path, AppRoot,
-                                      [{"Cache-Control", "max-age=10"}])}
-                     end;
-                 'POST' ->
-                     case PathTokens of
-                         ["uilogin"] ->
-                             {done, handle_uilogin(Req)};
-                         ["uilogout"] ->
-                             {done, handle_uilogout(Req)};
-                         ["sampleBuckets", "install"] ->
-                             {auth, fun handle_post_sample_buckets/1};
-                         ["engageCluster2"] ->
-                             {auth, fun handle_engage_cluster2/1};
-                         ["completeJoin"] ->
-                             {auth, fun handle_complete_join/1};
-                         ["node", "controller", "doJoinCluster"] ->
-                             {auth, fun handle_join/1};
-                         ["node", "controller", "doJoinClusterV2"] ->
-                             {auth, fun handle_join/1};
-                         ["node", "controller", "rename"] ->
-                             {auth, fun handle_node_rename/1};
-                         ["nodes", NodeId, "controller", "settings"] ->
-                             {auth, fun handle_node_settings_post/2,
-                              [NodeId]};
-                         ["node", "controller", "setupServices"] ->
-                             {auth, fun handle_setup_services_post/1};
-                         ["settings", "web"] ->
-                             {auth, fun handle_settings_web_post/1};
-                         ["settings", "alerts"] ->
-                             {auth, fun handle_settings_alerts_post/1};
-                         ["settings", "alerts", "testEmail"] ->
-                             {auth, fun handle_settings_alerts_send_test_email/1};
-                         ["settings", "stats"] ->
-                             {auth, fun handle_settings_stats_post/1};
-                         ["settings", "autoFailover"] ->
-                             {auth, fun handle_settings_auto_failover_post/1};
-                         ["settings", "autoFailover", "resetCount"] ->
-                             {auth, fun handle_settings_auto_failover_reset_count/1};
-                         ["settings", "maxParallelIndexers"] ->
-                             {auth, fun handle_settings_max_parallel_indexers_post/1};
-                         ["settings", "viewUpdateDaemon"] ->
-                             {auth, fun handle_settings_view_update_daemon_post/1};
-                         ["settings", "readOnlyUser"] ->
-                             {auth, fun handle_settings_read_only_user_post/1};
-                         ["settings", "replications"] ->
-                             {auth, fun menelaus_web_xdc_replications:handle_global_replication_settings_post/1};
-                         ["settings", "replications", XID] ->
-                             {auth, fun menelaus_web_xdc_replications:handle_replication_settings_post/2, [XID]};
-                         ["settings", "saslauthdAuth"] ->
-                             {auth, fun handle_saslauthd_auth_settings_post/1};
-                         ["settings", "audit"] ->
-                             {auth, fun handle_settings_audit_post/1};
-                         ["validateCredentials"] ->
-                             {auth, fun handle_validate_saslauthd_creds_post/1};
-                         ["internalSettings"] ->
-                             {auth, fun handle_internal_settings_post/1};
-                         ["pools", "default"] ->
-                             {auth, fun handle_pool_settings_post/1};
-                         ["controller", "ejectNode"] ->
-                             {auth, fun handle_eject_post/1};
-                         ["controller", "addNode"] ->
-                             {auth, fun handle_add_node/1};
-                         ["controller", "addNodeV2"] ->
-                             {auth, fun handle_add_node/1};
-                         ["pools", "default", "serverGroups", UUID, "addNode"] ->
-                             {auth, fun handle_add_node_to_group/2, [UUID]};
-                         ["pools", "default", "serverGroups", UUID, "addNodeV2"] ->
-                             {auth, fun handle_add_node_to_group/2, [UUID]};
-                         ["controller", "failOver"] ->
-                             {auth, fun handle_failover/1};
-                         ["controller", "startGracefulFailover"] ->
-                             {auth, fun handle_start_graceful_failover/1};
-                         ["controller", "rebalance"] ->
-                             {auth, fun handle_rebalance/1};
-                         ["controller", "reAddNode"] ->
-                             {auth, fun handle_re_add_node/1};
-                         ["controller", "reFailOver"] ->
-                             {auth, fun handle_re_failover/1};
-                         ["controller", "stopRebalance"] ->
-                             {auth, fun handle_stop_rebalance/1};
-                         ["controller", "setRecoveryType"] ->
-                             {auth, fun handle_set_recovery_type/1};
-                         ["controller", "setAutoCompaction"] ->
-                             {auth, fun handle_set_autocompaction/1};
-                         ["controller", "createReplication"] ->
-                             {auth, fun menelaus_web_xdc_replications:handle_create_replication/1};
-                         ["controller", "cancelXDCR", XID] ->
-                             {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
-                         ["controller", "cancelXCDR", XID] ->
-                             {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
-                         ["controller", "resetAlerts"] ->
-                             {auth, fun handle_reset_alerts/1};
-                         ["controller", "regenerateCertificate"] ->
-                             {auth, fun menelaus_web_cert:handle_regenerate_certificate/1};
-                         ["controller", "uploadClusterCA"] ->
-                             {auth, fun menelaus_web_cert:handle_upload_cluster_ca/1};
-                         ["controller", "startLogsCollection"] ->
-                             {auth, fun menelaus_web_cluster_logs:handle_start_collect_logs/1};
-                         ["controller", "cancelLogsCollection"] ->
-                             {auth, fun menelaus_web_cluster_logs:handle_cancel_collect_logs/1};
-                         ["pools", "default", "buckets", Id] ->
-                             {auth_check_bucket_uuid, fun menelaus_web_buckets:handle_bucket_update/3,
-                              ["default", Id]};
-                         ["pools", "default", "buckets"] ->
-                             {auth, fun menelaus_web_buckets:handle_bucket_create/2,
-                              ["default"]};
-                         ["pools", "default", "buckets", Id, "docs", DocId] ->
-                             {auth, fun menelaus_web_crud:handle_post/3, [Id, DocId]};
-                         ["pools", "default", "buckets", Id, "controller", "doFlush"] ->
-                             {auth_bucket_mutate,
-                              fun menelaus_web_buckets:handle_bucket_flush/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id, "controller", "compactBucket"] ->
-                             {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_compact_bucket/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id, "controller", "unsafePurgeBucket"] ->
-                             {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_purge_compact_bucket/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id, "controller", "cancelBucketCompaction"] ->
-                             {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_cancel_bucket_compaction/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id, "controller", "compactDatabases"] ->
-                             {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_compact_databases/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id, "controller", "cancelDatabasesCompaction"] ->
-                             {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_cancel_databases_compaction/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id, "controller", "startRecovery"] ->
-                             {auth, fun menelaus_web_recovery:handle_start_recovery/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id, "controller", "stopRecovery"] ->
-                             {auth, fun menelaus_web_recovery:handle_stop_recovery/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id, "controller", "commitVBucket"] ->
-                             {auth, fun menelaus_web_recovery:handle_commit_vbucket/3, ["default", Id]};
-                         ["pools", "default", "buckets", Id,
-                          "ddocs", DDocId, "controller", "compactView"] ->
-                             {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_compact_view/4, ["default", Id, DDocId]};
-                         ["pools", "default", "buckets", Id,
-                          "ddocs", DDocId, "controller", "cancelViewCompaction"] ->
-                             {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_cancel_view_compaction/4, ["default", Id, DDocId]};
-                         ["pools", "default", "buckets", Id,
-                          "ddocs", DDocId, "controller", "setUpdateMinChanges"] ->
-                             {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_set_ddoc_update_min_changes/4, ["default", Id, DDocId]};
-                         ["pools", "default", "remoteClusters"] ->
-                             {auth, fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
-                         ["pools", "default", "remoteClusters", Id] ->
-                             {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_update/2, [Id]};
-                         ["pools", "default", "serverGroups"] ->
-                             {auth, fun menelaus_web_groups:handle_server_groups_post/1};
-                         ["pools", "default", "settings", "memcached", "global"] ->
-                             {auth, fun menelaus_web_mcd_settings:handle_global_post/1};
-                         ["pools", "default", "settings", "memcached", "node", Node] ->
-                             {auth, fun menelaus_web_mcd_settings:handle_node_post/2, [Node]};
-                         ["pools", "default", "settings", "memcached", "node", Node, "_restart"] ->
-                             {auth, fun menelaus_web_mcd_settings:handle_node_restart/2, [Node]};
-                         ["settings", "indexes"] ->
-                             {auth, fun menelaus_web_indexes:handle_settings_post/1};
-                         ["_cbauth"] ->
-                             {auth_ro, fun menelaus_cbauth:handle_cbauth_post/1};
-                         ["_log"] ->
-                             {auth, fun handle_log_post/1};
-                         ["_goxdcr", "regexpValidation"] ->
-                             {auth, fun menelaus_web_xdc_replications:handle_regexp_validation/1};
-                         ["logClientError"] -> {auth,
-                                                fun (R) ->
-                                                        User = menelaus_auth:extract_auth_user(R),
-                                                        ?MENELAUS_WEB_LOG(?UI_SIDE_ERROR_REPORT,
-                                                                          "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
-                                                                          [User, node(),
-                                                                           Req:get_header_value("user-agent"), binary_to_list(R:recv_body())]),
-                                                        reply_ok(R, "text/plain", [])
-                                                end};
-                         ["diag", "eval"] -> {auth, fun handle_diag_eval/1};
-                         ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
-                         [?PLUGGABLE_UI, RestPrefix | _] ->
-                             {auth_any_bucket,
-                              fun (PReq) ->
-                                      menelaus_pluggable_ui:proxy_req(
-                                        RestPrefix,
-                                        drop_rest_prefix(Req:get(raw_path)),
-                                        Plugins, PReq)
-                              end};
-                         _ ->
-                             ?MENELAUS_WEB_LOG(0001, "Invalid post received: ~p", [Req]),
-                             {done, reply_not_found(Req)}
-                     end;
-                 'DELETE' ->
-                     case PathTokens of
-                         ["pools", "default", "buckets", Id] ->
-                             {auth_check_bucket_uuid,
-                              fun menelaus_web_buckets:handle_bucket_delete/3, ["default", Id]};
-                         ["pools", "default", "remoteClusters", Id] ->
-                             {auth, fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
-                         ["pools", "default", "buckets", Id, "docs", DocId] ->
-                             {auth, fun menelaus_web_crud:handle_delete/3, [Id, DocId]};
-                         ["controller", "cancelXCDR", XID] ->
-                             {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
-                         ["controller", "cancelXDCR", XID] ->
-                             {auth, fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
-                         ["settings", "readOnlyUser"] ->
-                             {auth, fun handle_read_only_user_delete/1};
-                         ["pools", "default", "serverGroups", GroupUUID] ->
-                             {auth, fun menelaus_web_groups:handle_server_group_delete/2, [GroupUUID]};
-                         ["pools", "default", "settings", "memcached", "node", Node, "setting", Name] ->
-                             {auth, fun menelaus_web_mcd_settings:handle_node_setting_delete/3, [Node, Name]};
-                         ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
-                         ["_metakv" | _] ->
-                             {auth, fun menelaus_metakv:handle_delete/2, [Path]};
-                         [?PLUGGABLE_UI, RestPrefix | _] ->
-                             {auth_any_bucket,
-                              fun (PReq) ->
-                                      menelaus_pluggable_ui:proxy_req(
-                                        RestPrefix,
-                                        drop_rest_prefix(Req:get(raw_path)),
-                                        Plugins, PReq)
-                              end};
-                         _ ->
-                             ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p",
-                                               [Req, PathTokens]),
-                             {done, reply_text(Req, "Method Not Allowed", 405)}
-                     end;
-                 'PUT' = Method ->
-                     case PathTokens of
-                         ["settings", "readOnlyUser"] ->
-                             {auth, fun handle_read_only_user_reset/1};
-                         ["pools", "default", "serverGroups"] ->
-                             {auth, fun menelaus_web_groups:handle_server_groups_put/1};
-                         ["pools", "default", "serverGroups", GroupUUID] ->
-                             {auth, fun menelaus_web_groups:handle_server_group_update/2, [GroupUUID]};
-                         ["couchBase" | _] -> {auth, fun capi_http_proxy:handle_request/1};
-                         ["_metakv" | _] ->
-                             {auth, fun menelaus_metakv:handle_put/2, [Path]};
-                         [?PLUGGABLE_UI, RestPrefix | _] ->
-                             {auth_any_bucket,
-                              fun (PReq) ->
-                                      menelaus_pluggable_ui:proxy_req(
-                                        RestPrefix,
-                                        drop_rest_prefix(Req:get(raw_path)),
-                                        Plugins, PReq)
-                              end};
-                         _ ->
-                             ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
-                             {done, reply_text(Req, "Method Not Allowed", 405)}
-                     end;
-                 "RPCCONNECT" ->
-                     {auth, fun json_rpc_connection:handle_rpc_connect/1};
-
-                 _ ->
-                     ?MENELAUS_WEB_LOG(0004, "Invalid request received: ~p", [Req]),
-                     {done, reply_text(Req, "Method Not Allowed", 405)}
-             end,
-    case Action of
+    case get_action(Req, Info, Path, PathTokens) of
         {done, RV} -> RV;
         {auth_ro, F} -> auth_ro(Req, F, []);
         {auth_ro, F, Args} -> auth_ro(Req, F, Args);
