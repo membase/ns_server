@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os, subprocess, sys, signal, atexit, socket, getopt, select, shlex
-import platform, fnmatch
+import platform
 
 base_direct_port = 12000
 base_api_port = 9000
@@ -344,11 +344,6 @@ def main():
         print "Valid log levels are the following: %s" % ', '.join(LOGLEVELS)
         sys.exit(1)
     extra_args += ["-ns_server", "loglevel_stderr", loglevel]
-
-    plugins_dir = '../build/cluster_run_ui_plugins'
-    for file in os.listdir(plugins_dir):
-        if fnmatch.fnmatch(file, 'pluggable-ui-*.cluster_run.json'):
-            pluggable_config.append(os.path.join(plugins_dir, file))
 
     if pluggable_config:
         extra_args += ["-ns_server", "ui_plugins",
