@@ -74,7 +74,7 @@
       function showErrorsSensitiveSpinner(name, timer, scope) {
         name && setSpinnerName(name);
         maybeHandleSpinnerWithTimer(timer, scope);
-        promise.then(null, hideSpinner);
+        promise.then(clearSpinnerTimeout, hideSpinner);
         return this;
       }
       function catchErrorsFromSuccess(nameOrCallback) {
