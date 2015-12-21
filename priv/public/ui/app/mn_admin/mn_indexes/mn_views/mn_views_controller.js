@@ -35,13 +35,11 @@
         return mnViewsListService.getKvNodeLink(vm.mnPoolDefault.value.nodes);
       }
       function onSelectBucket(selectedBucket) {
-        _.defer(function () { //in order to set selected into ng-model before state.go
-          $state.go('app.admin.indexes.views.list', {viewsBucket: selectedBucket});
-        });
+        $state.go('app.admin.indexes.views.list', {viewsBucket: selectedBucket});
       }
 
       function activate() {
-        new mnPoller($scope, function () {
+        var poller = new mnPoller($scope, function () {
             return mnViewsListService.prepareBucketsDropdownData($state.params, true);
           })
           .subscribe("state", vm)

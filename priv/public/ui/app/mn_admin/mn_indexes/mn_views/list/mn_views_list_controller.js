@@ -5,7 +5,7 @@
     .module("mnViews")
     .controller("mnViewsListController", mnViewsListController);
 
-  function mnViewsListController($scope, $state, $uibModal, mnPoolDefault, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoller) {
+  function mnViewsListController($scope, $rootScope, $state, $uibModal, mnPoolDefault, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoller) {
     var vm = this;
 
     vm.showCreationDialog = showCreationDialog;
@@ -135,13 +135,14 @@
     function registerCompactionAsTriggeredAndPost(row) {
       row.disableCompact = true;
       mnPromiseHelper(vm, mnCompaction.registerAsTriggeredAndPost(row.controllers.compact))
-        .reloadState();
+        .broadcast("reloadViewsPoller");
     }
     function activate() {
-      new mnPoller($scope, function () {
+      var poller = new mnPoller($scope, function () {
           return mnViewsListService.getViewsListState($state.params);
         })
         .subscribe("state", vm)
+        .reloadOnScopeEvent("reloadViewsPoller", vm)
         .cycle();
     }
   }

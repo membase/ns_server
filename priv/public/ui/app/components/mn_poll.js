@@ -58,13 +58,20 @@
     Poller.prototype.subscribe = subscribe;
     Poller.prototype.showSpinner = showSpinner;
     Poller.prototype.reload = reload;
+    Poller.prototype.reloadOnScopeEvent = reloadOnScopeEvent;
 
     return Poller;
 
     function isStopped(startTimestamp) {
       return !(angular.isUndefined(this.stopTimestamp) || startTimestamp >= this.stopTimestamp);
     }
-
+    function reloadOnScopeEvent(eventName, vm, spinnerName) {
+      var self = this;
+      self.scope.$on(eventName, function () {
+        self.reload(vm).showSpinner(vm, spinnerName);
+      });
+      return this;
+    }
     function setExtractInterval(interval) {
       this.extractInterval = interval;
       return this;

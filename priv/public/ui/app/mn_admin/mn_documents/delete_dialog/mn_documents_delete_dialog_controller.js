@@ -14,7 +14,11 @@
         documentsBucket: $state.params.documentsBucket,
         documentId: documentId
       });
-      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance);
+
+      mnPromiseHelper(vm, promise, $uibModalInstance)
+        .showErrorsSensitiveSpinner()
+        .closeFinally()
+        .broadcast("reloadDocumentsPoller");
     }
   }
 })();

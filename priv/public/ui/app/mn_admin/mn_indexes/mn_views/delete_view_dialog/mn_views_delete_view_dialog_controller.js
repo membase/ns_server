@@ -20,7 +20,10 @@
         return mnViewsListService.createDdoc(url, presentDdoc.json);
       });
 
-      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance, vm);
+      mnPromiseHelper(vm, promise, $uibModalInstance)
+        .showErrorsSensitiveSpinner()
+        .closeFinally()
+        .broadcast("reloadViewsPoller");
     };
   }
 })();

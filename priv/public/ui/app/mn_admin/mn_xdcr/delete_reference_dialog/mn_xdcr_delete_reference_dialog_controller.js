@@ -11,7 +11,10 @@
 
     function deleteClusterReference() {
       var promise = mnXDCRService.deleteClusterReference(name);
-      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance, vm);
+      mnPromiseHelper(vm, promise, $uibModalInstance)
+        .showErrorsSensitiveSpinner()
+        .closeFinally()
+        .broadcast("reloadXdcrPoller");
     }
   }
 })();

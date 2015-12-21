@@ -65,7 +65,7 @@
         <a
           class="list_button when-roadmin-hide-me"
           ng-hide="bucketsListCtl.mnPoolDefault.value.isROAdminCreds"
-          ui-sref="app.admin.documents.list({documentsBucket: bucket.name})"><span>Documents</span></a>
+          ui-sref="app.admin.documents.control.list({documentsBucket: bucket.name})"><span>Documents</span></a>
       </td>
     </tr>
     <tr ng-if="bucketsListCtl.isDetailsOpened(bucket.name)" ui-view="details"></tr>

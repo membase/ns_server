@@ -21,7 +21,7 @@
     <a
       class="auto_failover_count_reset edit_btn when-roadmin-hide-me"
       ng-hide="serversCtl.mnPoolDefault.value.isROAdminCreds"
-      ng-click="serversCtl.state.resetAutoFailOverCount()"
+      ng-click="adminCtl.resetAutoFailOverCount()"
       mn-spinner="serversCtl.state.resetQuotaLoading">
       <span>Reset Quota</span>
     </a>
@@ -56,13 +56,13 @@
       <ul class="tabs">
         <li class="tab_left">
           <a
-            ui-sref="app.admin.servers({ list: 'active' })"
+            ui-sref="app.admin.servers.list({ list: 'active' })"
             ui-sref-active="selected">Active Servers</a>
         </li>
         <li class="tab_right" id="rebalance_tab">
           <a
             class="casper_servers_pending_rebalance_tab"
-            ui-sref="app.admin.servers({ list: 'pending' })"
+            ui-sref="app.admin.servers.list({ list: 'pending' })"
             ui-sref-active="selected">Pending Rebalance</a>
             <span
               class="badge"
@@ -73,171 +73,6 @@
         </li>
       </ul>
     </div>
-    <div class="panes">
-      <div
-        class="servers_list"
-        mn-spinner="serversCtl.viewLoading"
-        min-height="91px">
-        <table class="list" style="width:100%" mn-sortable-table="hostname">
-          <colgroup>
-            <col style="width:19%">
-            <col style="width:9%">
-            <col style='{%= serversCtl.state.isGroupsAvailable ? "width: 7%;" : "width: 0px;" %}'>
-            <col style="width:7%">
-            <col style="width:8%">
-            <col style="width:8%">
-            <col style="width:8%">
-            <col style="width:8%">
-            <col style="width:4%">
-            <col style="width:22%">
-          </colgroup>
-          <tbody>
-            <tr>
-              <th mn-sortable-title="hostname" class="node_name" style="text-align:left;">Server Node Name</th>
-              <th></th>
-              <th mn-sortable-title="group" style='{{ serversCtl.state.isGroupsAvailable ? "text-align: center!important;" : "width: 0px;" }}'>{{ serversCtl.state.isGroupsAvailable ? "Group" : " " }}</th>
-              <th mn-sortable-title="services">Services</th>
-              <th>RAM Usage</th>
-              <th>Swap Usage</th>
-              <th>CPU Usage</th>
-              <th>Data/Disk Usage</th>
-              <th style="text-indent:8px;white-space: nowrap;">Items (Active / Replica)</th>
-              <th></th>
-            </tr>
-          </tbody>
-          <tbody ng-repeat="node in serversCtl.state.currentNodes | orderBy:serversCtl.sortableTableProperties.orderBy:serversCtl.sortableTableProperties.invert track by node.otpNode">
-            <tr
-              ng-if="serversCtl.isReAddPossible(node)"
-              class="add_back_row when-roadmin-avoid-me">
-              <td colspan="10">
-                <span
-                  class="add_back_btn"
-                  ng-click="serversCtl.reAddNode('full', node.otpNode)">
-                    <span>Full Recovery</span>
-                </span>
-                <span
-                  class="add_back_btn only-when-30"
-                  ng-click="serversCtl.reAddNode('delta', node.otpNode)">
-                    <span>Delta Recovery</span>
-                </span>
-                <span class="add_b_message">
-                  This server is now reachable. Do you want to add it back to the cluster on the next rebalance?
-                </span>
-              </td>
-            </tr>
-            <tr class="server_row " id="{{node.otpNode | mnMakeSafeForCSS}}">
-              <td class="node_name ellipsis">
-                <a ng-if="!serversCtl.isNodeUnhealthy(node)"
-                   ng-click="serversCtl.toggleDetails(node.hostname)"
-                   class="{{'casper_open_cluster_' + node.otpNode | mnMakeSafeForCSS}}"
-                   title="Show Server Node info">
-                    <ins class="expander" ng-class="{closed: !serversCtl.isDetailsOpened(node.hostname)}"></ins>
-                </a>
-                <span ng-if="serversCtl.showInactiveNodeHostname(node)">
-                  {{node.hostname | mnStripPortHTML:serversCtl.state.nodes.allNodes}}
-                </span>
-                <span ng-if="serversCtl.isNodeUnhealthy(node)">
-                  {{node.hostname}}
-                </span>
-                <a ng-if="serversCtl.showActiveNodeHostname(node)"
-                   title="{{'View Analytics for ' + node.hostname}}"
-                   ui-sref="app.admin.analytics.list.graph({statsHostname: node.hostname})">
-                  {{node.hostname | mnStripPortHTML:serversCtl.state.nodes.allNodes}}
-                </a>
-              </td>
-              <td
-                class="servers_icons  {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}"
-                ng-class="{dynamic_lastActive: serversCtl.isLastActiveData(node)}">
-              </td>
-              <td>
-                <div class="ellipsis" title="{{node.group}}">{{node.group}}</div>
-              </td>
-              <td style="text-align: left;">
-                <div ng-repeat="service in node.services | orderBy:'toString()'">
-                  {{service | mnFormatServices}}
-                </div>
-              </td>
-
-              <td class="ram" mn-vertical-bar="" conf="serversCtl.getRamUsageConf(node)">
-              </td>
-              <td class="ram" mn-vertical-bar="" conf="serversCtl.getSwapUsageConf(node)">
-              </td>
-              <td class="ram" mn-vertical-bar="" conf="serversCtl.getCpuUsageConf(node)">
-              </td>
-              <td class="ram">
-                <span ng-if="!serversCtl.isDataDiskUsageAvailable(node)">
-                  N/A
-                </span>
-                <span ng-if="serversCtl.isDataDiskUsageAvailable(node)">
-                  {{serversCtl.couchDataSize(node) | mnFormatQuantity}} / <br>{{serversCtl.couchDiskUsage(node) | mnFormatQuantity}}
-                </span>
-              </td>
-              <td class="rep" style="padding-left:0;padding-right:0;">
-                {{node.interestingStats.curr_items || 0 | mnFormatQuantity:1000:' ' }}/<br>{{node.interestingStats.vb_replica_curr_items || 0 | mnFormatQuantity:1000:' ' }}
-              </td>
-              <td
-                ng-if="serversCtl.showRebalanceProgressPerItem()"
-                class="actions">
-                  <span class="usage_info">{{serversCtl.getRebalanceProgress(node) | mnTruncateTo3Digits}} % Complete</span>
-                  <span class="server_usage"><span style="width: {{serversCtl.getRebalanceProgress(node) | mnTruncateTo3Digits}}%"></span></span>
-              </td>
-              <td
-                ng-if="serversCtl.showPendingAddControls(node)"
-                class="actions with_state_message">
-                  <span class="state_message">Pending Add</span>
-                  <a
-                    ng-hide="serversCtl.mnPoolDefault.value.isROAdminCreds"
-                    class="list_button btn_cancel eject_server when-roadmin-avoid-me"
-                    ng-class="{dynamic_disabled: serversCtl.state.tasks.inRecoveryMode}"
-                    ng-click="!serversCtl.state.tasks.inRecoveryMode && serversCtl.ejectServer(node)"><span>Cancel</span></a>
-              </td>
-              <td
-                ng-if="serversCtl.showPendingRecoveryControls(node)"
-                class="actions with_state_message">
-                  <span class="state_message">Pending {{node.recoveryType}} recovery</span>
-                  <a
-                    ng-hide="serversCtl.mnPoolDefault.value.isROAdminCreds"
-                    class="list_button btn_cancel eject_server when-roadmin-avoid-me"
-                    ng-class="{dynamic_disabled: serversCtl.state.tasks.inRecoveryMode}"
-                    ng-click="!serversCtl.state.tasks.inRecoveryMode && serversCtl.cancelFailOverNode(node.otpNode)"><span>Cancel</span></a>
-              </td>
-              <td
-                ng-if="serversCtl.showPendingRemovalControls(node)"
-                class="actions with_state_message">
-                  <span class="state_message">Pending Removal</span>
-                  <a
-                    ng-hide="serversCtl.mnPoolDefault.value.isROAdminCreds"
-                    class="list_button btn_cancel remove_from_list when-roadmin-avoid-me"
-                    ng-class="{dynamic_disabled: serversCtl.state.tasks.inRecoveryMode}"
-                    ng-click="!serversCtl.state.tasks.inRecoveryMode && serversCtl.cancelEjectServer(node)"><span>Cancel</span></a>
-              </td>
-              <td
-                ng-if="serversCtl.showFailedOverControls(node)"
-                class="actions">
-                  <a
-                    ng-hide="serversCtl.mnPoolDefault.value.isROAdminCreds"
-                    class="list_button eject_server when-roadmin-avoid-me casper_servers_remove_popup"
-                    ng-class="{dynamic_disabled: serversCtl.disableRemoveBtn(node)}"
-                    ng-click="!serversCtl.disableRemoveBtn(node) && serversCtl.ejectServer(node)"><span>Remove</span></a>
-                  <a
-                    ng-hide="serversCtl.mnPoolDefault.value.isROAdminCreds"
-                    class="list_button failover_server when-roadmin-avoid-me casper_servers_failover_popup"
-                    ng-class="{dynamic_disabled: serversCtl.isFailOverDisabled(node)}"
-                    ng-click="!serversCtl.isFailOverDisabled(node) && serversCtl.failOverNode(node)"><span>Fail Over</span></a>
-                  <span class="failed_over_message">Failed Over: Pending Removal</span>
-              </td>
-            </tr>
-            <tr ng-if="serversCtl.isDetailsOpened(node.hostname)" ui-view="details">
-            </tr>
-          </tbody>
-
-          <tbody ng-if="!serversCtl.state.currentNodes.length">
-            <tr class="server_row rebalance_empty">
-              <td colspan="10">There are no servers pending rebalance.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <div ui-view></div>
   </div>
 </div>

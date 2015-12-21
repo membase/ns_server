@@ -13,7 +13,10 @@
     function doDelete() {
       var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, currentDdocName);
       var promise = mnViewsListService.deleteDdoc(url);
-      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance, vm);
+      mnPromiseHelper(vm, promise, $uibModalInstance)
+        .showErrorsSensitiveSpinner()
+        .closeFinally()
+        .broadcast("reloadViewsPoller");
     }
   }
 })();

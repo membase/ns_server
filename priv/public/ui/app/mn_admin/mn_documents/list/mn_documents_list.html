@@ -1,99 +1,78 @@
-<div class="doc_header" style="margin-top:-50px;">
-  <div class="items_per_list_wrap">
-    <ui-select ng-model="documentsListCtl.state.pageLimits.selected" theme="selectize" on-select="documentsListCtl.onSelectPageLimits($item)" style="width: 80px; display: inline-block; vertical-align: middle;">
-      <ui-select-match>{{$select.selected}}</ui-select-match>
-      <ui-select-choices repeat="name in documentsListCtl.state.pageLimits | filter: $select.search">
-        <span ng-bind-html="name | highlight: $select.search"></span>
-      </ui-select-choices>
-    </ui-select>
-  </div>
-  <div class="ic_prev_next">
-    <a class="arr_prev" ng-class="{dynamic_disabled: documentsListCtl.isPrevDisabled()}" ng-click="!documentsListCtl.isPrevDisabled() && documentsListCtl.prevPage()"></a>
-    <a class="arr_next" ng-class="{dynamic_disabled: documentsListCtl.isNextDisabled()}" ng-click="!documentsListCtl.isNextDisabled() && documentsListCtl.nextPage()"></a>
-  </div>
-  <div class="docs_info">
-    Current page: <span class="docs_crnt_pg">{{documentsListCtl.state.pageNumber + 1}}</span>
-  </div>
-</div>
 <div id="documents_list">
-    <div class="warning_message documents_notice" ng-show="documentsListCtl.state.docs.errors[0]">
-      Error: {{documentsListCtl.state.docs.errors[0].reason}} ({{documentsListCtl.state.docs.errors[0].error }})
-    </div>
-    <div class="shadow_box">
-      <div class="header_2 servers_header">
-        <div class="docs_title">
-          <div class="filter_container">
-            <h2>Documents Filter</h2>
-            <div
-              mn-filter="documentsListCtl.filterInitParams"
-              items="documentsListCtl.filterItems"
-              disabled="documentsListCtl.isEmptyState()"
-              on-close="documentsListCtl.onFilterClose(params)"
-              on-reset="documentsListCtl.onFilterReset()"
-              ></div>
-          </div>
-        </div>
-        <div class="editing_ctrls">
-          <form id="search_doc" action="#" ng-submit="documentsListCtl.lookupSubmit($event)">
-            <input
-              type="text"
-              id="docs_lookup_doc_by_id"
-              placeholder="Document ID"
-              ng-model="documentsListCtl.lookupId"
-              ng-disabled="documentsListCtl.isEmptyState()">
-            <button
-              type="submit"
-              class="btn_1"
-              ng-class="{dynamic_disabled: documentsListCtl.isEmptyState()}"
-              id="docs_lookup_doc_by_id_btn">
-              <span>Lookup Id</span>
-            </button>
-          </form>
-          <a
-            class="btn_1 btn_create when-roadmin-avoid-me"
-            ng-class="{dynamic_disabled: documentsListCtl.isEmptyState()}"
-            ng-click="!documentsListCtl.isEmptyState() && documentsListCtl.showCreateDialog()"
-            ng-hide="documentsListCtl.isCreateDocumentDisabled()"><span>Create Document</span></a>
-          <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+  <div class="warning_message documents_notice" ng-show="documentsControlCtl.state.docs.errors[0]">
+    Error: {{documentsControlCtl.state.docs.errors[0].reason}} ({{documentsControlCtl.state.docs.errors[0].error }})
+  </div>
+  <div class="shadow_box">
+    <div class="header_2 servers_header">
+      <div class="docs_title">
+        <div class="filter_container">
+          <h2>Documents Filter</h2>
+          <div
+            mn-filter="documentsListCtl.filterInitParams"
+            items="documentsListCtl.filterItems"
+            disabled="documentsControlCtl.isEmptyState()"
+            on-close="documentsListCtl.onFilterClose(params)"
+            on-reset="documentsListCtl.onFilterReset()"
+            ></div>
         </div>
       </div>
+      <div class="editing_ctrls">
+        <form id="search_doc" action="#" ng-submit="documentsControlCtl.isEmptyState() && documentsListCtl.lookupSubmit($event)">
+          <input
+            type="text"
+            id="docs_lookup_doc_by_id"
+            placeholder="Document ID"
+            ng-model="documentsListCtl.lookupId"
+            ng-disabled="documentsControlCtl.isEmptyState()">
+          <button
+            type="submit"
+            class="btn_1"
+            ng-class="{dynamic_disabled: documentsControlCtl.isEmptyState()}"
+            id="docs_lookup_doc_by_id_btn">
+            <span>Lookup Id</span>
+          </button>
+        </form>
+        <a
+          class="btn_1 btn_create when-roadmin-avoid-me"
+          ng-class="{dynamic_disabled: documentsControlCtl.isEmptyState()}"
+          ng-click="!documentsControlCtl.isEmptyState() && documentsListCtl.showCreateDialog()"
+          ng-hide="documentsListCtl.isCreateDocumentDisabled()"><span>Create Document</span></a>
+        <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+      </div>
+    </div>
 
-      <div id="documents_list_container" mn-spinner="!documentsListCtl.state">
-        <table class="list" style="width:100%">
-          <thead>
-            <tr>
-              <th class="keycol">ID</th>
-              <th>&#160;</th>
-              <th>&#160;</th>
-              <th>&#160;</th>
-              <th>&#160;</th>
-              <th>&#160;</th>
-              <th>&#160;</th>
-              <th>&#160;</th>
-              <th>&#160;</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="align_text" ng-repeat="r in documentsListCtl.state.docs.rows" ng-show="documentsListCtl.state.docs.rows.length">
-              <td class="key ellipsis" colspan="6">
-                <a ui-sref="app.admin.documents.editing({documentId: r.id})">{{ r.key }}</a>
-              </td>
-              <td colspan="3">
-                <button class="list_button delete_btn when-roadmin-avoid-me" ng-click="documentsListCtl.deleteDocument(r.id)"><span>Delete</span></button>
-                <a  class="list_button btn_edit" ui-sref="app.admin.documents.editing({documentId: r.id})"><span>Edit Document</span></a>
-              </td>
-            </tr>
-            <tr ng-if="!documentsListCtl.state.docs.rows.length">
-              <td colspan="9" class="empty_docs">
-                There are currently no documents in this bucket {{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}
-              </td>
-            </tr>
+    <div id="documents_list_container" mn-spinner="!documentsControlCtl.state || documentsControlCtl.viewLoading">
+      <table class="list" style="width:100%">
+        <thead>
+          <tr>
+            <th class="keycol">ID</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="align_text" ng-repeat="r in documentsControlCtl.state.docs.rows" ng-show="documentsControlCtl.state.docs.rows.length">
+            <td class="key ellipsis" colspan="6">
+              <a ui-sref="app.admin.documents.editing({documentId: r.id})">{{ r.key }}</a>
+            </td>
+            <td colspan="3">
+              <button class="list_button delete_btn when-roadmin-avoid-me" ng-click="documentsListCtl.deleteDocument(r.id)"><span>Delete</span></button>
+              <a  class="list_button btn_edit" ui-sref="app.admin.documents.editing({documentId: r.id})"><span>Edit Document</span></a>
+            </td>
+          </tr>
+          <tr ng-if="!documentsControlCtl.state.docs.rows.length">
+            <td colspan="9" class="empty_docs">
+              There are currently no documents in this bucket {{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}
+            </td>
+          </tr>
         </tbody>
       </table>
-      </div>
-      <div class="ic_prev_next bottom">
-        <a class="arr_prev" ng-class="{dynamic_disabled: documentsListCtl.isPrevDisabled()}" ng-click="!documentsListCtl.isPrevDisabled() && documentsListCtl.prevPage()"></a>
-        <a class="arr_next" ng-class="{dynamic_disabled: documentsListCtl.isNextDisabled()}" ng-click="!documentsListCtl.isNextDisabled() && documentsListCtl.nextPage()"></a>
-      </div>
     </div>
   </div>
+</div>

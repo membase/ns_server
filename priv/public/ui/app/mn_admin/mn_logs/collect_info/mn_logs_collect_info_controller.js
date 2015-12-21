@@ -25,11 +25,12 @@
     }
 
     function activate() {
-      new mnPoller($scope, mnLogsCollectInfoService.getState)
+      var poller = new mnPoller($scope, mnLogsCollectInfoService.getState)
       .subscribe(function (state) {
         vm.loadingResult = false;
         vm.state = state;
       })
+      .reloadOnScopeEvent("reloadCollectInfoPoller", vm, "loadingResult")
       .cycle();
     }
 

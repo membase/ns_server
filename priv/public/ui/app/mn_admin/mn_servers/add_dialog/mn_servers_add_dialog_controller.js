@@ -53,10 +53,11 @@
 
       var promise = mnServersService.addServer(vm.addNodeConfig.selectedGroup, vm.addNodeConfig.credentials, servicesList);
 
-      promise = mnPromiseHelper(vm, promise, $uibModalInstance)
+      mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .closeOnSuccess()
+        .broadcast("reloadServersPoller")
         .getPromise()
         .then(function () {
           return mnPromiseHelper(vm, mnPoolDefault.getFresh())

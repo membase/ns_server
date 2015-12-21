@@ -70,10 +70,9 @@
 
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
-        
         .catchErrors()
         .closeOnSuccess()
-        .reloadState();
+        .broadcast("reloadViewsPoller");
     };
 
   }

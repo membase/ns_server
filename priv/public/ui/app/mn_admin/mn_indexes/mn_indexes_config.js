@@ -17,16 +17,16 @@
       .state('app.admin.indexes.views', {
         abstract: true,
         url: '/views?viewsBucket',
-        params: {
-          type: {
-            value: 'development'
-          }
-        },
         templateUrl: 'app/mn_admin/mn_indexes/mn_views/mn_views.html',
         controller: 'mnViewsController as viewsCtl'
       })
       .state('app.admin.indexes.views.list', {
         url: "?type",
+        params: {
+          type: {
+            value: 'development'
+          }
+        },
         resolve: {
           setDefaultBucketName: mnHelperProvider.setDefaultBucketName("viewsBucket", 'app.admin.indexes.views.list')
         },

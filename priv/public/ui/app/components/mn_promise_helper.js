@@ -8,7 +8,7 @@
     ])
     .factory('mnPromiseHelper', mnPromiseHelperFactory);
 
-  function mnPromiseHelperFactory(mnAlertsService, mnHelper, $timeout) {
+  function mnPromiseHelperFactory(mnAlertsService, mnHelper, $timeout, $rootScope) {
 
     mnPromiseHelper.handleModalAction = handleModalAction;
 
@@ -29,7 +29,6 @@
         applyToScope: applyToScope,
         getPromise: getPromise,
         onSuccess: onSuccess,
-        reloadAndSwitchOnPoller: reloadAndSwitchOnPoller,
         reloadState: reloadState,
         closeFinally: closeFinally,
         closeOnSuccess: closeOnSuccess,
@@ -38,7 +37,8 @@
         showSpinner: showSpinner,
         catchErrors: catchErrors,
         catchGlobalErrors: catchGlobalErrors,
-        showGlobalSuccess: showGlobalSuccess
+        showGlobalSuccess: showGlobalSuccess,
+        broadcast: broadcast
       }
 
       return promiseHelper;
@@ -49,12 +49,6 @@
       function onSuccess(cb) {
         promise.then(cb);
         return this;
-      }
-      function reloadAndSwitchOnPoller(vm) {
-        return mnPromiseHelper(scope, promise.then(function () {
-          vm.poller.reload(vm)
-          return vm.poller.doCallPromise;
-        }), modalInstance);
       }
       function reloadState() {
         promise.then(function () {
@@ -118,6 +112,12 @@
           } else {
             delete scope[keyOrFunction];
           }
+        });
+        return this;
+      }
+      function broadcast(event, scope) {
+        promise.then(function () {
+          $rootScope.$broadcast(event);
         });
         return this;
       }

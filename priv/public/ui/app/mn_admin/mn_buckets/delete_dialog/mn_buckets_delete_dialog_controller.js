@@ -15,7 +15,7 @@
         .showErrorsSensitiveSpinner()
         .catchGlobalErrors()
         .closeFinally()
-        .reloadState();
+        .broadcast("reloadBucketsPoller");
     }
   }
 })();

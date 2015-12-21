@@ -12,7 +12,8 @@
     function onStopRebalance() {
       mnPromiseHelper(vm, mnServersService.stopRebalance(), $uibModalInstance)
         .showErrorsSensitiveSpinner()
-        .closeFinally();
+        .closeFinally()
+        .broadcast("reloadServersPoller");
     }
   }
 })();

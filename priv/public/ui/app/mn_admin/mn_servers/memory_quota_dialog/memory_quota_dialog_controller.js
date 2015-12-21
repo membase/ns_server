@@ -20,7 +20,8 @@
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
-        .closeOnSuccess();
+        .closeOnSuccess()
+        .broadcast("reloadServersPoller");
     }
   }
 })();

@@ -24,7 +24,7 @@
                 vm.error = data && data.reason;
               })
               .closeOnSuccess()
-              .reloadState()
+              .broadcast("reloadDocumentsPoller")
               .getPromise();
           } else {
             vm.error = resp.data && resp.data.reason;

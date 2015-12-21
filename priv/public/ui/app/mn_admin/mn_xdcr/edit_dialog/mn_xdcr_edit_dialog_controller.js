@@ -15,7 +15,7 @@
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .closeOnSuccess()
-        .reloadState();
+        .broadcast("reloadXdcrPoller");
     };
   }
 })();

@@ -68,8 +68,9 @@
         });
     }
     function activate() {
-      new mnPoller($scope, mnBucketsService.getBucketsState)
+      var poller = new mnPoller($scope, mnBucketsService.getBucketsState)
       .subscribe("state", vm)
+      .reloadOnScopeEvent("reloadBucketsPoller", vm)
       .cycle();
     }
   }

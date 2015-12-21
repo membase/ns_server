@@ -81,18 +81,15 @@
       })
       .cycle();
 
-      $rootScope.$on("taskUriChanged", runTasks);
-      runTasks();
+      var tasksPoller = new mnPoller($scope, function () {
+        return mnTasksDetails.get({group: "global"});
+      })
+      .subscribe("tasks", vm)
+      .cycle();
 
-      var poller;
-      function runTasks() {
-        poller && poller.stop();
-        poller = new mnPoller($scope, function () {
-          return mnTasksDetails.get({group: "global"});
-        })
-        .subscribe("tasks", vm)
-        .cycle();
-      }
+      $scope.$on("taskUriChanged", function () {
+        tasksPoller.reload();
+      });
     }
   }
 })();

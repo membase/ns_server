@@ -57,7 +57,7 @@
           }
         }
       }).result.then(function () {
-        $state.go("app.admin.documents.list");
+        $state.go("app.admin.documents.control.list");
       });
     }
     function saveAsDialog() {

@@ -5,7 +5,7 @@
     .module('mnBuckets')
     .controller('mnBucketsDetailsDialogController', mnBucketsDetailsDialogController);
 
-  function mnBucketsDetailsDialogController($scope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, mnPromiseHelper, $uibModalInstance) {
+  function mnBucketsDetailsDialogController($scope, $rootScope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, mnPromiseHelper, $uibModalInstance) {
     var vm = this;
     bucketConf.autoCompactionDefined = !!bucketConf.autoCompactionSettings;
     vm.bucketConf = bucketConf;
@@ -25,7 +25,7 @@
         .onSuccess(function (result) {
           if (!result.data) {
             $uibModalInstance.close();
-            mnHelper.reloadState();
+            $rootScope.$broadcast("reloadBucketsPoller");
           }
         });
     };

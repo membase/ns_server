@@ -5,13 +5,14 @@
     .module('mnAnalytics')
     .controller('mnAnalyticsListGraphController', mnAnalyticsListGraphController);
 
-  function mnAnalyticsListGraphController($scope, $stateParams) {
+  function mnAnalyticsListGraphController($scope, $rootScope, $stateParams) {
     var vm = this;
     var selectedStat;
 
     activate();
 
     function activate() {
+      $rootScope.$broadcast('reloadAnalyticsPoller');
       $scope.$watch('analyticsCtl.state', watchOnAnalyticsState);
       $scope.$on('$destroy', onScopeDestroy);
     }

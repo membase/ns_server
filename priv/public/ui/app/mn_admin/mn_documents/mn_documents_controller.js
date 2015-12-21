@@ -30,11 +30,9 @@
     activate();
 
     function onSelectBucketName(selectedBucket) {
-      _.defer(function () { //in order to set selected into ng-model before state.go
-        $state.go('app.admin.documents.list', {
-          documentsBucket: selectedBucket,
-          pageNumber: 0
-        });
+      $state.go('app.admin.documents.control.list', {
+        documentsBucket: selectedBucket,
+        pageNumber: 0
       });
     }
 

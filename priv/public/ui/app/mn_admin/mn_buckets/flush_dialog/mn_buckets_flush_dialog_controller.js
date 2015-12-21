@@ -11,7 +11,10 @@
 
     function doFlush() {
       var promise = mnBucketsDetailsService.flushBucket(bucket);
-      mnPromiseHelper.handleModalAction($scope, promise, $uibModalInstance, vm);
+      mnPromiseHelper(vm, promise, $uibModalInstance)
+        .showErrorsSensitiveSpinner()
+        .closeFinally()
+        .broadcast("reloadBucketsPoller");
     }
   }
 })();

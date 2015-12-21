@@ -65,6 +65,16 @@
             admin: true
           }
         },
+        controller: "mnDocumentsController as documentsCtl",
+        url: "/documents?documentsBucket"
+      })
+      .state('app.admin.documents.control', {
+        abstract: true,
+        controller: 'mnDocumentsControlController as documentsControlCtl',
+        templateUrl: 'app/mn_admin/mn_documents/list/mn_documents_control.html'
+      })
+      .state('app.admin.documents.control.list', {
+        url: "?{pageLimit:int}&{pageNumber:int}&documentsFilter",
         params: {
           pageLimit: {
             value: 5
@@ -74,11 +84,6 @@
           },
           documentsFilter: null
         },
-        controller: "mnDocumentsController as documentsCtl",
-        url: "/documents?documentsBucket&{pageLimit:int}&{pageNumber:int}&documentsFilter"
-      })
-      .state('app.admin.documents.list', {
-        url: "",
         controller: 'mnDocumentsListController as documentsListCtl',
         templateUrl: 'app/mn_admin/mn_documents/list/mn_documents_list.html'
       })
@@ -89,12 +94,7 @@
       })
       .state('app.admin.analytics', {
         abstract: true,
-        url: '/analytics?statsHostname&analyticsBucket&zoom&specificStat',
-        params: {
-          zoom: {
-            value: 'minute'
-          }
-        },
+        url: '/analytics?statsHostname&analyticsBucket&specificStat',
         controller: 'mnAnalyticsController as analyticsCtl',
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics.html',
         resolve: {
@@ -113,10 +113,13 @@
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list.html'
       })
       .state('app.admin.analytics.list.graph', {
-        url: '/:graph',
+        url: '/:graph?zoom',
         params: {
           graph: {
             value: 'ops'
+          },
+          zoom: {
+            value: 'minute'
           }
         },
         controller: 'mnAnalyticsListGraphController as analyticsListGraphCtl',
@@ -141,7 +144,13 @@
         }
       })
       .state('app.admin.servers', {
-        url: '/servers/:list?openedServers',
+        abstract: true,
+        url: '/servers',
+        controller: 'mnServersController as serversCtl',
+        templateUrl: 'app/mn_admin/mn_servers/mn_servers.html'
+      })
+      .state('app.admin.servers.list', {
+        url: '/:list?openedServers',
         params: {
           list: {
             value: 'active'
@@ -152,10 +161,10 @@
         },
         views: {
           "" : {
-            controller: 'mnServersController as serversCtl',
-            templateUrl: 'app/mn_admin/mn_servers/mn_servers.html'
+            controller: 'mnServersListController as serversListCtl',
+            templateUrl: 'app/mn_admin/mn_servers/list/mn_servers_list.html'
           },
-          "details@app.admin.servers": {
+          "details@app.admin.servers.list": {
             templateUrl: 'app/mn_admin/mn_servers/details/mn_servers_list_item_details.html',
             controller: 'mnServersListItemDetailsController as serversListItemDetailsCtl'
           }

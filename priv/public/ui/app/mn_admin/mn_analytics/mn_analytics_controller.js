@@ -20,7 +20,7 @@
     activate();
 
     function activate() {
-      new mnPoller($scope, function (previousResult) {
+      var poller = new mnPoller($scope, function (previousResult) {
         return mnAnalyticsService.getStats({$stateParams: $state.params, previousResult: previousResult});
       })
       .setExtractInterval(function (response) {
@@ -28,20 +28,16 @@
         return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
       })
       .subscribe("state", vm)
-      .cycle();
+      .reloadOnScopeEvent("reloadAnalyticsPoller", vm);
     }
     function onSelectBucket(selectedBucket) {
-      _.defer(function () { //in order to set selected item into ng-model before state.go
-        $state.go('app.admin.analytics.list.graph', {
-          analyticsBucket: selectedBucket
-        });
+      $state.go('app.admin.analytics.list.graph', {
+        analyticsBucket: selectedBucket
       });
     }
     function onSelectNode(selectedHostname) {
-      _.defer(function () { //in order to set selected item into ng-model before state.go
-        $state.go('app.admin.analytics.list.graph', {
-          statsHostname: selectedHostname.indexOf("All Server Nodes") > -1 ? undefined : selectedHostname
-        });
+      $state.go('app.admin.analytics.list.graph', {
+        statsHostname: selectedHostname.indexOf("All Server Nodes") > -1 ? undefined : selectedHostname
       });
     }
     function computeOps(key) {

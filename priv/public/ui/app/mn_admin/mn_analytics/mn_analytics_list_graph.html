@@ -16,7 +16,7 @@
 </div>
 <div
   class="analytics_graph_main"
-  mn-spinner="!analyticsListGraphCtl.selectedStat">
+  mn-spinner="!analyticsListGraphCtl.selectedStat || analyticsCtl.viewLoading">
     <h2 class="current-graph-name js_current-graph-name">{{analyticsListGraphCtl.selectedStat.title}}</h2>
     <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
     <div id="analytics_main_graph_grid">
