@@ -1095,8 +1095,7 @@ handle_pool_info(Id, Req) ->
     WaitChangeS = proplists:get_value("waitChange", Query),
     PassedETag = proplists:get_value("etag", Query),
     case WaitChangeS of
-        undefined -> reply_json(Req, build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
-                                                     normal, LocalAddr));
+        undefined -> reply_json(Req, build_pool_info(Id, Req, normal, LocalAddr));
         _ ->
             WaitChange = list_to_integer(WaitChangeS),
             menelaus_event:register_watcher(self()),
@@ -1105,8 +1104,7 @@ handle_pool_info(Id, Req) ->
     end.
 
 handle_pool_info_wait(Req, Id, LocalAddr, PassedETag) ->
-    Info = build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
-                           stable, LocalAddr),
+    Info = build_pool_info(Id, Req, stable, LocalAddr),
     ETag = integer_to_list(erlang:phash2(Info)),
     if
         ETag =:= PassedETag ->
@@ -1140,8 +1138,7 @@ handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     %% consume all notifications
     consume_notifications(),
     %% and reply
-    {struct, PList} = build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
-                                      for_ui, LocalAddr),
+    {struct, PList} = build_pool_info(Id, Req, for_ui, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     reply_ok(Req, "application/json", menelaus_util:encode_json(Info),
              menelaus_auth:maybe_refresh_token(Req)),
@@ -1151,29 +1148,31 @@ handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     exit(normal).
 
 
-build_pool_info(Id, IsAdmin, normal, LocalAddr) ->
+build_pool_info(Id, Req, normal, LocalAddr) ->
+    CanIncludeOtpCookie = menelaus_auth:has_permission({[admin, internal], all}, Req),
+
     %% NOTE: we limit our caching here for "normal" info
     %% level. Explicitly excluding UI (which InfoLevel = for_ui). This
     %% is because caching doesn't take into account "buckets version"
     %% which is important to deliver asap to UI (i.e. without any
     %% caching "staleness"). Same situation is with tasks version
     menelaus_web_cache:lookup_or_compute_with_expiration(
-      {pool_details, IsAdmin, LocalAddr},
+      {pool_details, CanIncludeOtpCookie, LocalAddr},
       fun () ->
               %% NOTE: token needs to be taken before building pool info
               Token = ns_config:config_version_token(),
-              {do_build_pool_info(Id, IsAdmin, normal, LocalAddr), 1000, Token}
+              {do_build_pool_info(Id, CanIncludeOtpCookie, normal, LocalAddr), 1000, Token}
       end,
       fun (_Key, _Value, ConfigVersionToken) ->
               ConfigVersionToken =/= ns_config:config_version_token()
       end);
-build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
-    do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr).
+build_pool_info(Id, _Req, InfoLevel, LocalAddr) ->
+    do_build_pool_info(Id, false, InfoLevel, LocalAddr).
 
-do_build_pool_info(Id, IsAdmin, InfoLevel, LocalAddr) ->
+do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
     UUID = get_uuid(),
 
-    F = build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr),
+    F = build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, LocalAddr),
     Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
     Config = ns_config:get(),
     BucketsVer = erlang:phash2(ns_bucket:get_bucket_names(Config))
@@ -1364,7 +1363,7 @@ build_node_status(Node, Bucket, InfoNode, BucketsAll) ->
             <<"unhealthy">>
     end.
 
-build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr) ->
+build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(erlang:get_cookie())),
     NodeStatuses = ns_doctor:get_nodes(),
     Config = ns_config:get(),
@@ -1385,7 +1384,7 @@ build_nodes_info_fun(IsAdmin, InfoLevel, LocalAddr) ->
                    {otpNode, list_to_binary(atom_to_list(WantENode))}
                    | KV],
             %% NOTE: the following avoids exposing otpCookie to UI
-            KV2 = case IsAdmin andalso InfoLevel =:= normal of
+            KV2 = case CanIncludeOtpCookie andalso InfoLevel =:= normal of
                       true ->
                           [{otpCookie, OtpCookie} | KV1];
                       false -> KV1
@@ -1508,8 +1507,7 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
 handle_pool_info_streaming(Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     F = fun(InfoLevel) ->
-                build_pool_info(Id, menelaus_auth:is_under_role(Req, admin),
-                                InfoLevel, LocalAddr)
+                build_pool_info(Id, Req, InfoLevel, LocalAddr)
         end,
     handle_streaming(F, Req, undefined).
 

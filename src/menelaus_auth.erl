@@ -24,6 +24,7 @@
          apply_ro_auth/3,
          apply_auth_bucket/5,
          filter_accessible_buckets/2,
+         has_permission/2,
          is_bucket_accessible/2,
          apply_auth_any_bucket/3,
          extract_auth/1,
@@ -487,6 +488,9 @@ check_ldap_int({User, Password}, AllowedRoles) ->
     end;
 check_ldap_int(undefined, _) ->
     false.
+
+has_permission({[admin, internal], all}, Req) ->
+    menelaus_auth:get_role(Req) =:= "admin".
 
 verify_login_creds(User, Password) ->
     case ns_config_auth:authenticate(admin, User, Password) of
