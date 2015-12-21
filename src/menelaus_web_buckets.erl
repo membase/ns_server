@@ -86,8 +86,8 @@ checking_bucket_uuid(Req, BucketConfig, Body) ->
             Body()
     end.
 
-may_expose_bucket_auth(Req) ->
-    not menelaus_auth:is_under_role(Req, ro_admin).
+may_expose_bucket_auth(Name, Req) ->
+    menelaus_auth:has_permission({[{bucket, Name}, password], read}, Req).
 
 handle_bucket_list(Req) ->
     BucketNames = lists:sort(fun (A,B) -> A =< B end,
@@ -99,7 +99,7 @@ handle_bucket_list(Req) ->
                 end,
     SkipMap = proplists:get_value("skipMap", Req:parse_qs()) =:= "true",
     BucketsInfo = [build_bucket_info(Name, undefined, InfoLevel, LocalAddr,
-                                     may_expose_bucket_auth(Req), SkipMap)
+                                     may_expose_bucket_auth(Name, Req), SkipMap)
                    || Name <- BucketNames],
     reply_json(Req, BucketsInfo).
 
@@ -111,7 +111,7 @@ handle_bucket_info(_PoolId, Id, Req) ->
     SkipMap = proplists:get_value("skipMap", Req:parse_qs()) =:= "true",
     reply_json(Req, build_bucket_info(Id, undefined, InfoLevel,
                                       menelaus_util:local_addr(Req),
-                                      may_expose_bucket_auth(Req), SkipMap)).
+                                      may_expose_bucket_auth(Id, Req), SkipMap)).
 
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
     %% Only list nodes this bucket is mapped to
@@ -381,7 +381,7 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
                                 {just_write, {write, Bin}};
                             _ ->
                                 Info = build_bucket_info(Id, BucketConfig, stable, LocalAddr,
-                                                         may_expose_bucket_auth(Req), false),
+                                                         may_expose_bucket_auth(Id, Req), false),
                                 {just_write, Info}
                         end;
                     not_present ->

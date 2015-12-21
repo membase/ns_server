@@ -490,7 +490,9 @@ check_ldap_int(undefined, _) ->
     false.
 
 has_permission({[admin, internal], all}, Req) ->
-    menelaus_auth:get_role(Req) =:= "admin".
+    menelaus_auth:get_role(Req) =:= "admin";
+has_permission({[{bucket, _Name}, password], read}, Req) ->
+    menelaus_auth:get_role(Req) =/= "ro_admin".
 
 verify_login_creds(User, Password) ->
     case ns_config_auth:authenticate(admin, User, Password) of
