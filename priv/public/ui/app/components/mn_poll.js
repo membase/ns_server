@@ -4,13 +4,12 @@
   angular
     .module("mnPoll", [
       "mnTasksDetails",
-      "mnPendingQueryKeeper",
       "mnPromiseHelper"
     ])
     .factory("mnPoller", mnPollerFactory)
     .factory("mnEtagPoller", mnEtagPollerFactory);
 
-  function mnEtagPollerFactory(mnPoller, mnPendingQueryKeeper) {
+  function mnEtagPollerFactory(mnPoller) {
     function EtagPoller(scope, request) {
       mnPoller.call(this, scope, request);
     }
@@ -23,8 +22,10 @@
 
     function cycle() {
       var self = this;
-      self.doCall().then(function () {
-        if (self.isCanceled) {
+      var timestamp = new Date();
+      self.doCallPromise = self.doCall(timestamp);
+      self.doCallPromise.then(function () {
+        if (self.isStopped(timestamp)) {
           return;
         }
         self.cycle();
@@ -32,8 +33,7 @@
     }
   }
 
-  function mnPollerFactory($q, $cacheFactory, $timeout, $rootScope, mnTasksDetails, mnPendingQueryKeeper, mnPromiseHelper) {
-    $cacheFactory('stateKeeper');
+  function mnPollerFactory($q, $timeout, mnTasksDetails, mnPromiseHelper) {
 
     function Poller(scope, request) {
       this.deferred = $q.defer();
@@ -43,12 +43,13 @@
       scope.$on('$destroy', this.stop.bind(this));
 
       this.latestResult = undefined;
-      this.isCanceled = undefined;
+      this.stopTimestamp = undefined;
+      this.extractInterval = undefined;
       this.timeout = undefined;
-      this.stateChangeStartBind = undefined;
-      this.cache = undefined;
+      this.doCallPromise = undefined;
     }
 
+    Poller.prototype.isStopped = isStopped;
     Poller.prototype.doCall = doCall;
     Poller.prototype.setExtractInterval = setExtractInterval;
     Poller.prototype.cycle = cycle;
@@ -60,26 +61,29 @@
 
     return Poller;
 
+    function isStopped(startTimestamp) {
+      return !(angular.isUndefined(this.stopTimestamp) || startTimestamp >= this.stopTimestamp);
+    }
+
     function setExtractInterval(interval) {
       this.extractInterval = interval;
       return this;
     }
     function reload(vm) {
       this.stop();
-      this.isCanceled = false;
       this.doCycle();
       return this;
     }
-    function showSpinner(vm) {
+    function showSpinner(vm, name) {
       var self = this;
-      mnPromiseHelper(vm, self.doCallPromise).showSpinner();
+      mnPromiseHelper(vm, self.doCallPromise).showSpinner(name);
       return self;
     }
-    function doCall() {
+    function doCall(timestamp) {
       var self = this;
       var query = angular.isFunction(self.request) ? self.request(self.latestResult) : self.request;
       query.then(function (result) {
-        if (self.isCanceled) {
+        if (self.isStopped(timestamp)) {
           return;
         }
         self.deferred.notify(result);
@@ -92,10 +96,14 @@
     }
     function doCycle() {
       var self = this;
+      var timestamp = new Date();
+
+      self.doCallPromise = self.doCall(timestamp);
+
       if (self.extractInterval) {
         if (angular.isFunction(self.extractInterval)) {
-          self.doCallPromise = self.doCall().then(function (result) {
-            if (self.isCanceled) {
+          self.doCallPromise.then(function (result) {
+            if (self.isStopped(timestamp)) {
               return;
             }
             var interval = self.extractInterval(result);
@@ -103,29 +111,25 @@
           });
         } else {
           self.timeout = $timeout(self.doCycle.bind(self), self.extractInterval);
-          self.doCallPromise = self.doCall();
         }
       } else {
-        self.doCallPromise = mnTasksDetails.getFresh().then(function (result) {
-          if (self.isCanceled) {
+        mnTasksDetails.getFresh().then(function (result) {
+          if (self.isStopped(timestamp)) {
             return;
           }
           var interval = (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
           self.timeout = $timeout(self.doCycle.bind(self), interval);
-          return self.doCall();
         });
       }
       return this;
     }
     function stop() {
       var self = this;
-      self.stateChangeStartBind && this.stateChangeStartBind();
-      self.isCanceled = true;
+      self.stopTimestamp = new Date();
       $timeout.cancel(self.timeout);
     }
     function subscribe(subscriber, keeper) {
       var self = this;
-      self.subscriber = subscriber;
       self.deferred.promise.then(null, null, angular.isFunction(subscriber) ? function (value) {
         subscriber(value, self.latestResult);
         self.latestResult = value;
