@@ -7,7 +7,7 @@
     'mnPluggableUiRegistry'
   ]).config(mnIndexesConfig);
 
-  function mnIndexesConfig($stateProvider) {
+  function mnIndexesConfig($stateProvider, mnHelperProvider) {
     $stateProvider
       .state('app.admin.indexes', {
         abstract: true,
@@ -27,6 +27,9 @@
       })
       .state('app.admin.indexes.views.list', {
         url: "?type",
+        resolve: {
+          setDefaultBucketName: mnHelperProvider.setDefaultBucketName("viewsBucket", 'app.admin.indexes.views.list')
+        },
         controller: 'mnViewsListController as viewsListCtl',
         templateUrl: 'app/mn_admin/mn_indexes/mn_views/list/mn_views_list.html'
       })

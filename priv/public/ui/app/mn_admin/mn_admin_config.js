@@ -28,7 +28,7 @@
     'mnPoorMansAlerts'
   ]).config(mnAdminConfig);
 
-  function mnAdminConfig($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider) {
+  function mnAdminConfig($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider, mnHelperProvider) {
 
     function valToString(val) {
       return val != null ? val.toString() : val;
@@ -96,7 +96,10 @@
           }
         },
         controller: 'mnAnalyticsController as analyticsCtl',
-        templateUrl: 'app/mn_admin/mn_analytics/mn_analytics.html'
+        templateUrl: 'app/mn_admin/mn_analytics/mn_analytics.html',
+        resolve: {
+          setDefaultBucketName: mnHelperProvider.setDefaultBucketName("analyticsBucket", 'app.admin.analytics.list.graph')
+        }
       })
       .state('app.admin.analytics.list', {
         abstract: true,

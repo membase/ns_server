@@ -67,8 +67,7 @@
       }
     }
     function getStats(params) {
-      return mnBucketsService.getBucketsByType(true).then(function (buckets) {
-        params.$stateParams.analyticsBucket = params.$stateParams.analyticsBucket || buckets.byType.membase.defaultName;
+      return mnBucketsService.getBucketsByType().then(function (buckets) {
         var isSpecificStat = !!params.$stateParams.specificStat;
         return mnAnalyticsService.doGetStats(params).then(function (resp) {
           var queries = [
