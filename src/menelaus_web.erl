@@ -919,10 +919,11 @@ get_content_for_provisioned_system() ->
     [{pools, Pools}, {settings, Settings}, {uuid, UUID}].
 
 handle_pools(Req) ->
-    ReadOnlyAdmin = menelaus_auth:is_under_role(Req, ro_admin),
-    Admin = ReadOnlyAdmin orelse menelaus_auth:is_under_role(Req, admin),
-    RV1 = [{isAdminCreds, Admin},
-           {isROAdminCreds, ReadOnlyAdmin},
+    %% TODO RBAC for the time being let's tell the UI that the user is admin
+    %% later there will be an API to test the permissions
+
+    RV1 = [{isAdminCreds, true},
+           {isROAdminCreds, false},
            {isEnterprise, cluster_compat_mode:is_enterprise()}
            | get_content_for_provisioned_system()],
     RV = RV1 ++ menelaus_web_cache:versions_response(),

@@ -30,7 +30,6 @@
          extract_auth/1,
          extract_auth_user/1,
          parse_user_password/1,
-         is_under_role/2,
          extract_ui_auth_token/1,
          complete_uilogin/4,
          reject_uilogin/2,
@@ -464,9 +463,6 @@ bucket_auth_fun(Auth) ->
                     false
             end
     end.
-
-is_under_role(Req, Role) when is_atom(Role) ->
-    get_role(Req) =:= atom_to_list(Role).
 
 check_ldap(Req, Auth, AllowedRoles) ->
     case check_ldap_int(Auth, AllowedRoles) of
