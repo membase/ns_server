@@ -1325,7 +1325,7 @@ input[type=number].size {width:4em;}
 
 #init_update_notifications_dialog .when-required { display: none; }
 
-
+.filter_container {position: relative; z-index: 2;}
 .filter_container .selectBox-dropdown {width:130px}
 .filter_container .selectBox-dropdown-menu {width:100px}
 
