@@ -26,8 +26,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([all_accessible_bucket_names/2,
-         checking_bucket_uuid/3,
+-export([checking_bucket_uuid/3,
          handle_bucket_list/1,
          handle_bucket_info/3,
          build_bucket_node_infos/4,
@@ -62,13 +61,6 @@
 
 -define(MAX_BUCKET_NAME_LEN, 100).
 
-all_accessible_buckets(_PoolId, Req) ->
-    BucketsAll = ns_bucket:get_buckets(),
-    menelaus_auth:filter_accessible_buckets(BucketsAll, Req).
-
-all_accessible_bucket_names(PoolId, Req) ->
-    [Name || {Name, _Config} <- all_accessible_buckets(PoolId, Req)].
-
 checking_bucket_uuid(Req, BucketConfig, Body) ->
     ReqUUID0 = proplists:get_value("bucket_uuid", Req:parse_qs()),
     case ReqUUID0 =/= undefined of
@@ -90,8 +82,13 @@ may_expose_bucket_auth(Name, Req) ->
     menelaus_auth:has_permission({[{bucket, Name}, password], read}, Req).
 
 handle_bucket_list(Req) ->
-    BucketNames = lists:sort(fun (A,B) -> A =< B end,
-                             all_accessible_bucket_names(fakepool, Req)),
+    BucketNamesUnsorted =
+        menelaus_auth:get_accessible_buckets(fun (BucketName) ->
+                                                     {[{bucket, BucketName}, settings], read}
+                                             end, Req),
+
+    BucketNames = lists:sort(fun (A,B) -> A =< B end, BucketNamesUnsorted),
+
     LocalAddr = menelaus_util:local_addr(Req),
     InfoLevel = case proplists:get_value("basic_stats", Req:parse_qs()) of
                     undefined -> normal;

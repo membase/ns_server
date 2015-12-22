@@ -164,8 +164,13 @@ basic_stats(BucketName) ->
     [{quotaPercentUsed, lists:min([QuotaPercent, 100])}
      | Stats].
 
-handle_overview_stats(PoolId, Req) ->
-    Names = lists:sort(menelaus_web_buckets:all_accessible_bucket_names(PoolId, Req)),
+handle_overview_stats(_PoolId, Req) ->
+    BucketNamesUnsorted =
+        menelaus_auth:get_accessible_buckets(fun (BucketName) ->
+                                                     {[{bucket, BucketName}, stats], read}
+                                             end, Req),
+
+    Names = lists:sort(BucketNamesUnsorted),
     {ClientTStamp, Window} = parse_stats_params([{"zoom", "hour"}]),
     AllSamples = lists:map(fun (Name) ->
                                    grab_aggregate_op_stats(Name, all, ClientTStamp, Window, [ops, ep_bg_fetched])

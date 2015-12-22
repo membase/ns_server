@@ -25,6 +25,7 @@
          apply_auth_bucket/5,
          filter_accessible_buckets/2,
          has_permission/2,
+         get_accessible_buckets/2,
          is_bucket_accessible/2,
          apply_auth_any_bucket/3,
          extract_auth/1,
@@ -56,6 +57,9 @@ require_auth(Req) ->
             menelaus_util:reply(Req, 401, [{"WWW-Authenticate",
                                             "Basic realm=\"Couchbase Server Admin / REST\""}])
     end.
+
+get_accessible_buckets(_Fun, Req) ->
+    [Name || {Name, _} <- filter_accessible_buckets(ns_bucket:get_buckets(), Req)].
 
 %% Returns list of accessible buckets for current credentials. Admin
 %% credentials grant access to all buckets. Bucket credentials grant
