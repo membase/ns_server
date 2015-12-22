@@ -13,12 +13,11 @@
       vm.onSubmit = onSubmit;
 
       vm.register = {
-        version: '',
         email: '',
         firstname: '',
         lastname: '',
         company: '',
-        version: pools.implementationVersion || 'unknown'
+        version: (pools.implementationVersion || 'unknown')
       };
 
       function onSubmit() {
