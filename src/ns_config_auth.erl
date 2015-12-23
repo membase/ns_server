@@ -27,7 +27,9 @@
          unset_credentials/1,
          upgrade/1,
          get_creds/2,
-         is_system_provisioned/0]).
+         is_system_provisioned/0,
+         is_bucket_auth/2,
+         get_no_auth_buckets/0]).
 
 get_key(admin) ->
     rest_creds;
@@ -202,3 +204,23 @@ hash_password(Salt, Password) ->
         end,
 
     erlang:apply(crypto, F, A).
+
+is_bucket_auth(User, Password) ->
+    case ns_bucket:get_bucket(User) of
+        {ok, BucketConf} ->
+            case {proplists:get_value(auth_type, BucketConf),
+                  proplists:get_value(sasl_password, BucketConf)} of
+                {none, _} ->
+                    Password =:= "";
+                {sasl, P} ->
+                    Password =:= P
+            end;
+        not_present ->
+            false
+    end.
+
+get_no_auth_buckets() ->
+    [BucketName ||
+        {BucketName, BucketProps} <- ns_bucket:get_buckets(),
+        proplists:get_value(auth_type, BucketProps) =:= none orelse
+            proplists:get_value(sasl_password, BucketProps) =:= ""].
