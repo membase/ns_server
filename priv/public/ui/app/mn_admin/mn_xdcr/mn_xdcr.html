@@ -28,7 +28,7 @@
             <tr>
               <td>{{row.name}}</td>
               <td>
-                <a href="{{ window.location.protocol + '//' + row.hostname + 'index.html#/analytics&amp;statsHostname=' + (row.hostname | encodeURIComponent) }}" target="blank">{{row.hostname}}</a>
+                <a href="{{ window.location.protocol + '//' + row.hostname + '/index.html#/analytics/?statsHostname=' + (row.hostname | encodeURIComponent) }}" target="blank">{{row.hostname}}</a>
               </td>
               <td>
                 <a
