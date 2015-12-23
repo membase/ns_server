@@ -87,6 +87,12 @@
       return isEmptyState() || vm.viewLoading || !vm.state.rows || vm.state.rows.length < viewsPerPageLimit || $state.params.pageNumber >= 15;
     }
     function onFilterClose(params) {
+      if (params.group === false) {
+        delete params.group;
+      }
+      if (params.descending === false) {
+        delete params.descending;
+      }
       $state.go('app.admin.indexes.views.editing.result', {
         viewsParams: JSON.stringify(params)
       });
