@@ -130,10 +130,16 @@ send_no_active_vbuckets(CouchReq, Bucket0) ->
              <<"{\"error\":\"no_active_vbuckets\",\"reason\":\"Cannot execute view query since the node has no active vbuckets\"}">>},
     {ok, Req:respond(Tuple)}.
 
-is_bucket_accessible(BucketTuple, MochiReq) ->
+is_bucket_accessible(BucketName, MochiReq) ->
     case MochiReq:get_header_value("Capi-Auth-Token") of
         undefined ->
-            menelaus_auth:is_bucket_accessible(BucketTuple, MochiReq);
+            case menelaus_auth:verify_rest_auth(MochiReq,
+                                                {[{bucket, BucketName}, data], write}) of
+                {true, _} ->
+                    true;
+                false ->
+                    false
+            end;
         Token ->
             %% capi_http_proxy will pass erlang cookie as a token if the originating request
             %% was successfully authenticated by menelaus
@@ -152,7 +158,7 @@ verify_bucket_auth(#httpd{mochi_req=MochiReq}, BucketName) ->
                            throw({not_found, missing});
                        {ok, X} -> X
                    end,
-    case is_bucket_accessible({ListBucketName, BucketConfig}, MochiReq) of
+    case is_bucket_accessible(ListBucketName, MochiReq) of
         true ->
             case couch_util:get_value(type, BucketConfig) =:= membase of
                 true ->

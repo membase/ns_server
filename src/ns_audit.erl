@@ -173,16 +173,14 @@ format_iso8601({{YYYY, MM, DD}, {Hour, Min, Sec}}, Microsecs, Offset) ->
     io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",
                   [YYYY, MM, DD, Hour, Min, Sec, Microsecs div 1000]) ++ Offset.
 
-get_user_id(undefined, undefined) ->
+get_user_id(undefined) ->
     undefined;
-get_user_id(User, "undefined") ->
-    to_binary(User);
-get_user_id(User, Source) ->
-    {[{source, case to_binary(Source) of
-                   <<"builtin">> ->
-                       <<"ns_server">>;
-                   BSource ->
-                       BSource
+get_user_id({User, Source}) ->
+    {[{source, case menelaus_auth:get_advertised_source(Source) of
+                   builtin ->
+                       ns_server;
+                   Src ->
+                       Src
                end},
       {user, to_binary(User)}]}.
 
@@ -215,7 +213,7 @@ prepare(Req, Params) ->
             undefined ->
                 {undefined, undefined, undefined};
             _ ->
-                {get_user_id(menelaus_auth:get_user(Req), menelaus_auth:get_source(Req)),
+                {get_user_id(menelaus_auth:get_identity(Req)),
                  menelaus_auth:get_token(Req),
                  get_remote(Req)}
         end,

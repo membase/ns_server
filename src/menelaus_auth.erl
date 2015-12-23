@@ -32,17 +32,17 @@
          extract_auth_user/1,
          parse_user_password/1,
          extract_ui_auth_token/1,
-         complete_uilogin/4,
+         complete_uilogin/2,
          reject_uilogin/2,
          complete_uilogout/1,
          maybe_refresh_token/1,
-         get_user/1,
+         get_identity/1,
          get_token/1,
          get_role/1,
-         get_source/1,
+         get_advertised_source/1,
          validate_request/1,
          verify_login_creds/2,
-         authenticate/1]).
+         verify_rest_auth/2]).
 
 %% External API
 
@@ -59,8 +59,13 @@ require_auth(Req) ->
                                             "Basic realm=\"Couchbase Server Admin / REST\""}])
     end.
 
-get_accessible_buckets(_Fun, Req) ->
-    [Name || {Name, _} <- filter_accessible_buckets(ns_bucket:get_buckets(), Req)].
+get_accessible_buckets(Fun, Req) ->
+    Identity = menelaus_auth:get_identity(Req),
+    Roles = menelaus_roles:get_compiled_roles(Identity),
+
+    [BucketName ||
+        {BucketName, _Config} <- ns_bucket:get_buckets(),
+        menelaus_roles:is_allowed(Fun(BucketName), Roles)].
 
 %% Returns list of accessible buckets for current credentials. Admin
 %% credentials grant access to all buckets. Bucket credentials grant
@@ -163,14 +168,14 @@ kill_auth_cookie(Req) ->
     {Name, Content} = mochiweb_cookies:cookie(ui_auth_cookie_name(Req), "", Options),
     {Name, Content ++ "; expires=Thu, 01 Jan 1970 00:00:00 GMT"}.
 
-complete_uilogin(Req, User, Role, Src) ->
-    Token = menelaus_ui_auth:generate_token({User, Role, Src}),
+complete_uilogin(Req, Identity) ->
+    Token = menelaus_ui_auth:generate_token(Identity),
     CookieHeader = generate_auth_cookie(Req, Token),
-    ns_audit:login_success(store_user_info(Req, User, Role, Src, Token)),
+    ns_audit:login_success(store_user_info(Req, Identity, Token)),
     menelaus_util:reply(Req, 200, [CookieHeader]).
 
-reject_uilogin(Req, User) ->
-    ns_audit:login_failure(store_user_info(Req, User, undefined, undefined, undefined)),
+reject_uilogin(Req, Identity) ->
+    ns_audit:login_failure(store_user_info(Req, Identity, undefined)),
     menelaus_util:reply(Req, 400).
 
 complete_uilogout(Req) ->
@@ -192,29 +197,41 @@ maybe_refresh_token(Req) ->
 
 validate_request(Req) ->
     undefined = Req:get_header_value("menelaus-auth-user"),
-    undefined = Req:get_header_value("menelaus-auth-role"),
-    undefined = Req:get_header_value("menelaus-auth-token"),
-    undefined = Req:get_header_value("menelaus-auth-source").
+    undefined = Req:get_header_value("menelaus-auth-src"),
+    undefined = Req:get_header_value("menelaus-auth-token").
 
-store_user_info(Req, User, Role, Source, Token) ->
+store_user_info(_Req, _User, _Role, _Source, _Token) ->
+    erlang:error(to_be_deleted).
+
+store_user_info(Req, {User, Src}, Token) ->
     Headers = Req:get(headers),
     H1 = mochiweb_headers:enter("menelaus-auth-user", User, Headers),
-    H2 = mochiweb_headers:enter("menelaus-auth-role", Role, H1),
+    H2 = mochiweb_headers:enter("menelaus-auth-src", Src, H1),
     H3 = mochiweb_headers:enter("menelaus-auth-token", Token, H2),
-    H4 = mochiweb_headers:enter("menelaus-auth-source", Source, H3),
-    mochiweb_request:new(Req:get(socket), Req:get(method), Req:get(raw_path), Req:get(version), H4).
+    mochiweb_request:new(Req:get(socket), Req:get(method), Req:get(raw_path), Req:get(version), H3).
 
-get_user(Req) ->
-    Req:get_header_value("menelaus-auth-user").
+get_identity(Req) ->
+    case {Req:get_header_value("menelaus-auth-user"),
+          Req:get_header_value("menelaus-auth-src")} of
+        {undefined, undefined} ->
+            undefined;
+        {User, Src} ->
+            {User, list_to_existing_atom(Src)}
+    end.
 
 get_token(Req) ->
     Req:get_header_value("menelaus-auth-token").
 
-get_role(Req) ->
-    Req:get_header_value("menelaus-auth-role").
+get_advertised_source(admin) ->
+    builtin;
+get_advertised_source(ro_admin) ->
+    builtin;
+get_advertised_source(Src) ->
+    Src.
 
-get_source(Req) ->
-    Req:get_header_value("menelaus-auth-source").
+%% TODO RBAC: to be removed
+get_role(_Req) ->
+    none.
 
 %% applies given function F if current credentials allow access to at
 %% least single SASL-auth bucket. So admin credentials and bucket
@@ -490,10 +507,10 @@ check_ldap_int({User, Password}, AllowedRoles) ->
 check_ldap_int(undefined, _) ->
     false.
 
-has_permission({[admin, internal], all}, Req) ->
-    menelaus_auth:get_role(Req) =:= "admin";
-has_permission({[{bucket, _Name}, password], read}, Req) ->
-    menelaus_auth:get_role(Req) =/= "ro_admin".
+has_permission(Permission, Req) ->
+    Identity = get_identity(Req),
+    Roles = menelaus_roles:get_compiled_roles(Identity),
+    menelaus_roles:is_allowed(Permission, Roles).
 
 authenticate(undefined) ->
     {ok, {"", anonymous}};
@@ -536,24 +553,33 @@ authenticate({Username, Password}) ->
             end
     end.
 
-verify_login_creds(User, Password) ->
-    case ns_config_auth:authenticate(admin, User, Password) of
-        true ->
-            {ok, admin, builtin};
+verify_login_creds(Username, Password) ->
+    case authenticate({Username, Password}) of
+        {ok, {Username, bucket}} ->
+            false;
+        Other ->
+            Other
+    end.
+
+verify_rest_auth(Req, Permissions) ->
+    Auth = extract_auth(Req),
+    case authenticate(Auth) of
         false ->
-            case ns_config_auth:authenticate(ro_admin, User, Password) of
+            false;
+        {ok, Identity} ->
+            Roles = menelaus_roles:get_compiled_roles(Identity),
+            case menelaus_roles:is_allowed(Permissions, Roles) of
                 true ->
-                    {ok, ro_admin, builtin};
+                    Token = case Auth of
+                                {token, T} ->
+                                    T;
+                                _ ->
+                                    undefined
+                            end,
+                    {true, store_user_info(Req, Identity, Token)};
                 false ->
-                    case saslauthd_auth:check(User, Password) of
-                        admin ->
-                            {ok, admin, saslauthd};
-                        ro_admin ->
-                            {ok, ro_admin, saslauthd};
-                        false ->
-                            false;
-                        {error, Error} ->
-                            {error, Error}
-                    end
+                    ?log_debug("Access denied.~nIdentity: ~p~nRoles: ~p~nPermissions: ~p~n",
+                               [Identity, Roles, Permissions]),
+                    false
             end
     end.
