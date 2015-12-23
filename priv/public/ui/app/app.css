@@ -1580,6 +1580,9 @@ input[type=number].size {width:4em;}
 .indexes_list_container thead th.dynamic_active i {border-bottom-color: #4d4d4d;}
 .indexes_list_container.dynamic_descending thead th.dynamic_active i {border-bottom-color: transparent; border-top-color: #4d4d4d; border-width: 6px 4px 0;}
 
-.ui-select-container .ui-select-match {white-space: nowrap;}
+.ui-select-container {min-width: 200px;}
+.ui-select-container span {display: inline-block; vertical-align: bottom; max-width: 400px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; -o-text-overflow: ellipsis;}
+.ui-select-container .select-item {max-width: 200px;display: block;}
+.ui-select-container .ui-select-match {white-space: nowrap;padding-right: 25px;}
 .ui-select-container .ui-select-choices-row.disabled {background: #fff; cursor: default; text-decoration: none;}
 .ui-select-container .ui-select-choices-row.disabled a {color: #666; font-weight: bold; cursor: default; text-decoration: none;}

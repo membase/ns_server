@@ -16,10 +16,10 @@
       theme="selectize"
       ng-disabled="disabled"
       on-select="analyticsCtl.onSelectBucket($item)"
-      style="width: 200px; display: inline-block; vertical-align: middle;">
+      style="display: inline-block; vertical-align: middle;">
         <ui-select-match>{{$select.selected}}</ui-select-match>
         <ui-select-choices repeat="name in analyticsCtl.state.bucketsNames | filter: $select.search">
-          <span ng-bind-html="name | highlight: $select.search"></span>
+          <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
         </ui-select-choices>
     </ui-select>
     <span
@@ -31,10 +31,10 @@
         theme="selectize"
         ng-disabled="disabled"
         on-select="analyticsCtl.onSelectNode($item)"
-        style="width: 200px; display: inline-block; vertical-align: middle;">
+        style="display: inline-block; vertical-align: middle;">
           <ui-select-match>{{$select.selected}}</ui-select-match>
           <ui-select-choices repeat="name in analyticsCtl.state.nodesNames | filter: $select.search">
-            <span ng-bind-html="name | highlight: $select.search"></span>
+            <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
           </ui-select-choices>
       </ui-select>
     </span>

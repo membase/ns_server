@@ -8,10 +8,10 @@
         ng-model="viewsCtl.state.bucketsNames.selected"
         on-select="viewsCtl.onSelectBucket($item)"
         theme="selectize"
-        style="width: 200px; display: inline-block; vertical-align: middle;">
+        style="display: inline-block; vertical-align: middle;">
         <ui-select-match>{{$select.selected}}</ui-select-match>
         <ui-select-choices repeat="name in viewsCtl.state.bucketsNames | filter: $select.search">
-          <span ng-bind-html="name | highlight: $select.search"></span>
+          <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search" ></span>
         </ui-select-choices>
       </ui-select>
       <span style="vertical-align: middle;">

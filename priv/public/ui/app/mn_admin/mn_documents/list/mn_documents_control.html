@@ -3,7 +3,7 @@
     <ui-select ng-model="documentsControlCtl.state.pageLimits.selected" theme="selectize" on-select="documentsControlCtl.onSelectPageLimits($item)" style="width: 80px; display: inline-block; vertical-align: middle;">
       <ui-select-match>{{$select.selected}}</ui-select-match>
       <ui-select-choices repeat="name in documentsControlCtl.state.pageLimits | filter: $select.search">
-        <span ng-bind-html="name | highlight: $select.search"></span>
+        <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>
   </div>
