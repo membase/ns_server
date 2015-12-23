@@ -15,6 +15,7 @@
     var rv = {
       isOrderBy: isOrderBy,
       setOrder: setOrder,
+      setOrderOrToggleInvert: setOrderOrToggleInvert,
       get: get
     };
 
@@ -26,12 +27,15 @@
     function isOrderBy(orderBy) {
       return properties.orderBy === orderBy;
     }
-    function setOrder(orderBy) {
+    function setOrderOrToggleInvert(orderBy) {
       if (!isOrderBy(orderBy)) {
         properties.invert = false;
       } else {
         properties.invert = !properties.invert;
       }
+      setOrder(orderBy);
+    }
+    function setOrder(orderBy) {
       properties.orderBy = orderBy;
     }
   }
@@ -50,7 +54,7 @@
 
     function controller() {
       var vm = this;
-      vm.setOrder = mnSortableTable.setOrder;
+      vm.setOrderOrToggleInvert = mnSortableTable.setOrderOrToggleInvert;
       vm.isOrderBy = mnSortableTable.isOrderBy;
     }
 
@@ -58,7 +62,7 @@
     function link($scope, $element, $attrs) {
       var mnSortableTitle = $attrs.mnSortableTitle;
       $element.removeAttr("mn-sortable-title");
-      $attrs.$set('ngClick', 'controller.setOrder("' + mnSortableTitle +'")');
+      $attrs.$set('ngClick', 'controller.setOrderOrToggleInvert("' + mnSortableTitle +'")');
       $attrs.$set('ngClass', '{dynamic_active: controller.isOrderBy("' + mnSortableTitle + '")}');
       $compile($element)($scope);
     }
