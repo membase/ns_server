@@ -768,7 +768,7 @@ var BucketsSection = {
           return allRecentPosts[task.cancelURI] || false;
         });
         var rawBucketDetails = Cell.compute(function (v) {
-          return future.get({url: bucketInfo.uri + "&basic_stats=true"});
+          return future.get({url: bucketInfo.uri + "&basic_stats=true&skipMap=true"});
         });
         var rv = Cell.compute(function (v) {
           var thisBucketCompactionTask = v.need(maybeBucketCompactionTaskCell);

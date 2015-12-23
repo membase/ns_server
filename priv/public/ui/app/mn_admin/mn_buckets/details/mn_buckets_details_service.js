@@ -117,7 +117,7 @@
     function doGetDetails(bucket) {
       return $http({
         method: 'GET',
-        url: bucket.uri + "&basic_stats=true"
+        url: bucket.uri + "&basic_stats=true&skipMap=true"
       });
     }
     function getDetails(bucket) {

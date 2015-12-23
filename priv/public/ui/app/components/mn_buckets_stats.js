@@ -17,13 +17,13 @@
     function get(mnHttpParams) {
       return $http({
         method: "GET",
-        url: '/pools/default/buckets?basic_stats=true',
+        url: '/pools/default/buckets?basic_stats=true&skipMap=true',
         mnHttp: mnHttpParams
       });
     }
 
     function clearCache() {
-      $cacheFactory.get('$http').remove('/pools/default/buckets?basic_stats=true');
+      $cacheFactory.get('$http').remove('/pools/default/buckets?basic_stats=true&skipMap=true');
       return this;
     }
 

@@ -599,7 +599,7 @@ var DAL = {
   });
 
   var rawDetailedBuckets = Cell.compute(function (v) {
-    return future.get({url: v.need(bucketsURI) + "&basic_stats=true"});
+    return future.get({url: v.need(bucketsURI) + "&basic_stats=true&skipMap=true"});
   });
   rawDetailedBuckets.keepValueDuringAsync = true;
 
