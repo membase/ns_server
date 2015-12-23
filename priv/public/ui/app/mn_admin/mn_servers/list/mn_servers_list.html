@@ -78,8 +78,8 @@
             <div class="ellipsis" title="{{node.group}}">{{node.group}}</div>
           </td>
           <td style="text-align: left;">
-            <div ng-repeat="service in node.services | orderBy:'toString()'">
-              {{service | mnFormatServices}}
+            <div ng-repeat="service in node.services | mnFormatServicesArray | orderBy">
+              {{service}}
             </div>
           </td>
 

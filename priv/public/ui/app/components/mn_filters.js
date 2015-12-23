@@ -25,6 +25,7 @@
     .filter('parseVersion', parseVersion)
     .filter('getStringBytes', getStringBytes)
     .filter('mnFormatServices', mnFormatServices)
+    .filter('mnFormatServicesArray', mnFormatServicesArray)
     .filter('mnPrettyVersion', mnPrettyVersion)
     .filter('encodeURIComponent', encodeURIComponentFilter)
     .filter('mnTrustAsHtml', mnTrustAsHtml)
@@ -437,6 +438,11 @@
         case 'fts': return 'Full Text';
       }
     }
+  }
+  function mnFormatServicesArray() {
+    return function (services) {
+      return _.map(services, mnFormatServices());
+    };
   }
   function mnPrettyVersion(parseVersionFilter) {
 
