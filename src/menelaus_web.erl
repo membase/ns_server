@@ -50,6 +50,7 @@
          find_node_hostname/2,
          build_bucket_auto_compaction_settings/1,
          parse_validate_bucket_auto_compaction_settings/1,
+         parse_validate_boolean_field/3,
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
          assert_is_40/0,
@@ -368,7 +369,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]};
                 ["settings", "saslauthdAuth"] ->
                     {{[admin, security], read},
-                     fun handle_saslauthd_auth_settings/1};
+                     fun menelaus_web_rbac:handle_saslauthd_auth_settings/1};
                 ["settings", "audit"] ->
                     {{[admin, security], read},
                      fun handle_settings_audit/1};
@@ -500,13 +501,13 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_xdc_replications:handle_replication_settings_post/2, [XID]};
                 ["settings", "saslauthdAuth"] ->
                     {{[admin, security], write},
-                     fun handle_saslauthd_auth_settings_post/1};
+                     fun menelaus_web_rbac:handle_saslauthd_auth_settings_post/1};
                 ["settings", "audit"] ->
                     {{[admin, security], write},
                      fun handle_settings_audit_post/1};
                 ["validateCredentials"] ->
                     {{[admin, security], write},
-                     fun handle_validate_saslauthd_creds_post/1};
+                     fun menelaus_web_rbac:handle_validate_saslauthd_creds_post/1};
                 ["internalSettings"] ->
                     {[{[settings], write}, {[xdcr, settings], write}],
                      fun handle_internal_settings_post/1};
@@ -1151,18 +1152,6 @@ assert_cluster_version(Fun) ->
             erlang:throw({web_exception,
                           400,
                           "This http API endpoint isn't supported in mixed version clusters",
-                          []})
-    end.
-
-assert_is_ldap_enabled() ->
-    case cluster_compat_mode:is_ldap_enabled() of
-        true ->
-            ok;
-        false ->
-            erlang:throw({web_exception,
-                          400,
-                          "This http API endpoint is only supported in enterprise edition "
-                          "running on GNU/Linux",
                           []})
     end.
 
@@ -3914,88 +3903,6 @@ hostname_parsing_test() ->
     ok.
 
 -endif.
-
-handle_saslauthd_auth_settings(Req) ->
-    assert_is_ldap_enabled(),
-
-    reply_json(Req, {saslauthd_auth:build_settings()}).
-
-extract_user_list(undefined) ->
-    asterisk;
-extract_user_list(String) ->
-    StringNoCR = [C || C <- String, C =/= $\r],
-    Strings = string:tokens(StringNoCR, "\n"),
-    [B || B <- [list_to_binary(misc:trim(S)) || S <- Strings],
-          B =/= <<>>].
-
-parse_validate_saslauthd_settings(Params) ->
-    EnabledR = case parse_validate_boolean_field("enabled", enabled, Params) of
-                   [] ->
-                       [{error, enabled, <<"is missing">>}];
-                   EnabledX -> EnabledX
-               end,
-    [AdminsParam, RoAdminsParam] =
-        case EnabledR of
-            [{ok, enabled, false}] ->
-                ["", ""];
-            _ ->
-                [proplists:get_value(K, Params) || K <- ["admins", "roAdmins"]]
-        end,
-    Admins = extract_user_list(AdminsParam),
-    RoAdmins = extract_user_list(RoAdminsParam),
-    MaybeExtraFields = case proplists:get_keys(Params) -- ["enabled", "roAdmins", "admins"] of
-                           [] ->
-                               [];
-                           UnknownKeys ->
-                               Msg = io_lib:format("failed to recognize the following fields ~s", [string:join(UnknownKeys, ", ")]),
-                               [{error, '_', iolist_to_binary(Msg)}]
-                       end,
-    MaybeTwoAsterisks = case Admins =:= asterisk andalso RoAdmins =:= asterisk of
-                            true ->
-                                [{error, 'admins', <<"at least one of admins or roAdmins needs to be given">>}];
-                            false ->
-                                []
-                        end,
-    Everything = EnabledR ++ MaybeExtraFields ++ MaybeTwoAsterisks,
-    case [{Field, Msg} || {error, Field, Msg} <- Everything] of
-        [] ->
-            [{ok, enabled, Enabled}] = EnabledR,
-            {ok, [{enabled, Enabled},
-                  {admins, Admins},
-                  {roAdmins, RoAdmins}]};
-        Errors ->
-            {errors, Errors}
-    end.
-
-handle_saslauthd_auth_settings_post(Req) ->
-    assert_is_ldap_enabled(),
-
-    case parse_validate_saslauthd_settings(Req:parse_post()) of
-        {ok, Props} ->
-            saslauthd_auth:set_settings(Props),
-            ns_audit:setup_ldap(Req, Props),
-            handle_saslauthd_auth_settings(Req);
-        {errors, Errors} ->
-            reply_json(Req, {Errors}, 400)
-    end.
-
-handle_validate_saslauthd_creds_post(Req) ->
-    assert_is_ldap_enabled(),
-
-    Params = Req:parse_post(),
-    VRV = menelaus_auth:verify_login_creds(proplists:get_value("user", Params, ""),
-                                           proplists:get_value("password", Params, "")),
-    {Role, Src} =
-        case VRV of
-            %% TODO RBAC: return correct role for ldap users
-            {ok, {_, saslauthd}} -> {fullAdmin, saslauthd};
-            {ok, {_, admin}} -> {fullAdmin, builtin};
-            {ok, {_, ro_admin}} -> {fullAdmin, builtin};
-            {error, Error} ->
-                erlang:throw({web_exception, 400, Error, []});
-            _ -> none
-        end,
-    reply_json(Req, {[{role, Role}, {source, Src}]}).
 
 handle_log_post(Req) ->
     Params = Req:parse_post(),
