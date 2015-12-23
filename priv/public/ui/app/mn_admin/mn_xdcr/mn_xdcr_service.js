@@ -104,7 +104,6 @@
           }
 
           replication.when = replication.continuous ? "on change" : "one time sync";
-
           return replication;
         });
 
