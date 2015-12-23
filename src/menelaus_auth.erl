@@ -41,7 +41,8 @@
          get_role/1,
          get_source/1,
          validate_request/1,
-         verify_login_creds/2]).
+         verify_login_creds/2,
+         authenticate/1]).
 
 %% External API
 
@@ -493,6 +494,47 @@ has_permission({[admin, internal], all}, Req) ->
     menelaus_auth:get_role(Req) =:= "admin";
 has_permission({[{bucket, _Name}, password], read}, Req) ->
     menelaus_auth:get_role(Req) =/= "ro_admin".
+
+authenticate(undefined) ->
+    {ok, {"", anonymous}};
+authenticate({token, Token}) ->
+    case menelaus_ui_auth:check(Token) of
+        false ->
+            %% this is needed so UI can get /pools on unprovisioned
+            %% system with leftover cookie
+            case ns_config_auth:is_system_provisioned() of
+                false ->
+                    {ok, {"", wrong_token}};
+                true ->
+                    false
+            end;
+        Other ->
+            Other
+    end;
+authenticate({Username, Password}) ->
+    case ns_config_auth:authenticate(admin, Username, Password) of
+        true ->
+            {ok, {Username, admin}};
+        false ->
+            case ns_config_auth:authenticate(ro_admin, Username, Password) of
+                true ->
+                    {ok, {Username, ro_admin}};
+                false ->
+                    case ns_config_auth:is_bucket_auth(Username, Password) of
+                        true ->
+                            {ok, {Username, bucket}};
+                        false ->
+                            case saslauthd_auth:authenticate(Username, Password) of
+                                true ->
+                                    {ok, {Username, saslauthd}};
+                                false ->
+                                    false;
+                                {error, Error} ->
+                                    {error, Error}
+                            end
+                    end
+            end
+    end.
 
 verify_login_creds(User, Password) ->
     case ns_config_auth:authenticate(admin, User, Password) of
