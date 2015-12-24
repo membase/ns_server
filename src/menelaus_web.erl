@@ -1042,18 +1042,13 @@ assert_is_enterprise() ->
     end.
 
 assert_is_40() ->
-    case cluster_compat_mode:is_cluster_40() of
-        true ->
-            ok;
-        false ->
-            erlang:throw({web_exception,
-                          400,
-                          "This http API endpoint isn't supported in mixed version clusters",
-                          []})
-    end.
+    assert_cluster_version(fun cluster_compat_mode:is_cluster_40/0).
 
 assert_is_watson() ->
-    case cluster_compat_mode:is_cluster_watson() of
+    assert_cluster_version(fun cluster_compat_mode:is_cluster_watson/0).
+
+assert_cluster_version(Fun) ->
+    case Fun() of
         true ->
             ok;
         false ->
