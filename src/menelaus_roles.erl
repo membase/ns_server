@@ -43,7 +43,8 @@
 -export([get_definitions/0,
          preconfigured_roles/0,
          is_allowed/2,
-         get_compiled_roles/1]).
+         get_compiled_roles/1,
+         get_all_assignable_roles/1]).
 
 preconfigured_roles() ->
     [{admin, [],
@@ -98,11 +99,14 @@ preconfigured_roles() ->
 get_definitions() ->
     case cluster_compat_mode:is_cluster_watson() of
         true ->
-            {value, RolesDefinitions} = ns_config:search(roles_definitions),
-            RolesDefinitions;
+            get_definitions(ns_config:latest());
         false ->
             preconfigured_roles()
     end.
+
+get_definitions(Config) ->
+    {value, RolesDefinitions} = ns_config:search(Config, roles_definitions),
+    RolesDefinitions.
 
 object_match(_, []) ->
     true;
@@ -210,3 +214,21 @@ get_compiled_roles(Identity) ->
     Definitions = get_definitions(),
     Roles = get_roles(Identity),
     compile_roles(Roles, Definitions).
+
+get_possible_param_values(Config, bucket_name) ->
+    [all | [Name || {Name, _} <- ns_bucket:get_buckets(Config)]].
+
+get_all_assignable_roles(Config) ->
+    BucketNames = get_possible_param_values(Config, bucket_name),
+
+    lists:foldr(
+      fun ({bucket_sasl, _, _, _}, Acc) ->
+              Acc;
+          ({Role, [], Props, _}, Acc) ->
+              [{Role, Props} | Acc];
+          ({Role, [bucket_name], Props, _}, Acc) ->
+              lists:foldr(
+                fun (BucketName, Acc1) ->
+                        [{{Role, [BucketName]}, Props} | Acc1]
+                end, Acc, BucketNames)
+      end, [], get_definitions(Config)).

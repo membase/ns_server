@@ -22,7 +22,8 @@
 
 -export([handle_saslauthd_auth_settings/1,
          handle_saslauthd_auth_settings_post/1,
-         handle_validate_saslauthd_creds_post/1]).
+         handle_validate_saslauthd_creds_post/1,
+         handle_get_roles/1]).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of
@@ -117,3 +118,18 @@ handle_validate_saslauthd_creds_post(Req) ->
             _ -> none
         end,
     menelaus_util:reply_json(Req, {[{role, Role}, {source, Src}]}).
+
+role_to_json(Name) when is_atom(Name) ->
+    [{role, Name}];
+role_to_json({Name, [all]}) ->
+    [{role, Name}, {bucket_name, <<"*">>}];
+role_to_json({Name, [BucketName]}) ->
+    [{role, Name}, {bucket_name, list_to_binary(BucketName)}].
+
+handle_get_roles(Req) ->
+    menelaus_web:assert_is_enterprise(),
+    menelaus_web:assert_is_watson(),
+
+    Json = [{role_to_json(Role) ++ Props} ||
+               {Role, Props} <- menelaus_roles:get_all_assignable_roles(ns_config:get())],
+    menelaus_util:reply_json(Req, Json).

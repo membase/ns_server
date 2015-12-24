@@ -373,6 +373,9 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["settings", "audit"] ->
                     {{[admin, security], read},
                      fun handle_settings_audit/1};
+                ["settings", "rbac", "roles"] ->
+                    {{[admin, security], read},
+                     fun menelaus_web_rbac:handle_get_roles/1};
                 ["internalSettings"] ->
                     {[{[settings], read}, {[xdcr, settings], read}],
                      fun handle_internal_settings/1};
