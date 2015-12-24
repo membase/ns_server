@@ -44,7 +44,10 @@
          preconfigured_roles/0,
          is_allowed/2,
          get_compiled_roles/1,
-         get_all_assignable_roles/1]).
+         get_all_assignable_roles/1,
+         get_users/0,
+         store_user/3,
+         delete_user/1]).
 
 preconfigured_roles() ->
     [{admin, [],
@@ -232,3 +235,53 @@ get_all_assignable_roles(Config) ->
                         [{{Role, [BucketName]}, Props} | Acc1]
                 end, Acc, BucketNames)
       end, [], get_definitions(Config)).
+
+get_users() ->
+    ns_config:search(ns_config:latest(), user_roles, []).
+
+delete_user(Identity) ->
+    ns_config:run_txn(
+      fun (Config, SetFn) ->
+              case ns_config:search(Config, user_roles) of
+                  false ->
+                      {abort, {error, not_found}};
+                  {value, Users} ->
+                      case lists:keytake(Identity, 1, Users) of
+                          false ->
+                              {abort, {error, not_found}};
+                          {value, _, NewUsers} ->
+                              {commit, SetFn(user_roles, NewUsers, Config)}
+                      end
+              end
+      end).
+
+validate_role(Role, Definitions, _BucketNames) when is_atom(Role) ->
+    lists:keymember(Role, 1, Definitions);
+validate_role({Role, [BucketName]}, Definitions, BucketNames) ->
+    lists:keymember(Role, 1, Definitions) andalso
+        lists:member(BucketName, BucketNames).
+
+store_user(Identity, Name, Roles) ->
+    Props = case Name of
+                undefined ->
+                    [];
+                _ ->
+                    [{name, Name}]
+            end,
+    ns_config:run_txn(
+      fun (Config, SetFn) ->
+              {value, Definitions} = ns_config:search(roles_definitions),
+              BucketNames = get_possible_param_values(Config, bucket_name),
+
+              UnknownRoles = [Role || Role <- Roles,
+                                      not validate_role(Role, Definitions, BucketNames)],
+              case UnknownRoles of
+                  [] ->
+                      Users = ns_config:search(Config, user_roles, []),
+                      NewUsers = lists:keystore(Identity, 1, Users,
+                                                {Identity, [{roles, Roles} | Props]}),
+                      {commit, SetFn(user_roles, NewUsers, Config)};
+                  _ ->
+                      {abort, {error, roles_validation, UnknownRoles}}
+              end
+      end).

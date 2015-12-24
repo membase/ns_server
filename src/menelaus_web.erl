@@ -376,6 +376,9 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["settings", "rbac", "roles"] ->
                     {{[admin, security], read},
                      fun menelaus_web_rbac:handle_get_roles/1};
+                ["settings", "rbac", "users"] ->
+                    {{[admin, security], read},
+                     fun menelaus_web_rbac:handle_get_users/1};
                 ["internalSettings"] ->
                     {[{[settings], read}, {[xdcr, settings], read}],
                      fun handle_internal_settings/1};
@@ -696,6 +699,9 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["pools", "default", "settings", "memcached", "node", Node, "setting", Name] ->
                     {{[admin, memcached], write},
                      fun menelaus_web_mcd_settings:handle_node_setting_delete/3, [Node, Name]};
+                ["settings", "rbac", "users", UserId] ->
+                    {{[admin, security], write},
+                     fun menelaus_web_rbac:handle_delete_user/2, [UserId]};
                 ["couchBase" | _] -> {{[admin, internal], all},
                                       fun capi_http_proxy:handle_request/1};
                 ["_metakv" | _] ->
@@ -724,6 +730,9 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["pools", "default", "serverGroups", GroupUUID] ->
                     {{[server_groups], write},
                      fun menelaus_web_groups:handle_server_group_update/2, [GroupUUID]};
+                ["settings", "rbac", "users", UserId] ->
+                    {{[admin, security], write},
+                     fun menelaus_web_rbac:handle_put_user/2, [UserId]};
                 ["couchBase" | _] -> {{[admin, internal], all},
                                       fun capi_http_proxy:handle_request/1};
                 ["_metakv" | _] ->

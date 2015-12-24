@@ -20,10 +20,15 @@
 
 -include("ns_common.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+
 -export([handle_saslauthd_auth_settings/1,
          handle_saslauthd_auth_settings_post/1,
          handle_validate_saslauthd_creds_post/1,
-         handle_get_roles/1]).
+         handle_get_roles/1,
+         handle_get_users/1,
+         handle_put_user/2,
+         handle_delete_user/2]).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of
@@ -133,3 +138,107 @@ handle_get_roles(Req) ->
     Json = [{role_to_json(Role) ++ Props} ||
                {Role, Props} <- menelaus_roles:get_all_assignable_roles(ns_config:get())],
     menelaus_util:reply_json(Req, Json).
+
+handle_get_users(Req) ->
+    menelaus_web:assert_is_enterprise(),
+    menelaus_web:assert_is_watson(),
+
+    Users = menelaus_roles:get_users(),
+    Json = lists:map(
+             fun ({{User, saslauthd}, Props}) ->
+                     Roles = proplists:get_value(roles, Props, []),
+                     UserJson = [{id, list_to_binary(User)},
+                                 {roles, [{role_to_json(Role)} || Role <- Roles]}],
+                     {case lists:keyfind(name, 1, Props) of
+                          false ->
+                              UserJson;
+                          {name, Name} ->
+                              [{name, list_to_binary(Name)} | UserJson]
+                      end}
+             end, Users),
+    menelaus_util:reply_json(Req, Json).
+
+parse_until(Str, Delimeters) ->
+    lists:splitwith(fun (Char) ->
+                            not lists:member(Char, Delimeters)
+                    end, Str).
+
+parse_role(RoleRaw) ->
+    try
+        case parse_until(RoleRaw, "[") of
+            {Role, []} ->
+                list_to_existing_atom(Role);
+            {Role, "[*]"} ->
+                {list_to_existing_atom(Role), [all]};
+            {Role, [$[ | ParamAndBracket]} ->
+                case parse_until(ParamAndBracket, "]") of
+                    {Param, "]"} ->
+                        {list_to_existing_atom(Role), [Param]};
+                    _ ->
+                        {error, RoleRaw}
+                end
+        end
+    catch error:badarg ->
+            {error, RoleRaw}
+    end.
+
+parse_roles(undefined) ->
+    [];
+parse_roles(RolesStr) ->
+    RolesRaw = string:tokens(RolesStr, ","),
+    [parse_role(misc:trim(RoleRaw)) || RoleRaw <- RolesRaw].
+
+role_to_string(Role) when is_atom(Role) ->
+    atom_to_list(Role);
+role_to_string({Role, [BucketName]}) ->
+    lists:flatten(io_lib:format("~p[~s]", [Role, BucketName])).
+
+parse_roles_test() ->
+    Res = parse_roles("admin, bucket_admin[test.test], bucket_admin[*], no_such_atom, bucket_admin[default"),
+    ?assertMatch([admin,
+                  {bucket_admin, ["test.test"]},
+                  {bucket_admin, [all]},
+                  {error, "no_such_atom"},
+                  {error, "bucket_admin[default"}], Res).
+
+reply_bad_roles(Req, BadRoles) ->
+    Str = string:join(BadRoles, ","),
+    menelaus_util:reply_json(
+      Req,
+      iolist_to_binary(io_lib:format("Malformed or unknown roles: [~s]", [Str])), 400).
+
+handle_put_user(UserId, Req) ->
+    menelaus_web:assert_is_enterprise(),
+    menelaus_web:assert_is_watson(),
+
+    Props = Req:parse_post(),
+    Roles = parse_roles(proplists:get_value("roles", Props)),
+
+    BadRoles = [BadRole || {error, BadRole} <- Roles],
+    case BadRoles of
+        [] ->
+            case menelaus_roles:store_user({UserId, saslauthd},
+                                           proplists:get_value("name", Props),
+                                           Roles) of
+                {commit, _} ->
+                    handle_get_users(Req);
+                {abort, {error, roles_validation, UnknownRoles}} ->
+                    reply_bad_roles(Req, [role_to_string(UR) || UR <- UnknownRoles]);
+                retry_needed ->
+                    erlang:error(exceeded_retries)
+            end;
+        _ ->
+            reply_bad_roles(Req, BadRoles)
+    end.
+
+handle_delete_user(UserId, Req) ->
+    case menelaus_roles:delete_user({UserId, saslauthd}) of
+        {commit, _} ->
+            handle_get_users(Req);
+        {abort, {error, not_found}} ->
+            menelaus_util:reply_json(Req, <<"User was not found.">>, 404);
+        retry_needed ->
+            erlang:error(exceeded_retries)
+    end.
+
+
