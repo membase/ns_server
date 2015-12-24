@@ -47,17 +47,25 @@
 
 preconfigured_roles() ->
     [{admin, [],
+      [{name, <<"Admin">>},
+       {desc, <<"Can manage ALL cluster features including security.">>}],
       [{[], all}]},
      {ro_admin, [],
+      [{name, <<"Read Only Admin">>},
+       {desc, <<"Can view ALL cluster features.">>}],
       [{[{bucket, all}, password], none},
        {[{bucket, all}, data], none},
        {[admin, security], [read]},
        {[admin], none},
        {[], [read]}]},
      {cluster_admin, [],
+      [{name, <<"Cluster Admin">>},
+       {desc, <<"Can manage all cluster features EXCEPT security.">>}],
       [{[admin], none},
        {[], all}]},
      {bucket_admin, [bucket_name],
+      [{name, <<"Bucket Admin">>},
+       {desc, <<"Can manage ALL bucket features for specified buckets (incl. start/stop XDCR)">>}],
       [{[{bucket, bucket_name}, xdcr], [read, execute]},
        {[{bucket, bucket_name}], all},
        {[{bucket, all}, data], none},
@@ -65,10 +73,13 @@ preconfigured_roles() ->
        {[admin], none},
        {[], [read]}]},
      {bucket_sasl, [bucket_name],
+      [],
       [{[{bucket, bucket_name}, data], all},
        {[{bucket, bucket_name}], [read]},
        {[pools], [read]}]},
      {views_admin, [bucket_name],
+      [{name, <<"Views Admin">>},
+       {desc, <<"Can manage views for specified buckets">>}],
       [{[{bucket, bucket_name}, views], all},
        {[{bucket, bucket_name}, data], [read]},
        {[{bucket, all}, settings], [read]},
@@ -77,6 +88,8 @@ preconfigured_roles() ->
        {[admin], none},
        {[], [read]}]},
      {replication_admin, [],
+      [{name, <<"Replication Admin">>},
+       {desc, <<"Can manage ONLY XDCR features (cluster AND bucket level)">>}],
       [{[{bucket, all}, xdcr], all},
        {[xdcr], all},
        {[admin], none},
@@ -146,10 +159,11 @@ substitute_params(Params, ParamDefinitions, Permissions) ->
 
 compile_roles(Roles, Definitions) ->
     lists:map(fun (Name) when is_atom(Name) ->
-                      {Name, [], Permissions} = lists:keyfind(Name, 1, Definitions),
+                      {Name, [], _Props, Permissions} = lists:keyfind(Name, 1, Definitions),
                       Permissions;
                   ({Name, Params}) ->
-                      {Name, ParamDefinitions, Permissions} = lists:keyfind(Name, 1, Definitions),
+                      {Name, ParamDefinitions, _Props, Permissions} =
+                          lists:keyfind(Name, 1, Definitions),
                       substitute_params(Params, ParamDefinitions, Permissions)
               end, Roles).
 
