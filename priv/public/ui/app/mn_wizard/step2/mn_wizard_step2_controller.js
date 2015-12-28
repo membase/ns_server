@@ -12,7 +12,7 @@
 
     activate();
 
-    $scope.$watch('selected', mnWizardStep2Service.setSelected, true);
+    $scope.$watch('wizardStep2Ctl.selected', mnWizardStep2Service.setSelected, true);
 
     function activate() {
       mnPromiseHelper(vm, mnSettingsSampleBucketsService.getSampleBuckets())
