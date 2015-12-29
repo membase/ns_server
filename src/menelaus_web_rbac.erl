@@ -28,7 +28,8 @@
          handle_get_roles/1,
          handle_get_users/1,
          handle_put_user/2,
-         handle_delete_user/2]).
+         handle_delete_user/2,
+         handle_check_permissions_post/1]).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of
@@ -241,4 +242,88 @@ handle_delete_user(UserId, Req) ->
             erlang:error(exceeded_retries)
     end.
 
+list_to_rbac_atom(List) ->
+    try
+        list_to_existing_atom(List)
+    catch error:badarg ->
+            '_unknown_'
+    end.
 
+parse_permission(RawPermission) ->
+    case string:tokens(RawPermission, "!") of
+        [Object, Operation] ->
+            case parse_object(Object) of
+                error ->
+                    error;
+                Parsed ->
+                    {Parsed, list_to_rbac_atom(Operation)}
+            end;
+        _ ->
+            error
+    end.
+
+parse_object("cluster" ++ RawObject) ->
+    parse_vertices(RawObject, []);
+parse_object(_) ->
+    error.
+
+parse_vertices([], Acc) ->
+    lists:reverse(Acc);
+parse_vertices([$. | Rest], Acc) ->
+    case parse_until(Rest, ".[") of
+        {Name, [$. | Rest1]} ->
+            parse_vertices([$. | Rest1], [list_to_rbac_atom(Name) | Acc]);
+        {Name, []} ->
+            parse_vertices([], [list_to_rbac_atom(Name) | Acc]);
+        {Name, [$[ | Rest1]} ->
+            case parse_until(Rest1, "]") of
+                {Param, [$] | Rest2]} ->
+                    parse_vertices(Rest2, [{list_to_rbac_atom(Name), Param} | Acc]);
+                _ ->
+                    error
+            end
+    end;
+parse_vertices(_, _) ->
+    error.
+
+parse_permissions(Body) ->
+    RawPermissions = string:tokens(Body, ","),
+    lists:map(fun (RawPermission) ->
+                      Trimmed = misc:trim(RawPermission),
+                      {Trimmed, parse_permission(Trimmed)}
+              end, RawPermissions).
+
+parse_permissions_test() ->
+    ?assertMatch(
+       [{"cluster.admin!write", {[admin], write}},
+        {"cluster.admin", error},
+        {"admin!write", error}],
+       parse_permissions("cluster.admin!write, cluster.admin, admin!write")),
+    ?assertMatch(
+       [{"cluster.bucket[test.test]!read", {[{bucket, "test.test"}], read}},
+        {"cluster.bucket[test.test].stats!read", {[{bucket, "test.test"}, stats], read}}],
+       parse_permissions(" cluster.bucket[test.test]!read, cluster.bucket[test.test].stats!read ")),
+    ?assertMatch(
+       [{"cluster.no_such_atom!no_such_atom", {['_unknown_'], '_unknown_'}}],
+       parse_permissions("cluster.no_such_atom!no_such_atom")).
+
+handle_check_permissions_post(Req) ->
+    Body = Req:recv_body(),
+    case Body of
+        undefined ->
+            menelaus_util:reply_json(Req, <<"Request body should not be empty.">>, 400);
+        _ ->
+            Permissions = parse_permissions(binary_to_list(Body)),
+            Malformed = [Bad || {Bad, error} <- Permissions],
+            case Malformed of
+                [] ->
+                    Tested =
+                        [{RawPermission, menelaus_auth:has_permission(Permission, Req)} ||
+                            {RawPermission, Permission} <- Permissions],
+                    menelaus_util:reply_json(Req, {Tested});
+                _ ->
+                    Message = io_lib:format("Malformed permissions: [~s].",
+                                            [string:join(Malformed, ",")]),
+                    menelaus_util:reply_json(Req, iolist_to_binary(Message), 400)
+            end
+    end.
