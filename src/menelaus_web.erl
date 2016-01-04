@@ -715,7 +715,12 @@ check_uuid(F, Args, Req) ->
         true ->
             ReqUUID = list_to_binary(ReqUUID0),
             UUID = get_uuid(),
-
+            %%
+            %% get_uuid() will return empty UUID if the system is not
+            %% provisioned yet. If ReqUUID is also empty then we let
+            %% the request go through. But, if ReqUUID is not-empty
+            %% and UUID is empty then we will retrun 404 error.
+            %%
             case ReqUUID =:= UUID of
                 true ->
                     erlang:apply(F, Args ++ [Req]);
@@ -883,33 +888,35 @@ check_valid_samples(Samples) ->
 format_MB(X) ->
     integer_to_list(misc:ceiling(X / 1024 / 1024)) ++ "MB".
 
+get_content_for_provisioned_system() ->
+    {Pools, Settings, UUID} =
+        case ns_config_auth:is_system_provisioned() of
+            true ->
+                UUID1 = get_uuid(),
+                Pools1 = [{struct,
+                           [{name, <<"default">>},
+                            {uri, <<"/pools/default?uuid=", UUID1/binary>>},
+                            {streamingUri, <<"/poolsStreaming/default?uuid=", UUID1/binary>>}]}],
+                Settings1 = {struct,
+                             [{<<"maxParallelIndexers">>,
+                               <<"/settings/maxParallelIndexers?uuid=", UUID1/binary>>},
+                              {<<"viewUpdateDaemon">>,
+                               <<"/settings/viewUpdateDaemon?uuid=", UUID1/binary>>}]},
+                {Pools1, Settings1, UUID1};
+            false ->
+                {[], [], []}
+        end,
+    [{pools, Pools}, {settings, Settings}, {uuid, UUID}].
 
 handle_pools(Req) ->
-    UUID = get_uuid(),
-
-    Pools = [{struct,
-              [{name, <<"default">>},
-               {uri, <<"/pools/default?uuid=", UUID/binary>>},
-               {streamingUri, <<"/poolsStreaming/default?uuid=", UUID/binary>>}]}],
-    EffectivePools =
-        case ns_config_auth:is_system_provisioned() of
-            true -> Pools;
-            _ -> []
-        end,
     ReadOnlyAdmin = menelaus_auth:is_under_role(Req, ro_admin),
     Admin = ReadOnlyAdmin orelse menelaus_auth:is_under_role(Req, admin),
-    reply_json(Req,{struct, [{pools, EffectivePools},
-                             {isAdminCreds, Admin},
-                             {isROAdminCreds, ReadOnlyAdmin},
-                             {isEnterprise, cluster_compat_mode:is_enterprise()},
-                             {settings,
-                              {struct,
-                               [{<<"maxParallelIndexers">>,
-                                 <<"/settings/maxParallelIndexers?uuid=", UUID/binary>>},
-                                {<<"viewUpdateDaemon">>,
-                                 <<"/settings/viewUpdateDaemon?uuid=", UUID/binary>>}]}},
-                             {uuid, UUID}
-                             | menelaus_web_cache:versions_response()]}).
+    RV1 = [{isAdminCreds, Admin},
+           {isROAdminCreds, ReadOnlyAdmin},
+           {isEnterprise, cluster_compat_mode:is_enterprise()}
+           | get_content_for_provisioned_system()],
+    RV = RV1 ++ menelaus_web_cache:versions_response(),
+    reply_json(Req, {struct, RV}).
 
 handle_engage_cluster2(Req) ->
     Body = Req:recv_body(),
@@ -997,18 +1004,15 @@ handle_complete_join(Req) ->
     end,
     exit(normal).
 
-% Returns an UUID if it is already in the ns_config and generates
-% a new one otherwise.
+%% Returns an UUID from the ns_config
+%% cluster UUID is set in ns_config only when the system is provisioned.
 get_uuid() ->
     case ns_config:search(uuid) of
         false ->
-            Uuid = couch_uuids:random(),
-            ns_config:set(uuid, Uuid),
-            Uuid;
+            <<>>;
         {value, Uuid2} ->
             Uuid2
     end.
-
 
 handle_versions(Req) ->
     reply_json(Req, {struct, menelaus_web_cache:versions_response()}).
@@ -2367,6 +2371,13 @@ handle_settings_web_post(Req) ->
                     maybe_cleanup_old_buckets(),
                     ns_config:set(rest, [{port, PortInt}]),
                     ns_config_auth:set_credentials(admin, U, P),
+                    case ns_config:search(uuid) of
+                        false ->
+                            Uuid = couch_uuids:random(),
+                            ns_config:set(uuid, Uuid);
+                        _ ->
+                            ok
+                    end,
                     ns_audit:password_change(Req, U, admin),
 
                     %% NOTE: this to avoid admin user name to be equal
