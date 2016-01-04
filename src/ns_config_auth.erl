@@ -149,7 +149,7 @@ authenticate_old(admin, User, Password) ->
         [{User, Auth} | _] ->
             Password =:= proplists:get_value(password, Auth, "");
         [] ->
-            % An empty list means no login/password auth check.
+            %% An empty list means no login/password auth check.
             true;
         _ ->
             false
