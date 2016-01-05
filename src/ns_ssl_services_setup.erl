@@ -335,27 +335,6 @@ build_cert_state({user_set, Cert, PKey, CAChain}) ->
                 pkey = PKey,
                 compat_30 = true}.
 
-read_files([], Result) ->
-    lists:reverse(Result);
-read_files([Path | Rest], Result) ->
-    case file:read_file(Path) of
-        {ok, Content} ->
-            read_files(Rest, [Content | Result]);
-        Err ->
-            {Err, Path}
-    end.
-
-get_user_set_chain_and_pkey() ->
-    Files = [user_set_cert_path(), user_set_key_path(), user_set_ca_chain_path()],
-    case read_files(Files, []) of
-        {Error, Path} ->
-            ?log_debug("Cannot read file ~p. Error: ~p. Use generated certificate.",
-                       [Path, Error]),
-            use_generated;
-        Contents ->
-            Contents
-    end.
-
 get_node_cert_data() ->
     Compat30 = cluster_compat_mode:is_cluster_30(),
     Node = node(),
@@ -363,10 +342,13 @@ get_node_cert_data() ->
         {GeneratedCert, GeneratedKey} ->
             {generated, GeneratedCert, GeneratedKey, Compat30, Node};
         {_UploadedCAProps, GeneratedCert, GeneratedKey} ->
-            case get_user_set_chain_and_pkey() of
-                [Cert, PKey, CAChain] ->
+            case ns_config:search(ns_config:latest(), {node, node(), cert}) of
+                {value, _Props} ->
+                    {ok, Cert} = file:read_file(user_set_cert_path()),
+                    {ok, PKey} = file:read_file(user_set_key_path()),
+                    {ok, CAChain} = file:read_file(user_set_ca_chain_path()),
                     {user_set, Cert, PKey, CAChain};
-                use_generated ->
+                false ->
                     {generated, GeneratedCert, GeneratedKey, Compat30, Node}
             end
     end.
