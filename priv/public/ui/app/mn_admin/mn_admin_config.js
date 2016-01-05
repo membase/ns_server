@@ -17,6 +17,7 @@
     'mnDocuments',
     'mnSettings',
     'mnXDCR',
+    'mnSecurity',
     'mnPoll',
     'mnLaunchpad',
     'mnFilters',

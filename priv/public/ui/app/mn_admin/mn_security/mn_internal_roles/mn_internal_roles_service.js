@@ -2,17 +2,17 @@
   "use strict";
 
   angular
-    .module("mnAccountManagementService", [])
-    .factory("mnAccountManagementService", mnAccountManagementFactory);
+    .module("mnInternalRolesService", [])
+    .factory("mnInternalRolesService", mnInternalRolesFactory);
 
-  function mnAccountManagementFactory($http, $q) {
-    var mnAccountManagementService = {
+  function mnInternalRolesFactory($http, $q) {
+    var mnInternalRolesService = {
       getAccountManagmentState: getAccountManagmentState,
       postReadOnlyAdminName: postReadOnlyAdminName,
       deleteReadOnlyAdmin: deleteReadOnlyAdmin,
       resetReadOnlyAdmin: resetReadOnlyAdmin
     };
-    return mnAccountManagementService;
+    return mnInternalRolesService;
 
     function resetReadOnlyAdmin(password) {
       return $http({

@@ -1,0 +1,44 @@
+<div id="js_security" class="security">
+  <ul class="second-level-nav">
+    <li ng-show="securityCtl.poolDefault.ldapEnabled">
+      <a
+        ui-sref="app.admin.security.externalRoles"
+        ui-sref-active="selected">External User/Roles</a>
+    </li>
+    <li
+      ng-hide="securityCtl.poolDefault.isROAdminCreds">
+        <a
+          id="internal_roles"
+          class="casper_internal_roles"
+          ui-sref="app.admin.security.internalRoles"
+          ui-sref-active="selected">Internal User/Roles</a>
+    </li>
+    <li>
+      <a
+        ui-sref="app.admin.security.certificates"
+        ui-sref-active="selected">Certificates</a>
+    </li>
+    <li
+      class="when-enterprise only-when-40"
+      ng-show="securityCtl.poolDefault.isEnterprise">
+      <a
+        id="security_audit"
+        class="casper_security_audit"
+        ui-sref="app.admin.security.audit"
+        ui-sref-active="selected">Audit</a>
+    </li>
+    <li
+      class="when-enterprise only-when-40 only-when_ldap_enabled"
+      ng-show="securityCtl.poolDefault.ldapEnabled">
+        <a
+          id="ldap_setup"
+          ui-sref="app.admin.security.ldap"
+          ui-sref-active="selected">LDAP Auth Setup</a>
+    </li>
+    <li ng-repeat="config in securityCtl.pluggableUiConfigs | filter:{plugIn: 'securityTab'}" class="line">
+      <a ui-sref="{{ config.state }}" ui-sref-active="selected">{{ config.name }}</a>
+    </li>
+  </ul>
+  <div ui-view="">
+  </div>
+</div>

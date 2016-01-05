@@ -2,10 +2,10 @@
   "use strict";
 
   angular
-    .module('mnAccountManagement')
-    .controller('mnAccountManagementDeleteController', mnAccountManagementDeleteController);
+    .module('mnInternalRoles')
+    .controller('mnInternalRolesDeleteController', mnInternalRolesDeleteController);
 
-  function mnAccountManagementDeleteController($scope, $uibModalInstance, mnAccountManagementService, mnPromiseHelper, name) {
+  function mnInternalRolesDeleteController($scope, $uibModalInstance, mnInternalRolesService, mnPromiseHelper, name) {
     var vm = this;
 
     vm.name = name;
@@ -16,7 +16,7 @@
         return;
       }
 
-      var promise = mnAccountManagementService.deleteReadOnlyAdmin();
+      var promise = mnInternalRolesService.deleteReadOnlyAdmin();
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
         .catchGlobalErrors()

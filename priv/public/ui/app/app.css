@@ -1394,21 +1394,21 @@ input[type=number].size {width:4em;}
 
 #view_details .results_block .list {table-layout:fixed;}
 
-.account_management_container fieldset {overflow: hidden;}
-.account_management_container label {display: block; padding: 5px 0;}
+.internal_roles_container fieldset {overflow: hidden;}
+.internal_roles_container label {display: block; padding: 5px 0;}
 .reset_roadmin_form label,
 .reset_roadmin_form input,
-.account_management_container label span,
-.account_management_container label input,
+.internal_roles_container label span,
+.internal_roles_container label input,
 .xdcr_advaced_settings.dialog label,
 .xdcr_advaced_settings.dialog input,
-.account_management_container span.list_button {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
-.account_management_container label span {width: 120px; margin-right: 5px;}
-.account_management_container label input {width: 150px;}
-.account_management_container span.list_button {float: none; margin-left: 0; margin-right: 40px;}
-.account_management_container .error {border: 1px solid red;}
-.account_management_container .errors {color: red;}
-.account_management_container h3 {margin: 20px 24px 15px 24px;}
+.internal_roles_container span.list_button {display: -moz-inline-stack; display: inline-block; zoom: 1; *display: inline; vertical-align: middle;}
+.internal_roles_container label span {width: 120px; margin-right: 5px;}
+.internal_roles_container label input {width: 150px;}
+.internal_roles_container span.list_button {float: none; margin-left: 0; margin-right: 40px;}
+.internal_roles_container .error {border: 1px solid red;}
+.internal_roles_container .errors {color: red;}
+.internal_roles_container h3 {margin: 20px 24px 15px 24px;}
 .account_delete {padding-bottom: 28px;}
 .xdcr_errors {font-size: 11px; line-height: 14px;}
 .xdcr_errors span {padding-bottom: 15px;display: block;}
@@ -1562,10 +1562,13 @@ input[type=number].size {width:4em;}
 .indexes_list_container .row td {height: 33px; vertical-align: middle;}
 .indexes_list_container .with_expander_button a {position: absolute; left: 10px;}
 .indexes_list_container .with_expander_button {padding-left: 35px;}
+.security table.list th.dynamic_active,
 .indexes_list_container .list thead th.dynamic_active,
 .servers .servers_list .list th.dynamic_active {color: #4d4d4d;}
+.security table.list th,
 .servers .servers_list .list th,
 .indexes_list_container .list thead th {color: #A4A4A4;}
+.security table.list th[ng-click],
 .servers .servers_list .list thead th[ng-click],
 .indexes_list_container .list thead th[ng-click] {
   cursor: pointer;
@@ -1580,9 +1583,22 @@ input[type=number].size {width:4em;}
 .indexes_list_container thead th.dynamic_active i {border-bottom-color: #4d4d4d;}
 .indexes_list_container.dynamic_descending thead th.dynamic_active i {border-bottom-color: transparent; border-top-color: #4d4d4d; border-width: 6px 4px 0;}
 
-.ui-select-container {min-width: 200px;}
-.ui-select-container span {display: inline-block; vertical-align: bottom; max-width: 400px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; -o-text-overflow: ellipsis;}
-.ui-select-container .select-item {max-width: 200px;display: block;}
-.ui-select-container .ui-select-match {white-space: nowrap;padding-right: 25px;}
-.ui-select-container .ui-select-choices-row.disabled {background: #fff; cursor: default; text-decoration: none;}
-.ui-select-container .ui-select-choices-row.disabled a {color: #666; font-weight: bold; cursor: default; text-decoration: none;}
+.ui-select-container.single {min-width: 200px;}
+.ui-select-container.single span {display: inline-block; vertical-align: bottom; max-width: 400px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; -o-text-overflow: ellipsis;}
+.ui-select-container.single .select-item {max-width: 200px;display: block;}
+.ui-select-container.single .ui-select-match {white-space: nowrap;padding-right: 25px;}
+.ui-select-container.single .ui-select-choices-row.disabled {background: #fff; cursor: default; text-decoration: none;}
+.ui-select-container.single .ui-select-choices-row.disabled a {color: #666; font-weight: bold; cursor: default; text-decoration: none;}
+
+.security_tab table td {text-align: left;}
+.ui-select-multiple.ui-select-bootstrap {background: #fff; border: 1px solid #ccd3d7; font-size: 13px; padding: 3px; position: relative; z-index: 1;}
+.ui-select-multiple.ui-select-bootstrap input.ui-select-search {height: 18px; padding: 0;}
+.ui-select-multiple.ui-select-bootstrap > .ui-select-choices {position: absolute; background: #fff; left: 0; top: 100%;}
+.ui-select-multiple.ui-select-bootstrap .ui-select-match-item {display: inline-block; max-width: 174px; overflow:hidden;white-space:nowrap;text-overflow:ellipsis;-o-text-overflow:ellipsis;}
+.ui-select-multiple .ui-select-match-item {font-size: 12px;}
+.ui-select-multiple .ui-select-match-close {cursor: pointer;}
+.add_user_role label {width: 100%; display: block; font-size: 12px; line-height: 26px;}
+.add_user_role input {width: 200px;}
+.add_user_role .content {padding: 10px;}
+
+

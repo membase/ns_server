@@ -2,17 +2,17 @@
   "use strict";
 
   angular
-    .module('mnSettingsLdapService', [])
-    .factory("mnSettingsLdapService", mnSettingsLdapFactory);
+    .module('mnLdapService', [])
+    .factory("mnLdapService", mnLdapFactory);
 
-    function mnSettingsLdapFactory($http) {
-      var mnSettingsLdapService = {
+    function mnLdapFactory($http) {
+      var mnLdapService = {
         getSaslauthdAuth: getSaslauthdAuth,
         postSaslauthdAuth: postSaslauthdAuth,
         validateCredentials: validateCredentials
       };
 
-      return mnSettingsLdapService;
+      return mnLdapService;
 
       function unpack(data, key) {
         if (data[key] === "asterisk") {

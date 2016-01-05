@@ -2,10 +2,10 @@
   "use strict";
 
   angular
-    .module('mnAccountManagement')
-    .controller('mnAccountManagementResetController', mnAccountManagementResetController);
+    .module('mnInternalRoles')
+    .controller('mnInternalRolesResetController', mnInternalRolesResetController);
 
-  function mnAccountManagementResetController($scope, $uibModalInstance, mnAccountManagementService, mnPromiseHelper) {
+  function mnInternalRolesResetController($scope, $uibModalInstance, mnInternalRolesService, mnPromiseHelper) {
     var vm = this;
 
     vm.onSubmit = onSubmit;
@@ -15,7 +15,7 @@
         return;
       }
 
-      var promise = mnAccountManagementService.resetReadOnlyAdmin(vm.password);
+      var promise = mnInternalRolesService.resetReadOnlyAdmin(vm.password);
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
         .catchErrors()

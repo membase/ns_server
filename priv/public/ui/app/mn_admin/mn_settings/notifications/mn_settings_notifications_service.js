@@ -5,10 +5,10 @@ angular.module('mnSettingsNotificationsService', [
   'mnAnalyticsService',
   'mnViewsListService',
   'mnGsiService',
-  'mnSettingsAuditService',
+  'mnAuditService',
   'mnFilters'
 ]).factory('mnSettingsNotificationsService',
-  function ($http, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnGsiService, mnSettingsAuditService, mnMBtoBytesFilter) {
+  function ($http, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnGsiService, mnAuditService, mnMBtoBytesFilter) {
     var mnSettingsNotificationsService = {};
 
     function sumWithoutNull(array, average) {
@@ -170,7 +170,7 @@ angular.module('mnSettingsNotificationsService', [
       calculateAvgWeekAndHour(stats, "total_avg_index_num_rows_returned");
 
       if (pools.isEnterprise) {
-        return mnSettingsAuditService.getAuditSettings().then(function (auditSettings) {
+        return mnAuditService.getAuditSettings().then(function (auditSettings) {
           stats.adminAuditEnabled = auditSettings.auditdEnabled;
           return stats;
         });

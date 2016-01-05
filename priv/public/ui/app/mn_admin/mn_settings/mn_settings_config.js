@@ -4,16 +4,16 @@
   angular
     .module('mnSettings', [
       'mnSettingsNotifications',
-      'mnSettingsLdap',
+      'mnLdap',
       'mnSettingsSampleBuckets',
       'mnSettingsCluster',
       'mnSettingsAutoFailover',
       'mnSettingsAutoCompaction',
-      'mnSettingsAudit',
+      'mnAudit',
       'mnSettingsCluster',
       'mnSettingsAlerts',
       'mnSettingsNotificationsService',
-      'mnAccountManagement',
+      'mnInternalRoles',
       'ui.router'
     ])
     .config(mnSettingsConfig);
@@ -52,40 +52,10 @@
         controller: 'mnSettingsAutoCompactionController as settingsAutoCompactionCtl',
         templateUrl: 'app/mn_admin/mn_settings/auto_compaction/mn_settings_auto_compaction.html'
       })
-      .state('app.admin.settings.ldap', {
-        url: '/ldap',
-        controller: 'mnSettingsLdapController as settingsLdapCtl',
-        templateUrl: 'app/mn_admin/mn_settings/ldap/mn_settings_ldap.html',
-        data: {
-          required: {
-            enterprise: true
-          }
-        }
-      })
       .state('app.admin.settings.sampleBuckets', {
         url: '/sampleBuckets',
         controller: 'mnSettingsSampleBucketsController as settingsSampleBucketsCtl',
         templateUrl: 'app/mn_admin/mn_settings/sample_buckets/mn_settings_sample_buckets.html'
-      })
-      .state('app.admin.settings.accountManagement', {
-        url: '/accountManagement',
-        controller: 'mnAccountManagementController as accountManagementCtl',
-        templateUrl: 'app/mn_admin/mn_settings/account_management/mn_account_management.html',
-        data: {
-          required: {
-            admin: true
-          }
-        }
-      })
-      .state('app.admin.settings.audit', {
-        url: '/audit',
-        controller: 'mnSettingsAuditController as settingsAuditCtl',
-        templateUrl: 'app/mn_admin/mn_settings/audit/mn_settings_audit.html',
-        data: {
-          required: {
-            enterprise: true
-          }
-        }
       });
   }
 })();

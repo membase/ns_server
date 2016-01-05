@@ -1,16 +1,16 @@
 (function () {
   "use strict";
 
-  angular.module('mnSettingsAuditService', [
-  ]).factory('mnSettingsAuditService', mnSettingsAuditServiceFactory);
+  angular.module('mnAuditService', [
+  ]).factory('mnAuditService', mnAuditServiceFactory);
 
-  function mnSettingsAuditServiceFactory($http) {
-    var mnSettingsAuditService = {
+  function mnAuditServiceFactory($http) {
+    var mnAuditService = {
       getAuditSettings: getAuditSettings,
       saveAuditSettings: saveAuditSettings
     };
 
-    return mnSettingsAuditService;
+    return mnAuditService;
 
     function getAuditSettings() {
       return $http({

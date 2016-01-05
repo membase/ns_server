@@ -74,6 +74,9 @@
         <li class="line" ui-sref-active="currentNav">
           <a class="switch_replications" ui-sref="app.admin.replications">XDCR</a>
         </li>
+        <li class="line" ng-class="{currentNav: ('app.admin.security' | includedByState)}">
+          <a class="switch_security" ui-sref="app.admin.security.externalRoles">Security</a>
+        </li>
         <li class="line" ng-class="{currentNav: ('app.admin.logs' | includedByState)}">
           <a class="switch_log" ui-sref="app.admin.logs.list">Log</a>
         </li>

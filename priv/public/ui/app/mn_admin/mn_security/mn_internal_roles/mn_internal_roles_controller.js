@@ -2,16 +2,16 @@
   "use strict";
 
   angular
-    .module("mnAccountManagement", [
-      "mnAccountManagementService",
+    .module("mnInternalRoles", [
+      "mnInternalRolesService",
       "mnPromiseHelper",
       "mnHelper",
       "mnSpinner",
       "mnPoolDefault"
     ])
-    .controller("mnAccountManagementController", mnAccountManagementController);
+    .controller("mnInternalRolesController", mnInternalRolesController);
 
-  function mnAccountManagementController($scope, $uibModal, mnAccountManagementService, mnPromiseHelper, mnHelper, mnPoolDefault) {
+  function mnInternalRolesController($scope, $uibModal, mnInternalRolesService, mnPromiseHelper, mnHelper, mnPoolDefault) {
     var vm = this;
 
     vm.creds = {};
@@ -29,8 +29,8 @@
 
     function deleteUser() {
       return $uibModal.open({
-        templateUrl: 'app/mn_admin/mn_settings/account_management/delete/mn_account_management_delete.html',
-        controller: 'mnAccountManagementDeleteController as accountManagementDeleteCtl',
+        templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/delete/mn_internal_roles_delete.html',
+        controller: 'mnInternalRolesDeleteController as internalRolesDeleteCtl',
         resolve: {
           name: mnHelper.wrapInFunction(vm.roAdminName)
         }
@@ -38,8 +38,8 @@
     }
     function resetUserPassword() {
       return $uibModal.open({
-        templateUrl: 'app/mn_admin/mn_settings/account_management/reset/mn_account_management_reset.html',
-        controller: 'mnAccountManagementResetController as accountManagementResetCtl'
+        templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/reset/mn_internal_roles_reset.html',
+        controller: 'mnInternalRolesResetController as internalRolesResetCtl'
       });
     }
     function createUser() {
@@ -47,16 +47,16 @@
         return;
       }
 
-      mnPromiseHelper(vm, mnAccountManagementService.postReadOnlyAdminName(vm.creds, true))
+      mnPromiseHelper(vm, mnInternalRolesService.postReadOnlyAdminName(vm.creds, true))
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .onSuccess(function () {
-          mnPromiseHelper(vm, mnAccountManagementService.postReadOnlyAdminName(vm.creds))
+          mnPromiseHelper(vm, mnInternalRolesService.postReadOnlyAdminName(vm.creds))
             .reloadState();
         });
     }
     function activate() {
-      mnPromiseHelper(vm, mnAccountManagementService.getAccountManagmentState())
+      mnPromiseHelper(vm, mnInternalRolesService.getAccountManagmentState())
         .showSpinner()
         .applyToScope("roAdminName");
     }

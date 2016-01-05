@@ -2,14 +2,14 @@
   "use strict";
 
   angular
-    .module('mnSettingsLdap', [
-      "mnSettingsLdapService",
+    .module('mnLdap', [
+      "mnLdapService",
       "mnPromiseHelper"
     ])
-    .controller('mnSettingsLdapController', mnSettingsLdapController)
+    .controller('mnLdapController', mnLdapController)
     .filter("formatRoleMessage", formatRoleMessageFilter);
 
-    function mnSettingsLdapController($scope, mnSettingsLdapService, mnPromiseHelper, mnPoolDefault) {
+    function mnLdapController($scope, mnLdapService, mnPromiseHelper, mnPoolDefault) {
       var vm = this;
 
       vm.test = {};
@@ -49,7 +49,7 @@
         }
         var test = vm.test;
         vm.test = {};
-        mnPromiseHelper(vm, mnSettingsLdapService.validateCredentials(test))
+        mnPromiseHelper(vm, mnLdapService.validateCredentials(test))
           .catchErrors("validateErrors")
           .showSpinner("validateSpinner")
           .applyToScope("validateResult");
@@ -58,13 +58,13 @@
         if (vm.viewLoading) {
           return;
         }
-        mnPromiseHelper(vm, mnSettingsLdapService.postSaslauthdAuth(vm.state))
+        mnPromiseHelper(vm, mnLdapService.postSaslauthdAuth(vm.state))
           .showErrorsSensitiveSpinner()
           .catchErrors()
           .reloadState();
       }
       function activate() {
-        mnPromiseHelper(vm, mnSettingsLdapService.getSaslauthdAuth())
+        mnPromiseHelper(vm, mnLdapService.getSaslauthdAuth())
           .applyToScope("state");
       }
     }
