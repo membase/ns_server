@@ -24,6 +24,7 @@
 -include("ns_common.hrl").
 
 -define(CONFIG_DIR, etc).
+-define(DOCROOTS_DIR, lib).
 -define(PLUGIN_FILE_PATTERN, "pluggable-ui-*.json").
 -define(HEAD_FRAG_HTML, <<"head.frag.html">>).
 -define(HEAD_MARKER, <<"<!-- Inject head.frag.html file content for Pluggable UI components here -->">>).
@@ -120,10 +121,14 @@ decode_proxy_strategy(<<"local">>) ->
 %% When run from cluster_run doc-root may be a list of directories.
 %% DocRoot has to be a list in order for mochiweb to be able to guess
 %% the MIME type.
-decode_docroot(Roots) when is_list(Roots) ->
-    {multiple_roots, [decode_docroot(Root) || Root <- Roots]};
-decode_docroot(Root) ->
-    binary_to_list(Root).
+decode_docroot(Roots) ->
+    Prefix = path_config:component_path(?DOCROOTS_DIR),
+    decode_docroot(Prefix, Roots).
+
+decode_docroot(Prefix, Roots) when is_list(Roots) ->
+    {multiple_roots, [decode_docroot(Prefix, Root) || Root <- Roots]};
+decode_docroot(Prefix, Root) ->
+    filename:join(Prefix, binary_to_list(Root)).
 
 %%% =============================================================
 %%%
