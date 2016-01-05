@@ -30,7 +30,7 @@
             ng-class="{dynamic_disabled: documentsEditingCtl.isSaveDisabled()}"
             id="doc_save"
             ng-click="!documentsEditingCtl.isSaveDisabled() && documentsEditingCtl.save()"><span>Save</span></a>
-          <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+          <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
         </div>
       </div>
       <div mn-spinner="documentsEditingCtl.viewLoading || !documentsEditingCtl.state">

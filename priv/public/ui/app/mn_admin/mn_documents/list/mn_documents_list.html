@@ -37,7 +37,7 @@
           ng-class="{dynamic_disabled: documentsControlCtl.isEmptyState()}"
           ng-click="!documentsControlCtl.isEmptyState() && documentsListCtl.showCreateDialog()"
           ng-hide="documentsListCtl.isCreateDocumentDisabled()"><span>Create Document</span></a>
-        <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+        <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>
 

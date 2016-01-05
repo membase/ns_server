@@ -10,7 +10,7 @@
       ng-show="groupsCtl.revisionMismatch">Error: Revision mismatch. Changes are not applied. <a ng-click="groupsCtl.reloadState()">Press to sync</a></div>
     <div class="shadow_box">
       <div class="header_2">
-        <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+        <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
         <a class="btn_1" ui-sref="app.admin.servers.list"><span>Server Nodes</span></a>
         <a
           id="js_create_group"

@@ -10,7 +10,7 @@
     <span id="js_stats-period-container" class="stats-period-container">
       <span class="with_samples current">Last <b id="js_stats_visible_period">{{analyticsListGraphCtl.selectedStat.visiblePeriod | mnFormatUptime}}</b></span><span class="without_samples current">No samples, yet</span>
     </span>
-    <span class="js_staleness-notice staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+    <span class="js_staleness-notice staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
   </span>
   General Bucket Analytics
 </div>

@@ -23,6 +23,7 @@
     'mnPluggableUiRegistry',
     'mnAboutDialog',
     'mnInternalSettings',
+    'mnLostConnection',
     'ui.router',
     'ui.bootstrap',
     'mnPoorMansAlerts'
@@ -44,11 +45,19 @@
     $stateProvider
       .state('app.admin', {
         abstract: true,
-        templateUrl: 'app/mn_admin/mn_admin.html',
-        controller: 'mnAdminController as adminCtl',
         resolve: {
           poolDefault: function (mnPoolDefault) {
             return mnPoolDefault.getFresh();
+          }
+        },
+        views: {
+          "": {
+            controller: 'mnAdminController as adminCtl',
+            templateUrl: 'app/mn_admin/mn_admin.html'
+          },
+          "lostConnection@app.admin": {
+            templateUrl: 'app/mn_admin/mn_lost_connection/mn_lost_connection.html',
+            controller: 'mnLostConnectionController as lostConnCtl'
           }
         }
       })

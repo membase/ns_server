@@ -20,7 +20,7 @@
         style="float: right; margin-right: 5px;"
         ng-show="viewsListCtl.showViewCreationButtons()"
         ng-click="viewsListCtl.showSpatialCreationDialog()"><span>Create Development Spatial View</span></a>
-      <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
     </div>
   </div>
   <div class="panes">

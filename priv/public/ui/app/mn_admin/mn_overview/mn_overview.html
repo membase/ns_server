@@ -6,7 +6,7 @@
   <div id="notice_container"></div>
   <div class="shadow_box">
     <div class="hdr">
-      <span class="staleness-notice">Difficulties communicating with the
+      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the
       cluster; displaying cached information!</span>Cluster
     </div>
     <div class="section" id="overview_clusters_block">
@@ -27,7 +27,7 @@
 
   <div class="shadow_box">
     <div class="hdr">
-      <span class="staleness-notice">Difficulties communicating
+      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating
       with the cluster; displaying cached information!</span>
       Buckets <span>(<span class="buckets-number">{{overviewCtl.buckets.length || '0'}}</span> active)</span>
     </div>
@@ -50,7 +50,7 @@
 
   <div class="shadow_box">
     <div class="hdr">
-      <span class="staleness-notice">Difficulties communicating with
+      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with
       the cluster; displaying cached information!</span>Servers
     </div>
     <div class="section" id="overview_servers_block">

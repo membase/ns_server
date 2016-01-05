@@ -15,7 +15,7 @@
           ng-click="bucketsCtl.addBucket()">
             <span>Create New Data Bucket</span>
         </a>
-        <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+        <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>
     <div id="bucket_list_container" mn-spinner="!bucketsCtl.state || bucketsCtl.viewLoading" min-height="91px">
@@ -26,7 +26,7 @@
     <div id="manage_buckets_top_bar" class="header_2">
       <h4 style="float:left">Memcached Buckets</h4>
       <div class="right">
-        <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+        <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>
     <div id="memcached_bucket_list_container" mn-spinner="!bucketsCtl.state || bucketsCtl.viewLoading" min-height="91px">

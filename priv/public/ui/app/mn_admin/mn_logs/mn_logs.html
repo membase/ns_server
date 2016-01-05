@@ -1,6 +1,6 @@
 <div id="js_logs" class="logs">
   <!-- Shadow box -->
-  <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+  <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
   <h1>Log</h1>
   <div class="clear"></div>
   <div class="shadow_box">

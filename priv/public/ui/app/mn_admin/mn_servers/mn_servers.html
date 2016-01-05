@@ -28,7 +28,7 @@
   </div>
   <div class="shadow_box">
     <div class="header_2">
-      <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
       <a
         class="btn_1 when-enterprise when-roadmin-avoid-me"
         ui-sref="app.admin.groups"

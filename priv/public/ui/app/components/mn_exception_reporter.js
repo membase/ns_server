@@ -30,6 +30,12 @@
     }
 
     function send(exception) {
+      if (exception.hasOwnProperty("config") &&
+          exception.hasOwnProperty("headers") &&
+          exception.hasOwnProperty("status") &&
+          exception.hasOwnProperty("statusText")) {
+        return; //we are not interested in http exception;
+      }
       var error;
       if (sentReports < errorReportsLimit) {
         sentReports++;

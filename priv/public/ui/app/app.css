@@ -1159,7 +1159,7 @@ input.view_name{width:20em;padding:5px}
 .io-error-notice { background-color: #FFF1A8; font-size: 14px; padding: 3px 10px;}
 
 /* extra element is needed to increase 'specifity' of this selector */
-span.staleness-notice, .staleness-notice { font-size: 12px!important; display: none; color: red; }
+span.staleness-notice, .staleness-notice { font-size: 12px!important; color: red; }
 .buckets .staleness-notice {float: right; line-height: 32px;}
 .buckets .buckets_action_bar {height: 32px; padding:10px;}
 .overview .staleness-notice {float: right;}

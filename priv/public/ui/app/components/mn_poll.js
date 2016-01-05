@@ -128,6 +128,9 @@
           self.timeout = $timeout(self.doCycle.bind(self), interval);
         });
       }
+      self.doCallPromise.then(null, function (resp) {
+        self.stop(); //stop cycle on any http error;
+      });
       return this;
     }
     function stop() {

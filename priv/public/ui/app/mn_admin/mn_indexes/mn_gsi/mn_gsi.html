@@ -4,7 +4,7 @@
   </div>
   <div class="shadow_box">
     <div class="header_2">
-      <span class="staleness-notice">Difficulties communicating with the cluster; displaying cached information!</span>
+      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
     </div>
     <div mn-spinner="!gsiCtl.state">
       <div id="js_indexes_list_container" class="servers_list indexes_list_container">
