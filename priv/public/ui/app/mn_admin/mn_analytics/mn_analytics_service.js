@@ -95,7 +95,8 @@
                 };
               });
               return isSpecificStat ? rv : rv.then(prepareNodesList(params));
-            case 0: return $q.reject(resp);
+            case 0:
+            case -1: return $q.reject(resp);
           }
         });
       });

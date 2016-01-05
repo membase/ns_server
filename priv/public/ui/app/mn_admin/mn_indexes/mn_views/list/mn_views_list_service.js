@@ -172,7 +172,8 @@
             emptyState.ddocsAreInFactMissing = resp.data.error === 'no_ddocs_service';
             return emptyState;
           });
-          case 0: return $q.reject();
+          case 0:
+          case -1: return $q.reject();
         }
       });
     }
