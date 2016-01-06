@@ -162,10 +162,7 @@ extract_auth_user(Req) ->
 extract_auth(Req) ->
     case Req:get_header_value("ns-server-ui") of
         "yes" ->
-            case extract_ui_auth_token(Req) of
-                undefined -> undefined;
-                Token -> {token, Token}
-            end;
+            {token, extract_ui_auth_token(Req)};
         _ ->
             case Req:get_header_value("authorization") of
                 "Basic " ++ Value ->

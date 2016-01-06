@@ -40,6 +40,8 @@ tok2bin(Token) when is_list(Token) ->
 tok2bin(Token) ->
     Token.
 
+check(undefined) ->
+    false;
 check(Token) ->
     gen_server:call(?MODULE, {check, tok2bin(Token)}, infinity).
 
