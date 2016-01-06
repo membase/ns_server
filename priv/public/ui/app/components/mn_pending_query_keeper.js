@@ -17,22 +17,27 @@
     };
 
     function cancelAllQueries() {
-      angular.forEach(pendingQueryKeeper, function (query) {
-        query.canceler();
-      });
+      var i = pendingQueryKeeper.length;
+      while (i--) {
+        pendingQueryKeeper[i].canceler();
+      }
     }
     function cancelTabsSpecificQueries() {
-      angular.forEach(pendingQueryKeeper, function (query) {
-        if (query.group !== "global") {
-          query.canceler();
+      var i = pendingQueryKeeper.length;
+      while (i--) {
+        if (pendingQueryKeeper[i].group !== "global") {
+          pendingQueryKeeper[i].canceler();
         }
-      });
+      }
     }
 
     function removeQueryInFly(findMe) {
-      _.remove(pendingQueryKeeper, function (pendingQuery) {
-        return pendingQuery === findMe;
-      });
+      var i = pendingQueryKeeper.length;
+      while (i--) {
+        if (pendingQueryKeeper[i] === findMe) {
+          pendingQueryKeeper.splice(i, 1);
+        }
+      }
     }
 
     function getQueryInFly(config) {
