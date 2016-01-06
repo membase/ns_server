@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry, mnPoorMansAlerts, mnLostConnectionService) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry, mnPoorMansAlertsService, mnLostConnectionService) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -70,7 +70,7 @@
         vm.tabName = resp.clusterName;
 
         if (!_.isEqual(resp.alerts, (previous || {}).alerts)) {
-          mnPoorMansAlerts.maybeShowAlerts(resp);
+          mnPoorMansAlertsService.maybeShowAlerts(resp);
         }
 
         var version = parseVersionFilter(pools.implementationVersion);
