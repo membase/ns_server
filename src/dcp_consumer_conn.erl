@@ -251,7 +251,6 @@ handle_call(Msg, _From, State, ParentState) ->
     ?rebalance_warning("Unhandled call: Msg = ~p, State = ~p", [Msg, State]),
     {reply, refused, State, ParentState}.
 
-
 handle_cast({producer_stream_closed, Packet},
             #state{state = #stream_state{to_close_on_producer = ToClose,
                                          errors = Errors} = StreamState} = State,
@@ -290,6 +289,61 @@ handle_cast({set_vbucket_state, Packet},
             {noreply, State, ParentState}
     end;
 
+%%
+%% Producer has ended a stream.
+%%
+handle_cast({producer_stream_end, _Packet}, #state{state = shut} = State,
+            ParentState) ->
+    %% Do nothing if the connection is already shutdown.
+    {noreply, State, ParentState};
+handle_cast({producer_stream_end, Packet}, State, ParentState) ->
+    {Header, _Body} = mc_binary:decode_packet(Packet),
+
+    %% Does the vBucket have an active stream?
+    StreamToEnd = Header#mc_header.vbucket,
+    NewState = case has_partition(StreamToEnd, State) of
+                   true ->
+                       %% There is an active stream for the vbucket.
+                       %% Consumer's KV engine processes the stream end when the
+                       %% producer "proxies" the request to it.
+                       %% So all we need to do here is cleanup the state in
+                       %% ns_server.
+                       %% Although very unlikely, it is possible to have race
+                       %% between DCP_CLOSE_STREAM and DCP_STREAM_END for
+                       %% the same vBucket. Consider consumer has
+                       %% sent a DCP_CLOSE_STREAM request for a vbucket but not
+                       %% processed a response for it yet when it receives
+                       %% producer_stream_end message. We will still go ahead
+                       %% and do the cleanup below - i.e. remove the vbucket
+                       %% from list of active partitions.
+                       ?log_debug("Processed stream end for vbucket ~p ~n",
+                                  [StreamToEnd]),
+                       del_partition(StreamToEnd, State);
+                   false ->
+                       %%
+                       %% The vbucket might not be in the list of "partitions"
+                       %% because:
+                       %% 1. The vbucket does not have an active stream.
+                       %% 2. Consumer is in process of adding a stream for this
+                       %%    vbucket.
+                       %% 3. This is a takeover stream.
+                       %%
+                       %% In all 3 cases, we do nothing.
+                       %%
+                       %% Case 2: We will not handle race scenarios where
+                       %% consumer is trying to add a stream for a vbucket
+                       %% for which producer sends a stream end.
+                       %%
+                       %% Case 3:
+                       %% The producer sends stream end message at the end of
+                       %% dcp takeover.
+                       %% But, we do not need to process it because ns_server
+                       %% uses DCP_SET_VBUCKET_STATE change to indentify
+                       %% end of takeover.
+                       %%
+                       State
+               end,
+    {noreply, NewState, ParentState};
 
 handle_cast(Msg, State, ParentState) ->
     ?rebalance_warning("Unhandled cast: Msg = ~p, State = ~p", [Msg, State]),
