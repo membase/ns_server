@@ -306,13 +306,15 @@ set_node_certificate_chain(ClusterCA, Chain, PKey) ->
                       _ ->
                           [CAPemEntry | PemEntriesReversed]
                   end),
+            NodeCertPemEncoded = public_key:pem_encode([NodeCert]),
             Props = [{subject, Subject},
                      {expires, Expiration},
-                     {verified_with, erlang:md5(ClusterCA)}],
+                     {verified_with, erlang:md5(ClusterCA)},
+                     {pem, NodeCertPemEncoded}],
             case ns_ssl_services_setup:set_node_certificate_chain(
                    Props,
                    public_key:pem_encode(CAChain),
-                   public_key:pem_encode([NodeCert]), PKey) of
+                   NodeCertPemEncoded, PKey) of
                 ok ->
                     {ok, Props};
                 Err ->
