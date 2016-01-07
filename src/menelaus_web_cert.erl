@@ -22,7 +22,8 @@
 -export([handle_cluster_certificate/1,
          handle_regenerate_certificate/1,
          handle_upload_cluster_ca/1,
-         handle_reload_node_certificate/1]).
+         handle_reload_node_certificate/1,
+         handle_get_node_certificate/2]).
 
 handle_cluster_certificate(Req) ->
     menelaus_web:assert_is_enterprise(),
@@ -125,4 +126,19 @@ handle_reload_node_certificate(Req) ->
         {error, Error} ->
             menelaus_util:reply_json(
               Req, ns_error_messages:reload_node_certificate_error(Error), 400)
+    end.
+
+handle_get_node_certificate(NodeId, Req) ->
+    menelaus_web:assert_is_enterprise(),
+
+    case menelaus_web:find_node_hostname(NodeId, Req) of
+        {ok, Node} ->
+            case ns_server_cert:get_node_cert_info(Node) of
+                [] ->
+                    menelaus_util:reply_text(Req, <<"Certificate is not set up on this node">>, 404);
+                Props ->
+                    menelaus_util:reply_json(Req, {jsonify_cert_props(Props)})
+            end;
+        false ->
+            menelaus_util:reply_text(Req, <<"Node is not found">>, 404)
     end.

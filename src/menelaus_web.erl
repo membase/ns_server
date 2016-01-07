@@ -307,6 +307,8 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                     {auth_ro, fun menelaus_web_groups:handle_server_groups/1};
                 ["pools", "default", "certificate"] ->
                     {done, menelaus_web_cert:handle_cluster_certificate(Req)};
+                ["pools", "default", "certificate", "node", Node] ->
+                    {auth, fun menelaus_web_cert:handle_get_node_certificate/2, [Node]};
                 ["pools", "default", "settings", "memcached", "global"] ->
                     {auth, fun menelaus_web_mcd_settings:handle_global_get/1};
                 ["pools", "default", "settings", "memcached", "effective", Node] ->

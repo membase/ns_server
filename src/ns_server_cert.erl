@@ -26,7 +26,8 @@
          set_cluster_ca/1,
          apply_certificate_chain_from_inbox/0,
          apply_certificate_chain_from_inbox/1,
-         get_warnings/1]).
+         get_warnings/1,
+         get_node_cert_info/1]).
 
 inbox_chain_path() ->
     filename:join(path_config:component_path(data, "inbox"), "chain.pem").
@@ -380,3 +381,7 @@ get_warnings(CAProps) ->
                       [{Node, mismatch} | Acc]
               end
       end, [], Nodes).
+
+get_node_cert_info(Node) ->
+    Props = ns_config:read_key_fast({node, Node, cert}, []),
+    proplists:delete(verified_with, Props).
