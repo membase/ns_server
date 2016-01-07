@@ -57,6 +57,15 @@ warning_props(Warning) ->
 translate_warning({Node, Warning}) ->
     [{node, Node} | warning_props(Warning)].
 
+jsonify_cert_props(Props) ->
+    lists:map(fun ({expires, UTCSeconds}) ->
+                      {expires, format_time(UTCSeconds)};
+                  ({K, V}) when is_list(V) ->
+                      {K, list_to_binary(V)};
+                  (Pair) ->
+                      Pair
+              end, Props).
+
 handle_cluster_certificate_extended(Req) ->
     {Cert, WarningsJson} =
         case ns_server_cert:cluster_ca() of
@@ -64,21 +73,11 @@ handle_cluster_certificate_extended(Req) ->
                 {[{type, generated},
                   {pem, GeneratedCert}], []};
             {UploadedCAProps, _, _} ->
-                NewProps = lists:map(fun ({expires, UTCSeconds}) ->
-                                             {expires, format_time(UTCSeconds)};
-                                         (Pair) ->
-                                             Pair
-                                     end, UploadedCAProps),
                 Warnings = ns_server_cert:get_warnings(UploadedCAProps),
-                {[{type, uploaded} | NewProps],
+                {[{type, uploaded} | UploadedCAProps],
                  [{translate_warning(Pair)} || Pair <- Warnings]}
-          end,
-    CertJson = lists:map(fun ({K, V}) when is_list(V) ->
-                                 {K, list_to_binary(V)};
-                             (Pair) ->
-                                 Pair
-                         end, Cert),
-    menelaus_util:reply_json(Req, {[{cert, {CertJson}},
+        end,
+    menelaus_util:reply_json(Req, {[{cert, {jsonify_cert_props(Cert)}},
                                     {warnings, WarningsJson}]}).
 
 handle_regenerate_certificate(Req) ->
