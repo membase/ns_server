@@ -564,8 +564,6 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                     {auth, fun menelaus_web_mcd_settings:handle_global_post/1};
                 ["pools", "default", "settings", "memcached", "node", Node] ->
                     {auth, fun menelaus_web_mcd_settings:handle_node_post/2, [Node]};
-                ["pools", "default", "settings", "memcached", "node", Node, "_restart"] ->
-                    {auth, fun menelaus_web_mcd_settings:handle_node_restart/2, [Node]};
                 ["settings", "indexes"] ->
                     {auth, fun menelaus_web_indexes:handle_settings_post/1};
                 ["_cbauth"] ->
