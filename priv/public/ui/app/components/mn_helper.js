@@ -21,11 +21,16 @@
       return function ($q, $state, mnBucketsService, $stateParams) {
         var deferred = $q.defer();
 
-        if (!$stateParams[bucketParamName]) {
+        if ($stateParams[bucketParamName] === null) {
           mnBucketsService.getBucketsByType(true).then(function (buckets) {
-            $stateParams[bucketParamName] = buckets.byType.membase.defaultName;
-            $state.go(stateRedirect, $stateParams);
-          })["finally"](deferred.reject);
+            if (!buckets.byType.membase.defaultName) {
+              deferred.resolve();
+            } else {
+              deferred.reject();
+              $stateParams[bucketParamName] = buckets.byType.membase.defaultName;
+              $state.go(stateRedirect, $stateParams);
+            }
+          });
         } else {
           deferred.resolve();
         }

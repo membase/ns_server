@@ -106,6 +106,11 @@
         url: '/analytics?statsHostname&analyticsBucket&specificStat',
         controller: 'mnAnalyticsController as analyticsCtl',
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics.html',
+        params: {
+          analyticsBucket: {
+            value: null
+          }
+        },
         resolve: {
           setDefaultBucketName: mnHelperProvider.setDefaultBucketName("analyticsBucket", 'app.admin.analytics.list.graph')
         }
