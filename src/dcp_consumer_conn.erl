@@ -22,7 +22,7 @@
 -include("mc_entry.hrl").
 
 -export([start_link/2,
-         setup_streams/2, takeover/2, maybe_close_stream/2, shut_connection/1]).
+         setup_streams/2, takeover/2, maybe_close_stream/2, shut_connection/2]).
 
 -export([init/2, handle_packet/5, handle_call/4, handle_cast/3]).
 
@@ -427,8 +427,8 @@ maybe_close_stream(Pid, Partition) ->
 takeover(Pid, Partition) ->
     gen_server:call(Pid, {takeover, Partition}, infinity).
 
-shut_connection(Pid) ->
-    gen_server:call(Pid, shut_connection, infinity).
+shut_connection(Pid, Timeout) ->
+    gen_server:call(Pid, shut_connection, Timeout).
 
 add_partition(Partition, #state{partitions = CurrentPartitions} = State) ->
     State#state{partitions = ordsets:add_element(Partition, CurrentPartitions)}.

@@ -40,6 +40,7 @@
                 bucket :: bucket_name()}).
 
 -define(VBUCKET_POLL_INTERVAL, 100).
+-define(SHUT_CONSUMER_TIMEOUT, ns_config:get_timeout_fast(dcp_shut_consumer, 60000)).
 
 init({ProducerNode, Bucket}) ->
     process_flag(trap_exit, true),
@@ -236,7 +237,7 @@ should_shut_consumer(_) ->
 maybe_shut_consumer(Reason, Consumer) ->
     case should_shut_consumer(Reason) of
         true ->
-            ok = dcp_consumer_conn:shut_connection(Consumer);
+            ok = dcp_consumer_conn:shut_connection(Consumer, ?SHUT_CONSUMER_TIMEOUT);
         false ->
             ok
     end.
