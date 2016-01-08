@@ -77,6 +77,7 @@
          upgrade_config_explicitly/1, config_version_token/0,
          fold/3, read_key_fast/2, get_timeout_fast/2,
          delete/1,
+         regenerate_node_uuid/0,
          strip_metadata/1, extract_vclock/1]).
 
 -export([save_config_sync/1]).
@@ -237,6 +238,9 @@ delete(Keys) when is_list(Keys) ->
 delete(Key) ->
     delete([Key]).
 
+regenerate_node_uuid() ->
+    gen_server:call(?MODULE, regenerate_node_uuid).
+
 %% update config by applying Fun to it. Fun should return a pair
 %% {NewPairs, NewConfig} where NewConfig is new config and NewPairs is
 %% list of changed pairs. That list of changed pairs is announced via
@@ -276,6 +280,13 @@ do_update_rec(Fun, SoftDelete, Erase, [Pair | Rest], UUID, NewConfig, NewPairs) 
         Erase ->
             do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
                           NewConfig, NewPairs);
+        update_vclock  ->
+            {K, OldValue} = Pair,
+            %% Value has not changed. We just want to attach new vclock.
+            %% Note, attach_vclock() removes old vclock entries.
+            NewPair = {K, attach_vclock(OldValue, UUID)},
+            do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
+                          [NewPair | NewConfig], [NewPair | NewPairs]);
         {K, Data} ->
             {OldK, OldValue} = Pair,
             NewPair = {K, increment_vclock(Data, OldValue, UUID)},
@@ -779,6 +790,19 @@ handle_call(reannounce, _From, State) ->
 
 handle_call(get, _From, State) ->
     {reply, State, State};
+
+handle_call(regenerate_node_uuid, From, State) ->
+    NewUUID = couch_uuids:random(),
+    Key = {node, node(), uuid},
+    NewPair = {Key, attach_vclock(NewUUID, NewUUID)},
+    ?log_debug("Regenerated node UUID: ~p ~n", [NewUUID]),
+    Fun =
+        fun (Config, _) ->
+                {[NewPair], [NewPair | lists:keydelete(Key, 1, Config)]}
+        end,
+    {reply, ok, NewState} = handle_call({update_with_changes, Fun}, From,
+                                        State),
+    {reply, ok, NewState#config{uuid=NewUUID}};
 
 handle_call({update_with_changes, Fun}, From, #config{uuid = UUID} = State) ->
     OldList = config_dynamic(State),
