@@ -45,7 +45,13 @@
       }).then(handleCouchRequest);
     }
     function getDdocUrl(bucket, name) {
-      return '/couchBase/' + encodeURIComponent(bucket) + '/' + name;
+      var encodedName = encodeURIComponent(cutOffDesignPrefix(name));
+      if (name.indexOf("_design/dev_") > -1) {
+        encodedName = "_design/dev_" + encodedName;
+      } else if (name.indexOf("_design/") > -1) {
+        encodedName = "_design/" + encodedName;
+      }
+      return '/couchBase/' + encodeURIComponent(bucket) + '/' + encodedName;
     }
     function getDdoc(url) {
       return $http({

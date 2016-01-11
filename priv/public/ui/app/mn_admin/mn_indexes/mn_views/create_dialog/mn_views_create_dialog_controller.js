@@ -19,7 +19,7 @@
     vm.onSubmit = onSubmit;
 
     function getDdocUrl() {
-      return mnViewsListService.getDdocUrl($state.params.viewsBucket, '_design/dev_' + encodeURIComponent(vm.ddoc.name));
+      return mnViewsListService.getDdocUrl($state.params.viewsBucket, '_design/dev_' + vm.ddoc.name);
     }
 
     function createDdoc(presentDdoc) {
