@@ -25,7 +25,8 @@
          find_all_replication_docs/1,
          all_local_replication_infos/0,
          stats/1,
-         get_replications_with_remote_info/0]).
+         get_replications_with_remote_info/0,
+         get_controller_bucket_settings/2]).
 
 get_rest_port() ->
     ns_config:read_key_fast({node, node(), xdcr_rest_port}, 9998).
@@ -232,3 +233,6 @@ get_replications_with_remote_info() ->
               ClusterName = proplists:get_value(RemoteClusterUUID, RemoteClusters, <<"unknown">>),
               [{Id, BucketName, binary_to_list(ClusterName), RemoteBucket} | Acc]
       end, [], find_all_replication_docs(30000)).
+
+get_controller_bucket_settings(Path, MochiReq) ->
+    proxy(MochiReq, Path).

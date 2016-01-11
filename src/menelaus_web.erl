@@ -393,6 +393,9 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["sampleBuckets"] -> {auth_ro, fun handle_sample_buckets/1};
                 ["_metakv" | _] ->
                     {auth, fun menelaus_metakv:handle_get/2, [Path]};
+                ["_goxdcr", "controller", "bucketSettings", _Bucket] ->
+                    XdcrPath = drop_prefix(Req:get(raw_path)),
+                    {auth, fun goxdcr_rest:get_controller_bucket_settings/2, [XdcrPath]};
                 [?PLUGGABLE_UI, "ui", RestPrefix | _] ->
                     {done, menelaus_pluggable_ui:maybe_serve_file(
                              RestPrefix, Plugins, Req,
@@ -4002,3 +4005,6 @@ path_tail([_|Rest]) ->
 
 drop_rest_prefix("/" ++ Path) ->
     [$/ | nth_path_tail(Path, 2)].
+
+drop_prefix("/" ++ Path) ->
+    [$/ | nth_path_tail(Path, 1)].
