@@ -40,7 +40,7 @@
       })
       .state('app.admin.indexes.views.editing', {
         abstract: true,
-        url: '/:documentId/:viewId?{isSpatial:bool}&sampleDocumentId',
+        url: '/:documentId?viewId&{isSpatial:bool}&sampleDocumentId',
         controller: 'mnViewsEditingController as viewsEditingCtl',
         templateUrl: 'app/mn_admin/mn_indexes/mn_views/editing/mn_views_editing.html',
         data: {
