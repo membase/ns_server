@@ -575,6 +575,9 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                     {auth, fun handle_log_post/1};
                 ["_goxdcr", "regexpValidation"] ->
                     {auth, fun menelaus_web_xdc_replications:handle_regexp_validation/1};
+                ["_goxdcr", "controller", "bucketSettings", _Bucket] ->
+                    XdcrPath = drop_prefix(Req:get(raw_path)),
+                    {auth, fun goxdcr_rest:post_controller_bucket_settings/2, [XdcrPath]};
                 ["logClientError"] -> {auth,
                                        fun (R) ->
                                                User = menelaus_auth:extract_auth_user(R),
