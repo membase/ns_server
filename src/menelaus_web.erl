@@ -1340,7 +1340,10 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
                  {autoCompactionSettings, build_global_auto_compaction_settings(Config)},
                  {tasks, {struct, [{uri, TasksURI}]}},
                  {counters, {struct, ns_cluster:counters()}},
-                 {indexStatusURI, <<"/indexStatus?v=", IndexesVersion/binary>>}],
+                 {indexStatusURI, <<"/indexStatus?v=", IndexesVersion/binary>>},
+                 {checkPermissionsURI,
+                  bin_concat_path(["pools", Id, "checkPermissions"],
+                                  [{"v", menelaus_web_rbac:check_permissions_url_version(Config)}])}],
 
     PropList1 = build_memory_quota_info(Config) ++ PropList0,
 

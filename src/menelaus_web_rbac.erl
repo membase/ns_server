@@ -29,7 +29,8 @@
          handle_get_users/1,
          handle_put_user/2,
          handle_delete_user/2,
-         handle_check_permissions_post/1]).
+         handle_check_permissions_post/1,
+         check_permissions_url_version/1]).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of
@@ -327,3 +328,8 @@ handle_check_permissions_post(Req) ->
                     menelaus_util:reply_json(Req, iolist_to_binary(Message), 400)
             end
     end.
+
+check_permissions_url_version(Config) ->
+    erlang:phash2([menelaus_roles:get_definitions(Config),
+                   menelaus_roles:get_users(Config),
+                   ns_bucket:get_bucket_names(Config)]).

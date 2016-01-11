@@ -41,11 +41,13 @@
 -include("ns_common.hrl").
 
 -export([get_definitions/0,
+         get_definitions/1,
          preconfigured_roles/0,
          is_allowed/2,
          get_compiled_roles/1,
          get_all_assignable_roles/1,
          get_users/0,
+         get_users/1,
          store_user/3,
          delete_user/1]).
 
@@ -237,7 +239,10 @@ get_all_assignable_roles(Config) ->
       end, [], get_definitions(Config)).
 
 get_users() ->
-    ns_config:search(ns_config:latest(), user_roles, []).
+    get_users(ns_config:latest()).
+
+get_users(Config) ->
+    ns_config:search(Config, user_roles, []).
 
 delete_user(Identity) ->
     ns_config:run_txn(

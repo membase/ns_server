@@ -114,6 +114,8 @@ is_interesting_to_watchers({goxdcr_enabled, _}) -> true;
 is_interesting_to_watchers({{node, _, stop_xdcr}, _}) -> true;
 is_interesting_to_watchers({{node, _, services}, _}) -> true;
 is_interesting_to_watchers({{service_map, _}, _}) -> true;
+is_interesting_to_watchers({roles_definitions, _}) -> true;
+is_interesting_to_watchers({user_roles, _}) -> true;
 is_interesting_to_watchers(_) -> false.
 
 handle_event({{node, Node, rest}, _}, State) when Node =:= node() ->
