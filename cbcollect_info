@@ -382,7 +382,7 @@ def make_os_tasks():
         LinuxTask("Extended iostat", "iostat -x -p ALL 1 10 || iostat -x 1 10"),
         LinuxTask("Core dump settings", "find /proc/sys/kernel -type f -name '*core*' -print -exec cat '{}' ';'"),
         UnixTask("sysctl settings", "sysctl -a"),
-        LinuxTask("relevant lsof output",
+        LinuxTask("Relevant lsof output",
                   "echo %(programs)s | xargs -n1 pgrep | xargs -n1 -r -- lsof -n -p" % locals()),
         LinuxTask("LVM info", "lvdisplay"),
         LinuxTask("LVM info", "vgdisplay"),
