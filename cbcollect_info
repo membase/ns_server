@@ -392,6 +392,7 @@ def make_os_tasks():
         MacOSXTask("Process list",
                    "ps -Aww -o user,pid,lwp,ppid,nlwp,pcpu,pri,nice,vsize,rss,tty,"
                    "stat,wchan:12,start,bsdtime,command"),
+        WindowsTask("Installed software", "wmic product get name, version"),
         WindowsTask("Service list", "wmic service where state=\"running\" GET caption, name, state"),
         WindowsTask("Process list", "wmic process"),
         WindowsTask("Process usage", "tasklist /V /fo list"),
