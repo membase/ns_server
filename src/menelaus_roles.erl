@@ -143,6 +143,9 @@ operation_allowed(_, none) ->
 operation_allowed(Operation, AllowedOperations) ->
     lists:member(Operation, AllowedOperations).
 
+is_allowed(Permission, {_, _} = Identity) ->
+    Roles = get_compiled_roles(Identity),
+    is_allowed(Permission, Roles);
 is_allowed({Object, Operation}, Roles) ->
     lists:any(fun (Role) ->
                       Operations = get_allowed_operations(Object, Role),

@@ -30,7 +30,8 @@
          handle_put_user/2,
          handle_delete_user/2,
          handle_check_permissions_post/1,
-         check_permissions_url_version/1]).
+         check_permissions_url_version/1,
+         handle_check_permission_for_cbauth/1]).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of
@@ -333,3 +334,17 @@ check_permissions_url_version(Config) ->
     erlang:phash2([menelaus_roles:get_definitions(Config),
                    menelaus_roles:get_users(Config),
                    ns_bucket:get_bucket_names(Config)]).
+
+handle_check_permission_for_cbauth(Req) ->
+    Params = Req:parse_qs(),
+    Identity = {proplists:get_value("user", Params),
+                list_to_existing_atom(proplists:get_value("src", Params))},
+    RawPermission = proplists:get_value("permission", Params),
+    Permission = parse_permission(misc:trim(RawPermission)),
+
+    case menelaus_roles:is_allowed(Permission, Identity) of
+        true ->
+            menelaus_util:reply_text(Req, "", 200);
+        false ->
+            menelaus_util:reply_text(Req, "", 401)
+    end.

@@ -436,6 +436,9 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                     XdcrPath = drop_prefix(Req:get(raw_path)),
                     {{[admin, internal], all},
                      fun goxdcr_rest:get_controller_bucket_settings/2, [XdcrPath]};
+                ["_cbauth", "checkPermission"] ->
+                    {{[admin, internal], all},
+                     fun menelaus_web_rbac:handle_check_permission_for_cbauth/1};
                 [?PLUGGABLE_UI, "ui", RestPrefix | _] ->
                     {done, menelaus_pluggable_ui:maybe_serve_file(
                              RestPrefix, Plugins, Req,

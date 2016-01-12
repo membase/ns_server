@@ -203,9 +203,7 @@ parse_user(UserPasswordStr) ->
     end.
 
 has_permission(Permission, Req) ->
-    Identity = get_identity(Req),
-    Roles = menelaus_roles:get_compiled_roles(Identity),
-    menelaus_roles:is_allowed(Permission, Roles).
+    menelaus_roles:is_allowed(Permission, get_identity(Req)).
 
 authenticate(undefined) ->
     {ok, {"", anonymous}};
