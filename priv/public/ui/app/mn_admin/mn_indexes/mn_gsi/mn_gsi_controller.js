@@ -17,7 +17,9 @@
     function activate() {
       mnHelper.initializeDetailsHashObserver(vm, 'openedIndex', 'app.admin.indexes.gsi');
 
-      new mnPoller($scope, mnGsiService.getIndexesState)
+      new mnPoller($scope, function () {
+       return mnGsiService.getIndexesState();
+      })
       .subscribe("state", vm)
       .cycle();
     }
