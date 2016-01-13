@@ -72,6 +72,9 @@ is_interesting({buckets, _}) -> true;
 is_interesting({rest, _}) -> true;
 is_interesting({rest_creds, _}) -> true;
 is_interesting({read_only_user_creds, _}) -> true;
+is_interesting({cluster_compat_version, _}) -> true;
+is_interesting({{node, _, is_enterprise}, _}) -> true;
+is_interesting({{node, _, ldap_enabled}, _}) -> true;
 is_interesting(_) -> false.
 
 handle_call(_Msg, _From, State) ->
@@ -210,7 +213,8 @@ build_auth_info() ->
                                  [misc:node_rest_port(Config, node())]),
     [{nodes, Nodes},
      {buckets, build_buckets_info(Config)},
-     {authCheckURL, iolist_to_binary(AuthCheckURL)}
+     {authCheckURL, iolist_to_binary(AuthCheckURL)},
+     {ldapEnabled, cluster_compat_mode:is_ldap_enabled()}
      | (build_cred_info(Config, admin, admin) ++ build_cred_info(Config, roAdmin, ro_admin))].
 
 handle_cbauth_post(Req) ->
