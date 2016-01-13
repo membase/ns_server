@@ -5,7 +5,7 @@
     .module("mnServers")
     .controller("mnServersListController", mnServersListController);
 
-  function mnServersListController($scope, $state, $rootScope, $uibModal, mnServersService, mnPoolDefault, mnSortableTable, $q, mnMemoryQuotaService, mnGsiService) {
+  function mnServersListController($scope, $state, $rootScope, $uibModal, mnServersService, mnPoolDefault, mnSortableTable, $q, mnMemoryQuotaService, mnGsiService,  mnPromiseHelper) {
     var vm = this;
     vm.sortableTableProperties = mnSortableTable.get();
     vm.isReAddPossible = isReAddPossible;
