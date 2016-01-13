@@ -206,11 +206,11 @@ build_auth_info() ->
                                 end
                         end, [], ns_node_disco:nodes_wanted(Config)),
 
-    TokenURL = io_lib:format("http://127.0.0.1:~w/_cbauth", [misc:node_rest_port(Config, node())]),
-
+    AuthCheckURL = io_lib:format("http://127.0.0.1:~w/_cbauth",
+                                 [misc:node_rest_port(Config, node())]),
     [{nodes, Nodes},
      {buckets, build_buckets_info(Config)},
-     {tokenCheckURL, iolist_to_binary(TokenURL)}
+     {authCheckURL, iolist_to_binary(AuthCheckURL)}
      | (build_cred_info(Config, admin, admin) ++ build_cred_info(Config, roAdmin, ro_admin))].
 
 handle_cbauth_post(Req) ->
