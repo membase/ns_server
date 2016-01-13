@@ -401,9 +401,9 @@ start_link_rebalance(KeepNodes, EjectNodes,
                        master_activity_events:note_rebalance_start(
                          self(), KeepNodes, EjectNodes, FailedNodes, DeltaNodes),
 
+                       ok = drop_old_2i_indexes(KeepNodes),
                        ok = apply_delta_recovery_buckets(DeltaRecoveryBucketTuples, DeltaNodes, BucketConfigs),
 
-                       ok = drop_old_2i_indexes(KeepNodes),
                        ns_cluster_membership:activate(KeepNodes),
 
                        rebalance(KeepNodes, EjectNodes, FailedNodes,
@@ -1157,10 +1157,32 @@ drop_old_2i_indexes(KeepNodes) ->
         true ->
             Config = ns_config:get(),
             NewNodes = KeepNodes -- ns_cluster_membership:active_nodes(Config),
-            ?rebalance_info("Going to drop possible old 2i indexes on nodes ~p", [NewNodes]),
+            %% Only delta recovery is supported for index service.
+            %% Note that if a node is running both KV and index service,
+            %% and if user selects the full recovery option for such
+            %% a node, then recovery_type will be set to full.
+            %% But, we will treat delta and full recovery the same for
+            %% the index data.
+            %% Also, delta recovery for index service is different
+            %% from that for the KV service. In case of index, it just
+            %% means that we will not drop the indexes and their meta data.
+            CleanupNodes = [N || N <- NewNodes,
+                                 ns_cluster_membership:get_recovery_type(Config, N) =:= none],
+            ?rebalance_info("Going to drop possible old 2i indexes on nodes ~p",
+                            [CleanupNodes]),
             {Oks, RPCErrors, Downs} = misc:rpc_multicall_with_plist_result(
-                                        NewNodes,
+                                        CleanupNodes,
                                         ns_storage_conf, delete_old_2i_indexes, []),
+            RecoveryNodes = NewNodes -- CleanupNodes,
+            ?rebalance_info("Going to keep possible 2i indexes on nodes ~p",
+                            [RecoveryNodes]),
+            %% Clear recovery type for non-KV nodes here.
+            %% recovery_type for nodes running KV services gets cleared later.
+            NonKV = [N || N <- RecoveryNodes,
+                          not lists:member(kv, ns_cluster_membership:node_services(Config, N))],
+            NodeChanges = [[{{node, N, recovery_type}, none},
+                            {{node, N, membership}, active}] || N <- NonKV],
+            ok = ns_config:set(lists:flatten(NodeChanges)),
             Errors = [{N, RV}
                       || {N, RV} <- Oks,
                          RV =/= ok]

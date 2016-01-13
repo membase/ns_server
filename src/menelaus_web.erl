@@ -3738,7 +3738,8 @@ do_handle_set_recovery_type(Req, Type, Params) ->
 
     OtpNodeErrorMsg = <<"invalid node name or node can't be used for delta recovery">>,
 
-    NotKV = not lists:member(kv, ns_cluster_membership:node_services(ns_config:latest(), Node)),
+    NodeSvcs = ns_cluster_membership:node_services(ns_config:latest(), Node),
+    NotKVIndex = not lists:member(kv, NodeSvcs) andalso not lists:member(index, NodeSvcs),
 
     Errors = lists:flatten(
                [case Type of
@@ -3755,7 +3756,7 @@ do_handle_set_recovery_type(Req, Type, Params) ->
                         []
                 end,
 
-                case Type =:= delta andalso NotKV of
+                case Type =:= delta andalso NotKVIndex of
                     true ->
                         [{otpNode, OtpNodeErrorMsg}];
                     false ->
