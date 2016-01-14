@@ -39,6 +39,11 @@ handle_packet(response, ?DCP_CLOSE_STREAM, Packet, State, ParentState) ->
     gen_server:cast(Consumer, {producer_stream_closed, Packet}),
     {block, State, ParentState};
 
+handle_packet(request, ?DCP_STREAM_END, Packet, State, ParentState) ->
+    Consumer = dcp_proxy:get_partner(ParentState),
+    gen_server:cast(Consumer, {producer_stream_end, Packet}),
+    {proxy, State, ParentState};
+
 handle_packet(_, _, _, State, ParentState) ->
     {proxy, State, ParentState}.
 

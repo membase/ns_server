@@ -1055,11 +1055,20 @@ perform_actual_join(RemoteNode, NewCookie) ->
         end,
 
         MyNode = node(),
+        %% Generate new node UUID while joining a cluster.
+        %% We want to prevent situations where multiple nodes in
+        %% the same cluster end up having same node uuid because they
+        %% were created from same virtual machine image.
+        ns_config:regenerate_node_uuid(),
+
+        %% For the keys that are being preserved and have vclocks,
+        %% we will just update_vclock so that these keys get stamped
+        %% with new node uuid vclock.
         ns_config:update(fun ({directory,_} = X, _) -> X;
                              ({otp, _}, _) -> {otp, [{cookie, NewCookie}]};
                              ({nodes_wanted, _} = X, _) -> X;
                              ({{node, _, membership}, _}, {_, BlackSpot}) -> BlackSpot;
-                             ({{node, Node, _}, _} = X, _) when Node =:= MyNode -> X;
+                             ({{node, Node, _}, _}, _) when Node =:= MyNode -> update_vclock;
                              (_, {_, BlackSpot}) -> BlackSpot
                          end),
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
