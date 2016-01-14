@@ -176,8 +176,10 @@ format_iso8601({{YYYY, MM, DD}, {Hour, Min, Sec}}, Microsecs, Offset) ->
 get_user_id(undefined) ->
     undefined;
 get_user_id({User, Source}) ->
-    {[{source, case menelaus_auth:get_advertised_source(Source) of
-                   builtin ->
+    {[{source, case Source of
+                   admin ->
+                       ns_server;
+                   ro_admin ->
                        ns_server;
                    Src ->
                        Src
