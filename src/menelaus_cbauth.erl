@@ -218,11 +218,9 @@ build_auth_info() ->
      | (build_cred_info(Config, admin, admin) ++ build_cred_info(Config, roAdmin, ro_admin))].
 
 handle_cbauth_post(Req) ->
-    %% TODO RBAC: for the time being the role will always be "admin"
     {User, Source} = menelaus_auth:get_identity(Req),
-    menelaus_util:reply_json(Req, {[{role, admin},
-                                    {user, erlang:list_to_binary(User)},
-                                    {source, menelaus_auth:get_advertised_source(Source)}]}).
+    menelaus_util:reply_json(Req, {[{user, erlang:list_to_binary(User)},
+                                    {source, Source}]}).
 
 is_cbauth_connection(Label) ->
     lists:suffix("-cbauth", Label).
