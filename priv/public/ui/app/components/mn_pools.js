@@ -32,7 +32,7 @@
         var pools = resp.data;
         var rv = {};
         pools.isInitialized = !!pools.pools.length;
-        pools.isAuthenticated = pools.isAdminCreds && pools.isInitialized;
+        pools.isAuthenticated = pools.isInitialized;
         pools.launchID = pools.uuid + '-' + launchID;
         mnPools.value = pools;
         return pools;
