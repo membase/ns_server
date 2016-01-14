@@ -211,11 +211,13 @@ build_auth_info() ->
                                 end
                         end, [], ns_node_disco:nodes_wanted(Config)),
 
-    AuthCheckURL = io_lib:format("http://127.0.0.1:~w/_cbauth",
-                                 [misc:node_rest_port(Config, node())]),
+    Port = misc:node_rest_port(Config, node()),
+    AuthCheckURL = io_lib:format("http://127.0.0.1:~w/_cbauth", [Port]),
+    PermissionCheckURL = io_lib:format("http://127.0.0.1:~w/_cbauth/checkPermission", [Port]),
     [{nodes, Nodes},
      {buckets, build_buckets_info(Config)},
      {authCheckURL, iolist_to_binary(AuthCheckURL)},
+     {permissionCheckURL, iolist_to_binary(PermissionCheckURL)},
      {ldapEnabled, cluster_compat_mode:is_ldap_enabled()},
      {permissionsVersion, menelaus_web_rbac:check_permissions_url_version(Config)}
      | (build_cred_info(Config, admin, admin) ++ build_cred_info(Config, roAdmin, ro_admin))].
