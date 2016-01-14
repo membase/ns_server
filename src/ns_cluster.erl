@@ -99,7 +99,9 @@ engage_cluster_not_to_self(NodeKVList) ->
             call_engage_cluster(NodeKVList);
         ClusterCA ->
             case ns_server_cert:apply_certificate_chain_from_inbox(ClusterCA) of
-                ok ->
+                {ok, Props} ->
+                    ?log_info("Custom certificate was loaded on the node before joining. Props: ~p",
+                              [Props]),
                     call_engage_cluster(NodeKVList);
                 {error, Error} ->
                     Message =
