@@ -40,6 +40,7 @@
                 bucket :: bucket_name()}).
 
 -define(VBUCKET_POLL_INTERVAL, 100).
+-define(SHUT_CONSUMER_TIMEOUT, ns_config:get_timeout(dcp_shut_consumer, 60000)).
 
 init({ProducerNode, Bucket}) ->
     process_flag(trap_exit, true),
@@ -230,7 +231,17 @@ spawn_and_wait(Body) ->
             erlang:error({child_interrupted, ExitMsg})
     end.
 
-maybe_shut_consumer(shutdown, Consumer) ->
-    ok = dcp_consumer_conn:shut_connection(Consumer);
-maybe_shut_consumer(_, _) ->
-    ok.
+should_shut_consumer(shutdown) ->
+    true;
+should_shut_consumer({shutdown, _}) ->
+    true;
+should_shut_consumer(_) ->
+    false.
+
+maybe_shut_consumer(Reason, Consumer) ->
+    case should_shut_consumer(Reason) of
+        true ->
+            ok = dcp_consumer_conn:shut_connection(Consumer, ?SHUT_CONSUMER_TIMEOUT);
+        false ->
+            ok
+    end.
