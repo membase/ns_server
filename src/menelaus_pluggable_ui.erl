@@ -138,7 +138,9 @@ proxy_req(RestPrefix, Path, Plugins, Req) ->
             case address_and_port_for(Service, ProxyStrategy) of
                 HostPort when is_tuple(HostPort) ->
                     Timeout = get_timeout(Service),
-                    do_proxy_req(HostPort, Path, Timeout, Req);
+                    AuthToken = auth_token(Req),
+                    Headers = AuthToken ++ convert_headers(Req),
+                    do_proxy_req(HostPort, Path, Headers, Timeout, Req);
                 Error ->
                     server_error(Req, Service, Error)
             end;
@@ -176,36 +178,37 @@ port_for(n1ql, Node) ->
 get_timeout(_Service) ->
     ?TIMEOUT.
 
-do_proxy_req({Host, Port}, Path, Timeout, Req) ->
+auth_token(MochiReq) ->
+    case menelaus_auth:extract_ui_auth_token(MochiReq) of
+        undefined ->
+            [];
+        Token ->
+            [{"ns-server-auth-token", Token}]
+    end.
+
+convert_headers(MochiReq) ->
+    HeadersList = mochiweb_headers:to_list(MochiReq:get(headers)),
+    lists:filtermap(fun ({'Content-Length', _Value}) ->
+                            false;
+                        ({'Transfer-Encoding', _Value}) ->
+                            false;
+                        ({Name, Value}) ->
+                            {true, {convert_header_name(Name), Value}}
+                    end, HeadersList).
+
+convert_header_name(Header) when is_atom(Header) ->
+    atom_to_list(Header);
+convert_header_name(Header) when is_list(Header) ->
+    Header.
+
+do_proxy_req({Host, Port}, Path, Headers, Timeout, Req) ->
     Method = Req:get(method),
-    Headers = convert_headers(Req),
     Body = get_body(Req),
     Options = [{partial_download, [{window_size, ?WINDOW_SIZE},
                                    {part_size, ?PART_SIZE}]}],
     Resp = lhttpc:request(Host, Port, false, Path, Method, Headers, Body,
                           Timeout, Options),
     handle_resp(Resp, Req).
-
-convert_headers(MochiReq) ->
-    HeadersList = mochiweb_headers:to_list(MochiReq:get(headers)),
-    Headers = lists:filtermap(fun ({'Content-Length', _Value}) ->
-                                      false;
-                                  ({'Transfer-Encoding', _Value}) ->
-                                      false;
-                                  ({Name, Value}) ->
-                                      {true, {convert_header_name(Name), Value}}
-                              end, HeadersList),
-    case menelaus_auth:extract_ui_auth_token(MochiReq) of
-        undefined ->
-            Headers;
-        Token ->
-            [{"ns-server-auth-token", Token} | Headers]
-    end.
-
-convert_header_name(Header) when is_atom(Header) ->
-    atom_to_list(Header);
-convert_header_name(Header) when is_list(Header) ->
-    Header.
 
 get_body(Req) ->
     case Req:recv_body() of
