@@ -137,7 +137,8 @@ proxy_req(RestPrefix, Path, Plugins, Req) ->
         #plugin{name = Service, proxy_strategy = ProxyStrategy} ->
             case address_and_port_for(Service, ProxyStrategy) of
                 HostPort when is_tuple(HostPort) ->
-                    do_proxy_req(HostPort, Path, Req);
+                    Timeout = get_timeout(Service),
+                    do_proxy_req(HostPort, Path, Timeout, Req);
                 Error ->
                     server_error(Req, Service, Error)
             end;
@@ -172,14 +173,17 @@ port_for(n1ql, Node) ->
                                      {node, Node, query_port}),
     Port.
 
-do_proxy_req({Host, Port}, Path, Req) ->
+get_timeout(_Service) ->
+    ?TIMEOUT.
+
+do_proxy_req({Host, Port}, Path, Timeout, Req) ->
     Method = Req:get(method),
     Headers = convert_headers(Req),
     Body = get_body(Req),
     Options = [{partial_download, [{window_size, ?WINDOW_SIZE},
                                    {part_size, ?PART_SIZE}]}],
     Resp = lhttpc:request(Host, Port, false, Path, Method, Headers, Body,
-                          ?TIMEOUT, Options),
+                          Timeout, Options),
     handle_resp(Resp, Req).
 
 convert_headers(MochiReq) ->
