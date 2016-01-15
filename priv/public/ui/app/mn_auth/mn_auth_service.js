@@ -3,10 +3,11 @@
 
   angular.module('mnAuthService', [
     'mnPools',
-    'ui.router'
+    'ui.router',
+    'mnPendingQueryKeeper'
   ]).factory('mnAuthService', mnAuthServiceFactory);
 
-  function mnAuthServiceFactory($http, $rootScope, $state, mnPools) {
+  function mnAuthServiceFactory($http, $rootScope, $state, mnPools, mnPendingQueryKeeper) {
     var mnAuthService = {
       login: login,
       logout: logout
@@ -23,6 +24,9 @@
           user: user.username,
           password: user.password
         }
+      }).then(function (resp) {
+        mnPools.clearCache();
+        return resp;
       });
     }
     function logout() {
@@ -30,9 +34,9 @@
         method: 'POST',
         url: "/uilogout"
       }).then(function () {
-        return mnPools.getFresh().then(function () {
-          $state.go('app.auth');
-        });
+        mnPools.clearCache();
+        $state.go('app.auth');
+        mnPendingQueryKeeper.cancelAllQueries();
       });
     }
   }

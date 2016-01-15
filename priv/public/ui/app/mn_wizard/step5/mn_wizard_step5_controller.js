@@ -25,14 +25,12 @@
       function login(user) {
         return mnWizardStep5Service.postAuth(user).then(function () {
           return mnAuthService.login(user).then(function () {
-            return mnPools.getFresh().then(function () {
-              $state.go('app.admin.overview');
-              if (mnWizardStep2Service.isSomeBucketSelected()) {
-                return mnSettingsSampleBucketsService.installSampleBuckets(mnWizardStep2Service.getSelectedBuckets()).then(null, function (resp) {
-                  mnAlertsService.formatAndSetAlerts(resp.data, 'error');
-                });
-              }
-            });
+            $state.go('app.admin.overview');
+            if (mnWizardStep2Service.isSomeBucketSelected()) {
+              return mnSettingsSampleBucketsService.installSampleBuckets(mnWizardStep2Service.getSelectedBuckets()).then(null, function (resp) {
+                mnAlertsService.formatAndSetAlerts(resp.data, 'error');
+              });
+            }
           });
         });
       }

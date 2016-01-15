@@ -49,6 +49,9 @@
         resolve: {
           poolDefault: function (mnPoolDefault) {
             return mnPoolDefault.getFresh();
+          },
+          pools: function (mnPools) {
+            return mnPools.get();
           }
         },
         views: {

@@ -12,9 +12,7 @@
       vm.onSubmit = onSubmit;
 
       function login(user) {
-        return mnPools.getFresh().then(function () {
-          $state.go('app.admin.overview');
-        });
+        $state.go('app.admin.overview');
       }
 
       function onSubmit() {

@@ -36,16 +36,11 @@
       $exceptionHandler(error);
     }
     function onStateChangeStart(event, toState, toParams, fromState, fromParams, error) {
-      if ($uibModalStack.getTop()) {
-        return event.preventDefault();
-      }
-      if (fromState.name.indexOf('app.admin') > -1 && toState.name.indexOf('app.admin') === -1) {
-        mnPendingQueryKeeper.cancelAllQueries();
-      } else {
-        mnPendingQueryKeeper.cancelTabsSpecificQueries();
-      }
-      mnPools.get().then(function (pools) {
-        if (pools.isAuthenticated) {
+      if (fromState.name.indexOf('app.admin') > -1 && toState.name.indexOf('app.admin') > -1) {
+        if ($uibModalStack.getTop()) {
+          return event.preventDefault();
+        }
+        mnPools.get().then(function (pools) {
           var required = (toState.data && toState.data.required) || {};
           var isOnlyForAdmin = (required.admin && pools.isROAdminCreds);
           var isOnlyForEnterprise = (required.enterprise && !pools.isEnterprise);
@@ -53,20 +48,20 @@
             event.preventDefault();
             return $state.go('app.admin.overview');
           }
-        }
-      });
+        });
+      }
     }
     function onLocationChangeSuccess(event) {
       event.preventDefault();
       mnPools.get().then(function (pools) {
-        if (pools.isAuthenticated) {
+        if (pools.isInitialized) {
           $urlRouter.sync();
         } else {
-          if (pools.isInitialized) {
-            $state.go('app.auth');
-          } else {
-            $state.go('app.wizard.welcome');
-          }
+          $state.go('app.wizard.welcome');
+        }
+      }, function (resp) {
+        switch (resp.status) {
+          case 401: return $state.go('app.auth');
         }
       });
     }

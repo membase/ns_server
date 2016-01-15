@@ -125,10 +125,8 @@
                 if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.joinClusterConfig.services.model, 'index')) {
                   $state.go('app.wizard.step6');
                 } else {
-                  return mnPools.getFresh().then(function (pools) {
-                    $state.go('app.admin.overview');
-                    mnAlertsService.formatAndSetAlerts('This server has been associated with the cluster and will join on the next rebalance operation.', 'success');
-                  });
+                  $state.go('app.admin.overview');
+                  mnAlertsService.formatAndSetAlerts('This server has been associated with the cluster and will join on the next rebalance operation.', 'success');
                 }
               });
             });

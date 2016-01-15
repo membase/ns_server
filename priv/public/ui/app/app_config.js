@@ -26,12 +26,7 @@
         }
       },
       abstract: true,
-      template: '<div ui-view="" />',
-      resolve: {
-        pools: function (mnPools) {
-          return mnPools.get();
-        }
-      }
+      template: '<div ui-view="" />'
     });
 
     $urlRouterProvider.deferIntercept();
