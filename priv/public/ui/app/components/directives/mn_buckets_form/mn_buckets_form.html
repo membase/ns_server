@@ -66,10 +66,10 @@
       <input id="js_bucket_details_sasl_selected" type="radio" name="authType" value="sasl" ng-model="bucketConf.authType">
       <div class="with_radiogroup">
         <label for="js_bucket_details_sasl_selected">
-          <span ng-if="bucketConf.isDefault">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</span>
-          <span ng-if="!bucketConf.isDefault">Standard port (TCP port 11211. Needs SASL auth.)</span>
+          <span ng-if="bucketConf.isDefault || (bucketConf.name === 'default')">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</span>
+          <span ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">Standard port (TCP port 11211. Needs SASL auth.)</span>
         </label>
-        <div ng-if="!bucketConf.isDefault">
+        <div ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">
           <label for="js_bucket_details_sasl_password">Enter password:</label>
           <input type="password" name="saslPassword" id="js_bucket_details_sasl_password" ng-model="bucketConf.saslPassword" ng-disabled="bucketConf.authType !== 'sasl'" value="">
           <div class="error-container err-saslPassword"></div>
@@ -77,7 +77,7 @@
       </div>
     </div>
     <div>
-      <input type="radio" name="authType" ng-model="bucketConf.authType" value="none" id="js_bucket_details_auth_type" ng-disabled="isDefault">
+      <input type="radio" name="authType" ng-model="bucketConf.authType" value="none" id="js_bucket_details_auth_type" ng-disabled="bucketConf.isDefault || (bucketConf.name === 'default')">
       <div class="with_radiogroup">
         <label for="js_bucket_details_auth_type">Dedicated port (supports ASCII protocol and is auth-less)</label>
         <div>
