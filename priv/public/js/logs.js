@@ -258,7 +258,7 @@ var LogsSection = {
         allNodeBoxes.attr({checked: true, disabled: true});
       } else {
         allNodeBoxes.attr({checked: false});
-        allActiveNodeBoxes.attr({checked: true, disabled: false});
+        allActiveNodeBoxes.attr({disabled: false});
       }
       maybeDisableSaveBtn();
     });

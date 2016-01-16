@@ -36,10 +36,9 @@
                 type="checkbox"
                 name="js-selected-nodes"
                 ng-model="logsCollectInfoCtl.collect.nodes[node.otpNode]"
-                ng-init="logsCollectInfoCtl.collect.nodes[node.otpNode] = true"
                 value="{{node.otpNode}}"
                 id="collected_node_list_{{node.otpNode | mnMakeSafeForCSS }}"
-                ng-checked="node.status !== 'unhealthy'"
+                ng-checked="logsCollectInfoCtl.collect.from === '*'"
                 ng-disabled="node.status === 'unhealthy' || logsCollectInfoCtl.collect.from">
               <label for="collected_node_list_{{node.otpNode | mnMakeSafeForCSS }}">{{ node.hostname | mnStripPortHTML:logsCollectInfoCtl.state.nodes }}</label>
               <span class="icon {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}"></span>
