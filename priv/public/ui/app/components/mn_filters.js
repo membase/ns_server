@@ -29,7 +29,16 @@
     .filter('mnPrettyVersion', mnPrettyVersion)
     .filter('encodeURIComponent', encodeURIComponentFilter)
     .filter('mnTrustAsHtml', mnTrustAsHtml)
+    .filter('mnMath', mnMath)
     .filter('mnIntegerToString', mnIntegerToString);
+
+  function mnMath() {
+    return function () {
+      var args = Array.prototype.slice.call(arguments, 0);
+      var method = args.shift();
+      return Math[method].apply(_, args);
+    }
+  }
 
   function mnTrustAsHtml($sce) {
     return function (html) {
