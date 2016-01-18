@@ -374,7 +374,7 @@ get_warnings(CAProps) ->
                                   A when is_integer(A) ->
                                       Acc
                               end;
-                          false ->
+                          _ ->
                               [{Node, mismatch} | Acc]
                       end;
                   false ->
