@@ -94,29 +94,32 @@ compute_buckets_diff(NewBuckets, OldBuckets) ->
 
     misc:update_proplist(NewBuckets, [{configs, Diffed}]).
 
+rewrite_tuples_with_vclock(Fun, Config) ->
+    misc:rewrite_tuples(
+      fun ({Key, [{'_vclock', _} = VClock|Value]}) ->
+              {Action, {Key, NewValue}} = Fun({Key, Value}),
+              {Action, {Key, [VClock|NewValue]}};
+          (Other) ->
+              Fun(Other)
+      end, Config).
+
 sanitize(Config) ->
-    misc:rewrite_tuples(fun (T) ->
-                                case T of
-                                    {password, _} ->
-                                        {stop, {password, "*****"}};
-                                    {sasl_password, _} ->
-                                        {stop, {sasl_password, "*****"}};
-                                    {admin_pass, _} ->
-                                        {stop, {admin_pass, "*****"}};
-                                    {pass, _} ->
-                                        {stop, {pass, "*****"}};
-                                    {cert_and_pkey, [VClock|{Cert, _PKey}]} ->
-                                        {stop, {cert_and_pkey, [VClock|{Cert, <<"*****">>}]}};
-                                    {cert_and_pkey, {Cert, _PKey}} ->
-                                        {stop, {cert_and_pkey, {Cert, <<"*****">>}}};
-                                    {{metakv, K}, [VClock|{?METAKV_SENSITIVE, _V}]} ->
-                                        {stop, {{metakv, K}, [VClock|{?METAKV_SENSITIVE, <<"*****">>}]}};
-                                    {{metakv, K}, {?METAKV_SENSITIVE, _V}} ->
-                                        {stop, {{metakv, K}, {?METAKV_SENSITIVE, <<"*****">>}}};
-                                    _ ->
-                                        {continue, T}
-                                end
-                        end, Config).
+    rewrite_tuples_with_vclock(
+      fun ({password, _}) ->
+              {stop, {password, "*****"}};
+          ({sasl_password, _}) ->
+              {stop, {sasl_password, "*****"}};
+          ({admin_pass, _}) ->
+              {stop, {admin_pass, "*****"}};
+          ({pass, _}) ->
+              {stop, {pass, "*****"}};
+          ({cert_and_pkey, {Cert, _PKey}}) ->
+              {stop, {cert_and_pkey, {Cert, <<"*****">>}}};
+          ({{metakv, K}, {?METAKV_SENSITIVE, _V}}) ->
+              {stop, {{metakv, K}, {?METAKV_SENSITIVE, <<"*****">>}}};
+          (Other) ->
+              {continue, Other}
+      end, Config).
 
 log_kv({buckets, RawBuckets0}, #state{buckets=OldBuckets} = State) ->
     VClock = ns_config:extract_vclock(RawBuckets0),
