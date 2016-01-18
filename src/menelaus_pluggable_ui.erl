@@ -26,6 +26,7 @@
 -define(CONFIG_DIR, etc).
 -define(DOCROOTS_DIR, lib).
 -define(PLUGIN_FILE_PATTERN, "pluggable-ui-*.json").
+
 -define(HEAD_FRAG_HTML, <<"head.frag.html">>).
 -define(HEAD_MARKER, <<"<!-- Inject head.frag.html file content for Pluggable UI components here -->">>).
 -define(TIMEOUT, 60000).
@@ -42,10 +43,15 @@
 -type plugin()  :: #plugin{}.
 -type plugins() :: [plugin()].
 
+-define(VIEW_PLUGIN, #plugin{name = views,
+                             proxy_strategy = local,
+                             rest_api_prefix = "couchBase",
+                             doc_root = ""}).
+
 -spec find_plugins() -> plugins().
 find_plugins() ->
     SpecFiles = find_plugin_spec_files(),
-    read_and_validate_plugin_specs(SpecFiles).
+    [?VIEW_PLUGIN | read_and_validate_plugin_specs(SpecFiles)].
 
 %% The plugin files passed via the command line are processed first so it is
 %% possible to override the standard files.
@@ -137,8 +143,8 @@ proxy_req(RestPrefix, Path, Plugins, Req) ->
         #plugin{name = Service, proxy_strategy = ProxyStrategy} ->
             case address_and_port_for(Service, ProxyStrategy) of
                 HostPort when is_tuple(HostPort) ->
-                    Timeout = get_timeout(Service),
-                    AuthToken = auth_token(Req),
+                    Timeout = get_timeout(Service, Req),
+                    AuthToken = auth_token(Service, Req),
                     Headers = AuthToken ++ convert_headers(Req),
                     do_proxy_req(HostPort, Path, Headers, Timeout, Req);
                 Error ->
@@ -149,12 +155,17 @@ proxy_req(RestPrefix, Path, Plugins, Req) ->
     end.
 
 address_and_port_for(Service, local) ->
-    case ns_cluster_membership:should_run_service(Service, node()) of
+    case should_run_service(Service, node()) of
         true ->
             address_and_port(Service, node());
         false ->
             service_not_running
     end.
+
+should_run_service(views, Node) ->
+    should_run_service(kv, Node);
+should_run_service(Service, Node) ->
+    ns_cluster_membership:should_run_service(Service, Node).
 
 address_and_port(Service, Node) ->
     Addr = node_address(Node),
@@ -173,28 +184,38 @@ port_for(fts, Node) ->
 port_for(n1ql, Node) ->
     {value, Port} = ns_config:search(ns_config:latest(),
                                      {node, Node, query_port}),
+    Port;
+
+port_for(views, Node) ->
+    {value, Port} = ns_config:search(ns_config:latest(),
+                                     {node, Node, capi_port}),
     Port.
 
-get_timeout(_Service) ->
+get_timeout(views, Req) ->
+    Params = Req:parse_qs(),
+    list_to_integer(proplists:get_value("connection_timeout", Params, "30000"));
+get_timeout(_Service, _Req) ->
     ?TIMEOUT.
 
-auth_token(MochiReq) ->
-    case menelaus_auth:extract_ui_auth_token(MochiReq) of
+auth_token(views, _Req) ->
+    [{"Capi-Auth-Token", atom_to_list(ns_server:get_babysitter_cookie())}];
+auth_token(_Service, Req) ->
+    case menelaus_auth:extract_ui_auth_token(Req) of
         undefined ->
             [];
         Token ->
             [{"ns-server-auth-token", Token}]
     end.
 
-convert_headers(MochiReq) ->
-    HeadersList = mochiweb_headers:to_list(MochiReq:get(headers)),
+convert_headers(Req) ->
+    Headers = mochiweb_headers:to_list(Req:get(headers)),
     lists:filtermap(fun ({'Content-Length', _Value}) ->
                             false;
                         ({'Transfer-Encoding', _Value}) ->
                             false;
                         ({Name, Value}) ->
                             {true, {convert_header_name(Name), Value}}
-                    end, HeadersList).
+                    end, Headers).
 
 convert_header_name(Header) when is_atom(Header) ->
     atom_to_list(Header);

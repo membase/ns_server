@@ -428,7 +428,10 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                     {done, menelaus_util:serve_file(Req, Path, AppRoot,
                                                     [{"Cache-Control", "max-age=30000000"}])};
                 ["couchBase" | _] -> {{[admin, internal], all},
-                                      fun capi_http_proxy:handle_request/1};
+                                      fun menelaus_pluggable_ui:proxy_req/4,
+                                      ["couchBase",
+                                       drop_prefix(Req:get(raw_path)),
+                                       Plugins]};
                 ["sampleBuckets"] -> {{[samples], read}, fun handle_sample_buckets/1};
                 ["_metakv" | _] ->
                     {{[admin, internal], all}, fun menelaus_metakv:handle_get/2, [Path]};
@@ -666,7 +669,10 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["diag", "eval"] ->
                     {{[cluster, admin, diag], write}, fun handle_diag_eval/1};
                 ["couchBase" | _] ->
-                    {{[admin, internal], all}, fun capi_http_proxy:handle_request/1};
+                    {{[admin, internal], all}, fun menelaus_pluggable_ui:proxy_req/4,
+                     ["couchBase",
+                      drop_prefix(Req:get(raw_path)),
+                      Plugins]};
                 [?PLUGGABLE_UI, RestPrefix | _] ->
                     {{[admin, internal], all},
                      fun (PReq) ->
@@ -709,7 +715,10 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_delete_user/2, [UserId]};
                 ["couchBase" | _] -> {{[admin, internal], all},
-                                      fun capi_http_proxy:handle_request/1};
+                                      fun menelaus_pluggable_ui:proxy_req/4,
+                                      ["couchBase",
+                                       drop_prefix(Req:get(raw_path)),
+                                       Plugins]};
                 ["_metakv" | _] ->
                     {{[admin, internal], all}, fun menelaus_metakv:handle_delete/2, [Path]};
                 [?PLUGGABLE_UI, RestPrefix | _] ->
@@ -739,8 +748,11 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["settings", "rbac", "users", UserId] ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_put_user/2, [UserId]};
-                ["couchBase" | _] -> {{[admin, internal], all},
-                                      fun capi_http_proxy:handle_request/1};
+                ["couchBase" | _] ->
+                    {{[admin, internal], all}, fun menelaus_pluggable_ui:proxy_req/4,
+                     ["couchBase",
+                      drop_prefix(Req:get(raw_path)),
+                      Plugins]};
                 ["_metakv" | _] ->
                     {{[admin, internal], all}, fun menelaus_metakv:handle_put/2, [Path]};
                 [?PLUGGABLE_UI, RestPrefix | _] ->
