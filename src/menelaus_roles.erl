@@ -40,6 +40,8 @@
 
 -include("ns_common.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+
 -export([get_definitions/0,
          get_definitions/1,
          preconfigured_roles/0,
@@ -49,7 +51,8 @@
          get_users/0,
          get_users/1,
          store_user/3,
-         delete_user/1]).
+         delete_user/1,
+         upgrade_users/1]).
 
 preconfigured_roles() ->
     [{admin, [],
@@ -293,3 +296,58 @@ store_user(Identity, Name, Roles) ->
                       {abort, {error, roles_validation, UnknownRoles}}
               end
       end).
+
+collect_users(asterisk, _Role, Dict) ->
+    Dict;
+collect_users([], _Role, Dict) ->
+    Dict;
+collect_users([User | Rest], Role, Dict) ->
+    NewDict = dict:update(User, fun (Roles) ->
+                                        ordsets:add_element(Role, Roles)
+                                end, ordsets:from_list([Role]), Dict),
+    collect_users(Rest, Role, NewDict).
+
+upgrade_users(Config) ->
+    case ns_config:search(Config, saslauthd_auth_settings) of
+        false ->
+            [];
+        {value, Props} ->
+            case proplists:get_value(enabled, Props, false) of
+                false ->
+                    [];
+                true ->
+                    Dict = dict:new(),
+                    Dict1 = collect_users(proplists:get_value(admins, Props, []), admin, Dict),
+                    Dict2 = collect_users(proplists:get_value(roAdmins, Props, []), ro_admin, Dict1),
+                    [{set, user_roles,
+                      lists:map(fun ({User, Roles}) ->
+                                        {{binary_to_list(User), saslauthd},
+                                         [{roles, ordsets:to_list(Roles)}]}
+                                end, dict:to_list(Dict2))}]
+            end
+    end.
+
+upgrade_users_test() ->
+    Config = [[{saslauthd_auth_settings,
+                [{enabled,true},
+                 {admins,[<<"user1">>, <<"user2">>, <<"user1">>, <<"user3">>]},
+                 {roAdmins,[<<"user4">>, <<"user1">>]}]}]],
+    UserRoles = [{{"user1", saslauthd}, [{roles, [admin, ro_admin]}]},
+                 {{"user2", saslauthd}, [{roles, [admin]}]},
+                 {{"user3", saslauthd}, [{roles, [admin]}]},
+                 {{"user4", saslauthd}, [{roles, [ro_admin]}]}],
+    Upgraded = upgrade_users(Config),
+    ?assertMatch([{set, user_roles, _}], Upgraded),
+    [{set, user_roles, UpgradedUserRoles}] = Upgraded,
+    ?assertMatch(UserRoles, lists:sort(UpgradedUserRoles)).
+
+upgrade_users_asterisk_test() ->
+    Config = [[{saslauthd_auth_settings,
+                [{enabled,true},
+                 {admins, asterisk},
+                 {roAdmins,[<<"user1">>]}]}]],
+    UserRoles = [{{"user1", saslauthd}, [{roles, [ro_admin]}]}],
+    Upgraded = upgrade_users(Config),
+    ?assertMatch([{set, user_roles, _}], Upgraded),
+    [{set, user_roles, UpgradedUserRoles}] = Upgraded,
+    ?assertMatch(UserRoles, lists:sort(UpgradedUserRoles)).
