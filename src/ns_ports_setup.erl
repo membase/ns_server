@@ -592,7 +592,12 @@ fts_spec(Config) ->
                      "-server=http://127.0.0.1:" ++ integer_to_list(NsRestPort),
                      "-bindHttp=" ++ BindHttp,
                      "-dataDir=" ++ FTSIdxDir,
-                     "-extra=" ++ io_lib:format("~s:~b", [Host, NsRestPort])
+                     "-extra=" ++ io_lib:format("~s:~b", [Host, NsRestPort]),
+                     "-options=" ++
+                     "startCheckServer=skip," ++
+                     "slowQueryLogTimeout=5s," ++
+                     "defaultMaxPartitionsPerPIndex=128," ++
+                     "bleveMaxResultWindow=10000"
                     ],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?FTS_LOG_FILENAME},
