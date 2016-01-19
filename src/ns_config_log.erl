@@ -115,6 +115,8 @@ sanitize(Config) ->
               {stop, {pass, "*****"}};
           ({cert_and_pkey, {Cert, _PKey}}) ->
               {stop, {cert_and_pkey, {Cert, <<"*****">>}}};
+          ({cert_and_pkey, {Props, Cert, _PKey}}) ->
+              {stop, {cert_and_pkey, {Props, Cert, <<"*****">>}}};
           ({{metakv, K}, {?METAKV_SENSITIVE, _V}}) ->
               {stop, {{metakv, K}, {?METAKV_SENSITIVE, <<"*****">>}}};
           (Other) ->
