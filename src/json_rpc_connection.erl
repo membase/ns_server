@@ -21,7 +21,6 @@
 
 -export([start/2,
          perform_call/3, perform_call/4,
-         have_named_connection/1,
          handle_rpc_connect/1,
          reannounce/0]).
 
@@ -55,9 +54,6 @@ perform_call(Label, Name, EJsonArg, Timeout) ->
 
 perform_call(Label, Name, EJsonArg) ->
     perform_call(Label, Name, EJsonArg, infinity).
-
-have_named_connection(Label) ->
-    erlang:whereis(label_to_name(Label)) =/= undefined.
 
 handle_rpc_connect(Req) ->
     "/" ++ Path = Req:get(path),
