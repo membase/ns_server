@@ -777,6 +777,8 @@ get_bucket_id({Objects, _Operations}) ->
     case lists:keyfind(bucket, 1, Objects) of
         {bucket, all} ->
             false;
+        {bucket, any} ->
+            false;
         {bucket, Bucket} ->
             Bucket;
         false ->
