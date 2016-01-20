@@ -17,6 +17,7 @@
     function get(mnHttpParams) {
       return $http({
         method: "GET",
+        cache: true,
         url: '/pools/default/buckets?basic_stats=true&skipMap=true',
         mnHttp: mnHttpParams
       });
