@@ -58,6 +58,10 @@ init([]) ->
             {ns_process_registry, start_link,
              [vbucket_filter_changes_registry, [{terminate_command, shutdown}]]},
             permanent, 100, worker, [ns_process_registry]},
+           {json_rpc_connection_sup,
+            {json_rpc_connection_sup, start_link, []},
+            permanent, infinity, supervisor,
+            [json_rpc_connection_sup]},
            restartable:spec(
              {ns_server_nodes_sup, {ns_server_nodes_sup, start_link, []},
               permanent, infinity, supervisor, [ns_server_nodes_sup]})

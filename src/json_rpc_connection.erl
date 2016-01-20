@@ -19,16 +19,16 @@
 
 -include("ns_common.hrl").
 
--export([start/2,
+-export([start_link/2,
          perform_call/3, perform_call/4,
-         handle_rpc_connect/1,
-         reannounce/0]).
+         reannounce/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {counter :: non_neg_integer(),
+-record(state, {label :: string(),
+                counter :: non_neg_integer(),
                 sock :: port(),
                 id_to_caller_tid :: ets:tid()}).
 
@@ -39,12 +39,8 @@ label_to_name(Pid) when is_pid(Pid) ->
 label_to_name(Label) when is_list(Label)  ->
     list_to_atom(?PREFIX ++ Label).
 
-start(Label, InetSock) ->
-    Ref = make_ref(),
-    {ok, Pid} = gen_server:start(?MODULE, {Ref, Label}, []),
-    ok = gen_tcp:controlling_process(InetSock, Pid),
-    Pid ! {Ref, InetSock},
-    {ok, Pid}.
+start_link(Label, GetSocket) ->
+    gen_server:start_link(?MODULE, {Label, GetSocket}, []).
 
 perform_call(Label, Name, EJsonArg, Timeout) ->
     EJsonArgThunk = fun () -> EJsonArg end,
@@ -53,23 +49,13 @@ perform_call(Label, Name, EJsonArg, Timeout) ->
 perform_call(Label, Name, EJsonArg) ->
     perform_call(Label, Name, EJsonArg, infinity).
 
-handle_rpc_connect(Req) ->
-    "/" ++ Path = Req:get(path),
-    Sock = Req:get(socket),
-    menelaus_util:reply(Req, 200),
-    {ok, _} = json_rpc_connection:start(Path, Sock),
-    erlang:exit(normal).
+reannounce(Pid) when is_pid(Pid) ->
+    gen_server:cast(Pid, reannounce).
 
-init({Ref, Label}) ->
+init({Label, GetSocket}) ->
     proc_lib:init_ack({ok, self()}),
-    receive
-        {Ref, InetSock} ->
-            continue_init(Label, InetSock)
-    after 5000 ->
-            exit(sock_recv_timeout)
-    end.
+    InetSock = GetSocket(),
 
-continue_init(Label, InetSock) ->
     Name = label_to_name(Label),
     case erlang:whereis(Name) of
         undefined ->
@@ -85,21 +71,14 @@ continue_init(Label, InetSock) ->
     ?log_debug("Observed revrpc connection: label ~p, handling process ~p",
                [Label, self()]),
     gen_event:notify(json_rpc_events, {started, Label, self()}),
-    {ok, #state{counter = 0,
+    {ok, #state{label = Label,
+                counter = 0,
                 sock = InetSock,
                 id_to_caller_tid = IdToCaller}}.
 
-reannounce() ->
-    lists:map(fun (Name) ->
-                      case atom_to_list(Name) of
-                          ?PREFIX ++ Label ->
-                              gen_event:notify(json_rpc_events,
-                                               {needs_update, Label, whereis(Name)});
-                          _ ->
-                              ok
-                      end
-              end, registered()).
-
+handle_cast(reannounce, #state{label = Label} = State) ->
+    gen_event:notify(json_rpc_events, {needs_update, Label, self()}),
+    {noreply, State};
 handle_cast(_Msg, _State) ->
     erlang:error(unknown).
 

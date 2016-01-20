@@ -741,7 +741,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                     {done, reply_text(Req, "Method Not Allowed", 405)}
             end;
         "RPCCONNECT" ->
-            {{[admin, internal], all}, fun json_rpc_connection:handle_rpc_connect/1};
+            {{[admin, internal], all}, fun json_rpc_connection_sup:handle_rpc_connect/1};
 
         _ ->
             ?MENELAUS_WEB_LOG(0004, "Invalid request received: ~p", [Req]),

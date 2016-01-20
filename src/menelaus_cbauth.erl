@@ -36,7 +36,7 @@ init([]) ->
     ns_pubsub:subscribe_link(json_rpc_events, fun json_rpc_event/1),
     ns_pubsub:subscribe_link(ns_node_disco_events, fun node_disco_event/1),
     ns_pubsub:subscribe_link(ns_config_events, fun ns_config_event/1),
-    json_rpc_connection:reannounce(),
+    json_rpc_connection_sup:reannounce(),
     {ok, #state{}}.
 
 json_rpc_event({_, Label, _} = Event) ->
