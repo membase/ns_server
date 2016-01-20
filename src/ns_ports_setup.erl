@@ -585,12 +585,7 @@ fts_spec(Config) ->
             FTSIdxDir = filename:join(IdxDir, "@fts"),
             ok = misc:ensure_writable_dir(FTSIdxDir),
             {_, Host} = misc:node_name_host(node()),
-            BindHttp = case Host of
-                           "127.0.0.1" ->
-                               io_lib:format("~s:~b", [Host, FtRestPort]);
-                           _ ->
-                               io_lib:format("~s:~b,0.0.0.0:~b", [Host, FtRestPort, FtRestPort])
-                       end,
+            BindHttp = io_lib:format("~s:~b,0.0.0.0:~b", [Host, FtRestPort, FtRestPort]),
             Spec = {fts, FtCmd,
                     [
                      "-cfg=metakv",
