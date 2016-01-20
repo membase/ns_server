@@ -40,12 +40,10 @@ label_to_name(Label) when is_list(Label)  ->
     list_to_atom(?PREFIX ++ Label).
 
 start(Label, InetSock) ->
-    {ok, Pid} = gen_server:start(?MODULE, {self(), Label}, []),
+    Ref = make_ref(),
+    {ok, Pid} = gen_server:start(?MODULE, {Ref, Label}, []),
     ok = gen_tcp:controlling_process(InetSock, Pid),
-    receive
-        {'$gen_call', {Pid, _} = From, get_sock}  ->
-            gen_server:reply(From, InetSock)
-    end,
+    Pid ! {Ref, InetSock},
     {ok, Pid}.
 
 perform_call(Label, Name, EJsonArg, Timeout) ->
@@ -62,10 +60,16 @@ handle_rpc_connect(Req) ->
     {ok, _} = json_rpc_connection:start(Path, Sock),
     erlang:exit(normal).
 
-
-init({Starter, Label}) ->
+init({Ref, Label}) ->
     proc_lib:init_ack({ok, self()}),
-    InetSock = gen_server:call(Starter, get_sock, 5000),
+    receive
+        {Ref, InetSock} ->
+            continue_init(Label, InetSock)
+    after 5000 ->
+            exit(sock_recv_timeout)
+    end.
+
+continue_init(Label, InetSock) ->
     Name = label_to_name(Label),
     case erlang:whereis(Name) of
         undefined ->
