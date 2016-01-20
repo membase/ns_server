@@ -574,7 +574,7 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
 
     Services = search_config_for_node(NSConfig, Node, services, [kv]),
 
-    Candidates = [{n1ql, query_port, 8093}, {index, indexer_http_port, 9102}],
+    Candidates = [{n1ql, query_port, 8093}, {index, indexer_http_port, 9102}, {fts, fts_http_port, 9110}],
     OtherPorts = find_ports(NSConfig, Node, Services, Candidates),
 
     {_, DataDir} = lists:keyfind(path_config_datadir, 1, StaticTerms),

@@ -548,6 +548,13 @@ def make_product_task(guts, initargs_path, options):
         index_tasks = [make_curl_task(name="Index definitions are: ",
                           user="@", password=read_guts(guts, "memcached_pass"), url=url)]
 
+    fts_tasks = []
+    fts_port = read_guts(guts, "fts_http_port")
+    if fts_port:
+        url='http://127.0.0.1:%s/api/diag' % fts_port
+        fts_tasks = [make_curl_task(name="FTS /api/diag: ",
+                       user="@", password=read_guts(guts, "memcached_pass"), url=url)]
+
     _tasks = [
         UnixTask("Directory structure",
                  ["ls", "-lRai", root]),
@@ -682,7 +689,7 @@ def make_product_task(guts, initargs_path, options):
         make_stats_archives_task(guts, initargs_path)
         ]
 
-    _tasks = flatten([lookup_tasks, query_tasks, index_tasks, _tasks])
+    _tasks = flatten([lookup_tasks, query_tasks, index_tasks, fts_tasks, _tasks])
 
     return _tasks
 
