@@ -246,7 +246,7 @@ general_settings_lens_props() ->
      {logLevel, id_lens(<<"indexer.settings.log_level">>)}].
 
 general_settings_defaults() ->
-    [{indexerThreads, 4},
+    [{indexerThreads, 0},
      {memorySnapshotInterval, 200},
      {stableSnapshotInterval, 5000},
      {maxRollbackPoints, 5},

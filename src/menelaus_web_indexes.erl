@@ -158,7 +158,7 @@ handle_settings_post(Req) ->
 
 integer_settings() ->
     NearInfinity = 1 bsl 64 - 1,
-    [{indexerThreads, 1, 1024},
+    [{indexerThreads, 0, 1024},
      {memorySnapshotInterval, 1, NearInfinity},
      {stableSnapshotInterval, 1, NearInfinity},
      {maxRollbackPoints, 1, NearInfinity}].
