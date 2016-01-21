@@ -32,21 +32,32 @@
 -define(TIMEOUT, 60000).
 -define(PART_SIZE, 100000).
 -define(WINDOW_SIZE, 5).
-
+-define(DEF_REQ_HEADER_FILTER, {drop, ["Content-Length",
+                                       "Transfer-Encoding"]}).
 -type service_name()   :: atom().
 -type rest_api_prefix():: string().
 -type proxy_strategy() :: local.
+-type filter_op()      :: keep | drop.
 -record(plugin, { name            :: service_name(),
                   proxy_strategy  :: proxy_strategy(),
                   rest_api_prefix :: rest_api_prefix(),
-                  doc_root        :: {multiple_roots, [string()]} | string()}).
+                  doc_root        :: {multiple_roots, [string()]} | string(),
+                  request_headers_filter :: {filter_op(), [string()]}}).
 -type plugin()  :: #plugin{}.
 -type plugins() :: [plugin()].
 
 -define(VIEW_PLUGIN, #plugin{name = views,
                              proxy_strategy = local,
                              rest_api_prefix = "couchBase",
-                             doc_root = ""}).
+                             doc_root = "",
+                             request_headers_filter = {keep, ["Accept",
+                                                              "Accept-Encoding",
+                                                              "Accept-Language",
+                                                              "Cache-Control",
+                                                              "Connection",
+                                                              "Content-Type",
+                                                              "Pragma",
+                                                              "Referer"]}}).
 
 -spec find_plugins() -> plugins().
 find_plugins() ->
@@ -93,6 +104,8 @@ validate_plugin_spec(KVs, Plugins) ->
                                                       KVs)),
     RestApiPrefix = binary_to_list(get_element(<<"rest-api-prefix">>, KVs)),
     DocRoot = decode_docroot(get_element(<<"doc-root">>, KVs)),
+    ReqHdrFilter = decode_request_header_filter(
+                     get_opt_element(<<"request-headers-filter">>, KVs)),
     case {valid_service(ServiceName),
           find_plugin_by_prefix(RestApiPrefix, Plugins)} of
         {true, false} ->
@@ -101,7 +114,8 @@ validate_plugin_spec(KVs, Plugins) ->
             [#plugin{name = ServiceName,
                      proxy_strategy = ProxyStrategy,
                      rest_api_prefix = RestApiPrefix,
-                     doc_root = DocRoot} | Plugins];
+                     doc_root = DocRoot,
+                     request_headers_filter = ReqHdrFilter} | Plugins];
         {true, #plugin{}} ->
             ?log_info("Pluggable UI specification for ~p not loaded, "
                       "duplicate REST API prefix ~p~n",
@@ -121,6 +135,14 @@ get_element(Key, KVs) ->
     {Key, Val} = lists:keyfind(Key, 1, KVs),
     Val.
 
+get_opt_element(Key, KVs) ->
+    case lists:keyfind(Key, 1, KVs) of
+        {Key, Val} ->
+            Val;
+         false ->
+            undefined
+    end.
+
 decode_proxy_strategy(<<"local">>) ->
     local.
 
@@ -136,16 +158,22 @@ decode_docroot(Prefix, Roots) when is_list(Roots) ->
 decode_docroot(Prefix, Root) ->
     filename:join(Prefix, binary_to_list(Root)).
 
+decode_request_header_filter(undefined) ->
+    ?DEF_REQ_HEADER_FILTER;
+decode_request_header_filter({[{Op, Names}]}) ->
+    {binary_to_existing_atom(Op, latin1), [binary_to_list(Name) || Name <- Names]}.
+
 %%% =============================================================
 %%%
 proxy_req(RestPrefix, Path, Plugins, Req) ->
     case find_plugin_by_prefix(RestPrefix, Plugins) of
-        #plugin{name = Service, proxy_strategy = ProxyStrategy} ->
+        #plugin{name = Service, proxy_strategy = ProxyStrategy,
+                request_headers_filter = HdrFilter} ->
             case address_and_port_for(Service, ProxyStrategy) of
                 HostPort when is_tuple(HostPort) ->
                     Timeout = get_timeout(Service, Req),
                     AuthToken = auth_token(Service, Req),
-                    Headers = AuthToken ++ convert_headers(Req),
+                    Headers = AuthToken ++ convert_headers(Req, HdrFilter),
                     do_proxy_req(HostPort, Path, Headers, Timeout, Req);
                 Error ->
                     server_error(Req, Service, Error)
@@ -207,20 +235,20 @@ auth_token(_Service, Req) ->
             [{"ns-server-auth-token", Token}]
     end.
 
-convert_headers(Req) ->
-    Headers = mochiweb_headers:to_list(Req:get(headers)),
-    lists:filtermap(fun ({'Content-Length', _Value}) ->
-                            false;
-                        ({'Transfer-Encoding', _Value}) ->
-                            false;
-                        ({Name, Value}) ->
-                            {true, {convert_header_name(Name), Value}}
-                    end, Headers).
+convert_headers(Req, Filter) ->
+    RawHeaders = mochiweb_headers:to_list(Req:get(headers)),
+    Headers = [{convert_header_name(Name), Val} || {Name, Val} <- RawHeaders],
+    filter_headers(Headers, Filter).
 
 convert_header_name(Header) when is_atom(Header) ->
     atom_to_list(Header);
 convert_header_name(Header) when is_list(Header) ->
     Header.
+
+filter_headers(Headers, {keep, Names}) ->
+    [Hdr || {Name, _} = Hdr <- Headers, lists:member(Name, Names)];
+filter_headers(Headers, {drop, Names}) ->
+    [Hdr || {Name, _} = Hdr <- Headers, not lists:member(Name, Names)].
 
 do_proxy_req({Host, Port}, Path, Headers, Timeout, Req) ->
     Method = Req:get(method),
