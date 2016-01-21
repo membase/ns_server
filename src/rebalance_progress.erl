@@ -23,7 +23,7 @@
          }).
 
 init(LiveNodes) ->
-    init(LiveNodes, [kv]).
+    init(LiveNodes, [kv] ++ ns_cluster_membership:topology_aware_services()).
 
 init(LiveNodes, Services) ->
     do_init([{S, ns_cluster_membership:service_nodes(LiveNodes, S)} ||

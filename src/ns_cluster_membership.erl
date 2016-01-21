@@ -39,6 +39,7 @@
         ]).
 
 -export([supported_services/0,
+         topology_aware_services/0,
          default_services/0,
          set_service_map/2,
          get_service_map/2,
@@ -212,6 +213,9 @@ supported_services() ->
 
 default_services() ->
     [kv].
+
+topology_aware_services() ->
+    [] ++ maybe_example_service().
 
 maybe_example_service() ->
     case os:getenv("ENABLE_EXAMPLE_SERVICE") =/= false of

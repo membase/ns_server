@@ -416,32 +416,100 @@ move_vbuckets(Bucket, Moves) ->
               proplists:get_value(servers, Config),
               ProgressFun, Map, NewMap).
 
-rebalance_services(KeepNodes) ->
+rebalance_services(KeepNodes, EjectNodes) ->
     Config = ns_config:get(),
 
+    AllServices = ns_cluster_membership:supported_services(),
+    TopologyAwareServices = ns_cluster_membership:topology_aware_services(),
+    SimpleServices = AllServices -- TopologyAwareServices,
+
+    SimpleTSs = rebalance_simple_services(Config, SimpleServices, KeepNodes),
+    TopologyAwareTSs = rebalance_topology_aware_services(Config, TopologyAwareServices,
+                                                             KeepNodes, EjectNodes),
+
+    maybe_delay_eject_nodes(SimpleTSs ++ TopologyAwareTSs, EjectNodes).
+
+rebalance_simple_services(Config, Services, KeepNodes) ->
     case cluster_compat_mode:is_cluster_41(Config) of
         true ->
-            AllServices = ns_cluster_membership:supported_services(),
             lists:filtermap(
               fun (Service) ->
-                      ServiceNodes0 = ns_cluster_membership:service_nodes(KeepNodes, Service),
-                      ServiceNodes = lists:sort(ServiceNodes0),
+                      ServiceNodes = ns_cluster_membership:service_nodes(KeepNodes, Service),
+                      Updated = update_service_map_with_config(Config, Service, ServiceNodes),
 
-                      CurrentNodes0 = ns_cluster_membership:get_service_map(Config, Service),
-                      CurrentNodes = lists:sort(CurrentNodes0),
-
-                      case CurrentNodes =:= ServiceNodes of
-                          true ->
-                              false;
+                      case Updated of
                           false ->
-                              ?rebalance_info("Updating service map for ~p:~n~p",
-                                              [Service, ServiceNodes]),
-                              ok = ns_cluster_membership:set_service_map(Service, ServiceNodes),
+                              false;
+                          true ->
                               {true, {Service, os:timestamp()}}
                       end
-              end, AllServices);
+              end, Services);
         false ->
             []
+    end.
+
+update_service_map_with_config(Config, Service, ServiceNodes0) ->
+    CurrentNodes0 = ns_cluster_membership:get_service_map(Config, Service),
+    update_service_map(Service, CurrentNodes0, ServiceNodes0).
+
+update_service_map(Service, CurrentNodes0, ServiceNodes0) ->
+    CurrentNodes = lists:sort(CurrentNodes0),
+    ServiceNodes = lists:sort(ServiceNodes0),
+
+    case CurrentNodes =:= ServiceNodes of
+        true ->
+            false;
+        false ->
+            ?rebalance_info("Updating service map for ~p:~n~p",
+                            [Service, ServiceNodes]),
+            ok = ns_cluster_membership:set_service_map(Service, ServiceNodes),
+            true
+    end.
+
+rebalance_topology_aware_services(Config, Services, KeepNodesAll, EjectNodesAll) ->
+    %% TODO: support this one day
+    DeltaNodesAll = [],
+
+    lists:filtermap(
+      fun (Service) ->
+              KeepNodes = ns_cluster_membership:service_nodes(Config, KeepNodesAll, Service),
+              EjectNodes = ns_cluster_membership:service_nodes(Config, EjectNodesAll, Service),
+              DeltaNodes = ns_cluster_membership:service_nodes(Config, DeltaNodesAll, Service),
+
+              AllNodes = EjectNodes ++ KeepNodes,
+
+              case AllNodes of
+                  [] ->
+                      false;
+                  _ ->
+                      update_service_map_with_config(Config, Service, AllNodes),
+                      ok = rebalance_topology_aware_service(Service, KeepNodes,
+                                                            EjectNodes, DeltaNodes),
+                      update_service_map(Service, AllNodes, KeepNodes),
+                      {true, {Service, os:timestamp()}}
+              end
+      end, Services).
+
+rebalance_topology_aware_service(Service, KeepNodes, EjectNodes, DeltaNodes) ->
+    ProgressCallback =
+        fun (Progress) ->
+                ns_orchestrator:update_progress(Service, Progress)
+        end,
+
+    {Pid, MRef} = service_rebalancer:spawn_monitor_rebalance(
+                    Service, KeepNodes, EjectNodes, DeltaNodes, ProgressCallback),
+
+    receive
+        stop ->
+            misc:terminate_and_wait({shutdown, stopped}, Pid),
+            exit(stopped);
+        {'DOWN', MRef, _, _, Reason} ->
+            case Reason of
+                normal ->
+                    ok;
+                _ ->
+                    exit({service_rebalance_failed, Service, Reason})
+            end
     end.
 
 get_service_eject_delay(Service) ->
@@ -515,13 +583,12 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
 
     do_pre_rebalance_config_sync(KeepNodes),
 
-    Timestamps = rebalance_services(KeepNodes),
-
     %% Eject failed nodes first so they don't cause trouble
     FailedNodes = FailedNodesAll -- [node()],
     eject_nodes(FailedNodes),
 
     rebalance_kv(KeepNodes, EjectNodesAll, BucketConfigs, DeltaRecoveryBuckets),
+    rebalance_services(KeepNodes, EjectNodesAll),
 
     ns_config:sync_announcements(),
     ns_config_rep:push(),
@@ -529,8 +596,6 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
 
     %% don't eject ourselves at all here; this will be handled by ns_orchestrator
     EjectNodes = EjectNodesAll -- [node()],
-
-    maybe_delay_eject_nodes(Timestamps, EjectNodesAll),
     eject_nodes(EjectNodes).
 
 make_progress_fun(BucketCompletion, NumBuckets) ->

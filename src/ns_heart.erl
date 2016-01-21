@@ -345,7 +345,10 @@ current_status_slow_inner() ->
                   false
           end, ProcessesStats),
 
+    ServiceStatuses = grab_service_statuses(),
+
     failover_safeness_level:build_local_safeness_info(BucketNames) ++
+        ServiceStatuses ++
         [{local_tasks, Tasks},
          {memory, misc:memory()},
          {system_memory_data, memsup:get_system_memory_data()},
@@ -494,3 +497,18 @@ grab_warmup_tasks() ->
     lists:foldl(fun (Bucket, Acc) ->
                         Acc ++ grab_warmup_task(Bucket)
                 end, [], BucketNames).
+
+grab_service_statuses() ->
+    Services = [S || S <- ns_cluster_membership:topology_aware_services(),
+                     ns_cluster_membership:should_run_service(S, node())],
+    [{{service_status, S}, grab_one_service_status(S)} || S <- Services].
+
+grab_one_service_status(Service) ->
+    try
+        service_agent:get_status(Service, 2000)
+    catch
+        T:E ->
+            ?log_error("Failed to grab service ~p status: ~p",
+                       [Service, {T, E, erlang:get_stacktrace()}]),
+            []
+    end.

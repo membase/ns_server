@@ -19,6 +19,8 @@
 
 -export([cleanup/0]).
 
+-define(INITIAL_REBALANCE_TIMEOUT, ns_config:get_timeout(initial_rebalance, 120000)).
+
 cleanup() ->
     Config = ns_config:get(),
     case ns_config_auth:is_system_provisioned(Config) of
@@ -52,6 +54,14 @@ maybe_init_services(Config) ->
 maybe_init_service(_Config, kv) ->
     ok;
 maybe_init_service(Config, Service) ->
+    case lists:member(Service, ns_cluster_membership:topology_aware_services()) of
+        true ->
+            maybe_init_topology_aware_service(Config, Service);
+        false ->
+            maybe_init_simple_service(Config, Service)
+    end.
+
+maybe_init_simple_service(Config, Service) ->
     case ns_cluster_membership:get_service_map(Config, Service) of
         [] ->
             ns_cluster_membership:set_service_map(Service, [node()]),
@@ -59,4 +69,57 @@ maybe_init_service(Config, Service) ->
             ok;
         _ ->
             ok
+    end.
+
+maybe_init_topology_aware_service(Config, Service) ->
+    case ns_cluster_membership:get_service_map(Config, Service) of
+        [] ->
+            ?log_debug("Doing initial topology change for service `~p'", [Service]),
+            case orchestrate_initial_rebalance(Service) of
+                ok ->
+                    ?log_debug("Initial rebalance for `~p` finished successfully",
+                               [Service]),
+                    ok;
+                Error ->
+                    ?log_error("Initial rebalance for `~p` failed: ~p",
+                               [Service, Error]),
+                    Error
+            end;
+        _ ->
+            ok
+    end.
+
+orchestrate_initial_rebalance(Service) ->
+    ProgressCallback =
+        fun (Progress) ->
+                ?log_debug("Initial rebalance progress for `~p': ~p",
+                           [Service, dict:to_list(Progress)])
+        end,
+
+    KeepNodes = [node()],
+    EjectNodes = [],
+    DeltaNodes = [],
+
+    {Pid, MRef} = service_rebalancer:spawn_monitor_rebalance(
+                    Service, KeepNodes, EjectNodes, DeltaNodes, ProgressCallback),
+    receive
+        {'DOWN', MRef, _, Pid, Reason} ->
+            case Reason of
+                normal ->
+                    ns_cluster_membership:set_service_map(Service, KeepNodes),
+                    ok;
+                _ ->
+                    {error, {initial_rebalance_failed, Service, Reason}}
+            end;
+        {'EXIT', _, Reason} = Exit ->
+            ?log_debug("Received exit message ~p. Terminating initial rebalance",
+                       [Exit]),
+            misc:terminate_and_wait(Reason, Pid),
+            exit(Reason)
+    after
+        ?INITIAL_REBALANCE_TIMEOUT ->
+            ?log_error("Initial rebalance of service `~p` takes too long (timeout ~p)",
+                       [Service, ?INITIAL_REBALANCE_TIMEOUT]),
+            misc:terminate_and_wait(shutdown, Pid),
+            {error, {initial_rebalance_timeout, Service}}
     end.

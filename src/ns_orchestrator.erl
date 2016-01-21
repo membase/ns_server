@@ -186,7 +186,25 @@ needs_rebalance() ->
 service_needs_rebalance(Service, NodesWanted) ->
     ServiceNodes = ns_cluster_membership:service_nodes(NodesWanted, Service),
     ActiveServiceNodes = ns_cluster_membership:service_active_nodes(Service),
-    lists:sort(ServiceNodes) =/= lists:sort(ActiveServiceNodes).
+    lists:sort(ServiceNodes) =/= lists:sort(ActiveServiceNodes) orelse
+        topology_aware_service_needs_rebalance(Service, ActiveServiceNodes).
+
+topology_aware_service_needs_rebalance(Service, ServiceNodes) ->
+    case lists:member(Service, ns_cluster_membership:topology_aware_services()) of
+        true ->
+            %% TODO: consider caching this
+            Statuses = ns_doctor:get_nodes(),
+            lists:any(
+              fun (Node) ->
+                      NodeStatus = misc:dict_get(Node, Statuses, []),
+                      ServiceStatus =
+                          proplists:get_value({service_status, Service},
+                                              NodeStatus, []),
+                      proplists:get_value(needs_rebalance, ServiceStatus, false)
+              end, ServiceNodes);
+        false ->
+            false
+    end.
 
 -spec buckets_need_rebalance([node(), ...]) -> boolean().
 buckets_need_rebalance(NodesWanted) ->
@@ -1016,6 +1034,8 @@ run_cleanup(Item) ->
     end.
 
 do_run_cleanup(services) ->
+    %% we need to be able to terminate spawned subprocesses synchronously
+    process_flag(trap_exit, true),
     service_janitor:cleanup();
 do_run_cleanup({bucket, Bucket}) ->
     ns_janitor:cleanup(Bucket, [consider_stopping_rebalance_status]).

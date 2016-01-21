@@ -167,6 +167,9 @@ child_specs() ->
      {ns_ports_setup, {ns_ports_setup, start, []},
       {permanent, 4}, brutal_kill, worker, []},
 
+     {service_agent_sup, {service_agent_sup, start_link, []},
+      permanent, infinity, supervisor, [service_agent_sup]},
+
      {ns_memcached_sockets_pool, {ns_memcached_sockets_pool, start_link, []},
       permanent, 1000, worker, []},
 
