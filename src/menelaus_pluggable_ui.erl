@@ -205,18 +205,17 @@ node_address(Node) ->
     Addr.
 
 port_for(fts, Node) ->
-    {value, Port} = ns_config:search(ns_config:latest(),
-                                     {node, Node, fts_http_port}),
-    Port;
+    lookup_port(fts_http_port, Node);
 
 port_for(n1ql, Node) ->
-    {value, Port} = ns_config:search(ns_config:latest(),
-                                     {node, Node, query_port}),
-    Port;
+    lookup_port(query_port, Node);
 
 port_for(views, Node) ->
+    lookup_port(capi_port, Node).
+
+lookup_port(Name, Node) ->
     {value, Port} = ns_config:search(ns_config:latest(),
-                                     {node, Node, capi_port}),
+                                     {node, Node, Name}),
     Port.
 
 get_timeout(views, Req) ->
