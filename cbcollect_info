@@ -365,7 +365,7 @@ def make_os_tasks():
         LinuxTask("Raw /proc/vmstat", "cat /proc/vmstat"),
         LinuxTask("Raw /proc/mounts", "cat /proc/mounts"),
         LinuxTask("Raw /proc/partitions", "cat /proc/partitions"),
-        LinuxTask("Raw /proc/diskstats", "cat /proc/diskstats"),
+        LinuxTask("Raw /proc/diskstats", "cat /proc/diskstats; echo ''", num_samples=10, interval=1),
         LinuxTask("Raw /proc/interrupts", "cat /proc/interrupts"),
         LinuxTask("Swap configuration", "free -t"),
         LinuxTask("Swap configuration", "swapon -s"),
