@@ -536,6 +536,7 @@ check_service_quotas([{Service, Quota} | Rest], Config) ->
 
 -define(MIN_BUCKET_QUOTA, 256).
 -define(MIN_INDEX_QUOTA, 256).
+-define(MIN_FTS_QUOTA, 256).
 
 check_service_quota(kv, Quota, Config) ->
     MinMemoryMB0 = ?MIN_BUCKET_QUOTA,
@@ -557,6 +558,15 @@ check_service_quota(index, Quota, _) ->
             ok;
         false ->
             {error, {service_quota_too_low, index, Quota, MinQuota}}
+    end;
+check_service_quota(fts, Quota, _) ->
+    MinQuota = ?MIN_FTS_QUOTA,
+
+    case Quota >= MinQuota of
+        true ->
+            ok;
+        false ->
+            {error, {service_quota_too_low, fts, Quota, MinQuota}}
     end.
 
 %% check that the node has enough memory for the quotas; note that we do not
@@ -587,6 +597,13 @@ get_memory_quota(Config, index) ->
             not_found;
         Quota ->
             {ok, Quota}
+    end;
+get_memory_quota(Config, fts) ->
+    case ns_config:search(Config, fts_memory_quota) of
+        {value, Quota} ->
+            {ok, Quota};
+        false ->
+            not_found
     end.
 
 get_memory_quota(Config, Service, Default) ->
@@ -622,7 +639,9 @@ do_set_memory_quota(index, Quota, Cfg, SetFn) ->
     Txn = index_settings_manager:update_txn([{memoryQuota, Quota}]),
 
     {commit, NewCfg, _} = Txn(Cfg, SetFn),
-    NewCfg.
+    NewCfg;
+do_set_memory_quota(fts, Quota, Cfg, SetFn) ->
+    SetFn(fts_memory_quota, Quota, Cfg).
 
 default_quota(Service, Memory, Max) ->
     {Min, Quota} = do_default_quota(Service, Memory),
@@ -643,10 +662,13 @@ do_default_quota(kv, Memory) ->
     {?MIN_BUCKET_QUOTA, KvQuota};
 do_default_quota(index, Memory) ->
     IndexQuota = (Memory * 3) div 5,
-    {?MIN_INDEX_QUOTA, IndexQuota}.
+    {?MIN_INDEX_QUOTA, IndexQuota};
+do_default_quota(fts, Memory) ->
+    FTSQuota = Memory div 5,
+    {?MIN_FTS_QUOTA, FTSQuota}.
 
 services_ranking() ->
-    [kv, index].
+    [kv, index, fts].
 
 default_quotas(Services) ->
     %% this is actually bogus, because nodes can be heterogeneous; but that's

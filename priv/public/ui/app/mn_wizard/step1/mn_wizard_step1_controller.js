@@ -35,8 +35,11 @@
             isServicesControllsAvailable: true,
             showKVMemoryQuota: true,
             showIndexMemoryQuota: true,
+            showFTSMemoryQuota: true,
             indexMemoryQuota: selfConfig.indexMemoryQuota,
-            minMemorySize: 256
+            ftsMemoryQuota: selfConfig.ftsMemoryQuota,
+            minMemorySize: 256,
+            minFTSMemorySize: 256
           };
           vm.hostname = selfConfig.hostname;
           vm.dbPath = selfConfig.storage.hdd[0].path;

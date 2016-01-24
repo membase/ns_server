@@ -978,14 +978,28 @@ check_memory_size(NodeKVList, Services) ->
             false ->
                 undefined
         end,
+    FTSQuota =
+        case lists:keyfind(<<"ftsMemoryQuota">>, 1, NodeKVList) of
+            {_, V2} ->
+                expect_integer(<<"ftsMemoryQuota">>, V2);
+            false ->
+                undefined
+        end,
 
-    Quotas0 = [{kv, KvQuota}],
-    Quotas =
+    Quotas1 = [{kv, KvQuota}],
+    Quotas0 =
         case IndexQuota of
+            undefined ->
+                Quotas1;
+            _ ->
+                [{index, IndexQuota} | Quotas1]
+        end,
+    Quotas =
+        case FTSQuota of
             undefined ->
                 Quotas0;
             _ ->
-                [{index, IndexQuota} | Quotas0]
+                [{fts, FTSQuota} | Quotas0]
         end,
 
     case ns_storage_conf:check_this_node_quotas(Services, Quotas) of

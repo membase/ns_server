@@ -680,7 +680,7 @@ body.init_resources #init_resources_dialog {background:none; background-color:#e
 .init_cluster_form .login-credentials { margin-right: 85px;}
 .init_block .error-container {font-size: 11px; color: #ec5223!important;}
 .init_block .init_cluster_form .warning {margin: 0; padding-bottom: 10px;}
-.start_new_cluster_block label {width: 129px; display: inline-block;}
+.start_new_cluster_block label {width: 149px; display: inline-block;}
 .start_new_cluster_block input[type="number"] {width: 65px;}
 .login-credentials label {width: 100px; display: inline-block;}
 .wizard_services {display: inline;}

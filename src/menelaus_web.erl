@@ -2147,14 +2147,13 @@ get_cluster_name() ->
 get_cluster_name(Config) ->
     ns_config:search(Config, cluster_name, "").
 
-validate_pool_settings_post(Config, Is40, Args) ->
+validate_pool_settings_post(Config, Is40, IsWatson, Args) ->
     R0 = validate_has_params({Args, [], []}),
     R1 = validate_any_value(clusterName, R0),
-
-    R2 = validate_memory_quota(Config, Is40, R1),
+    R2 = validate_memory_quota(Config, Is40, IsWatson, R1),
     validate_unsupported_params(R2).
 
-validate_memory_quota(Config, Is40, R0) ->
+validate_memory_quota(Config, Is40, IsWatson, R0) ->
     R1 = validate_integer(memoryQuota, R0),
     R2 = case Is40 of
              true ->
@@ -2162,37 +2161,47 @@ validate_memory_quota(Config, Is40, R0) ->
              false ->
                  R1
          end,
+    R3 = case IsWatson of
+             true ->
+                 validate_integer(ftsMemoryQuota, R2);
+             false ->
+                 R2
+         end,
 
-    Values = menelaus_util:get_values(R2),
+    Values = menelaus_util:get_values(R3),
 
     NewKvQuota = proplists:get_value(memoryQuota, Values),
     NewIndexQuota = proplists:get_value(indexMemoryQuota, Values),
+    NewFTSQuota = proplists:get_value(ftsMemoryQuota, Values),
 
-    case NewKvQuota =/= undefined orelse NewIndexQuota =/= undefined of
+    case NewKvQuota =/= undefined orelse NewIndexQuota =/= undefined orelse NewFTSQuota =/= undefined of
         true ->
             {ok, KvQuota} = ns_storage_conf:get_memory_quota(Config, kv),
             {ok, IndexQuota} = ns_storage_conf:get_memory_quota(Config, index),
+            {ok, FTSQuota} = ns_storage_conf:get_memory_quota(Config, fts),
 
             do_validate_memory_quota(Config,
-                                     KvQuota, IndexQuota,
-                                     NewKvQuota, NewIndexQuota, R2);
+                                     KvQuota, IndexQuota, FTSQuota,
+                                     NewKvQuota, NewIndexQuota, NewFTSQuota, R3);
         false ->
-            R2
+            R3
     end.
 
 do_validate_memory_quota(Config,
-                         KvQuota, IndexQuota, NewKvQuota0, NewIndexQuota0, R0) ->
+                         KvQuota, IndexQuota, FTSQuota,
+                         NewKvQuota0, NewIndexQuota0, NewFTSQuota0, R0) ->
     NewKvQuota = misc:default_if_undefined(NewKvQuota0, KvQuota),
     NewIndexQuota = misc:default_if_undefined(NewIndexQuota0, IndexQuota),
+    NewFTSQuota = misc:default_if_undefined(NewFTSQuota0, FTSQuota),
 
-    case {NewKvQuota, NewIndexQuota} =:= {KvQuota, IndexQuota} of
+    case {NewKvQuota, NewIndexQuota, NewFTSQuota} =:= {KvQuota, IndexQuota, FTSQuota} of
         true ->
             R0;
         false ->
-            do_validate_memory_quota_tail(Config, NewKvQuota, NewIndexQuota, R0)
+            do_validate_memory_quota_tail(Config, NewKvQuota, NewIndexQuota, NewFTSQuota, R0)
     end.
 
-do_validate_memory_quota_tail(Config, KvQuota, IndexQuota, R0) ->
+do_validate_memory_quota_tail(Config, KvQuota, IndexQuota, FTSQuota, R0) ->
     Nodes = ns_node_disco:nodes_wanted(Config),
     {ok, NodeStatuses} = ns_doctor:wait_statuses(Nodes, 3 * ?HEART_BEAT_PERIOD),
     NodeInfos =
@@ -2205,7 +2214,8 @@ do_validate_memory_quota_tail(Config, KvQuota, IndexQuota, R0) ->
           end, Nodes),
 
     Quotas = [{kv, KvQuota},
-              {index, IndexQuota}],
+              {index, IndexQuota},
+              {fts, FTSQuota}],
 
     case ns_storage_conf:check_quotas(NodeInfos, Config, Quotas) of
         ok ->
@@ -2226,7 +2236,9 @@ quota_error_msg({service_quota_too_low, Service, Quota, MinAllowed}) ->
                 D = " (current total buckets quota, or at least 256MB)",
                 {memoryQuota, D};
             index ->
-                {indexMemoryQuota, ""}
+                {indexMemoryQuota, ""};
+            fts ->
+                {ftsMemoryQuota, ""}
         end,
 
     Msg = io_lib:format("The ~p service quota (~bMB) cannot be less than ~bMB~s.",
@@ -2248,12 +2260,13 @@ do_handle_pool_settings_post_loop(Req, RetriesLeft) ->
 
 do_handle_pool_settings_post(Req) ->
     Is40 = cluster_compat_mode:is_cluster_40(),
+    IsWatson = cluster_compat_mode:is_cluster_watson(),
     Config = ns_config:get(),
 
     execute_if_validated(
       fun (Values) ->
               do_handle_pool_settings_post_body(Req, Config, Is40, Values)
-      end, Req, validate_pool_settings_post(Config, Is40, Req:parse_post())).
+      end, Req, validate_pool_settings_post(Config, Is40, IsWatson, Req:parse_post())).
 
 do_handle_pool_settings_post_body(Req, Config, Is40, Values) ->
     case lists:keyfind(quotas, 1, Values) of
@@ -2288,9 +2301,10 @@ do_audit_cluster_settings(Req) ->
     %% this is obviously raceful, but since it's just audit...
     {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
     {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
+    {ok, FTSQuota} = ns_storage_conf:get_memory_quota(fts),
     ClusterName = get_cluster_name(),
 
-    ns_audit:cluster_settings(Req, KvQuota, IndexQuota, ClusterName).
+    ns_audit:cluster_settings(Req, KvQuota, IndexQuota, FTSQuota, ClusterName).
 
 handle_settings_web(Req) ->
     reply_json(Req, build_settings_web()).
@@ -2715,13 +2729,22 @@ build_memory_quota_info() ->
 build_memory_quota_info(Config) ->
     {ok, KvQuota} = ns_storage_conf:get_memory_quota(Config, kv),
     Props = [{memoryQuota, KvQuota}],
-    case cluster_compat_mode:is_cluster_40() of
+    Props1 = case cluster_compat_mode:is_cluster_40() of
         true ->
             {ok, IndexQuota} = ns_storage_conf:get_memory_quota(Config, index),
             [{indexMemoryQuota, IndexQuota} | Props];
         false ->
             Props
-    end.
+    end,
+    Props2 = case cluster_compat_mode:is_cluster_watson() of
+        true ->
+            {ok, FTSQuota} = ns_storage_conf:get_memory_quota(Config, fts),
+            [{ftsMemoryQuota, FTSQuota} | Props1];
+        false ->
+            Props1
+    end,
+    Props2.
+
 
 % S = [{ssd, []},
 %      {hdd, [[{path, /some/nice/disk/path}, {quotaMb, 1234}, {state, ok}],
@@ -2857,9 +2880,11 @@ validate_setup_services_post(Req) ->
 setup_services_check_quota(Services) ->
     {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
     {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
+    {ok, FTSQuota} = ns_storage_conf:get_memory_quota(fts),
 
     Quotas = [{kv, KvQuota},
-              {index, IndexQuota}],
+              {index, IndexQuota},
+              {fts, FTSQuota}],
 
     case ns_storage_conf:check_this_node_quotas(Services, Quotas) of
         ok ->

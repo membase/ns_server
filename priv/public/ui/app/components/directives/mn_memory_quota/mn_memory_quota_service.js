@@ -26,10 +26,13 @@
         showKVMemoryQuota: showKVMemoryQuota,
         roAdmin: false,
         showIndexMemoryQuota: true,
+        showFTSMemoryQuota: true,
         minMemorySize: Math.max(256, Math.floor(ram.quotaUsedPerNode / IEC.Mi)),
+        minFTSMemorySize: 256,
         totalMemorySize: false,
         memoryQuota: Math.floor(ram.quotaTotalPerNode/IEC.Mi),
         indexMemoryQuota: currentPool.indexMemoryQuota || 256,
+        ftsMemoryQuota: currentPool.ftsMemoryQuota || 256,
         isServicesControllsAvailable: false
       };
       if (calculateMaxMemory) {
