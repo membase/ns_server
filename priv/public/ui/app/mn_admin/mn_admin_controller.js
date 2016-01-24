@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry, mnPoorMansAlertsService, mnLostConnectionService) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -22,6 +22,8 @@
     vm.enableInternalSettings = $state.params.enableInternalSettings;
     vm.runInternalSettingsDialog = runInternalSettingsDialog;
     vm.lostConnState = mnLostConnectionService.getState();
+
+    $rootScope.rbac = mnPermissions.export;
 
     activate();
 
@@ -78,6 +80,10 @@
 
         if (previous && previous.tasks.uri != resp.tasks.uri) {
           $rootScope.$broadcast("taskUriChanged");
+        }
+
+        if (previous && previous.checkPermissionsURI != resp.checkPermissionsURI) {
+          mnPermissions.check();
         }
       })
       .cycle();

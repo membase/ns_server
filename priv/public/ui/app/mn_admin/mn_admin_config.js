@@ -27,7 +27,8 @@
     'mnLostConnection',
     'ui.router',
     'ui.bootstrap',
-    'mnPoorMansAlerts'
+    'mnPoorMansAlerts',
+    'mnPermissions'
   ]).config(mnAdminConfig);
 
   function mnAdminConfig($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider, mnHelperProvider) {
@@ -52,6 +53,9 @@
           },
           pools: function (mnPools) {
             return mnPools.get();
+          },
+          permissions: function (mnPermissions) {
+            return mnPermissions.check();
           }
         },
         views: {
