@@ -93,13 +93,11 @@
 
               <a
                 class="list_button casper_views_delete_popup"
-                ng-hide="viewsListCtl.mnPoolDefault.value.isROAdminCreds"
                 ng-click="viewsListCtl.showDdocDeletionDialog(row.doc)"><span>Delete</span></a>
 
               <button
                 class="list_button"
                 ng-class="{dynamic_disabled: row.disableCompact}"
-                ng-hide="viewsListCtl.mnPoolDefault.value.isROAdminCreds"
                 ng-click="!row.disableCompact && viewsListCtl.registerCompactionAsTriggeredAndPost(row)"><span>Compact</span></button>
 
               <div
@@ -120,8 +118,8 @@
                 ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">{{key}}</a>
             </td>
             <td>
-              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))"><span>{{(row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds) ? 'Edit' : 'Show' }}</span></a>
+              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
+              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))"><span>{{row.isDevModeDoc ? 'Edit' : 'Show' }}</span></a>
             </td>
           </tr>
           <tr ng-repeat-end="" ng-if="row.containsSpatials" ng-repeat="(key, spatial) in row.doc.json.spatial">
@@ -129,8 +127,8 @@
               <a ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">[Spatial] {{key}}</a>
             </td>
             <td>
-              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))"><span>{{(row.isDevModeDoc && !viewsListCtl.mnPoolDefault.value.isROAdminCreds) ? 'Edit' : 'Show' }}</span></a>
+              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
+              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))"><span>{{row.isDevModeDoc ? 'Edit' : 'Show' }}</span></a>
             </td>
           </tr>
         </tbody>

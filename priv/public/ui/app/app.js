@@ -42,9 +42,8 @@
         }
         mnPools.get().then(function (pools) {
           var required = (toState.data && toState.data.required) || {};
-          var isOnlyForAdmin = (required.admin && pools.isROAdminCreds);
           var isOnlyForEnterprise = (required.enterprise && !pools.isEnterprise);
-          if (isOnlyForAdmin || isOnlyForEnterprise) {
+          if (isOnlyForEnterprise) {
             event.preventDefault();
             return $state.go('app.admin.overview');
           }

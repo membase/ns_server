@@ -19,12 +19,6 @@
     function mnGroupsController($scope, $uibModal, mnGroupsService, mnPromiseHelper, mnHelper, mnPoller, jQuery, mnMakeSafeForCSSFilter, mnNaturalSortingFilter, $window, mnAlertsService, mnPoolDefault) {
       var vm = this;
 
-      vm.mnPoolDefault = mnPoolDefault.latestValue();
-
-      if (vm.mnPoolDefault.value.isROAdminCreds) {
-        return;
-      }
-
       vm.createGroup = createGroup;
       vm.deleteGroup = deleteGroup;
       vm.applyChanges = applyChanges;

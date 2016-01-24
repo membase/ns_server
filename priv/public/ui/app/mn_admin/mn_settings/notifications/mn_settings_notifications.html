@@ -22,8 +22,7 @@
         <input
           type="checkbox"
           id="notification-updates"
-          ng-model="settingsNotificationsCtl.updates.enabled"
-          ng-disabled="settingsNotificationsCtl.mnPoolDefault.value.isROAdminCreds">
+          ng-model="settingsNotificationsCtl.updates.enabled">
         <span>Enable software update notifications.</span>
         <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
           <span class="tooltip_msg text_11" style="width:310px;"><span>
@@ -39,8 +38,7 @@
     <div class="save_cancel when-roadmin-hide-me">
       <button
         class="save_button float_right"
-        type="submit"
-        ng-hide="settingsNotificationsCtl.mnPoolDefault.value.isROAdminCreds">Save</button>
+        type="submit">Save</button>
     </div>
   </form>
 </div>

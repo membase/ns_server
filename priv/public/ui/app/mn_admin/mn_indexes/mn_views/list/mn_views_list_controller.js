@@ -5,7 +5,7 @@
     .module("mnViews")
     .controller("mnViewsListController", mnViewsListController);
 
-  function mnViewsListController($scope, $rootScope, $state, $uibModal, mnPoolDefault, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoller) {
+  function mnViewsListController($scope, $rootScope, $state, $uibModal, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoller) {
     var vm = this;
 
     vm.showCreationDialog = showCreationDialog;
@@ -22,7 +22,6 @@
     vm.showViewCreationButtons = showViewCreationButtons;
     vm.showMatchingWarning = showMatchingWarning;
     vm.getInitialViewsFilterParams = getInitialViewsFilterParams;
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.isDevelopmentViews = $state.params.type === 'development';
 
     activate();
@@ -43,21 +42,21 @@
       return row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)
     }
     function showViewCreationButtons() {
-      return vm.state && $state.params.viewsBucket && vm.isDevelopmentViews && !vm.state.ddocsAreInFactMissing && !vm.mnPoolDefault.value.isROAdminCreds;
+      return vm.state && $state.params.viewsBucket && vm.isDevelopmentViews && !vm.state.ddocsAreInFactMissing;
     }
     function showPublishButton(row) {
-      return vm.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)) && !vm.mnPoolDefault.value.isROAdminCreds;
+      return vm.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views));
     }
     function isEmptyView(row) {
       return (!row.doc.json.spatial && !row.doc.json.views || _.isEmpty(row.doc.json.spatial) && _.isEmpty(row.doc.json.views));
     }
     function showCreationButton(row) {
       return vm.isDevelopmentViews && (isEmptyView(row) ||
-        (row.doc.json.views && !_.isEmpty(row.doc.json.views) && (!row.doc.json.spatial || _.isEmpty(row.doc.json.spatial)))) && !vm.mnPoolDefault.value.isROAdminCreds;
+        (row.doc.json.views && !_.isEmpty(row.doc.json.views) && (!row.doc.json.spatial || _.isEmpty(row.doc.json.spatial))));
     }
     function showSpatialButton(row) {
       return vm.isDevelopmentViews && (isEmptyView(row) ||
-        (row.doc.json.spatial && !_.isEmpty(row.doc.json.spatial) && (!row.doc.json.views || _.isEmpty(row.doc.json.views)))) && !vm.mnPoolDefault.value.isROAdminCreds;
+        (row.doc.json.spatial && !_.isEmpty(row.doc.json.spatial) && (!row.doc.json.views || _.isEmpty(row.doc.json.views))));
     }
 
     function showMapreduceCreationDialog() {

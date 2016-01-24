@@ -17,15 +17,10 @@
     ])
     .controller("mnDocumentsController", mnDocumentsController);
 
-  function mnDocumentsController($scope, mnPoolDefault, mnDocumentsListService, mnPoller, $state) {
+  function mnDocumentsController($scope, mnDocumentsListService, mnPoller, $state) {
     var vm = this;
 
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.onSelectBucketName = onSelectBucketName;
-
-    if (vm.mnPoolDefault.value.isROAdminCreds) {
-      return;
-    }
 
     activate();
 

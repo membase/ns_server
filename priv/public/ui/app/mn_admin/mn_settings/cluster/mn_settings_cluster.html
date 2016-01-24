@@ -15,8 +15,7 @@
         type="text"
         name="clusterName"
         maxlength="256"
-        ng-model="settingsClusterCtl.state.clusterName"
-        ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds">
+        ng-model="settingsClusterCtl.state.clusterName">
       <span>(0 — 256 chars)</span>
     </div>
     <div class="certificate_section" ng-show="settingsClusterCtl.state.certificate">
@@ -36,16 +35,13 @@
           <textarea
             id="js-about-cert-area"
             readonly="readonly"
-            ng-model="settingsClusterCtl.state.certificate"
-            ng-disbled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"></textarea>
+            ng-model="settingsClusterCtl.state.certificate"></textarea>
           <div></div>
           <div
             ng-click="settingsClusterCtl.regenerateCertificate();"
-            class="edit_btn when-roadmin-avoid-me"
-            ng-hide="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds">Regenerate</div>
+            class="edit_btn when-roadmin-avoid-me">Regenerate</div>
           <span
-            style="color:red;display:inline;margin-left:5px;font-size:11px;"
-            ng-hide="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds">* Clicking 'Regenerate' will immediately generate new certificate for the cluster</span>
+            style="color:red;display:inline;margin-left:5px;font-size:11px;">* Clicking 'Regenerate' will immediately generate new certificate for the cluster</span>
         </div>
       </div>
     </div>
@@ -61,7 +57,6 @@
         <input
           type="number"
           ng-model="settingsClusterCtl.state.indexSettings.indexerThreads"
-          ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"
           name="indexerThreads"
           id="index_settings_thread">
         <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
@@ -80,7 +75,6 @@
         <input
           type="number"
           ng-model="settingsClusterCtl.state.indexSettings.memorySnapshotInterval"
-          ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"
           name="memorySnapshotInterval"
           id="in_memory_snapshot">
         <span>(ms)</span>
@@ -101,7 +95,6 @@
         <input
           type="number"
           ng-model="settingsClusterCtl.state.indexSettings.stableSnapshotInterval"
-          ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"
           name="stableSnapshotInterval"
           id="in_memory_snapshot">
         <span>(ms)</span>
@@ -121,7 +114,6 @@
         <input
           type="number"
           ng-model="settingsClusterCtl.state.indexSettings.maxRollbackPoints"
-          ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"
           name="maxRollbackPoints"
           id="in_memory_snapshot">
         <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
@@ -139,7 +131,6 @@
         <label for="indexer_log_level">Indexer Log Level:</label>
         <select
           ng-model="settingsClusterCtl.state.indexSettings.logLevel"
-          ng-disabled="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds"
           name="logLevel"
           id="indexer_log_level">
           <option value="silent">Silent</option>
@@ -160,7 +151,7 @@
       </div>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="submit" ng-hide="settingsClusterCtl.mnPoolDefault.value.isROAdminCreds" ng-disabled="!!settingsClusterCtl.indexSettingsErrors || !!settingsClusterCtl.memoryQuotaErrors">
+      <button class="save_button float_right" type="submit" ng-disabled="!!settingsClusterCtl.indexSettingsErrors || !!settingsClusterCtl.memoryQuotaErrors">
         Save
       </button>
     </div>

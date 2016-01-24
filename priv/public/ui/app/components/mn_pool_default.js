@@ -39,7 +39,6 @@
         poolDefault.rebalancing = poolDefault.rebalanceStatus !== 'none';
         poolDefault.isGroupsAvailable = !!(pools.isEnterprise && poolDefault.serverGroupsUri);
         poolDefault.isEnterprise = pools.isEnterprise;
-        poolDefault.isROAdminCreds = pools.isROAdminCreds;
         poolDefault.thisNode = _.detect(poolDefault.nodes, function (n) {
           return n.thisNode;
         });

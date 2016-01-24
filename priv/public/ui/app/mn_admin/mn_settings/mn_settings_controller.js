@@ -5,8 +5,7 @@
     .module("mnSettings")
     .controller("mnSettingsController", mnSettingsController);
 
-  function mnSettingsController($scope, poolDefault) {
+  function mnSettingsController($scope) {
     var vm = this;
-    vm.poolDefault = poolDefault;
   }
 })();

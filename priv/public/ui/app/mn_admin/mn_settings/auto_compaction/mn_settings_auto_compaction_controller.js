@@ -5,15 +5,13 @@
     'mnSettingsAutoCompactionService',
     'mnHelper',
     'mnPromiseHelper',
-    'mnAutoCompactionForm',
-    'mnPoolDefault'
+    'mnAutoCompactionForm'
   ]).controller('mnSettingsAutoCompactionController', mnSettingsAutoCompactionController);
 
-  function mnSettingsAutoCompactionController($scope, mnHelper, mnPromiseHelper, mnSettingsAutoCompactionService, mnPoolDefault) {
+  function mnSettingsAutoCompactionController($scope, mnHelper, mnPromiseHelper, mnSettingsAutoCompactionService) {
     var vm = this;
 
     vm.submit = submit;
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
 
     activate();
 

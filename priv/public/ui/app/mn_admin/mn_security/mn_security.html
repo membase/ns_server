@@ -5,13 +5,12 @@
         ui-sref="app.admin.security.externalRoles"
         ui-sref-active="selected">External User/Roles</a>
     </li>
-    <li
-      ng-hide="securityCtl.poolDefault.isROAdminCreds">
-        <a
-          id="internal_roles"
-          class="casper_internal_roles"
-          ui-sref="app.admin.security.internalRoles"
-          ui-sref-active="selected">Internal User/Roles</a>
+    <li>
+      <a
+        id="internal_roles"
+        class="casper_internal_roles"
+        ui-sref="app.admin.security.internalRoles"
+        ui-sref-active="selected">Internal User/Roles</a>
     </li>
     <li>
       <a
@@ -19,8 +18,7 @@
         ui-sref-active="selected">Certificates</a>
     </li>
     <li
-      class="when-enterprise only-when-40"
-      ng-show="securityCtl.poolDefault.isEnterprise">
+      class="when-enterprise only-when-40">
       <a
         id="security_audit"
         class="casper_security_audit"

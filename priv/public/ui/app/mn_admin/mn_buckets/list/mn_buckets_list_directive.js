@@ -5,7 +5,7 @@
     .module('mnBuckets')
     .directive('mnBucketsList', mnBucketsList);
 
-  function mnBucketsList(mnHelper, mnPoolDefault) {
+  function mnBucketsList(mnHelper) {
     var mnBucketsListDirective = {
       restrict: 'A',
       scope: {
@@ -22,7 +22,6 @@
 
     function controller($scope) {
       var vm = this;
-      vm.mnPoolDefault = mnPoolDefault.latestValue();
       mnHelper.initializeDetailsHashObserver(vm, 'openedBucket', 'app.admin.buckets');
     }
   }

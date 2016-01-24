@@ -5,12 +5,10 @@
     'mnLogsService',
     'mnPromiseHelper',
     'mnPoll',
-    'mnPoolDefault',
     'mnSpinner'
   ]).controller('mnLogsController', mnLogsController);
 
-  function mnLogsController($scope, mnHelper, mnLogsService, mnPoolDefault) {
+  function mnLogsController($scope, mnHelper, mnLogsService) {
     var vm = this;
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
   }
 })();

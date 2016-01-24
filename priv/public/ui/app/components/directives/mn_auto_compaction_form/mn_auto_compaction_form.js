@@ -2,12 +2,10 @@
   "use strict";
 
   angular
-    .module('mnAutoCompactionForm', [
-      'mnPoolDefault'
-    ])
+    .module('mnAutoCompactionForm', [])
     .directive('mnAutoCompactionForm', mnAutoCompactionFormDirective);
 
-  function mnAutoCompactionFormDirective($http, mnPoolDefault) {
+  function mnAutoCompactionFormDirective($http) {
     var mnAutoCompactionForm = {
       restrict: 'A',
       scope: {
@@ -23,10 +21,6 @@
     return mnAutoCompactionForm;
 
     function controller($scope) {
-      $scope.mnPoolDefault = mnPoolDefault.latestValue();
-      if ($scope.mnPoolDefault.value.isROAdminCreds) {
-        return;
-      }
       $scope.$watch('validationErrors', function (errors) {
         angular.forEach($scope.validationErrors, function (value, key) {
           $scope.validationErrors[key.replace('[', '_').replace(']', '_')] = value;

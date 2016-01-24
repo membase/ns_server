@@ -32,7 +32,7 @@
     activate();
 
     function isCreateNewDataBucketDisabled() {
-      return !vm.state || poolDefault.value.isROAdminCreds || areThereCreationWarnings();
+      return !vm.state || areThereCreationWarnings();
     }
     function isBucketCreationWarning() {
       return poolDefault.value.rebalancing;

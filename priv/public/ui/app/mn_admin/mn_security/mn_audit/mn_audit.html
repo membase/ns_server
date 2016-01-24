@@ -16,8 +16,7 @@
             <span>Enable:</span>
             <input
               type="checkbox"
-              ng-model="auditCtl.state.auditdEnabled"
-              ng-disabled="auditCtl.mnPoolDefault.value.isROAdminCreds">
+              ng-model="auditCtl.state.auditdEnabled">
           </label>
         </div>
         <div class="row">
@@ -59,8 +58,7 @@
       <div class="save_cancel">
         <button
           ng-disabled="!!auditCtl.errors || auditForm.$pristine"
-          class="save_button float_right"
-          ng-hide="auditCtl.mnPoolDefault.value.isROAdminCreds">Save</button>
+          class="save_button float_right">Save</button>
       </div>
     </form>
   </div>

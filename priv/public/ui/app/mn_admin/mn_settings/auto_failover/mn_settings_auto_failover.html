@@ -6,8 +6,7 @@
         <input
           type="checkbox"
           id="auto_failover_enabled"
-          ng-model="settingsAutoFailoverCtl.state.enabled"
-          ng-disabled="settingsAutoFailoverCtl.mnPoolDefault.value.isROAdminCreds">
+          ng-model="settingsAutoFailoverCtl.state.enabled">
         <span>Enable auto-failover</span>
       </label>
       <p>
@@ -34,14 +33,13 @@
         A server was automatically failed over
         <a
           class="auto_failover_count_reset edit_btn when-roadmin-hide-me"
-          ng-hide="settingsAutoFailoverCtl.mnPoolDefault.value.isROAdminCreds"
           ng-click="adminCtl.resetAutoFailOverCount()" mn-spinner="adminCtl.resetQuotaLoading">
           <span>Reset Quota</span>
         </a>
       </div>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="submit" ng-hide="settingsAutoFailoverCtl.mnPoolDefault.value.isROAdminCreds">Save</button>
+      <button class="save_button float_right" type="submit">Save</button>
     </div>
   </form>
 </div>

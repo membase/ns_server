@@ -4,12 +4,11 @@
   angular
     .module('mnMemoryQuota', [
       'mnServices',
-      'mnFocus',
-      'mnPoolDefault'
+      'mnFocus'
     ])
     .directive('mnMemoryQuota', mnMemoryQuotaDirective);
 
-   function mnMemoryQuotaDirective(mnPoolDefault) {
+   function mnMemoryQuotaDirective() {
     var mnMemoryQuota = {
       restrict: 'A',
       scope: {
@@ -26,7 +25,6 @@
       //hack for avoiding access to $parent scope from child scope via propery "$parent"
       //should be removed after implementation of Controller As syntax
       $scope.mnMemoryQuotaController = $scope;
-      $scope.mnPoolDefault = mnPoolDefault.latestValue();
     }
   }
 })();

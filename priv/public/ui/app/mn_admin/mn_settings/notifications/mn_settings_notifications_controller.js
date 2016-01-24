@@ -4,16 +4,14 @@
   angular
     .module('mnSettingsNotifications', [
       'mnSettingsNotificationsService',
-      'mnPromiseHelper',
-      'mnPoolDefault'
+      'mnPromiseHelper'
     ])
     .controller('mnSettingsNotificationsController', mnSettingsNotificationsController);
 
-  function mnSettingsNotificationsController($scope, mnPromiseHelper, mnSettingsNotificationsService, mnPoolDefault, pools) {
+  function mnSettingsNotificationsController($scope, mnPromiseHelper, mnSettingsNotificationsService, pools) {
     var vm = this;
 
     vm.submit = submit;
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.implementationVersion = pools.implementationVersion;
 
     activate();

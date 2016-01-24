@@ -21,12 +21,7 @@
       .state('app.admin.security.internalRoles', {
         url: '/internalRoles',
         controller: 'mnInternalRolesController as internalRolesCtl',
-        templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/mn_internal_roles.html',
-        data: {
-          required: {
-            admin: true
-          }
-        }
+        templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/mn_internal_roles.html'
       })
       .state('app.admin.security.ldap', {
         url: '/ldap',

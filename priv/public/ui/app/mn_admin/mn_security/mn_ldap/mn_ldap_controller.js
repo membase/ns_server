@@ -9,7 +9,7 @@
     .controller('mnLdapController', mnLdapController)
     .filter("formatRoleMessage", formatRoleMessageFilter);
 
-    function mnLdapController($scope, mnLdapService, mnPromiseHelper, mnPoolDefault) {
+    function mnLdapController($scope, mnLdapService, mnPromiseHelper) {
       var vm = this;
 
       vm.test = {};
@@ -21,27 +21,26 @@
       vm.validate = validate;
       vm.save = save;
       vm.isUserFormDisabled = isUserFormDisabled;
-      vm.mnPoolDefault = mnPoolDefault.latestValue();
 
       activate();
 
       function isValidateButtonDisabled() {
-        return !vm.test.username || !vm.test.password || !vm.state || !vm.state.enabled || vm.mnPoolDefault.value.isROAdminCreds;
+        return !vm.test.username || !vm.test.password || !vm.state || !vm.state.enabled;
       }
       function isReadOnlyAdminsDisabled() {
-        return !vm.state || !vm.state.enabled || vm.state["default"] === "roAdmins" || vm.mnPoolDefault.value.isROAdminCreds;
+        return !vm.state || !vm.state.enabled || vm.state["default"] === "roAdmins";
       }
       function isFullAdminsDisabled() {
-        return !vm.state || !vm.state.enabled || vm.state["default"] === "admins" || vm.mnPoolDefault.value.isROAdminCreds;
+        return !vm.state || !vm.state.enabled || vm.state["default"] === "admins";
       }
       function isRadioDefaultDisabled() {
-        return !vm.state || !vm.state.enabled || vm.mnPoolDefault.value.isROAdminCreds;
+        return !vm.state || !vm.state.enabled;
       }
       function isRecognizedNotViaLdap() {
         return (vm.validateResult && vm.validateResult.role !== 'none' && vm.validateResult.source === 'builtin');
       }
       function isUserFormDisabled() {
-        return (vm.state && !vm.state.enabled) || vm.mnPoolDefault.value.isROAdminCreds;
+        return (vm.state && !vm.state.enabled);
       }
       function validate() {
         if (vm.validateSpinner) {

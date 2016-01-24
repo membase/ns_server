@@ -65,19 +65,19 @@
         .reloadOnScopeEvent("reloadServersPoller", vm);
     }
     function isServerGroupsDisabled() {
-      return !vm.state || !vm.state.isGroupsAvailable || vm.mnPoolDefault.value.isROAdminCreds || !vm.mnPoolDefault.value.isEnterprise;
+      return !vm.state || !vm.state.isGroupsAvailable || !vm.mnPoolDefault.value.isEnterprise;
     }
     function isAddServerDisabled() {
-      return !vm.state || vm.state.rebalancing || vm.mnPoolDefault.value.isROAdminCreds;
+      return !vm.state || vm.state.rebalancing;
     }
     function isRebalanceDisabled() {
-      return !vm.state || !vm.state.mayRebalance || vm.mnPoolDefault.value.isROAdminCreds;
+      return !vm.state || !vm.state.mayRebalance;
     }
     function stopRebalanceDisabled() {
-      return !vm.state || !vm.state.tasks.inRebalance || vm.mnPoolDefault.value.isROAdminCreds;
+      return !vm.state || !vm.state.tasks.inRebalance;
     }
     function stopRecoveryDisabled() {
-      return !vm.state || !vm.state.tasks.inRecoveryMode || vm.mnPoolDefault.value.isROAdminCreds;
+      return !vm.state || !vm.state.tasks.inRecoveryMode;
     }
     function addServer() {
       $uibModal.open({

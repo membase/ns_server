@@ -6,12 +6,11 @@
       "mnInternalRolesService",
       "mnPromiseHelper",
       "mnHelper",
-      "mnSpinner",
-      "mnPoolDefault"
+      "mnSpinner"
     ])
     .controller("mnInternalRolesController", mnInternalRolesController);
 
-  function mnInternalRolesController($scope, $uibModal, mnInternalRolesService, mnPromiseHelper, mnHelper, mnPoolDefault) {
+  function mnInternalRolesController($scope, $uibModal, mnInternalRolesService, mnPromiseHelper, mnHelper) {
     var vm = this;
 
     vm.creds = {};
@@ -19,11 +18,6 @@
     vm.createUser = createUser;
     vm.deleteUser = deleteUser;
     vm.resetUserPassword = resetUserPassword;
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
-
-    if (vm.mnPoolDefault.value.isROAdminCreds) {
-      return;
-    }
 
     activate();
 

@@ -7,20 +7,16 @@
 
   function mnLogsCollectInfoController($scope, mnHelper, mnPromiseHelper, mnPoolDefault, mnLogsCollectInfoService, mnPoller, $state, $uibModal) {
     var vm = this;
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.stopCollection = stopCollection;
     vm.submit = submit;
 
     activate();
 
-    if (vm.mnPoolDefault.value.isROAdminCreds) {
-      return;
-    }
     vm.collect = {
       nodes: {},
       from: '*'
     };
-    if (vm.mnPoolDefault.value.isEnterprise) {
+    if (mnPoolDefault.latestValue().value.isEnterprise) {
       vm.collect.uploadHost = 's3.amazonaws.com/cb-customers';
     }
 

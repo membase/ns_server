@@ -51,7 +51,7 @@
       return vm.state.tasks.inRebalance && vm.state.tasks.tasksRebalance.status === 'running';
     }
     function isReAddPossible(node) {
-      return isNodeInactiveFaied(node) && !isNodeUnhealthy(node) && !vm.mnPoolDefault.value.isROAdminCreds;
+      return isNodeInactiveFaied(node) && !isNodeUnhealthy(node);
     }
     function showPendingRecoveryControls(node) {
       return !vm.state.tasks.inRebalance && isNodeInactiveAdded(node) && node.recoveryType !== 'none'

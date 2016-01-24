@@ -4,14 +4,12 @@
   angular.module('mnAudit', [
     'mnAuditService',
     'mnHelper',
-    'mnPromiseHelper',
-    'mnPoolDefault'
+    'mnPromiseHelper'
   ]).controller('mnAuditController', mnAuditController);
 
-  function mnAuditController($scope, mnAuditService, mnPromiseHelper, mnHelper, mnPoolDefault) {
+  function mnAuditController($scope, mnAuditService, mnPromiseHelper, mnHelper) {
     var vm = this;
 
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.submit = submit;
 
     activate();
@@ -20,9 +18,7 @@
       mnPromiseHelper(vm, mnAuditService.getAuditSettings())
         .applyToScope("state");
 
-      if (!vm.mnPoolDefault.value.isROAdminCreds) {
-        $scope.$watch('auditCtl.state', watchOnState, true);
-      }
+      $scope.$watch('auditCtl.state', watchOnState, true);
     }
     function watchOnState(state) {
       if (!state) {

@@ -10,7 +10,7 @@
         <span
           id="edit-internal-settings-link"
           class="when-roadmin-avoid-me"
-          ng-hide="adminCtl.poolDefault.isROAdminCreds || !adminCtl.enableInternalSettings">
+          ng-hide="!adminCtl.enableInternalSettings">
           <a ng-click="adminCtl.runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b>
         </span>
         <a href="/classic-index.html" target="_self">

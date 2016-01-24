@@ -77,11 +77,6 @@
       .state('app.admin.documents', {
         abstract: true,
         templateUrl: 'app/mn_admin/mn_documents/mn_documents.html',
-        data: {
-          required: {
-            admin: true
-          }
-        },
         controller: "mnDocumentsController as documentsCtl",
         url: "/documents?documentsBucket"
       })
@@ -198,7 +193,6 @@
         controller: 'mnGroupsController as groupsCtl',
         data: {
           required: {
-            admin: true,
             enterprise: true
           }
         }
@@ -224,11 +218,6 @@
         abstract: true,
         controller: 'mnLogsCollectInfoController as logsCollectInfoCtl',
         templateUrl: 'app/mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
-        data: {
-          required: {
-            admin: true
-          }
-        }
       })
       .state('app.admin.logs.collectInfo.result', {
         url: '/result',

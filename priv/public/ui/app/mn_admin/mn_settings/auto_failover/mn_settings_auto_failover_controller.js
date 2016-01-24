@@ -7,10 +7,9 @@
     'mnPromiseHelper'
   ]).controller('mnSettingsAutoFailoverController', mnSettingsAutoFailoverController);
 
-  function mnSettingsAutoFailoverController($scope, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService, mnPoolDefault) {
+  function mnSettingsAutoFailoverController($scope, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService) {
     var vm = this;
 
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.isAutoFailOverDisabled = isAutoFailOverDisabled;
     vm.submit = submit;
 
@@ -23,7 +22,7 @@
         });
     }
     function isAutoFailOverDisabled() {
-      return !vm.state || !vm.state.enabled || vm.mnPoolDefault.value.isROAdminCreds;
+      return !vm.state || !vm.state.enabled;
     }
     function submit() {
       var data = {

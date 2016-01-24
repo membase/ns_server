@@ -22,7 +22,6 @@
             <span>Enable:</span>
             <input
               type="checkbox"
-              ng-disabled="ldapCtl.mnPoolDefault.value.isROAdminCreds"
               ng-model="ldapCtl.state.enabled">
           </label>
           <label class="textarea_label">
@@ -122,8 +121,7 @@
     <div class="save_cancel">
       <button
         class="save_button float_right"
-        ng-click="ldapCtl.save()"
-        ng-hide="ldapCtl.mnPoolDefault.value.isROAdminCreds">Save</button>
+        ng-click="ldapCtl.save()">Save</button>
     </div>
   </div>
 </div>

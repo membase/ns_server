@@ -5,8 +5,7 @@
     .module('mnSettingsAlerts', [
       'mnSettingsAlertsService',
       'mnHelper',
-      'mnPromiseHelper',
-      'mnPoolDefault'
+      'mnPromiseHelper'
     ])
     .controller('mnSettingsAlertsController', mnSettingsAlertsController)
     .filter('alertsLabel', alertsLabelFilter);
@@ -29,9 +28,8 @@
     };
   }
 
-  function mnSettingsAlertsController($scope, mnHelper, mnPromiseHelper, mnSettingsAlertsService, mnPoolDefault) {
+  function mnSettingsAlertsController($scope, mnHelper, mnPromiseHelper, mnSettingsAlertsService) {
     var vm = this;
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.isFormElementsDisabled = isFormElementsDisabled;
     vm.testEmail = testEmail;
     vm.submit = submit;
@@ -60,7 +58,7 @@
         .catchGlobalErrors('An error occurred during sending test email.');
     }
     function isFormElementsDisabled() {
-      return !vm.state || !vm.state.enabled || vm.mnPoolDefault.value.isROAdminCreds;
+      return !vm.state || !vm.state.enabled;
     }
     function getParams() {
       var params = _.clone(vm.state);

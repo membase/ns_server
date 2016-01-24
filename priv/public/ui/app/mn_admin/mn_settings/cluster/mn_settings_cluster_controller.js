@@ -9,18 +9,13 @@
     'mnSpinner'
   ]).controller('mnSettingsClusterController', mnSettingsClusterController);
 
-  function mnSettingsClusterController($scope, $uibModal, mnSettingsClusterService, mnHelper, mnPromiseHelper, mnPoolDefault) {
+  function mnSettingsClusterController($scope, $uibModal, mnSettingsClusterService, mnHelper, mnPromiseHelper) {
     var vm = this;
-    vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.toggleCertArea = toggleCertArea;
     vm.saveVisualInternalSettings = saveVisualInternalSettings;
     vm.regenerateCertificate = regenerateCertificate;
 
     activate();
-
-    if (vm.mnPoolDefault.value.isROAdminCreds) {
-      return;
-    }
 
     $scope.$watch('settingsClusterCtl.state.memoryQuotaConfig', _.debounce(function (memoryQuotaConfig) {
       if (!memoryQuotaConfig) {

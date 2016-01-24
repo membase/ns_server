@@ -7,8 +7,7 @@
           type="checkbox"
           id="email_alerts_enabled"
           ng-model="settingsAlertsCtl.state.enabled"
-          class="casper_settings_alerts_errors"
-          ng-disabled="settingsAlertsCtl.mnPoolDefault.value.isROAdminCreds">
+          class="casper_settings_alerts_errors">
         <span>Enable email alerts</span>
       </label>
     </div>
@@ -87,8 +86,7 @@
             {{settingsAlertsCtl.errors.recipients}}
         </div>
         <div
-          class="when-roadmin-avoid-me"
-          ng-hide="settingsAlertsCtl.mnPoolDefault.value.isROAdminCreds">
+          class="when-roadmin-avoid-me">
           <button
             type="button"
             ng-disabled="!settingsAlertsCtl.state.enabled"
@@ -110,7 +108,7 @@
       </label>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="submit" ng-hide="settingsAlertsCtl.mnPoolDefault.value.isROAdminCreds">
+      <button class="save_button float_right" type="submit">
         Save
       </button>
     </div>
