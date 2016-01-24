@@ -588,6 +588,12 @@ fts_spec(Config) ->
             ok = misc:ensure_writable_dir(FTSIdxDir),
             {_, Host} = misc:node_name_host(node()),
             BindHttp = io_lib:format("~s:~b,0.0.0.0:~b", [Host, FtRestPort, FtRestPort]),
+            {ok, FTSMemoryQuota} = ns_storage_conf:get_memory_quota(Config, fts),
+            Options = "startCheckServer=skip," ++
+                      "slowQueryLogTimeout=5s," ++
+                      "defaultMaxPartitionsPerPIndex=128," ++
+                      "bleveMaxResultWindow=10000," ++
+                      "ftsMemoryQuota=" ++ integer_to_list(FTSMemoryQuota * 1024000),
             Spec = {fts, FtCmd,
                     [
                      "-cfg=metakv",
@@ -596,11 +602,7 @@ fts_spec(Config) ->
                      "-bindHttp=" ++ BindHttp,
                      "-dataDir=" ++ FTSIdxDir,
                      "-extra=" ++ io_lib:format("~s:~b", [Host, NsRestPort]),
-                     "-options=" ++
-                     "startCheckServer=skip," ++
-                     "slowQueryLogTimeout=5s," ++
-                     "defaultMaxPartitionsPerPIndex=128," ++
-                     "bleveMaxResultWindow=10000"
+                     "-options=" ++ Options
                     ],
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?FTS_LOG_FILENAME},
