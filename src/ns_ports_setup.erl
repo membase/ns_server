@@ -574,7 +574,9 @@ memcached_spec(Config) ->
 
 fts_spec(Config) ->
     FtCmd = find_executable("cbft"),
+    NodeUUID = ns_config:search(Config, {node, node(), uuid}, false),
     case FtCmd =/= false andalso
+        NodeUUID =/= false andalso
         ns_cluster_membership:should_run_service(Config, fts, node()) of
         false ->
             [];
@@ -589,6 +591,7 @@ fts_spec(Config) ->
             Spec = {fts, FtCmd,
                     [
                      "-cfg=metakv",
+                     "-uuid=" ++ NodeUUID,
                      "-server=http://127.0.0.1:" ++ integer_to_list(NsRestPort),
                      "-bindHttp=" ++ BindHttp,
                      "-dataDir=" ++ FTSIdxDir,
