@@ -671,6 +671,22 @@
           "optional_fields" : {
               "sessionid" : ""
           }
+      },
+      {
+          "id" : 8231,
+          "name" : "modify index storage mode",
+          "description" : "Modify Index Storage Mode",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "storageMode" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
       }
     ]
 }

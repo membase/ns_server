@@ -82,12 +82,13 @@ validate_string(State, Param) ->
               end
       end, Param, State1).
 
-update_storage_mode(Values) ->
+update_storage_mode(Req, Values) ->
     case proplists:get_value(storageMode, Values) of
         undefined ->
             Values;
         StorageMode ->
             ok = update_settings(storageMode, StorageMode),
+            ns_audit:modify_index_storage_mode(Req, StorageMode),
             proplists:delete(storageMode, Values)
     end.
 update_settings(Key, Value) ->
@@ -105,7 +106,7 @@ handle_settings_post(Req) ->
       fun (Values) ->
               Values1 = case cluster_compat_mode:is_cluster_watson() of
                             true ->
-                                update_storage_mode(Values);
+                                update_storage_mode(Req, Values);
                             false ->
                                 Values
                         end,
