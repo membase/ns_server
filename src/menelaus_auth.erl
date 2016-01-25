@@ -20,7 +20,8 @@
 
 -include("ns_common.hrl").
 
--export([has_permission/2,
+-export([authenticate/1,
+         has_permission/2,
          get_accessible_buckets/2,
          extract_auth/1,
          extract_auth_user/1,
@@ -199,19 +200,24 @@ has_permission(Permission, Req) ->
 
 authenticate(undefined) ->
     {ok, {"", anonymous}};
-authenticate({token, Token}) ->
-    case menelaus_ui_auth:check(Token) of
+authenticate({token, Token} = Param) ->
+    case ns_node_disco:couchdb_node() == node() of
         false ->
-            %% this is needed so UI can get /pools on unprovisioned
-            %% system with leftover cookie
-            case ns_config_auth:is_system_provisioned() of
+            case menelaus_ui_auth:check(Token) of
                 false ->
-                    {ok, {"", wrong_token}};
-                true ->
-                    false
+                    %% this is needed so UI can get /pools on unprovisioned
+                    %% system with leftover cookie
+                    case ns_config_auth:is_system_provisioned() of
+                        false ->
+                            {ok, {"", wrong_token}};
+                        true ->
+                            false
+                    end;
+                Other ->
+                    Other
             end;
-        Other ->
-            Other
+        true ->
+            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, authenticate, [Param])
     end;
 authenticate({Username, Password}) ->
     case ns_config_auth:authenticate(admin, Username, Password) of
