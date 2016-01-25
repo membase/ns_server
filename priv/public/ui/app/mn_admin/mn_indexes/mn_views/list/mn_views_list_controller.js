@@ -8,6 +8,10 @@
   function mnViewsListController($scope, $rootScope, $state, $uibModal, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoller) {
     var vm = this;
 
+    vm.type = $state.params.type;
+    vm.isDevModeDoc = mnViewsListService.isDevModeDoc;
+    vm.getStartedCompactions = mnCompaction.getStartedCompactions;
+
     vm.showCreationDialog = showCreationDialog;
     vm.showMapreduceCreationDialog = showMapreduceCreationDialog;
     vm.showSpatialCreationDialog = showSpatialCreationDialog;
@@ -42,7 +46,7 @@
       return row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)
     }
     function showViewCreationButtons() {
-      return vm.state && $state.params.viewsBucket && vm.isDevelopmentViews && !vm.state.ddocsAreInFactMissing;
+      return vm.ddocs && $state.params.viewsBucket && vm.isDevelopmentViews && !vm.ddocs.ddocsAreInFactMissing;
     }
     function showPublishButton(row) {
       return vm.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views));
@@ -132,17 +136,23 @@
       });
     }
     function registerCompactionAsTriggeredAndPost(row) {
-      row.disableCompact = true;
       mnPromiseHelper(vm, mnCompaction.registerAsTriggeredAndPost(row.controllers.compact))
         .broadcast("reloadViewsPoller");
     }
     function activate() {
-      var poller = new mnPoller($scope, function () {
-          return mnViewsListService.getViewsListState($state.params);
-        })
-        .subscribe("state", vm)
-        .reloadOnScopeEvent("reloadViewsPoller", vm)
-        .cycle();
+      new mnPoller($scope, function () {
+        return mnViewsListService.getTasksOfCurrentBucket($state.params);
+      })
+      .subscribe("tasks", vm)
+      .reloadOnScopeEvent("reloadViewsPoller", vm)
+      .cycle();
+
+      new mnPoller($scope, function () {
+        return mnViewsListService.getViewsListState($state.params);
+      })
+      .subscribe("ddocs", vm)
+      .reloadOnScopeEvent("reloadViewsPoller", vm)
+      .cycle();
     }
   }
 })();

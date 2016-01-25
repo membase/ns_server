@@ -5,11 +5,10 @@
     .module("mnViewsListService", [
       'mnTasksDetails',
       'mnBucketsService',
-      'mnCompaction'
     ])
     .factory("mnViewsListService", mnViewsListFactory);
 
-  function mnViewsListFactory($http, $q, $window, mnTasksDetails, mnBucketsService, mnCompaction, mnPoolDefault) {
+  function mnViewsListFactory($http, $q, $window, mnTasksDetails, mnBucketsService) {
     var mnViewsListService = {
       createDdoc: createDdoc,
       getDdocUrl: getDdocUrl,
@@ -76,12 +75,11 @@
         return rv;
       });
     }
-    function getEmptyViewsState(params) {
-      return prepareBucketsDropdownData(params, true).then(function (rv) {
-        rv.development = [];
-        rv.production = [];
-        return rv;
-      });
+    function getEmptyViewsState() {
+      var rv = {}
+      rv.development = [];
+      rv.production = [];
+      return $q.when(rv);
     }
     function getKvNodeLink(nodes) {
       var kvNode = _.find(nodes, function (node) {
@@ -116,6 +114,17 @@
           return isDevModeDoc(row.doc.meta.id);
         });
         return ddocs;
+      }, function (resp) {
+        switch (resp.status) {
+          case 404: return getEmptyViewsState();
+          case 400: return getEmptyViewsState().then(function (emptyState) {
+            emptyState.ddocsAreInFactMissing = resp.data.error === 'no_ddocs_service';
+            return emptyState;
+          });
+          case 0:
+          case -1:
+          default: $q.reject(resp);
+        }
       });
     }
 
@@ -145,43 +154,10 @@
     }
     function getViewsListState(params) {
       if (params.viewsBucket) {
-        return doGetViewsListState(params);
+        return getDdocsByType(params.viewsBucket);
       } else {
-        return mnBucketsService.getBucketsByType(true).then(function (buckets) {
-          params.viewsBucket = buckets.byType.membase.defaultName;
-          if (!params.viewsBucket) {
-            return getEmptyViewsState(params);
-          } else {
-            return doGetViewsListState(params);
-          }
-        });
+        return getEmptyViewsState();
       }
-    }
-    function doGetViewsListState(params) {
-      return getDdocsByType(params.viewsBucket).then(function (ddocs) {
-        ddocs.type = params.type;
-        return getTasksOfCurrentBucket(params).then(function (ddocTasks) {
-          _.each(ddocs.rows, function (row) {
-            row.isDevModeDoc = isDevModeDoc(row.doc.meta.id);
-            row.task = (ddocTasks[row.doc.meta.id] || [])[0];
-            row.containsViews = !_.isEmpty(row.doc.json.views);
-            row.containsSpatials = !_.isEmpty(row.doc.json.spatial);
-            row.isEmpty = !row.containsViews && !row.containsSpatials;
-            row.disableCompact = row.isEmpty || !!(row.task && row.task.type === 'view_compaction') || !!mnCompaction.getStartedCompactions()[row.controllers.compact];
-          });
-          return ddocs;
-        });
-      }, function (resp) {
-        switch (resp.status) {
-          case 404: return getEmptyViewsState(params);
-          case 400: return getEmptyViewsState(params).then(function (emptyState) {
-            emptyState.ddocsAreInFactMissing = resp.data.error === 'no_ddocs_service';
-            return emptyState;
-          });
-          case 0:
-          case -1: return $q.reject();
-        }
-      });
     }
   }
 })();

@@ -40,7 +40,7 @@
 
       function activate() {
         var poller = new mnPoller($scope, function () {
-            return mnViewsListService.prepareBucketsDropdownData($state.params, true);
+            return mnViewsListService.prepareBucketsDropdownData($state.params);
           })
           .subscribe("state", vm)
           .cycle();

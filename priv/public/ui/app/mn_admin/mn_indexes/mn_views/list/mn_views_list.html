@@ -5,8 +5,15 @@
         <a ui-sref="app.admin.indexes.views.list({ type: 'development' })" ui-sref-active="selected">Development Views</a>
       </li>
       <li class="tab_right">
-        <a class="casper_views_prod_tab" ui-sref="app.admin.indexes.views.list({ type: 'production' })" ui-sref-active="selected">Production Views</a>
-        <span class="badge notify" ng-show="viewsListCtl.state.production.length"><span id="prod_view_count">{{viewsListCtl.state.production.length}}</span></span>
+        <a
+          class="casper_views_prod_tab"
+          ui-sref="app.admin.indexes.views.list({ type: 'production' })"
+          ui-sref-active="selected">Production Views</a>
+        <span
+          class="badge notify"
+          ng-show="viewsListCtl.ddocs.production.length">
+            <span id="prod_view_count">{{viewsListCtl.ddocs.production.length}}</span>
+        </span>
       </li>
     </ul>
     <div class="create_view">
@@ -24,7 +31,7 @@
     </div>
   </div>
   <div class="panes">
-    <div class="views_list" mn-spinner="!viewsListCtl.state || viewsListCtl.viewLoading">
+    <div class="views_list" mn-spinner="!viewsListCtl.ddocs || viewsListCtl.viewLoading">
       <table class="list">
         <thead>
           <tr>
@@ -36,7 +43,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr ng-if="!viewsCtl.state.bucketsNames.selected && !viewsListCtl.state.ddocsAreInFactMissing">
+          <tr ng-if="!viewsCtl.state.bucketsNames.selected && !viewsListCtl.ddocs.ddocsAreInFactMissing">
             <td colspan="6" class="empty">
               <span>
                 No buckets currently defined! Go to
@@ -45,28 +52,28 @@
               </span>
             </td>
           </tr>
-          <tr ng-if="viewsListCtl.state.ddocsAreInFactMissing">
+          <tr ng-if="viewsListCtl.ddocs.ddocsAreInFactMissing">
             <td colspan="6" class="empty">
               <span style="line-height:23px">This node doesn't host current bucket yet, so for list of design docs, please, visit different node's UI</span>
             </td>
           </tr>
-          <tr ng-if="viewsCtl.state.bucketsNames.selected && !viewsListCtl.state.ddocsAreInFactMissing && !viewsListCtl.state[viewsListCtl.state.type].length">
+          <tr ng-if="viewsCtl.state.bucketsNames.selected && !viewsListCtl.ddocs.ddocsAreInFactMissing && !viewsListCtl.ddocs[viewsListCtl.type].length">
             <td colspan="6" class="empty">
               <span ng-show="viewsListCtl.isDevelopmentViews" style="line-height:23px">There are currently no Design Documents in Development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
               <span ng-show="!viewsListCtl.isDevelopmentViews" style="line-height:23px">There are no Design Documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
             </td>
           </tr>
-          <tr ng-repeat-start="row in viewsListCtl.state[viewsListCtl.state.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="viewsListCtl.state.rows.length">
+          <tr ng-repeat-start="row in viewsListCtl.ddocs[viewsListCtl.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="viewsListCtl.ddocs.rows.length">
             <td class="design_doc_name ellipsis">
               {{row.doc.meta.id}}
             </td>
             <td class="langv">{{row.doc.language || "javascript"}}</td>
             <td>
-              <div class="indexer_progress" ng-if="row.task && row.task.progress">
+              <div class="indexer_progress" ng-if="viewsListCtl.tasks[row.doc.meta.id][0].progress">
                 <div class="usage_smallest">
-                  <div class="used" style="width: {{row.task.progress}}%"></div>
+                  <div class="used" style="width: {{viewsListCtl.tasks[row.doc.meta.id][0].progress}}%"></div>
                 </div>
-                <span class="ddoc_message">{{row.task.type == 'indexer' ? "Indexing" : "Compacting"}} {{row.task.progress}}%</span>
+                <span class="ddoc_message">{{viewsListCtl.tasks[row.doc.meta.id][0].type == 'indexer' ? "Indexing" : "Compacting"}} {{viewsListCtl.tasks[row.doc.meta.id][0].progress}}%</span>
               </div>
             </td>
             <td colspan="3" class="when-roadmin-hide-me" style="height: 33px;">
@@ -77,7 +84,7 @@
 
               <a
                 class="list_button when-in-dev"
-                ng-class="{dynamic_disabled: row.isEmpty}"
+                ng-class="{dynamic_disabled: ('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)}"
                 ng-click="viewsListCtl.publishDdoc(row.doc)"
                 ng-show="viewsListCtl.showPublishButton(row)"><span>Publish</span></a>
 
@@ -97,8 +104,8 @@
 
               <button
                 class="list_button"
-                ng-class="{dynamic_disabled: row.disableCompact}"
-                ng-click="!row.disableCompact && viewsListCtl.registerCompactionAsTriggeredAndPost(row)"><span>Compact</span></button>
+                ng-class="{dynamic_disabled: (('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)) || !!(viewsListCtl.tasks[row.doc.meta.id][0].type === 'view_compaction') || !!viewsListCtl.getStartedCompactions()[row.controllers.compact]}"
+                ng-click="!($event | isDisabled) && viewsListCtl.registerCompactionAsTriggeredAndPost(row)"><span>Compact</span></button>
 
               <div
                 class="warning"
@@ -107,10 +114,10 @@
 
             </td>
           </tr>
-          <tr ng-if="row.isEmpty">
+          <tr ng-if="('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)">
             <td colspan="5" style="padding:15px;line-height:23px;">No views defined!<span class="when-in-dev"> Click "Create Development View" above to create one.</span></td>
           </tr>
-          <tr ng-if="row.containsViews" ng-repeat="(key, view) in row.doc.json.views">
+          <tr ng-if="!('isEmpty' | lodash:row.doc.json.views)" ng-repeat="(key, view) in row.doc.json.views">
             <td class="view_name ellipsis" colspan="5">
               <a
                 class="casper_views_view_tab"
@@ -118,17 +125,17 @@
                 ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">{{key}}</a>
             </td>
             <td>
-              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))"><span>{{row.isDevModeDoc ? 'Edit' : 'Show' }}</span></a>
+              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="viewsListCtl.isDevModeDoc(row.doc.meta.id)" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
+              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))"><span>{{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}</span></a>
             </td>
           </tr>
-          <tr ng-repeat-end="" ng-if="row.containsSpatials" ng-repeat="(key, spatial) in row.doc.json.spatial">
+          <tr ng-repeat-end="" ng-if="!('isEmpty' | lodash:row.doc.json.spatial)" ng-repeat="(key, spatial) in row.doc.json.spatial">
             <td class="view_name ellipsis" colspan="5">
               <a ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">[Spatial] {{key}}</a>
             </td>
             <td>
-              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="row.isDevModeDoc" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))"><span>{{row.isDevModeDoc ? 'Edit' : 'Show' }}</span></a>
+              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="viewsListCtl.isDevModeDoc(row.doc.meta.id)" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
+              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))"><span>{{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}</span></a>
             </td>
           </tr>
         </tbody>
