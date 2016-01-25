@@ -31,6 +31,7 @@
     .filter('mnTrustAsHtml', mnTrustAsHtml)
     .filter('mnMath', mnMath)
     .filter('lodash', lodash)
+    .filter('isDisabled', isDisabled)
     .filter('mnIntegerToString', mnIntegerToString);
 
   function lodash() {
@@ -38,6 +39,12 @@
       var args = Array.prototype.slice.call(arguments, 0);
       var method = args.shift();
       return _[method].apply(_, args);
+    };
+  }
+
+  function isDisabled() {
+    return function ($event) {
+      return angular.element($event.currentTarget).hasClass("dynamic_disabled");
     };
   }
 
