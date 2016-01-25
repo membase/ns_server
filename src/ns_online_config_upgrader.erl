@@ -74,8 +74,9 @@ upgrade_config_from_4_0_to_4_1(Config) ->
 upgrade_config_from_4_1_to_watson(Config) ->
     ?log_info("Performing online config upgrade to ~s version",
               [misc:pretty_version(?WATSON_VERSION_NUM)]),
-    create_service_maps(Config, [fts]) ++
-        menelaus_roles:upgrade_users(Config).
+    RV = create_service_maps(Config, [fts]) ++
+        menelaus_roles:upgrade_users(Config),
+    index_settings_manager:config_upgrade_to_watson(Config) ++ RV.
 
 delete_unwanted_per_node_keys(Config) ->
     NodesWanted = ns_node_disco:nodes_wanted(Config),

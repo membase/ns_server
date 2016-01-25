@@ -31,10 +31,18 @@
 handle_settings_get(Req) ->
     menelaus_web:assert_is_40(),
 
-    Settings = index_settings_manager:get(generalSettings),
+    Settings = get_settings(),
     true = (Settings =/= undefined),
-
     reply_json(Req, {Settings}).
+
+get_settings() ->
+    S0 = index_settings_manager:get(generalSettings),
+    case cluster_compat_mode:is_cluster_watson() of
+        true ->
+            [{storageMode, index_settings_manager:get(storageMode)}] ++ S0;
+        false ->
+            S0
+    end.
 
 validate_settings_post(Args) ->
     R0 = validate_has_params({Args, [], []}),
@@ -43,39 +51,71 @@ validate_settings_post(Args) ->
                    Acc1 = validate_integer(Key, Acc),
                    validate_range(Key, Min, Max, Acc1)
            end, R0, integer_settings()),
-    R2 = validate_loglevel(R1),
+    R2 = validate_string(R1, logLevel),
+    R3 = case cluster_compat_mode:is_cluster_watson() of
+             true ->
+                 validate_string(R2, storageMode);
+             false ->
+                 R2
+         end,
 
-    validate_unsupported_params(R2).
+    validate_unsupported_params(R3).
 
-validate_loglevel(State) ->
-    State1 = validate_any_value(logLevel, State, fun list_to_binary/1),
+acceptable_values(logLevel) ->
+    ["silent", "fatal", "error", "warn", "info",
+     "verbose", "timing", "debug", "trace"];
+acceptable_values(storageMode) ->
+    ["forestdb", "memory_optimized"].
+
+validate_string(State, Param) ->
+    State1 = validate_any_value(Param, State, fun list_to_binary/1),
     validate_by_fun(
       fun (Value) ->
-              LogLevels = ["silent", "fatal", "error", "warn", "info",
-                           "verbose", "timing", "debug", "trace"],
-
-              case lists:member(binary_to_list(Value), LogLevels) of
+              AV = acceptable_values(Param),
+              case lists:member(binary_to_list(Value), AV) of
                   true ->
                       ok;
                   false ->
                       {error,
-                       io_lib:format("logLevel must be one of ~s",
-                                     [string:join(LogLevels, ", ")])}
+                       io_lib:format("~p must be one of ~s",
+                                     [Param, string:join(AV, ", ")])}
               end
-      end, logLevel, State1).
+      end, Param, State1).
+
+update_storage_mode(Values) ->
+    case proplists:get_value(storageMode, Values) of
+        undefined ->
+            Values;
+        StorageMode ->
+            ok = update_settings(storageMode, StorageMode),
+            proplists:delete(storageMode, Values)
+    end.
+update_settings(Key, Value) ->
+    case index_settings_manager:update(Key, Value) of
+        {ok, _} ->
+            ok;
+        retry_needed ->
+            erlang:error(exceeded_retries)
+    end.
 
 handle_settings_post(Req) ->
     menelaus_web:assert_is_40(),
 
     execute_if_validated(
       fun (Values) ->
-              case index_settings_manager:update(generalSettings, Values) of
-                  {ok, NewSettingsAll} ->
-                      {_, NewSettings} = lists:keyfind(generalSettings, 1, NewSettingsAll),
-                      reply_json(Req, {NewSettings});
-                  retry_needed ->
-                      erlang:error(exceeded_retries)
-              end
+              Values1 = case cluster_compat_mode:is_cluster_watson() of
+                            true ->
+                                update_storage_mode(Values);
+                            false ->
+                                Values
+                        end,
+              case Values1 of
+                  [] ->
+                      ok;
+                  _ ->
+                      ok = update_settings(generalSettings, Values1)
+              end,
+              reply_json(Req, {get_settings()})
       end, Req, validate_settings_post(Req:parse_post())).
 
 integer_settings() ->

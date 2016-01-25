@@ -25,7 +25,8 @@
          get_from_config/3,
          update/1, update/2,
          update_txn/1,
-         config_upgrade/0]).
+         config_upgrade/0,
+         config_upgrade_to_watson/1]).
 
 start_link() ->
     work_queue:start_link(?MODULE, fun init/0).
@@ -81,6 +82,13 @@ update_txn(Props) ->
 config_upgrade() ->
     [{set, ?INDEX_CONFIG_KEY, build_settings_json(default_settings())}].
 
+config_upgrade_to_watson(Config) ->
+    JSON = fetch_settings_json(Config),
+    Current = decode_settings_json(JSON),
+    New = build_settings_json(extra_default_settings(), Current,
+                              extra_known_settings()),
+    [{set, ?INDEX_CONFIG_KEY, New}].
+
 %% internal
 init() ->
     ets:new(?MODULE, [named_table, set, protected]),
@@ -130,7 +138,10 @@ build_settings_json(Props) ->
     build_settings_json(Props, dict:new()).
 
 build_settings_json(Props, Dict) ->
-    NewDict = lens_set_many(known_settings(), Props, Dict),
+    build_settings_json(Props, Dict, known_settings()).
+
+build_settings_json(Props, Dict, KnownSettings) ->
+    NewDict = lens_set_many(KnownSettings, Props, Dict),
     ejson:encode({dict:to_list(NewDict)}).
 
 decode_settings_json(JSON) ->
@@ -170,14 +181,32 @@ do_populate_ets_table(JSON) ->
     erlang:put(prev_json, JSON).
 
 known_settings() ->
-    [{memoryQuota, memory_quota_lens()},
-     {generalSettings, general_settings_lens()},
-     {compaction, compaction_lens()}].
+    RV = [{memoryQuota, memory_quota_lens()},
+          {generalSettings, general_settings_lens()},
+          {compaction, compaction_lens()}],
+    case cluster_compat_mode:is_cluster_watson() of
+        true ->
+            extra_known_settings() ++ RV;
+        false ->
+            RV
+    end.
+
+extra_known_settings() ->
+    [{storageMode, id_lens(<<"indexer.settings.storage_mode">>)}].
 
 default_settings() ->
-    [{memoryQuota, 256},
-     {generalSettings, general_settings_defaults()},
-     {compaction, compaction_defaults()}].
+    RV = [{memoryQuota, 256},
+          {generalSettings, general_settings_defaults()},
+          {compaction, compaction_defaults()}],
+    case cluster_compat_mode:is_cluster_watson() of
+        true ->
+            extra_default_settings() ++ RV;
+        false ->
+            RV
+    end.
+
+extra_default_settings() ->
+    [{storageMode, <<"forestdb">>}].
 
 id_lens(Key) ->
     Get = fun (Dict) ->
@@ -302,7 +331,8 @@ lens_set_many(Lenses, Values, Dict) ->
 defaults_test() ->
     Keys = fun (L) -> lists:sort([K || {K, _} <- L]) end,
 
-    ?assertEqual(Keys(known_settings()), Keys(default_settings())),
+    %% TODO: Need to mock cluster_compat_mode:is_cluster_***
+    %% ?assertEqual(Keys(known_settings()), Keys(default_settings())),
     ?assertEqual(Keys(compaction_lens_props()), Keys(compaction_defaults())),
     ?assertEqual(Keys(general_settings_lens_props()),
                  Keys(general_settings_defaults())).
