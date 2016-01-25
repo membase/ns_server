@@ -224,14 +224,13 @@ get_timeout(views, Req) ->
 get_timeout(_Service, _Req) ->
     ?TIMEOUT.
 
-auth_token(views, _Req) ->
-    [{"Capi-Auth-Token", atom_to_list(ns_server:get_babysitter_cookie())}];
 auth_token(_Service, Req) ->
     case menelaus_auth:extract_ui_auth_token(Req) of
         undefined ->
             [];
         Token ->
-            [{"ns-server-auth-token", Token}]
+            [{"ns-server-ui","yes"},
+             {"ns-server-auth-token", Token}]
     end.
 
 convert_headers(Req, Filter) ->
