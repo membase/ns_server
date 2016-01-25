@@ -7,9 +7,9 @@
     <th>Nodes</th>
     <th colspan="2">Item Count</th>
     <th>Ops/sec</th>
-    <th colspan="2" ng-show="!bucketsListCtl.buckets"></th>
-    <th colspan="2" ng-show="bucketsListCtl.buckets.isMembase">Disk Fetches/sec</th>
-    <th colspan="2" ng-show="bucketsListCtl.buckets.isMemcached">Hit Ratio</th>
+    <th colspan="2" ng-show="!buckets"></th>
+    <th colspan="2" ng-show="buckets.isMembase">Disk Fetches/sec</th>
+    <th colspan="2" ng-show="buckets.isMemcached">Hit Ratio</th>
     <th colspan="2">RAM/Quota Usage</th>
     <th colspan="2">Data/Disk Usage</th>
     <th></th>
@@ -18,13 +18,13 @@
     <th class="last"></th>
   </tr>
   <tbody>
-    <tr ng-if="!bucketsListCtl.buckets.length">
+    <tr ng-if="!buckets.length">
       <td colspan="18" style="padding:15px">
         No buckets currently defined! Click "Create New Data Bucket" above to create one.
       </td>
     </tr>
   </tbody>
-  <tbody ng-if="bucketsListCtl.buckets.length" ng-repeat="bucket in bucketsListCtl.buckets | orderBy:'name' track by bucket.name">
+  <tbody ng-if="buckets.length" ng-repeat="bucket in buckets | orderBy:'name' track by bucket.name">
     <tr>
       <td class="bucket_name ellipsis" colspan="4">
         <a
@@ -42,25 +42,25 @@
         {{ bucket.nodes.length }}
       </td>
       <td colspan="2">{{bucket.basicStats.itemCount}}</td>
-      <td>{{bucket.roundedOpsPerSec}}</td>
-      <td colspan="2" ng-if="bucketsListCtl.buckets.isMembase">
-        {{bucket.truncatedDiskFetches}}
+      <td>{{'round' | mnMath:bucket.basicStats.opsPerSec}}</td>
+      <td colspan="2" ng-if="buckets.isMembase">
+        {{bucket.basicStats.diskFetches | mnTruncateTo3Digits}}
       </td>
-      <td colspan="2" ng-if="bucketsListCtl.buckets.isMemcached">
-        {{bucket.truncatedHitRatio}}%
+      <td colspan="2" ng-if="buckets.isMemcached">
+        {{(bucket.basicStats.hitRatio * 100) | mnTruncateTo3Digits}}%
       </td>
       <td colspan="2">
         {{bucket.basicStats.memUsed | mnFormatQuantity}} /<br>
         {{bucket.quota.ram | mnFormatQuantity}}
       </td>
       <td colspan="2">
-        <span ng-show="bucketsListCtl.buckets.isMembase">
+        <span ng-show="buckets.isMembase">
           {{bucket.basicStats.dataUsed | mnFormatQuantity}} /<br>
           {{bucket.basicStats.diskUsed | mnFormatQuantity}}
         </span>
-        <span ng-show="!bucketsListCtl.buckets.isMembase">N/A</span>
+        <span ng-show="!buckets.isMembase">N/A</span>
       </td>
-      <td colspan="4" class="last" ng-if="bucketsListCtl.buckets.isMembase">
+      <td colspan="4" class="last" ng-if="buckets.isMembase">
         <a class="list_button disable-if-stale" ui-sref="app.admin.indexes.views.list({viewsBucket: bucket.name})"><span>Views</span></a>
         <a
           class="list_button when-roadmin-hide-me"

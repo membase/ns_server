@@ -62,8 +62,7 @@
       });
     }
     function reviewBucketConf(bucketDetails) {
-      return mnBucketsDetailsService.doGetDetails(bucketDetails).then(function (resp) {
-        var bucketConf = resp.data;
+      return mnBucketsDetailsService.doGetDetails(bucketDetails).then(function (bucketConf) {
         bucketConf.ramQuotaMB = mnBytesToMBFilter(bucketConf.quota.rawRAM);
         bucketConf.isDefault = bucketConf.name === 'default';
         bucketConf.replicaIndex = bucketConf.replicaIndex ? 1 : 0;

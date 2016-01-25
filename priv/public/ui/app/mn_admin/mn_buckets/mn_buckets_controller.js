@@ -12,7 +12,9 @@
       'mnPromiseHelper',
       'mnPoll',
       'mnPoolDefault',
-      'mnSpinner'
+      'mnSpinner',
+      'mnFilters',
+      'mnTasksDetails'
     ])
     .controller('mnBucketsController', mnBucketsController);
 
@@ -32,22 +34,21 @@
     activate();
 
     function isCreateNewDataBucketDisabled() {
-      return !vm.state || areThereCreationWarnings();
+      return !vm.buckets || areThereCreationWarnings();
     }
     function isBucketCreationWarning() {
       return poolDefault.value.rebalancing;
     }
     function isMaxBucketCountWarning() {
-      return (vm.state || []).length >= poolDefault.value.maxBucketCount;
+      return (vm.buckets || []).length >= poolDefault.value.maxBucketCount;
     }
     function areThereCreationWarnings() {
       return isMaxBucketCountWarning() || isBucketCreationWarning();
     }
     function addBucket() {
-      mnPromiseHelper(vm, mnBucketsService.getBucketsState())
-        .applyToScope("state")
-        .onSuccess(function (state) {
-          if (state.isFullyAlloc) {
+      mnPromiseHelper(vm, mnPoolDefault.getFresh())
+        .onSuccess(function (poolDefault) {
+          if (poolDefault.storageTotals.ram.quotaTotal === poolDefault.storageTotals.ram.quotaUsed) {
             $uibModal.open({
               templateUrl: 'app/mn_admin/mn_buckets/mn_bucket_full_dialog.html'
             });
@@ -68,8 +69,10 @@
         });
     }
     function activate() {
-      var poller = new mnPoller($scope, mnBucketsService.getBucketsState)
-      .subscribe("state", vm)
+      new mnPoller($scope, function () {
+        return mnBucketsService.getBucketsByType();
+      })
+      .subscribe("buckets", vm)
       .reloadOnScopeEvent("reloadBucketsPoller", vm)
       .cycle();
     }

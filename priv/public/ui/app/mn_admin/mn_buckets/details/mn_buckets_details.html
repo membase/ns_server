@@ -1,5 +1,5 @@
 <td colspan="18" class="settings-placeholder"
-  mn-spinner="!bucketsDetailsCtl.bucketDetails.ramConfig || (bucketsDetailsCtl.bucketDetails.isMembase && !bucketsDetailsCtl.bucketDetails.hddConfig)">
+  mn-spinner="!bucketsDetailsCtl.bucketDetails">
   <div class="gong_rb">
     <div class="pad">
       <div style="width:800px;float:left;">
@@ -10,29 +10,49 @@
             {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? ': ' + bucketsDetailsCtl.bucketDetails.proxyPort : ''}}
           </span>
         </div>
-        <div ng-if="bucketsDetailsCtl.bucketDetails.isMembase">
+        <div ng-if="bucket.isMembase">
           Replicas: <span>{{bucketsDetailsCtl.bucketDetails.replicaNumber != 0 ? (bucketsDetailsCtl.bucketDetails.replicaNumber | mnCount:'replica copy') : 'disabled'}}</span>
         </div>
-        <div ng-if="bucketsDetailsCtl.bucketDetails.isMembase">
-          Compaction: <span class="bucket_progress_container" data-name="{{bucketsDetailsCtl.bucketDetails.name}}">
-          {{bucketsDetailsCtl.bucketDetails.thisBucketCompactionTask ? bucketsDetailsCtl.bucketDetails.thisBucketCompactionTask.progress + "% complete" : "Not active"}}
+        <div ng-if="bucket.isMembase">
+          Compaction: <span class="bucket_progress_container">
+          {{bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask ? bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.progress + "% complete" : "Not active"}}
           </span>
         </div>
-        <div ng-if="bucketsDetailsCtl.bucketDetails.isMembase">
+        <div ng-if="bucket.isMembase">
           Cache Metadata: <span>{{bucketsDetailsCtl.bucketDetails.evictionPolicy === "valueOnly" ? 'Value Ejection' : 'Full Ejection'}}</span>
         </div>
-        <div ng-if="bucketsDetailsCtl.bucketDetails.isMembase">
+        <div ng-if="bucket.isMembase">
           Disk I/O priority: <span>{{bucketsDetailsCtl.bucketDetails.threadsNumber === 3 ? 'Low' : 'High'}}</span>
         </div>
       </div>
       <div class="last when-roadmin-hide-me">
-        <a class="inner_btn casper_buckets_edit_bucket_popup" ng-click="bucketsDetailsCtl.editBucket(bucketsDetailsCtl.bucketDetails)" >Edit</a>
-        <button ng-show="!bucketsDetailsCtl.bucketDetails.showCancel && !bucketsDetailsCtl.bucketDetails.noCompaction" class="inner_btn compact_btn" ng-class="{dynamic_disabled: bucketsDetailsCtl.bucketDetails.disableCompact}" ng-click="!bucketsDetailsCtl.bucketDetails.disableCompact && bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.bucketDetails.controllers.compactAll, 'disableCompact')">
-          <span>Compact</span>
+        <a
+          class="inner_btn casper_buckets_edit_bucket_popup"
+          ng-click="bucketsDetailsCtl.editBucket(bucketsDetailsCtl.bucketDetails)">Edit</a>
+        <button
+          ng-show="!bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && bucket.isMembase"
+          class="inner_btn compact_btn"
+          ng-class="{dynamic_disabled: bucketsDetailsCtl.compactionTasks.disableCompact}" ng-click="!bucketsDetailsCtl.compactionTasks.disableCompact && bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.bucketDetails.controllers.compactAll, 'disableCompact')">
+            <span>Compact</span>
         </button>
-        <button  ng-show="bucketsDetailsCtl.bucketDetails.showCancel" class="inner_btn cancel_compact_btn " ng-class="{dynamic_disabled: bucketsDetailsCtl.bucketDetails.disableCancel}" ng-click="!bucketsDetailsCtl.bucketDetails.disableCancel && bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.bucketDetails.thisBucketCompactionTask.cancelURI, 'disableCancel')"><span>Cancel</span></button>
-        <button class="inner_btn " ng-click="bucketsDetailsCtl.deleteBucket(bucketsDetailsCtl.bucketDetails)"><span>Delete</span></button>
-        <button ng-show="bucketsDetailsCtl.bucketDetails.flushEnabled" class="inner_btn " ng-click="bucketsDetailsCtl.flushBucket(bucketsDetailsCtl.bucketDetails)" ><span>Flush</span></button>
+        <button
+          ng-show="bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI"
+          class="inner_btn cancel_compact_btn "
+          ng-class="{dynamic_disabled: bucketsDetailsCtl.compactionTasks.disableCancel}"
+          ng-click="!bucketsDetailsCtl.compactionTasks.disableCancel && bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI, 'disableCancel')">
+            <span>Cancel</span>
+        </button>
+        <button
+          class="inner_btn "
+          ng-click="bucketsDetailsCtl.deleteBucket(bucketsDetailsCtl.bucketDetails)">
+            <span>Delete</span>
+        </button>
+        <button
+          ng-show="bucketsDetailsCtl.bucketDetails.controllers !== undefined && bucketsDetailsCtl.bucketDetails.controllers.flush !== undefined"
+          class="inner_btn "
+          ng-click="bucketsDetailsCtl.flushBucket(bucketsDetailsCtl.bucketDetails)">
+            <span>Flush</span>
+        </button>
       </div>
     </div>
     <div class="side side_1"></div>
@@ -42,7 +62,11 @@
   </div>
 
   <div class="additional_server_info bucket_details_info">
-    <div ng-if="bucketsDetailsCtl.bucketDetails.warmUpTasks.length" mn-warmup-progress warm-up-tasks="bucketsDetailsCtl.bucketDetails.warmUpTasks" sort-by="hostname"></div>
+    <div
+      ng-if="bucketsDetailsCtl.warmUpTasks.length"
+      mn-warmup-progress
+      warm-up-tasks="bucketsDetailsCtl.warmUpTasks"
+      sort-by="hostname"></div>
 
     <h2>Cache Size</h2>
     <div class="dynamic_ram">
@@ -52,9 +76,13 @@
         <abbr></abbr>
       </label>
     </div>
-    <div class="usage-block for-ram" mn-bar-usage base-info="bucketsDetailsCtl.bucketDetails.ramConfig"></div>
+    <div
+      class="usage-block for-ram"
+      mn-bar-usage
+      base-info="bucketsDetailsCtl.getBucketRamGuageConfig(bucketsDetailsCtl.bucketDetails)">
+    </div>
 
-    <div ng-if="bucketsDetailsCtl.bucketDetails.hddConfig">
+    <div ng-if="bucket.isMembase">
       <h2>Storage Size</h2>
       <div class="disk_storage">
         <label class="for-hdd-quota" style="padding:0;">
@@ -67,7 +95,9 @@
           <abbr></abbr>
         </label>
       </div>
-      <div class="usage-block for-hdd" mn-bar-usage base-info="bucketsDetailsCtl.bucketDetails.hddConfig"></div>
+      <div
+        class="usage-block for-hdd"
+        mn-bar-usage base-info="bucketsDetailsCtl.getGuageConfig(bucketsDetailsCtl.bucketDetails)"></div>
     </div>
 
   </div>

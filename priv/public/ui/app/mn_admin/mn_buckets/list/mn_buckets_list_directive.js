@@ -11,11 +11,9 @@
       scope: {
         buckets: '='
       },
-      isolate: false,
       templateUrl: 'app/mn_admin/mn_buckets/list/mn_buckets_list.html',
       controller: controller,
-      controllerAs: "bucketsListCtl",
-      bindToController: true
+      controllerAs: "bucketsListCtl"
     };
 
     return mnBucketsListDirective;

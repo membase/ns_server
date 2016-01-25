@@ -11,95 +11,136 @@
       deleteBucket: deleteBucket,
       flushBucket: flushBucket,
       doGetDetails: doGetDetails,
-      getDetails: getDetails
+      getWarmUpTasks: getWarmUpTasks,
+      getGuageConfig: getGuageConfig,
+      getCompactionTask: getCompactionTask
     };
+
+    var bucketRamGuageConfig = {};
+    var guageConfig = {};
 
     return mnBucketsDetailsService;
 
-    function getBucketRamGuageConfig(ramSummary) {
-      var options = {
-        topRight: {
-          name: 'Cluster quota',
-          value: ramSummary.total
-        },
-        items: [{
-          name: 'Other Buckets',
-          value: ramSummary.otherBuckets,
-          itemStyle: {'background-color': '#00BCE9', 'z-index': '2'},
-          labelStyle: {'color': '#1878a2', 'text-align': 'left'}
-        }, {
-          name: 'This Bucket',
-          value: ramSummary.thisAlloc,
-          itemStyle: {'background-color': '#7EDB49', 'z-index': '1'},
-          labelStyle: {'color': '#409f05', 'text-align': 'center'}
-        }, {
-          name: 'Free',
-          value: ramSummary.total - ramSummary.otherBuckets - ramSummary.thisAlloc,
-          itemStyle: {'background-color': '#E1E2E3'},
-          labelStyle: {'color': '#444245', 'text-align': 'right'}
-        }],
-        markers: []
-      };
+    function getWarmUpTasks(bucket) {
+      return $q.all([
+        mnTasksDetails.get(),
+        mnPoolDefault.getFresh()
+      ]).then(function (resp) {
+        var tasks = resp[0];
+        var poolDefault = resp[0];
 
-      if (options.items[2].value < 0) {
-        options.items[1].value = ramSummary.total - ramSummary.otherBuckets;
-        options.items[2] = {
+        return _.filter(tasks.tasks, function (task) {
+          var isNeeded = task.type === 'warming_up' && task.status === 'running' && task.bucket === bucket.name;
+          if (isNeeded) {
+            task.hostname = _.find(poolDefault.nodes, function (node) {
+              return node.otpNode === task.node;
+            }).hostname;
+          }
+          return isNeeded;
+        });
+      });
+    }
+
+    function getCompactionTask(bucket) {
+      return mnTasksDetails.get().then(function (tasks) {
+        var rv = {};
+        rv.thisBucketCompactionTask = _.find(tasks.tasks, function (task) {
+          return task.type === 'bucket_compaction' && task.bucket === bucket.name;
+        });
+        if (rv.thisBucketCompactionTask && !!rv.thisBucketCompactionTask.cancelURI) {
+          rv.disableCancel = !!mnCompaction.getStartedCompactions()[rv.thisBucketCompactionTask.cancelURI];
+        } else {
+          rv.disableCompact = !!(mnCompaction.getStartedCompactions()[bucket.controllers.compactAll] || rv.thisBucketCompactionTask);
+        }
+        return rv
+      });
+    }
+
+    function getBucketRamGuageConfig(ramSummary) {
+      if (!ramSummary) {
+        return;
+      }
+      bucketRamGuageConfig.topRight = {
+        name: 'Cluster quota',
+        value: ramSummary.total
+      };
+      bucketRamGuageConfig.items = [{
+        name: 'Other Buckets',
+        value: ramSummary.otherBuckets,
+        itemStyle: {'background-color': '#00BCE9', 'z-index': '2'},
+        labelStyle: {'color': '#1878a2', 'text-align': 'left'}
+      }, {
+        name: 'This Bucket',
+        value: ramSummary.thisAlloc,
+        itemStyle: {'background-color': '#7EDB49', 'z-index': '1'},
+        labelStyle: {'color': '#409f05', 'text-align': 'center'}
+      }, {
+        name: 'Free',
+        value: ramSummary.total - ramSummary.otherBuckets - ramSummary.thisAlloc,
+        itemStyle: {'background-color': '#E1E2E3'},
+        labelStyle: {'color': '#444245', 'text-align': 'right'}
+      }];
+      bucketRamGuageConfig.markers = [];
+
+      if (bucketRamGuageConfig.items[2].value < 0) {
+        bucketRamGuageConfig.items[1].value = ramSummary.total - ramSummary.otherBuckets;
+        bucketRamGuageConfig.items[2] = {
           name: 'Overcommitted',
           value: ramSummary.otherBuckets + ramSummary.thisAlloc - ramSummary.total,
           itemStyle: {'background-color': '#F40015'},
           labelStyle: {'color': '#e43a1b'}
         };
-        options.markers.push({
+        bucketRamGuageConfig.markers.push({
           value: ramSummary.total,
           itemStyle: {'background-color': '#444245'}
         });
-        options.markers.push({
+        bucketRamGuageConfig.markers.push({
           value: ramSummary.otherBuckets + ramSummary.thisAlloc,
           itemStyle: {'background-color': 'red'}
         });
-        options.topLeft = {
+        bucketRamGuageConfig.topLeft = {
           name: 'Total Allocated',
           value: ramSummary.otherBuckets + ramSummary.thisAlloc,
           itemStyle: {'color': '#e43a1b'}
         };
       }
-      return options;
+      return bucketRamGuageConfig;
     }
 
     function getGuageConfig(total, thisBucket, otherBuckets, otherData) {
       var free = total - otherData - thisBucket - otherBuckets;
 
-      return {
-        topLeft: {
-          name: 'Other Data',
-          value: otherData
-        },
-        topRight: {
-          name: 'Total Cluster Storage',
-          value: total
-        },
-        items: [{
-          name: null,
-          value: otherData,
-          itemStyle: {'background-color':'#FDC90D', 'z-index': '3'},
-          labelStyle: {}
-        }, {
-          name: 'Other Buckets',
-          value: otherBuckets,
-          itemStyle: {'background-color':'#00BCE9', 'z-index': '2'},
-          labelStyle: {'color':'#1878a2', 'text-align': 'left'}
-        }, {
-          name: 'This Bucket',
-          value: thisBucket,
-          itemStyle: {'background-color':'#7EDB49', 'z-index': '1'},
-          labelStyle: {'color':'#409f05', 'text-align': 'center'}
-        }, {
-          name: 'Free',
-          value: free,
-          itemStyle: {'background-color':'#E1E2E3'},
-          labelStyle: {'color':'#444245', 'text-align': 'right'}
-        }]
+      guageConfig.topLeft = {
+        name: 'Other Data',
+        value: otherData
       };
+      guageConfig.topRight = {
+        name: 'Total Cluster Storage',
+        value: total
+      };
+      guageConfig.items = [{
+        name: null,
+        value: otherData,
+        itemStyle: {'background-color':'#FDC90D', 'z-index': '3'},
+        labelStyle: {}
+      }, {
+        name: 'Other Buckets',
+        value: otherBuckets,
+        itemStyle: {'background-color':'#00BCE9', 'z-index': '2'},
+        labelStyle: {'color':'#1878a2', 'text-align': 'left'}
+      }, {
+        name: 'This Bucket',
+        value: thisBucket,
+        itemStyle: {'background-color':'#7EDB49', 'z-index': '1'},
+        labelStyle: {'color':'#409f05', 'text-align': 'center'}
+      }, {
+        name: 'Free',
+        value: free,
+        itemStyle: {'background-color':'#E1E2E3'},
+        labelStyle: {'color':'#444245', 'text-align': 'right'}
+      }];
+
+      return guageConfig;
     }
 
     function deleteBucket(bucket) {
@@ -118,63 +159,8 @@
       return $http({
         method: 'GET',
         url: bucket.uri + "&basic_stats=true&skipMap=true"
-      });
-    }
-    function getDetails(bucket) {
-      return $q.all([
-        mnBucketsDetailsService.doGetDetails(bucket),
-        mnTasksDetails.get(),
-        mnPoolDefault.getFresh()
-      ]).then(function (resp) {
-        var details = resp[0].data;
-        var tasks = resp[1];
-        var poolDefault = resp[2];
-
-        var hdd = details.basicStats.storageTotals.hdd;
-        var ram = details.basicStats.storageTotals.ram;
-
-        details.ramConfig = mnBucketsDetailsService.getBucketRamGuageConfig({
-          total: ram.quotaTotalPerNode * details.nodes.length,
-          thisAlloc: details.quota.ram,
-          otherBuckets: ram.quotaUsedPerNode * details.nodes.length - details.quota.ram
-        });
-
-        details.flushEnabled = details.controllers !== undefined && details.controllers.flush !== undefined;
-
-        details.isMembase = bucket.isMembase;
-        details.warmUpTasks = _.filter(tasks.tasks, function (task) {
-          var isNeeded = task.type === 'warming_up' && task.status === 'running' && task.bucket === bucket.name;
-          if (isNeeded) {
-            task.hostname = _.find(poolDefault.nodes, function (node) {
-              return node.otpNode === task.node;
-            }).hostname;
-          }
-          return isNeeded;
-        });
-
-        details.thisBucketCompactionTask = _.find(tasks.tasks, function (task) {
-          return task.type === 'bucket_compaction' && task.bucket === bucket.name;
-        });
-
-        if (details.thisBucketCompactionTask && !!details.thisBucketCompactionTask.cancelURI) {
-          details.showCancel = true;
-          details.disableCancel = !!mnCompaction.getStartedCompactions()[details.thisBucketCompactionTask.cancelURI];
-        } else {
-          details.disableCompact = !!(mnCompaction.getStartedCompactions()[bucket.controllers.compactAll] || details.thisBucketCompactionTask);
-        }
-
-        if (bucket.isMembase) {
-          details.hddConfig = getGuageConfig(
-            hdd.total,
-            details.basicStats.diskUsed,
-            hdd.usedByData - details.basicStats.diskUsed,
-            hdd.used - hdd.usedByData
-          );
-        } else {
-          details.noCompaction = true;
-        }
-
-        return details;
+      }).then(function (resp) {
+        return resp.data;
       });
     }
   }
