@@ -61,7 +61,7 @@ def log(message, end = '\n'):
 class Task(object):
     privileged = False
     no_header = False
-    num_samples = 0
+    num_samples = 1
     interval = 0
     def __init__(self, description, command, timeout=None, **kwargs):
         self.description = description
@@ -213,14 +213,15 @@ class TaskRunner(object):
             fp = self.get_file(filename)
             if not task.no_header:
                 self.header(fp, task.description, command_to_print)
-            result = task.execute(fp)
-            fp.flush()
-            self.log_result(result)
-            for i in xrange(2, task.num_samples + 2):
-                log("Taking sample %d after %f seconds - " % (i, task.interval), end='')
-                time.sleep(task.interval)
+
+            for i in xrange(task.num_samples):
+                if i > 0:
+                    log("Taking sample %d after %f seconds - " % (i+1, task.interval), end='')
+                    time.sleep(task.interval)
                 result = task.execute(fp)
                 self.log_result(result)
+            fp.flush()
+
         elif self.verbosity >= 2:
             log('Skipping "%s" (%s): not for platform %s' % (task.description, command_to_print, sys.platform))
 
@@ -400,10 +401,10 @@ def make_os_tasks():
         WindowsTask("Disk partition", "wmic partition"),
         WindowsTask("Disk volumes", "wmic volume"),
         UnixTask("Network configuration", "ifconfig -a", interval=10,
-                 num_samples=1),
+                 num_samples=2),
         LinuxTask("Network configuration", "echo link addr neigh rule route netns | xargs -n1 -- sh -x -c 'ip $1 list' --"),
         WindowsTask("Network configuration", "ipconfig /all", interval=10,
-                    num_samples=1),
+                    num_samples=2),
         LinuxTask("Raw /proc/net/dev", "cat /proc/net/dev"),
         LinuxTask("Network link statistics", "ip -s link"),
         UnixTask("Network status", "netstat -anp || netstat -an"),
