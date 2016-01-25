@@ -3,16 +3,14 @@
 
   angular
     .module('mnServersService', [
-      'mnTasksDetails',
       'mnPoolDefault',
-      'mnSettingsAutoFailoverService',
       'ui.router',
       'mnSettingsClusterService',
       'mnGroupsService'
     ])
     .factory('mnServersService', mnServersFactory);
 
-  function mnServersFactory($http, mnTasksDetails, mnPoolDefault, mnGroupsService, mnSettingsAutoFailoverService, $q, $state, $stateParams) {
+  function mnServersFactory($http, mnPoolDefault, mnGroupsService, $state, $stateParams) {
     var pendingEject = [];
 
     var mnServersService = {
@@ -30,7 +28,6 @@
       postRebalance: postRebalance,
       getNodeStatuses: getNodeStatuses,
       getNodes: getNodes,
-      getServersState: getServersState,
       addServer: addServer
     };
 
@@ -128,32 +125,8 @@
       })
     }
     function getNodes() {
-      return $q.all([
-        mnPoolDefault.getFresh(),
-        mnGroupsService.getGroups()
-      ]).then(function (responses) {
-        var groups = responses[1].groups;
-        var poolDefault = responses[0];
+      return mnPoolDefault.getFresh().then(function (poolDefault) {
         var nodes = poolDefault.nodes;
-
-        if (poolDefault.isGroupsAvailable) {
-          var hostnameToGroup = {};
-
-          _.each(groups, function (group) {
-            _.each(group.nodes, function (node) {
-              hostnameToGroup[node.hostname] = group;
-            });
-          });
-
-          nodes = _.map(nodes, function (n) {
-            n = _.clone(n);
-            var group = hostnameToGroup[n.hostname];
-            if (group) {
-              n.group = group.name;
-            }
-            return n;
-          });
-        }
 
         var stillActualEject = [];
 
@@ -198,33 +171,6 @@
         });
         rv.ramTotalPerActiveNode = poolDefault.storageTotals.ram.total / rv.onlyActive.length;
 
-        return rv;
-      });
-    }
-    function getServersState(stateParamsNodeType) {
-      return $q.all([
-        mnServersService.getNodes(),
-        mnPoolDefault.getFresh(),
-        mnTasksDetails.get(),
-        mnSettingsAutoFailoverService.getAutoFailoverSettings()
-      ]).then(function (results) {
-
-        var rv = {};
-        var poolDefault = results[1];
-        var nodes = results[0];
-        var tasks = results[2];
-        var autoFailoverSettings = results[3];
-        rv.tasks = tasks;
-        rv.nodes = nodes;
-        rv.isGroupsAvailable = poolDefault.isGroupsAvailable;
-        rv.currentNodes = nodes[stateParamsNodeType];
-        rv.rebalancing = poolDefault.rebalancing;
-        rv.pendingLength = nodes.pending.length;
-        rv.mayRebalanceWithoutSampleLoading = !poolDefault.rebalancing && !tasks.inRecoveryMode && (!!nodes.pending.length || !poolDefault.balanced) && !nodes.unhealthyActive;
-        rv.mayRebalance = rv.mayRebalanceWithoutSampleLoading && !tasks.isLoadingSampless && !tasks.isOrphanBucketTask;
-        rv.showWarningMessage = rv.mayRebalanceWithoutSampleLoading && tasks.isLoadingSamples;
-        rv.showPendingBadge = !rv.rebalancing && rv.pendingLength;
-        rv.autoFailoverSettingsCount = autoFailoverSettings.data.count;
         return rv;
       });
     }

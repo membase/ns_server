@@ -8,24 +8,18 @@
   function mnServersListController($scope, $state, $rootScope, $uibModal, mnServersService, mnPoolDefault, mnSortableTable, $q, mnMemoryQuotaService, mnGsiService,  mnPromiseHelper) {
     var vm = this;
     vm.sortableTableProperties = mnSortableTable.get();
-    vm.isReAddPossible = isReAddPossible;
     vm.mnPoolDefault = mnPoolDefault.latestValue();
 
     vm.isNodeUnhealthy = isNodeUnhealthy;
-    vm.showInactiveNodeHostname = showInactiveNodeHostname;
-    vm.showActiveNodeHostname = showActiveNodeHostname;
-    vm.showPendingRecoveryControls = showPendingRecoveryControls;
-    vm.showPendingRemovalControls = showPendingRemovalControls;
-    vm.showPendingAddControls = showPendingAddControls;
-    vm.showFailedOverControls = showFailedOverControls;
+    vm.isNodeInactiveFaied = isNodeInactiveFaied;
     vm.isLastActiveData = isLastActiveData;
+    vm.isNodeInactiveAdded = isNodeInactiveAdded;
     vm.isDataDiskUsageAvailable = isDataDiskUsageAvailable;
     vm.couchDataSize = couchDataSize;
     vm.couchDiskUsage = couchDiskUsage;
     vm.getRebalanceProgress = getRebalanceProgress;
     vm.disableRemoveBtn = disableRemoveBtn;
     vm.isFailOverDisabled = isFailOverDisabled;
-    vm.showRebalanceProgressPerItem = showRebalanceProgressPerItem;
 
     vm.getRamUsageConf = getRamUsageConf;
     vm.getSwapUsageConf = getSwapUsageConf;
@@ -37,34 +31,13 @@
     vm.failOverNode = failOverNode;
     vm.ejectServer = ejectServer;
 
-    $scope.$watch("serversCtl.state", function (state) {
-      vm.state = state;
-    });
+    vm.stateParamsNodeType = $state.params.list;
 
     var ramUsageConf = {};
     var swapUsageConf = {};
     var cpuUsageConf = {};
 
     activate();
-
-    function showRebalanceProgressPerItem() {
-      return vm.state.tasks.inRebalance && vm.state.tasks.tasksRebalance.status === 'running';
-    }
-    function isReAddPossible(node) {
-      return isNodeInactiveFaied(node) && !isNodeUnhealthy(node);
-    }
-    function showPendingRecoveryControls(node) {
-      return !vm.state.tasks.inRebalance && isNodeInactiveAdded(node) && node.recoveryType !== 'none'
-    }
-    function showInactiveNodeHostname(node) {
-      return isNodeInactiveFaied(node) && !isNodeUnhealthy(node);
-    }
-    function showActiveNodeHostname(node) {
-      return !isNodeInactiveFaied(node) && !isNodeUnhealthy(node);
-    }
-    function showPendingAddControls(node) {
-      return !vm.state.tasks.inRebalance && isNodeInactiveAdded(node) && node.recoveryType === 'none';
-    }
 
     function getRamUsageConf(node) {
       var total = node.memoryTotal;
@@ -94,16 +67,13 @@
       return cpuUsageConf;
     }
     function isFailOverDisabled(node) {
-      return isLastActiveData(node) || vm.state.tasks.inRecoveryMode;
+      return isLastActiveData(node) || $scope.serversCtl.tasks.inRecoveryMode;
     }
     function disableRemoveBtn(node) {
-      return isLastActiveData(node) || isActiveUnhealthy(node) || vm.state.tasks.inRecoveryMode;
+      return isLastActiveData(node) || isActiveUnhealthy(node) || $scope.serversCtl.tasks.inRecoveryMode;
     }
-    function showFailedOverControls(node) {
-      return !vm.state.tasks.inRebalance && !isNodeInactiveAdded(node) && !node.pendingEject;
-    }
-    function showPendingRemovalControls(node) {
-      return !vm.state.tasks.inRebalance && !isNodeInactiveAdded(node) && node.pendingEject;
+    function isLastActiveData(node) {
+      return $scope.serversCtl.nodes.reallyActiveData.length === 1 && (node.services.indexOf("kv") > -1);
     }
     function isNodeInactiveAdded(node) {
       return node.clusterMembership === 'inactiveAdded';
@@ -114,21 +84,22 @@
     function isNodeInactiveFaied(node) {
       return node.clusterMembership === 'inactiveFailed';
     }
-    function isLastActiveData(node) {
-      return vm.state.nodes.reallyActiveData.length === 1 && (node.services.indexOf("kv") > -1);
-    }
     function couchDataSize(node) {
-      return node.interestingStats['couch_docs_data_size'] + node.interestingStats['couch_views_data_size'] + node.interestingStats['couch_spatial_data_size'];
+      return node.interestingStats['couch_docs_data_size'] +
+             node.interestingStats['couch_views_data_size'] +
+             node.interestingStats['couch_spatial_data_size'];
     }
     function couchDiskUsage(node) {
-      return node.interestingStats['couch_docs_actual_disk_size'] + node.interestingStats['couch_views_actual_disk_size'] + node.interestingStats['couch_spatial_disk_size']
+      return node.interestingStats['couch_docs_actual_disk_size'] +
+             node.interestingStats['couch_views_actual_disk_size'] +
+             node.interestingStats['couch_spatial_disk_size'];
     }
     function isDataDiskUsageAvailable(node) {
       return !!(couchDataSize(node) || couchDiskUsage(node));
     }
     function getRebalanceProgress(node) {
-      return vm.state.tasks.tasksRebalance.perNode && vm.state.tasks.tasksRebalance.perNode[node.otpNode]
-           ? vm.state.tasks.tasksRebalance.perNode[node.otpNode].progress : 0 ;
+      return $scope.serversCtl.tasks.tasksRebalance.perNode && $scope.serversCtl.tasks.tasksRebalance.perNode[node.otpNode]
+           ? $scope.serversCtl.tasks.tasksRebalance.perNode[node.otpNode].progress : 0 ;
     }
     function isActiveUnhealthy(node) {
       return $state.params.type === "active" && isNodeUnhealthy(node);
@@ -204,7 +175,7 @@
     }
     function cancelEjectServer(node) {
       mnServersService.removeFromPendingEject(node);
-      $scope.$broadcast("reloadServersPoller");
+      $rootScope.$broadcast("reloadServersPoller");
     }
 
     function activate() {

@@ -13,7 +13,8 @@
       createGroup: createGroup,
       updateGroup: updateGroup,
       deleteGroup: deleteGroup,
-      applyChanges: applyChanges
+      applyChanges: applyChanges,
+      getGroupsByHostname: getGroupsByHostname
     };
 
     return mnGroupsService;
@@ -55,6 +56,21 @@
 
     function getGroupsState() {
       return mnGroupsService.getGroups();
+    }
+
+    function getGroupsByHostname() {
+      return mnGroupsService.getGroups().then(function (resp) {
+        var groups = resp.groups;
+        var hostnameToGroup = {};
+
+        _.each(groups, function (group) {
+          _.each(group.nodes, function (node) {
+            hostnameToGroup[node.hostname] = group;
+          });
+        });
+
+        return hostnameToGroup;
+      });
     }
 
     function getGroups() {

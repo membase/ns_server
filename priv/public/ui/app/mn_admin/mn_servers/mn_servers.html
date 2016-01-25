@@ -1,4 +1,7 @@
-<div id="js_servers" class="servers" data-ng-class="{'rebalancing': serversCtl.state.rebalancing}">
+<div
+  id="js_servers"
+  class="servers"
+  data-ng-class="{'rebalancing': serversCtl.poolDefault.rebalancing}">
   <h1>Servers</h1>
   <div
     class="warning_message failover_warning"
@@ -10,48 +13,63 @@
     class="warning_message"
     style="color:red;"
     id="js_rebalance_during_sample_load"
-    ng-show="serversCtl.state.showWarningMessage">
+    ng-show="serversCtl.mayRebalanceWithoutSampleLoading() && serversCtl.tasks.isLoadingSamples">
       Warning: Rebalance is not available until data loading is completed!
   </div>
   <div
     id="auto_failover_count_container"
     class="warning_message"
-    ng-show="serversCtl.state.autoFailoverSettingsCount > 0">
+    ng-show="serversCtl.autoFailoverSettings.data.count > 0">
       A server was automatically failed over
+
+    <!--TODO: adminCtl.resetAutoFailOverCount is not available -->
     <a
       class="auto_failover_count_reset edit_btn when-roadmin-hide-me"
       ng-click="adminCtl.resetAutoFailOverCount()"
-      mn-spinner="serversCtl.state.resetQuotaLoading">
+      mn-spinner="serversCtl.resetQuotaLoading">
       <span>Reset Quota</span>
     </a>
   </div>
   <div class="shadow_box">
     <div class="header_2">
-      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
+      <span
+        class="staleness-notice"
+        ng-show="adminCtl.lostConnState.isActivated">
+          Difficulties communicating with the cluster; displaying cached information!
+      </span>
       <a
         class="btn_1 when-enterprise when-roadmin-avoid-me"
         ui-sref="app.admin.groups"
         id="js_server_groups_tab"
-        ng-hide="serversCtl.isServerGroupsDisabled()"><span>Server Groups</span></a>
+        ng-show="serversCtl.poolDefault.isGroupsAvailable && serversCtl.poolDefault.isEnterprise">
+          <span>Server Groups</span>
+      </a>
       <a
         class="add_button btn_1 when-roadmin-hide-me casper_servers_add_popup"
-        ng-hide="serversCtl.isAddServerDisabled()"
-        ng-click="serversCtl.addServer()"><span>Add Server</span></a>
+        ng-show="serversCtl.poolDefault && !serversCtl.poolDefault.rebalancing"
+        ng-click="serversCtl.addServer()">
+          <span>Add Server</span>
+      </a>
       <a
         class="rebalance_button btn_1 when-roadmin-hide-me"
-        ng-hide="serversCtl.isRebalanceDisabled()"
-        ng-click="serversCtl.postRebalance()"><span>Rebalance</span></a>
+        ng-show="serversCtl.mayRebalanceWithoutSampleLoading() && !serversCtl.tasks.isLoadingSamples && !serversCtl.tasks.isOrphanBucketTask"
+        ng-click="serversCtl.postRebalance()">
+          <span>Rebalance</span>
+      </a>
       <a
         class="stop_rebalance_button btn_1 when-roadmin-hide-me"
-        ng-hide="serversCtl.stopRebalanceDisabled()"
+        ng-show="serversCtl.poolDefault.rebalancing"
         ng-click="serversCtl.stopRebalance()">
-        <span ng-show="serversCtl.state.tasks.isSubtypeGraceful">Stop Fail Over</span>
-        <span ng-show="!serversCtl.state.tasks.isSubtypeGraceful">Stop Rebalance</span>
+        <span ng-show="serversCtl.tasks.isSubtypeGraceful">Stop Fail Over</span>
+        <span ng-show="!serversCtl.tasks.isSubtypeGraceful">Stop Rebalance</span>
       </a>
+      <!--TODO: mn-display-permission to Stop Recovery -->
       <a
         class="stop_recovery_button btn_1 when-roadmin-hide-me"
         ng-click="serversCtl.onStopRecovery()"
-        ng-hide="serversCtl.stopRecoveryDisabled()"><span>Stop Recovery</span></a>
+        ng-show="serversCtl.tasks.inRecoveryMode">
+          <span>Stop Recovery</span>
+      </a>
       <ul class="tabs">
         <li class="tab_left">
           <a
@@ -65,8 +83,8 @@
             ui-sref-active="selected">Pending Rebalance</a>
             <span
               class="badge"
-              data-ng-show="serversCtl.state.showPendingBadge"><span>
-                {{serversCtl.state.pendingLength}}
+              data-ng-show="!serversCtl.poolDefault.rebalancing && serversCtl.nodes.pending.length"><span>
+                {{serversCtl.nodes.pending.length}}
               </span>
             </span>
         </li>

@@ -22,7 +22,9 @@
       'mnGroupsService',
       'mnPoll',
       'mnFocus',
-      'mnPools'
+      'mnPools',
+      'mnSettingsAutoFailoverService',
+      'mnTasksDetails'
     ])
     .controller('mnServersController', mnServersController)
     .filter("formatFailoverWarnings", formatFailoverWarnings);
@@ -38,46 +40,52 @@
     };
   }
 
-  function mnServersController($scope, $state, $uibModal, mnPoolDefault, mnPoller, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools) {
+  function mnServersController($scope, $state, $uibModal, mnPoolDefault, mnPoller, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools, mnSettingsAutoFailoverService, mnTasksDetails) {
     var vm = this;
     vm.mnPoolDefault = mnPoolDefault.latestValue();
-
-    vm.isServerGroupsDisabled = isServerGroupsDisabled;
-    vm.isAddServerDisabled = isAddServerDisabled;
-    vm.isRebalanceDisabled = isRebalanceDisabled;
-    vm.stopRebalanceDisabled = stopRebalanceDisabled;
-    vm.stopRecoveryDisabled = stopRecoveryDisabled;
 
     vm.stopRebalance = stopRebalance;
     vm.onStopRecovery = onStopRecovery;
     vm.postRebalance = postRebalance;
     vm.addServer = addServer;
+    vm.mayRebalanceWithoutSampleLoading = mayRebalanceWithoutSampleLoading;
 
     activate();
 
     function activate() {
       mnHelper.initializeDetailsHashObserver(vm, 'openedServers', 'app.admin.servers.list');
 
-      var poller = new mnPoller($scope, function () {
-          return mnServersService.getServersState($state.params.list);
-        })
-        .subscribe("state", vm)
-        .reloadOnScopeEvent("reloadServersPoller", vm);
+      new mnPoller($scope, function () {
+        return mnGroupsService.getGroupsByHostname();
+      })
+      .subscribe("getGroupsByHostname", vm)
+      .reloadOnScopeEvent("reloadServersPoller", vm, "serverGroupsLoading");
+
+      new mnPoller($scope, function () {
+        return mnServersService.getNodes();
+      })
+      .subscribe("nodes", vm)
+      .reloadOnScopeEvent("reloadServersPoller", vm, "nodesLoading");
+      new mnPoller($scope, function () {
+        return mnPoolDefault.getFresh();
+      })
+      .subscribe("poolDefault", vm)
+      .reloadOnScopeEvent("reloadServersPoller", vm, "poolDefaultLoading");
+      new mnPoller($scope, function () {
+        return mnTasksDetails.get();
+      })
+      .subscribe("tasks", vm)
+      .reloadOnScopeEvent("reloadServersPoller", vm, "tasksLoading");
+      new mnPoller($scope, function () {
+        return mnSettingsAutoFailoverService.getAutoFailoverSettings();
+      })
+      .subscribe("autoFailoverSettings", vm)
+      .reloadOnScopeEvent("reloadServersPoller", vm, "autoFailoverSettingsLoading");
     }
-    function isServerGroupsDisabled() {
-      return !vm.state || !vm.state.isGroupsAvailable || !vm.mnPoolDefault.value.isEnterprise;
-    }
-    function isAddServerDisabled() {
-      return !vm.state || vm.state.rebalancing;
-    }
-    function isRebalanceDisabled() {
-      return !vm.state || !vm.state.mayRebalance;
-    }
-    function stopRebalanceDisabled() {
-      return !vm.state || !vm.state.tasks.inRebalance;
-    }
-    function stopRecoveryDisabled() {
-      return !vm.state || !vm.state.tasks.inRecoveryMode;
+    function mayRebalanceWithoutSampleLoading() {
+      return (vm.poolDefault && !vm.poolDefault.rebalancing) &&
+             (vm.tasks && !vm.tasks.inRecoveryMode) &&
+             vm.nodes && (!!vm.nodes.pending.length || !vm.poolDefault.balanced) && !vm.nodes.unhealthyActive;
     }
     function addServer() {
       $uibModal.open({
@@ -95,7 +103,7 @@
       });
     }
     function postRebalance() {
-      mnPromiseHelper(vm, mnServersService.postRebalance(vm.state.nodes.allNodes))
+      mnPromiseHelper(vm, mnServersService.postRebalance(vm.nodes.allNodes))
         .onSuccess(function () {
           $state.go('app.admin.servers.list', {list: 'active'});
         })
@@ -103,7 +111,7 @@
         .showErrorsSensitiveSpinner();
     }
     function onStopRecovery() {
-      mnPromiseHelper(vm, mnServersService.stopRecovery(vm.state.tasks.tasksRecovery.stopURI))
+      mnPromiseHelper(vm, mnServersService.stopRecovery(vm.tasks.tasksRecovery.stopURI))
         .broadcast("reloadServersPoller")
         .showErrorsSensitiveSpinner();
     }
