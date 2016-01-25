@@ -22,6 +22,9 @@
               id="replication_from_bucket"
               style="width: 154px;"
               ng-options="bucket.name as bucket.name for bucket in xdcrCreateDialogCtl.buckets">
+              <option value="" disabled selected style="display: none;">
+                select a bucket
+              </option>
             </select>
             <span
               class="error error-container err-fromBucket"
