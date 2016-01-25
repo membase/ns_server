@@ -11,7 +11,7 @@
         <ui-select-choices
           repeat="item in viewsEditingCtl.state.viewsNames | filter: $select.search"
           ui-disable-choice="item.isTitle">
-            <a class="select-item ellipsis" ng-bind-html="item.name | highlight: $select.search">
+            <a class="select-item ellipsis" ng-bind-html="item.name | highlight: $select.search"></a>
         </ui-select-choices>
       </ui-select>
     </span>

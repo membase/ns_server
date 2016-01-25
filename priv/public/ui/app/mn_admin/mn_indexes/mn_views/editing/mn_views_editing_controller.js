@@ -53,7 +53,7 @@
       vm.isViewsClosed = !vm.isViewsClosed;
     }
     function isEditDocumentDisabled() {
-      return awaitingSampleDocument() || !vm.state.sampleDocument || vm.state.isEmptyState;
+      return awaitingSampleDocument() || vm.state.sampleDocument.warnings || vm.state.isEmptyState;
     }
     function isPreviewRandomDisabled() {
       return awaitingSampleDocument() || vm.state.isEmptyState;
