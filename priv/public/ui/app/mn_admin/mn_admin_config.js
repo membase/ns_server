@@ -115,7 +115,7 @@
           }
         },
         resolve: {
-          setDefaultBucketName: mnHelperProvider.setDefaultBucketName("analyticsBucket", 'app.admin.analytics.list.graph')
+          setDefaultBucketName: mnHelperProvider.setDefaultBucketName("analyticsBucket", 'app.admin.analytics.list.graph', true)
         }
       })
       .state('app.admin.analytics.list', {

@@ -20,6 +20,8 @@
           bucketsDetails.byType[bucket.bucketType].push(bucket);
           bucket.isMembase = bucket.bucketType === 'membase';
         });
+        bucketsDetails.byType.names = _.pluck(bucketsDetails, 'name');
+        bucketsDetails.byType.defaultName = _.contains(bucketsDetails.byType.names, 'default') ? 'default' : bucketsDetails.byType.names[0] || '';
         bucketsDetails.byType.membase.names = _.pluck(bucketsDetails.byType.membase, 'name');
         bucketsDetails.byType.membase.defaultName = _.contains(bucketsDetails.byType.membase.names, 'default') ? 'default' : bucketsDetails.byType.membase.names[0] || '';
         return bucketsDetails;

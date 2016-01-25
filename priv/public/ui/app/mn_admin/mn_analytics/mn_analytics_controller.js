@@ -48,7 +48,7 @@
       new mnPoller($scope, function (previousResult) {
         return mnBucketsService.getBucketsByType().then(function (buckets) {
           var rv = {};
-          rv.bucketsNames = buckets.byType.membase.names;
+          rv.bucketsNames = buckets.byType.names;
           rv.bucketsNames.selected = $state.params.analyticsBucket;
           return rv;
         });

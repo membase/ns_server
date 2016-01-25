@@ -17,17 +17,18 @@
       setDefaultBucketName: setDefaultBucketName
     };
 
-    function setDefaultBucketName(bucketParamName, stateRedirect) {
+    function setDefaultBucketName(bucketParamName, stateRedirect, memcached) {
       return function ($q, $state, mnBucketsService, $stateParams) {
         var deferred = $q.defer();
 
         if ($stateParams[bucketParamName] === null) {
           mnBucketsService.getBucketsByType(true).then(function (buckets) {
-            if (!buckets.byType.membase.defaultName) {
+            var defaultBucket = memcached ? buckets.byType.defaultName : buckets.byType.membase.defaultName;
+            if (!defaultBucket) {
               deferred.resolve();
             } else {
               deferred.reject();
-              $stateParams[bucketParamName] = buckets.byType.membase.defaultName;
+              $stateParams[bucketParamName] = defaultBucket;
               $state.go(stateRedirect, $stateParams);
             }
           });
