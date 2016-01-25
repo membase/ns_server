@@ -33,6 +33,7 @@
         var tasks = resp.data;
 
         rv.tasks = tasks;
+        rv.tasksXDCR = _.filter(tasks, detectXDCRTask);
         rv.tasksRecovery = _.detect(tasks, detectRecoveryTasks);
         rv.tasksRebalance = _.detect(tasks, detectRebalanceTasks);
         rv.tasksWarmingUp = _.filter(tasks, detectWarmupTask);
@@ -49,6 +50,10 @@
         return rv;
       });
     };
+
+    function detectXDCRTask(taskInfo) {
+      return taskInfo.type === 'xdcr';
+    }
 
     function detectOrphanBucketTask(taskInfo) {
       return taskInfo.type === "orphanBucket";

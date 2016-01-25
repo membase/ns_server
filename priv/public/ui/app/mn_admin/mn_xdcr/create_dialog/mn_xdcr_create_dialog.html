@@ -50,7 +50,7 @@
               name="toCluster"
               ng-model="xdcrCreateDialogCtl.replication.toCluster"
               id="replication_to_cluster" style="width: 154px;"
-              ng-options="reference.name as reference.name for reference in xdcrCtl.state.references">
+              ng-options="reference.name as reference.name for reference in xdcrCtl.references.filtered">
               <option value="" disabled selected style="display: none;">
                 Pick remote cluster
               </option>

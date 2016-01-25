@@ -14,7 +14,7 @@
         </span>
       </h3>
 
-      <div class="stats" id="cluster_reference_list_container" mn-spinner="!xdcrCtl.state" min-height="66px">
+      <div class="stats" id="cluster_reference_list_container" mn-spinner="!xdcrCtl.references" min-height="66px">
         <table class="list casper_remout_cluster_container" style="width:100%">
           <thead>
             <tr>
@@ -23,7 +23,7 @@
               <th></th>
             </tr>
           </thead>
-          <tbody ng-if="xdcrCtl.state.references.length" ng-repeat="row in xdcrCtl.state.references | orderBy:'name' track by row.name">
+          <tbody ng-if="xdcrCtl.references.filtered.length" ng-repeat="row in xdcrCtl.references.filtered | orderBy:'name' track by row.name">
             <tr>
               <td>{{row.name}}</td>
               <td>
@@ -39,7 +39,7 @@
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="!xdcrCtl.state.references.length">
+          <tbody ng-if="!xdcrCtl.references.filtered.length">
             <tr><td colspan="3" style="text-align:center">No cluster references defined. <span class="when-roadmin-avoid-me">Please create one.</span></td></tr>
           </tbody>
         </table>
@@ -54,13 +54,13 @@
         <span class="view_head" style="padding-left: 0;padding-bottom: 7px;">Ongoing Replications</span>
         <span class="buttons">
           <a
-            ng-show="xdcrCtl.state.references.length" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="xdcrCtl.createReplications()">
+            ng-show="xdcrCtl.references.filtered.length" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="xdcrCtl.createReplications()">
             <span>Create Replication</span>
           </a>
         </span>
       </h3>
 
-      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container" mn-spinner="!xdcrCtl.state" min-height="66px">
+      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container" mn-spinner="!xdcrCtl.tasks" min-height="66px">
         <table class="list" style="width:100%">
           <colgroup>
             <col class="bucket">
@@ -83,12 +83,12 @@
               <th></th>
             </tr>
           </thead>
-          <tbody ng-if="xdcrCtl.state.replications.length" ng-repeat="row in xdcrCtl.state.replications track by row.id">
+          <tbody ng-if="xdcrCtl.tasks.tasksXDCR.length" ng-repeat="row in xdcrCtl.tasks.tasksXDCR track by row.id">
             <tr class="row">
               <td>{{row.source}}</td>
-              <td>{{row.protocol}}</td>
+              <td>{{"Version " + (row.replicationType === "xmem" ? "2" : row.replicationType === "capi" ? "1" : "unknown")}}</td>
               <td style="color:#777">this cluster</td>
-              <td>{{row.to}}</td>
+              <td>{{xdcrCtl.to(row)}}</td>
               <td class="when-enterprise" ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise">
                 <span ng-show="row.filterExpression">
                   <a class="tooltip text_11"><span>Yes</span>
@@ -100,8 +100,8 @@
                 <span ng-show="!row.filterExpression">No</span>
               </td>
               <td class="replication_status_cell">
-                <span>{{row.humanStatus}}</span>
-                <span ng-show="row.status !== 'notRunning'" class="only-when-30 js_replication_control replication_control dynamic_{{row.status}}" ng-click="row.status !== 'spinner' && xdcrCtl.pausePlayReplication(row)"></span>
+                <span>{{xdcrCtl.humanStatus(row)}}</span>
+                <span ng-show="xdcrCtl.status(row) !== 'notRunning'" class="only-when-30 js_replication_control replication_control dynamic_{{xdcrCtl.status(row)}}" ng-click="xdcrCtl.status(row) !== 'spinner' && xdcrCtl.pausePlayReplication(row)"></span>
                 <a ng-show="row.errors.length" ng-click="xdcrCtl.showReplicationErrors(row)">Last {{row.errors.length | mnCount:'error'}}</a>
               </td>
               <td>{{row.when}}</td>
@@ -115,7 +115,7 @@
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="!xdcrCtl.state.replications.length">
+          <tbody ng-if="!xdcrCtl.tasks.tasksXDCR.length">
             <tr><td colspan="8" style="text-align:center">There are no replications currently in progress.</td></tr>
           </tbody>
         </table>

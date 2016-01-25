@@ -55,61 +55,15 @@
       return $http.post("/controller/createReplication", settings);
     }
     function getReplicationState() {
-      return $q.all([
-        mnTasksDetails.get(),
-        $http.get('/pools/default/remoteClusters')
-      ]).then(function (resp) {
-        var tasks = resp[0];
-        var allReferences = resp[1].data;
-        var references = _.filter(allReferences, function (cluster) { return !cluster.deleted });
-
-        var replications = _.map(_.filter(tasks.tasks, function (task) {
-          return task.type === 'xdcr';
-        }), function (replication) {
-          var clusterUUID = replication.id.split("/")[0];
-          var cluster = _.find(references, function (cluster) {
-            return cluster.uuid === clusterUUID;
-          });
-          var name;
-          if (cluster) {
-            name = '"' + cluster.name + '"';
-          } else {
-            cluster = _.find(allReferences, function (cluster) {
-              return cluster.uuid === clusterUUID;
-            });
-            if (cluster) {
-              // if we found cluster among rawClusters we assume it was
-              // deleted
-              name = 'at ' + cluster.hostname;
-            } else {
-              name = '"unknown"';
-            }
-          }
-
-          replication.protocol = "Version " + (replication.replicationType === "xmem" ? "2" :
-                                              replication.replicationType === "capi" ? "1" : "unknown");
-          replication.to = 'bucket "' + replication.target.split('buckets/')[1] + '" on cluster ' + name;
-          replication.humanStatus = (function (status) {
-            switch (status) {
-              case 'running': return 'Replicating';
-              case 'paused': return 'Paused';
-              default: return 'Starting Up';
-            }
-          })(replication.status);
-
-
-          if (replication.pauseRequested && replication.status != 'paused') {
-            replication.status = 'spinner';
-            replication.humanStatus = 'Paused';
-          }
-
-          replication.when = replication.continuous ? "on change" : "one time sync";
-          return replication;
+      return $http.get('/pools/default/remoteClusters').then(function (resp) {
+        var byUUID = {};
+        _.forEach(resp.data, function (reference) {
+          byUUID[reference.uuid] = reference;
         });
-
         return {
-          references: references,
-          replications: replications
+          filtered: _.filter(resp.data, function (cluster) { return !cluster.deleted }),
+          all: resp.data,
+          byUUID: byUUID
         };
       });
     }

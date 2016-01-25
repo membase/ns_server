@@ -12,7 +12,7 @@
     'mnSpinner'
   ]).controller('mnXDCRController', mnXDCRController);
 
-  function mnXDCRController($scope, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnBucketsService, mnPromiseHelper) {
+  function mnXDCRController($scope, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnTasksDetails, mnBucketsService, mnPromiseHelper) {
     var vm = this;
 
     vm.mnPoolDefault = mnPoolDefault.latestValue();
@@ -28,9 +28,46 @@
 
     activate();
 
+    vm.to = to;
+    vm.humanStatus = humanStatus;
+    vm.status = status;
+
+    function to(row) {
+      if (!vm.references) {
+        return;
+      }
+      var uuid = row.id.split("/")[0];
+      var clusters = vm.references.byUUID;
+      var toName = !clusters[uuid] ? "unknown" : !clusters[uuid].deleted ? clusters[uuid].name : ('at ' + cluster[uuid].hostname);
+      return 'bucket "' + row.target.split('buckets/')[1] + '" on cluster "' + toName + '"';
+    }
+    function humanStatus(row) {
+      if (row.pauseRequested && row.status != 'paused') {
+        return 'Paused';
+      } else {
+        switch (row.status) {
+          case 'running': return 'Replicating';
+          case 'paused': return 'Paused';
+          default: return 'Starting Up';
+        }
+      }
+    }
+    function status(row) {
+      return row.pauseRequested && row.status != 'paused' ? 'spinner' : row.status;
+    }
+
     function activate() {
-      var poller = new mnPoller($scope, mnXDCRService.getReplicationState)
-      .subscribe("state", vm)
+      new mnPoller($scope, function () {
+        return mnTasksDetails.get();
+      })
+      .subscribe("tasks", vm)
+      .reloadOnScopeEvent("reloadXdcrPoller", vm)
+      .cycle();
+
+      new mnPoller($scope, function () {
+        return mnXDCRService.getReplicationState();
+      })
+      .subscribe("references", vm)
       .reloadOnScopeEvent("reloadXdcrPoller", vm)
       .cycle();
     }
