@@ -12,7 +12,8 @@
   function mnAnalyticsServiceFactory($http, $q, mnBucketsService, mnServersService, mnCloneOnlyDataFilter, mnFormatQuantityFilter, mnParseHttpDateFilter, timeUnitToSeconds) {
     var mnAnalyticsService = {
       getStats: getStats,
-      doGetStats: doGetStats
+      doGetStats: doGetStats,
+      prepareNodesList: prepareNodesList
     };
 
     return mnAnalyticsService;
@@ -55,50 +56,38 @@
       return value;
     }
     function prepareNodesList(params) {
-      return function (analiticsState) {
-        return mnServersService.getNodes().then(function (nodes) {
-          analiticsState.nodesNames = _(nodes.active).filter(function (node) {
-            return !(node.clusterMembership === 'inactiveFailed') && !(node.status === 'unhealthy');
-          }).pluck("hostname").value();
-          analiticsState.nodesNames.unshift("All Server Nodes (" + analiticsState.nodesNames.length + ")");
-          analiticsState.nodesNames.selected = params.$stateParams.statsHostname || analiticsState.nodesNames[0];
-          return analiticsState;
-        });
-      }
+      return mnServersService.getNodes().then(function (nodes) {
+        var rv = {};
+        rv.nodesNames = _(nodes.active).filter(function (node) {
+          return !(node.clusterMembership === 'inactiveFailed') && !(node.status === 'unhealthy');
+        }).pluck("hostname").value();
+        rv.nodesNames.unshift("All Server Nodes (" + rv.nodesNames.length + ")");
+        rv.nodesNames.selected = params.statsHostname || rv.nodesNames[0];
+        return rv;
+      });
     }
     function getStats(params) {
-      return mnBucketsService.getBucketsByType().then(function (buckets) {
-        var isSpecificStat = !!params.$stateParams.specificStat;
-        return mnAnalyticsService.doGetStats(params).then(function (resp) {
-          var queries = [
-            $q.when(buckets),
-            $q.when(resp)
-          ];
-          queries.push(isSpecificStat ? $q.when({
-            data: resp.data.directory.value,
-            origTitle: resp.data.directory.origTitle
-          }) : getStatsDirectory(resp.data.directory.url));
+      var isSpecificStat = !!params.$stateParams.specificStat;
+      return mnAnalyticsService.doGetStats(params).then(function (resp) {
+        var queries = [
+          $q.when(resp)
+        ];
+        queries.push(isSpecificStat ? $q.when({
+          data: resp.data.directory.value,
+          origTitle: resp.data.directory.origTitle
+        }) : getStatsDirectory(resp.data.directory.url));
 
-          var rv = $q.all(queries).then(function (data) {
-            return prepareAnaliticsState(data, params);
-          });
-          return isSpecificStat ? rv : rv.then(prepareNodesList(params));
-        }, function (resp) {
-          switch (resp.status) {
-            case 404:
-            case 500: //should be removed later
-              var rv = $q.when(buckets).then(function (buckets) {
-                buckets.byType.membase.names.selected = params.$stateParams.analyticsBucket;
-                return {
-                  bucketsNames: buckets.byType.membase.names,
-                  isEmptyState: true
-                };
-              });
-              return isSpecificStat ? rv : rv.then(prepareNodesList(params));
-            case 0:
-            case -1: return $q.reject(resp);
-          }
+        return $q.all(queries).then(function (data) {
+          return prepareAnaliticsState(data, params);
         });
+      }, function (resp) {
+        switch (resp.status) {
+          case 404:
+          case 500: //should be removed later
+            return $q.when({isEmptyState: true});
+          case 0:
+          case -1: return $q.reject(resp);
+        }
       });
     }
     function doGetStats(params, mnHttpParams) {
@@ -128,9 +117,8 @@
       });
     }
     function prepareAnaliticsState(data, params) {
-      var stats = mnCloneOnlyDataFilter(data[1].data);
-      var statDesc = mnCloneOnlyDataFilter(data[2].data);
-      var buckets = data[0];
+      var stats = mnCloneOnlyDataFilter(data[0].data);
+      var statDesc = mnCloneOnlyDataFilter(data[1].data);
       var samples = {};
       var rv = {};
 
@@ -149,7 +137,7 @@
         }
       });
 
-      stats.serverDate = mnParseHttpDateFilter(data[1].headers('date')).valueOf();
+      stats.serverDate = mnParseHttpDateFilter(data[0].headers('date')).valueOf();
       stats.clientDate = (new Date()).valueOf();
 
       var statsByName = {};
@@ -179,11 +167,9 @@
       rv.isSpecificStats = !!params.$stateParams.specificStat;
 
       rv.statsByName = statsByName;
-      rv.bucketsNames = buckets.byType.membase.names;
-      rv.bucketsNames.selected = params.$stateParams.analyticsBucket;
       rv.statsDirectoryBlocks = statDesc.blocks;
       rv.stats = stats;
-      rv.origTitle = data[2].origTitle;
+      rv.origTitle = data[1].origTitle;
 
       return rv;
     }

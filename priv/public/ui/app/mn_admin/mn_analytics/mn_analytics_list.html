@@ -33,8 +33,8 @@
             <ins class="right-arrow js_right-arrow">
               <ul class="js_inner">
                 <li>
-                  <a ng-show="!analyticsCtl.state.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: '@' + analyticsCtl.state.nodesNames[1], specificStat: statInfo.name})">show by server</a>
-                  <a ng-show="analyticsCtl.state.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: 'ops', statsHostname: statInfo.title, specificStat: null})">show this server</a>
+                  <a ng-show="!analyticsCtl.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: '@' + analyticsCtl.nodes.nodesNames[1], specificStat: statInfo.name})">show by server</a>
+                  <a ng-show="analyticsCtl.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: 'ops', statsHostname: statInfo.title, specificStat: null})">show this server</a>
                 </li>
               </ul>
             </ins>
