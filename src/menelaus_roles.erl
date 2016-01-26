@@ -15,12 +15,12 @@
 %%
 %% 1. Permission is defined as a pair {object, operation}
 %% 2. Objects are organized in the tree structure with common root []
-%% 3. One vertice of this tree can be parametrized: {bucket, bucket_name},
+%% 3. One vertex of this tree can be parametrized: {bucket, bucket_name},
 %%    wildcard all can be used in place of bucket_name
 %% 4. Permission pattern is a pair {Object pattern, Allowed operations}
 %% 5. Allowed operations can be list of operations, all or none
 %% 6. Object pattern is a list of vertices that define a certain subtree of the objects tree
-%% 7. Object pattern vertice {bucket, bucket_name} always matches object vertice {bucket, all},
+%% 7. Object pattern vertex {bucket, bucket_name} always matches object vertex {bucket, all},
 %%    otherwise vertices match if they are equal
 %% 8. Object matches the object pattern if all the vertices of object pattern match
 %%    corresponding vertices of the object.
@@ -167,8 +167,8 @@ substitute_params(Params, ParamDefinitions, Permissions) ->
                                      ({Name, Param}) ->
                                          {Param, Subst} = lists:keyfind(Param, 1, ParamPairs),
                                          {Name, Subst};
-                                     (Vertice) ->
-                                         Vertice
+                                     (Vertex) ->
+                                         Vertex
                                  end, ObjectPattern), AllowedOperations}
               end, Permissions).
 
