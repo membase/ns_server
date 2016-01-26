@@ -247,9 +247,12 @@ convert_header_name(Header) when is_list(Header) ->
     Header.
 
 filter_headers(Headers, {keep, Names}) ->
-    [Hdr || {Name, _} = Hdr <- Headers, lists:member(Name, Names)];
+    [Hdr || {Name, _} = Hdr <- Headers, member(Name, Names)];
 filter_headers(Headers, {drop, Names}) ->
-    [Hdr || {Name, _} = Hdr <- Headers, not lists:member(Name, Names)].
+    [Hdr || {Name, _} = Hdr <- Headers, not member(Name, Names)].
+
+member(Name, Names) ->
+    lists:member(string:to_lower(Name), Names).
 
 do_proxy_req({Host, Port}, Path, Headers, Timeout, Req) ->
     Method = Req:get(method),
