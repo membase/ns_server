@@ -36,7 +36,8 @@
          get_bucket/2,
          get_bucket_names/0,
          get_bucket_names/1,
-         get_bucket_names/2,
+         get_bucket_names_of_type/1,
+         get_bucket_names_of_type/2,
          couchbase_bucket_exists/1,
          get_buckets/0,
          get_buckets/1,
@@ -216,13 +217,15 @@ maybe_get_bucket(_, BucketConfig) ->
     {ok, BucketConfig}.
 
 get_bucket_names() ->
-    BucketConfigs = get_buckets(),
+    get_bucket_names(get_buckets()).
+
+get_bucket_names(BucketConfigs) ->
     proplists:get_keys(BucketConfigs).
 
-get_bucket_names(Type) ->
-    get_bucket_names(Type, get_buckets()).
+get_bucket_names_of_type(Type) ->
+    get_bucket_names_of_type(Type, get_buckets()).
 
-get_bucket_names(Type, BucketConfigs) ->
+get_bucket_names_of_type(Type, BucketConfigs) ->
     [Name || {Name, Config} <- BucketConfigs,
              proplists:get_value(type, Config) == Type].
 
@@ -731,7 +734,7 @@ filter_ready_buckets(BucketInfos) ->
 %% If bucket with given name exists, but with different type, we
 %% should return {exit, {not_found, _}, _}
 update_bucket_props(Type, BucketName, Props) ->
-    case lists:member(BucketName, get_bucket_names(Type)) of
+    case lists:member(BucketName, get_bucket_names_of_type(Type)) of
         true ->
             update_bucket_props(BucketName, Props);
         false ->

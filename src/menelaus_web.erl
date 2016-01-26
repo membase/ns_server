@@ -1292,7 +1292,7 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
     F = build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, LocalAddr),
     Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
     Config = ns_config:get(),
-    BucketsVer = erlang:phash2(ns_bucket:get_bucket_names(Config))
+    BucketsVer = erlang:phash2(ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)))
         bxor erlang:phash2([{proplists:get_value(hostname, KV),
                              proplists:get_value(status, KV)} || {struct, KV} <- Nodes]),
     BucketsInfo = {struct, [{uri, bin_concat_path(["pools", Id, "buckets"],

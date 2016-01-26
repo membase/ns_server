@@ -421,7 +421,7 @@ delete_unused_buckets_db_files() ->
             false ->
                 case ns_cluster_membership:get_cluster_membership(node(), Config) of
                     active ->
-                        ns_bucket:get_bucket_names(membase, ns_bucket:get_buckets(Config));
+                        ns_bucket:get_bucket_names_of_type(membase, ns_bucket:get_buckets(Config));
                     _ ->
                         []
                 end

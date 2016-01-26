@@ -48,12 +48,12 @@ init(Indexer) ->
       ns_config_events,
       fun ({buckets, Buckets}) ->
               BucketConfigs = proplists:get_value(configs, Buckets, []),
-              Self ! {buckets, ns_bucket:get_bucket_names(membase, BucketConfigs)};
+              Self ! {buckets, ns_bucket:get_bucket_names_of_type(membase, BucketConfigs)};
           (_) ->
               ok
       end),
 
-    Buckets = lists:map(fun list_to_binary/1, ns_bucket:get_bucket_names(membase)),
+    Buckets = lists:map(fun list_to_binary/1, ns_bucket:get_bucket_names_of_type(membase)),
     Defaults = [{Indexer:global_index_stat(atom_to_binary(Stat, latin1)), 0}
                 || Stat <- Indexer:get_gauges() ++ Indexer:get_counters() ++ Indexer:get_computed()],
 

@@ -426,7 +426,7 @@ handle_sync_event(Event, _From, StateName, State) ->
     {stop, {unhandled, Event, StateName}, State}.
 
 handle_info(janitor, idle, #idle_state{remaining_buckets=[]} = State) ->
-    case ns_bucket:get_bucket_names(membase) of
+    case ns_bucket:get_bucket_names_of_type(membase) of
         [] ->
             consider_switching_compat_mode(),
             {next_state, idle, State#idle_state{remaining_buckets=[]}};
