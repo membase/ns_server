@@ -391,13 +391,13 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["settings", "indexes"] ->
                     {{[indexes], read}, fun menelaus_web_indexes:handle_settings_get/1};
                 ["diag"] ->
-                    {{[cluster, admin, diag], read}, fun diag_handler:handle_diag/1, []};
+                    {{[admin, diag], read}, fun diag_handler:handle_diag/1, []};
                 ["diag", "vbuckets"] ->
-                    {{[cluster, admin, diag], read}, fun handle_diag_vbuckets/1};
+                    {{[admin, diag], read}, fun handle_diag_vbuckets/1};
                 ["diag", "ale"] ->
-                    {{[cluster, admin, diag], read}, fun diag_handler:handle_diag_ale/1};
+                    {{[admin, diag], read}, fun diag_handler:handle_diag_ale/1};
                 ["diag", "masterEvents"] ->
-                    {{[cluster, admin, diag], read}, fun handle_diag_master_events/1};
+                    {{[admin, diag], read}, fun handle_diag_master_events/1};
                 ["pools", "default", "rebalanceProgress"] ->
                     {{[tasks], read}, fun handle_rebalance_progress/2, ["default"]};
                 ["pools", "default", "tasks"] ->
@@ -667,7 +667,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                                                reply_ok(R, "text/plain", [])
                                        end};
                 ["diag", "eval"] ->
-                    {{[cluster, admin, diag], write}, fun handle_diag_eval/1};
+                    {{[admin, diag], write}, fun handle_diag_eval/1};
                 ["couchBase" | _] ->
                     {{[admin, internal], all}, fun menelaus_pluggable_ui:proxy_req/4,
                      ["couchBase",
