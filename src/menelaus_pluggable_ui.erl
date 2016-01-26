@@ -32,8 +32,11 @@
 -define(TIMEOUT, 60000).
 -define(PART_SIZE, 100000).
 -define(WINDOW_SIZE, 5).
--define(DEF_REQ_HEADER_FILTER, {drop, ["Content-Length",
-                                       "Transfer-Encoding"]}).
+-define(DEF_REQ_HEADERS_FILTER, {drop, ["Content-Length",
+                                        "Transfer-Encoding"]}).
+-define(DEF_RESP_HEADERS_FILTER, {drop, ["Content-Length",
+                                         "Transfer-Encoding",
+                                         "WWW-Authenticate"]}).
 -type service_name()   :: atom().
 -type rest_api_prefix():: string().
 -type proxy_strategy() :: local.
@@ -159,7 +162,7 @@ decode_docroot(Prefix, Root) ->
     filename:join(Prefix, binary_to_list(Root)).
 
 decode_request_header_filter(undefined) ->
-    ?DEF_REQ_HEADER_FILTER;
+    ?DEF_REQ_HEADERS_FILTER;
 decode_request_header_filter({[{Op, Names}]}) ->
     {binary_to_existing_atom(Op, latin1), [binary_to_list(Name) || Name <- Names]}.
 
@@ -267,26 +270,16 @@ get_body(Req) ->
 
 handle_resp({ok, {{StatusCode, _ReasonPhrase}, RcvdHeaders, Pid}}, Req)
   when is_pid(Pid) ->
-    SendHeaders = filter_resp_headers(RcvdHeaders),
+    SendHeaders = filter_headers(RcvdHeaders, ?DEF_RESP_HEADERS_FILTER),
     Resp = start_response(Req, StatusCode, SendHeaders),
     stream_body(Pid, Resp);
 handle_resp({ok, {{StatusCode, _ReasonPhrase}, RcvdHeaders, undefined = _Body}},
             Req) ->
-    SendHeaders = filter_resp_headers(RcvdHeaders),
+    SendHeaders = filter_headers(RcvdHeaders, ?DEF_RESP_HEADERS_FILTER),
     menelaus_util:respond(Req, {StatusCode, SendHeaders, <<>>});
 handle_resp({error, _Reason}=Error, Req) ->
     ?log_error("http client error ~p~n", [Error]),
     menelaus_util:respond(Req, {500, [], <<"Unexpected server error">> }).
-
-filter_resp_headers(Headers) ->
-    lists:filter(fun is_safe_response_header/1, Headers).
-
-is_safe_response_header({"Content-Length", _}) ->
-    false;
-is_safe_response_header({"Transfer-Encoding", _}) ->
-    false;
-is_safe_response_header(_) ->
-    true.
 
 start_response(Req, StatusCode, Headers) ->
     menelaus_util:respond(Req, {StatusCode, Headers, chunked}).
