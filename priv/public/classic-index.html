@@ -2241,7 +2241,7 @@
                   <!-- {% _.each(rows, function (r) { %} -->
                       <tr class="align_text">
                           <td class="key ellipsis" colspan="2">
-                            <a href="#sec=documents&viewsBucket={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.key) %}</a>
+                            <a href="#sec=documents&viewsBucket={%= encodeURIComponent(bucketName) %}&documentsPageNumber={%= pageNumber %}&docId={%= encodeURIComponent(r.id) %}">{%= h(r.id) %}</a>
                           </td>
                           <td class="ellipsis" colspan="5">{%= $.futon.formatJSON(r.doc.json || r.doc.base64, {html:true}) %}</td>
                           <td colspan="3">

@@ -155,7 +155,7 @@ do_handle_limit(Heap, Limit, R) ->
     end.
 
 encode_doc({Key, undefined}) ->
-    {struct, [{id, Key}, {key, Key}]};
+    {struct, [{id, Key}]};
 encode_doc({Key, Value}) ->
     Doc = case Value of
               {binary, V} ->
@@ -164,7 +164,6 @@ encode_doc({Key, Value}) ->
                   couch_doc:from_binary(Key, V, true)
           end,
     {struct, [{id, Key},
-              {key, Key},
               {doc, capi_utils:couch_doc_to_mochi_json(Doc)}]}.
 
 do_get(BucketId, DocId) ->
