@@ -4035,7 +4035,9 @@ path_tail([$/|[$/|_] = Path]) ->
 path_tail([$/|Path]) ->
     Path;
 path_tail([_|Rest]) ->
-    path_tail(Rest).
+    path_tail(Rest);
+path_tail([]) ->
+    [].
 
 drop_rest_prefix("/" ++ Path) ->
     [$/ | nth_path_tail(Path, 2)].
