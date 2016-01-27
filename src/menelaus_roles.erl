@@ -20,7 +20,8 @@
 %% 4. Permission pattern is a pair {Object pattern, Allowed operations}
 %% 5. Allowed operations can be list of operations, all or none
 %% 6. Object pattern is a list of vertices that define a certain subtree of the objects tree
-%% 7. Object pattern vertex {bucket, bucket_name} always matches object vertex {bucket, all},
+%% 7. Object pattern vertex {bucket, bucket_name} always matches object vertex {bucket, any},
+%%    object pattern vertex {bucket, any} matches {bucket, bucket_name} with any bucket_name
 %%    otherwise vertices match if they are equal
 %% 8. Object matches the object pattern if all the vertices of object pattern match
 %%    corresponding vertices of the object.
@@ -62,8 +63,8 @@ preconfigured_roles() ->
      {ro_admin, [],
       [{name, <<"Read Only Admin">>},
        {desc, <<"Can view ALL cluster features.">>}],
-      [{[{bucket, all}, password], none},
-       {[{bucket, all}, data], none},
+      [{[{bucket, any}, password], none},
+       {[{bucket, any}, data], none},
        {[admin, security], [read]},
        {[admin], none},
        {[], [read]}]},
@@ -77,8 +78,8 @@ preconfigured_roles() ->
        {desc, <<"Can manage ALL bucket features for specified buckets (incl. start/stop XDCR)">>}],
       [{[{bucket, bucket_name}, xdcr], [read, execute]},
        {[{bucket, bucket_name}], all},
-       {[{bucket, all}, data], none},
-       {[{bucket, all}, settings], [read]},
+       {[{bucket, any}, data], none},
+       {[{bucket, any}, settings], [read]},
        {[admin], none},
        {[], [read]}]},
      {bucket_sasl, [bucket_name],
@@ -91,15 +92,15 @@ preconfigured_roles() ->
        {desc, <<"Can manage views for specified buckets">>}],
       [{[{bucket, bucket_name}, views], all},
        {[{bucket, bucket_name}, data], [read]},
-       {[{bucket, all}, settings], [read]},
-       {[{bucket, all}], none},
+       {[{bucket, any}, settings], [read]},
+       {[{bucket, any}], none},
        {[xdcr], none},
        {[admin], none},
        {[], [read]}]},
      {replication_admin, [],
       [{name, <<"Replication Admin">>},
        {desc, <<"Can manage ONLY XDCR features (cluster AND bucket level)">>}],
-      [{[{bucket, all}, xdcr], all},
+      [{[{bucket, any}, xdcr], all},
        {[xdcr], all},
        {[admin], none},
        {[], [read]}]}].
@@ -122,7 +123,7 @@ object_match([], [_|_]) ->
     false;
 object_match([{_Same, _} | RestOfObject], [{_Same, any} | RestOfObjectPattern]) ->
     object_match(RestOfObject, RestOfObjectPattern);
-object_match([{_Same, all} | RestOfObject], [{_Same, _} | RestOfObjectPattern]) ->
+object_match([{_Same, any} | RestOfObject], [{_Same, _} | RestOfObjectPattern]) ->
     object_match(RestOfObject, RestOfObjectPattern);
 object_match([_Same | RestOfObject], [_Same | RestOfObjectPattern]) ->
     object_match(RestOfObject, RestOfObjectPattern);
@@ -162,8 +163,8 @@ is_allowed(Permissions, Roles) when is_list(Permissions) ->
 substitute_params(Params, ParamDefinitions, Permissions) ->
     ParamPairs = lists:zip(ParamDefinitions, Params),
     lists:map(fun ({ObjectPattern, AllowedOperations}) ->
-                      {lists:map(fun ({Name, all}) ->
-                                         {Name, all};
+                      {lists:map(fun ({Name, any}) ->
+                                         {Name, any};
                                      ({Name, Param}) ->
                                          {Param, Subst} = lists:keyfind(Param, 1, ParamPairs),
                                          {Name, Subst};
@@ -351,3 +352,26 @@ upgrade_users_asterisk_test() ->
     ?assertMatch([{set, user_roles, _}], Upgraded),
     [{set, user_roles, UpgradedUserRoles}] = Upgraded,
     ?assertMatch(UserRoles, lists:sort(UpgradedUserRoles)).
+
+%% assertEqual is used instead of assert and assertNot to avoid
+%% dialyzer warnings
+object_match_test() ->
+    ?assertEqual(true, object_match([o1, o2], [o1, o2])),
+    ?assertEqual(false, object_match([o1], [o1, o2])),
+    ?assertEqual(true, object_match([o1, o2], [o1])),
+    ?assertEqual(true, object_match([{b, "a"}], [{b, "a"}])),
+    ?assertEqual(false, object_match([{b, "a"}], [{b, "b"}])),
+    ?assertEqual(true, object_match([{b, any}], [{b, "b"}])),
+    ?assertEqual(false, object_match([{b, all}], [{b, "b"}])),
+    ?assertEqual(true, object_match([{b, all}], [{b, any}])),
+    ?assertEqual(true, object_match([{b, "a"}], [{b, any}])),
+    ?assertEqual(true, object_match([{b, any}], [{b, any}])).
+
+admin_test() ->
+    Roles = compile_roles([admin], preconfigured_roles()),
+    ?assertEqual(true, menelaus_roles:is_allowed({[{bucket, all}], create}, Roles)).
+
+bucket_admin_test() ->
+    Roles = compile_roles([{bucket_admin, ["default"]}], preconfigured_roles()),
+    ?assertEqual(false, menelaus_roles:is_allowed({[{bucket,"test"}, data], read}, Roles)),
+    ?assertEqual(false, menelaus_roles:is_allowed({[{bucket, all}], create}, Roles)).
