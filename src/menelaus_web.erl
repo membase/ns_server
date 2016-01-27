@@ -818,15 +818,17 @@ perform_action(Req, {Permissions, Fun}) ->
     perform_action(Req, {Permissions, Fun, []});
 perform_action(Req, {Permissions, Fun, Args}) ->
     case menelaus_auth:verify_rest_auth(Req, Permissions) of
-        {true, NewReq} ->
+        {allowed, NewReq} ->
             case get_bucket_id(Permissions) of
                 false ->
                     check_uuid(Fun, Args, NewReq);
                 Bucket ->
                     check_bucket_uuid(Bucket, fun check_uuid/3, [Fun, Args], NewReq)
             end;
-        false ->
-            require_auth(Req)
+        auth_failure ->
+            require_auth(Req);
+        forbidden ->
+            menelaus_web_rbac:reply_forbidden(Req, Permissions)
     end.
 
 handle_uilogin(Req) ->

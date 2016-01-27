@@ -31,7 +31,8 @@
          handle_delete_user/2,
          handle_check_permissions_post/1,
          check_permissions_url_version/1,
-         handle_check_permission_for_cbauth/1]).
+         handle_check_permission_for_cbauth/1,
+         reply_forbidden/2]).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of
@@ -348,3 +349,51 @@ handle_check_permission_for_cbauth(Req) ->
         false ->
             menelaus_util:reply_text(Req, "", 401)
     end.
+
+vertex_to_iolist(Atom) when is_atom(Atom) ->
+    atom_to_list(Atom);
+vertex_to_iolist({Atom, all}) ->
+    [atom_to_list(Atom), "[*]"];
+vertex_to_iolist({Atom, any}) ->
+    [atom_to_list(Atom), "[?]"];
+vertex_to_iolist({Atom, Param}) ->
+    [atom_to_list(Atom), "[", Param, "]"].
+
+permission_to_iolist({Object, Operation}) ->
+    FormattedVertices = ["cluster" | [vertex_to_iolist(Vertex) || Vertex <- Object]],
+    [string:join(FormattedVertices, "."), "!", atom_to_list(Operation)].
+
+format_permissions(Permissions) ->
+    lists:foldl(fun ({Object, Operations}, Acc) when is_list(Operations) ->
+                        lists:foldl(
+                          fun (Oper, Acc1) ->
+                                  [iolist_to_binary(permission_to_iolist({Object, Oper})) | Acc1]
+                          end, Acc, Operations);
+                    (Permission, Acc) ->
+                        [iolist_to_binary(permission_to_iolist(Permission)) | Acc]
+                end, [], Permissions).
+
+format_permissions_test() ->
+    Permissions = [{[{bucket, all}, views], compact},
+                   {[{bucket, any}, views], write},
+                   {[{bucket, "default"}], all},
+                   {[], all},
+                   {[admin, diag], read},
+                   {[{bucket, "test"}, xdcr], [write, execute]}],
+    Formatted = [<<"cluster.bucket[*].views!compact">>,
+                 <<"cluster.bucket[?].views!write">>,
+                 <<"cluster.bucket[default]!all">>,
+                 <<"cluster!all">>,
+                 <<"cluster.admin.diag!read">>,
+                 <<"cluster.bucket[test].xdcr!write">>,
+                 <<"cluster.bucket[test].xdcr!execute">>],
+    ?assertEqual(
+       lists:sort(Formatted),
+       lists:sort(format_permissions(Permissions))).
+
+reply_forbidden(Req, Permissions) when is_list(Permissions) ->
+    menelaus_util:reply_json(
+      Req, {[{message, <<"Forbidden. User needs one of the following permissions">>},
+             {permissions, format_permissions(Permissions)}]}, 403);
+reply_forbidden(Req, Permission) ->
+    reply_forbidden(Req, [Permission]).

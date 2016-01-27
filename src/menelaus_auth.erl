@@ -256,21 +256,36 @@ verify_rest_auth(Req, Permissions) ->
     Auth = extract_auth(Req),
     case authenticate(Auth) of
         false ->
-            false;
+            auth_failure;
         {ok, Identity} ->
             Roles = menelaus_roles:get_compiled_roles(Identity),
-            case menelaus_roles:is_allowed(Permissions, Roles) of
-                true ->
-                    Token = case Auth of
-                                {token, T} ->
-                                    T;
+            case Roles of
+                [] ->
+                    %% this can happen in case of expired token, or if LDAP
+                    %% server authenticates the user that has no roles assigned
+                    auth_failure;
+                _ ->
+                    case menelaus_roles:is_allowed(Permissions, Roles) of
+                        true ->
+                            Token = case Auth of
+                                        {token, T} ->
+                                            T;
+                                        _ ->
+                                            undefined
+                                    end,
+                            {allowed, store_user_info(Req, Identity, Token)};
+                        false ->
+                            ?log_debug("Access denied.~nIdentity: ~p~nRoles: ~p~nPermissions: ~p~n",
+                                       [Identity, Roles, Permissions]),
+                            case Identity of
+                                {"", anonymous} ->
+                                    %% we do allow some api's for anonymous
+                                    %% under some circumstances, but we want to return 401 in case
+                                    %% if autorization for requests with no auth fails
+                                    auth_failure;
                                 _ ->
-                                    undefined
-                            end,
-                    {true, store_user_info(Req, Identity, Token)};
-                false ->
-                    ?log_debug("Access denied.~nIdentity: ~p~nRoles: ~p~nPermissions: ~p~n",
-                               [Identity, Roles, Permissions]),
-                    false
+                                    forbidden
+                            end
+                    end
             end
     end.

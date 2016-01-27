@@ -133,9 +133,9 @@ send_no_active_vbuckets(CouchReq, Bucket0) ->
 is_bucket_accessible(BucketName, MochiReq) ->
     case menelaus_auth:verify_rest_auth(MochiReq,
                                         {[{bucket, BucketName}, data], write}) of
-        {true, _} ->
+        {allowed, _} ->
             true;
-        false ->
+        _ ->
             false
     end.
 
