@@ -36,7 +36,7 @@
     return function () {
       var args = Array.prototype.slice.call(arguments, 0);
       var method = args.shift();
-      return Math[method].apply(_, args);
+      return Math[method].apply(null, args);
     }
   }
 
