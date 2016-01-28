@@ -32,11 +32,11 @@
 -define(TIMEOUT, 60000).
 -define(PART_SIZE, 100000).
 -define(WINDOW_SIZE, 5).
--define(DEF_REQ_HEADERS_FILTER, {drop, ["Content-Length",
-                                        "Transfer-Encoding"]}).
--define(DEF_RESP_HEADERS_FILTER, {drop, ["Content-Length",
-                                         "Transfer-Encoding",
-                                         "WWW-Authenticate"]}).
+-define(DEF_REQ_HEADERS_FILTER, {drop, ["content-length",
+                                        "transfer-encoding"]}).
+-define(DEF_RESP_HEADERS_FILTER, {drop, ["content-length",
+                                         "transfer-encoding",
+                                         "www-authenticate"]}).
 -type service_name()   :: atom().
 -type rest_api_prefix():: string().
 -type proxy_strategy() :: local.
@@ -53,14 +53,14 @@
                              proxy_strategy = local,
                              rest_api_prefix = "couchBase",
                              doc_root = "",
-                             request_headers_filter = {keep, ["Accept",
-                                                              "Accept-Encoding",
-                                                              "Accept-Language",
-                                                              "Cache-Control",
-                                                              "Connection",
-                                                              "Content-Type",
-                                                              "Pragma",
-                                                              "Referer"]}}).
+                             request_headers_filter = {keep, ["accept",
+                                                              "accept-encoding",
+                                                              "accept-language",
+                                                              "cache-control",
+                                                              "connection",
+                                                              "content-type",
+                                                              "pragma",
+                                                              "referer"]}}).
 
 -spec find_plugins() -> plugins().
 find_plugins() ->
@@ -107,7 +107,7 @@ validate_plugin_spec(KVs, Plugins) ->
                                                       KVs)),
     RestApiPrefix = binary_to_list(get_element(<<"rest-api-prefix">>, KVs)),
     DocRoot = decode_docroot(get_element(<<"doc-root">>, KVs)),
-    ReqHdrFilter = decode_request_header_filter(
+    ReqHdrFilter = decode_request_headers_filter(
                      get_opt_element(<<"request-headers-filter">>, KVs)),
     case {valid_service(ServiceName),
           find_plugin_by_prefix(RestApiPrefix, Plugins)} of
@@ -161,10 +161,11 @@ decode_docroot(Prefix, Roots) when is_list(Roots) ->
 decode_docroot(Prefix, Root) ->
     filename:join(Prefix, binary_to_list(Root)).
 
-decode_request_header_filter(undefined) ->
+decode_request_headers_filter(undefined) ->
     ?DEF_REQ_HEADERS_FILTER;
-decode_request_header_filter({[{Op, Names}]}) ->
-    {binary_to_existing_atom(Op, latin1), [binary_to_list(Name) || Name <- Names]}.
+decode_request_headers_filter({[{Op, BinNames}]}) ->
+    Names = [string:to_lower(binary_to_list(Name)) || Name <- BinNames],
+    {binary_to_existing_atom(Op, latin1), Names}.
 
 %%% =============================================================
 %%%
