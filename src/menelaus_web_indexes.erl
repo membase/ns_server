@@ -15,6 +15,7 @@
 %%
 -module(menelaus_web_indexes).
 
+-include("ns_common.hrl").
 -export([handle_settings_get/1, handle_settings_post/1, handle_index_status/1]).
 
 -import(menelaus_util,
@@ -54,12 +55,48 @@ validate_settings_post(Args) ->
     R2 = validate_string(R1, logLevel),
     R3 = case cluster_compat_mode:is_cluster_watson() of
              true ->
-                 validate_string(R2, storageMode);
+                 validate_storage_mode(R2);
              false ->
                  R2
          end,
 
     validate_unsupported_params(R3).
+
+validate_storage_mode(State) ->
+    State1 = validate_string(State, storageMode),
+
+    %% Do not allow changing index storage mode when:
+    %% - running community edition
+    %% - there are nodes running index service in the cluster
+    IndexErr = "Changing the optimization mode of global indexes is not supported when index service nodes are present in the cluster. Please remove all index service nodes to change this option.",
+    CEErr = "Memory optimized indexes are restricted to enterprise edition and are not available in the community edition.",
+
+    validate_by_fun(
+      fun (Value) ->
+              OldValue = index_settings_manager:get(storageMode),
+              case Value =/= OldValue of
+                  true ->
+                      case cluster_compat_mode:is_enterprise() of
+                          true ->
+                              %% Note it is not sufficient to check
+                              %% service_active_nodes(index) because the
+                              %% index nodes could be down or failed over.
+                              IndexNodes = ns_cluster_membership:service_nodes(ns_node_disco:nodes_wanted(), index),
+                              case IndexNodes of
+                                  [] ->
+                                      ok;
+                                  _ ->
+                                      ?log_debug("Index nodes ~p present. Cannot change index storage mode. ~n", [IndexNodes]),
+                                      {error, IndexErr}
+                              end;
+                          false ->
+                              ?log_debug("Community edition. Cannot change index storage mode. ~n"),
+                              {error, CEErr}
+                      end;
+                  false ->
+                      ok
+              end
+      end, storageMode, State1).
 
 acceptable_values(logLevel) ->
     ["silent", "fatal", "error", "warn", "info",
