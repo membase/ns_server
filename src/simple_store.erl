@@ -47,7 +47,7 @@
 
 start_link(StoreName) ->
     ProcName = get_proc_name(StoreName),
-    work_queue:start_link(ProcName, fun init/1, [StoreName]).
+    work_queue:start_link(ProcName, fun () -> init(StoreName) end).
 
 get(StoreName, Key) ->
     get(StoreName, Key, false).

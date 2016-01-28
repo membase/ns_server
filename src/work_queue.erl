@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, start_link/2, start_link/3,
+-export([start_link/1, start_link/2,
          submit_work/2, submit_sync_work/2, sync_work/1]).
 
 %% gen_server callbacks
@@ -26,13 +26,10 @@
          terminate/2, code_change/3]).
 
 start_link(Name) ->
-    gen_server:start_link({local, Name}, ?MODULE, [], []).
+    start_link(Name, fun nothing/0).
 
 start_link(Name, InitFun) ->
-    gen_server:start_link({local, Name}, ?MODULE, [InitFun, []], []).
-
-start_link(Name, InitFun, Args) ->
-    gen_server:start_link({local, Name}, ?MODULE, [InitFun, Args], []).
+    gen_server:start_link({local, Name}, ?MODULE, InitFun, []).
 
 submit_work(Name, Fun) ->
     gen_server:cast(Name, Fun).
@@ -45,11 +42,8 @@ sync_work(Name) ->
 
 nothing() -> [].
 
-init([]) ->
-    {ok, []};
-
-init([InitFun, Args]) ->
-    erlang:apply(InitFun, Args),
+init(InitFun) ->
+    InitFun(),
     {ok, []}.
 
 handle_call(Fun, _From, State) ->
