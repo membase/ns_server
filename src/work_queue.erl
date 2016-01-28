@@ -18,15 +18,20 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, start_link/2,
+-export([start_link/0, start_link/1, start_link/2,
          submit_work/2, submit_sync_work/2, sync_work/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
-start_link(Name) ->
-    start_link(Name, fun nothing/0).
+start_link() ->
+    start_link(fun nothing/0).
+
+start_link(Name) when is_atom(Name) ->
+    start_link(Name, fun nothing/0);
+start_link(InitFun) when is_function(InitFun) ->
+    gen_server:start_link(?MODULE, InitFun, []).
 
 start_link(Name, InitFun) ->
     gen_server:start_link({local, Name}, ?MODULE, InitFun, []).
