@@ -468,7 +468,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 .index_settings_section .row,
 .cluster_quota_settings .row {margin: 5px 0;}
 .cluster_quota_settings label {width:111px; display: inline-block;}
-.memory_quota_dialog label {width: 130px;}
+.memory_quota_dialog label {width: 150px;}
 
 /* update notification styles */
 #notifications_container .item {padding:13px;}
