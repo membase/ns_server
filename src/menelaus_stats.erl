@@ -394,7 +394,7 @@ get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window
 %% List of different types of stats
 kinds_list(BucketName) ->
     ["@system", BucketName, "@query", "@index-" ++ BucketName,
-     "@fts-" ++ BucketName, "@xdcr-" ++ BucketName].
+     "@fts-" ++ BucketName, "@xdcr-" ++ BucketName, "@index"].
 
 %% For many stats, their kind can be identified by their prefix.
 get_possible_kind(StatName, BucketName) ->
@@ -516,6 +516,8 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
 
 section_nodes("@system") ->
     ns_cluster_membership:actual_active_nodes();
+section_nodes("@index") ->
+    ns_cluster_membership:service_actual_nodes(ns_config:latest(), index);
 section_nodes("@query") ->
     ns_cluster_membership:service_actual_nodes(ns_config:latest(), n1ql);
 section_nodes("@index-"++_) ->
@@ -542,6 +544,8 @@ bucket_exists(Bucket) ->
     ns_bucket:get_bucket(Bucket) =/= not_present.
 
 section_exists("@system") ->
+    true;
+section_exists("@index") ->
     true;
 section_exists("@query") ->
     true;
@@ -610,6 +614,17 @@ per_fts_stat(Index, Metric) ->
 
 computed_stats_lazy_proplist("@system") ->
     [];
+computed_stats_lazy_proplist("@index") ->
+    Z2 = fun (StatNameA, StatNameB, Combiner) ->
+                 {Combiner, [StatNameA, StatNameB]}
+         end,
+    RemainingIndexRam = Z2(<<"index_memory_used">>, <<"index_memory_quota">>,
+                           fun (Used, Quota) ->
+                                   try Quota - Used
+                                   catch error:badarith -> 0
+                                   end
+                           end),
+    [{<<"index_remaining_ram">>, RemainingIndexRam}];
 computed_stats_lazy_proplist("@query") ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
@@ -1070,6 +1085,8 @@ get_aggregate_method(Key) ->
         couch_views_ops ->
             max;
         cpu_utilization_rate ->
+            max;
+        <<"index_ram_percent">> ->
             max;
         <<"views/", S/binary>> ->
             case binary:match(S, <<"/accesses">>) of
@@ -1567,7 +1584,6 @@ membase_index_stats_description(_) ->
      {struct, [{title, <<"index scanned/sec">>},
                {name, global_index_stat(<<"num_rows_returned">>)},
                {desc, <<"Number of index items scanned by the indexer per second">>}]}].
-
 membase_fts_stats_description([]) ->
     [];
 membase_fts_stats_description(_) ->
@@ -2126,7 +2142,7 @@ memcached_stats_description() ->
                          {title,<<"CAS misses per sec.">>},
                          {desc,<<"Number of CAS operations per second for data that this bucket does not contain (measured from cas_misses)">>}]}]}]}].
 
-server_resources_stats_description() ->
+server_resources_stats_description(IndexNodes) ->
     [{blockName,<<"Server Resources">>},
      {serverResources, true},
      {stats,
@@ -2156,7 +2172,18 @@ server_resources_stats_description() ->
                 {desc,<<"Number of streaming requests on port 8091 now idle">>}]},
        {struct,[{name,<<"hibernated_waked">>},
                 {title,<<"streaming wakeups/sec">>},
-                {desc,<<"Rate of streaming request wakeups on port 8091">>}]}]}].
+                {desc,<<"Rate of streaming request wakeups on port 8091">>}]}
+       | (case IndexNodes of
+              [] ->
+                  [];
+              _ ->
+                  [{struct,[{name,<<"index_ram_percent">>},
+                            {title,<<"Max Index RAM Used %">>},
+                            {desc,<<"Percentage of Index RAM in use across all indexes on this server">>}]},
+                   {struct,[{name,<<"index_remaining_ram">>},
+                            {title,<<"remaining index ram">>},
+                            {desc,<<"Amount of index RAM available on this server">>}]}]
+          end)]}].
 
 base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
@@ -2164,7 +2191,7 @@ base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                membase -> membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes);
                memcached -> memcached_stats_description()
            end,
-    [{struct, server_resources_stats_description()} | Base].
+    [{struct, server_resources_stats_description(IndexNodes)} | Base].
 
 parse_add_index_param(Param, Params) ->
     case proplists:get_value(Param, Params) of
@@ -2324,8 +2351,11 @@ serve_aggregated_ui_stats(Req, Params) ->
     {_, IndexNodes, IStats} =
         maybe_grab_stats("@index-" ++ Bucket, Nodes, HaveStamp, Wnd, QStats),
 
+    {_, _, IndexerStats} =
+        maybe_grab_stats("@index", Nodes, HaveStamp, Wnd, IStats),
+
     {_, FtsNodes, FStats} =
-        maybe_grab_stats("@fts-" ++ Bucket, Nodes, HaveStamp, Wnd, IStats),
+        maybe_grab_stats("@fts-" ++ Bucket, Nodes, HaveStamp, Wnd, IndexerStats),
 
     Stats = [{list_to_binary(Bucket), {BS}},
              {<<"@system">>, {SS}}
