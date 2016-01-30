@@ -60,7 +60,7 @@ init(Indexer) ->
 
     {ok, #state{indexer = Indexer,
                 buckets = Buckets,
-                default_stats = finalize_index_bucket_stats(Defaults)}}.
+                default_stats = finalize_index_stats(Defaults)}}.
 
 find_type(_, []) ->
     not_found;
@@ -80,6 +80,19 @@ do_recognize_name(_Indexer, <<"needs_restart">>) ->
 do_recognize_name(_Indexer, <<"num_connections">>) ->
     {status, index_num_connections};
 do_recognize_name(Indexer, K) ->
+    MaybeService = [SS || SS <- Indexer:get_service_stats(),
+                          atom_to_binary(SS, latin1) =:= K],
+    case MaybeService of
+        [] ->
+            do_recognize_bucket_metric(Indexer, K);
+        _ ->
+            %% These are service related stats.
+            NewKey = list_to_binary(Indexer:service_stat_prefix() ++
+                                        binary_to_list(K)),
+            {service, NewKey}
+    end.
+
+do_recognize_bucket_metric(Indexer, K) ->
     case binary:split(K, <<":">>, [global]) of
         [Bucket, Index, Metric] ->
             Type = find_type(Metric, [{gauge, Indexer:get_gauges()},
@@ -112,18 +125,26 @@ recognize_name(Indexer, Ets, K) ->
             end
     end.
 
-massage_stats(_Indexer, _Ets, [], AccGauges, AccCounters, AccStatus) ->
-    {AccGauges, AccCounters, AccStatus};
-massage_stats(Indexer, Ets, [{K, V} | Rest], AccGauges, AccCounters, AccStatus) ->
+massage_stats(_Indexer, _Ets, [], AccGauges, AccCounters, AccStatus, AccSS) ->
+    {AccGauges, AccCounters, AccStatus, AccSS};
+massage_stats(Indexer, Ets, [{K, V} | Rest], AccGauges, AccCounters,
+              AccStatus, AccSS) ->
     case recognize_name(Indexer, Ets, K) of
         undefined ->
-            massage_stats(Indexer, Ets, Rest, AccGauges, AccCounters, AccStatus);
+            massage_stats(Indexer, Ets, Rest, AccGauges, AccCounters, AccStatus,
+                          AccSS);
         {counter, NewK} ->
-            massage_stats(Indexer, Ets, Rest, AccGauges, [{NewK, V} | AccCounters], AccStatus);
+            massage_stats(Indexer, Ets, Rest, AccGauges,
+                          [{NewK, V} | AccCounters], AccStatus, AccSS);
         {gauge, NewK} ->
-            massage_stats(Indexer, Ets, Rest, [{NewK, V} | AccGauges], AccCounters, AccStatus);
+            massage_stats(Indexer, Ets, Rest, [{NewK, V} | AccGauges],
+                          AccCounters, AccStatus, AccSS);
+        {service, NewK} ->
+            massage_stats(Indexer, Ets, Rest, AccGauges, AccCounters,
+                          AccStatus, [{NewK, V} | AccSS]);
         {status, NewK} ->
-            massage_stats(Indexer, Ets, Rest, AccGauges, AccCounters, [{NewK, V} | AccStatus])
+            massage_stats(Indexer, Ets, Rest, AccGauges, AccCounters,
+                          [{NewK, V} | AccStatus], AccSS)
     end.
 
 grab_stats(#state{indexer = Indexer}) ->
@@ -148,18 +169,22 @@ do_grab_stats(Indexer) ->
 process_stats(TS, GrabbedStats, PrevCounters, PrevTS, #state{indexer = Indexer,
                                                              buckets = KnownBuckets,
                                                              default_stats = Defaults} = State) ->
-    {Gauges0, Counters, Status} = massage_stats(Indexer, ets_name(Indexer), GrabbedStats, [], [], []),
+    {Gauges0, Counters, Status, SS} = massage_stats(Indexer, ets_name(Indexer),
+                                                    GrabbedStats,
+                                                    [], [], [], []),
     Gauges = Indexer:compute_gauges(Gauges0) ++ Gauges0,
 
     {Stats, SortedCounters} =
         base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS),
 
     index_status_keeper:update(Indexer, Status),
-
+    ServiceStats1 = Indexer:compute_service_stats(SS) ++ SS,
+    ServiceStats = [{Indexer:service_event_name(),
+                     finalize_index_stats(ServiceStats1)}],
     Prefix = Indexer:prefix(),
     AggregatedStats =
         [{Prefix ++ binary_to_list(Bucket), Values} ||
-            {Bucket, Values} <- aggregate_index_stats(Indexer, Stats, KnownBuckets, Defaults)],
+            {Bucket, Values} <- aggregate_index_stats(Indexer, Stats, KnownBuckets, Defaults)] ++ ServiceStats,
     {AggregatedStats, SortedCounters, State}.
 
 aggregate_index_stats(Indexer, Stats, Buckets, Defaults) ->
@@ -179,7 +204,7 @@ aggregate_index_bucket_stats(Indexer, Bucket, Stats, Defaults) ->
     do_aggregate_index_bucket_stats(Indexer, Defaults, Bucket, Stats).
 
 do_aggregate_index_bucket_stats(_Indexer, Acc, _, []) ->
-    {finalize_index_bucket_stats(Acc), []};
+    {finalize_index_stats(Acc), []};
 do_aggregate_index_bucket_stats(Indexer, Acc, Bucket, [{{Bucket, Index, Name}, V} | Rest]) ->
     Global = Indexer:global_index_stat(Name),
     PerIndex = Indexer:per_index_stat(Index, Name),
@@ -196,9 +221,9 @@ do_aggregate_index_bucket_stats(Indexer, Acc, Bucket, [{{Bucket, Index, Name}, V
 
     do_aggregate_index_bucket_stats(Indexer, Acc2, Bucket, Rest);
 do_aggregate_index_bucket_stats(_Indexer, Acc, _, Stats) ->
-    {finalize_index_bucket_stats(Acc), Stats}.
+    {finalize_index_stats(Acc), Stats}.
 
-finalize_index_bucket_stats(Acc) ->
+finalize_index_stats(Acc) ->
     lists:keysort(1, Acc).
 
 aggregate_index_stats_test() ->

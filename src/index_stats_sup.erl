@@ -67,6 +67,10 @@ compute_wanted_children(Indexer, Config) ->
         true ->
             StaticChildren = [{Indexer, index_stats_collector}],
 
+            %% Stats archiver and reader for Service specific stats
+            ServiceChildren = [{Indexer, Mod, Indexer:service_event_name()}
+                               || Mod <- [stats_archiver, stats_reader]],
+
             BucketCfgs = ns_bucket:get_buckets(Config),
             BucketNames = [Name || {Name, BConfig} <- BucketCfgs,
                                    lists:keyfind(type, 1, BConfig) =:= {type, membase}],
@@ -75,7 +79,7 @@ compute_wanted_children(Indexer, Config) ->
                  || Name <- BucketNames,
                     Mod <- [stats_archiver, stats_reader]],
 
-            lists:sort(StaticChildren ++ PerBucketChildren)
+            lists:sort(StaticChildren ++ PerBucketChildren ++ ServiceChildren)
     end.
 
 refresh_children() ->
@@ -91,6 +95,9 @@ refresh_children() ->
     lists:foreach(fun start_child/1, ToStart),
     ok.
 
+child_spec({Indexer, Mod, Name}) when Name =:= "@index" orelse Name =:= "@fts" ->
+    {{Indexer, Mod, Name}, {Mod, start_link, [Name]},
+     permanent, 1000, worker, []};
 child_spec({Indexer, Mod, Name}) when Mod =:= stats_archiver; Mod =:= stats_reader ->
     {{Indexer, Mod, Name}, {Mod, start_link, [Indexer:prefix() ++ Name]},
      permanent, 1000, worker, []};
