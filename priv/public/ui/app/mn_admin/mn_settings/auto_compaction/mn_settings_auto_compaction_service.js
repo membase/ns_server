@@ -84,7 +84,6 @@
       });
     }
     function saveAutoCompaction(autoCompactionSettings, params) {
-      var params = {};
       return $http({
         method: 'POST',
         url: '/controller/setAutoCompaction',
