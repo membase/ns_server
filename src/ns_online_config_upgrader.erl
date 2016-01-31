@@ -76,7 +76,18 @@ upgrade_config_from_4_1_to_watson(Config) ->
               [misc:pretty_version(?WATSON_VERSION_NUM)]),
     RV = create_service_maps(Config, [fts]) ++
         menelaus_roles:upgrade_users(Config),
-    index_settings_manager:config_upgrade_to_watson(Config) ++ RV.
+    RV1 = index_settings_manager:config_upgrade_to_watson(Config) ++ RV,
+    add_index_ram_alert_limit(Config) ++ RV1.
+
+add_index_ram_alert_limit(Config) ->
+    {value, Current} = ns_config:search(Config, alert_limits),
+    case proplists:get_value(max_indexer_ram, Current) of
+        undefined ->
+            New = Current ++ [{max_indexer_ram, 75}],
+            [{set, alert_limits, New}];
+        _ ->
+            []
+    end.
 
 delete_unwanted_per_node_keys(Config) ->
     NodesWanted = ns_node_disco:nodes_wanted(Config),

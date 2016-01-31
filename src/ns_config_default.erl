@@ -353,13 +353,16 @@ default() ->
        {alerts, [auto_failover_node, auto_failover_maximum_reached,
                  auto_failover_other_nodes_down,
                  auto_failover_cluster_too_small, auto_failover_disabled,
-                 ip, disk, overhead, ep_oom_errors, ep_item_commit_failed, audit_dropped_events]}
+                 ip, disk, overhead, ep_oom_errors, ep_item_commit_failed,
+                 audit_dropped_events, indexer_ram_max_usage]}
       ]},
      {alert_limits, [
        %% Maximum percentage of overhead compared to max bucket size (%)
        {max_overhead_perc, 50},
        %% Maximum disk usage before warning (%)
-       {max_disk_used, 90}
+       {max_disk_used, 90},
+       %% Maximum Indexer RAM Usage before warning (%)
+       {max_indexer_ram, 75}
       ]},
      {replication, [{enabled, true}]},
      {auto_failover_cfg, [{enabled, false},

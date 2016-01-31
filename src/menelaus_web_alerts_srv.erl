@@ -53,6 +53,8 @@ short_description(disk) ->
     "approaching full disk warning";
 short_description(audit_dropped_events) ->
     "audit write failure";
+short_description(indexer_ram_max_usage) ->
+    "indexer ram approaching threshold warning";
 short_description(Other) ->
     %% this case is needed for tests to work
     couch_util:to_list(Other).
@@ -69,8 +71,9 @@ errors(overhead) ->
 errors(disk) ->
     "Approaching full disk warning. Usage of disk \"~s\" on node \"~s\" is around ~p%.";
 errors(audit_dropped_events) ->
-    "Audit Write Failure. Attempt to write to audit log on node \"~s\" was unsuccessful".
-
+    "Audit Write Failure. Attempt to write to audit log on node \"~s\" was unsuccessful";
+errors(indexer_ram_max_usage) ->
+    "Approaching full Indexer RAM warning. Usage of Indexer RAM on node \"~s\" is around ~p%. This is above the threshold of ~p%.".
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -190,7 +193,15 @@ handle_info(_Info, State) ->
 do_handle_check_alerts_info(#state{history=Hist, opaque=Opaque}) ->
     BucketNames = ordsets:intersection(lists:sort(ns_memcached:active_buckets()),
                                        lists:sort(ns_bucket:node_bucket_names(node()))),
-    AllNames = ["@global" | BucketNames],
+    IsIndex = lists:member(index, ns_cluster_membership:node_services(node())),
+    IsWatson = cluster_compat_mode:is_cluster_watson(),
+    Index = case IsWatson andalso IsIndex of
+                true ->
+                    ["@index"];
+                false ->
+                    []
+            end,
+    AllNames = ["@global" | BucketNames] ++ Index,
     RawPairs = [{Name, stats_reader:latest(minute, node(), Name, 1)} || Name <- AllNames],
     Stats = [{Name, OrdDict}
              || {Name, {ok, [#stat_entry{values = OrdDict}|_]}} <- RawPairs],
@@ -215,7 +226,8 @@ start_timer() ->
 %% @doc global checks for any server specific problems locally then
 %% broadcast alerts to clients connected to any particular node
 global_checks() ->
-    [oom, ip, write_fail, overhead, disk, audit_write_fail].
+    [oom, ip, write_fail, overhead, disk, audit_write_fail,
+     indexer_ram_max_usage].
 
 %% @doc fires off various checks
 check_alerts(Opaque, Hist, Stats) ->
@@ -286,6 +298,33 @@ check(overhead, Opaque, _History, Stats) ->
          false  ->
              ok
      end || Bucket <- ns_memcached:active_buckets()],
+    Opaque;
+
+%% @doc check for indexer ram usage
+check(indexer_ram_max_usage, Opaque, _History, Stats) ->
+    case proplists:get_value("@index", Stats) of
+        undefined ->
+            ok;
+        Val ->
+            IndexerRam = proplists:get_value(<<"index_ram_percent">>, Val),
+            case IndexerRam of
+                undefined ->
+                    ok;
+                _ ->
+                    {value, Config} = ns_config:search(alert_limits),
+                    Max = proplists:get_value(max_indexer_ram, Config),
+                    case IndexerRam > Max of
+                        true ->
+                            {_Sname, Host} = misc:node_name_host(node()),
+                            Err = fmt_to_bin(errors(indexer_ram_max_usage),
+                                             [Host, erlang:trunc(IndexerRam),
+                                              Max]),
+                            global_alert(indexer_ram_max_usage, Err);
+                        false ->
+                            ok
+                    end
+            end
+    end,
     Opaque;
 
 %% @doc check for write failures inside ep engine
