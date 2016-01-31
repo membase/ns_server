@@ -10,18 +10,10 @@
     'ui.bootstrap'
   ]).run(appRun);
 
-  function appRun($rootScope, $state, $urlRouter, mnPools, $uibModalStack, $window, $exceptionHandler, $http, $templateCache, mnPendingQueryKeeper) {
+  function appRun($state, $urlRouter, $exceptionHandler, mnPools, $window, $http, $templateCache, $transitions) {
+
     var originalOnerror = $window.onerror;
-
     $window.onerror = onError;
-    $rootScope.$on('$stateChangeError', onStateChangeError);
-    $rootScope.$on('$stateChangeStart', onStateChangeStart);
-    $rootScope.$on('$locationChangeSuccess', onLocationChangeSuccess);
-    $urlRouter.listen();
-    angular.forEach(angularTemplatesList, function (url) {
-      $http.get(url, {cache: $templateCache});
-    });
-
     function onError(message, url, lineNumber, columnNumber, exception) {
       $exceptionHandler({
         message: message,
@@ -32,37 +24,26 @@
       });
       originalOnerror && originalOnerror.apply($window, Array.prototype.slice.call(arguments));
     }
-    function onStateChangeError(event, toState, toParams, fromState, fromParams, error) {
-      $exceptionHandler(error);
-    }
-    function onStateChangeStart(event, toState, toParams, fromState, fromParams, error) {
-      if (fromState.name.indexOf('app.admin') > -1 && toState.name.indexOf('app.admin') > -1) {
-        if ($uibModalStack.getTop()) {
-          return event.preventDefault();
-        }
-        mnPools.get().then(function (pools) {
-          var required = (toState.data && toState.data.required) || {};
-          var isOnlyForEnterprise = (required.enterprise && !pools.isEnterprise);
-          if (isOnlyForEnterprise) {
-            event.preventDefault();
-            return $state.go('app.admin.overview');
-          }
-        });
+
+    angular.forEach(angularTemplatesList, function (url) {
+      $http.get(url, {cache: $templateCache});
+    });
+
+    mnPools.get().then(function (pools) {
+      if (!pools.isInitialized) {
+        return $state.go('app.wizard.welcome');
       }
-    }
-    function onLocationChangeSuccess(event) {
-      event.preventDefault();
-      mnPools.get().then(function (pools) {
-        if (pools.isInitialized) {
-          $urlRouter.sync();
-        } else {
-          $state.go('app.wizard.welcome');
-        }
-      }, function (resp) {
-        switch (resp.status) {
-          case 401: return $state.go('app.auth');
-        }
-      });
-    }
+    }, function (resp) {
+      switch (resp.status) {
+        case 401: return $state.go('app.auth');
+      }
+    }).then(function () {
+      $urlRouter.listen();
+      $urlRouter.sync();
+    })
+
+    $transitions.defaultErrorHandler(function (error) {
+      error && $exceptionHandler(error);
+    });
   }
 })();

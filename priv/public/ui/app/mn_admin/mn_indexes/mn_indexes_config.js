@@ -22,6 +22,9 @@
             value: null
           }
         },
+        resolve: {
+          setDefaultBucketName: mnHelperProvider.setDefaultBucketName("viewsBucket", 'app.admin.indexes.views.list')
+        },
         templateUrl: 'app/mn_admin/mn_indexes/mn_views/mn_views.html',
         controller: 'mnViewsController as viewsCtl'
       })
@@ -31,9 +34,6 @@
           type: {
             value: 'development'
           }
-        },
-        resolve: {
-          setDefaultBucketName: mnHelperProvider.setDefaultBucketName("viewsBucket", 'app.admin.indexes.views.list')
         },
         controller: 'mnViewsListController as viewsListCtl',
         templateUrl: 'app/mn_admin/mn_indexes/mn_views/list/mn_views_list.html'
@@ -64,6 +64,7 @@
             array: true
           }
         },
+        reloadOnSearch: false,
         controller: "mnGsiController as gsiCtl",
         templateUrl: "app/mn_admin/mn_indexes/mn_gsi/mn_gsi.html"
       });

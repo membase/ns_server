@@ -121,6 +121,7 @@
       .state('app.admin.analytics.list', {
         abstract: true,
         url: '?openedStatsBlock',
+        // reloadOnSearch: false, should be uncomented after this fix will be merget https://github.com/angular-ui/ui-router/issues/2470
         params: {
           openedStatsBlock: {
             array: true
@@ -169,6 +170,7 @@
             array: true
           }
         },
+        reloadOnSearch: false,
         views: {
           "": {
             controller: 'mnBucketsController as bucketsCtl',
@@ -196,6 +198,7 @@
             array: true
           }
         },
+        reloadOnSearch: false,
         views: {
           "" : {
             controller: 'mnServersListController as serversListCtl',

@@ -71,11 +71,11 @@
           var stateParams = {};
           if ($scope.isDetailsOpened(hashValue)) {
             stateParams[hashKey] = _.difference(currentlyOpened, [String(hashValue)]);
-            $state.go(stateName, stateParams, {notify: false});
+            $state.go(stateName, stateParams);
           } else {
             currentlyOpened.push(String(hashValue));
             stateParams[hashKey] = currentlyOpened;
-            $state.go(stateName, stateParams, {notify: false});
+            $state.go(stateName, stateParams);
           }
         };
       }
@@ -87,7 +87,7 @@
       }
       function reloadState() {
         mnPendingQueryKeeper.cancelAllQueries();
-        $state.transitionTo($state.current, $stateParams, {reload: true, inherit: true, notify: true});
+        $state.transitionTo($state.current, $stateParams, {reload: true, inherit: true});
       }
     }
   }

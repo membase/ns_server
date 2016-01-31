@@ -32,6 +32,9 @@
     }
 
     function buildViewUrl(params) {
+      if (!params || !params.documentId) {
+        return;
+      }
       var params = _.clone(params);
       if (params.documentId.slice(0, "_design/".length) === "_design/") {
         params.documentId = "_design/" + encodeURIComponent(params.documentId.slice("_design/".length));

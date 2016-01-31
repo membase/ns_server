@@ -5,7 +5,7 @@
     .module('app')
     .config(appConfig);
 
-  function appConfig($httpProvider, $stateProvider, $urlRouterProvider, $uibModalProvider) {
+  function appConfig($httpProvider, $stateProvider, $urlRouterProvider, $uibModalProvider, $transitionsProvider) {
     $httpProvider.defaults.headers.common['invalid-auth-response'] = 'on';
     $httpProvider.defaults.headers.common['Cache-Control'] = 'no-cache';
     $httpProvider.defaults.headers.common['Pragma'] = 'no-cache';
@@ -29,7 +29,67 @@
       template: '<div ui-view="" />'
     });
 
+    $transitionsProvider.onBefore({
+      to: "app.admin.**",
+      from: "app.admin.**"
+    }, function ($uibModalStack) {
+      return !$uibModalStack.getTop();
+    });
+    $transitionsProvider.onBefore({
+      to: "app.admin.**",
+      from: "app.auth"
+    }, function (mnPools) {
+      return mnPools.get().then(function () {
+        return true;
+      }, function (resp) {
+        switch (resp.status) {
+          case 401: return false;
+        }
+      });
+    });
+    $transitionsProvider.onBefore({
+      from: "app.wizard.**",
+      to: "app.auth"
+    }, function (mnPools) {
+      return mnPools.get().then(function (pools) {
+        return pools.isInitialized;
+      });
+    });
+    $transitionsProvider.onBefore({
+      from: "app.admin.**",
+      to: "app.auth"
+    }, function (mnPools) {
+      return mnPools.get().then(function () {
+        return false;
+      }, function (resp) {
+        switch (resp.status) {
+          case 401: return true;
+        }
+      });
+    });
+    $transitionsProvider.onStart({
+      to: function (state) {
+        return state.data && state.data.permissions;
+      }
+    }, function ($state, $parse, mnPermissions, $transition$) {
+      return mnPermissions.check().then(function() {
+        if (!$parse($transition$.to().data.permissions)(mnPermissions.export)) {
+          return false;
+        }
+      });
+    });
+    $transitionsProvider.onStart({
+      to: function (state) {
+        return state.data && state.data.required && state.data.required.enterprise;
+      }
+    }, function ($state, mnPools) {
+      return mnPools.get().then(function (pools) {
+        if (!pools.isEnterprise) {
+          return false;
+        }
+      });
+    });
+
     $urlRouterProvider.deferIntercept();
-    $urlRouterProvider.otherwise('/overview');
   }
 })();

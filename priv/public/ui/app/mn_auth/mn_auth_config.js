@@ -9,9 +9,8 @@
 
   function mnAuthConfig($stateProvider, $httpProvider, $urlRouterProvider) {
     $httpProvider.interceptors.push(['$q', '$injector', interceptorOf401]);
-    $urlRouterProvider.when('', '/auth');
-    $urlRouterProvider.when('/', '/auth');
     $stateProvider.state('app.auth', {
+      url: "/auth",
       templateUrl: 'app/mn_auth/mn_auth.html',
       controller: 'mnAuthController as authCtl'
     });
