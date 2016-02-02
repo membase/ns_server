@@ -63,20 +63,34 @@ validate_settings_post(Args) ->
     validate_unsupported_params(R3).
 
 validate_storage_mode(State) ->
+    %% Note, at the beginning the storage mode will be empty. Once set,
+    %% validate_string will prevent user from changing it back to empty
+    %% since it is not one of the acceptable values.
     State1 = validate_string(State, storageMode),
 
-    %% Do not allow changing index storage mode when:
-    %% - running community edition
-    %% - there are nodes running index service in the cluster
+    %% Do not allow:
+    %% - changing index storage mode to mem optimized in community edition
+    %% - changing index storage mode when there are nodes running index
+    %% service in the cluster
     IndexErr = "Changing the optimization mode of global indexes is not supported when index service nodes are present in the cluster. Please remove all index service nodes to change this option.",
     CEErr = "Memory optimized indexes are restricted to enterprise edition and are not available in the community edition.",
 
     validate_by_fun(
       fun (Value) ->
               OldValue = index_settings_manager:get(storageMode),
-              case Value =/= OldValue of
+              IsEE = cluster_compat_mode:is_enterprise(),
+              IsMemOpt = Value =:= <<"memory_optimized">>,
+              case OldValue =:= <<"">> orelse Value =:= OldValue of
                   true ->
-                      case cluster_compat_mode:is_enterprise() of
+                        case IsMemOpt andalso IsEE =:= false of
+                            true ->
+                              ?log_debug("Community edition. Cannot set index storage mode to memory optimized. ~n"),
+                              {error, CEErr};
+                            false ->
+                                ok
+                        end;
+                  false ->
+                      case IsEE of
                           true ->
                               %% Note it is not sufficient to check
                               %% service_active_nodes(index) because the
@@ -92,9 +106,7 @@ validate_storage_mode(State) ->
                           false ->
                               ?log_debug("Community edition. Cannot change index storage mode. ~n"),
                               {error, CEErr}
-                      end;
-                  false ->
-                      ok
+                      end
               end
       end, storageMode, State1).
 

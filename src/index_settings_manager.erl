@@ -85,8 +85,16 @@ config_upgrade() ->
 config_upgrade_to_watson(Config) ->
     JSON = fetch_settings_json(Config),
     Current = decode_settings_json(JSON),
-    New = build_settings_json(extra_default_settings(), Current,
-                              extra_known_settings()),
+    Nodes = ns_node_disco:nodes_wanted(),
+    %% If there are no index nodes in the cluster then set the default
+    %% to empty.
+    Default = case ns_cluster_membership:service_nodes(Config, Nodes, index) of
+                  [] ->
+                      [{storageMode, <<"">>}];
+                  _ ->
+                      [{storageMode, <<"forestdb">>}]
+              end,
+    New = build_settings_json(Default, Current, extra_known_settings()),
     [{set, ?INDEX_CONFIG_KEY, New}].
 
 %% internal
@@ -206,7 +214,7 @@ default_settings() ->
     end.
 
 extra_default_settings() ->
-    [{storageMode, <<"forestdb">>}].
+    [{storageMode, <<"">>}].
 
 id_lens(Key) ->
     Get = fun (Dict) ->
