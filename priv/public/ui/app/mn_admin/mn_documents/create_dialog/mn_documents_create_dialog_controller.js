@@ -24,8 +24,11 @@
                 vm.error = data && data.reason;
               })
               .closeOnSuccess()
-              .broadcast("reloadDocumentsPoller")
-              .getPromise();
+              .onSuccess(function () {
+                $state.go('app.admin.documents.editing', {
+                  documentId: newDocumentParams.documentId
+                });
+              });
           } else {
             vm.error = resp.data && resp.data.reason;
           }
