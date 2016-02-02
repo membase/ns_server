@@ -17,7 +17,7 @@
         </div>
       </div>
       <div class="editing_ctrls">
-        <form id="search_doc" action="#" ng-submit="documentsControlCtl.isEmptyState() && documentsListCtl.lookupSubmit($event)">
+        <form id="search_doc" ng-submit="!documentsControlCtl.isEmptyState() && documentsListCtl.lookupSubmit()">
           <input
             type="text"
             id="docs_lookup_doc_by_id"

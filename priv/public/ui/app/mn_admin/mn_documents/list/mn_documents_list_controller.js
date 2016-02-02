@@ -32,13 +32,10 @@
     function onFilterReset() {
       vm.filterInitParams = {};
     }
-    function lookupSubmit(event) {
-      event.preventDefault();
-
-      $state.go('app.admin.documents.editing', {
+    function lookupSubmit() {
+      vm.lookupId && $state.go('app.admin.documents.editing', {
         documentId: vm.lookupId
       });
-      return false;
     }
     function deleteDocument(documentId) {
       return $uibModal.open({
