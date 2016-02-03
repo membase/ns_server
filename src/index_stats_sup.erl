@@ -47,6 +47,8 @@ is_notable_event({buckets, _}) ->
     true;
 is_notable_event({{node, Node, membership}, _}) when Node =:= node() ->
     true;
+is_notable_event({rest_creds, _}) ->
+    true;
 is_notable_event(_) ->
     false.
 
