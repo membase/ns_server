@@ -158,6 +158,8 @@ format_attribute([#'AttributeTypeAndValue'{type = Type,
             [[Str, "=", format_value(Value)] | Acc]
     end.
 
+format_value({utf8String, Utf8Value}) ->
+    unicode:characters_to_list(Utf8Value);
 format_value({_, Value}) when is_list(Value) ->
     Value;
 format_value(Value) when is_list(Value) ->
