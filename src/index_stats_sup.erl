@@ -82,8 +82,9 @@ refresh_children() ->
     RunningChildren0 = [Id || {Id, _, _, _} <- supervisor:which_children(index_stats_children_sup)],
     RunningChildren = lists:sort(RunningChildren0),
     Config = ns_config:get(),
-    WantedChildren = compute_wanted_children(indexer_fts, Config) ++
+    WantedChildren0 = compute_wanted_children(indexer_fts, Config) ++
         compute_wanted_children(indexer_gsi, Config),
+    WantedChildren = lists:sort(WantedChildren0),
     ToStart = ordsets:subtract(WantedChildren, RunningChildren),
     ToStop = ordsets:subtract(RunningChildren, WantedChildren),
     lists:foreach(fun stop_child/1, ToStop),
