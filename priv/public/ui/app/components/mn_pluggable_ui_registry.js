@@ -3,7 +3,53 @@
 
   angular
     .module('mnPluggableUiRegistry', [])
-    .provider('mnPluggableUiRegistry', mnPluggableUiRegistryProvider);
+    .provider('mnPluggableUiRegistry', mnPluggableUiRegistryProvider)
+    .factory('mnPluggableTabUtil', mnPluggableTabUtil)
+    .directive('mnPluggableUiTabs', mnPluggableUiTabs);
+
+  function mnPluggableTabUtil() {
+    var defaultTemplate = "<li><a ui-sref=\"{{ ::pluggableUiConfig.state }}\" ui-sref-active=\"selected\">{{ ::pluggableUiConfig.name }}</a></li>";
+    var tabTemplates = {
+      adminTab:    "<li class=\"line\" ui-sref-active=\"currentNav\"><a ui-sref=\"{{ ::pluggableUiConfig.state}}\">{{ ::pluggableUiConfig.name }}</a></li>",
+      indexesTab:  "<li><a ui-sref=\"{{::pluggableUiConfig.state }}\" ng-class=\"selected\">{{ ::pluggableUiConfig.name }}</a></li>"
+    };
+
+    return {
+      getTabTemplate: getTabTemplate
+    };
+
+    function getTabTemplate(tabBarName) {
+      return tabTemplates[tabBarName] || defaultTemplate;
+    }
+  }
+
+  function mnPluggableUiTabs(mnPluggableUiRegistry, mnPluggableTabUtil, $compile) {
+
+    return {
+      link: link
+    };
+
+    function link($scope, $element, $attrs) {
+      var pluggableUiConfigs = mnPluggableUiRegistry.getConfigsByTabBarName($attrs.mnTabBarName);
+      if (!pluggableUiConfigs.length) {
+        return;
+      }
+      angular.forEach(pluggableUiConfigs, function (config) {
+        $scope.pluggableUiConfig = config;
+        if (config.after) {
+          var targetTab = $element[0].querySelector("[mn-tab='" + config.after + "']");
+          if (!targetTab) {
+            throw new Error("There is no tab with mn-tab=" + config.after + " in " + $attrs.mnTabBarName);
+          }
+          var compiled = $compile(mnPluggableTabUtil.getTabTemplate($attrs.mnTabBarName))($scope);
+          angular.element(targetTab).after(compiled);
+        } else {
+          var compiled = $compile(mnPluggableTabUtil.getTabTemplate($attrs.mnTabBarName))($scope);
+          $element.append(compiled);
+        }
+      });
+    }
+  }
 
   function mnPluggableUiRegistryProvider() {
     var _configs = [];
@@ -38,7 +84,8 @@
     function mnPluggableUiRegistryFactory() {
 
       return {
-        getConfigs: getConfigs
+        getConfigs: getConfigs,
+        getConfigsByTabBarName: getConfigsByTabBarName
       };
 
       /**
@@ -47,6 +94,9 @@
        */
       function getConfigs() {
         return _configs;
+      }
+      function getConfigsByTabBarName(tabBarName) {
+        return _.filter(_configs, {plugIn: tabBarName});
       }
     }
   }

@@ -5,8 +5,7 @@
     .module("mnIndexes")
     .controller("mnIndexesController", mnIndexesController);
 
-  function mnIndexesController(mnPluggableUiRegistry) {
+  function mnIndexesController() {
     var vm = this;
-    vm.pluggableUiConfigs = mnPluggableUiRegistry.getConfigs();
   }
 })();

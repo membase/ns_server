@@ -3,16 +3,13 @@
   <div class="shadow_box">
     <div class="section">
       <div class="header_2">
-        <ul class="tabs">
+        <ul class="tabs" mn-pluggable-ui-tabs mn-tab-bar-name="settingsTab">
           <li class="tab_left"><a id="settings_cluster" ui-sref="app.admin.settings.cluster" ui-sref-active="selected">Cluster</a></li>
           <li><a id="settings_update_notifications" ui-sref="app.admin.settings.notifications" ui-sref-active="selected" class="casper_settings_update_notifications">Update Notifications</a></li>
           <li><a id="settings_auto_failover" class="casper_settings_auto_failover" ui-sref="app.admin.settings.autoFailover" ui-sref-active="selected">Auto-Failover</a></li>
           <li><a id="settings_alerts" class="casper_settings_alerts" ui-sref="app.admin.settings.alerts" ui-sref-active="selected">Alerts</a></li>
           <li><a id="settings_compaction" class="casper_settings_compaction" ui-sref="app.admin.settings.autoCompaction" ui-sref-active="selected">Auto-Compaction</a></li>
           <li><a id="settings_sample_buckets" class="casper_settings_sample_buckets" ui-sref="app.admin.settings.sampleBuckets" ui-sref-active="selected">Sample Buckets</a></li>
-          <li ng-repeat="config in adminCtl.pluggableUiConfigs | filter:{plugIn: 'settingsTab'}">
-              <a ui-sref="{{ config.state }}" ui-sref-active="selected">{{ config.name }}</a>
-          </li>
         </ul>
       </div>
       <div class="panes clearfix" ui-view="">

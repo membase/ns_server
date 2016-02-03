@@ -58,35 +58,32 @@
   </div>
   <div id="headerNav">
     <div class="contents">
-      <ul>
-        <li class="line" ui-sref-active="currentNav">
+      <ul mn-pluggable-ui-tabs mn-tab-bar-name="adminTab">
+        <li mn-tab="overview" class="line" ui-sref-active="currentNav">
           <a ui-sref="app.admin.overview">Overview</a>
         </li>
-        <li class="line" ui-sref-active="currentNav">
+        <li mn-tab="servers" class="line" ui-sref-active="currentNav">
           <a class="switch_servers" ui-sref="app.admin.servers.list">Server Nodes</a>
         </li>
-        <li class="line" ui-sref-active="currentNav">
+        <li mn-tab="buckets" class="line" ui-sref-active="currentNav">
           <a class="switch_buckets" ui-sref="app.admin.buckets">Data Buckets</a>
         </li>
-        <li class="line" ng-class="{currentNav: ('app.admin.indexes' | includedByState)}">
+        <li mn-tab="indexes" class="line" ng-class="{currentNav: ('app.admin.indexes' | includedByState)}">
           <a class="switch_views" ui-sref="app.admin.indexes.gsi">Indexes</a>
         </li>
-        <li class="line" ui-sref-active="currentNav">
+        <li mn-tab="replications" class="line" ui-sref-active="currentNav">
           <a class="switch_replications" ui-sref="app.admin.replications">XDCR</a>
         </li>
-        <li class="line" ng-class="{currentNav: ('app.admin.security' | includedByState)}">
+        <li mn-tab="security" class="line" ng-class="{currentNav: ('app.admin.security' | includedByState)}">
           <a class="switch_security" ui-sref="app.admin.security.externalRoles">Security</a>
         </li>
-        <li class="line" ng-class="{currentNav: ('app.admin.logs' | includedByState)}">
+        <li mn-tab="logs" class="line" ng-class="{currentNav: ('app.admin.logs' | includedByState)}">
           <a class="switch_log" ui-sref="app.admin.logs.list">Log</a>
         </li>
-        <li class="line" ng-class="{currentNav: ('app.admin.settings' | includedByState)}" id="nav_settings_container">
+        <li mn-tab="settings" id="nav_settings_container" class="line" ng-class="{currentNav: ('app.admin.settings' | includedByState)}">
           <a href="#?section=settings" ui-sref="app.admin.settings.cluster" class="switch_settings">Settings
             <span ng-show="adminCtl.updates.sendStats && !!adminCtl.updates.newVersion" class="badge notify"><span>!</span></span>
           </a>
-        </li>
-        <li ng-repeat="config in adminCtl.pluggableUiConfigs | filter:{plugIn: 'adminTab'}" class="line" ui-sref-active="currentNav">
-          <a ui-sref="{{ config.state }}">{{ config.name }}</a>
         </li>
       </ul>
     </div>

@@ -14,7 +14,8 @@
       'mnSettingsAlerts',
       'mnSettingsNotificationsService',
       'mnInternalRoles',
-      'ui.router'
+      'ui.router',
+      'mnPluggableUiRegistry'
     ])
     .config(mnSettingsConfig);
 

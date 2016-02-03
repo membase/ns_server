@@ -7,7 +7,6 @@
 
   function mnSecurityController($scope, mnPluggableUiRegistry, poolDefault) {
     var vm = this;
-    vm.pluggableUiConfigs = mnPluggableUiRegistry.getConfigs();
     vm.poolDefault = poolDefault;
   }
 })();

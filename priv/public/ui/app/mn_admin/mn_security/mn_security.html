@@ -1,5 +1,5 @@
 <div id="js_security" class="security">
-  <ul class="second-level-nav">
+  <ul class="second-level-nav" mn-pluggable-ui-tabs mn-tab-bar-name="securityTab">
     <li ng-show="securityCtl.poolDefault.ldapEnabled">
       <a
         ui-sref="app.admin.security.externalRoles"
@@ -32,9 +32,6 @@
           id="ldap_setup"
           ui-sref="app.admin.security.ldap"
           ui-sref-active="selected">LDAP Auth Setup</a>
-    </li>
-    <li ng-repeat="config in securityCtl.pluggableUiConfigs | filter:{plugIn: 'securityTab'}" class="line">
-      <a ui-sref="{{ config.state }}" ui-sref-active="selected">{{ config.name }}</a>
     </li>
   </ul>
   <div ui-view="">

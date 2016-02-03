@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPluggableUiRegistry, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -16,7 +16,6 @@
     vm.toggleProgressBar = toggleProgressBar;
     vm.filterTasks = filterTasks;
 
-    vm.pluggableUiConfigs = mnPluggableUiRegistry.getConfigs();
     vm.showAboutDialog = mnAboutDialogService.showAboutDialog;
 
     vm.enableInternalSettings = $state.params.enableInternalSettings;
