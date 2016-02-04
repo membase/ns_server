@@ -89,6 +89,11 @@
       if (vm.viewLoading) {
         return;
       }
+      delete vm.setupServicesErrors;
+      delete vm.postMemoryErrors;
+      delete vm.postDiskStorageErrors;
+      delete vm.postJoinClusterErrors;
+      delete vm.postHostnameErrors;
 
       var promise = postDiskStorage().then(function () {
         return addErrorHandler(mnWizardStep1Service.postHostname(vm.hostname), "postHostname");
