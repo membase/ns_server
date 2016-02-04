@@ -26,8 +26,20 @@
       });
     }
 
+    function getVersion() {
+      return $http({
+        url: "/versions",
+        method: "GET"
+      }).then(function (resp) {
+        return resp.data;
+      });
+    }
+
     function getState() {
       return mnPools.get().then(function (pools) {
+        if (!pools.isInitialized) {
+          return getVersion();
+        }
         return $q.all([
           mnPoolDefault.get(),
           mnBucketsService.getBucketsByType()
@@ -64,14 +76,7 @@
             implementationVersion: pools.implementationVersion
           };
         });
-      }, function () {
-        return $http({
-          url: "/versions",
-          method: "GET"
-        }).then(function (resp) {
-          return resp.data;
-        });
-      });
+      }, getVersion);
     }
   }
 })();
