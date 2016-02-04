@@ -3,7 +3,8 @@
 
   angular.module('mnSecurity', [
     'mnExternalRoles',
-    'mnPluggableUiRegistry'
+    'mnPluggableUiRegistry',
+    'mnRootCertificate'
   ]).config(mnIndexesConfig);
 
   function mnIndexesConfig($stateProvider) {
@@ -22,6 +23,16 @@
         url: '/internalRoles',
         controller: 'mnInternalRolesController as internalRolesCtl',
         templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/mn_internal_roles.html'
+      })
+      .state('app.admin.security.rootCertificate', {
+        url: '/root certificate',
+        controller: 'mnRootCertificateController as rootCertificateCtl',
+        templateUrl: 'app/mn_admin/mn_security/mn_root_certificate/mn_root_certificate.html',
+        data: {
+          required: {
+            enterprise: true
+          }
+        }
       })
       .state('app.admin.security.ldap', {
         url: '/ldap',

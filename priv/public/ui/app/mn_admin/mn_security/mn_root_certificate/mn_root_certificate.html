@@ -1,0 +1,36 @@
+<div class="shadow_box settings">
+  <div class="header_2">
+    <div class="right" style="overflow:hidden;">
+      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
+    </div>
+  </div>
+  <div
+    class="ldap_setup_container only-when-40 when-enterprise"
+    mn-spinner="!rootCertificateCtl.certificate">
+
+    <h2>Certificate</h2>
+    <div class="sub_section">
+      <p>
+        A <strong>{{(rootCertificateCtl.certificate.cert.type == "generated") ? "self-signed" : "signed"}}</strong> SSL certificate is currently deployed across the cluster.
+      </p>
+      <div
+        class="about-cert-area_wrapper"
+        id="js_about-cert-area_wrapper">
+        <div
+          id="js-about-cert-area"
+          readonly="readonly"
+          style="width:630px;padding:15px;background:#fff;border:1px solid #ccd3d7;white-space: pre;line-height:1.2;">{{rootCertificateCtl.certificate.cert.pem}}</div>
+        <div></div>
+      </div>
+      <div class="error-container" ng-show="rootCertificateCtl.certificate.warnings.length" style="margin-top:22px;">
+        <strong>Warning:</strong>
+        <div ng-repeat="warn in rootCertificateCtl.certificate.warnings">
+          {{warn.node}}: {{warn.message}} {{warn.expires}}
+        </div>
+      </div>
+    </div>
+
+    <div class="save_cancel">
+    </div>
+  </div>
+</div>

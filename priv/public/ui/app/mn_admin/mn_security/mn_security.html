@@ -12,10 +12,10 @@
         ui-sref="app.admin.security.internalRoles"
         ui-sref-active="selected">Internal User/Roles</a>
     </li>
-    <li>
+    <li ng-show="adminCtl.poolDefault.isEnterprise">
       <a
-        ui-sref="app.admin.security.certificates"
-        ui-sref-active="selected">Certificates</a>
+        ui-sref="app.admin.security.rootCertificate"
+        ui-sref-active="selected">Root Certificates</a>
     </li>
     <li
       class="when-enterprise only-when-40">

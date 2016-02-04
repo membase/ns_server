@@ -9,8 +9,6 @@
 
   function mnSettingsClusterServiceFactory($http, $q, mnServersService, mnPoolDefault, mnMemoryQuotaService, IEC) {
     var mnSettingsClusterService = {
-      getDefaultCertificate: getDefaultCertificate,
-      regenerateCertificate: regenerateCertificate,
       postPoolsDefault: postPoolsDefault,
       getIndexSettings: getIndexSettings,
       postIndexSettings: postIndexSettings,
@@ -19,18 +17,6 @@
 
     return mnSettingsClusterService;
 
-    function getDefaultCertificate() {
-      return $http({
-        method: 'GET',
-        url: '/pools/default/certificate'
-      });
-    }
-    function regenerateCertificate() {
-      return $http({
-        method: 'POST',
-        url: '/controller/regenerateCertificate'
-      });
-    }
     function postPoolsDefault(memoryQuotaConfig, justValidate, clusterName) {
       var data = {
         memoryQuota: memoryQuotaConfig.memoryQuota === null ? "" : memoryQuotaConfig.memoryQuota,
@@ -75,11 +61,7 @@
           mnMemoryQuotaService.memoryQuotaConfig(true, false),
           mnSettingsClusterService.getIndexSettings()
         ];
-        if (poolDefault.isEnterprise) {
-          requests.push(mnSettingsClusterService.getDefaultCertificate())
-        }
         return $q.all(requests).then(function (resp) {
-          var certificate = (resp[2] && resp[2].data);
           var memoryQuotaConfig = resp[0];
           var indexSettings = resp[1].data;
 
@@ -87,7 +69,6 @@
             initialMemoryQuota: memoryQuotaConfig.indexMemoryQuota,
             clusterName: poolDefault.clusterName,
             memoryQuotaConfig: memoryQuotaConfig,
-            certificate: certificate,
             indexSettings: indexSettings
           };
         });

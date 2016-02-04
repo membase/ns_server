@@ -11,9 +11,7 @@
 
   function mnSettingsClusterController($scope, $uibModal, mnSettingsClusterService, mnHelper, mnPromiseHelper) {
     var vm = this;
-    vm.toggleCertArea = toggleCertArea;
     vm.saveVisualInternalSettings = saveVisualInternalSettings;
-    vm.regenerateCertificate = regenerateCertificate;
 
     activate();
 
@@ -60,22 +58,9 @@
         saveSettings();
       }
     }
-    function regenerateCertificate() {
-      if (vm.regenerateCertificateInprogress) {
-        return;
-      }
-      mnPromiseHelper(vm, mnSettingsClusterService.regenerateCertificate())
-        .onSuccess(function (certificate) {
-          vm.state.certificate = certificate.data;
-        })
-        .showSpinner('regenerateCertificateInprogress');
-    }
     function activate() {
       mnPromiseHelper(vm, mnSettingsClusterService.getClusterState())
         .applyToScope("state");
-    }
-    function toggleCertArea() {
-      vm.toggleCertAreaFlag = !vm.toggleCertAreaFlag;
     }
   }
 })();

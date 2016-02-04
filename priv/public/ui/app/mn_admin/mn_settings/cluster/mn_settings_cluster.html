@@ -18,33 +18,6 @@
         ng-model="settingsClusterCtl.state.clusterName">
       <span>(0 — 256 chars)</span>
     </div>
-    <div class="certificate_section" ng-show="settingsClusterCtl.state.certificate">
-      <h3>Certificate:</h3>
-      <div class="sub_section">
-        <p>
-          Self-signed SSL certificate is deployed across the cluster on each nodes.
-        </p>
-        <p>
-          <a id="js_show_hide_cert_area" ng-click="settingsClusterCtl.toggleCertArea()">{{settingsClusterCtl.toggleCertAreaFlag ? 'Hide' : 'Show'}}</a> certificate.
-        </p>
-        <div
-          class="about-cert-area_wrapper"
-          id="js_about-cert-area_wrapper"
-          ng-show="settingsClusterCtl.toggleCertAreaFlag"
-          mn-spinner="settingsClusterCtl.regenerateCertificateInprogress">
-          <textarea
-            id="js-about-cert-area"
-            readonly="readonly"
-            ng-model="settingsClusterCtl.state.certificate"></textarea>
-          <div></div>
-          <div
-            ng-click="settingsClusterCtl.regenerateCertificate();"
-            class="edit_btn when-roadmin-avoid-me">Regenerate</div>
-          <span
-            style="color:red;display:inline;margin-left:5px;font-size:11px;">* Clicking 'Regenerate' will immediately generate new certificate for the cluster</span>
-        </div>
-      </div>
-    </div>
     <h2>Cluster RAM Quota</h2>
     <div
       class="sub_section cluster_quota_settings"
