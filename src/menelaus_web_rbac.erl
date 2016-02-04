@@ -194,6 +194,8 @@ parse_roles(RolesStr) ->
 
 role_to_string(Role) when is_atom(Role) ->
     atom_to_list(Role);
+role_to_string({Role, [all]}) ->
+    lists:flatten(io_lib:format("~p[*]", [Role]));
 role_to_string({Role, [BucketName]}) ->
     lists:flatten(io_lib:format("~p[~s]", [Role, BucketName])).
 
