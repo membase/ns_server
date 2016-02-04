@@ -267,11 +267,20 @@ delete_user(Identity) ->
               end
       end).
 
-validate_role(Role, Definitions, _BucketNames) when is_atom(Role) ->
-    lists:keymember(Role, 1, Definitions);
-validate_role({Role, [BucketName]}, Definitions, BucketNames) ->
-    lists:keymember(Role, 1, Definitions) andalso
-        lists:member(BucketName, BucketNames).
+validate_role(Role, Definitions, Config) when is_atom(Role) ->
+    validate_role(Role, [], Definitions, Config);
+validate_role({Role, Params}, Definitions, Config) ->
+    validate_role(Role, Params, Definitions, Config).
+
+validate_role(Role, Params, Definitions, Config) ->
+    case lists:keyfind(Role, 1, Definitions) of
+        {Role, ParamsDef, _, _} when length(Params) =:= length(ParamsDef) ->
+            lists:all(fun ({Param, ParamDef}) ->
+                              lists:member(Param, get_possible_param_values(Config, ParamDef))
+                      end, lists:zip(Params, ParamsDef));
+        _ ->
+            false
+    end.
 
 store_user(Identity, Name, Roles) ->
     Props = case Name of
@@ -283,10 +292,9 @@ store_user(Identity, Name, Roles) ->
     ns_config:run_txn(
       fun (Config, SetFn) ->
               {value, Definitions} = ns_config:search(roles_definitions),
-              BucketNames = get_possible_param_values(Config, bucket_name),
 
               UnknownRoles = [Role || Role <- Roles,
-                                      not validate_role(Role, Definitions, BucketNames)],
+                                      not validate_role(Role, Definitions, Config)],
               case UnknownRoles of
                   [] ->
                       Users = ns_config:search(Config, user_roles, []),
@@ -375,3 +383,16 @@ bucket_admin_test() ->
     Roles = compile_roles([{bucket_admin, ["default"]}], preconfigured_roles()),
     ?assertEqual(false, is_allowed({[{bucket,"test"}, data], read}, Roles)),
     ?assertEqual(false, is_allowed({[{bucket, all}], create}, Roles)).
+
+validate_role_test() ->
+    Config = [[{buckets, [{configs, [{"test", []}]}]}]],
+    Definitions = preconfigured_roles(),
+    ?assertEqual(true, validate_role(admin, Definitions, Config)),
+    ?assertEqual(true, validate_role({bucket_admin, ["test"]}, Definitions, Config)),
+    ?assertEqual(true, validate_role({views_admin, [all]}, Definitions, Config)),
+    ?assertEqual(false, validate_role(something, Definitions, Config)),
+    ?assertEqual(false, validate_role({bucket_admin, ["something"]}, Definitions, Config)),
+    ?assertEqual(false, validate_role({something, ["test"]}, Definitions, Config)),
+    ?assertEqual(false, validate_role({admin, ["test"]}, Definitions, Config)),
+    ?assertEqual(false, validate_role(bucket_admin, Definitions, Config)),
+    ?assertEqual(false, validate_role({bucket_admin, ["test", "test"]}, Definitions, Config)).
