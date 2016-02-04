@@ -369,9 +369,9 @@ object_match_test() ->
 
 admin_test() ->
     Roles = compile_roles([admin], preconfigured_roles()),
-    ?assertEqual(true, menelaus_roles:is_allowed({[{bucket, all}], create}, Roles)).
+    ?assertEqual(true, is_allowed({[{bucket, all}], create}, Roles)).
 
 bucket_admin_test() ->
     Roles = compile_roles([{bucket_admin, ["default"]}], preconfigured_roles()),
-    ?assertEqual(false, menelaus_roles:is_allowed({[{bucket,"test"}, data], read}, Roles)),
-    ?assertEqual(false, menelaus_roles:is_allowed({[{bucket, all}], create}, Roles)).
+    ?assertEqual(false, is_allowed({[{bucket,"test"}, data], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, all}], create}, Roles)).
