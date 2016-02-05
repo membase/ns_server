@@ -582,7 +582,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     ns_config_rep:push(),
     ok = ns_config_rep:synchronize_remote(KeepNodes),
 
-    maybe_delay_eject_nodes(StartTS, EjectNodes),
+    maybe_delay_eject_nodes(StartTS, EjectNodesAll),
     eject_nodes(EjectNodes).
 
 
