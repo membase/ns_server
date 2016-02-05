@@ -247,7 +247,7 @@ maybe_initiate_indexing(Bucket, Parent, JustBackfillNodes, ReplicaNodes, VBucket
     master_activity_events:note_indexing_initiated(Bucket, JustBackfillNodes, VBucket).
 
 mover_inner_dcp(Parent, Bucket, VBucket,
-                [OldMaster|_] = OldChain, [NewMaster|_] = NewChain, IndexAware) ->
+                [OldMaster|OldReplicas] = OldChain, [NewMaster|_] = NewChain, IndexAware) ->
     maybe_inhibit_view_compaction(Parent, OldMaster, Bucket, NewMaster, IndexAware),
 
     %% build new chain as replicas of existing master
@@ -317,7 +317,49 @@ mover_inner_dcp(Parent, Bucket, VBucket,
         true ->
             ok;
         false ->
-            cleanup_old_streams(Bucket, ReplicaNodes, Parent, VBucket)
+            %% Vbucket on the old master is dead.
+            %% Cleanup replication streams from the old master to the
+            %% new and old replica nodes.
+            %% We need to cleanup streams to the old replicas as well
+            %% to prevent race condition like the one described below.
+            %%
+            %% At the end of the vbucket move,
+            %% update_replication_post_move performs bulk vbucket state
+            %% update. Based on how the old and new chains are, one possible
+            %% set of state transitions are as follows:
+            %%  - change state of vbucket, say vb1, on old master to replica
+            %%  - change state of vb1 on old replicas. This results in closing
+            %%    of streams from old master to the old replicas.
+            %% Ideally, we want all replication streams from the old master
+            %% to close before we change the state of the vbucket on the
+            %% old master. But, bulk vbucket state change is racy which causes
+            %% other races. Consider this sequence which can occur
+            %% if state of vb on old master changes before the replication
+            %% streams from it are closed.
+            %%  1. State of vb1 on old master changes to replica. Replication
+            %%     stream from old master to the old replicas are still active.
+            %%  2. Because of the state change, EP engine sends dcp stream
+            %%     end to old replicas.
+            %%  3. Old replica is in middle of processing the dcp stream end.
+            %%     There is a few milisecond window when
+            %%     ns-server has processed dcp stream end but EP engine has not.
+            %%  4. Setup replication stream for some other vbucket comes in
+            %%     during the above window. It tries to add back the
+            %%     replication stream from old master to the old replicas.
+            %%     Since EP engine has not processed the dcp stream end
+            %%     yet, the stream add fails with eexist causing rebalance to
+            %%     fail.
+            %% Since state of the vb on old master is no longer active, we
+            %% should not be trying to add a stream from it.
+            %% If all replication streams from old master are closed
+            %% here before the vbucket state changes on the old master,
+            %% then we will not end up in race conditions like these.
+
+            OldReplicaNodes = [N || N <- OldReplicas,
+                                    N =/= undefined],
+            CleanupNodes = lists:subtract(OldReplicaNodes, ReplicaNodes) ++
+                ReplicaNodes,
+            cleanup_old_streams(Bucket, CleanupNodes, Parent, VBucket)
     end.
 
 set_vbucket_state(Bucket, Node, RebalancerPid, VBucket,
