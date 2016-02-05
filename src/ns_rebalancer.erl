@@ -40,8 +40,7 @@
          verify_replication/3,
          start_link_graceful_failover/1,
          generate_vbucket_map_options/2,
-         check_failover_possible/1,
-         activate_services/1]).
+         check_failover_possible/1]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
