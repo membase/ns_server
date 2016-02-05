@@ -406,7 +406,8 @@ start_link_rebalance(KeepNodes, EjectNodes,
                        ns_cluster_membership:activate(KeepNodes),
 
                        rebalance(KeepNodes, EjectNodes, FailedNodes,
-                                 BucketConfigs, DeltaRecoveryBucketTuples)
+                                 BucketConfigs,
+                                 DeltaRecoveryBucketTuples)
                end
        end, []]).
 
@@ -504,18 +505,35 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
           BucketConfigs, DeltaRecoveryBuckets) ->
     do_pre_rebalance_config_sync(KeepNodes),
 
-    %% now wait when all bucket shutdowns are done on nodes we're
-    %% adding (or maybe adding)
-    do_wait_buckets_shutdown(KeepNodes),
+    ok = activate_services(KeepNodes),
+    StartTS = os:timestamp(),
+
+    %% Eject failed nodes first so they don't cause trouble
+    FailedNodes = FailedNodesAll -- [node()],
+    eject_nodes(FailedNodes),
+
+    rebalance_kv(KeepNodes, EjectNodesAll, BucketConfigs, DeltaRecoveryBuckets),
+
+    ns_config:sync_announcements(),
+    ns_config_rep:push(),
+    ok = ns_config_rep:synchronize_remote(KeepNodes),
 
     %% don't eject ourselves at all here; this will be handled by ns_orchestrator
     EjectNodes = EjectNodesAll -- [node()],
-    FailedNodes = FailedNodesAll -- [node()],
 
-    KeepKVNodes = ns_cluster_membership:service_nodes(KeepNodes, kv),
-    LiveKVNodes = ns_cluster_membership:service_nodes(KeepNodes ++ EjectNodesAll, kv),
+    maybe_delay_eject_nodes(StartTS, EjectNodesAll),
+    eject_nodes(EjectNodes).
+
+rebalance_kv(KeepNodes, EjectNodes, BucketConfigs, DeltaRecoveryBuckets) ->
+    %% wait when all bucket shutdowns are done on nodes we're
+    %% adding (or maybe adding)
+    do_wait_buckets_shutdown(KeepNodes),
+
     NumBuckets = length(BucketConfigs),
     ?rebalance_debug("BucketConfigs = ~p", [sanitize(BucketConfigs)]),
+
+    KeepKVNodes = ns_cluster_membership:service_nodes(KeepNodes, kv),
+    LiveKVNodes = ns_cluster_membership:service_nodes(KeepNodes ++ EjectNodes, kv),
 
     case maybe_cleanup_old_buckets(KeepNodes) of
         ok ->
@@ -524,13 +542,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
             exit(Error)
     end,
 
-    ok = activate_services(KeepNodes),
-    StartTS = os:timestamp(),
-
     {ok, RebalanceObserver} = ns_rebalance_observer:start_link(length(BucketConfigs)),
 
-    %% Eject failed nodes first so they don't cause trouble
-    eject_nodes(FailedNodes),
     lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
                           ale:info(?USER_LOGGER, "Started rebalancing bucket ~s", [BucketName]),
                           ?rebalance_info("Rebalancing bucket ~p with config ~p",
@@ -548,7 +561,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                   %% Only start one bucket at a time to avoid
                                   %% overloading things
                                   ThisEjected = ordsets:intersection(lists:sort(proplists:get_value(servers, BucketConfig, [])),
-                                                                     lists:sort(EjectNodesAll)),
+                                                                     lists:sort(EjectNodes)),
                                   ThisLiveNodes = KeepKVNodes ++ ThisEjected,
                                   ns_bucket:set_servers(BucketName, ThisLiveNodes),
                                   execute_and_be_stop_aware(
@@ -574,9 +587,9 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
                                       ns_bucket:get_bucket(BucketName),
                                   master_activity_events:note_bucket_rebalance_started(BucketName),
                                   {NewMap, MapOptions} =
-                                      rebalance(BucketName, NewConf,
-                                                KeepKVNodes, BucketCompletion,
-                                                NumBuckets, DeltaRecoveryBuckets),
+                                      do_rebalance_bucket(BucketName, NewConf,
+                                                          KeepKVNodes, BucketCompletion,
+                                                          NumBuckets, DeltaRecoveryBuckets),
                                   ns_bucket:set_map_opts(BucketName, MapOptions),
                                   ns_bucket:update_bucket_props(BucketName,
                                                                 [{deltaRecoveryMap, undefined}]),
@@ -587,21 +600,13 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
 
     unlink(RebalanceObserver),
     exit(RebalanceObserver, shutdown),
-    misc:wait_for_process(RebalanceObserver, infinity),
-
-    ns_config:sync_announcements(),
-    ns_config_rep:push(),
-    ok = ns_config_rep:synchronize_remote(KeepNodes),
-
-    maybe_delay_eject_nodes(StartTS, EjectNodesAll),
-    eject_nodes(EjectNodes).
-
-
+    misc:wait_for_process(RebalanceObserver, infinity).
 
 %% @doc Rebalance the cluster. Operates on a single bucket. Will
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
-rebalance(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, DeltaRecoveryBuckets) ->
+do_rebalance_bucket(Bucket, Config, KeepNodes, BucketCompletion,
+                    NumBuckets, DeltaRecoveryBuckets) ->
     Map = proplists:get_value(map, Config),
     {FastForwardMap, MapOptions} =
         case lists:keyfind(Bucket, 1, DeltaRecoveryBuckets) of
