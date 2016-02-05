@@ -33,7 +33,8 @@
 -define(PART_SIZE, 100000).
 -define(WINDOW_SIZE, 5).
 -define(DEF_REQ_HEADERS_FILTER, {drop, ["content-length",
-                                        "transfer-encoding"]}).
+                                        "transfer-encoding",
+                                        "ns-server-proxy-timeout"]}).
 -define(DEF_RESP_HEADERS_FILTER, {drop, ["content-length",
                                          "transfer-encoding",
                                          "www-authenticate"]}).
@@ -225,8 +226,13 @@ lookup_port(Name, Node) ->
 get_timeout(views, Req) ->
     Params = Req:parse_qs(),
     list_to_integer(proplists:get_value("connection_timeout", Params, "30000"));
-get_timeout(_Service, _Req) ->
-    ?TIMEOUT.
+get_timeout(_Service, Req) ->
+    case Req:get_header_value("ns-server-proxy-timeout") of
+        undefined ->
+            ?TIMEOUT;
+        Val ->
+            list_to_integer(Val)
+    end.
 
 auth_token(_Service, Req) ->
     case menelaus_auth:extract_ui_auth_token(Req) of
@@ -260,8 +266,8 @@ do_proxy_req({Host, Port}, Path, Headers, Timeout, Req) ->
     Body = get_body(Req),
     Options = [{partial_download, [{window_size, ?WINDOW_SIZE},
                                    {part_size, ?PART_SIZE}]}],
-    Resp = lhttpc:request(Host, Port, false, Path, Method, Headers, Body,
-                          Timeout, Options),
+    Resp = lhttpc:request(Host, Port, false, Path, Method, Headers,
+                          Body, Timeout, Options),
     handle_resp(Resp, Req).
 
 get_body(Req) ->
@@ -281,6 +287,8 @@ handle_resp({ok, {{StatusCode, _ReasonPhrase}, RcvdHeaders, undefined = _Body}},
             Req) ->
     SendHeaders = filter_headers(RcvdHeaders, ?DEF_RESP_HEADERS_FILTER),
     menelaus_util:respond(Req, {StatusCode, SendHeaders, <<>>});
+handle_resp({error, timeout}, Req) ->
+    menelaus_util:respond(Req, {504, [], <<"Gateway Timeout">> });
 handle_resp({error, _Reason}=Error, Req) ->
     ?log_error("http client error ~p~n", [Error]),
     menelaus_util:respond(Req, {500, [], <<"Unexpected server error">> }).
