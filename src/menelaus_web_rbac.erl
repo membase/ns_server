@@ -32,7 +32,8 @@
          handle_check_permissions_post/1,
          check_permissions_url_version/1,
          handle_check_permission_for_cbauth/1,
-         reply_forbidden/2]).
+         reply_forbidden/2,
+         role_to_string/1]).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of

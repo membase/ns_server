@@ -12,7 +12,7 @@
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
               "remote" : {"ip" : "", "port" : 1},
-              "role" : ""
+              "roles" : ""
           },
           "optional_fields" : {
               "sessionid" : ""

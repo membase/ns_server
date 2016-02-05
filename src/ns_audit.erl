@@ -265,7 +265,10 @@ stats() ->
       end).
 
 login_success(Req) ->
-    put(login_success, Req, [{role, menelaus_auth:get_role(Req)}]).
+    Identity = menelaus_auth:get_identity(Req),
+    Roles = menelaus_roles:get_roles(Identity),
+    put(login_success, Req,
+        [{roles, {list, [menelaus_web_rbac:role_to_string(Role) || Role <- Roles]}}]).
 
 login_failure(Req) ->
     put(login_failure, Req, []).

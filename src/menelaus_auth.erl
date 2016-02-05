@@ -32,7 +32,6 @@
          maybe_refresh_token/1,
          get_identity/1,
          get_token/1,
-         get_role/1,
          validate_request/1,
          verify_login_creds/2,
          verify_rest_auth/2]).
@@ -138,10 +137,6 @@ get_identity(Req) ->
 
 get_token(Req) ->
     Req:get_header_value("menelaus-auth-token").
-
-%% TODO RBAC: to be removed
-get_role(_Req) ->
-    none.
 
 extract_auth_user(Req) ->
     case Req:get_header_value("authorization") of

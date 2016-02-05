@@ -47,6 +47,7 @@
          get_definitions/1,
          preconfigured_roles/0,
          is_allowed/2,
+         get_roles/1,
          get_compiled_roles/1,
          get_all_assignable_roles/1,
          get_users/0,
