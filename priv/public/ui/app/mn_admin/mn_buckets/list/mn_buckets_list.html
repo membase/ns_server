@@ -4,7 +4,7 @@
     <th></th>
     <th></th>
     <th></th>
-    <th>Nodes</th>
+    <th colspan="2">Data Nodes</th>
     <th colspan="2">Item Count</th>
     <th>Ops/sec</th>
     <th colspan="2" ng-show="!buckets"></th>
@@ -37,7 +37,7 @@
           ui-sref="app.admin.analytics.list.graph({analyticsBucket: bucket.name })"
           >{{bucket.name}}</a>
       </td>
-      <td>
+      <td colspan="2">
         <span id="{{bucket.name}}_health" class="health_graph"></span>
         {{ bucket.nodes.length }}
       </td>

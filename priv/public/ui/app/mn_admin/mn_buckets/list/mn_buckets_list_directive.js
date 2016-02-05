@@ -18,7 +18,7 @@
 
     return mnBucketsListDirective;
 
-    function controller($scope) {
+    function controller() {
       var vm = this;
       mnHelper.initializeDetailsHashObserver(vm, 'openedBucket', 'app.admin.buckets');
     }
