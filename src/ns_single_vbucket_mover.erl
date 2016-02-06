@@ -356,7 +356,8 @@ mover_inner_dcp(Parent, Bucket, VBucket,
             %% then we will not end up in race conditions like these.
 
             OldReplicaNodes = [N || N <- OldReplicas,
-                                    N =/= undefined],
+                                    N =/= undefined,
+                                    N =/= NewMaster],
             CleanupNodes = lists:subtract(OldReplicaNodes, ReplicaNodes) ++
                 ReplicaNodes,
             cleanup_old_streams(Bucket, CleanupNodes, Parent, VBucket)
