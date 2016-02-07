@@ -208,10 +208,18 @@ update_recovery_type(Node, NewType) ->
     end.
 
 supported_services() ->
-    [kv, n1ql, index, fts].
+    [kv, n1ql, index, fts] ++ maybe_example_service().
 
 default_services() ->
     [kv].
+
+maybe_example_service() ->
+    case os:getenv("ENABLE_EXAMPLE_SERVICE") =/= false of
+        true ->
+            [example];
+        false ->
+            []
+    end.
 
 set_service_map(kv, _Nodes) ->
     %% kv is special; it's dealt with using different set of functions

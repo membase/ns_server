@@ -271,7 +271,8 @@ dynamic_children(normal) ->
              run_via_goport(fun goxdcr_spec/1, Config),
              per_bucket_moxi_specs(Config),
              maybe_create_ssl_proxy_spec(Config),
-             run_via_goport(fun fts_spec/1, Config)],
+             run_via_goport(fun fts_spec/1, Config),
+             run_via_goport(fun example_service_spec/1, Config)],
 
     lists:flatten(Specs).
 
@@ -621,4 +622,25 @@ fts_spec(Config) ->
                      {log, ?FTS_LOG_FILENAME},
                      {env, build_go_env_vars(Config, fts)}]},
             [Spec]
+    end.
+
+example_service_spec(Config) ->
+    CacheCmd = find_executable("cache-service"),
+    {value, NodeUUID} = ns_config:search(Config, {node, node(), uuid}),
+
+    case CacheCmd =/= false andalso
+        NodeUUID =/= false andalso
+        ns_cluster_membership:should_run_service(Config, example, node()) of
+        true ->
+            Port = misc:node_rest_port(Config, node()) + 20000,
+            {_, Host} = misc:node_name_host(node()),
+            Args = ["-node-id", binary_to_list(NodeUUID),
+                    "-host", Host ++ ":" ++ integer_to_list(Port)],
+            Spec = {example, CacheCmd, Args,
+                    [use_stdio, exit_status,
+                     stderr_to_stdout, stream,
+                     {env, build_go_env_vars(Config, example)}]},
+            [Spec];
+        false ->
+            []
     end.

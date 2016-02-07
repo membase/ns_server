@@ -165,7 +165,9 @@ build_services(Node, Config, EnabledServices) ->
                   {indexStreamMaint, ns_config:search(Config, {node, Node, indexer_stmaint_port}, undefined)}
                  ];
              fts ->
-                 [{fts, ns_config:search(Config, {node, Node, fts_http_port}, undefined)}]
+                 [{fts, ns_config:search(Config, {node, Node, fts_http_port}, undefined)}];
+             example ->
+                 []
          end || S <- EnabledServices],
 
     MgmtSSL = GetPort(ssl_rest_port, mgmtSSL),
