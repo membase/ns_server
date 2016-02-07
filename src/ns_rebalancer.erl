@@ -418,9 +418,10 @@ move_vbuckets(Bucket, Moves) ->
                                setelement(VBucket+1, Map0, TargetChain)
                        end, list_to_tuple(Map), Moves),
     NewMap = tuple_to_list(TMap),
+    ProgressFun = make_progress_fun(0, 1),
     run_mover(Bucket, Config,
               proplists:get_value(servers, Config),
-              0, 1, Map, NewMap).
+              ProgressFun, Map, NewMap).
 
 activate_services(KeepNodes) ->
     Config = ns_config:get(),
@@ -524,6 +525,14 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     maybe_delay_eject_nodes(StartTS, EjectNodesAll),
     eject_nodes(EjectNodes).
 
+make_progress_fun(BucketCompletion, NumBuckets) ->
+    fun (P) ->
+            Progress = dict:map(fun (_, N) ->
+                                        N / NumBuckets + BucketCompletion
+                                end, P),
+            ns_orchestrator:update_progress(Progress)
+    end.
+
 rebalance_kv(KeepNodes, EjectNodes, BucketConfigs, DeltaRecoveryBuckets) ->
     %% wait when all bucket shutdowns are done on nodes we're
     %% adding (or maybe adding)
@@ -545,68 +554,73 @@ rebalance_kv(KeepNodes, EjectNodes, BucketConfigs, DeltaRecoveryBuckets) ->
     {ok, RebalanceObserver} = ns_rebalance_observer:start_link(length(BucketConfigs)),
 
     lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
-                          ale:info(?USER_LOGGER, "Started rebalancing bucket ~s", [BucketName]),
-                          ?rebalance_info("Rebalancing bucket ~p with config ~p",
-                                          [BucketName, sanitize(BucketConfig)]),
                           BucketCompletion = I / NumBuckets,
                           ns_orchestrator:update_progress(
                             dict:from_list([{N, BucketCompletion}
                                             || N <- LiveKVNodes])),
-                          case proplists:get_value(type, BucketConfig) of
-                              memcached ->
-                                  master_activity_events:note_bucket_rebalance_started(BucketName),
-                                  ns_bucket:set_servers(BucketName, KeepKVNodes),
-                                  master_activity_events:note_bucket_rebalance_ended(BucketName);
-                              membase ->
-                                  %% Only start one bucket at a time to avoid
-                                  %% overloading things
-                                  ThisEjected = ordsets:intersection(lists:sort(proplists:get_value(servers, BucketConfig, [])),
-                                                                     lists:sort(EjectNodes)),
-                                  ThisLiveNodes = KeepKVNodes ++ ThisEjected,
-                                  ns_bucket:set_servers(BucketName, ThisLiveNodes),
-                                  execute_and_be_stop_aware(
-                                    fun () ->
-                                            ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
-                                            {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
-                                            case Zombies of
-                                                [] ->
-                                                    ?rebalance_info("Bucket is ready on all nodes"),
-                                                    ok;
-                                                _ ->
-                                                    exit({not_all_nodes_are_ready_yet, Zombies})
-                                            end
-                                    end),
-                                  case ns_janitor:cleanup(BucketName,
-                                                          [{query_states_timeout, ?REBALANCER_QUERY_STATES_TIMEOUT},
-                                                           {apply_config_timeout, ?REBALANCER_APPLY_CONFIG_TIMEOUT}]) of
-                                      ok -> ok;
-                                      {error, _, BadNodes} ->
-                                          exit({pre_rebalance_janitor_run_failed, BadNodes})
-                                  end,
-                                  {ok, NewConf} =
-                                      ns_bucket:get_bucket(BucketName),
-                                  master_activity_events:note_bucket_rebalance_started(BucketName),
-                                  {NewMap, MapOptions} =
-                                      do_rebalance_bucket(BucketName, NewConf,
-                                                          KeepKVNodes, BucketCompletion,
-                                                          NumBuckets, DeltaRecoveryBuckets),
-                                  ns_bucket:set_map_opts(BucketName, MapOptions),
-                                  ns_bucket:update_bucket_props(BucketName,
-                                                                [{deltaRecoveryMap, undefined}]),
-                                  master_activity_events:note_bucket_rebalance_ended(BucketName),
-                                  run_verify_replication(BucketName, KeepKVNodes, NewMap)
-                          end
+
+                          ProgressFun = make_progress_fun(BucketCompletion, NumBuckets),
+                          rebalance_bucket(BucketName, BucketConfig, ProgressFun,
+                                           KeepKVNodes, EjectNodes, DeltaRecoveryBuckets)
                   end, misc:enumerate(BucketConfigs, 0)),
 
     unlink(RebalanceObserver),
     exit(RebalanceObserver, shutdown),
     misc:wait_for_process(RebalanceObserver, infinity).
 
+rebalance_bucket(BucketName, BucketConfig, ProgressFun,
+                 KeepKVNodes, EjectNodes, DeltaRecoveryBuckets) ->
+    ale:info(?USER_LOGGER, "Started rebalancing bucket ~s", [BucketName]),
+    ?rebalance_info("Rebalancing bucket ~p with config ~p",
+                    [BucketName, sanitize(BucketConfig)]),
+    case proplists:get_value(type, BucketConfig) of
+        memcached ->
+            master_activity_events:note_bucket_rebalance_started(BucketName),
+            ns_bucket:set_servers(BucketName, KeepKVNodes),
+            master_activity_events:note_bucket_rebalance_ended(BucketName);
+        membase ->
+            %% Only start one bucket at a time to avoid
+            %% overloading things
+            ThisEjected = ordsets:intersection(lists:sort(proplists:get_value(servers, BucketConfig, [])),
+                                               lists:sort(EjectNodes)),
+            ThisLiveNodes = KeepKVNodes ++ ThisEjected,
+            ns_bucket:set_servers(BucketName, ThisLiveNodes),
+            execute_and_be_stop_aware(
+              fun () ->
+                      ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
+                      {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
+                      case Zombies of
+                          [] ->
+                              ?rebalance_info("Bucket is ready on all nodes"),
+                              ok;
+                          _ ->
+                              exit({not_all_nodes_are_ready_yet, Zombies})
+                      end
+              end),
+            case ns_janitor:cleanup(BucketName,
+                                    [{query_states_timeout, ?REBALANCER_QUERY_STATES_TIMEOUT},
+                                     {apply_config_timeout, ?REBALANCER_APPLY_CONFIG_TIMEOUT}]) of
+                ok -> ok;
+                {error, _, BadNodes} ->
+                    exit({pre_rebalance_janitor_run_failed, BadNodes})
+            end,
+            {ok, NewConf} =
+                ns_bucket:get_bucket(BucketName),
+            master_activity_events:note_bucket_rebalance_started(BucketName),
+            {NewMap, MapOptions} =
+                do_rebalance_bucket(BucketName, NewConf,
+                                    KeepKVNodes, ProgressFun, DeltaRecoveryBuckets),
+            ns_bucket:set_map_opts(BucketName, MapOptions),
+            ns_bucket:update_bucket_props(BucketName,
+                                          [{deltaRecoveryMap, undefined}]),
+            master_activity_events:note_bucket_rebalance_ended(BucketName),
+            run_verify_replication(BucketName, KeepKVNodes, NewMap)
+    end.
+
 %% @doc Rebalance the cluster. Operates on a single bucket. Will
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
-do_rebalance_bucket(Bucket, Config, KeepNodes, BucketCompletion,
-                    NumBuckets, DeltaRecoveryBuckets) ->
+do_rebalance_bucket(Bucket, Config, KeepNodes, ProgressFun, DeltaRecoveryBuckets) ->
     Map = proplists:get_value(map, Config),
     {FastForwardMap, MapOptions} =
         case lists:keyfind(Bucket, 1, DeltaRecoveryBuckets) of
@@ -618,19 +632,12 @@ do_rebalance_bucket(Bucket, Config, KeepNodes, BucketCompletion,
 
     ns_bucket:update_vbucket_map_history(FastForwardMap, MapOptions),
     ?rebalance_debug("Target map options: ~p (hash: ~p)", [MapOptions, erlang:phash2(MapOptions)]),
-    {run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForwardMap),
+    {run_mover(Bucket, Config, KeepNodes, ProgressFun, Map, FastForwardMap),
      MapOptions}.
 
-run_mover(Bucket, Config, KeepNodes, BucketCompletion, NumBuckets, Map, FastForwardMap) ->
+run_mover(Bucket, Config, KeepNodes, ProgressFun, Map, FastForwardMap) ->
     ?rebalance_info("Target map (distance: ~p):~n~p", [(catch mb_map:vbucket_movements(Map, FastForwardMap)), FastForwardMap]),
     ns_bucket:set_fast_forward_map(Bucket, FastForwardMap),
-    ProgressFun =
-        fun (P) ->
-                Progress = dict:map(fun (_, N) ->
-                                            N / NumBuckets + BucketCompletion
-                                    end, P),
-                ns_orchestrator:update_progress(Progress)
-        end,
     {ok, Pid} =
         ns_vbucket_mover:start_link(Bucket, Map, FastForwardMap, ProgressFun),
     case wait_for_mover(Pid) of
@@ -1115,8 +1122,11 @@ run_graceful_failover(Node) ->
 do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I, N) ->
     Map = proplists:get_value(map, BucketConfig, []),
     Map1 = mb_map:promote_replicas_for_graceful_failover(Map, Node),
-    run_mover(BucketName, BucketConfig, proplists:get_value(servers, BucketConfig),
-              I, N, Map, Map1).
+
+    ProgressFun = make_progress_fun(I, N),
+    run_mover(BucketName, BucketConfig,
+              proplists:get_value(servers, BucketConfig),
+              ProgressFun, Map, Map1).
 
 check_graceful_failover_possible(Node, BucketsAll) ->
     case check_graceful_failover_possible_rec(Node, BucketsAll) of
