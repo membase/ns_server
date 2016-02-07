@@ -575,52 +575,61 @@ rebalance_bucket(BucketName, BucketConfig, ProgressFun,
                     [BucketName, sanitize(BucketConfig)]),
     case proplists:get_value(type, BucketConfig) of
         memcached ->
-            master_activity_events:note_bucket_rebalance_started(BucketName),
-            ns_bucket:set_servers(BucketName, KeepKVNodes),
-            master_activity_events:note_bucket_rebalance_ended(BucketName);
+            rebalance_memcached_bucket(BucketName, KeepKVNodes);
         membase ->
-            %% Only start one bucket at a time to avoid
-            %% overloading things
-            ThisEjected = ordsets:intersection(lists:sort(proplists:get_value(servers, BucketConfig, [])),
-                                               lists:sort(EjectNodes)),
-            ThisLiveNodes = KeepKVNodes ++ ThisEjected,
-            ns_bucket:set_servers(BucketName, ThisLiveNodes),
-            execute_and_be_stop_aware(
-              fun () ->
-                      ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
-                      {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
-                      case Zombies of
-                          [] ->
-                              ?rebalance_info("Bucket is ready on all nodes"),
-                              ok;
-                          _ ->
-                              exit({not_all_nodes_are_ready_yet, Zombies})
-                      end
-              end),
-            case ns_janitor:cleanup(BucketName,
-                                    [{query_states_timeout, ?REBALANCER_QUERY_STATES_TIMEOUT},
-                                     {apply_config_timeout, ?REBALANCER_APPLY_CONFIG_TIMEOUT}]) of
-                ok -> ok;
-                {error, _, BadNodes} ->
-                    exit({pre_rebalance_janitor_run_failed, BadNodes})
-            end,
-            {ok, NewConf} =
-                ns_bucket:get_bucket(BucketName),
-            master_activity_events:note_bucket_rebalance_started(BucketName),
-            {NewMap, MapOptions} =
-                do_rebalance_bucket(BucketName, NewConf,
-                                    KeepKVNodes, ProgressFun, DeltaRecoveryBuckets),
-            ns_bucket:set_map_opts(BucketName, MapOptions),
-            ns_bucket:update_bucket_props(BucketName,
-                                          [{deltaRecoveryMap, undefined}]),
-            master_activity_events:note_bucket_rebalance_ended(BucketName),
-            run_verify_replication(BucketName, KeepKVNodes, NewMap)
+            rebalance_membase_bucket(BucketName, BucketConfig, ProgressFun,
+                                     KeepKVNodes, EjectNodes, DeltaRecoveryBuckets)
     end.
+
+rebalance_memcached_bucket(BucketName, KeepKVNodes) ->
+    master_activity_events:note_bucket_rebalance_started(BucketName),
+    ns_bucket:set_servers(BucketName, KeepKVNodes),
+    master_activity_events:note_bucket_rebalance_ended(BucketName).
+
+rebalance_membase_bucket(BucketName, BucketConfig, ProgressFun,
+                         KeepKVNodes, EjectNodes, DeltaRecoveryBuckets) ->
+    %% Only start one bucket at a time to avoid
+    %% overloading things
+    ThisEjected = ordsets:intersection(lists:sort(proplists:get_value(servers, BucketConfig, [])),
+                                       lists:sort(EjectNodes)),
+    ThisLiveNodes = KeepKVNodes ++ ThisEjected,
+    ns_bucket:set_servers(BucketName, ThisLiveNodes),
+    execute_and_be_stop_aware(
+      fun () ->
+              ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
+              {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
+              case Zombies of
+                  [] ->
+                      ?rebalance_info("Bucket is ready on all nodes"),
+                      ok;
+                  _ ->
+                      exit({not_all_nodes_are_ready_yet, Zombies})
+              end
+      end),
+    case ns_janitor:cleanup(BucketName,
+                            [{query_states_timeout, ?REBALANCER_QUERY_STATES_TIMEOUT},
+                             {apply_config_timeout, ?REBALANCER_APPLY_CONFIG_TIMEOUT}]) of
+        ok -> ok;
+        {error, _, BadNodes} ->
+            exit({pre_rebalance_janitor_run_failed, BadNodes})
+    end,
+    {ok, NewConf} =
+        ns_bucket:get_bucket(BucketName),
+    master_activity_events:note_bucket_rebalance_started(BucketName),
+    {NewMap, MapOptions} =
+        do_rebalance_membase_bucket(BucketName, NewConf,
+                                    KeepKVNodes, ProgressFun, DeltaRecoveryBuckets),
+    ns_bucket:set_map_opts(BucketName, MapOptions),
+    ns_bucket:update_bucket_props(BucketName,
+                                  [{deltaRecoveryMap, undefined}]),
+    master_activity_events:note_bucket_rebalance_ended(BucketName),
+    run_verify_replication(BucketName, KeepKVNodes, NewMap).
 
 %% @doc Rebalance the cluster. Operates on a single bucket. Will
 %% either return ok or exit with reason 'stopped' or whatever reason
 %% was given by whatever failed.
-do_rebalance_bucket(Bucket, Config, KeepNodes, ProgressFun, DeltaRecoveryBuckets) ->
+do_rebalance_membase_bucket(Bucket, Config,
+                            KeepNodes, ProgressFun, DeltaRecoveryBuckets) ->
     Map = proplists:get_value(map, Config),
     {FastForwardMap, MapOptions} =
         case lists:keyfind(Bucket, 1, DeltaRecoveryBuckets) of
