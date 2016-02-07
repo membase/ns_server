@@ -31,7 +31,7 @@
          validate_autofailover/1,
          generate_initial_map/1,
          start_link_rebalance/5,
-         run_mover/7,
+         move_vbuckets/2,
          unbalanced/2,
          map_options_changed/1,
          eject_nodes/1,
@@ -409,6 +409,17 @@ start_link_rebalance(KeepNodes, EjectNodes,
                                  BucketConfigs, DeltaRecoveryBucketTuples)
                end
        end, []]).
+
+move_vbuckets(Bucket, Moves) ->
+    {ok, Config} = ns_bucket:get_bucket(Bucket),
+    Map = proplists:get_value(map, Config),
+    TMap = lists:foldl(fun ({VBucket, TargetChain}, Map0) ->
+                               setelement(VBucket+1, Map0, TargetChain)
+                       end, list_to_tuple(Map), Moves),
+    NewMap = tuple_to_list(TMap),
+    run_mover(Bucket, Config,
+              proplists:get_value(servers, Config),
+              0, 1, Map, NewMap).
 
 activate_services(KeepNodes) ->
     Config = ns_config:get(),

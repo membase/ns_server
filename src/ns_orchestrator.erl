@@ -739,14 +739,7 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{remaining_buckets = Rema
     notify_janitor_finished(RemainingBuckets, rebalance_running),
     Pid = spawn_link(
             fun () ->
-                    {ok, Config} = ns_bucket:get_bucket(Bucket),
-                    Map = proplists:get_value(map, Config),
-                    TMap = lists:foldl(fun ({VBucket, TargetChain}, Map0) ->
-                                               setelement(VBucket+1, Map0, TargetChain)
-                                       end, list_to_tuple(Map), Moves),
-                    NewMap = tuple_to_list(TMap),
-                    ns_rebalancer:run_mover(Bucket, Config, proplists:get_value(servers, Config),
-                                            0, 1, Map, NewMap)
+                    ns_rebalancer:move_vbuckets(Bucket, Moves)
             end),
     ns_config:set([{rebalance_status, running},
                    {rebalance_status_uuid, couch_uuids:random()},
