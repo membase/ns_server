@@ -7,7 +7,6 @@
 
   function mnWizardStep1ServiceFactory($http, mnHelper, IEC) {
     var mnWizardStep1Service = {
-      setDynamicRamQuota: setDynamicRamQuota,
       getDynamicRamQuota: getDynamicRamQuota,
       getJoinClusterConfig: getJoinClusterConfig,
       getNewClusterConfig: getNewClusterConfig,
@@ -15,7 +14,8 @@
       postDiskStorage: postDiskStorage,
       postHostname: postHostname,
       postJoinCluster: postJoinCluster,
-      lookup: lookup
+      lookup: lookup,
+      getConfig: getConfig
     };
     var re = /^[A-Z]:\//;
     var preprocessPath;
@@ -31,14 +31,50 @@
         model: {kv: true, index: true, n1ql: true, fts: true}
       }
     };
+    var newConfig = {
+      maxMemorySize: undefined,
+      totalMemorySize: undefined,
+      memoryQuota: undefined,
+      services: {
+        disabled: {kv: true, index: false, n1ql: false, fts: false},
+        model: {kv: true, index: true, n1ql: true, fts: true}
+      },
+      isServicesControllsAvailable: true,
+      showKVMemoryQuota: true,
+      showIndexMemoryQuota: true,
+      showFTSMemoryQuota: true,
+      indexMemoryQuota: undefined,
+      ftsMemoryQuota: undefined,
+      minMemorySize: 256,
+      minFTSMemorySize: 256
+    };
 
     return mnWizardStep1Service;
 
-    function setDynamicRamQuota(ramQuota) {
-      dynamicRamQuota = ramQuota;
+    function getConfig() {
+      return mnWizardStep1Service.getSelfConfig().then(function (resp) {
+        var selfConfig = resp;
+        var rv = {};
+        rv.selfConfig = selfConfig;
+
+        newConfig.maxMemorySize = selfConfig.ramMaxMegs;
+        newConfig.totalMemorySize = selfConfig.ramTotalSize;
+        newConfig.memoryQuota = selfConfig.memoryQuota;
+        newConfig.indexMemoryQuota = selfConfig.indexMemoryQuota;
+        newConfig.ftsMemoryQuota = selfConfig.ftsMemoryQuota;
+
+        rv.startNewClusterConfig = newConfig;
+        rv.hostname = selfConfig.hostname;
+        rv.dbPath = selfConfig.storage.hdd[0].path;
+        rv.indexPath = selfConfig.storage.hdd[0].index_path;
+        return rv;
+      });
     }
     function getDynamicRamQuota() {
-      return dynamicRamQuota;
+      return newConfig.memoryQuota;
+    }
+    function getNewClusterConfig() {
+      return newConfig;
     }
 
     function preprocessPathStandard(p) {
@@ -59,9 +95,6 @@
     }
     function getJoinClusterConfig() {
       return joinClusterConfig;
-    }
-    function getNewClusterConfig() {
-      return getNewClusterConfig;
     }
     function getSelfConfig() {
       return $http({

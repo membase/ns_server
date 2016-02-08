@@ -1,7 +1,7 @@
 <div
   class="pad"
   id="init_cluster_dialog"
-  mn-spinner="wizardStep1Ctl.viewLoading || !wizardStep1Ctl.selfConfig">
+  mn-spinner="wizardStep1Ctl.viewLoading || !wizardStep1Ctl.config.selfConfig">
   <div class="config-top">
     <h1>Configure Server</h1>
     <h2>Step <span class="current-step">1</span> of 5</h2>
@@ -15,7 +15,7 @@
           <input
             type="text"
             name="db_path"
-            ng-model="wizardStep1Ctl.dbPath"
+            ng-model="wizardStep1Ctl.config.dbPath"
             ng-change="wizardStep1Ctl.onDbPathChange()">
           <br class="clear" />
         </div>
@@ -32,7 +32,7 @@
           <input
             type="text"
             name="index_path"
-            ng-model="wizardStep1Ctl.indexPath"
+            ng-model="wizardStep1Ctl.config.indexPath"
             ng-change="wizardStep1Ctl.onIndexPathChange()">
           <br class="clear">
         </div>
@@ -63,7 +63,7 @@
       <input
         type="text"
         name="hostname"
-        ng-model="wizardStep1Ctl.hostname">
+        ng-model="wizardStep1Ctl.config.hostname">
       <br class="clear">
       <div
         class="warning pat_10"
@@ -111,7 +111,7 @@
               {{wizardStep1Ctl.setupServicesErrors[0]}}
             </div>
             <div
-              mn-memory-quota="wizardStep1Ctl.startNewClusterConfig"
+              mn-memory-quota="wizardStep1Ctl.config.startNewClusterConfig"
               errors="wizardStep1Ctl.postMemoryErrors">
             </div>
           </div>

@@ -19,41 +19,19 @@
     activate();
 
     function activate() {
-      $scope.$watch('wizardStep1Ctl.startNewClusterConfig.memoryQuota', mnWizardStep1Service.setDynamicRamQuota);
-
-      mnPromiseHelper(vm, mnWizardStep1Service.getSelfConfig())
-        .onSuccess(function (selfConfig) {
-          vm.selfConfig = selfConfig;
-          vm.startNewClusterConfig = {
-            maxMemorySize: selfConfig.ramMaxMegs,
-            totalMemorySize: selfConfig.ramTotalSize,
-            memoryQuota: selfConfig.memoryQuota,
-            services: {
-              disabled: {kv: true, index: false, n1ql: false, fts: false},
-              model: {kv: true, index: true, n1ql: true, fts: true}
-            },
-            isServicesControllsAvailable: true,
-            showKVMemoryQuota: true,
-            showIndexMemoryQuota: true,
-            showFTSMemoryQuota: true,
-            indexMemoryQuota: selfConfig.indexMemoryQuota,
-            ftsMemoryQuota: selfConfig.ftsMemoryQuota,
-            minMemorySize: 256,
-            minFTSMemorySize: 256
-          };
-          vm.hostname = selfConfig.hostname;
-          vm.dbPath = selfConfig.storage.hdd[0].path;
-          vm.indexPath = selfConfig.storage.hdd[0].index_path;
-          vm.onDbPathChange();
-          vm.onIndexPathChange();
-        });
+      mnPromiseHelper(vm, mnWizardStep1Service.getConfig())
+      .applyToScope("config")
+      .onSuccess(function (config) {
+        vm.onDbPathChange();
+        vm.onIndexPathChange();
+      });
     }
 
     function onDbPathChange() {
-      vm.dbPathTotal = mnWizardStep1Service.lookup(vm.dbPath, vm.selfConfig.preprocessedAvailableStorage);
+      vm.dbPathTotal = mnWizardStep1Service.lookup(vm.config.dbPath, vm.config.selfConfig.preprocessedAvailableStorage);
     }
     function onIndexPathChange() {
-      vm.indexPathTotal = mnWizardStep1Service.lookup(vm.indexPath, vm.selfConfig.preprocessedAvailableStorage);
+      vm.indexPathTotal = mnWizardStep1Service.lookup(vm.config.indexPath, vm.config.selfConfig.preprocessedAvailableStorage);
     }
     function isJoinCluster(value) {
       return vm.joinCluster === value;
@@ -67,17 +45,17 @@
         .getPromise();
     }
     function postMemoryQuota() {
-      return addErrorHandler(mnSettingsClusterService.postPoolsDefault(vm.startNewClusterConfig), "postMemory");
+      return addErrorHandler(mnSettingsClusterService.postPoolsDefault(vm.config.startNewClusterConfig), "postMemory");
     }
     function postServices() {
       return addErrorHandler(mnServersService.setupServices({
-        services: mnHelper.checkboxesToList(vm.startNewClusterConfig.services.model).join(',')
+        services: mnHelper.checkboxesToList(vm.config.startNewClusterConfig.services.model).join(',')
       }), "setupServices");
     }
     function postDiskStorage() {
       return addErrorHandler(mnWizardStep1Service.postDiskStorage({
-        path: vm.dbPath,
-        index_path: vm.indexPath
+        path: vm.config.dbPath,
+        index_path: vm.config.indexPath
       }), "postDiskStorage");
     }
     function postJoinCluster() {
@@ -96,12 +74,12 @@
       delete vm.postHostnameErrors;
 
       var promise = postDiskStorage().then(function () {
-        return addErrorHandler(mnWizardStep1Service.postHostname(vm.hostname), "postHostname");
+        return addErrorHandler(mnWizardStep1Service.postHostname(vm.config.hostname), "postHostname");
       }).then(function () {
         if (vm.isJoinCluster('no')) {
-          var newClusterParams = vm.startNewClusterConfig;
-          var quotaIsChanged = newClusterParams.memoryQuota != vm.selfConfig.memoryQuota || newClusterParams.indexMemoryQuota != vm.selfConfig.indexMemoryQuota;
-          var hadServicesString = vm.selfConfig.services.sort().join("");
+          var newClusterParams = vm.config.startNewClusterConfig;
+          var quotaIsChanged = newClusterParams.memoryQuota != vm.config.selfConfig.memoryQuota || newClusterParams.indexMemoryQuota != vm.config.selfConfig.indexMemoryQuota;
+          var hadServicesString = vm.config.selfConfig.services.sort().join("");
           var hasServicesString = mnHelper.checkboxesToList(newClusterParams.services.model).sort().join("");
           if (hadServicesString === hasServicesString) {
             if (quotaIsChanged) {
