@@ -14,6 +14,7 @@
     'mnWizardStep5Service',
     'mnSettingsSampleBucketsService',
     'mnMemoryQuota',
+    'mnStorageMode',
     'mnPoolDefault',
     'mnMemoryQuotaService',
     'mnSettingsClusterService',
@@ -65,6 +66,9 @@
         resolve: {
           memoryQuotaConfig: function (mnMemoryQuotaService, mnWizardStep1Service) {
             return mnMemoryQuotaService.memoryQuotaConfig(mnWizardStep1Service.getJoinClusterConfig().services.model.kv);
+          },
+          indexSettigs: function (mnSettingsClusterService) {
+            return mnSettingsClusterService.getIndexSettings();
           }
         }
       });

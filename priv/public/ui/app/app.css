@@ -1180,7 +1180,7 @@ span.staleness-notice, .staleness-notice { font-size: 12px!important; color: red
 .dynamic_with_server_resources .darker_block.dynamic_server_resources { display: block; }
 
 .init_setting_memory_quota .cluster_quota_settings {margin-left: 85px; margin-right: 85px;}
-.init_setting_memory_quota .cluster_quota_settings label{display: inline-block; width: 130px;}
+.init_setting_memory_quota .cluster_quota_settings label{display: inline-block; width: 155px;}
 
 /* update notifications page in the startup wizard */
 #init_update_notifications_dialog {display:block}

@@ -114,6 +114,11 @@
               mn-memory-quota="wizardStep1Ctl.config.startNewClusterConfig"
               errors="wizardStep1Ctl.postMemoryErrors">
             </div>
+            <div
+              mn-storage-mode="wizardStep1Ctl.config.startNewClusterConfig.indexSettings"
+              is-disabled="!wizardStep1Ctl.isEnterprise || !wizardStep1Ctl.config.startNewClusterConfig.services.model.index"
+              errors="wizardStep1Ctl.postIndexSettingsErrors">
+            </div>
           </div>
         </div>
         <div name="joinClusterForm" ng-form novalidate>

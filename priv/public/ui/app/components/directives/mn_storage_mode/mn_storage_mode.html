@@ -1,0 +1,21 @@
+<div class="storage-mode row">
+  <label for="index_ram_quota" ng-hide="noLabel">Index settings:</label>
+  <input
+    type="radio"
+    value="forestdb"
+    id="storage_mode_forestdb"
+    ng-model="config.storageMode"
+    ng-disabled="isDisabled"
+    >
+  <label for="storage_mode_forestdb" style="width:auto;margin-right:5px;">Regular</label>
+  <input
+    type="radio"
+    value="memory_optimized"
+    id="storage_memory_optimized"
+    ng-model="config.storageMode"
+    ng-disabled="isDisabled">
+  <label for="storage_memory_optimized" style="width:auto;">Memory Optimized</label>
+  <span class="error-container err-indexMemoryQuota" ng-show="errors.storageMode">
+    {{errors.storageMode}}
+  </span>
+</div>

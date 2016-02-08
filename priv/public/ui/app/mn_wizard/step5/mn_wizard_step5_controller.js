@@ -5,7 +5,7 @@
     .module('mnWizard')
     .controller('mnWizardStep5Controller', mnWizardStep5Controller);
 
-    function mnWizardStep5Controller($scope, $state, mnPools, mnSettingsSampleBucketsService, mnWizardStep5Service, mnWizardStep2Service, mnAuthService, mnPromiseHelper, mnAlertsService) {
+    function mnWizardStep5Controller($scope, $state, mnPools, mnSettingsClusterService, mnWizardStep1Service, mnSettingsSampleBucketsService, mnWizardStep5Service, mnWizardStep2Service, mnAuthService, mnPromiseHelper, mnAlertsService) {
       var vm = this;
 
       vm.user = {
@@ -27,9 +27,13 @@
           return mnAuthService.login(user).then(function () {
             $state.go('app.admin.overview');
             if (mnWizardStep2Service.isSomeBucketSelected()) {
-              return mnSettingsSampleBucketsService.installSampleBuckets(mnWizardStep2Service.getSelectedBuckets()).then(null, function (resp) {
+              mnSettingsSampleBucketsService.installSampleBuckets(mnWizardStep2Service.getSelectedBuckets()).then(null, function (resp) {
                 mnAlertsService.formatAndSetAlerts(resp.data, 'error');
               });
+            }
+            var config = mnWizardStep1Service.getNewClusterConfig();
+            if (config.services.model.index) {
+              return mnSettingsClusterService.postIndexSettings(config.indexSettings);
             }
           });
         });

@@ -20,6 +20,7 @@
       'mnGsiService',
       'mnPromiseHelper',
       'mnGroupsService',
+      'mnStorageMode',
       'mnPoll',
       'mnFocus',
       'mnPools',

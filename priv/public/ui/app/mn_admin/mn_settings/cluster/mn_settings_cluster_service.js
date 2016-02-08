@@ -37,7 +37,9 @@
       return $http(config);
     }
     function getIndexSettings() {
-      return $http.get("/settings/indexes");
+      return $http.get("/settings/indexes").then(function (resp) {
+        return resp.data;
+      });
     }
     function postIndexSettings(data, justValidate) {
       var config = {
@@ -63,7 +65,7 @@
         ];
         return $q.all(requests).then(function (resp) {
           var memoryQuotaConfig = resp[0];
-          var indexSettings = resp[1].data;
+          var indexSettings = resp[1];
 
           return {
             initialMemoryQuota: memoryQuotaConfig.indexMemoryQuota,

@@ -47,6 +47,11 @@
     function postMemoryQuota() {
       return addErrorHandler(mnSettingsClusterService.postPoolsDefault(vm.config.startNewClusterConfig), "postMemory");
     }
+    function validateIndexSettings() {
+      return mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.config.startNewClusterConfig.indexSettings, true))
+        .catchErrorsFromSuccess('postIndexSettingsErrors')
+        .getPromise();
+    }
     function postServices() {
       return addErrorHandler(mnServersService.setupServices({
         services: mnHelper.checkboxesToList(vm.config.startNewClusterConfig.services.model).join(',')
@@ -63,6 +68,35 @@
       data.services = mnHelper.checkboxesToList(vm.joinClusterConfig.services.model).join(',');
       return addErrorHandler(mnWizardStep1Service.postJoinCluster(data), "postJoinCluster");
     }
+    function doStartNewCluster() {
+      var newClusterParams = vm.config.startNewClusterConfig;
+      var quotaIsChanged = newClusterParams.memoryQuota != vm.config.selfConfig.memoryQuota || newClusterParams.indexMemoryQuota != vm.config.selfConfig.indexMemoryQuota;
+      var hadServicesString = vm.config.selfConfig.services.sort().join("");
+      var hasServicesString = mnHelper.checkboxesToList(newClusterParams.services.model).sort().join("");
+      if (hadServicesString === hasServicesString) {
+        if (quotaIsChanged) {
+          return postMemoryQuota().then(goNext);
+        } else {
+          goNext();
+        }
+      } else {
+        if (quotaIsChanged) {
+          var hadIndexService = hadServicesString.indexOf("index") > -1;
+          var hasIndexService = hasServicesString.indexOf("index") > -1;
+          if (hadIndexService && !hasIndexService) {
+            return postServices().then(function () {
+              return postMemoryQuota().then(goNext);
+            });
+          } else {
+            return postMemoryQuota().then(function () {
+              return postServices().then(goNext);
+            });
+          }
+        } else {
+          return postServices().then(goNext);
+        }
+      }
+    }
     function onSubmit(e) {
       if (vm.viewLoading) {
         return;
@@ -72,37 +106,21 @@
       delete vm.postDiskStorageErrors;
       delete vm.postJoinClusterErrors;
       delete vm.postHostnameErrors;
+      delete vm.postIndexSettingsErrors;
 
       var promise = postDiskStorage().then(function () {
         return addErrorHandler(mnWizardStep1Service.postHostname(vm.config.hostname), "postHostname");
       }).then(function () {
         if (vm.isJoinCluster('no')) {
-          var newClusterParams = vm.config.startNewClusterConfig;
-          var quotaIsChanged = newClusterParams.memoryQuota != vm.config.selfConfig.memoryQuota || newClusterParams.indexMemoryQuota != vm.config.selfConfig.indexMemoryQuota;
-          var hadServicesString = vm.config.selfConfig.services.sort().join("");
-          var hasServicesString = mnHelper.checkboxesToList(newClusterParams.services.model).sort().join("");
-          if (hadServicesString === hasServicesString) {
-            if (quotaIsChanged) {
-              return postMemoryQuota().then(goNext);
-            } else {
-              goNext();
-            }
-          } else {
-            if (quotaIsChanged) {
-              var hadIndexService = hadServicesString.indexOf("index") > -1;
-              var hasIndexService = hasServicesString.indexOf("index") > -1;
-              if (hadIndexService && !hasIndexService) {
-                return postServices().then(function () {
-                  return postMemoryQuota().then(goNext);
-                });
-              } else {
-                return postMemoryQuota().then(function () {
-                  return postServices().then(goNext);
-                });
+          if (vm.config.startNewClusterConfig.services.model.index) {
+            return validateIndexSettings().then(function () {
+              if (vm.postIndexSettingsErrors) {
+                return $q.reject();
               }
-            } else {
-              return postServices().then(goNext);
-            }
+              return doStartNewCluster();
+            });
+          } else {
+            return doStartNewCluster();
           }
         } else {
           return postJoinCluster().then(function () {

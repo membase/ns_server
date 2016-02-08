@@ -6,6 +6,7 @@
     'mnHelper',
     'mnPromiseHelper',
     'mnMemoryQuota',
+    'mnStorageMode',
     'mnSpinner'
   ]).controller('mnSettingsClusterController', mnSettingsClusterController);
 

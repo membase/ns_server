@@ -70,6 +70,9 @@
                   resolve: {
                     memoryQuotaConfig: function (mnMemoryQuotaService) {
                       return mnMemoryQuotaService.memoryQuotaConfig(vm.addNodeConfig.services.model.kv)
+                    },
+                    indexSettings: function (mnSettingsClusterService) {
+                      return mnSettingsClusterService.getIndexSettings();
                     }
                   }
                 }).result;
