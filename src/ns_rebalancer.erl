@@ -530,7 +530,7 @@ make_progress_fun(BucketCompletion, NumBuckets) ->
             Progress = dict:map(fun (_, N) ->
                                         N / NumBuckets + BucketCompletion
                                 end, P),
-            ns_orchestrator:update_progress(Progress)
+            ns_orchestrator:update_progress(kv, Progress)
     end.
 
 rebalance_kv(KeepNodes, EjectNodes, BucketConfigs, DeltaRecoveryBuckets) ->
@@ -556,6 +556,7 @@ rebalance_kv(KeepNodes, EjectNodes, BucketConfigs, DeltaRecoveryBuckets) ->
     lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
                           BucketCompletion = I / NumBuckets,
                           ns_orchestrator:update_progress(
+                            kv,
                             dict:from_list([{N, BucketCompletion}
                                             || N <- LiveKVNodes])),
 

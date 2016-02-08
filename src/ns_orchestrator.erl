@@ -52,7 +52,7 @@
          start_link/0,
          start_rebalance/3,
          stop_rebalance/0,
-         update_progress/1,
+         update_progress/2,
          is_rebalance_running/0,
          start_recovery/1,
          stop_recovery/2,
@@ -726,7 +726,7 @@ idle({start_rebalance, KeepNodes, EjectNodes,
 
             {reply, ok, rebalancing,
              #rebalancing_state{rebalancer=Pid,
-                                progress=dict:new(),
+                                progress=rebalance_progress:init(KeepNodes ++ EjectNodes),
                                 keep_nodes=KeepNodes,
                                 eject_nodes=EjectNodes,
                                 failed_nodes=FailedNodes}};
@@ -745,9 +745,13 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{remaining_buckets = Rema
                    {rebalance_status_uuid, couch_uuids:random()},
                    {graceful_failover_pid, undefined},
                    {rebalancer_pid, Pid}]),
+
+    Nodes = ns_cluster_membership:active_nodes(),
+    Progress = rebalance_progress:init(Nodes, [kv]),
+
     {reply, ok, rebalancing,
      #rebalancing_state{rebalancer=Pid,
-                        progress=dict:new()}};
+                        progress=Progress}};
 idle(stop_rebalance, _From, State) ->
     ns_janitor:stop_rebalance_status(
       fun () ->
@@ -860,9 +864,9 @@ janitor_running({ensure_janitor_run, BucketName}, From, State) ->
     do_request_janitor_run({BucketName, [From]}, janitor_running, State).
 
 %% Asynchronous rebalancing events
-rebalancing({update_progress, Progress},
+rebalancing({update_progress, Service, ServiceProgress},
             #rebalancing_state{progress=Old} = State) ->
-    NewProgress = dict:merge(fun (_, _, New) -> New end, Old, Progress),
+    NewProgress = rebalance_progress:update(Service, ServiceProgress, Old),
     {next_state, rebalancing,
      State#rebalancing_state{progress=NewProgress}}.
 
@@ -882,15 +886,16 @@ rebalancing(stop_rebalance, _From,
     {reply, ok, rebalancing, State};
 rebalancing(rebalance_progress, _From,
             #rebalancing_state{progress = Progress} = State) ->
-    {reply, {running, dict:to_list(Progress)}, rebalancing, State};
+    AggregatedProgress = dict:to_list(rebalance_progress:get_progress(Progress)),
+    {reply, {running, AggregatedProgress}, rebalancing, State};
 rebalancing(Event, _From, State) ->
     ?log_warning("Got event ~p while rebalancing.", [Event]),
     {reply, rebalance_running, rebalancing, State}.
 
 %% Asynchronous upgrading_to_dcp events
-upgrading_to_dcp({update_progress, Progress},
+upgrading_to_dcp({update_progress, Service, ServiceProgress},
                  #dcp_upgrade_state{progress=Old} = State) ->
-    NewProgress = dict:merge(fun (_, _, New) -> New end, Old, Progress),
+    NewProgress = rebalance_progress:update(Service, ServiceProgress, Old),
     {next_state, upgrading_to_dcp,
      State#dcp_upgrade_state{progress=NewProgress}}.
 
@@ -906,7 +911,8 @@ upgrading_to_dcp(stop_rebalance, _From,
     {reply, ok, upgrading_to_dcp, State};
 upgrading_to_dcp(rebalance_progress, _From,
                  #dcp_upgrade_state{progress = Progress} = State) ->
-    {reply, {running, dict:to_list(Progress)}, upgrading_to_dcp, State};
+    AggregatedProgress = dict:to_list(rebalance_progress:get_progress(Progress)),
+    {reply, {running, AggregatedProgress}, upgrading_to_dcp, State};
 upgrading_to_dcp(Event, _From, State) ->
     ?log_warning("Got event ~p while upgrading to DCP.", [Event]),
     {reply, dcp_upgrade_running, upgrading_to_dcp, State}.
@@ -1055,10 +1061,9 @@ do_request_janitor_run(BucketRequest, FsmState, State) ->
             {next_state, FsmState, State#janitor_state{remaining_buckets = NewBucketRequests}}
     end.
 
--spec update_progress(dict()) -> ok.
-update_progress(Progress) ->
-    gen_fsm:send_event(?SERVER, {update_progress, Progress}).
-
+-spec update_progress(service(), dict()) -> ok.
+update_progress(Service, ServiceProgress) ->
+    gen_fsm:send_event(?SERVER, {update_progress, Service, ServiceProgress}).
 
 wait_for_nodes_loop(Nodes) ->
     receive
@@ -1294,8 +1299,11 @@ maybe_start_upgrade_to_dcp(Restart, Type) ->
                            {rebalance_status_uuid, couch_uuids:random()},
                            {rebalancer_pid, Pid}]),
 
+            Nodes = ns_cluster_membership:active_nodes(),
+            Progress = rebalance_progress:init(Nodes, [kv]),
+
             {next_state, upgrading_to_dcp,
              #dcp_upgrade_state{upgrader = Pid,
-                                progress = dict:new(),
+                                progress = Progress,
                                 restart = Restart}}
     end.

@@ -99,7 +99,7 @@ handle_call({update_replication_status, Partition, Master, NumPartitions}, _From
             NewProgress = dict:store(Master,
                                      dict:fetch(Master, Progress) + 1 / (NumPartitions * NumBuckets),
                                      Progress),
-            ns_orchestrator:update_progress(NewProgress),
+            ns_orchestrator:update_progress(kv, NewProgress),
             {reply, ok, State#state{progress = NewProgress}}
     end.
 
@@ -117,7 +117,7 @@ handle_info(upgrade_next_bucket, #state{buckets = [{BucketName, BucketConfig} | 
 
     ProgressSoFar = IBucket / NumBuckets,
     Progress = dict:from_list([{N, ProgressSoFar} || N <- BucketNodes]),
-    ns_orchestrator:update_progress(Progress),
+    ns_orchestrator:update_progress(kv, Progress),
 
     Map = proplists:get_value(map, BucketConfig),
 
