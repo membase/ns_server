@@ -122,7 +122,6 @@
           data: interestedPermissions.join(',')
         }).then(function (resp) {
           var rv = convertIntoTree(resp.data);
-          console.log(rv)
           mnPermissions.export.data = resp.data;
           mnPermissions.export.cluster = rv.cluster;
           return mnPermissions.export;
