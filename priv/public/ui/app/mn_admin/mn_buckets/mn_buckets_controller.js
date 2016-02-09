@@ -61,7 +61,7 @@
                   return mnBucketsDetailsDialogService.getNewBucketConf();
                 },
                 autoCompactionSettings: function (mnSettingsAutoCompactionService) {
-                  return mnSettingsAutoCompactionService.getAutoCompaction();
+                  return mnSettingsAutoCompactionService.getAutoCompaction(true);
                 }
               }
             });

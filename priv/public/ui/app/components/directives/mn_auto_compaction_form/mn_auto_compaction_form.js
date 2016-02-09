@@ -10,7 +10,8 @@
       restrict: 'A',
       scope: {
         autoCompactionSettings: '=',
-        validationErrors: '='
+        validationErrors: '=',
+        isBucketsSettings: '='
       },
       isolate: false,
       replace: true,

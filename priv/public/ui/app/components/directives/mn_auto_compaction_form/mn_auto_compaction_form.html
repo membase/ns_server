@@ -32,6 +32,20 @@
       <span class="error-container err-databaseFragmentationThreshold-size-" ng-show="errors.databaseFragmentationThreshold_size_">{{errors.databaseFragmentationThreshold_size_}}</span>
     </p>
   </div>
+
+  <h3 class="only-when-40" ng-if="!isBucketsSettings">Index Fragmentation</h3>
+  <div class="sub_section only-when-40" id="js_index_fragmentation_settings" ng-if="!isBucketsSettings">
+    <p>Set the index fragmentation level to determine the point when compaction is triggered.</p>
+    <p class="row">
+      <input
+        type="number"
+        ng-model="autoCompactionSettings.indexFragmentationThreshold.percentage"> %
+      <span
+        class="error-container err-indexFragmentationThreshold-percentage-"
+        ng-show="errors.indexFragmentationThreshold_percentage_">{{errors.indexFragmentationThreshold_percentage_}}</span>
+    </p>
+  </div>
+
   <h3>View Fragmentation</h3>
   <div class="sub_section">
     <p>Set the view fragmentation level to determine the point when compaction is triggered.</p>

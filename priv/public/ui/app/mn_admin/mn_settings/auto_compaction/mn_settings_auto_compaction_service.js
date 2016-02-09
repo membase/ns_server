@@ -25,10 +25,16 @@
         }
       });
     }
-    function prepareSettingsForView(settings) {
+    function prepareSettingsForView(settings, isBucketsDetails) {
       var acSettings = settings.autoCompactionSettings;
       prepareValuesForView(acSettings.databaseFragmentationThreshold);
       prepareValuesForView(acSettings.viewFragmentationThreshold);
+      if (isBucketsDetails) {
+        delete acSettings.indexFragmentationThreshold;
+      }
+      if (acSettings.indexFragmentationThreshold) {
+        prepareValuesForView(acSettings.indexFragmentationThreshold);
+      }
       acSettings.allowedTimePeriodFlag = !!acSettings.allowedTimePeriod;
       acSettings.purgeInterval = settings.purgeInterval;
       !acSettings.allowedTimePeriod && (acSettings.allowedTimePeriod = {
@@ -60,6 +66,11 @@
       }
       prepareVluesForSaving(acSettings.databaseFragmentationThreshold);
       prepareVluesForSaving(acSettings.viewFragmentationThreshold);
+      if (acSettings.indexFragmentationThreshold) {
+        prepareVluesForSaving(acSettings.indexFragmentationThreshold);
+        delete acSettings.indexFragmentationThreshold.sizeFlag;
+        delete acSettings.indexFragmentationThreshold.percentageFlag;
+      }
       delete acSettings.databaseFragmentationThreshold.sizeFlag;
       delete acSettings.viewFragmentationThreshold.percentageFlag;
       delete acSettings.viewFragmentationThreshold.sizeFlag;
@@ -67,9 +78,9 @@
       delete acSettings.allowedTimePeriodFlag;
       return acSettings;
     }
-    function getAutoCompaction() {
+    function getAutoCompaction(isBucketsDetails) {
       return $http.get('/settings/autoCompaction').then(function (resp) {
-        return mnSettingsAutoCompactionService.prepareSettingsForView(resp.data);
+        return mnSettingsAutoCompactionService.prepareSettingsForView(resp.data, isBucketsDetails);
       });
     }
     function saveAutoCompaction(autoCompactionSettings, params) {

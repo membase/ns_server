@@ -55,7 +55,7 @@
             },
             autoCompactionSettings: function () {
               return !vm.bucketDetails.autoCompactionSettings ?
-                      mnSettingsAutoCompactionService.getAutoCompaction() :
+                      mnSettingsAutoCompactionService.getAutoCompaction(true) :
                       mnSettingsAutoCompactionService.prepareSettingsForView(vm.bucketDetails);
             }
           }

@@ -145,7 +145,7 @@
             <label><input type="checkbox" name="autoCompactionDefined" ng-model="bucketConf.autoCompactionDefined" value="true" /> Override the default autocompaction settings?</label>
           </li>
         </ul>
-        <div ng-show="bucketConf.autoCompactionDefined" mn-auto-compaction-form auto-compaction-settings="autoCompactionSettings" validation-errors="validation.result.errors"></div>
+        <div ng-show="bucketConf.autoCompactionDefined" mn-auto-compaction-form auto-compaction-settings="autoCompactionSettings" is-buckets-settings="true" validation-errors="validation.result.errors"></div>
       </div>
     </div> <!-- .auto_compaction -->
   </div>
