@@ -140,7 +140,26 @@
           }
         },
         controller: 'mnAnalyticsListGraphController as analyticsListGraphCtl',
-        templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list_graph.html'
+        templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list_graph.html',
+        resolve: {
+          setDefaultGraph: function (mnAnalyticsService, $stateParams, $state, $q) {
+            if ($stateParams.analyticsBucket) {
+              return mnAnalyticsService.getStats({$stateParams: $stateParams}).then(function (state) {
+                var selectedStat = state.statsByName && state.statsByName[$stateParams.graph];
+                if (!selectedStat || !selectedStat.config.data.length) {
+                  var findBy = function (info) {
+                    return info.config.data.length;
+                  };
+                  selectedStat = _.detect(state.statsDirectoryBlocks[1].stats, findBy) ||
+                                 _.detect(state.statsByName, findBy);
+                  $stateParams.graph = selectedStat.name;
+                  $state.go("app.admin.analytics.list.graph", $stateParams);
+                  return $q.reject();
+                }
+              });
+            }
+          }
+        }
       })
       .state('app.admin.buckets', {
         url: '/buckets?openedBucket',
