@@ -423,13 +423,13 @@ move_vbuckets(Bucket, Moves) ->
               proplists:get_value(servers, Config),
               ProgressFun, Map, NewMap).
 
-activate_services(KeepNodes) ->
+rebalance_services(KeepNodes) ->
     Config = ns_config:get(),
 
     case cluster_compat_mode:is_cluster_41(Config) of
         true ->
             AllServices = ns_cluster_membership:supported_services(),
-            lists:foreach(
+            lists:filtermap(
               fun (Service) ->
                       ServiceNodes0 = ns_cluster_membership:service_nodes(KeepNodes, Service),
                       ServiceNodes = lists:sort(ServiceNodes0),
@@ -439,15 +439,16 @@ activate_services(KeepNodes) ->
 
                       case CurrentNodes =:= ServiceNodes of
                           true ->
-                              ok;
+                              false;
                           false ->
                               ?rebalance_info("Updating service map for ~p:~n~p",
                                               [Service, ServiceNodes]),
-                              ok = ns_cluster_membership:set_service_map(Service, ServiceNodes)
+                              ok = ns_cluster_membership:set_service_map(Service, ServiceNodes),
+                              {true, {Service, os:timestamp()}}
                       end
               end, AllServices);
         false ->
-            ok
+            []
     end.
 
 get_service_eject_delay(Service) ->
@@ -461,32 +462,39 @@ get_service_eject_delay(Service) ->
 
     ns_config:get_global_timeout({eject_delay, Service}, Default).
 
-maybe_delay_eject_nodes(StartTS, EjectNodes) ->
+maybe_delay_eject_nodes(Timestamps, EjectNodes) ->
     case cluster_compat_mode:is_cluster_41() of
         true ->
-            do_maybe_delay_eject_nodes(StartTS, EjectNodes);
+            do_maybe_delay_eject_nodes(Timestamps, EjectNodes);
         false ->
             ok
     end.
 
-do_maybe_delay_eject_nodes(_StartTS, []) ->
+do_maybe_delay_eject_nodes(_Timestamps, []) ->
     ok;
-do_maybe_delay_eject_nodes(StartTS, EjectNodes) ->
+do_maybe_delay_eject_nodes(Timestamps, EjectNodes) ->
     EjectedServices =
         ordsets:union([ordsets:from_list(ns_cluster_membership:node_services(N))
                        || N <- EjectNodes]),
-    Delay = lists:max([get_service_eject_delay(S) || S <- EjectedServices]),
     Now = os:timestamp(),
-    SinceStart = max(0, timer:now_diff(Now, StartTS) div 1000),
 
-    DelayLeft = Delay - SinceStart,
-    case DelayLeft > 0 of
+    Delays = [begin
+                  ServiceDelay = get_service_eject_delay(Service),
+                  RebalanceTS = proplists:get_value(Service, Timestamps),
+                  true = (RebalanceTS =/= undefined),
+                  SinceRebalance = max(0, timer:now_diff(Now, RebalanceTS) div 1000),
+                  ServiceDelay - SinceRebalance
+              end || Service <- EjectedServices],
+
+    Delay = lists:max(Delays),
+
+    case Delay > 0 of
         true ->
             execute_and_be_stop_aware(
               fun () ->
-                      ?log_info("Waiting ~pms (full delay ~pms) before ejecting nodes:~n~p",
-                                [DelayLeft, Delay, EjectNodes]),
-                      timer:sleep(DelayLeft)
+                      ?log_info("Waiting ~pms before ejecting nodes:~n~p",
+                                [Delay, EjectNodes]),
+                      timer:sleep(Delay)
               end);
         false ->
             ok
@@ -506,8 +514,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
           BucketConfigs, DeltaRecoveryBuckets) ->
     do_pre_rebalance_config_sync(KeepNodes),
 
-    ok = activate_services(KeepNodes),
-    StartTS = os:timestamp(),
+    Timestamps = rebalance_services(KeepNodes),
 
     %% Eject failed nodes first so they don't cause trouble
     FailedNodes = FailedNodesAll -- [node()],
@@ -522,7 +529,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     %% don't eject ourselves at all here; this will be handled by ns_orchestrator
     EjectNodes = EjectNodesAll -- [node()],
 
-    maybe_delay_eject_nodes(StartTS, EjectNodesAll),
+    maybe_delay_eject_nodes(Timestamps, EjectNodesAll),
     eject_nodes(EjectNodes).
 
 make_progress_fun(BucketCompletion, NumBuckets) ->
