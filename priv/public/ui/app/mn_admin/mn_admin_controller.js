@@ -75,7 +75,7 @@
         }
 
         var version = parseVersionFilter(pools.implementationVersion);
-        $rootScope.mnTitle = (version ? '(' + version[0] + ')' : '') + (vm.tabName ? '-' + vm.tabName : '');
+        $rootScope.mnTitle = "Couchbase Console " + (version ? '(' + version[0] + ')' : '') + (vm.tabName ? '-' + vm.tabName : '');
 
         if (previous && previous.tasks.uri != resp.tasks.uri) {
           $rootScope.$broadcast("taskUriChanged");
