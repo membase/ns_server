@@ -57,6 +57,7 @@
                              request_headers_filter = {keep, ["accept",
                                                               "accept-encoding",
                                                               "accept-language",
+                                                              "authorization",
                                                               "cache-control",
                                                               "connection",
                                                               "content-type",
