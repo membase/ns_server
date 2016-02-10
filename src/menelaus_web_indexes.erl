@@ -182,8 +182,8 @@ handle_index_status(Req) ->
     Warnings =
         case Stale of
             true ->
-                Msg = <<"We are having troubles communicating to the indexer process. "
-                        "The information might be stale.">>,
+                Msg = <<"Cannot communicate with indexer process."
+                        "Information on indexes may be stale. Will retry.">>,
                 [Msg];
             false ->
                 []
