@@ -67,10 +67,10 @@
       return cpuUsageConf;
     }
     function isFailOverDisabled(node) {
-      return isLastActiveData(node) || $scope.serversCtl.tasks.inRecoveryMode;
+      return isLastActiveData(node) || ($scope.serversCtl.tasks && $scope.serversCtl.tasks.inRecoveryMode);
     }
     function disableRemoveBtn(node) {
-      return isLastActiveData(node) || isActiveUnhealthy(node) || $scope.serversCtl.tasks.inRecoveryMode;
+      return isLastActiveData(node) || isActiveUnhealthy(node) || ($scope.serversCtl.tasks && $scope.serversCtl.tasks.inRecoveryMode);
     }
     function isLastActiveData(node) {
       return $scope.serversCtl.nodes.reallyActiveData.length === 1 && (node.services.indexOf("kv") > -1);
@@ -98,8 +98,8 @@
       return !!(couchDataSize(node) || couchDiskUsage(node));
     }
     function getRebalanceProgress(node) {
-      return $scope.serversCtl.tasks.tasksRebalance.perNode && $scope.serversCtl.tasks.tasksRebalance.perNode[node.otpNode]
-           ? $scope.serversCtl.tasks.tasksRebalance.perNode[node.otpNode].progress : 0 ;
+      return $scope.serversCtl.tasks && ($scope.serversCtl.tasks.tasksRebalance.perNode && $scope.serversCtl.tasks.tasksRebalance.perNode[node.otpNode]
+           ? $scope.serversCtl.tasks.tasksRebalance.perNode[node.otpNode].progress : 0 );
     }
     function isActiveUnhealthy(node) {
       return $state.params.type === "active" && isNodeUnhealthy(node);
