@@ -1,11 +1,11 @@
 <div id="js_security" class="security">
   <ul class="second-level-nav" mn-pluggable-ui-tabs mn-tab-bar-name="securityTab">
-    <li ng-show="securityCtl.poolDefault.ldapEnabled">
+    <li ng-show="securityCtl.poolDefault.ldapEnabled" style="display:none;">
       <a
         ui-sref="app.admin.security.externalRoles"
         ui-sref-active="selected">External User/Roles</a>
     </li>
-    <li>
+    <li  style="display:none;">
       <a
         id="internal_roles"
         class="casper_internal_roles"
