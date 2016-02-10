@@ -1050,6 +1050,13 @@ perform_actual_join(RemoteNode, NewCookie) ->
         Connected = net_kernel:connect_node(RemoteNode),
         ?cluster_debug("Connection from ~p to ~p:  ~p",
                        [node(), RemoteNode, Connected]),
+
+        %% merge dynamic config with static and default, so the dynamic config
+        %% gets all the static keys the same way as it happens during load_config
+        ok = ns_config_rep:pull_remote(RemoteNode),
+        ns_config:merge_dynamic_and_static(),
+        ?cluster_debug("pre-join merged config is:~n~p", [ns_config:get()]),
+
         {ok, ok}
     catch
         Type:Error ->
@@ -1072,16 +1079,14 @@ perform_actual_join(RemoteNode, NewCookie) ->
                       misc:remove_marker(start_marker_path()),
                       Status
               end,
+
     case Status2 of
         {ok, _} ->
-            ?cluster_log(?NODE_JOINED, "Node ~s joined cluster",
-                         [node()]),
-            Status2;
+            ?cluster_log(?NODE_JOINED, "Node ~s joined cluster", [node()]);
         _ ->
-            ?cluster_error("Failed to join cluster because of: ~p",
-                           [Status2]),
-            Status2
-    end.
+            ?cluster_error("Failed to join cluster because of: ~p", [Status2])
+    end,
+    Status2.
 
 leave_marker_path() ->
     path_config:component_path(data, "leave_marker").

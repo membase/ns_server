@@ -79,7 +79,8 @@
          delete/1,
          regenerate_node_uuid/0,
          strip_metadata/1, extract_vclock/1,
-         latest/0]).
+         latest/0,
+         merge_dynamic_and_static/0]).
 
 -export([compute_global_rev/1]).
 
@@ -956,6 +957,13 @@ handle_call({merge_ns_couchdb_config, NewKVList0, FromNode}, _From, State) ->
     {reply, true, NewState} = handle_call(C, [], State),
     {reply, ok, NewState};
 
+handle_call(merge_dynamic_and_static, _From, State) ->
+    OldDynamic = config_dynamic(State),
+    NewDynamic = do_merge_dynamic_and_static([OldDynamic], State),
+    C = {cas_config, NewDynamic, OldDynamic, remote},
+    {reply, true, NewState} = handle_call(C, [], State),
+    {reply, ok, NewState};
+
 handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
     case OldKVList =:= hd(State#config.dynamic) of
         true ->
@@ -1013,6 +1021,30 @@ dynamic_config_path(DirPath) ->
     ok = filelib:ensure_dir(C),
     C.
 
+merge_dynamic_and_static() ->
+    gen_server:call(?MODULE, merge_dynamic_and_static, infinity).
+
+do_merge_dynamic_and_static(Dynamic, #config{static = [S, DefaultConfig], uuid = UUID}) ->
+    DefaultConfigWithVClocks =
+        lists:map(
+          fun ({{node, Node, _} = K, V}) when Node =:= node() ->
+                  {K, attach_vclock(V, UUID)};
+              (Other) ->
+                  Other
+          end, DefaultConfig),
+
+    {_, DynamicPropList} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
+                                               K = element(1, Tuple),
+                                               case sets:is_element(K, Seen) of
+                                                   true -> {Seen, Acc};
+                                                   false -> {sets:add_element(K, Seen),
+                                                             [Tuple | Acc]}
+                                               end
+                                       end,
+                                       {sets:from_list([directory]), []},
+                                       lists:append(Dynamic ++ [S, DefaultConfigWithVClocks])),
+    DynamicPropList.
+
 load_config(ConfigPath, DirPath, PolicyMod) ->
     DefaultConfig = PolicyMod:default(),
     % Static config file.
@@ -1054,30 +1086,14 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
                         {UUID0, Dynamic0}
                 end,
 
-            DefaultConfigWithVClocks =
-                lists:map(
-                  fun ({{node, Node, _} = K, V}) when Node =:= node() ->
-                          {K, attach_vclock(V, UUID)};
-                      (Other) ->
-                          Other
-                  end, DefaultConfig),
+            Config1 = #config{static = [S, DefaultConfig],
+                              policy_mod = PolicyMod,
+                              uuid = UUID},
+            DynamicPropList = do_merge_dynamic_and_static(Dynamic1, Config1),
 
-            {_, DynamicPropList} = lists:foldl(fun (Tuple, {Seen, Acc}) ->
-                                                       K = element(1, Tuple),
-                                                       case sets:is_element(K, Seen) of
-                                                           true -> {Seen, Acc};
-                                                           false -> {sets:add_element(K, Seen),
-                                                                     [Tuple | Acc]}
-                                                       end
-                                               end,
-                                               {sets:from_list([directory]), []},
-                                               lists:append(Dynamic1 ++ [S, DefaultConfigWithVClocks])),
             ?log_info("Here's full dynamic config we loaded + static & default config:~n~p",
                       [ns_config_log:sanitize(DynamicPropList)]),
-            {ok, #config{static = [S, DefaultConfig],
-                         dynamic = [lists:keysort(1, DynamicPropList)],
-                         policy_mod = PolicyMod,
-                         uuid = UUID}};
+            {ok, Config1#config{dynamic = [lists:keysort(1, DynamicPropList)]}};
         E ->
             ?log_error("Failed loading static config: ~p", [E]),
             E
