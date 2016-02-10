@@ -48,7 +48,7 @@
          synchronize_local/0, synchronize_remote/0, synchronize_remote/1,
          pull_and_push/1]).
 
--export([get_remote/2]).
+-export([get_remote/2, pull_remote/1]).
 
 -record(state, {}).
 
@@ -379,3 +379,6 @@ get_remote(Node, Timeout) ->
                                           Node, Timeout),
                                  binary_to_term(zlib:uncompress(Blob))
                          end, [Node], Timeout)).
+
+pull_remote(Node) ->
+    do_pull([Node], 1).
