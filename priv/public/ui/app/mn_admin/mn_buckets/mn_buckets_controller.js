@@ -14,7 +14,8 @@
       'mnPoolDefault',
       'mnSpinner',
       'mnFilters',
-      'mnTasksDetails'
+      'mnTasksDetails',
+      'angular-chartist'
     ])
     .controller('mnBucketsController', mnBucketsController);
 
@@ -70,7 +71,7 @@
     }
     function activate() {
       new mnPoller($scope, function () {
-        return mnBucketsService.getBucketsByType();
+        return mnBucketsService.getBucketsForBucketsPage();
       })
       .subscribe("buckets", vm)
       .reloadOnScopeEvent("reloadBucketsPoller", vm)

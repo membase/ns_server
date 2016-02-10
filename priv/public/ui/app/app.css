@@ -1598,4 +1598,14 @@ input[type=number].size {width:4em;}
 .add_user_role input {width: 200px;}
 .add_user_role .content {padding: 10px;}
 
+.ct-chart-pie .ct-series.ct-series-a .ct-slice-pie {
+  fill: #4A0;
+}
+.ct-chart-pie .ct-series.ct-series-b .ct-slice-pie {
+  fill: #fac344;
+}
+.ct-chart-pie .ct-series.ct-series-c .ct-slice-pie {
+  fill: #f00;
+}
+
 

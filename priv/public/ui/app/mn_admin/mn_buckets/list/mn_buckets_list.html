@@ -38,7 +38,14 @@
           >{{bucket.name}}</a>
       </td>
       <td colspan="2">
-        <span id="{{bucket.name}}_health" class="health_graph"></span>
+        <span
+          title="{{bucket.pieConfig.status[0]}} healthy, {{bucket.pieConfig.status[1]}} warmup, {{bucket.pieConfig.status[2]}} unhealthy"
+          class="health_graph"
+          chartist
+          chartist-data="bucket.pieConfig"
+          chartist-chart-type="Pie"
+          chartist-chart-options="bucketsListCtl.getPieOptions()"
+          style="height:18px;width:18px;"></span>
         {{ bucket.nodes.length }}
       </td>
       <td colspan="2">{{bucket.basicStats.itemCount}}</td>
