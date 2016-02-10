@@ -15,7 +15,7 @@
         templateUrl: "app/mn_admin/mn_security/mn_security.html"
       })
       .state('app.admin.security.rootCertificate', {
-        url: '/root certificate',
+        url: '/rootCertificate',
         controller: 'mnRootCertificateController as rootCertificateCtl',
         templateUrl: 'app/mn_admin/mn_security/mn_root_certificate/mn_root_certificate.html',
         data: {
