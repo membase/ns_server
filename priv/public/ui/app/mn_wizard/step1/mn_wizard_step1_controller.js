@@ -22,6 +22,9 @@
       mnPromiseHelper(vm, mnWizardStep1Service.getConfig())
       .applyToScope("config")
       .onSuccess(function (config) {
+        if (!vm.isEnterprise) {
+          config.startNewClusterConfig.indexSettings.storageMode = 'forestdb';
+        }
         vm.onDbPathChange();
         vm.onIndexPathChange();
       });
