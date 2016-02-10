@@ -357,7 +357,6 @@ current_status_slow_inner() ->
          {interesting_stats, InterestingStats},
          {per_bucket_interesting_stats, PerBucketInterestingStats},
          {processes_stats, InterestingProcessesStats},
-         {index_status, IndexStatus},
          {cluster_compatibility_version, ClusterCompatVersion}
          | element(2, ns_info:basic_info())] ++ MaybeMeminfo.
 
