@@ -45,7 +45,7 @@
 -record(plugin, { name            :: service_name(),
                   proxy_strategy  :: proxy_strategy(),
                   rest_api_prefix :: rest_api_prefix(),
-                  doc_root        :: {multiple_roots, [string()]} | string(),
+                  doc_roots       :: [string()],
                   request_headers_filter :: {filter_op(), [string()]}}).
 -type plugin()  :: #plugin{}.
 -type plugins() :: [plugin()].
@@ -53,7 +53,7 @@
 -define(VIEW_PLUGIN, #plugin{name = views,
                              proxy_strategy = local,
                              rest_api_prefix = "couchBase",
-                             doc_root = "",
+                             doc_roots = [],
                              request_headers_filter = {keep, ["accept",
                                                               "accept-encoding",
                                                               "accept-language",
@@ -108,7 +108,7 @@ validate_plugin_spec(KVs, Plugins) ->
     ProxyStrategy = decode_proxy_strategy(get_element(<<"proxy-strategy">>,
                                                       KVs)),
     RestApiPrefix = binary_to_list(get_element(<<"rest-api-prefix">>, KVs)),
-    DocRoot = decode_docroot(get_element(<<"doc-root">>, KVs)),
+    DocRoots = decode_docroots(get_element(<<"doc-root">>, KVs)),
     ReqHdrFilter = decode_request_headers_filter(
                      get_opt_element(<<"request-headers-filter">>, KVs)),
     case {valid_service(ServiceName),
@@ -119,7 +119,7 @@ validate_plugin_spec(KVs, Plugins) ->
             [#plugin{name = ServiceName,
                      proxy_strategy = ProxyStrategy,
                      rest_api_prefix = RestApiPrefix,
-                     doc_root = DocRoot,
+                     doc_roots = DocRoots,
                      request_headers_filter = ReqHdrFilter} | Plugins];
         {true, #plugin{}} ->
             ?log_info("Pluggable UI specification for ~p not loaded, "
@@ -154,13 +154,16 @@ decode_proxy_strategy(<<"local">>) ->
 %% When run from cluster_run doc-root may be a list of directories.
 %% DocRoot has to be a list in order for mochiweb to be able to guess
 %% the MIME type.
-decode_docroot(Roots) ->
+decode_docroots(Roots) ->
     Prefix = path_config:component_path(?DOCROOTS_DIR),
-    decode_docroot(Prefix, Roots).
+    decode_docroots(Prefix, Roots).
 
-decode_docroot(Prefix, Roots) when is_list(Roots) ->
-    {multiple_roots, [decode_docroot(Prefix, Root) || Root <- Roots]};
-decode_docroot(Prefix, Root) ->
+decode_docroots(Prefix, Roots) when is_list(Roots) ->
+    [create_docroot(Prefix, Root) || Root <- Roots];
+decode_docroots(Prefix, Root) ->
+    [create_docroot(Prefix, Root)].
+
+create_docroot(Prefix, Root) ->
     filename:join(Prefix, binary_to_list(Root)).
 
 decode_request_headers_filter(undefined) ->
@@ -320,19 +323,17 @@ send_server_error(Req, Msg) ->
 %%% =============================================================
 %%%
 maybe_serve_file(RestPrefix, Plugins, Req, Path) ->
-    case doc_root(RestPrefix, Plugins) of
-        DocRoot when is_list(DocRoot) ->
-            serve_file(Req, Path, DocRoot);
-        {multiple_roots, DocRoots} ->
+    case doc_roots(RestPrefix, Plugins) of
+        DocRoots when is_list(DocRoots) ->
             serve_file_multiple_roots(Req, Path, DocRoots);
         undefined ->
             menelaus_util:reply_not_found(Req)
     end.
 
-doc_root(RestPrefix, Plugins) ->
+doc_roots(RestPrefix, Plugins) ->
     case find_plugin_by_prefix(RestPrefix, Plugins) of
-        #plugin{doc_root = DocRoot} ->
-            DocRoot;
+        #plugin{doc_roots = DocRoots} ->
+            DocRoots;
         false ->
             undefined
     end.
@@ -388,31 +389,62 @@ split_index(Bin) ->
 head_fragments(Plugins) ->
     [head_fragment(P) || P <- Plugins].
 
-head_fragment(#plugin{name = Service, doc_root = DocRoot}) ->
-    File = filename:join(DocRoot, ?HEAD_FRAG_HTML),
-    Fragment = get_head_fragment(Service, File, file:read_file(File)),
-    create_service_block(Service, Fragment).
+head_fragment(#plugin{name = Service, doc_roots = []}) ->
+    [];
+head_fragment(#plugin{name = Service, doc_roots = DocRoot}) ->
+    create_service_block(Service, find_head_fragments(Service, DocRoot)).
 
-get_head_fragment(_Service, _File, {ok, Bin}) ->
-    Bin;
-get_head_fragment(Service, File, {error, Reason}) ->
+find_head_fragments(Service, [DocRoot|DocRoots]) ->
+    [must_get_fragment(Service, DocRoot)
+     | maybe_get_fragments(Service, DocRoots)].
+
+maybe_get_fragments(Service, DocRoots) ->
+    [maybe_get_head_fragment(Service, DocRoot) || DocRoot <- DocRoots].
+
+must_get_fragment(Service, DocRoot) ->
+    Path = filename:join(DocRoot, ?HEAD_FRAG_HTML),
+    handle_must_get_fragment(Service, Path, file:read_file(Path)).
+
+handle_must_get_fragment(_Service, File, {ok, Bin}) ->
+    create_fragment_block(File, Bin);
+handle_must_get_fragment(Service, File, {error, Reason}) ->
     Msg = lists:flatten(io_lib:format(
                           "Failed to read ~s for service ~p, reason '~p'",
                           [File, Service, Reason])),
     ?log_error(Msg),
     html_comment(Msg).
 
-create_service_block(Service, Bin) ->
+maybe_get_head_fragment(Service, DocRoot) ->
+    Path = filename:join(DocRoot, ?HEAD_FRAG_HTML),
+    handle_maybe_get_fragment(Path, file:read_file(Path)).
+
+handle_maybe_get_fragment(File, {ok, Bin}) ->
+    create_fragment_block(File, Bin);
+handle_maybe_get_fragment(_File, {error, _Reason}) ->
+    [].
+
+create_service_block(Service, Fragments) ->
     SBin = atom_to_binary(Service, latin1),
-    [start_of_fragment(SBin),
+    [start_of_service_fragment(SBin),
+     Fragments,
+     end_of_service_fragment(SBin)].
+
+create_fragment_block(File, Bin) ->
+    [start_of_docroot_fragment(File),
      Bin,
-     end_of_fragment(SBin)].
+     end_of_docroot_fragment(File)].
 
-start_of_fragment(Service) ->
-    html_comment([<<"Beginning of head.frag.html for service ">>, Service]).
+start_of_service_fragment(Service) ->
+    html_comment([<<"Beginning of head html fragments for service ">>, Service]).
 
-end_of_fragment(Service) ->
-    html_comment([<<"End of head.frag.html for service ">>, Service]).
+end_of_service_fragment(Service) ->
+    html_comment([<<"End of head html fragments for service ">>, Service]).
+
+start_of_docroot_fragment(File) ->
+    html_comment([<<"Beginning of ">>, File]).
+
+end_of_docroot_fragment(File) ->
+    html_comment([<<"End of ">>, File]).
 
 html_comment(Content) ->
     [<<"<!-- ">>, Content, <<" -->\n">>].
