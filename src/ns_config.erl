@@ -630,7 +630,7 @@ fold(Fun, Acc0, [KVList | Rest]) ->
             end, Acc0, KVList),
     fold(Fun, Acc, Rest);
 fold(Fun, Acc, #config{dynamic = DL, static = SL}) ->
-    fold(Fun, fold(Fun, Acc, DL), SL);
+    fold(Fun, fold(Fun, Acc, SL), DL);
 fold(Fun, Acc, 'latest-config-marker') ->
     fold(Fun, Acc, ns_config:get()).
 
