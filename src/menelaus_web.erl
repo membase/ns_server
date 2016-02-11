@@ -2945,7 +2945,12 @@ validate_add_node_params(User, Password) ->
 
 %% erlang R15B03 has http_uri:parse/2 that does the job
 %% reimplement after support of R14B04 will be dropped
-parse_hostname([_ | _] = Hostname) ->
+parse_hostname(Hostname) ->
+    do_parse_hostname(misc:trim(Hostname)).
+
+do_parse_hostname([]) ->
+    throw({error, [<<"Hostname is required.">>]});
+do_parse_hostname(Hostname) ->
     WithoutScheme = case string:str(Hostname, "://") of
                         0 ->
                             Hostname;
@@ -2968,10 +2973,7 @@ parse_hostname([_ | _] = Hostname) ->
                                  throw({error, [<<"The hostname is malformed.">>]})
                          end,
 
-    {string:strip(Host), menelaus_util:parse_validate_port_number(StringPort)};
-
-parse_hostname([]) ->
-    throw({error, [<<"Hostname is required.">>]}).
+    {Host, menelaus_util:parse_validate_port_number(StringPort)}.
 
 handle_add_node(Req) ->
     do_handle_add_node(Req, undefined).
@@ -4065,7 +4067,7 @@ extra_field_parse_validate_auto_compaction_settings_test() ->
     ok.
 
 hostname_parsing_test() ->
-    Urls = ["http://host:1025",
+    Urls = [" \t\r\nhttp://host:1025\n\r\t ",
             "http://host:100",
             "http://host:100000",
             "hTTp://host:8000",
@@ -4074,7 +4076,8 @@ hostname_parsing_test() ->
             "127.0.0.1:6000",
             "host:port",
             "aaa:bb:cc",
-            ""],
+            " \t\r\nhost\n",
+            " "],
 
     ExpectedResults = [{"host",1025},
                        {error, [<<"The port number must be greater than 1023 and less than 65536.">>]},
@@ -4085,6 +4088,7 @@ hostname_parsing_test() ->
                        {"127.0.0.1", 6000},
                        {error, [<<"Port must be a number.">>]},
                        {error, [<<"The hostname is malformed.">>]},
+                       {"host", 8091},
                        {error, [<<"Hostname is required.">>]}],
 
     Results = [(catch parse_hostname(X)) || X <- Urls],
