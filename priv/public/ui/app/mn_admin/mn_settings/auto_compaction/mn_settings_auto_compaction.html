@@ -9,12 +9,14 @@
       </div>
       <div
         mn-auto-compaction-form
+        rbac="rbac"
         auto-compaction-settings="settingsAutoCompactionCtl.autoCompactionSettings"
         validation-errors="settingsAutoCompactionCtl.errors"></div>
     </div> <!-- .auto_compaction -->
     <div class="save_cancel when-roadmin-hide-me">
       <button
         class="save_button float_right"
+        ng-show="rbac.cluster.settings.write"
         type="submit">
         Save
       </button>

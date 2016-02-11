@@ -1,4 +1,4 @@
-<div class="shadow_box settings">
+<div class="shadow_box settings" ng-if="rbac.cluster.admin.security.read">
   <div class="header_2">
     <div class="right" style="overflow:hidden;">
       <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>

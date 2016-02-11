@@ -19,7 +19,7 @@
     activate();
 
     $scope.$watch('settingsClusterCtl.memoryQuotaConfig', _.debounce(function (memoryQuotaConfig) {
-      if (!memoryQuotaConfig) {
+      if (!memoryQuotaConfig || !$scope.rbac.cluster.pools.write) {
         return;
       }
       var promise = mnSettingsClusterService.postPoolsDefault(vm.memoryQuotaConfig, true);
@@ -28,7 +28,7 @@
     }, 500), true);
 
     $scope.$watch('settingsClusterCtl.indexSettings', _.debounce(function (indexSettings) {
-      if (!indexSettings) {
+      if (!indexSettings || !$scope.rbac.cluster.indexes.write) {
         return;
       }
       var promise = mnSettingsClusterService.postIndexSettings(vm.indexSettings, true);
@@ -37,17 +37,12 @@
     }, 500), true);
 
     function saveSettings() {
-      var promise = mnPromiseHelper(vm, mnSettingsClusterService.postPoolsDefault(vm.memoryQuotaConfig, false, vm.clusterName))
+      mnPromiseHelper(vm, mnSettingsClusterService.postPoolsDefault(vm.memoryQuotaConfig, false, vm.clusterName))
         .catchErrors("memoryQuotaErrors")
-        .getPromise()
-        .then(function () {
-          return mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
-            .catchErrors("indexSettingsErrors")
-            .getPromise();
-        })
-      mnPromiseHelper(vm, promise)
-        .showSpinner('clusterSettingsLoading')
-        .reloadState();
+        .showSpinner('memoryQuotaLoading');
+      mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
+        .catchErrors("indexSettingsErrors")
+        .showSpinner('indexSettingsLoading');
     }
     function saveVisualInternalSettings() {
       if (vm.clusterSettingsLoading) {

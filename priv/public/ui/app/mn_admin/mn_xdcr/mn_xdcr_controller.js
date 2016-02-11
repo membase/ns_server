@@ -12,7 +12,7 @@
     'mnSpinner'
   ]).controller('mnXDCRController', mnXDCRController);
 
-  function mnXDCRController($scope, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnTasksDetails, mnBucketsService, mnPromiseHelper) {
+  function mnXDCRController($scope, permissions, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnTasksDetails, mnBucketsService, mnPromiseHelper) {
     var vm = this;
 
     vm.mnPoolDefault = mnPoolDefault.latestValue();
@@ -64,12 +64,14 @@
       .reloadOnScopeEvent("reloadXdcrPoller", vm)
       .cycle();
 
-      new mnPoller($scope, function () {
-        return mnXDCRService.getReplicationState();
-      })
-      .subscribe("references", vm)
-      .reloadOnScopeEvent("reloadXdcrPoller", vm)
-      .cycle();
+      if ($scope.rbac.cluster.xdcr.remote_clusters.read) {
+        new mnPoller($scope, function () {
+          return mnXDCRService.getReplicationState();
+        })
+        .subscribe("references", vm)
+        .reloadOnScopeEvent("reloadXdcrPoller", vm)
+        .cycle();
+      }
     }
     function createClusterReference() {
       $uibModal.open({

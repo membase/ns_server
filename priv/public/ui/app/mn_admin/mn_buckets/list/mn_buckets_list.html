@@ -35,7 +35,9 @@
         </a>
         <a class="disable-if-stale" title="View Analytics for {{ bucket.name }}"
           ui-sref="app.admin.analytics.list.graph({analyticsBucket: bucket.name })"
+          ng-show="rbac.cluster.bucket[bucket.name].stats.read"
           >{{bucket.name}}</a>
+        <span ng-show="!rbac.cluster.bucket[bucket.name].stats.read">{{bucket.name}}</span>
       </td>
       <td colspan="2">
         <span
@@ -68,9 +70,13 @@
         <span ng-show="!buckets.isMembase">N/A</span>
       </td>
       <td colspan="4" class="last" ng-if="buckets.isMembase">
-        <a class="list_button disable-if-stale" ui-sref="app.admin.indexes.views.list({viewsBucket: bucket.name})"><span>Views</span></a>
+        <a
+          class="list_button disable-if-stale"
+          ng-show="rbac.cluster.bucket[bucket.name].views.read"
+          ui-sref="app.admin.indexes.views.list({viewsBucket: bucket.name})"><span>Views</span></a>
         <a
           class="list_button when-roadmin-hide-me"
+          ng-show="rbac.cluster.bucket[bucket.name].data.read"
           ui-sref="app.admin.documents.control.list({documentsBucket: bucket.name})"><span>Documents</span></a>
       </td>
     </tr>

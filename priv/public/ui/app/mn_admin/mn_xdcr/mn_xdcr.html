@@ -1,6 +1,6 @@
 <div id="js_replications" class="replications">
   <h1>Replications</h1>
-  <div id="cluster_references" class="shadow_box">
+  <div id="cluster_references" class="shadow_box" ng-show="rbac.cluster.xdcr.remote_clusters.read">
     <div class="darker_block js_darker_block" style="font-size:13px;">
       <h3 class="js_block-expander block-expander">
         <ins></ins><span class="view_head">Remote Clusters</span>
@@ -8,6 +8,7 @@
           <a
             class="btn_1 when-roadmin-hide-me"
             id="create_cluster_reference"
+            ng-show="rbac.cluster.xdcr.remote_clusters.write"
             ng-click="xdcrCtl.createClusterReference()">
             <span>Create Cluster Reference</span>
           </a>
@@ -32,9 +33,11 @@
               <td>
                 <a
                   class="list_button delete-button when-roadmin-avoid-me"
+                  ng-show="rbac.cluster.xdcr.remote_clusters.write"
                   ng-click="xdcrCtl.deleteClusterReference(row)"><span>Delete</span></a>
                 <a
                   class="list_button edit-button when-roadmin-avoid-me"
+                  ng-show="rbac.cluster.xdcr.remote_clusters.write"
                   ng-click="xdcrCtl.editClusterReference(row)"><span>Edit</span></a>
               </td>
             </tr>
@@ -48,7 +51,7 @@
   </div>
 
   <!-- Ongoing Replications -->
-  <div id="ongoing_replications" class="shadow_box">
+  <div id="ongoing_replications" class="shadow_box" ng-show="rbac.cluster.tasks.read">
     <div class="darker_block" style="font-size:13px;">
       <h3>
         <span class="view_head" style="padding-left: 0;padding-bottom: 7px;">Ongoing Replications</span>
@@ -101,16 +104,18 @@
               </td>
               <td class="replication_status_cell">
                 <span>{{xdcrCtl.humanStatus(row)}}</span>
-                <span ng-show="xdcrCtl.status(row) !== 'notRunning'" class="only-when-30 js_replication_control replication_control dynamic_{{xdcrCtl.status(row)}}" ng-click="xdcrCtl.status(row) !== 'spinner' && xdcrCtl.pausePlayReplication(row)"></span>
+                <span ng-show="xdcrCtl.status(row) !== 'notRunning' && rbac.cluster.bucket['?'].xdcr.write && rbac.cluster.bucket['?'].xdcr.execute" class="only-when-30 js_replication_control replication_control dynamic_{{xdcrCtl.status(row)}}" ng-click="xdcrCtl.status(row) !== 'spinner' && xdcrCtl.pausePlayReplication(row)"></span>
                 <a ng-show="row.errors.length" ng-click="xdcrCtl.showReplicationErrors(row)">Last {{row.errors.length | mnCount:'error'}}</a>
               </td>
               <td>{{row.when}}</td>
               <td>
                 <a
                   class="list_button when-roadmin-avoid-me"
+                  ng-show="rbac.cluster.bucket['?'].xdcr.write"
                   ng-click="xdcrCtl.deleteReplication(row)"><span>Delete</span></a>
                 <span
                   class="list_button when-roadmin-avoid-me js_per_xdcr_settings"
+                  ng-show="rbac.cluster.bucket['?'].xdcr.read && rbac.cluster.xdcr.settings.read"
                   ng-click="xdcrCtl.editReplication(row)"><span>Edit</span></span>
               </td>
             </tr>

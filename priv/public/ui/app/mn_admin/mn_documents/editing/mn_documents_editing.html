@@ -17,11 +17,13 @@
         <div class="editing_ctrls when-roadmin-hide-me">
           <a
             class="btn_1"
+            ng-hide="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write === false"
             ng-class="{dynamic_disabled: documentsEditingCtl.isDeleteDisabled()}"
             ng-click="!documentsEditingCtl.isDeleteDisabled() && documentsEditingCtl.deleteDocument()"
             id="doc_delete"><span>Delete</span></a>
           <a
             class="btn_1"
+            ng-hide="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write === false"
             ng-class="{dynamic_disabled: documentsEditingCtl.isSaveAsDisabled()}"
             ng-click="!documentsEditingCtl.isSaveAsDisabled() && documentsEditingCtl.saveAsDialog()"
             id="doc_saveas"><span>Save As...</span></a>
@@ -29,6 +31,7 @@
             class="btn_1 btn_save"
             ng-class="{dynamic_disabled: documentsEditingCtl.isSaveDisabled()}"
             id="doc_save"
+            ng-hide="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write === false"
             ng-click="!documentsEditingCtl.isSaveDisabled() && documentsEditingCtl.save()"><span>Save</span></a>
           <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
         </div>

@@ -37,6 +37,7 @@
         var poolDefault = resp[0].data;
         var pools = resp[1]
         poolDefault.rebalancing = poolDefault.rebalanceStatus !== 'none';
+        //TODO replace serverGroupsUri in isGroupsAvailable using mixed cluster version
         poolDefault.isGroupsAvailable = !!(pools.isEnterprise && poolDefault.serverGroupsUri);
         poolDefault.isEnterprise = pools.isEnterprise;
         poolDefault.thisNode = _.detect(poolDefault.nodes, function (n) {

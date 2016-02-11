@@ -11,7 +11,7 @@
       <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
       <div class="right" style="overflow:hidden;">
         <button
-          ng-hide="bucketsCtl.isCreateNewDataBucketDisabled()"
+          ng-hide="bucketsCtl.isCreateNewDataBucketDisabled() || !rbac.cluster.bucket.all.create"
           class="btn_1 create-bucket-button casper_buckets_new_data_bucket"
           style="float:right;"
           ng-click="bucketsCtl.addBucket()">
@@ -24,7 +24,7 @@
       id="bucket_list_container"
       mn-spinner="!bucketsCtl.buckets || bucketsCtl.viewLoading"
       min-height="91px">
-        <div mn-buckets-list buckets="bucketsCtl.buckets.byType.membase"></div>
+        <div mn-buckets-list buckets="bucketsCtl.buckets.byType.membase" rbac="rbac"></div>
     </div>
   </div>
   <div class="shadow_box" id="memcached_buckets" ng-if="bucketsCtl.buckets.byType.memcached.length">
@@ -38,7 +38,7 @@
       id="memcached_bucket_list_container"
       mn-spinner="!bucketsCtl.buckets || bucketsCtl.viewLoading"
       min-height="91px">
-        <div mn-buckets-list buckets="bucketsCtl.buckets.byType.memcached"></div>
+        <div mn-buckets-list buckets="bucketsCtl.buckets.byType.memcached" rbac="rbac"></div>
     </div>
   </div>
 </div>

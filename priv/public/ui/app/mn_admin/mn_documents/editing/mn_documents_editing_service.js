@@ -43,8 +43,7 @@
             },
             title: params.documentId
           };
-          case 503:
-          case 500: return {
+          default: return {
             errors: resp && resp.data,
           };
         }

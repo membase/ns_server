@@ -9,7 +9,8 @@
     var mnBucketsListDirective = {
       restrict: 'A',
       scope: {
-        buckets: '='
+        buckets: '=',
+        rbac: "="
       },
       templateUrl: 'app/mn_admin/mn_buckets/list/mn_buckets_list.html',
       controller: controller,

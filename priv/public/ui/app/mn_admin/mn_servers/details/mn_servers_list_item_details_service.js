@@ -5,7 +5,8 @@
 
   function mnServersListItemDetailsFactory($http, $q, mnTasksDetails) {
     var mnServersListItemDetailsService = {
-      getNodeDetails: getNodeDetails
+      getNodeDetails: getNodeDetails,
+      getNodeTasks: getNodeTasks
     };
 
     return mnServersListItemDetailsService;
@@ -36,17 +37,25 @@
       };
     }
 
-    function getNodeDetails(node) {
-      return $q.all([
-        $http({method: 'GET', url: '/nodes/' + encodeURIComponent(node.otpNode)}),
-        mnTasksDetails.get()
-      ]).then(function (resp) {
-        var rv = {};
-        var details = resp[0].data;
-        var tasks = resp[1];
-        rv.getDiskStorageConfig = getBaseConfig(details.storageTotals.hdd);
+    function getNodeTasks(node, tasks) {
+      if (!tasks || !node) {
+        return;
+      }
+      var rebalanceTask = tasks.tasksRebalance.status === 'running' && tasks.tasksRebalance;
+      return {
+        warmUpTasks: _.filter(tasks.tasksWarmingUp, function (task) {
+          return task.node === node.otpNode;
+        }),
+        detailedProgress: rebalanceTask.detailedProgress && rebalanceTask.detailedProgress.perNode && rebalanceTask.detailedProgress.perNode[node.otpNode]
+      };
+    }
 
+    function getNodeDetails(node) {
+      return $http({method: 'GET', url: '/nodes/' + encodeURIComponent(node.otpNode)}).then(function (resp) {
+        var rv = {};
+        var details = resp.data;
         var memoryCacheConfig = getBaseConfig(details.storageTotals.ram);
+
         memoryCacheConfig.topLeft = {
           name: 'Couchbase Quota',
           value: details.storageTotals.ram.quotaTotal
@@ -58,15 +67,8 @@
           itemStyle: {"background-color": "#E43A1B"}
         });
 
+        rv.getDiskStorageConfig = getBaseConfig(details.storageTotals.hdd);
         rv.getMemoryCacheConfig = memoryCacheConfig;
-
-        var rebalanceTask = tasks.tasksRebalance.status === 'running' && tasks.tasksRebalance;
-        rv.detailedProgress = rebalanceTask.detailedProgress && rebalanceTask.detailedProgress.perNode && rebalanceTask.detailedProgress.perNode[node.otpNode];
-
-        rv.warmUpTasks = _.filter(tasks.tasksWarmingUp, function (task) {
-          return task.node === node.otpNode;
-        });
-
         rv.details = details;
         return rv;
       });

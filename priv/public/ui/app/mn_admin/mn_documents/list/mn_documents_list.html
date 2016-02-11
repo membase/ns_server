@@ -23,7 +23,7 @@
             id="docs_lookup_doc_by_id"
             placeholder="Document ID"
             ng-model="documentsListCtl.lookupId"
-            ng-disabled="documentsControlCtl.isEmptyState()">
+            ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">
           <button
             type="submit"
             class="btn_1"
@@ -34,9 +34,10 @@
         </form>
         <a
           class="btn_1 btn_create when-roadmin-avoid-me"
-          ng-class="{dynamic_disabled: documentsControlCtl.isEmptyState()}"
-          ng-click="!documentsControlCtl.isEmptyState() && documentsListCtl.showCreateDialog()"
-          ng-hide="documentsListCtl.isCreateDocumentDisabled()"><span>Create Document</span></a>
+          ng-class="{dynamic_disabled: documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write}"
+          ng-click="(!documentsControlCtl.isEmptyState() && rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write) && documentsListCtl.showCreateDialog()">
+            <span>Create Document</span>
+        </a>
         <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
       </div>
     </div>

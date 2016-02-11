@@ -6,6 +6,7 @@
         <input
           type="checkbox"
           id="email_alerts_enabled"
+          ng-disabled="!rbac.cluster.settings.write"
           ng-model="settingsAlertsCtl.state.enabled"
           class="casper_settings_alerts_errors">
         <span>Enable email alerts</span>
@@ -19,13 +20,13 @@
           type="text"
           id="email_alerts_host"
           ng-model="settingsAlertsCtl.state.emailServer.host"
-          ng-disabled="settingsAlertsCtl.isFormElementsDisabled()">
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
         <label for="email_alerts_port" style="text-align: right;">Port:</label>
         <input
           type="text"
           id="email_alerts_port"
           ng-model="settingsAlertsCtl.state.emailServer.port"
-          ng-disabled="settingsAlertsCtl.isFormElementsDisabled()">
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
         <div
           class="error-container err-email_port"
           ng-if="settingsAlertsCtl.errors.email_port">
@@ -38,7 +39,7 @@
           type="text"
           id="email_alerts_user"
           ng-model="settingsAlertsCtl.state.emailServer.user"
-          ng-disabled="settingsAlertsCtl.isFormElementsDisabled()">
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
       </div>
       <div class="row">
         <label for="email_alerts_pass">Password:</label>
@@ -46,7 +47,7 @@
           type="password"
           id="email_alerts_pass"
           ng-model="settingsAlertsCtl.state.emailServer.pass"
-          ng-disabled="settingsAlertsCtl.isFormElementsDisabled()"
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write"
           mn-autocomplete-off>
       </div>
       <div class="row">
@@ -55,7 +56,7 @@
           type="checkbox"
           id="email_alerts_encrypt"
           ng-model="settingsAlertsCtl.state.emailServer.encrypt"
-          ng-disabled="settingsAlertsCtl.isFormElementsDisabled()">
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
       </div>
     </div>
     <h3>Email Settings</h3>
@@ -66,7 +67,7 @@
           type="text"
           id="email_alerts_sender"
           ng-model="settingsAlertsCtl.state.sender"
-          ng-disabled="settingsAlertsCtl.isFormElementsDisabled()">
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
         <div
           class="error-container err-sender"
           ng-if="settingsAlertsCtl.errors.sender">
@@ -77,7 +78,7 @@
         <label for="email_alerts_sender" style="vertical-align:top;">Recipients:</label>
         <textarea
           id="email_alerts_recipients"
-          ng-disabled="!settingsAlertsCtl.state.enabled">{{settingsAlertsCtl.state.recipients}}
+          ng-disabled="!settingsAlertsCtl.state.enabled || !rbac.cluster.settings.write">{{settingsAlertsCtl.state.recipients}}
         </textarea>
         <span style="vertical-align:top;margin:0 5px;line-height:24px">separate addresses with comma "," or spaces " "</span>
         <div
@@ -89,7 +90,7 @@
           class="when-roadmin-avoid-me">
           <button
             type="button"
-            ng-disabled="!settingsAlertsCtl.state.enabled"
+            ng-disabled="!settingsAlertsCtl.state.enabled || !rbac.cluster.settings.write"
             class="edit_btn"
             id="test_email"
             ng-click="settingsAlertsCtl.testEmail()">Test Mail</button>
@@ -103,12 +104,12 @@
         <input
           type="checkbox"
           ng-model="settingsAlertsCtl.state.alerts[alert]"
-          ng-disabled="settingsAlertsCtl.isFormElementsDisabled()">
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
         <span>{{alert | alertsLabel}}</span>
       </label>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="submit">
+      <button class="save_button float_right" ng-show="rbac.cluster.settings.write" type="submit">
         Save
       </button>
     </div>

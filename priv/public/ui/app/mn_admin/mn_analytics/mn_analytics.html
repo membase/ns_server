@@ -40,7 +40,7 @@
       </ui-select>
     </span>
   </h1>
-  <div id="js_date_slider_container" class="date_slider_container">
+  <div id="js_date_slider_container" class="date_slider_container" ng-if="rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read">
     <div class="time_mode_wrap">
       <a id="js_zoom_minute" ui-sref="app.admin.analytics.list.graph({zoom: 'minute'})" ui-sref-active="selected">Minute</a>
       <a id="js_zoom_hour" ui-sref="app.admin.analytics.list.graph({zoom: 'hour'})" ui-sref-active="selected">Hour</a>
@@ -51,7 +51,7 @@
     </div>
   </div>
   <ui-view></ui-view>
-  <div class="shadow_box" style="width:780px;" ng-if="!analyticsCtl.isSpecificStats">
+  <div class="shadow_box" style="width:780px;" ng-if="!analyticsCtl.isSpecificStats && rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read" >
     <div class="section" id="js_top_keys_block">
       <h2 class="header_2">
         TOP KEYS

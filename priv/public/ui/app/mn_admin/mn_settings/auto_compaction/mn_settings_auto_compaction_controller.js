@@ -23,6 +23,9 @@
         });
     }
     function watchOnAutoCompactionSettings(autoCompactionSettings) {
+      if (!$scope.rbac.cluster.settings.write) {
+        return;
+      }
       mnPromiseHelper(vm, mnSettingsAutoCompactionService
         .saveAutoCompaction(autoCompactionSettings, {just_validate: 1}))
           .catchErrors();

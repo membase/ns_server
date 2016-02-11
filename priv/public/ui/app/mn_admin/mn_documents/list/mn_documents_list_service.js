@@ -42,7 +42,8 @@
         return getListState(resp.data, params);
       }, function (resp) {
         switch (resp.status) {
-          case 500: return getEmptyListState(params, resp);
+          case 404: return getEmptyListState(params, {data: {error: "bucket not found"}});
+          default: return getEmptyListState(params, resp);
         }
       });
     }

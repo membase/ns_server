@@ -6,6 +6,7 @@
         <input
           type="checkbox"
           id="auto_failover_enabled"
+          ng-disabled="!rbac.cluster.settings.write"
           ng-model="settingsAutoFailoverCtl.state.enabled">
         <span>Enable auto-failover</span>
       </label>
@@ -17,7 +18,7 @@
           type="text"
           id="auto_failover_timeout"
           ng-model="settingsAutoFailoverCtl.state.timeout"
-          ng-disabled="settingsAutoFailoverCtl.isAutoFailOverDisabled()">
+          ng-disabled="settingsAutoFailoverCtl.isAutoFailOverDisabled() || !rbac.cluster.settings.write">
         <span class="error-container err-timeout"></span>
         <a class="text_11 tooltip casper_settings_auto_failover_timeout_tooltip"><span>What's this?</span>
           <span class="tooltip_msg"><span>
@@ -33,13 +34,15 @@
         A server was automatically failed over
         <a
           class="auto_failover_count_reset edit_btn when-roadmin-hide-me"
-          ng-click="adminCtl.resetAutoFailOverCount()" mn-spinner="adminCtl.resetQuotaLoading">
+          ng-click="adminCtl.resetAutoFailOverCount()"
+          ng-show="rbac.cluster.settings.write"
+          mn-spinner="adminCtl.resetQuotaLoading">
           <span>Reset Quota</span>
         </a>
       </div>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" type="submit">Save</button>
+      <button class="save_button float_right" ng-show="rbac.cluster.settings.write" type="submit">Save</button>
     </div>
   </form>
 </div>

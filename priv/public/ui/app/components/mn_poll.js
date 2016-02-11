@@ -124,6 +124,9 @@
           if (self.isStopped(timestamp)) {
             return;
           }
+          //recommendedRefreshPeriod should be implemented only for tasks poller,
+          //for dependent pollers better to use scope.$watch("adminCtl.tasks");
+          //in conjunction with some static extractInterval (e.g. 10000)
           var interval = (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
           self.timeout = $timeout(self.doCycle.bind(self), interval);
         });

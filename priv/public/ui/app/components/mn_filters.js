@@ -43,6 +43,7 @@
   }
 
   function isDisabled() {
+    //TODO implement this across entire app
     return function ($event) {
       return angular.element($event.currentTarget).hasClass("dynamic_disabled");
     };

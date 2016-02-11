@@ -217,7 +217,8 @@
         data: {
           required: {
             enterprise: true
-          }
+          },
+          permissions: "cluster.server_groups.read"
         }
       })
       .state('app.admin.replications', {
@@ -241,6 +242,9 @@
         abstract: true,
         controller: 'mnLogsCollectInfoController as logsCollectInfoCtl',
         templateUrl: 'app/mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
+        data: {
+          permissions: "cluster.admin.logs.read"
+        }
       })
       .state('app.admin.logs.collectInfo.result', {
         url: '/result',

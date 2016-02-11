@@ -34,6 +34,7 @@
             ng-false-value="0"
             ng-true-value="{{bucket.quotaNeeded}}"
             id="setup-sample-{{bucket.name}}"
+            ng-disabled="!rbac.cluster.bucket.all.create"
             ng-model="settingsSampleBucketsCtl.selected[bucket.name]">
           <label for="setup-sample-{{bucket.name}}">{{bucket.name}}</label>
         </li>
@@ -46,6 +47,7 @@
       <button
         class="save_button float_right"
         type="submit"
+        ng-show="rbac.cluster.bucket.all.create"
         id="sample_buckets_settings_btn"
         ng-disabled="settingsSampleBucketsCtl.isCreateButtonDisabled()">Create</button>
     </div>

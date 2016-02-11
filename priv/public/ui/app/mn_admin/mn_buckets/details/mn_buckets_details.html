@@ -3,40 +3,41 @@
   <div class="gong_rb">
     <div class="pad">
       <div style="width:800px;float:left;">
-        <div>
+        <div ng-show="rbac.cluster.bucket[bucket.name].settings.read">
           Access Control:
           <span>
             {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? 'Port' : bucketsDetailsCtl.bucketDetails.name === 'default' ? 'None' : 'Authentication'}}
             {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? ': ' + bucketsDetailsCtl.bucketDetails.proxyPort : ''}}
           </span>
         </div>
-        <div ng-if="bucket.isMembase">
+        <div ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
           Replicas: <span>{{bucketsDetailsCtl.bucketDetails.replicaNumber != 0 ? (bucketsDetailsCtl.bucketDetails.replicaNumber | mnCount:'replica copy') : 'disabled'}}</span>
         </div>
-        <div ng-if="bucket.isMembase">
+        <div ng-if="bucket.isMembase && rbac.cluster.tasks.read">
           Compaction: <span class="bucket_progress_container">
           {{bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask ? bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.progress + "% complete" : "Not active"}}
           </span>
         </div>
-        <div ng-if="bucket.isMembase">
+        <div ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
           Cache Metadata: <span>{{bucketsDetailsCtl.bucketDetails.evictionPolicy === "valueOnly" ? 'Value Ejection' : 'Full Ejection'}}</span>
         </div>
-        <div ng-if="bucket.isMembase">
+        <div ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
           Disk I/O priority: <span>{{bucketsDetailsCtl.bucketDetails.threadsNumber === 3 ? 'Low' : 'High'}}</span>
         </div>
       </div>
       <div class="last when-roadmin-hide-me">
         <a
           class="inner_btn casper_buckets_edit_bucket_popup"
-          ng-click="bucketsDetailsCtl.editBucket(bucketsDetailsCtl.bucketDetails)">Edit</a>
+          ng-click="bucketsDetailsCtl.editBucket(bucketsDetailsCtl.bucketDetails)"
+          ng-show="rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].settings.write">Edit</a>
         <button
-          ng-show="!bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && bucket.isMembase"
+          ng-show="!bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && bucket.isMembase && rbac.cluster.tasks.read && rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].compact"
           class="inner_btn compact_btn"
           ng-class="{dynamic_disabled: bucketsDetailsCtl.compactionTasks.disableCompact}" ng-click="!bucketsDetailsCtl.compactionTasks.disableCompact && bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.bucketDetails.controllers.compactAll, 'disableCompact')">
             <span>Compact</span>
         </button>
         <button
-          ng-show="bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI"
+          ng-show="bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && rbac.cluster.tasks.read && rbac.cluster.bucket[bucket.name].compact"
           class="inner_btn cancel_compact_btn "
           ng-class="{dynamic_disabled: bucketsDetailsCtl.compactionTasks.disableCancel}"
           ng-click="!bucketsDetailsCtl.compactionTasks.disableCancel && bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI, 'disableCancel')">
@@ -44,11 +45,12 @@
         </button>
         <button
           class="inner_btn "
+          ng-show="rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].delete"
           ng-click="bucketsDetailsCtl.deleteBucket(bucketsDetailsCtl.bucketDetails)">
             <span>Delete</span>
         </button>
         <button
-          ng-show="bucketsDetailsCtl.bucketDetails.controllers !== undefined && bucketsDetailsCtl.bucketDetails.controllers.flush !== undefined"
+          ng-show="bucketsDetailsCtl.bucketDetails.controllers !== undefined && bucketsDetailsCtl.bucketDetails.controllers.flush !== undefined && rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].flush"
           class="inner_btn "
           ng-click="bucketsDetailsCtl.flushBucket(bucketsDetailsCtl.bucketDetails)">
             <span>Flush</span>
@@ -63,13 +65,13 @@
 
   <div class="additional_server_info bucket_details_info">
     <div
-      ng-if="bucketsDetailsCtl.warmUpTasks.length"
+      ng-if="bucketsDetailsCtl.warmUpTasks.length && rbac.cluster.tasks.read"
       mn-warmup-progress
       warm-up-tasks="bucketsDetailsCtl.warmUpTasks"
       sort-by="hostname"></div>
 
-    <h2>Cache Size</h2>
-    <div class="dynamic_ram">
+    <h2 ng-show="rbac.cluster.bucket[bucket.name].settings.read">Cache Size</h2>
+    <div class="dynamic_ram" ng-show="rbac.cluster.bucket[bucket.name].settings.read">
       <label class="for-hdd-quota">
         <span>Dynamic RAM Quota:</span>
         <span>{{bucketsDetailsCtl.bucketDetails.quota.rawRAM | mnFormatQuantity}}</span>
@@ -79,10 +81,11 @@
     <div
       class="usage-block for-ram"
       mn-bar-usage
-      base-info="bucketsDetailsCtl.getBucketRamGuageConfig(bucketsDetailsCtl.bucketDetails)">
+      base-info="bucketsDetailsCtl.getBucketRamGuageConfig(bucketsDetailsCtl.bucketDetails)"
+      ng-show="rbac.cluster.bucket[bucket.name].settings.read">
     </div>
 
-    <div ng-if="bucket.isMembase">
+    <div ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
       <h2>Storage Size</h2>
       <div class="disk_storage">
         <label class="for-hdd-quota" style="padding:0;">
@@ -97,7 +100,8 @@
       </div>
       <div
         class="usage-block for-hdd"
-        mn-bar-usage base-info="bucketsDetailsCtl.getGuageConfig(bucketsDetailsCtl.bucketDetails)"></div>
+        mn-bar-usage base-info="bucketsDetailsCtl.getGuageConfig(bucketsDetailsCtl.bucketDetails)"
+        ng-if="rbac.cluster.bucket[bucket.name].settings.read"></div>
     </div>
 
   </div>

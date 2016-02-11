@@ -200,7 +200,7 @@
         });
       }, function (resp) {
         switch (resp.status) {
-          case 404: return getEmptyViewState(params);
+          default: return getEmptyViewState(params);
         }
       });
     }

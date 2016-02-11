@@ -12,7 +12,7 @@
     class="focusme js_ram_quota"
     id="kv_ram_quota"
     mn-focus
-    ng-disabled="config.services && !config.services.model.kv"
+    ng-disabled="config.services && !config.services.model.kv || (rbac && !rbac.cluster.pools.write)"
     name="memoryQuota"
     ng-model="config.memoryQuota" />
   <span>MB (min {{::config.minMemorySize}} MB)</span>
@@ -29,7 +29,7 @@
     type="number"
     class="js_ram_quota"
     id="index_ram_quota"
-    ng-disabled="config.services && !config.services.model.index"
+    ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)"
     name="indexMemoryQuota"
     mn-focus="config.services.model.kv === false"
     ng-model="config.indexMemoryQuota" />
@@ -49,7 +49,7 @@
     class="focusme js_ram_quota"
     id="fts_ram_quota"
     mn-focus="config.services.model.kv === false && config.services.model.index  === false"
-    ng-disabled="config.services && !config.services.model.fts || mnMemoryQuotaController.mnPoolDefault.value.isROAdminCreds"
+    ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)"
     name="ftsMemoryQuota"
     ng-model="config.ftsMemoryQuota" />
   <span>MB (min {{::config.minFTSMemorySize}} MB)</span>

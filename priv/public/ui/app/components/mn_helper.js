@@ -61,7 +61,7 @@
       }
       function initializeDetailsHashObserver($scope, hashKey, stateName) {
         function getHashValue() {
-          return $stateParams[hashKey] || [];
+          return $state.params[hashKey] || [];
         }
         $scope.isDetailsOpened = function (hashValue) {
           return _.contains(getHashValue(), String(hashValue));

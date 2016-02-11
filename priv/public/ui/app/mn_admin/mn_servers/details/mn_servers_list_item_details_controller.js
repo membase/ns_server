@@ -11,5 +11,8 @@
         mnPromiseHelper(vm, mnServersListItemDetailsService.getNodeDetails(node))
           .applyToScope("server");
       });
+      $scope.$watchGroup(['node', 'serversCtl.tasks'], function (values) {
+        vm.tasks = mnServersListItemDetailsService.getNodeTasks(values[0], values[1]);
+      });
     }
 })();

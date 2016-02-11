@@ -82,11 +82,9 @@
         });
       }, function (resp) {
         switch (resp.status) {
-          case 404:
-          case 500: //should be removed later
-            return $q.when({isEmptyState: true});
           case 0:
           case -1: return $q.reject(resp);
+          default: return $q.when({isEmptyState: true});
         }
       });
     }

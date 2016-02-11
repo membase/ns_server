@@ -21,6 +21,7 @@
       <label class="for-enable-replicas">
         <input
           type="checkbox"
+          ng-disabled="!rbac.cluster.settings.write"
           id="notification-updates"
           ng-model="settingsNotificationsCtl.updates.enabled">
         <span>Enable software update notifications.</span>
@@ -38,6 +39,7 @@
     <div class="save_cancel when-roadmin-hide-me">
       <button
         class="save_button float_right"
+        ng-show="rbac.cluster.settings.write"
         type="submit">Save</button>
     </div>
   </form>

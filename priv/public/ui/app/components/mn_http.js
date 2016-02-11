@@ -77,7 +77,6 @@
       if (timeout) {
         timeoutID = $timeout(cancel("timeout"), timeout);
       }
-
       return config;
     }
 

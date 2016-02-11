@@ -21,53 +21,53 @@
   <div class="side side_4"></div>
 </div>
 <div class="additional_server_info">
-    <h3 ng-if="serversListItemDetailsCtl.server.detailedProgress">Rebalance Progress</h3>
-    <p ng-if="serversListItemDetailsCtl.server.detailedProgress.bucket">
+    <h3 ng-if="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">Rebalance Progress</h3>
+    <p ng-if="serversListItemDetailsCtl.tasks.detailedProgress.bucket && rbac.cluster.tasks.read">
       <span>Bucket:</span>
-      {{serversListItemDetailsCtl.server.detailedProgress.bucket}}
-      ({{serversListItemDetailsCtl.server.detailedProgress.bucketNumber}} out of {{serversListItemDetailsCtl.server.detailedProgress.bucketsCount}})
+      {{serversListItemDetailsCtl.tasks.detailedProgress.bucket}}
+      ({{serversListItemDetailsCtl.tasks.detailedProgress.bucketNumber}} out of {{serversListItemDetailsCtl.server.detailedProgress.bucketsCount}})
     </p>
-    <div class="rebalance_progress" ng-if="serversListItemDetailsCtl.server.detailedProgress">
-      <div ng-if="serversListItemDetailsCtl.server.detailedProgress.outgoing">
+    <div class="rebalance_progress" ng-if="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">
+      <div ng-if="serversListItemDetailsCtl.tasks.detailedProgress.outgoing">
         <p class="direction">Data being transferred out</p>
         <p>
           <span>Total number of keys to be transferred:</span>
-          {{ serversListItemDetailsCtl.server.detailedProgress.outgoing.docsTotal }}
+          {{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.docsTotal }}
         </p>
         <p>
           <span>Estimated number of keys transferred:</span>
-          {{ serversListItemDetailsCtl.server.detailedProgress.outgoing.docsTransferred }}
+          {{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.docsTransferred }}
         </p>
         <p>
           <span>
             Number of Active# vBuckets and Replica# vBuckets to transfer:
           </span>
-          Active#-{{ serversListItemDetailsCtl.server.detailedProgress.outgoing.activeVBucketsLeft }}
-          Replica#-{{ serversListItemDetailsCtl.server.detailedProgress.outgoing.replicaVBucketsLeft }}
+          Active#-{{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.activeVBucketsLeft }}
+          Replica#-{{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.replicaVBucketsLeft }}
         </p>
       </div>
 
-      <div ng-if="serversListItemDetailsCtl.server.detailedProgress.ingoing">
+      <div ng-if="serversListItemDetailsCtl.tasks.detailedProgress.ingoing">
         <p class="direction">Data being transferred in</p>
         <p>
           <span>Total number of keys to be transferred:</span>
-          {{ serversListItemDetailsCtl.server.detailedProgress.ingoing.docsTotal }}
+          {{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.docsTotal }}
         </p>
         <p>
           <span>Estimated number of keys transferred:</span>
-          {{ serversListItemDetailsCtl.server.detailedProgress.ingoing.docsTransferred }}
+          {{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.docsTransferred }}
         </p>
         <p>
           <span>
             Number of Active# vBuckets and Replica# vBuckets to transfer:
           </span>
-          Active#-{{ serversListItemDetailsCtl.server.detailedProgress.ingoing.activeVBucketsLeft }}
-          Replica#-{{ serversListItemDetailsCtl.server.detailedProgress.ingoing.replicaVBucketsLeft }}
+          Active#-{{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.activeVBucketsLeft }}
+          Replica#-{{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.replicaVBucketsLeft }}
         </p>
       </div>
 
     </div>
-    <div ng-if="serversListItemDetailsCtl.server.warmUpTasks.length" mn-warmup-progress warm-up-tasks="serversListItemDetailsCtl.server.warmUpTasks" sort-by="bucket"></div>
+    <div ng-if="serversListItemDetailsCtl.tasks.warmUpTasks.length && rbac.cluster.tasks.read" mn-warmup-progress warm-up-tasks="serversListItemDetailsCtl.tasks.warmUpTasks" sort-by="bucket"></div>
 
   <h3>Memory</h3>
   <div class="info_block">

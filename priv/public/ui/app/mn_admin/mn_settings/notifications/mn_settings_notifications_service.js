@@ -6,9 +6,10 @@ angular.module('mnSettingsNotificationsService', [
   'mnViewsListService',
   'mnGsiService',
   'mnAuditService',
-  'mnFilters'
+  'mnFilters',
+  'mnPermissions'
 ]).factory('mnSettingsNotificationsService',
-  function ($http, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnGsiService, mnAuditService, mnMBtoBytesFilter) {
+  function ($http, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnGsiService, mnAuditService, mnMBtoBytesFilter, mnPermissions) {
     var mnSettingsNotificationsService = {};
 
     function sumWithoutNull(array, average) {
@@ -169,7 +170,7 @@ angular.module('mnSettingsNotificationsService', [
       calculateAvgWeekAndHour(stats, "total_avg_view_accesses");
       calculateAvgWeekAndHour(stats, "total_avg_index_num_rows_returned");
 
-      if (pools.isEnterprise) {
+      if (pools.isEnterprise && mnPermissions.export.cluster.admin.security.read) {
         return mnAuditService.getAuditSettings().then(function (auditSettings) {
           stats.adminAuditEnabled = auditSettings.auditdEnabled;
           return stats;

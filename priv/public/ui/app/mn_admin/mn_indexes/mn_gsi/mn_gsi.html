@@ -1,4 +1,4 @@
-<div id="js_indexes" class="gsi">
+<div id="js_indexes" class="gsi" ng-if="rbac.cluster.indexes.read">
   <div id="js_index_warnings_container">
     <div class="warning_message" ng-repeat="message in gsiCtl.state.warnings">Warning: {{message}}</div>
   </div>

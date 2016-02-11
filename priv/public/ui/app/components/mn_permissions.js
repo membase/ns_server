@@ -11,16 +11,32 @@
     this.set = set;
 
     var interestedPermissions = [
-      "cluster.bucket:all!create",
+      "cluster.bucket.all!create",
       "cluster.nodes!write",
       "cluster.pools!read",
       "cluster.server_groups!read",
+      "cluster.server_groups!write",
       "cluster.settings!read",
+      "cluster.settings!write",
       "cluster.stats!read",
       "cluster.tasks!read",
       "cluster.indexes!read",
       "cluster.admin.internal!all",
-      "cluster.xdcr.settings!read"
+      "cluster.xdcr.settings!read",
+      "cluster.xdcr.settings!write",
+      "cluster.xdcr.remote_clusters!read",
+      "cluster.xdcr.remote_clusters!write",
+      "cluster.admin.security!read",
+      "cluster.admin.logs!read",
+      "cluster.logs!read",
+      "cluster.pools!write",
+      "cluster.indexes!write",
+      "cluster.admin.security!write",
+      "cluster.samples!read",
+      "cluster.nodes!read",
+      "cluster.bucket[?].xdcr!read",
+      "cluster.bucket[?].xdcr!write",
+      "cluster.bucket[?].xdcr!execute"
     ];
 
     function getAll() {
@@ -86,7 +102,7 @@
           return doCheck(permissions);
         }, function (resp) {
           switch (resp.status) {
-            case 401: return doCheck(getAll());
+            case 403: return doCheck(getAll());
             default: return $q.reject(resp);
           }
         });

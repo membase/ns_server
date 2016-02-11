@@ -17,12 +17,18 @@
       .state('app.admin.security.externalRoles', {
         url: "/externalRoles",
         controller: "mnExternalRolesController as externalRolesCtl",
-        templateUrl: "app/mn_admin/mn_security/mn_external_roles/mn_external_roles.html"
+        templateUrl: "app/mn_admin/mn_security/mn_external_roles/mn_external_roles.html",
+        data: {
+          permissions: "cluster.admin.security.read"
+        }
       })
       .state('app.admin.security.internalRoles', {
         url: '/internalRoles',
         controller: 'mnInternalRolesController as internalRolesCtl',
-        templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/mn_internal_roles.html'
+        templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/mn_internal_roles.html',
+        data: {
+          permissions: "cluster.admin.security.read"
+        }
       })
       .state('app.admin.security.rootCertificate', {
         url: '/rootCertificate',
@@ -41,7 +47,8 @@
         data: {
           required: {
             enterprise: true
-          }
+          },
+          permissions: "cluster.admin.security.read"
         }
       })
       .state('app.admin.security.audit', {
@@ -51,7 +58,8 @@
         data: {
           required: {
             enterprise: true
-          }
+          },
+          permissions: "cluster.admin.security.read"
         }
       });
   }

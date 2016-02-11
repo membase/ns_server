@@ -11,7 +11,7 @@
           ui-sref-active="selected">Production Views</a>
         <span
           class="badge notify"
-          ng-show="viewsListCtl.ddocs.production.length">
+          ng-show="viewsListCtl.ddocs.production.length && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.read">
             <span id="prod_view_count">{{viewsListCtl.ddocs.production.length}}</span>
         </span>
       </li>
@@ -21,11 +21,11 @@
         class="btn_1 button_200 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup"
         style="float: right;"
         ng-click="viewsListCtl.showMapreduceCreationDialog()"
-        ng-show="viewsListCtl.showViewCreationButtons()"><span>Create Development View</span></a>
+        ng-show="viewsListCtl.showViewCreationButtons() && rbac.cluster.admin.internal.all"><span>Create Development View</span></a>
       <a
         class="btn_1 btn_create_spatial when-in-dev when-roadmin-hide-me casper_views_create_view_popup"
         style="float: right; margin-right: 5px;"
-        ng-show="viewsListCtl.showViewCreationButtons()"
+        ng-show="viewsListCtl.showViewCreationButtons() && rbac.cluster.admin.internal.all"
         ng-click="viewsListCtl.showSpatialCreationDialog()"><span>Create Development Spatial View</span></a>
       <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
     </div>
@@ -69,7 +69,7 @@
             </td>
             <td class="langv">{{row.doc.language || "javascript"}}</td>
             <td>
-              <div class="indexer_progress" ng-if="viewsListCtl.tasks[row.doc.meta.id][0].progress">
+              <div class="indexer_progress" ng-if="viewsListCtl.tasks[row.doc.meta.id][0].progress && rbac.cluster.tasks.read">
                 <div class="usage_smallest">
                   <div class="used" style="width: {{viewsListCtl.tasks[row.doc.meta.id][0].progress}}%"></div>
                 </div>
@@ -79,32 +79,34 @@
             <td colspan="3" class="when-roadmin-hide-me" style="height: 33px;">
               <a
                 class="list_button when-in-prod casper_views_copy_to_dev"
-                ng-show="!viewsListCtl.isDevelopmentViews"
+                ng-show="!viewsListCtl.isDevelopmentViews && rbac.cluster.admin.internal.all"
                 ng-click="viewsListCtl.copyToDev(row.doc)"><span>Copy to Dev</span></a>
 
               <a
                 class="list_button when-in-dev"
                 ng-class="{dynamic_disabled: ('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)}"
                 ng-click="viewsListCtl.publishDdoc(row.doc)"
-                ng-show="viewsListCtl.showPublishButton(row)"><span>Publish</span></a>
+                ng-show="viewsListCtl.showPublishButton(row) && rbac.cluster.admin.internal.all"><span>Publish</span></a>
 
               <a
                 class="list_button when-in-dev casper_views_add_view_popup"
                 ng-click="viewsListCtl.showCreationDialog(row.doc)"
-                ng-show="viewsListCtl.showCreationButton(row)"><span>Add View</span></a>
+                ng-show="viewsListCtl.showCreationButton(row) && rbac.cluster.admin.internal.all"><span>Add View</span></a>
 
               <a
                 class="list_button when-in-dev casper_views_add_spatial_popup"
                 ng-click="viewsListCtl.showCreationDialog(row.doc, true)"
-                ng-show="viewsListCtl.showSpatialButton(row)"><span>Add Spatial View</span></a>
+                ng-show="viewsListCtl.showSpatialButton(row) && rbac.cluster.admin.internal.all"><span>Add Spatial View</span></a>
 
               <a
                 class="list_button casper_views_delete_popup"
+                ng-show="rbac.cluster.admin.internal.all"
                 ng-click="viewsListCtl.showDdocDeletionDialog(row.doc)"><span>Delete</span></a>
 
               <button
                 class="list_button"
                 ng-class="{dynamic_disabled: (('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)) || !!(viewsListCtl.tasks[row.doc.meta.id][0].type === 'view_compaction') || !!viewsListCtl.getStartedCompactions()[row.controllers.compact]}"
+                ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.compact"
                 ng-click="!($event | isDisabled) && viewsListCtl.registerCompactionAsTriggeredAndPost(row)"><span>Compact</span></button>
 
               <div
@@ -125,8 +127,8 @@
                 ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">{{key}}</a>
             </td>
             <td>
-              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="viewsListCtl.isDevModeDoc(row.doc.meta.id)" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))"><span>{{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}</span></a>
+              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.admin.internal.all" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
+              <a class="list_button btn_edit" ng-show="rbac.cluster.admin.internal.all" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))"><span>{{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}</span></a>
             </td>
           </tr>
           <tr ng-repeat-end="" ng-if="!('isEmpty' | lodash:row.doc.json.spatial)" ng-repeat="(key, spatial) in row.doc.json.spatial">
@@ -134,8 +136,8 @@
               <a ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">[Spatial] {{key}}</a>
             </td>
             <td>
-              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="viewsListCtl.isDevModeDoc(row.doc.meta.id)" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))"><span>{{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}</span></a>
+              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.admin.internal.all" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
+              <a class="list_button btn_edit" ng-show="rbac.cluster.admin.internal.all" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))"><span>{{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}</span></a>
             </td>
           </tr>
         </tbody>

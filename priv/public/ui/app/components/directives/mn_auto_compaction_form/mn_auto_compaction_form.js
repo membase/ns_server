@@ -11,7 +11,8 @@
       scope: {
         autoCompactionSettings: '=',
         validationErrors: '=',
-        isBucketsSettings: '='
+        isBucketsSettings: '=',
+        rbac: "="
       },
       isolate: false,
       replace: true,

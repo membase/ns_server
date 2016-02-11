@@ -15,20 +15,20 @@
         <a
           id="js_create_group"
           class="btn_1 casper_groups_create_popup"
-          ng-class="{dynamic_disabled: groupsCtl.disableAddGroupBtn || groupsCtl.rebalancing}"
-          ng-click="!groupsCtl.disableAddGroupBtn && groupsCtl.createGroup()"
+          ng-class="{dynamic_disabled: groupsCtl.disableAddGroupBtn || groupsCtl.rebalancings || !rbac.cluster.server_groups.write}"
+          ng-click="!groupsCtl.disableAddGroupBtn && !groupsCtl.rebalancings && rbac.cluster.server_groups.write && groupsCtl.createGroup()"
           ><span>Create Group</span></a>
         <a
           id="js_save_groups_changes"
           class="btn_1 casper_groups_error"
-          ng-class="{dynamic_disabled: groupsCtl.disableApplyChangesBtn || groupsCtl.rebalancing}"
-          ng-click="!groupsCtl.disableApplyChangesBtn && groupsCtl.applyChanges()"
+          ng-class="{dynamic_disabled: groupsCtl.disableApplyChangesBtn || groupsCtl.rebalancing || !rbac.cluster.server_groups.write}"
+          ng-click="!groupsCtl.disableApplyChangesBtn && !groupsCtl.rebalancing && rbac.cluster.server_groups.write && groupsCtl.applyChanges()"
           ><span>Apply Changes</span></a>
       </div>
       <div class="groups_container" id="js_server_group_container" mn-spinner="viewLoading">
         <div ng-repeat="group in groupsCtl.state.groups | orderBy:'name'" class="group_wrapper js_group_wrapper">
           <div class="head">
-            <a class="btn_1 js_edit_group casper_groups_edit_popup" ng-click="groupsCtl.createGroup(group)"><span>Rename Group</span></a>
+            <a class="btn_1 js_edit_group casper_groups_edit_popup" ng-show="rbac.cluster.server_groups.write" ng-click="groupsCtl.createGroup(group)"><span>Rename Group</span></a>
             <div><h4 class="ellipsis">{{ group.name }}</h4></div>
           </div>
           <div class="group_servers js_group_servers">

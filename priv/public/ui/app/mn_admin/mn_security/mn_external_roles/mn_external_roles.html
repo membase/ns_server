@@ -24,7 +24,7 @@
       <th></th>
     </tr>
     <tbody>
-      <tr ng-if="externalRolesCtl.state.users.length" ng-repeat="user in externalRolesCtl.state.users | orderBy:externalRolesCtl.sortableTableProperties.orderBy:externalRolesCtl.sortableTableProperties.invert track by user.name">
+      <tr ng-if="externalRolesCtl.state.users.length" ng-repeat="user in externalRolesCtl.state.users | orderBy:externalRolesCtl.sortableTableProperties.orderBy:externalRolesCtl.sortableTableProperties.invert track by user.id">
         <td class="ellipsis">{{user.id}}</td>
         <td class="ellipsis">{{user.name}}</td>
         <td>

@@ -116,14 +116,13 @@
         return ddocs;
       }, function (resp) {
         switch (resp.status) {
-          case 404: return getEmptyViewsState();
           case 400: return getEmptyViewsState().then(function (emptyState) {
             emptyState.ddocsAreInFactMissing = resp.data.error === 'no_ddocs_service';
             return emptyState;
           });
           case 0:
-          case -1:
-          default: $q.reject(resp);
+          case -1: return $q.reject(resp);
+          default: return getEmptyViewsState();
         }
       });
     }

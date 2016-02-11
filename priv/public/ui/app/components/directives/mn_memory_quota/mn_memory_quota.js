@@ -13,7 +13,8 @@
       restrict: 'A',
       scope: {
         config: '=mnMemoryQuota',
-        errors: "="
+        errors: "=",
+        rbac: "="
       },
       templateUrl: 'app/components/directives/mn_memory_quota/mn_memory_quota.html',
       controller: controller

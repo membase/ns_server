@@ -10,7 +10,7 @@
         <span
           id="edit-internal-settings-link"
           class="when-roadmin-avoid-me"
-          ng-hide="!adminCtl.enableInternalSettings">
+          ng-show="adminCtl.enableInternalSettings && (rbac.cluster.settings.read || rbac.cluster.xdcr.settings.read)">
           <a ng-click="adminCtl.runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b>
         </span>
         <a href="/classic-index.html" target="_self">
@@ -43,7 +43,7 @@
           'closed': adminCtl.isProgressBarClosed
         }"
         class="closed"
-        ng-show="adminCtl.filterTasks(adminCtl.tasks.running).length">
+        ng-show="rbac.cluster.tasks.read && adminCtl.filterTasks(adminCtl.tasks.running).length">
           <i
             class="toggle"
             ng-click="adminCtl.areThereMoreThenTwoRunningTasks() && adminCtl.toggleProgressBar()">i</i>
@@ -71,15 +71,16 @@
           <a class="switch_buckets" ui-sref="app.admin.buckets">Data Buckets</a>
         </li>
         <li mn-tab="indexes" class="line" ng-class="{currentNav: ('app.admin.indexes' | includedByState)}">
-          <a class="switch_views" ui-sref="app.admin.indexes.gsi">Indexes</a>
+          <a class="switch_views" ui-sref="app.admin.indexes.gsi" ng-show="rbac.cluster.indexes.read">Indexes</a>
+          <a class="switch_views" ui-sref="app.admin.indexes.views.list" ng-show="rbac.cluster.indexes.read === false">Indexes</a>
         </li>
         <li mn-tab="replications" class="line" ui-sref-active="currentNav">
           <a class="switch_replications" ui-sref="app.admin.replications">XDCR</a>
         </li>
-        <li mn-tab="security" class="line" ng-class="{currentNav: ('app.admin.security' | includedByState)}">
+        <li mn-tab="security" class="line" ng-show="rbac.cluster.admin.security.read" ng-class="{currentNav: ('app.admin.security' | includedByState)}">
           <a class="switch_security" ui-sref="app.admin.security.externalRoles">Security</a>
         </li>
-        <li mn-tab="logs" class="line" ng-class="{currentNav: ('app.admin.logs' | includedByState)}">
+        <li mn-tab="logs" class="line" ng-class="{currentNav: ('app.admin.logs' | includedByState)}" ng-show="rbac.cluster.logs.read">
           <a class="switch_log" ui-sref="app.admin.logs.list">Log</a>
         </li>
         <li mn-tab="settings" id="nav_settings_container" class="line" ng-class="{currentNav: ('app.admin.settings' | includedByState)}">

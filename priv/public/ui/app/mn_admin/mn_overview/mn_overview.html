@@ -25,7 +25,7 @@
     </div>
   </div>
 
-  <div class="shadow_box">
+  <div class="shadow_box" ng-show="rbac.cluster.stats.read">
     <div class="hdr">
       <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating
       with the cluster; displaying cached information!</span>
