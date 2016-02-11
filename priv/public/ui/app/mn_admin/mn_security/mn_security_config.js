@@ -14,6 +14,16 @@
         controller: "mnSecurityController as securityCtl",
         templateUrl: "app/mn_admin/mn_security/mn_security.html"
       })
+      .state('app.admin.security.externalRoles', {
+        url: "/externalRoles",
+        controller: "mnExternalRolesController as externalRolesCtl",
+        templateUrl: "app/mn_admin/mn_security/mn_external_roles/mn_external_roles.html"
+      })
+      .state('app.admin.security.internalRoles', {
+        url: '/internalRoles',
+        controller: 'mnInternalRolesController as internalRolesCtl',
+        templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/mn_internal_roles.html'
+      })
       .state('app.admin.security.rootCertificate', {
         url: '/rootCertificate',
         controller: 'mnRootCertificateController as rootCertificateCtl',
