@@ -13,6 +13,10 @@
     vm.initialIndexSettigs = _.clone(indexSettings);
     vm.indexSettings = indexSettings;
 
+    if (!vm.isEnterprise) {
+      vm.indexSettings.storageMode = 'forestdb';
+    }
+
     function onSubmit() {
       if (vm.viewLoading) {
         return;

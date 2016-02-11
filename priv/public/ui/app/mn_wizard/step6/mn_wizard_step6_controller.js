@@ -22,6 +22,10 @@
           return;
         }
 
+        if (!vm.isEnterprise) {
+          vm.indexSettings.storageMode = 'forestdb';
+        }
+
         var promise = $q.all([
           mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
             .catchErrors("postIndexSettingsErrors")
