@@ -6,7 +6,7 @@
     ])
     .factory('mnGroupsService', mnGroupsService);
 
-  function mnGroupsService($http) {
+  function mnGroupsService($http, $filter) {
     var mnGroupsService = {
       getGroups: getGroups,
       getGroupsState: getGroupsState,
@@ -78,8 +78,9 @@
         method: 'GET',
         url: '/pools/default/serverGroups'
       }).then(function (resp) {
-        resp.data.currentGroups = _.cloneDeep(resp.data.groups);
-        resp.data.initialGroups = _.cloneDeep(resp.data.groups);
+        var groups = $filter('orderBy')(resp.data.groups, 'name');
+        resp.data.currentGroups = _.cloneDeep(groups);
+        resp.data.initialGroups = _.cloneDeep(groups);
         return resp.data;
       });
     }
