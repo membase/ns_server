@@ -59,7 +59,7 @@ active_nodes() ->
     active_nodes(ns_config:get()).
 
 active_nodes(Config) ->
-    [Node || Node <- ns_node_disco:nodes_wanted(),
+    [Node || Node <- ns_node_disco:nodes_wanted(Config),
              get_cluster_membership(Node, Config) == active].
 
 actual_active_nodes() ->
