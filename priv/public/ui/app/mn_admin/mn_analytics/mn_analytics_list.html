@@ -34,7 +34,7 @@
               <ul class="js_inner">
                 <li>
                   <a ng-show="!analyticsCtl.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: '@' + analyticsCtl.nodes.nodesNames[1], specificStat: statInfo.name})">show by server</a>
-                  <a ng-show="analyticsCtl.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: 'ops', statsHostname: statInfo.title, specificStat: null})">show this server</a>
+                  <a ng-show="analyticsCtl.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: 'ops', statsHostname: statInfo.name.slice(1), specificStat: null})">show this server</a>
                 </li>
               </ul>
             </ins>
