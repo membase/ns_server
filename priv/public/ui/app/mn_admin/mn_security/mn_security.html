@@ -18,6 +18,7 @@
         ui-sref-active="selected">Root Certificates</a>
     </li>
     <li
+      ng-show="adminCtl.poolDefault.isEnterprise"
       class="when-enterprise only-when-40">
       <a
         id="security_audit"
