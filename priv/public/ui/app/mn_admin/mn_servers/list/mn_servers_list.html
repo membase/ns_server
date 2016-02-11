@@ -78,6 +78,7 @@
           </td>
           <td>
             <div
+              ng-show="serversCtl.mnPoolDefault.value.isGroupsAvailable"
               class="ellipsis"
               title="{{serversCtl.getGroupsByHostname[node.hostname].name}}">
                 {{serversCtl.getGroupsByHostname[node.hostname].name}}
