@@ -2,17 +2,13 @@
   "use strict";
 
   angular.module('mnSettingsClusterService', [
-    'mnServersService',
-    'mnPoolDefault',
-    'mnMemoryQuotaService'
   ]).factory('mnSettingsClusterService', mnSettingsClusterServiceFactory);
 
-  function mnSettingsClusterServiceFactory($http, $q, mnServersService, mnPoolDefault, mnMemoryQuotaService, IEC) {
+  function mnSettingsClusterServiceFactory($http, $q, IEC) {
     var mnSettingsClusterService = {
       postPoolsDefault: postPoolsDefault,
       getIndexSettings: getIndexSettings,
-      postIndexSettings: postIndexSettings,
-      getClusterState: getClusterState
+      postIndexSettings: postIndexSettings
     };
 
     return mnSettingsClusterService;
@@ -54,27 +50,5 @@
       }
       return $http(config);
     }
-    function getInMegs(value) {
-      return Math.floor(value / IEC.Mi);
-    }
-    function getClusterState() {
-      return mnPoolDefault.getFresh().then(function (poolDefault) {
-        var requests = [
-          mnMemoryQuotaService.memoryQuotaConfig({kv: true, index: true, fts: true, n1ql: true}, false),
-          mnSettingsClusterService.getIndexSettings()
-        ];
-        return $q.all(requests).then(function (resp) {
-          var memoryQuotaConfig = resp[0];
-          var indexSettings = resp[1];
-
-          return {
-            initialMemoryQuota: memoryQuotaConfig.indexMemoryQuota,
-            clusterName: poolDefault.clusterName,
-            memoryQuotaConfig: memoryQuotaConfig,
-            indexSettings: indexSettings
-          };
-        });
-      });
-    };
   }
 })();

@@ -1,7 +1,7 @@
 <div
   id="js_cluster_settings_container"
   class="cluster_settings_container"
-  mn-spinner="!settingsClusterCtl.state || settingsClusterCtl.clusterSettingsLoading">
+  mn-spinner="settingsClusterCtl.clusterName === undefined || !settingsClusterCtl.memoryQuotaConfig || !settingsClusterCtl.indexSettings || (poolDefault.value.isEnterprise && !settingsClusterCtl.certificate) || settingsClusterCtl.clusterSettingsLoading">
   <form
     id="js_cluster_public_settings_form"
     class="cluster_settings_form"
@@ -15,18 +15,18 @@
         type="text"
         name="clusterName"
         maxlength="256"
-        ng-model="settingsClusterCtl.state.clusterName">
+        ng-model="settingsClusterCtl.clusterName">
       <span>(0 — 256 chars)</span>
     </div>
     <h2>Cluster RAM Quota</h2>
     <div
       class="sub_section cluster_quota_settings"
-      mn-memory-quota="settingsClusterCtl.state.memoryQuotaConfig"
+      mn-memory-quota="settingsClusterCtl.memoryQuotaConfig"
       errors="settingsClusterCtl.memoryQuotaErrors"></div>
     <h2 class="only-when-40">Index Settings</h2>
     <div class="sub_section index_settings_section js_index_settings_section only-when-40">
       <div
-        mn-storage-mode="settingsClusterCtl.state.indexSettings"
+        mn-storage-mode="settingsClusterCtl.indexSettings"
         is-disabled="!adminCtl.poolDefault.isEnterprise"
         no-label="true"
         errors="settingsClusterCtl.indexSettingsErrors"></div>
@@ -36,9 +36,9 @@
           <label for="index_settings_thread">Indexer Threads:</label>
           <input
             type="number"
-            ng-model="settingsClusterCtl.state.indexSettings.indexerThreads"
+            ng-model="settingsClusterCtl.indexSettings.indexerThreads"
             name="indexerThreads"
-            ng-disabled="settingsClusterCtl.state.indexSettings.storageMode === ''"
+            ng-disabled="settingsClusterCtl.indexSettings.storageMode === ''"
             id="index_settings_thread">
           <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
             <span class="tooltip_msg text_11" style="width:310px;"><span>
@@ -55,9 +55,9 @@
           <label for="in_memory_snapshot">In Memory Snapshot Interval:</label>
           <input
             type="number"
-            ng-model="settingsClusterCtl.state.indexSettings.memorySnapshotInterval"
+            ng-model="settingsClusterCtl.indexSettings.memorySnapshotInterval"
             name="memorySnapshotInterval"
-            ng-disabled="settingsClusterCtl.state.indexSettings.storageMode === ''"
+            ng-disabled="settingsClusterCtl.indexSettings.storageMode === ''"
             id="in_memory_snapshot">
           <span>(ms)</span>
           <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
@@ -76,9 +76,9 @@
           <label for="in_memory_snapshot">Stable Snapshot Interval:</label>
           <input
             type="number"
-            ng-model="settingsClusterCtl.state.indexSettings.stableSnapshotInterval"
+            ng-model="settingsClusterCtl.indexSettings.stableSnapshotInterval"
             name="stableSnapshotInterval"
-            ng-disabled="settingsClusterCtl.state.indexSettings.storageMode === ''"
+            ng-disabled="settingsClusterCtl.indexSettings.storageMode === ''"
             id="in_memory_snapshot">
           <span>(ms)</span>
           <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
@@ -96,9 +96,9 @@
           <label for="in_memory_snapshot">Max Rollback Points:</label>
           <input
             type="number"
-            ng-model="settingsClusterCtl.state.indexSettings.maxRollbackPoints"
+            ng-model="settingsClusterCtl.indexSettings.maxRollbackPoints"
             name="maxRollbackPoints"
-            ng-disabled="settingsClusterCtl.state.indexSettings.storageMode === ''"
+            ng-disabled="settingsClusterCtl.indexSettings.storageMode === ''"
             id="in_memory_snapshot">
           <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
             <span class="tooltip_msg text_11" style="width:310px;"><span>
@@ -114,9 +114,9 @@
         <div class="row">
           <label for="indexer_log_level">Indexer Log Level:</label>
           <select
-            ng-model="settingsClusterCtl.state.indexSettings.logLevel"
+            ng-model="settingsClusterCtl.indexSettings.logLevel"
             name="logLevel"
-            ng-disabled="settingsClusterCtl.state.indexSettings.storageMode === ''"
+            ng-disabled="settingsClusterCtl.indexSettings.storageMode === ''"
             id="indexer_log_level">
             <option value="silent">Silent</option>
             <option value="fatal">Fatal</option>
