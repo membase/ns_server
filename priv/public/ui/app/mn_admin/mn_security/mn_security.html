@@ -26,6 +26,14 @@
         ui-sref="app.admin.security.audit"
         ui-sref-active="selected">Audit</a>
     </li>
+    <li
+      class="when-enterprise only-when-40 only-when_ldap_enabled"
+      ng-show="securityCtl.poolDefault.ldapEnabled">
+        <a
+          id="ldap_setup"
+          ui-sref="app.admin.security.ldap"
+          ui-sref-active="selected">LDAP Auth Setup</a>
+    </li>
   </ul>
   <div ui-view="">
   </div>

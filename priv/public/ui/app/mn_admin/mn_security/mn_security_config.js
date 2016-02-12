@@ -24,6 +24,16 @@
           }
         }
       })
+      .state('app.admin.security.ldap', {
+        url: '/ldap',
+        controller: 'mnLdapController as ldapCtl',
+        templateUrl: 'app/mn_admin/mn_security/mn_ldap/mn_ldap.html',
+        data: {
+          required: {
+            enterprise: true
+          }
+        }
+      })
       .state('app.admin.security.audit', {
         url: '/audit',
         controller: 'mnAuditController as auditCtl',
