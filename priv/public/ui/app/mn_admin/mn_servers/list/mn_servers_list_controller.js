@@ -141,7 +141,7 @@
           });
         } else {
           mnServersService.addToPendingEject(node);
-          $scope.$broadcast("reloadServersPoller");
+          $rootScope.$broadcast("reloadServersPoller");
         }
       });
 
