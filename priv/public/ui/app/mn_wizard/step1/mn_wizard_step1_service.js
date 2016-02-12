@@ -35,6 +35,7 @@
       maxMemorySize: undefined,
       totalMemorySize: undefined,
       memoryQuota: undefined,
+      displayedServices: {kv: true, index: true, fts: true, n1ql: true},
       services: {
         disabled: {kv: true, index: false, n1ql: false, fts: false},
         model: {kv: true, index: true, n1ql: true, fts: true}

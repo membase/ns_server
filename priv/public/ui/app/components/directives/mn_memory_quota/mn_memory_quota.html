@@ -5,7 +5,7 @@
 </div>
 <div class="row" ng-if="config.services" mn-services="config">
 </div>
-<div class="memory-quota row" ng-if="config.showKVMemoryQuota">
+<div class="memory-quota row" ng-if="config.displayedServices.kv">
   <label for="kv_ram_quota">Data RAM Quota:</label>
   <input
     type="number"
@@ -23,7 +23,7 @@
   </a>
   <span class="error-container err-memoryQuota" ng-show="errors.memoryQuota">{{errors.memoryQuota}}</span>
 </div>
-<div class="memory-quota row" ng-if="config.showIndexMemoryQuota">
+<div class="memory-quota row" ng-if="config.displayedServices.index">
   <label for="index_ram_quota">Index RAM Quota:</label>
   <input
     type="number"
@@ -41,7 +41,7 @@
   <span class="error-container err-indexMemoryQuota" ng-show="errors.indexMemoryQuota">
     {{errors.indexMemoryQuota}}</span>
 </div>
-<div class="memory-quota row" ng-if="config.showFTSMemoryQuota">
+<div class="memory-quota row" ng-if="config.displayedServices.fts">
   <label for="fts_ram_quota">Full Text RAM Quota:</label>
   <input
     type="number"

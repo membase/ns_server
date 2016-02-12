@@ -65,7 +65,7 @@
         controller: 'mnWizardStep6Controller as wizardStep6Ctl',
         resolve: {
           memoryQuotaConfig: function (mnMemoryQuotaService, mnWizardStep1Service) {
-            return mnMemoryQuotaService.memoryQuotaConfig(mnWizardStep1Service.getJoinClusterConfig().services.model.kv);
+            return mnMemoryQuotaService.memoryQuotaConfig(mnWizardStep1Service.getJoinClusterConfig().services.model);
           },
           indexSettigs: function (mnSettingsClusterService) {
             return mnSettingsClusterService.getIndexSettings();

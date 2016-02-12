@@ -60,7 +60,7 @@
     function getClusterState() {
       return mnPoolDefault.getFresh().then(function (poolDefault) {
         var requests = [
-          mnMemoryQuotaService.memoryQuotaConfig(true, false),
+          mnMemoryQuotaService.memoryQuotaConfig({kv: true, index: true, fts: true, n1ql: true}, false),
           mnSettingsClusterService.getIndexSettings()
         ];
         return $q.all(requests).then(function (resp) {
