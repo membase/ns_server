@@ -85,16 +85,8 @@ config_upgrade() ->
 config_upgrade_to_watson(Config) ->
     JSON = fetch_settings_json(Config),
     Current = decode_settings_json(JSON),
-    Nodes = ns_node_disco:nodes_wanted(),
-    %% If there are no index nodes in the cluster then set the default
-    %% to empty.
-    Default = case ns_cluster_membership:service_nodes(Config, Nodes, index) of
-                  [] ->
-                      [{storageMode, <<"">>}];
-                  _ ->
-                      [{storageMode, <<"forestdb">>}]
-              end,
-    New = build_settings_json(Default, Current, extra_known_settings()),
+    New = build_settings_json(extra_default_settings(Config), Current,
+                              extra_known_settings()),
     [{set, ?INDEX_CONFIG_KEY, New}].
 
 %% internal
@@ -200,21 +192,41 @@ known_settings() ->
     end.
 
 extra_known_settings() ->
-    [{storageMode, id_lens(<<"indexer.settings.storage_mode">>)}].
+    [{storageMode, id_lens(<<"indexer.settings.storage_mode">>)},
+     {compactionMode,
+      id_lens(<<"indexer.settings.compaction.compaction_mode">>)},
+     {circularCompaction, circular_compaction_lens()}].
 
 default_settings() ->
-    RV = [{memoryQuota, 256},
-          {generalSettings, general_settings_defaults()},
-          {compaction, compaction_defaults()}],
-    case cluster_compat_mode:is_cluster_watson() of
-        true ->
-            extra_default_settings() ++ RV;
-        false ->
-            RV
-    end.
+    [{memoryQuota, 256},
+     {generalSettings, general_settings_defaults()},
+     {compaction, compaction_defaults()}].
 
-extra_default_settings() ->
-    [{storageMode, <<"">>}].
+extra_default_settings(Config) ->
+    Nodes = ns_node_disco:nodes_wanted(),
+
+    IndexNodes = ns_cluster_membership:service_nodes(Config, Nodes, index),
+    {SM, CM, Int} = case IndexNodes of
+                        [] ->
+                            %% New cluster install or upgrades w/o any
+                            %% index nodes.
+                            {<<"">>, <<"circular">>,
+                             [{interval, compaction_interval_default()}]};
+                        _ ->
+                            %% Upgrades with index nodes in the cluster.
+                            %% Leave interval to whatever value user had set
+                            %% to prior to the upgrade.
+                            %% storage mode is set to forestdb because that
+                            %% was the only type supported in previous
+                            %% release. compaction mode set to "full"
+                            %% for the same reason.
+                            {<<"forestdb">>, <<"full">>, []}
+                    end,
+
+    CircDefaults = [{daysOfWeek, <<"">>},
+                    {abort_outside, false}] ++ Int,
+    [{storageMode, SM}, {compactionMode, CM},
+     {circularCompaction, CircDefaults}].
 
 id_lens(Key) ->
     Get = fun (Dict) ->
@@ -276,8 +288,21 @@ compaction_interval_default() ->
      {to_minute, 0}].
 
 compaction_interval_lens() ->
-    Get = fun (_Dict) ->
-                  unused
+    Key = <<"indexer.settings.compaction.interval">>,
+    Get = fun (Dict) ->
+                  case cluster_compat_mode:is_cluster_watson() of
+                      true ->
+                          Int0 = binary_to_list(dict:fetch(Key, Dict)),
+                          [From, To] = string:tokens(Int0, ","),
+                          [FromH, FromM] = string:tokens(From, ":"),
+                          [ToH, ToM] = string:tokens(To, ":"),
+                          [{from_hour, list_to_integer(FromH)},
+                           {from_minute, list_to_integer(FromM)},
+                           {to_hour, list_to_integer(ToH)},
+                           {to_minute, list_to_integer(ToM)}];
+                      false ->
+                          unused
+                  end
           end,
     Set = fun (Values0, Dict) ->
                   Values =
@@ -293,7 +318,6 @@ compaction_interval_lens() ->
                   {_, FromMinute} = lists:keyfind(from_minute, 1, Values),
                   {_, ToMinute} = lists:keyfind(to_minute, 1, Values),
 
-                  Key = <<"indexer.settings.compaction.interval">>,
                   Value = iolist_to_binary(
                             io_lib:format("~2.10.0b:~2.10.0b,~2.10.0b:~2.10.0b",
                                           [FromHour, FromMinute, ToHour, ToMinute])),
@@ -301,6 +325,22 @@ compaction_interval_lens() ->
                   dict:store(Key, Value, Dict)
           end,
     {Get, Set}.
+
+circular_compaction_lens_props() ->
+    [{daysOfWeek,
+      id_lens(<<"indexer.settings.compaction.days_of_week">>)},
+     {abort_outside,
+      id_lens(<<"indexer.settings.compaction.abort_exceed_interval">>)},
+     {interval, compaction_interval_lens()}].
+
+circular_compaction_lens_get(Dict) ->
+    lens_get_many(circular_compaction_lens_props(), Dict).
+
+circular_compaction_lens_set(Values, Dict) ->
+    lens_set_many(circular_compaction_lens_props(), Values, Dict).
+
+circular_compaction_lens() ->
+    {fun circular_compaction_lens_get/1, fun circular_compaction_lens_set/2}.
 
 compaction_lens_props() ->
     [{fragmentation, id_lens(<<"indexer.settings.compaction.min_frag">>)},
@@ -341,7 +381,7 @@ defaults_test() ->
 
     %% TODO: Need to mock cluster_compat_mode:is_cluster_***
     %% ?assertEqual(Keys(known_settings()), Keys(default_settings())),
-    ?assertEqual(Keys(compaction_lens_props()), Keys(compaction_defaults())),
+    %% ?assertEqual(Keys(compaction_lens_props()), Keys(compaction_defaults())),
     ?assertEqual(Keys(general_settings_lens_props()),
                  Keys(general_settings_defaults())).
 -endif.
