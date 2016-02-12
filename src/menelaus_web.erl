@@ -1407,12 +1407,30 @@ build_global_auto_compaction_settings(Config) ->
                 false ->
                     []
             end,
-
+    IndexExtra = (case cluster_compat_mode:is_cluster_watson() of
+                      true ->
+                          CompMode = index_settings_manager:get(compactionMode),
+                          true = (CompMode =/= undefined),
+                          Circ0 = index_settings_manager:get(circularCompaction),
+                          true = (Circ0 =/= undefined),
+                          Int = proplists:get_value(interval, Circ0),
+                          Circ1 = [{abort_outside,
+                                    proplists:get_value(abort_outside, Circ0)}] ++ Int,
+                          Circ = [{daysOfWeek,
+                                   proplists:get_value(daysOfWeek, Circ0)},
+                                  {interval,
+                                   build_auto_compaction_allowed_time_period(
+                                     Circ1)}],
+                          [{indexCompactionMode, CompMode},
+                           {indexCircularCompaction, {struct, Circ}}];
+                      false ->
+                          []
+                  end) ++ Extra,
     case ns_config:search(Config, autocompaction) of
         false ->
-            do_build_auto_compaction_settings([], Extra);
+            do_build_auto_compaction_settings([], IndexExtra);
         {value, ACSettings} ->
-            do_build_auto_compaction_settings(ACSettings, Extra)
+            do_build_auto_compaction_settings(ACSettings, IndexExtra)
     end.
 
 build_bucket_auto_compaction_settings(Settings) ->
@@ -3402,23 +3420,63 @@ handle_set_autocompaction(Req) ->
 
             case Is40 of
                 true ->
-                    AllowedPeriod = proplists:get_value(allowed_time_period, ACSettings, []),
-                    Fragmentation =
-                        case MaybeIndex of
-                            [] ->
-                                [];
-                            _ ->
-                                [{fragmentation, misc:expect_prop_value(index_fragmentation_percentage, MaybeIndex)}]
-                        end,
-
-                    {ok, _} = index_settings_manager:update(compaction,
-                                                            [{interval, AllowedPeriod}] ++ Fragmentation);
+                    case cluster_compat_mode:is_cluster_watson() of
+                        true ->
+                            new_index_compaction_settings(MaybeIndex);
+                        false ->
+                            old_index_compaction_settings(ACSettings, MaybeIndex)
+                    end;
                 false ->
                     ok
             end,
 
             ns_audit:modify_compaction_settings(Req, ACSettings ++ MaybePurgeInterval ++ MaybeIndex),
             reply_json(Req, [], 200)
+    end.
+
+old_index_compaction_settings(ACSettings, MaybeIndex) ->
+    AllowedPeriod = proplists:get_value(allowed_time_period, ACSettings, []),
+    Fragmentation =
+        case MaybeIndex of
+            [] ->
+                [];
+            _ ->
+                [{fragmentation, misc:expect_prop_value(index_fragmentation_percentage, MaybeIndex)}]
+        end,
+
+    {ok, _} = index_settings_manager:update(compaction,
+                                            [{interval, AllowedPeriod}] ++ Fragmentation).
+
+new_index_compaction_settings(Settings) ->
+    case proplists:get_value(index_fragmentation_percentage, Settings) of
+        undefined ->
+            ok;
+        Val ->
+            index_settings_manager:update(compaction, [{fragmentation, Val}])
+    end,
+    SetList = [{index_circular_compaction_days, daysOfWeek},
+               {index_circular_compaction_abort, abort_outside},
+               {index_circular_compaction_interval, interval}],
+    Set = lists:filtermap(
+            fun ({K, NewK}) ->
+                    case proplists:get_value(K, Settings) of
+                        undefined ->
+                            false;
+                        V ->
+                            {true, {NewK, V}}
+                    end
+            end, SetList),
+    case Set of
+        [] ->
+            ok;
+        _ ->
+            index_settings_manager:update(circularCompaction, Set)
+    end,
+    case proplists:get_value(index_compaction_mode, Settings) of
+        undefined ->
+            ok;
+        Mode ->
+            index_settings_manager:update(compactionMode, Mode)
     end.
 
 mk_number_field_validator_error_maker(JSONName, Msg, Args) ->
@@ -3456,6 +3514,78 @@ parse_validate_boolean_field(JSONName, CfgName, Params) ->
         _ -> [{error, JSONName, iolist_to_binary(io_lib:format("~s is invalid", [JSONName]))}]
     end.
 
+mk_string_field_validator(AV, Params) ->
+    fun ({JSONName, CfgName, HumanName}) ->
+            case proplists:get_value(JSONName, Params) of
+                undefined ->
+                    [];
+                Val ->
+                    %% Is Val one of the acceptable ones?
+                    %% Some settings are list of strings
+                    %% E.g. daysOfWeek can be "Sunday, Thursday"
+                    %% Need to validate each token.
+                    Tokens = string:tokens(Val, ","),
+                    case lists:any(fun (V) -> not lists:member(V, AV) end, Tokens) of
+                        true ->
+                            [{error, JSONName,
+                              iolist_to_binary(io_lib:format("~s must be one of ~p",
+                                                             [HumanName, AV]))}];
+                        false ->
+                            [{ok, CfgName, list_to_binary(Val)}]
+                    end
+            end
+    end.
+
+parse_and_validat_time_interval(JSONName, Params) ->
+    FromH = JSONName ++ "[fromHour]",
+    FromM = JSONName ++ "[fromMinute]",
+    ToH = JSONName ++ "[toHour]",
+    ToM = JSONName ++ "[toMinute]",
+    Abort = JSONName ++ "[abortOutside]",
+
+    Hours = [{FromH, from_hour, "from hour"}, {ToH, to_hour, "to hour"}],
+    Mins = [{FromM, from_minute, "from minute"}, {ToM, to_minute, "to minute"}],
+
+    Res0 = lists:flatmap(mk_number_field_validator(0, 23, Params), Hours)
+        ++ lists:flatmap(mk_number_field_validator(0, 59, Params), Mins)
+        ++ parse_validate_boolean_field(Abort, abort_outside, Params),
+
+    Err = lists:filter(fun ({error, _, _}) -> true; (_) -> false end, Res0),
+    %% If validation failed for any field then return error.
+    case Err of
+        [] ->
+            Res0;
+        _ ->
+            Err
+    end.
+
+parse_and_validate_extra_index_settings(Params) ->
+    CModeValidator = mk_string_field_validator(["circular", "full"], Params),
+    RV0 = CModeValidator({"indexCompactionMode", index_compaction_mode,
+                          "index compaction mode"}),
+
+    DaysList = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
+                "Friday", "Saturday"],
+    DaysValidator = mk_string_field_validator(DaysList, Params),
+    RV1 = DaysValidator({"indexCircularCompaction[daysOfWeek]",
+                         index_circular_compaction_days,
+                         "index circular compaction days"}) ++ RV0,
+
+    Time0 = parse_and_validat_time_interval("indexCircularCompaction[interval]",
+                                            Params),
+    TimeResults = case Time0 of
+                      [] ->
+                          Time0;
+                      [{error, _, _}|_] ->
+                          Time0;
+                      _ ->
+                          {_, {_, _, Abort}, Time1} = lists:keytake(abort_outside, 2, Time0),
+                          [{ok, index_circular_compaction_abort, Abort},
+                           {ok, index_circular_compaction_interval,
+                            [{F, V} || {ok, F, V} <- Time1]}]
+                  end,
+    TimeResults ++ RV1.
+
 parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
     PercResults = lists:flatmap(mk_number_field_validator(2, 100, Params),
                                 [{"databaseFragmentationThreshold[percentage]",
@@ -3476,9 +3606,15 @@ parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
         case ExpectIndex of
             true ->
                 PercValidator = mk_number_field_validator(2, 100, Params),
-                PercValidator({"indexFragmentationThreshold[percentage]",
-                               index_fragmentation_percentage,
-                               "index fragmentation"});
+                RV0 = PercValidator({"indexFragmentationThreshold[percentage]",
+                                     index_fragmentation_percentage,
+                                     "index fragmentation"}),
+                case cluster_compat_mode:is_cluster_watson() of
+                    true ->
+                        parse_and_validate_extra_index_settings(Params) ++ RV0;
+                    false ->
+                        RV0
+                end;
             false ->
                 []
         end,
@@ -3487,19 +3623,8 @@ parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
                          [] -> [{error, "parallelDBAndViewCompaction", <<"parallelDBAndViewCompaction is missing">>}];
                          X -> X
                      end,
-    PeriodTimeHours = [{"allowedTimePeriod[fromHour]", from_hour, "from hour"},
-                       {"allowedTimePeriod[toHour]", to_hour, "to hour"}],
-    PeriodTimeMinutes = [{"allowedTimePeriod[fromMinute]", from_minute, "from minute"},
-                         {"allowedTimePeriod[toMinute]", to_minute, "to minute"}],
-    PeriodTimeFieldsCount = length(PeriodTimeHours) + length(PeriodTimeMinutes) + 1,
-    PeriodTimeResults0 = lists:flatmap(mk_number_field_validator(0, 23, Params), PeriodTimeHours)
-        ++ lists:flatmap(mk_number_field_validator(0, 59, Params), PeriodTimeMinutes)
-        ++ parse_validate_boolean_field("allowedTimePeriod[abortOutside]", abort_outside, Params),
-    PeriodTimeResults = case length(PeriodTimeResults0) of
-                            0 -> PeriodTimeResults0;
-                            PeriodTimeFieldsCount -> PeriodTimeResults0;
-                            _ -> [{error, <<"allowedTimePeriod">>, <<"allowedTimePeriod is invalid">>}]
-                        end,
+    PeriodTimeResults = parse_and_validat_time_interval("allowedTimePeriod",
+                                                        Params),
     PurgeIntervalResults = (mk_number_field_validator(0.04, 60, Params, list_to_float))({"purgeInterval", purge_interval, "metadata purge interval"}),
 
     Errors0 = [{iolist_to_binary(Field), Msg} ||
@@ -3846,8 +3971,9 @@ do_handle_set_recovery_type(Req, Type, Params) ->
 -ifdef(EUNIT).
 
 basic_parse_validate_auto_compaction_settings_test() ->
+    %% TODO: Need to mock cluster_compat_mode:is_cluster_***
     {ok, Stuff0, [],
-     [{index_fragmentation_percentage, 43}]} =
+     []} =
         parse_validate_auto_compaction_settings([{"databaseFragmentationThreshold[percentage]", "10"},
                                                  {"viewFragmentationThreshold[percentage]", "20"},
                                                  {"indexFragmentationThreshold[size]", "42"},
@@ -3857,7 +3983,7 @@ basic_parse_validate_auto_compaction_settings_test() ->
                                                  {"allowedTimePeriod[fromMinute]", "1"},
                                                  {"allowedTimePeriod[toHour]", "2"},
                                                  {"allowedTimePeriod[toMinute]", "3"},
-                                                 {"allowedTimePeriod[abortOutside]", "false"}], true),
+                                                 {"allowedTimePeriod[abortOutside]", "false"}], false),
     Stuff1 = lists:sort(Stuff0),
     ?assertEqual([{allowed_time_period, [{from_hour, 0},
                                          {to_hour, 2},
@@ -3933,7 +4059,7 @@ extra_field_parse_validate_auto_compaction_settings_test() ->
                                                                 {"allowedTimePeriod[toHour]", "2"},
                                                                 {"allowedTimePeriod[toMinute]", "3"},
                                                                 {"allowedTimePeriod[abortOutside]", "false"}],
-                                                               true),
+                                                               false),
     ?assertEqual([{<<"_">>, <<"Got unsupported fields: databaseFragmentationThreshold">>}],
                  Stuff1),
     ok.
