@@ -24,7 +24,8 @@
          handle_info/2, terminate/2, code_change/3]).
 
 -export([generate_token/1, maybe_refresh/1,
-         check/1, reset/0, logout/1]).
+         check/1, reset/0, logout/1,
+         revoke/1]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -50,6 +51,9 @@ reset() ->
 
 logout(Token) ->
     gen_server:call(?MODULE, {logout, tok2bin(Token)}, infinity).
+
+revoke(User) ->
+    gen_server:cast(?MODULE, {revoke, User}).
 
 -define(MAX_TOKENS, 1024).
 
@@ -157,8 +161,14 @@ handle_call({check, Token}, _From, State) ->
         {_, _, Memo} ->
             {reply, {ok, Memo}, State}
     end;
+
 handle_call(Msg, From, _State) ->
     erlang:error({unknown_call, Msg, From}).
+
+handle_cast({revoke, User}, State) ->
+    Tokens = ets:match(ui_auth_by_token, {'$1','_','_',{User,'_'}}),
+    [delete_token(Token) || [Token] <- Tokens],
+    {noreply, State};
 
 handle_cast(Msg, _State) ->
     erlang:error({unknown_cast, Msg}).
