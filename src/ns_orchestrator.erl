@@ -428,14 +428,12 @@ handle_sync_event(Event, _From, StateName, State) ->
     {stop, {unhandled, Event, StateName}, State}.
 
 handle_info(janitor, idle, #idle_state{janitor_requests=[]} = State) ->
-    case get_janitor_items() of
-        [] ->
-            consider_switching_compat_mode(),
-            {next_state, idle, State#idle_state{janitor_requests=[]}};
-        Items ->
-            handle_info(janitor, idle,
-                        State#idle_state{janitor_requests=[{Item, []}|| Item <- Items]})
-    end;
+    consider_switching_compat_mode(),
+
+    [_|_] = Items = get_janitor_items(),
+
+    handle_info(janitor, idle,
+                State#idle_state{janitor_requests=[{Item, []} || Item <- Items]});
 handle_info(janitor, idle, #idle_state{janitor_requests=Requests}) ->
     misc:verify_name(?MODULE), % MB-3180: Make sure we're still registered
     maybe_drop_recovery_status(),
@@ -1017,6 +1015,8 @@ run_cleanup(Item) ->
             exit({shutdown, Error})
     end.
 
+do_run_cleanup(services) ->
+    service_janitor:cleanup();
 do_run_cleanup({bucket, Bucket}) ->
     ns_janitor:cleanup(Bucket, [consider_stopping_rebalance_status]).
 
@@ -1319,4 +1319,5 @@ maybe_start_upgrade_to_dcp(Restart, Type) ->
     end.
 
 get_janitor_items() ->
-    [{bucket, B} || B <- ns_bucket:get_bucket_names_of_type(membase)].
+    Buckets = [{bucket, B} || B <- ns_bucket:get_bucket_names_of_type(membase)],
+    [services | Buckets].

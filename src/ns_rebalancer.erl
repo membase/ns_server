@@ -511,6 +511,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     ok = drop_old_2i_indexes(KeepNodes),
     ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes, BucketConfigs),
 
+    ok = service_janitor:cleanup(),
+
     ns_cluster_membership:activate(KeepNodes),
 
     do_pre_rebalance_config_sync(KeepNodes),

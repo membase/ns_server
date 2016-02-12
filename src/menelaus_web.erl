@@ -2930,10 +2930,6 @@ handle_setup_services_post(Req) ->
             reply_json(Req, [Error], 400);
         {ok, Services} ->
             ns_config:set({node, node(), services}, Services),
-            lists:foreach(
-              fun (S) ->
-                      ok = ns_cluster_membership:set_service_map(S, [node()])
-              end, Services),
             ns_audit:setup_node_services(Req, node(), Services),
             reply(Req, 200)
     end.

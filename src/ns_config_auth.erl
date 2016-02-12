@@ -28,6 +28,7 @@
          upgrade/1,
          get_creds/2,
          is_system_provisioned/0,
+         is_system_provisioned/1,
          is_bucket_auth/2,
          get_no_auth_buckets/0]).
 
@@ -54,7 +55,10 @@ set_credentials_old(ro_admin, User, Password) ->
     ns_config:set(read_only_user_creds, {User, {password, Password}}).
 
 is_system_provisioned() ->
-    case ns_config:search(get_key(admin)) of
+    is_system_provisioned(ns_config:latest()).
+
+is_system_provisioned(Config) ->
+    case ns_config:search(Config, get_key(admin)) of
         {value, {_U, _}} ->
             true;
         {value, [{creds, [{_U, _}|_]}]} ->
