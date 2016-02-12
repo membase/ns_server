@@ -143,6 +143,9 @@
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list_graph.html',
         resolve: {
           setDefaultGraph: function (mnAnalyticsService, setDefaultBucketName, $stateParams, $state, $q) {
+            if (!$stateParams.analyticsBucket) {
+              return;
+            }
             return mnAnalyticsService.getStats({$stateParams: $stateParams}).then(function (state) {
               var selectedStat = state.statsByName && state.statsByName[$stateParams.graph];
               if (!selectedStat || !selectedStat.config.data.length) {
