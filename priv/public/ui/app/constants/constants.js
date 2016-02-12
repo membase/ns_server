@@ -27,7 +27,8 @@
       'overhead',
       'ep_oom_errors',
       'ep_item_commit_failed',
-      'audit_dropped_events'
+      'audit_dropped_events',
+      'indexer_ram_max_usage'
     ])
     .constant('timeUnitToSeconds', {
       minute: 60,

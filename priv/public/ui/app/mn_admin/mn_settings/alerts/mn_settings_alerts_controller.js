@@ -24,6 +24,7 @@
         case knownAlerts[8]: return 'Bucket memory on a node is entirely used for metadata';
         case knownAlerts[9]: return 'Writing data to disk for a specific bucket has failed';
         case knownAlerts[10]: return 'Writing event to audit log has failed';
+        case knownAlerts[11]: return 'Approaching full Indexer RAM warning';
       }
     };
   }
