@@ -12,6 +12,7 @@
           errors="serversMemoryQuotaDialogCtl.errors">
         </div>
         <div
+          ng-if="serversMemoryQuotaDialogCtl.config.displayedServices.index"
           mn-storage-mode="serversMemoryQuotaDialogCtl.indexSettings"
           is-disabled="!serversMemoryQuotaDialogCtl.isEnterprise || serversMemoryQuotaDialogCtl.initialIndexSettigs.storageMode !== ''"
           errors="serversMemoryQuotaDialogCtl.postIndexSettingsErrors">

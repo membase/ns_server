@@ -63,7 +63,10 @@
           return mnPromiseHelper(vm, mnPoolDefault.getFresh())
             .getPromise()
             .then(function (poolsDefault) {
-              if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.addNodeConfig.services.model, 'index')) {
+              if (
+                mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.addNodeConfig.services.model, 'index') ||
+                mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.addNodeConfig.services.model, 'fts')
+              ) {
                 return $uibModal.open({
                   templateUrl: 'app/mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
                   controller: 'mnServersMemoryQuotaDialogController as serversMemoryQuotaDialogCtl',

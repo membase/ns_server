@@ -17,6 +17,7 @@
           mn-memory-quota="wizardStep6Ctl.config"
           errors="wizardStep6Ctl.errors"></div>
         <div
+          ng-if="wizardStep6Ctl.config.displayedServices.index"
           mn-storage-mode="wizardStep6Ctl.indexSettings"
           is-disabled="!wizardStep6Ctl.isEnterprise || wizardStep6Ctl.initialIndexSettigs.storageMode !== ''"
           errors="wizardStep6Ctl.postIndexSettingsErrors"></div>

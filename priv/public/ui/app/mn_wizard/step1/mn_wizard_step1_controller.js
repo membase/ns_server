@@ -129,7 +129,10 @@
           return postJoinCluster().then(function () {
             return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
               return mnPoolDefault.getFresh().then(function (poolsDefault) {
-                if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.joinClusterConfig.services.model, 'index')) {
+                if (
+                  mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.joinClusterConfig.services.model, 'index') ||
+                  mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.joinClusterConfig.services.model, 'fts')
+                ) {
                   $state.go('app.wizard.step6');
                 } else {
                   $state.go('app.admin.overview');
