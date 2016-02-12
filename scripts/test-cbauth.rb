@@ -79,9 +79,9 @@ class TestCBAuth < Minitest::Test
       create_bucket! "foo", ""
     end
 
-    puts post!("/diag/eval", 'ns_orchestrator:ensure_janitor_run("default")')
-    puts post!("/diag/eval", 'ns_orchestrator:ensure_janitor_run("other")')
-    puts post!("/diag/eval", 'ns_orchestrator:ensure_janitor_run("foo")')
+    puts post!("/diag/eval", 'ns_orchestrator:ensure_janitor_run({bucket, "default"})')
+    puts post!("/diag/eval", 'ns_orchestrator:ensure_janitor_run({bucket, "other"})')
+    puts post!("/diag/eval", 'ns_orchestrator:ensure_janitor_run({bucket, "foo"})')
 
     sh "go build -o /tmp/cbauth-example github.com/couchbase/cbauth/cmd/cbauth-example"
     sh "go build -o /tmp/multi-bucket-demo github.com/couchbase/cbauth/cmd/multi-bucket-demo"

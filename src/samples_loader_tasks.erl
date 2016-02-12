@@ -111,7 +111,7 @@ perform_loading_task(Name, Quota) ->
         allowed_to_go -> ok
     end,
 
-    case ns_orchestrator:ensure_janitor_run(Name) of
+    case ns_orchestrator:ensure_janitor_run({bucket, Name}) of
         ok ->
             ok;
         _ ->
