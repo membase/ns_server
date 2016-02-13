@@ -67,8 +67,11 @@
           memoryQuotaConfig: function (mnMemoryQuotaService, mnWizardStep1Service) {
             return mnMemoryQuotaService.memoryQuotaConfig(mnWizardStep1Service.getJoinClusterConfig().services.model);
           },
-          indexSettigs: function (mnSettingsClusterService) {
+          indexSettings: function (mnSettingsClusterService) {
             return mnSettingsClusterService.getIndexSettings();
+          },
+          firstTimeAddedNodes: function (mnWizardStep1Service) {
+            return mnWizardStep1Service.getJoinClusterConfig().firstTimeAddedNodes;
           }
         }
       });

@@ -5,18 +5,17 @@
     .module('mnServers')
     .controller('mnServersMemoryQuotaDialogController', mnServersMemoryQuotaDialogController);
 
-  function mnServersMemoryQuotaDialogController($scope, indexSettings, $q, mnPoolDefault, $uibModalInstance, mnSettingsClusterService, memoryQuotaConfig, mnPromiseHelper, servicesAddedWithSpecificSettings) {
+  function mnServersMemoryQuotaDialogController($scope, indexSettings, $q, mnPoolDefault, $uibModalInstance, mnSettingsClusterService, memoryQuotaConfig, mnPromiseHelper, firstTimeAddedNodes) {
     var vm = this;
     vm.config = memoryQuotaConfig;
     vm.isEnterprise = mnPoolDefault.latestValue().value.isEnterprise;
     vm.onSubmit = onSubmit;
-    vm.initialIndexSettigs = _.clone(indexSettings);
+    vm.initialIndexSettings = _.clone(indexSettings);
     vm.indexSettings = indexSettings;
-    vm.servicesAddedWithSpecificSettings = servicesAddedWithSpecificSettings;
+    vm.firstTimeAddedNodes = firstTimeAddedNodes;
 
-    if (vm.config.displayedServices.index) {
-      /* if index node is to be added, the default should be forest db */
-      vm.indexSettings.storageMode = 'forestdb';
+    if (indexSettings.storageMode === "") {
+      vm.indexSettings.storageMode = "forestdb";
     }
 
     function onSubmit() {
@@ -29,7 +28,8 @@
           .catchErrors()
           .getPromise()
       ];
-      if(vm.servicesAddedWithSpecificSettings.index) {
+
+      if (vm.firstTimeAddedNodes.index) {
         queries.push(
           mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
             .catchErrors("postIndexSettingsErrors")

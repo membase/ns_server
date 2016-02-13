@@ -12,7 +12,8 @@
     var mnMemoryQuotaService = {
       prepareClusterQuotaSettings: prepareClusterQuotaSettings,
       isOnlyOneNodeWithService: isOnlyOneNodeWithService,
-      memoryQuotaConfig: memoryQuotaConfig
+      memoryQuotaConfig: memoryQuotaConfig,
+      getFirstTimeAddedNodes: getFirstTimeAddedNodes
     };
 
     return mnMemoryQuotaService;
@@ -45,8 +46,19 @@
 
       return rv;
     }
+    function getFirstTimeAddedNodes(interestedServices, selectedServices, allNodes) {
+      var rv = {
+        count: 0
+      };
+      angular.forEach(interestedServices, function (interestedService) {
+        if (selectedServices[interestedService] && mnMemoryQuotaService.isOnlyOneNodeWithService(allNodes, selectedServices, interestedService)) {
+          rv[interestedService] = true;
+          rv.count++;
+        }
+      });
+      return rv;
+    }
     function isOnlyOneNodeWithService(nodes, services, service) {
-
       var nodesCount = 0;
       var indexExists = _.each(nodes, function (node) {
         nodesCount += (_.indexOf(node.services, service) > -1);

@@ -22,9 +22,6 @@
       mnPromiseHelper(vm, mnWizardStep1Service.getConfig())
       .applyToScope("config")
       .onSuccess(function (config) {
-        /* always default to 'forestdb'; if indexing process not selected as a service
-           this value won't be sent to the REST API and it can be changed later */
-        config.startNewClusterConfig.indexSettings.storageMode = 'forestdb';
         vm.onDbPathChange();
         vm.onIndexPathChange();
       });
@@ -129,10 +126,9 @@
           return postJoinCluster().then(function () {
             return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
               return mnPoolDefault.getFresh().then(function (poolsDefault) {
-                if (
-                  mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.joinClusterConfig.services.model, 'index') ||
-                  mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.joinClusterConfig.services.model, 'fts')
-                ) {
+                var firstTimeAddedNodes = mnMemoryQuotaService.getFirstTimeAddedNodes(["index", "fts"], vm.joinClusterConfig.services.model, poolsDefault.nodes);
+                vm.joinClusterConfig.firstTimeAddedNodes = firstTimeAddedNodes;
+                if (firstTimeAddedNodes.count) {
                   $state.go('app.wizard.step6');
                 } else {
                   $state.go('app.admin.overview');

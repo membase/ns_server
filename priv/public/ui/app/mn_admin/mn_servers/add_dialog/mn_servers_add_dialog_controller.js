@@ -63,15 +63,8 @@
           return mnPromiseHelper(vm, mnPoolDefault.getFresh())
             .getPromise()
             .then(function (poolsDefault) {
-              var servicesWithSpecificSettings = ['index', 'fts'];
-              var servicesAddedWithSettings = {count: 0};
-              angular.forEach(servicesWithSpecificSettings, function(service) {
-                if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.addNodeConfig.services.model, service)) {
-                  servicesAddedWithSettings[service] = true;
-                  servicesAddedWithSettings.count++;
-                }
-              });
-              if (servicesAddedWithSettings.count) {
+              var firstTimeAddedNodes = mnMemoryQuotaService.getFirstTimeAddedNodes(["index", "fts"], vm.addNodeConfig.services.model, poolsDefault.nodes);
+              if (firstTimeAddedNodes.count) {
                 return $uibModal.open({
                   templateUrl: 'app/mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
                   controller: 'mnServersMemoryQuotaDialogController as serversMemoryQuotaDialogCtl',
@@ -82,8 +75,8 @@
                     indexSettings: function (mnSettingsClusterService) {
                       return mnSettingsClusterService.getIndexSettings();
                     },
-                    servicesAddedWithSpecificSettings: function() {
-                      return $q.when(servicesAddedWithSettings);
+                    firstTimeAddedNodes: function() {
+                      return firstTimeAddedNodes;
                     }
                   }
                 }).result;
