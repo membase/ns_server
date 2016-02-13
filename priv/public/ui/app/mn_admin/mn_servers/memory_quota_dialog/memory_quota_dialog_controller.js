@@ -13,7 +13,8 @@
     vm.initialIndexSettigs = _.clone(indexSettings);
     vm.indexSettings = indexSettings;
 
-    if (!vm.isEnterprise) {
+    if (vm.config.displayedServices.index) {
+      /* if index node is to be added, the default should be forest db */
       vm.indexSettings.storageMode = 'forestdb';
     }
 
