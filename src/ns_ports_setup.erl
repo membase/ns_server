@@ -601,7 +601,6 @@ fts_spec(Config) ->
                      "-server=http://127.0.0.1:" ++ integer_to_list(NsRestPort),
                      "-bindHttp=" ++ BindHttp,
                      "-dataDir=" ++ FTSIdxDir,
-                     "-auth=cbauth",
                      "-extra=" ++ io_lib:format("~s:~b", [Host, NsRestPort]),
                      "-options=" ++ Options
                     ],
