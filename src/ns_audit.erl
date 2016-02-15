@@ -455,6 +455,16 @@ build_compaction_settings(Settings) ->
               [T | Acc];
           ({parallel_db_and_view_compaction, _} = T, Acc) ->
               [T | Acc];
+          ({index_fragmentation_percentage, _} = T, Acc) ->
+              [T | Acc];
+          ({index_compaction_mode, _} = T, Acc) ->
+              [T | Acc];
+          ({index_circular_compaction_days, _} = T, Acc) ->
+              [T | Acc];
+          ({index_circular_compaction_abort, _} = T, Acc) ->
+              [T | Acc];
+          ({index_circular_compaction_interval, V}, Acc) ->
+              [{index_circular_compaction_interval, {prepare_list(V)}} | Acc];
           (_, Acc) ->
               Acc
       end, [], Settings).

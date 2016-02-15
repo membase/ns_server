@@ -586,7 +586,15 @@
               "database_fragmentation_threshold" : {"percentage" : 1, "size" : 1},
               "view_fragmentation_threshold" : {"percentage" : 1, "size" : 1},
               "parallel_db_and_view_compaction" : false,
-              "purge_interval" : ""
+              "purge_interval" : "",
+              "index_fragmentation_percentage" : "",
+              "index_compaction_mode" : "",
+              "index_circular_compaction_days" : "",
+              "index_circular_compaction_abort" : false,
+              "index_circular_compaction_interval" : {"from_hour" : 1,
+                                                      "to_hour" : 1,
+                                                      "from_minute" : 1,
+                                                      "to_minute" : 1}
           }
       },
       {
