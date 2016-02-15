@@ -409,6 +409,18 @@ index_node_spec(Config) ->
             {ok, IdxDir} = ns_storage_conf:this_node_ixdir(),
             IdxDir2 = filename:join(IdxDir, "@2i"),
             MinidumpDir = path_config:minidump_dir(),
+            AddSM = case cluster_compat_mode:is_cluster_watson() of
+                        true ->
+                            StorageMode =
+                                index_settings_manager:get_from_config(Config,
+                                                                       storageMode,
+                                                                       undefined),
+                            true = StorageMode =/= undefined,
+                            ["-storageMode=" ++ binary_to_list(StorageMode)];
+                        false ->
+                            []
+                    end,
+            NodeUUID = binary_to_list(ns_config:uuid()),
 
             Spec = {'indexer', IndexerCmd,
                     ["-vbuckets=" ++ integer_to_list(NumVBuckets),
@@ -420,7 +432,8 @@ index_node_spec(Config) ->
                      "-streamCatchupPort=" ++ integer_to_list(StCatchupPort),
                      "-streamMaintPort=" ++ integer_to_list(StMaintPort),
                      "-storageDir=" ++ IdxDir2,
-                     "-diagDir=" ++ MinidumpDir],
+                     "-diagDir=" ++ MinidumpDir,
+                     "-nodeUUID=" ++ NodeUUID] ++ AddSM,
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?INDEXER_LOG_FILENAME},
                      {env, build_go_env_vars(Config, index)}]},
