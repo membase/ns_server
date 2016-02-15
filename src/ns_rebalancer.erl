@@ -400,14 +400,9 @@ start_link_rebalance(KeepNodes, EjectNodes,
                        master_activity_events:note_rebalance_start(
                          self(), KeepNodes, EjectNodes, FailedNodes, DeltaNodes),
 
-                       ok = drop_old_2i_indexes(KeepNodes),
-                       ok = apply_delta_recovery_buckets(DeltaRecoveryBucketTuples, DeltaNodes, BucketConfigs),
-
-                       ns_cluster_membership:activate(KeepNodes),
-
                        rebalance(KeepNodes, EjectNodes, FailedNodes,
                                  BucketConfigs,
-                                 DeltaRecoveryBucketTuples)
+                                 DeltaNodes, DeltaRecoveryBucketTuples)
                end
        end, []]).
 
@@ -511,7 +506,13 @@ execute_and_be_stop_aware(Fun) ->
     end.
 
 rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
-          BucketConfigs, DeltaRecoveryBuckets) ->
+          BucketConfigs,
+          DeltaNodes, DeltaRecoveryBuckets) ->
+    ok = drop_old_2i_indexes(KeepNodes),
+    ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes, BucketConfigs),
+
+    ns_cluster_membership:activate(KeepNodes),
+
     do_pre_rebalance_config_sync(KeepNodes),
 
     Timestamps = rebalance_services(KeepNodes),
