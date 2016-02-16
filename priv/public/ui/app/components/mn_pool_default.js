@@ -13,13 +13,27 @@
       latestValue: latestValue,
       get: get,
       clearCache: clearCache,
-      getFresh: getFresh
+      getFresh: getFresh,
+      export: {
+        compat: undefined
+      }
     };
+    var version25 = encodeCompatVersion(2, 5);
+    var version30 = encodeCompatVersion(3, 0);
+    var version40 = encodeCompatVersion(4, 0);
+    var version45 = encodeCompatVersion(4, 5);
 
     return mnPoolDefault;
 
     function latestValue() {
       return latest;
+    }
+    // counterpart of ns_heart:effective_cluster_compat_version/0
+    function encodeCompatVersion(major, minor) {
+      if (major < 2) {
+        return 1;
+      }
+      return major * 0x10000 + minor;
     }
     function get(params, mnHttpParams) {
       params = params || {waitChange: 0};
@@ -43,6 +57,13 @@
         poolDefault.thisNode = _.detect(poolDefault.nodes, function (n) {
           return n.thisNode;
         });
+        mnPoolDefault.export.compat = {
+          atLeast25: poolDefault.thisNode.clusterCompatibility >= version25,
+          atLeast30: poolDefault.thisNode.clusterCompatibility >= version30,
+          atLeast40: poolDefault.thisNode.clusterCompatibility >= version40,
+          atLeast45: poolDefault.thisNode.clusterCompatibility >= version45
+        };
+
         poolDefault.isKvNode =  _.indexOf(poolDefault.thisNode.services, "kv") > -1;
         poolDefault.capiBase = $window.location.protocol === "https:" ? poolDefault.thisNode.couchApiBaseHTTPS : poolDefault.thisNode.couchApiBase;
         latest.value = poolDefault;

@@ -59,7 +59,7 @@
         </li>
         <li
           class="when-enterprise only-when-25"
-          ng-show="xdcrReferenceDialogCtl.mnPoolDefault.value.isEnterprise">
+          ng-show="xdcrReferenceDialogCtl.mnPoolDefault.value.isEnterprise && poolDefault.compat.atLeast25">
             <label for="demand_encryption_flag-2">Enable Encryption</label>
             <input
               name="demandEncryption"

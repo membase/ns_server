@@ -42,7 +42,7 @@
                 <span>Full Recovery</span>
             </span>
             <span
-              ng-show="node.services.indexOf('kv') > -1"
+              ng-show="node.services.indexOf('kv') > -1 && poolDefault.compat.atLeast30"
               class="add_back_btn only-when-30"
               ng-click="serversListCtl.reAddNode('delta', node.otpNode)">
                 <span>Delta Recovery</span>

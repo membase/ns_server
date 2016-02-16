@@ -37,7 +37,8 @@
         data: {
           required: {
             enterprise: true
-          }
+          },
+          compat: "atLeast40"
         }
       })
       .state('app.admin.security.ldap', {
@@ -48,6 +49,7 @@
           required: {
             enterprise: true
           },
+          compat: "atLeast40 && !atLeast45",
           permissions: "cluster.admin.security.read"
         }
       })
@@ -59,6 +61,7 @@
           required: {
             enterprise: true
           },
+          compat: "atLeast40",
           permissions: "cluster.admin.security.read"
         }
       });

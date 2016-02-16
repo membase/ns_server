@@ -104,7 +104,7 @@
               </td>
               <td class="replication_status_cell">
                 <span>{{xdcrCtl.humanStatus(row)}}</span>
-                <span ng-show="xdcrCtl.status(row) !== 'notRunning' && rbac.cluster.bucket['?'].xdcr.write && rbac.cluster.bucket['?'].xdcr.execute" class="only-when-30 js_replication_control replication_control dynamic_{{xdcrCtl.status(row)}}" ng-click="xdcrCtl.status(row) !== 'spinner' && xdcrCtl.pausePlayReplication(row)"></span>
+                <span ng-show="xdcrCtl.status(row) !== 'notRunning' && poolDefault.compat.atLeast30 && rbac.cluster.bucket['?'].xdcr.write && rbac.cluster.bucket['?'].xdcr.execute" class="only-when-30 js_replication_control replication_control dynamic_{{xdcrCtl.status(row)}}" ng-click="xdcrCtl.status(row) !== 'spinner' && xdcrCtl.pausePlayReplication(row)"></span>
                 <a ng-show="row.errors.length" ng-click="xdcrCtl.showReplicationErrors(row)">Last {{row.errors.length | mnCount:'error'}}</a>
               </td>
               <td>{{row.when}}</td>

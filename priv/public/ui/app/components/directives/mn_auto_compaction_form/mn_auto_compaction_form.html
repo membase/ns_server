@@ -35,8 +35,8 @@
     </p>
   </div>
 
-  <h3 class="only-when-40" ng-if="!isBucketsSettings">Index Fragmentation</h3>
-  <div class="sub_section only-when-40" id="js_index_fragmentation_settings" ng-if="!isBucketsSettings">
+  <h3 class="only-when-40" ng-if="!isBucketsSettings && poolDefault.compat.atLeast40">Index Fragmentation</h3>
+  <div class="sub_section only-when-40" id="js_index_fragmentation_settings" ng-if="!isBucketsSettings && poolDefault.compat.atLeast40">
     <p>Set the index fragmentation level to determine the point when compaction is triggered.</p>
     <p class="row">
       <input

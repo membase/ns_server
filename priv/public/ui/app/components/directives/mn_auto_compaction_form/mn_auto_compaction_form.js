@@ -12,7 +12,8 @@
         autoCompactionSettings: '=',
         validationErrors: '=',
         isBucketsSettings: '=',
-        rbac: "="
+        rbac: "=",
+        poolDefault: "="
       },
       isolate: false,
       replace: true,

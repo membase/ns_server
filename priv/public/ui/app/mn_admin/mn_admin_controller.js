@@ -23,6 +23,7 @@
     vm.lostConnState = mnLostConnectionService.getState();
 
     $rootScope.rbac = mnPermissions.export;
+    $rootScope.poolDefault = mnPoolDefault.export;
 
     activate();
 

@@ -80,6 +80,17 @@
     });
     $transitionsProvider.onStart({
       to: function (state) {
+        return state.data && state.data.compat;
+      }
+    }, function ($state, $parse, mnPoolDefault, $transition$) {
+      return mnPoolDefault.get().then(function() {
+        if (!$parse($transition$.to().data.compat)(mnPoolDefault.export.compat)) {
+          return false;
+        }
+      });
+    });
+    $transitionsProvider.onStart({
+      to: function (state) {
         return state.data && state.data.required && state.data.required.enterprise;
       }
     }, function ($state, mnPools) {
