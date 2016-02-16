@@ -195,7 +195,7 @@ set(Key, Value) ->
                    UpdateFn :: fun((Key :: term(), Value :: term(), Cfg :: [term()]) -> NewConfig :: [[term()]]))
                   -> {commit, ConfigKVList :: [[term()]]} |
                      {commit, ConfigKVList :: [[term()]], term()} | {abort, any()})) ->
-                     {commit, [term()]} | {commit, [term()], term()} | {abort, any()} | retry_needed.
+                     run_txn_return().
 run_txn(Body) ->
     run_txn_loop(Body, 10).
 

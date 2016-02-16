@@ -12,3 +12,5 @@
 -define(DELETED_MARKER, '_deleted').
 
 -type ns_config() :: #config{} | [[term()]] | 'latest-config-marker'.
+
+-type run_txn_return() :: {commit, [term()]} | {commit, [term()], term()} | {abort, any()} | retry_needed.
