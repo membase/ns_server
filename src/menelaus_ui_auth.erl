@@ -16,6 +16,7 @@
 -module(menelaus_ui_auth).
 
 -include("ns_common.hrl").
+-include("rbac.hrl").
 
 -behaviour(gen_server).
 
@@ -27,28 +28,36 @@
          check/1, reset/0, logout/1,
          revoke/1]).
 
+-type auth_token_bin() :: binary().
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+-spec generate_token(term()) -> auth_token().
 generate_token(Memo) ->
     gen_server:call(?MODULE, {generate_token, Memo}, infinity).
 
+-spec maybe_refresh(auth_token()) -> nothing | {new_token, auth_token()}.
 maybe_refresh(Token) ->
     gen_server:call(?MODULE, {maybe_refresh, tok2bin(Token)}, infinity).
 
+-spec tok2bin(auth_token() | undefined) -> auth_token_bin() | undefined.
 tok2bin(Token) when is_list(Token) ->
     list_to_binary(Token);
 tok2bin(Token) ->
     Token.
 
+-spec check(auth_token() | undefined) -> false | {ok, term()}.
 check(undefined) ->
     false;
 check(Token) ->
     gen_server:call(?MODULE, {check, tok2bin(Token)}, infinity).
 
+-spec reset() -> ok.
 reset() ->
     gen_server:call(?MODULE, reset, infinity).
 
+-spec logout(auth_token()) -> ok.
 logout(Token) ->
     gen_server:call(?MODULE, {logout, tok2bin(Token)}, infinity).
 
@@ -62,6 +71,7 @@ init([]) ->
     _ = ets:new(ui_auth_by_expiration, [protected, named_table, ordered_set]),
     {ok, []}.
 
+-spec maybe_expire() -> ok.
 maybe_expire() ->
     Size = ets:info(ui_auth_by_token, size),
     case Size < ?MAX_TOKENS of
@@ -71,11 +81,14 @@ maybe_expire() ->
             expire_oldest()
     end.
 
+-spec expire_oldest() -> ok.
 expire_oldest() ->
     {Expiration, Token} = ets:first(ui_auth_by_expiration),
     ets:delete(ui_auth_by_expiration, {Expiration, Token}),
-    ets:delete(ui_auth_by_token, Token).
+    ets:delete(ui_auth_by_token, Token),
+    ok.
 
+-spec delete_token(auth_token_bin()) -> false | undefined | auth_token_bin().
 delete_token(Token) ->
     case ets:lookup(ui_auth_by_token, Token) of
         [{Token, Expiration, ReplacedToken, _}] ->
@@ -89,6 +102,7 @@ delete_token(Token) ->
 get_now() ->
     misc:time_to_epoch_int(os:timestamp()).
 
+-spec do_generate_token(auth_token_bin() | undefined, term()) -> auth_token_bin().
 do_generate_token(ReplacedToken, Memo) ->
     %% NOTE: couch_uuids:random is using crypto-strong random
     %% generator
@@ -98,6 +112,7 @@ do_generate_token(ReplacedToken, Memo) ->
     ets:insert(ui_auth_by_expiration, {{Expiration, Token}}),
     Token.
 
+-spec validate_token_maybe_expire(auth_token_bin()) -> false | {integer(), integer(), term()}.
 validate_token_maybe_expire(Token) ->
     case ets:lookup(ui_auth_by_token, Token) of
         [{Token, Expiration, _, Memo}] ->

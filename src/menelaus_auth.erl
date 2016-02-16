@@ -19,6 +19,7 @@
 -author('Northscale <info@northscale.com>').
 
 -include("ns_common.hrl").
+-include("rbac.hrl").
 
 -export([authenticate/1,
          has_permission/2,
@@ -38,6 +39,8 @@
 
 %% External API
 
+-spec get_accessible_buckets(fun ((bucket_name()) -> rbac_permission()), mochiweb_request()) ->
+                                    [bucket_name()].
 get_accessible_buckets(Fun, Req) ->
     Identity = menelaus_auth:get_identity(Req),
     Roles = menelaus_roles:get_compiled_roles(Identity),
@@ -46,6 +49,7 @@ get_accessible_buckets(Fun, Req) ->
         {BucketName, _Config} <- ns_bucket:get_buckets(),
         menelaus_roles:is_allowed(Fun(BucketName), Roles)].
 
+-spec get_cookies(mochiweb_request()) -> [{string(), string()}].
 get_cookies(Req) ->
     case Req:get_header_value("Cookie") of
         undefined -> [];
@@ -54,9 +58,11 @@ get_cookies(Req) ->
             RV
     end.
 
+-spec lookup_cookie(mochiweb_request(), string()) -> string() | undefined.
 lookup_cookie(Req, Cookie) ->
     proplists:get_value(Cookie, get_cookies(Req)).
 
+-spec ui_auth_cookie_name(mochiweb_request()) -> string().
 ui_auth_cookie_name(Req) ->
     %% NOTE: cookies are _not_ per-port and in general quite
     %% unexpectedly a stupid piece of mess. In order to have working
@@ -70,6 +76,7 @@ ui_auth_cookie_name(Req) ->
             "ui-auth-" ++ mochiweb_util:quote_plus(Host)
     end.
 
+-spec extract_ui_auth_token(mochiweb_request()) -> auth_token() | undefined.
 extract_ui_auth_token(Req) ->
     case Req:get_header_value("ns-server-auth-token") of
         undefined ->
@@ -78,29 +85,35 @@ extract_ui_auth_token(Req) ->
             T
     end.
 
+-spec generate_auth_cookie(mochiweb_request(), auth_token()) -> {string(), string()}.
 generate_auth_cookie(Req, Token) ->
     Options = [{path, "/"}, {http_only, true}],
     mochiweb_cookies:cookie(ui_auth_cookie_name(Req), Token, Options).
 
+-spec kill_auth_cookie(mochiweb_request()) -> {string(), string()}.
 kill_auth_cookie(Req) ->
     Options = [{path, "/"}, {http_only, true}],
     {Name, Content} = mochiweb_cookies:cookie(ui_auth_cookie_name(Req), "", Options),
     {Name, Content ++ "; expires=Thu, 01 Jan 1970 00:00:00 GMT"}.
 
+-spec complete_uilogin(mochiweb_request(), rbac_identity()) -> mochiweb_response().
 complete_uilogin(Req, Identity) ->
     Token = menelaus_ui_auth:generate_token(Identity),
     CookieHeader = generate_auth_cookie(Req, Token),
     ns_audit:login_success(store_user_info(Req, Identity, Token)),
     menelaus_util:reply(Req, 200, [CookieHeader]).
 
+-spec reject_uilogin(mochiweb_request(), rbac_identity()) -> mochiweb_response().
 reject_uilogin(Req, Identity) ->
     ns_audit:login_failure(store_user_info(Req, Identity, undefined)),
     menelaus_util:reply(Req, 400).
 
+-spec complete_uilogout(mochiweb_request()) -> mochiweb_response().
 complete_uilogout(Req) ->
     CookieHeader = kill_auth_cookie(Req),
     menelaus_util:reply(Req, 200, [CookieHeader]).
 
+-spec maybe_refresh_token(mochiweb_request()) -> [{string(), string()}].
 maybe_refresh_token(Req) ->
     case menelaus_auth:extract_auth(Req) of
         {token, Token} ->
@@ -114,11 +127,15 @@ maybe_refresh_token(Req) ->
             []
     end.
 
+-spec validate_request(mochiweb_request()) -> ok.
 validate_request(Req) ->
     undefined = Req:get_header_value("menelaus-auth-user"),
     undefined = Req:get_header_value("menelaus-auth-src"),
-    undefined = Req:get_header_value("menelaus-auth-token").
+    undefined = Req:get_header_value("menelaus-auth-token"),
+    ok.
 
+-spec store_user_info(mochiweb_request(), rbac_identity(), auth_token() | undefined) ->
+                             mochiweb_request().
 store_user_info(Req, {User, Src}, Token) ->
     Headers = Req:get(headers),
     H1 = mochiweb_headers:enter("menelaus-auth-user", User, Headers),
@@ -126,6 +143,7 @@ store_user_info(Req, {User, Src}, Token) ->
     H3 = mochiweb_headers:enter("menelaus-auth-token", Token, H2),
     mochiweb_request:new(Req:get(socket), Req:get(method), Req:get(raw_path), Req:get(version), H3).
 
+-spec get_identity(mochiweb_request()) -> rbac_identity() | undefined.
 get_identity(Req) ->
     case {Req:get_header_value("menelaus-auth-user"),
           Req:get_header_value("menelaus-auth-src")} of
@@ -135,9 +153,11 @@ get_identity(Req) ->
             {User, list_to_existing_atom(Src)}
     end.
 
+-spec get_token(mochiweb_request()) -> auth_token() | undefined.
 get_token(Req) ->
     Req:get_header_value("menelaus-auth-token").
 
+-spec extract_auth_user(mochiweb_request()) -> string() | undefined.
 extract_auth_user(Req) ->
     case Req:get_header_value("authorization") of
         "Basic " ++ Value ->
@@ -145,8 +165,8 @@ extract_auth_user(Req) ->
         _ -> undefined
     end.
 
--spec extract_auth(any()) -> {User :: string(), Password :: string()}
-                                 | {token, string()} | undefined.
+-spec extract_auth(mochiweb_request()) -> {User :: string(), Password :: string()}
+                                              | {token, string()} | undefined.
 extract_auth(Req) ->
     case Req:get_header_value("ns-server-ui") of
         "yes" ->
@@ -190,9 +210,12 @@ parse_user(UserPasswordStr) ->
         [User, _Password] -> User
     end.
 
+-spec has_permission(rbac_permission(), mochiweb_request()) -> boolean().
 has_permission(Permission, Req) ->
     menelaus_roles:is_allowed(Permission, get_identity(Req)).
 
+-spec authenticate(undefined | {token, auth_token()} | {rbac_user_name(), rbac_password()}) ->
+                          false | {ok, rbac_identity()} | {error, term()}.
 authenticate(undefined) ->
     {ok, {"", anonymous}};
 authenticate({token, Token} = Param) ->
@@ -239,6 +262,8 @@ authenticate({Username, Password}) ->
             end
     end.
 
+-spec verify_login_creds(rbac_user_name(), rbac_password()) ->
+                                false | {ok, rbac_identity()} | {error, term()}.
 verify_login_creds(Username, Password) ->
     case authenticate({Username, Password}) of
         {ok, {Username, bucket}} ->
@@ -247,6 +272,8 @@ verify_login_creds(Username, Password) ->
             Other
     end.
 
+-spec verify_rest_auth(mochiweb_request(), rbac_permissions()) ->
+                              auth_failure | forbidden | {allowed, mochiweb_request()}.
 verify_rest_auth(Req, Permissions) ->
     Auth = extract_auth(Req),
     case authenticate(Auth) of

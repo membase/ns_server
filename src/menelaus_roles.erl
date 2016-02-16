@@ -40,6 +40,8 @@
 -module(menelaus_roles).
 
 -include("ns_common.hrl").
+-include("ns_config.hrl").
+-include("rbac.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -56,6 +58,7 @@
          delete_user/1,
          upgrade_users/1]).
 
+-spec preconfigured_roles() -> [rbac_role_def(), ...].
 preconfigured_roles() ->
     [{admin, [],
       [{name, <<"Admin">>},
@@ -106,6 +109,7 @@ preconfigured_roles() ->
        {[admin], none},
        {[], [read]}]}].
 
+-spec get_definitions() -> [rbac_role_def(), ...].
 get_definitions() ->
     case cluster_compat_mode:is_cluster_watson() of
         true ->
@@ -114,10 +118,13 @@ get_definitions() ->
             preconfigured_roles()
     end.
 
+-spec get_definitions(ns_config()) -> [rbac_role_def(), ...].
 get_definitions(Config) ->
     {value, RolesDefinitions} = ns_config:search(Config, roles_definitions),
     RolesDefinitions.
 
+-spec object_match(rbac_permission_object(), rbac_permission_pattern_object()) ->
+                          boolean().
 object_match(_, []) ->
     true;
 object_match([], [_|_]) ->
@@ -131,6 +138,8 @@ object_match([_Same | RestOfObject], [_Same | RestOfObjectPattern]) ->
 object_match(_, _) ->
     false.
 
+-spec get_allowed_operations(rbac_permission_object(), [rbac_permission_pattern()]) ->
+                                    rbac_permission_pattern_operations().
 get_allowed_operations(_Object, []) ->
     none;
 get_allowed_operations(Object, [{ObjectPattern, AllowedOperations} | Rest]) ->
@@ -141,6 +150,8 @@ get_allowed_operations(Object, [{ObjectPattern, AllowedOperations} | Rest]) ->
             get_allowed_operations(Object, Rest)
     end.
 
+-spec operation_allowed(rbac_operation(), rbac_permission_pattern_operations()) ->
+                               boolean().
 operation_allowed(_, all) ->
     true;
 operation_allowed(_, none) ->
@@ -148,6 +159,7 @@ operation_allowed(_, none) ->
 operation_allowed(Operation, AllowedOperations) ->
     lists:member(Operation, AllowedOperations).
 
+-spec is_allowed(rbac_permissions(), rbac_identity() | [rbac_compiled_role()]) -> boolean().
 is_allowed(Permission, {_, _} = Identity) ->
     Roles = get_compiled_roles(Identity),
     is_allowed(Permission, Roles);
@@ -161,6 +173,8 @@ is_allowed(Permissions, Roles) when is_list(Permissions) ->
                       is_allowed(Permission, Roles)
               end, Permissions).
 
+-spec substitute_params([string()], [atom()], [rbac_permission_pattern_raw()]) ->
+                               [rbac_permission_pattern()].
 substitute_params(Params, ParamDefinitions, Permissions) ->
     ParamPairs = lists:zip(ParamDefinitions, Params),
     lists:map(fun ({ObjectPattern, AllowedOperations}) ->
@@ -174,6 +188,7 @@ substitute_params(Params, ParamDefinitions, Permissions) ->
                                  end, ObjectPattern), AllowedOperations}
               end, Permissions).
 
+-spec compile_roles([rbac_role()], [rbac_role_def()]) -> [rbac_compiled_role()].
 compile_roles(Roles, Definitions) ->
     lists:map(fun (Name) when is_atom(Name) ->
                       {Name, [], _Props, Permissions} = lists:keyfind(Name, 1, Definitions),
@@ -184,6 +199,7 @@ compile_roles(Roles, Definitions) ->
                       substitute_params(Params, ParamDefinitions, Permissions)
               end, Roles).
 
+-spec get_user_roles(rbac_identity()) -> [rbac_role()].
 get_user_roles({User, saslauthd} = Identity) ->
     case cluster_compat_mode:is_cluster_watson() of
         true ->
@@ -200,6 +216,7 @@ get_user_roles({User, saslauthd} = Identity) ->
             end
     end.
 
+-spec get_roles(rbac_identity()) -> [rbac_role()].
 get_roles({"", wrong_token}) ->
     case ns_config_auth:is_system_provisioned() of
         false ->
@@ -223,14 +240,17 @@ get_roles({BucketName, bucket}) ->
 get_roles({_, saslauthd} = Identity) ->
     get_user_roles(Identity).
 
+-spec get_compiled_roles(rbac_identity()) -> [rbac_compiled_role()].
 get_compiled_roles(Identity) ->
     Definitions = get_definitions(),
     Roles = get_roles(Identity),
     compile_roles(Roles, Definitions).
 
+-spec get_possible_param_values(ns_config(), atom()) -> [rbac_role_param()].
 get_possible_param_values(Config, bucket_name) ->
     [all | [Name || {Name, _} <- ns_bucket:get_buckets(Config)]].
 
+-spec get_all_assignable_roles(ns_config()) -> [rbac_role()].
 get_all_assignable_roles(Config) ->
     BucketNames = get_possible_param_values(Config, bucket_name),
 
@@ -246,12 +266,15 @@ get_all_assignable_roles(Config) ->
                 end, Acc, BucketNames)
       end, [], get_definitions(Config)).
 
+-spec get_users() -> [{rbac_identity(), []}].
 get_users() ->
     get_users(ns_config:latest()).
 
+-spec get_users(ns_config()) -> [{rbac_identity(), []}].
 get_users(Config) ->
     ns_config:search(Config, user_roles, []).
 
+-spec delete_user(rbac_identity()) -> run_txn_return().
 delete_user(Identity) ->
     ns_config:run_txn(
       fun (Config, SetFn) ->
@@ -268,6 +291,7 @@ delete_user(Identity) ->
               end
       end).
 
+-spec validate_role(rbac_role(), [rbac_role_def()], ns_config()) -> boolean().
 validate_role(Role, Definitions, Config) when is_atom(Role) ->
     validate_role(Role, [], Definitions, Config);
 validate_role({Role, Params}, Definitions, Config) ->
@@ -283,6 +307,7 @@ validate_role(Role, Params, Definitions, Config) ->
             false
     end.
 
+-spec store_user(rbac_identity(), rbac_user_name(), [rbac_role()]) -> run_txn_return().
 store_user(Identity, Name, Roles) ->
     Props = case Name of
                 undefined ->
@@ -317,6 +342,7 @@ collect_users([User | Rest], Role, Dict) ->
                                 end, ordsets:from_list([Role]), Dict),
     collect_users(Rest, Role, NewDict).
 
+-spec upgrade_users(ns_config()) -> [{set, user_roles, _}].
 upgrade_users(Config) ->
     case ns_config:search(Config, saslauthd_auth_settings) of
         false ->

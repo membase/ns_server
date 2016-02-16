@@ -29,6 +29,7 @@
 -include("ns_heart.hrl").
 -include("ns_stats.hrl").
 -include("couch_db.hrl").
+-include("rbac.hrl").
 
 -ifdef(EUNIT).
 -export([test/0]).
@@ -205,6 +206,10 @@ is_throttled_request([?PLUGGABLE_UI | _]) ->
 is_throttled_request(_) ->
     true.
 
+-type action() :: {done, term()} |
+                  {rbac_permissions(), fun()} | {rbac_permissions(), fun(), [string()]}.
+
+-spec get_action(mochiweb_request(), {term(), term()}, string(), [string()]) -> action().
 get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
     case Req:get(method) of
         Method when Method =:= 'GET'; Method =:= 'HEAD' ->
@@ -791,6 +796,7 @@ require_auth(Req) ->
                                             "Basic realm=\"Couchbase Server Admin / REST\""}])
     end.
 
+-spec get_bucket_id([rbac_permission()] | rbac_permission()) -> bucket_name() | false.
 get_bucket_id([]) ->
     false;
 get_bucket_id([Permission | Rest]) ->
@@ -800,8 +806,8 @@ get_bucket_id([Permission | Rest]) ->
         Bucket ->
             Bucket
     end;
-get_bucket_id({Objects, _Operations}) ->
-    case lists:keyfind(bucket, 1, Objects) of
+get_bucket_id({Object, _Operations}) ->
+    case lists:keyfind(bucket, 1, Object) of
         {bucket, all} ->
             false;
         {bucket, any} ->
@@ -812,6 +818,7 @@ get_bucket_id({Objects, _Operations}) ->
             false
     end.
 
+-spec perform_action(mochiweb_request(), action()) -> term().
 perform_action(_Req, {done, RV}) ->
     RV;
 perform_action(Req, {Permissions, Fun}) ->
