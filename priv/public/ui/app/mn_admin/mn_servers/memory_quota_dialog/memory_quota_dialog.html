@@ -6,8 +6,8 @@
     ng-submit="serversMemoryQuotaDialogCtl.onSubmit()">
       <p style="padding: 20px;">
       These service(s) are being added to the cluster for the first time:
-      <span ng-show="serversMemoryQuotaDialogCtl.config.displayedServices.index">Index</span><span ng-show="serversMemoryQuotaDialogCtl.config.displayedServices.index && serversMemoryQuotaDialogCtl.config.displayedServices.fts">,</span>
-      <span ng-show="serversMemoryQuotaDialogCtl.config.displayedServices.fts">Full Text</span><br>
+      <span ng-show="serversMemoryQuotaDialogCtl.servicesAddedWithSpecificSettings.index">Index</span><span ng-show="serversMemoryQuotaDialogCtl.servicesAddedWithSpecificSettings.count > 1">,</span>
+      <span ng-show="serversMemoryQuotaDialogCtl.servicesAddedWithSpecificSettings.fts">Full Text</span><br>
       Please review and set the following service-specific settings. These values need to be set one time only: when you add more server nodes running these services into the cluster we will not ask you to review these values again.</p>
       <div style="margin: 20px;">
         <div
@@ -16,7 +16,7 @@
           errors="serversMemoryQuotaDialogCtl.errors">
         </div>
         <div
-          ng-if="serversMemoryQuotaDialogCtl.config.displayedServices.index"
+          ng-if="serversMemoryQuotaDialogCtl.servicesAddedWithSpecificSettings.index"
           mn-storage-mode="serversMemoryQuotaDialogCtl.indexSettings"
           is-disabled="!serversMemoryQuotaDialogCtl.isEnterprise || serversMemoryQuotaDialogCtl.initialIndexSettigs.storageMode !== ''"
           errors="serversMemoryQuotaDialogCtl.postIndexSettingsErrors">

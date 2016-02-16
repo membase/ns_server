@@ -5,7 +5,7 @@
     .module('mnServers')
     .controller('mnServersAddDialogController', mnServersAddDialogController)
 
-  function mnServersAddDialogController($scope, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
+  function mnServersAddDialogController($q, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
     var vm = this;
 
     vm.addNodeConfig = {
@@ -63,10 +63,15 @@
           return mnPromiseHelper(vm, mnPoolDefault.getFresh())
             .getPromise()
             .then(function (poolsDefault) {
-              if (
-                mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.addNodeConfig.services.model, 'index') ||
-                mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.addNodeConfig.services.model, 'fts')
-              ) {
+              var servicesWithSpecificSettings = ['index', 'fts'];
+              var servicesAddedWithSettings = {count: 0};
+              angular.forEach(servicesWithSpecificSettings, function(service) {
+                if (mnMemoryQuotaService.isOnlyOneNodeWithService(poolsDefault.nodes, vm.addNodeConfig.services.model, service)) {
+                  servicesAddedWithSettings[service] = true;
+                  servicesAddedWithSettings.count++;
+                }
+              });
+              if (servicesAddedWithSettings.count) {
                 return $uibModal.open({
                   templateUrl: 'app/mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
                   controller: 'mnServersMemoryQuotaDialogController as serversMemoryQuotaDialogCtl',
@@ -76,6 +81,9 @@
                     },
                     indexSettings: function (mnSettingsClusterService) {
                       return mnSettingsClusterService.getIndexSettings();
+                    },
+                    servicesAddedWithSpecificSettings: function() {
+                      return $q.when(servicesAddedWithSettings);
                     }
                   }
                 }).result;
