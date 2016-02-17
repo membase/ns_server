@@ -17,10 +17,15 @@
 
 -include("ns_common.hrl").
 
--export([spawn_monitor_rebalance/5]).
+-export([spawn_monitor_rebalance/5, spawn_monitor_failover/2]).
 
 spawn_monitor_rebalance(Service, KeepNodes, EjectNodes, DeltaNodes, ProgressCallback) ->
     spawn_monitor(Service, rebalance, KeepNodes, EjectNodes, DeltaNodes, ProgressCallback).
+
+spawn_monitor_failover(Service, KeepNodes) ->
+    ProgressCallback = fun (_) -> ok end,
+
+    spawn_monitor(Service, failover, KeepNodes, [], [], ProgressCallback).
 
 spawn_monitor(Service, Type, KeepNodes, EjectNodes, DeltaNodes, ProgressCallback) ->
     Parent = self(),

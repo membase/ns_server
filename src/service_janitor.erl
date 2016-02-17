@@ -17,7 +17,7 @@
 
 -include("ns_common.hrl").
 
--export([cleanup/0]).
+-export([cleanup/0, complete_service_failover/1]).
 
 -define(INITIAL_REBALANCE_TIMEOUT, ns_config:get_timeout(initial_rebalance, 120000)).
 
@@ -31,7 +31,14 @@ cleanup() ->
     end.
 
 do_cleanup(Config) ->
-    maybe_init_services(Config).
+    case maybe_init_services(Config) of
+        ok ->
+            %% config might have been changed by maybe_init_services
+            NewConfig = ns_config:get(),
+            maybe_complete_pending_failovers(NewConfig);
+        Error ->
+            Error
+    end.
 
 maybe_init_services(Config) ->
     ActiveNodes = ns_cluster_membership:active_nodes(Config),
@@ -39,14 +46,7 @@ maybe_init_services(Config) ->
         [Node] when Node =:= node() ->
             Services = ns_cluster_membership:node_services(Config, Node),
             RVs = [maybe_init_service(Config, S) || S <- Services],
-            NotOKs = [R || R <- RVs, R =/= ok],
-
-            case NotOKs of
-                [] ->
-                    ok;
-                _ ->
-                    failed
-            end;
+            handle_results(RVs);
         _ ->
             ok
     end.
@@ -122,4 +122,85 @@ orchestrate_initial_rebalance(Service) ->
                        [Service, ?INITIAL_REBALANCE_TIMEOUT]),
             misc:terminate_and_wait(shutdown, Pid),
             {error, {initial_rebalance_timeout, Service}}
+    end.
+
+maybe_complete_pending_failovers(Config) ->
+    Services = ns_cluster_membership:supported_services(),
+    RVs = [maybe_complete_pending_failover(Config, S) || S <- Services],
+    handle_results(RVs).
+
+maybe_complete_pending_failover(Config, Service) ->
+    case ns_cluster_membership:service_has_pending_failover(Config, Service) of
+        true ->
+            ?log_debug("Found unfinished failover for service ~p", [Service]),
+            RV = complete_service_failover(Config, Service),
+            case RV of
+                ok ->
+                    ?log_debug("Completed failover for service ~p successfully",
+                               [Service]);
+                Error ->
+                    ?log_debug("Failed to complete service ~p failover: ~p",
+                               [Service, Error])
+            end,
+            RV;
+        false ->
+            ok
+    end.
+
+complete_service_failover(Service) ->
+    complete_service_failover(ns_config:get(), Service).
+
+complete_service_failover(Config, Service) ->
+    true = ns_cluster_membership:service_has_pending_failover(Config, Service),
+
+    RV = case lists:member(Service, ns_cluster_membership:topology_aware_services()) of
+             true ->
+                 complete_topology_aware_service_failover(Config, Service);
+             false ->
+                 ok
+         end,
+
+    case RV of
+        ok ->
+            ns_cluster_membership:service_clear_pending_failover(Service);
+        _ ->
+            ok
+    end,
+
+    RV.
+
+complete_topology_aware_service_failover(Config, Service) ->
+    NodesLeft = ns_cluster_membership:get_service_map(Config, Service),
+    case NodesLeft of
+        [] ->
+            ok;
+        _ ->
+            orchestrate_service_failover(Service, NodesLeft)
+    end.
+
+orchestrate_service_failover(Service, Nodes) ->
+    {Pid, MRef} = service_rebalancer:spawn_monitor_failover(Service, Nodes),
+
+    receive
+        {'DOWN', MRef, _, Pid, Reason} ->
+            case Reason of
+                normal ->
+                    ok;
+                _ ->
+                    {error, {failover_failed, Service, Reason}}
+            end;
+        {'EXIT', _, Reason} = Exit ->
+            ?log_debug("Received exit message ~p. Terminating failover",
+                       [Exit]),
+            misc:terminate_and_wait(Reason, Pid),
+            exit(Reason)
+    end.
+
+handle_results(RVs) ->
+    NotOKs = [R || R <- RVs, R =/= ok],
+    case NotOKs of
+        [] ->
+            ok;
+        _ ->
+            failed
     end.

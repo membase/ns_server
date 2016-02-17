@@ -100,24 +100,28 @@ failover(Node) ->
     ok = failover_services(Node).
 
 failover_services(Node) ->
+    Config = ns_config:get(),
+    NodeServices = ns_cluster_membership:node_services(Config, Node) -- [kv],
+
     case cluster_compat_mode:is_cluster_41() of
         true ->
-            Config = ns_config:get(),
-            AllServices = ns_cluster_membership:supported_services(),
             lists:foreach(
               fun (Service) ->
-                      Map = ns_cluster_membership:get_service_map(Config, Service),
-                      NewMap = lists:delete(Node, Map),
-
-                      case Map =:= NewMap of
-                          true ->
-                              ok;
-                          false ->
-                              ok = ns_cluster_membership:set_service_map(Service, NewMap)
-                      end
-              end, AllServices);
+                      failover_service(Config, Service, Node)
+              end, NodeServices);
         false ->
             ok
+    end.
+
+failover_service(Config, Service, Node) ->
+    ns_cluster_membership:failover_service_node(Config, Service, Node),
+    case service_janitor:complete_service_failover(Service) of
+        ok ->
+            ?log_debug("Failed over node ~p for service ~p successfully",
+                       [Node, Service]);
+        Error ->
+            ?log_error("Failed to complete node ~p failover for service ~p: ~p",
+                       [Node, Service, Error])
     end.
 
 get_failover_vbuckets(Config, Node) ->
