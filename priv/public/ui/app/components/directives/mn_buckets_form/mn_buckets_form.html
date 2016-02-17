@@ -3,7 +3,7 @@
   <div class="bucket-icon sub_section">
     <div>
       <label>Bucket Name:</label>
-      <input ng-model="bucketConf.name" ng-disabled="bucketConf.isWizard || !bucketConf.isNew" mn-focus="focusMe.name">
+      <input ng-model="bucketConf.name" ng-disabled="bucketConf.isWizard || !bucketConf.isNew" mn-focus="!(bucketConf.isWizard || !bucketConf.isNew)">
       <span class="error-container err-name" ng-show="validation.result.errors.name">{{validation.result.errors.name}}</span>
     </div>
     <div>
@@ -27,7 +27,7 @@
       <div class="usage-block size-gauge for-ram" mn-bar-usage base-info="validation.result.guageConfig" ></div>
       <div class="gauge-label">
         <label for="ram_quota_mb_init">Per Node RAM Quota:</label>
-        <input name="ramQuotaMB" class="focusme" mn-focus="focusMe.quota" ng-class="{invalid: validation.result.errors.ramQuotaMB}" value="30" ng-model="bucketConf.ramQuotaMB">
+        <input name="ramQuotaMB" class="focusme" mn-focus="(bucketConf.isWizard || !bucketConf.isNew)" ng-class="{invalid: validation.result.errors.ramQuotaMB}" value="30" ng-model="bucketConf.ramQuotaMB">
         <abbr>MB</abbr>
       </div>
     </div>

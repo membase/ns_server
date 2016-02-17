@@ -31,6 +31,7 @@
     id="index_ram_quota"
     ng-disabled="config.services && !config.services.model.index"
     name="indexMemoryQuota"
+    mn-focus="config.services.model.kv === false"
     ng-model="config.indexMemoryQuota" />
   <span>MB (min 256 MB)</span>
   <a class="tooltip text_11"><span>What&#39;s this?</span>
@@ -47,7 +48,7 @@
     type="number"
     class="focusme js_ram_quota"
     id="fts_ram_quota"
-    mn-focus
+    mn-focus="config.services.model.kv === false && config.services.model.index  === false"
     ng-disabled="config.services && !config.services.model.fts || mnMemoryQuotaController.mnPoolDefault.value.isROAdminCreds"
     name="ftsMemoryQuota"
     ng-model="config.ftsMemoryQuota" />
