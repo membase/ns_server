@@ -505,7 +505,8 @@ maybe_send_out_email_alert({Key0, Node}, Message) ->
     end.
 
 alert_keys() ->
-    [ip, disk, overhead, ep_oom_errors, ep_item_commit_failed, audit_dropped_events].
+    [ip, disk, overhead, ep_oom_errors, ep_item_commit_failed,
+     audit_dropped_events, indexer_ram_max_usage].
 
 %% Cant currently test the alert timeouts as would need to mock
 %% calls to the archiver
