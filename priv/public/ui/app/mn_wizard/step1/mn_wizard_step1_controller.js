@@ -45,7 +45,10 @@
         .getPromise();
     }
     function postMemoryQuota() {
-      return addErrorHandler(mnSettingsClusterService.postPoolsDefault(vm.config.startNewClusterConfig), "postMemory");
+      var data = _.clone(vm.config.startNewClusterConfig);
+      !vm.config.startNewClusterConfig.services.model.index && (delete data.indexMemoryQuota);
+      !vm.config.startNewClusterConfig.services.model.fts && (delete data.ftsMemoryQuota);
+      return addErrorHandler(mnSettingsClusterService.postPoolsDefault(data), "postMemory");
     }
     function validateIndexSettings() {
       return mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.config.startNewClusterConfig.indexSettings, true))
