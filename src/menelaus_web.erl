@@ -2660,7 +2660,6 @@ reset_admin_password(Password) ->
             Err;
         _ ->
             ok = ns_config_auth:set_credentials(admin, User, Password),
-            menelaus_ui_auth:revoke(User),
             ns_audit:password_change(undefined, User, admin),
             {ok, ?l2b(io_lib:format("Password for user ~s was successfully replaced.", [User]))}
     end.

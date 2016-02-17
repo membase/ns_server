@@ -69,7 +69,17 @@ revoke(User) ->
 init([]) ->
     _ = ets:new(ui_auth_by_token, [protected, named_table, set]),
     _ = ets:new(ui_auth_by_expiration, [protected, named_table, ordered_set]),
+    ns_pubsub:subscribe_link(ns_config_events,
+                             fun ns_config_event_handler/1),
+
     {ok, []}.
+
+ns_config_event_handler({rest_creds, _}) ->
+    gen_server:cast(?MODULE, {revoke, admin});
+ns_config_event_handler({read_only_user_creds, _}) ->
+    gen_server:cast(?MODULE, {revoke, ro_admin});
+ns_config_event_handler(_Evt) ->
+    ok.
 
 -spec maybe_expire() -> ok.
 maybe_expire() ->
@@ -176,12 +186,12 @@ handle_call({check, Token}, _From, State) ->
         {_, _, Memo} ->
             {reply, {ok, Memo}, State}
     end;
-
 handle_call(Msg, From, _State) ->
     erlang:error({unknown_call, Msg, From}).
 
-handle_cast({revoke, User}, State) ->
-    Tokens = ets:match(ui_auth_by_token, {'$1','_','_',{User,'_'}}),
+handle_cast({revoke, Role}, State) ->
+    Tokens = ets:match(ui_auth_by_token, {'$1','_','_',{'_', Role}}),
+    ?log_debug("Revoke tokens ~p for role ~p", [Tokens, Role]),
     [delete_token(Token) || [Token] <- Tokens],
     {noreply, State};
 
