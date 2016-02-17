@@ -389,17 +389,17 @@ split_index(Bin) ->
 head_fragments(Plugins) ->
     [head_fragment(P) || P <- Plugins].
 
-head_fragment(#plugin{name = Service, doc_roots = []}) ->
+head_fragment(#plugin{doc_roots = []}) ->
     [];
 head_fragment(#plugin{name = Service, doc_roots = DocRoot}) ->
     create_service_block(Service, find_head_fragments(Service, DocRoot)).
 
 find_head_fragments(Service, [DocRoot|DocRoots]) ->
     [must_get_fragment(Service, DocRoot)
-     | maybe_get_fragments(Service, DocRoots)].
+     | maybe_get_fragments(DocRoots)].
 
-maybe_get_fragments(Service, DocRoots) ->
-    [maybe_get_head_fragment(Service, DocRoot) || DocRoot <- DocRoots].
+maybe_get_fragments(DocRoots) ->
+    [maybe_get_head_fragment(DocRoot) || DocRoot <- DocRoots].
 
 must_get_fragment(Service, DocRoot) ->
     Path = filename:join(DocRoot, ?HEAD_FRAG_HTML),
@@ -414,7 +414,7 @@ handle_must_get_fragment(Service, File, {error, Reason}) ->
     ?log_error(Msg),
     html_comment(Msg).
 
-maybe_get_head_fragment(Service, DocRoot) ->
+maybe_get_head_fragment(DocRoot) ->
     Path = filename:join(DocRoot, ?HEAD_FRAG_HTML),
     handle_maybe_get_fragment(Path, file:read_file(Path)).
 
