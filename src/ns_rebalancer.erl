@@ -74,8 +74,6 @@ orchestrate_failover(Node) ->
 %% @doc Fail a node. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
 failover(Node) ->
-    ok = failover_services(Node),
-
     FailoverVBuckets =
         lists:foldl(
           fun (Bucket, Acc) ->
@@ -99,7 +97,7 @@ failover(Node) ->
             ok
     end,
 
-    ok.
+    ok = failover_services(Node).
 
 failover_services(Node) ->
     case cluster_compat_mode:is_cluster_41() of
