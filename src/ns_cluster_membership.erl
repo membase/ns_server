@@ -218,7 +218,7 @@ default_services() ->
     [kv].
 
 topology_aware_services() ->
-    [] ++ maybe_example_service().
+    [fts] ++ maybe_example_service().
 
 maybe_example_service() ->
     case os:getenv("ENABLE_EXAMPLE_SERVICE") =/= false of
