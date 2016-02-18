@@ -402,6 +402,11 @@ object_match_test() ->
     ?assertEqual(true, object_match([{b, "a"}], [{b, any}])),
     ?assertEqual(true, object_match([{b, any}], [{b, any}])).
 
+compile_roles_test() ->
+    ?assertEqual([[{[{bucket, "test"}], none}]],
+                 compile_roles([{test_role, ["test"]}],
+                               [{test_role, [param], [], [{[{bucket, param}], none}]}])).
+
 admin_test() ->
     Roles = compile_roles([admin], preconfigured_roles()),
     ?assertEqual(true, is_allowed({[{bucket, all}], create}, Roles)).
