@@ -1082,6 +1082,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
                              ({otp, _}, _) -> {otp, [{cookie, NewCookie}]};
                              ({nodes_wanted, _} = X, _) -> X;
                              ({{node, _, membership}, _}, {_, BlackSpot}) -> BlackSpot;
+                             ({{node, _, services}, _}, {_, BlackSpot}) -> BlackSpot;
                              ({{node, Node, _}, _}, _) when Node =:= MyNode -> update_vclock;
                              (_, {_, BlackSpot}) -> BlackSpot
                          end),
