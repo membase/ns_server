@@ -248,7 +248,7 @@ get_compiled_roles(Identity) ->
 
 -spec get_possible_param_values(ns_config(), atom()) -> [rbac_role_param()].
 get_possible_param_values(Config, bucket_name) ->
-    [all | [Name || {Name, _} <- ns_bucket:get_buckets(Config)]].
+    [any | [Name || {Name, _} <- ns_bucket:get_buckets(Config)]].
 
 -spec get_all_assignable_roles(ns_config()) -> [rbac_role()].
 get_all_assignable_roles(Config) ->
@@ -421,7 +421,7 @@ validate_role_test() ->
     Definitions = preconfigured_roles(),
     ?assertEqual(true, validate_role(admin, Definitions, Config)),
     ?assertEqual(true, validate_role({bucket_admin, ["test"]}, Definitions, Config)),
-    ?assertEqual(true, validate_role({views_admin, [all]}, Definitions, Config)),
+    ?assertEqual(true, validate_role({views_admin, [any]}, Definitions, Config)),
     ?assertEqual(false, validate_role(something, Definitions, Config)),
     ?assertEqual(false, validate_role({bucket_admin, ["something"]}, Definitions, Config)),
     ?assertEqual(false, validate_role({something, ["test"]}, Definitions, Config)),

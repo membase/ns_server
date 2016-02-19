@@ -131,7 +131,7 @@ handle_validate_saslauthd_creds_post(Req) ->
 
 role_to_json(Name) when is_atom(Name) ->
     [{role, Name}];
-role_to_json({Name, [all]}) ->
+role_to_json({Name, [any]}) ->
     [{role, Name}, {bucket_name, <<"*">>}];
 role_to_json({Name, [BucketName]}) ->
     [{role, Name}, {bucket_name, list_to_binary(BucketName)}].
@@ -174,7 +174,7 @@ parse_role(RoleRaw) ->
             {Role, []} ->
                 list_to_existing_atom(Role);
             {Role, "[*]"} ->
-                {list_to_existing_atom(Role), [all]};
+                {list_to_existing_atom(Role), [any]};
             {Role, [$[ | ParamAndBracket]} ->
                 case parse_until(ParamAndBracket, "]") of
                     {Param, "]"} ->
@@ -195,7 +195,7 @@ parse_roles(RolesStr) ->
 
 role_to_string(Role) when is_atom(Role) ->
     atom_to_list(Role);
-role_to_string({Role, [all]}) ->
+role_to_string({Role, [any]}) ->
     lists:flatten(io_lib:format("~p[*]", [Role]));
 role_to_string({Role, [BucketName]}) ->
     lists:flatten(io_lib:format("~p[~s]", [Role, BucketName])).
@@ -204,7 +204,7 @@ parse_roles_test() ->
     Res = parse_roles("admin, bucket_admin[test.test], bucket_admin[*], no_such_atom, bucket_admin[default"),
     ?assertMatch([admin,
                   {bucket_admin, ["test.test"]},
-                  {bucket_admin, [all]},
+                  {bucket_admin, [any]},
                   {error, "no_such_atom"},
                   {error, "bucket_admin[default"}], Res).
 
