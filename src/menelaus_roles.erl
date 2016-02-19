@@ -410,12 +410,91 @@ compile_roles_test() ->
 
 admin_test() ->
     Roles = compile_roles([admin], preconfigured_roles()),
-    ?assertEqual(true, is_allowed({[{bucket, all}], create}, Roles)).
+    ?assertEqual(true, is_allowed({[{bucket, all}], create}, Roles)),
+    ?assertEqual(true, is_allowed({[something, something], anything}, Roles)).
+
+ro_admin_test() ->
+    Roles = compile_roles([ro_admin], preconfigured_roles()),
+    ?assertEqual(false, is_allowed({[{bucket, "test"}, password], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "test"}, data], read}, Roles)),
+    ?assertEqual(true, is_allowed({[{bucket, "test"}, something], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "test"}, something], write}, Roles)),
+    ?assertEqual(false, is_allowed({[admin, security], write}, Roles)),
+    ?assertEqual(true, is_allowed({[admin, security], read}, Roles)),
+    ?assertEqual(false, is_allowed({[admin, other], write}, Roles)),
+    ?assertEqual(true, is_allowed({[anything], read}, Roles)),
+    ?assertEqual(false, is_allowed({[anything], write}, Roles)).
+
+bucket_views_admin_check_global(Roles) ->
+    ?assertEqual(false, is_allowed({[xdcr], read}, Roles)),
+    ?assertEqual(false, is_allowed({[admin], read}, Roles)),
+    ?assertEqual(true, is_allowed({[something], read}, Roles)),
+    ?assertEqual(false, is_allowed({[something], write}, Roles)).
+
+bucket_views_admin_check_another(Roles) ->
+    ?assertEqual(false, is_allowed({[{bucket, "another"}, xdcr], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "another"}, views], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "another"}, data], read}, Roles)),
+    ?assertEqual(true, is_allowed({[{bucket, "another"}, settings], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "another"}, settings], write}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "another"}], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, all}], create}, Roles)).
+
+bucket_admin_check_default(Roles) ->
+    ?assertEqual(true, is_allowed({[{bucket, "default"}, xdcr], read}, Roles)),
+    ?assertEqual(true, is_allowed({[{bucket, "default"}, xdcr], execute}, Roles)),
+    ?assertEqual(true, is_allowed({[{bucket, "default"}, anything], anything}, Roles)),
+    ?assertEqual(true, is_allowed({[{bucket, "default"}, anything], anything}, Roles)).
 
 bucket_admin_test() ->
     Roles = compile_roles([{bucket_admin, ["default"]}], preconfigured_roles()),
-    ?assertEqual(false, is_allowed({[{bucket,"test"}, data], read}, Roles)),
-    ?assertEqual(false, is_allowed({[{bucket, all}], create}, Roles)).
+    bucket_admin_check_default(Roles),
+    bucket_views_admin_check_another(Roles),
+    bucket_views_admin_check_global(Roles).
+
+bucket_admin_wildcard_test() ->
+    Roles = compile_roles([{bucket_admin, [any]}], preconfigured_roles()),
+    bucket_admin_check_default(Roles),
+    bucket_views_admin_check_global(Roles).
+
+views_admin_check_default(Roles) ->
+    ?assertEqual(true, is_allowed({[{bucket, "default"}, views], anything}, Roles)),
+    ?assertEqual(true, is_allowed({[{bucket, "default"}, data], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "default"}, data], write}, Roles)),
+    ?assertEqual(true, is_allowed({[{bucket, "default"}, settings], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "default"}, settings], write}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "default"}], read}, Roles)).
+
+views_admin_test() ->
+    Roles = compile_roles([{views_admin, ["default"]}], preconfigured_roles()),
+    views_admin_check_default(Roles),
+    bucket_views_admin_check_another(Roles),
+    bucket_views_admin_check_global(Roles).
+
+views_admin_wildcard_test() ->
+    Roles = compile_roles([{views_admin, [any]}], preconfigured_roles()),
+    views_admin_check_default(Roles),
+    bucket_views_admin_check_global(Roles).
+
+bucket_sasl_check(Roles, Bucket, Allowed) ->
+    ?assertEqual(Allowed, is_allowed({[{bucket, Bucket}, data], anything}, Roles)),
+    ?assertEqual(Allowed, is_allowed({[{bucket, Bucket}], flush}, Roles)),
+    ?assertEqual(Allowed, is_allowed({[{bucket, Bucket}], flush}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, Bucket}], write}, Roles)).
+
+bucket_sasl_test() ->
+    Roles = compile_roles([{bucket_sasl, ["default"]}], preconfigured_roles()),
+    bucket_sasl_check(Roles, "default", true),
+    bucket_sasl_check(Roles, "another", false),
+    ?assertEqual(true, is_allowed({[pools], read}, Roles)),
+    ?assertEqual(false, is_allowed({[another], read}, Roles)).
+
+replication_admin_test() ->
+    Roles = compile_roles([replication_admin], preconfigured_roles()),
+    ?assertEqual(true, is_allowed({[{bucket, "default"}, xdcr], anything}, Roles)),
+    ?assertEqual(true, is_allowed({[xdcr], anything}, Roles)),
+    ?assertEqual(false, is_allowed({[admin], read}, Roles)),
+    ?assertEqual(true, is_allowed({[other], read}, Roles)).
 
 validate_role_test() ->
     Config = [[{buckets, [{configs, [{"test", []}]}]}]],
