@@ -2,10 +2,10 @@
   "use strict";
 
   angular
-    .module('mnAutoCompactionForm', [])
+    .module('mnAutoCompactionForm', ['mnPeriod'])
     .directive('mnAutoCompactionForm', mnAutoCompactionFormDirective);
 
-  function mnAutoCompactionFormDirective($http) {
+  function mnAutoCompactionFormDirective($http, daysOfWeek) {
     var mnAutoCompactionForm = {
       restrict: 'A',
       scope: {
@@ -21,15 +21,10 @@
       controller: controller
     };
 
-    return mnAutoCompactionForm;
-
-    function controller($scope) {
-      $scope.$watch('validationErrors', function (errors) {
-        angular.forEach($scope.validationErrors, function (value, key) {
-          $scope.validationErrors[key.replace('[', '_').replace(']', '_')] = value;
-        });
-        $scope.errors = $scope.validationErrors;
-      });
+    function controller($scope, daysOfWeek) {
+      $scope.daysOfWeek = daysOfWeek;
     }
+
+    return mnAutoCompactionForm;
   }
 })();

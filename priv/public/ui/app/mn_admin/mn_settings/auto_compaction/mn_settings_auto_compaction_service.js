@@ -2,10 +2,11 @@
   "use strict";
 
   angular.module('mnSettingsAutoCompactionService', [
-    'mnFilters'
+    'mnFilters',
+    'mnHelper'
   ]).factory('mnSettingsAutoCompactionService', mnSettingsAutoCompactionServiceFactory);
 
-  function mnSettingsAutoCompactionServiceFactory($http, mnBytesToMBFilter, mnMBtoBytesFilter) {
+  function mnSettingsAutoCompactionServiceFactory($http, $q, mnBytesToMBFilter, mnMBtoBytesFilter, mnHelper) {
     var mnSettingsAutoCompactionService = {
       prepareSettingsForView: prepareSettingsForView,
       prepareSettingsForSaving: prepareSettingsForSaving,
@@ -31,6 +32,13 @@
       prepareValuesForView(acSettings.viewFragmentationThreshold);
       if (isBucketsDetails) {
         delete acSettings.indexFragmentationThreshold;
+        delete acSettings.indexCircularCompaction;
+      } else {
+        if (acSettings.indexCircularCompaction) {
+          acSettings.indexCircularCompactionFlag = acSettings.indexCompactionMode === "circular";
+          acSettings.indexCircularCompactionDaysOfWeek = mnHelper.listToCheckboxes(acSettings.indexCircularCompaction.daysOfWeek.split(","));
+          acSettings.indexCircularCompaction = acSettings.indexCircularCompaction.interval;
+        }
       }
       if (acSettings.indexFragmentationThreshold) {
         prepareValuesForView(acSettings.indexFragmentationThreshold);
@@ -39,10 +47,10 @@
       acSettings.purgeInterval = settings.purgeInterval;
       !acSettings.allowedTimePeriod && (acSettings.allowedTimePeriod = {
         abortOutside: false,
-        toMinute: '',
-        toHour: '',
-        fromMinute: '',
-        fromHour: ''
+        toMinute: 0,
+        toHour: 0,
+        fromMinute: 0,
+        fromHour: 0
       });
       return acSettings;
     }
@@ -63,6 +71,15 @@
       acSettings = _.clone(acSettings, true);
       if (!acSettings.allowedTimePeriodFlag) {
         delete acSettings.allowedTimePeriod;
+      }
+      if (acSettings.indexCircularCompaction) {
+        acSettings.indexCompactionMode = acSettings.indexCircularCompactionFlag === true ? "circular" : "full";
+        acSettings.indexCircularCompaction = {
+          daysOfWeek: mnHelper.checkboxesToList(acSettings.indexCircularCompactionDaysOfWeek).join(','),
+          interval: acSettings.indexCircularCompaction
+        };
+        delete acSettings.indexCircularCompactionFlag;
+        delete acSettings.indexCircularCompactionDaysOfWeek;
       }
       prepareVluesForSaving(acSettings.databaseFragmentationThreshold);
       prepareVluesForSaving(acSettings.viewFragmentationThreshold);
@@ -89,6 +106,19 @@
         url: '/controller/setAutoCompaction',
         params: params || {},
         data: mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings)
+      }).then(null, function (resp) {
+        var errors = resp.data.errors;
+        angular.forEach(["fromHour", "fromMinute", "toHour", "toMinute"], function (value) {
+          if (errors["indexCircularCompaction[interval]["+value+"]"]) {
+            errors["indexCircularCompaction["+value+"]"] = errors["indexCircularCompaction[interval]["+value+"]"];
+            delete errors["indexCircularCompaction[interval]["+value+"]"];
+          }
+        });
+        angular.forEach(errors, function (value, key) {
+          errors[key.replace('[', '_').replace(']', '_')] = value;
+        });
+        resp.data.errors = errors;
+        return $q.reject(resp);
       });
     }
   }

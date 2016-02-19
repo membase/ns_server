@@ -46,7 +46,8 @@
         initializeDetailsHashObserver: initializeDetailsHashObserver,
         checkboxesToList: checkboxesToList,
         reloadApp: reloadApp,
-        reloadState: reloadState
+        reloadState: reloadState,
+        listToCheckboxes: listToCheckboxes
       };
 
       return mnHelper;
@@ -81,6 +82,9 @@
       }
       function checkboxesToList(object) {
         return _.chain(object).pick(angular.identity).keys().value();
+      }
+      function listToCheckboxes(list) {
+        return _.zipObject(list, _.fill(new Array(list.length), true, 0, list.length));
       }
       function reloadApp() {
         $window.location.reload();

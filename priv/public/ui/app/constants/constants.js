@@ -16,6 +16,15 @@
       ramQuotaMB: "0",
       uri: '/pools/default/buckets'
     })
+    .constant('daysOfWeek', [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ])
     .constant('knownAlerts', [
       'auto_failover_node',
       'auto_failover_maximum_reached',

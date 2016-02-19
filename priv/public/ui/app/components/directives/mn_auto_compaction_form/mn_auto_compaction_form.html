@@ -1,7 +1,7 @@
 <div>
   <h3>Database Fragmentation</h3>
   <div class="sub_section">
-    <p>Set the database fragmentation level to determine the point when compaction is triggered.</p>
+    <div>Set the database fragmentation level to determine the point when compaction is triggered.</div>
     <p class="row">
       <input
         type="checkbox"
@@ -14,9 +14,9 @@
         id="decaebe7-bb14-4c1f-9bb1-70ceb7fb2e43"
         ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentage"
         name="databaseFragmentationThreshold_percentage_"
-        ng-class="{invalid: errors.databaseFragmentationThreshold_percentage_}"
+        ng-class="{invalid: validationErrors.databaseFragmentationThreshold_percentage_}"
         ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.percentageFlag || (rbac && !rbac.cluster.settings.write)"> %
-      <span class="error-container err-databaseFragmentationThreshold-percentage-" ng-show="errors.databaseFragmentationThreshold_percentage_">{{errors.databaseFragmentationThreshold_percentage_}}</span>
+      <span class="error-container err-databaseFragmentationThreshold-percentage-" ng-show="validationErrors.databaseFragmentationThreshold_percentage_">{{validationErrors.databaseFragmentationThreshold_percentage_}}</span>
     </p>
     <p class="row">
       <input
@@ -29,29 +29,15 @@
         id="settings-db-compaction-size"
         name="databaseFragmentationThreshold_size_"
         ng-model="autoCompactionSettings.databaseFragmentationThreshold.size"
-        ng-class="{invalid: errors.databaseFragmentationThreshold_size_}"
+        ng-class="{invalid: validationErrors.databaseFragmentationThreshold_size_}"
         ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.sizeFlag || (rbac && !rbac.cluster.settings.write)" class="size"> MB
-      <span class="error-container err-databaseFragmentationThreshold-size-" ng-show="errors.databaseFragmentationThreshold_size_">{{errors.databaseFragmentationThreshold_size_}}</span>
-    </p>
-  </div>
-
-  <h3 class="only-when-40" ng-if="!isBucketsSettings && poolDefault.compat.atLeast40">Index Fragmentation</h3>
-  <div class="sub_section only-when-40" id="js_index_fragmentation_settings" ng-if="!isBucketsSettings && poolDefault.compat.atLeast40">
-    <p>Set the index fragmentation level to determine the point when compaction is triggered.</p>
-    <p class="row">
-      <input
-        type="number"
-        ng-disabled="(rbac && !rbac.cluster.settings.write)"
-        ng-model="autoCompactionSettings.indexFragmentationThreshold.percentage"> %
-      <span
-        class="error-container err-indexFragmentationThreshold-percentage-"
-        ng-show="errors.indexFragmentationThreshold_percentage_">{{errors.indexFragmentationThreshold_percentage_}}</span>
+      <span class="error-container err-databaseFragmentationThreshold-size-" ng-show="validationErrors.databaseFragmentationThreshold_size_">{{validationErrors.databaseFragmentationThreshold_size_}}</span>
     </p>
   </div>
 
   <h3>View Fragmentation</h3>
   <div class="sub_section">
-    <p>Set the view fragmentation level to determine the point when compaction is triggered.</p>
+    <div>Set the view fragmentation level to determine the point when compaction is triggered.</div>
     <p class="row">
       <input
         type="checkbox"
@@ -63,10 +49,10 @@
         id="8e49a092-3108-46ed-b5c3-9b95c4ceda6f"
         ng-model="autoCompactionSettings.viewFragmentationThreshold.percentage"
         name="viewFragmentationThreshold_percentage_"
-        ng-class="{invalid: errors.viewFragmentationThreshold_percentage_}"
+        ng-class="{invalid: validationErrors.viewFragmentationThreshold_percentage_}"
         ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.percentageFlag || (rbac && !rbac.cluster.settings.write)"
         type="number"> %
-      <span class="error-container err-viewFragmentationThreshold-percentage-" ng-show="errors.viewFragmentationThreshold_percentage_">{{errors.viewFragmentationThreshold_percentage_}}</span>
+      <span class="error-container err-viewFragmentationThreshold-percentage-" ng-show="validationErrors.viewFragmentationThreshold_percentage_">{{validationErrors.viewFragmentationThreshold_percentage_}}</span>
     </p>
     <p class="row">
       <input
@@ -79,10 +65,10 @@
         id="settings-view-compaction-size"
         ng-model="autoCompactionSettings.viewFragmentationThreshold.size"
         name="viewFragmentationThreshold_size_"
-        ng-class="{invalid: errors.viewFragmentationThreshold_size_}"
+        ng-class="{invalid: validationErrors.viewFragmentationThreshold_size_}"
         ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.sizeFlag || (rbac && !rbac.cluster.settings.write)"
         class="size"> MB
-      <span class="error-container err-viewFragmentationThreshold-size-" ng-show="errors.viewFragmentationThreshold_size_">{{errors.viewFragmentationThreshold_size_}}</span>
+      <span class="error-container err-viewFragmentationThreshold-size-" ng-show="validationErrors.viewFragmentationThreshold_size_">{{validationErrors.viewFragmentationThreshold_size_}}</span>
     </p>
   </div>
   <h3>Time Interval</h3>
@@ -96,63 +82,11 @@
         ng-model="autoCompactionSettings.allowedTimePeriodFlag"/>
       <label for="f5962927-16af-4eb6-802c-86fe6c3a238d">Set the time interval for when compaction is allowed to run</label>
     </div>
-    <div class="row">
-      Start Time:
-      <input
-        id="8a786bbb-e9df-46d4-8733-2993ae0c2b95"
-        name="allowedTimePeriod_fromHour_"
-        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || (rbac && !rbac.cluster.settings.write)"
-        ng-model="autoCompactionSettings.allowedTimePeriod.fromHour"
-        ng-class="{invalid: errors.allowedTimePeriod_fromHour_}"
-        type="number"
-        min="0"
-        max="23"
-        placeholder="HH" /> :
-      <input
-        name="allowedTimePeriod_fromMinute_"
-        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || (rbac && !rbac.cluster.settings.write)"
-        ng-model="autoCompactionSettings.allowedTimePeriod.fromMinute"
-        ng-class="{invalid: errors.allowedTimePeriod_fromMinute_}"
-        type="number"
-        min="0"
-        max="59"
-        placeholder="MM" />
-      End Time:
-      <input
-        name="allowedTimePeriod_toHour_"
-        type="number"
-        min="0"
-        max="23"
-        placeholder="HH"
-        ng-class="{invalid: errors.allowedTimePeriod_toHour_}"
-        ng-model="autoCompactionSettings.allowedTimePeriod.toHour"
-        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || (rbac && !rbac.cluster.settings.write)" /> :
-      <input
-        name="allowedTimePeriod_toMinute_"
-        ng-class="{invalid: errors.allowedTimePeriod_toMinute_}"
-        ng-model="autoCompactionSettings.allowedTimePeriod.toMinute"
-        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || (rbac && !rbac.cluster.settings.write)"
-        type="number"
-        min="0"
-        max="59"
-        placeholder="MM" />
-      <div class="error-container err-allowedTimePeriod" ng-show="errors.allowedTimePeriod">{{errors.allowedTimePeriod}}</div>
-      <div class="error-container err-allowedTimePeriod-fromHour-" ng-show="errors.allowedTimePeriod_fromHour_">{{errors.allowedTimePeriod_fromHour_}}</div>
-      <div class="error-container err-allowedTimePeriod-fromMinute-" ng-show="errors.allowedTimePeriod_fromMinute_">{{errors.allowedTimePeriod_fromMinute_}}</div>
-      <div class="error-container err-allowedTimePeriod-toHour-" ng-show="errors.allowedTimePeriod_toHour_">{{errors.allowedTimePeriod_toHour_}}</div>
-      <div class="error-container err-allowedTimePeriod-toMinute-" ng-show="errors.allowedTimePeriod_toMinute_">{{errors.allowedTimePeriod_toMinute_}}</div>
-    </div>
-    <div class="row">
-      <input
-        id="302bc9f8-0a98-4963-85a4-5670ab8f1c25"
-        type="checkbox"
-        ng-class="{invalid: errors.allowedTimePeriod_abortOutside_}"
-        ng-model="autoCompactionSettings.allowedTimePeriod.abortOutside"
-        ng-disabled="!autoCompactionSettings.allowedTimePeriodFlag || (rbac && !rbac.cluster.settings.write)"
-        name="allowedTimePeriod_abortOutside_"
-        value="true" />
-      <label for="302bc9f8-0a98-4963-85a4-5670ab8f1c25">Abort compaction if run time exceeds the set time interval</label>
-      <div class="error-container err-allowedTimePeriod-abortOutside-" ng-show="errors.allowedTimePeriod_abortOutside_">{{errors.allowedTimePeriod_abortOutside_}}</div>
+    <div
+      mn-period="allowedTimePeriod"
+      auto-compaction-settings="autoCompactionSettings"
+      rbac="rbac"
+      errors="validationErrors">
     </div>
     <div class="row">
       <input
@@ -160,13 +94,71 @@
         type="checkbox"
         ng-disabled="(rbac && !rbac.cluster.settings.write)"
         name="parallelDBAndViewCompaction"
-        ng-class="{invalid: errors.parallelDBAndViewCompaction}"
+        ng-class="{invalid: validationErrors.parallelDBAndViewCompaction}"
         ng-model="autoCompactionSettings.parallelDBAndViewCompaction"
         value="true" />
       <label for="f6fb6488-c05a-4baa-88f7-27032da6600b">Compact Database and View in parallel</label>
-      <div class="error-container err-parallelDBAndViewCompaction" ng-show="errors.parallelDBAndViewCompaction">{{errors.parallelDBAndViewCompaction}}</div>
+      <div class="error-container err-parallelDBAndViewCompaction" ng-show="validationErrors.parallelDBAndViewCompaction">{{validationErrors.parallelDBAndViewCompaction}}</div>
     </div>
   </div>
+
+  <h3 class="only-when-40" ng-if="!isBucketsSettings && poolDefault.compat.atLeast40">Index Fragmentation</h3>
+  <div class="sub_section only-when-40" id="js_index_fragmentation_settings" ng-if="!isBucketsSettings && poolDefault.compat.atLeast40">
+    <div class="row">
+      <input
+        type="radio"
+        ng-disabled="(rbac && !rbac.cluster.settings.write)"
+        id="index-regular-compaction-radio"
+        class="check-for-allowedTimePeriod"
+        name="indexCircularCompaction"
+        ng-value="false"
+        ng-model="autoCompactionSettings.indexCircularCompactionFlag">
+      <label for="index-regular-compaction-radio">Set the index fragmentation level to determine the point when compaction is triggered.</label>
+    </div>
+    <div class="row">
+      <input
+        type="number"
+        ng-disabled="(rbac && !rbac.cluster.settings.write) || autoCompactionSettings.indexCircularCompactionFlag === true"
+        ng-model="autoCompactionSettings.indexFragmentationThreshold.percentage"> %
+      <span
+        class="error-container err-indexFragmentationThreshold-percentage-"
+        ng-show="validationErrors.indexFragmentationThreshold_percentage_">{{validationErrors.indexFragmentationThreshold_percentage_}}</span>
+    </div>
+    <div class="row">
+      <input
+        type="radio"
+        ng-disabled="(rbac && !rbac.cluster.settings.write)"
+        id="index-circular-compaction-radio"
+        class="check-for-allowedTimePeriod"
+        name="indexCircularCompaction"
+        ng-value="true"
+        ng-model="autoCompactionSettings.indexCircularCompactionFlag">
+      <label for="index-circular-compaction-radio">Use circular compaction with time interval for when defragmintation is allowed to run.</label>
+    </div>
+    <div class="row">
+      <span ng-repeat="day in daysOfWeek">
+        <input
+          ng-disabled="!autoCompactionSettings.indexCircularCompactionFlag"
+          type="checkbox"
+          style="vertical-align:middle;"
+          id="days_of_week_{{day}}"
+          ng-model="autoCompactionSettings.indexCircularCompactionDaysOfWeek[day]"
+          ng-value="day">
+        <label style="vertical-align:middle;margin-right:5px;" for="days_of_week_{{day}}">
+          {{day}}
+        </label>
+      </span>
+    </div>
+    <div class="row">
+      <div
+        mn-period="indexCircularCompaction"
+        auto-compaction-settings="autoCompactionSettings"
+        rbac="rbac"
+        errors="validationErrors">
+      </div>
+    </div>
+  </div>
+
   <h3>Metadata Purge Interval</h3>
   <div class="sub_section">
     <div class="row">
@@ -174,7 +166,7 @@
       <input
         ng-disabled="(rbac && !rbac.cluster.settings.write)"
         ng-model="autoCompactionSettings.purgeInterval"
-        ng-class="{invalid: errors.purgeInterval}"
+        ng-class="{invalid: validationErrors.purgeInterval}"
         id="fc68aaf1-9519-4eeb-ba28-3daa042aae22"
         name="purgeInterval"
         style="width: 2.5em;">
@@ -184,7 +176,7 @@
             Metadata Purge Interval. Allowed range is 0.04 - 60 where 0.04 = 1h, 0.5 = 12h. Set how frequently a node will purge metadata on deleted items. If set too high, may significantly delay the node from reclaiming disk space. If set too low, may cause data inconsistencies in XDCR or Views.
         </span></span>
       </a>
-      <div class="error-container err-purgeInterval" style="display: inline; padding-left: 0;" ng-show="errors.purgeInterval">{{errors.purgeInterval}}</div>
+      <div class="error-container err-purgeInterval" style="display: inline; padding-left: 0;" ng-show="validationErrors.purgeInterval">{{validationErrors.purgeInterval}}</div>
     </div>
   </div>
 </div>

@@ -34,6 +34,7 @@
       if (vm.viewLoading) {
         return;
       }
+      delete vm.errors;
       mnPromiseHelper(vm, mnSettingsAutoCompactionService.saveAutoCompaction(vm.autoCompactionSettings))
         .showErrorsSensitiveSpinner()
         .catchErrors()

@@ -3,10 +3,11 @@
 
   angular
     .module('mnSettingsAlertsService', [
+      "mnHelper"
     ])
     .factory('mnSettingsAlertsService', mnSettingsAlertsService);
 
-  function mnSettingsAlertsService($http, knownAlerts) {
+  function mnSettingsAlertsService($http, knownAlerts, mnHelper) {
     var mnSettingsAlertsService = {
       testMail: testMail,
       saveAlerts: saveAlerts,
@@ -30,8 +31,7 @@
         var val = _.clone(resp.data);
         val.recipients = val.recipients.join('\n');
         val.knownAlerts = _.clone(knownAlerts);
-        // {auto_failover_node: true, auto_failover_maximum_reached: true ...}
-        val.alerts = _.zipObject(val.alerts, _.fill(new Array(val.knownAlerts.length), true, 0, val.knownAlerts.length));
+        val.alerts = mnHelper.listToCheckboxes(val.alerts);
 
         return val;
       });

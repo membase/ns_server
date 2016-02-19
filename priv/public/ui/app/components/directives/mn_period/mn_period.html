@@ -1,0 +1,62 @@
+<div class="row">
+  Start Time:
+  <input
+    id="8a786bbb-e9df-46d4-8733-2993ae0c2b95"
+    name="{{mnPeriod}}_fromHour_"
+    ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
+    ng-model="autoCompactionSettings[mnPeriod].fromHour"
+    ng-class="{invalid: errors[mnPeriod + '_fromHour_']}"
+    type="number"
+    min="0"
+    max="23"
+    required
+    placeholder="HH" /> :
+  <input
+    name="{{mnPeriod}}_fromMinute_"
+    ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
+    ng-model="autoCompactionSettings[mnPeriod].fromMinute"
+    ng-class="{invalid: errors[mnPeriod + '_fromMinute_']}"
+    type="number"
+    min="0"
+    max="59"
+    required
+    placeholder="MM" />
+  End Time:
+  <input
+    name="{{mnPeriod}}_toHour_"
+    type="number"
+    min="0"
+    max="23"
+    placeholder="HH"
+    required
+    ng-class="{invalid: errors[mnPeriod + '_toHour_']}"
+    ng-model="autoCompactionSettings[mnPeriod].toHour"
+    ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)" /> :
+  <input
+    name="{{mnPeriod}}_toMinute_"
+    ng-class="{invalid: errors[mnPeriod + '_toMinute_']}"
+    ng-model="autoCompactionSettings[mnPeriod].toMinute"
+    ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
+    type="number"
+    required
+    min="0"
+    max="59"
+    placeholder="MM" />
+  <div class="error-container err-{{mnPeriod}}" ng-show="errors[mnPeriod]">{{errors[mnPeriod]}}</div>
+  <div class="error-container err-{{mnPeriod}}-fromHour-" ng-show="errors[mnPeriod + '_fromHour_']">{{errors[mnPeriod + '_fromHour_']}}</div>
+  <div class="error-container err-{{mnPeriod}}-fromMinute-" ng-show="errors[mnPeriod + '_fromMinute_']">{{errors[mnPeriod + '_fromMinute_']}}</div>
+  <div class="error-container err-{{mnPeriod}}-toHour-" ng-show="errors[mnPeriod + '_toHour_']">{{errors[mnPeriod + '_toHour_']}}</div>
+  <div class="error-container err-{{mnPeriod}}-toMinute-" ng-show="errors[mnPeriod + '_toMinute_']">{{errors[mnPeriod + '_toMinute_']}}</div>
+</div>
+<div class="row">
+  <input
+    id="302bc9f8-0a98-4963-85a4-5670ab8f1c25{{mnPeriod}}"
+    type="checkbox"
+    ng-class="{invalid: errors[mnPeriod + '_abortOutside_']}"
+    ng-model="autoCompactionSettings[mnPeriod].abortOutside"
+    ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
+    name="{{mnPeriod}}_abortOutside_"
+    value="true" />
+  <label for="302bc9f8-0a98-4963-85a4-5670ab8f1c25{{mnPeriod}}">Abort compaction if run time exceeds the set time interval</label>
+  <div class="error-container err-{{mnPeriod}}-abortOutside-" ng-show="errors[mnPeriod + '_abortOutside_']">{{errors[mnPeriod + '_abortOutside_']}}</div>
+</div>
