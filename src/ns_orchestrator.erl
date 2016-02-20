@@ -688,12 +688,16 @@ idle({start_graceful_failover, Node}, _From,
                            {rebalance_status_uuid, couch_uuids:random()},
                            {graceful_failover_pid, Pid},
                            {rebalancer_pid, Pid}]),
+
+            Nodes = ns_cluster_membership:active_nodes(),
+            Progress = rebalance_progress:init(Nodes, [kv]),
+
             {reply, ok, rebalancing,
              #rebalancing_state{rebalancer=Pid,
                                 eject_nodes = [],
                                 keep_nodes = [],
                                 failed_nodes = [],
-                                progress=dict:new()}};
+                                progress=Progress}};
         {error, RV} ->
             {reply, RV, idle, State}
     end;
