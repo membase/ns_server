@@ -30,14 +30,14 @@
     });
 
     $transitionsProvider.onBefore({
-      to: "app.admin.**",
-      from: "app.admin.**"
+      from: "app.admin.**",
+      to: "app.admin.**"
     }, function ($uibModalStack) {
       return !$uibModalStack.getTop();
     });
     $transitionsProvider.onBefore({
-      to: "app.admin.**",
-      from: "app.auth"
+      from: "app.auth",
+      to: "app.admin.**"
     }, function (mnPools) {
       return mnPools.get().then(function () {
         return true;
