@@ -5,13 +5,13 @@
     .module('mnWizard')
     .controller('mnWizardStep6Controller', mnWizardStep6Controller);
 
-    function mnWizardStep6Controller($scope, $q, indexSettings, $state, pools, mnPromiseHelper, memoryQuotaConfig, mnSettingsClusterService, firstTimeAddedNodes) {
+    function mnWizardStep6Controller($scope, $q, indexSettings, $state, pools, mnPromiseHelper, memoryQuotaConfig, mnSettingsClusterService, firstTimeAddedServices) {
       var vm = this;
       vm.initialIndexSettings = _.clone(indexSettings);
       vm.indexSettings = indexSettings;
       vm.config = memoryQuotaConfig;
       vm.onSubmit = onSubmit;
-      vm.firstTimeAddedNodes = firstTimeAddedNodes;
+      vm.firstTimeAddedServices = firstTimeAddedServices;
       vm.isEnterprise = pools.isEnterprise;
 
       if (indexSettings.storageMode === "") {
@@ -33,7 +33,7 @@
             .getPromise()
         ];
 
-        if (vm.firstTimeAddedNodes.index) {
+        if (vm.firstTimeAddedServices.index) {
           queries.push(
             mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
               .catchErrors("postIndexSettingsErrors")

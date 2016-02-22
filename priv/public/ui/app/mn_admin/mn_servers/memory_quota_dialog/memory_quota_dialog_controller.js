@@ -5,14 +5,14 @@
     .module('mnServers')
     .controller('mnServersMemoryQuotaDialogController', mnServersMemoryQuotaDialogController);
 
-  function mnServersMemoryQuotaDialogController($scope, indexSettings, $q, mnPoolDefault, $uibModalInstance, mnSettingsClusterService, memoryQuotaConfig, mnPromiseHelper, firstTimeAddedNodes) {
+  function mnServersMemoryQuotaDialogController($scope, indexSettings, $q, mnPoolDefault, $uibModalInstance, mnSettingsClusterService, memoryQuotaConfig, mnPromiseHelper, firstTimeAddedServices) {
     var vm = this;
     vm.config = memoryQuotaConfig;
     vm.isEnterprise = mnPoolDefault.latestValue().value.isEnterprise;
     vm.onSubmit = onSubmit;
     vm.initialIndexSettings = _.clone(indexSettings);
     vm.indexSettings = indexSettings;
-    vm.firstTimeAddedNodes = firstTimeAddedNodes;
+    vm.firstTimeAddedServices = firstTimeAddedServices;
 
     if (indexSettings.storageMode === "") {
       vm.indexSettings.storageMode = "forestdb";
@@ -29,7 +29,7 @@
           .getPromise()
       ];
 
-      if (vm.firstTimeAddedNodes.index) {
+      if (vm.firstTimeAddedServices.index) {
         queries.push(
           mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
             .catchErrors("postIndexSettingsErrors")

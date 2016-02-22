@@ -30,7 +30,7 @@
         disabled: {kv: false, index: false, n1ql: false, fts: false},
         model: {kv: true, index: true, n1ql: true, fts: true}
       },
-      firstTimeAddedNodes: undefined
+      firstTimeAddedServices: undefined
     };
     var newConfig = {
       maxMemorySize: undefined,

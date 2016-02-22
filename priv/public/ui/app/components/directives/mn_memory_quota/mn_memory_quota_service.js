@@ -13,7 +13,7 @@
       prepareClusterQuotaSettings: prepareClusterQuotaSettings,
       isOnlyOneNodeWithService: isOnlyOneNodeWithService,
       memoryQuotaConfig: memoryQuotaConfig,
-      getFirstTimeAddedNodes: getFirstTimeAddedNodes
+      getFirstTimeAddedServices: getFirstTimeAddedServices
     };
 
     return mnMemoryQuotaService;
@@ -46,7 +46,7 @@
 
       return rv;
     }
-    function getFirstTimeAddedNodes(interestedServices, selectedServices, allNodes) {
+    function getFirstTimeAddedServices(interestedServices, selectedServices, allNodes) {
       var rv = {
         count: 0
       };

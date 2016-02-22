@@ -129,9 +129,9 @@
           return postJoinCluster().then(function () {
             return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
               return mnPoolDefault.getFresh().then(function (poolsDefault) {
-                var firstTimeAddedNodes = mnMemoryQuotaService.getFirstTimeAddedNodes(["index", "fts"], vm.joinClusterConfig.services.model, poolsDefault.nodes);
-                vm.joinClusterConfig.firstTimeAddedNodes = firstTimeAddedNodes;
-                if (firstTimeAddedNodes.count) {
+                var firstTimeAddedServices = mnMemoryQuotaService.getFirstTimeAddedServices(["index", "fts"], vm.joinClusterConfig.services.model, poolsDefault.nodes);
+                vm.joinClusterConfig.firstTimeAddedServices = firstTimeAddedServices;
+                if (firstTimeAddedServices.count) {
                   $state.go('app.wizard.step6');
                 } else {
                   $state.go('app.admin.overview');

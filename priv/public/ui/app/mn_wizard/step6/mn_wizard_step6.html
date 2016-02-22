@@ -10,8 +10,8 @@
       <h2 class="question">Set RAM Quota</h2>
       <p class="pad_10" style="margin:20px 85px;">
         These service(s) are being added to the cluster for the first time:
-        <span ng-show="wizardStep6Ctl.firstTimeAddedNodes.index">Index</span><span ng-show="wizardStep6Ctl.firstTimeAddedNodes.count > 1">,</span>
-        <span ng-show="wizardStep6Ctl.firstTimeAddedNodes.fts">Full Text</span><br>
+        <span ng-show="wizardStep6Ctl.firstTimeAddedServices.index">Index</span><span ng-show="wizardStep6Ctl.firstTimeAddedServices.count > 1">,</span>
+        <span ng-show="wizardStep6Ctl.firstTimeAddedServices.fts">Full Text</span><br>
         Please review and set the following service-specific settings. These values need to be set one time only: when you add more server nodes running these services into the cluster we will not ask you to review these values again.
       </p>
       <div class="cluster_quota_settings pad_10">
@@ -20,7 +20,7 @@
           mn-memory-quota="wizardStep6Ctl.config"
           errors="wizardStep6Ctl.errors"></div>
         <div
-          ng-if="wizardStep6Ctl.firstTimeAddedNodes.index"
+          ng-if="wizardStep6Ctl.firstTimeAddedServices.index"
           mn-storage-mode="wizardStep6Ctl.indexSettings"
           is-disabled="!wizardStep6Ctl.isEnterprise || wizardStep6Ctl.initialIndexSettings.storageMode !== ''"
           errors="wizardStep6Ctl.postIndexSettingsErrors"></div>

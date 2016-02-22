@@ -70,8 +70,8 @@
           indexSettings: function (mnSettingsClusterService) {
             return mnSettingsClusterService.getIndexSettings();
           },
-          firstTimeAddedNodes: function (mnWizardStep1Service) {
-            return mnWizardStep1Service.getJoinClusterConfig().firstTimeAddedNodes;
+          firstTimeAddedServices: function (mnWizardStep1Service) {
+            return mnWizardStep1Service.getJoinClusterConfig().firstTimeAddedServices;
           }
         }
       });
