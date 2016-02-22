@@ -538,8 +538,14 @@ make_progress_fun(BucketCompletion, NumBuckets) ->
             Progress = dict:map(fun (_, N) ->
                                         N / NumBuckets + BucketCompletion
                                 end, P),
-            ns_orchestrator:update_progress(kv, Progress)
+            update_kv_progress(Progress)
     end.
+
+update_kv_progress(Progress) ->
+    ns_orchestrator:update_progress(kv, Progress).
+
+update_kv_progress(Nodes, Progress) ->
+    update_kv_progress(dict:from_list([{N, Progress} || N <- Nodes])).
 
 rebalance_kv(KeepNodes, EjectNodes, BucketConfigs, DeltaRecoveryBuckets) ->
     %% wait when all bucket shutdowns are done on nodes we're
@@ -563,15 +569,14 @@ rebalance_kv(KeepNodes, EjectNodes, BucketConfigs, DeltaRecoveryBuckets) ->
 
     lists:foreach(fun ({I, {BucketName, BucketConfig}}) ->
                           BucketCompletion = I / NumBuckets,
-                          ns_orchestrator:update_progress(
-                            kv,
-                            dict:from_list([{N, BucketCompletion}
-                                            || N <- LiveKVNodes])),
+                          update_kv_progress(LiveKVNodes, BucketCompletion),
 
                           ProgressFun = make_progress_fun(BucketCompletion, NumBuckets),
                           rebalance_bucket(BucketName, BucketConfig, ProgressFun,
                                            KeepKVNodes, EjectNodes, DeltaRecoveryBuckets)
                   end, misc:enumerate(BucketConfigs, 0)),
+
+    update_kv_progress(LiveKVNodes, 1.0),
 
     unlink(RebalanceObserver),
     exit(RebalanceObserver, shutdown),
