@@ -212,13 +212,24 @@ update_recovery_type(Node, NewType) ->
     end.
 
 supported_services() ->
-    [kv, n1ql, index, fts] ++ maybe_example_service().
+    Services = [kv, n1ql, index],
+    case cluster_compat_mode:is_cluster_watson() of
+        true ->
+            Services ++ [fts | maybe_example_service()];
+        false ->
+            Services
+    end.
 
 default_services() ->
     [kv].
 
 topology_aware_services() ->
-    [fts] ++ maybe_example_service().
+    case cluster_compat_mode:is_cluster_watson() of
+        true ->
+            [fts | maybe_example_service()];
+        false ->
+            []
+    end.
 
 maybe_example_service() ->
     case os:getenv("ENABLE_EXAMPLE_SERVICE") =/= false of
