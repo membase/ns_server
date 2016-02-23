@@ -113,12 +113,23 @@ handle_info({'EXIT', _Pid, Reason}, State) ->
 handle_info(_Msg, State) ->
     {noreply, State}.
 
-handle_call({remove_undesired_replications, FutureReps}, From,
-            #state{desired_replications = CurrentReps} = State) ->
+handle_call({remove_undesired_replications, FutureReps}, From, State) ->
+    %% Sometimes the state in the replication manager can be out of sync.
+    %% E.g. the dcp connections are nuked when rebalance fails,
+    %% but the replication_manager might not be aware of it.
+    %% Getting current replications from the replicators will greatly
+    %% reduce the window where the replication manager is out of sync.
+    %% It does not close the window entirely because
+    %% at the time of get_actual_replications_as_list(), there may be
+    %% some streams in the process of being created or removed which
+    %% will not be included in the list.
+    %% Closing the window entirely is a non-trvial and risky change.
+    CurrentReps = get_actual_replications_as_list(State),
     Diff = replications_difference(FutureReps, CurrentReps),
     CleanedReps0 = [{N, ordsets:intersection(FutureVBs, CurrentVBs)} || {N, FutureVBs, CurrentVBs} <- Diff],
     CleanedReps = [{N, VBs} || {N, [_|_] = VBs} <- CleanedReps0],
     handle_call({set_desired_replications, CleanedReps}, From, State);
+
 handle_call({set_desired_replications, DesiredReps}, _From,
             #state{bucket_name = Bucket,
                    repl_type = ReplType,
