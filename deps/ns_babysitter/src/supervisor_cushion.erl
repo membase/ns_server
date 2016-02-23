@@ -88,17 +88,14 @@ terminate(_Reason, #state{child_pid = undefined}) ->
     ok;
 terminate(Reason, #state{child_pid=Pid, shutdown_timeout=Timeout}) ->
     erlang:exit(Pid, Reason),
-    receive
-        {'EXIT', Pid, _Reason2} ->
-            ok
-    after Timeout ->
+    case misc:wait_for_process(Pid, Timeout) of
+        ok ->
+            ok;
+        {error, timeout} ->
             ?log_warning("Cushioned process ~p failed to terminate within ~pms. "
                          "Killing it brutally.", [Pid, Timeout]),
             erlang:exit(Pid, kill),
-            receive
-                {'EXIT', Pid, _Reason3} ->
-                    ok
-            end
+            ok = misc:wait_for_process(Pid, infinity)
     end.
 
 code_change(_OldVsn, State, _Extra) ->
