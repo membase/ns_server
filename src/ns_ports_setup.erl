@@ -596,7 +596,7 @@ fts_spec(Config) ->
             [];
         _ ->
             NsRestPort = misc:node_rest_port(Config, node()),
-            FtRestPort = ns_config:search(Config, {node, node(), fts_http_port}, 9110),
+            FtRestPort = ns_config:search(Config, {node, node(), fts_http_port}, 8094),
             {ok, IdxDir} = ns_storage_conf:this_node_ixdir(),
             FTSIdxDir = filename:join(IdxDir, "@fts"),
             ok = misc:ensure_writable_dir(FTSIdxDir),

@@ -193,7 +193,7 @@ default() ->
       misc:get_env_default(indexer_stmaint_port, 9105)},
 
      {{node, node(), fts_http_port},
-      misc:get_env_default(fts_http_port, 9110)},
+      misc:get_env_default(fts_http_port, 8094)},
 
      {{node, node(), ssl_proxy_downstream_port},
       case IsEnterprise of
