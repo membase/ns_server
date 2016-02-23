@@ -66,7 +66,7 @@ init([Name, Options]) ->
 
 
 consume_death_of(Pid, State) ->
-    [Parent | _] = get('ancestors'),
+    [Parent | _] = misc:get_ancestors(),
     receive
         {'EXIT', Parent, Reason} = ExitMsg ->
             ?log_debug("Got exit signal from parent: ~p", [ExitMsg]),
