@@ -237,7 +237,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["poolsStreaming", "default"] ->
                     {{[pools], read}, fun handle_pool_info_streaming/2, ["default"]};
                 ["pools", "default", "buckets"] ->
-                    {{[pools], read}, fun menelaus_web_buckets:handle_bucket_list/1, []};
+                    {{[{bucket, any}, settings], read}, fun menelaus_web_buckets:handle_bucket_list/1, []};
                 ["pools", "default", "saslBucketsStreaming"] ->
                     {{[admin, buckets], read},
                      fun menelaus_web_buckets:handle_sasl_buckets_streaming/2,
