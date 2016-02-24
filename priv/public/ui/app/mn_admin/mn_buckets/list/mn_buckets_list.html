@@ -50,7 +50,7 @@
           style="height:18px;width:18px;"></span>
         {{ bucket.nodes.length }}
       </td>
-      <td colspan="2">{{bucket.basicStats.itemCount}}</td>
+      <td colspan="2">{{bucket.basicStats.itemCount | number}}</td>
       <td>{{'round' | mnMath:bucket.basicStats.opsPerSec}}</td>
       <td colspan="2" ng-if="buckets.isMembase">
         {{bucket.basicStats.diskFetches | mnTruncateTo3Digits}}
