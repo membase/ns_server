@@ -231,7 +231,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["pools", "nodes"] ->
                     {{[pools], read}, fun check_and_handle_pool_info/2, ["default"]};
                 ["pools", "default", "overviewStats"] ->
-                    {{[stats], read}, fun menelaus_stats:handle_overview_stats/2, ["default"]};
+                    {{[{bucket, any}, stats], read}, fun menelaus_stats:handle_overview_stats/2, ["default"]};
                 ["_uistats"] ->
                     {{[stats], read}, fun menelaus_stats:serve_ui_stats/1};
                 ["poolsStreaming", "default"] ->
