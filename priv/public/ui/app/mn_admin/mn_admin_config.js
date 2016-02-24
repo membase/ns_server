@@ -156,7 +156,7 @@
                 selectedStat = _.detect(state.statsDirectoryBlocks[1].stats, findBy) ||
                                _.detect(state.statsByName, findBy);
                 $stateParams.graph = selectedStat.name;
-                $state.go("app.admin.analytics.list.graph", $stateParams);
+                $state.go("app.admin.analytics.list.graph", _.clone($stateParams));
                 return $q.reject();
               }
             });

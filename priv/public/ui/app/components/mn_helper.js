@@ -29,7 +29,7 @@
             } else {
               deferred.reject();
               $stateParams[bucketParamName] = defaultBucket;
-              $state.go(stateRedirect, $stateParams);
+              $state.go(stateRedirect, _.clone($stateParams));
             }
           });
         } else {
@@ -62,7 +62,7 @@
       }
       function initializeDetailsHashObserver($scope, hashKey, stateName) {
         function getHashValue() {
-          return $state.params[hashKey] || [];
+          return _.clone($state.params[hashKey]) || [];
         }
         $scope.isDetailsOpened = function (hashValue) {
           return _.contains(getHashValue(), String(hashValue));
