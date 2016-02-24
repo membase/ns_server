@@ -5,7 +5,7 @@
     .module('mnServers')
     .controller('mnServersAddDialogController', mnServersAddDialogController)
 
-  function mnServersAddDialogController($q, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
+  function mnServersAddDialogController($scope, $q, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
     var vm = this;
 
     vm.addNodeConfig = {
@@ -14,7 +14,7 @@
           kv: true,
           index: true,
           n1ql: true,
-          fts: true
+          fts: $scope.poolDefault.compat.atLeast45
         }
       },
       credentials: {
