@@ -429,7 +429,7 @@ rebalance_services(KeepNodes, EjectNodes) ->
 
     SimpleTSs = rebalance_simple_services(Config, SimpleServices, KeepNodes),
     TopologyAwareTSs = rebalance_topology_aware_services(Config, TopologyAwareServices,
-                                                             KeepNodes, EjectNodes),
+                                                         KeepNodes, EjectNodes),
 
     maybe_delay_eject_nodes(SimpleTSs ++ TopologyAwareTSs, EjectNodes).
 
@@ -1086,8 +1086,8 @@ apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes, CurrentBuckets) -
                    [{Bucket, BucketConfig} ||
                        {Bucket, BucketConfig, _} <- DeltaRecoveryBuckets]),
     NodeChanges = [[{{node, N, recovery_type}, none},
-                      {{node, N, failover_vbuckets}, undefined},
-                      {{node, N, membership}, active}] || N <- DeltaNodes],
+                    {{node, N, failover_vbuckets}, undefined},
+                    {{node, N, membership}, active}] || N <- DeltaNodes],
     BucketChanges = {buckets, [{configs, NewBuckets}]},
 
     Changes = lists:flatten([BucketChanges, NodeChanges]),
