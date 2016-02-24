@@ -545,10 +545,17 @@ do_maybe_delay_eject_nodes(Timestamps, EjectNodes) ->
 
     Delays = [begin
                   ServiceDelay = get_service_eject_delay(Service),
-                  RebalanceTS = proplists:get_value(Service, Timestamps),
-                  true = (RebalanceTS =/= undefined),
-                  SinceRebalance = max(0, timer:now_diff(Now, RebalanceTS) div 1000),
-                  ServiceDelay - SinceRebalance
+
+                  case proplists:get_value(Service, Timestamps) of
+                      undefined ->
+                          %% it's possible that a node is ejected without ever
+                          %% getting rebalanced in; there's no point in
+                          %% delaying anything in such case
+                          0;
+                      RebalanceTS ->
+                          SinceRebalance = max(0, timer:now_diff(Now, RebalanceTS) div 1000),
+                          ServiceDelay - SinceRebalance
+                  end
               end || Service <- EjectedServices],
 
     Delay = lists:max(Delays),
