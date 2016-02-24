@@ -1,7 +1,15 @@
 <h1>{{title}}</h1>
-<p class="pat_20 pas_20">
-  {{message}}
-</p>
+<div class="pat_20 pas_20">
+  <div
+    ng-if="('isArray' | lodash:alertsCtl.message) || ('isObject' | lodash:alertsCtl.message)">
+    <div ng-repeat="text in alertsCtl.message">
+      {{text}}
+    </div>
+  </div>
+  <div ng-if="('isString' | lodash:alertsCtl.message)">
+    {{alertsCtl.message}}
+  </div>
+</div>
 <div class="save_cancel">
   <button class="save_button float_right" ng-click="$close()">OK</button>
 </div>

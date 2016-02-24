@@ -2,7 +2,7 @@
   "use strict";
 
   angular
-    .module('mnAlertsService', ['ui.bootstrap'])
+    .module('mnAlertsService', ['ui.bootstrap', 'mnFilters'])
     .service('mnAlertsService', mnAlertsServiceFactory);
 
   function mnAlertsServiceFactory($uibModal, $rootScope) {
@@ -20,7 +20,9 @@
 
     function showAlertInPopup(message, title) {
       var scope = $rootScope.$new();
-      scope.message = message;
+      scope.alertsCtl = {
+        message: message
+      };
       scope.title = title;
       return $uibModal.open({
         scope: scope,
