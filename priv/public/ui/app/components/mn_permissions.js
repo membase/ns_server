@@ -36,7 +36,8 @@
       "cluster.nodes!read",
       "cluster.bucket[?].xdcr!read",
       "cluster.bucket[?].xdcr!write",
-      "cluster.bucket[?].xdcr!execute"
+      "cluster.bucket[?].xdcr!execute",
+      "cluster.bucket[?].stats!read"
     ];
 
     function getAll() {
