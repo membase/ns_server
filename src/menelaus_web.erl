@@ -845,7 +845,7 @@ handle_uilogin(Req) ->
     case menelaus_auth:verify_login_creds(User, Password) of
         {ok, Identity} ->
             menelaus_auth:complete_uilogin(Req, Identity);
-        _ ->
+        false ->
             menelaus_auth:reject_uilogin(Req, {User, rejected})
     end.
 
