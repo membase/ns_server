@@ -272,7 +272,7 @@ verify_login_creds(Username, Password) ->
             Other
     end.
 
--spec verify_rest_auth(mochiweb_request(), rbac_permissions()) ->
+-spec verify_rest_auth(mochiweb_request(), rbac_permissions() | no_check) ->
                               auth_failure | forbidden | {allowed, mochiweb_request()}.
 verify_rest_auth(Req, Permissions) ->
     Auth = extract_auth(Req),
@@ -280,34 +280,46 @@ verify_rest_auth(Req, Permissions) ->
         false ->
             auth_failure;
         {ok, Identity} ->
-            Roles = menelaus_roles:get_compiled_roles(Identity),
-            case Roles of
-                [] ->
-                    %% this can happen in case of expired token, or if LDAP
-                    %% server authenticates the user that has no roles assigned
-                    auth_failure;
-                _ ->
-                    case menelaus_roles:is_allowed(Permissions, Roles) of
-                        true ->
-                            Token = case Auth of
-                                        {token, T} ->
-                                            T;
-                                        _ ->
-                                            undefined
-                                    end,
-                            {allowed, store_user_info(Req, Identity, Token)};
-                        false ->
-                            ?log_debug("Access denied.~nIdentity: ~p~nRoles: ~p~nPermissions: ~p~n",
-                                       [Identity, Roles, Permissions]),
-                            case Identity of
-                                {"", anonymous} ->
-                                    %% we do allow some api's for anonymous
-                                    %% under some circumstances, but we want to return 401 in case
-                                    %% if autorization for requests with no auth fails
-                                    auth_failure;
+            case check_permissions(Identity, Permissions) of
+                allowed ->
+                    Token = case Auth of
+                                {token, T} ->
+                                    T;
                                 _ ->
-                                    forbidden
-                            end
+                                    undefined
+                            end,
+                    {allowed, store_user_info(Req, Identity, Token)};
+                Other ->
+                    Other
+            end
+    end.
+
+-spec check_permissions(rbac_identity(), rbac_permissions() | no_check) ->
+                               auth_failure | forbidden | allowed.
+check_permissions(_Identity, no_check) ->
+    allowed;
+check_permissions(Identity, Permissions) ->
+    Roles = menelaus_roles:get_compiled_roles(Identity),
+    case Roles of
+        [] ->
+            %% this can happen in case of expired token, or if LDAP
+            %% server authenticates the user that has no roles assigned
+            auth_failure;
+        _ ->
+            case menelaus_roles:is_allowed(Permissions, Roles) of
+                true ->
+                    allowed;
+                false ->
+                    ?log_debug("Access denied.~nIdentity: ~p~nRoles: ~p~nPermissions: ~p~n",
+                               [Identity, Roles, Permissions]),
+                    case Identity of
+                        {"", anonymous} ->
+                            %% we do allow some api's for anonymous
+                            %% under some circumstances, but we want to return 401 in case
+                            %% if autorization for requests with no auth fails
+                            auth_failure;
+                        _ ->
+                            forbidden
                     end
             end
     end.
