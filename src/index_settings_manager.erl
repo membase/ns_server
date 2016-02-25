@@ -181,10 +181,13 @@ do_populate_ets_table(JSON) ->
     erlang:put(prev_json, JSON).
 
 known_settings() ->
+    known_settings(cluster_compat_mode:is_cluster_watson()).
+
+known_settings(IsWatson) ->
     RV = [{memoryQuota, memory_quota_lens()},
           {generalSettings, general_settings_lens()},
           {compaction, compaction_lens()}],
-    case cluster_compat_mode:is_cluster_watson() of
+    case IsWatson of
         true ->
             watson_extra_known_settings() ++ RV;
         false ->
@@ -371,12 +374,15 @@ lens_set_many(Lenses, Values, Dict) ->
       end, Dict, Values).
 
 -ifdef(EUNIT).
+
 defaults_test() ->
     Keys = fun (L) -> lists:sort([K || {K, _} <- L]) end,
 
-    %% TODO: Need to mock cluster_compat_mode:is_cluster_***
-    %% ?assertEqual(Keys(known_settings()), Keys(default_settings())),
-    %% ?assertEqual(Keys(compaction_lens_props()), Keys(compaction_defaults())),
+    ?assertEqual(Keys(known_settings(false)), Keys(default_settings())),
+    ?assertEqual(Keys(known_settings(true)),
+                 Keys(default_settings() ++ watson_extra_known_settings())),
+    ?assertEqual(Keys(compaction_lens_props()), Keys(compaction_defaults())),
     ?assertEqual(Keys(general_settings_lens_props()),
                  Keys(general_settings_defaults())).
+
 -endif.
