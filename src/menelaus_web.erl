@@ -207,7 +207,8 @@ is_throttled_request(_) ->
     true.
 
 -type action() :: {done, term()} |
-                  {rbac_permissions(), fun()} | {rbac_permissions(), fun(), [string()]}.
+                  {rbac_permissions() | no_check, fun()} |
+                  {rbac_permissions() | no_check, fun(), [string()]}.
 
 -spec get_action(mochiweb_request(), {term(), term()}, string(), [string()]) -> action().
 get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
@@ -432,7 +433,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["images" | _] ->
                     {done, menelaus_util:serve_file(Req, Path, AppRoot,
                                                     [{"Cache-Control", "max-age=30000000"}])};
-                ["couchBase" | _] -> {{[admin, internal], all},
+                ["couchBase" | _] -> {no_check,
                                       fun menelaus_pluggable_ui:proxy_req/4,
                                       ["couchBase",
                                        drop_prefix(Req:get(raw_path)),
@@ -674,7 +675,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["diag", "eval"] ->
                     {{[admin, diag], write}, fun handle_diag_eval/1};
                 ["couchBase" | _] ->
-                    {{[admin, internal], all}, fun menelaus_pluggable_ui:proxy_req/4,
+                    {no_check, fun menelaus_pluggable_ui:proxy_req/4,
                      ["couchBase",
                       drop_prefix(Req:get(raw_path)),
                       Plugins]};
@@ -719,7 +720,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["settings", "rbac", "users", UserId] ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_delete_user/2, [UserId]};
-                ["couchBase" | _] -> {{[admin, internal], all},
+                ["couchBase" | _] -> {no_check,
                                       fun menelaus_pluggable_ui:proxy_req/4,
                                       ["couchBase",
                                        drop_prefix(Req:get(raw_path)),
@@ -754,7 +755,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_put_user/2, [UserId]};
                 ["couchBase" | _] ->
-                    {{[admin, internal], all}, fun menelaus_pluggable_ui:proxy_req/4,
+                    {no_check, fun menelaus_pluggable_ui:proxy_req/4,
                      ["couchBase",
                       drop_prefix(Req:get(raw_path)),
                       Plugins]};
@@ -796,7 +797,9 @@ require_auth(Req) ->
                                             "Basic realm=\"Couchbase Server Admin / REST\""}])
     end.
 
--spec get_bucket_id([rbac_permission()] | rbac_permission()) -> bucket_name() | false.
+-spec get_bucket_id([rbac_permission()] | rbac_permission() | no_check) -> bucket_name() | false.
+get_bucket_id(no_check) ->
+    false;
 get_bucket_id([]) ->
     false;
 get_bucket_id([Permission | Rest]) ->
