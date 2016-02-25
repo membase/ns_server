@@ -1,5 +1,5 @@
-%% @author Northscale <info@northscale.com>
-%% @copyright 2010 NorthScale, Inc.
+%% @author Couchbase <info@couchbase.com>
+%% @copyright 2016 Couchbase, Inc.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -13,34 +13,21 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
--module(mb_master_sup).
+-module(ns_orchestrator_sup).
 
 -behaviour(supervisor).
 
--include("ns_common.hrl").
-
 -export([start_link/0]).
-
 -export([init/1]).
 
-
 start_link() ->
-    master_activity_events:note_became_master(),
-    supervisor:start_link({local, mb_master_sup}, ?MODULE, []).
-
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    {ok, {{one_for_one, 3, 10}, child_specs()}}.
+    {ok, {{rest_for_one, 3, 10}, child_specs()}}.
 
-
-%%
-%% Internal functions
-%%
-
-%% @private
-%% @doc The list of child specs.
 child_specs() ->
-    [{ns_tick, {ns_tick, start_link, []},
-      permanent, 10, worker, [ns_tick]},
-     {ns_orchestrator_sup, {ns_orchestrator_sup, start_link, []},
-      permanent, infinity, supervisor, [ns_orchestrator_sup]}].
+    [{ns_orchestrator, {ns_orchestrator, start_link, []},
+      permanent, 1000, worker, [ns_orchestrator]},
+     {auto_failover, {auto_failover, start_link, []},
+      permanent, 1000, worker, [auto_failover]}].
