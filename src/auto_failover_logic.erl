@@ -61,17 +61,20 @@
          }).
 
 init_state(DownThreshold) ->
+    init_state(DownThreshold, cluster_compat_mode:get_compat_version()).
+
+init_state(DownThreshold, CompatVersion) ->
     #state{nodes_states = [],
-           services_state = init_services_state(),
+           services_state = init_services_state(CompatVersion),
            down_threshold = DownThreshold - 1 - ?DOWN_GRACE_PERIOD}.
 
-init_services_state() ->
+init_services_state(CompatVersion) ->
     lists:map(
       fun (Service) ->
               #service_state{name = Service,
                              mailed_too_small_cluster = [],
                              logged_auto_failover_disabled = false}
-      end, ns_cluster_membership:supported_services()).
+      end, ns_cluster_membership:supported_services(CompatVersion)).
 
 fold_matching_nodes([], NodeStates, Fun, Acc) ->
     lists:foldl(fun (S, A) ->
@@ -388,7 +391,7 @@ attach_uuid(Nodes) ->
     lists:map(fun(X) -> {X, list_to_binary(atom_to_list(X))} end, Nodes).
 
 basic_kv_1_test() ->
-    State0 = init_state(3+?DOWN_GRACE_PERIOD),
+    State0 = init_state(3+?DOWN_GRACE_PERIOD, ?LATEST_VERSION_NUM),
     SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode = attach_uuid([b]),
@@ -398,7 +401,7 @@ basic_kv_1_test() ->
     {[{failover, DN}], _} = process_frame(Nodes, DownNode, State2, SvcConfig).
 
 basic_kv_2_test() ->
-    State0 = init_state(4+?DOWN_GRACE_PERIOD),
+    State0 = init_state(4+?DOWN_GRACE_PERIOD, ?LATEST_VERSION_NUM),
     SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode = attach_uuid([b]),
@@ -408,7 +411,7 @@ basic_kv_2_test() ->
     {[{failover, DN}], _} = process_frame(Nodes, DownNode, State2, SvcConfig).
 
 min_size_test_body(Threshold) ->
-    State0 = init_state(Threshold+?DOWN_GRACE_PERIOD),
+    State0 = init_state(Threshold+?DOWN_GRACE_PERIOD, ?LATEST_VERSION_NUM),
     SvcConfig = build_svc_config([kv], false, [a,b]),
     Nodes = attach_uuid([a,b]),
     DownNode = attach_uuid([b]),
@@ -432,7 +435,7 @@ min_size_and_increasing_test() ->
     {[{failover, DN}], _} = process_frame(Nodes, DownNode, State2, SvcConfig).
 
 other_down_test() ->
-    State0 = init_state(3+?DOWN_GRACE_PERIOD),
+    State0 = init_state(3+?DOWN_GRACE_PERIOD, ?LATEST_VERSION_NUM),
     SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode1 = attach_uuid([b]),
@@ -448,7 +451,7 @@ other_down_test() ->
     {[{failover, DN}], _} = process_frame(Nodes, DownNode1, State6, SvcConfig).
 
 two_down_at_same_time_test() ->
-    State0 = init_state(3+?DOWN_GRACE_PERIOD),
+    State0 = init_state(3+?DOWN_GRACE_PERIOD, ?LATEST_VERSION_NUM),
     SvcConfig = build_svc_config([kv], false, [a,b,c,d]),
     Nodes = attach_uuid([a,b,c,d]),
     DownNode2 = attach_uuid([b, c]),
@@ -458,7 +461,7 @@ two_down_at_same_time_test() ->
         process_frame(Nodes, DownNode2, State1, SvcConfig).
 
 multiple_mail_down_warning_test() ->
-    State0 = init_state(3+?DOWN_GRACE_PERIOD),
+    State0 = init_state(3+?DOWN_GRACE_PERIOD, ?LATEST_VERSION_NUM),
     SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode1 = attach_uuid([b]),
@@ -473,7 +476,7 @@ multiple_mail_down_warning_test() ->
 
 %% Test if mail_down_warning is sent again if node was up in between
 mail_down_warning_down_up_down_test() ->
-    State0 = init_state(3+?DOWN_GRACE_PERIOD),
+    State0 = init_state(3+?DOWN_GRACE_PERIOD, ?LATEST_VERSION_NUM),
     SvcConfig = build_svc_config([kv], false, [a,b,c]),
     Nodes = attach_uuid([a,b,c]),
     DownNode1 = attach_uuid([b]),

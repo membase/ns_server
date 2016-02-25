@@ -32,6 +32,7 @@
          is_cluster_41/0,
          is_cluster_41/1,
          is_cluster_watson/0,
+         is_version_watson/1,
          is_enterprise/0,
          is_goxdcr_enabled/0,
          is_goxdcr_enabled/1,
@@ -94,6 +95,9 @@ is_cluster_41(Config) ->
 
 compat_mode_string_40() ->
     "4.0".
+
+is_version_watson(ClusterVersion) ->
+    is_enabled_at(ClusterVersion, ?WATSON_VERSION_NUM).
 
 is_cluster_watson() ->
     is_enabled(?WATSON_VERSION_NUM).
