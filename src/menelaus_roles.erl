@@ -90,6 +90,7 @@ preconfigured_roles() ->
      {bucket_sasl, [bucket_name],
       [],
       [{[{bucket, bucket_name}, data], all},
+       {[{bucket, bucket_name}, views], all},
        {[{bucket, bucket_name}], [read, flush]},
        {[pools], [read]}]},
      {views_admin, [bucket_name],
