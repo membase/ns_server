@@ -32,7 +32,7 @@
          handle_check_permissions_post/1,
          check_permissions_url_version/1,
          handle_check_permission_for_cbauth/1,
-         reply_forbidden/2,
+         forbidden_response/1,
          role_to_string/1]).
 
 assert_is_ldap_enabled() ->
@@ -394,9 +394,8 @@ format_permissions_test() ->
        lists:sort(Formatted),
        lists:sort(format_permissions(Permissions))).
 
-reply_forbidden(Req, Permissions) when is_list(Permissions) ->
-    menelaus_util:reply_json(
-      Req, {[{message, <<"Forbidden. User needs one of the following permissions">>},
-             {permissions, format_permissions(Permissions)}]}, 403);
-reply_forbidden(Req, Permission) ->
-    reply_forbidden(Req, [Permission]).
+forbidden_response(Permissions) when is_list(Permissions) ->
+    {[{message, <<"Forbidden. User needs one of the following permissions">>},
+      {permissions, format_permissions(Permissions)}]};
+forbidden_response(Permission) ->
+    forbidden_response([Permission]).

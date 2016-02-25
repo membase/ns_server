@@ -838,7 +838,7 @@ perform_action(Req, {Permissions, Fun, Args}) ->
         auth_failure ->
             require_auth(Req);
         forbidden ->
-            menelaus_web_rbac:reply_forbidden(Req, Permissions)
+            menelaus_util:reply_json(Req, menelaus_web_rbac:get_forbidden_response(Permissions), 403)
     end.
 
 handle_uilogin(Req) ->
