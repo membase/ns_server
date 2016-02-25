@@ -27,12 +27,17 @@
 not_implemented(Arg, Rest) ->
     {not_implemented, Arg, Rest}.
 
-do_db_req(Req, Fun) ->
+do_db_req(#httpd{path_parts=[DbName | _]} = Req, Fun) ->
 
     request_throttler:request(
       capi,
       fun () ->
-              continue_do_db_req(Req, Fun)
+              {BucketName, VBucket, UUID} = capi_utils:split_dbname_with_uuid(DbName),
+              with_verify_bucket_auth(
+                Req, BucketName, UUID,
+                fun (BucketConfig) ->
+                        continue_do_db_req(Req, BucketConfig, BucketName, VBucket, Fun)
+                end)
       end,
       fun (Error, Reason) ->
               random:seed(os:timestamp()),
@@ -67,12 +72,8 @@ get_required_permission(_, BucketName, _) ->
     {[{bucket, BucketName}, data], write}.
 
 continue_do_db_req(#httpd{user_ctx=UserCtx,
-                          path_parts=[DbName | RestPathParts]} = Req, Fun) ->
-    {BucketName, VBucket, UUID} = capi_utils:split_dbname_with_uuid(DbName),
-
-    BucketConfig = verify_bucket_auth(Req, BucketName),
-    verify_bucket_uuid(BucketConfig, UUID),
-
+                          path_parts=[_DbName | RestPathParts]} = Req,
+                   BucketConfig, BucketName, VBucket, Fun) ->
     case VBucket of
         undefined ->
             case lists:member(ns_node_disco:ns_server_node(),
@@ -142,34 +143,43 @@ send_no_active_vbuckets(CouchReq, Bucket0) ->
              <<"{\"error\":\"no_active_vbuckets\",\"reason\":\"Cannot execute view query since the node has no active vbuckets\"}">>},
     {ok, Req:respond(Tuple)}.
 
-is_bucket_accessible(BucketName, #httpd{method = Method,
-                                        path_parts=[_DbName | RestPathParts],
-                                        mochi_req = MochiReq}) ->
-    Permission = get_required_permission(Method, BucketName, RestPathParts),
-    case menelaus_auth:verify_rest_auth(MochiReq, Permission) of
-        {allowed, _} ->
-            true;
-        _ ->
-            false
+with_verify_bucket_auth(Req, BucketName, UUID, Fun) ->
+    case verify_bucket_auth(Req, BucketName) of
+        {allowed, BucketConfig} ->
+            verify_bucket_uuid(BucketConfig, UUID),
+            Fun(BucketConfig);
+        {not_found, _} = NotFound ->
+            throw(NotFound);
+        auth_failure ->
+            throw({unauthorized, <<"password required">>});
+        {forbidden, Permission} ->
+            couch_httpd:send_json(Req, 403, menelaus_web_rbac:forbidden_response(Permission))
     end.
 
-verify_bucket_auth(Req, BucketName) ->
+verify_bucket_auth(#httpd{method = Method,
+                          path_parts=[_DbName | RestPathParts],
+                          mochi_req = MochiReq},
+                   BucketName) ->
     ListBucketName = ?b2l(BucketName),
-    BucketConfig = case ns_bucket:get_bucket(ListBucketName) of
-                       not_present ->
-                           throw({not_found, missing});
-                       {ok, X} -> X
-                   end,
-    case is_bucket_accessible(ListBucketName, Req) of
-        true ->
-            case couch_util:get_value(type, BucketConfig) =:= membase of
-                true ->
-                    BucketConfig;
-                _ ->
-                    erlang:throw({not_found, no_couchbase_bucket_exists})
-            end;
-        _ ->
-            throw({unauthorized, <<"password required">>})
+    Permission = get_required_permission(Method, ListBucketName, RestPathParts),
+
+    case ns_bucket:get_bucket(ListBucketName) of
+        not_present ->
+            {not_found, missing};
+        {ok, BucketConfig} ->
+            case menelaus_auth:verify_rest_auth(MochiReq, Permission) of
+                {allowed, _} ->
+                    case couch_util:get_value(type, BucketConfig) =:= membase of
+                        true ->
+                            {allowed, BucketConfig};
+                        _ ->
+                            {not_found, no_couchbase_bucket_exists}
+                    end;
+                forbidden ->
+                    {forbidden, Permission};
+                auth_failure ->
+                    auth_failure
+            end
     end.
 
 %% This is used by 2.x xdcr checkpointing. It's only supposed to work

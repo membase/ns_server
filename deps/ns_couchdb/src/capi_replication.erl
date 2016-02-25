@@ -216,7 +216,7 @@ get_meta(Bucket, VBucket, DocId) ->
             Other
     end.
 
-extract_base_ck_params(Req) ->
+handle_with_bucket(Req, Fun) ->
     couch_httpd:validate_ctype(Req, "application/json"),
     {Obj} = couch_httpd:json_body_obj(Req),
     Bucket =
@@ -237,36 +237,34 @@ extract_base_ck_params(Req) ->
             erlang:throw(bad_request);
         _ -> true
     end,
-    BucketConfig = capi_frontend:verify_bucket_auth(Req, Bucket),
+    capi_frontend:with_verify_bucket_auth(
+      Req, Bucket, BucketUUID,
+      fun (_BucketConfig) ->
+              Fun(Req, Obj, Bucket)
+      end).
 
-    case proplists:get_value(uuid, BucketConfig) =:= BucketUUID of
-        true ->
-            ok;
-        false ->
-            erlang:throw({not_found, uuid_mismatch})
-    end,
+handle_with_bucket_ext(Req, Fun) ->
+    handle_with_bucket(
+      Req,
+      fun (_, Body, Bucket) ->
+              VB = proplists:get_value(<<"vb">>, Body),
+              case VB =:= undefined of
+                  true ->
+                      erlang:throw(bad_request);
+                  _ -> true
+              end,
 
-    {Obj, Bucket}.
+              VBOpaque = proplists:get_value(<<"vbopaque">>, Body),
 
-extract_ck_params(Req) ->
-    {Body, Bucket} = extract_base_ck_params(Req),
+              CommitOpaque = proplists:get_value(<<"commitopaque">>, Body),
 
-    VB = proplists:get_value(<<"vb">>, Body),
-    case VB =:= undefined of
-        true ->
-            erlang:throw(bad_request);
-        _ -> true
-    end,
-
-    VBOpaque = proplists:get_value(<<"vbopaque">>, Body),
-
-    CommitOpaque = proplists:get_value(<<"commitopaque">>, Body),
-
-    {Bucket, VB, VBOpaque, CommitOpaque}.
+              Fun(Req, Bucket, VB, VBOpaque, CommitOpaque)
+      end).
 
 handle_pre_replicate(Req) ->
-    {Bucket, VB, VBOpaque, CommitOpaque} = extract_ck_params(Req),
+    handle_with_bucket_ext(Req, fun handle_pre_replicate/5).
 
+handle_pre_replicate(Req, Bucket, VB, VBOpaque, CommitOpaque) ->
     FailoverLog = case xdcr_dcp_streamer:get_failover_log(binary_to_list(Bucket), VB) of
                       {memcached_error, not_my_vbucket} ->
                           erlang:throw({not_found, not_my_vbucket});
@@ -301,8 +299,9 @@ handle_pre_replicate(Req) ->
     couch_httpd:send_json(Req, Code, {[{<<"vbopaque">>, VBUUID}]}).
 
 handle_mass_vbopaque_check(Req) ->
-    {Body, Bucket} = extract_base_ck_params(Req),
+    handle_with_bucket(Req, fun handle_mass_vbopaque_check/3).
 
+handle_mass_vbopaque_check(Req, Body, Bucket) ->
     Opaques0 = proplists:get_value(<<"vbopaques">>, Body),
     Opaques =
         case is_list(Opaques0) of
@@ -394,8 +393,9 @@ get_vbucket_seqno_stats(BucketName, Vb) ->
      list_to_integer(binary_to_list(S0))}.
 
 handle_commit_for_checkpoint(#httpd{method='POST'}=Req) ->
-    {Bucket, VB, VBOpaque, _} = extract_ck_params(Req),
+    handle_with_bucket_ext(Req, fun handle_commit_for_checkpoint/5).
 
+handle_commit_for_checkpoint(Req, Bucket, VB, VBOpaque, _) ->
     case ns_config:read_key_fast(xdcr_commits_dont_wait_disk, false) of
         true ->
             ok;
