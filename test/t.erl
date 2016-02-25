@@ -113,7 +113,54 @@ start_without_coverage() ->
                         end,
                         Files),
 
-    eunit:test(Modules, [verbose]).
+    Listener = spawn_listener(),
+    eunit:test(Modules, [verbose, {report, Listener}]),
+
+    receive
+        {failed_tests, FailedTests} ->
+            handle_failed_tests(FailedTests)
+    end.
+
+spawn_listener() ->
+    Parent = self(),
+    proc_lib:spawn_link(fun () -> listener_loop(Parent, []) end).
+
+listener_loop(Parent, FailedTests) ->
+    receive
+        {stop, _, _} ->
+            Parent ! {failed_tests, FailedTests};
+        {status, Id, {progress, 'begin', {test, TestProps}}} ->
+            NewFailedTests = handle_test_progress(Id, TestProps, FailedTests),
+            listener_loop(Parent, NewFailedTests);
+        _ ->
+            listener_loop(Parent, FailedTests)
+    end.
+
+handle_test_progress(Id, TestProps, FailedTests) ->
+    receive
+        {status, Id, {progress, 'end', {Result, _}}} ->
+            case Result of
+                ok ->
+                    FailedTests;
+                _ ->
+                    Source = proplists:get_value(source, TestProps),
+                    [Source | FailedTests]
+            end
+    end.
+
+handle_failed_tests([]) ->
+    ok;
+handle_failed_tests(FailedTests) ->
+    io:format("=======================================================~n"),
+    io:format("  ~s:~n", [bold_red("Failed tests")]),
+    lists:foreach(
+      fun ({Module, Function, Arity}) ->
+              io:format("    ~s:~s/~b~n", [Module, Function, Arity])
+      end, FailedTests),
+    io:format("=======================================================~n").
+
+bold_red(Text) ->
+    [<<"\e[31;1m">>, Text, <<"\e[0m">>].
 
 config(cov_dir) ->
     filename:absname(filename:join([config(root_dir), "coverage"]));
