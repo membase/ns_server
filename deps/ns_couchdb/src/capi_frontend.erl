@@ -54,6 +54,18 @@ verify_bucket_uuid(BucketConfig, MaybeUUID) ->
             erlang:throw({not_found, uuids_dont_match})
     end.
 
+
+get_required_permission('GET', BucketName, [<<"_design">> | _]) ->
+    {[{bucket, BucketName}, views], read};
+get_required_permission('GET', BucketName, _) ->
+    {[{bucket, BucketName}, data], read};
+
+
+get_required_permission(_, BucketName, [<<"_design">> | _]) ->
+    {[{bucket, BucketName}, views], write};
+get_required_permission(_, BucketName, _) ->
+    {[{bucket, BucketName}, data], write}.
+
 continue_do_db_req(#httpd{user_ctx=UserCtx,
                           path_parts=[DbName | RestPathParts]} = Req, Fun) ->
     {BucketName, VBucket, UUID} = capi_utils:split_dbname_with_uuid(DbName),
@@ -130,23 +142,25 @@ send_no_active_vbuckets(CouchReq, Bucket0) ->
              <<"{\"error\":\"no_active_vbuckets\",\"reason\":\"Cannot execute view query since the node has no active vbuckets\"}">>},
     {ok, Req:respond(Tuple)}.
 
-is_bucket_accessible(BucketName, MochiReq) ->
-    case menelaus_auth:verify_rest_auth(MochiReq,
-                                        {[{bucket, BucketName}, data], write}) of
+is_bucket_accessible(BucketName, #httpd{method = Method,
+                                        path_parts=[_DbName | RestPathParts],
+                                        mochi_req = MochiReq}) ->
+    Permission = get_required_permission(Method, BucketName, RestPathParts),
+    case menelaus_auth:verify_rest_auth(MochiReq, Permission) of
         {allowed, _} ->
             true;
         _ ->
             false
     end.
 
-verify_bucket_auth(#httpd{mochi_req=MochiReq}, BucketName) ->
+verify_bucket_auth(Req, BucketName) ->
     ListBucketName = ?b2l(BucketName),
     BucketConfig = case ns_bucket:get_bucket(ListBucketName) of
                        not_present ->
                            throw({not_found, missing});
                        {ok, X} -> X
                    end,
-    case is_bucket_accessible(ListBucketName, MochiReq) of
+    case is_bucket_accessible(ListBucketName, Req) of
         true ->
             case couch_util:get_value(type, BucketConfig) =:= membase of
                 true ->
