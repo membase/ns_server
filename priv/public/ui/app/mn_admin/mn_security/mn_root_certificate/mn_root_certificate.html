@@ -8,10 +8,23 @@
     class="ldap_setup_container only-when-40 when-enterprise"
     mn-spinner="!rootCertificateCtl.certificate">
 
-    <h2>Certificate</h2>
+    <h2 ng-show="rootCertificateCtl.certificate.cert.type == 'generated'">
+      Self-Signed Cluster Certificate
+    </h2>
+    <h2 ng-show="rootCertificateCtl.certificate.cert.type !== 'generated'">
+      Root CA Cluster Certificate
+    </h2>
     <div class="sub_section">
       <p>
-        A <strong>{{(rootCertificateCtl.certificate.cert.type == "generated") ? "self-signed" : "signed"}}</strong> SSL certificate is currently deployed across the cluster.
+        The cluster is currently using a <strong>{{(rootCertificateCtl.certificate.cert.type == "generated") ? "self-signed" : "signed"}}</strong> SSL/TLS certificate.
+      </p>
+      <p ng-show="rootCertificateCtl.certificate.cert.subject || rootCertificateCtl.certificate.cert.expires">
+        <span style="display:block;" ng-show="rootCertificateCtl.certificate.cert.subject">
+          Subject: {{rootCertificateCtl.certificate.cert.subject}}
+        </span>
+        <span style="display:block;" ng-show="rootCertificateCtl.certificate.cert.expires">
+          Expires: {{rootCertificateCtl.certificate.cert.expires}}
+        </span>
       </p>
       <div
         class="about-cert-area_wrapper"

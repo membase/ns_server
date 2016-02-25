@@ -60,7 +60,7 @@
         <li
           class="when-enterprise only-when-25"
           ng-show="xdcrReferenceDialogCtl.mnPoolDefault.value.isEnterprise && poolDefault.compat.atLeast25">
-            <label for="demand_encryption_flag-2">Enable Encryption</label>
+            <label for="demand_encryption_flag-2">Enable TLS Encryption</label>
             <input
               name="demandEncryption"
               ng-model="xdcrReferenceDialogCtl.cluster.encryption"
@@ -69,7 +69,7 @@
               style="vertical-align: middle;">
           <a class="text_11 tooltip"><span>What's this?</span>
             <span class="tooltip_msg" style="width:250px"><span>
-              If checked, XDCR data encryption occurs using SSL. Obtain the SSL certificate from the remote cluster (Settings &gt; Cluster) and paste below.
+              If checked, XDCR data encryption occurs using TSL. Obtain the TSL certificate from the remote cluster (Security &gt; Root Certificate) and paste below.
             </span></span>
           </a>
         </li>
@@ -79,7 +79,7 @@
       name="certificate"
       ng-show="xdcrReferenceDialogCtl.cluster.encryption"
       ng-model="xdcrReferenceDialogCtl.cluster.certificate"
-      placeholder="Copy paste the Certificate information from Remote Cluster here. You can find the certificate information on Couchbase Admin UI under Settings -> Cluster tab."
+      placeholder="Copy paste the Certificate information from Remote Cluster here. You can find the certificate information on Couchbase Admin UI under Security &gt; Root Certificate tab."
       style="font-size:10px;width:100%;margin:0;padding:0;min-height:20em;">
      </textarea>
     </fieldset>
