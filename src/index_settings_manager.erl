@@ -290,19 +290,14 @@ compaction_interval_default() ->
 compaction_interval_lens() ->
     Key = <<"indexer.settings.compaction.interval">>,
     Get = fun (Dict) ->
-                  case cluster_compat_mode:is_cluster_watson() of
-                      true ->
-                          Int0 = binary_to_list(dict:fetch(Key, Dict)),
-                          [From, To] = string:tokens(Int0, ","),
-                          [FromH, FromM] = string:tokens(From, ":"),
-                          [ToH, ToM] = string:tokens(To, ":"),
-                          [{from_hour, list_to_integer(FromH)},
-                           {from_minute, list_to_integer(FromM)},
-                           {to_hour, list_to_integer(ToH)},
-                           {to_minute, list_to_integer(ToM)}];
-                      false ->
-                          unused
-                  end
+                  Int0 = binary_to_list(dict:fetch(Key, Dict)),
+                  [From, To] = string:tokens(Int0, ","),
+                  [FromH, FromM] = string:tokens(From, ":"),
+                  [ToH, ToM] = string:tokens(To, ":"),
+                  [{from_hour, list_to_integer(FromH)},
+                   {from_minute, list_to_integer(FromM)},
+                   {to_hour, list_to_integer(ToH)},
+                   {to_minute, list_to_integer(ToM)}]
           end,
     Set = fun (Values0, Dict) ->
                   Values =
