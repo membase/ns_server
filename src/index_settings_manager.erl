@@ -85,8 +85,8 @@ config_upgrade() ->
 config_upgrade_to_watson(Config) ->
     JSON = fetch_settings_json(Config),
     Current = decode_settings_json(JSON),
-    New = build_settings_json(extra_default_settings(Config), Current,
-                              extra_known_settings()),
+    New = build_settings_json(watson_extra_default_settings(Config), Current,
+                              watson_extra_known_settings()),
     [{set, ?INDEX_CONFIG_KEY, New}].
 
 %% internal
@@ -186,12 +186,12 @@ known_settings() ->
           {compaction, compaction_lens()}],
     case cluster_compat_mode:is_cluster_watson() of
         true ->
-            extra_known_settings() ++ RV;
+            watson_extra_known_settings() ++ RV;
         false ->
             RV
     end.
 
-extra_known_settings() ->
+watson_extra_known_settings() ->
     [{storageMode, id_lens(<<"indexer.settings.storage_mode">>)},
      {compactionMode,
       id_lens(<<"indexer.settings.compaction.compaction_mode">>)},
@@ -202,7 +202,7 @@ default_settings() ->
      {generalSettings, general_settings_defaults()},
      {compaction, compaction_defaults()}].
 
-extra_default_settings(Config) ->
+watson_extra_default_settings(Config) ->
     Nodes = ns_node_disco:nodes_wanted(),
 
     IndexNodes = ns_cluster_membership:service_nodes(Config, Nodes, index),
