@@ -103,8 +103,7 @@ is_cluster_watson() ->
     is_enabled(?WATSON_VERSION_NUM).
 
 is_index_aware_rebalance_on() ->
-    Disabled = ns_config:read_key_fast(index_aware_rebalance_disabled, false),
-    (not Disabled) andalso is_enabled([2, 0]).
+    not ns_config:read_key_fast(index_aware_rebalance_disabled, false).
 
 is_index_pausing_on() ->
     is_index_aware_rebalance_on() andalso
