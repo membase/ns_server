@@ -236,6 +236,7 @@ default() ->
       [{maxconn, 30000},
        {dedicated_port_maxconn, 5000},
        {ssl_cipher_list, "HIGH"},
+       {connection_idle_time, 0},
        {verbosity, 0},
        {breakpad_enabled, true},
        %% Location that Breakpad should write minidumps upon memcached crash.
@@ -296,6 +297,8 @@ default() ->
           ]}},
 
         {ssl_cipher_list, {"~s", [ssl_cipher_list]}},
+
+        {connection_idle_time, connection_idle_time},
 
         {breakpad,
          {[{enabled, breakpad_enabled},
