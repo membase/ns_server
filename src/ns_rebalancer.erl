@@ -528,6 +528,8 @@ get_service_eject_delay(Service) ->
         case Service of
             n1ql ->
                 20000;
+            fts ->
+                10000;
             _ ->
                 0
         end,
