@@ -323,13 +323,7 @@ check_xmem_allowed(<<"xdc-xmem">>, RemoteVersion) when RemoteVersion < [2, 2] ->
     [{<<"type">>,
       <<"Version 2 replication is disallowed. Remote cluster has nodes with versions less than 2.2.">>}];
 check_xmem_allowed(<<"xdc-xmem">>, _) ->
-    case cluster_compat_mode:is_cluster_25() of
-        true ->
-            ok;
-        false ->
-            [{<<"type">>,
-              <<"Version 2 replication is disallowed. Cluster has nodes with versions less than 2.5.">>}]
-    end.
+    ok.
 
 validate_new_replication_params_check_from_bucket(Type, FromBucket, ToCluster, ToBucket,
                                                   ReplicationType, Buckets) ->

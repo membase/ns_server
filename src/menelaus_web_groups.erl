@@ -35,7 +35,6 @@ build_group_uri(GroupPList) ->
     build_group_uri(proplists:get_value(uuid, GroupPList)).
 
 handle_server_groups(Req) ->
-    true = cluster_compat_mode:is_cluster_25(),
     {value, Groups} = ns_config:search(server_groups),
     LocalAddr = menelaus_util:local_addr(Req),
     CanIncludeOtpCookie = menelaus_auth:has_permission({[admin, internal], all}, Req),
@@ -55,7 +54,6 @@ handle_server_groups(Req) ->
 
 handle_server_groups_put(Req) ->
     menelaus_web:assert_is_enterprise(),
-    true = cluster_compat_mode:is_cluster_25(),
     Rev = proplists:get_value("rev", Req:parse_qs()),
     JSON = menelaus_util:parse_json(Req),
     Config = ns_config:get(),
@@ -240,7 +238,6 @@ parse_single_group(_NodesSet, _NonStructG) ->
 
 handle_server_groups_post(Req) ->
     menelaus_web:assert_is_enterprise(),
-    true = cluster_compat_mode:is_cluster_25(),
     case parse_groups_post(Req:parse_post()) of
         {ok, Name} ->
             case do_handle_server_groups_post(Name, Req) of
@@ -322,7 +319,6 @@ parse_groups_post(Params) ->
 
 handle_server_group_update(GroupUUID, Req) ->
     menelaus_web:assert_is_enterprise(),
-    true = cluster_compat_mode:is_cluster_25(),
     case parse_groups_post(Req:parse_post()) of
         {ok, Name} ->
             case do_group_update(list_to_binary(GroupUUID), Name, Req) of
@@ -369,7 +365,6 @@ do_group_update(GroupUUID, Name, Req) ->
 
 handle_server_group_delete(GroupUUID, Req) ->
     menelaus_web:assert_is_enterprise(),
-    true = cluster_compat_mode:is_cluster_25(),
     case do_group_delete(list_to_binary(GroupUUID), Req) of
         ok ->
             reply_json(Req, []);

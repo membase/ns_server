@@ -1169,7 +1169,7 @@ handle_versions(Req) ->
     reply_json(Req, {struct, menelaus_web_cache:versions_response()}).
 
 is_xdcr_over_ssl_allowed() ->
-    cluster_compat_mode:is_enterprise() andalso cluster_compat_mode:is_cluster_25().
+    cluster_compat_mode:is_enterprise().
 
 assert_is_enterprise() ->
     case cluster_compat_mode:is_enterprise() of
@@ -1347,6 +1347,8 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
     {ok, IndexesVersion0} = indexer_gsi:get_indexes_version(),
     IndexesVersion = list_to_binary(integer_to_list(IndexesVersion0)),
 
+    GroupsV = erlang:phash2(ns_config:search(Config, server_groups)),
+
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
                  {alertsSilenceURL,
@@ -1370,18 +1372,11 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
                  {indexStatusURI, <<"/indexStatus?v=", IndexesVersion/binary>>},
                  {checkPermissionsURI,
                   bin_concat_path(["pools", Id, "checkPermissions"],
-                                  [{"v", menelaus_web_rbac:check_permissions_url_version(Config)}])}],
+                                  [{"v", menelaus_web_rbac:check_permissions_url_version(Config)}])},
+                 {serverGroupsUri, <<"/pools/default/serverGroups?v=",
+                                     (list_to_binary(integer_to_list(GroupsV)))/binary>>}],
 
     PropList1 = build_memory_quota_info(Config) ++ PropList0,
-
-    PropList2 = case cluster_compat_mode:is_cluster_25() of
-                    true ->
-                        GroupsV = erlang:phash2(ns_config:search(Config, server_groups)),
-                        [{serverGroupsUri, <<"/pools/default/serverGroups?v=", (list_to_binary(integer_to_list(GroupsV)))/binary>>}
-                         | PropList1];
-                    _ ->
-                        PropList1
-                end,
     PropList =
         case InfoLevel of
             for_ui ->
@@ -1393,12 +1388,13 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
                  {failoverWarnings, ns_bucket:failover_warnings()},
                  {goxdcrEnabled, cluster_compat_mode:is_goxdcr_enabled(Config)},
                  {ldapEnabled, cluster_compat_mode:is_ldap_enabled()}
-                 | PropList2];
+                 | PropList1];
             normal ->
                 StorageTotals = [{Key, {struct, StoragePList}}
                                  || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
-                [{storageTotals, {struct, StorageTotals}} | PropList2];
-            _ -> PropList2
+                [{storageTotals, {struct, StorageTotals}} | PropList1];
+            _ ->
+                PropList1
         end,
 
     {struct, PropList}.
