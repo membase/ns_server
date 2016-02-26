@@ -13,6 +13,8 @@
 
     $uibModalProvider.options.backdrop = 'static';
 
+    $urlRouterProvider.otherwise('/overview');
+
     $stateProvider.state('app', {
       url: '?{enableInternalSettings:bool}&{disablePoorMansAlerts:bool}',
       params: {
