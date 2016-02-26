@@ -477,8 +477,15 @@ rebalance_topology_aware_services(Config, Services, KeepNodesAll, EjectNodesAll)
     lists:filtermap(
       fun (Service) ->
               KeepNodes = ns_cluster_membership:service_nodes(Config, KeepNodesAll, Service),
-              EjectNodes = ns_cluster_membership:service_nodes(Config, EjectNodesAll, Service),
               DeltaNodes = ns_cluster_membership:service_nodes(Config, DeltaNodesAll, Service),
+
+              %% if a node being ejected is not active, then it means that it
+              %% was never rebalanced in in the first place; so we can
+              %% postpone the heat death of the universe a little bit by
+              %% ignoring such nodes
+              ActiveNodes = ns_cluster_membership:get_service_map(Config, Service),
+              EjectNodes = [N || N <- EjectNodesAll,
+                                 lists:member(N, ActiveNodes)],
 
               AllNodes = EjectNodes ++ KeepNodes,
 
