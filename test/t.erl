@@ -138,11 +138,19 @@ listener_loop(Parent, FailedTests) ->
 
 handle_test_progress(Id, TestProps, FailedTests) ->
     receive
-        {status, Id, {progress, 'end', {Result, _}}} ->
-            case Result of
-                ok ->
+        {status, Id, Info} ->
+            Failed =
+                case Info of
+                    {progress, 'end', {Result, _}} ->
+                        Result =/= ok;
+                    {cancel, _} ->
+                        true
+                end,
+
+            case Failed of
+                false ->
                     FailedTests;
-                _ ->
+                true ->
                     Source = proplists:get_value(source, TestProps),
                     [Source | FailedTests]
             end
