@@ -71,25 +71,25 @@ get_status(Service, Timeout) ->
     gen_server:call(server_name(Service), get_status, Timeout).
 
 set_rebalancer(Service, Nodes, Rebalancer) ->
-    Result = gen_server:multi_call(
+    Result = misc:multi_call(
                Nodes, server_name(Service),
                {set_rebalancer, Rebalancer}, ?OUTER_TIMEOUT),
     handle_multicall_result(Service, set_rebalancer, Result).
 
 unset_rebalancer(Service, Nodes, Rebalancer) ->
-    Result = gen_server:multi_call(
+    Result = misc:multi_call(
                Nodes, server_name(Service),
                {if_rebalance, Rebalancer, unset_rebalancer}, ?OUTER_TIMEOUT),
     handle_multicall_result(Service, unset_rebalancer, Result, fun just_ok/1).
 
 get_node_infos(Service, Nodes, Rebalancer) ->
-    Result = gen_server:multi_call(
+    Result = misc:multi_call(
                Nodes, server_name(Service),
                {if_rebalance, Rebalancer, get_node_info}, ?OUTER_TIMEOUT),
     handle_multicall_result(Service, get_node_infos, Result).
 
 prepare_rebalance(Service, Nodes, Rebalancer, RebalanceId, Type, KeepNodes, EjectNodes) ->
-    Result = gen_server:multi_call(
+    Result = misc:multi_call(
                Nodes, server_name(Service),
                {if_rebalance, Rebalancer,
                {prepare_rebalance, RebalanceId, Type, KeepNodes, EjectNodes}},
@@ -695,7 +695,7 @@ handle_multicall_result(Service, Call, Result) ->
 
 handle_multicall_result(Service, Call, {RVs, FailedNodes}, OkFun) ->
     Bad0 = [Pair || {_, R} = Pair <- RVs, not is_good_result(R)],
-    Bad = [{N, node_failed} || N <- FailedNodes] ++ Bad0,
+    Bad = FailedNodes ++ Bad0,
 
     case Bad of
         [] ->
