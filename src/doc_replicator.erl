@@ -114,7 +114,7 @@ nodeup_monitoring_loop(Parent) ->
 
 handle_pull_docs(ServerName, Nodes) ->
     Timeout = ns_config:read_key_fast(goxdcr_upgrade_timeout, 60000),
-    {RVs, BadNodes} = misc:safe_multi_call(Nodes, ServerName, get_all_docs, Timeout),
+    {RVs, BadNodes} = gen_server:multi_call(Nodes, ServerName, get_all_docs, Timeout),
     case BadNodes of
         [] ->
             lists:foreach(
