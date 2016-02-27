@@ -111,32 +111,6 @@ parallel_map(Fun, List, Timeout) when is_list(List) andalso is_function(Fun) ->
             exit(timeout)
     end.
 
-safe_multi_call(Nodes, Name, Request, Timeout) ->
-    Ref = erlang:make_ref(),
-    Parent = self(),
-    try
-        parallel_map(fun (N) ->
-                             try gen_server:call({Name, N}, Request, infinity) of
-                                 Res ->
-                                     Parent ! {Ref, {N, Res}}
-                             catch _:_ -> ok
-                             end,
-                             ok
-                     end, Nodes, Timeout)
-    catch exit:timeout ->
-            ok
-    end,
-    safe_multi_call_collect(lists:sort(Nodes), [], [], Ref).
-
-safe_multi_call_collect(Nodes, GotNodes, Acc, Ref) ->
-    receive
-        {Ref, {N, _} = Pair} ->
-            safe_multi_call_collect(Nodes, [N|GotNodes], [Pair|Acc], Ref)
-    after 0 ->
-            BadNodes = ordsets:subtract(Nodes, lists:sort(GotNodes)),
-            {Acc, BadNodes}
-    end.
-
 parallel_map_gather_loop(_Ref, Acc, 0) ->
     [V || {_, V} <- lists:keysort(1, Acc)];
 parallel_map_gather_loop(Ref, Acc, RepliesLeft) ->
@@ -1849,3 +1823,121 @@ pretty_version(ListOfInts) when is_list(ListOfInts) ->
 
 get_ancestors() ->
     erlang:get('$ancestors').
+
+multi_call(Nodes, Name, Request, Timeout) ->
+    Ref = erlang:make_ref(),
+    Parent = self(),
+    try
+        parallel_map(fun (N) ->
+                             try gen_server:call({Name, N}, Request, infinity) of
+                                 Res ->
+                                     Parent ! {Ref, {N, {ok, Res}}}
+                             catch T:E ->
+                                     Parent ! {Ref, {N, {error, {T, E}}}}
+                             end,
+                             ok
+                     end, Nodes, Timeout)
+    catch exit:timeout ->
+            ok
+    end,
+    multi_call_collect(ordsets:from_list(Nodes), [], [], [], Ref).
+
+multi_call_collect(Nodes, GotNodes, AccGood, AccBad, Ref) ->
+    receive
+        {Ref, {N, Result}} ->
+            {NewGood, NewBad} =
+                case Result of
+                    {ok, Good} ->
+                        {[{N, Good} | AccGood], AccBad};
+                    {error, Bad} ->
+                        {AccGood, [{N, Bad} | AccBad]}
+                end,
+
+            multi_call_collect(Nodes, [N | GotNodes], NewGood, NewBad, Ref)
+    after 0 ->
+            TimeoutNodes = ordsets:subtract(Nodes, ordsets:from_list(GotNodes)),
+            BadNodes = [{N, timeout} || N <- TimeoutNodes] ++ AccBad,
+            {AccGood, BadNodes}
+    end.
+
+-ifdef(EUNIT).
+
+multi_call_test_() ->
+    {setup, fun multi_call_test_setup/0, fun multi_call_test_teardown/1,
+     [fun do_test_multi_call/0]}.
+
+multi_call_test_setup_server() ->
+    {ok, Pid} = mock_gen_server:start_link({local, multi_call_server}),
+    ok = mock_gen_server:stub_call(Pid, echo,
+                                   fun ({echo, V}) ->
+                                           V
+                                   end),
+    ok = mock_gen_server:stub_call(Pid, sleep,
+                                   fun ({sleep, Time}) ->
+                                           timer:sleep(Time)
+                                   end).
+
+multi_call_test_setup() ->
+    NodeNames = [a, b, c, d, e],
+    {TestNode, Host0} = misc:node_name_host(node()),
+    Host = list_to_atom(Host0),
+
+    CodePath = code:get_path(),
+    Nodes = lists:map(
+              fun (N) ->
+                      FullName = list_to_atom(atom_to_list(N) ++ "-" ++ TestNode),
+                      {ok, Node} = slave:start(Host, FullName),
+                      true = rpc:call(Node, code, set_path, [CodePath]),
+                      ok = rpc:call(Node, misc, multi_call_test_setup_server, []),
+                      Node
+              end, NodeNames),
+    erlang:put(nodes, Nodes).
+
+multi_call_test_teardown(_) ->
+    Nodes = erlang:get(nodes),
+    lists:foreach(
+      fun (Node) ->
+              ok = slave:stop(Node)
+      end, Nodes).
+
+multi_call_test_assert_bad_nodes(Bad, Expected) ->
+    BadNodes = [N || {N, _} <- Bad],
+    ?assertEqual(lists:sort(BadNodes), lists:sort(Expected)).
+
+multi_call_test_assert_results(RVs, Nodes, Result) ->
+    lists:foreach(
+      fun (N) ->
+              RV = proplists:get_value(N, RVs),
+              ?assertEqual(RV, Result)
+      end, Nodes).
+
+do_test_multi_call() ->
+    Nodes = nodes(),
+    BadNodes = [bad_node],
+
+    {R1, Bad1} = misc:multi_call(Nodes, multi_call_server, {echo, ok}, 100),
+
+    multi_call_test_assert_results(R1, Nodes, ok),
+    multi_call_test_assert_bad_nodes(Bad1, []),
+
+    {R2, Bad2} = misc:multi_call(BadNodes ++ Nodes,
+                                 multi_call_server, {echo, ok}, 100),
+    multi_call_test_assert_results(R2, Nodes, ok),
+    multi_call_test_assert_bad_nodes(Bad2, BadNodes),
+
+    [FirstNode | RestNodes] = Nodes,
+    catch gen_server:call({multi_call_server, FirstNode}, {sleep, 100000}, 100),
+
+    {R3, Bad3} = misc:multi_call(Nodes, multi_call_server, {echo, ok}, 100),
+    multi_call_test_assert_results(R3, RestNodes, ok),
+    ?assertEqual(Bad3, [{FirstNode, timeout}]),
+
+    true = rpc:call(FirstNode, erlang, apply,
+                    [fun () ->
+                             erlang:exit(whereis(multi_call_server), kill)
+                     end, []]),
+    {R4, Bad4} = misc:multi_call(Nodes, multi_call_server, {echo, ok}, 100),
+    multi_call_test_assert_results(R4, RestNodes, ok),
+    ?assertMatch([{FirstNode, {exit, {noproc, _}}}], Bad4).
+
+-endif.
