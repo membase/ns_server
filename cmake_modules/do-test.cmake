@@ -12,6 +12,9 @@ FILE (GLOB ebindirs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
 # Bug in CMake?
 STRING (REGEX REPLACE "//" "/" ebindirs "${ebindirs}")
 
+STRING (RANDOM LENGTH 16 NODE_NAME_RANDOM)
+SET (NODE_NAME "test-${NODE_NAME_RANDOM}")
+
 # If you update the test command, please also update this echo command
 # (including the silly escaped quotes) so it displays what is
 # invoked. Yes, this is annoying.
@@ -21,6 +24,7 @@ EXECUTE_PROCESS(COMMAND "${CMAKE_COMMAND}" -E echo
   -pa "${COUCHDB_BIN_DIR}/src/mochiweb"
   -pa "${COUCHDB_BIN_DIR}/src/ejson"
   -noshell -kernel error_logger silent -shutdown_time 10000
+  -name "${NODE_NAME}"
   -eval "\"application:start(sasl).\""
   -eval "\"case t:${TEST_TARGET}() of ok -> init:stop(); _ -> init:stop(1) end.\"")
 
@@ -30,6 +34,7 @@ EXECUTE_PROCESS(RESULT_VARIABLE _failure
   -pa "${COUCHDB_BIN_DIR}/src/mochiweb"
   -pa "${COUCHDB_BIN_DIR}/src/ejson"
   -noshell -kernel error_logger silent -shutdown_time 10000
+  -name "${NODE_NAME}"
   -eval "application:start(sasl)."
   -eval "case t:${TEST_TARGET}() of ok -> init:stop(); _ -> init:stop(1) end.")
 IF (_failure)
