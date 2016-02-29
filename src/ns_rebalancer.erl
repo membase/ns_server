@@ -1130,14 +1130,30 @@ wait_for_bucket(Bucket, Nodes) ->
     do_wait_for_bucket(Bucket, Nodes).
 
 do_wait_for_bucket(Bucket, Nodes) ->
-    {ok, _States, Zombies} = janitor_agent:query_states(Bucket, Nodes, 60000),
-    case Zombies of
-        [] ->
+    case janitor_agent:query_states_details(Bucket, Nodes, 60000) of
+        {ok, _States, []} ->
             ?log_debug("Bucket ~p became ready on nodes ~p", [Bucket, Nodes]),
             ok;
+        {ok, _States, Failures} ->
+            case check_failures(Failures) of
+                keep_waiting ->
+                    Zombies = [N || {N, _} <- Failures],
+                    ?log_debug("Bucket ~p still not ready on nodes ~p",
+                               [Bucket, Zombies]),
+                    do_wait_for_bucket(Bucket, Zombies);
+                fail ->
+                    ?log_error("Bucket ~p not available on nodes ~p",
+                               [Bucket, Failures]),
+                    fail
+            end
+    end.
+
+check_failures(Failures) ->
+    case [F || {_Node, Reason} = F <- Failures, Reason =/= warming_up] of
+        [] ->
+            keep_waiting;
         _ ->
-            ?log_debug("Bucket ~p still not ready on nodes ~p", [Bucket, Zombies]),
-            do_wait_for_bucket(Bucket, Zombies)
+            fail
     end.
 
 build_transitional_bucket_config(BucketConfig, TargetMap, Options, DeltaNodes) ->
