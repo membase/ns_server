@@ -65,13 +65,13 @@ init([]) ->
                                      Self ! {push_keys, Keys}
                              end),
     % Start with startup config sync.
-    ?log_debug("init pulling~n", []),
+    ?log_debug("init pulling", []),
     do_pull(),
-    ?log_debug("init pushing~n", []),
+    ?log_debug("init pushing", []),
     do_push(),
     % Have ns_config reannounce its config for any synchronization that
     % may have occurred.
-    ?log_debug("init reannouncing~n", []),
+    ?log_debug("init reannouncing", []),
     ns_config:reannounce(),
     % Schedule some random config syncs.
     schedule_config_sync(),
@@ -224,7 +224,7 @@ handle_info({pull_and_push, Nodes}, State) ->
     do_pull(FinalNodes, length(FinalNodes)),
     RawKVList = ns_config:get_kv_list(?SELF_PULL_TIMEOUT),
     do_push(RawKVList, FinalNodes),
-    ?log_debug("config pull_and_push done.~n", []),
+    ?log_debug("config pull_and_push done.", []),
     {noreply, State};
 handle_info(push, State) ->
     misc:flush(push),
@@ -344,7 +344,7 @@ do_pull(N) -> do_pull(misc:shuffle(ns_node_disco:nodes_actual_other()), N).
 do_pull([], _N)    -> ok;
 do_pull(_Nodes, 0) -> error;
 do_pull([Node | Rest], N) ->
-    ?log_info("Pulling config from: ~p~n", [Node]),
+    ?log_info("Pulling config from: ~p", [Node]),
     case (catch get_remote(Node, ?PULL_TIMEOUT)) of
         {'EXIT', _, _} -> do_pull(Rest, N - 1);
         {'EXIT', _}    -> do_pull(Rest, N - 1);
