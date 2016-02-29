@@ -48,6 +48,7 @@
                 rebalance_subprocesses_registry :: pid()}).
 
 -export([wait_for_bucket_creation/2, query_states/3,
+         query_states_details/3,
          apply_new_bucket_config_with_timeout/6,
          mark_bucket_warmed/2,
          delete_vbucket_copies/4,
@@ -94,21 +95,38 @@ wait_for_bucket_creation(Bucket, Nodes) ->
                      end],
     BadNodes.
 
-query_vbucket_states_loop(Node, Bucket) ->
+query_vbucket_states_loop(Node, Bucket, Parent) ->
+    query_vbucket_states_loop(Node, Bucket, Parent, undefined).
+query_vbucket_states_loop(Node, Bucket, Parent, Warming) ->
     case (catch gen_server:call(server_name(Bucket, Node), query_vbucket_states, infinity)) of
         {ok, _} = Msg ->
             Msg;
+        warming_up ->
+            query_vbucket_states_loop_next_step(Node, Bucket, Parent,
+                                                Warming, warming_up);
+        {'EXIT', {noproc, _}} = Exc ->
+            ?log_debug("Exception from query_vbucket_states of ~p:~p~n~p",
+                       [Bucket, Node, Exc]),
+            query_vbucket_states_loop_next_step(Node, Bucket, Parent,
+                                                Warming, noproc);
         Exc ->
-            ?log_debug("Exception from query_vbucket_states of ~p:~p~n~p", [Bucket, Node, Exc]),
-            query_vbucket_states_loop_next_step(Node, Bucket)
+            ?log_debug("Exception from query_vbucket_states of ~p:~p~n~p",
+                       [Bucket, Node, Exc]),
+            Exc
     end.
 
-query_vbucket_states_loop_next_step(Node, Bucket) ->
+query_vbucket_states_loop_next_step(Node, Bucket, Parent, Warming, Reason) ->
     ?log_debug("Waiting for ~p on ~p", [Bucket, Node]),
+    NewWarming = maybe_send_warming(Parent, Warming, Reason),
     timer:sleep(1000),
-    query_vbucket_states_loop(Node, Bucket).
+    query_vbucket_states_loop(Node, Bucket, Parent, NewWarming).
 
--spec wait_for_memcached([node()], bucket_name(), non_neg_integer()) -> [{node(), {ok, list()} | any()}].
+maybe_send_warming(Parent, undefined, warming_up) ->
+    Parent ! warming_up;
+maybe_send_warming(_Parent, Warming, _Reason) ->
+    Warming.
+
+-spec wait_for_memcached([node()], bucket_name(), non_neg_integer()) -> [{node(), {ok, list()} | warming_up | timeout | any()}].
 wait_for_memcached(Nodes, Bucket, WaitTimeout) ->
     Parent = self(),
     misc:executing_on_new_process(
@@ -119,7 +137,7 @@ wait_for_memcached(Nodes, Bucket, WaitTimeout) ->
               NodePids = [{Node, proc_lib:spawn_link(
                                    fun () ->
                                            {ok, TRef} = timer2:kill_after(WaitTimeout),
-                                           RV = query_vbucket_states_loop(Node, Bucket),
+                                           RV = query_vbucket_states_loop(Node, Bucket, Me),
                                            Me ! {'EXIT', self(), {Ref, RV}},
                                            %% doing cancel is quite
                                            %% important. kill_after is
@@ -134,23 +152,28 @@ wait_for_memcached(Nodes, Bucket, WaitTimeout) ->
                                            erlang:unlink(Me)
                                    end)}
                           || Node <- Nodes],
-              [receive
-                   {'EXIT', Parent, Reason} ->
-                       ?log_debug("Parent died ~p", [Reason]),
-                       exit(Reason);
-                   {'EXIT', P, Reason} = ExitMsg ->
-                       case Reason of
-                           {Ref, RV} ->
-                               {Node, RV};
-                           killed ->
-                               {Node, ExitMsg};
-                           _ ->
-                               ?log_info("Got exception trying to query vbuckets of ~p bucket ~p~n~p", [Node, Bucket, Reason]),
-                               {Node, ExitMsg}
-                       end
-               end || {Node, P} <- NodePids]
+              [recv_result(Bucket, Parent, Ref, NodePid) || NodePid <- NodePids]
       end).
 
+recv_result(Bucket, Parent, Ref, {Node, Pid}) ->
+    receive
+        {'EXIT', Parent, Reason} ->
+            ?log_debug("Parent died ~p", [Reason]),
+            exit(Reason);
+        {'EXIT', Pid, {Ref, RV}} ->
+            {Node, RV};
+        {'EXIT', Pid, killed} ->
+            receive
+                warming_up ->
+                    {Node, warming_up}
+            after 0 ->
+                    {Node, timeout}
+            end;
+        {'EXIT', Pid, Reason} = ExitMsg ->
+            ?log_info("Got exception trying to query vbuckets of ~p bucket ~p~n~p",
+                      [Node, Bucket, Reason]),
+            {Node, ExitMsg}
+    end.
 
 complete_flush(Bucket, Nodes, Timeout) ->
     {Replies, BadNodes} = gen_server:multi_call(Nodes, server_name(Bucket), complete_flush, Timeout),
@@ -163,6 +186,16 @@ complete_flush(Bucket, Nodes, Timeout) ->
 query_states(Bucket, Nodes, undefined) ->
     query_states(Bucket, Nodes, ?WAIT_FOR_MEMCACHED_TIMEOUT);
 query_states(Bucket, Nodes, ReadynessWaitTimeout) ->
+    {ok, States, Failures} = query_states_details(Bucket, Nodes, ReadynessWaitTimeout),
+    BadNodes = [N || {N, _} <- Failures],
+    {ok, States, BadNodes}.
+
+-spec query_states_details(bucket_name(), [node()], undefined | pos_integer()) ->
+                                  {ok, [{node(), vbucket_id(), vbucket_state()}],
+                                   [{node(), term()}]}.
+query_states_details(Bucket, Nodes, undefined) ->
+    query_states_details(Bucket, Nodes, ?WAIT_FOR_MEMCACHED_TIMEOUT);
+query_states_details(Bucket, Nodes, ReadynessWaitTimeout) ->
     NodeRVs = wait_for_memcached(Nodes, Bucket, ReadynessWaitTimeout),
     Failures = [{N, R} || {N, R} <- NodeRVs,
                           case R of
@@ -176,10 +209,9 @@ query_states(Bucket, Nodes, ReadynessWaitTimeout) ->
                      {VBucket, State} <- Pairs],
             {ok, RV, []};
         _ ->
-            ?log_error("Failed to query vbucket states from some nodes:~n~p", [Failures]),
-
-            BadNodes = [N || {N, _} <- Failures],
-            {ok, [], BadNodes}
+            ?log_error("Failed to query vbucket states from some nodes:~n~p",
+                       [Failures]),
+            {ok, [], Failures}
     end.
 
 -spec mark_bucket_warmed(Bucket::bucket_name(), [node()]) -> ok | {error, [node()], list()}.
