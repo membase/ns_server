@@ -836,7 +836,7 @@ def generate_upload_url(parser, options, zip_filename):
     upload_url = None
     if options.upload_host:
         if not options.upload_customer:
-            parse.error("Need --upload when --upload-host is given")
+            parser.error("Need --customer when --upload-host is given")
         upload_host = urllib.quote(options.upload_host)
         customer = urllib.quote(options.upload_customer)
         fname = urllib.quote(zip_filename)
