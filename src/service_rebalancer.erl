@@ -46,13 +46,15 @@ run_rebalance(Parent, Service,
     AllNodes = KeepNodes ++ EjectNodes,
     Rebalancer = self(),
 
-    {ok, Agents} = service_agent:set_rebalancer(Service, AllNodes, Rebalancer),
+    erlang:monitor(process, Parent),
+
+    {ok, Agents} = service_agent:wait_for_agents(Service, AllNodes),
     lists:foreach(
       fun ({_Node, Agent}) ->
               erlang:monitor(process, Agent)
       end, Agents),
 
-    erlang:monitor(process, Parent),
+    ok = service_agent:set_rebalancer(Service, AllNodes, Rebalancer),
 
     Worker = proc_lib:spawn_link(
                fun () ->

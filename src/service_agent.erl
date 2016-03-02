@@ -23,6 +23,7 @@
 
 -export([start_link/1]).
 -export([get_status/2]).
+-export([wait_for_agents/2]).
 -export([set_rebalancer/3, unset_rebalancer/3]).
 -export([get_node_infos/3, prepare_rebalance/7, start_rebalance/7]).
 -export([init/1, handle_call/3, handle_cast/2,
@@ -30,6 +31,8 @@
 
 -define(CONNECTION_TIMEOUT,
         ns_config:get_timeout({service_agent, wait_for_connection}, 60000)).
+-define(WAIT_TIMEOUT,
+        ns_config:get_timeout({service_agent, wait_for_agent}, 60000)).
 -define(OUTER_TIMEOUT,
         ns_config:get_timeout({service_agent, outer_timeout}, 90000)).
 
@@ -70,11 +73,49 @@ start_link(Service) ->
 get_status(Service, Timeout) ->
     gen_server:call(server_name(Service), get_status, Timeout).
 
+wait_for_agents(Service, Nodes) ->
+    ?log_debug("Waiting for the service agents for service ~p to come up on nodes:~n~p",
+               [Service, Nodes]),
+    wait_for_agents_loop(Service, Nodes, [], ?WAIT_TIMEOUT).
+
+-define(WAIT_FOR_AGENTS_SLEEP, 1000).
+
+wait_for_agents_loop(Service, Nodes, _Acc, Timeout)
+  when Timeout =< 0 ->
+    process_bad_results(Service, get_agent, [{N, {error, timeout}} || N <- Nodes]);
+wait_for_agents_loop(Service, Nodes, Acc, Timeout) ->
+    {Elapsed, Result} =
+        timer:tc(
+          fun () ->
+                  misc:multi_call(Nodes, server_name(Service), get_agent, Timeout)
+          end),
+
+    {Good, Bad} = partition_multicall_results(Result),
+    case Bad of
+        [] ->
+            ?log_debug("All service agents are ready for ~p", [Service]),
+            extract_ok_responses(Good ++ Acc);
+        _ ->
+            case lists:all(fun is_noproc/1, Bad) of
+                true ->
+                    NotReady = [N || {N, _} <- Bad],
+                    ?log_debug("Service agent for ~s is not "
+                               "ready on some nodes:~n~p", [Service, NotReady]),
+                    timer:sleep(?WAIT_FOR_AGENTS_SLEEP),
+
+                    ElapsedMs = Elapsed div 1000,
+                    NewTimeout = Timeout - ElapsedMs - ?WAIT_FOR_AGENTS_SLEEP,
+                    wait_for_agents_loop(Service, NotReady, Good ++ Acc, NewTimeout);
+                false ->
+                    process_bad_results(Service, get_agent, Bad)
+            end
+    end.
+
 set_rebalancer(Service, Nodes, Rebalancer) ->
     Result = misc:multi_call(
                Nodes, server_name(Service),
                {set_rebalancer, Rebalancer}, ?OUTER_TIMEOUT),
-    handle_multicall_result(Service, set_rebalancer, Result).
+    handle_multicall_result(Service, set_rebalancer, Result, fun just_ok/1).
 
 unset_rebalancer(Service, Nodes, Rebalancer) ->
     Result = misc:multi_call(
@@ -128,11 +169,13 @@ handle_call(get_status, _From, #state{service = Service,
         end,
 
     {reply, Status, State};
+handle_call(get_agent, _From, State) ->
+    {reply, {ok, self()}, State};
 handle_call({set_rebalancer, Pid} = Call, _From,
             #state{rebalancer = Rebalancer} = State) ->
     case Rebalancer of
         undefined ->
-            {reply, {ok, self()}, handle_set_rebalancer(Pid, State)};
+            {reply, ok, handle_set_rebalancer(Pid, State)};
         _ ->
             ?log_error("Got set_rebalance call ~p when "
                        "rebalance is already running. Rebalancer: ~p",
@@ -683,28 +726,25 @@ process_service_response(Name, Raw, Fun) ->
     end.
 
 handle_multicall_result(Service, Call, Result) ->
-    OkFun = fun (Replies) ->
-                    ActualReplies =
-                        [begin
-                             {ok, ActualRV} = RV,
-                             {N, ActualRV}
-                         end || {N, RV} <- Replies],
-                    {ok, ActualReplies}
-            end,
-    handle_multicall_result(Service, Call, Result, OkFun).
+    handle_multicall_result(Service, Call, Result, fun extract_ok_responses/1).
 
-handle_multicall_result(Service, Call, {RVs, FailedNodes}, OkFun) ->
-    Bad0 = [Pair || {_, R} = Pair <- RVs, not is_good_result(R)],
-    Bad = FailedNodes ++ Bad0,
+handle_multicall_result(Service, Call, Result, OkFun) ->
+    {Good, Bad} = partition_multicall_results(Result),
 
     case Bad of
         [] ->
-            OkFun(RVs);
+            OkFun(Good);
         _ ->
-            ?log_error("Service call ~p (service ~p) failed on some nodes:~n~p",
-                       [Call, Service, Bad]),
-            {error, {bad_nodes, Service, Call, Bad}}
+            process_bad_results(Service, Call, Bad)
     end.
+
+partition_multicall_results({RVs, Failed}) ->
+    {Good, Bad} =
+        lists:partition(
+          fun ({_, R}) ->
+                  is_good_result(R)
+          end, RVs),
+    {Good, Failed ++ Bad}.
 
 is_good_result(ok) ->
     true;
@@ -715,6 +755,19 @@ is_good_result(_) ->
 
 just_ok(_) ->
     ok.
+
+extract_ok_responses(Replies) ->
+    ActualReplies =
+        [begin
+             {ok, ActualRV} = RV,
+             {N, ActualRV}
+         end || {N, RV} <- Replies],
+    {ok, ActualReplies}.
+
+process_bad_results(Service, Call, Bad) ->
+    ?log_error("Service call ~p (service ~p) failed on some nodes:~n~p",
+               [Call, Service, Bad]),
+    {error, {bad_nodes, Service, Call, Bad}}.
 
 config_event_handler({{node, _, uuid}, _} = Event, Agent) ->
     gen_server:cast(Agent, {config_event, Event}),
@@ -758,3 +811,8 @@ needs_rebalance(_Service, #topology{is_balanced = false}) ->
 needs_rebalance(Service, #topology{nodes = Nodes}) ->
     ServiceNodes = ns_cluster_membership:service_active_nodes(Service),
     lists:sort(ServiceNodes) =/= Nodes.
+
+is_noproc({_Node, {exit, {noproc, _}}}) ->
+    true;
+is_noproc(_) ->
+    false.
