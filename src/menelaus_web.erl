@@ -653,7 +653,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["settings", "indexes"] ->
                     {{[indexes], write}, fun menelaus_web_indexes:handle_settings_post/1};
                 ["_cbauth"] ->
-                    {{[admin, internal], all}, fun menelaus_cbauth:handle_cbauth_post/1};
+                    {no_check, fun menelaus_cbauth:handle_cbauth_post/1};
                 ["_log"] ->
                     {{[admin, internal], all}, fun handle_log_post/1};
                 ["_goxdcr", "regexpValidation"] ->
