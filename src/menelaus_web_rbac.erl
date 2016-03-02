@@ -284,7 +284,13 @@ parse_vertices([$. | Rest], Acc) ->
         {Name, [$[ | Rest1]} ->
             case parse_until(Rest1, "]") of
                 {Param, [$] | Rest2]} ->
-                    parse_vertices(Rest2, [{list_to_rbac_atom(Name), Param} | Acc]);
+                    Param1 = case Param of
+                                 "?" ->
+                                     any;
+                                 _ ->
+                                     Param
+                             end,
+                    parse_vertices(Rest2, [{list_to_rbac_atom(Name), Param1} | Acc]);
                 _ ->
                     error
             end
@@ -311,7 +317,10 @@ parse_permissions_test() ->
        parse_permissions(" cluster.bucket[test.test]!read, cluster.bucket[test.test].stats!read ")),
     ?assertMatch(
        [{"cluster.no_such_atom!no_such_atom", {['_unknown_'], '_unknown_'}}],
-       parse_permissions("cluster.no_such_atom!no_such_atom")).
+       parse_permissions("cluster.no_such_atom!no_such_atom")),
+    ?assertMatch(
+       [{"cluster.bucket[?]!read", {[{bucket, any}], read}}],
+       parse_permissions("cluster.bucket[?]!read")).
 
 handle_check_permissions_post(Req) ->
     Body = Req:recv_body(),
