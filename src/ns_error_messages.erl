@@ -175,7 +175,7 @@ cert_validation_error_message(too_many_entries) ->
 reload_node_certificate_error(no_cluster_ca) ->
     <<"Cluster CA needs to be set before setting node certificate.">>;
 reload_node_certificate_error({bad_cert, {Error, Subject}}) ->
-    list_to_binary(io_lib:format("Certificate validation error: ~p. Certificate: ~p", [Error, Subject]));
+    list_to_binary(io_lib:format("Incorrectly configured certificate chain. Error: ~p. Certificate: ~p", [Error, Subject]));
 reload_node_certificate_error({read_pkey, Reason}) ->
     list_to_binary(io_lib:format("Unable to read private key file. Reason: ~p", [Reason]));
 reload_node_certificate_error({read_chain, Reason}) ->
