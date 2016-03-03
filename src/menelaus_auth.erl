@@ -21,8 +21,7 @@
 -include("ns_common.hrl").
 -include("rbac.hrl").
 
--export([authenticate/1,
-         has_permission/2,
+-export([has_permission/2,
          get_accessible_buckets/2,
          extract_auth/1,
          extract_auth_user/1,
@@ -36,6 +35,10 @@
          validate_request/1,
          verify_login_creds/2,
          verify_rest_auth/2]).
+
+%% rpc from ns_couchdb node
+-export([authenticate/1,
+         saslauthd_authenticate/2]).
 
 %% External API
 
@@ -250,16 +253,26 @@ authenticate({Username, Password}) ->
                         true ->
                             {ok, {Username, bucket}};
                         false ->
-                            case saslauthd_auth:authenticate(Username, Password) of
-                                true ->
-                                    {ok, {Username, saslauthd}};
-                                false ->
-                                    false;
-                                {error, Error} ->
-                                    {error, Error}
-                            end
+                            saslauthd_authenticate(Username, Password)
                     end
             end
+    end.
+
+-spec saslauthd_authenticate(rbac_user_name(), rbac_password()) ->
+                                    false | {ok, rbac_identity()} | {error, term()}.
+saslauthd_authenticate(Username, Password) ->
+    case ns_node_disco:couchdb_node() == node() of
+        false ->
+            case saslauthd_auth:authenticate(Username, Password) of
+                true ->
+                    {ok, {Username, saslauthd}};
+                false ->
+                    false;
+                {error, Error} ->
+                    {error, Error}
+            end;
+        true ->
+            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, saslauthd_authenticate, [Username, Password])
     end.
 
 -spec verify_login_creds(rbac_user_name(), rbac_password()) ->
