@@ -663,7 +663,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                     XdcrPath = drop_prefix(Req:get(raw_path)),
                     {{[admin, internal], all},
                      fun goxdcr_rest:post_controller_bucket_settings/2, [XdcrPath]};
-                ["logClientError"] -> {{[admin, internal], all},
+                ["logClientError"] -> {no_check,
                                        fun (R) ->
                                                User = menelaus_auth:extract_auth_user(R),
                                                ?MENELAUS_WEB_LOG(?UI_SIDE_ERROR_REPORT,
