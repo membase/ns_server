@@ -16,6 +16,7 @@ import atexit
 import signal
 import urllib
 import shutil
+import urlparse
 
 class AltExitC(object):
     def __init__(self):
@@ -832,18 +833,29 @@ def do_upload_and_exit(path, url):
             log('HTTP status code: %s' % stdout)
             sys.exit(1)
 
+def parse_host(host):
+    url = urlparse.urlsplit(host)
+    if not url.scheme:
+        url = urlparse.urlsplit('https://' + host)
+
+    return url.scheme, url.netloc, url.path
+
 def generate_upload_url(parser, options, zip_filename):
     upload_url = None
     if options.upload_host:
         if not options.upload_customer:
             parser.error("Need --customer when --upload-host is given")
-        upload_host = urllib.quote(options.upload_host)
+
+        scheme, netloc, path = parse_host(options.upload_host)
+
         customer = urllib.quote(options.upload_customer)
         fname = urllib.quote(zip_filename)
         if options.upload_ticket:
-            upload_url = "https://%s/%s/%d/%s" % (upload_host, customer, options.upload_ticket, fname)
+            full_path = '%s/%s/%d/%s' % (path, customer, options.upload_ticket, fname)
         else:
-            upload_url = "https://%s/%s/%s" % (upload_host, customer, fname)
+            full_path = '%s/%s/%s' % (path, customer, fname)
+
+        upload_url = urlparse.urlunsplit((scheme, netloc, full_path, '', ''))
         log("Will upload collected .zip file into %s" % upload_url)
     return upload_url
 
