@@ -107,6 +107,9 @@ preconfigured_roles() ->
       [{name, <<"Replication Admin">>},
        {desc, <<"Can manage ONLY XDCR features (cluster AND bucket level)">>}],
       [{[{bucket, any}, xdcr], all},
+       {[{bucket, any}, data], [read]},
+       {[{bucket, any}, settings], [read]},
+       {[{bucket, any}], none},
        {[xdcr], all},
        {[admin], none},
        {[], [read]}]}].
@@ -493,6 +496,12 @@ bucket_sasl_test() ->
 replication_admin_test() ->
     Roles = compile_roles([replication_admin], preconfigured_roles()),
     ?assertEqual(true, is_allowed({[{bucket, "default"}, xdcr], anything}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "default"}, password], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "default"}, views], read}, Roles)),
+    ?assertEqual(true, is_allowed({[{bucket, "default"}, settings], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "default"}, settings], write}, Roles)),
+    ?assertEqual(true, is_allowed({[{bucket, "default"}, data], read}, Roles)),
+    ?assertEqual(false, is_allowed({[{bucket, "default"}, data], write}, Roles)),
     ?assertEqual(true, is_allowed({[xdcr], anything}, Roles)),
     ?assertEqual(false, is_allowed({[admin], read}, Roles)),
     ?assertEqual(true, is_allowed({[other], read}, Roles)).
