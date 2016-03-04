@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {3,0,2}.
+    {3,1,5}.
 
 % Allow all keys to be mergable.
 
@@ -186,7 +186,9 @@ default() ->
      {remote_clusters, []},
      {{node, node(), isasl}, [{path, filename:join(DataDir, ?ISASL_PW)}]},
 
-                                                % Memcached config
+     {{node, node(), memcached_defaults}, []},
+
+     %% Memcached config
      {{node, node(), memcached},
       [{port, misc:get_env_default(memcached_port, 11210)},
        {dedicated_port, misc:get_env_default(memcached_dedicated_port, 11209)},
@@ -425,7 +427,10 @@ upgrade_config(Config) ->
              upgrade_config_from_2_3_0_to_3_0(Config)];
         {value, {3,0}} ->
             [{set, {node, node(), config_version}, {3,0,2}} |
-             upgrade_config_from_3_0_to_3_0_2(Config)]
+             upgrade_config_from_3_0_to_3_0_2(Config)];
+        {value, {3,0,2}} ->
+            [{set, {node, node(), config_version}, {3,1,5}} |
+             upgrade_config_from_3_0_2_to_3_1_5(Config)]
     end.
 
 upgrade_config_from_1_7_to_1_7_1() ->
@@ -709,6 +714,16 @@ do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig) ->
                               KN =/= memcached],
 
     [{set, McdKey, NewMcdConfig} | PerNodeKeyTouchings].
+
+upgrade_config_from_3_0_2_to_3_1_5(Config) ->
+    ?log_info("Upgrading config from 3.0.2 to 3.1.5"),
+    DefaultConfig = default(),
+    do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig).
+
+do_upgrade_config_from_3_0_2_to_3_1_5(_Config, DefaultConfig) ->
+    MCDefaultsK = {node, node(), memcached_defaults},
+    {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
+    [{set, MCDefaultsK, NewMCDefaults}].
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
@@ -1048,6 +1063,24 @@ upgrade_3_0_to_3_0_2_test() ->
                                                {port, 3}]},
                   {set, {node, _, memcached_config}, memcached_config}],
                  do_upgrade_config_from_3_0_to_3_0_2(Cfg, Default)).
+
+upgrade_3_0_2_to_3_1_5_test() ->
+    Cfg = [[{some_key, some_value},
+            {{node, node(), memcached},
+             [{some_key, some_value}]},
+            {{node, node(), port_servers}, old_port_servers},
+            {{node, node(), memcached_config},
+             {[{some_key, some_value}]}}
+           ]],
+    Default = [{{node, node(), memcached_defaults},
+                [{some, stuff}]},
+               {{node, node(), port_servers}, new_port_servers},
+               {{node, node(), memcached},
+                [{audit_file, audit_file_path}]},
+               {{node, node(), memcached_config},
+                {[{some_other_key, some_value}]}}],
+    ?assertMatch([{set, {node, _, memcached_defaults}, [{some, stuff}]}],
+                 do_upgrade_config_from_3_0_2_to_3_1_5(Cfg, Default)).
 
 
 no_upgrade_on_current_version_test() ->
