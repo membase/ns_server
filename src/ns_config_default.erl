@@ -559,9 +559,14 @@ upgrade_config_from_4_0_to_watson() ->
     do_upgrade_config_from_4_0_to_watson(DefaultConfig).
 
 do_upgrade_config_from_4_0_to_watson(DefaultConfig) ->
-    Key = {node, node(), memcached_config},
-    {value, McdConfig} = ns_config:search([DefaultConfig], Key),
-    [{set, Key, McdConfig}].
+    ConfKey = {node, node(), memcached_config},
+    {value, McdConfig} = ns_config:search([DefaultConfig], ConfKey),
+
+    DefaultsKey = {node, node(), memcached_defaults},
+    {value, McdDefaults} = ns_config:search([DefaultConfig], DefaultsKey),
+
+    [{set, ConfKey, McdConfig},
+     {set, DefaultsKey, McdDefaults}].
 
 upgrade_2_3_0_to_3_0_test() ->
     Cfg = [[{some_key, some_value},
@@ -648,7 +653,8 @@ upgrade_4_0_to_watson_test() ->
                {{node, node(), memcached}, memcached},
                {{node, node(), memcached_defaults}, memcached_defaults}],
 
-    ?assertMatch([{set, {node, _, memcached_config}, memcached_config}],
+    ?assertMatch([{set, {node, _, memcached_config}, memcached_config},
+                  {set, {node, _, memcached_defaults}, memcached_defaults}],
                  do_upgrade_config_from_4_0_to_watson(Default)).
 
 no_upgrade_on_current_version_test() ->
