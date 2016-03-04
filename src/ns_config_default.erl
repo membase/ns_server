@@ -186,7 +186,8 @@ default() ->
      {remote_clusters, []},
      {{node, node(), isasl}, [{path, filename:join(DataDir, ?ISASL_PW)}]},
 
-     {{node, node(), memcached_defaults}, []},
+     {{node, node(), memcached_defaults},
+      [{dedupe_nmvb_maps, false}]},
 
      %% Memcached config
      {{node, node(), memcached},
@@ -265,7 +266,8 @@ default() ->
            {config, {"admin=~s;default_bucket_name=default;auto_create=false",
                      [admin_user]}}]}},
 
-        {verbosity, verbosity}
+        {verbosity, verbosity},
+        {dedupe_nmvb_maps, dedupe_nmvb_maps}
        ]}},
 
      {memory_quota, InitQuota},
@@ -720,10 +722,20 @@ upgrade_config_from_3_0_2_to_3_1_5(Config) ->
     DefaultConfig = default(),
     do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig).
 
-do_upgrade_config_from_3_0_2_to_3_1_5(_Config, DefaultConfig) ->
+do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig) ->
     MCDefaultsK = {node, node(), memcached_defaults},
     {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
-    [{set, MCDefaultsK, NewMCDefaults}].
+
+    JTKey = {node, node(), memcached_config},
+    {value, {DefaultJsonTemplateConfig}} = ns_config:search([DefaultConfig], JTKey),
+    DedupMaps = {dedupe_nmvb_maps, _} =
+        lists:keyfind(dedupe_nmvb_maps, 1, DefaultJsonTemplateConfig),
+    {value, {CurrentJsonTemplateConfig}} = ns_config:search(Config, JTKey),
+    NewJsonTemplateConfig =
+        lists:keystore(dedupe_nmvb_maps, 1, CurrentJsonTemplateConfig, DedupMaps),
+
+    [{set, MCDefaultsK, NewMCDefaults},
+     {set, JTKey, {NewJsonTemplateConfig}}].
 
 search_sub_key(Config, Key, Subkey) ->
     case ns_config:search(Config, Key) of
@@ -1078,8 +1090,12 @@ upgrade_3_0_2_to_3_1_5_test() ->
                {{node, node(), memcached},
                 [{audit_file, audit_file_path}]},
                {{node, node(), memcached_config},
-                {[{some_other_key, some_value}]}}],
-    ?assertMatch([{set, {node, _, memcached_defaults}, [{some, stuff}]}],
+                {[{some_other_key, some_value},
+                  {dedupe_nmvb_maps, dedupe_nmvb_maps}]}}],
+    ?assertMatch([{set, {node, _, memcached_defaults}, [{some, stuff}]},
+                  {set, {node, _, memcached_config},
+                   {[{some_key, some_value},
+                     {dedupe_nmvb_maps, dedupe_nmvb_maps}]}}],
                  do_upgrade_config_from_3_0_2_to_3_1_5(Cfg, Default)).
 
 
