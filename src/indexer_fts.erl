@@ -55,16 +55,13 @@ start_keeper() ->
     index_status_keeper:start_link(?MODULE).
 
 get_gauges() ->
-    [doc_count, num_pindexes].
+    [num_mutations_to_index, doc_count, num_recs_to_persist, num_bytes_used_disk,
+    num_pindexes_actual, num_pindexes_target, avg_queries_latency].
 
 get_counters() ->
-    [timer_batch_merge_count, timer_batch_store_count,
-     timer_iterator_next_count, timer_iterator_seek_count,
-     timer_reader_get_count, timer_reader_multi_get_count,
-     timer_reader_prefix_iterator_count, timer_reader_range_iterator_count,
-     timer_writer_execute_batch_count,
-     timer_opaque_set_count, timer_rollback_count, timer_data_update_count,
-     timer_data_delete_count, timer_snapshot_start_count, timer_opaque_get_count].
+    [total_bytes_indexed, total_compactions, total_queries, total_queries_slow,
+    total_queries_timeout, total_queries_error, total_bytes_query_results,
+    total_term_searchers].
 
 get_computed() ->
     [].
