@@ -607,6 +607,7 @@ fts_spec(Config) ->
                       "slowQueryLogTimeout=5s," ++
                       "defaultMaxPartitionsPerPIndex=32," ++
                       "bleveMaxResultWindow=10000," ++
+                      "cbaudit=" ++ atom_to_list(cluster_compat_mode:is_enterprise()) ++ "," ++
                       "ftsMemoryQuota=" ++ integer_to_list(FTSMemoryQuota * 1024000),
             Spec = {fts, FtCmd,
                     [
