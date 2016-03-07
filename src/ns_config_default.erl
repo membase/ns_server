@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    {4, 0}.
+    {4, 1, 1}.
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),
@@ -417,6 +417,9 @@ upgrade_config(Config) ->
         {value, {3,1,5}} ->
             [{set, {node, node(), config_version}, {4,0}} |
              upgrade_config_from_3_1_5_to_4_0(Config)];
+        {value, {4,0}} ->
+            [{set, {node, node(), config_version}, {4,1,1}} |
+             upgrade_config_from_4_0_to_4_1_1(Config)];
         V0 ->
             OldVersion =
                 case V0 of
@@ -547,6 +550,19 @@ do_upgrade_config_from_3_1_5_to_4_0(Config, DefaultConfig) ->
      {set, McdKey, NewMcdConfig3},
      {set, JTKey, DefaultJsonTemplateConfig}].
 
+upgrade_config_from_4_0_to_4_1_1(Config) ->
+    ?log_info("Upgrading config from 4.0 to 4.1.1"),
+    do_upgrade_config_from_4_0_to_4_1_1(Config, default()).
+
+do_upgrade_config_from_4_0_to_4_1_1(_Config, DefaultConfig) ->
+    MCDefaultsK = {node, node(), memcached_defaults},
+    {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
+
+    JTKey = {node, node(), memcached_config},
+    {value, DefaultJsonTemplateConfig} = ns_config:search([DefaultConfig], JTKey),
+    [{set, MCDefaultsK, NewMCDefaults},
+     {set, JTKey, DefaultJsonTemplateConfig}].
+
 upgrade_2_3_0_to_3_0_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
@@ -630,6 +646,20 @@ upgrade_3_1_5_to_4_0_test() ->
                                                {config_path, cfg_path}]},
                   {set, {node, _, memcached_config}, new_memcached_config}],
                  do_upgrade_config_from_3_1_5_to_4_0(Cfg, Default)).
+
+upgrade_4_0_to_4_1_1_test() ->
+    Cfg = [[{some_key, some_value},
+            {{node, node(), memcached}, old_memcached_config},
+            {{node, node(), port_servers}, old_port_servers},
+            {{node, node(), memcached_default}, old_memcached_defaults},
+            {{node, node(), memcached_config}, old_memcached_config}]],
+    Default = [{{node, node(), memcached_defaults}, new_memcached_defaults},
+               {{node, node(), port_servers}, new_port_servers},
+               {{node, node(), memcached}, new_memcached},
+               {{node, node(), memcached_config}, new_memcached_config}],
+    ?assertMatch([{set, {node, _, memcached_defaults}, new_memcached_defaults},
+                  {set, {node, _, memcached_config}, new_memcached_config}],
+                 do_upgrade_config_from_4_0_to_4_1_1(Cfg, Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
