@@ -1463,9 +1463,9 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
     [{struct, [{blockName, <<"Full Text Search Stats: ", Id/binary>>},
                {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
-                [{struct, [{title, <<"total items remaining">>},
+                [{struct, [{title, <<"items remaining">>},
                            {name, per_fts_stat(Id, <<"num_mutations_to_index">>)},
-                           {desc, <<"Number of items pending to be indexed">>}]},
+                           {desc, <<"Number of mutations not yet indexed">>}]},
                  {struct, [{title, <<"items">>},
                            {name, per_fts_stat(Id, <<"doc_count">>)},
                            {desc, <<"Number of documents">>}]},
@@ -1475,7 +1475,8 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
                  {struct, [{title, <<"items not persisted">>},
                            {name, per_fts_stat(Id, <<"num_recs_to_persist">>)},
                            {desc, <<"Number items indexed but not yet persisted to disk">>}]},
-                 {struct, [{title, <<"disk size">>},
+                 {struct, [{isBytes, true},
+                           {title, <<"disk size">>},
                            {name, per_fts_stat(Id, <<"num_bytes_used_disk">>)},
                            {desc, <<"Total disk file size used by the index">>}]},
                  {struct, [{title, <<"pindexes actual">>},
@@ -1486,7 +1487,7 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
                            {desc, <<"Number of PIndexes expected">>}]},
                  {struct, [{title, <<"compactions/sec">>},
                            {name, per_fts_stat(Id, <<"total_compactions">>)},
-                           {desc, <<"Number of index compactions per second">>}]},
+                           {desc, <<"Number of pindex compactions completed per second">>}]},
                  {struct, [{title, <<"queries/sec">>},
                            {name, per_fts_stat(Id, <<"total_queries">>)},
                            {desc, <<"Number of queries per second">>}]},
@@ -1501,13 +1502,13 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
                            {desc, <<"Number of queries that timeout per second">>}]},
                  {struct, [{title, <<"error queries/sec">>},
                            {name, per_fts_stat(Id, <<"total_queries_error">>)},
-                           {desc, <<"Number of queries that encountered error per second">>}]},
+                           {desc, <<"Number of queries that resulted in errors per second. Includes timeouts.">>}]},
                  {struct, [{title, <<"bytes returned/sec">>},
                            {name, per_fts_stat(Id, <<"total_bytes_query_results">>)},
                            {desc, <<"Number of bytes returned in results per second">>}]},
                  {struct, [{title, <<"term searchers/sec">>},
                            {name, per_fts_stat(Id, <<"total_term_searchers">>)},
-                           {desc, <<"Number of term searchers executed per second">>}]}]}]}
+                           {desc, <<"Number of term searchers started per second">>}]}]}]}
      || Id <- AllIndexes].
 
 couchbase_query_stats_descriptions() ->
