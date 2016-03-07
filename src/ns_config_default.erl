@@ -236,7 +236,8 @@ default() ->
        {verbosity, 0},
        {breakpad_enabled, true},
        %% Location that Breakpad should write minidumps upon memcached crash.
-       {breakpad_minidump_dir_path, BreakpadMinidumpDir}]},
+       {breakpad_minidump_dir_path, BreakpadMinidumpDir},
+       {dedupe_nmvb_maps, false}]},
 
      %% Memcached config
      {{node, node(), memcached},
@@ -319,7 +320,8 @@ default() ->
                      [admin_user]}}]}},
 
         {verbosity, verbosity},
-        {audit_file, {"~s", [audit_file]}}
+        {audit_file, {"~s", [audit_file]}},
+        {dedupe_nmvb_maps, dedupe_nmvb_maps}
        ]}},
 
      {memory_quota, KvQuota},
@@ -410,8 +412,11 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {3,0,2}} |
              upgrade_config_from_3_0_to_3_0_2(Config)];
         {value, {3,0,2}} ->
+            [{set, {node, node(), config_version}, {3,1,5}} |
+             upgrade_config_from_3_0_2_to_3_1_5(Config)];
+        {value, {3,1,5}} ->
             [{set, {node, node(), config_version}, {4,0}} |
-             upgrade_config_from_3_0_2_to_4_0(Config)];
+             upgrade_config_from_3_1_5_to_4_0(Config)];
         V0 ->
             OldVersion =
                 case V0 of
@@ -491,11 +496,31 @@ do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig) ->
 
     [{set, McdKey, NewMcdConfig} | PerNodeKeyTouchings].
 
-upgrade_config_from_3_0_2_to_4_0(Config) ->
-    ?log_info("Upgrading config from 3.0.2 to 4.0"),
-    do_upgrade_config_from_3_0_2_to_4_0(Config, default()).
+upgrade_config_from_3_0_2_to_3_1_5(Config) ->
+    ?log_info("Upgrading config from 3.0.2 to 3.1.5"),
+    DefaultConfig = default(),
+    do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig).
 
-do_upgrade_config_from_3_0_2_to_4_0(Config, DefaultConfig) ->
+do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig) ->
+    MCDefaultsK = {node, node(), memcached_defaults},
+    {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
+
+    JTKey = {node, node(), memcached_config},
+    {value, {DefaultJsonTemplateConfig}} = ns_config:search([DefaultConfig], JTKey),
+    DedupMaps = {dedupe_nmvb_maps, _} =
+        lists:keyfind(dedupe_nmvb_maps, 1, DefaultJsonTemplateConfig),
+    {value, {CurrentJsonTemplateConfig}} = ns_config:search(Config, JTKey),
+    NewJsonTemplateConfig =
+        lists:keystore(dedupe_nmvb_maps, 1, CurrentJsonTemplateConfig, DedupMaps),
+
+    [{set, MCDefaultsK, NewMCDefaults},
+     {set, JTKey, {NewJsonTemplateConfig}}].
+
+upgrade_config_from_3_1_5_to_4_0(Config) ->
+    ?log_info("Upgrading config from 3.1.5 to 4.0"),
+    do_upgrade_config_from_3_1_5_to_4_0(Config, default()).
+
+do_upgrade_config_from_3_1_5_to_4_0(Config, DefaultConfig) ->
     MCDefaultsK = {node, node(), memcached_defaults},
     {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
 
@@ -556,7 +581,29 @@ upgrade_3_0_to_3_0_2_test() ->
                   {set, {node, _, memcached_config}, memcached_config}],
                  do_upgrade_config_from_3_0_to_3_0_2(Cfg, Default)).
 
-upgrade_3_0_2_to_4_0_test() ->
+upgrade_3_0_2_to_3_1_5_test() ->
+    Cfg = [[{some_key, some_value},
+            {{node, node(), memcached},
+             [{some_key, some_value}]},
+            {{node, node(), port_servers}, old_port_servers},
+            {{node, node(), memcached_config},
+             {[{some_key, some_value}]}}
+           ]],
+    Default = [{{node, node(), memcached_defaults},
+                [{some, stuff}]},
+               {{node, node(), port_servers}, new_port_servers},
+               {{node, node(), memcached},
+                [{audit_file, audit_file_path}]},
+               {{node, node(), memcached_config},
+                {[{some_other_key, some_value},
+                  {dedupe_nmvb_maps, dedupe_nmvb_maps}]}}],
+    ?assertMatch([{set, {node, _, memcached_defaults}, [{some, stuff}]},
+                  {set, {node, _, memcached_config},
+                   {[{some_key, some_value},
+                     {dedupe_nmvb_maps, dedupe_nmvb_maps}]}}],
+                 do_upgrade_config_from_3_0_2_to_3_1_5(Cfg, Default)).
+
+upgrade_3_1_5_to_4_0_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
              [{engines, old_value},
@@ -582,7 +629,7 @@ upgrade_3_0_2_to_4_0_test() ->
                                                {audit_file, audit_file_path},
                                                {config_path, cfg_path}]},
                   {set, {node, _, memcached_config}, new_memcached_config}],
-                 do_upgrade_config_from_3_0_2_to_4_0(Cfg, Default)).
+                 do_upgrade_config_from_3_1_5_to_4_0(Cfg, Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
