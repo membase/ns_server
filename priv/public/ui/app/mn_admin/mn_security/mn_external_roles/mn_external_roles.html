@@ -1,3 +1,14 @@
+<div style="margin: 9px 0 9px 9px;">
+  <span style="display:inline-block;vertical-align: middle;width: 20px;height:20px;">
+    <span ng-show="externalRolesCtl.saslauthdAuth.enabled"><img src="/images/correct.svg" width="20" height="20"></span>
+    <span ng-show="!externalRolesCtl.saslauthdAuth.enabled"><img src="/images/ban.svg" width="20" height="20"></span>
+  </span>
+  <span style="vertical-align: middle;">Authentication <span ng-show="externalRolesCtl.saslauthdAuth"><span ng-show="!externalRolesCtl.saslauthdAuth.enabled">Not</span> Enabled</span></span>
+  <a style="vertical-align: middle;" ng-show="!externalRolesCtl.saslauthdAuthLoading" ng-click="externalRolesCtl.toggleSaslauthdAuth()">
+    <span ng-show="!externalRolesCtl.saslauthdAuth.enabled">enabled</span>
+    <span ng-show="externalRolesCtl.saslauthdAuth.enabled">disabled</span>
+  </a>
+</div>
 <div class="shadow_box">
   <div class="header_2">
     <div class="right" style="overflow:hidden;">

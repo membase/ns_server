@@ -52,6 +52,8 @@
           method: "POST",
           url: "/settings/saslauthdAuth",
           data: state
+        }).then(function (resp) {
+          return resp.data;
         });
       }
 

@@ -9,17 +9,19 @@
       "mnPoll",
       "mnSortableTable",
       "mnSpinner",
-      "ui.select"
+      "ui.select",
+      "mnLdapService"
     ])
     .controller("mnExternalRolesController", mnExternalRolesController);
 
-  function mnExternalRolesController($scope, $uibModal, mnPromiseHelper, mnExternalRolesService, mnPoller, mnHelper, mnSortableTable) {
+  function mnExternalRolesController($scope, $uibModal, mnLdapService, mnPromiseHelper, mnExternalRolesService, mnPoller, mnHelper, mnSortableTable) {
     var vm = this;
     vm.addUser = addUser;
     vm.deleteUser = deleteUser;
     vm.editUser = editUser;
     vm.readRoleDescriptionByName = readRoleDescriptionByName;
     vm.sortableTableProperties = mnSortableTable.get();
+    vm.toggleSaslauthdAuth = toggleSaslauthdAuth;
 
     activate();
 
@@ -28,6 +30,10 @@
     }
 
     function activate() {
+      mnPromiseHelper(vm, mnLdapService.getSaslauthdAuth())
+        .applyToScope("saslauthdAuth")
+        .showSpinner("saslauthdAuthLoading");
+
       mnPromiseHelper(vm, mnExternalRolesService.getRolseByRole())
         .applyToScope("rolseByRole");
 
@@ -35,6 +41,15 @@
         .subscribe("state", vm)
         .reloadOnScopeEvent("reloadRolesPoller", vm)
         .cycle();
+    }
+
+    function toggleSaslauthdAuth() {
+      var config = {
+        enabled: !vm.saslauthdAuth.enabled
+      };
+      mnPromiseHelper(vm, mnLdapService.postSaslauthdAuth(config))
+        .applyToScope("saslauthdAuth")
+        .showSpinner("saslauthdAuthLoading");
     }
 
     function editUser(user) {
