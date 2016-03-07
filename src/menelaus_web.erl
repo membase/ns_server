@@ -1551,54 +1551,21 @@ build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
                           [{replication, Replication} | KV2]
                   end,
             KV4 = case InfoLevel of
-                      stable -> KV3;
-                      _ -> build_extra_node_info(Config, WantENode,
-                                                 InfoNode, BucketsAll,
-                                                 KV3)
+                      stable ->
+                          KV3;
+                      _ ->
+                          build_extra_node_info(InfoNode, KV3)
                   end,
             {struct, KV4}
     end.
 
-build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
-
-    {UpSecs, {MemoryTotalErlang, MemoryAllocedErlang, _}} =
-        {proplists:get_value(wall_clock, InfoNode, 0),
-         proplists:get_value(memory_data, InfoNode,
-                             {0, 0, undefined})},
-
+build_extra_node_info(InfoNode, Append) ->
+    UpSecs = proplists:get_value(wall_clock, InfoNode, 0),
     SystemStats = proplists:get_value(system_stats, InfoNode, []),
-    SigarMemTotal = proplists:get_value(mem_total, SystemStats),
-    SigarMemFree = proplists:get_value(mem_free, SystemStats),
-    {MemoryTotal, MemoryFree} =
-        case SigarMemTotal =:= undefined orelse SigarMemFree =:= undefined of
-            true ->
-                {MemoryTotalErlang, MemoryTotalErlang - MemoryAllocedErlang};
-            _ ->
-                {SigarMemTotal, SigarMemFree}
-        end,
 
-    NodesBucketMemoryTotal = case ns_config:search_node_prop(Node,
-                                                             Config,
-                                                             memcached,
-                                                             max_size) of
-                                 X when is_integer(X) -> X;
-                                 undefined -> (MemoryTotal * 4) div (5 * ?MIB)
-                             end,
-
-    NodesBucketMemoryAllocated = NodesBucketMemoryTotal,
-    [{systemStats, {struct, proplists:get_value(system_stats, InfoNode, [])}},
+    [{systemStats, {struct, SystemStats}},
      {interestingStats, {struct, proplists:get_value(interesting_stats, InfoNode, [])}},
-     %% TODO: deprecate this in API (we need 'stable' "startupTStamp"
-     %% first)
-     {uptime, list_to_binary(integer_to_list(UpSecs))},
-     %% TODO: deprecate this in API
-     {memoryTotal, erlang:trunc(MemoryTotal)},
-     %% TODO: deprecate this in API
-     {memoryFree, erlang:trunc(MemoryFree)},
-     %% TODO: deprecate this in API
-     {mcdMemoryReserved, erlang:trunc(NodesBucketMemoryTotal)},
-     %% TODO: deprecate this in API
-     {mcdMemoryAllocated, erlang:trunc(NodesBucketMemoryAllocated)}
+     {uptime, list_to_binary(integer_to_list(UpSecs))}
      | Append].
 
 build_node_hostname(Config, Node, LocalAddr) ->
