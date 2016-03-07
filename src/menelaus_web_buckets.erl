@@ -29,7 +29,6 @@
 -export([checking_bucket_uuid/3,
          handle_bucket_list/1,
          handle_bucket_info/3,
-         build_bucket_node_infos/4,
          handle_sasl_buckets_streaming/2,
          handle_bucket_info_streaming/3,
          handle_bucket_delete/3,
