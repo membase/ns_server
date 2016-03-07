@@ -108,7 +108,7 @@ query_vbucket_states_loop_next_step(Node, Bucket) ->
     timer:sleep(1000),
     query_vbucket_states_loop(Node, Bucket).
 
--spec wait_for_memcached([node()], bucket_name(), non_neg_integer()) -> [{node(), warming_up | {ok, list()} | any()}].
+-spec wait_for_memcached([node()], bucket_name(), non_neg_integer()) -> [{node(), {ok, list()} | any()}].
 wait_for_memcached(Nodes, Bucket, WaitTimeout) ->
     Parent = self(),
     misc:executing_on_new_process(
