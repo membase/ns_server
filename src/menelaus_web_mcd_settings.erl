@@ -38,7 +38,8 @@ supported_setting_names() ->
      {verbosity, {int, 0, ?MAXINT}},
      {ssl_cipher_list, string},
      {breakpad_enabled, bool},
-     {breakpad_minidump_dir_path, string}].
+     {breakpad_minidump_dir_path, string},
+     {dedupe_nmvb_maps, bool}].
 
 supported_extra_setting_names() ->
     [{default_reqs_per_event, {int, 0, ?MAXINT}},
