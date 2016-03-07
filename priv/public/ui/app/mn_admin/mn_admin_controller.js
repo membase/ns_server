@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -75,8 +75,8 @@
           mnPoorMansAlertsService.maybeShowAlerts(resp);
         }
 
-        var version = parseVersionFilter(pools.implementationVersion);
-        $rootScope.mnTitle = "Couchbase Console " + (version ? '(' + version[0] + ')' : '') + (vm.tabName ? '-' + vm.tabName : '');
+        var version = mnPrettyVersionFilter(pools.implementationVersion);
+        $rootScope.mnTitle = "Couchbase Console " + (version ? version : '') + (vm.tabName ? ' - ' + vm.tabName : '');
 
         if (previous && previous.tasks.uri != resp.tasks.uri) {
           $rootScope.$broadcast("taskUriChanged");

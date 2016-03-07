@@ -89,9 +89,10 @@ a.dynamic_disabled{text-decoration:none;cursor:default;}
 #mainContainer {position:relative;width:1060px;left:12%;margin-top:15px;padding:0 0 220px;}
 .main_holder {position:relative; margin:auto; left:0px !important;}
 .cnt_holder {width: 1060px; height: 42px; position:relative; margin: 0 auto;}
-.logo_wrap {float: left; display: block;padding-top:3px;}
-.tab_name {overflow: hidden; padding-left: 7px; font-weight: bold; font-size: 18px; color: #000; line-height: 40px; font-family: Helvetica, Arial;}
+.logo_wrap {float: left; display: block;padding-top:3px;padding-right: 7px;}
+.tab_name {float: left; max-width: 430px; font-weight: bold; font-size: 18px; color: #000; line-height: 40px; font-family: Helvetica, Arial;}
 .page-header {background:url('/images/header_bg.png') 0 bottom repeat-x;height:42px;}
+.cluster_edition {float: left;line-height: 38px;font-size: 13px;font-family: Helvetica, Arial;color: #000;padding-top: 2px;}
 
 #headerNav {clear:both;height:50px;background:url('/images/navigation_bg.png') repeat-x;}
 #headerNav .contents{width:1060px;margin:auto;}
