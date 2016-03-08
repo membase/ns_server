@@ -405,7 +405,7 @@ handle_info(ssl_minimum_protocol_changed, #state{reload_state = ReloadState,
         Other ->
             misc:create_marker(marker_path()),
             self() ! notify_services,
-            ReloadServices = [ssl_service, capi_ssl_service, xdcr_proxy],
+            ReloadServices = [ssl_service, capi_ssl_service],
             ?log_debug("Notify services ~p about ssl_minimum_protocol change", [ReloadServices]),
             {noreply, #state{min_ssl_ver = Other,
                              reload_state =
