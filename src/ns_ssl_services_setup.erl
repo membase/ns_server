@@ -47,7 +47,8 @@
 -behavior(gen_server).
 
 -record(state, {cert_state,
-                reload_state}).
+                reload_state,
+                min_ssl_ver}).
 
 -record(cert_state, {cert,
                      pkey,
@@ -341,7 +342,8 @@ init([]) ->
                        []
                end,
     {ok, #state{cert_state = build_cert_state(CertPEM, PKeyPEM, Compat30, Node),
-                reload_state = RetrySvc}}.
+                reload_state = RetrySvc,
+                min_ssl_ver = ssl_minimum_protocol()}}.
 
 format_status(_Opt, [_PDict, _State]) ->
     {}.
@@ -356,9 +358,11 @@ config_change_detector_loop({cluster_compat_version, _Version}, Parent) ->
 config_change_detector_loop({{node, _Node, capi_port}, _}, Parent) ->
     Parent ! cert_and_pkey_changed,
     Parent;
+config_change_detector_loop({ssl_minimum_protocol, _}, Parent) ->
+    Parent ! ssl_minimum_protocol_changed,
+    Parent;
 config_change_detector_loop(_OtherEvent, Parent) ->
     Parent.
-
 
 handle_call(ping, _From, State) ->
     {reply, ok, State};
@@ -385,6 +389,21 @@ handle_info(cert_and_pkey_changed, #state{cert_state = OldCertState} = State) ->
             self() ! notify_services,
             {noreply, #state{cert_state = NewCertState,
                              reload_state = all_services()}}
+    end;
+handle_info(ssl_minimum_protocol_changed, #state{reload_state = ReloadState,
+                                                 min_ssl_ver = MinSslVer} = State) ->
+    misc:flush(ssl_minimum_protocol_changed),
+    case ssl_minimum_protocol() of
+        MinSslVer ->
+            {noreply, State};
+        Other ->
+            misc:create_marker(marker_path()),
+            self() ! notify_services,
+            ReloadServices = [ssl_service, capi_ssl_service, xdcr_proxy],
+            ?log_debug("Notify services ~p about ssl_minimum_protocol change", [ReloadServices]),
+            {noreply, #state{min_ssl_ver = Other,
+                             reload_state =
+                                 lists:umerge(lists:sort(ReloadServices), lists:sort(ReloadState))}}
     end;
 handle_info(notify_services, #state{reload_state = []} = State) ->
     misc:flush(notify_services),
