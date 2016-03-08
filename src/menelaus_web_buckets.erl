@@ -109,7 +109,8 @@ handle_bucket_info(_PoolId, Id, Req) ->
                                       menelaus_util:local_addr(Req),
                                       may_expose_bucket_auth(Id, Req), SkipMap)).
 
-build_bucket_node_infos(BucketName, BucketConfig, InfoLevel, LocalAddr) ->
+build_bucket_node_infos(BucketName, BucketConfig, InfoLevel0, LocalAddr) ->
+    InfoLevel = convert_info_level(InfoLevel0),
     %% Only list nodes this bucket is mapped to
     F = menelaus_web:build_nodes_info_fun(false, InfoLevel, LocalAddr),
     Nodes = proplists:get_value(servers, BucketConfig, []),
@@ -189,7 +190,8 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
         end,
 
     Suffix = case InfoLevel of
-                 stable -> BucketCaps;
+                 streaming ->
+                     BucketCaps;
                  _ ->
                      BasicStats0 = menelaus_stats:basic_stats(Id),
 
@@ -376,7 +378,7 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
                                 {ok, Bin} = bucket_info_cache:terse_bucket_info_with_local_addr(Id, LocalAddr),
                                 {just_write, {write, Bin}};
                             _ ->
-                                Info = build_bucket_info(Id, BucketConfig, stable, LocalAddr,
+                                Info = build_bucket_info(Id, BucketConfig, streaming, LocalAddr,
                                                          may_expose_bucket_auth(Id, Req), false),
                                 {just_write, Info}
                         end;
@@ -1404,3 +1406,8 @@ handle_local_random_key(_PoolId, Bucket, Req) ->
             reply_json(Req, {struct,
                              [{ok, false}]}, 404)
     end.
+
+convert_info_level(streaming) ->
+    stable;
+convert_info_level(InfoLevel) ->
+    InfoLevel.
