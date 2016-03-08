@@ -3338,14 +3338,25 @@ handle_diag_eval(Req) ->
 
     ?log_debug("WARNING: /diag/eval:~n~n~s", [Snippet]),
 
-    {value, Value, _} = misc:eval(Snippet, erl_eval:add_binding('Req', Req, erl_eval:new_bindings())),
-    case Value of
-        done ->
-            ok;
-        {json, V} ->
-            reply_json(Req, V, 200);
-        _ ->
-            reply_text(Req, io_lib:format("~p", [Value]), 200)
+    try misc:eval(Snippet, erl_eval:add_binding('Req', Req, erl_eval:new_bindings())) of
+        {value, Value, _} ->
+            case Value of
+                done ->
+                    ok;
+                {json, V} ->
+                    reply_json(Req, V, 200);
+                _ ->
+                    reply_text(Req, io_lib:format("~p", [Value]), 200)
+            end
+    catch
+        T:E ->
+            Msg = io_lib:format("/diag/eval failed.~nError: ~p~nBacktrace:~n~p",
+                                [{T, E}, erlang:get_stacktrace()]),
+            ?log_error("Server error during processing: ~s", [Msg]),
+
+            reply_text(Req, io_lib:format("/diag/eval failed.~nError: ~p~nBacktrace:~n~p",
+                                          [{T, E}, erlang:get_stacktrace()]),
+                       500)
     end.
 
 handle_diag_master_events(Req) ->
