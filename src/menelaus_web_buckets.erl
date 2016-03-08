@@ -110,9 +110,9 @@ handle_bucket_info(_PoolId, Id, Req) ->
                                       may_expose_bucket_auth(Id, Req), SkipMap)).
 
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel0, LocalAddr) ->
-    InfoLevel = convert_info_level(InfoLevel0),
+    {InfoLevel, Stability} = convert_info_level(InfoLevel0),
     %% Only list nodes this bucket is mapped to
-    F = menelaus_web:build_nodes_info_fun(false, InfoLevel, LocalAddr),
+    F = menelaus_web:build_nodes_info_fun(false, InfoLevel, Stability, LocalAddr),
     Nodes = proplists:get_value(servers, BucketConfig, []),
     %% NOTE: there's potential inconsistency here between BucketConfig
     %% and (potentially more up-to-date) vbuckets dict. Given that
@@ -327,7 +327,7 @@ build_bucket_capabilities(BucketConfig) ->
 
 handle_sasl_buckets_streaming(_PoolId, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
-    F = fun (_) ->
+    F = fun (_, _) ->
                 Config = ns_config:get(),
                 SASLBuckets = lists:filter(
                                 fun ({_, BucketInfo}) ->
@@ -370,7 +370,7 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
 handle_bucket_info_streaming(_PoolId, Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
     SendTerse = ns_config:read_key_fast(send_terse_streaming_buckets, false),
-    F = fun(_InfoLevel) ->
+    F = fun(_InfoLevel, _Stability) ->
                 case ns_bucket:get_bucket(Id) of
                     {ok, BucketConfig} ->
                         case SendTerse of
@@ -1408,6 +1408,6 @@ handle_local_random_key(_PoolId, Bucket, Req) ->
     end.
 
 convert_info_level(streaming) ->
-    stable;
+    {normal, stable};
 convert_info_level(InfoLevel) ->
-    InfoLevel.
+    {InfoLevel, unstable}.

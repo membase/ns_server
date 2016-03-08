@@ -44,7 +44,7 @@
          restart/0,
          build_node_hostname/3,
          build_nodes_info/0,
-         build_nodes_info_fun/3,
+         build_nodes_info_fun/4,
          build_full_node_info/2,
          handle_streaming/3,
          maybe_cleanup_old_buckets/0,
@@ -1224,7 +1224,9 @@ handle_pool_info(Id, Req) ->
     WaitChangeS = proplists:get_value("waitChange", Query),
     PassedETag = proplists:get_value("etag", Query),
     case WaitChangeS of
-        undefined -> reply_json(Req, build_pool_info(Id, Req, normal, LocalAddr));
+        undefined ->
+            reply_json(Req,
+                       build_pool_info(Id, Req, normal, unstable, LocalAddr));
         _ ->
             WaitChange = list_to_integer(WaitChangeS),
             menelaus_event:register_watcher(self()),
@@ -1233,7 +1235,7 @@ handle_pool_info(Id, Req) ->
     end.
 
 handle_pool_info_wait(Req, Id, LocalAddr, PassedETag) ->
-    Info = build_pool_info(Id, Req, stable, LocalAddr),
+    Info = build_pool_info(Id, Req, for_ui, stable, LocalAddr),
     ETag = integer_to_list(erlang:phash2(Info)),
     if
         ETag =:= PassedETag ->
@@ -1267,7 +1269,7 @@ handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     %% consume all notifications
     consume_notifications(),
     %% and reply
-    {struct, PList} = build_pool_info(Id, Req, for_ui, LocalAddr),
+    {struct, PList} = build_pool_info(Id, Req, for_ui, unstable, LocalAddr),
     Info = {struct, [{etag, list_to_binary(ETag)} | PList]},
     reply_ok(Req, "application/json", menelaus_util:encode_json(Info),
              menelaus_auth:maybe_refresh_token(Req)),
@@ -1277,7 +1279,7 @@ handle_pool_info_wait_tail(Req, Id, LocalAddr, ETag) ->
     exit(normal).
 
 
-build_pool_info(Id, Req, normal, LocalAddr) ->
+build_pool_info(Id, Req, normal, Stability, LocalAddr) ->
     CanIncludeOtpCookie = menelaus_auth:has_permission({[admin, internal], all}, Req),
 
     %% NOTE: we limit our caching here for "normal" info
@@ -1286,22 +1288,23 @@ build_pool_info(Id, Req, normal, LocalAddr) ->
     %% which is important to deliver asap to UI (i.e. without any
     %% caching "staleness"). Same situation is with tasks version
     menelaus_web_cache:lookup_or_compute_with_expiration(
-      {pool_details, CanIncludeOtpCookie, LocalAddr},
+      {pool_details, CanIncludeOtpCookie, Stability, LocalAddr},
       fun () ->
               %% NOTE: token needs to be taken before building pool info
               Token = ns_config:config_version_token(),
-              {do_build_pool_info(Id, CanIncludeOtpCookie, normal, LocalAddr), 1000, Token}
+              {do_build_pool_info(Id, CanIncludeOtpCookie,
+                                  normal, Stability, LocalAddr), 1000, Token}
       end,
       fun (_Key, _Value, ConfigVersionToken) ->
               ConfigVersionToken =/= ns_config:config_version_token()
       end);
-build_pool_info(Id, _Req, InfoLevel, LocalAddr) ->
-    do_build_pool_info(Id, false, InfoLevel, LocalAddr).
+build_pool_info(Id, _Req, InfoLevel, Stability, LocalAddr) ->
+    do_build_pool_info(Id, false, InfoLevel, Stability, LocalAddr).
 
-do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
+do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
     UUID = get_uuid(),
 
-    F = build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, LocalAddr),
+    F = build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr),
     Nodes = [F(N, undefined) || N <- ns_node_disco:nodes_wanted()],
     Config = ns_config:get(),
     BucketsVer = erlang:phash2(ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)))
@@ -1377,24 +1380,27 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
                                      (list_to_binary(integer_to_list(GroupsV)))/binary>>}],
 
     PropList1 = build_memory_quota_info(Config) ++ PropList0,
-    PropList =
+    PropList2 =
         case InfoLevel of
             for_ui ->
-                StorageTotals = [{Key, {struct, StoragePList}}
-                                 || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
                 [{clusterName, list_to_binary(get_cluster_name())},
-                 {storageTotals, {struct, StorageTotals}},
                  {balanced, ns_cluster_membership:is_balanced()},
                  {failoverWarnings, ns_bucket:failover_warnings()},
                  {goxdcrEnabled, cluster_compat_mode:is_goxdcr_enabled(Config)},
                  {ldapEnabled, cluster_compat_mode:is_ldap_enabled()}
                  | PropList1];
-            normal ->
-                StorageTotals = [{Key, {struct, StoragePList}}
-                                 || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
-                [{storageTotals, {struct, StorageTotals}} | PropList1];
             _ ->
                 PropList1
+        end,
+
+    PropList =
+        case Stability of
+            stable ->
+                PropList2;
+            unstable ->
+                StorageTotals = [{Key, {struct, StoragePList}}
+                                 || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
+                [{storageTotals, {struct, StorageTotals}} | PropList2]
         end,
 
     {struct, PropList}.
@@ -1473,7 +1479,7 @@ build_auto_compaction_allowed_time_period(AllowedTimePeriod) ->
 
 
 build_nodes_info() ->
-    F = build_nodes_info_fun(true, normal, "127.0.0.1"),
+    F = build_nodes_info_fun(true, normal, unstable, "127.0.0.1"),
     [F(N, undefined) || N <- ns_node_disco:nodes_wanted()].
 
 %% builds health/warmup status of given node (w.r.t. given Bucket if
@@ -1509,7 +1515,7 @@ build_node_status(Node, Bucket, InfoNode, BucketsAll) ->
             <<"unhealthy">>
     end.
 
-build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
+build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
     OtpCookie = list_to_binary(atom_to_list(erlang:get_cookie())),
     NodeStatuses = ns_doctor:get_nodes(),
     Config = ns_config:get(),
@@ -1550,10 +1556,10 @@ build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, LocalAddr) ->
                                         end,
                           [{replication, Replication} | KV2]
                   end,
-            KV4 = case InfoLevel of
+            KV4 = case Stability of
                       stable ->
                           KV3;
-                      _ ->
+                      unstable ->
                           build_extra_node_info(InfoNode, KV3)
                   end,
             {struct, KV4}
@@ -1619,8 +1625,8 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
 
 handle_pool_info_streaming(Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
-    F = fun(InfoLevel) ->
-                build_pool_info(Id, Req, InfoLevel, LocalAddr)
+    F = fun(InfoLevel, Stability) ->
+                build_pool_info(Id, Req, InfoLevel, Stability, LocalAddr)
         end,
     handle_streaming(F, Req, undefined).
 
@@ -1633,14 +1639,16 @@ handle_streaming(F, Req, LastRes) ->
     handle_streaming(F, Req, HTTPRes, LastRes).
 
 streaming_inner(F, HTTPRes, LastRes) ->
-    Res = F(stable),
+    Res = F(normal, stable),
     case Res =:= LastRes of
         true ->
             ok;
         false ->
             ResNormal = case Res of
-                            {just_write, Stuff} -> Stuff;
-                            _ -> F(normal)
+                            {just_write, Stuff} ->
+                                Stuff;
+                            _ ->
+                                F(normal, unstable)
                         end,
             Encoded = case ResNormal of
                           {write, Bin} -> Bin;
@@ -2703,7 +2711,7 @@ handle_node(_PoolId, Node, Req) ->
     end.
 
 build_full_node_info(Node, LocalAddr) ->
-    {struct, KV} = (build_nodes_info_fun(true, normal, LocalAddr))(Node, undefined),
+    {struct, KV} = (build_nodes_info_fun(true, normal, unstable, LocalAddr))(Node, undefined),
     NodeStatus = ns_doctor:get_node(Node),
     StorageConf = ns_storage_conf:storage_conf_from_node_status(NodeStatus),
     R = {struct, storage_conf_to_json(StorageConf)},
@@ -3863,7 +3871,7 @@ serve_short_bucket_info(_PoolId, BucketName, Req) ->
 
 serve_streaming_short_bucket_info(_PoolId, BucketName, Req) ->
     handle_streaming(
-      fun (_) ->
+      fun (_, _) ->
               V = build_terse_bucket_info(BucketName),
               {just_write, {write, V}}
       end, Req, undefined).
@@ -3873,7 +3881,7 @@ serve_node_services(Req) ->
 
 serve_node_services_streaming(Req) ->
     handle_streaming(
-      fun (_) ->
+      fun (_, _) ->
               V = bucket_info_cache:build_node_services(),
               {just_write, {write, V}}
       end, Req, undefined).
