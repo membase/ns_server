@@ -148,7 +148,8 @@ create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort) ->
             {local_memcached_port, LocalMemcachedPort},
             {cert_file, Path},
             {private_key_file, Path},
-            {cacert_file, CACertPath}],
+            {cacert_file, CACertPath},
+            {ssl_minimum_protocol, ns_ssl_services_setup:ssl_minimum_protocol()}],
 
     ErlangArgs = ["-smp", "enable",
                   "+P", "327680",

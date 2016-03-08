@@ -24,10 +24,11 @@
          ssl_cacert_key_path/0,
          memcached_cert_path/0,
          memcached_key_path/0,
-         sync_local_cert_and_pkey_change/0]).
+         sync_local_cert_and_pkey_change/0,
+         ssl_minimum_protocol/0]).
 
 %% used by ssl proxy
--export([dh_params_der/0, supported_versions/0, supported_ciphers/0]).
+-export([dh_params_der/0, supported_versions/1, supported_ciphers/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -169,7 +170,7 @@ dh_params_der() ->
       9,135,41,60,75,4,202,133,173,72,6,69,167,89,112,174,40,
       229,171,2,1,2>>.
 
-supported_versions() ->
+supported_versions(MinVer) ->
     case application:get_env(ssl_versions) of
         {ok, Versions} ->
             Versions;
@@ -178,13 +179,17 @@ supported_versions() ->
                                           ssl:versions(), []),
             Versions0 = ['tlsv1.1', 'tlsv1.2'],
 
-            case lists:member(tls_padding_check, Patches) of
-                true ->
-                    ['tlsv1' | Versions0];
-                false ->
-                    Versions0
-            end
+            Versions1 = case lists:member(tls_padding_check, Patches) of
+                            true ->
+                                ['tlsv1' | Versions0];
+                            false ->
+                                Versions0
+                        end,
+            lists:dropwhile(fun (Ver) -> Ver < MinVer end, Versions1)
     end.
+
+ssl_minimum_protocol() ->
+    ns_config:search(ns_config:latest(), ssl_minimum_protocol, 'tlsv1').
 
 %% The list is obtained by running the following openssl command:
 %%
@@ -238,7 +243,7 @@ ssl_server_opts() ->
     Path = ssl_cert_key_path(),
     [{keyfile, Path},
      {certfile, Path},
-     {versions, supported_versions()},
+     {versions, supported_versions(ssl_minimum_protocol())},
      {cacertfile, ssl_cacert_key_path()},
      {dh, dh_params_der()},
      {ciphers, supported_ciphers()}].

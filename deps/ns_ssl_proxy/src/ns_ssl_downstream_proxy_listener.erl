@@ -30,6 +30,7 @@ init() ->
     {ok, CertFile} = application:get_env(ns_ssl_proxy, cert_file),
     {ok, PrivateKeyFile} = application:get_env(ns_ssl_proxy, private_key_file),
     {ok, CACertFile} = application:get_env(ns_ssl_proxy, cacert_file),
+    {ok, MinSslVer} = application:get_env(ns_ssl_proxy, ssl_minimum_protocol),
 
     case ssl:listen(Port,
                     [{reuseaddr, true},
@@ -43,7 +44,7 @@ init() ->
                      {certfile, CertFile},
                      {keyfile, PrivateKeyFile},
                      {cacertfile, CACertFile},
-                     {versions, ns_ssl_services_setup:supported_versions()},
+                     {versions, ns_ssl_services_setup:supported_versions(MinSslVer)},
                      {dh, ns_ssl_services_setup:dh_params_der()},
                      {ciphers, ns_ssl_services_setup:supported_ciphers()}]) of
         {ok, Sock} ->
