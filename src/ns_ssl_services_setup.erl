@@ -186,7 +186,13 @@ supported_versions(MinVer) ->
                             false ->
                                 Versions0
                         end,
-            lists:dropwhile(fun (Ver) -> Ver < MinVer end, Versions1)
+            case lists:dropwhile(fun (Ver) -> Ver < MinVer end, Versions1) of
+                [] ->
+                    ?log_warning("Incorrect ssl_minimum_protocol ~p was ignored.", [MinVer]),
+                    Versions1;
+                Versions ->
+                    Versions
+            end
     end.
 
 ssl_minimum_protocol() ->
