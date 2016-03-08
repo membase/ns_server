@@ -295,6 +295,7 @@ default() ->
           ]}},
 
         {ssl_cipher_list, {"~s", [ssl_cipher_list]}},
+        {ssl_minimum_protocol, {memcached_config_mgr, ssl_minimum_protocol, []}},
 
         {breakpad,
          {[{enabled, breakpad_enabled},
