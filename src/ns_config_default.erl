@@ -240,7 +240,8 @@ default() ->
        {verbosity, 0},
        {breakpad_enabled, true},
        %% Location that Breakpad should write minidumps upon memcached crash.
-       {breakpad_minidump_dir_path, BreakpadMinidumpDir}]},
+       {breakpad_minidump_dir_path, BreakpadMinidumpDir},
+       {dedupe_nmvb_maps, false}]},
 
      %% Memcached config
      {{node, node(), memcached},
@@ -320,8 +321,8 @@ default() ->
         {admin, {"~s", [admin_user]}},
 
         {verbosity, verbosity},
-
-        {audit_file, {"~s", [audit_file]}}
+        {audit_file, {"~s", [audit_file]}},
+        {dedupe_nmvb_maps, dedupe_nmvb_maps}
        ]}},
 
      {memory_quota, KvQuota},
@@ -417,14 +418,17 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {3,0,2}} |
              upgrade_config_from_3_0_to_3_0_2(Config)];
         {value, {3,0,2}} ->
-            [{set, {node, node(), config_version}, {3,0,99}} |
-             upgrade_config_from_3_0_2_to_3_0_99(Config)];
-        {value, {3,0,99}} ->
+            [{set, {node, node(), config_version}, {3,1,5}} |
+             upgrade_config_from_3_0_2_to_3_1_5(Config)];
+        {value, {3,1,5}} ->
             [{set, {node, node(), config_version}, {4,0}} |
-             upgrade_config_from_3_0_99_to_4_0(Config)];
+             upgrade_config_from_3_1_5_to_4_0(Config)];
         {value, {4,0}} ->
+            [{set, {node, node(), config_version}, {4,1,1}} |
+             upgrade_config_from_4_0_to_4_1_1(Config)];
+        {value, {4,1,1}} ->
             [{set, {node, node(), config_version}, CurrentVersion} |
-             upgrade_config_from_4_0_to_watson()];
+             upgrade_config_from_4_1_1_to_watson()];
         V0 ->
             OldVersion =
                 case V0 of
@@ -504,33 +508,31 @@ do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig) ->
 
     [{set, McdKey, NewMcdConfig} | PerNodeKeyTouchings].
 
-upgrade_config_from_3_0_2_to_3_0_99(Config) ->
-    ?log_info("Upgrading config from 3.0.2 to 3.0.99"),
+upgrade_config_from_3_0_2_to_3_1_5(Config) ->
+    ?log_info("Upgrading config from 3.0.2 to 3.1.5"),
     DefaultConfig = default(),
-    do_upgrade_config_from_3_0_2_to_3_0_99(Config, DefaultConfig).
+    do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig).
 
-do_upgrade_config_from_3_0_2_to_3_0_99(Config, DefaultConfig) ->
-    McdKey = {node, node(), memcached},
+do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig) ->
+    MCDefaultsK = {node, node(), memcached_defaults},
+    {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
+
     JTKey = {node, node(), memcached_config},
-    PortServersKey = {node, node(), port_servers},
-    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
-    {value, DefaultJsonTemplateConfig} = ns_config:search([DefaultConfig], JTKey),
-    {value, DefaultPortServers} = ns_config:search([DefaultConfig], PortServersKey),
-    {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
-    EnginesTuple = {engines, _} = lists:keyfind(engines, 1, DefaultMcdConfig),
-    ConfigPathTuple = {config_path, _} = lists:keyfind(config_path, 1, DefaultMcdConfig),
-    NewMcdConfig0 = lists:keystore(engines, 1, CurrentMcdConfig, EnginesTuple),
-    NewMcdConfig1 = lists:keystore(config_path, 1, NewMcdConfig0, ConfigPathTuple),
-    NewMcdConfig2 = lists:keydelete(verbosity, 1, NewMcdConfig1),
-    [{set, McdKey, NewMcdConfig2},
-     {set, JTKey, DefaultJsonTemplateConfig},
-     {set, PortServersKey, DefaultPortServers}].
+    {value, {DefaultJsonTemplateConfig}} = ns_config:search([DefaultConfig], JTKey),
+    DedupMaps = {dedupe_nmvb_maps, _} =
+        lists:keyfind(dedupe_nmvb_maps, 1, DefaultJsonTemplateConfig),
+    {value, {CurrentJsonTemplateConfig}} = ns_config:search(Config, JTKey),
+    NewJsonTemplateConfig =
+        lists:keystore(dedupe_nmvb_maps, 1, CurrentJsonTemplateConfig, DedupMaps),
 
-upgrade_config_from_3_0_99_to_4_0(Config) ->
-    ?log_info("Upgrading config from 3.0.99 to 4.0"),
-    do_upgrade_config_from_3_0_99_to_4_0(Config, default()).
+    [{set, MCDefaultsK, NewMCDefaults},
+     {set, JTKey, {NewJsonTemplateConfig}}].
 
-do_upgrade_config_from_3_0_99_to_4_0(Config, DefaultConfig) ->
+upgrade_config_from_3_1_5_to_4_0(Config) ->
+    ?log_info("Upgrading config from 3.1.5 to 4.0"),
+    do_upgrade_config_from_3_1_5_to_4_0(Config, default()).
+
+do_upgrade_config_from_3_1_5_to_4_0(Config, DefaultConfig) ->
     MCDefaultsK = {node, node(), memcached_defaults},
     {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
 
@@ -540,25 +542,41 @@ do_upgrade_config_from_3_0_99_to_4_0(Config, DefaultConfig) ->
     McdKey = {node, node(), memcached},
     {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
     AuditFileTupleMcd = {audit_file, _} = lists:keyfind(audit_file, 1, DefaultMcdConfig),
+    EnginesTuple = {engines, _} = lists:keyfind(engines, 1, DefaultMcdConfig),
+    ConfigPathTuple = {config_path, _} = lists:keyfind(config_path, 1, DefaultMcdConfig),
+
     {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
-    NewMcdConfig = lists:keystore(audit_file, 1, CurrentMcdConfig, AuditFileTupleMcd),
+    NewMcdConfig0 = lists:keystore(audit_file, 1, CurrentMcdConfig, AuditFileTupleMcd),
+    NewMcdConfig1 = lists:keystore(engines, 1, NewMcdConfig0, EnginesTuple),
+    NewMcdConfig2 = lists:keystore(config_path, 1, NewMcdConfig1, ConfigPathTuple),
+    NewMcdConfig3 = lists:keydelete(verbosity, 1, NewMcdConfig2),
 
     JTKey = {node, node(), memcached_config},
-    {value, {DefaultJsonTemplateConfig}} = ns_config:search([DefaultConfig], JTKey),
-    AuditFileTupleJT = {audit_file, _} = lists:keyfind(audit_file, 1, DefaultJsonTemplateConfig),
-    {value, {CurrentJsonTemplateConfig}} = ns_config:search(Config, JTKey),
-    NewJsonTemplateConfig = lists:keystore(audit_file, 1, CurrentJsonTemplateConfig, AuditFileTupleJT),
+    {value, DefaultJsonTemplateConfig} = ns_config:search([DefaultConfig], JTKey),
 
     [{set, MCDefaultsK, NewMCDefaults},
      {set, PortServersK, NewPSDefaults},
-     {set, McdKey, NewMcdConfig},
-     {set, JTKey, {NewJsonTemplateConfig}}].
+     {set, McdKey, NewMcdConfig3},
+     {set, JTKey, DefaultJsonTemplateConfig}].
 
-upgrade_config_from_4_0_to_watson() ->
+upgrade_config_from_4_0_to_4_1_1(Config) ->
+    ?log_info("Upgrading config from 4.0 to 4.1.1"),
+    do_upgrade_config_from_4_0_to_4_1_1(Config, default()).
+
+do_upgrade_config_from_4_0_to_4_1_1(_Config, DefaultConfig) ->
+    MCDefaultsK = {node, node(), memcached_defaults},
+    {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
+
+    JTKey = {node, node(), memcached_config},
+    {value, DefaultJsonTemplateConfig} = ns_config:search([DefaultConfig], JTKey),
+    [{set, MCDefaultsK, NewMCDefaults},
+     {set, JTKey, DefaultJsonTemplateConfig}].
+
+upgrade_config_from_4_1_1_to_watson() ->
     DefaultConfig = default(),
-    do_upgrade_config_from_4_0_to_watson(DefaultConfig).
+    do_upgrade_config_from_4_1_1_to_watson(DefaultConfig).
 
-do_upgrade_config_from_4_0_to_watson(DefaultConfig) ->
+do_upgrade_config_from_4_1_1_to_watson(DefaultConfig) ->
     ConfKey = {node, node(), memcached_config},
     {value, McdConfig} = ns_config:search([DefaultConfig], ConfKey),
 
@@ -602,30 +620,7 @@ upgrade_3_0_to_3_0_2_test() ->
                   {set, {node, _, memcached_config}, memcached_config}],
                  do_upgrade_config_from_3_0_to_3_0_2(Cfg, Default)).
 
-upgrade_3_0_2_to_3_0_99_test() ->
-    Cfg = [[{some_key, some_value},
-            {{node, node(), memcached},
-             [{engines, old_value},
-              {ssl_port, 1},
-              {verbosity, 2},
-              {port, 3}]},
-            {{node, node(), memcached_config}, memcached_config}]],
-    Default = [{{node, node(), port_servers}, port_servers_cfg},
-               {{node, node(), memcached}, [{ssl_port, 1},
-                                            {config_path, cfg_path},
-                                            {engines, [something]}]},
-               {{node, node(), memcached_config}, memcached_config},
-               {{node, node(), port_servers}, port_servers_cfg}],
-
-    ?assertMatch([{set, {node, _, memcached}, [{engines, [something]},
-                                               {ssl_port, 1},
-                                               {port, 3},
-                                               {config_path, cfg_path}]},
-                  {set, {node, _, memcached_config}, memcached_config},
-                  {set, {node, _, port_servers}, port_servers_cfg}],
-                 do_upgrade_config_from_3_0_2_to_3_0_99(Cfg, Default)).
-
-upgrade_3_0_99_to_4_0_test() ->
+upgrade_3_0_2_to_3_1_5_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
              [{some_key, some_value}]},
@@ -639,23 +634,64 @@ upgrade_3_0_99_to_4_0_test() ->
                {{node, node(), memcached},
                 [{audit_file, audit_file_path}]},
                {{node, node(), memcached_config},
-                {[{audit_file, audit_file}]}}],
+                {[{some_other_key, some_value},
+                  {dedupe_nmvb_maps, dedupe_nmvb_maps}]}}],
+    ?assertMatch([{set, {node, _, memcached_defaults}, [{some, stuff}]},
+                  {set, {node, _, memcached_config},
+                   {[{some_key, some_value},
+                     {dedupe_nmvb_maps, dedupe_nmvb_maps}]}}],
+                 do_upgrade_config_from_3_0_2_to_3_1_5(Cfg, Default)).
+
+upgrade_3_1_5_to_4_0_test() ->
+    Cfg = [[{some_key, some_value},
+            {{node, node(), memcached},
+             [{engines, old_value},
+              {ssl_port, 1},
+              {verbosity, 2},
+              {port, 3}]},
+            {{node, node(), memcached_config}, old_memcached_config},
+            {{node, node(), port_servers}, old_port_servers}]],
+    Default = [{{node, node(), memcached_defaults},
+                [{some, stuff}]},
+               {{node, node(), port_servers}, new_port_servers},
+               {{node, node(), memcached}, [{ssl_port, 1},
+                                            {config_path, cfg_path},
+                                            {engines, [something]},
+                                            {audit_file, audit_file_path}]},
+               {{node, node(), memcached_config}, new_memcached_config}],
+
     ?assertMatch([{set, {node, _, memcached_defaults}, [{some, stuff}]},
                   {set, {node, _, port_servers}, new_port_servers},
-                  {set, {node, _, memcached}, [{some_key, some_value},
-                                               {audit_file, audit_file_path}]},
-                  {set, {node, _, memcached_config}, {[{some_key, some_value},
-                                                       {audit_file, audit_file}]}}],
-                 do_upgrade_config_from_3_0_99_to_4_0(Cfg, Default)).
+                  {set, {node, _, memcached}, [{engines, [something]},
+                                               {ssl_port, 1},
+                                               {port, 3},
+                                               {audit_file, audit_file_path},
+                                               {config_path, cfg_path}]},
+                  {set, {node, _, memcached_config}, new_memcached_config}],
+                 do_upgrade_config_from_3_1_5_to_4_0(Cfg, Default)).
 
-upgrade_4_0_to_watson_test() ->
+upgrade_4_0_to_4_1_1_test() ->
+    Cfg = [[{some_key, some_value},
+            {{node, node(), memcached}, old_memcached_config},
+            {{node, node(), port_servers}, old_port_servers},
+            {{node, node(), memcached_default}, old_memcached_defaults},
+            {{node, node(), memcached_config}, old_memcached_config}]],
+    Default = [{{node, node(), memcached_defaults}, new_memcached_defaults},
+               {{node, node(), port_servers}, new_port_servers},
+               {{node, node(), memcached}, new_memcached},
+               {{node, node(), memcached_config}, new_memcached_config}],
+    ?assertMatch([{set, {node, _, memcached_defaults}, new_memcached_defaults},
+                  {set, {node, _, memcached_config}, new_memcached_config}],
+                 do_upgrade_config_from_4_0_to_4_1_1(Cfg, Default)).
+
+upgrade_4_1_1_to_watson_test() ->
     Default = [{{node, node(), memcached_config}, memcached_config},
                {{node, node(), memcached}, memcached},
                {{node, node(), memcached_defaults}, memcached_defaults}],
 
     ?assertMatch([{set, {node, _, memcached_config}, memcached_config},
                   {set, {node, _, memcached_defaults}, memcached_defaults}],
-                 do_upgrade_config_from_4_0_to_watson(Default)).
+                 do_upgrade_config_from_4_1_1_to_watson(Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).

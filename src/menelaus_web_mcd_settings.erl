@@ -39,7 +39,8 @@ supported_setting_names() ->
      {ssl_cipher_list, string},
      {connection_idle_time, {int, 0, ?MAXINT}},
      {breakpad_enabled, bool},
-     {breakpad_minidump_dir_path, string}].
+     {breakpad_minidump_dir_path, string},
+     {dedupe_nmvb_maps, bool}].
 
 supported_extra_setting_names() ->
     [{default_reqs_per_event, {int, 0, ?MAXINT}},
