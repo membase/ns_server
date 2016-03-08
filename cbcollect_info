@@ -311,6 +311,11 @@ def make_query_task(statement, user, password, port):
     return make_curl_task(name="Result of query statement \'%s\'" % statement,
                           user=user, password=password, url=url)
 
+def make_index_task(name, api, passwd, index_port, logfile="couchbase.log"):
+    index_url = 'http://127.0.0.1:%s/%s' % (index_port, api)
+
+    return make_curl_task(name, "@", passwd, index_url, log_file=logfile)
+
 def basedir():
     mydir = os.path.dirname(sys.argv[0])
     if mydir == "":
@@ -547,9 +552,21 @@ def make_product_task(guts, initargs_path, options):
     index_tasks = []
     index_port = read_guts(guts, "indexer_http_port")
     if index_port:
-        url='http://127.0.0.1:%s/getIndexStatus' % index_port
-        index_tasks = [make_curl_task(name="Index definitions are: ",
-                          user="@", password=read_guts(guts, "memcached_pass"), url=url)]
+        password = read_guts(guts, "memcached_pass")
+        index_tasks = [make_index_task("Index definitions are: ", "getIndexStatus", password, index_port),
+                       make_index_task("Indexer settings are: ", "settings", password, index_port),
+                       make_index_task("Index storage stats are: ", "stats/storage", password, index_port),
+                       make_index_task("MOI allocator stats are: ", "stats/storage/mm", password, index_port),
+                       make_index_task("Indexer Go routine dump: ", "debug/pprof/goroutine?debug=1",
+                                       password, index_port, logfile="indexer_pprof.log")]
+
+    projector_tasks = []
+    proj_port = read_guts(guts, "projector_port")
+    if proj_port:
+        proj_url = 'http://127.0.0.1:%s/debug/pprof/goroutine?debug=1' % proj_port
+        projector_tasks = [make_curl_task(name="Projector Go routine dump ",
+                                          user="@", password=read_guts(guts, "memcached_pass"),
+                                          url=proj_url, log_file="projector_pprof.log")]
 
     fts_tasks = []
     fts_port = read_guts(guts, "fts_http_port")
@@ -698,7 +715,7 @@ def make_product_task(guts, initargs_path, options):
         make_stats_archives_task(guts, initargs_path)
         ]
 
-    _tasks = flatten([lookup_tasks, query_tasks, index_tasks, fts_tasks, _tasks])
+    _tasks = flatten([lookup_tasks, query_tasks, index_tasks, projector_tasks, fts_tasks, _tasks])
 
     return _tasks
 
