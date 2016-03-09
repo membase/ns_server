@@ -87,20 +87,20 @@
       if (!roles || !roles.length) {
         return $q.reject("at least one role should be added");
       }
-      if (originalUser) {
-        if (originalUser.id !== user.id) {
-          return deleteUser(originalUser.id).then(function () {
-            return doAddUser(user, roles, user.id);
-          });
-        } else {
-          return doAddUser(user, roles, originalUser.id);
-        }
+      if (originalUser && originalUser.id === user.id) {
+        return doAddUser(user, roles, originalUser.id);
       } else {
         return getUsers().then(function (users) {
           if (_.find(users, {id: user.id})) {
             return $q.reject("username already exist");
           } else {
-            return doAddUser(user, roles, user.id);
+            if (originalUser && originalUser.id !== user.id) {
+              return deleteUser(originalUser.id).then(function () {
+                return doAddUser(user, roles, user.id);
+              });
+            } else {
+              return doAddUser(user, roles, user.id);
+            }
           }
         });
       }
