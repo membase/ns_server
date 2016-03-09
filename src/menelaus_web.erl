@@ -92,8 +92,9 @@ start_link() ->
 
 start_link(Options) ->
     {AppRoot, Options1} = get_option(approot, Options),
+    IsSSL = proplists:get_value(ssl, Options1, false),
     Loop = fun (Req) ->
-                   ?MODULE:loop(Req, AppRoot)
+                   ?MODULE:loop(Req, {AppRoot, IsSSL})
            end,
     case mochiweb_http:start([{loop, Loop} | Options1]) of
         {ok, Pid} -> {ok, Pid};
@@ -132,7 +133,7 @@ webconfig(Config) ->
 webconfig() ->
     webconfig(ns_config:get()).
 
-loop(Req, AppRoot) ->
+loop(Req, Config) ->
     random:seed(os:timestamp()),
 
     try
@@ -144,12 +145,12 @@ loop(Req, AppRoot) ->
 
         case is_throttled_request(PathTokens) of
             false ->
-                loop_inner(Req, AppRoot, Path, PathTokens);
+                loop_inner(Req, Config, Path, PathTokens);
             true ->
                 request_throttler:request(
                   rest,
                   fun () ->
-                          loop_inner(Req, AppRoot, Path, PathTokens)
+                          loop_inner(Req, Config, Path, PathTokens)
                   end,
                   fun (_Error, Reason) ->
                           Retry = integer_to_list(random:uniform(10)),
@@ -183,7 +184,7 @@ is_throttled_request(["pools", _, "buckets", _BucketId, "docs"]) ->
 is_throttled_request(_) ->
     true.
 
-loop_inner(Req, AppRoot, Path, PathTokens) ->
+loop_inner(Req, {AppRoot, IsSSL}, Path, PathTokens) ->
     Action = case Req:get(method) of
                  Method when Method =:= 'GET'; Method =:= 'HEAD' ->
                      case PathTokens of
@@ -307,10 +308,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                          ["pools", "default", "tasks"] ->
                              {auth_ro, fun handle_tasks/2, ["default"]};
                          ["index.html"] ->
-                             {done, menelaus_util:serve_static_file(
-                                      Req, {AppRoot, Path},
-                                      "text/html; charset=utf8",
-                                      [{"Cache-Control", "must-revalidate"}])};
+                             {ui, IsSSL, fun handle_index_html/3, [AppRoot, Path]};
                          ["dot", Bucket] ->
                              {auth, fun handle_dot/2, [Bucket]};
                          ["dotsvg", Bucket] ->
@@ -333,7 +331,7 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
                  'POST' ->
                      case PathTokens of
                          ["uilogin"] ->
-                             {done, handle_uilogin(Req)};
+                             {ui, IsSSL, fun handle_uilogin/1};
                          ["uilogout"] ->
                              {done, handle_uilogout(Req)};
                          ["sampleBuckets", "install"] ->
@@ -527,6 +525,8 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
              end,
     case Action of
         {done, RV} -> RV;
+        {ui, IsSSL, F} -> serve_ui(Req, IsSSL, F, []);
+        {ui, IsSSL, F, Args} -> serve_ui(Req, IsSSL, F, Args);
         {auth_ro, F} -> auth_ro(Req, F, []);
         {auth_ro, F, Args} -> auth_ro(Req, F, Args);
         {auth_special, F, Args} -> auth_special(Req, F, Args);
@@ -543,6 +543,21 @@ loop_inner(Req, AppRoot, Path, PathTokens) ->
         {auth_check_bucket_uuid, F, Args} ->
             auth_check_bucket_uuid(Req, F, Args)
     end.
+
+serve_ui(Req, false, F, Args) ->
+    case ns_config:read_key_fast(disable_ui_over_http, false) of
+        true ->
+            reply(Req, 404);
+        false ->
+            serve_ui(Req, true, F, Args)
+    end;
+serve_ui(Req, true, F, Args) ->
+    apply(F, Args ++ [Req]).
+
+handle_index_html(AppRoot, Path, Req) ->
+    menelaus_util:serve_static_file(Req, {AppRoot, Path},
+                                    "text/html; charset=utf8",
+                                    [{"Cache-Control", "must-revalidate"}]).
 
 handle_uilogin(Req) ->
     Params = Req:parse_post(),
