@@ -108,8 +108,9 @@ start_link() ->
 start_link(Options) ->
     {AppRoot, Options1} = get_option(approot, Options),
     Plugins = menelaus_pluggable_ui:find_plugins(),
+    IsSSL = proplists:get_value(ssl, Options1, false),
     Loop = fun (Req) ->
-                   ?MODULE:loop(Req, {AppRoot, Plugins})
+                   ?MODULE:loop(Req, {AppRoot, IsSSL, Plugins})
            end,
     case mochiweb_http:start_link([{loop, Loop} | Options1]) of
         {ok, Pid} -> {ok, Pid};
@@ -207,11 +208,13 @@ is_throttled_request(_) ->
     true.
 
 -type action() :: {done, term()} |
+                  {ui, boolean(), fun()} |
+                  {ui, boolean(), fun(), [term()]} |
                   {rbac_permissions() | no_check, fun()} |
-                  {rbac_permissions() | no_check, fun(), [string()]}.
+                  {rbac_permissions() | no_check, fun(), [term()]}.
 
--spec get_action(mochiweb_request(), {term(), term()}, string(), [string()]) -> action().
-get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
+-spec get_action(mochiweb_request(), {term(), boolean(), term()}, string(), [string()]) -> action().
+get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
     case Req:get(method) of
         Method when Method =:= 'GET'; Method =:= 'HEAD' ->
             case PathTokens of
@@ -411,17 +414,9 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["index.html"] ->
                     {done, redirect_permanently("/ui/index.html", Req)};
                 ["ui", "index.html"] ->
-                    {done, menelaus_util:reply_ok(
-                             Req,
-                             "text/html; charset=utf8",
-                             menelaus_pluggable_ui:inject_head_fragments(
-                               AppRoot, Path, Plugins),
-                             [{"Cache-Control", "must-revalidate"}])};
+                    {ui, IsSSL, fun handle_ui_root/4, [AppRoot, Path, Plugins]};
                 ["classic-index.html"] ->
-                    {done, menelaus_util:serve_static_file(
-                             Req, {AppRoot, Path},
-                             "text/html; charset=utf8",
-                             [{"Cache-Control", "must-revalidate"}])};
+                    {ui, IsSSL, fun handle_classic_index_html/3, [AppRoot, Path]};
                 ["dot", Bucket] ->
                     {{[{bucket, Bucket}, settings], read}, fun handle_dot/2, [Bucket]};
                 ["dotsvg", Bucket] ->
@@ -469,7 +464,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
         'POST' ->
             case PathTokens of
                 ["uilogin"] ->
-                    {done, handle_uilogin(Req)};
+                    {ui, IsSSL, fun handle_uilogin/1};
                 ["uilogout"] ->
                     {done, handle_uilogout(Req)};
                 ["sampleBuckets", "install"] ->
@@ -781,6 +776,29 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
             {done, reply_text(Req, "Method Not Allowed", 405)}
     end.
 
+serve_ui(Req, false, F, Args) ->
+    case ns_config:read_key_fast(disable_ui_over_http, false) of
+        true ->
+            reply(Req, 404);
+        false ->
+            serve_ui(Req, true, F, Args)
+    end;
+serve_ui(Req, true, F, Args) ->
+    apply(F, Args ++ [Req]).
+
+handle_ui_root(AppRoot, Path, Plugins, Req) ->
+    menelaus_util:reply_ok(
+      Req,
+      "text/html; charset=utf8",
+      menelaus_pluggable_ui:inject_head_fragments(
+        AppRoot, Path, Plugins),
+      [{"Cache-Control", "must-revalidate"}]).
+
+handle_classic_index_html(AppRoot, Path, Req) ->
+    menelaus_util:serve_static_file(Req, {AppRoot, Path},
+                                    "text/html; charset=utf8",
+                                    [{"Cache-Control", "must-revalidate"}]).
+
 loop_inner(Req, Info, Path, PathTokens) ->
     menelaus_auth:validate_request(Req),
     perform_action(Req, get_action(Req, Info, Path, PathTokens)).
@@ -822,6 +840,10 @@ get_bucket_id({Object, _Operations}) ->
 -spec perform_action(mochiweb_request(), action()) -> term().
 perform_action(_Req, {done, RV}) ->
     RV;
+perform_action(Req, {ui, IsSSL, Fun}) ->
+    perform_action(Req, {ui, IsSSL, Fun, []});
+perform_action(Req, {ui, IsSSL, Fun, Args}) ->
+    serve_ui(Req, IsSSL, Fun, Args);
 perform_action(Req, {Permissions, Fun}) ->
     perform_action(Req, {Permissions, Fun, []});
 perform_action(Req, {Permissions, Fun, Args}) ->
