@@ -45,7 +45,7 @@
         nodeCount: mnCountFilter(ramSummary.nodesCount, 'node'),
         perNodeMegs: ramSummary.perNodeMegs,
         guageConfig: mnBucketsDetailsService.getBucketRamGuageConfig(ramSummary),
-        errors: result.errors
+        errors: mnSettingsAutoCompactionService.prepareErrorsForView(result.errors)
       };
     }
     function getNewBucketConf() {

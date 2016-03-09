@@ -5,15 +5,13 @@
     .module('mnAutoCompactionForm', ['mnPeriod'])
     .directive('mnAutoCompactionForm', mnAutoCompactionFormDirective);
 
-  function mnAutoCompactionFormDirective($http, daysOfWeek) {
+  function mnAutoCompactionFormDirective($http, daysOfWeek, mnPermissions, mnPoolDefault) {
     var mnAutoCompactionForm = {
       restrict: 'A',
       scope: {
         autoCompactionSettings: '=',
         validationErrors: '=',
-        isBucketsSettings: '=',
-        rbac: "=",
-        poolDefault: "="
+        isBucketsSettings: '='
       },
       isolate: false,
       replace: true,
@@ -23,6 +21,8 @@
 
     function controller($scope, daysOfWeek) {
       $scope.daysOfWeek = daysOfWeek;
+      $scope.rbac = mnPermissions.export;
+      $scope.poolDefault = mnPoolDefault.export;
     }
 
     return mnAutoCompactionForm;

@@ -11,7 +11,8 @@
       prepareSettingsForView: prepareSettingsForView,
       prepareSettingsForSaving: prepareSettingsForSaving,
       getAutoCompaction: getAutoCompaction,
-      saveAutoCompaction: saveAutoCompaction
+      saveAutoCompaction: saveAutoCompaction,
+      prepareErrorsForView: prepareErrorsForView
     };
 
     return mnSettingsAutoCompactionService;
@@ -100,6 +101,18 @@
         return mnSettingsAutoCompactionService.prepareSettingsForView(resp.data, isBucketsDetails);
       });
     }
+    function prepareErrorsForView(errors) {
+      angular.forEach(["fromHour", "fromMinute", "toHour", "toMinute"], function (value) {
+        if (errors["indexCircularCompaction[interval]["+value+"]"]) {
+          errors["indexCircularCompaction["+value+"]"] = errors["indexCircularCompaction[interval]["+value+"]"];
+          delete errors["indexCircularCompaction[interval]["+value+"]"];
+        }
+      });
+      angular.forEach(errors, function (value, key) {
+        errors[key.replace('[', '_').replace(']', '_')] = value;
+      });
+      return errors;
+    }
     function saveAutoCompaction(autoCompactionSettings, params) {
       return $http({
         method: 'POST',
@@ -107,17 +120,7 @@
         params: params || {},
         data: mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings)
       }).then(null, function (resp) {
-        var errors = resp.data.errors;
-        angular.forEach(["fromHour", "fromMinute", "toHour", "toMinute"], function (value) {
-          if (errors["indexCircularCompaction[interval]["+value+"]"]) {
-            errors["indexCircularCompaction["+value+"]"] = errors["indexCircularCompaction[interval]["+value+"]"];
-            delete errors["indexCircularCompaction[interval]["+value+"]"];
-          }
-        });
-        angular.forEach(errors, function (value, key) {
-          errors[key.replace('[', '_').replace(']', '_')] = value;
-        });
-        resp.data.errors = errors;
+        resp.data.errors = prepareErrorsForView(resp.data.errors);
         return $q.reject(resp);
       });
     }
