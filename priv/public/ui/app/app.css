@@ -1591,11 +1591,11 @@ input[type=number].size {width:4em;}
 .ui-select-multiple.ui-select-bootstrap {background: #fff; border: 1px solid #ccd3d7; font-size: 13px; padding: 3px; position: relative; z-index: 1;}
 .ui-select-multiple.ui-select-bootstrap input.ui-select-search {height: 18px; padding: 0;}
 .ui-select-multiple.ui-select-bootstrap > .ui-select-choices {position: absolute; background: #fff; left: 0; top: 100%;}
-.ui-select-multiple.ui-select-bootstrap .ui-select-match-item {display: inline-block; max-width: 174px; overflow:hidden;white-space:nowrap;text-overflow:ellipsis;-o-text-overflow:ellipsis;}
+.ui-select-multiple.ui-select-bootstrap .ui-select-match-item {display: inline-block; max-width: 274px; overflow:hidden;white-space:nowrap;text-overflow:ellipsis;-o-text-overflow:ellipsis;}
 .ui-select-multiple .ui-select-match-item {font-size: 12px;}
 .ui-select-multiple .ui-select-match-close {cursor: pointer;}
 .add_user_role label {width: 100%; display: block; font-size: 12px; line-height: 26px;}
-.add_user_role input {width: 200px;}
+.add_user_role input {width: 300px;}
 .add_user_role .content {padding: 10px;}
 
 .security table.list td {text-align: left;}
