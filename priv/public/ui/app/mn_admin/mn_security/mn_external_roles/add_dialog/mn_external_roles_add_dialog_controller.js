@@ -35,8 +35,8 @@
       }
     }
 
-    function save(user) {
-      mnPromiseHelper(vm, mnExternalRolesService.addUser(vm.user, vm.roles.selected), $uibModalInstance)
+    function save() {
+      mnPromiseHelper(vm, mnExternalRolesService.addUser(vm.user, vm.roles.selected, user), $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .catchErrors()
         .broadcast("reloadRolesPoller")

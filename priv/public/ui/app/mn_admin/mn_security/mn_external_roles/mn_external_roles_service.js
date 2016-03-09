@@ -34,10 +34,10 @@
       });
     }
 
-    function deleteUser(name) {
+    function deleteUser(id) {
       return $http({
         method: "DELETE",
-        url: "/settings/rbac/users/" + encodeURIComponent(name)
+        url: "/settings/rbac/users/" + encodeURIComponent(id)
       });
     }
 
@@ -51,13 +51,7 @@
       });
     }
 
-    function addUser(user, roles) {
-      if (!user || !user.id) {
-        return $q.reject("username is required");
-      }
-      if (!roles || !roles.length) {
-        return $q.reject("at least one role should be added");
-      }
+    function doAddUser(user, roles, id) {
       var rolesWithBucketName = _.map(roles, function (role) {
         if (role.bucket_name) {
           return role.role + "[" + role.bucket_name + "]";
@@ -72,8 +66,34 @@
       return $http({
         method: "PUT",
         data: data,
-        url: "/settings/rbac/users/" + encodeURIComponent(user.id)
+        url: "/settings/rbac/users/" + encodeURIComponent(id)
       });
+    }
+
+    function addUser(user, roles, originalUser) {
+      if (!user || !user.id) {
+        return $q.reject("username is required");
+      }
+      if (!roles || !roles.length) {
+        return $q.reject("at least one role should be added");
+      }
+      if (originalUser) {
+        if (originalUser.id !== user.id) {
+          return deleteUser(originalUser.id).then(function () {
+            return doAddUser(user, roles, user.id);
+          });
+        } else {
+          return doAddUser(user, roles, originalUser.id);
+        }
+      } else {
+        return getUsers().then(function (users) {
+          if (_.find(users, {id: user.id})) {
+            return $q.reject("username already exist");
+          } else {
+            return doAddUser(user, roles, user.id);
+          }
+        });
+      }
     }
 
     function getState() {
