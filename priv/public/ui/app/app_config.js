@@ -93,6 +93,15 @@
     });
     $transitionsProvider.onStart({
       to: function (state) {
+        return state.data && state.data.ldap;
+      }
+    }, function ($state, $parse, mnPoolDefault, $transition$) {
+      return mnPoolDefault.get().then(function(value) {
+        return value.ldapEnabled;
+      });
+    });
+    $transitionsProvider.onStart({
+      to: function (state) {
         return state.data && state.data.required && state.data.required.enterprise;
       }
     }, function ($state, mnPools) {
