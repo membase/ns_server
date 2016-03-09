@@ -19,14 +19,15 @@
     vm.addUser = addUser;
     vm.deleteUser = deleteUser;
     vm.editUser = editUser;
-    vm.readRoleDescriptionByName = readRoleDescriptionByName;
     vm.sortableTableProperties = mnSortableTable.get();
     vm.toggleSaslauthdAuth = toggleSaslauthdAuth;
+    vm.getRoleFromRoles = mnExternalRolesService.getRoleFromRoles;
+    vm.rolesFilter = rolesFilter;
 
     activate();
 
-    function readRoleDescriptionByName(role) {
-      return mnExternalRolesService.rolesByRole[role];
+    function rolesFilter(value) {
+      return !value.bucket_name || value.bucket_name === "*";
     }
 
     function activate() {
@@ -34,8 +35,12 @@
         .applyToScope("saslauthdAuth")
         .showSpinner("saslauthdAuthLoading");
 
-      mnPromiseHelper(vm, mnExternalRolesService.getRolseByRole())
-        .applyToScope("rolseByRole");
+      mnPromiseHelper(vm, mnExternalRolesService.getRoles())
+        .applyToScope(function (roles) {
+          vm.roles = roles;
+          mnPromiseHelper(vm, mnExternalRolesService.getRolesByRole(roles))
+            .applyToScope("rolesByRole");
+        });
 
       var poller = new mnPoller($scope, mnExternalRolesService.getState, 10000)
         .subscribe("state", vm)

@@ -26,10 +26,10 @@
 
       if (user) {
         promise.then(function () {
-          return mnExternalRolesService.getRolseByRole(user.roles);
-        }).then(function (userRolseByRole) {
+          return mnExternalRolesService.getRolesByRole(user.roles);
+        }).then(function (userRolesByRole) {
           vm.roles.selected = _.filter(vm.roles, function (role) {
-            return userRolseByRole[role.role] && userRolseByRole[role.role].bucket_name === role.bucket_name;
+            return mnExternalRolesService.getRoleFromRoles(userRolesByRole, role);
           });
         });
       }

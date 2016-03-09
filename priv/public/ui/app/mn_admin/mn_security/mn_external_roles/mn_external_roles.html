@@ -40,8 +40,11 @@
         <td class="ellipsis">{{user.name}}</td>
         <td>
           <span ng-repeat="role in user.roles" class="tooltip" style="display: inline-block; margin-right: 15px;">
-            {{externalRolesCtl.rolseByRole[role.role].name + (role.bucket_name ? ("[" + role.bucket_name + "]") : "") }}
-            <span class="tooltip_msg"><span>{{externalRolesCtl.rolseByRole[role.role].desc}}</span></span>
+            <span>{{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).name}} <span ng-show="role.bucket_name">[{{role.bucket_name}}]</span>
+              <span class="tooltip_msg">
+                <span>{{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).desc}}</span>
+              </span>
+            </span>
           </span>
         </td>
         <td>
@@ -60,7 +63,7 @@
   </table>
 </div>
 <span>ROLES:</span>
-  <span ng-repeat="role in externalRolesCtl.rolseByRole" class="tooltip" style="display: inline-block; margin-left: 15px;">
+  <span ng-repeat="role in externalRolesCtl.roles | filter:externalRolesCtl.rolesFilter" class="tooltip" style="display: inline-block; margin-left: 15px;">
     {{role.name}}
     <span class="tooltip_msg"><span>{{role.desc}}</span></span>
   </span>

@@ -11,7 +11,8 @@
       addUser: addUser,
       getRoles: getRoles,
       deleteUser: deleteUser,
-      getRolseByRole: getRolseByRole
+      getRolesByRole: getRolesByRole,
+      getRoleFromRoles: getRoleFromRoles
     };
 
     return mnExternalRolesService;
@@ -41,11 +42,20 @@
       });
     }
 
-    function getRolseByRole(roles) {
+    function getRoleFromRoles(rolesByRole, role) {
+      return rolesByRole[role.role] && (role.bucket_name ? rolesByRole[role.role][role.bucket_name] : rolesByRole[role.role]);
+    }
+
+    function getRolesByRole(roles) {
       return (roles ? $q.when(roles) : getRoles()).then(function (roles) {
         var rolesByRole = {};
         angular.forEach(roles, function (role) {
-          rolesByRole[role.role] = role;
+          rolesByRole[role.role] = rolesByRole[role.role] || {};
+          if (role.bucket_name) {
+            rolesByRole[role.role][role.bucket_name] = role;
+          } else {
+            rolesByRole[role.role] = _.extend(rolesByRole[role.role], role);
+          }
         });
         return rolesByRole;
       });
