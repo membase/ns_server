@@ -8,6 +8,7 @@
   function mnExternalRolesAddDialogController($scope, mnExternalRolesService, $uibModalInstance, mnPromiseHelper, user) {
     var vm = this;
     vm.user = _.clone(user) || {};
+    vm.userID = vm.user.id || 'New';
     vm.roles = [];
     vm.save = save;
     vm.onSelect = onSelect;
