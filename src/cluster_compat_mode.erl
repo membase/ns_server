@@ -17,7 +17,9 @@
 
 -include("ns_common.hrl").
 
--export([get_compat_version/0, is_enabled/1, is_enabled_at/2,
+-export([get_compat_version/0,
+         get_compat_version/1,
+         is_enabled/1, is_enabled_at/2,
          force_compat_version/1, un_force_compat_version/0,
          consider_switching_compat_mode/0,
          is_index_aware_rebalance_on/0,
@@ -27,6 +29,7 @@
          split_live_nodes_by_version/1,
          is_cluster_30/0,
          is_cluster_40/0,
+         is_version_40/1,
          compat_mode_string_40/0,
          is_cluster_41/0,
          is_cluster_41/1,
@@ -82,6 +85,9 @@ is_cluster_30() ->
 
 is_cluster_40() ->
     is_enabled([4, 0]).
+
+is_version_40(ClusterVersion) ->
+    is_enabled_at(ClusterVersion, [4, 0]).
 
 is_cluster_41() ->
     is_cluster_41(ns_config:latest()).

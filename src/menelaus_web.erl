@@ -2205,21 +2205,21 @@ get_cluster_name() ->
 get_cluster_name(Config) ->
     ns_config:search(Config, cluster_name, "").
 
-validate_pool_settings_post(Config, Is40, IsWatson, Args) ->
+validate_pool_settings_post(Config, CompatVersion, Args) ->
     R0 = validate_has_params({Args, [], []}),
     R1 = validate_any_value(clusterName, R0),
-    R2 = validate_memory_quota(Config, Is40, IsWatson, R1),
+    R2 = validate_memory_quota(Config, CompatVersion, R1),
     validate_unsupported_params(R2).
 
-validate_memory_quota(Config, Is40, IsWatson, R0) ->
+validate_memory_quota(Config, CompatVersion, R0) ->
     R1 = validate_integer(memoryQuota, R0),
-    R2 = case Is40 of
+    R2 = case cluster_compat_mode:is_version_40(CompatVersion) of
              true ->
                  validate_integer(indexMemoryQuota, R1);
              false ->
                  R1
          end,
-    R3 = case IsWatson of
+    R3 = case cluster_compat_mode:is_version_watson(CompatVersion) of
              true ->
                  validate_integer(ftsMemoryQuota, R2);
              false ->
@@ -2317,16 +2317,15 @@ do_handle_pool_settings_post_loop(Req, RetriesLeft) ->
     end.
 
 do_handle_pool_settings_post(Req) ->
-    Is40 = cluster_compat_mode:is_cluster_40(),
-    IsWatson = cluster_compat_mode:is_cluster_watson(),
     Config = ns_config:get(),
+    CompatVersion = cluster_compat_mode:get_compat_version(Config),
 
     execute_if_validated(
       fun (Values) ->
-              do_handle_pool_settings_post_body(Req, Config, Is40, Values)
-      end, Req, validate_pool_settings_post(Config, Is40, IsWatson, Req:parse_post())).
+              do_handle_pool_settings_post_body(Req, Config, CompatVersion, Values)
+      end, Req, validate_pool_settings_post(Config, CompatVersion, Req:parse_post())).
 
-do_handle_pool_settings_post_body(Req, Config, Is40, Values) ->
+do_handle_pool_settings_post_body(Req, Config, CompatVersion, Values) ->
     case lists:keyfind(quotas, 1, Values) of
         {_, Quotas} ->
             case ns_storage_conf:set_quotas(Config, Quotas) of
@@ -2346,7 +2345,7 @@ do_handle_pool_settings_post_body(Req, Config, Is40, Values) ->
             ok
     end,
 
-    case Is40 of
+    case cluster_compat_mode:is_version_40(CompatVersion) of
         true ->
             do_audit_cluster_settings(Req);
         false ->
