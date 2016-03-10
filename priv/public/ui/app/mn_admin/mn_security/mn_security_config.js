@@ -12,11 +12,7 @@
       .state('app.admin.security', {
         abstract: true,
         controller: "mnSecurityController as securityCtl",
-        templateUrl: "app/mn_admin/mn_security/mn_security.html",
-        data: {
-          enterprise: true,
-          compat: "atLeast40"
-        }
+        templateUrl: "app/mn_admin/mn_security/mn_security.html"
       })
       .state('app.admin.security.externalRoles', {
         url: "/externalRoles",
@@ -26,6 +22,7 @@
           permissions: "cluster.admin.security.read",
           compat: "atLeast45",
           ldap: true,
+          enterprise: true
         }
       })
       .state('app.admin.security.internalRoles', {
@@ -39,7 +36,10 @@
       .state('app.admin.security.rootCertificate', {
         url: '/rootCertificate',
         controller: 'mnRootCertificateController as rootCertificateCtl',
-        templateUrl: 'app/mn_admin/mn_security/mn_root_certificate/mn_root_certificate.html'
+        templateUrl: 'app/mn_admin/mn_security/mn_root_certificate/mn_root_certificate.html',
+        data: {
+          enterprise: true
+        }
       })
       .state('app.admin.security.ldap', {
         url: '/ldap',
@@ -47,8 +47,9 @@
         templateUrl: 'app/mn_admin/mn_security/mn_ldap/mn_ldap.html',
         data: {
           ldap: true,
-          compat: "!atLeast45",
-          permissions: "cluster.admin.security.read"
+          compat: "atLeast40 && !atLeast45",
+          permissions: "cluster.admin.security.read",
+          enterprise: true
         }
       })
       .state('app.admin.security.audit', {
@@ -56,7 +57,9 @@
         controller: 'mnAuditController as auditCtl',
         templateUrl: 'app/mn_admin/mn_security/mn_audit/mn_audit.html',
         data: {
-          permissions: "cluster.admin.security.read"
+          permissions: "cluster.admin.security.read",
+          enterprise: true,
+          compat: "atLeast40"
         }
       });
   }

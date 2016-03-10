@@ -77,7 +77,7 @@
         <li mn-tab="replications" class="line" ui-sref-active="currentNav">
           <a class="switch_replications" ui-sref="app.admin.replications">XDCR</a>
         </li>
-        <li mn-tab="security" class="line" ng-show="poolDefault.compat.atLeast40 && adminCtl.poolDefault.isEnterprise" ng-class="{currentNav: ('app.admin.security' | includedByState)}">
+        <li mn-tab="security" class="line" ng-show="rbac.cluster.admin.security.read || adminCtl.poolDefault.isEnterprise" ng-class="{currentNav: ('app.admin.security' | includedByState)}">
           <a class="switch_security" ui-sref="app.admin.security.externalRoles" ng-show="adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read">Security</a>
           <a class="switch_security" ui-sref="app.admin.security.internalRoles" ng-show="!(adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.read">Security</a>
           <a class="switch_security" ui-sref="app.admin.security.rootCertificate" ng-show="(rbac.cluster.admin.security.read === false)">Security</a>
