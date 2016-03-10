@@ -473,7 +473,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                 ["uilogout"] ->
                     {done, handle_uilogout(Req)};
                 ["sampleBuckets", "install"] ->
-                    {{[{bucket, all}], create}, fun handle_post_sample_buckets/1};
+                    {{[buckets], create}, fun handle_post_sample_buckets/1};
                 ["engageCluster2"] ->
                     {{[admin, setup], write}, fun handle_engage_cluster2/1};
                 ["completeJoin"] ->
@@ -585,7 +585,7 @@ get_action(Req, {AppRoot, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_buckets:handle_bucket_update/3,
                      ["default", Id]};
                 ["pools", "default", "buckets"] ->
-                    {{[{bucket, all}], create},
+                    {{[buckets], create},
                      fun menelaus_web_buckets:handle_bucket_create/2,
                      ["default"]};
                 ["pools", "default", "buckets", Id, "docs", DocId] ->
@@ -811,8 +811,6 @@ get_bucket_id([Permission | Rest]) ->
     end;
 get_bucket_id({Object, _Operations}) ->
     case lists:keyfind(bucket, 1, Object) of
-        {bucket, all} ->
-            false;
         {bucket, any} ->
             false;
         {bucket, Bucket} ->

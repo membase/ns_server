@@ -402,8 +402,6 @@ object_match_test() ->
     ?assertEqual(true, object_match([{b, "a"}], [{b, "a"}])),
     ?assertEqual(false, object_match([{b, "a"}], [{b, "b"}])),
     ?assertEqual(true, object_match([{b, any}], [{b, "b"}])),
-    ?assertEqual(false, object_match([{b, all}], [{b, "b"}])),
-    ?assertEqual(true, object_match([{b, all}], [{b, any}])),
     ?assertEqual(true, object_match([{b, "a"}], [{b, any}])),
     ?assertEqual(true, object_match([{b, any}], [{b, any}])).
 
@@ -414,7 +412,7 @@ compile_roles_test() ->
 
 admin_test() ->
     Roles = compile_roles([admin], preconfigured_roles()),
-    ?assertEqual(true, is_allowed({[{bucket, all}], create}, Roles)),
+    ?assertEqual(true, is_allowed({[buckets], create}, Roles)),
     ?assertEqual(true, is_allowed({[something, something], anything}, Roles)).
 
 ro_admin_test() ->
@@ -433,7 +431,8 @@ bucket_views_admin_check_global(Roles) ->
     ?assertEqual(false, is_allowed({[xdcr], read}, Roles)),
     ?assertEqual(false, is_allowed({[admin], read}, Roles)),
     ?assertEqual(true, is_allowed({[something], read}, Roles)),
-    ?assertEqual(false, is_allowed({[something], write}, Roles)).
+    ?assertEqual(false, is_allowed({[something], write}, Roles)),
+    ?assertEqual(false, is_allowed({[buckets], create}, Roles)).
 
 bucket_views_admin_check_another(Roles) ->
     ?assertEqual(false, is_allowed({[{bucket, "another"}, xdcr], read}, Roles)),
@@ -442,7 +441,7 @@ bucket_views_admin_check_another(Roles) ->
     ?assertEqual(true, is_allowed({[{bucket, "another"}, settings], read}, Roles)),
     ?assertEqual(false, is_allowed({[{bucket, "another"}, settings], write}, Roles)),
     ?assertEqual(false, is_allowed({[{bucket, "another"}], read}, Roles)),
-    ?assertEqual(false, is_allowed({[{bucket, all}], create}, Roles)).
+    ?assertEqual(false, is_allowed({[buckets], create}, Roles)).
 
 bucket_admin_check_default(Roles) ->
     ?assertEqual(true, is_allowed({[{bucket, "default"}, xdcr], read}, Roles)),

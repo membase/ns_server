@@ -51,7 +51,7 @@
 -type rbac_role_def() :: {rbac_role_name(), [atom()], rbac_role_params(),
                           nonempty_list(rbac_permission_pattern_raw())}.
 
--type rbac_permission_vertex_param() :: string() | any | all.
+-type rbac_permission_vertex_param() :: string() | any.
 -type rbac_permission_vertex() :: atom() | {atom(), rbac_permission_vertex_param()}.
 -type rbac_permission_object() :: [rbac_permission_vertex(), ...].
 -type rbac_permission_operations() :: rbac_operation() | [rbac_operation(), ...].
