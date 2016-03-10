@@ -43,6 +43,9 @@
     }
 
     function getRoleFromRoles(rolesByRole, role) {
+      if (!rolesByRole) {
+        return;
+      }
       return rolesByRole[role.role] && (role.bucket_name ? rolesByRole[role.role][role.bucket_name] : rolesByRole[role.role]);
     }
 
