@@ -92,7 +92,7 @@
       } else {
         return getUsers().then(function (users) {
           if (_.find(users, {id: user.id})) {
-            return $q.reject("username already exist");
+            return $q.reject("username already exists");
           } else {
             if (originalUser && originalUser.id !== user.id) {
               return deleteUser(originalUser.id).then(function () {
