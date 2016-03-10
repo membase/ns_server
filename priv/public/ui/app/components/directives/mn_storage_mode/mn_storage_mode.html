@@ -16,6 +16,6 @@
     ng-disabled="isDisabled">
   <label for="storage_memory_optimized" style="width:auto;">Memory-Optimized Global Index</label>
   <span class="error-container err-indexMemoryQuota" ng-show="errors.storageMode">
-    {{errors.storageMode}}
+    {{errors.storageMode | mnFormatStorageModeError}}
   </span>
 </div>

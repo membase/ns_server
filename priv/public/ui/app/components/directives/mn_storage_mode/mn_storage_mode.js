@@ -3,7 +3,19 @@
 
   angular
     .module('mnStorageMode', [])
-    .directive('mnStorageMode', mnStorageModeDirective);
+    .directive('mnStorageMode', mnStorageModeDirective)
+    .filter('mnFormatStorageModeError', mnFormatStorageModeError);
+
+  function mnFormatStorageModeError() {
+    return function (error) {
+      switch (error) {
+        case "storageMode must be one of forestdb, memory_optimized":
+          return "please choose an index storage mode";
+        default:
+          return error;
+      }
+    };
+  }
 
    function mnStorageModeDirective() {
     var mnStorageMode = {
