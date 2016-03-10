@@ -285,7 +285,7 @@ parse_vertices([$. | Rest], Acc) ->
             case parse_until(Rest1, "]") of
                 {Param, [$] | Rest2]} ->
                     Param1 = case Param of
-                                 "?" ->
+                                 "*" ->
                                      any;
                                  _ ->
                                      Param
@@ -319,8 +319,8 @@ parse_permissions_test() ->
        [{"cluster.no_such_atom!no_such_atom", {['_unknown_'], '_unknown_'}}],
        parse_permissions("cluster.no_such_atom!no_such_atom")),
     ?assertMatch(
-       [{"cluster.bucket[?]!read", {[{bucket, any}], read}}],
-       parse_permissions("cluster.bucket[?]!read")).
+       [{"cluster.bucket[*]!read", {[{bucket, any}], read}}],
+       parse_permissions("cluster.bucket[*]!read")).
 
 handle_check_permissions_post(Req) ->
     Body = Req:recv_body(),
@@ -365,7 +365,7 @@ handle_check_permission_for_cbauth(Req) ->
 vertex_to_iolist(Atom) when is_atom(Atom) ->
     atom_to_list(Atom);
 vertex_to_iolist({Atom, any}) ->
-    [atom_to_list(Atom), "[?]"];
+    [atom_to_list(Atom), "[*]"];
 vertex_to_iolist({Atom, Param}) ->
     [atom_to_list(Atom), "[", Param, "]"].
 
@@ -389,7 +389,7 @@ format_permissions_test() ->
                    {[], all},
                    {[admin, diag], read},
                    {[{bucket, "test"}, xdcr], [write, execute]}],
-    Formatted = [<<"cluster.bucket[?].views!write">>,
+    Formatted = [<<"cluster.bucket[*].views!write">>,
                  <<"cluster.bucket[default]!all">>,
                  <<"cluster!all">>,
                  <<"cluster.admin.diag!read">>,
