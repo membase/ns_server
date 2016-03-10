@@ -30,11 +30,18 @@
         .setExtractInterval(3000)
         .subscribe("mnOverviewConfig", vm)
         .cycle();
-
-      mnPromiseHelper(vm, mnServersService.getNodes())
-        .applyToScope("nodes");
-      mnPromiseHelper(vm, mnBucketsService.getBucketsByType())
-        .applyToScope("buckets");
+      new mnPoller($scope, function () {
+          return mnServersService.getNodes();
+        })
+        .setExtractInterval(3000)
+        .subscribe("nodes", vm)
+        .cycle();
+      new mnPoller($scope, function () {
+          return mnBucketsService.getBucketsByType();
+        })
+        .setExtractInterval(3000)
+        .subscribe("buckets", vm)
+        .cycle();
     }
   }
 })();
