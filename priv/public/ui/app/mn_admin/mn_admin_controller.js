@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, parseVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -91,7 +91,17 @@
       var tasksPoller = new mnPoller($scope, function () {
         return mnTasksDetails.get({group: "global"});
       })
-      .subscribe("tasks", vm)
+      .subscribe(function (tasks, prevTask) {
+        var rebalanceError = tasks.tasksRebalance && tasks.tasksRebalance.status !== 'running' && tasks.tasksRebalance.errorMessage;
+        if (
+          rebalanceError && !_.find(mnAlertsService.alerts, {'msg': rebalanceError}) &&
+          prevTask && prevTask.tasksRebalance && prevTask.tasksRebalance.status === "running"
+        ) {
+          mnAlertsService.setAlert("error", rebalanceError);
+          $state.go("app.admin.overview");
+        }
+        vm.tasks = tasks;
+      }, vm)
       .cycle();
 
       $scope.$on("taskUriChanged", function () {
