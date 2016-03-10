@@ -11,7 +11,7 @@
       <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
       <div class="right" style="overflow:hidden;">
         <button
-          ng-hide="bucketsCtl.isCreateNewDataBucketDisabled() || !rbac.cluster.bucket.all.create"
+          ng-hide="bucketsCtl.isCreateNewDataBucketDisabled() || !rbac.cluster.buckets.create"
           class="btn_1 create-bucket-button casper_buckets_new_data_bucket"
           style="float:right;"
           ng-click="bucketsCtl.addBucket()">

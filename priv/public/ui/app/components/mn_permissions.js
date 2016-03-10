@@ -11,7 +11,7 @@
     this.set = set;
 
     var interestedPermissions = [
-      "cluster.bucket.all!create",
+      "cluster.buckets!create",
       "cluster.nodes!write",
       "cluster.pools!read",
       "cluster.server_groups!read",
