@@ -189,6 +189,16 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                 <<"fullEviction">>
         end,
 
+    TimeSynchronization =
+        case proplists:get_value(time_synchronization, BucketConfig, disabled) of
+            disabled ->
+                <<"disabled">>;
+            enabled_with_drift ->
+                <<"enabledWithDrift">>;
+            enabled_without_drift ->
+                <<"enabledWithoutDrift">>
+        end,
+
     Suffix = case InfoLevel of
                  streaming ->
                      BucketCaps;
@@ -209,7 +219,8 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                       {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
                                         {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
                       {basicStats, {struct, BasicStats}},
-                      {evictionPolicy, EvictionPolicy}
+                      {evictionPolicy, EvictionPolicy},
+                      {timeSynchronization, TimeSynchronization}
                       | BucketCaps]
              end,
     BucketType = ns_bucket:bucket_type(BucketConfig),
@@ -412,7 +423,8 @@ extract_bucket_props(BucketId, Props) ->
     ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, replica_index, ram_quota, auth_type,
                                                                      sasl_password, moxi_port,
                                                                      autocompaction, purge_interval,
-                                                                     flush_enabled, num_threads, eviction_policy]],
+                                                                     flush_enabled, num_threads, eviction_policy,
+                                                                     time_synchronization]],
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
@@ -934,6 +946,7 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                fun parse_validate_replicas_number/1),
                          [{ok, bucketType, membase},
                           ReplicasNumResult,
+                          get_time_sync(Params, IsNew),
                           case IsNew of
                               true ->
                                   ReplicaIndexDefault =
@@ -966,6 +979,21 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
      end || E <- Candidates],
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
+
+get_time_sync(Params, true = IsNew) ->
+    validate_with_missing(
+      proplists:get_value("timeSynchronization", Params),
+      "disabled",
+      IsNew,
+      fun parse_validate_time_synchronization/1);
+get_time_sync(Params, false = _IsNew) ->
+    case proplists:get_value("timeSynchronization", Params) of
+        undefined ->
+            ignore;
+        _Any ->
+            {error, time_synchronization,
+             <<"TimeSyncronization not allowed in update bucket">>}
+    end.
 
 validate_bucket_password(undefined) ->
     {error, saslPassword, <<"Bucket password is undefined">>};
@@ -1140,6 +1168,15 @@ parse_validate_other_buckets_ram_quota(Value) ->
         _ ->
             {error, otherBucketsRamQuotaMB, <<"The other buckets RAM Quota must be a positive integer.">>}
     end.
+
+parse_validate_time_synchronization("disabled") ->
+    {ok, time_synchronization, disabled};
+parse_validate_time_synchronization("enabledWithoutDrift") ->
+    {ok, time_synchronization, enabled_without_drift};
+parse_validate_time_synchronization("enabledWithDrift") ->
+    {ok, time_synchronization, enabled_with_drift};
+parse_validate_time_synchronization(_Other) ->
+    {error, time_synchronization, <<"Time synchronization must be, 'disabled', 'enabledWithDrift', or 'enabledWithoutDrift'">>}.
 
 extended_cluster_storage_info() ->
     [{nodesCount, length(ns_cluster_membership:service_active_nodes(kv))}

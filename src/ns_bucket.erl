@@ -116,6 +116,9 @@ config_string(BucketName) ->
                 NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
                 NumThreads = proplists:get_value(num_threads, BucketConfig, 3),
                 EvictionPolicy = proplists:get_value(eviction_policy, BucketConfig, value_only),
+                TimeSynchronization = proplists:get_value(time_synchronization,
+                                                          BucketConfig,
+                                                          disabled),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
@@ -125,7 +128,8 @@ config_string(BucketName) ->
                       "tap_keepalive=~B;dbname=~s;"
                       "backend=couchdb;couch_bucket=~s;max_vbuckets=~B;"
                       "alog_path=~s;data_traffic_enabled=false;max_num_workers=~B;"
-                      "uuid=~s;item_eviction_policy=~s",
+                      "uuid=~s;item_eviction_policy=~s;"
+                      "time_synchronization=~s",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
@@ -147,7 +151,8 @@ config_string(BucketName) ->
                        AccessLog,
                        NumThreads,
                        BucketUUID,
-                       EvictionPolicy]),
+                       EvictionPolicy,
+                       TimeSynchronization]),
                 {CFG, {MemQuota, DBSubDir, NumThreads, EvictionPolicy}, DBSubDir};
             memcached ->
                 {io_lib:format("cache_size=~B;uuid=~s", [MemQuota, BucketUUID]),
