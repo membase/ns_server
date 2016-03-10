@@ -1601,6 +1601,7 @@ input[type=number].size {width:4em;}
 .security table.list td {text-align: left;}
 
 .alerts_popup_container.error {color: red;}
+.without-titlebar-close .ui-dialog-titlebar-close {display: none;}
 
 .ct-chart-pie .ct-series.ct-series-a .ct-slice-pie {
   fill: #4A0;
