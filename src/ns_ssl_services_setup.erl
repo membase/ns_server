@@ -25,10 +25,11 @@
          memcached_cert_path/0,
          memcached_key_path/0,
          sync_local_cert_and_pkey_change/0,
+         ssl_minimum_protocol/0,
          set_node_certificate_chain/4]).
 
 %% used by ssl proxy
--export([dh_params_der/0, supported_versions/0, supported_ciphers/0]).
+-export([dh_params_der/0, supported_versions/1, supported_ciphers/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -47,7 +48,8 @@
 -behavior(gen_server).
 
 -record(state, {cert_state,
-                reload_state}).
+                reload_state,
+                min_ssl_ver}).
 
 -record(cert_state, {cert,
                      pkey,
@@ -170,7 +172,7 @@ dh_params_der() ->
       9,135,41,60,75,4,202,133,173,72,6,69,167,89,112,174,40,
       229,171,2,1,2>>.
 
-supported_versions() ->
+supported_versions(MinVer) ->
     case application:get_env(ssl_versions) of
         {ok, Versions} ->
             Versions;
@@ -179,13 +181,23 @@ supported_versions() ->
                                           ssl:versions(), []),
             Versions0 = ['tlsv1.1', 'tlsv1.2'],
 
-            case lists:member(tls_padding_check, Patches) of
-                true ->
-                    ['tlsv1' | Versions0];
-                false ->
-                    Versions0
+            Versions1 = case lists:member(tls_padding_check, Patches) of
+                            true ->
+                                ['tlsv1' | Versions0];
+                            false ->
+                                Versions0
+                        end,
+            case lists:dropwhile(fun (Ver) -> Ver < MinVer end, Versions1) of
+                [] ->
+                    ?log_warning("Incorrect ssl_minimum_protocol ~p was ignored.", [MinVer]),
+                    Versions1;
+                Versions ->
+                    Versions
             end
     end.
+
+ssl_minimum_protocol() ->
+    ns_config:search(ns_config:latest(), ssl_minimum_protocol, 'tlsv1').
 
 %% The list is obtained by running the following openssl command:
 %%
@@ -239,7 +251,7 @@ ssl_server_opts() ->
     Path = ssl_cert_key_path(),
     [{keyfile, Path},
      {certfile, Path},
-     {versions, supported_versions()},
+     {versions, supported_versions(ssl_minimum_protocol())},
      {cacertfile, ssl_cacert_key_path()},
      {dh, dh_params_der()},
      {ciphers, supported_ciphers()}].
@@ -368,7 +380,9 @@ init([]) ->
                    false ->
                        []
                end,
-    {ok, #state{cert_state = build_cert_state(Data), reload_state = RetrySvc}}.
+    {ok, #state{cert_state = build_cert_state(Data),
+                reload_state = RetrySvc,
+                min_ssl_ver = ssl_minimum_protocol()}}.
 
 format_status(_Opt, [_PDict, #state{cert_state = CertState} = State]) ->
     State#state{cert_state = CertState#cert_state{pkey = <<"sanitized">>}}.
@@ -383,6 +397,9 @@ config_change_detector_loop({cluster_compat_version, _Version}, Parent) ->
 config_change_detector_loop({{node, _Node, capi_port}, _}, Parent) ->
     Parent ! cert_and_pkey_changed,
     Parent;
+config_change_detector_loop({ssl_minimum_protocol, _}, Parent) ->
+    Parent ! ssl_minimum_protocol_changed,
+    Parent;
 config_change_detector_loop(_OtherEvent, Parent) ->
     Parent.
 
@@ -395,7 +412,6 @@ handle_call({set_node_certificate_chain, Props, CAChain, Cert, PKey}, _From, Sta
 
     ns_config:set({node, node(), cert}, Props),
     self() ! cert_and_pkey_changed,
-
     {reply, ok, State};
 handle_call(ping, _From, State) ->
     {reply, ok, State};
@@ -421,6 +437,21 @@ handle_info(cert_and_pkey_changed, #state{cert_state = OldCertState} = State) ->
             self() ! notify_services,
             {noreply, #state{cert_state = NewCertState,
                              reload_state = all_services()}}
+    end;
+handle_info(ssl_minimum_protocol_changed, #state{reload_state = ReloadState,
+                                                 min_ssl_ver = MinSslVer} = State) ->
+    misc:flush(ssl_minimum_protocol_changed),
+    case ssl_minimum_protocol() of
+        MinSslVer ->
+            {noreply, State};
+        Other ->
+            misc:create_marker(marker_path()),
+            self() ! notify_services,
+            ReloadServices = [ssl_service, capi_ssl_service],
+            ?log_debug("Notify services ~p about ssl_minimum_protocol change", [ReloadServices]),
+            {noreply, #state{min_ssl_ver = Other,
+                             reload_state =
+                                 lists:umerge(lists:sort(ReloadServices), lists:sort(ReloadState))}}
     end;
 handle_info(notify_services, #state{reload_state = []} = State) ->
     misc:flush(notify_services),

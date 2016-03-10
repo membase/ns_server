@@ -25,7 +25,7 @@
 -export([expand_memcached_config/2]).
 
 %% referenced from ns_config_default
--export([get_minidump_dir/2, omit_missing_mcd_ports/2]).
+-export([get_minidump_dir/2, omit_missing_mcd_ports/2, ssl_minimum_protocol/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -107,6 +107,7 @@ is_notable_config_key({node, N, memcached_config_extra}) ->
     N =:= node();
 is_notable_config_key(memcached) -> true;
 is_notable_config_key(memcached_config_extra) -> true;
+is_notable_config_key(ssl_minimum_protocol) -> true;
 is_notable_config_key(_) ->
     false.
 
@@ -310,3 +311,6 @@ omit_missing_mcd_ports(Interfaces, MCDParams) ->
                 {Props} ->
                     proplists:get_value(port, Props) =/= undefined
             end].
+
+ssl_minimum_protocol([], _Params) ->
+    ns_ssl_services_setup:ssl_minimum_protocol().
