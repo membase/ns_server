@@ -72,7 +72,9 @@
         <div ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">
           <label for="js_bucket_details_sasl_password">Enter password:</label>
           <input type="password" name="saslPassword" id="js_bucket_details_sasl_password" ng-model="bucketConf.saslPassword" ng-disabled="bucketConf.authType !== 'sasl'" value="">
-          <div class="error-container err-saslPassword"></div>
+          <div class="error-container err-saslPassword" ng-show="validation.result.errors.saslPassword">
+            {{validation.result.errors.saslPassword}}
+          </div>
         </div>
       </div>
     </div>
@@ -83,7 +85,9 @@
         <div>
           <label for="js_bucket_details_proxy_port">Protocol Port:</label>
           <input id="js_bucket_details_proxy_port" name="proxyPort" style="width:50px" ng-model="bucketConf.proxyPort" ng-disabled="bucketConf.authType !== 'none'">
-          <span class="error-container err-proxyPort"></span>
+          <div style="width:500px" class="error-container err-proxyPort" ng-show="bucketConf.authType === 'none'">
+            <span ng-show="validation.result.errors.proxyPort">{{validation.result.errors.proxyPort}}</span> <span>Dedicated ports for memcached ASCII protocol are deprecated. Please see documentation for alternatives.</span>
+          </div>
         </div>
       </div>
     </div>
