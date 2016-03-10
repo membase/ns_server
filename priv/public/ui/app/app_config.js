@@ -102,13 +102,11 @@
     });
     $transitionsProvider.onStart({
       to: function (state) {
-        return state.data && state.data.required && state.data.required.enterprise;
+        return state.data && state.data.enterprise;
       }
     }, function ($state, mnPools) {
       return mnPools.get().then(function (pools) {
-        if (!pools.isEnterprise) {
-          return false;
-        }
+        return pools.isEnterprise;
       });
     });
 

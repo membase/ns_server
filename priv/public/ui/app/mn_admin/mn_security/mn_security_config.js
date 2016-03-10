@@ -14,9 +14,7 @@
         controller: "mnSecurityController as securityCtl",
         templateUrl: "app/mn_admin/mn_security/mn_security.html",
         data: {
-          required: {
-            enterprise: true
-          },
+          enterprise: true,
           compat: "atLeast40"
         }
       })

@@ -215,9 +215,7 @@
         templateUrl: 'app/mn_admin/mn_groups/mn_groups.html',
         controller: 'mnGroupsController as groupsCtl',
         data: {
-          required: {
-            enterprise: true
-          },
+          enterprise: true,
           permissions: "cluster.server_groups.read"
         }
       })
