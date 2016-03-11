@@ -172,14 +172,29 @@ cert_validation_error_message(non_cert_entries) ->
 cert_validation_error_message(too_many_entries) ->
     <<"Only one certificate per request is allowed.">>.
 
+file_read_error(enoent) ->
+    "The file does not exist.";
+file_read_error(eacces) ->
+    "Missing permission for reading the file, or for searching one of the parent directories.";
+file_read_error(eisdir) ->
+    "The named file is a directory.";
+file_read_error(enotdir) ->
+    "A component of the file name is not a directory.";
+file_read_error(enomem) ->
+    "There is not enough memory for the content of the file.";
+file_read_error(Reason) ->
+    atom_to_list(Reason).
+
 reload_node_certificate_error(no_cluster_ca) ->
     <<"Cluster CA needs to be set before setting node certificate.">>;
 reload_node_certificate_error({bad_cert, {Error, Subject}}) ->
     list_to_binary(io_lib:format("Incorrectly configured certificate chain. Error: ~p. Certificate: ~p", [Error, Subject]));
-reload_node_certificate_error({read_pkey, Reason}) ->
-    list_to_binary(io_lib:format("Unable to read private key file. Reason: ~p", [Reason]));
-reload_node_certificate_error({read_chain, Reason}) ->
-    list_to_binary(io_lib:format("Unable to read certificate chain file. Reason: ~p", [Reason])).
+reload_node_certificate_error({read_pkey, Path, Reason}) ->
+    list_to_binary(io_lib:format("Unable to read private key file ~s. ~s",
+                                 [Path, file_read_error(Reason)]));
+reload_node_certificate_error({read_chain, Path, Reason}) ->
+    list_to_binary(io_lib:format("Unable to read certificate chain file ~s. ~s",
+                                 [Path, file_read_error(Reason)])).
 
 node_certificate_warning(mismatch) ->
     <<"Certificate is not signed with cluster CA.">>;

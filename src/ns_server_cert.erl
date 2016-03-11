@@ -343,10 +343,10 @@ apply_certificate_chain_from_inbox(ClusterCA) ->
                 {ok, PKeyPEM} ->
                     set_node_certificate_chain(ClusterCA, ChainPEM, PKeyPEM);
                 {error, Reason} ->
-                    {error, {read_pkey, Reason}}
+                    {error, {read_pkey, inbox_pkey_path(), Reason}}
             end;
         {error, Reason} ->
-            {error, {read_chain, Reason}}
+            {error, {read_chain, inbox_chain_path(), Reason}}
     end.
 
 get_warnings(CAProps) ->
