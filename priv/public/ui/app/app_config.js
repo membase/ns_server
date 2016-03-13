@@ -90,9 +90,7 @@
       }
     }, function ($state, $parse, mnPermissions, $transition$) {
       return mnPermissions.check().then(function() {
-        if (!$parse($transition$.to().data.permissions)(mnPermissions.export)) {
-          return false;
-        }
+        return $parse($transition$.to().data.permissions)(mnPermissions.export);
       });
     });
     $transitionsProvider.onStart({
@@ -101,9 +99,7 @@
       }
     }, function ($state, $parse, mnPoolDefault, $transition$) {
       return mnPoolDefault.get().then(function() {
-        if (!$parse($transition$.to().data.compat)(mnPoolDefault.export.compat)) {
-          return false;
-        }
+        return $parse($transition$.to().data.compat)(mnPoolDefault.export.compat);
       });
     });
     $transitionsProvider.onStart({
