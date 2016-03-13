@@ -16,7 +16,7 @@
 -module(menelaus_pluggable_ui).
 
 -export([find_plugins/0,
-         inject_head_fragments/3,
+         inject_head_fragments/2,
          is_plugin/2,
          proxy_req/4,
          maybe_serve_file/4]).
@@ -375,9 +375,8 @@ find_plugin(Prefix, Plugins, KeyPos) ->
 
 %%% =============================================================
 %%%
-inject_head_fragments(AppRoot, Path, Plugins) ->
-    inject_head_fragments(filename:join(AppRoot, Path), Plugins).
 
+-spec inject_head_fragments(file:filename_all(), plugins()) -> [binary()].
 inject_head_fragments(File, Plugins) ->
     {ok, Index} = file:read_file(File),
     [Head, Tail] = split_index(Index),

@@ -36,6 +36,9 @@ install:
 dataclean distclean test ui_test docs dialyzer dialyzer_obsessive:
 	cd build && $(MAKE) --no-print-directory ns_$@
 
+minify:
+	cd build/deps/gocode && $(MAKE) --no-print-directory ns_minify/fast
+
 # assuming exuberant-ctags
 TAGS:
 	ctags -eR .

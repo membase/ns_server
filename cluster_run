@@ -218,7 +218,7 @@ def usage():
     sys.exit("Usage: {0} [--nodes=N] [--dont-rename] [--dont-start] "
              "[--interactive] [--static-cookie] [--start-index=N] "
              "[--static-cookie] [--host=H] [--loglevel=L] "
-             "[--pluggable-config=File] "
+             "[--pluggable-config=File] [--minified]"
              "[ns_server args]".format(sys.argv[0]))
 
 def find_primary_addr():
@@ -239,7 +239,8 @@ def main():
                                            "dont-rename", "interactive",
                                            "static-cookie", "dont-start",
                                            "host=", "loglevel=",
-                                           "prepend-extras", "pluggable-config="])
+                                           "prepend-extras", "pluggable-config=",
+                                           "minified"])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -256,6 +257,7 @@ def main():
     host = "127.0.0.1"
     loglevel = 'debug'
     pluggable_config = []
+    use_minified = False
 
     for o, a in optlist:
         if o in ("--nodes", "-n"):
@@ -281,6 +283,8 @@ def main():
             prepend_extras = True
         elif o == "--pluggable-config":
             pluggable_config.append(a)
+        elif o == "--minified":
+            use_minified = True
         else:
             assert False, "unhandled options"
 
@@ -354,6 +358,8 @@ def main():
     if pluggable_config:
         extra_args += ["-ns_server", "ui_plugins",
                         quote_string_for_erl(','.join(pluggable_config))]
+
+    extra_args += ["-ns_server", "use_minified", "true" if use_minified else "false"]
 
     nodes = start_cluster(num_nodes, start_index, host, extra_args, prepend_args)
 

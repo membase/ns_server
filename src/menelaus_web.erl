@@ -787,11 +787,16 @@ serve_ui(Req, true, F, Args) ->
     apply(F, Args ++ [Req]).
 
 handle_ui_root(AppRoot, Path, Plugins, Req) ->
+    Filename = case misc:get_env_default(use_minified, true) of
+                   true ->
+                       filename:join([AppRoot, "ui", "index.min.html"]);
+                   _ ->
+                       filename:join(AppRoot, Path)
+               end,
     menelaus_util:reply_ok(
       Req,
       "text/html; charset=utf8",
-      menelaus_pluggable_ui:inject_head_fragments(
-        AppRoot, Path, Plugins),
+      menelaus_pluggable_ui:inject_head_fragments(Filename, Plugins),
       [{"Cache-Control", "must-revalidate"}]).
 
 handle_classic_index_html(AppRoot, Path, Req) ->
@@ -2662,7 +2667,6 @@ reset_admin_password(Password) ->
             ns_audit:password_change(undefined, User, admin),
             {ok, ?l2b(io_lib:format("Password for user ~s was successfully replaced.", [User]))}
     end.
-
 
 -ifdef(EUNIT).
 

@@ -55,6 +55,17 @@ ADD_CUSTOM_TARGET (all_images ALL DEPENDS "${all_img_js}")
 FILE (WRITE "${PROJECT_BINARY_DIR}/cluster_run.configuration"
   "prefix=\"${CMAKE_INSTALL_PREFIX}\"\n")
 
+SET (app_min_js "${PROJECT_BINARY_DIR}/priv/public/ui/app.min.js")
+SET (index_min_html "${PROJECT_BINARY_DIR}/priv/public/ui/index.min.html")
+ADD_CUSTOM_TARGET (minify ALL
+  COMMAND "${CMAKE_COMMAND}"
+    -D "PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+    -D "INDEX_HTML_FILE=${PROJECT_SOURCE_DIR}/priv/public/ui/index.html"
+    -D "APP_MIN_FILE=${app_min_js}"
+    -D "INDEX_MIN_FILE=${index_min_html}"
+    -P "${PROJECT_SOURCE_DIR}/cmake_modules/minify.cmake"
+  DEPENDS ns_minify)
+
 # Various cleaning targets
 ADD_CUSTOM_TARGET (ns_realclean
   COMMAND "${CMAKE_COMMAND}" -E remove -f cov.html erl_crash.dump deps/vbmap/vbmap
@@ -63,6 +74,9 @@ ADD_CUSTOM_TARGET (ns_realclean
   COMMAND "${CMAKE_COMMAND}" -E remove_directory docs
   COMMAND "${CMAKE_COMMAND}" -E remove -f rebar.config
   COMMAND "${CMAKE_COMMAND}" -E remove -f src/ns_server.app.src
+  COMMAND "${CMAKE_COMMAND}" -E remove -f ${all_img_js}
+  COMMAND "${CMAKE_COMMAND}" -E remove -f ${app_min_js}
+  COMMAND "${CMAKE_COMMAND}" -E remove -f ${index_min_html}
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   VERBATIM)
 ADD_DEPENDENCIES (realclean ns_realclean)
