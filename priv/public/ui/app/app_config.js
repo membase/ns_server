@@ -47,9 +47,9 @@
     $transitionsProvider.onBefore({
       from: "app.auth",
       to: "app.admin.**"
-    }, function (mnPools) {
-      return mnPools.get().then(function () {
-        return true;
+    }, function (mnPools, $state) {
+      return mnPools.get().then(function (pools) {
+        return pools.isInitialized ? true : $state.target("app.wizard.welcome");
       }, function (resp) {
         switch (resp.status) {
           case 401: return false;
