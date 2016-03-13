@@ -13,7 +13,14 @@
 
     $uibModalProvider.options.backdrop = 'static';
 
-    $urlRouterProvider.otherwise('/overview');
+    $urlRouterProvider.otherwise(function ($injector, $location) {
+      $injector.get("mnPools").get().then(function (pools) {
+        if (pools.isInitialized) {
+          return $injector.get("$state").go("app.admin.overview");
+        }
+      });
+      return true;
+    });
 
     $stateProvider.state('app', {
       url: '?{enableInternalSettings:bool}&{disablePoorMansAlerts:bool}',
