@@ -8,10 +8,10 @@
     .directive('mnPluggableUiTabs', mnPluggableUiTabs);
 
   function mnPluggableTabUtil() {
-    var defaultTemplate = "<li><a ui-sref=\"{{ ::pluggableUiConfig.state }}\" ui-sref-active=\"selected\">{{ ::pluggableUiConfig.name }}</a></li>";
+    var defaultTemplate = "<li ng-show=\"{{::pluggableUiConfig.ngShow}}\"><a ui-sref=\"{{ ::pluggableUiConfig.state }}\" ui-sref-active=\"selected\">{{ ::pluggableUiConfig.name }}</a></li>";
     var tabTemplates = {
-      adminTab:    "<li class=\"line\" ui-sref-active=\"currentNav\"><a ui-sref=\"{{ ::pluggableUiConfig.state}}\">{{ ::pluggableUiConfig.name }}</a></li>",
-      indexesTab:  "<li><a ui-sref=\"{{::pluggableUiConfig.state }}\" ng-class=\"selected\">{{ ::pluggableUiConfig.name }}</a></li>"
+      adminTab:    "<li ng-show=\"{{::pluggableUiConfig.ngShow}}\" class=\"line\" ui-sref-active=\"currentNav\"><a ui-sref=\"{{ ::pluggableUiConfig.state}}\">{{ ::pluggableUiConfig.name }}</a></li>",
+      indexesTab:  "<li ng-show=\"{{::pluggableUiConfig.ngShow}}\" ><a ui-sref=\"{{::pluggableUiConfig.state }}\" ng-class=\"selected\">{{ ::pluggableUiConfig.name }}</a></li>"
     };
 
     return {
@@ -35,6 +35,7 @@
         return;
       }
       angular.forEach(pluggableUiConfigs, function (config) {
+        config.ngShow = config.ngShow || true;
         $scope.pluggableUiConfig = config;
         if (config.after) {
           var targetTab = $element[0].querySelector("[mn-tab='" + config.after + "']");
