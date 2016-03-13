@@ -27,8 +27,8 @@
         .catchErrorsFromSuccess("memoryQuotaErrors");
     }, 500), true);
 
-    $scope.$watch('settingsClusterCtl.indexSettings', _.debounce(function (indexSettings) {
-      if (!indexSettings || !$scope.rbac.cluster.indexes.write) {
+    $scope.$watch('settingsClusterCtl.indexSettings', _.debounce(function (indexSettings, prevIndexSettings) {
+      if (!indexSettings || !$scope.rbac.cluster.indexes.write || !(prevIndexSettings && !_.isEqual(indexSettings, prevIndexSettings))) {
         return;
       }
       var promise = mnSettingsClusterService.postIndexSettings(vm.indexSettings, true);
@@ -40,9 +40,13 @@
       mnPromiseHelper(vm, mnSettingsClusterService.postPoolsDefault(vm.memoryQuotaConfig, false, vm.clusterName))
         .catchErrors("memoryQuotaErrors")
         .showSpinner('memoryQuotaLoading');
-      mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
-        .catchErrors("indexSettingsErrors")
-        .showSpinner('indexSettingsLoading');
+
+      if (!_.isEqual(vm.indexSettings, vm.initialIndexSettings)) {
+        mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
+          .catchErrors("indexSettingsErrors")
+          .showSpinner('indexSettingsLoading')
+          .applyToScope("initialIndexSettings");
+      }
     }
     function saveVisualInternalSettings() {
       if (vm.clusterSettingsLoading) {
@@ -69,7 +73,10 @@
         });
 
       mnPromiseHelper(vm, mnSettingsClusterService.getIndexSettings())
-        .applyToScope("indexSettings");
+        .applyToScope(function (indexSettings) {
+          vm.indexSettings = indexSettings;
+          vm.initialIndexSettings = _.clone(indexSettings);
+        });
     }
   }
 })();
