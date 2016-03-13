@@ -58,6 +58,14 @@
     });
     $transitionsProvider.onBefore({
       from: "app.wizard.**",
+      to: "app.admin.**"
+    }, function (mnPools) {
+      return mnPools.get().then(function (pools) {
+        return pools.isInitialized;
+      });
+    });
+    $transitionsProvider.onBefore({
+      from: "app.wizard.**",
       to: "app.auth"
     }, function (mnPools) {
       return mnPools.get().then(function (pools) {
