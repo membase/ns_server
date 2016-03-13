@@ -8,7 +8,7 @@
     'mnPermissions'
   ]).factory('mnAuthService', mnAuthServiceFactory);
 
-  function mnAuthServiceFactory($http, $state, mnPools, mnPendingQueryKeeper, mnPermissions, $uibModalStack) {
+  function mnAuthServiceFactory($http, $state, mnPools, $rootScope, mnPendingQueryKeeper, mnPermissions, $uibModalStack) {
     var mnAuthService = {
       login: login,
       logout: logout
@@ -35,6 +35,8 @@
         method: 'POST',
         url: "/uilogout"
       }).then(function () {
+        delete $rootScope.poolDefault;
+        delete $rootScope.pools;
         $uibModalStack.dismissAll("uilogout");
         mnPools.clearCache();
         $state.go('app.auth');

@@ -10,7 +10,8 @@
     var mnPools = {
       get: get,
       clearCache: clearCache,
-      getFresh: getFresh
+      getFresh: getFresh,
+      export: {}
     };
 
     var launchID =  (new Date()).valueOf() + '-' + ((Math.random() * 65536) >> 0);
@@ -28,6 +29,7 @@
         var pools = resp.data;
         pools.isInitialized = !!pools.pools.length;
         pools.launchID = pools.uuid + '-' + launchID;
+        mnPools.export.isEnterprise = pools.isEnterprise;
         return pools;
       });
     }
