@@ -124,24 +124,6 @@ child_specs() ->
      {master_activity_events, {gen_event, start_link, [{local, master_activity_events}]},
       permanent, brutal_kill, worker, dynamic},
 
-     %% Starts mb_master_sup, which has all processes that start on the master
-     %% node.
-     restartable:spec(
-       {mb_master, {mb_master, start_link, []},
-        permanent, infinity, supervisor, [mb_master]}),
-
-     {master_activity_events_ingress, {gen_event, start_link, [{local, master_activity_events_ingress}]},
-      permanent, brutal_kill, worker, dynamic},
-
-     {master_activity_events_timestamper, {master_activity_events, start_link_timestamper, []},
-      permanent, brutal_kill, worker, dynamic},
-
-     {master_activity_events_pids_watcher, {master_activity_events_pids_watcher, start_link, []},
-      permanent, brutal_kill, worker, dynamic},
-
-     {master_activity_events_keeper, {master_activity_events_keeper, start_link, []},
-      permanent, brutal_kill, worker, dynamic},
-
      {xdcr_ckpt_store,
       {simple_store, start_link, [?XDCR_CHECKPOINT_STORE]},
       permanent, 1000, worker, []},
@@ -270,4 +252,22 @@ child_specs() ->
       permanent, infinity, supervisor, []},
 
      {remote_api, {remote_api, start_link, []},
-      permanent, 1000, worker, [remote_api]}].
+      permanent, 1000, worker, [remote_api]},
+
+     %% Starts mb_master_sup, which has all processes that start on the master
+     %% node.
+     restartable:spec(
+       {mb_master, {mb_master, start_link, []},
+        permanent, infinity, supervisor, [mb_master]}),
+
+     {master_activity_events_ingress, {gen_event, start_link, [{local, master_activity_events_ingress}]},
+      permanent, brutal_kill, worker, dynamic},
+
+     {master_activity_events_timestamper, {master_activity_events, start_link_timestamper, []},
+      permanent, brutal_kill, worker, dynamic},
+
+     {master_activity_events_pids_watcher, {master_activity_events_pids_watcher, start_link, []},
+      permanent, brutal_kill, worker, dynamic},
+
+     {master_activity_events_keeper, {master_activity_events_keeper, start_link, []},
+      permanent, brutal_kill, worker, dynamic}].
