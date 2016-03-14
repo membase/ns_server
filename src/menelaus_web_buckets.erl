@@ -981,11 +981,18 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
      [{K,V} || {error, K, V} <- Candidates]}.
 
 get_time_sync(Params, true = IsNew) ->
-    validate_with_missing(
-      proplists:get_value("timeSynchronization", Params),
-      "disabled",
-      IsNew,
-      fun parse_validate_time_synchronization/1);
+    case proplists:get_value("timeSynchronization", Params) of
+        undefined ->
+            {ok, time_synchronization, disabled};
+        Value ->
+            case cluster_compat_mode:is_cluster_watson() of
+                true ->
+                    parse_validate_time_synchronization(Value);
+                false ->
+                    {error, time_synchronization,
+                     <<"TimeSynchronization can not be set if cluster is not fully Watson">>}
+            end
+    end;
 get_time_sync(Params, false = _IsNew) ->
     case proplists:get_value("timeSynchronization", Params) of
         undefined ->
