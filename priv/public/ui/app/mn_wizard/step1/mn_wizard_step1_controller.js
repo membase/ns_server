@@ -128,7 +128,7 @@
         } else {
           return postJoinCluster().then(function () {
             return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
-              return mnPoolDefault.getFresh().then(function (poolsDefault) {
+              return mnPoolDefault.get().then(function (poolsDefault) {
                 var firstTimeAddedServices = mnMemoryQuotaService.getFirstTimeAddedServices(["index", "fts"], vm.joinClusterConfig.services.model, poolsDefault.nodes);
                 vm.joinClusterConfig.firstTimeAddedServices = firstTimeAddedServices;
                 if (firstTimeAddedServices.count) {

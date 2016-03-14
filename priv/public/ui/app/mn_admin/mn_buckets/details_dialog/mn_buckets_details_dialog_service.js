@@ -51,7 +51,7 @@
     function getNewBucketConf() {
       return $q.all([
         mnServersService.getNodes(),
-        mnPoolDefault.getFresh()
+        mnPoolDefault.get()
       ]).then(function (resp) {
         var activeServersLength = resp[0].active.length;
         var totals = resp[1].storageTotals;

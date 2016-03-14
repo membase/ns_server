@@ -47,7 +47,7 @@
       return isMaxBucketCountWarning() || isBucketCreationWarning();
     }
     function addBucket() {
-      mnPromiseHelper(vm, mnPoolDefault.getFresh())
+      mnPromiseHelper(vm, mnPoolDefault.get())
         .onSuccess(function (poolDefault) {
           if (poolDefault.storageTotals.ram.quotaTotal === poolDefault.storageTotals.ram.quotaUsed) {
             $uibModal.open({
