@@ -2214,38 +2214,26 @@ validate_memory_quota(Config, CompatVersion, R0) ->
 
     Values = menelaus_util:get_values(R3),
 
-    NewKvQuota = proplists:get_value(memoryQuota, Values),
-    NewIndexQuota = proplists:get_value(indexMemoryQuota, Values),
-    NewFTSQuota = proplists:get_value(ftsMemoryQuota, Values),
+    Quotas = lists:filtermap(
+               fun ({Key, Service}) ->
+                       case lists:keyfind(Key, 1, Values) of
+                           false ->
+                               false;
+                           {_, ServiceQuota} ->
+                               {true, {Service, ServiceQuota}}
+                       end
+               end, [{memoryQuota, kv},
+                     {indexMemoryQuota, index},
+                     {ftsMemoryQuota, fts}]),
 
-    case NewKvQuota =/= undefined orelse NewIndexQuota =/= undefined orelse NewFTSQuota =/= undefined of
-        true ->
-            {ok, KvQuota} = ns_storage_conf:get_memory_quota(Config, kv),
-            {ok, IndexQuota} = ns_storage_conf:get_memory_quota(Config, index),
-            {ok, FTSQuota} = ns_storage_conf:get_memory_quota(Config, fts),
-
-            do_validate_memory_quota(Config,
-                                     KvQuota, IndexQuota, FTSQuota,
-                                     NewKvQuota, NewIndexQuota, NewFTSQuota, R3);
-        false ->
-            R3
+    case Quotas of
+        [] ->
+            R3;
+        _ ->
+            do_validate_memory_quota(Config, Quotas, R3)
     end.
 
-do_validate_memory_quota(Config,
-                         KvQuota, IndexQuota, FTSQuota,
-                         NewKvQuota0, NewIndexQuota0, NewFTSQuota0, R0) ->
-    NewKvQuota = misc:default_if_undefined(NewKvQuota0, KvQuota),
-    NewIndexQuota = misc:default_if_undefined(NewIndexQuota0, IndexQuota),
-    NewFTSQuota = misc:default_if_undefined(NewFTSQuota0, FTSQuota),
-
-    case {NewKvQuota, NewIndexQuota, NewFTSQuota} =:= {KvQuota, IndexQuota, FTSQuota} of
-        true ->
-            R0;
-        false ->
-            do_validate_memory_quota_tail(Config, NewKvQuota, NewIndexQuota, NewFTSQuota, R0)
-    end.
-
-do_validate_memory_quota_tail(Config, KvQuota, IndexQuota, FTSQuota, R0) ->
+do_validate_memory_quota(Config, Quotas, R0) ->
     Nodes = ns_node_disco:nodes_wanted(Config),
     {ok, NodeStatuses} = ns_doctor:wait_statuses(Nodes, 3 * ?HEART_BEAT_PERIOD),
     NodeInfos =
@@ -2256,10 +2244,6 @@ do_validate_memory_quota_tail(Config, KvQuota, IndexQuota, FTSQuota, R0) ->
                   NodeServices = ns_cluster_membership:node_services(Config, Node),
                   {Node, NodeServices, MemoryData}
           end, Nodes),
-
-    Quotas = [{kv, KvQuota},
-              {index, IndexQuota},
-              {fts, FTSQuota}],
 
     case ns_storage_conf:check_quotas(NodeInfos, Config, Quotas) of
         ok ->

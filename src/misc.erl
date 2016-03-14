@@ -1813,11 +1813,6 @@ eval(Str,Binding) ->
     {ok,Expr} = erl_parse:parse_exprs(Ts1),
     erl_eval:exprs(Expr, Binding).
 
-default_if_undefined(undefined, Default) ->
-    Default;
-default_if_undefined(Value, _) ->
-    Value.
-
 pretty_version(ListOfInts) when is_list(ListOfInts) ->
     string:join([integer_to_list(I) || I <- ListOfInts], ".").
 

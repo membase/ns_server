@@ -496,21 +496,42 @@ allowed_memory_usage_max(MemSupData) ->
 
 -spec check_quotas([NodeInfo], ns_config(), quotas()) -> quota_result() when
       NodeInfo :: {node(), [service()], MemoryData :: term()}.
-check_quotas(NodeInfos, Config, Quotas) ->
-    case check_service_quotas(Quotas, Config) of
+check_quotas(NodeInfos, Config, UpdatedQuotas) ->
+    case check_service_quotas(UpdatedQuotas, Config) of
         ok ->
-            check_quotas_loop(NodeInfos, Quotas);
+            AllQuotas = get_all_quotas(Config, UpdatedQuotas),
+            check_quotas_loop(NodeInfos, AllQuotas);
         Error ->
             Error
     end.
 
+quota_aware_services(CompatVersion) ->
+    [S || S <- ns_cluster_membership:supported_services_for_version(CompatVersion),
+          lists:member(S, [kv, index, fts])].
+
+get_all_quotas(Config, UpdatedQuotas) ->
+    CompatVersion = cluster_compat_mode:get_compat_version(Config),
+    Services = quota_aware_services(CompatVersion),
+    lists:map(
+      fun (Service) ->
+              Value =
+                  case lists:keyfind(Service, 1, UpdatedQuotas) of
+                      false ->
+                          {ok, V} = get_memory_quota(Config, Service),
+                          V;
+                      {_, V} ->
+                          V
+                  end,
+              {Service, Value}
+      end, Services).
+
 check_quotas_loop([], _) ->
     ok;
-check_quotas_loop([{Node, Services, MemoryData} | Rest], Quotas) ->
-    TotalQuota = lists:sum([Q || {S, Q} <- Quotas, lists:member(S, Services)]),
+check_quotas_loop([{Node, Services, MemoryData} | Rest], AllQuotas) ->
+    TotalQuota = lists:sum([Q || {S, Q} <- AllQuotas, lists:member(S, Services)]),
     case check_node_total_quota(Node, TotalQuota, MemoryData) of
         ok ->
-            check_quotas_loop(Rest, Quotas);
+            check_quotas_loop(Rest, AllQuotas);
         Error ->
             Error
     end.
