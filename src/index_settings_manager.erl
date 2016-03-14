@@ -226,7 +226,7 @@ watson_extra_default_settings(Config) ->
                             {<<"forestdb">>, <<"full">>, []}
                     end,
 
-    CircDefaults = [{daysOfWeek, <<"">>},
+    CircDefaults = [{daysOfWeek, <<"Sunday">>},
                     {abort_outside, false}] ++ Int,
     [{storageMode, SM}, {compactionMode, CM},
      {circularCompaction, CircDefaults}].
