@@ -365,7 +365,7 @@ get_warnings(CAProps) ->
                       case proplists:get_value(verified_with, Props) of
                           VerifiedWith ->
                               Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-                              WarningDays = ns_config:read_key_fast(cert_exp_warning_days, 7),
+                              WarningDays = ns_config:read_key_fast({cert, expiration_warning_days}, 7),
                               WarningThreshold = Now + WarningDays * 24 * 60 * 60,
 
                               case proplists:get_value(expires, Props) of
