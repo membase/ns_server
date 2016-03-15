@@ -39,7 +39,8 @@
         ]).
 
 -export([supported_services/0,
-         supported_services/1,
+         supported_services_for_version/1,
+         cluster_supported_services/0,
          topology_aware_services/0,
          default_services/0,
          set_service_map/2,
@@ -213,9 +214,9 @@ update_recovery_type(Node, NewType) ->
     end.
 
 supported_services() ->
-    supported_services(cluster_compat_mode:get_compat_version()).
+    supported_services_for_version(cluster_compat_mode:supported_compat_version()).
 
-supported_services(CompatVersion) ->
+supported_services_for_version(CompatVersion) ->
     Services = [kv, n1ql, index],
     case cluster_compat_mode:is_version_watson(CompatVersion) of
         true ->
@@ -223,6 +224,9 @@ supported_services(CompatVersion) ->
         false ->
             Services
     end.
+
+cluster_supported_services() ->
+    supported_services_for_version(cluster_compat_mode:get_compat_version()).
 
 default_services() ->
     [kv].

@@ -423,7 +423,7 @@ move_vbuckets(Bucket, Moves) ->
 rebalance_services(KeepNodes, EjectNodes) ->
     Config = ns_config:get(),
 
-    AllServices = ns_cluster_membership:supported_services() -- [kv],
+    AllServices = ns_cluster_membership:cluster_supported_services() -- [kv],
     TopologyAwareServices = ns_cluster_membership:topology_aware_services(),
     SimpleServices = AllServices -- TopologyAwareServices,
 

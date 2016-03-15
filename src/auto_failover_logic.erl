@@ -74,7 +74,7 @@ init_services_state(CompatVersion) ->
               #service_state{name = Service,
                              mailed_too_small_cluster = [],
                              logged_auto_failover_disabled = false}
-      end, ns_cluster_membership:supported_services(CompatVersion)).
+      end, ns_cluster_membership:supported_services_for_version(CompatVersion)).
 
 fold_matching_nodes([], NodeStates, Fun, Acc) ->
     lists:foldl(fun (S, A) ->

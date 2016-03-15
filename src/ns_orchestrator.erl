@@ -180,7 +180,7 @@ needs_rebalance() ->
     ServicesNeedRebalance =
         lists:any(fun (S) ->
                           service_needs_rebalance(S, NodesWanted)
-                  end, ns_cluster_membership:supported_services()),
+                  end, ns_cluster_membership:cluster_supported_services()),
     ServicesNeedRebalance orelse buckets_need_rebalance(NodesWanted).
 
 service_needs_rebalance(Service, NodesWanted) ->

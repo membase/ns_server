@@ -423,7 +423,7 @@ update_reported_flags_by_actions(Actions, State) ->
 %% - list of nodes that are currently running the service.
 all_services_config(Config) ->
     %% Get list of all supported services
-    AllServices = ns_cluster_membership:supported_services(),
+    AllServices = ns_cluster_membership:cluster_supported_services(),
     lists:map(
       fun (Service) ->
               %% Get list of all nodes running the service.

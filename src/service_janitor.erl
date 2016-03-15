@@ -125,7 +125,7 @@ orchestrate_initial_rebalance(Service) ->
     end.
 
 maybe_complete_pending_failovers(Config) ->
-    Services = ns_cluster_membership:supported_services(),
+    Services = ns_cluster_membership:cluster_supported_services(),
     RVs = [maybe_complete_pending_failover(Config, S) || S <- Services],
     handle_results(RVs).
 

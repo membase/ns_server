@@ -1768,10 +1768,7 @@ handle_join(Req) ->
     end.
 
 parse_validate_services_list(ServicesList) ->
-    parse_validate_services_list(ServicesList, cluster_compat_mode:get_compat_version()).
-
-parse_validate_services_list(ServicesList, CompatVersion) ->
-    KnownServices = ns_cluster_membership:supported_services(CompatVersion),
+    KnownServices = ns_cluster_membership:supported_services(),
     ServicePairs = [{erlang:atom_to_list(S), S} || S <- KnownServices],
     ServiceStrings = string:tokens(ServicesList, ","),
     FoundServices = [{SN, lists:keyfind(SN, 1, ServicePairs)} || SN <- ServiceStrings],
@@ -1791,13 +1788,11 @@ parse_validate_services_list(ServicesList, CompatVersion) ->
     end.
 
 parse_validate_services_list_test() ->
-    {error, _} = parse_validate_services_list("", ?LATEST_VERSION_NUM),
-    ?assertEqual({ok, [index, kv, n1ql]},
-                 parse_validate_services_list("n1ql,kv,index", ?LATEST_VERSION_NUM)),
-    {ok, [kv]} = parse_validate_services_list("kv", ?LATEST_VERSION_NUM),
-    {error, _} = parse_validate_services_list("n1ql,kv,s", ?LATEST_VERSION_NUM),
-    ?assertMatch({error, _},
-                 parse_validate_services_list("neeql,kv", ?LATEST_VERSION_NUM)).
+    {error, _} = parse_validate_services_list(""),
+    ?assertEqual({ok, [index, kv, n1ql]}, parse_validate_services_list("n1ql,kv,index")),
+    {ok, [kv]} = parse_validate_services_list("kv"),
+    {error, _} = parse_validate_services_list("n1ql,kv,s"),
+    ?assertMatch({error, _}, parse_validate_services_list("neeql,kv")).
 
 parse_join_cluster_params(Params, ThisIsJoin) ->
     Version = proplists:get_value("version", Params, "3.0"),
