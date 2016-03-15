@@ -893,7 +893,7 @@ enforce_topology_limitation(Services, SupportedCombinations) ->
         true ->
             ok;
         false ->
-            {error, ns_error_messages:topology_limitation_error()}
+            {error, ns_error_messages:topology_limitation_error(SupportedCombinations)}
     end.
 
 do_engage_cluster_check_services(NodeKVList) ->

@@ -24,7 +24,7 @@
          verify_otp_connectivity_port_error/2,
          verify_otp_connectivity_connection_error/4,
          unsupported_services_error/2,
-         topology_limitation_error/0,
+         topology_limitation_error/1,
          cert_validation_error_message/1,
          reload_node_certificate_error/1,
          node_certificate_warning/1]).
@@ -162,8 +162,13 @@ unsupported_services_error(AvailableServices, RequestedServices) ->
 services_to_iolist(Services) ->
     misc:intersperse(lists:map(fun couch_util:to_binary/1, Services), ", ").
 
-topology_limitation_error() ->
-    <<"Community edition supports either data only nodes or nodes with all services enabled.">>.
+topology_limitation_error(Combinations) ->
+    CombinationsStr = misc:intersperse([[$", services_to_iolist(C), $"] ||
+                                           C <- Combinations], ", "),
+    Msg = io_lib:format("Unsupported service combination. "
+                        "Community edition supports only the following combinations: ~s",
+                        [CombinationsStr]),
+    iolist_to_binary(Msg).
 
 cert_validation_error_message(empty_cert) ->
     <<"Certificate should not be empty">>;
