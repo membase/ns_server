@@ -5,15 +5,13 @@
     'mnOverviewService',
     'mnBarUsage',
     'mnPlot',
-    'mnHelper',
     'mnServersService',
     'mnBucketsService',
-    'mnPromiseHelper',
     'mnPoll',
     'ui.bootstrap'
   ]).controller('mnOverviewController', mnOverviewController);
 
-  function mnOverviewController($scope, mnServersService, mnBucketsService, mnOverviewService, mnHelper, mnPoller, mnAlertsService, mnPromiseHelper) {
+  function mnOverviewController($scope, mnServersService, mnBucketsService, mnOverviewService, mnPoller, mnAlertsService) {
     var vm = this;
 
     vm.alerts = mnAlertsService.alerts;
@@ -22,25 +20,25 @@
     activate();
 
     function activate() {
-      new mnPoller($scope, mnOverviewService.getStats)
-        .setExtractInterval(3000)
-        .subscribe("mnOverviewStats", vm)
-        .cycle();
       new mnPoller($scope, mnOverviewService.getOverviewConfig)
-        .setExtractInterval(3000)
+        .reloadOnScopeEvent("mnPoolDefaultChanged")
         .subscribe("mnOverviewConfig", vm)
         .cycle();
       new mnPoller($scope, function () {
           return mnServersService.getNodes();
         })
-        .setExtractInterval(3000)
+        .reloadOnScopeEvent("nodesChanged")
         .subscribe("nodes", vm)
         .cycle();
       new mnPoller($scope, function () {
           return mnBucketsService.getBucketsByType();
         })
-        .setExtractInterval(3000)
+        .reloadOnScopeEvent("bucketUriChanged")
         .subscribe("buckets", vm)
+        .cycle();
+      new mnPoller($scope, mnOverviewService.getStats)
+        .setInterval(3000)
+        .subscribe("mnOverviewStats", vm)
         .cycle();
     }
   }

@@ -60,33 +60,35 @@
         return mnGroupsService.getGroupsByHostname();
       })
       .subscribe("getGroupsByHostname", vm)
-      .reloadOnScopeEvent("reloadServersPoller", vm, "serverGroupsLoading");
+      .reloadOnScopeEvent(["serverGroupsUriChanged", "reloadServersPoller"])
+      .cycle();
 
       new mnPoller($scope, function () {
         return mnServersService.getNodes();
       })
-      .subscribe("nodes", vm)
-      .reloadOnScopeEvent("reloadServersPoller", vm, "nodesLoading");
-      new mnPoller($scope, function () {
-        return mnPoolDefault.get();
+      .subscribe(function (nodes) {
+        vm.showSpinner = false;
+        vm.nodes = nodes;
       })
-      .subscribe("poolDefault", vm)
-      .reloadOnScopeEvent("reloadServersPoller", vm, "poolDefaultLoading");
-      new mnPoller($scope, function () {
-        return mnTasksDetails.get();
-      })
-      .subscribe("tasks", vm)
-      .reloadOnScopeEvent("reloadServersPoller", vm, "tasksLoading");
+      .reloadOnScopeEvent(["mnPoolDefaultChanged", "reloadNodes"])
+      .cycle();
+
       new mnPoller($scope, function () {
         return mnSettingsAutoFailoverService.getAutoFailoverSettings();
       })
+      .setInterval(10000)
       .subscribe("autoFailoverSettings", vm)
-      .reloadOnScopeEvent("reloadServersPoller", vm, "autoFailoverSettingsLoading");
+      .reloadOnScopeEvent("reloadServersPoller")
+      .cycle();
+
+      $scope.$on("reloadServersPoller", function () {
+        vm.showSpinner = true;
+      });
     }
     function mayRebalanceWithoutSampleLoading() {
-      return (vm.poolDefault && !vm.poolDefault.rebalancing) &&
-             (vm.tasks && !vm.tasks.inRecoveryMode) &&
-             vm.nodes && (!!vm.nodes.pending.length || !vm.poolDefault.balanced) && !vm.nodes.unhealthyActive;
+      return ($scope.poolDefault && !$scope.poolDefault.rebalancing) &&
+             ($scope.adminCtl.tasks && !$scope.adminCtl.tasks.inRecoveryMode) &&
+             vm.nodes && (!!vm.nodes.pending.length || !$scope.poolDefault.balanced) && !vm.nodes.unhealthyActive;
     }
     function addServer() {
       $uibModal.open({
@@ -112,7 +114,7 @@
         .showErrorsSensitiveSpinner();
     }
     function onStopRecovery() {
-      mnPromiseHelper(vm, mnServersService.stopRecovery(vm.tasks.tasksRecovery.stopURI))
+      mnPromiseHelper(vm, mnServersService.stopRecovery($scope.adminCtl.tasks.tasksRecovery.stopURI))
         .broadcast("reloadServersPoller")
         .showErrorsSensitiveSpinner();
     }

@@ -57,17 +57,11 @@
     }
 
     function activate() {
-      new mnPoller($scope, function () {
-        return mnTasksDetails.get();
-      })
-      .subscribe("tasks", vm)
-      .reloadOnScopeEvent("reloadXdcrPoller", vm)
-      .cycle();
-
       if ($scope.rbac.cluster.xdcr.remote_clusters.read) {
         new mnPoller($scope, function () {
           return mnXDCRService.getReplicationState();
         })
+        .setInterval(10000)
         .subscribe("references", vm)
         .reloadOnScopeEvent("reloadXdcrPoller", vm)
         .cycle();

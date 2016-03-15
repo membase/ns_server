@@ -73,7 +73,9 @@
       new mnPoller($scope, function () {
         return mnBucketsService.getBucketsForBucketsPage();
       })
+      .setInterval(10000)
       .subscribe("buckets", vm)
+      .reloadOnScopeEvent("bucketUriChanged")
       .reloadOnScopeEvent("reloadBucketsPoller", vm)
       .cycle();
     }

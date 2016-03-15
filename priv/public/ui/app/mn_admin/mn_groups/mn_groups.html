@@ -15,14 +15,14 @@
         <a
           id="js_create_group"
           class="btn_1 casper_groups_create_popup"
-          ng-class="{dynamic_disabled: groupsCtl.disableAddGroupBtn || groupsCtl.rebalancings || !rbac.cluster.server_groups.write}"
-          ng-click="!groupsCtl.disableAddGroupBtn && !groupsCtl.rebalancings && rbac.cluster.server_groups.write && groupsCtl.createGroup()"
+          ng-class="{dynamic_disabled: groupsCtl.disableAddGroupBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write}"
+          ng-click="!groupsCtl.disableAddGroupBtn && !poolDefault.rebalancing && rbac.cluster.server_groups.write && groupsCtl.createGroup()"
           ><span>Create Group</span></a>
         <a
           id="js_save_groups_changes"
           class="btn_1 casper_groups_error"
-          ng-class="{dynamic_disabled: groupsCtl.disableApplyChangesBtn || groupsCtl.rebalancing || !rbac.cluster.server_groups.write}"
-          ng-click="!groupsCtl.disableApplyChangesBtn && !groupsCtl.rebalancing && rbac.cluster.server_groups.write && groupsCtl.applyChanges()"
+          ng-class="{dynamic_disabled: groupsCtl.disableApplyChangesBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write}"
+          ng-click="!groupsCtl.disableApplyChangesBtn && !poolDefault.rebalancing && rbac.cluster.server_groups.write && groupsCtl.applyChanges()"
           ><span>Apply Changes</span></a>
       </div>
       <div class="groups_container" id="js_server_group_container" mn-spinner="viewLoading">

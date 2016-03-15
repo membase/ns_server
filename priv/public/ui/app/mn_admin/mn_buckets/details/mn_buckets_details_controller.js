@@ -5,7 +5,7 @@
     .module('mnBuckets')
     .controller('mnBucketsDetailsController', mnBucketsDetailsController);
 
-    function mnBucketsDetailsController($scope, mnBucketsDetailsService, mnTasksDetails, mnPromiseHelper, mnSettingsAutoCompactionService, mnCompaction, mnHelper, $uibModal, mnBytesToMBFilter, mnBucketsDetailsDialogService) {
+    function mnBucketsDetailsController($scope, mnBucketsDetailsService, mnTasksDetails, mnPromiseHelper, mnSettingsAutoCompactionService, mnCompaction, $uibModal, mnBytesToMBFilter, mnBucketsDetailsDialogService, mnPoller) {
       var vm = this;
       vm.editBucket = editBucket;
       vm.deleteBucket = deleteBucket;
@@ -14,18 +14,31 @@
       vm.getBucketRamGuageConfig = getBucketRamGuageConfig;
       vm.getGuageConfig = getGuageConfig;
 
+      var compactionTasks;
+      var warmUpTasks;
+
       activate();
 
       function activate() {
-        $scope.$watch('bucket', getBucketsDetails);
-      }
-      function getBucketsDetails() {
-        mnPromiseHelper(vm, mnBucketsDetailsService.getWarmUpTasks($scope.bucket))
-          .applyToScope("warmUpTasks");
-        mnPromiseHelper(vm, mnBucketsDetailsService.doGetDetails($scope.bucket))
-          .applyToScope("bucketDetails");
-        mnPromiseHelper(vm, mnBucketsDetailsService.getCompactionTask($scope.bucket))
-          .applyToScope("compactionTasks");
+        warmUpTasks = new mnPoller($scope, function () {
+          return mnBucketsDetailsService.getWarmUpTasks($scope.bucket);
+        })
+        .subscribe("warmUpTasks", vm)
+        .reloadOnScopeEvent(["nodesChanged", "mnTasksDetailsChanged"])
+        .cycle();
+
+        compactionTasks = new mnPoller($scope, function () {
+          return mnBucketsDetailsService.getCompactionTask($scope.bucket);
+        })
+        .subscribe("compactionTasks", vm)
+        .reloadOnScopeEvent("mnTasksDetailsChanged")
+        .cycle();
+
+        $scope.$watch('bucket', function () {
+          warmUpTasks.reload();
+          compactionTasks.reload();
+          mnPromiseHelper(vm, mnBucketsDetailsService.doGetDetails($scope.bucket)).applyToScope("bucketDetails");
+        });
       }
       function getBucketRamGuageConfig(details) {
         return mnBucketsDetailsService.getBucketRamGuageConfig(details && {
@@ -86,7 +99,9 @@
       function registerCompactionAsTriggeredAndPost(url, disableButtonKey) {
         vm.compactionTasks[disableButtonKey] = true;
         mnPromiseHelper(vm, mnCompaction.registerAsTriggeredAndPost(url))
-          .onSuccess(getBucketsDetails);
+          .onSuccess(function () {
+            compactionTasks.reload()
+          });
       };
     }
 })();

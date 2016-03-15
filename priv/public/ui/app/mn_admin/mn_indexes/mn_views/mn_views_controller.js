@@ -39,9 +39,10 @@
       }
 
       function activate() {
-        var poller = new mnPoller($scope, function () {
+        new mnPoller($scope, function () {
             return mnViewsListService.prepareBucketsDropdownData($state.params);
           })
+          .reloadOnScopeEvent("bucketUriChanged")
           .subscribe("state", vm)
           .cycle();
       }

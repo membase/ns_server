@@ -63,7 +63,7 @@
         </span>
       </h3>
 
-      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container" mn-spinner="!xdcrCtl.tasks" min-height="66px">
+      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container" mn-spinner="!adminCtl.tasks" min-height="66px">
         <table class="list" style="width:100%">
           <colgroup>
             <col class="bucket">
@@ -86,7 +86,7 @@
               <th></th>
             </tr>
           </thead>
-          <tbody ng-if="xdcrCtl.tasks.tasksXDCR.length" ng-repeat="row in xdcrCtl.tasks.tasksXDCR track by row.id">
+          <tbody ng-if="adminCtl.tasks.tasksXDCR.length" ng-repeat="row in adminCtl.tasks.tasksXDCR track by row.id">
             <tr class="row">
               <td>{{row.source}}</td>
               <td>{{"Version " + (row.replicationType === "xmem" ? "2" : row.replicationType === "capi" ? "1" : "unknown")}}</td>
@@ -120,7 +120,7 @@
               </td>
             </tr>
           </tbody>
-          <tbody ng-if="!xdcrCtl.tasks.tasksXDCR.length">
+          <tbody ng-if="!adminCtl.tasks.tasksXDCR.length">
             <tr><td colspan="8" style="text-align:center">There are no replications currently in progress.</td></tr>
           </tbody>
         </table>

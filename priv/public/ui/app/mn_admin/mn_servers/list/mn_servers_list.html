@@ -1,7 +1,7 @@
 <div class="panes">
   <div
     class="servers_list"
-    mn-spinner="serversCtl.nodesLoading || serversCtl.poolDefaultLoading || serversCtl.tasksLoading || serversCtl.serverGroupsLoading"
+    mn-spinner="!serversCtl.nodes || !adminCtl.tasks || !serversCtl.getGroupsByHostname || serversCtl.showSpinner"
     min-height="91px">
     <table class="list" style="width:100%" mn-sortable-table="hostname">
       <colgroup>
@@ -20,7 +20,7 @@
         <tr>
           <th mn-sortable-title="hostname" class="node_name" style="text-align:left;">Server Node Name</th>
           <th></th>
-          <th mn-sortable-title="group" style='{{ serversCtl.mnPoolDefault.value.isGroupsAvailable && rbac.cluster.server_groups.read ? "text-align: center!important;" : "width: 0px;" }}'>{{ serversCtl.poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "Group" : " " }}</th>
+          <th mn-sortable-title="group" style='{{ serversCtl.mnPoolDefault.value.isGroupsAvailable && rbac.cluster.server_groups.read ? "text-align: center!important;" : "width: 0px;" }}'>{{ poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "Group" : " " }}</th>
           <th mn-sortable-title="services">Services</th>
           <th>RAM Usage</th>
           <th>Swap Usage</th>
@@ -109,44 +109,44 @@
             {{node.interestingStats.curr_items || 0 | mnFormatQuantity:1000:' ' }}/<br>{{node.interestingStats.vb_replica_curr_items || 0 | mnFormatQuantity:1000:' ' }}
           </td>
           <td
-            ng-if="serversCtl.tasks.inRebalance && serversCtl.tasks.tasksRebalance.status === 'running' && rbac.cluster.tasks.read"
+            ng-if="adminCtl.tasks.inRebalance && adminCtl.tasks.tasksRebalance.status === 'running' && rbac.cluster.tasks.read"
             class="actions">
               <span class="usage_info">{{serversListCtl.getRebalanceProgress(node) | mnTruncateTo3Digits}} % Complete</span>
               <span class="server_usage"><span style="width: {{serversListCtl.getRebalanceProgress(node) | mnTruncateTo3Digits}}%"></span></span>
           </td>
           <td
-            ng-if="!serversCtl.tasks.inRebalance && serversListCtl.isNodeInactiveAdded(node) && node.recoveryType === 'none' && rbac.cluster.tasks.read"
+            ng-if="!adminCtl.tasks.inRebalance && serversListCtl.isNodeInactiveAdded(node) && node.recoveryType === 'none' && rbac.cluster.tasks.read"
             class="actions with_state_message">
               <span class="state_message">Pending Add</span>
               <a
                 ng-show="rbac.cluster.nodes.write"
                 class="list_button btn_cancel eject_server when-roadmin-avoid-me"
-                ng-class="{dynamic_disabled: serversCtl.tasks.inRecoveryMode}"
-                ng-click="!serversCtl.tasks.inRecoveryMode && serversListCtl.ejectServer(node)"><span>Cancel</span></a>
+                ng-class="{dynamic_disabled: adminCtl.tasks.inRecoveryMode}"
+                ng-click="!adminCtl.tasks.inRecoveryMode && serversListCtl.ejectServer(node)"><span>Cancel</span></a>
           </td>
           <td
-            ng-if="!serversCtl.tasks.inRebalance && serversListCtl.isNodeInactiveAdded(node) && node.recoveryType !== 'none' && rbac.cluster.tasks.read"
+            ng-if="!adminCtl.tasks.inRebalance && serversListCtl.isNodeInactiveAdded(node) && node.recoveryType !== 'none' && rbac.cluster.tasks.read"
             class="actions with_state_message">
               <span class="state_message">Pending {{node.recoveryType}} recovery</span>
               <a
                 ng-show="rbac.cluster.nodes.write"
                 class="list_button btn_cancel eject_server when-roadmin-avoid-me"
-                ng-class="{dynamic_disabled: serversCtl.tasks.inRecoveryMode}"
-                ng-click="!serversCtl.tasks.inRecoveryMode && serversListCtl.cancelFailOverNode(node.otpNode)"><span>Cancel</span></a>
+                ng-class="{dynamic_disabled: adminCtl.tasks.inRecoveryMode}"
+                ng-click="!adminCtl.tasks.inRecoveryMode && serversListCtl.cancelFailOverNode(node.otpNode)"><span>Cancel</span></a>
           </td>
           <td
             ng-show="rbac.cluster.tasks.read"
-            ng-if="!serversCtl.tasks.inRebalance && !serversListCtl.isNodeInactiveAdded(node) && node.pendingEject;"
+            ng-if="!adminCtl.tasks.inRebalance && !serversListCtl.isNodeInactiveAdded(node) && node.pendingEject;"
             class="actions with_state_message">
               <span class="state_message">Pending Removal</span>
               <a
                 ng-show="rbac.cluster.nodes.write"
                 class="list_button btn_cancel remove_from_list when-roadmin-avoid-me"
-                ng-class="{dynamic_disabled: serversCtl.tasks.inRecoveryMode}"
-                ng-click="!serversCtl.tasks.inRecoveryMode && serversListCtl.cancelEjectServer(node)"><span>Cancel</span></a>
+                ng-class="{dynamic_disabled: adminCtl.tasks.inRecoveryMode}"
+                ng-click="!adminCtl.tasks.inRecoveryMode && serversListCtl.cancelEjectServer(node)"><span>Cancel</span></a>
           </td>
           <td
-            ng-if="!serversCtl.tasks.inRebalance && !serversListCtl.isNodeInactiveAdded(node) && !node.pendingEject && rbac.cluster.tasks.read"
+            ng-if="!adminCtl.tasks.inRebalance && !serversListCtl.isNodeInactiveAdded(node) && !node.pendingEject && rbac.cluster.tasks.read"
             class="actions">
               <a
                 ng-show="!(serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node)) && rbac.cluster.nodes.write"

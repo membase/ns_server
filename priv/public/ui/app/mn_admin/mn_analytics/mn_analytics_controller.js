@@ -11,7 +11,7 @@
     ])
     .controller('mnAnalyticsController', mnAnalyticsController);
 
-  function mnAnalyticsController($scope, mnAnalyticsService, mnHelper, $state, $http, mnPoller, mnBucketsService) {
+  function mnAnalyticsController($scope, mnAnalyticsService, $state, $http, mnPoller, mnBucketsService) {
     var vm = this;
 
     vm.computeOps = computeOps;
@@ -25,12 +25,11 @@
 
     function activate() {
       if (!$state.params.specificStat) {
-        new mnPoller($scope, function (previousResult) {
+        new mnPoller($scope, function () {
           return mnAnalyticsService.prepareNodesList($state.params);
         })
-        .setExtractInterval(10000)
         .subscribe("nodes", vm)
-        // .reloadOnScopeEvent("reloadAnalyticsPoller", vm)
+        .reloadOnScopeEvent("nodesChanged")
         .cycle();
       }
 
@@ -38,14 +37,14 @@
       new mnPoller($scope, function (previousResult) {
         return mnAnalyticsService.getStats({$stateParams: $state.params, previousResult: previousResult});
       })
-      .setExtractInterval(function (response) {
+      .setInterval(function (response) {
         //TODO add error handler
         return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
       })
       .subscribe("state", vm)
       .reloadOnScopeEvent("reloadAnalyticsPoller", vm);
 
-      new mnPoller($scope, function (previousResult) {
+      new mnPoller($scope, function () {
         return mnBucketsService.getBucketsByType().then(function (buckets) {
           var rv = {};
           rv.bucketsNames = buckets.byType.names;
@@ -53,9 +52,8 @@
           return rv;
         });
       })
-      .setExtractInterval(10000)
       .subscribe("buckets", vm)
-      // .reloadOnScopeEvent("reloadAnalyticsPoller", vm)
+      .reloadOnScopeEvent("bucketUriChanged")
       .cycle();
     }
     function onSelectBucket(selectedBucket) {

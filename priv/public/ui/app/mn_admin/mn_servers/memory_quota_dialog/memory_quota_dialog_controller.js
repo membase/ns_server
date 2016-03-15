@@ -40,8 +40,7 @@
 
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
-        .closeOnSuccess()
-        .broadcast("reloadServersPoller");
+        .closeOnSuccess();
     }
   }
 })();

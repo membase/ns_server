@@ -144,12 +144,13 @@
         return mnViewsListService.getTasksOfCurrentBucket($state.params);
       })
       .subscribe("tasks", vm)
-      .reloadOnScopeEvent("reloadViewsPoller", vm)
+      .reloadOnScopeEvent(["reloadViewsPoller", "mnTasksDetailsChanged"])
       .cycle();
 
       new mnPoller($scope, function () {
         return mnViewsListService.getViewsListState($state.params);
       })
+      .setInterval(10000)
       .subscribe("ddocs", vm)
       .reloadOnScopeEvent("reloadViewsPoller", vm)
       .cycle();

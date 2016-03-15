@@ -16,6 +16,7 @@
       .subscribe(function (logs) {
         vm.logs = logs.data.list;
       })
+      .setInterval(10000)
       .cycle();
     }
   }

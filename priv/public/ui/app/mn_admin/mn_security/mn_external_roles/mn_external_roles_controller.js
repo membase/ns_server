@@ -42,8 +42,9 @@
             .applyToScope("rolesByRole");
         });
 
-      var poller = new mnPoller($scope, mnExternalRolesService.getState, 10000)
+      var poller = new mnPoller($scope, mnExternalRolesService.getState)
         .subscribe("state", vm)
+        .setInterval(10000)
         .reloadOnScopeEvent("reloadRolesPoller", vm)
         .cycle();
     }

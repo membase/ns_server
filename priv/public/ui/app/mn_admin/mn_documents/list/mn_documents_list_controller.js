@@ -5,7 +5,7 @@
     .module("mnDocuments")
     .controller("mnDocumentsListController", mnDocumentsListController);
 
-  function mnDocumentsListController($scope, $rootScope, mnDocumentsListService, $state, $uibModal, mnPoller, removeEmptyValueFilter) {
+  function mnDocumentsListController($scope, $rootScope, mnDocumentsListService, $state, $uibModal, removeEmptyValueFilter) {
     var vm = this;
 
     vm.lookupSubmit = lookupSubmit;

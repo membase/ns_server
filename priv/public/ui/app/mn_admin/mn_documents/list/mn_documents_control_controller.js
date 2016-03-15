@@ -47,7 +47,7 @@
       var poller = new mnPoller($scope, function () {
           return mnDocumentsListService.getDocumentsListState($state.params);
         })
-        .setExtractInterval(10000)
+        .setInterval(10000)
         .subscribe("state", vm)
         .reloadOnScopeEvent("reloadDocumentsPoller", vm);
     }

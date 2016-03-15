@@ -20,7 +20,9 @@
       new mnPoller($scope, function () {
        return mnGsiService.getIndexesState();
       })
+      .setInterval(10000)
       .subscribe("state", vm)
+      .reloadOnScopeEvent("indexStatusURIChanged")
       .cycle();
     }
   }

@@ -61,17 +61,19 @@
         poolDefault.thisNode = _.detect(poolDefault.nodes, function (n) {
           return n.thisNode;
         });
-        mnPoolDefault.export.compat = {
+        poolDefault.compat = {
           atLeast25: poolDefault.thisNode.clusterCompatibility >= version25,
           atLeast30: poolDefault.thisNode.clusterCompatibility >= version30,
           atLeast40: poolDefault.thisNode.clusterCompatibility >= version40,
           atLeast45: poolDefault.thisNode.clusterCompatibility >= version45
         };
-
         poolDefault.isKvNode =  _.indexOf(poolDefault.thisNode.services, "kv") > -1;
         poolDefault.capiBase = $window.location.protocol === "https:" ? poolDefault.thisNode.couchApiBaseHTTPS : poolDefault.thisNode.couchApiBase;
-        latest.value = poolDefault;
+
+        _.extend(mnPoolDefault.export, poolDefault);
+        latest.value = poolDefault; //deprecated and superseded by mnPoolDefault.export
         cache = poolDefault;
+
         return poolDefault;
       });
     }

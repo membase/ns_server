@@ -13,7 +13,7 @@
       function doEjectServer() {
         mnServersService.addToPendingEject(node);
         $uibModalInstance.close();
-        $rootScope.$broadcast("reloadServersPoller");
+        $rootScope.$broadcast("reloadNodes");
       };
     }
 })();

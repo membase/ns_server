@@ -51,7 +51,7 @@
 
     Poller.prototype.isStopped = isStopped;
     Poller.prototype.doCall = doCall;
-    Poller.prototype.setExtractInterval = setExtractInterval;
+    Poller.prototype.setInterval = setInterval;
     Poller.prototype.cycle = cycle;
     Poller.prototype.doCycle = doCycle;
     Poller.prototype.stop = stop;
@@ -67,16 +67,26 @@
     }
     function reloadOnScopeEvent(eventName, vm, spinnerName) {
       var self = this;
-      self.scope.$on(eventName, function () {
-        self.reload(vm).showSpinner(vm, spinnerName);
-      });
+      function action() {
+        self.reload();
+        if (vm) {
+          self.showSpinner(vm, spinnerName);
+        }
+      }
+      if (angular.isArray(eventName)) {
+        angular.forEach(eventName, function (event) {
+          self.scope.$on(event, action);
+        });
+      } else {
+        self.scope.$on(eventName, action);
+      }
       return this;
     }
-    function setExtractInterval(interval) {
+    function setInterval(interval) {
       this.extractInterval = interval;
       return this;
     }
-    function reload(vm) {
+    function reload() {
       this.stop();
       this.doCycle();
       return this;
@@ -119,17 +129,6 @@
         } else {
           self.timeout = $timeout(self.doCycle.bind(self), self.extractInterval);
         }
-      } else {
-        mnTasksDetails.getFresh().then(function (result) {
-          if (self.isStopped(timestamp)) {
-            return;
-          }
-          //recommendedRefreshPeriod should be implemented only for tasks poller,
-          //for dependent pollers better to use scope.$watch("adminCtl.tasks");
-          //in conjunction with some static extractInterval (e.g. 10000)
-          var interval = (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
-          self.timeout = $timeout(self.doCycle.bind(self), interval);
-        });
       }
       self.doCallPromise.then(null, function (resp) {
         self.stop(); //stop cycle on any http error;

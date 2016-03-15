@@ -67,10 +67,30 @@
       new mnEtagPoller($scope, function (previous) {
         return mnPoolDefault.get({
           etag: previous ? previous.etag : "",
-          waitChange: 10000
+          waitChange: $state.current.name === "app.admin.overview" ? 3000 : 10000
         }, {group: "global"});
       }).subscribe(function (resp, previous) {
+        if (!_.isEqual(resp, previous)) {
+          $rootScope.$broadcast("mnPoolDefaultChanged");
+        }
+
         vm.tabName = resp.clusterName;
+
+        if (previous && !_.isEqual(resp.nodes, previous.nodes)) {
+          $rootScope.$broadcast("nodesChanged");
+        }
+
+        if (previous && previous.buckets.uri !== resp.buckets.uri) {
+          $rootScope.$broadcast("bucketUriChanged");
+        }
+
+        if (previous && previous.serverGroupsUri !== resp.serverGroupsUri) {
+          $rootScope.$broadcast("serverGroupsUriChanged");
+        }
+
+        if (previous && previous.indexStatusURI !== resp.indexStatusURI) {
+          $rootScope.$broadcast("indexStatusURIChanged");
+        }
 
         if (!_.isEqual(resp.alerts, (previous || {}).alerts)) {
           mnPoorMansAlertsService.maybeShowAlerts(resp);
@@ -90,9 +110,15 @@
       .cycle();
 
       var tasksPoller = new mnPoller($scope, function () {
-        return mnTasksDetails.get({group: "global"});
+        return mnTasksDetails.getFresh({group: "global"});
+      })
+      .setInterval(function (result) {
+        return (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
       })
       .subscribe(function (tasks, prevTask) {
+        if (!_.isEqual(tasks, prevTask)) {
+          $rootScope.$broadcast("mnTasksDetailsChanged");
+        }
         var rebalanceError = tasks.tasksRebalance && tasks.tasksRebalance.status !== 'running' && tasks.tasksRebalance.errorMessage;
         if (
           rebalanceError && !_.find(mnAlertsService.alerts, {'msg': rebalanceError}) &&

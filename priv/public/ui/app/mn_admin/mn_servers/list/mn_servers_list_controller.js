@@ -37,8 +37,6 @@
     var swapUsageConf = {};
     var cpuUsageConf = {};
 
-    activate();
-
     function getRamUsageConf(node) {
       var total = node.memoryTotal;
       var free = node.memoryFree;
@@ -67,10 +65,10 @@
       return cpuUsageConf;
     }
     function isFailOverDisabled(node) {
-      return isLastActiveData(node) || ($scope.serversCtl.tasks && $scope.serversCtl.tasks.inRecoveryMode);
+      return isLastActiveData(node) || ($scope.adminCtl.tasks && $scope.adminCtl.tasks.inRecoveryMode);
     }
     function disableRemoveBtn(node) {
-      return isLastActiveData(node) || isActiveUnhealthy(node) || ($scope.serversCtl.tasks && $scope.serversCtl.tasks.inRecoveryMode);
+      return isLastActiveData(node) || isActiveUnhealthy(node) || ($scope.adminCtl.tasks && $scope.adminCtl.tasks.inRecoveryMode);
     }
     function isLastActiveData(node) {
       return $scope.serversCtl.nodes.reallyActiveData.length === 1 && (node.services.indexOf("kv") > -1);
@@ -98,8 +96,8 @@
       return !!(couchDataSize(node) || couchDiskUsage(node));
     }
     function getRebalanceProgress(node) {
-      return $scope.serversCtl.tasks && ($scope.serversCtl.tasks.tasksRebalance.perNode && $scope.serversCtl.tasks.tasksRebalance.perNode[node.otpNode]
-           ? $scope.serversCtl.tasks.tasksRebalance.perNode[node.otpNode].progress : 0 );
+      return $scope.adminCtl.tasks && ($scope.adminCtl.tasks.tasksRebalance.perNode && $scope.adminCtl.tasks.tasksRebalance.perNode[node.otpNode]
+           ? $scope.adminCtl.tasks.tasksRebalance.perNode[node.otpNode].progress : 0 );
     }
     function isActiveUnhealthy(node) {
       return $state.params.type === "active" && isNodeUnhealthy(node);
@@ -141,7 +139,7 @@
           });
         } else {
           mnServersService.addToPendingEject(node);
-          $rootScope.$broadcast("reloadServersPoller");
+          $rootScope.$broadcast("reloadNodes");
         }
       });
 
@@ -175,11 +173,7 @@
     }
     function cancelEjectServer(node) {
       mnServersService.removeFromPendingEject(node);
-      $rootScope.$broadcast("reloadServersPoller");
-    }
-
-    function activate() {
-      $rootScope.$broadcast("reloadServersPoller");
+      $rootScope.$broadcast("reloadNodes");
     }
   }
 })();

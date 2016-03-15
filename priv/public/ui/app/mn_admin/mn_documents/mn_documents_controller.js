@@ -17,7 +17,7 @@
     ])
     .controller("mnDocumentsController", mnDocumentsController);
 
-  function mnDocumentsController($scope, mnDocumentsListService, mnPoller, $state) {
+  function mnDocumentsController($scope, mnDocumentsListService, mnPromiseHelper, $state) {
     var vm = this;
 
     vm.onSelectBucketName = onSelectBucketName;
@@ -36,6 +36,7 @@
           return mnDocumentsListService.populateBucketsSelectBox($state.params);
         })
         .subscribe("state", vm)
+        .reloadOnScopeEvent("bucketUriChanged")
         .cycle();
     }
   }
