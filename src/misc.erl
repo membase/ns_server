@@ -1941,3 +1941,17 @@ do_test_multi_call() ->
     ?assertMatch([{FirstNode, {exit, {noproc, _}}}], Bad4).
 
 -endif.
+
+intersperse([], _) ->
+    [];
+intersperse([_] = List, _) ->
+    List;
+intersperse([X | Rest], Sep) ->
+    [X, Sep | intersperse(Rest, Sep)].
+
+-ifdef(EUNIT).
+intersperse_test() ->
+    ?assertEqual([], intersperse([], x)),
+    ?assertEqual([a], intersperse([a], x)),
+    ?assertEqual([a,x,b,x,c], intersperse([a,b,c], x)).
+-endif.

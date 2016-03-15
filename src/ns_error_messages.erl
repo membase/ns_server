@@ -155,8 +155,12 @@ verify_otp_connectivity_connection_error(Reason, OtpNode, Host, Port) ->
                                  " This can be firewall problem.", [Port, Detail, OtpNode])).
 
 unsupported_services_error(AvailableServices, RequestedServices) ->
-    list_to_binary(io_lib:format("Node doesn't support requested services: ~p. Supported services: ~p",
-                                 [RequestedServices, AvailableServices])).
+    list_to_binary(io_lib:format("Node doesn't support requested services: ~s. Supported services: ~s",
+                                 [services_to_iolist(RequestedServices),
+                                  services_to_iolist(AvailableServices)])).
+
+services_to_iolist(Services) ->
+    misc:intersperse(lists:map(fun couch_util:to_binary/1, Services), ", ").
 
 topology_limitation_error() ->
     <<"Community edition supports either data only nodes or nodes with all services enabled.">>.

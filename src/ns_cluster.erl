@@ -52,7 +52,7 @@
 -export([add_node_to_group/5,
          engage_cluster/1, complete_join/1,
          check_host_connectivity/1, change_address/1,
-         enforce_topology_limitation/2,
+         enforce_topology_limitation/1,
          rename_marker_path/0]).
 
 %% debugging & diagnostic export
@@ -859,7 +859,7 @@ get_requested_services(KVList) ->
 do_get_requested_services(Key, KVList, Default) ->
     case lists:keyfind(Key, 1, KVList) of
         false ->
-            [atom_to_binary(S, latin1) || S <- Default];
+            {ok, Default};
         {_, List} ->
             case is_list(List) of
                 false ->
@@ -869,10 +869,22 @@ do_get_requested_services(Key, KVList, Default) ->
                         false ->
                             erlang:exit({unexpected_json, not_list, Key});
                         true ->
-                            List
+                            try
+                                {ok, [binary_to_existing_atom(S, latin1) || S <- List]}
+                            catch
+                                error:badarg ->
+                                    {bad_services, List}
+                            end
                     end
             end
     end.
+
+enforce_topology_limitation(Services) ->
+    KvOnly = [kv],
+    AllServices = lists:sort(ns_cluster_membership:supported_services()),
+
+    Combinations = [KvOnly, AllServices],
+    enforce_topology_limitation(Services, Combinations).
 
 enforce_topology_limitation(Services, SupportedCombinations) ->
     SortedServices = lists:sort(Services),
@@ -885,25 +897,28 @@ enforce_topology_limitation(Services, SupportedCombinations) ->
     end.
 
 do_engage_cluster_check_services(NodeKVList) ->
-    RequestedServices = get_requested_services(NodeKVList),
-    SupportedServices = [atom_to_binary(S, latin1) || S <- ns_cluster_membership:supported_services()],
-    case RequestedServices -- SupportedServices of
-        [] ->
-            case enforce_topology_limitation(RequestedServices,
-                                            [[<<"kv">>], lists:sort(SupportedServices)]) of
-                {error, Msg} ->
-                    {error, incompatible_services, Msg, incompatible_services};
-                ok ->
-                    Services = [binary_to_existing_atom(S, latin1) ||
-                                   S <- RequestedServices],
-
-                    do_engage_cluster_inner(NodeKVList, Services)
+    SupportedServices = ns_cluster_membership:supported_services(),
+    case get_requested_services(NodeKVList) of
+        {ok, Services} ->
+            case Services -- SupportedServices of
+                [] ->
+                    case enforce_topology_limitation(Services) of
+                        {error, Msg} ->
+                            {error, incompatible_services, Msg, incompatible_services};
+                        ok ->
+                            do_engage_cluster_inner(NodeKVList, Services)
+                    end;
+                _ ->
+                    unsupported_services_error(SupportedServices, Services)
             end;
-        _ ->
-            {error, incompatible_services,
-             ns_error_messages:unsupported_services_error(SupportedServices, RequestedServices),
-             incompatible_services}
+        {bad_services, RawServices} ->
+            unsupported_services_error(SupportedServices, RawServices)
     end.
+
+unsupported_services_error(Supported, Requested) ->
+    {error, incompatible_services,
+     ns_error_messages:unsupported_services_error(Supported, Requested),
+     incompatible_services}.
 
 do_engage_cluster_inner(NodeKVList, Services) ->
     OtpNode = expect_json_property_atom(<<"otpNode">>, NodeKVList),
@@ -1026,9 +1041,7 @@ do_complete_join(NodeKVList) ->
         OtpCookie = expect_json_property_atom(<<"otpCookie">>, NodeKVList),
         MyNode = expect_json_property_atom(<<"targetNode">>, NodeKVList),
 
-        Services0 = get_requested_services(NodeKVList),
-        Services = [binary_to_existing_atom(S, latin1) || S <- Services0],
-
+        {ok, Services} = get_requested_services(NodeKVList),
         case check_can_join_to(NodeKVList, Services) of
             {ok, _} ->
                 case ns_cluster_membership:system_joinable() andalso MyNode =:= node() of
