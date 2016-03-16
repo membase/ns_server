@@ -197,7 +197,7 @@ parse_cluster_ca(CA) ->
         {ok, []} ->
             {error, malformed_cert, CA};
         {ok, [{'Certificate', RootCertDer, not_encrypted}]} ->
-            Info = {Subject, NotBefore, NotAfter} =
+            Info =
                 try
                     get_info(RootCertDer)
                 catch T:E ->
@@ -206,7 +206,7 @@ parse_cluster_ca(CA) ->
             case Info of
                 {error, malformed_cert, _} = E1 ->
                     E1;
-                _ ->
+                {Subject, NotBefore, NotAfter} ->
                     UTC = calendar:datetime_to_gregorian_seconds(
                             calendar:universal_time()),
                     case NotBefore > UTC orelse NotAfter < UTC of
