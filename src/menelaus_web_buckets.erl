@@ -980,7 +980,7 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
 
-get_time_sync(Params, true = IsNew) ->
+get_time_sync(Params, true = _IsNew) ->
     case proplists:get_value("timeSynchronization", Params) of
         undefined ->
             {ok, time_synchronization, disabled};
