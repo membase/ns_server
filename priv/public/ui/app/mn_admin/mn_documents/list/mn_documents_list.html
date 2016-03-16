@@ -23,11 +23,11 @@
             id="docs_lookup_doc_by_id"
             placeholder="Document ID"
             ng-model="documentsListCtl.lookupId"
-            ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">
+            ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">
           <button
             type="submit"
             class="btn_1"
-            ng-class="{dynamic_disabled: documentsControlCtl.isEmptyState()}"
+            ng-class="{dynamic_disabled: documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read}"
             id="docs_lookup_doc_by_id_btn">
             <span>Lookup Id</span>
           </button>
@@ -63,8 +63,11 @@
               <a ui-sref="app.admin.documents.editing({documentId: r.id})">{{ r.key }}</a>
             </td>
             <td colspan="3">
-              <button class="list_button delete_btn when-roadmin-avoid-me" ng-click="documentsListCtl.deleteDocument(r.id)"><span>Delete</span></button>
-              <a  class="list_button btn_edit" ui-sref="app.admin.documents.editing({documentId: r.id})"><span>Edit Document</span></a>
+              <button class="list_button delete_btn when-roadmin-avoid-me" ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write" ng-click="documentsListCtl.deleteDocument(r.id)"><span>Delete</span></button>
+              <a class="list_button btn_edit" ui-sref="app.admin.documents.editing({documentId: r.id})">
+                <span ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">Edit Document</span>
+                <span ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read && !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">View Document</span>
+              </a>
             </td>
           </tr>
           <tr ng-if="!documentsControlCtl.state.docs.rows.length">

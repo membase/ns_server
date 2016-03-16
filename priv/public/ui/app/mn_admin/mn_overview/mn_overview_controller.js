@@ -36,10 +36,13 @@
         .reloadOnScopeEvent("bucketUriChanged")
         .subscribe("buckets", vm)
         .cycle();
-      new mnPoller($scope, mnOverviewService.getStats)
-        .setInterval(3000)
-        .subscribe("mnOverviewStats", vm)
-        .cycle();
+
+      if ($scope.rbac.cluster.bucket['*'].stats.read) {
+        new mnPoller($scope, mnOverviewService.getStats)
+          .setInterval(3000)
+          .subscribe("mnOverviewStats", vm)
+          .cycle();
+      }
     }
   }
 })();
