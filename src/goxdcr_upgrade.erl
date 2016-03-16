@@ -26,8 +26,9 @@
 maybe_upgrade(undefined, _, _, _) ->
     %% this happens during the cluster initialization. no upgrade needed
     ok;
-maybe_upgrade(CurrentVersion, NewVersion, Config, NodesWanted) when CurrentVersion < [4, 0] andalso
-                                                                    NewVersion >= [4, 0] ->
+maybe_upgrade(CurrentVersion, NewVersion, Config, NodesWanted)
+  when CurrentVersion < ?VERSION_40 andalso
+       NewVersion >= ?VERSION_40 ->
     ?log_debug("Initiating goxdcr upgrade due to version change from ~p to ~p",
                [CurrentVersion, NewVersion]),
     upgrade(Config, NodesWanted);

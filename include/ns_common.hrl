@@ -199,6 +199,10 @@
 -define(MIN_FREE_RAM, misc:get_env_default(quota_min_free_ram, 1024)).
 -define(MIN_FREE_RAM_PERCENT, 80).
 
+-define(VERSION_25, [2, 5]).
+-define(VERSION_30, [3, 0]).
+-define(VERSION_40, [4, 0]).
+-define(VERSION_41, [4, 1]).
 -define(VERSION_45, [4, 5]).
 
 %% Points to latest release

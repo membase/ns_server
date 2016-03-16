@@ -746,7 +746,7 @@ node_add_transaction(Node, GroupUUID, Services, Body) ->
                       Cfg2 = SetFn({node, Node, membership}, inactiveAdded, Cfg1),
                       CfgPreGroups = SetFn({node, Node, services}, Services, Cfg2),
                       case ns_config:search(Cfg, cluster_compat_version, undefined) of
-                          [_A, _B] = CompatVersion when CompatVersion >= [2, 5] ->
+                          [_A, _B] = CompatVersion when CompatVersion >= ?VERSION_25 ->
                               {value, Groups} = ns_config:search(Cfg, server_groups),
                               MaybeGroup0 = [G || G <- Groups,
                                                   proplists:get_value(uuid, G) =:= GroupUUID],

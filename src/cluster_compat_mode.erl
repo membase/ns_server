@@ -60,7 +60,7 @@ supported_compat_version() ->
     ?LATEST_VERSION_NUM.
 
 min_supported_compat_version() ->
-    [2, 5].
+    ?VERSION_25.
 
 %% NOTE: this is rpc:call-ed by mb_master of 2.0.1+
 %%
@@ -81,19 +81,19 @@ is_enabled(Config, FeatureVersion) ->
     is_enabled_at(get_compat_version(Config), FeatureVersion).
 
 is_cluster_30() ->
-    is_enabled([3, 0]).
+    is_enabled(?VERSION_30).
 
 is_cluster_40() ->
-    is_enabled([4, 0]).
+    is_enabled(?VERSION_40).
 
 is_version_40(ClusterVersion) ->
-    is_enabled_at(ClusterVersion, [4, 0]).
+    is_enabled_at(ClusterVersion, ?VERSION_40).
 
 is_cluster_41() ->
     is_cluster_41(ns_config:latest()).
 
 is_cluster_41(Config) ->
-    is_enabled(Config, [4, 1]).
+    is_enabled(Config, ?VERSION_41).
 
 compat_mode_string_40() ->
     "4.0".

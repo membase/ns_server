@@ -39,19 +39,19 @@ do_upgrade_config(Config, FinalVersion) ->
         %% default config, but that uncovered issues that I'm too scared to
         %% touch at the moment.
         false ->
-            [{set, cluster_compat_version, [2, 5]}];
+            [{set, cluster_compat_version, ?VERSION_25}];
         {value, undefined} ->
-            [{set, cluster_compat_version, [2, 5]}];
-        {value, [2, 5]} ->
-            [{set, cluster_compat_version, [3, 0]} |
+            [{set, cluster_compat_version, ?VERSION_25}];
+        {value, ?VERSION_25} ->
+            [{set, cluster_compat_version, ?VERSION_30} |
              upgrade_config_from_2_5_to_3_0(Config)];
-        {value, [3, 0]} ->
-            [{set, cluster_compat_version, [4, 0]} |
+        {value, ?VERSION_30} ->
+            [{set, cluster_compat_version, ?VERSION_40} |
              upgrade_config_from_3_0_to_4_0(Config)];
-        {value, [4, 0]} ->
-            [{set, cluster_compat_version, [4, 1]} |
+        {value, ?VERSION_40} ->
+            [{set, cluster_compat_version, ?VERSION_41} |
              upgrade_config_from_4_0_to_4_1(Config)];
-        {value, [4, 1]} ->
+        {value, ?VERSION_41} ->
             [{set, cluster_compat_version, ?VERSION_45} |
              upgrade_config_from_4_1_to_4_5(Config)]
     end.

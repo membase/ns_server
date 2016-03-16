@@ -15,6 +15,7 @@
 %%
 -module(ns_cluster_membership).
 
+-include("ns_common.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -export([active_nodes/0,
@@ -235,14 +236,14 @@ supported_services_for_version(CompatVersion) ->
 
 -ifdef(EUNIT).
 supported_services_for_version_test() ->
-    ?assertEqual([kv], supported_services_for_version([2,5])),
-    ?assertEqual([kv], supported_services_for_version([3,0])),
+    ?assertEqual([kv], supported_services_for_version(?VERSION_25)),
+    ?assertEqual([kv], supported_services_for_version(?VERSION_30)),
     ?assertEqual(lists:sort([kv,index,n1ql]),
-                 lists:sort(supported_services_for_version([4,0]))),
+                 lists:sort(supported_services_for_version(?VERSION_40))),
     ?assertEqual(lists:sort([kv,index,n1ql]),
-                 lists:sort(supported_services_for_version([4,1]))),
+                 lists:sort(supported_services_for_version(?VERSION_41))),
     ?assertEqual(lists:sort([fts,kv,index,n1ql]),
-                 lists:sort(supported_services_for_version([4,5]))).
+                 lists:sort(supported_services_for_version(?VERSION_45))).
 -endif.
 
 cluster_supported_services() ->
