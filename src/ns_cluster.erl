@@ -879,21 +879,26 @@ do_get_requested_services(Key, KVList, Default) ->
             end
     end.
 
-enforce_topology_limitation(Services) ->
+community_allowed_topologies() ->
     KvOnly = [kv],
-    AllServices = lists:sort(ns_cluster_membership:supported_services()),
+    AllServices40 = ns_cluster_membership:supported_services_for_version(?VERSION_40),
+    AllServices = ns_cluster_membership:supported_services(),
 
-    Combinations = [KvOnly, AllServices],
-    enforce_topology_limitation(Services, Combinations).
+    [KvOnly, lists:sort(AllServices40), lists:sort(AllServices)].
 
-enforce_topology_limitation(Services, SupportedCombinations) ->
-    SortedServices = lists:sort(Services),
-    case cluster_compat_mode:is_enterprise() orelse
-        lists:member(SortedServices, SupportedCombinations) of
+enforce_topology_limitation(Services) ->
+    case cluster_compat_mode:is_enterprise() of
         true ->
             ok;
         false ->
-            {error, ns_error_messages:topology_limitation_error(SupportedCombinations)}
+            SortedServices = lists:sort(Services),
+            SupportedCombinations = community_allowed_topologies(),
+            case lists:member(SortedServices, SupportedCombinations) of
+                true ->
+                    ok;
+                false ->
+                    {error, ns_error_messages:topology_limitation_error(SupportedCombinations)}
+            end
     end.
 
 do_engage_cluster_check_services(NodeKVList) ->
