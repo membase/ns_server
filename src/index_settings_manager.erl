@@ -206,7 +206,7 @@ default_settings() ->
      {compaction, compaction_defaults()}].
 
 extra_default_settings_for_45(Config) ->
-    Nodes = ns_node_disco:nodes_wanted(),
+    Nodes = ns_node_disco:nodes_wanted(Config),
 
     IndexNodes = ns_cluster_membership:service_nodes(Config, Nodes, index),
     {SM, CM, Int} = case IndexNodes of
