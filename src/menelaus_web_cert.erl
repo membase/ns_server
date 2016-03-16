@@ -96,7 +96,7 @@ reply_error(Req, Error) ->
 
 handle_upload_cluster_ca(Req) ->
     menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_watson(),
+    menelaus_web:assert_is_45(),
 
     case Req:recv_body() of
         undefined ->
@@ -115,7 +115,7 @@ handle_upload_cluster_ca(Req) ->
 
 handle_reload_node_certificate(Req) ->
     menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_watson(),
+    menelaus_web:assert_is_45(),
 
     case ns_server_cert:apply_certificate_chain_from_inbox() of
         {ok, Props} ->

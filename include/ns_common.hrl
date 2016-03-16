@@ -198,10 +198,10 @@
 
 -define(MIN_FREE_RAM, misc:get_env_default(quota_min_free_ram, 1024)).
 -define(MIN_FREE_RAM_PERCENT, 80).
-%% Watson Release Related
--define(WATSON_VERSION_NUM, [4, 5]).
+
+-define(VERSION_45, [4, 5]).
 
 %% Points to latest release
--define(LATEST_VERSION_NUM, ?WATSON_VERSION_NUM).
+-define(LATEST_VERSION_NUM, ?VERSION_45).
 
 -endif.

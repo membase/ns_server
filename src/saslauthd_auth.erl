@@ -21,7 +21,7 @@
          set_settings/1,
          check/2,
          authenticate/2,
-         get_role_pre_watson/1
+         get_role_pre_45/1
         ]).
 
 verify_creds(Username, Password) ->
@@ -65,15 +65,15 @@ do_authenticate(User, Password) ->
             verify_creds(User, Password)
     end.
 
-get_role_pre_watson(User) ->
+get_role_pre_45(User) ->
     case ns_config:search(saslauthd_auth_settings) of
         {value, LDAPCfg} ->
-            get_role_pre_watson(LDAPCfg, User);
+            get_role_pre_45(LDAPCfg, User);
         false ->
             false
     end.
 
-get_role_pre_watson(LDAPCfg, User) ->
+get_role_pre_45(LDAPCfg, User) ->
     {_, Admins} = lists:keyfind(admins, 1, LDAPCfg),
     {_, RoAdmins} = lists:keyfind(roAdmins, 1, LDAPCfg),
     UserB = list_to_binary(User),
@@ -101,7 +101,7 @@ check(User, Password) ->
         true ->
             case verify_creds(User, Password) of
                 true ->
-                    get_role_pre_watson(LDAPCfg, User);
+                    get_role_pre_45(LDAPCfg, User);
                 Other ->
                     Other
             end

@@ -985,12 +985,12 @@ get_time_sync(Params, true = _IsNew) ->
         undefined ->
             {ok, time_synchronization, disabled};
         Value ->
-            case cluster_compat_mode:is_cluster_watson() of
+            case cluster_compat_mode:is_cluster_45() of
                 true ->
                     parse_validate_time_synchronization(Value);
                 false ->
                     {error, time_synchronization,
-                     <<"TimeSynchronization can not be set if cluster is not fully Watson">>}
+                     <<"TimeSynchronization can not be set if cluster is not fully 4.5">>}
             end
     end;
 get_time_sync(Params, false = _IsNew) ->

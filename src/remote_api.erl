@@ -36,7 +36,7 @@
 get_indexes(Node) ->
     do_call(Node, get_indexes).
 
-%% introduced in watson
+%% introduced in 4.5
 get_fts_indexes(Node) ->
     do_call(Node, get_fts_indexes).
 

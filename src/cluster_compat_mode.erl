@@ -33,8 +33,8 @@
          compat_mode_string_40/0,
          is_cluster_41/0,
          is_cluster_41/1,
-         is_cluster_watson/0,
-         is_version_watson/1,
+         is_cluster_45/0,
+         is_version_45/1,
          is_enterprise/0,
          is_goxdcr_enabled/0,
          is_goxdcr_enabled/1,
@@ -98,11 +98,11 @@ is_cluster_41(Config) ->
 compat_mode_string_40() ->
     "4.0".
 
-is_version_watson(ClusterVersion) ->
-    is_enabled_at(ClusterVersion, ?WATSON_VERSION_NUM).
+is_version_45(ClusterVersion) ->
+    is_enabled_at(ClusterVersion, ?VERSION_45).
 
-is_cluster_watson() ->
-    is_enabled(?WATSON_VERSION_NUM).
+is_cluster_45() ->
+    is_enabled(?VERSION_45).
 
 is_index_aware_rebalance_on() ->
     not ns_config:read_key_fast(index_aware_rebalance_disabled, false).

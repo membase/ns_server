@@ -223,7 +223,7 @@ supported_services_for_version(CompatVersion) ->
     case cluster_compat_mode:is_version_40(CompatVersion) of
         true ->
             Services1 = [n1ql, index] ++ Services0,
-            case cluster_compat_mode:is_version_watson(CompatVersion) of
+            case cluster_compat_mode:is_version_45(CompatVersion) of
                 true ->
                     [fts] ++ maybe_example_service() ++ Services1;
                 false ->
@@ -252,7 +252,7 @@ default_services() ->
     [kv].
 
 topology_aware_services() ->
-    case cluster_compat_mode:is_cluster_watson() of
+    case cluster_compat_mode:is_cluster_45() of
         true ->
             [fts | maybe_example_service()];
         false ->

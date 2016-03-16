@@ -49,8 +49,8 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, cluster_compat_version, [4, 1]} |
              upgrade_config_from_4_0_to_4_1(Config)];
         {value, [4, 1]} ->
-            [{set, cluster_compat_version, ?WATSON_VERSION_NUM} |
-             upgrade_config_from_4_1_to_watson(Config)]
+            [{set, cluster_compat_version, ?VERSION_45} |
+             upgrade_config_from_4_1_to_4_5(Config)]
     end.
 
 upgrade_config_from_2_0_to_2_5(Config) ->
@@ -71,12 +71,11 @@ upgrade_config_from_4_0_to_4_1(Config) ->
     ?log_info("Performing online config upgrade to 4.1 version"),
     create_service_maps(Config, [n1ql, index]).
 
-upgrade_config_from_4_1_to_watson(Config) ->
-    ?log_info("Performing online config upgrade to ~s version",
-              [misc:pretty_version(?WATSON_VERSION_NUM)]),
+upgrade_config_from_4_1_to_4_5(Config) ->
+    ?log_info("Performing online config upgrade to 4.5 version"),
     RV = create_service_maps(Config, [fts]) ++
         menelaus_roles:upgrade_users(Config),
-    RV1 = index_settings_manager:config_upgrade_to_watson(Config) ++ RV,
+    RV1 = index_settings_manager:config_upgrade_to_45(Config) ++ RV,
     add_index_ram_alert_limit(Config) ++ RV1.
 
 add_index_ram_alert_limit(Config) ->

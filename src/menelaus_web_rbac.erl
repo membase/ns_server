@@ -138,7 +138,7 @@ role_to_json({Name, [BucketName]}) ->
 
 handle_get_roles(Req) ->
     menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_watson(),
+    menelaus_web:assert_is_45(),
 
     Json = [{role_to_json(Role) ++ Props} ||
                {Role, Props} <- menelaus_roles:get_all_assignable_roles(ns_config:get())],
@@ -146,7 +146,7 @@ handle_get_roles(Req) ->
 
 handle_get_users(Req) ->
     menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_watson(),
+    menelaus_web:assert_is_45(),
 
     Users = menelaus_roles:get_users(),
     Json = lists:map(
@@ -216,7 +216,7 @@ reply_bad_roles(Req, BadRoles) ->
 
 handle_put_user(UserId, Req) ->
     menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_watson(),
+    menelaus_web:assert_is_45(),
 
     Props = Req:parse_post(),
     Roles = parse_roles(proplists:get_value("roles", Props)),

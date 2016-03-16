@@ -55,7 +55,7 @@
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
          assert_is_40/0,
-         assert_is_watson/0]).
+         assert_is_45/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -1205,8 +1205,8 @@ assert_is_enterprise() ->
 assert_is_40() ->
     assert_cluster_version(fun cluster_compat_mode:is_cluster_40/0).
 
-assert_is_watson() ->
-    assert_cluster_version(fun cluster_compat_mode:is_cluster_watson/0).
+assert_is_45() ->
+    assert_cluster_version(fun cluster_compat_mode:is_cluster_45/0).
 
 assert_cluster_version(Fun) ->
     case Fun() of
@@ -1439,7 +1439,7 @@ build_global_auto_compaction_settings(Config) ->
                 false ->
                     []
             end,
-    IndexExtra = (case cluster_compat_mode:is_cluster_watson() of
+    IndexExtra = (case cluster_compat_mode:is_cluster_45() of
                       true ->
                           CompMode = index_settings_manager:get(compactionMode),
                           true = (CompMode =/= undefined),
@@ -2205,7 +2205,7 @@ validate_memory_quota(Config, CompatVersion, R0) ->
              false ->
                  R1
          end,
-    R3 = case cluster_compat_mode:is_version_watson(CompatVersion) of
+    R3 = case cluster_compat_mode:is_version_45(CompatVersion) of
              true ->
                  validate_integer(ftsMemoryQuota, R2);
              false ->
@@ -2763,7 +2763,7 @@ build_memory_quota_info(Config) ->
         false ->
             Props
     end,
-    Props2 = case cluster_compat_mode:is_cluster_watson() of
+    Props2 = case cluster_compat_mode:is_cluster_45() of
         true ->
             {ok, FTSQuota} = ns_storage_conf:get_memory_quota(Config, fts),
             [{ftsMemoryQuota, FTSQuota} | Props1];
@@ -3441,7 +3441,7 @@ handle_set_autocompaction(Req) ->
 
             case Is40 of
                 true ->
-                    case cluster_compat_mode:is_cluster_watson() of
+                    case cluster_compat_mode:is_cluster_45() of
                         true ->
                             new_index_compaction_settings(MaybeIndex);
                         false ->
@@ -3630,7 +3630,7 @@ parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
                 RV0 = PercValidator({"indexFragmentationThreshold[percentage]",
                                      index_fragmentation_percentage,
                                      "index fragmentation"}),
-                case cluster_compat_mode:is_cluster_watson() of
+                case cluster_compat_mode:is_cluster_45() of
                     true ->
                         parse_and_validate_extra_index_settings(Params) ++ RV0;
                     false ->

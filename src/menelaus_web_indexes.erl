@@ -38,7 +38,7 @@ handle_settings_get(Req) ->
 
 get_settings() ->
     S0 = index_settings_manager:get(generalSettings),
-    case cluster_compat_mode:is_cluster_watson() of
+    case cluster_compat_mode:is_cluster_45() of
         true ->
             [{storageMode, index_settings_manager:get(storageMode)}] ++ S0;
         false ->
@@ -53,7 +53,7 @@ validate_settings_post(Args) ->
                    validate_range(Key, Min, Max, Acc1)
            end, R0, integer_settings()),
     R2 = validate_string(R1, logLevel),
-    R3 = case cluster_compat_mode:is_cluster_watson() of
+    R3 = case cluster_compat_mode:is_cluster_45() of
              true ->
                  validate_storage_mode(R2);
              false ->
@@ -153,7 +153,7 @@ handle_settings_post(Req) ->
 
     execute_if_validated(
       fun (Values) ->
-              Values1 = case cluster_compat_mode:is_cluster_watson() of
+              Values1 = case cluster_compat_mode:is_cluster_45() of
                             true ->
                                 update_storage_mode(Req, Values);
                             false ->

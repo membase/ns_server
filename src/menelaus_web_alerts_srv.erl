@@ -194,8 +194,8 @@ do_handle_check_alerts_info(#state{history=Hist, opaque=Opaque}) ->
     BucketNames = ordsets:intersection(lists:sort(ns_memcached:active_buckets()),
                                        lists:sort(ns_bucket:node_bucket_names(node()))),
     IsIndex = lists:member(index, ns_cluster_membership:node_active_services(node())),
-    IsWatson = cluster_compat_mode:is_cluster_watson(),
-    Index = case IsWatson andalso IsIndex of
+    Is45 = cluster_compat_mode:is_cluster_45(),
+    Index = case Is45 andalso IsIndex of
                 true ->
                     ["@index"];
                 false ->

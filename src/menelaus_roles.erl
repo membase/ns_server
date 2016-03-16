@@ -116,7 +116,7 @@ preconfigured_roles() ->
 
 -spec get_definitions() -> [rbac_role_def(), ...].
 get_definitions() ->
-    case cluster_compat_mode:is_cluster_watson() of
+    case cluster_compat_mode:is_cluster_45() of
         true ->
             get_definitions(ns_config:latest());
         false ->
@@ -206,12 +206,12 @@ compile_roles(Roles, Definitions) ->
 
 -spec get_user_roles(rbac_identity()) -> [rbac_role()].
 get_user_roles({User, saslauthd} = Identity) ->
-    case cluster_compat_mode:is_cluster_watson() of
+    case cluster_compat_mode:is_cluster_45() of
         true ->
             Props = ns_config:search_prop(ns_config:latest(), user_roles, Identity, []),
             proplists:get_value(roles, Props, []);
         false ->
-            case saslauthd_auth:get_role_pre_watson(User) of
+            case saslauthd_auth:get_role_pre_45(User) of
                 admin ->
                     [admin];
                 ro_admin ->

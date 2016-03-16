@@ -26,7 +26,7 @@
          update/1, update/2,
          update_txn/1,
          config_upgrade/0,
-         config_upgrade_to_watson/1]).
+         config_upgrade_to_45/1]).
 
 start_link() ->
     work_queue:start_link(?MODULE, fun init/0).
@@ -82,11 +82,11 @@ update_txn(Props) ->
 config_upgrade() ->
     [{set, ?INDEX_CONFIG_KEY, build_settings_json(default_settings())}].
 
-config_upgrade_to_watson(Config) ->
+config_upgrade_to_45(Config) ->
     JSON = fetch_settings_json(Config),
     Current = decode_settings_json(JSON),
-    New = build_settings_json(watson_extra_default_settings(Config), Current,
-                              watson_extra_known_settings()),
+    New = build_settings_json(extra_default_settings_for_45(Config), Current,
+                              extra_known_settings_for_45()),
     [{set, ?INDEX_CONFIG_KEY, New}].
 
 %% internal
@@ -181,20 +181,20 @@ do_populate_ets_table(JSON) ->
     erlang:put(prev_json, JSON).
 
 known_settings() ->
-    known_settings(cluster_compat_mode:is_cluster_watson()).
+    known_settings(cluster_compat_mode:is_cluster_45()).
 
-known_settings(IsWatson) ->
+known_settings(Is45) ->
     RV = [{memoryQuota, memory_quota_lens()},
           {generalSettings, general_settings_lens()},
           {compaction, compaction_lens()}],
-    case IsWatson of
+    case Is45 of
         true ->
-            watson_extra_known_settings() ++ RV;
+            extra_known_settings_for_45() ++ RV;
         false ->
             RV
     end.
 
-watson_extra_known_settings() ->
+extra_known_settings_for_45() ->
     [{storageMode, id_lens(<<"indexer.settings.storage_mode">>)},
      {compactionMode,
       id_lens(<<"indexer.settings.compaction.compaction_mode">>)},
@@ -205,7 +205,7 @@ default_settings() ->
      {generalSettings, general_settings_defaults()},
      {compaction, compaction_defaults()}].
 
-watson_extra_default_settings(Config) ->
+extra_default_settings_for_45(Config) ->
     Nodes = ns_node_disco:nodes_wanted(),
 
     IndexNodes = ns_cluster_membership:service_nodes(Config, Nodes, index),
@@ -380,7 +380,7 @@ defaults_test() ->
 
     ?assertEqual(Keys(known_settings(false)), Keys(default_settings())),
     ?assertEqual(Keys(known_settings(true)),
-                 Keys(default_settings() ++ watson_extra_known_settings())),
+                 Keys(default_settings() ++ extra_known_settings_for_45())),
     ?assertEqual(Keys(compaction_lens_props()), Keys(compaction_defaults())),
     ?assertEqual(Keys(general_settings_lens_props()),
                  Keys(general_settings_defaults())).

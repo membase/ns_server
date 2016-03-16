@@ -413,7 +413,7 @@ index_node_spec(Config) ->
             {ok, IdxDir} = ns_storage_conf:this_node_ixdir(),
             IdxDir2 = filename:join(IdxDir, "@2i"),
             MinidumpDir = path_config:minidump_dir(),
-            AddSM = case cluster_compat_mode:is_cluster_watson() of
+            AddSM = case cluster_compat_mode:is_cluster_45() of
                         true ->
                             StorageMode =
                                 index_settings_manager:get_from_config(Config,

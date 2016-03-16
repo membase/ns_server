@@ -25,7 +25,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    list_to_tuple(?WATSON_VERSION_NUM).
+    list_to_tuple(?VERSION_45).
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),
@@ -429,7 +429,7 @@ upgrade_config(Config) ->
              upgrade_config_from_4_0_to_4_1_1(Config)];
         {value, {4,1,1}} ->
             [{set, {node, node(), config_version}, CurrentVersion} |
-             upgrade_config_from_4_1_1_to_watson()];
+             upgrade_config_from_4_1_1_to_4_5()];
         V0 ->
             OldVersion =
                 case V0 of
@@ -573,11 +573,11 @@ do_upgrade_config_from_4_0_to_4_1_1(_Config, DefaultConfig) ->
     [{set, MCDefaultsK, NewMCDefaults},
      {set, JTKey, DefaultJsonTemplateConfig}].
 
-upgrade_config_from_4_1_1_to_watson() ->
+upgrade_config_from_4_1_1_to_4_5() ->
     DefaultConfig = default(),
-    do_upgrade_config_from_4_1_1_to_watson(DefaultConfig).
+    do_upgrade_config_from_4_1_1_to_4_5(DefaultConfig).
 
-do_upgrade_config_from_4_1_1_to_watson(DefaultConfig) ->
+do_upgrade_config_from_4_1_1_to_4_5(DefaultConfig) ->
     ConfKey = {node, node(), memcached_config},
     {value, McdConfig} = ns_config:search([DefaultConfig], ConfKey),
 
@@ -685,14 +685,14 @@ upgrade_4_0_to_4_1_1_test() ->
                   {set, {node, _, memcached_config}, new_memcached_config}],
                  do_upgrade_config_from_4_0_to_4_1_1(Cfg, Default)).
 
-upgrade_4_1_1_to_watson_test() ->
+upgrade_4_1_1_to_4_5_test() ->
     Default = [{{node, node(), memcached_config}, memcached_config},
                {{node, node(), memcached}, memcached},
                {{node, node(), memcached_defaults}, memcached_defaults}],
 
     ?assertMatch([{set, {node, _, memcached_config}, memcached_config},
                   {set, {node, _, memcached_defaults}, memcached_defaults}],
-                 do_upgrade_config_from_4_1_1_to_watson(Default)).
+                 do_upgrade_config_from_4_1_1_to_4_5(Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
