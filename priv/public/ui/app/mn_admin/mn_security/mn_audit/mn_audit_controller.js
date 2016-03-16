@@ -21,7 +21,7 @@
       $scope.$watch('auditCtl.state', watchOnState, true);
     }
     function watchOnState(state) {
-      if (!state) {
+      if (!state || !$scope.rbac.cluster.admin.security.write) {
         return;
       }
       mnPromiseHelper(vm, mnAuditService.saveAuditSettings(state, true))

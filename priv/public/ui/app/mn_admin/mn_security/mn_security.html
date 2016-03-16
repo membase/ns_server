@@ -5,7 +5,7 @@
         ui-sref="app.admin.security.externalRoles"
         ui-sref-active="selected">External User/Roles</a>
     </li>
-    <li ng-show="rbac.cluster.admin.security.read">
+    <li ng-show="rbac.cluster.admin.security.read && rbac.cluster.admin.security.write">
       <a
         id="internal_roles"
         class="casper_internal_roles"

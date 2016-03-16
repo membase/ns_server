@@ -16,6 +16,7 @@
             <span>Enable:</span>
             <input
               type="checkbox"
+              ng-disabled="!rbac.cluster.admin.security.write"
               ng-model="auditCtl.state.auditdEnabled">
           </label>
         </div>
@@ -24,7 +25,7 @@
             <span>Target log directory:</span>
             <input
               ng-model="auditCtl.state.logPath"
-              ng-disabled="!auditCtl.state.auditdEnabled"
+              ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
               class="archive_path_field">
           </label>
           <i ng-if="auditCtl.errors.logPath" class="error-container">
@@ -36,13 +37,13 @@
             <span>Log rotation time interval:</span>
             <input
               ng-model="auditCtl.state.rotateInterval"
-              ng-disabled="!auditCtl.state.auditdEnabled"
+              ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
               type="number"
               style="width:67px;">
           </label>
           <select
             ng-model="auditCtl.state.rotateUnit"
-            ng-disabled="!auditCtl.state.auditdEnabled"
+            ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
             style="width:75px;">
               <option value="minutes">Minutes</option>
               <option value="hours">Hours</option>
@@ -57,6 +58,7 @@
       </div>
       <div class="save_cancel">
         <button
+          ng-show="rbac.cluster.admin.security.write"
           ng-disabled="!!auditCtl.errors || auditForm.$pristine"
           class="save_button float_right">Save</button>
       </div>

@@ -30,7 +30,7 @@
         controller: 'mnInternalRolesController as internalRolesCtl',
         templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/mn_internal_roles.html',
         data: {
-          permissions: "cluster.admin.security.read"
+          permissions: "cluster.admin.security.read && cluster.admin.security.write"
         }
       })
       .state('app.admin.security.rootCertificate', {

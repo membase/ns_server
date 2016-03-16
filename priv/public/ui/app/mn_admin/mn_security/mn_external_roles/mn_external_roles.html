@@ -5,8 +5,8 @@
   </span>
   <span style="vertical-align: middle;">Authentication <span ng-show="externalRolesCtl.saslauthdAuth"><span ng-show="!externalRolesCtl.saslauthdAuth.enabled">Not</span> Enabled</span></span>
   <a style="vertical-align: middle;" ng-show="!externalRolesCtl.saslauthdAuthLoading" ng-click="externalRolesCtl.toggleSaslauthdAuth()">
-    <span ng-show="!externalRolesCtl.saslauthdAuth.enabled">enabled</span>
-    <span ng-show="externalRolesCtl.saslauthdAuth.enabled">disabled</span>
+    <span ng-show="!externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">enabled</span>
+    <span ng-show="externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">disabled</span>
   </a>
 </div>
 <div class="shadow_box">
@@ -15,6 +15,7 @@
       <a
         class="btn_1 create-bucket-button casper_buckets_new_data_bucket"
         style="float:right;"
+        ng-show="rbac.cluster.admin.security.write"
         ng-click="externalRolesCtl.addUser()">
           <span>Add User</span>
       </a>
@@ -50,9 +51,11 @@
         <td>
           <a
             class="list_button when-roadmin-avoid-me"
+            ng-show="rbac.cluster.admin.security.write"
             ng-click="externalRolesCtl.editUser(user)"><span>Edit</span></a>
           <a
             class="list_button when-roadmin-avoid-me"
+            ng-show="rbac.cluster.admin.security.write"
             ng-click="externalRolesCtl.deleteUser(user)"><span>Delete</span></a>
         </td>
       </tr>

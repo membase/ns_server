@@ -22,6 +22,7 @@
             <span>Enable:</span>
             <input
               type="checkbox"
+              ng-disabled="rbac.cluster.admin.security.write"
               ng-model="ldapCtl.state.enabled">
           </label>
           <label class="textarea_label">
@@ -121,6 +122,7 @@
     <div class="save_cancel">
       <button
         class="save_button float_right"
+        ng-show="rbac.cluster.admin.security.write"
         ng-click="ldapCtl.save()">Save</button>
     </div>
   </div>
