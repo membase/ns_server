@@ -15,6 +15,8 @@
 %%
 -module(ns_cluster_membership).
 
+-include_lib("eunit/include/eunit.hrl").
+
 -export([active_nodes/0,
          active_nodes/1,
          actual_active_nodes/0,
@@ -217,13 +219,31 @@ supported_services() ->
     supported_services_for_version(cluster_compat_mode:supported_compat_version()).
 
 supported_services_for_version(CompatVersion) ->
-    Services = [kv, n1ql, index],
-    case cluster_compat_mode:is_version_watson(CompatVersion) of
+    Services0 = [kv],
+    case cluster_compat_mode:is_version_40(CompatVersion) of
         true ->
-            Services ++ [fts | maybe_example_service()];
+            Services1 = [n1ql, index] ++ Services0,
+            case cluster_compat_mode:is_version_watson(CompatVersion) of
+                true ->
+                    [fts] ++ maybe_example_service() ++ Services1;
+                false ->
+                    Services1
+            end;
         false ->
-            Services
+            Services0
     end.
+
+-ifdef(EUNIT).
+supported_services_for_version_test() ->
+    ?assertEqual([kv], supported_services_for_version([2,5])),
+    ?assertEqual([kv], supported_services_for_version([3,0])),
+    ?assertEqual(lists:sort([kv,index,n1ql]),
+                 lists:sort(supported_services_for_version([4,0]))),
+    ?assertEqual(lists:sort([kv,index,n1ql]),
+                 lists:sort(supported_services_for_version([4,1]))),
+    ?assertEqual(lists:sort([fts,kv,index,n1ql]),
+                 lists:sort(supported_services_for_version([4,5]))).
+-endif.
 
 cluster_supported_services() ->
     supported_services_for_version(cluster_compat_mode:get_compat_version()).
