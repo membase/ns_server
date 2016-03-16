@@ -138,7 +138,7 @@
     <div class="row">
       <span ng-repeat="day in daysOfWeek">
         <input
-          ng-disabled="!autoCompactionSettings.indexCircularCompactionFlag"
+          ng-disabled="!autoCompactionSettings.indexCircularCompactionFlag || !rbac.cluster.settings.write"
           type="checkbox"
           style="vertical-align:middle;"
           id="days_of_week_{{day}}"
