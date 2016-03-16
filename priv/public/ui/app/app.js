@@ -25,10 +25,6 @@
       originalOnerror && originalOnerror.apply($window, Array.prototype.slice.call(arguments));
     }
 
-    angular.forEach(angularTemplatesList, function (url) {
-      $http.get(url, {cache: $templateCache});
-    });
-
     mnPools.get().then(function (pools) {
       if (!pools.isInitialized) {
         return $state.go('app.wizard.welcome');
