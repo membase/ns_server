@@ -6,9 +6,9 @@
     <h2>Sample Buckets</h2>
     <div class="sub_section">
       <div ng-messages="settingsSampleBucketsCtl.state.warnings" ng-message-multiple>
-        <p ng-message="quota" class="warning_message">Your cluster does not have enough RAM quota available to create the selected sample data buckets. Please free at least {{quota}}MB of RAM Quota per node</p>
+        <p ng-message="quota" class="warning_message">Your cluster does not have enough RAM quota available to create the selected sample data buckets. Please free at least {{settingsSampleBucketsCtl.state.warnings.quota}}MB of RAM Quota per node</p>
         <p ng-message="rebalance" class="warning_message">Can not load samples during rebalance.</p>
-        <p ng-message="maxBucketCount" class="warning_message">Maximum number of buckets has been reached. For optimal performance, no more than {{maxBucketCount}} buckets are allowed.</p>
+        <p ng-message="maxBucketCount" class="warning_message">Maximum number of buckets has been reached. For optimal performance, no more than {{settingsSampleBucketsCtl.state.warnings.maxBucketCount}} buckets are allowed.</p>
       </div>
       <p>
         Sample buckets contain example data and Couchbase views. You can provision one or more sample buckets to help you discover the power of Couchbase Server.
