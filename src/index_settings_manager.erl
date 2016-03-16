@@ -25,7 +25,7 @@
          get_from_config/3,
          update/1, update/2,
          update_txn/1,
-         config_upgrade/0,
+         config_upgrade_to_40/0,
          config_upgrade_to_45/1]).
 
 start_link() ->
@@ -79,8 +79,8 @@ update_txn(Props) ->
             {commit, SetFn(?INDEX_CONFIG_KEY, New, Config), New}
     end.
 
-config_upgrade() ->
-    [{set, ?INDEX_CONFIG_KEY, build_settings_json(default_settings())}].
+config_upgrade_to_40() ->
+    [{set, ?INDEX_CONFIG_KEY, build_settings_json(default_settings_for_40())}].
 
 config_upgrade_to_45(Config) ->
     JSON = fetch_settings_json(Config),
@@ -200,7 +200,7 @@ extra_known_settings_for_45() ->
       id_lens(<<"indexer.settings.compaction.compaction_mode">>)},
      {circularCompaction, circular_compaction_lens()}].
 
-default_settings() ->
+default_settings_for_40() ->
     [{memoryQuota, 256},
      {generalSettings, general_settings_defaults()},
      {compaction, compaction_defaults()}].
@@ -378,9 +378,9 @@ lens_set_many(Lenses, Values, Dict) ->
 defaults_test() ->
     Keys = fun (L) -> lists:sort([K || {K, _} <- L]) end,
 
-    ?assertEqual(Keys(known_settings(false)), Keys(default_settings())),
+    ?assertEqual(Keys(known_settings(false)), Keys(default_settings_for_40())),
     ?assertEqual(Keys(known_settings(true)),
-                 Keys(default_settings() ++ extra_known_settings_for_45())),
+                 Keys(default_settings_for_40() ++ extra_known_settings_for_45())),
     ?assertEqual(Keys(compaction_lens_props()), Keys(compaction_defaults())),
     ?assertEqual(Keys(general_settings_lens_props()),
                  Keys(general_settings_defaults())).

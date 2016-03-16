@@ -65,7 +65,7 @@ upgrade_config_from_2_5_to_3_0(Config) ->
 upgrade_config_from_3_0_to_4_0(Config) ->
     ?log_info("Performing online config upgrade to 4.0 version"),
     goxdcr_upgrade:config_upgrade(Config) ++
-        index_settings_manager:config_upgrade().
+        index_settings_manager:config_upgrade_to_40().
 
 upgrade_config_from_4_0_to_4_1(Config) ->
     ?log_info("Performing online config upgrade to 4.1 version"),
