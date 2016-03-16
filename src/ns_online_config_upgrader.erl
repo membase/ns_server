@@ -30,15 +30,18 @@ upgrade_config(NewVersion) ->
 
 do_upgrade_config(Config, FinalVersion) ->
     case ns_config:search(Config, cluster_compat_version) of
-        false ->
-            [{set, cluster_compat_version, [2, 0]}];
-        {value, undefined} ->
-            [{set, cluster_compat_version, [2, 0]}];
         {value, FinalVersion} ->
             [];
-        {value, [2, 0]} ->
-            [{set, cluster_compat_version, [2, 5]} |
-             upgrade_config_from_2_0_to_2_5(Config)];
+        %% The following two cases don't actually correspond to upgrade from
+        %% pre-2.0 clusters, we don't support those anymore. Instead, it's an
+        %% upgrade from pristine ns_config_default:default(). I tried settings
+        %% cluster_compat_version to the most up-to-date compat version in
+        %% default config, but that uncovered issues that I'm too scared to
+        %% touch at the moment.
+        false ->
+            [{set, cluster_compat_version, [2, 5]}];
+        {value, undefined} ->
+            [{set, cluster_compat_version, [2, 5]}];
         {value, [2, 5]} ->
             [{set, cluster_compat_version, [3, 0]} |
              upgrade_config_from_2_5_to_3_0(Config)];
@@ -52,10 +55,6 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, cluster_compat_version, ?VERSION_45} |
              upgrade_config_from_4_1_to_4_5(Config)]
     end.
-
-upgrade_config_from_2_0_to_2_5(Config) ->
-    ?log_info("Performing online config upgrade to 2.5 version"),
-    create_server_groups(Config).
 
 upgrade_config_from_2_5_to_3_0(Config) ->
     ?log_info("Performing online config upgrade to 3.0 version"),
@@ -103,12 +102,6 @@ delete_unwanted_per_node_keys(Config) ->
           end, sets:new(), Config),
 
     sets:to_list(R).
-
-create_server_groups(Config) ->
-    {value, Nodes} = ns_config:search(Config, nodes_wanted),
-    [{set, server_groups, [[{uuid, <<"0">>},
-                            {name, <<"Group 1">>},
-                            {nodes, Nodes}]]}].
 
 create_service_maps(Config, Services) ->
     ActiveNodes = ns_cluster_membership:active_nodes(Config),

@@ -123,6 +123,9 @@ default() ->
      {{node, node(), compaction_daemon}, [{check_interval, 30},
                                           {min_file_size, 131072}]},
      {nodes_wanted, [node()]},
+     {server_groups, [[{uuid, <<"0">>},
+                       {name, <<"Group 1">>},
+                       {nodes, [node()]}]]},
      {{node, node(), membership}, active},
      %% In general, the value in these key-value pairs are property lists,
      %% like [{prop_atom1, value1}, {prop_atom2, value2}].
