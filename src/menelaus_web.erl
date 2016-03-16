@@ -449,7 +449,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                              nth_path_tail(Path, 3))};
 
                 [?PLUGGABLE_UI, RestPrefix | _] ->
-                    {{[admin, internal], all},
+                    {no_check,
                      fun (PReq) ->
                              menelaus_pluggable_ui:proxy_req(
                                RestPrefix,
@@ -675,7 +675,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                       drop_prefix(Req:get(raw_path)),
                       Plugins]};
                 [?PLUGGABLE_UI, RestPrefix | _] ->
-                    {{[admin, internal], all},
+                    {no_check,
                      fun (PReq) ->
                              menelaus_pluggable_ui:proxy_req(
                                RestPrefix,
@@ -723,7 +723,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["_metakv" | _] ->
                     {{[admin, internal], all}, fun menelaus_metakv:handle_delete/2, [Path]};
                 [?PLUGGABLE_UI, RestPrefix | _] ->
-                    {{[admin, internal], all},
+                    {no_check,
                      fun (PReq) ->
                              menelaus_pluggable_ui:proxy_req(
                                RestPrefix,
@@ -757,7 +757,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["_metakv" | _] ->
                     {{[admin, internal], all}, fun menelaus_metakv:handle_put/2, [Path]};
                 [?PLUGGABLE_UI, RestPrefix | _] ->
-                    {{[admin, internal], all},
+                    {no_check,
                      fun (PReq) ->
                              menelaus_pluggable_ui:proxy_req(
                                RestPrefix,
