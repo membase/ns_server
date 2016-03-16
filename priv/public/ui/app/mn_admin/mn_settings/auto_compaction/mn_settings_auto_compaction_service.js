@@ -37,7 +37,11 @@
       } else {
         if (acSettings.indexCircularCompaction) {
           acSettings.indexCircularCompactionFlag = acSettings.indexCompactionMode === "circular";
-          acSettings.indexCircularCompactionDaysOfWeek = mnHelper.listToCheckboxes(acSettings.indexCircularCompaction.daysOfWeek.split(","));
+          if (acSettings.indexCircularCompaction.daysOfWeek == "") {
+            acSettings.indexCircularCompactionDaysOfWeek = {};
+          } else {
+            acSettings.indexCircularCompactionDaysOfWeek = mnHelper.listToCheckboxes(acSettings.indexCircularCompaction.daysOfWeek.split(","));
+          }
           acSettings.indexCircularCompaction = acSettings.indexCircularCompaction.interval;
         }
       }
