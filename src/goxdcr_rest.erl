@@ -19,8 +19,7 @@
 -module(goxdcr_rest).
 -include("ns_common.hrl").
 
--export([proxy_or/2,
-         proxy_or/3,
+-export([spec/2, spec/3, spec/4,
          send/2,
          find_all_replication_docs/1,
          all_local_replication_infos/0,
@@ -77,7 +76,9 @@ special_auth_headers() ->
                                  ns_config_auth:get_user(special),
                                  ns_config_auth:get_password(special)).
 
-proxy(MochiReq, Path) ->
+proxy(undefined, MochiReq) ->
+    proxy(MochiReq:get(raw_path), MochiReq);
+proxy(Path, MochiReq) ->
     Headers = convert_headers(MochiReq),
     Body = case MochiReq:recv_body() of
                undefined ->
@@ -87,20 +88,26 @@ proxy(MochiReq, Path) ->
            end,
     menelaus_util:respond(MochiReq, send(MochiReq, MochiReq:get(method), Path, Headers, Body)).
 
-proxy_or(Fun, Req) ->
-    proxy_or(Fun, Req, Req:get(raw_path)).
+spec(Permissions, Fun) ->
+    spec(Permissions, Fun, []).
 
-proxy_or(Fun, Req, Path) ->
+spec(Permissions, Fun, Args) ->
+    spec(Permissions, Fun, Args, undefined).
+
+spec(Permissions, Fun, Args, Path) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            {Permissions, fun handle_xdcr/3, [Fun, Args]};
+        true ->
+            {no_check, fun proxy/2, [Path]}
+    end.
+
+handle_xdcr(Fun, Args, Req) ->
     case (Req:get(method) =:= 'GET') orelse goxdcr_upgrade:updates_allowed() of
         false ->
             menelaus_util:reply_json(Req, {[{"_", <<"Not allowed during cluster upgrade.">>}]}, 503);
         true ->
-            case cluster_compat_mode:is_goxdcr_enabled() of
-                false ->
-                    Fun();
-                true ->
-                    proxy(Req, Path)
-            end
+            erlang:apply(Fun, Args ++ [Req])
     end.
 
 send(MochiReq, Body) ->
@@ -236,7 +243,7 @@ get_replications_with_remote_info() ->
       end, [], find_all_replication_docs(30000)).
 
 get_controller_bucket_settings(Path, MochiReq) ->
-    proxy(MochiReq, Path).
+    proxy(Path, MochiReq).
 
 post_controller_bucket_settings(Path, MochiReq) ->
-    proxy(MochiReq, Path).
+    proxy(Path, MochiReq).
