@@ -25,22 +25,22 @@
       activate();
 
       function isValidateButtonDisabled() {
-        return !vm.test.username || !vm.test.password || !vm.state || !vm.state.enabled;
+        return !vm.test.username || !vm.test.password || !vm.state || !vm.state.enabled || !$scope.rbac.cluster.admin.security.write;
       }
       function isReadOnlyAdminsDisabled() {
-        return !vm.state || !vm.state.enabled || vm.state["default"] === "roAdmins";
+        return !vm.state || !vm.state.enabled || vm.state["default"] === "roAdmins" || !$scope.rbac.cluster.admin.security.write;
       }
       function isFullAdminsDisabled() {
-        return !vm.state || !vm.state.enabled || vm.state["default"] === "admins";
+        return !vm.state || !vm.state.enabled || vm.state["default"] === "admins" || !$scope.rbac.cluster.admin.security.write;
       }
       function isRadioDefaultDisabled() {
-        return !vm.state || !vm.state.enabled;
+        return !vm.state || !vm.state.enabled || !$scope.rbac.cluster.admin.security.write;
       }
       function isRecognizedNotViaLdap() {
         return (vm.validateResult && vm.validateResult.role !== 'none' && vm.validateResult.source === 'builtin');
       }
       function isUserFormDisabled() {
-        return (vm.state && !vm.state.enabled);
+        return (vm.state && !vm.state.enabled) || !$scope.rbac.cluster.admin.security.write;
       }
       function validate() {
         if (vm.validateSpinner) {
