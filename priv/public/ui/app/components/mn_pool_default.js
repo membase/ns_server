@@ -7,7 +7,7 @@
     ])
     .factory('mnPoolDefault', mnPoolDefaultFactory);
 
-  function mnPoolDefaultFactory($http, $q, mnPools, $window) {
+  function mnPoolDefaultFactory($http, $cacheFactory, $q, mnPools, $window) {
     var latest = {};
     var mnPoolDefault = {
       latestValue: latestValue,
@@ -22,7 +22,6 @@
     var version30 = encodeCompatVersion(3, 0);
     var version40 = encodeCompatVersion(4, 0);
     var version45 = encodeCompatVersion(4, 5);
-    var cache;
 
     return mnPoolDefault;
 
@@ -37,9 +36,6 @@
       return major * 0x10000 + minor;
     }
     function get(params, mnHttpParams) {
-      if (!(params && params.etag) && cache) {
-        return $q.when(cache);
-      }
       params = params || {waitChange: 0};
       return $q.all([
         $http({
@@ -71,15 +67,15 @@
         poolDefault.isKvNode =  _.indexOf(poolDefault.thisNode.services, "kv") > -1;
         poolDefault.capiBase = $window.location.protocol === "https:" ? poolDefault.thisNode.couchApiBaseHTTPS : poolDefault.thisNode.couchApiBase;
         latest.value = poolDefault;
-        cache = poolDefault;
         return poolDefault;
       });
     }
     function clearCache() {
-      cache = undefined;
+      $cacheFactory.get('$http').remove('/pools/default?waitChange=0');
       return this;
     }
     function getFresh(params) {
+      params = params || {waitChange: 0};
       return mnPoolDefault.clearCache().get(params);
     }
   }

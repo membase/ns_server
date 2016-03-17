@@ -60,7 +60,7 @@
         .broadcast("reloadServersPoller")
         .getPromise()
         .then(function () {
-          return mnPromiseHelper(vm, mnPoolDefault.get())
+          return mnPromiseHelper(vm, mnPoolDefault.getFresh())
             .getPromise()
             .then(function (poolsDefault) {
               var firstTimeAddedServices = mnMemoryQuotaService.getFirstTimeAddedServices(["index", "fts"], vm.addNodeConfig.services.model, poolsDefault.nodes);

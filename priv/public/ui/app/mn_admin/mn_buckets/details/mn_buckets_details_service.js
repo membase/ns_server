@@ -24,7 +24,7 @@
     function getWarmUpTasks(bucket) {
       return $q.all([
         mnTasksDetails.get(),
-        mnPoolDefault.get()
+        mnPoolDefault.getFresh()
       ]).then(function (resp) {
         var tasks = resp[0];
         var poolDefault = resp[0];

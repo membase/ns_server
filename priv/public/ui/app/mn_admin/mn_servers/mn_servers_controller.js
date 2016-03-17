@@ -68,7 +68,7 @@
       .subscribe("nodes", vm)
       .reloadOnScopeEvent("reloadServersPoller", vm, "nodesLoading");
       new mnPoller($scope, function () {
-        return mnPoolDefault.get();
+        return mnPoolDefault.getFresh();
       })
       .subscribe("poolDefault", vm)
       .reloadOnScopeEvent("reloadServersPoller", vm, "poolDefaultLoading");
@@ -94,7 +94,7 @@
         controller: 'mnServersAddDialogController as serversAddDialogCtl',
         resolve: {
           groups: function () {
-            return mnPoolDefault.get().then(function (poolDefault) {
+            return mnPoolDefault.getFresh().then(function (poolDefault) {
               if (poolDefault.isGroupsAvailable) {
                 return mnGroupsService.getGroups();
               }

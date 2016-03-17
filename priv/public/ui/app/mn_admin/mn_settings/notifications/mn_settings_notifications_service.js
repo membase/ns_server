@@ -206,7 +206,7 @@ angular.module('mnSettingsNotificationsService', [
           $q.when(buckets),
           $q.all(perBucketQueries),
           $q.when(pools),
-          mnPoolDefault.get(undefined, mnHttpParams),
+          mnPoolDefault.getFresh(undefined, mnHttpParams),
           mnGsiService.getIndexesState(mnHttpParams)
         ]).then(buildPhoneHomeThingy);
       });

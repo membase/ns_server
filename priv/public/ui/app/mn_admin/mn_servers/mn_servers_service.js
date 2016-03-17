@@ -125,7 +125,7 @@
       })
     }
     function getNodes() {
-      return mnPoolDefault.get().then(function (poolDefault) {
+      return mnPoolDefault.getFresh().then(function (poolDefault) {
         var nodes = poolDefault.nodes;
 
         var stillActualEject = [];

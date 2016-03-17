@@ -113,7 +113,7 @@
       });
     }
     function getOverviewConfig() {
-      return mnPoolDefault.get().then(function (poolsDetails) {
+      return mnPoolDefault.getFresh().then(function (poolsDetails) {
         var details = poolsDetails;
         var rv = {};
 
