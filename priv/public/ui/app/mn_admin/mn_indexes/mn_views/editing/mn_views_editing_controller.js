@@ -18,6 +18,7 @@
       theme: 'default',
       readOnly: false
     };
+    vm.currentBucketName = $state.params.viewsBucket;
     vm.viewsOptions = viewsOptions;
     vm.isSpatial = $state.params.isSpatial;
     vm.viewId = $state.params.viewId;
@@ -52,17 +53,20 @@
     function toggleViews() {
       vm.isViewsClosed = !vm.isViewsClosed;
     }
+    function hasNoWritePermission() {
+      return !$scope.rbac.cluster.bucket[$state.params.viewsBucket].views.write;
+    }
     function isEditDocumentDisabled() {
-      return awaitingSampleDocument() || vm.state.sampleDocument.warnings || vm.state.isEmptyState;
+      return awaitingSampleDocument() || (vm.state.sampleDocument && vm.state.sampleDocument.warnings) || vm.state.isEmptyState || hasNoWritePermission();
     }
     function isPreviewRandomDisabled() {
-      return awaitingSampleDocument() || vm.state.isEmptyState;
+      return awaitingSampleDocument() || vm.state.isEmptyState || hasNoWritePermission();
     }
     function isViewsEditorControllsDisabled() {
-      return awaitingViews() || vm.state.isEmptyState || !vm.state.isDevelopmentDocument;
+      return awaitingViews() || vm.state.isEmptyState || !vm.state.isDevelopmentDocument || hasNoWritePermission();
     }
     function awaitingSampleDocument() {
-      return !vm.state || vm.state.sampleDocumentLoading;
+      return !vm.state || vm.state.sampleDocumentLoading
     }
     function awaitingViews() {
       return !vm.state || vm.state.viewsLoading;

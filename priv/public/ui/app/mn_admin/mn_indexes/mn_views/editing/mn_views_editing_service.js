@@ -5,7 +5,7 @@
     .module("mnViewsEditingService", ["mnViewsListService", "mnDocumentsEditingService", "mnViewsListService", "mnFilters"])
     .factory("mnViewsEditingService", mnViewsEditingFactory);
 
-  function mnViewsEditingFactory($http, $state, mnViewsListService, mnDocumentsEditingService, $q, removeEmptyValueFilter, $httpParamSerializerJQLike, mnPoolDefault, viewsPerPageLimit) {
+  function mnViewsEditingFactory($http, $state, mnPermissions, mnViewsListService, mnDocumentsEditingService, $q, removeEmptyValueFilter, $httpParamSerializerJQLike, mnPoolDefault, viewsPerPageLimit) {
     var mnViewsEditingService = {
       getViewsEditingState: getViewsEditingState,
       prepareRandomDocument: prepareRandomDocument,
@@ -153,7 +153,7 @@
     function prepareViewsSelectbox(params) {
       return mnViewsListService.getDdocsByType(params.viewsBucket).then(function (ddocs) {
         var rv = {};
-        if (ddocs.rows.length) {
+        if (ddocs.rows && ddocs.rows.length) {
           var viewsNames = [];
           if (ddocs.development.length) {
             viewsNames.push({name: "Development Views", isTitle: true});
@@ -190,10 +190,14 @@
             rv.currentDocument = _.find(rv.ddocs.rows, function (row) {
               return row.doc.meta.id === params.documentId;
             });
-            return prepareRandomDocument(params).then(function (randomDoc) {
-              rv.sampleDocument = randomDoc;
+            if (mnPermissions.export.cluster.bucket[params.viewsBucket].data.read) {
+              return prepareRandomDocument(params).then(function (randomDoc) {
+                rv.sampleDocument = randomDoc;
+                return rv;
+              });
+            } else {
               return rv;
-            });
+            }
           } else {
             return rv;
           }

@@ -78,6 +78,7 @@
           "cluster.bucket[" + name + "].data!read",
           "cluster.bucket[" + name + "].recovery!read",
           "cluster.bucket[" + name + "].views!read",
+          "cluster.bucket[" + name + "].views!write",
           "cluster.bucket[" + name + "].stats!read",
           "cluster.bucket[" + name + "]!flush",
           "cluster.bucket[" + name + "]!delete",
