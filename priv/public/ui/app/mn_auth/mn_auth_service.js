@@ -35,13 +35,14 @@
         method: 'POST',
         url: "/uilogout"
       }).then(function () {
-        delete $rootScope.poolDefault;
-        delete $rootScope.pools;
         $uibModalStack.dismissAll("uilogout");
         mnPools.clearCache();
-        $state.go('app.auth');
+        $state.go('app.auth').then(function () {
+          delete $rootScope.poolDefault;
+          delete $rootScope.pools;
+          mnPermissions.clear();
+        });
         mnPendingQueryKeeper.cancelAllQueries();
-        mnPermissions.clear();
       });
     }
   }
