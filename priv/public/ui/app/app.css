@@ -795,7 +795,7 @@ body.init_bucket_dialog #init_bucket_dialog { display: block; }
 .rebalancing li {display:block; position:relative;}
 .rebalancing li a {text-decoration:none !important; cursor:default;}
 
-.failed_over_message {color: #9c9e9e; display: none; padding: 1em}
+.failed_over_message {color: #9c9e9e; padding: 1em}
 .dynamic_inactiveFailed .failed_over_message {display:block;}
 
 .add_back_failed_over_node {font-size: 12px; line-height: 32px; padding: 10px 0;}

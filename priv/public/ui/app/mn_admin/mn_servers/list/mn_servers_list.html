@@ -149,16 +149,20 @@
             ng-if="!serversCtl.tasks.inRebalance && !serversListCtl.isNodeInactiveAdded(node) && !node.pendingEject && rbac.cluster.tasks.read"
             class="actions">
               <a
-                ng-show="rbac.cluster.nodes.write"
+                ng-show="!(serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node)) && rbac.cluster.nodes.write"
                 class="list_button eject_server when-roadmin-avoid-me casper_servers_remove_popup"
                 ng-class="{dynamic_disabled: serversListCtl.disableRemoveBtn(node)}"
                 ng-click="!serversListCtl.disableRemoveBtn(node) && serversListCtl.ejectServer(node)"><span>Remove</span></a>
               <a
-                ng-show="rbac.cluster.nodes.write"
+                ng-show="!(serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node)) && rbac.cluster.nodes.write"
                 class="list_button failover_server when-roadmin-avoid-me casper_servers_failover_popup"
                 ng-class="{dynamic_disabled: serversListCtl.isFailOverDisabled(node)}"
                 ng-click="!serversListCtl.isFailOverDisabled(node) && serversListCtl.failOverNode(node)"><span>Fail Over</span></a>
-              <span class="failed_over_message">Failed Over: Pending Removal</span>
+              <span
+                class="failed_over_message"
+                ng-show="serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node)">
+                  Failed Over: Pending Removal
+              </span>
           </td>
         </tr>
         <tr ng-if="serversCtl.isDetailsOpened(node.hostname) && rbac.cluster.nodes.read" ui-view="details">
