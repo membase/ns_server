@@ -121,10 +121,11 @@
         }
         var rebalanceError = tasks.tasksRebalance && tasks.tasksRebalance.status !== 'running' && tasks.tasksRebalance.errorMessage;
         if (
-          rebalanceError && !_.find(mnAlertsService.alerts, {'msg': rebalanceError}) &&
-          prevTask && prevTask.tasksRebalance && prevTask.tasksRebalance.status === "running"
+          rebalanceError && prevTask && prevTask.tasksRebalance && prevTask.tasksRebalance.status === "running"
         ) {
-          mnAlertsService.setAlert("error", rebalanceError);
+          if (!_.find(mnAlertsService.alerts, {'msg': rebalanceError})) {
+            mnAlertsService.setAlert("error", rebalanceError);
+          }
           $state.go("app.admin.overview");
         }
         vm.tasks = tasks;
