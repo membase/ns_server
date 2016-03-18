@@ -31,7 +31,8 @@
 -record(janitor_state, {janitor_requests :: [janitor_request()],
                         pid}).
 -record(rebalancing_state, {rebalancer, progress,
-                            keep_nodes, eject_nodes, failed_nodes}).
+                            keep_nodes, eject_nodes, failed_nodes,
+                            stop_timer}).
 -record(recovery_state, {uuid :: binary(),
                          bucket :: bucket_name(),
                          recoverer_state :: any()}).
@@ -80,6 +81,7 @@
 -define(RECOVERY_QUERY_STATES_TIMEOUT,
         ns_config:get_global_timeout(recovery_query_states, 5000)).
 -define(JANITOR_INTERVAL, ns_config:read_key_fast(janitor_interval, 10000)).
+-define(STOP_REBALANCE_TIMEOUT, ns_config:get_global_timeout(stop_rebalance_timeout, 60000)).
 
 %% gen_fsm callbacks
 -export([code_change/4,
@@ -492,7 +494,8 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
             #rebalancing_state{rebalancer=Pid,
                                keep_nodes=KeepNodes,
                                eject_nodes=EjectNodes,
-                               failed_nodes=FailedNodes}) ->
+                               failed_nodes=FailedNodes,
+                               stop_timer = MaybeTref}) ->
     Status = case Reason of
                  graceful_failover_done ->
                      none;
@@ -506,6 +509,12 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                      ?user_log(?REBALANCE_STOPPED,
                                "Rebalance stopped by user.~n"),
                      ns_cluster:counter_inc(rebalance_stop),
+                     case MaybeTref of
+                         undefined ->
+                             ok;
+                         _ ->
+                             gen_fsm:cancel_timer(MaybeTref)
+                     end,
                      none;
                  _ ->
                      ?user_log(?REBALANCE_FAILED,
@@ -890,7 +899,12 @@ rebalancing({update_progress, Service, ServiceProgress},
             #rebalancing_state{progress=Old} = State) ->
     NewProgress = rebalance_progress:update(Service, ServiceProgress, Old),
     {next_state, rebalancing,
-     State#rebalancing_state{progress=NewProgress}}.
+     State#rebalancing_state{progress=NewProgress}};
+rebalancing({timeout, _Tref, stop_timeout},
+            #rebalancing_state{rebalancer = Pid} = State) ->
+    ?log_debug("Stop rebalance timeout, brutal kill pid = ~p", [Pid]),
+    exit(Pid, stopped),
+    {next_state, rebalancing, State#rebalancing_state{stop_timer = undefined}}.
 
 %% Synchronous rebalancing events
 rebalancing({start_rebalance, _KeepNodes, _EjectNodes,
@@ -905,7 +919,8 @@ rebalancing(stop_rebalance, _From,
             #rebalancing_state{rebalancer=Pid} = State) ->
     ?log_debug("Sending stop to rebalancer: ~p", [Pid]),
     Pid ! stop,
-    {reply, ok, rebalancing, State};
+    Tref = gen_fsm:start_timer(?STOP_REBALANCE_TIMEOUT, stop_timeout),
+    {reply, ok, rebalancing, State#rebalancing_state{stop_timer = Tref}};
 rebalancing(rebalance_progress, _From,
             #rebalancing_state{progress = Progress} = State) ->
     AggregatedProgress = dict:to_list(rebalance_progress:get_progress(Progress)),
