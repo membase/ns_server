@@ -347,9 +347,6 @@ should_failover_service_policy(State, SvcConfig, Service, Node) ->
                 false ->
                     [];
                 true ->
-                    %% TODO:
-                    %% Translate "Service" for user_log consumption
-                    %% e.g. translate "kv" to "data"
                     [{mail_too_small, Service, SvcNodes, Node}]
             end
     end.
