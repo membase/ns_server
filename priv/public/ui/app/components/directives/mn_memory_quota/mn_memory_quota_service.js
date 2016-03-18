@@ -66,7 +66,7 @@
       return nodesCount === 1 && services && (angular.isArray(services) ? (_.indexOf(services, service) > -1) : services[service]);
     }
     function memoryQuotaConfig(displayedServices, calculateMaxMemory) {
-      return mnPoolDefault.getFresh().then(function (poolsDefault) {
+      return mnPoolDefault.get().then(function (poolsDefault) {
         return mnMemoryQuotaService.prepareClusterQuotaSettings(poolsDefault, displayedServices, calculateMaxMemory);
       });
     }

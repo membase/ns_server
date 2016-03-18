@@ -180,7 +180,7 @@
       }).then(function () {
         return $q.all([
           prepareViewsSelectbox(params),
-          mnPoolDefault.getFresh()
+          mnPoolDefault.get()
         ]).then(function (resp) {
           var rv = resp[0];
           var poolDefault = resp[1];

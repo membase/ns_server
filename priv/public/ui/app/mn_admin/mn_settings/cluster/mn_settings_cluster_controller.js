@@ -61,7 +61,7 @@
       }
     }
     function activate() {
-      mnPromiseHelper(vm, mnPoolDefault.getFresh())
+      mnPromiseHelper(vm, mnPoolDefault.get())
         .applyToScope(function (resp) {
           vm.clusterName = resp.clusterName;
         });
