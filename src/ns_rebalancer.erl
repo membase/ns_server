@@ -1130,6 +1130,7 @@ wait_for_bucket(Bucket, Nodes) ->
     do_wait_for_bucket(Bucket, Nodes).
 
 do_wait_for_bucket(Bucket, Nodes) ->
+    stop_if_ordered(),
     case janitor_agent:query_states_details(Bucket, Nodes, 60000) of
         {ok, _States, []} ->
             ?log_debug("Bucket ~p became ready on nodes ~p", [Bucket, Nodes]),
@@ -1146,6 +1147,14 @@ do_wait_for_bucket(Bucket, Nodes) ->
                                [Bucket, Failures]),
                     fail
             end
+    end.
+
+stop_if_ordered() ->
+    receive
+        stop ->
+            exit(stopped)
+    after 0 ->
+            ok
     end.
 
 check_failures(Failures) ->
