@@ -224,10 +224,11 @@ handle_put_user(UserId, Req) ->
     BadRoles = [BadRole || {error, BadRole} <- Roles],
     case BadRoles of
         [] ->
-            case menelaus_roles:store_user({UserId, saslauthd},
-                                           proplists:get_value("name", Props),
-                                           Roles) of
+            Identity = {UserId, saslauthd},
+            Name = proplists:get_value("name", Props),
+            case menelaus_roles:store_user(Identity, Name, Roles) of
                 {commit, _} ->
+                    ns_audit:set_user(Req, Identity, Roles, Name),
                     handle_get_users(Req);
                 {abort, {error, roles_validation, UnknownRoles}} ->
                     reply_bad_roles(Req, [role_to_string(UR) || UR <- UnknownRoles]);
@@ -239,8 +240,10 @@ handle_put_user(UserId, Req) ->
     end.
 
 handle_delete_user(UserId, Req) ->
-    case menelaus_roles:delete_user({UserId, saslauthd}) of
+    Identity = {UserId, saslauthd},
+    case menelaus_roles:delete_user(Identity) of
         {commit, _} ->
+            ns_audit:delete_user(Req, Identity),
             handle_get_users(Req);
         {abort, {error, not_found}} ->
             menelaus_util:reply_json(Req, <<"User was not found.">>, 404);

@@ -23,6 +23,7 @@
          login_failure/1,
          delete_user/2,
          password_change/2,
+         set_user/4,
          add_node/7,
          remove_node/2,
          failover_node/3,
@@ -141,7 +142,9 @@ code(upload_cluster_ca) ->
 code(reload_node_certificate) ->
     8230;
 code(modify_index_storage_mode) ->
-    8231.
+    8231;
+code(set_user) ->
+    8232.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -281,6 +284,11 @@ delete_user(Req, Identity) ->
 
 password_change(Req, Identity) ->
     put(password_change, Req, [{identity, get_identity(Identity)}]).
+
+set_user(Req, Identity, Roles, Name) ->
+    put(set_user, Req, [{identity, get_identity(Identity)},
+                        {roles, {list, [menelaus_web_rbac:role_to_string(Role) || Role <- Roles]}},
+                        {full_name, Name}]).
 
 add_node(Req, Hostname, Port, User, GroupUUID, Services, Node) ->
     put(add_node, Req, [{node, Node},
