@@ -34,6 +34,8 @@
 -define(AUTO_FAILOVER_KV_NODE_COUNT, 2).
 -define(AUTO_FAILOVER_INDEX_NODE_COUNT, 1).
 -define(AUTO_FAILOVER_N1QL_NODE_COUNT, 1).
+-define(AUTO_FAILOVER_FTS_NODE_COUNT, 1).
+-define(AUTO_FAILOVER_EXAMPLE_NODE_COUNT, 1).
 
 -record(node_state, {
           name :: term(),
@@ -367,9 +369,20 @@ service_failover_min_node_count(kv) ->
 service_failover_min_node_count(index) ->
     ?AUTO_FAILOVER_INDEX_NODE_COUNT;
 service_failover_min_node_count(n1ql) ->
-    ?AUTO_FAILOVER_N1QL_NODE_COUNT.
+    ?AUTO_FAILOVER_N1QL_NODE_COUNT;
+service_failover_min_node_count(fts) ->
+    ?AUTO_FAILOVER_FTS_NODE_COUNT;
+service_failover_min_node_count(example) ->
+    ?AUTO_FAILOVER_EXAMPLE_NODE_COUNT.
 
 -ifdef(EUNIT).
+
+service_failover_min_node_count_test() ->
+    Services = ns_cluster_membership:supported_services(),
+    lists:foreach(
+      fun (Service) ->
+              true = is_integer(service_failover_min_node_count(Service))
+      end, Services).
 
 process_frame_no_action(0, _Nodes, _DownNodes, State, _SvcConfig) ->
     State;
