@@ -21,8 +21,8 @@
 
 -export([login_success/1,
          login_failure/1,
-         delete_user/3,
-         password_change/3,
+         delete_user/2,
+         password_change/2,
          add_node/7,
          remove_node/2,
          failover_node/3,
@@ -189,6 +189,9 @@ get_user_id({User, Source}) ->
                end},
       {user, to_binary(User)}]}.
 
+get_identity({User, Source}) ->
+    {[{source, Source}, {user, to_binary(User)}]}.
+
 get_remote(Req) ->
     Socket = Req:get(socket),
     {ok, {Host, Port}} = mochiweb_socket:peername(Socket),
@@ -273,13 +276,11 @@ login_success(Req) ->
 login_failure(Req) ->
     put(login_failure, Req, []).
 
-delete_user(Req, User, Role) ->
-    put(delete_user, Req, [{role, Role},
-                           {userid, User}]).
+delete_user(Req, Identity) ->
+    put(delete_user, Req, [{identity, get_identity(Identity)}]).
 
-password_change(Req, User, Role) ->
-    put(password_change, Req, [{role, Role},
-                               {userid, User}]).
+password_change(Req, Identity) ->
+    put(password_change, Req, [{identity, get_identity(Identity)}]).
 
 add_node(Req, Hostname, Port, User, GroupUUID, Services, Node) ->
     put(add_node, Req, [{node, Node},

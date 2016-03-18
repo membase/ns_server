@@ -42,8 +42,7 @@
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
               "remote" : {"ip" : "", "port" : 1},
-              "role" : "",
-              "userid" : ""
+              "identity" : {"source" : "", "user" : ""}
           },
           "optional_fields" : {
               "sessionid" : ""
@@ -57,8 +56,7 @@
           "enabled" : true,
           "mandatory_fields" : {
               "timestamp" : "",
-              "role" : "",
-              "userid" : ""
+              "identity" : {"source" : "", "user" : ""}
           },
           "optional_fields" : {
               "real_userid" : {"source" : "", "user" : ""},
