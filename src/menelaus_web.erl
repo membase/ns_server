@@ -331,9 +331,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_recovery:handle_recovery_status/3,
                      ["default", Id]};
                 ["pools", "default", "remoteClusters"] ->
-                    goxdcr_rest:spec(
-                      {[xdcr, remote_clusters], read},
-                      fun menelaus_web_remote_clusters:handle_remote_clusters/1);
+                    {{[xdcr, remote_clusters], read},
+                     fun menelaus_web_remote_clusters:handle_remote_clusters/1};
                 ["pools", "default", "serverGroups"] ->
                     {{[server_groups], read},
                      fun menelaus_web_groups:handle_server_groups/1};
@@ -372,13 +371,11 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[admin, security], read},
                      fun handle_settings_read_only_admin_name/1};
                 ["settings", "replications"] ->
-                    goxdcr_rest:spec(
-                      {[xdcr, settings], read},
-                      fun menelaus_web_xdc_replications:handle_global_replication_settings/1);
+                    {{[xdcr, settings], read},
+                     fun menelaus_web_xdc_replications:handle_global_replication_settings/1};
                 ["settings", "replications", XID] ->
-                    goxdcr_rest:spec(
-                      {[{bucket, any}, xdcr], read},
-                      fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]);
+                    {{[{bucket, any}, xdcr], read},
+                     fun menelaus_web_xdc_replications:handle_replication_settings/2, [XID]};
                 ["settings", "saslauthdAuth"] ->
                     {{[admin, security], read},
                      fun menelaus_web_rbac:handle_saslauthd_auth_settings/1};
@@ -510,13 +507,11 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[admin, security], write},
                      fun handle_settings_read_only_user_post/1};
                 ["settings", "replications"] ->
-                    goxdcr_rest:spec(
-                      {[xdcr, settings], write},
-                      fun menelaus_web_xdc_replications:handle_global_replication_settings_post/1);
+                    {{[xdcr, settings], write},
+                     fun menelaus_web_xdc_replications:handle_global_replication_settings_post/1};
                 ["settings", "replications", XID] ->
-                    goxdcr_rest:spec(
-                      {[{bucket, any}, xdcr], [write, execute]},
-                      fun menelaus_web_xdc_replications:handle_replication_settings_post/2, [XID]);
+                    {{[{bucket, any}, xdcr], [write, execute]},
+                     fun menelaus_web_xdc_replications:handle_replication_settings_post/2, [XID]};
                 ["settings", "saslauthdAuth"] ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_saslauthd_auth_settings_post/1};
@@ -558,18 +553,14 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["controller", "setAutoCompaction"] ->
                     {{[settings], write}, fun handle_set_autocompaction/1};
                 ["controller", "createReplication"] ->
-                    goxdcr_rest:spec(
-                      {[{bucket, any}, xdcr], write},
-                      fun menelaus_web_xdc_replications:handle_create_replication/1);
+                    {{[{bucket, any}, xdcr], write},
+                     fun menelaus_web_xdc_replications:handle_create_replication/1};
                 ["controller", "cancelXDCR", XID] ->
-                    goxdcr_rest:spec(
-                      {[{bucket, any}, xdcr], write},
-                      fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]);
+                    {{[{bucket, any}, xdcr], write},
+                     fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                 ["controller", "cancelXCDR", XID] ->
-                    goxdcr_rest:spec(
-                      {[{bucket, any}, xdcr], write},
-                      fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID],
-                      menelaus_util:concat_url_path(["controller", "cancelXDCR", XID]));
+                    {{[{bucket, any}, xdcr], write},
+                     fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                 ["controller", "resetAlerts"] ->
                     {{[settings], write}, fun handle_reset_alerts/1};
                 ["controller", "regenerateCertificate"] ->
@@ -637,13 +628,11 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_buckets:handle_set_ddoc_update_min_changes/4,
                      ["default", Id, DDocId]};
                 ["pools", "default", "remoteClusters"] ->
-                    goxdcr_rest:spec(
-                      {[xdcr, remote_clusters], write},
-                      fun menelaus_web_remote_clusters:handle_remote_clusters_post/1);
+                    {{[xdcr, remote_clusters], write},
+                     fun menelaus_web_remote_clusters:handle_remote_clusters_post/1};
                 ["pools", "default", "remoteClusters", Id] ->
-                    goxdcr_rest:spec(
-                      {[xdcr, remote_clusters], write},
-                      fun menelaus_web_remote_clusters:handle_remote_cluster_update/2, [Id]);
+                    {{[xdcr, remote_clusters], write},
+                     fun menelaus_web_remote_clusters:handle_remote_cluster_update/2, [Id]};
                 ["pools", "default", "serverGroups"] ->
                     {{[server_groups], write},
                      fun menelaus_web_groups:handle_server_groups_post/1};
@@ -663,9 +652,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["_log"] ->
                     {{[admin, internal], all}, fun handle_log_post/1};
                 ["_goxdcr", "regexpValidation"] ->
-                    goxdcr_rest:spec(
-                      no_check,
-                      fun menelaus_util:reply_not_found/1);
+                    {{[admin, internal], all},
+                     fun menelaus_web_xdc_replications:handle_regexp_validation/1};
                 ["_goxdcr", "controller", "bucketSettings", _Bucket] ->
                     XdcrPath = drop_prefix(Req:get(raw_path)),
                     {{[admin, internal], all},
@@ -704,21 +692,17 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[{bucket, Id}], delete},
                      fun menelaus_web_buckets:handle_bucket_delete/3, ["default", Id]};
                 ["pools", "default", "remoteClusters", Id] ->
-                    goxdcr_rest:spec(
-                      {[xdcr, remote_clusters], write},
-                      fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]);
+                    {{[xdcr, remote_clusters], write},
+                     fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]};
                 ["pools", "default", "buckets", Id, "docs", DocId] ->
                     {{[{bucket, Id}, data], write},
                      fun menelaus_web_crud:handle_delete/3, [Id, DocId]};
                 ["controller", "cancelXCDR", XID] ->
-                    goxdcr_rest:spec(
-                      {[{bucket, any}, xdcr], write},
-                      fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID],
-                      menelaus_util:concat_url_path(["controller", "cancelXDCR", XID]));
+                    {{[{bucket, any}, xdcr], write},
+                     fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                 ["controller", "cancelXDCR", XID] ->
-                    goxdcr_rest:spec(
-                      {[{bucket, any}, xdcr], write},
-                      fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]);
+                    {{[{bucket, any}, xdcr], write},
+                     fun menelaus_web_xdc_replications:handle_cancel_replication/2, [XID]};
                 ["settings", "readOnlyUser"] ->
                     {{[admin, security], write},
                      fun handle_read_only_user_delete/1};

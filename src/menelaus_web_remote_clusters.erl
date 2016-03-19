@@ -73,17 +73,23 @@ build_remote_cluster_info(KV, Upgrade) ->
          end ++ MaybeCert}.
 
 handle_remote_clusters(Req) ->
-    RemoteClusters = get_remote_clusters(),
-    JSON = lists:map(fun (KV) ->
-                             build_remote_cluster_info(KV, false)
-                     end, RemoteClusters),
-    menelaus_util:reply_json(Req, JSON).
+    goxdcr_rest:proxy_or(
+      fun () ->
+              RemoteClusters = get_remote_clusters(),
+              JSON = lists:map(fun (KV) ->
+                                       build_remote_cluster_info(KV, false)
+                               end, RemoteClusters),
+              menelaus_util:reply_json(Req, JSON)
+      end, Req).
 
 handle_remote_clusters_post(Req) ->
-    Params = Req:parse_post(),
-    QS = Req:parse_qs(),
-    do_handle_remote_clusters_post(Req, Params,
-                                   proplists:get_value("just_validate", QS), 10).
+    goxdcr_rest:proxy_or(
+      fun () ->
+              Params = Req:parse_post(),
+              QS = Req:parse_qs(),
+              do_handle_remote_clusters_post(Req, Params,
+                                             proplists:get_value("just_validate", QS), 10)
+      end, Req).
 
 do_handle_remote_clusters_post(_Req, _Params, _JustValidate, _TriesLeft = 0) ->
     erlang:error(cas_retries_exceeded);
@@ -244,10 +250,13 @@ screen_hostname_valid_tail([C | Rest]) ->
     end.
 
 handle_remote_cluster_update(Id, Req) ->
-    Params = Req:parse_post(),
-    QS = Req:parse_qs(),
-    do_handle_remote_cluster_update(Id, Req, Params,
-                                    proplists:get_value("just_validate", QS), 10).
+    goxdcr_rest:proxy_or(
+      fun () ->
+              Params = Req:parse_post(),
+              QS = Req:parse_qs(),
+              do_handle_remote_cluster_update(Id, Req, Params,
+                                              proplists:get_value("just_validate", QS), 10)
+      end, Req).
 
 do_handle_remote_cluster_update(_Id, _Req, _Params, _JustValidate, _TriesLeft = 0) ->
     erlang:error(cas_retries_exceeded);
@@ -415,7 +424,10 @@ update_cluster(OldCluster, NewCluster, OtherClusters) ->
     end.
 
 handle_remote_cluster_delete(Id, Req) ->
-    do_handle_remote_cluster_delete(Id, Req, 10).
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_remote_cluster_delete(Id, Req, 10)
+      end, Req).
 
 do_handle_remote_cluster_delete(_Id, _Req, _TriesLeft = 0) ->
     erlang:error(cas_retries_exceeded);

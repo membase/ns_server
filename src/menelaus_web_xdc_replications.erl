@@ -28,11 +28,18 @@
          handle_global_replication_settings/1,
          handle_global_replication_settings_post/1,
          build_replication_settings/1,
-         build_global_replication_settings/0]).
+         build_global_replication_settings/0,
+         handle_regexp_validation/1]).
 
 -type replication_type() :: 'one-time' | continuous.
 
 handle_create_replication(Req) ->
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_create_replication(Req)
+      end, Req).
+
+do_handle_create_replication(Req) ->
     Params = Req:parse_post(),
     Config = ns_config:get(),
     Buckets = ns_bucket:get_buckets(Config),
@@ -67,6 +74,12 @@ handle_create_replication(Req) ->
     end.
 
 handle_cancel_replication(XID, Req) ->
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_cancel_replication(XID, Req)
+      end, Req, menelaus_util:concat_url_path(["controller", "cancelXDCR", XID])).
+
+do_handle_cancel_replication(XID, Req) ->
     case xdc_rdoc_api:delete_replicator_doc(XID) of
         ok ->
             ns_audit:xdcr_cancel_replication(Req, XID),
@@ -76,6 +89,12 @@ handle_cancel_replication(XID, Req) ->
     end.
 
 handle_replication_settings(XID, Req) ->
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_replication_settings(XID, Req)
+      end, Req).
+
+do_handle_replication_settings(XID, Req) ->
     with_replicator_doc(
       Req, XID,
       fun (RepDoc) ->
@@ -93,6 +112,12 @@ format_setting_value(socket_options, V) -> {V};
 format_setting_value(_K, V) -> V.
 
 handle_replication_settings_post(XID, Req) ->
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_replication_settings_post(XID, Req)
+      end, Req).
+
+do_handle_replication_settings_post(XID, Req) ->
     with_replicator_doc(
       Req, XID,
       fun (RepDoc) ->
@@ -120,14 +145,26 @@ handle_replication_settings_post(XID, Req) ->
               end
       end).
 
+handle_global_replication_settings(Req) ->
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_global_replication_settings(Req)
+      end, Req).
+
 build_global_replication_settings() ->
     SettingsRaw = xdc_settings:get_all_global_settings(),
     [{key_to_request_key(K), format_setting_value(K, V)} || {K, V} <- SettingsRaw].
 
-handle_global_replication_settings(Req) ->
+do_handle_global_replication_settings(Req) ->
     menelaus_util:reply_json(Req, {build_global_replication_settings()}, 200).
 
 handle_global_replication_settings_post(Req) ->
+    goxdcr_rest:proxy_or(
+      fun () ->
+              do_handle_global_replication_settings_post(Req)
+      end, Req).
+
+do_handle_global_replication_settings_post(Req) ->
     Params = Req:parse_post(),
     Specs = settings_specs(),
 
@@ -443,3 +480,9 @@ update_rdoc_replication_settings(#doc{body={Props}} = RepDoc, Params) ->
         _ ->
             {error, Errors}
     end.
+
+handle_regexp_validation(Req) ->
+    goxdcr_rest:proxy_or(
+      fun () ->
+              menelaus_util:reply_not_found(Req)
+      end, Req, "/controller/regexpValidation").
