@@ -53,7 +53,7 @@ effective_loglevel(LoggerLogLevel, SinkLogLevels) ->
 -spec assemble_info(atom(), loglevel(), atom(), atom(), integer(), any()) ->
                            #log_info{}.
 assemble_info(Logger, LogLevel, Module, Function, Line, UserData) ->
-    Time = now(),
+    Time = os:timestamp(),
     RegName =
         case erlang:process_info(self(), registered_name) of
             {registered_name, Name} ->
