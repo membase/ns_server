@@ -113,21 +113,35 @@ handle_saslauthd_auth_settings_post(Req) ->
 
 handle_validate_saslauthd_creds_post(Req) ->
     assert_is_ldap_enabled(),
+    case cluster_compat_mode:is_cluster_45() of
+        true ->
+            erlang:throw({web_exception,
+                          400,
+                          "This http API endpoint is not supported in 4.5 clusters", []});
+        false ->
+            ok
+    end,
 
     Params = Req:parse_post(),
-    VRV = menelaus_auth:verify_login_creds(proplists:get_value("user", Params, ""),
-                                           proplists:get_value("password", Params, "")),
+    User = proplists:get_value("user", Params, ""),
+    VRV = menelaus_auth:verify_login_creds(User, proplists:get_value("password", Params, "")),
+
     {Role, Src} =
         case VRV of
-            %% TODO RBAC: return correct role for ldap users
-            {ok, {_, saslauthd}} -> {fullAdmin, saslauthd};
-            {ok, {_, admin}} -> {fullAdmin, builtin};
-            {ok, {_, ro_admin}} -> {fullAdmin, builtin};
+            {ok, {_, saslauthd}} -> {saslauthd_auth:get_role_pre_45(User), saslauthd};
+            {ok, {_, R}} -> {R, builtin};
             {error, Error} ->
-                erlang:throw({web_exception, 400, Error, []});
-            _ -> none
+                erlang:throw({web_exception, 400, Error, []})
         end,
-    menelaus_util:reply_json(Req, {[{role, Role}, {source, Src}]}).
+    JRole = case Role of
+                admin ->
+                    fullAdmin;
+                ro_admin ->
+                    roAdmin;
+                false ->
+                    none
+            end,
+    menelaus_util:reply_json(Req, {[{role, JRole}, {source, Src}]}).
 
 role_to_json(Name) when is_atom(Name) ->
     [{role, Name}];
