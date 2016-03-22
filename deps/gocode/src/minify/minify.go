@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"flag"
+	"github.com/tdewolff/minify"
+	"github.com/tdewolff/minify/js"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 	"io"
@@ -119,16 +122,30 @@ func createAppMinJsFile(appScripts []string, dir string) {
 		log.Fatal(err)
 	}
 	defer closeFile(appMinJsWrtr, true)
+	var buffer bytes.Buffer
 	for _, script := range appScripts {
 		file, err := os.Open(filepath.Join(dir, script))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer closeFile(file, false)
-		_, err = io.Copy(appMinJsWrtr, file)
+		_, err = io.Copy(&buffer, file)
 		if err != nil {
-			log.Fatalf("Error copying script file '%v' to app.min.js: %v", script, err)
+			log.Fatalf("Error copying script file '%v' to buffer: %v", script, err)
 		}
+
+	}
+	mimetype := "text/javascript"
+	minifier := minify.New()
+	minifier.AddFunc(mimetype, js.Minify)
+	minified, err := minify.Bytes(minifier, mimetype, buffer.Bytes())
+	if err != nil {
+		log.Fatalf("Error during minification: %v", err)
+	}
+
+	_, err = io.Copy(appMinJsWrtr, bytes.NewReader(minified))
+	if err != nil {
+		log.Fatalf("Error copying to file app.min.js: %v", err)
 	}
 }
 
