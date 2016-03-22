@@ -9,7 +9,7 @@
     ])
     .controller("mnInternalSettingsController", mnInternalSettingsController);
 
-  function mnInternalSettingsController($scope, mnInternalSettingsService, mnPromiseHelper, mnPoolDefault) {
+  function mnInternalSettingsController($scope, mnInternalSettingsService, mnPromiseHelper, mnPoolDefault, $uibModalInstance) {
     var vm = this;
 
     vm.onSubmit = onSubmit;
@@ -21,9 +21,11 @@
       if (vm.viewLoading) {
         return;
       }
-      mnPromiseHelper(vm, mnInternalSettingsService.save(vm.state))
-        .showSpinner()
-        .catchErrors();
+      mnPromiseHelper(vm, mnInternalSettingsService.save(vm.state), $uibModalInstance)
+        .showErrorsSensitiveSpinner()
+        .catchErrors()
+        .closeOnSuccess()
+        .reloadState();
     }
 
     function activate() {
