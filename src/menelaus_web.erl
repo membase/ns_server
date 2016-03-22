@@ -389,7 +389,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[admin, security], read},
                      fun menelaus_web_rbac:handle_get_users/1};
                 ["internalSettings"] ->
-                    {[{[settings], read}, {[xdcr, settings], read}],
+                    {{[admin, settings], read},
                      fun handle_internal_settings/1};
                 ["nodes", NodeId] ->
                     {{[nodes], read}, fun handle_node/2, [NodeId]};
@@ -522,7 +522,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_validate_saslauthd_creds_post/1};
                 ["internalSettings"] ->
-                    {[{[settings], write}, {[xdcr, settings], write}],
+                    {{[admin, settings], write},
                      fun handle_internal_settings_post/1};
                 ["pools", "default"] ->
                     {{[pools], write}, fun handle_pool_settings_post/1};
