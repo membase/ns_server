@@ -1,12 +1,12 @@
-<div style="margin: 9px 0 9px 9px;">
-  <span style="display:inline-block;vertical-align: middle;width: 20px;height:20px;">
-    <span ng-show="externalRolesCtl.saslauthdAuth.enabled"><img src="/images/correct.svg" width="20" height="20"></span>
-    <span ng-show="!externalRolesCtl.saslauthdAuth.enabled"><img src="/images/ban.svg" width="20" height="20"></span>
+<div style="margin: 9px 0 15px 9px;">
+  <span style="display:inline-block;vertical-align: middle;width: 15px;height:15px;">
+    <span ng-show="externalRolesCtl.saslauthdAuth.enabled"><img src="/images/correct.svg" width="15" height="15"></span>
+    <span ng-show="!externalRolesCtl.saslauthdAuth.enabled"><img src="/images/ban.svg" width="15" height="15"></span>
   </span>
-  <span style="vertical-align: middle;">Authentication <span ng-show="externalRolesCtl.saslauthdAuth"><span ng-show="!externalRolesCtl.saslauthdAuth.enabled">Not</span> Enabled</span></span>
-  <a style="vertical-align: middle;" ng-show="!externalRolesCtl.saslauthdAuthLoading" ng-click="externalRolesCtl.toggleSaslauthdAuth()">
-    <span ng-show="!externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">enabled</span>
-    <span ng-show="externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">disabled</span>
+  <span style="vertical-align: middle; color:#333;">Authentication <span ng-show="externalRolesCtl.saslauthdAuth"><span ng-show="!externalRolesCtl.saslauthdAuth.enabled">Not</span> Enabled</span></span>
+  <a style="vertical-align: middle; margin-left: 10px;" ng-show="!externalRolesCtl.saslauthdAuthLoading" ng-click="externalRolesCtl.toggleSaslauthdAuth()">
+    <span ng-show="!externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">enable</span>
+    <span ng-show="externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">disable</span>
   </a>
 </div>
 <div class="shadow_box">
