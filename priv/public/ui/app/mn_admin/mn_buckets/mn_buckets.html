@@ -3,7 +3,7 @@
   <div
     class="warning_message"
     ng-show="bucketsCtl.areThereCreationWarnings()">
-    <span ng-show="bucketsCtl.isBucketCreationWarning()">Attention: <span class="warning-text">Cannot create buckets while rebalance is running.</span></span>
+    <span ng-show="bucketsCtl.isBucketCreationWarning()">Attention: <span class="warning-text">Cannot create, delete or edit buckets while rebalance is running.</span></span>
     <span ng-show="bucketsCtl.isMaxBucketCountWarning()">Attention: <span class="warning-text">Maximum number of buckets has been reached. <br>For optimal performance, no more than {{maxBucketCount}} buckets are allowed.</span></span>
   </div>
   <div class="shadow_box" id="couchbase_buckets">
@@ -24,7 +24,7 @@
       id="bucket_list_container"
       mn-spinner="!bucketsCtl.buckets || bucketsCtl.viewLoading"
       min-height="91px">
-        <div mn-buckets-list buckets="bucketsCtl.buckets.byType.membase" rbac="rbac"></div>
+        <div mn-buckets-list buckets="bucketsCtl.buckets.byType.membase" pool-default="poolDefault" rbac="rbac"></div>
     </div>
   </div>
   <div class="shadow_box" id="memcached_buckets" ng-if="bucketsCtl.buckets.byType.memcached.length">
@@ -38,7 +38,7 @@
       id="memcached_bucket_list_container"
       mn-spinner="!bucketsCtl.buckets || bucketsCtl.viewLoading"
       min-height="91px">
-        <div mn-buckets-list buckets="bucketsCtl.buckets.byType.memcached" rbac="rbac"></div>
+        <div mn-buckets-list buckets="bucketsCtl.buckets.byType.memcached" pool-default="poolDefault" rbac="rbac"></div>
     </div>
   </div>
 </div>

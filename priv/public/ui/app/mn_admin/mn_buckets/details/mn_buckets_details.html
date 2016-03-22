@@ -27,8 +27,9 @@
       </div>
       <div class="last when-roadmin-hide-me">
         <a
+          ng-class="{dynamic_disabled: poolDefault.rebalancing}"
           class="inner_btn casper_buckets_edit_bucket_popup"
-          ng-click="bucketsDetailsCtl.editBucket(bucketsDetailsCtl.bucketDetails)"
+          ng-click="!($event | isDisabled) && bucketsDetailsCtl.editBucket(bucketsDetailsCtl.bucketDetails)"
           ng-show="rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].settings.write">Edit</a>
         <button
           ng-show="!bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && bucket.isMembase && rbac.cluster.tasks.read && rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].compact"
@@ -44,9 +45,10 @@
             <span>Cancel</span>
         </button>
         <button
+          ng-class="{dynamic_disabled: poolDefault.rebalancing}"
           class="inner_btn "
           ng-show="rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].delete"
-          ng-click="bucketsDetailsCtl.deleteBucket(bucketsDetailsCtl.bucketDetails)">
+          ng-click="!($event | isDisabled) && bucketsDetailsCtl.deleteBucket(bucketsDetailsCtl.bucketDetails)">
             <span>Delete</span>
         </button>
         <button
