@@ -17,7 +17,7 @@
     ])
     .controller("mnDocumentsController", mnDocumentsController);
 
-  function mnDocumentsController($scope, mnDocumentsListService, mnPromiseHelper, $state) {
+  function mnDocumentsController($scope, mnDocumentsListService, mnPromiseHelper, $state, mnPoller) {
     var vm = this;
 
     vm.onSelectBucketName = onSelectBucketName;
