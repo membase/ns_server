@@ -37,6 +37,13 @@
 
     activate();
 
+    function watchOnAlertsSettings(alertsSettings) {
+      if (!$scope.rbac.cluster.settings.write) {
+        return;
+      }
+      mnPromiseHelper(vm, mnSettingsAlertsService.saveAlerts(getParams(), {just_validate: 1}))
+          .catchErrors();
+    }
     function submit() {
       var params = getParams();
       mnPromiseHelper(vm, mnSettingsAlertsService.saveAlerts(params))
@@ -46,7 +53,10 @@
     }
     function activate() {
       mnPromiseHelper(vm, mnSettingsAlertsService.getAlerts())
-        .applyToScope("state");
+        .applyToScope("state")
+        .onSuccess(function () {
+          $scope.$watch('settingsAlertsCtl.state', _.debounce(watchOnAlertsSettings, 500, {leading: true}), true);
+        });
     }
     function testEmail() {
       var params = getParams();

@@ -21,10 +21,10 @@
       params.alerts = params.alerts.join(',');
       return $http.post('/settings/alerts/testEmail', params);
     }
-    function saveAlerts(params) {
-      params = _.clone(params);
-      params.alerts = params.alerts.join(',');
-      return $http.post('/settings/alerts', params);
+    function saveAlerts(settings, params) {
+      settings = _.clone(settings);
+      settings.alerts = settings.alerts.join(',');
+      return $http.post('/settings/alerts', settings, params);
     }
     function getAlerts() {
       return $http.get('/settings/alerts').then(function (resp) {

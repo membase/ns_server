@@ -109,7 +109,7 @@
       </label>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" ng-show="rbac.cluster.settings.write" type="submit">
+      <button class="save_button float_right" ng-show="rbac.cluster.settings.write" ng-disabled="settingsAlertsCtl.errors" type="submit">
         Save
       </button>
     </div>
