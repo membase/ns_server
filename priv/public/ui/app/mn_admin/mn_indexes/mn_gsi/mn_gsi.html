@@ -18,7 +18,7 @@
               <th mn-sortable-title="progress" style="width: 150px;">Initial Build Progress</th>
             </tr>
           </thead>
-          <tbody ng-if="gsiCtl.state.indexes.length" ng-repeat="row in gsiCtl.state.indexes | orderBy:orderBy:invert">
+          <tbody ng-if="gsiCtl.state.indexes.length" ng-repeat="row in gsiCtl.state.indexes | orderBy:gsiCtl.sortableTableProperties.orderBy:gsiCtl.sortableTableProperties.invert">
             <tr class="row">
               <td class="ellipsis with_expander_button" title="{{row.bucket}}">
                 <a ng-click="gsiCtl.toggleDetails(row.id)"><ins class="expander" ng-class="{closed:!gsiCtl.isDetailsOpened(row.id)}"></ins></a>

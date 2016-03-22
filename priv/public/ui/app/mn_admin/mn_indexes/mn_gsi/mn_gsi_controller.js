@@ -9,8 +9,9 @@
     'mnSpinner'
   ]).controller('mnGsiController', mnGsiController);
 
-  function mnGsiController($scope, mnGsiService, mnHelper, mnPoller) {
+  function mnGsiController($scope, mnGsiService, mnSortableTable, mnHelper, mnPoller) {
     var vm = this;
+    vm.sortableTableProperties = mnSortableTable.get();
 
     activate();
 
