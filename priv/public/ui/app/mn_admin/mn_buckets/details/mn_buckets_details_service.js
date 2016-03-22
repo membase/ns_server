@@ -27,7 +27,7 @@
         mnPoolDefault.get()
       ]).then(function (resp) {
         var tasks = resp[0];
-        var poolDefault = resp[0];
+        var poolDefault = resp[1];
 
         return _.filter(tasks.tasks, function (task) {
           var isNeeded = task.type === 'warming_up' && task.status === 'running' && task.bucket === bucket.name;
