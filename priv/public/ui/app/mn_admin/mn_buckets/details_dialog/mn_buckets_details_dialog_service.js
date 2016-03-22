@@ -4,7 +4,8 @@
     'mnPoolDefault',
     'mnServersService',
     'mnBucketsDetailsService',
-    'mnSettingsAutoCompactionService'
+    'mnSettingsAutoCompactionService',
+    'mnAlertsService'
   ]).factory('mnBucketsDetailsDialogService', mnBucketsDetailsDialogServiceFactory);
 
   function mnBucketsDetailsDialogServiceFactory($http, $q, mnBytesToMBFilter, mnCountFilter, mnSettingsAutoCompactionService, mnPoolDefault, mnServersService, bucketsFormConfiguration, mnBucketsDetailsService) {

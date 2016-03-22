@@ -5,7 +5,7 @@
     .module('mnBuckets')
     .controller('mnBucketsDetailsDialogController', mnBucketsDetailsDialogController);
 
-  function mnBucketsDetailsDialogController($scope, $rootScope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, mnPromiseHelper, $uibModalInstance) {
+  function mnBucketsDetailsDialogController($scope, $rootScope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, mnPromiseHelper, $uibModalInstance, mnAlertsService) {
     var vm = this;
     bucketConf.autoCompactionDefined = !!bucketConf.autoCompactionSettings;
     vm.bucketConf = bucketConf;
@@ -20,7 +20,13 @@
       mnPromiseHelper(vm, promise)
         .showErrorsSensitiveSpinner()
         .catchErrors(function (result) {
-          vm.validationResult = result && mnBucketsDetailsDialogService.adaptValidationResult(result);
+          if (result) {
+            if (result.summaries) {
+              vm.validationResult = mnBucketsDetailsDialogService.adaptValidationResult(result);
+            } else {
+              mnAlertsService.showAlertInPopup(result, "error");
+            }
+          }
         })
         .onSuccess(function (result) {
           if (!result.data) {
