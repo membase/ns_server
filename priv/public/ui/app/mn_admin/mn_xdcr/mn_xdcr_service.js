@@ -35,6 +35,9 @@
     }
     function saveClusterReference(cluster, name) {
       cluster = _.clone(cluster);
+      if (cluster.encryption && !cluster.certificate) {
+        return $q.reject(["certificate is missing"]);
+      }
       cluster.hostname && !cluster.hostname.split(":")[1] && (cluster.hostname += ":8091");
       !cluster.encription && (cluster.certificate = '');
       return $http.post('/pools/default/remoteClusters' + (name ? ("/" + encodeURIComponent(name)) : ""), cluster);
