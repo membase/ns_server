@@ -22,7 +22,7 @@
             <span>Enable:</span>
             <input
               type="checkbox"
-              ng-disabled="rbac.cluster.admin.security.write"
+              ng-disabled="!rbac.cluster.admin.security.write"
               ng-model="ldapCtl.state.enabled">
           </label>
           <label class="textarea_label">
