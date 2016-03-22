@@ -11,10 +11,10 @@ import (
 	"strings"
 )
 
-func getAppScript(n *html.Node) string {
+func getScript(n *html.Node) string {
 	if n.Type == html.ElementNode && n.Data == "script" {
 		for _, a := range n.Attr {
-			if a.Key == "src" && strings.HasPrefix(string(a.Val), "app") {
+			if a.Key == "src" {
 				return a.Val
 			}
 		}
@@ -36,11 +36,20 @@ func makeAppMinJsNode() *html.Node {
 	return &html.Node{Type: html.ElementNode, Data: "script", DataAtom: atom.Data, Attr: attrs}
 }
 
+func replaceAttrValue(node *html.Node, name string, value string) {
+	for i := range node.Attr {
+		if node.Attr[i].Key == name {
+			node.Attr[i].Val = value
+		}
+	}
+}
+
 func makeNewLine() *html.Node {
 	return &html.Node{Type: html.TextNode, Data: "\n"}
 }
 
 type context struct {
+	BaseDir             string
 	FoundFirstAppScript bool
 }
 
@@ -56,22 +65,29 @@ func doMinify(node *html.Node, ctx *context) result {
 	rv := result{}
 	for child := node.FirstChild; child != nil; child = next {
 		next = child.NextSibling
-		appScript := getAppScript(child)
-		if appScript != "" {
+		script := getScript(child)
+		switch {
+		case strings.HasPrefix(script, "app"):
 			if !ctx.FoundFirstAppScript {
 				ctx.FoundFirstAppScript = true
 				node.InsertBefore(makeAppMinJsNode(), child)
 				node.InsertBefore(makeNewLine(), child)
 			}
-			rv.AppScripts = append(rv.AppScripts, appScript)
+			rv.AppScripts = append(rv.AppScripts, script)
 			node.RemoveChild(child)
-		} else if isWhitespaceText(child) && node.Type == html.ElementNode && node.Data == "head" {
+		case strings.HasPrefix(script, "lib") && strings.HasSuffix(script, ".js"):
+			minFile := script[:len(script)-3] + ".min.js"
+			if _, err := os.Stat(filepath.Join(ctx.BaseDir, minFile)); err == nil {
+				replaceAttrValue(child, "src", minFile)
+			}
+			prevWasWhitespace = false
+		case isWhitespaceText(child) && node.Type == html.ElementNode && node.Data == "head":
 			if !prevWasWhitespace {
 				node.InsertBefore(makeNewLine(), child)
 			}
 			node.RemoveChild(child)
 			prevWasWhitespace = true
-		} else {
+		default:
 			if isPluggableUIInjectionComment(child) {
 				rv.PluggableInjectionCount++
 			} else {
@@ -147,7 +163,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error during parse of '%v': %v", *indexHTML, err)
 	}
-	rv := doMinify(doc, &context{})
+	rv := doMinify(doc, &context{BaseDir: dir})
 	if rv.PluggableInjectionCount != 1 {
 		log.Fatalf("Error: number of pluggable injection comments found was %v, should be 1",
 			rv.PluggableInjectionCount)
