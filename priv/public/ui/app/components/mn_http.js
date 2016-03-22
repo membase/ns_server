@@ -11,7 +11,8 @@
   function mnHttpFactory(mnPendingQueryKeeper, $q, $httpParamSerializerJQLike, $timeout) {
     var myHttpInterceptor = {
       request: request,
-      response: response
+      response: response,
+      responseError: responseError
     };
 
     return myHttpInterceptor;
@@ -80,12 +81,20 @@
       return config;
     }
 
-    function response(response) {
+    function clearOnResponse(response) {
       if (response.config.clear && angular.isFunction(response.config.clear)) {
         response.config.clear();
         delete response.config.clear;
       }
+    }
+
+    function response(response) {
+      clearOnResponse(response);
       return response;
+    }
+    function responseError(response) {
+      clearOnResponse(response);
+      return $q.reject(response);
     }
   }
 
