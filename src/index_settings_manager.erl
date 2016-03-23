@@ -201,7 +201,7 @@ extra_known_settings_for_45() ->
      {circularCompaction, circular_compaction_lens()}].
 
 default_settings_for_40() ->
-    [{memoryQuota, 256},
+    [{memoryQuota, 512},
      {generalSettings, general_settings_defaults()},
      {compaction, compaction_defaults()}].
 

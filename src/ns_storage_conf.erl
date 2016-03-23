@@ -558,6 +558,7 @@ check_service_quotas([{Service, Quota} | Rest], Config) ->
 -define(MIN_BUCKET_QUOTA, 256).
 -define(MIN_INDEX_QUOTA, 256).
 -define(MIN_FTS_QUOTA, 256).
+-define(MAX_DEFAULT_FTS_QUOTA, 512).
 
 check_service_quota(kv, Quota, Config) ->
     MinMemoryMB0 = ?MIN_BUCKET_QUOTA,
@@ -685,7 +686,7 @@ do_default_quota(index, Memory) ->
     IndexQuota = (Memory * 3) div 5,
     {?MIN_INDEX_QUOTA, IndexQuota};
 do_default_quota(fts, Memory) ->
-    FTSQuota = Memory div 5,
+    FTSQuota = min(Memory div 5, ?MAX_DEFAULT_FTS_QUOTA),
     {?MIN_FTS_QUOTA, FTSQuota}.
 
 services_ranking() ->
