@@ -111,6 +111,7 @@
           $state.go('app.admin.servers.list', {list: 'active'});
         })
         .broadcast("reloadServersPoller")
+        .catchGlobalErrors()
         .showErrorsSensitiveSpinner();
     }
     function onStopRecovery() {

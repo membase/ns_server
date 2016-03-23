@@ -10,7 +10,7 @@
     ])
     .factory('mnServersService', mnServersFactory);
 
-  function mnServersFactory($http, mnPoolDefault, mnGroupsService, $state, $stateParams) {
+  function mnServersFactory($http, $q, mnPoolDefault, mnGroupsService, $state, $stateParams) {
     var pendingEject = [];
 
     var mnServersService = {
@@ -101,6 +101,21 @@
           knownNodes: _.pluck(allNodes, 'otpNode').join(','),
           ejectedNodes: _.pluck(mnServersService.getPendingEject(), 'otpNode').join(',')
         }
+      }).then(null, function (resp) {
+        if (resp.data) {
+          if (resp.data.mismatch) {
+            resp.data.mismatch = "Could not Rebalance because the cluster configuration was modified by someone else.\nYou may want to verify the latest cluster configuration and, if necessary, please retry a Rebalance.";
+          }
+          if (resp.data.deltaRecoveryNotPossible) {
+            resp.data.deltaRecoveryNotPossible = "Could not Rebalance because requested delta recovery is not possible. You probably added more nodes to the cluster or changed server groups configuration.";
+          }
+          if (resp.data.noKVNodesLeft) {
+            resp.data.noKVNodesLeft = "Could not Rebalance out last kv node(s).";
+          }
+        } else {
+          resp.data = "Request failed. Check logs.";
+        }
+        return $q.reject(resp);
       });
     }
     function getNodeStatuses(hostname) {
