@@ -79,7 +79,7 @@ validate_storage_mode(State) ->
       fun (Value) ->
               OldValue = index_settings_manager:get(storageMode),
               IsEE = cluster_compat_mode:is_enterprise(),
-              IsMemOpt = Value =:= <<"memory_optimized">>,
+              IsMemOpt = index_settings_manager:is_memory_optimized(Value),
               case OldValue =:= <<"">> orelse Value =:= OldValue of
                   true ->
                         case IsMemOpt andalso IsEE =:= false of

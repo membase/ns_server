@@ -19,6 +19,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(INDEX_CONFIG_KEY, {metakv, <<"/indexing/settings/config">>}).
+-define(MEMORY_OPTIMIZED_STORAGE_MODE, <<"memory_optimized">>).
+-define(FORESTDB_STORAGE_MODE, <<"forestdb">>).
 
 -export([start_link/0,
          get/1, get/2,
@@ -26,7 +28,8 @@
          update/1, update/2,
          update_txn/1,
          config_upgrade_to_40/0,
-         config_upgrade_to_45/1]).
+         config_upgrade_to_45/1,
+         is_memory_optimized/1]).
 
 start_link() ->
     work_queue:start_link(?MODULE, fun init/0).
@@ -88,6 +91,12 @@ config_upgrade_to_45(Config) ->
     New = build_settings_json(extra_default_settings_for_45(Config), Current,
                               extra_known_settings_for_45()),
     [{set, ?INDEX_CONFIG_KEY, New}].
+
+-spec is_memory_optimized(any()) -> boolean().
+is_memory_optimized(?MEMORY_OPTIMIZED_STORAGE_MODE) ->
+    true;
+is_memory_optimized(_) ->
+    false.
 
 %% internal
 init() ->
@@ -223,7 +232,7 @@ extra_default_settings_for_45(Config) ->
                             %% was the only type supported in previous
                             %% release. compaction mode set to "full"
                             %% for the same reason.
-                            {<<"forestdb">>, <<"full">>, []}
+                            {?FORESTDB_STORAGE_MODE, <<"full">>, []}
                     end,
 
     CircDefaults = [{daysOfWeek, <<"Sunday">>},
