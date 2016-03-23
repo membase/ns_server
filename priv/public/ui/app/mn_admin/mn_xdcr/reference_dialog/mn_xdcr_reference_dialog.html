@@ -63,7 +63,7 @@
             <label for="demand_encryption_flag-2">Enable TLS Encryption</label>
             <input
               name="demandEncryption"
-              ng-model="xdcrReferenceDialogCtl.cluster.encryption"
+              ng-model="xdcrReferenceDialogCtl.cluster.demandEncryption"
               id="demand_encryption_flag-2"
               type="checkbox"
               style="vertical-align: middle;">
@@ -77,7 +77,7 @@
      <textarea
       id="ssh_key_area-2"
       name="certificate"
-      ng-show="xdcrReferenceDialogCtl.cluster.encryption"
+      ng-show="xdcrReferenceDialogCtl.cluster.demandEncryption"
       ng-model="xdcrReferenceDialogCtl.cluster.certificate"
       placeholder="Copy paste the Certificate information from Remote Cluster here. You can find the certificate information on Couchbase Admin UI under Security &gt; Root Certificate tab."
       style="font-size:10px;width:100%;margin:0;padding:0;min-height:20em;">

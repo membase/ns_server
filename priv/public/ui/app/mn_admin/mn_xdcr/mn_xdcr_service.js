@@ -36,7 +36,7 @@
     function saveClusterReference(cluster, name) {
       cluster = _.clone(cluster);
       cluster.hostname && !cluster.hostname.split(":")[1] && (cluster.hostname += ":8091");
-      !cluster.encription && (cluster.certificate = '');
+      !cluster.demandEncryption && (cluster.certificate = '');
       return $http.post('/pools/default/remoteClusters' + (name ? ("/" + encodeURIComponent(name)) : ""), cluster);
     }
     function deleteClusterReference(name) {
