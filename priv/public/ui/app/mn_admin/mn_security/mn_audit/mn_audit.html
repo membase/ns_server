@@ -38,7 +38,7 @@
             <input
               ng-model="auditCtl.state.rotateInterval"
               ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
-              type="number"
+              type="number" min="0"
               style="width:67px;">
           </label>
           <select

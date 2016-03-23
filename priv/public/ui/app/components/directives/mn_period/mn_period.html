@@ -6,7 +6,7 @@
     ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
     ng-model="autoCompactionSettings[mnPeriod].fromHour"
     ng-class="{invalid: errors[mnPeriod + '_fromHour_']}"
-    type="number"
+    type="number" min="0"
     min="0"
     max="23"
     required
@@ -16,7 +16,7 @@
     ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
     ng-model="autoCompactionSettings[mnPeriod].fromMinute"
     ng-class="{invalid: errors[mnPeriod + '_fromMinute_']}"
-    type="number"
+    type="number" min="0"
     min="0"
     max="59"
     required
@@ -24,7 +24,7 @@
   End Time:
   <input
     name="{{mnPeriod}}_toHour_"
-    type="number"
+    type="number" min="0"
     min="0"
     max="23"
     placeholder="HH"
@@ -37,7 +37,7 @@
     ng-class="{invalid: errors[mnPeriod + '_toMinute_']}"
     ng-model="autoCompactionSettings[mnPeriod].toMinute"
     ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
-    type="number"
+    type="number" min="0"
     required
     min="0"
     max="59"

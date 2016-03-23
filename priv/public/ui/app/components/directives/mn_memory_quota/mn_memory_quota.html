@@ -8,7 +8,7 @@
 <div class="memory-quota row" ng-if="config.displayedServices.kv">
   <label for="kv_ram_quota">Data RAM Quota:</label>
   <input
-    type="number"
+    type="number" min="0"
     class="focusme js_ram_quota"
     id="kv_ram_quota"
     mn-focus
@@ -26,7 +26,7 @@
 <div class="memory-quota row" ng-if="config.displayedServices.index">
   <label for="index_ram_quota">Index RAM Quota:</label>
   <input
-    type="number"
+    type="number" min="0"
     class="js_ram_quota"
     id="index_ram_quota"
     ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)"
@@ -45,7 +45,7 @@
 <div class="memory-quota row" ng-if="config.displayedServices.fts">
   <label for="fts_ram_quota">Full Text RAM Quota:</label>
   <input
-    type="number"
+    type="number" min="0"
     class="focusme js_ram_quota"
     id="fts_ram_quota"
     mn-focus="config.services.model.kv === false && config.services.model.index  === false"
