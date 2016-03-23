@@ -83,7 +83,7 @@
     }
     function getKvNodeLink(nodes) {
       var kvNode = _.find(nodes, function (node) {
-        return node.status === "healthy" && _.indexOf(node.services, "kv") > -1;
+        return _.indexOf(node.services, "kv") > -1;
       });
 
       var hostnameAndPort = kvNode.hostname.split(':');
