@@ -56,6 +56,7 @@
           }
           marker.itemStyle = marker.itemStyle || {};
           marker.itemStyle.left = (percent > 100 ? 100 : percent) + '%';
+          marker.itemStyle.zIndex = 4;
         });
         newOptions.tdItems = _.select(newOptions.items, function (item) {
           return item.name !== null;
