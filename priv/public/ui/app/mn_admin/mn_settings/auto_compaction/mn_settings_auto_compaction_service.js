@@ -65,6 +65,7 @@
           delete holder[fieldName];
         } else {
           fieldName === "size" && (holder[fieldName] = mnMBtoBytesFilter(holder[fieldName]));
+          fieldName === "percentage" && (holder[fieldName] = Number(holder[fieldName]));
         }
       });
     }
