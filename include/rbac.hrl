@@ -56,6 +56,5 @@
 -type rbac_permission_object() :: [rbac_permission_vertex(), ...].
 -type rbac_permission_operations() :: rbac_operation() | [rbac_operation(), ...].
 -type rbac_permission() :: {rbac_permission_object(), rbac_permission_operations()}.
--type rbac_permissions() :: rbac_permission() | [rbac_permission(), ...].
 
 -endif.

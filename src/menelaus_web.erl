@@ -210,8 +210,8 @@ is_throttled_request(_) ->
 -type action() :: {done, term()} |
                   {ui, boolean(), fun()} |
                   {ui, boolean(), fun(), [term()]} |
-                  {rbac_permissions() | no_check, fun()} |
-                  {rbac_permissions() | no_check, fun(), [term()]}.
+                  {rbac_permission() | no_check, fun()} |
+                  {rbac_permission() | no_check, fun(), [term()]}.
 
 -spec get_action(mochiweb_request(), {term(), boolean(), term()}, string(), [string()]) -> action().
 get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
@@ -820,18 +820,9 @@ require_auth(Req) ->
                                             "Basic realm=\"Couchbase Server Admin / REST\""}])
     end.
 
--spec get_bucket_id([rbac_permission()] | rbac_permission() | no_check) -> bucket_name() | false.
+-spec get_bucket_id(rbac_permission() | no_check) -> bucket_name() | false.
 get_bucket_id(no_check) ->
     false;
-get_bucket_id([]) ->
-    false;
-get_bucket_id([Permission | Rest]) ->
-    case get_bucket_id(Permission) of
-        false ->
-            get_bucket_id(Rest);
-        Bucket ->
-            Bucket
-    end;
 get_bucket_id({Object, _Operations}) ->
     case lists:keyfind(bucket, 1, Object) of
         {bucket, any} ->
@@ -849,12 +840,12 @@ perform_action(Req, {ui, IsSSL, Fun}) ->
     perform_action(Req, {ui, IsSSL, Fun, []});
 perform_action(Req, {ui, IsSSL, Fun, Args}) ->
     serve_ui(Req, IsSSL, Fun, Args);
-perform_action(Req, {Permissions, Fun}) ->
-    perform_action(Req, {Permissions, Fun, []});
-perform_action(Req, {Permissions, Fun, Args}) ->
-    case menelaus_auth:verify_rest_auth(Req, Permissions) of
+perform_action(Req, {Permission, Fun}) ->
+    perform_action(Req, {Permission, Fun, []});
+perform_action(Req, {Permission, Fun, Args}) ->
+    case menelaus_auth:verify_rest_auth(Req, Permission) of
         {allowed, NewReq} ->
-            case get_bucket_id(Permissions) of
+            case get_bucket_id(Permission) of
                 false ->
                     check_uuid(Fun, Args, NewReq);
                 Bucket ->
@@ -863,7 +854,7 @@ perform_action(Req, {Permissions, Fun, Args}) ->
         auth_failure ->
             require_auth(Req);
         forbidden ->
-            menelaus_util:reply_json(Req, menelaus_web_rbac:forbidden_response(Permissions), 403)
+            menelaus_util:reply_json(Req, menelaus_web_rbac:forbidden_response(Permission), 403)
     end.
 
 handle_uilogin(Req) ->

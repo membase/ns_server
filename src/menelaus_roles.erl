@@ -164,7 +164,7 @@ operation_allowed(_, none) ->
 operation_allowed(Operation, AllowedOperations) ->
     lists:member(Operation, AllowedOperations).
 
--spec is_allowed(rbac_permissions(), rbac_identity() | [rbac_compiled_role()]) -> boolean().
+-spec is_allowed(rbac_permission(), rbac_identity() | [rbac_compiled_role()]) -> boolean().
 is_allowed(Permission, {_, _} = Identity) ->
     Roles = get_compiled_roles(Identity),
     is_allowed(Permission, Roles);
@@ -172,11 +172,7 @@ is_allowed({Object, Operation}, Roles) ->
     lists:any(fun (Role) ->
                       Operations = get_allowed_operations(Object, Role),
                       operation_allowed(Operation, Operations)
-              end, Roles);
-is_allowed(Permissions, Roles) when is_list(Permissions) ->
-    lists:any(fun (Permission) ->
-                      is_allowed(Permission, Roles)
-              end, Permissions).
+              end, Roles).
 
 -spec substitute_params([string()], [atom()], [rbac_permission_pattern_raw()]) ->
                                [rbac_permission_pattern()].

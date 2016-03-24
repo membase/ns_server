@@ -285,15 +285,15 @@ verify_login_creds(Username, Password) ->
             Other
     end.
 
--spec verify_rest_auth(mochiweb_request(), rbac_permissions() | no_check) ->
+-spec verify_rest_auth(mochiweb_request(), rbac_permission() | no_check) ->
                               auth_failure | forbidden | {allowed, mochiweb_request()}.
-verify_rest_auth(Req, Permissions) ->
+verify_rest_auth(Req, Permission) ->
     Auth = extract_auth(Req),
     case authenticate(Auth) of
         false ->
             auth_failure;
         {ok, Identity} ->
-            case check_permissions(Identity, Permissions) of
+            case check_permission(Identity, Permission) of
                 allowed ->
                     Token = case Auth of
                                 {token, T} ->
@@ -307,11 +307,11 @@ verify_rest_auth(Req, Permissions) ->
             end
     end.
 
--spec check_permissions(rbac_identity(), rbac_permissions() | no_check) ->
-                               auth_failure | forbidden | allowed.
-check_permissions(_Identity, no_check) ->
+-spec check_permission(rbac_identity(), rbac_permission() | no_check) ->
+                              auth_failure | forbidden | allowed.
+check_permission(_Identity, no_check) ->
     allowed;
-check_permissions(Identity, Permissions) ->
+check_permission(Identity, Permission) ->
     Roles = menelaus_roles:get_compiled_roles(Identity),
     case Roles of
         [] ->
@@ -319,12 +319,12 @@ check_permissions(Identity, Permissions) ->
             %% server authenticates the user that has no roles assigned
             auth_failure;
         _ ->
-            case menelaus_roles:is_allowed(Permissions, Roles) of
+            case menelaus_roles:is_allowed(Permission, Roles) of
                 true ->
                     allowed;
                 false ->
-                    ?log_debug("Access denied.~nIdentity: ~p~nRoles: ~p~nPermissions: ~p~n",
-                               [Identity, Roles, Permissions]),
+                    ?log_debug("Access denied.~nIdentity: ~p~nRoles: ~p~nPermission: ~p~n",
+                               [Identity, Roles, Permission]),
                     case Identity of
                         {"", anonymous} ->
                             %% we do allow some api's for anonymous
