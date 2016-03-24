@@ -15,6 +15,7 @@
     <div class="save_cancel when-roadmin-hide-me">
       <button
         class="save_button float_right"
+        ng-disabled="settingsAutoCompactionCtl.errors"
         ng-show="rbac.cluster.settings.write"
         type="submit">
         Save
