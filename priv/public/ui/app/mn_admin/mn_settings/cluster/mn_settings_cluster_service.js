@@ -41,7 +41,12 @@
       var config = {
         method: 'POST',
         url: '/settings/indexes',
-        data: data
+        data: {
+          indexerThreads: data.indexerThreads,
+          logLevel:  data.logLevel,
+          maxRollbackPoints:  data.maxRollbackPoints,
+          storageMode:  data.storageMode
+        }
       };
       if (justValidate) {
         config.params = {

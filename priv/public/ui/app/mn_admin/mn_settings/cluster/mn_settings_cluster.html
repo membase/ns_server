@@ -54,47 +54,6 @@
           </span>
         </div>
         <div class="row">
-          <label for="in_memory_snapshot">In Memory Snapshot Interval:</label>
-          <input
-            type="number" min="0"
-            ng-model="settingsClusterCtl.indexSettings.memorySnapshotInterval"
-            name="memorySnapshotInterval"
-            ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
-            id="in_memory_snapshot">
-          <span>(ms)</span>
-          <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
-            <span class="tooltip_msg text_11" style="width:310px;"><span>
-              Specifies the frequency of in-memory snapshots. This determines
-              the earliest possibility of a scan seeing a given KV mutation.
-            </span></span>
-          </a>
-          <span
-            class="error-container err-memorySnapshotInterval"
-            ng-show="settingsClusterCtl.indexSettingsErrors.memorySnapshotInterval">
-              {{settingsClusterCtl.indexSettingsErrors.memorySnapshotInterval}}
-          </span>
-        </div>
-        <div class="row">
-          <label for="in_memory_snapshot">Stable Snapshot Interval:</label>
-          <input
-            type="number" min="0"
-            ng-model="settingsClusterCtl.indexSettings.stableSnapshotInterval"
-            name="stableSnapshotInterval"
-            ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
-            id="in_memory_snapshot">
-          <span>(ms)</span>
-          <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
-            <span class="tooltip_msg text_11" style="width:310px;"><span>
-              Specifies the frequency of persisted snapshots for recovery.
-            </span></span>
-          </a>
-          <span
-            class="error-container err-stableSnapshotInterval"
-            ng-show="settingsClusterCtl.indexSettingsErrors.stableSnapshotInterval">
-              {{settingsClusterCtl.indexSettingsErrors.stableSnapshotInterval}}
-          </span>
-        </div>
-        <div class="row">
           <label for="in_memory_snapshot">Max Rollback Points:</label>
           <input
             type="number" min="0"
