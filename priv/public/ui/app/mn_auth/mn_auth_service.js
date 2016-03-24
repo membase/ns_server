@@ -8,7 +8,7 @@
     'mnPermissions'
   ]).factory('mnAuthService', mnAuthServiceFactory);
 
-  function mnAuthServiceFactory($http, $state, mnPools, $rootScope, mnPendingQueryKeeper, mnPermissions, $uibModalStack) {
+  function mnAuthServiceFactory($http, $state, mnPools, $rootScope, mnPendingQueryKeeper, mnPermissions, $uibModalStack, $window) {
     var mnAuthService = {
       login: login,
       logout: logout
@@ -42,6 +42,8 @@
           delete $rootScope.pools;
           mnPermissions.clear();
         });
+        $window.localStorage.removeItem('mn_xdcr_regex');
+        $window.localStorage.removeItem('mn_xdcr_testKeys');
         mnPendingQueryKeeper.cancelAllQueries();
       });
     }
