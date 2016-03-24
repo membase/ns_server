@@ -536,6 +536,9 @@ terminate_and_wait(Reason, Processes) ->
 
 %% waits until given name is globally registered. I.e. until calling
 %% {global, Name} starts working
+wait_for_global_name(Name) ->
+    wait_for_global_name(Name, ns_config:get_global_timeout(wait_for_global_name, 20000)).
+
 wait_for_global_name(Name, TimeoutMillis) ->
     wait_for_name({global, Name}, TimeoutMillis).
 

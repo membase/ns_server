@@ -114,11 +114,11 @@ reset_count_async() ->
     cast(reset_auto_failover_count).
 
 call(Call) ->
-    misc:wait_for_global_name(?MODULE, 20000),
+    misc:wait_for_global_name(?MODULE),
     gen_server:call({global, ?MODULE}, Call).
 
 cast(Call) ->
-    misc:wait_for_global_name(?MODULE, 20000),
+    misc:wait_for_global_name(?MODULE),
     gen_server:cast({global, ?MODULE}, Call).
 
 -spec alert_key(Code::integer()) -> atom().

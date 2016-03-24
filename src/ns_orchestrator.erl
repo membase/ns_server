@@ -107,7 +107,7 @@ start_link() ->
     misc:start_singleton(gen_fsm, ?MODULE, [], []).
 
 wait_for_orchestrator() ->
-    misc:wait_for_global_name(?MODULE, 20000).
+    misc:wait_for_global_name(?MODULE).
 
 
 -spec create_bucket(memcached|membase, nonempty_string(), list()) ->
