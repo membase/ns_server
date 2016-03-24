@@ -1503,10 +1503,10 @@ input[type=number].size {width:4em;}
 .collect_information_dialog h2 {margin-top: 15px;clear:both;font-size:20px;font-weight:normal;padding-bottom:6px;margin-bottom:10px;border-bottom:1px solid #d4d9dc;}
 .collect_information_dialog .collect_from {padding-left: 20px; padding-top: 5px; line-height: 30px;}
 .collect_information_dialog .collect_from input {vertical-align: middle; margin-right: 5px;}
-.collect_information_dialog .collect_from label {vertical-align: middle; display: inline-block; width: 170px;}
+.collect_information_dialog .collect_from label {vertical-align: middle; display: inline-block; padding-right: 10px;}
 .collect_information_dialog .selected_nodes .icon {display: inline-block; height: 58px; vertical-align: middle; background-image: url("/images/server_status_icons_solid_bg-v2.png"); background-repeat: no-repeat; margin: -14px 0;}
 .collect_information_dialog .selected_nodes {padding: 9px 0 9px 60px; margin: 0; display: inline-block; background: no-repeat url('/images/server_icon.png') 0 50%; }
-.collect_information_dialog .selected_nodes li { padding-right: 150px; width: 300px;}
+.collect_information_dialog .selected_nodes li {padding-right: 150px;}
 .collect_information_dialog .save_cancel button {color: #fff;}
 .collect_information_dialog .js_error_container {display: none; color: red; display: inline-block; margin-left: 10px;}
 .collect_information_dialog .dynamic_input_error {border-color: red;}
