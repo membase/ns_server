@@ -26,11 +26,12 @@
         url: "/settings/autoFailover"
       });
     }
-    function saveAutoFailoverSettings(autoFailoverSettings) {
+    function saveAutoFailoverSettings(autoFailoverSettings, params) {
       return $http({
         method: 'POST',
         url: "/settings/autoFailover",
-        data: autoFailoverSettings
+        data: autoFailoverSettings,
+        params: params
       });
     }
   }

@@ -19,7 +19,9 @@
           id="auto_failover_timeout"
           ng-model="settingsAutoFailoverCtl.state.timeout"
           ng-disabled="settingsAutoFailoverCtl.isAutoFailOverDisabled() || !rbac.cluster.settings.write">
-        <span class="error-container err-timeout"></span>
+        <span class="error-container err-timeout" ng-show="settingsAutoFailoverCtl.errors.timeout">
+          {{settingsAutoFailoverCtl.errors.timeout}}
+        </span>
         <a class="text_11 tooltip casper_settings_auto_failover_timeout_tooltip"><span>What's this?</span>
           <span class="tooltip_msg"><span>
               How long (in seconds) a node must be considered down before it gets auto-failed-over.
@@ -42,7 +44,7 @@
       </div>
     </div>
     <div class="save_cancel when-roadmin-hide-me">
-      <button class="save_button float_right" ng-show="rbac.cluster.settings.write" type="submit">Save</button>
+      <button class="save_button float_right" ng-show="rbac.cluster.settings.write" ng-disabled="settingsAutoFailoverCtl.errors" type="submit">Save</button>
     </div>
   </form>
 </div>

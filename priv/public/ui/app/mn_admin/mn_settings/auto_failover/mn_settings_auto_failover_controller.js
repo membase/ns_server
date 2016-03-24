@@ -15,10 +15,23 @@
 
     activate();
 
+    function watchOnAutoFailoverSettings() {
+      if (!$scope.rbac.cluster.settings.write) {
+        return;
+      }
+      mnPromiseHelper(vm, mnSettingsAutoFailoverService.saveAutoFailoverSettings({
+        enabled: vm.state.enabled,
+        timeout: vm.state.timeout
+      }, {
+        just_validate: 1
+      })).catchErrorsFromSuccess();
+    }
+
     function activate() {
       mnPromiseHelper(vm, mnSettingsAutoFailoverService.getAutoFailoverSettings())
         .applyToScope(function (autoFailoverSettings) {
           vm.state = autoFailoverSettings.data;
+          $scope.$watch('settingsAutoFailoverCtl.state', _.debounce(watchOnAutoFailoverSettings, 500, {leading: true}), true);
         });
     }
     function isAutoFailOverDisabled() {
@@ -31,7 +44,7 @@
       };
       mnPromiseHelper(vm, mnSettingsAutoFailoverService.saveAutoFailoverSettings(data))
         .showErrorsSensitiveSpinner()
-        .catchGlobalErrors('An error occured, auto-failover settings were not saved.')
+        .catchErrors()
         .reloadState();
     };
   }
