@@ -13,7 +13,18 @@
     var errorReportsLimit = 8;
     var sentReports = 0;
 
+    // TransitionRejection types
+    // 2 "SUPERSEDED";
+    // 3 "ABORTED";
+    // 4 "INVALID";
+    // 5 "IGNORED";
     return function (exception, cause) {
+      if (
+        exception.constructor.name === "TransitionRejection" &&
+       (exception.type === 2 || exception.type === 3 || exception.type === 5)
+      ) {
+        return; //we are not interested in these TransitionRejection exceptions;
+      }
       exception.cause = cause;
       send(exception);
       $delegate(exception, cause);
