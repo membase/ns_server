@@ -537,10 +537,92 @@ terminate_and_wait(Reason, Processes) ->
 %% waits until given name is globally registered. I.e. until calling
 %% {global, Name} starts working
 wait_for_global_name(Name) ->
-    wait_for_global_name(Name, ns_config:get_global_timeout(wait_for_global_name, 20000)).
+    Timeout = ns_config:get_global_timeout(wait_for_global_name, 20000),
+    case do_wait_for_global_name(Name, Timeout) of
+        ok ->
+            ok;
+        failed ->
+            case ns_config:search(ns_config:latest(), enable_global_workaround, true) of
+                true ->
+                    case try_apply_global_workaround(Name) of
+                        ok ->
+                            do_wait_for_global_name(Name, Timeout);
+                        failed ->
+                            failed
+                    end;
+                false ->
+                    failed
+            end
+    end.
 
-wait_for_global_name(Name, TimeoutMillis) ->
+try_apply_global_workaround(Name) ->
+    KnownNodes0 = gen_server:call(global_name_server, get_known),
+    SyncedNodes0 = gen_server:call(global_name_server, get_synced),
+
+    KnownNodes = ordsets:from_list(KnownNodes0),
+    SyncedNodes = ordsets:from_list(SyncedNodes0),
+
+    Unsynced = ordsets:subtract(KnownNodes, SyncedNodes),
+    case Unsynced =:= ordsets:new() of
+        true ->
+            failed;
+        false ->
+            ?log_debug("Found unsynced nodes ~p while looking up ~p. "
+                       "Trying to work around.", [Unsynced, Name]),
+            apply_global_workaround(ordsets:to_list(Unsynced))
+    end.
+
+apply_global_workaround(Nodes) ->
+    lists:foreach(
+      fun (N) ->
+              erlang:disconnect_node(N),
+              net_adm:ping(N)
+      end, Nodes).
+
+do_wait_for_global_name(Name, TimeoutMillis) ->
     wait_for_name({global, Name}, TimeoutMillis).
+
+-ifdef(EUNIT).
+wait_for_global_name_test_() ->
+    {setup, fun wait_for_global_name_test_setup/0, fun wait_for_global_name_test_teardown/1,
+     [fun do_test_wait_for_global_name/0]}.
+
+wait_for_global_name_test_setup() ->
+    CodePath = code:get_path(),
+
+    {TestNode, Host0} = misc:node_name_host(node()),
+    Host = list_to_atom(Host0),
+
+    lists:map(
+      fun (N) ->
+              FullName = list_to_atom(atom_to_list(N) ++ "-" ++ TestNode),
+              {ok, Node} = slave:start(Host, FullName),
+              true = rpc:call(Node, code, set_path, [CodePath]),
+              Node
+      end, [a, b]).
+
+wait_for_global_name_test_teardown(Nodes) ->
+    lists:foreach(
+      fun (Node) ->
+              ok = slave:stop(Node)
+      end, Nodes).
+
+wait_for_global_name_test_register() ->
+    global:register_name(?MODULE, whereis(global_name_server)).
+
+do_test_wait_for_global_name() ->
+    [A, B] = nodes(),
+
+    yes = rpc:call(A, misc, wait_for_global_name_test_register, []),
+
+    ok = rpc:call(B, misc, do_wait_for_global_name, [?MODULE, 1000]),
+
+    true = rpc:call(B, erlang, disconnect_node, [A]),
+    failed = rpc:call(B, misc, do_wait_for_global_name, [?MODULE, 1000]),
+
+    ok = rpc:call(B, misc, apply_global_workaround, [[A]]),
+    ok = rpc:call(B, misc, do_wait_for_global_name, [?MODULE, 2000]).
+-endif.
 
 wait_for_local_name(Name, TimeoutMillis) ->
     wait_for_name({local, Name}, TimeoutMillis).
