@@ -90,7 +90,7 @@
       }
     }, function ($state, $parse, mnPermissions, $transition$) {
       return mnPermissions.check().then(function() {
-        return $parse($transition$.to().data.permissions)(mnPermissions.export);
+        return !!$parse($transition$.to().data.permissions)(mnPermissions.export);
       });
     });
     $transitionsProvider.onStart({
@@ -99,7 +99,7 @@
       }
     }, function ($state, $parse, mnPoolDefault, $transition$) {
       return mnPoolDefault.get().then(function() {
-        return $parse($transition$.to().data.compat)(mnPoolDefault.export.compat);
+        return !!$parse($transition$.to().data.compat)(mnPoolDefault.export.compat);
       });
     });
     $transitionsProvider.onStart({

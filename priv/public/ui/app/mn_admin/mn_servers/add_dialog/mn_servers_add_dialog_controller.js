@@ -12,8 +12,8 @@
       services: {
         model: {
           kv: true,
-          index: true,
-          n1ql: true,
+          index: $scope.poolDefault.compat.atLeast40,
+          n1ql: $scope.poolDefault.compat.atLeast40,
           fts: $scope.poolDefault.compat.atLeast45
         }
       },

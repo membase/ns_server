@@ -18,7 +18,7 @@
         ui-sref-active="selected">Root Certificate</a>
     </li>
     <li
-      ng-show="rbac.cluster.admin.security.read"
+      ng-show="rbac.cluster.admin.security.read && poolDefault.compat.atLeast40"
       class="when-enterprise only-when-40">
       <a
         id="security_audit"

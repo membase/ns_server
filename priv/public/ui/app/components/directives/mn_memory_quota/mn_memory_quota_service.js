@@ -25,14 +25,16 @@
       }
       var rv = {
         displayedServices: displayedServices,
-        roAdmin: false,
         minMemorySize: Math.max(256, Math.floor(ram.quotaUsedPerNode / IEC.Mi)),
         totalMemorySize: false,
-        memoryQuota: Math.floor(ram.quotaTotalPerNode/IEC.Mi),
-        indexMemoryQuota: currentPool.indexMemoryQuota || 256,
-        ftsMemoryQuota: currentPool.ftsMemoryQuota || 256,
-        isServicesControllsAvailable: false
+        memoryQuota: Math.floor(ram.quotaTotalPerNode/IEC.Mi)
       };
+      if (currentPool.compat.atLeast40) {
+        rv.indexMemoryQuota = currentPool.indexMemoryQuota || 256;
+      }
+      if (currentPool.compat.atLeast45) {
+        rv.ftsMemoryQuota = currentPool.ftsMemoryQuota || 256;
+      }
       if (calculateMaxMemory) {
         var nNodes = _.pluck(currentPool.nodes, function (node) {
           return node.clusterMembership === "active";

@@ -170,7 +170,7 @@ angular.module('mnSettingsNotificationsService', [
       calculateAvgWeekAndHour(stats, "total_avg_view_accesses");
       calculateAvgWeekAndHour(stats, "total_avg_index_num_rows_returned");
 
-      if (pools.isEnterprise && mnPermissions.export.cluster.admin.security.read) {
+      if (pools.isEnterprise && mnPermissions.export.cluster.admin.security.read && poolsDefault.compat.atLeast40) {
         return mnAuditService.getAuditSettings().then(function (auditSettings) {
           stats.adminAuditEnabled = auditSettings.auditdEnabled;
           return stats;
