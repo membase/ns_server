@@ -34,6 +34,9 @@
       var error = ["Got unhandled javascript error:\n"];
       angular.forEach(["name", "message", "fileName", "lineNumber", "columnNumber", "stack"], function (property) {
         if (exception[property]) {
+          if (exception[property].length > 500) {
+            exception[property] = exception[property].substring(0, 500) + "...";
+          }
           error.push(property + ": " + exception[property] + ";\n");
         }
       });
