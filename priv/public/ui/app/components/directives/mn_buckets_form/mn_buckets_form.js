@@ -5,12 +5,12 @@
     .module('mnBucketsForm', [
       'mnFocus',
       'mnBucketsDetailsService',
-      'mnFilters',
-      'mnPromiseHelper'
+      'mnPromiseHelper',
+      'mnBarUsage'
     ])
     .directive('mnBucketsForm', mnBucketsFormDirective);
 
-  function mnBucketsFormDirective($http, mnBucketsDetailsDialogService, mnBytesToMBFilter, mnCountFilter, mnPromiseHelper) {
+  function mnBucketsFormDirective($http, mnBucketsDetailsDialogService, mnPromiseHelper) {
 
     var mnBucketsForm = {
       restrict: 'A',
