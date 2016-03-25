@@ -60,6 +60,7 @@
       if (!ramSummary) {
         return;
       }
+      var bucketRamGuageConfig = {};
       bucketRamGuageConfig.topRight = {
         name: 'Cluster quota',
         value: ramSummary.total

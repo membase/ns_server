@@ -11,7 +11,6 @@
       vm.deleteBucket = deleteBucket;
       vm.flushBucket = flushBucket;
       vm.registerCompactionAsTriggeredAndPost = registerCompactionAsTriggeredAndPost;
-      vm.getBucketRamGuageConfig = getBucketRamGuageConfig;
       vm.getGuageConfig = getGuageConfig;
 
       var compactionTasks;
@@ -40,8 +39,10 @@
           mnPromiseHelper(vm, mnBucketsDetailsService.doGetDetails($scope.bucket)).applyToScope("bucketDetails");
         });
       }
+
+      $scope.$watch("bucketsDetailsCtl.bucketDetails", getBucketRamGuageConfig);
       function getBucketRamGuageConfig(details) {
-        return mnBucketsDetailsService.getBucketRamGuageConfig(details && {
+        vm.bucketRamGuageConfig = mnBucketsDetailsService.getBucketRamGuageConfig(details && {
           total: details.basicStats.storageTotals.ram.quotaTotalPerNode * details.nodes.length,
           thisAlloc: details.quota.ram,
           otherBuckets: details.basicStats.storageTotals.ram.quotaUsedPerNode * details.nodes.length - details.quota.ram
