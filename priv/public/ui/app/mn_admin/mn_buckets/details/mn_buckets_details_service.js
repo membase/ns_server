@@ -113,7 +113,8 @@
 
       guageConfig.topLeft = {
         name: 'Other Data',
-        value: otherData
+        value: otherData,
+        itemStyle: {color: "#C19710"}
       };
       guageConfig.topRight = {
         name: 'Total Cluster Storage',
