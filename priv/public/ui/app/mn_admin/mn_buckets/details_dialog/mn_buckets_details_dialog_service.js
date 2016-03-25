@@ -45,7 +45,7 @@
         totalBucketSize: mnBytesToMBFilter(ramSummary.thisAlloc),
         nodeCount: mnCountFilter(ramSummary.nodesCount, 'node'),
         perNodeMegs: ramSummary.perNodeMegs,
-        guageConfig: _.clone(mnBucketsDetailsService.getBucketRamGuageConfig(ramSummary)),
+        guageConfig: mnBucketsDetailsService.getBucketRamGuageConfig(ramSummary),
         errors: mnSettingsAutoCompactionService.prepareErrorsForView(result.errors)
       };
     }
