@@ -27,7 +27,6 @@
         displayedServices: displayedServices,
         roAdmin: false,
         minMemorySize: Math.max(256, Math.floor(ram.quotaUsedPerNode / IEC.Mi)),
-        minFTSMemorySize: 256,
         totalMemorySize: false,
         memoryQuota: Math.floor(ram.quotaTotalPerNode/IEC.Mi),
         indexMemoryQuota: currentPool.indexMemoryQuota || 256,

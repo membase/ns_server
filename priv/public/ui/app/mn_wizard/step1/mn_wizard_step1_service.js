@@ -48,7 +48,6 @@
       indexMemoryQuota: undefined,
       ftsMemoryQuota: undefined,
       minMemorySize: 256,
-      minFTSMemorySize: 256,
       indexSettings: {
         storageMode: "forestdb"
       }

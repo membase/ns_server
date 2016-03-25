@@ -52,7 +52,7 @@
     ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)"
     name="ftsMemoryQuota"
     ng-model="config.ftsMemoryQuota" />
-  <span>MB (min {{::config.minFTSMemorySize}} MB)</span>
+  <span>MB (min 256 MB)</span>
   <a class="tooltip text_11"><span>What&#39;s this?</span>
     <span class="tooltip_msg" style="width:150px;"><span>
       Main memory allocation amount for full text service per node.
