@@ -76,7 +76,8 @@
                  daemon}).
 
 -record(daemon_config, {check_interval,
-                        min_file_size}).
+                        min_db_file_size,
+                        min_view_file_size}).
 
 -record(period, {from_hour,
                  from_minute,
@@ -681,7 +682,7 @@ make_per_vbucket_compaction_options({TS, 0, DD} = GeneralOption, {Vb, _}, SafeVi
     end.
 
 vbucket_needs_compaction({DataSize, FileSize}, Config) ->
-    #config{daemon=#daemon_config{min_file_size=MinFileSize},
+    #config{daemon=#daemon_config{min_db_file_size=MinFileSize},
             db_fragmentation=FragThreshold} = Config,
 
     file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize).
@@ -909,7 +910,7 @@ start_view_index_compactor(BucketName, DDocId, Kind, Type, InitialStatus) ->
     end.
 
 bucket_needs_compaction(BucketName, NumVBuckets,
-                        #config{daemon=#daemon_config{min_file_size=MinFileSize},
+                        #config{daemon=#daemon_config{min_db_file_size=MinFileSize},
                                 db_fragmentation=FragThreshold}) ->
     try aggregated_size_info(binary_to_list(BucketName)) of
         {DataSize, FileSize} ->
@@ -986,7 +987,7 @@ free_space(Path) ->
 
 view_needs_compaction(BucketName, DDocId, Kind, Type,
                       #config{view_fragmentation=FragThreshold,
-                              daemon=#daemon_config{min_file_size=MinFileSize}}) ->
+                              daemon=#daemon_config{min_view_file_size=MinFileSize}}) ->
     Info = get_group_data_info(BucketName, DDocId, Kind, Type),
 
     case Info of
@@ -1129,8 +1130,10 @@ daemon_config_to_record(Config) ->
 
 do_daemon_config_to_record([], Acc) ->
     Acc;
-do_daemon_config_to_record([{min_file_size, V} | Rest], Acc) ->
-    do_daemon_config_to_record(Rest, Acc#daemon_config{min_file_size=V});
+do_daemon_config_to_record([{min_db_file_size, V} | Rest], Acc) ->
+    do_daemon_config_to_record(Rest, Acc#daemon_config{min_db_file_size=V});
+do_daemon_config_to_record([{min_view_file_size, V} | Rest], Acc) ->
+    do_daemon_config_to_record(Rest, Acc#daemon_config{min_view_file_size=V});
 do_daemon_config_to_record([{check_interval, V} | Rest], Acc) ->
     do_daemon_config_to_record(Rest, Acc#daemon_config{check_interval=V}).
 

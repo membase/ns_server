@@ -121,7 +121,8 @@ default() ->
        {update_min_changes, 5000},
        {replica_update_min_changes, 5000}]},
      {{node, node(), compaction_daemon}, [{check_interval, 30},
-                                          {min_file_size, 131072}]},
+                                          {min_db_file_size, 131072},
+                                          {min_view_file_size, 131072}]},
      {nodes_wanted, [node()]},
      {server_groups, [[{uuid, <<"0">>},
                        {name, <<"Group 1">>},
@@ -587,8 +588,12 @@ do_upgrade_config_from_4_1_1_to_4_5(DefaultConfig) ->
     DefaultsKey = {node, node(), memcached_defaults},
     {value, McdDefaults} = ns_config:search([DefaultConfig], DefaultsKey),
 
+    CompactionDaemonKey = {node, node(), compaction_daemon},
+    {value, CompactionDaemonCfg} = ns_config:search([DefaultConfig], CompactionDaemonKey),
+
     [{set, ConfKey, McdConfig},
-     {set, DefaultsKey, McdDefaults}].
+     {set, DefaultsKey, McdDefaults},
+     {set, CompactionDaemonKey, CompactionDaemonCfg}].
 
 upgrade_2_3_0_to_3_0_test() ->
     Cfg = [[{some_key, some_value},
@@ -691,10 +696,12 @@ upgrade_4_0_to_4_1_1_test() ->
 upgrade_4_1_1_to_4_5_test() ->
     Default = [{{node, node(), memcached_config}, memcached_config},
                {{node, node(), memcached}, memcached},
-               {{node, node(), memcached_defaults}, memcached_defaults}],
+               {{node, node(), memcached_defaults}, memcached_defaults},
+               {{node, node(), compaction_daemon}, compaction_daemon_config}],
 
     ?assertMatch([{set, {node, _, memcached_config}, memcached_config},
-                  {set, {node, _, memcached_defaults}, memcached_defaults}],
+                  {set, {node, _, memcached_defaults}, memcached_defaults},
+                  {set, {node, _, compaction_daemon}, compaction_daemon_config}],
                  do_upgrade_config_from_4_1_1_to_4_5(Default)).
 
 no_upgrade_on_current_version_test() ->

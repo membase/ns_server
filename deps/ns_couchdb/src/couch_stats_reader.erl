@@ -85,7 +85,8 @@ handle_info(refresh_stats, #state{bucket = Bucket,
 
     Config = ns_config:get(),
     MinFileSize = ns_config:search_node_prop(Config,
-                                             compaction_daemon, min_file_size, 131072),
+                                             compaction_daemon, min_view_file_size),
+    true = (MinFileSize =/= undefined),
 
     NewStats = grab_couch_stats(Bucket, MinFileSize),
     {ProcessedSamples, NewLastViewStats} = parse_couch_stats(TS, NewStats, LastTS,
