@@ -122,7 +122,7 @@ default() ->
        {replica_update_min_changes, 5000}]},
      {{node, node(), compaction_daemon}, [{check_interval, 30},
                                           {min_db_file_size, 131072},
-                                          {min_view_file_size, 131072}]},
+                                          {min_view_file_size, 20 * 1024 * 1024}]},
      {nodes_wanted, [node()]},
      {server_groups, [[{uuid, <<"0">>},
                        {name, <<"Group 1">>},
