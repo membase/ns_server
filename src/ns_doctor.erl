@@ -691,10 +691,12 @@ do_build_tasks_list(NodesDict, PoolId, AllRepDocs, Buckets, RebStatusTimeout) ->
     RebalanceTask = build_rebalance_task(RebStatusTimeout),
     RecoveryTask = build_recovery_task(PoolId),
     OrphanBucketsTasks = build_orphan_buckets_tasks(Buckets, NodesDict),
+    GSITask = build_gsi_task(),
 
     Tasks0 = lists:append([CompactionAndIndexingTasks, XDCRTasks,
                            SampleBucketTasks, WarmupTasks, CollectTask,
-                           RebalanceTask, RecoveryTask, OrphanBucketsTasks]),
+                           RebalanceTask, RecoveryTask, OrphanBucketsTasks,
+                           GSITask]),
 
     Tasks1 =
         lists:sort(
@@ -886,6 +888,35 @@ get_node(Node, NodeStatuses) ->
     case dict:find(Node, NodeStatuses) of
         {ok, Info} -> Info;
         error -> [down]
+    end.
+
+build_gsi_task() ->
+    case cluster_compat_mode:is_cluster_45() of
+        true ->
+            {ok, Indexes, Stale, _} = indexer_gsi:get_indexes(),
+            build_gsi_index_task(Indexes, Stale, []);
+        false ->
+            []
+    end.
+
+build_gsi_index_task([], _, Acc) ->
+    Acc;
+build_gsi_index_task([Index | Rest], Stale, Acc) ->
+    Status = proplists:get_value(status, Index),
+    case Status of
+        <<"Building">> ->
+            Task = [{type, global_indexes},
+                    {recommendedRefreshPeriod, 2.0},
+                    {status, Status},
+                    {bucket, proplists:get_value(bucket, Index)},
+                    {index, proplists:get_value(index, Index)},
+                    {id, proplists:get_value(id, Index)},
+                    {progress, proplists:get_value(progress, Index)},
+                    {statusIsStale, Stale}],
+            build_gsi_index_task(Rest, Stale, [Task | Acc]);
+        _ ->
+            %% Skip this index if it is already built
+            build_gsi_index_task(Rest, Stale, Acc)
     end.
 
 build_recovery_task(PoolId) ->
