@@ -53,13 +53,19 @@ restart() ->
     ns_ports_setup:restart_port_by_name(indexer).
 
 get_status_mapping() ->
+    AddType = case cluster_compat_mode:is_cluster_45() of
+                  true ->
+                      [{storageMode, <<"indexType">>}];
+                  false ->
+                      []
+              end,
     [{id, <<"defnId">>},
      {index, <<"name">>},
      {bucket, <<"bucket">>},
      {status, <<"status">>},
      {definition, <<"definition">>},
      {progress, <<"completion">>},
-     {hosts, <<"hosts">>}].
+     {hosts, <<"hosts">>} | AddType].
 
 start_keeper() ->
     index_status_keeper:start_link(?MODULE).
