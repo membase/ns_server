@@ -920,6 +920,30 @@ computed_stats_lazy_proplist(BucketName) ->
      {<<"avg_bg_wait_time">>, AverageBgWait}] ++ Views2iStats ++ XDCAllRepStats
         ++ computed_stats_lazy_proplist("@query").
 
+combine_samples(CombineTwo, Dict, [FirstName | Rest]) ->
+    case lists:keyfind(FirstName, 1, Dict) of
+        false ->
+            undefined;
+        {_, Val} ->
+            combine_samples(CombineTwo, Dict, Val, Rest)
+    end.
+
+combine_samples(_CombineTwo, _Dict, Val, []) ->
+    Val;
+combine_samples(CombineTwo, Dict, ValA, [StatNameB | Rest]) ->
+    NewVal = case lists:keyfind(StatNameB, 1, Dict) of
+                 false ->
+                     undefined;
+                 {_, ValB} ->
+                     lists:zipwith(
+                       fun (A, B) when A =/= null, B =/= null ->
+                               CombineTwo(A, B);
+                           (_, _) ->
+                               null
+                       end, ValA, ValB)
+             end,
+    combine_samples(CombineTwo, Dict, NewVal, Rest).
+
 %% converts list of samples to proplist of stat values.
 %%
 %% null values should be uncommon, but they are not impossible. They
@@ -947,21 +971,8 @@ samples_to_proplists(Samples, BucketName) ->
                                            end, Acc)
                        end, InitialAcc, ReversedRest),
 
-    ExtraStats = lists:map(fun ({K, {F, [StatNameA, StatNameB]}}) ->
-                                   ResA = lists:keyfind(StatNameA, 1, Dict),
-                                   ResB = lists:keyfind(StatNameB, 1, Dict),
-                                   ValR = case {ResA, ResB} of
-                                              {{_, ValA}, {_, ValB}} ->
-                                                  lists:zipwith(
-                                                    fun (A, B) when A =/= null, B =/= null ->
-                                                            F(A, B);
-                                                        (_, _) ->
-                                                            null
-                                                    end, ValA, ValB);
-                                              _ ->
-                                                  undefined
-                                          end,
-                                   {K, ValR}
+    ExtraStats = lists:map(fun ({K, {F, StatNames}}) ->
+                                   {K, combine_samples(F, Dict, StatNames)}
                            end, computed_stats_lazy_proplist(BucketName)),
 
     lists:filter(fun ({_, undefined}) -> false;
