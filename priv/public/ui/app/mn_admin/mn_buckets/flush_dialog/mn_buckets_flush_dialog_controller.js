@@ -14,6 +14,7 @@
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .closeFinally()
+        .catchGlobalErrors()
         .broadcast("reloadBucketsPoller");
     }
   }
