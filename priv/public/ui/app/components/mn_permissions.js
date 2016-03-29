@@ -7,7 +7,7 @@
 
   function mnPermissionsProvider() {
 
-    this.$get = ["$http", "$timeout", "$q", "$rootScope", "mnBucketsService", mnPermissionsFacatory];
+    this.$get = ["$http", "$timeout", "$q", "$rootScope", "mnBucketsService", "$parse", mnPermissionsFacatory];
     this.set = set;
 
     var interestingPermissions = [
@@ -33,11 +33,7 @@
       "cluster.indexes!write",
       "cluster.admin.security!write",
       "cluster.samples!read",
-      "cluster.nodes!read",
-      "cluster.bucket[*].xdcr!read",
-      "cluster.bucket[*].xdcr!write",
-      "cluster.bucket[*].xdcr!execute",
-      "cluster.bucket[*].stats!read"
+      "cluster.nodes!read"
     ];
 
     function getAll() {
@@ -50,7 +46,7 @@
       }
     }
 
-    function mnPermissionsFacatory($http, $timeout, $q, $rootScope, mnBucketsService) {
+    function mnPermissionsFacatory($http, $timeout, $q, $rootScope, mnBucketsService, $parse) {
       var mnPermissions = {
         clear: clear,
         set: set,
@@ -83,7 +79,10 @@
           "cluster.bucket[" + name + "]!flush",
           "cluster.bucket[" + name + "]!delete",
           "cluster.bucket[" + name + "]!compact",
-          "cluster.bucket[" + name + "].views!compact"
+          "cluster.bucket[" + name + "].views!compact",
+          "cluster.bucket[" + name + "].xdcr!read",
+          "cluster.bucket[" + name + "].xdcr!write",
+          "cluster.bucket[" + name + "].xdcr!execute"
         ];
       }
 
@@ -110,10 +109,34 @@
         });
       }
 
+      function createWildcard(cluster, wildcard) {
+        for (var bucket in cluster.bucket) {
+          if (bucket != "*" && $parse(wildcard.join("."))(cluster.bucket[bucket])) {
+            wildcard.unshift("bucket['*']");
+            $parse(wildcard.join(".")).assign(cluster, true);
+            return;
+          }
+        }
+        wildcard.unshift("bucket['*']");
+        $parse(wildcard.join(".")).assign(cluster, false);
+      }
+
+      function createWildcards(root) {
+        var wildcards = [
+          ["stats", "read"],
+          ["xdcr", "read"],
+          ["xdcr", "write"],
+          ["xdcr", "execute"]
+        ];
+
+        root.cluster.bucket = root.cluster.bucket || {};
+        wildcards.forEach(function (wildcard) {
+          createWildcard(root.cluster, wildcard);
+        });
+      }
+
       function convertIntoTree(permissions) {
         var rv = {};
-        var root;
-        var level;
         angular.forEach(permissions, function (value, key) {
           var levels = key.split(/[\[\]]+/);
           var regex = /[.:!]+/;
@@ -122,14 +145,10 @@
           } else {
             levels = levels[0].split(regex);
           }
-          var lastOne = levels.pop();
-          root = rv;
-          while (levels.length) {
-            level = levels.shift();
-            root = root[level] = root[level] || {};
-          }
-          root[lastOne] = value;
+          var path = levels.shift() + "['" + levels.join("']['") + "']"; //in order to properly handle bucket names
+          $parse(path).assign(rv, value);
         });
+        createWildcards(rv);
         return rv;
       }
 
