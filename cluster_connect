@@ -28,7 +28,8 @@ class PasswordManager(urllib2.HTTPPasswordMgr):
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "n:t:s:r:iS:T:I:")
+        opts, args = getopt.getopt(sys.argv[1:],
+                                   "n:t:s:r:iS:T:I:", ["dont-rebalance"])
     except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -41,6 +42,7 @@ def main():
     replica_index = True
     start_index = 0
     deploy = ['kv']
+    do_rebalance = True
 
     data_base_path = os.getcwd() + "/data"
     for o, a in opts:
@@ -66,6 +68,8 @@ def main():
             else:
                 plan = dict(e.split(':') for e in plan)
                 deploy = dict([(k, v.split('+')) for k, v in plan.items()])
+        elif o == "--dont-rebalance":
+            do_rebalance = False
         else:
             usage()
             sys.exit()
@@ -123,14 +127,15 @@ def main():
                    "&clusterMemberPort={0}".format(base_port) +
                    "&services={0}".format(",".join(services))).read()
 
-    print "Getting node list"
-    info = json.loads(o.open("http://127.0.0.1:{0}/nodeStatuses".format(base_port)).read())
+    if do_rebalance:
+        print "Getting node list"
+        info = json.loads(o.open("http://127.0.0.1:{0}/nodeStatuses".format(base_port)).read())
 
-    print "Servers added, triggering rebalance."
-    o.open("http://127.0.0.1:{0}/controller/rebalance".format(base_port),
-           urllib.urlencode(
-            {'knownNodes': ",".join([info[k]['otpNode'] for k in info]),
-             'ejectedNodes': ''})).read()
+        print "Servers added, triggering rebalance."
+        o.open("http://127.0.0.1:{0}/controller/rebalance".format(base_port),
+               urllib.urlencode(
+                {'knownNodes': ",".join([info[k]['otpNode'] for k in info]),
+                 'ejectedNodes': ''})).read()
 
 def bool_request_value(Value):
     return "1" if Value else "0"
