@@ -110,21 +110,20 @@
         return;
       }
 
-      var promise = $q.all([
-        mnGsiService.getIndexesState(),
-        mnServersService.getNodes()
-      ]).then(function (resp) {
-        var nodes = resp[1];
-        var indexStatus = resp[0];
+      var promise = mnServersService.getNodes().then(function (nodes) {
         var warnings = {
           isLastIndex: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'index', true),
           isLastQuery: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'n1ql', true),
           isLastFts: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'fts', true),
-          isThereIndex: !!_.find(indexStatus.indexes, function (index) {
-            return _.indexOf(index.hosts, node.hostname) > -1;
-          }),
           isKv: _.indexOf(node.services, 'kv') > -1
         };
+        return mnPoolDefault.export.compat.atLeast40 ? mnGsiService.getIndexesState().then(function (indexStatus) {
+          warnings.isThereIndex = !!_.find(indexStatus.indexes, function (index) {
+            return _.indexOf(index.hosts, node.hostname) > -1;
+          });
+          return warnings;
+        }) : warnings;
+      }).then(function (warnings) {
         if (_.some(_.values(warnings))) {
           $uibModal.open({
             templateUrl: 'app/mn_admin/mn_servers/eject_dialog/mn_servers_eject_dialog.html',

@@ -202,13 +202,18 @@ angular.module('mnSettingsNotificationsService', [
           ]));
         });
 
-        return $q.all([
+        var queries = [
           $q.when(buckets),
           $q.all(perBucketQueries),
           $q.when(pools),
-          mnPoolDefault.get(undefined, mnHttpParams),
-          mnGsiService.getIndexesState(mnHttpParams)
-        ]).then(buildPhoneHomeThingy);
+          mnPoolDefault.get(undefined, mnHttpParams)
+        ];
+
+        if (mnPoolDefault.export.compat.atLeast40) {
+          queries[4] = mnGsiService.getIndexesState(mnHttpParams);
+        }
+
+        return $q.all(queries).then(buildPhoneHomeThingy);
       });
     };
 
