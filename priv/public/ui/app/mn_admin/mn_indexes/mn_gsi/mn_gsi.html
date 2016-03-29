@@ -11,9 +11,10 @@
         <table class="list align_text" style="width:100%" mn-sortable-table="hosts">
           <thead>
             <tr>
-              <th mn-sortable-title="bucket" style="width: 200px;">Bucket</th>
-              <th mn-sortable-title="hosts" style="width: 350px;">Node</th>
-              <th mn-sortable-title="index" style="width: 200px;">Index Name</th>
+              <th mn-sortable-title="bucket" style="width: 170px;">Bucket</th>
+              <th mn-sortable-title="hosts" style="width: 170px;">Node</th>
+              <th mn-sortable-title="index" style="width: 160px;">Index Name</th>
+              <th mn-sortable-title="storageMode | mnFormatStorageMode" style="width: 200px;">Storage Type</th>
               <th mn-sortable-title="status">Status</th>
               <th mn-sortable-title="progress" style="width: 150px;">Initial Build Progress</th>
             </tr>
@@ -26,13 +27,14 @@
               </td>
               <td class="ellipsis" title="{{row.hosts[0]}}">{{row.hosts[0]}}</td>
               <td class="ellipsis" title="{{row.index}}">{{row.index}}</td>
+              <td class="ellipsis" title="{{row.storageMode | mnFormatStorageMode}}">{{row.storageMode | mnFormatStorageMode}}</td>
               <td class="ellipsis" title="{{row.status}}">{{row.status}}</td>
               <td class="ellipsis" title="{{row.progress}}">
                 <span ng-if="row.progress">{{row.progress}} %</span>
               </td>
             </tr>
             <tr>
-              <td colspan="5" class="details-placeholder" ng-if="gsiCtl.isDetailsOpened(row.id)" ui-view="details">
+              <td colspan="6" class="details-placeholder" ng-if="gsiCtl.isDetailsOpened(row.id)" ui-view="details">
                 <div class="gong_rb">
                   <table class="properties_table">
                     <tbody>

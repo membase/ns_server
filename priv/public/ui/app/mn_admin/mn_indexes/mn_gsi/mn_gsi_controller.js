@@ -6,7 +6,8 @@
     'mnGsiService',
     'mnSortableTable',
     'mnPoll',
-    'mnSpinner'
+    'mnSpinner',
+    'mnFilters'
   ]).controller('mnGsiController', mnGsiController);
 
   function mnGsiController($scope, mnGsiService, mnSortableTable, mnHelper, mnPoller) {

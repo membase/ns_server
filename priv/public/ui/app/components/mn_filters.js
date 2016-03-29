@@ -32,7 +32,18 @@
     .filter('mnMath', mnMath)
     .filter('lodash', lodash)
     .filter('isDisabled', isDisabled)
-    .filter('mnIntegerToString', mnIntegerToString);
+    .filter('mnIntegerToString', mnIntegerToString)
+    .filter('mnFormatStorageMode', mnFormatStorageMode);
+
+  function mnFormatStorageMode() {
+    return function (value) {
+      switch (value) {
+        case "forestdb": return "Global Index";
+        case "memory_optimized": return "Memory-Optimized Global Index";
+        default: return value;
+      }
+    };
+  }
 
   function lodash() {
     return function (/*lodash medthod and args..*/) {
