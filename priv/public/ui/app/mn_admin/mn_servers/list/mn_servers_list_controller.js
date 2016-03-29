@@ -5,7 +5,7 @@
     .module("mnServers")
     .controller("mnServersListController", mnServersListController);
 
-  function mnServersListController($scope, $state, $rootScope, $uibModal, mnServersService, mnPoolDefault, mnSortableTable, $q, mnMemoryQuotaService, mnGsiService,  mnPromiseHelper) {
+  function mnServersListController($scope, $state, $rootScope, $uibModal, mnServersService, mnPoolDefault, mnSortableTable, $q, mnMemoryQuotaService, mnGsiService,  mnPromiseHelper, mnPermissions) {
     var vm = this;
     vm.sortableTableProperties = mnSortableTable.get();
     vm.mnPoolDefault = mnPoolDefault.latestValue();
@@ -117,7 +117,7 @@
           isLastFts: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'fts', true),
           isKv: _.indexOf(node.services, 'kv') > -1
         };
-        return mnPoolDefault.export.compat.atLeast40 ? mnGsiService.getIndexesState().then(function (indexStatus) {
+        return mnPoolDefault.export.compat.atLeast40 && mnPermissions.export.cluster.indexes.read ? mnGsiService.getIndexesState().then(function (indexStatus) {
           warnings.isThereIndex = !!_.find(indexStatus.indexes, function (index) {
             return _.indexOf(index.hosts, node.hostname) > -1;
           });

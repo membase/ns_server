@@ -204,7 +204,7 @@ angular.module('mnSettingsNotificationsService', [
           mnPoolDefault.get(undefined, mnHttpParams)
         ];
 
-        if (mnPoolDefault.export.compat.atLeast40) {
+        if (mnPoolDefault.export.compat.atLeast40 && mnPermissions.export.cluster.indexes.read) {
           queries[4] = mnGsiService.getIndexesState(mnHttpParams);
         }
 
