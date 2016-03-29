@@ -10,7 +10,7 @@
     this.$get = ["$http", "$timeout", "$q", "$rootScope", "mnBucketsService", mnPermissionsFacatory];
     this.set = set;
 
-    var interestedPermissions = [
+    var interestingPermissions = [
       "cluster.buckets!create",
       "cluster.nodes!write",
       "cluster.pools!read",
@@ -41,12 +41,12 @@
     ];
 
     function getAll() {
-      return _.clone(interestedPermissions);
+      return _.clone(interestingPermissions);
     }
 
     function set(permission) {
-      if (!_.contains(interestedPermissions, permission)) {
-        interestedPermissions.push(permission);
+      if (!_.contains(interestingPermissions, permission)) {
+        interestingPermissions.push(permission);
       }
     }
 
@@ -133,11 +133,11 @@
         return rv;
       }
 
-      function doCheck(interestedPermissions) {
+      function doCheck(interestingPermissions) {
         return $http({
           method: "POST",
           url: "/pools/default/checkPermissions",
-          data: interestedPermissions.join(',')
+          data: interestingPermissions.join(',')
         }).then(function (resp) {
           var rv = convertIntoTree(resp.data);
           mnPermissions.export.data = resp.data;
