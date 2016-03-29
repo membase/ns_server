@@ -119,6 +119,7 @@
         var warnings = {
           isLastIndex: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'index', true),
           isLastQuery: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'n1ql', true),
+          isLastFts: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'fts', true),
           isThereIndex: !!_.find(indexStatus.indexes, function (index) {
             return _.indexOf(index.hosts, node.hostname) > -1;
           }),
