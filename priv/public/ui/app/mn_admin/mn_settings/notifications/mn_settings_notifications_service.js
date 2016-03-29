@@ -32,6 +32,7 @@ angular.module('mnSettingsNotificationsService', [
       var pools = source[2];
       var poolsDefault = source[3];
       var indexStatus = source[4];
+      var auditSettings = source[5];
 
       function getAvgPerItem(items, filter) {
         var avgs = [];
@@ -164,20 +165,14 @@ angular.module('mnSettingsNotificationsService', [
       if (indexStatus) {
         stats.istats.total_indexes = indexStatus.indexes.length;
       }
+      if (auditSettings) {
+        stats.adminAuditEnabled = auditSettings.auditdEnabled;
+      }
       calculateAvgWeekAndHour(stats, "avg_ops", true);
       calculateAvgWeekAndHour(stats, "avg_cmd_set", true);
       calculateAvgWeekAndHour(stats, "avg_query_requests", true);
       calculateAvgWeekAndHour(stats, "total_avg_view_accesses");
       calculateAvgWeekAndHour(stats, "total_avg_index_num_rows_returned");
-
-      if (pools.isEnterprise && mnPermissions.export.cluster.admin.security.read && poolsDefault.compat.atLeast40) {
-        return mnAuditService.getAuditSettings().then(function (auditSettings) {
-          stats.adminAuditEnabled = auditSettings.auditdEnabled;
-          return stats;
-        });
-      } else {
-        return stats;
-      }
     }
 
     mnSettingsNotificationsService.buildPhoneHomeThingy = function (mnHttpParams) {
@@ -211,6 +206,10 @@ angular.module('mnSettingsNotificationsService', [
 
         if (mnPoolDefault.export.compat.atLeast40) {
           queries[4] = mnGsiService.getIndexesState(mnHttpParams);
+        }
+
+        if (mnPools.export.isEnterprise && mnPermissions.export.cluster.admin.security.read && mnPoolDefault.export.compat.atLeast40) {
+          queries[5] = mnAuditService.getAuditSettings();
         }
 
         return $q.all(queries).then(buildPhoneHomeThingy);
