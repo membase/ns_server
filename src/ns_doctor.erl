@@ -907,7 +907,7 @@ build_gsi_index_task([Index | Rest], Stale, Acc) ->
         <<"Building">> ->
             Task = [{type, global_indexes},
                     {recommendedRefreshPeriod, 2.0},
-                    {status, Status},
+                    {status, running},
                     {bucket, proplists:get_value(bucket, Index)},
                     {index, proplists:get_value(index, Index)},
                     {id, proplists:get_value(id, Index)},
