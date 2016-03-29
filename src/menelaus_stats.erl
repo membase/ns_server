@@ -524,6 +524,8 @@ section_nodes("@index-"++_) ->
     ns_cluster_membership:service_actual_nodes(ns_config:latest(), index);
 section_nodes("@fts-"++_) ->
     ns_cluster_membership:service_actual_nodes(ns_config:latest(), fts);
+section_nodes("@fts") ->
+    ns_cluster_membership:service_actual_nodes(ns_config:latest(), fts);
 section_nodes("@xdcr-"++Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket);
 section_nodes(Bucket) ->
@@ -1608,7 +1610,11 @@ membase_fts_stats_description(_) ->
                {desc, <<"Number of fts bytes indexed per second">>}]},
      {struct, [{title, <<"fts queries/sec">>},
                {name, global_fts_stat(<<"total_queries">>)},
-               {desc, <<"Number of fts queries per second">>}]}].
+               {desc, <<"Number of fts queries per second">>}]},
+     {struct, [{isBytes,true},
+               {title, <<"fts disk size">>},
+               {name, global_fts_stat(<<"num_bytes_used_disk">>)},
+               {desc, <<"Total fts disk file size for this bucket">>}]}].
 
 membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
     [{struct,[{blockName,<<"Summary">>},
@@ -2155,7 +2161,30 @@ memcached_stats_description() ->
                          {title,<<"CAS misses per sec.">>},
                          {desc,<<"Number of CAS operations per second for data that this bucket does not contain (measured from cas_misses)">>}]}]}]}].
 
-server_resources_stats_description(IndexNodes) ->
+server_resources_stats_description(IndexNodes, FtsNodes) ->
+    MaybeFts =
+        case FtsNodes of
+            [] ->
+                [];
+            _ ->
+                [{struct,[{isBytes,true},
+                          {name,<<"fts_num_bytes_used_ram">>},
+                          {title,<<"fts RAM used">>},
+                          {desc,<<"Amount of RAM used by FTS on this server">>}]}]
+        end,
+    MaybeIndexFts =
+        case IndexNodes of
+            [] ->
+                MaybeFts;
+            _ ->
+                [{struct,[{name,<<"index_ram_percent">>},
+                          {title,<<"Max Index RAM Used %">>},
+                          {desc,<<"Percentage of Index RAM in use across all indexes on this server">>}]},
+                 {struct,[{name,<<"index_remaining_ram">>},
+                          {title,<<"remaining index ram">>},
+                          {desc,<<"Amount of index RAM available on this server">>}]}
+                 | MaybeFts]
+        end,
     [{blockName,<<"Server Resources">>},
      {serverResources, true},
      {stats,
@@ -2186,17 +2215,7 @@ server_resources_stats_description(IndexNodes) ->
        {struct,[{name,<<"hibernated_waked">>},
                 {title,<<"streaming wakeups/sec">>},
                 {desc,<<"Rate of streaming request wakeups on port 8091">>}]}
-       | (case IndexNodes of
-              [] ->
-                  [];
-              _ ->
-                  [{struct,[{name,<<"index_ram_percent">>},
-                            {title,<<"Max Index RAM Used %">>},
-                            {desc,<<"Percentage of Index RAM in use across all indexes on this server">>}]},
-                   {struct,[{name,<<"index_remaining_ram">>},
-                            {title,<<"remaining index ram">>},
-                            {desc,<<"Amount of index RAM available on this server">>}]}]
-          end)]}].
+       | MaybeIndexFts]}].
 
 base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
@@ -2204,7 +2223,7 @@ base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                membase -> membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes);
                memcached -> memcached_stats_description()
            end,
-    [{struct, server_resources_stats_description(IndexNodes)} | Base].
+    [{struct, server_resources_stats_description(IndexNodes, FtsNodes)} | Base].
 
 parse_add_index_param(Param, Params) ->
     case proplists:get_value(Param, Params) of
@@ -2375,9 +2394,12 @@ serve_aggregated_ui_stats(Req, Params) ->
     {_, FtsNodes, FStats} =
         maybe_grab_stats("@fts-" ++ Bucket, Nodes, HaveStamp, Wnd, IndexerStats),
 
+    {_, _, FullStats} =
+        maybe_grab_stats("@fts", Nodes, HaveStamp, Wnd, FStats),
+
     Stats = [{list_to_binary(Bucket), {BS}},
              {<<"@system">>, {SS}}
-             | FStats],
+             | FullStats],
     NewHaveStamp = [case proplists:get_value(timestamp, S) of
                         [] -> {Name, 0};
                         L -> {Name, lists:last(L)}

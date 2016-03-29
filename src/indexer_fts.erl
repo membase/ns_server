@@ -67,7 +67,7 @@ get_computed() ->
     [].
 
 get_service_stats() ->
-    [].
+    [num_bytes_used_ram].
 
 grab_stats() ->
     index_rest:get_json(fts, "api/nsstats", get_port(), get_timeout()).
