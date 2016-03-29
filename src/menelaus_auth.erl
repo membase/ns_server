@@ -281,8 +281,15 @@ verify_login_creds(Username, Password) ->
     case authenticate({Username, Password}) of
         {ok, {Username, bucket}} ->
             false;
-        Other ->
-            Other
+        {ok, Identity} ->
+            case check_permission(Identity, {[pools], read}) of
+                allowed ->
+                    {ok, Identity};
+                _ ->
+                    false
+            end;
+        false ->
+            false
     end.
 
 -spec verify_rest_auth(mochiweb_request(), rbac_permission() | no_check) ->
