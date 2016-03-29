@@ -176,6 +176,7 @@ integer_settings() ->
      {maxRollbackPoints, 1, NearInfinity}].
 
 handle_index_status(Req) ->
+    menelaus_web:assert_is_40(),
     {ok, Indexes0, Stale, Version} = indexer_gsi:get_indexes(),
     Indexes = [{Props} || Props <- Indexes0],
 
