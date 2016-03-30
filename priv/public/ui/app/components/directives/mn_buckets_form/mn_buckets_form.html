@@ -160,7 +160,7 @@
     <label for="for-enable-flush-init">Enable</label>
     <a class="tooltip text_11"><span>What's this?</span>
       <span class="tooltip_msg" style="width:218px;"><span>
-        When flushed, items in memcached buckets are flagged for removal and subsequently removed; items in couchbase buckets are immediately removed. This does not affect the item count immediately.
+        When flushed, items in the bucket are removed as soon as possible in both memcached and Couchbase buckets. Note this does not immediately show in item count statistics with memcached buckets.
       </span></span>
     </a>
   </div>
