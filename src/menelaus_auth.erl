@@ -288,8 +288,8 @@ verify_login_creds(Username, Password) ->
                 _ ->
                     false
             end;
-        false ->
-            false
+        Other ->
+            Other
     end.
 
 -spec verify_rest_auth(mochiweb_request(), rbac_permission() | no_check) ->
