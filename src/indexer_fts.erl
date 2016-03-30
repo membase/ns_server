@@ -47,8 +47,6 @@ restart() ->
 get_status_mapping() ->
     [{[index, id], <<"name">>},
      {bucket, <<"bucket">>},
-     {status, <<"status">>},
-     {progress, <<"completion">>},
      {hosts, <<"hosts">>}].
 
 start_keeper() ->
