@@ -21,7 +21,6 @@
 
 -export([proxy_or/2,
          proxy_or/3,
-         send/2,
          find_all_replication_docs/1,
          all_local_replication_infos/0,
          stats/1,
@@ -102,10 +101,6 @@ proxy_or(Fun, Req, Path) ->
                     proxy(Req, Path)
             end
     end.
-
-send(MochiReq, Body) ->
-    Headers = convert_headers(MochiReq),
-    send(MochiReq, MochiReq:get(method), MochiReq:get(raw_path), Headers, Body).
 
 interesting_doc_key(<<"id">>) ->
     true;
