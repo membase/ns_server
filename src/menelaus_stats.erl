@@ -617,16 +617,7 @@ per_fts_stat(Index, Metric) ->
 computed_stats_lazy_proplist("@system") ->
     [];
 computed_stats_lazy_proplist("@index") ->
-    Z2 = fun (StatNameA, StatNameB, Combiner) ->
-                 {Combiner, [StatNameA, StatNameB]}
-         end,
-    RemainingIndexRam = Z2(<<"index_memory_used">>, <<"index_memory_quota">>,
-                           fun (Used, Quota) ->
-                                   try Quota - Used
-                                   catch error:badarith -> 0
-                                   end
-                           end),
-    [{<<"index_remaining_ram">>, RemainingIndexRam}];
+    [];
 computed_stats_lazy_proplist("@query") ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}

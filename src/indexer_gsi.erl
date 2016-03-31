@@ -102,14 +102,15 @@ global_index_stat(StatName) ->
     iolist_to_binary([atom_to_list(get_type()), <<"/">>, StatName]).
 
 compute_service_stats(Stats) ->
-    compute_index_ram_usage_percent(Stats).
+    compute_index_ram_usage_stats(Stats).
 
-compute_index_ram_usage_percent(Stats) ->
+compute_index_ram_usage_stats(Stats) ->
     Quota = proplists:get_value(<<"index_memory_quota">>, Stats, undefined),
     Used = proplists:get_value(<<"index_memory_used">>, Stats, undefined),
     case Quota =/= undefined andalso Used =/= undefined of
         true ->
-            [{<<"index_ram_percent">>, (Used / Quota) * 100}];
+            [{<<"index_ram_percent">>, min(((Used / Quota) * 100), 100)},
+             {<<"index_remaining_ram">>, max(Quota - Used, 0)}];
         false ->
             []
     end.
