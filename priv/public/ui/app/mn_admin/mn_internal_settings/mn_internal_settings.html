@@ -135,7 +135,23 @@
           ng-model="internalSettingsCtl.state.xdcrMaxConcurrentReps"
           name="xdcrMaxConcurrentReps">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label ng-if="internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+        <span>XDCR Source Nozzles per Node</span>
+        <input
+          maxlength="5"
+          style="width:1.5em;"
+          ng-model="internalSettingsCtl.state.xdcrSourceNozzlePerNode"
+          name="xdcrSourceNozzlePerNode">
+      </label>
+      <label ng-if="internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+        <span>XDCR Target Nozzles per Node</span>
+        <input
+          maxlength="5"
+          style="width:1.5em;"
+          ng-model="internalSettingsCtl.state.xdcrTargetNozzlePerNode"
+          name="xdcrTargetNozzlePerNode">
+      </label>
+      <label>
         <span>XDCR Checkpoint Interval</span>
         <input
           maxlength="5"
@@ -143,7 +159,7 @@
           ng-model="internalSettingsCtl.state.xdcrCheckpointInterval"
           name="xdcrCheckpointInterval">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label>
         <span>XDCR Batch Count</span>
         <input
           maxlength="5"
@@ -151,7 +167,7 @@
           ng-model="internalSettingsCtl.state.xdcrWorkerBatchSize"
           name="xdcrWorkerBatchSize">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label>
         <span>XDCR Batch Size (kB)</span>
         <input
           maxlength="6"
@@ -159,7 +175,7 @@
           ng-model="internalSettingsCtl.state.xdcrDocBatchSizeKb"
           name="xdcrDocBatchSizeKb">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label>
         <span>XDCR Failure Retry Interval</span>
         <input
           maxlength="3"
@@ -167,7 +183,26 @@
           ng-model="internalSettingsCtl.state.xdcrFailureRestartInterval"
           name="xdcrFailureRestartInterval">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label ng-if="internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+        <span>XDCR Statistics Collection Interval (ms)</span>
+        <input
+          maxlength="5"
+          style="width:1.5em;"
+          ng-model="internalSettingsCtl.state.xdcrStatsInterval"
+          name="xdcrStatsInterval">
+      </label>
+      <label ng-if="internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+        <span>XDCR Logging Level</span>
+        <select
+          name="xdcrLogLevel"
+          ng-model="internalSettingsCtl.state.xdcrLogLevel">
+          <option value="Info">Info</option>
+          <option value="Debug">Debug</option>
+          <option value="Trace">Trace</option>
+          <option value="Error">Error</option>
+        </select>
+      </label>
+      <label>
         <span>XDCR Optimistic Replication Threshold</span>
         <input
           maxlength="6"

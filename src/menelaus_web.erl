@@ -3792,35 +3792,46 @@ handle_internal_settings(Req) ->
                              (_) ->
                                  true
                          end, build_internal_settings_kvs()),
-    reply_json(Req, {InternalSettings}).
+
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        false ->
+            reply_json(Req, {InternalSettings});
+        true ->
+            case goxdcr_rest:send(Req, []) of
+                {200, _Headers, Body} ->
+                    {struct, XdcrSettings} = mochijson2:decode(Body),
+                    reply_json(Req, {InternalSettings ++ XdcrSettings});
+                RV ->
+                    Req:respond(RV)
+            end
+    end.
 
 handle_internal_settings_post(Req) ->
     Conf = [{CK, atom_to_list(JK), JK, Parser} ||
                {CK, JK, _, Parser} <- internal_settings_conf()],
     Params = Req:parse_post(),
     CurrentValues = build_internal_settings_kvs(),
-    {ToSet, Errors} =
+    {ToSet, NotFound, Errors} =
         lists:foldl(
-          fun ({SJK, SV}, {ListToSet, ListErrors}) ->
+          fun ({SJK, SV}, {ListToSet, ListNotFound, ListErrors}) ->
                   case lists:keyfind(SJK, 2, Conf) of
                       {CK, SJK, JK, Parser} ->
                           case Parser(SV) of
                               {ok, V} ->
                                   case proplists:get_value(JK, CurrentValues) of
                                       V ->
-                                          {ListToSet, ListErrors};
+                                          {ListToSet, ListNotFound, ListErrors};
                                       _ ->
-                                          {[{CK, V} | ListToSet], ListErrors}
+                                          {[{CK, V} | ListToSet], ListNotFound, ListErrors}
                                   end;
                               _ ->
-                                  {ListToSet,
+                                  {ListToSet, ListNotFound,
                                    [iolist_to_binary(io_lib:format("~s is invalid", [SJK])) | ListErrors]}
                           end;
                       false ->
-                          {ListToSet,
-                           [iolist_to_binary(io_lib:format("Unknown key ~s", [SJK])) | ListErrors]}
+                          {ListToSet, [{SJK, SV} | ListNotFound], ListErrors}
                   end
-          end, {[], []}, Params),
+          end, {[], [], []}, Params),
 
     case Errors of
         [] ->
@@ -3831,7 +3842,20 @@ handle_internal_settings_post(Req) ->
                     ns_config:set(ToSet),
                     ns_audit:internal_settings(Req, ToSet)
             end,
-            reply_json(Req, []);
+
+            case NotFound of
+                [] ->
+                    reply_json(Req, []);
+                _ ->
+                    {Code, RespHeaders, RespBody} =
+                        goxdcr_rest:send(Req, mochiweb_util:urlencode(NotFound)),
+                    case Code of
+                        200 ->
+                            reply_json(Req, []);
+                        _ ->
+                            Req:respond({Code, RespHeaders, RespBody})
+                    end
+            end;
         _ ->
             reply_json(Req, {[{error, X} || X <- Errors]}, 400)
     end.
