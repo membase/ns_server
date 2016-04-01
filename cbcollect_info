@@ -555,8 +555,8 @@ def make_stats_archives_task(guts, initargs_path):
 
 def make_product_task(guts, initargs_path, options):
     root = os.path.abspath(os.path.join(initargs_path, "..", "..", "..", ".."))
-    dbdir = read_guts(guts, "db_dir")
-    viewdir = read_guts(guts, "idx_dir")
+    dbdir = os.path.realpath(read_guts(guts, "db_dir"))
+    viewdir = os.path.realpath(read_guts(guts, "idx_dir"))
 
     diag_url = "http://127.0.0.1:%s/diag?noLogs=1" % read_guts(guts, "rest_port")
     if options.single_node_diag:
