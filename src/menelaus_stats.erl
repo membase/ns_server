@@ -1246,14 +1246,14 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
                                           {desc,<<"Percentage of checked items out of all checked and to-be-replicated items "
                                                   "(measured from per-replication stat percent_completeness)">>}]},
                                  {struct,[{title,<<"mutations replicated">>},
-                                          {name,<<Prefix/binary,"docs_processed">>},
+                                          {name,<<Prefix/binary,"docs_written">>},
                                           {desc,<<"Number of mutations that have been replicated to other clusters "
-                                                  "(measured from per-replication stat docs_processed)">>}]},
+                                                  "(measured from per-replication stat docs_written)">>}]},
                                  {struct,[{title,<<"mutations filtered per sec.">>},
                                           {name,<<Prefix/binary,"docs_filtered">>},
                                           {desc,<<"Number of mutations per second that have been filtered out and have not been replicated to other clusters "
                                                   "(measured from per-replication stat docs_filtered)">>}]},
-                                 {struct,[{title,<<"mutations failed resolution">>},
+                                 {struct,[{title,<<"mutations skipped by resolution">>},
                                           {name,<<Prefix/binary,"docs_failed_cr_source">>},
                                           {desc,<<"Number of mutations that failed conflict resolution on the source side and hence have not been replicated to other clusters "
                                                   "(measured from per-replication stat docs_failed_cr_source)">>}]},
@@ -1280,7 +1280,7 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
                                           {name,<<Prefix/binary, "wtavg_docs_latency">>},
                                           {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
                                                   "(measured from per-replication stat wtavg_docs_latency)">>}]},
-                                 {struct,[{title,<<"doc receival rate">>},
+                                 {struct,[{title,<<"doc reception rate">>},
                                           {name,<<Prefix/binary,"rate_received_from_dcp">>},
                                           {desc,<<"Rate of mutations received from dcp in terms of number of mutations per second ">>}]}]}]}
               end, Reps).
