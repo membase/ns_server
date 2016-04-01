@@ -48,6 +48,7 @@
           <tr>
             <th class="keycol">ID</th>
             <th>&#160;</th>
+            <th>Content</th>
             <th>&#160;</th>
             <th>&#160;</th>
             <th>&#160;</th>
@@ -59,8 +60,11 @@
         </thead>
         <tbody>
           <tr class="align_text" ng-repeat="r in documentsControlCtl.state.docs.rows" ng-show="documentsControlCtl.state.docs.rows.length">
-            <td class="key ellipsis" colspan="6">
+            <td class="key ellipsis" colspan="2">
               <a ui-sref="app.admin.documents.editing({documentId: r.id})">{{ r.key }}</a>
+            </td>
+            <td class="code ellipsis" colspan="5">
+                <code class="object">{{ r.asString() }}</code>
             </td>
             <td colspan="3">
               <button class="list_button delete_btn when-roadmin-avoid-me" ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write" ng-click="documentsListCtl.deleteDocument(r.id)"><span>Delete</span></button>
