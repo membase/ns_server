@@ -4,7 +4,7 @@
       Error: {{documentsEditingCtl.state.errors.reason}} ({{documentsEditingCtl.state.errors.error }})
     </div>
     <div class="warning_message documents_notice" ng-show="documentsEditingCtl.areThereWarnings()" ng-messages="documentsEditingCtl.state.editorWarnings">
-      <div ng-message="documentLimitError">Warning: Editing of document with size more than 2.5kb is not allowed</div>
+      <div ng-message="documentLimitError">Warning: Editing of document with size more than 256 KiB is not allowed</div>
       <div ng-message="shouldNotBeNull">Warning: JSON object cannot be null</div>
       <div ng-message="shouldBeAnObject">Warning: JSON should represent an object</div>
       <div ng-message="shouldNotBeAnArray">Warning: JSON should not be an array</div>

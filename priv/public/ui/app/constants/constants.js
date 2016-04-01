@@ -48,7 +48,7 @@
       year: 31622400
     })
     .constant("docsLimit", 1000)
-    .constant("docBytesLimit", 2500)
+    .constant("docBytesLimit", 256 * 1024)
     .constant("viewsPerPageLimit", 6)
     .constant("IEC", {
       Ki: 1024,
