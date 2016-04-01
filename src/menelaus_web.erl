@@ -802,8 +802,17 @@ serve_ui(Req, false, F, Args) ->
 serve_ui(Req, true, F, Args) ->
     apply(F, Args ++ [Req]).
 
+use_minified(Req) ->
+    Query = Req:parse_qs(),
+    %% explicity specified minified in the query params
+    %% overrides the application env value
+    Minified = proplists:get_value("minified", Query),
+    Minified =:= "true" orelse
+        Minified =:= undefined andalso
+        misc:get_env_default(use_minified, true).
+
 handle_ui_root(AppRoot, Path, Plugins, Req) ->
-    Filename = case misc:get_env_default(use_minified, true) of
+    Filename = case use_minified(Req) of
                    true ->
                        filename:join([AppRoot, "ui", "index.min.html"]);
                    _ ->
