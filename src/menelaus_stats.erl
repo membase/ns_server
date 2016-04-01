@@ -719,8 +719,22 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                    {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency},
                    {per_index_stat(Index, <<"num_docs_pending+queued">>), AllPendingDocs}]
           end, get_indexes(indexer_gsi, BucketId));
-computed_stats_lazy_proplist("@fts-"++_BucketId) ->
-    [];
+computed_stats_lazy_proplist("@fts-"++BucketId) ->
+    Z2 = fun (StatNameA, StatNameB, Combiner) ->
+                 {Combiner, [StatNameA, StatNameB]}
+         end,
+    lists:flatmap(
+      fun (Index) ->
+	      AvgQueriesLatency = Z2(per_fts_stat(Index, <<"total_request_time">>),
+				     per_fts_stat(Index, <<"total_queries">>),
+				     fun (TimeNanos, Count) ->
+					     try TimeNanos * 1.0E-6 / Count
+					     catch error:badarith -> 0
+					     end
+				     end),
+
+              [{per_fts_stat(Index, <<"avg_queries_latency">>), AvgQueriesLatency}]
+      end, get_indexes(indexer_fts, BucketId));
 computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}

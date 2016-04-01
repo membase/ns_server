@@ -54,12 +54,12 @@ start_keeper() ->
 
 get_gauges() ->
     [num_mutations_to_index, doc_count, num_recs_to_persist, num_bytes_used_disk,
-    num_pindexes_actual, num_pindexes_target, avg_queries_latency].
+    num_pindexes_actual, num_pindexes_target].
 
 get_counters() ->
     [total_bytes_indexed, total_compactions, total_queries, total_queries_slow,
     total_queries_timeout, total_queries_error, total_bytes_query_results,
-    total_term_searchers].
+    total_term_searchers, total_request_time].
 
 get_computed() ->
     [].
