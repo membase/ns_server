@@ -31,12 +31,12 @@
       }
     }, function (resp) {
       switch (resp.status) {
-        case 401: return $state.go('app.auth');
+        case 401: return $state.go('app.auth', null, {location: false});
       }
     }).then(function () {
       $urlRouter.listen();
       $urlRouter.sync();
-    })
+    });
 
     $transitions.defaultErrorHandler(function (error) {
       error && $exceptionHandler(error);
