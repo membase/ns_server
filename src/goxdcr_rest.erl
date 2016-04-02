@@ -20,6 +20,7 @@
 -include("ns_common.hrl").
 
 -export([spec/2, spec/3, spec/4,
+         send/2,
          find_all_replication_docs/1,
          all_local_replication_infos/0,
          stats/1,
@@ -108,6 +109,10 @@ handle_xdcr(Fun, Args, Req) ->
         true ->
             erlang:apply(Fun, Args ++ [Req])
     end.
+
+send(MochiReq, Body) ->
+    Headers = convert_headers(MochiReq),
+    send(MochiReq, MochiReq:get(method), MochiReq:get(raw_path), Headers, Body).
 
 interesting_doc_key(<<"id">>) ->
     true;
