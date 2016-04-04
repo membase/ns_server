@@ -726,6 +726,8 @@ computed_stats_lazy_proplist("@fts-"++BucketId) ->
 
               [{per_fts_stat(Index, <<"avg_queries_latency">>), AvgQueriesLatency}]
       end, get_indexes(indexer_fts, BucketId));
+computed_stats_lazy_proplist("@fts") ->
+    [];
 computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
