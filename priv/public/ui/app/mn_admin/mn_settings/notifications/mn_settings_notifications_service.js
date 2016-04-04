@@ -4,12 +4,15 @@ angular.module('mnSettingsNotificationsService', [
   'mnPools',
   'mnAnalyticsService',
   'mnViewsListService',
+  'mnSettingsClusterService',
+  'mnSettingsAutoFailoverService',
+  'mnSettingsAutoCompactionService',
   'mnGsiService',
   'mnAuditService',
   'mnFilters',
   'mnPermissions'
 ]).factory('mnSettingsNotificationsService',
-  function ($http, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnGsiService, mnAuditService, mnMBtoBytesFilter, mnPermissions) {
+  function ($http, mnPoolDefault, mnBucketsService, mnPools, $q, $window, $rootScope, mnAnalyticsService, mnViewsListService, mnGsiService, mnAuditService, mnMBtoBytesFilter, mnPermissions, mnSettingsClusterService, mnSettingsAutoFailoverService, mnSettingsAutoCompactionService) {
     var mnSettingsNotificationsService = {};
 
     function sumWithoutNull(array, average) {
@@ -33,6 +36,9 @@ angular.module('mnSettingsNotificationsService', [
       var poolsDefault = source[3];
       var indexStatus = source[4];
       var auditSettings = source[5];
+      var indexSettings = source[6];
+      var autoFailoverSettings = source[7];
+      var autoCompactionSettings = source[8];
 
       function getAvgPerItem(items, filter) {
         var avgs = [];
@@ -73,6 +79,7 @@ angular.module('mnSettingsNotificationsService', [
       }
 
       var stats = {
+        cluster_settings: {},
         version: pools.implementationVersion,
         componentsVersion: pools.componentsVersion,
         uuid: pools.uuid,
@@ -162,6 +169,38 @@ angular.module('mnSettingsNotificationsService', [
           stats.istats.total_curr_items_tot += bucketStats.curr_items_tot ? bucketStats.curr_items_tot[bucketStats.curr_items_tot.length - 1] : 0;
         }
       });
+      if (autoCompactionSettings) {
+        stats.cluster_settings.compaction = {
+          database_trigger_percent_enabled: !!autoCompactionSettings.databaseFragmentationThreshold.percentageFlag,
+          database_trigger_percent_level: autoCompactionSettings.databaseFragmentationThreshold.percentage,
+          database_trigger_size_enabled: !!autoCompactionSettings.databaseFragmentationThreshold.sizeFlag,
+          database_trigger_size_MB: autoCompactionSettings.databaseFragmentationThreshold.size,
+          view_trigger_percent_enabled: !!autoCompactionSettings.viewFragmentationThreshold.percentageFlag,
+          view_trigger_percent_level: autoCompactionSettings.viewFragmentationThreshold.percentage,
+          view_trigger_size_enabled: !!autoCompactionSettings.viewFragmentationThreshold.sizeFlag,
+          view_trigger_size_MB: autoCompactionSettings.viewFragmentationThreshold.size,
+          compaction_trigger_time_based_enabled: !!autoCompactionSettings.allowedTimePeriodFlag,
+          compaction_trigger_time_based_start_time: {
+            hour: autoCompactionSettings.allowedTimePeriod.fromHour,
+            minute: autoCompactionSettings.allowedTimePeriod.fromMinute
+          },
+          index_trigger_percent_enabled: !autoCompactionSettings.indexCircularCompactionFlag,
+          index_trigger_percent_level: autoCompactionSettings.indexFragmentationThreshold.percentage,
+          index_trigger_circular_reuse_enabled: autoCompactionSettings.indexCircularCompactionFlag,
+          index_trigger_circular_reuse_days: autoCompactionSettings.indexCircularCompactionDaysOfWeek,
+          index_trigger_circular_reuse_start_time: {
+            hour: autoCompactionSettings.indexCircularCompaction.fromHour,
+            minute: autoCompactionSettings.indexCircularCompaction.fromMinute
+          }
+        };
+      }
+      if (autoFailoverSettings) {
+        stats.cluster_settings.enable_auto_failover = autoFailoverSettings.data.enabled;
+        stats.cluster_settings.failover_timeout = autoFailoverSettings.data.timeout;
+      }
+      if (indexSettings) {
+        stats.cluster_settings.index_storage_mode = indexSettings.storageMode;
+      }
       if (indexStatus) {
         stats.istats.total_indexes = indexStatus.indexes.length;
       }
@@ -207,9 +246,17 @@ angular.module('mnSettingsNotificationsService', [
         if (mnPoolDefault.export.compat.atLeast40 && mnPermissions.export.cluster.indexes.read) {
           queries[4] = mnGsiService.getIndexesState(mnHttpParams);
         }
-
         if (mnPools.export.isEnterprise && mnPermissions.export.cluster.admin.security.read && mnPoolDefault.export.compat.atLeast40) {
           queries[5] = mnAuditService.getAuditSettings();
+        }
+        if (mnPoolDefault.export.compat.atLeast40 && mnPermissions.export.cluster.indexes.read) {
+          queries[6] = mnSettingsClusterService.getIndexSettings();
+        }
+        if (mnPermissions.export.cluster.settings.read) {
+          queries[7] = mnSettingsAutoFailoverService.getAutoFailoverSettings();
+        }
+        if (mnPermissions.export.cluster.settings.read) {
+          queries[8] = mnSettingsAutoCompactionService.getAutoCompaction();
         }
 
         return $q.all(queries).then(buildPhoneHomeThingy);
