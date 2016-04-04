@@ -43,7 +43,7 @@
         .catchErrors("memoryQuotaErrors")
         .showSpinner('memoryQuotaLoading');
 
-      if (!_.isEqual(vm.indexSettings, vm.initialIndexSettings) && mnPoolDefault.export.compat.atLeast40) {
+      if (!_.isEqual(vm.indexSettings, vm.initialIndexSettings) && mnPoolDefault.export.compat.atLeast40 && $scope.rbac.cluster.indexes.write) {
         mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
           .catchErrors("indexSettingsErrors")
           .showSpinner('indexSettingsLoading')
@@ -79,7 +79,7 @@
           vm.memoryQuotaConfig = resp;
         });
 
-      if (mnPoolDefault.export.compat.atLeast40) {
+      if (mnPoolDefault.export.compat.atLeast40 && $scope.rbac.cluster.indexes.read) {
         mnPromiseHelper(vm, mnSettingsClusterService.getIndexSettings())
           .applyToScope(function (indexSettings) {
             vm.indexSettings = indexSettings;
