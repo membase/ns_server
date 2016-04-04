@@ -716,13 +716,13 @@ computed_stats_lazy_proplist("@fts-"++BucketId) ->
          end,
     lists:flatmap(
       fun (Index) ->
-	      AvgQueriesLatency = Z2(per_fts_stat(Index, <<"total_request_time">>),
-				     per_fts_stat(Index, <<"total_queries">>),
-				     fun (TimeNanos, Count) ->
-					     try TimeNanos * 1.0E-6 / Count
-					     catch error:badarith -> 0
-					     end
-				     end),
+              AvgQueriesLatency = Z2(per_fts_stat(Index, <<"total_request_time">>),
+                                     per_fts_stat(Index, <<"total_queries">>),
+                                     fun (TimeNanos, Count) ->
+                                             try TimeNanos * 1.0E-6 / Count
+                                             catch error:badarith -> 0
+                                             end
+                                     end),
 
               [{per_fts_stat(Index, <<"avg_queries_latency">>), AvgQueriesLatency}]
       end, get_indexes(indexer_fts, BucketId));
