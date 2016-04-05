@@ -34,7 +34,8 @@
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
 
--export([inhibit_view_compaction/3]).
+-export([inhibit_view_compaction/3,
+         do_monitor_mc_cluster_config_updates/3]).
 
 -type progress_callback() :: fun((dict()) -> any()).
 
@@ -131,7 +132,12 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     timer2:send_interval(?TAP_STATS_LOGGING_INTERVAL, log_tap_stats),
 
     AllNodesSet = sets:del_element(undefined, AllNodesSet0),
-    {ok, NodeVersions} = janitor_agent:prepare_nodes_for_rebalance(Bucket, sets:to_list(AllNodesSet), self()),
+    AllNodes = sets:to_list(AllNodesSet),
+
+    {ok, NodeVersions} = janitor_agent:prepare_nodes_for_rebalance(Bucket,
+                                                                   AllNodes,
+                                                                   self()),
+    start_monitor_mc_cluster_config_updates(AllNodes, Bucket),
 
     ets:new(node_versions_for_rebalance, [named_table, protected, set]),
     ets:insert(node_versions_for_rebalance, NodeVersions),
@@ -371,3 +377,22 @@ register_child_process(Pid) ->
     List = erlang:get(child_processes),
     true = is_list(List),
     erlang:put(child_processes, [Pid | List]).
+
+start_monitor_mc_cluster_config_updates(Nodes, BucketName) ->
+    Pid = self(),
+    proc_lib:spawn_link(?MODULE, do_monitor_mc_cluster_config_updates,
+                        [Nodes, BucketName, Pid]).
+
+do_monitor_mc_cluster_config_updates(Nodes, BucketName, RebalancerPid) ->
+    [monitor(process, Pid)
+     || Pid <- janitor_agent:terse_bucket_info_uploader_pid(Nodes, BucketName,
+                                                            RebalancerPid)],
+    do_monitor_mc_cluster_config_updates_loop().
+
+do_monitor_mc_cluster_config_updates_loop() ->
+    receive
+        {'DOWN', _Mref, _Type, Pid, _Info} ->
+            ?log_debug("Got DOWN from terse_bucket_info_uploader on node ~p",
+                       [node(Pid)]),
+            exit(cluster_config_update_failed)
+    end.
