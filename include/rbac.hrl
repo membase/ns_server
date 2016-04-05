@@ -23,13 +23,14 @@
 -type mochiweb_response() :: {mochiweb_response, [any()]}.
 -type auth_token() :: binary() | string().
 
--type rbac_user_name() :: string().
+-type rbac_user_id() :: string().
 -type rbac_password() :: string().
 -type rbac_identity_type() :: rejected | wrong_token | anonymous | admin | ro_admin | bucket | saslauthd.
--type rbac_identity() :: {rbac_user_name(), rbac_identity_type()}.
+-type rbac_identity() :: {rbac_user_id(), rbac_identity_type()}.
 -type rbac_role_param() :: string() | any.
 -type rbac_role_name() :: atom().
 -type rbac_role() :: rbac_role_name() | {rbac_role_name(), nonempty_list(rbac_role_param())}.
+-type rbac_user_name() :: string() | undefined.
 
 -type rbac_operation() :: atom().
 -type rbac_permission_pattern_operations() :: none | all | nonempty_list(rbac_operation()).

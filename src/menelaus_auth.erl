@@ -217,7 +217,7 @@ parse_user(UserPasswordStr) ->
 has_permission(Permission, Req) ->
     menelaus_roles:is_allowed(Permission, get_identity(Req)).
 
--spec authenticate(undefined | {token, auth_token()} | {rbac_user_name(), rbac_password()}) ->
+-spec authenticate(undefined | {token, auth_token()} | {rbac_user_id(), rbac_password()}) ->
                           false | {ok, rbac_identity()} | {error, term()}.
 authenticate(undefined) ->
     {ok, {"", anonymous}};
@@ -258,7 +258,7 @@ authenticate({Username, Password}) ->
             end
     end.
 
--spec saslauthd_authenticate(rbac_user_name(), rbac_password()) ->
+-spec saslauthd_authenticate(rbac_user_id(), rbac_password()) ->
                                     false | {ok, rbac_identity()} | {error, term()}.
 saslauthd_authenticate(Username, Password) ->
     case ns_node_disco:couchdb_node() == node() of
@@ -275,7 +275,7 @@ saslauthd_authenticate(Username, Password) ->
             rpc:call(ns_node_disco:ns_server_node(), ?MODULE, saslauthd_authenticate, [Username, Password])
     end.
 
--spec verify_login_creds(rbac_user_name(), rbac_password()) ->
+-spec verify_login_creds(rbac_user_id(), rbac_password()) ->
                                 false | {ok, rbac_identity()} | {error, term()}.
 verify_login_creds(Username, Password) ->
     case authenticate({Username, Password}) of
