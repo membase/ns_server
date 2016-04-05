@@ -312,8 +312,24 @@ wait_for_connection_loop(Agent, WantedLabel, Timeout) ->
             wait_for_connection_loop(Agent, WantedLabel, Timeout)
     end.
 
-handle_connection(Conn, #state{service = Service,
-                               rebalance_worker = Worker} = State) ->
+handle_connection(Conn, State) ->
+    try
+        do_handle_connection(Conn, State)
+    catch
+        T:E ->
+            %% We might get here because of misbehaving revrpc service, so try
+            %% to drop the connection in the hope that it will help the
+            %% service to recover. We do a similar thing in the terminate
+            %% function, but that won't work for this case because there's no
+            %% connection in the state yet.
+            exit(Conn, {handle_connection_failed, {T, E}}),
+
+            Stack = erlang:get_stacktrace(),
+            erlang:raise(T, E, Stack)
+    end.
+
+do_handle_connection(Conn, #state{service = Service,
+                                  rebalance_worker = Worker} = State) ->
     ?log_debug("Observed new json rpc connection for ~p: ~p",
                [Service, Conn]),
 
