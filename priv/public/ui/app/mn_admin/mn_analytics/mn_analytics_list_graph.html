@@ -1,4 +1,4 @@
-<div id="current_stat_info">
+<div id="current_stat_info" ng-show="!analyticsCtl.state.isEmptyState">
   <h3>
     <span class="i">i</span>
     <span class="current-graph-name js_current-graph-name">{{analyticsListGraphCtl.selectedStat.title}}</span>
@@ -23,6 +23,7 @@
       <div
         id="js_analytics_main_graph"
         class="analytics_main_graph"
+        ng-if="analyticsListGraphCtl.selectedStat.graphConfig"
         mn-plot mn-plot-config="analyticsListGraphCtl.selectedStat.graphConfig">
       </div>
     </div>

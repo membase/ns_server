@@ -149,6 +149,9 @@
               return;
             }
             return mnAnalyticsService.getStats({$stateParams: params}).then(function (state) {
+              if (state.isEmptyState) {
+                return;
+              }
               var selectedStat = state.statsByName && state.statsByName[params.graph];
               if (!selectedStat || !selectedStat.config.data.length) {
                 var findBy = function (info) {
@@ -156,6 +159,9 @@
                 };
                 selectedStat = _.detect(state.statsDirectoryBlocks[1].stats, findBy) ||
                                _.detect(state.statsByName, findBy);
+                if (!selectedStat) {
+                  return;
+                }
                 params.graph = selectedStat.name;
                 $state.go("app.admin.analytics.list.graph", _.clone(params));
                 return $q.reject();

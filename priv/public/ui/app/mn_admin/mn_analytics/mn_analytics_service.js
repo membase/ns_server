@@ -119,8 +119,7 @@
       var statDesc = mnCloneOnlyDataFilter(data[1].data);
       var samples = {};
       var rv = {};
-
-      if (params.previousResult) {
+      if (params.previousResult && !params.previousResult.isEmptyState) {
         stats = maybeApplyDelta(params.previousResult.stats, stats);
       }
 
