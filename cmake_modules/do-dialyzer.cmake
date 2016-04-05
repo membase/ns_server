@@ -8,7 +8,6 @@ IF (NOT EXISTS "${COUCHBASE_PLT}")
     --apps compiler crypto erts inets kernel os_mon sasl ssl stdlib xmerl
     ${_couchdb_bin_dir}/src/mochiweb
     ${_couchdb_bin_dir}/src/snappy ${_couchdb_bin_dir}/src/etap
-    # MISSING?  ${_couchdb_bin_dir}/src/ibrowse
     ${_couchdb_bin_dir}/src/lhttpc
     ${_couchdb_bin_dir}/src/erlang-oauth deps/gen_smtp/ebin)
 
@@ -16,7 +15,6 @@ IF (NOT EXISTS "${COUCHBASE_PLT}")
     --apps compiler crypto erts inets kernel os_mon sasl ssl stdlib xmerl
     ${_couchdb_bin_dir}/src/mochiweb
     ${_couchdb_bin_dir}/src/snappy ${_couchdb_bin_dir}/src/etap
-    # MISSING?  ${_couchdb_bin_dir}/src/ibrowse
     ${_couchdb_bin_dir}/src/lhttpc
     ${_couchdb_bin_dir}/src/erlang-oauth deps/gen_smtp/ebin)
 ENDIF (NOT EXISTS "${COUCHBASE_PLT}")
