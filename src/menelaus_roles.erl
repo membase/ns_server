@@ -242,11 +242,12 @@ get_roles({BucketName, bucket}) ->
 get_roles({_, saslauthd} = Identity) ->
     get_user_roles(Identity).
 
--spec get_compiled_roles(rbac_identity()) -> [rbac_compiled_role()].
-get_compiled_roles(Identity) ->
+-spec get_compiled_roles([rbac_role()] | rbac_identity()) -> [rbac_compiled_role()].
+get_compiled_roles(Roles) when is_list(Roles) ->
     Definitions = get_definitions(),
-    Roles = get_roles(Identity),
-    compile_roles(Roles, Definitions).
+    compile_roles(Roles, Definitions);
+get_compiled_roles(Identity) ->
+    get_compiled_roles(get_roles(Identity)).
 
 -spec get_possible_param_values(ns_config(), atom()) -> [rbac_role_param()].
 get_possible_param_values(Config, bucket_name) ->

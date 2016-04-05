@@ -151,13 +151,41 @@ role_to_json({Name, [any]}) ->
 role_to_json({Name, [BucketName]}) ->
     [{role, Name}, {bucket_name, list_to_binary(BucketName)}].
 
+filter_roles(undefined, Roles) ->
+    Roles;
+filter_roles(RawPermission, Roles) ->
+    case parse_permission(RawPermission) of
+        error ->
+            error;
+        Permission ->
+            lists:filtermap(
+              fun ({Role, _} = RoleInfo) ->
+                      [CompiledRole] = menelaus_roles:get_compiled_roles([Role]),
+                      case menelaus_roles:is_allowed(Permission, [CompiledRole]) of
+                          true ->
+                              {true, RoleInfo};
+                          false ->
+                              false
+                      end
+              end, Roles)
+    end.
+
+
 handle_get_roles(Req) ->
     menelaus_web:assert_is_enterprise(),
     menelaus_web:assert_is_45(),
 
-    Json = [{role_to_json(Role) ++ Props} ||
-               {Role, Props} <- menelaus_roles:get_all_assignable_roles(ns_config:get())],
-    menelaus_util:reply_json(Req, Json).
+    Params = Req:parse_qs(),
+    Permission = proplists:get_value("permission", Params, undefined),
+
+    Roles = menelaus_roles:get_all_assignable_roles(ns_config:get()),
+    case filter_roles(Permission, Roles) of
+        error ->
+            menelaus_util:reply_json(Req, <<"Malformed permission.">>, 400);
+        FilteredRoles ->
+            Json = [{role_to_json(Role) ++ Props} || {Role, Props} <- FilteredRoles],
+            menelaus_util:reply_json(Req, Json)
+    end.
 
 get_user_json(User, Name, Roles) ->
     UserJson = [{id, list_to_binary(User)},
