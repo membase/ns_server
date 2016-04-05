@@ -222,6 +222,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {done, redirect_permanently("/ui/index.html", Req)};
                 ["versions"] ->
                     {done, handle_versions(Req)};
+                ["whoami"] ->
+                    {no_check, fun menelaus_web_rbac:handle_whoami/1};
                 ["pools"] ->
                     {{[pools], read}, fun handle_pools/1};
                 ["pools", "default"] ->

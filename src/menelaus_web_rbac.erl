@@ -27,6 +27,7 @@
          handle_validate_saslauthd_creds_post/1,
          handle_get_roles/1,
          handle_get_users/1,
+         handle_whoami/1,
          handle_put_user/2,
          handle_delete_user/2,
          handle_check_permissions_post/1,
@@ -158,6 +159,16 @@ handle_get_roles(Req) ->
                {Role, Props} <- menelaus_roles:get_all_assignable_roles(ns_config:get())],
     menelaus_util:reply_json(Req, Json).
 
+get_user_json(User, Name, Roles) ->
+    UserJson = [{id, list_to_binary(User)},
+                {roles, [{role_to_json(Role)} || Role <- Roles]}],
+    {case Name of
+         undefined ->
+             UserJson;
+         _ ->
+             [{name, list_to_binary(Name)} | UserJson]
+     end}.
+
 handle_get_users(Req) ->
     menelaus_web:assert_is_enterprise(),
     menelaus_web:assert_is_45(),
@@ -166,16 +177,15 @@ handle_get_users(Req) ->
     Json = lists:map(
              fun ({{User, saslauthd}, Props}) ->
                      Roles = proplists:get_value(roles, Props, []),
-                     UserJson = [{id, list_to_binary(User)},
-                                 {roles, [{role_to_json(Role)} || Role <- Roles]}],
-                     {case lists:keyfind(name, 1, Props) of
-                          false ->
-                              UserJson;
-                          {name, Name} ->
-                              [{name, list_to_binary(Name)} | UserJson]
-                      end}
+                     get_user_json(User, proplists:get_value(name, Props), Roles)
              end, Users),
     menelaus_util:reply_json(Req, Json).
+
+handle_whoami(Req) ->
+    {User, _} = Identity = menelaus_auth:get_identity(Req),
+    Roles = menelaus_roles:get_roles(Identity),
+    Name = menelaus_roles:get_user_name(Identity),
+    menelaus_util:reply_json(Req, get_user_json(User, Name, Roles)).
 
 parse_until(Str, Delimeters) ->
     lists:splitwith(fun (Char) ->

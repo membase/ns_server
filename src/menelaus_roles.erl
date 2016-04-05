@@ -54,6 +54,7 @@
          get_all_assignable_roles/1,
          get_users/0,
          get_users/1,
+         get_user_name/1,
          store_user/3,
          delete_user/1,
          upgrade_users/1]).
@@ -274,6 +275,15 @@ get_users() ->
 -spec get_users(ns_config()) -> [{rbac_identity(), []}].
 get_users(Config) ->
     ns_config:search(Config, user_roles, []).
+
+-spec get_user_name(rbac_identity()) -> rbac_user_name().
+get_user_name(Identity) ->
+    case lists:keyfind(Identity, 1, get_users()) of
+        false ->
+            undefined;
+        {Identity, Props} ->
+            proplists:get_value(name, Props)
+    end.
 
 -spec delete_user(rbac_identity()) -> run_txn_return().
 delete_user(Identity) ->
