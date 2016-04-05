@@ -36,7 +36,10 @@
       .state('app.admin.security.rootCertificate', {
         url: '/rootCertificate',
         controller: 'mnRootCertificateController as rootCertificateCtl',
-        templateUrl: 'app/mn_admin/mn_security/mn_root_certificate/mn_root_certificate.html'
+        templateUrl: 'app/mn_admin/mn_security/mn_root_certificate/mn_root_certificate.html',
+        data: {
+          enterprise: true
+        }
       })
       .state('app.admin.security.ldap', {
         url: '/ldap',
