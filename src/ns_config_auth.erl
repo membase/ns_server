@@ -30,7 +30,7 @@
          is_system_provisioned/0,
          is_system_provisioned/1,
          is_bucket_auth/2,
-         get_no_auth_buckets/0]).
+         get_no_auth_buckets/1]).
 
 get_key(admin) ->
     rest_creds;
@@ -223,8 +223,8 @@ is_bucket_auth(User, Password) ->
             false
     end.
 
-get_no_auth_buckets() ->
+get_no_auth_buckets(Config) ->
     [BucketName ||
-        {BucketName, BucketProps} <- ns_bucket:get_buckets(),
+        {BucketName, BucketProps} <- ns_bucket:get_buckets(Config),
         proplists:get_value(auth_type, BucketProps) =:= none orelse
             proplists:get_value(sasl_password, BucketProps) =:= ""].
