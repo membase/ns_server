@@ -14,3 +14,7 @@
     Only uncheck services you are certain you will NOT use on this node. Services are enabled on a per-node basis.
   </span></span>
 </a>
+<label ng-show="config.services.model.fts"></label>
+<div ng-show="config.services.model.fts" class="wizard_services">
+  <span class="error-container text_11">Full Text Search is a developer preview and is not supported.</span>
+</div>
