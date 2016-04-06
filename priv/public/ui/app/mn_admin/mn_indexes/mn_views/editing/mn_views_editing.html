@@ -65,11 +65,9 @@
           ng-if="!viewsEditingCtl.state.sampleDocument.warnings"
           ng-bind-html="viewsEditingCtl.state.sampleDocument.meta | prettyJson:2 | mnTrustAsHtml" ></pre>
         <pre
-          style="text-align:center;"
+          style="text-align:center;padding: 40px 0 30px;"
           ng-show="viewsEditingCtl.state.sampleDocument.warnings"
-          ng-messages="viewsEditingCtl.state.sampleDocument.warnings">
-            <span ng-message="documentDoesnotExist">A document with that ID does not exist</span>
-            <span ng-message="thereAreNoDocs">There are no documents</span>
+          ng-messages="viewsEditingCtl.state.sampleDocument.warnings"><span ng-message="documentDoesnotExist">A document with that ID does not exist</span><span ng-message="largeDocumet">Large documents are not allowed for preview</span><span ng-message="thereAreNoDocs">There are no documents</span>
         </pre>
       </div>
     </div>

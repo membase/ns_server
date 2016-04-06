@@ -5,7 +5,7 @@
     .module("mnViewsEditingService", ["mnViewsListService", "mnDocumentsEditingService", "mnViewsListService", "mnFilters"])
     .factory("mnViewsEditingService", mnViewsEditingFactory);
 
-  function mnViewsEditingFactory($http, $state, mnPermissions, mnViewsListService, mnDocumentsEditingService, $q, removeEmptyValueFilter, $httpParamSerializerJQLike, mnPoolDefault, viewsPerPageLimit) {
+  function mnViewsEditingFactory($http, $state, mnPermissions, mnViewsListService, mnDocumentsEditingService, $q, removeEmptyValueFilter, $httpParamSerializerJQLike, mnPoolDefault, viewsPerPageLimit, docBytesLimit, getStringBytesFilter) {
     var mnViewsEditingService = {
       getViewsEditingState: getViewsEditingState,
       prepareRandomDocument: prepareRandomDocument,
@@ -107,6 +107,14 @@
 
     function getSampleDocument(params) {
       return mnDocumentsEditingService.getDocument(params).then(function (sampleDocument) {
+        if (getStringBytesFilter(angular.toJson(sampleDocument.data.json)) > docBytesLimit) {
+          return {
+            meta: sampleDocument.data.meta,
+            warnings: {
+              largeDocumet: true
+            }
+          };
+        }
         return sampleDocument.data;
       }, function (resp) {
         switch(resp.status) {
