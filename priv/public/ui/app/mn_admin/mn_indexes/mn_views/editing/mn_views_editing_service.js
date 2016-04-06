@@ -111,7 +111,7 @@
           return {
             meta: sampleDocument.data.meta,
             warnings: {
-              largeDocumet: true
+              largeDocument: true
             }
           };
         }
@@ -125,7 +125,7 @@
               }
             },
             warnings: {
-              documentDoesnotExist: true
+              documentDoesNotExist: true
             }
           };
         }
