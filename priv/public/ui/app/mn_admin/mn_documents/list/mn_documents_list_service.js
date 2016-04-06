@@ -29,23 +29,7 @@
       if (docs.rows.length > params.pageLimit) {
         docs.rows.pop();
       }
-      angular.forEach(docs.rows, function (doc) {
-        doc.asString = function() {
-          if (angular.isUndefined(this._stringValue)) {
-            var value = "";
-            if (angular.isDefined(this.doc.json)) {
-              value = angular.toJson(this.doc.json);
-            }
-            else if (angular.isDefined(this.doc.base64)) {
-              value = this.doc.base64;
-            }
-            // just grab first 200 chars of the string, will max out the
-            // space in the UI and ellipsis will show
-            this._stringValue = value.substring(0, 200);
-          }
-          return this._stringValue;
-        }
-      });
+
       rv.docs = docs;
 
       rv.pageLimits = [5, 10, 20, 50, 100];

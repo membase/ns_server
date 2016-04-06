@@ -33,8 +33,17 @@
     .filter('lodash', lodash)
     .filter('isDisabled', isDisabled)
     .filter('mnIntegerToString', mnIntegerToString)
-    .filter('mnFormatStorageMode', mnFormatStorageMode);
+    .filter('mnFormatStorageMode', mnFormatStorageMode)
+    .filter('mnLimitTo', mnLimitTo);
 
+  //angular limitTo uses slice in order to truncate sting
+  //the method is very slow in case string is very big
+  //therefore we use the substring method here
+  function mnLimitTo() {
+    return function (string, limit) {
+      return (angular.isString(string) ? string : angular.toJson(string)).substring(0, limit);
+    }
+  }
   function mnFormatStorageMode() {
     return function (value) {
       switch (value) {
