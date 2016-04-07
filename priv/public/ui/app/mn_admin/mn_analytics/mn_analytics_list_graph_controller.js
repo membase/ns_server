@@ -5,7 +5,7 @@
     .module('mnAnalytics')
     .controller('mnAnalyticsListGraphController', mnAnalyticsListGraphController);
 
-  function mnAnalyticsListGraphController($scope, $rootScope, $stateParams) {
+  function mnAnalyticsListGraphController($scope, $rootScope, $transition$) {
     var vm = this;
     var selectedStat;
 
@@ -24,7 +24,7 @@
         return;
       }
 
-      selectedStat = analyticsState.statsByName && analyticsState.statsByName[$stateParams.graph];
+      selectedStat = analyticsState.statsByName && analyticsState.statsByName[$transition$.params().graph];
       if (!selectedStat) {
         vm.selectedStat = {};
         return;

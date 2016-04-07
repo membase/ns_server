@@ -121,10 +121,10 @@
       .state('app.admin.analytics.list', {
         abstract: true,
         url: '?openedStatsBlock',
-        // reloadOnSearch: false, should be uncomented after this fix will be merget https://github.com/angular-ui/ui-router/issues/2470
         params: {
           openedStatsBlock: {
-            array: true
+            array: true,
+            dynamic: true
           }
         },
         controller: 'mnAnalyticsListController as analyticsListCtl',
@@ -143,20 +143,21 @@
         controller: 'mnAnalyticsListGraphController as analyticsListGraphCtl',
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list_graph.html',
         resolve: {
-          setDefaultGraph: function (mnAnalyticsService, setDefaultBucketName, $stateParams, $state, $q) {
-            if (!$stateParams.analyticsBucket) {
+          setDefaultGraph: function (mnAnalyticsService, setDefaultBucketName, $state, $q, $transition$) {
+            var params = $transition$.params();
+            if (!params.analyticsBucket) {
               return;
             }
-            return mnAnalyticsService.getStats({$stateParams: $stateParams}).then(function (state) {
-              var selectedStat = state.statsByName && state.statsByName[$stateParams.graph];
+            return mnAnalyticsService.getStats({$stateParams: params}).then(function (state) {
+              var selectedStat = state.statsByName && state.statsByName[params.graph];
               if (!selectedStat || !selectedStat.config.data.length) {
                 var findBy = function (info) {
                   return info.config.data.length;
                 };
                 selectedStat = _.detect(state.statsDirectoryBlocks[1].stats, findBy) ||
                                _.detect(state.statsByName, findBy);
-                $stateParams.graph = selectedStat.name;
-                $state.go("app.admin.analytics.list.graph", _.clone($stateParams));
+                params.graph = selectedStat.name;
+                $state.go("app.admin.analytics.list.graph", _.clone(params));
                 return $q.reject();
               }
             });
@@ -167,10 +168,10 @@
         url: '/buckets?openedBucket',
         params: {
           openedBucket: {
-            array: true
+            array: true,
+            dynamic: true
           }
         },
-        reloadOnSearch: false,
         views: {
           "": {
             controller: 'mnBucketsController as bucketsCtl',
@@ -195,10 +196,10 @@
             value: 'active'
           },
           openedServers: {
-            array: true
+            array: true,
+            dynamic: true
           }
         },
-        reloadOnSearch: false,
         views: {
           "" : {
             controller: 'mnServersListController as serversListCtl',

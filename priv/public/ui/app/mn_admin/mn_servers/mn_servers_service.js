@@ -10,7 +10,7 @@
     ])
     .factory('mnServersService', mnServersFactory);
 
-  function mnServersFactory($http, $q, mnPoolDefault, mnGroupsService, $state, $stateParams) {
+  function mnServersFactory($http, $q, mnPoolDefault, mnGroupsService) {
     var pendingEject = [];
 
     var mnServersService = {

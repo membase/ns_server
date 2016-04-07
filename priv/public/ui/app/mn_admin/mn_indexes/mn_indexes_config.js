@@ -61,10 +61,10 @@
         url: "/index?openedIndex",
         params: {
           openedIndex: {
-            array: true
+            array: true,
+            dynamic: true
           }
         },
-        reloadOnSearch: false,
         controller: "mnGsiController as gsiCtl",
         templateUrl: "app/mn_admin/mn_indexes/mn_gsi/mn_gsi.html"
       });

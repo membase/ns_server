@@ -18,18 +18,18 @@
     };
 
     function setDefaultBucketName(bucketParamName, stateRedirect, memcached) {
-      return function ($q, $state, mnBucketsService, $stateParams) {
+      return function ($q, $state, mnBucketsService, $transition$) {
         var deferred = $q.defer();
-
-        if ($stateParams[bucketParamName] === null) {
+        var params = $transition$.params();
+        if (params[bucketParamName] === null) {
           mnBucketsService.getBucketsByType(true).then(function (buckets) {
             var defaultBucket = memcached ? buckets.byType.defaultName : buckets.byType.membase.defaultName;
             if (!defaultBucket) {
               deferred.resolve();
             } else {
               deferred.reject();
-              $stateParams[bucketParamName] = defaultBucket;
-              $state.go(stateRedirect, _.clone($stateParams));
+              params[bucketParamName] = defaultBucket;
+              $state.go(stateRedirect, _.clone(params));
             }
           });
         } else {
@@ -39,7 +39,7 @@
         return deferred.promise;
       };
     }
-    function mnHelperFactory($window, $state, $stateParams, $location, $timeout, $q, mnTasksDetails, mnAlertsService, $http, mnPendingQueryKeeper) {
+    function mnHelperFactory($window, $state, $location, $timeout, $q, mnTasksDetails, mnAlertsService, $http, mnPendingQueryKeeper) {
       var mnHelper = {
         wrapInFunction: wrapInFunction,
         calculateMaxMemorySize: calculateMaxMemorySize,
@@ -91,7 +91,7 @@
       }
       function reloadState() {
         mnPendingQueryKeeper.cancelAllQueries();
-        $state.transitionTo($state.current, $stateParams, {reload: true, inherit: true});
+        $state.transitionTo($state.current, $state.params, {reload: true, inherit: true});
       }
     }
   }
