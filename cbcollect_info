@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- python -*-
+import json
 import os
 import sys
 import tempfile
@@ -316,6 +317,43 @@ def make_index_task(name, api, passwd, index_port, logfile="couchbase.log"):
 
     return make_curl_task(name, "@", passwd, index_url, log_file=logfile)
 
+def make_view_query_stats_task(rest_port, capi_port):
+    tasks = []
+    ns_server_buckets_url = "http://127.0.0.1:%s/pools/default/buckets" % \
+        (rest_port)
+
+    try:
+        cluster_data = urllib.urlopen(ns_server_buckets_url).read()
+
+        buckets = []
+        for entry in json.loads(cluster_data):
+            if entry['bucketType'] == "membase":
+                buckets.append(entry['name'])
+
+        bucket_ddoc_map = dict()
+        for bucket in buckets:
+            ddocs_url = "http://127.0.0.1:%s/pools/default/buckets/%s/ddocs" %\
+                        (rest_port, bucket)
+            ddoc_data = urllib.urlopen(ddocs_url).read()
+            bucket_ddoc_map[bucket] = [entry['doc']['meta']['id']
+                                      for entry in json.loads(ddoc_data)['rows']]
+
+        def make_task(bucket, ddoc_name):
+            query_stat_url = "http://127.0.0.1:%s/_set_view/%s/%s/_get_query_stats"\
+                % (capi_port, bucket, ddoc_name)
+            return make_curl_task(name="View query timing stat bucket: %s ddoc: %s"
+                                % (bucket, ddoc_name),
+                                user='', password='', url=query_stat_url)
+
+        for bucket in bucket_ddoc_map:
+            for ddoc_name in bucket_ddoc_map[bucket]:
+                tasks.append(make_task(bucket, ddoc_name))
+    except IOError:
+        log("Error fetching view_query timing stats")
+    except ValueError:
+        log("Error decoding views design doc list")
+    return tasks
+
 def basedir():
     mydir = os.path.dirname(sys.argv[0])
     if mydir == "":
@@ -578,6 +616,10 @@ def make_product_task(guts, initargs_path, options):
         fts_tasks = [make_curl_task(name="FTS /api/diag: ",
                        user="@", password=read_guts(guts, "memcached_pass"), url=url)]
 
+    view_query_stat_task = make_view_query_stats_task(
+                                read_guts(guts, "rest_port"),
+                                read_guts(guts, "capi_port"))
+
     _tasks = [
         UnixTask("Directory structure",
                  ["ls", "-lRai", root]),
@@ -718,8 +760,8 @@ def make_product_task(guts, initargs_path, options):
         make_stats_archives_task(guts, initargs_path)
         ]
 
-    _tasks = flatten([lookup_tasks, query_tasks, index_tasks, projector_tasks, fts_tasks, _tasks])
-
+    _tasks = flatten([lookup_tasks, query_tasks, index_tasks, projector_tasks,
+                      fts_tasks, view_query_stat_task, _tasks])
     return _tasks
 
 def find_script(name):
