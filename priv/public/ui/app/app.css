@@ -585,7 +585,7 @@ body.auth #cluster_state_id, body.init_welcome #cluster_state_id {font-style:ita
 #login_form label {display:inline-block;width:5em;text-align:right; font-size:18px; color:#e6f5ff; padding:0 7px 0 0;}
 #login_form input {border:1px solid #60696b; background:none #fff; padding:12px 5px; width:390px; font-size:16px;}
 #login_form input.submit {float:right;padding:0;margin:0.6em 2.2em 0.9em;width:210px; height:45px; overflow:visible; border:0px; background:url(/images/sign_in_button.gif) 0 0 no-repeat; font-size:22px; color:#fff;}
-.auth_block .submit:hover, .auth_block .submit:focus {background-position:0 -45px;}
+#login_form .submit:hover, #login_form .submit:focus {background-position:0 -45px;}
 .auth_block .submit:active {background-position:0 -90px;}
 .auth_block .alert_red {width:588px; height:71px; position:absolute; left:-8px; top:-35px; font-size:14px; color:#fff; background:url(/images/alert_red.png) 0 0 no-repeat; z-index:1000;}
 .auth_block .alert_red .al_text {padding:25px 0 0 30px;}
