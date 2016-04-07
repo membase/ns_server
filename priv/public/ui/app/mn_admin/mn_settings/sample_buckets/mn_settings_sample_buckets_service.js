@@ -22,7 +22,7 @@
     function getSampleBucketsState(selectedBuckets) {
       return $q.all([
         getSampleBuckets(),
-        mnPoolDefault.get(),
+        mnPoolDefault.getFresh(),
         mnTasksDetails.get(),
         mnBucketsService.getBucketsByType(true),
         mnServersService.getNodes()
