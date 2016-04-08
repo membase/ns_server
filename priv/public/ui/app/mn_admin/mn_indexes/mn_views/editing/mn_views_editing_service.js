@@ -5,7 +5,7 @@
     .module("mnViewsEditingService", ["mnViewsListService", "mnDocumentsEditingService", "mnViewsListService", "mnFilters"])
     .factory("mnViewsEditingService", mnViewsEditingFactory);
 
-  function mnViewsEditingFactory($http, $state, mnPermissions, mnViewsListService, mnDocumentsEditingService, $q, removeEmptyValueFilter, $httpParamSerializerJQLike, mnPoolDefault, viewsPerPageLimit, docBytesLimit, getStringBytesFilter) {
+  function mnViewsEditingFactory($http, $state, mnPermissions, mnViewsListService, mnDocumentsEditingService, mnDocumentsListService, $q, removeEmptyValueFilter, $httpParamSerializerJQLike, mnPoolDefault, viewsPerPageLimit, docBytesLimit, getStringBytesFilter) {
     var mnViewsEditingService = {
       getViewsEditingState: getViewsEditingState,
       prepareRandomDocument: prepareRandomDocument,
@@ -143,11 +143,26 @@
         });
       }, function (resp) {
         switch(resp.status) {
-          case 404: return {
-            warnings: {
-              thereAreNoDocs: true
+          case 404:
+            if (resp.data.error === "fallback_to_all_docs") {
+              return mnDocumentsListService.getDocuments({
+                documentsBucket: params.viewsBucket,
+                pageNumber: 0,
+                pageLimit: 1
+              }).then(function (resp) {
+                return resp.data.rows[0] ? resp.data.rows[0].doc : {
+                  warnings: {
+                    thereAreNoDocs: true
+                  }
+                };
+              });
+            } else {
+              return {
+                warnings: {
+                  thereAreNoDocs: true
+                }
+              };
             }
-          };
         }
       });
     }

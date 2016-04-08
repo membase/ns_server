@@ -7,6 +7,7 @@
 
   function mnDocumentsListFactory($http, $q, mnBucketsService, docsLimit) {
     var mnDocumentsListService = {
+      getDocuments: getDocuments,
       getDocumentsListState: getDocumentsListState,
       populateBucketsSelectBox: populateBucketsSelectBox
     };
