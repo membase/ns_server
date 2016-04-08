@@ -120,9 +120,13 @@
       })
       .state('app.admin.analytics.list', {
         abstract: true,
-        url: '?openedStatsBlock',
+        url: '?openedStatsBlock&openedSpecificStatsBlock',
         params: {
           openedStatsBlock: {
+            array: true,
+            dynamic: true
+          },
+          openedSpecificStatsBlock: {
             array: true,
             dynamic: true
           }
@@ -152,6 +156,22 @@
               if (state.isEmptyState) {
                 return;
               }
+              var originalParams = _.clone(params);
+              function checkLackOfParam(paramName) {
+                return !params[paramName] || !params[paramName].length || !_.intersection(params[paramName], _.pluck(state.statsDirectoryBlocks, 'blockName')).length;
+              }
+              if (params.specificStat) {
+                if (checkLackOfParam("openedSpecificStatsBlock")) {
+                  params.openedSpecificStatsBlock = [state.statsDirectoryBlocks[0].blockName];
+                }
+              } else {
+                if (checkLackOfParam("openedStatsBlock")) {
+                  params.openedStatsBlock = [
+                    state.statsDirectoryBlocks[0].blockName,
+                    state.statsDirectoryBlocks[1].blockName
+                  ];
+                }
+              }
               var selectedStat = state.statsByName && state.statsByName[params.graph];
               if (!selectedStat || !selectedStat.config.data.length) {
                 var findBy = function (info) {
@@ -159,11 +179,12 @@
                 };
                 selectedStat = _.detect(state.statsDirectoryBlocks[1].stats, findBy) ||
                                _.detect(state.statsByName, findBy);
-                if (!selectedStat) {
-                  return;
+                if (selectedStat) {
+                  params.graph = selectedStat.name;
                 }
-                params.graph = selectedStat.name;
-                $state.go("app.admin.analytics.list.graph", _.clone(params));
+              }
+              if (!_.isEqual(originalParams, params)) {
+                $state.go("app.admin.analytics.list.graph", params);
                 return $q.reject();
               }
             });

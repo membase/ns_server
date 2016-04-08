@@ -5,8 +5,9 @@
     .module('mnAnalytics')
     .controller('mnAnalyticsListController', mnAnalyticsListController);
 
-  function mnAnalyticsListController(mnHelper) {
+  function mnAnalyticsListController(mnHelper, $state) {
     var vm = this;
-    mnHelper.initializeDetailsHashObserver(vm, 'openedStatsBlock', 'app.admin.analytics.list.graph');
+    var expanderStateParamName = $state.params.specificStat ? 'openedSpecificStatsBlock' : 'openedStatsBlock';
+    mnHelper.initializeDetailsHashObserver(vm, expanderStateParamName, 'app.admin.analytics.list.graph');
   }
 })();
