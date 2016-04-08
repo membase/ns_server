@@ -11,6 +11,9 @@
       <div ng-repeat="error in serversAddDialogCtl.errors"><strong>Attention</strong> - {{error}}<br></div>
       <div ng-show="form.hostname.$error.required"><strong>Attention</strong> - Server IP Address cannot be blank.</div>
       <span class="warning" ng-show="form.$error.services" style="margin: 10px 30px 10px 0px; display: block; padding: 0;"><strong>Attention</strong> - Please specify a Service(s) for this node.</span>
+      <div ng-show="serversAddDialogCtl.addNodeConfig.services.model.fts">
+        <strong>Attention</strong> - Full Text Search is a developer preview and is not supported.<br>
+      </div>
     </div>
     <fieldset>
       <ul>

@@ -145,6 +145,9 @@
                 <strong>Attention</strong> - {{error}}
               </span>
             </p>
+            <div class="warning" ng-show="wizardStep1Ctl.joinClusterConfig.services.model.fts">
+              <strong>Attention</strong> - Full Text Search is a developer preview and is not supported.
+            </div>
             <div>
               <label for="clusterMemberHostIp">IP Address:</label>
               <input
