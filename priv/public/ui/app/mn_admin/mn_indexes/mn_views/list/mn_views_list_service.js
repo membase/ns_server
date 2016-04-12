@@ -89,7 +89,7 @@
       var hostnameAndPort = kvNode.hostname.split(':');
       var protocol = $window.location.protocol;
       var kvNodeLink = protocol + "//" + (protocol === "https:" ? hostnameAndPort[0] + ":" + kvNode.ports.httpsMgmt : kvNode.hostname);
-
+      kvNodeLink += "#/views?viewsBucket=default&type=development";
       return kvNodeLink;
     }
     function getDdocs(viewsBucket, mnHttpParams) {
