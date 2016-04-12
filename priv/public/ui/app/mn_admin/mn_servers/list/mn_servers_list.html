@@ -112,7 +112,7 @@
             ng-if="adminCtl.tasks.inRebalance && adminCtl.tasks.tasksRebalance.status === 'running' && rbac.cluster.tasks.read"
             class="actions">
               <span class="usage_info">{{serversListCtl.getRebalanceProgress(node) | mnTruncateTo3Digits}} % Complete</span>
-              <span class="server_usage"><span style="width: {{serversListCtl.getRebalanceProgress(node) | mnTruncateTo3Digits}}%"></span></span>
+              <span class="server_usage"><span ng-style="{width: (serversListCtl.getRebalanceProgress(node) | mnTruncateTo3Digits) + '%'}"></span></span>
           </td>
           <td
             ng-if="!adminCtl.tasks.inRebalance && serversListCtl.isNodeInactiveAdded(node) && node.recoveryType === 'none' && rbac.cluster.tasks.read"
