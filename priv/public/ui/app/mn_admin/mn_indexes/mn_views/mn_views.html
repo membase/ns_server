@@ -1,6 +1,6 @@
 <div ng-if="!viewsCtl.mnPoolDefault.value.isKvNode">
   The views interface is only available on nodes running the Data service. You may access the interface here: 
-  <a id="js_healthy_kv_node_link" href="{{::viewsCtl.getKvNodeLink()}}" target="_blank">{{::viewsCtl.getKvNodeLink()}}</a>
+  <a id="js_healthy_kv_node_link" href="{{::viewsCtl.getKvNodeLink()}}">{{::viewsCtl.getKvNodeLink()}}</a>
 </div>
 <div ng-if="viewsCtl.mnPoolDefault.value.isKvNode" id="js_views" class="views">
   <h1 style="float:left;">
