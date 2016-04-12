@@ -102,8 +102,11 @@
     </div>
   </div>
 
-  <h3 class="only-when-40" ng-if="!isBucketsSettings && poolDefault.compat.atLeast40">Index Fragmentation</h3>
-  <div class="sub_section only-when-40" id="js_index_fragmentation_settings" ng-if="!isBucketsSettings && poolDefault.compat.atLeast40">
+  <h3 class="only-when-40" ng-if="!isBucketsSettings && poolDefault.compat.atLeast40 && indexSettings && indexSettings.storageMode !== 'memory_optimized'">Index Fragmentation</h3>
+  <div
+    class="sub_section only-when-40"
+    id="js_index_fragmentation_settings"
+    ng-if="!isBucketsSettings && poolDefault.compat.atLeast40 && indexSettings && indexSettings.storageMode !== 'memory_optimized'">
     <div class="row">
       <input
         type="radio"
