@@ -5,11 +5,11 @@ smart services.  It is an application in the Erlang OTP sense.
 
 ## Building
 
-Build dependencies include...
+Build dependencies include:
 
-* erlang R14 (make sure to have functional crypto)
+* erlang R16B03
 
-Building...
+Building:
 
 You should use top level make file and repo manifest as explained
 here: https://github.com/membase/manifest/blob/master/README.markdown
@@ -24,13 +24,13 @@ Before you start the server, you may need to do the following
 ## Running
 
 After building everything via top level makefile you'll have
-couchbase-server script in your $REPO/install/bin (or other prefix if
+`couchbase-server` script in your `$REPO/install/bin` (or other prefix if
 you specified so). You can run this script for normal single node
 startup.
 
 During development it's convenient to have several 'nodes' on your
-machine. There's ./cluster_run script in root directory for achiving
-that. Feel free to ask --help. You normally need something like -n2
+machine. There's `./cluster_run` script in root directory for achieving
+that. Feel free to ask `--help`. You normally need something like -n2
 where 2 is number of nodes you want.
 
 It'll start REST API on ports 9000...9000+n. memcached on ports
@@ -48,22 +48,22 @@ Other alternative is setting up and clustering nodes via REST
 API. couchbase-cli allows that. And you can easily write your own
 script(s).
 
-There's ./cluster_connect script that eases cluster configuration for
-development clusters. Ask --help.
+There's `./cluster_connect` script that eases cluster configuration for
+development clusters. Again, ask `--help`.
 
 Sometimes during debugging/development you want smaller number of
 vbuckets. You can change vbuckets number by setting
-COUCHBASE_NUM_VBUCKETS environment variable to desired number of vbuckets
+`COUCHBASE_NUM_VBUCKETS` environment variable to desired number of vbuckets
 before creating new couchbase bucket.
 
 ### Other tools
 
 Couchbase ships with a bunch of nice tools. Feel free to check
-$REPO/install/bin (or $PREFIX/bin). One of notable tools is
-mbstats. It allows you to query buckets for all kinds of internal
+`$REPO/install/bin` (or `$PREFIX/bin`). One of notable tools is
+`mbstats`. It allows you to query buckets for all kinds of internal
 stats.
 
-Another notable tool is couchbase-cli. Script is called just couchbase.
+Another notable tool is `couchbase-cli`.
 
 * * * * *
-Copyright (c) 2012, Couchbase, Inc.
+Copyright (c) 2016, Couchbase, Inc.
