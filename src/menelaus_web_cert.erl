@@ -124,6 +124,7 @@ handle_reload_node_certificate(Req) ->
                                              proplists:get_value(expires, Props)),
             menelaus_util:reply(Req, 200);
         {error, Error} ->
+            ?log_error("Error reloading node certificate: ~p", [Error]),
             menelaus_util:reply_json(
               Req, ns_error_messages:reload_node_certificate_error(Error), 400)
     end.
