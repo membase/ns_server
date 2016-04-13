@@ -1,6 +1,9 @@
 <div class="clearfix">
   <h2>Bucket Settings</h2>
   <div class="bucket-icon sub_section">
+    <p class="warning" ng-show="bucketConf.isWizard" style="padding-bottom: 10px;">
+      The default bucket is for development purposes only! You may choose to skip creation of this bucket below.
+    </p>
     <div>
       <label>Bucket Name:</label>
       <input ng-model="bucketConf.name" ng-disabled="bucketConf.isWizard || !bucketConf.isNew" mn-focus="!(bucketConf.isWizard || !bucketConf.isNew)">
