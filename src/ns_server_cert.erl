@@ -111,7 +111,7 @@ validate_pkey(PKeyPemBin) ->
         {'PrivateKeyInfo', _, _} ->
             ok;
         {BadType, _, _} ->
-            {error, pkey_not_found, BadType}
+            {error, invalid_pkey, BadType}
     end.
 
 extract_cert_and_pkey(Output) ->
@@ -310,18 +310,23 @@ set_node_certificate_chain(ClusterCA, Chain, PKey) ->
                           [CAPemEntry | PemEntriesReversed]
                   end),
             NodeCertPemEncoded = public_key:pem_encode([NodeCert]),
-            Props = [{subject, Subject},
-                     {expires, Expiration},
-                     {verified_with, erlang:md5(ClusterCA)},
-                     {pem, NodeCertPemEncoded}],
-            case ns_ssl_services_setup:set_node_certificate_chain(
-                   Props,
-                   public_key:pem_encode(CAChain),
-                   NodeCertPemEncoded, PKey) of
+            case validate_pkey(PKey) of
                 ok ->
-                    {ok, Props};
-                Err ->
-                    Err
+                    Props = [{subject, Subject},
+                             {expires, Expiration},
+                             {verified_with, erlang:md5(ClusterCA)},
+                             {pem, NodeCertPemEncoded}],
+                    case ns_ssl_services_setup:set_node_certificate_chain(
+                           Props,
+                           public_key:pem_encode(CAChain),
+                           NodeCertPemEncoded, PKey) of
+                        ok ->
+                            {ok, Props};
+                        Err ->
+                            Err
+                    end;
+                {error, invalid_pkey, BadType} ->
+                    {error, {invalid_pkey, BadType}}
             end;
         {error, _} = Error ->
             Error
