@@ -140,21 +140,22 @@ extract_cert_and_pkey(Output) ->
     Begin = <<"-----BEGIN">>,
     [<<>> | Parts0] = binary:split(Output, Begin, [global]),
     Parts = [<<Begin/binary,P/binary>> || P <- Parts0],
-    %% we're anticipating chain of certs and pkey here
-    [PKey | CertParts] = lists:reverse(Parts),
-    Cert = iolist_to_binary(lists:reverse(CertParts)),
-    BadResults = lists:filter(fun ({ok, _}) ->
+    case Parts of
+        [Cert, PKey] ->
+            case lists:filter(fun ({ok, _}) ->
                                       false;
                                   (_) ->
                                       true
-                              end, [validate_cert(Cert), validate_pkey(PKey)]),
-    case BadResults of
-        [] ->
-            ok;
+                              end, [validate_cert(Cert), validate_pkey(PKey)]) of
+                [] ->
+                    ok;
+                BadResults ->
+                    erlang:exit({bad_generated_cert_or_pkey, Parts, BadResults})
+            end,
+            {Cert, PKey};
         _ ->
-            erlang:exit({bad_cert_or_pkey, BadResults})
-    end,
-    {Cert, PKey}.
+            erlang:exit({bad_generate_cert_output, Parts})
+    end.
 
 attribute_string(?'id-at-countryName') ->
     "C";
