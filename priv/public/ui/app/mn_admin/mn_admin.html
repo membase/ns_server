@@ -81,19 +81,19 @@
         <li mn-tab="replications" class="line" ui-sref-active="currentNav">
           <a class="switch_replications" ui-sref="app.admin.replications">XDCR</a>
         </li>
-        <li mn-tab="security" class="line" ng-class="{currentNav: ('app.admin.security' | includedByState)}" ng-hide="!pools.isEnterprise && !(rbac.cluster.admin.security.read && rbac.cluster.admin.security.write)">
+        <li mn-tab="security" class="line" ng-class="{currentNav: ('app.admin.security' | includedByState)}" ng-show="rbac.cluster.admin.security.read && (pools.isEnterprise || rbac.cluster.admin.security.write)">
           <a
             class="switch_security"
             ui-sref="app.admin.security.externalRoles"
-            ng-show="pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read">Security</a>
+            ng-show="pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45">Security</a>
           <a
             class="switch_security"
             ui-sref="app.admin.security.internalRoles"
-            ng-show="!(pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.read">Security</a>
+            ng-show="!(pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.write">Security</a>
           <a
             class="switch_security"
             ui-sref="app.admin.security.rootCertificate"
-            ng-show="(pools.isEnterprise && rbac.cluster.admin.security.read === false)">Security</a>
+            ng-show="pools.isEnterprise && !(adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.write === false">Security</a>
         </li>
         <li mn-tab="logs" class="line" ng-class="{currentNav: ('app.admin.logs' | includedByState)}" ng-show="rbac.cluster.logs.read">
           <a class="switch_log" ui-sref="app.admin.logs.list">Log</a>
