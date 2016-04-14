@@ -10,7 +10,7 @@
         ng-disabled="(rbac && !rbac.cluster.settings.write)"
         class="check-for-databaseFragmentationThresholdPercentage">
       <input
-        type="number" min="0"
+        type="number" min="0" max="100"
         id="decaebe7-bb14-4c1f-9bb1-70ceb7fb2e43"
         ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentage"
         name="databaseFragmentationThreshold_percentage_"
@@ -51,7 +51,7 @@
         name="viewFragmentationThreshold_percentage_"
         ng-class="{invalid: validationErrors.viewFragmentationThreshold_percentage_}"
         ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.percentageFlag || (rbac && !rbac.cluster.settings.write)"
-        type="number" min="0"> %
+        type="number" min="0" max="100"> %
       <span class="error-container err-viewFragmentationThreshold-percentage-" ng-show="validationErrors.viewFragmentationThreshold_percentage_">{{validationErrors.viewFragmentationThreshold_percentage_}}</span>
     </p>
     <p class="row">
@@ -120,7 +120,7 @@
     </div>
     <div class="row">
       <input
-        type="number" min="0"
+        type="number" min="0" max="100"
         ng-disabled="(rbac && !rbac.cluster.settings.write) || autoCompactionSettings.indexCircularCompactionFlag === true"
         ng-model="autoCompactionSettings.indexFragmentationThreshold.percentage"> %
       <span
