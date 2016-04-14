@@ -101,17 +101,39 @@ validate_cert(CertPemBin) ->
     end.
 
 validate_pkey(PKeyPemBin) ->
-    %% TODO: validate pkey with cert public key
-    [Entry] = public_key:pem_decode(PKeyPemBin),
-    case Entry of
-        {'RSAPrivateKey', _, _} ->
-            ok;
-        {'DSAPrivateKey', _, _} ->
-            ok;
-        {'PrivateKeyInfo', _, _} ->
-            ok;
-        {BadType, _, _} ->
-            {error, invalid_pkey, BadType}
+    case public_key:pem_decode(PKeyPemBin) of
+        [{'RSAPrivateKey', _, _} = Entry] ->
+            {ok, Entry};
+        [{'DSAPrivateKey', _, _} = Entry] ->
+            {ok, Entry};
+        [{'PrivateKeyInfo', _, _} = Entry] ->
+            {ok, Entry};
+        [{BadType, _, _}] ->
+            {error, {invalid_pkey, BadType}};
+        _ ->
+            {error, malformed_pkey}
+    end.
+
+validate_cert_and_pkey({'Certificate', DerCert, not_encrypted}, PKey) ->
+    case validate_pkey(PKey) of
+        {ok, DerKey} ->
+            DecodedCert = public_key:pkix_decode_cert(DerCert, otp),
+
+            TBSCert = DecodedCert#'OTPCertificate'.tbsCertificate,
+            PublicKeyInfo = TBSCert#'OTPTBSCertificate'.subjectPublicKeyInfo,
+            PublicKey = PublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey,
+            DecodedKey = public_key:pem_entry_decode(DerKey),
+
+            Msg = <<"1234567890">>,
+            Signature = public_key:sign(Msg, sha, DecodedKey),
+            case public_key:verify(Msg, sha, Signature, PublicKey) of
+                true ->
+                    ok;
+                false ->
+                    {error, cert_pkey_mismatch}
+            end;
+        Err ->
+            Err
     end.
 
 extract_cert_and_pkey(Output) ->
@@ -121,13 +143,11 @@ extract_cert_and_pkey(Output) ->
     %% we're anticipating chain of certs and pkey here
     [PKey | CertParts] = lists:reverse(Parts),
     Cert = iolist_to_binary(lists:reverse(CertParts)),
-    ValidateCertErr = case validate_cert(Cert) of
-                          {ok, _} -> ok;
-                          Err -> Err
-                      end,
-    Results = [ValidateCertErr, validate_pkey(PKey)],
-    BadResults = [Err || Err <- Results,
-                         Err =/= ok],
+    BadResults = lists:filter(fun ({ok, _}) ->
+                                      false;
+                                  (_) ->
+                                      true
+                              end, [validate_cert(Cert), validate_pkey(PKey)]),
     case BadResults of
         [] ->
             ok;
@@ -309,9 +329,9 @@ set_node_certificate_chain(ClusterCA, Chain, PKey) ->
                       _ ->
                           [CAPemEntry | PemEntriesReversed]
                   end),
-            NodeCertPemEncoded = public_key:pem_encode([NodeCert]),
-            case validate_pkey(PKey) of
+            case validate_cert_and_pkey(NodeCert, PKey) of
                 ok ->
+                    NodeCertPemEncoded = public_key:pem_encode([NodeCert]),
                     Props = [{subject, Subject},
                              {expires, Expiration},
                              {verified_with, erlang:md5(ClusterCA)},
@@ -325,8 +345,8 @@ set_node_certificate_chain(ClusterCA, Chain, PKey) ->
                         Err ->
                             Err
                     end;
-                {error, invalid_pkey, BadType} ->
-                    {error, {invalid_pkey, BadType}}
+                Err ->
+                    Err
             end;
         {error, _} = Error ->
             Error

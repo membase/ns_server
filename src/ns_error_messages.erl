@@ -206,7 +206,11 @@ reload_node_certificate_error({read_chain, Path, Reason}) ->
                                  [Path, file_read_error(Reason)]));
 reload_node_certificate_error({invalid_pkey, BadType}) ->
     list_to_binary(io_lib:format("Invalid private key type: ~s.",
-                                 [BadType])).
+                                 [BadType]));
+reload_node_certificate_error(cert_pkey_mismatch) ->
+    <<"Provided certificate doesn't match provided private key">>;
+reload_node_certificate_error(malformed_pkey) ->
+    <<"Provided private key contains incorrect number of entries">>.
 
 node_certificate_warning(mismatch) ->
     <<"Certificate is not signed with cluster CA.">>;
