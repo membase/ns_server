@@ -20,6 +20,7 @@
     vm.getRebalanceProgress = getRebalanceProgress;
     vm.disableRemoveBtn = disableRemoveBtn;
     vm.isFailOverDisabled = isFailOverDisabled;
+    vm.isKVNode = isKVNode;
 
     vm.getRamUsageConf = getRamUsageConf;
     vm.getSwapUsageConf = getSwapUsageConf;
@@ -37,6 +38,9 @@
     var swapUsageConf = {};
     var cpuUsageConf = {};
 
+    function isKVNode(node) {
+      return node.services.indexOf("kv") > -1;
+    }
     function getRamUsageConf(node) {
       var total = node.memoryTotal;
       var free = node.memoryFree;
@@ -71,7 +75,7 @@
       return isLastActiveData(node) || isActiveUnhealthy(node) || ($scope.adminCtl.tasks && $scope.adminCtl.tasks.inRecoveryMode);
     }
     function isLastActiveData(node) {
-      return $scope.serversCtl.nodes.reallyActiveData.length === 1 && (node.services.indexOf("kv") > -1);
+      return $scope.serversCtl.nodes.reallyActiveData.length === 1 && isKVNode(node);
     }
     function isNodeInactiveAdded(node) {
       return node.clusterMembership === 'inactiveAdded';

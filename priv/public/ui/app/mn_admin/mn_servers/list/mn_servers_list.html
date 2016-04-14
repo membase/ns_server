@@ -39,10 +39,11 @@
             <span
               class="add_back_btn"
               ng-click="serversListCtl.reAddNode('full', node.otpNode)">
-                <span>Full Recovery</span>
+                <span ng-show="serversListCtl.isKVNode(node)">Full Recovery</span>
+                <span ng-show="!serversListCtl.isKVNode(node)">Recovery</span>
             </span>
             <span
-              ng-show="node.services.indexOf('kv') > -1 && poolDefault.compat.atLeast30"
+              ng-show="serversListCtl.isKVNode(node) && poolDefault.compat.atLeast30"
               class="add_back_btn only-when-30"
               ng-click="serversListCtl.reAddNode('delta', node.otpNode)">
                 <span>Delta Recovery</span>
