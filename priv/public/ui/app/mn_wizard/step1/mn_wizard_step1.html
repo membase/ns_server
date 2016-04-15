@@ -187,7 +187,13 @@
     </div>
 
     <div class="config-bottom">
-      <button name="next" value="Next" class="submit next direction-button" id="step-2-next" type="submit">Next</button>
+      <button
+        name="next"
+        value="Next"
+        class="submit next direction-button"
+        id="step-2-next"
+        ng-disabled="wizardStep1Ctl.postMemoryErrors"
+        type="submit">Next</button>
     </div>
   </form>
 </div>

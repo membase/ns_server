@@ -25,8 +25,18 @@
         vm.onDbPathChange();
         vm.onIndexPathChange();
       });
+
+      $scope.$watch('wizardStep1Ctl.config.startNewClusterConfig', _.debounce(onMemoryQuotaChanged, 500), true);
     }
 
+    function onMemoryQuotaChanged(memoryQuotaConfig) {
+      if (!memoryQuotaConfig) {
+        return;
+      }
+      var promise = mnSettingsClusterService.postPoolsDefault(memoryQuotaConfig, true);
+      mnPromiseHelper(vm, promise)
+        .catchErrorsFromSuccess("postMemoryErrors");
+    }
     function onDbPathChange() {
       vm.dbPathTotal = mnWizardStep1Service.lookup(vm.config.dbPath, vm.config.selfConfig.preprocessedAvailableStorage);
     }
