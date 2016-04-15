@@ -20,7 +20,7 @@
 -include_lib("public_key/include/public_key.hrl").
 
 -export([do_generate_cert_and_pkey/2,
-         validate_cert/1,
+         decode_single_certificate/1,
          generate_and_set_cert_and_pkey/0,
          cluster_ca/0,
          set_cluster_ca/1,
@@ -88,17 +88,32 @@ do_generate_cert_and_pkey(Args, Env) ->
             erlang:exit({bad_generate_cert_exit, Status, Output})
     end.
 
-
-validate_cert(CertPemBin) ->
-    PemEntries = public_key:pem_decode(CertPemBin),
-    NonCertEntries = [Type || {Type, _, _} <- PemEntries,
-                              Type =/= 'Certificate'],
-    case NonCertEntries of
+decode_single_certificate(CertPemBin) ->
+    case do_decode_certificates(CertPemBin) of
+        malformed_cert ->
+            {error, malformed_cert};
+        [PemEntry] ->
+            validate_cert_pem_entry(PemEntry);
         [] ->
-            {ok, PemEntries};
-        _ ->
-            {error, non_cert_entries, NonCertEntries}
+            {error, empty_cert};
+        [_|_] ->
+            {error, too_many_entries}
     end.
+
+do_decode_certificates(CertPemBin) ->
+    try
+        public_key:pem_decode(CertPemBin)
+    catch T:E ->
+            ?log_error("Unknown error while parsing certificate:~n~p", [{T,E,erlang:get_stacktrace()}]),
+            malformed_cert
+    end.
+
+validate_cert_pem_entry({'Certificate', DerCert, not_encrypted}) ->
+    DerCert;
+validate_cert_pem_entry({'Certificate', _, _}) ->
+    {error, encrypted_certificate};
+validate_cert_pem_entry({BadType, _, _}) ->
+    {error, {invalid_certificate_type, BadType}}.
 
 validate_pkey(PKeyPemBin) ->
     case public_key:pem_decode(PKeyPemBin) of
@@ -142,17 +157,17 @@ extract_cert_and_pkey(Output) ->
     Parts = [<<Begin/binary,P/binary>> || P <- Parts0],
     case Parts of
         [Cert, PKey] ->
-            case lists:filter(fun ({ok, _}) ->
-                                      false;
-                                  (_) ->
-                                      true
-                              end, [validate_cert(Cert), validate_pkey(PKey)]) of
-                [] ->
-                    ok;
-                BadResults ->
-                    erlang:exit({bad_generated_cert_or_pkey, Parts, BadResults})
-            end,
-            {Cert, PKey};
+            case decode_single_certificate(Cert) of
+                {error, Error} ->
+                    erlang:exit({bad_generated_cert, Cert, Error});
+                _ ->
+                    case validate_pkey(PKey) of
+                        {ok, _} ->
+                            {Cert, PKey};
+                        Err ->
+                            erlang:exit({bad_generated_pkey, PKey, Err})
+                    end
+            end;
         _ ->
             erlang:exit({bad_generate_cert_output, Parts})
     end.
@@ -214,35 +229,27 @@ get_info(DerCert) ->
     {Subject, NotBefore, NotAfter}.
 
 parse_cluster_ca(CA) ->
-    case validate_cert(CA) of
-        {ok, []} ->
-            {error, malformed_cert, CA};
-        {ok, [{'Certificate', RootCertDer, not_encrypted}]} ->
-            Info =
-                try
-                    get_info(RootCertDer)
-                catch T:E ->
-                        {error, malformed_cert, {T,E,erlang:get_stacktrace()}}
-                end,
-            case Info of
-                {error, malformed_cert, _} = E1 ->
-                    E1;
-                {Subject, NotBefore, NotAfter} ->
-                    UTC = calendar:datetime_to_gregorian_seconds(
-                            calendar:universal_time()),
-                    case NotBefore > UTC orelse NotAfter < UTC of
-                        true ->
-                            {error, not_valid_at_this_time, [{now, UTC}, Info]};
-                        false ->
-                            {ok, [{pem, CA},
-                                  {subject, Subject},
-                                  {expires, NotAfter}]}
-                    end
-            end;
-        {ok, OtherList} ->
-            {error, too_many_entries, OtherList};
-        Error ->
-            Error
+    case decode_single_certificate(CA) of
+        {error, Error} ->
+            {error, Error};
+        RootCertDer ->
+            try
+                {Subject, NotBefore, NotAfter} = get_info(RootCertDer),
+                UTC = calendar:datetime_to_gregorian_seconds(
+                        calendar:universal_time()),
+                case NotBefore > UTC orelse NotAfter < UTC of
+                    true ->
+                        {error, not_valid_at_this_time};
+                    false ->
+                        {ok, [{pem, CA},
+                              {subject, Subject},
+                              {expires, NotAfter}]}
+                end
+            catch T:E ->
+                    ?log_error("Failed to get certificate info:~n~p~n~p",
+                               [RootCertDer, {T,E,erlang:get_stacktrace()}]),
+                    {error, malformed_cert}
+            end
     end.
 
 set_cluster_ca(CA) ->
@@ -268,8 +275,8 @@ set_cluster_ca(CA) ->
                 retry_needed ->
                     erlang:error(exceeded_retries)
             end;
-        {error, Error, _} = Err ->
-            ?log_error("Certificate authority validation failed with ~p", [Err]),
+        {error, Error} ->
+            ?log_error("Certificate authority validation failed with ~p", [Error]),
             {error, Error}
     end.
 

@@ -176,10 +176,12 @@ cert_validation_error_message(not_valid_at_this_time) ->
     <<"Certificate is not valid at this time">>;
 cert_validation_error_message(malformed_cert) ->
     <<"Malformed certificate">>;
-cert_validation_error_message(non_cert_entries) ->
-    <<"Certificate contains malformed entries.">>;
 cert_validation_error_message(too_many_entries) ->
-    <<"Only one certificate per request is allowed.">>.
+    <<"Only one certificate per request is allowed.">>;
+cert_validation_error_message(encrypted_certificate) ->
+    <<"Encrypted certificates are not supported.">>;
+cert_validation_error_message({invalid_certificate_type, BadType}) ->
+    list_to_binary(io_lib:format("Invalid certificate type: ~s", [BadType])).
 
 file_read_error(enoent) ->
     "The file does not exist.";

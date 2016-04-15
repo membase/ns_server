@@ -175,21 +175,13 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
                               {<<"certificate">>, <<"certificate must be given if demand encryption is on">>};
                           {_, _} ->
                               CertBin = list_to_binary(Cert),
-                              OkCert = case (catch ns_server_cert:validate_cert(CertBin)) of
-                                           {ok, [_]} -> true;
-                                           {ok, [_|_]} -> <<"found multiple certificates instead">>;
-                                           {error, non_cert_entries, _} ->
-                                               <<"found non-certificate entries">>;
-                                           _ ->
-                                               <<"failed to parse given certificate">>
-                                       end,
-                              case OkCert of
-                                  true ->
-                                      undefined;
-                                  _ ->
+                              case ns_server_cert:decode_single_certificate(CertBin) of
+                                  {error, Error} ->
                                       Err = [<<"certificate must be a single, PEM-encoded x509 certificate and nothing more (">>,
-                                             OkCert, $)],
-                                      {<<"certificate">>, iolist_to_binary(Err)}
+                                             ns_error_messages:cert_validation_error_message(Error), $)],
+                                      {<<"certificate">>, iolist_to_binary(Err)};
+                                  _ ->
+                                      undefined
                               end
                       end,
     Errors0 = lists:filter(fun (undefined) -> false;
