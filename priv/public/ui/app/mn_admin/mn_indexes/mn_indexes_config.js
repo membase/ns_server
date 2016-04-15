@@ -52,6 +52,10 @@
           },
           pageNumber: {
             value: 0
+          },
+          activate: {
+            value: null,
+            dynamic: true
           }
         },
         controller: 'mnViewsEditingResultController as viewsEditingResultCtl',

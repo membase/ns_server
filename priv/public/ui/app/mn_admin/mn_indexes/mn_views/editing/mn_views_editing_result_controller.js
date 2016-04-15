@@ -47,7 +47,12 @@
     vm.filterParams = mnViewsEditingService.getFilterParams();
     vm.activate = activate;
 
-    activate();
+    if ($state.params.activate) {
+      $state.go('app.admin.indexes.views.editing.result', {
+        activate: false
+      });
+      activate();
+    }
 
     function onFilterReset() {
       vm.filterParams = mnViewsEditingService.getInitialViewsFilterParams($state.params.isSpatial);
@@ -62,14 +67,16 @@
 
     function nextPage() {
       $state.go('app.admin.indexes.views.editing.result', {
-        pageNumber: $state.params.pageNumber + 1
+        pageNumber: $state.params.pageNumber + 1,
+        activate: true
       });
     }
     function prevPage() {
       var prevPage = $state.params.pageNumber - 1;
       prevPage = prevPage < 0 ? 0 : prevPage;
       $state.go('app.admin.indexes.views.editing.result', {
-        pageNumber: prevPage
+        pageNumber: prevPage,
+        activate: true
       });
     }
     function loadSampleDocument(id) {
