@@ -33,7 +33,7 @@ inbox_chain_path() ->
     filename:join(path_config:component_path(data, "inbox"), "chain.pem").
 
 inbox_pkey_path() ->
-    filename:join(path_config:component_path(data, "inbox"), "pkey.pem").
+    filename:join(path_config:component_path(data, "inbox"), "pkey.key").
 
 cluster_ca() ->
     case ns_config:search(cert_and_pkey) of
