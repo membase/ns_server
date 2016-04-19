@@ -123,8 +123,6 @@ validate_pkey(PKeyPemBin) ->
                     {ok, Entry};
                 'DSAPrivateKey' ->
                     {ok, Entry};
-                'PrivateKeyInfo' ->
-                    {ok, Entry};
                 _ ->
                     {error, {invalid_pkey, Type}}
             end;
