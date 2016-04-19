@@ -117,14 +117,19 @@ validate_cert_pem_entry({BadType, _, _}) ->
 
 validate_pkey(PKeyPemBin) ->
     case public_key:pem_decode(PKeyPemBin) of
-        [{'RSAPrivateKey', _, _} = Entry] ->
-            {ok, Entry};
-        [{'DSAPrivateKey', _, _} = Entry] ->
-            {ok, Entry};
-        [{'PrivateKeyInfo', _, _} = Entry] ->
-            {ok, Entry};
-        [{BadType, _, _}] ->
-            {error, {invalid_pkey, BadType}};
+        [{Type, _, not_encrypted} = Entry] ->
+            case Type of
+                'RSAPrivateKey' ->
+                    {ok, Entry};
+                'DSAPrivateKey' ->
+                    {ok, Entry};
+                'PrivateKeyInfo' ->
+                    {ok, Entry};
+                _ ->
+                    {error, {invalid_pkey, Type}}
+            end;
+        [{_, _, _}] ->
+            {error, encrypted_pkey};
         _ ->
             {error, malformed_pkey}
     end.
