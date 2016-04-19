@@ -15,7 +15,8 @@
       'mnSpinner',
       'mnFilters',
       'mnTasksDetails',
-      'angular-chartist'
+      'angular-chartist',
+      'mnWarmupProgress'
     ])
     .controller('mnBucketsController', mnBucketsController);
 

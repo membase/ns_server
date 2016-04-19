@@ -26,7 +26,8 @@
       'mnFocus',
       'mnPools',
       'mnSettingsAutoFailoverService',
-      'mnTasksDetails'
+      'mnTasksDetails',
+      'mnWarmupProgress'
     ])
     .controller('mnServersController', mnServersController)
     .filter("formatFailoverWarnings", formatFailoverWarnings);
