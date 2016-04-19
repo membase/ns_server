@@ -116,7 +116,7 @@ validate_cert_pem_entry({BadType, _, _}) ->
     {error, {invalid_certificate_type, BadType}}.
 
 validate_pkey(PKeyPemBin) ->
-    case public_key:pem_decode(PKeyPemBin) of
+    try public_key:pem_decode(PKeyPemBin) of
         [{Type, _, not_encrypted} = Entry] ->
             case Type of
                 'RSAPrivateKey' ->
@@ -131,6 +131,9 @@ validate_pkey(PKeyPemBin) ->
         [{_, _, _}] ->
             {error, encrypted_pkey};
         _ ->
+            {error, too_many_pkey_entries}
+    catch T:E ->
+            ?log_error("Unknown error while parsing private key:~n~p", [{T,E,erlang:get_stacktrace()}]),
             {error, malformed_pkey}
     end.
 
