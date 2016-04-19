@@ -95,7 +95,7 @@ decode_single_certificate(CertPemBin) ->
         [PemEntry] ->
             validate_cert_pem_entry(PemEntry);
         [] ->
-            {error, empty_cert};
+            {error, malformed_cert};
         [_|_] ->
             {error, too_many_entries}
     end.
