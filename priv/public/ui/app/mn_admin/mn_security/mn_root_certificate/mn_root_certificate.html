@@ -29,11 +29,10 @@
       <div
         class="about-cert-area_wrapper"
         id="js_about-cert-area_wrapper">
-        <div
+        <textarea
           id="js-about-cert-area"
           readonly="readonly"
-          style="width:630px;padding:15px;background:#fff;border:1px solid #ccd3d7;white-space: pre;line-height:1.2;">{{rootCertificateCtl.certificate.cert.pem}}</div>
-        <div></div>
+          style="width:630px;height:210px;padding:15px;background:#fff;border:1px solid #ccd3d7;line-height:1.2;">{{rootCertificateCtl.certificate.cert.pem}}</textarea>
       </div>
       <div class="error-container" ng-show="rootCertificateCtl.certificate.warnings.length" style="margin-top:22px;">
         <strong>Warning:</strong>
