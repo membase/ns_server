@@ -177,7 +177,12 @@
                 var findBy = function (info) {
                   return info.config.data.length;
                 };
-                selectedStat = _.detect(state.statsDirectoryBlocks[1].stats, findBy) ||
+                if (params.specificStat) {
+                  var directoryForSearch = state.statsDirectoryBlocks[0];
+                } else {
+                  var directoryForSearch = state.statsDirectoryBlocks[1];
+                }
+                selectedStat = _.detect(directoryForSearch.stats, findBy) ||
                                _.detect(state.statsByName, findBy);
                 if (selectedStat) {
                   params.graph = selectedStat.name;
