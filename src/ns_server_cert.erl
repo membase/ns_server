@@ -304,9 +304,47 @@ verify_fun(Cert, Event, State) ->
             {valid, State}
     end.
 
-validate_chain({'Certificate', RootCertDer, not_encrypted}, Chain) ->
+decode_chain(Chain) ->
+    try
+        lists:reverse(public_key:pem_decode(Chain))
+    catch T:E ->
+            ?log_error("Unknown error while parsing certificate chain:~n~p", [{T,E,erlang:get_stacktrace()}]),
+            {error, {bad_chain, malformed_cert}}
+    end.
+
+validate_chain([]) ->
+    ok;
+validate_chain([Entry | Rest]) ->
+    case validate_cert_pem_entry(Entry) of
+        {error, Error} ->
+            {error, {bad_chain, Error}};
+        _ ->
+            validate_chain(Rest)
+    end.
+
+validate_chain_signatures({'Certificate', RootCertDer, not_encrypted}, Chain) ->
     DerChain = [Der || {'Certificate', Der, not_encrypted} <- Chain],
     public_key:pkix_path_validation(RootCertDer, DerChain, [{verify_fun, {fun verify_fun/3, []}}]).
+
+decode_and_validate_chain(CA, Chain) ->
+    case decode_chain(Chain) of
+        {error, _} = Err ->
+            Err;
+        [] ->
+            {error, {bad_chain, malformed_cert}};
+        PemEntriesReversed ->
+            case validate_chain(PemEntriesReversed) of
+                {error, _} = Err ->
+                    Err;
+                ok ->
+                    case validate_chain_signatures(CA, PemEntriesReversed) of
+                        {error, _} = Err ->
+                            Err;
+                        {ok, _} ->
+                            {ok, PemEntriesReversed}
+                    end
+            end
+    end.
 
 get_chain_info(Chain) ->
     lists:foldl(fun ({'Certificate', DerCert, not_encrypted}, Acc) ->
@@ -326,10 +364,9 @@ get_chain_info(Chain) ->
 
 set_node_certificate_chain(ClusterCA, Chain, PKey) ->
     [CAPemEntry] = public_key:pem_decode(ClusterCA),
-    PemEntriesReversed = lists:reverse(public_key:pem_decode(Chain)),
 
-    case validate_chain(CAPemEntry, PemEntriesReversed) of
-        {ok, _} ->
+    case decode_and_validate_chain(CAPemEntry, Chain) of
+        {ok, PemEntriesReversed} ->
             {Subject, Expiration} =
                 get_chain_info(PemEntriesReversed),
 
