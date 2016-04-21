@@ -509,7 +509,7 @@ p.info {padding:5px 24px 15px;font-weight:bold;}
 
 #installed_samples a { color: #DD3B2C; }
 
-#init_sample_buckets_dialog p { margin: 10px 0 10px 40px; }
+#init_sample_buckets_dialog p { margin: 15px 50px; }
 #init_sample_buckets_dialog h3,
 #init_cluster_form h3,
 .settings h3 { margin: 20px 50px 6px; font-weight: normal; color: #444245; font-size: 16px;}
@@ -1044,7 +1044,7 @@ html>/**/body .servers .list_button span, x:-moz-any-link, x:default {float:none
 .disk_setup_block input {border: 1px solid #ccd3d7; width: 415px;  padding: 3px;}
 .disk_setup_block .when-enterprise {font-size: 13px; margin-top: 20px;}
 
-.hostname_setup_block {margin:6px 0 0 85px;overflow:hidden;}
+.hostname_setup_block {margin: 6px 0 40px 85px;overflow:hidden;}
 
 .hostname_setup_block > div + div {padding:0 0 0 11px}
 .hostname_setup_block > .warning {float:none;width:auto;clear:both;}
