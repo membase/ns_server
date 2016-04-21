@@ -132,7 +132,8 @@ handle_validate_saslauthd_creds_post(Req) ->
             {ok, {_, saslauthd}} -> {saslauthd_auth:get_role_pre_45(User), saslauthd};
             {ok, {_, R}} -> {R, builtin};
             {error, Error} ->
-                erlang:throw({web_exception, 400, Error, []})
+                erlang:throw({web_exception, 400, Error, []});
+            false -> {false, builtin}
         end,
     JRole = case Role of
                 admin ->
