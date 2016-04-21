@@ -119,7 +119,8 @@ angular.module('mnSettingsNotificationsService', [
           total_ddocs: 0, //Number of total design docs
           total_views: 0, //Number of total views
           total_indexes: 0, //Number of total indexes
-          total_curr_items_tot: 0 //Total number of items across all buckets
+          total_curr_items_tot: 0, //Total number of items across all buckets
+          total_fts_indexes: 0
         },
         browser: $window.navigator.userAgent
       };
@@ -150,6 +151,17 @@ angular.module('mnSettingsNotificationsService', [
           var bucketStats = statsInfo.stats[bucketName];
           var indexStats = statsInfo.stats["@index-" + bucketName];
           var queriesStats = statsInfo.stats["@query"];
+          var ftsStats = statsInfo.stats["@fts-" + bucketName];
+
+          if (ftsStats) {
+            stats.istats.total_fts_indexes += _.keys(_.reduce(ftsStats, function (result, value, key) {
+              key = key.split("/");
+              if (key.length === 3) {
+                result[key[1]] = true;
+              }
+              return result;
+            }, {})).length;
+          }
           var avgNumRowsReturnedPerIndex = getAvgPerItem(indexStats, function (key) {
             key = key.split("/");
             return key.length === 3 && key[2] === "num_rows_returned" && key[0] === "index";
