@@ -43,14 +43,15 @@ describe('mnHttp', function () {
       });
       expect(mnPendingQueryKeeper.push).toHaveBeenCalledWith({
         config: {
+          url: '/url',
+          method: 'GET',
           httpConfig: 'httpConfig',
           mnHttp: {
             deleteMe: true
-          },
-          method: 'GET',
-          url: '/url'
+          }
         },
-        canceler: jasmine.any(Function)
+        canceler: jasmine.any(Function),
+        group: undefined
       });
       expect(mnHttpInterceptor.request({
         url: '/url',
@@ -97,7 +98,7 @@ describe('mnHttp', function () {
 
     spyOn(mnPendingQueryKeeper, "getQueryInFly").and.callThrough();
     $http.post("/url", undefined, {mnHttp: {cancelPrevious: true}}).catch(function (response) {
-      expect(response.status).toBe(0);
+      expect(response.status).toBe(-1);
       callback();
     });
     $http.post("/url", undefined, {mnHttp: {cancelPrevious: true}});
