@@ -35,6 +35,13 @@
         }
       },
       abstract: true,
+      resolve: {
+        env: function (mnEnv, $rootScope) {
+          return mnEnv.loadEnv().then(function(env) {
+            $rootScope.ENV = env;
+          });
+        }
+      },
       template: '<div ui-view="" />'
     });
 

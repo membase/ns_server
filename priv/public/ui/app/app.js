@@ -7,10 +7,11 @@
     'mnWizard',
     'mnHttp',
     'mnExceptionReporter',
-    'ui.bootstrap'
+    'ui.bootstrap',
+    'mnEnv'
   ]).run(appRun);
 
-  function appRun($state, $urlRouter, $exceptionHandler, mnPools, $window, $http, $templateCache, $transitions) {
+  function appRun($state, $urlRouter, $exceptionHandler, mnPools, $window, $transitions) {
 
     var originalOnerror = $window.onerror;
     $window.onerror = onError;
