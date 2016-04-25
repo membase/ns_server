@@ -495,8 +495,10 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
             case ns_orchestrator:update_bucket(BucketType, BucketId, UpdatedProps) of
                 ok ->
                     ns_audit:modify_bucket(Req, BucketId, BucketType, UpdatedProps),
-                    ale:info(?USER_LOGGER, "Updated bucket ~s (of type ~s) properties:~n~p",
-                             [BucketId, BucketType, lists:keydelete(sasl_password, 1, UpdatedProps)]),
+                    DisplayBucketType = display_type(BucketType),
+                    ale:info(?USER_LOGGER, "Updated bucket \"~s\" (of type ~s) properties:~n~p",
+                             [BucketId, DisplayBucketType,
+                              lists:keydelete(sasl_password, 1, UpdatedProps)]),
                     reply(Req, 200);
                 rebalance_running ->
                     reply_text(Req, "\"cannot update bucket while rebalance is running\"", 503);
@@ -528,16 +530,7 @@ do_bucket_create(Req, Name, ParsedProps) ->
     case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
         ok ->
             ns_audit:create_bucket(Req, Name, BucketType, BucketProps),
-            %% Default bucket type is now couchbase and not membase.
-            %% Ideally, we should change the default bucket type atom to couchbase
-            %% but the bucket type membase is used/checked at multiple locations.
-            %% Instead, fix the log message to display the correct bucket type.
-            DisplayBucketType = case BucketType of
-                                    membase ->
-                                        couchbase;
-                                    Other ->
-                                        Other
-                                end,
+            DisplayBucketType = display_type(BucketType),
             ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n~p",
                               [Name, DisplayBucketType, lists:keydelete(sasl_password, 1, BucketProps)]),
             ok;
@@ -643,6 +636,14 @@ num_replicas_warnings_validation(Ctx, NReplicas) ->
             [{replicaNumber, ?l2b("Warning: " ++ Msg ++ ".")}]
     end.
 
+display_type(membase) ->
+    %% Default bucket type is now couchbase and not membase.
+    %% Ideally, we should change the default bucket type atom to couchbase
+    %% but the bucket type membase is used/checked at multiple locations.
+    %% Instead, fix the log message to display the correct bucket type.
+    couchbase;
+display_type(Type) ->
+    Type.
 
 handle_bucket_flush(_PoolId, Id, Req) ->
     XDCRDocs = xdc_rdoc_api:find_all_replication_docs(),
