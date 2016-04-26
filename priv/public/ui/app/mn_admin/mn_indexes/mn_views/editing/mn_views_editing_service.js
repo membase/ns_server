@@ -105,6 +105,12 @@
         .concat(_.map(ddoc.doc.json.views, prepareDropboxItem(false, ddoc)));
     }
 
+    function prepareDocForCodeMirror(doc) {
+      doc.metaJSON = angular.toJson(doc.meta, 2);
+      doc.jsonJSON = angular.toJson(doc.json, 2);
+      return doc;
+    }
+
     function getSampleDocument(params) {
       return mnDocumentsEditingService.getDocument(params).then(function (sampleDocument) {
         if (getStringBytesFilter(angular.toJson(sampleDocument.data.json)) > docBytesLimit) {
@@ -115,7 +121,7 @@
             }
           };
         }
-        return sampleDocument.data;
+        return prepareDocForCodeMirror(sampleDocument.data);
       }, function (resp) {
         switch(resp.status) {
           case 404: return {
@@ -150,11 +156,15 @@
                 pageNumber: 0,
                 pageLimit: 1
               }).then(function (resp) {
-                return resp.data.rows[0] ? resp.data.rows[0].doc : {
-                  warnings: {
-                    thereAreNoDocs: true
-                  }
-                };
+                if (resp.data.rows[0]) {
+                  return prepareDocForCodeMirror(resp.data.rows[0].doc);
+                } else {
+                  return {
+                    warnings: {
+                      thereAreNoDocs: true
+                    }
+                  };
+                }
               });
             } else {
               return {

@@ -54,16 +54,24 @@
         id="sample_documents_container"
         class="sample_documents stats"
         mn-spinner="viewsEditingCtl.awaitingSampleDocument()">
-        <pre
-          class="json"
-          style="z-index:1;position:relative;height: 300px;oveflow: scroll;"
+        <div
+          class="json read_only"
+          style="z-index:1;position:relative;height: 300px;overflow: scroll;"
+          spellcheck="false"
+          cols="20"
+          rows="11"
           ng-if="!viewsEditingCtl.state.sampleDocument.warnings"
-          ng-bind-html="viewsEditingCtl.state.sampleDocument.json | prettyJson:2 | mnTrustAsHtml"></pre>
-        <pre
-          class="meta"
-          style="z-index:1;position:relative;height: 300px;oveflow: scroll;"
+          ng-model="viewsEditingCtl.state.sampleDocument.jsonJSON"
+          ui-codemirror="viewsEditingCtl.sampleDocumentOptions"></div>
+        <div
+          class="meta read_only"
+          style="z-index:1;position:relative;height: 300px;overflow: scroll;border-left:1px solid #DDD;"
+          spellcheck="false"
+          cols="20"
+          rows="11"
           ng-if="!viewsEditingCtl.state.sampleDocument.warnings"
-          ng-bind-html="viewsEditingCtl.state.sampleDocument.meta | prettyJson:2 | mnTrustAsHtml" ></pre>
+          ng-model="viewsEditingCtl.state.sampleDocument.metaJSON"
+          ui-codemirror="viewsEditingCtl.sampleMetaOptions"></div>
         <pre
           style="text-align:center;padding: 40px 0 30px;"
           ng-show="viewsEditingCtl.state.sampleDocument.warnings"

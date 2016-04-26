@@ -7,7 +7,7 @@
 
   function mnViewsEditingController($scope, $state, $uibModal, mnHelper, mnViewsEditingService, mnViewsListService, mnPromiseHelper) {
     var vm = this;
-    var viewsOptions = {
+    var codemirrorOptions = {
       lineNumbers: true,
       matchBrackets: true,
       tabSize: 2,
@@ -17,9 +17,18 @@
       },
       theme: 'default',
       readOnly: false
-    };
+    }
+    var viewsOptions = _.clone(codemirrorOptions);
+    var sampleDocumentOptions = _.clone(codemirrorOptions);
+    sampleDocumentOptions.readOnly = true;
+    sampleDocumentOptions.lineWrapping = true;
+    var sampleMetaOptions = _.clone(sampleDocumentOptions);
+    sampleMetaOptions.lineNumbers = false;
+
     vm.currentBucketName = $state.params.viewsBucket;
     vm.viewsOptions = viewsOptions;
+    vm.sampleDocumentOptions = sampleDocumentOptions;
+    vm.sampleMetaOptions = sampleMetaOptions;
     vm.isSpatial = $state.params.isSpatial;
     vm.viewId = $state.params.viewId;
     vm.previewRandomDocument = previewRandomDocument;

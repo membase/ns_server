@@ -14,8 +14,7 @@
       'ui.router',
       'ui.bootstrap',
       'ngSanitize',
-      'mnPoolDefault',
-      'io.utils'
+      'mnPoolDefault'
     ])
     .controller("mnViewsController", mnViewsController);
 
