@@ -4,28 +4,25 @@
   data-ng-class="{'rebalancing': poolDefault.rebalancing}">
   <h1>Servers</h1>
   <div
-    class="warning_message failover_warning"
+    class="warning_message"
     ng-repeat="warning in serversCtl.mnPoolDefault.value.failoverWarnings"
     ng-show="warning && warning != 'failoverNeeded'">
       <span>Fail Over Warning: <span class="warning-text">{{warning | formatFailoverWarnings}}</span></span>
   </div>
   <div
     class="warning_message"
-    style="color:red;"
     id="js_rebalance_during_sample_load"
     ng-show="serversCtl.mayRebalanceWithoutSampleLoading() && adminCtl.tasks.isLoadingSamples && rbac.cluster.tasks.read">
       Warning: Rebalance is not available until data loading is completed!
   </div>
   <div
-    id="auto_failover_count_container"
     class="warning_message"
     ng-show="serversCtl.autoFailoverSettings.data.count > 0 && rbac.cluster.settings.read">
-      A server was automatically failed over
+      A server was automatically failed over.
     <a
-      class="auto_failover_count_reset edit_btn when-roadmin-hide-me"
+      class="auto_failover_count_reset when-roadmin-hide-me"
       ng-show="rbac.cluster.settings.write"
-      ng-click="adminCtl.resetAutoFailOverCount()"
-      mn-spinner="adminCtl.resetQuotaLoading">
+      ng-click="adminCtl.resetAutoFailOverCount()">
       <span>Reset Quota</span>
     </a>
   </div>
