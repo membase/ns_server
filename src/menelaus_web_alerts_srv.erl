@@ -73,7 +73,7 @@ errors(disk) ->
 errors(audit_dropped_events) ->
     "Audit Write Failure. Attempt to write to audit log on node \"~s\" was unsuccessful";
 errors(indexer_ram_max_usage) ->
-    "Approaching full Indexer RAM warning. Usage of Indexer RAM on node \"~s\" is around ~p%. This is above the threshold of ~p%.".
+    "Warning: approaching max index RAM. Indexer RAM on node \"~s\" is ~p%, which is at or above the threshold of ~p%.".
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
