@@ -667,7 +667,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["_goxdcr", "regexpValidation"] ->
                     goxdcr_rest:spec(
                       no_check,
-                      fun menelaus_util:reply_not_found/1);
+                      fun menelaus_util:reply_not_found/1, [],
+                      menelaus_util:concat_url_path(["controller", "regexpValidation"]));
                 ["_goxdcr", "controller", "bucketSettings", _Bucket] ->
                     XdcrPath = drop_prefix(Req:get(raw_path)),
                     {{[admin, internal], all},
