@@ -110,7 +110,7 @@
 
 -ifdef(use_specs).
 -record(child, {% pid is undefined when child is not running
-	        pid = undefined :: child() | {restarting,pid()} | [pid()],
+	        pid = undefined :: child() | {restarting,pid() | undefined} | [pid()],
 		name            :: child_id(),
 		mfargs          :: mfargs(),
 		restart_type    :: restart(),
@@ -951,6 +951,9 @@ maybe_restart(Strategy, Child, State) ->
                  end,
             timer:apply_after(0,?MODULE,try_again_restart,[self(),Id,Reason]),
             {ok,NState2};
+        {try_again, Reason, NState2, #child{name=ChName}} ->
+            timer:apply_after(0,?MODULE,try_again_restart,[self(),ChName,Reason]),
+            {ok,NState2};
         Other ->
             Other
     end.
@@ -992,10 +995,16 @@ restart(rest_for_one, Child, State) ->
     case start_children(ChAfter2, State#state.name) of
 	{ok, ChAfter3} ->
 	    {ok, State#state{children = ChAfter3 ++ ChBefore}};
-	{error, ChAfter3, Reason} ->
-	    NChild = Child#child{pid=restarting(Child#child.pid)},
-	    NState = State#state{children = ChAfter3 ++ ChBefore},
-	    {try_again, Reason, replace_child(NChild,NState)}
+	{error, ChAfter3, {failed_to_start_child, ChName, _} = Reason}
+          when ChName =:= Child#child.name ->
+            NChild = Child#child{pid=restarting(Child#child.pid)},
+            NState = State#state{children = ChAfter3 ++ ChBefore},
+            {try_again, Reason, replace_child(NChild,NState)};
+        {error, ChAfter3, {failed_to_start_child, ChName, _} = Reason} ->
+            NChild = lists:keyfind(ChName, #child.name, ChAfter3),
+            NChild2 = NChild#child{pid=?restarting(undefined)},
+            NState = State#state{children = ChAfter3 ++ ChBefore},
+	    {try_again, Reason, replace_child(NChild2,NState), NChild2}
     end;
 restart(one_for_all, Child, State) ->
     Children1 = del_child(Child#child.pid, State#state.children),
@@ -1003,10 +1012,16 @@ restart(one_for_all, Child, State) ->
     case start_children(Children2, State#state.name) of
 	{ok, NChs} ->
 	    {ok, State#state{children = NChs}};
-	{error, NChs, Reason} ->
+	{error, NChs, {failed_to_start_child, ChName, _} = Reason}
+          when ChName =:= Child#child.name ->
 	    NChild = Child#child{pid=restarting(Child#child.pid)},
 	    NState = State#state{children = NChs},
-	    {try_again, Reason, replace_child(NChild,NState)}
+	    {try_again, Reason, replace_child(NChild,NState)};
+	{error, NChs, {failed_to_start_child, ChName, _} = Reason} ->
+	    NChild = lists:keyfind(ChName, #child.name, NChs),
+	    NChild2 = NChild#child{pid=?restarting(undefined)},
+	    NState = State#state{children = NChs},
+	    {try_again, Reason, replace_child(NChild2,NState), NChild2}
     end.
 
 restarting(Pid) when is_pid(Pid) -> ?restarting(Pid);

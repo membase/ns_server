@@ -91,3 +91,131 @@ frequent_crashes_run() ->
 
 frequent_crashes_test_() ->
     {timeout, 20, fun frequent_crashes_run/0}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% the code below is taken from:
+%% https://github.com/erlang/otp/blob/c59c3a6d57b857913ddfa13f96425ba0d95ccb2d/lib/stdlib/test/supervisor_SUITE.erl
+%% some minor modifications are made
+%%
+
+%% %CopyrightBegin%
+%%
+%% Copyright Ericsson AB 1996-2011. All Rights Reserved.
+%%
+%% The contents of this file are subject to the Erlang Public License,
+%% Version 1.1, (the "License"); you may not use this file except in
+%% compliance with the License. You should have received a copy of the
+%% Erlang Public License along with this software. If not, it can be
+%% retrieved online at http://www.erlang.org/.
+%%
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+%% the License for the specific language governing rights and limitations
+%% under the License.
+%%
+%% %CopyrightEnd%
+
+start_link(InitResult) ->
+    supervisor2:start_link({local, sup_test}, ?MODULE, InitResult).
+
+check_exit([]) ->
+    ok;
+check_exit([Pid | Pids]) ->
+    receive
+        {'EXIT', Pid, _} ->
+            check_exit(Pids)
+    end.
+
+%%-------------------------------------------------------------------------
+%% Test that the supervisor terminates a restarted child when a different
+%% child fails to start.
+rest_for_one_other_child_fails_restart_test() ->
+    process_flag(trap_exit, true),
+    Self = self(),
+    Child1 = {child1, {supervisor_3, start_child, [child1, Self]},
+              permanent, 1000, worker, []},
+    Child2 = {child2, {supervisor_3, start_child, [child2, Self]},
+              permanent, 1000, worker, []},
+    Children = [Child1, Child2],
+    StarterFun = fun() ->
+                         {ok, SupPid} = start_link({{rest_for_one, 3, 3600}, Children}),
+                         Self ! {sup_pid, SupPid},
+                         receive {stop, Self} -> ok end
+                 end,
+    StarterPid = spawn_link(StarterFun),
+    Ok = {{ok, undefined}, Self},
+    %% Let the children start.
+    Child1Pid = receive {child1, Pid1} -> Pid1 end,
+    Child1Pid ! Ok,
+    Child2Pid = receive {child2, Pid2} -> Pid2 end,
+    Child2Pid ! Ok,
+    %% Supervisor started.
+    SupPid = receive {sup_pid, Pid} -> Pid end,
+    link(SupPid),
+    exit(Child1Pid, die),
+    %% Let child1 restart but don't let child2.
+    Child1Pid2  = receive {child1, Pid3} -> Pid3 end,
+    Child1Pid2 ! Ok,
+    Child2Pid2 = receive {child2, Pid4} -> Pid4 end,
+    Child2Pid2 ! {{stop, normal}, Self},
+    %% Let child2 restart.
+    receive
+        {child2, Child2Pid3} ->
+            Child2Pid3 ! Ok;
+        {child1, _Child1Pid3} ->
+            exit(SupPid, kill),
+            check_exit([StarterPid, SupPid]),
+            test_server:fail({restarting_started_child, Child1Pid2})
+    end,
+    StarterPid ! {stop, Self},
+    check_exit([StarterPid, SupPid]).
+
+%%-------------------------------------------------------------------------
+%% Test that the supervisor terminates a restarted child when a different
+%% child fails to start.
+one_for_all_other_child_fails_restart_test() ->
+    process_flag(trap_exit, true),
+    Self = self(),
+    Child1 = {child1, {supervisor_3, start_child, [child1, Self]},
+              permanent, 1000, worker, []},
+    Child2 = {child2, {supervisor_3, start_child, [child2, Self]},
+              permanent, 1000, worker, []},
+    Children = [Child1, Child2],
+    StarterFun = fun() ->
+                         {ok, SupPid} = start_link({{one_for_all, 3, 3600}, Children}),
+                         Self ! {sup_pid, SupPid},
+                         receive {stop, Self} -> ok end
+                 end,
+    StarterPid = spawn_link(StarterFun),
+    Ok = {{ok, undefined}, Self},
+    %% Let the children start.
+    Child1Pid = receive {child1, Pid1} -> Pid1 end,
+    Child1Pid ! Ok,
+    Child2Pid = receive {child2, Pid2} -> Pid2 end,
+    Child2Pid ! Ok,
+    %% Supervisor started.
+    SupPid = receive {sup_pid, Pid} -> Pid end,
+    link(SupPid),
+    exit(Child1Pid, die),
+    %% Let child1 restart but don't let child2.
+    Child1Pid2  = receive {child1, Pid3} -> Pid3 end,
+    Child1Pid2Ref = erlang:monitor(process, Child1Pid2),
+    Child1Pid2 ! Ok,
+    Child2Pid2 = receive {child2, Pid4} -> Pid4 end,
+    Child2Pid2 ! {{stop, normal}, Self},
+    %% Check child1 is terminated.
+    receive
+        {'DOWN', Child1Pid2Ref, _, _, shutdown} ->
+            ok;
+        {_childName, _Pid} ->
+            exit(SupPid, kill),
+            check_exit([StarterPid, SupPid]),
+            test_server:fail({restarting_child_not_terminated, Child1Pid2})
+    end,
+    %% Let the restart complete.
+    Child1Pid3 = receive {child1, Pid5} -> Pid5 end,
+    Child1Pid3 ! Ok,
+    Child2Pid3 = receive {child2, Pid6} -> Pid6 end,
+    Child2Pid3 ! Ok,
+    StarterPid ! {stop, Self},
+    check_exit([StarterPid, SupPid]).
