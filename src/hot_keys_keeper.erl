@@ -167,19 +167,45 @@ sort_with_limit(Comparator, Limit, Items) ->
                   Limit).
 
 keys_updater_body() ->
-    LocalUpdatedKeys = [{Name, sort_with_limit(fun ops_desc_comparator/2,
-                                               ?TOP_KEYS_NUMBER,
-                                               grab_bucket_topkeys(Name))}
-                        || {Name, _} <- ns_bucket:filter_ready_buckets(ns_bucket:get_buckets())],
-    {RemoteKeys, _BadNodes} = mb_grid:aggregate_call(ns_node_disco:nodes_actual_other(),
-                                                     ?MODULE, all_local_hot_keys, fun merge_list_proplists/2, 2000),
-    MergedKeys = lists:map(fun ({BucketName, LocalKeys}) ->
-                                   AllKeys = lists:append(LocalKeys, proplists:get_value(BucketName, RemoteKeys, [])),
-                                   FinalKeys = lists:sublist(lists:sort(fun ops_desc_comparator/2, AllKeys),
-                                                             ?TOP_KEYS_NUMBER),
-                                   {BucketName, FinalKeys}
-                           end, LocalUpdatedKeys),
-    gen_server:cast(?MODULE, {set_keys, MergedKeys, LocalUpdatedKeys}).
+    {ClusterKeys, LocalKeys} = get_keys(),
+    gen_server:cast(?MODULE, {set_keys, ClusterKeys, LocalKeys}).
+
+get_keys() ->
+    LocalKeys = get_local_keys(),
+    RemoteKeys = get_remote_keys(),
+    MergedKeys = merge_keys(LocalKeys, RemoteKeys),
+    {MergedKeys, LocalKeys}.
+
+get_local_keys() ->
+    HotKeys = [{Name, top_keys(grab_bucket_topkeys(Name))}
+               || {Name, _} <- local_buckets()],
+    orddict:from_list(HotKeys).
+
+local_buckets() ->
+    ns_bucket:filter_ready_buckets(ns_bucket:get_buckets()).
+
+get_remote_keys() ->
+    {RemoteKeys, _BadNodes} =
+        mb_grid:aggregate_call(ns_node_disco:nodes_actual_other(), ?MODULE,
+                               all_local_hot_keys, fun merge_list_proplists/2,
+                               2000),
+    orddict:from_list(RemoteKeys).
+
+merge_keys(LocalKeys, RemoteKeys) ->
+    [{BucketName, top_keys(Keys)}
+     || {BucketName, Keys} <- do_merge_keys(LocalKeys, RemoteKeys)].
+
+do_merge_keys([], RemoteKeys) ->
+    RemoteKeys;
+do_merge_keys(LocalKeys, RemoteKeys) ->
+    orddict:merge(fun append_keys/3, LocalKeys, RemoteKeys).
+
+append_keys(_Bucket, LocalKeys, RemoteKeys) ->
+    LocalKeys ++ RemoteKeys.
+
+top_keys(Keys) ->
+    sort_with_limit(fun ops_desc_comparator/2,
+                    ?TOP_KEYS_NUMBER, Keys).
 
 %%--------------------------------------------------------------------
 %% @private
