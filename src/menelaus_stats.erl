@@ -1088,8 +1088,17 @@ is_safe_key_name(Name) ->
                       C >= 16#20 andalso C =< 16#7f
               end, Name).
 
+
 build_bucket_stats_hks_response(BucketName) ->
-    BucketsTopKeys = case hot_keys_keeper:bucket_hot_keys(BucketName) of
+    build_bucket_stats_hks_response(BucketName, all).
+
+build_bucket_stats_hks_response(BucketName, all) ->
+    handle_hot_keys_resp(hot_keys_keeper:bucket_hot_keys(BucketName));
+build_bucket_stats_hks_response(BucketName, [Node]) ->
+    handle_hot_keys_resp(hot_keys_keeper:bucket_hot_keys(BucketName, Node)).
+
+handle_hot_keys_resp(Resp) ->
+    BucketsTopKeys = case Resp of
                          undefined -> [];
                          X -> X
                      end,
@@ -2431,7 +2440,7 @@ serve_aggregated_ui_stats(Req, Params) ->
     DirQS = [{v, integer_to_list(StatsDirectoryV)} | DirAddF],
     DirURL = "/pools/default/buckets/" ++ menelaus_util:concat_url_path([Bucket, "statsDirectory"], DirQS),
 
-    [{hot_keys, HKs0}] = build_bucket_stats_hks_response(Bucket),
+    [{hot_keys, HKs0}] = build_bucket_stats_hks_response(Bucket, Nodes),
     HKs = [{HK} || {struct, HK} <- HKs0],
     Extra = [{hot_keys, HKs}],
     output_ui_stats(Req, Stats,
