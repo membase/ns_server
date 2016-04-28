@@ -86,7 +86,7 @@ a.dynamic_disabled{text-decoration:none;cursor:default;}
 .fiter_opened {padding-bottom: 200px;}
 
 
-#container {background-color:#fff;position:absolute;width:100%;min-width:960px;min-height:100%;overflow: hidden;}
+#container {background-color:#fff;position:absolute;width:100%;min-width:1060px;min-height:100%;overflow: hidden;}
 #mainContainer {position:relative;width:1060px;left:12%;margin-top:15px;padding:0 0 220px;}
 .main_holder {position:relative; margin:auto; left:0px !important;}
 .cnt_holder {width: 1060px; height: 42px; position:relative; margin: 0 auto;}
