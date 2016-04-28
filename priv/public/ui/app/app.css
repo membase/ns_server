@@ -26,6 +26,7 @@ blockquote:before, blockquote:after, q:before, q:after {
 }
 textarea {overflow:auto;}
 input, textarea {margin:0;padding:3px;font-size:13px;border:1px solid #ccd3d7;}
+input[type=number] {-moz-appearance: textfield;}
 input[type=image] {border:none}
 input[type=number] {width:2em;}
 input[disabled=disabled], input[disabled=true], input[disabled], textarea[disabled=disabled], textarea[disabled=true], textarea[disabled] {background-color: #eeeeef;}
