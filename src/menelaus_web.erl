@@ -3608,8 +3608,7 @@ parse_and_validate_extra_index_settings(Params) ->
     RV0 = CModeValidator({"indexCompactionMode", index_compaction_mode,
                           "index compaction mode"}),
 
-    DaysList = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
-                "Friday", "Saturday"],
+    DaysList = misc:get_days_list(),
     DaysValidator = mk_string_field_validator(DaysList, Params),
     RV1 = DaysValidator({"indexCircularCompaction[daysOfWeek]",
                          index_circular_compaction_days,

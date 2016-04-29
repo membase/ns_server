@@ -234,8 +234,8 @@ extra_default_settings_for_45(Config) ->
                             %% for the same reason.
                             {?FORESTDB_STORAGE_MODE, <<"full">>, []}
                     end,
-
-    CircDefaults = [{daysOfWeek, <<"Sunday">>},
+    DaysOfWeek = misc:get_days_list(),
+    CircDefaults = [{daysOfWeek, list_to_binary(string:join(DaysOfWeek, ","))},
                     {abort_outside, false}] ++ Int,
     [{storageMode, SM}, {compactionMode, CM},
      {circularCompaction, CircDefaults}].

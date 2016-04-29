@@ -47,8 +47,8 @@
   function mnFormatStorageMode() {
     return function (value) {
       switch (value) {
-        case "forestdb": return "Global Index";
-        case "memory_optimized": return "Memory-Optimized Global Index";
+        case "forestdb": return "Standard Global Secondary Indexes";
+        case "memory_optimized": return "Memory-Optimized Global Secondary Indexes";
         default: return value;
       }
     };
