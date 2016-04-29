@@ -1738,7 +1738,7 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                                  "(measured from xdc_ops)">>}]},
                 {struct,[{title,<<"intra-replication queue">>},
                          {name,<<"ep_dcp_replica_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]}
+                         {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]}
                 | (case display_outbound_xdcr_mutations(BucketId) of
                        true ->
                            [{struct,[{title,<<"outbound XDCR mutations">>},
@@ -2014,16 +2014,16 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                          {desc,<<"Number of other senders for this bucket (measured from ep_dcp_other_producer_count)">>}]},
                 {struct,[{title,<<"items remaining">>},
                          {name,<<"ep_dcp_replica_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]},
+                         {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]},
                 {struct,[{title,<<"items remaining">>},
                          {name,<<"ep_dcp_xdcr_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_xdcr_items_remaining)">>}]},
+                         {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_xdcr_items_remaining)">>}]},
                 {struct,[{title,<<"items remaining">>},
                          {name,<<"ep_dcp_views+indexes_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_views_items_remaining + ep_dcp_2i_items_remaining + ep_dcp_fts_items_remaining)">>}]},
+                         {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_views_items_remaining + ep_dcp_2i_items_remaining + ep_dcp_fts_items_remaining)">>}]},
                 {struct,[{title,<<"items remaining">>},
                          {name,<<"ep_dcp_other_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to producer in this bucket (measured from ep_dcp_other_items_remaining)">>}]},
+                         {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_other_items_remaining)">>}]},
                 {struct,[{title,<<"drain rate items/sec">>},
                          {name,<<"ep_dcp_replica_items_sent">>},
                          {desc,<<"Number of items per second being sent for a producer for this bucket (measured from ep_dcp_replica_items_sent)">>}]},
