@@ -14,7 +14,7 @@
       <input type="text" name="group" ng-model="groupsGroupDialogCtl.groupName" id="js_new_group_filed">
     </div>
     <div class="save_cancel clearfix">
-      <button type="submit" class="save_button float_right">Create</button>
+      <button type="submit" class="save_button float_right">{{ groupsGroupDialogCtl.isEditMode ? 'Rename' : 'Create'}}</button>
       <a class="close casper_close_add_group_dialog" ng-click="$dismiss()">Cancel</a>
     </div>
   </form>
