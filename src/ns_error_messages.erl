@@ -60,15 +60,10 @@ decode_json_response_error({ok, {{200 = _StatusCode, _} = _StatusLine,
     erlang:error(bug);
 
 decode_json_response_error({ok, {{401 = StatusCode, _}, _, Body}},
-                         Method,
-                         {Host, Port, Path, _MimeType, _Payload}) ->
+                         _Method,
+                         _Request) ->
     TrimmedBody = string:substr(erlang:binary_to_list(Body), 1, 48),
-    RealPort = if is_integer(Port) -> integer_to_list(Port);
-                  true -> Port
-               end,
-    M = list_to_binary(io_lib:format("Authentication failed. Verify username and password. "
-                                     "Got HTTP status ~p from REST call ~p to http://~s:~s~s. Body was: ~p",
-                                     [StatusCode, Method, Host, RealPort, Path, TrimmedBody])),
+    M = <<"Authentication failed. Verify username and password.">>,
     {error, rest_error, M, {bad_status, StatusCode, list_to_binary(TrimmedBody)}};
 
 decode_json_response_error({ok, {{StatusCode, _}, _, Body}},
