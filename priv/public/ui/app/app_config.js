@@ -41,8 +41,15 @@
     $transitionsProvider.onBefore({
       from: "app.admin.**",
       to: "app.admin.**"
-    }, function ($uibModalStack) {
-      return !$uibModalStack.getTop();
+    }, function ($uibModalStack, mnPendingQueryKeeper, $transition$) {
+      var isModalOpen = !!$uibModalStack.getTop();
+      var toName = $transition$.to().name;
+      var fromName = $transition$.from().name;
+      if (!isModalOpen && toName.indexOf(fromName) === -1 && fromName.indexOf(toName) === -1) {
+        //cancel tabs specific queries in case toName is not child of fromName and vise versa
+        mnPendingQueryKeeper.cancelTabsSpecificQueries();
+      }
+      return !isModalOpen;
     });
     $transitionsProvider.onBefore({
       from: "app.auth",
