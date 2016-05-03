@@ -75,7 +75,8 @@ loop(Bucket, ServerName, RemoteNodes) ->
                 end,
                 AllNodes;
             {'$gen_call', From, {pull_docs, Nodes}} ->
-                gen_server:reply(From, handle_pull_docs(ServerName, Nodes));
+                gen_server:reply(From, handle_pull_docs(ServerName, Nodes)),
+                RemoteNodes;
             {'DOWN', _Ref, _Type, {Server, RemoteNode}, Error} ->
                 ?log_warning("Remote server node ~p process down: ~p",
                              [{Server, RemoteNode}, Error]),
