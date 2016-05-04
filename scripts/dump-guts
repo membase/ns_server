@@ -441,16 +441,6 @@ search_config_for_node(NSConfig, Node, Key, Default) ->
             Value
     end.
 
-extract_capi_port(NSConfig, Node) ->
-    None = make_ref(),
-    case search_config_for_node(NSConfig, Node, {node, Node, capi_port}, None) of
-        None ->
-            % If capi_port entry is missing then try default port 8092
-            8092;
-        Value ->
-            Value
-    end.
-
 extract_rest_port(NSConfig, Node) ->
     None = make_ref(),
     case search_config_for_node(NSConfig, Node, rest, None) of
@@ -546,7 +536,6 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     DBDir = proplists:get_value({"couchdb", "database_dir"}, CouchInisPList, ""),
     IdxDir = proplists:get_value({"couchdb", "view_index_dir"}, CouchInisPList, ""),
     RestPort = extract_rest_port(NSConfig, Node),
-    CapiPort = extract_capi_port(NSConfig, Node),
     MCDConfig = search_config_for_node(NSConfig, Node, memcached, []),
     MCDDefaults = search_config_for_node(NSConfig, Node, memcached_defaults, []),
     MCDPort = search_config(MCDConfig, dedicated_port, ""),
@@ -603,7 +592,6 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
          {db_dir, DBDir},
          {idx_dir, IdxDir},
          {rest_port, RestPort},
-         {capi_port, CapiPort},
          {memcached_port, MCDPort},
          {moxi_ports, string:join(MoxiPorts, ",")},
          {buckets, string:join(BucketNames, ",")},
