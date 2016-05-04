@@ -136,9 +136,9 @@
   function formatProgressMessage() {
     return function (task) {
       switch (task.type) {
-        case "indexer": return "Indexing " + task.bucket + "/" + task.designDocument;
-        case "global_indexes": return "Building GSI " + task.index  + " on bucket " + task.bucket;
-        case "view_compaction": return "Compacting index " + task.bucket + "/" + task.designDocument;
+        case "indexer": return "Building view index " + task.bucket + "/" + task.designDocument;
+        case "global_indexes": return "Building index " + task.index  + " on bucket " + task.bucket;
+        case "view_compaction": return "Compacting view index " + task.bucket + "/" + task.designDocument;
         case "bucket_compaction": return "Compacting bucket " + task.bucket;
         case "loadingSampleBucket": return "Loading sample: " + task.bucket;
         case "orphanBucket": return "Orphan bucket: " + task.bucket;
