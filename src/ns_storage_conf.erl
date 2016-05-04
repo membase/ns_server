@@ -273,7 +273,7 @@ nodes_storage_info(NodeNames) ->
 %%
 %% usedByData - amount of this resource used by our data
 cluster_storage_info() ->
-    nodes_storage_info(ns_cluster_membership:active_nodes()).
+    nodes_storage_info(ns_cluster_membership:service_active_nodes(kv)).
 
 extract_subprop(NodeInfos, Key, SubKey) ->
     [proplists:get_value(SubKey, proplists:get_value(Key, NodeInfo, [])) ||
