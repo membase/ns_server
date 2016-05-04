@@ -18,7 +18,7 @@
           value: totals.total
         },
         items: [{
-          name: 'In Use',
+          name: 'In Use by Buckets',
           value: totals.usedByData,
           itemStyle: {'background-color': '#00BCE9', 'z-index': 3},
           labelStyle: {'color': '#1878A2', 'text-align': 'left'}
