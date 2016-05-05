@@ -5,7 +5,8 @@
     'mnLogsService',
     'mnPromiseHelper',
     'mnPoll',
-    'mnSpinner'
+    'mnSpinner',
+    'mnFilters'
   ]).controller('mnLogsController', mnLogsController);
 
   function mnLogsController($scope, mnHelper, mnLogsService) {
