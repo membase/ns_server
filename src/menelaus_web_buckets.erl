@@ -670,9 +670,8 @@ do_handle_bucket_flush(Id, Req) ->
             reply(Req, 404);
         flush_disabled ->
             reply_json(Req, {struct, [{'_', <<"Flush is disabled for the bucket">>}]}, 400);
-        OtherError ->
-            Msg = iolist_to_binary(io_lib:format("Unexpected error: ~p", [OtherError])),
-            reply_json(Req, {struct, [{'_', Msg}]}, 503)
+        _ ->
+            reply_json(Req, {struct, [{'_', <<"Flush failed with unexpected error. Check server logs for details.">>}]}, 500)
     end.
 
 

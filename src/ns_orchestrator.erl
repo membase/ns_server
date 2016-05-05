@@ -633,7 +633,13 @@ idle({create_bucket, BucketType, BucketName, NewConfig}, _From, State) ->
     end,
     {reply, Reply, idle, State};
 idle({flush_bucket, BucketName}, _From, State) ->
-    perform_bucket_flushing(BucketName, State);
+    RV = perform_bucket_flushing(BucketName),
+    case RV of
+        ok -> ok;
+        _ ->
+            ale:info(?USER_LOGGER, "Flushing ~p failed with error: ~n~p", [BucketName, RV])
+    end,
+    {reply, RV, idle, State};
 idle({delete_bucket, BucketName}, _From,
      #idle_state{janitor_requests=JanitorRequests} = State) ->
     xdc_rdoc_api:delete_all_replications(BucketName),
@@ -1188,25 +1194,25 @@ consider_switching_compat_mode() ->
             ok
     end.
 
-perform_bucket_flushing(BucketName, State) ->
+perform_bucket_flushing(BucketName) ->
     case ns_bucket:get_bucket(BucketName) of
         not_present ->
-            {reply, bucket_not_found, idle, State};
+            bucket_not_found;
         {ok, BucketConfig} ->
             case proplists:get_value(flush_enabled, BucketConfig, false) of
                 true ->
-                    perform_bucket_flushing_with_config(BucketName, State, BucketConfig);
+                    perform_bucket_flushing_with_config(BucketName, BucketConfig);
                 false ->
-                    {reply, flush_disabled, idle, State}
+                    flush_disabled
             end
     end.
 
 
-perform_bucket_flushing_with_config(BucketName, State, BucketConfig) ->
+perform_bucket_flushing_with_config(BucketName, BucketConfig) ->
     ale:info(?MENELAUS_LOGGER, "Flushing bucket ~p from node ~p", [BucketName, erlang:node()]),
     case ns_bucket:bucket_type(BucketConfig) =:= memcached of
         true ->
-            {reply, do_flush_old_style(BucketName, BucketConfig), idle, State};
+            do_flush_old_style(BucketName, BucketConfig);
         _ ->
             RV = do_flush_bucket(BucketName, BucketConfig),
             case RV of
@@ -1218,9 +1224,9 @@ perform_bucket_flushing_with_config(BucketName, State, BucketConfig) ->
                         _ ->
                             ?log_error("Flusher's janitor run failed: ~p", [JanitorRV])
                     end,
-                    {reply, RV, idle, State};
+                    RV;
                 _ ->
-                    {reply, RV, idle, State}
+                    RV
             end
     end.
 
