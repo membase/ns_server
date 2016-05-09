@@ -39,7 +39,7 @@
       });
     }
     function postReadOnlyAdminName(creds, justValidate) {
-      if (creds.password.length !== creds.verifyPassword.length) {
+      if (creds.password !== creds.verifyPassword) {
         return $q.reject({
           data: {
             errors: {
