@@ -233,6 +233,7 @@ collect_diag_per_node_binary_loop(ReplyRef, ChildRef, Results) ->
 
 collect_diag_per_node_binary_body(Reply) ->
     ActiveBuckets = ns_memcached:active_buckets(),
+    PersistentBuckets = [B || B <- ActiveBuckets, ns_bucket:is_persistent(B)],
 
     Reply(processes, grab_process_infos()),
     Reply(babysitter_processes, (catch grab_babysitter_process_infos())),
@@ -248,7 +249,8 @@ collect_diag_per_node_binary_body(Reply) ->
     Reply(active_buckets, ActiveBuckets),
     Reply(replication_docs, (catch xdc_rdoc_api:find_all_replication_docs(5000))),
     Reply(master_local_docs, [{Bucket, (catch capi_utils:capture_local_master_docs(Bucket, 10000))} || Bucket <- ActiveBuckets]),
-    Reply(design_docs, [{Bucket, (catch capi_utils:full_live_ddocs(Bucket, 2000))} || Bucket <- ActiveBuckets]),
+    Reply(design_docs, [{Bucket, (catch capi_utils:full_live_ddocs(Bucket, 2000))} ||
+                           Bucket <- PersistentBuckets]),
     Reply(ets_tables, (catch grab_all_ets_tables())),
     Reply(couchdb_ets_tables, (catch grab_couchdb_ets_tables())),
     Reply(internal_settings, (catch menelaus_web:build_internal_settings_kvs())),
