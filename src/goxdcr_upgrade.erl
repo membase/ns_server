@@ -67,7 +67,7 @@ do_upgrade(Config, Nodes) ->
                [ns_config_log:sanitize(UpgradeConf)]),
 
     ok = run_upgrade(Config, ejson:encode({UpgradeConf})),
-    ?log_debug("Goxdcr configuration was successfully upgraded").
+    ale:info(?USER_LOGGER, "XDCR configuration was successfully upgraded to 4.0").
 
 config_upgrade(Config) ->
     StopRequests = [{set, {node, N, stop_xdcr}, true} || N <- ns_node_disco:nodes_wanted(Config)],
