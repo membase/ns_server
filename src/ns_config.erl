@@ -1164,8 +1164,10 @@ save_file(bin, ConfigPath, X) ->
     ok = file:close(F),
     file:rename(TempFile, ConfigPath).
 
--spec merge_kv_pairs([{term(), term()}], [{term(), term()}], any(), boolean()) -> [{term(), term()}].
-merge_kv_pairs(RemoteKVList, LocalKVList, _UUID, _Cluster30) when RemoteKVList =:= LocalKVList -> LocalKVList;
+-spec merge_kv_pairs(kvlist(), kvlist(), uuid(), boolean()) -> kvlist().
+merge_kv_pairs(RemoteKVList, LocalKVList, _UUID, _Cluster30)
+  when RemoteKVList =:= LocalKVList ->
+    LocalKVList;
 merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
     RemoteKVList1 = lists:sort(RemoteKVList),
     LocalKVList1 = lists:sort(LocalKVList),
@@ -1223,7 +1225,7 @@ merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
              end,
     misc:ukeymergewith(Merger, 1, RemoteKVList1, LocalKVList1).
 
--spec merge_values({term(), term()}, {term(), term()}, any()) -> {term(), term()}.
+-spec merge_values(kvpair(), kvpair(), uuid()) -> kvpair().
 merge_values({_K, RV} = RP, {_, LV} = _LP, _UUID) when RV =:= LV -> RP;
 merge_values({K, RV} = RP, {_, LV} = LP, UUID) ->
     RClock = extract_vclock(RV),
@@ -1248,6 +1250,9 @@ merge_values({K, RV} = RP, {_, LV} = LP, UUID) ->
         {false, true} -> LP
     end.
 
+-spec merge_values_using_timestamps(key(),
+                                    kvpair(), vclock(),
+                                    kvpair(), vclock()) -> kvpair().
 merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
     LocalTS = vclock:get_latest_timestamp(LClock),
     RemoteTS = vclock:get_latest_timestamp(RClock),

@@ -11,6 +11,21 @@
 -define(METADATA_VCLOCK, '_vclock').
 -define(DELETED_MARKER, '_deleted').
 
--type ns_config() :: #config{} | [[term()]] | 'latest-config-marker'.
+-type uuid() :: binary().
+-type vclock_counter() :: integer().
+-type vclock_timestamp() :: integer().
+-type vclock_entry() :: {uuid(), {vclock_counter(), vclock_timestamp()}}.
+-type vclock() :: [vclock_entry()].
 
--type run_txn_return() :: {commit, [term()]} | {commit, [term()], term()} | {abort, any()} | retry_needed.
+-type key() :: term().
+-type raw_value() :: term().
+-type value() :: [{?METADATA_VCLOCK, vclock()} | raw_value()] | raw_value().
+-type kvpair() :: {key(), value()}.
+-type kvlist() :: [kvpair()].
+
+-type ns_config() :: #config{} | [kvlist()] | 'latest-config-marker'.
+
+-type run_txn_return() :: {commit, [kvlist()]}
+                        | {commit, [kvlist()], any()}
+                        | {abort, any()}
+                        | retry_needed.

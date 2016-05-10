@@ -245,10 +245,10 @@ merge_kv_pairs_timestamps_test() ->
     ?assertMatch([{<<"uuid">>, {2, _}}], ClockRight).
 
 merge_kv_pairs_same_value_test() ->
-    X0 = [{x, [{'_vclock', [{a, {1, 10}}]}, {data, 1}]}],
-    X1 = [{x, [{'_vclock', [{b, {1, 11}}]}, {data, 1}]}],
-    ?assertEqual(X1, ns_config:merge_kv_pairs(X0, X1, a, true)),
-    ?assertEqual(X1, ns_config:merge_kv_pairs(X1, X0, b, true)).
+    X0 = [{x, [{'_vclock', [{<<"a">>, {1, 10}}]}, {data, 1}]}],
+    X1 = [{x, [{'_vclock', [{<<"b">>, {1, 11}}]}, {data, 1}]}],
+    ?assertEqual(X1, ns_config:merge_kv_pairs(X0, X1, <<"a">>, true)),
+    ?assertEqual(X1, ns_config:merge_kv_pairs(X1, X0, <<"b">>, true)).
 
 test_bin_persist() ->
     CP = data_file(),
