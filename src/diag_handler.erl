@@ -170,7 +170,8 @@ collect_diag_per_node_binary(Timeout) ->
         spawn_monitor(
           fun () ->
                   Reply = fun (Key, Value) ->
-                                  Parent ! {ReplyRef, {Key, Value}}
+                                  Parent ! {ReplyRef, {Key, Value}},
+                                  ?log_debug("Collected data for key ~p", [Key])
                           end,
 
                   ChildPid = self(),
@@ -232,6 +233,7 @@ collect_diag_per_node_binary_loop(ReplyRef, ChildRef, Results) ->
     end.
 
 collect_diag_per_node_binary_body(Reply) ->
+    ?log_debug("Start collecting diagnostic data"),
     ActiveBuckets = ns_memcached:active_buckets(),
     PersistentBuckets = [B || B <- ActiveBuckets, ns_bucket:is_persistent(B)],
 
