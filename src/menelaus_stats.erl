@@ -377,10 +377,26 @@ gather_needed_stats(BucketName, ForNodes, ClientTStamp, Window, GatherStats) ->
     AllNodesSamples = [{MainNode, lists:reverse(MainSamples)} | RestSamplesRaw],
     {AllNodesSamples, Nodes}.
 
+get_samples_from_one_of_kind([], _, _, _) ->
+    %% We will reach here if samples are not available for a known stat.
+    %% Samples may not be available at higher zoom level e.g. week, year etc.
+    %% We do not know which Kind the stat belongs to and the
+    %% nodes relevant for that Kind i.e. its section_nodes().
+    %% So, return empty sample with local node.
+    {[[]], [node()]};
 get_samples_from_one_of_kind([Kind | RestKinds], StatName, ClientTStamp, Window) ->
-    ForNodes = section_nodes(Kind),
+    case section_nodes(Kind) of
+        [] ->
+            get_samples_from_one_of_kind(RestKinds,
+                                         StatName, ClientTStamp, Window);
+        ForNodes ->
+            get_samples_for_kind(Kind, RestKinds, ForNodes,
+                                 StatName, ClientTStamp, Window)
+    end.
+
+get_samples_for_kind(Kind, RestKinds, ForNodes, StatName, ClientTStamp, Window) ->
     RV = {Samples, _} = get_samples_for_stat(Kind, StatName, ForNodes, ClientTStamp, Window),
-    case RestKinds =/= [] andalso are_samples_undefined(Samples) of
+    case are_samples_undefined(Samples) of
         true ->
             get_samples_from_one_of_kind(RestKinds, StatName, ClientTStamp, Window);
         false ->
