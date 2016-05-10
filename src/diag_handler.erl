@@ -248,7 +248,6 @@ collect_diag_per_node_binary_body(Reply) ->
     Reply(ns_server_stats, (catch system_stats_collector:get_ns_server_stats())),
     Reply(active_buckets, ActiveBuckets),
     Reply(replication_docs, (catch xdc_rdoc_api:find_all_replication_docs(5000))),
-    Reply(master_local_docs, [{Bucket, (catch capi_utils:capture_local_master_docs(Bucket, 10000))} || Bucket <- ActiveBuckets]),
     Reply(design_docs, [{Bucket, (catch capi_utils:full_live_ddocs(Bucket, 2000))} ||
                            Bucket <- PersistentBuckets]),
     Reply(ets_tables, (catch grab_all_ets_tables())),
