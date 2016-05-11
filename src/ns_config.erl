@@ -57,7 +57,7 @@
          start_link/2, start_link/1,
          merge/1,
          get/2, get/1, get/0, set/2, set/1,
-         cas_remote_config/2, cas_local_config/2,
+         cas_remote_config/3, cas_local_config/2,
          set_initial/2, update/1, update_key/2, update_key/3,
          update_sub_key/3, set_sub/2, set_sub/3,
          search_node/3, search_node/2, search_node/1,
@@ -177,11 +177,11 @@ update_config_key(Key, Value, KVList, UUID) ->
 
 %% Replaces config key-value pairs by NewConfig if they're still equal
 %% to OldConfig. Returns true on success.
-cas_remote_config(NewConfig, OldConfig) ->
-    gen_server:call(?MODULE, {cas_config, NewConfig, OldConfig, remote}).
+cas_remote_config(NewConfig, TouchedKeys, OldConfig) ->
+    gen_server:call(?MODULE, {cas_config, NewConfig, TouchedKeys, OldConfig, remote}).
 
 cas_local_config(NewConfig, OldConfig) ->
-    gen_server:call(?MODULE, {cas_config, NewConfig, OldConfig, local}).
+    gen_server:call(?MODULE, {cas_config, NewConfig, [], OldConfig, local}).
 
 set(Key, Value) ->
     ok = update_with_changes(fun (Config, UUID) ->
@@ -953,35 +953,60 @@ handle_call({merge_ns_couchdb_config, NewKVList0, FromNode}, _From, State) ->
     OldKVList = config_dynamic(State),
     NewKVList = misc:ukeymergewith(fun (New, _Old) -> New end,
                                    1, NewKVList1, lists:sort(OldKVList)),
-    C = {cas_config, NewKVList, OldKVList, remote},
+    C = {cas_config, NewKVList, [], OldKVList, remote},
     {reply, true, NewState} = handle_call(C, [], State),
     {reply, ok, NewState};
 
 handle_call(merge_dynamic_and_static, _From, State) ->
     OldDynamic = config_dynamic(State),
     NewDynamic = do_merge_dynamic_and_static([OldDynamic], State),
-    C = {cas_config, NewDynamic, OldDynamic, remote},
+    C = {cas_config, NewDynamic, [], OldDynamic, remote},
     {reply, true, NewState} = handle_call(C, [], State),
     {reply, ok, NewState};
 
-handle_call({cas_config, NewKVList, OldKVList, Type}, _From, State) ->
+handle_call({cas_config, NewKVList, ExtraLocalChanges, OldKVList, Type},
+            _From, State) ->
     case OldKVList =:= hd(State#config.dynamic) of
         true ->
+            HaveExtraLocalChanges = (ExtraLocalChanges =/= []),
+
             NewState0 = State#config{dynamic = [NewKVList]},
-            NewState = case Type of
-                           remote ->
-                               NewState0;
-                           local ->
-                               bump_local_changes_counter(NewState0)
-                       end,
+            NewState =
+                case {Type, HaveExtraLocalChanges} of
+                    {local, _} ->
+                        bump_local_changes_counter(NewState0);
+                    {remote, true} ->
+                        bump_local_changes_counter(NewState0);
+                    {remote, false} ->
+                        NewState0
+                end,
+
             Diff = config_dynamic(NewState) -- OldKVList,
             update_ets_dup(Diff),
-            case Type of
-                local ->
-                    announce_locally_made_changes(Diff);
-                remote ->
-                    announce_changes(Diff)
-            end,
+
+            {LocalDiff, RemoteDiff} =
+                case {Type, HaveExtraLocalChanges} of
+                    {local, _} ->
+                        {Diff, []};
+                    {remote, false} ->
+                        {[], Diff};
+                    {remote, true} ->
+                        %% if we reach here, we definitely bumped local change
+                        %% counter, so we need to make sure it's replicated
+                        %% immediately too
+                        ToReplicate =
+                            [{local_changes_count, ns_config:uuid(State)} |
+                             ExtraLocalChanges],
+
+                        lists:partition(
+                          fun ({K, _}) ->
+                                  lists:member(K, ToReplicate)
+                          end, Diff)
+                end,
+
+            announce_locally_made_changes(LocalDiff),
+            announce_changes(RemoteDiff),
+
             {reply, true, initiate_save_config(NewState)};
         _ ->
             {reply, false, State}
@@ -1459,9 +1484,9 @@ do_test_cas_config(Self) ->
 
     (catch ets:new(ns_config_ets_dup, [public, set, named_table])),
 
-    ns_config:cas_remote_config(new, old),
+    ns_config:cas_remote_config(new, [], old),
     receive
-        {cas_config, new, old, _} ->
+        {cas_config, new, [], old, _} ->
             ok
     after 0 ->
             exit(missing_cas_config_msg)
@@ -1474,11 +1499,11 @@ do_test_cas_config(Self) ->
     ?assertEqual([{a,1},{b,1}], config_dynamic(Config)),
 
 
-    {reply, true, NewConfig} = handle_call({cas_config, [{a,2}], config_dynamic(Config), remote}, [], Config),
+    {reply, true, NewConfig} = handle_call({cas_config, [{a,2}], [], config_dynamic(Config), remote}, [], Config),
     ?assertEqual(NewConfig, Config#config{dynamic=[config_dynamic(NewConfig)]}),
     ?assertEqual([{a,2}], config_dynamic(NewConfig)),
 
-    {reply, false, NewConfig} = handle_call({cas_config, [{a,3}], config_dynamic(Config), remote}, [], NewConfig).
+    {reply, false, NewConfig} = handle_call({cas_config, [{a,3}], [], config_dynamic(Config), remote}, [], NewConfig).
 
 
 test_update_config() ->

@@ -357,12 +357,12 @@ do_merge(RemoteKVList) ->
     LocalKVList = ns_config:get_kv_list_with_config(Config),
     UUID = ns_config:uuid(Config),
     Cluster30 = cluster_compat_mode:is_cluster_30(),
-    {NewKVList, _} = ns_config:merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30),
+    {NewKVList, TouchedKeys} = ns_config:merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30),
     case NewKVList =:= LocalKVList of
         true ->
             ok;
         _ ->
-            case ns_config:cas_remote_config(NewKVList, LocalKVList) of
+            case ns_config:cas_remote_config(NewKVList, TouchedKeys, LocalKVList) of
                 true ->
                     do_push(NewKVList -- LocalKVList, ns_node_disco:local_sub_nodes()),
                     ok;
