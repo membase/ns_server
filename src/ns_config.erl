@@ -1164,11 +1164,36 @@ save_file(bin, ConfigPath, X) ->
     ok = file:close(F),
     file:rename(TempFile, ConfigPath).
 
--spec merge_kv_pairs(kvlist(), kvlist(), uuid(), boolean()) -> kvlist().
-merge_kv_pairs(RemoteKVList, LocalKVList, _UUID, _Cluster30)
+-define(TOUCHED_KEYS, touched_keys).
+touch_key(Key) ->
+    Current = erlang:get(?TOUCHED_KEYS),
+    true = (Current =/= undefined),
+    New = ordsets:add_element(Key, Current),
+    erlang:put(?TOUCHED_KEYS, New),
+    ok.
+
+with_touched_keys(Body) ->
+    try
+        undefined = erlang:put(?TOUCHED_KEYS, ordsets:new()),
+        RV = Body(),
+        TouchedKeys = ordsets:to_list(erlang:get(?TOUCHED_KEYS)),
+        {RV, TouchedKeys}
+    after
+        erlang:erase(?TOUCHED_KEYS)
+    end.
+
+-spec merge_kv_pairs(kvlist(), kvlist(), uuid(), boolean()) -> {kvlist(), [key()]}.
+merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
+    with_touched_keys(
+      fun () ->
+              do_merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30)
+      end).
+
+-spec do_merge_kv_pairs(kvlist(), kvlist(), uuid(), boolean()) -> kvlist().
+do_merge_kv_pairs(RemoteKVList, LocalKVList, _UUID, _Cluster30)
   when RemoteKVList =:= LocalKVList ->
     LocalKVList;
-merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
+do_merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
     RemoteKVList1 = lists:sort(RemoteKVList),
     LocalKVList1 = lists:sort(LocalKVList),
     Merger = fun (_, {directory, _} = LP) ->
@@ -1215,6 +1240,7 @@ merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
                                                 "Overriding remote with local:~n"
                                                 "local = ~p~n"
                                                 "remote = ~p", [K, LV, RV]),
+                                     touch_key(K),
                                      {K, increment_vclock(LV, merge_vclocks(RV, LV), UUID)}
                              end;
                          false ->
@@ -1241,6 +1267,7 @@ merge_values({K, RV} = RP, {_, LV} = LP, UUID) ->
                 {_, ?DELETED_MARKER} ->
                     LP;
                 {_, _} ->
+                    touch_key(K),
                     V = merge_values_using_timestamps(K, LV, LClock, RV, RClock),
 
                     %% Increment the merged vclock so we don't pingpong
@@ -1905,10 +1932,13 @@ merge_values_test_() ->
 merge_values_test__() ->
     mock_timestamp(
       fun () ->
-              lists:foreach(
-                fun (_I) ->
-                        merge_values_test_iter()
-                end, lists:seq(1, 1000))
+              with_touched_keys(
+                fun () ->
+                        lists:foreach(
+                          fun (_I) ->
+                                  merge_values_test_iter()
+                          end, lists:seq(1, 1000))
+                end)
       end).
 
 mock_timestamp(Body) ->
