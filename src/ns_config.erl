@@ -953,7 +953,7 @@ handle_call({merge_ns_couchdb_config, NewKVList0, FromNode}, _From, State) ->
     OldKVList = config_dynamic(State),
     NewKVList = misc:ukeymergewith(fun (New, _Old) -> New end,
                                    1, NewKVList1, lists:sort(OldKVList)),
-    C = {cas_config, NewKVList, OldKVList, replace},
+    C = {cas_config, NewKVList, OldKVList, remote},
     {reply, true, NewState} = handle_call(C, [], State),
     {reply, ok, NewState};
 
@@ -971,18 +971,16 @@ handle_call({cas_config, NewKVList, OldKVList, Type}, _From, State) ->
             NewState = case Type of
                            remote ->
                                NewState0;
-                           replace ->
-                               NewState0;
                            local ->
                                bump_local_changes_counter(NewState0)
                        end,
             Diff = config_dynamic(NewState) -- OldKVList,
             update_ets_dup(Diff),
             case Type of
+                local ->
+                    announce_locally_made_changes(Diff);
                 remote ->
-                    announce_changes(Diff);
-                _ ->
-                    announce_locally_made_changes(Diff)
+                    announce_changes(Diff)
             end,
             {reply, true, initiate_save_config(NewState)};
         _ ->
