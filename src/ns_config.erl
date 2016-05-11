@@ -964,11 +964,11 @@ handle_call(merge_dynamic_and_static, _From, State) ->
     {reply, true, NewState} = handle_call(C, [], State),
     {reply, ok, NewState};
 
-handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
+handle_call({cas_config, NewKVList, OldKVList, Type}, _From, State) ->
     case OldKVList =:= hd(State#config.dynamic) of
         true ->
             NewState0 = State#config{dynamic = [NewKVList]},
-            NewState = case RemoteOrLocal of
+            NewState = case Type of
                            remote ->
                                NewState0;
                            replace ->
@@ -978,7 +978,7 @@ handle_call({cas_config, NewKVList, OldKVList, RemoteOrLocal}, _From, State) ->
                        end,
             Diff = config_dynamic(NewState) -- OldKVList,
             update_ets_dup(Diff),
-            case RemoteOrLocal of
+            case Type of
                 remote ->
                     announce_changes(Diff);
                 _ ->
