@@ -47,11 +47,6 @@
 -define(TERMINATE_SAVE_TIMEOUT, 10000).
 
 %% log codes
--define(RELOAD_FAILED, 1).
--define(RESAVE_FAILED, 2).
--define(CONFIG_CONFLICT, 3).
--define(GOT_TERMINATE_SAVE_TIMEOUT, 4).
-
 -export([eval/1,
          uuid/0, uuid/1,
          start_link/2, start_link/1,
@@ -848,8 +843,8 @@ wait_saver(State, Timeout) ->
 terminate(_Reason, State) ->
     case wait_saver(State, ?TERMINATE_SAVE_TIMEOUT) of
         timeout ->
-            ?user_log(?GOT_TERMINATE_SAVE_TIMEOUT,
-                      "Termination wait for ns_config saver process timed out.~n");
+            ale:warn(?USER_LOGGER,
+                     "Termination wait for ns_config saver process timed out.");
         _ -> ok
     end.
 
@@ -883,10 +878,11 @@ handle_call({eval, Fun}, _From, State) ->
 
 handle_call(reload, _From, State) ->
     case init(State#config.init) of
-        {ok, State2}  -> {reply, ok, State2};
-        {stop, Error} -> ?user_log(?RELOAD_FAILED, "reload failed: ~p",
-                                   [Error]),
-                         {reply, {error, Error}, State}
+        {ok, State2} ->
+            {reply, ok, State2};
+        {stop, Error} ->
+            ale:warn(?USER_LOGGER, "reload failed: ~p", [Error]),
+            {reply, {error, Error}, State}
     end;
 
 handle_call(resave, _From, State) ->
@@ -1311,12 +1307,12 @@ merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
         {X1, X1} ->
             [Winner, Loser] = lists:sort([LV, RV]),
 
-            ?user_log(?CONFIG_CONFLICT,
-                      "Conflicting configuration changes to field "
-                      "~p:~n~p and~n~p, choosing the former.~n",
-                      [K,
-                       ns_config_log:sanitize(Winner),
-                       ns_config_log:sanitize(Loser)]),
+            ale:info(?USER_LOGGER,
+                     "Conflicting configuration changes to field "
+                     "~p:~n~p and~n~p, choosing the former.",
+                     [K,
+                      ns_config_log:sanitize(Winner),
+                      ns_config_log:sanitize(Loser)]),
 
             Winner;
         {LocalNewer, RemoteNewer} ->
@@ -1330,12 +1326,12 @@ merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
                         [RV, LV]
                 end,
 
-            ?user_log(?CONFIG_CONFLICT,
-                      "Conflicting configuration changes to field "
-                      "~p:~n~p and~n~p, choosing the former, which looks newer.~n",
-                      [K,
-                       ns_config_log:sanitize(Winner),
-                       ns_config_log:sanitize(Loser)]),
+            ale:info(?USER_LOGGER,
+                     "Conflicting configuration changes to field "
+                     "~p:~n~p and~n~p, choosing the former, which looks newer.",
+                     [K,
+                      ns_config_log:sanitize(Winner),
+                      ns_config_log:sanitize(Loser)]),
 
             Winner
     end.
