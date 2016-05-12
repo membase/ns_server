@@ -224,6 +224,8 @@ angular.module('mnSettingsNotificationsService', [
       calculateAvgWeekAndHour(stats, "avg_query_requests", true);
       calculateAvgWeekAndHour(stats, "total_avg_view_accesses");
       calculateAvgWeekAndHour(stats, "total_avg_index_num_rows_returned");
+
+      return stats;
     }
 
     mnSettingsNotificationsService.buildPhoneHomeThingy = function (mnHttpParams) {
