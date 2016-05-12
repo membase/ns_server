@@ -593,14 +593,16 @@ do_chain_compactors(Parent, [Compactor | Compactors]) ->
 
             case Important of
                 true ->
-                    ?log_warning("Compactor for ~p `~s` (pid ~p) terminated "
-                                 "unexpectedly: ~p",
-                                 [Type, Name, Compactor, Reason]),
+                    ale:warn(?USER_LOGGER,
+                             "Compactor for ~p `~s` (pid ~p) terminated "
+                             "unexpectedly: ~p",
+                             [Type, Name, Compactor, Reason]),
                     exit(Reason);
                 false ->
-                    ?log_warning("Compactor for ~p `~s` (pid ~p) terminated "
-                                 "unexpectedly (ignoring this): ~p",
-                                 [Type, Name, Compactor, Reason])
+                    ale:warn(?USER_LOGGER,
+                             "Compactor for ~p `~s` (pid ~p) terminated "
+                             "unexpectedly (ignoring this): ~p",
+                             [Type, Name, Compactor, Reason])
             end
     end.
 
