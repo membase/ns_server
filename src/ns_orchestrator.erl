@@ -742,7 +742,10 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{remaining_buckets = Rema
                    {rebalancer_pid, Pid}]),
     {reply, ok, rebalancing,
      #rebalancing_state{rebalancer=Pid,
-                        progress=dict:new()}};
+                        progress=dict:new(),
+                        keep_nodes=ns_node_disco:nodes_wanted(),
+                        eject_nodes=[],
+                        failed_nodes=[]}};
 idle(stop_rebalance, _From, State) ->
     ns_janitor:stop_rebalance_status(
       fun () ->
