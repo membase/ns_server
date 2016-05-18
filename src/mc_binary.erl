@@ -137,7 +137,7 @@ quick_stats(Sock, Key, CB, CBState, Timeout) ->
                  end,
     try
         send(Sock, Req),
-        quick_stats_loop(Sock, CB, CBState, Ref, <<>>)
+        quick_stats_loop_enter(Sock, CB, CBState, Ref, <<>>)
     after
         case MaybeTimer of
             [] ->
@@ -151,8 +151,24 @@ quick_stats(Sock, Key, CB, CBState, Timeout) ->
         end
     end.
 
+quick_stats_loop_enter(Sock, CB, CBState, TimeoutRef, Data) ->
+    {ok, Header, Entry, Rest} = quick_stats_recv(Sock, Data, TimeoutRef),
+    %% Assume that only first entry might indicate an error
+    case Header#mc_header.status of
+        ?SUCCESS ->
+            quick_stats_loop_process_entry(Sock, CB, CBState, TimeoutRef,
+                                           Header, Entry, Rest);
+        Status ->
+            {memcached_error, mc_client_binary:map_status(Status), Entry#mc_entry.data}
+    end.
+
 quick_stats_loop(Sock, CB, CBState, TimeoutRef, Data) ->
     {ok, Header, Entry, Rest} = quick_stats_recv(Sock, Data, TimeoutRef),
+    quick_stats_loop_process_entry(Sock, CB, CBState, TimeoutRef,
+                                   Header, Entry, Rest).
+
+quick_stats_loop_process_entry(Sock, CB, CBState, TimeoutRef,
+                               Header, Entry, Rest) ->
     #mc_header{keylen = RKeyLen} = Header,
     case RKeyLen =:= 0 of
         true ->
