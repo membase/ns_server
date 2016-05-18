@@ -690,15 +690,28 @@ vbucket_needs_compaction({DataSize, FileSize}, Config) ->
     file_needs_compaction(DataSize, FileSize, FragThreshold, MinFileSize).
 
 get_db_size_info(Bucket, VBucket) ->
-    {ok, Props} = ns_memcached:get_vbucket_details_stats(Bucket, VBucket),
-
-    {list_to_integer(proplists:get_value("db_data_size", Props)),
-     list_to_integer(proplists:get_value("db_file_size", Props))}.
+    case ns_memcached:get_vbucket_details_stats(Bucket, VBucket) of
+        {ok, Props} ->
+            {ok, {list_to_integer(proplists:get_value("db_data_size", Props)),
+                  list_to_integer(proplists:get_value("db_file_size", Props))}};
+        {memcached_error, _, _} = Error ->
+            Error
+    end.
 
 maybe_compact_vbucket(BucketName, {VBucket, DbName},
                       Config, Force, Options) ->
     Bucket = binary_to_list(BucketName),
-    {DataSize, FileSize} = SizeInfo = get_db_size_info(Bucket, VBucket),
+    {DataSize, FileSize} = SizeInfo =
+        case get_db_size_info(Bucket, VBucket) of
+            {ok, Info} ->
+                Info;
+            {memcached_error, not_my_vbucket, _} ->
+                ?log_debug("Seems that vbucket ~p is gone from the node. "
+                           "Skipping compaction", [VBucket]),
+                exit(normal);
+            Error ->
+                exit({stats_error, Error})
+        end,
 
     Force orelse vbucket_needs_compaction(SizeInfo, Config) orelse exit(normal),
 
