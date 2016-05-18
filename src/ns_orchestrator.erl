@@ -30,9 +30,13 @@
 -record(idle_state, {janitor_requests = [] :: [janitor_request()]}).
 -record(janitor_state, {janitor_requests :: [janitor_request()],
                         pid}).
--record(rebalancing_state, {rebalancer, progress,
-                            keep_nodes, eject_nodes, failed_nodes,
-                            stop_timer}).
+-record(rebalancing_state, {rebalancer,
+                            progress,
+                            keep_nodes,
+                            eject_nodes,
+                            failed_nodes,
+                            stop_timer,
+                            consider_post_rebalance_upgrade = true}).
 -record(recovery_state, {uuid :: binary(),
                          bucket :: bucket_name(),
                          recoverer_state :: any()}).
@@ -495,7 +499,8 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                                keep_nodes=KeepNodes,
                                eject_nodes=EjectNodes,
                                failed_nodes=FailedNodes,
-                               stop_timer = MaybeTref}) ->
+                               stop_timer=MaybeTref,
+                               consider_post_rebalance_upgrade=ConsiderUpgrade} = State) ->
     Status = case Reason of
                  graceful_failover_done ->
                      none;
@@ -539,15 +544,21 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
             ok
     end,
 
-    Restart =
-        try
-            consider_switching_compat_mode(),
-            false
-        catch exit:normal ->
-                true
-        end,
+    case ConsiderUpgrade of
+        true ->
+            Restart =
+                try
+                    consider_switching_compat_mode(),
+                    false
+                catch exit:normal ->
+                        true
+                end,
 
-    maybe_start_upgrade_to_dcp(Restart);
+            maybe_start_upgrade_to_dcp(Restart);
+        false ->
+            ?log_debug("Skipping post-rebalance upgrade for rebalance ~p", [State]),
+            {next_state, idle, #idle_state{}}
+    end;
 
 handle_info({'EXIT', Pid, Reason}, upgrading_to_dcp,
             #dcp_upgrade_state{upgrader = Pid,
@@ -788,7 +799,11 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{janitor_requests = Janit
 
     {reply, ok, rebalancing,
      #rebalancing_state{rebalancer=Pid,
-                        progress=Progress}};
+                        progress=Progress,
+                        keep_nodes=ns_node_disco:nodes_wanted(),
+                        eject_nodes=[],
+                        failed_nodes=[],
+                        consider_post_rebalance_upgrade=false}};
 idle(stop_rebalance, _From, State) ->
     ns_janitor:stop_rebalance_status(
       fun () ->
