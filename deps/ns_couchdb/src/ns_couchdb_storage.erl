@@ -31,9 +31,9 @@ delete_databases_and_files(Bucket) ->
                             end, AllDBs),
     RV = case delete_databases_loop(MaybeMasterDb ++ RestDBs) of
              ok ->
-                 ?log_info("Couch dbs are deleted. Proceeding with bucket directory"),
                  {ok, DbDir} = ns_storage_conf:this_node_dbdir(),
                  Path = filename:join(DbDir, Bucket),
+                 ?log_info("Couch dbs are deleted. Proceeding with bucket directory ~p", [Path]),
                  case misc:rm_rf(Path) of
                      ok -> ok;
                      Error ->
@@ -43,10 +43,12 @@ delete_databases_and_files(Bucket) ->
                  {delete_vbuckets_error, Error}
          end,
     do_delete_bucket_indexes(Bucket),
+    ?log_info("Bucket ~p deletion has finished with ~p", [Bucket, RV]),
     RV.
 
 do_delete_bucket_indexes(Bucket) ->
     {ok, BaseIxDir} = ns_storage_conf:this_node_ixdir(),
+    ?log_info("Start deleting bucket ~p indexes at ~p", [Bucket, BaseIxDir]),
     couch_set_view:delete_index_dir(BaseIxDir, list_to_binary(Bucket)).
 
 delete_databases_loop([]) ->
