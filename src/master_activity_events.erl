@@ -51,7 +51,8 @@
          note_wait_index_updated_started/3,
          note_wait_index_updated_ended/3,
          note_compaction_inhibited/2,
-         note_compaction_uninhibited/2,
+         note_compaction_uninhibit_started/2,
+         note_compaction_uninhibit_done/2,
          note_forced_inhibited_view_compaction/1,
          note_tap_stats/4,
          event_to_jsons/1,
@@ -189,8 +190,11 @@ note_wait_index_updated_ended(BucketName, Node, VBucket) ->
 note_compaction_inhibited(BucketName, Node) ->
     submit_cast({compaction_inhibited, BucketName, Node}).
 
-note_compaction_uninhibited(BucketName, Node) ->
-    submit_cast({compaction_uninhibited, BucketName, Node}).
+note_compaction_uninhibit_started(BucketName, Node) ->
+    submit_cast({compaction_uninhibit_started, BucketName, Node}).
+
+note_compaction_uninhibit_done(BucketName, Node) ->
+    submit_cast({compaction_uninhibit_done, BucketName, Node}).
 
 note_forced_inhibited_view_compaction(BucketName) ->
     submit_cast({forced_inhibited_view_compaction, BucketName, node()}).
@@ -639,8 +643,14 @@ event_to_jsons({TS, compaction_inhibited, BucketName, Node}) ->
                                   {bucket, BucketName},
                                   {node, node_to_host(Node, ns_config:get())}])];
 
-event_to_jsons({TS, compaction_uninhibited, BucketName, Node}) ->
-    [format_simple_plist_as_json([{type, compactionUninhibited},
+event_to_jsons({TS, compaction_uninhibit_started, BucketName, Node}) ->
+    [format_simple_plist_as_json([{type, compactionUninhibitStarted},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {node, node_to_host(Node, ns_config:get())}])];
+
+event_to_jsons({TS, compaction_uninhibit_done, BucketName, Node}) ->
+    [format_simple_plist_as_json([{type, compactionUninhibitDone},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {node, node_to_host(Node, ns_config:get())}])];

@@ -277,9 +277,10 @@ spawn_compaction_uninhibitor(Bucket, Node, MRef) ->
       fun () ->
               case cluster_compat_mode:is_index_aware_rebalance_on() of
                   true ->
+                      master_activity_events:note_compaction_uninhibit_started(Bucket, Node),
                       case uninhibit_view_compaction(Bucket, Parent, Node, MRef) of
                           ok ->
-                              master_activity_events:note_compaction_uninhibited(Bucket, Node),
+                              master_activity_events:note_compaction_uninhibit_done(Bucket, Node),
                               ok;
                           nack ->
                               erlang:exit({failed_to_initiate_compaction, Bucket, Node, MRef})
