@@ -215,6 +215,7 @@ worker_loop(Parent, #state{sock = Sock} = State, PrevCounterSlot) ->
     {Msg, From, StartTS, CounterSlot} = gen_server:call(Parent, {get_work, PrevCounterSlot}, infinity),
     WorkStartTS = os:timestamp(),
 
+    erlang:put(last_call, Msg),
     {Reply, NewState} =
         case do_handle_call(Msg, From, State) of
             %% note we only accept calls that don't mutate state. So in- and
