@@ -204,6 +204,10 @@ worker_init(Parent, ParentState) ->
 
 do_worker_init(State) ->
     {ok, Sock} = connect(),
+
+    {ok, SockName} = inet:sockname(Sock),
+    erlang:put(sockname, SockName),
+
     ok = mc_client_binary:select_bucket(Sock, State#state.bucket),
     State#state{sock = Sock}.
 
