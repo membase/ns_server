@@ -1,0 +1,6 @@
+#!/bin/sh
+#
+# Read master events into a single array of events.
+#
+
+exec jq -s . "$@"
