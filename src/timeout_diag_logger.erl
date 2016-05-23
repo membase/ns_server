@@ -28,6 +28,9 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+%% for ns_couchdb_api
+-export([do_log_diagnostics/1]).
+
 -define(MIN_LOG_INTERVAL, 5000).
 
 -record(state, {last_tstamp}).
@@ -37,6 +40,10 @@
 %%%===================================================================
 
 log_diagnostics(Err) ->
+    do_log_diagnostics(Err),
+    ns_couchdb_api:log_diagnostics(Err).
+
+do_log_diagnostics(Err) ->
     Pid = erlang:whereis(?MODULE),
     case Pid of
         undefined -> ok;
