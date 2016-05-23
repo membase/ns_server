@@ -33,7 +33,8 @@
 
 -define(MIN_LOG_INTERVAL, 5000).
 
--record(state, {last_tstamp}).
+-record(state, {last_tstamp,
+                diag_pid}).
 
 %%%===================================================================
 %%% API
@@ -44,16 +45,7 @@ log_diagnostics(Err) ->
     ns_couchdb_api:log_diagnostics(Err).
 
 do_log_diagnostics(Err) ->
-    Pid = erlang:whereis(?MODULE),
-    case Pid of
-        undefined -> ok;
-        _ ->
-            try erlang:process_info(Pid, message_queue_len) of
-                {_, V} when V < 1 -> gen_server:cast(?MODULE, {diag, Err});
-                _ -> nothing
-            catch _:_ -> nothing
-            end
-    end.
+    gen_server:cast(?MODULE, {diag, Err}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -81,6 +73,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    erlang:process_flag(trap_exit, true),
     {ok, #state{last_tstamp = misc:time_to_epoch_ms_int(now()) - ?MIN_LOG_INTERVAL}}.
 
 %%--------------------------------------------------------------------
@@ -100,23 +93,32 @@ init([]) ->
 handle_call(_, _From, _State) ->
     erlang:error(unsupported).
 
-do_diag(Err, #state{last_tstamp = TStamp} = State) ->
-    self() ! busy_marker,
+maybe_spawn_diag(Error, #state{last_tstamp = TStamp} = State) ->
     Now = misc:time_to_epoch_ms_int(now()),
+
     NewState =
         case Now - TStamp >= ?MIN_LOG_INTERVAL of
             true ->
-                Processes = lists:foldl(fun (Pid, Acc) ->
-                                                [{Pid, (catch diag_handler:grab_process_info(Pid))} | Acc]
-                                        end, [], erlang:processes()),
-                ?log_error("Got timeout ~p~nProcesses snapshot is: ~n", [Err]),
-                lists:foreach(fun (Item) ->
-                                      ?log_error("~n~p", [Item])
-                              end, Processes),
-                State#state{last_tstamp = misc:time_to_epoch_ms_int(now())};
-            _ -> State
+                Pid = proc_lib:spawn_link(fun () -> do_diag(Error) end),
+                State#state{diag_pid = Pid};
+            _ ->
+                ?log_warning("Ignoring diag request (error: ~p) because "
+                             "last dumped less than ~bms ago",
+                             [Error, ?MIN_LOG_INTERVAL]),
+                State
         end,
+
     NewState.
+
+do_diag(Error) ->
+    Processes =
+        lists:foldl(fun (Pid, Acc) ->
+                            [{Pid, (catch diag_handler:grab_process_info(Pid))} | Acc]
+                    end, [], erlang:processes()),
+    ?log_error("Got timeout ~p~nProcesses snapshot is: ~n", [Error]),
+    lists:foreach(fun (Item) ->
+                          ?log_error("~n~p", [Item])
+                  end, Processes).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,8 +130,13 @@ do_diag(Err, #state{last_tstamp = TStamp} = State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({diag, Err}, State) ->
-    {noreply, do_diag(Err, State)};
+handle_cast({diag, Error},
+            #state{diag_pid = Pid} = State) when is_pid(Pid) ->
+    ?log_warning("Ignoring diag request (error: ~p) "
+                 "while already dumping diagnostics", [Error]),
+    {noreply, State};
+handle_cast({diag, Error}, #state{diag_pid = undefined} = State) ->
+    {noreply, maybe_spawn_diag(Error, State)};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -143,6 +150,16 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'EXIT', Pid, Reason}, #state{diag_pid = Pid} = State) ->
+    State0 = State#state{diag_pid = undefined},
+
+    case Reason of
+        normal ->
+            {noreply, State0#state{last_tstamp = misc:time_to_epoch_ms_int(now())}};
+        _ ->
+            ?log_warning("Diag process died unexpectedly: ~p", [Reason]),
+            {noreply, State0}
+    end;
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -157,7 +174,13 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{diag_pid = DiagPid} = _State) ->
+    case DiagPid of
+        undefined ->
+            ok;
+        _ ->
+            misc:terminate_and_wait(kill, DiagPid)
+    end,
     ok.
 
 %%--------------------------------------------------------------------
@@ -174,4 +197,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
