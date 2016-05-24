@@ -940,17 +940,22 @@ wait_for_seqno_persistence(Sock, VBucket, SeqNo) ->
 -spec get_tap_docs_estimate(port(), vbucket_id(), binary()) ->
                                    {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
 get_tap_docs_estimate(Sock, VBucket, TapName) ->
-    mc_binary:quick_stats(Sock,
-                          iolist_to_binary([<<"tap-vbtakeover ">>, integer_to_list(VBucket), $\s | TapName]),
-                          fun (<<"estimate">>, V, {_, AccChkItems, AccStatus}) ->
-                                  {list_to_integer(binary_to_list(V)), AccChkItems, AccStatus};
-                              (<<"chk_items">>, V, {AccEstimate, _, AccStatus}) ->
-                                  {AccEstimate, list_to_integer(binary_to_list(V)), AccStatus};
-                              (<<"status">>, V, {AccEstimate, AccChkItems, _}) ->
-                                  {AccEstimate, AccChkItems, V};
-                              (_, _, Acc) ->
-                                  Acc
-                          end, {0, 0, <<"unknown">>}).
+    Default = {0, 0, <<"unknown">>},
+
+    RV = mc_binary:quick_stats(
+           Sock,
+           iolist_to_binary([<<"tap-vbtakeover ">>, integer_to_list(VBucket), $\s | TapName]),
+           fun (<<"estimate">>, V, {_, AccChkItems, AccStatus}) ->
+                   {list_to_integer(binary_to_list(V)), AccChkItems, AccStatus};
+               (<<"chk_items">>, V, {AccEstimate, _, AccStatus}) ->
+                   {AccEstimate, list_to_integer(binary_to_list(V)), AccStatus};
+               (<<"status">>, V, {AccEstimate, AccChkItems, _}) ->
+                   {AccEstimate, AccChkItems, V};
+               (_, _, Acc) ->
+                   Acc
+           end, Default),
+
+    handle_docs_estimate_result(RV, Default).
 
 -spec get_mass_tap_docs_estimate(port(), [vbucket_id()]) ->
                                         {ok, [{non_neg_integer(), non_neg_integer(), binary()}]}.
@@ -964,18 +969,27 @@ get_mass_tap_docs_estimate(Sock, VBuckets) ->
 -spec get_dcp_docs_estimate(port(), vbucket_id(), binary() | string()) ->
                                    {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
 get_dcp_docs_estimate(Sock, VBucket, ConnName) ->
+    Default = {0, 0, <<"does_not_exist">>},
     Key = iolist_to_binary([<<"dcp-vbtakeover ">>, integer_to_list(VBucket), $\s, ConnName]),
 
-    mc_binary:quick_stats(Sock, Key,
-                          fun (<<"estimate">>, V, {_, AccChkItems, AccStatus}) ->
-                                  {list_to_integer(binary_to_list(V)), AccChkItems, AccStatus};
-                              (<<"chk_items">>, V, {AccEstimate, _, AccStatus}) ->
-                                  {AccEstimate, list_to_integer(binary_to_list(V)), AccStatus};
-                              (<<"status">>, V, {AccEstimate, AccChkItems, _}) ->
-                                  {AccEstimate, AccChkItems, V};
-                              (_, _, Acc) ->
-                                  Acc
-                          end, {0, 0, <<"does_not_exist">>}).
+    RV = mc_binary:quick_stats(
+           Sock, Key,
+           fun (<<"estimate">>, V, {_, AccChkItems, AccStatus}) ->
+                   {list_to_integer(binary_to_list(V)), AccChkItems, AccStatus};
+               (<<"chk_items">>, V, {AccEstimate, _, AccStatus}) ->
+                   {AccEstimate, list_to_integer(binary_to_list(V)), AccStatus};
+               (<<"status">>, V, {AccEstimate, AccChkItems, _}) ->
+                   {AccEstimate, AccChkItems, V};
+               (_, _, Acc) ->
+                   Acc
+           end, Default),
+
+    handle_docs_estimate_result(RV, Default).
+
+handle_docs_estimate_result({ok, _} = RV, _) ->
+    RV;
+handle_docs_estimate_result({memcached_error, not_my_vbucket, _}, Default) ->
+    {ok, Default}.
 
 -spec get_mass_dcp_docs_estimate(port(), [vbucket_id()]) ->
                                         {ok, [{non_neg_integer(), non_neg_integer(), binary()}]}.
