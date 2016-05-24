@@ -85,6 +85,12 @@ sanitize_backtrace(Backtrace) ->
           end, []),
     lists:reverse(R).
 
+massage_messages(Messages) ->
+    [massage_message(M) || M <- lists:sublist(Messages, 10)].
+
+massage_message(Message) ->
+    iolist_to_binary(io_lib:format("~W", [Message, 25])).
+
 grab_process_info(Pid) ->
     PureInfo = erlang:process_info(Pid,
                                    [registered_name,
@@ -99,14 +105,21 @@ grab_process_info(Pid) ->
                                     monitors,
                                     monitored_by,
                                     memory,
+                                    messages,
                                     message_queue_len,
                                     reductions,
                                     trap_exit,
                                     current_location,
                                     dictionary]),
+
     Backtrace = proplists:get_value(backtrace, PureInfo),
     NewBacktrace = sanitize_backtrace(Backtrace),
-    lists:keyreplace(backtrace, 1, PureInfo, {backtrace, NewBacktrace}).
+
+    Messages = proplists:get_value(messages, PureInfo),
+    NewMessages = massage_messages(Messages),
+
+    Info0 = lists:keyreplace(backtrace, 1, PureInfo, {backtrace, NewBacktrace}),
+    lists:keyreplace(messages, 1, Info0, {messages, NewMessages}).
 
 grab_all_tap_and_checkpoint_stats() ->
     grab_all_tap_and_checkpoint_stats(15000).
