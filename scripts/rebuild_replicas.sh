@@ -15,10 +15,12 @@ password=$2
 host=$3
 bucket=$4
 vbucket=$5
+sleep=${6:-10000}
 
 curl --fail -X POST -u $user:$password http://$host/diag/eval -d @- <<EOF
 Bucket = "${bucket}",
 VBucket = ${vbucket},
+Sleep = ${sleep},
 
 GetChainsFromBucket =
   fun () ->
@@ -92,6 +94,7 @@ UpdateReplType =
 Rebalance(NoReplicasChain),
 UpdateReplType(),
 Rebalance(OldChain),
+ns_config:delete({fixup_rebalance, Bucket, VBucket}),
 
-ns_config:delete({fixup_rebalance, Bucket, VBucket}).
+timer:sleep(Sleep).
 EOF
