@@ -17,6 +17,7 @@ import signal
 import urllib
 import shutil
 import urlparse
+import errno
 
 class AltExitC(object):
     def __init__(self):
@@ -805,10 +806,28 @@ of utilites used by cbcollect_info'''
 
     sys.exit(0)
 
+def stdin_watcher():
+    fd = sys.stdin.fileno()
+
+    while True:
+        try:
+            buf = os.read(fd, 1024)
+            # stdin closed
+            if not buf:
+                break
+
+            if buf.find('\n') != -1:
+                break
+        except OSError, e:
+            if e.errno != errno.EINTR:
+                raise
+
 def setup_stdin_watcher():
     def _in_thread():
-        sys.stdin.readline()
-        AltExit.exit(2)
+        try:
+            stdin_watcher()
+        finally:
+            AltExit.exit(2)
     th = threading.Thread(target = _in_thread)
     th.setDaemon(True)
     th.start()
