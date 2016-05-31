@@ -520,7 +520,10 @@ mover_inner(Parent, Bucket, VBucket,
             ?rebalance_info("Going to do takeover"),
             ok = run_mover(Bucket, VBucket, Node, NewNode),
             set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined)
-    end.
+    end,
+
+    misc:sync_shutdown_many_i_am_trapping_exits([BuilderPid]),
+    cleanup_list_del(BuilderPid).
 
 get_replica_and_backfill_nodes(MasterNode, [NewMasterNode|_] = NewChain) ->
     ReplicaNodes = [N || N <- NewChain,
@@ -588,7 +591,10 @@ mover_inner_old_style(Parent, Bucket, VBucket,
             ok = run_mover(Bucket, VBucket, Node, NewNode),
             set_vbucket_state(Bucket, NewNode, Parent, VBucket, active, undefined, undefined),
             ok
-    end.
+    end,
+
+    misc:sync_shutdown_many_i_am_trapping_exits([ReplicasBuilderPid]),
+    cleanup_list_del(ReplicasBuilderPid).
 
 run_mover(Bucket, V, N1, N2) ->
     case {ns_memcached:get_vbucket(N1, Bucket, V),
