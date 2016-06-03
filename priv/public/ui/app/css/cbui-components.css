@@ -1,0 +1,711 @@
+/* ----------------COMPONENTS --------------- */
+
+/* Main Header Elements ------------ */
+header .logobug {
+  margin: 0 .5rem 0 0;
+}
+
+header h1 {
+  -webkit-flex:1 1 auto;
+      -ms-flex:1 1 auto;
+          flex:1 1 auto;
+}
+
+.header-controls {
+  -webkit-flex:0 1 auto;
+      -ms-flex:0 1 auto;
+          flex:0 1 auto;
+}
+.menu-icon {
+  display: none;
+}
+
+/* hyperlinks per functional area ----------- */
+
+/* nav header utility links --------------------- */
+.nav-header a {
+  display: inline-block;
+  font-size: .813rem;
+  padding: 0 .25rem 3px .25rem;
+}
+
+.nav-header a:last-child {
+  padding: 0 0 0 .25rem;
+}
+
+.nav-header a:link {
+  color: #555;
+}
+
+.nav-header a:visited {
+  color: #555;
+}
+
+.nav-header a:hover {
+  color: #3c7ac2;
+}
+
+.nav-header a:active {
+  color: #689fde;
+}
+
+/* white header hyperlinks ----------------------------------------------- */
+.header-controls a {
+  display: inline-block;
+  font-size: .938rem;
+  padding: .5rem .75rem;
+  font-weight: 600;
+  border: 1px solid #4287d6;
+}
+
+.header-controls a:last-child {
+  margin-right: -.75rem;
+}
+
+.header-controls a:link {
+  color: #fff;
+}
+
+.header-controls a:visited {
+  color: #fff;
+}
+
+.header-controls a:hover {
+  color: #fff;
+  border: 1px solid #eceff2;
+  transition: none;
+}
+
+.header-controls a:active {
+  color: #d8dde4;
+}
+
+/* sidebar hyperlinks --------------------------------------------------- */
+.nav-sidebar a {
+  font-size: 1rem;
+  display: block;
+  padding: .125rem 0 .125rem .125rem;
+  text-align: right;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+.nav-sidebar a:hover {
+  background-color: #eceff2;
+}
+
+.nav-sidebar h5 {
+  margin-bottom: 1.25rem;
+}
+
+/* dialog closing (X) hyperlinks ------------ */
+.modal-close {
+  display: inline-block;
+  font-size: 1rem;
+  padding: .5rem .75rem;
+  margin-right: -.6rem;
+  font-weight: 500;
+  border: 1px solid #4287d6;
+}
+
+.modal-close:link {
+  color: #fff;
+}
+
+.modal-close:visited {
+  color: #fff;
+}
+
+.modal-close:hover {
+  color: #fff;
+  border: 1px solid #eceff2;
+  transition: none;
+}
+
+.modal-close:active {
+  color: #689fde;
+}
+
+/* cbui table rows ------------------------ */
+.cbui-tablerow-controls a {
+  padding: .75rem 0 .75rem .75rem;
+}
+
+.cbui-tablerow-expansion p span.success a {
+  font-weight:700;
+}
+
+/* Icons ---------------------------------- */
+/* this inserts the down-caret (triangle) displayed after items with ".has-menu"  */
+
+.has-menu:after {
+  font-family:FontAwesome;
+  content: "\f0d7";
+  color: #222;
+  position:absolute;
+}
+
+.menu-sortable-link.has-menu:after {
+  right: -.75rem;
+}
+
+table th span.has-menu:after {
+  right: -1rem;
+}
+
+/* this inserts the magnifying glass displayed inside input fields with ".filter-input"  */
+.filter-input-group:after{
+  font-family:FontAwesome;
+  content: "\f010";
+  font-size: 1rem;
+  color: #aaa;
+  position:absolute;
+  top: .25rem;
+  right: .75rem;
+}
+
+/* inserts the "Check Circle" icon before "Done Editing" */
+.link-manage.manage-mode:before {
+  font-family:FontAwesome;
+  font-size:2rem;
+  content: "\f058";
+  color: #fff;
+  position:absolute;
+  top: 0.5rem;
+  left: -2rem;
+}
+
+/* -- alert success icon ------------- */
+.alert.alert-success p:before {
+  font-family:FontAwesome;
+  content: "\f00c";
+  font-size: 1.125rem;
+  color: #2ca01c;
+  position:absolute;
+  top: 0;
+  left: -1.5rem;
+}
+
+/* -- alert warning icon -------------- */
+.alert.alert-warning p:before {
+  font-family:FontAwesome;
+  content: "\f06a";
+  font-size: 1.125rem;
+  color: #f5a623;
+  position:absolute;
+  top: 0;
+  left: -1.5rem;
+}
+
+/* -- alert error icon ----------------- */
+.alert.alert-error p:before {
+  font-family:FontAwesome;
+  content: "\f071";
+  font-size: 1.125rem;
+  color: #cc2a2e;
+  position:absolute;
+  top: 0;
+  left: -1.5rem;
+}
+
+/* -- close alert icon ------------------ */
+.alert span.close {
+  font-family:FontAwesome;
+  font-size: 1.125rem;
+  position:absolute;
+  top: 0;
+  cursor: pointer;
+  right: 0;
+  padding: 0 1.5rem;
+  opacity: .6;
+  filter: alpha(opacity=60);
+}
+
+/* "CBUI tables" (uses .row) ------------ */
+
+.cbui-tablerow {
+  position:relative;
+  padding: 1rem 1rem 1rem 2rem;
+  margin-left:8px;
+}
+
+.cbui-tablerows-header {
+  padding: 0 0 1rem 0;
+  border-bottom: 1px solid #d1d1d1;
+}
+
+.cbui-tablerow:hover {
+  background-color:#ecf3fa;
+  transition: all linear 0.2s;
+  cursor:pointer;
+}
+
+.cbui-tablerow-title {
+  -webkit-flex: 1 1 65%;
+      -ms-flex: 1 1 65%;
+          flex: 1 1 65%;
+  position:relative;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  margin: 0;
+  color:#000;
+}
+
+.cbui-tablerow-title small {
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.cbui-tablerow-statusmsg {
+  -webkit-flex: 1 1 35%;
+      -ms-flex: 1 1 35%;
+          flex: 1 1 35%;
+  margin: 0 0 0 .75rem;
+  font-size: .85rem;
+}
+
+.cbui-tablerow-controls {
+  -webkit-flex: 0 1 auto;
+      -ms-flex: 0 1 auto;
+          flex: 0 1 auto;
+  text-align: right;
+  margin: 0 0 0 .75rem;
+  white-space:nowrap;
+}
+
+.cbui-tablerow-expansion {
+  padding: 0 1rem 1rem 2rem;
+  margin: 0 0 0 8px;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+      -ms-flex-wrap: wrap;
+          flex-wrap: wrap;
+  -webkit-justify-content: flex-start;
+      -ms-flex-pack: start;
+          justify-content: flex-start;
+  -webkit-align-content: flex-start;
+      -ms-flex-line-pack: start;
+          align-content: flex-start;
+  -webkit-align-items: flex-start;
+      -ms-flex-align: start;
+          align-items: flex-start;
+}
+
+.cbui-tablerow-expansion p {
+  margin: 0 0 1.5rem 0;
+  display:inline-block;
+}
+
+.cbui-tablerow-expansion p span {
+  display:inline-block;
+  margin:0 1.25rem .25rem 0;
+}
+
+.cbui-tablerow-expansion p span:last-child {
+  margin-right: 0;
+}
+
+.cbui-tablerow-expansion p span.success {
+  border-left: 4px solid #2ca01c;
+  padding-left: 4px;
+}
+
+section.status-green:last-of-type,
+section.status-orange:last-of-type,
+section.status-red:last-of-type
+ {
+  margin-bottom: 2rem;
+}
+
+/* CBUI TABLE ROW STATUSES --------------------- */
+section.status-green {
+  box-shadow: inset 8px 0 0 #2ca01c;
+}
+
+section.status-orange {
+  box-shadow: inset 8px 0 0 #f5a623;
+}
+
+section.status-red {
+  box-shadow: inset 8px 0 0 #cc2a2e;
+}
+section.status-red .cbui-tablerow-statusmsg {
+  color:#cc2a2e;
+}
+
+/* MANAGE MODE  ------------------------ */
+.cbui-tablerows-header.manage-mode {
+  border-bottom: 0px;
+}
+
+.cbui-tablerow-manage {
+  padding: 0 1rem .5rem 1.5rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.cbui-tablerow-manage ~ .row.manage-mode {
+  padding: .97rem 1rem 1.03rem .75rem;
+}
+
+.tablerow-manage-checkbox {
+  padding:0 .75rem;
+}
+
+.manage-mode-checkall label {
+  font-size:.8rem;
+  font-weight:400;
+  cursor:pointer;
+}
+
+.manage-mode-buttons {
+  margin: 0 0 0 3rem;
+}
+
+.manage-mode-buttons button {
+  margin: 0 0.125rem;
+}
+
+.link-manage {
+  position:relative;
+}
+
+.link-manage.manage-mode {
+  padding: 0.75rem;
+}
+
+/* STANDARD PANEL ------------------- */
+.panel {
+  background-color: #fff;
+  border: none;
+  border-radius: 3px 3px 2px 2px;
+  box-shadow: 0px 1px 1px 1px rgba(0,0,0,0.25);
+  z-index:0;
+}
+
+.panel-header {
+  width: 100%;
+  display:-webkit-flex;
+  display:-ms-flexbox;
+  display:flex;
+  -webkit-align-items: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-justify-content:space-between;
+      -ms-flex-pack:justify;
+          justify-content:space-between;
+  background-color: #4287D6;
+  color: #fff;
+  border-radius: 3px 3px 0px 0px;
+  padding: 0 .75rem 0 1.25rem;
+  min-height:3rem;
+}
+
+.panel-header h2 {
+  color: #fff;
+}
+
+.panel-content {
+  padding: 1.5rem;
+}
+
+.panel-footer {
+  width: 100%;
+  display:-webkit-flex;
+  display:-ms-flexbox;
+  display:flex;
+  -webkit-align-items: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-justify-content:flex-end;
+      -ms-flex-pack:end;
+          justify-content:flex-end;
+  border-top: 1px solid #d1d1d1;
+  margin-bottom: 0 !important;
+  padding: .75rem 1rem;
+}
+
+.panel-footer a {
+  margin-right: 1.5rem;
+  font-size: .961rem;
+}
+
+/* Modal Dialog - Medium (uses Panel) ------ */
+.dialog-med {
+  position: relative;
+  z-index:101;
+  width: 530px;
+  margin: 0 auto;
+  top:60px;
+}
+
+.dialog-med .panel-content {
+  padding: 1rem 2rem 0 2rem;
+  overflow:auto;
+  margin-bottom: 1rem;
+}
+
+.dialog-med .panel-footer {
+  -webkit-justify-content:flex-end;
+      -ms-flex-pack:end;
+          justify-content:flex-end;
+}
+
+/* Sign In page details ------------ */
+.sign-in-background {
+  background: #eceff2;
+  height: 4.5rem;
+  width:100%;
+  position:absolute;
+  top: 24px;
+  z-index:1;
+}
+
+/* Small Dialog (uses Panel) -------- */
+.dialog-small .logobug {
+  margin: 0 .5rem 0 0;
+}
+
+.dialog-small h2 {
+  -webkit-flex:1 1 auto;
+      -ms-flex:1 1 auto;
+          flex:1 1 auto;
+}
+
+.dialog-small {
+  position: relative;
+  z-index:101;
+  width: 320px;
+  margin: 0 auto;
+  top:60px;
+}
+
+.dialog-small .panel-content {
+  padding: 1.5rem 1rem .5rem 1.5rem;
+}
+
+.dialog-small .panel-footer {
+  border-top: 0;
+  padding: 0 1rem 1rem 0;
+}
+
+/* Wizard Dialog (uses Panel) --------- */
+.dialog-wizard  .panel-footer {
+  -webkit-justify-content:space-between;
+      -ms-flex-pack:justify;
+          justify-content:space-between;
+}
+
+/* modal background -------------------- */
+#modal-bg {
+  position:absolute;
+  top:0;
+  left:0;
+  width: 100%;
+  height: 300%;
+  z-index:99;
+  background-color: rgba(0,0,0,.80);
+}
+
+/*  SIMPLE MENU VERSION OF "PANELS" ----- */
+.menu {
+  border: 1px solid #ddd;
+  padding: .25rem 4rem 1rem 1rem;
+  position:absolute;
+  top: 2rem;
+  left: 0;
+  z-index: 999;
+  opacity:.98;
+  filter: alpha(opacity=98);
+}
+
+.menu a:link {
+  color: #000;
+  font-size: 1rem;
+  line-height:1.8rem;
+  display:block;
+}
+
+.menu a:visited {
+  color: #000;
+}
+
+.menu a:hover {
+  color: #cc2a2e;
+  background-color:#eceff2;
+  padding:0 4rem 0 1rem;
+  margin:0 -4rem 0 -1rem;
+  transition: none;
+}
+
+.menu a:active {
+  color: #000;
+}
+
+/* Sorting ("view by...") Menu  --------- */
+.menu-sortable-controls {
+  font-size: .875rem;
+  margin-right: 2.5rem;
+}
+
+.menu-sortable-link {
+  position:relative;
+  padding-right: 0rem;
+  font-weight:700;
+}
+
+.menu-selecteditem {
+  font-weight:700;
+}
+
+/* search/filter control ----------------- */
+.filter-input-group {
+  position:relative;
+  -webkit-flex: 1 1 30%;
+      -ms-flex: 1 1 30%;
+          flex: 1 1 30%;
+  max-width:20rem;
+}
+
+.filter-input {
+  width: 100%;
+  padding-right: 2rem;
+}
+
+/* Labels/Tags ---------------------------*/
+.label {
+  font-size: .688rem;
+  font-weight: 600;
+  display: inline-block;
+  line-height: 1;
+  color: #333;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid #fff;
+  border-radius: 1px;
+  padding: 0.25rem 0.5rem;
+  position: relative;
+  top: -3px;
+}
+
+.label.lt-blue {
+  background-color: #d9e7f7;
+}
+
+.label.neutral {
+  background-color: #d8d8d8;
+}
+
+.label.services {
+  background-color: #d8d8d8;
+  margin-right:-1px;
+}
+
+.label[yellow] {
+  background-color: #faf6bd;
+}
+
+.badge {
+  border-radius: 30px;
+  min-width: 17px;
+}
+
+/* Alerts  ---------------------------*/
+.alert {
+  text-align:center;
+  line-height: 2.5rem;
+  height: 2.5rem;
+  font-size:.961rem;
+  font-weight:600;
+  display: block;
+  color: #555;
+  position:relative;
+}
+
+.alert p {
+  margin: 0;
+  display:inline-block;
+  position:relative;
+}
+
+.alert a {
+  font-weight:600;
+}
+
+.alert a:hover {
+  text-decoration:underline;
+}
+
+.alert-success {
+  background-color: #e9f5e8;
+}
+
+.alert-success a,
+.alert-success span
+ {
+  color: #0a8754;
+}
+
+.alert-warning {
+  background-color: #fdebcf;
+}
+
+.alert-warning a,
+.alert-warning span {
+  color: #f5a623;
+}
+
+.alert-error {
+  background-color: #f8dfe0;
+}
+
+.alert-error a,
+.alert-error span {
+  color: #cc2a2e;
+}
+
+.alert span.close:hover {
+  opacity: 1;
+  filter: alpha(opacity=100);
+}
+
+/* HTML5 METER ELEMENT ------------ */
+meter {
+  height:28px;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.forms meter {
+  width: 70%;
+  display:inline-block;
+}
+
+/* Charts ------------------------ */
+.chart-large {
+}
+.chart-medium {
+}
+.chart-small {
+}
+
+/* Query Monitor ------------------- */
+.kill-button {
+  margin: -.25rem 0 -.3rem 2rem;
+}
+
+/* random stuff -------------------- */
+.floater {
+  position:fixed;
+  bottom: 30px;
+  left:20px;
+  z-index:103;
+  padding: 1rem;
+  background:#fff;
+  box-shadow:2px 2px 6px rgba(5,5,5,.50);
+}

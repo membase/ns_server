@@ -1,0 +1,1169 @@
+/* BASE CBUI STYLES  */
+
+/* Reset
+-------------------------------------- */
+
+html {
+  box-sizing: border-box;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+img {
+  box-sizing: content-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  font-size: 100%;
+  vertical-align: baseline;
+  background: transparent;
+}
+
+a:active,
+a:hover {
+  outline: 0;
+}
+
+audio:not([controls]) {
+  display: none;
+  height: 0;
+}
+
+blockquote,
+q {
+  quotes: none;
+}
+
+blockquote p:before,
+blockquote p:after,
+q:before,
+q:after {
+  content: '';
+  content: none;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+caption,
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th,
+thead td {
+  font-weight: bold;
+  vertical-align: bottom;
+}
+
+a img,
+th img,
+td img {
+  vertical-align: top;
+}
+
+button,
+input,
+select,
+textarea {
+  margin: 0;
+}
+
+textarea {
+  overflow: auto;
+  vertical-align: top;
+  resize: vertical;
+}
+
+button {
+  width: auto;
+  overflow: visible;
+}
+
+input[type="reset"],
+input[type="submit"],
+input[type="file"],
+input[type="radio"],
+input[type="checkbox"],
+select,
+button {
+  cursor: pointer;
+}
+
+button:active,
+button:focus {
+  outline: none;
+}
+
+input::-moz-focus-inner,
+button::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}
+
+input[type="search"] {
+  -webkit-appearance: textfield;
+}
+
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+hr {
+  display: block;
+  box-sizing: content-box;
+  height: 1px;
+  border: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+img,
+video,
+audio,
+embed,
+object {
+  max-width: 100%;
+}
+
+img,
+video,
+embed,
+object {
+  height: auto;
+}
+
+embed,
+object {
+  height: 100%;
+}
+
+img {
+  vertical-align: middle;
+  -ms-interpolation-mode: bicubic;
+}
+
+/* EMBEDDED FONTS ---------------------------------------------------------------- */
+
+/* Opens Sans (http://www.fontsquirrel.com/license/open-sans)
+   Font Awesome (https://fortawesome.github.io/Font-Awesome/license/)    */
+
+/* Regular */
+
+@font-face {
+  font-family: 'OpenSans';
+  src: url("fonts/OpenSans-Regular-webfont.woff") format('woff'),
+         url("fonts/OpenSans-Regular-webfont.ttf") format('truetype');
+  font-weight: 400;
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Italic */
+
+@font-face {
+  font-family: 'OpenSans';
+  src: url("fonts/OpenSans-Italic-webfont.woff") format('woff'),
+         url("fonts/OpenSans-Italic-webfont.ttf") format('truetype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Light */
+
+@font-face {
+  font-family: 'OpenSans';
+  src: url("fonts/OpenSans-Light-webfont.woff") format('woff'),
+         url("fonts/OpenSans-Light-webfont.ttf") format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+/* Semibold */
+
+@font-face {
+  font-family: 'OpenSans';
+  src: url("fonts/OpenSans-Semibold-webfont.woff") format('woff'),
+         url("fonts/OpenSans-Semibold-webfont.ttf") format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* Bold */
+
+@font-face {
+  font-family: 'OpenSans';
+  src: url("fonts/OpenSans-Bold-webfont.woff") format('woff'),
+         url("fonts/OpenSans-Bold-webfont.ttf") format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* icon font ---------------------------------------------------- */
+
+@font-face {
+  font-family: 'FontAwesome';
+  src: url("fonts/fontawesome-webfont.woff?v=3.2.1") format('woff'),
+        url("fonts/fontawesome-webfont.ttf?v=3.2.1") format('truetype');
+}
+
+/* Typography ------------------------------ */
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: OpenSans, sans-serif;
+  font-size: 16px;
+  font-weight: normal;
+  line-height: 1.5;
+  background: #fff;
+  color: #333;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+a,
+label,
+button {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon {
+  font-family: FontAwesome;
+  font-size: 18px;
+  padding: 0 0 0 4px;
+  position: relative;
+  top: 1px;
+}
+
+/* Headings  -----------------------------*/
+
+/* big white title */
+h1 {
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1;
+  color: #fff;
+}
+
+/* 20px modal dialog title */
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* 17px black content title for tables mostly */
+h3 {
+  font-size: 1.063rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #000;
+}
+
+/* section title for forms | small modal dialog title */
+h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* 14px sidebar section headers */
+h5 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #555;
+}
+
+/* margins:  only the first element of type (2nd el in pair),
+   preceded by the former element receives this style */
+
+p + h1,
+ul + h1,
+ol + h1,
+dl + h1,
+blockquote + h1,
+hr + h1,
+pre + h1,
+table + h1,
+form + h1,
+p + h2,
+ul + h2,
+ol + h2,
+dl + h2,
+blockquote + h2,
+hr + h2,
+pre + h2,
+table + h2,
+form + h2,
+p + h3,
+ul + h3,
+ol + h3,
+dl + h3,
+blockquote + h3,
+hr + h3,
+pre + h3,
+table + h3,
+form + h3,
+p + h4,
+ul + h4,
+ol + h4,
+dl + h4,
+blockquote + h4,
+hr + h4,
+pre + h4,
+table + h4,
+form + h4,
+a + h5,
+p + h5,
+ul + h5,
+ol + h5,
+dl + h5,
+blockquote + h5,
+hr + h5,
+pre + h5,
+table + h5,
+form + h5 {
+  margin-top: 1rem;
+}
+
+ul,
+ol,
+ul ul,
+ol ol,
+ul ol,
+ol ul {
+  margin: 0 0 0 1.5rem;
+}
+
+ol ol li {
+  list-style-type: lower-alpha;
+}
+ol ol ol li {
+  list-style-type: lower-roman;
+}
+
+p,
+ul,
+ol,
+dl,
+blockquote,
+hr,
+pre,
+table,
+fieldset,
+figure,
+address,
+output {
+  margin-bottom: 1rem;
+}
+
+/* Text Styles -----------------------------*/
+
+/* 16px base = 15px */
+.text-medium {
+  font-size: .961;
+}
+
+/* 16px base = 14px */
+small {
+  font-size: .875rem;
+  font-weight: 400;
+  white-space:nowrap;
+}
+
+/* 16px base = 14px */
+.text-small {
+  font-size: .875rem;
+  font-weight: 400;
+}
+
+/* 16px base = 12px */
+.text-smaller {
+  font-size: .75rem;
+  font-weight: 400;
+}
+/* 16px base = 11px */
+.text-fine {
+  font-size: .688rem;
+  font-weight: 400;
+}
+
+.text-larger {
+  font-size: 130%;
+}
+
+s,
+del {
+  text-decoration: line-through;
+}
+
+strong,
+b {
+  font-weight: 700;
+}
+
+.semi-bold {
+  font-weight: 600;
+}
+
+em,
+i {
+  font-style: italic;
+}
+
+sub,
+sup {
+  font-size: 74%;
+  line-height: 0;
+  position: relative;
+  margin-left: .2rem;
+}
+
+sup {
+  top: -0.4rem;
+}
+
+sub {
+  bottom: -0.2rem;
+}
+
+.error {
+  color: #cc2a2e;
+}
+
+.red {
+  color: #cc2a2e;
+}
+
+.success {
+  color: #2ca01c;
+}
+
+.green {
+  color: #2ca01c;
+}
+
+.warning {
+  color: #f5a623;
+}
+
+.orange {
+  color: #f5a623;
+}
+
+.text-block {
+  display: inline-block;
+  white-space:nowrap;
+}
+.label-block {
+  display: -webkit-inline-flex;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+}
+
+/* Code ----------------------------*/
+pre,
+code,
+kbd,
+samp,
+var,
+output {
+  font-size: .875rem;
+  font-style: normal;
+  font-family: Monaco, Consolas, "Andale Mono", "Lucida Console", "Lucida Sans Typewriter", "Courier New", monospace;
+}
+
+pre {
+  font-size: .875rem;
+  line-height: 1.5;
+  color: #333;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.03);
+  padding: 1.5rem;
+  word-wrap: normal;
+}
+
+td pre {
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -pre-wrap;
+  white-space: -o-pre-wrap;
+  word-wrap: break-word;
+}
+
+mark,
+code,
+samp,
+kbd {
+  padding: .2rem .4rem;
+  display: inline-block;
+  line-height: 1;
+  border-radius: 2px;
+}
+
+code {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+pre code {
+  font-size: 100%;
+  border: none;
+  padding: 0;
+  background: none;
+  line-height: 1.5rem;
+}
+
+var {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+samp {
+  background: #46a9fc;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+kbd {
+  background: #202020;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
+/* Basic Hyperlinks -------------------- */
+
+a:active,
+a:hover {
+  outline: 0;
+}
+
+a {
+  font-weight: 400;
+  text-decoration: none;
+}
+
+a:link {
+  color: #4287d6;
+}
+
+a:visited {
+  color: #4287d6;
+}
+
+a:hover {
+  color: #3c7ac2;
+  transition: all linear 0.2s;
+}
+
+a:active {
+  color: #689fde;
+}
+
+.disabled-link {
+  color: #a1a1a1 !important;
+  cursor: default !important;
+}
+
+/* buttons ------------------------ */
+.btn,
+button {
+  display: inline-block;
+  vertical-align: top;
+  font-family: OpenSans, sans-serif;
+  font-size: .961rem;
+  font-weight: normal;
+  white-space: nowrap;
+  padding: 0 1.5rem;
+  height: 2rem;
+  line-height: 2rem;
+  text-align: center;
+  text-decoration: none;
+  -webkit-appearance: none;
+  outline: none;
+  margin: 0;
+  border: none;
+  border-radius: 2px;
+  box-shadow: 0px 1px 1px 0px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  color: #fff;
+  background-color: #4287d6;
+  min-width: 7rem;
+}
+
+.btn:hover,
+button:hover {
+  background-color: #3c7ac2;
+  box-shadow: 0px 2px 2px 1px rgba(0, 0, 0, 0.3);
+  transition: all 0.4s ease;
+}
+
+.btn:active,
+button:active {
+  background-color: #4287d6;
+  box-shadow: 0px 0px 0px 0px rgba(0, 0, 0, 0.3);
+}
+
+.btn[disabled],
+button[disabled] {
+  cursor: default;
+  box-shadow: none;
+  background-color: #8eb7e6;
+}
+
+.btn.outline,
+button.outline {
+  background: none;
+  border: 1px solid #a6b2bf;
+  color: #333;
+  line-height: 1.9rem;
+  box-shadow: none;
+}
+
+.btn.outline:hover,
+button.outline:hover {
+  text-decoration: none;
+  background-color: #fff;
+  color: #000;
+  box-shadow: 0px 1px 1px 0px rgba(0, 0, 0, 0.2);
+}
+
+.btn.outline:active,
+button.outline:active {
+  background-color: #eceff2;
+  color: #333;
+  box-shadow: 0px 0px 0px 0px rgba(0, 0, 0, 0.3);
+}
+
+.btn::-moz-focus-inner,
+button::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}
+
+/* HTML Tables ------------------------------------*/
+
+table {
+  width: 100%;
+  empty-cells: show;
+  max-width: 100%;
+}
+
+.table-header {
+  height: 3rem;
+}
+
+table th,
+table td {
+  font-size: .875rem;
+  border-bottom: 1px solid #eceff2;
+  padding: 1rem;
+}
+
+table th {
+  background: #eceff2;
+  color: #555;
+  font-size: .813rem;
+  font-weight: 600;
+  padding: .5rem 1rem;
+  border-left: 2px solid #fff;
+}
+
+table th:nth-child(-n+2) {
+  border-left: none;
+}
+
+table tr:hover {
+  background-color: #ecf3fa;
+  transition: all linear 0.2s;
+  cursor: pointer;
+}
+
+table tr.row-locked {
+  background: #c6dbf2;
+  color: #000;
+}
+
+table th:first-child,
+table td:first-child {
+  padding-left: .75rem;
+}
+
+table th:last-child,
+table td:last-child {
+  padding-right: .75rem;
+}
+
+table tfoot th,
+table tfoot td {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+table.table-bordered {
+  margin-top: -1px;
+}
+
+table.table-bordered td,
+table.table-bordered th {
+  border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+table.table-bordered caption {
+  padding-left: 16px;
+}
+
+table.table-bordered td:first-child,
+table.table-stripped td:first-child,
+table.table-bordered th:first-child,
+table.table-stripped th:first-child {
+  padding-left: 16px;
+}
+
+table.table-bordered td:last-child,
+table.table-stripped td:last-child,
+table.table-bordered th:last-child,
+table.table-stripped th:last-child {
+  padding-right: 16px;
+}
+
+table.table-simple td,
+table.table-simple th,
+table.table-simple caption {
+  border: none;
+  padding-left: 0;
+}
+
+table.table-simple td,
+table.table-simple th {
+  padding-bottom: 16px;
+}
+
+table.table-flat td,
+table.table-flat th,
+table.table-flat caption {
+  border: none;
+  padding: 0;
+}
+
+table.table-stroked td,
+table.table-stroked th {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+table.table-stripped tbody tr:nth-child(odd) td {
+  background: #f8f8f8;
+}
+
+/*  Forms ----------------------------*/
+form {
+  margin: 0;
+}
+
+label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #000;
+  display: block;
+  line-height: 1.7;
+}
+
+.forms p {
+  margin-bottom: .5rem;
+}
+
+.desc {
+  text-transform: none;
+  margin-top: 4px;
+  color: #333;
+  font-size: 12px;
+  line-height: 1.3;
+  font-weight: normal;
+}
+
+h4 + div.desc {
+  margin: 0 0 .5rem 0;
+}
+
+.forms h4.expando {
+  color: #000;
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.forms h4.disclosure:after {
+  font-family: FontAwesome;
+  content: "\f0da";
+  font-size: 1rem;
+  color: #333;
+  position: absolute;
+  top: 0;
+  right: -.75rem;
+}
+.forms h4.disclosed:after {
+  font-family: FontAwesome;
+  content: "\f0d7";
+  font-size: 1rem;
+  color: #333;
+  position: absolute;
+  top: 0;
+  right: -1rem;
+}
+
+.formrow {
+  margin-bottom: 1rem;
+}
+
+.formrow p {
+  margin: 0;
+  font-size: .75rem;
+}
+
+label.checkbox {
+  text-transform: none;
+  font-weight: 300;
+  cursor: pointer;
+  color: #000;
+  font-size: .938rem;
+}
+
+.checkbox input[type=text] {
+  margin-bottom: .5rem;
+}
+
+.checkbox-inline {
+  margin-left: 1rem !important;
+}
+
+select[multiple="multiple"],
+textarea {
+  width: 100%;
+}
+
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="text"],
+input[type="tel"],
+input[type="url"],
+input[type="password"],
+textarea,
+select {
+  font-family: OpenSans, sans-serif;
+  font-size: .875rem;
+  padding: 0 .5rem;
+  line-height: 2rem;
+  height: 2rem;
+  outline: none;
+  background: #ffffff;
+  border: 1px solid #d1d1d1;
+  border-radius: 2px;
+  margin-bottom: 0;
+  color: #333;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  font-size: .938rem;
+  position: relative;
+  top: -1px;
+  margin-right: .25rem;
+  padding: 0;
+}
+
+input[type="text"]::-webkit-input-placeholder {
+  font-size: .9rem;
+  padding: .3rem 0 0 0;
+  line-height:normal;
+}
+
+input[type="text"]::-moz-placeholder {
+  font-size: .9rem;
+  padding: 0;
+  line-height:1.9rem;
+}
+
+input[type="text"]:-ms-input-placeholder {
+  font-size: .9rem;
+  padding: .25rem 0 0 0;
+  line-height:normal;
+}
+
+input[type="text"]::placeholder {
+  font-size: .9rem;
+  padding: .25rem 0 .25rem 0;
+  line-height:normal;
+}
+
+input[type="email"][disabled],
+input[type="number"][disabled],
+input[type="search"][disabled],
+input[type="text"][disabled],
+input[type="tel"][disabled],
+input[type="url"][disabled],
+input[type="password"][disabled],
+textarea[disabled],
+select[disabled] {
+  resize: none;
+  opacity: 0.55;
+  filter: alpha(opacity=55);
+  cursor: default;
+}
+
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="text"],
+input[type="tel"],
+input[type="url"],
+input[type="password"] {
+  -webkit-appearance: none;
+}
+
+select[multiple],
+textarea {
+  height: auto;
+  line-height: 1.5;
+}
+
+textarea {
+  font-size: .938rem;
+}
+
+textarea:focus,
+select:focus,
+input:focus {
+  outline: none;
+  background: #fff;
+  border: 1px solid #a1a1a1;
+}
+
+select:-moz-focusring {
+  color: transparent;
+  text-shadow: 0 0 0 #000;
+}
+
+fieldset {
+  padding: 31px 32px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+fieldset *:last-child {
+  margin-bottom: 0 !important;
+}
+
+legend {
+  font-weight: 500;
+  font-size: 86%;
+  text-transform: uppercase;
+  padding: 0 1em;
+  margin-left: -1em;
+  top: 2px;
+  position: relative;
+  line-height: 0;
+}
+
+.forms textarea,
+.forms select,
+.forms input[type="email"],
+.forms input[type="number"],
+.forms input[type="search"],
+.forms input[type="text"],
+.forms input[type="tel"],
+.forms input[type="url"],
+.forms input[type="password"] {
+  width: 100%;
+  display: block;
+}
+.input-append,
+.input-prepend {
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  display: flex;
+  margin-bottom: 0;
+}
+.input-append input,
+.input-prepend input {
+  -webkit-flex: 1;
+      -ms-flex: 1;
+          flex: 1;
+  margin-bottom: 0 !important;
+}
+
+.input-append input[type="number"],
+.input-append input[type="text"],
+.input-append textarea,
+.input-append select {
+  display: inline-block;
+}
+
+.forms .label-top {
+  padding-top: .5rem;
+}
+
+.forms .checkbox-list {
+  display: block;
+}
+
+.forms .checkbox-list label {
+  color: inherit;
+  display: inline-block;
+  margin-bottom: 0;
+  margin-right: 16px;
+  text-transform: none;
+  font-weight: 300;
+}
+
+.forms .checkbox-list-vertical .checkbox {
+  margin-bottom: 8px;
+}
+
+.forms .checkbox-list-vertical .checkbox:last-child {
+  margin-bottom: 0;
+}
+
+.forms input.width-1,
+.forms textarea.width-1,
+.forms select.width-1 {
+  width: 8.33333333%;
+}
+
+.forms input.width-2,
+.forms textarea.width-2,
+.forms select.width-2 {
+  width: 16.66666667%;
+}
+
+.forms input.width-3,
+.forms textarea.width-3,
+.forms select.width-3 {
+  width: 25%;
+}
+
+.forms input.width-4,
+.forms textarea.width-4,
+.forms select.width-4 {
+  width: 33.33333333%;
+}
+
+.forms input.width-5,
+.forms textarea.width-5,
+.forms select.width-5 {
+  width: 41.66666667%;
+}
+
+.forms input.width-6,
+.forms textarea.width-6,
+.forms select.width-6 {
+  width: 50%;
+}
+
+.forms input.width-7,
+.forms textarea.width-7,
+.forms select.width-7 {
+  width: 58.33333333%;
+}
+
+.forms input.width-8,
+.forms textarea.width-8,
+.forms select.width-8 {
+  width: 66.66666667%;
+}
+
+.forms input.width-9,
+.forms textarea.width-9,
+.forms select.width-9 {
+  width: 75%;
+}
+
+.forms input.width-10,
+.forms textarea.width-10,
+.forms select.width-10 {
+  width: 83.33333333%;
+}
+
+.forms input.width-11,
+.forms textarea.width-11,
+.forms select.width-11 {
+  width: 91.66666667%;
+}
+
+.forms input.width-12,
+.forms textarea.width-12,
+.forms select.width-12 {
+  width: 100%;
+}
+
+.forms.form-inline textarea,
+.forms .form-inline textarea,
+.forms.form-inline select,
+.forms .form-inline select,
+.forms.form-inline input[type="email"],
+.forms .form-inline input[type="email"],
+.forms.form-inline input[type="number"],
+.forms .form-inline input[type="number"],
+.forms.form-inline input[type="search"],
+.forms .form-inline input[type="search"],
+.forms.form-inline input[type="text"],
+.forms .form-inline input[type="text"],
+.forms.form-inline input[type="tel"],
+.forms .form-inline input[type="tel"],
+.forms.form-inline input[type="url"],
+.forms .form-inline input[type="url"],
+.forms.form-inline input[type="password"],
+.forms .form-inline input[type="password"],
+.forms.form-inline .tools-select,
+.forms .form-inline .tools-select {
+  width: auto;
+  display: inline-block;
+}
+
+input.input-small {
+  font-size: .875rem;
+  padding: 0 .5rem;
+  height: 28px;
+  line-height:normal;
+}
+
+select.select-small {
+  font-size: .75rem;
+  height: 28px;
+  padding: 0;
+  border-radius: 2px;
+}
+
+/* field and form errors --------------------- */
+.forms .error,
+.forms .success {
+  font-size: 12px;
+  display: inline-block;
+}
+
+.forms .error-form {
+  margin: 0 0 1rem 0;
+}
+
+.forms div.error {
+  display: none;
+}

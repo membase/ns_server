@@ -1,0 +1,155 @@
+ /* LAYOUT  */
+
+nav.nav-header {
+  text-align:right;
+  padding: 0 1.5rem 0 0;
+  margin: 0;
+  width:100%;
+}
+
+header {
+  display:-webkit-flex;
+  display:-ms-flexbox;
+  display:flex;
+  -webkit-flex-wrap:no-wrap;
+      -ms-flex-wrap:no-wrap;
+          flex-wrap:no-wrap;
+  -webkit-justify-content:flex-start;
+      -ms-flex-pack:start;
+          justify-content:flex-start;
+  -webkit-align-items: center;
+      -ms-flex-align: center;
+          align-items: center;
+  background-color: #4287D6;
+  padding:0 1.5rem;
+  color:#fff;
+  height: 4.5rem;
+  position:relative;
+}
+
+main {
+  display:-webkit-flex;
+  display:-ms-flexbox;
+  display:flex;
+  -webkit-flex-wrap:no-wrap;
+      -ms-flex-wrap:no-wrap;
+          flex-wrap:no-wrap;
+  -webkit-align-items:flex-start;
+      -ms-flex-align:start;
+          align-items:flex-start;
+  padding: 1.5rem;
+  margin: 0 0 3rem 0;
+}
+
+nav.nav-sidebar {
+  width: 168px;
+  border-right: 1px solid #d8dde4;
+  padding: .3rem 1rem 0 0;
+  margin: 0 2.5rem 0 -.5rem;
+  text-align: right;
+}
+
+.main-content {
+width:90%;
+width: calc(100% - 200px);
+}
+
+.row {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  min-height: 1rem;
+  -webkit-align-items: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-flex-wrap: no-wrap;
+      -ms-flex-wrap: no-wrap;
+          flex-wrap: no-wrap;
+  -webkit-justify-content: space-between;
+      -ms-flex-pack: justify;
+          justify-content: space-between;
+  position: relative;
+}
+
+.column {
+  padding: 0;
+  margin: 0 1.5rem 1rem 0;
+}
+
+.column:last-child {
+  margin-right: 0;
+}
+
+section {
+  border-bottom: 1px solid #d1d1d1;
+}
+
+footer {
+  text-align:center;
+  padding: .5rem 0;
+  width:100%;
+  background-color:#eceff2;
+  font-size:70%;
+  }
+
+/* WIDTH HELPERS --------------------- */
+.width-1 {
+  width: 8.33333333%;
+}
+
+.width-2 {
+  width: 16.66666667%;
+}
+
+.width-3 {
+  width: 25%;
+}
+
+.width-4 {
+  width: 33.33333333%;
+}
+
+.width-5 {
+  width: 41.66666667%;
+}
+
+.width-6 {
+  width: 50%;
+}
+
+.width-7 {
+  width: 58.33333333%;
+}
+
+.width-8 {
+  width: 66.66666667%;
+}
+
+.width-9 {
+  width: 75%;
+}
+
+.width-10 {
+  width: 83.33333333%;
+}
+
+.width-11 {
+  width: 91.66666667%;
+}
+
+.width-12 {
+  width: 100%;
+}
+
+/* LAYOUT HELPERS ------------------- */
+.indent-1 {
+  margin-left: 1.25rem;
+}
+
+.debug-outline {
+  border: 1px dashed red;
+}
+
+.right-align {
+  text-align:right;
+}
