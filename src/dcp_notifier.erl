@@ -98,9 +98,15 @@ handle_response(?DCP_STREAM_REQ, Header, Body,
             close_stream(Error, PartitionState)
     end.
 
-handle_request(?DCP_STREAM_END, _Header, _Body,
+handle_request(?DCP_STREAM_END, _Header, #mc_entry{ext = Ext},
                #partition{stream_state = open} = PartitionState, _ParentState) ->
-    close_stream(ok, PartitionState).
+    case Ext of
+        <<0,0,0,0>> ->
+            close_stream(ok, PartitionState);
+        _ ->
+            close_stream({abnormal_stream_end, Ext},
+                         PartitionState#partition{last_known_pos = undefined})
+    end.
 
 close_stream(Result, #partition{subscribers = Subscribers} = PartitionState) ->
     [gen_server:reply(From, Result) || From <- Subscribers],
