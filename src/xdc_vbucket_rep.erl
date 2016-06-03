@@ -1052,8 +1052,16 @@ check_src_db_updated(#rep_state{status = #rep_vb_status{status = idle,
               fun () ->
                       RV = (catch dcp_notifier:subscribe(couch_util:to_list(SourceBucket),
                                                          Vb, Seq, U)),
+                      AdditionalDelay =
+                          case RV of
+                              ok ->
+                                  0;
+                              _ ->
+                                  ?log_debug("Notifier returned ~p", [RV]),
+                                  1000
+                          end,
                       ?x_trace(gotNotification, [{rv, xdcr_trace_log_formatter:format_pp(RV)}]),
-                      case ns_config:read_key_fast(xdcr_anticipatory_delay, 0) of
+                      case ns_config:read_key_fast(xdcr_anticipatory_delay, 0) + AdditionalDelay of
                           0 ->
                               Self ! wake_me_up;
                           Delay0 ->
