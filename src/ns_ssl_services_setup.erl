@@ -64,6 +64,7 @@ start_link() ->
     end.
 
 start_link_capi_service() ->
+    ok = ns_couchdb_config_rep:pull(),
     case ns_config:search_node(ns_node_disco:ns_server_node(),
                                ns_config:latest(),
                                ssl_capi_port) of
