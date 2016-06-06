@@ -24,7 +24,7 @@
 -include("ns_common.hrl").
 
 %% API
--export([start_link/0]).
+-export([start_link/0, pull/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -40,6 +40,9 @@ start_link() ->
 
 init([]) ->
     {ok, []}.
+
+pull() ->
+    gen_server:call(ns_config_rep, pull, infinity).
 
 update_ns_server_node_name(Node) ->
     ok = rpc:call(ns_node_disco:couchdb_node(), erlang, apply,
@@ -61,14 +64,17 @@ do_pull() ->
     Node = ns_node_disco:ns_server_node(),
     ?log_info("Pulling config from: ~p~n", [Node]),
     case (catch ns_config_rep:get_remote(Node, ?PULL_TIMEOUT)) of
-        {'EXIT', _, _} ->
-            ok;
-        {'EXIT', _} ->
-            ok;
+        {'EXIT', _, _} = E ->
+            {error, E};
+        {'EXIT', _} = E ->
+            {error, E};
         KVList ->
             meld_config(KVList, Node)
     end.
 
+handle_call(pull, _From, State) ->
+    ok = do_pull(),
+    {reply, ok, State};
 handle_call(Msg, _From, State) ->
     ?log_warning("Unhandled call: ~p", [Msg]),
     {reply, error, State}.
