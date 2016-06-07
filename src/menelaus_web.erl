@@ -2009,10 +2009,6 @@ handle_settings_web_post(Req) ->
                     ns_config:set(rest, [{port, PortInt}]),
                     ns_config_auth:set_credentials(admin, U, P),
 
-                    %% NOTE: this to avoid admin user name to be equal
-                    %% to read only user name
-                    ns_config_auth:unset_credentials(ro_admin),
-
                     menelaus_ui_auth:reset()
 
                     %% No need to restart right here, as our ns_config
