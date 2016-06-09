@@ -656,7 +656,7 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
               {ok, Manager} = compaction_dbs:start_link(BucketName, VBucketDbs, Force, OriginalTarget),
               ?log_debug("Started KV compaction manager ~p", [Manager]),
 
-              NWorkers = ns_config:read_key_fast(compaction_number_of_kv_workers, 4),
+              NWorkers = ns_config:read_key_fast(compaction_number_of_kv_workers, 1),
               Compactors =
                   [ [{type, vbucket_worker},
                      {name, integer_to_list(I)},
