@@ -450,6 +450,8 @@ def make_os_tasks():
         LinuxTask("Network statistics", "netstat -s"),
         LinuxTask("Full raw netstat", "cat /proc/net/netstat"),
         LinuxTask("CPU throttling info", "echo /sys/devices/system/cpu/cpu*/thermal_throttle/* | xargs -n1 -- sh -c 'echo $1; cat $1' --"),
+        LinuxTask("Raw PID 1 scheduler /proc/1/sched", "cat /proc/1/sched | head -n 1"),
+        LinuxTask("Raw PID 1 control groups /proc/1/cgroup", "cat /proc/1/cgroup"),
         make_event_log_task(),
         ]
 
