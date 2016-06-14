@@ -2321,16 +2321,6 @@ handle_settings_web_post(Req) ->
                     ns_config_auth:set_credentials(admin, U, P),
                     ns_audit:password_change(Req, U, admin),
 
-                    %% NOTE: this to avoid admin user name to be equal
-                    %% to read only user name
-                    case ns_config_auth:get_user(ro_admin) of
-                        undefined ->
-                            ok;
-                        ROUser ->
-                            ns_config_auth:unset_credentials(ro_admin),
-                            ns_audit:delete_user(Req, ROUser, admin)
-                    end,
-
                     menelaus_ui_auth:reset()
 
                     %% No need to restart right here, as our ns_config
