@@ -205,7 +205,9 @@
 -define(VERSION_41, [4, 1]).
 -define(VERSION_45, [4, 5]).
 
+-define(SPOCK_VERSION_NUM, [5, 0]).
+
 %% Points to latest release
--define(LATEST_VERSION_NUM, ?VERSION_45).
+-define(LATEST_VERSION_NUM, ?SPOCK_VERSION_NUM).
 
 -endif.
