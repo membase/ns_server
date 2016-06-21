@@ -54,6 +54,9 @@ child_specs() ->
      {cb_init_loggers, {cb_init_loggers, start_link, []},
       transient, 1000, worker, [cb_init_loggers]},
 
+     {timeout_diag_logger, {timeout_diag_logger, start_link, []},
+      permanent, 1000, worker, [timeout_diag_logger]},
+
      {ns_memcached_sockets_pool, {ns_memcached_sockets_pool, start_link, []},
       permanent, 1000, worker, []},
 

@@ -219,7 +219,7 @@ def usage():
     sys.exit("Usage: {0} [--nodes=N] [--dont-rename] [--dont-start] "
              "[--interactive] [--static-cookie] [--start-index=N] "
              "[--static-cookie] [--host=H] [--loglevel=L] "
-             "[--pluggable-config=File] [--minified]"
+             "[--pluggable-config=File] [--minified] [--disable-autocomplete]"
              "[ns_server args]".format(sys.argv[0]))
 
 def find_primary_addr():
@@ -241,7 +241,7 @@ def main():
                                            "static-cookie", "dont-start",
                                            "host=", "loglevel=",
                                            "prepend-extras", "pluggable-config=",
-                                           "minified"])
+                                           "minified", "disable-autocomplete"])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -259,6 +259,7 @@ def main():
     loglevel = 'debug'
     pluggable_config = []
     use_minified = False
+    disable_autocomplete = "{disable_autocomplete,false}"
 
     for o, a in optlist:
         if o in ("--nodes", "-n"):
@@ -286,6 +287,8 @@ def main():
             pluggable_config.append(a)
         elif o == "--minified":
             use_minified = True
+        elif o == "--disable-autocomplete":
+            disable_autocomplete = "{disable_autocomplete,true}"
         else:
             assert False, "unhandled options"
 
@@ -360,7 +363,10 @@ def main():
         extra_args += ["-ns_server", "ui_plugins",
                         quote_string_for_erl(','.join(pluggable_config))]
 
+    ui_env = [disable_autocomplete]
+
     extra_args += ["-ns_server", "use_minified", "true" if use_minified else "false"]
+    extra_args += ["-ns_server", "ui_env", '[' + ','.join(ui_env) + ']']
 
     nodes = start_cluster(num_nodes, start_index, host, extra_args, prepend_args)
 

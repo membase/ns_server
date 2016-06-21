@@ -67,7 +67,6 @@
          complete_flush/3,
          get_replication_persistence_checkpoint_id/4,
          wait_checkpoint_persisted/5,
-         get_tap_docs_estimate/4,
          get_tap_docs_estimate_many_taps/4,
          get_mass_tap_docs_estimate/3,
          get_dcp_docs_estimate/4,
@@ -77,7 +76,8 @@
          get_vbucket_high_seqno/4,
          dcp_takeover/5,
          inhibit_view_compaction/3,
-         uninhibit_view_compaction/4]).
+         uninhibit_view_compaction/4,
+         terse_bucket_info_uploader_pid/3]).
 
 -export([start_link/1]).
 
@@ -536,12 +536,6 @@ get_servant_call_reply({MRef, Tag}) ->
 do_servant_call(Server, Request) ->
     get_servant_call_reply(initiate_servant_call(Server, Request)).
 
-get_tap_docs_estimate(Bucket, SrcNode, VBucket, TapName) ->
-    RV = do_servant_call({server_name(Bucket), SrcNode},
-                         {get_tap_docs_estimate, VBucket, TapName}),
-    {ok, _} = RV,
-    RV.
-
 -spec get_tap_docs_estimate_many_taps(bucket_name(), node(), vbucket_id(), [binary()]) ->
                                              [{ok, {non_neg_integer(), non_neg_integer(), binary()}}].
 get_tap_docs_estimate_many_taps(Bucket, SrcNode, VBucket, TapNames) ->
@@ -580,6 +574,14 @@ mass_prepare_flush(Bucket, Nodes) ->
 
 server_name(Bucket, Node) ->
     {server_name(Bucket), Node}.
+
+terse_bucket_info_uploader_pid(Nodes, BucketName, RebalancerPid) ->
+    {Pids, []} = gen_server:multi_call(Nodes,
+                                       server_name(BucketName),
+                                       {if_rebalance,
+                                        RebalancerPid,
+                                        terse_bucket_info_uploader_pid}),
+    [Pid || {_Node, Pid} <- Pids].
 
 %% ----------- implementation -----------
 
@@ -868,12 +870,6 @@ handle_call({get_vbucket_high_seqno, VBucket},
     %% persisted seq no should not be possible here
     {ok, SeqNo} = ns_memcached:get_vbucket_high_seqno(Bucket, VBucket),
     {reply, SeqNo, State};
-handle_call({get_tap_docs_estimate, _VBucketId, _TapName} = Req, From, State) ->
-    handle_call_via_servant(
-      From, State, Req,
-      fun ({_, VBucketId, TapName}, #state{bucket_name = Bucket}) ->
-              ns_memcached:get_tap_docs_estimate(Bucket, VBucketId, TapName)
-      end);
 handle_call({get_tap_docs_estimate_many_taps, _VBucketId, _TapName} = Req, From, State) ->
     handle_call_via_servant(
       From, State, Req,
@@ -899,7 +895,10 @@ handle_call({get_mass_dcp_docs_estimate, VBucketsR}, From, State) ->
       From, State, VBucketsR,
       fun (VBuckets, #state{bucket_name = Bucket}) ->
               ns_memcached:get_mass_dcp_docs_estimate(Bucket, VBuckets)
-      end).
+      end);
+handle_call(terse_bucket_info_uploader_pid, _From,
+            #state{bucket_name = BucketName} = State) ->
+    {reply, terse_bucket_info_uploader:get_pid(BucketName), State}.
 
 handle_call_via_servant({FromPid, _Tag}, State, Req, Body) ->
     Tag = erlang:make_ref(),

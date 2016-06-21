@@ -15,10 +15,12 @@ password=$2
 host=$3
 bucket=$4
 vbucket=$5
+sleep=${6:-10000}
 
 curl --fail -X POST -u $user:$password http://$host/diag/eval -d @- <<EOF
 Bucket = "${bucket}",
 VBucket = ${vbucket},
+Sleep = ${sleep},
 
 GetChainsFromBucket =
   fun () ->
@@ -39,9 +41,20 @@ WaitForRebalance =
     end
   end,
 
+SyncConfig =
+  fun () ->
+    Nodes = ns_node_disco:nodes_wanted(),
+
+    ns_config_rep:pull_and_push(Nodes),
+    ns_config:sync_announcements(),
+    ok = ns_config_rep:synchronize_remote(Nodes)
+  end,
+
 Rebalance =
   fun (C) ->
     error_logger:info_msg("Starting fixup rebalance ~p", [{VBucket, C}]),
+
+    SyncConfig(),
     ok = ns_orchestrator:ensure_janitor_run({bucket, Bucket}),
     ok = gen_fsm:sync_send_event({global, ns_orchestrator},
                                  {move_vbuckets, Bucket, [{VBucket, C}]}),
@@ -52,6 +65,8 @@ Rebalance =
 
 UpdateReplType =
   fun () ->
+    SyncConfig(),
+
     {ok, Conf} = ns_bucket:get_bucket(Bucket),
     case ns_bucket:replication_type(Conf) of
       dcp ->
@@ -92,6 +107,7 @@ UpdateReplType =
 Rebalance(NoReplicasChain),
 UpdateReplType(),
 Rebalance(OldChain),
+ns_config:delete({fixup_rebalance, Bucket, VBucket}),
 
-ns_config:delete({fixup_rebalance, Bucket, VBucket}).
+timer:sleep(Sleep).
 EOF

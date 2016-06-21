@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# Filter and group events for unfinished moves.
+#
+
+exec jq '
+def has_vbucketMoveStart: any(.type == "vbucketMoveStart");
+def has_vbucketMoveDone: any(.type == "vbucketMoveDone");
+
+map(select(has("bucket") and has("vbucket"))) |
+group_by([.bucket,.vbucket]) |
+map(select(has_vbucketMoveStart and (has_vbucketMoveDone | not)))
+' "$@"

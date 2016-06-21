@@ -270,11 +270,13 @@ start_collection_per_node(TimestampS, Parent, Options) ->
     {Status, Output} =
         misc:run_external_tool(path_config:component_path(bin, "cbcollect_info"),
                                Args, []),
-    ?log_debug("Done"),
     case Status of
         0 ->
+            ?log_debug("Done"),
             Parent ! {self(), {ok, Filename, Output}};
         _ ->
+            ?log_error("Log collection failed with status: ~p.~nOutput:~n~s",
+                       [Status, Output]),
             Parent ! {self(), {error, Status, Output}}
     end.
 

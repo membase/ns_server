@@ -239,6 +239,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[{bucket, any}, stats], read}, fun menelaus_stats:handle_overview_stats/2, ["default"]};
                 ["_uistats"] ->
                     {{[stats], read}, fun menelaus_stats:serve_ui_stats/1};
+                ["_uiEnv"] ->
+                    {done, serve_ui_env(Req)};
                 ["poolsStreaming", "default"] ->
                     {{[pools], read}, fun handle_pool_info_streaming/2, ["default"]};
                 ["pools", "default", "buckets"] ->
@@ -812,6 +814,15 @@ use_minified(Req) ->
     Minified =:= "true" orelse
         Minified =:= undefined andalso
         misc:get_env_default(use_minified, true).
+
+serve_ui_env(Req) ->
+    %% UI env values are expected to be unfolded proplists
+    UIEnvDefault = lists:ukeysort(1, misc:get_env_default(ui_env, [])),
+    GlobalUIEnv = lists:ukeysort(1, ns_config:read_key_fast(ui_env, [])),
+    NodeSpecificUIEnv = lists:ukeysort(1, ns_config:read_key_fast({node, node(), ui_env}, [])),
+    menelaus_util:reply_json(Req,
+                             {lists:ukeymerge(1, NodeSpecificUIEnv,
+                                              lists:ukeymerge(1, GlobalUIEnv, UIEnvDefault))}).
 
 handle_ui_root(AppRoot, Path, Plugins, Req) ->
     Filename = case use_minified(Req) of
@@ -2568,16 +2579,6 @@ handle_settings_web_post(Req) ->
                             ok
                     end,
                     ns_audit:password_change(Req, {U, admin}),
-
-                    %% NOTE: this to avoid admin user name to be equal
-                    %% to read only user name
-                    case ns_config_auth:get_user(ro_admin) of
-                        undefined ->
-                            ok;
-                        ROUser ->
-                            ns_config_auth:unset_credentials(ro_admin),
-                            ns_audit:delete_user(Req, {ROUser, admin})
-                    end,
 
                     menelaus_ui_auth:reset()
 

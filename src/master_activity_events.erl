@@ -51,7 +51,8 @@
          note_wait_index_updated_started/3,
          note_wait_index_updated_ended/3,
          note_compaction_inhibited/2,
-         note_compaction_uninhibited/2,
+         note_compaction_uninhibit_started/2,
+         note_compaction_uninhibit_done/2,
          note_forced_inhibited_view_compaction/1,
          note_tap_stats/4,
          event_to_jsons/1,
@@ -189,8 +190,11 @@ note_wait_index_updated_ended(BucketName, Node, VBucket) ->
 note_compaction_inhibited(BucketName, Node) ->
     submit_cast({compaction_inhibited, BucketName, Node}).
 
-note_compaction_uninhibited(BucketName, Node) ->
-    submit_cast({compaction_uninhibited, BucketName, Node}).
+note_compaction_uninhibit_started(BucketName, Node) ->
+    submit_cast({compaction_uninhibit_started, BucketName, Node}).
+
+note_compaction_uninhibit_done(BucketName, Node) ->
+    submit_cast({compaction_uninhibit_done, BucketName, Node}).
 
 note_forced_inhibited_view_compaction(BucketName) ->
     submit_cast({forced_inhibited_view_compaction, BucketName, node()}).
@@ -440,7 +444,7 @@ event_to_jsons({TS, vbucket_state_change, Bucket, Node, VBucketId, NewState}) ->
     [format_simple_plist_as_json([{type, vbucketStateChange},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, Bucket},
-                                  {host, node_to_host(Node, ns_config:get())},
+                                  {host, node_to_host(Node, ns_config:latest())},
                                   {vbucket, VBucketId},
                                   {state, NewState}])];
 
@@ -543,7 +547,7 @@ event_to_jsons({TS, bucket_failover_started, BucketName, Node, Pid}) ->
     [format_simple_plist_as_json([{type, bucketFailoverStarted},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {host, node_to_host(Node, ns_config:get())},
+                                  {host, node_to_host(Node, ns_config:latest())},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 
@@ -551,20 +555,20 @@ event_to_jsons({TS, bucket_failover_ended, BucketName, Node, Pid}) ->
     [format_simple_plist_as_json([{type, bucketFailoverEnded},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {host, node_to_host(Node, ns_config:get())},
+                                  {host, node_to_host(Node, ns_config:latest())},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 
 event_to_jsons({TS, failover, Node}) ->
     [format_simple_plist_as_json([{type, failover},
                                   {ts, misc:time_to_epoch_float(TS)},
-                                  {host, node_to_host(Node, ns_config:get())}])];
+                                  {host, node_to_host(Node, ns_config:latest())}])];
 
 event_to_jsons({TS, became_master, Node}) ->
     [format_simple_plist_as_json([{type, becameMaster},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {node, Node},
-                                  {host, node_to_host(Node, ns_config:get())}])];
+                                  {host, node_to_host(Node, ns_config:latest())}])];
 event_to_jsons({TS, became_master}) ->
     event_to_jsons({TS, became_master, 'nonode@unknown'});
 
@@ -624,32 +628,38 @@ event_to_jsons({TS, wait_index_updated_started, BucketName, Node, VBucket}) ->
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {vbucket, VBucket},
-                                  {node, node_to_host(Node, ns_config:get())}])];
+                                  {node, node_to_host(Node, ns_config:latest())}])];
 
 event_to_jsons({TS, wait_index_updated_ended, BucketName, Node, VBucket}) ->
     [format_simple_plist_as_json([{type, waitIndexUpdatedEnded},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {vbucket, VBucket},
-                                  {node, node_to_host(Node, ns_config:get())}])];
+                                  {node, node_to_host(Node, ns_config:latest())}])];
 
 event_to_jsons({TS, compaction_inhibited, BucketName, Node}) ->
     [format_simple_plist_as_json([{type, compactionInhibited},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {node, node_to_host(Node, ns_config:get())}])];
+                                  {node, node_to_host(Node, ns_config:latest())}])];
 
-event_to_jsons({TS, compaction_uninhibited, BucketName, Node}) ->
-    [format_simple_plist_as_json([{type, compactionUninhibited},
+event_to_jsons({TS, compaction_uninhibit_started, BucketName, Node}) ->
+    [format_simple_plist_as_json([{type, compactionUninhibitStarted},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {node, node_to_host(Node, ns_config:get())}])];
+                                  {node, node_to_host(Node, ns_config:latest())}])];
+
+event_to_jsons({TS, compaction_uninhibit_done, BucketName, Node}) ->
+    [format_simple_plist_as_json([{type, compactionUninhibitDone},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {bucket, BucketName},
+                                  {node, node_to_host(Node, ns_config:latest())}])];
 
 event_to_jsons({TS, forced_inhibited_view_compaction, BucketName, Node}) ->
     [format_simple_plist_as_json([{type, forcedPreviouslyInhibitedViewCompaction},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {node, node_to_host(Node, ns_config:get())}])];
+                                  {node, node_to_host(Node, ns_config:latest())}])];
 
 event_to_jsons({TS, tap_estimate, {Type, BucketName, VBucket, SrcNode, DstNode}, Estimate, Pid, TapName}) ->
     Cfg = ns_config:get(),
@@ -690,16 +700,16 @@ event_to_jsons({TS, takeover_started, BucketName, VBucket, OldMaster, NewMaster}
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {vbucket, VBucket},
-                                  {oldMaster, node_to_host(OldMaster, ns_config:get())},
-                                  {node, node_to_host(NewMaster, ns_config:get())}])];
+                                  {oldMaster, node_to_host(OldMaster, ns_config:latest())},
+                                  {node, node_to_host(NewMaster, ns_config:latest())}])];
 
 event_to_jsons({TS, takeover_ended, BucketName, VBucket, OldMaster, NewMaster}) ->
     [format_simple_plist_as_json([{type, takeoverEnded},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {vbucket, VBucket},
-                                  {oldMaster, node_to_host(OldMaster, ns_config:get())},
-                                  {node, node_to_host(NewMaster, ns_config:get())}])];
+                                  {oldMaster, node_to_host(OldMaster, ns_config:latest())},
+                                  {node, node_to_host(NewMaster, ns_config:latest())}])];
 
 event_to_jsons({TS, note_vbucket_upgraded_to_dcp, BucketName, VBucket}) ->
     [format_simple_plist_as_json([{type, vbucketUpgradedToDCP},

@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# Filter only events relevant to last rebalance.
+#
+
+exec jq '
+(length as $size |
+ to_entries |
+ map({key: .key, type: .value.type} |
+     select(.type == "rebalanceStart" or
+            .type == "rebalanceEnd")) |
+ (length - 1) as $last |
+ if .[$last].type == "rebalanceEnd" then
+   [.[$last-1].key, .[$last].key+1]
+ else
+   [.[$last].key, $size]
+ end) as [$a,$b] | .[$a:$b]
+' "$@"
