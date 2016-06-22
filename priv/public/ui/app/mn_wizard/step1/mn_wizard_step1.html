@@ -186,7 +186,7 @@
         value="Next"
         class="submit next direction-button"
         id="step-2-next"
-        ng-disabled="wizardStep1Ctl.postMemoryErrors"
+        ng-disabled="wizardStep1Ctl.postMemoryErrors && wizardStep1Ctl.joinCluster === 'no'"
         type="submit">Next</button>
     </div>
   </form>
