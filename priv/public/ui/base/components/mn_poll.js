@@ -87,6 +87,7 @@
       return this;
     }
     function reload() {
+      delete this.latestResult;
       this.stop();
       this.doCycle();
       return this;
