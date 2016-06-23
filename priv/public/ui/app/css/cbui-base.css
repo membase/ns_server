@@ -164,8 +164,8 @@ img {
 
 @font-face {
   font-family: 'OpenSans';
-  src: url("fonts/OpenSans-Regular-webfont.woff") format('woff'),
-         url("fonts/OpenSans-Regular-webfont.ttf") format('truetype');
+  src: url("fonts/OpenSans-Regular.woff") format('woff'),
+         url("fonts/OpenSans-Regular.ttf") format('truetype');
   font-weight: 400;
   font-weight: normal;
   font-style: normal;
@@ -175,8 +175,8 @@ img {
 
 @font-face {
   font-family: 'OpenSans';
-  src: url("fonts/OpenSans-Italic-webfont.woff") format('woff'),
-         url("fonts/OpenSans-Italic-webfont.ttf") format('truetype');
+  src: url("fonts/OpenSans-Italic.woff") format('woff'),
+         url("fonts/OpenSans-Italic.ttf") format('truetype');
   font-weight: 400;
   font-style: italic;
 }
@@ -185,8 +185,8 @@ img {
 
 @font-face {
   font-family: 'OpenSans';
-  src: url("fonts/OpenSans-Light-webfont.woff") format('woff'),
-         url("fonts/OpenSans-Light-webfont.ttf") format('truetype');
+  src: url("fonts/OpenSans-Light.woff") format('woff'),
+         url("fonts/OpenSans-Light.ttf") format('truetype');
   font-weight: 300;
   font-style: normal;
 }
@@ -195,8 +195,8 @@ img {
 
 @font-face {
   font-family: 'OpenSans';
-  src: url("fonts/OpenSans-Semibold-webfont.woff") format('woff'),
-         url("fonts/OpenSans-Semibold-webfont.ttf") format('truetype');
+  src: url("fonts/OpenSans-Semibold.woff") format('woff'),
+         url("fonts/OpenSans-Semibold.ttf") format('truetype');
   font-weight: 600;
   font-style: normal;
 }
@@ -205,8 +205,8 @@ img {
 
 @font-face {
   font-family: 'OpenSans';
-  src: url("fonts/OpenSans-Bold-webfont.woff") format('woff'),
-         url("fonts/OpenSans-Bold-webfont.ttf") format('truetype');
+  src: url("fonts/OpenSans-Bold.woff") format('woff'),
+         url("fonts/OpenSans-Bold.ttf") format('truetype');
   font-weight: 700;
   font-style: normal;
 }
@@ -215,8 +215,8 @@ img {
 
 @font-face {
   font-family: 'FontAwesome';
-  src: url("fonts/fontawesome-webfont.woff?v=3.2.1") format('woff'),
-        url("fonts/fontawesome-webfont.ttf?v=3.2.1") format('truetype');
+  src: url("fonts/Font-Awesome.woff?v=3.2.1") format('woff'),
+        url("fonts/Font-Awesome.ttf?v=3.2.1") format('truetype');
 }
 
 /* Typography ------------------------------ */
