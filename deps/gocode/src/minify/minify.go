@@ -14,10 +14,10 @@ import (
 	"strings"
 )
 
-func getScript(n *html.Node) string {
-	if n.Type == html.ElementNode && n.Data == "script" {
+func getHTMLNodeAttr(n *html.Node, tagName string, attrKey string) string {
+	if n.Type == html.ElementNode && n.Data == tagName {
 		for _, a := range n.Attr {
-			if a.Key == "src" {
+			if a.Key == attrKey {
 				return a.Val
 			}
 		}
@@ -59,6 +59,15 @@ type context struct {
 type result struct {
 	PluggableInjectionCount int
 	AppScripts              []string
+	IndexHTMLBase           string
+}
+
+func (r1 *result) merge(r2 result) {
+	if r1.IndexHTMLBase == "" {
+		r1.IndexHTMLBase = r2.IndexHTMLBase
+	}
+	r1.AppScripts = append(r1.AppScripts, r2.AppScripts...)
+	r1.PluggableInjectionCount += r2.PluggableInjectionCount
 }
 
 // Minifies node and returns a minification Result.
@@ -68,9 +77,18 @@ func doMinify(node *html.Node, ctx *context) result {
 	rv := result{}
 	for child := node.FirstChild; child != nil; child = next {
 		next = child.NextSibling
-		script := getScript(child)
+		script := getHTMLNodeAttr(child, "script", "src")
+		if rv.IndexHTMLBase == "" {
+			rv.IndexHTMLBase = getHTMLNodeAttr(child, "base", "href")
+		}
 		switch {
-		case strings.HasPrefix(script, "app"):
+		case strings.Contains(script, "libs/") && strings.HasSuffix(script, ".js"):
+			minFile := script[:len(script)-3] + ".min.js"
+			if _, err := os.Stat(filepath.Join(ctx.BaseDir, minFile)); err == nil {
+				replaceAttrValue(child, "src", minFile)
+			}
+			prevWasWhitespace = false
+		case strings.HasSuffix(script, ".js"):
 			if !ctx.FoundFirstAppScript {
 				ctx.FoundFirstAppScript = true
 				node.InsertBefore(makeAppMinJsNode(), child)
@@ -78,12 +96,6 @@ func doMinify(node *html.Node, ctx *context) result {
 			}
 			rv.AppScripts = append(rv.AppScripts, script)
 			node.RemoveChild(child)
-		case strings.HasPrefix(script, "lib") && strings.HasSuffix(script, ".js"):
-			minFile := script[:len(script)-3] + ".min.js"
-			if _, err := os.Stat(filepath.Join(ctx.BaseDir, minFile)); err == nil {
-				replaceAttrValue(child, "src", minFile)
-			}
-			prevWasWhitespace = false
 		case isWhitespaceText(child) && node.Type == html.ElementNode && node.Data == "head":
 			if !prevWasWhitespace {
 				node.InsertBefore(makeNewLine(), child)
@@ -95,8 +107,7 @@ func doMinify(node *html.Node, ctx *context) result {
 				rv.PluggableInjectionCount++
 			} else {
 				childResult := doMinify(child, ctx)
-				rv.AppScripts = append(rv.AppScripts, childResult.AppScripts...)
-				rv.PluggableInjectionCount += childResult.PluggableInjectionCount
+				rv.merge(childResult)
 			}
 			prevWasWhitespace = false
 		}
@@ -185,6 +196,7 @@ func main() {
 		log.Fatalf("Error: number of pluggable injection comments found was %v, should be 1",
 			rv.PluggableInjectionCount)
 	}
-	createAppMinJsFile(rv.AppScripts, dir)
+	dirRelativeToBase := filepath.Join(dir, rv.IndexHTMLBase)
+	createAppMinJsFile(rv.AppScripts, dirRelativeToBase)
 	createIndexMinHTMLFile(doc, dir)
 }
