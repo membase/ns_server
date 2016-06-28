@@ -421,6 +421,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {done, redirect_permanently("/ui/index.html", Req)};
                 ["ui", "index.html"] ->
                     {ui, IsSSL, fun handle_ui_root/4, [AppRoot, Path, Plugins]};
+                ["ui", "spock-index.html"] ->
+                    {ui, IsSSL, fun handle_spock_ui_root/4, [AppRoot, Path, Plugins]};
                 ["classic-index.html"] ->
                     {ui, IsSSL, fun handle_classic_index_html/3, [AppRoot, Path]};
                 ["dot", Bucket] ->
@@ -835,6 +837,13 @@ handle_ui_root(AppRoot, Path, Plugins, Req) ->
       Req,
       "text/html; charset=utf8",
       menelaus_pluggable_ui:inject_head_fragments(Filename, Plugins),
+      [{"Cache-Control", "must-revalidate"}]).
+
+handle_spock_ui_root(AppRoot, Path, Plugins, Req) ->
+    menelaus_util:reply_ok(
+      Req,
+      "text/html; charset=utf8",
+      menelaus_pluggable_ui:inject_head_fragments(filename:join(AppRoot, Path), Plugins),
       [{"Cache-Control", "must-revalidate"}]).
 
 handle_classic_index_html(AppRoot, Path, Req) ->
