@@ -1,89 +1,99 @@
-<div class="global_alerts_container">
-  <div uib-alert ng-repeat="alert in overviewCtl.alerts" type="{{alert.type}}" close="overviewCtl.closeAlert($index)" dismiss-on-timeout="{{alert.timeout}}">{{alert.msg}}</div>
+<div
+   class="interim alert alert-warning"
+   ng-show="adminCtl.lostConnState.isActivated">
+  <p>Difficulties communicating with the cluster; displaying cached information!</p>
 </div>
-<div id="js_overview" class="overview">
-  <h1>Cluster Overview</h1>
-  <div id="notice_container"></div>
-  <div class="shadow_box">
-    <div class="hdr">
-      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the
-      cluster; displaying cached information!</span>Cluster
+<div
+   uib-alert
+   class="interim alert alert-warning"
+   ng-repeat="alert in overviewCtl.alerts"
+   type="{{alert.type}}"
+   close="overviewCtl.closeAlert($index)"
+   dismiss-on-timeout="{{alert.timeout}}">
+  <p>{{alert.msg}}</p>
+</div>
+<div class="interim main-content">
+  <h4>RAM Overview for Data Nodes</h4>
+  <hr>
+  <div
+     class="row indent-1"
+     mn-spinner="!overviewCtl.mnOverviewConfig.ramOverviewConfig">
+    <div
+       class="column bar-usages label-top-0-red"
+       mn-bar-usage
+       base-info="overviewCtl.mnOverviewConfig.ramOverviewConfig"></div>
+  </div>
+
+  <h4>Disk Overview for Data Nodes</h4>
+  <hr>
+  <div
+     class="row indent-1"
+     mn-spinner="!overviewCtl.mnOverviewConfig.hddOverviewConfig">
+    <div
+       class="column bar-usages label-top-0-red"
+       mn-bar-usage
+       base-info="overviewCtl.mnOverviewConfig.hddOverviewConfig"></div>
+  </div>
+
+  <div ng-if="rbac.cluster.bucket['*'].stats.read">
+    <h4>
+      Buckets ({{overviewCtl.buckets.length || '0'}} active)
+    </h4>
+    <hr>
+
+    <div class="interim row items-space-around">
+      <div
+         ng-show="overviewCtl.buckets.length"
+         mn-spinner="!overviewCtl.mnOverviewStats.opsGraphConfig">
+        <div>Operations per second</div>
+        <div
+           mn-plot
+           mn-plot-config="overviewCtl.mnOverviewStats.opsGraphConfig"
+           style="height: 170px; width: 400px;"></div>
+      </div>
+
+      <div
+         ng-show="overviewCtl.buckets.length"
+         mn-spinner="!overviewCtl.mnOverviewStats.readsGraphConfig">
+        <div>Disk fetches per second</div>
+        <div
+           mn-plot
+           mn-plot-config="overviewCtl.mnOverviewStats.readsGraphConfig"
+           style="height: 170px; width: 400px"></div>
+      </div>
     </div>
-    <div class="section" id="overview_clusters_block">
-      <div class="item ram-item" mn-spinner="!overviewCtl.mnOverviewConfig.ramOverviewConfig">
-        <div class="label">
-          <strong>RAM Overview for Data Nodes</strong>
-        </div>
-        <div class="line_cnt usage-block usage_biggest" mn-bar-usage base-info="overviewCtl.mnOverviewConfig.ramOverviewConfig"></div>
-      </div>
-      <div class="item disk-item" mn-spinner="!overviewCtl.mnOverviewConfig.hddOverviewConfig">
-        <div class="label">
-          <strong>Disk Overview for Data Nodes</strong>
-        </div>
-        <div class="line_cnt usage-block usage_biggest" mn-bar-usage base-info="overviewCtl.mnOverviewConfig.hddOverviewConfig"></div>
-      </div>
+
+    <div ng-show="!overviewCtl.buckets.length">
+      No buckets currently defined! Go to <a ui-sref="app.admin.buckets">Manage Buckets</a> to create some.
     </div>
   </div>
 
-  <div class="shadow_box" ng-if="rbac.cluster.bucket['*'].stats.read">
-    <div class="hdr">
-      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating
-      with the cluster; displaying cached information!</span>
-      Buckets <span>(<span class="buckets-number">{{overviewCtl.buckets.length || '0'}}</span> active)</span>
+  <h4>
+    Servers
+  </h4>
+  <hr>
+  <div class="interim row items-space-around">
+    <div>
+      Active Servers: {{overviewCtl.nodes.active.length || '0'}}
     </div>
-    <div class="section">
-      <div class="item">
-        <div class="graph_main" ng-show="overviewCtl.buckets.length" mn-spinner="!overviewCtl.mnOverviewStats.opsGraphConfig" style="margin: 0;">
-          <span class="graph_info_label">Operations per second</span>
-          <div id="overview_ops_graph" class="graph" mn-plot mn-plot-config="overviewCtl.mnOverviewStats.opsGraphConfig"></div>
-        </div>
-        <div class="graph_main" ng-show="overviewCtl.buckets.length" mn-spinner="!overviewCtl.mnOverviewStats.readsGraphConfig">
-          <span class="graph_info_label">Disk fetches per second</span>
-          <div id="overview_reads_graph" class="graph" mn-plot mn-plot-config="overviewCtl.mnOverviewStats.readsGraphConfig"></div>
-        </div>
-        <div ng-show="!overviewCtl.buckets.length">
-          <span class="without_buckets">No buckets currently defined! Go to <a ui-sref="app.admin.buckets">Manage Buckets</a> to create some.</span>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="shadow_box">
-    <div class="hdr">
-      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with
-      the cluster; displaying cached information!</span>Servers
-    </div>
-    <div class="section" id="overview_servers_block">
-      <div class="item ovf">
-        <div class="actservers">
-          <h3>Active Servers: <span id="active-servers-count">{{overviewCtl.nodes.active.length || '0'}}</span></h3>
-        </div>
-        <ul>
-          <li class="fail" ng-class="{'is-zero':!overviewCtl.nodes.failedOver.length}">
-            <span class="when-non-zero">
-              <a ui-sref="app.admin.servers.list({list: 'pending'})">Servers Failed Over: <span class="failed-over-count">{{overviewCtl.nodes.failedOver.length}}</span></a>
-              <span class="badge">
-                <span class="failed-over-count">{{overviewCtl.nodes.failedOver.length}}</span>
-              </span>
-            </span>
-            <span class="when-zero">Servers Failed Over: 0</span>
-          </li>
-          <li class="down" ng-class="{'is-zero':!overviewCtl.nodes.down.length}">
-            <span class="when-non-zero">
-              <a  ui-sref="app.admin.servers.list">Servers Down: <span class="down-count">{{overviewCtl.nodes.down.length}}</span></a>
-              <span class="badge"><span class="down-count">{{overviewCtl.nodes.down.length}}</span></span>
-            </span>
-            <span class="when-zero">Servers Down: 0</span>
-          </li>
-          <li class="pending" ng-class="{'is-zero':!overviewCtl.nodes.pending.length}">
-            <span class="when-non-zero">
-              <a ui-sref="app.admin.servers.list({list: 'pending'})">Servers Pending Rebalance: <span class="pending-count">{{overviewCtl.nodes.pending.length}}</span></a>
-              <span class="badge"><span class="pending-count">{{overviewCtl.nodes.pending.length}}</span></span>
-            </span>
-            <span class="when-zero">Servers Pending Rebalance: 0</span>
-          </li>
-        </ul>
-      </div>
-    </div>
+    <a
+       ui-sref="app.admin.servers.list({list: 'pending'})"
+       ng-show="overviewCtl.nodes.failedOver.length">
+      Servers Failed Over: {{overviewCtl.nodes.failedOver.length}}
+    </a>
+    <span ng-show="!overviewCtl.nodes.failedOver.length">Servers Failed Over: 0</span>
+    <a
+       ui-sref="app.admin.servers.list"
+       ng-show="overviewCtl.nodes.down.length">
+      Servers Down: {{overviewCtl.nodes.down.length}}
+    </a>
+    <span ng-show="!overviewCtl.nodes.down.length">Servers Down: 0</span>
+    <a
+       ui-sref="app.admin.servers.list({list: 'pending'})"
+       ng-show="overviewCtl.nodes.pending.length">
+      Servers Pending Rebalance: {{overviewCtl.nodes.pending.length}}
+    </a>
+    <span ng-show="!overviewCtl.nodes.pending.length">Servers Pending Rebalance: 0</span>
   </div>
 </div>

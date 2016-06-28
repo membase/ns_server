@@ -90,6 +90,13 @@ width: calc(100% - 200px);
     justify-content: center;
 }
 
+.row.items-space-around {
+    -webkit-box-pack: space-around;
+    -webkit-justify-content: space-around;
+    -ms-flex-pack: space-around;
+    justify-content: space-around;
+}
+
 .flex-grow-one {
     flex-grow: 1;
 }
