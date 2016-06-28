@@ -76,8 +76,7 @@
          get_vbucket_high_seqno/4,
          dcp_takeover/5,
          inhibit_view_compaction/3,
-         uninhibit_view_compaction/4,
-         terse_bucket_info_uploader_pid/3]).
+         uninhibit_view_compaction/4]).
 
 -export([start_link/1]).
 
@@ -575,14 +574,6 @@ mass_prepare_flush(Bucket, Nodes) ->
 server_name(Bucket, Node) ->
     {server_name(Bucket), Node}.
 
-terse_bucket_info_uploader_pid(Nodes, BucketName, RebalancerPid) ->
-    {Pids, []} = gen_server:multi_call(Nodes,
-                                       server_name(BucketName),
-                                       {if_rebalance,
-                                        RebalancerPid,
-                                        terse_bucket_info_uploader_pid}),
-    [Pid || {_Node, Pid} <- Pids].
-
 %% ----------- implementation -----------
 
 start_link(Bucket) ->
@@ -895,10 +886,7 @@ handle_call({get_mass_dcp_docs_estimate, VBucketsR}, From, State) ->
       From, State, VBucketsR,
       fun (VBuckets, #state{bucket_name = Bucket}) ->
               ns_memcached:get_mass_dcp_docs_estimate(Bucket, VBuckets)
-      end);
-handle_call(terse_bucket_info_uploader_pid, _From,
-            #state{bucket_name = BucketName} = State) ->
-    {reply, terse_bucket_info_uploader:get_pid(BucketName), State}.
+      end).
 
 handle_call_via_servant({FromPid, _Tag}, State, Req, Body) ->
     Tag = erlang:make_ref(),

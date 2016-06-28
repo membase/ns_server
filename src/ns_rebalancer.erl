@@ -44,6 +44,7 @@
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
+
 -define(DATA_LOST, 1).
 -define(BAD_REPLICATORS, 2).
 

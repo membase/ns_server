@@ -21,9 +21,7 @@
 
 -include("ns_common.hrl").
 
--export([start_link/1,
-         refresh_cluster_config/1,
-         get_pid/1]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -43,9 +41,6 @@ start_link(BucketName) ->
               Name = server_name(BucketName),
               gen_server:start_link({local, Name}, ?MODULE, BucketName, [])
       end).
-
-get_pid(BucketName) ->
-    whereis(server_name(BucketName)).
 
 server_name(BucketName) ->
     list_to_atom("terse_bucket_info_uploader-" ++ BucketName).
@@ -93,7 +88,7 @@ flush_refresh_msgs(BucketName) ->
 refresh_cluster_config(BucketName) ->
     case bucket_info_cache:terse_bucket_info(BucketName) of
         {ok, JSON} ->
-            set_cluster_config(BucketName, JSON);
+            ok = ns_memcached:set_cluster_config(BucketName, JSON);
         not_present ->
             ?log_debug("Bucket ~s is dead", [BucketName]),
             ok;
@@ -101,17 +96,6 @@ refresh_cluster_config(BucketName) ->
             ?log_error("Got exception trying to get terse bucket info: ~p", [Exception]),
             timer:sleep(10000),
             erlang:raise(T, E, Stack)
-    end.
-
-set_cluster_config(BucketName, JSON) ->
-    case ns_memcached:set_cluster_config(BucketName, JSON) of
-        ok ->
-            ?log_debug("Successfully updated memcached cluster configuration for ~p",
-                       [BucketName]);
-        Error ->
-            ?log_error("Failed to set memcached cluster configuration for ~p, error = ~p",
-                       [BucketName, Error]),
-            exit({set_cluster_config_failed, Error})
     end.
 
 submit_refresh(BucketName, Process) ->
