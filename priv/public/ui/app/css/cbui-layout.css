@@ -85,12 +85,14 @@ section {
 }
 
 footer {
+  position:fixed;
+  bottom: 0;
   text-align:center;
   padding: .5rem 0;
   width:100%;
   background-color:#eceff2;
   font-size:70%;
-  }
+}
 
 /* WIDTH HELPERS --------------------- */
 .width-1 {
