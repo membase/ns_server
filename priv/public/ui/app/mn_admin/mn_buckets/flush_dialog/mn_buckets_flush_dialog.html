@@ -1,12 +1,19 @@
-<div id="eject_confirmation_dialog" style="width:711px">
-    <h1 class="dialog_corner_radius">Flushing</h1>
-    <div mn-spinner="bucketsFlushDialogCtl.viewLoading">
-      <div class="warning pat_20">
-        <strong>Warning</strong> – Flushing this bucket will result in complete data loss for this bucket. Are you sure you want to flush it?
-      </div>
-      <div class="right save_cancel pas_20 footer_bg">
-        <button type="submit" class="save_button float_right" ng-click="bucketsFlushDialogCtl.doFlush()">Flush</button>
-        <a class="close casper_close_eject_confirmation_dialog float_right" ng-click="$dismiss()">Cancel</a>
-      </div>
+<div class="dialog-med">
+  <div class="panel-header">
+    <h2>Flushing</h2>
+  </div>
+  <div mn-spinner="bucketsFlushDialogCtl.viewLoading">
+    <div class="panel-content">
+      <p class="error"><strong>Warning</strong> – Flushing this bucket will result in complete data loss for this bucket.</p>
+      <p>Are you sure you want to flush it?</p>
     </div>
+    <div class="panel-footer">
+      <a
+         href=""
+         ng-click="$dismiss()">Cancel</a>
+      <button
+         type="submit"
+         ng-click="bucketsFlushDialogCtl.doFlush()">Flush</button>
+    </div>
+  </div>
 </div>

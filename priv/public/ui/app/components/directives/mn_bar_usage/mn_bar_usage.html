@@ -1,19 +1,30 @@
-
-<div class="top-left" ng-if="config.topLeft" ng-style="config.topLeft.itemStyle">
-{{config.topLeft.name}} ({{config.topLeft.value | mnFormatMemSize}})
+<div
+   class="usage-label label-top-0"
+   ng-if="config.topLeft">
+  {{config.topLeft.name}} ({{config.topLeft.value | mnFormatMemSize}})
 </div>
-<div class="top-right" ng-if="config.topRight" ng-style="config.topRight.itemStyle">{{config.topRight.name}} ({{config.topRight.value | mnFormatMemSize}})</div>
-  <div class="usage">
-    <div ng-repeat="item in config.items" ng-style="item.itemStyle"></div>
-    <i ng-repeat="marker in config.markers" ng-style="marker.itemStyle"></i>
+<div
+   class="usage-label label-top-1"
+   ng-if="config.topRight">
+  {{config.topRight.name}} ({{config.topRight.value | mnFormatMemSize}})
+</div>
+<div class="usage">
+  <div
+     class="item"
+     ng-repeat="item in config.items | orderBy:[]:true"
+     ng-style="{width: item.itemStyle.width}"
+     ng-class="'usage-item-' + $index"></div>
+  <i
+     class="marker"
+     ng-repeat="marker in config.markers | orderBy:[]:true"
+     ng-style="{left: marker.itemStyle.left}"
+     ng-class="'marker-' + $index"></i>
+</div>
+<div class="row">
+  <div
+     class="usage-label"
+     ng-repeat="tditem in config.tdItems"
+     ng-class="'label-bottom-' + $index">
+    {{tditem.name}} ({{ tditem.value | mnFormatMemSize }})
   </div>
-  <table style="width:100%;">
-    <tbody>
-      <tr>
-        <td ng-repeat="tditem in config.tdItems" ng-style="tditem.labelStyle">
-          {{tditem.name}} ({{ tditem.value | mnFormatMemSize }})
-        </td>
-      </tr>
-    </tbody>
-  </table>
 </div>

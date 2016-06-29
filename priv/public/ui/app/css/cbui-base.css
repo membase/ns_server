@@ -5,6 +5,8 @@
 
 html {
   box-sizing: border-box;
+  width:100vw;
+  overflow-x:hidden;
 }
 
 *,
@@ -383,7 +385,7 @@ output {
 
 /* 16px base = 15px */
 .text-medium {
-  font-size: .961;
+  font-size: .961rem;
 }
 
 /* 16px base = 14px */
@@ -703,11 +705,6 @@ table th {
   font-size: .813rem;
   font-weight: 600;
   padding: .5rem 1rem;
-  border-left: 2px solid #fff;
-}
-
-table th:first-child {
-  border-left: none;
 }
 
 table tr.has-hover:hover {
@@ -789,7 +786,11 @@ table.table-flat caption {
 
 table.table-stroked td,
 table.table-stroked th {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  border-bottom: 1px solid #ddd;
+}
+
+table.table-stroked tr.no-stroke td {
+  border-bottom: 0;
 }
 
 table.table-stripped tbody tr:nth-child(odd) td {
@@ -1015,8 +1016,6 @@ legend {
   display: -ms-flexbox;
   display: -webkit-flex;
   display: flex;
-  margin-bottom: 0;
-  line-height: 2rem;
 }
 .input-append input,
 .input-prepend input {
@@ -1049,6 +1048,10 @@ legend {
   text-transform: none;
   font-weight: normal;
   font-size: .961rem;
+}
+
+.forms .checkbox-list label.inline {
+    display: inline;
 }
 
 .forms .checkbox-list .desc {
@@ -1182,4 +1185,9 @@ select.select-small {
 
 .forms .error-form {
   margin: 0 0 1rem 0;
+}
+
+/* background colors ----------------------------------- */
+.grayblue-5 {
+  background-color: #f6f7f9;
 }

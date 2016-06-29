@@ -174,6 +174,29 @@ main.interim {}
   padding: 0 1.5rem;
 }
 
+.interim.content-box {
+  border-radius: 5px;
+  background-color: #e5e5e5;
+  font-size: .75rem;
+  padding: 1rem 1rem 0 1rem;
+  margin-bottom: 1.5rem;
+}
+
+h3.interim {
+  margin: 2rem 0 0 0;
+  border-bottom: 1px solid #d1d1d1;
+  color: #333;
+}
+
+h3.interim:first-of-type {
+  margin-top: 1rem;
+}
+
+h3.interim ~ div.formrow {
+  margin-top: 1rem;
+  margin-left: 1.5rem;
+}
+
 td.node_name a {
   text-decoration:none !important;
 }
@@ -945,6 +968,22 @@ meter {
 .chart-small {
 }
 
+.ct-chart-pie .ct-series.ct-series-a .ct-slice-pie {
+    fill: #4A0;
+}
+.ct-chart-pie .ct-series.ct-series-b .ct-slice-pie {
+    fill: #fac344;
+}
+.ct-chart-pie .ct-series.ct-series-c .ct-slice-pie {
+    fill: #f00;
+}
+.chartist-pie {
+    height: 18px;
+    width: 18px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
 /* Query Monitor ------------------- */
 .kill-button {
   margin: -.25rem 0 -.3rem 2rem;
@@ -953,4 +992,79 @@ meter {
 /* random stuff -------------------- */
 .spinner-container {
   min-height: 100px;
+}
+
+/* Bar Usages -------------------- */
+
+/* bar usages marker -------------------- */
+.bar-usages .marker {
+    position: absolute;
+    display: block;
+    width: 1px;
+    height: 3rem;
+    font-size: 0;
+    line-height: 0;
+    top: -.5rem;
+}
+.bar-usages .marker-0 {
+    background-color: rgb(228, 58, 27);
+}
+/* bar usages label -------------------- */
+.bar-usages {
+    width: 100%;
+}
+.bar-usages .usage-label {
+    font-size: .7rem;
+    padding: .2rem;
+}
+.bar-usages .label-top-0 {
+    float: left;
+}
+.bar-usages .label-top-1 {
+    float: right;
+}
+.bar-usages .label-bottom-0 {
+    color: rgb(24, 120, 162);
+}
+.bar-usages .label-bottom-1 {
+    color: rgb(64, 159, 5);
+}
+
+/* bar usages items -------------------- */
+.bar-usages .usage {
+    clear: both;
+    height: 2rem;
+    position: relative;
+}
+.bar-usages .usage .item {
+    height: 2rem;
+    position: absolute;
+}
+.bar-usages .usage .usage-item-0 {
+    background-color: rgb(225, 226, 227);
+}
+.bar-usages .usage .usage-item-1 {
+    background-color: rgb(126, 219, 73);
+}
+.bar-usages .usage .usage-item-2 {
+    background-color: rgb(0, 188, 233);
+}
+.bar-usages .usage .usage-item-3 {
+    background-color: rgb(253, 201, 13);
+}
+/* bar usages specific -------------------- */
+.bar-usages.label-top-0-gold .label-top-0 {
+    color: rgb(193, 151, 16);
+}
+.bar-usages.overcommitted .label-bottom-2 {
+    color: rgb(244, 0, 21);
+}
+.bar-usages.overcommitted .usage-item-0 {
+    background-color: rgb(244, 0, 21);
+}
+.bar-usages.overcommitted .label-top-0 {
+    color: rgb(228, 58, 27);
+}
+.bar-usages.overcommitted .marker-1 {
+    background-color: rgb(68, 66, 69);
 }

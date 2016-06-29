@@ -77,6 +77,12 @@ width: calc(100% - 200px);
     align-items: flex-start;
 }
 
+.row.items-bottom {
+    -webkit-align-items: flex-end;
+    -ms-flex-align: flex-end;
+    align-items: flex-end;
+}
+
 .row.items-center {
     -webkit-box-pack: center;
     -webkit-justify-content: center;
@@ -86,7 +92,7 @@ width: calc(100% - 200px);
 
 .column {
   padding: 0;
-  margin: 0 1.5rem 1rem 0;
+  margin: 0 2rem 1rem 0;
 }
 
 .column:last-child {
@@ -158,10 +164,14 @@ footer {
 
 /* LAYOUT HELPERS ------------------- */
 .indent-1 {
-  margin-left: 1.25rem;
+  margin-left: 1rem;
 }
 .margin-top-1 {
   margin-top: -1rem;
+}
+
+.margin-top2 {
+  margin-top: 2rem;
 }
 
 .debug-outline {

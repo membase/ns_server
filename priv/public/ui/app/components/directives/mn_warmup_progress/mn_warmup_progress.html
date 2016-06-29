@@ -1,20 +1,11 @@
 <div>
-  <h3>Warmup Progress</h3>
-  <div class="warmup_icon"></div>
-  <div class="warmup_table_wrapper">
-    <table class="warmup_table">
-      <colgroup>
-        <col class="bucket_name">
-        <col>
-      </colgroup>
-      <tbody ng-repeat="task in warmUpTasks | orderBy:sortBy | limitTo:3">
-        <tr>
-          <td title="task[$parent.sortBy]" class="ellipsis">{{task[$parent.sortBy]}}</td>
-          <td>{{task | formatWarmupMessage}}</td>
-        </tr>
-      </tbody>
-      <tbody ng-if="warmUpTasks.length > 3"><tr><td title="more ...">more ...</td><td></td></tr></tbody>
-    </table>
+  <h4>Warmup Progress</h4>
+  <hr>
+  <div class="column indent-1 text-smaller">
+    <div ng-repeat="task in warmUpTasks | orderBy:sortBy | limitTo:3">
+      <span title="task[$parent.sortBy]" class="ellipsis">{{task[$parent.sortBy]}}</span>
+      <span>{{task | formatWarmupMessage}}</span>
+    </div>
+    <div ng-show="warmUpTasks.length > 3">more ...</div>
   </div>
-  <div class="clear"></div>
 </div>

@@ -1,75 +1,100 @@
-<div class="error-container err-_" ng-show="errors._">{{errors._}}</div>
-<div class="error-container err-_" ng-show="config.services.model.fts">
+<div
+   class="error"
+   ng-show="errors._">
+  {{errors._}}
+</div>
+<div
+   class="error"
+   ng-show="config.services.model.fts">
   Full Text Search is a developer preview. Use only in test environments.
 </div>
-<div class="row" ng-if="config.totalMemorySize">
-  <label>RAM Available: </label>
-  <span class="ram-total-size">{{::config.totalMemorySize}} MB</span>
+<div
+   class="formrow"
+   ng-if="config.totalMemorySize">
+  <p>RAM Available: {{::config.totalMemorySize}} mb</p>
 </div>
-<div class="row" ng-if="config.services" mn-services="config">
+<div
+   class="formrow"
+   ng-if="config.services"
+   mn-services="config">
 </div>
-<div class="memory-quota row" ng-if="config.displayedServices.kv">
-  <label for="kv_ram_quota">Data RAM Quota:</label>
+<div
+   class="formrow"
+   ng-if="config.displayedServices.kv">
+  <label for="kv_ram_quota">Data RAM Quota</label>
   <input
-    type="number" min="0"
-    class="focusme js_ram_quota"
-    id="kv_ram_quota"
-    mn-focus
-    ng-disabled="config.services && !config.services.model.kv || (rbac && !rbac.cluster.pools.write)"
-    name="memoryQuota"
-    ng-model="config.memoryQuota" />
-  <span>MB (min {{::config.minMemorySize}} MB)</span>
+     type="number"
+     min="0"
+     id="kv_ram_quota"
+     mn-focus
+     ng-disabled="config.services && !config.services.model.kv || (rbac && !rbac.cluster.pools.write)"
+     ng-model="config.memoryQuota">
+  <small>mb (min {{::config.minMemorySize}})</small>
   <a class="tooltip text_11"><span>What&#39;s this?</span>
-    <span class="tooltip_msg" style="width:150px;"><span>
-      Main memory allocation amount for data service per node.
+    <span class="tooltip_msg"><span>
+        Main memory allocation amount for data service per node.
     </span></span>
   </a>
-  <span class="error-container err-memoryQuota" ng-show="errors.memoryQuota">{{errors.memoryQuota}}</span>
+  <div
+     class="error"
+     ng-show="errors.memoryQuota">
+    {{errors.memoryQuota}}
+  </div>
 </div>
-<div class="memory-quota row" ng-if="config.displayedServices.index">
-  <label for="index_ram_quota">Index RAM Quota:</label>
+
+<div
+   class="formrow"
+   ng-if="config.displayedServices.index">
+  <label for="index_ram_quota">Index RAM Quota</label>
   <input
-    type="number" min="0"
-    class="js_ram_quota"
-    id="index_ram_quota"
-    ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)"
-    name="indexMemoryQuota"
-    mn-focus="config.services.model.kv === false"
-    ng-model="config.indexMemoryQuota" />
-  <span>MB (min 256 MB)</span>
+     type="number"
+     min="0"
+     id="index_ram_quota"
+     ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)"
+     mn-focus="config.services.model.kv === false"
+     ng-model="config.indexMemoryQuota">
+  <small>mb (min 256)</small>
   <a class="tooltip text_11"><span>What&#39;s this?</span>
-    <span class="tooltip_msg" style="width:150px;"><span>
-      Main memory allocation amount for index service per node.
+    <span class="tooltip_msg"><span>
+        Main memory allocation amount for index service per node.
     </span></span>
   </a>
-  <span class="error-container err-indexMemoryQuota" ng-show="errors.indexMemoryQuota">
-    {{errors.indexMemoryQuota}}</span>
+  <div
+     class="error"
+     ng-show="errors.indexMemoryQuota">
+    {{errors.indexMemoryQuota}}
+  </div>
 </div>
-<div class="memory-quota row" ng-if="config.displayedServices.fts">
-  <label for="fts_ram_quota">Full Text RAM Quota:</label>
+
+<div
+   class="formrow memory-quota"
+   ng-if="config.displayedServices.fts">
+  <label for="fts_ram_quota">Full Text RAM Quota</label>
   <input
-    type="number" min="0"
-    class="focusme js_ram_quota"
-    id="fts_ram_quota"
-    mn-focus="config.services.model.kv === false && config.services.model.index  === false"
-    ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)"
-    name="ftsMemoryQuota"
-    ng-model="config.ftsMemoryQuota" />
-  <span>MB (min 256 MB)</span>
+     type="number"
+     min="0"
+     id="fts_ram_quota"
+     mn-focus="config.services.model.kv === false && config.services.model.index  === false"
+     ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)"
+       ng-model="config.ftsMemoryQuota">
+  <small>mb (min 256)</small>
   <a class="tooltip text_11"><span>What&#39;s this?</span>
-    <span class="tooltip_msg" style="width:150px;"><span>
-      Main memory allocation amount for full text service per node.
+    <span class="tooltip_msg"><span>
+        Main memory allocation amount for full text service per node.
     </span></span>
   </a>
-  <span class="error-container err-ftsMemoryQuota" ng-show="errors.ftsMemoryQuota">
+  <div
+     class="error"
+     ng-show="errors.ftsMemoryQuota">
     {{errors.ftsMemoryQuota}}
-  </span>
+  </div>
 </div>
-<div class="row" ng-if="config.maxMemorySize">
+
+<div ng-if="config.maxMemorySize">
   <label>Total Per Server:</label>
-  <span><span class="js_per_server_total">
-    {{ ((!config.displayedServices.kv || (config.services && !config.services.model.kv)) ? 0 : config.memoryQuota) +
+  <span>
+      {{ ((!config.displayedServices.kv || (config.services && !config.services.model.kv)) ? 0 : config.memoryQuota) +
        ((!config.displayedServices.index || (config.services && !config.services.model.index)) ? 0 : config.indexMemoryQuota) +
-       ((!config.displayedServices.fts || (config.services && !config.services.model.fts)) ? 0 : config.ftsMemoryQuota) }}
-  </span> MB (must be less than <span class="js_max_ram_size">{{::config.maxMemorySize}}</span> MB) </span>
+      ((!config.displayedServices.fts || (config.services && !config.services.model.fts)) ? 0 : config.ftsMemoryQuota) }} mb (must be less than {{::config.maxMemorySize}} mb)
+  </span>
 </div>
