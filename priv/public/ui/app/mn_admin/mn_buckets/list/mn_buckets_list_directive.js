@@ -13,7 +13,7 @@
         rbac: "=",
         poolDefault: "="
       },
-      templateUrl: 'app/mn_admin/mn_buckets/list/mn_buckets_list.html',
+      templateUrl: 'mn_admin/mn_buckets/list/mn_buckets_list.html',
       controller: controller,
       controllerAs: "bucketsListCtl"
     };

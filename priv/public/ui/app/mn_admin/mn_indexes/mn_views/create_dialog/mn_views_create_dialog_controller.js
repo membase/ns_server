@@ -56,7 +56,7 @@
         }
         if (_.keys(views).length >= 10) {
           return $uibModal.open({
-            templateUrl: 'app/mn_admin/mn_indexes/mn_views/confirm_dialogs/mn_views_confirm_limit_dialog.html'
+            templateUrl: 'mn_admin/mn_indexes/mn_views/confirm_dialogs/mn_views_confirm_limit_dialog.html'
           }).result.then(function () {
             return createDdoc(presentDdoc);
           }, function () {

@@ -23,7 +23,7 @@
       },
       isolate: false,
       replace: true,
-      templateUrl: 'app/components/directives/mn_buckets_form/mn_buckets_form.html',
+      templateUrl: 'components/directives/mn_buckets_form/mn_buckets_form.html',
       controller: controller
     };
 

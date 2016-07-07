@@ -16,7 +16,7 @@
         onOpen: "&",
         onReset: "&"
       },
-      templateUrl: "app/components/directives/mn_filter/mn_filter.html",
+      templateUrl: "components/directives/mn_filter/mn_filter.html",
       controller: mnFilterController,
       controllerAs: "mnFilterController",
       bindToController: true

@@ -30,7 +30,7 @@
 
     function runInternalSettingsDialog() {
       $uibModal.open({
-        templateUrl: "app/mn_admin/mn_internal_settings/mn_internal_settings.html",
+        templateUrl: "mn_admin/mn_internal_settings/mn_internal_settings.html",
         controller: "mnInternalSettingsController as internalSettingsCtl"
       });
     }

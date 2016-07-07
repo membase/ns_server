@@ -21,7 +21,7 @@
 
     function showAboutDialog() {
       $uibModal.open({
-        templateUrl: 'app/mn_about_dialog/mn_about_dialog.html',
+        templateUrl: 'mn_about_dialog/mn_about_dialog.html',
         controller: "mnAboutDialogController as aboutDialogCtl"
       });
     }

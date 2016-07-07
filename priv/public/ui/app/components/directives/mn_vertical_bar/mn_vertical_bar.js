@@ -12,7 +12,7 @@
         conf: '='
       },
       isolate: false,
-      templateUrl: 'app/components/directives/mn_vertical_bar/mn_vertical_bar.html'
+      templateUrl: 'components/directives/mn_vertical_bar/mn_vertical_bar.html'
     };
     return mnVerticalBar;
   }

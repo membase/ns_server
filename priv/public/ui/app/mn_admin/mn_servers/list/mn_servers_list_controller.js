@@ -130,7 +130,7 @@
       }).then(function (warnings) {
         if (_.some(_.values(warnings))) {
           $uibModal.open({
-            templateUrl: 'app/mn_admin/mn_servers/eject_dialog/mn_servers_eject_dialog.html',
+            templateUrl: 'mn_admin/mn_servers/eject_dialog/mn_servers_eject_dialog.html',
             controller: 'mnServersEjectDialogController as serversEjectDialogCtl',
             resolve: {
               warnings: function () {
@@ -151,7 +151,7 @@
     }
     function failOverNode(node) {
       $uibModal.open({
-        templateUrl: 'app/mn_admin/mn_servers/failover_dialog/mn_servers_failover_dialog.html',
+        templateUrl: 'mn_admin/mn_servers/failover_dialog/mn_servers_failover_dialog.html',
         controller: 'mnServersFailOverDialogController as serversFailOverDialogCtl',
         resolve: {
           node: function () {

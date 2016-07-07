@@ -53,7 +53,7 @@
 
         if (_.isEqual(initialGroups, currentGroups)) {
           return $uibModal.open({
-            templateUrl: 'app/mn_admin/mn_groups/delete_dialog/mn_groups_delete_dialog.html',
+            templateUrl: 'mn_admin/mn_groups/delete_dialog/mn_groups_delete_dialog.html',
             controller: 'mnGroupsDeleteDialogController as groupsDeleteDialogCtl',
             resolve: {
               group: mnHelper.wrapInFunction(group)
@@ -68,7 +68,7 @@
 
       function createGroup(group) {
         return $uibModal.open({
-          templateUrl: 'app/mn_admin/mn_groups/group_dialog/mn_groups_group_dialog.html',
+          templateUrl: 'mn_admin/mn_groups/group_dialog/mn_groups_group_dialog.html',
           controller: 'mnGroupsGroupDialogController as groupsGroupDialogCtl',
           resolve: {
             group: mnHelper.wrapInFunction(group)

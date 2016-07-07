@@ -26,7 +26,7 @@
       scope.title = title;
       return $uibModal.open({
         scope: scope,
-        templateUrl: "app/components/mn_alerts_popup_message.html"
+        templateUrl: "components/mn_alerts_popup_message.html"
       }).result;
     }
     function setAlert(type, message) {

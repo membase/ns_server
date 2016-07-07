@@ -15,7 +15,7 @@
       },
       isolate: false,
       replace: true,
-      templateUrl: 'app/components/directives/mn_auto_compaction_form/mn_auto_compaction_form.html',
+      templateUrl: 'components/directives/mn_auto_compaction_form/mn_auto_compaction_form.html',
       controller: controller
     };
 

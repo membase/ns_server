@@ -26,7 +26,7 @@
         isDisabled: "=",
         noLabel: "="
       },
-      templateUrl: 'app/components/directives/mn_storage_mode/mn_storage_mode.html'
+      templateUrl: 'components/directives/mn_storage_mode/mn_storage_mode.html'
     };
 
     return mnStorageMode;

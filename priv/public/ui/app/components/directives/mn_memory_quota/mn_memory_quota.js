@@ -16,7 +16,7 @@
         errors: "=",
         rbac: "="
       },
-      templateUrl: 'app/components/directives/mn_memory_quota/mn_memory_quota.html',
+      templateUrl: 'components/directives/mn_memory_quota/mn_memory_quota.html',
       controller: controller
     };
 

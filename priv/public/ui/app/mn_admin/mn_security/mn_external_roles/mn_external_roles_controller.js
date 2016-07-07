@@ -60,7 +60,7 @@
 
     function editUser(user) {
       $uibModal.open({
-        templateUrl: 'app/mn_admin/mn_security/mn_external_roles/add_dialog/mn_external_roles_add_dialog.html',
+        templateUrl: 'mn_admin/mn_security/mn_external_roles/add_dialog/mn_external_roles_add_dialog.html',
         controller: 'mnExternalRolesAddDialogController as externalRolesAddDialogCtl',
         resolve: {
           user: mnHelper.wrapInFunction(user)
@@ -69,7 +69,7 @@
     }
     function addUser() {
       $uibModal.open({
-        templateUrl: 'app/mn_admin/mn_security/mn_external_roles/add_dialog/mn_external_roles_add_dialog.html',
+        templateUrl: 'mn_admin/mn_security/mn_external_roles/add_dialog/mn_external_roles_add_dialog.html',
         controller: 'mnExternalRolesAddDialogController as externalRolesAddDialogCtl',
         resolve: {
           user: mnHelper.wrapInFunction(undefined)
@@ -78,7 +78,7 @@
     }
     function deleteUser(user) {
       $uibModal.open({
-        templateUrl: 'app/mn_admin/mn_security/mn_external_roles/delete_dialog/mn_external_roles_delete_dialog.html',
+        templateUrl: 'mn_admin/mn_security/mn_external_roles/delete_dialog/mn_external_roles_delete_dialog.html',
         controller: 'mnExternalRolesDeleteDialogController as externalRolesDeleteDialogCtl',
         resolve: {
           user: mnHelper.wrapInFunction(user)

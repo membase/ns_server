@@ -67,7 +67,7 @@
               if (firstTimeAddedServices.count) {
                 return $uibModal.open({
                   windowTopClass: "without-titlebar-close",
-                  templateUrl: 'app/mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
+                  templateUrl: 'mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
                   controller: 'mnServersMemoryQuotaDialogController as serversMemoryQuotaDialogCtl',
                   resolve: {
                     memoryQuotaConfig: function (mnMemoryQuotaService) {

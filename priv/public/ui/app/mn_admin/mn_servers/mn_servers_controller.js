@@ -94,7 +94,7 @@
     }
     function addServer() {
       $uibModal.open({
-        templateUrl: 'app/mn_admin/mn_servers/add_dialog/mn_servers_add_dialog.html',
+        templateUrl: 'mn_admin/mn_servers/add_dialog/mn_servers_add_dialog.html',
         controller: 'mnServersAddDialogController as serversAddDialogCtl',
         resolve: {
           groups: function () {
@@ -125,7 +125,7 @@
       mnPromiseHelper(vm, mnServersService.stopRebalance())
         .onSuccess(function (resp) {
           (resp === 400) && $uibModal.open({
-            templateUrl: 'app/mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
+            templateUrl: 'mn_admin/mn_servers/stop_rebalance_dialog/mn_servers_stop_rebalance_dialog.html',
             controller: 'mnServersStopRebalanceDialogController as serversStopRebalanceDialogCtl'
           });
         })
