@@ -732,9 +732,8 @@ parse_bucket_params_without_warnings(Ctx, Params, UsageGetter) ->
                                              UsageGetter)
                  end,
     HDDSummary = interpret_hdd_quota(CurrentBucket, OKs, ClusterStorageTotals, UsageGetter),
-    JSONSummaries = [X || X <- [{ramSummary, {struct, ram_summary_to_proplist(RAMSummary)}},
-                                {hddSummary, {struct, hdd_summary_to_proplist(HDDSummary)}}],
-                          X =/= undefined],
+    JSONSummaries = [{ramSummary, {struct, ram_summary_to_proplist(RAMSummary)}},
+                     {hddSummary, {struct, hdd_summary_to_proplist(HDDSummary)}}],
     Errors2 = case {CurrentBucket, IsNew} of
                   {undefined, _} -> Errors;
                   {_, true} -> Errors;
