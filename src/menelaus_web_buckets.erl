@@ -705,18 +705,6 @@ parse_bucket_params(Ctx, Params) ->
     end.
 
 parse_bucket_params_without_warnings(Ctx, Params) ->
-    UsageGetter = fun (ram, Name) ->
-                          menelaus_stats:bucket_ram_usage(Name);
-                      (hdd, all) ->
-                          {hdd, HDDStats} = lists:keyfind(hdd, 1, Ctx#bv_ctx.cluster_storage_totals),
-                          {usedByData, V} = lists:keyfind(usedByData, 1, HDDStats),
-                          V;
-                      (hdd, Name) ->
-                          menelaus_stats:bucket_disk_usage(Name)
-                  end,
-    parse_bucket_params_without_warnings(Ctx, Params, UsageGetter).
-
-parse_bucket_params_without_warnings(Ctx, Params, UsageGetter) ->
     {OKs, Errors} = basic_bucket_params_screening(Ctx ,Params),
     ClusterStorageTotals = Ctx#bv_ctx.cluster_storage_totals,
     IsNew = Ctx#bv_ctx.new,
@@ -724,14 +712,14 @@ parse_bucket_params_without_warnings(Ctx, Params, UsageGetter) ->
     HasRAMQuota = lists:keyfind(ram_quota, 1, OKs) =/= false,
     RAMSummary = if
                      HasRAMQuota ->
-                         interpret_ram_quota(CurrentBucket, OKs, ClusterStorageTotals, UsageGetter);
+                         interpret_ram_quota(CurrentBucket, OKs,
+                                             ClusterStorageTotals);
                      true ->
                          interpret_ram_quota(CurrentBucket,
                                              [{ram_quota, 0} | OKs],
-                                             ClusterStorageTotals,
-                                             UsageGetter)
+                                             ClusterStorageTotals)
                  end,
-    HDDSummary = interpret_hdd_quota(CurrentBucket, OKs, ClusterStorageTotals, UsageGetter),
+    HDDSummary = interpret_hdd_quota(CurrentBucket, OKs, ClusterStorageTotals, Ctx),
     JSONSummaries = [{ramSummary, {struct, ram_summary_to_proplist(RAMSummary)}},
                      {hddSummary, {struct, hdd_summary_to_proplist(HDDSummary)}}],
     Errors2 = case {CurrentBucket, IsNew} of
@@ -1033,7 +1021,7 @@ ram_summary_to_proplist(V) ->
      ?PRAM(this_used, thisUsed),
      ?PRAM(free, free)].
 
-interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGetter) ->
+interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals) ->
     RAMQuota = proplists:get_value(ram_quota, ParsedProps),
     OtherBucketsRAMQuota = proplists:get_value(other_buckets_ram_quota, ParsedProps, 0),
     NodesCount = proplists:get_value(nodesCount, ClusterStorageTotals),
@@ -1050,7 +1038,8 @@ interpret_ram_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGette
           end + OtherBucketsRAMQuota * NodesCount,
     ThisUsed = case CurrentBucket of
                    [_|_] ->
-                       UsageGetter(ram, proplists:get_value(name, ParsedProps));
+                       menelaus_stats:bucket_ram_usage(
+                         proplists:get_value(name, ParsedProps));
                    _ -> 0
                end,
     Total = proplists:get_value(quotaTotalPerNode, ClusterTotals) * NodesCount,
@@ -1070,13 +1059,17 @@ hdd_summary_to_proplist(V) ->
      ?PHDD(this_used, thisUsed),
      ?PHDD(free, free)].
 
-interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, UsageGetter) ->
+interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, Ctx) ->
     ClusterTotals = proplists:get_value(hdd, ClusterStorageTotals),
-    UsedByUs = UsageGetter(hdd, all),
+    {hdd, HDDStats} = lists:keyfind(hdd, 1, Ctx#bv_ctx.cluster_storage_totals),
+    {usedByData, V} = lists:keyfind(usedByData, 1, HDDStats),
+    UsedByUs = V,
     ThisUsed = case CurrentBucket of
                    [_|_] ->
-                       UsageGetter(hdd, proplists:get_value(name, ParsedProps));
-                   _ -> 0
+                       menelaus_stats:bucket_disk_usage(
+                         proplists:get_value(name, ParsedProps));
+                   _ ->
+                       0
                end,
     OtherData = proplists:get_value(used, ClusterTotals) - UsedByUs,
     OtherBuckets = UsedByUs - ThisUsed,
