@@ -1,0 +1,30 @@
+<div id="current_stat_info" ng-show="!analyticsCtl.state.isEmptyState">
+  <h3>
+    <span class="i">i</span>
+    <span class="current-graph-name js_current-graph-name">{{analyticsListGraphCtl.selectedStat.title}}</span>
+  </h3>
+  <p class="js_current-graph-desc">{{analyticsListGraphCtl.selectedStat.desc}}</p>
+</div>
+<div class="header_2">
+  <span class="block nav float_right">
+    <span id="js_stats-period-container" class="stats-period-container">
+      <span class="with_samples current">Last <b id="js_stats_visible_period">{{analyticsListGraphCtl.selectedStat.visiblePeriod | mnFormatUptime}}</b></span><span class="without_samples current">No samples, yet</span>
+    </span>
+    <span class="js_staleness-notice staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
+  </span>
+  General Bucket Analytics
+</div>
+<div
+  class="analytics_graph_main"
+  mn-spinner="!analyticsListGraphCtl.selectedStat || analyticsCtl.viewLoading">
+    <h2 class="current-graph-name js_current-graph-name">{{analyticsListGraphCtl.selectedStat.title}}</h2>
+    <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
+    <div id="analytics_main_graph_grid">
+      <div
+        id="js_analytics_main_graph"
+        class="analytics_main_graph"
+        ng-if="analyticsListGraphCtl.selectedStat.graphConfig"
+        mn-plot mn-plot-config="analyticsListGraphCtl.selectedStat.graphConfig">
+      </div>
+    </div>
+</div>

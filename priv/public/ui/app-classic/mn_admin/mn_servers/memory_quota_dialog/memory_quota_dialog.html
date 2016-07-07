@@ -1,0 +1,30 @@
+<div class="memory_quota_dialog" id="js_memory_quota_dialog" style="width: 615px;">
+  <h1>Review Service Specific Settings</h1>
+  <form
+    class="cluster_quota_settings"
+    mn-spinner="serversMemoryQuotaDialogCtl.viewLoading"
+    ng-submit="serversMemoryQuotaDialogCtl.onSubmit()">
+      <p style="padding: 20px;">
+      These service(s) are being added to the cluster for the first time:
+      <span ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index">Index</span><span ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.count > 1">,</span>
+      <span ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.fts">Full Text</span><br>
+      Please review and set the following service-specific settings. These values need to be set one time only: when you add more server nodes running these services into the cluster we will not ask you to review these values again.</p>
+      <div style="margin: 20px;">
+        <div
+          id="js_add_node_memory_quota_holder"
+          mn-memory-quota="serversMemoryQuotaDialogCtl.config"
+          rbac="rbac"
+          errors="serversMemoryQuotaDialogCtl.errors">
+        </div>
+        <div
+          ng-if="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index"
+          mn-storage-mode="serversMemoryQuotaDialogCtl.indexSettings"
+          is-disabled="!serversMemoryQuotaDialogCtl.isEnterprise || serversMemoryQuotaDialogCtl.initialIndexSettings.storageMode !== ''"
+          errors="serversMemoryQuotaDialogCtl.postIndexSettingsErrors">
+        </div>
+      </div>
+      <div class="save_cancel clearfix">
+        <button type="submit" class="save_button float_right">Set Quota</button>
+      </div>
+  </form>
+</div>

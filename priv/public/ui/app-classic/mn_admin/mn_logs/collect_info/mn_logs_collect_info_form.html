@@ -1,0 +1,123 @@
+<div
+  class="collect_information_dialog"
+  id="js_collect_info_start_new_view"
+  mn-spinner="logsCollectInfoCtl.viewLoading">
+  <form
+    id="js_collect_info_form"
+    ng-submit="logsCollectInfoCtl.submit()"
+    name="collectForm">
+    <div class="content">
+      <h2>Select Nodes</h2>
+      <p>Collect logs and diagnostic information from:</p>
+      <ul class="collect_from">
+        <li>
+          <input
+            type="radio"
+            name="from"
+            value="*"
+            ng-model="logsCollectInfoCtl.collect.from"
+            id="all_nodes_radio"
+            checked="checked">
+          <label for="all_nodes_radio">All nodes</label>
+        </li>
+        <li>
+          <input
+            type="radio"
+            name="from"
+            value=""
+            ng-model="logsCollectInfoCtl.collect.from"
+            id="selected_nodes_radio">
+          <label for="selected_nodes_radio">Selected nodes:</label>
+        </li>
+        <li>
+          <ul id="js_select_nodes_list_container" class="selected_nodes">
+            <li ng-repeat="node in logsCollectInfoCtl.state.nodes track by node.otpNode">
+              <input
+                type="checkbox"
+                name="js-selected-nodes"
+                ng-model="logsCollectInfoCtl.collect.nodes[node.otpNode]"
+                value="{{node.otpNode}}"
+                id="collected_node_list_{{node.otpNode | mnMakeSafeForCSS }}"
+                ng-checked="logsCollectInfoCtl.collect.from === '*'"
+                ng-disabled="node.status === 'unhealthy' || logsCollectInfoCtl.collect.from">
+              <label for="collected_node_list_{{node.otpNode | mnMakeSafeForCSS }}">{{ node.hostname | mnStripPortHTML:logsCollectInfoCtl.state.nodes }}</label>
+              <span class="icon {{'dynamic_' + node.status + ' dynamic_' + node.clusterMembership}}"></span>
+            </li>
+          </ul>
+          <div id="js_nodes_error" class="js_error_container" style="display:block"></div>
+        </li>
+      </ul>
+      <h2>Upload Options</h2>
+      <div class="for_upload" id="js_upload_conf">
+        <div
+          id="js_generalCollectInfo_error"
+          class="js_error_container"
+          style="display:block;margin:0 0 10px 0; line-height: 13px;"
+          ng-show="logsCollectInfoCtl.errors._">{{logsCollectInfoCtl.errors._}}</div>
+        <div>
+          <label for="js_upload_to_cb">Upload to Couchbase:</label>
+          <input
+            id="js_upload_to_cb"
+            name="upload"
+            ng-model="logsCollectInfoCtl.collect.upload"
+            value="true"
+            type="checkbox">
+          <div id="js_upload_error" class="js_error_container" ng-show="logsCollectInfoCtl.errors.upload">{{logsCollectInfoCtl.errors.upload}}</div>
+        </div>
+        <div>
+          <label for="js_uploadHost_input">Upload to host:</label>
+          <input
+            id="js_uploadHost_input"
+            name="uploadHost"
+            ng-model="logsCollectInfoCtl.collect.uploadHost"
+            type="text"
+            ng-disabled="!logsCollectInfoCtl.collect.upload"
+            required>
+          <div
+            id="js_uploadHost_error"
+            class="js_error_container"
+            ng-show="logsCollectInfoCtl.errors.uploadHost">{{logsCollectInfoCtl.errors.uploadHost}}</div>
+          <div
+            class="js_error_container"
+            ng-show="logsCollectInfoCtl.collect.upload && collectForm.uploadHost.$error.required">upload host field must be given if upload is selected</div>
+        </div>
+        <div>
+          <label for="js_customer_input">Customer name:</label>
+          <input
+            id="js_customer_input"
+            name="customer"
+            ng-model="logsCollectInfoCtl.collect.customer"
+            type="text"
+            ng-disabled="!logsCollectInfoCtl.collect.upload"
+            required>
+          <div
+            id="js_customer_error"
+            class="js_error_container"
+            ng-show="logsCollectInfoCtl.errors.customer">{{logsCollectInfoCtl.errors.customer}}</div>
+          <div
+            class="js_error_container"
+            ng-show="logsCollectInfoCtl.collect.upload && collectForm.customer.$error.required">customer field must be given if upload is selected</div>
+        </div>
+        <div>
+          <label for="js_ticket_input">Ticket Number (optional):</label>
+          <input
+            id="js_ticket_input"
+            name="ticket"
+            ng-model="logsCollectInfoCtl.collect.ticket"
+            type="text"
+            ng-disabled="!logsCollectInfoCtl.collect.upload">
+          <div
+            id="js_ticket_error"
+            class="js_error_container"
+            ng-show="logsCollectInfoCtl.errors.ticket">{{logsCollectInfoCtl.errors.ticket}}</div>
+        </div>
+      </div>
+    </div>
+    <div class="save_cancel">
+      <button
+        class="save_button float_right js_save_button"
+        type="submit"
+        ng-disabled="logsCollectInfoCtl.collect.nodes.length">Collect</button>
+    </div>
+  </form>
+</div>

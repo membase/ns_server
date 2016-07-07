@@ -1,0 +1,24 @@
+<div class="doc_header" style="margin-top:-50px;">
+  <div class="items_per_list_wrap">
+    <ui-select ng-model="documentsControlCtl.state.pageLimits.selected" theme="selectize" on-select="documentsControlCtl.onSelectPageLimits($item)" style="width: 80px; display: inline-block; vertical-align: middle;">
+      <ui-select-match>{{$select.selected}}</ui-select-match>
+      <ui-select-choices repeat="name in documentsControlCtl.state.pageLimits | filter: $select.search">
+        <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
+      </ui-select-choices>
+    </ui-select>
+  </div>
+  <div class="ic_prev_next">
+    <a class="arr_prev" ng-class="{dynamic_disabled: documentsControlCtl.isPrevDisabled()}" ng-click="!documentsControlCtl.isPrevDisabled() && documentsControlCtl.prevPage()"></a>
+    <a class="arr_next" ng-class="{dynamic_disabled: documentsControlCtl.isNextDisabled()}" ng-click="!documentsControlCtl.isNextDisabled() && documentsControlCtl.nextPage()"></a>
+  </div>
+  <div class="docs_info">
+    Current page: <span class="docs_crnt_pg">{{documentsControlCtl.state.pageNumber + 1}}</span>
+  </div>
+</div>
+
+<ui-view></ui-view>
+
+<div class="ic_prev_next bottom" style="margin-top: 0;">
+  <a class="arr_prev" ng-class="{dynamic_disabled: documentsControlCtl.isPrevDisabled()}" ng-click="!documentsControlCtl.isPrevDisabled() && documentsControlCtl.prevPage()"></a>
+  <a class="arr_next" ng-class="{dynamic_disabled: documentsControlCtl.isNextDisabled()}" ng-click="!documentsControlCtl.isNextDisabled() && documentsControlCtl.nextPage()"></a>
+</div>

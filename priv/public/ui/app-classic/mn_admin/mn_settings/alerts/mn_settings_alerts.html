@@ -1,0 +1,117 @@
+<div class="email_alerts" mn-spinner="settingsAlertsCtl.viewLoading || !settingsAlertsCtl.state">
+  <form ng-submit="settingsAlertsCtl.submit()">
+    <h2>Email Alerts</h2>
+    <div class="sub_section">
+      <label class="for-enable-replicas">
+        <input
+          type="checkbox"
+          id="email_alerts_enabled"
+          ng-disabled="!rbac.cluster.settings.write"
+          ng-model="settingsAlertsCtl.state.enabled"
+          class="casper_settings_alerts_errors">
+        <span>Enable email alerts</span>
+      </label>
+    </div>
+    <h3>Email Server Settings</h3>
+    <div class="sub_section fields">
+      <div class="row">
+        <label for="email_alerts_host">Host:</label>
+        <input
+          type="text"
+          id="email_alerts_host"
+          ng-model="settingsAlertsCtl.state.emailServer.host"
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
+        <label for="email_alerts_port" style="text-align: right;">Port:</label>
+        <input
+          type="text"
+          id="email_alerts_port"
+          ng-model="settingsAlertsCtl.state.emailServer.port"
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
+        <div
+          class="error-container err-email_port"
+          ng-if="settingsAlertsCtl.errors.email_port">
+            {{settingsAlertsCtl.errors.email_port}}
+        </div>
+      </div>
+      <div class="row">
+        <label for="email_alerts_user">Username:</label>
+        <input
+          type="text"
+          id="email_alerts_user"
+          ng-model="settingsAlertsCtl.state.emailServer.user"
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
+      </div>
+      <div class="row">
+        <label for="email_alerts_pass">Password:</label>
+        <input
+          type="password"
+          id="email_alerts_pass"
+          ng-model="settingsAlertsCtl.state.emailServer.pass"
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write"
+          mn-autocomplete-off>
+      </div>
+      <div class="row">
+        <label for="email_alerts_encrypt">Require TLS:</label>
+        <input
+          type="checkbox"
+          id="email_alerts_encrypt"
+          ng-model="settingsAlertsCtl.state.emailServer.encrypt"
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
+      </div>
+    </div>
+    <h3>Email Settings</h3>
+    <div class="sub_section fields">
+      <div class="row">
+        <label for="email_alerts_sender">Sender email:</label>
+        <input
+          type="text"
+          id="email_alerts_sender"
+          ng-model="settingsAlertsCtl.state.sender"
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
+        <div
+          class="error-container err-sender"
+          ng-if="settingsAlertsCtl.errors.sender">
+            {{settingsAlertsCtl.errors.sender}}
+        </div>
+      </div>
+      <div class="row">
+        <label for="email_alerts_sender" style="vertical-align:top;">Recipients:</label>
+        <textarea
+          id="email_alerts_recipients"
+          ng-disabled="!settingsAlertsCtl.state.enabled || !rbac.cluster.settings.write"
+          ng-model="settingsAlertsCtl.state.recipients"></textarea>
+        <span style="vertical-align:top;margin:0 5px;line-height:24px">separate addresses with comma "," or spaces " "</span>
+        <div
+          class="error-container err-recipients"
+          ng-if="settingsAlertsCtl.errors.recipients">
+            {{settingsAlertsCtl.errors.recipients}}
+        </div>
+        <div
+          class="when-roadmin-avoid-me">
+          <button
+            type="button"
+            ng-disabled="!settingsAlertsCtl.state.enabled || !rbac.cluster.settings.write"
+            class="edit_btn"
+            id="test_email"
+            ng-click="settingsAlertsCtl.testEmail()">Test Mail</button>
+          <span>using the settings above</span>
+        </div>
+      </div>
+    </div>
+    <h3>Available Alerts</h3>
+    <div class="sub_section checkboxes" id="email_alerts_alerts">
+      <label ng-repeat="alert in settingsAlertsCtl.state.knownAlerts">
+        <input
+          type="checkbox"
+          ng-model="settingsAlertsCtl.state.alerts[alert]"
+          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
+        <span>{{alert | alertsLabel}}</span>
+      </label>
+    </div>
+    <div class="save_cancel when-roadmin-hide-me">
+      <button class="save_button float_right" ng-show="rbac.cluster.settings.write" ng-disabled="settingsAlertsCtl.errors" type="submit">
+        Save
+      </button>
+    </div>
+  </form>
+</div>

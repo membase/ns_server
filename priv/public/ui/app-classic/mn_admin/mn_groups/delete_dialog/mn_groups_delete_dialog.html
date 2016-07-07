@@ -1,0 +1,14 @@
+<div class="dialog casper_remove_group_dialog" id="js_remove_group_dialog">
+  <h1>Removing Server Group</h1>
+  <form ng-submit="groupsDeleteDialogCtl.onSubmit()" mn-spinner="groupsDeleteDialogCtl.viewLoading">
+    <div class="clearfix">
+      <div class="err">
+        <p>Are you sure you want to remove the Server group?</p>
+      </div>
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="delete_button float_right js_delete_button">Delete</button>
+      <a class="close casper_close_remove_group_dialog" ng-click="$dismiss()">Cancel</a>
+    </div>
+  </form>
+</div>

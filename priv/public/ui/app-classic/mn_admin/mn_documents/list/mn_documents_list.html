@@ -1,0 +1,86 @@
+<div id="documents_list">
+  <div class="warning_message documents_notice" ng-show="documentsControlCtl.state.docs.errors[0]">
+    Error: {{documentsControlCtl.state.docs.errors[0].reason}} ({{documentsControlCtl.state.docs.errors[0].error }})
+  </div>
+  <div class="shadow_box">
+    <div class="header_2 servers_header">
+      <div class="docs_title">
+        <div class="filter_container">
+          <h2>Documents Filter</h2>
+          <div
+            mn-filter="documentsListCtl.filterInitParams"
+            items="documentsListCtl.filterItems"
+            disabled="documentsControlCtl.isEmptyState()"
+            on-close="documentsListCtl.onFilterClose(params)"
+            on-reset="documentsListCtl.onFilterReset()"
+            ></div>
+        </div>
+      </div>
+      <div class="editing_ctrls">
+        <form id="search_doc" ng-submit="!documentsControlCtl.isEmptyState() && documentsListCtl.lookupSubmit()">
+          <input
+            type="text"
+            id="docs_lookup_doc_by_id"
+            placeholder="Document ID"
+            ng-model="documentsListCtl.lookupId"
+            ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">
+          <button
+            type="submit"
+            class="btn_1"
+            ng-class="{dynamic_disabled: documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read}"
+            id="docs_lookup_doc_by_id_btn">
+            <span>Lookup Id</span>
+          </button>
+        </form>
+        <a
+          class="btn_1 btn_create when-roadmin-avoid-me"
+          ng-class="{dynamic_disabled: documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write}"
+          ng-click="(!documentsControlCtl.isEmptyState() && rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write) && documentsListCtl.showCreateDialog()">
+            <span>Create Document</span>
+        </a>
+        <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
+      </div>
+    </div>
+
+    <div id="documents_list_container" mn-spinner="!documentsControlCtl.state || documentsControlCtl.viewLoading">
+      <table class="list" style="width:100%">
+        <thead>
+          <tr>
+            <th class="keycol">ID</th>
+            <th>&#160;</th>
+            <th>Content</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+            <th>&#160;</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="align_text" ng-repeat="r in documentsControlCtl.state.docs.rows" ng-show="documentsControlCtl.state.docs.rows.length">
+            <td class="key ellipsis" colspan="2">
+              <a ui-sref="app.admin.documents.editing({documentId: r.id})">{{ r.id }}</a>
+            </td>
+            <td class="code ellipsis" colspan="5">
+                <code class="object">{{r.doc.json || r.doc.base64 | mnLimitTo: 200}}</code>
+            </td>
+            <td colspan="3">
+              <button class="list_button delete_btn when-roadmin-avoid-me" ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write" ng-click="documentsListCtl.deleteDocument(r.id)"><span>Delete</span></button>
+              <a class="list_button btn_edit" ui-sref="app.admin.documents.editing({documentId: r.id})">
+                <span ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">Edit Document</span>
+                <span ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read && !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">View Document</span>
+              </a>
+            </td>
+          </tr>
+          <tr ng-if="!documentsControlCtl.state.docs.rows.length">
+            <td colspan="9" class="empty_docs">
+              There are currently no documents in this bucket {{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,14 @@
+<div class="pad" id="init_welcome_dialog">
+  <div class="pad-header">
+    <img class="logo" src="/images/couchbase_logo_vertical.svg" height="152" width="275" alt="Couchbase logo">
+  </div>
+  <div id="init_welcome_form" class="clearfix">
+    <div class="version">{{wizardWelcomeCtl.implementationVersion | mnPrettyVersion}}</div>
+    <button mn-focus class="setup" data-ui-sref="app.wizard.step1">Setup</button>
+  </div>
+  <div class="welcome-footer">
+    Copyright &copy; 2016 Couchbase, Inc. All Rights Reserved
+    <a href="http://www.couchbase.com/contact" id="welcome-footer-contact" target="_blank" tabindex="2">Contact</a>
+    <a ng-click="wizardWelcomeCtl.showAboutDialog()" tabindex="3">About</a>
+  </div>
+</div>

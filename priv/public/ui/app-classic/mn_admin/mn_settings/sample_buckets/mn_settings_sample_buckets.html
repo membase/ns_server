@@ -1,0 +1,58 @@
+<div id="sample_buckets_container">
+  <form
+    id="sample_buckets_form"
+    ng-submit="settingsSampleBucketsCtl.installSampleBuckets()"
+    mn-spinner="!settingsSampleBucketsCtl.state || settingsSampleBucketsCtl.viewLoading">
+    <h2>Sample Buckets</h2>
+    <div class="sub_section">
+      <div ng-messages="settingsSampleBucketsCtl.state.warnings" ng-message-multiple>
+        <p ng-message="quota" class="warning_message">Your cluster does not have enough RAM quota available to create the selected sample data buckets. Please free at least {{settingsSampleBucketsCtl.state.warnings.quota}}MB of RAM Quota per node</p>
+        <p ng-message="rebalance" class="warning_message">Can not load samples during rebalance.</p>
+        <p ng-message="maxBucketCount" class="warning_message">Maximum number of buckets has been reached. For optimal performance, no more than {{settingsSampleBucketsCtl.state.warnings.maxBucketCount}} buckets are allowed.</p>
+      </div>
+      <p>
+        Sample buckets contain example data and Couchbase views. You can provision one or more sample buckets to help you discover the power of Couchbase Server.
+      </p>
+      <p style="color:#ec5223;">
+        Sample buckets can be accessed without a password! They are only recommended for non-production environments.
+      </p>
+    </div>
+    <h3>Installed Samples</h3>
+    <div class="sub_section">
+      <ul id="installed_samples">
+        <li ng-repeat="bucket in settingsSampleBucketsCtl.state.installed">
+          {{bucket.name}}
+        </li>
+        <li ng-if="!settingsSampleBucketsCtl.state.installed.length">
+          There are no samples available to install.
+        </li>
+      </ul>
+    </div>
+    <h3>Available Samples</h3>
+    <div class="sub_section">
+      <ul id="available_samples" class="casper_settings_sample_warnign">
+        <li ng-repeat="bucket in settingsSampleBucketsCtl.state.available">
+          <input
+            type="checkbox"
+            ng-false-value="0"
+            ng-true-value="{{bucket.quotaNeeded}}"
+            id="setup-sample-{{bucket.name}}"
+            ng-disabled="!rbac.cluster.buckets.create"
+            ng-model="settingsSampleBucketsCtl.selected[bucket.name]">
+          <label for="setup-sample-{{bucket.name}}">{{bucket.name}}</label>
+        </li>
+        <li ng-if="!settingsSampleBucketsCtl.state.available.length">
+          There are no samples available to install.
+        </li>
+      </ul>
+    </div>
+    <div class="save_cancel when-roadmin-hide-me">
+      <button
+        class="save_button float_right"
+        type="submit"
+        ng-show="rbac.cluster.buckets.create"
+        id="sample_buckets_settings_btn"
+        ng-disabled="settingsSampleBucketsCtl.isCreateButtonDisabled() && !settingsSampleBucketsCtl.state.available.length">Create</button>
+    </div>
+  </form>
+</div>

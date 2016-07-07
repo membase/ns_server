@@ -1,0 +1,117 @@
+<div id="container">
+  <div mn-launchpad launchpad-source="adminCtl.launchpadSource" launchpad-id="adminCtl.launchpadId"></div>
+  <div ui-view="lostConnection"></div>
+  <div class="page-header">
+    <div class="cnt_holder main_holder">
+      <div class="topper_nav">
+        <span class="only-when-below-20" style="display:none;">
+          NOTE: need all 2.0 nodes to enable 2.0-only features<b>&bull;</b>
+        </span>
+        <span
+          id="edit-internal-settings-link"
+          class="when-roadmin-avoid-me"
+          ng-show="adminCtl.enableInternalSettings && (rbac.cluster.settings.read || rbac.cluster.xdcr.settings.read)">
+          <a ng-click="adminCtl.runInternalSettingsDialog();">Edit internal settings</a> <b>&bull;</b>
+        </span>
+        <a href="http://docs.couchbase.com/4.5" target="cbdocs">
+          Documentation
+        </a>
+        <b>&bull;</b>
+        <a href="{{adminCtl.poolDefault.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
+          Support
+        </a>
+        <b>&bull;</b>
+        <a ng-click="adminCtl.showAboutDialog()">
+          About
+        </a>
+        <i class="sign-out-link"><b>&bull;</b> <a ng-click="adminCtl.logout()">Sign Out</a></i>
+      </div>
+      <a href="/index.html" class="logo_wrap">
+        <img src="/images/logo.svg" width="140" height="32">
+      </a>
+      <div class="tab_name ellipsis" id="js_tab_name" title="{{adminCtl.tabName}}" ng-show="adminCtl.tabName">
+        - {{adminCtl.tabName}}
+      </div>
+      <div class="cluster_edition">
+        <span ng-show="adminCtl.poolDefault.isEnterprise">
+          Enterprise Edition
+        </span>
+        <span ng-show="!adminCtl.poolDefault.isEnterprise">
+          Community Edition
+        </span>
+      </div>
+      <div
+        id="global_progress"
+        ng-class="{
+          'disable_toggle': !adminCtl.areThereMoreThenTwoRunningTasks(),
+          'closed': adminCtl.isProgressBarClosed
+        }"
+        class="closed"
+        ng-show="rbac.cluster.tasks.read && adminCtl.filterTasks(adminCtl.tasks.running).length">
+          <i
+            class="toggle"
+            ng-click="adminCtl.areThereMoreThenTwoRunningTasks() && adminCtl.toggleProgressBar()">i</i>
+          <ul id="global_progress_container">
+            <li ng-repeat="task in adminCtl.filterTasks(adminCtl.tasks.running)" class="clearfix">
+              <div class="usage_smallest" ng-show="task.type !== 'loadingSampleBucket' && task.type !== 'orphanBucket'">
+                <div class="used" style="width: {{task.progress}}%"></div>
+              </div>
+              <span class="message">{{task | formatProgressMessage}}</span>
+            </li>
+          </ul>
+      </div>
+    </div>
+  </div>
+  <div id="headerNav">
+    <div class="contents">
+      <ul mn-pluggable-ui-tabs mn-tab-bar-name="adminTab">
+        <li mn-tab="overview" class="line" ui-sref-active="currentNav">
+          <a ui-sref="app.admin.overview">Overview</a>
+        </li>
+        <li mn-tab="servers" class="line" ui-sref-active="currentNav">
+          <a class="switch_servers" ui-sref="app.admin.servers.list">Server Nodes</a>
+        </li>
+        <li mn-tab="buckets" class="line" ui-sref-active="currentNav">
+          <a class="switch_buckets" ui-sref="app.admin.buckets">Data Buckets</a>
+        </li>
+        <li mn-tab="indexes" class="line" ng-class="{currentNav: ('app.admin.indexes' | includedByState)}">
+          <a class="switch_views" ui-sref="app.admin.indexes.gsi" ng-show="rbac.cluster.indexes.read">Indexes</a>
+          <a class="switch_views" ui-sref="app.admin.indexes.views.list" ng-show="rbac.cluster.indexes.read === false">Indexes</a>
+        </li>
+        <li mn-tab="replications" class="line" ui-sref-active="currentNav">
+          <a class="switch_replications" ui-sref="app.admin.replications">XDCR</a>
+        </li>
+        <li mn-tab="security" class="line" ng-class="{currentNav: ('app.admin.security' | includedByState)}" ng-show="rbac.cluster.admin.security.read && (pools.isEnterprise || rbac.cluster.admin.security.write)">
+          <a
+            class="switch_security"
+            ui-sref="app.admin.security.externalRoles"
+            ng-show="pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45">Security</a>
+          <a
+            class="switch_security"
+            ui-sref="app.admin.security.internalRoles"
+            ng-show="!(pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.write">Security</a>
+          <a
+            class="switch_security"
+            ui-sref="app.admin.security.rootCertificate"
+            ng-show="pools.isEnterprise && !(adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.write === false">Security</a>
+        </li>
+        <li mn-tab="logs" class="line" ng-class="{currentNav: ('app.admin.logs' | includedByState)}" ng-show="rbac.cluster.logs.read">
+          <a class="switch_log" ui-sref="app.admin.logs.list">Log</a>
+        </li>
+        <li mn-tab="settings" id="nav_settings_container" class="line" ng-class="{currentNav: ('app.admin.settings' | includedByState)}">
+          <a href="#?section=settings" ui-sref="app.admin.settings.cluster" class="switch_settings">Settings
+            <span ng-show="adminCtl.updates.sendStats && !!adminCtl.updates.newVersion" class="badge notify"><span>!</span></span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div id="mainContainer" class="main_holder">
+    <div id="mainPanel" class="mainPanel" ui-view autoscroll="false"></div>
+  </div>
+  <div class="page-footer">
+    <div class="main_holder">
+      <h1>Copyright &copy; 2016 <a href="http://couchbase.com" target="_blank">Couchbase, Inc.</a> All rights reserved.</h1>
+    </div>
+  </div>
+</div>

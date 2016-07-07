@@ -1,0 +1,106 @@
+<div
+  id="js_cluster_settings_container"
+  class="cluster_settings_container"
+  mn-spinner="settingsClusterCtl.clusterName === undefined || !settingsClusterCtl.memoryQuotaConfig || (rbac.cluster.indexes.read && poolDefault.compat.atLeast40 && !settingsClusterCtl.indexSettings) || (poolDefault.value.isEnterprise && !settingsClusterCtl.certificate) || settingsClusterCtl.memoryQuotaLoading || settingsClusterCtl.indexSettingsLoading">
+  <form
+    id="js_cluster_public_settings_form"
+    class="cluster_settings_form"
+    ng-submit="settingsClusterCtl.saveVisualInternalSettings()">
+    <h2>
+      Configure Cluster
+    </h2>
+    <div class="sub_section">
+      <label>Cluster Name:</label>
+      <input
+        type="text"
+        name="clusterName"
+        maxlength="256"
+        ng-model="settingsClusterCtl.clusterName"
+        ng-disabled="!rbac.cluster.pools.write">
+      <span>(0 — 256 chars)</span>
+    </div>
+    <h2>Cluster RAM Quota</h2>
+    <div
+      rbac="rbac"
+      class="sub_section cluster_quota_settings"
+      mn-memory-quota="settingsClusterCtl.memoryQuotaConfig"
+      errors="settingsClusterCtl.memoryQuotaErrors"></div>
+    <h2 class="only-when-40" ng-show="poolDefault.compat.atLeast40 && rbac.cluster.indexes.read">Index Settings</h2>
+    <div class="sub_section index_settings_section js_index_settings_section only-when-40" ng-show="poolDefault.compat.atLeast40 && rbac.cluster.indexes.read">
+      <div
+        mn-storage-mode="settingsClusterCtl.indexSettings"
+        is-disabled="!adminCtl.poolDefault.isEnterprise || !rbac.cluster.indexes.write"
+        no-label="true"
+        errors="settingsClusterCtl.indexSettingsErrors"></div>
+      <a ng-click="settingsClusterCtl.showAdvancedSettings = !settingsClusterCtl.showAdvancedSettings">{{ settingsClusterCtl.showAdvancedSettings ? 'Hide': 'Show' }} Advanced Index Settings</a>
+      <div ng-show="settingsClusterCtl.showAdvancedSettings">
+        <div class="row">
+          <label for="index_settings_thread">Indexer Threads:</label>
+          <input
+            type="number" min="0"
+            ng-model="settingsClusterCtl.indexSettings.indexerThreads"
+            name="indexerThreads"
+            ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
+            id="index_settings_thread">
+          <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
+            <span class="tooltip_msg text_11" style="width:310px;"><span>
+              Number of dedicated threads the indexer uses. On multi-core machines increasing this number will increase the indexer's CPU utilization. Defaults to 0 which instructs the indexer to use all available machine cores.
+            </span></span>
+          </a>
+          <span
+            class="error-container err-indexerThreads"
+            ng-show="settingsClusterCtl.indexSettingsErrors.indexerThreads">
+              {{settingsClusterCtl.indexSettingsErrors.indexerThreads}}
+          </span>
+        </div>
+        <div class="row">
+          <label for="in_memory_snapshot">Max Rollback Points:</label>
+          <input
+            type="number" min="0"
+            ng-model="settingsClusterCtl.indexSettings.maxRollbackPoints"
+            name="maxRollbackPoints"
+            ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
+            id="in_memory_snapshot">
+          <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
+            <span class="tooltip_msg text_11" style="width:310px;"><span>
+              The maximum number of committed rollback points.
+            </span></span>
+          </a>
+          <span
+            class="error-container err-maxRollbackPoints"
+            ng-show="settingsClusterCtl.indexSettingsErrors.maxRollbackPoints">
+              {{settingsClusterCtl.indexSettingsErrors.maxRollbackPoints}}
+          </span>
+        </div>
+        <div class="row">
+          <label for="indexer_log_level">Indexer Log Level:</label>
+          <select
+            ng-model="settingsClusterCtl.indexSettings.logLevel"
+            name="logLevel"
+            ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
+            id="indexer_log_level">
+            <option value="silent">Silent</option>
+            <option value="fatal">Fatal</option>
+            <option value="error">Error</option>
+            <option value="warn">Warn</option>
+            <option value="info">Info</option>
+            <option value="verbose">Verbose</option>
+            <option value="timing">Timing</option>
+            <option value="debug">Debug</option>
+            <option value="trace">Trace</option>
+          </select>
+          <span
+            class="error-container err-logLevel"
+            ng-show="settingsClusterCtl.indexSettingsErrors.logLevel">
+              {{settingsClusterCtl.indexSettingsErrors.logLevel}}
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="save_cancel when-roadmin-hide-me">
+      <button class="save_button float_right" type="submit" ng-show="rbac.cluster.pools.write || rbac.cluster.indexes.write" ng-disabled="!!settingsClusterCtl.indexSettingsErrors || !!settingsClusterCtl.memoryQuotaErrors">
+        Save
+      </button>
+    </div>
+  </form>
+</div>

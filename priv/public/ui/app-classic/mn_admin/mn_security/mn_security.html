@@ -1,0 +1,40 @@
+<div id="js_security" class="security">
+  <ul class="second-level-nav" mn-pluggable-ui-tabs mn-tab-bar-name="securityTab">
+    <li ng-show="securityCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read && pools.isEnterprise">
+      <a
+        ui-sref="app.admin.security.externalRoles"
+        ui-sref-active="selected">External User/Roles</a>
+    </li>
+    <li ng-show="rbac.cluster.admin.security.read && rbac.cluster.admin.security.write">
+      <a
+        id="internal_roles"
+        class="casper_internal_roles"
+        ui-sref="app.admin.security.internalRoles"
+        ui-sref-active="selected">Internal User/Roles</a>
+    </li>
+    <li ng-show="pools.isEnterprise">
+      <a
+        ui-sref="app.admin.security.rootCertificate"
+        ui-sref-active="selected">Root Certificate</a>
+    </li>
+    <li
+      ng-show="rbac.cluster.admin.security.read && poolDefault.compat.atLeast40 && pools.isEnterprise"
+      class="when-enterprise only-when-40">
+      <a
+        id="security_audit"
+        class="casper_security_audit"
+        ui-sref="app.admin.security.audit"
+        ui-sref-active="selected">Audit</a>
+    </li>
+    <li
+      class="when-enterprise only-when-40 only-when_ldap_enabled"
+      ng-show="pools.isEnterprise && securityCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast40 && !poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read">
+        <a
+          id="ldap_setup"
+          ui-sref="app.admin.security.ldap"
+          ui-sref-active="selected">LDAP Auth Setup</a>
+    </li>
+  </ul>
+  <div ui-view="">
+  </div>
+</div>

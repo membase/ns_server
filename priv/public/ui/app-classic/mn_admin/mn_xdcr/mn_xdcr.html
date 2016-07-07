@@ -1,0 +1,130 @@
+<div id="js_replications" class="replications">
+  <h1>Replications</h1>
+  <div id="cluster_references" class="shadow_box" ng-show="rbac.cluster.xdcr.remote_clusters.read">
+    <div class="darker_block js_darker_block" style="font-size:13px;">
+      <h3 class="js_block-expander block-expander">
+        <ins></ins><span class="view_head">Remote Clusters</span>
+        <span class="buttons">
+          <a
+            class="btn_1 when-roadmin-hide-me"
+            id="create_cluster_reference"
+            ng-show="rbac.cluster.xdcr.remote_clusters.write"
+            ng-click="xdcrCtl.createClusterReference()">
+            <span>Create Cluster Reference</span>
+          </a>
+        </span>
+      </h3>
+
+      <div class="stats" id="cluster_reference_list_container" mn-spinner="!xdcrCtl.references" min-height="66px">
+        <table class="list casper_remout_cluster_container" style="width:100%">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>IP/hostname</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody ng-if="xdcrCtl.references.filtered.length" ng-repeat="row in xdcrCtl.references.filtered | orderBy:'name' track by row.name">
+            <tr>
+              <td>{{row.name}}</td>
+              <td>
+                <a href="{{ window.location.protocol + '//' + row.hostname + '/index.html#/analytics/?statsHostname=' + (row.hostname | encodeURIComponent) }}" target="blank">{{row.hostname}}</a>
+              </td>
+              <td>
+                <a
+                  class="list_button delete-button when-roadmin-avoid-me"
+                  ng-show="rbac.cluster.xdcr.remote_clusters.write"
+                  ng-click="xdcrCtl.deleteClusterReference(row)"><span>Delete</span></a>
+                <a
+                  class="list_button edit-button when-roadmin-avoid-me"
+                  ng-show="rbac.cluster.xdcr.remote_clusters.write"
+                  ng-click="xdcrCtl.editClusterReference(row)"><span>Edit</span></a>
+              </td>
+            </tr>
+          </tbody>
+          <tbody ng-if="!xdcrCtl.references.filtered.length">
+            <tr><td colspan="3" style="text-align:center">No cluster references defined. <span class="when-roadmin-avoid-me">Please create one.</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ongoing Replications -->
+  <div id="ongoing_replications" class="shadow_box" ng-show="rbac.cluster.tasks.read">
+    <div class="darker_block" style="font-size:13px;">
+      <h3>
+        <span class="view_head" style="padding-left: 0;padding-bottom: 7px;">Ongoing Replications</span>
+        <span class="buttons">
+          <a
+            ng-show="xdcrCtl.references.filtered.length" class="btn_1 when-roadmin-hide-me" id="create_replication" ng-click="xdcrCtl.createReplications()">
+            <span>Create Replication</span>
+          </a>
+        </span>
+      </h3>
+
+      <div class="stats ongoing_replications_list" id="ongoing_replications_list_container" mn-spinner="!adminCtl.tasks" min-height="66px">
+        <table class="list" style="width:100%">
+          <colgroup>
+            <col class="bucket">
+            <col class="protocol">
+            <col class="from">
+            <col class="to">
+            <col class="filter when-enterprise" ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise">
+            <col class="status">
+            <col class="when">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Bucket</th>
+              <th>Protocol</th>
+              <th>From</th>
+              <th>To</th>
+              <th class="when-enterprise" ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise">Filtered</th>
+              <th>Status</th>
+              <th>When</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody ng-if="adminCtl.tasks.tasksXDCR.length" ng-repeat="row in adminCtl.tasks.tasksXDCR track by row.id">
+            <tr class="row">
+              <td>{{row.source}}</td>
+              <td>{{"Version " + (row.replicationType === "xmem" ? "2" : row.replicationType === "capi" ? "1" : "unknown")}}</td>
+              <td style="color:#777">this cluster</td>
+              <td>{{xdcrCtl.to(row)}}</td>
+              <td class="when-enterprise" ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise">
+                <span ng-show="row.filterExpression">
+                  <a class="tooltip text_11"><span>Yes</span>
+                    <span class="tooltip_msg break-word" style="width:200px;"><span>
+                      {{row.filterExpression }}
+                    </span></span>
+                  </a>
+                </span>
+                <span ng-show="!row.filterExpression">No</span>
+              </td>
+              <td class="replication_status_cell">
+                <span>{{xdcrCtl.humanStatus(row)}}</span>
+                <span ng-show="xdcrCtl.status(row) !== 'notRunning' && poolDefault.compat.atLeast30 && rbac.cluster.bucket['*'].xdcr.write && rbac.cluster.bucket['*'].xdcr.execute" class="only-when-30 js_replication_control replication_control dynamic_{{xdcrCtl.status(row)}}" ng-click="xdcrCtl.status(row) !== 'spinner' && xdcrCtl.pausePlayReplication(row)"></span>
+                <a ng-show="row.errors.length" ng-click="xdcrCtl.showReplicationErrors(row)">Last {{row.errors.length | mnCount:'error'}}</a>
+              </td>
+              <td>{{row.when}}</td>
+              <td>
+                <a
+                  class="list_button when-roadmin-avoid-me"
+                  ng-show="rbac.cluster.bucket['*'].xdcr.write"
+                  ng-click="xdcrCtl.deleteReplication(row)"><span>Delete</span></a>
+                <span
+                  class="list_button when-roadmin-avoid-me js_per_xdcr_settings"
+                  ng-show="rbac.cluster.bucket['*'].xdcr.read && rbac.cluster.xdcr.settings.read"
+                  ng-click="xdcrCtl.editReplication(row)"><span>Edit</span></span>
+              </td>
+            </tr>
+          </tbody>
+          <tbody ng-if="!adminCtl.tasks.tasksXDCR.length">
+            <tr><td colspan="8" style="text-align:center">There are no replications currently in progress.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,47 @@
+<div style="width: 330px;">
+  <h1><span class="ellipsis" style="display: block;">Manage User: {{externalRolesAddDialogCtl.userID}}</span></h1>
+  <form ng-submit="externalRolesAddDialogCtl.save()" mn-spinner="externalRolesAddDialogCtl.viewLoading" class="add_user_role">
+    <div class="content">
+      <div class="warning" ng-show="externalRolesAddDialogCtl.errors">
+        {{externalRolesAddDialogCtl.errors}}
+      </div>
+      <div>
+        <label class="label" for="name_inp">Username:</label>
+        <input
+          type="text"
+          class="inp"
+          name="name"
+          id="name_inp"
+          ng-model="externalRolesAddDialogCtl.user.id">
+      </div>
+      <div>
+        <label class="label" for="name_full_inp">Full Name (optional)</label>
+        <input
+          type="text"
+          class="inp"
+          name="fullName"
+          id="name_full_inp"
+          ng-model="externalRolesAddDialogCtl.user.name">
+      </div>
+      <div>
+        <label class="label" for="user_inp">Role(s)</label>
+        <ui-select
+          on-select="externalRolesAddDialogCtl.onSelect($select)"
+          multiple
+          style="width:298px;"
+          ng-if="externalRolesAddDialogCtl.roles"
+          ng-model="externalRolesAddDialogCtl.roles.selected"
+          >
+            <ui-select-match placeholder="choose single or multiple roles">{{$item.name}}<span ng-show="$item.bucket_name">[{{$item.bucket_name}}]</span></ui-select-match>
+            <ui-select-choices repeat="role in externalRolesAddDialogCtl.roles | filter: $select.search">
+              <span class="select-item ellipsis" ng-bind-html="(role.name + (role.bucket_name ? '[' + role.bucket_name + ']' : '')) | highlight: $select.search"></span>
+            </ui-select-choices>
+        </ui-select>
+      </div>
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="save_button float_right">Save</button>
+      <a class="casper_close_join_cluster_dialog close" ng-click="$dismiss()">Cancel</a>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,19 @@
+
+<div class="top-left" ng-if="config.topLeft" ng-style="config.topLeft.itemStyle">
+{{config.topLeft.name}} ({{config.topLeft.value | mnFormatMemSize}})
+</div>
+<div class="top-right" ng-if="config.topRight" ng-style="config.topRight.itemStyle">{{config.topRight.name}} ({{config.topRight.value | mnFormatMemSize}})</div>
+  <div class="usage">
+    <div ng-repeat="item in config.items" ng-style="item.itemStyle"></div>
+    <i ng-repeat="marker in config.markers" ng-style="marker.itemStyle"></i>
+  </div>
+  <table style="width:100%;">
+    <tbody>
+      <tr>
+        <td ng-repeat="tditem in config.tdItems" ng-style="tditem.labelStyle">
+          {{tditem.name}} ({{ tditem.value | mnFormatMemSize }})
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

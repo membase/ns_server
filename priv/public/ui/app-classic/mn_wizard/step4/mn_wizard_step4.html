@@ -1,0 +1,118 @@
+<div class="pad" id="init_update_notifications_dialog" mn-spinner="wizardStep4Ctl.viewLoading">
+  <form
+    name="wizardStep4Ctl.form"
+    novalidate
+    ng-submit="wizardStep4Ctl.onSubmit()">
+    <div class="config-top">
+      <h1>Notifications</h1>
+      <h2>Step <span class="current-step">4</span> of 5</h2>
+    </div>
+    <h2 class="question">Update Notifications</h2>
+    <p class="pad_10">
+      <label for="init-notifications-updates-enabled">
+        <input
+          type="checkbox"
+          id="init-notifications-updates-enabled"
+          ng-model="wizardStep4Ctl.sendStats" checked="checked">
+        <span>Enable software update notifications</span>
+      </label>
+      <a
+        class="more_info"
+        tabindex="-1"
+        ng-click="wizardStep4Ctl.showWhatThis = !wizardStep4Ctl.showWhatThis">What's this?</a>
+    </p>
+    <p
+      class="more_info pad_10"
+      ng-show="wizardStep4Ctl.showWhatThis">
+      Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
+    </p>
+    <div
+      class="when-community"
+      ng-show="!wizardStep4Ctl.isEnterprise">
+      <h2 class="question">Community Updates</h2>
+      <p class="pad_10">Please provide your email address to join the community and receive news on coming events.</p>
+    </div>
+    <div
+      class="when-enterprise"
+      ng-show="wizardStep4Ctl.isEnterprise">
+      <h2 class="question">Product Registration</h2>
+      <p class="pad_10 clearfix">Register your Enterprise Edition of Couchbase Server below.</p>
+    </div>
+    <div
+      class="pad_10 warn"
+      id="update_notifications_errors_container"
+      ng-show="wizardStep4Ctl.form.$invalid">
+      <span ng-show="wizardStep4Ctl.form.email.$error.email">Email appears to be invalid</span>
+      <span ng-show="wizardStep4Ctl.form.agree.$error.required">Terms and conditions need to be accepted in order to continue</span>
+      <span ng-show="wizardStep4Ctl.errors">{{errors}}</span>
+    </div>
+    <div class="subscribe_fields">
+      <p class="pad_10">
+        <label for="init-join-community-email">
+          <span class="field-label">Email:</span>
+          <input
+            id="init-join-community-email"
+            type="email"
+            name="email"
+            ng-model="wizardStep4Ctl.register.email">
+        </label>
+      </p>
+      <p class="pad_10">
+        <label for="init-join-community-firstname">
+          <span class="field-label">First name:</span>
+          <input
+            id="init-join-community-firstname"
+            ng-model="wizardStep4Ctl.register.firstname">
+          <span class="error-container err-firstname"></span>
+        </label>
+      </p>
+      <p class="pad_10">
+        <label for="init-join-community-lastname">
+          <span class="field-label">Last name:</span>
+          <input
+            id="init-join-community-lastname"
+            ng-model="wizardStep4Ctl.register.lastname">
+          <span class="error-container err-lastname"></span>
+        </label>
+      </p>
+      <p class="pad_10">
+        <label for="init-join-community-company">
+          <span class="field-label">Company:</span>
+          <input
+            id="init-join-community-company"
+            ng-model="wizardStep4Ctl.register.company">
+          <span class="error-container err-company"></span>
+        </label>
+      </p>
+      <p
+        class="when-enterprise pad_10"
+        ng-if="wizardStep4Ctl.isEnterprise">
+        <label for="init-join-terms">
+          <input
+            type="checkbox"
+            id="init-join-terms"
+            ng-model="wizardStep4Ctl.register.agree"
+            name="agree">
+          <span>I agree to the <a href="http://www.couchbase.com/agreement/free-license" target="_blank">terms and conditions</a> associated with this product. <span style="color:red">*</span></span>
+        </label>
+      </p>
+      <p class="pad_10">PLEASE NOTE: Running Couchbase Server Enterprise Edition in production environments requires a paid support subscription.</p>
+    </div>
+    <div class="config-bottom">
+      <button
+        name="next"
+        value="Next"
+        class="submit next direction-button"
+        id="step-3-next"
+        type="submit"
+        mn-focus>Next</button>
+      <button
+        name="back"
+        value="Back"
+        class="submit back direction-button"
+        id="step-3-back"
+        type="button"
+        ui-sref="app.wizard.step3">Back</button>
+    </div>
+  </form></div>
+  <!-- END init_update_notifications-->

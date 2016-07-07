@@ -1,0 +1,72 @@
+<div style="margin: 9px 0 15px 9px;">
+  <span style="display:inline-block;vertical-align: middle;width: 15px;height:15px;">
+    <span ng-show="externalRolesCtl.saslauthdAuth.enabled"><img src="/images/correct.svg" width="15" height="15"></span>
+    <span ng-show="!externalRolesCtl.saslauthdAuth.enabled"><img src="/images/ban.svg" width="15" height="15"></span>
+  </span>
+  <span style="vertical-align: middle; color:#333;">Authentication <span ng-show="externalRolesCtl.saslauthdAuth"><span ng-show="!externalRolesCtl.saslauthdAuth.enabled">Not</span> Enabled</span></span>
+  <a style="vertical-align: middle; margin-left: 10px;" ng-show="!externalRolesCtl.saslauthdAuthLoading" ng-click="externalRolesCtl.toggleSaslauthdAuth()">
+    <span ng-show="!externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">enable</span>
+    <span ng-show="externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">disable</span>
+  </a>
+</div>
+<div class="shadow_box">
+  <div class="header_2">
+    <div class="right" style="overflow:hidden;">
+      <a
+        class="btn_1 create-bucket-button casper_buckets_new_data_bucket"
+        style="float:right;"
+        ng-show="rbac.cluster.admin.security.write"
+        ng-click="externalRolesCtl.addUser()">
+          <span>Add User</span>
+      </a>
+      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
+    </div>
+  </div>
+  <table class="list" width="100%" mn-spinner="!externalRolesCtl.state || externalRolesCtl.viewLoading" mn-sortable-table="name">
+    <colgroup>
+      <col style="width:20%;">
+      <col style="width:25%;">
+      <col style="width:40%;">
+      <col style="width:15%;">
+    </colgroup>
+    <tr>
+      <th mn-sortable-title="id">Username</th>
+      <th mn-sortable-title="name">Full Name</th>
+      <th mn-sortable-title="roles">Roles</th>
+      <th></th>
+    </tr>
+    <tbody>
+      <tr ng-if="externalRolesCtl.state.users.length" ng-repeat="user in externalRolesCtl.state.users | orderBy:externalRolesCtl.sortableTableProperties.orderBy:externalRolesCtl.sortableTableProperties.invert track by user.id">
+        <td class="ellipsis">{{user.id}}</td>
+        <td class="ellipsis">{{user.name}}</td>
+        <td>
+          <span ng-repeat="role in user.roles" class="tooltip" style="display: inline-block; margin-right: 15px;">
+            <span>{{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).name}} <span ng-show="role.bucket_name">[{{role.bucket_name}}]</span>
+              <span class="tooltip_msg">
+                <span>{{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).desc}}</span>
+              </span>
+            </span>
+          </span>
+        </td>
+        <td>
+          <a
+            class="list_button when-roadmin-avoid-me"
+            ng-show="rbac.cluster.admin.security.write"
+            ng-click="externalRolesCtl.editUser(user)"><span>Edit</span></a>
+          <a
+            class="list_button when-roadmin-avoid-me"
+            ng-show="rbac.cluster.admin.security.write"
+            ng-click="externalRolesCtl.deleteUser(user)"><span>Delete</span></a>
+        </td>
+      </tr>
+      <tr ng-if="!externalRolesCtl.state.users.length">
+        <td colspan="4" style="text-align: center;">Users list is empty</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<span>ROLES:</span>
+  <span ng-repeat="role in externalRolesCtl.roles | filter:externalRolesCtl.rolesFilter" class="tooltip" style="display: inline-block; margin-left: 15px;">
+    {{role.name}}
+    <span class="tooltip_msg"><span>{{role.desc}}</span></span>
+  </span>

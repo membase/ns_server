@@ -1,0 +1,44 @@
+<divv id="js_buckets" class="buckets">
+  <h1>Data Buckets</h1>
+  <div
+    class="warning_message"
+    ng-show="bucketsCtl.areThereCreationWarnings()">
+    <span ng-show="bucketsCtl.isBucketCreationWarning()">Attention: <span class="warning-text">Cannot create, delete or edit buckets while rebalance is running.</span></span>
+    <span ng-show="bucketsCtl.isMaxBucketCountWarning()">Attention: <span class="warning-text">Maximum number of buckets has been reached. <br>For optimal performance, no more than {{maxBucketCount}} buckets are allowed.</span></span>
+  </div>
+  <div class="shadow_box" id="couchbase_buckets">
+    <div id="manage_buckets_top_bar" class="header_2">
+      <h4 style="float:left;line-height:34px;">Couchbase Buckets</h4>
+      <div class="right" style="overflow:hidden;">
+        <button
+          ng-hide="bucketsCtl.isCreateNewDataBucketDisabled() || !rbac.cluster.buckets.create"
+          class="btn_1 create-bucket-button casper_buckets_new_data_bucket"
+          style="float:right;"
+          ng-click="bucketsCtl.addBucket()">
+            <span>Create New Data Bucket</span>
+        </button>
+        <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
+      </div>
+    </div>
+    <div
+      id="bucket_list_container"
+      mn-spinner="!bucketsCtl.buckets || bucketsCtl.viewLoading"
+      min-height="91px">
+        <div mn-buckets-list buckets="bucketsCtl.buckets.byType.membase" pool-default="poolDefault" rbac="rbac"></div>
+    </div>
+  </div>
+  <div class="shadow_box" id="memcached_buckets" ng-if="bucketsCtl.buckets.byType.memcached.length">
+    <div id="manage_buckets_top_bar" class="header_2">
+      <h4 style="float:left">Memcached Buckets</h4>
+      <div class="right">
+        <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
+      </div>
+    </div>
+    <div
+      id="memcached_bucket_list_container"
+      mn-spinner="!bucketsCtl.buckets || bucketsCtl.viewLoading"
+      min-height="91px">
+        <div mn-buckets-list buckets="bucketsCtl.buckets.byType.memcached" pool-default="poolDefault" rbac="rbac"></div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,14 @@
+<div class="dialog" id="js_roadmin_remove_dialog">
+  <h1>Removing</h1>
+  <form ng-submit="internalRolesDeleteCtl.onSubmit()">
+    <div class="clearfix">
+      <div class="err">
+        <p>Are you sure you want to remove <span class="js_roadmin_name">{{internalRolesDeleteCtl.name}}</span>?</p>
+      </div>
+    </div>
+    <div class="save_cancel clearfix">
+      <button type="submit" class="delete_button float_right js_delete_button casper_settings_roadmin_remove_click">Delete</button>
+      <a class="close" ng-click="$dismiss()">Cancel</a>
+    </div>
+  </form>
+</div>

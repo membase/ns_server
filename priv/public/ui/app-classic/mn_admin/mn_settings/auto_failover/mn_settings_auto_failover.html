@@ -1,0 +1,50 @@
+<div mn-spinner="settingsAutoFailoverCtl.viewLoading || !settingsAutoFailoverCtl.state" class="auto_failover">
+  <h2>Auto-Failover</h2>
+  <form ng-submit="settingsAutoFailoverCtl.submit()">
+    <div class="sub_section">
+      <label class="for-enable-replicas casper_settings_auto_failover_enabled">
+        <input
+          type="checkbox"
+          id="auto_failover_enabled"
+          ng-disabled="!rbac.cluster.settings.write"
+          ng-model="settingsAutoFailoverCtl.state.enabled">
+        <span>Enable auto-failover</span>
+      </label>
+      <p>
+        <label for="auto_failover_timeout">
+          <span>Timeout: </span>
+        </label>
+        <input
+          type="text"
+          id="auto_failover_timeout"
+          ng-model="settingsAutoFailoverCtl.state.timeout"
+          ng-disabled="settingsAutoFailoverCtl.isAutoFailOverDisabled() || !rbac.cluster.settings.write">
+        <span class="error-container err-timeout" ng-show="settingsAutoFailoverCtl.errors.timeout">
+          {{settingsAutoFailoverCtl.errors.timeout}}
+        </span>
+        <a class="text_11 tooltip casper_settings_auto_failover_timeout_tooltip"><span>What's this?</span>
+          <span class="tooltip_msg"><span>
+              How long (in seconds) a node must be considered down before it gets auto-failed-over.
+          </span></span>
+        </a>
+      </p>
+      <div
+        id="auto_failover_count_container"
+        style="position: relative; left: auto; top: auto;"
+        class="warning_message"
+        ng-show="settingsAutoFailoverCtl.state.count > 0">
+        A server was automatically failed over
+        <a
+          class="auto_failover_count_reset edit_btn when-roadmin-hide-me"
+          ng-click="adminCtl.resetAutoFailOverCount()"
+          ng-show="rbac.cluster.settings.write"
+          mn-spinner="adminCtl.resetQuotaLoading">
+          <span>Reset Quota</span>
+        </a>
+      </div>
+    </div>
+    <div class="save_cancel when-roadmin-hide-me">
+      <button class="save_button float_right" ng-show="rbac.cluster.settings.write" ng-disabled="settingsAutoFailoverCtl.errors" type="submit">Save</button>
+    </div>
+  </form>
+</div>

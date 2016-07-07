@@ -1,0 +1,53 @@
+<div class="auth_block">
+  <div class="page-header">
+    <div class="cnt_holder main_holder">
+      <div class="topper_nav">
+        <a ng-click="authCtl.showAboutDialog()">
+          About
+        </a>
+      </div>
+    </div>
+  </div>
+  <div class="pad">
+    <div class="alert_red" id="auth_failed_message" ng-if="authCtl.loginFailed">
+      <div class="al_text">
+        Login failed. Try again.
+      </div>
+    </div>
+    <form
+      id="login_form"
+      class="form block"
+      novalidate=""
+      ng-submit="authCtl.submit()">
+      <fieldset>
+        <ul>
+          <li>
+            <label for="login_inp">Username:</label>
+            <input
+              ng-model="authCtl.user.username"
+              name="username"
+              id="login_inp"
+              type="text"
+              class="inp"
+              maxlength="24"
+              required
+              mn-focus>
+          </li>
+          <li>
+            <label for="password2_inp">Password:</label>
+            <input
+            ng-model="authCtl.user.password"
+            name="password"
+            id="password2_inp"
+            type="password"
+            class="inp"
+            maxlength="24"
+            mn-autocomplete-off
+            required>
+          </li>
+        </ul>
+        <input type="submit" value="Sign In" class="submit">
+      </fieldset>
+    </form>
+  </div>
+</div>

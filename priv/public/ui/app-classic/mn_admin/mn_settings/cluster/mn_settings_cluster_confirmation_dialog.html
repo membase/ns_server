@@ -1,0 +1,12 @@
+<div class="view_document_dialog" id="copy_view_dialog" title="Copy View" style="width:711px">
+  <h1>Confirm Indexer Memory Quota Change</h1>
+  <form ng-submit="$close()">
+    <p class="pat_20 pas_20 warning">
+      Warning: changing the index memory quota will cause the index processes to be restarted and will make indexes briefly temporarily unavailable. Are you sure you wish to continue?
+    </p>
+    <div class="save_cancel">
+      <button class="save_button float_right" type="submit" mn-focus>Confirm</button>
+      <a class="close" ng-click="$dismiss()">Cancel</a>
+    </div>
+  </form>
+</div>

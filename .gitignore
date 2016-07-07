@@ -20,7 +20,7 @@
 /make.out
 /ns_server.plt
 /priv/public/js/all-images.js
-/priv/public/ui/app/app.min.js
+/priv/public/ui/app-classic/app.min.js
 /priv/public/ui/index.min.html
 /priv/ui_tests/screenshots_output
 /rebar.config

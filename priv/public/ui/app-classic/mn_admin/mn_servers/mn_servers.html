@@ -1,0 +1,90 @@
+<div
+  id="js_servers"
+  class="servers"
+  data-ng-class="{'rebalancing': poolDefault.rebalancing}">
+  <h1>Servers</h1>
+  <div
+    class="warning_message"
+    ng-repeat="warning in serversCtl.mnPoolDefault.value.failoverWarnings"
+    ng-show="warning && warning != 'failoverNeeded' && !poolDefault.rebalancing">
+      <span>Fail Over Warning: <span class="warning-text">{{warning | formatFailoverWarnings}}</span></span>
+  </div>
+  <div
+    class="warning_message"
+    id="js_rebalance_during_sample_load"
+    ng-show="serversCtl.mayRebalanceWithoutSampleLoading() && adminCtl.tasks.isLoadingSamples && rbac.cluster.tasks.read">
+      Warning: Rebalance is not available until data loading is completed!
+  </div>
+  <div
+    class="warning_message"
+    ng-show="serversCtl.autoFailoverSettings.data.count > 0 && rbac.cluster.settings.read">
+      A server was automatically failed over.
+    <a
+      class="auto_failover_count_reset when-roadmin-hide-me"
+      ng-show="rbac.cluster.settings.write"
+      ng-click="adminCtl.resetAutoFailOverCount()">
+      <span>Reset Quota</span>
+    </a>
+  </div>
+  <div class="shadow_box">
+    <div class="header_2">
+      <span
+        class="staleness-notice"
+        ng-show="adminCtl.lostConnState.isActivated">
+          Difficulties communicating with the cluster; displaying cached information!
+      </span>
+      <a
+        class="btn_1 when-enterprise when-roadmin-avoid-me"
+        ui-sref="app.admin.groups"
+        id="js_server_groups_tab"
+        ng-show="poolDefault.isGroupsAvailable && poolDefault.isEnterprise && rbac.cluster.server_groups.read">
+          <span>Server Groups</span>
+      </a>
+      <a
+        class="add_button btn_1 when-roadmin-hide-me casper_servers_add_popup"
+        ng-show="poolDefault && !poolDefault.rebalancing && rbac.cluster.nodes.write"
+        ng-click="serversCtl.addServer()">
+          <span>Add Server</span>
+      </a>
+      <a
+        class="rebalance_button btn_1 when-roadmin-hide-me"
+        ng-show="serversCtl.mayRebalanceWithoutSampleLoading() && !adminCtl.tasks.isLoadingSamples && !adminCtl.tasks.isOrphanBucketTask && rbac.cluster.nodes.write && rbac.cluster.tasks.read"
+        ng-click="serversCtl.postRebalance()">
+          <span>Rebalance</span>
+      </a>
+      <a
+        class="stop_rebalance_button btn_1 when-roadmin-hide-me"
+        ng-show="poolDefault.rebalancing && rbac.cluster.nodes.write"
+        ng-click="serversCtl.stopRebalance()">
+        <span ng-show="adminCtl.tasks.isSubtypeGraceful">Stop Fail Over</span>
+        <span ng-show="!adminCtl.tasks.isSubtypeGraceful">Stop Rebalance</span>
+      </a>
+      <a
+        class="stop_recovery_button btn_1 when-roadmin-hide-me"
+        ng-click="serversCtl.onStopRecovery()"
+        ng-show="adminCtl.tasks.inRecoveryMode && rbac.cluster.tasks.read && rbac.cluster.bucket[adminCtl.tasks.tasksRecovery.bucket].write">
+          <span>Stop Recovery</span>
+      </a>
+      <ul class="tabs">
+        <li class="tab_left">
+          <a
+            ui-sref="app.admin.servers.list({ list: 'active' })"
+            ui-sref-active="selected">Active Servers</a>
+        </li>
+        <li class="tab_right" id="rebalance_tab">
+          <a
+            class="casper_servers_pending_rebalance_tab"
+            ui-sref="app.admin.servers.list({ list: 'pending' })"
+            ui-sref-active="selected">Pending Rebalance</a>
+            <span
+              class="badge"
+              data-ng-show="!poolDefault.rebalancing && serversCtl.nodes.pending.length"><span>
+                {{serversCtl.nodes.pending.length}}
+              </span>
+            </span>
+        </li>
+      </ul>
+    </div>
+    <div ui-view></div>
+  </div>
+</div>

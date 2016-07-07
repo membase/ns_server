@@ -1,0 +1,35 @@
+<div
+  class="pad init_setting_memory_quota "
+  id="init_setting_memory_quota_dialog"
+  mn-spinner="wizardStep6Ctl.viewLoading || wizardStep6Ctl.indexSettingsLoading">
+    <form ng-submit="wizardStep6Ctl.onSubmit()">
+      <div class="config-top">
+        <h1>Set RAM Quota</h1>
+        <h2>Step <span class="current-step">5</span> of 5</h2>
+      </div>
+      <h2 class="question">Set RAM Quota</h2>
+      <p class="pad_10" style="margin:20px 85px;">
+        These service(s) are being added to the cluster for the first time:
+        <span ng-show="wizardStep6Ctl.firstTimeAddedServices.index">Index</span><span ng-show="wizardStep6Ctl.firstTimeAddedServices.count > 1">,</span>
+        <span ng-show="wizardStep6Ctl.firstTimeAddedServices.fts">Full Text</span><br>
+        Please review and set the following service-specific settings. These values need to be set one time only: when you add more server nodes running these services into the cluster we will not ask you to review these values again.
+      </p>
+      <div class="cluster_quota_settings pad_10">
+        <div
+          id="js_join_wizard_cluster_quota"
+          mn-memory-quota="wizardStep6Ctl.config"
+          errors="wizardStep6Ctl.errors"></div>
+        <div
+          ng-if="wizardStep6Ctl.firstTimeAddedServices.index"
+          mn-storage-mode="wizardStep6Ctl.indexSettings"
+          is-disabled="!wizardStep6Ctl.isEnterprise || wizardStep6Ctl.initialIndexSettings.storageMode !== ''"
+          errors="wizardStep6Ctl.postIndexSettingsErrors"></div>
+      </div>
+      <div class="config-bottom">
+        <button
+          name="next" value="Next"
+          class="submit next direction-button"
+          type="submit">Set Quota</button>
+      </div>
+    </form>
+</div>

@@ -1,0 +1,25 @@
+<div id="compaction_container">
+  <form
+    ng-submit="settingsAutoCompactionCtl.submit()"
+    mn-spinner="settingsAutoCompactionCtl.viewLoading || !settingsAutoCompactionCtl.autoCompactionSettings">
+    <div class="auto_compaction persistent-only">
+      <h2>Auto-Compaction</h2>
+      <div class="sub_section">
+        <p>Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes when the following conditions are met.</p>
+      </div>
+      <div
+        mn-auto-compaction-form
+        auto-compaction-settings="settingsAutoCompactionCtl.autoCompactionSettings"
+        validation-errors="settingsAutoCompactionCtl.errors"></div>
+    </div> <!-- .auto_compaction -->
+    <div class="save_cancel when-roadmin-hide-me">
+      <button
+        class="save_button float_right"
+        ng-disabled="settingsAutoCompactionCtl.errors"
+        ng-show="rbac.cluster.settings.write"
+        type="submit">
+        Save
+      </button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,129 @@
+<div class="shadow_box settings">
+  <div class="header_2">
+    <div class="right" style="overflow:hidden;">
+      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
+    </div>
+  </div>
+  <div
+    class="ldap_setup_container only-when-40 when-enterprise"
+    mn-spinner="ldapCtl.viewLoading || !ldapCtl.state">
+    <h2>LDAP Auth</h2>
+    <div class="sub_section">
+      <p>Integrate with a directory server such as Active Directory or LDAP using the LDAP protocol. Users in LDAP can be mapped to Full-Admin / Read-Only Admin in Couchbase.</p>
+    </div>
+    <div style="float:left;">
+      <h3>Setup</h3>
+      <form>
+        <div class="sub_section" style="margin-right:0;">
+          <span class="error-container err-_" ng-show="ldapCtl.errors._">
+            {{ldapCtl.errors._}}
+          </span>
+          <label>
+            <span>Enable:</span>
+            <input
+              type="checkbox"
+              ng-disabled="!rbac.cluster.admin.security.write"
+              ng-model="ldapCtl.state.enabled">
+          </label>
+          <label class="textarea_label">
+            <span>Read-Only Admins:</span>
+            <textarea
+              name="roAdmins"
+              ng-model="ldapCtl.state.roAdmins"
+              ng-disabled="ldapCtl.isReadOnlyAdminsDisabled()"></textarea>
+              <a class="text_11 tooltip" style="vertical-align: top;"><span>What's this?</span>
+                <span class="tooltip_msg"><span>
+                    UIDs must be in ASCII and must be new line separated.
+                </span></span>
+              </a>
+          </label>
+          <label class="textarea_label">
+            <span>Full Admins:</span>
+            <textarea
+              name="admins"
+              ng-model="ldapCtl.state.admins"
+              ng-disabled="ldapCtl.isFullAdminsDisabled()"></textarea>
+              <a class="text_11 tooltip" style="vertical-align: top;"><span>What's this?</span>
+                <span class="tooltip_msg"><span>
+                    UIDs must be in ASCII and must be new line separated.
+                </span></span>
+              </a>
+          </label>
+          <label style="display: inline-block;">
+            <span>Default:</span>
+          </label>
+          <span class="radio_set">
+            <label>
+              <input
+                type="radio"
+                name="deftype"
+                value="roAdmins"
+                ng-model="ldapCtl.state.default"
+                ng-disabled="ldapCtl.isRadioDefaultDisabled()">
+              <span>Read-only</span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="deftype"
+                value="admins"
+                ng-model="ldapCtl.state.default"
+                ng-disabled="ldapCtl.isRadioDefaultDisabled()">
+              <span>Full Admin</span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="deftype"
+                value=""
+                ng-model="ldapCtl.state.default"
+                ng-disabled="ldapCtl.isRadioDefaultDisabled()">
+              <span>None</span>
+            </label>
+          </span>
+        </div>
+      </form>
+    </div>
+    <div style="overflow: hidden" mn-spinner="ldapCtl.validateSpinner">
+      <h3>Test</h3>
+      <form ng-submit="ldapCtl.validate()">
+        <div class="sub_section">
+          <label>
+            <span>Username:</span>
+            <input
+              type="text"
+              ng-model="ldapCtl.test.username"
+              ng-disabled="ldapCtl.isUserFormDisabled()"
+              style="width: 150px;">
+          </label>
+          <label>
+            <span>Password:</span>
+            <input
+              type="password"
+              ng-model="ldapCtl.test.password"
+              ng-disabled="ldapCtl.isUserFormDisabled()"
+              mn-autocomplete-off
+              style="width: 150px;">
+          </label>
+          <button
+            type="submit"
+            class="edit_btn"
+            ng-disabled="ldapCtl.isValidateButtonDisabled()">Validate</button>
+            <p ng-show="ldapCtl.validateErrors">
+              {{ldapCtl.validateErrors}}
+            </p>
+            <p ng-show="ldapCtl.validateResult">
+              User {{ldapCtl.validateResult.test.username}} has {{ldapCtl.validateResult.role | formatRoleMessage}} access
+              <span ng-show="ldapCtl.isRecognizedNotViaLdap()">but it is recognized not via LDAP</span>
+            </p>
+        </div>
+      </form>
+    </div>
+    <div class="save_cancel">
+      <button
+        class="save_button float_right"
+        ng-show="rbac.cluster.admin.security.write"
+        ng-click="ldapCtl.save()">Save</button>
+    </div>
+  </div>
+</div>
