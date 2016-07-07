@@ -1061,17 +1061,9 @@ hdd_summary_to_proplist(V) ->
 
 interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, Ctx) ->
     ClusterTotals = proplists:get_value(hdd, ClusterStorageTotals),
-    {hdd, HDDStats} = lists:keyfind(hdd, 1, Ctx#bv_ctx.cluster_storage_totals),
-    {usedByData, V} = lists:keyfind(usedByData, 1, HDDStats),
-    UsedByUs = V,
-    ThisUsed = case CurrentBucket of
-                   [_|_] ->
-                       menelaus_stats:bucket_disk_usage(
-                         proplists:get_value(name, ParsedProps));
-                   _ ->
-                       0
-               end,
+    UsedByUs = get_hdd_used_by_us(Ctx),
     OtherData = proplists:get_value(used, ClusterTotals) - UsedByUs,
+    ThisUsed = get_hdd_used_by_this_bucket(CurrentBucket, ParsedProps),
     OtherBuckets = UsedByUs - ThisUsed,
     Total = proplists:get_value(total, ClusterTotals),
     #hdd_summary{total = Total,
@@ -1079,6 +1071,17 @@ interpret_hdd_quota(CurrentBucket, ParsedProps, ClusterStorageTotals, Ctx) ->
                  other_buckets = OtherBuckets,
                  this_used = ThisUsed,
                  free = Total - OtherData - OtherBuckets}.
+
+get_hdd_used_by_us(Ctx) ->
+    {hdd, HDDStats} = lists:keyfind(hdd, 1, Ctx#bv_ctx.cluster_storage_totals),
+    {usedByData, V} = lists:keyfind(usedByData, 1, HDDStats),
+    V.
+
+get_hdd_used_by_this_bucket([_|_] = _CurrentBucket, Props) ->
+    menelaus_stats:bucket_disk_usage(
+      proplists:get_value(name, Props));
+get_hdd_used_by_this_bucket(_ = _CurrentBucket, _Props) ->
+    0.
 
 validate_with_missing(GivenValue, DefaultValue, IsNew, Fn) ->
     case Fn(GivenValue) of
