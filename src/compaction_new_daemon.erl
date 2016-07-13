@@ -947,7 +947,9 @@ aggregated_size_info(Bucket) ->
     {list_to_integer(binary_to_list(DS)),
      list_to_integer(binary_to_list(FS))}.
 
-check_fragmentation({FragLimit, FragSizeLimit}, Frag, FragSize) ->
+check_fragmentation(FragThreshold, Frag, FragSize) ->
+    {FragLimit, FragSizeLimit} = normalize_fragmentation(FragThreshold),
+
     true = is_integer(FragLimit),
     true = is_integer(FragSizeLimit),
 
@@ -1086,11 +1088,9 @@ config_to_record(Config, DaemonConfig) ->
 do_config_to_record([], Acc) ->
     Acc;
 do_config_to_record([{database_fragmentation_threshold, V} | Rest], Acc) ->
-   do_config_to_record(
-     Rest, Acc#config{db_fragmentation=normalize_fragmentation(V)});
+   do_config_to_record(Rest, Acc#config{db_fragmentation=V});
 do_config_to_record([{view_fragmentation_threshold, V} | Rest], Acc) ->
-    do_config_to_record(
-      Rest, Acc#config{view_fragmentation=normalize_fragmentation(V)});
+    do_config_to_record(Rest, Acc#config{view_fragmentation=V});
 do_config_to_record([{parallel_db_and_view_compaction, V} | Rest], Acc) ->
     do_config_to_record(Rest, Acc#config{parallel_view_compact=V});
 do_config_to_record([{allowed_time_period, V} | Rest], Acc) ->
