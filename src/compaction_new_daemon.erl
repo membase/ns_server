@@ -745,7 +745,7 @@ maybe_compact_master_db(BucketName, Config, Force) ->
     DbName = db_name(BucketName, "master"),
     SizeInfo = ns_couchdb_api:get_master_vbucket_size(BucketName),
 
-    Force orelse vbucket_needs_compaction(SizeInfo, Config) orelse exit(normal),
+    Force orelse master_db_needs_compaction(SizeInfo, Config) orelse exit(normal),
 
     %% effectful
     ensure_can_db_compact(DbName, SizeInfo),
@@ -754,6 +754,28 @@ maybe_compact_master_db(BucketName, Config, Force) ->
     Ret = compact_master_vbucket(BucketName),
     ?log_info("Compaction of ~p has finished with ~p", [DbName, Ret]),
     Ret.
+
+master_db_needs_compaction(SizeInfo, Config) ->
+    vbucket_needs_compaction(SizeInfo, master_db_compaction_config(Config)).
+
+master_db_compaction_config(Config) ->
+    FragThreshold = Config#config.db_fragmentation,
+    NewFragThreshold = do_master_db_compaction_config(FragThreshold),
+    Config#config{db_fragmentation = NewFragThreshold}.
+
+do_master_db_compaction_config({FragLimit, FragSizeLimit})
+  when is_integer(FragSizeLimit) ->
+    case is_integer(FragLimit) of
+        true ->
+            {FragLimit, undefined};
+        false ->
+            %% Master vbucket is special in that it only contains metadata and
+            %% generally is very small. So it's ok to cheat here and pretend
+            %% that fragmentation percentage threshold is defined.
+            {50, undefined}
+    end;
+do_master_db_compaction_config(FragThreshold) ->
+    FragThreshold.
 
 compact_master_vbucket(BucketName) ->
     process_flag(trap_exit, true),
