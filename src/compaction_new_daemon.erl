@@ -656,12 +656,14 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
               ?log_debug("Started KV compaction manager ~p", [Manager]),
 
               NWorkers = ns_config:read_key_fast(compaction_number_of_kv_workers, 4),
+              VBucketConfig = vbucket_compaction_config(Config, NumVBuckets),
               Compactors =
                   [ [{type, vbucket_worker},
                      {name, integer_to_list(I)},
                      {important, true},
                      {fa, {fun spawn_vbuckets_compactor/6,
-                           [BucketName, Manager, Config, Force, Options, SafeViewSeqs]}}] ||
+                           [BucketName, Manager, VBucketConfig,
+                            Force, Options, SafeViewSeqs]}}] ||
                       I <- lists:seq(1, NWorkers) ],
 
               Pids = [chain_compactors([Compactor]) || Compactor <- Compactors],
@@ -673,6 +675,17 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
               ?log_info("Finished compaction of databases for bucket ~s",
                         [BucketName])
       end).
+
+vbucket_compaction_config(Config, NumVBuckets) ->
+    FragThreshold = Config#config.db_fragmentation,
+    NewFragThreshold = do_vbucket_compaction_config(FragThreshold, NumVBuckets),
+    Config#config{db_fragmentation = NewFragThreshold}.
+
+do_vbucket_compaction_config({FragLimit, FragSizeLimit}, NumVBuckets)
+  when is_integer(FragSizeLimit) ->
+    {FragLimit, FragSizeLimit div NumVBuckets};
+do_vbucket_compaction_config(FragThreshold, _) ->
+    FragThreshold.
 
 make_per_vbucket_compaction_options({TS, 0, DD} = GeneralOption, {Vb, _}, SafeViewSeqs) ->
     case lists:keyfind(Vb, 1, SafeViewSeqs) of
