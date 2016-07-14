@@ -769,205 +769,191 @@ basic_bucket_params_screening(Ctx, Params) ->
         _ -> basic_bucket_params_screening_tail(Ctx, Params, AuthType)
     end.
 
-basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
-    BucketName = Ctx#bv_ctx.bucket_name,
-    BucketConfig = Ctx#bv_ctx.bucket_config,
-    IsNew = Ctx#bv_ctx.new,
-    AllBuckets = Ctx#bv_ctx.all_buckets,
-
-    Candidates0 = [{ok, name, BucketName},
-                   {ok, auth_type, AuthType},
-                   validate_with_missing(proplists:get_value("flushEnabled", Params), "0", IsNew, fun parse_validate_flush_enabled/1),
-                   case IsNew of
-                       true ->
-                           case BucketConfig of
-                               false ->
-                                   %% we'll give error on missing bucket name later
-                                   case BucketName =:= undefined orelse ns_bucket:is_valid_bucket_name(BucketName) of
-                                       {error, invalid} ->
-                                           {error, name,
-                                            <<"Bucket name can only contain characters in range A-Z, a-z, 0-9 as well as underscore, period, dash & percent. Consult the documentation.">>};
-                                       {error, reserved} ->
-                                           {error, name, <<"This name is reserved for the internal use.">>};
-                                       {error, starts_with_dot} ->
-                                           {error, name, <<"Bucket name cannot start with dot.">>};
-                                       {error, empty} ->
-                                           %% we'll give error on empty bucket name later
-                                           ignore;
-                                       _ ->
-                                           %% we have to check for conflict here because we were looking
-                                           %% for BucketConfig using case sensetive search (in basic_bucket_params_screening/4)
-                                           %% but we do not allow buckets with the same names in a different register
-                                           case BucketName =/= undefined andalso ns_bucket:name_conflict(BucketName, AllBuckets) of
-                                               false ->
-                                                   ignore;
-                                               _ ->
-                                                   {error, name, <<"Bucket with given name already exists">>}
-                                           end
-                                   end;
-                               _ ->
-                                   {error, name, <<"Bucket with given name already exists">>}
-                           end;
-                       _ ->
-                           true = (BucketConfig =/= false),
-                           {ok, currentBucket, BucketConfig}
-                   end,
-                   case BucketName of
-                       [] ->
-                           {error, name, <<"Bucket name cannot be empty">>};
-                       undefined ->
-                           {error, name, <<"Bucket name needs to be specified">>};
-                       _ ->
-                           case string:len(BucketName) > ?MAX_BUCKET_NAME_LEN of
-                               true ->
-                                   {error, name, ?l2b(io_lib:format("Bucket name cannot exceed ~p characters",
-                                                                    [?MAX_BUCKET_NAME_LEN]))};
-                               _ -> ignore
-                           end
-                   end,
-                   case AuthType of
-                       none ->
-                           ProxyPort = proplists:get_value("proxyPort", Params),
-                           case ProxyPort of
-                               undefined when BucketConfig =/= false ->
-                                   case ns_bucket:auth_type(BucketConfig) of
-                                       AuthType -> ignore;
-                                       _ ->
-                                           {error, proxyPort,
-                                            <<"port is missing">>}
-                                   end;
-                               _ ->
-                                   case (catch menelaus_util:parse_validate_port_number(ProxyPort)) of
-                                       {error, [Error]} ->
-                                           {error, proxyPort, Error};
-                                       PP ->
-                                           case ns_bucket:is_port_free(BucketName, PP) of
-                                               true ->
-                                                   {ok, moxi_port, PP};
-                                               false ->
-                                                   {error, proxyPort,
-                                                    <<"port is already in use">>}
-                                           end
-                                   end
-                           end;
-                       sasl ->
-                           validate_with_missing(proplists:get_value("saslPassword", Params), "",
-                                                 IsNew, fun validate_bucket_password/1)
-                   end,
-                   parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params),
-                                            BucketConfig),
-                   parse_validate_other_buckets_ram_quota(
-                     proplists:get_value("otherBucketsRamQuotaMB", Params))],
-    BucketType = if
-                     (not IsNew) andalso BucketConfig =/= false ->
-                         ns_bucket:bucket_type(BucketConfig);
-                     true ->
-                         case proplists:get_value("bucketType", Params) of
-                             "memcached" -> memcached;
-                             "membase" -> membase;
-                             "couchbase" -> membase;
-                             undefined -> membase;
-                             _ -> invalid
-                         end
-                 end,
-    QuotaSizeError = case lists:keyfind(ram_quota, 2, Candidates0) of
-                         {ok, ram_quota, RAMQuotaMB} ->
-                             {MinQuota, Msg}
-                                 = case BucketType of
-                                       membase ->
-                                           Q = misc:get_env_default(membase_min_ram_quota, 100),
-                                           Qv = list_to_binary(integer_to_list(Q)),
-                                           {Q, <<"RAM quota cannot be less than ", Qv/binary, " MB">>};
-                                       memcached ->
-                                           Q = misc:get_env_default(memcached_min_ram_quota, 64),
-                                           Qv = list_to_binary(integer_to_list(Q)),
-                                           {Q, <<"RAM quota cannot be less than ", Qv/binary, " MB">>};
-                                       _ -> {0, <<"">>}
-                                   end,
-                             if
-                                 RAMQuotaMB < MinQuota * ?MIB ->
-                                     {error, ramQuotaMB, Msg};
-                                 IsNew =/= true andalso BucketConfig =/= false andalso BucketType =:= memcached ->
-                                     case ns_bucket:raw_ram_quota(BucketConfig) of
-                                         RAMQuotaMB -> ignore;
-                                         _ ->
-                                             {error, ramQuotaMB, <<"cannot change quota of memcached buckets">>}
-                                     end;
-                                 true ->
-                                     ignore
-                             end;
-                         _ -> ignore
-                     end,
-    Candidates1 = [QuotaSizeError | Candidates0],
-    Candidates2 = case menelaus_web:parse_validate_bucket_auto_compaction_settings(Params) of
-                      nothing -> Candidates1;
-                      false -> [{ok, autocompaction, false},
-                                {ok, purge_interval, undefined} | Candidates1];
-                      {errors, Errors} ->
-                          [{error, F, M} || {F, M} <- Errors] ++ Candidates1;
-                      {ok, ACSettings, MaybePurgeInterval} ->
-                          case MaybePurgeInterval of
-                              [{purge_interval, PurgeInterval}] ->
-                                  [{ok, purge_interval, PurgeInterval}];
-                              [] ->
-                                  []
-                          end ++ [{ok, autocompaction, ACSettings} | Candidates1]
-                  end,
-    Candidates = case BucketType of
-                     memcached ->
-                         [{ok, bucketType, memcached}
-                          | Candidates1];
-                     membase ->
-                         ReplicasNumResult =
-                             validate_with_missing(
-                               proplists:get_value("replicaNumber", Params),
-                               %% replicaNumber doesn't have
-                               %% default. Has to be given for
-                               %% creates, but may be omitted for
-                               %% updates. Later is for backwards
-                               %% compat, the former is from earlier
-                               %% code and stricter requirements is
-                               %% IMO ok to keep.
-                               undefined,
-                               IsNew,
-                               fun parse_validate_replicas_number/1),
-                         [{ok, bucketType, membase},
-                          ReplicasNumResult,
-                          get_time_sync(Params, IsNew),
-                          case IsNew of
-                              true ->
-                                  ReplicaIndexDefault =
-                                      case ReplicasNumResult of
-                                          {ok, num_replicas, 0} ->
-                                              "0";
-                                          _ ->
-                                              "1"
-                                      end,
-                                  parse_validate_replica_index(proplists:get_value("replicaIndex", Params, ReplicaIndexDefault));
-                              false ->
-                                  ignore
-                          end,
-                          validate_with_missing(proplists:get_value("threadsNumber", Params), "3", IsNew, fun parse_validate_threads_number/1),
-                          validate_with_missing(proplists:get_value("evictionPolicy", Params), "valueOnly", IsNew, fun parse_validate_eviction_policy/1)
-                          | Candidates2];
-                     _ ->
-                         [{error, bucketType, <<"invalid bucket type">>}
-                          | Candidates2]
-                 end,
-    %% this is to validate that Candidates elements have specific
-    %% structure
-    [case E of
-         %% ok-s are used to keep correctly parsed/validated params
-         {ok, _, _} -> [];
-         %% error-s hold errors
-         {error, _, _} -> [];
-         %% ignore-s are used to "do nothing"
-         ignore -> []
-     end || E <- Candidates],
+basic_bucket_params_screening_tail(#bv_ctx{bucket_config = BucketConfig,
+                                           new = IsNew} = Ctx,
+                                   Params, AuthType) ->
+    BucketType = get_bucket_type(IsNew, BucketConfig, Params),
+    CommonParams = validate_common_params(Ctx, Params, AuthType),
+    TypeSpecificParams =
+        validate_bucket_type_specific_params(CommonParams, Params, BucketType,
+                                             IsNew, BucketConfig),
+    Candidates = CommonParams ++ TypeSpecificParams,
+    assert_candidates(Candidates),
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
 
-get_time_sync(Params, true = _IsNew) ->
+validate_common_params(#bv_ctx{bucket_name = BucketName,
+                               bucket_config = BucketConfig, new = IsNew,
+                               all_buckets = AllBuckets},
+                       Params, AuthType) ->
+    [{ok, name, BucketName},
+     {ok, auth_type, AuthType},
+     parse_validate_flush_enabled(Params, IsNew),
+     validate_bucket_name(IsNew, BucketConfig, BucketName, AllBuckets),
+     validate_auth_params(AuthType, Params, BucketConfig, BucketName, IsNew),
+     parse_validate_ram_quota(Params, BucketConfig),
+     parse_validate_other_buckets_ram_quota(Params)].
+
+validate_bucket_type_specific_params(CommonParams, _Params, memcached, IsNew,
+                                     BucketConfig) ->
+    [{ok, bucketType, memcached},
+     quota_size_error(CommonParams, memcached, IsNew, BucketConfig)];
+validate_bucket_type_specific_params(CommonParams, Params, membase, IsNew,
+                                     BucketConfig) ->
+    ReplicasNumResult = validate_replicas_number(Params, IsNew),
+    [{ok, bucketType, membase},
+     ReplicasNumResult,
+     validate_time_sync(Params, IsNew),
+     parse_validate_replica_index(Params, ReplicasNumResult, IsNew),
+     parse_validate_threads_number(Params, IsNew),
+     parse_validate_eviction_policy(Params, IsNew),
+     quota_size_error(CommonParams, membase, IsNew, BucketConfig)
+     | validate_bucket_auto_compaction_settings(Params)];
+validate_bucket_type_specific_params(_CommonParams, Params, _BucketType,
+                                     _IsNew, _BucketConfig) ->
+    [{error, bucketType, <<"invalid bucket type">>}
+     | validate_bucket_auto_compaction_settings(Params)].
+
+parse_validate_flush_enabled(Params, IsNew) ->
+    validate_with_missing(proplists:get_value("flushEnabled", Params),
+                          "0", IsNew, fun parse_validate_flush_enabled/1).
+
+validate_bucket_name(_IsNew, _BucketConfig, [] = _BucketName, _AllBuckets) ->
+    {error, name, <<"Bucket name cannot be empty">>};
+validate_bucket_name(_IsNew, _BucketConfig, undefined = _BucketName, _AllBuckets) ->
+    {error, name, <<"Bucket name needs to be specified">>};
+validate_bucket_name(_IsNew, _BucketConfig, BucketName, _AllBuckets)
+  when length(BucketName) > ?MAX_BUCKET_NAME_LEN ->
+    {error, name, ?l2b(io_lib:format("Bucket name cannot exceed ~p characters",
+                                     [?MAX_BUCKET_NAME_LEN]))};
+validate_bucket_name(true = _IsNew, _BucketConfig, BucketName, AllBuckets) ->
+    case ns_bucket:is_valid_bucket_name(BucketName) of
+        {error, invalid} ->
+            {error, name,
+             <<"Bucket name can only contain characters in range A-Z, a-z, 0-9 "
+               "as well as underscore, period, dash & percent. Consult the documentation.">>};
+        {error, reserved} ->
+            {error, name, <<"This name is reserved for the internal use.">>};
+        {error, starts_with_dot} ->
+            {error, name, <<"Bucket name cannot start with dot.">>};
+        _ ->
+            %% we have to check for conflict here because we were looking
+            %% for BucketConfig using case sensetive search (in basic_bucket_params_screening/4)
+            %% but we do not allow buckets with the same names in a different register
+            case ns_bucket:name_conflict(BucketName, AllBuckets) of
+                false ->
+                    ignore;
+                _ ->
+                    {error, name, <<"Bucket with given name already exists">>}
+            end
+    end;
+validate_bucket_name(false = _IsNew, BucketConfig, _BucketName, _AllBuckets) ->
+    true = (BucketConfig =/= false),
+    {ok, currentBucket, BucketConfig}.
+
+validate_auth_params(none = _AuthType, Params, BucketConfig, BucketName, _IsNew) ->
+    case proplists:get_value("proxyPort", Params) of
+        undefined when BucketConfig =/= false ->
+            case ns_bucket:auth_type(BucketConfig) of
+                none ->
+                    ignore;
+                _ ->
+                    {error, proxyPort, <<"port is missing">>}
+            end;
+        ProxyPort ->
+            case (catch menelaus_util:parse_validate_port_number(ProxyPort)) of
+                {error, [Error]} ->
+                    {error, proxyPort, Error};
+                PP ->
+                    case ns_bucket:is_port_free(BucketName, PP) of
+                        true ->
+                            {ok, moxi_port, PP};
+                        false ->
+                            {error, proxyPort,
+                             <<"port is already in use">>}
+                    end
+            end
+    end;
+validate_auth_params(sasl = _AuthType, Params, _BucketConfig, _BucketName, IsNew) ->
+    validate_with_missing(proplists:get_value("saslPassword", Params), "",
+                          IsNew, fun validate_bucket_password/1).
+
+get_bucket_type(false = _IsNew, BucketConfig, _Params)
+  when is_list(BucketConfig) ->
+    ns_bucket:bucket_type(BucketConfig);
+get_bucket_type(_IsNew, _BucketConfig, Params) ->
+    case proplists:get_value("bucketType", Params) of
+        "memcached" -> memcached;
+        "membase" -> membase;
+        "couchbase" -> membase;
+        undefined -> membase;
+        _ -> invalid
+    end.
+
+quota_size_error(CommonParams, BucketType, IsNew, BucketConfig) ->
+    case lists:keyfind(ram_quota, 2, CommonParams) of
+        {ok, ram_quota, RAMQuotaMB} ->
+            {MinQuota, Msg}
+                = case BucketType of
+                      membase ->
+                          Q = misc:get_env_default(membase_min_ram_quota, 100),
+                          Qv = list_to_binary(integer_to_list(Q)),
+                          {Q, <<"RAM quota cannot be less than ", Qv/binary, " MB">>};
+                      memcached ->
+                          Q = misc:get_env_default(memcached_min_ram_quota, 64),
+                          Qv = list_to_binary(integer_to_list(Q)),
+                          {Q, <<"RAM quota cannot be less than ", Qv/binary, " MB">>}
+                  end,
+            if
+                RAMQuotaMB < MinQuota * ?MIB ->
+                    {error, ramQuotaMB, Msg};
+                IsNew =/= true andalso BucketConfig =/= false andalso BucketType =:= memcached ->
+                    case ns_bucket:raw_ram_quota(BucketConfig) of
+                        RAMQuotaMB -> ignore;
+                        _ ->
+                            {error, ramQuotaMB, <<"cannot change quota of memcached buckets">>}
+                    end;
+                true ->
+                    ignore
+            end;
+        _ ->
+            ignore
+    end.
+
+validate_bucket_auto_compaction_settings(Params) ->
+    case menelaus_web:parse_validate_bucket_auto_compaction_settings(Params) of
+        nothing ->
+            [];
+        false ->
+            [{ok, autocompaction, false},
+             {ok, purge_interval, undefined}];
+        {errors, Errors} ->
+            [{error, F, M} || {F, M} <- Errors];
+        {ok, ACSettings, MaybePurgeInterval} ->
+            [{ok, autocompaction, ACSettings}
+             | purge_interval(MaybePurgeInterval)]
+    end.
+
+purge_interval([{purge_interval, PurgeInterval}]) ->
+    [{ok, purge_interval, PurgeInterval}];
+purge_interval([]) ->
+    [].
+
+validate_replicas_number(Params, IsNew) ->
+    validate_with_missing(
+      proplists:get_value("replicaNumber", Params),
+      %% replicaNumber doesn't have
+      %% default. Has to be given for
+      %% creates, but may be omitted for
+      %% updates. Later is for backwards
+      %% compat, the former is from earlier
+      %% code and stricter requirements is
+      %% IMO ok to keep.
+      undefined,
+      IsNew,
+      fun parse_validate_replicas_number/1).
+
+validate_time_sync(Params, true = _IsNew) ->
     case proplists:get_value("timeSynchronization", Params) of
         undefined ->
             {ok, time_synchronization, disabled};
@@ -980,7 +966,7 @@ get_time_sync(Params, true = _IsNew) ->
                      <<"TimeSynchronization can not be set if cluster is not fully 4.5">>}
             end
     end;
-get_time_sync(Params, false = _IsNew) ->
+validate_time_sync(Params, false = _IsNew) ->
     case proplists:get_value("timeSynchronization", Params) of
         undefined ->
             ignore;
@@ -988,6 +974,18 @@ get_time_sync(Params, false = _IsNew) ->
             {error, time_synchronization,
              <<"TimeSyncronization not allowed in update bucket">>}
     end.
+
+assert_candidates(Candidates) ->
+    %% this is to validate that Candidates elements have specific
+    %% structure
+    [case E of
+         %% ok-s are used to keep correctly parsed/validated params
+         {ok, _, _} -> [];
+         %% error-s hold errors
+         {error, _, _} -> [];
+         %% ignore-s are used to "do nothing"
+         ignore -> []
+     end || E <- Candidates].
 
 validate_bucket_password(undefined) ->
     {error, saslPassword, <<"Bucket password is undefined">>};
@@ -1119,9 +1117,25 @@ parse_validate_replicas_number(NumReplicas) ->
         {ok, X} -> {ok, num_replicas, X}
     end.
 
+parse_validate_replica_index(Params, ReplicasNum, true = _IsNew) ->
+    parse_validate_replica_index(
+      proplists:get_value("replicaIndex", Params,
+                          replicas_num_default(ReplicasNum)));
+parse_validate_replica_index(_Params, _ReplicasNum, false = _IsNew) ->
+    ignore.
+
+replicas_num_default({ok, num_replicas, 0}) ->
+    "0";
+replicas_num_default(_) ->
+    "1".
+
 parse_validate_replica_index("0") -> {ok, replica_index, false};
 parse_validate_replica_index("1") -> {ok, replica_index, true};
 parse_validate_replica_index(_ReplicaValue) -> {error, replicaIndex, <<"replicaIndex can only be 1 or 0">>}.
+
+parse_validate_threads_number(Params, IsNew) ->
+    validate_with_missing(proplists:get_value("threadsNumber", Params),
+                          "3", IsNew, fun parse_validate_threads_number/1).
 
 parse_validate_flush_enabled("0") -> {ok, flush_enabled, false};
 parse_validate_flush_enabled("1") -> {ok, flush_enabled, true};
@@ -1142,6 +1156,11 @@ parse_validate_threads_number(NumThreads) ->
             {ok, num_threads, X}
     end.
 
+parse_validate_eviction_policy(Params, IsNew) ->
+    validate_with_missing(proplists:get_value("evictionPolicy", Params),
+                          "valueOnly", IsNew,
+                          fun parse_validate_eviction_policy/1).
+
 parse_validate_eviction_policy("valueOnly") ->
     {ok, eviction_policy, value_only};
 parse_validate_eviction_policy("fullEviction") ->
@@ -1150,25 +1169,36 @@ parse_validate_eviction_policy(_Other) ->
     {error, evictionPolicy,
      <<"Eviction policy must be either 'valueOnly' or 'fullEviction'">>}.
 
-parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
+parse_validate_ram_quota(Params, BucketConfig) ->
+    do_parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params),
+                                BucketConfig).
+
+do_parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
     {ok, ram_quota, ns_bucket:raw_ram_quota(BucketConfig)};
-parse_validate_ram_quota(Value, _BucketConfig) ->
+do_parse_validate_ram_quota(Value, _BucketConfig) ->
     case menelaus_util:parse_validate_number(Value, 0, undefined) of
         invalid ->
-            {error, ramQuotaMB, <<"The RAM Quota must be specified and must be a positive integer.">>};
+            {error, ramQuotaMB,
+             <<"The RAM Quota must be specified and must be a positive integer.">>};
         too_small ->
             {error, ramQuotaMB, <<"The RAM Quota cannot be negative.">>};
-        {ok, X} -> {ok, ram_quota, X * ?MIB}
+        {ok, X} ->
+            {ok, ram_quota, X * ?MIB}
     end.
 
-parse_validate_other_buckets_ram_quota(undefined) ->
+parse_validate_other_buckets_ram_quota(Params) ->
+    do_parse_validate_other_buckets_ram_quota(
+      proplists:get_value("otherBucketsRamQuotaMB", Params)).
+
+do_parse_validate_other_buckets_ram_quota(undefined) ->
     {ok, other_buckets_ram_quota, 0};
-parse_validate_other_buckets_ram_quota(Value) ->
+do_parse_validate_other_buckets_ram_quota(Value) ->
     case menelaus_util:parse_validate_number(Value, 0, undefined) of
         {ok, X} ->
             {ok, other_buckets_ram_quota, X * ?MIB};
         _ ->
-            {error, otherBucketsRamQuotaMB, <<"The other buckets RAM Quota must be a positive integer.">>}
+            {error, otherBucketsRamQuotaMB,
+             <<"The other buckets RAM Quota must be a positive integer.">>}
     end.
 
 parse_validate_time_synchronization("disabled") ->
@@ -1178,7 +1208,8 @@ parse_validate_time_synchronization("enabledWithoutDrift") ->
 parse_validate_time_synchronization("enabledWithDrift") ->
     {ok, time_synchronization, enabled_with_drift};
 parse_validate_time_synchronization(_Other) ->
-    {error, time_synchronization, <<"Time synchronization must be, 'disabled', 'enabledWithDrift', or 'enabledWithoutDrift'">>}.
+    {error, time_synchronization,
+     <<"Time synchronization must be, 'disabled', 'enabledWithDrift', or 'enabledWithoutDrift'">>}.
 
 extended_cluster_storage_info() ->
     [{nodesCount, length(ns_cluster_membership:service_active_nodes(kv))}
