@@ -587,10 +587,10 @@ do_bucket_create(Req, Name, Params, Ctx) ->
 
 handle_bucket_create(PoolId, Req) ->
     Params = Req:parse_post(),
-    Name = proplists:get_value("name", Params),
+    {Name, Params1} = extract_value("name", Params),
     Ctx = init_bucket_validation_context(true, Name, Req),
 
-    case do_bucket_create(Req, Name, Params, Ctx) of
+    case do_bucket_create(Req, Name, Params1, Ctx) of
         ok ->
             respond_bucket_created(Req, PoolId, Name);
         {Struct, Code} ->
@@ -758,7 +758,8 @@ parse_bucket_params_without_warnings(Ctx, Params) ->
 
 basic_bucket_params_screening(Ctx, Params) ->
     BucketConfig = Ctx#bv_ctx.bucket_config,
-    AuthType = case proplists:get_value("authType", Params) of
+    {Value, Params1} = extract_value("authType", Params),
+    AuthType = case Value of
                    "none" -> none;
                    "sasl" -> sasl;
                    undefined when BucketConfig =/= false ->
@@ -770,18 +771,36 @@ basic_bucket_params_screening(Ctx, Params) ->
             {[], [{name, <<"Bucket with given name doesn't exist">>}]};
         {_, _, {crap, Crap}} ->
             {[], [{authType, Crap}]};
-        _ -> basic_bucket_params_screening_tail(Ctx, Params, AuthType)
+        _ -> basic_bucket_params_screening_tail(Ctx, Params1, AuthType)
     end.
+
+-spec extract_value(string(), proplists:proplist()) ->
+                           {term(), proplists:proplist()}.
+extract_value(Name, Params) ->
+    case lists:keytake(Name, 1, Params) of
+        {value, {Name, Value}, Rest} ->
+            {Value, Rest};
+        false ->
+            {undefined, Params}
+    end.
+
+-spec extract_value(string(), proplists:proplist(), term()) ->
+                           {term(), proplists:proplist()}.
+extract_value(Name, Params, Default) ->
+    Value = proplists:get_value(Name, Params, Default),
+    Rest = proplists:delete(Name, Params),
+    {Value, Rest}.
 
 basic_bucket_params_screening_tail(#bv_ctx{bucket_config = BucketConfig,
                                            new = IsNew} = Ctx,
                                    Params, AuthType) ->
-    BucketType = get_bucket_type(IsNew, BucketConfig, Params),
-    CommonParams = validate_common_params(Ctx, Params, AuthType),
-    TypeSpecificParams =
-        validate_bucket_type_specific_params(CommonParams, Params, BucketType,
+    {BucketType, Params1} = get_bucket_type(IsNew, BucketConfig, Params),
+    {CommonParams, Params2} = validate_common_params(Ctx, Params1, AuthType),
+    {TypeSpecificParams, RestParams} =
+        validate_bucket_type_specific_params(CommonParams, Params2, BucketType,
                                              IsNew, BucketConfig),
-    Candidates = CommonParams ++ TypeSpecificParams,
+    UnknownParams = validate_remaining_params(RestParams),
+    Candidates = CommonParams ++ TypeSpecificParams ++ UnknownParams,
     assert_candidates(Candidates),
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
@@ -790,37 +809,64 @@ validate_common_params(#bv_ctx{bucket_name = BucketName,
                                bucket_config = BucketConfig, new = IsNew,
                                all_buckets = AllBuckets},
                        Params, AuthType) ->
-    [{ok, name, BucketName},
-     {ok, auth_type, AuthType},
-     parse_validate_flush_enabled(Params, IsNew),
-     validate_bucket_name(IsNew, BucketConfig, BucketName, AllBuckets),
-     validate_auth_params(AuthType, Params, BucketConfig, BucketName, IsNew),
-     parse_validate_ram_quota(Params, BucketConfig),
-     parse_validate_other_buckets_ram_quota(Params)].
+    {FlushEnabled, Params1} = parse_validate_flush_enabled(Params, IsNew),
+    NameErrors = validate_bucket_name(IsNew, BucketConfig, BucketName, AllBuckets),
+    {AuthParams, Params2} = validate_auth_params(AuthType, Params1,
+                                                 BucketConfig, BucketName,
+                                                 IsNew),
+    {RamQuota, Params3} = parse_validate_ram_quota(Params2, BucketConfig),
+    {OtherRamQuota, Params4} = parse_validate_other_buckets_ram_quota(Params3),
 
-validate_bucket_type_specific_params(CommonParams, _Params, memcached, IsNew,
+    Results = [{ok, name, BucketName},
+               {ok, auth_type, AuthType},
+               FlushEnabled,
+               NameErrors,
+               AuthParams,
+               RamQuota,
+               OtherRamQuota],
+    {Results, Params4}.
+
+validate_bucket_type_specific_params(CommonParams, Params, memcached, IsNew,
                                      BucketConfig) ->
-    [{ok, bucketType, memcached},
-     quota_size_error(CommonParams, memcached, IsNew, BucketConfig)];
+    Result = [{ok, bucketType, memcached},
+              quota_size_error(CommonParams, memcached, IsNew, BucketConfig)],
+    {Result, Params};
 validate_bucket_type_specific_params(CommonParams, Params, membase, IsNew,
                                      BucketConfig) ->
-    ReplicasNumResult = validate_replicas_number(Params, IsNew),
-    [{ok, bucketType, membase},
-     ReplicasNumResult,
-     validate_time_sync(Params, IsNew),
-     parse_validate_replica_index(Params, ReplicasNumResult, IsNew),
-     parse_validate_threads_number(Params, IsNew),
-     parse_validate_eviction_policy(Params, IsNew),
-     quota_size_error(CommonParams, membase, IsNew, BucketConfig)
-     | validate_bucket_auto_compaction_settings(Params)];
+    {ReplicasNumResult, Params1} = validate_replicas_number(Params, IsNew),
+    {TimeSync, Params2} = validate_time_sync(Params1, IsNew),
+    {ReplIndex, Params3} = parse_validate_replica_index(Params2,
+                                                        ReplicasNumResult,
+                                                        IsNew),
+    {Threads, Params4} = parse_validate_threads_number(Params3, IsNew),
+    {EvictionPol, Params5} = parse_validate_eviction_policy(Params4, IsNew),
+    QuotaSizeErr = quota_size_error(CommonParams, membase, IsNew, BucketConfig),
+    {AutoCompactionSettings, Params6} = validate_bucket_auto_compaction_settings(Params5),
+    Result = [{ok, bucketType, membase},
+              ReplicasNumResult,
+              TimeSync,
+              ReplIndex,
+              Threads,
+              EvictionPol,
+              QuotaSizeErr
+              | AutoCompactionSettings],
+    {Result, Params6};
 validate_bucket_type_specific_params(_CommonParams, Params, _BucketType,
                                      _IsNew, _BucketConfig) ->
-    [{error, bucketType, <<"invalid bucket type">>}
-     | validate_bucket_auto_compaction_settings(Params)].
+    {AutoCompactionSettings, Params1} = validate_bucket_auto_compaction_settings(Params),
+    Result = [{error, bucketType, <<"invalid bucket type">>}
+              | AutoCompactionSettings],
+    {Result, Params1}.
+
+validate_remaining_params(RestParams) ->
+    [{error, list_to_binary(Name), <<"Unkown or unexpected parameter">>} ||
+        {Name, _Value} <- RestParams].
 
 parse_validate_flush_enabled(Params, IsNew) ->
-    validate_with_missing(proplists:get_value("flushEnabled", Params),
-                          "0", IsNew, fun parse_validate_flush_enabled/1).
+    {Value, Params1} = extract_value("flushEnabled", Params),
+    Result = validate_with_missing(Value, "0", IsNew,
+                                   fun parse_validate_flush_enabled/1),
+    {Result, Params1}.
 
 validate_bucket_name(_IsNew, _BucketConfig, [] = _BucketName, _AllBuckets) ->
     {error, name, <<"Bucket name cannot be empty">>};
@@ -856,43 +902,49 @@ validate_bucket_name(false = _IsNew, BucketConfig, _BucketName, _AllBuckets) ->
     {ok, currentBucket, BucketConfig}.
 
 validate_auth_params(none = _AuthType, Params, BucketConfig, BucketName, _IsNew) ->
-    case proplists:get_value("proxyPort", Params) of
-        undefined when BucketConfig =/= false ->
-            case ns_bucket:auth_type(BucketConfig) of
-                none ->
-                    ignore;
-                _ ->
-                    {error, proxyPort, <<"port is missing">>}
-            end;
-        ProxyPort ->
-            case (catch menelaus_util:parse_validate_port_number(ProxyPort)) of
-                {error, [Error]} ->
-                    {error, proxyPort, Error};
-                PP ->
-                    case ns_bucket:is_port_free(BucketName, PP) of
-                        true ->
-                            {ok, moxi_port, PP};
-                        false ->
-                            {error, proxyPort,
-                             <<"port is already in use">>}
-                    end
-            end
-    end;
+    {Value, Params1} = extract_value("proxyPort", Params),
+    Result = case Value of
+                 undefined when BucketConfig =/= false ->
+                     case ns_bucket:auth_type(BucketConfig) of
+                         none ->
+                             ignore;
+                         _ ->
+                             {error, proxyPort, <<"port is missing">>}
+                     end;
+                 ProxyPort ->
+                     case (catch menelaus_util:parse_validate_port_number(ProxyPort)) of
+                         {error, [Error]} ->
+                             {error, proxyPort, Error};
+                         PP ->
+                             case ns_bucket:is_port_free(BucketName, PP) of
+                                 true ->
+                                     {ok, moxi_port, PP};
+                                 false ->
+                                     {error, proxyPort,
+                                      <<"port is already in use">>}
+                             end
+                     end
+             end,
+    {Result, Params1};
 validate_auth_params(sasl = _AuthType, Params, _BucketConfig, _BucketName, IsNew) ->
-    validate_with_missing(proplists:get_value("saslPassword", Params), "",
-                          IsNew, fun validate_bucket_password/1).
+    {Value, Params1} = extract_value("saslPassword", Params),
+    Result = validate_with_missing(Value, "", IsNew,
+                                   fun validate_bucket_password/1),
+    {Result, Params1}.
 
-get_bucket_type(false = _IsNew, BucketConfig, _Params)
+get_bucket_type(false = _IsNew, BucketConfig, Params)
   when is_list(BucketConfig) ->
-    ns_bucket:bucket_type(BucketConfig);
+    {ns_bucket:bucket_type(BucketConfig), Params};
 get_bucket_type(_IsNew, _BucketConfig, Params) ->
-    case proplists:get_value("bucketType", Params) of
-        "memcached" -> memcached;
-        "membase" -> membase;
-        "couchbase" -> membase;
-        undefined -> membase;
-        _ -> invalid
-    end.
+    {Value, Params1} = extract_value("bucketType", Params),
+    Result = case Value of
+                 "memcached" -> memcached;
+                 "membase" -> membase;
+                 "couchbase" -> membase;
+                 undefined -> membase;
+                 _ -> invalid
+             end,
+    {Result, Params1}.
 
 quota_size_error(CommonParams, BucketType, IsNew, BucketConfig) ->
     case lists:keyfind(ram_quota, 2, CommonParams) of
@@ -925,18 +977,20 @@ quota_size_error(CommonParams, BucketType, IsNew, BucketConfig) ->
     end.
 
 validate_bucket_auto_compaction_settings(Params) ->
-    case parse_validate_bucket_auto_compaction_settings(Params) of
-        nothing ->
-            [];
-        false ->
-            [{ok, autocompaction, false},
-             {ok, purge_interval, undefined}];
-        {errors, Errors} ->
-            [{error, F, M} || {F, M} <- Errors];
-        {ok, ACSettings, MaybePurgeInterval} ->
-            [{ok, autocompaction, ACSettings}
-             | purge_interval(MaybePurgeInterval)]
-    end.
+    Result = case parse_validate_bucket_auto_compaction_settings(Params) of
+                 nothing ->
+                     [];
+                 false ->
+                     [{ok, autocompaction, false},
+                      {ok, purge_interval, undefined}];
+                 {errors, Errors} ->
+                     [{error, F, M} || {F, M} <- Errors];
+                 {ok, ACSettings, MaybePurgeInterval} ->
+                     [{ok, autocompaction, ACSettings}
+                      | purge_interval(MaybePurgeInterval)]
+             end,
+    Params1 = remove_auto_compaction_params(Params),
+    {Result, Params1}.
 
 parse_validate_bucket_auto_compaction_settings(Params) ->
     case menelaus_web:parse_validate_boolean_field("autoCompactionDefined", '_', Params) of
@@ -957,41 +1011,66 @@ purge_interval([{purge_interval, PurgeInterval}]) ->
 purge_interval([]) ->
     [].
 
+remove_auto_compaction_params(Params) ->
+    Names = ["allowedTimePeriod[abortOutside]",
+             "allowedTimePeriod[fromHour]",
+             "allowedTimePeriod[fromMinute]",
+             "allowedTimePeriod[toHour]",
+             "allowedTimePeriod[toMinute]",
+             "autoCompactionDefined",
+             "databaseFragmentationThreshold[percentage]",
+             "databaseFragmentationThreshold[size]",
+             "indexCompactionMode",
+             "parallelDBAndViewCompaction",
+             "purgeInterval",
+             "viewFragmentationThreshold[percentage]",
+             "viewFragmentationThreshold[size]"],
+    lists:foldl(fun (Name, Ps) ->
+                        proplists:delete(Name, Ps)
+                end, Params, Names).
+
+
 validate_replicas_number(Params, IsNew) ->
-    validate_with_missing(
-      proplists:get_value("replicaNumber", Params),
-      %% replicaNumber doesn't have
-      %% default. Has to be given for
-      %% creates, but may be omitted for
-      %% updates. Later is for backwards
-      %% compat, the former is from earlier
-      %% code and stricter requirements is
-      %% IMO ok to keep.
-      undefined,
-      IsNew,
-      fun parse_validate_replicas_number/1).
+    {Value, Params1} = extract_value("replicaNumber", Params),
+    Result = validate_with_missing(
+               Value,
+               %% replicaNumber doesn't have
+               %% default. Has to be given for
+               %% creates, but may be omitted for
+               %% updates. Later is for backwards
+               %% compat, the former is from earlier
+               %% code and stricter requirements is
+               %% IMO ok to keep.
+               undefined,
+               IsNew,
+               fun parse_validate_replicas_number/1),
+    {Result, Params1}.
 
 validate_time_sync(Params, true = _IsNew) ->
-    case proplists:get_value("timeSynchronization", Params) of
-        undefined ->
-            {ok, time_synchronization, disabled};
-        Value ->
-            case cluster_compat_mode:is_cluster_45() of
-                true ->
-                    parse_validate_time_synchronization(Value);
-                false ->
-                    {error, time_synchronization,
-                     <<"TimeSynchronization can not be set if cluster is not fully 4.5">>}
-            end
-    end;
+    {Value, Params1} = extract_value("timeSynchronization", Params),
+    Result = case Value of
+                 undefined ->
+                     {ok, time_synchronization, disabled};
+                 Value ->
+                     case cluster_compat_mode:is_cluster_45() of
+                         true ->
+                             parse_validate_time_synchronization(Value);
+                         false ->
+                             {error, time_synchronization,
+                              <<"TimeSynchronization can not be set if cluster is not fully 4.5">>}
+                     end
+             end,
+    {Result, Params1};
 validate_time_sync(Params, false = _IsNew) ->
-    case proplists:get_value("timeSynchronization", Params) of
-        undefined ->
-            ignore;
-        _Any ->
-            {error, time_synchronization,
-             <<"TimeSyncronization not allowed in update bucket">>}
-    end.
+    {Value, Params1} = extract_value("timeSynchronization", Params),
+    Result = case Value of
+                 undefined ->
+                     ignore;
+                 _Any ->
+                     {error, time_synchronization,
+                      <<"TimeSyncronization not allowed in update bucket">>}
+             end,
+    {Result, Params1}.
 
 assert_candidates(Candidates) ->
     %% this is to validate that Candidates elements have specific
@@ -1136,11 +1215,11 @@ parse_validate_replicas_number(NumReplicas) ->
     end.
 
 parse_validate_replica_index(Params, ReplicasNum, true = _IsNew) ->
-    parse_validate_replica_index(
-      proplists:get_value("replicaIndex", Params,
-                          replicas_num_default(ReplicasNum)));
-parse_validate_replica_index(_Params, _ReplicasNum, false = _IsNew) ->
-    ignore.
+    {Value, Params1} = extract_value("replicaIndex", Params,
+                          replicas_num_default(ReplicasNum)),
+    {parse_validate_replica_index(Value), Params1};
+parse_validate_replica_index(Params, _ReplicasNum, false = _IsNew) ->
+    {ignore, Params}.
 
 replicas_num_default({ok, num_replicas, 0}) ->
     "0";
@@ -1152,8 +1231,10 @@ parse_validate_replica_index("1") -> {ok, replica_index, true};
 parse_validate_replica_index(_ReplicaValue) -> {error, replicaIndex, <<"replicaIndex can only be 1 or 0">>}.
 
 parse_validate_threads_number(Params, IsNew) ->
-    validate_with_missing(proplists:get_value("threadsNumber", Params),
-                          "3", IsNew, fun parse_validate_threads_number/1).
+    {Value, Params1} = extract_value("threadsNumber", Params),
+    Result = validate_with_missing(Value, "3", IsNew,
+                                   fun parse_validate_threads_number/1),
+    {Result, Params1}.
 
 parse_validate_flush_enabled("0") -> {ok, flush_enabled, false};
 parse_validate_flush_enabled("1") -> {ok, flush_enabled, true};
@@ -1175,9 +1256,10 @@ parse_validate_threads_number(NumThreads) ->
     end.
 
 parse_validate_eviction_policy(Params, IsNew) ->
-    validate_with_missing(proplists:get_value("evictionPolicy", Params),
-                          "valueOnly", IsNew,
-                          fun parse_validate_eviction_policy/1).
+    {Value, Params1} = extract_value("evictionPolicy", Params),
+    Result = validate_with_missing(Value, "valueOnly", IsNew,
+                                   fun parse_validate_eviction_policy/1),
+    {Result, Params1}.
 
 parse_validate_eviction_policy("valueOnly") ->
     {ok, eviction_policy, value_only};
@@ -1188,8 +1270,8 @@ parse_validate_eviction_policy(_Other) ->
      <<"Eviction policy must be either 'valueOnly' or 'fullEviction'">>}.
 
 parse_validate_ram_quota(Params, BucketConfig) ->
-    do_parse_validate_ram_quota(proplists:get_value("ramQuotaMB", Params),
-                                BucketConfig).
+    {Value, Params1} = extract_value("ramQuotaMB", Params),
+    {do_parse_validate_ram_quota(Value, BucketConfig), Params1}.
 
 do_parse_validate_ram_quota(undefined, BucketConfig) when BucketConfig =/= false ->
     {ok, ram_quota, ns_bucket:raw_ram_quota(BucketConfig)};
@@ -1205,8 +1287,8 @@ do_parse_validate_ram_quota(Value, _BucketConfig) ->
     end.
 
 parse_validate_other_buckets_ram_quota(Params) ->
-    do_parse_validate_other_buckets_ram_quota(
-      proplists:get_value("otherBucketsRamQuotaMB", Params)).
+    {Value, Params1} = extract_value("otherBucketsRamQuotaMB", Params),
+    {do_parse_validate_other_buckets_ram_quota(Value), Params1}.
 
 do_parse_validate_other_buckets_ram_quota(undefined) ->
     {ok, other_buckets_ram_quota, 0};
@@ -1312,8 +1394,7 @@ basic_bucket_params_screening_test() ->
 
     %% it is not possible to update missing bucket. And specific format of errors
     {OK3, E3} = basic_bucket_params_screening(false, "missing",
-                                              [{"bucketType", "membase"},
-                                               {"authType", "sasl"}, {"saslPassword", ""},
+                                              [{"authType", "sasl"}, {"saslPassword", ""},
                                                {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
                                               AllBuckets),
     [] = OK3,
@@ -1335,8 +1416,7 @@ basic_bucket_params_screening_test() ->
 
     %% it is possible to update only some fields
     {OK6, E6} = basic_bucket_params_screening(false, "third",
-                                              [{"bucketType", "membase"},
-                                               {"saslPassword", "password"}],
+                                              [{"saslPassword", "password"}],
                                               AllBuckets),
     {sasl_password, "password"} = lists:keyfind(sasl_password, 1, OK6),
     {auth_type, sasl} = lists:keyfind(auth_type, 1, OK6),
@@ -1347,8 +1427,7 @@ basic_bucket_params_screening_test() ->
 
     %% its not possible to update memcached bucket ram quota
     {_OK7, E7} = basic_bucket_params_screening(false, "mcd",
-                                               [{"bucketType", "membase"},
-                                                {"authType", "sasl"}, {"saslPassword", ""},
+                                               [{"authType", "sasl"}, {"saslPassword", ""},
                                                 {"ramQuotaMB", "1024"}, {"replicaNumber", "2"}],
                                                AllBuckets),
     ?assertEqual(true, lists:member(ramQuotaMB, proplists:get_keys(E7))),
@@ -1361,8 +1440,7 @@ basic_bucket_params_screening_test() ->
     ?assertEqual([{name, <<"Bucket name needs to be specified">>}], E8),
 
     {_OK9, E9} = basic_bucket_params_screening(false, undefined,
-                                               [{"bucketType", "membase"},
-                                                {"authType", "sasl"}, {"saslPassword", ""},
+                                               [{"authType", "sasl"}, {"saslPassword", ""},
                                                 {"ramQuotaMB", "400"}, {"replicaNumber", "2"}],
                                                AllBuckets),
     ?assertEqual([{name, <<"Bucket with given name doesn't exist">>}], E9),
@@ -1386,13 +1464,21 @@ basic_bucket_params_screening_test() ->
 
     %% it is possible to update optional fields
     {OK12, E12} = basic_bucket_params_screening(false, "third",
-                                                [{"bucketType", "membase"},
-                                                 {"threadsNumber", "8"},
+                                                [{"threadsNumber", "8"},
                                                  {"evictionPolicy", "fullEviction"}],
                                                 AllBuckets),
     [] = E12,
     ?assertEqual(8, proplists:get_value(num_threads, OK12)),
     ?assertEqual(full_eviction, proplists:get_value(eviction_policy, OK12)),
+
+    {_OK13, E13} = basic_bucket_params_screening(true, "missing",
+                                                 [{"bucketType", "membase"},
+                                                  {"authType", "sasl"}, {"saslPassword", ""},
+                                                  {"ramQuotaMB", "400"}, {"replicaNumber", "2"},
+                                                  {"unexpectedParameter", "value"}],
+                                                 AllBuckets),
+
+    ?assertEqual([<<"unexpectedParameter">>], proplists:get_keys(E13)),
 
     ok.
 
