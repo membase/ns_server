@@ -604,7 +604,7 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
     proc_lib:spawn_link(
       fun () ->
               VBucketDbs = all_bucket_dbs(BucketName),
-              Total = length(VBucketDbs),
+              NumVBuckets = length(VBucketDbs),
 
               DoCompact =
                   case Force of
@@ -613,10 +613,15 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                                     [BucketName]),
                           true;
                       false ->
-                          bucket_needs_compaction(BucketName, Total, Config)
+                          bucket_needs_compaction(BucketName, NumVBuckets, Config)
                   end,
 
-              DoCompact orelse exit(normal),
+              case DoCompact andalso NumVBuckets =/= 0 of
+                  true ->
+                      ok;
+                  false ->
+                      exit(normal)
+              end,
 
               ?log_info("Compacting databases for bucket ~s", [BucketName]),
 
