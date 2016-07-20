@@ -610,7 +610,7 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
     proc_lib:spawn_link(
       fun () ->
               VBucketDbs = all_bucket_dbs(BucketName),
-              Total = length(VBucketDbs),
+              NumVBuckets = length(VBucketDbs),
 
               DoCompact =
                   case Force of
@@ -619,10 +619,15 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
                                     [BucketName]),
                           true;
                       false ->
-                          bucket_needs_compaction(BucketName, Total, Config)
+                          bucket_needs_compaction(BucketName, NumVBuckets, Config)
                   end,
 
-              DoCompact orelse exit(normal),
+              case DoCompact andalso NumVBuckets =/= 0 of
+                  true ->
+                      ok;
+                  false ->
+                      exit(normal)
+              end,
 
               ?log_info("Compacting databases for bucket ~s", [BucketName]),
 
@@ -657,12 +662,14 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
               ?log_debug("Started KV compaction manager ~p", [Manager]),
 
               NWorkers = ns_config:read_key_fast(compaction_number_of_kv_workers, 1),
+              VBucketConfig = vbucket_compaction_config(Config, NumVBuckets),
               Compactors =
                   [ [{type, vbucket_worker},
                      {name, integer_to_list(I)},
                      {important, true},
                      {fa, {fun spawn_vbuckets_compactor/6,
-                           [BucketName, Manager, Config, Force, Options, SafeViewSeqs]}}] ||
+                           [BucketName, Manager, VBucketConfig,
+                            Force, Options, SafeViewSeqs]}}] ||
                       I <- lists:seq(1, NWorkers) ],
 
               Pids = [chain_compactors([Compactor]) || Compactor <- Compactors],
@@ -674,6 +681,17 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
               ?log_info("Finished compaction of databases for bucket ~s",
                         [BucketName])
       end).
+
+vbucket_compaction_config(Config, NumVBuckets) ->
+    FragThreshold = Config#config.db_fragmentation,
+    NewFragThreshold = do_vbucket_compaction_config(FragThreshold, NumVBuckets),
+    Config#config{db_fragmentation = NewFragThreshold}.
+
+do_vbucket_compaction_config({FragLimit, FragSizeLimit}, NumVBuckets)
+  when is_integer(FragSizeLimit) ->
+    {FragLimit, FragSizeLimit div NumVBuckets};
+do_vbucket_compaction_config(FragThreshold, _) ->
+    FragThreshold.
 
 make_per_vbucket_compaction_options({TS, 0, DD} = GeneralOption, {Vb, _}, SafeViewSeqs) ->
     case lists:keyfind(Vb, 1, SafeViewSeqs) of
@@ -764,7 +782,7 @@ maybe_compact_master_db(BucketName, Config, Force) ->
     DbName = db_name(BucketName, "master"),
     SizeInfo = ns_couchdb_api:get_master_vbucket_size(BucketName),
 
-    Force orelse vbucket_needs_compaction(SizeInfo, Config) orelse exit(normal),
+    Force orelse master_db_needs_compaction(SizeInfo, Config) orelse exit(normal),
 
     %% effectful
     ensure_can_db_compact(DbName, SizeInfo),
@@ -773,6 +791,28 @@ maybe_compact_master_db(BucketName, Config, Force) ->
     Ret = compact_master_vbucket(BucketName),
     ?log_info("Compaction of ~p has finished with ~p", [DbName, Ret]),
     Ret.
+
+master_db_needs_compaction(SizeInfo, Config) ->
+    vbucket_needs_compaction(SizeInfo, master_db_compaction_config(Config)).
+
+master_db_compaction_config(Config) ->
+    FragThreshold = Config#config.db_fragmentation,
+    NewFragThreshold = do_master_db_compaction_config(FragThreshold),
+    Config#config{db_fragmentation = NewFragThreshold}.
+
+do_master_db_compaction_config({FragLimit, FragSizeLimit})
+  when is_integer(FragSizeLimit) ->
+    case is_integer(FragLimit) of
+        true ->
+            {FragLimit, undefined};
+        false ->
+            %% Master vbucket is special in that it only contains metadata and
+            %% generally is very small. So it's ok to cheat here and pretend
+            %% that fragmentation percentage threshold is defined.
+            {50, undefined}
+    end;
+do_master_db_compaction_config(FragThreshold) ->
+    FragThreshold.
 
 compact_master_vbucket(BucketName) ->
     process_flag(trap_exit, true),
@@ -966,7 +1006,9 @@ aggregated_size_info(Bucket) ->
     {list_to_integer(binary_to_list(DS)),
      list_to_integer(binary_to_list(FS))}.
 
-check_fragmentation({FragLimit, FragSizeLimit}, Frag, FragSize) ->
+check_fragmentation(FragThreshold, Frag, FragSize) ->
+    {FragLimit, FragSizeLimit} = normalize_fragmentation(FragThreshold),
+
     true = is_integer(FragLimit),
     true = is_integer(FragSizeLimit),
 
@@ -1105,11 +1147,9 @@ config_to_record(Config, DaemonConfig) ->
 do_config_to_record([], Acc) ->
     Acc;
 do_config_to_record([{database_fragmentation_threshold, V} | Rest], Acc) ->
-   do_config_to_record(
-     Rest, Acc#config{db_fragmentation=normalize_fragmentation(V)});
+   do_config_to_record(Rest, Acc#config{db_fragmentation=V});
 do_config_to_record([{view_fragmentation_threshold, V} | Rest], Acc) ->
-    do_config_to_record(
-      Rest, Acc#config{view_fragmentation=normalize_fragmentation(V)});
+    do_config_to_record(Rest, Acc#config{view_fragmentation=V});
 do_config_to_record([{parallel_db_and_view_compaction, V} | Rest], Acc) ->
     do_config_to_record(Rest, Acc#config{parallel_view_compact=V});
 do_config_to_record([{allowed_time_period, V} | Rest], Acc) ->
