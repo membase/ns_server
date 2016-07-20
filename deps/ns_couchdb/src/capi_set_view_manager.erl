@@ -443,7 +443,7 @@ do_wait_index_updated({Pid, _} = From, VBucket,
 -spec get_safe_purge_seqs(BucketName :: binary()) -> [{non_neg_integer(), non_neg_integer()}].
 get_safe_purge_seqs(BucketName) ->
     lists:foldl(
-      fun (<<"_design/dev_",_>>, SafeSeqs) ->
+      fun (<<"_design/dev_", _/binary>>, SafeSeqs) ->
               %% we ignore dev design docs
               SafeSeqs;
           (DDocId, SafeSeqs) ->
