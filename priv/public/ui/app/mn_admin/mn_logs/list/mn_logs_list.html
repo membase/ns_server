@@ -1,44 +1,40 @@
-<div id="logs_container" mn-spinner="!logsListCtl.logs" min-height="100px">
-<table class="lined_tab">
-  <colgroup>
-    <col style="width: 55%;">
-    <col style="width: 15%;">
-    <col style="width: 15%;">
-    <col style="width: 15%;">
-  </colgroup>
-  <thead>
-    <tr>
-      <th>Event</th>
-      <th>Module Code</th>
-      <th>Server Node</th>
-      <th>Time</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr ng-repeat="row in logsListCtl.logs | orderBy:'serverTime':true track by $index">
-      <td>
-        <span
-          ng-if="!logsListCtl.isOpened($index) && logsListCtl.isOverLimit(row)"
-          style="white-space: pre-wrap;">{{row.text | mnLimitTo: logsListCtl.textLimit}}</span>
-        <span
-          ng-if="logsListCtl.isOpened($index) || !logsListCtl.isOverLimit(row)"
-          style="white-space: pre-wrap;">{{row.text}}</span>
-        <span ng-show="logsListCtl.isOverLimit(row)">
-          <a
-            ng-show="!logsListCtl.isOpened($index)"
-            ng-click="logsListCtl.toggle($index)">... show</a>
-          <a
-            ng-show="logsListCtl.isOpened($index)"
-            ng-click="logsListCtl.toggle($index)">hide</a>
-        </span>
-      </td>
-      <td>{{row.module}} {{row.code | moduleCode }}</td>
-      <td>{{row.node}}</td>
-      <td class="text_11 nobr">
-        <strong>{{row.serverTime | date:'mediumTime':'UTC'}}</strong>
-        {{row.serverTime | date:'EEE MMM d, yyyy'}}
-      </td>
-    </tr>
-  </tbody>
-</table>
+<div mn-spinner="!logsListCtl.logs">
+  <table class="table-stroked break-all">
+    <thead>
+      <tr>
+        <th>Event</th>
+        <th class="text-center">Module Code</th>
+        <th class="text-center">Server Node</th>
+        <th class="text-center">Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="row in logsListCtl.logs | orderBy:'serverTime':true track by $index">
+        <td>
+          <span
+             ng-if="!logsListCtl.isOpened($index) && logsListCtl.isOverLimit(row)"
+             >{{row.text | mnLimitTo: logsListCtl.textLimit}}</span>
+          <span
+             ng-if="logsListCtl.isOpened($index) || !logsListCtl.isOverLimit(row)"
+             >{{row.text}}</span>
+          <span ng-show="logsListCtl.isOverLimit(row)">
+            <a
+               href=""
+               ng-show="!logsListCtl.isOpened($index)"
+               ng-click="logsListCtl.toggle($index)">... show</a>
+            <a
+               href=""
+               ng-show="logsListCtl.isOpened($index)"
+               ng-click="logsListCtl.toggle($index)">hide</a>
+          </span>
+        </td>
+        <td class="text-center width-2">{{row.module}} {{row.code | moduleCode }}</td>
+        <td class="text-center width-2">{{row.node}}</td>
+        <td class="text-center width-2">
+          <strong class="nowrap">{{row.serverTime | date:'mediumTime':'UTC'}}</strong>
+          <span class="nowrap">{{row.serverTime | date:'EEE MMM d, yyyy'}}</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </div>

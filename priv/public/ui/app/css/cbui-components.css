@@ -236,14 +236,14 @@ td.node_name a {
   width: 4px;
 }
 
-td.dynamic_healthy {
+.dynamic_healthy {
     background-color: #2ca01c;
 }
-td.dynamic_unhealthy {
+.dynamic_unhealthy {
     background-color: red;
 }
-td.dynamic_inactiveFailed,
-td.dynamic_warmup {
+.dynamic_inactiveFailed,
+.dynamic_warmup {
     background-color: orange;
 }
 

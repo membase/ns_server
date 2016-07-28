@@ -1,18 +1,23 @@
-<div id="js_logs" class="logs">
-  <!-- Shadow box -->
-  <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
-  <h1>Log</h1>
-  <div class="clear"></div>
-  <div class="shadow_box">
-    <div class="section">
-      <div class="header_2">
-        <ul class="tabs when-roadmin-avoid-me" ng-show="rbac.cluster.admin.logs.read">
-          <li class="tab_left" ui-sref="app.admin.logs.list" ui-sref-active="selected"><a>Logs</a></li>
-          <li class="tab_right" ui-sref="app.admin.logs.collectInfo.form" ng-class="{selected: ('app.admin.logs.collectInfo' | includedByState)}"><a>Collect Information</a></li>
-        </ul>
-      </div>
-      <div class="panes clearfix" ui-view>
-      </div>
-    </div>
+<div>
+  <div
+     class="interim alert alert-warning"
+     ng-show="adminCtl.lostConnState.isActivated">
+    <p>Difficulties communicating with the cluster; displaying cached information!</p>
+  </div>
+  <div
+     class="interim row flex-left sub-nav"
+     ng-show="rbac.cluster.admin.logs.read">
+    <span class="pills">
+      <a
+         ui-sref="app.admin.logs.list"
+         ui-sref-active="pills-selected">Logs</a>
+    </span>
+    <span class="pills">
+      <a
+         ui-sref="app.admin.logs.collectInfo.form"
+         ui-sref-active="pills-selected"
+         ng-class="{selected: ('app.admin.logs.collectInfo' | includedByState)}">Collect Information</a>
+    </span>
   </div>
 </div>
+<div class="interim main-content" ui-view=""></div>

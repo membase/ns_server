@@ -1,12 +1,14 @@
-<div class="view_document_dialog" id="copy_view_dialog" style="width:711px">
-  <h1>Confirm Log Collection Stop</h1>
+<div class="dialog-small">
+  <div class="panel-header">
+    <h2>Confirm Log Collection Stop</h2>
+  </div>
   <form ng-submit="$close()">
-    <p class="pat_20 pas_20">
-       <strong>Warning</strong> - Are you sure you want to stop log collection?
-    </p>
-    <div class="save_cancel">
-      <button class="save_button float_right" type="submit">Stop</button>
-      <a class="close" ng-click="$dismiss()">Cancel</a>
+    <div class="panel-content">
+      <p>Are you sure you want to stop log collection?</p>
+    </div>
+    <div class="panel-footer">
+      <a href="" ng-click="$dismiss()">Cancel</a>
+      <button type="submit">Stop</button>
     </div>
   </form>
 </div>
