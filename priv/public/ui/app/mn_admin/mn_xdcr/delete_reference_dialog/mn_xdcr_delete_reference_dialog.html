@@ -1,12 +1,16 @@
-<div class="join_cluster" id="create_cluster_reference_dialog" title="Create Cluster Reference" style="width:500px">
-  <h1>Delete Cluster Reference</h1>
-  <form ng-submit="xdcrDeleteReferenceDialogCtl.deleteClusterReference()" mn-spinner="xdcrDeleteReferenceDialogCtl.viewLoading">
-    <p class="pat_20 pas_20">
-      Please, confirm deleting remote cluster reference "{{xdcrDeleteReferenceDialogCtl.name}}".
-    </p>
-    <div class="save_cancel">
-      <button class="save_button float_right" type="submit">OK</button>
-      <a class="close"  ng-click="$dismiss()">Cancel</a>
+<div class="dialog-small">
+  <div class="panel-header">
+    <h2>Confirm Delete</h2>
+  </div>
+  <form
+     ng-submit="xdcrDeleteReferenceDialogCtl.deleteClusterReference()"
+     mn-spinner="xdcrDeleteReferenceDialogCtl.viewLoading">
+    <div class="panel-content">
+      <p class="error">Delete remote cluster reference "{{xdcrDeleteReferenceDialogCtl.name}}"?</p>
+    </div>
+    <div class="panel-footer">
+      <a href="" ng-click="$dismiss()">Cancel</a>
+      <button type="submit">Yes, Delete Reference</button>
     </div>
   </form>
 </div>

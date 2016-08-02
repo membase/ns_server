@@ -1224,8 +1224,7 @@ meter {
 .rebalance-progress div {
     position: absolute;
     height: 100%;
-    background-color: #4287D6
-
+    background-color: #4287D6;
 }
 
 /* create xdcr dialog --------------- */

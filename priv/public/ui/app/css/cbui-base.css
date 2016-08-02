@@ -283,6 +283,12 @@ button.icon {
 .fa-ban:before {
     content: "\f05e";
 }
+.fa-running:before {
+    content: "\f04b";
+}
+.fa-paused:before {
+    content: "\f04c";
+}
 
 /* Headings  -----------------------------*/
 
@@ -927,6 +933,7 @@ textarea {
   width: 100%;
 }
 
+.input,
 input[type="email"],
 input[type="number"],
 input[type="search"],

@@ -1,10 +1,17 @@
-<div id="create_replication_dialog" style="width:440px">
-  <h1>Advanced settings</h1>
-  <form ng-submit="xdcrEditDialogCtl.createReplication()" mn-spinner="xdcrEditDialogCtl.viewLoading">
-    <div mn-xdcr-settings="xdcrEditDialogCtl.settings" class="xdcr_advaced_settings dialog" style="display: block;"></div>
-    <div class="save_cancel">
-      <button class="save_button float_right replicate-button" type="submit" style="margin-left:12px;">Save</button>
-      <a class="close" ng-click="$dismiss()">Cancel</a>
+<div class="dialog-med">
+  <div class="panel-header">
+    <h2>Advanced Settings</h2>
+  </div>
+  <form
+     class="forms"
+     ng-submit="xdcrEditDialogCtl.createReplication()"
+     mn-spinner="xdcrEditDialogCtl.viewLoading">
+    <div
+       class="panel-content"
+       mn-xdcr-settings="xdcrEditDialogCtl.settings"></div>
+    <div class="panel-footer">
+      <a href="" ng-click="$dismiss()">Cancel</a>
+      <button type="submit">Save</button>
     </div>
   </form>
 </div>

@@ -1,11 +1,15 @@
-<div id="create_replication_dialog" style="width:600px">
-  <h1>XDCR Errors</h1>
+<div class="dialog-med">
+  <div class="panel-header">
+    <h2>XDCR Errors</h2>
+  </div>
   <form ng-submit="$dismiss()">
-    <div class="warning pat_10 xdcr_errors" id="create_replication_dialog_errors_container">
-      <span ng-repeat="error in xdcrCtl.xdcrErrors"><strong>Attention</strong> - {{error}}</span>
+    <div class="panel-content">
+      <p class="error" ng-repeat="error in xdcrCtl.xdcrErrors">
+        <strong>Attention</strong> - {{error}}
+      </p>
     </div>
-    <div class="save_cancel">
-      <button class="save_button float_right replicate-button" type="submit" style="margin-left:12px;">OK</button>
+    <div class="panel-footer">
+      <button type="submit">OK</button>
     </div>
   </form>
 </div>
