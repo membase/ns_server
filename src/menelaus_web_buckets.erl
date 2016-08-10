@@ -26,6 +26,10 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-ifdef(EUNIT).
+-export([test/0]).
+-endif.
+
 -export([checking_bucket_uuid/3,
          handle_bucket_list/1,
          handle_bucket_info/3,
@@ -921,7 +925,7 @@ quota_size_error(CommonParams, BucketType, IsNew, BucketConfig) ->
     end.
 
 validate_bucket_auto_compaction_settings(Params) ->
-    case menelaus_web:parse_validate_bucket_auto_compaction_settings(Params) of
+    case parse_validate_bucket_auto_compaction_settings(Params) of
         nothing ->
             [];
         false ->
@@ -932,6 +936,20 @@ validate_bucket_auto_compaction_settings(Params) ->
         {ok, ACSettings, MaybePurgeInterval} ->
             [{ok, autocompaction, ACSettings}
              | purge_interval(MaybePurgeInterval)]
+    end.
+
+parse_validate_bucket_auto_compaction_settings(Params) ->
+    case menelaus_web:parse_validate_boolean_field("autoCompactionDefined", '_', Params) of
+        [] -> nothing;
+        [{error, F, V}] -> {errors, [{F, V}]};
+        [{ok, _, false}] -> false;
+        [{ok, _, true}] ->
+            case menelaus_web:parse_validate_auto_compaction_settings(Params, false) of
+                {ok, AllFields, MaybePurge, _} ->
+                    {ok, AllFields, MaybePurge};
+                Error ->
+                    Error
+            end
     end.
 
 purge_interval([{purge_interval, PurgeInterval}]) ->
@@ -1481,3 +1499,53 @@ convert_info_level(streaming) ->
     {normal, stable};
 convert_info_level(InfoLevel) ->
     {InfoLevel, unstable}.
+
+-ifdef(EUNIT).
+
+test() ->
+    eunit:test({module, ?MODULE},
+               [verbose]).
+
+basic_parse_validate_bucket_auto_compaction_settings_test() ->
+    Value0 = parse_validate_bucket_auto_compaction_settings([{"not_autoCompactionDefined", "false"},
+                                                             {"databaseFragmentationThreshold[percentage]", "10"},
+                                                             {"viewFragmentationThreshold[percentage]", "20"},
+                                                             {"parallelDBAndViewCompaction", "false"},
+                                                             {"allowedTimePeriod[fromHour]", "0"},
+                                                             {"allowedTimePeriod[fromMinute]", "1"},
+                                                             {"allowedTimePeriod[toHour]", "2"},
+                                                             {"allowedTimePeriod[toMinute]", "3"},
+                                                             {"allowedTimePeriod[abortOutside]", "false"}]),
+    ?assertMatch(nothing, Value0),
+    Value1 = parse_validate_bucket_auto_compaction_settings([{"autoCompactionDefined", "false"},
+                                                             {"databaseFragmentationThreshold[percentage]", "10"},
+                                                             {"viewFragmentationThreshold[percentage]", "20"},
+                                                             {"parallelDBAndViewCompaction", "false"},
+                                                             {"allowedTimePeriod[fromHour]", "0"},
+                                                             {"allowedTimePeriod[fromMinute]", "1"},
+                                                             {"allowedTimePeriod[toHour]", "2"},
+                                                             {"allowedTimePeriod[toMinute]", "3"},
+                                                             {"allowedTimePeriod[abortOutside]", "false"}]),
+    ?assertMatch(false, Value1),
+    {ok, Stuff0, []} = parse_validate_bucket_auto_compaction_settings([{"autoCompactionDefined", "true"},
+                                                                       {"databaseFragmentationThreshold[percentage]", "10"},
+                                                                       {"viewFragmentationThreshold[percentage]", "20"},
+                                                                       {"parallelDBAndViewCompaction", "false"},
+                                                                       {"allowedTimePeriod[fromHour]", "0"},
+                                                                       {"allowedTimePeriod[fromMinute]", "1"},
+                                                                       {"allowedTimePeriod[toHour]", "2"},
+                                                                       {"allowedTimePeriod[toMinute]", "3"},
+                                                                       {"allowedTimePeriod[abortOutside]", "false"}]),
+    Stuff1 = lists:sort(Stuff0),
+    ?assertEqual([{allowed_time_period, [{from_hour, 0},
+                                         {to_hour, 2},
+                                         {from_minute, 1},
+                                         {to_minute, 3},
+                                         {abort_outside, false}]},
+                  {database_fragmentation_threshold, {10, undefined}},
+                  {parallel_db_and_view_compaction, false},
+                  {view_fragmentation_threshold, {20, undefined}}],
+                 Stuff1),
+    ok.
+
+-endif.

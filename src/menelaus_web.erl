@@ -49,7 +49,7 @@
          maybe_cleanup_old_buckets/0,
          find_node_hostname/2,
          build_bucket_auto_compaction_settings/1,
-         parse_validate_bucket_auto_compaction_settings/1,
+         parse_validate_auto_compaction_settings/2,
          parse_validate_boolean_field/3,
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
@@ -3719,20 +3719,6 @@ parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
             {errors, Errors}
     end.
 
-parse_validate_bucket_auto_compaction_settings(Params) ->
-    case parse_validate_boolean_field("autoCompactionDefined", '_', Params) of
-        [] -> nothing;
-        [{error, F, V}] -> {errors, [{F, V}]};
-        [{ok, _, false}] -> false;
-        [{ok, _, true}] ->
-            case parse_validate_auto_compaction_settings(Params, false) of
-                {ok, AllFields, MaybePurge, _} ->
-                    {ok, AllFields, MaybePurge};
-                Error ->
-                    Error
-            end
-    end.
-
 handle_settings_auto_compaction(Req) ->
     JSON = [{autoCompactionSettings, build_global_auto_compaction_settings()},
             {purgeInterval, compaction_api:get_purge_interval(global)}],
@@ -4023,49 +4009,6 @@ basic_parse_validate_auto_compaction_settings_test() ->
                   {view_fragmentation_threshold, {20, undefined}}],
                  Stuff1),
     ok.
-
-basic_parse_validate_bucket_auto_compaction_settings_test() ->
-    Value0 = parse_validate_bucket_auto_compaction_settings([{"not_autoCompactionDefined", "false"},
-                                                             {"databaseFragmentationThreshold[percentage]", "10"},
-                                                             {"viewFragmentationThreshold[percentage]", "20"},
-                                                             {"parallelDBAndViewCompaction", "false"},
-                                                             {"allowedTimePeriod[fromHour]", "0"},
-                                                             {"allowedTimePeriod[fromMinute]", "1"},
-                                                             {"allowedTimePeriod[toHour]", "2"},
-                                                             {"allowedTimePeriod[toMinute]", "3"},
-                                                             {"allowedTimePeriod[abortOutside]", "false"}]),
-    ?assertMatch(nothing, Value0),
-    Value1 = parse_validate_bucket_auto_compaction_settings([{"autoCompactionDefined", "false"},
-                                                             {"databaseFragmentationThreshold[percentage]", "10"},
-                                                             {"viewFragmentationThreshold[percentage]", "20"},
-                                                             {"parallelDBAndViewCompaction", "false"},
-                                                             {"allowedTimePeriod[fromHour]", "0"},
-                                                             {"allowedTimePeriod[fromMinute]", "1"},
-                                                             {"allowedTimePeriod[toHour]", "2"},
-                                                             {"allowedTimePeriod[toMinute]", "3"},
-                                                             {"allowedTimePeriod[abortOutside]", "false"}]),
-    ?assertMatch(false, Value1),
-    {ok, Stuff0, []} = parse_validate_bucket_auto_compaction_settings([{"autoCompactionDefined", "true"},
-                                                                       {"databaseFragmentationThreshold[percentage]", "10"},
-                                                                       {"viewFragmentationThreshold[percentage]", "20"},
-                                                                       {"parallelDBAndViewCompaction", "false"},
-                                                                       {"allowedTimePeriod[fromHour]", "0"},
-                                                                       {"allowedTimePeriod[fromMinute]", "1"},
-                                                                       {"allowedTimePeriod[toHour]", "2"},
-                                                                       {"allowedTimePeriod[toMinute]", "3"},
-                                                                       {"allowedTimePeriod[abortOutside]", "false"}]),
-    Stuff1 = lists:sort(Stuff0),
-    ?assertEqual([{allowed_time_period, [{from_hour, 0},
-                                         {to_hour, 2},
-                                         {from_minute, 1},
-                                         {to_minute, 3},
-                                         {abort_outside, false}]},
-                  {database_fragmentation_threshold, {10, undefined}},
-                  {parallel_db_and_view_compaction, false},
-                  {view_fragmentation_threshold, {20, undefined}}],
-                 Stuff1),
-    ok.
-
 
 extra_field_parse_validate_auto_compaction_settings_test() ->
     {errors, Stuff0} = parse_validate_auto_compaction_settings([{"databaseFragmentationThreshold", "10"},
