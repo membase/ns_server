@@ -272,4 +272,7 @@ child_specs() ->
       permanent, brutal_kill, worker, dynamic},
 
      {master_activity_events_keeper, {master_activity_events_keeper, start_link, []},
-      permanent, brutal_kill, worker, dynamic}].
+      permanent, brutal_kill, worker, dynamic},
+
+     {health_monitor_sup, {health_monitor_sup, start_link, []},
+      permanent, infinity, supervisor, [health_monitor_sup]}].
