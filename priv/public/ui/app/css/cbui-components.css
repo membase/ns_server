@@ -1165,8 +1165,10 @@ meter {
     z-index: 1;
 }
 .ui-select-multiple input.ui-select-search {
-    height: 18px;
+    height: 2rem!important;
     padding: 0;
+    width: auto;
+    display: inline;
 }
 .ui-select-multiple > .ui-select-choices {
     position: absolute;

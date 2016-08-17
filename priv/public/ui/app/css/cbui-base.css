@@ -86,7 +86,6 @@ textarea {
 textarea {
   overflow: auto;
   vertical-align: top;
-  resize: vertical;
 }
 
 button {
@@ -277,6 +276,12 @@ button.icon {
 }
 .fa-angle-up:before {
     content: "\f106";
+}
+.fa-check:before {
+    content: "\f00c";
+}
+.fa-ban:before {
+    content: "\f05e";
 }
 
 /* Headings  -----------------------------*/

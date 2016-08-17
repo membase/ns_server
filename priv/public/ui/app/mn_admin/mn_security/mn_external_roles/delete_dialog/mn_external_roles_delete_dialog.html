@@ -1,10 +1,18 @@
-<div>
-  <h1>Confirm Delete</h1>
-  <form ng-submit="externalRolesDeleteDialogCtl.onSubmit()" mn-spinner="externalRolesDeleteDialogCtl.viewLoading">
-    <p class="pat_20 pas_20">Are you sure you want to permanently delete {{externalRolesDeleteDialogCtl.username}} </p>
-    <div class="save_cancel clearfix">
-      <button type="submit" class="save_button float_right">Yes, Delete</button>
-      <a class="casper_close_join_cluster_dialog close" ng-click="$dismiss()">Cancel</a>
+<div class="dialog-small">
+  <div class="panel-header">
+    <h2>Confirm Delete</h2>
+  </div>
+  <form
+     ng-submit="externalRolesDeleteDialogCtl.onSubmit()"
+     mn-spinner="externalRolesDeleteDialogCtl.viewLoading">
+    <div class="panel-content">
+      <p class="error">
+        Are you sure you want to permanently delete {{externalRolesDeleteDialogCtl.username}}?
+      </p>
+    </div>
+    <div class="panel-footer">
+      <a href="" ng-click="$dismiss()">Cancel</a>
+      <button type="submit">Yes, Delete</button>
     </div>
   </form>
 </div>

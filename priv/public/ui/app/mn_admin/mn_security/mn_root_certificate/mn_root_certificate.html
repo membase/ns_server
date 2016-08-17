@@ -1,48 +1,23 @@
-<div class="shadow_box settings">
-  <div class="header_2">
-    <div class="right" style="overflow:hidden;">
-      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
+<div mn-spinner="!rootCertificateCtl.certificate">
+  <p>
+    The cluster is currently using a <strong>{{(rootCertificateCtl.certificate.cert.type == "generated") ? "self-signed" : "signed"}}</strong> SSL/TLS certificate.
+  </p>
+  <span ng-show="rootCertificateCtl.certificate.cert.subject || rootCertificateCtl.certificate.cert.expires">
+    <div ng-show="rootCertificateCtl.certificate.cert.subject">
+      Subject: {{rootCertificateCtl.certificate.cert.subject}}
     </div>
-  </div>
-  <div
-    class="ldap_setup_container only-when-40 when-enterprise"
-    mn-spinner="!rootCertificateCtl.certificate">
-
-    <h2 ng-show="rootCertificateCtl.certificate.cert.type == 'generated'">
-      Self-Signed Cluster Certificate
-    </h2>
-    <h2 ng-show="rootCertificateCtl.certificate.cert.type !== 'generated'">
-      Root CA Cluster Certificate
-    </h2>
-    <div class="sub_section">
-      <p>
-        The cluster is currently using a <strong>{{(rootCertificateCtl.certificate.cert.type == "generated") ? "self-signed" : "signed"}}</strong> SSL/TLS certificate.
-      </p>
-      <p ng-show="rootCertificateCtl.certificate.cert.subject || rootCertificateCtl.certificate.cert.expires">
-        <span style="display:block;" ng-show="rootCertificateCtl.certificate.cert.subject">
-          Subject: {{rootCertificateCtl.certificate.cert.subject}}
-        </span>
-        <span style="display:block;" ng-show="rootCertificateCtl.certificate.cert.expires">
-          Expires: {{rootCertificateCtl.certificate.cert.expires}}
-        </span>
-      </p>
-      <div
-        class="about-cert-area_wrapper"
-        id="js_about-cert-area_wrapper">
-        <textarea
-          id="js-about-cert-area"
-          readonly="readonly"
-          style="width:630px;height:210px;padding:15px;background:#fff;border:1px solid #ccd3d7;line-height:1.2;">{{rootCertificateCtl.certificate.cert.pem}}</textarea>
-      </div>
-      <div class="error-container" ng-show="rootCertificateCtl.certificate.warnings.length" style="margin-top:22px;">
-        <strong>Warning:</strong>
-        <div ng-repeat="warn in rootCertificateCtl.certificate.warnings">
-          {{warn.node}}: {{warn.message}} {{warn.expires}}
-        </div>
-      </div>
+    <div ng-show="rootCertificateCtl.certificate.cert.expires">
+      Expires: {{rootCertificateCtl.certificate.cert.expires}}
     </div>
-
-    <div class="save_cancel">
+  </span>
+  <textarea
+     class="width-680"
+     rows="15"
+     readonly="readonly">{{rootCertificateCtl.certificate.cert.pem}}</textarea>
+  <div class="error error-field" ng-show="rootCertificateCtl.certificate.warnings.length">
+    Warning:
+    <div ng-repeat="warn in rootCertificateCtl.certificate.warnings">
+      {{warn.node}}: {{warn.message}} {{warn.expires}}
     </div>
   </div>
 </div>

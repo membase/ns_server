@@ -1,67 +1,64 @@
-<div class="shadow_box settings" ng-if="rbac.cluster.admin.security.read">
-  <div class="header_2">
-    <div class="right" style="overflow:hidden;">
-      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
+<div mn-spinner="auditCtl.viewLoading">
+  <h3>Audit Configuration</h3>
+  <p>
+    Auditing keeps track of important admin events occurring in Couchbase. Tracking and persisting these events is essential for any secured environment and provides evidence for suspicious/malicious activity in Couchbase.
+  </p>
+  <form
+     ng-submit="auditCtl.submit()"
+     name="auditForm"
+     class="forms width-300">
+
+    <div class="formrow checkbox-list">
+      <input
+         type="checkbox"
+         id="audit-enable-flag"
+         ng-disabled="!rbac.cluster.admin.security.write"
+         ng-model="auditCtl.state.auditdEnabled">
+      <label for="audit-enable-flag">Enable Auditing</label>
     </div>
-  </div>
-  <div class="audit_container when-enterprise only-when-40" mn-spinner="auditCtl.viewLoading">
-    <h2>Audit Configuration</h2>
-    <p class="sub_section">
-      Auditing keeps track of important admin events occurring in Couchbase. Keeping track and persisting these events is essential for any secured environment and provides evidence for suspicious/malicious activity in Couchbase.
-    </p>
-    <form ng-submit="auditCtl.submit()" name="auditForm">
-      <div class="sub_section" style="margin-right:0;">
-        <div class="row">
-          <label>
-            <span>Enable:</span>
-            <input
-              type="checkbox"
-              ng-disabled="!rbac.cluster.admin.security.write"
-              ng-model="auditCtl.state.auditdEnabled">
-          </label>
-        </div>
-        <div class="row">
-          <label>
-            <span>Target log directory:</span>
-            <input
-              ng-model="auditCtl.state.logPath"
-              ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
-              class="archive_path_field">
-          </label>
-          <i ng-if="auditCtl.errors.logPath" class="error-container">
-            {{auditCtl.errors.logPath}}
-          </i>
-        </div>
-        <div class="row">
-          <label>
-            <span>Log rotation time interval:</span>
-            <input
-              ng-model="auditCtl.state.rotateInterval"
-              ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
-              type="number" min="0"
-              style="width:67px;">
-          </label>
-          <select
-            ng-model="auditCtl.state.rotateUnit"
-            ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
-            style="width:75px;">
-              <option value="minutes">Minutes</option>
-              <option value="hours">Hours</option>
-              <option value="days">Days</option>
-          </select>
-          <i
-            ng-if="auditCtl.errors.rotateInterval"
-            class="error-container">
-              {{auditCtl.errors.rotateInterval}}
-          </i>
-        </div>
+
+    <div class="formrow">
+      <label for="target-log-field">Target Log Directory</label>
+      <input
+         type="text"
+         id="target-log-field"
+         ng-model="auditCtl.state.logPath"
+         ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write">
+
+      <div
+         ng-if="auditCtl.errors.logPath"
+         class="error error-field">
+        {{auditCtl.errors.logPath}}
       </div>
-      <div class="save_cancel">
-        <button
-          ng-show="rbac.cluster.admin.security.write"
-          ng-disabled="!!auditCtl.errors || auditForm.$pristine"
-          class="save_button float_right">Save</button>
+    </div>
+
+    <div class="formrow">
+      <label for="log-rotation-interval">Log Rotation Time Interval</label>
+      <span class="form-inline">
+        <input
+           id="log-rotation-interval"
+           ng-model="auditCtl.state.rotateInterval"
+           ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
+           type="number"
+           min="0">
+        <select
+           ng-model="auditCtl.state.rotateUnit"
+           ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write">
+          <option value="minutes">Minutes</option>
+          <option value="hours">Hours</option>
+          <option value="days">Days</option>
+        </select>
+      </span>
+      <div
+         ng-if="auditCtl.errors.rotateInterval"
+         class="error error-field">
+        {{auditCtl.errors.rotateInterval}}
       </div>
-    </form>
-  </div>
+    </div>
+
+    <button
+       ng-show="rbac.cluster.admin.security.write"
+       ng-disabled="!!auditCtl.errors || auditForm.$pristine"
+       class="save_button">Save</button>
+  </form>
 </div>
