@@ -256,6 +256,9 @@ child_specs() ->
      {remote_api, {remote_api, start_link, []},
       permanent, 1000, worker, [remote_api]},
 
+     {testconditions_store, {simple_store, start_link, [testconditions]},
+      permanent, 1000, worker, []},
+
      %% Starts mb_master_sup, which has all processes that start on the master
      %% node.
      restartable:spec(
