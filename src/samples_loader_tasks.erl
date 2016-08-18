@@ -126,11 +126,13 @@ perform_loading_task(Name, Quota) ->
     Args = ["-n", Host ++ ":" ++ integer_to_list(Port),
             "-b", Name,
             "-s", integer_to_list(Quota),
+            "-t", "2",
+            "-v",
             filename:join([BinDir, "..", "samples", Name ++ ".zip"])],
 
     EPort = open_port({spawn_executable, Cmd},
                       [exit_status,
-                       {env, [{"BUCKET_USERNAME", Name}, {"BUCKET_PASSWORD", ""}]},
+                       {env, [{"CBDOCLOADER_SKIP_AUTH", "true"}]},
                        {args, Args},
                        stderr_to_stdout]),
     case wait_for_exit(EPort, Name) of
