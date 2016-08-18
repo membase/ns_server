@@ -71,6 +71,19 @@ width: calc(100% - 200px);
   position: relative;
 }
 
+.row.items-top {
+    -webkit-align-items: flex-start;
+    -ms-flex-align: flex-start;
+    align-items: flex-start;
+}
+
+.row.items-center {
+    -webkit-box-pack: center;
+    -webkit-justify-content: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+}
+
 .column {
   padding: 0;
   margin: 0 1.5rem 1rem 0;

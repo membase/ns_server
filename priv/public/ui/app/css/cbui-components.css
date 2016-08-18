@@ -307,33 +307,6 @@ header h1 {
   margin-bottom: 1.25rem;
 }
 
-/* dialog closing (X) hyperlinks ------------ */
-.modal-close {
-  display: inline-block;
-  font-size: 1rem;
-  padding: .5rem .75rem;
-  margin-right: -.6rem;
-  font-weight: 500;
-  border: 1px solid #4287d6;
-}
-
-.modal-close:link {
-  color: #fff;
-}
-
-.modal-close:visited {
-  color: #fff;
-}
-
-.modal-close:hover {
-  color: #fff;
-  border: 1px solid #eceff2;
-  transition: none;
-}
-
-.modal-close:active {
-  color: #689fde;
-}
 
 /* cbui table row links ------------------------ */
 .cbui-tablerow-controls a {
@@ -714,11 +687,7 @@ section.status-red .cbui-tablerow-statusmsg {
 
 /* Modal Dialog - Medium (uses Panel) ------ */
 .dialog-med {
-  position: relative;
-  z-index:101;
   width: 530px;
-  margin: 0 auto;
-  top:60px;
 }
 
 .dialog-med .panel-content {
@@ -755,11 +724,7 @@ section.status-red .cbui-tablerow-statusmsg {
 }
 
 .dialog-small {
-  position: relative;
-  z-index:101;
   width: 320px;
-  margin: 0 auto;
-  top:60px;
 }
 
 .dialog-small .panel-content {
