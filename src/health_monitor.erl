@@ -144,13 +144,24 @@ get_module(Monitor) ->
 
 %% Internal functions
 send_heartbeat_inner(MonModule, SendNodes, Payload) ->
+    SendTo = SendNodes -- skip_heartbeats_to(MonModule),
     try
         misc:parallel_map(
           fun (N) ->
                   gen_server:cast({MonModule, N}, Payload)
-          end, SendNodes, ?REFRESH_INTERVAL - 10)
+          end, SendTo, ?REFRESH_INTERVAL - 10)
     catch exit:timeout ->
             ?log_warning("~p send heartbeat timed out~n", [MonModule])
+    end.
+
+skip_heartbeats_to(MonModule) ->
+    TestCondition = list_to_atom(atom_to_list(MonModule) ++ "_skip_heartbeat"),
+    case testconditions:get(TestCondition) of
+        false ->
+            [];
+        SkipList ->
+            ?log_debug("~p skip heartbeats to ~p ~n", [MonModule, SkipList]),
+            SkipList
     end.
 
 handle_config_event({nodes_wanted, _} = Msg, Pid) ->
