@@ -31,4 +31,6 @@ init([]) ->
 
 child_specs() ->
     [{ns_server_monitor, {ns_server_monitor, start_link, []},
-      permanent, 1000, worker, [ns_server_monitor]}].
+      permanent, 1000, worker, [ns_server_monitor]},
+     {node_monitor, {node_monitor, start_link, []},
+      permanent, 1000, worker, [node_monitor]}].

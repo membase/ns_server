@@ -30,6 +30,8 @@
 -export([common_init/1, common_init/2,
          is_active/1,
          process_nodes_wanted/2,
+         all_monitors/0,
+         get_module/1,
          send_heartbeat/2, send_heartbeat/3]).
 
 -record(state, {
@@ -133,6 +135,12 @@ send_heartbeat(MonModule, SendNodes) ->
     send_heartbeat_inner(MonModule, SendNodes, {heartbeat, node()}).
 send_heartbeat(MonModule, SendNodes, Payload) ->
     send_heartbeat_inner(MonModule, SendNodes, {heartbeat, node(), Payload}).
+
+all_monitors() ->
+    [ns_server].
+
+get_module(Monitor) ->
+    list_to_atom(atom_to_list(Monitor) ++ "_monitor").
 
 %% Internal functions
 send_heartbeat_inner(MonModule, SendNodes, Payload) ->
