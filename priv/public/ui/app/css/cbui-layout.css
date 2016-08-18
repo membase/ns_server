@@ -147,11 +147,34 @@ footer {
 .indent-1 {
   margin-left: 1.25rem;
 }
+.margin-top-1 {
+  margin-top: -1rem;
+}
 
 .debug-outline {
   border: 1px dashed red;
 }
 
-.right-align {
+.text-right {
   text-align:right;
+}
+.text-center {
+  text-align:center;
+}
+.text-nowrap {
+  white-space: nowrap;
+  overflow: ellipsis;
+}
+.flex-left {
+-webkit-box-pack: start;
+-webkit-justify-content: flex-start;
+-ms-flex-pack: start;
+justify-content: flex-start;
+}
+
+.flex-right {
+-webkit-box-pack: end;
+-webkit-justify-content: flex-end;
+-ms-flex-pack: end;
+justify-content: flex-end;
 }
