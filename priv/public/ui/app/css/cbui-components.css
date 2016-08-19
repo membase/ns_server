@@ -226,11 +226,22 @@ td.node_name a {
   cursor: pointer;
 }
 
-td.dynamic_healthy {
+.node-status {
   padding:0;
   width: 4px;
-  background-color:#2ca01c;
 }
+
+td.dynamic_healthy {
+    background-color: #2ca01c;
+}
+td.dynamic_unhealthy {
+    background-color: red;
+}
+td.dynamic_inactiveFailed,
+td.dynamic_warmup {
+    background-color: orange;
+}
+
 
 /* Main Header Elements ------------ */
 header .logobug {
@@ -724,6 +735,8 @@ section.status-red .cbui-tablerow-statusmsg {
           justify-content:flex-end;
 }
 
+.without-titlebar-close .ui-dialog-titlebar-close {display: none;}
+
 /* Sign In page details ------------ */
 .sign-in-background {
   background: #eceff2;
@@ -746,7 +759,7 @@ section.status-red .cbui-tablerow-statusmsg {
 }
 
 .dialog-small {
-  width: 320px;
+  width: 380px;
 }
 
 .dialog-small .panel-content {
@@ -855,6 +868,7 @@ section.status-red .cbui-tablerow-statusmsg {
   padding: 0.25rem 0.5rem;
   position: relative;
   top: -3px;
+  white-space: nowrap;
 }
 
 .label.lt-blue {
@@ -1055,6 +1069,9 @@ meter {
 .bar-usages.label-top-0-gold .label-top-0 {
     color: rgb(193, 151, 16);
 }
+.bar-usages.label-top-0-red .label-top-0 {
+    color: rgb(228, 58, 27);
+}
 .bar-usages.overcommitted .label-bottom-2 {
     color: rgb(244, 0, 21);
 }
@@ -1160,3 +1177,62 @@ meter {
     height: 1rem;
     vertical-align: middle;
 }
+
+/* vertical usage bar --------------- */
+
+.vertical_bar {
+    display: inline-block;
+    vertical-align: middle;
+    width: 1rem;
+    height: 3rem;
+    background: white;
+    border: .1rem solid #999;
+    border-radius: .1rem; margin-right: .3rem;
+}
+.vertical_bar .used {
+    position: relative;
+    background: #4287D6;
+}
+
+/* rebalance progress --------------- */
+
+.rebalance-progress {
+    position: relative;
+    height: 1rem;
+    background-color: rgb(229, 229, 229);
+    width: 100%;
+}
+.rebalance-progress div {
+    position: absolute;
+    height: 100%;
+    background-color: #4287D6
+
+}
+
+/* create xdcr dialog --------------- */
+
+.dynamic-hightlight span {
+    Background-color: LightSkyBlue;
+}
+.match_indicator {
+    background-color: #ffbd44;
+    color: #fff;
+    font-size: 0.7rem;
+    text-align: center;
+    line-height: 1.5rem;
+    position: absolute;
+    width: 4rem;
+    height: 1.6rem;
+    top: -1.8rem;
+    right: 0.2rem;
+}
+.match_indicator.dynamic_match {background-color: green;}
+.match_indicator .no_match,
+.match_indicator.dynamic_match .match,
+.match_indicator.dynamic_spinner .loading {display: block;}
+.match_indicator.dynamic_spinner .no_match,
+.match_indicator.dynamic_spinner .match,
+.match_indicator.dynamic_match .no_match,
+.match_indicator.dynamic_match .loading,
+.match_indicator .loading,
+.match_indicator .match  {display: none;}

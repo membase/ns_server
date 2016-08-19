@@ -1,97 +1,114 @@
 <td
-  colspan="10"
-  class="settings-placeholder"
-  mn-spinner="!serversListItemDetailsCtl.server.getMemoryCacheConfig || !serversListItemDetailsCtl.server.getDiskStorageConfig">
-<div class="first gong_rb">
-  <div class="pad">
-    <table class="properties_table">
-      <tr>
-          <td>Server Name: <span>{{serversListItemDetailsCtl.server.details.hostname}}</span></td>
-          <td>Uptime: <span>{{serversListItemDetailsCtl.server.details.uptime | mnFormatUptime}}</span></td>
-          <td>OS: <span>{{serversListItemDetailsCtl.server.details.os}}</span></td>
-      </tr>
-      <tr>
-        <td colspan="3">Version: <span>{{serversListItemDetailsCtl.server.details.version | mnPrettyVersion:true}}</span></td>
-      </tr>
-    </table>
+   class="no-padding"
+   ng-class="['dynamic_' + node.status, ' dynamic_' + node.clusterMembership]">
+</td>
+<td
+   colspan="9"
+   mn-spinner="!serversListItemDetailsCtl.server.getMemoryCacheConfig || !serversListItemDetailsCtl.server.getDiskStorageConfig">
+
+  <div class="interim content-box row flex-left">
+
+    <span class="column">
+      <span class="semi-bold">Server Name:</span> {{serversListItemDetailsCtl.server.details.hostname}}
+    </span>
+    <span class="column">
+      <span class="semi-bold">Uptime:</span> {{serversListItemDetailsCtl.server.details.uptime | mnFormatUptime}}
+    </span>
+    <span class="column">
+      <span class="semi-bold">OS:</span> {{serversListItemDetailsCtl.server.details.os}}
+    </span>
+    <span class="column">
+      <span class="semi-bold">Version:</span> {{serversListItemDetailsCtl.server.details.version | mnPrettyVersion:true}}
+    </span>
   </div>
-  <div class="side side_1"></div>
-  <div class="side side_2"></div>
-  <div class="side side_3"></div>
-  <div class="side side_4"></div>
-</div>
-<div class="additional_server_info">
-    <h3 ng-if="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">Rebalance Progress</h3>
+
+
+  <h4 ng-show="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">
+    Rebalance Progress
+  </h4>
+  <hr ng-show="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">
+  <div class="column indent-1">
     <p ng-if="serversListItemDetailsCtl.tasks.detailedProgress.bucket && rbac.cluster.tasks.read">
       <span>Bucket:</span>
       {{serversListItemDetailsCtl.tasks.detailedProgress.bucket}}
       ({{serversListItemDetailsCtl.tasks.detailedProgress.bucketNumber}} out of {{serversListItemDetailsCtl.server.detailedProgress.bucketsCount}})
     </p>
-    <div class="rebalance_progress" ng-if="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">
+    <div ng-if="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">
       <div ng-if="serversListItemDetailsCtl.tasks.detailedProgress.outgoing">
-        <p class="direction">Data being transferred out</p>
         <p>
-          <span>Total number of keys to be transferred:</span>
-          {{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.docsTotal }}
-        </p>
-        <p>
-          <span>Estimated number of keys transferred:</span>
-          {{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.docsTransferred }}
-        </p>
-        <p>
-          <span>
-            Number of Active# vBuckets and Replica# vBuckets to transfer:
+          <span class="semi-bold">Data being transferred out</span>
+          <br>
+          <span class="text-smaller">
+            Total number of keys to be transferred:
+            {{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.docsTotal }}
+            <br>
+            Estimated number of keys transferred:
+            {{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.docsTransferred }}
+            <br>
+            Number of active vBuckets and replica vBuckets to transfer:
+            Active-{{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.activeVBucketsLeft }},
+            Replica-{{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.replicaVBucketsLeft }}
           </span>
-          Active#-{{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.activeVBucketsLeft }}
-          Replica#-{{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.replicaVBucketsLeft }}
         </p>
       </div>
 
       <div ng-if="serversListItemDetailsCtl.tasks.detailedProgress.ingoing">
-        <p class="direction">Data being transferred in</p>
         <p>
-          <span>Total number of keys to be transferred:</span>
-          {{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.docsTotal }}
-        </p>
-        <p>
-          <span>Estimated number of keys transferred:</span>
-          {{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.docsTransferred }}
-        </p>
-        <p>
-          <span>
-            Number of Active# vBuckets and Replica# vBuckets to transfer:
+          <span class="semi-bold">Data being transferred in</span>
+          <br>
+          <span class="text-smaller">
+            Total number of keys to be transferred:
+            {{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.docsTotal }}
+            <br>
+            Estimated number of keys transferred:
+            {{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.docsTransferred }}
+            <br>
+            Number of active vBuckets and replica vBuckets to transfer:
+            Active-{{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.activeVBucketsLeft }},
+            Replica-{{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.replicaVBucketsLeft }}
           </span>
-          Active#-{{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.activeVBucketsLeft }}
-          Replica#-{{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.replicaVBucketsLeft }}
         </p>
       </div>
-
     </div>
-    <div ng-if="serversListItemDetailsCtl.tasks.warmUpTasks.length && rbac.cluster.tasks.read" mn-warmup-progress warm-up-tasks="serversListItemDetailsCtl.tasks.warmUpTasks" sort-by="bucket"></div>
+  </div>
 
-  <h3>Memory</h3>
-  <div class="info_block">
-    <span class="dynamic_ram">Dynamic RAM:</span>
-    <div class="usage-block" mn-bar-usage base-info="serversListItemDetailsCtl.server.getMemoryCacheConfig"></div>
+  <div
+     ng-if="serversListItemDetailsCtl.tasks.warmUpTasks.length && rbac.cluster.tasks.read"
+     mn-warmup-progress
+     warm-up-tasks="serversListItemDetailsCtl.tasks.warmUpTasks"
+     sort-by="bucket">
   </div>
-  <h3>Disk Storage</h3>
-  <div class="info_block">
-    <span class="disk_storage">
-      <span>Disk One: </span>
-      <span
-        class="path"
-        title="{{serversListItemDetailsCtl.server.details.storage.hdd[0].path}}"
-        ng-if="!!serversListItemDetailsCtl.server.details.storage.hdd[0].path">
-          data: {{serversListItemDetailsCtl.server.details.storage.hdd[0].path | mnEllipsisiseOnLeft:25}}
-      </span>
-      <span
-        class="path"
-        title="{{serversListItemDetailsCtl.server.details.storage.hdd[0].index_path}}"
-        ng-if="!!serversListItemDetailsCtl.server.details.storage.hdd[0].index_path">
-          index: {{serversListItemDetailsCtl.server.details.storage.hdd[0].index_path | mnEllipsisiseOnLeft:25}}
-      </span>
-    </span>
-    <div class="usage-block" mn-bar-usage base-info="serversListItemDetailsCtl.server.getDiskStorageConfig"></div>
+
+  <h4>Memory</h4>
+  <hr>
+  <div class="row indent-1">
+    <div
+       class="column bar-usages label-top-0-red"
+       mn-bar-usage
+       base-info="serversListItemDetailsCtl.server.getMemoryCacheConfig"></div>
   </div>
-</div><!-- additional_server_info -->
+
+  <h4>Disk Storage</h4>
+  <hr>
+  <div class="row indent-1">
+    <div class="text-smaller">
+      <span
+         title="{{serversListItemDetailsCtl.server.details.storage.hdd[0].path}}"
+         ng-if="!!serversListItemDetailsCtl.server.details.storage.hdd[0].path">
+        <span class="semi-bold">Data Storage Path:</span> {{serversListItemDetailsCtl.server.details.storage.hdd[0].path | mnEllipsisiseOnLeft:100}}
+      </span>
+      &nbsp; &nbsp;
+      <span
+         title="{{serversListItemDetailsCtl.server.details.storage.hdd[0].index_path}}"
+         ng-if="!!serversListItemDetailsCtl.server.details.storage.hdd[0].index_path">
+        <span class="semi-bold">Index Storage Path:</span> {{serversListItemDetailsCtl.server.details.storage.hdd[0].index_path | mnEllipsisiseOnLeft:100}}
+      </span>
+    </div>
+  </div>
+  <div class="row indent-1">
+    <div
+       class="column bar-usages"
+       mn-bar-usage
+       base-info="serversListItemDetailsCtl.server.getDiskStorageConfig"></div>
+  </div>
 </td>

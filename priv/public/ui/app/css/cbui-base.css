@@ -132,6 +132,10 @@ hr {
   border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+.main-content hr {
+  margin-right: -2rem;
+}
+
 img,
 video,
 audio,
@@ -583,6 +587,12 @@ a:active {
   color: #689fde;
 }
 
+a[disabled] {
+    pointer-events: none;
+    color: #afafaf;
+    cursor: "default";
+}
+
 .disabled-link {
   color: #a1a1a1 !important;
   cursor: default !important;
@@ -693,6 +703,7 @@ table th,
 table td {
   font-size: .875rem;
   padding: 1rem;
+  vertical-align: middle;
 }
 
 .border-top {

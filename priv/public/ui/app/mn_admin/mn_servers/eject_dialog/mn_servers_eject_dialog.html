@@ -1,18 +1,22 @@
-<div id="eject_confirmation_dialog" style="width:711px">
-    <h1 class="dialog_corner_radius">Confirm Server Removal</h1>
-    <div class="warning pat_20" mn-spinner="serversEjectDialogCtl.viewLoading">
-      <p>Warning! Removing this node will:</p>
-      <ul style="margin:15px;" ng-messages="serversEjectDialogCtl.warningFlags" ng-messages-multiple>
-        <li ng-message="isThereIndex">Remove indexes from the cluster and may cause queries to fail</li>
-        <li ng-message="isLastIndex">Remove the last index node from the cluster so new indexes can’t be created</li>
-        <li ng-message="isLastQuery">Remove the last query node from the cluster so queries can’t be run</li>
-        <li ng-message="isLastFts">Remove the last full text node from the cluster so full text search can’t be run</li>
-        <li ng-message="isKv">Reduce cache capacity across all data buckets</li>
-      </ul>
-      <p>Are you sure you want to remove this server?</p>
-    </div>
-    <div class="right save_cancel pas_20 footer_bg">
-      <button type="submit" class="save_button float_right" ng-click="serversEjectDialogCtl.doEjectServer()">Remove</button>
-      <a class="close casper_close_eject_confirmation_dialog float_right" ng-click="$dismiss()">Cancel</a>
-    </div>
+<div class="dialog-med">
+  <div class="panel-header">
+    <h2>Confirm Server Removal</h2>
+  </div>
+  <div
+     class="panel-content"
+     mn-spinner="serversEjectDialogCtl.viewLoading">
+    <p class="error"><strong>Warning</strong> - Removing this node will:</p>
+    <ul ng-messages="serversEjectDialogCtl.warningFlags" ng-messages-multiple>
+      <li ng-message="isThereIndex"><p>Remove indexes from the cluster and may cause queries to fail</p></li>
+      <li ng-message="isLastIndex"><p>Remove the last index node from the cluster so new indexes can’t be created</p></li>
+      <li ng-message="isLastQuery"><p>Remove the last query node from the cluster so queries can’t be run</p></li>
+      <li ng-message="isLastFts"><p>Remove the last full text node from the cluster so full text search can’t be run</p></li>
+      <li ng-message="isKv"><p>Reduce cache capacity across all data buckets</p></li>
+    </ul>
+    <p>Are you sure you want to remove this server?</p>
+  </div>
+  <div class="panel-footer">
+    <a href="" ng-click="$dismiss()">Cancel</a>
+    <button ng-click="serversEjectDialogCtl.doEjectServer()">Remove</button>
+  </div>
 </div>

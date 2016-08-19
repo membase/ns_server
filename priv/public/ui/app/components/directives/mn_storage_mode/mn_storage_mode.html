@@ -1,27 +1,24 @@
-<div class="storage-mode row">
-  <div class="error-container err-indexMemoryQuota" ng-show="errors.storageMode">
-    {{errors.storageMode | mnFormatStorageModeError}}
+<label for="index_ram_quota" ng-hide="noLabel">Index Storage Setting:</label>
+<div class="checkbox-list storage-mode">
+  <div class="indent-1">
+    <input
+       type="radio"
+       value="forestdb"
+       id="storage_mode_forestdb"
+       ng-model="config.storageMode"
+       ng-disabled="isDisabled">
+    <label for="storage_mode_forestdb" class="checkbox">Standard Global Secondary Indexes</label>
   </div>
-  <label for="index_ram_quota" ng-hide="noLabel" style="display: inline-block; vertical-align: top;">Index Storage Setting:</label>
-  <div style="display: inline-block;">
-    <div>
-      <input
-        type="radio"
-        value="forestdb"
-        id="storage_mode_forestdb"
-        ng-model="config.storageMode"
-        ng-disabled="isDisabled"
-        >
-      <label for="storage_mode_forestdb" style="width:auto;margin-right:5px;">Standard Global Secondary Indexes</label>
-    </div>
-    <div>
-      <input
-        type="radio"
-        value="memory_optimized"
-        id="storage_memory_optimized"
-        ng-model="config.storageMode"
-        ng-disabled="isDisabled">
-      <label for="storage_memory_optimized" style="width:auto;">Memory-Optimized Global Secondary Indexes</label>
-    </div>
+  <div class="indent-1">
+    <input
+       type="radio"
+       value="memory_optimized"
+       id="storage_memory_optimized"
+       ng-model="config.storageMode"
+       ng-disabled="isDisabled">
+    <label for="storage_memory_optimized" class="checkbox">Memory-Optimized Global Secondary Indexes</label>
+  </div>
+  <div class="error error-field" ng-show="errors.storageMode">
+    {{errors.storageMode | mnFormatStorageModeError}}
   </div>
 </div>

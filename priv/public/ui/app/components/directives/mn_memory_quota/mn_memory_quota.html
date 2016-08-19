@@ -14,7 +14,7 @@
   <p>RAM Available: {{::config.totalMemorySize}} mb</p>
 </div>
 <div
-   class="formrow"
+   class="formrow checkbox-list"
    ng-if="config.services"
    mn-services="config">
 </div>
@@ -22,19 +22,21 @@
    class="formrow"
    ng-if="config.displayedServices.kv">
   <label for="kv_ram_quota">Data RAM Quota</label>
-  <input
-     type="number"
-     min="0"
-     id="kv_ram_quota"
-     mn-focus
-     ng-disabled="config.services && !config.services.model.kv || (rbac && !rbac.cluster.pools.write)"
-     ng-model="config.memoryQuota">
-  <small>mb (min {{::config.minMemorySize}})</small>
-  <a class="tooltip text_11"><span>What&#39;s this?</span>
-    <span class="tooltip_msg"><span>
-        Main memory allocation amount for data service per node.
-    </span></span>
-  </a>
+  <div class="form-inline">
+    <input
+       type="number"
+       min="0"
+       id="kv_ram_quota"
+       mn-focus
+       ng-disabled="config.services && !config.services.model.kv || (rbac && !rbac.cluster.pools.write)"
+       ng-model="config.memoryQuota">
+      <small>mb (min {{::config.minMemorySize}})</small>
+      <a class="tooltip text_11"><span>What&#39;s this?</span>
+      <span class="tooltip_msg"><span>
+          Main memory allocation amount for data service per node.
+      </span></span>
+      </a>
+    </div>
   <div
      class="error"
      ng-show="errors.memoryQuota">
@@ -46,19 +48,21 @@
    class="formrow"
    ng-if="config.displayedServices.index">
   <label for="index_ram_quota">Index RAM Quota</label>
-  <input
-     type="number"
-     min="0"
-     id="index_ram_quota"
-     ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)"
-     mn-focus="config.services.model.kv === false"
-     ng-model="config.indexMemoryQuota">
-  <small>mb (min 256)</small>
-  <a class="tooltip text_11"><span>What&#39;s this?</span>
-    <span class="tooltip_msg"><span>
-        Main memory allocation amount for index service per node.
-    </span></span>
-  </a>
+  <div class="form-inline">
+    <input
+       type="number"
+       min="0"
+       id="index_ram_quota"
+       ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)"
+       mn-focus="config.services.model.kv === false"
+       ng-model="config.indexMemoryQuota">
+      <small>mb (min 256)</small>
+      <a class="tooltip text_11"><span>What&#39;s this?</span>
+      <span class="tooltip_msg"><span>
+          Main memory allocation amount for index service per node.
+      </span></span>
+      </a>
+    </div>
   <div
      class="error"
      ng-show="errors.indexMemoryQuota">
@@ -67,22 +71,24 @@
 </div>
 
 <div
-   class="formrow memory-quota"
+   class="formrow"
    ng-if="config.displayedServices.fts">
   <label for="fts_ram_quota">Full Text RAM Quota</label>
-  <input
-     type="number"
-     min="0"
-     id="fts_ram_quota"
-     mn-focus="config.services.model.kv === false && config.services.model.index  === false"
-     ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)"
-       ng-model="config.ftsMemoryQuota">
-  <small>mb (min 256)</small>
-  <a class="tooltip text_11"><span>What&#39;s this?</span>
-    <span class="tooltip_msg"><span>
-        Main memory allocation amount for full text service per node.
-    </span></span>
-  </a>
+  <div class="form-inline">
+    <input
+       type="number"
+       min="0"
+       id="fts_ram_quota"
+       mn-focus="config.services.model.kv === false && config.services.model.index  === false"
+       ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)"
+         ng-model="config.ftsMemoryQuota">
+      <small>mb (min 256)</small>
+      <a class="tooltip text_11"><span>What&#39;s this?</span>
+        <span class="tooltip_msg"><span>
+            Main memory allocation amount for full text service per node.
+        </span></span>
+      </a>
+    </div>
   <div
      class="error"
      ng-show="errors.ftsMemoryQuota">

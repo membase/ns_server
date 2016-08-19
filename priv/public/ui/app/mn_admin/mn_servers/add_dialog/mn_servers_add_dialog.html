@@ -1,85 +1,99 @@
-<div class="join_cluster join_cluster_dialog" id="join_cluster_dialog" style="width: 550px">
-  <h1 class="dialog_corner_radius">Add Server</h1>
-  <div>
+<div class="dialog-med">
+  <div class="panel-header">
+    <h2>Add Server Node</h2>
+  </div>
   <form
-    novalidate
-    ng-submit="serversAddDialogCtl.onSubmit(form)"
-    name="form"
-    mn-spinner="serversAddDialogCtl.viewLoading">
-    <div class="warning pat_10" id="join_cluster_dialog_errors_container">
-      <div><strong>Warning</strong> – Adding a server to this cluster means all data on that server will be removed.</div>
-      <div ng-repeat="error in serversAddDialogCtl.errors"><strong>Attention</strong> - {{error}}<br></div>
-      <div ng-show="form.hostname.$error.required"><strong>Attention</strong> - Server IP Address cannot be blank.</div>
-      <span class="warning" ng-show="form.$error.services" style="margin: 10px 30px 10px 0px; display: block; padding: 0;"><strong>Attention</strong> - Please specify a Service(s) for this node.</span>
-      <div ng-show="serversAddDialogCtl.addNodeConfig.services.model.fts">
-        <strong>Attention</strong> - Full Text Search is a developer preview. Use only in test environments.<br>
+     novalidate
+     ng-submit="serversAddDialogCtl.onSubmit(form)"
+     name="form"
+     class="forms"
+     mn-spinner="serversAddDialogCtl.viewLoading">
+    <div class="panel-content">
+      <div class="error error-form">
+        <strong>Warning</strong> – Adding a server to this cluster means all data on that server will be removed.
+      </div>
+      <div
+         class="error error-form"
+         ng-repeat="error in serversAddDialogCtl.errors">
+        <strong>Attention</strong> - {{error}}<br>
+      </div>
+      <div
+         class="error error-form"
+         ng-show="form.hostname.$error.required">
+        <strong>Attention</strong> - Server IP Address cannot be blank.
+      </div>
+      <div
+         class="error error-form"
+         ng-show="form.$error.services">
+        <strong>Attention</strong> - Please specify a Service(s) for this node.
+      </div>
+      <div
+         class="error error-form"
+         ng-show="serversAddDialogCtl.addNodeConfig.services.model.fts">
+        <strong>Attention</strong> - Full Text Search is a developer preview. Use only in test environments.
+      </div>
+
+      <div class="formrow">
+        <label for="add-server-hostname">Server IP Address</label>
+        <input
+           type="text"
+           id="add-server-hostname"
+           ng-model="serversAddDialogCtl.addNodeConfig.credentials.hostname"
+           mn-focus="serversAddDialogCtl.focusMe"
+           required
+           autocorrect="off"
+           spellcheck="false"
+           autocomplete="off">
+        <a class="text_11 tooltip">
+          <span>What's this?</span>
+          <span class="tooltip_msg"><span>
+              This is the hostname or IP address of a server node that you wish to add.
+          </span></span>
+        </a>
+      </div>
+
+      <div class="formrow">
+        <span ng-if="serversAddDialogCtl.isGroupsAvailable">
+          <label for="js_servers_group_select">Server Group</label>
+          <select
+             id="js_servers_group_select"
+             ng-model="serversAddDialogCtl.addNodeConfig.selectedGroup"
+             ng-options="group.name for group in serversAddDialogCtl.groups"></select>
+        </span>
+      </div>
+
+      <div class="formrow">
+        <label for="user_inp">Username</label>
+        <input
+           type="text"
+           id="user_inp"
+           ng-model="serversAddDialogCtl.addNodeConfig.credentials.user"
+           autocorrect="off"
+           spellcheck="false"
+           autocomplete="off">
+      </div>
+
+      <div class="formrow">
+        <label for="password_inp">Password</label>
+        <input
+           mn-autocomplete-off
+           type="password"
+           id="password_inp"
+           ng-model="serversAddDialogCtl.addNodeConfig.credentials.password"
+           autocorrect="off"
+           spellcheck="false"
+           autocomplete="off">
+      </div>
+
+      <div
+         class="formrow checkbox-list"
+         mn-services="serversAddDialogCtl.addNodeConfig">
       </div>
     </div>
-    <fieldset>
-      <ul>
-        <li>
-          <label class="label" for="add-server-hostname">Server IP Address*:</label>
-          <input
-            type="text"
-            class="inp"
-            name="hostname"
-            id="add-server-hostname"
-            ng-model="serversAddDialogCtl.addNodeConfig.credentials.hostname"
-            mn-focus="serversAddDialogCtl.focusMe"
-            required>
-          <a class="text_11 tooltip"><span>What's this?</span>
-            <span class="tooltip_msg"><span>
-              This is the hostname or IP address of a server node that you wish to add.
-            </span></span>
-          </a>
-        </li>
-        <li class="when-groups" ng-if="serversAddDialogCtl.isGroupsAvailable">
-          <label class="label" for="js_servers_group_select">Server Group:</label>
-          <select
-            id="js_servers_group_select"
-            class="server_group_select"
-            style="width:157px;"
-            name="group"
-            ng-model="serversAddDialogCtl.addNodeConfig.selectedGroup"
-            ng-options="group.name for group in serversAddDialogCtl.groups"></select>
-        </li>
-      </ul>
-    </fieldset>
-    <fieldset>
-      <legend>Security <a class="text_11 tooltip"><span>What's this?</span>
-        <span class="tooltip_msg"><span>
-          Enter the username and password for the node you want to add to this cluster.
-        </span></span></a>
-      </legend>
-      <ul>
-        <li>
-          <label class="label" for="user_inp">Username:</label>
-          <input
-            type="text"
-            class="inp"
-            name="user"
-            id="user_inp"
-            ng-model="serversAddDialogCtl.addNodeConfig.credentials.user">
-        </li>
-        <li>
-          <label class="label" for="password_inp">Password:</label>
-          <input
-            mn-autocomplete-off
-            type="password"
-            class="inp"
-            name="password"
-            id="password_inp"
-            ng-model="serversAddDialogCtl.addNodeConfig.credentials.password">
-        </li>
-      </ul>
-    </fieldset>
-    <fieldset mn-services="serversAddDialogCtl.addNodeConfig" class="services_wrapper">
-    </fieldset>
-    <div class="save_cancel clearfix">
-      <button type="submit" class="save_button float_right">Add Server</button>
-      <a class="casper_close_join_cluster_dialog close" ng-click="$dismiss()">Cancel</a>
+
+    <div class="panel-footer">
+      <a href="" ng-click="$dismiss()">Cancel</a>
+      <button type="submit">Add Server</button>
     </div>
   </form>
-  <!-- END join cluster -->
-</div>
 </div>
