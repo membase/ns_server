@@ -1,21 +1,30 @@
-<div id="js_add_group_dialog" class="dialog" style="width: 331px;">
-  <h1 ng-show="groupsGroupDialogCtl.isEditMode">Edit Group</h1>
-  <h1 ng-show="!groupsGroupDialogCtl.isEditMode">Create Group</h1>
+<div class="dialog-small">
+  <div class="panel-header">
+    <h2 ng-show="groupsGroupDialogCtl.isEditMode">Edit Group</h2>
+    <h2 ng-show="!groupsGroupDialogCtl.isEditMode">Create Group</h2>
+  </div>
   <form
-    id="js_add_group_form"
-    class="add_group_form"
-    ng-submit="groupsGroupDialogCtl.onSubmit()"
-    mn-spinner="groupsGroupDialogCtl.viewLoading">
-    <div class="inner_wrap">
-      <i class="warning js_error_group" ng-show="groupsGroupDialogCtl.errors.name">
-        name - {{groupsGroupDialogCtl.errors.name}}
-      </i>
-      <label for="js_new_group_filed" style="width:auto">Group Name:</label>
-      <input type="text" name="group" ng-model="groupsGroupDialogCtl.groupName" id="js_new_group_filed">
+     ng-submit="groupsGroupDialogCtl.onSubmit()"
+     mn-spinner="groupsGroupDialogCtl.viewLoading"
+     class="forms">
+    <div class="panel-content">
+      <div class="formrow">
+        <label for="new_group_filed">Group Name:</label>
+        <input
+           type="text"
+           name="group"
+           ng-model="groupsGroupDialogCtl.groupName"
+           id="new_group_filed">
+        <div
+           class="error error-form"
+           ng-show="groupsGroupDialogCtl.errors.name">
+          name - {{groupsGroupDialogCtl.errors.name}}
+        </div>
+      </div>
     </div>
-    <div class="save_cancel clearfix">
-      <button type="submit" class="save_button float_right">{{ groupsGroupDialogCtl.isEditMode ? 'Rename' : 'Create'}}</button>
-      <a class="close casper_close_add_group_dialog" ng-click="$dismiss()">Cancel</a>
+    <div class="panel-footer">
+      <a href="" ng-click="$dismiss()">Cancel</a>
+      <button type="submit">{{ groupsGroupDialogCtl.isEditMode ? 'Rename' : 'Create'}}</button>
     </div>
   </form>
 </div>
