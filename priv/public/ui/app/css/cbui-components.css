@@ -72,6 +72,7 @@
   vertical-align: middle;
 }
 .ellipsis {
+  position:relative;
   overflow:hidden;
   white-space:nowrap;
   text-overflow:ellipsis;
@@ -170,6 +171,10 @@ main.interim {}
   margin-bottom: .5rem;
 }
 
+.interim.row.padded {
+  margin: 1rem 0 1rem 0;
+}
+
 .interim.row.server-details {
   padding: 0 1.5rem;
 }
@@ -242,6 +247,10 @@ td.dynamic_warmup {
     background-color: orange;
 }
 
+.back-gray {
+  padding: .5rem;
+  background-color: #ececec;
+}
 
 /* Main Header Elements ------------ */
 header .logobug {
@@ -356,7 +365,7 @@ header h1 {
 .pills a {
   color: #333;
   font-size: .961rem;
-  font-weight: 600;
+  font-weight: 400;
   display: inline-block;
   padding: .25rem .75rem;
   border-radius: 1rem;
@@ -414,7 +423,14 @@ table th span.has-menu:after {
 /* inserts right-caret (triangle) & down-caret before items with ".disclosure"  */
 .disclosure {
   position:relative;
-  padding-left: .75rem;
+  padding-left: 1rem;
+  cursor: pointer;
+  text-decoration:none;
+}
+
+.disclosed {
+  position:relative;
+  padding-left: 1rem;
   cursor: pointer;
   text-decoration:none;
 }
@@ -436,7 +452,7 @@ table th span.has-menu:after {
   color: #333;
   position: absolute;
   top: 0;
-  left: -1rem;
+  left: 0;
   text-decoration:none;
 }
 
@@ -670,6 +686,7 @@ section.status-red .cbui-tablerow-statusmsg {
   border-radius: 3px 3px 2px 2px;
   box-shadow: 0px 1px 1px 1px rgba(0,0,0,0.25);
   z-index:0;
+  margin-bottom: 2.5rem;
 }
 
 .panel-header {
@@ -709,7 +726,7 @@ section.status-red .cbui-tablerow-statusmsg {
   -webkit-justify-content:flex-end;
       -ms-flex-pack:end;
           justify-content:flex-end;
-  border-top: 1px solid #d1d1d1;
+  border-top: 1px solid #ececec;
   margin-bottom: 0 !important;
   padding: .75rem 1rem;
 }

@@ -1,147 +1,149 @@
-<div class="shadow_box" id="views_list" style="clear:left;">
-  <div class="header_2">
-    <ul class="tabs switcher">
-      <li class="tab_left">
-        <a ui-sref="app.admin.indexes.views.list({ type: 'development' })" ui-sref-active="selected">Development Views</a>
-      </li>
-      <li class="tab_right">
-        <a
-          class="casper_views_prod_tab"
-          ui-sref="app.admin.indexes.views.list({ type: 'production' })"
-          ui-sref-active="selected">Production Views</a>
-        <span
-          class="badge notify"
-          ng-show="viewsListCtl.ddocs.production.length && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.read">
-            <span id="prod_view_count">{{viewsListCtl.ddocs.production.length}}</span>
-        </span>
-      </li>
-    </ul>
-    <div class="create_view">
+<div>
+  <div class="interim row margin-top1">
+    <span class="pills">
       <a
-        class="btn_1 button_200 btn_create when-in-dev when-roadmin-hide-me casper_views_create_view_popup"
-        style="float: right;"
-        ng-click="viewsListCtl.showMapreduceCreationDialog()"
-        ng-show="viewsListCtl.showViewCreationButtons() && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"><span>Create Development View</span></a>
+         ui-sref="app.admin.indexes.views.list({ type: 'development' })"
+         ui-sref-active="pills-selected">Development Views</a>
+
       <a
-        class="btn_1 btn_create_spatial when-in-dev when-roadmin-hide-me casper_views_create_view_popup"
-        style="float: right; margin-right: 5px;"
-        ng-show="viewsListCtl.showViewCreationButtons() && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"
-        ng-click="viewsListCtl.showSpatialCreationDialog()"><span>Create Development Spatial View</span></a>
-      <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
-    </div>
+         ui-sref="app.admin.indexes.views.list({ type: 'production' })"
+         ui-sref-active="pills-selected">Production Views</a>
+      <span
+         class="label red badge"
+         ng-show="viewsListCtl.ddocs.production.length && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.read">{{viewsListCtl.ddocs.production.length}}
+      </span>
+    </span>
+
+    <span>
+      <button
+         ng-click="viewsListCtl.showMapreduceCreationDialog()"
+         ng-show="viewsListCtl.showViewCreationButtons() && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write">Create View</button>
+      <button
+         ng-show="viewsListCtl.showViewCreationButtons() && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"
+         ng-click="viewsListCtl.showSpatialCreationDialog()">Create Spatial View</button>
+    </span>
   </div>
-  <div class="panes">
-    <div class="views_list" mn-spinner="!viewsListCtl.ddocs || viewsListCtl.viewLoading">
-      <table class="list">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Language</th>
-            <th>Status</th>
-            <th><div style="display:none">Disk Size</div></th>
-            <th colspan=2 class="last"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr ng-if="!viewsCtl.state.bucketsNames.selected && !viewsListCtl.ddocs.ddocsAreInFactMissing">
-            <td colspan="6" class="empty">
-              <span>
-                No buckets currently defined! Go to
-                <a ui-sref="app.admin.buckets">Data Buckets</a>
-                to create some.
-              </span>
-            </td>
-          </tr>
-          <tr ng-if="viewsListCtl.ddocs.ddocsAreInFactMissing">
-            <td colspan="6" class="empty">
-              <span style="line-height:23px">This node doesn't host current bucket yet, so for list of design docs, please, visit different node's UI</span>
-            </td>
-          </tr>
-          <tr ng-if="viewsCtl.state.bucketsNames.selected && !viewsListCtl.ddocs.ddocsAreInFactMissing && !viewsListCtl.ddocs[viewsListCtl.type].length">
-            <td colspan="6" class="empty">
-              <span ng-show="viewsListCtl.isDevelopmentViews" style="line-height:23px">There are currently no Design Documents in Development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
-              <span ng-show="!viewsListCtl.isDevelopmentViews" style="line-height:23px">There are no Design Documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
-            </td>
-          </tr>
-          <tr ng-repeat-start="row in viewsListCtl.ddocs[viewsListCtl.type] | orderBy:'hostname' track by row.doc.meta.id" ng-if="viewsListCtl.ddocs.rows.length">
-            <td class="design_doc_name ellipsis">
-              {{row.doc.meta.id}}
-            </td>
-            <td class="langv">{{row.doc.language || "javascript"}}</td>
-            <td>
-              <div class="indexer_progress" ng-if="viewsListCtl.tasks[row.doc.meta.id][0].progress && rbac.cluster.tasks.read">
-                <div class="usage_smallest">
-                  <div class="used" style="width: {{viewsListCtl.tasks[row.doc.meta.id][0].progress}}%"></div>
-                </div>
-                <span class="ddoc_message">{{viewsListCtl.tasks[row.doc.meta.id][0].type == 'indexer' ? "Indexing" : "Compacting"}} {{viewsListCtl.tasks[row.doc.meta.id][0].progress}}%</span>
-              </div>
-            </td>
-            <td colspan="3" class="when-roadmin-hide-me" style="height: 33px;">
-              <a
-                class="list_button when-in-prod casper_views_copy_to_dev"
-                ng-show="!viewsListCtl.isDevelopmentViews && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"
-                ng-click="viewsListCtl.copyToDev(row.doc)"><span>Copy to Dev</span></a>
 
-              <a
-                class="list_button when-in-dev"
-                ng-class="{dynamic_disabled: ('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)}"
-                ng-click="viewsListCtl.publishDdoc(row.doc)"
-                ng-show="viewsListCtl.showPublishButton(row) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"><span>Publish</span></a>
+  <div mn-spinner="!viewsListCtl.ddocs || viewsListCtl.viewLoading">
+    <table class="table-stroked">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Language</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-if="!viewsCtl.state.bucketsNames.selected && !viewsListCtl.ddocs.ddocsAreInFactMissing">
+          <td colspan="4">
+            No buckets currently defined! Go to <a ui-sref="app.admin.buckets">Data Buckets</a> to create some.
+          </td>
+        </tr>
 
-              <a
-                class="list_button when-in-dev casper_views_add_view_popup"
-                ng-click="viewsListCtl.showCreationDialog(row.doc)"
-                ng-show="viewsListCtl.showCreationButton(row) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"><span>Add View</span></a>
+        <tr ng-if="viewsListCtl.ddocs.ddocsAreInFactMissing">
+          <td colspan="4">
+            This node doesn't host the current bucket. For a list of design docs, please open the web console on a different node.
+          </td>
+        </tr>
 
-              <a
-                class="list_button when-in-dev casper_views_add_spatial_popup"
-                ng-click="viewsListCtl.showCreationDialog(row.doc, true)"
-                ng-show="viewsListCtl.showSpatialButton(row) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"><span>Add Spatial View</span></a>
+        <tr ng-if="viewsCtl.state.bucketsNames.selected && !viewsListCtl.ddocs.ddocsAreInFactMissing && !viewsListCtl.ddocs[viewsListCtl.type].length">
+          <td colspan="4">
+            <span ng-show="viewsListCtl.isDevelopmentViews">There are currently no design documents in development. <span class="when-roadmin-avoid-me">Click "Create Development View" above to create one.</span></span>
+            <span ng-show="!viewsListCtl.isDevelopmentViews">There are no design documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
+          </td>
+        </tr>
 
-              <a
-                class="list_button casper_views_delete_popup"
-                ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"
-                ng-click="viewsListCtl.showDdocDeletionDialog(row.doc)"><span>Delete</span></a>
+        <tr
+           ng-repeat-start="row in viewsListCtl.ddocs[viewsListCtl.type] | orderBy:'hostname' track by row.doc.meta.id"
+           ng-if="viewsListCtl.ddocs.rows.length">
+          <td>{{row.doc.meta.id}}</td>
+          <td>{{row.doc.language || "javascript"}}</td>
+          <td>
+            <div ng-if="viewsListCtl.tasks[row.doc.meta.id][0].progress && rbac.cluster.tasks.read">
+              <div ng-style="{width: {{viewsListCtl.tasks[row.doc.meta.id][0].progress}}%}"></div>
+              <span>{{viewsListCtl.tasks[row.doc.meta.id][0].type == 'indexer' ? "Indexing" : "Compacting"}} {{viewsListCtl.tasks[row.doc.meta.id][0].progress}}%</span>
+            </div>
+          </td>
+          <td class="text-right">
+            <button
+               class="outline"
+               ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"
+               ng-click="viewsListCtl.showDdocDeletionDialog(row.doc)">Delete</button>
+            <button
+               class="outline"
+               ng-disabled="(('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)) || !!(viewsListCtl.tasks[row.doc.meta.id][0].type === 'view_compaction') || !!viewsListCtl.getStartedCompactions()[row.controllers.compact]"
+               ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.compact"
+               ng-click="viewsListCtl.registerCompactionAsTriggeredAndPost(row)">Compact</button>
+            <button
+               ng-click="viewsListCtl.showCreationDialog(row.doc)"
+               ng-show="viewsListCtl.showCreationButton(row) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write">Add View</button>
+            <button
+               ng-click="viewsListCtl.showCreationDialog(row.doc, true)"
+               ng-show="viewsListCtl.showSpatialButton(row) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write">Add Spatial View</button>
+            <button
+               ng-show="!viewsListCtl.isDevelopmentViews && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"
+               ng-click="viewsListCtl.copyToDev(row.doc)">Copy to Dev</button>
+            <button
+               ng-disabled="('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)"
+               ng-click="viewsListCtl.publishDdoc(row.doc)"
+               ng-show="viewsListCtl.showPublishButton(row) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write">Publish</button>
+            <div
+               class="error"
+               ng-show="viewsListCtl.showMatchingWarning(row)">No new views can be added to this document. Delete either mapreduce or spatial views first.</div>
+          </td>
+        </tr>
 
-              <button
-                class="list_button"
-                ng-class="{dynamic_disabled: (('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)) || !!(viewsListCtl.tasks[row.doc.meta.id][0].type === 'view_compaction') || !!viewsListCtl.getStartedCompactions()[row.controllers.compact]}"
-                ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.compact"
-                ng-click="!($event | isDisabled) && viewsListCtl.registerCompactionAsTriggeredAndPost(row)"><span>Compact</span></button>
+        <tr ng-if="('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)">
+          <td colspan="4">No views defined!<span class="when-in-dev"> Click "Create Development View" above to create one.</span></td>
+        </tr>
 
-              <div
-                class="warning"
-                style="overflow: hidden; margin-top:4px;"
-                ng-show="viewsListCtl.showMatchingWarning(row)">No new views can be added to this document. Delete either mapreduce or spatial views first.</div>
+        <tr
+           class="has-hover"
+           ng-if="!('isEmpty' | lodash:row.doc.json.views)"
+           ng-repeat="(key, view) in row.doc.json.views"
+           ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">
+          <td
+             class="padding-left-2"
+             colspan="3"
+             class="ellipsis">
+            <a href="">{{key}}</a>
+          </td>
+          <td class="text-right">
+            <button
+               class="outline"
+               ng-show="viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"
+               ng-click="$event.stopPropagation() || viewsListCtl.showViewDeletionDialog(row.doc, key)">Delete</button>
+            <button
+               ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"
+               ng-click="$event.stopPropagation()"
+               ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">{{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}</button>
+          </td>
+        </tr>
 
-            </td>
-          </tr>
-          <tr ng-if="('isEmpty' | lodash:row.doc.json.views) && ('isEmpty' | lodash:row.doc.json.spatial)">
-            <td colspan="5" style="padding:15px;line-height:23px;">No views defined!<span class="when-in-dev"> Click "Create Development View" above to create one.</span></td>
-          </tr>
-          <tr ng-if="!('isEmpty' | lodash:row.doc.json.views)" ng-repeat="(key, view) in row.doc.json.views">
-            <td class="view_name ellipsis" colspan="5">
-              <a
-                class="casper_views_view_tab"
-                style="display:block;line-height:33px;"
-                ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">{{key}}</a>
-            </td>
-            <td>
-              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))"><span>{{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}</span></a>
-            </td>
-          </tr>
-          <tr ng-repeat-end="" ng-if="!('isEmpty' | lodash:row.doc.json.spatial)" ng-repeat="(key, spatial) in row.doc.json.spatial">
-            <td class="view_name ellipsis" colspan="5">
-              <a ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">[Spatial] {{key}}</a>
-            </td>
-            <td>
-              <a class="list_button btn_remove when-roadmin-avoid-me" ng-show="viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write" ng-click="viewsListCtl.showViewDeletionDialog(row.doc, key, true)"><span>Delete</span></a>
-              <a class="list_button btn_edit" ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.read" ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))"><span>{{viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write ? 'Edit' : 'Show' }}</span></a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <tr
+           class="has-hover"
+           ng-repeat-end=""
+           ng-if="!('isEmpty' | lodash:row.doc.json.spatial)"
+           ng-repeat="(key, spatial) in row.doc.json.spatial"
+           ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">
+          <td
+             class="ellipsis padding-left-2"
+             colspan="3">
+            <a href="">[Spatial] {{key}}</a>
+          </td>
+          <td class="text-right">
+            <button
+               class="outline"
+               ng-show="viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"
+               ng-click="$event.stopPropagation() || viewsListCtl.showViewDeletionDialog(row.doc, key, true)">Delete</button>
+            <button
+               ng-click="$event.stopPropagation()"
+               ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.read"
+               ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">{{viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write ? 'Edit' : 'Show' }}</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>

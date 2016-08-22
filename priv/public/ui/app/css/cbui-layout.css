@@ -90,6 +90,10 @@ width: calc(100% - 200px);
     justify-content: center;
 }
 
+.flex-grow-one {
+    flex-grow: 1;
+}
+
 .column {
   padding: 0;
   margin: 0 2rem 1rem 0;
@@ -166,12 +170,31 @@ footer {
 .indent-1 {
   margin-left: 1rem;
 }
+
+.padding-left-2 {
+  padding-left: 2.5rem;
+}
+
 .margin-top-1 {
   margin-top: -1rem;
 }
 
+.margin-top1 {
+  margin-top: 1rem;
+}
+
 .margin-top2 {
   margin-top: 2rem;
+}
+
+.margin-bottom1 {
+  display:block;
+  margin-bottom: 1rem;
+}
+
+.margin-bottom-half {
+  display:block;
+  margin-bottom: .5rem;
 }
 
 .debug-outline {

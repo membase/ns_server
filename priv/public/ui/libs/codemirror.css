@@ -4,7 +4,7 @@
   /* Set height, width, borders, and global font properties here */
   font-family: monospace;
   height: 300px;
-  color: black;
+  background-color: #f6f7f9;
 }
 
 /* PADDING */
@@ -24,7 +24,7 @@
 
 .CodeMirror-gutters {
   border-right: 1px solid #ddd;
-  background-color: #f7f7f7;
+  background-color: ##f6f7f9;
   white-space: nowrap;
 }
 .CodeMirror-linenumbers {}
@@ -146,7 +146,6 @@ div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #f22;}
 .CodeMirror {
   position: relative;
   overflow: hidden;
-  background: white;
 }
 
 .CodeMirror-scroll {

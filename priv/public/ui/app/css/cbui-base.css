@@ -262,6 +262,22 @@ button {
   position: relative;
   top: 1px;
 }
+button.icon {
+    min-width: auto;
+    padding: 0 1rem;
+}
+.fa-angle-right:before {
+    content: "\f105";
+}
+.fa-angle-left:before {
+    content: "\f104";
+}
+.fa-angle-down:before {
+    content: "\f107";
+}
+.fa-angle-up:before {
+    content: "\f106";
+}
 
 /* Headings  -----------------------------*/
 
@@ -387,6 +403,11 @@ output {
 
 /* Text Styles -----------------------------*/
 
+.text-normal {
+  font-size: 1rem;
+  font-weight: 400;
+}
+
 /* 16px base = 15px */
 .text-medium {
   font-size: .961rem;
@@ -489,6 +510,9 @@ sub {
   display: inline-flex;
 }
 
+.nowrap {
+    white-space:nowrap;
+}
 /* Code ----------------------------*/
 pre,
 code,
@@ -675,6 +699,15 @@ button.outline:active {
   box-shadow: 0px 0px 0px 0px rgba(0, 0, 0, 0.3);
 }
 
+button.outline[disabled],
+button.outline:hover[disabled] {
+  cursor: default;
+  border: 1px solid #d1d1d1;
+  color: #d1d1d1;
+  box-shadow: none;
+  background: none;
+}
+
 .btn.orange,
 button.orange {
   background-color: #f5a623;
@@ -687,6 +720,16 @@ button::-moz-focus-inner {
   padding: 0;
 }
 
+button.outline.btn-small {
+  height: 1.5rem;
+  line-height: 0;
+  min-width: 2rem;
+  padding: 0;
+}
+
+.btn-small .icon {
+  top: 0;
+}
 /* HTML Tables ------------------------------------*/
 
 table {

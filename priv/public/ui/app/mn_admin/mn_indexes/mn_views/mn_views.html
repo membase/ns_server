@@ -1,24 +1,26 @@
-<div ng-if="!viewsCtl.mnPoolDefault.value.isKvNode">
-  The views interface is only available on nodes running the Data service. You may access the interface here: 
-  <a id="js_healthy_kv_node_link" href="{{::viewsCtl.getKvNodeLink()}}">{{::viewsCtl.getKvNodeLink()}}</a>
+<div
+   class="interim alert alert-warning"
+   ng-if="!viewsCtl.mnPoolDefault.value.isKvNode">
+  <p>The views interface is only available on nodes running the Data service. You may access the interface here: <a ng-href="{{::viewsCtl.getKvNodeLink()}}">{{::viewsCtl.getKvNodeLink()}}</a></p>
 </div>
-<div ng-if="viewsCtl.mnPoolDefault.value.isKvNode" id="js_views" class="views">
-  <h1 style="float:left;">
-    <span >
-      <ui-select
-        ng-model="viewsCtl.state.bucketsNames.selected"
-        on-select="viewsCtl.onSelectBucket($item)"
-        theme="selectize"
-        style="display: inline-block; vertical-align: middle;">
-        <ui-select-match>{{$select.selected}}</ui-select-match>
-        <ui-select-choices repeat="name in viewsCtl.state.bucketsNames | filter: $select.search">
-          <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search" ></span>
-        </ui-select-choices>
-      </ui-select>
-      <span style="vertical-align: middle;">
-       &gt; <a style="vertical-align: middle;" ui-sref="app.admin.indexes.views.list">Views</a>
-      </span>
-    </span>
-  </h1>
+<div
+   class="interim alert alert-warning"
+   ng-show="adminCtl.lostConnState.isActivated">
+  <p>Difficulties communicating with the cluster; displaying cached information!</p>
+</div>
+
+<div
+   ng-if="viewsCtl.mnPoolDefault.value.isKvNode"
+   class="margin-top-1 interim main-content">
+  <ui-select
+     ng-model="viewsCtl.state.bucketsNames.selected"
+     on-select="viewsCtl.onSelectBucket($item)"
+     theme="selectize"
+     class="width-2">
+    <ui-select-match>{{$select.selected}}</ui-select-match>
+    <ui-select-choices repeat="name in viewsCtl.state.bucketsNames | filter: $select.search">
+      <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search" ></span>
+    </ui-select-choices>
+  </ui-select>
   <ui-view></ui-view>
 </div>

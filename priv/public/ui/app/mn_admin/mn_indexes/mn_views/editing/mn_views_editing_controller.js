@@ -23,7 +23,6 @@
     sampleDocumentOptions.readOnly = true;
     sampleDocumentOptions.lineWrapping = true;
     var sampleMetaOptions = _.clone(sampleDocumentOptions);
-    sampleMetaOptions.lineNumbers = false;
 
     vm.currentBucketName = $state.params.viewsBucket;
     vm.viewsOptions = viewsOptions;

@@ -1,96 +1,105 @@
-<div id="view_results_block" class="results_block">
-  <div id="view_filter_container" class="filter_container">
-    <h2>Filter Results</h2>
-    <div
-      class="filters_container"
-      mn-filter="viewsEditingResultCtl.filterParams"
-      items="viewsEditingResultCtl.filterItems"
-      disabled="viewsEditingResultCtl.isEmptyState()"
-      on-close="viewsEditingResultCtl.onFilterClose(params)"
-      on-reset="viewsEditingResultCtl.onFilterReset()"
-      on-open="viewsEditingResultCtl.onFilterOpen()">
-    </div>
-    <a href="{{viewsEditingResultCtl.generateViewHref()}}" target="_blank">{{viewsEditingResultCtl.getFilterParamsAsString()}}</a>
-  </div>
-  <a id="spatial_run_button" class="run_button btn_1 bt_marg" ng-click="viewsEditingResultCtl.activate()">
-    <span>Show Results</span>
-  </a>
-    <span class="ic_prev_next">
-      <a
-        class="arr_prev"
-        ng-class="{dynamic_disabled: viewsEditingResultCtl.isPrevDisabled()}"
-        ng-click="!viewsEditingResultCtl.isPrevDisabled() && viewsEditingResultCtl.prevPage()"
-        ></a>
-      <a
-        class="arr_next"
-        ng-class="{dynamic_disabled: viewsEditingResultCtl.isNextDisabled()}"
-        ng-click="!viewsEditingResultCtl.isNextDisabled() && viewsEditingResultCtl.nextPage()"></a>
-    </span>
-    <div class="clr"></div>
-    <div class="shadow_box">
-      <div style="height:38px;">
-        <ul class="tabs dev-subset-switcher when-in-dev" ng-show="viewsEditingCtl.state.isDevelopmentDocument">
-          <li class="tab_left">
-            <a
-              class="subset_dev"
-              ui-sref-active="selected"
-              ui-sref="app.admin.indexes.views.editing.result({full_set: null})">Development Time Subset</a></li>
-          <li class="tab_right">
-            <a
-              class="subset_prod"
-              ui-sref-active="selected"
-              ui-sref="app.admin.indexes.views.editing.result({full_set: 'true'})">Full Cluster Data Set</a></li>
-        </ul>
+<div>
+  <div class="interim row">
+      <h4>Results</h4>
+      <span class="row flex-left text-small indent-1 width-12">
+        Filter:&nbsp;
+        <div
+           mn-filter="viewsEditingResultCtl.filterParams"
+           items="viewsEditingResultCtl.filterItems"
+           disabled="viewsEditingResultCtl.isEmptyState()"
+           on-close="viewsEditingResultCtl.onFilterClose(params)"
+           on-reset="viewsEditingResultCtl.onFilterReset()"
+           on-open="viewsEditingResultCtl.onFilterOpen()">
+        </div>&nbsp;
+        <a
+           class="ellipsis"
+           href="{{viewsEditingResultCtl.generateViewHref()}}"
+           target="_blank">
+          {{viewsEditingResultCtl.getFilterParamsAsString()}}
+        </a>
+      </span>
+      <div class="nowrap">
+        <button
+           class="icon fa-angle-left outline"
+           ng-disabled="viewsEditingResultCtl.isPrevDisabled()"
+           ng-click="!viewsEditingResultCtl.isPrevDisabled() && viewsEditingResultCtl.prevPage()"></button>
+        <button
+           class="icon fa-angle-right outline"
+           ng-disabled="viewsEditingResultCtl.isNextDisabled()"
+           ng-click="!viewsEditingResultCtl.isNextDisabled() && viewsEditingResultCtl.nextPage()"></button>
+        <button ng-click="viewsEditingResultCtl.activate()">Show Results</button>
       </div>
-      <div id="view_results_container" class="content c_result" mn-spinner="viewsEditingResultCtl.viewLoading">
-        <div style="height: 373px;" ng-show="viewsEditingResultCtl.viewLoading"></div>
-        <table class="list align_text" style="width:100%" ng-show="viewsEditingResultCtl.errors">
-          <tr>
-            <th class="keycol">Errors</th>
-            <th></th>
-          </tr>
-          <tbody class="list_errors">
-            <tr>
-              <td colspan="{{ !viewsEditingResultCtl.errors.showBtn ? 2 : 1 }}">
-                <div><span class="label">from:</span> <span>{{ viewsEditingCtl.state.capiBase + viewsEditingResultCtl.errors.from }}</span></div>
-                <div><span class="label">reason:</span> <span>{{ viewsEditingResultCtl.errors.error }} {{ viewsEditingResultCtl.errors.reason ? "(" + viewsEditingResultCtl.errors.reason + ")" : "" }}</span></div>
-              </td>
-              <td ng-if="r.showBtn">
-                <a class="list_button buttontn_remove" ng-click="viewsEditingResultCtl.activate()"><span>
-                  Run Query Again
-                </span></a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table ng-show="!viewsEditingResultCtl.errors && !viewsEditingResultCtl.viewLoading" class="list align_text" style="width:100%" >
-          <tr>
-            <th class="keycol">Key</th>
-            <th class="keycol" ng-if="viewsEditingCtl.isSpatial">Geometry</th>
-            <th>Value</th>
-          </tr>
-          <tbody ng-if="!viewsEditingResultCtl.state.rows.lackOfValue && viewsEditingResultCtl.state.rows.length" ng-repeat="r in viewsEditingResultCtl.state.rows">
-            <tr>
-              <td class="keycol">
-                <div class="key ellipsis" title="{{ r.key | json }}">{{ r.key | json}}</div>
-                <a ng-show="r.id !== 'undefined'" class="id ellipsis sample-document-link" ng-click="viewsEditingResultCtl.loadSampleDocument(r.id)">{{ r.id }}</a>
-                <div ng-show="r.id === undefined" class="id ellipsis">undefined</div>
-              </td>
-              <td ng-if="viewsEditingCtl.isSpatial">{{r.geometry === undefined ? 'undfined' : (r.geometry | json)}}</td>
-              <td class="ellipsis"><pre class="break_all">{{r.value === undefined ? 'undfined' : (r.value | json)}}</pre></td>
-            </tr>
-          </tbody>
-          <tbody ng-show="!viewsEditingResultCtl.state">
-            <tr>
-              <td colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}" style="text-align:center">To see the results of this view, click "Show Results" above.</td>
-            </tr>
-          </tbody>
-          <tbody>
-            <tr ng-show="viewsEditingResultCtl.state && !viewsEditingResultCtl.state.rows.length && !viewsEditingResultCtl.errors">
-              <td colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}" style="text-align:center">The results of this view is empty.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
   </div>
+
+  <div
+     class="pills margin-bottom-half"
+     ng-show="viewsEditingCtl.state.isDevelopmentDocument">
+    <a
+       ui-sref-active="pills-selected"
+       ui-sref="app.admin.indexes.views.editing.result({full_set: null})">Development Time Subset</a>
+    <a
+       ui-sref-active="pills-selected"
+       ui-sref="app.admin.indexes.views.editing.result({full_set: 'true'})">Full Cluster Data Set</a>
+  </div>
+
+  <div
+     class="error"
+     ng-show="viewsEditingResultCtl.errors">
+    from: {{viewsEditingCtl.state.capiBase + viewsEditingResultCtl.errors.from}};<br>
+    reason: {{viewsEditingResultCtl.errors.error}} {{viewsEditingResultCtl.errors.reason ? "(" + viewsEditingResultCtl.errors.reason + ")" : ""}}
+    <a
+       href=""
+       ng-show="viewsEditingResultCtl.errors.showBtn"
+       ng-click="viewsEditingResultCtl.activate()">
+      Run Query Again
+    </a>
+  </div>
+
+  <div
+     mn-spinner="viewsEditingResultCtl.viewLoading"
+     min-height="373px;">
+    <table class="table-stroked">
+      <tr>
+        <th>Key</th>
+        <th ng-if="viewsEditingCtl.isSpatial">Geometry</th>
+        <th>Value</th>
+      </tr>
+      <tbody
+         ng-if="!viewsEditingResultCtl.state.rows.lackOfValue && viewsEditingResultCtl.state.rows.length"
+         ng-repeat="r in viewsEditingResultCtl.state.rows">
+        <tr>
+          <td class="ellipsis"  title="{{ r.key | json }}">
+            {{ r.key | json}}<br>
+            <a
+               href=""
+               ng-show="r.id !== 'undefined'"
+               ng-click="viewsEditingResultCtl.loadSampleDocument(r.id)">{{ r.id }}</a>
+            <div
+               ng-show="r.id === undefined"
+               class="id ellipsis">undefined</div>
+          </td>
+          <td ng-if="viewsEditingCtl.isSpatial">
+            {{r.geometry === undefined ? 'undefined' : (r.geometry | json)}}
+          </td>
+          <td class="ellipsis">
+            <pre style="padding: 0rem; margin-bottom: 0rem; background-color: #ffffff;">{{r.value === undefined ? 'undefined' : (r.value | json)}}</pre>
+          </td>
+        </tr>
+      </tbody>
+      <tbody ng-show="!viewsEditingResultCtl.state">
+        <tr>
+          <td colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}">
+            To see the results of this view, click "Show Results" above.
+          </td>
+        </tr>
+      </tbody>
+      <tbody ng-show="viewsEditingResultCtl.state && !viewsEditingResultCtl.state.rows.length && !viewsEditingResultCtl.errors">
+        <tr>
+          <td colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}">
+            The results of this view is empty.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

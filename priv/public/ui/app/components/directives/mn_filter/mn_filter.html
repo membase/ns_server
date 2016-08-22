@@ -1,96 +1,222 @@
-<div class="filters_container" ng-class="{open: mnFilterController.showPopup, dynamic_disabled: mnFilterController.disabled}" ng-click="!mnFilterController.disabled && mnFilterController.stopEvent($event)">
-  <div class="filters_btn" ng-click="mnFilterController.togglePopup($event)"></div>
-  <div class="filters_popup" ng-show="mnFilterController.showPopup">
-  <form>
-    <div class="key">
-        <div ng-show="mnFilterController.items.conflict">
-          <label for="filter_conflicts">conflicts</label>
-          <input id="filter_conflicts" name="conflicts" ng-model="mnFilterController.mnFilter.conflicts" type="checkbox">
+<div
+   style="position: relative;"
+   ng-click="!mnFilterController.disabled && mnFilterController.stopEvent($event)">
+  <button
+     class="outline icon btn-small"
+     ng-class="{
+               'fa-angle-up': mnFilterController.showPopup,
+               'fa-angle-down': !mnFilterController.showPopup
+               }"
+     ng-click="mnFilterController.togglePopup($event)"
+     ng-disabled="mnFilterController.disabled"></button>
+  <div
+     class="panel dialog dialog-med"
+     ng-show="mnFilterController.showPopup"
+     style="position: absolute; top: auto;">
+    <form ng-submit="mnFilterController.togglePopup()">
+      <div class="panel-content forms">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.conflict">
+          <label class="width-5" for="filter_conflicts">conflicts</label>
+          <input
+             id="filter_conflicts"
+             ng-model="mnFilterController.mnFilter.conflicts"
+             type="checkbox">
         </div>
-        <div ng-show="mnFilterController.items.bbox">
-          <label for="filter_bbox">bbox</label>
-          <input id="filter_bbox" name="bbox" ng-model="mnFilterController.mnFilter.bbox" type="text">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.bbox">
+          <label class="width-5" for="filter_bbox">bbox</label>
+          <input
+             id="filter_bbox"
+             ng-model="mnFilterController.mnFilter.bbox"
+             type="text" class="width-7">
         </div>
-        <div ng-show="mnFilterController.items.startRange">
-          <label for="filter_start_range">start_range</label>
-          <input id="filter_start_range" name="start_range" ng-model="mnFilterController.mnFilter.start_range" type="text">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.startRange">
+          <label class="width-5" for="filter_start_range">start_range</label>
+          <input
+             id="filter_start_range"
+             ng-model="mnFilterController.mnFilter.start_range"
+             type="text" class="width-7">
         </div>
-        <div ng-show="mnFilterController.items.endRange">
-          <label for="filter_end_range">end_range</label>
-          <input id="filter_end_range" name="end_range" ng-model="mnFilterController.mnFilter.end_range" type="text">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.endRange">
+          <label class="width-5" for="filter_end_range">end_range</label>
+          <input
+             id="filter_end_range"
+             ng-model="mnFilterController.mnFilter.end_range"
+             type="text" class="width-7">
         </div>
-        <div ng-show="mnFilterController.items.descending">
-          <label for="filter_descending">descending</label>
-          <input id="filter_descending" name="descending" ng-model="mnFilterController.mnFilter.descending" type="checkbox">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.descending">
+          <label class="width-5" for="filter_descending">descending</label>
+          <input
+             id="filter_descending"
+             ng-model="mnFilterController.mnFilter.descending"
+             type="checkbox">
         </div>
-        <div ng-show="mnFilterController.items.startkey">
-          <label for="filter_startkey">startkey</label>
-          <input id="filter_startkey" name="startkey" ng-model="mnFilterController.mnFilter.startkey" type="text">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.startkey">
+          <label class="width-5" for="filter_startkey">startkey</label>
+          <input
+             id="filter_startkey"
+             ng-model="mnFilterController.mnFilter.startkey"
+             type="text" class="width-7">
         </div>
-        <div ng-show="mnFilterController.items.endkey">
-          <label for="filter_endkey">endkey</label>
-          <input id="filter_endkey" name="endkey" ng-model="mnFilterController.mnFilter.endkey" type="text">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.endkey">
+          <label class="width-5" for="filter_endkey">endkey</label>
+          <input
+             id="filter_endkey"
+             ng-model="mnFilterController.mnFilter.endkey"
+             type="text" class="width-7">
         </div>
-        <div ng-show="mnFilterController.items.startkeyDocid">
-          <label for="filter_startkey_docid">startkey_docid</label>
-          <input id="filter_startkey_docid" name="startkey_docid" ng-model="mnFilterController.mnFilter.startkey_docid" type="text">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.startkeyDocid">
+          <label class="width-5" for="filter_startkey_docid">startkey_docid</label>
+          <input
+             id="filter_startkey_docid"
+             ng-model="mnFilterController.mnFilter.startkey_docid"
+             type="text" class="width-7">
         </div>
-        <div ng-show="mnFilterController.items.endkeyDocid">
-          <label for="filter_endkey_docid">endkey_docid</label>
-          <input id="filter_endkey_docid" name="endkey_docid" ng-model="mnFilterController.mnFilter.endkey_docid" type="text">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.endkeyDocid">
+          <label class="width-5" for="filter_endkey_docid">endkey_docid</label>
+          <input
+             id="filter_endkey_docid"
+             ng-model="mnFilterController.mnFilter.endkey_docid"
+             type="text" class="width-7">
         </div>
-        <div ng-show="mnFilterController.items.group">
-          <label for="filter_group">group</label>
-          <input id="filter_group" name="group" ng-model="mnFilterController.mnFilter.group" type="checkbox">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.group">
+          <label class="width-5" for="filter_group">group</label>
+          <input
+             id="filter_group"
+             name="group"
+             ng-model="mnFilterController.mnFilter.group"
+             type="checkbox">
         </div>
-        <div ng-show="mnFilterController.items.groupLevel">
-          <label for="filter_group_level">group_level</label>
-          <input id="filter_group_level" name="group_level" ng-model="mnFilterController.mnFilter.group_level" type="text">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.groupLevel">
+          <label class="width-5" for="filter_group_level">group_level</label>
+          <input
+             id="filter_group_level"
+             ng-model="mnFilterController.mnFilter.group_level"
+             type="text" class="width-7">
         </div>
-        <div ng-show="mnFilterController.items.inclusiveEnd">
-          <label for="filter_inclusive_end">inclusive_end</label>
-          <input id="filter_inclusive_end" name="inclusive_end" ng-model="mnFilterController.mnFilter.inclusive_end" type="checkbox" ng-false-value="false" ng-true-value="true">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.inclusiveEnd">
+          <label class="width-5" for="filter_inclusive_end">inclusive_end</label>
+          <input
+             id="filter_inclusive_end"
+             ng-model="mnFilterController.mnFilter.inclusive_end"
+             type="checkbox"
+             ng-false-value="false"
+             ng-true-value="true">
         </div>
-        <div ng-show="mnFilterController.items.key">
-          <label for="filter_key">key</label>
-          <input id="filter_key" name="key" ng-model="mnFilterController.mnFilter.key" type="text">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.key">
+          <label class="width-5" for="filter_key">key</label>
+          <input
+             id="filter_key"
+             ng-model="mnFilterController.mnFilter.key"
+             type="text" class="width-7">
         </div>
-        <div ng-show="mnFilterController.items.keys">
-          <label for="filter_keys">keys</label>
-          <input id="filter_keys" name="keys" ng-model="mnFilterController.mnFilter.keys" type="text">
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.keys">
+          <label class="width-5" for="filter_keys">keys</label>
+          <input
+             id="filter_keys"
+             ng-model="mnFilterController.mnFilter.keys"
+             type="text" class="width-7">
         </div>
-        <div ng-show="mnFilterController.items.reduce">
-          <label for="filter_reduce">reduce</label>
-          <div style="display: inline-block" class="radio_set">
-            <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.reduce" id="reduce_true" value="true">
-            <label for="reduce_true">true</label>
-            <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.reduce" id="reduce_false" value="false">
-            <label for="reduce_false">false</label>
-            <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.reduce" id="reduce_none" value="">
-            <label for="reduce_none">none</label>
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.reduce">
+          <label class="width-5" for="filter_reduce">reduce</label>
+          <div class="checkbox-list">
+            <input
+               type="radio"
+               group="reduce"
+               ng-model="mnFilterController.mnFilter.reduce"
+               id="reduce_true"
+               value="true"><!--
+         --><label for="reduce_true">true</label><!--
+         --><input
+               type="radio"
+               group="reduce"
+               ng-model="mnFilterController.mnFilter.reduce"
+               id="reduce_false"
+               value="false"><!--
+         --><label for="reduce_false">false</label><!--
+         --><input
+               type="radio"
+               group="reduce"
+               ng-model="mnFilterController.mnFilter.reduce"
+               id="reduce_none"
+               value=""><!--
+          --><label for="reduce_none">none</label>
           </div>
         </div>
-        <div ng-show="mnFilterController.items.stale">
-          <label for="filter_stale">stale</label>
-            <div style="display: inline-block" class="radio_set">
-              <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.stale" id="stale_false" value="false">
-              <label for="stale_false">false</label>
-              <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.stale" id="stale_update_after" value="update_after">
-              <label for="stale_update_after">update_after</label>
-              <input type="radio" group="reduce" ng-model="mnFilterController.mnFilter.stale" id="stale_ok" value="ok">
-              <label for="stale_ok">ok</label>
-            </div>
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.stale">
+          <label class="width-5" for="filter_stale">stale</label>
+          <div class="checkbox-list">
+            <input
+               type="radio"
+               group="reduce"
+               ng-model="mnFilterController.mnFilter.stale"
+               id="stale_false"
+               value="false"><!--
+         --><label for="stale_false">false</label><!--
+         --><input
+               type="radio"
+               group="reduce"
+               ng-model="mnFilterController.mnFilter.stale"
+               id="stale_update_after"
+               value="update_after"><!--
+         --><label for="stale_update_after">update_after</label><!--
+         --><input
+               type="radio"
+               group="reduce"
+               ng-model="mnFilterController.mnFilter.stale"
+               id="stale_ok"
+               value="ok"><!--
+          --><label for="stale_ok">ok</label>
           </div>
-        <div ng-show="mnFilterController.items.connectionTimeout">
-          <label for="filter_connection_timeout">connection_timeout</label>
-          <input id="filter_connection_timeout" name="connection_timeout" ng-model="mnFilterController.mnFilter.connection_timeout" type="text" placeholder="milliseconds">
+        </div>
+        <div
+           class="row interim flex-left"
+           ng-show="mnFilterController.items.connectionTimeout">
+          <label class="width-5" for="filter_connection_timeout">connection_timeout</label>
+          <input
+             id="filter_connection_timeout"
+             ng-model="mnFilterController.mnFilter.connection_timeout"
+             type="text" class="width-7"
+             placeholder="milliseconds">
         </div>
       </div>
-      <div class="btn_wrap">
-        <button type="submit" class="list_button" ng-click="mnFilterController.togglePopup()"><span>Close</span></button>
-        <button type="button" class="list_button" ng-click="mnFilterController.onReset()"><span>Reset</span></button>
+      <div class="panel-footer">
+        <a
+           href=""
+           ng-click="mnFilterController.onReset()">Reset</a>
+        <button type="submit">Save</button>
       </div>
+    </form>
   </div>
-  </form>
 </div>
-<a href="#" target="_blank" class="filters_url"></a>

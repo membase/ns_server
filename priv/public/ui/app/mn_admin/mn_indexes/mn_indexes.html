@@ -1,16 +1,19 @@
 <div id="js_indexes" class="indexes">
-  <ul class="second-level-nav" mn-pluggable-ui-tabs mn-tab-bar-name="indexesTab">
-    <li ng-show="rbac.cluster.indexes.read">
+<div class="interim row flex-left sub-nav" mn-pluggable-ui-tabs mn-tab-bar-name="indexesTab">
+    <span class="pills" ng-show="rbac.cluster.indexes.read">
       <a
         ui-sref="app.admin.indexes.gsi"
-        ui-sref-active="selected">Global Indexes</a>
-    </li>
-    <li ng-show="rbac.cluster.pools.read">
+        ui-sref-active="pills-selected">Global Indexes</a>
+    </span>
+    <span class="pills" ng-show="rbac.cluster.pools.read">
       <a
         ui-sref="app.admin.indexes.views.list"
-        ng-class="{selected: ('app.admin.indexes.views' | includedByState)}">Views</a>
-    </li>
-  </ul>
+        ng-class="{selected: ('app.admin.indexes.views' | includedByState)}"
+        ui-sref-active="pills-selected">Views</a>
+    </span>
+    </div>
+
   <div ui-view="">
   </div>
 </div>
+
