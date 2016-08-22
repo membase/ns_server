@@ -18,7 +18,7 @@
       var defaultTemplate = "<li ng-show=\"{{" + configLocation + ".ngShow}}\"><a ui-sref=\"{{ " + configLocation + ".state }}\" ui-sref-active=\"selected\">{{ " + configLocation + ".name }}</a></li>"
       var tabTemplates = {
         adminTab: "<li ng-show=\"{{" + configLocation + ".ngShow}}\" class=\"line\" ui-sref-active=\"currentNav\"><a ui-sref=\"{{" + configLocation + ".state}}\">{{" + configLocation + ".name}}</a></li>",
-        indexesTab:  "<li ng-show=\"{{" + configLocation + ".ngShow}}\"><a ui-sref=\"{{" + configLocation + ".state}}\" ui-sref-active=\"selected\">{{" + configLocation + ".name}}</a></li>"
+        indexesTab:  "<span class=\"pills\" ng-show=\"{{" + configLocation + ".ngShow}}\" ><a ui-sref=\"{{" + configLocation + ".state}}\" ui-sref-active=\"selected\">{{" + configLocation + ".name}}</a></span>"
      };
 
       return tabTemplates[tabBarName] || defaultTemplate;
