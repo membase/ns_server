@@ -169,7 +169,7 @@ maybe_connect(#state{sock = undefined,
                      connect_info = {Type, ConnName, Node, Bucket}} = State) ->
     Sock = connect(Type, ConnName, Node, Bucket),
 
-    % setup socket to receive the first message
+    %% setup socket to receive the first message
     ok = inet:setopts(Sock, [{active, once}]),
 
     State#state{sock = Sock};
