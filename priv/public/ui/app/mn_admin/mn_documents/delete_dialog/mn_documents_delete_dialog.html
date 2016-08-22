@@ -1,15 +1,18 @@
-<div class="dialog" id="delete_document_confirmation_dialog">
-  <form class="content" ng-submit="documentsDeleteDialogCtl.onSubmit()">
-    <h1>Delete Document</h1>
-    <div class="pas_20">
-      <div class="warning pat_20">
-        <div class="error"></div>
+<div class="dialog-small">
+  <div class="panel-header">
+    <h2>Delete Document</h2>
+  </div>
+  <form ng-submit="documentsDeleteDialogCtl.onSubmit()">
+    <div class="panel-content">
+      <p>
         <strong>Warning</strong> – Are you sure you want to remove this Document?
-      </div>
+      </p>
     </div>
-    <div class="right save_cancel pas_20 footer_bg">
-      <button type="submit" class="save_button float_right" ng-click="onSubmit()">Delete</button>
-      <a class="close float_right" ng-click="$dismiss()">Cancel</a>
+    <div class="panel-footer">
+      <a
+         href=""
+         ng-click="$dismiss()">Cancel</a>
+      <button type="submit">Delete</button>
     </div>
   </form>
 </div>

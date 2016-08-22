@@ -1,20 +1,28 @@
-<div class="dialog join_cluster" id="create_document_dialog" title="Create Document" style="width:400px">
-  <h1>Create Document</h1>
-  <div mn-spinner="viewLoading">
-    <span class="warning pat_10" ng-show="documentsCreateDialogCtl.error">{{documentsCreateDialogCtl.error}}</span>
-    <form ng-submit="documentsCreateDialogCtl.onSubmit()">
-      <fieldset style="padding-top:10px">
-        <ul>
-          <li>
-            <label for="new_doc_id" style="width:auto">Document ID:</label>
-            <input type="text" name="id" id="new_doc_id" ng-model="documentsCreateDialogCtl.documentId" />
-          </li>
-        </ul>
-      </fieldset>
-      <div class="save_cancel clearfix">
-        <button type="submit" class="save_button float_right">Create</button>
-        <a class="close" ng-click="$dismiss()">Cancel</a>
-      </div>
-    </form>
+<div class="dialog-small">
+  <div class="panel-header">
+    <h2>Create Document</h2>
   </div>
+  <form
+     mn-spinner="viewLoading"
+     ng-submit="documentsCreateDialogCtl.onSubmit()"
+     class="forms">
+    <div class="panel-content">
+      <div
+         class="error"
+         ng-show="documentsCreateDialogCtl.error">{{documentsCreateDialogCtl.error}}</div>
+      <div class="formrow">
+        <label for="new_doc_id">Document ID:</label>
+        <input
+           type="text"
+           id="new_doc_id"
+           ng-model="documentsCreateDialogCtl.documentId">
+      </div>
+    </div>
+    <div class="panel-footer">
+      <a
+         href=""
+         ng-click="$dismiss()">Cancel</a>
+      <button type="submit">Create</button>
+    </div>
+  </form>
 </div>

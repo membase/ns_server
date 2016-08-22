@@ -1,51 +1,49 @@
-
-  <div id="documents_details" class="documents_details">
-    <div class="warning_message documents_notice" ng-show="documentsEditingCtl.state.errors">
-      Error: {{documentsEditingCtl.state.errors.reason}} ({{documentsEditingCtl.state.errors.error }})
-    </div>
-    <div class="warning_message documents_notice" ng-show="documentsEditingCtl.areThereWarnings()" ng-messages="documentsEditingCtl.state.editorWarnings">
-      <div ng-message="documentLimitError">Warning: Editing of document with size more than 256 KiB is not allowed</div>
-      <div ng-message="shouldNotBeNull">Warning: JSON object cannot be null</div>
-      <div ng-message="shouldBeAnObject">Warning: JSON should represent an object</div>
-      <div ng-message="shouldNotBeAnArray">Warning: JSON should not be an array</div>
-      <div ng-message="documentIsBase64">Warning: Editing of binary document is not allowed</div>
-      <div ng-message="notFound">Error: not found (Document does not exist)</div>
-    </div>
-    <div class="shadow_box">
-      <div class="header_2 servers_header">
-        <div class="docs_title ellipsis">{{documentsEditingCtl.state.title}}</div>
-        <div class="editing_ctrls when-roadmin-hide-me">
-          <a
-            class="btn_1"
-            ng-hide="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write === false"
-            ng-class="{dynamic_disabled: documentsEditingCtl.isDeleteDisabled()}"
-            ng-click="!documentsEditingCtl.isDeleteDisabled() && documentsEditingCtl.deleteDocument()"
-            id="doc_delete"><span>Delete</span></a>
-          <a
-            class="btn_1"
-            ng-hide="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write === false"
-            ng-class="{dynamic_disabled: documentsEditingCtl.isSaveAsDisabled()}"
-            ng-click="!documentsEditingCtl.isSaveAsDisabled() && documentsEditingCtl.saveAsDialog()"
-            id="doc_saveas"><span>Save As...</span></a>
-          <a
-            class="btn_1 btn_save"
-            ng-class="{dynamic_disabled: documentsEditingCtl.isSaveDisabled()}"
-            id="doc_save"
-            ng-hide="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write === false"
-            ng-click="!documentsEditingCtl.isSaveDisabled() && documentsEditingCtl.save()"><span>Save</span></a>
-          <span class="staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
-        </div>
+<div class="interim main-content">
+  <div class="margin-bottom1">
+    <a
+       ui-sref="app.admin.documents.control.list"
+       class="link-heavy">&lt back to Documents</a>
+  </div>
+  <div
+     class="error"
+     ng-show="documentsEditingCtl.state.errors">
+    <p>Error: {{documentsEditingCtl.state.errors.reason}} ({{documentsEditingCtl.state.errors.error }})</p>
+  </div>
+  <div
+     class="error"
+     ng-show="documentsEditingCtl.areThereWarnings()"
+     ng-messages="documentsEditingCtl.state.editorWarnings">
+    <p ng-message="documentLimitError">Warning: Editing of document with size more than 256 KiB is not allowed</p>
+    <p ng-message="shouldNotBeNull">Warning: JSON object cannot be null</p>
+    <p ng-message="shouldBeAnObject">Warning: JSON should represent an object</p>
+    <p ng-message="shouldNotBeAnArray">Warning: JSON should not be an array</p>
+    <p ng-message="documentIsBase64">Warning: Editing of binary document is not allowed</p>
+    <p ng-message="notFound">Error: not found (Document does not exist)</p>
+  </div>
+  <div>
+    <div class="interim row">
+      <div class="ellipsis">{{documentsEditingCtl.state.title}}</div>
+      <div>
+        <button
+           ng-hide="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write === false"
+           ng-disabled="documentsEditingCtl.isDeleteDisabled()"
+           ng-click="documentsEditingCtl.deleteDocument()">Delete</button>
+        <button
+           ng-hide="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write === false"
+           ng-disabled="documentsEditingCtl.isSaveAsDisabled()"
+           ng-click="documentsEditingCtl.saveAsDialog()">Save As...</button>
+        <button
+           ng-disabled="documentsEditingCtl.isSaveDisabled()"
+           ng-hide="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write === false"
+           ng-click="documentsEditingCtl.save()">Save</button>
       </div>
-      <div mn-spinner="documentsEditingCtl.viewLoading || !documentsEditingCtl.state">
-        <div
-          id="json_doc"
-          spellcheck="false"
-          cols="20"
-          rows="11"
-          ng-model="documentsEditingCtl.state.doc"
-          ui-codemirror="documentsEditingCtl.editorOptions"
-          ng-class="{read_only: documentsEditingCtl.isEditorDisabled()}"
-          ></div>
-      </div>
+    </div>
+    <div mn-spinner="documentsEditingCtl.viewLoading || !documentsEditingCtl.state">
+      <div
+         spellcheck="false"
+         ng-model="documentsEditingCtl.state.doc"
+         ui-codemirror="documentsEditingCtl.editorOptions"
+         ></div>
     </div>
   </div>
+</div>

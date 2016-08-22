@@ -1,24 +1,62 @@
-<div class="doc_header" style="margin-top:-50px;">
-  <div class="items_per_list_wrap">
-    <ui-select ng-model="documentsControlCtl.state.pageLimits.selected" theme="selectize" on-select="documentsControlCtl.onSelectPageLimits($item)" style="width: 80px; display: inline-block; vertical-align: middle;">
+<div
+   class="interim alert alert-warning"
+   ng-show="documentsControlCtl.state.docs.errors[0]">
+  <p>Error: {{documentsControlCtl.state.docs.errors[0].reason}} ({{documentsControlCtl.state.docs.errors[0].error }})</p>
+</div>
+<div class="interim main-content">
+  <div class="row">
+    <ui-select
+       on-select="documentsCtl.onSelectBucketName($item)"
+       ng-model="documentsCtl.state.bucketsNames.selected"
+       theme="selectize"
+       style="display: inline-block; vertical-align: middle;">
       <ui-select-match>{{$select.selected}}</ui-select-match>
-      <ui-select-choices repeat="name in documentsControlCtl.state.pageLimits | filter: $select.search">
+      <ui-select-choices repeat="name in documentsCtl.state.bucketsNames | filter: $select.search">
         <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>
+    <div>
+      <div class="inline middle">
+        Current page: {{documentsControlCtl.state.pageNumber + 1}}
+      </div>
+      <div class="inline middle">
+        <button
+           class="icon fa-angle-left outline"
+           ng-disabled="documentsControlCtl.isPrevDisabled()"
+           ng-click="documentsControlCtl.prevPage()"></button>
+        <button
+           class="icon fa-angle-right outline"
+           ng-disabled="documentsControlCtl.isNextDisabled()"
+           ng-click="documentsControlCtl.nextPage()"></button>
+      </div>
+      <div class="inline middle">
+        <ui-select
+           ng-model="documentsControlCtl.state.pageLimits.selected"
+           theme="selectize"
+           on-select="documentsControlCtl.onSelectPageLimits($item)"
+           style="width: 80px; display: inline-block; vertical-align: middle;">
+          <ui-select-match>{{$select.selected}}</ui-select-match>
+          <ui-select-choices
+             repeat="name in documentsControlCtl.state.pageLimits | filter: $select.search">
+            <span
+               class="select-item ellipsis"
+               ng-bind-html="name | highlight: $select.search"></span>
+          </ui-select-choices>
+        </ui-select>
+      </div>
+    </div>
   </div>
-  <div class="ic_prev_next">
-    <a class="arr_prev" ng-class="{dynamic_disabled: documentsControlCtl.isPrevDisabled()}" ng-click="!documentsControlCtl.isPrevDisabled() && documentsControlCtl.prevPage()"></a>
-    <a class="arr_next" ng-class="{dynamic_disabled: documentsControlCtl.isNextDisabled()}" ng-click="!documentsControlCtl.isNextDisabled() && documentsControlCtl.nextPage()"></a>
-  </div>
-  <div class="docs_info">
-    Current page: <span class="docs_crnt_pg">{{documentsControlCtl.state.pageNumber + 1}}</span>
-  </div>
-</div>
 
-<ui-view></ui-view>
+  <ui-view></ui-view>
 
-<div class="ic_prev_next bottom" style="margin-top: 0;">
-  <a class="arr_prev" ng-class="{dynamic_disabled: documentsControlCtl.isPrevDisabled()}" ng-click="!documentsControlCtl.isPrevDisabled() && documentsControlCtl.prevPage()"></a>
-  <a class="arr_next" ng-class="{dynamic_disabled: documentsControlCtl.isNextDisabled()}" ng-click="!documentsControlCtl.isNextDisabled() && documentsControlCtl.nextPage()"></a>
+  <div class="nowrap">
+    <button
+       class="icon fa-angle-left outline"
+       ng-disabled="documentsControlCtl.isPrevDisabled()"
+       ng-click="documentsControlCtl.prevPage()"></button>
+    <button
+       class="icon fa-angle-right outline"
+       ng-disabled="documentsControlCtl.isNextDisabled()"
+       ng-click="documentsControlCtl.nextPage()"></button>
+  </div>
 </div>

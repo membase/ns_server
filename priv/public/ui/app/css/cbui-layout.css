@@ -54,6 +54,13 @@ width:90%;
 width: calc(100% - 200px);
 }
 
+.inline {
+    display: inline-block;
+}
+.middle {
+    vertical-align: middle;
+}
+
 .row {
   display: -webkit-flex;
   display: -ms-flexbox;
