@@ -1,53 +1,70 @@
-<div class="auth_block">
-  <div class="page-header">
-    <div class="cnt_holder main_holder">
-      <div class="topper_nav">
-        <a ng-click="authCtl.showAboutDialog()">
-          About
-        </a>
-      </div>
+<div class="sign-in-background"></div>
+<div class="row items-center items-top dialog_main_wrapper">
+  <div class="panel dialog-small dialog">
+    <div class="panel-header">
+      <img
+         src="/images/cb_logo_bug_white.svg"
+         width="35"
+         height="35"
+         alt="Couchbase Server"
+         class="logobug">
+      <h2>Couchbase Server</h2>
     </div>
-  </div>
-  <div class="pad">
-    <div class="alert_red" id="auth_failed_message" ng-if="authCtl.loginFailed">
-      <div class="al_text">
-        Login failed. Try again.
-      </div>
-    </div>
+
     <form
-      id="login_form"
-      class="form block"
-      novalidate=""
-      ng-submit="authCtl.submit()">
-      <fieldset>
-        <ul>
-          <li>
-            <label for="login_inp">Username:</label>
-            <input
-              ng-model="authCtl.user.username"
-              name="username"
-              id="login_inp"
-              type="text"
-              class="inp"
-              maxlength="24"
-              required
-              mn-focus>
-          </li>
-          <li>
-            <label for="password2_inp">Password:</label>
-            <input
-            ng-model="authCtl.user.password"
-            name="password"
-            id="password2_inp"
-            type="password"
-            class="inp"
-            maxlength="24"
-            mn-autocomplete-off
-            required>
-          </li>
-        </ul>
-        <input type="submit" value="Sign In" class="submit">
-      </fieldset>
+       name="loginForm"
+       novalidate=""
+       ng-submit="!loginForm.$invalid && authCtl.submit()">
+
+      <div class="panel-content forms">
+        <div
+           class="error error-form"
+           ng-show="authCtl.loginFailed">Login failed. Please try again.</div>
+        <div class="formrow">
+          <input
+             type="text"
+             id="auth-username-input"
+             ng-model="authCtl.user.username"
+             ng-model-options="{updateOn: 'default'}"
+             name="username"
+             placeholder="Username"
+             required
+             ng-maxlength="24"
+             mn-focus>
+          <div
+             ng-messages="loginForm.username.$error"
+             ng-show="loginForm.username.$dirty"
+             class="error error-field">
+            <div ng-message="required">Username is required.</div>
+            <div ng-message="maxlength">Username must not exceed 24 characters.</div>
+          </div>
+        </div>
+
+        <div class="formrow">
+          <input
+             type="password"
+             id="auth-password-input"
+             ng-model="authCtl.user.password"
+             ng-model-options="{updateOn: 'default'}"
+             name="password"
+             placeholder="Password"
+             ng-maxlength="24"
+             required
+             mn-autocomplete-off>
+          <div
+             ng-messages="loginForm.password.$error"
+             ng-show="loginForm.password.$dirty"
+             class="error error-field">
+            <div ng-message="required">Password is required.</div>
+            <div ng-message="maxlength">Password must not exceed 24 characters.</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button
+           type="submit"
+           ng-disabled="loginForm.$invalid">Sign In</button>
+      </div>
     </form>
   </div>
 </div>
