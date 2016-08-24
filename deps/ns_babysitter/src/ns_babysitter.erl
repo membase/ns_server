@@ -60,6 +60,11 @@ start(_, _) ->
             ok
     end,
 
+    % Clear the HTTP proxy environment variables as they are honored, when they
+    % are set, by the golang net/http package.
+    true = os:unsetenv("http_proxy"),
+    true = os:unsetenv("https_proxy"),
+
     ns_babysitter_sup:start_link().
 
 log_pending() ->
