@@ -714,8 +714,7 @@ section.status-red .cbui-tablerow-statusmsg {
 }
 
 .dialog-med .panel-content {
-  padding: 1rem 2rem 0 2rem;
-  overflow:auto;
+  padding: 1rem 2rem 1px 2rem;
   margin-bottom: 1rem;
 }
 
@@ -1082,4 +1081,82 @@ meter {
     right: 0;
     bottom: 0;
     background: url(/images/spinner/spinner_3.gif) center 43% no-repeat #fff;
+}
+
+/* custom selectize styles */
+.selectize-dropdown, .selectize-input, .selectize-input input {
+    height: auto;
+}
+.ui-select-container {
+    line-height: 1;
+}
+
+.ui-select-container.single {
+    min-width: 200px;
+}
+.ui-select-container.single span {
+    display: inline-block;
+    vertical-align: bottom;
+    max-width: 400px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    -o-text-overflow: ellipsis;
+}
+.ui-select-container.single .select-item {
+    max-width: 200px;
+    display: block;
+}
+.ui-select-container.single .ui-select-match {
+    white-space: nowrap;
+    padding-right: 25px;
+}
+.ui-select-container.single .ui-select-choices-row.disabled {
+    background: #fff;
+    cursor: default;
+    text-decoration: none;
+}
+.ui-select-container.single .ui-select-choices-row.disabled a {
+    color: #666;
+    font-weight: bold;
+    cursor: default;
+    text-decoration: none;
+}
+.ui-select-multiple {
+    background: #fff;
+    border: 1px solid #ccd3d7;
+    font-size: 13px;
+    padding: 3px;
+    position: relative;
+    z-index: 1;
+}
+.ui-select-multiple input.ui-select-search {
+    height: 18px;
+    padding: 0;
+}
+.ui-select-multiple > .ui-select-choices {
+    position: absolute;
+    background: #fff;
+    left: 0;
+    top: 100%;
+    margin: 1px 0 0 0;
+}
+.ui-select-multiple .ui-select-match-item {
+    display: inline-block;
+    font-size: 12px;
+    max-width: 274px;
+    min-width: auto;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    -o-text-overflow: ellipsis;
+    padding: 0 0.5rem 0 0;
+    margin: 0 3px 3px 0;
+    cursor: default;
+}
+.ui-select-multiple.ui-select-bootstrap .ui-select-match .close {
+    display: inline-block;
+    cursor: pointer;
+    height: 1rem;
+    vertical-align: middle;
 }
