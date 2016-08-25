@@ -8,17 +8,19 @@
     .directive('mnPluggableUiTabs', mnPluggableUiTabs);
 
   function mnPluggableTabUtil() {
-    var defaultTemplate = "<li ng-show=\"{{::pluggableUiConfig.ngShow}}\"><a ui-sref=\"{{ ::pluggableUiConfig.state }}\" ui-sref-active=\"selected\">{{ ::pluggableUiConfig.name }}</a></li>";
-    var tabTemplates = {
-      adminTab:    "<li ng-show=\"{{::pluggableUiConfig.ngShow}}\" class=\"line\" ui-sref-active=\"currentNav\"><a ui-sref=\"{{ ::pluggableUiConfig.state}}\">{{ ::pluggableUiConfig.name }}</a></li>",
-      indexesTab:  "<li ng-show=\"{{::pluggableUiConfig.ngShow}}\" ><a ui-sref=\"{{::pluggableUiConfig.state }}\" ng-class=\"selected\">{{ ::pluggableUiConfig.name }}</a></li>"
-    };
 
     return {
       getTabTemplate: getTabTemplate
     };
 
-    function getTabTemplate(tabBarName) {
+    function getTabTemplate(tabBarName, index) {
+      var configLocation = "::" + tabBarName + ".pluggableUiConfigs[" + index + "]";
+      var defaultTemplate = "<li ng-show=\"{{" + configLocation + ".ngShow}}\"><a ui-sref=\"{{ " + configLocation + ".state }}\" ui-sref-active=\"selected\">{{ " + configLocation + ".name }}</a></li>"
+      var tabTemplates = {
+        adminTab: "<li ng-show=\"{{" + configLocation + ".ngShow}}\" class=\"line\" ui-sref-active=\"currentNav\"><a ui-sref=\"{{" + configLocation + ".state}}\">{{" + configLocation + ".name}}</a></li>",
+        indexesTab:  "<li ng-show=\"{{" + configLocation + ".ngShow}}\"><a ui-sref=\"{{" + configLocation + ".state}}\" ui-sref-active=\"selected\">{{" + configLocation + ".name}}</a></li>"
+     };
+
       return tabTemplates[tabBarName] || defaultTemplate;
     }
   }
@@ -34,18 +36,20 @@
       if (!pluggableUiConfigs.length) {
         return;
       }
-      angular.forEach(pluggableUiConfigs, function (config) {
-        config.ngShow = config.ngShow || true;
-        $scope.pluggableUiConfig = config;
+      $scope[$attrs.mnTabBarName] = {
+        pluggableUiConfigs: pluggableUiConfigs
+      };
+      angular.forEach(pluggableUiConfigs, function (config, index) {
+        config.ngShow = config.ngShow == undefined ? true : config.ngShow;
         if (config.after) {
           var targetTab = $element[0].querySelector("[mn-tab='" + config.after + "']");
           if (!targetTab) {
             throw new Error("There is no tab with mn-tab=" + config.after + " in " + $attrs.mnTabBarName);
           }
-          var compiled = $compile(mnPluggableTabUtil.getTabTemplate($attrs.mnTabBarName))($scope);
+          var compiled = $compile(mnPluggableTabUtil.getTabTemplate($attrs.mnTabBarName, index))($scope);
           angular.element(targetTab).after(compiled);
         } else {
-          var compiled = $compile(mnPluggableTabUtil.getTabTemplate($attrs.mnTabBarName))($scope);
+          var compiled = $compile(mnPluggableTabUtil.getTabTemplate($attrs.mnTabBarName, index))($scope);
           $element.append(compiled);
         }
       });
