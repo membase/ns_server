@@ -42,28 +42,34 @@ decrypt(Data) ->
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-prompt_the_password(EncryptedDataKey, State) ->
-    ?log_debug("Waiting for the master password to be supplied"),
-    {Resp, ReplyTo} =
-        receive
-            {'$gen_call', From, {set_password, P}} ->
-                ok = set_password(P, State),
-                case EncryptedDataKey of
-                    undefined ->
-                        {ok, From};
-                    _ ->
-                        Ret = call_gosecrets({set_data_key, EncryptedDataKey}, State),
-                        case Ret of
-                            ok ->
-                                {ok, From};
-                            Error ->
-                                ?log_error("Incorrect master password. Error: ~p", [Error]),
-                                {auth_failure, From}
-                        end
-                end
-        end,
-    gen_server:reply(ReplyTo, Resp),
-    Resp.
+prompt_the_password(EncryptedDataKey, State, Try) ->
+    ?log_debug("Waiting for the master password to be supplied. Attempt ~p", [Try]),
+    receive
+        {'$gen_call', From, {set_password, P}} ->
+            ok = set_password(P, State),
+            case EncryptedDataKey of
+                undefined ->
+                    gen_server:reply(From, ok),
+                    ok;
+                _ ->
+                    Ret = call_gosecrets({set_data_key, EncryptedDataKey}, State),
+                    case Ret of
+                        ok ->
+                            gen_server:reply(From, ok),
+                            ok;
+                        Error ->
+                            ?log_error("Incorrect master password. Error: ~p", [Error]),
+                            maybe_retry_prompt_the_password(EncryptedDataKey, State, From, Try)
+                    end
+            end
+    end.
+
+maybe_retry_prompt_the_password(_EncryptedDataKey, _State, ReplyTo, 1) ->
+    gen_server:reply(ReplyTo, auth_failure),
+    auth_failure;
+maybe_retry_prompt_the_password(EncryptedDataKey, State, ReplyTo, Try) ->
+    gen_server:reply(ReplyTo, retry),
+    prompt_the_password(EncryptedDataKey, State, Try - 1).
 
 set_password(Password, State) ->
     ?log_debug("Sending password to gosecrets"),
@@ -83,7 +89,7 @@ init([]) ->
     State = start_gosecrets(),
     case os:getenv("CB_WAIT_FOR_MASTER_PASSWORD") of
         "true" ->
-            case prompt_the_password(EncryptedDataKey, State) of
+            case prompt_the_password(EncryptedDataKey, State, 3) of
                 ok ->
                     ok;
                 auth_failure ->
