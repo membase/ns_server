@@ -23,10 +23,15 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([decrypt/1, encrypt/1]).
+-export([set_password/1,
+         decrypt/1,
+         encrypt/1]).
 
 data_key_store_path() ->
     filename:join(path_config:component_path(data, "config"), "encrypted_data_keys").
+
+set_password(Password) ->
+    gen_server:call(?MODULE, {set_password, Password}, infinity).
 
 encrypt(Data) ->
     gen_server:call({?MODULE, ns_server:get_babysitter_node()}, {encrypt, Data}, infinity).
@@ -36,6 +41,33 @@ decrypt(Data) ->
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+prompt_the_password(EncryptedDataKey, State) ->
+    ?log_debug("Waiting for the master password to be supplied"),
+    {Resp, ReplyTo} =
+        receive
+            {'$gen_call', From, {set_password, P}} ->
+                ok = set_password(P, State),
+                case EncryptedDataKey of
+                    undefined ->
+                        {ok, From};
+                    _ ->
+                        Ret = call_gosecrets({set_data_key, EncryptedDataKey}, State),
+                        case Ret of
+                            ok ->
+                                {ok, From};
+                            Error ->
+                                ?log_error("Incorrect master password. Error: ~p", [Error]),
+                                {auth_failure, From}
+                        end
+                end
+        end,
+    gen_server:reply(ReplyTo, Resp),
+    Resp.
+
+set_password(Password, State) ->
+    ?log_debug("Sending password to gosecrets"),
+    call_gosecrets({set_password, Password}, State).
 
 init([]) ->
     Path = data_key_store_path(),
@@ -49,16 +81,24 @@ init([]) ->
                 undefined
         end,
     State = start_gosecrets(),
-    Password =
-        case os:getenv("CB_MASTER_PASSWORD") of
-            false ->
-                "";
-            S ->
-                S
-        end,
-    ?log_debug("Sending password to gosecrets"),
-    ok = call_gosecrets({set_password, Password}, State),
-
+    case os:getenv("CB_WAIT_FOR_MASTER_PASSWORD") of
+        "true" ->
+            case prompt_the_password(EncryptedDataKey, State) of
+                ok ->
+                    ok;
+                auth_failure ->
+                    exit(incorrect_master_password)
+            end;
+        _ ->
+            Password =
+                case os:getenv("CB_MASTER_PASSWORD") of
+                    false ->
+                        "";
+                    S ->
+                        S
+                end,
+            ok = set_password(Password, State)
+    end,
     EncryptedDataKey1 =
         case EncryptedDataKey of
             undefined ->
@@ -79,6 +119,8 @@ init([]) ->
     end,
     {ok, State}.
 
+handle_call({set_password, _}, _From, State) ->
+    {reply, {error, not_allowed}, State};
 handle_call({encrypt, Data}, _From, State) ->
     {reply, call_gosecrets({encrypt, Data}, State), State};
 handle_call({decrypt, Data}, _From, State) ->
