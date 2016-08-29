@@ -31,6 +31,8 @@ init([]) ->
 child_specs() ->
     [{ns_crash_log, {ns_crash_log, start_link, []},
       permanent, 1000, worker, []},
+     {encryption_service, {encryption_service, start_link, []},
+      permanent, 1000, worker, []},
      {child_ns_server_sup, {child_ns_server_sup, start_link, []},
       permanent, infinity, supervisor, []},
      {ns_child_ports_sup, {ns_child_ports_sup, start_link, []},
