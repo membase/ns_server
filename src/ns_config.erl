@@ -79,11 +79,11 @@
 
 -export([compute_global_rev/1]).
 
--export([save_config_sync/1, do_not_save_config/1]).
+-export([save_config_sync/1, save_config_sync/2, do_not_save_config/1]).
 
 % Exported for tests only
 -export([save_file/3, load_config/3,
-         load_file/2, save_config_sync/2, send_config/2,
+         load_file/2, send_config/2,
          test_setup/1]).
 
 % A static config file is often hand edited.
@@ -793,7 +793,7 @@ init({full, ConfigPath, DirPath, PolicyMod} = Init) ->
     case load_config(ConfigPath, DirPath, PolicyMod) of
         {ok, Config} ->
             do_init(Config#config{init = Init,
-                                  saver_mfa = {?MODULE, save_config_sync, []},
+                                  saver_mfa = {PolicyMod, encrypt_and_save, []},
                                   upgrade_config_fun = fun upgrade_config/1});
         Error ->
             {stop, Error}
@@ -1084,7 +1084,7 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
             ?log_info("Loading dynamic config from ~p", [C]),
             Dynamic0 = case load_file(bin, C) of
                            {ok, DRead} ->
-                               DRead;
+                               PolicyMod:decrypt(DRead);
                            not_found ->
                                ?log_info("No dynamic config file found. Assuming we're brand new node"),
                                [[]]
@@ -1119,8 +1119,11 @@ load_config(ConfigPath, DirPath, PolicyMod) ->
     end.
 
 save_config_sync(#config{dynamic = D}, DirPath) ->
+    save_config_sync(D, DirPath);
+
+save_config_sync(Dynamic, DirPath) when is_list(Dynamic) ->
     C = dynamic_config_path(DirPath),
-    ok = save_file(bin, C, D),
+    ok = save_file(bin, C, Dynamic),
     ok.
 
 save_config_sync(Config) ->

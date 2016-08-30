@@ -402,3 +402,6 @@ test_dir() ->
 
 data_file()     -> data_file(atom_to_list(node())).
 data_file(Name) -> filename:join([test_dir(), Name]).
+
+decrypt(Config) ->
+    Config.

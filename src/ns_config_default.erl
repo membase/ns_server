@@ -19,7 +19,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([default/0, upgrade_config/1, get_current_version/0]).
+-export([default/0, upgrade_config/1, get_current_version/0, encrypt_and_save/1, decrypt/1]).
 
 -define(ISASL_PW, "isasl.pw").
 -define(NS_LOG, "ns_log").
@@ -594,6 +594,35 @@ do_upgrade_config_from_4_1_1_to_4_5(DefaultConfig) ->
     [{set, ConfKey, McdConfig},
      {set, DefaultsKey, McdDefaults},
      {set, CompactionDaemonKey, CompactionDaemonCfg}].
+
+encrypt_config_val(Val) ->
+    {ok, Encrypted} = encryption_service:encrypt(term_to_binary(Val)),
+    {encrypted, Encrypted}.
+
+encrypt(Config) ->
+    misc:rewrite_tuples(fun ({admin_pass, Pass}) ->
+                                {stop, {admin_pass, encrypt_config_val(Pass)}};
+                            ({sasl_password, Pass}) ->
+                                {stop, {sasl_password, encrypt_config_val(Pass)}};
+                            ({metakv_sensitive, Val}) ->
+                                {stop, {metakv_sensitive, encrypt_config_val(Val)}};
+                            (T) ->
+                                {continue, T}
+                        end, Config).
+
+encrypt_and_save(Config) ->
+    {value, DirPath} = ns_config:search(Config, directory),
+    Dynamic = ns_config:get_kv_list_with_config(Config),
+    EncryptedConfig = encrypt(Dynamic),
+    ns_config:save_config_sync([EncryptedConfig], DirPath).
+
+decrypt(Config) ->
+    misc:rewrite_tuples(fun ({encrypted, Val}) when is_binary(Val) ->
+                                {ok, Decrypted} = encryption_service:decrypt(Val),
+                                {stop, binary_to_term(Decrypted)};
+                            (T) ->
+                                {continue, T}
+                        end, Config).
 
 upgrade_2_3_0_to_3_0_test() ->
     Cfg = [[{some_key, some_value},
