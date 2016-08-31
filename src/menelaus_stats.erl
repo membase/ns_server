@@ -303,6 +303,7 @@ build_computed_stat_extractor(ComputeFun, Stats) ->
                     {TS, erlang:apply(ComputeFun, Args)}
             end
     end.
+
 %%
 %% For the specified StatName, build the list of stats that need to be gathered
 %% and the function to extract them.
@@ -920,7 +921,7 @@ computed_stats_lazy_proplist(BucketName) ->
         end,
 
     ViewsIndexesStats =
-        [{Key, Z3(ViewKey, IndexKey, FtsKey, fun (A, B) -> A + B end)} ||
+        [{Key, Z3(ViewKey, IndexKey, FtsKey, fun (A, B, C) -> A + B + C end)} ||
             {Key, ViewKey, IndexKey, FtsKey} <-
                 [{<<"ep_dcp_views+indexes_count">>,
                   ep_dcp_views_count, ep_dcp_2i_count, ep_dcp_fts_count},
@@ -955,29 +956,44 @@ computed_stats_lazy_proplist(BucketName) ->
      {<<"avg_bg_wait_time">>, AverageBgWait}] ++ ViewsIndexesStats ++ XDCAllRepStats
         ++ computed_stats_lazy_proplist("@query").
 
-combine_samples(CombineTwo, Dict, [FirstName | Rest]) ->
-    case lists:keyfind(FirstName, 1, Dict) of
+combine_samples(Combiner, Dict, StatNames) ->
+    case all_stats_defined(Dict, StatNames, []) of
         false ->
             undefined;
-        {_, Val} ->
-            combine_samples(CombineTwo, Dict, Val, Rest)
+        Stats ->
+            case length(Stats) of
+                2 ->
+                    combine_2_samples(Combiner, Stats);
+                3 ->
+                    combine_3_samples(Combiner, Stats)
+            end
     end.
 
-combine_samples(_CombineTwo, _Dict, Val, []) ->
-    Val;
-combine_samples(CombineTwo, Dict, ValA, [StatNameB | Rest]) ->
-    NewVal = case lists:keyfind(StatNameB, 1, Dict) of
-                 false ->
-                     undefined;
-                 {_, ValB} ->
-                     lists:zipwith(
-                       fun (A, B) when A =/= null, B =/= null ->
-                               CombineTwo(A, B);
-                           (_, _) ->
-                               null
-                       end, ValA, ValB)
-             end,
-    combine_samples(CombineTwo, Dict, NewVal, Rest).
+combine_2_samples(Combiner, [ValA, ValB]) ->
+    lists:zipwith(
+        fun (A, B) when A =/= null, B =/= null ->
+                Combiner(A, B);
+            (_, _) ->
+                null
+        end, ValA, ValB).
+
+combine_3_samples(Combiner, [ValA, ValB, ValC]) ->
+    lists:zipwith3(
+        fun (A, B, C) when A =/= null, B =/= null, C =/= null ->
+                Combiner(A, B, C);
+            (_, _, _) ->
+                null
+        end, ValA, ValB, ValC).
+
+all_stats_defined(_Dict, [], Acc) ->
+    lists:reverse(Acc);
+all_stats_defined(Dict, [First | Rest], Acc) ->
+    case lists:keyfind(First, 1, Dict) of
+        false ->
+            false;
+        {_, Val} ->
+            all_stats_defined(Dict, Rest, [Val | Acc])
+    end.
 
 %% converts list of samples to proplist of stat values.
 %%
