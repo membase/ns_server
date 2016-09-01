@@ -408,11 +408,11 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["diag"] ->
                     {{[admin, diag], read}, fun diag_handler:handle_diag/1, []};
                 ["diag", "vbuckets"] ->
-                    {{[admin, diag], read}, fun handle_diag_vbuckets/1};
+                    {{[admin, diag], read}, fun diag_handler:handle_diag_vbuckets/1};
                 ["diag", "ale"] ->
                     {{[admin, diag], read}, fun diag_handler:handle_diag_ale/1};
                 ["diag", "masterEvents"] ->
-                    {{[admin, diag], read}, fun handle_diag_master_events/1};
+                    {{[admin, diag], read}, fun diag_handler:handle_diag_master_events/1};
                 ["pools", "default", "rebalanceProgress"] ->
                     {{[tasks], read}, fun handle_rebalance_progress/2, ["default"]};
                 ["pools", "default", "tasks"] ->
@@ -684,7 +684,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                                                reply_ok(R, "text/plain", [])
                                        end};
                 ["diag", "eval"] ->
-                    {{[admin, diag], write}, fun handle_diag_eval/1};
+                    {{[admin, diag], write}, fun diag_handler:handle_diag_eval/1};
                 ["couchBase" | _] ->
                     {no_check, fun menelaus_pluggable_ui:proxy_req/4,
                      ["couchBase",
@@ -3324,119 +3324,6 @@ average_failover_safenesses_rec(_Node, _NodeInfos, [], Sum, Count) ->
 average_failover_safenesses_rec(Node, NodeInfos, [{BucketName, BucketConfig} | RestBuckets], Sum, Count) ->
     Level = failover_safeness_level:extract_replication_uptodateness(BucketName, BucketConfig, Node, NodeInfos),
     average_failover_safenesses_rec(Node, NodeInfos, RestBuckets, Sum + Level, Count + 1).
-
-handle_diag_eval(Req) ->
-    Snippet = binary_to_list(Req:recv_body()),
-
-    ?log_debug("WARNING: /diag/eval:~n~n~s", [Snippet]),
-
-    try misc:eval(Snippet, erl_eval:add_binding('Req', Req, erl_eval:new_bindings())) of
-        {value, Value, _} ->
-            case Value of
-                done ->
-                    ok;
-                {json, V} ->
-                    reply_json(Req, V, 200);
-                _ ->
-                    reply_text(Req, io_lib:format("~p", [Value]), 200)
-            end
-    catch
-        T:E ->
-            Msg = io_lib:format("/diag/eval failed.~nError: ~p~nBacktrace:~n~p",
-                                [{T, E}, erlang:get_stacktrace()]),
-            ?log_error("Server error during processing: ~s", [Msg]),
-
-            reply_text(Req, io_lib:format("/diag/eval failed.~nError: ~p~nBacktrace:~n~p",
-                                          [{T, E}, erlang:get_stacktrace()]),
-                       500)
-    end.
-
-handle_diag_master_events(Req) ->
-    Params = Req:parse_qs(),
-    case proplists:get_value("o", Params) of
-        undefined ->
-            do_handle_diag_master_events(Req);
-        _ ->
-            Body = master_activity_events:format_some_history(master_activity_events_keeper:get_history()),
-            reply_ok(Req, "text/kind-of-json; charset=utf-8", Body)
-    end.
-
-do_handle_diag_master_events(Req) ->
-    Rep = reply_ok(Req, "text/kind-of-json; charset=utf-8", chunked),
-    Parent = self(),
-    Sock = Req:get(socket),
-    inet:setopts(Sock, [{active, true}]),
-    spawn_link(
-      fun () ->
-              master_activity_events:stream_events(
-                fun (Event, _Ignored, _Eof) ->
-                        IOList = master_activity_events:event_to_formatted_iolist(Event),
-                        case IOList of
-                            [] ->
-                                ok;
-                            _ ->
-                                Parent ! {write_chunk, IOList}
-                        end,
-                        ok
-                end, [])
-      end),
-    Loop = fun (Loop) ->
-                   receive
-                       {tcp_closed, _} ->
-                           exit(self(), shutdown);
-                       {tcp, _, _} ->
-                           %% eat & ignore
-                           Loop(Loop);
-                       {write_chunk, Chunk} ->
-                           Rep:write_chunk(Chunk),
-                           Loop(Loop)
-                   end
-           end,
-    Loop(Loop).
-
-
-diag_vbucket_accumulate_vbucket_stats(K, V, Dict) ->
-    case misc:split_binary_at_char(K, $:) of
-        {<<"vb_",VB/binary>>, AttrName} ->
-            SubDict = case dict:find(VB, Dict) of
-                          error ->
-                              dict:new();
-                          {ok, X} -> X
-                      end,
-            dict:store(VB, dict:store(AttrName, V, SubDict), Dict);
-        _ ->
-            Dict
-    end.
-
-diag_vbucket_per_node(BucketName, Node) ->
-    {ok, RV1} = ns_memcached:raw_stats(Node, BucketName, <<"vbucket-details">>, fun diag_vbucket_accumulate_vbucket_stats/3, dict:new()),
-    {ok, RV2} = ns_memcached:raw_stats(Node, BucketName, <<"checkpoint">>, fun diag_vbucket_accumulate_vbucket_stats/3, RV1),
-    RV2.
-
-handle_diag_vbuckets(Req) ->
-    Params = Req:parse_qs(),
-    BucketName = proplists:get_value("bucket", Params),
-    {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
-    Nodes = ns_node_disco:nodes_actual_proper(),
-    RawPerNode = misc:parallel_map(fun (Node) ->
-                                           diag_vbucket_per_node(BucketName, Node)
-                                   end, Nodes, 30000),
-    PerNodeStates = lists:zip(Nodes,
-                              [{struct, [{K, {struct, dict:to_list(V)}} || {K, V} <- dict:to_list(Dict)]}
-                               || Dict <- RawPerNode]),
-    JSON = {struct, [{name, list_to_binary(BucketName)},
-                     {bucketMap, proplists:get_value(map, BucketConfig, [])},
-                     %% {ffMap, proplists:get_value(fastForwardMap, BucketConfig, [])},
-                     {perNodeStates, {struct, PerNodeStates}}]},
-    Hash = integer_to_list(erlang:phash2(JSON)),
-    ExtraHeaders = [{"Cache-Control", "must-revalidate"},
-                    {"ETag", Hash}],
-    case Req:get_header_value("if-none-match") of
-        Hash ->
-            reply(Req, 304, ExtraHeaders);
-        _ ->
-            reply_json(Req, JSON, 200, ExtraHeaders)
-    end.
 
 handle_set_autocompaction(Req) ->
     Params = Req:parse_post(),
