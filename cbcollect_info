@@ -306,6 +306,17 @@ def make_curl_task(name, user, password, url,
                      log_file=log_file,
                      command_to_print=make_cmd("*****"), **kwargs)
 
+def make_cbstats_task(kind, memcached_pass, guts):
+    port = read_guts(guts, "memcached_port")
+    user = read_guts(guts, "memcached_admin")
+    def make_cmd(pwd):
+        return flatten(["cbstats", "-a", "127.0.0.1:%s" % port, kind, "-b", user, "-p", pwd])
+    return AllOsTask("memcached stats %s" % kind,
+                     make_cmd(memcached_pass),
+                     log_file="stats.log",
+                     timeout=60,
+                     command_to_print=make_cmd("*****"))
+
 def get_diag_password(port):
     import subprocess
     import StringIO
@@ -681,12 +692,7 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
                       "goxdcr.log", "query.log", "projector.log", "indexer.log",
                       "fts.log", "metakv.log"]],
 
-        [AllOsTask("memcached stats %s" % kind,
-
-                   flatten(["cbstats", "-a", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
-                            kind, "-b", read_guts(guts, "memcached_admin"), "-p", memcached_pass]),
-                   log_file="stats.log",
-                   timeout=60)
+        [make_cbstats_task(kind, memcached_pass, guts)
          for kind in ["all", "allocator", "checkpoint", "config",
                       "dcp", "dcpagg",
                       ["diskinfo", "detail"], ["dispatcher", "logs"],
