@@ -413,6 +413,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[admin, diag], read}, fun diag_handler:handle_diag_ale/1};
                 ["diag", "masterEvents"] ->
                     {{[admin, diag], read}, fun diag_handler:handle_diag_master_events/1};
+                ["diag", "password"] ->
+                    {done, diag_handler:handle_diag_get_password(Req)};
                 ["pools", "default", "rebalanceProgress"] ->
                     {{[tasks], read}, fun handle_rebalance_progress/2, ["default"]};
                 ["pools", "default", "tasks"] ->
