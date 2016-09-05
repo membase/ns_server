@@ -60,6 +60,9 @@ width: calc(100% - 200px);
 .middle {
     vertical-align: middle;
 }
+.align-top {
+  vertical-align: top;
+}
 
 .row {
   display: -webkit-flex;
@@ -218,6 +221,11 @@ footer {
   margin-bottom: 1rem;
 }
 
+.margin-bottom2 {
+  display:block;
+  margin-bottom: 2rem;
+}
+
 .margin-bottom-half {
   display:block;
   margin-bottom: .5rem;
@@ -233,9 +241,14 @@ footer {
 .text-center {
   text-align:center;
 }
+.text-left {
+  text-align: left;
+}
+
 .text-nowrap {
   white-space: nowrap;
-  overflow: ellipsis;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .flex-left {
 -webkit-box-pack: start;

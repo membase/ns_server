@@ -1,76 +1,62 @@
-<div id="js_analytics" class="analytics">
-  <span class="block nav float_right configure_view"></span>
-  <h1>
+<div
+   class="interim alert alert-warning"
+   ng-show="adminCtl.lostConnState.isActivated">
+  <p>Difficulties communicating with the cluster; displaying cached information!</p>
+</div>
+
+<div class="interim main-content" style="max-width:1150px;">
+  <div class="formrow">
     <!--TODO move dropboxes into separate state -->
-    <span
-      class="js_when-normal-stats"
-      ng-show="!analyticsCtl.isSpecificStats">
-        DATA BUCKETS:
+    <span ng-show="!analyticsCtl.isSpecificStats">
+      Statistics for
     </span>
-    <span
-      class="js_when-specific-stats"
-      ng-show="analyticsCtl.isSpecificStats">
-        <em class="js_specific-stat-description">{{analyticsCtl.state.origTitle}}</em> for bucket:
+    <span ng-show="analyticsCtl.isSpecificStats">
+      <em>{{analyticsCtl.state.origTitle}}</em> for bucket:
     </span>
     <ui-select
-      ng-model="analyticsCtl.buckets.bucketsNames.selected"
-      theme="selectize"
-      ng-disabled="disabled"
-      on-select="analyticsCtl.onSelectBucket($item)"
-      style="display: inline-block; vertical-align: middle;">
+       class="inline middle"
+       ng-model="analyticsCtl.buckets.bucketsNames.selected"
+       theme="selectize"
+       ng-disabled="disabled"
+       on-select="analyticsCtl.onSelectBucket($item)">
+      <ui-select-match>{{$select.selected}}</ui-select-match>
+      <ui-select-choices repeat="name in analyticsCtl.buckets.bucketsNames | filter: $select.search">
+        <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
+      </ui-select-choices>
+    </ui-select>
+    <span ng-if="!analyticsCtl.isSpecificStats">
+      on
+      <ui-select
+         class="inline middle"
+         ng-model="analyticsCtl.nodes.nodesNames.selected"
+         theme="selectize"
+         ng-disabled="disabled"
+         on-select="analyticsCtl.onSelectNode($item)">
         <ui-select-match>{{$select.selected}}</ui-select-match>
-        <ui-select-choices repeat="name in analyticsCtl.buckets.bucketsNames | filter: $select.search">
+        <ui-select-choices repeat="name in analyticsCtl.nodes.nodesNames | filter: $select.search">
           <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
         </ui-select-choices>
-    </ui-select>
-    <span
-      class="js_when-normal-stats"
-      ng-if="!analyticsCtl.isSpecificStats">
-        on
-      <ui-select
-        ng-model="analyticsCtl.nodes.nodesNames.selected"
-        theme="selectize"
-        ng-disabled="disabled"
-        on-select="analyticsCtl.onSelectNode($item)"
-        style="display: inline-block; vertical-align: middle;">
-          <ui-select-match>{{$select.selected}}</ui-select-match>
-          <ui-select-choices repeat="name in analyticsCtl.nodes.nodesNames | filter: $select.search">
-            <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
-          </ui-select-choices>
       </ui-select>
     </span>
-  </h1>
-  <div id="js_date_slider_container" class="date_slider_container" ng-if="rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read">
-    <div class="time_mode_wrap">
-      <a id="js_zoom_minute" ui-sref="app.admin.analytics.list.graph({zoom: 'minute'})" ui-sref-active="selected">Minute</a>
-      <a id="js_zoom_hour" ui-sref="app.admin.analytics.list.graph({zoom: 'hour'})" ui-sref-active="selected">Hour</a>
-      <a id="js_zoom_day" ui-sref="app.admin.analytics.list.graph({zoom: 'day'})" ui-sref-active="selected">Day</a>
-      <a id="js_zoom_week" ui-sref="app.admin.analytics.list.graph({zoom: 'week'})" ui-sref-active="selected">Week</a>
-      <a id="js_zoom_month" ui-sref="app.admin.analytics.list.graph({zoom: 'month'})" ui-sref-active="selected">Month</a>
-      <a id="js_zoom_year" ui-sref="app.admin.analytics.list.graph({zoom: 'year'})" ui-sref-active="selected">Year</a>
-    </div>
   </div>
   <ui-view></ui-view>
-  <div class="shadow_box" style="width:780px;" ng-if="!analyticsCtl.isSpecificStats && rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read" >
-    <div class="section" id="js_top_keys_block">
-      <h2 class="header_2">
-        TOP KEYS
-      </h2>
-      <p id="js_top_keys_container" class="top_keys_container"></p>
-      <table class="lined_tab">
-        <thead>
-          <tr>
-            <th>Key</th>
-            <th>Ops/Sec</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr ng-repeat="key in analyticsCtl.state.stats.hot_keys">
-            <td style="max-width:600px;word-wrap:break-word">{{key.name}}</td>
-            <td>{{ analyticsCtl.computeOps(key) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div> <!-- section -->
-  </div> <!-- END shadow box -->
+  <div
+     class="margin-top2"
+     ng-if="!analyticsCtl.isSpecificStats && rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read" >
+    <h2>TOP KEYS</h2>
+    <table class="table-stroked">
+      <thead>
+        <tr>
+          <th>Key</th>
+          <th>Ops/Sec</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="key in analyticsCtl.state.stats.hot_keys">
+          <td>{{key.name}}</td>
+          <td>{{analyticsCtl.computeOps(key)}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>

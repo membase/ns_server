@@ -1,30 +1,34 @@
-<div id="current_stat_info" ng-show="!analyticsCtl.state.isEmptyState">
-  <h3>
-    <span class="i">i</span>
-    <span class="current-graph-name js_current-graph-name">{{analyticsListGraphCtl.selectedStat.title}}</span>
-  </h3>
-  <p class="js_current-graph-desc">{{analyticsListGraphCtl.selectedStat.desc}}</p>
-</div>
-<div class="header_2">
-  <span class="block nav float_right">
-    <span id="js_stats-period-container" class="stats-period-container">
-      <span class="with_samples current">Last <b id="js_stats_visible_period">{{analyticsListGraphCtl.selectedStat.visiblePeriod | mnFormatUptime}}</b></span><span class="without_samples current">No samples, yet</span>
-    </span>
-    <span class="js_staleness-notice staleness-notice" ng-show="adminCtl.lostConnState.isActivated">Difficulties communicating with the cluster; displaying cached information!</span>
-  </span>
-  General Bucket Analytics
-</div>
 <div
-  class="analytics_graph_main"
-  mn-spinner="!analyticsListGraphCtl.selectedStat || analyticsCtl.viewLoading">
-    <h2 class="current-graph-name js_current-graph-name">{{analyticsListGraphCtl.selectedStat.title}}</h2>
-    <span class="graph_info_label block right active_node_count"><!-- 3 active nodes --></span>
-    <div id="analytics_main_graph_grid">
-      <div
-        id="js_analytics_main_graph"
-        class="analytics_main_graph"
-        ng-if="analyticsListGraphCtl.selectedStat.graphConfig"
-        mn-plot mn-plot-config="analyticsListGraphCtl.selectedStat.graphConfig">
-      </div>
+   mn-spinner="!analyticsListGraphCtl.selectedStat || analyticsCtl.viewLoading"
+   class="text-center margin-top2 margin-bottom2">
+  <h2>{{analyticsListGraphCtl.selectedStat.title}}
+    <span ng-show="analyticsListGraphCtl.selectedStat.visiblePeriod">
+      <small>last {{analyticsListGraphCtl.selectedStat.visiblePeriod | mnFormatUptime}}</small>
+    </span>
+    <span ng-show="!analyticsListGraphCtl.selectedStat.visiblePeriod">
+      No samples, yet
+    </span>
+  </h2>
+  <div style="position: relative;">
+    <div
+       class="inline"
+       style="width: 742px; height: 269px;"
+       ng-if="analyticsListGraphCtl.selectedStat.graphConfig"
+       mn-plot
+       mn-plot-config="analyticsListGraphCtl.selectedStat.graphConfig">
     </div>
+    <div
+       ng-if="rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read"
+       class="text-left inline align-top">
+        <a ui-sref="app.admin.analytics.list.graph({zoom: 'minute'})" ui-sref-active="selected">Minute</a><br>
+        <a ui-sref="app.admin.analytics.list.graph({zoom: 'hour'})" ui-sref-active="selected">Hour</a><br>
+        <a ui-sref="app.admin.analytics.list.graph({zoom: 'day'})" ui-sref-active="selected">Day</a><br>
+        <a ui-sref="app.admin.analytics.list.graph({zoom: 'week'})" ui-sref-active="selected">Week</a><br>
+        <a ui-sref="app.admin.analytics.list.graph({zoom: 'month'})" ui-sref-active="selected">Month</a><br>
+        <a ui-sref="app.admin.analytics.list.graph({zoom: 'year'})" ui-sref-active="selected">Year</a>
+    </div>
+  </div>
+  <div ng-show="!analyticsCtl.state.isEmptyState">
+    <small>{{analyticsListGraphCtl.selectedStat.desc}}</small>
+  </div>
 </div>

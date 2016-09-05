@@ -797,6 +797,12 @@ table td {
   vertical-align: middle;
 }
 
+table td.ellipsis {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .break-all td {
     word-break: break-all;
 }
@@ -1296,5 +1302,13 @@ select.select-small {
 
 /* background colors ----------------------------------- */
 .grayblue-5 {
+  background-color: #f6f7f9;
+}
+.gray-7 {
+  background-color: #f5f5f5;
+}
+.has-hover:hover {
   background-color: #ecf3fa;
+  transition: all linear 0.2s;
+  cursor: pointer;
 }

@@ -48,7 +48,7 @@ angular.module('mnPlot', [
         var series = [],
             options = {
                 // the color theme used for graphs
-                colors: ["#edc240", "#afd8f8", "#cb4b4b", "#4da74d", "#9440ed"],
+                colors: ["#b3cfef", "#afd8f8", "#cb4b4b", "#4da74d", "#9440ed"],
                 legend: {
                     show: true,
                     noColumns: 1, // number of colums in legend table
