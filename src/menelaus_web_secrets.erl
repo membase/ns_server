@@ -20,7 +20,8 @@
 
 -include("ns_common.hrl").
 
--export([handle_change_master_password/1]).
+-export([handle_change_master_password/1,
+         handle_rotate_data_key/1]).
 
 handle_change_master_password(Req) ->
     menelaus_util:execute_if_validated(
@@ -39,3 +40,17 @@ validate_change_master_password(Args) ->
     R1 = menelaus_util:validate_required(newPassword, R0),
     R2 = menelaus_util:validate_any_value(newPassword, R1),
     menelaus_util:validate_unsupported_params(R2).
+
+handle_rotate_data_key(Req) ->
+    RV = encryption_service:rotate_data_key(),
+    %% the reason that resave is called regardless of the return value of
+    %% rotate_data_key is that in case of previous insuccessful attempt to
+    %% rotate, the backup key is still might be set in encryption_service
+    %% and we want to clean it up, so the next attempt to rotate will succeed
+    ns_config:resave(),
+    case RV of
+        ok ->
+            menelaus_util:reply(Req, 200);
+        {error, Error} ->
+            menelaus_util:reply_global_error(Req, Error ++ ". You might try one more time.")
+    end.

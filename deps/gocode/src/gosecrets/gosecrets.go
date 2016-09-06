@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -24,6 +25,7 @@ var salt = [8]byte{20, 183, 239, 38, 44, 214, 22, 141}
 type encryptionService struct {
 	lockKey          []byte
 	encryptedDataKey []byte
+	backupDataKey    []byte
 	reader           *bufio.Reader
 }
 
@@ -91,6 +93,21 @@ func replyError(error string) {
 	doReply([]byte("E" + error))
 }
 
+func encodeKey(key []byte) []byte {
+	if key == nil {
+		return []byte{0}
+	}
+	return append([]byte{byte(len(key))}, key...)
+}
+
+func combineDataKeys(key1, key2 []byte) []byte {
+	return append(encodeKey(key1), encodeKey(key2)...)
+}
+
+func (s *encryptionService) replySuccessWithDataKey() {
+	replySuccessWithData(combineDataKeys(s.encryptedDataKey, s.backupDataKey))
+}
+
 func (s *encryptionService) processCommand() {
 	command, data := s.readCommand()
 
@@ -109,6 +126,10 @@ func (s *encryptionService) processCommand() {
 		s.cmdDecrypt(data)
 	case 7:
 		s.cmdChangePassword(data)
+	case 8:
+		s.cmdRotateDataKey()
+	case 9:
+		s.cmdClearBackupKey(data)
 	default:
 		panic(fmt.Sprintf("Unknown command %v", command))
 	}
@@ -119,33 +140,54 @@ func (s *encryptionService) cmdSetPassword(data []byte) {
 	replySuccess()
 }
 
-func (s *encryptionService) cmdCreateDataKey() {
-	if s.lockKey == nil {
-		panic("Password was not set")
-	}
+func (s *encryptionService) createDataKey() []byte {
 	dataKey := make([]byte, keySize)
 	if _, err := io.ReadFull(rand.Reader, dataKey); err != nil {
 		panic(err.Error())
 	}
-	encryptedDataKey := aesgcmEncrypt(s.lockKey, dataKey)
-	replySuccessWithData(encryptedDataKey)
+	return aesgcmEncrypt(s.lockKey, dataKey)
+}
+
+func (s *encryptionService) cmdCreateDataKey() {
+	if s.lockKey == nil {
+		panic("Password was not set")
+	}
+	replySuccessWithData(combineDataKeys(s.createDataKey(), nil))
+}
+
+func readField(b []byte) ([]byte, []byte) {
+	size := b[0]
+	return b[1 : size+1], b[size+1:]
 }
 
 func (s *encryptionService) cmdSetDataKey(data []byte) {
 	if s.lockKey == nil {
 		panic("Password was not set")
 	}
-	_, err := aesgcmDecrypt(s.lockKey, data)
+	encryptedDataKey, data := readField(data)
+	backupDataKey, _ := readField(data)
+
+	_, err := aesgcmDecrypt(s.lockKey, encryptedDataKey)
 	if err != nil {
 		replyError(err.Error())
 		return
 	}
-	s.encryptedDataKey = data
+	if len(backupDataKey) == 0 {
+		s.backupDataKey = nil
+	} else {
+		_, err = aesgcmDecrypt(s.lockKey, backupDataKey)
+		if err != nil {
+			replyError(err.Error())
+			return
+		}
+		s.backupDataKey = backupDataKey
+	}
+	s.encryptedDataKey = encryptedDataKey
 	replySuccess()
 }
 
 func (s *encryptionService) cmdGetDataKey() {
-	replySuccessWithData(s.encryptedDataKey)
+	s.replySuccessWithDataKey()
 }
 
 func (s *encryptionService) cmdEncrypt(data []byte) {
@@ -160,16 +202,27 @@ func (s *encryptionService) cmdEncrypt(data []byte) {
 	replySuccessWithData(aesgcmEncrypt(dataKey, data))
 }
 
+func (s *encryptionService) decryptWithKey(key []byte, data []byte) ([]byte, error) {
+	if key == nil {
+		return nil, errors.New("Unable to decrypt value")
+	}
+	dataKey, err := aesgcmDecrypt(s.lockKey, key)
+	if err != nil {
+		return nil, err
+	}
+	return aesgcmDecrypt(dataKey, data)
+}
+
 func (s *encryptionService) cmdDecrypt(data []byte) {
 	if s.lockKey == nil {
 		panic("Password was not set")
 	}
-	dataKey, err := aesgcmDecrypt(s.lockKey, s.encryptedDataKey)
-	if err != nil {
-		replyError(err.Error())
+	plaintext, err := s.decryptWithKey(s.encryptedDataKey, data)
+	if err == nil {
+		replySuccessWithData(plaintext)
 		return
 	}
-	plaintext, err := aesgcmDecrypt(dataKey, data)
+	plaintext, err = s.decryptWithKey(s.backupDataKey, data)
 	if err != nil {
 		replyError(err.Error())
 		return
@@ -181,6 +234,15 @@ func (s *encryptionService) cmdChangePassword(data []byte) {
 	if s.lockKey == nil {
 		panic("Password was not set")
 	}
+	var backupDataKey []byte
+	var err error
+	if s.backupDataKey != nil {
+		backupDataKey, err = aesgcmDecrypt(s.lockKey, s.backupDataKey)
+		if err != nil {
+			replyError(err.Error())
+			return
+		}
+	}
 	dataKey, err := aesgcmDecrypt(s.lockKey, s.encryptedDataKey)
 	if err != nil {
 		replyError(err.Error())
@@ -188,7 +250,36 @@ func (s *encryptionService) cmdChangePassword(data []byte) {
 	}
 	s.lockKey = generateLockKey(data)
 	s.encryptedDataKey = aesgcmEncrypt(s.lockKey, dataKey)
-	replySuccessWithData(s.encryptedDataKey)
+	if s.backupDataKey != nil {
+		s.backupDataKey = aesgcmEncrypt(s.lockKey, backupDataKey)
+	}
+	s.replySuccessWithDataKey()
+}
+
+func (s *encryptionService) cmdRotateDataKey() {
+	if s.lockKey == nil {
+		panic("Password was not set")
+	}
+	if s.backupDataKey != nil {
+		replyError("Data key rotation is in progress")
+		return
+	}
+	s.backupDataKey = s.encryptedDataKey
+	s.encryptedDataKey = s.createDataKey()
+	s.replySuccessWithDataKey()
+}
+
+func (s *encryptionService) cmdClearBackupKey(keys []byte) {
+	if !bytes.Equal(combineDataKeys(s.encryptedDataKey, s.backupDataKey), keys) {
+		replyError("Key mismatch")
+		return
+	}
+	if s.backupDataKey == nil {
+		replySuccess()
+		return
+	}
+	s.backupDataKey = nil
+	s.replySuccessWithDataKey()
 }
 
 func generateLockKey(password []byte) []byte {

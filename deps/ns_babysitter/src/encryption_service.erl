@@ -26,7 +26,10 @@
 -export([set_password/1,
          decrypt/1,
          encrypt/1,
-         change_password/1]).
+         change_password/1,
+         get_data_key/0,
+         rotate_data_key/0,
+         maybe_clear_backup_key/1]).
 
 data_key_store_path() ->
     filename:join(path_config:component_path(data, "config"), "encrypted_data_keys").
@@ -43,6 +46,15 @@ decrypt(Data) ->
 change_password(NewPassword) ->
     gen_server:call({?MODULE, ns_server:get_babysitter_node()},
                     {change_password, NewPassword}, infinity).
+
+get_data_key() ->
+    gen_server:call({?MODULE, ns_server:get_babysitter_node()}, get_data_key, infinity).
+
+rotate_data_key() ->
+    gen_server:call({?MODULE, ns_server:get_babysitter_node()}, rotate_data_key, infinity).
+
+maybe_clear_backup_key(DataKey) ->
+    gen_server:call({?MODULE, ns_server:get_babysitter_node()}, {maybe_clear_backup_key, DataKey}, infinity).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -165,13 +177,15 @@ handle_call({decrypt, Data}, _From, State) ->
      end, State};
 handle_call({change_password, NewPassword}, _From, State) ->
     {reply,
-     case call_gosecrets({change_password, NewPassword}, State) of
-         {ok, NewEncryptedDataKey} ->
-             ?log_debug("Master password was changed"),
-             ok = misc:atomic_write_file(data_key_store_path(), NewEncryptedDataKey);
-         Error ->
-             Error
-     end, State};
+     call_gosecrets_and_store_data_key(
+       {change_password, NewPassword}, "Master password change", State), State};
+handle_call(get_data_key, _From, State) ->
+    {reply, call_gosecrets(get_data_key, State), State};
+handle_call(rotate_data_key, _From, State) ->
+    {reply, call_gosecrets_and_store_data_key(rotate_data_key, "Data key rotation", State), State};
+handle_call({maybe_clear_backup_key, DataKey}, _From, State) ->
+    {reply, call_gosecrets_and_store_data_key({maybe_clear_backup_key, DataKey},
+                                              "Clearing backup key", State), State};
 handle_call(_, _From, State) ->
     {reply, {error, not_allowed}, State}.
 
@@ -186,6 +200,18 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+call_gosecrets_and_store_data_key(Call, Msg, State) ->
+    case call_gosecrets(Call, State) of
+        ok ->
+            ok;
+        {ok, NewEncryptedDataKey} ->
+            ?log_info("~s succeded", [Msg]),
+            ok = misc:atomic_write_file(data_key_store_path(), NewEncryptedDataKey);
+        Error ->
+            ?log_error("~s failed with ~p", [Msg, Error]),
+            Error
+    end.
 
 start_gosecrets() ->
     Parent = self(),
@@ -253,4 +279,8 @@ encode({decrypt, Data}) ->
     <<6, Data/binary>>;
 encode({change_password, Password}) ->
     BinaryPassoword = list_to_binary(Password),
-    <<7, BinaryPassoword/binary>>.
+    <<7, BinaryPassoword/binary>>;
+encode(rotate_data_key) ->
+    <<8>>;
+encode({maybe_clear_backup_key, DataKey}) ->
+    <<9, DataKey/binary>>.

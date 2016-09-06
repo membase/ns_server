@@ -498,6 +498,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["node", "controller", "changeMasterPassword"] ->
                     {{[admin, security], write},
                      fun menelaus_web_secrets:handle_change_master_password/1};
+                ["node", "controller", "rotateDataKey"] ->
+                    {{[admin, security], write},
+                     fun menelaus_web_secrets:handle_rotate_data_key/1};
                 ["settings", "web"] ->
                     {{[admin, setup], write}, fun handle_settings_web_post/1};
                 ["settings", "alerts"] ->

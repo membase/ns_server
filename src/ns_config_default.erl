@@ -613,8 +613,10 @@ encrypt(Config) ->
 encrypt_and_save(Config) ->
     {value, DirPath} = ns_config:search(Config, directory),
     Dynamic = ns_config:get_kv_list_with_config(Config),
+    {ok, DataKey} = encryption_service:get_data_key(),
     EncryptedConfig = encrypt(Dynamic),
-    ns_config:save_config_sync([EncryptedConfig], DirPath).
+    ns_config:save_config_sync([EncryptedConfig], DirPath),
+    encryption_service:maybe_clear_backup_key(DataKey).
 
 decrypt(Config) ->
     misc:rewrite_tuples(fun ({encrypted, Val}) when is_binary(Val) ->
