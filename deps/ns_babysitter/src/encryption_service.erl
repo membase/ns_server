@@ -25,7 +25,8 @@
 
 -export([set_password/1,
          decrypt/1,
-         encrypt/1]).
+         encrypt/1,
+         change_password/1]).
 
 data_key_store_path() ->
     filename:join(path_config:component_path(data, "config"), "encrypted_data_keys").
@@ -38,6 +39,10 @@ encrypt(Data) ->
 
 decrypt(Data) ->
     gen_server:call({?MODULE, ns_server:get_babysitter_node()}, {decrypt, Data}, infinity).
+
+change_password(NewPassword) ->
+    gen_server:call({?MODULE, ns_server:get_babysitter_node()},
+                    {change_password, NewPassword}, infinity).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -158,6 +163,15 @@ handle_call({decrypt, Data}, _From, State) ->
          Ret ->
              Ret
      end, State};
+handle_call({change_password, NewPassword}, _From, State) ->
+    {reply,
+     case call_gosecrets({change_password, NewPassword}, State) of
+         {ok, NewEncryptedDataKey} ->
+             ?log_debug("Master password was changed"),
+             ok = misc:atomic_write_file(data_key_store_path(), NewEncryptedDataKey);
+         Error ->
+             Error
+     end, State};
 handle_call(_, _From, State) ->
     {reply, {error, not_allowed}, State}.
 
@@ -236,4 +250,7 @@ encode(get_data_key) ->
 encode({encrypt, Data}) ->
     <<5, Data/binary>>;
 encode({decrypt, Data}) ->
-    <<6, Data/binary>>.
+    <<6, Data/binary>>;
+encode({change_password, Password}) ->
+    BinaryPassoword = list_to_binary(Password),
+    <<7, BinaryPassoword/binary>>.
