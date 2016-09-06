@@ -69,7 +69,8 @@
          return_value/3,
          return_error/3,
          format_server_time/2,
-         ensure_local/1]).
+         ensure_local/1,
+         reply_global_error/2]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
@@ -508,3 +509,7 @@ ensure_local(Req) ->
         _ ->
             erlang:throw({web_exception, 400, <<"API is accessible from localhost only">>, []})
     end.
+
+reply_global_error(Req, Error) when is_list(Error) ->
+    menelaus_util:reply_json(
+      Req, {struct, [{errors, {struct, [{<<"_">>, list_to_binary(Error)}]}}]}, 400).
