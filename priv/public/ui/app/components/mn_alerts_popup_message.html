@@ -1,8 +1,10 @@
-<div style="max-width: 600px; word-wrap:break-word;">
-  <h1>{{title}}</h1>
-  <div class="pat_20 pas_20 alerts_popup_container" ng-class="title">
+<div class="small-dialog">
+  <h2 class="panel-header">
+    {{title}}
+  </h2>
+  <div class="panel-content">
     <div
-      ng-if="('isArray' | lodash:alertsCtl.message) || ('isObject' | lodash:alertsCtl.message)">
+       ng-if="('isArray' | lodash:alertsCtl.message) || ('isObject' | lodash:alertsCtl.message)">
       <div ng-repeat="text in alertsCtl.message">
         {{text}}
       </div>
@@ -11,7 +13,7 @@
       {{alertsCtl.message}}
     </div>
   </div>
-  <div class="save_cancel">
-    <button class="save_button float_right" ng-click="$close()">OK</button>
+  <div class="panel-footer">
+    <button ng-click="$close()">OK</button>
   </div>
 </div>
