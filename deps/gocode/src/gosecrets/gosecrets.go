@@ -145,7 +145,7 @@ func (s *encryptionService) createDataKey() []byte {
 	if _, err := io.ReadFull(rand.Reader, dataKey); err != nil {
 		panic(err.Error())
 	}
-	return aesgcmEncrypt(s.lockKey, dataKey)
+	return encrypt(s.lockKey, dataKey)
 }
 
 func (s *encryptionService) cmdCreateDataKey() {
@@ -167,7 +167,7 @@ func (s *encryptionService) cmdSetDataKey(data []byte) {
 	encryptedDataKey, data := readField(data)
 	backupDataKey, _ := readField(data)
 
-	_, err := aesgcmDecrypt(s.lockKey, encryptedDataKey)
+	_, err := decrypt(s.lockKey, encryptedDataKey)
 	if err != nil {
 		replyError(err.Error())
 		return
@@ -175,7 +175,7 @@ func (s *encryptionService) cmdSetDataKey(data []byte) {
 	if len(backupDataKey) == 0 {
 		s.backupDataKey = nil
 	} else {
-		_, err = aesgcmDecrypt(s.lockKey, backupDataKey)
+		_, err = decrypt(s.lockKey, backupDataKey)
 		if err != nil {
 			replyError(err.Error())
 			return
@@ -194,23 +194,23 @@ func (s *encryptionService) cmdEncrypt(data []byte) {
 	if s.lockKey == nil {
 		panic("Password was not set")
 	}
-	dataKey, err := aesgcmDecrypt(s.lockKey, s.encryptedDataKey)
+	dataKey, err := decrypt(s.lockKey, s.encryptedDataKey)
 	if err != nil {
 		replyError(err.Error())
 		return
 	}
-	replySuccessWithData(aesgcmEncrypt(dataKey, data))
+	replySuccessWithData(encrypt(dataKey, data))
 }
 
 func (s *encryptionService) decryptWithKey(key []byte, data []byte) ([]byte, error) {
 	if key == nil {
 		return nil, errors.New("Unable to decrypt value")
 	}
-	dataKey, err := aesgcmDecrypt(s.lockKey, key)
+	dataKey, err := decrypt(s.lockKey, key)
 	if err != nil {
 		return nil, err
 	}
-	return aesgcmDecrypt(dataKey, data)
+	return decrypt(dataKey, data)
 }
 
 func (s *encryptionService) cmdDecrypt(data []byte) {
@@ -237,21 +237,21 @@ func (s *encryptionService) cmdChangePassword(data []byte) {
 	var backupDataKey []byte
 	var err error
 	if s.backupDataKey != nil {
-		backupDataKey, err = aesgcmDecrypt(s.lockKey, s.backupDataKey)
+		backupDataKey, err = decrypt(s.lockKey, s.backupDataKey)
 		if err != nil {
 			replyError(err.Error())
 			return
 		}
 	}
-	dataKey, err := aesgcmDecrypt(s.lockKey, s.encryptedDataKey)
+	dataKey, err := decrypt(s.lockKey, s.encryptedDataKey)
 	if err != nil {
 		replyError(err.Error())
 		return
 	}
 	s.lockKey = generateLockKey(data)
-	s.encryptedDataKey = aesgcmEncrypt(s.lockKey, dataKey)
+	s.encryptedDataKey = encrypt(s.lockKey, dataKey)
 	if s.backupDataKey != nil {
-		s.backupDataKey = aesgcmEncrypt(s.lockKey, backupDataKey)
+		s.backupDataKey = encrypt(s.lockKey, backupDataKey)
 	}
 	s.replySuccessWithDataKey()
 }
@@ -284,6 +284,21 @@ func (s *encryptionService) cmdClearBackupKey(keys []byte) {
 
 func generateLockKey(password []byte) []byte {
 	return pbkdf2.Key(password, salt[:], nIterations, keySize, hmacFun)
+}
+
+func encrypt(key []byte, data []byte) []byte {
+	encrypted := aesgcmEncrypt(key, data)
+	return append([]byte{0}, encrypted...)
+}
+
+func decrypt(key []byte, data []byte) ([]byte, error) {
+	if len(data) < 1 {
+		return nil, errors.New("ciphertext is too short")
+	}
+	if data[0] != 0 {
+		return nil, errors.New("unsupported cipher")
+	}
+	return aesgcmDecrypt(key, data[1:len(data)])
 }
 
 func aesgcmEncrypt(key []byte, data []byte) []byte {
