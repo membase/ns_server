@@ -21,7 +21,8 @@
     'mnPromiseHelper',
     'mnFilters',
     'mnFocus',
-    'mnAboutDialog'
+    'mnAboutDialog',
+    'mnBucketsDetailsDialogService'
   ]).config(mnWizardConfig);
 
   function mnWizardConfig($stateProvider) {

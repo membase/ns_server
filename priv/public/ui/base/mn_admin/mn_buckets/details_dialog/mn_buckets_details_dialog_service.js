@@ -28,14 +28,38 @@
     }
     function prepareBucketConfigForSaving(bucketConf, autoCompactionSettings) {
       var conf = {};
-      angular.forEach(['bucketType', 'ramQuotaMB', 'name', 'evictionPolicy', 'authType', 'saslPassword', 'proxyPort', 'replicaNumber', 'replicaIndex', 'threadsNumber', 'flushEnabled', 'autoCompactionDefined', 'otherBucketsRamQuotaMB'], function (fieldName) {
-        if (bucketConf[fieldName] !== undefined) {
-          conf[fieldName] = bucketConf[fieldName];
+      function copyProperty(property) {
+        if (bucketConf[property] !== undefined) {
+          conf[property] = bucketConf[property];
         }
-      });
-      if (conf.autoCompactionDefined) {
-        _.extend(conf, mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings));
       }
+      function copyProperties(properties) {
+        properties.forEach(copyProperty);
+      }
+      if (bucketConf.isNew) {
+        copyProperties(["name", "bucketType"]);
+      }
+      if (bucketConf.bucketType === "membase") {
+        copyProperties(["evictionPolicy", "threadsNumber", "replicaNumber", "autoCompactionDefined"]);
+        if (bucketConf.isNew) {
+          copyProperty("replicaIndex");
+        }
+        if (bucketConf.autoCompactionDefined) {
+          _.extend(conf, mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings));
+      }
+      }
+      if (bucketConf.authType === "sasl") {
+        copyProperty("saslPassword");
+      }
+      if (bucketConf.authType === "none") {
+        copyProperty("proxyPort");
+      }
+      if (bucketConf.isWizard) {
+        copyProperty("otherBucketsRamQuotaMB");
+      }
+
+      copyProperties(["authType", "ramQuotaMB", "flushEnabled"]);
+
       return conf;
     }
     function adaptValidationResult(result) {
