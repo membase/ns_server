@@ -41,6 +41,9 @@
   //therefore we use the substring method here
   function mnLimitTo() {
     return function (string, limit) {
+      if (string === undefined) {
+        return "";
+      }
       return (angular.isString(string) ? string : angular.toJson(string)).substring(0, limit);
     }
   }
