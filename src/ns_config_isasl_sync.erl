@@ -59,8 +59,8 @@ start_link() ->
 start_link(Path, AU, AP) when is_list(Path); is_list(AU); is_list(AP) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [Path, AU, AP], []).
 
-init([Path, AU, AP] = Args) ->
-    ?log_debug("isasl_sync init: ~p", [Args]),
+init([Path, AU, AP]) ->
+    ?log_debug("isasl_sync init: ~p", [[Path, AU]]),
     Buckets =
         case ns_config:search(buckets) of
             {value, RawBuckets} ->
