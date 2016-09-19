@@ -5,12 +5,11 @@
 </div>
 <div
    uib-alert
-   class="interim alert alert-warning"
    ng-repeat="alert in overviewCtl.alerts"
    type="{{alert.type}}"
    close="overviewCtl.closeAlert($index)"
    dismiss-on-timeout="{{alert.timeout}}">
-  <p>{{alert.msg}}</p>
+  {{alert.msg}}
 </div>
 <div class="interim main-content">
   <h4>RAM Overview for Data Nodes</h4>

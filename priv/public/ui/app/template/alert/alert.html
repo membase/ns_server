@@ -1,6 +1,9 @@
-<div class="shadow_box notice" role="alert">
-  <h2 class="header_2">Couchbase Server {{type === "success" ? "Message" : "Alert"}}<span style="float: right; color: black; font-size: 13px;" ng-click="close()">click to dismiss</span></h2>
-  <div class="pad_10 success_msg" ng-class="[type + '_msg', closeable ? 'alert-dismissable' : null]" >
-    <p class="info_text" ng-transclude></p>
-  </div>
+<div
+   class="interim alert"
+   ng-class="{'alert-error': type !== 'success', 'alert-success': type === 'success'}"
+   role="alert">
+  <p>
+    <span ng-transclude></span>
+    <a href="" ng-click="close()">click to dismiss</a>
+  </p>
 </div>
