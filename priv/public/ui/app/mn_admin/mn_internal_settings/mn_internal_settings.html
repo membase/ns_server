@@ -1,239 +1,222 @@
-<div class="dialog internal_settings_dialog really" id="internal_settings_dialog">
-  <h1>Tweak internal settings</h1>
-  <form ng-submit="internalSettingsCtl.onSubmit()" mn-spinner="internalSettingsCtl.viewLoading">
-    <fieldset>
-      <div ng-show="internalSettingsCtl.errors.error" class="error-container" style="padding:10px;">
+<div class="dialog-med">
+  <div class="panel-header">
+    <h2>Tweak internal settings</h2>
+  </div>
+  <form
+     class="forms"
+     ng-submit="internalSettingsCtl.onSubmit()"
+     mn-spinner="internalSettingsCtl.viewLoading">
+    <div class="panel-content">
+      <div
+         ng-show="internalSettingsCtl.errors.error"
+         class="error error-form">
         {{internalSettingsCtl.errors.error}}
       </div>
       <input
-        type="hidden"
-        name="indexAwareRebalanceDisabled"
-        ng-model="internalSettingsCtl.state.indexAwareRebalanceDisabled"
-        value="false">
+         type="hidden"
+         ng-model="internalSettingsCtl.state.indexAwareRebalanceDisabled"
+         value="false">
       <input
-        type="hidden"
-        name="rebalanceIndexWaitingDisabled"
-        ng-model="internalSettingsCtl.state.rebalanceIndexWaitingDisabled"
-        value="false">
+         type="hidden"
+         ng-model="internalSettingsCtl.state.rebalanceIndexWaitingDisabled"
+         value="false">
       <input
-        type="hidden"
-        name="rebalanceIndexPausingDisabled"
-        ng-model="internalSettingsCtl.state.rebalanceIndexPausingDisabled"
-        value="false">
+         type="hidden"
+         ng-model="internalSettingsCtl.state.rebalanceIndexPausingDisabled"
+         value="false">
       <input
-        type="hidden"
-        name="rebalanceIgnoreViewCompactions"
-        ng-model="internalSettingsCtl.state.rebalanceIgnoreViewCompactions"
-        value="false">
+         type="hidden"
+         ng-model="internalSettingsCtl.state.rebalanceIgnoreViewCompactions"
+         value="false">
       <input
-        type="hidden"
-        name="indexAutoFailoverDisabled"
-        ng-model="internalSettingsCtl.state.indexAutoFailoverDisabled"
-        value="false">
+         type="hidden"
+         ng-model="internalSettingsCtl.state.indexAutoFailoverDisabled"
+         value="false">
       <input
-        type="hidden"
-        name="certUseSha1"
-        ng-model="internalSettingsCtl.state.certUseSha1"
-        value="false">
-      <label>
-        <span
-          class="cursor_helper"
-          title="When not disabled makes sure indexes are always up-to-date during rebalance">
+         type="hidden"
+         ng-model="internalSettingsCtl.state.certUseSha1"
+         value="false">
+      <label class="checkbox formrow">
+        <input
+           type="checkbox"
+           ng-model="internalSettingsCtl.state.indexAwareRebalanceDisabled"
+           value="true">
+         <span title="When not disabled makes sure indexes are always up-to-date during rebalance">
           Disable view-index aware rebalance
         </span>
-        <input
-          type="checkbox"
-          name="indexAwareRebalanceDisabled"
-          ng-model="internalSettingsCtl.state.indexAwareRebalanceDisabled"
-          value="true">
       </label>
-      <label>
-        <span
-          class="cursor_helper"
-          title="Whether index aware rebalance waiting for index up-to-dateness should be disabled. Makes rebalance faster">
+      <label class="checkbox formrow">
+        <input
+           type="checkbox"
+           ng-model="internalSettingsCtl.state.rebalanceIndexWaitingDisabled"
+           value="true">
+        <span title="Whether index aware rebalance waiting for index up-to-dateness should be disabled. Makes rebalance faster">
           Disable view-index waiting during rebalance
         </span>
-        <input
-          type="checkbox"
-          name="rebalanceIndexWaitingDisabled"
-          ng-model="internalSettingsCtl.state.rebalanceIndexWaitingDisabled"
-          value="true">
       </label>
-      <label>
-        <span
-          class="cursor_helper"
-          title="That's too complex to explain">
+      <label class="checkbox formrow">
+        <input
+           type="checkbox"
+           ng-model="internalSettingsCtl.state.rebalanceIndexPausingDisabled"
+           value="true">
+        <span title="That's too complex to explain">
           Disable view-index pausing during rebalance
         </span>
-        <input
-          type="checkbox"
-          name="rebalanceIndexPausingDisabled"
-          ng-model="internalSettingsCtl.state.rebalanceIndexPausingDisabled"
-          value="true">
       </label>
-      <label>
+      <label class="checkbox formrow">
+        <input
+           type="checkbox"
+           ng-model="internalSettingsCtl.state.rebalanceIgnoreViewCompactions"
+           value="true">
         <span>Don't compact views during rebalance</span>
-        <input
-          type="checkbox"
-          name="rebalanceIgnoreViewCompactions"
-          ng-model="internalSettingsCtl.state.rebalanceIgnoreViewCompactions"
-          value="true">
       </label>
-      <label>
+      <label class="checkbox formrow">
+        <input
+           type="checkbox"
+           ng-model="internalSettingsCtl.state.indexAutoFailoverDisabled"
+           value="true">
         <span>Do not failover Index service automatically.</span>
-        <input
-          type="checkbox"
-          name="indexAutoFailoverDisabled"
-          ng-model="internalSettingsCtl.state.indexAutoFailoverDisabled"
-          value="true">
       </label>
-      <label>
-        <span>Max in-/out-going backfills per node<br>during rebalance</span>
+      <label class="formrow">
+        <span>Max in-/out-going backfills per node during rebalance</span>
         <input
-          maxlength="5"
-          style="width:1.5em;"
-          ng-model="internalSettingsCtl.state.rebalanceMovesPerNode"
-          name="rebalanceMovesPerNode">
+           type="text"
+           maxlength="5"
+           ng-model="internalSettingsCtl.state.rebalanceMovesPerNode">
       </label>
-      <label>
-        <span>VBucket moves per node<br>before forced view compaction</span>
+      <label class="formrow">
+        <span>VBucket moves per node before forced view compaction</span>
         <input
-          maxlength="5"
-          style="width:1.5em;"
-          ng-model="internalSettingsCtl.state.rebalanceMovesBeforeCompaction"
-          name="rebalanceMovesBeforeCompaction">
+           maxlength="5"
+           type="text"
+           ng-model="internalSettingsCtl.state.rebalanceMovesBeforeCompaction">
       </label>
-      <label>
+      <label class="formrow">
         <span>Max parallel main view-index tasks per node</span>
         <input
-          maxlength="5"
-          style="width:1.5em;"
-          ng-model="internalSettingsCtl.state.maxParallelIndexers"
-          name="maxParallelIndexers">
+           maxlength="5"
+           type="text"
+           ng-model="internalSettingsCtl.state.maxParallelIndexers">
       </label>
-      <label>
+      <label class="formrow">
         <span>Max parallel replica view-index tasks per node</span>
         <input
-          maxlength="5"
-          style="width:1.5em;"
-          ng-model="internalSettingsCtl.state.maxParallelReplicaIndexers"
-          name="maxParallelReplicaIndexers">
+           maxlength="5"
+           type="text"
+           ng-model="internalSettingsCtl.state.maxParallelReplicaIndexers">
       </label>
-      <label>
+      <label class="formrow">
         <span>Maximum Bucket Count</span>
         <input
-          maxlength="3"
-          style="width:1.5em;"
-          ng-model="internalSettingsCtl.state.maxBucketCount"
-          name="maxBucketCount">
+           maxlength="3"
+           type="text"
+           ng-model="internalSettingsCtl.state.maxBucketCount">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label
+         class="formrow"
+         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
         <span>XDCR Max Replications per Bucket</span>
         <input
-          maxlength="5"
-          style="width:1.5em;"
-          ng-model="internalSettingsCtl.state.xdcrMaxConcurrentReps"
-          name="xdcrMaxConcurrentReps">
+           maxlength="5"
+           type="text"
+           ng-model="internalSettingsCtl.state.xdcrMaxConcurrentReps">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label
+         class="formrow"
+         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
         <span>XDCR Checkpoint Interval</span>
         <input
-          maxlength="5"
-          style="width:2.5em;"
-          ng-model="internalSettingsCtl.state.xdcrCheckpointInterval"
-          name="xdcrCheckpointInterval">
+           maxlength="5"
+           type="text"
+           ng-model="internalSettingsCtl.state.xdcrCheckpointInterval">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label
+         class="formrow"
+         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
         <span>XDCR Batch Count</span>
         <input
-          maxlength="5"
-          style="width:2.5em;"
-          ng-model="internalSettingsCtl.state.xdcrWorkerBatchSize"
-          name="xdcrWorkerBatchSize">
+           maxlength="5"
+           type="text"
+           ng-model="internalSettingsCtl.state.xdcrWorkerBatchSize">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label
+         class="formrow"
+         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
         <span>XDCR Batch Size (kB)</span>
         <input
-          maxlength="6"
-          style="width:2.5em;"
-          ng-model="internalSettingsCtl.state.xdcrDocBatchSizeKb"
-          name="xdcrDocBatchSizeKb">
+           maxlength="6"
+           type="text"
+           ng-model="internalSettingsCtl.state.xdcrDocBatchSizeKb">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label
+         class="formrow"
+         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
         <span>XDCR Failure Retry Interval</span>
         <input
-          maxlength="3"
-          style="width:1.5em;"
-          ng-model="internalSettingsCtl.state.xdcrFailureRestartInterval"
-          name="xdcrFailureRestartInterval">
+           maxlength="3"
+           type="text"
+           ng-model="internalSettingsCtl.state.xdcrFailureRestartInterval">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label
+         class="formrow"
+         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
         <span>XDCR Optimistic Replication Threshold</span>
         <input
-          maxlength="6"
-          style="width:2.5em;"
-          ng-model="internalSettingsCtl.state.xdcrOptimisticReplicationThreshold"
-          name="xdcrOptimisticReplicationThreshold">
+           maxlength="6"
+           type="text"
+           ng-model="internalSettingsCtl.state.xdcrOptimisticReplicationThreshold">
       </label>
-      <label>
+      <label class="formrow">
         <span>Simultaneous REST requests limit</span>
         <input
-          maxlength="6"
-          style="width:2.5em;"
-          ng-model="internalSettingsCtl.state.restRequestLimit"
-          name="restRequestLimit">
+           maxlength="6"
+           type="text"
+           ng-model="internalSettingsCtl.state.restRequestLimit">
       </label>
-      <label>
+      <label class="formrow">
         <span>Simultaneous CAPI requests limit</span>
         <input
-          maxlength="6"
-          style="width:2.5em;"
-          ng-model="internalSettingsCtl.state.capiRequestLimit"
-          name="capiRequestLimit">
+           maxlength="6"
+           type="text"
+           ng-model="internalSettingsCtl.state.capiRequestLimit">
       </label>
-      <label>
+      <label class="formrow">
         <span>Drop requests after this much memory is used (MiB)</span>
         <input
-          maxlength="6"
-          style="width:2.5em;"
-          ng-model="internalSettingsCtl.state.dropRequestMemoryThresholdMiB"
-          name="dropRequestMemoryThresholdMiB">
+           maxlength="6"
+           type="text"
+           ng-model="internalSettingsCtl.state.dropRequestMemoryThresholdMiB">
       </label>
-      <label>
+      <label class="formrow">
         <span>GOTRACEBACK</span>
         <input
-          style="width:2.5em;"
-          ng-model="internalSettingsCtl.state.gotraceback"
-          name="gotraceback">
+           type="text"
+           ng-model="internalSettingsCtl.state.gotraceback">
       </label>
-      <label ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
+      <label
+         class="formrow"
+         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
         <span>XDCR anticipatory delay (ms)</span>
         <input
-          maxlength="6"
-          style="width:2.5em;"
-          ng-model="internalSettingsCtl.state.xdcrAnticipatoryDelay"
-          name="xdcrAnticipatoryDelay">
+           maxlength="6"
+           type="text"
+           ng-model="internalSettingsCtl.state.xdcrAnticipatoryDelay">
       </label>
-      <label>
-        <span
-          class="cursor_helper"
-          title="When enabled forces sha1 signature algorithm during ssl certificates generation">
-            Use sha1 in ssl certificates
-        </span>
+      <label class="checkbox formrow">
         <input
-          type="checkbox"
-          ng-model="internalSettingsCtl.state.certUseSha1"
-          name="certUseSha1"
-          value="true">
+           type="checkbox"
+           ng-model="internalSettingsCtl.state.certUseSha1"
+           value="true">
+        <span title="When enabled forces sha1 signature algorithm during ssl certificates generation">
+          Use sha1 in ssl certificates
+        </span>
       </label>
-    </fieldset>
-    <div class="save_cancel">
-      <button
-        class="save_button float_right"
-        type="submit">
-          Save
+    </div>
+    <div class="panel-footer">
+      <a href="" ng-click="$dismiss()">Cancel</a>
+      <button type="submit">
+        Save
       </button>
-      <a class="close casper_internal_settings_close" ng-click="$dismiss()">Cancel</a>
     </div>
   </form>
 </div>
