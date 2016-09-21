@@ -47,19 +47,19 @@
         <td class="ellipsis">{{user.id}}</td>
         <td class="ellipsis text-center">{{user.name}}</td>
         <td class="text-center">
-          <span ng-repeat="role in user.roles">
-            <span>{{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).name}} <span ng-show="role.bucket_name">[{{role.bucket_name}}]</span>
-              <span style="display:none;">
-                <span>{{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).desc}}</span>
-              </span>
-            </span>
-          </span>
+          <a
+             href=""
+             class="margin-right-half"
+             ng-repeat="role in user.roles"
+             uib-tooltip="{{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).desc}}">
+            {{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).name}} <span ng-show="role.bucket_name">[{{role.bucket_name}}]</span>
+          </a>
         </td>
         <td class="text-right">
           <a
-             class="link-heavy"
+             class="link-heavy margin-right-half"
              ng-show="rbac.cluster.admin.security.write"
-             ng-click="externalRolesCtl.editUser(user)">Edit</a>&nbsp;&nbsp;
+             ng-click="externalRolesCtl.editUser(user)">Edit</a>
           <a
              class="link-heavy"
              ng-show="rbac.cluster.admin.security.write"
@@ -72,10 +72,13 @@
     </tbody>
   </table>
   <div class="text-smaller">
-    <strong>Roles:</strong>&nbsp;&nbsp;
-    <span ng-repeat="role in externalRolesCtl.roles | filter:externalRolesCtl.rolesFilter">
-      {{role.name}}&nbsp;&nbsp;
-      <span style="display:none;"><span>{{role.desc}}</span></span>
-    </span>
+    <strong class="margin-right-half">Roles:</strong>
+    <a
+       href=""
+       class="margin-right-half"
+       uib-tooltip="{{role.desc}}"
+       ng-repeat="role in externalRolesCtl.roles | filter:externalRolesCtl.rolesFilter">
+      {{role.name}}
+    </a>
   </div>
 </div>
