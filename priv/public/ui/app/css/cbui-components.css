@@ -156,7 +156,9 @@ background-color: #689fde;
   padding: 0 2.5rem;
 }
 
-main.interim {}
+main.interim {
+  padding-top:.5rem;
+}
 
 .interim.main-content {
   width: 100%;

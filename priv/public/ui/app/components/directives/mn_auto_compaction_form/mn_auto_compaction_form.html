@@ -2,7 +2,7 @@
   <h4>Database Fragmentation</h4>
   <div class="desc">Set the database fragmentation level to determine the point when compaction is triggered.</div>
 
-  <div class="formrow form-inline">
+  <div class="formrow form-inline indent-1">
     <input
        type="checkbox"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentageFlag"
@@ -20,7 +20,7 @@
     </div>
   </div>
 
-  <div class="formrow form-inline">
+  <div class="formrow form-inline indent-1">
     <input
        type="checkbox"
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
@@ -40,7 +40,7 @@
 
   <h4>View Fragmentation</h4>
   <div class="desc">Set the view fragmentation level to determine the point when compaction is triggered.</div>
-  <div class="formrow form-inline">
+  <div class="formrow form-inline indent-1">
     <input
        type="checkbox"
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
@@ -58,7 +58,7 @@
     </div>
   </div>
 
-  <div class="formrow form-inline">
+  <div class="formrow form-inline indent-1">
     <input
        type="checkbox"
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
@@ -76,8 +76,8 @@
     </div>
   </div>
 
+  <h4>Time Interval</h4>
   <div class="formrow">
-    <h4>Time Interval</h4>
     <label class="checkbox">
       <input
         type="checkbox"
@@ -90,7 +90,8 @@
        mn-period="allowedTimePeriod"
        auto-compaction-settings="autoCompactionSettings"
        rbac="rbac"
-       errors="validationErrors">
+       errors="validationErrors"
+       class="indent-1">
     </div>
 
     <label class="checkbox">
@@ -112,7 +113,7 @@
   <h4 ng-if="!isBucketsSettings && poolDefault.compat.atLeast40 && indexSettings && indexSettings.storageMode !== 'memory_optimized'">Index Fragmentation</h4>
   <div
      ng-if="!isBucketsSettings && poolDefault.compat.atLeast40 && indexSettings && indexSettings.storageMode !== 'memory_optimized'">
-    <div class="formrow form-inline checkbox-list">
+    <div class="formrow form-inline checkbox-list indent-1">
       <input
          type="radio"
          ng-disabled="(rbac && !rbac.cluster.settings.write)"
@@ -124,19 +125,18 @@
          for="index-regular-compaction-radio">
         Append-only write mode with index fragmentation level trigger:
       </label>
-
+      <br>
       <input
          type="number" min="0" max="100"
          ng-disabled="(rbac && !rbac.cluster.settings.write) || autoCompactionSettings.indexCircularCompactionFlag === true"
-         ng-model="autoCompactionSettings.indexFragmentationThreshold.percentage"> %
+         ng-model="autoCompactionSettings.indexFragmentationThreshold.percentage"
+         class="indent-1"> %
       <small
          class="error"
          ng-show="validationErrors.indexFragmentationThreshold_percentage_">
         {{validationErrors.indexFragmentationThreshold_percentage_}}
       </small>
-    </div>
-
-    <div class="formrow form-inline checkbox-list">
+      <br>
       <input
          type="radio"
          ng-disabled="(rbac && !rbac.cluster.settings.write)"
@@ -148,8 +148,8 @@
          for="index-circular-compaction-radio">
         Circular write mode with day + time interval trigger:
       </label>
-
-      <span ng-repeat="day in daysOfWeek">
+      <br>
+      <span ng-repeat="day in daysOfWeek" class="indent-1">
         <input
            ng-disabled="!autoCompactionSettings.indexCircularCompactionFlag || !rbac.cluster.settings.write"
            type="checkbox"
@@ -179,14 +179,14 @@
         Set the frequency of metadata purge interval:
       </label>
 
-      <span clas="form-inline">
+      <span class="form-inline">
         <input
            type="text"
            ng-disabled="(rbac && !rbac.cluster.settings.write)"
            ng-model="autoCompactionSettings.purgeInterval"
            ng-class="{invalid: validationErrors.purgeInterval}"
            id="metadata-purge-frequency">
-        <div class="desc">Range 0.04 (1 H) - 60days</div>
+        <small>Range 0.04 (1 H) - 60days</small>
       </span>
 
       <a class="text_11 tooltip">
