@@ -32,6 +32,7 @@
          process_nodes_wanted/2,
          all_monitors/0,
          get_module/1,
+         supported_services/0,
          send_heartbeat/2, send_heartbeat/3]).
 
 -record(state, {
@@ -137,7 +138,13 @@ send_heartbeat(MonModule, SendNodes, Payload) ->
     send_heartbeat_inner(MonModule, SendNodes, {heartbeat, node(), Payload}).
 
 all_monitors() ->
-    [ns_server].
+    Services = [S || S <- supported_services(),
+                     ns_cluster_membership:should_run_service(S,
+                                                              node())],
+    [ns_server] ++ Services.
+
+supported_services() ->
+    [kv].
 
 get_module(Monitor) ->
     list_to_atom(atom_to_list(Monitor) ++ "_monitor").
