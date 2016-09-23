@@ -38,19 +38,22 @@
                 ext_module,
                 ext_state,
                 proxy_to = undefined :: port() | undefined,
-                partner = undefined :: pid() | undefined
+                partner = undefined :: pid() | undefined,
+                connection_alive
                }).
 
 -define(HIBERNATE_TIMEOUT, 10000).
+-define(LIVELINESS_UPDATE_INTERVAL, 1000).
 
 init([Type, ConnName, Node, Bucket, ExtModule, InitArgs]) ->
     {ExtState, State} = ExtModule:init(
                           InitArgs,
                           #state{connect_info = {Type, ConnName, Node, Bucket},
                                  ext_module = ExtModule}),
-
+    self() ! check_liveliness,
     {ok, State#state{
-           ext_state = ExtState
+           ext_state = ExtState,
+           connection_alive = false
           }, ?HIBERNATE_TIMEOUT}.
 
 start_link(Type, ConnName, Node, Bucket, ExtModule, InitArgs) ->
@@ -99,6 +102,28 @@ handle_info({'EXIT', _Pid, _Reason} = ExitSignal, State) ->
 handle_info(timeout, State) ->
     {noreply, State, hibernate};
 
+handle_info(check_liveliness, #state{connection_alive = false} = State) ->
+    erlang:send_after(?LIVELINESS_UPDATE_INTERVAL, self(), check_liveliness),
+    {noreply, State, ?HIBERNATE_TIMEOUT};
+handle_info(check_liveliness,
+            #state{connect_info = {_, _, Node, Bucket},
+                   connection_alive = true} = State) ->
+    %% We are not interested in the exact time of the last DCP traffic.
+    %% We mainly want to know whether there was atleast one DCP message
+    %% during the last LIVELINESS_UPDATE_INTERVAL.
+    %% An approximate timestamp is good enough.
+    %% erlang:now() can be bit expensive compared to os:timestamp().
+    %% But, os:timestamp() may not be monotonic.
+    %% Since this function gets called only every 1 second, should
+    %% be ok to use erlang:now().
+    %% Alternatively, we can also attach the timestamp in
+    %% dcp_traffic_monitor:node_alive(). But, node_alive is an async operation
+    %% so I prefer to attach the timestamp here.
+
+    dcp_traffic_monitor:node_alive(Node, {Bucket, erlang:now(), self()}),
+    erlang:send_after(?LIVELINESS_UPDATE_INTERVAL, self(), check_liveliness),
+    {noreply, State#state{connection_alive = false}, ?HIBERNATE_TIMEOUT};
+
 handle_info(Msg, State) ->
     ?log_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
     {noreply, State, ?HIBERNATE_TIMEOUT}.
@@ -114,7 +139,9 @@ handle_call(Command, From, State = #state{ext_module = ExtModule, ext_state = Ex
     end.
 
 handle_packet(<<Magic:8, Opcode:8, _Rest/binary>> = Packet,
-              State = #state{ext_module = ExtModule, ext_state = ExtState, proxy_to = ProxyTo}) ->
+              State = #state{ext_module = ExtModule,
+                             ext_state = ExtState,
+                             proxy_to = ProxyTo}) ->
     case (erlang:get(suppress_logging_for_xdcr) =:= true
           orelse suppress_logging(Packet)
           orelse not ale:is_loglevel_enabled(?NS_SERVER_LOGGER, debug)) of
@@ -137,7 +164,7 @@ handle_packet(<<Magic:8, Opcode:8, _Rest/binary>> = Packet,
         block ->
             ok
     end,
-    {ok, NewState#state{ext_state = NewExtState}}.
+    {ok, NewState#state{ext_state = NewExtState, connection_alive = true}}.
 
 suppress_logging(<<?REQ_MAGIC:8, ?DCP_MUTATION:8, _Rest/binary>>) ->
     true;
