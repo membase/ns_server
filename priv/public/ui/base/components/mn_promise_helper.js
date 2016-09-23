@@ -115,9 +115,9 @@
         });
         return this;
       }
-      function broadcast(event, scope) {
+      function broadcast(event, data) {
         promise.then(function () {
-          $rootScope.$broadcast(event);
+          $rootScope.$broadcast(event, data);
         });
         return this;
       }

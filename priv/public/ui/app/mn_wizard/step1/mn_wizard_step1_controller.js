@@ -4,7 +4,7 @@
     .module('mnWizard')
     .controller('mnWizardStep1Controller', mnWizardStep1Controller);
 
-  function mnWizardStep1Controller($scope, $state, $q, mnWizardStep1Service, mnSettingsClusterService, mnAuthService, pools, mnHelper, mnServersService, mnPools, mnPoolDefault, mnAlertsService, mnMemoryQuotaService, mnPromiseHelper) {
+  function mnWizardStep1Controller($scope, $rootScope, $state, $q, mnWizardStep1Service, mnSettingsClusterService, mnAuthService, pools, mnHelper, mnServersService, mnPools, mnAlertsService, mnPromiseHelper) {
     var vm = this;
 
     vm.joinClusterConfig = mnWizardStep1Service.getJoinClusterConfig();
@@ -138,15 +138,9 @@
         } else {
           return postJoinCluster().then(function () {
             return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
-              return mnPoolDefault.get().then(function (poolsDefault) {
-                var firstTimeAddedServices = mnMemoryQuotaService.getFirstTimeAddedServices(["index", "fts"], vm.joinClusterConfig.services.model, poolsDefault.nodes);
-                vm.joinClusterConfig.firstTimeAddedServices = firstTimeAddedServices;
-                if (firstTimeAddedServices.count) {
-                  $state.go('app.wizard.step6');
-                } else {
-                  $state.go('app.admin.overview');
-                  mnAlertsService.formatAndSetAlerts('This server has been associated with the cluster and will join on the next rebalance operation.', 'success');
-                }
+              $state.go('app.admin.overview').then(function () {
+                $rootScope.$broadcast("maybeShowMemoryQuotaDialog", vm.joinClusterConfig.services.model);
+                mnAlertsService.formatAndSetAlerts('This server has been associated with the cluster and will join on the next rebalance operation.', 'success');
               });
             });
           });

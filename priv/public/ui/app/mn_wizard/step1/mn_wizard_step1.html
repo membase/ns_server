@@ -1,193 +1,160 @@
 <div
-  class="pad"
-  id="init_cluster_dialog"
-  mn-spinner="wizardStep1Ctl.viewLoading || !wizardStep1Ctl.config.selfConfig">
-  <div class="config-top">
-    <h1>Configure Server</h1>
-    <h2>Step <span class="current-step">1</span> of 5</h2>
+   class="panel dialog-med dialog"
+   mn-spinner="wizardStep1Ctl.viewLoading || !wizardStep1Ctl.config.selfConfig">
+  <div class="panel-header">
+    <h2>Configure Server</h2>
+    <small>Step 1 of 5</small>
   </div>
-  <form ng-submit="wizardStep1Ctl.onSubmit()">
-    <div>
-      <h2 class="question">
+  <form
+     class="forms"
+     ng-submit="wizardStep1Ctl.onSubmit()">
+    <div class="panel-content">
+      <h3 class="interim">
         Start New Cluster or Join Cluster
-      </h2>
-      <div id="init_cluster_form" class="block init_cluster_form">
-        <div>
-          <h3>
-            <label>
-              <input
-                type="radio"
-                ng-model="wizardStep1Ctl.joinCluster"
-                value="no"
-                name="joinCluster"
-                id="no-join-cluster">
-              Start a new cluster
-            </label>
-          </h3>
+      </h3>
+      <div class="formrow">
+        <label>
+          <input
+             type="radio"
+             ng-model="wizardStep1Ctl.joinCluster"
+             value="no">
+          Start a new cluster
+        </label>
+        <div ng-if="wizardStep1Ctl.isJoinCluster('no')">
+          <p>
+            The "Per Server RAM Quota" you set below will define
+            the amount of RAM each server provides to the Couchbase Cluster. This value will
+            be inherited by all servers subsequently joining the cluster, so please set
+            appropriately.
+          </p>
+          <br>
           <div
-            class="start_new_cluster_block js_start_new_cluster_block"
-            ng-if="wizardStep1Ctl.isJoinCluster('no')">
-            <p style="margin: 20px 0;">
-              The "Per Server RAM Quota" you set below will define
-              the amount of RAM each server provides to the Couchbase Cluster. This value will
-              be inherited by all servers subsequently joining the cluster, so please set
-              appropriately.
-            </p>
-            <div
-              class="warning pat_10"
-              ng-show="!!wizardStep1Ctl.setupServicesErrors[0]">
-              {{wizardStep1Ctl.setupServicesErrors[0]}}
-            </div>
-            <div
-              mn-memory-quota="wizardStep1Ctl.config.startNewClusterConfig"
-              errors="wizardStep1Ctl.postMemoryErrors">
-            </div>
-            <div
-              mn-storage-mode="wizardStep1Ctl.config.startNewClusterConfig.indexSettings"
-              is-disabled="!wizardStep1Ctl.isEnterprise || !wizardStep1Ctl.config.startNewClusterConfig.services.model.index"
-              errors="wizardStep1Ctl.postIndexSettingsErrors">
-            </div>
+             class="error error-form"
+             ng-show="!!wizardStep1Ctl.setupServicesErrors[0]">
+            {{wizardStep1Ctl.setupServicesErrors[0]}}
           </div>
-        </div>
-        <div name="joinClusterForm" ng-form novalidate>
-          <h3>
-            <label>
-              <input
-                type="radio"
-                ng-model="wizardStep1Ctl.joinCluster"
-                value="ok"
-                name="joinCluster"
-                id="join-cluster">
-              Join a cluster now
-            </label>
-          </h3>
           <div
-            class="login-credentials"
-            ng-if="wizardStep1Ctl.isJoinCluster('ok')">
-            <p
-              class="warning pat_10 join_cluster_dialog_errors_container"
-              ng-if="wizardStep1Ctl.postJoinClusterErrors"
-              style="margin: 10px 30px 10px 0px; display: block;">
-              <span ng-repeat="error in wizardStep1Ctl.postJoinClusterErrors">
-                <strong>Attention</strong> - {{error}}
-              </span>
-            </p>
-            <div class="warning" ng-show="wizardStep1Ctl.joinClusterConfig.services.model.fts">
-              <strong>Attention</strong> - Full Text Search is a developer preview. Use only in test environments.
-            </div>
-            <div>
-              <label for="clusterMemberHostIp">IP Address:</label>
-              <input
-                type="text"
-                class="inp"
-                name="hostname"
-                id="clusterMemberHostIp"
-                ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.hostname">
-              <br class="clear">
-            </div>
-            <div>
-              <label for="join_user_input">Username:</label>
-              <input
-                type="text"
-                class="inp"
-                name="user"
-                id="join_user_input"
-                ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.username">
-              <br class="clear">
-            </div>
-            <div>
-              <label for="join_password_input">Password:</label>
-              <input
-                type="password"
-                class="inp"
-                name="password"
-                mn-autocomplete-off
-                ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.password"
-                id="join_password_input">
-              <br class="clear">
-            </div>
-            <div mn-services="wizardStep1Ctl.joinClusterConfig">
-            </div>
+             class="formrow intent-1"
+             mn-memory-quota="wizardStep1Ctl.config.startNewClusterConfig"
+             errors="wizardStep1Ctl.postMemoryErrors">
+          </div>
+          <div
+             class="formrow"
+             mn-storage-mode="wizardStep1Ctl.config.startNewClusterConfig.indexSettings"
+             is-disabled="!wizardStep1Ctl.isEnterprise || !wizardStep1Ctl.config.startNewClusterConfig.services.model.index"
+             errors="wizardStep1Ctl.postIndexSettingsErrors">
           </div>
         </div>
       </div>
-    </div>
 
-    <div>
-      <h2 class="question">Configure Disk Storage</h2>
-      <div class="disk_setup_block">
-        <div>
-          <label for="setup_db_path_input">Databases Path:</label>
+      <div ng-form novalidate class="formrow">
+        <label>
           <input
-            type="text"
-            name="db_path"
-            ng-model="wizardStep1Ctl.config.dbPath"
-            ng-change="wizardStep1Ctl.onDbPathChange()">
-          <br class="clear" />
+             type="radio"
+             ng-model="wizardStep1Ctl.joinCluster"
+             value="ok">
+          Join a cluster now
+        </label>
+        <div ng-if="wizardStep1Ctl.isJoinCluster('ok')">
+          <p
+             class="error error-form"
+             ng-if="wizardStep1Ctl.postJoinClusterErrors">
+            <span ng-repeat="error in wizardStep1Ctl.postJoinClusterErrors">
+              <strong>Attention</strong> - {{error}}
+            </span>
+          </p>
+          <div
+             class="error error-form"
+             ng-show="wizardStep1Ctl.joinClusterConfig.services.model.fts">
+            <strong>Attention</strong> - Full Text Search is a developer preview. Use only in test environments.
+          </div>
+          <div>
+            <label for="clusterMemberHostIp">IP Address</label>
+            <input
+               type="text"
+               id="clusterMemberHostIp"
+               ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.hostname">
+          </div>
+          <div>
+            <label for="join_user_input">Username</label>
+            <input
+               type="text"
+               id="join_user_input"
+               ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.username">
+          </div>
+          <div>
+            <label for="join_password_input">Password</label>
+            <input
+               type="password"
+               mn-autocomplete-off
+               ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.password"
+               id="join_password_input">
+          </div>
+          <div
+             class="checkbox-list"
+             mn-services="wizardStep1Ctl.joinClusterConfig"></div>
         </div>
-        <div>
-          <label>Free:</label>
-          <span
-            style="font-size:10pt; margin-left:5px; line-height: 25px;"
-            class="total-db-size">
-            {{wizardStep1Ctl.dbPathTotal}}
-          </span>
-        </div>
-        <div>
-          <label for="setup_index_path_input">Indexes Path:</label>
+      </div>
+
+      <div>
+        <h3 class="interim">
+          Configure Disk Storage
+        </h3>
+        <div class="formrow">
+          <label for="setup_db_path_input">Databases Path</label>
           <input
-            type="text"
-            name="index_path"
-            ng-model="wizardStep1Ctl.config.indexPath"
-            ng-change="wizardStep1Ctl.onIndexPathChange()">
-          <br class="clear">
+             type="text"
+             id="setup_db_path_input"
+             ng-model="wizardStep1Ctl.config.dbPath"
+             ng-change="wizardStep1Ctl.onDbPathChange()">
+          <p>
+            Free: {{wizardStep1Ctl.dbPathTotal}}
+          </p>
         </div>
-        <div>
-          <label>Free:</label>
-          <span
-            style="font-size:10pt; margin-left:5px; line-height: 25px;"
-            class="total-index-size">
-            {{wizardStep1Ctl.indexPathTotal}}
-          </span>
+        <div class="formrow">
+          <label for="setup_index_path_input">Indexes Path</label>
+          <input
+             type="text"
+             id="setup_index_path_input"
+             ng-model="wizardStep1Ctl.config.indexPath"
+             ng-change="wizardStep1Ctl.onIndexPathChange()">
+          <p>
+            Free: {{wizardStep1Ctl.indexPathTotal}}
+          </p>
         </div>
         <div
-          class="warning init_cluster_dialog_errors_container"
-          ng-if="wizardStep1Ctl.postDiskStorageErrors">
+           class="error error-form"
+           ng-if="wizardStep1Ctl.postDiskStorageErrors">
           <div ng-repeat="error in wizardStep1Ctl.postDiskStorageErrors">
             <strong>Attention</strong> - {{error}}<br>
           </div>
         </div>
-        <p class="when-enterprise" ng-show="wizardStep1Ctl.isEnterprise">
+        <p ng-show="wizardStep1Ctl.isEnterprise">
           Hint: if you use this server in a production environment, use different file systems for databases and indexes.
         </p>
       </div>
-    </div>
 
-    <h2 class="question">Configure Server Hostname</h2>
-    <div class="hostname_setup_block">
-      <label for="setup_hostname">Hostname:</label>
-      <input
-        type="text"
-        name="hostname"
-        ng-model="wizardStep1Ctl.config.hostname">
-      <br class="clear">
-      <div
-        class="warning pat_10"
-        style="padding-right: 95px;"
-        id="init_cluster_dialog_hostname_errors_container"
-        ng-if="wizardStep1Ctl.postHostnameErrors[0]">
+      <h3 class="interim">
+        Configure Server Hostname
+      </h3>
+      <div class="formrow">
+        <label for="setup_hostname">Hostname</label>
+        <input
+           type="text"
+           name="hostname"
+           id="setup_hostname"
+           ng-model="wizardStep1Ctl.config.hostname">
+        <div
+           class="error error-form"
+           ng-if="wizardStep1Ctl.postHostnameErrors[0]">
           {{wizardStep1Ctl.postHostnameErrors[0]}}
+        </div>
       </div>
     </div>
-
-    <div class="config-bottom">
+    <div class="panel-footer">
       <button
-        name="next"
-        value="Next"
-        class="submit next direction-button"
-        id="step-2-next"
-        ng-disabled="wizardStep1Ctl.postMemoryErrors && wizardStep1Ctl.joinCluster === 'no'"
-        type="submit">Next</button>
+         ng-disabled="wizardStep1Ctl.postMemoryErrors && wizardStep1Ctl.joinCluster === 'no'"
+         type="submit">Next</button>
     </div>
   </form>
 </div>

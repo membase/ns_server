@@ -28,7 +28,8 @@
     'ui.router',
     'ui.bootstrap',
     'mnPoorMansAlerts',
-    'mnPermissions'
+    'mnPermissions',
+    'mnMemoryQuotaService'
   ]).config(mnAdminConfig);
 
   function mnAdminConfig($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider, mnHelperProvider) {

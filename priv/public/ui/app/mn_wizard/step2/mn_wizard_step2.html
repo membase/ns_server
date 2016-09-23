@@ -1,52 +1,48 @@
 <div
-  class="pad"
-  id="init_sample_buckets_dialog"
-  mn-spinner="!wizardStep2Ctl.sampleBuckets"
-  min-height="387px">
-  <form>
-    <div class="config-top">
-      <h1>Sample Buckets</h1>
-      <h2>Step <span class="current-step">2</span> of 5</h2>
+   class="panel dialog-med dialog dialog-wizard"
+   mn-spinner="!wizardStep2Ctl.sampleBuckets"
+   min-height="387px">
+  <div class="panel-header">
+    <h2>Sample Buckets</h2>
+    <small>Step 2 of 5</small>
+  </div>
+  <form class="forms">
+    <div class="panel-content">
+      <p>
+        Sample buckets contain example data. You can provision one or more sample buckets to help you discover the power of Couchbase Server. Sample buckets can be removed later from the bucket edit panel.
+      </p>
+      <p class="red">
+        Sample buckets can be accessed without a password. They are only recommended for non-production environments.
+      </p>
+
+      <h4>Available Samples</h4>
+      <div class="checkbox-list">
+        <div
+           ng-repeat="bucket in wizardStep2Ctl.sampleBuckets"
+           ng-if="!bucket.installed">
+          <input
+             type="checkbox"
+             ng-false-value="0"
+             ng-true-value="{{bucket.quotaNeeded}}"
+             id="setup-sample-{{bucket.name}}"
+             ng-model="wizardStep2Ctl.selected[bucket.name]">
+          <label for="setup-sample-{{bucket.name}}">
+            {{bucket.name}}
+          </label>
+        </div>
+        <div ng-if="!wizardStep2Ctl.sampleBuckets.length">
+          There are no samples available to install.
+        </div>
+      </div>
     </div>
-    <p>
-      Sample buckets contain example data. You can provision one or more sample buckets to help you discover the power of Couchbase Server. Sample buckets can be removed later from the bucket edit panel.
-    </p>
-    <p style="color:#ec5223;">
-      Sample buckets can be accessed without a password. They are only recommended for non-production environments.
-    </p>
-    <h3>Available Samples</h3>
-    <ul id="setup_available_samples">
-      <li
-        ng-repeat="bucket in wizardStep2Ctl.sampleBuckets"
-        ng-if="!bucket.installed">
-        <input
-          type="checkbox"
-          ng-false-value="0"
-          ng-true-value="{{bucket.quotaNeeded}}"
-          id="setup-sample-{{bucket.name}}"
-          ng-model="wizardStep2Ctl.selected[bucket.name]">
-        <label for="setup-sample-{{bucket.name}}">
-          {{bucket.name}}
-        </label>
-      </li>
-      <li ng-if="!wizardStep2Ctl.sampleBuckets.length">There are no samples available to install.</li>
-    </ul>
-    <div class="config-bottom">
+    <div class="panel-footer">
       <button
-        name="next"
-        value="Next"
-        class="submit next direction-button"
-        id="step-4-next"
-        type="submit"
-        mn-focus
-        ui-sref="app.wizard.step3">Next</button>
+         type="button"
+         ui-sref="app.wizard.step1">Back</button>
       <button
-        name="back"
-        value="Back"
-        class="submit back direction-button"
-        id="step-4-back"
-        type="button"
-        ui-sref="app.wizard.step1">Back</button>
+         type="submit"
+         mn-focus
+         ui-sref="app.wizard.step3">Next</button>
     </div>
   </form>
 </div>

@@ -5,7 +5,7 @@
     .module('mnServers')
     .controller('mnServersAddDialogController', mnServersAddDialogController)
 
-  function mnServersAddDialogController($scope, $q, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups, mnPoolDefault, mnMemoryQuotaService) {
+  function mnServersAddDialogController($scope, $rootScope, $q, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups) {
     var vm = this;
 
     vm.addNodeConfig = {
@@ -58,32 +58,7 @@
         .catchErrors()
         .closeOnSuccess()
         .broadcast("reloadServersPoller")
-        .getPromise()
-        .then(function () {
-          return mnPromiseHelper(vm, mnPoolDefault.get())
-            .getPromise()
-            .then(function (poolsDefault) {
-              var firstTimeAddedServices = mnMemoryQuotaService.getFirstTimeAddedServices(["index", "fts"], vm.addNodeConfig.services.model, poolsDefault.nodes);
-              if (firstTimeAddedServices.count) {
-                return $uibModal.open({
-                  windowTopClass: "without-titlebar-close",
-                  templateUrl: 'mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
-                  controller: 'mnServersMemoryQuotaDialogController as serversMemoryQuotaDialogCtl',
-                  resolve: {
-                    memoryQuotaConfig: function (mnMemoryQuotaService) {
-                      return mnMemoryQuotaService.memoryQuotaConfig(vm.addNodeConfig.services.model)
-                    },
-                    indexSettings: function (mnSettingsClusterService) {
-                      return mnSettingsClusterService.getIndexSettings();
-                    },
-                    firstTimeAddedServices: function() {
-                      return firstTimeAddedServices;
-                    }
-                  }
-                }).result;
-              }
-            });
-        });
+        .broadcast("maybeShowMemoryQuotaDialog", vm.addNodeConfig.services.model);
     };
   }
 })();

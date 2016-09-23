@@ -16,8 +16,6 @@
     'mnSettingsSampleBucketsService',
     'mnMemoryQuota',
     'mnStorageMode',
-    'mnPoolDefault',
-    'mnMemoryQuotaService',
     'mnSettingsClusterService',
     'mnSpinner',
     'mnPromiseHelper',
@@ -60,21 +58,6 @@
       .state('app.wizard.step5', {
         templateUrl: 'mn_wizard/step5/mn_wizard_step5.html',
         controller: 'mnWizardStep5Controller as wizardStep5Ctl'
-      })
-      .state('app.wizard.step6', {
-        templateUrl: 'mn_wizard/step6/mn_wizard_step6.html',
-        controller: 'mnWizardStep6Controller as wizardStep6Ctl',
-        resolve: {
-          memoryQuotaConfig: function (mnMemoryQuotaService, mnWizardStep1Service) {
-            return mnMemoryQuotaService.memoryQuotaConfig(mnWizardStep1Service.getJoinClusterConfig().services.model);
-          },
-          indexSettings: function (mnSettingsClusterService) {
-            return mnSettingsClusterService.getIndexSettings();
-          },
-          firstTimeAddedServices: function (mnWizardStep1Service) {
-            return mnWizardStep1Service.getJoinClusterConfig().firstTimeAddedServices;
-          }
-        }
       });
   }
 })();

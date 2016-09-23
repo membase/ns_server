@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions, mnPools) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnAboutDialogService, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions, mnPools, mnMemoryQuotaService) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -134,6 +134,30 @@
 
       $scope.$on("taskUriChanged", function () {
         tasksPoller.reload();
+      });
+
+      $scope.$on("maybeShowMemoryQuotaDialog", function (event, services) {
+        return mnPoolDefault.get().then(function (poolsDefault) {
+          var firstTimeAddedServices = mnMemoryQuotaService.getFirstTimeAddedServices(["index", "fts"], services, poolsDefault.nodes);
+          if (firstTimeAddedServices.count) {
+            $uibModal.open({
+              windowTopClass: "without-titlebar-close",
+              templateUrl: 'mn_admin/mn_servers/memory_quota_dialog/memory_quota_dialog.html',
+              controller: 'mnServersMemoryQuotaDialogController as serversMemoryQuotaDialogCtl',
+              resolve: {
+                memoryQuotaConfig: function (mnMemoryQuotaService) {
+                  return mnMemoryQuotaService.memoryQuotaConfig(services)
+                },
+                indexSettings: function (mnSettingsClusterService) {
+                  return mnSettingsClusterService.getIndexSettings();
+                },
+                firstTimeAddedServices: function() {
+                  return firstTimeAddedServices;
+                }
+              }
+            });
+          }
+        });
       });
     }
   }
