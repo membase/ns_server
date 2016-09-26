@@ -51,7 +51,7 @@
           Data Usage: {{bucketsDetailsCtl.bucketDetails.basicStats.dataUsed | mnFormatQuantity}}
         </div>
         <div
-           class="column bar-usages label-top-0-gold"
+           class="column bar-usages label-top-has-square label-top-0-other-data"
            mn-bar-usage
            base-info="bucketsDetailsCtl.getGuageConfig(bucketsDetailsCtl.bucketDetails)"
            ng-if="rbac.cluster.bucket[bucket.name].settings.read">

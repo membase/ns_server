@@ -131,10 +131,6 @@ hr {
   border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.main-content hr {
-  margin-right: -2rem;
-}
-
 img,
 video,
 audio,
@@ -325,6 +321,9 @@ button.icon {
 }
 .fa-refresh:before {
   content: "\f021";
+}
+.fa-square:before {
+  content: "\f0c8";
 }
 
 /* Headings  -----------------------------*/

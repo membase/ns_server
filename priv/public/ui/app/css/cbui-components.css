@@ -178,7 +178,7 @@ main.interim {
 
 .interim.content-box {
   border-radius: 5px;
-  background-color: #e5e5e5;
+  background-color: #f5f5f5;
   font-size: .75rem;
   padding: 1rem 1rem 0 1rem;
   margin-bottom: 1.5rem;
@@ -1047,221 +1047,240 @@ meter {
 
 /* bar usages marker -------------------- */
 .bar-usages .marker {
-    position: absolute;
-    display: block;
-    width: 1px;
-    height: 3rem;
-    font-size: 0;
-    line-height: 0;
-    top: -.5rem;
+  position: absolute;
+  display: block;
+  width: 1px;
+  height: 1.75rem;
+  font-size: 0;
+  line-height: 0;
+  top: -.25rem;
 }
 .bar-usages .marker-0 {
-    background-color: rgb(228, 58, 27);
+  background-color: #333;
 }
 /* bar usages label -------------------- */
 .bar-usages {
-    width: 100%;
+  width: 100%;
 }
 .bar-usages .usage-label {
-    font-size: .7rem;
-    padding: .2rem;
+  font-size: .75rem;
+  white-space: nowrap;
+  position: relative;
+  color: #333;
+}
+.bar-usages .label-bottom.with-square,
+.bar-usages.label-top-has-square .label-top.with-square {
+  padding-left: 1rem;
+}
+.bar-usages .label-bottom.with-square:before,
+.bar-usages.label-top-has-square .label-top.with-square:before {
+  padding: 4px;
+  max-height: 4px;
+  position: absolute;
+  content: "";
+  left: 0;
+  top: 4px;
+  border: 1px solid #a1a1a1;
 }
 .bar-usages .label-top-0 {
-    float: left;
+  float: left;
 }
 .bar-usages .label-top-1 {
-    float: right;
+  float: right;
 }
-.bar-usages .label-bottom-0 {
-    color: rgb(24, 120, 162);
+
+.bar-usages .label-bottom-0.with-square:before {
+  background-color: #8eb7e6;
 }
-.bar-usages .label-bottom-1 {
-    color: rgb(64, 159, 5);
+.bar-usages .label-bottom-1.with-square:before {
+  background-color: #b3cfef;
+}
+.bar-usages .label-bottom-2.with-square:before {
+  background-color: #efebe0;
 }
 
 /* bar usages items -------------------- */
 .bar-usages .usage {
-    clear: both;
-    height: 2rem;
-    position: relative;
+  clear: both;
+  height: 2rem;
+  position: relative;
 }
 .bar-usages .usage .item {
-    height: 2rem;
-    position: absolute;
+  height: 1.5rem;
+  position: absolute;
 }
 .bar-usages .usage .usage-item-0 {
-    background-color: rgb(225, 226, 227);
+  background-color: #efebe0; /* .beige-1 */
 }
 .bar-usages .usage .usage-item-1 {
-    background-color: rgb(126, 219, 73);
+  background-color: #b3cfef; /* .blue-4 */
 }
 .bar-usages .usage .usage-item-2 {
-    background-color: rgb(0, 188, 233);
+  background-color: #8eb7e6; /* .blue-3 */
 }
 .bar-usages .usage .usage-item-3 {
-    background-color: rgb(253, 201, 13);
+  background-color: #d8dde4;  /* .gray-blue-3 */
 }
 /* bar usages specific -------------------- */
-.bar-usages.label-top-0-gold .label-top-0 {
-    color: rgb(193, 151, 16);
+.bar-usages.label-top-0-other-data .label-top-0.with-square:before {
+  background-color: #d8dde4;
 }
 .bar-usages.label-top-0-red .label-top-0 {
-    color: rgb(228, 58, 27);
+  color: rgb(228, 58, 27);
 }
-.bar-usages.overcommitted .label-bottom-2 {
-    color: rgb(244, 0, 21);
+.bar-usages.label-top-0-red .marker-0 {
+  background-color: rgb(228, 58, 27);
+}
+.bar-usages.overcommitted .label-bottom-2:before {
+  background-color: rgb(244, 0, 21);
 }
 .bar-usages.overcommitted .usage-item-0 {
-    background-color: rgb(244, 0, 21);
-}
-.bar-usages.overcommitted .label-top-0 {
-    color: rgb(228, 58, 27);
+  background-color: rgb(244, 0, 21);
 }
 .bar-usages.overcommitted .marker-1 {
-    background-color: rgb(68, 66, 69);
+  background-color: rgb(68, 66, 69);
 }
 
 /* spinner ---------------- */
-
 .spinner_wrap {
     position: relative;
 }
 .spinner {
-    position: absolute;
-    z-index: 10;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url(/images/spinner/spinner_3.gif) center 43% no-repeat #fff;
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url(/images/spinner/spinner_3.gif) center 43% no-repeat #fff;
 }
 
 /* custom selectize styles */
 .selectize-dropdown, .selectize-input, .selectize-input input {
-    height: auto;
+  height: auto;
 }
 .ui-select-container {
-    line-height: 1;
+  line-height: 1;
 }
 
 .ui-select-container.single {
-    min-width: 200px;
+  min-width: 200px;
 }
 .ui-select-container.single span {
-    display: inline-block;
-    vertical-align: bottom;
-    max-width: 200px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    -o-text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: bottom;
+  max-width: 200px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  -o-text-overflow: ellipsis;
 }
 .ui-select-container.single .select-item {
-    max-width: 200px;
-    display: block;
+  max-width: 200px;
+  display: block;
 }
 .ui-select-container.single .ui-select-match {
-    white-space: nowrap;
-    padding-right: 25px;
+  white-space: nowrap;
+  padding-right: 25px;
 }
 .ui-select-container.single .ui-select-choices-row.disabled {
-    background: #fff;
-    cursor: default;
-    text-decoration: none;
+  background: #fff;
+  cursor: default;
+  text-decoration: none;
 }
 .ui-select-container.single .ui-select-choices-row.disabled a {
-    color: #666;
-    font-weight: bold;
-    cursor: default;
-    text-decoration: none;
+  color: #666;
+  font-weight: bold;
+  cursor: default;
+  text-decoration: none;
 }
 .ui-select-multiple {
-    background: #fff;
-    border: 1px solid #ccd3d7;
-    font-size: 13px;
-    padding: 3px;
-    position: relative;
-    z-index: 1;
+  background: #fff;
+  border: 1px solid #ccd3d7;
+  font-size: 13px;
+  padding: 3px;
+  position: relative;
+  z-index: 1;
 }
 .ui-select-multiple input.ui-select-search {
-    height: 2rem!important;
-    padding: 0;
-    width: auto;
-    display: inline;
+  height: 2rem!important;
+  padding: 0;
+  width: auto;
+  display: inline;
 }
 .ui-select-multiple > .ui-select-choices {
-    position: absolute;
-    background: #fff;
-    left: 0;
-    top: 100%;
-    margin: 1px 0 0 0;
+  position: absolute;
+  background: #fff;
+  left: 0;
+  top: 100%;
+  margin: 1px 0 0 0;
 }
 .ui-select-multiple .ui-select-match-item {
-    display: inline-block;
-    font-size: 12px;
-    max-width: 274px;
-    min-width: auto;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    -o-text-overflow: ellipsis;
-    padding: 0 0.5rem 0 0;
-    margin: 0 3px 3px 0;
-    cursor: default;
+  display: inline-block;
+  font-size: 12px;
+  max-width: 274px;
+  min-width: auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  -o-text-overflow: ellipsis;
+  padding: 0 0.5rem 0 0;
+  margin: 0 3px 3px 0;
+  cursor: default;
 }
 .ui-select-multiple.ui-select-bootstrap .ui-select-match .close {
-    display: inline-block;
-    cursor: pointer;
-    height: 1rem;
-    vertical-align: middle;
+  display: inline-block;
+  cursor: pointer;
+  height: 1rem;
+  vertical-align: middle;
 }
 
 /* vertical usage bar --------------- */
 
 .vertical_bar {
-    display: inline-block;
-    vertical-align: middle;
-    width: 1rem;
-    height: 3rem;
-    background: white;
-    border: .1rem solid #999;
-    border-radius: .1rem; margin-right: .3rem;
+  display: inline-block;
+  vertical-align: middle;
+  width: 1rem;
+  height: 3rem;
+  background: white;
+  border: .1rem solid #999;
+  border-radius: .1rem; margin-right: .3rem;
 }
 .vertical_bar .used {
-    position: relative;
-    background: #4287D6;
+  position: relative;
+  background: #4287D6;
 }
 
 /* rebalance progress --------------- */
 
 .rebalance-progress {
-    position: relative;
-    height: 1rem;
-    background-color: rgb(229, 229, 229);
-    width: 100%;
+  position: relative;
+  height: 1rem;
+  background-color: rgb(229, 229, 229);
+  width: 100%;
 }
 .rebalance-progress div {
-    position: absolute;
-    height: 100%;
-    background-color: #4287D6;
+  position: absolute;
+  height: 100%;
+  background-color: #4287D6;
 }
 
 /* create xdcr dialog --------------- */
 
 .dynamic-hightlight span {
-    Background-color: LightSkyBlue;
+  Background-color: LightSkyBlue;
 }
 .match_indicator {
-    background-color: #ffbd44;
-    color: #fff;
-    font-size: 0.7rem;
-    text-align: center;
-    line-height: 1.5rem;
-    position: absolute;
-    width: 4rem;
-    height: 1.6rem;
-    top: -1.8rem;
-    right: 0.2rem;
+  background-color: #ffbd44;
+  color: #fff;
+  font-size: 0.7rem;
+  text-align: center;
+  line-height: 1.5rem;
+  position: absolute;
+  width: 4rem;
+  height: 1.6rem;
+  top: -1.8rem;
+  right: 0.2rem;
 }
 .match_indicator.dynamic_match {background-color: green;}
 .match_indicator .no_match,

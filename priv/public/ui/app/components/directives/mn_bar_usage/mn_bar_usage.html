@@ -1,10 +1,10 @@
 <div
-   class="usage-label label-top-0"
+   class="usage-label label-top label-top-0 with-square"
    ng-if="config.topLeft">
   {{config.topLeft.name}} ({{config.topLeft.value | mnFormatMemSize}})
 </div>
 <div
-   class="usage-label label-top-1"
+   class="usage-label label-top label-top-1"
    ng-if="config.topRight">
   {{config.topRight.name}} ({{config.topRight.value | mnFormatMemSize}})
 </div>
@@ -22,7 +22,7 @@
 </div>
 <div class="row">
   <div
-     class="usage-label"
+     class="usage-label label-bottom with-square"
      ng-repeat="tditem in config.tdItems"
      ng-class="'label-bottom-' + $index">
     {{tditem.name}} ({{ tditem.value | mnFormatMemSize }})

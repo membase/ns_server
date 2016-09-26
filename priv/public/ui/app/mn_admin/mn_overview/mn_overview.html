@@ -12,87 +12,86 @@
   {{alert.msg}}
 </div>
 <div class="interim main-content">
-  <h4>RAM Overview for Data Nodes</h4>
-  <hr>
-  <div
-     class="row indent-1"
-     mn-spinner="!overviewCtl.mnOverviewConfig.ramOverviewConfig">
-    <div
-       class="column bar-usages label-top-0-red"
-       mn-bar-usage
-       base-info="overviewCtl.mnOverviewConfig.ramOverviewConfig"></div>
+  <div class="margin-top1">
+    <div class="interim row items-space-around content-box" style="font-size:1rem;padding:1rem;">
+      <div class="text-center">
+        <h4>Active Servers</h4><small>{{overviewCtl.nodes.active.length || '0'}}</small>
+      </div>
+      <a
+         ui-sref="app.admin.servers.list({list: 'pending'})"
+         ng-show="overviewCtl.nodes.failedOver.length">
+        <h4>Servers Failed Over</h4><small>{{overviewCtl.nodes.failedOver.length}}</small>
+      </a>
+      <span class="text-center" ng-show="!overviewCtl.nodes.failedOver.length">
+        <h4>Servers Failed Over</h4><small>0</small>
+      </span>
+      <a
+         class="text-center"
+         ui-sref="app.admin.servers.list"
+         ng-show="overviewCtl.nodes.down.length">
+        <h4>Servers Down</h4><small>{{overviewCtl.nodes.down.length}}</small>
+      </a>
+      <span class="text-center" ng-show="!overviewCtl.nodes.down.length">
+        <h4>Servers Down</h4><small>0</small>
+      </span>
+      <a
+         class="text-center"
+         ui-sref="app.admin.servers.list({list: 'pending'})"
+         ng-show="overviewCtl.nodes.pending.length">
+        <h4>Servers Pending Rebalance</h4><small>{{overviewCtl.nodes.pending.length}}</small>
+      </a>
+      <span class="text-center" ng-show="!overviewCtl.nodes.pending.length">
+        <h4>Servers Pending Rebalance</h4><small>0</small>
+      </span>
+    </div>
   </div>
-
-  <h4>Disk Overview for Data Nodes</h4>
-  <hr>
-  <div
-     class="row indent-1"
-     mn-spinner="!overviewCtl.mnOverviewConfig.hddOverviewConfig">
+  <div class="row margin-top2">
     <div
-       class="column bar-usages label-top-0-red"
-       mn-bar-usage
-       base-info="overviewCtl.mnOverviewConfig.hddOverviewConfig"></div>
+       class="column width-6"
+       mn-spinner="!overviewCtl.mnOverviewConfig.ramOverviewConfig">
+      <h4>RAM Overview for Data Nodes</h4>
+      <div
+         class="bar-usages"
+         mn-bar-usage
+         base-info="overviewCtl.mnOverviewConfig.ramOverviewConfig"></div>
+    </div>
+    <div
+       class="column width-6"
+       mn-spinner="!overviewCtl.mnOverviewConfig.hddOverviewConfig">
+      <h4>Disk Overview for Data Nodes</h4>
+      <div
+         class="bar-usages"
+         mn-bar-usage
+         base-info="overviewCtl.mnOverviewConfig.hddOverviewConfig"></div>
+    </div>
   </div>
-
-  <div ng-if="rbac.cluster.bucket['*'].stats.read">
+  <div ng-if="rbac.cluster.bucket['*'].stats.read" class="margin-top2">
     <h4>
-      Buckets ({{overviewCtl.buckets.length || '0'}} active)
+      Buckets &nbsp;<small>{{overviewCtl.buckets.length || '0'}} active</small>
     </h4>
     <hr>
-
     <div class="interim row items-space-around">
       <div
          ng-show="overviewCtl.buckets.length"
          mn-spinner="!overviewCtl.mnOverviewStats.opsGraphConfig">
-        <div>Operations per second</div>
+        <div>Operations Per Second</div>
         <div
            mn-plot
            mn-plot-config="overviewCtl.mnOverviewStats.opsGraphConfig"
            style="height: 170px; width: 400px;"></div>
       </div>
-
       <div
          ng-show="overviewCtl.buckets.length"
          mn-spinner="!overviewCtl.mnOverviewStats.readsGraphConfig">
-        <div>Disk fetches per second</div>
+        <div>Disk Fetches Per Second</div>
         <div
            mn-plot
            mn-plot-config="overviewCtl.mnOverviewStats.readsGraphConfig"
            style="height: 170px; width: 400px"></div>
       </div>
     </div>
-
     <div ng-show="!overviewCtl.buckets.length">
-      No buckets currently defined! Go to <a ui-sref="app.admin.buckets">Manage Buckets</a> to create some.
+      No buckets currently defined! Go to <a ui-sref="app.admin.buckets">Buckets</a> to create some.
     </div>
-  </div>
-
-  <h4>
-    Servers
-  </h4>
-  <hr>
-  <div class="interim row items-space-around">
-    <div>
-      Active Servers: {{overviewCtl.nodes.active.length || '0'}}
-    </div>
-
-    <a
-       ui-sref="app.admin.servers.list({list: 'pending'})"
-       ng-show="overviewCtl.nodes.failedOver.length">
-      Servers Failed Over: {{overviewCtl.nodes.failedOver.length}}
-    </a>
-    <span ng-show="!overviewCtl.nodes.failedOver.length">Servers Failed Over: 0</span>
-    <a
-       ui-sref="app.admin.servers.list"
-       ng-show="overviewCtl.nodes.down.length">
-      Servers Down: {{overviewCtl.nodes.down.length}}
-    </a>
-    <span ng-show="!overviewCtl.nodes.down.length">Servers Down: 0</span>
-    <a
-       ui-sref="app.admin.servers.list({list: 'pending'})"
-       ng-show="overviewCtl.nodes.pending.length">
-      Servers Pending Rebalance: {{overviewCtl.nodes.pending.length}}
-    </a>
-    <span ng-show="!overviewCtl.nodes.pending.length">Servers Pending Rebalance: 0</span>
   </div>
 </div>
