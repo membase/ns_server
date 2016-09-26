@@ -348,6 +348,7 @@ def main():
         extra_args += ["-noinput"]
         if not dont_start:
             extra_args += ["-run", "child_erlang", "child_start", "ns_babysitter_bootstrap"]
+            extra_args += ["-ns_babysitter", "handle_ctrl_c", "true"]
     else:
         if not dont_start:
             extra_args += ["-run", "ns_babysitter_bootstrap"]

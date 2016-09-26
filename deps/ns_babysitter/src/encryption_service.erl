@@ -42,9 +42,12 @@ decrypt(Data) ->
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-prompt_the_password(EncryptedDataKey, State, Try) ->
+prompt_the_password(EncryptedDataKey, State, StdIn, Try) ->
     ?log_debug("Waiting for the master password to be supplied. Attempt ~p", [Try]),
     receive
+        {StdIn, M} ->
+            ?log_error("Password prompt interrupted: ~p", [M]),
+            ns_babysitter_bootstrap:stop();
         {'$gen_call', From, {set_password, P}} ->
             ok = set_password(P, State),
             case EncryptedDataKey of
@@ -59,17 +62,17 @@ prompt_the_password(EncryptedDataKey, State, Try) ->
                             ok;
                         Error ->
                             ?log_error("Incorrect master password. Error: ~p", [Error]),
-                            maybe_retry_prompt_the_password(EncryptedDataKey, State, From, Try)
+                            maybe_retry_prompt_the_password(EncryptedDataKey, State, StdIn, From, Try)
                     end
             end
     end.
 
-maybe_retry_prompt_the_password(_EncryptedDataKey, _State, ReplyTo, 1) ->
+maybe_retry_prompt_the_password(_EncryptedDataKey, _State, _StdIn, ReplyTo, 1) ->
     gen_server:reply(ReplyTo, auth_failure),
     auth_failure;
-maybe_retry_prompt_the_password(EncryptedDataKey, State, ReplyTo, Try) ->
+maybe_retry_prompt_the_password(EncryptedDataKey, State, StdIn, ReplyTo, Try) ->
     gen_server:reply(ReplyTo, retry),
-    prompt_the_password(EncryptedDataKey, State, Try - 1).
+    prompt_the_password(EncryptedDataKey, State, StdIn, Try - 1).
 
 set_password(Password, State) ->
     ?log_debug("Sending password to gosecrets"),
@@ -89,11 +92,24 @@ init([]) ->
     State = start_gosecrets(),
     case os:getenv("CB_WAIT_FOR_MASTER_PASSWORD") of
         "true" ->
-            case prompt_the_password(EncryptedDataKey, State, 3) of
+            StdIn =
+                case application:get_env(handle_ctrl_c) of
+                    {ok, true} ->
+                        erlang:open_port({fd, 0, 1}, [in, stream, binary, eof]);
+                    _ ->
+                        undefined
+                end,
+            case prompt_the_password(EncryptedDataKey, State, StdIn, 3) of
                 ok ->
                     ok;
                 auth_failure ->
                     exit(incorrect_master_password)
+            end,
+            case StdIn of
+                undefined ->
+                    ok;
+                _ ->
+                    port_close(StdIn)
             end;
         _ ->
             Password =
