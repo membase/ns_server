@@ -5,13 +5,19 @@
     .module('app')
     .config(appConfig);
 
-  function appConfig($httpProvider, $stateProvider, $urlRouterProvider, $uibModalProvider, $transitionsProvider) {
+  function appConfig($httpProvider, $stateProvider, $urlRouterProvider, $uibModalProvider, $transitionsProvider, $uibTooltipProvider) {
     $httpProvider.defaults.headers.common['invalid-auth-response'] = 'on';
     $httpProvider.defaults.headers.common['Cache-Control'] = 'no-cache';
     $httpProvider.defaults.headers.common['Pragma'] = 'no-cache';
     $httpProvider.defaults.headers.common['ns-server-ui'] = 'yes';
 
     $uibModalProvider.options.backdrop = 'static';
+    // When using a tooltip in an absolute positioned element,
+    // you need tooltip-append-to-body="true" https://github.com/angular-ui/bootstrap/issues/4195
+    $uibTooltipProvider.options({
+      appendToBody: true,
+      placement: "auto right"
+    });
 
     $urlRouterProvider.otherwise(function ($injector, $location) {
       $injector.get("mnPools").get().then(function (pools) {

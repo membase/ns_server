@@ -30,12 +30,11 @@
        mn-focus
        ng-disabled="config.services && !config.services.model.kv || (rbac && !rbac.cluster.pools.write)"
        ng-model="config.memoryQuota">
-      <small>mb (min {{::config.minMemorySize}})</small>
-      <a class="tooltip text_11"><span>What&#39;s this?</span>
-      <span class="tooltip_msg"><span>
-          Main memory allocation amount for data service per node.
-      </span></span>
-      </a>
+    <small>mb (min {{::config.minMemorySize}})</small>
+    <a
+       href=""
+       uib-tooltip="Main memory allocation amount for data service per node.">What&#39;s this?</a>
+
     </div>
   <div
      class="error"
@@ -56,12 +55,10 @@
        ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)"
        mn-focus="config.services.model.kv === false"
        ng-model="config.indexMemoryQuota">
-      <small>mb (min 256)</small>
-      <a class="tooltip text_11"><span>What&#39;s this?</span>
-      <span class="tooltip_msg"><span>
-          Main memory allocation amount for index service per node.
-      </span></span>
-      </a>
+    <small>mb (min 256)</small>
+    <a
+       href=""
+       uib-tooltip="Main memory allocation amount for index service per node.">What&#39;s this?</a>
     </div>
   <div
      class="error"
@@ -82,12 +79,10 @@
        mn-focus="config.services.model.kv === false && config.services.model.index  === false"
        ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)"
          ng-model="config.ftsMemoryQuota">
-      <small>mb (min 256)</small>
-      <a class="tooltip text_11"><span>What&#39;s this?</span>
-        <span class="tooltip_msg"><span>
-            Main memory allocation amount for full text service per node.
-        </span></span>
-      </a>
+    <small>mb (min 256)</small>
+    <a
+       href=""
+       uib-tooltip="Main memory allocation amount for full text service per node.">What&#39;s this?</a>
     </div>
   <div
      class="error"

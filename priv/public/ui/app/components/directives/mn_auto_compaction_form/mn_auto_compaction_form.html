@@ -189,14 +189,9 @@
         <small>Range 0.04 (1 H) - 60days</small>
       </span>
 
-      <a class="text_11 tooltip">
-        <span>What's this?</span>
-        <span class="tooltip_msg">
-          <span>
-            Metadata Purge Interval. Allowed range is 0.04 - 60 where 0.04 = 1h, 0.5 = 12h. Set how frequently a node will purge metadata on deleted items. If set too high, may significantly delay the node from reclaiming disk space. If set too low, may cause data inconsistencies in XDCR or Views.
-          </span>
-        </span>
-      </a>
+      <a
+         href=""
+         uib-tooltip="Metadata Purge Interval. Allowed range is 0.04 - 60 where 0.04 = 1h, 0.5 = 12h. Set how frequently a node will purge metadata on deleted items. If set too high, may significantly delay the node from reclaiming disk space. If set too low, may cause data inconsistencies in XDCR or Views.">What&#39;s this?</a>
       <div
          class="error"
          ng-show="validationErrors.purgeInterval">

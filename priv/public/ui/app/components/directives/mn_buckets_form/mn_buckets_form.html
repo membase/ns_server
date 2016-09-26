@@ -84,13 +84,11 @@
          ng-model="bucketConf.evictionPolicy">
       <label for="cache_metadata_non_retain-init">Full Ejection</label>
 
-      <a class="tooltip text_11"><span>What's this?</span>
-        <span class="tooltip_msg"><span>
-            Value Ejection - During ejection, only the value will be ejected (key and metadata will remain in memory).
+      <a
+         href=""
+         uib-tooltip="Value Ejection - During ejection, only the value will be ejected (key and metadata will remain in memory).
             Full Ejection - During ejection, everything (including key, metadata and value) will be ejected.
-            Value Ejection needs more system memory but provides the best performance. Full Ejection reduces memory overhead requirement.
-        </span></span>
-      </a>
+            Value Ejection needs more system memory but provides the best performance. Full Ejection reduces memory overhead requirement.">What&#39;s this?</a>
       <div
          class="error"
          ng-show="!!evictionPolicyWarning">
@@ -216,18 +214,15 @@
        id="hight_threads_number_init"
        ng-model="bucketConf.threadsNumber">
     <label for="hight_threads_number_init">High</label>
+    <a
+       href=""
+       uib-tooltip="This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.">What&#39;s this?</a>
     <div
        class="error"
        ng-show="!!threadsNumberWarning">
       {{threadsNumberWarning}}
     </div>
   </div>
-
-  <a class="tooltip text_11"><span>What's this?</span>
-    <span class="tooltip_msg" style="width:200px;"><span>
-        This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.
-    </span></span>
-  </a>
 
   <div ng-if="!bucketConf.isWizard">
     <div
@@ -264,10 +259,8 @@
        ng-false-value="0"
        ng-true-value="1">
     <label for="for-enable-flush-init">Enable</label>
-    <a class="tooltip text_11"><span>What's this?</span>
-      <span class="tooltip_msg" style="width:218px;"><span>
-          When flushed, items in the bucket are removed as soon as possible in both memcached and Couchbase buckets. Note this does not immediately show in item count statistics with memcached buckets.
-      </span></span>
-    </a>
+    <a
+       href=""
+       uib-tooltip="When flushed, items in the bucket are removed as soon as possible in both memcached and Couchbase buckets. Note this does not immediately show in item count statistics with memcached buckets.">What&#39;s this?</a>
   </div>
 </div>

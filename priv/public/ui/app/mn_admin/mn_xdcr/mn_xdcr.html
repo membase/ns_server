@@ -86,13 +86,10 @@
             <td class="text-center">this cluster</td>
             <td class="text-center">{{xdcrCtl.to(row)}}</td>
             <td ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise" class="text-center">
-              <span ng-show="row.filterExpression">
-                <a class="tooltip text_11"><span>Yes</span>
-                  <span class="tooltip_msg break-word"><span>
-                      {{row.filterExpression }}
-                  </span></span>
-                </a>
-              </span>
+              <a
+                 ng-show="row.filterExpression"
+                 href=""
+                 uib-tooltip="{{row.filterExpression}}">Yes</a>
               <span ng-show="!row.filterExpression">No</span>
             </td>
             <td class="text-center">

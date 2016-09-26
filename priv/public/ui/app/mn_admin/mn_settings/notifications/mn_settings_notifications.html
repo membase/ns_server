@@ -39,16 +39,10 @@
            ng-disabled="!rbac.cluster.settings.write"
            ng-model="settingsNotificationsCtl.updates.enabled">
         Enable software update notifications.
+        <a
+           href=""
+           uib-tooltip="Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.">What&#39;s this?</a>
       </label>
-      <a class="tooltip text_11 casper_settings_software_update_tooltip"><span>What's this?</span>
-        <span class="tooltip_msg text_11" style="width:310px;"><span>
-            Enabling software update notifications allows notification in
-            the Couchbase web console when a new version of Couchbase Server
-            is available. Configuration information transferred in the
-            update check is anonymous and does not include any stored
-            key-value data.
-        </span></span>
-      </a>
     </div>
     <button
        ng-show="rbac.cluster.settings.write"
