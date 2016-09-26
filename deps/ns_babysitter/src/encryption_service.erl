@@ -47,7 +47,8 @@ prompt_the_password(EncryptedDataKey, State, StdIn, Try) ->
     receive
         {StdIn, M} ->
             ?log_error("Password prompt interrupted: ~p", [M]),
-            ns_babysitter_bootstrap:stop();
+            ns_babysitter_bootstrap:stop(),
+            shutdown;
         {'$gen_call', From, {set_password, P}} ->
             ok = set_password(P, State),
             case EncryptedDataKey of
@@ -69,6 +70,8 @@ prompt_the_password(EncryptedDataKey, State, StdIn, Try) ->
 
 maybe_retry_prompt_the_password(_EncryptedDataKey, _State, _StdIn, ReplyTo, 1) ->
     gen_server:reply(ReplyTo, auth_failure),
+    ?log_error("Incorrect master password!"),
+    ns_babysitter_bootstrap:stop(),
     auth_failure;
 maybe_retry_prompt_the_password(EncryptedDataKey, State, StdIn, ReplyTo, Try) ->
     gen_server:reply(ReplyTo, retry),
@@ -90,54 +93,56 @@ init([]) ->
                 undefined
         end,
     State = start_gosecrets(),
-    case os:getenv("CB_WAIT_FOR_MASTER_PASSWORD") of
-        "true" ->
-            StdIn =
-                case application:get_env(handle_ctrl_c) of
-                    {ok, true} ->
-                        erlang:open_port({fd, 0, 1}, [in, stream, binary, eof]);
+    RV1 =
+        case os:getenv("CB_WAIT_FOR_MASTER_PASSWORD") of
+            "true" ->
+                StdIn =
+                    case application:get_env(handle_ctrl_c) of
+                        {ok, true} ->
+                            erlang:open_port({fd, 0, 1}, [in, stream, binary, eof]);
+                        _ ->
+                            undefined
+                    end,
+                RV = prompt_the_password(EncryptedDataKey, State, StdIn, 3),
+                case StdIn of
+                    undefined ->
+                        ok;
                     _ ->
-                        undefined
+                        port_close(StdIn)
                 end,
-            case prompt_the_password(EncryptedDataKey, State, StdIn, 3) of
+                RV;
+            _ ->
+                Password =
+                    case os:getenv("CB_MASTER_PASSWORD") of
+                        false ->
+                            "";
+                        S ->
+                            S
+                    end,
+                ok = set_password(Password, State)
+        end,
+    case RV1 of
+        ok ->
+            EncryptedDataKey1 =
+                case EncryptedDataKey of
+                    undefined ->
+                        ?log_debug("Create new data key."),
+                        {ok, NewDataKey} = call_gosecrets(create_data_key, State),
+                        ok = misc:mkdir_p(path_config:component_path(data, "config")),
+                        ok = misc:atomic_write_file(Path, NewDataKey),
+                        NewDataKey;
+                    _ ->
+                        EncryptedDataKey
+                end,
+            case call_gosecrets({set_data_key, EncryptedDataKey1}, State) of
                 ok ->
                     ok;
-                auth_failure ->
-                    exit(incorrect_master_password)
-            end,
-            case StdIn of
-                undefined ->
-                    ok;
-                _ ->
-                    port_close(StdIn)
+                Error ->
+                    ?log_error("Incorrect master password. Error: ~p", [Error]),
+                    ns_babysitter_bootstrap:stop()
             end;
         _ ->
-            Password =
-                case os:getenv("CB_MASTER_PASSWORD") of
-                    false ->
-                        "";
-                    S ->
-                        S
-                end,
-            ok = set_password(Password, State)
-    end,
-    EncryptedDataKey1 =
-        case EncryptedDataKey of
-            undefined ->
-                ?log_debug("Create new data key."),
-                {ok, NewDataKey} = call_gosecrets(create_data_key, State),
-                ok = misc:mkdir_p(path_config:component_path(data, "config")),
-                ok = misc:atomic_write_file(Path, NewDataKey),
-                NewDataKey;
-            _ ->
-                EncryptedDataKey
-        end,
-    case call_gosecrets({set_data_key, EncryptedDataKey1}, State) of
-        ok ->
-            ok;
-        Error ->
-            ?log_error("Incorrect master password. Error: ~p", [Error]),
-            exit(incorrect_master_password)
+            ok
     end,
     {ok, State}.
 
