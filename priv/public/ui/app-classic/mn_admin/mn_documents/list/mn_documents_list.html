@@ -64,7 +64,7 @@
               <a ui-sref="app.admin.documents.editing({documentId: r.id})">{{ r.id }}</a>
             </td>
             <td class="code ellipsis" colspan="5">
-                <code class="object">{{r.doc.json || r.doc.base64 | mnLimitTo: 200}}</code>
+                <code class="object">{{r.doc.json !== undefined ? r.doc.json : r.doc.base64 | mnLimitTo: 200}}</code>
             </td>
             <td colspan="3">
               <button class="list_button delete_btn when-roadmin-avoid-me" ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write" ng-click="documentsListCtl.deleteDocument(r.id)"><span>Delete</span></button>
