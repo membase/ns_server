@@ -87,20 +87,23 @@ prompt_the_password(EncryptedDataKey, State, StdIn, Try) ->
             ok = set_password(P, State),
             case EncryptedDataKey of
                 undefined ->
-                    gen_server:reply(From, ok),
-                    ok;
+                    confirm_set_password(From, P);
                 _ ->
                     Ret = call_gosecrets({set_data_key, EncryptedDataKey}, State),
                     case Ret of
                         ok ->
-                            gen_server:reply(From, ok),
-                            ok;
+                            confirm_set_password(From, P);
                         Error ->
                             ?log_error("Incorrect master password. Error: ~p", [Error]),
                             maybe_retry_prompt_the_password(EncryptedDataKey, State, StdIn, From, Try)
                     end
             end
     end.
+
+confirm_set_password(From, Password) ->
+    application:set_env(ns_babysitter, master_password, Password),
+    gen_server:reply(From, ok),
+    ok.
 
 maybe_retry_prompt_the_password(_EncryptedDataKey, _State, _StdIn, ReplyTo, 1) ->
     gen_server:reply(ReplyTo, auth_failure),
@@ -130,7 +133,13 @@ init([]) ->
     RV1 =
         case os:getenv("CB_WAIT_FOR_MASTER_PASSWORD") of
             "true" ->
-                prompt_the_password(EncryptedDataKey, State);
+                case application:get_env(master_password) of
+                    {ok, P} ->
+                        ?log_info("Password was recovered from application environment"),
+                        ok = set_password(P, State);
+                    _ ->
+                        prompt_the_password(EncryptedDataKey, State)
+                end;
             _ ->
                 Password =
                     case os:getenv("CB_MASTER_PASSWORD") of
