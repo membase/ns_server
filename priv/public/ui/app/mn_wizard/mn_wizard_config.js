@@ -29,7 +29,7 @@
     $stateProvider
       .state('app.wizard', {
         abstract: true,
-        templateUrl: 'mn_wizard/mn_wizard.html',
+        templateUrl: 'app/mn_wizard/mn_wizard.html',
         controller: "mnWizardWelcomeController as wizardWelcomeCtl",
         resolve: {
           pools: function (mnPools) {
@@ -38,26 +38,26 @@
         }
       })
       .state('app.wizard.welcome', {
-        templateUrl: 'mn_wizard/welcome/mn_wizard_welcome.html'
+        templateUrl: 'app/mn_wizard/welcome/mn_wizard_welcome.html'
       })
       .state('app.wizard.step1', {
-        templateUrl: 'mn_wizard/step1/mn_wizard_step1.html',
+        templateUrl: 'app/mn_wizard/step1/mn_wizard_step1.html',
         controller: 'mnWizardStep1Controller as wizardStep1Ctl'
       })
       .state('app.wizard.step2', {
-        templateUrl: 'mn_wizard/step2/mn_wizard_step2.html',
+        templateUrl: 'app/mn_wizard/step2/mn_wizard_step2.html',
         controller: 'mnWizardStep2Controller as wizardStep2Ctl'
       })
       .state('app.wizard.step3', {
-        templateUrl: 'mn_wizard/step3/mn_wizard_step3.html',
+        templateUrl: 'app/mn_wizard/step3/mn_wizard_step3.html',
         controller: 'mnWizardStep3Controller as wizardStep3Ctl'
       })
       .state('app.wizard.step4', {
-        templateUrl: 'mn_wizard/step4/mn_wizard_step4.html',
+        templateUrl: 'app/mn_wizard/step4/mn_wizard_step4.html',
         controller: 'mnWizardStep4Controller as wizardStep4Ctl'
       })
       .state('app.wizard.step5', {
-        templateUrl: 'mn_wizard/step5/mn_wizard_step5.html',
+        templateUrl: 'app/mn_wizard/step5/mn_wizard_step5.html',
         controller: 'mnWizardStep5Controller as wizardStep5Ctl'
       });
   }

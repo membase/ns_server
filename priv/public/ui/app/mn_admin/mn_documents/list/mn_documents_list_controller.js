@@ -40,7 +40,7 @@
     function deleteDocument(documentId) {
       return $uibModal.open({
         controller: 'mnDocumentsDeleteDialogController as documentsDeleteDialogCtl',
-        templateUrl: 'mn_admin/mn_documents/delete_dialog/mn_documents_delete_dialog.html',
+        templateUrl: 'app/mn_admin/mn_documents/delete_dialog/mn_documents_delete_dialog.html',
         resolve: {
           documentId: function () {
             return documentId;
@@ -51,7 +51,7 @@
     function showCreateDialog() {
       return $uibModal.open({
         controller: 'mnDocumentsCreateDialogController as documentsCreateDialogCtl',
-        templateUrl: 'mn_admin/mn_documents/create_dialog/mn_documents_create_dialog.html',
+        templateUrl: 'app/mn_admin/mn_documents/create_dialog/mn_documents_create_dialog.html',
         resolve: {
           doc: function () {
             return false;

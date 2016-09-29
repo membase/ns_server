@@ -33,7 +33,7 @@
 
     function stopCollection() {
       $uibModal.open({
-        templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info_stop_dialog.html'
+        templateUrl: 'app/mn_admin/mn_logs/collect_info/mn_logs_collect_info_stop_dialog.html'
       }).result.then(function () {
         vm.disabledStopCollect = true;
         mnPromiseHelper(vm, mnLogsCollectInfoService.cancelLogsCollection())

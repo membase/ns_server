@@ -54,7 +54,7 @@
 
     function doShowAlerts(alertsSilenceURL, alerts) {
       return $uibModal.open({
-        templateUrl: "mn_admin/mn_poor_mans_alerts/mn_poor_mans_alerts.html",
+        templateUrl: "app-classic/mn_admin/mn_poor_mans_alerts/mn_poor_mans_alerts.html",
         controller: "mnPoorMansAlertsController as poorMansCtl",
         resolve: {
           alertsSilenceURL: mnHelper.wrapInFunction(alertsSilenceURL),

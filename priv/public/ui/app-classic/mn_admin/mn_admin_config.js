@@ -61,10 +61,10 @@
         views: {
           "": {
             controller: 'mnAdminController as adminCtl',
-            templateUrl: 'mn_admin/mn_admin.html'
+            templateUrl: 'app-classic/mn_admin/mn_admin.html'
           },
           "lostConnection@app.admin": {
-            templateUrl: 'mn_admin/mn_lost_connection/mn_lost_connection.html',
+            templateUrl: 'app-classic/mn_admin/mn_lost_connection/mn_lost_connection.html',
             controller: 'mnLostConnectionController as lostConnCtl'
           }
         }
@@ -72,18 +72,18 @@
       .state('app.admin.overview', {
         url: '/overview',
         controller: 'mnOverviewController as overviewCtl',
-        templateUrl: 'mn_admin/mn_overview/mn_overview.html'
+        templateUrl: 'app-classic/mn_admin/mn_overview/mn_overview.html'
       })
       .state('app.admin.documents', {
         abstract: true,
-        templateUrl: 'mn_admin/mn_documents/mn_documents.html',
+        templateUrl: 'app-classic/mn_admin/mn_documents/mn_documents.html',
         controller: "mnDocumentsController as documentsCtl",
         url: "/documents?documentsBucket"
       })
       .state('app.admin.documents.control', {
         abstract: true,
         controller: 'mnDocumentsControlController as documentsControlCtl',
-        templateUrl: 'mn_admin/mn_documents/list/mn_documents_control.html'
+        templateUrl: 'app-classic/mn_admin/mn_documents/list/mn_documents_control.html'
       })
       .state('app.admin.documents.control.list', {
         url: "?{pageLimit:int}&{pageNumber:int}&documentsFilter",
@@ -97,18 +97,18 @@
           documentsFilter: null
         },
         controller: 'mnDocumentsListController as documentsListCtl',
-        templateUrl: 'mn_admin/mn_documents/list/mn_documents_list.html'
+        templateUrl: 'app-classic/mn_admin/mn_documents/list/mn_documents_list.html'
       })
       .state('app.admin.documents.editing', {
         url: '/:documentId',
         controller: 'mnDocumentsEditingController as documentsEditingCtl',
-        templateUrl: 'mn_admin/mn_documents/editing/mn_documents_editing.html'
+        templateUrl: 'app-classic/mn_admin/mn_documents/editing/mn_documents_editing.html'
       })
       .state('app.admin.analytics', {
         abstract: true,
         url: '/analytics?statsHostname&analyticsBucket&specificStat',
         controller: 'mnAnalyticsController as analyticsCtl',
-        templateUrl: 'mn_admin/mn_analytics/mn_analytics.html',
+        templateUrl: 'app-classic/mn_admin/mn_analytics/mn_analytics.html',
         params: {
           analyticsBucket: {
             value: null
@@ -132,7 +132,7 @@
           }
         },
         controller: 'mnAnalyticsListController as analyticsListCtl',
-        templateUrl: 'mn_admin/mn_analytics/mn_analytics_list.html'
+        templateUrl: 'app-classic/mn_admin/mn_analytics/mn_analytics_list.html'
       })
       .state('app.admin.analytics.list.graph', {
         url: '/:graph?zoom',
@@ -145,7 +145,7 @@
           }
         },
         controller: 'mnAnalyticsListGraphController as analyticsListGraphCtl',
-        templateUrl: 'mn_admin/mn_analytics/mn_analytics_list_graph.html',
+        templateUrl: 'app-classic/mn_admin/mn_analytics/mn_analytics_list_graph.html',
         resolve: {
           setDefaultGraph: function (mnAnalyticsService, setDefaultBucketName, $state, $q, $transition$) {
             var params = $transition$.params();
@@ -207,10 +207,10 @@
         views: {
           "": {
             controller: 'mnBucketsController as bucketsCtl',
-            templateUrl: 'mn_admin/mn_buckets/mn_buckets.html'
+            templateUrl: 'app-classic/mn_admin/mn_buckets/mn_buckets.html'
           },
           "details@app.admin.buckets": {
-            templateUrl: 'mn_admin/mn_buckets/details/mn_buckets_details.html',
+            templateUrl: 'app-classic/mn_admin/mn_buckets/details/mn_buckets_details.html',
             controller: 'mnBucketsDetailsController as bucketsDetailsCtl'
           }
         }
@@ -219,7 +219,7 @@
         abstract: true,
         url: '/servers',
         controller: 'mnServersController as serversCtl',
-        templateUrl: 'mn_admin/mn_servers/mn_servers.html'
+        templateUrl: 'app-classic/mn_admin/mn_servers/mn_servers.html'
       })
       .state('app.admin.servers.list', {
         url: '/:list?openedServers',
@@ -235,17 +235,17 @@
         views: {
           "" : {
             controller: 'mnServersListController as serversListCtl',
-            templateUrl: 'mn_admin/mn_servers/list/mn_servers_list.html'
+            templateUrl: 'app-classic/mn_admin/mn_servers/list/mn_servers_list.html'
           },
           "details@app.admin.servers.list": {
-            templateUrl: 'mn_admin/mn_servers/details/mn_servers_list_item_details.html',
+            templateUrl: 'app-classic/mn_admin/mn_servers/details/mn_servers_list_item_details.html',
             controller: 'mnServersListItemDetailsController as serversListItemDetailsCtl'
           }
         }
       })
       .state('app.admin.groups', {
         url: '/groups',
-        templateUrl: 'mn_admin/mn_groups/mn_groups.html',
+        templateUrl: 'app-classic/mn_admin/mn_groups/mn_groups.html',
         controller: 'mnGroupsController as groupsCtl',
         data: {
           enterprise: true,
@@ -254,36 +254,36 @@
       })
       .state('app.admin.replications', {
         url: '/replications',
-        templateUrl: 'mn_admin/mn_xdcr/mn_xdcr.html',
+        templateUrl: 'app-classic/mn_admin/mn_xdcr/mn_xdcr.html',
         controller: 'mnXDCRController as xdcrCtl'
       })
       .state('app.admin.logs', {
         url: '/logs',
         abstract: true,
-        templateUrl: 'mn_admin/mn_logs/mn_logs.html',
+        templateUrl: 'app-classic/mn_admin/mn_logs/mn_logs.html',
         controller: 'mnLogsController as logsCtl'
       })
       .state('app.admin.logs.list', {
         url: '',
         controller: 'mnLogsListController as logsListCtl',
-        templateUrl: 'mn_admin/mn_logs/list/mn_logs_list.html'
+        templateUrl: 'app-classic/mn_admin/mn_logs/list/mn_logs_list.html'
       })
       .state('app.admin.logs.collectInfo', {
         url: '/collectInfo',
         abstract: true,
         controller: 'mnLogsCollectInfoController as logsCollectInfoCtl',
-        templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
+        templateUrl: 'app-classic/mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
         data: {
           permissions: "cluster.admin.logs.read"
         }
       })
       .state('app.admin.logs.collectInfo.result', {
         url: '/result',
-        templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info_result.html'
+        templateUrl: 'app-classic/mn_admin/mn_logs/collect_info/mn_logs_collect_info_result.html'
       })
       .state('app.admin.logs.collectInfo.form', {
         url: '/form',
-        templateUrl: 'mn_admin/mn_logs/collect_info/mn_logs_collect_info_form.html'
+        templateUrl: 'app-classic/mn_admin/mn_logs/collect_info/mn_logs_collect_info_form.html'
       });
   }
 })();

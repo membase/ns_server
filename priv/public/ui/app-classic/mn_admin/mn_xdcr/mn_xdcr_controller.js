@@ -71,7 +71,7 @@
     function createClusterReference() {
       $uibModal.open({
         controller: 'mnXDCRReferenceDialogController as xdcrReferenceDialogCtl',
-        templateUrl: 'mn_admin/mn_xdcr/reference_dialog/mn_xdcr_reference_dialog.html',
+        templateUrl: 'app-classic/mn_admin/mn_xdcr/reference_dialog/mn_xdcr_reference_dialog.html',
         scope: $scope,
         resolve: {
           reference: mnHelper.wrapInFunction()
@@ -81,7 +81,7 @@
     function deleteClusterReference(row) {
       $uibModal.open({
         controller: 'mnXDCRDeleteReferenceDialogController as xdcrDeleteReferenceDialogCtl',
-        templateUrl: 'mn_admin/mn_xdcr/delete_reference_dialog/mn_xdcr_delete_reference_dialog.html',
+        templateUrl: 'app-classic/mn_admin/mn_xdcr/delete_reference_dialog/mn_xdcr_delete_reference_dialog.html',
         scope: $scope,
         resolve: {
           name: mnHelper.wrapInFunction(row.name)
@@ -91,7 +91,7 @@
     function editClusterReference(reference) {
       $uibModal.open({
         controller: 'mnXDCRReferenceDialogController as xdcrReferenceDialogCtl',
-        templateUrl: 'mn_admin/mn_xdcr/reference_dialog/mn_xdcr_reference_dialog.html',
+        templateUrl: 'app-classic/mn_admin/mn_xdcr/reference_dialog/mn_xdcr_reference_dialog.html',
         scope: $scope,
         resolve: {
           reference: mnHelper.wrapInFunction(reference)
@@ -101,7 +101,7 @@
     function createReplications() {
       $uibModal.open({
         controller: 'mnXDCRCreateDialogController as xdcrCreateDialogCtl',
-        templateUrl: 'mn_admin/mn_xdcr/create_dialog/mn_xdcr_create_dialog.html',
+        templateUrl: 'app-classic/mn_admin/mn_xdcr/create_dialog/mn_xdcr_create_dialog.html',
         scope: $scope,
         resolve: {
           buckets: mnHelper.wrapInFunction(mnBucketsService.getBucketsByType()),
@@ -112,7 +112,7 @@
     function showReplicationErrors(row) {
       vm.xdcrErrors = row.errors;
       $uibModal.open({
-        templateUrl: 'mn_admin/mn_xdcr/errors_dialog/mn_xdcr_errors_dialog.html',
+        templateUrl: 'app-classic/mn_admin/mn_xdcr/errors_dialog/mn_xdcr_errors_dialog.html',
         scope: $scope
       }).result['finally'](function () {
         delete vm.xdcrErrors;
@@ -121,7 +121,7 @@
     function deleteReplication(row) {
       $uibModal.open({
         controller: 'mnXDCRDeleteDialogController as xdcrDeleteDialogCtl',
-        templateUrl: 'mn_admin/mn_xdcr/delete_dialog/mn_xdcr_delete_dialog.html',
+        templateUrl: 'app-classic/mn_admin/mn_xdcr/delete_dialog/mn_xdcr_delete_dialog.html',
         scope: $scope,
         resolve: {
           id: mnHelper.wrapInFunction(row.id)
@@ -131,7 +131,7 @@
     function editReplication(row) {
       $uibModal.open({
         controller: 'mnXDCREditDialogController as xdcrEditDialogCtl',
-        templateUrl: 'mn_admin/mn_xdcr/edit_dialog/mn_xdcr_edit_dialog.html',
+        templateUrl: 'app-classic/mn_admin/mn_xdcr/edit_dialog/mn_xdcr_edit_dialog.html',
         scope: $scope,
         resolve: {
           id: mnHelper.wrapInFunction(row.id),

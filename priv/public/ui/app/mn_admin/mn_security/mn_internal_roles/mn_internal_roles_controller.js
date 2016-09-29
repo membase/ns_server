@@ -24,7 +24,7 @@
 
     function deleteUser() {
       return $uibModal.open({
-        templateUrl: 'mn_admin/mn_security/mn_internal_roles/delete/mn_internal_roles_delete.html',
+        templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/delete/mn_internal_roles_delete.html',
         controller: 'mnInternalRolesDeleteController as internalRolesDeleteCtl',
         resolve: {
           name: mnHelper.wrapInFunction(vm.roAdminName)
@@ -33,7 +33,7 @@
     }
     function resetUserPassword() {
       return $uibModal.open({
-        templateUrl: 'mn_admin/mn_security/mn_internal_roles/reset/mn_internal_roles_reset.html',
+        templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/reset/mn_internal_roles_reset.html',
         controller: 'mnInternalRolesResetController as internalRolesResetCtl'
       });
     }

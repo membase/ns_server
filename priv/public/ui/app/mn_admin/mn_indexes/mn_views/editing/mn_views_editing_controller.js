@@ -92,7 +92,7 @@
       e.stopImmediatePropagation();
       $uibModal.open({
         controller: 'mnViewsCreateDialogController as viewsCreateDialogCtl',
-        templateUrl: 'mn_admin/mn_indexes/mn_views/create_dialog/mn_views_create_dialog.html',
+        templateUrl: 'app/mn_admin/mn_indexes/mn_views/create_dialog/mn_views_create_dialog.html',
         scope: $scope,
         resolve: {
           currentDdoc: mnHelper.wrapInFunction(vm.state.currentDocument.doc),

@@ -52,11 +52,11 @@
         .onSuccess(function (poolDefault) {
           if (poolDefault.storageTotals.ram.quotaTotal === poolDefault.storageTotals.ram.quotaUsed) {
             $uibModal.open({
-              templateUrl: 'mn_admin/mn_buckets/mn_bucket_full_dialog.html'
+              templateUrl: 'app-classic/mn_admin/mn_buckets/mn_bucket_full_dialog.html'
             });
           } else {
             !areThereCreationWarnings() && $uibModal.open({
-              templateUrl: 'mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
+              templateUrl: 'app-classic/mn_admin/mn_buckets/details_dialog/mn_buckets_details_dialog.html',
               controller: 'mnBucketsDetailsDialogController as bucketsDetailsDialogCtl',
               resolve: {
                 bucketConf: function (mnBucketsDetailsDialogService) {

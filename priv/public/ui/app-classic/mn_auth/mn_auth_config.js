@@ -12,7 +12,7 @@
     $httpProvider.interceptors.push(['$q', '$injector', interceptorOf401]);
     $stateProvider.state('app.auth', {
       url: "/auth",
-      templateUrl: 'mn_auth/mn_auth.html',
+      templateUrl: 'app-classic/mn_auth/mn_auth.html',
       controller: 'mnAuthController as authCtl'
     });
 

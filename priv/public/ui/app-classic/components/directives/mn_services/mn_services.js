@@ -11,7 +11,7 @@
       scope: {
         config: '=mnServices'
       },
-      templateUrl: 'components/directives/mn_services/mn_services.html',
+      templateUrl: 'app-classic/components/directives/mn_services/mn_services.html',
       controller: controller
     };
 

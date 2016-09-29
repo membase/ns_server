@@ -14,7 +14,7 @@
         errors: "=",
         rbac: "="
       },
-      templateUrl: 'components/directives/mn_period/mn_period.html'
+      templateUrl: 'app/components/directives/mn_period/mn_period.html'
     };
 
     return mnPeriod;

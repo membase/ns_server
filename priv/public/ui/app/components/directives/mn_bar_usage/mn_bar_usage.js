@@ -15,7 +15,7 @@
         baseInfo: '=',
       },
       isolate: false,
-      templateUrl: 'components/directives/mn_bar_usage/mn_bar_usage.html',
+      templateUrl: 'app/components/directives/mn_bar_usage/mn_bar_usage.html',
       controller: controller
     };
 

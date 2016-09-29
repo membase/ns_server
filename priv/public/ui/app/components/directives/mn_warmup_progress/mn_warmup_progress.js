@@ -15,7 +15,7 @@
         sortBy: '@'
       },
       replace: true,
-      templateUrl: 'components/directives/mn_warmup_progress/mn_warmup_progress.html'
+      templateUrl: 'app/components/directives/mn_warmup_progress/mn_warmup_progress.html'
     };
 
     return mnWarmupProgress;

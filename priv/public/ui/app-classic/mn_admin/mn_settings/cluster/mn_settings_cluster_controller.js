@@ -56,7 +56,7 @@
       }
       if ((!vm.indexSettings || vm.indexSettings.storageMode !== "memory_optimized") && vm.initialMemoryQuota != vm.memoryQuotaConfig.indexMemoryQuota) {
         $uibModal.open({
-          templateUrl: 'mn_admin/mn_settings/cluster/mn_settings_cluster_confirmation_dialog.html'
+          templateUrl: 'app-classic/mn_admin/mn_settings/cluster/mn_settings_cluster_confirmation_dialog.html'
         }).result.then(saveSettings);
       } else {
         saveSettings();
@@ -89,4 +89,3 @@
     }
   }
 })();
-
