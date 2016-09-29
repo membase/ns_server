@@ -59,6 +59,23 @@ maybe_clear_backup_key(DataKey) ->
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+prompt_the_password(EncryptedDataKey, State) ->
+    StdIn =
+        case application:get_env(handle_ctrl_c) of
+            {ok, true} ->
+                erlang:open_port({fd, 0, 1}, [in, stream, binary, eof]);
+            _ ->
+                undefined
+        end,
+    RV = prompt_the_password(EncryptedDataKey, State, StdIn, 3),
+    case StdIn of
+        undefined ->
+            ok;
+        _ ->
+            port_close(StdIn)
+    end,
+    RV.
+
 prompt_the_password(EncryptedDataKey, State, StdIn, Try) ->
     ?log_debug("Waiting for the master password to be supplied. Attempt ~p", [Try]),
     receive
@@ -113,21 +130,7 @@ init([]) ->
     RV1 =
         case os:getenv("CB_WAIT_FOR_MASTER_PASSWORD") of
             "true" ->
-                StdIn =
-                    case application:get_env(handle_ctrl_c) of
-                        {ok, true} ->
-                            erlang:open_port({fd, 0, 1}, [in, stream, binary, eof]);
-                        _ ->
-                            undefined
-                    end,
-                RV = prompt_the_password(EncryptedDataKey, State, StdIn, 3),
-                case StdIn of
-                    undefined ->
-                        ok;
-                    _ ->
-                        port_close(StdIn)
-                end,
-                RV;
+                prompt_the_password(EncryptedDataKey, State);
             _ ->
                 Password =
                     case os:getenv("CB_MASTER_PASSWORD") of
