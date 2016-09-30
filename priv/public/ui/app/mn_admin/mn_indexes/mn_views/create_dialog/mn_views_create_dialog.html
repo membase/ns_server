@@ -26,8 +26,8 @@
       <span
          class="error"
          ng-show="
-                  (ddocForm.designdoc_name.$dirty && ddocForm.designdoc_name.$error.required) ||
-                  (ddocForm.view_name.$dirty && ddocForm.view_name.$error.required)">
+                  (ddocForm.$submitted && ddocForm.designdoc_name.$error.required) ||
+                  (ddocForm.$submitted && ddocForm.view_name.$error.required)">
         Design Document and View names cannot be empty
       </span>
       <label for="copy_view_ddoc_name">Design Document Name</label>
