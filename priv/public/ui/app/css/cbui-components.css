@@ -1144,7 +1144,7 @@ meter {
 .ui-select-container.single span {
     display: inline-block;
     vertical-align: bottom;
-    max-width: 400px;
+    max-width: 200px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
