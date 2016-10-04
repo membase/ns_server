@@ -1013,7 +1013,8 @@ start_loading_sample(Req, Name) ->
               {"saslPassword", ""},
               {"authType", "sasl"},
               {"ramQuotaMB", integer_to_list(?SAMPLE_BUCKET_QUOTA_MB) },
-              {"bucketType", "membase"}],
+              {"bucketType", "membase"},
+              {"name", Name}],
     case menelaus_web_buckets:create_bucket(Req, Name, Params) of
         ok ->
             start_loading_sample_task(Req, Name);
