@@ -162,7 +162,7 @@ handle_arguments(Arguments) ->
                           _ ->
                               AccEnv1 = case lists:keymember(Flag, 1, AccEnv) of
                                             false ->
-                                                [{Flag, application:get_all_env(Flag)} | AccEnv];
+                                                [{Flag, get_all_env(Flag)} | AccEnv];
                                             true ->
                                                 AccEnv
                                         end,
@@ -170,3 +170,9 @@ handle_arguments(Arguments) ->
                       end
               end
       end, {[], []}, Arguments).
+
+get_all_env(ns_babysitter) ->
+    Env = application:get_all_env(ns_babysitter),
+    lists:keydelete(master_password, 1, Env);
+get_all_env(Flag) ->
+    application:get_all_env(Flag).
