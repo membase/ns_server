@@ -49,7 +49,7 @@
           <a href="">{{ r.id }}</a>
         </td>
         <td>
-          {{r.doc.json || r.doc.base64 | mnLimitTo: 200}}
+          {{r.doc.json !== undefined ? r.doc.json : r.doc.base64 | mnLimitTo: 200}
         </td>
         <td class="text-right nowrap">
           <button
