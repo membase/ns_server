@@ -315,17 +315,11 @@ handle_call(Msg, From, State) ->
     {noreply, NewState}.
 
 perform_very_long_call(Fun, Bucket) ->
-    misc:executing_on_new_process(
-      fun () ->
-              case ns_memcached_sockets_pool:take_socket(Bucket) of
-                  {ok, Sock} ->
-                      {reply, R} = Fun(Sock),
-                      ns_memcached_sockets_pool:put_socket(Sock),
-                      R;
-                  Error ->
-                      Error
-              end
-      end).
+    ns_memcached_sockets_pool:executing_on_socket(
+      fun (Sock) ->
+              {reply, Result} = Fun(Sock),
+              Result
+      end, Bucket).
 
 verify_report_long_call(StartTS, ActualStartTS, State, Msg, RV) ->
     try

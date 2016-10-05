@@ -21,7 +21,7 @@
 
 -export([start_link/0]).
 
--export([take_socket/0, take_socket/1, put_socket/1, executing_on_socket/1]).
+-export([executing_on_socket/1, executing_on_socket/2]).
 
 start_link() ->
     Options = [{name, ?MODULE},
@@ -37,6 +37,8 @@ take_socket() ->
             ns_memcached:connect()
     end.
 
+take_socket(undefined) ->
+    take_socket();
 take_socket(Bucket) ->
     case take_socket() of
         {ok, Socket} ->
@@ -54,12 +56,15 @@ put_socket(Socket) ->
     ns_connection_pool:put_socket(?MODULE, ns_memcached, Socket).
 
 executing_on_socket(Fun) ->
+    executing_on_socket(Fun, undefined).
+
+executing_on_socket(Fun, Bucket) ->
     misc:executing_on_new_process(
       fun () ->
-              case ns_memcached_sockets_pool:take_socket() of
+              case take_socket(Bucket) of
                   {ok, Sock} ->
                       Result = Fun(Sock),
-                      ns_memcached_sockets_pool:put_socket(Sock),
+                      put_socket(Sock),
                       Result;
                   Error ->
                       Error
