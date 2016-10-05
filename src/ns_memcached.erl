@@ -569,9 +569,6 @@ do_handle_call({get_from_replica, Key, VBucket}, _From, State) ->
 do_handle_call({sync, Key, VBucket, CAS}, _From, State) ->
     {reply, mc_client_binary:sync(State#state.sock, VBucket, Key, CAS), State};
 
-do_handle_call({set_flush_param, Key, Value}, _From, State) ->
-    Reply = mc_client_binary:set_flush_param(State#state.sock, Key, Value),
-    {reply, Reply, State};
 do_handle_call({set_vbucket, VBucket, VBState}, _From,
             #state{sock=Sock} = State) ->
     (catch master_activity_events:note_vbucket_state_change(State#state.bucket, node(), VBucket, VBState)),
