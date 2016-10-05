@@ -31,7 +31,7 @@
 </div>
 
 <div mn-spinner="!documentsControlCtl.state || documentsControlCtl.viewLoading">
-  <table class="table-stroked break-all">
+  <table class="table-stroked">
     <thead>
       <tr>
         <th>ID</th>
@@ -45,11 +45,11 @@
          ui-sref="app.admin.documents.editing({documentId: r.id})"
          ng-repeat="r in documentsControlCtl.state.docs.rows"
          ng-show="documentsControlCtl.state.docs.rows.length">
-        <td class="ellipsis">
+        <td class="break-all max-width-4">
           <a href="">{{ r.id }}</a>
         </td>
-        <td>
-          {{r.doc.json !== undefined ? r.doc.json : r.doc.base64 | mnLimitTo: 200}
+        <td class="break-all">
+          {{r.doc.json !== undefined ? r.doc.json : r.doc.base64 | mnLimitTo: 200}}
         </td>
         <td class="text-right nowrap">
           <button

@@ -57,7 +57,7 @@
         <tr
            ng-repeat-start="row in viewsListCtl.ddocs[viewsListCtl.type] | orderBy:'hostname' track by row.doc.meta.id"
            ng-if="viewsListCtl.ddocs.rows.length">
-          <td>{{row.doc.meta.id}}</td>
+          <td class="break-all">{{row.doc.meta.id}}</td>
           <td>{{row.doc.language || "javascript"}}</td>
           <td>
             <div ng-if="viewsListCtl.tasks[row.doc.meta.id][0].progress && rbac.cluster.tasks.read">
@@ -104,9 +104,8 @@
            ng-repeat="(key, view) in row.doc.json.views"
            ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">
           <td
-             class="padding-left-2"
              colspan="3"
-             class="ellipsis">
+             class="padding-left-2 break-all">
             <a href="">{{key}}</a>
           </td>
           <td class="text-right">

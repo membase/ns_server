@@ -183,6 +183,14 @@ footer {
   width: 100%;
 }
 
+.max-width-4 {
+  max-width: 16rem;
+}
+
+.max-width-3 {
+  max-width: 12rem;
+}
+
 /* LAYOUT HELPERS ------------------- */
 .indent-1 {
   margin-left: 1rem;

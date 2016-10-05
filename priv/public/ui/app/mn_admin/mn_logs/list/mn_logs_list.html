@@ -1,5 +1,5 @@
 <div mn-spinner="!logsListCtl.logs">
-  <table class="table-stroked break-all">
+  <table class="table-stroked">
     <thead>
       <tr>
         <th>Event</th>
@@ -10,7 +10,7 @@
     </thead>
     <tbody>
       <tr ng-repeat="row in logsListCtl.logs | orderBy:'serverTime':true track by $index">
-        <td>
+        <td class="break-all">
           <span
              ng-if="!logsListCtl.isOpened($index) && logsListCtl.isOverLimit(row)"
              >{{row.text | mnLimitTo: logsListCtl.textLimit}}</span>

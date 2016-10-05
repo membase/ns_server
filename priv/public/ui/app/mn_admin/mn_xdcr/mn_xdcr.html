@@ -26,8 +26,8 @@
            ng-if="xdcrCtl.references.filtered.length"
            ng-repeat="row in xdcrCtl.references.filtered | orderBy:'name' track by row.name">
           <tr>
-            <td>{{row.name}}</td>
-            <td>
+            <td class="break-all max-width-4">{{row.name}}</td>
+            <td class="break-all">
               <a href="{{ window.location.protocol + '//' + row.hostname + '/index.html#/analytics/?statsHostname=' + (row.hostname | encodeURIComponent) }}">{{row.hostname}}</a>
             </td>
             <td class="text-right">
@@ -81,7 +81,7 @@
            ng-if="adminCtl.tasks.tasksXDCR.length"
            ng-repeat="row in adminCtl.tasks.tasksXDCR track by row.id">
           <tr>
-            <td>{{row.source}}</td>
+            <td class="break-all max-width-4">{{row.source}}</td>
             <td class="text-center">{{"Version " + (row.replicationType === "xmem" ? "2" : row.replicationType === "capi" ? "1" : "unknown")}}</td>
             <td class="text-center">this cluster</td>
             <td class="text-center">{{xdcrCtl.to(row)}}</td>

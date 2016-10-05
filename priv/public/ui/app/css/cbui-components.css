@@ -72,10 +72,10 @@
   vertical-align: middle;
 }
 .ellipsis {
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  -o-text-overflow:ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -o-text-overflow: ellipsis;
 }
 /* ----------------COMPONENTS --------------- */
 
@@ -203,10 +203,10 @@ td.node_name a {
   text-decoration:none !important;
 }
 
-.expander:after {
+.expander:before {
   font-family:FontAwesome;
   content: "\f0d7";
-  font-size: 1.5rem;
+  font-size: 1.48rem;
   color: #aaa;
   position:relative;
   top: .25rem;
@@ -216,7 +216,7 @@ td.node_name a {
   line-height: .75rem;
 }
 
-.expander.closed:after {
+.expander.closed:before {
   font-family:FontAwesome;
   content: "\f0da";
   font-size: 1.5rem;
@@ -883,6 +883,12 @@ section.status-red .cbui-tablerow-statusmsg {
   position: relative;
   top: -3px;
   white-space: nowrap;
+}
+
+.label.cell-label {
+  display: inline;
+  top: auto;
+  position: static;
 }
 
 .label.lt-blue {

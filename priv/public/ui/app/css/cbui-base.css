@@ -673,8 +673,6 @@ a[disabled] {
 .link-heavy {
   font-weight:600;
   color: #4287d6;
-  display:inline-block;
-  white-space: nowrap;
 }
 
 /* buttons ------------------------ */
@@ -797,14 +795,15 @@ table td {
   vertical-align: middle;
 }
 
-table td.ellipsis {
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.break-all td {
-    word-break: break-all;
+.break-all {
+  -ms-word-break: break-all;
+  word-break: break-all;
+  /* Non standard for webkit */
+  word-break: break-word;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  -ms-hyphens: auto;
+  hyphens: auto;
 }
 
 .border-top {

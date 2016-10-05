@@ -46,21 +46,19 @@
                  }"
          ng-click="gsiCtl.toggleDetails(row.id)">
         <td
-           class="ellipsis"
+           class="break-all max-width-4"
            title="{{row.bucket}}">
-          <a
+          <span
              class="expander"
-             ng-class="{closed:!gsiCtl.isDetailsOpened(row.id)}">
-          </a>
-          <span>{{row.bucket}}</span>
+             ng-class="{closed:!gsiCtl.isDetailsOpened(row.id)}">{{row.bucket}}</span>
         </td>
         <td
-           class="ellipsis text-center"
+           class="text-center"
            title="{{row.hosts[0]}}">
           {{row.hosts[0]}}
         </td>
         <td
-           class="ellipsis text-center"
+           class="break-all text-center"
            title="{{row.index}}">
           {{row.index}}
         </td>

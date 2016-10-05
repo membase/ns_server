@@ -28,15 +28,11 @@
                  'no-stroke': bucketsListCtl.isDetailsOpened(bucket.name)
                  }"
        ng-click="bucketsListCtl.toggleDetails(bucket.name)">
-      <td class="ellipsis">
+      <td class="break-all max-width-4">
         <a
-           title="Show Bucket info"
-           class="expander"
-           ng-class="{closed:!bucketsListCtl.isDetailsOpened(bucket.name)}">
-        </a>
-        <a
+           ng-class="{closed:!bucketsListCtl.isDetailsOpened(bucket.name)}"
            ng-click="$event.stopPropagation()"
-           class="link-heavy text-medium"
+           class="link-heavy text-medium expander"
            title="View Analytics for {{ bucket.name }}"
            ui-sref="app.admin.analytics.list.graph({analyticsBucket: bucket.name })"
            ng-show="rbac.cluster.bucket[bucket.name].stats.read"
@@ -78,7 +74,6 @@
         <span ng-show="!buckets.isMembase">N/A</span>
       </td>
       <td
-         colspan="4"
          ng-if="buckets.isMembase"
          class="text-right">
         <a

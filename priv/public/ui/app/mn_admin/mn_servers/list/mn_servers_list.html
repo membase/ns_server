@@ -60,34 +60,31 @@
            class="node-status"
            ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]">
         </td>
-        <td class="ellipsis text-nowrap">
-          <a
-             ng-if="!serversListCtl.isNodeUnhealthy(node) && rbac.cluster.nodes.read"
-             title="Show Server Node info">
-            <span
-               class="expander"
-               ng-class="{closed: !serversCtl.isDetailsOpened(node.hostname)}">
+        <td class="ellipsis max-width-3">
+          <span ng-class="{
+                          closed: !serversCtl.isDetailsOpened(node.hostname),
+                          expander: !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.nodes.read
+                          }">
+            <span ng-if="serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read">
+              {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
             </span>
-          </a>
-          <span ng-if="serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read">
-            {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
+            <span ng-if="serversListCtl.isNodeUnhealthy(node) || !rbac.cluster.stats.read">
+              {{node.hostname}}
+            </span>
+            <a
+               ng-if="!serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read"
+               title="{{'View Analytics for ' + node.hostname}}"
+               class="link-heavy"
+               ng-click="$event.stopPropagation()"
+               ui-sref="app.admin.analytics.list.graph({statsHostname: node.hostname})">
+              {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
+            </a>
           </span>
-          <span ng-if="serversListCtl.isNodeUnhealthy(node) || !rbac.cluster.stats.read">
-            {{node.hostname}}
-          </span>
-          <a
-             ng-if="!serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read"
-             title="{{'View Analytics for ' + node.hostname}}"
-             class="link-heavy"
-             ng-click="$event.stopPropagation()"
-             ui-sref="app.admin.analytics.list.graph({statsHostname: node.hostname})">
-            {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
-          </a>
         </td>
-        <td>
+        <td class="ellipsis max-width-3">
           <span
              ng-show="serversCtl.mnPoolDefault.value.isGroupsAvailable"
-             class="label lt-blue"
+             class="label cell-label lt-blue"
              ng-show="rbac.cluster.server_groups.read"
              title="{{serversCtl.getGroupsByHostname[node.hostname].name}}">
             {{serversCtl.getGroupsByHostname[node.hostname].name}}
