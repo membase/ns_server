@@ -62,7 +62,12 @@
           if (!mnHttpConfig.isNotForm) {
             config.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
             if (!angular.isString(config.data)) {
-              config.data = $httpParamSerializerJQLike(config.data);
+              //Angular uses it's own method for encoding uri component which called
+              //encodeUriQuery. They need a custom method because encodeURIComponent
+              //is too aggressive and encodes stuff that doesn't have to be encoded per
+              //http://tools.ietf.org/html/rfc3986. However semicolon is important symbol
+              //for mochiweb, so we should encode it.
+              config.data = $httpParamSerializerJQLike(config.data).replace(/;/gi, '%3B');
             }
           }
         break;
