@@ -21,7 +21,7 @@
                                     mnGroupsService.createGroup(vm.groupName);
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
-        .catchGlobalErrors()
+        .catchErrors()
         .closeOnSuccess()
         .reloadState();
     }
