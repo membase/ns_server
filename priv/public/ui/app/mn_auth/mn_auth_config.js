@@ -19,7 +19,7 @@
     function interceptorOf401($q, $injector) {
       return {
         responseError: function (rejection) {
-          if (rejection.status === 401 && rejection.config.url !== "/pools" && $injector.get('$state').includes('app.admin')) {
+          if (rejection.status === 401 && rejection.config.url !== "/pools" && $injector.get('$state').includes('app.admin') && !rejection.config.headers["ignore-401"]) {
             $injector.get('mnAuthService').logout();
           }
           return $q.reject(rejection);
