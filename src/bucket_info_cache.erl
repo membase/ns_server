@@ -165,7 +165,13 @@ build_services(Node, Config, EnabledServices) ->
                   {indexStreamMaint, ns_config:search(Config, {node, Node, indexer_stmaint_port}, undefined)}
                  ];
              fts ->
-                 [{fts, ns_config:search(Config, {node, Node, fts_http_port}, undefined)}];
+                 [{fts, ns_config:search(Config, {node, Node, fts_http_port}, undefined)}] ++
+                     case ns_config:search(Config, {node, Node, fts_ssl_port}, undefined) of
+                         undefined ->
+                             [];
+                         Port ->
+                             [{ftsSSL, Port}]
+                     end;
              example ->
                  []
          end || S <- EnabledServices],

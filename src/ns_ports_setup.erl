@@ -605,6 +605,14 @@ fts_spec(Config) ->
             ok = misc:ensure_writable_dir(FTSIdxDir),
             {_, Host} = misc:node_name_host(node()),
             BindHttp = io_lib:format("~s:~b,0.0.0.0:~b", [Host, FtRestPort, FtRestPort]),
+            BindHttps = case ns_config:search(Config, {node, node(), fts_ssl_port}, undefined) of
+                            undefined ->
+                                [];
+                            Port ->
+                                ["-bindHttps=:" ++ integer_to_list(Port),
+                                 "-tlsCertFile=" ++ ns_ssl_services_setup:ssl_cert_key_path(),
+                                 "-tlsKeyFile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
+                        end,
             {ok, FTSMemoryQuota} = ns_storage_conf:get_memory_quota(Config, fts),
             Options = "startCheckServer=skip," ++
                       "slowQueryLogTimeout=5s," ++
@@ -625,7 +633,7 @@ fts_spec(Config) ->
                      "-auth=cbauth",
                      "-extra=" ++ io_lib:format("~s:~b", [Host, NsRestPort]),
                      "-options=" ++ Options
-                    ],
+                    ] ++ BindHttps,
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?FTS_LOG_FILENAME},
                      {env, build_go_env_vars(Config, fts)}]},
