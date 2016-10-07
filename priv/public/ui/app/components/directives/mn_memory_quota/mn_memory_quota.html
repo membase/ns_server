@@ -25,7 +25,6 @@
   <div class="form-inline">
     <input
        type="number"
-       min="0"
        id="kv_ram_quota"
        mn-focus
        ng-disabled="config.services && !config.services.model.kv || (rbac && !rbac.cluster.pools.write)"
@@ -74,7 +73,6 @@
   <div class="form-inline">
     <input
        type="number"
-       min="0"
        id="fts_ram_quota"
        mn-focus="config.services.model.kv === false && config.services.model.index  === false"
        ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)"

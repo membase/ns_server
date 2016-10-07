@@ -8,7 +8,7 @@
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentageFlag"
        ng-disabled="(rbac && !rbac.cluster.settings.write)">
     <input
-       type="number" min="0" max="100"
+       type="number"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentage"
        ng-class="{invalid: validationErrors.databaseFragmentationThreshold_percentage_}"
        ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.percentageFlag || (rbac && !rbac.cluster.settings.write)">
@@ -26,7 +26,7 @@
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.sizeFlag">
     <input
-       type="number" min="0"
+       type="number"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.size"
        ng-class="{invalid: validationErrors.databaseFragmentationThreshold_size_}"
        ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.sizeFlag || (rbac && !rbac.cluster.settings.write)">
@@ -49,7 +49,7 @@
        ng-model="autoCompactionSettings.viewFragmentationThreshold.percentage"
        ng-class="{invalid: validationErrors.viewFragmentationThreshold_percentage_}"
        ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.percentageFlag || (rbac && !rbac.cluster.settings.write)"
-       type="number" min="0" max="100">
+       type="number">
     <small> %</small>
     <div
        class="error"
@@ -64,7 +64,7 @@
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
        ng-model="autoCompactionSettings.viewFragmentationThreshold.sizeFlag">
     <input
-       type="number" min="0"
+       type="number"
        ng-model="autoCompactionSettings.viewFragmentationThreshold.size"
        ng-class="{invalid: validationErrors.viewFragmentationThreshold_size_}"
        ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.sizeFlag || (rbac && !rbac.cluster.settings.write)">
@@ -127,7 +127,7 @@
       </label>
       <br>
       <input
-         type="number" min="0" max="100"
+         type="number"
          ng-disabled="(rbac && !rbac.cluster.settings.write) || autoCompactionSettings.indexCircularCompactionFlag === true"
          ng-model="autoCompactionSettings.indexFragmentationThreshold.percentage"
          class="indent-1"> %

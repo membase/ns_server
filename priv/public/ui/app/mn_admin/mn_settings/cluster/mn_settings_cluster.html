@@ -50,7 +50,7 @@
         <div class="formrow width-300">
           <label for="index_settings_thread">Indexer Threads</label>
           <input
-             type="number" min="0"
+             type="number"
              ng-model="settingsClusterCtl.indexSettings.indexerThreads"
              ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
              id="index_settings_thread">
@@ -68,7 +68,7 @@
             Max Rollback Points
           </label>
           <input
-             type="number" min="0"
+             type="number"
              ng-model="settingsClusterCtl.indexSettings.maxRollbackPoints"
              ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
              id="in_memory_snapshot">
@@ -87,7 +87,7 @@
             Max Rollback Points
           </label>
           <input
-             type="number" min="0"
+             type="number"
              ng-model="settingsClusterCtl.indexSettings.maxRollbackPoints"
              ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
              id="in_memory_snapshot">

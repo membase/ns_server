@@ -39,8 +39,7 @@
            id="log-rotation-interval"
            ng-model="auditCtl.state.rotateInterval"
            ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
-           type="number"
-           min="0">
+           type="number">
         <select
            ng-model="auditCtl.state.rotateUnit"
            ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write">

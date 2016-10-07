@@ -8,8 +8,6 @@
          ng-model="autoCompactionSettings[mnPeriod].fromHour"
          ng-class="{invalid: errors[mnPeriod + '_fromHour_']}"
          type="number"
-         min="0"
-         max="23"
          required
          placeholder="HH"> &nbsp; : &nbsp;
       <input
@@ -18,8 +16,6 @@
          ng-model="autoCompactionSettings[mnPeriod].fromMinute"
          ng-class="{invalid: errors[mnPeriod + '_fromMinute_']}"
          type="number"
-         min="0"
-         max="59"
          required
          placeholder="MM">
     </div>
@@ -31,13 +27,11 @@
       <input
          class="width-2"
          type="number"
-         min="0"
-         max="23"
          placeholder="HH"
          required
          ng-class="{invalid: errors[mnPeriod + '_toHour_']}"
          ng-model="autoCompactionSettings[mnPeriod].toHour"
-         ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)" /> &nbsp; : &nbsp; 
+         ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)" /> &nbsp; : &nbsp;
       <input
          class="width-2"
          ng-class="{invalid: errors[mnPeriod + '_toMinute_']}"
@@ -45,8 +39,6 @@
          ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
          type="number"
          required
-         min="0"
-         max="59"
          placeholder="MM">
     </div>
   </div>
