@@ -23,7 +23,7 @@
   <div>
     <div class="interim row">
       <div class="ellipsis">{{documentsEditingCtl.state.title}}</div>
-      <div>
+      <div class="text-nowrap">
         <button
            ng-hide="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write === false"
            ng-disabled="documentsEditingCtl.isDeleteDisabled()"

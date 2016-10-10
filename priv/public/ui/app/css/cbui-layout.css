@@ -255,9 +255,8 @@ footer {
 
 .text-nowrap {
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+
 .flex-left {
 -webkit-box-pack: start;
 -webkit-justify-content: flex-start;
