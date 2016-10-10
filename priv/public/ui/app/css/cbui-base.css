@@ -312,10 +312,10 @@ button.icon {
     content: "\f05e";
 }
 .fa-running:before {
-    content: "\f04b";
+  content: "\f04c";
 }
 .fa-paused:before {
-    content: "\f04c";
+  content: "\f04b";
 }
 .fa-expand:before {
   content: "\f065";
