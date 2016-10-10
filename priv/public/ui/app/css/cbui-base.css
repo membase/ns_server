@@ -975,6 +975,10 @@ textarea {
   width: 100%;
 }
 
+textarea {
+  resize: vertical;
+}
+
 .input,
 input[type="email"],
 input[type="number"],
