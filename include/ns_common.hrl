@@ -211,4 +211,6 @@
 %% Points to latest release
 -define(LATEST_VERSION_NUM, ?SPOCK_VERSION_NUM).
 
+-define(DEFAULT_UI_COMPAT_VERSION, ?VERSION_45).
+
 -endif.

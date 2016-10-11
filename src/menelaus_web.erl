@@ -422,11 +422,13 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["index.html"] ->
                     {done, redirect_permanently("/ui/index.html", Req)};
                 ["ui", "index.html"] ->
-                    {ui, IsSSL, fun handle_ui_root/4, [AppRoot, Path, Plugins]};
+                    {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_45,
+                                                       Plugins]};
                 ["ui", "spock-index.html"] ->
-                    {ui, IsSSL, fun handle_spock_ui_root/4, [AppRoot, Path, Plugins]};
+                    {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?SPOCK_VERSION_NUM,
+                                                       Plugins]};
                 ["classic-index.html"] ->
-                    {ui, IsSSL, fun handle_classic_index_html/3, [AppRoot, Path]};
+                    {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_41, []]};
                 ["dot", Bucket] ->
                     {{[{bucket, Bucket}, settings], read}, fun handle_dot/2, [Bucket]};
                 ["dotsvg", Bucket] ->
@@ -834,8 +836,10 @@ serve_ui_env(Req) ->
                              {lists:ukeymerge(1, NodeSpecificUIEnv,
                                               lists:ukeymerge(1, GlobalUIEnv, UIEnvDefault))}).
 
-handle_ui_root(AppRoot, Path, Plugins, Req) ->
-    Filename = case use_minified(Req) of
+handle_ui_root(AppRoot, Path, UiCompatVersion, Plugins, Req)
+  when UiCompatVersion =:= ?VERSION_45;
+       UiCompatVersion =:= ?SPOCK_VERSION_NUM ->
+    Filename = case UiCompatVersion =:= ?VERSION_45 andalso use_minified(Req) of
                    true ->
                        filename:join([AppRoot, "ui", "index.min.html"]);
                    _ ->
@@ -845,16 +849,8 @@ handle_ui_root(AppRoot, Path, Plugins, Req) ->
       Req,
       "text/html; charset=utf8",
       menelaus_pluggable_ui:inject_head_fragments(Filename, Plugins),
-      [{"Cache-Control", "must-revalidate"}]).
-
-handle_spock_ui_root(AppRoot, Path, Plugins, Req) ->
-    menelaus_util:reply_ok(
-      Req,
-      "text/html; charset=utf8",
-      menelaus_pluggable_ui:inject_head_fragments(filename:join(AppRoot, Path), Plugins),
-      [{"Cache-Control", "must-revalidate"}]).
-
-handle_classic_index_html(AppRoot, Path, Req) ->
+      [{"Cache-Control", "must-revalidate"}]);
+handle_ui_root(AppRoot, Path, ?VERSION_41, [], Req) ->
     menelaus_util:serve_static_file(Req, {AppRoot, Path},
                                     "text/html; charset=utf8",
                                     [{"Cache-Control", "must-revalidate"}]).
