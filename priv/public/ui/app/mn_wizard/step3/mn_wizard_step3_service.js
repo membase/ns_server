@@ -42,11 +42,11 @@
       })
     }
 
-    function postBuckets(data) {
+    function postBuckets(data, url) {
       return $http({
         data: data,
         method: 'POST',
-        url: data.uri
+        url: url
       });
     }
   }

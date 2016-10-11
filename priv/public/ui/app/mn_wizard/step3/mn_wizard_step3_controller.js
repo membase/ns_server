@@ -5,8 +5,9 @@
     .module('mnWizard')
     .controller('mnWizardStep3Controller', mnWizardStep3Controller);
 
-  function mnWizardStep3Controller($scope, $state, mnWizardStep3Service, mnPromiseHelper) {
+  function mnWizardStep3Controller($scope, $state, mnWizardStep3Service, mnPromiseHelper, mnBucketsDetailsDialogService, pools) {
     var vm = this;
+    vm.pools = pools;
 
     vm.validationKeeper = {};
     vm.onSubmit = onSubmit;
@@ -18,7 +19,8 @@
         .applyToScope("bucketConf");
     }
     function onSubmit() {
-      var promise = mnWizardStep3Service.postBuckets(vm.bucketConf);
+      var params = mnBucketsDetailsDialogService.prepareBucketConfigForSaving(vm.bucketConf, null, null, pools);
+      var promise = mnWizardStep3Service.postBuckets(params, vm.bucketConf.uri);
       mnPromiseHelper(vm, promise)
         .showErrorsSensitiveSpinner()
         .getPromise()

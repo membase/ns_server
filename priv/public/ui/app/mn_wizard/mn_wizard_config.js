@@ -17,13 +17,15 @@
     'mnMemoryQuota',
     'mnStorageMode',
     'mnPoolDefault',
+    'mnPools',
     'mnMemoryQuotaService',
     'mnSettingsClusterService',
     'mnSpinner',
     'mnPromiseHelper',
     'mnFilters',
     'mnFocus',
-    'mnAboutDialog'
+    'mnAboutDialog',
+    'mnBucketsDetailsDialogService'
   ]).config(mnWizardConfig);
 
   function mnWizardConfig($stateProvider) {

@@ -26,13 +26,16 @@
         url: uri
       });
     }
-    function prepareBucketConfigForSaving(bucketConf, autoCompactionSettings) {
+    function prepareBucketConfigForSaving(bucketConf, autoCompactionSettings, poolDefault, pools) {
       var conf = {};
       angular.forEach(['bucketType', 'ramQuotaMB', 'name', 'evictionPolicy', 'authType', 'saslPassword', 'proxyPort', 'replicaNumber', 'replicaIndex', 'threadsNumber', 'flushEnabled', 'autoCompactionDefined', 'otherBucketsRamQuotaMB'], function (fieldName) {
         if (bucketConf[fieldName] !== undefined) {
           conf[fieldName] = bucketConf[fieldName];
         }
       });
+      if (bucketConf.isNew && bucketConf.bucketType === 'membase' && pools.isEnterprise && (bucketConf.isWizard || poolDefault.compat.atLeast46)) {
+        conf.conflictResolutionType = bucketConf.conflictResolutionType;
+      }
       if (conf.autoCompactionDefined) {
         _.extend(conf, mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings));
       }

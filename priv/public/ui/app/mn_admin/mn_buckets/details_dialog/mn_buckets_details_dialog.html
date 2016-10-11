@@ -4,10 +4,12 @@
   <div mn-spinner="bucketsDetailsDialogCtl.viewLoading || !bucketsDetailsDialogCtl.validationKeeper.result">
     <form ng-submit="bucketsDetailsDialogCtl.onSubmit()">
       <div
-        mn-buckets-form
-        bucket-conf="bucketsDetailsDialogCtl.bucketConf"
-        validation="bucketsDetailsDialogCtl.validationKeeper"
-        auto-compaction-settings="bucketsDetailsDialogCtl.autoCompactionSettings"></div>
+         mn-buckets-form
+         pool-default="poolDefault"
+         pools="pools"
+         bucket-conf="bucketsDetailsDialogCtl.bucketConf"
+         validation="bucketsDetailsDialogCtl.validationKeeper"
+         auto-compaction-settings="bucketsDetailsDialogCtl.autoCompactionSettings"></div>
       <div class="save_cancel">
         <button class="save_button float_right" type="submit">
           <span ng-show="bucketsDetailsDialogCtl.bucketConf.isNew">Create</span>
