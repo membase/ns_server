@@ -16,7 +16,7 @@
 -module(menelaus_pluggable_ui).
 
 -export([find_plugins/0,
-         inject_head_fragments/2,
+         inject_head_fragments/3,
          is_plugin/2,
          proxy_req/4,
          maybe_serve_file/4]).
@@ -42,10 +42,12 @@
 -type rest_api_prefix():: string().
 -type proxy_strategy() :: local.
 -type filter_op()      :: keep | drop.
--record(plugin, { name            :: service_name(),
-                  proxy_strategy  :: proxy_strategy(),
-                  rest_api_prefix :: rest_api_prefix(),
-                  doc_roots       :: [string()],
+-type ui_compat_version() :: [integer()].
+-record(plugin, { name                   :: service_name(),
+                  proxy_strategy         :: proxy_strategy(),
+                  rest_api_prefix        :: rest_api_prefix(),
+                  doc_roots              :: [string()],
+                  version_dirs           :: [{ui_compat_version(), string()}],
                   request_headers_filter :: {filter_op(), [string()]}}).
 -type plugin()  :: #plugin{}.
 -type plugins() :: [plugin()].
@@ -63,7 +65,6 @@
                                                               "content-type",
                                                               "pragma",
                                                               "referer"]}}).
-
 -spec find_plugins() -> plugins().
 find_plugins() ->
     SpecFiles = find_plugin_spec_files(),
@@ -109,6 +110,7 @@ validate_plugin_spec(KVs, Plugins) ->
                                                       KVs)),
     RestApiPrefix = binary_to_list(get_element(<<"rest-api-prefix">>, KVs)),
     DocRoots = decode_docroots(get_element(<<"doc-root">>, KVs)),
+    VersionDirs = decode_version_dirs(get_opt_element(<<"version-dirs">>, KVs)),
     ReqHdrFilter = decode_request_headers_filter(
                      get_opt_element(<<"request-headers-filter">>, KVs)),
     case {valid_service(ServiceName),
@@ -120,6 +122,7 @@ validate_plugin_spec(KVs, Plugins) ->
                      proxy_strategy = ProxyStrategy,
                      rest_api_prefix = RestApiPrefix,
                      doc_roots = DocRoots,
+                     version_dirs = VersionDirs,
                      request_headers_filter = ReqHdrFilter} | Plugins];
         {true, #plugin{}} ->
             ?log_info("Pluggable UI specification for ~p not loaded, "
@@ -144,7 +147,7 @@ get_opt_element(Key, KVs) ->
     case lists:keyfind(Key, 1, KVs) of
         {Key, Val} ->
             Val;
-         false ->
+        false ->
             undefined
     end.
 
@@ -165,6 +168,13 @@ decode_docroots(Prefix, Root) ->
 
 create_docroot(Prefix, Root) ->
     filename:join(Prefix, binary_to_list(Root)).
+
+decode_version_dirs(undefined) ->
+    [{?DEFAULT_UI_COMPAT_VERSION, "."}];
+decode_version_dirs(VersionDirs) ->
+    [{get_element(<<"version">>, VersionDir),
+      binary_to_list(get_element(<<"dir">>, VersionDir))} ||
+        {VersionDir} <- VersionDirs].
 
 decode_request_headers_filter(undefined) ->
     ?DEF_REQ_HEADERS_FILTER;
@@ -376,32 +386,39 @@ find_plugin(Prefix, Plugins, KeyPos) ->
 %%% =============================================================
 %%%
 
--spec inject_head_fragments(file:filename_all(), plugins()) -> [binary()].
-inject_head_fragments(File, Plugins) ->
+-spec inject_head_fragments(file:filename_all(), ui_compat_version(), plugins()) -> [binary()].
+inject_head_fragments(File, UiCompatVersion, Plugins) ->
     {ok, Index} = file:read_file(File),
     [Head, Tail] = split_index(Index),
-    [Head, head_fragments(Plugins), Tail].
+    [Head, head_fragments(UiCompatVersion, Plugins), Tail].
 
 split_index(Bin) ->
     binary:split(Bin, ?HEAD_MARKER).
 
-head_fragments(Plugins) ->
-    [head_fragment(P) || P <- Plugins].
+head_fragments(UiCompatVersion, Plugins) ->
+    [head_fragment(UiCompatVersion, P) || P <- Plugins].
 
-head_fragment(#plugin{doc_roots = []}) ->
+head_fragment(_UiCompatVersion, #plugin{doc_roots = []}) ->
     [];
-head_fragment(#plugin{name = Service, doc_roots = DocRoot}) ->
-    create_service_block(Service, find_head_fragments(Service, DocRoot)).
+head_fragment(UiCompatVersion, #plugin{name = Service, doc_roots = DocRoots,
+                                       version_dirs = VersionDirs}) ->
+    VersionDir = proplists:get_value(UiCompatVersion, VersionDirs),
+    create_service_block(Service, find_head_fragments(Service, DocRoots, VersionDir)).
 
-find_head_fragments(Service, [DocRoot|DocRoots]) ->
-    [must_get_fragment(Service, DocRoot)
-     | maybe_get_fragments(DocRoots)].
+find_head_fragments(Service, _, undefined) ->
+    Msg = io_lib:format("Pluggable component for service ~p is not supported for "
+                        "this UI compat version", [Service]),
+    ?log_error(Msg),
+    html_comment(Msg);
+find_head_fragments(Service, [DocRoot|DocRoots], VersionDir) ->
+    [must_get_fragment(Service, DocRoot, VersionDir)
+     | maybe_get_fragments(DocRoots, VersionDir)].
 
-maybe_get_fragments(DocRoots) ->
-    [maybe_get_head_fragment(DocRoot) || DocRoot <- DocRoots].
+maybe_get_fragments(DocRoots, VersionDir) ->
+    [maybe_get_head_fragment(DocRoot, VersionDir) || DocRoot <- DocRoots].
 
-must_get_fragment(Service, DocRoot) ->
-    Path = filename:join(DocRoot, ?HEAD_FRAG_HTML),
+must_get_fragment(Service, DocRoot, VersionDir) ->
+    Path = filename:join([DocRoot, VersionDir, ?HEAD_FRAG_HTML]),
     handle_must_get_fragment(Service, Path, file:read_file(Path)).
 
 handle_must_get_fragment(_Service, File, {ok, Bin}) ->
@@ -413,8 +430,8 @@ handle_must_get_fragment(Service, File, {error, Reason}) ->
     ?log_error(Msg),
     html_comment(Msg).
 
-maybe_get_head_fragment(DocRoot) ->
-    Path = filename:join(DocRoot, ?HEAD_FRAG_HTML),
+maybe_get_head_fragment(DocRoot, VersionDir) ->
+    Path = filename:join([DocRoot, VersionDir, ?HEAD_FRAG_HTML]),
     handle_maybe_get_fragment(Path, file:read_file(Path)).
 
 handle_maybe_get_fragment(File, {ok, Bin}) ->
