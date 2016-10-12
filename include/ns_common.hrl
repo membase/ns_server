@@ -204,8 +204,9 @@
 -define(VERSION_40, [4, 0]).
 -define(VERSION_41, [4, 1]).
 -define(VERSION_45, [4, 5]).
+-define(VERSION_46, [4, 6]).
 
 %% Points to latest release
--define(LATEST_VERSION_NUM, ?VERSION_45).
+-define(LATEST_VERSION_NUM, ?VERSION_46).
 
 -endif.

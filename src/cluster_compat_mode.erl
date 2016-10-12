@@ -35,6 +35,8 @@
          is_cluster_41/1,
          is_cluster_45/0,
          is_version_45/1,
+         is_cluster_46/0,
+         is_version_46/1,
          is_enterprise/0,
          is_goxdcr_enabled/0,
          is_goxdcr_enabled/1,
@@ -103,6 +105,12 @@ is_version_45(ClusterVersion) ->
 
 is_cluster_45() ->
     is_enabled(?VERSION_45).
+
+is_version_46(ClusterVersion) ->
+    is_enabled_at(ClusterVersion, ?VERSION_46).
+
+is_cluster_46() ->
+    is_enabled(?VERSION_46).
 
 is_index_aware_rebalance_on() ->
     not ns_config:read_key_fast(index_aware_rebalance_disabled, false).
