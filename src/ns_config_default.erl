@@ -621,7 +621,7 @@ encrypt_and_save(Config) ->
             ns_config:save_config_sync([EncryptedConfig], DirPath),
             encryption_service:maybe_clear_backup_key(DataKey);
         false ->
-            ns_config:save_config_sync(Dynamic, DirPath)
+            ns_config:save_config_sync([Dynamic], DirPath)
     end.
 
 decrypt(Config) ->
