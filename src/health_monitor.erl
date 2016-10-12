@@ -30,9 +30,10 @@
 -export([common_init/1, common_init/2,
          is_active/1,
          process_nodes_wanted/2,
-         all_monitors/0,
-         get_module/1,
+         local_monitors/0,
+         node_monitors/1,
          supported_services/0,
+         get_module/1,
          send_heartbeat/2, send_heartbeat/3]).
 
 -record(state, {
@@ -137,10 +138,12 @@ send_heartbeat(MonModule, SendNodes) ->
 send_heartbeat(MonModule, SendNodes, Payload) ->
     send_heartbeat_inner(MonModule, SendNodes, {heartbeat, node(), Payload}).
 
-all_monitors() ->
+local_monitors() ->
+    node_monitors(node()).
+
+node_monitors(Node) ->
     Services = [S || S <- supported_services(),
-                     ns_cluster_membership:should_run_service(S,
-                                                              node())],
+                     ns_cluster_membership:should_run_service(S, Node)],
     [ns_server] ++ Services.
 
 supported_services() ->

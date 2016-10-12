@@ -110,7 +110,7 @@ latest_status(NodesWanted) ->
                     fun (Monitor, Acc) ->
                             Module = health_monitor:get_module(Monitor),
                             [{Monitor, Module:get_nodes()} | Acc]
-                    end, [], health_monitor:all_monitors()),
+                    end, [], health_monitor:local_monitors()),
     lists:foldl(
       fun (Node, Acc1) ->
               Status = lists:foldl(
@@ -127,4 +127,3 @@ node_status(Node, Dict) ->
         _ ->
             []
     end.
-
