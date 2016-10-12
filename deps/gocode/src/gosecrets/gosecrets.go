@@ -10,9 +10,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/pbkdf2"
 	"io"
 	"os"
+
+	"golang.org/x/crypto/pbkdf2"
 )
 
 const keySize = 32
