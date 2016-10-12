@@ -120,6 +120,12 @@
           $rootScope.$broadcast("mnTasksDetailsChanged");
         }
         var rebalanceError = tasks.tasksRebalance && tasks.tasksRebalance.status !== 'running' && tasks.tasksRebalance.errorMessage;
+        var isRebalanceFinished =
+            tasks.tasksRebalance && tasks.tasksRebalance.status !== 'running' &&
+            prevTask && prevTask.tasksRebalance && prevTask.tasksRebalance.status === "running";
+        if (isRebalanceFinished) {
+          $rootScope.$broadcast("rebalanceFinished");
+        }
         if (
           rebalanceError && prevTask && prevTask.tasksRebalance && prevTask.tasksRebalance.status === "running"
         ) {

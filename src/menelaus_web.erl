@@ -413,6 +413,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[admin, diag], read}, fun diag_handler:handle_diag_ale/1};
                 ["diag", "masterEvents"] ->
                     {{[admin, diag], read}, fun diag_handler:handle_diag_master_events/1};
+                ["diag", "password"] ->
+                    {done, diag_handler:handle_diag_get_password(Req)};
                 ["pools", "default", "rebalanceProgress"] ->
                     {{[tasks], read}, fun handle_rebalance_progress/2, ["default"]};
                 ["pools", "default", "tasks"] ->
@@ -495,6 +497,12 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["node", "controller", "reloadCertificate"] ->
                     {{[admin, setup], write},
                      fun menelaus_web_cert:handle_reload_node_certificate/1};
+                ["node", "controller", "changeMasterPassword"] ->
+                    {{[admin, security], write},
+                     fun menelaus_web_secrets:handle_change_master_password/1};
+                ["node", "controller", "rotateDataKey"] ->
+                    {{[admin, security], write},
+                     fun menelaus_web_secrets:handle_rotate_data_key/1};
                 ["settings", "web"] ->
                     {{[admin, setup], write}, fun handle_settings_web_post/1};
                 ["settings", "alerts"] ->

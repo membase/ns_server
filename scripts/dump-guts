@@ -540,7 +540,6 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     MCDDefaults = search_config_for_node(NSConfig, Node, memcached_defaults, []),
     MCDPort = search_config(MCDConfig, dedicated_port, ""),
     MCDAdmin = search_config(MCDConfig, admin_user, ""),
-    MCDPass = search_config(MCDConfig, admin_pass, ""),
     MCDLogs = search_config(MCDConfig, log_path, ""),
 
     %% Minidump path can be overridden both globally and per-node, so have
@@ -600,7 +599,6 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
          {ns_log, iolist_to_binary(io_lib:format("~p", [NSLog]))},
          {log_path, search_config(StaticTerms, error_logger_mf_dir, "")},
          {memcached_admin, MCDAdmin},
-         {memcached_pass, MCDPass},
          {memcached_logs_path, MCDLogs},
          {memcached_breakpad_minidump_dir, PerNodeMDD},
          {nodes, string:join(Nodes, ",")},

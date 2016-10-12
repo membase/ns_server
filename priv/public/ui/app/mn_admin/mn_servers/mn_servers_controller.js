@@ -80,7 +80,7 @@
       })
       .setInterval(10000)
       .subscribe("autoFailoverSettings", vm)
-      .reloadOnScopeEvent("reloadServersPoller")
+      .reloadOnScopeEvent(["reloadServersPoller", "rebalanceFinished"])
       .cycle();
 
       $scope.$on("reloadServersPoller", function () {

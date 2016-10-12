@@ -70,6 +70,8 @@ class Task(object):
         self.command = command
         self.timeout = timeout
         self.__dict__.update(kwargs)
+        if not hasattr(self, 'command_to_print'):
+            self.command_to_print = self.command
 
     def execute(self, fp):
         """Run the task"""
@@ -96,7 +98,7 @@ class Task(object):
             # setting non-zero status code. It's might also
             # automatically handle things like "failed to fork due
             # to some system limit".
-            print >> fp, "Failed to execute %s: %s" % (self.command, e)
+            print >> fp, "Failed to execute %s: %s" % (self.command_to_print, e)
             return 127
         p.stdin.close()
 
@@ -129,7 +131,7 @@ class Task(object):
                 # timer is fired; that would result in a spurious timeout
                 # message
                 if timer_fired.isSet():
-                    print >> fp, "`%s` timed out after %s seconds" % (self.command, self.timeout)
+                    print >> fp, "`%s` timed out after %s seconds" % (self.command_to_print, self.timeout)
 
         return p.wait()
 
@@ -197,12 +199,7 @@ class TaskRunner(object):
     def run(self, task):
         """Run a task with a file descriptor corresponding to its log file"""
         if task.will_run():
-            if hasattr(task, 'command_to_print'):
-                command_to_print = task.command_to_print
-            else:
-                command_to_print = task.command
-
-            log("%s (%s) - " % (task.description, command_to_print), end='')
+            log("%s (%s) - " % (task.description, task.command_to_print), end='')
             if task.privileged and os.getuid() != 0:
                 log("skipped (needs root privs)")
                 return
@@ -214,7 +211,7 @@ class TaskRunner(object):
 
             fp = self.get_file(filename)
             if not task.no_header:
-                self.header(fp, task.description, command_to_print)
+                self.header(fp, task.description, task.command_to_print)
 
             for i in xrange(task.num_samples):
                 if i > 0:
@@ -225,7 +222,7 @@ class TaskRunner(object):
             fp.flush()
 
         elif self.verbosity >= 2:
-            log('Skipping "%s" (%s): not for platform %s' % (task.description, command_to_print, sys.platform))
+            log('Skipping "%s" (%s): not for platform %s' % (task.description, task.command_to_print, sys.platform))
 
     def zip(self, filename, node):
         """Write all our logs to a zipfile"""
@@ -305,6 +302,32 @@ def make_curl_task(name, user, password, url,
                      timeout=timeout,
                      log_file=log_file,
                      command_to_print=make_cmd("*****"), **kwargs)
+
+def make_cbstats_task(kind, memcached_pass, guts):
+    port = read_guts(guts, "memcached_port")
+    user = read_guts(guts, "memcached_admin")
+    def make_cmd(pwd):
+        return flatten(["cbstats", "-a", "127.0.0.1:%s" % port, kind, "-b", user, "-p", pwd])
+    return AllOsTask("memcached stats %s" % kind,
+                     make_cmd(memcached_pass),
+                     log_file="stats.log",
+                     timeout=60,
+                     command_to_print=make_cmd("*****"))
+
+def get_diag_password(port):
+    import subprocess
+    import StringIO
+
+    url = "http://127.0.0.1:%s/diag/password" % port
+    command = ["curl", "-sS", "--proxy", "", url]
+
+    task = AllOsTask("get diag password", command, timeout=60)
+    output = StringIO.StringIO()
+    if task.execute(output) == 0:
+        return output.getvalue()
+    else:
+        log(output.getvalue())
+        return ""
 
 def make_query_task(statement, user, password, port):
     url = "http://127.0.0.1:%s/query/service?statement=%s" % (port, urllib.quote(statement))
@@ -455,7 +478,7 @@ def make_os_tasks():
         LinuxTask("Relevant proc data", "echo %(programs)s | "
                   "xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; cat /proc/$1/status; cat /proc/$1/limits; cat /proc/$1/smaps; cat /proc/$1/numa_maps; cat /proc/$1/task/*/sched; echo' --" % locals()),
         LinuxTask("Processes' environment", "echo %(programs)s | "
-                  r"xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; ( cat /proc/$1/environ | tr \\0 \\n ); echo' --" % locals()),
+                  r"xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; ( cat /proc/$1/environ | tr \\0 \\n | grep -v ^CB_MASTER_PASSWORD= ); echo' --" % locals()),
         LinuxTask("NUMA data", "numactl --hardware"),
         LinuxTask("NUMA data", "numactl --show"),
         LinuxTask("NUMA data", "cat /sys/devices/system/node/node*/numastat"),
@@ -518,7 +541,7 @@ def make_stats_archives_task(guts, initargs_path):
                      no_header=True,
                      log_file="stats_archives.json")
 
-def make_product_task(guts, initargs_path, options):
+def make_product_task(guts, initargs_path, memcached_pass, options):
     root = os.path.abspath(os.path.join(initargs_path, "..", "..", "..", ".."))
     dbdir = os.path.realpath(read_guts(guts, "db_dir"))
     viewdir = os.path.realpath(read_guts(guts, "idx_dir"))
@@ -547,7 +570,7 @@ def make_product_task(guts, initargs_path, options):
     if query_port:
         def make(statement):
             return make_query_task(statement, user="@",
-                                   password=read_guts(guts, "memcached_pass"),
+                                   password=memcached_pass,
                                    port=query_port)
 
         query_tasks = [make("SELECT * FROM system:datastores"),
@@ -558,20 +581,23 @@ def make_product_task(guts, initargs_path, options):
     index_tasks = []
     index_port = read_guts(guts, "indexer_http_port")
     if index_port:
-        password = read_guts(guts, "memcached_pass")
-        index_tasks = [make_index_task("Index definitions are: ", "getIndexStatus", password, index_port),
-                       make_index_task("Indexer settings are: ", "settings", password, index_port),
-                       make_index_task("Index storage stats are: ", "stats/storage", password, index_port),
-                       make_index_task("MOI allocator stats are: ", "stats/storage/mm", password, index_port),
+        index_tasks = [make_index_task("Index definitions are: ", "getIndexStatus",
+                                       memcached_pass, index_port),
+                       make_index_task("Indexer settings are: ", "settings",
+                                       memcached_pass, index_port),
+                       make_index_task("Index storage stats are: ", "stats/storage",
+                                       memcached_pass, index_port),
+                       make_index_task("MOI allocator stats are: ", "stats/storage/mm",
+                                       memcached_pass, index_port),
                        make_index_task("Indexer Go routine dump: ", "debug/pprof/goroutine?debug=1",
-                                       password, index_port, logfile="indexer_pprof.log")]
+                                       memcached_pass, index_port, logfile="indexer_pprof.log")]
 
     projector_tasks = []
     proj_port = read_guts(guts, "projector_port")
     if proj_port:
         proj_url = 'http://127.0.0.1:%s/debug/pprof/goroutine?debug=1' % proj_port
         projector_tasks = [make_curl_task(name="Projector Go routine dump ",
-                                          user="@", password=read_guts(guts, "memcached_pass"),
+                                          user="@", password=memcached_pass,
                                           url=proj_url, log_file="projector_pprof.log")]
 
     fts_tasks = []
@@ -579,7 +605,7 @@ def make_product_task(guts, initargs_path, options):
     if fts_port:
         url='http://127.0.0.1:%s/api/diag' % fts_port
         fts_tasks = [make_curl_task(name="FTS /api/diag: ",
-                                    user="@", password=read_guts(guts, "memcached_pass"),
+                                    user="@", password=memcached_pass,
                                     url=url,
                                     log_file="fts_diag.json", no_header=True)]
 
@@ -632,14 +658,14 @@ def make_product_task(guts, initargs_path, options):
 
         make_curl_task(name="couchbase diags",
                        user="@",
-                       password=read_guts(guts, "memcached_pass"),
+                       password=memcached_pass,
                        timeout=600,
                        url=diag_url,
                        log_file="diag.log"),
 
         make_curl_task(name="master events",
                        user="@",
-                       password=read_guts(guts, "memcached_pass"),
+                       password=memcached_pass,
                        timeout=300,
                        url='http://127.0.0.1:%s/diag/masterEvents?o=1' % read_guts(guts, "rest_port"),
                        log_file="master_events.log",
@@ -647,7 +673,7 @@ def make_product_task(guts, initargs_path, options):
 
         make_curl_task(name="ale configuration",
                        user="@",
-                       password=read_guts(guts, "memcached_pass"),
+                       password=memcached_pass,
                        url='http://127.0.0.1:%s/diag/ale' % read_guts(guts, "rest_port"),
                        log_file="couchbase.log"),
 
@@ -663,11 +689,7 @@ def make_product_task(guts, initargs_path, options):
                       "goxdcr.log", "query.log", "projector.log", "indexer.log",
                       "fts.log", "metakv.log"]],
 
-        [AllOsTask("memcached stats %s" % kind,
-
-                   flatten(["cbstats", "-a", "127.0.0.1:%s" % read_guts(guts, "memcached_port"), kind, "-b", read_guts(guts, "memcached_admin"), "-p", read_guts(guts, "memcached_pass")]),
-                   log_file="stats.log",
-                   timeout=60)
+        [make_cbstats_task(kind, memcached_pass, guts)
          for kind in ["all", "allocator", "checkpoint", "config",
                       "dcp", "dcpagg",
                       ["diskinfo", "detail"], ["dispatcher", "logs"],
@@ -683,7 +705,7 @@ def make_product_task(guts, initargs_path, options):
         [AllOsTask("memcached mcstat %s" % kind,
                    flatten(["mcstat", "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
                             "-u", read_guts(guts, "memcached_admin"),
-                            "-P", read_guts(guts, "memcached_pass"), kind]),
+                            "-P", memcached_pass, kind]),
                    log_file="stats.log",
                    timeout=60)
          for kind in ["connections"]],
@@ -713,7 +735,7 @@ def make_product_task(guts, initargs_path, options):
         [AllOsTask("mctimings",
                    ["mctimings",
                     "-u", read_guts(guts, "memcached_admin"),
-                    "-P", read_guts(guts, "memcached_pass"),
+                    "-P", memcached_pass,
                     "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
                     "-v"] + stat,
                    log_file="stats.log",
@@ -786,7 +808,7 @@ def dump_utilities(*args, **kwargs):
         def __getattr__(self, name):
             return None
 
-    tasks = make_os_tasks() + make_product_task({}, "", FakeOptions())
+    tasks = make_os_tasks() + make_product_task({}, "", "", FakeOptions())
 
     for task in tasks:
         utility = guess_utility(task.command)
@@ -1043,13 +1065,15 @@ def main():
 
         guts_initargs_path = prefix
 
+    memcached_password =  get_diag_password(read_guts(guts, "rest_port"))
+
     zip_node = read_guts(guts, "node")
     runner.run(
         AllOsTask("product diag header",
                   "",
                   literal = "Found server initargs at %s (%d)" % (guts_initargs_path, len(guts))))
 
-    for task in make_product_task(guts, guts_initargs_path, options):
+    for task in make_product_task(guts, guts_initargs_path, memcached_password, options):
         runner.run(task)
 
     # Collect breakpad crash dumps.

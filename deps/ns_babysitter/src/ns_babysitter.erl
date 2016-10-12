@@ -52,13 +52,8 @@ start(_, _) ->
         end,
 
     ?log_info("babysitter cookie: ~p~n", [Cookie]),
-    case application:get_env(cookiefile) of
-        {ok, CookieFile} ->
-            misc:atomic_write_file(CookieFile, erlang:atom_to_list(Cookie) ++ "\n"),
-            ?log_info("Saved babysitter cookie to ~s", [CookieFile]);
-        _ ->
-            ok
-    end,
+    maybe_write_file(cookiefile, Cookie, "babysitter cookie"),
+    maybe_write_file(nodefile, node(), "babysitter node name"),
 
     % Clear the HTTP proxy environment variables as they are honored, when they
     % are set, by the golang net/http package.
@@ -66,6 +61,16 @@ start(_, _) ->
     true = os:unsetenv("https_proxy"),
 
     ns_babysitter_sup:start_link().
+
+maybe_write_file(Env, Content, Name) ->
+    case application:get_env(Env) of
+        {ok, File} ->
+            filelib:ensure_dir(File),
+            misc:atomic_write_file(File, erlang:atom_to_list(Content) ++ "\n"),
+            ?log_info("Saved ~s to ~s", [Name, File]);
+        _ ->
+            ok
+    end.
 
 log_pending() ->
     receive

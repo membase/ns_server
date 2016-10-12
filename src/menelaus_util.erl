@@ -68,7 +68,9 @@
          get_values/1,
          return_value/3,
          return_error/3,
-         format_server_time/2]).
+         format_server_time/2,
+         ensure_local/1,
+         reply_global_error/2]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
@@ -499,3 +501,15 @@ format_server_time({{YYYY, MM, DD}, {Hour, Min, Sec}}, MicroSecs) ->
     list_to_binary(
       io_lib:format("~4.4.0w-~2.2.0w-~2.2.0wT~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0wZ",
                     [YYYY, MM, DD, Hour, Min, Sec, MicroSecs div 1000])).
+
+ensure_local(Req) ->
+    case Req:get(peer) of
+        "127.0.0.1" ->
+            ok;
+        _ ->
+            erlang:throw({web_exception, 400, <<"API is accessible from localhost only">>, []})
+    end.
+
+reply_global_error(Req, Error) when is_list(Error) ->
+    menelaus_util:reply_json(
+      Req, {struct, [{errors, {struct, [{<<"_">>, list_to_binary(Error)}]}}]}, 400).

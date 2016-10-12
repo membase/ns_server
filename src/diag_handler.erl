@@ -31,6 +31,7 @@
          handle_diag_eval/1,
          handle_diag_master_events/1,
          handle_diag_vbuckets/1,
+         handle_diag_get_password/1,
          arm_timeout/2, arm_timeout/1, disarm_timeout/1,
          grab_process_info/1, manifest/0,
          grab_all_tap_and_checkpoint_stats/0,
@@ -914,6 +915,10 @@ handle_diag_vbuckets(Req) ->
         _ ->
             menelaus_util:reply_json(Req, JSON, 200, ExtraHeaders)
     end.
+
+handle_diag_get_password(Req) ->
+    menelaus_util:ensure_local(Req),
+    menelaus_util:reply_text(Req, ns_config_auth:get_password(special), 200).
 
 -ifdef(EUNIT).
 

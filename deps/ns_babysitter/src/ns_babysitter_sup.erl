@@ -30,10 +30,17 @@ init([]) ->
 
 child_specs() ->
     [{ns_crash_log, {ns_crash_log, start_link, []},
-      permanent, 1000, worker, []},
-     {child_ns_server_sup, {child_ns_server_sup, start_link, []},
-      permanent, infinity, supervisor, []},
-     {ns_child_ports_sup, {ns_child_ports_sup, start_link, []},
-      permanent, infinity, supervisor, []},
-     {ns_ports_manager, {ns_ports_manager, start_link, []},
-      permanent, 1000, worker, []}].
+      permanent, 1000, worker, []}] ++
+        case ns_config_default:init_is_enterprise() of
+            true ->
+                [{encryption_service, {encryption_service, start_link, []},
+                  permanent, 1000, worker, []}];
+            false ->
+                []
+        end ++
+        [{child_ns_server_sup, {child_ns_server_sup, start_link, []},
+          permanent, infinity, supervisor, []},
+         {ns_child_ports_sup, {ns_child_ports_sup, start_link, []},
+          permanent, infinity, supervisor, []},
+         {ns_ports_manager, {ns_ports_manager, start_link, []},
+          permanent, 1000, worker, []}].
