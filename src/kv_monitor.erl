@@ -19,7 +19,8 @@
 -include("ns_common.hrl").
 
 -export([start_link/0]).
--export([get_nodes/0]).
+-export([get_nodes/0,
+         analyze_status/2]).
 
 -export([init/0, handle_call/4, handle_cast/3, handle_info/3]).
 
@@ -55,7 +56,56 @@ handle_info(Info, Statuses, _Nodes) ->
 get_nodes() ->
     gen_server:call(?MODULE, get_nodes).
 
+analyze_status(Node, AllNodes) ->
+    Buckets = ns_bucket:node_bucket_names(Node),
+
+    %% Initially, all buckets are considered not ready.
+    case get_not_ready_buckets(AllNodes, Node, Buckets) of
+        [] ->
+            %% All buckets are active or ready
+            healthy;
+        Buckets ->
+            %% None of the buckets are active or ready
+            unhealthy;
+        NotReadyBuckets ->
+            {not_ready, NotReadyBuckets}
+    end.
+
 %% Internal functions
+get_not_ready_buckets(_, _, []) ->
+    [];
+get_not_ready_buckets([], _, NotReadyBuckets) ->
+    NotReadyBuckets;
+get_not_ready_buckets([{_OtherNode, inactive, _} | Rest], Node,
+                      NotReadyBuckets) ->
+    %% Consider OtherNode's view  only if it itself is active.
+    get_not_ready_buckets(Rest, Node, NotReadyBuckets);
+get_not_ready_buckets([{_OtherNode, _, OtherNodeView} | Rest], Node,
+                      NotReadyBuckets) ->
+    NodeStatus = proplists:get_value(Node, OtherNodeView, []),
+    case proplists:get_value(kv, NodeStatus, unknown) of
+        unknown ->
+            get_not_ready_buckets(Rest, Node, NotReadyBuckets);
+        [] ->
+            get_not_ready_buckets(Rest, Node, NotReadyBuckets);
+        BucketList ->
+            %% Remove active/ready buckets from NotReadyBuckets list.
+            NotReady = lists:filter(
+                         fun (Bucket) ->
+                                 case lists:keyfind(Bucket, 1, BucketList) of
+                                     false ->
+                                         true;
+                                     {Bucket, active} ->
+                                         false;
+                                     {Bucket, ready} ->
+                                         false;
+                                     _ ->
+                                         true
+                                 end
+                         end, NotReadyBuckets),
+            get_not_ready_buckets(Rest, Node, NotReady)
+    end.
+
 handle_refresh_status(NodesWanted) ->
     NodesDict = get_dcp_traffic_status(),
 
