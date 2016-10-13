@@ -668,9 +668,10 @@ handle_cast(start_completed, #state{start_time=Start,
 handle_info(check_started, #state{status=Status} = State)
   when Status =:= connected orelse Status =:= warmed ->
     {noreply, State};
-handle_info(check_started, #state{timer=Timer, sock=Sock} = State) ->
+handle_info(check_started,
+            #state{timer=Timer, bucket=Bucket, sock=Sock} = State) ->
     Stats = retrieve_warmup_stats(Sock),
-    case has_started(Stats) of
+    case has_started(Stats, Bucket) of
         true ->
             {ok, cancel} = timer2:cancel(Timer),
             misc:flush(check_started),
@@ -1365,10 +1366,35 @@ server(Bucket) ->
 retrieve_warmup_stats(Sock) ->
     mc_client_binary:stats(Sock, <<"warmup">>, fun (K, V, Acc) -> [{K, V}|Acc] end, []).
 
-has_started({memcached_error, key_enoent, _}) ->
+simulate_slow_warmup(Bucket) ->
+    TestCondition = {ep_slow_bucket_warmup, Bucket},
+    case testconditions:get(TestCondition) of
+        false ->
+            false;
+        0 ->
+            false;
+        Delay ->
+            NewDelay = case Delay =< ?CHECK_WARMUP_INTERVAL of
+                           true ->
+                               0;
+                           _ ->
+                               Delay - ?CHECK_WARMUP_INTERVAL
+                       end,
+            ?log_debug("Simulating slow warmup of bucket ~p. Pending delay ~p seconds", [Bucket, Delay/1000]),
+            testconditions:set(TestCondition, NewDelay),
+            true
+    end.
+has_started({memcached_error, key_enoent, _}, _) ->
     %% this is memcached bucket, warmup is done :)
     true;
-has_started({ok, WarmupStats}) ->
+has_started(Stats, Bucket) ->
+    case simulate_slow_warmup(Bucket) of
+        false ->
+            has_started_inner(Stats);
+        true ->
+            false
+    end.
+has_started_inner({ok, WarmupStats}) ->
     case lists:keyfind(<<"ep_warmup_thread">>, 1, WarmupStats) of
         {_, <<"complete">>} ->
             true;
