@@ -189,6 +189,8 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                 <<"fullEviction">>
         end,
 
+    ConflictResolutionType = ns_bucket:conflict_resolution_type(BucketConfig),
+
     Suffix = case InfoLevel of
                  streaming ->
                      BucketCaps;
@@ -209,7 +211,8 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                       {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
                                         {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
                       {basicStats, {struct, BasicStats}},
-                      {evictionPolicy, EvictionPolicy}
+                      {evictionPolicy, EvictionPolicy},
+                      {conflictResolutionType, ConflictResolutionType}
                       | BucketCaps]
              end,
     BucketType = ns_bucket:bucket_type(BucketConfig),
@@ -412,7 +415,8 @@ extract_bucket_props(BucketId, Props) ->
     ImportantProps = [X || X <- [lists:keyfind(Y, 1, Props) || Y <- [num_replicas, replica_index, ram_quota, auth_type,
                                                                      sasl_password, moxi_port,
                                                                      autocompaction, purge_interval,
-                                                                     flush_enabled, num_threads, eviction_policy]],
+                                                                     flush_enabled, num_threads, eviction_policy,
+                                                                     conflict_resolution_type]],
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
@@ -934,6 +938,7 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                fun parse_validate_replicas_number/1),
                          [{ok, bucketType, membase},
                           ReplicasNumResult,
+                          get_conflict_resolution_type(Params, IsNew),
                           case IsNew of
                               true ->
                                   ReplicaIndexDefault =
@@ -966,6 +971,28 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
      end || E <- Candidates],
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
+
+get_conflict_resolution_type(Params, true = _IsNew) ->
+    case proplists:get_value("conflictResolutionType", Params) of
+        undefined ->
+            {ok, conflict_resolution_type, seqno};
+        Value ->
+            case cluster_compat_mode:is_cluster_46() of
+                true ->
+                    parse_validate_conflict_resolution_type(Value);
+                false ->
+                    {error, conflictResolutionType,
+                     <<"Conflict resolution type can not be set if cluster is not fully 4.6">>}
+            end
+    end;
+get_conflict_resolution_type(Params, false = _IsNew) ->
+    case proplists:get_value("conflictResolutionType", Params) of
+        undefined ->
+            ignore;
+        _Any ->
+            {error, conflictResolutionType,
+             <<"Conflict resolution type not allowed in update bucket">>}
+    end.
 
 validate_bucket_password(undefined) ->
     {error, saslPassword, <<"Bucket password is undefined">>};
@@ -1140,6 +1167,20 @@ parse_validate_other_buckets_ram_quota(Value) ->
         _ ->
             {error, otherBucketsRamQuotaMB, <<"The other buckets RAM Quota must be a positive integer.">>}
     end.
+
+parse_validate_conflict_resolution_type("seqno") ->
+    {ok, conflict_resolution_type, seqno};
+parse_validate_conflict_resolution_type("lww") ->
+    case cluster_compat_mode:is_enterprise() of
+        true ->
+            {ok, conflict_resolution_type, lww};
+        false ->
+            {error, conflictResolutionType,
+             <<"Conflict resolution type 'lww' is supported only in enterprise edition">>}
+    end;
+parse_validate_conflict_resolution_type(_Other) ->
+    {error, conflictResolutionType,
+     <<"Conflict resolution type must be 'seqno' or 'lww'">>}.
 
 extended_cluster_storage_info() ->
     [{nodesCount, length(ns_cluster_membership:service_active_nodes(kv))}

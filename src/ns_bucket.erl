@@ -59,6 +59,7 @@
          node_locator/1,
          num_replicas/1,
          ram_quota/1,
+         conflict_resolution_type/1,
          raw_ram_quota/1,
          sasl_password/1,
          set_bucket_config/2,
@@ -116,6 +117,7 @@ config_string(BucketName) ->
                 NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
                 NumThreads = proplists:get_value(num_threads, BucketConfig, 3),
                 EvictionPolicy = proplists:get_value(eviction_policy, BucketConfig, value_only),
+                ConflictResolutionType = conflict_resolution_type(BucketConfig),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
@@ -125,7 +127,8 @@ config_string(BucketName) ->
                       "tap_keepalive=~B;dbname=~s;"
                       "backend=couchdb;couch_bucket=~s;max_vbuckets=~B;"
                       "alog_path=~s;data_traffic_enabled=false;max_num_workers=~B;"
-                      "uuid=~s;item_eviction_policy=~s",
+                      "uuid=~s;item_eviction_policy=~s;"
+                      "conflict_resolution_type=~s",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
@@ -147,7 +150,8 @@ config_string(BucketName) ->
                        AccessLog,
                        NumThreads,
                        BucketUUID,
-                       EvictionPolicy]),
+                       EvictionPolicy,
+                       ConflictResolutionType]),
                 {CFG, {MemQuota, DBSubDir, NumThreads, EvictionPolicy}, DBSubDir};
             memcached ->
                 {io_lib:format("cache_size=~B;uuid=~s", [MemQuota, BucketUUID]),
@@ -243,6 +247,10 @@ live_bucket_nodes_from_config(BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig),
     LiveNodes = [node()|nodes()],
     [Node || Node <- Servers, lists:member(Node, LiveNodes) ].
+
+-spec conflict_resolution_type([{_,_}]) -> atom().
+conflict_resolution_type(BucketConfig) ->
+    proplists:get_value(conflict_resolution_type, BucketConfig, seqno).
 
 %% returns bucket ram quota multiplied by number of nodes this bucket
 %% resides on. I.e. gives amount of ram quota that will be used by
