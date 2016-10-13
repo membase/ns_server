@@ -42,8 +42,7 @@
           .showErrorsSensitiveSpinner()
           .catchErrors()
           .closeOnSuccess()
-          .broadcast("reloadXdcrPoller");
+          .broadcast("reloadTasksPoller");
       };
     }
 })();
-

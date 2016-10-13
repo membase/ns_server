@@ -100,7 +100,7 @@
         $rootScope.mnTitle = "Couchbase Console " + (version ? version : '') + (vm.tabName ? ' - ' + vm.tabName : '');
 
         if (previous && previous.tasks.uri != resp.tasks.uri) {
-          $rootScope.$broadcast("taskUriChanged");
+          $rootScope.$broadcast("reloadTasksPoller");
         }
 
         if (previous && previous.checkPermissionsURI != resp.checkPermissionsURI) {
@@ -138,7 +138,7 @@
       }, vm)
       .cycle();
 
-      $scope.$on("taskUriChanged", function () {
+      $scope.$on("reloadTasksPoller", function () {
         tasksPoller.reload();
       });
 

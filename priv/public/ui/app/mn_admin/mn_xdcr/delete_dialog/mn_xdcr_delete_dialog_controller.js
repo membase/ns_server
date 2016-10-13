@@ -13,8 +13,7 @@
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showErrorsSensitiveSpinner()
         .closeFinally()
-        .broadcast("reloadXdcrPoller");
+        .broadcast("reloadTasksPoller");
     }
   }
 })();
-

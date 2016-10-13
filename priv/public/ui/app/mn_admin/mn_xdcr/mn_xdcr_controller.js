@@ -142,7 +142,7 @@
     }
     function pausePlayReplication(row) {
       mnPromiseHelper(vm, mnXDCRService.saveReplicationSettings(row.id, {pauseRequested: row.status !== 'paused'}))
-        .broadcast("reloadXdcrPoller");
+        .broadcast(["reloadTasksPoller"]);
     };
   }
 })();
