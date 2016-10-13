@@ -15,41 +15,31 @@
         <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>
-    <div>
-      <div class="inline middle">
-        Current page: {{documentsControlCtl.state.pageNumber + 1}}
-      </div>
-      <div class="inline middle">
-        <button
-           class="icon fa-angle-left outline"
-           ng-disabled="documentsControlCtl.isPrevDisabled()"
-           ng-click="documentsControlCtl.prevPage()"></button>
-        <button
-           class="icon fa-angle-right outline"
-           ng-disabled="documentsControlCtl.isNextDisabled()"
-           ng-click="documentsControlCtl.nextPage()"></button>
-      </div>
-      <div class="inline middle">
-        <ui-select
-           ng-model="documentsControlCtl.state.pageLimits.selected"
-           theme="selectize"
-           on-select="documentsControlCtl.onSelectPageLimits($item)"
-           style="width: 80px; display: inline-block; vertical-align: middle;">
-          <ui-select-match>{{$select.selected}}</ui-select-match>
-          <ui-select-choices
-             repeat="name in documentsControlCtl.state.pageLimits | filter: $select.search">
-            <span
-               class="select-item ellipsis"
-               ng-bind-html="name | highlight: $select.search"></span>
-          </ui-select-choices>
-        </ui-select>
-      </div>
-    </div>
   </div>
 
   <ui-view></ui-view>
 
-  <div class="nowrap">
+  <div class="row">
+    <div>
+     <span class="text-small">show per page: </span>
+     <ui-select
+        ng-model="documentsControlCtl.state.pageLimits.selected"
+        theme="selectize"
+        on-select="documentsControlCtl.onSelectPageLimits($item)"
+        class="inline middle">
+       <ui-select-match>{{$select.selected}}</ui-select-match>
+       <ui-select-choices
+          repeat="name in documentsControlCtl.state.pageLimits | filter: $select.search">
+         <span
+            class="select-item ellipsis"
+            ng-bind-html="name | highlight: $select.search"></span>
+       </ui-select-choices>
+     </ui-select>
+    </div>
+    <p class="inline middle text-small">
+      &lt; page {{documentsControlCtl.state.pageNumber + 1}} &gt;
+    </p>
+    <div>
     <button
        class="icon fa-angle-left outline"
        ng-disabled="documentsControlCtl.isPrevDisabled()"
@@ -58,5 +48,6 @@
        class="icon fa-angle-right outline"
        ng-disabled="documentsControlCtl.isNextDisabled()"
        ng-click="documentsControlCtl.nextPage()"></button>
+     </div>
   </div>
 </div>

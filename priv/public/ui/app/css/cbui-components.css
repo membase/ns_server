@@ -501,8 +501,8 @@ table th span.has-menu:after {
 .alert.alert-error p:before {
   font-family:FontAwesome;
   content: "\f071";
-  font-size: 1.125rem;
-  color: #cc2a2e;
+  font-size: 1rem;
+  color: #d65558;
   position:absolute;
   top: 0;
   left: -1.5rem;
@@ -924,10 +924,10 @@ section.status-red .cbui-tablerow-statusmsg {
   text-align:center;
   line-height: 2.5rem;
   height: 2.5rem;
-  font-size:.875rem;
+  font-size:.75rem;
   font-weight:600;
   display: block;
-  color: #444;
+  color: #333;
   position:relative;
 }
 
