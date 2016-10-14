@@ -19,14 +19,14 @@
     function getWizardBucketConf() {
       return $http({
         method: 'GET',
-        url: '/pools/default/buckets/default'
+        url: '/pools/default/buckets/default?basic_stats=true&skipMap=true'
       }).then(function (resp) {
         var data = resp.data;
         var bucketConf = _.pick(data, _.keys( _.clone(bucketsFormConfiguration)));
         bucketConf.replicaIndex = bucketConf.replicaIndex ? 1 : 0;
         bucketConf.flushEnabled = (data.controllers !== undefined && data.controllers.flush !== undefined) ? 1 : 0;
         bucketConf.ramQuotaMB = mnBytesToMBFilter(resp.data.quota.rawRAM);
-        bucketConf.uri = '/pools/default/buckets/default';
+        bucketConf.uri = '/pools/default/buckets/default?basic_stats=true&skipMap=true';
         return bucketConf;
       }, function () {
         var bucketConf = _.clone(bucketsFormConfiguration);
