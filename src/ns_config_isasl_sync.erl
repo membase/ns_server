@@ -26,6 +26,8 @@
 % Useful for testing.
 -export([extract_creds/1]).
 
+-export([get_secrets_env_var/0]).
+
 -include("ns_common.hrl").
 
 -record(state, {buckets,
@@ -141,14 +143,7 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     TmpPath = filename:join(filename:dirname(Path), "isasl.tmp"),
     ok = filelib:ensure_dir(TmpPath),
     ?log_debug("Writing isasl passwd file: ~p", [filename:join(Pwd, Path)]),
-    {ok, F} = file:open(TmpPath, [write]),
-    io:format(F, "~s ~s~n", [AU, AP]),
-    lists:foreach(
-      fun({User, Pass}) ->
-              io:format(F, "~s ~s~n", [User, Pass])
-      end,
-      Buckets),
-    file:close(F),
+    misc:write_file(TmpPath, encrypted_sasl_conf(AU, AP, Buckets)),
     case file:rename(TmpPath, Path) of
         ok ->
             case (catch ns_memcached:connect_and_send_isasl_refresh()) of
@@ -167,4 +162,32 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
                               [SleepTime, Tries]),
                     {ok, _TRef} = timer2:apply_after(SleepTime, ?MODULE, writeSASLConf, [Path, Buckets, AU, AP, Tries - 1, SleepTime * 2.0])
             end
+    end.
+
+generate_sasl_conf(AU, AP, Buckets) ->
+    iolist_to_binary(
+      [io_lib:format("~s ~s~n", [AU, AP]),
+       [io_lib:format("~s ~s~n", [User, Pass]) || {User, Pass} <- Buckets]]).
+
+encrypted_sasl_conf(AU, AP, Buckets) ->
+    SaslConf = generate_sasl_conf(AU, AP, Buckets),
+    case cluster_compat_mode:is_enterprise() of
+        true ->
+            encryption_service:encrypt_with_isasl_key(SaslConf);
+        false ->
+            SaslConf
+    end.
+
+get_secrets_json() ->
+    {Key, IVec} = encryption_service:get_isasl_key_and_ivec(),
+    menelaus_util:encode_json({[{cipher, 'AES_256_cbc'},
+                                {key, base64:encode(Key)},
+                                {iv, base64:encode(IVec)}]}).
+
+get_secrets_env_var() ->
+    case cluster_compat_mode:is_enterprise() of
+        true ->
+            [{"COUCHBASE_CBSASL_SECRETS", binary_to_list(get_secrets_json())}];
+        false ->
+            []
     end.
