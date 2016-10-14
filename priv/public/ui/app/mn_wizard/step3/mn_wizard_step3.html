@@ -20,6 +20,7 @@
          type="button"
          ui-sref="app.wizard.step2">Back</button>
       <button
+         ng-show="wizardStep3Ctl.bucketConf.isNew"
          type="button"
          class="outline"
          ui-sref="app.wizard.step4">Skip</button>
