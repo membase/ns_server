@@ -3,7 +3,7 @@
    ng-message-multiple>
   <div
      ng-message="quota"
-     class="alert alert-warning"><p>Insufficient RAM quota available to add the selected sample data. Please free up at least {{settingsSampleBucketsCtl.state.warnings.quota}}mb of RAM quota in <a href="#settings">cluster settings</a>.</p></div>
+     class="alert alert-warning"><p>Insufficient RAM quota available to add the selected sample data. Please free up at least {{settingsSampleBucketsCtl.state.warnings.quota}}mb of RAM quota in <a ui-sref="app.admin.settings.cluster">cluster settings</a>.</p></div>
   <div
      ng-message="rebalance"
      class="alert alert-warning"><p>Can not load samples during rebalance.</p></div>
