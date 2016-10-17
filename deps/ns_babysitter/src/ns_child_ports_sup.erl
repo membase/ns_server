@@ -75,7 +75,14 @@ set_dynamic_children(NCAOs) ->
     PidBefore = PidAfter.
 
 sanitize(Struct) ->
-    misc:rewrite_key_value_tuple("MOXI_SASL_PLAIN_PWD", "*****", Struct).
+    misc:rewrite_tuples(
+      fun ({"MOXI_SASL_PLAIN_PWD", _}) ->
+              {stop, {"MOXI_SASL_PLAIN_PWD", "*****"}};
+          ({"COUCHBASE_CBSASL_SECRETS", _}) ->
+              {stop, {"COUCHBASE_CBSASL_SECRETS", "*****"}};
+          (Other) ->
+              {continue, Other}
+      end, Struct).
 
 launch_port(NCAO) ->
     Id = sanitize(NCAO),
