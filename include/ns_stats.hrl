@@ -114,7 +114,8 @@
         %% aggregated by collector: vb_total_queue_age
 
         %% used by alerts
-        ep_item_commit_failed
+        ep_item_commit_failed,
+        ep_clock_cas_drift_threshold_exceeded
 ).
 
 -define(STAT_COUNTERS,

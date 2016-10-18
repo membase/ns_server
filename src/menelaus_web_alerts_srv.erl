@@ -55,6 +55,8 @@ short_description(audit_dropped_events) ->
     "audit write failure";
 short_description(indexer_ram_max_usage) ->
     "indexer ram approaching threshold warning";
+short_description(ep_clock_cas_drift_threshold_exceeded) ->
+    "cas drift threshold exceeded error";
 short_description(Other) ->
     %% this case is needed for tests to work
     couch_util:to_list(Other).
@@ -73,7 +75,10 @@ errors(disk) ->
 errors(audit_dropped_events) ->
     "Audit Write Failure. Attempt to write to audit log on node \"~s\" was unsuccessful";
 errors(indexer_ram_max_usage) ->
-    "Warning: approaching max index RAM. Indexer RAM on node \"~s\" is ~p%, which is at or above the threshold of ~p%.".
+    "Warning: approaching max index RAM. Indexer RAM on node \"~s\" is ~p%, which is at or above the threshold of ~p%.";
+errors(ep_clock_cas_drift_threshold_exceeded) ->
+    "Clock CAS drift threshold exceeded for bucket \"~s\" on node ~s.".
+
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -214,7 +219,6 @@ do_handle_check_alerts_info(#state{history=Hist, opaque=Opaque}) ->
 terminate(_Reason, _State) ->
     ok.
 
-
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
@@ -231,7 +235,7 @@ start_timer() ->
 %% broadcast alerts to clients connected to any particular node
 global_checks() ->
     [oom, ip, write_fail, overhead, disk, audit_write_fail,
-     indexer_ram_max_usage].
+     indexer_ram_max_usage, cas_drift_threshold].
 
 %% @doc fires off various checks
 check_alerts(Opaque, Hist, Stats) ->
@@ -341,8 +345,11 @@ check(audit_write_fail, Opaque, _History, Stats) ->
 
 %% @doc check for any oom errors an any bucket
 check(oom, Opaque, _History, Stats) ->
-    check_stat_increased(Stats, ep_oom_errors, Opaque).
+    check_stat_increased(Stats, ep_oom_errors, Opaque);
 
+%% @doc check for any CAS drift threshold exceeded errors on any bucket
+check(cas_drift_threshold, Opaque, _History, Stats) ->
+    check_stat_increased(Stats, ep_clock_cas_drift_threshold_exceeded, Opaque).
 
 %% @doc only check for disk usage if there has been no previous
 %% errors or last error was over the timeout ago
@@ -368,7 +375,6 @@ over_threshold(EpErrs, Max) ->
         true -> {true, Perc};
         false  -> false
     end.
-
 
 %% @doc Check if the value of any statistic has increased since
 %% last check
@@ -510,7 +516,8 @@ maybe_send_out_email_alert({Key0, Node}, Message) ->
 
 alert_keys() ->
     [ip, disk, overhead, ep_oom_errors, ep_item_commit_failed,
-     audit_dropped_events, indexer_ram_max_usage].
+     audit_dropped_events, indexer_ram_max_usage,
+     ep_clock_cas_drift_threshold_exceeded].
 
 %% Cant currently test the alert timeouts as would need to mock
 %% calls to the archiver
