@@ -43,9 +43,8 @@
         timeout: vm.state.timeout
       };
       mnPromiseHelper(vm, mnSettingsAutoFailoverService.saveAutoFailoverSettings(data))
-        .showErrorsSensitiveSpinner()
-        .catchErrors()
-        .reloadState();
+        .showGlobalSpinner()
+        .catchErrors();
     };
   }
 })();

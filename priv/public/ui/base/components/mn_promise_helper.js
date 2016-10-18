@@ -24,6 +24,7 @@
     function mnPromiseHelper(scope, promise, modalInstance) {
       var spinnerNameOrFunction = 'viewLoading';
       var errorsNameOrCallback = 'errors';
+      var pendingGlobalSpinnerQueries = {};
       var spinnerTimeout;
       var promiseHelper = {
         applyToScope: applyToScope,
@@ -35,6 +36,7 @@
         showErrorsSensitiveSpinner: showErrorsSensitiveSpinner,
         catchErrorsFromSuccess: catchErrorsFromSuccess,
         showSpinner: showSpinner,
+        showGlobalSpinner: showGlobalSpinner,
         catchErrors: catchErrors,
         catchGlobalErrors: catchGlobalErrors,
         showGlobalSuccess: showGlobalSuccess,
@@ -82,6 +84,12 @@
         name && setSpinnerName(name);
         maybeHandleSpinnerWithTimer(timer, scope);
         promise.then(hideSpinner, hideSpinner);
+        return this;
+      }
+
+      function showGlobalSpinner(timer) {
+        var id = doShowGlobalSpinner();
+        promise.then(hideGlobalSpinner(id), hideGlobalSpinner(id));
         return this;
       }
       function catchErrors(nameOrCallback) {
@@ -133,6 +141,23 @@
           errorsNameOrCallback(errors);
         } else {
           scope[errorsNameOrCallback] = errors;
+        }
+      }
+      function doShowGlobalSpinner() {
+        var timer = $timeout(function () {
+          $rootScope.mnGlobalSpinnerFlag = true;
+        }, 100);
+        var id = "id" + Math.random().toString(36).substr(2, 9);
+        pendingGlobalSpinnerQueries[id] = timer;
+        return id;
+      }
+      function hideGlobalSpinner(id) {
+        return function () {
+          $timeout.cancel(pendingGlobalSpinnerQueries.id);
+          delete pendingGlobalSpinnerQueries.id;
+          if (_.isEmpty(pendingGlobalSpinnerQueries)) {
+            $rootScope.mnGlobalSpinnerFlag = false;
+          }
         }
       }
       function hideSpinner() {

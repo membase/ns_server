@@ -1142,8 +1142,19 @@ meter {
 }
 
 /* spinner ---------------- */
+
+.global-spinner {
+  background: url(/images/spinner/spinner_3.gif) center 43% no-repeat rgba(255, 255, 255, 0.6);
+  z-index: 10000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
 .spinner_wrap {
-    position: relative;
+  position: relative;
 }
 .spinner {
   position: absolute;

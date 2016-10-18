@@ -49,9 +49,8 @@
     function submit() {
       var params = getParams();
       mnPromiseHelper(vm, mnSettingsAlertsService.saveAlerts(params))
-        .showErrorsSensitiveSpinner()
-        .catchErrors()
-        .reloadState();
+        .showGlobalSpinner()
+        .catchErrors();
     }
     function activate() {
       mnPromiseHelper(vm, mnSettingsAlertsService.getAlerts())
@@ -66,7 +65,7 @@
       params.body = 'This email was sent to you to test the email alert email server settings.';
 
       mnPromiseHelper(vm, mnSettingsAlertsService.testMail(params))
-        .showSpinner()
+        .showGlobalSpinner()
         .showGlobalSuccess('Test email was sent successfully!')
         .catchGlobalErrors('An error occurred during sending test email.');
     }

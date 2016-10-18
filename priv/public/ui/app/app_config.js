@@ -48,16 +48,20 @@
           });
         }
       },
-      template: '<div ui-view="" />'
+      template: '<div ui-view=""></div>' +
+        '<div ng-show="mnGlobalSpinnerFlag" class="global-spinner"></div>'
     });
 
     $transitionsProvider.onBefore({
       from: "app.admin.**",
       to: "app.admin.**"
-    }, function ($uibModalStack, mnPendingQueryKeeper, $transition$) {
+    }, function ($uibModalStack, mnPendingQueryKeeper, $transition$, $rootScope) {
       var isModalOpen = !!$uibModalStack.getTop();
       var toName = $transition$.to().name;
       var fromName = $transition$.from().name;
+      if ($rootScope.mnGlobalSpinnerFlag) {
+        return false;
+      }
       if (!isModalOpen && toName.indexOf(fromName) === -1 && fromName.indexOf(toName) === -1) {
         //cancel tabs specific queries in case toName is not child of fromName and vise versa
         mnPendingQueryKeeper.cancelTabsSpecificQueries();

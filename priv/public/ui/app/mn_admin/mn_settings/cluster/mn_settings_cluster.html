@@ -1,5 +1,5 @@
 <div
-   mn-spinner="settingsClusterCtl.clusterName === undefined || !settingsClusterCtl.memoryQuotaConfig || (rbac.cluster.indexes.read && poolDefault.compat.atLeast40 && !settingsClusterCtl.indexSettings) || (poolDefault.value.isEnterprise && !settingsClusterCtl.certificate) || settingsClusterCtl.memoryQuotaLoading || settingsClusterCtl.indexSettingsLoading"
+   mn-spinner="settingsClusterCtl.clusterName === undefined || !settingsClusterCtl.memoryQuotaConfig || (rbac.cluster.indexes.read && poolDefault.compat.atLeast40 && !settingsClusterCtl.indexSettings) || (poolDefault.value.isEnterprise && !settingsClusterCtl.certificate)"
    class="interim main-content">
   <form
      ng-submit="settingsClusterCtl.saveVisualInternalSettings()"

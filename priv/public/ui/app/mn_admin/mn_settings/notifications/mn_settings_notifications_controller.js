@@ -23,9 +23,8 @@
 
     function submit() {
       mnPromiseHelper(vm, mnSettingsNotificationsService.saveSendStatsFlag(vm.updates.enabled))
-        .showErrorsSensitiveSpinner()
-        .catchGlobalErrors('An error occured, update notifications settings were not saved.')
-        .reloadState();
+        .showGlobalSpinner()
+        .catchGlobalErrors('An error occured, update notifications settings were not saved.');
     }
   }
 })();

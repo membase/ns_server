@@ -23,7 +23,8 @@
 
     function installSampleBuckets() {
       mnPromiseHelper(vm, mnSettingsSampleBucketsService.installSampleBuckets(vm.selected))
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
+        .catchGlobalErrors()
         .reloadState();
     }
 

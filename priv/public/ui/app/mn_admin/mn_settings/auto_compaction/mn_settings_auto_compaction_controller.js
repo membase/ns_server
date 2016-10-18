@@ -36,9 +36,8 @@
       }
       delete vm.errors;
       mnPromiseHelper(vm, mnSettingsAutoCompactionService.saveAutoCompaction(vm.autoCompactionSettings))
-        .showErrorsSensitiveSpinner()
-        .catchErrors()
-        .reloadState();
+        .showGlobalSpinner()
+        .catchErrors();
     }
   }
 })();
