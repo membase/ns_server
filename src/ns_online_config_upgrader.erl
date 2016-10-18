@@ -55,6 +55,8 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, cluster_compat_version, ?VERSION_45} |
              upgrade_config_from_4_1_to_4_5(Config)];
         {value, ?VERSION_45} ->
+            [{set, cluster_compat_version, ?VERSION_46}];
+        {value, ?VERSION_46} ->
             [{set, cluster_compat_version, ?SPOCK_VERSION_NUM}]
     end.
 

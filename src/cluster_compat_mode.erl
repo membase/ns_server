@@ -35,6 +35,8 @@
          is_cluster_41/1,
          is_cluster_45/0,
          is_version_45/1,
+         is_cluster_46/0,
+         is_version_46/1,
          is_cluster_spock/0,
          is_version_spock/1,
          is_enterprise/0,
@@ -105,6 +107,12 @@ is_version_45(ClusterVersion) ->
 
 is_cluster_45() ->
     is_enabled(?VERSION_45).
+
+is_version_46(ClusterVersion) ->
+    is_enabled_at(ClusterVersion, ?VERSION_46).
+
+is_cluster_46() ->
+    is_enabled(?VERSION_46).
 
 is_version_spock(ClusterVersion) ->
     is_enabled_at(ClusterVersion, ?SPOCK_VERSION_NUM).

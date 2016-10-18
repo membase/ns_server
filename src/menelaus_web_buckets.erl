@@ -193,15 +193,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                 <<"fullEviction">>
         end,
 
-    TimeSynchronization =
-        case proplists:get_value(time_synchronization, BucketConfig, disabled) of
-            disabled ->
-                <<"disabled">>;
-            enabled_with_drift ->
-                <<"enabledWithDrift">>;
-            enabled_without_drift ->
-                <<"enabledWithoutDrift">>
-        end,
+    ConflictResolutionType = ns_bucket:conflict_resolution_type(BucketConfig),
 
     Suffix = case InfoLevel of
                  streaming ->
@@ -224,7 +216,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                                         {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
                       {basicStats, {struct, BasicStats}},
                       {evictionPolicy, EvictionPolicy},
-                      {timeSynchronization, TimeSynchronization}
+                      {conflictResolutionType, ConflictResolutionType}
                       | BucketCaps]
              end,
     BucketType = ns_bucket:bucket_type(BucketConfig),
@@ -428,7 +420,7 @@ extract_bucket_props(BucketId, Props) ->
                                                                      sasl_password, moxi_port,
                                                                      autocompaction, purge_interval,
                                                                      flush_enabled, num_threads, eviction_policy,
-                                                                     time_synchronization]],
+                                                                     conflict_resolution_type]],
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
@@ -807,7 +799,7 @@ validate_bucket_type_specific_params(CommonParams, Params, membase, IsNew,
     ReplicasNumResult = validate_replicas_number(Params, IsNew),
     [{ok, bucketType, membase},
      ReplicasNumResult,
-     validate_time_sync(Params, IsNew),
+     get_conflict_resolution_type(Params, IsNew),
      parse_validate_replica_index(Params, ReplicasNumResult, IsNew),
      parse_validate_threads_number(Params, IsNew),
      parse_validate_eviction_policy(Params, IsNew),
@@ -971,26 +963,26 @@ validate_replicas_number(Params, IsNew) ->
       IsNew,
       fun parse_validate_replicas_number/1).
 
-validate_time_sync(Params, true = _IsNew) ->
-    case proplists:get_value("timeSynchronization", Params) of
+get_conflict_resolution_type(Params, true = _IsNew) ->
+    case proplists:get_value("conflictResolutionType", Params) of
         undefined ->
-            {ok, time_synchronization, disabled};
+            {ok, conflict_resolution_type, seqno};
         Value ->
-            case cluster_compat_mode:is_cluster_45() of
+            case cluster_compat_mode:is_cluster_46() of
                 true ->
-                    parse_validate_time_synchronization(Value);
+                    parse_validate_conflict_resolution_type(Value);
                 false ->
-                    {error, time_synchronization,
-                     <<"TimeSynchronization can not be set if cluster is not fully 4.5">>}
+                    {error, conflictResolutionType,
+                     <<"Conflict resolution type can not be set if cluster is not fully 4.6">>}
             end
     end;
-validate_time_sync(Params, false = _IsNew) ->
-    case proplists:get_value("timeSynchronization", Params) of
+get_conflict_resolution_type(Params, false = _IsNew) ->
+    case proplists:get_value("conflictResolutionType", Params) of
         undefined ->
             ignore;
         _Any ->
-            {error, time_synchronization,
-             <<"TimeSyncronization not allowed in update bucket">>}
+            {error, conflictResolutionType,
+             <<"Conflict resolution type not allowed in update bucket">>}
     end.
 
 assert_candidates(Candidates) ->
@@ -1219,15 +1211,19 @@ do_parse_validate_other_buckets_ram_quota(Value) ->
              <<"The other buckets RAM Quota must be a positive integer.">>}
     end.
 
-parse_validate_time_synchronization("disabled") ->
-    {ok, time_synchronization, disabled};
-parse_validate_time_synchronization("enabledWithoutDrift") ->
-    {ok, time_synchronization, enabled_without_drift};
-parse_validate_time_synchronization("enabledWithDrift") ->
-    {ok, time_synchronization, enabled_with_drift};
-parse_validate_time_synchronization(_Other) ->
-    {error, time_synchronization,
-     <<"Time synchronization must be, 'disabled', 'enabledWithDrift', or 'enabledWithoutDrift'">>}.
+parse_validate_conflict_resolution_type("seqno") ->
+    {ok, conflict_resolution_type, seqno};
+parse_validate_conflict_resolution_type("lww") ->
+    case cluster_compat_mode:is_enterprise() of
+        true ->
+            {ok, conflict_resolution_type, lww};
+        false ->
+            {error, conflictResolutionType,
+             <<"Conflict resolution type 'lww' is supported only in enterprise edition">>}
+    end;
+parse_validate_conflict_resolution_type(_Other) ->
+    {error, conflictResolutionType,
+     <<"Conflict resolution type must be 'seqno' or 'lww'">>}.
 
 extended_cluster_storage_info() ->
     [{nodesCount, length(ns_cluster_membership:service_active_nodes(kv))}
