@@ -1112,6 +1112,10 @@ var EmailAlertsSection = {
           label: 'Writing event to audit log has failed',
           enabled: $.inArray('audit_dropped_events', val.alerts)!==-1,
           value: 'audit_dropped_events'
+        },{
+          label: 'Clock CAS drift threshold has exceeded on a node',
+          enabled: $.inArray('ep_clock_cas_drift_threshold_exceeded', val.alerts)!==-1,
+          value: 'ep_clock_cas_drift_threshold_exceeded'
         }];
 
         renderTemplate('email_alerts', val, $i('email_alerts_container'));

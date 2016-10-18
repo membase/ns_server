@@ -38,7 +38,8 @@
       'ep_oom_errors',
       'ep_item_commit_failed',
       'audit_dropped_events',
-      'indexer_ram_max_usage'
+      'indexer_ram_max_usage',
+      'ep_clock_cas_drift_threshold_exceeded'
     ])
     .constant('timeUnitToSeconds', {
       minute: 60,
