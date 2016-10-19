@@ -27,8 +27,7 @@
 
 %% API
 -export([start_link/0,
-         cookie_init/0, cookie_gen/0,
-         cookie_set/1, cookie_sync/0]).
+         cookie_init/0, cookie_sync/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1]).
 
@@ -45,12 +44,6 @@ start_link() ->
 
 cookie_init() ->
     gen_server:call(?SERVER, cookie_init).
-
-cookie_gen() ->
-    gen_server:call(?SERVER, cookie_gen).
-
-cookie_set(Cookie) ->
-    gen_server:call(?SERVER, {cookie_set, Cookie}).
 
 cookie_sync() ->
     gen_server:call(?SERVER, cookie_sync).
@@ -72,10 +65,6 @@ handle_info(_Info, State) ->
 
 handle_call(cookie_init, _From, State) ->
     {reply, do_cookie_init(), State};
-handle_call(cookie_gen, _From, State) ->
-    {reply, do_cookie_gen(), State};
-handle_call({cookie_set, Cookie}, _From, State) ->
-    {reply, do_cookie_set(Cookie), State};
 handle_call(cookie_sync, _From, State) ->
     {reply, do_cookie_sync(), State}.
 
