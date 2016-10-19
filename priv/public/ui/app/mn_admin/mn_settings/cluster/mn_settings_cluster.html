@@ -63,24 +63,6 @@
             {{settingsClusterCtl.indexSettingsErrors.indexerThreads}}
           </div>
         </div>
-        <div class="formrow width-300">
-          <label for="in_memory_snapshot">
-            Max Rollback Points
-          </label>
-          <input
-             type="number"
-             ng-model="settingsClusterCtl.indexSettings.maxRollbackPoints"
-             ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
-             id="in_memory_snapshot">
-          <a
-             href=""
-             uib-tooltip="The maximum number of committed rollback points.">What&#39;s this?</a>
-          <div
-             class="error error-field"
-             ng-show="settingsClusterCtl.indexSettingsErrors.maxRollbackPoints">
-            {{settingsClusterCtl.indexSettingsErrors.maxRollbackPoints}}
-          </div>
-        </div>
 
         <div class="formrow width-300">
           <label for="in_memory_snapshot">
