@@ -121,7 +121,7 @@ do_cookie_sync() ->
                     ?user_log(?COOKIE_INHERITED,
                               "Node ~p inherited otp cookie ~p from cluster",
                               [node(), CurrCookie]),
-                    do_cookie_set(CurrCookie),
+                    ok = do_cookie_set(CurrCookie),
                     {ok, CurrCookie}
             end;
         WantedCookie ->
