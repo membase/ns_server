@@ -261,7 +261,7 @@ handle_cast(leave, State) ->
     %% config replication (right after joining cluster next time) will
     %% not conflict with this value.
     ns_config:set_initial(nodes_wanted, [node()]),
-    ns_cookie_manager:cookie_sync(),
+    {ok, _} = ns_cookie_manager:cookie_sync(),
 
     ReplicatorDeleteRV = ns_couchdb_storage:delete_couch_database_files("_replicator"),
     ?cluster_debug("Deleted _replicator db: ~p", [ReplicatorDeleteRV]),
