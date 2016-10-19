@@ -102,9 +102,11 @@ do_cookie_get() ->
     ns_config:search_prop(ns_config:latest(), otp, cookie).
 
 do_cookie_set(Cookie) ->
-    X = ns_config:set(otp, [{cookie, Cookie}]),
+    OldCookie = erlang:get_cookie(),
+
     erlang:set_cookie(node(), Cookie),
-    X.
+    maybe_disconnect_stale_nodes(OldCookie, Cookie),
+    ns_config:set(otp, [{cookie, Cookie}]).
 
 do_cookie_sync() ->
     ?log_debug("ns_cookie_manager do_cookie_sync"),
@@ -130,9 +132,21 @@ do_cookie_sync() ->
                               "Node ~p synchronized otp cookie ~p from cluster",
                               [node(), WantedCookie]),
                     erlang:set_cookie(node(), WantedCookie),
+                    disconnect_stale_nodes(),
                     {ok, WantedCookie}
             end
     end.
+
+maybe_disconnect_stale_nodes(OldCookie, NewCookie) ->
+    case OldCookie =:= NewCookie of
+        true ->
+            ok;
+        false ->
+            disconnect_stale_nodes()
+    end.
+
+disconnect_stale_nodes() ->
+    lists:foreach(fun erlang:disconnect_node/1, nodes()).
 
 ns_log_cat(_X) ->
     info.
