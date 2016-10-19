@@ -80,6 +80,8 @@ sanitize(Struct) ->
               {stop, {"MOXI_SASL_PLAIN_PWD", "*****"}};
           ({"COUCHBASE_CBSASL_SECRETS", _}) ->
               {stop, {"COUCHBASE_CBSASL_SECRETS", "*****"}};
+          ({"CBAUTH_REVRPC_URL", Url}) ->
+              {stop, {"CBAUTH_REVRPC_URL", misc:sanitize_url(Url)}};
           (Other) ->
               {continue, Other}
       end, Struct).
