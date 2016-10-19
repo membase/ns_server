@@ -41,7 +41,10 @@
     function saveSettings() {
       mnPromiseHelper(vm, mnSettingsClusterService.postPoolsDefault(vm.memoryQuotaConfig, false, vm.clusterName))
         .catchErrors("memoryQuotaErrors")
-        .showGlobalSpinner();
+        .showGlobalSpinner()
+        .onSuccess(function () {
+          vm.initialMemoryQuota = vm.memoryQuotaConfig.indexMemoryQuota;
+        });
 
       if (!_.isEqual(vm.indexSettings, vm.initialIndexSettings) && mnPoolDefault.export.compat.atLeast40 && $scope.rbac.cluster.indexes.write) {
         mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
