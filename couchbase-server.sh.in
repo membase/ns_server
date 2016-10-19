@@ -42,7 +42,8 @@ LOCAL_CONFIG_DIR="@PREFIX@/etc/couchdb/local.d"
 LOCAL_CONFIG_FILE="@PREFIX@/etc/couchdb/local.ini"
 
 PIDFILE="@PREFIX@/var/lib/couchbase/couchbase-server.pid"
-COOKIEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.cookie"
+COOKIEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.babysitter.cookie"
+NODEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.babysitter.node"
 
 couch_start_arguments=""
 
@@ -165,27 +166,29 @@ _start() {
         -run ns_babysitter_bootstrap -- \
         -couch_ini $couch_start_arguments \
         -ns_babysitter cookiefile "\"$COOKIEFILE\"" \
+        -ns_babysitter nodefile "\"$NODEFILE\"" \
         -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
         -ns_server pidfile "\"$PIDFILE\"" \
         -ns_server enable_mlockall ${COUCHBASE_ENABLE_MLOCKALL:-false}
 }
 
 _stop() {
-    [ -f $COOKIEFILE ] || return 1
+    [ -f "$COOKIEFILE" -a -f "$NODEFILE" ] || return 1
 
     cookie=`cat "$COOKIEFILE"`
+    node=`cat "$NODEFILE"`
 
     erl \
         -name executioner@executioner \
         -noshell \
         -hidden \
         -setcookie "$cookie" \
-        -eval "ns_babysitter_bootstrap:remote_stop('babysitter_of_ns_1@127.0.0.1')"
+        -eval "ns_babysitter_bootstrap:remote_stop('$node')"
 
     errcode=$?
 
     if [ $errcode -eq 0 ]; then
-        rm "$COOKIEFILE"
+        rm "$COOKIEFILE" "$NODEFILE"
 
         epmd -kill >/dev/null
     fi
