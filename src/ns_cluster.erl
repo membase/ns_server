@@ -208,9 +208,7 @@ handle_cast(leave, State) ->
 
     %% in order to disconnect from rest of nodes we need new cookie
     %% and explicit disconnect_node calls
-    NewCookie = ns_cookie_manager:cookie_gen(),
-    erlang:set_cookie(node(), NewCookie),
-    lists:foreach(fun erlang:disconnect_node/1, nodes()),
+    {ok, _} = ns_cookie_manager:cookie_init(),
 
     %% we will preserve rest settings, so we get them before resetting
     %% config
