@@ -10,27 +10,27 @@
      mn-spinner="serversAddDialogCtl.viewLoading">
     <div class="panel-content">
       <div class="error error-form">
-        <strong>Warning</strong> – Adding a server to this cluster means all data on that server will be removed.
+        Warning: Adding a server to this cluster means all data on that server will be removed.
       </div>
       <div
          class="error error-form"
          ng-repeat="error in serversAddDialogCtl.errors">
-        <strong>Attention</strong> - {{error}}<br>
+        Attention: {{error}}<br>
       </div>
       <div
          class="error error-form"
          ng-show="form.hostname.$error.required">
-        <strong>Attention</strong> - Server IP Address cannot be blank.
+        Attention: Server IP Address cannot be blank.
       </div>
       <div
          class="error error-form"
          ng-show="form.$error.services">
-        <strong>Attention</strong> - Please specify a Service(s) for this node.
+        Attention: Please specify a Service(s) for this node.
       </div>
       <div
          class="error error-form"
          ng-show="serversAddDialogCtl.addNodeConfig.services.model.fts">
-        <strong>Attention</strong> - Full Text Search is a developer preview. Use only in test environments.
+        Attention: Full Text Search is a developer preview. Use only in test environments.
       </div>
 
       <div class="formrow">

@@ -60,13 +60,13 @@
              class="error error-form"
              ng-if="wizardStep1Ctl.postJoinClusterErrors">
             <span ng-repeat="error in wizardStep1Ctl.postJoinClusterErrors">
-              <strong>Attention</strong> - {{error}}
+              Attention: {{error}}
             </span>
           </p>
           <div
              class="error error-form"
              ng-show="wizardStep1Ctl.joinClusterConfig.services.model.fts">
-            <strong>Attention</strong> - Full Text Search is a developer preview. Use only in test environments.
+            Attention: Full Text Search is a developer preview. Use only in test environments.
           </div>
           <div>
             <label for="clusterMemberHostIp">IP Address</label>
@@ -126,7 +126,7 @@
            class="error error-form"
            ng-if="wizardStep1Ctl.postDiskStorageErrors">
           <div ng-repeat="error in wizardStep1Ctl.postDiskStorageErrors">
-            <strong>Attention</strong> - {{error}}<br>
+            Attention: {{error}}<br>
           </div>
         </div>
         <p ng-show="wizardStep1Ctl.isEnterprise">

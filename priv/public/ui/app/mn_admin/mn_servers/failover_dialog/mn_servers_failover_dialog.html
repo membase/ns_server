@@ -32,12 +32,12 @@
         <div
            class="error error-form"
            ng-if="!serversFailOverDialogCtl.status.gracefulFailoverPossible">
-          <strong>Attention</strong> – The graceful failover option is not available either because node is unreachable or replica vbucket cannot be activated gracefully.
+          Attention: The graceful failover option is not available either because node is unreachable or replica vbucket cannot be activated gracefully.
         </div>
         <div
            class="error error-form"
            ng-show="serversFailOverDialogCtl.status.backfill && (serversFailOverDialogCtl.status.failOver === 'failOver')">
-          <strong>Attention</strong> – A significant amount of data stored on this node
+          Attention: A significant amount of data stored on this node
           does not yet have replica (backup) copies! Failing over the node now will
           irrecoverably lose that data when the incomplete replica is
           activated and this node is removed from the cluster. It is
@@ -64,7 +64,7 @@
         <div
            class="error error-form"
            ng-show="serversFailOverDialogCtl.status.backfill">
-          <strong>Attention</strong> – There are not replica (backup) copies of all data
+          Attention: There are not replica (backup) copies of all data
           on this node! Failing over the node now will irrecoverably
           lose that data when the incomplete replica is activated and
           this node is removed from the cluster. If the node might
