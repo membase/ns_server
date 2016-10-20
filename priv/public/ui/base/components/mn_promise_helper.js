@@ -95,13 +95,17 @@
       function catchErrors(nameOrCallback) {
         nameOrCallback && setErrorsNameOrCallback(nameOrCallback);
         promise.then(removeErrors, function (resp) {
-          errorsCtrl(extractErrors(resp));
+          if (resp.status !== -1) {
+            errorsCtrl(extractErrors(resp));
+          }
         });
         return this;
       }
       function catchGlobalErrors(errorMessage, timeout) {
         promise.then(null, function (resp) {
-          mnAlertsService.showAlertInPopup(errorMessage || extractErrors(resp.data), 'error', timeout);
+          if (resp.status !== -1) {
+            mnAlertsService.showAlertInPopup(errorMessage || extractErrors(resp.data), 'error', timeout);
+          }
         });
         return this;
       }
