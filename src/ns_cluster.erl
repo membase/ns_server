@@ -233,7 +233,6 @@ handle_cast(leave, State) ->
     ?cluster_debug("Deleted _replicator db: ~p", [ReplicatorDeleteRV]),
 
     ?cluster_debug("Leaving cluster", []),
-    timer:sleep(1000),
 
     misc:create_marker(start_marker_path()),
     misc:remove_marker(leave_marker_path()),
