@@ -16,6 +16,8 @@
     'mnSettingsSampleBucketsService',
     'mnMemoryQuota',
     'mnStorageMode',
+    'mnPoolDefault',
+    'mnPools',
     'mnSettingsClusterService',
     'mnSpinner',
     'mnPromiseHelper',

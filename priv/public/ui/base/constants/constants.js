@@ -6,6 +6,7 @@
     .constant('bucketsFormConfiguration', {
       authType: 'sasl',
       name: '',
+      conflictResolutionType: 'seqno',
       saslPassword: '',
       bucketType: 'membase',
       evictionPolicy: 'valueOnly',

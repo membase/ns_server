@@ -22,6 +22,7 @@
     var version30 = encodeCompatVersion(3, 0);
     var version40 = encodeCompatVersion(4, 0);
     var version45 = encodeCompatVersion(4, 5);
+    var version46 = encodeCompatVersion(4, 6);
     var cache;
 
     return mnPoolDefault;
@@ -65,7 +66,8 @@
           atLeast25: poolDefault.thisNode.clusterCompatibility >= version25,
           atLeast30: poolDefault.thisNode.clusterCompatibility >= version30,
           atLeast40: poolDefault.thisNode.clusterCompatibility >= version40,
-          atLeast45: poolDefault.thisNode.clusterCompatibility >= version45
+          atLeast45: poolDefault.thisNode.clusterCompatibility >= version45,
+          atLeast46: poolDefault.thisNode.clusterCompatibility >= version46
         };
         poolDefault.isKvNode =  _.indexOf(poolDefault.thisNode.services, "kv") > -1;
         poolDefault.capiBase = $window.location.protocol === "https:" ? poolDefault.thisNode.couchApiBaseHTTPS : poolDefault.thisNode.couchApiBase;

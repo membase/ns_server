@@ -461,6 +461,7 @@ def make_os_tasks():
         UnixTask("System activity reporter", "sar 1 10"),
         UnixTask("System paging activity", "vmstat 1 10"),
         UnixTask("System uptime", "uptime"),
+        UnixTask("Last logins of users and ttys", "last -x || last"),
         UnixTask("couchbase user definition", "getent passwd couchbase"),
         UnixTask("couchbase user limits", "su couchbase -c \"ulimit -a\"",
                  privileged=True),
@@ -478,7 +479,7 @@ def make_os_tasks():
         LinuxTask("Relevant proc data", "echo %(programs)s | "
                   "xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; cat /proc/$1/status; cat /proc/$1/limits; cat /proc/$1/smaps; cat /proc/$1/numa_maps; cat /proc/$1/task/*/sched; echo' --" % locals()),
         LinuxTask("Processes' environment", "echo %(programs)s | "
-                  r"xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; ( cat /proc/$1/environ | tr \\0 \\n | grep -v ^CB_MASTER_PASSWORD= ); echo' --" % locals()),
+                  r"xargs -n1 pgrep | xargs -n1 -- sh -c 'echo $1; ( cat /proc/$1/environ | tr \\0 \\n | egrep -v ^CB_MASTER_PASSWORD=\|^COUCHBASE_CBSASL_SECRETS=\|^CBAUTH_REVRPC_URL=); echo' --" % locals()),
         LinuxTask("NUMA data", "numactl --hardware"),
         LinuxTask("NUMA data", "numactl --show"),
         LinuxTask("NUMA data", "cat /sys/devices/system/node/node*/numastat"),

@@ -173,6 +173,12 @@ handle_arguments(Arguments) ->
 
 get_all_env(ns_babysitter) ->
     Env = application:get_all_env(ns_babysitter),
-    lists:keydelete(master_password, 1, Env);
+    lists:filter(fun ({master_password, _}) ->
+                         false;
+                     ({memcached_secrets, _}) ->
+                         false;
+                     (_) ->
+                         true
+                 end, Env);
 get_all_env(Flag) ->
     application:get_all_env(Flag).

@@ -26,7 +26,7 @@
         url: uri
       });
     }
-    function prepareBucketConfigForSaving(bucketConf, autoCompactionSettings) {
+    function prepareBucketConfigForSaving(bucketConf, autoCompactionSettings, poolDefault, pools) {
       var conf = {};
       function copyProperty(property) {
         if (bucketConf[property] !== undefined) {
@@ -43,6 +43,10 @@
         copyProperties(["evictionPolicy", "threadsNumber", "replicaNumber", "autoCompactionDefined"]);
         if (bucketConf.isNew) {
           copyProperty("replicaIndex");
+
+          if (pools.isEnterprise && (bucketConf.isWizard || poolDefault.compat.atLeast46)) {
+            copyProperty("conflictResolutionType");
+          }
         }
         if (bucketConf.autoCompactionDefined) {
           _.extend(conf, mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings));

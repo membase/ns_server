@@ -14,7 +14,7 @@
     vm.onSubmit = onSubmit;
 
     function onSubmit() {
-      var data = mnBucketsDetailsDialogService.prepareBucketConfigForSaving(vm.bucketConf, vm.autoCompactionSettings);
+      var data = mnBucketsDetailsDialogService.prepareBucketConfigForSaving(vm.bucketConf, vm.autoCompactionSettings, $scope.poolDefault, $scope.pools);
       var promise = mnBucketsDetailsDialogService.postBuckets(data, vm.bucketConf.uri);
 
       mnPromiseHelper(vm, promise)
