@@ -9,10 +9,11 @@
   </div>
   <form ng-submit="wizardStep3Ctl.onSubmit()">
     <div
-      mn-buckets-form
-      bucket-conf="wizardStep3Ctl.bucketConf"
-      validation="wizardStep3Ctl.validationKeeper"
-      ng-if="wizardStep3Ctl.bucketConf"></div>
+       mn-buckets-form
+       pools="wizardStep3Ctl.pools"
+       bucket-conf="wizardStep3Ctl.bucketConf"
+       validation="wizardStep3Ctl.validationKeeper"
+       ng-if="wizardStep3Ctl.bucketConf"></div>
     <div class="config-bottom">
       <button
         name="finish"

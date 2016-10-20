@@ -19,7 +19,9 @@
       scope: {
         bucketConf: '=',
         autoCompactionSettings: '=',
-        validation: '='
+        validation: '=',
+        poolDefault: '=?',
+        pools: '='
       },
       isolate: false,
       replace: true,
@@ -73,7 +75,7 @@
         mnPromiseHelper($scope, $http({
           method: 'POST',
           url: bucketConf.uri,
-          data: mnBucketsDetailsDialogService.prepareBucketConfigForSaving(bucketConf, autoCompactionSettings),
+          data: mnBucketsDetailsDialogService.prepareBucketConfigForSaving(bucketConf, autoCompactionSettings, $scope.poolDefault, $scope.pools),
           params: {
             just_validate: 1,
             ignore_warnings: $scope.bucketConf.ignoreWarnings ? 1 : 0

@@ -17,6 +17,7 @@
     'mnMemoryQuota',
     'mnStorageMode',
     'mnPoolDefault',
+    'mnPools',
     'mnMemoryQuotaService',
     'mnSettingsClusterService',
     'mnSpinner',
