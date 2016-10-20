@@ -210,28 +210,17 @@ handle_cast(leave, State) ->
     %% and explicit disconnect_node calls
     {ok, _} = ns_cookie_manager:cookie_init(),
 
-    %% we will preserve rest settings, so we get them before resetting
-    %% config
-    Config = ns_config:get(),
-    RestConf = ns_config:search(Config, {node, node(), rest}),
-    GlobalRestConf = ns_config:search(Config, rest),
-
     %% reset_address() below drops user_assigned flag (if any) which makes
     %% it possible for the node to be renamed if necessary
     ok = dist_manager:reset_address(),
     %% and then we clear config. In fact better name would be 'reset',
     %% because as seen above we actually re-initialize default config
-    ns_config:clear([directory]),
+    ns_config:clear([directory,
+                     %% we preserve rest settings, so if the server runs on a
+                     %% custom port, it doesn't revert to the default
+                     rest,
+                     {node, node(), rest}]),
 
-    %% we restore our rest settings
-    case GlobalRestConf of
-        false -> false;
-        {value, GlobalRestConf1} -> ns_config:set(rest, GlobalRestConf1)
-    end,
-    case RestConf of
-        false -> false;
-        {value, RestConf1} -> ns_config:set({node, node(), rest}, RestConf1)
-    end,
 
     %% set_initial here clears vclock on nodes_wanted. Thus making
     %% sure that whatever nodes_wanted we will get through initial
