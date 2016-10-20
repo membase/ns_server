@@ -381,7 +381,7 @@ handle_call(reset_address, _From,
     case save_address_config(NewState) of
         ok ->
             ?log_info("Persisted the address successfully"),
-            {reply, net_restarted, NewState};
+            {reply, ok, NewState};
         {error, Error} ->
             ?log_warning("Failed to persist the address: ~p", [Error]),
             {stop,
@@ -390,7 +390,7 @@ handle_call(reset_address, _From,
              State}
     end;
 handle_call(reset_address, _From, State) ->
-    {reply, net_restarted, State};
+    {reply, ok, State};
 handle_call(_Request, _From, State) ->
     {reply, unhandled, State}.
 

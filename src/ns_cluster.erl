@@ -218,7 +218,7 @@ handle_cast(leave, State) ->
 
     %% reset_address() below drops user_assigned flag (if any) which makes
     %% it possible for the node to be renamed if necessary
-    net_restarted = dist_manager:reset_address(),
+    ok = dist_manager:reset_address(),
     %% and then we clear config. In fact better name would be 'reset',
     %% because as seen above we actually re-initialize default config
     ns_config:clear([directory]),
