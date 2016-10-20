@@ -73,6 +73,28 @@ class Task(object):
         if not hasattr(self, 'command_to_print'):
             self.command_to_print = self.command
 
+        self._is_posix = (os.name == 'posix')
+
+    def _platform_popen_flags(self):
+        flags = {}
+        if self._is_posix:
+            flags['preexec_fn'] = os.setsid
+
+        return flags
+
+    def _can_kill(self, p):
+        if self._is_posix:
+            return True
+
+        return hasattr(p, 'kill')
+
+    def _kill(self, p):
+        if self._is_posix:
+            group_pid = os.getpgid(p.pid)
+            os.killpg(group_pid, signal.SIGKILL)
+        else:
+            p.kill()
+
     def execute(self, fp):
         """Run the task"""
         import subprocess
@@ -86,11 +108,13 @@ class Task(object):
             env = os.environ.copy()
             env.update(self.addenv)
         try:
+            platform_flags = self._platform_popen_flags()
             p = subprocess.Popen(self.command, bufsize=-1,
                                  stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT,
-                                 shell=use_shell, env=env)
+                                 shell=use_shell, env=env,
+                                 **platform_flags)
         except OSError, e:
             # if use_shell is False then Popen may raise exception
             # if binary is missing. In this case we mimic what
@@ -107,9 +131,14 @@ class Task(object):
         timer = None
         timer_fired = Event()
 
-        if self.timeout is not None and hasattr(p, 'kill'):
+        if self.timeout is not None and self._can_kill(p):
             def on_timeout():
-                p.kill()
+                try:
+                    self._kill(p)
+                except:
+                    # the process might have died already
+                    pass
+
                 timer_fired.set()
 
             timer = Timer(self.timeout, on_timeout)
