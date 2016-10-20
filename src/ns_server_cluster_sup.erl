@@ -17,6 +17,8 @@
 
 -behavior(supervisor).
 
+-include("ns_common.hrl").
+
 %% API
 -export([start_link/0,
          start_ns_server/0, stop_ns_server/0, restart_ns_server/0]).
@@ -73,9 +75,21 @@ start_ns_server() ->
 
 %% @doc Stop ns_server and couchdb
 stop_ns_server() ->
-    %% ports need to be shut down before stopping ns_server to avoid errors
-    %% in go components when menelaus disappears
-    ns_ports_setup:shutdown_ports(),
+    try
+        %% ports need to be shut down before stopping ns_server to avoid errors
+        %% in go components when menelaus disappears
+        ns_ports_setup:shutdown_ports()
+    catch
+        T:E ->
+            %% it's ok if we fail to stop the ports; the only bad thing that
+            %% will happen are errors in go components logs; at the same time,
+            %% we want stop_ns_server to work if ns_server already stopped;
+            %% this gives us this
+            ?log_warning("Failed to shutdown ports before "
+                         "ns_server shutdown: ~p. "
+                         "This is usually normal.", [{T,E}])
+    end,
+
     supervisor:terminate_child(?MODULE, ns_server_nodes_sup).
 
 restart_ns_server() ->
