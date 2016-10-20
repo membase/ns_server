@@ -75,7 +75,9 @@
          regenerate_node_uuid/0,
          strip_metadata/1, extract_vclock/1,
          latest/0,
-         merge_dynamic_and_static/0]).
+         merge_dynamic_and_static/0,
+         search_node_with_default/2,
+         search_node_with_default/3]).
 
 -export([compute_global_rev/1]).
 
@@ -521,6 +523,17 @@ search_with_vclock(Config, Key) ->
 
 search_node(Config, Key) ->
     search_node(node(), Config, Key).
+
+search_node_with_default(Key, Default) ->
+    search_node_with_default(ns_config:latest(), Key, Default).
+
+search_node_with_default(Config, Key, Default) ->
+    case search_node(Config, Key) of
+        {value, V}->
+            V;
+        false ->
+            Default
+    end.
 
 search_node(Node, Config, Key) ->
     case search(Config, {node, Node, Key}) of
