@@ -30,14 +30,14 @@
 
         vm.register.email && mnWizardStep4Service.postEmail(vm.register);
 
-        var promise = mnWizardStep4Service.postStats({sendStats: vm.sendStats});
+        var promise = mnWizardStep4Service
+            .postStats({sendStats: vm.sendStats})
+            .then(function () {
+              return $state.go('app.wizard.step5');
+            });
         mnPromiseHelper(vm, promise)
-          .showErrorsSensitiveSpinner()
-          .catchErrors()
-          .getPromise()
-          .then(function () {
-            $state.go('app.wizard.step5');
-          });
+          .showGlobalSpinner()
+          .catchErrors();
       };
     }
 })();

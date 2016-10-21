@@ -20,13 +20,12 @@
     }
     function onSubmit() {
       var params = mnBucketsDetailsDialogService.prepareBucketConfigForSaving(vm.bucketConf, null, null, pools);
-      var promise = mnWizardStep3Service.postBuckets(params, vm.bucketConf.uri);
-      mnPromiseHelper(vm, promise)
-        .showErrorsSensitiveSpinner()
-        .getPromise()
-        .then(function (result) {
-          !result.data && $state.go('app.wizard.step4');
-        });
+      var promise = mnWizardStep3Service
+          .postBuckets(params, vm.bucketConf.uri)
+          .then(function (result) {
+            return !result.data && $state.go('app.wizard.step4');
+          });
+      mnPromiseHelper(vm, promise).showGlobalSpinner();
     }
   }
 })();

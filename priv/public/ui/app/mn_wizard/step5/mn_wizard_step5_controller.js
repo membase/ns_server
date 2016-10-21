@@ -25,7 +25,6 @@
       function login(user) {
         return mnWizardStep5Service.postAuth(user).then(function () {
           return mnAuthService.login(user).then(function () {
-            $state.go('app.admin.overview');
             if (mnWizardStep2Service.isSomeBucketSelected()) {
               mnSettingsSampleBucketsService.installSampleBuckets(mnWizardStep2Service.getSelectedBuckets()).then(null, function (resp) {
                 mnAlertsService.formatAndSetAlerts(resp.data, 'error');
@@ -33,8 +32,10 @@
             }
             var config = mnWizardStep1Service.getNewClusterConfig();
             if (config.services.model.index) {
-              return mnSettingsClusterService.postIndexSettings(config.indexSettings);
+              mnSettingsClusterService.postIndexSettings(config.indexSettings);
             }
+          }).then(function () {
+            return $state.go('app.admin.overview');
           });
         });
       }
@@ -51,7 +52,7 @@
 
         var promise = login(vm.user);
         mnPromiseHelper(vm, promise)
-          .showErrorsSensitiveSpinner()
+          .showGlobalSpinner()
           .catchErrors();
       }
     }

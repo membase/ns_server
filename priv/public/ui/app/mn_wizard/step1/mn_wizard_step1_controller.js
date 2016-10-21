@@ -47,7 +47,7 @@
       return vm.joinCluster === value;
     }
     function goNext() {
-      $state.go('app.wizard.step2');
+      return $state.go('app.wizard.step2');
     }
     function addErrorHandler(query, name) {
       return mnPromiseHelper(vm, query)
@@ -90,7 +90,7 @@
         if (quotaIsChanged) {
           return postMemoryQuota().then(goNext);
         } else {
-          goNext();
+          return goNext();
         }
       } else {
         if (quotaIsChanged) {
@@ -138,7 +138,7 @@
         } else {
           return postJoinCluster().then(function () {
             return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
-              $state.go('app.admin.overview').then(function () {
+              return $state.go('app.admin.overview').then(function () {
                 $rootScope.$broadcast("maybeShowMemoryQuotaDialog", vm.joinClusterConfig.services.model);
                 mnAlertsService.formatAndSetAlerts('This server has been associated with the cluster and will join on the next rebalance operation.', 'success');
               });
@@ -146,7 +146,7 @@
           });
         }
       });
-      mnPromiseHelper(vm, promise).showErrorsSensitiveSpinner();
+      mnPromiseHelper(vm, promise).showGlobalSpinner();
     };
   }
 })();
