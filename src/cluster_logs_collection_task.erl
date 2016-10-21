@@ -264,12 +264,20 @@ start_collection_per_node(TimestampS, Parent, Options) ->
                           _ ->
                               []
                       end,
-    Args = ["--watch-stdin"] ++ MaybeSingleNode
+    Args0 = ["--watch-stdin"] ++ MaybeSingleNode
         ++ ["--initargs=" ++ InitargsFilename, Filename],
-    ?log_debug("spawning collectinfo: ~p", [Args]),
+
+    ExtraArgs = ns_config:search_node_with_default(cbcollect_info_extra_args, []),
+    Env = ns_config:search_node_with_default(cbcollect_info_extra_env, []),
+
+    Args = Args0 ++ ExtraArgs,
+
+    ?log_debug("spawning collectinfo:~n"
+               "  Args: ~p~n"
+               "  Env: ~p", [Args, Env]),
     {Status, Output} =
         misc:run_external_tool(path_config:component_path(bin, "cbcollect_info"),
-                               Args, []),
+                               Args, Env),
     case Status of
         0 ->
             ?log_debug("Done"),

@@ -108,52 +108,30 @@ do_cookie_set(Cookie) ->
 
 do_cookie_sync() ->
     ?log_debug("ns_cookie_manager do_cookie_sync"),
-    Result =
-        case do_cookie_get() of
-            undefined ->
-                case erlang:get_cookie() of
-                    nocookie ->
-                        % TODO: We should have length(nodes_wanted) == 0 or 1,
-                        %       so, we should check that assumption.
-                        do_cookie_init();
-                    CurrCookie ->
-                        ?user_log(?COOKIE_INHERITED,
-                                  "Node ~p inherited otp cookie ~p from cluster",
-                                  [node(), CurrCookie]),
-                        do_cookie_set(CurrCookie),
-                        {ok, CurrCookie}
-                end;
-            WantedCookie ->
-                case erlang:get_cookie() of
-                    WantedCookie -> {ok, WantedCookie};
-                    _ ->
-                        ?user_log(?COOKIE_SYNCHRONIZED,
-                                  "Node ~p synchronized otp cookie ~p from cluster",
-                                  [node(), WantedCookie]),
-                        erlang:set_cookie(node(), WantedCookie),
-                        {ok, WantedCookie}
-                end
-        end,
-
-    case Result of
-        {ok, Cookie} ->
-            do_cookie_save(Cookie),
-            Result
-    end.
-
-%% Saves cookie in human readable format.
--spec do_cookie_save(atom(), string()) -> ok | {error, term()}.
-do_cookie_save(Cookie, Path) ->
-    ?log_debug("saving cookie to ~p", [Path]),
-    R = misc:atomic_write_file(Path, erlang:atom_to_list(Cookie) ++ "\n"),
-    ?log_debug("attempted to save cookie to ~p: ~p", [Path, R]),
-    R.
-
--spec do_cookie_save(atom()) -> ok | {error, term()}.
-do_cookie_save(Cookie) ->
-    case application:get_env(cookiefile) of
-        {ok, CookieFile} -> do_cookie_save(Cookie, CookieFile);
-        X -> X
+    case do_cookie_get() of
+        undefined ->
+            case erlang:get_cookie() of
+                nocookie ->
+                    % TODO: We should have length(nodes_wanted) == 0 or 1,
+                    %       so, we should check that assumption.
+                    do_cookie_init();
+                CurrCookie ->
+                    ?user_log(?COOKIE_INHERITED,
+                              "Node ~p inherited otp cookie ~p from cluster",
+                              [node(), CurrCookie]),
+                    do_cookie_set(CurrCookie),
+                    {ok, CurrCookie}
+            end;
+        WantedCookie ->
+            case erlang:get_cookie() of
+                WantedCookie -> {ok, WantedCookie};
+                _ ->
+                    ?user_log(?COOKIE_SYNCHRONIZED,
+                              "Node ~p synchronized otp cookie ~p from cluster",
+                              [node(), WantedCookie]),
+                    erlang:set_cookie(node(), WantedCookie),
+                    {ok, WantedCookie}
+            end
     end.
 
 ns_log_cat(_X) ->
