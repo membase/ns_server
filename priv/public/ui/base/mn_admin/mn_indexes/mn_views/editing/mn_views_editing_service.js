@@ -79,11 +79,18 @@
         return resp.data;
       }, function (view) {
         return mnViewsListService.getTasksOfCurrentBucket(params).then(function (tasks) {
+          if (angular.isString(view.data)) {
+            view = {
+              data: {
+                error: view.data
+              }
+            };
+          }
           view.data.from = buildViewUrl(params) + getFilterParamsAsString(params);
           var indexingRunning = _.filter(tasks[params.documentId], function (item) {
             return item.type == "indexer" && item.status == "running" && item.designDocument == params.documentId;
           }).length;
-          if ((view.data.error === "timeout" || view.config.timeout.value === "timeout") && indexingRunning) {
+          if ((view.data.error === "timeout" || (view.config && view.config.timeout.value === "timeout")) && indexingRunning) {
             view.data.error === "timeout";
             view.data.reason = "node is still building up the index";
             view.data.showBtn = true;
