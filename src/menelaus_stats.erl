@@ -868,6 +868,20 @@ computed_stats_lazy_proplist(BucketName) ->
                                end
                        end),
 
+    AvgActiveTimestampDrift = Z2(ep_active_hlc_drift, ep_active_hlc_drift_count,
+                                 fun (DriftTotal, Count) ->
+                                         try DriftTotal / 1000000 / Count
+                                         catch error:badarith -> 0
+                                         end
+                                 end),
+
+    AvgReplicaTimestampDrift = Z2(ep_replica_hlc_drift, ep_replica_hlc_drift_count,
+                                  fun (DriftTotal, Count) ->
+                                          try DriftTotal / 1000000 / Count
+                                          catch error:badarith -> 0
+                                          end
+                                  end),
+
     XDCAllRepStats =
         case cluster_compat_mode:is_goxdcr_enabled() of
             true ->
@@ -952,7 +966,10 @@ computed_stats_lazy_proplist(BucketName) ->
      {<<"vb_pending_resident_items_ratio">>, PendingResRate},
      {<<"avg_disk_update_time">>, AverageDiskUpdateTime},
      {<<"avg_disk_commit_time">>, AverageCommitTime},
-     {<<"avg_bg_wait_time">>, AverageBgWait}] ++ ViewsIndexesStats ++ XDCAllRepStats
+     {<<"avg_bg_wait_time">>, AverageBgWait},
+     {<<"avg_active_timestamp_drift">>, AvgActiveTimestampDrift},
+     {<<"avg_replica_timestamp_drift">>, AvgReplicaTimestampDrift}]
+        ++ ViewsIndexesStats ++ XDCAllRepStats
         ++ computed_stats_lazy_proplist("@query").
 
 combine_samples(CombineTwo, Dict, [FirstName | Rest]) ->
@@ -1648,6 +1665,31 @@ membase_fts_stats_description(_) ->
                {name, global_fts_stat(<<"num_bytes_used_disk">>)},
                {desc, <<"Total fts disk file size for this bucket">>}]}].
 
+membase_lww_bucket_stats(BucketId) ->
+    case ns_bucket:get_bucket(BucketId) of
+        {ok, BucketCfg} ->
+            case ns_bucket:conflict_resolution_type(BucketCfg) of
+                lww ->
+                    [{struct,[{title,<<"avg active drift/mutation">>},
+                              {name,<<"avg_active_timestamp_drift">>},
+                              {desc,<<"Average drift (in seconds) per mutation on active vBuckets">>}]},
+                     {struct,[{title,<<"avg replica drift/mutation">>},
+                              {name,<<"avg_replica_timestamp_drift">>},
+                              {desc,<<"Average drift (in seconds) per mutation on replica vBuckets">>}]},
+                     {struct,[{title,<<"active ahead exceptions/sec">>},
+                              {name,<<"ep_active_ahead_exceptions">>},
+                              {desc,<<"Total number of ahead exceptions for  all active vBuckets">>}]},
+                     {struct,[{title,<<"replica ahead exceptions/sec">>},
+                              {name,<<"ep_replica_ahead_exceptions">>},
+                              {desc,<<"Total number of ahead exceptions for all replica vBuckets">>}]}
+                    ];
+                seqno ->
+                    []
+            end;
+        not_present ->
+            []
+    end.
+
 membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
     [{struct,[{blockName,<<"Summary">>},
               {stats,
@@ -1775,7 +1817,8 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                    end ++
                        membase_query_stats_description(AddQuery) ++
                        membase_index_stats_description(IndexNodes) ++
-                       membase_fts_stats_description(FtsNodes)
+                       membase_fts_stats_description(FtsNodes) ++
+                       membase_lww_bucket_stats(BucketId)
                   )]}]},
     {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
