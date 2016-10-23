@@ -206,14 +206,24 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                                       _ -> BasicStats0
                                   end,
 
-                     [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
-                      {threadsNumber, proplists:get_value(num_threads, BucketConfig, 3)},
-                      {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
-                                        {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
-                      {basicStats, {struct, BasicStats}},
-                      {evictionPolicy, EvictionPolicy},
-                      {conflictResolutionType, ConflictResolutionType}
-                      | BucketCaps]
+                     BucketParams =
+                         [{replicaNumber, ns_bucket:num_replicas(BucketConfig)},
+                          {threadsNumber, proplists:get_value(num_threads, BucketConfig, 3)},
+                          {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
+                                            {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
+                          {basicStats, {struct, BasicStats}},
+                          {evictionPolicy, EvictionPolicy},
+                          {conflictResolutionType, ConflictResolutionType}
+                          | BucketCaps],
+
+                     case ns_bucket:drift_thresholds(BucketConfig) of
+                         undefined ->
+                             BucketParams;
+                         {DriftAheadThreshold, DriftBehindThreshold} ->
+                             [{driftAheadThresholdMs, DriftAheadThreshold},
+                              {driftBehindThresholdMs, DriftBehindThreshold}
+                              | BucketParams]
+                     end
              end,
     BucketType = ns_bucket:bucket_type(BucketConfig),
     %% Only list nodes this bucket is mapped to
@@ -416,7 +426,9 @@ extract_bucket_props(BucketId, Props) ->
                                                                      sasl_password, moxi_port,
                                                                      autocompaction, purge_interval,
                                                                      flush_enabled, num_threads, eviction_policy,
-                                                                     conflict_resolution_type]],
+                                                                     conflict_resolution_type,
+                                                                     drift_ahead_threshold_ms,
+                                                                     drift_behind_threshold_ms]],
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
@@ -936,25 +948,30 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
                                undefined,
                                IsNew,
                                fun parse_validate_replicas_number/1),
-                         [{ok, bucketType, membase},
-                          ReplicasNumResult,
-                          get_conflict_resolution_type(Params, IsNew),
-                          case IsNew of
-                              true ->
-                                  ReplicaIndexDefault =
-                                      case ReplicasNumResult of
-                                          {ok, num_replicas, 0} ->
-                                              "0";
-                                          _ ->
-                                              "1"
-                                      end,
-                                  parse_validate_replica_index(proplists:get_value("replicaIndex", Params, ReplicaIndexDefault));
-                              false ->
-                                  ignore
-                          end,
-                          validate_with_missing(proplists:get_value("threadsNumber", Params), "3", IsNew, fun parse_validate_threads_number/1),
-                          validate_with_missing(proplists:get_value("evictionPolicy", Params), "valueOnly", IsNew, fun parse_validate_eviction_policy/1)
-                          | Candidates2];
+                         BucketParams =
+                             [{ok, bucketType, membase},
+                              ReplicasNumResult,
+                              case IsNew of
+                                  true ->
+                                      ReplicaIndexDefault =
+                                          case ReplicasNumResult of
+                                              {ok, num_replicas, 0} ->
+                                                  "0";
+                                              _ ->
+                                                  "1"
+                                          end,
+                                      parse_validate_replica_index(proplists:get_value("replicaIndex", Params, ReplicaIndexDefault));
+                                  false ->
+                                      ignore
+                              end,
+                              validate_with_missing(proplists:get_value("threadsNumber", Params), "3", IsNew, fun parse_validate_threads_number/1),
+                              validate_with_missing(proplists:get_value("evictionPolicy", Params), "valueOnly", IsNew, fun parse_validate_eviction_policy/1)
+                              | Candidates2],
+
+                         get_conflict_resolution_type_and_thresholds(
+                           Params,
+                           BucketConfig,
+                           IsNew) ++ BucketParams;
                      _ ->
                          [{error, bucketType, <<"invalid bucket type">>}
                           | Candidates2]
@@ -972,27 +989,53 @@ basic_bucket_params_screening_tail(Ctx, Params, AuthType) ->
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
 
-get_conflict_resolution_type(Params, true = _IsNew) ->
+get_conflict_resolution_type_and_thresholds(Params, _BucketConfig, true = IsNew) ->
     case proplists:get_value("conflictResolutionType", Params) of
         undefined ->
-            {ok, conflict_resolution_type, seqno};
+            [{ok, conflict_resolution_type, seqno}];
         Value ->
             case cluster_compat_mode:is_cluster_46() of
-                true ->
-                    parse_validate_conflict_resolution_type(Value);
                 false ->
-                    {error, conflictResolutionType,
-                     <<"Conflict resolution type can not be set if cluster is not fully 4.6">>}
+                    [{error, conflictResolutionType,
+                      <<"Conflict resolution type can not be set if cluster is not fully 4.6">>}];
+                true ->
+                    ConResType = parse_validate_conflict_resolution_type(Value),
+                    case ConResType of
+                        {ok, _, lww} ->
+                            [ConResType,
+                             get_drift_ahead_threshold(Params, IsNew),
+                             get_drift_behind_threshold(Params, IsNew)];
+                        _ ->
+                            [ConResType]
+                    end
             end
     end;
-get_conflict_resolution_type(Params, false = _IsNew) ->
+get_conflict_resolution_type_and_thresholds(Params, BucketConfig, false = IsNew) ->
     case proplists:get_value("conflictResolutionType", Params) of
         undefined ->
-            ignore;
+            case ns_bucket:conflict_resolution_type(BucketConfig) of
+                lww ->
+                    [get_drift_ahead_threshold(Params, IsNew),
+                     get_drift_behind_threshold(Params, IsNew)];
+                seqno ->
+                    []
+            end;
         _Any ->
-            {error, conflictResolutionType,
-             <<"Conflict resolution type not allowed in update bucket">>}
+            [{error, conflictResolutionType,
+              <<"Conflict resolution type not allowed in update bucket">>}]
     end.
+
+get_drift_ahead_threshold(Params, IsNew) ->
+    validate_with_missing(proplists:get_value("driftAheadThresholdMs", Params),
+                          "5000",
+                          IsNew,
+                          fun parse_validate_drift_ahead_threshold/1).
+
+get_drift_behind_threshold(Params, IsNew) ->
+    validate_with_missing(proplists:get_value("driftBehindThresholdMs", Params),
+                          "5000",
+                          IsNew,
+                          fun parse_validate_drift_behind_threshold/1).
 
 validate_bucket_password(undefined) ->
     {error, saslPassword, <<"Bucket password is undefined">>};
@@ -1137,6 +1180,30 @@ parse_validate_threads_number(NumThreads) ->
              <<"The number of threads can't be greater than 8">>};
         {ok, X} ->
             {ok, num_threads, X}
+    end.
+
+parse_validate_drift_ahead_threshold(Threshold) ->
+    case menelaus_util:parse_validate_number(Threshold, 100, undefined) of
+        invalid ->
+            {error, driftAheadThresholdMs,
+             <<"The drift ahead threshold must be an integer not less than 100ms">>};
+        too_small ->
+            {error, driftAheadThresholdMs,
+             <<"The drift ahead threshold can't be less than 100ms">>};
+        {ok, X} ->
+            {ok, drift_ahead_threshold_ms, X}
+    end.
+
+parse_validate_drift_behind_threshold(Threshold) ->
+    case menelaus_util:parse_validate_number(Threshold, 100, undefined) of
+        invalid ->
+            {error, driftBehindThresholdMs,
+             <<"The drift behind threshold must be an integer not less than 100ms">>};
+        too_small ->
+            {error, driftBehindThresholdMs,
+             <<"The drift behind threshold can't be less than 100ms">>};
+        {ok, X} ->
+            {ok, drift_behind_threshold_ms, X}
     end.
 
 parse_validate_eviction_policy("valueOnly") ->
