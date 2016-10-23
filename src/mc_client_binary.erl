@@ -364,9 +364,14 @@ engine_param_type_to_int(flush) ->
 engine_param_type_to_int(tap) ->
     2;
 engine_param_type_to_int(checkpoint) ->
-    3.
+    3;
+engine_param_type_to_int(dcp) ->
+    4;
+engine_param_type_to_int(vbucket) ->
+    5.
 
--spec set_engine_param(port(), binary(), binary(), flush | tap | checkpoint) -> ok | mc_error().
+-spec set_engine_param(port(), binary(), binary(),
+                       flush | tap | checkpoint | dcp | vbucket) -> ok | mc_error().
 set_engine_param(Sock, Key, Value, Type) ->
     ParamType = engine_param_type_to_int(Type),
     Entry = #mc_entry{key = Key,
