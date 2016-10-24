@@ -5,8 +5,8 @@
 
   function mnXDCRReferenceDialogController($scope, $uibModalInstance, mnPromiseHelper, mnXDCRService, reference, mnPoolDefault) {
     var vm = this;
-
-    vm.cluster = reference ? _.clone(reference) : {username: 'Administrator'};
+    vm.isNew = !reference;
+    vm.cluster = !vm.isNew ? _.clone(reference) : {username: 'Administrator'};
     vm.mnPoolDefault = mnPoolDefault.latestValue();
     vm.createClusterReference = createClusterReference;
 
@@ -20,4 +20,3 @@
     };
   }
 })();
-

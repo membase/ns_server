@@ -1,6 +1,7 @@
 <div class="dialog-med">
   <div class="panel-header">
-    <h2>Add Remote Cluster</h2>
+    <h2 ng-show="xdcrReferenceDialogCtl.isNew">Add Remote Cluster</h2>
+    <h2 ng-show="!xdcrReferenceDialogCtl.isNew">Edit Remote Cluster</h2>
   </div>
   <form
      ng-submit="xdcrReferenceDialogCtl.createClusterReference()"
