@@ -155,6 +155,15 @@ counter_inc(CounterName) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+sanitize_node_info(NodeKVList) ->
+    misc:rewrite_tuples(
+      fun ({<<"otpCookie">>, Cookie}) ->
+              {stop, {<<"otpCookie">>, ns_cookie_manager:sanitize_cookie(Cookie)}};
+          ({otpCookie, Cookie}) ->
+              {stop, {otpCookie, ns_cookie_manager:sanitize_cookie(Cookie)}};
+          (Other) ->
+              {continue, Other}
+      end, NodeKVList).
 
 handle_call({add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID, Services}, _From, State) ->
     ?cluster_debug("handling add_node(~p, ~p, ~p, ..)", [RemoteAddr, RestPort, GroupUUID]),
@@ -163,15 +172,15 @@ handle_call({add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID, Services}
     {reply, RV, State};
 
 handle_call({engage_cluster, NodeKVList}, _From, State) ->
-    ?cluster_debug("handling engage_cluster(~p)", [NodeKVList]),
+    ?cluster_debug("handling engage_cluster(~p)", [sanitize_node_info(NodeKVList)]),
     RV = do_engage_cluster(NodeKVList),
     ?cluster_debug("engage_cluster(..) -> ~p", [RV]),
     {reply, RV, State};
 
 handle_call({complete_join, NodeKVList}, _From, State) ->
-    ?cluster_debug("handling complete_join(~p)", [NodeKVList]),
+    ?cluster_debug("handling complete_join(~p)", [sanitize_node_info(NodeKVList)]),
     RV = do_complete_join(NodeKVList),
-    ?cluster_debug("complete_join(~p) -> ~p", [NodeKVList, RV]),
+    ?cluster_debug("complete_join(~p) -> ~p", [sanitize_node_info(NodeKVList), RV]),
 
     case RV of
         %% we failed to start ns_server back; we don't want to stay in this
@@ -561,14 +570,14 @@ do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID, Services) -
         end,
 
     ?cluster_debug("Posting node info to engage_cluster on ~p:~n~p",
-                   [{RemoteAddr, RestPort}, {Props1}]),
+                   [{RemoteAddr, RestPort}, {sanitize_node_info(Props1)}]),
     RV = menelaus_rest:json_request_hilevel(post,
                                             {RemoteAddr, RestPort, "/engageCluster2",
                                              "application/json",
                                              mochijson2:encode({Props1})},
                                             Auth),
     ?cluster_debug("Reply from engage_cluster on ~p:~n~p",
-                   [{RemoteAddr, RestPort}, RV]),
+                   [{RemoteAddr, RestPort}, sanitize_node_info(RV)]),
 
     ExtendedRV = case RV of
                      {client_error, [Message]} = JSONErr when is_binary(Message) ->
@@ -710,7 +719,7 @@ do_add_node_engaged_inner(NodeKVList, OtpNode, Auth, Services) ->
                        | MyNodeKVList]},
 
     ?cluster_debug("Posting the following to complete_join on ~p:~n~p",
-                   [HostnameRaw, Struct]),
+                   [HostnameRaw, sanitize_node_info(Struct)]),
     RV = menelaus_rest:json_request_hilevel(post,
                                             {Hostname, Port, "/completeJoin",
                                              "application/json",
@@ -1106,7 +1115,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
                          end),
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
         ns_config:set_initial(cluster_compat_version, undefined),
-        ?cluster_debug("pre-join cleaned config is:~n~p", [ns_config:get()]),
+        ?cluster_debug("pre-join cleaned config is:~n~p", [ns_config_log:sanitize(ns_config:get())]),
         {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
         %% Let's verify connectivity.
         Connected = net_kernel:connect_node(RemoteNode),
@@ -1117,7 +1126,7 @@ perform_actual_join(RemoteNode, NewCookie) ->
         %% gets all the static keys the same way as it happens during load_config
         ok = ns_config_rep:pull_remote(RemoteNode),
         ns_config:merge_dynamic_and_static(),
-        ?cluster_debug("pre-join merged config is:~n~p", [ns_config:get()]),
+        ?cluster_debug("pre-join merged config is:~n~p", [ns_config_log:sanitize(ns_config:get())]),
 
         {ok, ok}
     catch

@@ -285,7 +285,8 @@ do_adjust_address(MyIP, UserSupplied, OnRename, State = #state{my_ip = MyOldIP})
                 NewState1 = bringup(MyIP, UserSupplied),
                 if
                     NewState1#state.self_started ->
-                        ?log_info("Re-setting cookie ~p", [{Cookie, node()}]),
+                        ?log_info("Re-setting cookie ~p",
+                                  [{ns_cookie_manager:sanitize_cookie(Cookie), node()}]),
                         erlang:set_cookie(node(), Cookie);
                     true -> ok
                 end,

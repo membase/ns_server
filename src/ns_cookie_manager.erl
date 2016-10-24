@@ -30,7 +30,7 @@
          cookie_init/0, cookie_gen/0,
          cookie_set/1, cookie_sync/0]).
 
--export([ns_log_cat/1, ns_log_code_string/1]).
+-export([ns_log_cat/1, ns_log_code_string/1, sanitize_cookie/1]).
 
 
 -define(SERVER, ?MODULE).
@@ -79,12 +79,19 @@ handle_call({cookie_set, Cookie}, _From, State) ->
 handle_call(cookie_sync, _From, State) ->
     {reply, do_cookie_sync(), State}.
 
+sanitize_cookie(nocookie) ->
+    nocookie;
+sanitize_cookie(Cookie) when is_atom(Cookie) ->
+    sanitize_cookie(list_to_binary(atom_to_list(Cookie)));
+sanitize_cookie(Cookie) when is_binary(Cookie) ->
+    {sanitized, base64:encode(crypto:hash(sha256, Cookie))}.
+
 %% Auxiliary functions
 
 do_cookie_init() ->
     NewCookie = do_cookie_gen(),
     ?user_log(?COOKIE_GEN, "Initial otp cookie generated: ~p",
-              [NewCookie]),
+              [sanitize_cookie(NewCookie)]),
     ok = do_cookie_set(NewCookie),
     {ok, NewCookie}.
 
@@ -118,7 +125,7 @@ do_cookie_sync() ->
                 CurrCookie ->
                     ?user_log(?COOKIE_INHERITED,
                               "Node ~p inherited otp cookie ~p from cluster",
-                              [node(), CurrCookie]),
+                              [node(), sanitize_cookie(CurrCookie)]),
                     do_cookie_set(CurrCookie),
                     {ok, CurrCookie}
             end;
@@ -128,7 +135,7 @@ do_cookie_sync() ->
                 _ ->
                     ?user_log(?COOKIE_SYNCHRONIZED,
                               "Node ~p synchronized otp cookie ~p from cluster",
-                              [node(), WantedCookie]),
+                              [node(), sanitize_cookie(WantedCookie)]),
                     erlang:set_cookie(node(), WantedCookie),
                     {ok, WantedCookie}
             end

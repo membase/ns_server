@@ -119,6 +119,8 @@ sanitize(Config) ->
               {stop, {cert_and_pkey, {Props, Cert, <<"*****">>}}};
           ({{metakv, K}, {?METAKV_SENSITIVE, _V}}) ->
               {stop, {{metakv, K}, {?METAKV_SENSITIVE, <<"*****">>}}};
+          ({cookie, Cookie}) ->
+              {stop, {cookie, ns_cookie_manager:sanitize_cookie(Cookie)}};
           (Other) ->
               {continue, Other}
       end, Config).
