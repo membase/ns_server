@@ -53,7 +53,8 @@
          engage_cluster/1, complete_join/1,
          check_host_connectivity/1, change_address/1,
          enforce_topology_limitation/1,
-         rename_marker_path/0]).
+         rename_marker_path/0,
+         sanitize_node_info/1]).
 
 %% debugging & diagnostic export
 -export([do_change_address/2]).
