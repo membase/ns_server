@@ -51,7 +51,6 @@
     vm.onStopRecovery = onStopRecovery;
     vm.postRebalance = postRebalance;
     vm.addServer = addServer;
-    vm.mayRebalanceWithoutSampleLoading = mayRebalanceWithoutSampleLoading;
 
     activate();
 
@@ -86,11 +85,6 @@
       $scope.$on("reloadServersPoller", function () {
         vm.showSpinner = true;
       });
-    }
-    function mayRebalanceWithoutSampleLoading() {
-      return ($scope.poolDefault && !$scope.poolDefault.rebalancing) &&
-             ($scope.adminCtl.tasks && !$scope.adminCtl.tasks.inRecoveryMode) &&
-             vm.nodes && (!!vm.nodes.pending.length || !$scope.poolDefault.balanced) && !vm.nodes.unhealthyActive;
     }
     function addServer() {
       $uibModal.open({

@@ -6,7 +6,7 @@
 </div>
 <div
    class="interim alert alert-warning"
-   ng-show="serversCtl.mayRebalanceWithoutSampleLoading() && adminCtl.tasks.isLoadingSamples && rbac.cluster.tasks.read">
+   ng-show="adminCtl.tasks.isLoadingSamples && rbac.cluster.tasks.read">
   <p>Warning: Rebalance is not available until data loading is completed!</p>
 </div>
 <div
@@ -47,8 +47,9 @@
          ng-show="poolDefault && !poolDefault.rebalancing && rbac.cluster.nodes.write"
          ng-click="serversCtl.addServer()">+ Add Server</button>
       <button
-         ng-show="serversCtl.mayRebalanceWithoutSampleLoading() && !adminCtl.tasks.isLoadingSamples && !adminCtl.tasks.isOrphanBucketTask && rbac.cluster.nodes.write && rbac.cluster.tasks.read"
+         ng-show="!poolDefault.rebalancing  && rbac.cluster.nodes.write && rbac.cluster.tasks.read"
          ng-click="serversCtl.postRebalance()"
+         ng-disabled="adminCtl.tasks.inRecoveryMode || (!serversCtl.nodes.pending.length && poolDefault.balanced) || serversCtl.nodes.unhealthyActive || adminCtl.tasks.isLoadingSamples || adminCtl.tasks.isOrphanBucketTask"
          class="orange">Rebalance</button>
       <button
          class="orange"

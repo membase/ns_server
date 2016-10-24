@@ -759,6 +759,13 @@ button.orange {
   color: #fff;
 }
 
+.btn.orange[disabled],
+button.orange[disabled] {
+  background-color: #fad79e;
+  cursor: default;
+  box-shadow: none;
+}
+
 .btn::-moz-focus-inner,
 button::-moz-focus-inner {
   border: 0;
