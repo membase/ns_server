@@ -1,31 +1,39 @@
 <div
    mn-spinner="!analyticsListGraphCtl.selectedStat || analyticsCtl.viewLoading"
+   min-height="269px"
    class="text-center margin-top2 margin-bottom2">
-  <h2>{{analyticsListGraphCtl.selectedStat.title}}
-    <span ng-show="analyticsListGraphCtl.selectedStat.visiblePeriod">
-      <small>last {{analyticsListGraphCtl.selectedStat.visiblePeriod | mnFormatUptime}}</small>
-    </span>
-    <span ng-show="!analyticsListGraphCtl.selectedStat.visiblePeriod">
-      No samples, yet
-    </span>
-  </h2>
-  <div style="position: relative;">
-    <div
-       class="inline"
-       style="width: 742px; height: 269px;"
-       ng-if="analyticsListGraphCtl.selectedStat.graphConfig"
-       mn-plot
-       mn-plot-config="analyticsListGraphCtl.selectedStat.graphConfig">
-    </div>
-    <div
-       ng-if="rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read"
-       class="text-left inline align-top">
+  <div class="inline">
+    <div class="inline" style="position: relative;">
+      <h2>{{analyticsListGraphCtl.selectedStat.title}}
+        <span ng-show="analyticsListGraphCtl.selectedStat.visiblePeriod">
+          <small>last {{analyticsListGraphCtl.selectedStat.visiblePeriod | mnFormatUptime}}</small>
+        </span>
+      </h2>
+      <span
+         style="position: absolute; width: 742px;"
+         class="text-center margin-top4"
+         ng-show="!analyticsListGraphCtl.selectedStat.visiblePeriod">
+        No samples, yet
+      </span>
+      <div
+         class="inline"
+         style="width: 742px; height: 269px;"
+         ng-if="analyticsListGraphCtl.selectedStat.graphConfig"
+         mn-plot
+         mn-plot-config="analyticsListGraphCtl.selectedStat.graphConfig">
+      </div>
+      <div
+         ng-hide="!analyticsListGraphCtl.selectedStat || analyticsCtl.viewLoading"
+         style="position: absolute; left: 100%; top: 0;"
+         ng-if="rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read"
+         class="text-left">
         <a ui-sref="app.admin.analytics.list.graph({zoom: 'minute'})" ui-sref-active="selected">Minute</a><br>
         <a ui-sref="app.admin.analytics.list.graph({zoom: 'hour'})" ui-sref-active="selected">Hour</a><br>
         <a ui-sref="app.admin.analytics.list.graph({zoom: 'day'})" ui-sref-active="selected">Day</a><br>
         <a ui-sref="app.admin.analytics.list.graph({zoom: 'week'})" ui-sref-active="selected">Week</a><br>
         <a ui-sref="app.admin.analytics.list.graph({zoom: 'month'})" ui-sref-active="selected">Month</a><br>
         <a ui-sref="app.admin.analytics.list.graph({zoom: 'year'})" ui-sref-active="selected">Year</a>
+      </div>
     </div>
   </div>
   <div ng-show="!analyticsCtl.state.isEmptyState">
