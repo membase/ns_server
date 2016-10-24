@@ -21,12 +21,10 @@
              checked="checked">
           Enable software update notifications
         </label>
-        <a href="" ng-click="wizardStep4Ctl.showWhatThis = !wizardStep4Ctl.showWhatThis">What&#39;s this?</a>
+        <a
+         href=""
+         uib-tooltip="Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.">What&#39;s this?</a>
       </div>
-      <p
-         ng-show="wizardStep4Ctl.showWhatThis">
-        Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.
-      </p>
       <div ng-show="!wizardStep4Ctl.isEnterprise">
         <h3 class="interim">Community Updates</h3>
         <p class="margin-top1">Please provide your email address to join the community and receive news on coming events.</p>
