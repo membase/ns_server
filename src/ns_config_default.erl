@@ -608,6 +608,8 @@ encrypt(Config) ->
                                 {stop, {sasl_password, encrypt_config_val(Pass)}};
                             ({metakv_sensitive, Val}) ->
                                 {stop, {metakv_sensitive, encrypt_config_val(Val)}};
+                            ({cookie, Cookie}) ->
+                                {stop, {cookie, encrypt_config_val(Cookie)}};
                             (T) ->
                                 {continue, T}
                         end, Config).
