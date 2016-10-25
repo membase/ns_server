@@ -14,9 +14,6 @@
       vm.replication.replicationType = "continuous";
       vm.replication.type = "xmem";
       vm.buckets = buckets.byType.membase;
-      if (vm.buckets[0]) {
-        vm.replication.fromBucket = vm.buckets[0].name;
-      }
       vm.advancedFiltering = mnRegexService.getProperties();
       vm.createReplication = createReplication;
 
