@@ -540,8 +540,6 @@ find_ports(NSConfig, Node, Services, Candidates) ->
      || {Service, ConfigKey, DefaultPort} <- Candidates, lists:member(Service, Services)].
 
 main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
-    Cookie = search_config(search_config(NSConfig, otp, []),
-                           cookie, []),
     DBDir = proplists:get_value({"couchdb", "database_dir"}, CouchInisPList, ""),
     IdxDir = proplists:get_value({"couchdb", "view_index_dir"}, CouchInisPList, ""),
     RestPort = extract_rest_port(NSConfig, Node),
@@ -596,7 +594,6 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
          {static_config, iolist_to_binary(io_lib:format("~p", [StaticTerms]))},
          {couch_inis, confget(#config.couch_inis)},
          {node, Node},
-         {cookie, Cookie},
          {db_dir, DBDir},
          {idx_dir, IdxDir},
          {rest_port, RestPort},
