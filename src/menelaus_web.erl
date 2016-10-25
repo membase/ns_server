@@ -61,8 +61,6 @@
 -export([handle_streaming_wakeup/4,
          handle_pool_info_wait_wake/4]).
 
--export([reset_admin_password/1]).
-
 %% for /diag
 -export([build_internal_settings_kvs/0]).
 
@@ -595,6 +593,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["controller", "cancelLogsCollection"] ->
                     {{[admin, logs], read},
                      fun menelaus_web_cluster_logs:handle_cancel_collect_logs/1};
+                ["controller", "resetAdminPassword"] ->
+                    {done, handle_reset_admin_password(Req)};
                 ["pools", "default", "buckets", Id] ->
                     {{[{bucket, Id}, settings], write},
                      fun menelaus_web_buckets:handle_bucket_update/3,
@@ -2661,38 +2661,49 @@ get_random_string(Length, AllowedChars) ->
                             ++ Acc
                 end, [], lists:seq(1, Length)).
 
-%% reset admin password to the generated or user specified value
-%% this function is called from cli by rpc call
-reset_admin_password(generated) ->
-    Password = gen_password(8),
-    case reset_admin_password(Password) of
-        {ok, Message} ->
-            {ok, list_to_binary(io_lib:format("~s New password is ~s", [binary_to_list(Message), Password]))};
-        Err ->
-            Err
-    end;
 reset_admin_password(Password) ->
     {User, Error} =
         case ns_config_auth:get_user(admin) of
             undefined ->
-                {undefined,
-                 {error, <<"Failed to reset administrative password. Node is not initialized.">>}};
+                {undefined, "Failed to reset administrative password. Node is not initialized."};
             U ->
                 {U, case validate_cred(Password, password) of
                         true ->
                             undefined;
                         ErrStr ->
-                            {error, ErrStr}
+                            ErrStr
                     end}
         end,
 
     case Error of
-        {error, _} = Err ->
-            Err;
-        _ ->
+        undefined ->
             ok = ns_config_auth:set_credentials(admin, User, Password),
             ns_audit:password_change(undefined, {User, admin}),
-            {ok, list_to_binary(io_lib:format("Password for user ~s was successfully replaced.", [User]))}
+            {ok, Password};
+        _ ->
+            {error, Error}
+    end.
+
+handle_reset_admin_password(Req) ->
+    menelaus_util:ensure_local(Req),
+    Password =
+        case proplists:get_value("generate", Req:parse_qs()) of
+            "1" ->
+                gen_password(8);
+            _ ->
+                PostArgs = Req:parse_post(),
+                proplists:get_value("password", PostArgs)
+        end,
+    case Password of
+        undefined ->
+            menelaus_util:reply_error(Req, "password", "Password should be supplied");
+        _ ->
+            case reset_admin_password(Password) of
+                {ok, Password} ->
+                    menelaus_util:reply_json(Req, {struct, [{password, list_to_binary(Password)}]});
+                {error, Error} ->
+                    menelaus_util:reply_global_error(Req, Error)
+            end
     end.
 
 -ifdef(EUNIT).
