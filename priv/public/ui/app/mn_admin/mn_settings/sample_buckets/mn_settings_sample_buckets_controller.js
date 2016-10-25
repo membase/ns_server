@@ -12,12 +12,15 @@
     vm.installSampleBuckets = installSampleBuckets;
 
     activate();
-
+    function getState(selected) {
+      return mnPromiseHelper(vm, mnSettingsSampleBucketsService.getSampleBucketsState(selected || vm.selected)).applyToScope("state");
+    }
     function activate() {
-      $scope.$watch("settingsSampleBucketsCtl.selected", function (selected) {
-        mnPromiseHelper(vm, mnSettingsSampleBucketsService.getSampleBucketsState(selected))
-          .showSpinner()
-          .applyToScope("state");
+      getState().showSpinner();
+      $scope.$watch("settingsSampleBucketsCtl.selected", function (value, oldValue) {
+        if (value !== oldValue) {
+          getState(value);
+        }
       }, true);
     }
 
