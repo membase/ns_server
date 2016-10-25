@@ -30,10 +30,16 @@
     vm.save = save;
 
     function save() {
-      mnPromiseHelper(vm, mnDocumentsEditingService.createDocument($state.params, vm.state.doc))
+      var promise = mnDocumentsEditingService
+          .createDocument($state.params, vm.state.doc)
+          .then(function () {
+            return mnDocumentsEditingService.getDocumentsEditingState($state.params);
+          });
+      mnPromiseHelper(vm, promise)
         .showSpinner()
         .catchErrors()
-        .onSuccess(function () {
+        .applyToScope("state")
+        .onSuccess(function (doc) {
           vm.isDocumentChanged = false;
         });
     }
