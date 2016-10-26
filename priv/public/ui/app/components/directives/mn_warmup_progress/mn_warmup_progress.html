@@ -1,11 +1,17 @@
 <div>
   <h4>Warmup Progress</h4>
   <hr>
-  <div class="column indent-1 text-smaller">
-    <div ng-repeat="task in warmUpTasks | orderBy:sortBy | limitTo:3">
+  <div class="column indent-1 text-smaller" ng-init="limitTo = 3">
+    <div ng-repeat="task in warmUpTasks | orderBy:sortBy | limitTo:limitTo">
       <span title="task[$parent.sortBy]" class="ellipsis">{{task[$parent.sortBy]}}</span>
       <span>{{task | formatWarmupMessage}}</span>
     </div>
-    <div ng-show="warmUpTasks.length > 3">more ...</div>
+    <a
+       href=""
+       ng-show="warmUpTasks.length > 3 && limitTo === 3"
+       ng-click="limitTo = undefined">... more</a>
+    <a href=""
+       ng-show="warmUpTasks.length > 3 && limitTo === undefined"
+       ng-click="limitTo = 3">less</a>
   </div>
 </div>
