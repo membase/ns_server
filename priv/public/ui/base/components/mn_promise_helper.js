@@ -153,8 +153,8 @@
       }
       function hideGlobalSpinner(id) {
         return function () {
-          $timeout.cancel(pendingGlobalSpinnerQueries.id);
-          delete pendingGlobalSpinnerQueries.id;
+          $timeout.cancel(pendingGlobalSpinnerQueries[id]);
+          delete pendingGlobalSpinnerQueries[id];
           if (_.isEmpty(pendingGlobalSpinnerQueries)) {
             $rootScope.mnGlobalSpinnerFlag = false;
           }
