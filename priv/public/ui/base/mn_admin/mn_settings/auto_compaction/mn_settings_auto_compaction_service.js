@@ -125,7 +125,9 @@
         params: params || {},
         data: mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings)
       }).then(null, function (resp) {
-        resp.data.errors = prepareErrorsForView(resp.data.errors);
+        if (resp.data) {
+          resp.data.errors = prepareErrorsForView(resp.data.errors);
+        }
         return $q.reject(resp);
       });
     }
