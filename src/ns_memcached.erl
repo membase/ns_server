@@ -1329,33 +1329,78 @@ ensure_bucket(Sock, Bucket) ->
     end.
 
 
+maybe_set_drift_thresholds(_Sock, _Bucket, undefined, _, _) ->
+    ok;
+maybe_set_drift_thresholds(Sock, Bucket, {DAT, DBT}, ActualDAT, ActualDBT) ->
+    DATBin = list_to_binary(integer_to_list(misc:msecs_to_usecs(DAT))),
+    DBTBin = list_to_binary(integer_to_list(misc:msecs_to_usecs(DBT))),
+    DATChanged = (DATBin =/= ActualDAT),
+    DBTChanged = (DBTBin =/= ActualDBT),
+
+    case DATChanged of
+        true ->
+            ok = mc_client_binary:set_engine_param(Sock,
+                                                   <<"hlc_drift_ahead_threshold_us">>,
+                                                   DATBin,
+                                                   vbucket),
+            ?log_info("Drift ahead threshold changed from '~s' to '~s' for bucket ~p",
+                      [ActualDAT, DATBin, Bucket]);
+        false ->
+            ok
+    end,
+
+    case DBTChanged of
+        true ->
+            ok = mc_client_binary:set_engine_param(Sock,
+                                                   <<"hlc_drift_behind_threshold_us">>,
+                                                   DBTBin,
+                                                   vbucket),
+            ?log_info("Drift behind threshold changed from '~s' to '~s' for bucket ~p",
+                      [ActualDBT, DBTBin, Bucket]);
+        false ->
+            ok
+    end.
+
+-record(qstats, {max_size = missng_max_size,
+                 dbname = missing_path,
+                 max_num_workers = missing_num_threads,
+                 item_eviction_policy = missing_eviction_policy,
+                 ahead_threshold = missing_ahead_threshold,
+                 behind_threshold = missing_behind_threshold}).
+
 -spec ensure_bucket_config(port(), bucket_name(), bucket_type(),
                            {pos_integer(), nonempty_string()}) ->
                                   ok | no_return().
 ensure_bucket_config(Sock, Bucket, membase,
-                     {MaxSize, DBDir, NumThreads, EvictionPolicy}) ->
+                     {MaxSize, DBDir, NumThreads, EvictionPolicy,
+                      DriftThresholds}) ->
     MaxSizeBin = list_to_binary(integer_to_list(MaxSize)),
     DBDirBin = list_to_binary(DBDir),
     NumThreadsBin = list_to_binary(integer_to_list(NumThreads)),
     EvictionPolicyBin = atom_to_binary(EvictionPolicy, latin1),
-    {ok, {ActualMaxSizeBin,
-          ActualDBDirBin,
-          ActualNumThreads,
-          ActualEvictionPolicy}} =
+    {ok, #qstats{max_size = ActualMaxSizeBin,
+                 dbname = ActualDBDirBin,
+                 max_num_workers = ActualNumThreads,
+                 item_eviction_policy = ActualEvictionPolicy,
+                 ahead_threshold = ActualDAT,
+                 behind_threshold = ActualDBT}} =
         mc_binary:quick_stats(
           Sock, <<>>,
-          fun (<<"ep_max_size">>, V, {_, Path, T, E}) ->
-                  {V, Path, T, E};
-              (<<"ep_dbname">>, V, {S, _, T, E}) ->
-                  {S, V, T, E};
-              (<<"ep_max_num_workers">>, V, {S, Path, _, E}) ->
-                  {S, Path, V, E};
-              (<<"ep_item_eviction_policy">>, V, {S, Path, T, _}) ->
-                  {S, Path, T, V};
-              (_, _, CD) ->
-                  CD
-          end, {missing_max_size, missing_path,
-                missing_num_threads, missing_eviction_policy}),
+          fun (<<"ep_max_size">>, V, QStats) ->
+                  QStats#qstats{max_size = V};
+              (<<"ep_dbname">>, V, QStats) ->
+                  QStats#qstats{dbname = V};
+              (<<"ep_max_num_workers">>, V, QStats) ->
+                  QStats#qstats{max_num_workers = V};
+              (<<"ep_item_eviction_policy">>, V, QStats) ->
+                  QStats#qstats{item_eviction_policy = V};
+              (<<"ep_hlc_drift_ahead_threshold_us">>, V, QStats) ->
+                  QStats#qstats{ahead_threshold = V};
+              (<<"ep_hlc_drift_behind_threshold_us">>, V, QStats) ->
+                  QStats#qstats{behind_threshold = V};
+              (_, _, QStats) ->
+                  QStats
+          end, #qstats{}),
 
     CanReloadBuckets = ns_config:read_key_fast(dont_reload_bucket_on_cfg_change, false) =:= false,
 
@@ -1379,6 +1424,8 @@ ensure_bucket_config(Sock, Bucket, membase,
         false ->
             ok
     end,
+
+    maybe_set_drift_thresholds(Sock, Bucket, DriftThresholds, ActualDAT, ActualDBT),
 
     case NumThreadsChanged orelse EvictionPolicyChanged of
         true ->

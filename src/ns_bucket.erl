@@ -60,6 +60,7 @@
          num_replicas/1,
          ram_quota/1,
          conflict_resolution_type/1,
+         drift_thresholds/1,
          raw_ram_quota/1,
          sasl_password/1,
          set_bucket_config/2,
@@ -118,6 +119,7 @@ config_string(BucketName) ->
                 NumThreads = proplists:get_value(num_threads, BucketConfig, 3),
                 EvictionPolicy = proplists:get_value(eviction_policy, BucketConfig, value_only),
                 ConflictResolutionType = conflict_resolution_type(BucketConfig),
+                DriftThresholds = drift_thresholds(BucketConfig),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
@@ -152,7 +154,8 @@ config_string(BucketName) ->
                        BucketUUID,
                        EvictionPolicy,
                        ConflictResolutionType]),
-                {CFG, {MemQuota, DBSubDir, NumThreads, EvictionPolicy}, DBSubDir};
+                {CFG, {MemQuota, DBSubDir, NumThreads, EvictionPolicy,
+                       DriftThresholds}, DBSubDir};
             memcached ->
                 {io_lib:format("cache_size=~B;uuid=~s", [MemQuota, BucketUUID]),
                  MemQuota, undefined}
@@ -251,6 +254,15 @@ live_bucket_nodes_from_config(BucketConfig) ->
 -spec conflict_resolution_type([{_,_}]) -> atom().
 conflict_resolution_type(BucketConfig) ->
     proplists:get_value(conflict_resolution_type, BucketConfig, seqno).
+
+drift_thresholds(BucketConfig) ->
+    case conflict_resolution_type(BucketConfig) of
+        lww ->
+            {proplists:get_value(drift_ahead_threshold_ms, BucketConfig),
+             proplists:get_value(drift_behind_threshold_ms, BucketConfig)};
+        seqno ->
+            undefined
+    end.
 
 %% returns bucket ram quota multiplied by number of nodes this bucket
 %% resides on. I.e. gives amount of ram quota that will be used by
