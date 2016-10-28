@@ -89,7 +89,7 @@ handle_info({tcp, Socket, Data}, #state{sock = Socket} = State) ->
     {noreply, process_data(Data, State), ?HIBERNATE_TIMEOUT};
 
 handle_info({tcp_closed, Socket}, State) ->
-    ?log_debug("Socket ~p was closed. Closing myself. State = ~p", [Socket, State]),
+    ?log_error("Socket ~p was closed. Closing myself. State = ~p", [Socket, State]),
     {stop, normal, State};
 
 handle_info({'EXIT', _Pid, _Reason} = ExitSignal, State) ->
