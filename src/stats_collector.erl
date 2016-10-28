@@ -172,7 +172,8 @@ process_stats(TS,
                 []
         end,
 
-    NewState = maybe_log_stats(TS, State, PlainStats),
+    StatsToBeLogged = DcpValues ++ PlainStats,
+    NewState = maybe_log_stats(TS, State, StatsToBeLogged),
 
     {Stats,
      {PlainCounters, TapCounters, DcpCounters, TimingsCounters},
