@@ -13,13 +13,26 @@
     return mnFocus;
 
     function link($scope, $element, $attrs) {
-      $scope.$watch($attrs.mnFocus ? $parse($attrs.mnFocus) : function () { return true; }, function (focus) {
+
+      if ($attrs.mnFocus === "") {
+        return $element[0].focus();
+      }
+
+      var getter = $parse($attrs.mnFocus);
+      var setter = getter.assign;
+      $scope.$watch($attrs.mnFocus, function (focus) {
         focus && $element[0].focus();
       });
 
-      $element.bind('blur', function () {
-        $scope.mnFocus = false;
-      });
+      if (setter) {
+        function handler() {
+          setter($scope, false);
+        }
+        $element.on('blur', handler);
+        $scope.$on('$destroy', function () {
+          $element.off('blur', handler);
+        })
+      }
     }
   }
 })();
