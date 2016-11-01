@@ -349,7 +349,20 @@ check(oom, Opaque, _History, Stats) ->
 
 %% @doc check for any CAS drift threshold exceeded errors on any bucket
 check(cas_drift_threshold, Opaque, _History, Stats) ->
-    check_stat_increased(Stats, ep_clock_cas_drift_threshold_exceeded, Opaque).
+    FilterLWW = fun(Bucket) ->
+                        case ns_bucket:get_bucket(Bucket) of
+                            {ok, BCfg} ->
+                                ns_bucket:conflict_resolution_type(BCfg) =:= lww;
+                            not_present ->
+                                false
+                        end
+                end,
+
+    NewStats = [Item || {Bucket, _OrdDict} = Item <- Stats,
+                        Bucket =/= "@global" andalso FilterLWW(Bucket)],
+
+    check_stat_increased(NewStats, ep_clock_cas_drift_threshold_exceeded,
+                         Opaque).
 
 %% @doc only check for disk usage if there has been no previous
 %% errors or last error was over the timeout ago
@@ -390,7 +403,8 @@ check_stat_increased(Stats, StatName, Opaque) ->
                     ok;
                 Buckets ->
                     {_Sname, Host} = misc:node_name_host(node()),
-                    [global_alert({StatName, Bucket}, fmt_to_bin(errors(StatName), [Bucket, Host]))
+                    [global_alert({StatName, Bucket},
+                                  fmt_to_bin(errors(StatName), [Bucket, Host]))
                      || Bucket <- Buckets]
             end,
             dict:store(StatName, New, Opaque)
