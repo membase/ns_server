@@ -18,19 +18,21 @@
         credentials in the "join cluster" process.
       </p>
       <div
-         class="error error-form"
-         ng-show="wizardStep5Ctl.form.$invalid">
-        <div ng-show="wizardStep5Ctl.form.$error.equals">
+         class="error error-form">
+        <div ng-show="wizardStep5Ctl.form.$submitted && wizardStep5Ctl.form.password.$error.mnEqual">
           'Password' and 'Verify Password' do not match
         </div>
-        <div ng-show="wizardStep5Ctl.form.password.$error.minlength">
+        <div ng-show="wizardStep5Ctl.form.$submitted && wizardStep5Ctl.form.password.$error.mnMinlength">
           A password of at least six characters is required
         </div>
-        <div ng-show="wizardStep5Ctl.form.password.$error.maxlength || wizardStep5Ctl.form.username.$error.maxlength">
+        <div ng-show="wizardStep5Ctl.form.password.$error.mnMaxlength || wizardStep5Ctl.form.username.$error.mnMaxlength">
           Maximum 24 characters exceeded
         </div>
-        <div ng-show="wizardStep5Ctl.form.username.$error.required">
+        <div ng-show="wizardStep5Ctl.form.$submitted && wizardStep5Ctl.form.username.$error.required">
           Username is required
+        </div>
+        <div ng-show="wizardStep5Ctl.form.$submitted && wizardStep5Ctl.form.password.$error.required">
+          Password is required
         </div>
       </div>
       <div
@@ -44,7 +46,7 @@
            type="text"
            name="username"
            id="secure-username"
-           ng-maxlength="24"
+           mn-maxlength="24"
            ng-model="wizardStep5Ctl.user.username"
            required>
       </div>
@@ -55,8 +57,9 @@
            name="password"
            ng-model="wizardStep5Ctl.user.password"
            id="secure-password"
-           ng-minlength="6"
-           ng-maxlength="24"
+           mn-minlength="6"
+           mn-maxlength="24"
+           mn-equal="{{wizardStep5Ctl.user.verifyPassword}}"
            required
            mn-autocomplete-off
            mn-focus="wizardStep5Ctl.focusMe">
@@ -67,7 +70,6 @@
            type="password"
            name="passwordVerify"
            id="secure-password-verify"
-           maxlength="24"
            mn-autocomplete-off
            ng-model="wizardStep5Ctl.user.verifyPassword">
       </div>

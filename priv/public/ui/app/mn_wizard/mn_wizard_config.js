@@ -24,7 +24,10 @@
     'mnFilters',
     'mnFocus',
     'mnAboutDialog',
-    'mnBucketsDetailsDialogService'
+    'mnBucketsDetailsDialogService',
+    'mnMinlength',
+    'mnMaxlength',
+    'mnEqual'
   ]).config(mnWizardConfig);
 
   function mnWizardConfig($stateProvider) {

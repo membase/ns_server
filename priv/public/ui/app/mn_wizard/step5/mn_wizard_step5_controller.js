@@ -19,8 +19,6 @@
 
       function activate() {
         vm.focusMe = true;
-        vm.user.password = '';
-        vm.user.verifyPassword = '';
       }
       function login(user) {
         return mnWizardStep5Service.postAuth(user).then(function () {
@@ -43,8 +41,6 @@
         if (vm.viewLoading) {
           return;
         }
-
-        vm.form.$setValidity('equals', vm.user.password === vm.user.verifyPassword);
 
         if (vm.form.$invalid) {
           return activate();
