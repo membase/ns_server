@@ -13,7 +13,9 @@
         abstract: true,
         controller: "mnSecurityController as securityCtl",
         templateUrl: "app/mn_admin/mn_security/mn_security.html",
-        permissions: "cluster.admin.security.read"
+        data: {
+          permissions: "cluster.admin.security.read"
+        }
       })
       .state('app.admin.security.externalRoles', {
         url: "/externalRoles",
