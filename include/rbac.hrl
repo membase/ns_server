@@ -25,7 +25,7 @@
 
 -type rbac_user_id() :: string().
 -type rbac_password() :: string().
--type rbac_identity_type() :: rejected | wrong_token | anonymous | admin | ro_admin | bucket | saslauthd.
+-type rbac_identity_type() :: rejected | wrong_token | anonymous | admin | ro_admin | bucket | saslauthd | local_token.
 -type rbac_identity() :: {rbac_user_id(), rbac_identity_type()}.
 -type rbac_role_param() :: string() | any.
 -type rbac_role_name() :: atom().

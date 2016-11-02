@@ -205,6 +205,7 @@ is_throttled_request(_) ->
     true.
 
 -type action() :: {done, term()} |
+                  {local, fun()} |
                   {ui, boolean(), fun()} |
                   {ui, boolean(), fun(), [term()]} |
                   {rbac_permission() | no_check, fun()} |
@@ -412,7 +413,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["diag", "masterEvents"] ->
                     {{[admin, diag], read}, fun diag_handler:handle_diag_master_events/1};
                 ["diag", "password"] ->
-                    {done, diag_handler:handle_diag_get_password(Req)};
+                    {local, fun diag_handler:handle_diag_get_password/1};
                 ["pools", "default", "rebalanceProgress"] ->
                     {{[tasks], read}, fun handle_rebalance_progress/2, ["default"]};
                 ["pools", "default", "tasks"] ->
@@ -882,6 +883,13 @@ get_bucket_id({Object, _Operations}) ->
 -spec perform_action(mochiweb_request(), action()) -> term().
 perform_action(_Req, {done, RV}) ->
     RV;
+perform_action(Req, {local, Fun}) ->
+    case menelaus_auth:verify_local_token(Req) of
+        {allowed, NewReq} ->
+            Fun(NewReq);
+        auth_failure ->
+            require_auth(Req)
+    end;
 perform_action(Req, {ui, IsSSL, Fun}) ->
     perform_action(Req, {ui, IsSSL, Fun, []});
 perform_action(Req, {ui, IsSSL, Fun, Args}) ->

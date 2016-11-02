@@ -599,7 +599,8 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
          {memcached_logs_path, MCDLogs},
          {memcached_breakpad_minidump_dir, PerNodeMDD},
          {nodes, string:join(Nodes, ",")},
-         {stats_dir, StatsDir}],
+         {stats_dir, StatsDir},
+         {localtoken_path, filename:join(DataDir, "localtoken")}],
 
     output([E || {K, V} <- Pairs,
                  E <- [K, V]]),

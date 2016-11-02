@@ -343,12 +343,24 @@ def make_cbstats_task(kind, memcached_pass, guts):
                      timeout=60,
                      command_to_print=make_cmd("*****"))
 
-def get_diag_password(port):
+def get_local_token(guts, port):
+    path = read_guts(guts, "localtoken_path")
+    token = ""
+    try:
+        with open(path, 'r') as f:
+            token = f.read().rstrip('\n')
+    except IOError as e:
+        log("I/O error(%s): %s" % (e.errno, e.strerror))
+    return token
+
+def get_diag_password(guts):
     import subprocess
     import StringIO
 
+    port = read_guts(guts, "rest_port")
+    pwd = get_local_token(guts, port)
     url = "http://127.0.0.1:%s/diag/password" % port
-    command = ["curl", "-sS", "--proxy", "", url]
+    command = ["curl", "-sS", "--proxy", "", "-u", "@localtoken:%s" % pwd, url]
 
     task = AllOsTask("get diag password", command, timeout=60)
     output = StringIO.StringIO()
@@ -1095,7 +1107,7 @@ def main():
 
         guts_initargs_path = prefix
 
-    memcached_password =  get_diag_password(read_guts(guts, "rest_port"))
+    memcached_password =  get_diag_password(guts)
 
     zip_node = read_guts(guts, "node")
     runner.run(
