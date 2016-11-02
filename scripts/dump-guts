@@ -497,13 +497,6 @@ rewrite_tuples(Fun, Struct) ->
       end,
       Struct).
 
-sanitize_cookie(nocookie) ->
-    nocookie;
-sanitize_cookie(Cookie) when is_atom(Cookie) ->
-    sanitize_cookie(list_to_binary(atom_to_list(Cookie)));
-sanitize_cookie(Cookie) when is_binary(Cookie) ->
-    {sanitized, base64:encode(crypto:hash(sha256, Cookie))}.
-
 %% this one is taken from ns_config_log
 sanitize_config(Config) ->
     rewrite_tuples(fun (T) ->
@@ -524,8 +517,6 @@ sanitize_config(Config) ->
                                    {stop, {{metakv, K}, [VClock|{metakv_sensitive, <<"*****">>}]}};
                                {{metakv, K}, {metakv_sensitive, _V}} ->
                                    {stop, {{metakv, K}, {metakv_sensitive, <<"*****">>}}};
-                               ({cookie, Cookie}) ->
-                                   {stop, {cookie, sanitize_cookie(Cookie)}};
                                _ ->
                                    {continue, T}
                            end
