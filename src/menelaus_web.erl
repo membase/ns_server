@@ -595,7 +595,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[admin, logs], read},
                      fun menelaus_web_cluster_logs:handle_cancel_collect_logs/1};
                 ["controller", "resetAdminPassword"] ->
-                    {done, handle_reset_admin_password(Req)};
+                    {local, fun handle_reset_admin_password/1};
                 ["pools", "default", "buckets", Id] ->
                     {{[{bucket, Id}, settings], write},
                      fun menelaus_web_buckets:handle_bucket_update/3,
