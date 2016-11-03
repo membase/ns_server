@@ -4,7 +4,7 @@
      ng-show="!xdcrSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
     <label for="max_concurrent_reps">XDCR Max Replications Per Bucket</label>
     <input
-       type="text"
+       type="number"
        ng-model="xdcrSettingsCtl.settings.maxConcurrentReps">
     <div
        class="error"
@@ -17,7 +17,7 @@
      ng-show="!xdcrSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
     <label for="worker_processes_setting">XDCR Workers Per Replication</label>
     <input
-       type="text"
+       type="number"
        ng-model="xdcrSettingsCtl.settings.workerProcesses">
     <div
        class="error"
@@ -30,7 +30,7 @@
      ng-show="xdcrSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
     <label for="source_nozzle_per_node">XDCR Source Nozzles Per Node</label>
     <input
-       type="text"
+       type="number"
        ng-model="xdcrSettingsCtl.settings.sourceNozzlePerNode">
     <div
        class="error"
@@ -43,7 +43,7 @@
      ng-show="xdcrSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
     <label for="target_nozzle_per_node">XDCR Target Nozzles Per Node</label>
     <input
-       type="text"
+       type="number"
        ng-model="xdcrSettingsCtl.settings.targetNozzlePerNode">
     <div
        class="error"
@@ -54,7 +54,7 @@
   <div class="formrow">
     <label for="checkpoint_interval">XDCR Checkpoint Interval</label>
     <input
-       type="text"
+       type="number"
        ng-model="xdcrSettingsCtl.settings.checkpointInterval">
     <div
        class="error"
@@ -65,7 +65,7 @@
   <div class="formrow">
     <label for="worker_batch_size">XDCR Batch Count</label>
     <input
-       type="text"
+       type="number"
        ng-model="xdcrSettingsCtl.settings.workerBatchSize">
     <div
        class="error"
@@ -76,7 +76,7 @@
   <div class="formrow">
     <label for="doc_batch_size_kb">XDCR Batch Size (kB)</label>
     <input
-       type="text"
+       type="number"
        ng-model="xdcrSettingsCtl.settings.docBatchSizeKb">
     <div
        class="error"
@@ -87,7 +87,7 @@
   <div class="formrow">
     <label for="failure_restart_interval">XDCR Failure Retry Interval</label>
     <input
-       type="text"
+       type="number"
        ng-model="xdcrSettingsCtl.settings.failureRestartInterval">
     <div
        class="error"
@@ -98,7 +98,7 @@
   <div class="formrow">
     <label for="optimistic_replication_threshold">XDCR Optimistic Replication Threshold</label>
     <input
-       type="text"
+       type="number"
        ng-model="xdcrSettingsCtl.settings.optimisticReplicationThreshold">
     <div
        class="error"
@@ -111,7 +111,7 @@
      ng-show="xdcrSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
     <label for="statistics_collection_interval">XDCR Statistics Collection Interval (ms)</label>
     <input
-       type="text"
+       type="number"
        ng-model="xdcrSettingsCtl.settings.statsInterval">
     <div
        class="error"
