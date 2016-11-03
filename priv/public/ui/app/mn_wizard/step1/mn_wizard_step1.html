@@ -7,6 +7,7 @@
   </div>
   <form
      class="forms"
+     novalidate
      ng-submit="wizardStep1Ctl.onSubmit()">
     <div class="panel-content">
       <h3 class="interim">
@@ -160,6 +161,7 @@
            autocapitalize="off"
            name="hostname"
            id="setup_hostname"
+           required
            ng-model="wizardStep1Ctl.config.hostname">
         <div
            class="error error-form"
