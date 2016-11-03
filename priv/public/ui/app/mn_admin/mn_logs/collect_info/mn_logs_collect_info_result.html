@@ -7,61 +7,61 @@
     <div ng-if="logsCollectInfoCtl.state.nodesByStatus.started">
       <p>In progress:</p>
       <div class="result">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.started">{{node.nodeName}}</div>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.started track by node.nodeName">{{node.nodeName}}</div>
       </div>
     </div>
     <div ng-if="logsCollectInfoCtl.state.nodesByStatus.starting">
       <p>Pending:</p>
       <div class="result">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.starting">{{node.nodeName}}</div>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.starting track by node.nodeName">{{node.nodeName}}</div>
       </div>
     </div>
     <div ng-if="logsCollectInfoCtl.state.nodesByStatus.collected">
       <p class="green">Logs were successfully collected to the following paths:</p>
       <div class="result">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.collected"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.collected track by node.nodeName"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
       </div>
     </div>
     <div ng-if="logsCollectInfoCtl.state.nodesByStatus.startedUpload">
       <p class="green">Logs are being uploaded from this paths:</p>
       <div class="result">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.startedUpload"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.startedUpload track by node.nodeName"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
       </div>
     </div>
     <div ng-if="logsCollectInfoCtl.state.nodesByStatus.startingUpload">
       <p class="green">Logs are pending upload from this paths:</p>
       <div class="result">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.startingUpload"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.startingUpload track by node.nodeName"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
       </div>
     </div>
     <div ng-if="logsCollectInfoCtl.state.nodesByStatus.uploaded">
       <p class="green">Logs were successfully uploaded to the following URLs:</p>
       <div class="result">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.uploaded"><a href="{{node.url}}" target="_blank">{{node.url}}</a></div>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.uploaded track by node.nodeName"><a href="{{node.url}}" target="_blank">{{node.url}}</a></div>
       </div>
     </div>
     <div ng-if="logsCollectInfoCtl.state.nodesByStatus.failedUpload">
       <p class="red">Warning: The following logs were successfully collected but failed to upload. Please manually upload from the following locations:</p>
       <div class="result">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.failedUpload"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.failedUpload track by node.nodeName"><strong>{{node.nodeName}}</strong> {{node.path}}</div>
       </div>
     </div>
     <div ng-if="logsCollectInfoCtl.state.nodesByStatus.failed">
       <p class="red">Error: Unable to collect logs from the following nodes:</p>
       <div class="result">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.failed">{{node.nodeName}}</div>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.failed track by node.nodeName">{{node.nodeName}}</div>
       </div>
     </div>
     <div ng-if="logsCollectInfoCtl.state.nodesByStatus.cancelled">
       <p class="red">Cancelled Nodes:</p>
       <div class="result">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.cancelled">{{node.nodeName}}</div>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodesByStatus.cancelled track by node.nodeName">{{node.nodeName}}</div>
       </div>
     </div>
     <div ng-if="logsCollectInfoCtl.state.nodeErrors.length">
       <p class="red">Node Errors:</p>
       <div class="result">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodeErrors"><strong>{{node.nodeName}}</strong> {{node.error}}</div></div>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodeErrors track by node.nodeName"><strong>{{node.nodeName}}</strong> {{node.error}}</div></div>
     </div>
   </div>
 </div>
