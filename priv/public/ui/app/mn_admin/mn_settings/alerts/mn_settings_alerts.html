@@ -21,6 +21,9 @@
       <label for="email_alerts_host">Host</label>
       <input
          type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
          id="email_alerts_host"
          ng-model="settingsAlertsCtl.state.emailServer.host"
          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
@@ -29,6 +32,9 @@
       <label for="email_alerts_port">Port</label>
       <input
          type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
          id="email_alerts_port"
          ng-model="settingsAlertsCtl.state.emailServer.port"
          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
@@ -42,6 +48,9 @@
       <label for="email_alerts_user">Username</label>
       <input
          type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
          id="email_alerts_user"
          ng-model="settingsAlertsCtl.state.emailServer.user"
          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
@@ -50,6 +59,8 @@
       <label for="email_alerts_pass">Password</label>
       <input
          type="password"
+         autocorrect="off"
+         spellcheck="false"
          id="email_alerts_pass"
          ng-model="settingsAlertsCtl.state.emailServer.pass"
          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write"
@@ -76,6 +87,9 @@
       </label>
       <input
          type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
          id="email_alerts_sender"
          ng-model="settingsAlertsCtl.state.sender"
          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
@@ -91,6 +105,9 @@
       </label>
       <textarea
          id="email_alerts_recipients"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"
          ng-disabled="!settingsAlertsCtl.state.enabled || !rbac.cluster.settings.write"
          ng-model="settingsAlertsCtl.state.recipients"></textarea>
       <div

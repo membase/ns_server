@@ -14,7 +14,7 @@
        mn-focus="!(bucketConf.isWizard || !bucketConf.isNew)"
        autocorrect="off"
        spellcheck="false"
-       autocomplete="off">
+       autocapitalize="off">
     <div
        class="error"
        ng-show="validation.result.errors.name">
@@ -140,6 +140,9 @@
     <label for="js_bucket_details_proxy_port">Protocol Port:</label>
     <input
        type="text"
+       autocorrect="off"
+       spellcheck="false"
+       autocapitalize="off"
        id="js_bucket_details_proxy_port"
        ng-model="bucketConf.proxyPort"
        ng-disabled="bucketConf.authType !== 'none'">

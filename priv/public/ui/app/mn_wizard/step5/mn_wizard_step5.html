@@ -44,6 +44,9 @@
         <label for="secure-username">Username</label>
         <input
            type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
            name="username"
            id="secure-username"
            mn-maxlength="24"
@@ -55,6 +58,8 @@
         <input
            type="password"
            name="password"
+           autocorrect="off"
+           spellcheck="false"
            ng-model="wizardStep5Ctl.user.password"
            id="secure-password"
            mn-minlength="6"
@@ -68,6 +73,8 @@
         <label for="secure-password-verify">Verify Password</label>
         <input
            type="password"
+           autocorrect="off"
+           spellcheck="false"
            name="passwordVerify"
            id="secure-password-verify"
            mn-autocomplete-off

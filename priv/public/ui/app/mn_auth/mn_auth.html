@@ -22,6 +22,9 @@
            ng-show="authCtl.loginFailed">Login failed. Please try again.</div>
         <div class="formrow">
           <input
+             autocorrect="off"
+             spellcheck="false"
+             autocapitalize="off"
              type="text"
              id="auth-username-input"
              ng-model="authCtl.user.username"
@@ -43,6 +46,8 @@
         <div class="formrow">
           <input
              type="password"
+             autocorrect="off"
+             spellcheck="false"
              id="auth-password-input"
              ng-model="authCtl.user.password"
              ng-model-options="{updateOn: 'default'}"

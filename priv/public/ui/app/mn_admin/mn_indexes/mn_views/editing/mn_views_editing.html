@@ -89,6 +89,9 @@
          ng-class="{'width-8': !viewsEditingCtl.isSpatial}">
         <label for="viewcode_map">Map</label>
         <textarea
+           autocorrect="off"
+           autocapitalize="off"
+           spellcheck="false"
            class="flex-grow-one width-4 text-small"
            ng-if="viewsEditingCtl.isSpatial"
            spellcheck="false"
@@ -97,6 +100,8 @@
            ></textarea>
         <textarea
            ng-if="!viewsEditingCtl.isSpatial"
+           autocorrect="off"
+           autocapitalize="off"
            spellcheck="false"
            ng-model="viewsEditingCtl.state.currentDocument.doc.json.views[viewsEditingCtl.viewId].map"
            ui-codemirror="viewsEditingCtl.viewsOptions"
@@ -115,6 +120,8 @@
         <textarea
            class="text-small"
            placeholder="(optional)"
+           autocorrect="off"
+           autocapitalize="off"
            spellcheck="false"
            ng-change="viewsEditingCtl.onReduceChange(viewsEditingCtl.state.currentDocument.doc.json.views[viewsEditingCtl.viewId])"
            ng-model="viewsEditingCtl.state.currentDocument.doc.json.views[viewsEditingCtl.viewId].reduce"

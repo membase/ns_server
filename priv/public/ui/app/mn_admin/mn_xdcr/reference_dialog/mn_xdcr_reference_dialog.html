@@ -19,7 +19,10 @@
            ng-model="xdcrReferenceDialogCtl.cluster.name"
            id="cluster_reference_name"
            mn-focus
-           type="text">
+           type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off">
       </div>
       <div class="formrow">
         <label for="cluster_reference_hostname">IP/Hostname
@@ -30,19 +33,27 @@
         <input
            ng-model="xdcrReferenceDialogCtl.cluster.hostname"
            id="cluster_reference_hostname"
-           type="text">
+           type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off">
       </div>
       <div class="formrow">
         <label>Username for Remote Cluster</label>
         <input
            ng-model="xdcrReferenceDialogCtl.cluster.username"
-           type="text">
+           type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off">
       </div>
       <div class="formrow">
         <label>Password</label>
         <input
            ng-model="xdcrReferenceDialogCtl.cluster.password"
            type="password"
+           autocorrect="off"
+           spellcheck="false"
            mn-autocomplete-off>
       </div>
       <!-- encryption options -->
@@ -62,6 +73,9 @@
       </div>
       <div class="formrow">
         <textarea
+           autocorrect="off"
+           autocompleterg="off"
+           spellcheck="false"
            ng-show="xdcrReferenceDialogCtl.cluster.demandEncryption"
            ng-model="xdcrReferenceDialogCtl.cluster.certificate"
            placeholder="Copy paste the Certificate information from Remote Cluster here. You can find the certificate information on Couchbase Admin UI under Security &gt; Root Certificate tab.">

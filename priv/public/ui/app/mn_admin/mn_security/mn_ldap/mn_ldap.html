@@ -25,6 +25,9 @@
           <textarea
              id="read-only-admins-field"
              rows="5"
+             autocorrect="off"
+             spellcheck="false"
+             autocapitalize="off"
              ng-model="ldapCtl.state.roAdmins"
              ng-disabled="ldapCtl.isReadOnlyAdminsDisabled()"></textarea>
           <a
@@ -35,6 +38,9 @@
           <label for="full-admin-field">Full Admins:</label>
           <textarea
              id="full-admin-field"
+             autocorrect="off"
+             autocapitalize="off"
+             spellcheck="false"
              rows="5"
              ng-model="ldapCtl.state.admins"
              ng-disabled="ldapCtl.isFullAdminsDisabled()"></textarea>
@@ -92,6 +98,8 @@
           <label for="test-username-field">Username:</label>
           <input
              id="test-username-field"
+             autocorrect="off"
+             spellcheck="false"
              type="text"
              ng-model="ldapCtl.test.username"
              ng-disabled="ldapCtl.isUserFormDisabled()">

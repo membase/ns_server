@@ -45,8 +45,12 @@
       <div class="formrow">
         <label for="replication_to_bucket">Remote Bucket</label>
         <input
+           id="replication_to_bucket"
            ng-model="xdcrCreateDialogCtl.replication.toBucket"
-           type="text">
+           type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off">
         <div
            class="error error-field"
            ng-show="xdcrCreateDialogCtl.errors.toBucket">

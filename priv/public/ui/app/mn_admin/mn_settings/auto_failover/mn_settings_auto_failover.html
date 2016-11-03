@@ -17,6 +17,9 @@
       </label>
       <input
          type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
          id="auto_failover_timeout"
          ng-model="settingsAutoFailoverCtl.state.timeout"
          ng-disabled="settingsAutoFailoverCtl.isAutoFailOverDisabled() || !rbac.cluster.settings.write">

@@ -21,6 +21,9 @@
       <label for="target-log-field">Target Log Directory</label>
       <input
          type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
          id="target-log-field"
          ng-model="auditCtl.state.logPath"
          ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write">

@@ -14,6 +14,9 @@
     <form ng-submit="!documentsControlCtl.isEmptyState() && documentsListCtl.lookupSubmit()">
       <input
          type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
          placeholder="Document ID"
          ng-model="documentsListCtl.lookupId"
          ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">

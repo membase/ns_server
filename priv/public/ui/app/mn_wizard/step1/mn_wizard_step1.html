@@ -72,6 +72,9 @@
             <label for="clusterMemberHostIp">IP Address</label>
             <input
                type="text"
+               autocorrect="off"
+               spellcheck="false"
+               autocapitalize="off"
                id="clusterMemberHostIp"
                ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.hostname">
           </div>
@@ -79,6 +82,9 @@
             <label for="join_user_input">Username</label>
             <input
                type="text"
+               autocorrect="off"
+               spellcheck="false"
+               autocapitalize="off"
                id="join_user_input"
                ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.username">
           </div>
@@ -86,6 +92,8 @@
             <label for="join_password_input">Password</label>
             <input
                type="password"
+               autocorrect="off"
+               spellcheck="false"
                mn-autocomplete-off
                ng-model="wizardStep1Ctl.joinClusterConfig.clusterMember.password"
                id="join_password_input">
@@ -104,6 +112,9 @@
           <label for="setup_db_path_input">Databases Path</label>
           <input
              type="text"
+             autocorrect="off"
+             spellcheck="false"
+             autocapitalize="off"
              id="setup_db_path_input"
              ng-model="wizardStep1Ctl.config.dbPath"
              ng-change="wizardStep1Ctl.onDbPathChange()">
@@ -115,6 +126,9 @@
           <label for="setup_index_path_input">Indexes Path</label>
           <input
              type="text"
+             autocorrect="off"
+             spellcheck="false"
+             autocapitalize="off"
              id="setup_index_path_input"
              ng-model="wizardStep1Ctl.config.indexPath"
              ng-change="wizardStep1Ctl.onIndexPathChange()">
@@ -141,6 +155,9 @@
         <label for="setup_hostname">Hostname</label>
         <input
            type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
            name="hostname"
            id="setup_hostname"
            ng-model="wizardStep1Ctl.config.hostname">

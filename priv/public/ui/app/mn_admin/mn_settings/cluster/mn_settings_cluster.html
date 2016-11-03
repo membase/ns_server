@@ -10,6 +10,9 @@
         <input
            id="cluster-name-field"
            type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
            maxlength="256"
            ng-model="settingsClusterCtl.clusterName"
            ng-disabled="!rbac.cluster.pools.write">
