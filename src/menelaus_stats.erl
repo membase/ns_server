@@ -1665,30 +1665,19 @@ membase_fts_stats_description(_) ->
                {name, global_fts_stat(<<"num_bytes_used_disk">>)},
                {desc, <<"Total fts disk file size for this bucket">>}]}].
 
-membase_lww_bucket_stats(BucketId) ->
-    case ns_bucket:get_bucket(BucketId) of
-        {ok, BucketCfg} ->
-            case ns_bucket:conflict_resolution_type(BucketCfg) of
-                lww ->
-                    [{struct,[{title,<<"avg active drift/mutation">>},
-                              {name,<<"avg_active_timestamp_drift">>},
-                              {desc,<<"Average drift (in seconds) per mutation on active vBuckets">>}]},
-                     {struct,[{title,<<"avg replica drift/mutation">>},
-                              {name,<<"avg_replica_timestamp_drift">>},
-                              {desc,<<"Average drift (in seconds) per mutation on replica vBuckets">>}]},
-                     {struct,[{title,<<"active ahead exceptions/sec">>},
-                              {name,<<"ep_active_ahead_exceptions">>},
-                              {desc,<<"Total number of ahead exceptions for  all active vBuckets">>}]},
-                     {struct,[{title,<<"replica ahead exceptions/sec">>},
-                              {name,<<"ep_replica_ahead_exceptions">>},
-                              {desc,<<"Total number of ahead exceptions for all replica vBuckets">>}]}
-                    ];
-                seqno ->
-                    []
-            end;
-        not_present ->
-            []
-    end.
+membase_drift_stats_description() ->
+    [{struct,[{title,<<"avg active drift/mutation">>},
+              {name,<<"avg_active_timestamp_drift">>},
+              {desc,<<"Average drift (in seconds) per mutation on active vBuckets">>}]},
+     {struct,[{title,<<"avg replica drift/mutation">>},
+              {name,<<"avg_replica_timestamp_drift">>},
+              {desc,<<"Average drift (in seconds) per mutation on replica vBuckets">>}]},
+     {struct,[{title,<<"active ahead exceptions/sec">>},
+              {name,<<"ep_active_ahead_exceptions">>},
+              {desc,<<"Total number of ahead exceptions for  all active vBuckets">>}]},
+     {struct,[{title,<<"replica ahead exceptions/sec">>},
+              {name,<<"ep_replica_ahead_exceptions">>},
+              {desc,<<"Total number of ahead exceptions for all replica vBuckets">>}]}].
 
 membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
     [{struct,[{blockName,<<"Summary">>},
@@ -1818,7 +1807,7 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                        membase_query_stats_description(AddQuery) ++
                        membase_index_stats_description(IndexNodes) ++
                        membase_fts_stats_description(FtsNodes) ++
-                       membase_lww_bucket_stats(BucketId)
+                       membase_drift_stats_description()
                   )]}]},
     {struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
