@@ -45,8 +45,7 @@
     <label for="ram_quota_mb_init">Per Node RAM Quota</label>
     <div class="form-inline">
       <input
-         type="text"
-         autocomplete="off"
+         type="number"
          mn-focus="(bucketConf.isWizard || !bucketConf.isNew)"
          ng-class="{invalid: validation.result.errors.ramQuotaMB}"
          value="30"
