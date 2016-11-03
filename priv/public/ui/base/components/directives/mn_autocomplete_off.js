@@ -27,8 +27,12 @@
 
         //avoiding autocomplete via readonly attr
         $element.attr('readonly', true);
-        $element.on('focus', function () {
+        function onFocus() {
           $element.attr('readonly', false);
+        }
+        $element.on('focus', onFocus);
+        $scope.$on("$destroy", function () {
+          $element.off('focus', onFocus);
         });
       }
     }
