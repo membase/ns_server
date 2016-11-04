@@ -217,7 +217,20 @@
         %% Total drained items
         vb_pending_queue_drain,
         %% vb_total_queue_drain: aggregated by stats_collector
-        ep_diskqueue_drain
+        ep_diskqueue_drain,
+
+        %% Total absolute drift for all active vBuckets.
+        ep_active_hlc_drift,
+        %% Number of updates applied to ep_active_hlc_drift.
+        ep_active_hlc_drift_count,
+        %% Total abosulte drift for all replica vBuckets.
+        ep_replica_hlc_drift,
+        %% Number of updates applied to ep_replica_hlc_drift.
+        ep_replica_hlc_drift_count,
+        %% Sum total of all active vBuckets' drift_ahead_threshold_exceeded counter.
+        ep_active_ahead_exceptions,
+        %% Sum total of all replica vBuckets' drift_ahead_threshold_exceeded counter.
+        ep_replica_ahead_exceptions
 ).
 
 %% atom() timestamps and values are used by archiver for internal mnesia-related

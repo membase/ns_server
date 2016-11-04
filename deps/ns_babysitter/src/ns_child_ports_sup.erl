@@ -21,7 +21,7 @@
          send_command/2,
          create_ns_server_supervisor_spec/0]).
 
--export([init/1, launch_port/1, terminate_port/1,
+-export([init/1,
          restart_port/1,
          current_ports/0, find_port/1]).
 
@@ -56,39 +56,45 @@ do_send_command(PortName, Command) ->
 
 -spec set_dynamic_children([any()]) -> pid().
 set_dynamic_children(NCAOs) ->
-    CurrPortParams = [erlang:element(1, C) || C <- supervisor:which_children(?MODULE)],
-    OldPortParams = CurrPortParams -- NCAOs,
-    NewPortParams = NCAOs -- CurrPortParams,
+    RequestedIds = [sanitize(NCAO) || NCAO <- NCAOs],
+    CurrentIds = [erlang:element(1, C) || C <- supervisor:which_children(?MODULE)],
+    IdsToTerminate = CurrentIds -- RequestedIds,
+
+    RequestedIdsParams = lists:zip(RequestedIds, NCAOs),
+    IdsParamsToLaunch = lists:filter(fun ({Id, _NCAO}) ->
+                                             not lists:member(Id, CurrentIds)
+                                     end, RequestedIdsParams),
 
     PidBefore = erlang:whereis(?MODULE),
 
-    lists:foreach(fun(NCAO) ->
-                          terminate_port(NCAO)
+    lists:foreach(fun(Id) ->
+                          terminate_port(Id)
                   end,
-                  OldPortParams),
-    lists:foreach(fun(NCAO) ->
-                          launch_port(NCAO)
+                  IdsToTerminate),
+    lists:foreach(fun({Id, NCAO}) ->
+                          launch_port(Id, NCAO)
                   end,
-                  NewPortParams),
+                  IdsParamsToLaunch),
 
     PidAfter = erlang:whereis(?MODULE),
     PidBefore = PidAfter.
 
+sanitize_value(Value) ->
+    crypto:hash(sha256, term_to_binary(Value)).
+
 sanitize(Struct) ->
     misc:rewrite_tuples(
-      fun ({"MOXI_SASL_PLAIN_PWD", _}) ->
-              {stop, {"MOXI_SASL_PLAIN_PWD", "*****"}};
-          ({"COUCHBASE_CBSASL_SECRETS", _}) ->
-              {stop, {"COUCHBASE_CBSASL_SECRETS", "*****"}};
-          ({"CBAUTH_REVRPC_URL", Url}) ->
-              {stop, {"CBAUTH_REVRPC_URL", misc:sanitize_url(Url)}};
+      fun ({"MOXI_SASL_PLAIN_PWD", V}) ->
+              {stop, {"MOXI_SASL_PLAIN_PWD", sanitize_value(V)}};
+          ({"COUCHBASE_CBSASL_SECRETS", V}) ->
+              {stop, {"COUCHBASE_CBSASL_SECRETS", sanitize_value(V)}};
+          ({"CBAUTH_REVRPC_URL", V}) ->
+              {stop, {"CBAUTH_REVRPC_URL", sanitize_value(V)}};
           (Other) ->
               {continue, Other}
       end, Struct).
 
-launch_port(NCAO) ->
-    Id = sanitize(NCAO),
-
+launch_port(Id, NCAO) ->
     ?log_info("supervising port: ~p", [Id]),
     {ok, _C} = supervisor:start_child(?MODULE,
                                       create_child_spec(Id, NCAO)).

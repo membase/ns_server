@@ -308,6 +308,8 @@ sanitize_ets_table(remote_clusters_info, _Info, Content) ->
     sanitize_remote_clusters_info(Content);
 sanitize_ets_table(ns_config_ets_dup, _Info, Content) ->
     ns_config_log:sanitize(Content);
+sanitize_ets_table(menelaus_web_cache, _Info, Content) ->
+    ns_cluster:sanitize_node_info(Content);
 sanitize_ets_table(_, Info, Content) ->
     case proplists:get_value(name, Info) of
         ssl_otp_pem_cache ->
@@ -411,7 +413,7 @@ handle_just_diag(Req, Extra) ->
     Buckets = lists:sort(fun (A,B) -> element(1, A) =< element(1, B) end,
                          ns_bucket:get_buckets()),
 
-    Infos = [["nodes_info = ~p", menelaus_web:build_nodes_info()],
+    Infos = [["nodes_info = ~p", ns_cluster:sanitize_node_info(menelaus_web:build_nodes_info())],
              ["buckets = ~p", ns_config_log:sanitize(Buckets)]],
 
     [begin

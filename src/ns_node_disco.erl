@@ -222,13 +222,13 @@ do_nodes_wanted_updated_fun(NodeListIn) ->
     {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
     NodeList = lists:usort(NodeListIn),
     ?log_debug("ns_node_disco: nodes_wanted updated: ~p, with cookie: ~p",
-               [NodeList, erlang:get_cookie()]),
+               [NodeList, ns_cookie_manager:sanitize_cookie(erlang:get_cookie())]),
     PongList = lists:filter(fun(N) ->
                                     net_adm:ping(N) == pong
                             end,
                             NodeList),
     ?log_debug("ns_node_disco: nodes_wanted pong: ~p, with cookie: ~p",
-               [PongList, erlang:get_cookie()]),
+               [PongList, ns_cookie_manager:sanitize_cookie(erlang:get_cookie())]),
     case lists:member(node(), NodeList) of
         true ->
             ok;
