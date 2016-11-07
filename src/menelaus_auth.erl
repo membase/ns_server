@@ -34,7 +34,8 @@
          get_token/1,
          validate_request/1,
          verify_login_creds/2,
-         verify_rest_auth/2]).
+         verify_rest_auth/2,
+         verify_local_token/1]).
 
 %% rpc from ns_couchdb node
 -export([authenticate/1,
@@ -342,4 +343,19 @@ check_permission(Identity, Permission) ->
                             forbidden
                     end
             end
+    end.
+
+-spec verify_local_token(mochiweb_request()) ->
+                                auth_failure | {allowed, mochiweb_request()}.
+verify_local_token(Req) ->
+    case extract_auth(Req) of
+        {"@localtoken" = Username, Password} ->
+            case menelaus_local_auth:check_token(Password) of
+                true ->
+                    {allowed, store_user_info(Req, {Username, local_token}, undefined)};
+                false ->
+                    auth_failure
+            end;
+        _ ->
+            auth_failure
     end.

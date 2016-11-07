@@ -497,13 +497,6 @@ rewrite_tuples(Fun, Struct) ->
       end,
       Struct).
 
-sanitize_cookie(nocookie) ->
-    nocookie;
-sanitize_cookie(Cookie) when is_atom(Cookie) ->
-    sanitize_cookie(list_to_binary(atom_to_list(Cookie)));
-sanitize_cookie(Cookie) when is_binary(Cookie) ->
-    {sanitized, base64:encode(crypto:hash(sha256, Cookie))}.
-
 %% this one is taken from ns_config_log
 sanitize_config(Config) ->
     rewrite_tuples(fun (T) ->
@@ -524,8 +517,6 @@ sanitize_config(Config) ->
                                    {stop, {{metakv, K}, [VClock|{metakv_sensitive, <<"*****">>}]}};
                                {{metakv, K}, {metakv_sensitive, _V}} ->
                                    {stop, {{metakv, K}, {metakv_sensitive, <<"*****">>}}};
-                               ({cookie, Cookie}) ->
-                                   {stop, {cookie, sanitize_cookie(Cookie)}};
                                _ ->
                                    {continue, T}
                            end
@@ -540,8 +531,6 @@ find_ports(NSConfig, Node, Services, Candidates) ->
      || {Service, ConfigKey, DefaultPort} <- Candidates, lists:member(Service, Services)].
 
 main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
-    Cookie = search_config(search_config(NSConfig, otp, []),
-                           cookie, []),
     DBDir = proplists:get_value({"couchdb", "database_dir"}, CouchInisPList, ""),
     IdxDir = proplists:get_value({"couchdb", "view_index_dir"}, CouchInisPList, ""),
     RestPort = extract_rest_port(NSConfig, Node),
@@ -596,7 +585,6 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
          {static_config, iolist_to_binary(io_lib:format("~p", [StaticTerms]))},
          {couch_inis, confget(#config.couch_inis)},
          {node, Node},
-         {cookie, Cookie},
          {db_dir, DBDir},
          {idx_dir, IdxDir},
          {rest_port, RestPort},
@@ -611,7 +599,8 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
          {memcached_logs_path, MCDLogs},
          {memcached_breakpad_minidump_dir, PerNodeMDD},
          {nodes, string:join(Nodes, ",")},
-         {stats_dir, StatsDir}],
+         {stats_dir, StatsDir},
+         {localtoken_path, filename:join(DataDir, "localtoken")}],
 
     output([E || {K, V} <- Pairs,
                  E <- [K, V]]),
