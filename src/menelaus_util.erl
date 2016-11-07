@@ -70,7 +70,8 @@
          return_error/3,
          format_server_time/2,
          ensure_local/1,
-         reply_global_error/2]).
+         reply_global_error/2,
+         reply_error/3]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
@@ -511,5 +512,8 @@ ensure_local(Req) ->
     end.
 
 reply_global_error(Req, Error) when is_list(Error) ->
+    reply_error(Req, "_", Error).
+
+reply_error(Req, Field, Error) when is_list(Error), is_list(Field) ->
     menelaus_util:reply_json(
-      Req, {struct, [{errors, {struct, [{<<"_">>, list_to_binary(Error)}]}}]}, 400).
+      Req, {struct, [{errors, {struct, [{list_to_binary(Field), list_to_binary(Error)}]}}]}, 400).

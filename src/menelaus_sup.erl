@@ -97,6 +97,10 @@ init([]) ->
               {menelaus_ui_auth, start_link, []},
               permanent, 5000, worker, dynamic},
 
+    LocalAuth = {menelaus_local_auth,
+                 {menelaus_local_auth, start_link, []},
+                 permanent, 5000, worker, dynamic},
+
     Cache = {menelaus_web_cache,
              {menelaus_web_cache, start_link, []},
              permanent, 5000, worker, dynamic},
@@ -129,8 +133,8 @@ init([]) ->
               {menelaus_cbauth, start_link, []},
               permanent, 1000, worker, dynamic},
 
-    Processes = [UIAuth, Cache, StatsGatherer, RpcEvents, Web, WebEvent, HotKeysKeeper, Alerts,
-                 CBAuth],
+    Processes = [UIAuth, LocalAuth, Cache, StatsGatherer, RpcEvents, Web, WebEvent, HotKeysKeeper,
+                 Alerts, CBAuth],
     {ok, {{one_for_one, 10, 10}, Processes}}.
 
 ns_log_cat(?START_OK) ->
