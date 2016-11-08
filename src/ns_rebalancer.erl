@@ -190,7 +190,10 @@ failover(Bucket, BucketConfig, Node) ->
                 ok ->
                     ok;
                 {error, _, BadNodes} ->
-                    ?rebalance_error("Skipped vbucket activations and replication topology changes because not all remaining node were found to have healthy bucket ~p: ~p", [Bucket, BadNodes]),
+                    ?rebalance_error("Skipped vbucket activations and "
+                                     "replication topology changes because not "
+                                     "all remaining nodes were found to have "
+                                     "healthy bucket ~p: ~p", [Bucket, BadNodes]),
                     janitor_failed
             catch
                 E:R ->
