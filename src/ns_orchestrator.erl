@@ -79,13 +79,13 @@
 -define(REBALANCE_PROGRESS, 5).
 -define(REBALANCE_STOPPED, 7).
 
--define(DELETE_BUCKET_TIMEOUT, ns_config:get_global_timeout(delete_bucket, 30000)).
--define(FLUSH_BUCKET_TIMEOUT, ns_config:get_global_timeout(flush_bucket, 60000)).
--define(CREATE_BUCKET_TIMEOUT, ns_config:get_global_timeout(create_bucket, 5000)).
+-define(DELETE_BUCKET_TIMEOUT, ns_config:get_timeout(delete_bucket, 30000)).
+-define(FLUSH_BUCKET_TIMEOUT, ns_config:get_timeout(flush_bucket, 60000)).
+-define(CREATE_BUCKET_TIMEOUT, ns_config:get_timeout(create_bucket, 5000)).
 -define(RECOVERY_QUERY_STATES_TIMEOUT,
-        ns_config:get_global_timeout(recovery_query_states, 5000)).
+        ns_config:get_timeout(recovery_query_states, 5000)).
 -define(JANITOR_INTERVAL, ns_config:read_key_fast(janitor_interval, 10000)).
--define(STOP_REBALANCE_TIMEOUT, ns_config:get_global_timeout(stop_rebalance_timeout, 60000)).
+-define(STOP_REBALANCE_TIMEOUT, ns_config:get_timeout(stop_rebalance_timeout, 60000)).
 
 %% gen_fsm callbacks
 -export([code_change/4,
