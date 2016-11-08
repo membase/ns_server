@@ -180,6 +180,10 @@
 -define(metakv_debug(Format, Args), ale:debug(?METAKV_LOGGER, Format, Args)).
 -define(metakv_debug(Msg), ale:debug(?METAKV_LOGGER, Msg)).
 
+-define(get_timeout(Op, Default), ns_config:get_timeout({?MODULE, Op}, Default)).
+-define(get_param(Param, Default),
+        ns_config:search_node_with_default({?MODULE, Param}, Default)).
+
 -define(i2l(V), integer_to_list(V)).
 
 -define(UI_AUTH_EXPIRATION_SECONDS, 600).

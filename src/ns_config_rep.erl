@@ -30,11 +30,11 @@
 
 -include("ns_common.hrl").
 
--define(PULL_TIMEOUT, 10000).
--define(SELF_PULL_TIMEOUT, 30000).
--define(SYNCHRONIZE_TIMEOUT, 30000).
+-define(PULL_TIMEOUT, ?get_timeout(pull, 10000)).
+-define(SELF_PULL_TIMEOUT, ?get_timeout(self_pull, 30000)).
+-define(SYNCHRONIZE_TIMEOUT, ?get_timeout(sync, 30000)).
 
--define(MERGING_EMERGENCY_THRESHOLD, 2000).
+-define(MERGING_EMERGENCY_THRESHOLD, ?get_param(merge_mailbox_threshold, 2000)).
 
 % How to launch the thing.
 -export([start_link/0, start_link_merger/0]).
