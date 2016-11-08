@@ -88,7 +88,7 @@ merger_loop() ->
     receive
         {merge_compressed, Blob} ->
             WakeTime = os:timestamp(),
-            KVList = binary_to_term(zlib:uncompress(Blob)),
+            KVList = decompress(Blob),
             system_stats_collector:increment_counter(total_config_merger_sleep_time, timer:now_diff(WakeTime, EnterTime)),
             do_merge(KVList),
             system_stats_collector:increment_counter(total_config_merger_run_time, timer:now_diff(os:timestamp(), WakeTime)),
@@ -334,7 +334,7 @@ do_push(RawKVList) ->
 do_push(_RawKVList, []) ->
     ok;
 do_push(RawKVList, OtherNodes) ->
-    Blob = zlib:compress(term_to_binary(RawKVList)),
+    Blob = compress(RawKVList),
     misc:parallel_map(fun(Node) ->
                               gen_server:cast({ns_config_rep, Node},
                                               {merge_compressed, Blob})
@@ -380,8 +380,14 @@ get_remote(Node, Timeout) ->
                                  Blob = ns_config_replica:get_compressed(
                                           ns_config_remote,
                                           Node, Timeout),
-                                 binary_to_term(zlib:uncompress(Blob))
+                                 decompress(Blob)
                          end, [Node], Timeout)).
 
 pull_remote(Node) ->
     do_pull([Node], 1).
+
+compress(KVList) ->
+    zlib:compress(term_to_binary(KVList)).
+
+decompress(Blob) ->
+    binary_to_term(zlib:uncompress(Blob)).
