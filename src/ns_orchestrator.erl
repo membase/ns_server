@@ -167,7 +167,12 @@ flush_bucket(BucketName) ->
 
 
 -spec failover(atom()) -> ok | rebalance_running |
-                          in_recovery | last_node | unknown_node.
+                          in_recovery | last_node | unknown_node |
+                          %% the following is needed just to trick the
+                          %% dialyzer; otherwise it wouldn't let the callers
+                          %% cover what it believes to be an impossible return
+                          %% value if all other options are also covered
+                          any().
 failover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
@@ -274,7 +279,13 @@ start_rebalance(KnownNodes, EjectNodes, DeltaRecoveryBuckets) ->
 
 -spec start_graceful_failover(node()) ->
                                      ok | in_progress | in_recovery | non_kv_node |
-                                     not_graceful | unknown_node | last_node.
+                                     not_graceful | unknown_node | last_node |
+                                     %% the following is needed just to trick
+                                     %% the dialyzer; otherwise it wouldn't
+                                     %% let the callers cover what it believes
+                                     %% to be an impossible return value if
+                                     %% all other options are also covered
+                                     any().
 start_graceful_failover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {start_graceful_failover, Node}).

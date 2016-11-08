@@ -3109,7 +3109,11 @@ handle_failover(Req) ->
                 last_node ->
                     reply_text(Req, "Last active node cannot be failed over.", 400);
                 unknown_node ->
-                    reply_text(Req, "Unknown server given.", 400)
+                    reply_text(Req, "Unknown server given.", 400);
+                Other ->
+                    reply_text(Req,
+                               io_lib:format("Unexpected server error: ~p", [Other]),
+                               500)
             end;
         {error, ErrorMsg} ->
             reply_text(Req, ErrorMsg, 400)
@@ -3132,7 +3136,10 @@ handle_start_graceful_failover(Req) ->
                       unknown_node ->
                           {400, "Unknown server given."};
                       last_node ->
-                          {400, "Last active node cannot be failed over."}
+                          {400, "Last active node cannot be failed over."};
+                      Other ->
+                          {500,
+                           io_lib:format("Unexpected server error: ~p", [Other])}
                   end,
             case Msg of
                 [] ->
