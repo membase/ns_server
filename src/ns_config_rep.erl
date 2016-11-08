@@ -166,7 +166,10 @@ accumulate_push_keys(InitialKeys) ->
 
 accumulate_push_keys_and_get_config(_Keys0, 0) ->
     system_stats_collector:increment_counter(ns_config_rep_push_keys_retries_exceeded, 1),
-    ale:warn(?USER_LOGGER, "Exceeded retries count trying to get consistent keys/values for config replication. This is minor bug. Everything is safe, but please file bug and attach logs", []),
+    ale:warn(?USER_LOGGER,
+             "Exceeded retries count trying to get consistent keys/values "
+             "for config replication. This is minor bug. Everything is "
+             "safe, but please file bug and attach logs"),
     KVs = lists:sort(ns_config:get_kv_list()),
     Keys = [K || {K, _} <- KVs],
     do_push_keys(Keys, KVs);
