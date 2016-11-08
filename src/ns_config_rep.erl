@@ -164,7 +164,7 @@ accumulate_pull_and_push_test() ->
 accumulate_push_keys(InitialKeys) ->
     accumulate_X(lists:sort(InitialKeys), push_keys).
 
-accumulate_push_keys_and_get_config(_Keys0, 0) ->
+accumulate_and_push_keys(_Keys0, 0) ->
     system_stats_collector:increment_counter(ns_config_rep_push_keys_retries_exceeded, 1),
     ale:warn(?USER_LOGGER,
              "Exceeded retries count trying to get consistent keys/values "
@@ -173,7 +173,7 @@ accumulate_push_keys_and_get_config(_Keys0, 0) ->
     KVs = lists:sort(ns_config:get_kv_list()),
     Keys = [K || {K, _} <- KVs],
     do_push_keys(Keys, KVs);
-accumulate_push_keys_and_get_config(Keys0, RetriesLeft) ->
+accumulate_and_push_keys(Keys0, RetriesLeft) ->
     Keys = accumulate_push_keys(Keys0),
     AllConfigKV = ns_config:get_kv_list(),
     %% the following ensures that all queued ns_config_events_local
@@ -190,7 +190,7 @@ accumulate_push_keys_and_get_config(Keys0, RetriesLeft) ->
             %% ordering of these messages is irrelevant so we can
             %% resend and retry
             self() ! Msg,
-            accumulate_push_keys_and_get_config(Keys, RetriesLeft-1)
+            accumulate_and_push_keys(Keys, RetriesLeft-1)
     after 0 ->
             %% we know that AllConfigKV has exactly changes we've seen
             %% with {push_keys, ...}. I.e. there's no way config
@@ -219,7 +219,7 @@ accumulate_push_keys_and_get_config(Keys0, RetriesLeft) ->
     end.
 
 handle_info({push_keys, Keys0}, State) ->
-    accumulate_push_keys_and_get_config(Keys0, 10),
+    accumulate_and_push_keys(Keys0, 10),
     {noreply, State};
 handle_info({pull_and_push, Nodes}, State) ->
     ?log_info("Replicating config to/from:~n~p", [Nodes]),
