@@ -419,9 +419,6 @@ upgrade_config(Config) ->
     case ns_config:search_node(node(), Config, config_version) of
         {value, CurrentVersion} ->
             [];
-        {value, {2,3,0}} ->
-            [{set, {node, node(), config_version}, {3,0}} |
-             upgrade_config_from_2_3_0_to_3_0(Config)];
         {value, {3,0}} ->
             [{set, {node, node(), config_version}, {3,0,2}} |
              upgrade_config_from_3_0_to_3_0_2(Config)];
@@ -451,44 +448,6 @@ upgrade_config(Config) ->
             catch ale:sync_all_sinks(),
             misc:halt(1)
     end.
-
-upgrade_config_from_2_3_0_to_3_0(Config) ->
-    ?log_info("Upgrading config from 2.3.0 to 3.0"),
-    DefaultConfig = default(),
-    do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig).
-
-do_upgrade_config_from_2_3_0_to_3_0(Config, DefaultConfig) ->
-    PortServersKey = {node, node(), port_servers},
-    {value, DefaultPortServers} = ns_config:search([DefaultConfig], PortServersKey),
-
-    McdConfigKey = {node, node(), memcached_config},
-    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdConfigKey),
-
-    upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ++
-        [{set, PortServersKey, DefaultPortServers},
-         {set, McdConfigKey, DefaultMcdConfig}].
-
-%% NOTE: verbosity part actually doesn't work anymore because default
-%% memcached config doesn't have verbosity field anymore
-upgrade_memcached_ssl_port_and_verbosity(Config, DefaultConfig) ->
-    McdKey = {node, node(), memcached},
-
-    {value, McdConfig} = ns_config:search(Config, McdKey),
-    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
-
-    NewOrUpdatedParams =
-        lists:filter(
-          fun ({Key, _Value}) ->
-                  lists:member(Key, [ssl_port, verbosity])
-          end, DefaultMcdConfig),
-
-    StrippedMcdConfig =
-        lists:filter(
-          fun ({Key, _Value}) ->
-                  not lists:keymember(Key, 1, NewOrUpdatedParams)
-          end, McdConfig),
-
-    [{set, McdKey, NewOrUpdatedParams ++ StrippedMcdConfig}].
 
 upgrade_config_from_3_0_to_3_0_2(Config) ->
     ?log_info("Upgrading config from 3.0 to 3.0.2"),
@@ -635,21 +594,6 @@ decrypt(Config) ->
                             (T) ->
                                 {continue, T}
                         end, Config).
-
-upgrade_2_3_0_to_3_0_test() ->
-    Cfg = [[{some_key, some_value},
-            {{node, node(), memcached},
-             [{ssl_port, 1}, {verbosity, "-v"}, {port, 3}]},
-            {{node, node(), memcached_config}, memcached_config}]],
-    Default = [{{node, node(), port_servers}, port_servers_cfg},
-               {{node, node(), memcached}, [{ssl_port, 1}, {verbosity, 2}]},
-               {{node, node(), memcached_config}, memcached_config}],
-
-    ?assertMatch([{set, {node, _, memcached}, [{ssl_port, 1},
-                                               {verbosity, 2}, {port, 3}]},
-                  {set, {node, _, port_servers}, _},
-                  {set, {node, _, memcached_config}, _}],
-                 do_upgrade_config_from_2_3_0_to_3_0(Cfg, Default)).
 
 upgrade_3_0_to_3_0_2_test() ->
     Cfg = [[{some_key, some_value},
