@@ -372,12 +372,8 @@ do_merge(RemoteKVList) ->
     end.
 
 get_remote(Node, Timeout) ->
-    hd(misc:parallel_map(fun (_) ->
-                                 Blob = ns_config_replica:get_compressed(
-                                          ns_config_remote,
-                                          Node, Timeout),
-                                 decompress(Blob)
-                         end, [Node], Timeout)).
+    Blob = ns_config_replica:get_compressed(ns_config_remote, Node, Timeout),
+    decompress(Blob).
 
 pull_remote(Node) ->
     do_pull([Node], 1).
