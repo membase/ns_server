@@ -34,17 +34,14 @@ do_upgrade_config(Config, FinalVersion) ->
             [];
         %% The following two cases don't actually correspond to upgrade from
         %% pre-2.0 clusters, we don't support those anymore. Instead, it's an
-        %% upgrade from pristine ns_config_default:default(). I tried settings
+        %% upgrade from pristine ns_config_default:default(). I tried setting
         %% cluster_compat_version to the most up-to-date compat version in
         %% default config, but that uncovered issues that I'm too scared to
         %% touch at the moment.
         false ->
-            [{set, cluster_compat_version, ?VERSION_25}];
+            [{set, cluster_compat_version, ?VERSION_30}];
         {value, undefined} ->
-            [{set, cluster_compat_version, ?VERSION_25}];
-        {value, ?VERSION_25} ->
-            [{set, cluster_compat_version, ?VERSION_30} |
-             upgrade_config_from_2_5_to_3_0(Config)];
+            [{set, cluster_compat_version, ?VERSION_30}];
         {value, ?VERSION_30} ->
             [{set, cluster_compat_version, ?VERSION_40} |
              upgrade_config_from_3_0_to_4_0(Config)];
@@ -59,11 +56,6 @@ do_upgrade_config(Config, FinalVersion) ->
         {value, ?VERSION_46} ->
             [{set, cluster_compat_version, ?SPOCK_VERSION_NUM}]
     end.
-
-upgrade_config_from_2_5_to_3_0(Config) ->
-    ?log_info("Performing online config upgrade to 3.0 version"),
-    delete_unwanted_per_node_keys(Config) ++
-        ns_config_auth:upgrade(Config).
 
 upgrade_config_from_3_0_to_4_0(Config) ->
     ?log_info("Performing online config upgrade to 4.0 version"),
@@ -90,22 +82,6 @@ add_index_ram_alert_limit(Config) ->
         _ ->
             []
     end.
-
-delete_unwanted_per_node_keys(Config) ->
-    NodesWanted = ns_node_disco:nodes_wanted(Config),
-    R = ns_config:fold(
-          fun ({node, Node, _} = K, _, Acc) ->
-                  case lists:member(Node, NodesWanted) of
-                      true ->
-                          Acc;
-                      false ->
-                          sets:add_element({delete, K}, Acc)
-                  end;
-              (_, _, Acc) ->
-                  Acc
-          end, sets:new(), Config),
-
-    sets:to_list(R).
 
 create_service_maps(Config, Services) ->
     ActiveNodes = ns_cluster_membership:active_nodes(Config),

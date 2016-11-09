@@ -218,17 +218,12 @@ default() ->
           _ -> undefined
       end},
 
-     %% pre 3.0 format:
-     %% {rest_creds, [{creds, [{"user", [{password, "password"}]},
-     %%                        {"admin", [{password, "admin"}]}]}
-     %% An empty list means no login/password auth check.
-
-     %% for 3.0 clusters:
      %% {rest_creds, {User, {password, {Salt, Mac}}}}
      %% {rest_creds, null} means no login/password auth check.
      %% read_only_user_creds has the same format
-     {rest_creds, [{creds, []}
-                  ]},
+     {rest_creds, null},
+     {read_only_user_creds, null},
+
      {remote_clusters, []},
      {{node, node(), isasl}, [{path, filename:join(DataDir, ?ISASL_PW)}]},
 
