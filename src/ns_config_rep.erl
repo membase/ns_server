@@ -276,11 +276,7 @@ synchronize_remote(Nodes) ->
         lists:foldl(
           fun ({Node, Reply}, Acc) ->
                   case Reply of
-                      ok ->                     % new node
-                          Acc;
-                      error ->
-                          %% must be an old node; see default clause of
-                          %% handle_call
+                      ok ->
                           Acc;
                       _Other ->
                           [{Node, Reply} | Acc]
