@@ -182,21 +182,18 @@ merge_kv_pairs_dynamic_test() ->
                  ns_config:merge_kv_pairs(
                    [],
                    [{y,1}],
-                   <<"uuid">>,
-                   true)),
+                   <<"uuid">>)),
     ?assertEqual({[{y,1}], []},
                  ns_config:merge_kv_pairs(
                    [{y,1}],
                    [],
-                   <<"uuid">>,
-                   true)),
+                   <<"uuid">>)),
 
     Strip = fun (L) -> [{K, ns_config:strip_metadata(V)} || {K, V} <- L] end,
 
     {NewKVList0, Touched0} = ns_config:merge_kv_pairs([{y,1}, {a,a}],
                                                       [{y,2}, {b,b}],
-                                                      <<"uuid">>,
-                                                      true),
+                                                      <<"uuid">>),
 
     NewKVList = Strip(lists:sort(NewKVList0)),
     Touched = lists:sort(Touched0),
@@ -215,15 +212,13 @@ merge_kv_pairs_vclock_test() ->
                  ns_config:merge_kv_pairs(
                    [],
                    [{y,[{?METADATA_VCLOCK,VClock}, yy]}, {x,1}],
-                   <<"uuid">>,
-                   true)),
+                   <<"uuid">>)),
     X2 = [{x,1},{y,[{?METADATA_VCLOCK,VClocka1}, y2]}],
     ?assertEqual({X2, []},
                  ns_config:merge_kv_pairs(
                    [{y,[{?METADATA_VCLOCK,VClock}, y1]}, {x,1}],
                    [{y,[{?METADATA_VCLOCK,VClocka1}, y2]}],
-                   <<"uuid">>,
-                   true)),
+                   <<"uuid">>)),
     X3 = [{x,[{?METADATA_VCLOCK,VClockab1}, x1]},
           {y,[{?METADATA_VCLOCK,VClocka2}, y2]}],
     ?assertEqual({X3, []},
@@ -232,17 +227,16 @@ merge_kv_pairs_vclock_test() ->
                     {y,[{?METADATA_VCLOCK,VClocka1}, y1]}],
                    [{y,[{?METADATA_VCLOCK,VClocka2}, y2]},
                     {x,[{?METADATA_VCLOCK,VClocka1}, x2]}],
-                   <<"uuid">>,
-                   true)),
+                   <<"uuid">>)),
     ok.
 
 merge_kv_pairs_timestamps_test() ->
     X0 = [{x, [{'_vclock', [{<<"uuid">>, {1, 10}}]}, {data, 1}]}],
     X1 = [{x, [{'_vclock', [{<<"uuid">>, {1, 11}}]}, {data, 2}]}],
-    {MergedLeft, TouchedLeft} = ns_config:merge_kv_pairs(X0, X1, <<"uuid">>, true),
+    {MergedLeft, TouchedLeft} = ns_config:merge_kv_pairs(X0, X1, <<"uuid">>),
     ?assertEqual({value, [{data, 2}]}, ns_config:search([MergedLeft], x)),
     ?assertEqual([x], TouchedLeft),
-    {MergedRight, TouchedRight} = ns_config:merge_kv_pairs(X1, X0, <<"uuid">>, true),
+    {MergedRight, TouchedRight} = ns_config:merge_kv_pairs(X1, X0, <<"uuid">>),
     ?assertEqual({value, [{data, 2}]}, ns_config:search([MergedRight], x)),
     ?assertEqual([x], TouchedRight),
     [{x, [{'_vclock', ClockLeft}|_]}] = MergedLeft,
@@ -253,8 +247,8 @@ merge_kv_pairs_timestamps_test() ->
 merge_kv_pairs_same_value_test() ->
     X0 = [{x, [{'_vclock', [{<<"a">>, {1, 10}}]}, {data, 1}]}],
     X1 = [{x, [{'_vclock', [{<<"b">>, {1, 11}}]}, {data, 1}]}],
-    ?assertEqual({X1, []}, ns_config:merge_kv_pairs(X0, X1, <<"a">>, true)),
-    ?assertEqual({X1, []}, ns_config:merge_kv_pairs(X1, X0, <<"b">>, true)).
+    ?assertEqual({X1, []}, ns_config:merge_kv_pairs(X0, X1, <<"a">>)),
+    ?assertEqual({X1, []}, ns_config:merge_kv_pairs(X1, X0, <<"b">>)).
 
 test_bin_persist() ->
     CP = data_file(),

@@ -66,7 +66,7 @@
          run_txn/1, run_txn_with_config/2,
          clear/0, clear/1,
          proplist_get_value/3,
-         merge_kv_pairs/4,
+         merge_kv_pairs/3,
          sync_announcements/0,
          get_kv_list/0, get_kv_list/1, get_kv_list_with_config/1,
          upgrade_config_explicitly/1, config_version_token/0,
@@ -1214,18 +1214,18 @@ with_touched_keys(Body) ->
         erlang:erase(?TOUCHED_KEYS)
     end.
 
--spec merge_kv_pairs(kvlist(), kvlist(), uuid(), boolean()) -> {kvlist(), [key()]}.
-merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
+-spec merge_kv_pairs(kvlist(), kvlist(), uuid()) -> {kvlist(), [key()]}.
+merge_kv_pairs(RemoteKVList, LocalKVList, UUID) ->
     with_touched_keys(
       fun () ->
-              do_merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30)
+              do_merge_kv_pairs(RemoteKVList, LocalKVList, UUID)
       end).
 
--spec do_merge_kv_pairs(kvlist(), kvlist(), uuid(), boolean()) -> kvlist().
-do_merge_kv_pairs(RemoteKVList, LocalKVList, _UUID, _Cluster30)
+-spec do_merge_kv_pairs(kvlist(), kvlist(), uuid()) -> kvlist().
+do_merge_kv_pairs(RemoteKVList, LocalKVList, _UUID)
   when RemoteKVList =:= LocalKVList ->
     LocalKVList;
-do_merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
+do_merge_kv_pairs(RemoteKVList, LocalKVList, UUID) ->
     RemoteKVList1 = lists:sort(RemoteKVList),
     LocalKVList1 = lists:sort(LocalKVList),
     Merger = fun (_, {directory, _} = LP) ->
@@ -1244,19 +1244,8 @@ do_merge_kv_pairs(RemoteKVList, LocalKVList, UUID, Cluster30) ->
                      LP;
                  ({_, RV} = RP, {{node, Node, Key} = K, LV} = LP) when Node =:= node() ->
                      %% we want to make sure that that no one is able to
-                     %% modify our own UUID and in addition to that while the
-                     %% cluster is not fully 3.0 we don't receive any updates
-                     %% for per node keys; the latter is needed because
-                     %% conflict resolution strategy was slightly changed in
-                     %% 3.0 and we don't want old nodes to resolve conflicts
-                     %% at all; so if we receive such a change, we always
-                     %% prefer our local version and adjust vector clock so
-                     %% that it overwrites the remote one
-                     Bounce0 = (Key =:= uuid) orelse (not Cluster30),
-                     IsSafeKey = (Key =:= membership) orelse (Key =:= rest)
-                         orelse (Key =:= capi_port) orelse (Key =:= services),
-
-                     Bounce = Bounce0 andalso not IsSafeKey,
+                     %% modify our own UUID
+                     Bounce = (Key =:= uuid),
 
                      case Bounce of
                          true ->
