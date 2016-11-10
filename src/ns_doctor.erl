@@ -772,43 +772,48 @@ build_rebalance_task(Timeout) ->
     [Task].
 
 do_build_rebalance_task(Timeout) ->
-    case (catch ns_orchestrator:rebalance_progress_full(Timeout)) of
-        {running, PerNode} ->
-            DetailedProgress = get_detailed_progress(),
+    case ns_config:search(rebalance_status_uuid) of
+        false -> [];
+        {value, undefined} -> [];
+        {value, Id} -> [{statusId, Id}]
+    end ++
+        case (catch ns_orchestrator:rebalance_progress_full(Timeout)) of
+            {running, PerNode} ->
+                DetailedProgress = get_detailed_progress(),
 
-            Subtype = case ns_config:search(rebalancer_pid) =:= ns_config:search(graceful_failover_pid) of
-                          true ->
-                              gracefulFailover;
-                          _ ->
-                              rebalance
-                      end,
+                Subtype = case ns_config:search(rebalancer_pid) =:= ns_config:search(graceful_failover_pid) of
+                              true ->
+                                  gracefulFailover;
+                              _ ->
+                                  rebalance
+                          end,
 
-            [{type, rebalance},
-             {subtype, Subtype},
-             {recommendedRefreshPeriod, 0.25},
-             {status, running},
-             {progress, case lists:foldl(fun ({_, Progress}, {Total, Count}) ->
-                                                 {Total + Progress, Count + 1}
-                                         end, {0, 0}, PerNode) of
-                            {_, 0} -> 0;
-                            {TotalRebalanceProgress, RebalanceNodesCount} ->
-                                TotalRebalanceProgress * 100.0 / RebalanceNodesCount
-                        end},
-             {perNode,
-              {struct, [{Node, {struct, [{progress, Progress * 100}]}}
-                        || {Node, Progress} <- PerNode]}},
-             {detailedProgress, DetailedProgress}];
-        FullProgress ->
-            [{type, rebalance},
-             {status, notRunning},
-             {statusIsStale, FullProgress =/= not_running},
-             {masterRequestTimedOut, misc:is_timeout_exit(FullProgress)}
-             | case ns_config:search(rebalance_status) of
-                   {value, {none, ErrorMessage}} ->
-                       [{errorMessage, iolist_to_binary(ErrorMessage)}];
-                   _ -> []
-               end]
-    end.
+                [{type, rebalance},
+                 {subtype, Subtype},
+                 {recommendedRefreshPeriod, 0.25},
+                 {status, running},
+                 {progress, case lists:foldl(fun ({_, Progress}, {Total, Count}) ->
+                                                     {Total + Progress, Count + 1}
+                                             end, {0, 0}, PerNode) of
+                                {_, 0} -> 0;
+                                {TotalRebalanceProgress, RebalanceNodesCount} ->
+                                    TotalRebalanceProgress * 100.0 / RebalanceNodesCount
+                            end},
+                 {perNode,
+                  {struct, [{Node, {struct, [{progress, Progress * 100}]}}
+                            || {Node, Progress} <- PerNode]}},
+                 {detailedProgress, DetailedProgress}];
+            FullProgress ->
+                [{type, rebalance},
+                 {status, notRunning},
+                 {statusIsStale, FullProgress =/= not_running},
+                 {masterRequestTimedOut, misc:is_timeout_exit(FullProgress)}
+                 | case ns_config:search(rebalance_status) of
+                       {value, {none, ErrorMessage}} ->
+                           [{errorMessage, iolist_to_binary(ErrorMessage)}];
+                       _ -> []
+                   end]
+        end.
 
 build_orphan_buckets_tasks(Buckets, NodesDict) ->
     Orphans =
