@@ -9,7 +9,6 @@
     var alerts = [];
     var mnAlertsService = {
       setAlert: setAlert,
-      setAlerts: setAlerts,
       formatAndSetAlerts: formatAndSetAlerts,
       showAlertInPopup: showAlertInPopup,
       closeAlert: closeAlert,
@@ -29,24 +28,21 @@
         templateUrl: "app/components/mn_alerts_popup_message.html"
       }).result;
     }
-    function setAlert(type, message) {
-      alerts.push({type: type, msg: message});
-    }
-    function setAlerts(incomingAlerts) {
-      Array.prototype.push.apply(alerts, incomingAlerts);
+    function setAlert(type, message, id) {
+      alerts.push({type: type, msg: message, id: id, dismissed: false});
     }
     function formatAndSetAlerts(incomingAlerts, type, timeout) {
       timeout = timeout || 60000;
-      (angular.isArray(incomingAlerts) && angular.isString(incomingAlerts[0])) ||
-      (angular.isObject(incomingAlerts) && angular.isString(Object.keys(incomingAlerts)[0])) &&
-      angular.forEach(incomingAlerts, function (msg) {
-        this.push({type: type, msg: msg, timeout: timeout});
-      }, alerts);
+      if ((angular.isArray(incomingAlerts) && angular.isString(incomingAlerts[0])) || angular.isObject(incomingAlerts)) {
+        angular.forEach(incomingAlerts, function (msg) {
+          incomingAlerts.push({type: type, msg: msg, timeout: timeout});
+        }, alerts);
+      }
 
-      angular.isString(incomingAlerts) && alerts.push({type: type, msg: incomingAlerts, timeout: timeout});
+      angular.isString(incomingAlerts) && alerts.push({type: type, msg: incomingAlerts, timeout: timeout, dismissed: false});
     }
-    function closeAlert(index) {
-      alerts.splice(index, 1);
+    function closeAlert(alert) {
+      alert.dismissed = true;
     }
   }
 })();

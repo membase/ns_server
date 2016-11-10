@@ -93,6 +93,15 @@
     <p>Difficulties communicating with the cluster; displaying cached information!</p>
   </div>
 
+  <div
+     uib-alert
+     ng-repeat="alert in adminCtl.alerts | filter:{dismissed: false}"
+     type="{{alert.type}}"
+     close="adminCtl.closeAlert(alert)"
+     dismiss-on-timeout="{{alert.timeout}}">
+    {{alert.msg}}
+  </div>
+
   <main>
     <nav
        ng-show="!adminCtl.$state.current.data.child"

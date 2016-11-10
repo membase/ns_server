@@ -1,14 +1,3 @@
-<mn-element-cargo depot="alerts">
-  <div
-     uib-alert
-     ng-repeat="alert in overviewCtl.alerts"
-     type="{{alert.type}}"
-     close="overviewCtl.closeAlert($index)"
-     dismiss-on-timeout="{{alert.timeout}}">
-    {{alert.msg}}
-  </div>
-</mn-element-cargo>
-
 <mn-element-cargo depot="header">
   {{overviewCtl.aboutState.implementationVersion | mnPrettyVersion}}
   state ID: {{overviewCtl.aboutState.clusterStateId}}

@@ -22,6 +22,9 @@
     vm.runInternalSettingsDialog = runInternalSettingsDialog;
     vm.lostConnState = mnLostConnectionService.getState();
 
+    vm.alerts = mnAlertsService.alerts;
+    vm.closeAlert = mnAlertsService.closeAlert;
+
     $rootScope.rbac = mnPermissions.export;
     $rootScope.poolDefault = mnPoolDefault.export;
     $rootScope.pools = mnPools.export;
@@ -119,27 +122,22 @@
         if (!_.isEqual(tasks, prevTask)) {
           $rootScope.$broadcast("mnTasksDetailsChanged");
         }
-        var rebalanceError = tasks.tasksRebalance && tasks.tasksRebalance.status !== 'running' && tasks.tasksRebalance.errorMessage;
         var isRebalanceFinished =
             tasks.tasksRebalance && tasks.tasksRebalance.status !== 'running' &&
             prevTask && prevTask.tasksRebalance && prevTask.tasksRebalance.status === "running";
         if (isRebalanceFinished) {
           $rootScope.$broadcast("rebalanceFinished");
         }
-        if (
-          rebalanceError && prevTask && prevTask.tasksRebalance && prevTask.tasksRebalance.status === "running"
-        ) {
-          if (!_.find(mnAlertsService.alerts, {'msg': rebalanceError})) {
-            mnAlertsService.setAlert("error", rebalanceError);
-          }
-          $state.go("app.admin.overview");
+
+        if (tasks.tasksRebalance.errorMessage && !_.find(mnAlertsService.alerts, {id: tasks.tasksRebalance.statusId})) {
+          mnAlertsService.setAlert("error", tasks.tasksRebalance.errorMessage, tasks.tasksRebalance.statusId);
         }
         vm.tasks = tasks;
       }, vm)
       .cycle();
 
       $scope.$on("reloadTasksPoller", function () {
-        tasksPoller.reload();
+        tasksPoller.reload(true);
       });
 
       $scope.$on("maybeShowMemoryQuotaDialog", function (event, services) {

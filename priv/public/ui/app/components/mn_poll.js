@@ -86,8 +86,10 @@
       this.extractInterval = interval;
       return this;
     }
-    function reload() {
-      delete this.latestResult;
+    function reload(keepLatestResult) {
+      if (!keepLatestResult) {
+        delete this.latestResult;
+      }
       this.stop();
       this.doCycle();
       return this;

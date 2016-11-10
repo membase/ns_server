@@ -14,11 +14,8 @@
     'mnPromiseHelper'
   ]).controller('mnOverviewController', mnOverviewController);
 
-  function mnOverviewController($scope, mnServersService, mnBucketsService, mnOverviewService, mnPoller, mnAlertsService, mnAboutDialogService, mnPromiseHelper) {
+  function mnOverviewController($scope, mnServersService, mnBucketsService, mnOverviewService, mnPoller, mnAboutDialogService, mnPromiseHelper) {
     var vm = this;
-
-    vm.alerts = mnAlertsService.alerts;
-    vm.closeAlert = mnAlertsService.closeAlert;
 
     activate();
 
