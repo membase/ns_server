@@ -90,7 +90,7 @@ merger_loop() ->
             WakeTime = os:timestamp(),
             KVList = decompress(Blob),
             system_stats_collector:increment_counter(total_config_merger_sleep_time, timer:now_diff(WakeTime, EnterTime)),
-            do_merge(KVList),
+            merge_one_remote_config(KVList),
             system_stats_collector:increment_counter(total_config_merger_run_time, timer:now_diff(os:timestamp(), WakeTime)),
             system_stats_collector:increment_counter(total_config_merger_runs, 1),
             {message_queue_len, QL} = erlang:process_info(self(), message_queue_len),
@@ -347,28 +347,41 @@ do_pull([Node | Rest], N) ->
     case (catch get_remote(Node, ?PULL_TIMEOUT)) of
         {'EXIT', _, _} -> do_pull(Rest, N - 1);
         {'EXIT', _}    -> do_pull(Rest, N - 1);
-        RemoteKVList   -> do_merge(RemoteKVList),
+        RemoteKVList   -> merge_one_remote_config(RemoteKVList),
                           ok
     end.
 
-do_merge(RemoteKVList) ->
+merge_one_remote_config(KVList) ->
+    merge_remote_configs([KVList]).
+
+merge_remote_configs(KVLists) ->
     Config = ns_config:get(),
     LocalKVList = ns_config:get_kv_list_with_config(Config),
     UUID = ns_config:uuid(Config),
-    {NewKVList, TouchedKeys} = ns_config:merge_kv_pairs(RemoteKVList, LocalKVList, UUID),
+
+    {NewKVList, TouchedKeys} =
+        lists:foldl(
+          fun (RemoteKVList, {AccKVList, AccTouched}) ->
+                  do_merge_one_remote_config(UUID, RemoteKVList, AccKVList, AccTouched)
+          end, {LocalKVList, []}, KVLists),
+
     case NewKVList =:= LocalKVList of
         true ->
             ok;
-        _ ->
+        false ->
             case ns_config:cas_remote_config(NewKVList, TouchedKeys, LocalKVList) of
                 true ->
                     do_push(NewKVList -- LocalKVList, ns_node_disco:local_sub_nodes()),
                     ok;
                 _ ->
                     ?log_warning("config cas failed. Retrying", []),
-                    do_merge(RemoteKVList)
+                    merge_remote_configs(KVLists)
             end
     end.
+
+do_merge_one_remote_config(UUID, RemoteKVList, AccKVList, AccTouched) ->
+    {Merged, Touched} = ns_config:merge_kv_pairs(RemoteKVList, AccKVList, UUID),
+    {Merged, ordsets:union(AccTouched, Touched)}.
 
 get_remote(Node, Timeout) ->
     Blob = ns_config_replica:get_compressed(ns_config_remote, Node, Timeout),
