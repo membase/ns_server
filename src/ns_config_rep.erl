@@ -296,6 +296,13 @@ pull_and_push([]) -> ok;
 pull_and_push(Nodes) ->
     ?MODULE ! {pull_and_push, Nodes}.
 
+get_remote(Node, Timeout) ->
+    Blob = ns_config_replica:get_compressed(ns_config_remote, Node, Timeout),
+    decompress(Blob).
+
+pull_remote(Node) ->
+    do_pull([Node], 1).
+
 %
 % Privates
 %
@@ -382,13 +389,6 @@ merge_remote_configs(KVLists) ->
 do_merge_one_remote_config(UUID, RemoteKVList, AccKVList, AccTouched) ->
     {Merged, Touched} = ns_config:merge_kv_pairs(RemoteKVList, AccKVList, UUID),
     {Merged, ordsets:union(AccTouched, Touched)}.
-
-get_remote(Node, Timeout) ->
-    Blob = ns_config_replica:get_compressed(ns_config_remote, Node, Timeout),
-    decompress(Blob).
-
-pull_remote(Node) ->
-    do_pull([Node], 1).
 
 compress(KVList) ->
     zlib:compress(term_to_binary(KVList)).
