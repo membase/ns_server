@@ -75,15 +75,35 @@ split_fold_incremental_loop(Binary, CP, Len, Fun, Acc, Start) ->
     NewAcc = Fun(NewPiece, Acc),
     split_fold_incremental_loop(Binary, CP, Len, Fun, NewAcc, MatchPos + MatchLen).
 
--spec sanitize_backtrace(binary()) -> [binary()].
-sanitize_backtrace(Backtrace) ->
+-spec sanitize_backtrace(atom(), binary()) -> [binary()].
+sanitize_backtrace(Name, Backtrace) ->
+    SanitizeRegisters =
+        case {Name, ns_config:read_key_fast(sanitize_backtrace_registers, true)} of
+            {auth, true} ->
+                true;
+            {ns_config_isasl_sync, true} ->
+                true;
+            _ ->
+                false
+        end,
+    case SanitizeRegisters of
+        true ->
+            {ok, RE} = re:compile(<<"^Program counter: 0x[0-9a-f]+ |^0x[0-9a-f]+ Return addr 0x[0-9a-f]+">>),
+            do_sanitize_backtrace(Backtrace, fun (X) -> re:run(X, RE) end);
+        false ->
+            do_sanitize_backtrace(Backtrace, fun (X) -> X end)
+    end.
+
+do_sanitize_backtrace(Backtrace, Fun) ->
     R = split_fold_incremental(
           Backtrace, <<"\n">>,
           fun (X, Acc) ->
-                  if
-                      size(X) =< 120 ->
+                  case Fun(X) of
+                      nomatch ->
+                          Acc;
+                      _ when size(X) =< 120 ->
                           [binary:copy(X) | Acc];
-                      true ->
+                      _ ->
                           [binary:copy(binary:part(X, 1, 120)) | Acc]
                   end
           end, []),
@@ -117,7 +137,8 @@ grab_process_info(Pid) ->
                                     dictionary]),
 
     Backtrace = proplists:get_value(backtrace, PureInfo),
-    NewBacktrace = sanitize_backtrace(Backtrace),
+    Name = proplists:get_value(registered_name, PureInfo),
+    NewBacktrace = sanitize_backtrace(Name, Backtrace),
 
     Messages = proplists:get_value(messages, PureInfo),
     NewMessages = massage_messages(Messages),
