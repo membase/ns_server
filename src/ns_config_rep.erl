@@ -48,7 +48,7 @@
          synchronize_local/0, synchronize_remote/0, synchronize_remote/1,
          pull_and_push/1]).
 
--export([get_remote/2, pull_remote/1]).
+-export([get_remote/2]).
 
 -record(state, {}).
 
@@ -299,9 +299,6 @@ pull_and_push(Nodes) ->
 get_remote(Node, Timeout) ->
     Blob = ns_config_replica:get_compressed(ns_config_remote, Node, Timeout),
     decompress(Blob).
-
-pull_remote(Node) ->
-    do_pull([Node], 1).
 
 %
 % Privates
