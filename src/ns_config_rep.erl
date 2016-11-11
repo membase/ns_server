@@ -66,7 +66,7 @@ init([]) ->
                              end),
     % Start with startup config sync.
     ?log_debug("init pulling", []),
-    do_pull(),
+    pull_random_node(),
     ?log_debug("init pushing", []),
     do_push(),
     % Have ns_config reannounce its config for any synchronization that
@@ -224,7 +224,7 @@ handle_info({push_keys, Keys0}, State) ->
 handle_info({pull_and_push, Nodes}, State) ->
     ?log_info("Replicating config to/from:~n~p", [Nodes]),
     FinalNodes = accumulate_pull_and_push(Nodes),
-    do_pull(FinalNodes, length(FinalNodes)),
+    pull_one_node(FinalNodes, length(FinalNodes)),
     RawKVList = ns_config:get_kv_list(?SELF_PULL_TIMEOUT),
     do_push(RawKVList, FinalNodes),
     ?log_debug("config pull_and_push done.", []),
@@ -235,7 +235,7 @@ handle_info(push, State) ->
     {noreply, State};
 handle_info(sync_random, State) ->
     schedule_config_sync(),
-    do_pull(1),
+    pull_random_node(1),
     {noreply, State};
 handle_info({'EXIT', _From, Reason} = Msg, _State) ->
     ?log_warning("Got exit message. Exiting: ~p", [Msg]),
@@ -341,16 +341,16 @@ do_push(RawKVList, OtherNodes) ->
                       end,
                       OtherNodes, 2000).
 
-do_pull()  -> do_pull(5).
-do_pull(N) -> do_pull(misc:shuffle(ns_node_disco:nodes_actual_other()), N).
+pull_random_node()  -> pull_random_node(5).
+pull_random_node(N) -> pull_one_node(misc:shuffle(ns_node_disco:nodes_actual_other()), N).
 
-do_pull([], _N)    -> ok;
-do_pull(_Nodes, 0) -> error;
-do_pull([Node | Rest], N) ->
+pull_one_node([], _N)    -> ok;
+pull_one_node(_Nodes, 0) -> error;
+pull_one_node([Node | Rest], N) ->
     ?log_info("Pulling config from: ~p", [Node]),
     case (catch get_remote(Node, ?PULL_TIMEOUT)) of
-        {'EXIT', _, _} -> do_pull(Rest, N - 1);
-        {'EXIT', _}    -> do_pull(Rest, N - 1);
+        {'EXIT', _, _} -> pull_one_node(Rest, N - 1);
+        {'EXIT', _}    -> pull_one_node(Rest, N - 1);
         RemoteKVList   -> merge_one_remote_config(RemoteKVList),
                           ok
     end.
