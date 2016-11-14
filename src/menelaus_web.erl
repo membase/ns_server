@@ -94,7 +94,8 @@
          validate_by_fun/3,
          execute_if_validated/3]).
 
--define(AUTO_FAILLOVER_MIN_TIMEOUT, 30).
+-define(AUTO_FAILLOVER_MIN_TIMEOUT, 5).
+-define(AUTO_FAILLOVER_MIN_CE_TIMEOUT, 30).
 -define(AUTO_FAILLOVER_MAX_TIMEOUT, 3600).
 -define(PLUGGABLE_UI, "_p").
 
@@ -2434,9 +2435,16 @@ validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
     end,
     case Enabled2 of
         true ->
-            Errors = [is_valid_positive_integer_in_range(Timeout, ?AUTO_FAILLOVER_MIN_TIMEOUT, ?AUTO_FAILLOVER_MAX_TIMEOUT) orelse
+            MinTimeout = case cluster_compat_mode:is_cluster_spock() andalso
+                             cluster_compat_mode:is_enterprise() of
+                             true ->
+                                 ?AUTO_FAILLOVER_MIN_TIMEOUT;
+                             false ->
+                                 ?AUTO_FAILLOVER_MIN_CE_TIMEOUT
+                         end,
+            Errors = [is_valid_positive_integer_in_range(Timeout, MinTimeout, ?AUTO_FAILLOVER_MAX_TIMEOUT) orelse
                       {timeout, erlang:list_to_binary(io_lib:format("The value of \"timeout\" must be a positive integer in a range from ~p to ~p",
-                                                                                [?AUTO_FAILLOVER_MIN_TIMEOUT, ?AUTO_FAILLOVER_MAX_TIMEOUT]))},
+                                                                    [MinTimeout, ?AUTO_FAILLOVER_MAX_TIMEOUT]))},
                       is_valid_positive_integer(MaxNodes) orelse
                       {maxNodes, <<"The value of \"maxNodes\" must be a positive integer">>}],
             case lists:filter(fun (E) -> E =/= true end, Errors) of
