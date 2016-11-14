@@ -58,6 +58,9 @@
 %% @doc The time a stats request to a bucket may take (in milliseconds)
 -define(STATS_TIMEOUT, 2000).
 
+%% @doc Frequency (in milliseconds) at which to check for down nodes.
+-define(TICK_PERIOD, 1000).
+
 -record(state, {
           auto_failover_logic_state,
           %% Reference to the ns_tick_event. If it is nil, auto-failover is
@@ -162,7 +165,8 @@ init([]) ->
     end.
 
 init_logic_state(Timeout) ->
-    DownThreshold = (Timeout * 1000 + ?HEART_BEAT_PERIOD - 1) div ?HEART_BEAT_PERIOD,
+    TickPeriod = get_tick_period(),
+    DownThreshold = (Timeout * 1000 + TickPeriod - 1) div TickPeriod,
     auto_failover_logic:init_state(DownThreshold).
 
 %% @doc Auto-failover isn't enabled yet (tick_ref isn't set).
@@ -170,7 +174,7 @@ handle_call({enable_auto_failover, Timeout, Max}, _From,
             #state{tick_ref=nil}=State) ->
     1 = Max,
     ale:info(?USER_LOGGER, "Enabled auto-failover with timeout ~p", [Timeout]),
-    {ok, Ref} = timer2:send_interval(?HEART_BEAT_PERIOD, tick),
+    {ok, Ref} = timer2:send_interval(get_tick_period(), tick),
     State2 = State#state{tick_ref=Ref, timeout=Timeout,
                          auto_failover_logic_state=init_logic_state(Timeout)},
     make_state_persistent(State2),
@@ -236,7 +240,8 @@ handle_info(tick, State0) ->
     NonPendingNodes = lists:sort(ns_cluster_membership:active_nodes(Config)),
 
     NodeStatuses = ns_doctor:get_nodes(),
-    CurrentlyDown = actual_down_nodes(NodeStatuses, NonPendingNodes, Config),
+    DownNodes = get_down_nodes(NodeStatuses, NonPendingNodes, Config),
+    CurrentlyDown = [N || {N, _} <- DownNodes],
 
     NodeUUIDs =
         ns_config:fold(
@@ -296,9 +301,18 @@ handle_info(tick, State0) ->
               ({failover, {Node, _UUID}}, S) ->
                   case ns_orchestrator:try_autofailover(Node) of
                       ok ->
-                          ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                                    "Node (~p) was automatically failovered.~n~p",
-                                    [Node, ns_doctor:get_node(Node, NodeStatuses)]),
+                          {_, Reason} = lists:keyfind(Node, 1, DownNodes),
+                          case Reason of
+                              unknown ->
+                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                            "Node (~p) was automatically failovered.~n~p",
+                                            [Node, ns_doctor:get_node(Node, NodeStatuses)]);
+                              _ ->
+                                  %% TODO: Display diag information.
+                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                            "Node (~p) was automatically failed over. Reason: ~s",
+                                            [Node, Reason])
+                          end,
                           init_reported(S#state{count = S#state.count+1});
                       {autofailover_unsafe, UnsafeBuckets} ->
                           case should_report(#state.reported_autofailover_unsafe, S) of
@@ -355,6 +369,71 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %% Internal functions
 %%
+get_tick_period() ->
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            ?TICK_PERIOD;
+        false ->
+            ?HEART_BEAT_PERIOD
+    end.
+%% Returns list of nodes that are down/unhealthy along with the reason
+%% why the node is considered unhealthy.
+get_down_nodes(NodeStatuses, NonPendingNodes, Config) ->
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            %% Find down nodes using the new failure detector.
+            fastfo_down_nodes(NonPendingNodes);
+        false ->
+            DownNodes = actual_down_nodes(NodeStatuses, NonPendingNodes,
+                                          Config),
+            lists:zip(DownNodes, lists:duplicate(length(DownNodes), unknown))
+    end.
+
+fastfo_down_nodes(NonPendingNodes) ->
+    NodeStatuses = node_status_analyzer:get_nodes(),
+    lists:foldl(
+      fun (Node, Acc) ->
+              case dict:find(Node, NodeStatuses) of
+                  error ->
+                      Acc;
+                  {ok, NodeStatus} ->
+                      case is_node_down(NodeStatus) of
+                          false ->
+                              Acc;
+                          {true, DownReason} ->
+                              [{Node, DownReason} | Acc]
+                      end
+              end
+      end, [], NonPendingNodes).
+
+is_node_down({unhealthy, _}) ->
+    {true, "All monitors report node is unhealthy."};
+is_node_down({{needs_attention, MonitorStatuses}, _}) ->
+    %% Different monitors are reporting different status for the node.
+    Down = lists:foldl(
+             fun (MonitorStatus, Acc) ->
+                     {Monitor, Status} = case MonitorStatus of
+                                             {M, S} ->
+                                                 {M, S};
+                                             M ->
+                                                 {M, needs_attention}
+                                         end,
+                     Module = health_monitor:get_module(Monitor),
+                     case Module:is_node_down(Status) of
+                         false ->
+                             Acc;
+                         {true, Reason} ->
+                             Reason ++ " " ++  Acc
+                     end
+             end, [], MonitorStatuses),
+    case Down of
+        [] ->
+            false;
+        _ ->
+            {true, Down}
+    end;
+is_node_down(_) ->
+    false.
 
 %% @doc Returns a list of nodes that should be active, but are not running.
 -spec actual_down_nodes(dict(), [atom()], [{atom(), term()}]) -> [atom()].

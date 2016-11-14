@@ -21,7 +21,8 @@
 -export([start_link/0]).
 -export([get_nodes/0,
          annotate_status/1,
-         analyze_status/2]).
+         analyze_status/2,
+         is_node_down/1]).
 -export([init/0, handle_call/4, handle_cast/3, handle_info/3]).
 
 start_link() ->
@@ -63,6 +64,11 @@ get_nodes() ->
 annotate_status(empty) ->
     {recv_ts, erlang:now()}.
 
+is_node_down(needs_attention) ->
+    {true, "Cluster manager is down."};
+is_node_down(_) ->
+    false.
+
 analyze_status(Node, AllNodes) ->
     %% AllNodes contains each node's view of every other node in the
     %% cluster.
@@ -101,4 +107,3 @@ analyze_node_view({OtherNode, _, NodeView}, Node, {Active, Inactive}) ->
         _ ->
             {Active, [OtherNode | Inactive]}
     end.
-

@@ -20,7 +20,8 @@
 
 -export([start_link/0]).
 -export([get_nodes/0,
-         analyze_status/2]).
+         analyze_status/2,
+         is_node_down/1]).
 
 -export([init/0, handle_call/4, handle_cast/3, handle_info/3]).
 
@@ -70,6 +71,11 @@ analyze_status(Node, AllNodes) ->
         NotReadyBuckets ->
             {not_ready, NotReadyBuckets}
     end.
+
+is_node_down(needs_attention) ->
+    {true, "None of the buckets are ready. Either buckets have not warmed up or potential issue with the data service."};
+is_node_down({not_ready, Buckets}) ->
+    {true, "Data service is operational but following buckets are not ready: " ++ string:join(Buckets, ", ")}.
 
 %% Internal functions
 get_not_ready_buckets(_, _, []) ->
