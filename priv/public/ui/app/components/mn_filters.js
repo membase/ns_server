@@ -139,18 +139,23 @@
   function formatProgressMessage() {
     return function (task) {
       switch (task.type) {
-        case "indexer": return "Building view index " + task.bucket + "/" + task.designDocument;
-        case "global_indexes": return "Building index " + task.index  + " on bucket " + task.bucket;
-        case "view_compaction": return "Compacting view index " + task.bucket + "/" + task.designDocument;
-        case "bucket_compaction": return "Compacting bucket " + task.bucket;
-        case "loadingSampleBucket": return "Loading sample: " + task.bucket;
-        case "orphanBucket": return "Orphan bucket: " + task.bucket;
-        case "clusterLogsCollection":
-          var serversCount = (_.keys(task.perNode) || []).length;
-          return "Collecting logs from " + serversCount + " " + (serversCount === 1 ? 'node' : 'nodes');
-        case "rebalance":
-          var serversCount = _.keys((task.perNode || {})).length;
-          return (task.subtype == 'gracefulFailover') ? "Failing over 1 node" : "Rebalancing " + serversCount + " nodes";
+      case "indexer":
+        return "building view index " + task.bucket + "/" + task.designDocument;
+      case "global_indexes":
+        return "building index " + task.index  + " on bucket " + task.bucket;
+      case "view_compaction":
+        return "compacting view index " + task.bucket + "/" + task.designDocument;
+      case "bucket_compaction":
+        return "compacting bucket " + task.bucket;
+      case "loadingSampleBucket":
+        return "loading sample: " + task.bucket;
+      case "orphanBucket":
+        return "orphan bucket: " + task.bucket;
+      case "clusterLogsCollection":
+        var serversCount = (_.keys(task.perNode) || []).length;
+        return "collecting logs from " + serversCount + " " + (serversCount === 1 ? 'node' : 'nodes');
+      case "rebalance":
+        return (task.subtype == 'gracefulFailover') ? "failing over 1 node" : "rebalance";
       }
     };
   }

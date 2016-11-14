@@ -29,7 +29,9 @@
     'mnPoorMansAlerts',
     'mnPermissions',
     'mnMemoryQuotaService',
-    'mnElementCrane'
+    'mnElementCrane',
+    'ngAnimate',
+    'mnDragAndDrop'
   ]).config(mnAdminConfig);
 
   function mnAdminConfig($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider, mnHelperProvider) {

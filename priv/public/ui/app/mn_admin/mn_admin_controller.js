@@ -12,7 +12,6 @@
     vm.logout = mnAuthService.logout;
     vm.resetAutoFailOverCount = resetAutoFailOverCount;
     vm.isProgressBarClosed = true;
-    vm.areThereMoreThenTwoRunningTasks = areThereMoreThenTwoRunningTasks;
     vm.toggleProgressBar = toggleProgressBar;
     vm.filterTasks = filterTasks;
 
@@ -36,10 +35,6 @@
         templateUrl: "app/mn_admin/mn_internal_settings/mn_internal_settings.html",
         controller: "mnInternalSettingsController as internalSettingsCtl"
       });
-    }
-
-    function areThereMoreThenTwoRunningTasks() {
-      return vm.tasks && vm.tasks.running.length > 1;
     }
 
     function toggleProgressBar() {
@@ -128,6 +123,21 @@
         if (isRebalanceFinished) {
           $rootScope.$broadcast("rebalanceFinished");
         }
+
+        tasks.tasks.forEach(function (task) {
+          if (task.type !== "indexer" &&
+              task.type !== "view_compaction" &&
+              task.status === "running") {
+            if (!prevTask) {
+              vm.isProgressBarClosed = false;
+            } else {
+              var task = _.find(prevTask.tasks, {type: task.type});
+              if (task && task.status !== "running") {
+                vm.isProgressBarClosed = false;
+              }
+            }
+          }
+        });
 
         if (tasks.tasksRebalance.errorMessage && !_.find(mnAlertsService.alerts, {id: tasks.tasksRebalance.statusId})) {
           mnAlertsService.setAlert("error", tasks.tasksRebalance.errorMessage, tasks.tasksRebalance.statusId);

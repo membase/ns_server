@@ -8,6 +8,47 @@
   </div>
 
   <nav class="nav-header">
+    <a ng-click="adminCtl.toggleProgressBar()" class="activities">
+      Activity
+      <span
+         ng-if="adminCtl.filterTasks(adminCtl.tasks.running).length > 0"
+         class="label badge">
+        {{adminCtl.filterTasks(adminCtl.tasks.running).length}}
+      </span>
+    </a>
+    <div class="relative inline">
+      <div
+         mn-drag-and-drop
+         base-corner-right="true"
+         class="tasks-progress panel dialog-small"
+         ng-if="rbac.cluster.tasks.read && !adminCtl.isProgressBarClosed && adminCtl.filterTasks(adminCtl.tasks.running).length">
+        <div class="close-tasks">
+          <span ng-click="adminCtl.toggleProgressBar()">X</span>
+        </div>
+        <div class="panel-content">
+          <div ng-repeat="task in adminCtl.filterTasks(adminCtl.tasks.running)">
+            <div class="text-small text-left">
+              {{task | formatProgressMessage}}
+              <span ng-if="task.progress != undefined">{{(task.progress | number:1) + '%'}}</span>
+            </div>
+            <div
+               class="bar-wrapper"
+               ng-show="task.type !== 'loadingSampleBucket' && task.type !== 'orphanBucket'">
+              <div
+                 class="bar positive"
+                 ng-style="{'width': task.progress + '%'}">
+                <div></div>
+              </div>
+              <div
+                 class="bar negative"
+                 ng-style="{'width': (100 - task.progress) + '%'}">
+                <div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <a
        ng-click="adminCtl.runInternalSettingsDialog();"
        ng-show="adminCtl.enableInternalSettings && (rbac.cluster.settings.read || rbac.cluster.xdcr.settings.read)">
@@ -21,27 +62,6 @@
     </a>
     <a ng-click="adminCtl.logout()">Sign Out</a>
   </nav>
-
-  <div
-     id="global_progress"
-     ng-class="{
-               'disable_toggle': !adminCtl.areThereMoreThenTwoRunningTasks(),
-               'closed': adminCtl.isProgressBarClosed
-               }"
-     class="closed"
-     ng-show="rbac.cluster.tasks.read && adminCtl.filterTasks(adminCtl.tasks.running).length">
-    <i
-       class="toggle"
-       ng-click="adminCtl.areThereMoreThenTwoRunningTasks() && adminCtl.toggleProgressBar()">i</i>
-    <ul id="global_progress_container">
-      <li ng-repeat="task in adminCtl.filterTasks(adminCtl.tasks.running)" class="clearfix">
-        <div class="usage_smallest" ng-show="task.type !== 'loadingSampleBucket' && task.type !== 'orphanBucket'">
-          <div class="used" style="width: {{task.progress}}%"></div>
-        </div>
-        <span class="message">{{task | formatProgressMessage}}</span>
-      </li>
-    </ul>
-  </div>
 
   <header>
     <a

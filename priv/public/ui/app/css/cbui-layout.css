@@ -82,6 +82,10 @@ nav.nav-sidebar {
   width: 100%;
 }
 
+.relative {
+  position: relative;
+}
+
 /* these hacks must GO !!!********** */
 .inline {
     display: inline-block;

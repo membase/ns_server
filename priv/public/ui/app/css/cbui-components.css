@@ -935,6 +935,13 @@ section.status-red .cbui-tablerow-statusmsg {
   top: -8px;
 }
 
+.activities .badge {
+  background-color: #f5a623;
+  color: #fff;
+  left: -1px;
+  top: 0;
+  padding: .275rem;
+}
 
 /* Alerts  ---------------------------*/
 .alert {
@@ -1277,6 +1284,105 @@ meter {
 .vertical_bar .used {
   position: relative;
   background: #4287D6;
+}
+
+/* tasks progress --------------- */
+
+.tasks-progress.ng-enter,
+.tasks-progress.ng-leave {
+  -webkit-transition: 250ms cubic-bezier(0.25, 0.1, 0.25, 1) all;
+  -moz-transition: 250ms cubic-bezier(0.25, 0.1, 0.25, 1) all;
+  -ms-transition: 250ms cubic-bezier(0.25, 0.1, 0.25, 1) all;
+  -o-transition: 250ms cubic-bezier(0.25, 0.1, 0.25, 1) all;
+  transition: 250ms cubic-bezier(0.25, 0.1, 0.25, 1) all;
+  transform-origin: 100% 0;
+}
+.tasks-progress.ng-leave.ng-leave-active,
+.tasks-progress.ng-enter {
+  -webkit-transform: scaleY(0.1) scaleX(0.1);
+  -moz-transform: scaleY(0.1) scaleX(0.1);
+  -ms-transform: scaleY(0.1) scaleX(0.1);
+  -o-transform: scaleY(0.1) scaleX(0.1);
+  transform: scaleY(0.1) scaleX(0.1);
+  top: 50%!important;
+  right: 10px!important;
+}
+.tasks-progress.ng-enter.ng-enter-active,
+.tasks-progress.ng-leave {
+  -webkit-transform: scaleY(1) scaleX(1);
+  -moz-transform: scaleY(1) scaleX(1);
+  -ms-transform: scaleY(1) scaleX(1);
+  -o-transform: scaleY(1) scaleX(1);
+  transform: scaleY(1) scaleX(1);
+}
+
+.tasks-progress {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  z-index: 100;
+  -webkit-box-shadow: 0 0 25px 0px rgba(0,0,0,0.75);
+  -moz-box-shadow: 0 0 25px 0px rgba(0,0,0,0.75);
+  box-shadow: 0 0 25px 0px rgba(0,0,0,0.75);
+}
+.tasks-progress .close-tasks {
+  width: 100%;
+  text-align: right;
+  padding: .75rem 1rem 0 0;
+  font-size: 1rem;
+  color: #333;
+  line-height: .9;
+}
+.tasks-progress .close-tasks span {
+  cursor: pointer;
+}
+.close-tasks + .panel-content {padding-top:0;}
+
+.tasks-progress .bar div,
+.tasks-progress .bar-wrapper {
+  height: 1rem;
+  width: 338px;
+}
+.tasks-progress .bar-wrapper {
+  margin: .25rem 0 1rem 0;
+  position: relative;
+  border: 1px solid #C6DBF2;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.tasks-progress .bar.positive {
+  left: 0;
+}
+.tasks-progress .bar.negative {
+  right: 0;
+}
+.tasks-progress .bar {
+  position: absolute;
+  overflow: hidden;
+  height: 1rem;
+}
+.tasks-progress .bar div {
+  position: absolute;
+
+}
+.tasks-progress .bar.negative div {
+  background: #ffffff;
+  background: -moz-linear-gradient(left, transparent 0%, transparent 98%, #7db9e8 98%, #7db9e8 100%);
+  background: -webkit-linear-gradient(left, transparent 0%, transparent 98%, #7db9e8 98%, #7db9e8 100%);
+  background: linear-gradient(to right, transparent 0%, transparent 98%, #7db9e8 95%, #7db9e8 100%);
+  background-size: 34px auto;
+  right: 0;
+}
+.tasks-progress .bar.positive {
+  background-color: #7db9e8;
+}
+.tasks-progress .bar.positive div {
+  background: #ffffff;
+  background: -moz-linear-gradient(left, transparent 0%, transparent 98%, #fff 98%, #fff 100%);
+  background: -webkit-linear-gradient(left, transparent 0%, transparent 98%, #fff 98%, #fff 100%);
+  background: linear-gradient(to right, transparent 0%, transparent 98%, #fff 98%, #fff 100%);
+  background-size: 34px auto;
+  left:0;
 }
 
 /* rebalance progress --------------- */
