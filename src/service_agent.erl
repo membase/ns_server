@@ -84,13 +84,12 @@ wait_for_agents_loop(Service, Nodes, _Acc, Timeout)
   when Timeout =< 0 ->
     process_bad_results(Service, get_agent, [{N, {error, timeout}} || N <- Nodes]);
 wait_for_agents_loop(Service, Nodes, Acc, Timeout) ->
-    {Elapsed, Result} =
+    {Elapsed, {Good, Bad}} =
         timer:tc(
           fun () ->
-                  misc:multi_call(Nodes, server_name(Service), get_agent, Timeout)
+                  multi_call(Nodes, Service, get_agent, Timeout)
           end),
 
-    {Good, Bad} = partition_multicall_results(Result),
     case Bad of
         [] ->
             ?log_debug("All service agents are ready for ~p", [Service]),
@@ -112,29 +111,25 @@ wait_for_agents_loop(Service, Nodes, Acc, Timeout) ->
     end.
 
 set_rebalancer(Service, Nodes, Rebalancer) ->
-    Result = misc:multi_call(
-               Nodes, server_name(Service),
-               {set_rebalancer, Rebalancer}, ?OUTER_TIMEOUT),
+    Result = multi_call(Nodes, Service,
+                        {set_rebalancer, Rebalancer}, ?OUTER_TIMEOUT),
     handle_multicall_result(Service, set_rebalancer, Result, fun just_ok/1).
 
 unset_rebalancer(Service, Nodes, Rebalancer) ->
-    Result = misc:multi_call(
-               Nodes, server_name(Service),
-               {if_rebalance, Rebalancer, unset_rebalancer}, ?OUTER_TIMEOUT),
+    Result = multi_call(Nodes, Service,
+                        {if_rebalance, Rebalancer, unset_rebalancer}, ?OUTER_TIMEOUT),
     handle_multicall_result(Service, unset_rebalancer, Result, fun just_ok/1).
 
 get_node_infos(Service, Nodes, Rebalancer) ->
-    Result = misc:multi_call(
-               Nodes, server_name(Service),
-               {if_rebalance, Rebalancer, get_node_info}, ?OUTER_TIMEOUT),
+    Result = multi_call(Nodes, Service,
+                        {if_rebalance, Rebalancer, get_node_info}, ?OUTER_TIMEOUT),
     handle_multicall_result(Service, get_node_infos, Result).
 
 prepare_rebalance(Service, Nodes, Rebalancer, RebalanceId, Type, KeepNodes, EjectNodes) ->
-    Result = misc:multi_call(
-               Nodes, server_name(Service),
-               {if_rebalance, Rebalancer,
-               {prepare_rebalance, RebalanceId, Type, KeepNodes, EjectNodes}},
-               ?OUTER_TIMEOUT),
+    Result = multi_call(Nodes, Service,
+                        {if_rebalance, Rebalancer,
+                         {prepare_rebalance, RebalanceId, Type, KeepNodes, EjectNodes}},
+                        ?OUTER_TIMEOUT),
     handle_multicall_result(Service, prepare_rebalance, Result, fun just_ok/1).
 
 start_rebalance(Service, Node, Rebalancer, RebalanceId, Type, KeepNodes, EjectNodes) ->
@@ -744,23 +739,13 @@ process_service_response(Name, Raw, Fun) ->
 handle_multicall_result(Service, Call, Result) ->
     handle_multicall_result(Service, Call, Result, fun extract_ok_responses/1).
 
-handle_multicall_result(Service, Call, Result, OkFun) ->
-    {Good, Bad} = partition_multicall_results(Result),
-
+handle_multicall_result(Service, Call, {Good, Bad}, OkFun) ->
     case Bad of
         [] ->
             OkFun(Good);
         _ ->
             process_bad_results(Service, Call, Bad)
     end.
-
-partition_multicall_results({RVs, Failed}) ->
-    {Good, Bad} =
-        lists:partition(
-          fun ({_, R}) ->
-                  is_good_result(R)
-          end, RVs),
-    {Good, Failed ++ Bad}.
 
 is_good_result(ok) ->
     true;
@@ -832,3 +817,7 @@ is_noproc({_Node, {exit, {noproc, _}}}) ->
     true;
 is_noproc(_) ->
     false.
+
+multi_call(Nodes, Service, Request, Timeout) ->
+    misc:multi_call(Nodes, server_name(Service),
+                    Request, Timeout, fun is_good_result/1).
