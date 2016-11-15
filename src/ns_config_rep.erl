@@ -297,7 +297,7 @@ pull_and_push(Nodes) ->
     ?MODULE ! {pull_and_push, Nodes}.
 
 get_remote(Node, Timeout) ->
-    Blob = ns_config_replica:get_compressed(ns_config_remote, Node, Timeout),
+    Blob = ns_config_replica:get_compressed(Node, Timeout),
     decompress(Blob).
 
 %

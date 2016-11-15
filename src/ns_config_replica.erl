@@ -19,8 +19,10 @@
 
 -behaviour(gen_server).
 
+-define(SERVER, ns_config_remote).
+
 %% API
--export([start_link/1, get_compressed/3]).
+-export([start_link/0, get_compressed/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -39,12 +41,12 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(RegName) ->
-    gen_server:start_link(RegName, ?MODULE, [], []).
+start_link() ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec get_compressed(term(), node(), timeout()) -> binary().
-get_compressed(Name, Node, Timeout) ->
-    gen_server:call({Name, Node}, get_compressed, Timeout).
+-spec get_compressed(node(), timeout()) -> binary().
+get_compressed(Node, Timeout) ->
+    gen_server:call({?SERVER, Node}, get_compressed, Timeout).
 
 %%%===================================================================
 %%% gen_server callbacks

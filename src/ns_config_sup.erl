@@ -47,7 +47,7 @@ init([]) ->
             permanent, 1000, worker, [ns_config, ns_config_default]},
 
            {ns_config_remote,
-            {ns_config_replica, start_link, [{local, ns_config_remote}]},
+            {ns_config_replica, start_link, []},
             permanent, 1000, worker, [ns_config, ns_config_replica]},
 
            %% logs config changes for debugging.
