@@ -1909,29 +1909,46 @@ pretty_version(ListOfInts) when is_list(ListOfInts) ->
 get_ancestors() ->
     erlang:get('$ancestors').
 
+multi_call(Nodes, Name, Request, Timeout) ->
+    multi_call(Nodes, Name, Request, Timeout, fun (_) -> true end).
+
 %% Behaves like gen_server:multi_call except that instead of just returning a
 %% list of "bad nodes" it returns some details about why a call failed.
--spec multi_call(Nodes, Name, Request, Timeout) -> Result
+%%
+%% In addition it takes a predicate that can classify an ok reply as an
+%% error. Such a reply will be put into the bad replies list.
+-spec multi_call(Nodes, Name, Request, Timeout, OkPred) -> Result
   when Nodes   :: [node()],
        Name    :: atom(),
        Request :: any(),
        Timeout :: infinity | non_neg_integer(),
        Result  :: {Good, Bad},
        Good    :: [{node(), any()}],
-       Bad     :: [{node(), any()}].
-multi_call(Nodes, Name, Request, Timeout) ->
+       Bad     :: [{node(), any()}],
+
+       OkPred   :: fun((any()) -> OkPredRV),
+       OkPredRV :: boolean() | {false, ErrorTerm :: term()}.
+multi_call(Nodes, Name, Request, Timeout, OkPred) ->
     Ref = erlang:make_ref(),
     Parent = self(),
     try
-        parallel_map(fun (N) ->
-                             try gen_server:call({Name, N}, Request, infinity) of
-                                 Res ->
-                                     Parent ! {Ref, {N, {ok, Res}}}
-                             catch T:E ->
-                                     Parent ! {Ref, {N, {error, {T, E}}}}
-                             end,
-                             ok
-                     end, Nodes, Timeout)
+        parallel_map(
+          fun (N) ->
+                  RV = try gen_server:call({Name, N}, Request, infinity) of
+                           Res ->
+                               case OkPred(Res) of
+                                   true ->
+                                       {ok, Res};
+                                   false ->
+                                       {error, Res};
+                                   {false, ErrorTerm} ->
+                                       {error, ErrorTerm}
+                               end
+                       catch T:E ->
+                               {error, {T, E}}
+                       end,
+                  Parent ! {Ref, {N, RV}}
+          end, Nodes, Timeout)
     catch exit:timeout ->
             ok
     end,
@@ -1970,6 +1987,10 @@ multi_call_test_setup_server() ->
     ok = mock_gen_server:stub_call(Pid, sleep,
                                    fun ({sleep, Time}) ->
                                            timer:sleep(Time)
+                                   end),
+    ok = mock_gen_server:stub_call(Pid, eval,
+                                   fun ({eval, Fun}) ->
+                                           Fun()
                                    end).
 
 multi_call_test_setup() ->
@@ -2034,6 +2055,46 @@ do_test_multi_call() ->
     {R4, Bad4} = misc:multi_call(Nodes, multi_call_server, {echo, ok}, 100),
     multi_call_test_assert_results(R4, RestNodes, ok),
     ?assertMatch([{FirstNode, {exit, {noproc, _}}}], Bad4).
+
+multi_call_ok_pred_test_() ->
+    {setup, fun multi_call_test_setup/0, fun multi_call_test_teardown/1,
+     [fun do_test_multi_call_ok_pred/0]}.
+
+do_test_multi_call_ok_pred() ->
+    Nodes = nodes(),
+    BadNodes = [bad_node],
+    AllNodes = BadNodes ++ Nodes,
+
+    {R1, Bad1} = misc:multi_call(AllNodes, multi_call_server, {echo, ok}, 100,
+                                 fun (_) -> false end),
+
+    ?assertEqual(R1, []),
+    multi_call_test_assert_bad_nodes(Bad1, AllNodes),
+
+    {R2, Bad2} = misc:multi_call(AllNodes, multi_call_server, {echo, ok}, 100,
+                                 fun (_) -> {false, some_error} end),
+    ?assertEqual(R2, []),
+    multi_call_test_assert_bad_nodes(Bad2, AllNodes),
+    multi_call_test_assert_results(Bad2, Nodes, some_error),
+
+    {OkNodes, ErrorNodes} = lists:split(length(Nodes) div 2, misc:shuffle(Nodes)),
+    {R3, Bad3} = misc:multi_call(AllNodes, multi_call_server,
+                                 {eval, fun () ->
+                                                case lists:member(node(), OkNodes) of
+                                                    true ->
+                                                        ok;
+                                                    false ->
+                                                        error
+                                                end
+                                        end},
+                                 100,
+                                 fun (RV) ->
+                                         RV =:= ok
+                                 end),
+
+    multi_call_test_assert_results(R3, OkNodes, ok),
+    multi_call_test_assert_bad_nodes(Bad3, BadNodes ++ ErrorNodes),
+    multi_call_test_assert_results(Bad3, ErrorNodes, error).
 
 -endif.
 
