@@ -1909,6 +1909,16 @@ pretty_version(ListOfInts) when is_list(ListOfInts) ->
 get_ancestors() ->
     erlang:get('$ancestors').
 
+%% Behaves like gen_server:multi_call except that instead of just returning a
+%% list of "bad nodes" it returns some details about why a call failed.
+-spec multi_call(Nodes, Name, Request, Timeout) -> Result
+  when Nodes   :: [node()],
+       Name    :: atom(),
+       Request :: any(),
+       Timeout :: infinity | non_neg_integer(),
+       Result  :: {Good, Bad},
+       Good    :: [{node(), any()}],
+       Bad     :: [{node(), any()}].
 multi_call(Nodes, Name, Request, Timeout) ->
     Ref = erlang:make_ref(),
     Parent = self(),
