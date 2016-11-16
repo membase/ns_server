@@ -605,7 +605,6 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     rebalance_services(KeepNodes, EjectNodesAll),
 
     ns_config:sync_announcements(),
-    ns_config_rep:push(),
     ok = ns_config_rep:synchronize_remote(KeepNodes),
 
     %% don't eject ourselves at all here; this will be handled by ns_orchestrator

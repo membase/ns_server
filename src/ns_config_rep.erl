@@ -44,8 +44,7 @@
          terminate/2, code_change/3]).
 
 % API
--export([push/0,
-         synchronize_local/0, synchronize_remote/0, synchronize_remote/1,
+-export([synchronize_local/0, synchronize_remote/0, synchronize_remote/1,
          pull_and_push/1]).
 
 -export([get_remote/2, pull_remotes/1]).
@@ -231,10 +230,6 @@ handle_info({pull_and_push, Nodes}, State) ->
     do_push(RawKVList, FinalNodes),
     ?log_debug("config pull_and_push done.", []),
     {noreply, State};
-handle_info(push, State) ->
-    misc:flush(push),
-    do_push(),
-    {noreply, State};
 handle_info(sync_random, State) ->
     schedule_config_sync(),
     pull_random_node(1),
@@ -255,9 +250,6 @@ code_change(_OldVsn, State, _Extra) ->
 %
 % API methods
 %
-
-push() ->
-    ?MODULE ! push.
 
 % awaits completion of all previous requests
 synchronize_local() ->

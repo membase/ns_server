@@ -353,7 +353,6 @@ rename_node_in_config(Old, New) ->
                              end
                      end),
     ns_config:sync_announcements(),
-    ns_config_rep:push(),
     ns_config_rep:synchronize_remote(ns_node_disco:nodes_actual_other()).
 
 handle_call({adjust_my_address, _, _, _}, _From,

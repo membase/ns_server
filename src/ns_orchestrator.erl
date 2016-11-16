@@ -548,7 +548,6 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
         lists:member(node(), FailedNodes) of
         true ->
             ns_config:sync_announcements(),
-            ns_config_rep:push(),
             ok = ns_config_rep:synchronize_remote(KeepNodes),
             ns_rebalancer:eject_nodes([node()]);
         false ->
