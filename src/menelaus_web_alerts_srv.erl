@@ -77,8 +77,9 @@ errors(audit_dropped_events) ->
 errors(indexer_ram_max_usage) ->
     "Warning: approaching max index RAM. Indexer RAM on node \"~s\" is ~p%, which is at or above the threshold of ~p%.";
 errors(ep_clock_cas_drift_threshold_exceeded) ->
-    "Clock CAS drift threshold exceeded for bucket \"~s\" on node ~s.".
-
+    "Remote or replica mutation received for bucket ~p on node ~p with timestamp more "
+    "than ~p milliseconds ahead of local clock. Please ensure that NTP is set up correctly "
+    "on all nodes across the replication topology and clocks are synchronized.".
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -360,9 +361,24 @@ check(cas_drift_threshold, Opaque, _History, Stats) ->
 
     NewStats = [Item || {Bucket, _OrdDict} = Item <- Stats,
                         Bucket =/= "@global" andalso FilterLWW(Bucket)],
-
-    check_stat_increased(NewStats, ep_clock_cas_drift_threshold_exceeded,
-                         Opaque).
+    Formatter = fun(Bucket, _, Host) ->
+                        Threshold =
+                            case ns_bucket:get_bucket(Bucket) of
+                                {ok, Cfg} ->
+                                    case ns_bucket:drift_thresholds(Cfg) of
+                                        {Ahead, _} ->
+                                            Ahead;
+                                        _ ->
+                                            undefined
+                                    end;
+                                _ ->
+                                    undefined
+                            end,
+                        fmt_to_bin(errors(ep_clock_cas_drift_threshold_exceeded),
+                                   [Bucket, Host, Threshold])
+                end,
+    check_stat_increased(NewStats, ep_clock_cas_drift_threshold_exceeded, Opaque,
+                         Formatter).
 
 %% @doc only check for disk usage if there has been no previous
 %% errors or last error was over the timeout ago
@@ -392,6 +408,12 @@ over_threshold(EpErrs, Max) ->
 %% @doc Check if the value of any statistic has increased since
 %% last check
 check_stat_increased(Stats, StatName, Opaque) ->
+    Formatter = fun(Bucket, SName, Host) ->
+                        fmt_to_bin(errors(SName), [Bucket, Host])
+                end,
+    check_stat_increased(Stats, StatName, Opaque, Formatter).
+
+check_stat_increased(Stats, StatName, Opaque, Formatter) ->
     New = fetch_buckets_stat(Stats, StatName),
     case dict:is_key(StatName, Opaque) of
         false ->
@@ -403,8 +425,7 @@ check_stat_increased(Stats, StatName, Opaque) ->
                     ok;
                 Buckets ->
                     {_Sname, Host} = misc:node_name_host(node()),
-                    [global_alert({StatName, Bucket},
-                                  fmt_to_bin(errors(StatName), [Bucket, Host]))
+                    [global_alert({StatName, Bucket}, Formatter(Bucket, StatName, Host))
                      || Bucket <- Buckets]
             end,
             dict:store(StatName, New, Opaque)
