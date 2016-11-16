@@ -392,6 +392,12 @@ over_threshold(EpErrs, Max) ->
 %% @doc Check if the value of any statistic has increased since
 %% last check
 check_stat_increased(Stats, StatName, Opaque) ->
+    Formatter = fun(Bucket, SName, Host) ->
+                        fmt_to_bin(errors(SName), [Bucket, Host])
+                end,
+    check_stat_increased(Stats, StatName, Opaque, Formatter).
+
+check_stat_increased(Stats, StatName, Opaque, Formatter) ->
     New = fetch_buckets_stat(Stats, StatName),
     case dict:is_key(StatName, Opaque) of
         false ->
@@ -403,8 +409,7 @@ check_stat_increased(Stats, StatName, Opaque) ->
                     ok;
                 Buckets ->
                     {_Sname, Host} = misc:node_name_host(node()),
-                    [global_alert({StatName, Bucket},
-                                  fmt_to_bin(errors(StatName), [Bucket, Host]))
+                    [global_alert({StatName, Bucket}, Formatter(Bucket, StatName, Host))
                      || Bucket <- Buckets]
             end,
             dict:store(StatName, New, Opaque)
