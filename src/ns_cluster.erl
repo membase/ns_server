@@ -340,7 +340,7 @@ force_eject_self() ->
 leave(Node) ->
     ?cluster_debug("Asking node ~p to leave the cluster", [Node]),
 
-    case Node == node() of
+    case Node =:= node() of
         true ->
             leave();
         false ->
@@ -355,7 +355,7 @@ leave_async() ->
 
 %% Note that shun does *not* cause the other node to reset its config!
 shun(RemoteNode) ->
-    case RemoteNode == node() of
+    case RemoteNode =:= node() of
         false ->
             ?cluster_debug("Shunning ~p", [RemoteNode]),
             ok = ns_config:update(
