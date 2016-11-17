@@ -359,8 +359,13 @@ sanitize(Config) ->
     misc:rewrite_key_value_tuple(sasl_password, "*****", Config).
 
 pull_and_push_config(Nodes) ->
-    %% TODO: pull config reliably here as well.
-    %%
+    case ns_config_rep:pull_remotes(Nodes) of
+        ok ->
+            ok;
+        Error ->
+            exit({config_sync_failed, Error})
+    end,
+
     %% And after we have that, make sure recovery, rebalance and
     %% graceful failover, all start with latest config reliably
     case ns_config_rep:ensure_config_seen_by_nodes(Nodes) of
