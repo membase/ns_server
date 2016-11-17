@@ -287,30 +287,20 @@ synchronize_local() ->
 
 synchronize_remote(Nodes) ->
     ok = synchronize_local(),
-    {Replies, BadNodes0} =
-        gen_server:multi_call(Nodes, ?MODULE,
-                              synchronize_everything, ?SYNCHRONIZE_TIMEOUT),
+    {_Replies, BadNodes} =
+        misc:multi_call(Nodes, ?MODULE,
+                        synchronize_everything, ?SYNCHRONIZE_TIMEOUT,
+                        fun (R) ->
+                                R =:= ok
+                        end),
 
-    BadNodes = [{N, down} || N <- BadNodes0],
-
-    AllBadNodes =
-        lists:foldl(
-          fun ({Node, Reply}, Acc) ->
-                  case Reply of
-                      ok ->
-                          Acc;
-                      _Other ->
-                          [{Node, Reply} | Acc]
-                  end
-          end, BadNodes, Replies),
-
-    case AllBadNodes of
+    case BadNodes of
         [] ->
             ok;
         _ ->
             ?log_error("Failed to synchronize config to some nodes: ~n~p",
-                       [AllBadNodes]),
-            {error, AllBadNodes}
+                       [BadNodes]),
+            {error, BadNodes}
     end.
 
 schedule_config_sync() ->
