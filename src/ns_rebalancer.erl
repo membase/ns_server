@@ -1227,6 +1227,8 @@ start_link_graceful_failover(Node) ->
     proc_lib:start_link(erlang, apply, [fun run_graceful_failover/1, [Node]]).
 
 run_graceful_failover(Node) ->
+    pull_and_push_config(ns_node_disco:nodes_wanted()),
+
     %% No graceful failovers for non KV node
     case lists:member(kv, ns_cluster_membership:node_services(Node)) of
         true ->
@@ -1249,17 +1251,7 @@ run_graceful_failover(Node) ->
     proc_lib:init_ack({ok, self()}),
 
     ale:info(?USER_LOGGER, "Starting vbucket moves for graceful failover of ~p", [Node]),
-    pull_and_push_config(ns_node_disco:nodes_wanted()),
     AllBucketConfigs = ns_bucket:get_buckets(),
-
-    %% yes we're doing it second time after config sync. In case
-    %% synced config is different
-    case check_graceful_failover_possible(Node, AllBucketConfigs) of
-        true -> ok;
-        false ->
-            erlang:exit(not_graceful)
-    end,
-
     MembaseBuckets = [BC || BC = {_, Conf} <- AllBucketConfigs,
                             proplists:get_value(type, Conf) =:= membase],
     N = length(MembaseBuckets),

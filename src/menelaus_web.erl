@@ -3137,6 +3137,8 @@ handle_start_graceful_failover(Req) ->
                           {400, "Unknown server given."};
                       last_node ->
                           {400, "Last active node cannot be failed over."};
+                      {config_sync_failed, _} ->
+                          {500, "Failed to synchronize config to other nodes"};
                       Other ->
                           {500,
                            io_lib:format("Unexpected server error: ~p", [Other])}

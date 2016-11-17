@@ -280,6 +280,7 @@ start_rebalance(KnownNodes, EjectNodes, DeltaRecoveryBuckets) ->
 -spec start_graceful_failover(node()) ->
                                      ok | in_progress | in_recovery | non_kv_node |
                                      not_graceful | unknown_node | last_node |
+                                     {config_sync_failed, any()} |
                                      %% the following is needed just to trick
                                      %% the dialyzer; otherwise it wouldn't
                                      %% let the callers cover what it believes
