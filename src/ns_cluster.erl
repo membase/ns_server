@@ -374,8 +374,7 @@ shun(RemoteNode) ->
                        (_Other) ->
                            skip
                    end),
-            ns_config:sync_announcements(),
-            ns_config_rep:synchronize_local();
+            ns_config_rep:ensure_config_pushed();
         true ->
             ?cluster_debug("Asked to shun myself. Leaving cluster.", []),
             leave()

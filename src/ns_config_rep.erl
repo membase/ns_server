@@ -44,7 +44,7 @@
          terminate/2, code_change/3]).
 
 % API
--export([synchronize_local/0, synchronize_remote/0, synchronize_remote/1,
+-export([ensure_config_pushed/0, synchronize_remote/0, synchronize_remote/1,
          pull_and_push/1]).
 
 -export([get_remote/2, pull_remotes/1]).
@@ -251,9 +251,10 @@ code_change(_OldVsn, State, _Extra) ->
 % API methods
 %
 
-% awaits completion of all previous requests
-synchronize_local() ->
-    gen_server:call(?MODULE, synchronize, ?SYNCHRONIZE_TIMEOUT).
+%% make sure that all outstanding changes are pushed out to other nodes
+ensure_config_pushed() ->
+    ns_config:sync_announcements(),
+    synchronize_local().
 
 synchronize_remote() ->
     synchronize_remote(ns_node_disco:nodes_actual_other()).
@@ -299,6 +300,10 @@ pull_remotes(Nodes) ->
 %
 % Privates
 %
+
+% wait for completion of all previous requests
+synchronize_local() ->
+    gen_server:call(?MODULE, synchronize, ?SYNCHRONIZE_TIMEOUT).
 
 schedule_config_sync() ->
     Frequency = 5000 + trunc(random:uniform() * 55000),
