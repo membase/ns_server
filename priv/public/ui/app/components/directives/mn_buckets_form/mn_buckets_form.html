@@ -96,47 +96,48 @@
     </div>
   </div>
 
-  <h2 ng-show="bucketConf.bucketType === 'membase'">Conflict Resolution</h2>
-  <div
-     class="sub_section"
-     ng-if="pools.isEnterprise && bucketConf.bucketType === 'membase' && (bucketConf.isWizard || poolDefault.compat.atLeast46)">
-    <p>
-      Select the conflict resolution method to use if XDCR replications will be set up for this bucket:
-    </p>
-    <div class="with_radiogroup">
-      <div>
-        <input
-           type="radio"
-           id="for-enable-conflict-resolution-seqno"
-           ng-model="bucketConf.conflictResolutionType"
-           name="conflictResolutionType"
-           value="seqno"
-           ng-disabled="!bucketConf.isNew">
-        <label
-           for="for-enable-conflict-resolution-seqno"
-           style="width: auto;">Sequence number</label>
-      </div>
-      <div>
-        <input
-           type="radio"
-           id="for-enable-conflict-resolution-lww"
-           ng-model="bucketConf.conflictResolutionType"
-           name="conflictResolutionType"
-           value="lww"
-           ng-disabled="!bucketConf.isNew">
-        <label
-           for="for-enable-conflict-resolution-lww"
-           style="width: auto;">Timestamp</label>
-      </div>
-      <div
-         class="error-container"
-         ng-show="validation.result.errors.conflictResolutionType">
-        {{validation.result.errors.conflictResolutionType}}
-      </div>
-      <div
-         class="error-container"
-         ng-show="bucketConf.conflictResolutionType === 'lww'">
-        Warning: Timestamp-based conflict resolution requires NTP to be correctly set up on all the nodes in your replication topology to ensure high-quality time synchronization. See Setting up NTP in the Couchbase documentation.
+  <div ng-if="pools.isEnterprise && bucketConf.bucketType === 'membase' && (bucketConf.isWizard || poolDefault.compat.atLeast46)">
+    <h2>Conflict Resolution</h2>
+    <div
+       class="sub_section">
+      <p>
+        Select the conflict resolution method to use if XDCR replications will be set up for this bucket:
+      </p>
+      <div class="with_radiogroup">
+        <div>
+          <input
+             type="radio"
+             id="for-enable-conflict-resolution-seqno"
+             ng-model="bucketConf.conflictResolutionType"
+             name="conflictResolutionType"
+             value="seqno"
+             ng-disabled="!bucketConf.isNew">
+          <label
+             for="for-enable-conflict-resolution-seqno"
+             style="width: auto;">Sequence number</label>
+        </div>
+        <div>
+          <input
+             type="radio"
+             id="for-enable-conflict-resolution-lww"
+             ng-model="bucketConf.conflictResolutionType"
+             name="conflictResolutionType"
+             value="lww"
+             ng-disabled="!bucketConf.isNew">
+          <label
+             for="for-enable-conflict-resolution-lww"
+             style="width: auto;">Timestamp</label>
+        </div>
+        <div
+           class="error-container"
+           ng-show="validation.result.errors.conflictResolutionType">
+          {{validation.result.errors.conflictResolutionType}}
+        </div>
+        <div
+           class="error-container"
+           ng-show="bucketConf.conflictResolutionType === 'lww'">
+          Warning: Timestamp-based conflict resolution requires NTP to be correctly set up on all the nodes in your replication topology to ensure high-quality time synchronization. See Setting up NTP in the Couchbase documentation.
+        </div>
       </div>
     </div>
   </div>
