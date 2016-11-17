@@ -1243,7 +1243,12 @@ run_graceful_failover(Node) ->
             erlang:exit(Error)
     end,
 
-    case check_graceful_failover_possible(Node, ns_bucket:get_buckets()) of
+    AllBucketConfigs = ns_bucket:get_buckets(),
+    MembaseBuckets = [BC || BC = {_, Conf} <- AllBucketConfigs,
+                            proplists:get_value(type, Conf) =:= membase],
+    NumBuckets = length(MembaseBuckets),
+
+    case check_graceful_failover_possible(Node, MembaseBuckets) of
         true -> ok;
         false ->
             erlang:exit(not_graceful)
@@ -1251,13 +1256,10 @@ run_graceful_failover(Node) ->
     proc_lib:init_ack({ok, self()}),
 
     ale:info(?USER_LOGGER, "Starting vbucket moves for graceful failover of ~p", [Node]),
-    AllBucketConfigs = ns_bucket:get_buckets(),
-    MembaseBuckets = [BC || BC = {_, Conf} <- AllBucketConfigs,
-                            proplists:get_value(type, Conf) =:= membase],
-    N = length(MembaseBuckets),
     lists:foldl(
       fun ({BucketName, BucketConfig}, I) ->
-              do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I / N, N),
+              do_run_graceful_failover_moves(Node, BucketName, BucketConfig,
+                                             I / NumBuckets, NumBuckets),
               I+1
       end, 0, MembaseBuckets),
     orchestrate_failover(Node),
