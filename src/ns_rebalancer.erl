@@ -358,12 +358,12 @@ do_wait_buckets_shutdown(KeepNodes) ->
 sanitize(Config) ->
     misc:rewrite_key_value_tuple(sasl_password, "*****", Config).
 
-do_pre_rebalance_config_sync(KeepNodes) ->
+do_pre_rebalance_config_sync(Nodes) ->
     %% TODO: pull config reliably here as well.
     %%
     %% And after we have that, make sure recovery, rebalance and
     %% graceful failover, all start with latest config reliably
-    case ns_config_rep:ensure_config_seen_by_nodes(KeepNodes) of
+    case ns_config_rep:ensure_config_seen_by_nodes(Nodes) of
         ok ->
             cool;
         {error, SyncFailedNodes} ->
@@ -594,7 +594,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
 
     ns_cluster_membership:activate(KeepNodes),
 
-    do_pre_rebalance_config_sync(KeepNodes),
+    do_pre_rebalance_config_sync(EjectNodesAll ++ KeepNodes),
 
     %% Eject failed nodes first so they don't cause trouble
     FailedNodes = FailedNodesAll -- [node()],
