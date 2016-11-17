@@ -3877,13 +3877,6 @@ do_handle_set_recovery_type(Req, Type, Params) ->
                         [{otpNode, OtpNodeErrorMsg}];
                     false ->
                         []
-                end,
-
-                case cluster_compat_mode:is_cluster_30() orelse Type =/= delta of
-                    true ->
-                        [];
-                    false ->
-                        [{'_', <<"This mixed-versions cluster (pre-3.0) cannot support delta recovery">>}]
                 end]),
 
     case Errors of

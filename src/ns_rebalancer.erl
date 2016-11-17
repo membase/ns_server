@@ -90,12 +90,7 @@ failover(Node) ->
                   [{Bucket, VBuckets} | Acc]
           end, [], ns_bucket:get_bucket_names()),
 
-    case cluster_compat_mode:is_cluster_30() of
-        true ->
-            ns_config:set({node, Node, failover_vbuckets}, FailoverVBuckets);
-        false ->
-            ok
-    end,
+    ns_config:set({node, Node, failover_vbuckets}, FailoverVBuckets),
 
     ok = failover_services(Node).
 

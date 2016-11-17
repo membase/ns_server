@@ -355,8 +355,6 @@ leave_async() ->
 
 %% Note that shun does *not* cause the other node to reset its config!
 shun(RemoteNode) ->
-    Cluster30 = cluster_compat_mode:is_cluster_30(),
-
     case RemoteNode == node() of
         false ->
             ?cluster_debug("Shunning ~p", [RemoteNode]),
@@ -371,7 +369,7 @@ shun(RemoteNode) ->
                                  end || G <- Groups],
                            {server_groups, G2};
                        ({{node, Node, _}, _}, {SoftDelete, _})
-                         when Node =:= RemoteNode andalso Cluster30 ->
+                         when Node =:= RemoteNode ->
                            SoftDelete;
                        (Other, _) ->
                            Other

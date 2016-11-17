@@ -168,15 +168,8 @@ re_failover(NodeString) ->
     true = is_list(NodeString),
     case re_failover_possible(NodeString) of
         {ok, Node} ->
-            KVList0 = [{{node, Node, membership}, inactiveFailed}],
-
-            KVList = case cluster_compat_mode:is_cluster_30() of
-                         true ->
-                             [{{node, Node, recovery_type}, none} | KVList0];
-                         false ->
-                             KVList0
-                     end,
-
+            KVList = [{{node, Node, membership}, inactiveFailed},
+                      {{node, Node, recovery_type}, none}],
             ns_config:set(KVList),
             ok;
         not_possible ->

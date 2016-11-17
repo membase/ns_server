@@ -318,25 +318,15 @@ build_bucket_capabilities(BucketConfig) ->
     Caps =
         case ns_bucket:bucket_type(BucketConfig) of
             membase ->
-                case cluster_compat_mode:is_cluster_30() of
-                    true ->
-                        MaybeDCP = case cluster_compat_mode:is_cluster_40() of
-                                       true ->
-                                           [dcp];
-                                       false ->
-                                           []
-                                   end,
-                        [cbhello, touch, couchapi, cccp, xdcrCheckpointing, nodesExt | MaybeDCP];
-                    _ ->
-                        [touch, couchapi]
-                end;
+                MaybeDCP = case cluster_compat_mode:is_cluster_40() of
+                               true ->
+                                   [dcp];
+                               false ->
+                                   []
+                           end,
+                [cbhello, touch, couchapi, cccp, xdcrCheckpointing, nodesExt | MaybeDCP];
             memcached ->
-                case cluster_compat_mode:is_cluster_30() of
-                    true ->
-                        [cbhello, nodesExt];
-                    _ ->
-                        []
-                end
+                [cbhello, nodesExt]
         end,
 
     [{bucketCapabilitiesVer, ''},

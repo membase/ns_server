@@ -245,7 +245,6 @@ process_apply_config_rv(Bucket, {Replies, BadNodes}, Call) ->
 get_apply_new_config_call(undefined, NewBucketConfig, IgnoredVBuckets) ->
     {apply_new_config, NewBucketConfig, IgnoredVBuckets};
 get_apply_new_config_call(Rebalancer, NewBucketConfig, IgnoredVBuckets) ->
-    true = cluster_compat_mode:is_cluster_30(),
     {if_rebalance, Rebalancer,
      {apply_new_config, Rebalancer, NewBucketConfig, IgnoredVBuckets}}.
 
@@ -711,13 +710,8 @@ handle_call({apply_new_config, Caller, NewBucketConfig, IgnoredVBuckets}, _From,
 
     %% make the replicator aware of the latest bucket replication type
     %% this might shutdown some replications which will be restored later
-    case cluster_compat_mode:is_cluster_30() of
-        true ->
-            ok = replication_manager:set_replication_type(BucketName,
-                                                          ns_bucket:replication_type(NewBucketConfig));
-        false ->
-            ok
-    end,
+    ok = replication_manager:set_replication_type(BucketName,
+                                                  ns_bucket:replication_type(NewBucketConfig)),
 
     %% before changing vbucket states (i.e. activating or killing
     %% vbuckets) we must stop replications into those vbuckets
@@ -982,8 +976,7 @@ set_rebalance_mref(Pid, State0) ->
         undefined ->
             ok;
         OldMRef ->
-            case cluster_compat_mode:is_cluster_30() andalso
-                State0#state.rebalance_status =:= in_process andalso
+            case State0#state.rebalance_status =:= in_process andalso
                 State0#state.rebalancer_type =:= rebalancer of
                 true ->
                     %% something went wrong. nuke replicator just in case

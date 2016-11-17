@@ -27,7 +27,6 @@
          rebalance_ignore_view_compactions/0,
          is_node_compatible/2,
          split_live_nodes_by_version/1,
-         is_cluster_30/0,
          is_cluster_40/0,
          is_version_40/1,
          compat_mode_string_40/0,
@@ -83,9 +82,6 @@ is_enabled(FeatureVersion) ->
 
 is_enabled(Config, FeatureVersion) ->
     is_enabled_at(get_compat_version(Config), FeatureVersion).
-
-is_cluster_30() ->
-    is_enabled(?VERSION_30).
 
 is_cluster_40() ->
     is_enabled(?VERSION_40).

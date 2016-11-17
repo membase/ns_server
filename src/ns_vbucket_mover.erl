@@ -356,12 +356,7 @@ spawn_workers(#state{bucket=Bucket,
                                   end,
     case Done of
         true ->
-            case cluster_compat_mode:is_cluster_30() of
-                true ->
-                    janitor_agent:finish_rebalance(Bucket, sets:to_list(AllNodesSet), self());
-                false ->
-                    ok
-            end,
+            janitor_agent:finish_rebalance(Bucket, sets:to_list(AllNodesSet), self()),
             {stop, normal, NextState};
         _ ->
             {noreply, NextState}

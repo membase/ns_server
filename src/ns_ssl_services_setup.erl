@@ -53,7 +53,6 @@
 
 -record(cert_state, {cert,
                      pkey,
-                     compat_30,
                      node}).
 
 start_link() ->
@@ -333,27 +332,19 @@ sync_local_cert_and_pkey_change() ->
 set_node_certificate_chain(Props, CAChain, Cert, PKey) ->
     gen_server:call(?MODULE, {set_node_certificate_chain, Props, CAChain, Cert, PKey}, infinity).
 
-build_cert_state({generated, CertPEM, PKeyPEM, Compat30, Node}) ->
+build_cert_state({generated, CertPEM, PKeyPEM, Node}) ->
     BaseState = #cert_state{cert = CertPEM,
-                            pkey = PKeyPEM,
-                            compat_30 = Compat30},
-    case Compat30 of
-        true ->
-            BaseState#cert_state{node = Node};
-        false ->
-            BaseState
-    end;
+                            pkey = PKeyPEM},
+    BaseState#cert_state{node = Node};
 build_cert_state({user_set, Cert, PKey, CAChain}) ->
     #cert_state{cert = [Cert, CAChain],
-                pkey = PKey,
-                compat_30 = true}.
+                pkey = PKey}.
 
 get_node_cert_data() ->
-    Compat30 = cluster_compat_mode:is_cluster_30(),
     Node = node(),
     case ns_server_cert:cluster_ca() of
         {GeneratedCert, GeneratedKey} ->
-            {generated, GeneratedCert, GeneratedKey, Compat30, Node};
+            {generated, GeneratedCert, GeneratedKey, Node};
         {_UploadedCAProps, GeneratedCert, GeneratedKey} ->
             case ns_config:search(ns_config:latest(), {node, node(), cert}) of
                 {value, _Props} ->
@@ -362,7 +353,7 @@ get_node_cert_data() ->
                     {ok, CAChain} = file:read_file(user_set_ca_chain_path()),
                     {user_set, Cert, PKey, CAChain};
                 false ->
-                    {generated, GeneratedCert, GeneratedKey, Compat30, Node}
+                    {generated, GeneratedCert, GeneratedKey, Node}
             end
     end.
 
@@ -389,9 +380,6 @@ format_status(_Opt, [_PDict, #state{cert_state = CertState} = State]) ->
     State#state{cert_state = CertState#cert_state{pkey = <<"sanitized">>}}.
 
 config_change_detector_loop({cert_and_pkey, _}, Parent) ->
-    Parent ! cert_and_pkey_changed,
-    Parent;
-config_change_detector_loop({cluster_compat_version, _Version}, Parent) ->
     Parent ! cert_and_pkey_changed,
     Parent;
 %% we're using this key to detect change of node() name
@@ -529,17 +517,12 @@ apply_node_cert_data(Data) ->
     apply_node_cert_data(Data, Path),
     ok = ssl_manager:clear_pem_cache().
 
-apply_node_cert_data({generated, CertPEM, PKeyPEM, true, Node}, Path) ->
+apply_node_cert_data({generated, CertPEM, PKeyPEM, Node}, Path) ->
     {LocalCert, LocalPKey} = maybe_generate_local_cert(CertPEM, PKeyPEM, Node),
     ok = misc:atomic_write_file(Path, [LocalCert, LocalPKey]),
     ok = misc:atomic_write_file(raw_ssl_cacert_key_path(), CertPEM),
     ok = misc:atomic_write_file(memcached_cert_path(), [LocalCert, CertPEM]),
     ok = misc:atomic_write_file(memcached_key_path(), LocalPKey);
-apply_node_cert_data({generated, CertPEM, PKeyPEM, false, _Node}, Path) ->
-    _ = file:delete(raw_ssl_cacert_key_path()),
-    ok = misc:atomic_write_file(Path, [CertPEM, PKeyPEM]),
-    ok = misc:atomic_write_file(memcached_cert_path(), CertPEM),
-    ok = misc:atomic_write_file(memcached_key_path(), PKeyPEM);
 apply_node_cert_data({user_set, Cert, PKey, CAChain}, Path) ->
     ok = misc:atomic_write_file(Path, [Cert, PKey]),
     ok = misc:atomic_write_file(raw_ssl_cacert_key_path(), CAChain),
