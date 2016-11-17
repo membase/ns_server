@@ -358,7 +358,7 @@ do_wait_buckets_shutdown(KeepNodes) ->
 sanitize(Config) ->
     misc:rewrite_key_value_tuple(sasl_password, "*****", Config).
 
-do_pre_rebalance_config_sync(Nodes) ->
+pull_and_push_config(Nodes) ->
     %% TODO: pull config reliably here as well.
     %%
     %% And after we have that, make sure recovery, rebalance and
@@ -367,7 +367,7 @@ do_pre_rebalance_config_sync(Nodes) ->
         ok ->
             cool;
         {error, SyncFailedNodes} ->
-            exit({pre_rebalance_config_synchronization_failed, SyncFailedNodes})
+            exit({config_sync_failed, SyncFailedNodes})
     end.
 
 start_link_rebalance(KeepNodes, EjectNodes,
@@ -594,7 +594,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
 
     ns_cluster_membership:activate(KeepNodes),
 
-    do_pre_rebalance_config_sync(EjectNodesAll ++ KeepNodes),
+    pull_and_push_config(EjectNodesAll ++ KeepNodes),
 
     %% Eject failed nodes first so they don't cause trouble
     FailedNodes = FailedNodesAll -- [node()],
@@ -1244,7 +1244,7 @@ run_graceful_failover(Node) ->
     proc_lib:init_ack({ok, self()}),
 
     ale:info(?USER_LOGGER, "Starting vbucket moves for graceful failover of ~p", [Node]),
-    do_pre_rebalance_config_sync(ns_node_disco:nodes_wanted()),
+    pull_and_push_config(ns_node_disco:nodes_wanted()),
     AllBucketConfigs = ns_bucket:get_buckets(),
 
     %% yes we're doing it second time after config sync. In case
