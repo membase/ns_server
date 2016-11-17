@@ -1403,9 +1403,9 @@ ensure_bucket_config(Sock, Bucket, membase,
                   QStats#qstats{max_num_workers = V};
               (<<"ep_item_eviction_policy">>, V, QStats) ->
                   QStats#qstats{item_eviction_policy = V};
-              (<<"ep_hlc_drift_ahead_threshold_us">>, V, QStats) ->
+              (<<"ep_hlc_ahead_threshold_us">>, V, QStats) ->
                   QStats#qstats{ahead_threshold = V};
-              (<<"ep_hlc_drift_behind_threshold_us">>, V, QStats) ->
+              (<<"ep_hlc_behind_threshold_us">>, V, QStats) ->
                   QStats#qstats{behind_threshold = V};
               (_, _, QStats) ->
                   QStats
