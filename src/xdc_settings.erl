@@ -35,8 +35,7 @@ get_global_setting(Key) ->
 
 update_global_settings(KVList0) ->
     KVList = [{{xdcr, K}, V} || {K, V} <- KVList0],
-    ns_config:set(KVList),
-    ns_config:sync_announcements().
+    ns_config:set(KVList).
 
 get_all_global_settings() ->
     Settings0 = [{Key, Default} || {Key, _, _, Default} <- settings_specs()],
