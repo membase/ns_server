@@ -669,7 +669,6 @@ idle({delete_bucket, BucketName}, _From,
         case DeleteRV of
             {ok, _} ->
                 master_activity_events:note_bucket_deletion(BucketName),
-                ns_config:sync_announcements(),
                 State#idle_state{janitor_requests=
                                      delete_bucket_request(BucketName, JanitorRequests)};
             _ ->
