@@ -80,7 +80,7 @@ failover(Node) ->
                   master_activity_events:note_bucket_failover_started(Bucket, Node),
 
                   {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
-                  failover(Bucket, BucketConfig, Node),
+                  failover_bucket(Bucket, BucketConfig, Node),
 
                   {map, Map} = lists:keyfind(map, 1, BucketConfig),
                   VBuckets = node_vbuckets(Map, Node),
@@ -152,52 +152,59 @@ validate_autofailover_bucket(BucketConfig, Node) ->
             true
     end.
 
--spec failover(string(), list(), atom()) -> ok | janitor_failed.
-failover(Bucket, BucketConfig, Node) ->
-    Servers = proplists:get_value(servers, BucketConfig),
+-spec failover_bucket(string(), list(), atom()) -> ok | janitor_failed.
+failover_bucket(Bucket, BucketConfig, Node) ->
     case proplists:get_value(type, BucketConfig) of
         membase ->
-            %% Promote replicas of vbuckets on this node
-            Map = proplists:get_value(map, BucketConfig),
-            Map1 = mb_map:promote_replicas(Map, [Node]),
-            case Map1 of
-                undefined ->
-                    ok;
-                _ ->
-                    case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
-                        [] -> ok; % Phew!
-                        MissingVBuckets ->
-                            ?rebalance_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
-                            ?user_log(?DATA_LOST,
-                                      "Data has been lost for ~B% of vbuckets in bucket ~p.",
-                                      [length(MissingVBuckets) * 100 div length(Map), Bucket])
-                    end
-            end,
-            ns_bucket:set_fast_forward_map(Bucket, undefined),
-            case Map1 of
-                undefined ->
-                    undefined = Map;            % Do nothing. Map didn't change
-                _ ->
-                    ns_bucket:set_map(Bucket, Map1)
-            end,
-            ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
-            try ns_janitor:cleanup(Bucket, []) of
-                ok ->
-                    ok;
-                {error, _, BadNodes} ->
-                    ?rebalance_error("Skipped vbucket activations and "
-                                     "replication topology changes because not "
-                                     "all remaining nodes were found to have "
-                                     "healthy bucket ~p: ~p", [Bucket, BadNodes]),
-                    janitor_failed
-            catch
-                E:R ->
-                    ?rebalance_error("Janitor cleanup of ~p failed after failover of ~p: ~p",
-                                     [Bucket, Node, {E, R}]),
-                    janitor_failed
-            end;
+            failover_membase_bucket(Node, Bucket, BucketConfig);
         memcached ->
-            ns_bucket:set_servers(Bucket, lists:delete(Node, Servers))
+            failover_memcached_bucket(Node, Bucket, BucketConfig)
+    end.
+
+failover_memcached_bucket(Node, Bucket, BucketConfig) ->
+    Servers = proplists:get_value(servers, BucketConfig),
+    ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)).
+
+failover_membase_bucket(Node, Bucket, BucketConfig) ->
+    Servers = proplists:get_value(servers, BucketConfig),
+    %% Promote replicas of vbuckets on this node
+    Map = proplists:get_value(map, BucketConfig),
+    Map1 = mb_map:promote_replicas(Map, [Node]),
+    case Map1 of
+        undefined ->
+            ok;
+        _ ->
+            case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
+                [] -> ok; % Phew!
+                MissingVBuckets ->
+                    ?rebalance_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
+                    ?user_log(?DATA_LOST,
+                              "Data has been lost for ~B% of vbuckets in bucket ~p.",
+                              [length(MissingVBuckets) * 100 div length(Map), Bucket])
+            end
+    end,
+    ns_bucket:set_fast_forward_map(Bucket, undefined),
+    case Map1 of
+        undefined ->
+            undefined = Map;            % Do nothing. Map didn't change
+        _ ->
+            ns_bucket:set_map(Bucket, Map1)
+    end,
+    ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
+    try ns_janitor:cleanup(Bucket, []) of
+        ok ->
+            ok;
+        {error, _, BadNodes} ->
+            ?rebalance_error("Skipped vbucket activations and "
+                             "replication topology changes because not "
+                             "all remaining nodes were found to have "
+                             "healthy bucket ~p: ~p", [Bucket, BadNodes]),
+            janitor_failed
+    catch
+        E:R ->
+            ?rebalance_error("Janitor cleanup of ~p failed after failover of ~p: ~p",
+                             [Bucket, Node, {E, R}]),
+            janitor_failed
     end.
 
 generate_vbucket_map_options(KeepNodes, BucketConfig) ->
