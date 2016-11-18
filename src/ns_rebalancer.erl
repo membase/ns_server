@@ -1267,11 +1267,19 @@ run_graceful_failover(Node) ->
     end,
 
     AllBucketConfigs = ns_bucket:get_buckets(),
-    MembaseBuckets = [BC || BC = {_, Conf} <- AllBucketConfigs,
-                            proplists:get_value(type, Conf) =:= membase],
-    NumBuckets = length(MembaseBuckets),
+    InterestingBuckets = [BC || BC = {_, Conf} <- AllBucketConfigs,
+                                proplists:get_value(type, Conf) =:= membase,
+                                %% when bucket doesn't have a vbucket map,
+                                %% there's not much to do with respect to
+                                %% graceful failover; so we skip these;
+                                %%
+                                %% note, that failover will still operate on
+                                %% these buckets and, if needed, will remove
+                                %% the node from server list
+                                proplists:get_value(map, Conf, []) =/= []],
+    NumBuckets = length(InterestingBuckets),
 
-    case check_graceful_failover_possible(Node, MembaseBuckets) of
+    case check_graceful_failover_possible(Node, InterestingBuckets) of
         true -> ok;
         false ->
             erlang:exit(not_graceful)
@@ -1284,7 +1292,7 @@ run_graceful_failover(Node) ->
               do_run_graceful_failover_moves(Node, BucketName, BucketConfig,
                                              I / NumBuckets, NumBuckets),
               I+1
-      end, 0, MembaseBuckets),
+      end, 0, InterestingBuckets),
     orchestrate_failover(Node),
     erlang:exit(graceful_failover_done).
 
