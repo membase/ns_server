@@ -166,31 +166,43 @@ failover_memcached_bucket(Node, Bucket, BucketConfig) ->
     ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)).
 
 failover_membase_bucket(Node, Bucket, BucketConfig) ->
-    Servers = proplists:get_value(servers, BucketConfig),
+    case proplists:get_value(map, BucketConfig, []) of
+        [] ->
+            %% this is possible if bucket just got created and ns_janitor
+            %% didn't get a chance to create a map yet; or alternatively, if
+            %% it failed to do so because, for example, one of the nodes was
+            %% down
+            failover_membase_bucket_with_no_map(Node, Bucket, BucketConfig);
+        Map ->
+            failover_membase_bucket_with_map(Node, Bucket, BucketConfig, Map)
+    end.
+
+failover_membase_bucket_with_no_map(Node, Bucket, BucketConfig) ->
+    ?log_debug("Skipping failover of bucket ~p because it has no vbuckets. "
+               "Config:~n~p", [Bucket, BucketConfig]),
+
+    %% we still need to make sure to remove ourselves from the bucket server
+    %% list
+    remove_node_from_server_list(Node, Bucket, BucketConfig),
+    ok.
+
+failover_membase_bucket_with_map(Node, Bucket, BucketConfig, Map) ->
     %% Promote replicas of vbuckets on this node
-    Map = proplists:get_value(map, BucketConfig),
-    Map1 = mb_map:promote_replicas(Map, [Node]),
-    case Map1 of
-        undefined ->
-            ok;
-        _ ->
-            case [I || {I, [undefined|_]} <- misc:enumerate(Map1, 0)] of
-                [] -> ok; % Phew!
-                MissingVBuckets ->
-                    ?rebalance_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
-                    ?user_log(?DATA_LOST,
-                              "Data has been lost for ~B% of vbuckets in bucket ~p.",
-                              [length(MissingVBuckets) * 100 div length(Map), Bucket])
-            end
+    NewMap = mb_map:promote_replicas(Map, [Node]),
+    true = (NewMap =/= undefined),
+
+    case [I || {I, [undefined|_]} <- misc:enumerate(NewMap, 0)] of
+        [] -> ok; % Phew!
+        MissingVBuckets ->
+            ?rebalance_error("Lost data in ~p for ~w", [Bucket, MissingVBuckets]),
+            ?user_log(?DATA_LOST,
+                      "Data has been lost for ~B% of vbuckets in bucket ~p.",
+                      [length(MissingVBuckets) * 100 div length(Map), Bucket])
     end,
+
     ns_bucket:set_fast_forward_map(Bucket, undefined),
-    case Map1 of
-        undefined ->
-            undefined = Map;            % Do nothing. Map didn't change
-        _ ->
-            ns_bucket:set_map(Bucket, Map1)
-    end,
-    ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)),
+    ns_bucket:set_map(Bucket, NewMap),
+    remove_node_from_server_list(Node, Bucket, BucketConfig),
     try ns_janitor:cleanup(Bucket, []) of
         ok ->
             ok;
@@ -206,6 +218,10 @@ failover_membase_bucket(Node, Bucket, BucketConfig) ->
                              [Bucket, Node, {E, R}]),
             janitor_failed
     end.
+
+remove_node_from_server_list(Node, Bucket, BucketConfig) ->
+    Servers = proplists:get_value(servers, BucketConfig),
+    ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)).
 
 generate_vbucket_map_options(KeepNodes, BucketConfig) ->
     Config = ns_config:get(),
