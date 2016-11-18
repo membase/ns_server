@@ -74,25 +74,35 @@ orchestrate_failover(Node) ->
 %% @doc Fail a node. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
 failover(Node) ->
+    ok = failover_buckets(Node),
+    ok = failover_services(Node).
+
+failover_buckets(Node) ->
     FailoverVBuckets =
         lists:foldl(
           fun (Bucket, Acc) ->
                   master_activity_events:note_bucket_failover_started(Bucket, Node),
 
                   {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
-                  failover_bucket(Bucket, BucketConfig, Node),
+                  NewAcc =
+                      case ns_bucket:bucket_type(BucketConfig) of
+                          memcached ->
+                              failover_memcached_bucket(Node, Bucket, BucketConfig),
+                              Acc;
+                          membase ->
+                              Map = proplists:get_value(map, BucketConfig, []),
+                              failover_membase_bucket(Node, Bucket, BucketConfig, Map),
 
-                  {map, Map} = lists:keyfind(map, 1, BucketConfig),
-                  VBuckets = node_vbuckets(Map, Node),
+                              [{Bucket, node_vbuckets(Map, Node)} | Acc]
+                      end,
 
                   master_activity_events:note_bucket_failover_ended(Bucket, Node),
 
-                  [{Bucket, VBuckets} | Acc]
+                  NewAcc
           end, [], ns_bucket:get_bucket_names()),
 
     ns_config:set({node, Node, failover_vbuckets}, FailoverVBuckets),
-
-    ok = failover_services(Node).
+    ok.
 
 failover_services(Node) ->
     Config = ns_config:get(),
@@ -152,30 +162,17 @@ validate_autofailover_bucket(BucketConfig, Node) ->
             true
     end.
 
--spec failover_bucket(string(), list(), atom()) -> ok | janitor_failed.
-failover_bucket(Bucket, BucketConfig, Node) ->
-    case proplists:get_value(type, BucketConfig) of
-        membase ->
-            failover_membase_bucket(Node, Bucket, BucketConfig);
-        memcached ->
-            failover_memcached_bucket(Node, Bucket, BucketConfig)
-    end.
-
 failover_memcached_bucket(Node, Bucket, BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig),
     ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)).
 
-failover_membase_bucket(Node, Bucket, BucketConfig) ->
-    case proplists:get_value(map, BucketConfig, []) of
-        [] ->
-            %% this is possible if bucket just got created and ns_janitor
-            %% didn't get a chance to create a map yet; or alternatively, if
-            %% it failed to do so because, for example, one of the nodes was
-            %% down
-            failover_membase_bucket_with_no_map(Node, Bucket, BucketConfig);
-        Map ->
-            failover_membase_bucket_with_map(Node, Bucket, BucketConfig, Map)
-    end.
+failover_membase_bucket(Node, Bucket, BucketConfig, Map) when Map =:= [] ->
+    %% this is possible if bucket just got created and ns_janitor didn't get a
+    %% chance to create a map yet; or alternatively, if it failed to do so
+    %% because, for example, one of the nodes was down
+    failover_membase_bucket_with_no_map(Node, Bucket, BucketConfig);
+failover_membase_bucket(Node, Bucket, BucketConfig, Map) ->
+    failover_membase_bucket_with_map(Node, Bucket, BucketConfig, Map).
 
 failover_membase_bucket_with_no_map(Node, Bucket, BucketConfig) ->
     ?log_debug("Skipping failover of bucket ~p because it has no vbuckets. "
