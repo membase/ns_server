@@ -740,6 +740,12 @@ rebalance_membase_bucket(BucketName, BucketConfig, ProgressFun,
     run_verify_replication(BucketName, KeepKVNodes, NewMap).
 
 run_janitor_pre_rebalance(BucketName) ->
+    execute_and_be_stop_aware(
+      fun () ->
+              do_run_janitor_pre_rebalance(BucketName)
+      end).
+
+do_run_janitor_pre_rebalance(BucketName) ->
     case ns_janitor:cleanup(BucketName,
                             [{query_states_timeout, ?REBALANCER_QUERY_STATES_TIMEOUT},
                              {apply_config_timeout, ?REBALANCER_APPLY_CONFIG_TIMEOUT}]) of
