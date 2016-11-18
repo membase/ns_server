@@ -724,13 +724,9 @@ rebalance_membase_bucket(BucketName, BucketConfig, ProgressFun,
                       exit({not_all_nodes_are_ready_yet, Zombies})
               end
       end),
-    case ns_janitor:cleanup(BucketName,
-                            [{query_states_timeout, ?REBALANCER_QUERY_STATES_TIMEOUT},
-                             {apply_config_timeout, ?REBALANCER_APPLY_CONFIG_TIMEOUT}]) of
-        ok -> ok;
-        {error, _, BadNodes} ->
-            exit({pre_rebalance_janitor_run_failed, BadNodes})
-    end,
+
+    run_janitor_pre_rebalance(BucketName),
+
     {ok, NewConf} =
         ns_bucket:get_bucket(BucketName),
     master_activity_events:note_bucket_rebalance_started(BucketName),
@@ -742,6 +738,16 @@ rebalance_membase_bucket(BucketName, BucketConfig, ProgressFun,
                                   [{deltaRecoveryMap, undefined}]),
     master_activity_events:note_bucket_rebalance_ended(BucketName),
     run_verify_replication(BucketName, KeepKVNodes, NewMap).
+
+run_janitor_pre_rebalance(BucketName) ->
+    case ns_janitor:cleanup(BucketName,
+                            [{query_states_timeout, ?REBALANCER_QUERY_STATES_TIMEOUT},
+                             {apply_config_timeout, ?REBALANCER_APPLY_CONFIG_TIMEOUT}]) of
+        ok ->
+            ok;
+        {error, _, BadNodes} ->
+            exit({pre_rebalance_janitor_run_failed, BadNodes})
+    end.
 
 %% @doc Rebalance the cluster. Operates on a single bucket. Will
 %% either return ok or exit with reason 'stopped' or whatever reason
@@ -1297,6 +1303,8 @@ run_graceful_failover(Node) ->
     erlang:exit(graceful_failover_done).
 
 do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I, N) ->
+    run_janitor_pre_rebalance(BucketName),
+
     Map = proplists:get_value(map, BucketConfig, []),
     Map1 = mb_map:promote_replicas_for_graceful_failover(Map, Node),
 
