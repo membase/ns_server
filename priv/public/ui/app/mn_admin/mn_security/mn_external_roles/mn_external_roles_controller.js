@@ -14,12 +14,12 @@
     ])
     .controller("mnExternalRolesController", mnExternalRolesController);
 
-  function mnExternalRolesController($scope, $uibModal, mnLdapService, mnPromiseHelper, mnExternalRolesService, mnPoller, mnHelper, mnSortableTable) {
+  function mnExternalRolesController($scope, $uibModal, mnLdapService, mnPromiseHelper, mnExternalRolesService, mnPoller, mnHelper) {
     var vm = this;
     vm.addUser = addUser;
     vm.deleteUser = deleteUser;
     vm.editUser = editUser;
-    vm.sortableTableProperties = mnSortableTable.get();
+
     vm.toggleSaslauthdAuth = toggleSaslauthdAuth;
     vm.getRoleFromRoles = mnExternalRolesService.getRoleFromRoles;
     vm.rolesFilter = rolesFilter;

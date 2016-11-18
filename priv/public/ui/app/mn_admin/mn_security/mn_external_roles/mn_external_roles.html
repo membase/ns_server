@@ -33,17 +33,20 @@
 <div mn-spinner="!externalRolesCtl.state || externalRolesCtl.viewLoading">
   <table
      class="table-stroked"
-     mn-sortable-table="name">
+     mn-sortable-table>
     <tr>
       <th mn-sortable-title="id">Username</th>
-      <th mn-sortable-title="name" class="text-center">Full Name</th>
+      <th
+         mn-sortable-title="name"
+         sort-by-default="true"
+         class="text-center">Full Name</th>
       <th mn-sortable-title="roles" class="text-center">Roles</th>
       <th></th>
     </tr>
     <tbody>
       <tr
          ng-if="externalRolesCtl.state.users.length"
-         ng-repeat="user in externalRolesCtl.state.users | orderBy:externalRolesCtl.sortableTableProperties.orderBy:externalRolesCtl.sortableTableProperties.invert track by user.id">
+         ng-repeat="user in externalRolesCtl.state.users | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by user.id">
         <td class="ellipsis">{{user.id}}</td>
         <td class="ellipsis text-center">{{user.name}}</td>
         <td class="text-center">

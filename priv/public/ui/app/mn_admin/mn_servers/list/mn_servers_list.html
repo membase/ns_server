@@ -2,15 +2,17 @@
    mn-spinner="!serversCtl.nodes || !adminCtl.tasks || !serversCtl.getGroupsByHostname || serversCtl.showSpinner"
    min-height="91px">
   <table
-     mn-sortable-table="hostname"
+     mn-sortable-table
      class="table-stroked">
     <tbody>
       <tr>
         <th
            mn-sortable-title="hostname"
+           sort-by-default="true"
            colspan="2">Server Node Name</th>
         <th
            mn-sortable-title="group"
+           sort-function="serversCtl.sortByGroup"
            style="{%= serversCtl.mnPoolDefault.value.isGroupsAvailable && rbac.cluster.server_groups.read ? 'width: auto;' : 'width: 0px;' %}">
           {{ poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "Group" : " " }}
         </th>
@@ -24,7 +26,7 @@
       </tr>
     </tbody>
     <tbody
-       ng-repeat="node in serversCtl.nodes[serversListCtl.stateParamsNodeType] | orderBy:serversListCtl.sortableTableProperties.orderBy:serversListCtl.sortableTableProperties.invert track by node.otpNode">
+       ng-repeat="node in serversCtl.nodes[serversListCtl.stateParamsNodeType] | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by node.otpNode">
       <tr
          ng-if="serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.nodes.write"
          class="grayblue-5">

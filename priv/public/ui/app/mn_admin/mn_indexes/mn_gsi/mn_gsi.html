@@ -11,13 +11,14 @@
    ng-if="rbac.cluster.indexes.read"
    mn-spinner="!gsiCtl.state">
   <table
-     mn-sortable-table="hosts"
+     mn-sortable-table
      class="table-stroked">
     <thead>
       <tr>
         <th mn-sortable-title="bucket">Bucket</th>
         <th
            class="text-center"
+           sort-by-default="true"
            mn-sortable-title="hosts">Node</th>
         <th
            class="text-center"
@@ -35,7 +36,7 @@
     </thead>
     <tbody
        ng-if="gsiCtl.state.indexes.length"
-       ng-repeat="row in gsiCtl.state.indexes | orderBy:gsiCtl.sortableTableProperties.orderBy:gsiCtl.sortableTableProperties.invert">
+       ng-repeat="row in gsiCtl.state.indexes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert">
       <tr
          class="has-hover"
          ng-class="{

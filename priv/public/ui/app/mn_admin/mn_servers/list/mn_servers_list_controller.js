@@ -5,10 +5,12 @@
     .module("mnServers")
     .controller("mnServersListController", mnServersListController);
 
-  function mnServersListController($scope, $state, $rootScope, $uibModal, mnServersService, mnPoolDefault, mnSortableTable, $q, mnMemoryQuotaService, mnGsiService,  mnPromiseHelper, mnPermissions) {
+  function mnServersListController($scope, $state, $rootScope, $uibModal, mnServersService, mnPoolDefault, $q, mnMemoryQuotaService, mnGsiService,  mnPromiseHelper, mnPermissions) {
     var vm = this;
-    vm.sortableTableProperties = mnSortableTable.get();
+
     vm.mnPoolDefault = mnPoolDefault.latestValue();
+
+    vm.sortByGroup = sortByGroup
 
     vm.isNodeUnhealthy = isNodeUnhealthy;
     vm.isNodeInactiveFaied = isNodeInactiveFaied;
@@ -37,6 +39,10 @@
     var ramUsageConf = {};
     var swapUsageConf = {};
     var cpuUsageConf = {};
+
+    function sortByGroup(node) {
+      return vm.getGroupsByHostname[node.hostname].name;
+    }
 
     function isKVNode(node) {
       return node.services.indexOf("kv") > -1;

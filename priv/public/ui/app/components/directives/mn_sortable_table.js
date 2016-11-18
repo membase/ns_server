@@ -5,78 +5,81 @@
     .module('mnSortableTable', [])
     .directive('mnSortableTable', mnSortableTableDirective)
     .directive('mnSortableTitle', mnSortableTitleDirective)
-    .factory('mnSortableTable', mnSortableTableFactory)
 
-  function mnSortableTableFactory() {
-    var properties = {
-      orderBy: null,
-      invert: null
-    };
-    var rv = {
-      isOrderBy: isOrderBy,
-      setOrder: setOrder,
-      setOrderOrToggleInvert: setOrderOrToggleInvert,
-      get: get
-    };
-
-    return rv;
-
-    function get() {
-      return properties;
-    }
-    function isOrderBy(orderBy) {
-      return properties.orderBy === orderBy;
-    }
-    function setOrderOrToggleInvert(orderBy) {
-      if (!isOrderBy(orderBy)) {
-        properties.invert = false;
-      } else {
-        properties.invert = !properties.invert;
-      }
-      setOrder(orderBy);
-    }
-    function setOrder(orderBy) {
-      properties.orderBy = orderBy;
-    }
-  }
-
-  function mnSortableTitleDirective($compile, mnSortableTable) {
+  function mnSortableTitleDirective($compile) {
     var mnSortableTitle = {
       require: '^mnSortableTable',
+      transclude: 'element',
+      restrict: 'A',
       link: link,
-      controller: controller,
-      controllerAs: "controller",
-      bindToController: true,
-      scope: true
+      scope: {
+        sortFunction: "&?",
+        mnSortableTitle: "@?"
+      }
     };
 
     return mnSortableTitle;
 
-    function controller() {
-      var vm = this;
-      vm.setOrderOrToggleInvert = mnSortableTable.setOrderOrToggleInvert;
-      vm.isOrderBy = mnSortableTable.isOrderBy;
-    }
+    function link($scope, $element, $attrs, ctl, $transclude) {
+      $scope.mnSortableTable = ctl;
+      if ($attrs.sortByDefault) {
+        ctl.setOrderOrToggleInvert(
+          $scope.mnSortableTitle || $scope.sortFunction,
+          $scope.mnSortableTitle
+        );
+      }
 
-
-    function link($scope, $element, $attrs) {
-      var mnSortableTitle = $attrs.mnSortableTitle;
-      $element.removeAttr("mn-sortable-title");
-      $attrs.$set('ngClick', 'controller.setOrderOrToggleInvert("' + mnSortableTitle +'")');
-      $attrs.$set('ngClass', '{dynamic_active: controller.isOrderBy("' + mnSortableTitle + '")}');
-      $compile($element)($scope);
+      $transclude(function (cloned) {
+        cloned.attr(
+          'ng-click',
+          'mnSortableTable.setOrderOrToggleInvert(mnSortableTitle || sortFunction, mnSortableTitle)'
+        );
+        cloned.removeAttr('mn-sortable-title');
+        $element.after($compile(cloned)($scope));
+      });
     }
   }
 
   function mnSortableTableDirective() {
-    var mnSortableTable = {
-      controller: controller,
+     var mnSortableTable = {
+       transclude: 'element',
+       restrict: 'A',
+       link: link,
+       controller: controller,
+       controllerAs: "mnSortableTable"
     };
 
     return mnSortableTable;
 
-    function controller($scope, $element, $attrs, mnSortableTable) {
-      mnSortableTable.setOrder($attrs.mnSortableTable);
+    function controller($scope, $element, $attrs) {
+      var currentSortableTitle;
+      var vm = this;
+
+      vm.sortableTableProperties = {
+        orderBy: null,
+        invert: null
+      };
+      vm.setOrderOrToggleInvert = setOrderOrToggleInvert;
+
+      function isOrderBy(name) {
+        return currentSortableTitle === name;
+      }
+      function setOrderOrToggleInvert(orderBy, name) {
+        if (isOrderBy(name)) {
+          vm.sortableTableProperties.invert = !vm.sortableTableProperties.invert;
+        } else {
+          vm.sortableTableProperties.invert = false;
+        }
+        setOrder(orderBy, name);
+      }
+      function setOrder(orderBy, name) {
+        currentSortableTitle = name;
+        vm.sortableTableProperties.orderBy = orderBy;
+      }
+    }
+
+    function link($scope, $element, $attrs, ctl, $transclude) {
+      $element.after($transclude());
     }
   }
 })();
