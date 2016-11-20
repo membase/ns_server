@@ -9,21 +9,12 @@
 
 SHELL=/bin/sh
 
-ifneq (,$(wildcard build))
-all:
-	cd build && $(MAKE) --no-print-directory all
-
-fail-unless-configured:
-	@true
-
-else
-all fail-unless-configured:
-	@echo
-	@echo "you need to run ./configure with --prefix option to be able to run ns_server"
-	@echo
-	@false
+ifeq (,$(wildcard build))
+    $(error "you need to run ./configure with --prefix option to be able to run ns_server")
 endif
 
+all:
+	cd build && $(MAKE) --no-print-directory all
 
 .PHONY: test ui_test docs
 
