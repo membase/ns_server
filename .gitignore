@@ -14,6 +14,17 @@
 /couchbase.plt
 /coverage
 /data
+/deps/couch_dcp/
+/deps/couch_index_merger/
+/deps/couch_set_view/
+/deps/couchdb/
+/deps/ejson/
+/deps/erlang-oauth/
+/deps/etap/
+/deps/lhttpc/
+/deps/mapreduce/
+/deps/mochiweb/
+/deps/snappy/
 /doc/API/_site
 /lib
 /logs

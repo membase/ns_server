@@ -55,6 +55,12 @@ ADD_CUSTOM_TARGET (all_images ALL DEPENDS "${all_img_js}")
 FILE (WRITE "${PROJECT_BINARY_DIR}/cluster_run.configuration"
   "prefix=\"${CMAKE_INSTALL_PREFIX}\"\n")
 
+GET_FILENAME_COMPONENT (_couchdb_src "${COUCHDB_SRC_DIR}" REALPATH)
+GET_FILENAME_COMPONENT (_couchdb_bin "${COUCHDB_BIN_DIR}" REALPATH)
+FILE (WRITE "${PROJECT_BINARY_DIR}/config.mk"
+  "COUCHDB_SRC_DIR = ${_couchdb_src}\n"
+  "COUCHDB_BIN_DIR = ${_couchdb_bin}\n")
+
 SET (app_min_js "${PROJECT_BINARY_DIR}/priv/public/ui/app.min.js")
 SET (index_min_html "${PROJECT_BINARY_DIR}/priv/public/ui/index.min.html")
 ADD_CUSTOM_TARGET (minify ALL

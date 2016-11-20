@@ -13,6 +13,8 @@ ifeq (,$(wildcard build))
     $(error "you need to run ./configure with --prefix option to be able to run ns_server")
 endif
 
+include build/config.mk
+
 all:
 	cd build && $(MAKE) --no-print-directory all
 
@@ -29,6 +31,36 @@ dataclean distclean test ui_test docs dialyzer dialyzer_obsessive:
 
 minify:
 	cd build/deps/gocode && $(MAKE) --no-print-directory ns_minify/fast
+
+COUCHDB_FLAT_PROJECTS = couchdb ejson erlang-oauth etap \
+                        lhttpc mapreduce mochiweb snappy
+$(addprefix deps/,$(COUCHDB_FLAT_PROJECTS)):
+	mkdir $@
+	cd $@ && \
+	  ln -s $(COUCHDB_SRC_DIR)/src/$(notdir $@) src && \
+	  ln -s $(COUCHDB_BIN_DIR)/src/$(notdir $@) ebin
+
+COUCHDB_NONFLAT_PROJECTS = couch_dcp couch_index_merger couch_set_view
+$(addprefix deps/,$(COUCHDB_NONFLAT_PROJECTS)):
+	mkdir $@
+	cd $@ && \
+	  ln -s $(COUCHDB_SRC_DIR)/src/$(notdir $@)/src src && \
+	  ln -s $(COUCHDB_SRC_DIR)/src/$(notdir $@)/include include && \
+	  ln -s $(COUCHDB_BIN_DIR)/src/$(notdir $@)/ebin ebin
+
+COUCHDB_PROJECTS = $(COUCHDB_FLAT_PROJECTS) $(COUCHDB_NONFLAT_PROJECTS)
+COUCHDB_PROJECTS_DEPS_DIRS = $(addprefix deps/,$(COUCHDB_PROJECTS))
+
+.PHONY: edts_hack edts_hack_clean
+edts_hack: $(COUCHDB_PROJECTS_DEPS_DIRS)
+
+edts_hack_clean:
+	rm -rf $(COUCHDB_PROJECTS_DEPS_DIRS)
+
+ifneq (,$(ENABLE_EDTS_HACK))
+all: edts_hack
+clean clean_all: edts_hack_clean
+endif
 
 # assuming exuberant-ctags
 TAGS:
