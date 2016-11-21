@@ -17,7 +17,7 @@
 
 -include("ns_common.hrl").
 
--define(REGENERATE_AFTER, 60).
+-define(REGENERATE_AFTER, 60000).
 
 -behaviour(gen_server).
 
@@ -49,6 +49,7 @@ handle_cast(Msg, _State) ->
     erlang:error({unknown_cast, Msg}).
 
 handle_info(generate_token, {_OldToken, CurrentToken}) ->
+    misc:flush(generate_token),
     Token = binary_to_list(couch_uuids:random()),
 
     Path = path_config:component_path(data, "localtoken"),
