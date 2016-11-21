@@ -281,35 +281,28 @@ update_with_changes(Fun) ->
 %%
 %% Function returns a pair {NewPairs, NewConfig} where NewConfig is
 %% new config and NewPairs is list of changed pairs.
-do_update_rec(_Fun, _SoftDelete, _Erase, [], _UUID, NewConfig, NewPairs) ->
+do_update_rec(_Fun, [], _UUID, NewConfig, NewPairs) ->
     {NewPairs, lists:reverse(NewConfig)};
-do_update_rec(Fun, SoftDelete, Erase, [Pair | Rest], UUID, NewConfig, NewPairs) ->
+do_update_rec(Fun,[Pair | Rest], UUID, NewConfig, NewPairs) ->
     StrippedPair = case Pair of
                        {K0, [_|_] = V0} -> {K0, strip_metadata(V0)};
                        _ -> Pair
                    end,
-    case Fun(StrippedPair, {SoftDelete, Erase}) of
-        StrippedPair ->
-            do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
-                          [Pair | NewConfig], NewPairs);
-        SoftDelete ->
+    Action = Fun(StrippedPair),
+
+    case Action of
+        skip ->
+            do_update_rec(Fun, Rest, UUID, [Pair | NewConfig], NewPairs);
+        erase ->
+            do_update_rec(Fun, Rest, UUID, NewConfig, NewPairs);
+        delete ->
             {K, OldValue} = Pair,
             NewPair = {K, increment_vclock(?DELETED_MARKER, OldValue, UUID)},
-            do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
+            do_update_rec(Fun, Rest, UUID,
                           [NewPair | NewConfig], [NewPair | NewPairs]);
-        Erase ->
-            do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
-                          NewConfig, NewPairs);
-        update_vclock  ->
-            {K, OldValue} = Pair,
-            %% Value has not changed. We just want to attach new vclock.
-            %% Note, attach_vclock() removes old vclock entries.
-            NewPair = {K, attach_vclock(OldValue, UUID)},
-            do_update_rec(Fun, SoftDelete, Erase, Rest, UUID,
-                          [NewPair | NewConfig], [NewPair | NewPairs]);
-        {K, Data} ->
+        {update, {K, NewValue}} ->
             {OldK, OldValue} = Pair,
-            NewPair = {K, increment_vclock(Data, OldValue, UUID)},
+            NewPair = {K, increment_vclock(NewValue, OldValue, UUID)},
 
             {Rest1, NewConfig1, NewPairs1} =
                 case K =:= OldK of
@@ -324,15 +317,13 @@ do_update_rec(Fun, SoftDelete, Erase, [Pair | Rest], UUID, NewConfig, NewPairs) 
                          lists:keydelete(K, 1, NewPairs)}
                 end,
 
-            do_update_rec(Fun, SoftDelete, Erase, Rest1, UUID,
+            do_update_rec(Fun, Rest1, UUID,
                           [NewPair | NewConfig1], [NewPair | NewPairs1])
     end.
 
 update(Fun) ->
-    SoftDelete = make_ref(),
-    Erase = make_ref(),
     update_with_changes(fun (Config, UUID) ->
-                                do_update_rec(Fun, SoftDelete, Erase, Config, UUID, [], [])
+                                do_update_rec(Fun, Config, UUID, [], [])
                         end).
 
 %% Applies given Fun to value of given Key. The Key must exist.
@@ -1552,11 +1543,16 @@ test_update() ->
                  {a, 3},
                  {b, 4},
                  {delete, 5}],
-    ns_config:update(fun ({dont_change, _} = P, _) -> P;
-                         ({erase, _}, {_, BlackSpot}) -> BlackSpot;
-                         ({list_value, V}, _) -> {list_value, [V | V]};
-                         ({delete, _}, {Delete, _}) -> Delete;
-                         ({K, V}, _) -> {K, -V}
+    ns_config:update(fun ({dont_change, _}) ->
+                             skip;
+                         ({erase, _}) ->
+                             erase;
+                         ({list_value, V}) ->
+                             {update, {list_value, [V | V]}};
+                         ({delete, _}) ->
+                             delete;
+                         ({K, V}) ->
+                             {update, {K, -V}}
                      end),
     Updater = RecvUpdater(),
     {Changes, NewConfig} = Updater(OldConfig, <<"uuid">>),

@@ -359,20 +359,20 @@ shun(RemoteNode) ->
         false ->
             ?cluster_debug("Shunning ~p", [RemoteNode]),
             ok = ns_config:update(
-                   fun ({nodes_wanted, V}, _) ->
-                           {nodes_wanted, V -- [RemoteNode]};
-                       ({server_groups, Groups}, _) ->
+                   fun ({nodes_wanted, V}) ->
+                           {update, {nodes_wanted, V -- [RemoteNode]}};
+                       ({server_groups, Groups}) ->
                            G2 = [case proplists:get_value(nodes, G) of
                                      Nodes ->
                                          NewNodes = Nodes -- [RemoteNode],
                                          lists:keystore(nodes, 1, G, {nodes, NewNodes})
                                  end || G <- Groups],
-                           {server_groups, G2};
-                       ({{node, Node, _}, _}, {SoftDelete, _})
+                           {update, {server_groups, G2}};
+                       ({{node, Node, _}, _})
                          when Node =:= RemoteNode ->
-                           SoftDelete;
-                       (Other, _) ->
-                           Other
+                           delete;
+                       (_Other) ->
+                           skip
                    end),
             ns_config_rep:push();
         true ->
@@ -1069,13 +1069,22 @@ perform_actual_join(RemoteNode, NewCookie) ->
         %% For the keys that are being preserved and have vclocks,
         %% we will just update_vclock so that these keys get stamped
         %% with new node uuid vclock.
-        ns_config:update(fun ({directory,_} = X, _) -> X;
-                             ({otp, _}, _) -> {otp, [{cookie, NewCookie}]};
-                             ({nodes_wanted, _} = X, _) -> X;
-                             ({{node, _, membership}, _}, {_, BlackSpot}) -> BlackSpot;
-                             ({{node, _, services}, _}, {_, BlackSpot}) -> BlackSpot;
-                             ({{node, Node, _}, _}, _) when Node =:= MyNode -> update_vclock;
-                             (_, {_, BlackSpot}) -> BlackSpot
+        ns_config:update(fun ({directory,_}) ->
+                                 skip;
+                             ({otp, _}) ->
+                                 {update, {otp, [{cookie, NewCookie}]}};
+                             ({nodes_wanted, _}) ->
+                                 skip;
+                             ({{node, _, membership}, _}) ->
+                                 erase;
+                             ({{node, _, services}, _}) ->
+                                 erase;
+                             ({{node, Node, _}, _} = Pair) when Node =:= MyNode ->
+                                 %% update for the sake of incrementing the
+                                 %% vclock
+                                 {update, Pair};
+                             (_) ->
+                                 erase
                          end),
         ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
         ns_config:set_initial(cluster_compat_version, undefined),

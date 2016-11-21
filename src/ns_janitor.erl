@@ -137,19 +137,18 @@ cleanup_with_states(Bucket, Options, BucketConfig, Servers, States, [] = Zombies
     end.
 
 stop_rebalance_status(Fn) ->
-    Fun = fun ({rebalance_status, Value}, _) ->
-                  NewValue =
-                      case Value of
-                          running ->
-                              Fn();
-                          _ ->
-                              Value
-                      end,
-                  {rebalance_status, NewValue};
-              ({rebalancer_pid, _}, _) ->
-                  {rebalancer_pid, undefined};
-              (Other, _) ->
-                  Other
+    Fun = fun ({rebalance_status, Value}) ->
+                  case Value of
+                      running ->
+                          NewValue = Fn(),
+                          {update, {rebalance_status, NewValue}};
+                      _ ->
+                          skip
+                  end;
+              ({rebalancer_pid, Pid}) when is_pid(Pid) ->
+                  {update, {rebalancer_pid, undefined}};
+              (_Other) ->
+                  skip
           end,
 
     ok = ns_config:update(Fun).

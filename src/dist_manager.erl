@@ -339,7 +339,7 @@ complete_rename(OldNode) ->
     misc:remove_marker(ns_cluster:rename_marker_path()).
 
 rename_node_in_config(Old, New) ->
-    ns_config:update(fun ({K, V} = Pair, _) ->
+    ns_config:update(fun ({K, V}) ->
                              NewK = misc:rewrite_value(Old, New, K),
                              NewV = misc:rewrite_value(Old, New, V),
                              if
@@ -347,9 +347,9 @@ rename_node_in_config(Old, New) ->
                                      ?log_debug("renaming node conf ~p -> ~p:~n  ~p ->~n  ~p",
                                                 [K, NewK, ns_config_log:sanitize(V),
                                                  ns_config_log:sanitize(NewV)]),
-                                     {NewK, NewV};
+                                     {update, {NewK, NewV}};
                                  true ->
-                                     Pair
+                                     skip
                              end
                      end),
     ns_config:sync_announcements(),
