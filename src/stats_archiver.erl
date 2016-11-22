@@ -28,12 +28,12 @@
 
 -record(state, {bucket}).
 
--export([ start_link/1,
-          archives/0,
-          table/2,
-          avg/2,
-          latest_sample/2,
-          wipe/0 ]).
+-export([start_link/1,
+         archives/0,
+         table/2,
+         avg/2,
+         latest_sample/2,
+         wipe/0]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
@@ -219,7 +219,7 @@ terminate(_Reason, #state{bucket=Bucket} = _State) ->
 
 create_tables(Bucket) ->
     %% create stats logger tables
-    [ check_logger(Bucket, Period) || {Period, _, _} <- archives() ].
+    [check_logger(Bucket, Period) || {Period, _, _} <- archives()].
 
 read_table(Path, TableName) ->
     ets:new(TableName, [ordered_set, protected, named_table]),
