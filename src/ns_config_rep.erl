@@ -44,7 +44,8 @@
          terminate/2, code_change/3]).
 
 % API
--export([ensure_config_pushed/0, synchronize_remote/0, synchronize_remote/1,
+-export([ensure_config_pushed/0,
+         ensure_config_seen_by_nodes/0, ensure_config_seen_by_nodes/1,
          pull_and_push/1]).
 
 -export([get_remote/2, pull_remotes/1]).
@@ -256,8 +257,33 @@ ensure_config_pushed() ->
     ns_config:sync_announcements(),
     synchronize_local().
 
-synchronize_remote() ->
-    synchronize_remote(ns_node_disco:nodes_actual_other()).
+%% push outstanding changes to other nodes and make sure that they merged the
+%% changes in
+ensure_config_seen_by_nodes() ->
+    ensure_config_seen_by_nodes(ns_node_disco:nodes_actual_other()).
+
+ensure_config_seen_by_nodes(Nodes) ->
+    ns_config:sync_announcements(),
+    synchronize_remote(Nodes).
+
+pull_and_push([]) -> ok;
+pull_and_push(Nodes) ->
+    ?MODULE ! {pull_and_push, Nodes}.
+
+get_remote(Node, Timeout) ->
+    Blob = ns_config_replica:get_compressed(Node, Timeout),
+    decompress(Blob).
+
+pull_remotes(Nodes) ->
+    gen_server:call(?MODULE, {pull_remotes, Nodes}, infinity).
+
+%
+% Privates
+%
+
+% wait for completion of all previous requests
+synchronize_local() ->
+    gen_server:call(?MODULE, synchronize, ?SYNCHRONIZE_TIMEOUT).
 
 synchronize_remote(Nodes) ->
     ok = synchronize_local(),
@@ -286,24 +312,6 @@ synchronize_remote(Nodes) ->
                        [AllBadNodes]),
             {error, AllBadNodes}
     end.
-
-pull_and_push([]) -> ok;
-pull_and_push(Nodes) ->
-    ?MODULE ! {pull_and_push, Nodes}.
-
-get_remote(Node, Timeout) ->
-    Blob = ns_config_replica:get_compressed(Node, Timeout),
-    decompress(Blob).
-
-pull_remotes(Nodes) ->
-    gen_server:call(?MODULE, {pull_remotes, Nodes}, infinity).
-%
-% Privates
-%
-
-% wait for completion of all previous requests
-synchronize_local() ->
-    gen_server:call(?MODULE, synchronize, ?SYNCHRONIZE_TIMEOUT).
 
 schedule_config_sync() ->
     Frequency = 5000 + trunc(random:uniform() * 55000),

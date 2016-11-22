@@ -224,8 +224,7 @@ do_consider_switching_compat_mode(Config, CurrentVersion) ->
 do_switch_compat_mode(NewVersion, NodesWanted) ->
     ns_online_config_upgrader:upgrade_config(NewVersion),
     try
-        ns_config:sync_announcements(),
-        case ns_config_rep:synchronize_remote(NodesWanted) of
+        case ns_config_rep:ensure_config_seen_by_nodes(NodesWanted) of
             ok -> ok;
             {error, BadNodes} ->
                 ale:error(?USER_LOGGER, "Was unable to sync cluster_compat_version update to some nodes: ~p", [BadNodes]),
@@ -262,8 +261,7 @@ force_compat_version(ClusterVersion) ->
     try
         ns_config:set(cluster_compat_version, ClusterVersion),
         ns_config:set(forced_cluster_compat_version, true),
-        ns_config:sync_announcements(),
-        ok = ns_config_rep:synchronize_remote(ns_node_disco:nodes_wanted())
+        ok = ns_config_rep:ensure_config_seen_by_nodes(ns_node_disco:nodes_wanted())
     after
         RV2 = (catch rpc:multicall([node() | nodes()], supervisor, restart_child, [ns_server_sup, mb_master], 15000)),
         (catch ale:warn(?USER_LOGGER, "force_compat_version: restart of mb_master results: ~p", [RV2])),

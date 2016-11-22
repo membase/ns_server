@@ -138,8 +138,7 @@ build_upgrade_configuration() ->
 
 sync_config(Nodes) ->
     try
-        ns_config:sync_announcements(),
-        case ns_config_rep:synchronize_remote(Nodes) of
+        case ns_config_rep:ensure_config_seen_by_nodes(Nodes) of
             ok -> ok;
             {error, BadNodes} ->
                 ale:error(?USER_LOGGER, "Was unable to sync goxdcr config update to some nodes: ~p",

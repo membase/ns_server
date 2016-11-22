@@ -352,8 +352,7 @@ rename_node_in_config(Old, New) ->
                                      skip
                              end
                      end),
-    ns_config:sync_announcements(),
-    ns_config_rep:synchronize_remote(ns_node_disco:nodes_actual_other()).
+    ns_config_rep:ensure_config_seen_by_nodes().
 
 handle_call({adjust_my_address, _, _, _}, _From,
             #state{self_started = false} = State) ->

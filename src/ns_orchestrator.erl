@@ -547,8 +547,7 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
     case (lists:member(node(), EjectNodes) andalso Reason =:= normal) orelse
         lists:member(node(), FailedNodes) of
         true ->
-            ns_config:sync_announcements(),
-            ok = ns_config_rep:synchronize_remote(KeepNodes),
+            ok = ns_config_rep:ensure_config_seen_by_nodes(KeepNodes),
             ns_rebalancer:eject_nodes([node()]);
         false ->
             ok
@@ -845,10 +844,9 @@ idle({start_recovery, Bucket}, {FromPid, _} = _From,
         Servers = ns_cluster_membership:service_nodes(Servers0, kv),
         BucketConfig = misc:update_proplist(BucketConfig0, [{servers, Servers}]),
         ns_cluster_membership:activate(Servers),
-        ns_config:sync_announcements(),
         FromPidNode = erlang:node(FromPid),
         SyncServers = Servers -- [FromPidNode] ++ [FromPidNode],
-        case ns_config_rep:synchronize_remote(SyncServers) of
+        case ns_config_rep:ensure_config_seen_by_nodes(SyncServers) of
             ok ->
                 ok;
             {error, BadNodes} ->
@@ -1255,9 +1253,8 @@ perform_bucket_flushing_with_config(BucketName, BucketConfig) ->
     end.
 
 do_flush_bucket(BucketName, BucketConfig) ->
-    ns_config:sync_announcements(),
     Nodes = ns_bucket:bucket_nodes(BucketConfig),
-    case ns_config_rep:synchronize_remote(Nodes) of
+    case ns_config_rep:ensure_config_seen_by_nodes(Nodes) of
         ok ->
             case janitor_agent:mass_prepare_flush(BucketName, Nodes) of
                 {_, [], []} ->
@@ -1279,8 +1276,7 @@ continue_flush_bucket(BucketName, BucketConfig, Nodes) ->
     OldFlushCount = proplists:get_value(flushseq, BucketConfig, 0),
     NewConfig = lists:keystore(flushseq, 1, BucketConfig, {flushseq, OldFlushCount + 1}),
     ns_bucket:set_bucket_config(BucketName, NewConfig),
-    ns_config:sync_announcements(),
-    case ns_config_rep:synchronize_remote(Nodes) of
+    case ns_config_rep:ensure_config_seen_by_nodes(Nodes) of
         ok ->
             finalize_flush_bucket(BucketName, Nodes);
         {error, SyncFailedNodes} ->

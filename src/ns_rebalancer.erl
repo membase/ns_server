@@ -363,8 +363,7 @@ do_pre_rebalance_config_sync(KeepNodes) ->
     %%
     %% And after we have that, make sure recovery, rebalance and
     %% graceful failover, all start with latest config reliably
-    ns_config:sync_announcements(),
-    case ns_config_rep:synchronize_remote(KeepNodes) of
+    case ns_config_rep:ensure_config_seen_by_nodes(KeepNodes) of
         ok ->
             cool;
         {error, SyncFailedNodes} ->
@@ -604,8 +603,7 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     rebalance_kv(KeepNodes, EjectNodesAll, BucketConfigs, DeltaRecoveryBuckets),
     rebalance_services(KeepNodes, EjectNodesAll),
 
-    ns_config:sync_announcements(),
-    ok = ns_config_rep:synchronize_remote(KeepNodes),
+    ok = ns_config_rep:ensure_config_seen_by_nodes(KeepNodes),
 
     %% don't eject ourselves at all here; this will be handled by ns_orchestrator
     EjectNodes = EjectNodesAll -- [node()],
@@ -1126,8 +1124,7 @@ apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes, CurrentBuckets) -
     Changes = lists:flatten([BucketChanges, NodeChanges]),
     ok = ns_config:set(Changes),
 
-    ns_config:sync_announcements(),
-    case ns_config_rep:synchronize_remote(DeltaNodes) of
+    case ns_config_rep:ensure_config_seen_by_nodes(DeltaNodes) of
         ok ->
             cool;
         {error, SyncFailedNodes} ->

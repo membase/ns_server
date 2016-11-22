@@ -251,10 +251,7 @@ on_move_done({VBucket, OldChain, NewChain}, #state{bucket = Bucket,
     %% Update the current map
     Map1 = array:set(VBucket, NewChain, Map),
     ns_bucket:set_map(Bucket, array_to_map(Map1)),
-    RepSyncRV = (catch begin
-                           ns_config:sync_announcements(),
-                           ns_config_rep:synchronize_remote()
-                       end),
+    RepSyncRV = (catch ns_config_rep:ensure_config_seen_by_nodes()),
     case RepSyncRV of
         ok -> ok;
         _ ->
