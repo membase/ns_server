@@ -48,7 +48,7 @@
          synchronize_local/0, synchronize_remote/0, synchronize_remote/1,
          pull_and_push/1]).
 
--export([get_remote/2]).
+-export([get_remote/2, pull_remotes/1]).
 
 -record(state, {}).
 
@@ -121,6 +121,8 @@ handle_call(synchronize_everything, {Pid, _Tag} = _From,
     ?log_debug("Fully synchronized config in ~p us", [Diff]),
 
     {reply, ok, State};
+handle_call({pull_remotes, Nodes}, _From, State) ->
+    {reply, pull_from_all_nodes(Nodes), State};
 handle_call(Msg, _From, State) ->
     ?log_warning("Unhandled call: ~p", [Msg]),
     {reply, error, State}.
@@ -300,6 +302,8 @@ get_remote(Node, Timeout) ->
     Blob = ns_config_replica:get_compressed(Node, Timeout),
     decompress(Blob).
 
+pull_remotes(Nodes) ->
+    gen_server:call(?MODULE, {pull_remotes, Nodes}, infinity).
 %
 % Privates
 %
@@ -353,6 +357,17 @@ pull_one_node([Node | Rest], N) ->
         {'EXIT', _}    -> pull_one_node(Rest, N - 1);
         RemoteKVList   -> merge_one_remote_config(RemoteKVList),
                           ok
+    end.
+
+pull_from_all_nodes(Nodes) ->
+    {Good, Bad} = ns_config_replica:get_compressed_many(Nodes, ?PULL_TIMEOUT),
+
+    case Bad =:= [] of
+        true ->
+            KVLists = [decompress(Blob) || {_, Blob} <- Good],
+            merge_remote_configs(KVLists);
+        false ->
+            {error, {get_compressed_failed, Bad}}
     end.
 
 merge_one_remote_config(KVList) ->

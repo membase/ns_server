@@ -22,7 +22,7 @@
 -define(SERVER, ns_config_remote).
 
 %% API
--export([start_link/0, get_compressed/2]).
+-export([start_link/0, get_compressed/2, get_compressed_many/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -47,6 +47,17 @@ start_link() ->
 -spec get_compressed(node(), timeout()) -> binary().
 get_compressed(Node, Timeout) ->
     gen_server:call({?SERVER, Node}, get_compressed, Timeout).
+
+get_compressed_many(Nodes, Timeout) ->
+    misc:multi_call(Nodes, ?SERVER, get_compressed, Timeout,
+                    fun (V) ->
+                            case is_binary(V) of
+                                true ->
+                                    true;
+                                false ->
+                                    {false, {bad_return, V}}
+                            end
+                    end).
 
 %%%===================================================================
 %%% gen_server callbacks
