@@ -26,7 +26,8 @@
 
 -behaviour(gen_server).
 
--record(state, {bucket}).
+-record(state, {bucket :: bucket_name(),
+                saver :: undefined | pid()}).
 
 -export([start_link/1,
          archives/0,
@@ -190,21 +191,26 @@ handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
     {noreply, State};
 handle_info(backup, #state{bucket=Bucket} = State) ->
     misc:flush(backup),
-    proc_lib:spawn_link(
-      fun () ->
-              backup_loggers(Bucket)
-      end),
-    timer2:send_after(?BACKUP_INTERVAL, backup),
-    {noreply, State};
-handle_info({'EXIT', _Pid, Reason} = Exit, State) ->
+    Pid = proc_lib:spawn_link(
+            fun () ->
+                    backup_loggers(Bucket)
+            end),
+    {noreply, State#state{saver = Pid}};
+handle_info({'EXIT', Pid, Reason} = Exit, #state{saver = Saver} = State)
+  when Pid =:= Saver ->
     case Reason of
         normal ->
             ok;
         _Other ->
-            ?log_warning("Process exited unexpectedly: ~p", [Exit])
+            ?log_warning("Saver process terminated abnormally: ~p", [Exit])
     end,
-    {noreply, State};
-handle_info(_Msg, State) -> % Don't crash on delayed responses from calls
+    timer2:send_after(?BACKUP_INTERVAL, backup),
+    {noreply, State#state{saver = undefined}};
+handle_info({'EXIT', _, _} = Exit, State) ->
+    ?log_error("Got unexpected exit message: ~p", [Exit]),
+    {stop, {linked_process_died, Exit}, State};
+handle_info(Msg, State) -> % Don't crash on delayed responses from calls
+    ?log_warning("Got unexpected message: ~p", [Msg]),
     {noreply, State}.
 
 
