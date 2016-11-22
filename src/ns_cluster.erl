@@ -1077,10 +1077,10 @@ perform_actual_join(RemoteNode, NewCookie) ->
                                  {set_initial, {nodes_wanted, [node(), RemoteNode]}};
                              ({cluster_compat_mode, _}) ->
                                  {set_initial, {cluster_compat_mode, undefined}};
-                             ({{node, _, membership}, _}) ->
-                                 erase;
                              ({{node, _, services}, _}) ->
                                  erase;
+                             ({{node, Node, membership}, _} = P) when Node =:= MyNode ->
+                                 {set_initial, P};
                              ({{node, Node, _}, _} = Pair) when Node =:= MyNode ->
                                  %% update for the sake of incrementing the
                                  %% vclock
@@ -1088,18 +1088,15 @@ perform_actual_join(RemoteNode, NewCookie) ->
                              (_) ->
                                  erase
                          end),
+
+        ns_config:merge_dynamic_and_static(),
+
         ?cluster_debug("pre-join cleaned config is:~n~p", [ns_config_log:sanitize(ns_config:get())]),
         {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
         %% Let's verify connectivity.
         Connected = net_kernel:connect_node(RemoteNode),
         ?cluster_debug("Connection from ~p to ~p:  ~p",
                        [node(), RemoteNode, Connected]),
-
-        %% merge dynamic config with static and default, so the dynamic config
-        %% gets all the static keys the same way as it happens during load_config
-        ok = ns_config_rep:pull_remote(RemoteNode),
-        ns_config:merge_dynamic_and_static(),
-        ?cluster_debug("pre-join merged config is:~n~p", [ns_config_log:sanitize(ns_config:get())]),
 
         {ok, ok}
     catch
