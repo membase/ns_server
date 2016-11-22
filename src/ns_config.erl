@@ -300,26 +300,33 @@ do_update_rec(Fun,[Pair | Rest], UUID, NewConfig, NewPairs) ->
             NewPair = {K, increment_vclock(?DELETED_MARKER, OldValue, UUID)},
             do_update_rec(Fun, Rest, UUID,
                           [NewPair | NewConfig], [NewPair | NewPairs]);
-        {update, {K, NewValue}} ->
-            {OldK, OldValue} = Pair,
-            NewPair = {K, increment_vclock(NewValue, OldValue, UUID)},
-
-            {Rest1, NewConfig1, NewPairs1} =
-                case K =:= OldK of
-                    true ->
-                        {Rest, NewConfig, NewPairs};
-                    false ->
-                        %% key has changed; so we need to remove potential
-                        %% duplicates from rest of the config or from already
-                        %% processed part of it
-                        {lists:keydelete(K, 1, Rest),
-                         lists:keydelete(K, 1, NewConfig),
-                         lists:keydelete(K, 1, NewPairs)}
-                end,
-
-            do_update_rec(Fun, Rest1, UUID,
-                          [NewPair | NewConfig1], [NewPair | NewPairs1])
+        {update, {NewKey, NewValue}} ->
+            {_, OldValue} = Pair,
+            NewPair = {NewKey, increment_vclock(NewValue, OldValue, UUID)},
+            do_update(Fun, Rest, UUID, NewConfig, NewPairs, Pair, NewPair);
+        {set_initial, NewPair} ->
+            do_update(Fun, Rest, UUID, NewConfig, NewPairs, Pair, NewPair)
     end.
+
+do_update(Fun, Rest, UUID, NewConfig, NewPairs, OldPair, NewPair) ->
+    {OldKey, _} = OldPair,
+    {NewKey, _} = NewPair,
+
+    {Rest1, NewConfig1, NewPairs1} =
+        case NewKey =:= OldKey of
+            true ->
+                {Rest, NewConfig, NewPairs};
+            false ->
+                %% key has changed; so we need to remove potential
+                %% duplicates from rest of the config or from already
+                %% processed part of it
+                {lists:keydelete(NewKey, 1, Rest),
+                 lists:keydelete(NewKey, 1, NewConfig),
+                 lists:keydelete(NewKey, 1, NewPairs)}
+        end,
+
+    do_update_rec(Fun, Rest1, UUID,
+                  [NewPair | NewConfig1], [NewPair | NewPairs1]).
 
 update(Fun) ->
     update_with_changes(fun (Config, UUID) ->

@@ -1074,7 +1074,9 @@ perform_actual_join(RemoteNode, NewCookie) ->
                              ({otp, _}) ->
                                  {update, {otp, [{cookie, NewCookie}]}};
                              ({nodes_wanted, _}) ->
-                                 skip;
+                                 {set_initial, {nodes_wanted, [node(), RemoteNode]}};
+                             ({cluster_compat_mode, _}) ->
+                                 {set_initial, {cluster_compat_mode, undefined}};
                              ({{node, _, membership}, _}) ->
                                  erase;
                              ({{node, _, services}, _}) ->
@@ -1086,8 +1088,6 @@ perform_actual_join(RemoteNode, NewCookie) ->
                              (_) ->
                                  erase
                          end),
-        ns_config:set_initial(nodes_wanted, [node(), RemoteNode]),
-        ns_config:set_initial(cluster_compat_version, undefined),
         ?cluster_debug("pre-join cleaned config is:~n~p", [ns_config_log:sanitize(ns_config:get())]),
         {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
         %% Let's verify connectivity.
