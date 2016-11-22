@@ -784,7 +784,10 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_groups:handle_server_group_update/2, [GroupUUID]};
                 ["settings", "rbac", "users", UserId] ->
                     {{[admin, security], write},
-                     fun menelaus_web_rbac:handle_put_user/2, [UserId]};
+                     fun menelaus_web_rbac:handle_put_user/3, ["saslauthd", UserId]};
+                ["settings", "rbac", "users", Type, UserId] ->
+                    {{[admin, security], write},
+                     fun menelaus_web_rbac:handle_put_user/3, [Type, UserId]};
                 ["couchBase" | _] ->
                     {no_check, fun menelaus_pluggable_ui:proxy_req/4,
                      ["couchBase",

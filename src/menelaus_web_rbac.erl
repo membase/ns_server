@@ -28,7 +28,7 @@
          handle_get_roles/1,
          handle_get_users/1,
          handle_whoami/1,
-         handle_put_user/2,
+         handle_put_user/3,
          handle_delete_user/3,
          handle_check_permissions_post/1,
          check_permissions_url_version/1,
@@ -275,17 +275,24 @@ type_to_atom("saslauthd") ->
 type_to_atom(_) ->
     unknown.
 
-handle_put_user(UserId, Req) ->
+handle_put_user(Type, UserId, Req) ->
     menelaus_web:assert_is_enterprise(),
     menelaus_web:assert_is_45(),
 
+    case type_to_atom(Type) of
+        unknown ->
+            menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
+        T ->
+            handle_put_user_with_identity({UserId, T}, Req)
+    end.
+
+handle_put_user_with_identity(Identity, Req) ->
     Props = Req:parse_post(),
     Roles = parse_roles(proplists:get_value("roles", Props)),
 
     BadRoles = [BadRole || {error, BadRole} <- Roles],
     case BadRoles of
         [] ->
-            Identity = {UserId, saslauthd},
             Name = proplists:get_value("name", Props),
             case menelaus_roles:store_user(Identity, Name, Roles) of
                 {commit, _} ->
