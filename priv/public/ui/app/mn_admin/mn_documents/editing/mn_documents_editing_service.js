@@ -76,7 +76,7 @@
       });
     }
     function buildDocumentUrl(params) {
-      return "/pools/default/buckets/" + encodeURIComponent(params.documentsBucket) + "/docs/" + encodeURIComponent(params.documentId);
+      return "/pools/default/buckets/" + encodeURIComponent(params.bucket) + "/docs/" + encodeURIComponent(params.documentId);
     }
   }
 })();

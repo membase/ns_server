@@ -96,8 +96,8 @@
              (vm.state.editorWarnings.notFound ||
               vm.state.editorWarnings.documentIsBase64 ||
               vm.state.editorWarnings.documentLimitError)) ||
-             ($scope.rbac.cluster.bucket[$state.params.documentsBucket] &&
-             !$scope.rbac.cluster.bucket[$state.params.documentsBucket].data.write);
+             ($scope.rbac.cluster.bucket[$state.params.bucket] &&
+             !$scope.rbac.cluster.bucket[$state.params.bucket].data.write);
 
     }
     function isDeleteDisabled() {

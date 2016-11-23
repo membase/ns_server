@@ -11,7 +11,7 @@
 
     function onSubmit() {
       var promise = mnDocumentsEditingService.deleteDocument({
-        documentsBucket: $state.params.documentsBucket,
+        bucket: $state.params.bucket,
         documentId: documentId
       });
 

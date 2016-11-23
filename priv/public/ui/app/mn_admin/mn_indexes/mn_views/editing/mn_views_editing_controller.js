@@ -24,7 +24,7 @@
     sampleDocumentOptions.lineWrapping = true;
     var sampleMetaOptions = _.clone(sampleDocumentOptions);
 
-    vm.currentBucketName = $state.params.viewsBucket;
+    vm.currentBucketName = $state.params.bucket;
     vm.viewsOptions = viewsOptions;
     vm.sampleDocumentOptions = sampleDocumentOptions;
     vm.sampleMetaOptions = sampleMetaOptions;
@@ -52,7 +52,7 @@
       e.stopImmediatePropagation();
       $state.go("app.admin.documents.editing", {
         documentId: vm.state.sampleDocument.meta.id,
-        documentsBucket: $state.params.viewsBucket
+        bucket: $state.params.bucket
       });
     }
     function toggleSampleDocument() {
@@ -62,7 +62,7 @@
       vm.isViewsClosed = !vm.isViewsClosed;
     }
     function hasNoWritePermission() {
-      return !$scope.rbac.cluster.bucket[$state.params.viewsBucket].views.write;
+      return !$scope.rbac.cluster.bucket[$state.params.bucket].views.write;
     }
     function isEditDocumentDisabled() {
       return awaitingSampleDocument() || (vm.state.sampleDocument && vm.state.sampleDocument.warnings) || vm.state.isEmptyState || hasNoWritePermission();
@@ -122,7 +122,7 @@
     }
     function save(e) {
       e.stopImmediatePropagation();
-      var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, vm.state.currentDocument.doc.meta.id)
+      var url = mnViewsListService.getDdocUrl($state.params.bucket, vm.state.currentDocument.doc.meta.id)
       mnPromiseHelper(vm.state, mnViewsListService.createDdoc(url, vm.state.currentDocument.doc.json))
         .catchErrors("viewsError")
         .showSpinner("viewsLoading")

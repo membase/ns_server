@@ -11,7 +11,7 @@
 
     function onSubmit() {
       var newDocumentParams = {
-        documentsBucket: $state.params.documentsBucket,
+        bucket: $state.params.bucket,
         documentId: vm.documentId
       };
       var promise = mnDocumentsEditingService.getDocument(newDocumentParams)

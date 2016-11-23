@@ -38,7 +38,7 @@
         full_set: null,
         isSpatial: isSpatial,
         documentId: row.doc.meta.id,
-        viewsBucket: $state.params.viewsBucket,
+        bucket: $state.params.bucket,
         viewsParams: JSON.stringify(mnViewsEditingService.getInitialViewsFilterParams(isSpatial))
       };
     }
@@ -46,7 +46,7 @@
       return row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views)
     }
     function showViewCreationButtons() {
-      return vm.ddocs && $state.params.viewsBucket && vm.isDevelopmentViews && !vm.ddocs.ddocsAreInFactMissing;
+      return vm.ddocs && $state.params.bucket && vm.isDevelopmentViews && !vm.ddocs.ddocsAreInFactMissing;
     }
     function showPublishButton(row) {
       return vm.isDevelopmentViews && !(row.doc.json.spatial && row.doc.json.views && !_.isEmpty(row.doc.json.spatial) && !_.isEmpty(row.doc.json.views));
@@ -115,7 +115,7 @@
       };
     }
     function publishDdoc(ddoc) {
-      var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, "_design/" + mnViewsListService.cutOffDesignPrefix(ddoc.meta.id));
+      var url = mnViewsListService.getDdocUrl($state.params.bucket, "_design/" + mnViewsListService.cutOffDesignPrefix(ddoc.meta.id));
       var publish = prepareToPublish(url, ddoc);
       mnPromiseHelper(vm, mnViewsListService.getDdoc(url))
         .getPromise()

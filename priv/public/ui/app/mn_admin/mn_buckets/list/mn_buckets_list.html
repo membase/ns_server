@@ -34,7 +34,7 @@
            ng-click="$event.stopPropagation()"
            class="link-heavy text-medium expander"
            title="View Analytics for {{ bucket.name }}"
-           ui-sref="app.admin.analytics.list.graph({analyticsBucket: bucket.name })"
+           ui-sref="app.admin.analytics.list.graph({bucket: bucket.name })"
            ng-show="rbac.cluster.bucket[bucket.name].stats.read"
            >{{bucket.name}}</a>
         <span ng-show="!rbac.cluster.bucket[bucket.name].stats.read">{{bucket.name}}</span>
@@ -80,12 +80,12 @@
            ng-click="$event.stopPropagation()"
            class="link-heavy"
            ng-show="rbac.cluster.bucket[bucket.name].data.read"
-           ui-sref="app.admin.documents.control.list({documentsBucket: bucket.name})">Documents</a>  &nbsp;
+           ui-sref="app.admin.documents.control.list({bucket: bucket.name})">Documents</a>  &nbsp;
         <a
            ng-click="$event.stopPropagation()"
            class="link-heavy"
            ng-show="rbac.cluster.bucket[bucket.name].views.read"
-           ui-sref="app.admin.indexes.views.list({viewsBucket: bucket.name})">Views</a>
+           ui-sref="app.admin.indexes.views.list({bucket: bucket.name})">Views</a>
       </td>
       <td ng-if="buckets.isMemcached"></td>
     </tr>

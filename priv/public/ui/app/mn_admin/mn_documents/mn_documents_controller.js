@@ -26,7 +26,7 @@
 
     function onSelectBucketName(selectedBucket) {
       $state.go('app.admin.documents.control.list', {
-        documentsBucket: selectedBucket,
+        bucket: selectedBucket,
         pageNumber: 0
       });
     }

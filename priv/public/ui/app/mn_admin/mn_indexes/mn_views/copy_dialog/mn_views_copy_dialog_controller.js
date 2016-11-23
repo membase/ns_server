@@ -13,7 +13,7 @@
     vm.onSubmit = onSubmit;
 
     function onSubmit() {
-      var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, "_design/dev_" + vm.ddoc.name);
+      var url = mnViewsListService.getDdocUrl($state.params.bucket, "_design/dev_" + vm.ddoc.name);
       var copy = prepareToCopy(url, currentDdoc);
       var promise = mnViewsListService.getDdoc(url).then(function (presentDdoc) {
         return $uibModal.open({

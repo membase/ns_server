@@ -34,7 +34,7 @@
         return mnViewsListService.getKvNodeLink(vm.mnPoolDefault.value.nodes);
       }
       function onSelectBucket(selectedBucket) {
-        $state.go('app.admin.indexes.views.list', {viewsBucket: selectedBucket});
+        $state.go('app.admin.indexes.views.list', {bucket: selectedBucket});
       }
 
       function activate() {

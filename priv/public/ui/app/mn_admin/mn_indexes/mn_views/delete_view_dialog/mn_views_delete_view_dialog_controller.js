@@ -13,7 +13,7 @@
     vm.doDelete = doDelete;
 
     function doDelete() {
-      var url = mnViewsListService.getDdocUrl($state.params.viewsBucket, currentDdocName);
+      var url = mnViewsListService.getDdocUrl($state.params.bucket, currentDdocName);
 
       var promise = mnViewsListService.getDdoc(url).then(function (presentDdoc) {
         delete presentDdoc.json[isSpatial ? 'spatial' : 'views'][currentViewName];

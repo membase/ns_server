@@ -79,7 +79,7 @@
         abstract: true,
         templateUrl: 'app/mn_admin/mn_documents/mn_documents.html',
         controller: "mnDocumentsController as documentsCtl",
-        url: "/documents?documentsBucket"
+        url: "/documents?bucket"
       })
       .state('app.admin.documents.control', {
         abstract: true,
@@ -107,16 +107,16 @@
       })
       .state('app.admin.analytics', {
         abstract: true,
-        url: '/analytics?statsHostname&analyticsBucket&specificStat',
+        url: '/analytics?statsHostname&bucket&specificStat',
         controller: 'mnAnalyticsController as analyticsCtl',
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics.html',
         params: {
-          analyticsBucket: {
+          bucket: {
             value: null
           }
         },
         resolve: {
-          setDefaultBucketName: mnHelperProvider.setDefaultBucketName("analyticsBucket", 'app.admin.analytics.list.graph', true)
+          setDefaultBucketName: mnHelperProvider.setDefaultBucketName("bucket", 'app.admin.analytics.list.graph', true)
         }
       })
       .state('app.admin.analytics.list', {
@@ -150,7 +150,7 @@
         resolve: {
           setDefaultGraph: function (mnAnalyticsService, setDefaultBucketName, $state, $q, $transition$) {
             var params = $transition$.params();
-            if (!params.analyticsBucket) {
+            if (!params.bucket) {
               return;
             }
             return mnAnalyticsService.getStats({$stateParams: params}).then(function (state) {

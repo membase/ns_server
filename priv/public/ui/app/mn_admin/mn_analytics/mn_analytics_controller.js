@@ -48,7 +48,7 @@
         return mnBucketsService.getBucketsByType().then(function (buckets) {
           var rv = {};
           rv.bucketsNames = buckets.byType.names;
-          rv.bucketsNames.selected = $state.params.analyticsBucket;
+          rv.bucketsNames.selected = $state.params.bucket;
           return rv;
         });
       })
@@ -58,7 +58,7 @@
     }
     function onSelectBucket(selectedBucket) {
       $state.go('app.admin.analytics.list.graph', {
-        analyticsBucket: selectedBucket
+        bucket: selectedBucket
       });
     }
     function onSelectNode(selectedHostname) {
