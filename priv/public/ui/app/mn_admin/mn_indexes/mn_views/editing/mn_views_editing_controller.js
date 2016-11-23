@@ -50,7 +50,7 @@
 
     function goToDocumentsSection(e) {
       e.stopImmediatePropagation();
-      $state.go("app.admin.documents.editing", {
+      $state.go("app.admin.buckets.documents.editing", {
         documentId: vm.state.sampleDocument.meta.id,
         bucket: $state.params.bucket
       });
@@ -105,7 +105,7 @@
           viewId: vm.ddoc.view
         };
         if (!isViewPathTheSame($state.params, selected)) {
-          $state.go('app.admin.indexes.views.editing.result', {
+          $state.go('^.result', {
             viewId: selected.viewId,
             documentId: selected.documentId
           });
@@ -129,7 +129,7 @@
         .reloadState();
     }
     function onSelectViewName(selected) {
-      $state.go('app.admin.indexes.views.editing.result', {
+      $state.go('^.result', {
         viewId: selected.viewId,
         isSpatial: selected.isSpatial,
         documentId: selected.documentId

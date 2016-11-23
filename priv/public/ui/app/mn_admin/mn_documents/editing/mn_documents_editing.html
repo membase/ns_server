@@ -1,28 +1,23 @@
-<div
-   class="alert alert-error"
-   ng-show="documentsEditingCtl.state.errors">
- <p>Error: {{documentsEditingCtl.state.errors.reason}} ({{documentsEditingCtl.state.errors.error }})</p>
-</div>
-<div
-  class="alert alert-error"
-  ng-show="documentsEditingCtl.areThereWarnings()"
-  ng-messages="documentsEditingCtl.state.editorWarnings">
- <p ng-message="documentLimitError">Warning: Editing of document with size more than 256 KiB is not allowed</p>
- <p ng-message="shouldNotBeNull">Warning: JSON object cannot be null</p>
- <p ng-message="shouldBeAnObject">Warning: JSON should represent an object</p>
- <p ng-message="shouldNotBeAnArray">Warning: JSON should not be an array</p>
- <p ng-message="documentIsBase64">Warning: Editing of binary document is not allowed</p>
- <p ng-message="notFound">Error: not found (Document does not exist)</p>
-</div>
+<mn-element-cargo depot="alerts">
+  <div
+     class="alert alert-error"
+     ng-show="documentsEditingCtl.state.errors">
+    <p>Error: {{documentsEditingCtl.state.errors.reason}} ({{documentsEditingCtl.state.errors.error }})</p>
+  </div>
+  <div
+     class="alert alert-error"
+     ng-show="documentsEditingCtl.areThereWarnings()"
+     ng-messages="documentsEditingCtl.state.editorWarnings">
+    <p ng-message="documentLimitError">Warning: Editing of document with size more than 256 KiB is not allowed</p>
+    <p ng-message="shouldNotBeNull">Warning: JSON object cannot be null</p>
+    <p ng-message="shouldBeAnObject">Warning: JSON should represent an object</p>
+    <p ng-message="shouldNotBeAnArray">Warning: JSON should not be an array</p>
+    <p ng-message="documentIsBase64">Warning: Editing of binary document is not allowed</p>
+    <p ng-message="notFound">Error: not found (Document does not exist)</p>
+  </div>
+</mn-element-cargo>
 
 <div class="interim main-content">
-
-  <div class="margin-bottom1">
-    <a
-       ui-sref="app.admin.documents.control.list"
-       class="link-heavy">&lt back to Documents</a>
-  </div>
-
   <div>
     <div class="interim row">
       <div class="ellipsis">{{documentsEditingCtl.state.title}}</div>

@@ -8,10 +8,13 @@
     'mnServersService',
     'mnBucketsService',
     'mnPoll',
-    'ui.bootstrap'
+    'ui.bootstrap',
+    'mnElementCrane',
+    'mnAboutDialogService',
+    'mnPromiseHelper'
   ]).controller('mnOverviewController', mnOverviewController);
 
-  function mnOverviewController($scope, mnServersService, mnBucketsService, mnOverviewService, mnPoller, mnAlertsService) {
+  function mnOverviewController($scope, mnServersService, mnBucketsService, mnOverviewService, mnPoller, mnAlertsService, mnAboutDialogService, mnPromiseHelper) {
     var vm = this;
 
     vm.alerts = mnAlertsService.alerts;
@@ -20,6 +23,9 @@
     activate();
 
     function activate() {
+      mnPromiseHelper(vm, mnAboutDialogService.getState())
+        .applyToScope("aboutState");
+
       new mnPoller($scope, mnOverviewService.getOverviewConfig)
         .reloadOnScopeEvent("mnPoolDefaultChanged")
         .subscribe("mnOverviewConfig", vm)

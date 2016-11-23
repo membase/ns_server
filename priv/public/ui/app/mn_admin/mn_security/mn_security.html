@@ -1,44 +1,29 @@
-<div
-   class="interim row flex-left sub-nav"
-   mn-pluggable-ui-tabs
-   mn-tab-bar-name="securityTab">
-  <span
-     class="pills"
-     ng-show="securityCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read && pools.isEnterprise">
+<mn-element-cargo depot="subnav">
+  <nav
+     class="sub-nav"
+     mn-pluggable-ui-tabs
+     mn-tab-bar-name="securityTab">
     <a
+       ng-show="securityCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read && pools.isEnterprise"
        ui-sref="app.admin.security.externalRoles"
-       ui-sref-active="pills-selected">External User/Roles</a>
-  </span>
-  <span
-     class="pills"
-     ng-show="rbac.cluster.admin.security.read && rbac.cluster.admin.security.write">
+       ui-sref-active="selected">External User/Roles</a>
     <a
+       ng-show="rbac.cluster.admin.security.read && rbac.cluster.admin.security.write"
        ui-sref="app.admin.security.internalRoles"
-       ui-sref-active="pills-selected">Internal User/Roles</a>
-  </span>
-  <span class="pills" ng-show="pools.isEnterprise">
+       ui-sref-active="selected">Internal User/Roles</a>
     <a
+       ng-show="pools.isEnterprise"
        ui-sref="app.admin.security.rootCertificate"
-       ui-sref-active="pills-selected">Root Certificate</a>
-  </span>
-  <span
-     ng-show="rbac.cluster.admin.security.read && poolDefault.compat.atLeast40 && pools.isEnterprise"
-     class="pills">
+       ui-sref-active="selected">Root Certificate</a>
     <a
+       ng-show="rbac.cluster.admin.security.read && poolDefault.compat.atLeast40 && pools.isEnterprise"
        ui-sref="app.admin.security.audit"
-       ui-sref-active="pills-selected">Audit</a>
-  </span>
-  <span
-     class="pills"
-     ng-show="pools.isEnterprise && securityCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast40 && !poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read">
+       ui-sref-active="selected">Audit</a>
     <a
+       ng-show="pools.isEnterprise && securityCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast40 && !poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read"
        ui-sref="app.admin.security.ldap"
-       ui-sref-active="pills-selected">LDAP Auth Setup</a>
-  </span>
-</div>
-<div
-   class="interim alert alert-warning"
-   ng-show="adminCtl.lostConnState.isActivated">
-  <p>Difficulties communicating with the cluster; displaying cached information!</p>
-</div>
-<div class="interim main-content" ui-view=""></div>
+       ui-sref-active="selected">LDAP Auth Setup</a>
+  </nav>
+</mn-element-cargo>
+
+<div ui-view=""></div>

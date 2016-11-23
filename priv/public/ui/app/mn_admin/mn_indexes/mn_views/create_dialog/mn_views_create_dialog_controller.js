@@ -7,7 +7,7 @@
 
   function mnViewsCreateDialogController($scope, $uibModal, $state, $q, mnViewsListService, mnHelper, mnPromiseHelper, $uibModalInstance, currentDdoc, viewType) {
     var vm = this;
-    var isViewsEditingSection = $state.is('app.admin.indexes.views.editing.result');
+    var isViewsEditingSection = $state.includes('views.editing.result');
     vm.ddoc = {};
     vm.isSpatial = viewType === "spatial";
     vm.ddoc.name = currentDdoc && mnViewsListService.cutOffDesignPrefix(currentDdoc.meta.id);

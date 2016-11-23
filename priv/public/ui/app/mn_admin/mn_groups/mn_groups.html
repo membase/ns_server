@@ -1,35 +1,27 @@
-<div
-   class="interim alert alert-warning"
-   ng-show="groupsCtl.serverGroupsWarnig">
-  <p>Error: Changes must be saved before deleting the group.</p>
-</div>
-<div
-   class="interim alert alert-warning"
-   ng-show="groupsCtl.revisionMismatch">
-  <p>Error: Revision mismatch. Changes are not applied.</p>
-  <button ng-click="groupsCtl.reloadState()">Press to sync</button>
-</div>
-<div
-   class="interim alert alert-warning"
-   ng-show="adminCtl.lostConnState.isActivated">
-  <p>Difficulties communicating with the cluster; displaying cached information!</p>
-</div>
+<mn-element-cargo depot="alerts">
+  <div
+     class="interim alert alert-warning"
+     ng-show="groupsCtl.serverGroupsWarnig">
+    <p>Error: Changes must be saved before deleting the group.</p>
+  </div>
+  <div
+     class="interim alert alert-warning"
+     ng-show="groupsCtl.revisionMismatch">
+    <p>Error: Revision mismatch. Changes are not applied.</p>
+    <button ng-click="groupsCtl.reloadState()">Press to sync</button>
+  </div>
+</mn-element-cargo>
 
-<div class="interim main-content">
-  <div class="interim row">
-    <h3>
-      <small><a ui-sref="app.admin.servers.list">&lt back to Servers</a> /</small> Server Groups
-    </h3>
-    <span>
-      <button
-         ng-disabled="groupsCtl.disableAddGroupBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
-         ng-click="groupsCtl.createGroup()"
-         >Create Group</button>
-      <button
-         ng-disabled="groupsCtl.disableApplyChangesBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
-         ng-click="groupsCtl.applyChanges()"
-         >Apply Changes</button>
-    </span>
+<div>
+  <div class="interim row flex-right">
+    <button
+       ng-disabled="groupsCtl.disableAddGroupBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
+       ng-click="groupsCtl.createGroup()"
+       >Create Group</button>
+    <button
+       ng-disabled="groupsCtl.disableApplyChangesBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
+       ng-click="groupsCtl.applyChanges()"
+       >Apply Changes</button>
   </div>
   <div mn-spinner="viewLoading">
     <div

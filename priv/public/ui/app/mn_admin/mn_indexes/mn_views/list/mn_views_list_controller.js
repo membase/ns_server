@@ -107,7 +107,7 @@
       return function () {
         return mnPromiseHelper(vm, mnViewsListService.createDdoc(url, ddoc.json))
           .onSuccess(function () {
-            $state.go('app.admin.indexes.views.list', {
+            $state.go('^.list', {
               type: 'production'
             });
           })

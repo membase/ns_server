@@ -27,12 +27,12 @@
          style="position: absolute; left: 100%; top: 0;"
          ng-if="rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read"
          class="text-left">
-        <a ui-sref="app.admin.analytics.list.graph({zoom: 'minute'})" ui-sref-active="selected">Minute</a><br>
-        <a ui-sref="app.admin.analytics.list.graph({zoom: 'hour'})" ui-sref-active="selected">Hour</a><br>
-        <a ui-sref="app.admin.analytics.list.graph({zoom: 'day'})" ui-sref-active="selected">Day</a><br>
-        <a ui-sref="app.admin.analytics.list.graph({zoom: 'week'})" ui-sref-active="selected">Week</a><br>
-        <a ui-sref="app.admin.analytics.list.graph({zoom: 'month'})" ui-sref-active="selected">Month</a><br>
-        <a ui-sref="app.admin.analytics.list.graph({zoom: 'year'})" ui-sref-active="selected">Year</a>
+        <a ui-sref="{zoom: 'minute'}" ui-sref-active="selected">Minute</a><br>
+        <a ui-sref="{zoom: 'hour'}" ui-sref-active="selected">Hour</a><br>
+        <a ui-sref="{zoom: 'day'}" ui-sref-active="selected">Day</a><br>
+        <a ui-sref="{zoom: 'week'}" ui-sref-active="selected">Week</a><br>
+        <a ui-sref="{zoom: 'month'}" ui-sref-active="selected">Month</a><br>
+        <a ui-sref="{zoom: 'year'}" ui-sref-active="selected">Year</a>
       </div>
     </div>
   </div>

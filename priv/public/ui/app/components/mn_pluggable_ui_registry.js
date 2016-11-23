@@ -15,10 +15,10 @@
 
     function getTabTemplate(tabBarName, index) {
       var configLocation = "::" + tabBarName + ".pluggableUiConfigs[" + index + "]";
-      var defaultTemplate = "<li ng-show=\"{{" + configLocation + ".ngShow}}\"><a ui-sref=\"{{ " + configLocation + ".state }}\" ui-sref-active=\"selected\">{{ " + configLocation + ".name }}</a></li>"
+      var defaultTemplate = "<a ng-show=\"{{" + configLocation + ".ngShow}}\" ui-sref=\"{{ " + configLocation + ".state }}\" ui-sref-active=\"selected\">{{ " + configLocation + ".name }}</a>"
       var tabTemplates = {
-        adminTab: "<li ng-show=\"{{" + configLocation + ".ngShow}}\" class=\"line\" ui-sref-active=\"currentNav\"><a ui-sref=\"{{" + configLocation + ".state}}\">{{" + configLocation + ".name}}</a></li>",
-        indexesTab:  "<span class=\"pills\" ng-show=\"{{" + configLocation + ".ngShow}}\" ><a ui-sref=\"{{" + configLocation + ".state}}\" ui-sref-active=\"selected\">{{" + configLocation + ".name}}</a></span>"
+        adminTab: "<a ng-show=\"{{" + configLocation + ".ngShow}}\" class=\"line\" ui-sref-active=\"currentNav\" ui-sref=\"{{" + configLocation + ".state}}\">{{" + configLocation + ".name}}</a>",
+        indexesTab:  "<a class=\"pills\" ng-show=\"{{" + configLocation + ".ngShow}}\" ui-sref=\"{{" + configLocation + ".state}}\" ui-sref-active=\"selected\">{{" + configLocation + ".name}}</a>"
      };
 
       return tabTemplates[tabBarName] || defaultTemplate;

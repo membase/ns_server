@@ -4,17 +4,23 @@
   angular.module('mnSecurity', [
     'mnExternalRoles',
     'mnPluggableUiRegistry',
-    'mnRootCertificate'
+    'mnRootCertificate',
+    'mnElementCrane'
   ]).config(mnIndexesConfig);
 
   function mnIndexesConfig($stateProvider) {
     $stateProvider
       .state('app.admin.security', {
         abstract: true,
-        controller: "mnSecurityController as securityCtl",
-        templateUrl: "app/mn_admin/mn_security/mn_security.html",
+        views: {
+          "main@app.admin": {
+            controller: "mnSecurityController as securityCtl",
+            templateUrl: "app/mn_admin/mn_security/mn_security.html"
+          }
+        },
         data: {
-          permissions: "cluster.admin.security.read"
+          permissions: "cluster.admin.security.read",
+          title: "Security"
         }
       })
       .state('app.admin.security.externalRoles', {

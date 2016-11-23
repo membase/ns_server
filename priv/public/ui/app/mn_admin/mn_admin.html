@@ -1,52 +1,25 @@
-<div class="interim-wrapper">
+<div class="page-wrap">
   <div
      mn-launchpad
      launchpad-source="adminCtl.launchpadSource"
      launchpad-id="adminCtl.launchpadId"></div>
   <div
-     ui-view="lostConnection"></div>
+     ui-view="lostConnection">
+  </div>
 
-  <nav class="interim-nav-header">
-    <span class="text-smaller">
-      <a href="/index.html">
-        <img src="/images/logo.svg" width="140" height="32">
-      </a>
-
-      <span
-         class="tab-name ellipsis"
-         title="{{adminCtl.tabName}}"
-         ng-show="adminCtl.tabName">
-        - {{adminCtl.tabName}}
-      </span>
-      <span class="edition" ng-show="adminCtl.poolDefault.isEnterprise">
-        Enterprise Edition
-      </span>
-      <span class="edition" ng-show="!adminCtl.poolDefault.isEnterprise">
-        Community Edition
-      </span>
-
-      <span class="edition" class="only-when-below-20" style="display:none;">
-        NOTE: need all 2.0 nodes to enable 2.0-only features
-      </span>
-    </span>
-
-    <span class="nav-header">
-      <a
-         ng-click="adminCtl.runInternalSettingsDialog();"
-         ng-show="adminCtl.enableInternalSettings && (rbac.cluster.settings.read || rbac.cluster.xdcr.settings.read)">
-        Edit internal settings
-      </a>
-      <a href="http://docs.couchbase.com/4.5" target="cbdocs">
-        Documentation
-      </a>
-      <a href="{{adminCtl.poolDefault.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
-        Support
-      </a>
-      <a ng-click="adminCtl.showAboutDialog()">
-        About
-      </a>
-      <a ng-click="adminCtl.logout()">Sign Out</a>
-    </span>
+  <nav class="nav-header">
+    <a
+       ng-click="adminCtl.runInternalSettingsDialog();"
+       ng-show="adminCtl.enableInternalSettings && (rbac.cluster.settings.read || rbac.cluster.xdcr.settings.read)">
+      Edit internal settings
+    </a>
+    <a href="http://docs.couchbase.com/4.5" target="cbdocs">
+      Documentation
+    </a>
+    <a href="{{adminCtl.poolDefault.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
+      Support
+    </a>
+    <a ng-click="adminCtl.logout()">Sign Out</a>
   </nav>
 
   <div
@@ -70,27 +43,76 @@
     </ul>
   </div>
 
-  <div class="interim-nav-main">
-    <ul
+  <header>
+    <a
+       ng-show="!adminCtl.$state.current.data.child"
+       href="/index.html">
+      <img src="../images/cb_logo_bug_white.svg" width="58" height="58" alt="Couchbase Server" class="logobug">
+    </a>
+    <h1>
+      <span
+         class="hide-for-small ellipsis"
+         ng-show="adminCtl.tabName && !adminCtl.$state.current.data.child"
+         title="{{adminCtl.tabName}}">
+        {{adminCtl.tabName}} <!-- the cluster name -->
+      </span>
+      <span
+         class="hide-for-small"
+         ng-show="adminCtl.tabName && !adminCtl.$state.current.data.child">
+        <span class="icon fa-angle-right"></span>
+      </span>
+      <span ng-if="adminCtl.$state.current.data.child"> <!-- ng-if should not be on <a> tag in that particular case -->
+        <a
+           href="{{adminCtl.$state.href(adminCtl.$state.current.data.child, adminCtl.$state.params)}}">
+          &lt; {{adminCtl.$state.get(adminCtl.$state.current.data.child).data.title}} /
+        </a>
+      </span>
+      <i ng-show="adminCtl.$state.current.data.child">
+        {{adminCtl.$state.params.bucket}}
+      </i>
+      <span class="nowrap">
+        {{adminCtl.$state.current.data.title}}
+      </span>
+    </h1>
+
+    <mn-element-depot name="header" class="about-text hide-for-small">
+    </mn-element-depot>
+    <mn-element-depot name="actions" class="header-controls hide-for-small">
+    </mn-element-depot>
+  </header>
+
+  <mn-element-depot name="subnav">
+  </mn-element-depot>
+
+  <mn-element-depot name="alerts">
+  </mn-element-depot>
+
+  <div
+     class="interim alert alert-warning"
+     ng-show="adminCtl.lostConnState.isActivated">
+    <p>Difficulties communicating with the cluster; displaying cached information!</p>
+  </div>
+
+  <main>
+    <nav
+       ng-show="!adminCtl.$state.current.data.child"
+       class="nav-sidebar hide-for-small"
        mn-pluggable-ui-tabs
        mn-tab-bar-name="adminTab">
-      <li mn-tab="overview" ui-sref-active="currentNav">
-        <a ui-sref="app.admin.overview">Overview</a>
-      </li><!--
-   --><li mn-tab="servers" ui-sref-active="currentNav">
-        <a ui-sref="app.admin.servers.list">Server Nodes</a>
-      </li><!--
-   --><li mn-tab="buckets" ui-sref-active="currentNav">
-        <a ui-sref="app.admin.buckets">Data Buckets</a>
-      </li><!--
-   --><li mn-tab="indexes" ng-class="{currentNav: ('app.admin.indexes' | includedByState)}">
-        <a ui-sref="app.admin.indexes.gsi" ng-show="rbac.cluster.indexes.read">Indexes</a>
-        <a ui-sref="app.admin.indexes.views.list" ng-show="rbac.cluster.indexes.read === false">Indexes</a>
-      </li><!--
-   --><li mn-tab="replications" ui-sref-active="currentNav">
-        <a ui-sref="app.admin.replications">XDCR</a>
-      </li><!--
-   --><li
+      <h5>cluster</h5>
+      <a
+         mn-tab="overview"
+         ui-sref="app.admin.overview"
+         ui-sref-active="currentNav">Dashboard</a>
+      <a
+         mn-tab="servers"
+         ui-sref-active="currentNav"
+         ui-sref="app.admin.servers.list">Servers</a>
+      <a
+         mn-tab="replications"
+         ui-sref-active="currentNav"
+         ui-sref="app.admin.replications">XDCR</a>
+      <span
          mn-tab="security"
          ng-class="{currentNav: ('app.admin.security' | includedByState)}"
          ng-show="rbac.cluster.admin.security.read && (pools.isEnterprise || rbac.cluster.admin.security.write)">
@@ -103,26 +125,42 @@
         <a
            ui-sref="app.admin.security.rootCertificate"
            ng-show="pools.isEnterprise && !(adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.write === false">Security</a>
-      </li><!--
-   --><li
+      </span>
+      <a
+         mn-tab="settings"
+         ng-class="{currentNav: ('app.admin.settings' | includedByState)}"
+         ui-sref="app.admin.settings.cluster">Settings
+        <span
+           ng-show="adminCtl.updates.sendStats && !!adminCtl.updates.newVersion"
+           class="badge notify"><span>!</span></span>
+      </a>
+      <a
          mn-tab="logs"
+         ui-sref="app.admin.logs.list"
          ng-class="{currentNav: ('app.admin.logs' | includedByState)}"
-         ng-show="rbac.cluster.logs.read">
-        <a ui-sref="app.admin.logs.list">Log</a>
-      </li><!--
-   --><li mn-tab="settings" ng-class="{currentNav: ('app.admin.settings' | includedByState)}">
-        <a ui-sref="app.admin.settings.cluster">Settings
-          <span ng-show="adminCtl.updates.sendStats && !!adminCtl.updates.newVersion" class="badge">!</span>
-        </a>
-      </li>
-    </ul>
-  </div>
+         ng-show="rbac.cluster.logs.read">Logs</a>
 
-  <!-- all page content goes here -->
-  <div ui-view autoscroll="false">
+      <h5>data</h5>
+      <a
+         mn-tab="buckets"
+         ui-sref="app.admin.buckets"
+         ui-sref-active="currentNav">Buckets</a>
+      <a
+         mn-tab="indexes"
+         ng-class="{currentNav: ('app.admin.indexes' | includedByState)}"
+         ui-sref="app.admin.indexes.gsi">
+        <span
+           ui-sref="app.admin.indexes.gsi"
+           ng-show="rbac.cluster.indexes.read">Indexes</span>
+        <span
+           ui-sref="app.admin.indexes.views.list"
+           ng-show="rbac.cluster.indexes.read === false">Indexes</span>
+      </a>
+    </nav>
 
-  </div>
-
-  <footer>Copyright &copy; 2016 <a href="http://couchbase.com" target="_blank">Couchbase, Inc.</a> All rights reserved.</footer>
-
+    <!-- all page content goes here -->
+    <div ui-view="main" autoscroll="false" class="main-content"></div>
+  </main>
 </div>
+
+<footer>Copyright &copy; 2016 <a href="http://couchbase.com" target="_blank">Couchbase, Inc.</a> All rights reserved.</footer>

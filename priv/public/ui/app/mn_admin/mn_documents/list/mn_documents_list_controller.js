@@ -33,7 +33,7 @@
       vm.filterInitParams = {};
     }
     function lookupSubmit() {
-      vm.lookupId && $state.go('app.admin.documents.editing', {
+      vm.lookupId && $state.go('^.^.editing', {
         documentId: vm.lookupId
       });
     }
@@ -61,7 +61,7 @@
     }
     function onFilterClose(params) {
       params = removeEmptyValueFilter(params);
-      params && $state.go('app.admin.documents.control.list', {
+      params && $state.go('^.list', {
         documentsFilter: _.isEmpty(params) ? null : JSON.stringify(params)
       });
     }

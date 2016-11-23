@@ -32,7 +32,7 @@
              ui-sref-active="dynamic_selected"
              uib-tooltip="{{statInfo.desc}}"
              tooltip-placement="auto bottom">
-            <div ui-sref="app.admin.analytics.list.graph({graph: statInfo.name})">
+            <div ui-sref="{graph: statInfo.name}">
               <div style="background-color:#fff;border:1px solid #d1d1d1;display:table;margin:0 auto .5rem auto;">
               <div
                  mn-plot
@@ -43,8 +43,8 @@
             </div>
               <desc>{{statInfo.config.value}} {{statInfo.title}}</desc>
             </div>
-            <a class="text-smaller" ng-show="!analyticsCtl.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: '@' + analyticsCtl.nodes.nodesNames[1], specificStat: statInfo.name})">show by server</a>
-            <a class="text-smaller" ng-show="analyticsCtl.isSpecificStats" ui-sref="app.admin.analytics.list.graph({graph: 'ops', statsHostname: statInfo.name.slice(1), specificStat: null})">show this server</a>
+            <a class="text-smaller" ng-show="!analyticsCtl.isSpecificStats" ui-sref="{graph: '@' + analyticsCtl.nodes.nodesNames[1], specificStat: statInfo.name}">show by server</a>
+            <a class="text-smaller" ng-show="analyticsCtl.isSpecificStats" ui-sref="{graph: 'ops', statsHostname: statInfo.name.slice(1), specificStat: null}">show this server</a>
           </div>
         </div>
       </div>

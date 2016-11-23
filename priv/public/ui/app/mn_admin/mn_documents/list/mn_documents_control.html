@@ -1,9 +1,12 @@
-<div
-   class="interim alert alert-warning"
-   ng-show="documentsControlCtl.state.docs.errors[0]">
-  <p>Error: {{documentsControlCtl.state.docs.errors[0].reason}} ({{documentsControlCtl.state.docs.errors[0].error }})</p>
-</div>
-<div class="interim main-content">
+<mn-element-cargo depot="alerts">
+  <div
+     class="interim alert alert-warning"
+     ng-show="documentsControlCtl.state.docs.errors[0]">
+    <p>Error: {{documentsControlCtl.state.docs.errors[0].reason}} ({{documentsControlCtl.state.docs.errors[0].error }})</p>
+  </div>
+</mn-element-cargo>
+
+<div>
   <div class="row">
     <ui-select
        on-select="documentsCtl.onSelectBucketName($item)"

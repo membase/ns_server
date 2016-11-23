@@ -1,17 +1,12 @@
-<div
-   class="interim alert alert-warning"
-   ng-if="!viewsCtl.mnPoolDefault.value.isKvNode">
-  <p>The views interface is only available on nodes running the Data service. You may access the interface here: <a ng-href="{{::viewsCtl.getKvNodeLink()}}">{{::viewsCtl.getKvNodeLink()}}</a></p>
-</div>
-<div
-   class="interim alert alert-warning"
-   ng-show="adminCtl.lostConnState.isActivated">
-  <p>Difficulties communicating with the cluster; displaying cached information!</p>
-</div>
+<mn-element-cargo depot="alerts">
+  <div
+     class="interim alert alert-warning"
+     ng-if="!viewsCtl.mnPoolDefault.value.isKvNode">
+    <p>The views interface is only available on nodes running the Data service. You may access the interface here: <a ng-href="{{::viewsCtl.getKvNodeLink()}}">{{::viewsCtl.getKvNodeLink()}}</a></p>
+  </div>
+</mn-element-cargo>
 
-<div
-   ng-if="viewsCtl.mnPoolDefault.value.isKvNode"
-   class="margin-top-1 interim main-content">
+<div ng-if="viewsCtl.mnPoolDefault.value.isKvNode">
   <ui-select
      ng-model="viewsCtl.state.bucketsNames.selected"
      on-select="viewsCtl.onSelectBucket($item)"

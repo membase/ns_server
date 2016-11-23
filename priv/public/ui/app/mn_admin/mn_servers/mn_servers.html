@@ -1,29 +1,26 @@
-<div
-   class="interim alert alert-warning"
-   ng-repeat="warning in serversCtl.mnPoolDefault.value.failoverWarnings"
-   ng-show="warning && warning != 'failoverNeeded' && !poolDefault.rebalancing">
-  <p>Fail Over Warning: {{warning | formatFailoverWarnings}}</p>
-</div>
-<div
-   class="interim alert alert-warning"
-   ng-show="adminCtl.tasks.isLoadingSamples && rbac.cluster.tasks.read">
-  <p>Warning: Rebalance is not available until data loading is completed!</p>
-</div>
-<div
-   class="interim alert alert-warning"
-   ng-show="serversCtl.autoFailoverSettings.data.count > 0 && rbac.cluster.settings.read">
-  <p>A server was automatically failed over.</p>
-  <button
-     ng-show="rbac.cluster.settings.write"
-     ng-click="adminCtl.resetAutoFailOverCount()">Reset Quota</button>
-</div>
-<div
-   class="interim alert alert-warning"
-   ng-show="adminCtl.lostConnState.isActivated">
-  <p>Difficulties communicating with the cluster; displaying cached information!</p>
-</div>
+<mn-element-cargo depot="alerts">
+  <div
+     class="interim alert alert-warning"
+     ng-repeat="warning in serversCtl.mnPoolDefault.value.failoverWarnings"
+     ng-show="warning && warning != 'failoverNeeded' && !poolDefault.rebalancing">
+    <p>Fail Over Warning: {{warning | formatFailoverWarnings}}</p>
+  </div>
+  <div
+     class="interim alert alert-warning"
+     ng-show="adminCtl.tasks.isLoadingSamples && rbac.cluster.tasks.read">
+    <p>Warning: Rebalance is not available until data loading is completed!</p>
+  </div>
+  <div
+     class="interim alert alert-warning"
+     ng-show="serversCtl.autoFailoverSettings.data.count > 0 && rbac.cluster.settings.read">
+    <p>A server was automatically failed over.</p>
+    <button
+       ng-show="rbac.cluster.settings.write"
+       ng-click="adminCtl.resetAutoFailOverCount()">Reset Quota</button>
+  </div>
+</mn-element-cargo>
 
-<div class="interim main-content">
+<div>
   <div class="interim row">
     <span class="left pills">
       <a
@@ -41,7 +38,7 @@
     <span class="right">
       <button
          class="outline"
-         ui-sref="app.admin.groups"
+         ui-sref="app.admin.servers.list.groups"
          ng-show="poolDefault.isGroupsAvailable && poolDefault.isEnterprise && rbac.cluster.server_groups.read">Server Groups</button>
       <button
          ng-show="poolDefault && !poolDefault.rebalancing && rbac.cluster.nodes.write"

@@ -16,7 +16,8 @@
       'mnFilters',
       'mnTasksDetails',
       'angular-chartist',
-      'mnWarmupProgress'
+      'mnWarmupProgress',
+      'mnElementCrane'
     ])
     .controller('mnBucketsController', mnBucketsController);
 

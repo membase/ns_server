@@ -48,7 +48,7 @@
           });
         }
       },
-      template: '<div ui-view=""></div>' +
+      template: '<div ui-view="" class="root-container"></div>' +
         '<div ng-show="mnGlobalSpinnerFlag" class="global-spinner"></div>'
     });
 

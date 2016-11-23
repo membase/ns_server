@@ -1,23 +1,14 @@
-<div>
-  <div
-     class="interim alert alert-warning"
-     ng-show="adminCtl.lostConnState.isActivated">
-    <p>Difficulties communicating with the cluster; displaying cached information!</p>
-  </div>
-  <div
-     class="interim row flex-left sub-nav"
-     ng-show="rbac.cluster.admin.logs.read">
-    <span class="pills">
-      <a
-         ui-sref="app.admin.logs.list"
-         ui-sref-active="pills-selected">Logs</a>
-    </span>
-    <span class="pills">
-      <a
-         ui-sref="app.admin.logs.collectInfo.form"
-         ui-sref-active="pills-selected"
-         ng-class="{selected: ('app.admin.logs.collectInfo' | includedByState)}">Collect Information</a>
-    </span>
-  </div>
-</div>
-<div class="interim main-content" ui-view=""></div>
+<mn-element-cargo depot="subnav">
+  <nav
+  class="sub-nav"
+  ng-show="rbac.cluster.admin.logs.read">
+    <a
+       ui-sref="app.admin.logs.list"
+       ui-sref-active="selected">Logs</a>
+    <a
+       ui-sref="app.admin.logs.collectInfo.form"
+       ng-class="{'selected': ('app.admin.logs.collectInfo' | includedByState)}">Collect Information</a>
+  </nav>
+</mn-element-cargo>
+
+<div ui-view=""></div>

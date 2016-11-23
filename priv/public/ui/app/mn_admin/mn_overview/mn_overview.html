@@ -1,17 +1,20 @@
-<div
-   class="interim alert alert-warning"
-   ng-show="adminCtl.lostConnState.isActivated">
-  <p>Difficulties communicating with the cluster; displaying cached information!</p>
-</div>
-<div
-   uib-alert
-   ng-repeat="alert in overviewCtl.alerts"
-   type="{{alert.type}}"
-   close="overviewCtl.closeAlert($index)"
-   dismiss-on-timeout="{{alert.timeout}}">
-  {{alert.msg}}
-</div>
-<div class="interim main-content">
+<mn-element-cargo depot="alerts">
+  <div
+     uib-alert
+     ng-repeat="alert in overviewCtl.alerts"
+     type="{{alert.type}}"
+     close="overviewCtl.closeAlert($index)"
+     dismiss-on-timeout="{{alert.timeout}}">
+    {{alert.msg}}
+  </div>
+</mn-element-cargo>
+
+<mn-element-cargo depot="header">
+  {{overviewCtl.aboutState.implementationVersion | mnPrettyVersion}}
+  state ID: {{overviewCtl.aboutState.clusterStateId}}
+</mn-element-cargo>
+
+<div>
   <div class="margin-top1">
     <div class="interim row items-space-around content-box" style="font-size:1rem;padding:1rem;">
       <div class="text-center">

@@ -25,7 +25,7 @@
               })
               .closeOnSuccess()
               .onSuccess(function () {
-                $state.go('app.admin.documents.editing', {
+                $state.go('^.^.editing', {
                   documentId: newDocumentParams.documentId
                 });
               });

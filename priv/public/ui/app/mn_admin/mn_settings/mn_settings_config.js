@@ -15,7 +15,8 @@
       'mnSettingsNotificationsService',
       'mnInternalRoles',
       'ui.router',
-      'mnPluggableUiRegistry'
+      'mnPluggableUiRegistry',
+      'mnElementCrane'
     ])
     .config(mnSettingsConfig);
 
@@ -25,8 +26,15 @@
       .state('app.admin.settings', {
         url: '/settings',
         abstract: true,
-        templateUrl: 'app/mn_admin/mn_settings/mn_settings.html',
-        controller: 'mnSettingsController as settingsCtl'
+        views: {
+          "main@app.admin": {
+            templateUrl: 'app/mn_admin/mn_settings/mn_settings.html',
+            controller: 'mnSettingsController as settingsCtl'
+          }
+        },
+        data: {
+          title: "Settings"
+        }
       })
       .state('app.admin.settings.cluster', {
         url: '/cluster',

@@ -27,19 +27,19 @@
       return isEmptyState() || vm.state.isNextDisabled;
     }
     function nextPage() {
-      $state.go('app.admin.documents.control.list', {
+      $state.go('^.list', {
         pageNumber: vm.state.pageNumber + 1
       });
     }
     function prevPage() {
       var prevPage = vm.state.pageNumber - 1;
       prevPage = prevPage < 0 ? 0 : prevPage;
-      $state.go('app.admin.documents.control.list', {
+      $state.go('^.list', {
         pageNumber: prevPage
       });
     }
     function onSelectPageLimits(pageLimit) {
-      $state.go('app.admin.documents.control.list', {
+      $state.go('^.list', {
         pageLimit: pageLimit
       });
     }

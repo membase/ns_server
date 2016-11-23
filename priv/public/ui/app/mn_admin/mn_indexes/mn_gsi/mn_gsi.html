@@ -1,15 +1,13 @@
+<mn-element-cargo depot="alerts">
+  <div
+     class="interim alert alert-warning"
+     ng-repeat="message in gsiCtl.state.warnings">
+    <p>Warning: {{message}}</p>
+  </div>
+</mn-element-cargo>
+
+
 <div
-   class="interim alert alert-warning"
-   ng-repeat="message in gsiCtl.state.warnings">
-  <p>Warning: {{message}}</p>
-</div>
-<div
-   class="interim alert alert-warning"
-   ng-show="adminCtl.lostConnState.isActivated">
-  <p>Difficulties communicating with the cluster; displaying cached information!</p>
-</div>
-<div
-   class="interim main-content"
    ng-if="rbac.cluster.indexes.read"
    mn-spinner="!gsiCtl.state">
   <table

@@ -2,11 +2,11 @@
   <div class="interim row margin-top1">
     <span class="pills">
       <a
-         ui-sref="app.admin.indexes.views.list({ type: 'development' })"
+         ui-sref="{ type: 'development' }"
          ui-sref-active="pills-selected">Development Views</a>
 
       <a
-         ui-sref="app.admin.indexes.views.list({ type: 'production' })"
+         ui-sref="{ type: 'production' }"
          ui-sref-active="pills-selected">Production Views</a>
       <span
          class="label red badge"
@@ -102,7 +102,7 @@
            class="has-hover"
            ng-if="!('isEmpty' | lodash:row.doc.json.views)"
            ng-repeat="(key, view) in row.doc.json.views"
-           ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">
+           ui-sref=".editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">
           <td
              colspan="3"
              class="padding-left-2 break-all">
@@ -116,7 +116,7 @@
             <button
                ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write"
                ng-click="$event.stopPropagation()"
-               ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">{{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}</button>
+               ui-sref=".editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">{{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}</button>
           </td>
         </tr>
 
@@ -125,7 +125,7 @@
            ng-repeat-end=""
            ng-if="!('isEmpty' | lodash:row.doc.json.spatial)"
            ng-repeat="(key, spatial) in row.doc.json.spatial"
-           ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">
+           ui-sref=".editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">
           <td
              class="ellipsis padding-left-2"
              colspan="3">
@@ -139,7 +139,7 @@
             <button
                ng-click="$event.stopPropagation()"
                ng-show="rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.read"
-               ui-sref="app.admin.indexes.views.editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">{{viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write ? 'Edit' : 'Show' }}</button>
+               ui-sref=".editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">{{viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.write ? 'Edit' : 'Show' }}</button>
           </td>
         </tr>
       </tbody>

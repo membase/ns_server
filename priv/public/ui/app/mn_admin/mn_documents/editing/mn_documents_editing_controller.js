@@ -63,7 +63,7 @@
           }
         }
       }).result.then(function () {
-        $state.go("app.admin.documents.control.list");
+        $state.go("^.control.list");
       });
     }
     function saveAsDialog() {
@@ -76,7 +76,7 @@
           }
         }
       }).result.then(function (resp) {
-        $state.go("app.admin.documents.editing", {
+        $state.go("^.editing", {
           documentId: resp.documentId
         });
       })

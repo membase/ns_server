@@ -13,7 +13,8 @@
       "ui.codemirror",
       "mnSpinner",
       "ngMessages",
-      "mnPoll"
+      "mnPoll",
+      "mnElementCrane"
     ])
     .controller("mnDocumentsController", mnDocumentsController);
 
@@ -25,7 +26,7 @@
     activate();
 
     function onSelectBucketName(selectedBucket) {
-      $state.go('app.admin.documents.control.list', {
+      $state.go('^.list', {
         bucket: selectedBucket,
         pageNumber: 0
       });

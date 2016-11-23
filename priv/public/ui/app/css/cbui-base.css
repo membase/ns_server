@@ -252,10 +252,6 @@ button {
 
 .icon {
   font-family: FontAwesome;
-  font-size: 18px;
-  padding: 0 0 0 4px;
-  position: relative;
-  top: 1px;
 }
 button.icon {
     min-width: auto;
@@ -332,8 +328,11 @@ button.icon {
 h1 {
   font-size: 2rem;
   font-weight: 400;
-  line-height: 1;
+  line-height: 1.1;
   color: #fff;
+  display:-webkit-box;
+  display:-ms-flexbox;
+  display:flex;
 }
 
 /* 20px modal dialog title */

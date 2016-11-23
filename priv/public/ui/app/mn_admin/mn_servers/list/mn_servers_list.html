@@ -76,7 +76,7 @@
                title="{{'View Analytics for ' + node.hostname}}"
                class="link-heavy"
                ng-click="$event.stopPropagation()"
-               ui-sref="app.admin.analytics.list.graph({statsHostname: node.hostname})">
+               ui-sref="app.admin.servers.list.analytics.list.graph({statsHostname: node.hostname})">
               {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
             </a>
           </span>

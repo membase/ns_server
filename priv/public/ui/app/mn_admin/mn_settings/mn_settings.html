@@ -1,50 +1,44 @@
-<div
-   class="interim row flex-left sub-nav"
-   mn-pluggable-ui-tabs
-   mn-tab-bar-name="settingsTab">
-  <span class="pills">
+<mn-element-cargo depot="subnav">
+  <nav
+     class="sub-nav"
+     mn-pluggable-ui-tabs
+     mn-tab-bar-name="settingsTab">
     <a
        id="settings_cluster"
        ui-sref="app.admin.settings.cluster"
-       ui-sref-active="pills-selected">
-      Cluster
-    </a><a
-           id="settings_update_notifications"
-           ui-sref="app.admin.settings.notifications"
-           ui-sref-active="pills-selected"
-           class="casper_settings_update_notifications"
-           ng-show="rbac.cluster.settings.read">
-      Software Updates
-    </a><a
-           id="settings_auto_failover"
-           class="casper_settings_auto_failover"
-           ng-show="rbac.cluster.settings.read"
-           ui-sref="app.admin.settings.autoFailover"
-           ui-sref-active="pills-selected">
-      Auto-Failover
-    </a><a
-           id="settings_alerts"
-           class="casper_settings_alerts"
-           ng-show="rbac.cluster.settings.read"
-           ui-sref="app.admin.settings.alerts"
-           ui-sref-active="pills-selected">
-      Email Alerts
-    </a><a
-           id="settings_compaction"
-           class="casper_settings_compaction"
-           ng-show="rbac.cluster.settings.read"
-           ui-sref="app.admin.settings.autoCompaction"
-           ui-sref-active="pills-selected">
-      Auto-Compaction
-    </a><a
-           id="settings_sample_buckets"
-           class="casper_settings_sample_buckets"
-           ng-show="rbac.cluster.samples.read"
-           ui-sref="app.admin.settings.sampleBuckets"
-           ui-sref-active="pills-selected">
-      Sample Buckets
-    </a>
-  </span>
-</div>
+       ui-sref-active="selected">Cluster</a>
+    <a
+       id="settings_update_notifications"
+       ui-sref="app.admin.settings.notifications"
+       ui-sref-active="selected"
+       class="casper_settings_update_notifications"
+       ng-show="rbac.cluster.settings.read">Software Updates</a>
+    <a
+       id="settings_auto_failover"
+       class="casper_settings_auto_failover"
+       ng-show="rbac.cluster.settings.read"
+       ui-sref="app.admin.settings.autoFailover"
+       ui-sref-active="selected">Auto-Failover</a>
+    <a
+       id="settings_alerts"
+       class="casper_settings_alerts"
+       ng-show="rbac.cluster.settings.read"
+       ui-sref="app.admin.settings.alerts"
+       ui-sref-active="selected">Email Alerts</a>
+    <a
+       id="settings_compaction"
+       class="casper_settings_compaction"
+       ng-show="rbac.cluster.settings.read"
+       ui-sref="app.admin.settings.autoCompaction"
+       ui-sref-active="selected">Auto-Compaction</a>
+    <a
+       id="settings_sample_buckets"
+       class="casper_settings_sample_buckets"
+       ng-show="rbac.cluster.samples.read"
+       ui-sref="app.admin.settings.sampleBuckets"
+       ui-sref-active="selected">Sample Buckets</a>
+  </nav>
+</mn-element-cargo>
+
 <div ui-view="">
 </div>

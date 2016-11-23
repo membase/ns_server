@@ -48,7 +48,7 @@
     vm.activate = activate;
 
     if ($state.params.activate) {
-      $state.go('app.admin.indexes.views.editing.result', {
+      $state.go('^.result', {
         activate: false
       });
       activate();
@@ -66,7 +66,7 @@
     }
 
     function nextPage() {
-      $state.go('app.admin.indexes.views.editing.result', {
+      $state.go('^.result', {
         pageNumber: $state.params.pageNumber + 1,
         activate: true
       });
@@ -74,13 +74,13 @@
     function prevPage() {
       var prevPage = $state.params.pageNumber - 1;
       prevPage = prevPage < 0 ? 0 : prevPage;
-      $state.go('app.admin.indexes.views.editing.result', {
+      $state.go('^.result', {
         pageNumber: prevPage,
         activate: true
       });
     }
     function loadSampleDocument(id) {
-      $state.go('app.admin.indexes.views.editing.result', {
+      $state.go('^.result', {
         sampleDocumentId: id
       });
     }
@@ -100,7 +100,7 @@
       if (params.descending === false) {
         delete params.descending;
       }
-      $state.go('app.admin.indexes.views.editing.result', {
+      $state.go('^.result', {
         viewsParams: JSON.stringify(params)
       });
       $scope.viewsEditingCtl.isFilterOpened = false;

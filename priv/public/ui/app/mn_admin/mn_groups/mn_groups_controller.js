@@ -12,7 +12,8 @@
       'ui.bootstrap',
       'mnFilters',
       'mnAlertsService',
-      'mnPoolDefault'
+      'mnPoolDefault',
+      'mnElementCrane'
     ])
     .controller('mnGroupsController', mnGroupsController);
 

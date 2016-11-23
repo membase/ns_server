@@ -30,7 +30,7 @@
         return mnPromiseHelper(vm, mnViewsListService.createDdoc(url, ddoc.json), $uibModalInstance)
           .closeOnSuccess()
           .onSuccess(function () {
-            $state.go('app.admin.indexes.views.list', {
+            $state.go('^.list', {
               type: 'development'
             });
           })

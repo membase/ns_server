@@ -1,11 +1,5 @@
 <div>
-  <div class="margin-bottom1">
-    <a
-       ui-sref="app.admin.indexes.views.list"
-       class="link-heavy">&lt back to Views</a>
-  </div>
   <div ng-class="{fiter_opened: viewsEditingCtl.isFilterOpened}">
-
     <div ng-show="rbac.cluster.bucket[viewsEditingCtl.currentBucketName].data.read">
       <div ng-click="viewsEditingCtl.toggleSampleDocument()">
         <div class="interim row">

@@ -1,6 +1,5 @@
 <div
-   mn-spinner="settingsClusterCtl.clusterName === undefined || !settingsClusterCtl.memoryQuotaConfig || (rbac.cluster.indexes.read && poolDefault.compat.atLeast40 && !settingsClusterCtl.indexSettings) || (poolDefault.value.isEnterprise && !settingsClusterCtl.certificate)"
-   class="interim main-content">
+   mn-spinner="settingsClusterCtl.clusterName === undefined || !settingsClusterCtl.memoryQuotaConfig || (rbac.cluster.indexes.read && poolDefault.compat.atLeast40 && !settingsClusterCtl.indexSettings) || (poolDefault.value.isEnterprise && !settingsClusterCtl.certificate)">
   <form
      ng-submit="settingsClusterCtl.saveVisualInternalSettings()"
      class="forms">

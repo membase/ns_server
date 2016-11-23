@@ -2,7 +2,11 @@
   "use strict";
 
   angular
-    .module("mnSettingsSampleBuckets", ["mnSettingsSampleBucketsService", "mnPromiseHelper"])
+    .module("mnSettingsSampleBuckets", [
+      "mnSettingsSampleBucketsService",
+      "mnPromiseHelper",
+      "mnElementCrane"
+    ])
     .controller("mnSettingsSampleBucketsController", mnSettingsSampleBucketsController);
 
   function mnSettingsSampleBucketsController($scope, mnSettingsSampleBucketsService, mnPromiseHelper) {

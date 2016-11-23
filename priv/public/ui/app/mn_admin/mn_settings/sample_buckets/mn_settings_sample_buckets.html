@@ -1,18 +1,20 @@
-<div
-   ng-messages="settingsSampleBucketsCtl.state.warnings"
-   ng-message-multiple>
+<mn-element-cargo depot="alerts">
   <div
-     ng-message="quota"
-     class="alert alert-warning"><p>Insufficient RAM quota available to add the selected sample data. Please free up at least {{settingsSampleBucketsCtl.state.warnings.quota}}mb of RAM quota in <a ui-sref="app.admin.settings.cluster">cluster settings</a>.</p></div>
-  <div
-     ng-message="rebalance"
-     class="alert alert-warning"><p>Can not load samples during rebalance.</p></div>
-  <div
-     ng-message="maxBucketCount"
-     class="alert alert-warning"><p>Maximum number of buckets has been reached. For optimal performance, no more than {{settingsSampleBucketsCtl.state.warnings.maxBucketCount}} buckets are allowed.</p></div>
-</div>
+     ng-messages="settingsSampleBucketsCtl.state.warnings"
+     ng-message-multiple>
+    <div
+       ng-message="quota"
+       class="alert alert-warning"><p>Insufficient RAM quota available to add the selected sample data. Please free up at least {{settingsSampleBucketsCtl.state.warnings.quota}}mb of RAM quota in <a ui-sref="app.admin.settings.cluster">cluster settings</a>.</p></div>
+    <div
+       ng-message="rebalance"
+       class="alert alert-warning"><p>Can not load samples during rebalance.</p></div>
+    <div
+       ng-message="maxBucketCount"
+       class="alert alert-warning"><p>Maximum number of buckets has been reached. For optimal performance, no more than {{settingsSampleBucketsCtl.state.warnings.maxBucketCount}} buckets are allowed.</p></div>
+  </div>
+</mn-element-cargo>
 
-<div class="interim main-content">
+<div>
   <form
      class="forms"
      ng-submit="settingsSampleBucketsCtl.installSampleBuckets()"

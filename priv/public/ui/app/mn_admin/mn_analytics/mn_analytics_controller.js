@@ -57,12 +57,12 @@
       .cycle();
     }
     function onSelectBucket(selectedBucket) {
-      $state.go('app.admin.analytics.list.graph', {
+      $state.go('^.graph', {
         bucket: selectedBucket
       });
     }
     function onSelectNode(selectedHostname) {
-      $state.go('app.admin.analytics.list.graph', {
+      $state.go('^.graph', {
         statsHostname: selectedHostname.indexOf("All Server Nodes") > -1 ? undefined : selectedHostname
       });
     }
