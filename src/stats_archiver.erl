@@ -159,7 +159,9 @@ init(Bucket) ->
     start_cascade_timers(Archives),
     timer2:send_after(random:uniform(?BACKUP_INTERVAL), backup),
 
-    ns_pubsub:subscribe_link(ns_stats_event),
+    ns_pubsub:subscribe_link(ns_stats_event,
+                             fun stats_event_handler/2,
+                             {self(), Bucket}),
     process_flag(trap_exit, true),
     {ok, #state{bucket=Bucket}}.
 
@@ -174,13 +176,13 @@ handle_cast(_Msg, State) ->
 handle_info(init, State) ->
     create_tables(State#state.bucket),
     {noreply, State};
-handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
+handle_info({stats, Bucket, Sample}, State) ->
+    true = (Bucket =:= State#state.bucket),
+
     Tab = table(Bucket, minute),
     #stat_entry{timestamp=TS} = Sample,
     ets:insert(Tab, {TS, Sample}),
     gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
-    {noreply, State};
-handle_info({sample_archived, _, _}, State) ->
     {noreply, State};
 handle_info({truncate, Period, N} = Msg, #state{bucket=Bucket} = State) ->
     flush(Msg),
@@ -348,3 +350,13 @@ flush(Msg) ->
         false ->
             ok
     end.
+
+stats_event_handler(Event, {Parent, Bucket} = State) ->
+    case Event of
+        {stats, EventBucket, _}
+          when EventBucket =:= Bucket ->
+            Parent ! Event;
+        _ ->
+            ok
+    end,
+    State.
