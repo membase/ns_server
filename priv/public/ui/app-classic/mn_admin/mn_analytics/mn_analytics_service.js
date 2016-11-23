@@ -91,7 +91,7 @@
     function doGetStats(params, mnHttpParams) {
       var reqParams = {
         zoom: params.$stateParams.zoom,
-        bucket: params.$stateParams.bucket
+        bucket: params.$stateParams.analyticsBucket
       };
       if (params.$stateParams.specificStat) {
         reqParams.statName = params.$stateParams.specificStat;

@@ -42,13 +42,13 @@
       if (params.documentId.slice(0, "_local/".length) === "_local/") {
         params.documentId = "_local/" + encodeURIComponent(params.documentId.slice("_local/".length));
       }
-      return encodeURIComponent(params.bucket) + "/" + params.documentId + (params.isSpatial ? "/_spatial/" : "/_view/") + encodeURIComponent(params.viewId);
+      return encodeURIComponent(params.viewsBucket) + "/" + params.documentId + (params.isSpatial ? "/_spatial/" : "/_view/") + encodeURIComponent(params.viewId);
     }
 
-    function getRandomKey(bucket) {
+    function getRandomKey(viewsBucket) {
       return $http({
         method: "GET",
-        url: "/pools/default/buckets/" + encodeURIComponent(bucket) + "/localRandomKey"
+        url: "/pools/default/buckets/" + encodeURIComponent(viewsBucket) + "/localRandomKey"
       });
     }
     function getFilterParamsAsString(params) {
@@ -148,18 +148,18 @@
     function prepareRandomDocument(params) {
       return params.sampleDocumentId ? getSampleDocument({
         documentId: params.sampleDocumentId,
-        bucket: params.bucket
-      }) : getRandomKey(params.bucket).then(function (resp) {
+        documentsBucket: params.viewsBucket
+      }) : getRandomKey(params.viewsBucket).then(function (resp) {
         return getSampleDocument({
           documentId: resp.data.key,
-          bucket: params.bucket
+          documentsBucket: params.viewsBucket
         });
       }, function (resp) {
         switch(resp.status) {
           case 404:
             if (resp.data.error === "fallback_to_all_docs") {
               return mnDocumentsListService.getDocuments({
-                bucket: params.bucket,
+                documentsBucket: params.viewsBucket,
                 pageNumber: 0,
                 pageLimit: 1
               }).then(function (resp) {
@@ -191,7 +191,7 @@
     }
 
     function prepareViewsSelectbox(params) {
-      return mnViewsListService.getDdocsByType(params.bucket).then(function (ddocs) {
+      return mnViewsListService.getDdocsByType(params.viewsBucket).then(function (ddocs) {
         var rv = {};
         if (ddocs.rows && ddocs.rows.length) {
           var viewsNames = [];
@@ -230,7 +230,7 @@
             rv.currentDocument = _.find(rv.ddocs.rows, function (row) {
               return row.doc.meta.id === params.documentId;
             });
-            if (mnPermissions.export.cluster.bucket[params.bucket].data.read) {
+            if (mnPermissions.export.cluster.bucket[params.viewsBucket].data.read) {
               return prepareRandomDocument(params).then(function (randomDoc) {
                 rv.sampleDocument = randomDoc;
                 return rv;

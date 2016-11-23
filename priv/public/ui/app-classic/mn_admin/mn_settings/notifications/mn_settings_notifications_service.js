@@ -241,7 +241,7 @@ angular.module('mnSettingsNotificationsService', [
           var statsParams = {
             $stateParams: {
               zoom: "week",
-              bucket: bucket.name
+              analyticsBucket: bucket.name
             }
           };
           perBucketQueries.push($q.all([

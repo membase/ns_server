@@ -18,7 +18,7 @@
       return mnBucketsService.getBucketsByType().then(function (buckets) {
         var rv = {};
         rv.bucketsNames = buckets.byType.membase.names;
-        rv.bucketsNames.selected = params.bucket;
+        rv.bucketsNames.selected = params.documentsBucket;
         return rv;
       });
     }
@@ -81,7 +81,7 @@
 
       return $http({
         method: "GET",
-        url: "/pools/default/buckets/" + encodeURIComponent(params.bucket) + "/docs",
+        url: "/pools/default/buckets/" + encodeURIComponent(params.documentsBucket) + "/docs",
         params: param
       });
     }

@@ -71,7 +71,7 @@
       return mnBucketsService.getBucketsByType(fromCache).then(function (buckets) {
         var rv = {};
         rv.bucketsNames = buckets.byType.membase.names;
-        rv.bucketsNames.selected = params.bucket || buckets.byType.membase.defaultName
+        rv.bucketsNames.selected = params.viewsBucket || buckets.byType.membase.defaultName
         return rv;
       });
     }
@@ -89,13 +89,13 @@
       var hostnameAndPort = kvNode.hostname.split(':');
       var protocol = $window.location.protocol;
       var kvNodeLink = protocol + "//" + (protocol === "https:" ? hostnameAndPort[0] + ":" + kvNode.ports.httpsMgmt : kvNode.hostname);
-      kvNodeLink += "#/views?bucket=default&type=development";
+      kvNodeLink += "#/views?viewsBucket=default&type=development";
       return kvNodeLink;
     }
-    function getDdocs(bucket, mnHttpParams) {
+    function getDdocs(viewsBucket, mnHttpParams) {
       return $http({
         method: "GET",
-        url: '/pools/default/buckets/' + encodeURIComponent(bucket) + '/ddocs',
+        url: '/pools/default/buckets/' + encodeURIComponent(viewsBucket) + '/ddocs',
         mnHttp: mnHttpParams
       });
     }
@@ -104,8 +104,8 @@
       return id.substring(0, devPrefix.length) == devPrefix;
     }
 
-    function getDdocsByType(bucket) {
-      return getDdocs(bucket).then(function (resp) {
+    function getDdocsByType(viewsBucket) {
+      return getDdocs(viewsBucket).then(function (resp) {
         var ddocs = resp.data;
         ddocs.development = _.filter(ddocs.rows, function (row) {
           return isDevModeDoc(row.doc.meta.id);
@@ -136,7 +136,7 @@
         };
 
         _.each(tasks.tasks, function (taskInfo) {
-          if ((taskInfo.type !== 'indexer' && taskInfo.type !== 'view_compaction') || taskInfo.bucket !== params.bucket) {
+          if ((taskInfo.type !== 'indexer' && taskInfo.type !== 'view_compaction') || taskInfo.bucket !== params.viewsBucket) {
             return;
           }
           var ddoc = taskInfo.designDocument;
@@ -152,8 +152,8 @@
       });
     }
     function getViewsListState(params) {
-      if (params.bucket) {
-        return getDdocsByType(params.bucket);
+      if (params.viewsBucket) {
+        return getDdocsByType(params.viewsBucket);
       } else {
         return getEmptyViewsState();
       }
