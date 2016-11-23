@@ -182,11 +182,13 @@ handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
     {noreply, State};
 handle_info({sample_archived, _, _}, State) ->
     {noreply, State};
-handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
+handle_info({truncate, Period, N} = Msg, #state{bucket=Bucket} = State) ->
+    flush(Msg),
     Tab = table(Bucket, Period),
     truncate_logger(Tab, N),
     {noreply, State};
-handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
+handle_info({cascade, Prev, Period, Step} = Msg, #state{bucket=Bucket} = State) ->
+    flush(Msg),
     cascade_logger(Bucket, Prev, Period, Step),
     {noreply, State};
 handle_info(backup, #state{bucket=Bucket} = State) ->
@@ -337,3 +339,12 @@ fmt(Str, Args)  ->
 
 stats_dir() ->
     path_config:component_path(data, "stats").
+
+flush(Msg) ->
+    N = misc:flush(Msg),
+    case N =/= 0 of
+        true ->
+            ?log_warning("Dropped ~b ~p messages", [N, Msg]);
+        false ->
+            ok
+    end.
