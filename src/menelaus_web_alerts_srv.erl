@@ -142,7 +142,12 @@ handle_call({consume_alerts, PassedCounter}, _From, #state{change_counter = Coun
     {reply, NewState =/= State, NewState};
 
 handle_call(fetch_alert, _From, #state{queue=Msgs, change_counter=Counter}=State) ->
-    Alerts = [Msg || {_Key, Msg, _Time} <- Msgs],
+    Alerts = [{struct, [{msg, Msg},
+                        {serverTime,
+                         menelaus_util:format_server_time(
+                           calendar:now_to_local_time(
+                             misc:epoch_to_time(Time * 1000 * 1000000)), 0)}]}
+              || {_Key, Msg, Time} <- Msgs],
     {reply, {lists:reverse(Alerts), list_to_binary(integer_to_list(Counter))}, State};
 
 handle_call({add_alert, Key, Val}, _, #state{queue=Msgs, history=Hist, change_counter=Counter}=State) ->

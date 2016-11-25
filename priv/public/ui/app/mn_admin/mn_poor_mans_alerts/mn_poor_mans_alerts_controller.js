@@ -18,8 +18,7 @@
     function onClose() {
       mnPromiseHelper(vm, mnPoorMansAlertsService.postAlertsSilenceURL(alertsSilenceURL), $uibModalInstance)
         .showErrorsSensitiveSpinner()
-        .closeOnSuccess()
-        .reloadState();
+        .closeOnSuccess();
     }
   }
 })();

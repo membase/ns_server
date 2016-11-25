@@ -6,7 +6,7 @@
      class="panel-content"
      mn-spinner="poorMansCtl.viewLoading">
     <span ng-repeat="alert in poorMansCtl.alerts">
-      <strong>[{{alert[0] | date:'mediumTime'}}]</strong> - {{alert[1]}} <br>
+      <strong>[{{alert.serverTime | date:'mediumTime':'UTC'}}]</strong> - {{alert.msg}} <br>
     </span>
   </div>
   <div class="panel-footer">

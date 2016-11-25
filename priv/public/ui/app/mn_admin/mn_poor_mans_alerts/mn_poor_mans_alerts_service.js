@@ -34,7 +34,7 @@
       if ($state.params.disablePoorMansAlerts) {
         return;
       }
-      alerts = getStampedAlerts(poolDefault.alerts);
+      alerts = poolDefault.alerts;
       if (!alerts.length) {
         return;
       }
@@ -58,30 +58,9 @@
         controller: "mnPoorMansAlertsController as poorMansCtl",
         resolve: {
           alertsSilenceURL: mnHelper.wrapInFunction(alertsSilenceURL),
-          alerts: mnHelper.wrapInFunction(alerts)
+          alerts: mnHelper.wrapInFunction(_.clone(alerts, true))
         }
       });
-    }
-
-    function getStampedAlerts(newRawAlerts) {
-      var oldStampedAlerts = alerts;
-      if (!newRawAlerts) {
-        return oldStampedAlerts;
-      }
-      var i;
-      if (oldStampedAlerts.length > newRawAlerts.length) {
-        oldStampedAlerts = [];
-      }
-      for (i = 0; i < oldStampedAlerts.length; i++) {
-        if (oldStampedAlerts[i][1] != newRawAlerts[i]) {
-          break;
-        }
-      }
-      var rv = (i == oldStampedAlerts.length) ? _.clone(oldStampedAlerts) : [];
-      _.each(newRawAlerts.slice(rv.length), function (msg) {
-        rv.push([new Date(), msg]);
-      });
-      return rv;
     }
   }
 })();
