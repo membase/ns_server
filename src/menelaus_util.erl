@@ -511,9 +511,9 @@ ensure_local(Req) ->
             erlang:throw({web_exception, 400, <<"API is accessible from localhost only">>, []})
     end.
 
-reply_global_error(Req, Error) when is_list(Error) ->
+reply_global_error(Req, Error) ->
     reply_error(Req, "_", Error).
 
-reply_error(Req, Field, Error) when is_list(Error), is_list(Field) ->
+reply_error(Req, Field, Error) ->
     menelaus_util:reply_json(
-      Req, {struct, [{errors, {struct, [{list_to_binary(Field), list_to_binary(Error)}]}}]}, 400).
+      Req, {struct, [{errors, {struct, [{iolist_to_binary([Field]), iolist_to_binary([Error])}]}}]}, 400).
