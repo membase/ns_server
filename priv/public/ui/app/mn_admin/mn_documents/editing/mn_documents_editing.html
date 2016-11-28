@@ -36,11 +36,20 @@
            ng-click="documentsEditingCtl.save()">Save</button>
       </div>
     </div>
-    <div mn-spinner="documentsEditingCtl.viewLoading || !documentsEditingCtl.state">
+    <div
+       class="interim row items-top padded text-small"
+       mn-spinner="documentsEditingCtl.viewLoading || !documentsEditingCtl.state">
       <div
+         class="width-8 column"
          spellcheck="false"
          ng-model="documentsEditingCtl.state.doc"
          ui-codemirror="documentsEditingCtl.editorOptions"
+         ></div>
+      <div
+         class="width-4"
+         spellcheck="false"
+         ng-model="documentsEditingCtl.state.meta"
+         ui-codemirror="documentsEditingCtl.metaOptions"
          ></div>
     </div>
   </div>

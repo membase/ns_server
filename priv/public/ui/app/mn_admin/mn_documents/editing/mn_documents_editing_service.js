@@ -33,6 +33,7 @@
           rv.editorWarnings = editorWarnings;
         } else {
           rv.doc = JSON.stringify(doc.json, null, "  ");
+          rv.meta = JSON.stringify(doc.meta, null, "  ");
         }
         return rv;
       }, function (resp) {

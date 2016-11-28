@@ -7,7 +7,7 @@
 
   function mnDocumentsEditingController($scope, $state, $uibModal, mnDocumentsEditingService, mnPromiseHelper) {
     var vm = this;
-    var editorOptions = {
+    var codemirrorOptions = {
       lineNumbers: true,
       matchBrackets: false,
       tabSize: 2,
@@ -15,11 +15,20 @@
         name: "javascript",
         json: true
       },
-      theme: 'default',
-      readOnly: 'nocursor',
-      onLoad: codemirrorLoaded
+      theme: 'default'
     };
+
+    var metaOptions = _.clone(codemirrorOptions);
+    metaOptions.readOnly = true;
+    metaOptions.lineWrapping = true;
+
+    var editorOptions = _.clone(codemirrorOptions);
+    editorOptions.readOnly = 'nocursor';
+    editorOptions.onLoad = codemirrorLoaded;
+
     vm.editorOptions = editorOptions;
+    vm.metaOptions = metaOptions;
+
     vm.isDeleteDisabled = isDeleteDisabled;
     vm.isSaveAsDisabled = isSaveAsDisabled;
     vm.isSaveDisabled = isSaveDisabled;
