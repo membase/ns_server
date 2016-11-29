@@ -7,6 +7,8 @@
          restart_xdcr_proxy/0, sync/0, create_erl_node_spec/4,
          create_goxdcr_upgrade_spec/1, shutdown_ports/0]).
 
+-export([run_cbsasladm/1]).
+
 start() ->
     proc_lib:start_link(?MODULE, setup_body_tramp, []).
 
@@ -661,3 +663,13 @@ example_service_spec(Config) ->
         false ->
             []
     end.
+
+run_cbsasladm(Iterations) ->
+    [{cbsasladm, Cmd, [], Opts}] =
+        run_via_goport(fun (_) ->
+                               [{cbsasladm, find_executable("cbsasladm"),
+                                 ["-i", integer_to_list(Iterations), "pwconv", "-", "-"],
+                                 [use_stdio, exit_status, stream]}]
+                       end, undefined),
+    Opts1 = [{args, ["-graceful-shutdown", "-proxy-stdin"]} | Opts],
+    open_port({spawn_executable, Cmd}, Opts1).

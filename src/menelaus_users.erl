@@ -37,23 +37,26 @@ get_users(Config) ->
 
 build_auth(_Identity, undefined, _Users) ->
     [];
-build_auth(Identity, Password, Users) ->
+build_auth({User, _} = Identity, Password, Users) ->
     case proplists:get_value(Identity, Users) of
         undefined ->
-            [{authentication, build_auth(Password)}];
+            [{authentication, build_auth(User, Password)}];
         Props ->
             Auth = get_auth_info(Props),
             {Salt, Mac} = get_salt_and_mac(Auth),
-            case ns_config_auth:hash_password(Salt, Password) of
-                Mac ->
+            case get_memcached_auth(Auth) =:= undefined orelse
+                ns_config_auth:hash_password(Salt, Password) =/= Mac of
+                false ->
                     [{authentication, Auth}];
-                _ ->
-                    [{authentication, build_auth(Password)}]
+                true ->
+                    [{authentication, build_auth(User, Password)}]
             end
     end.
 
-build_auth(Password) ->
-    [{ns_server, ns_config_auth:hash_password(Password)}].
+build_auth(User, Password) ->
+    [MemcachedAuth] = get_memcached_auth_info([{User, Password}]),
+    [{ns_server, ns_config_auth:hash_password(Password)},
+     {memcached, MemcachedAuth}].
 
 -spec store_user(rbac_identity(), rbac_user_name(), rbac_password(), [rbac_role()]) -> run_txn_return().
 store_user(Identity, Name, Password, Roles) ->
@@ -100,6 +103,9 @@ get_auth_info(Props) ->
 get_salt_and_mac(Auth) ->
     proplists:get_value(ns_server, Auth).
 
+get_memcached_auth(Auth) ->
+    proplists:get_value(memcached, Auth).
+
 -spec authenticate(rbac_user_id(), rbac_password()) -> boolean().
 authenticate(Username, Password) ->
     Users = get_users(ns_config:latest()),
@@ -126,6 +132,27 @@ get_roles(Config, Identity) ->
 get_user_name(Config, Identity) ->
     Props = ns_config:search_prop(Config, user_roles, Identity, []),
     proplists:get_value(name, Props).
+
+collect_result(Port, Acc) ->
+    receive
+        {Port, {exit_status, Status}} ->
+            {Status, lists:flatten(lists:reverse(Acc))};
+        {Port, {data, Msg}} ->
+            collect_result(Port, [Msg | Acc])
+    end.
+
+get_memcached_auth_info(UserPasswords) ->
+    Iterations = ns_config:read_key_fast(memcached_password_hash_iterations, 4000),
+    Port = ns_ports_setup:run_cbsasladm(Iterations),
+    lists:foreach(
+      fun ({User, Password}) ->
+              PasswordStr = User ++ " " ++ Password ++ "\n",
+              Port ! {self(), {command, list_to_binary(PasswordStr)}}
+      end, UserPasswords),
+    Port ! {self(), {command, <<"\n">>}},
+    {0, Json} = collect_result(Port, []),
+    {struct, [{<<"users">>, Infos}]} = mochijson2:decode(Json),
+    Infos.
 
 collect_users(asterisk, _Role, Dict) ->
     Dict;
