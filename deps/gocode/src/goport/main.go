@@ -26,19 +26,33 @@ import (
 	"time"
 )
 
-func stdinWatcher(cmd *exec.Cmd, childStdin io.Closer, graceful bool) {
+func stdinWatcher(cmd *exec.Cmd, childStdin io.WriteCloser, graceful bool, proxy bool) {
 	b := make([]byte, 1)
+	count := 0
 
 	for {
 		_, err := os.Stdin.Read(b)
 		if err != nil {
 			log.Printf("got %s when reading stdin; terminating.", err.Error())
+			count = 0
 			break
 		}
 
-		if b[0] == '\n' || b[0] == '\r' {
-			log.Printf("got new line on a stdin; terminating.")
-			break
+		if proxy {
+			if b[0] != '\n' && b[0] != '\r' {
+				count = count + 1
+				childStdin.Write(b)
+			} else if count != 0 {
+				childStdin.Write(b)
+			}
+		}
+
+		if b[0] == '\n' {
+			if count == 0 {
+				log.Printf("got new line on a stdin; terminating.")
+				break
+			}
+			count = 0
 		}
 	}
 
@@ -161,10 +175,12 @@ func readCmd() *exec.Cmd {
 func main() {
 	var burst int
 	var gracefulShutdown bool
+	var proxyStdIn bool
 
 	flag.IntVar(&burst, "burst", 512*1024, "burst limit")
 	flag.BoolVar(&gracefulShutdown, "graceful-shutdown", false,
 		"shutdown the child gracefully")
+	flag.BoolVar(&proxyStdIn, "proxy-stdin", false, "proxy stdin to the child process")
 	flag.Parse()
 
 	log.SetPrefix("[goport] ")
@@ -189,7 +205,7 @@ func main() {
 		log.Fatalf("couldn't start %s: %s", cmd.Path, err.Error())
 	}
 
-	go stdinWatcher(cmd, stdin, gracefulShutdown)
+	go stdinWatcher(cmd, stdin, gracefulShutdown, proxyStdIn)
 
 	err = cmd.Wait()
 	if err != nil {
