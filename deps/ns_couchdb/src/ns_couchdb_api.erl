@@ -47,7 +47,8 @@
          try_to_cleanup_indexes/1,
          get_view_group_data_size/3,
          get_safe_purge_seqs/1,
-         log_diagnostics/1]).
+         log_diagnostics/1,
+         get_pid/0]).
 
 -export([handle_rpc/1]).
 
@@ -144,6 +145,9 @@ get_safe_purge_seqs(BucketName) ->
 
 log_diagnostics(Err) ->
     maybe_rpc_couchdb_node({log_diagnostics, Err}).
+
+get_pid() ->
+    maybe_rpc_couchdb_node(get_pid).
 
 maybe_rpc_couchdb_node(Request) ->
     maybe_rpc_couchdb_node(Request, infinity, undefined).
@@ -285,7 +289,10 @@ handle_rpc({get_safe_purge_seqs, BucketName}) ->
     capi_set_view_manager:get_safe_purge_seqs(BucketName);
 
 handle_rpc({log_diagnostics, Err}) ->
-    timeout_diag_logger:do_log_diagnostics(Err).
+    timeout_diag_logger:do_log_diagnostics(Err);
+
+handle_rpc(get_pid) ->
+    list_to_integer(os:getpid()).
 
 wait_for_doc_manager() ->
     ?log_debug("Start waiting for doc manager"),

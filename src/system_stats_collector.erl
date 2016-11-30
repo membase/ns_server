@@ -36,6 +36,13 @@
          cleanup_stale_epoch_histos/0, log_system_stats/1,
          stale_histo_epoch_cleaner/0]).
 
+-type os_pid() :: integer().
+
+-record(state, {
+          port      :: port() | undefined,
+          pid_names :: [{os_pid(), binary()}]
+         }).
+
 start_link() ->
     base_stats_collector:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -61,11 +68,15 @@ init([]) ->
                 undefined
         end,
     spawn_ale_stats_collector(),
+
+    State = #state{port = Port,
+                   pid_names = grab_pid_names()},
+
     case Port of
         undefined ->
-            {no_collecting, Port};
+            {no_collecting, State};
         _ ->
-            {ok, Port}
+            {ok, State}
     end.
 
 recv_data(Port) ->
@@ -95,7 +106,7 @@ recv_data_with_length(Port, Acc, WantedLength) ->
             end
     end.
 
-unpack_data(Bin, PrevSample) ->
+unpack_data(Bin, PrevSample, State) ->
     <<Version:32/native,
       StructSize:32/native,
       CPULocalMS:64/native,
@@ -121,7 +132,8 @@ unpack_data(Bin, PrevSample) ->
                 PrevSample
         end,
 
-    {NowSamplesProcs0, PrevSampleProcs1} = unpack_processes(Rest, PrevSampleProcs),
+    {NowSamplesProcs0, PrevSampleProcs1} =
+        unpack_processes(Rest, PrevSampleProcs, State),
     NowSamplesProcs =
         case NowSamplesProcs0 of
             [] ->
@@ -163,12 +175,12 @@ unpack_data(Bin, PrevSample) ->
 
     {{NowSamplesGlobal, NowSamplesProcs}, {RawStatsGlobal, PrevSampleProcs1}}.
 
-unpack_processes(Bin, PrevSample) ->
-    do_unpack_processes(Bin, {[], []}, PrevSample).
+unpack_processes(Bin, PrevSample, State) ->
+    do_unpack_processes(Bin, {[], []}, PrevSample, State).
 
-do_unpack_processes(Bin, Acc, _) when size(Bin) =:= 0 ->
+do_unpack_processes(Bin, Acc, _, _) when size(Bin) =:= 0 ->
     Acc;
-do_unpack_processes(Bin, {NewSampleAcc, NewPrevSampleAcc} = Acc, PrevSample) ->
+do_unpack_processes(Bin, {NewSampleAcc, NewPrevSampleAcc} = Acc, PrevSample, State) ->
     <<Name0:60/binary,
       CpuUtilization:32/native,
       Pid:64/native,
@@ -181,11 +193,12 @@ do_unpack_processes(Bin, {NewSampleAcc, NewPrevSampleAcc} = Acc, PrevSample) ->
       PageFaults:64/native,
       Rest/binary>> = Bin,
 
-    Name = extract_string(Name0),
-    case Name of
+    RawName = extract_string(Name0),
+    case RawName of
         <<>> ->
             Acc;
         _ ->
+            Name = adjust_process_name(Pid, RawName, State),
             PidBinary = list_to_binary(integer_to_list(Pid)),
 
             OldMinorFaults = proc_stat(Name, PidBinary, minor_faults, PrevSample, 0),
@@ -216,7 +229,7 @@ do_unpack_processes(Bin, {NewSampleAcc, NewPrevSampleAcc} = Acc, PrevSample) ->
                  | NewPrevSampleAcc],
 
             Acc1 = {NewSample ++ NewSampleAcc, NewPrevSampleAcc1},
-            do_unpack_processes(Rest, Acc1, PrevSample)
+            do_unpack_processes(Rest, Acc1, PrevSample, State)
     end.
 
 extract_string(Bin) ->
@@ -266,12 +279,12 @@ log_system_stats(TS) ->
 
     stats_collector:log_stats(TS, "@system", lists:keymerge(1, NSServerStats, NSCouchDbStats)).
 
-grab_stats(Port) ->
+grab_stats(#state{port = Port}) ->
     port_command(Port, <<0:32/native>>),
     recv_data(Port).
 
 process_stats(TS, Binary, PrevSample, _, State) ->
-    {{Stats0, ProcStats}, NewPrevSample} = unpack_data(Binary, PrevSample),
+    {{Stats0, ProcStats}, NewPrevSample} = unpack_data(Binary, PrevSample, State),
     RetStats =
         case Stats0 of
             undefined ->
@@ -471,3 +484,20 @@ spawn_ale_stats_collector() ->
           (_) ->
               ok
       end).
+
+grab_pid_names() ->
+    OurPid = list_to_integer(os:getpid()),
+    BabysitterPid = ns_server:get_babysitter_pid(),
+    CouchdbPid = ns_couchdb_api:get_pid(),
+
+    [{OurPid, <<"ns_server">>},
+     {BabysitterPid, <<"babysitter">>},
+     {CouchdbPid, <<"couchdb">>}].
+
+adjust_process_name(Pid, Name, #state{pid_names = PidNames}) ->
+    case lists:keyfind(Pid, 1, PidNames) of
+        false ->
+            Name;
+        {Pid, BetterName} ->
+            BetterName
+    end.
