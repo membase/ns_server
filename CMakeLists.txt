@@ -184,7 +184,7 @@ ADD_DEPENDENCIES (ns_dialyzer_obsessive ns_server)
 INSTALL (DIRECTORY ebin DESTINATION "${INST_LIBDIR}/ns_server")
 INSTALL (DIRECTORY priv/public DESTINATION "${INST_LIBDIR}/ns_server/priv")
 
-INSTALL (PROGRAMS cbbrowse_logs cbcollect_info cbmaster_password DESTINATION bin)
+INSTALL (PROGRAMS cbbrowse_logs cbcollect_info DESTINATION bin)
 INSTALL (PROGRAMS scripts/cbdump-config scripts/dump-guts DESTINATION bin)
 INSTALL (PROGRAMS scripts/escript-wrapper scripts/dump-stats DESTINATION bin)
 
