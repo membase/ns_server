@@ -176,7 +176,19 @@ unpack_data(Bin, PrevSample, State) ->
     {{NowSamplesGlobal, NowSamplesProcs}, {RawStatsGlobal, PrevSampleProcs1}}.
 
 unpack_processes(Bin, PrevSample, State) ->
-    do_unpack_processes(Bin, {[], []}, PrevSample, State).
+    {NewSample0, NewPrevSample0} =
+        do_unpack_processes(Bin, {[], []}, PrevSample, State),
+
+    {collapse_duplicates(NewSample0), collapse_duplicates(NewPrevSample0)}.
+
+collapse_duplicates(Sample) ->
+    Sorted = lists:keysort(1, Sample),
+    lists:foldl(fun do_collapse_duplicates/2, [], Sorted).
+
+do_collapse_duplicates({K, V1}, [{K, V2} | Acc]) ->
+    [{K, V1 + V2} | Acc];
+do_collapse_duplicates(KV, Acc) ->
+    [KV | Acc].
 
 do_unpack_processes(Bin, Acc, _, _) when size(Bin) =:= 0 ->
     Acc;
