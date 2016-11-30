@@ -184,7 +184,7 @@ do_unpack_processes(Bin, {NewSampleAcc, NewPrevSampleAcc} = Acc, PrevSample, Sta
     <<Name0:60/binary,
       CpuUtilization:32/native,
       Pid:64/native,
-      PPid:64/native,
+      _PPid:64/native,
       MemSize:64/native,
       MemResident:64/native,
       MemShare:64/native,
@@ -199,33 +199,31 @@ do_unpack_processes(Bin, {NewSampleAcc, NewPrevSampleAcc} = Acc, PrevSample, Sta
             Acc;
         _ ->
             Name = adjust_process_name(Pid, RawName, State),
-            PidBinary = list_to_binary(integer_to_list(Pid)),
 
-            OldMinorFaults = proc_stat(Name, PidBinary, minor_faults, PrevSample, 0),
-            OldMajorFaults = proc_stat(Name, PidBinary, major_faults, PrevSample, 0),
-            OldPageFaults = proc_stat(Name, PidBinary, page_faults, PrevSample, 0),
+            OldMinorFaults = proc_stat(Name, minor_faults, PrevSample, 0),
+            OldMajorFaults = proc_stat(Name, major_faults, PrevSample, 0),
+            OldPageFaults = proc_stat(Name, page_faults, PrevSample, 0),
 
             MinorFaultsDiff = MinorFaults - OldMinorFaults,
             MajorFaultsDiff = MajorFaults - OldMajorFaults,
             PageFaultsDiff = PageFaults - OldPageFaults,
 
             NewSample =
-                [{proc_stat_name(Name, PidBinary, ppid), PPid},
-                 {proc_stat_name(Name, PidBinary, major_faults), MajorFaultsDiff},
-                 {proc_stat_name(Name, PidBinary, minor_faults), MinorFaultsDiff},
-                 {proc_stat_name(Name, PidBinary, page_faults), PageFaultsDiff},
-                 {proc_stat_name(Name, PidBinary, mem_size), MemSize},
-                 {proc_stat_name(Name, PidBinary, mem_resident), MemResident},
-                 {proc_stat_name(Name, PidBinary, mem_share), MemShare},
-                 {proc_stat_name(Name, PidBinary, cpu_utilization), CpuUtilization},
-                 {proc_stat_name(Name, PidBinary, minor_faults_raw), MinorFaults},
-                 {proc_stat_name(Name, PidBinary, major_faults_raw), MajorFaults},
-                 {proc_stat_name(Name, PidBinary, page_faults_raw), PageFaults}],
+                [{proc_stat_name(Name, major_faults), MajorFaultsDiff},
+                 {proc_stat_name(Name, minor_faults), MinorFaultsDiff},
+                 {proc_stat_name(Name, page_faults), PageFaultsDiff},
+                 {proc_stat_name(Name, mem_size), MemSize},
+                 {proc_stat_name(Name, mem_resident), MemResident},
+                 {proc_stat_name(Name, mem_share), MemShare},
+                 {proc_stat_name(Name, cpu_utilization), CpuUtilization},
+                 {proc_stat_name(Name, minor_faults_raw), MinorFaults},
+                 {proc_stat_name(Name, major_faults_raw), MajorFaults},
+                 {proc_stat_name(Name, page_faults_raw), PageFaults}],
 
             NewPrevSampleAcc1 =
-                [{proc_stat_name(Name, PidBinary, major_faults), MajorFaults},
-                 {proc_stat_name(Name, PidBinary, minor_faults), MinorFaults},
-                 {proc_stat_name(Name, PidBinary, page_faults), PageFaults}
+                [{proc_stat_name(Name, major_faults), MajorFaults},
+                 {proc_stat_name(Name, minor_faults), MinorFaults},
+                 {proc_stat_name(Name, page_faults), PageFaults}
                  | NewPrevSampleAcc],
 
             Acc1 = {NewSample ++ NewSampleAcc, NewPrevSampleAcc1},
@@ -245,16 +243,16 @@ do_extract_string(Bin, Pos) ->
             binary:part(Bin, 0, Pos + 1)
     end.
 
-proc_stat(Name, Pid, Stat, Sample, Default) ->
-    case lists:keyfind(proc_stat_name(Name, Pid, Stat), 1, Sample) of
+proc_stat(Name, Stat, Sample, Default) ->
+    case lists:keyfind(proc_stat_name(Name, Stat), 1, Sample) of
         {_, V} ->
             V;
         _ ->
             Default
     end.
 
-proc_stat_name(Name, Pid, Stat) ->
-    <<Name/binary, $/, Pid/binary, $/, (atom_to_binary(Stat, latin1))/binary>>.
+proc_stat_name(Name, Stat) ->
+    <<Name/binary, $/, (atom_to_binary(Stat, latin1))/binary>>.
 
 add_ets_stats(Stats) ->
     [{_, NowRestLeaves}] = ets:lookup(ns_server_system_stats, {request_leaves, rest}),
