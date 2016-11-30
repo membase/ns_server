@@ -30,8 +30,10 @@ handle_change_master_password(Req) ->
               NewPassword = proplists:get_value(newPassword, Values),
               case encryption_service:change_password(NewPassword) of
                   ok ->
+                      ns_audit:master_password_change(Req, undefined),
                       menelaus_util:reply(Req, 200);
                   {error, Error} ->
+                      ns_audit:master_password_change(Req, Error),
                       menelaus_util:reply_global_error(Req, Error)
               end
       end, Req, validate_change_master_password(Req:parse_post())).
@@ -53,7 +55,9 @@ handle_rotate_data_key(Req) ->
     ns_config:resave(),
     case RV of
         ok ->
+            ns_audit:data_key_rotation(Req, undefined),
             menelaus_util:reply(Req, 200);
         {error, Error} ->
+            ns_audit:data_key_rotation(Req, Error),
             menelaus_util:reply_global_error(Req, Error ++ ". You might try one more time.")
     end.

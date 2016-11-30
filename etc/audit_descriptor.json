@@ -711,6 +711,38 @@
               "sessionid" : "",
               "full_name" : ""
           }
+      },
+      {
+          "id" : 8233,
+          "name" : "master password change",
+          "description" : "Master password change was requested",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : "",
+              "remote" : {"ip" : "", "port" : 1}
+          },
+          "optional_fields" : {
+              "sessionid" : "",
+              "error" : ""
+          }
+      },
+      {
+          "id" : 8234,
+          "name" : "encryption key rotation",
+          "description" : "Encryption key rotation was requested",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : "",
+              "remote" : {"ip" : "", "port" : 1}
+          },
+          "optional_fields" : {
+              "sessionid" : "",
+              "error" : ""
+          }
       }
     ]
 }
