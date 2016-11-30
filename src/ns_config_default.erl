@@ -610,6 +610,8 @@ encrypt(Config) ->
                                 {stop, {metakv_sensitive, encrypt_config_val(Val)}};
                             ({cookie, Cookie}) ->
                                 {stop, {cookie, encrypt_config_val(Cookie)}};
+                            ({pass, Pass}) ->
+                                {stop, {pass, encrypt_config_val(Pass)}};
                             (T) ->
                                 {continue, T}
                         end, Config).
