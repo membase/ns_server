@@ -36,6 +36,13 @@
          cleanup_stale_epoch_histos/0, log_system_stats/1,
          stale_histo_epoch_cleaner/0]).
 
+-type os_pid() :: integer().
+
+-record(state, {
+          port      :: port() | undefined,
+          pid_names :: [{os_pid(), binary()}]
+         }).
+
 start_link() ->
     base_stats_collector:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -61,11 +68,15 @@ init([]) ->
                 undefined
         end,
     spawn_ale_stats_collector(),
+
+    State = #state{port = Port,
+                   pid_names = grab_pid_names()},
+
     case Port of
         undefined ->
-            {no_collecting, Port};
+            {no_collecting, State};
         _ ->
-            {ok, Port}
+            {ok, State}
     end.
 
 recv_data(Port) ->
@@ -95,7 +106,7 @@ recv_data_with_length(Port, Acc, WantedLength) ->
             end
     end.
 
-unpack_data(Bin, PrevSample) ->
+unpack_data(Bin, PrevSample, State) ->
     <<Version:32/native,
       StructSize:32/native,
       CPULocalMS:64/native,
@@ -121,7 +132,8 @@ unpack_data(Bin, PrevSample) ->
                 PrevSample
         end,
 
-    {NowSamplesProcs0, PrevSampleProcs1} = unpack_processes(Rest, PrevSampleProcs),
+    {NowSamplesProcs0, PrevSampleProcs1} =
+        unpack_processes(Rest, PrevSampleProcs, State),
     NowSamplesProcs =
         case NowSamplesProcs0 of
             [] ->
@@ -163,16 +175,28 @@ unpack_data(Bin, PrevSample) ->
 
     {{NowSamplesGlobal, NowSamplesProcs}, {RawStatsGlobal, PrevSampleProcs1}}.
 
-unpack_processes(Bin, PrevSample) ->
-    do_unpack_processes(Bin, {[], []}, PrevSample).
+unpack_processes(Bin, PrevSample, State) ->
+    {NewSample0, NewPrevSample0} =
+        do_unpack_processes(Bin, {[], []}, PrevSample, State),
 
-do_unpack_processes(Bin, Acc, _) when size(Bin) =:= 0 ->
+    {collapse_duplicates(NewSample0), collapse_duplicates(NewPrevSample0)}.
+
+collapse_duplicates(Sample) ->
+    Sorted = lists:keysort(1, Sample),
+    lists:foldl(fun do_collapse_duplicates/2, [], Sorted).
+
+do_collapse_duplicates({K, V1}, [{K, V2} | Acc]) ->
+    [{K, V1 + V2} | Acc];
+do_collapse_duplicates(KV, Acc) ->
+    [KV | Acc].
+
+do_unpack_processes(Bin, Acc, _, _) when size(Bin) =:= 0 ->
     Acc;
-do_unpack_processes(Bin, {NewSampleAcc, NewPrevSampleAcc} = Acc, PrevSample) ->
+do_unpack_processes(Bin, {NewSampleAcc, NewPrevSampleAcc} = Acc, PrevSample, State) ->
     <<Name0:60/binary,
       CpuUtilization:32/native,
       Pid:64/native,
-      PPid:64/native,
+      _PPid:64/native,
       MemSize:64/native,
       MemResident:64/native,
       MemShare:64/native,
@@ -181,42 +205,41 @@ do_unpack_processes(Bin, {NewSampleAcc, NewPrevSampleAcc} = Acc, PrevSample) ->
       PageFaults:64/native,
       Rest/binary>> = Bin,
 
-    Name = extract_string(Name0),
-    case Name of
+    RawName = extract_string(Name0),
+    case RawName of
         <<>> ->
             Acc;
         _ ->
-            PidBinary = list_to_binary(integer_to_list(Pid)),
+            Name = adjust_process_name(Pid, RawName, State),
 
-            OldMinorFaults = proc_stat(Name, PidBinary, minor_faults, PrevSample, 0),
-            OldMajorFaults = proc_stat(Name, PidBinary, major_faults, PrevSample, 0),
-            OldPageFaults = proc_stat(Name, PidBinary, page_faults, PrevSample, 0),
+            OldMinorFaults = proc_stat(Name, minor_faults, PrevSample, 0),
+            OldMajorFaults = proc_stat(Name, major_faults, PrevSample, 0),
+            OldPageFaults = proc_stat(Name, page_faults, PrevSample, 0),
 
             MinorFaultsDiff = MinorFaults - OldMinorFaults,
             MajorFaultsDiff = MajorFaults - OldMajorFaults,
             PageFaultsDiff = PageFaults - OldPageFaults,
 
             NewSample =
-                [{proc_stat_name(Name, PidBinary, ppid), PPid},
-                 {proc_stat_name(Name, PidBinary, major_faults), MajorFaultsDiff},
-                 {proc_stat_name(Name, PidBinary, minor_faults), MinorFaultsDiff},
-                 {proc_stat_name(Name, PidBinary, page_faults), PageFaultsDiff},
-                 {proc_stat_name(Name, PidBinary, mem_size), MemSize},
-                 {proc_stat_name(Name, PidBinary, mem_resident), MemResident},
-                 {proc_stat_name(Name, PidBinary, mem_share), MemShare},
-                 {proc_stat_name(Name, PidBinary, cpu_utilization), CpuUtilization},
-                 {proc_stat_name(Name, PidBinary, minor_faults_raw), MinorFaults},
-                 {proc_stat_name(Name, PidBinary, major_faults_raw), MajorFaults},
-                 {proc_stat_name(Name, PidBinary, page_faults_raw), PageFaults}],
+                [{proc_stat_name(Name, major_faults), MajorFaultsDiff},
+                 {proc_stat_name(Name, minor_faults), MinorFaultsDiff},
+                 {proc_stat_name(Name, page_faults), PageFaultsDiff},
+                 {proc_stat_name(Name, mem_size), MemSize},
+                 {proc_stat_name(Name, mem_resident), MemResident},
+                 {proc_stat_name(Name, mem_share), MemShare},
+                 {proc_stat_name(Name, cpu_utilization), CpuUtilization},
+                 {proc_stat_name(Name, minor_faults_raw), MinorFaults},
+                 {proc_stat_name(Name, major_faults_raw), MajorFaults},
+                 {proc_stat_name(Name, page_faults_raw), PageFaults}],
 
             NewPrevSampleAcc1 =
-                [{proc_stat_name(Name, PidBinary, major_faults), MajorFaults},
-                 {proc_stat_name(Name, PidBinary, minor_faults), MinorFaults},
-                 {proc_stat_name(Name, PidBinary, page_faults), PageFaults}
+                [{proc_stat_name(Name, major_faults), MajorFaults},
+                 {proc_stat_name(Name, minor_faults), MinorFaults},
+                 {proc_stat_name(Name, page_faults), PageFaults}
                  | NewPrevSampleAcc],
 
             Acc1 = {NewSample ++ NewSampleAcc, NewPrevSampleAcc1},
-            do_unpack_processes(Rest, Acc1, PrevSample)
+            do_unpack_processes(Rest, Acc1, PrevSample, State)
     end.
 
 extract_string(Bin) ->
@@ -232,16 +255,16 @@ do_extract_string(Bin, Pos) ->
             binary:part(Bin, 0, Pos + 1)
     end.
 
-proc_stat(Name, Pid, Stat, Sample, Default) ->
-    case lists:keyfind(proc_stat_name(Name, Pid, Stat), 1, Sample) of
+proc_stat(Name, Stat, Sample, Default) ->
+    case lists:keyfind(proc_stat_name(Name, Stat), 1, Sample) of
         {_, V} ->
             V;
         _ ->
             Default
     end.
 
-proc_stat_name(Name, Pid, Stat) ->
-    <<Name/binary, $/, Pid/binary, $/, (atom_to_binary(Stat, latin1))/binary>>.
+proc_stat_name(Name, Stat) ->
+    <<Name/binary, $/, (atom_to_binary(Stat, latin1))/binary>>.
 
 add_ets_stats(Stats) ->
     [{_, NowRestLeaves}] = ets:lookup(ns_server_system_stats, {request_leaves, rest}),
@@ -266,12 +289,12 @@ log_system_stats(TS) ->
 
     stats_collector:log_stats(TS, "@system", lists:keymerge(1, NSServerStats, NSCouchDbStats)).
 
-grab_stats(Port) ->
+grab_stats(#state{port = Port}) ->
     port_command(Port, <<0:32/native>>),
     recv_data(Port).
 
 process_stats(TS, Binary, PrevSample, _, State) ->
-    {{Stats0, ProcStats}, NewPrevSample} = unpack_data(Binary, PrevSample),
+    {{Stats0, ProcStats}, NewPrevSample} = unpack_data(Binary, PrevSample, State),
     RetStats =
         case Stats0 of
             undefined ->
@@ -471,3 +494,20 @@ spawn_ale_stats_collector() ->
           (_) ->
               ok
       end).
+
+grab_pid_names() ->
+    OurPid = list_to_integer(os:getpid()),
+    BabysitterPid = ns_server:get_babysitter_pid(),
+    CouchdbPid = ns_couchdb_api:get_pid(),
+
+    [{OurPid, <<"ns_server">>},
+     {BabysitterPid, <<"babysitter">>},
+     {CouchdbPid, <<"couchdb">>}].
+
+adjust_process_name(Pid, Name, #state{pid_names = PidNames}) ->
+    case lists:keyfind(Pid, 1, PidNames) of
+        false ->
+            Name;
+        {Pid, BetterName} ->
+            BetterName
+    end.

@@ -17,8 +17,8 @@
 
 -behavior(application).
 
--export([start/2, stop/1, get_loglevel/1, setup_node_names/0, get_babysitter_node/0,
-         get_babysitter_cookie/0,
+-export([start/2, stop/1, get_loglevel/1, setup_node_names/0,
+         get_babysitter_node/0, get_babysitter_cookie/0, get_babysitter_pid/0,
          start_disk_sink/2, adjust_loglevel/2]).
 
 -include("ns_common.hrl").
@@ -279,3 +279,6 @@ get_babysitter_node() ->
     {ok, Node} = application:get_env(ns_server, babysitter_node),
     erlang:set_cookie(Node, get_babysitter_cookie()),
     Node.
+
+get_babysitter_pid() ->
+    list_to_integer(os:getenv("NS_SERVER_BABYSITTER_PID")).

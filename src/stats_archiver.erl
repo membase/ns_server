@@ -26,14 +26,15 @@
 
 -behaviour(gen_server).
 
--record(state, {bucket}).
+-record(state, {bucket :: bucket_name(),
+                saver :: undefined | pid()}).
 
--export([ start_link/1,
-          archives/0,
-          table/2,
-          avg/2,
-          latest_sample/2,
-          wipe/0 ]).
+-export([start_link/1,
+         archives/0,
+         table/2,
+         avg/2,
+         latest_sample/2,
+         wipe/0]).
 
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
@@ -158,7 +159,9 @@ init(Bucket) ->
     start_cascade_timers(Archives),
     timer2:send_after(random:uniform(?BACKUP_INTERVAL), backup),
 
-    ns_pubsub:subscribe_link(ns_stats_event),
+    ns_pubsub:subscribe_link(ns_stats_event,
+                             fun stats_event_handler/2,
+                             {self(), Bucket}),
     process_flag(trap_exit, true),
     {ok, #state{bucket=Bucket}}.
 
@@ -173,38 +176,45 @@ handle_cast(_Msg, State) ->
 handle_info(init, State) ->
     create_tables(State#state.bucket),
     {noreply, State};
-handle_info({stats, Bucket, Sample}, State = #state{bucket=Bucket}) ->
+handle_info({stats, Bucket, Sample}, State) ->
+    true = (Bucket =:= State#state.bucket),
+
     Tab = table(Bucket, minute),
     #stat_entry{timestamp=TS} = Sample,
     ets:insert(Tab, {TS, Sample}),
     gen_event:notify(ns_stats_event, {sample_archived, Bucket, Sample}),
     {noreply, State};
-handle_info({sample_archived, _, _}, State) ->
-    {noreply, State};
-handle_info({truncate, Period, N}, #state{bucket=Bucket} = State) ->
+handle_info({truncate, Period, N} = Msg, #state{bucket=Bucket} = State) ->
+    flush(Msg),
     Tab = table(Bucket, Period),
     truncate_logger(Tab, N),
     {noreply, State};
-handle_info({cascade, Prev, Period, Step}, #state{bucket=Bucket} = State) ->
+handle_info({cascade, Prev, Period, Step} = Msg, #state{bucket=Bucket} = State) ->
+    flush(Msg),
     cascade_logger(Bucket, Prev, Period, Step),
     {noreply, State};
 handle_info(backup, #state{bucket=Bucket} = State) ->
     misc:flush(backup),
-    proc_lib:spawn_link(
-      fun () ->
-              backup_loggers(Bucket)
-      end),
-    timer2:send_after(?BACKUP_INTERVAL, backup),
-    {noreply, State};
-handle_info({'EXIT', _Pid, Reason} = Exit, State) ->
+    Pid = proc_lib:spawn_link(
+            fun () ->
+                    backup_loggers(Bucket)
+            end),
+    {noreply, State#state{saver = Pid}};
+handle_info({'EXIT', Pid, Reason} = Exit, #state{saver = Saver} = State)
+  when Pid =:= Saver ->
     case Reason of
         normal ->
             ok;
         _Other ->
-            ?log_warning("Process exited unexpectedly: ~p", [Exit])
+            ?log_warning("Saver process terminated abnormally: ~p", [Exit])
     end,
-    {noreply, State};
-handle_info(_Msg, State) -> % Don't crash on delayed responses from calls
+    timer2:send_after(?BACKUP_INTERVAL, backup),
+    {noreply, State#state{saver = undefined}};
+handle_info({'EXIT', _, _} = Exit, State) ->
+    ?log_error("Got unexpected exit message: ~p", [Exit]),
+    {stop, {linked_process_died, Exit}, State};
+handle_info(Msg, State) -> % Don't crash on delayed responses from calls
+    ?log_warning("Got unexpected message: ~p", [Msg]),
     {noreply, State}.
 
 
@@ -219,7 +229,7 @@ terminate(_Reason, #state{bucket=Bucket} = _State) ->
 
 create_tables(Bucket) ->
     %% create stats logger tables
-    [ check_logger(Bucket, Period) || {Period, _, _} <- archives() ].
+    [check_logger(Bucket, Period) || {Period, _, _} <- archives()].
 
 read_table(Path, TableName) ->
     ets:new(TableName, [ordered_set, protected, named_table]),
@@ -331,3 +341,22 @@ fmt(Str, Args)  ->
 
 stats_dir() ->
     path_config:component_path(data, "stats").
+
+flush(Msg) ->
+    N = misc:flush(Msg),
+    case N =/= 0 of
+        true ->
+            ?log_warning("Dropped ~b ~p messages", [N, Msg]);
+        false ->
+            ok
+    end.
+
+stats_event_handler(Event, {Parent, Bucket} = State) ->
+    case Event of
+        {stats, EventBucket, _}
+          when EventBucket =:= Bucket ->
+            Parent ! Event;
+        _ ->
+            ok
+    end,
+    State.

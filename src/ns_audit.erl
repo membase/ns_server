@@ -58,7 +58,9 @@
          internal_settings/2,
          upload_cluster_ca/3,
          reload_node_certificate/3,
-         modify_index_storage_mode/2
+         modify_index_storage_mode/2,
+         master_password_change/2,
+         data_key_rotation/2
         ]).
 
 -export([stats/0]).
@@ -144,7 +146,11 @@ code(reload_node_certificate) ->
 code(modify_index_storage_mode) ->
     8231;
 code(set_user) ->
-    8232.
+    8232;
+code(master_password_change) ->
+    8233;
+code(data_key_rotation) ->
+    8234.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -511,3 +517,13 @@ reload_node_certificate(Req, Subject, Expires) ->
 
 modify_index_storage_mode(Req, StorageMode) ->
     put(modify_index_storage_mode, Req, [{storageMode, StorageMode}]).
+
+master_password_change(Req, undefined) ->
+    put(master_password_change, Req, []);
+master_password_change(Req, Error) ->
+    put(master_password_change, Req, [{error, Error}]).
+
+data_key_rotation(Req, undefined) ->
+    put(data_key_rotation, Req, []);
+data_key_rotation(Req, Error) ->
+    put(data_key_rotation, Req, [{error, Error}]).

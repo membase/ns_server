@@ -334,9 +334,9 @@ current_status_slow_inner() ->
         lists:filter(
           fun ({Name, _}) ->
                   case binary:split(Name, <<$/>>, [global]) of
-                      [_Process, _Pid, StatName] ->
+                      [_Process, StatName] ->
                           lists:member(StatName,
-                                       [<<"ppid">>, <<"mem_resident">>, <<"mem_size">>,
+                                       [<<"mem_resident">>, <<"mem_size">>,
                                         <<"cpu_utilization">>, <<"major_faults_raw">>]);
                       _ ->
                           false
