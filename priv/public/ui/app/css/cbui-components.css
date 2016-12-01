@@ -885,7 +885,7 @@ section.status-red .cbui-tablerow-statusmsg {
   padding-right: 2rem;
 }
 
-/* Labels/Tags ---------------------------*/
+/* Labels/Badges ---------------------------*/
 .label {
   font-size: .688rem;
   font-weight: 600;
@@ -929,8 +929,11 @@ section.status-red .cbui-tablerow-statusmsg {
   color: #fff;
 }
 .badge {
-  padding: .25rem .35rem;
-  border-radius: 16px;
+  padding: .3rem .4rem;
+  min-width: 1rem;
+  border-radius: 1rem;
+  line-height: .6;
+  position: relative;
   left: -12px;
   top: -8px;
 }
@@ -941,6 +944,13 @@ section.status-red .cbui-tablerow-statusmsg {
   left: -1px;
   top: 0;
   padding: .275rem;
+}
+
+.badge.notify {
+  background-color: #d9e7f7;
+  color: #333;
+  left: 0;
+  top: -2px;
 }
 
 /* Alerts  ---------------------------*/

@@ -158,10 +158,11 @@
       <a
          mn-tab="settings"
          ng-class="{currentNav: ('app.admin.settings' | includedByState)}"
-         ui-sref="app.admin.settings.cluster">Settings
-        <span
-           ng-show="adminCtl.updates.sendStats && !!adminCtl.updates.newVersion"
-           class="badge notify"><span>!</span></span>
+         ui-sref="app.admin.settings.cluster">
+         <span
+            ng-show="adminCtl.updates.sendStats && !!adminCtl.updates.newVersion"
+            class="label neutral badge notify">i</span>
+         Settings
       </a>
       <a
          mn-tab="logs"
