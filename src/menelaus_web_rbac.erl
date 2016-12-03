@@ -29,7 +29,7 @@
          handle_get_users/1,
          handle_whoami/1,
          handle_put_user/2,
-         handle_delete_user/2,
+         handle_delete_user/3,
          handle_check_permissions_post/1,
          check_permissions_url_version/1,
          handle_check_permission_for_cbauth/1,
@@ -268,6 +268,13 @@ reply_bad_roles(Req, BadRoles) ->
       Req,
       iolist_to_binary(io_lib:format("Malformed or unknown roles: [~s]", [Str])), 400).
 
+type_to_atom("builtin") ->
+    builtin;
+type_to_atom("saslauthd") ->
+    saslauthd;
+type_to_atom(_) ->
+    unknown.
+
 handle_put_user(UserId, Req) ->
     menelaus_web:assert_is_enterprise(),
     menelaus_web:assert_is_45(),
@@ -293,16 +300,21 @@ handle_put_user(UserId, Req) ->
             reply_bad_roles(Req, BadRoles)
     end.
 
-handle_delete_user(UserId, Req) ->
-    Identity = {UserId, saslauthd},
-    case menelaus_roles:delete_user(Identity) of
-        {commit, _} ->
-            ns_audit:delete_user(Req, Identity),
-            handle_get_users(Req);
-        {abort, {error, not_found}} ->
-            menelaus_util:reply_json(Req, <<"User was not found.">>, 404);
-        retry_needed ->
-            erlang:error(exceeded_retries)
+handle_delete_user(Type, UserId, Req) ->
+    case type_to_atom(Type) of
+        unknown ->
+            menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
+        T ->
+            Identity = {UserId, T},
+            case menelaus_roles:delete_user(Identity) of
+                {commit, _} ->
+                    ns_audit:delete_user(Req, Identity),
+                    handle_get_users(Req);
+                {abort, {error, not_found}} ->
+                    menelaus_util:reply_json(Req, <<"User was not found.">>, 404);
+                retry_needed ->
+                    erlang:error(exceeded_retries)
+            end
     end.
 
 list_to_rbac_atom(List) ->
