@@ -188,8 +188,9 @@ handle_get_roles(Req) ->
             menelaus_util:reply_json(Req, Json)
     end.
 
-get_user_json(User, Name, Roles) ->
-    UserJson = [{id, list_to_binary(User)},
+get_user_json({Id, Type}, Name, Roles) ->
+    UserJson = [{id, list_to_binary(Id)},
+                {type, Type},
                 {roles, [{role_to_json(Role)} || Role <- Roles]}],
     {case Name of
          undefined ->
@@ -204,17 +205,17 @@ handle_get_users(Req) ->
 
     Users = menelaus_roles:get_users(),
     Json = lists:map(
-             fun ({{User, saslauthd}, Props}) ->
+             fun ({Identity, Props}) ->
                      Roles = proplists:get_value(roles, Props, []),
-                     get_user_json(User, proplists:get_value(name, Props), Roles)
+                     get_user_json(Identity, proplists:get_value(name, Props), Roles)
              end, Users),
     menelaus_util:reply_json(Req, Json).
 
 handle_whoami(Req) ->
-    {User, _} = Identity = menelaus_auth:get_identity(Req),
+    Identity = menelaus_auth:get_identity(Req),
     Roles = menelaus_roles:get_roles(Identity),
     Name = menelaus_roles:get_user_name(Identity),
-    menelaus_util:reply_json(Req, get_user_json(User, Name, Roles)).
+    menelaus_util:reply_json(Req, get_user_json(Identity, Name, Roles)).
 
 parse_until(Str, Delimeters) ->
     lists:splitwith(fun (Char) ->
