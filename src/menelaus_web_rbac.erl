@@ -282,7 +282,10 @@ handle_put_user(Type, UserId, Req) ->
     case type_to_atom(Type) of
         unknown ->
             menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
-        T ->
+        saslauthd = T ->
+            handle_put_user_with_identity({UserId, T}, Req);
+        builtin = T ->
+            menelaus_web:assert_is_spock(),
             handle_put_user_with_identity({UserId, T}, Req)
     end.
 

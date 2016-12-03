@@ -54,7 +54,8 @@
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
          assert_is_40/0,
-         assert_is_45/0]).
+         assert_is_45/0,
+         assert_is_spock/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -1268,6 +1269,9 @@ assert_is_40() ->
 
 assert_is_45() ->
     assert_cluster_version(fun cluster_compat_mode:is_cluster_45/0).
+
+assert_is_spock() ->
+    assert_cluster_version(fun cluster_compat_mode:is_cluster_spock/0).
 
 assert_cluster_version(Fun) ->
     case Fun() of
