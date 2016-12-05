@@ -8,7 +8,7 @@
     'mnPermissions'
   ]).factory('mnAuthService', mnAuthServiceFactory);
 
-  function mnAuthServiceFactory($http, $state, mnPools, $rootScope, mnPendingQueryKeeper, mnPermissions, $uibModalStack, $window) {
+  function mnAuthServiceFactory($http, $state, mnPools, $rootScope, mnPendingQueryKeeper, mnPermissions, $uibModalStack, $window, $q) {
     var mnAuthService = {
       login: login,
       logout: logout
@@ -26,8 +26,16 @@
           password: user.password
         }
       }).then(function (resp) {
-        mnPools.clearCache();
-        return resp;
+        return mnPools.get().then(function (cachedPools) {
+          mnPools.clearCache();
+          return mnPools.get().then(function (newPools) {
+            if (cachedPools.implementationVersion !== newPools.implementationVersion) {
+              return $q.reject({status: 410});
+            } else {
+              return resp;
+            }
+          });
+        });
       });
     }
     function logout() {
@@ -49,4 +57,3 @@
     }
   }
 })();
-

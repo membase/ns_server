@@ -10,7 +10,6 @@
          class="logobug">
       <h2>Couchbase Server</h2>
     </div>
-
     <form
        name="loginForm"
        novalidate=""
@@ -18,8 +17,17 @@
 
       <div class="panel-content forms">
         <div
+           ng-messages="authCtl.error"
            class="error error-form"
-           ng-show="authCtl.loginFailed">Login failed. Please try again.</div>
+           ng-if="authCtl.error">
+          <span ng-message="_400">
+            Login failed. Please try again.
+          </span>
+          <span ng-message="_410">
+            The client's version does not match the server's. Please the reload tab.
+          </span>
+        </div>
+
         <div class="formrow">
           <input
              autocorrect="off"

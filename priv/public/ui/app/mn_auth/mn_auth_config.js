@@ -5,7 +5,8 @@
     'mnAuthService',
     'ui.router',
     'mnAboutDialog',
-    'mnAutocompleteOff'
+    'mnAutocompleteOff',
+    'ngMessages'
   ]).config(mnAuthConfig);
 
   function mnAuthConfig($stateProvider, $httpProvider, $urlRouterProvider) {

@@ -12,8 +12,9 @@
     vm.submit = submit;
     vm.showAboutDialog = mnAboutDialogService.showAboutDialog;
 
-    function error() {
-      vm.loginFailed = true;
+    function error(resp) {
+      vm.error = {};
+      vm.error["_" + resp.status] = true;
     }
     function success() {
       /* never sync to /auth URL (as user will stay on the login page) */
