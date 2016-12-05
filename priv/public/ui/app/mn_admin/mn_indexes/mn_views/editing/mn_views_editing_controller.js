@@ -9,6 +9,7 @@
     var vm = this;
     var codemirrorOptions = {
       lineNumbers: true,
+      lineWrapping: true,
       matchBrackets: true,
       tabSize: 2,
       mode: {

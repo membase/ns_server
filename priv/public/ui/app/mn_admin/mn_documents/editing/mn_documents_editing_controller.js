@@ -10,6 +10,7 @@
     var codemirrorOptions = {
       lineNumbers: true,
       matchBrackets: false,
+      lineWrapping: true,
       tabSize: 2,
       mode: {
         name: "javascript",
