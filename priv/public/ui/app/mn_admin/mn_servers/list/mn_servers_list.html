@@ -63,10 +63,7 @@
            ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]">
         </td>
         <td class="ellipsis max-width-3">
-          <span ng-class="{
-                          closed: !serversCtl.isDetailsOpened(node.hostname),
-                          expander: !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.nodes.read
-                          }">
+          <span ng-class="{closed: !serversCtl.isDetailsOpened(node.hostname)}">
             <span ng-if="serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read">
               {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
             </span>

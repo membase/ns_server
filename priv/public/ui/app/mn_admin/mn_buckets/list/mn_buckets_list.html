@@ -32,7 +32,7 @@
         <a
            ng-class="{closed:!bucketsListCtl.isDetailsOpened(bucket.name)}"
            ng-click="$event.stopPropagation()"
-           class="link-heavy text-medium expander"
+           class="link-heavy text-medium"
            title="View Analytics for {{ bucket.name }}"
            ui-sref="app.admin.buckets.analytics.list.graph({bucket: bucket.name })"
            ng-show="rbac.cluster.bucket[bucket.name].stats.read"
