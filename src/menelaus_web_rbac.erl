@@ -30,11 +30,17 @@
          handle_whoami/1,
          handle_put_user/3,
          handle_delete_user/3,
+         handle_settings_read_only_admin_name/1,
+         handle_settings_read_only_user_post/1,
+         handle_read_only_user_delete/1,
+         handle_read_only_user_reset/1,
+         handle_reset_admin_password/1,
          handle_check_permissions_post/1,
          check_permissions_url_version/1,
          handle_check_permission_for_cbauth/1,
          forbidden_response/1,
-         role_to_string/1]).
+         role_to_string/1,
+         validate_cred/2]).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of
@@ -275,6 +281,28 @@ type_to_atom("saslauthd") ->
 type_to_atom(_) ->
     unknown.
 
+validate_cred(undefined, _) -> <<"Field must be given">>;
+validate_cred(P, password) when length(P) < 6 -> <<"The password must be at least six characters.">>;
+validate_cred(P, password) ->
+    V = lists:all(
+          fun (C) ->
+                  C > 31 andalso C =/= 127
+          end, P)
+        andalso couch_util:validate_utf8(P),
+    V orelse <<"The password must not contain control characters and be valid utf8">>;
+validate_cred([], username) ->
+    <<"Username must not be empty">>;
+validate_cred(Username, username) ->
+    V = lists:all(
+          fun (C) ->
+                  C > 32 andalso C =/= 127 andalso
+                      not lists:member(C, "()<>@,;:\\\"/[]?={}")
+          end, Username)
+        andalso couch_util:validate_utf8(Username),
+
+    V orelse
+        <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters and must be valid utf8">>.
+
 handle_put_user(Type, UserId, Req) ->
     menelaus_web:assert_is_enterprise(),
     menelaus_web:assert_is_45(),
@@ -324,6 +352,128 @@ handle_delete_user(Type, UserId, Req) ->
                     menelaus_util:reply_json(Req, <<"User was not found.">>, 404);
                 retry_needed ->
                     erlang:error(exceeded_retries)
+            end
+    end.
+
+handle_settings_read_only_admin_name(Req) ->
+    case ns_config_auth:get_user(ro_admin) of
+        undefined ->
+            menelaus_util:reply_not_found(Req);
+        Name ->
+            menelaus_util:reply_json(Req, list_to_binary(Name), 200)
+    end.
+
+handle_settings_read_only_user_post(Req) ->
+    PostArgs = Req:parse_post(),
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
+    U = proplists:get_value("username", PostArgs),
+    P = proplists:get_value("password", PostArgs),
+    Errors0 = [{K, V} || {K, V} <- [{username, validate_cred(U, username)},
+                                    {password, validate_cred(P, password)}],
+                         V =/= true],
+    Errors = Errors0 ++
+        case ns_config_auth:get_user(admin) of
+            U ->
+                [{username, <<"Read-only user cannot be same user as administrator">>}];
+            _ ->
+                []
+        end,
+
+    case Errors of
+        [] ->
+            case ValidateOnly of
+                false ->
+                    ns_config_auth:set_credentials(ro_admin, U, P),
+                    ns_audit:password_change(Req, {U, ro_admin});
+                true ->
+                    true
+            end,
+            menelaus_util:reply_json(Req, [], 200);
+        _ ->
+            menelaus_util:reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400)
+    end.
+
+handle_read_only_user_delete(Req) ->
+    case ns_config_auth:get_user(ro_admin) of
+        undefined ->
+            menelaus_util:reply_json(Req, <<"Read-Only admin does not exist">>, 404);
+        User ->
+            ns_config_auth:unset_credentials(ro_admin),
+            ns_audit:delete_user(Req, {User, ro_admin}),
+            menelaus_util:reply_json(Req, [], 200)
+    end.
+
+handle_read_only_user_reset(Req) ->
+    case ns_config_auth:get_user(ro_admin) of
+        undefined ->
+            menelaus_util:reply_json(Req, <<"Read-Only admin does not exist">>, 404);
+        ROAName ->
+            ReqArgs = Req:parse_post(),
+            NewROAPass = proplists:get_value("password", ReqArgs),
+            case validate_cred(NewROAPass, password) of
+                true ->
+                    ns_config_auth:set_credentials(ro_admin, ROAName, NewROAPass),
+                    ns_audit:password_change(Req, {ROAName, ro_admin}),
+                    menelaus_util:reply_json(Req, [], 200);
+                Error ->
+                    menelaus_util:reply_json(Req, {struct, [{errors, {struct, [{password, Error}]}}]}, 400)
+            end
+    end.
+
+gen_password(Length) ->
+    Letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*?",
+    random:seed(os:timestamp()),
+    get_random_string(Length, Letters).
+
+get_random_string(Length, AllowedChars) ->
+    lists:foldl(fun(_, Acc) ->
+                        [lists:nth(random:uniform(length(AllowedChars)),
+                                   AllowedChars)]
+                            ++ Acc
+                end, [], lists:seq(1, Length)).
+
+reset_admin_password(Password) ->
+    {User, Error} =
+        case ns_config_auth:get_user(admin) of
+            undefined ->
+                {undefined, "Failed to reset administrative password. Node is not initialized."};
+            U ->
+                {U, case validate_cred(Password, password) of
+                        true ->
+                            undefined;
+                        ErrStr ->
+                            ErrStr
+                    end}
+        end,
+
+    case Error of
+        undefined ->
+            ok = ns_config_auth:set_credentials(admin, User, Password),
+            ns_audit:password_change(undefined, {User, admin}),
+            {ok, Password};
+        _ ->
+            {error, Error}
+    end.
+
+handle_reset_admin_password(Req) ->
+    menelaus_util:ensure_local(Req),
+    Password =
+        case proplists:get_value("generate", Req:parse_qs()) of
+            "1" ->
+                gen_password(8);
+            _ ->
+                PostArgs = Req:parse_post(),
+                proplists:get_value("password", PostArgs)
+        end,
+    case Password of
+        undefined ->
+            menelaus_util:reply_error(Req, "password", "Password should be supplied");
+        _ ->
+            case reset_admin_password(Password) of
+                {ok, Password} ->
+                    menelaus_util:reply_json(Req, {struct, [{password, list_to_binary(Password)}]});
+                {error, Error} ->
+                    menelaus_util:reply_global_error(Req, Error)
             end
     end.
 
