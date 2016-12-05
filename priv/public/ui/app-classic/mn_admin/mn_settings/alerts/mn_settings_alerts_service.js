@@ -24,7 +24,7 @@
     function saveAlerts(settings, params) {
       settings = _.clone(settings);
       settings.alerts = settings.alerts.join(',');
-      return $http.post('/settings/alerts', settings, params);
+      return $http.post('/settings/alerts', settings, {params: params});
     }
     function getAlerts() {
       return $http.get('/settings/alerts').then(function (resp) {
