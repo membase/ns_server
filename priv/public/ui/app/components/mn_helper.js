@@ -91,7 +91,7 @@
       }
       function reloadState() {
         mnPendingQueryKeeper.cancelAllQueries();
-        $state.transitionTo($state.current, $state.params, {reload: true, inherit: true});
+        return $state.reload();
       }
     }
   }

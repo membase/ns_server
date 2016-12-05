@@ -9,11 +9,6 @@
     var vm = this;
     vm.lostConnectionAt = $window.location.host;
     vm.state = mnLostConnectionService.getState();
-    vm.retryNow = retryNow;
-
-    function retryNow() {
-      mnLostConnectionService.deactivate();
-      mnHelper.reloadState();
-    }
+    vm.retryNow = mnLostConnectionService.resendQueries;
   }
 })();

@@ -11,18 +11,38 @@
   }
 
   function interceptorOfErrConnectionRefused($q, $injector) {
-      return {
-        responseError: function (rejection) {
-          if (rejection.status <= 0 && rejection.config.timeout &&
-              rejection.config.timeout.$$state && rejection.config.timeout.$$state.status === 0) {
-            //rejection caused not by us () in case status of $$state is 0
-            $injector.get("mnLostConnectionService").activate();
-          } else {
-            $injector.get("mnLostConnectionService").deactivate();
+    var wantedUrls = {};
+
+    return {
+      responseError: function (rejection) {
+        if (rejection.status <= 0 && rejection.config.timeout &&
+            rejection.config.timeout.$$state && rejection.config.timeout.$$state.status === 0) {
+          //rejection caused not by us (e.g. net::ERR_CONNECTION_REFUSED)
+          //in case status of $$state is 0
+          wantedUrls[rejection.config.url] = true;
+          $injector
+            .get("mnLostConnectionService")
+            .activate();
+        } else {
+          if (wantedUrls[rejection.config.url]) { //in order to avoid cached queries
+            wantedUrls = {};
+            $injector
+              .get("mnLostConnectionService")
+              .deactivate();
           }
-          return $q.reject(rejection);
         }
-      };
-    }
+        return $q.reject(rejection);
+      },
+      response: function (resp) {
+        if (wantedUrls[resp.config.url]) {
+          wantedUrls = {};
+          $injector
+            .get("mnLostConnectionService")
+            .deactivate();
+        }
+        return resp;
+      }
+    };
+  }
 
 })();
