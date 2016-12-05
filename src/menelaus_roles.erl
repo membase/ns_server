@@ -55,7 +55,7 @@
          get_users/0,
          get_users/1,
          get_user_name/1,
-         store_user/3,
+         store_user/4,
          delete_user/1,
          upgrade_users/1]).
 
@@ -320,13 +320,19 @@ validate_role(Role, Params, Definitions, Config) ->
             false
     end.
 
--spec store_user(rbac_identity(), rbac_user_name(), [rbac_role()]) -> run_txn_return().
-store_user(Identity, Name, Roles) ->
-    Props = case Name of
+-spec store_user(rbac_identity(), rbac_user_name(), rbac_password(), [rbac_role()]) -> run_txn_return().
+store_user(Identity, Name, Password, Roles) ->
+    Props0 = case Name of
+                 undefined ->
+                     [];
+                 _ ->
+                     [{name, Name}]
+             end,
+    Props = case Password of
                 undefined ->
-                    [];
+                    Props0;
                 _ ->
-                    [{name, Name}]
+                    [{authentication, build_auth(Password)} | Props0]
             end,
     ns_config:run_txn(
       fun (Config, SetFn) ->
@@ -344,6 +350,9 @@ store_user(Identity, Name, Roles) ->
                       {abort, {error, roles_validation, UnknownRoles}}
               end
       end).
+
+build_auth(Password) ->
+    [{ns_server, ns_config_auth:hash_password(Password)}].
 
 collect_users(asterisk, _Role, Dict) ->
     Dict;

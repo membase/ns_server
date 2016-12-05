@@ -29,7 +29,8 @@
          is_system_provisioned/0,
          is_system_provisioned/1,
          is_bucket_auth/2,
-         get_no_auth_buckets/1]).
+         get_no_auth_buckets/1,
+         hash_password/1]).
 
 get_key(admin) ->
     rest_creds;

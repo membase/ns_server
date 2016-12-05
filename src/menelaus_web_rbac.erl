@@ -317,15 +317,49 @@ handle_put_user(Type, UserId, Req) ->
             handle_put_user_with_identity({UserId, T}, Req)
     end.
 
-handle_put_user_with_identity(Identity, Req) ->
-    Props = Req:parse_post(),
-    Roles = parse_roles(proplists:get_value("roles", Props)),
+validate_password(R0) ->
+    R1 = menelaus_util:validate_required(password, R0),
+    R2 = menelaus_util:validate_any_value(password, R1),
+    menelaus_util:validate_by_fun(
+      fun (P) ->
+              case validate_cred(P, password) of
+                  true ->
+                      ok;
+                  Error ->
+                      {error, Error}
+              end
+      end, password, R2).
+
+validate_put_user(Type, Args) ->
+    R0 = menelaus_util:validate_has_params({Args, [], []}),
+    R1 = menelaus_util:validate_any_value(name, R0),
+    R2 = menelaus_util:validate_required(roles, R1),
+    R3 = menelaus_util:validate_any_value(roles, R2),
+    R4 = case Type of
+             builtin ->
+                 validate_password(R3);
+             saslauthd ->
+                 R3
+         end,
+    menelaus_util:validate_unsupported_params(R4).
+
+handle_put_user_with_identity({_UserId, Type} = Identity, Req) ->
+    menelaus_util:execute_if_validated(
+      fun (Values) ->
+              handle_put_user_validated(Identity,
+                                        proplists:get_value(name, Values),
+                                        proplists:get_value(password, Values),
+                                        proplists:get_value(roles, Values),
+                                        Req)
+      end, Req, validate_put_user(Type, Req:parse_post())).
+
+handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
+    Roles = parse_roles(RawRoles),
 
     BadRoles = [BadRole || {error, BadRole} <- Roles],
     case BadRoles of
         [] ->
-            Name = proplists:get_value("name", Props),
-            case menelaus_roles:store_user(Identity, Name, Roles) of
+            case menelaus_roles:store_user(Identity, Name, Password, Roles) of
                 {commit, _} ->
                     ns_audit:set_user(Req, Identity, Roles, Name),
                     handle_get_users(Req);
