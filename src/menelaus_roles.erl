@@ -201,12 +201,16 @@ compile_roles(Roles, Definitions) ->
                       substitute_params(Params, ParamDefinitions, Permissions)
               end, Roles).
 
+-spec get_roles_from_latest_config(rbac_identity()) -> [rbac_role()].
+get_roles_from_latest_config(Identity) ->
+    Props = ns_config:search_prop(ns_config:latest(), user_roles, Identity, []),
+    proplists:get_value(roles, Props, []).
+
 -spec get_user_roles(rbac_identity()) -> [rbac_role()].
 get_user_roles({User, saslauthd} = Identity) ->
     case cluster_compat_mode:is_cluster_45() of
         true ->
-            Props = ns_config:search_prop(ns_config:latest(), user_roles, Identity, []),
-            proplists:get_value(roles, Props, []);
+            get_roles_from_latest_config(Identity);
         false ->
             case saslauthd_auth:get_role_pre_45(User) of
                 admin ->
@@ -216,7 +220,9 @@ get_user_roles({User, saslauthd} = Identity) ->
                 false ->
                     []
             end
-    end.
+    end;
+get_user_roles({_User, builtin} = Identity) ->
+    get_roles_from_latest_config(Identity).
 
 -spec get_roles(rbac_identity()) -> [rbac_role()].
 get_roles({"", wrong_token}) ->
@@ -240,6 +246,8 @@ get_roles({_, ro_admin}) ->
     [ro_admin];
 get_roles({BucketName, bucket}) ->
     [{bucket_sasl, [BucketName]}];
+get_roles({_, builtin} = Identity) ->
+    get_user_roles(Identity);
 get_roles({_, saslauthd} = Identity) ->
     get_user_roles(Identity).
 

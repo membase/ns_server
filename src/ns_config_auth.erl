@@ -94,11 +94,16 @@ authenticate(Username, Password) ->
                 true ->
                     {ok, {Username, ro_admin}};
                 false ->
-                    case is_bucket_auth(Username, Password) of
+                    case authenticate_builtin(Username, Password) of
                         true ->
-                            {ok, {Username, bucket}};
+                            {ok, {Username, builtin}};
                         false ->
-                            false
+                            case is_bucket_auth(Username, Password) of
+                                true ->
+                                    {ok, {Username, bucket}};
+                                false ->
+                                    false
+                            end
                     end
             end
     end.
@@ -112,6 +117,17 @@ do_authenticate(admin, {value, null}, _User, _Password) ->
     true;
 do_authenticate(_Role, _Creds, _User, _Password) ->
     false.
+
+authenticate_builtin(Username, Password) ->
+    {value, Users} = ns_config:search(user_roles),
+    case proplists:get_value({Username, builtin}, Users) of
+        undefined ->
+            false;
+        Props ->
+            Auth = proplists:get_value(authentication, Props),
+            {Salt, Mac} = proplists:get_value(ns_server, Auth),
+            hash_password(Salt, Password) =:= Mac
+    end.
 
 unset_credentials(Role) ->
     ns_config:set(get_key(Role), null).
