@@ -19,7 +19,7 @@
 
 -include("ns_common.hrl").
 
--export([authenticate/3,
+-export([authenticate/2,
          set_credentials/3,
          get_user/1,
          get_password/1,
@@ -28,7 +28,6 @@
          get_creds/2,
          is_system_provisioned/0,
          is_system_provisioned/1,
-         is_bucket_auth/2,
          get_no_auth_buckets/1,
          hash_password/1]).
 
@@ -85,6 +84,24 @@ authenticate(admin, [$@ | _] = User, Password) ->
         orelse authenticate_non_special(admin, User, Password);
 authenticate(Role, User, Password) ->
     authenticate_non_special(Role, User, Password).
+
+authenticate(Username, Password) ->
+    case authenticate(admin, Username, Password) of
+        true ->
+            {ok, {Username, admin}};
+        false ->
+            case authenticate(ro_admin, Username, Password) of
+                true ->
+                    {ok, {Username, ro_admin}};
+                false ->
+                    case is_bucket_auth(Username, Password) of
+                        true ->
+                            {ok, {Username, bucket}};
+                        false ->
+                            false
+                    end
+            end
+    end.
 
 authenticate_non_special(Role, User, Password) ->
     do_authenticate(Role, ns_config:search(get_key(Role)), User, Password).

@@ -242,21 +242,11 @@ authenticate({token, Token} = Param) ->
             rpc:call(ns_node_disco:ns_server_node(), ?MODULE, authenticate, [Param])
     end;
 authenticate({Username, Password}) ->
-    case ns_config_auth:authenticate(admin, Username, Password) of
-        true ->
-            {ok, {Username, admin}};
+    case ns_config_auth:authenticate(Username, Password) of
         false ->
-            case ns_config_auth:authenticate(ro_admin, Username, Password) of
-                true ->
-                    {ok, {Username, ro_admin}};
-                false ->
-                    case ns_config_auth:is_bucket_auth(Username, Password) of
-                        true ->
-                            {ok, {Username, bucket}};
-                        false ->
-                            saslauthd_authenticate(Username, Password)
-                    end
-            end
+            saslauthd_authenticate(Username, Password);
+        Ok ->
+            Ok
     end.
 
 -spec saslauthd_authenticate(rbac_user_id(), rbac_password()) ->
