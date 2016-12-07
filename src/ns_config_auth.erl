@@ -29,7 +29,8 @@
          is_system_provisioned/0,
          is_system_provisioned/1,
          get_no_auth_buckets/1,
-         hash_password/1]).
+         hash_password/1,
+         get_builtin_users_auth_info/1]).
 
 get_key(admin) ->
     rest_creds;
@@ -118,16 +119,23 @@ do_authenticate(admin, {value, null}, _User, _Password) ->
 do_authenticate(_Role, _Creds, _User, _Password) ->
     false.
 
+get_builtin_user_auth_info(Props) ->
+    Auth = proplists:get_value(authentication, Props),
+    proplists:get_value(ns_server, Auth).
+
 authenticate_builtin(Username, Password) ->
     {value, Users} = ns_config:search(user_roles),
     case proplists:get_value({Username, builtin}, Users) of
         undefined ->
             false;
         Props ->
-            Auth = proplists:get_value(authentication, Props),
-            {Salt, Mac} = proplists:get_value(ns_server, Auth),
+            {Salt, Mac} = get_builtin_user_auth_info(Props),
             hash_password(Salt, Password) =:= Mac
     end.
+
+get_builtin_users_auth_info(Config) ->
+    {value, Users} = ns_config:search(Config, user_roles),
+    [{{Username, builtin}, get_builtin_user_auth_info(Props)} || {{Username, builtin}, Props} <- Users].
 
 unset_credentials(Role) ->
     ns_config:set(get_key(Role), null).

@@ -190,16 +190,24 @@ build_buckets_info(Config) ->
                          end}]}
               end, Buckets).
 
-build_cred_info(Config, Role) ->
-    case ns_config_auth:get_creds(Config, Role) of
+build_user({User, Type}, Salt, Mac) ->
+    {[{user, erlang:list_to_binary(User)},
+      {type, Type},
+      {salt, base64:encode(Salt)},
+      {mac, base64:encode(Mac)}]}.
+
+build_cred_info(Config, Type) ->
+    case ns_config_auth:get_creds(Config, Type) of
         {User, Salt, Mac} ->
-            [{[{user, erlang:list_to_binary(User)},
-               {type, Role},
-               {salt, base64:encode(Salt)},
-               {mac, base64:encode(Mac)}]}];
+            [build_user({User, Type}, Salt, Mac)];
         undefined ->
             []
     end.
+
+build_users(Config) ->
+    build_cred_info(Config, admin) ++ build_cred_info(Config, ro_admin) ++
+        [build_user(Identity, Salt, Mac) ||
+            {Identity, {Salt, Mac}} <- ns_config_auth:get_builtin_users_auth_info(Config)].
 
 build_auth_info() ->
     Config = ns_config:get(),
@@ -215,7 +223,6 @@ build_auth_info() ->
     Port = misc:node_rest_port(Config, node()),
     AuthCheckURL = io_lib:format("http://127.0.0.1:~w/_cbauth", [Port]),
     PermissionCheckURL = io_lib:format("http://127.0.0.1:~w/_cbauth/checkPermission", [Port]),
-    Users = build_cred_info(Config, admin) ++ build_cred_info(Config, ro_admin),
 
     [{nodes, Nodes},
      {buckets, build_buckets_info(Config)},
@@ -223,7 +230,7 @@ build_auth_info() ->
      {permissionCheckURL, iolist_to_binary(PermissionCheckURL)},
      {ldapEnabled, cluster_compat_mode:is_ldap_enabled()},
      {permissionsVersion, menelaus_web_rbac:check_permissions_url_version(Config)},
-     {users, Users}].
+     {users, build_users(Config)}].
 
 handle_cbauth_post(Req) ->
     {User, Source} = menelaus_auth:get_identity(Req),
