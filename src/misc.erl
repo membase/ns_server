@@ -1,4 +1,4 @@
-% Copyright (c) 2009, NorthScale, Inc.
+% Copyright (c) 2009-2016, Couchbase, Inc.
 % Copyright (c) 2008, Cliff Moon
 % Copyright (c) 2008, Powerset, Inc
 %
@@ -38,25 +38,10 @@
 -include_lib("kernel/include/file.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--define(FNV_OFFSET_BASIS, 2166136261).
--define(FNV_PRIME,        16777619).
-
 -compile(export_all).
-
--define(prof(Label), true).
--define(forp(Label), true).
--define(balance_prof, true).
 
 shuffle(List) when is_list(List) ->
     [N || {_R, N} <- lists:keysort(1, [{random:uniform(), X} || X <- List])].
-
-randomize() ->
-    case get(random_seed) of
-        undefined ->
-            random:seed(erlang:now());
-        _ ->
-            ok
-    end.
 
 get_days_list() ->
     ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].
@@ -201,23 +186,6 @@ rm_rf_loop(DirName, [F | Files]) ->
             Error
     end.
 
-space_split(Bin) ->
-    byte_split(Bin, 32). % ASCII space is 32.
-
-zero_split(Bin) ->
-    byte_split(Bin, 0).
-
-byte_split(Bin, C) ->
-    byte_split(0, Bin, C).
-
-byte_split(N, Bin, _C) when N > erlang:byte_size(Bin) -> Bin;
-
-byte_split(N, Bin, C) ->
-    case Bin of
-        <<_:N/binary, C:8, _/binary>> -> split_binary(Bin, N);
-        _ -> byte_split(N + 1, Bin, C)
-    end.
-
 rand_str(N) ->
   lists:map(fun(_I) ->
       random:uniform(26) + $a - 1
@@ -226,20 +194,6 @@ rand_str(N) ->
 nthreplace(N, E, List) ->
   lists:sublist(List, N-1) ++ [E] ++ lists:nthtail(N, List).
 
-nthdelete(N, List)        -> nthdelete(N, List, []).
-nthdelete(0, List, Ret)   -> lists:reverse(Ret) ++ List;
-nthdelete(_, [], Ret)     -> lists:reverse(Ret);
-nthdelete(1, [_E|L], Ret) -> nthdelete(0, L, Ret);
-nthdelete(N, [E|L], Ret)  -> nthdelete(N-1, L, [E|Ret]).
-
-floor(X) ->
-  T = erlang:trunc(X),
-  case (X - T) of
-    Neg when Neg < 0 -> T - 1;
-    Pos when Pos > 0 -> T;
-    _ -> T
-  end.
-
 ceiling(X) ->
   T = erlang:trunc(X),
   case (X - T) of
@@ -247,41 +201,6 @@ ceiling(X) ->
     Pos when Pos > 0 -> T + 1;
     _ -> T
   end.
-
-succ([])  -> [];
-succ(Str) -> succ_int(lists:reverse(Str), []).
-
-succ_int([Char|Str], Acc) ->
-  if
-    Char >= $z -> succ_int(Str, [$a|Acc]);
-    true -> lists:reverse(lists:reverse([Char+1|Acc]) ++ Str)
-  end.
-
-fast_acc(_, Acc, 0)   -> Acc;
-fast_acc(Fun, Acc, N) -> fast_acc(Fun, Fun(Acc), N-1).
-
-hash(Term) ->
-  ?prof(hash),
-  R = fnv(Term),
-  ?forp(hash),
-  R.
-
-hash(Term, Seed) -> hash({Term, Seed}).
-
-% 32 bit fnv. magic numbers ahoy
-fnv(Term) when is_binary(Term) ->
-  fnv_int(?FNV_OFFSET_BASIS, 0, Term);
-
-fnv(Term) ->
-  fnv_int(?FNV_OFFSET_BASIS, 0, term_to_binary(Term)).
-
-fnv_int(Hash, ByteOffset, Bin) when erlang:byte_size(Bin) == ByteOffset ->
-  Hash;
-
-fnv_int(Hash, ByteOffset, Bin) ->
-  <<_:ByteOffset/binary, Octet:8, _/binary>> = Bin,
-  Xord = Hash bxor Octet,
-  fnv_int((Xord * ?FNV_PRIME) rem (2 bsl 31), ByteOffset+1, Bin).
 
 position(Predicate, List) when is_function(Predicate) ->
   position(Predicate, List, 1);
@@ -332,56 +251,6 @@ epoch_to_time(Nano) ->
 
 msecs_to_usecs(MilliSec) ->
     MilliSec * 1000.
-
-byte_size(List) when is_list(List) ->
-  lists:foldl(fun(El, Acc) -> Acc + ?MODULE:byte_size(El) end, 0, List);
-
-byte_size(Term) ->
-  erlang:byte_size(Term).
-
-listify(List) when is_list(List) ->
-  List;
-
-listify(El) -> [El].
-
-reverse_bits(V) when is_integer(V) ->
-  % swap odd and even bits
-  V1 = ((V bsr 1) band 16#55555555) bor
-        (((V band 16#55555555) bsl 1) band 16#ffffffff),
-  % swap consecutive pairs
-  V2 = ((V1 bsr 2) band 16#33333333) bor
-        (((V1 band 16#33333333) bsl 2) band 16#ffffffff),
-  % swap nibbles ...
-  V3 = ((V2 bsr 4) band 16#0F0F0F0F) bor
-        (((V2 band 16#0F0F0F0F) bsl 4) band 16#ffffffff),
-  % swap bytes
-  V4 = ((V3 bsr 8) band 16#00FF00FF) bor
-        (((V3 band 16#00FF00FF) bsl 8) band 16#ffffffff),
-  % swap 2-byte long pairs
-  ((V4 bsr 16) band 16#ffffffff) bor ((V4 bsl 16) band 16#ffffffff).
-
-running(Node, Module) ->
-  Ref = erlang:monitor(process, {Module, Node}),
-  R = receive
-          {'DOWN', Ref, _, _, _} -> false
-      after 1 ->
-          true
-      end,
-  erlang:demonitor(Ref),
-  R.
-
-running(Pid) ->
-  Ref = erlang:monitor(process, Pid),
-  R = receive
-          {'DOWN', Ref, _, _, _} -> false
-      after 1 ->
-          true
-      end,
-  erlang:demonitor(Ref),
-  R.
-
-running_nodes(Module) ->
-  [Node || Node <- erlang:nodes([this, visible]), running(Node, Module)].
 
 % Returns just the node name string that's before the '@' char.
 % For example, returns "test" instead of "test@myhost.com".
@@ -446,14 +315,6 @@ ping_jointo(NodeName) ->
         pong -> ?log_debug("connected to ~p", [NodeName]);
         pang -> {error, io_lib:format("could not ping ~p~n", [NodeName])}
     end.
-
-mapfilter(F, Ref, List) ->
-    lists:foldr(fun (Item, Acc) ->
-                    case F(Item) of
-                    Ref -> Acc;
-                    Value -> [Value|Acc]
-                    end
-                 end, [], List).
 
 %% http://github.com/joearms/elib1/blob/master/lib/src/elib1_misc.erl#L1367
 
@@ -744,17 +605,6 @@ flush(Msg, N) ->
             N
     end.
 
-flush_head(Head) ->
-    flush_head(Head, 0).
-
-flush_head(Head, N) ->
-    receive
-        Msg when element(1, Msg) == Head ->
-            flush_head(Head, N+1)
-    after 0 ->
-            N
-    end.
-
 
 %% You know, like in Python
 enumerate(List) ->
@@ -803,38 +653,6 @@ keygroup_test() ->
 sort_and_keygroup(Index, List) ->
     keygroup(Index, lists:keysort(Index, List)).
 
-keymin(I, [H|T]) ->
-    keymin(I, T, H).
-
-keymin(_, [], M) ->
-    M;
-keymin(I, [H|T], M) ->
-    case element(I, H) < element(I, M) of
-        true ->
-            keymin(I, T, H);
-        false ->
-            keymin(I, T, M)
-    end.
-
-keymin_test() ->
-    {c, 3} = keymin(2, [{a, 5}, {c, 3}, {d, 10}]).
-
-keymax(I, [H|T]) ->
-    keymax(I, T, H).
-
-keymax(_, [], M) ->
-    M;
-keymax(I, [H|T], M) ->
-    case element(I, H) > element(I, M) of
-        true ->
-            keymax(I, T, H);
-        false ->
-            keymax(I, T, M)
-    end.
-
-keymax_test() ->
-    {20, g} = keymax(1, [{5, d}, {19, n}, {20, g}, {15, z}]).
-
 %% Turn [[1, 2, 3], [4, 5, 6], [7, 8, 9]] info
 %% [[1, 4, 7], [2, 5, 8], [3, 6, 9]]
 rotate(List) ->
@@ -853,21 +671,6 @@ rotate_test() ->
     [[1, 4, 7], [2, 5, 8], [3, 6, 9]] =
         rotate([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
     [] = rotate([]).
-
-
-pairs([H1|[H2|_] = T]) ->
-    [{H1, H2}|pairs(T)];
-pairs([_]) ->
-    [];
-pairs([]) ->
-    [].
-
-pairs_test() ->
-    [{1,2}, {2,3}, {3,4}] = pairs([1,2,3,4]),
-    [] = pairs([]),
-    [{1,2}, {2,3}] = pairs([1,2,3]),
-    [] = pairs([1]),
-    [{1,2}] = pairs([1,2]).
 
 rewrite(Fun, Term) ->
     case Fun(Term) of
@@ -1304,23 +1107,6 @@ realpath_rec_info(_Info, Current, [FirstToken | Tokens], SymlinksLimit) ->
     NewCurrent = filename:absname(FirstToken, Current),
     realpath_rec_check(NewCurrent, Tokens, SymlinksLimit).
 
-zipwith4(_Combine, [], [], [], []) -> [];
-zipwith4(Combine, List1, List2, List3, List4) ->
-    [Combine(hd(List1), hd(List2), hd(List3), hd(List4))
-     | zipwith4(Combine, tl(List1), tl(List2), tl(List3), tl(List4))].
-
-zipwith4_test() ->
-    F = fun (A1, A2, A3, A4) -> {A1, A2, A3, A4} end,
-
-    Actual1 = zipwith4(F, [1, 1, 1], [2,2,2], [3,3,3], [4,4,4]),
-    Actual1 = lists:duplicate(3, {1,2,3,4}),
-
-    case (catch {ok, zipwith4(F, [1,1,1], [2,2,2], [3,3,3], [4,4,4,4])}) of
-        {ok, _} ->
-            exit(bad_error_handling);
-        _ -> ok
-    end.
-
 -spec split_binary_at_char(binary(), char()) -> binary() | {binary(), binary()}.
 split_binary_at_char(Binary, Chr) ->
     case binary:split(Binary, <<Chr:8>>) of
@@ -1330,10 +1116,6 @@ split_binary_at_char(Binary, Chr) ->
 
 is_binary_ends_with(Binary, Suffix) ->
     binary:longest_common_suffix([Binary, Suffix]) =:= size(Suffix).
-
-file_contents(Filename) ->
-    {ok, Bin} = file:read_file(Filename),
-    Bin.
 
 absname(Name) ->
     PathType = filename:pathtype(Name),
@@ -1389,14 +1171,6 @@ atomic_rename(From, To) ->
         Err ->
             Err
     end.
-
-%% Return a list containing all but the last elements of the source list.
--spec init(nonempty_list()) -> list().
-init([_X]) ->
-    [];
-init([X | Rest]) ->
-    [X | init(Rest)].
-
 
 %% Get an item from from a dict, if it doesnt exist return default
 -spec dict_get(term(), dict(), term()) -> term().
@@ -1878,22 +1652,6 @@ is_prefix(KeyPattern, K) ->
             false
     end.
 
-%% works like string:rchr but for binaries; note that unlike everything else
-%% in erlang binaries use zero-based indexing
-binary_rchr(Binary, Chr) ->
-    Len = erlang:byte_size(Binary),
-    do_binary_rchr(Binary, Chr, Len).
-
-do_binary_rchr(_, _, 0) ->
-    -1;
-do_binary_rchr(Binary, Chr, Ix) ->
-    case binary:at(Binary, Ix - 1) =:= Chr of
-        true ->
-            Ix - 1;
-        false ->
-            do_binary_rchr(Binary, Chr, Ix - 1)
-    end.
-
 eval(Str,Binding) ->
     {ok,Ts,_} = erl_scan:string(Str),
     Ts1 = case lists:reverse(Ts) of
@@ -1902,9 +1660,6 @@ eval(Str,Binding) ->
           end,
     {ok,Expr} = erl_parse:parse_exprs(Ts1),
     erl_eval:exprs(Expr, Binding).
-
-pretty_version(ListOfInts) when is_list(ListOfInts) ->
-    string:join([integer_to_list(I) || I <- ListOfInts], ".").
 
 get_ancestors() ->
     erlang:get('$ancestors').

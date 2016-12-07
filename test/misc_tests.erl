@@ -35,23 +35,6 @@
 -module(misc_tests).
 -include_lib("eunit/include/eunit.hrl").
 
-reverse_bits_test() ->
-  3869426816 = misc:reverse_bits(19088743),
-  1458223569 = misc:reverse_bits(2342344554).
-
-nthdelete_test() ->
-  A = [1,2,3,4,5],
-  ?assertEqual([1,2,3,4,5], misc:nthdelete(0, A)),
-  ?assertEqual([1,2,3,4,5], misc:nthdelete(6, A)),
-  ?assertEqual([2,3,4,5], misc:nthdelete(1, A)),
-  ?assertEqual([1,2,4,5], misc:nthdelete(3, A)).
-
-zero_split_test() ->
-  ?assertEqual({<<"">>, <<0,"abcdefg">>}, misc:zero_split(<<0, "abcdefg">>)),
-  ?assertEqual({<<"abd">>, <<0, "efg">>}, misc:zero_split(<<"abd", 0, "efg">>)),
-  ?assertEqual({<<"abcdefg">>, <<0>>}, misc:zero_split(<<"abcdefg",0>>)),
-  ?assertEqual(<<"abcdefg">>, misc:zero_split(<<"abcdefg">>)).
-
 shuffle_test() ->
   % we can really only test that they aren't equals,
   % which won't even always work, weak
