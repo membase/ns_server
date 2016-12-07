@@ -2111,3 +2111,45 @@ intersperse_test() ->
     ?assertEqual([a], intersperse([a], x)),
     ?assertEqual([a,x,b,x,c], intersperse([a,b,c], x)).
 -endif.
+
+hexify(Binary) ->
+    << <<(hexify_digit(High)), (hexify_digit(Low))>>
+       || <<High:4, Low:4>> <= Binary >>.
+
+hexify_digit(0) -> $0;
+hexify_digit(1) -> $1;
+hexify_digit(2) -> $2;
+hexify_digit(3) -> $3;
+hexify_digit(4) -> $4;
+hexify_digit(5) -> $5;
+hexify_digit(6) -> $6;
+hexify_digit(7) -> $7;
+hexify_digit(8) -> $8;
+hexify_digit(9) -> $9;
+hexify_digit(10) -> $a;
+hexify_digit(11) -> $b;
+hexify_digit(12) -> $c;
+hexify_digit(13) -> $d;
+hexify_digit(14) -> $e;
+hexify_digit(15) -> $f.
+
+-ifdef(EUNIT).
+hexify_test() ->
+    lists:foreach(
+      fun (_) ->
+              R = crypto:rand_bytes(256),
+              Hex = hexify(R),
+
+              Etalon0 = string:to_lower(integer_to_list(binary:decode_unsigned(R), 16)),
+              Etalon1 =
+                  case erlang:byte_size(R) * 2 - length(Etalon0) of
+                      0 ->
+                          Etalon0;
+                      N when N > 0 ->
+                          lists:duplicate(N, $0) ++ Etalon0
+                  end,
+              Etalon = list_to_binary(Etalon1),
+
+              ?assertEqual(Hex, Etalon)
+      end, lists:seq(1, 100)).
+-endif.
