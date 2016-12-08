@@ -209,7 +209,7 @@ handle_get_users(Req) ->
     menelaus_web:assert_is_enterprise(),
     menelaus_web:assert_is_45(),
 
-    Users = menelaus_roles:get_users(),
+    Users = menelaus_users:get_users(ns_config:latest()),
     Json = lists:map(
              fun ({Identity, Props}) ->
                      Roles = proplists:get_value(roles, Props, []),
@@ -220,7 +220,7 @@ handle_get_users(Req) ->
 handle_whoami(Req) ->
     Identity = menelaus_auth:get_identity(Req),
     Roles = menelaus_roles:get_roles(Identity),
-    Name = menelaus_roles:get_user_name(Identity),
+    Name = menelaus_users:get_user_name(ns_config:latest(), Identity),
     menelaus_util:reply_json(Req, get_user_json(Identity, Name, Roles)).
 
 parse_until(Str, Delimeters) ->
@@ -359,7 +359,7 @@ handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
     BadRoles = [BadRole || {error, BadRole} <- Roles],
     case BadRoles of
         [] ->
-            case menelaus_roles:store_user(Identity, Name, Password, Roles) of
+            case menelaus_users:store_user(Identity, Name, Password, Roles) of
                 {commit, _} ->
                     ns_audit:set_user(Req, Identity, Roles, Name),
                     handle_get_users(Req);
@@ -378,7 +378,7 @@ handle_delete_user(Type, UserId, Req) ->
             menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
         T ->
             Identity = {UserId, T},
-            case menelaus_roles:delete_user(Identity) of
+            case menelaus_users:delete_user(Identity) of
                 {commit, _} ->
                     ns_audit:delete_user(Req, Identity),
                     handle_get_users(Req);
@@ -598,7 +598,7 @@ handle_check_permissions_post(Req) ->
     end.
 
 check_permissions_url_version(Config) ->
-    Users = menelaus_roles:get_users(Config),
+    Users = menelaus_users:get_users(Config),
     erlang:phash2([menelaus_roles:get_definitions(Config),
                    [{Identity, proplists:get_value(roles, Props)} || {Identity, Props} <- Users],
                    ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)),

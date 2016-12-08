@@ -52,12 +52,7 @@
          get_roles/1,
          get_compiled_roles/1,
          get_all_assignable_roles/1,
-         get_users/0,
-         get_users/1,
-         get_user_name/1,
-         store_user/4,
-         delete_user/1,
-         upgrade_users/1]).
+         validate_roles/2]).
 
 -spec preconfigured_roles() -> [rbac_role_def(), ...].
 preconfigured_roles() ->
@@ -201,16 +196,11 @@ compile_roles(Roles, Definitions) ->
                       substitute_params(Params, ParamDefinitions, Permissions)
               end, Roles).
 
--spec get_roles_from_latest_config(rbac_identity()) -> [rbac_role()].
-get_roles_from_latest_config(Identity) ->
-    Props = ns_config:search_prop(ns_config:latest(), user_roles, Identity, []),
-    proplists:get_value(roles, Props, []).
-
 -spec get_user_roles(rbac_identity()) -> [rbac_role()].
 get_user_roles({User, saslauthd} = Identity) ->
     case cluster_compat_mode:is_cluster_45() of
         true ->
-            get_roles_from_latest_config(Identity);
+            menelaus_users:get_roles(ns_config:latest(), Identity);
         false ->
             case saslauthd_auth:get_role_pre_45(User) of
                 admin ->
@@ -222,7 +212,7 @@ get_user_roles({User, saslauthd} = Identity) ->
             end
     end;
 get_user_roles({_User, builtin} = Identity) ->
-    get_roles_from_latest_config(Identity).
+    menelaus_users:get_roles(ns_config:latest(), Identity).
 
 -spec get_roles(rbac_identity()) -> [rbac_role()].
 get_roles({"", wrong_token}) ->
@@ -278,40 +268,6 @@ get_all_assignable_roles(Config) ->
                 end, Acc, BucketNames)
       end, [], get_definitions(Config)).
 
--spec get_users() -> [{rbac_identity(), []}].
-get_users() ->
-    get_users(ns_config:latest()).
-
--spec get_users(ns_config()) -> [{rbac_identity(), []}].
-get_users(Config) ->
-    ns_config:search(Config, user_roles, []).
-
--spec get_user_name(rbac_identity()) -> rbac_user_name().
-get_user_name(Identity) ->
-    case lists:keyfind(Identity, 1, get_users()) of
-        false ->
-            undefined;
-        {Identity, Props} ->
-            proplists:get_value(name, Props)
-    end.
-
--spec delete_user(rbac_identity()) -> run_txn_return().
-delete_user(Identity) ->
-    ns_config:run_txn(
-      fun (Config, SetFn) ->
-              case ns_config:search(Config, user_roles) of
-                  false ->
-                      {abort, {error, not_found}};
-                  {value, Users} ->
-                      case lists:keytake(Identity, 1, Users) of
-                          false ->
-                              {abort, {error, not_found}};
-                          {value, _, NewUsers} ->
-                              {commit, SetFn(user_roles, NewUsers, Config)}
-                      end
-              end
-      end).
-
 -spec validate_role(rbac_role(), [rbac_role_def()], ns_config()) -> boolean().
 validate_role(Role, Definitions, Config) when is_atom(Role) ->
     validate_role(Role, [], Definitions, Config);
@@ -328,95 +284,16 @@ validate_role(Role, Params, Definitions, Config) ->
             false
     end.
 
--spec store_user(rbac_identity(), rbac_user_name(), rbac_password(), [rbac_role()]) -> run_txn_return().
-store_user(Identity, Name, Password, Roles) ->
-    Props0 = case Name of
-                 undefined ->
-                     [];
-                 _ ->
-                     [{name, Name}]
-             end,
-    Props = case Password of
-                undefined ->
-                    Props0;
-                _ ->
-                    [{authentication, build_auth(Password)} | Props0]
-            end,
-    ns_config:run_txn(
-      fun (Config, SetFn) ->
-              {value, Definitions} = ns_config:search(roles_definitions),
-
-              UnknownRoles = [Role || Role <- Roles,
-                                      not validate_role(Role, Definitions, Config)],
-              case UnknownRoles of
-                  [] ->
-                      Users = ns_config:search(Config, user_roles, []),
-                      NewUsers = lists:keystore(Identity, 1, Users,
-                                                {Identity, [{roles, Roles} | Props]}),
-                      {commit, SetFn(user_roles, NewUsers, Config)};
-                  _ ->
-                      {abort, {error, roles_validation, UnknownRoles}}
-              end
-      end).
-
-build_auth(Password) ->
-    [{ns_server, ns_config_auth:hash_password(Password)}].
-
-collect_users(asterisk, _Role, Dict) ->
-    Dict;
-collect_users([], _Role, Dict) ->
-    Dict;
-collect_users([User | Rest], Role, Dict) ->
-    NewDict = dict:update(User, fun (Roles) ->
-                                        ordsets:add_element(Role, Roles)
-                                end, ordsets:from_list([Role]), Dict),
-    collect_users(Rest, Role, NewDict).
-
--spec upgrade_users(ns_config()) -> [{set, user_roles, _}].
-upgrade_users(Config) ->
-    case ns_config:search(Config, saslauthd_auth_settings) of
-        false ->
-            [];
-        {value, Props} ->
-            case proplists:get_value(enabled, Props, false) of
-                false ->
-                    [];
-                true ->
-                    Dict = dict:new(),
-                    Dict1 = collect_users(proplists:get_value(admins, Props, []), admin, Dict),
-                    Dict2 = collect_users(proplists:get_value(roAdmins, Props, []), ro_admin, Dict1),
-                    [{set, user_roles,
-                      lists:map(fun ({User, Roles}) ->
-                                        {{binary_to_list(User), saslauthd},
-                                         [{roles, ordsets:to_list(Roles)}]}
-                                end, dict:to_list(Dict2))}]
-            end
+validate_roles(Roles, Config) ->
+    {value, Definitions} = ns_config:search(roles_definitions),
+    UnknownRoles = [Role || Role <- Roles,
+                            not validate_role(Role, Definitions, Config)],
+    case UnknownRoles of
+        [] ->
+            ok;
+        _ ->
+            {error, roles_validation, UnknownRoles}
     end.
-
-upgrade_users_test() ->
-    Config = [[{saslauthd_auth_settings,
-                [{enabled,true},
-                 {admins,[<<"user1">>, <<"user2">>, <<"user1">>, <<"user3">>]},
-                 {roAdmins,[<<"user4">>, <<"user1">>]}]}]],
-    UserRoles = [{{"user1", saslauthd}, [{roles, [admin, ro_admin]}]},
-                 {{"user2", saslauthd}, [{roles, [admin]}]},
-                 {{"user3", saslauthd}, [{roles, [admin]}]},
-                 {{"user4", saslauthd}, [{roles, [ro_admin]}]}],
-    Upgraded = upgrade_users(Config),
-    ?assertMatch([{set, user_roles, _}], Upgraded),
-    [{set, user_roles, UpgradedUserRoles}] = Upgraded,
-    ?assertMatch(UserRoles, lists:sort(UpgradedUserRoles)).
-
-upgrade_users_asterisk_test() ->
-    Config = [[{saslauthd_auth_settings,
-                [{enabled,true},
-                 {admins, asterisk},
-                 {roAdmins,[<<"user1">>]}]}]],
-    UserRoles = [{{"user1", saslauthd}, [{roles, [ro_admin]}]}],
-    Upgraded = upgrade_users(Config),
-    ?assertMatch([{set, user_roles, _}], Upgraded),
-    [{set, user_roles, UpgradedUserRoles}] = Upgraded,
-    ?assertMatch(UserRoles, lists:sort(UpgradedUserRoles)).
 
 %% assertEqual is used instead of assert and assertNot to avoid
 %% dialyzer warnings

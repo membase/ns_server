@@ -69,7 +69,7 @@ upgrade_config_from_4_0_to_4_1(Config) ->
 upgrade_config_from_4_1_to_4_5(Config) ->
     ?log_info("Performing online config upgrade to 4.5 version"),
     RV = create_service_maps(Config, [fts]) ++
-        menelaus_roles:upgrade_users(Config),
+        menelaus_users:upgrade_to_4_5(Config),
     RV1 = index_settings_manager:config_upgrade_to_45(Config) ++ RV,
     add_index_ram_alert_limit(Config) ++ RV1.
 

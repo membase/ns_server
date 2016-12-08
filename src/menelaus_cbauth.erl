@@ -207,7 +207,7 @@ build_cred_info(Config, Type) ->
 build_users(Config) ->
     build_cred_info(Config, admin) ++ build_cred_info(Config, ro_admin) ++
         [build_user(Identity, Salt, Mac) ||
-            {Identity, {Salt, Mac}} <- ns_config_auth:get_builtin_users_auth_info(Config)].
+            {Identity, {Salt, Mac}} <- menelaus_users:get_auth_infos(Config)].
 
 build_auth_info() ->
     Config = ns_config:get(),
