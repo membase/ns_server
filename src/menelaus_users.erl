@@ -35,30 +35,42 @@
 get_users(Config) ->
     ns_config:search(Config, user_roles, []).
 
+build_auth(_Identity, undefined, _Users) ->
+    [];
+build_auth(Identity, Password, Users) ->
+    case proplists:get_value(Identity, Users) of
+        undefined ->
+            [{authentication, build_auth(Password)}];
+        Props ->
+            Auth = get_auth_info(Props),
+            {Salt, Mac} = get_salt_and_mac(Auth),
+            case ns_config_auth:hash_password(Salt, Password) of
+                Mac ->
+                    [{authentication, Auth}];
+                _ ->
+                    [{authentication, build_auth(Password)}]
+            end
+    end.
+
 build_auth(Password) ->
     [{ns_server, ns_config_auth:hash_password(Password)}].
 
 -spec store_user(rbac_identity(), rbac_user_name(), rbac_password(), [rbac_role()]) -> run_txn_return().
 store_user(Identity, Name, Password, Roles) ->
-    Props0 = case Name of
-                 undefined ->
-                     [];
-                 _ ->
-                     [{name, Name}]
-             end,
-    Props = case Password of
+    Props = case Name of
                 undefined ->
-                    Props0;
+                    [];
                 _ ->
-                    [{authentication, build_auth(Password)} | Props0]
+                    [{name, Name}]
             end,
     ns_config:run_txn(
       fun (Config, SetFn) ->
               Users = get_users(Config),
+              NewProps = [{roles, Roles} | Props] ++ build_auth(Identity, Password, Users),
+
               case menelaus_roles:validate_roles(Roles, Config) of
                   ok ->
-                      NewUsers = lists:keystore(Identity, 1, Users,
-                                                {Identity, [{roles, Roles} | Props]}),
+                      NewUsers = lists:keystore(Identity, 1, Users, {Identity, NewProps}),
                       {commit, SetFn(user_roles, NewUsers, Config)};
                   Error ->
                       {abort, Error}
@@ -83,7 +95,9 @@ delete_user(Identity) ->
       end).
 
 get_auth_info(Props) ->
-    Auth = proplists:get_value(authentication, Props),
+    proplists:get_value(authentication, Props).
+
+get_salt_and_mac(Auth) ->
     proplists:get_value(ns_server, Auth).
 
 -spec authenticate(rbac_user_id(), rbac_password()) -> boolean().
@@ -93,14 +107,15 @@ authenticate(Username, Password) ->
         undefined ->
             false;
         Props ->
-            {Salt, Mac} = get_auth_info(Props),
+            {Salt, Mac} = get_salt_and_mac(get_auth_info(Props)),
             ns_config_auth:hash_password(Salt, Password) =:= Mac
     end.
 
 -spec get_auth_infos(ns_config()) -> [{rbac_identity(), term()}].
 get_auth_infos(Config) ->
     Users = get_users(Config),
-    [{{Username, builtin}, get_auth_info(Props)} || {{Username, builtin}, Props} <- Users].
+    [{{Username, builtin}, get_salt_and_mac(get_auth_info(Props))} ||
+        {{Username, builtin}, Props} <- Users].
 
 -spec get_roles(ns_config(), rbac_identity()) -> [rbac_role()].
 get_roles(Config, Identity) ->
