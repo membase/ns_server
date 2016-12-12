@@ -416,12 +416,13 @@ delete_unused_buckets_db_files() ->
     BucketNames =
         case lists:member(kv, Services) of
             true ->
-                ns_bucket:node_bucket_names_of_type(node(), membase,
+                ns_bucket:node_bucket_names_of_type(node(), membase, couchstore,
                                                     ns_bucket:get_buckets(Config));
             false ->
                 case ns_cluster_membership:get_cluster_membership(node(), Config) of
                     active ->
-                        ns_bucket:get_bucket_names_of_type(membase, ns_bucket:get_buckets(Config));
+                        ns_bucket:get_bucket_names_of_type(membase, couchstore,
+                                                           ns_bucket:get_buckets(Config));
                     _ ->
                         []
                 end

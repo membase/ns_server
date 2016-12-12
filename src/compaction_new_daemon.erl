@@ -1299,7 +1299,7 @@ process_scheduler_message(Msg, #compaction_state{buckets_to_compact=Buckets0,
         case Buckets0 of
             [] ->
                 lists:map(fun list_to_binary/1,
-                          ns_bucket:node_bucket_names_of_type(node(), membase));
+                          ns_bucket:node_bucket_names_of_type(node(), membase, couchstore));
             _ ->
                 Buckets0
         end,

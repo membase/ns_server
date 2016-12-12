@@ -43,7 +43,7 @@
 
 %% API
 -export([create_bucket/3,
-         update_bucket/3,
+         update_bucket/4,
          delete_bucket/1,
          flush_bucket/1,
          failover/1,
@@ -122,12 +122,14 @@ create_bucket(BucketType, BucketName, NewConfig) ->
     gen_fsm:sync_send_event(?SERVER, {create_bucket, BucketType, BucketName,
                                       NewConfig}, infinity).
 
--spec update_bucket(memcached|membase, nonempty_string(), list()) ->
+-spec update_bucket(memcached|membase, undefined|couchstore|ephemeral,
+                    nonempty_string(), list()) ->
                            ok | {exit, {not_found, nonempty_string()}, []}
                                | rebalance_running.
-update_bucket(BucketType, BucketName, UpdatedProps) ->
+update_bucket(BucketType, StorageMode, BucketName, UpdatedProps) ->
     wait_for_orchestrator(),
-    gen_fsm:sync_send_all_state_event(?SERVER, {update_bucket, BucketType, BucketName,
+    gen_fsm:sync_send_all_state_event(?SERVER, {update_bucket, BucketType,
+                                                StorageMode, BucketName,
                                                 UpdatedProps}, infinity).
 
 %% Deletes bucket. Makes sure that once it returns it's already dead.
@@ -360,7 +362,6 @@ is_recovery_running() ->
 code_change(_OldVsn, StateName, StateData, _Extra) ->
     {ok, StateName, StateData}.
 
-
 init([]) ->
     process_flag(trap_exit, true),
     self() ! janitor,
@@ -379,11 +380,23 @@ init([]) ->
 handle_event(Event, StateName, State) ->
     {stop, {unhandled, Event, StateName}, State}.
 
-
-handle_sync_event({update_bucket, _BucketType, _BucketName, _UpdatedProps}, _From, rebalancing, State) ->
+%% In the mixed mode, depending upon the node from which the update bucket
+%% request is being sent, the length of the message could vary. In order to
+%% be backward compatible we need to field both types of messages.
+handle_sync_event({update_bucket, memcached, BucketName, UpdatedProps}, From,
+                 StateName, State) ->
+    handle_sync_event({update_bucket, memcached, undefined, BucketName,
+                      UpdatedProps}, From, StateName, State);
+handle_sync_event({update_bucket, membase, BucketName, UpdatedProps}, From,
+                  StateName, State) ->
+    handle_sync_event({update_bucket, membase, couchstore, BucketName,
+                      UpdatedProps}, From, StateName, State);
+handle_sync_event({update_bucket, _, _, _, _}, _From, rebalancing, State) ->
     {reply, rebalance_running, rebalancing, State};
-handle_sync_event({update_bucket, BucketType, BucketName, UpdatedProps}, _From, StateName, State) ->
-    Reply = ns_bucket:update_bucket_props(BucketType, BucketName, UpdatedProps),
+handle_sync_event({update_bucket, BucketType, StorageMode, BucketName,
+                  UpdatedProps}, _From, StateName, State) ->
+    Reply = ns_bucket:update_bucket_props(BucketType, StorageMode,
+                                          BucketName, UpdatedProps),
     case Reply of
         ok ->
             %% request janitor run to fix map if the replica # has changed
@@ -1271,5 +1284,11 @@ multicall_moxi_restart(Nodes, Timeout) ->
     end.
 
 get_janitor_items() ->
-    Buckets = [{bucket, B} || B <- ns_bucket:get_bucket_names_of_type(membase)],
+    MembaseBuckets = [{bucket, B} ||
+                         B <- ns_bucket:get_bucket_names_of_type(membase,
+                                                                 couchstore)],
+    EphemeralBuckets = [{bucket, B} ||
+                           B <- ns_bucket:get_bucket_names_of_type(membase,
+                                                                   ephemeral)],
+    Buckets = MembaseBuckets ++ EphemeralBuckets,
     [services | Buckets].

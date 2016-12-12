@@ -36,8 +36,8 @@
          get_bucket/2,
          get_bucket_names/0,
          get_bucket_names/1,
-         get_bucket_names_of_type/1,
          get_bucket_names_of_type/2,
+         get_bucket_names_of_type/3,
          get_buckets/0,
          get_buckets/1,
          is_persistent/1,
@@ -60,6 +60,7 @@
          ram_quota/1,
          conflict_resolution_type/1,
          drift_thresholds/1,
+         storage_mode/1,
          raw_ram_quota/1,
          sasl_password/1,
          set_bucket_config/2,
@@ -69,11 +70,11 @@
          set_servers/2,
          filter_ready_buckets/1,
          update_bucket_props/2,
-         update_bucket_props/3,
+         update_bucket_props/4,
          node_bucket_names/1,
          node_bucket_names/2,
-         node_bucket_names_of_type/2,
          node_bucket_names_of_type/3,
+         node_bucket_names_of_type/4,
          all_node_vbuckets/1,
          update_vbucket_map_history/2,
          past_vbucket_maps/0,
@@ -118,6 +119,7 @@ config_string(BucketName) ->
                 EvictionPolicy = proplists:get_value(eviction_policy, BucketConfig, value_only),
                 ConflictResolutionType = conflict_resolution_type(BucketConfig),
                 DriftThresholds = drift_thresholds(BucketConfig),
+                StorageMode = storage_mode(BucketConfig),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
@@ -127,7 +129,8 @@ config_string(BucketName) ->
                       "backend=couchdb;couch_bucket=~s;max_vbuckets=~B;"
                       "alog_path=~s;data_traffic_enabled=false;max_num_workers=~B;"
                       "uuid=~s;item_eviction_policy=~s;"
-                      "conflict_resolution_type=~s",
+                      "conflict_resolution_type=~s;"
+                      "bucket_type=~s",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
@@ -142,7 +145,8 @@ config_string(BucketName) ->
                        NumThreads,
                        BucketUUID,
                        EvictionPolicy,
-                       ConflictResolutionType]),
+                       ConflictResolutionType,
+                       storage_mode_to_bucket_type(StorageMode)]),
                 {CFG, {MemQuota, DBSubDir, NumThreads, EvictionPolicy,
                        DriftThresholds}, DBSubDir};
             memcached ->
@@ -206,12 +210,17 @@ get_bucket_names() ->
 get_bucket_names(BucketConfigs) ->
     proplists:get_keys(BucketConfigs).
 
-get_bucket_names_of_type(Type) ->
-    get_bucket_names_of_type(Type, get_buckets()).
+-spec get_bucket_names_of_type(memcached|membase,
+                               undefined|couchstore|ephemeral) -> list().
+get_bucket_names_of_type(Type, Mode) ->
+    get_bucket_names_of_type(Type, Mode, get_buckets()).
 
-get_bucket_names_of_type(Type, BucketConfigs) ->
+-spec get_bucket_names_of_type(memcached|membase,
+                               undefined|couchstore|ephemeral, list()) -> list().
+get_bucket_names_of_type(Type, Mode, BucketConfigs) ->
     [Name || {Name, Config} <- BucketConfigs,
-             proplists:get_value(type, Config) == Type].
+             bucket_type(Config) == Type,
+             storage_mode(Config) == Mode].
 
 get_buckets() ->
     get_buckets(ns_config:latest()).
@@ -240,6 +249,20 @@ drift_thresholds(BucketConfig) ->
         seqno ->
             undefined
     end.
+
+-spec storage_mode([{_,_}]) -> atom().
+storage_mode(BucketConfig) ->
+    case bucket_type(BucketConfig) of
+        memcached ->
+            undefined;
+        membase ->
+            proplists:get_value(storage_mode, BucketConfig, couchstore)
+    end.
+
+storage_mode_to_bucket_type(couchstore) ->
+    persistent;
+storage_mode_to_bucket_type(ephemeral) ->
+    ephemeral.
 
 %% returns bucket ram quota multiplied by number of nodes this bucket
 %% resides on. I.e. gives amount of ram quota that will be used by
@@ -701,8 +724,9 @@ filter_ready_buckets(BucketInfos) ->
 %%
 %% If bucket with given name exists, but with different type, we
 %% should return {exit, {not_found, _}, _}
-update_bucket_props(Type, BucketName, Props) ->
-    case lists:member(BucketName, get_bucket_names_of_type(Type)) of
+update_bucket_props(Type, StorageMode, BucketName, Props) ->
+    case lists:member(BucketName,
+                      get_bucket_names_of_type(Type, StorageMode)) of
         true ->
             update_bucket_props(BucketName, Props);
         false ->
@@ -802,14 +826,18 @@ node_bucket_names(Node, BucketsConfigs) ->
 node_bucket_names(Node) ->
     node_bucket_names(Node, get_buckets()).
 
-node_bucket_names_of_type(Node, Type) ->
-    node_bucket_names_of_type(Node, Type, get_buckets()).
+-spec node_bucket_names_of_type(node(), memcached|membase,
+                                undefined|couchstore|ephemeral) -> list().
+node_bucket_names_of_type(Node, Type, Mode) ->
+    node_bucket_names_of_type(Node, Type, Mode, get_buckets()).
 
-node_bucket_names_of_type(Node, Type, BucketConfigs) ->
+-spec node_bucket_names_of_type(node(), memcached|membase,
+                                undefined|couchstore|ephemeral, list()) -> list().
+node_bucket_names_of_type(Node, Type, Mode, BucketConfigs) ->
     [B || {B, C} <- BucketConfigs,
           lists:member(Node, proplists:get_value(servers, C, [])),
-          bucket_type(C) =:= Type].
-
+          bucket_type(C) =:= Type,
+          storage_mode(C) =:= Mode].
 
 %% All the vbuckets (active or replica) on a node
 -spec all_node_vbuckets(term()) -> list(integer()).

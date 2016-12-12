@@ -159,6 +159,20 @@ add_couch_api_base(BucketName, BucketUUID, KV, Node, LocalAddr) ->
             [{couchApiBaseHTTPS, CapiSSLBucketUrl} | KV1]
     end.
 
+%% Used while building the bucket info. This transforms the internal
+%% representation of bucket types to externally known bucket types.
+%% Ideally the 'display_type' function should suffice here but there
+%% is too much reliance on the atom membase by other modules (ex: xdcr).
+external_bucket_type(memcached = _Type, _) ->
+    memcached;
+external_bucket_type(membase = _Type, BucketConfig) ->
+    case ns_bucket:storage_mode(BucketConfig) of
+        couchstore ->
+            membase;
+        ephemeral ->
+            ephemeral
+    end.
+
 build_bucket_info(Id, undefined, InfoLevel, LocalAddr, MayExposeAuth,
                   SkipMap) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Id),
@@ -283,7 +297,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
         end,
 
     {struct, [{name, list_to_binary(Id)},
-              {bucketType, BucketType},
+              {bucketType, external_bucket_type(BucketType, BucketConfig)},
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
               {saslPassword, case MayExposeAuth of
                                  true -> list_to_binary(proplists:get_value(sasl_password, BucketConfig, ""));
@@ -422,7 +436,8 @@ extract_bucket_props(BucketId, Props) ->
                                                                      flush_enabled, num_threads, eviction_policy,
                                                                      conflict_resolution_type,
                                                                      drift_ahead_threshold_ms,
-                                                                     drift_behind_threshold_ms]],
+                                                                     drift_behind_threshold_ms,
+                                                                     storage_mode]],
                            X =/= false],
     case BucketId of
         "default" -> lists:keyreplace(auth_type, 1,
@@ -489,11 +504,14 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
             reply_json(Req, RV, 400);
         {false, _, {ok, ParsedProps, _}} ->
             BucketType = proplists:get_value(bucketType, ParsedProps),
+            StorageMode = proplists:get_value(storage_mode, ParsedProps,
+                                              undefined),
             UpdatedProps = extract_bucket_props(BucketId, ParsedProps),
-            case ns_orchestrator:update_bucket(BucketType, BucketId, UpdatedProps) of
+            case ns_orchestrator:update_bucket(BucketType, StorageMode,
+                                               BucketId, UpdatedProps) of
                 ok ->
                     ns_audit:modify_bucket(Req, BucketId, BucketType, UpdatedProps),
-                    DisplayBucketType = display_type(BucketType),
+                    DisplayBucketType = display_type(BucketType, StorageMode),
                     ale:info(?USER_LOGGER, "Updated bucket \"~s\" (of type ~s) properties:~n~p",
                              [BucketId, DisplayBucketType,
                               lists:keydelete(sasl_password, 1, UpdatedProps)]),
@@ -523,12 +541,13 @@ create_bucket(Req, Name, Params) ->
 
 do_bucket_create(Req, Name, ParsedProps) ->
     BucketType = proplists:get_value(bucketType, ParsedProps),
+    StorageMode = proplists:get_value(storage_mode, ParsedProps, undefined),
     BucketProps = extract_bucket_props(Name, ParsedProps),
     menelaus_web:maybe_cleanup_old_buckets(),
     case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
         ok ->
             ns_audit:create_bucket(Req, Name, BucketType, BucketProps),
-            DisplayBucketType = display_type(BucketType),
+            DisplayBucketType = display_type(BucketType, StorageMode),
             ?MENELAUS_WEB_LOG(?BUCKET_CREATED, "Created bucket \"~s\" of type: ~s~n~p",
                               [Name, DisplayBucketType, lists:keydelete(sasl_password, 1, BucketProps)]),
             ok;
@@ -634,13 +653,18 @@ num_replicas_warnings_validation(Ctx, NReplicas) ->
             [{replicaNumber, ?l2b("Warning: " ++ Msg ++ ".")}]
     end.
 
-display_type(membase) ->
-    %% Default bucket type is now couchbase and not membase.
-    %% Ideally, we should change the default bucket type atom to couchbase
-    %% but the bucket type membase is used/checked at multiple locations.
-    %% Instead, fix the log message to display the correct bucket type.
+%% Default bucket type is now couchbase and not membase. Ideally, we should
+%% change the default bucket type atom to couchbase but the bucket type membase
+%% is used/checked at multiple locations. For similar reasons, the ephemeral
+%% bucket type also gets stored as 'membase' and to differentiate between the
+%% couchbase and ephemeral buckets we store an extra parameter called
+%% 'storage_mode'. So to fix the log message to display the correct bucket type
+%% we use both type and storage_mode parameters of the bucket config.
+display_type(membase = _Type, couchstore = _StorageMode) ->
     couchbase;
-display_type(Type) ->
+display_type(membase = _Type, ephemeral = _StorageMode) ->
+    ephemeral;
+display_type(Type, _) ->
     Type.
 
 handle_bucket_flush(_PoolId, Id, Req) ->
@@ -805,7 +829,8 @@ validate_bucket_type_specific_params(CommonParams, Params, membase, IsNew,
          parse_validate_replica_index(Params, ReplicasNumResult, IsNew),
          parse_validate_threads_number(Params, IsNew),
          parse_validate_eviction_policy(Params, IsNew),
-         quota_size_error(CommonParams, membase, IsNew, BucketConfig)
+         quota_size_error(CommonParams, membase, IsNew, BucketConfig),
+         get_storage_mode(Params, BucketConfig, IsNew)
          | validate_bucket_auto_compaction_settings(Params)],
 
     get_conflict_resolution_type_and_thresholds(Params, BucketConfig, IsNew)
@@ -887,6 +912,7 @@ get_bucket_type(_IsNew, _BucketConfig, Params) ->
         "memcached" -> memcached;
         "membase" -> membase;
         "couchbase" -> membase;
+        "ephemeral" -> membase;
         undefined -> membase;
         _ -> invalid
     end.
@@ -967,6 +993,32 @@ validate_replicas_number(Params, IsNew) ->
       undefined,
       IsNew,
       fun parse_validate_replicas_number/1).
+
+%% The 'bucketType' parameter of the bucket create REST API will be set to
+%% 'ephemeral' by user. As this type, in many ways, is similar in functionality
+%% to 'membase' buckets we have decided to not store this as a new bucket type
+%% atom but instead use 'membase' as type and rely on another config parameter
+%% called 'storage_mode' to distinguish between membase and ephemeral buckets.
+%% Ideally we should store this as a new bucket type but the bucket_type is
+%% used/checked at multiple places and would need changes in all those places.
+%% Hence the above described approach.
+get_storage_mode(Params, _BucketConfig, true = _IsNew) ->
+    case proplists:get_value("bucketType", Params) of
+        "membase" ->
+            {ok, storage_mode, couchstore};
+        "couchbase" ->
+            {ok, storage_mode, couchstore};
+        "ephemeral" ->
+            case cluster_compat_mode:is_cluster_spock() of
+                true ->
+                    {ok, storage_mode, ephemeral};
+                false ->
+                    {error, bucketType,
+                     <<"Bucket type 'ephemeral' is supported only in spock">>}
+            end
+    end;
+get_storage_mode(_Params, BucketConfig, false = _IsNew)->
+    {ok, storage_mode, ns_bucket:storage_mode(BucketConfig)}.
 
 get_conflict_resolution_type_and_thresholds(Params, _BucketConfig, true = IsNew) ->
     case proplists:get_value("conflictResolutionType", Params) of

@@ -151,7 +151,9 @@ grab_all_dcp_stats() ->
 
 grab_all_dcp_stats(Timeout) ->
     ActiveBuckets = ns_memcached:active_buckets(),
-    ThisNodeBuckets = ns_bucket:node_bucket_names_of_type(node(), membase),
+    ThisNodeBuckets =
+        ns_bucket:node_bucket_names_of_type(node(), membase, couchstore) ++
+        ns_bucket:node_bucket_names_of_type(node(), membase, ephemeral),
     InterestingBuckets = ordsets:intersection(lists:sort(ActiveBuckets),
                                               lists:sort(ThisNodeBuckets)),
     misc:parallel_map(
