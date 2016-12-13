@@ -39,7 +39,7 @@
             <span>
               <span ng-click="serversListCtl.reAddNode('full', node.otpNode)">
                 <button ng-show="serversListCtl.isKVNode(node)">Add Back: Full Recovery</button>
-                <button ng-show="!serversListCtl.isKVNode(node)">Add Back</button>
+                <button ng-show="!serversListCtl.isKVNode(node)">Recovery</button>
               </span>
               <span
                  ng-show="serversListCtl.isKVNode(node) && poolDefault.compat.atLeast30"
