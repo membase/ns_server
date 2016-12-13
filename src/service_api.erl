@@ -81,7 +81,7 @@ topology_change_req(Id, Rev, Type, KeepNodes, EjectNodes) ->
       {currentTopologyRev, encode_rev(Rev)},
       {type, encode_topology_change_type(Type)},
       {keepNodes, encode_keep_nodes(KeepNodes)},
-      {ejectNode, encode_eject_nodes(EjectNodes)}]}.
+      {ejectNodes, encode_eject_nodes(EjectNodes)}]}.
 
 encode_rev(undefined) ->
     null;
