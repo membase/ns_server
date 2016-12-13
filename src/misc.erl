@@ -243,6 +243,9 @@ time_to_epoch_float({Mega,Sec,Micro}) ->
 time_to_epoch_float(_) ->
   undefined.
 
+now_int_to_now(Time) when is_integer(Time) ->
+    epoch_to_time(Time * 1000 * 1000000).
+
 epoch_to_time(Nano) ->
     Micro = Nano div 1000,
     Sec = Micro div 1000000,

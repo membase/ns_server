@@ -1395,7 +1395,8 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
                           _ -> <<"none">>
                       end,
 
-    {Alerts, AlertsSilenceToken} = menelaus_web_alerts_srv:fetch_alerts(),
+    {Alerts0, AlertsSilenceToken} = menelaus_web_alerts_srv:fetch_alerts(),
+    Alerts = build_alerts(Alerts0),
 
     Controllers = {struct, [
       {addNode, {struct, [{uri, <<"/controller/addNodeV2?uuid=", UUID/binary>>}]}},
@@ -1479,6 +1480,16 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
         end,
 
     {struct, PropList}.
+
+build_alerts(Alerts) ->
+    [build_one_alert(Alert) || Alert <- Alerts].
+
+build_one_alert({_Key, Msg, Time}) ->
+    LocalTime = calendar:now_to_local_time(misc:now_int_to_now(Time)),
+    StrTime = menelaus_util:format_server_time(LocalTime),
+
+    {struct, [{msg, Msg},
+              {serverTime, StrTime}]}.
 
 build_global_auto_compaction_settings() ->
     build_global_auto_compaction_settings(ns_config:latest()).

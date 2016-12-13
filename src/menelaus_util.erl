@@ -68,6 +68,7 @@
          get_values/1,
          return_value/3,
          return_error/3,
+         format_server_time/1,
          format_server_time/2,
          ensure_local/1,
          reply_global_error/2,
@@ -497,6 +498,9 @@ execute_if_validated(Fun, Req, {_, Values, Errors}) ->
 
 get_values({_, Values, _}) ->
     Values.
+
+format_server_time(DateTime) ->
+    format_server_time(DateTime, 0).
 
 format_server_time({{YYYY, MM, DD}, {Hour, Min, Sec}}, MicroSecs) ->
     list_to_binary(
