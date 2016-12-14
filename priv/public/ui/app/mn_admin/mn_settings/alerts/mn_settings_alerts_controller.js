@@ -26,7 +26,7 @@
         case knownAlerts[9]: return 'Writing data to disk for a specific bucket has failed';
         case knownAlerts[10]: return 'Writing event to audit log has failed';
         case knownAlerts[11]: return 'Approaching full Indexer RAM warning';
-        case knownAlerts[12]: return 'Clock CAS drift threshold has exceeded on a node';
+        case knownAlerts[12]: return 'Remote mutation timestamp exceeded drift threshold';
       }
     };
   }
