@@ -65,16 +65,26 @@
        class="interim row items-space-around">
       <div
          ng-show="overviewCtl.buckets.length">
-        <div>Operations Per Second</div>
+        <div>Operations Per Second
+          <span ng-show="!overviewCtl.mnOverviewStats.opsGraphConfig.stats.length">
+            (No samples, yet)
+          </span>
+        </div>
         <div
+           ng-if="overviewCtl.mnOverviewStats.opsGraphConfig.stats.length"
            mn-plot
            mn-plot-config="overviewCtl.mnOverviewStats.opsGraphConfig"
            style="height: 170px; width: 400px;"></div>
       </div>
       <div
          ng-show="overviewCtl.buckets.length">
-        <div>Disk Fetches Per Second</div>
+        <div>Disk Fetches Per Second
+          <span ng-show="!overviewCtl.mnOverviewStats.readsGraphConfig.stats.length">
+            (No samples, yet)
+          </span>
+        </div>
         <div
+           ng-if="overviewCtl.mnOverviewStats.readsGraphConfig.stats.length"
            mn-plot
            mn-plot-config="overviewCtl.mnOverviewStats.readsGraphConfig"
            style="height: 170px; width: 400px"></div>

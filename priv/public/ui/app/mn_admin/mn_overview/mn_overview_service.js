@@ -88,10 +88,6 @@
         var interval = tstamps[tstamps.length - 1] - tstamps[0];
         var breakInterval = (tstamps.length > 1) ? (interval / Math.min(tstamps.length / 2, 30)) : undefined;
 
-        if (!stats || !stats.ops.length || !stats.ep_bg_fetched.length) {
-          return;
-        }
-
         var options = {
           lastSampleTime: now,
           breakInterval: breakInterval,
