@@ -30,6 +30,7 @@
         }
         self.cycle();
       });
+      return self;
     }
   }
 
@@ -91,7 +92,7 @@
         delete this.latestResult;
       }
       this.stop();
-      this.doCycle();
+      this.cycle();
       return this;
     }
     function showSpinner(vm, name) {

@@ -62,7 +62,7 @@
           }
         });
 
-      new mnEtagPoller($scope, function (previous) {
+      var etagPoller = new mnEtagPoller($scope, function (previous) {
         return mnPoolDefault.get({
           etag: previous ? previous.etag : "",
           waitChange: $state.current.name === "app.admin.overview" ? 3000 : 10000
@@ -148,6 +148,11 @@
 
       $scope.$on("reloadTasksPoller", function () {
         tasksPoller.reload(true);
+      });
+
+      $scope.$on("reloadPoolDefaultPoller", function () {
+        mnPoolDefault.clearCache();
+        etagPoller.reload();
       });
 
       $scope.$on("maybeShowMemoryQuotaDialog", function (event, services) {

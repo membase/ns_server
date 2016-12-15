@@ -14,12 +14,14 @@
     'mnPromiseHelper'
   ]).controller('mnOverviewController', mnOverviewController);
 
-  function mnOverviewController($scope, mnServersService, mnBucketsService, mnOverviewService, mnPoller, mnAboutDialogService, mnPromiseHelper) {
+  function mnOverviewController($scope, $rootScope, mnServersService, mnBucketsService, mnOverviewService, mnPoller, mnAboutDialogService, mnPromiseHelper) {
     var vm = this;
 
     activate();
 
     function activate() {
+      $rootScope.$broadcast("reloadPoolDefaultPoller");
+
       mnPromiseHelper(vm, mnAboutDialogService.getState())
         .applyToScope("aboutState");
 

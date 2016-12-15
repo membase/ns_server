@@ -24,6 +24,7 @@
     var version45 = encodeCompatVersion(4, 5);
     var version46 = encodeCompatVersion(4, 6);
     var cache;
+    var request;
 
     return mnPoolDefault;
 
@@ -41,8 +42,11 @@
       if (!(params && params.etag) && cache) {
         return $q.when(cache);
       }
+      if (request && !cache) {
+        return request;
+      }
       params = params || {waitChange: 0};
-      return $q.all([
+      request = $q.all([
         $http({
           mnHttp: mnHttpParams,
           method: 'GET',
@@ -78,9 +82,11 @@
 
         return poolDefault;
       });
+      return request;
     }
     function clearCache() {
       cache = undefined;
+      request = undefined;
       return this;
     }
     function getFresh(params) {
