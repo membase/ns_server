@@ -3,7 +3,7 @@
   state ID: {{overviewCtl.aboutState.clusterStateId}}
 </mn-element-cargo>
 
-<div>
+<div mn-spinner="(rbac.cluster.bucket['*'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || !overviewCtl.buckets">
   <div class="margin-top1">
     <div class="interim row items-space-around content-box" style="font-size:1rem;padding:1rem;">
       <div class="text-center">
@@ -39,8 +39,7 @@
   </div>
   <div class="row margin-top2">
     <div
-       class="column width-6"
-       mn-spinner="!overviewCtl.mnOverviewConfig.ramOverviewConfig">
+       class="column width-6">
       <h4>RAM Overview for Data Nodes</h4>
       <div
          class="bar-usages"
@@ -48,8 +47,7 @@
          base-info="overviewCtl.mnOverviewConfig.ramOverviewConfig"></div>
     </div>
     <div
-       class="column width-6"
-       mn-spinner="!overviewCtl.mnOverviewConfig.hddOverviewConfig">
+       class="column width-6">
       <h4>Disk Overview for Data Nodes</h4>
       <div
          class="bar-usages"
@@ -66,8 +64,7 @@
        ng-if="rbac.cluster.bucket['*'].stats.read"
        class="interim row items-space-around">
       <div
-         ng-show="overviewCtl.buckets.length"
-         mn-spinner="!overviewCtl.mnOverviewStats.opsGraphConfig">
+         ng-show="overviewCtl.buckets.length">
         <div>Operations Per Second</div>
         <div
            mn-plot
@@ -75,8 +72,7 @@
            style="height: 170px; width: 400px;"></div>
       </div>
       <div
-         ng-show="overviewCtl.buckets.length"
-         mn-spinner="!overviewCtl.mnOverviewStats.readsGraphConfig">
+         ng-show="overviewCtl.buckets.length">
         <div>Disk Fetches Per Second</div>
         <div
            mn-plot
