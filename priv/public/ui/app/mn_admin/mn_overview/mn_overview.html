@@ -1,6 +1,8 @@
 <mn-element-cargo depot="header">
-  {{overviewCtl.aboutState.implementationVersion | mnPrettyVersion}}
-  state ID: {{overviewCtl.aboutState.clusterStateId}}
+  <span ng-show="overviewCtl.aboutState">
+    {{overviewCtl.aboutState.implementationVersion | mnPrettyVersion}}
+    state ID: {{overviewCtl.aboutState.clusterStateId}}
+  </span>
 </mn-element-cargo>
 
 <div mn-spinner="(rbac.cluster.bucket['*'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || !overviewCtl.buckets">
