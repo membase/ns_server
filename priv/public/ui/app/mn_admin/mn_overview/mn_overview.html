@@ -57,12 +57,14 @@
          base-info="overviewCtl.mnOverviewConfig.hddOverviewConfig"></div>
     </div>
   </div>
-  <div ng-if="rbac.cluster.bucket['*'].stats.read" class="margin-top2">
+  <div class="margin-top2">
     <h4>
       Buckets &nbsp;<small>{{overviewCtl.buckets.length || '0'}} active</small>
     </h4>
     <hr>
-    <div class="interim row items-space-around">
+    <div
+       ng-if="rbac.cluster.bucket['*'].stats.read"
+       class="interim row items-space-around">
       <div
          ng-show="overviewCtl.buckets.length"
          mn-spinner="!overviewCtl.mnOverviewStats.opsGraphConfig">
