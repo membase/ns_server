@@ -12,24 +12,19 @@
           mnSpinner: '=',
           minHeight: '@'
         },
-        controller: controller,
-        bindToController: true,
-        controllerAs: "controller",
         link: link
       };
 
       return directive;
 
-      function controller($scope, $element) {
-        var vm = this;
-        $scope.$watch('controller.mnSpinner', function (mnSpinner) {
-          $element.css({'min-height': (!!mnSpinner && vm.minHeight) ? vm.minHeight : ""});
-        });
-      }
-
       function link($scope, $element) {
-        $element.append($compile("<div class=\"spinner\" ng-show=\"controller.mnSpinner\"></div>")($scope));
-        $element.addClass('spinner_wrap');
+        var spinner = angular.element("<div class=\"spinner\" ng-show=\"mnSpinner\"></div>");
+
+        if ($scope.minHeight) {
+          spinner.css({minHeight: $scope.minHeight});
+        }
+        $element.addClass("relative");
+        $element.append($compile(spinner)($scope));
       }
     }
 })();

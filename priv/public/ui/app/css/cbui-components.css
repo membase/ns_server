@@ -1187,9 +1187,6 @@ meter {
   bottom: 0;
 }
 
-.spinner_wrap {
-  position: relative;
-}
 .spinner {
   position: absolute;
   z-index: 10;
