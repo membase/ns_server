@@ -10,7 +10,8 @@
         restrict: 'A',
         scope: {
           mnSpinner: '=',
-          minHeight: '@'
+          minHeight: '@',
+          opacity: '@'
         },
         link: link
       };
@@ -19,7 +20,9 @@
 
       function link($scope, $element) {
         var spinner = angular.element("<div class=\"spinner\" ng-show=\"mnSpinner\"></div>");
-
+        if ($scope.opacity) {
+          spinner.addClass("opacity");
+        }
         if ($scope.minHeight) {
           spinner.css({minHeight: $scope.minHeight});
         }

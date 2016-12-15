@@ -62,6 +62,13 @@
       return !state.isActivated || state.isReloading;
     });
 
+    $transitionsProvider.onFinish({
+      from: "app.admin.**",
+      to: "app.admin.**"
+    }, function ($rootScope) {
+      $rootScope.showMainSpinner = false;
+    });
+
     $transitionsProvider.onBefore({
       from: "app.admin.**",
       to: "app.admin.**"
@@ -75,6 +82,7 @@
       if (!isModalOpen && toName.indexOf(fromName) === -1 && fromName.indexOf(toName) === -1) {
         //cancel tabs specific queries in case toName is not child of fromName and vise versa
         mnPendingQueryKeeper.cancelTabsSpecificQueries();
+        $rootScope.showMainSpinner = true;
       }
       return !isModalOpen;
     });
