@@ -30,6 +30,7 @@
          get_roles/2,
          get_user_name/2,
          upgrade_to_4_5/1,
+         get_memcached_auth_infos/1,
          build_memcached_auth_info/1]).
 
 -spec get_users(ns_config()) -> [{rbac_identity(), []}].
@@ -123,6 +124,11 @@ get_auth_infos(Config) ->
     Users = get_users(Config),
     [{{Username, builtin}, get_salt_and_mac(get_auth_info(Props))} ||
         {{Username, builtin}, Props} <- Users].
+
+-spec get_memcached_auth_infos([{rbac_identity(), []}]) -> list().
+get_memcached_auth_infos(Users) ->
+    [get_memcached_auth(get_auth_info(Props)) ||
+        {{_Username, builtin}, Props} <- Users].
 
 -spec get_roles(ns_config(), rbac_identity()) -> [rbac_role()].
 get_roles(Config, Identity) ->

@@ -17,7 +17,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/0, start_link/3, writeSASLConf/6, sync/0]).
+-export([start_link/0, start_link/3, writeSASLConf/7, sync/0]).
 
 %% gen_event callbacks
 -export([init/1, handle_cast/2, handle_call/3,
@@ -29,6 +29,7 @@
 -include("ns_common.hrl").
 
 -record(state, {buckets,
+                users,
                 path,
                 updates,
                 admin_user,
@@ -61,23 +62,34 @@ start_link(Path, AU, AP) when is_list(Path); is_list(AU); is_list(AP) ->
 
 init([Path, AU, AP]) ->
     ?log_debug("isasl_sync init: ~p", [[Path, AU]]),
+    Pid = self(),
+    ns_pubsub:subscribe_link(ns_config_events,
+                             fun ({buckets, _V} = Evt, _) ->
+                                     gen_server:cast(Pid, Evt);
+                                 ({user_roles, _V} = Evt, _) ->
+                                     gen_server:cast(Pid, Evt);
+                                 (_, _) ->
+                                     ok
+                             end, ignored),
+
+    Config = ns_config:get(),
     Buckets =
-        case ns_config:search(buckets) of
+        case ns_config:search(Config, buckets) of
             {value, RawBuckets} ->
                 extract_creds(RawBuckets);
             _ -> []
         end,
+    Users = menelaus_users:get_memcached_auth_infos(menelaus_users:get_users(Config)),
+
     %% don't log passwords here
     ?log_debug("isasl_sync init buckets: ~p", [proplists:get_keys(Buckets)]),
-    Pid = self(),
-    ns_pubsub:subscribe_link(ns_config_events,
-                             fun ({buckets, _V}=Evt, _) ->
-                                     gen_server:cast(Pid, Evt);
-                                 (_, _) -> ok
-                             end, ignored),
-    writeSASLConf(Path, Buckets, AU, AP),
-    {ok, #state{buckets=Buckets, path=Path, updates=0,
-                admin_user=AU, admin_pass=AP}}.
+    writeSASLConf(Path, Buckets, Users, AU, AP),
+    {ok, #state{buckets = Buckets,
+                users = Users,
+                path = Path,
+                updates = 0,
+                admin_user = AU,
+                admin_pass = AP}}.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
@@ -90,8 +102,16 @@ handle_cast({buckets, V}, State) ->
         NewBuckets ->
             {noreply, initiate_write(State#state{buckets=NewBuckets})}
     end;
+handle_cast({user_roles, V}, State) ->
+    Prev = State#state.users,
+    case menelaus_users:get_memcached_auth_infos(V) of
+        Prev ->
+            {noreply, State};
+        NewUsers ->
+            {noreply, initiate_write(State#state{users=NewUsers})}
+    end;
 handle_cast(write_sasl_conf, State) ->
-    writeSASLConf(State#state.path, State#state.buckets,
+    writeSASLConf(State#state.path, State#state.buckets, State#state.users,
                   State#state.admin_user, State#state.admin_pass),
     {noreply, State#state{updates = State#state.updates + 1,
                           write_pending = false}};
@@ -130,18 +150,18 @@ extract_creds(ConfigList) ->
 %% sasl the isasl stuff.
 %%
 
-writeSASLConf(Path, Buckets, AU, AP) ->
-    writeSASLConf(Path, Buckets, AU, AP, 5, 101).
+writeSASLConf(Path, Buckets, Users, AU, AP) ->
+    writeSASLConf(Path, Buckets, Users, AU, AP, 5, 101).
 
--spec writeSASLConf(nonempty_string(), list(), string(), string(),
-                     non_neg_integer(), non_neg_integer()) ->
+-spec writeSASLConf(nonempty_string(), list(), list(), string(), string(),
+                    non_neg_integer(), non_neg_integer()) ->
     any().
-writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
+writeSASLConf(Path, Buckets, Users, AU, AP, Tries, SleepTime) ->
     {ok, Pwd} = file:get_cwd(),
     TmpPath = filename:join(filename:dirname(Path), "isasl.tmp"),
     ok = filelib:ensure_dir(TmpPath),
     ?log_debug("Writing isasl passwd file: ~p", [filename:join(Pwd, Path)]),
-    misc:write_file(TmpPath, generate_cbsasl_conf(AU, AP, Buckets)),
+    misc:write_file(TmpPath, generate_cbsasl_conf(AU, AP, Buckets, Users)),
     case file:rename(TmpPath, Path) of
         ok ->
             case (catch ns_memcached:connect_and_send_isasl_refresh()) of
@@ -158,12 +178,14 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
                 _ ->
                     ?log_info("Trying again after ~p ms (~p tries remaining)",
                               [SleepTime, Tries]),
-                    {ok, _TRef} = timer2:apply_after(SleepTime, ?MODULE, writeSASLConf, [Path, Buckets, AU, AP, Tries - 1, SleepTime * 2.0])
+                    {ok, _TRef} = timer2:apply_after(SleepTime, ?MODULE, writeSASLConf,
+                                                     [Path, Buckets, Users, AU, AP, Tries - 1,
+                                                      SleepTime * 2.0])
             end
     end.
 
-generate_cbsasl_conf(AU, AP, Buckets) ->
+generate_cbsasl_conf(AU, AP, Buckets, Users) ->
     UserPasswords = [{AU, AP} | Buckets],
-    Infos = menelaus_users:build_memcached_auth_info(UserPasswords),
+    Infos = menelaus_users:build_memcached_auth_info(UserPasswords) ++ Users,
     Json = {struct, [{<<"users">>, Infos}]},
     menelaus_util:encode_json(Json).
