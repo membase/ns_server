@@ -42,7 +42,7 @@
         return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
       })
       .subscribe("state", vm)
-      .reloadOnScopeEvent("reloadAnalyticsPoller", vm);
+      .reloadOnScopeEvent("reloadAnalyticsPoller");
 
       new mnPoller($scope, function () {
         return mnBucketsService.getBucketsByType().then(function (buckets) {

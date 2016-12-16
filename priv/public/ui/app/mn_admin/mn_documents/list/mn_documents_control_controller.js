@@ -49,7 +49,7 @@
         })
         .setInterval(10000)
         .subscribe("state", vm)
-        .reloadOnScopeEvent("reloadDocumentsPoller", vm);
+        .reloadOnScopeEvent("reloadDocumentsPoller");
     }
   }
 })();

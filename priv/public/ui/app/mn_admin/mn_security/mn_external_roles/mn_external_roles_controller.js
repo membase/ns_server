@@ -45,7 +45,7 @@
       var poller = new mnPoller($scope, mnExternalRolesService.getState)
         .subscribe("state", vm)
         .setInterval(10000)
-        .reloadOnScopeEvent("reloadRolesPoller", vm)
+        .reloadOnScopeEvent("reloadRolesPoller")
         .cycle();
     }
 

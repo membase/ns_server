@@ -152,7 +152,7 @@
       })
       .setInterval(10000)
       .subscribe("ddocs", vm)
-      .reloadOnScopeEvent("reloadViewsPoller", vm)
+      .reloadOnScopeEvent("reloadViewsPoller")
       .cycle();
     }
   }
