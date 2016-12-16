@@ -164,13 +164,14 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
             end
     end.
 
-generate_sasl_conf(AU, AP, Buckets) ->
-    iolist_to_binary(
-      [io_lib:format("~s ~s~n", [AU, AP]),
-       [io_lib:format("~s ~s~n", [User, Pass]) || {User, Pass} <- Buckets]]).
+generate_cbsasl_conf(AU, AP, Buckets) ->
+    UserPasswords = [{AU, AP} | Buckets],
+    Infos = menelaus_users:build_memcached_auth_info(UserPasswords),
+    Json = {struct, [{<<"users">>, Infos}]},
+    menelaus_util:encode_json(Json).
 
 encrypted_sasl_conf(AU, AP, Buckets) ->
-    SaslConf = generate_sasl_conf(AU, AP, Buckets),
+    SaslConf = generate_cbsasl_conf(AU, AP, Buckets),
     case cluster_compat_mode:is_enterprise() of
         true ->
             encryption_service:encrypt_with_isasl_key(SaslConf);

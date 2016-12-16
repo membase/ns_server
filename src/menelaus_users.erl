@@ -29,7 +29,8 @@
          get_auth_infos/1,
          get_roles/2,
          get_user_name/2,
-         upgrade_to_4_5/1]).
+         upgrade_to_4_5/1,
+         build_memcached_auth_info/1]).
 
 -spec get_users(ns_config()) -> [{rbac_identity(), []}].
 get_users(Config) ->
@@ -54,7 +55,7 @@ build_auth({User, _} = Identity, Password, Users) ->
     end.
 
 build_auth(User, Password) ->
-    [MemcachedAuth] = get_memcached_auth_info([{User, Password}]),
+    [MemcachedAuth] = build_memcached_auth_info([{User, Password}]),
     [{ns_server, ns_config_auth:hash_password(Password)},
      {memcached, MemcachedAuth}].
 
@@ -141,7 +142,7 @@ collect_result(Port, Acc) ->
             collect_result(Port, [Msg | Acc])
     end.
 
-get_memcached_auth_info(UserPasswords) ->
+build_memcached_auth_info(UserPasswords) ->
     Iterations = ns_config:read_key_fast(memcached_password_hash_iterations, 4000),
     Port = ns_ports_setup:run_cbsasladm(Iterations),
     lists:foreach(
