@@ -114,6 +114,7 @@
         return (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
       })
       .subscribe(function (tasks, prevTask) {
+        vm.showTasksSpinner = false;
         if (!_.isEqual(tasks, prevTask)) {
           $rootScope.$broadcast("mnTasksDetailsChanged");
         }
@@ -146,7 +147,10 @@
       }, vm)
       .cycle();
 
-      $scope.$on("reloadTasksPoller", function () {
+      $scope.$on("reloadTasksPoller", function (event, params) {
+        if (!params || !params.doNotShowSpinner) {
+          vm.showTasksSpinner = true;
+        }
         tasksPoller.reload(true);
       });
 

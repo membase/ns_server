@@ -60,11 +60,12 @@
     function activate() {
       if ($scope.rbac.cluster.xdcr.remote_clusters.read) {
         new mnPoller($scope, function () {
+          vm.showReferencesSpinner = false;
           return mnXDCRService.getReplicationState();
         })
         .setInterval(10000)
         .subscribe("references", vm)
-        .reloadOnScopeEvent("reloadXdcrPoller", vm)
+        .reloadOnScopeEvent("reloadXdcrPoller", vm, "showReferencesSpinner")
         .cycle();
       }
     }
@@ -142,7 +143,7 @@
     }
     function pausePlayReplication(row) {
       mnPromiseHelper(vm, mnXDCRService.saveReplicationSettings(row.id, {pauseRequested: row.status !== 'paused'}))
-        .broadcast(["reloadTasksPoller"]);
+        .broadcast(["reloadTasksPoller"], {doNotShowSpinner: true});
     };
   }
 })();

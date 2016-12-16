@@ -1,4 +1,4 @@
-<div>
+<div mn-spinner="(rbac.cluster.xdcr.remote_clusters.read && !xdcrCtl.references) || (rbac.cluster.tasks.read && !adminCtl.tasks)" min-height="300px">
   <div ng-show="rbac.cluster.xdcr.remote_clusters.read">
 
     <div class="interim row">
@@ -12,7 +12,7 @@
     </div>
 
     <div
-       mn-spinner="!xdcrCtl.references"
+       mn-spinner="xdcrCtl.showReferencesSpinner"
        min-height="66px">
       <table class="table-stroked">
         <thead>
@@ -62,7 +62,7 @@
     </div>
 
     <div
-       mn-spinner="!adminCtl.tasks"
+       mn-spinner="adminCtl.showTasksSpinner"
        min-height="66px">
       <table class="table-stroked">
         <thead>
