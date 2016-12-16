@@ -86,8 +86,6 @@ sanitize(Struct) ->
     misc:rewrite_tuples(
       fun ({"MOXI_SASL_PLAIN_PWD", V}) ->
               {stop, {"MOXI_SASL_PLAIN_PWD", sanitize_value(V)}};
-          ({"COUCHBASE_CBSASL_SECRETS", V}) ->
-              {stop, {"COUCHBASE_CBSASL_SECRETS", sanitize_value(V)}};
           ({"CBAUTH_REVRPC_URL", V}) ->
               {stop, {"CBAUTH_REVRPC_URL", sanitize_value(V)}};
           (Other) ->

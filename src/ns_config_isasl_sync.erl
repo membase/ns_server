@@ -26,8 +26,6 @@
 % Useful for testing.
 -export([extract_creds/1]).
 
--export([get_secrets_env_var/0]).
-
 -include("ns_common.hrl").
 
 -record(state, {buckets,
@@ -143,7 +141,7 @@ writeSASLConf(Path, Buckets, AU, AP, Tries, SleepTime) ->
     TmpPath = filename:join(filename:dirname(Path), "isasl.tmp"),
     ok = filelib:ensure_dir(TmpPath),
     ?log_debug("Writing isasl passwd file: ~p", [filename:join(Pwd, Path)]),
-    misc:write_file(TmpPath, encrypted_sasl_conf(AU, AP, Buckets)),
+    misc:write_file(TmpPath, generate_cbsasl_conf(AU, AP, Buckets)),
     case file:rename(TmpPath, Path) of
         ok ->
             case (catch ns_memcached:connect_and_send_isasl_refresh()) of
@@ -169,26 +167,3 @@ generate_cbsasl_conf(AU, AP, Buckets) ->
     Infos = menelaus_users:build_memcached_auth_info(UserPasswords),
     Json = {struct, [{<<"users">>, Infos}]},
     menelaus_util:encode_json(Json).
-
-encrypted_sasl_conf(AU, AP, Buckets) ->
-    SaslConf = generate_cbsasl_conf(AU, AP, Buckets),
-    case cluster_compat_mode:is_enterprise() of
-        true ->
-            encryption_service:encrypt_with_isasl_key(SaslConf);
-        false ->
-            SaslConf
-    end.
-
-get_secrets_json() ->
-    {Key, IVec} = encryption_service:get_isasl_key_and_ivec(),
-    menelaus_util:encode_json({[{cipher, 'AES_256_cbc'},
-                                {key, base64:encode(Key)},
-                                {iv, base64:encode(IVec)}]}).
-
-get_secrets_env_var() ->
-    case cluster_compat_mode:is_enterprise() of
-        true ->
-            [{"COUCHBASE_CBSASL_SECRETS", binary_to_list(get_secrets_json())}];
-        false ->
-            []
-    end.

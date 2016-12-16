@@ -31,9 +31,6 @@
          rotate_data_key/0,
          maybe_clear_backup_key/1]).
 
--export([encrypt_with_isasl_key/1,
-         get_isasl_key_and_ivec/0]).
-
 data_key_store_path() ->
     filename:join(path_config:component_path(data, "config"), "encrypted_data_keys").
 
@@ -122,7 +119,6 @@ set_password(Password, State) ->
     call_gosecrets({set_password, Password}, State).
 
 init([]) ->
-    maybe_create_isasl_key(),
     Path = data_key_store_path(),
     EncryptedDataKey =
         case file:read_file(Path) of
@@ -202,8 +198,6 @@ handle_call(rotate_data_key, _From, State) ->
 handle_call({maybe_clear_backup_key, DataKey}, _From, State) ->
     {reply, call_gosecrets_and_store_data_key({maybe_clear_backup_key, DataKey},
                                               "Clearing backup key", State), State};
-handle_call(get_isasl_key_and_ivec, _From, State) ->
-    {reply, handle_get_isasl_key_and_ivec(), State};
 handle_call(_, _From, State) ->
     {reply, {error, not_allowed}, State}.
 
@@ -302,36 +296,3 @@ encode(rotate_data_key) ->
     <<8>>;
 encode({maybe_clear_backup_key, DataKey}) ->
     <<9, DataKey/binary>>.
-
--define(AES256_BLOCK_SIZE, 16).
--define(AES256_KEY_SIZE, 32).
--define(AES256_IVEC_SIZE, 16).
-
-generate_key_and_ivec() ->
-    {crypto:rand_bytes(?AES256_KEY_SIZE), crypto:rand_bytes(?AES256_IVEC_SIZE)}.
-
-maybe_create_isasl_key() ->
-    case application:get_env(memcached_secrets) of
-        undefined ->
-            KeyIVec = generate_key_and_ivec(),
-            application:set_env(ns_babysitter, memcached_secrets, KeyIVec);
-        {ok, _} ->
-            ok
-    end.
-
-get_isasl_key_and_ivec() ->
-    gen_server:call({?MODULE, ns_server:get_babysitter_node()}, get_isasl_key_and_ivec, infinity).
-
-handle_get_isasl_key_and_ivec() ->
-    {ok, KeyIVec} = application:get_env(memcached_secrets),
-    KeyIVec.
-
-pad(Bin) ->
-    PadSize = ?AES256_BLOCK_SIZE - (byte_size(Bin) rem ?AES256_BLOCK_SIZE),
-    Pad = list_to_binary(lists:duplicate(PadSize, PadSize)),
-    <<Bin/binary, Pad/binary>>.
-
-encrypt_with_isasl_key(PlainText) ->
-    {Key, IVec} = get_isasl_key_and_ivec(),
-    Padded = pad(PlainText),
-    crypto:block_encrypt(aes_cbc256, Key, IVec, Padded).

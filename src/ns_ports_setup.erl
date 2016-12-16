@@ -582,8 +582,7 @@ memcached_spec(Config) ->
                     %% not too small number which means that we'll deal
                     %% with 40 top keys.
                     {"MEMCACHED_TOP_KEYS", "5"},
-                    {"CBSASL_PWFILE", {"~s", [{isasl, path}]}}] ++
-                  ns_config_isasl_sync:get_secrets_env_var()},
+                    {"CBSASL_PWFILE", {"~s", [{isasl, path}]}}]},
              use_stdio,
              stderr_to_stdout, exit_status,
              port_server_dont_start,
