@@ -6,7 +6,7 @@
   </div>
 </mn-element-cargo>
 
-<div>
+<div mn-spinner="!documentsControlCtl.state || !documentsCtl.state">
   <div class="row">
     <ui-select
        on-select="documentsCtl.onSelectBucketName($item)"
