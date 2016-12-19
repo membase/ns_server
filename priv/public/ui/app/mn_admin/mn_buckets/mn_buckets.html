@@ -7,7 +7,7 @@
   </div>
 </mn-element-cargo>
 
-<div>
+<div mn-spinner="!bucketsCtl.buckets" min-height="300px">
   <div class="interim row items-bottom">
     <h4>Couchbase Buckets</h4>
     <button
@@ -17,7 +17,7 @@
     </button>
   </div>
   <div
-     mn-spinner="!bucketsCtl.buckets || bucketsCtl.viewLoading"
+     mn-spinner="bucketsCtl.showBucketsPollerSpinner"
      min-height="91px">
     <div
        mn-buckets-list
@@ -32,7 +32,7 @@
       <h4>Memcached Buckets</h4>
     </div>
     <div
-       mn-spinner="!bucketsCtl.buckets || bucketsCtl.viewLoading"
+       mn-spinner="bucketsCtl.showBucketsPollerSpinner"
        min-height="91px">
       <div
          mn-buckets-list

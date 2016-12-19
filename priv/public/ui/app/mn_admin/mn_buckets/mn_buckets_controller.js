@@ -78,7 +78,7 @@
       .setInterval(10000)
       .subscribe("buckets", vm)
       .reloadOnScopeEvent("bucketUriChanged")
-      .reloadOnScopeEvent("reloadBucketsPoller")
+      .reloadOnScopeEvent("reloadBucketsPoller", vm, "showBucketsPollerSpinner")
       .cycle();
     }
   }
