@@ -1,87 +1,89 @@
-<div class="interim row">
-  <span>
-    <span
-       class="icon"
-       ng-class="{
-                 'fa-check': externalRolesCtl.saslauthdAuth.enabled,
-                 'green': externalRolesCtl.saslauthdAuth.enabled,
-                 'fa-ban': !externalRolesCtl.saslauthdAuth.enabled,
-                 'red': !externalRolesCtl.saslauthdAuth.enabled
-                 }"></span>
-    <span class="text-small">authentication</span>
-    <span ng-show="externalRolesCtl.saslauthdAuth" class="text-small">
-      <span ng-show="!externalRolesCtl.saslauthdAuth.enabled">Not</span> enabled
-    </span>&nbsp;
+<div mn-spinner="!externalRolesCtl.state || externalRolesCtl.viewLoading" min-height="300px">
+  <div class="interim row">
+    <span>
+      <span
+         class="icon"
+         ng-class="{
+                   'fa-check': externalRolesCtl.saslauthdAuth.enabled,
+                   'green': externalRolesCtl.saslauthdAuth.enabled,
+                   'fa-ban': !externalRolesCtl.saslauthdAuth.enabled,
+                   'red': !externalRolesCtl.saslauthdAuth.enabled
+                   }"></span>
+      <span class="text-small">authentication</span>
+      <span ng-show="externalRolesCtl.saslauthdAuth" class="text-small">
+        <span ng-show="!externalRolesCtl.saslauthdAuth.enabled">Not</span> enabled
+      </span>&nbsp;
       <a
-       href=""
-       class="text-small "
-       ng-show="!externalRolesCtl.saslauthdAuthLoading"
-       ng-click="externalRolesCtl.toggleSaslauthdAuth()">
-      <span ng-show="!externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">
-        enable
-      </span>
-      <span ng-show="externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">
-        disable
-      </span>
-    </a>
-  </span>
-  <button
-     ng-show="rbac.cluster.admin.security.write"
-     ng-click="externalRolesCtl.addUser()">+ Add User</button>
-</div>
+         href=""
+         class="text-small "
+         ng-show="!externalRolesCtl.saslauthdAuthLoading"
+         ng-click="externalRolesCtl.toggleSaslauthdAuth()">
+        <span ng-show="!externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">
+          enable
+        </span>
+        <span ng-show="externalRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">
+          disable
+        </span>
+      </a>
+    </span>
+    <button
+       ng-show="rbac.cluster.admin.security.write"
+       ng-click="externalRolesCtl.addUser()">+ Add User</button>
+  </div>
 
-<div mn-spinner="!externalRolesCtl.state || externalRolesCtl.viewLoading">
-  <table
-     class="table-stroked"
-     mn-sortable-table>
-    <tr>
-      <th mn-sortable-title="id">Username</th>
-      <th
-         mn-sortable-title="name"
-         sort-by-default="true"
-         class="text-center">Full Name</th>
-      <th mn-sortable-title="roles" class="text-center">Roles</th>
-      <th></th>
-    </tr>
-    <tbody>
-      <tr
-         ng-if="externalRolesCtl.state.users.length"
-         ng-repeat="user in externalRolesCtl.state.users | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by user.id">
-        <td class="ellipsis">{{user.id}}</td>
-        <td class="ellipsis text-center">{{user.name}}</td>
-        <td class="text-center">
-          <a
-             href=""
-             class="margin-right-half"
-             ng-repeat="role in user.roles"
-             uib-tooltip="{{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).desc}}">
-            {{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).name}} <span ng-show="role.bucket_name">[{{role.bucket_name}}]</span>
-          </a>
-        </td>
-        <td class="text-right">
-          <a
-             class="link-heavy margin-right-half"
-             ng-show="rbac.cluster.admin.security.write"
-             ng-click="externalRolesCtl.editUser(user)">Edit</a>
-          <a
-             class="link-heavy"
-             ng-show="rbac.cluster.admin.security.write"
-             ng-click="externalRolesCtl.deleteUser(user)">Delete</a>
-        </td>
+  <div>
+    <table
+       class="table-stroked"
+       mn-sortable-table>
+      <tr>
+        <th mn-sortable-title="id">Username</th>
+        <th
+           mn-sortable-title="name"
+           sort-by-default="true"
+           class="text-center">Full Name</th>
+        <th mn-sortable-title="roles" class="text-center">Roles</th>
+        <th></th>
       </tr>
-      <tr ng-if="!externalRolesCtl.state.users.length">
-        <td colspan="4">Users list is empty</td>
-      </tr>
-    </tbody>
-  </table>
-  <div class="text-smaller">
-    <strong class="margin-right-half">Roles:</strong>
-    <a
-       href=""
-       class="margin-right-half"
-       uib-tooltip="{{role.desc}}"
-       ng-repeat="role in externalRolesCtl.roles | filter:externalRolesCtl.rolesFilter">
-      {{role.name}}
-    </a>
+      <tbody>
+        <tr
+           ng-if="externalRolesCtl.state.users.length"
+           ng-repeat="user in externalRolesCtl.state.users | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by user.id">
+          <td class="ellipsis">{{user.id}}</td>
+          <td class="ellipsis text-center">{{user.name}}</td>
+          <td class="text-center">
+            <a
+               href=""
+               class="margin-right-half"
+               ng-repeat="role in user.roles"
+               uib-tooltip="{{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).desc}}">
+              {{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).name}} <span ng-show="role.bucket_name">[{{role.bucket_name}}]</span>
+            </a>
+          </td>
+          <td class="text-right">
+            <a
+               class="link-heavy margin-right-half"
+               ng-show="rbac.cluster.admin.security.write"
+               ng-click="externalRolesCtl.editUser(user)">Edit</a>
+            <a
+               class="link-heavy"
+               ng-show="rbac.cluster.admin.security.write"
+               ng-click="externalRolesCtl.deleteUser(user)">Delete</a>
+          </td>
+        </tr>
+        <tr ng-if="!externalRolesCtl.state.users.length">
+          <td colspan="4">Users list is empty</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="text-smaller">
+      <strong class="margin-right-half">Roles:</strong>
+      <a
+         href=""
+         class="margin-right-half"
+         uib-tooltip="{{role.desc}}"
+         ng-repeat="role in externalRolesCtl.roles | filter:externalRolesCtl.rolesFilter">
+        {{role.name}}
+      </a>
+    </div>
   </div>
 </div>
