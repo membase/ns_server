@@ -6,7 +6,10 @@
   </div>
 </mn-element-cargo>
 
-<div ng-if="viewsCtl.mnPoolDefault.value.isKvNode">
+<div
+   ng-if="viewsCtl.mnPoolDefault.value.isKvNode"
+   mn-spinner="viewsCtl.ddocsLoading || !viewsCtl.state"
+   min-height="300px">
   <ui-select
      ng-model="viewsCtl.state.bucketsNames.selected"
      on-select="viewsCtl.onSelectBucket($item)"

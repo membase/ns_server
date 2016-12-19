@@ -148,11 +148,15 @@
       .cycle();
 
       new mnPoller($scope, function () {
-        return mnViewsListService.getViewsListState($state.params);
+        var promise = mnViewsListService.getViewsListState($state.params);
+        promise["finally"](function () {
+          $scope.viewsCtl.ddocsLoading = false;
+        });
+        return promise;
       })
       .setInterval(10000)
       .subscribe("ddocs", vm)
-      .reloadOnScopeEvent("reloadViewsPoller")
+      .reloadOnScopeEvent("reloadViewsPoller", vm, "showViewsPollerSpinner")
       .cycle();
     }
   }

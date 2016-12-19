@@ -24,6 +24,7 @@
       vm.getKvNodeLink = getKvNodeLink;
       vm.onSelectBucket = onSelectBucket;
       vm.mnPoolDefault = mnPoolDefault.latestValue();
+      vm.ddocsLoading = true;
 
       if (!vm.mnPoolDefault.value.isKvNode) {
         return;
