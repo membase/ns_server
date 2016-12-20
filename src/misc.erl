@@ -1911,3 +1911,23 @@ hexify_test() ->
               ?assertEqual(Hex, Etalon)
       end, lists:seq(1, 100)).
 -endif.
+
+iolist_is_empty(<<>>) ->
+    true;
+iolist_is_empty([]) ->
+    true;
+iolist_is_empty([H|T]) ->
+    iolist_is_empty(H) andalso iolist_is_empty(T);
+iolist_is_empty(_) ->
+    false.
+
+-ifdef(EUNIT).
+iolist_is_empty_test() ->
+    ?assertEqual(iolist_is_empty(""), true),
+    ?assertEqual(iolist_is_empty(<<>>), true),
+    ?assertEqual(iolist_is_empty([[[<<>>]]]), true),
+    ?assertEqual(iolist_is_empty([[]|<<>>]), true),
+    ?assertEqual(iolist_is_empty([<<>>|[]]), true),
+    ?assertEqual(iolist_is_empty([[[]], <<"test">>]), false),
+    ?assertEqual(iolist_is_empty([[<<>>]|"test"]), false).
+-endif.
