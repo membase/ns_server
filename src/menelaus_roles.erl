@@ -45,8 +45,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([get_definitions/0,
-         get_definitions/1,
+-export([get_definitions/1,
          preconfigured_roles/0,
          is_allowed/2,
          get_roles/1,
