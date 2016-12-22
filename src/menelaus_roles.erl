@@ -109,15 +109,6 @@ preconfigured_roles() ->
        {[admin], none},
        {[], [read]}]}].
 
--spec get_definitions() -> [rbac_role_def(), ...].
-get_definitions() ->
-    case cluster_compat_mode:is_cluster_45() of
-        true ->
-            get_definitions(ns_config:latest());
-        false ->
-            preconfigured_roles()
-    end.
-
 -spec get_definitions(ns_config()) -> [rbac_role_def(), ...].
 get_definitions(Config) ->
     {value, RolesDefinitions} = ns_config:search(Config, roles_definitions),
@@ -242,7 +233,13 @@ get_roles({_, saslauthd} = Identity) ->
 
 -spec get_compiled_roles([rbac_role()] | rbac_identity()) -> [rbac_compiled_role()].
 get_compiled_roles(Roles) when is_list(Roles) ->
-    Definitions = get_definitions(),
+    Definitions =
+        case cluster_compat_mode:is_cluster_45() of
+            true ->
+                get_definitions(ns_config:latest());
+            false ->
+                preconfigured_roles()
+        end,
     compile_roles(Roles, Definitions);
 get_compiled_roles(Identity) ->
     get_compiled_roles(get_roles(Identity)).
