@@ -50,6 +50,7 @@
          is_allowed/2,
          get_roles/1,
          get_compiled_roles/1,
+         compile_roles/2,
          get_all_assignable_roles/1,
          validate_roles/2]).
 
@@ -231,8 +232,8 @@ get_roles({_, builtin} = Identity) ->
 get_roles({_, saslauthd} = Identity) ->
     get_user_roles(Identity).
 
--spec get_compiled_roles([rbac_role()] | rbac_identity()) -> [rbac_compiled_role()].
-get_compiled_roles(Roles) when is_list(Roles) ->
+-spec get_compiled_roles(rbac_identity()) -> [rbac_compiled_role()].
+get_compiled_roles(Identity) ->
     Definitions =
         case cluster_compat_mode:is_cluster_45() of
             true ->
@@ -240,9 +241,7 @@ get_compiled_roles(Roles) when is_list(Roles) ->
             false ->
                 preconfigured_roles()
         end,
-    compile_roles(Roles, Definitions);
-get_compiled_roles(Identity) ->
-    get_compiled_roles(get_roles(Identity)).
+    compile_roles(get_roles(Identity), Definitions).
 
 -spec get_possible_param_values(ns_config(), atom()) -> [rbac_role_param()].
 get_possible_param_values(Config, bucket_name) ->
