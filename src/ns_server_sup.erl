@@ -78,8 +78,7 @@ child_specs() ->
      {ns_crash_log_consumer, {ns_log, start_link_crash_consumer, []},
       {permanent, 4}, 1000, worker, []},
 
-     %% Track bucket configs and ensure isasl is sync'd up
-     {ns_config_isasl_sync, {ns_config_isasl_sync, start_link, []},
+     {memcached_passwords, {memcached_passwords, start_link, []},
       permanent, 1000, worker, []},
 
      {ns_log_events, {gen_event, start_link, [{local, ns_log_events}]},

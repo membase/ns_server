@@ -81,7 +81,7 @@ sanitize_backtrace(Name, Backtrace) ->
         case {Name, ns_config:read_key_fast(sanitize_backtrace_registers, true)} of
             {auth, true} ->
                 true;
-            {ns_config_isasl_sync, true} ->
+            {memcached_passwords, true} ->
                 true;
             _ ->
                 false

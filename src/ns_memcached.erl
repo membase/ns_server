@@ -736,7 +736,7 @@ handle_info(check_started, #state{timer=Timer, sock=Sock} = State) ->
             Pid = self(),
             proc_lib:spawn_link(
               fun () ->
-                      ns_config_isasl_sync:sync(),
+                      memcached_passwords:sync(),
 
                       gen_server:cast(Pid, start_completed),
                       %% we don't want exit signal in parent's message
