@@ -17,11 +17,23 @@
 
 -module(memcached_permissions).
 
+%% I'll uncomment this one when I'll figure out how to make erl_first_files rebar option
+%% to do what it suppose to do
+%%-behaviour(memcached_cfg).
+
+-export([start_link/0, sync/0]).
+
+%% callbacks
+-export([init/0, filter_event/1, handle_event/2, generate/1, refresh/0]).
+
 -include("ns_common.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([generate_json/1]).
+-record(state, {buckets,
+                users,
+                roles,
+                admin_user}).
 
 bucket_permissions_to_check(Bucket) ->
     [{{[{bucket, Bucket}, data, docs], read},  'Read'},
@@ -43,6 +55,61 @@ global_permissions_to_check() ->
      {{[admin, memcached, node], write},    'NodeManagement'},
      {{[admin, memcached, session], write}, 'SessionManagement'},
      {{[admin, security, audit], write},    'AuditManagement'}].
+
+start_link() ->
+    Path = ns_config:search_node_prop(ns_config:latest(), memcached, rbac_file),
+    memcached_cfg:start_link(?MODULE, Path).
+
+sync() ->
+    memcached_cfg:sync(?MODULE).
+
+init() ->
+    Config = ns_config:get(),
+    #state{buckets = ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)),
+           users = trim_users(menelaus_users:get_users(Config)),
+           admin_user = ns_config:search_node_prop(Config, memcached, admin_user),
+           roles = menelaus_roles:get_definitions(Config)}.
+
+filter_event({buckets, _V}) ->
+    true;
+filter_event({user_roles, _V}) ->
+    true;
+filter_event({roles_definitions, _V}) ->
+    true;
+filter_event(_) ->
+    false.
+
+handle_event({buckets, V}, #state{buckets = Buckets} = State) ->
+    Configs = proplists:get_value(configs, V),
+    case ns_bucket:get_bucket_names(Configs) of
+        Buckets ->
+            unchanged;
+        NewBuckets ->
+            {changed, State#state{buckets = NewBuckets}}
+    end;
+handle_event({user_roles, V}, #state{users = Users} = State) ->
+    case trim_users(V) of
+        Users ->
+            unchanged;
+        NewUsers ->
+            {changed, State#state{users = NewUsers}}
+    end;
+handle_event({roles_definitions, V}, #state{roles = V}) ->
+    unchanged;
+handle_event({roles_definitions, _V}, #state{roles = NewRoles} = State) ->
+    {changed, State#state{roles = NewRoles}}.
+
+generate(#state{buckets = Buckets,
+                users = Users,
+                roles = RoleDefinitions,
+                admin_user = Admin}) ->
+    Json =
+        {[memcached_admin_json(Admin, Buckets) | generate_json(Buckets, RoleDefinitions, Users)]},
+    menelaus_util:encode_json(Json).
+
+refresh() ->
+    %% TODO: memcached needs to implement this command
+    ok.
 
 trim_users(Users) ->
     [{menelaus_users:get_identity(User), menelaus_users:get_roles(User)} ||
@@ -108,12 +175,6 @@ generate_json(Buckets, RoleDefinitions, Users) ->
                             {[jsonify_user(Identity, Permissions) | Acc], NewDict}
                     end, {[], RolesDict}, BucketUsers ++ Users),
     lists:reverse(Json).
-
-generate_json(Config) ->
-    Buckets = ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)),
-    RoleDefinitions = menelaus_roles:get_definitions(Config),
-    Users = trim_users(menelaus_users:get_users(Config)),
-    {[memcached_admin_json(Config, Buckets) | generate_json(Buckets, RoleDefinitions, Users)]}.
 
 generate_json_test() ->
     Buckets = ["default", "test"],

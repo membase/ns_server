@@ -81,6 +81,9 @@ child_specs() ->
      {memcached_passwords, {memcached_passwords, start_link, []},
       permanent, 1000, worker, []},
 
+     {memcached_permissions, {memcached_permissions, start_link, []},
+      permanent, 1000, worker, []},
+
      {ns_log_events, {gen_event, start_link, [{local, ns_log_events}]},
       permanent, 1000, worker, dynamic},
 
