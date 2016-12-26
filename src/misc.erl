@@ -1139,9 +1139,12 @@ start_event_link(SubscriptionBody) ->
                 end)}.
 
 %% Writes to file atomically using write_file + atomic_rename
-atomic_write_file(Path, Contents) ->
+atomic_write_file(Path, BodyOrBytes)
+  when is_function(BodyOrBytes);
+       is_binary(BodyOrBytes);
+       is_list(BodyOrBytes) ->
     TmpPath = Path ++ ".tmp",
-    case misc:write_file(TmpPath, Contents) of
+    case misc:write_file(TmpPath, BodyOrBytes) of
         ok ->
             atomic_rename(TmpPath, Path);
         X ->
@@ -1556,8 +1559,25 @@ min_by(Less, Items) ->
 inspect_term(Value) ->
     binary_to_list(iolist_to_binary(io_lib:format("~p", [Value]))).
 
-write_file(Path, Bytes) ->
-    file:write_file(Path, Bytes, [raw]).
+with_file(Path, Mode, Body) ->
+    case file:open(Path, Mode) of
+        {ok, F} ->
+            try
+                Body(F)
+            after
+                (catch file:close(F))
+            end;
+        Error ->
+            Error
+    end.
+
+write_file(Path, Bytes) when is_binary(Bytes); is_list(Bytes) ->
+    misc:write_file(Path,
+                    fun (F) ->
+                            file:write(F, Bytes)
+                    end);
+write_file(Path, Body) when is_function(Body) ->
+    with_file(Path, [raw, binary, write], Body).
 
 halt(Status) ->
     try
