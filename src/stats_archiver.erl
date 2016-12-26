@@ -233,29 +233,73 @@ create_tables(Bucket) ->
 
 read_table(Path, TableName) ->
     ets:new(TableName, [ordered_set, protected, named_table]),
-    RV = case file:read_file(Path) of
-             {ok, <<>>} -> ok;
-             {ok, B} ->
-                 try zlib:uncompress(B) of
-                     B2 ->
-                         ets:insert(TableName, binary_to_term(B2)),
-                         ok
-                 catch error:data_error ->
-                         {error, data_error}
-                 end;
-             {error, enoent} ->
-                 ok;
-             Err ->
-                 Err
-         end,
-    case RV of
+    try
+        ok = do_read_table(Path, TableName)
+    catch
+        T:E ->
+            ?log_error("Failed to read table ~p from ~p:~n~p",
+                       [TableName, Path, {T, E, erlang:get_stacktrace()}])
+    end.
+
+do_read_table(Path, TableName) ->
+    case read_table_new(Path, TableName) of
         ok ->
             ok;
-        _ ->
-            ?log_error("Failed to restore stats table from "
-                       "file ~p with error ~p~n", [Path, RV])
-    end,
-    ok.
+        {error, enoent} ->
+            case read_table_old(Path, TableName) of
+                ok ->
+                    ?log_info("Found old stats archive for ~p at ~p. Converting.",
+                              [TableName, Path]),
+                    %% write table in new format immediately
+                    write_table(Path, TableName),
+                    file:delete(Path),
+                    ok;
+                {error, enoent} ->
+                    ok;
+                Error ->
+                    Error
+            end;
+        Error ->
+            Error
+    end.
+
+read_table_new(Path, Table) ->
+    GzPath = Path ++ ".gz",
+    misc:with_file(GzPath, [raw, binary, read],
+                   fun (File) ->
+                           pipes:run(pipes:read_file(File),
+                                     pipes:gunzip(),
+                                     pipes:unmarshal_table(Table)),
+                           ok
+                   end).
+
+%% deals with pre-spock stats archive files
+read_table_old(Path, Table) ->
+    case file:read_file(Path) of
+        {ok, <<>>} ->
+            ok;
+        {ok, B} ->
+            try zlib:uncompress(B) of
+                B2 ->
+                    ets:insert(Table, binary_to_term(B2)),
+                    ok
+            catch error:data_error ->
+                    {error, data_error}
+            end;
+        Error ->
+            Error
+    end.
+
+write_table(Path, TableName) ->
+    GzPath = Path ++ ".gz",
+    ok = misc:atomic_write_file(
+           GzPath,
+           fun (File) ->
+                   pipes:run(pipes:marshal_table(TableName),
+                             %% prefer speed over disk space
+                             pipes:gzip([{compression_level, 1}]),
+                             pipes:write_file(File))
+           end).
 
 check_logger(Bucket, Period) ->
     File = logger_file(Bucket, Period),
@@ -264,14 +308,7 @@ check_logger(Bucket, Period) ->
 backup_logger(Bucket, Period) ->
     Tab = table(Bucket, Period),
     File = logger_file(Bucket, Period),
-    Data = zlib:compress(erlang:term_to_binary(ets:tab2list(Tab))),
-    case misc:atomic_write_file(File, Data) of
-        {error, Reason} = Error ->
-            ?log_error("Failed to backup stats table ~p with error ~p~n", [Tab, Reason]),
-            Error;
-        OK ->
-            OK
-    end.
+    write_table(File, Tab).
 
 backup_loggers(Bucket) ->
     lists:foreach(
