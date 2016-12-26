@@ -1144,11 +1144,15 @@ atomic_write_file(Path, BodyOrBytes)
        is_binary(BodyOrBytes);
        is_list(BodyOrBytes) ->
     TmpPath = Path ++ ".tmp",
-    case misc:write_file(TmpPath, BodyOrBytes) of
-        ok ->
-            atomic_rename(TmpPath, Path);
-        X ->
-            X
+    try
+        case misc:write_file(TmpPath, BodyOrBytes) of
+            ok ->
+                atomic_rename(TmpPath, Path);
+            X ->
+                X
+        end
+    after
+        (catch file:delete(TmpPath))
     end.
 
 %% Rename file (more or less) atomically.
