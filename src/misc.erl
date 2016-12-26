@@ -1143,7 +1143,9 @@ atomic_write_file(Path, BodyOrBytes)
   when is_function(BodyOrBytes);
        is_binary(BodyOrBytes);
        is_list(BodyOrBytes) ->
-    TmpPath = Path ++ ".tmp",
+    DirName = filename:dirname(Path),
+    FileName = filename:basename(Path),
+    TmpPath = path_config:tempfile(DirName, FileName, ".tmp"),
     try
         case misc:write_file(TmpPath, BodyOrBytes) of
             ok ->
