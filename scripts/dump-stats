@@ -17,37 +17,38 @@ make_error(Error) ->
     {[{status, failed},
       {error, couch_util:to_binary(Error)}]}.
 
-decode_samples(<<>>) ->
-    {ok, []};
-decode_samples(Binary) ->
+process_samples(Samples) ->
+    [{[{ts, Ts},
+       {sample, {Sample}}]} || {Ts, {stat_entry, _, Sample}} <- Samples].
+
+do_read_stats_file(File) ->
     try
-        {ok, binary_to_term(zlib:uncompress(Binary))}
+        Samples = pipes:run(pipes:read_file(File),
+                            [pipes:gunzip(),
+                             pipes:unmarshal_terms()],
+                            pipes:collect()),
+        {ok, Samples}
     catch
         T:E ->
             Stack = erlang:get_stacktrace(),
             {error, {T, E, Stack}}
     end.
 
-process_samples(Samples) ->
-    [{[{ts, Ts},
-       {sample, {Sample}}]} || {Ts, {stat_entry, _, Sample}} <- Samples].
-
 read_stats_file(Path) ->
-    case file:read_file(Path) of
-        {ok, Binary} ->
-            case decode_samples(Binary) of
-                {ok, Samples} ->
-                    {[{status, ok},
-                      {samples, process_samples(Samples)}]};
-                {error, Error} ->
-                    make_error(Error)
-            end;
+    RV = misc:with_file(Path, [raw, binary, read],
+                        fun (File) ->
+                                do_read_stats_file(File)
+                        end),
+    case RV of
+        {ok, Samples} ->
+            {[{status, ok},
+              {samples, process_samples(Samples)}]};
         {error, Error} ->
             make_error(Error)
     end.
 
 read_all_stats(StatsDir) ->
-    RegExp = "^stats_archiver-(.+)\.(minute|hour|day|week|month|year)$",
+    RegExp = "^stats_archiver-(.+)\.(minute|hour|day|week|month|year).gz$",
     Stats0 =
         filelib:fold_files(
           StatsDir, RegExp, false,
