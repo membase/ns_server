@@ -172,12 +172,12 @@ class Task(object):
 class TaskRunner(object):
     default_name = "couchbase.log"
 
-    def __init__(self, verbosity=0):
+    def __init__(self, verbosity=0, task_regexp=''):
         self.files = {}
-        self.tasks = {}
         self.verbosity = verbosity
         self.start_time = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
         self.tmpdir = tempfile.mkdtemp()
+        self.task_regexp = re.compile(task_regexp)
 
         AltExit.register(self.finalize)
 
@@ -225,7 +225,19 @@ class TaskRunner(object):
         else:
             log("Exit code %d" % result)
 
+    def run_tasks(self, tasks):
+        for task in tasks:
+            self.run(task)
+
     def run(self, task):
+        if self.task_regexp.match(task.description) is None:
+                log("Skipping task %s because "
+                    "it doesn't match '%s'" % (task.description,
+                                               self.task_regexp.pattern))
+        else:
+            self._run(task)
+
+    def _run(self, task):
         """Run a task with a file descriptor corresponding to its log file"""
         if task.will_run():
             log("%s (%s) - " % (task.description, task.command_to_print), end='')
@@ -1014,6 +1026,9 @@ def main():
     parser.add_option("--bypass-sensitive-data", dest="bypass_sensitive_data",
                       action="store_true", default=False,
                       help="do not collect sensitive data")
+    parser.add_option("--task-regexp", dest="task_regexp",
+                      default="",
+                      help="Run only tasks matching regexp. For debugging purposes only.")
     options, args = parser.parse_args()
 
     if len(args) != 1:
@@ -1060,11 +1075,11 @@ def main():
     if options.just_upload_into != None:
         do_upload_and_exit(args[0], options.just_upload_into)
 
-    runner = TaskRunner(verbosity=options.verbosity)
+    runner = TaskRunner(verbosity=options.verbosity,
+                        task_regexp=options.task_regexp)
 
     if not options.product_only:
-        for task in make_os_tasks():
-            runner.run(task)
+        runner.run_tasks(make_os_tasks())
 
     initargs_variants = [os.path.abspath(os.path.join(options.root, "var", "lib", "couchbase", "initargs")),
                          "/opt/couchbase/var/lib/couchbase/initargs",
@@ -1111,8 +1126,8 @@ def main():
                   "",
                   literal = "Found server initargs at %s (%d)" % (guts_initargs_path, len(guts))))
 
-    for task in make_product_task(guts, guts_initargs_path, memcached_password, options):
-        runner.run(task)
+    runner.run_tasks(make_product_task(guts, guts_initargs_path,
+                                       memcached_password, options))
 
     # Collect breakpad crash dumps.
     if options.bypass_sensitive_data:
