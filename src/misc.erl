@@ -1957,3 +1957,10 @@ iolist_is_empty_test() ->
     ?assertEqual(iolist_is_empty([[[]], <<"test">>]), false),
     ?assertEqual(iolist_is_empty([[<<>>]|"test"]), false).
 -endif.
+
+ejson_encode_pretty(Json) ->
+    iolist_to_binary(
+      pipes:run(sjson:stream_json(Json),
+                sjson:encode_json([{compact, false},
+                                   {strict, false}]),
+                pipes:collect())).

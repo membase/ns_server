@@ -278,7 +278,7 @@ memcached_config(Config) ->
                   normalize_memcached_props(List, Acc)
           end, [], [ExtraPropsG, ExtraProps, RootProp, Props]),
 
-    ejson:encode({lists:sort(FinalProps)}).
+    misc:ejson_encode_pretty({lists:sort(FinalProps)}).
 
 normalize_memcached_props([], Tail) -> Tail;
 normalize_memcached_props([{Key, Value} | Rest], Tail) ->

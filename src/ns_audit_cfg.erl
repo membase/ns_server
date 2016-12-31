@@ -164,7 +164,7 @@ write_audit_json(Params) ->
                                          V
                                  end}
                      end, CompleteParams),
-    Bytes = ejson:encode({Json}),
+    Bytes = misc:ejson_encode_pretty({Json}),
     ok = misc:atomic_write_file(Path, Bytes),
     self() ! notify_memcached.
 
