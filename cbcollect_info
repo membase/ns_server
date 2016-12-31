@@ -78,7 +78,7 @@ class Task(object):
     def _platform_popen_flags(self):
         flags = {}
         if self._is_posix:
-            flags['preexec_fn'] = os.setsid
+            flags['preexec_fn'] = os.setpgrp
 
         return flags
 
