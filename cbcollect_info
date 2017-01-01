@@ -97,7 +97,6 @@ class Task(object):
 
     def execute(self, fp):
         """Run the task"""
-        import subprocess
         use_shell = not isinstance(self.command, list)
         if "literal" in self.__dict__:
             print >> fp, self.literal
@@ -364,7 +363,6 @@ def get_local_token(guts, port):
     return token
 
 def get_diag_password(guts):
-    import subprocess
     import StringIO
 
     port = read_guts(guts, "rest_port")
