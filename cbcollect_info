@@ -199,8 +199,7 @@ class TaskRunner(object):
         if not filename in self.files:
             self.files[filename] = open(filename, 'r')
         else:
-            log("Unable to collect file '{0}' - already collected.".format(
-                filename))
+            log("Unable to collect file '%s' - already collected." % filename)
 
     def get_file(self, filename):
         if filename in self.files:
