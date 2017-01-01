@@ -233,11 +233,7 @@ class TaskRunner(object):
                 log("skipped (needs root privs)")
                 return
 
-            if hasattr(task, 'log_file'):
-                filename = task.log_file
-            else:
-                filename = self.default_name
-
+            filename = getattr(task, 'log_file', self.default_name)
             fp = self.get_file(filename)
             if not task.no_header:
                 self.header(fp, task.description, task.command_to_print)
