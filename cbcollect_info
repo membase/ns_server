@@ -197,7 +197,10 @@ class TaskRunner(object):
         filename - Absolute path to file to collect.
         """
         if not filename in self.files:
-            self.files[filename] = open(filename, 'r')
+            try:
+                self.files[filename] = open(filename, 'r')
+            except IOError, e:
+                log("Failed to collect file '%s': %s" % (filename, str(e)))
         else:
             log("Unable to collect file '%s' - already collected." % filename)
 
