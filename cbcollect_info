@@ -289,6 +289,16 @@ class TaskRunner(object):
                     time.sleep(task.interval)
                 result = task.execute(fp)
                 self.log_result(result)
+
+            for artifact in getattr(task, 'artifacts', []):
+                path = artifact
+                if not os.path.isabs(path):
+                    # we assume that "relative" artifacts are produced in the
+                    # self.tmpdir
+                    path = os.path.join(self.tmpdir, path)
+
+                self.collect_file(path)
+
             fp.flush()
 
         elif self.verbosity >= 2:
@@ -566,8 +576,8 @@ def make_os_tasks():
         UnixTask("System log", "cat /var/adm/messages"),
         LinuxTask("Raw /proc/uptime", "cat /proc/uptime"),
         LinuxTask("Systemd journal",
-                  "journalctl 2>&1 | gzip -c",
-                  log_file="systemd_journal.gz", no_header=True),
+                  "journalctl | gzip -c > systemd_journal.gz",
+                  change_dir=True, artifacts=['systemd_journal.gz']),
         LinuxTask("All logs", "tar cz /var/log/syslog* /var/log/dmesg /var/log/messages* /var/log/daemon* /var/log/debug* /var/log/kern.log* 2>/dev/null",
                   log_file="syslog.tar.gz", no_header=True),
         LinuxTask("Relevant proc data", "echo %(programs)s | "
