@@ -98,10 +98,6 @@ class Task(object):
     def execute(self, fp):
         """Run the task"""
         use_shell = not isinstance(self.command, list)
-        if "literal" in self.__dict__:
-            print >> fp, self.literal
-            return 0
-
         env = None
         if "addenv" in self.__dict__:
             env = os.environ.copy()
@@ -262,6 +258,9 @@ class TaskRunner(object):
         elif self.verbosity >= 2:
             log('Skipping "%s" (%s): not for platform %s' % (task.description, task.command_to_print, sys.platform))
 
+    def literal(self, description, value, **kwargs):
+        self.run(LiteralTask(description, value, **kwargs))
+
     def zip(self, filename, node):
         """Write all our logs to a zipfile"""
         exe = exec_name("gozip")
@@ -328,6 +327,18 @@ class UnixTask(SolarisTask, LinuxTask, MacOSXTask):
 
 class AllOsTask(UnixTask, WindowsTask):
     platforms = UnixTask.platforms + WindowsTask.platforms
+
+class LiteralTask(AllOsTask):
+    def __init__(self, description, literal, **kwargs):
+        self.description = description
+        self.command = ''
+        self.command_to_print = ''
+        self.literal = literal
+        self.__dict__.update(kwargs)
+
+    def execute(self, fp):
+        print >> fp, self.literal
+        return 0
 
 def make_curl_task(name, user, password, url,
                    timeout=60, log_file="couchbase.log", base_task=AllOsTask,
@@ -687,9 +698,9 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
         LinuxTask("Version file", "cat '%s/VERSION.txt'" % root),
         LinuxTask("Manifest file", "cat '%s/manifest.txt'" % root),
         LinuxTask("Manifest file", "cat '%s/manifest.xml'" % root),
-        AllOsTask("Couchbase config", "", literal = read_guts(guts, "ns_config")),
-        AllOsTask("Couchbase static config", "", literal = read_guts(guts, "static_config")),
-        AllOsTask("Raw ns_log", "", literal = read_guts(guts, "ns_log")),
+        LiteralTask("Couchbase config", read_guts(guts, "ns_config")),
+        LiteralTask("Couchbase static config", read_guts(guts, "static_config")),
+        LiteralTask("Raw ns_log", read_guts(guts, "ns_log")),
         # TODO: just gather those in python
         WindowsTask("Memcached logs",
                     "cd " + winquote_path(read_guts(guts, "memcached_logs_path")) + " && " +
@@ -1121,10 +1132,8 @@ def main():
     memcached_password =  get_diag_password(guts)
 
     zip_node = read_guts(guts, "node")
-    runner.run(
-        AllOsTask("product diag header",
-                  "",
-                  literal = "Found server initargs at %s (%d)" % (guts_initargs_path, len(guts))))
+    runner.literal("product diag header",
+                   "Found server initargs at %s (%d)" % (guts_initargs_path, len(guts)))
 
     runner.run_tasks(make_product_task(guts, guts_initargs_path,
                                        memcached_password, options))
