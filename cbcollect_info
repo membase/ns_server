@@ -103,21 +103,32 @@ class Task(object):
         else:
             p.kill()
 
+    def _env_flags(self):
+        flags = {}
+        if hasattr(self, 'addenv'):
+            env = os.environ.copy()
+            env.update(self.addenv)
+            flags['env'] = env
+
+        return flags
+
+    def _extra_flags(self):
+        flags = self._env_flags()
+        flags.update(self._platform_popen_flags())
+
+        return flags
+
     def execute(self, fp):
         """Run the task"""
         use_shell = not isinstance(self.command, list)
-        env = None
-        if "addenv" in self.__dict__:
-            env = os.environ.copy()
-            env.update(self.addenv)
+        extra_flags = self._extra_flags()
         try:
-            platform_flags = self._platform_popen_flags()
             p = subprocess.Popen(self.command, bufsize=-1,
                                  stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT,
-                                 shell=use_shell, env=env,
-                                 **platform_flags)
+                                 shell=use_shell,
+                                 **extra_flags)
         except OSError, e:
             # if use_shell is False then Popen may raise exception
             # if binary is missing. In this case we mimic what
