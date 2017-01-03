@@ -112,11 +112,26 @@ class Task(object):
 
         return flags
 
+    def _cwd_flags(self):
+        flags = {}
+        if getattr(self, 'change_dir', False):
+            cwd = self._task_runner.tmpdir
+            if isinstance(self.change_dir, str):
+                cwd = self.change_dir
+
+            flags['cwd'] = cwd
+
+        return flags
+
     def _extra_flags(self):
         flags = self._env_flags()
         flags.update(self._platform_popen_flags())
+        flags.update(self._cwd_flags())
 
         return flags
+
+    def set_task_runner(self, runner):
+        self._task_runner = runner
 
     def execute(self, fp):
         """Run the task"""
@@ -260,6 +275,8 @@ class TaskRunner(object):
             if task.privileged and os.getuid() != 0:
                 log("skipped (needs root privs)")
                 return
+
+            task.set_task_runner(self)
 
             filename = getattr(task, 'log_file', self.default_name)
             fp = self.get_file(filename)
