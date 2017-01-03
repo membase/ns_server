@@ -18,6 +18,7 @@ import urllib
 import shutil
 import urlparse
 import errno
+from StringIO import StringIO
 
 class AltExitC(object):
     def __init__(self):
@@ -56,8 +57,15 @@ USAGE = """usage: %prog [options] output_file.zip
     %prog output_file.zip
     %prog -v output_file.zip"""
 
+log_stream = StringIO()
+
 def log(message, end = '\n'):
-    sys.stderr.write(message + end)
+    global log_stream
+
+    message = message + end
+    log_stream.write(message)
+
+    sys.stderr.write(message)
     sys.stderr.flush()
 
 class Task(object):
@@ -374,15 +382,13 @@ def get_local_token(guts, port):
     return token
 
 def get_diag_password(guts):
-    import StringIO
-
     port = read_guts(guts, "rest_port")
     pwd = get_local_token(guts, port)
     url = "http://127.0.0.1:%s/diag/password" % port
     command = ["curl", "-sS", "--proxy", "", "-u", "@localtoken:%s" % pwd, url]
 
     task = AllOsTask("get diag password", command, timeout=60)
-    output = StringIO.StringIO()
+    output = StringIO()
     if task.execute(output) == 0:
         return output.getvalue()
     else:
@@ -1152,6 +1158,9 @@ def main():
 
     if options.verbosity:
         log("Python version: %s" % sys.version)
+
+    runner.literal("cbcollect_info log", log_stream.getvalue(),
+                   log_file="cbcollect_info.log")
 
     runner.zip(zip_filename, zip_node)
 
