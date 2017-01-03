@@ -70,15 +70,15 @@ read_all_stats(StatsDir) ->
                   end, [], Stats0),
     {Stats1}.
 
-main([StatsDir]) ->
+main([StatsDir, OutputFile]) ->
     Stats = read_all_stats(StatsDir),
     try
         ejson:encode(Stats)
     of Json ->
-            ok = file:write(standard_io, Json)
+            ok = file:write_file(OutputFile, Json)
     catch T:E ->
             Stack = erlang:get_stacktrace(),
             fatal("failed to encode stats: ~p~n~p", [{T, E}, Stack])
     end;
 main(_) ->
-    fatal("usage: dump-stats <stats_dir>").
+    fatal("usage: dump-stats <stats_dir> <output file>").

@@ -638,13 +638,14 @@ def make_stats_archives_task(guts, initargs_path):
     if dump_stats is None or escript_wrapper is None or not stats_dir:
         return []
 
+    output_file = "stats_archives.json"
     return AllOsTask("stats archives",
                      [escript,
                       escript_wrapper,
                       "--initargs-path", initargs_path, "--",
-                      dump_stats, stats_dir],
-                     no_header=True,
-                     log_file="stats_archives.json")
+                      dump_stats, stats_dir, output_file],
+                     change_dir=True,
+                     artifacts=[output_file])
 
 def make_product_task(guts, initargs_path, memcached_pass, options):
     root = os.path.abspath(os.path.join(initargs_path, "..", "..", "..", ".."))
