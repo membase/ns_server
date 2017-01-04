@@ -155,9 +155,6 @@
            ui-sref="app.admin.security.externalRoles"
            ng-show="pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45">Security</a>
         <a
-           ui-sref="app.admin.security.internalRoles"
-           ng-show="!(pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.write">Security</a>
-        <a
            ui-sref="app.admin.security.rootCertificate"
            ng-show="pools.isEnterprise && !(adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.write === false">Security</a>
       </span>

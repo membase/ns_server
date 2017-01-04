@@ -13,7 +13,6 @@
       'mnSettingsCluster',
       'mnSettingsAlerts',
       'mnSettingsNotificationsService',
-      'mnInternalRoles',
       'ui.router',
       'mnPluggableUiRegistry',
       'mnElementCrane'
