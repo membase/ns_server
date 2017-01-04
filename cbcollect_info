@@ -860,7 +860,7 @@ def find_script(name):
         path = os.path.join(d, name)
         if os.path.exists(path):
             log("Found %s: %s" % (name, path))
-            return path
+            return os.path.abspath(path)
 
     return None
 
