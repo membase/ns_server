@@ -152,7 +152,7 @@
          ng-class="{currentNav: ('app.admin.security' | includedByState)}"
          ng-show="rbac.cluster.admin.security.read && (pools.isEnterprise || rbac.cluster.admin.security.write)">
         <a
-           ui-sref="app.admin.security.externalRoles"
+           ui-sref="app.admin.security.userRoles"
            ng-show="pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45">Security</a>
         <a
            ui-sref="app.admin.security.rootCertificate"

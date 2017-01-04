@@ -2,11 +2,11 @@
   "use strict";
 
   angular
-    .module("mnExternalRolesService", [])
-    .factory("mnExternalRolesService", mnExternalRolesFactory);
+    .module("mnUserRolesService", [])
+    .factory("mnUserRolesService", mnUserRolesFactory);
 
-  function mnExternalRolesFactory($q, $http) {
-    var mnExternalRolesService = {
+  function mnUserRolesFactory($q, $http) {
+    var mnUserRolesService = {
       getState: getState,
       addUser: addUser,
       getRoles: getRoles,
@@ -15,7 +15,7 @@
       getRoleFromRoles: getRoleFromRoles
     };
 
-    return mnExternalRolesService;
+    return mnUserRolesService;
 
     function getRoles() {
       return $http({

@@ -1,15 +1,15 @@
 <div class="dialog-med">
   <h2 class="ellipsis panel-header">
-    Manage User &gt; {{externalRolesAddDialogCtl.userID}}
+    Manage User &gt; {{userRolesAddDialogCtl.userID}}
   </h2>
   <form
-     ng-submit="externalRolesAddDialogCtl.save()"
-     mn-spinner="externalRolesAddDialogCtl.viewLoading">
+     ng-submit="userRolesAddDialogCtl.save()"
+     mn-spinner="userRolesAddDialogCtl.viewLoading">
     <div class="panel-content forms">
       <div
          class="error error-form"
-         ng-show="externalRolesAddDialogCtl.errors"
-         ng-repeat="error in externalRolesAddDialogCtl.errors">
+         ng-show="userRolesAddDialogCtl.errors"
+         ng-repeat="error in userRolesAddDialogCtl.errors">
         {{error}}
       </div>
       <div class="formrow checkbox-list">
@@ -19,14 +19,14 @@
            name="type"
            value="saslauthd"
            id="user-type-ldap"
-           ng-model="externalRolesAddDialogCtl.user.type">
+           ng-model="userRolesAddDialogCtl.user.type">
         <label for="user-type-ldap">LDAP</label>
         <input
            type="radio"
            name="type"
            value="builtin"
            id="user-type-builtin"
-           ng-model="externalRolesAddDialogCtl.user.type">
+           ng-model="userRolesAddDialogCtl.user.type">
         <label for="user-type-builtin">Couchbase</label>
       </div>
       <div class="formrow">
@@ -37,7 +37,7 @@
            spellcheck="false"
            autocapitalize="off"
            id="name_inp"
-           ng-model="externalRolesAddDialogCtl.user.id">
+           ng-model="userRolesAddDialogCtl.user.id">
       </div>
       <div class="formrow">
         <label for="name_full_inp">Full Name <small>(optional)</small></label>
@@ -47,9 +47,9 @@
            spellcheck="false"
            autocapitalize="off"
            id="name_full_inp"
-           ng-model="externalRolesAddDialogCtl.user.name">
+           ng-model="userRolesAddDialogCtl.user.name">
       </div>
-      <div class="formrow" ng-if="externalRolesAddDialogCtl.user.type !== 'saslauthd'">
+      <div class="formrow" ng-if="userRolesAddDialogCtl.user.type !== 'saslauthd'">
         <label for="password_inp">Password:</label>
         <input
            type="password"
@@ -57,22 +57,22 @@
            spellcheck="false"
            autocapitalize="off"
            id="password_inp"
-           ng-model="externalRolesAddDialogCtl.user.password">
+           ng-model="userRolesAddDialogCtl.user.password">
       </div>
       <div class="formrow">
         <label for="user_inp">Role(s)</label>
         <ui-select
            style="border: 1px solid #d1d1d1;"
-           on-select="externalRolesAddDialogCtl.onSelect($select)"
+           on-select="userRolesAddDialogCtl.onSelect($select)"
            multiple
-           ng-if="externalRolesAddDialogCtl.roles"
-           ng-model="externalRolesAddDialogCtl.roles.selected">
+           ng-if="userRolesAddDialogCtl.roles"
+           ng-model="userRolesAddDialogCtl.roles.selected">
           <ui-select-match
              placeholder="choose single or multiple roles">
             {{$item.name}}<span ng-show="$item.bucket_name">[{{$item.bucket_name}}]</span>
           </ui-select-match>
           <ui-select-choices
-             repeat="role in externalRolesAddDialogCtl.roles | filter: $select.search">
+             repeat="role in userRolesAddDialogCtl.roles | filter: $select.search">
             <span
                class="ellipsis"
                ng-bind-html="(role.name + (role.bucket_name ? '[' + role.bucket_name + ']' : '')) | highlight: $select.search"></span>

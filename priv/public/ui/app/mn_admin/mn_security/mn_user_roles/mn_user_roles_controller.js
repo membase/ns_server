@@ -2,8 +2,8 @@
   "use strict";
 
   angular
-    .module("mnExternalRoles", [
-      "mnExternalRolesService",
+    .module("mnUserRoles", [
+      "mnUserRolesService",
       "mnHelper",
       "mnPromiseHelper",
       "mnPoll",
@@ -12,16 +12,16 @@
       "ui.select",
       "mnLdapService"
     ])
-    .controller("mnExternalRolesController", mnExternalRolesController);
+    .controller("mnUserRolesController", mnUserRolesController);
 
-  function mnExternalRolesController($scope, $uibModal, mnLdapService, mnPromiseHelper, mnExternalRolesService, mnPoller, mnHelper) {
+  function mnUserRolesController($scope, $uibModal, mnLdapService, mnPromiseHelper, mnUserRolesService, mnPoller, mnHelper) {
     var vm = this;
     vm.addUser = addUser;
     vm.deleteUser = deleteUser;
     vm.editUser = editUser;
 
     vm.toggleSaslauthdAuth = toggleSaslauthdAuth;
-    vm.getRoleFromRoles = mnExternalRolesService.getRoleFromRoles;
+    vm.getRoleFromRoles = mnUserRolesService.getRoleFromRoles;
     vm.rolesFilter = rolesFilter;
 
     activate();
@@ -35,14 +35,14 @@
         .applyToScope("saslauthdAuth")
         .showSpinner("saslauthdAuthLoading");
 
-      mnPromiseHelper(vm, mnExternalRolesService.getRoles())
+      mnPromiseHelper(vm, mnUserRolesService.getRoles())
         .applyToScope(function (roles) {
           vm.roles = roles;
-          mnPromiseHelper(vm, mnExternalRolesService.getRolesByRole(roles))
+          mnPromiseHelper(vm, mnUserRolesService.getRolesByRole(roles))
             .applyToScope("rolesByRole");
         });
 
-      var poller = new mnPoller($scope, mnExternalRolesService.getState)
+      var poller = new mnPoller($scope, mnUserRolesService.getState)
         .subscribe("state", vm)
         .setInterval(10000)
         .reloadOnScopeEvent("reloadRolesPoller")
@@ -60,8 +60,8 @@
 
     function editUser(user) {
       $uibModal.open({
-        templateUrl: 'app/mn_admin/mn_security/mn_external_roles/add_dialog/mn_external_roles_add_dialog.html',
-        controller: 'mnExternalRolesAddDialogController as externalRolesAddDialogCtl',
+        templateUrl: 'app/mn_admin/mn_security/mn_user_roles/add_dialog/mn_user_roles_add_dialog.html',
+        controller: 'mnUserRolesAddDialogController as userRolesAddDialogCtl',
         resolve: {
           user: mnHelper.wrapInFunction(user)
         }
@@ -69,8 +69,8 @@
     }
     function addUser() {
       $uibModal.open({
-        templateUrl: 'app/mn_admin/mn_security/mn_external_roles/add_dialog/mn_external_roles_add_dialog.html',
-        controller: 'mnExternalRolesAddDialogController as externalRolesAddDialogCtl',
+        templateUrl: 'app/mn_admin/mn_security/mn_user_roles/add_dialog/mn_user_roles_add_dialog.html',
+        controller: 'mnUserRolesAddDialogController as userRolesAddDialogCtl',
         resolve: {
           user: mnHelper.wrapInFunction(undefined)
         }
@@ -78,8 +78,8 @@
     }
     function deleteUser(user) {
       $uibModal.open({
-        templateUrl: 'app/mn_admin/mn_security/mn_external_roles/delete_dialog/mn_external_roles_delete_dialog.html',
-        controller: 'mnExternalRolesDeleteDialogController as externalRolesDeleteDialogCtl',
+        templateUrl: 'app/mn_admin/mn_security/mn_user_roles/delete_dialog/mn_user_roles_delete_dialog.html',
+        controller: 'mnUserRolesDeleteDialogController as userRolesDeleteDialogCtl',
         resolve: {
           user: mnHelper.wrapInFunction(user)
         }

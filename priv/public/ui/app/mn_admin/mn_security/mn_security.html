@@ -5,8 +5,8 @@
      mn-tab-bar-name="securityTab">
     <a
        ng-show="securityCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read && pools.isEnterprise"
-       ui-sref="app.admin.security.externalRoles"
-       ui-sref-active="selected">External User/Roles</a>
+       ui-sref="app.admin.security.userRoles"
+       ui-sref-active="selected">Users</a>
     <a
        ng-show="pools.isEnterprise"
        ui-sref="app.admin.security.rootCertificate"
