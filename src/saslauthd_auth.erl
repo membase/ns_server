@@ -19,7 +19,6 @@
 
 -export([build_settings/0,
          set_settings/1,
-         check/2,
          authenticate/2,
          get_role_pre_45/1
         ]).
@@ -90,19 +89,4 @@ get_role_pre_45(LDAPCfg, User) ->
             ro_admin;
         true ->
             false
-    end.
-
-check(User, Password) ->
-    LDAPCfg = build_settings(),
-    Enabled = ({enabled, true} =:= lists:keyfind(enabled, 1, LDAPCfg)),
-    case Enabled of
-        false ->
-            false;
-        true ->
-            case verify_creds(User, Password) of
-                true ->
-                    get_role_pre_45(LDAPCfg, User);
-                Other ->
-                    Other
-            end
     end.
