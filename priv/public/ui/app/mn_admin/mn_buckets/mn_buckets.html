@@ -3,7 +3,7 @@
      class="interim alert alert-warning"
      ng-show="bucketsCtl.areThereCreationWarnings()">
     <p ng-show="bucketsCtl.isBucketCreationWarning()">Attention: Cannot create, delete or edit buckets while rebalance is running.</p>
-    <p ng-show="bucketsCtl.isMaxBucketCountWarning()">Attention: Maximum number of buckets has been reached. <br>For optimal performance, no more than {{maxBucketCount}} buckets are allowed.</p>
+    <p ng-show="bucketsCtl.isMaxBucketCountWarning()">Attention: Maximum number of buckets has been reached. For optimal performance, no more than {{bucketsCtl.maxBucketCount}} buckets are allowed.</p>
   </div>
 </mn-element-cargo>
 
