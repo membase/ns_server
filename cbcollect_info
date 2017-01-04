@@ -1151,7 +1151,7 @@ def main():
         # print("for initargs: %s got:\n%s" % (initargs_path, d))
         if len(d) > 0:
             guts = d
-            guts_initargs_path = initargs_path
+            guts_initargs_path = os.path.abspath(initargs_path)
             break
 
     if guts is None:
@@ -1171,7 +1171,7 @@ def main():
                 "log_path" : os.path.join(prefix, "var/lib/couchbase/logs"),
                 "memcached_logs_path" : os.path.join(prefix, "var/lib/couchbase/logs")}
 
-        guts_initargs_path = prefix
+        guts_initargs_path = os.path.abspath(prefix)
 
     memcached_password =  get_diag_password(guts)
 
