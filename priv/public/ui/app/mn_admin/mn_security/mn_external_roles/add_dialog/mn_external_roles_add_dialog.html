@@ -8,8 +8,26 @@
     <div class="panel-content forms">
       <div
          class="error error-form"
-         ng-show="externalRolesAddDialogCtl.errors">
-        {{externalRolesAddDialogCtl.errors}}
+         ng-show="externalRolesAddDialogCtl.errors"
+         ng-repeat="error in externalRolesAddDialogCtl.errors">
+        {{error}}
+      </div>
+      <div class="formrow checkbox-list">
+        <h4>Authentication Source:</h4>
+        <input
+           type="radio"
+           name="type"
+           value="saslauthd"
+           id="user-type-ldap"
+           ng-model="externalRolesAddDialogCtl.user.type">
+        <label for="user-type-ldap">LDAP</label>
+        <input
+           type="radio"
+           name="type"
+           value="builtin"
+           id="user-type-builtin"
+           ng-model="externalRolesAddDialogCtl.user.type">
+        <label for="user-type-builtin">Couchbase</label>
       </div>
       <div class="formrow">
         <label for="name_inp">Username:</label>
@@ -30,6 +48,16 @@
            autocapitalize="off"
            id="name_full_inp"
            ng-model="externalRolesAddDialogCtl.user.name">
+      </div>
+      <div class="formrow" ng-if="externalRolesAddDialogCtl.user.type !== 'saslauthd'">
+        <label for="password_inp">Password:</label>
+        <input
+           type="password"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
+           id="password_inp"
+           ng-model="externalRolesAddDialogCtl.user.password">
       </div>
       <div class="formrow">
         <label for="user_inp">Role(s)</label>

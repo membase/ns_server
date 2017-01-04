@@ -35,10 +35,10 @@
       });
     }
 
-    function deleteUser(id) {
+    function deleteUser(user) {
       return $http({
         method: "DELETE",
-        url: "/settings/rbac/users/" + encodeURIComponent(id)
+        url: getUserUrl(user)
       });
     }
 
@@ -47,6 +47,10 @@
         return;
       }
       return rolesByRole[role.role] && (role.bucket_name ? rolesByRole[role.role][role.bucket_name] : rolesByRole[role.role]);
+    }
+
+    function getUserUrl(user) {
+      return "/settings/rbac/users/" + encodeURIComponent(user.type) + "/"  + encodeURIComponent(user.id);
     }
 
     function getRolesByRole(roles) {
@@ -64,7 +68,7 @@
       });
     }
 
-    function doAddUser(user, roles, id) {
+    function doAddUser(user, roles) {
       var rolesWithBucketName = _.map(roles, function (role) {
         if (role.bucket_name) {
           return role.role + "[" + role.bucket_name + "]";
@@ -76,33 +80,43 @@
         roles: rolesWithBucketName.join(','),
         name: user.name
       };
+      if (user.type === "builtin") {
+        data.password = user.password;
+      }
+
       return $http({
         method: "PUT",
         data: data,
-        url: "/settings/rbac/users/" + encodeURIComponent(id)
+        url: getUserUrl(user)
       });
     }
 
     function addUser(user, roles, originalUser) {
       if (!user || !user.id) {
-        return $q.reject("username is required");
+        return $q.reject({username: "username is required"});
       }
       if (!roles || !roles.length) {
-        return $q.reject("at least one role should be added");
+        return $q.reject({roles: "at least one role should be added"});
       }
       if (originalUser && originalUser.id === user.id) {
-        return doAddUser(user, roles, originalUser.id);
+        if (originalUser.type === user.type) {
+          return doAddUser(user, roles);
+        } else {
+          return doAddUser(user, roles).then(function () {
+            return deleteUser(originalUser);
+          });
+        }
       } else {
         return getUsers().then(function (users) {
           if (_.find(users, {id: user.id})) {
-            return $q.reject("username already exists");
+            return $q.reject({username: "username already exists"});
           } else {
             if (originalUser && originalUser.id !== user.id) {
-              return deleteUser(originalUser.id).then(function () {
-                return doAddUser(user, roles, user.id);
+              return doAddUser(user, roles).then(function () {
+                return deleteUser(originalUser);
               });
             } else {
-              return doAddUser(user, roles, user.id);
+              return doAddUser(user, roles);
             }
           }
         });

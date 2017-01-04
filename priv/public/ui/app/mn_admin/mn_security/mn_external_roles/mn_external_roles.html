@@ -42,6 +42,7 @@
            sort-by-default="true"
            class="text-center">Full Name</th>
         <th mn-sortable-title="roles" class="text-center">Roles</th>
+        <th mn-sortable-title="type">Auth</th>
         <th></th>
       </tr>
       <tbody>
@@ -59,6 +60,9 @@
               {{externalRolesCtl.getRoleFromRoles(externalRolesCtl.rolesByRole, role).name}} <span ng-show="role.bucket_name">[{{role.bucket_name}}]</span>
             </a>
           </td>
+          <td>
+            {{user.type === "builtin" ? "Internal" : "LDAP"}}
+          </td>
           <td class="text-right">
             <a
                class="link-heavy margin-right-half"
@@ -71,7 +75,7 @@
           </td>
         </tr>
         <tr ng-if="!externalRolesCtl.state.users.length">
-          <td colspan="4">Users list is empty</td>
+          <td colspan="5">Users list is empty</td>
         </tr>
       </tbody>
     </table>

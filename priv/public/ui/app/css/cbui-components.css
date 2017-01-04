@@ -1270,6 +1270,7 @@ meter {
   padding: 0 0.5rem 0 0;
   margin: 0 3px 3px 0;
   cursor: default;
+  height: 2rem;
 }
 .ui-select-multiple.ui-select-bootstrap .ui-select-match .close {
   display: inline-block;
