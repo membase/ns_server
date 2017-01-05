@@ -54,7 +54,8 @@ do_upgrade_config(Config, FinalVersion) ->
         {value, ?VERSION_45} ->
             [{set, cluster_compat_version, ?VERSION_46}];
         {value, ?VERSION_46} ->
-            [{set, cluster_compat_version, ?SPOCK_VERSION_NUM}]
+            [{set, cluster_compat_version, ?SPOCK_VERSION_NUM} |
+             upgrade_config_from_4_6_to_spock()]
     end.
 
 upgrade_config_from_3_0_to_4_0(Config) ->
@@ -88,3 +89,6 @@ create_service_maps(Config, Services) ->
     Maps = [{S, ns_cluster_membership:service_nodes(Config, ActiveNodes, S)} ||
                 S <- Services],
     [{set, {service_map, Service}, Map} || {Service, Map} <- Maps].
+
+upgrade_config_from_4_6_to_spock() ->
+    [{set, roles_definitions, menelaus_roles:preconfigured_roles()}].

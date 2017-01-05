@@ -47,6 +47,7 @@
 
 -export([get_definitions/1,
          preconfigured_roles/0,
+         preconfigured_roles_45/0,
          is_allowed/2,
          get_roles/1,
          get_compiled_roles/1,
@@ -56,6 +57,10 @@
 
 -spec preconfigured_roles() -> [rbac_role_def(), ...].
 preconfigured_roles() ->
+    preconfigured_roles_45() ++ preconfigured_roles_spock().
+
+-spec preconfigured_roles_45() -> [rbac_role_def(), ...].
+preconfigured_roles_45() ->
     [{admin, [],
       [{name, <<"Admin">>},
        {desc, <<"Can manage ALL cluster features including security.">>}],
@@ -109,6 +114,23 @@ preconfigured_roles() ->
        {[xdcr], all},
        {[admin], none},
        {[], [read]}]}].
+
+-spec preconfigured_roles_spock() -> [rbac_role_def(), ...].
+preconfigured_roles_spock() ->
+    [{bucket_reader, [bucket_name],
+      [{name, <<"Bucket Reader">>},
+       {desc, <<"Can read information from specified bucket">>}],
+      [{[{bucket, bucket_name}, stats], [read]},
+       {[{bucket, bucket_name}, data, docs], [read]},
+       {[{bucket, bucket_name}, data, meta], [read]},
+       {[{bucket, bucket_name}, data, xattr], [read]}]},
+     {bucket_reader_writer, [bucket_name],
+      [{name, <<"Bucket Reader Writer">>},
+       {desc, <<"Can read and write information from/to specified bucket">>}],
+      [{[{bucket, bucket_name}, stats], [read]},
+       {[{bucket, bucket_name}, data, docs], [read, write]},
+       {[{bucket, bucket_name}, data, meta], [read, write]},
+       {[{bucket, bucket_name}, data, xattr], [read, write]}]}].
 
 -spec get_definitions(ns_config()) -> [rbac_role_def(), ...].
 get_definitions(Config) ->
