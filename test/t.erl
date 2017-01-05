@@ -36,10 +36,38 @@
 
 -include("ns_common.hrl").
 
--export([start/0, start_with_coverage/0, config/1]).
+-export([start/0, config/1]).
 
 start() ->
-    start_without_coverage().
+    fake_loggers(),
+    setup_paths(),
+
+    io:format("Running tests~n", []),
+    Ext = code:objfile_extension(),
+    Wildcard = case os:getenv("T_WILDCARD") of
+                   false -> "*";
+                   X -> X
+               end,
+    FullWildcard =
+        case lists:member($/, Wildcard) of
+            true ->
+                Wildcard ++ ".beam";
+            false ->
+                filename:join(["**", "ebin", Wildcard]) ++ ".beam"
+        end,
+    Files = filelib:wildcard(FullWildcard, config(root_dir)),
+    Modules = lists:map(fun(BFN) ->
+                                list_to_atom(filename:basename(BFN, Ext))
+                        end,
+                        Files),
+
+    Listener = spawn_listener(),
+    eunit:test(Modules, [verbose, {report, Listener}]),
+
+    receive
+        {failed_tests, FailedTests} ->
+            handle_failed_tests(FailedTests)
+    end.
 
 %% create all the logger real ns_server has; this prevents failures if test
 %% cases log something;
@@ -71,55 +99,6 @@ setup_paths() ->
      || K <- [path_config_tmpdir, path_config_datadir,
               path_config_libdir, path_config_etcdir]],
     ok.
-
-start_with_coverage() ->
-    fake_loggers(),
-    setup_paths(),
-
-    cover:compile_beam_directory(config(ebin_dir)),
-    Modules = cover:modules(),
-    Result = eunit:test(Modules, [verbose]),
-    CovDir = config(cov_dir),
-    misc:rm_rf(CovDir),
-    file:make_dir(CovDir),
-    lists:foreach(
-      fun (M) ->
-              cover:analyse_to_file(M, filename:join([CovDir, atom_to_list(M) ++
-                                                          ".COVERAGE.html"]),
-                                    [html])
-      end, Modules),
-    Result.
-
-start_without_coverage() ->
-    fake_loggers(),
-    setup_paths(),
-
-    io:format("Running tests without coverage~n", []),
-    Ext = code:objfile_extension(),
-    Wildcard = case os:getenv("T_WILDCARD") of
-                   false -> "*";
-                   X -> X
-               end,
-    FullWildcard =
-        case lists:member($/, Wildcard) of
-            true ->
-                Wildcard ++ ".beam";
-            false ->
-                filename:join(["**", "ebin", Wildcard]) ++ ".beam"
-        end,
-    Files = filelib:wildcard(FullWildcard, config(root_dir)),
-    Modules = lists:map(fun(BFN) ->
-                                list_to_atom(filename:basename(BFN, Ext))
-                        end,
-                        Files),
-
-    Listener = spawn_listener(),
-    eunit:test(Modules, [verbose, {report, Listener}]),
-
-    receive
-        {failed_tests, FailedTests} ->
-            handle_failed_tests(FailedTests)
-    end.
 
 spawn_listener() ->
     Parent = self(),
@@ -169,9 +148,6 @@ handle_failed_tests(FailedTests) ->
 
 bold_red(Text) ->
     [<<"\e[31;1m">>, Text, <<"\e[0m">>].
-
-config(cov_dir) ->
-    filename:absname(filename:join([config(root_dir), "coverage"]));
 
 config(root_dir) ->
     filename:absname(filename:dirname(config(test_dir)));
