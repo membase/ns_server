@@ -8,14 +8,13 @@
     ])
     .factory("mnViewsListService", mnViewsListFactory);
 
-  function mnViewsListFactory($http, $q, $window, mnTasksDetails, mnBucketsService) {
+  function mnViewsListFactory($http, $q, mnTasksDetails, mnBucketsService) {
     var mnViewsListService = {
       createDdoc: createDdoc,
       getDdocUrl: getDdocUrl,
       getDdoc: getDdoc,
       deleteDdoc: deleteDdoc,
       cutOffDesignPrefix: cutOffDesignPrefix,
-      getKvNodeLink: getKvNodeLink,
       getDdocs: getDdocs,
       getViewsListState: getViewsListState,
       getDdocsByType: getDdocsByType,
@@ -80,17 +79,6 @@
       rv.development = [];
       rv.production = [];
       return $q.when(rv);
-    }
-    function getKvNodeLink(nodes) {
-      var kvNode = _.find(nodes, function (node) {
-        return _.indexOf(node.services, "kv") > -1;
-      });
-
-      var hostnameAndPort = kvNode.hostname.split(':');
-      var protocol = $window.location.protocol;
-      var kvNodeLink = protocol + "//" + (protocol === "https:" ? hostnameAndPort[0] + ":" + kvNode.ports.httpsMgmt : kvNode.hostname);
-      kvNodeLink += "#/views?bucket=default&type=development";
-      return kvNodeLink;
     }
     function getDdocs(bucket, mnHttpParams) {
       return $http({

@@ -7,13 +7,14 @@
     ])
     .factory('mnPoolDefault', mnPoolDefaultFactory);
 
-  function mnPoolDefaultFactory($http, $q, mnPools, $window) {
+  function mnPoolDefaultFactory($http, $q, mnPools, $window, $location, $httpParamSerializerJQLike) {
     var latest = {};
     var mnPoolDefault = {
       latestValue: latestValue,
       get: get,
       clearCache: clearCache,
       getFresh: getFresh,
+      getUrlsRunningService: getUrlsRunningService,
       export: {
         compat: undefined
       }
@@ -91,6 +92,38 @@
     }
     function getFresh(params) {
       return mnPoolDefault.clearCache().get(params);
+    }
+    /**
+     * @param nodeInfos - details on the nodes in the cluster returned
+     *                    by
+     * @param service - name of service
+     * @param max - max number of links to return
+     * @return a list of URLs for the current UI location running the
+     *         specified service.
+     */
+    function getUrlsRunningService(nodeInfos, service, max) {
+      var nodes = _.filter(nodeInfos, function (node) {
+        return _.indexOf(node.services, service) > -1
+          && node.clusterMembership === 'active';
+      });
+      if (max && max < nodes.length) {
+        nodes = nodes.slice(0, max);
+      }
+      var protocol = $location.protocol();
+      var appbase = $window.location.pathname;
+      var search = $httpParamSerializerJQLike($location.search());
+      var hash = $location.hash();
+      return _.map(nodes, function(node) {
+        var hostnameAndPort = node.hostname.split(':');
+        var port = protocol == "https" ? kvNode.ports.httpsMgmt : hostnameAndPort[1];
+        return protocol
+          + "://" + hostnameAndPort[0]
+          + ":" + port
+          + appbase
+          + "#" + $location.path()
+          + (search ? "?" + search : "")
+          + (hash ? "#" + hash : "");
+      });
     }
   }
 })();
