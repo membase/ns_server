@@ -144,7 +144,8 @@ handle_failed_tests(FailedTests) ->
       fun ({Module, Function, Arity}) ->
               io:format("    ~s:~s/~b~n", [Module, Function, Arity])
       end, FailedTests),
-    io:format("=======================================================~n").
+    io:format("=======================================================~n"),
+    failed.
 
 bold_red(Text) ->
     [<<"\e[31;1m">>, Text, <<"\e[0m">>].
