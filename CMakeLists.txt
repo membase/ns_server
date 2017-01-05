@@ -111,6 +111,7 @@ ADD_CUSTOM_COMMAND(OUTPUT "${rebar_config}"
   -D "OUTPUT_FILE=${rebar_config}"
   -D "SEARCH=COUCHDB_SRC_DIR"
   -D "REPLACE=${COUCHDB_SRC_DIR}"
+  -D "NS_SERVER_SRC_DIR=${PROJECT_SOURCE_DIR}"
   -P "${PROJECT_SOURCE_DIR}/cmake_modules/string-replace.cmake"
   VERBATIM)
 
