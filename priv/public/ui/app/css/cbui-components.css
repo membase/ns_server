@@ -1211,7 +1211,7 @@ meter {
 .ui-select-container.single span {
   display: inline-block;
   vertical-align: bottom;
-  max-width: 200px;
+  max-width: 167px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1223,7 +1223,7 @@ meter {
 }
 .ui-select-container.single .ui-select-match {
   white-space: nowrap;
-  padding-right: 25px;
+  padding-right: 15px;
 }
 .ui-select-container.single .ui-select-choices-row.disabled {
   background: #fff;

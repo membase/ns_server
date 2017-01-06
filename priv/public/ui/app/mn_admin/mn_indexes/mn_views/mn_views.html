@@ -14,7 +14,7 @@
      ng-model="viewsCtl.state.bucketsNames.selected"
      on-select="viewsCtl.onSelectBucket($item)"
      theme="selectize"
-     class="width-2">
+     class="inline">
     <ui-select-match>{{$select.selected}}</ui-select-match>
     <ui-select-choices repeat="name in viewsCtl.state.bucketsNames | filter: $select.search">
       <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search" ></span>
