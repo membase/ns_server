@@ -36,13 +36,41 @@
 
 -include("ns_common.hrl").
 
--export([start/0, config/1]).
+-export([start/0, start_eunit/0, config/1]).
 
 start() ->
+    run_tests(all).
+
+start_eunit() ->
+    run_tests(eunit).
+
+run_tests(Enabled) ->
     fake_loggers(),
     setup_paths(),
+    Modules = get_modules(),
+    FailedTests =
+        lists:flatmap(
+          fun ({Name, Runner}) ->
+                  io:format("Running ~p tests~n", [Name]),
+                  Runner(Modules)
+          end, test_runners(Enabled)),
 
-    io:format("Running tests~n", []),
+    handle_failed_tests(FailedTests).
+
+all_test_runners() ->
+    [{eunit, fun run_eunit_tests/1}].
+
+test_runners(all) ->
+    all_test_runners();
+test_runners(OneTest) when is_atom(OneTest) ->
+    test_runners([OneTest]);
+test_runners(Enabled) when is_list(Enabled) ->
+    lists:filter(
+        fun ({Name, _}) ->
+                lists:member(Name, Enabled)
+        end, all_test_runners()).
+
+get_modules() ->
     Ext = code:objfile_extension(),
     Wildcard = case os:getenv("T_WILDCARD") of
                    false -> "*";
@@ -51,22 +79,21 @@ start() ->
     FullWildcard =
         case lists:member($/, Wildcard) of
             true ->
-                Wildcard ++ ".beam";
+                Wildcard ++ Ext;
             false ->
-                filename:join(["**", "ebin", Wildcard]) ++ ".beam"
+                filename:join(["**", "ebin", Wildcard]) ++ Ext
         end,
-    Files = filelib:wildcard(FullWildcard, config(root_dir)),
-    Modules = lists:map(fun(BFN) ->
-                                list_to_atom(filename:basename(BFN, Ext))
-                        end,
-                        Files),
 
+    Files = filelib:wildcard(FullWildcard, config(root_dir)),
+    [list_to_atom(filename:basename(F, Ext)) || F <- Files].
+
+run_eunit_tests(Modules) ->
     Listener = spawn_listener(),
     eunit:test(Modules, [verbose, {report, Listener}]),
 
     receive
         {failed_tests, FailedTests} ->
-            handle_failed_tests(FailedTests)
+            FailedTests
     end.
 
 %% create all the logger real ns_server has; this prevents failures if test
