@@ -3,6 +3,7 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
 PROJECT (ns_server)
 INCLUDE (FindCouchbaseErlang)
 INCLUDE (FindCouchbaseGo)
+INCLUDE (ParseArguments)
 
 # Global project variables
 
@@ -122,16 +123,34 @@ ADD_SUBDIRECTORY (deps)
 Rebar (TARGET ns_server NOCLEAN
   DEPENDS ale mlockall ns_babysitter ns_ssl_proxy gen_smtp ns_couchdb ns_cfg)
 
-# Test invocation
-ADD_TEST(NAME ns_test
-  COMMAND "${CMAKE_COMMAND}" -D "ERL_EXECUTABLE=${ERL_EXECUTABLE}"
-       -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
-       -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-test.cmake"
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+MACRO (NS_SERVER_TEST)
+  PARSE_ARGUMENTS (NS_SERVER_TEST "" "NAME;TEST_TARGET" "" ${ARGN})
 
-# Also create a custom target
-ADD_CUSTOM_TARGET (ns_test COMMAND ${CMAKE_CTEST_COMMAND} -VV -R ns_test)
-ADD_DEPENDENCIES (ns_test ns_server)
+  IF (NOT NS_SERVER_TEST_NAME)
+    MESSAGE (FATAL_ERROR "Need NAME")
+  ENDIF()
+
+  IF (NOT NS_SERVER_TEST_TEST_TARGET)
+    MESSAGE (FATAL_ERROR "Need TEST_TARGET")
+  ENDIF()
+
+  SET (_name ${NS_SERVER_TEST_NAME})
+  SET (_test_target ${NS_SERVER_TEST_TEST_TARGET})
+
+  # Test invocation
+  ADD_TEST(NAME ${_name}
+    COMMAND "${CMAKE_COMMAND}" -D "ERL_EXECUTABLE=${ERL_EXECUTABLE}"
+    -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
+    -D "TEST_TARGET=${_test_target}"
+    -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-test.cmake"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+
+  # Also create a custom target
+  ADD_CUSTOM_TARGET (${_name} COMMAND ${CMAKE_CTEST_COMMAND} -VV -R ${_name})
+  ADD_DEPENDENCIES (${_name} ns_server)
+ENDMACRO(NS_SERVER_TEST)
+
+NS_SERVER_TEST (NAME ns_test TEST_TARGET start)
 
 # Add custom target allowing folks to easily run the tests via
 # make (and not via directly invoking ctest).

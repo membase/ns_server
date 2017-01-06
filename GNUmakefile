@@ -18,7 +18,9 @@ include build/config.mk
 all:
 	cd build && $(MAKE) --no-print-directory all
 
-.PHONY: test ui_test docs
+TEST_TARGETS = test
+
+.PHONY: $(TEST_TARGETS) ui_test docs
 
 clean clean_all:
 	cd build && $(MAKE) --no-print-directory clean ns_realclean
@@ -26,7 +28,7 @@ clean clean_all:
 install:
 	cd build && $(MAKE) --no-print-directory $@
 
-dataclean distclean test ui_test docs dialyzer dialyzer_obsessive:
+dataclean distclean $(TEST_TARGETS) ui_test docs dialyzer dialyzer_obsessive:
 	cd build && $(MAKE) --no-print-directory ns_$@
 
 minify:
