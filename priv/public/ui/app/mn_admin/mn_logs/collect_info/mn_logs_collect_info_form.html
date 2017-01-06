@@ -29,10 +29,12 @@
       </div>
 
       <div class="formrow">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodes track by node.otpNode">
-          <span
-             class="icon margin-right-1"
-             ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]"></span>
+        <div ng-repeat="node in logsCollectInfoCtl.state.nodes track by node.otpNode"
+             class="row flex-left">
+          <div
+             class="icon margin-right-half indent-1"
+             style="width:.2rem;height:1rem;"
+             ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]"></div>
           <input
              type="checkbox"
              ng-model="logsCollectInfoCtl.collect.nodes[node.otpNode]"
