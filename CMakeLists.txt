@@ -124,7 +124,7 @@ Rebar (TARGET ns_server NOCLEAN
   DEPENDS ale mlockall ns_babysitter ns_ssl_proxy gen_smtp ns_couchdb ns_cfg)
 
 MACRO (NS_SERVER_TEST)
-  PARSE_ARGUMENTS (NS_SERVER_TEST "" "NAME;TEST_TARGET" "" ${ARGN})
+  PARSE_ARGUMENTS (NS_SERVER_TEST "" "NAME;TEST_TARGET" "EXPLICIT" ${ARGN})
 
   IF (NOT NS_SERVER_TEST_NAME)
     MESSAGE (FATAL_ERROR "Need NAME")
@@ -142,8 +142,10 @@ MACRO (NS_SERVER_TEST)
     -D "TEST_TARGET=${_test_target}"
     -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-test.cmake")
 
-  # Test invocation
-  ADD_TEST(NAME ${_name} COMMAND ${_cmd} WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+  IF (NOT NS_SERVER_TEST_EXPLICIT)
+    # Test invocation
+    ADD_TEST(NAME ${_name} COMMAND ${_cmd} WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+  ENDIF ()
 
   # Also create a custom target
   ADD_CUSTOM_TARGET (${_name} COMMAND ${_cmd} WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
@@ -151,6 +153,7 @@ MACRO (NS_SERVER_TEST)
 ENDMACRO(NS_SERVER_TEST)
 
 NS_SERVER_TEST (NAME ns_test TEST_TARGET start)
+NS_SERVER_TEST (NAME ns_test_eunit TEST_TARGET start_eunit EXPLICIT)
 
 # Add custom target allowing folks to easily run the tests via
 # make (and not via directly invoking ctest).

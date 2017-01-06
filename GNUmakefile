@@ -18,7 +18,7 @@ include build/config.mk
 all:
 	cd build && $(MAKE) --no-print-directory all
 
-TEST_TARGETS = test
+TEST_TARGETS = test test_eunit
 
 .PHONY: $(TEST_TARGETS) ui_test docs
 
