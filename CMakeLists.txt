@@ -137,16 +137,16 @@ MACRO (NS_SERVER_TEST)
   SET (_name ${NS_SERVER_TEST_NAME})
   SET (_test_target ${NS_SERVER_TEST_TEST_TARGET})
 
-  # Test invocation
-  ADD_TEST(NAME ${_name}
-    COMMAND "${CMAKE_COMMAND}" -D "ERL_EXECUTABLE=${ERL_EXECUTABLE}"
+  SET (_cmd "${CMAKE_COMMAND}" -D "ERL_EXECUTABLE=${ERL_EXECUTABLE}"
     -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
     -D "TEST_TARGET=${_test_target}"
-    -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-test.cmake"
-    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-test.cmake")
+
+  # Test invocation
+  ADD_TEST(NAME ${_name} COMMAND ${_cmd} WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
   # Also create a custom target
-  ADD_CUSTOM_TARGET (${_name} COMMAND ${CMAKE_CTEST_COMMAND} -VV -R ${_name})
+  ADD_CUSTOM_TARGET (${_name} COMMAND ${_cmd} WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
   ADD_DEPENDENCIES (${_name} ns_server)
 ENDMACRO(NS_SERVER_TEST)
 
