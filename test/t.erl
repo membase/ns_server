@@ -36,13 +36,16 @@
 
 -include("ns_common.hrl").
 
--export([start/0, start_eunit/0, config/1]).
+-export([start/0, start_eunit/0, start_triq/0, config/1]).
 
 start() ->
     run_tests(all).
 
 start_eunit() ->
     run_tests(eunit).
+
+start_triq() ->
+    run_tests(triq).
 
 run_tests(Enabled) ->
     fake_loggers(),
@@ -58,7 +61,8 @@ run_tests(Enabled) ->
     handle_failed_tests(FailedTests).
 
 all_test_runners() ->
-    [{eunit, fun run_eunit_tests/1}].
+    [{eunit, fun run_eunit_tests/1},
+     {triq, fun run_triq_tests/1}].
 
 test_runners(all) ->
     all_test_runners();
@@ -95,6 +99,29 @@ run_eunit_tests(Modules) ->
         {failed_tests, FailedTests} ->
             FailedTests
     end.
+
+run_triq_tests(Modules) ->
+    lists:flatmap(fun run_module_triq_tests/1, Modules).
+
+run_module_triq_tests(Module) ->
+    lists:filter(
+      fun ({M, F, _} = MFA) ->
+              io:format("Testing ~s~n", [format_mfa(MFA)]),
+              case triq:check(M:F()) of
+                  true ->
+                      false;
+                  _ ->
+                      true
+              end
+      end, get_module_triq_tests(Module)).
+
+get_module_triq_tests(Module) ->
+    Exports = Module:module_info(exports),
+    [{Module, F, 0} || {F, 0} <- Exports,
+                       is_triq_test(F)].
+
+is_triq_test(Name) when is_atom(Name) ->
+    lists:prefix("prop_", atom_to_list(Name)).
 
 %% create all the logger real ns_server has; this prevents failures if test
 %% cases log something;
@@ -168,11 +195,14 @@ handle_failed_tests(FailedTests) ->
     io:format("=======================================================~n"),
     io:format("  ~s:~n", [bold_red("Failed tests")]),
     lists:foreach(
-      fun ({Module, Function, Arity}) ->
-              io:format("    ~s:~s/~b~n", [Module, Function, Arity])
+      fun (MFA) ->
+              io:format("    ~s~n", [format_mfa(MFA)])
       end, FailedTests),
     io:format("=======================================================~n"),
     failed.
+
+format_mfa({M, F, A}) ->
+    io_lib:format("~s:~s/~b", [M, F, A]).
 
 bold_red(Text) ->
     [<<"\e[31;1m">>, Text, <<"\e[0m">>].

@@ -154,6 +154,7 @@ ENDMACRO(NS_SERVER_TEST)
 
 NS_SERVER_TEST (NAME ns_test TEST_TARGET start)
 NS_SERVER_TEST (NAME ns_test_eunit TEST_TARGET start_eunit EXPLICIT)
+NS_SERVER_TEST (NAME ns_test_triq TEST_TARGET start_triq EXPLICIT)
 
 # Add custom target allowing folks to easily run the tests via
 # make (and not via directly invoking ctest).
