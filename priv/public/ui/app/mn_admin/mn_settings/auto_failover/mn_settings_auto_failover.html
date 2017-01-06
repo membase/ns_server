@@ -1,4 +1,21 @@
-<div mn-spinner="settingsAutoFailoverCtl.viewLoading || !settingsAutoFailoverCtl.state">
+<div mn-spinner="settingsAutoFailoverCtl.viewLoading || !settingsAutoFailoverCtl.state || adminCtl.resetQuotaLoading">
+  <div
+     class="forms"
+     ng-show="settingsAutoFailoverCtl.state.count > 0">
+    <div class="formrow">
+      <div
+         class="error error-form">
+        A server was automatically failed over. Auto-failover is disabled until you reset it.
+        <button
+           ng-click="adminCtl.resetAutoFailOverCount()"
+           ng-show="rbac.cluster.settings.write"
+           class="middle">
+          Reset Auto-Failover
+        </button>
+      </div>
+    </div>
+  </div>
+
   <form class="forms" ng-submit="settingsAutoFailoverCtl.submit()">
     <div class="formrow">
       <label class="checkbox">
@@ -27,19 +44,6 @@
       <a
          href=""
          uib-tooltip="How long (in seconds) a node must be considered down before it gets auto-failed-over.">What&#39;s this?</a>
-    </div>
-
-    <div
-       class="error error-form"
-       ng-show="settingsAutoFailoverCtl.state.count > 0">
-      A server was automatically failed over. Auto-failover is disabled until you reset it.
-      <button
-         ng-click="adminCtl.resetAutoFailOverCount()"
-         ng-show="rbac.cluster.settings.write"
-         mn-spinner="adminCtl.resetQuotaLoading">
-        Reset Auto-Failover
-      </button>
-
     </div>
 
     <button
