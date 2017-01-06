@@ -44,7 +44,7 @@
         return;
       }
       mnPromiseHelper(vm, mnSettingsAlertsService.saveAlerts(getParams(), {just_validate: 1}))
-          .catchErrors();
+        .catchErrorsFromSuccess();
     }
     function submit() {
       var params = getParams();
