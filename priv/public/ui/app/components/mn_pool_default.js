@@ -115,7 +115,7 @@
       var hash = $location.hash();
       return _.map(nodes, function(node) {
         var hostnameAndPort = node.hostname.split(':');
-        var port = protocol == "https" ? kvNode.ports.httpsMgmt : hostnameAndPort[1];
+        var port = protocol == "https" ? node.ports.httpsMgmt : hostnameAndPort[1];
         return protocol
           + "://" + hostnameAndPort[0]
           + ":" + port
