@@ -123,14 +123,16 @@ preconfigured_roles_spock() ->
       [{[{bucket, bucket_name}, stats], [read]},
        {[{bucket, bucket_name}, data, docs], [read]},
        {[{bucket, bucket_name}, data, meta], [read]},
-       {[{bucket, bucket_name}, data, xattr], [read]}]},
+       {[{bucket, bucket_name}, data, xattr], [read]},
+       {[{bucket, bucket_name}, n1ql], [execute]}]},
      {bucket_reader_writer, [bucket_name],
       [{name, <<"Bucket Reader Writer">>},
        {desc, <<"Can read and write information from/to specified bucket">>}],
       [{[{bucket, bucket_name}, stats], [read]},
        {[{bucket, bucket_name}, data, docs], [read, write]},
        {[{bucket, bucket_name}, data, meta], [read, write]},
-       {[{bucket, bucket_name}, data, xattr], [read, write]}]}].
+       {[{bucket, bucket_name}, data, xattr], [read, write]},
+       {[{bucket, bucket_name}, n1ql], [execute]}]}].
 
 -spec get_definitions(ns_config()) -> [rbac_role_def(), ...].
 get_definitions(Config) ->
