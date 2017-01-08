@@ -57,7 +57,7 @@
 
 -spec preconfigured_roles() -> [rbac_role_def(), ...].
 preconfigured_roles() ->
-    preconfigured_roles_45() ++ preconfigured_roles_spock().
+    upgrade_roles_spock(preconfigured_roles_45()) ++ preconfigured_roles_spock().
 
 -spec preconfigured_roles_45() -> [rbac_role_def(), ...].
 preconfigured_roles_45() ->
@@ -133,6 +133,13 @@ preconfigured_roles_spock() ->
        {[{bucket, bucket_name}, data, meta], [read, write]},
        {[{bucket, bucket_name}, data, xattr], [read, write]},
        {[{bucket, bucket_name}, n1ql], [execute]}]}].
+
+upgrade_roles_spock(Definitions) ->
+    {value, {views_admin, Params, Info, Permissions}} =
+        lists:keysearch(views_admin, 1, Definitions),
+    lists:keyreplace(views_admin, 1, Definitions,
+                    {views_admin, Params, Info,
+                     [{[{bucket, bucket_name}, n1ql], [execute]} | Permissions]}).
 
 -spec get_definitions(ns_config()) -> [rbac_role_def(), ...].
 get_definitions(Config) ->
