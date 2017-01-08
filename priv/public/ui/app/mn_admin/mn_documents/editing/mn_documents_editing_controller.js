@@ -142,9 +142,6 @@
           };
           return false;
         }
-        vm.state.editorWarnings["shouldNotBeNull"] = _.isNull(parsedJSON);
-        vm.state.editorWarnings["shouldBeAnObject"] = !_.isObject(parsedJSON);
-        vm.state.editorWarnings["shouldNotBeAnArray"] = _.isArray(parsedJSON);
       }
 
       return areThereWarnings() ? false : parsedJSON;

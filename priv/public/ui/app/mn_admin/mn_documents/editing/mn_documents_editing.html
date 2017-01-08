@@ -9,9 +9,6 @@
      ng-show="documentsEditingCtl.areThereWarnings()"
      ng-messages="documentsEditingCtl.state.editorWarnings">
     <p ng-message="documentLimitError">Warning: Editing of document with size more than 256 KiB is not allowed</p>
-    <p ng-message="shouldNotBeNull">Warning: JSON object cannot be null</p>
-    <p ng-message="shouldBeAnObject">Warning: JSON should represent an object</p>
-    <p ng-message="shouldNotBeAnArray">Warning: JSON should not be an array</p>
     <p ng-message="documentIsBase64">Warning: Editing of binary document is not allowed</p>
     <p ng-message="notFound">Error: not found (Document does not exist)</p>
   </div>
