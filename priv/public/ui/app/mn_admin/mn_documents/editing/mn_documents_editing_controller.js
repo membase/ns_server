@@ -20,11 +20,10 @@
     };
 
     var metaOptions = _.clone(codemirrorOptions);
-    metaOptions.readOnly = true;
+    metaOptions.readOnly = 'nocursor';
     metaOptions.lineWrapping = true;
 
     var editorOptions = _.clone(codemirrorOptions);
-    editorOptions.readOnly = 'nocursor';
     editorOptions.onLoad = codemirrorLoaded;
 
     vm.editorOptions = editorOptions;

@@ -1433,3 +1433,5 @@ meter {
 .match_indicator.dynamic_match .loading,
 .match_indicator .loading,
 .match_indicator .match  {display: none;}
+
+.read-only-editor {opacity:.5;}

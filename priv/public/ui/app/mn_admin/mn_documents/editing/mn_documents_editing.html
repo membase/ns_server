@@ -40,10 +40,11 @@
          class="width-8 column"
          spellcheck="false"
          ng-model="documentsEditingCtl.state.doc"
+         ng-class="{'read-only-editor': documentsEditingCtl.isEditorDisabled()}"
          ui-codemirror="documentsEditingCtl.editorOptions"
          ></div>
       <div
-         class="width-4"
+         class="width-4 read-only-editor"
          spellcheck="false"
          ng-model="documentsEditingCtl.state.meta"
          ui-codemirror="documentsEditingCtl.metaOptions"

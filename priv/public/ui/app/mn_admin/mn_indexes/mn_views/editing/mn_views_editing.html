@@ -28,13 +28,13 @@
          ng-hide="viewsEditingCtl.isSampleDocumentClosed"
          mn-spinner="viewsEditingCtl.awaitingSampleDocument()">
         <div
-           class="flex-grow-one width-8 column"
+           class="flex-grow-one width-8 column read-only-editor"
            spellcheck="false"
            ng-if="!viewsEditingCtl.state.sampleDocument.warnings"
            ng-model="viewsEditingCtl.state.sampleDocument.jsonJSON"
            ui-codemirror="viewsEditingCtl.sampleDocumentOptions"></div>
         <div
-           class="flex-grow-one width-4"
+           class="flex-grow-one width-4 read-only-editor"
            spellcheck="false"
            ng-if="!viewsEditingCtl.state.sampleDocument.warnings"
            ng-model="viewsEditingCtl.state.sampleDocument.metaJSON"
@@ -80,7 +80,7 @@
        mn-spinner="viewsEditingCtl.awaitingViews()">
       <div
          class="flex-grow-one column"
-         ng-class="{'width-8': !viewsEditingCtl.isSpatial}">
+         ng-class="{'width-8': !viewsEditingCtl.isSpatial, 'read-only-editor': viewsEditingCtl.isViewsEditorControllsDisabled()}">
         <label for="viewcode_map">Map</label>
         <textarea
            autocorrect="off"
@@ -102,6 +102,7 @@
            ></textarea>
       </div>
       <div
+         ng-class="{'read-only-editor': viewsEditingCtl.isViewsEditorControllsDisabled()}"
          ng-if="!viewsEditingCtl.isSpatial"
          class="flex-grow-one width-4">
         <label for="viewcode_reduce">Reduce

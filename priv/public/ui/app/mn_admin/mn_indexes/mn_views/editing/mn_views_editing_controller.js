@@ -21,7 +21,7 @@
     }
     var viewsOptions = _.clone(codemirrorOptions);
     var sampleDocumentOptions = _.clone(codemirrorOptions);
-    sampleDocumentOptions.readOnly = true;
+    sampleDocumentOptions.readOnly = 'nocursor';
     sampleDocumentOptions.lineWrapping = true;
     var sampleMetaOptions = _.clone(sampleDocumentOptions);
 
