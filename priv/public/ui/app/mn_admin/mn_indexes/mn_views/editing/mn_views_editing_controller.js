@@ -114,6 +114,9 @@
       });
     }
     function setReduceValue(value) {
+      if (isViewsEditorControllsDisabled()) {
+        return;
+      }
       vm.state.currentDocument.doc.json.views[vm.viewId].reduce = value;
     }
     function onReduceChange(view) {
