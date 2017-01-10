@@ -17,9 +17,7 @@
 
 -module(memcached_permissions).
 
-%% I'll uncomment this one when I'll figure out how to make erl_first_files rebar option
-%% to do what it suppose to do
-%%-behaviour(memcached_cfg).
+-behaviour(memcached_cfg).
 
 -export([start_link/0, sync/0]).
 
