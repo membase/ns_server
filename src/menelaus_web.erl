@@ -671,7 +671,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[admin, memcached], write},
                      fun menelaus_web_mcd_settings:handle_node_post/2, [Node]};
                 ["pools", "default", "checkPermissions"] ->
-                    {{[pools], read},
+                    {no_check,
                      fun menelaus_web_rbac:handle_check_permissions_post/1};
                 ["settings", "indexes"] ->
                     {{[indexes], write}, fun menelaus_web_indexes:handle_settings_post/1};
