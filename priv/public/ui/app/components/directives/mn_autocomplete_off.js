@@ -27,7 +27,7 @@
 
         //avoiding autocomplete via readonly attr
         $element.attr('readonly', true);
-        function onFocus() {
+        var onFocus = function onFocus() {
           $element.attr('readonly', false);
         }
         $element.on('focus', onFocus);

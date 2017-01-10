@@ -21,7 +21,7 @@
         fileName: url,
         lineNumber: lineNumber,
         columnNumber: columnNumber,
-        stack: exception.stack
+        stack: exception && exception.stack
       });
       originalOnerror && originalOnerror.apply($window, Array.prototype.slice.call(arguments));
     }

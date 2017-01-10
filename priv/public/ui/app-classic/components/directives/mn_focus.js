@@ -25,7 +25,7 @@
       });
 
       if (setter) {
-        function handler() {
+        var handler = function handler() {
           setter($scope, false);
         }
         $element.on('blur', handler);
