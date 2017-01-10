@@ -5,6 +5,20 @@
     <title ng-bind="mnTitle">Couchbase Console</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 
+    <script>
+      Userback = window.Userback || {};
+      Userback.access_token = '716|810|V8BF5w5XxepJkn06Uu53ILzRQAVXH26CbHihdoeLDEvY2w5W0b';
+
+      (function(id) {
+        if (document.getElementById(id)) {return;}
+        var s = document.createElement('script');
+        s.id = id;
+        s.src = 'https://static.userback.io/widget/v1.js';
+        var parent_node = document.head || document.body;
+        parent_node.appendChild(s);
+      })('userback-sdk');
+    </script>
+
     <link rel="stylesheet" type="text/css" href="app/css/cbui-base.css">
     <link rel="stylesheet" type="text/css" href="app/css/cbui-components.css">
     <link rel="stylesheet" type="text/css" href="app/css/cbui-layout.css">
