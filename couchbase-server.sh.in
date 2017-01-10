@@ -169,7 +169,6 @@ _start() {
         -ns_babysitter nodefile "\"$NODEFILE\"" \
         -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
         -ns_server pidfile "\"$PIDFILE\"" \
-        -ns_server enable_mlockall ${COUCHBASE_ENABLE_MLOCKALL:-false}
 }
 
 _stop() {

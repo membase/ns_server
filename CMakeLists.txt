@@ -121,7 +121,7 @@ ADD_DEPENDENCIES (ns_distclean realclean ns_dataclean)
 
 ADD_SUBDIRECTORY (deps)
 Rebar (TARGET ns_server NOCLEAN
-  DEPENDS ale mlockall ns_babysitter
+  DEPENDS ale ns_babysitter
           ns_ssl_proxy gen_smtp ns_couchdb ns_cfg triq)
 
 MACRO (NS_SERVER_TEST)

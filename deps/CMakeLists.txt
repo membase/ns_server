@@ -1,6 +1,5 @@
 ADD_SUBDIRECTORY (gen_smtp)
 ADD_SUBDIRECTORY (ale)
-ADD_SUBDIRECTORY (mlockall)
 ADD_SUBDIRECTORY (ns_babysitter)
 ADD_SUBDIRECTORY (ns_ssl_proxy)
 ADD_SUBDIRECTORY (ns_couchdb)
