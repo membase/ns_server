@@ -6,7 +6,7 @@
 <div
    class="formrow"
    ng-if="config.totalMemorySize">
-  <p>RAM Available: {{::config.totalMemorySize}} mb</p>
+  <p>RAM Available: {{::config.totalMemorySize}} MB</p>
 </div>
 <div
    class="formrow checkbox-list"
@@ -24,7 +24,7 @@
        mn-focus
        ng-disabled="config.services && !config.services.model.kv || (rbac && !rbac.cluster.pools.write)"
        ng-model="config.memoryQuota">
-    <small>mb (min {{::config.minMemorySize}})</small>
+    <small>MB (min {{::config.minMemorySize}})</small>
     <a
        href=""
        uib-tooltip="Main memory allocation amount for data service per node.">What&#39;s this?</a>
@@ -49,7 +49,7 @@
        ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)"
        mn-focus="config.services.model.kv === false"
        ng-model="config.indexMemoryQuota">
-    <small>mb (min 256)</small>
+    <small>MB (min 256)</small>
     <a
        href=""
        uib-tooltip="Main memory allocation amount for index service per node.">What&#39;s this?</a>
@@ -72,7 +72,7 @@
        mn-focus="config.services.model.kv === false && config.services.model.index  === false"
        ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)"
          ng-model="config.ftsMemoryQuota">
-    <small>mb (min 256)</small>
+    <small>MB (min 256)</small>
     <a
        href=""
        uib-tooltip="Main memory allocation amount for full text service per node.">What&#39;s this?</a>
@@ -89,6 +89,6 @@
   <span>
       {{ ((!config.displayedServices.kv || (config.services && !config.services.model.kv)) ? 0 : config.memoryQuota) +
        ((!config.displayedServices.index || (config.services && !config.services.model.index)) ? 0 : config.indexMemoryQuota) +
-      ((!config.displayedServices.fts || (config.services && !config.services.model.fts)) ? 0 : config.ftsMemoryQuota) }} mb (must be less than {{::config.maxMemorySize}} mb)
+      ((!config.displayedServices.fts || (config.services && !config.services.model.fts)) ? 0 : config.ftsMemoryQuota) }} MB (must be less than {{::config.maxMemorySize}} MB)
   </span>
 </div>

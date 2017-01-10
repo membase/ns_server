@@ -30,7 +30,7 @@
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.size"
        ng-class="{invalid: validationErrors.databaseFragmentationThreshold_size_}"
        ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.sizeFlag || (rbac && !rbac.cluster.settings.write)">
-    <small> mb</small>
+    <small> MB</small>
     <div
        class="error"
        ng-show="validationErrors.databaseFragmentationThreshold_size_">
@@ -68,7 +68,7 @@
        ng-model="autoCompactionSettings.viewFragmentationThreshold.size"
        ng-class="{invalid: validationErrors.viewFragmentationThreshold_size_}"
        ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.sizeFlag || (rbac && !rbac.cluster.settings.write)">
-    <small>mb</small>
+    <small>MB</small>
     <div
        class="error"
        ng-show="validationErrors.viewFragmentationThreshold_size_">
