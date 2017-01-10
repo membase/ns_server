@@ -806,7 +806,7 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
         # TODO: just gather those in python
         WindowsTask("Memcached logs",
                     "cd " + winquote_path(read_guts(guts, "memcached_logs_path")) + " && " +
-                    "for /f %a IN ('dir /od /b memcached.log.*') do type %a",
+                    "for /f %a IN ('dir memcached.log.* /od /tw /b') do type %a",
                     log_file="memcached.log"),
         UnixTask("Memcached logs",
                  ["sh", "-c", 'cd "$1"; for file in $(ls -tr memcached.log.*); do cat \"$file\"; done', "--", read_guts(guts, "memcached_logs_path")],
