@@ -43,12 +43,12 @@ get_users(Config) ->
 get_identity({Identity, _}) ->
     Identity.
 
-build_auth(_Identity, undefined, _Users) ->
+build_auth(_Identity, undefined, _Hashes, _Users) ->
     [];
-build_auth({User, _} = Identity, Password, Users) ->
+build_auth(Identity, Password, Hashes, Users) ->
     case proplists:get_value(Identity, Users) of
         undefined ->
-            [{authentication, build_auth(User, Password)}];
+            [{authentication, Hashes}];
         Props ->
             Auth = get_auth_info(Props),
             {Salt, Mac} = get_salt_and_mac(Auth),
@@ -57,27 +57,30 @@ build_auth({User, _} = Identity, Password, Users) ->
                 false ->
                     [{authentication, Auth}];
                 true ->
-                    [{authentication, build_auth(User, Password)}]
+                    [{authentication, Hashes}]
             end
     end.
 
+build_auth(_User, undefined) ->
+    [];
 build_auth(User, Password) ->
     [MemcachedAuth] = build_memcached_auth_info([{User, Password}]),
     [{ns_server, ns_config_auth:hash_password(Password)},
      {memcached, MemcachedAuth}].
 
 -spec store_user(rbac_identity(), rbac_user_name(), rbac_password(), [rbac_role()]) -> run_txn_return().
-store_user(Identity, Name, Password, Roles) ->
+store_user({User, _} = Identity, Name, Password, Roles) ->
     Props = case Name of
                 undefined ->
                     [];
                 _ ->
                     [{name, Name}]
             end,
+    Hashes = build_auth(User, Password),
     ns_config:run_txn(
       fun (Config, SetFn) ->
               Users = get_users(Config),
-              NewProps = [{roles, Roles} | Props] ++ build_auth(Identity, Password, Users),
+              NewProps = [{roles, Roles} | Props] ++ build_auth(Identity, Password, Hashes, Users),
 
               case menelaus_roles:validate_roles(Roles, Config) of
                   ok ->
