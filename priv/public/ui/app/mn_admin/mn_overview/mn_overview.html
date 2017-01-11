@@ -12,6 +12,7 @@
         <h4>Active Servers</h4><small>{{overviewCtl.nodes.active.length || '0'}}</small>
       </div>
       <a
+         class="text-center"
          ui-sref="app.admin.servers.list({list: 'pending'})"
          ng-show="overviewCtl.nodes.failedOver.length">
         <h4>Servers Failed Over</h4><small>{{overviewCtl.nodes.failedOver.length}}</small>
