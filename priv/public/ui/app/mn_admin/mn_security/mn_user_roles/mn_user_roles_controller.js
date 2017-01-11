@@ -31,6 +31,8 @@
     }
 
     function activate() {
+      mnHelper.initializeDetailsHashObserver(vm, 'openedUsers', 'app.admin.security.userRoles');
+
       mnPromiseHelper(vm, mnLdapService.getSaslauthdAuth())
         .applyToScope("saslauthdAuth")
         .showSpinner("saslauthdAuthLoading");

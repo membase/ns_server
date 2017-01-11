@@ -43,12 +43,14 @@
            class="text-center">Full Name</th>
         <th mn-sortable-title="roles" class="text-center">Roles</th>
         <th mn-sortable-title="type">Auth</th>
-        <th></th>
       </tr>
-      <tbody>
+      <tbody
+         ng-if="userRolesCtl.state.users.length"
+         ng-repeat="user in userRolesCtl.state.users | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by user.id">
         <tr
-           ng-if="userRolesCtl.state.users.length"
-           ng-repeat="user in userRolesCtl.state.users | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by user.id">
+           class="has-hover"
+           ng-click="userRolesCtl.toggleDetails(user.id)"
+           ng-class="{'no-stroke': userRolesCtl.isDetailsOpened(user.id)}">
           <td class="ellipsis">{{user.id}}</td>
           <td class="ellipsis text-center">{{user.name}}</td>
           <td class="text-center">
@@ -63,19 +65,22 @@
           <td>
             {{user.type === "builtin" ? "Internal" : "LDAP"}}
           </td>
-          <td class="text-right">
-            <a
-               class="link-heavy margin-right-half"
+        </tr>
+        <tr>
+          <td class="text-right" colspan="4" ng-if="userRolesCtl.isDetailsOpened(user.id)">
+            <button
+               class="outline"
                ng-show="rbac.cluster.admin.security.write"
-               ng-click="userRolesCtl.editUser(user)">Edit</a>
-            <a
-               class="link-heavy"
+               ng-click="userRolesCtl.deleteUser(user)">Delete</button>
+            <button
                ng-show="rbac.cluster.admin.security.write"
-               ng-click="userRolesCtl.deleteUser(user)">Delete</a>
+               ng-click="userRolesCtl.editUser(user)">Edit</button>
           </td>
         </tr>
-        <tr ng-if="!userRolesCtl.state.users.length">
-          <td colspan="5">Users list is empty</td>
+      </tbody>
+      <tbody ng-if="!userRolesCtl.state.users.length">
+        <tr>
+          <td colspan="4">Users list is empty</td>
         </tr>
       </tbody>
     </table>
