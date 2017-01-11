@@ -30,6 +30,7 @@
          handle_whoami/1,
          handle_put_user/3,
          handle_delete_user/3,
+         handle_change_password/1,
          handle_settings_read_only_admin_name/1,
          handle_settings_read_only_user_post/1,
          handle_read_only_user_delete/1,
@@ -391,6 +392,46 @@ handle_delete_user(Type, UserId, Req) ->
                     erlang:error(exceeded_retries)
             end
     end.
+
+validate_change_password(Args) ->
+    R0 = menelaus_util:validate_has_params({Args, [], []}),
+    R1 = menelaus_util:validate_required(password, R0),
+    R2 = menelaus_util:validate_any_value(password, R1),
+    R3 = menelaus_util:validate_by_fun(
+           fun (P) ->
+                   case validate_cred(P, password) of
+                       true ->
+                           ok;
+                       Error ->
+                           {error, Error}
+                   end
+           end, password, R2),
+    menelaus_util:validate_unsupported_params(R3).
+
+handle_change_password(Req) ->
+    menelaus_web:assert_is_enterprise(),
+    menelaus_web:assert_is_spock(),
+
+    case menelaus_auth:get_identity(Req) of
+        {_, builtin} = Identity ->
+            handle_change_password_with_identity(Req, Identity);
+        _ ->
+            menelaus_util:reply_json(Req, <<"Changing of password is not allowed for this user.">>, 404)
+    end.
+
+handle_change_password_with_identity(Req, Identity) ->
+    menelaus_util:execute_if_validated(
+      fun (Values) ->
+              case menelaus_users:change_password(Identity, proplists:get_value(password, Values)) of
+                  {commit, _} ->
+                      ns_audit:password_change(Req, Identity),
+                      menelaus_util:reply(Req, 200);
+                  {abort, user_not_found} ->
+                      menelaus_util:reply_json(Req, <<"User was not found.">>, 404);
+                retry_needed ->
+                    erlang:error(exceeded_retries)
+              end
+      end, Req, validate_change_password(Req:parse_post())).
 
 handle_settings_read_only_admin_name(Req) ->
     case ns_config_auth:get_user(ro_admin) of

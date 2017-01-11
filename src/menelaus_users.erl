@@ -26,6 +26,7 @@
          get_identity/1,
          store_user/4,
          delete_user/1,
+         change_password/2,
          authenticate/2,
          get_auth_infos/1,
          get_roles/1,
@@ -106,6 +107,22 @@ store_user({UserName, Type} = Identity, Name, Password, Roles) ->
                           Error ->
                               {abort, Error}
                       end
+              end
+      end).
+
+change_password({UserName, builtin} = Identity, Password) when is_list(Password) ->
+    MemcachedAuth = build_memcached_auth(UserName, Password),
+    ns_config:run_txn(
+      fun (Config, SetFn) ->
+              Users = get_users(Config),
+              case proplists:get_value(Identity, Users) of
+                  undefined ->
+                      {abort, user_not_found};
+                  User ->
+                      Auth = build_auth_builtin(User, Password, MemcachedAuth),
+                      NewUser = lists:keyreplace(authentication, 1, User, {authentication, Auth}),
+                      NewUsers = lists:keystore(Identity, 1, Users, {Identity, NewUser}),
+                      {commit, SetFn(user_roles, NewUsers, Config)}
               end
       end).
 
