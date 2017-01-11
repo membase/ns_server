@@ -43,51 +43,69 @@ get_users(Config) ->
 get_identity({Identity, _}) ->
     Identity.
 
-build_auth(_Identity, undefined, _Hashes, _Users) ->
-    [];
-build_auth(Identity, Password, Hashes, Users) ->
-    case proplists:get_value(Identity, Users) of
-        undefined ->
-            [{authentication, Hashes}];
-        Props ->
-            Auth = get_auth_info(Props),
-            {Salt, Mac} = get_salt_and_mac(Auth),
-            case get_memcached_auth(Auth) =:= undefined orelse
-                ns_config_auth:hash_password(Salt, Password) =/= Mac of
-                false ->
-                    [{authentication, Auth}];
-                true ->
-                    [{authentication, Hashes}]
-            end
+build_auth_builtin(undefined, undefined, _MemcachedAuth) ->
+    password_required;
+build_auth_builtin(undefined, Password, MemcachedAuth) ->
+    [{ns_server, ns_config_auth:hash_password(Password)},
+     {memcached, MemcachedAuth}];
+build_auth_builtin(User, undefined, _MemcachedAuth) ->
+    get_auth_info(User);
+build_auth_builtin(User, Password, MemcachedAuth) ->
+    Auth = get_auth_info(User),
+    {Salt, Mac} = get_salt_and_mac(Auth),
+    case ns_config_auth:hash_password(Salt, Password) of
+        Mac ->
+            case get_memcached_auth(Auth) of
+                undefined ->
+                    [{memcached, MemcachedAuth} | Auth];
+                _ ->
+                    Auth
+            end;
+        _ ->
+            [{ns_server, ns_config_auth:hash_password(Password)},
+             {memcached, MemcachedAuth}]
     end.
 
-build_auth(_User, undefined) ->
+build_auth(saslauthd, _User, undefined, undefined) ->
     [];
-build_auth(User, Password) ->
+build_auth(builtin, User, Password, MemcachedAuth) ->
+    case build_auth_builtin(User, Password, MemcachedAuth) of
+        password_required ->
+            password_required;
+        Auth ->
+            [{authentication, Auth}]
+    end.
+
+build_memcached_auth(_User, undefined) ->
+    undefined;
+build_memcached_auth(User, Password) ->
     [MemcachedAuth] = build_memcached_auth_info([{User, Password}]),
-    [{ns_server, ns_config_auth:hash_password(Password)},
-     {memcached, MemcachedAuth}].
+    MemcachedAuth.
 
 -spec store_user(rbac_identity(), rbac_user_name(), rbac_password(), [rbac_role()]) -> run_txn_return().
-store_user({User, _} = Identity, Name, Password, Roles) ->
+store_user({UserName, Type} = Identity, Name, Password, Roles) ->
     Props = case Name of
                 undefined ->
                     [];
                 _ ->
                     [{name, Name}]
             end,
-    Hashes = build_auth(User, Password),
+    MemcachedAuth = build_memcached_auth(UserName, Password),
     ns_config:run_txn(
       fun (Config, SetFn) ->
               Users = get_users(Config),
-              NewProps = [{roles, Roles} | Props] ++ build_auth(Identity, Password, Hashes, Users),
-
-              case menelaus_roles:validate_roles(Roles, Config) of
-                  ok ->
-                      NewUsers = lists:keystore(Identity, 1, Users, {Identity, NewProps}),
-                      {commit, SetFn(user_roles, NewUsers, Config)};
-                  Error ->
-                      {abort, Error}
+              case build_auth(Type, proplists:get_value(Identity, Users), Password, MemcachedAuth) of
+                  password_required ->
+                      {abort, password_required};
+                  Auth ->
+                      NewProps = [{roles, Roles} | Props] ++ Auth,
+                      case menelaus_roles:validate_roles(Roles, Config) of
+                          ok ->
+                              NewUsers = lists:keystore(Identity, 1, Users, {Identity, NewProps}),
+                              {commit, SetFn(user_roles, NewUsers, Config)};
+                          Error ->
+                              {abort, Error}
+                      end
               end
       end).
 

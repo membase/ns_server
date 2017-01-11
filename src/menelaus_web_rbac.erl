@@ -319,8 +319,7 @@ handle_put_user(Type, UserId, Req) ->
             handle_put_user_with_identity({UserId, T}, Req)
     end.
 
-validate_password(R0) ->
-    R1 = menelaus_util:validate_required(password, R0),
+validate_password(R1) ->
     R2 = menelaus_util:validate_any_value(password, R1),
     menelaus_util:validate_by_fun(
       fun (P) ->
@@ -367,6 +366,8 @@ handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
                     handle_get_users(Req);
                 {abort, {error, roles_validation, UnknownRoles}} ->
                     reply_bad_roles(Req, [role_to_string(UR) || UR <- UnknownRoles]);
+                {abort, password_required} ->
+                    menelaus_util:reply_error(Req, "password", "Password is required for new user.");
                 retry_needed ->
                     erlang:error(exceeded_retries)
             end;
