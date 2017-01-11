@@ -21,29 +21,29 @@
     function mnViewsController($scope, $state, mnPoller, $q, mnViewsListService, mnPoolDefault) {
 
       var vm = this;
-      vm.getKvNodeLink = getKvNodeLink;
       vm.onSelectBucket = onSelectBucket;
       vm.mnPoolDefault = mnPoolDefault.latestValue();
+      vm.kvNodeLink = "";
 
-      if (!vm.mnPoolDefault.value.isKvNode) {
-        return;
-      }
       activate();
 
-      function getKvNodeLink() {
-        return mnViewsListService.getKvNodeLink(vm.mnPoolDefault.value.nodes);
-      }
       function onSelectBucket(selectedBucket) {
         $state.go('app.admin.indexes.views.list', {viewsBucket: selectedBucket});
       }
 
       function activate() {
-        new mnPoller($scope, function () {
+        if (vm.mnPoolDefault.value.isKvNode) {
+          new mnPoller($scope, function () {
             return mnViewsListService.prepareBucketsDropdownData($state.params);
           })
-          .reloadOnScopeEvent("bucketUriChanged")
-          .subscribe("state", vm)
-          .cycle();
+            .reloadOnScopeEvent("bucketUriChanged")
+            .subscribe("state", vm)
+            .cycle();
+        }
+        else {
+          var urls = mnPoolDefault.getUrlsRunningService(vm.mnPoolDefault.value.nodes, "kv", 1);
+          vm.kvNodeLink = urls && urls.length > 0 ? urls[0] : "";
+        }
       }
     }
 })();
