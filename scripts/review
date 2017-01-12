@@ -93,10 +93,23 @@ EOF
     exit 1
 }
 
-ARGS=$(getopt -o "b:u:v:r:p:sd" \
-              -l "branch:,upstream:,verified:,review:,port:,submit,dry-run" \
-              -n "$0" -- "$@")
+SHORT_OPTS="b:u:v:r:p:sd"
+LONG_OPTS="branch:,upstream:,verified:,review:,port:,submit,dry-run"
 
+function have_enhanced_getopt() {
+    getopt -T > /dev/null 2>&1
+    [ $? -eq 4 ]
+}
+
+function get_args() {
+    if have_enhanced_getopt; then
+        getopt -o "${SHORT_OPTS}" -l "${LONG_OPTS}" -n "$0" -- "$@"
+    else
+        getopt "${SHORT_OPTS}" "$@"
+    fi
+}
+
+ARGS=$(get_args "$@")
 if [ $? != 0 ]; then
     usage
 fi
