@@ -45,7 +45,7 @@ function get_diff_commits() {
     _branch=$1
     _upstream=$2
 
-    git log --pretty=tformat:%H ${_upstream}..${_branch} | tac
+    git log --reverse --pretty=tformat:%H ${_upstream}..${_branch}
 }
 
 function get_current_branch() {
