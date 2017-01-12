@@ -11,7 +11,7 @@
     function deleteReplication() {
       var promise = mnXDCRService.deleteReplication(id);
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadTasksPoller");
     }

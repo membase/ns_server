@@ -16,7 +16,7 @@
       });
 
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadDocumentsPoller");
     }

@@ -69,7 +69,7 @@
       });
 
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showSpinner()
+        .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
         .broadcast("reloadViewsPoller");

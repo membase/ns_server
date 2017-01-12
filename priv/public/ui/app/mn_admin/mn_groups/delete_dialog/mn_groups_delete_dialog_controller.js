@@ -17,7 +17,7 @@
 
       var promise = mnGroupsService.deleteGroup(group.uri);
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showSpinner()
+        .showGlobalSpinner()
         .catchErrors()
         .closeFinally()
         .reloadState();

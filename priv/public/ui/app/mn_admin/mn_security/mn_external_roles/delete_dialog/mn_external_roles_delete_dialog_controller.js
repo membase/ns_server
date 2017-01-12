@@ -12,7 +12,7 @@
 
     function onSubmit() {
       mnPromiseHelper(vm, mnExternalRolesService.deleteUser(user.id), $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadRolesPoller");
     }

@@ -14,7 +14,7 @@
       var url = mnViewsListService.getDdocUrl($state.params.bucket, currentDdocName);
       var promise = mnViewsListService.deleteDdoc(url);
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadViewsPoller");
     }

@@ -36,7 +36,7 @@
         }
         var promise = mnXDCRService.postRelication(replication);
         mnPromiseHelper(vm, promise, $uibModalInstance)
-          .showErrorsSensitiveSpinner()
+          .showGlobalSpinner()
           .catchErrors()
           .closeOnSuccess()
           .broadcast("reloadTasksPoller");

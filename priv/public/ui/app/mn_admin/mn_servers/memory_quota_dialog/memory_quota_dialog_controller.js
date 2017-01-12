@@ -39,7 +39,7 @@
       var promise = $q.all(queries);
 
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .closeOnSuccess();
     }
   }

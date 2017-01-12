@@ -34,7 +34,7 @@
           }
         });
       mnPromiseHelper($scope, promise, $uibModalInstance)
-        .showSpinner();
+        .showGlobalSpinner();
     }
   }
 })();

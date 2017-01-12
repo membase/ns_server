@@ -20,7 +20,7 @@
       var promise = vm.isEditMode ? mnGroupsService.updateGroup(vm.groupName, group.uri) :
                                     mnGroupsService.createGroup(vm.groupName);
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
         .reloadState();

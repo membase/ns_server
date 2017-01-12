@@ -11,7 +11,7 @@
 
     function onStopRebalance() {
       mnPromiseHelper(vm, mnServersService.stopRebalance(), $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadServersPoller");
     }

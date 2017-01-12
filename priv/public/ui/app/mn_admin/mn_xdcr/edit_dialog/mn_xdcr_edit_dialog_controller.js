@@ -12,7 +12,7 @@
     function createReplication() {
       var promise = mnXDCRService.saveReplicationSettings(id, mnXDCRService.removeExcessSettings(vm.settings));
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
         .broadcast("reloadTasksPoller");

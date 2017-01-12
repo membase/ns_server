@@ -22,7 +22,7 @@
         return;
       }
       mnPromiseHelper(vm, mnInternalSettingsService.save(vm.state), $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
         .reloadState();

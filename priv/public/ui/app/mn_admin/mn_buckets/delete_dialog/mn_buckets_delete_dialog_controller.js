@@ -12,7 +12,7 @@
     function doDelete() {
       var promise = mnBucketsDetailsService.deleteBucket(bucket);
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .catchGlobalErrors()
         .closeFinally()
         .broadcast("reloadBucketsPoller");

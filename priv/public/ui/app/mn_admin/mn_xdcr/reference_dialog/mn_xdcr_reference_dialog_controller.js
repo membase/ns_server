@@ -13,7 +13,7 @@
     function createClusterReference() {
       var promise = mnXDCRService.saveClusterReference(vm.cluster, reference && reference.name);
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
         .broadcast("reloadXdcrPoller");

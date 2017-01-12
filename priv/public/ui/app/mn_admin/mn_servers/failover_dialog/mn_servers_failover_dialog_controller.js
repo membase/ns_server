@@ -23,7 +23,7 @@
     function onSubmit() {
       var promise = mnServersService.postFailover(vm.status.failOver, node.otpNode);
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadServersPoller");
     }

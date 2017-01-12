@@ -17,7 +17,7 @@
 
     function onClose() {
       mnPromiseHelper(vm, mnPoorMansAlertsService.postAlertsSilenceURL(alertsSilenceURL), $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .closeOnSuccess();
     }
   }

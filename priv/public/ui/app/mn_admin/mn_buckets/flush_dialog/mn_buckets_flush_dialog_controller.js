@@ -12,7 +12,7 @@
     function doFlush() {
       var promise = mnBucketsDetailsService.flushBucket(bucket);
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .closeFinally()
         .catchGlobalErrors()
         .broadcast("reloadBucketsPoller");

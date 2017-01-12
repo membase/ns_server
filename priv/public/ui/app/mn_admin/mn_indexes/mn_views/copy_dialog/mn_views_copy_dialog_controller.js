@@ -22,8 +22,7 @@
       }, copy);
 
       mnPromiseHelper(vm, promise)
-        .showSpinner()
-        ;
+        .showGlobalSpinner();
     }
     function prepareToCopy(url, ddoc) {
       return function () {

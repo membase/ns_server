@@ -18,7 +18,7 @@
       var promise = mnBucketsDetailsDialogService.postBuckets(data, vm.bucketConf.uri);
 
       mnPromiseHelper(vm, promise)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .catchErrors(function (result) {
           if (result) {
             if (result.summaries) {

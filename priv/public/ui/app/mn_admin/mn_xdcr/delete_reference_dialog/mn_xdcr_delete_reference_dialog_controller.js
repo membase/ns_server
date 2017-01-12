@@ -12,7 +12,7 @@
     function deleteClusterReference() {
       var promise = mnXDCRService.deleteClusterReference(name);
       mnPromiseHelper(vm, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
+        .showGlobalSpinner()
         .closeFinally()
         .catchGlobalErrors()
         .broadcast("reloadXdcrPoller");
