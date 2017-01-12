@@ -86,13 +86,15 @@ function usage() {
 
     echo | error <<EOF
 Usage:
-	${_name} [--branch <branch>] [--upstream <upstream>] [--port <int>]
-	${_spacing} [--verified <-1|0|+1>] [--review <-2|-1|0|+1|+2>] [--submit] [--dry-run]
+	${_name} [-b|--branch <branch>] [-u|--upstream <upstream>] [-p|--port <int>]
+	${_spacing} [-v|--verified <-1|0|+1>] [-r|--review <-2|-1|0|+1|+2>]
+	${_spacing} [-s|--submit] [-d|--dry-run]
 EOF
     exit 1
 }
 
-ARGS=$(getopt -o "" -l "branch:,upstream:,verified:,review:,port:,submit,dry-run" \
+ARGS=$(getopt -o "b:u:v:r:p:sd" \
+              -l "branch:,upstream:,verified:,review:,port:,submit,dry-run" \
               -n "$0" -- "$@")
 
 if [ $? != 0 ]; then
@@ -110,13 +112,13 @@ UPSTREAM=
 eval set -- "$ARGS"
 while true; do
     case "$1" in
-        --dry-run) DRY_RUN=yes ; shift ;;
-        --verified) VERIFIED="$2" ; shift 2 ;;
-        --review) REVIEW="$2" ; shift 2 ;;
-        --submit) SUBMIT=yes ; shift ;;
-        --branch) BRANCH="$2" ; shift 2 ;;
-        --port) PORT=$2 ; shift 2 ;;
-        --upstream) UPSTREAM=$2 ; shift 2 ;;
+        -d|--dry-run) DRY_RUN=yes ; shift ;;
+        -v|--verified) VERIFIED="$2" ; shift 2 ;;
+        -r|--review) REVIEW="$2" ; shift 2 ;;
+        -s|--submit) SUBMIT=yes ; shift ;;
+        -b|--branch) BRANCH="$2" ; shift 2 ;;
+        -p|--port) PORT=$2 ; shift 2 ;;
+        -u|--upstream) UPSTREAM=$2 ; shift 2 ;;
         --) shift ; break ;;
     esac
 done
