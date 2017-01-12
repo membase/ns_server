@@ -29,7 +29,7 @@ start_link() ->
     % The ns_node_disco_conf_events gen_event handler will inform
     % me when relevant ns_config configuration changes.
     misc:start_event_link(fun () ->
-                                  gen_event:add_sup_handler(ns_config_events, ?MODULE, ignored)
+                                  ok = gen_event:add_sup_handler(ns_config_events, ?MODULE, ignored)
                           end).
 
 init(ignored) ->
@@ -54,5 +54,3 @@ handle_event({otp, _V}, State) ->
 
 handle_event(_E, State) ->
     {ok, State}.
-
-
