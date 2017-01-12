@@ -1,15 +1,18 @@
-<div class="small-dialog">
+<div class="dialog-med">
   <h2 class="panel-header">
     {{title}}
   </h2>
   <div class="panel-content">
     <div
-       ng-if="('isArray' | lodash:alertsCtl.message) || ('isObject' | lodash:alertsCtl.message)">
+       ng-if="('isArray' | lodash:alertsCtl.message) || ('isObject' | lodash:alertsCtl.message)"
+       class="error">
       <div ng-repeat="text in alertsCtl.message">
         {{text}}
       </div>
     </div>
-    <div ng-if="('isString' | lodash:alertsCtl.message)">
+    <div
+       ng-if="('isString' | lodash:alertsCtl.message)"
+       class="error">
       {{alertsCtl.message}}
     </div>
   </div>
