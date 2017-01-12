@@ -28,7 +28,7 @@
     <tbody
        ng-repeat="node in serversCtl.nodes[serversListCtl.stateParamsNodeType] | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by node.otpNode">
       <tr
-         ng-if="serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.nodes.write"
+         ng-if="serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.nodes.write"
          class="grayblue-5">
         <td colspan="10">
           <div class="row">
@@ -64,14 +64,14 @@
         </td>
         <td class="ellipsis max-width-3">
           <span ng-class="{closed: !serversCtl.isDetailsOpened(node.hostname)}">
-            <span ng-if="serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read">
+            <span ng-if="serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read">
               {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
             </span>
             <span ng-if="serversListCtl.isNodeUnhealthy(node) || !rbac.cluster.stats.read">
               {{node.hostname}}
             </span>
             <a
-               ng-if="!serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read"
+               ng-if="!serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read"
                title="{{'View Analytics for ' + node.hostname}}"
                class="link-heavy"
                ng-click="$event.stopPropagation()"
@@ -164,19 +164,19 @@
            ng-if="!adminCtl.tasks.inRebalance && !serversListCtl.isNodeInactiveAdded(node) && !node.pendingEject && rbac.cluster.tasks.read"
            class="text-center">
           <a
-             ng-show="!(serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node)) && rbac.cluster.nodes.write"
+             ng-show="!(serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node)) && rbac.cluster.nodes.write"
              class="link-heavy"
              ng-disabled="serversListCtl.disableRemoveBtn(node)"
              ng-click="$event.stopPropagation(); serversListCtl.ejectServer(node)">Remove</a>
           &nbsp;
           <a
-             ng-show="!(serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node)) && rbac.cluster.nodes.write"
+             ng-show="!(serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node)) && rbac.cluster.nodes.write"
              class="link-heavy"
              ng-disabled="serversListCtl.isFailOverDisabled(node)"
              ng-click="$event.stopPropagation(); serversListCtl.failOverNode(node)">Failover</a>
           <span
              class="error"
-             ng-show="serversListCtl.isNodeInactiveFaied(node) && !serversListCtl.isNodeUnhealthy(node)">
+             ng-show="serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node)">
             Failed Over: Pending Removal
           </span>
         </td>

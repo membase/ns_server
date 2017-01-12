@@ -13,7 +13,7 @@
     vm.sortByGroup = sortByGroup
 
     vm.isNodeUnhealthy = isNodeUnhealthy;
-    vm.isNodeInactiveFaied = isNodeInactiveFaied;
+    vm.isNodeInactiveFailed = isNodeInactiveFailed;
     vm.isLastActiveData = isLastActiveData;
     vm.isNodeInactiveAdded = isNodeInactiveAdded;
     vm.isDataDiskUsageAvailable = isDataDiskUsageAvailable;
@@ -89,7 +89,7 @@
     function isNodeUnhealthy(node) {
       return node.status === 'unhealthy';
     }
-    function isNodeInactiveFaied(node) {
+    function isNodeInactiveFailed(node) {
       return node.clusterMembership === 'inactiveFailed';
     }
     function couchDataSize(node) {
