@@ -869,18 +869,6 @@ loop_inner(Req, Info, Path, PathTokens) ->
     menelaus_auth:validate_request(Req),
     perform_action(Req, get_action(Req, Info, Path, PathTokens)).
 
-require_auth(Req) ->
-    case Req:get_header_value("invalid-auth-response") of
-        "on" ->
-            %% We need this for browsers that display auth
-            %% dialog when faced with 401 with
-            %% WWW-Authenticate header response, even via XHR
-            menelaus_util:reply(Req, 401);
-        _ ->
-            menelaus_util:reply(Req, 401, [{"WWW-Authenticate",
-                                            "Basic realm=\"Couchbase Server Admin / REST\""}])
-    end.
-
 -spec get_bucket_id(rbac_permission() | no_check) -> bucket_name() | false.
 get_bucket_id(no_check) ->
     false;
@@ -902,7 +890,7 @@ perform_action(Req, {local, Fun}) ->
         {allowed, NewReq} ->
             Fun(NewReq);
         auth_failure ->
-            require_auth(Req)
+            menelaus_util:require_auth(Req)
     end;
 perform_action(Req, {ui, IsSSL, Fun}) ->
     perform_action(Req, {ui, IsSSL, Fun, []});
@@ -920,7 +908,7 @@ perform_action(Req, {Permission, Fun, Args}) ->
                     check_bucket_uuid(Bucket, fun check_uuid/3, [Fun, Args], NewReq)
             end;
         auth_failure ->
-            require_auth(Req);
+            menelaus_util:require_auth(Req);
         forbidden ->
             menelaus_util:reply_json(Req, menelaus_web_rbac:forbidden_response(Permission), 403)
     end.

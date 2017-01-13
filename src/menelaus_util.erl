@@ -72,7 +72,8 @@
          format_server_time/2,
          ensure_local/1,
          reply_global_error/2,
-         reply_error/3]).
+         reply_error/3,
+         require_auth/1]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
@@ -521,3 +522,15 @@ reply_global_error(Req, Error) ->
 reply_error(Req, Field, Error) ->
     menelaus_util:reply_json(
       Req, {struct, [{errors, {struct, [{iolist_to_binary([Field]), iolist_to_binary([Error])}]}}]}, 400).
+
+require_auth(Req) ->
+    case Req:get_header_value("invalid-auth-response") of
+        "on" ->
+            %% We need this for browsers that display auth
+            %% dialog when faced with 401 with
+            %% WWW-Authenticate header response, even via XHR
+            reply(Req, 401);
+        _ ->
+            reply(Req, 401, [{"WWW-Authenticate",
+                              "Basic realm=\"Couchbase Server Admin / REST\""}])
+    end.
