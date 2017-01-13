@@ -144,7 +144,12 @@ store_user_info(Req, {User, Src}, Token) ->
     Headers = Req:get(headers),
     H1 = mochiweb_headers:enter("menelaus-auth-user", User, Headers),
     H2 = mochiweb_headers:enter("menelaus-auth-src", Src, H1),
-    H3 = mochiweb_headers:enter("menelaus-auth-token", Token, H2),
+    H3 = case Token of
+             undefined ->
+                 H2;
+             _ ->
+                 mochiweb_headers:enter("menelaus-auth-token", Token, H2)
+         end,
     mochiweb_request:new(Req:get(socket), Req:get(method), Req:get(raw_path), Req:get(version), H3).
 
 -spec get_identity(mochiweb_request()) -> rbac_identity() | undefined.
