@@ -37,6 +37,7 @@
          is_cluster_46/0,
          is_version_46/1,
          is_cluster_spock/0,
+         is_cluster_spock/1,
          is_version_spock/1,
          is_enterprise/0,
          is_goxdcr_enabled/0,
@@ -114,7 +115,10 @@ is_version_spock(ClusterVersion) ->
     is_enabled_at(ClusterVersion, ?SPOCK_VERSION_NUM).
 
 is_cluster_spock() ->
-    is_enabled(?SPOCK_VERSION_NUM).
+    is_cluster_spock(ns_config:latest()).
+
+is_cluster_spock(Config) ->
+    is_enabled(Config, ?SPOCK_VERSION_NUM).
 
 is_index_aware_rebalance_on() ->
     not ns_config:read_key_fast(index_aware_rebalance_disabled, false).

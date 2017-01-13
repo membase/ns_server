@@ -144,7 +144,12 @@ upgrade_roles_spock(Definitions) ->
 -spec get_definitions(ns_config()) -> [rbac_role_def(), ...].
 get_definitions(Config) ->
     {value, RolesDefinitions} = ns_config:search(Config, roles_definitions),
-    RolesDefinitions.
+    case cluster_compat_mode:is_cluster_spock(Config) of
+        true ->
+            RolesDefinitions;
+        false ->
+            upgrade_roles_spock(RolesDefinitions)
+    end.
 
 -spec object_match(rbac_permission_object(), rbac_permission_pattern_object()) ->
                           boolean().
