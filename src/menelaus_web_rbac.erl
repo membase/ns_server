@@ -412,11 +412,17 @@ handle_change_password(Req) ->
     menelaus_web:assert_is_enterprise(),
     menelaus_web:assert_is_spock(),
 
-    case menelaus_auth:get_identity(Req) of
-        {_, builtin} = Identity ->
-            handle_change_password_with_identity(Req, Identity);
+    case menelaus_auth:get_token(Req) of
+        undefined ->
+            case menelaus_auth:get_identity(Req) of
+                {_, builtin} = Identity ->
+                    handle_change_password_with_identity(Req, Identity);
+                _ ->
+                    menelaus_util:reply_json(
+                      Req, <<"Changing of password is not allowed for this user.">>, 404)
+            end;
         _ ->
-            menelaus_util:reply_json(Req, <<"Changing of password is not allowed for this user.">>, 404)
+            menelaus_util:require_auth(Req)
     end.
 
 handle_change_password_with_identity(Req, Identity) ->
