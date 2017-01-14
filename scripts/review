@@ -150,7 +150,7 @@ fi
 
 if [ -n "${REVIEW}" ]; then
     validate_arg "${REVIEW}" "([-+][12])|0" || usage "Invalid value for --review"
-    FLAGS="${FLAGS} --review ${REVIEW}"
+    FLAGS="${FLAGS} --code-review ${REVIEW}"
 fi
 
 if [ "${SUBMIT}" = yes ]; then
