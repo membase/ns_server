@@ -134,6 +134,16 @@ preconfigured_roles_spock() ->
        {[{bucket, bucket_name}, data, meta], [read, write]},
        {[{bucket, bucket_name}, data, xattr], [read, write]},
        {[{bucket, bucket_name}, n1ql], [execute]},
+       {[pools], [read]}]},
+     {fts_admin, [bucket_name],
+      [{name, <<"FTS Admin">>},
+       {desc, <<"Can administer all FTS features">>}],
+      [{[{bucket, bucket_name}, fts], [read, write, manage]},
+       {[pools], [read]}]},
+     {fts_searcher, [bucket_name],
+      [{name, <<"FTS Searcher">>},
+       {desc, <<"Can query FTS indexes if they have bucket permissions">>}],
+      [{[{bucket, bucket_name}, fts], [read]},
        {[pools], [read]}]}].
 
 upgrade_roles_spock(Definitions) ->
