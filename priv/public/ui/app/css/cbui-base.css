@@ -303,10 +303,10 @@ button.icon {
 .fa-ban:before {
     content: "\f05e";
 }
-.fa-running:before {
+.fa-pause:before {
   content: "\f04c";
 }
-.fa-paused:before {
+.fa-play:before {
   content: "\f04b";
 }
 .fa-expand:before {

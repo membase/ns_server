@@ -54,7 +54,15 @@
       }
     }
     function status(row) {
-      return row.pauseRequested && row.status != 'paused' ? 'spinner' : row.status;
+      if (row.pauseRequested && row.status != 'paused') {
+        return 'spinner';
+      } else {
+        switch (row.status) {
+        case 'running': return 'pause';
+        case 'paused': return 'play';
+        default: return 'spinner';
+        }
+      }
     }
 
     function activate() {
