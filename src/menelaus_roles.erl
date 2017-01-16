@@ -124,7 +124,8 @@ preconfigured_roles_spock() ->
        {[{bucket, bucket_name}, data, docs], [read]},
        {[{bucket, bucket_name}, data, meta], [read]},
        {[{bucket, bucket_name}, data, xattr], [read]},
-       {[{bucket, bucket_name}, n1ql], [execute]}]},
+       {[{bucket, bucket_name}, n1ql], [execute]},
+       {[pools], [read]}]},
      {bucket_reader_writer, [bucket_name],
       [{name, <<"Bucket Reader Writer">>},
        {desc, <<"Can read and write information from/to specified bucket">>}],
@@ -132,7 +133,8 @@ preconfigured_roles_spock() ->
        {[{bucket, bucket_name}, data, docs], [read, write]},
        {[{bucket, bucket_name}, data, meta], [read, write]},
        {[{bucket, bucket_name}, data, xattr], [read, write]},
-       {[{bucket, bucket_name}, n1ql], [execute]}]}].
+       {[{bucket, bucket_name}, n1ql], [execute]},
+       {[pools], [read]}]}].
 
 upgrade_roles_spock(Definitions) ->
     {value, {views_admin, Params, Info, Permissions}} =
