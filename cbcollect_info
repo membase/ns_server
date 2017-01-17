@@ -1201,7 +1201,7 @@ def main():
         log("Python version: %s" % sys.version)
 
     runner.literal("cbcollect_info log", log_stream.getvalue(),
-                   log_file="cbcollect_info.log")
+                   log_file="cbcollect_info.log", no_header=True)
 
     runner.zip(zip_filename, zip_node)
 
