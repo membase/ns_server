@@ -138,15 +138,18 @@
           $rootScope.$broadcast("rebalanceFinished");
         }
 
-        tasks.tasks.forEach(function (task) {
+        if (!filterTasks(tasks.running).length) {
+          vm.isProgressBarClosed = true;
+        }
+
+        tasks.running.forEach(function (task) {
           if (task.type !== "indexer" &&
-              task.type !== "view_compaction" &&
-              task.status === "running") {
+              task.type !== "view_compaction") {
             if (!prevTask) {
               vm.isProgressBarClosed = false;
             } else {
               var task = _.find(prevTask.tasks, {type: task.type});
-              if (task && task.status !== "running") {
+              if (!task || task.status !== "running") {
                 vm.isProgressBarClosed = false;
               }
             }
