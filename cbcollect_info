@@ -18,6 +18,7 @@ import urllib
 import shutil
 import urlparse
 import errno
+from datetime import datetime, timedelta, tzinfo
 from StringIO import StringIO
 
 class AltExitC(object):
@@ -57,7 +58,42 @@ USAGE = """usage: %prog [options] output_file.zip
     %prog output_file.zip
     %prog -v output_file.zip"""
 
+# adapted from pytz
+class FixedOffsetTZ(tzinfo):
+    def __init__(self, minutes):
+        if abs(minutes) >= 1440:
+            raise ValueError("absolute offset is too large", minutes)
+        self._minutes = minutes
+        self._offset = timedelta(minutes=minutes)
+
+    def utcoffset(self, dt):
+        return self._offset
+
+    def dst(self, dt):
+        return timedelta(0)
+
+    def tzname(self, dt):
+        return None
+
+local_tz = FixedOffsetTZ(minutes=time.timezone / 60)
 log_stream = StringIO()
+
+log_line = None
+def buffer_log_line(message, new_line):
+    global log_line
+
+    line = log_line
+    if line is None:
+        now = datetime.now(tz=local_tz)
+        line = '[%s] ' % now.isoformat()
+
+    line += message
+    if new_line:
+        log_line = None
+        return line
+    else:
+        log_line = line
+        return None
 
 def log(message, new_line=True):
     global log_stream
@@ -65,7 +101,9 @@ def log(message, new_line=True):
     if new_line:
         message += '\n'
 
-    log_stream.write(message)
+    bufline = buffer_log_line(message, new_line)
+    if bufline is not None:
+        log_stream.write(bufline)
 
     sys.stderr.write(message)
     sys.stderr.flush()
