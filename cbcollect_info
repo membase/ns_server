@@ -59,10 +59,12 @@ USAGE = """usage: %prog [options] output_file.zip
 
 log_stream = StringIO()
 
-def log(message, end = '\n'):
+def log(message, new_line=True):
     global log_stream
 
-    message = message + end
+    if new_line:
+        message += '\n'
+
     log_stream.write(message)
 
     sys.stderr.write(message)
@@ -271,7 +273,7 @@ class TaskRunner(object):
     def _run(self, task):
         """Run a task with a file descriptor corresponding to its log file"""
         if task.will_run():
-            log("%s (%s) - " % (task.description, task.command_to_print), end='')
+            log("%s (%s) - " % (task.description, task.command_to_print), new_line=False)
             if task.privileged and os.getuid() != 0:
                 log("skipped (needs root privs)")
                 return
@@ -285,7 +287,7 @@ class TaskRunner(object):
 
             for i in xrange(task.num_samples):
                 if i > 0:
-                    log("Taking sample %d after %f seconds - " % (i+1, task.interval), end='')
+                    log("Taking sample %d after %f seconds - " % (i+1, task.interval), new_line=False)
                     time.sleep(task.interval)
                 result = task.execute(fp)
                 self.log_result(result)
