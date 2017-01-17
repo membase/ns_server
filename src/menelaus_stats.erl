@@ -2164,7 +2164,7 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                                 {bigTitle, <<"Incoming XDCR total ops/sec.">>},
                                 {name,<<"xdc_ops">>},
                                 {desc,<<"Total XDCR operations per second for this bucket "
-                                        "(measured from xdc_ops)">>}]}]}]}].
+                                        "(measured from ep_num_ops_del_meta + ep_num_ops_get_meta + ep_num_ops_set_meta)">>}]}]}]}].
 
 display_outbound_xdcr_mutations(BucketID) ->
     case cluster_compat_mode:is_goxdcr_enabled() of
