@@ -47,7 +47,7 @@
       <tr
          class="has-hover"
          ui-sref="^.^.editing({documentId: r.id})"
-         ng-repeat="r in documentsControlCtl.state.docs.rows"
+         ng-repeat="r in documentsControlCtl.state.docs.rows track by r.id"
          ng-show="documentsControlCtl.state.docs.rows.length">
         <td class="break-all max-width-4">
           <a href="">{{ r.id }}</a>

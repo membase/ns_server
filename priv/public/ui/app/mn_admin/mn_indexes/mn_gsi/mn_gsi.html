@@ -36,7 +36,7 @@
     </thead>
     <tbody
        ng-if="gsiCtl.state.indexes.length"
-       ng-repeat="row in gsiCtl.state.indexes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert">
+       ng-repeat="row in gsiCtl.state.indexes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by row.id">
       <tr
          class="has-hover"
          ng-class="{
