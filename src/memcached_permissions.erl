@@ -106,8 +106,7 @@ generate(#state{buckets = Buckets,
     menelaus_util:encode_json(Json).
 
 refresh() ->
-    %% TODO: memcached needs to implement this command
-    ok.
+    ns_memcached:connect_and_send_rbac_refresh().
 
 trim_users(Users) ->
     [{menelaus_users:get_identity(User), menelaus_users:get_roles(User)} ||

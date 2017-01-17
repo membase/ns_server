@@ -120,6 +120,7 @@
          get_seqno_stats/2,
          connect_and_send_isasl_refresh/0,
          connect_and_send_ssl_certs_refresh/0,
+         connect_and_send_rbac_refresh/0,
          get_vbucket_checkpoint_ids/2,
          create_new_checkpoint/2,
          eval/2,
@@ -1261,6 +1262,18 @@ connect_and_send_ssl_certs_refresh() ->
         {ok, Sock} ->
             try
                 ok = mc_client_binary:refresh_ssl_certs(Sock)
+            after
+                gen_tcp:close(Sock)
+            end;
+        Error ->
+            Error
+    end.
+
+connect_and_send_rbac_refresh() ->
+    case connect(1) of
+        {ok, Sock}  ->
+            try
+                ok = mc_client_binary:refresh_rbac(Sock)
             after
                 gen_tcp:close(Sock)
             end;

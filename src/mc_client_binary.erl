@@ -74,7 +74,8 @@
          config_validate/2,
          config_reload/1,
          audit_put/3,
-         audit_config_reload/1
+         audit_config_reload/1,
+         refresh_rbac/1
         ]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
@@ -98,7 +99,8 @@
                      ?RPREPENDQ | ?RDELETE | ?RDELETEQ | ?RINCR | ?RINCRQ |
                      ?RDECR | ?RDECRQ | ?SYNC | ?CMD_CHECKPOINT_PERSISTENCE |
                      ?CMD_SEQNO_PERSISTENCE | ?CMD_GET_RANDOM_KEY |
-                     ?CMD_COMPACT_DB | ?CMD_AUDIT_PUT | ?CMD_AUDIT_CONFIG_RELOAD.
+                     ?CMD_COMPACT_DB | ?CMD_AUDIT_PUT | ?CMD_AUDIT_CONFIG_RELOAD |
+                     ?CMD_RBAC_REFRESH.
 
 
 %% A memcached client that speaks binary protocol.
@@ -1058,6 +1060,13 @@ audit_config_reload(Sock) ->
     RV = cmd(?CMD_AUDIT_CONFIG_RELOAD, Sock, undefined, undefined,
              {#mc_header{}, #mc_entry{}},
              infinity),
+    case process_error_response(RV) of
+        {memcached_error, success, _} -> ok;
+        Err -> Err
+    end.
+
+refresh_rbac(Sock) ->
+    RV = cmd(?CMD_RBAC_REFRESH, Sock, undefined, undefined, {#mc_header{}, #mc_entry{}}),
     case process_error_response(RV) of
         {memcached_error, success, _} -> ok;
         Err -> Err
