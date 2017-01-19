@@ -32,6 +32,7 @@
           rebalance: false,
           maxBucketCount: false
         };
+        var attentions = {};
         var sampleBuckets = resp[0];
         var poolDefault = resp[1];
         var tasks = resp[2];
@@ -53,10 +54,15 @@
         warnings.maxBucketCount = (numExistingBuckets + _.keys(selectedBuckets).length > maxNumBuckets) && maxNumBuckets;
         warnings.rebalance = tasks.inRebalance;
 
+        attentions.noIndexOrQuery = !_.find(servers.active, function (server) {
+          return _.indexOf(server.services, "index") > -1 || _.indexOf(server.services, "n1ql") > -1;
+        });
+
         return {
           installed: _.filter(sampleBuckets, 'installed', true),
           available: _.filter(sampleBuckets, 'installed', false),
-          warnings: warnings
+          warnings: warnings,
+          attentions: attentions
         };
       });
     }

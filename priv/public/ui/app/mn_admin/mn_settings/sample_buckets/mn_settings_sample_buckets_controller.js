@@ -14,6 +14,7 @@
     vm.selected = {};
     vm.isCreateButtonDisabled = isCreateButtonDisabled;
     vm.installSampleBuckets = installSampleBuckets;
+    vm.isAnyBucketSelected = isAnyBucketSelected;
 
     activate();
     function getState(selected) {
@@ -35,11 +36,15 @@
         .reloadState();
     }
 
+    function isAnyBucketSelected() {
+      return _.keys(_.pick(vm.selected, _.identity)).length;
+    }
+
     function isCreateButtonDisabled() {
       return vm.viewLoading || vm.state &&
              (_.chain(vm.state.warnings).values().some().value() ||
              !vm.state.available.length) ||
-             !_.keys(_.pick(vm.selected, _.identity)).length;
+             !isAnyBucketSelected();
     }
 
   }

@@ -12,6 +12,9 @@
        ng-message="maxBucketCount"
        class="alert alert-warning"><p>Maximum number of buckets has been reached. For optimal performance, no more than {{settingsSampleBucketsCtl.state.warnings.maxBucketCount}} buckets are allowed.</p></div>
   </div>
+  <div
+     ng-show="settingsSampleBucketsCtl.state.attentions.noIndexOrQuery && settingsSampleBucketsCtl.isAnyBucketSelected()"
+     class="alert alert-warning"><p>This cluster does not contain an index or query node. Sample data will be installed without creating indexes.</p></div>
 </mn-element-cargo>
 
 <div>
