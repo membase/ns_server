@@ -20,6 +20,9 @@
     function getState(selected) {
       return mnPromiseHelper(vm, mnSettingsSampleBucketsService.getSampleBucketsState(selected || vm.selected)).applyToScope("state");
     }
+    function doGetState() {
+      getState();
+    }
     function activate() {
       getState().showSpinner();
       $scope.$watch("settingsSampleBucketsCtl.selected", function (value, oldValue) {
@@ -27,7 +30,11 @@
           getState(value);
         }
       }, true);
+      $scope.$on("bucketUriChanged", doGetState);
+      $scope.$on("nodesChanged", doGetState);
+      $scope.$on("reloadTasksPoller", doGetState);
     }
+
 
     function installSampleBuckets() {
       mnPromiseHelper(vm, mnSettingsSampleBucketsService.installSampleBuckets(vm.selected))
