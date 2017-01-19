@@ -15,7 +15,7 @@
 
 -module(capi_ddoc_manager).
 
--behaviour(gen_server).
+-behaviour(replicated_storage).
 
 -export([start_link/3,
          start_link_event_manager/1,
@@ -24,21 +24,21 @@
          foreach_doc/3,
          reset_master_vbucket/1]).
 
--export([init/1, handle_call/3, handle_cast/2,
-         handle_info/2, terminate/2, code_change/3]).
+-export([init/1, init_after_ack/1, handle_call/3, handle_cast/2,
+         handle_info/2, get_id/1, find_doc/2, get_all_docs/1,
+         get_revision/1, set_revision/2, is_deleted/1, save_doc/2]).
 
 -include("ns_common.hrl").
 -include("couch_db.hrl").
 
--record(state, { bucket :: bucket_name(),
-                 event_manager :: pid(),
-                 ddoc_replicator :: pid(),
-                 local_docs :: [#doc{}]
+-record(state, {bucket :: bucket_name(),
+                event_manager :: pid(),
+                local_docs :: [#doc{}]
                }).
 
 start_link(Bucket, Replicator, ReplicationSrv) ->
-    gen_server:start_link({local, server(Bucket)}, ?MODULE,
-                          [Bucket, Replicator, ReplicationSrv], []).
+    replicated_storage:start_link(
+      server(Bucket), ?MODULE, [Bucket, Replicator, ReplicationSrv], Replicator).
 
 start_link_event_manager(Bucket) ->
     gen_event:start_link({local, event_manager(Bucket)}).
@@ -91,7 +91,8 @@ update_doc(Bucket, Doc) ->
 reset_master_vbucket(Bucket) ->
     gen_server:call(server(Bucket), reset_master_vbucket, infinity).
 
-%% gen_server callbacks
+%% replicated_storage callbacks
+
 init([Bucket, Replicator, ReplicationSrv]) ->
     Self = self(),
 
@@ -112,54 +113,41 @@ init([Bucket, Replicator, ReplicationSrv]) ->
           (_) ->
               ok
       end),
+    #state{bucket = Bucket,
+           event_manager = EventManager}.
 
-    Self ! replicate_newnodes_docs,
-
-    proc_lib:init_ack({ok, Self}),
-
+init_after_ack(#state{bucket = Bucket} = State) ->
     ok = misc:wait_for_local_name(couch_server, 10000),
 
     Docs = load_local_docs(Bucket),
-    State = #state{bucket = Bucket,
-                   event_manager = EventManager,
-                   ddoc_replicator = Replicator,
-                   local_docs = Docs},
+    State#state{local_docs = Docs}.
 
-    gen_server:enter_loop(?MODULE, [], State).
+get_id(#doc{id = Id}) ->
+    Id.
 
-handle_call({interactive_update, #doc{id = Id} = Doc}, _From,
-            #state{local_docs = Docs} = State) ->
-    Rand = crypto:rand_uniform(0, 16#100000000),
-    RandBin = <<Rand:32/integer>>,
-    {NewRev, FoundType} =
-        case lists:keyfind(Id, #doc.id, Docs) of
-            false ->
-                {{1, RandBin}, missing};
-            #doc{rev = {Pos, _DiskRev}, deleted = Deleted} ->
-                FoundType0 = case Deleted of
-                                 true ->
-                                     deleted;
-                                 false ->
-                                     existent
-                             end,
-                {{Pos + 1, RandBin}, FoundType0}
-        end,
+find_doc(Id, #state{local_docs = Docs}) ->
+    lists:keyfind(Id, #doc.id, Docs).
 
-    case Doc#doc.deleted andalso FoundType =/= existent of
-        true ->
-            {reply, {not_found, FoundType}, State};
-        false ->
-            NewDoc = Doc#doc{rev = NewRev},
-            try
-                ?log_debug("Writing interactively saved ddoc ~p", [Doc]),
-                NewState = save_doc(NewDoc, State),
-                NewState#state.ddoc_replicator ! {replicate_change, NewDoc},
-                {reply, ok, NewState}
-            catch throw:{invalid_design_doc, _} = Error ->
-                    ?log_debug("Document validation failed: ~p", [Error]),
-                    {reply, Error, State}
-            end
-    end;
+get_all_docs(#state{local_docs = Docs}) ->
+    Docs.
+
+get_revision(#doc{rev = Rev}) ->
+    Rev.
+
+set_revision(Doc, NewRev) ->
+    Doc#doc{rev = NewRev}.
+
+is_deleted(#doc{deleted = Deleted}) ->
+    Deleted.
+
+save_doc(NewDoc, State) ->
+    try
+        {ok, do_save_doc(NewDoc, State)}
+    catch throw:{invalid_design_doc, _} = Error ->
+            ?log_debug("Document validation failed: ~p", [Error]),
+            {error, Error}
+    end.
+
 handle_call({foreach_doc, Fun}, _From, #state{local_docs = Docs} = State) ->
     Res = [{Id, Fun(Doc)} || #doc{id = Id} = Doc <- Docs],
     {reply, Res, State};
@@ -172,46 +160,18 @@ handle_call(reset_master_vbucket, _From, #state{bucket = Bucket,
     {ok, MasterDB} = open_local_db(Bucket),
     ok = couch_db:close(MasterDB),
 
-    [save_doc(Doc, State) || Doc <- LocalDocs],
+    [do_save_doc(Doc, State) || Doc <- LocalDocs],
     {reply, ok, State}.
 
-handle_cast({replicated_update, #doc{id = Id, rev = Rev} = Doc}, State) ->
-    %% this is replicated from another node in the cluster. We only accept it
-    %% if it doesn't exist or the rev is higher than what we have.
-    #state{local_docs=Docs} = State,
-    Proceed = case lists:keyfind(Id, #doc.id, Docs) of
-                  false ->
-                      true;
-                  #doc{rev = DiskRev} when Rev > DiskRev ->
-                      true;
-                  _ ->
-                      false
-              end,
-    if Proceed ->
-            ?log_debug("Writing replicated ddoc ~p", [Doc]),
-            {noreply, save_doc(Doc, State)};
-       true ->
-            {noreply, State}
-    end;
 handle_cast(request_snapshot,
             #state{event_manager = EventManager,
                    local_docs = Docs} = State) ->
     gen_event:notify(EventManager, {snapshot, Docs}),
     {noreply, State}.
 
-handle_info(replicate_newnodes_docs, #state{local_docs = Docs,
-                                            ddoc_replicator = Replicator} = State) ->
-    Replicator ! {replicate_newnodes_docs, Docs},
-    {noreply, State};
 handle_info(Info, State) ->
     ?log_info("Ignoring unexpected message: ~p", [Info]),
     {noreply, State}.
-
-terminate(_Reason, _State) ->
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
 
 %% internal
 server(Bucket) when is_binary(Bucket) ->
@@ -243,16 +203,16 @@ load_local_docs(Bucket) ->
         ok = couch_db:close(Db)
     end.
 
-save_doc(#doc{id = Id} = Doc,
-         #state{bucket = Bucket,
-                event_manager = EventManager,
-                local_docs = Docs} = State) ->
+do_save_doc(#doc{id = Id} = Doc,
+            #state{bucket = Bucket,
+                   event_manager = EventManager,
+                   local_docs = Docs} = State) ->
 
     Ref = make_ref(),
     gen_event:sync_notify(EventManager, {suspend, Ref}),
 
     try
-        do_save_doc(Doc, Bucket),
+        do_save_doc_with_bucket(Doc, Bucket),
         gen_event:sync_notify(EventManager, {resume, Ref, {ok, Doc}})
     catch
         T:E ->
@@ -263,7 +223,7 @@ save_doc(#doc{id = Id} = Doc,
     end,
     State#state{local_docs = lists:keystore(Id, #doc.id, Docs, Doc)}.
 
-do_save_doc(Doc, Bucket) ->
+do_save_doc_with_bucket(Doc, Bucket) ->
     {ok, Db} = open_local_db(Bucket),
     try
         ok = couch_db:update_doc(Db, Doc)

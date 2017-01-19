@@ -1,5 +1,5 @@
 {lib_dirs, ["deps"]}.
-{erl_first_files, ["src/supervisor2.erl", "src/memcached_cfg.erl"]}.
+{erl_first_files, ["src/supervisor2.erl", "src/memcached_cfg.erl", "src/replicated_storage.erl"]}.
 {erl_opts, [{src_dirs, ["src", "test"]},
             {i, "@COUCHDB_SRC_DIR@/src/couchdb"},
             {i, "@COUCHDB_SRC_DIR@/src"},
