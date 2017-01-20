@@ -32,8 +32,9 @@
 /ns_server.plt
 /priv/public/js/all-images.js
 /priv/public/ui/app.min.js
-/priv/public/ui/app-classic/app.min.js
 /priv/public/ui/index.min.html
+/priv/public/ui/classic-app.min.js
+/priv/public/ui/classic-index.min.html
 /priv/ui_tests/screenshots_output
 /rebar.config
 /src/ns_server.app.src

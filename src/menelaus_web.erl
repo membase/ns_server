@@ -849,9 +849,14 @@ serve_ui_env(Req) ->
 handle_ui_root(AppRoot, Path, UiCompatVersion, Plugins, Req)
   when UiCompatVersion =:= ?VERSION_45;
        UiCompatVersion =:= ?SPOCK_VERSION_NUM ->
-    Filename = case UiCompatVersion =:= ?SPOCK_VERSION_NUM andalso use_minified(Req) of
+    Filename = case use_minified(Req) of
                    true ->
-                       filename:join([AppRoot, "ui", "index.min.html"]);
+                       IndexFileName =
+                           case UiCompatVersion =:= ?SPOCK_VERSION_NUM of
+                               true -> "index.min.html";
+                               false -> "classic-index.min.html"
+                           end,
+                       filename:join([AppRoot, "ui", IndexFileName]);
                    _ ->
                        filename:join(AppRoot, Path)
                end,
