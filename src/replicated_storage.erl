@@ -17,7 +17,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/4, start_link_remote/5]).
+-export([start_link/4, start_link_remote/5, wait_for_startup/0, anounce_startup/1]).
 
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
@@ -47,6 +47,24 @@ start_link_remote(Node, Name, Module, InitParams, Replicator) ->
     misc:start_link(Node, misc, turn_into_gen_server,
                     [{local, Name}, ?MODULE,
                      [Module, InitParams, Replicator], []]).
+
+wait_for_startup() ->
+    ?log_debug("Start waiting for startup"),
+    receive
+        {replicated_storege_pid, Pid} ->
+            ?log_debug("Received replicated storage registration from ~p", [Pid]),
+            Pid;
+        {'EXIT', ExitPid, Reason} ->
+            ?log_debug("Received exit from ~p with reason ~p", [ExitPid, Reason]),
+            exit(Reason)
+    after 10000 ->
+            ?log_error("Waited 10000 ms for replicated storage pid to no avail. Crash."),
+            exit(replicated_storage_not_available)
+    end.
+
+anounce_startup(Pid) ->
+    ?log_debug("Announce my startup to ~p", [Pid]),
+    Pid ! {replicated_storege_pid, self()}.
 
 init([Module, InitParams, Replicator]) ->
     Self = self(),

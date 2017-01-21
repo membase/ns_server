@@ -52,8 +52,6 @@
 
 -export([handle_rpc/1]).
 
--export([wait_for_doc_manager/0, register_doc_manager/1]).
-
 -spec get_db_and_ix_paths() -> [{db_path | index_path, string()}].
 get_db_and_ix_paths() ->
     maybe_rpc_couchdb_node(get_db_and_ix_paths).
@@ -293,21 +291,3 @@ handle_rpc({log_diagnostics, Err}) ->
 
 handle_rpc(get_pid) ->
     list_to_integer(os:getpid()).
-
-wait_for_doc_manager() ->
-    ?log_debug("Start waiting for doc manager"),
-    receive
-        {doc_manager_pid, Pid} ->
-            ?log_debug("Received doc manager registration from ~p", [Pid]),
-            Pid;
-        {'EXIT', ExitPid, Reason} ->
-            ?log_debug("Received exit from ~p with reason ~p", [ExitPid, Reason]),
-            exit(Reason)
-    after 10000 ->
-            ?log_error("Waited 10000 ms for doc manager pid to no avail. Crash."),
-            exit(doc_manager_not_available)
-    end.
-
-register_doc_manager(Pid) ->
-    ?log_debug("Register doc manager with ~p", [Pid]),
-    Pid ! {doc_manager_pid, self()}.

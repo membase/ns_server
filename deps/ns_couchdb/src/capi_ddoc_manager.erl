@@ -121,8 +121,8 @@ reset_master_vbucket(Bucket) ->
 init([Bucket, Replicator, ReplicationSrv]) ->
     Self = self(),
 
-    ns_couchdb_api:register_doc_manager(Replicator),
-    ns_couchdb_api:register_doc_manager(ReplicationSrv),
+    replicated_storage:anounce_startup(Replicator),
+    replicated_storage:anounce_startup(ReplicationSrv),
 
     EventManager = whereis(event_manager(Bucket)),
     true = is_pid(EventManager) andalso is_process_alive(EventManager),

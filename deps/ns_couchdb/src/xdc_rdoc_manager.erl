@@ -68,9 +68,9 @@ pull_docs(Nodes) ->
 %% replicated_storage callbacks
 
 init({Replicator, ReplicationSrvr, RepManager}) ->
-    ns_couchdb_api:register_doc_manager(Replicator),
-    ns_couchdb_api:register_doc_manager(ReplicationSrvr),
-    ns_couchdb_api:register_doc_manager(RepManager),
+    replicated_storage:anounce_startup(Replicator),
+    replicated_storage:anounce_startup(ReplicationSrvr),
+    replicated_storage:anounce_startup(RepManager),
     #state{rep_manager = RepManager}.
 
 init_after_ack(State) ->

@@ -28,7 +28,7 @@ start_link(Module, Name, GetNodes, ServerName) ->
 start_loop(Module, Name, GetNodes, ServerName) ->
     erlang:register(Name, self()),
     proc_lib:init_ack({ok, self()}),
-    DocMgr = ns_couchdb_api:wait_for_doc_manager(),
+    DocMgr = replicated_storage:wait_for_startup(),
 
     %% anytime we disconnect or reconnect, force a replicate event.
     erlang:spawn_link(

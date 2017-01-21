@@ -103,7 +103,7 @@ init(_) ->
               ok
       end),
 
-    DocMgr = ns_couchdb_api:wait_for_doc_manager(),
+    DocMgr = replicated_storage:wait_for_startup(),
 
     case cluster_compat_mode:is_goxdcr_enabled() of
         false ->
