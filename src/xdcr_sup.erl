@@ -53,7 +53,7 @@ child_specs() ->
       permanent, 30000, worker, []},
 
      {xdc_rdoc_replicator,
-      {doc_replicator, start_link_xdcr, []},
+      {xdc_rdoc_manager, start_replicator, []},
       permanent, 1000, worker, [doc_replicator]},
 
      {xdc_rdoc_replication_srv, {doc_replication_srv, start_link_xdcr, []},

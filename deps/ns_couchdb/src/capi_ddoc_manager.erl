@@ -19,6 +19,8 @@
 
 -export([start_link/3,
          start_link_event_manager/1,
+         start_replicator/1,
+         replicator_name/1,
          subscribe_link/2,
          update_doc/2,
          foreach_doc/3,
@@ -42,6 +44,29 @@ start_link(Bucket, Replicator, ReplicationSrv) ->
 
 start_link_event_manager(Bucket) ->
     gen_event:start_link({local, event_manager(Bucket)}).
+
+
+replicator_name(Bucket) ->
+    list_to_atom("capi_doc_replicator-" ++ Bucket).
+
+start_replicator(Bucket) ->
+    ns_bucket_sup:ignore_if_not_couchbase_bucket(
+      Bucket,
+      fun (_) ->
+              GetRemoteNodes =
+                  fun () ->
+                          case ns_bucket:bucket_view_nodes(Bucket) of
+                              [] ->
+                                  [];
+                              ViewNodes ->
+                                  LiveOtherNodes = ns_node_disco:nodes_actual_other(),
+                                  ordsets:intersection(LiveOtherNodes, ViewNodes)
+                          end,
+                          ns_node_disco:nodes_actual_other()
+                  end,
+              doc_replicator:start_link(?MODULE, replicator_name(Bucket), GetRemoteNodes,
+                                        doc_replication_srv:proxy_server_name(Bucket))
+      end).
 
 subscribe_link(Bucket, Body) ->
     Self = self(),

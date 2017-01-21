@@ -20,10 +20,12 @@
 -behaviour(replicated_storage).
 
 -export([start_link_remote/1,
+         start_replicator/0,
          update_doc/1,
          foreach_doc/2,
          foreach_doc/3,
-         get_doc/1]).
+         get_doc/1,
+         pull_docs/1]).
 
 -export([init/1, init_after_ack/1, handle_call/3,
          get_id/1, find_doc/2, get_all_docs/1,
@@ -36,7 +38,7 @@
 
 start_link_remote(Node) ->
     ReplicationSrvr = erlang:whereis(doc_replication_srv:proxy_server_name(xdcr)),
-    Replicator = erlang:whereis(doc_replicator:server_name(xdcr)),
+    Replicator = erlang:whereis(replicator_name()),
     RepManager = erlang:whereis(xdc_rep_manager),
 
     ?log_debug("Starting xdc_rdoc_manager on ~p with following links: ~p",
@@ -47,6 +49,21 @@ start_link_remote(Node) ->
 
     replicated_storage:start_link_remote(Node, ?MODULE, ?MODULE,
                                          {Replicator, ReplicationSrvr, RepManager}, Replicator).
+
+replicator_name() ->
+    xdcr_doc_replicator.
+
+start_replicator() ->
+    GetRemoteNodes =
+        fun () ->
+                ns_node_disco:nodes_actual_other()
+        end,
+    doc_replicator:start_link(?MODULE, replicator_name(), GetRemoteNodes,
+                              doc_replication_srv:proxy_server_name(xdcr)).
+
+pull_docs(Nodes) ->
+    Timeout = ns_config:read_key_fast(goxdcr_upgrade_timeout, 60000),
+    gen_server:call(replicator_name(), {pull_docs, Nodes, Timeout}, infinity).
 
 %% replicated_storage callbacks
 

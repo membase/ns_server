@@ -60,7 +60,7 @@ do_upgrade(Config, Nodes) ->
 
     %% this will make sure that our node has latest replications
     ?log_debug("Pull replication docs from other nodes synchronously."),
-    ok = doc_replicator:pull_docs(xdcr, Nodes -- [ns_node_disco:ns_server_node()]),
+    ok = xdc_rdoc_manager:pull_docs(Nodes -- [ns_node_disco:ns_server_node()]),
 
     UpgradeConf = build_upgrade_configuration(),
     ?log_debug("Starting goxdcr upgrade with the following configuration: ~p",

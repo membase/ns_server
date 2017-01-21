@@ -35,7 +35,7 @@ child_specs(BucketName) ->
       {remote_monitors, wait_for_net_kernel, []},
       transient, brutal_kill, worker, []},
      {doc_replicator,
-      {doc_replicator, start_link, [BucketName]},
+      {capi_ddoc_manager, start_replicator, [BucketName]},
       permanent, 1000, worker, [doc_replicator]},
      {doc_replication_srv,
       {doc_replication_srv, start_link, [BucketName]},

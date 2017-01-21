@@ -49,7 +49,7 @@ server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
 
 do_start_link_remote(Node, Bucket) ->
-    Replicator = erlang:whereis(doc_replicator:server_name(Bucket)),
+    Replicator = erlang:whereis(capi_ddoc_manager:replicator_name(Bucket)),
     ReplicationSrv = erlang:whereis(doc_replication_srv:proxy_server_name(Bucket)),
 
     true = is_pid(Replicator),
