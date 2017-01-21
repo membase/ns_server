@@ -22,32 +22,32 @@
 
 -export([start_link/4]).
 
-start_link(Module, Name, GetNodes, ServerName) ->
-    proc_lib:start_link(erlang, apply, [fun start_loop/4, [Module, Name, GetNodes, ServerName]]).
+start_link(Module, Name, GetNodes, StorageFrontend) ->
+    proc_lib:start_link(erlang, apply, [fun start_loop/4, [Module, Name, GetNodes, StorageFrontend]]).
 
-start_loop(Module, Name, GetNodes, ServerName) ->
+start_loop(Module, Name, GetNodes, StorageFrontend) ->
     erlang:register(Name, self()),
     proc_lib:init_ack({ok, self()}),
-    DocMgr = replicated_storage:wait_for_startup(),
+    LocalStoragePid = replicated_storage:wait_for_startup(),
 
     %% anytime we disconnect or reconnect, force a replicate event.
     erlang:spawn_link(
       fun () ->
               ok = net_kernel:monitor_nodes(true),
-              nodeup_monitoring_loop(DocMgr)
+              nodeup_monitoring_loop(LocalStoragePid)
       end),
 
     %% Explicitly ask all available nodes to send their documents to us
-    [{ServerName, N} ! replicate_newnodes_docs ||
+    [{StorageFrontend, N} ! replicate_newnodes_docs ||
         N <- GetNodes()],
 
-    loop(Module, GetNodes, ServerName, []).
+    loop(Module, GetNodes, StorageFrontend, []).
 
-loop(Module, GetNodes, ServerName, RemoteNodes) ->
+loop(Module, GetNodes, StorageFrontend, RemoteNodes) ->
     NewRemoteNodes =
         receive
             {replicate_change, Doc} ->
-                [replicate_change_to_node(Module, ServerName, Node, Doc)
+                [replicate_change_to_node(Module, StorageFrontend, Node, Doc)
                  || Node <- RemoteNodes],
                 RemoteNodes;
             {replicate_newnodes_docs, Docs} ->
@@ -59,14 +59,14 @@ loop(Module, GetNodes, ServerName, RemoteNodes) ->
                     [] ->
                         ok;
                     _ ->
-                        [monitor(process, {ServerName, Node}) || Node <- NewNodes],
-                        [replicate_change_to_node(Module, ServerName, S, D)
+                        [monitor(process, {StorageFrontend, Node}) || Node <- NewNodes],
+                        [replicate_change_to_node(Module, StorageFrontend, S, D)
                          || S <- NewNodes,
                             D <- Docs]
                 end,
                 AllNodes;
             {'$gen_call', From, {pull_docs, Nodes, Timeout}} ->
-                gen_server:reply(From, handle_pull_docs(ServerName, Nodes, Timeout)),
+                gen_server:reply(From, handle_pull_docs(StorageFrontend, Nodes, Timeout)),
                 RemoteNodes;
             {'DOWN', _Ref, _Type, {Server, RemoteNode}, Error} ->
                 ?log_warning("Remote server node ~p process down: ~p",
@@ -77,32 +77,32 @@ loop(Module, GetNodes, ServerName, RemoteNodes) ->
                 exit({unexpected_message, Msg})
         end,
 
-    loop(Module, GetNodes, ServerName, NewRemoteNodes).
+    loop(Module, GetNodes, StorageFrontend, NewRemoteNodes).
 
-replicate_change_to_node(Module, ServerName, Node, Doc) ->
+replicate_change_to_node(Module, StorageFrontend, Node, Doc) ->
     ?log_debug("Sending ~p to ~p", [Module:get_id(Doc), Node]),
-    gen_server:cast({ServerName, Node}, {replicated_update, Doc}).
+    gen_server:cast({StorageFrontend, Node}, {replicated_update, Doc}).
 
-nodeup_monitoring_loop(Parent) ->
+nodeup_monitoring_loop(LocalStoragePid) ->
     receive
         {nodeup, _} ->
             ?log_debug("got nodeup event. Considering ddocs replication"),
-            Parent ! replicate_newnodes_docs;
+            LocalStoragePid ! replicate_newnodes_docs;
         _ ->
             ok
     end,
-    nodeup_monitoring_loop(Parent).
+    nodeup_monitoring_loop(LocalStoragePid).
 
-handle_pull_docs(ServerName, Nodes, Timeout) ->
-    {RVs, BadNodes} = gen_server:multi_call(Nodes, ServerName, get_all_docs, Timeout),
+handle_pull_docs(StorageFrontend, Nodes, Timeout) ->
+    {RVs, BadNodes} = gen_server:multi_call(Nodes, StorageFrontend, get_all_docs, Timeout),
     case BadNodes of
         [] ->
             lists:foreach(
               fun ({_N, Docs}) ->
-                      [gen_server:cast(ServerName, {replicated_update, Doc}) ||
+                      [gen_server:cast(StorageFrontend, {replicated_update, Doc}) ||
                           Doc <- Docs]
               end, RVs),
-            gen_server:call(ServerName, sync, Timeout);
+            gen_server:call(StorageFrontend, sync, Timeout);
         _ ->
             {error, {bad_nodes, BadNodes}}
     end.
