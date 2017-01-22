@@ -39,7 +39,6 @@
                 last_applied_vbucket_states :: undefined | list(),
                 rebalance_only_vbucket_states :: list(),
                 flushseq,
-                rebalancer_type :: undefined | rebalancer | upgrader,
                 rebalance_status = finished :: in_process | finished,
                 replicators_primed :: boolean(),
 
@@ -53,7 +52,6 @@
          mark_bucket_warmed/2,
          delete_vbucket_copies/4,
          prepare_nodes_for_rebalance/3,
-         prepare_nodes_for_dcp_upgrade/3,
          finish_rebalance/3,
          this_node_replicator_triples/1,
          bulk_set_vbucket_state/4,
@@ -373,11 +371,6 @@ prepare_nodes_for_rebalance(Bucket, Nodes, RebalancerPid) ->
             Errors
     end.
 
-prepare_nodes_for_dcp_upgrade(Bucket, Nodes, RebalancerPid) ->
-    process_multicall_rv(gen_server:multi_call(Nodes, server_name(Bucket),
-                                               {prepare_dcp_upgrade, RebalancerPid},
-                                               ?PREPARE_REBALANCE_TIMEOUT)).
-
 finish_rebalance(Bucket, Nodes, RebalancerPid) ->
     process_multicall_rv(gen_server:multi_call(Nodes, server_name(Bucket),
                                                {if_rebalance, RebalancerPid, finish_rebalance},
@@ -592,8 +585,7 @@ handle_call(prepare_flush, _From, #state{bucket_name = BucketName} = State) ->
 handle_call(complete_flush, _From, State) ->
     {reply, ok, consider_doing_flush(State)};
 handle_call(query_vbucket_states, _From, #state{bucket_name = BucketName,
-                                               rebalance_status = in_process,
-                                               rebalancer_type = rebalancer} = State) ->
+                                               rebalance_status = in_process} = State) ->
     ?log_info("Attempt to query vbucket states for bucket ~p during rebalance", [BucketName]),
     {reply, rebalancing, State};
 handle_call(query_vbucket_states, _From, #state{bucket_name = BucketName} = State) ->
@@ -624,15 +616,9 @@ handle_call({prepare_rebalance, _Pid}, _From,
 handle_call({prepare_rebalance, Pid}, _From,
             State) ->
     State1 = State#state{rebalance_only_vbucket_states =
-                             [undefined || _ <- State#state.rebalance_only_vbucket_states],
-                         rebalancer_type = rebalancer},
+                             [undefined || _ <- State#state.rebalance_only_vbucket_states]},
     {reply, {ok, [{version, cluster_compat_mode:mb_master_advertised_version()}]},
      set_rebalance_mref(Pid, State1)};
-
-handle_call({prepare_dcp_upgrade, Pid}, _From, #state{rebalance_pid = undefined} = State) ->
-    {reply, ok, set_rebalance_mref(Pid, State#state{rebalancer_type = upgrader})};
-handle_call({prepare_dcp_upgrade, _Pid}, _From, State) ->
-    {reply, unable_to_start_upgrade, State};
 
 handle_call(finish_rebalance, _From, State) ->
     {reply, ok, State#state{rebalance_status = finished}};
@@ -708,10 +694,7 @@ handle_call({apply_new_config, Caller, NewBucketConfig, IgnoredVBuckets}, _From,
                      set_rebalance_mref(undefined, State2)
              end,
 
-    %% make the replicator aware of the latest bucket replication type
-    %% this might shutdown some replications which will be restored later
-    ok = replication_manager:set_replication_type(BucketName,
-                                                  ns_bucket:replication_type(NewBucketConfig)),
+    dcp = ns_bucket:replication_type(NewBucketConfig),
 
     %% before changing vbucket states (i.e. activating or killing
     %% vbuckets) we must stop replications into those vbuckets
@@ -910,8 +893,6 @@ handle_cast({apply_vbucket_state_reply, ReplyPid, Call, Reply},
 handle_cast(_, _State) ->
     erlang:error(cannot_do).
 
-handle_info({'DOWN', _MRef, _, _, _}, #state{rebalancer_type = upgrader} = State) ->
-    {noreply, set_rebalance_mref(undefined, State)};
 handle_info({'DOWN', MRef, _, Pid, Reason}, #state{rebalance_mref = RMRef,
                                                    last_applied_vbucket_states = WantedVBuckets} = State)
   when MRef =:= RMRef ->
@@ -976,8 +957,7 @@ set_rebalance_mref(Pid, State0) ->
         undefined ->
             ok;
         OldMRef ->
-            case State0#state.rebalance_status =:= in_process andalso
-                State0#state.rebalancer_type =:= rebalancer of
+            case State0#state.rebalance_status =:= in_process of
                 true ->
                     %% something went wrong. nuke replicator just in case
                     (catch dcp_sup:nuke(State0#state.bucket_name));

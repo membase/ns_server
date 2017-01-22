@@ -36,7 +36,9 @@ cleanup(Bucket, Options) ->
         {ok, BucketConfig} ->
             case ns_bucket:bucket_type(BucketConfig) of
                 membase ->
-                    cleanup_with_possible_dcp_upgrade(Bucket, Options, BucketConfig, FullConfig);
+                    dcp = ns_bucket:replication_type(BucketConfig),
+                    cleanup_with_membase_bucket_check_servers(Bucket, Options,
+                                                              BucketConfig, FullConfig);
                 _ -> ok
             end
     end.
@@ -49,14 +51,6 @@ cleanup_with_membase_bucket_check_servers(Bucket, Options, BucketConfig, FullCon
             ?log_debug("janitor decided to update servers list"),
             ns_bucket:set_servers(Bucket, NewServers),
             cleanup(Bucket, Options)
-    end.
-
-cleanup_with_possible_dcp_upgrade(Bucket, Options, BucketConfig, FullConfig) ->
-    case dcp_upgrade:consider_trivial_upgrade(Bucket, BucketConfig) of
-        true ->
-            cleanup(Bucket, Options);
-        false ->
-            cleanup_with_membase_bucket_check_servers(Bucket, Options, BucketConfig, FullConfig)
     end.
 
 cleanup_with_membase_bucket_check_map(Bucket, Options, BucketConfig) ->

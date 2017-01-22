@@ -58,8 +58,6 @@
          event_to_jsons/1,
          event_to_formatted_iolist/1,
          format_some_history/1,
-         note_vbucket_upgraded_to_dcp/2,
-         note_bucket_upgraded_to_dcp/1,
          note_dcp_replicator_start/5,
          note_dcp_add_stream/6,
          note_dcp_close_stream/5,
@@ -201,12 +199,6 @@ note_forced_inhibited_view_compaction(BucketName) ->
 
 note_tap_stats(NoteTag, Estimate, Pid, TapName) ->
     submit_cast({tap_estimate, NoteTag, Estimate, Pid, TapName}).
-
-note_vbucket_upgraded_to_dcp(Bucket, VBucket) ->
-    submit_cast({note_vbucket_upgraded_to_dcp, Bucket, VBucket}).
-
-note_bucket_upgraded_to_dcp(Bucket) ->
-    submit_cast({note_bucket_upgraded_to_dcp, Bucket}).
 
 note_dcp_replicator_start(Bucket, ConnName, ProducerNode, ConsumerConn, ProducerConn) ->
     Pid = self(),
@@ -711,17 +703,6 @@ event_to_jsons({TS, takeover_ended, BucketName, VBucket, OldMaster, NewMaster}) 
                                   {vbucket, VBucket},
                                   {oldMaster, node_to_host(OldMaster, ns_config:latest())},
                                   {node, node_to_host(NewMaster, ns_config:latest())}])];
-
-event_to_jsons({TS, note_vbucket_upgraded_to_dcp, BucketName, VBucket}) ->
-    [format_simple_plist_as_json([{type, vbucketUpgradedToDCP},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {bucket, BucketName},
-                                  {vbucket, VBucket}])];
-
-event_to_jsons({TS, note_bucket_upgraded_to_dcp, BucketName}) ->
-    [format_simple_plist_as_json([{type, bucketUpgradedToDCP},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {bucket, BucketName}])];
 
 event_to_jsons({TS, dcp_replicator_start,
                 Bucket, ConnName, ProducerNode, ConsumerConn, ProducerConn, Pid}) ->

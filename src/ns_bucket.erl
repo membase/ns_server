@@ -80,7 +80,6 @@
          past_vbucket_maps/0,
          past_vbucket_maps/1,
          config_to_map_options/1,
-         needs_upgrade_to_dcp/1,
          needs_rebalance/2,
          bucket_view_nodes/1,
          bucket_view_nodes/2,
@@ -453,18 +452,6 @@ bucket_nodes(Bucket) ->
 replication_type(Bucket) ->
     proplists:get_value(repl_type, Bucket, tap).
 
--spec needs_upgrade_to_dcp([{_,_}]) -> boolean().
-needs_upgrade_to_dcp(Bucket) ->
-    DefaultReplType = get_default_repl_type(),
-    case replication_type(Bucket) of
-        dcp ->
-            false;
-        DefaultReplType ->
-            false;
-        _ ->
-            true
-    end.
-
 json_map_from_config(LocalAddr, BucketConfig) ->
     Config = ns_config:get(),
     json_map_with_full_config(LocalAddr, BucketConfig, Config).
@@ -654,18 +641,6 @@ cleanup_bucket_props(Props) ->
         none -> lists:keydelete(sasl_password, 1, Props)
     end.
 
-get_default_repl_type() ->
-    case os:getenv("COUCHBASE_REPL_TYPE") of
-        "tap" ->
-            tap;
-        "upr" ->
-            dcp;
-        "dcp" ->
-            dcp;
-        _ ->
-            dcp
-    end.
-
 create_bucket(BucketType, BucketName, NewConfig) ->
     case validate_bucket_config(BucketName, NewConfig) of
         ok ->
@@ -674,7 +649,7 @@ create_bucket(BucketType, BucketName, NewConfig) ->
                                      NewConfig),
             MergedConfig1 = cleanup_bucket_props(MergedConfig0),
             BucketUUID = couch_uuids:random(),
-            MergedConfig = [{repl_type, get_default_repl_type()} |
+            MergedConfig = [{repl_type, dcp} |
                             [{uuid, BucketUUID} | MergedConfig1]],
             ns_config:update_sub_key(
               buckets, configs,
@@ -914,7 +889,6 @@ needs_rebalance(BucketConfig, Nodes) ->
                 _ ->
                     Map = proplists:get_value(map, BucketConfig),
                     Map =:= undefined orelse
-                        ns_bucket:needs_upgrade_to_dcp(BucketConfig) orelse
                         lists:sort(Nodes) =/= lists:sort(Servers) orelse
                         ns_rebalancer:map_options_changed(BucketConfig) orelse
                         (ns_rebalancer:unbalanced(Map, BucketConfig) andalso

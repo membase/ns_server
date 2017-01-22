@@ -35,12 +35,10 @@
                             keep_nodes,
                             eject_nodes,
                             failed_nodes,
-                            stop_timer,
-                            consider_post_rebalance_upgrade = true}).
+                            stop_timer}).
 -record(recovery_state, {uuid :: binary(),
                          bucket :: bucket_name(),
                          recoverer_state :: any()}).
--record(dcp_upgrade_state, {upgrader, progress, restart}).
 
 
 %% API
@@ -99,8 +97,7 @@
 -export([idle/2, idle/3,
          janitor_running/2, janitor_running/3,
          rebalancing/2, rebalancing/3,
-         recovery/2, recovery/3,
-         upgrading_to_dcp/2, upgrading_to_dcp/3]).
+         recovery/2, recovery/3]).
 
 
 %%
@@ -511,8 +508,7 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                                keep_nodes=KeepNodes,
                                eject_nodes=EjectNodes,
                                failed_nodes=FailedNodes,
-                               stop_timer=MaybeTref,
-                               consider_post_rebalance_upgrade=ConsiderUpgrade} = State) ->
+                               stop_timer=MaybeTref}) ->
     Status = case Reason of
                  graceful_failover_done ->
                      none;
@@ -554,50 +550,7 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
             ok
     end,
 
-    case ConsiderUpgrade of
-        true ->
-            Restart =
-                try
-                    consider_switching_compat_mode(),
-                    false
-                catch exit:normal ->
-                        true
-                end,
-
-            maybe_start_upgrade_to_dcp(Restart);
-        false ->
-            ?log_debug("Skipping post-rebalance upgrade for rebalance ~p", [State]),
-            {next_state, idle, #idle_state{}}
-    end;
-
-handle_info({'EXIT', Pid, Reason}, upgrading_to_dcp,
-            #dcp_upgrade_state{upgrader = Pid,
-                               restart = Restart}) ->
-    Status = case Reason of
-                 normal ->
-                     ?user_log(?REBALANCE_SUCCESSFUL,
-                               "DCP upgrade completed successfully.~n"),
-                     none;
-                 stopped ->
-                     ?user_log(?REBALANCE_STOPPED,
-                               "DCP upgrade stopped by user.~n"),
-                     none;
-                 _ ->
-                     ?user_log(?REBALANCE_FAILED,
-                               "DCP upgrade exited with reason ~p~n", [Reason]),
-                     {none, <<"DCP upgrade failed. See logs for detailed reason.">>}
-             end,
-
-    ns_config:set([{rebalance_status, Status},
-                   {rebalance_status_uuid, couch_uuids:random()},
-                   {rebalancer_pid, undefined}]),
-
-    case Restart of
-        true ->
-            exit(normal);
-        false ->
-            {next_state, idle, #idle_state{}}
-    end;
+    {next_state, idle, #idle_state{}};
 
 handle_info(Msg, StateName, StateData) ->
     ?log_warning("Got unexpected message ~p in state ~p with data ~p",
@@ -811,8 +764,7 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{janitor_requests = Janit
                         progress=Progress,
                         keep_nodes=ns_node_disco:nodes_wanted(),
                         eject_nodes=[],
-                        failed_nodes=[],
-                        consider_post_rebalance_upgrade=false}};
+                        failed_nodes=[]}};
 idle(stop_rebalance, _From, State) ->
     ns_janitor:stop_rebalance_status(
       fun () ->
@@ -957,31 +909,6 @@ rebalancing(rebalance_progress, _From,
 rebalancing(Event, _From, State) ->
     ?log_warning("Got event ~p while rebalancing.", [Event]),
     {reply, rebalance_running, rebalancing, State}.
-
-%% Asynchronous upgrading_to_dcp events
-upgrading_to_dcp({update_progress, Service, ServiceProgress},
-                 #dcp_upgrade_state{progress=Old} = State) ->
-    NewProgress = rebalance_progress:update(Service, ServiceProgress, Old),
-    {next_state, upgrading_to_dcp,
-     State#dcp_upgrade_state{progress=NewProgress}}.
-
-%% Synchronous upgrading_to_dcp events
-upgrading_to_dcp({start_rebalance, _KeepNodes, _EjectNodes, _FailedNodes},
-                 _From, State) ->
-    ?user_log(?REBALANCE_NOT_STARTED,
-              "Not rebalancing because rebalance is already in progress.~n"),
-    {reply, in_progress, upgrading_to_dcp, State};
-upgrading_to_dcp(stop_rebalance, _From,
-                 #dcp_upgrade_state{upgrader=Pid} = State) ->
-    Pid ! stop,
-    {reply, ok, upgrading_to_dcp, State};
-upgrading_to_dcp(rebalance_progress, _From,
-                 #dcp_upgrade_state{progress = Progress} = State) ->
-    AggregatedProgress = dict:to_list(rebalance_progress:get_progress(Progress)),
-    {reply, {running, AggregatedProgress}, upgrading_to_dcp, State};
-upgrading_to_dcp(Event, _From, State) ->
-    ?log_warning("Got event ~p while upgrading to DCP.", [Event]),
-    {reply, dcp_upgrade_running, upgrading_to_dcp, State}.
 
 recovery(Event, State) ->
     ?log_warning("Got unexpected event: ~p", [Event]),
@@ -1347,37 +1274,6 @@ multicall_moxi_restart(Nodes, Timeout) ->
             ok;
         _ ->
             FailedNodes ++ BadResults
-    end.
-
-maybe_start_upgrade_to_dcp(Restart) ->
-    maybe_start_upgrade_to_dcp(Restart, trivial).
-
-maybe_start_upgrade_to_dcp(Restart, Type) ->
-    case {dcp_upgrade:get_buckets_to_upgrade(), Type} of
-        {[], _} ->
-            case Restart of
-                true ->
-                    exit(normal);
-                false ->
-                    {next_state, idle, #idle_state{}}
-            end;
-        {Buckets, trivial} ->
-            dcp_upgrade:consider_trivial_upgrade(Buckets),
-            maybe_start_upgrade_to_dcp(Restart, nontrivial);
-        {Buckets, nontrivial} ->
-            {ok, Pid} = dcp_upgrade:start_link(Buckets),
-
-            ns_config:set([{rebalance_status, running},
-                           {rebalance_status_uuid, couch_uuids:random()},
-                           {rebalancer_pid, Pid}]),
-
-            Nodes = ns_cluster_membership:active_nodes(),
-            Progress = rebalance_progress:init(Nodes, [kv]),
-
-            {next_state, upgrading_to_dcp,
-             #dcp_upgrade_state{upgrader = Pid,
-                                progress = Progress,
-                                restart = Restart}}
     end.
 
 get_janitor_items() ->
