@@ -54,7 +54,6 @@
          note_compaction_uninhibit_started/2,
          note_compaction_uninhibit_done/2,
          note_forced_inhibited_view_compaction/1,
-         note_tap_stats/4,
          event_to_jsons/1,
          event_to_formatted_iolist/1,
          format_some_history/1,
@@ -196,9 +195,6 @@ note_compaction_uninhibit_done(BucketName, Node) ->
 
 note_forced_inhibited_view_compaction(BucketName) ->
     submit_cast({forced_inhibited_view_compaction, BucketName, node()}).
-
-note_tap_stats(NoteTag, Estimate, Pid, TapName) ->
-    submit_cast({tap_estimate, NoteTag, Estimate, Pid, TapName}).
 
 note_dcp_replicator_start(Bucket, ConnName, ProducerNode, ConsumerConn, ProducerConn) ->
     Pid = self(),
@@ -653,20 +649,6 @@ event_to_jsons({TS, forced_inhibited_view_compaction, BucketName, Node}) ->
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {node, node_to_host(Node, ns_config:latest())}])];
-
-event_to_jsons({TS, tap_estimate, {Type, BucketName, VBucket, SrcNode, DstNode}, Estimate, Pid, TapName}) ->
-    Cfg = ns_config:get(),
-    [format_simple_plist_as_json([{type, tapEstimate},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {tapType, Type},
-                                  {tapName, TapName},
-                                  {vbucket, VBucket},
-                                  {bucket, BucketName},
-                                  {src, node_to_host(SrcNode, Cfg)},
-                                  {dst, node_to_host(DstNode, Cfg)},
-                                  {estimate, Estimate},
-                                  {pid, Pid},
-                                  {node, maybe_get_pids_node(Pid)}])];
 
 event_to_jsons({TS, seqno_waiting_started, BucketName, VBucket, SeqNo, Nodes}) ->
     Config = ns_config:get(),

@@ -123,8 +123,6 @@
          create_new_checkpoint/2,
          eval/2,
          wait_for_checkpoint_persistence/3,
-         get_tap_docs_estimate/3,
-         get_mass_tap_docs_estimate/2,
          get_mass_dcp_docs_estimate/2,
          get_dcp_docs_estimate/3,
          set_cluster_config/2,
@@ -360,7 +358,6 @@ assign_queue({delete, _Key, _VBucket, _CAS}) -> #state.heavy_calls_queue;
 assign_queue({set, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
 assign_queue({get_keys, _VBuckets, _Params}) -> #state.heavy_calls_queue;
 assign_queue({sync, _Key, _VBucket, _CAS}) -> #state.very_heavy_calls_queue;
-assign_queue({get_mass_tap_docs_estimate, _VBuckets}) -> #state.very_heavy_calls_queue;
 assign_queue({get_mass_dcp_docs_estimate, _VBuckets}) -> #state.very_heavy_calls_queue;
 assign_queue(_) -> #state.fast_calls_queue.
 
@@ -559,10 +556,6 @@ do_handle_call({set_vbucket, VBucket, VBState}, _From,
 do_handle_call({stats, Key}, _From, State) ->
     Reply = mc_binary:quick_stats(State#state.sock, Key, fun mc_binary:quick_stats_append/3, []),
     {reply, Reply, State};
-do_handle_call({get_tap_docs_estimate, VBucketId, TapName}, _From, State) ->
-    {reply, mc_client_binary:get_tap_docs_estimate(State#state.sock, VBucketId, TapName), State};
-do_handle_call({get_mass_tap_docs_estimate, VBuckets}, _From, State) ->
-    {reply, mc_client_binary:get_mass_tap_docs_estimate(State#state.sock, VBuckets), State};
 do_handle_call({get_dcp_docs_estimate, VBucketId, ConnName}, _From, State) ->
     {reply, mc_client_binary:get_dcp_docs_estimate(State#state.sock, VBucketId, ConnName), State};
 do_handle_call({get_mass_dcp_docs_estimate, VBuckets}, _From, State) ->
@@ -1535,14 +1528,6 @@ compact_vbucket(Bucket, VBucket, {PurgeBeforeTS, PurgeBeforeSeqNo, DropDeletes})
                                                        PurgeBeforeTS, PurgeBeforeSeqNo, DropDeletes)}
       end, Bucket).
 
-
--spec get_tap_docs_estimate(bucket_name(), vbucket_id(), binary()) ->
-                                   {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
-get_tap_docs_estimate(Bucket, VBucketId, TapName) ->
-    do_call(server(Bucket), {get_tap_docs_estimate, VBucketId, TapName}, ?TIMEOUT).
-
-get_mass_tap_docs_estimate(Bucket, VBuckets) ->
-    do_call(server(Bucket), {get_mass_tap_docs_estimate, VBuckets}, ?TIMEOUT_VERY_HEAVY).
 
 -spec get_dcp_docs_estimate(bucket_name(), vbucket_id(), string()) ->
                                    {ok, {non_neg_integer(), non_neg_integer(), binary()}}.

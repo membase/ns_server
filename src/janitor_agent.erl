@@ -65,8 +65,6 @@
          complete_flush/3,
          get_replication_persistence_checkpoint_id/4,
          wait_checkpoint_persisted/5,
-         get_tap_docs_estimate_many_taps/4,
-         get_mass_tap_docs_estimate/3,
          get_dcp_docs_estimate/4,
          get_mass_dcp_docs_estimate/3,
          wait_dcp_data_move/5,
@@ -527,20 +525,6 @@ get_servant_call_reply({MRef, Tag}) ->
 do_servant_call(Server, Request) ->
     get_servant_call_reply(initiate_servant_call(Server, Request)).
 
--spec get_tap_docs_estimate_many_taps(bucket_name(), node(), vbucket_id(), [binary()]) ->
-                                             [{ok, {non_neg_integer(), non_neg_integer(), binary()}}].
-get_tap_docs_estimate_many_taps(Bucket, SrcNode, VBucket, TapNames) ->
-    do_servant_call({server_name(Bucket), SrcNode},
-                    {get_tap_docs_estimate_many_taps, VBucket, TapNames}).
-
-get_mass_tap_docs_estimate(_Bucket, _Node, []) ->
-    {ok, []};
-get_mass_tap_docs_estimate(Bucket, Node, VBuckets) ->
-    RV = do_servant_call({server_name(Bucket), Node},
-                         {get_mass_tap_docs_estimate, VBuckets}),
-    {ok, _} = RV,
-    RV.
-
 -spec get_dcp_docs_estimate(bucket_name(), node(), vbucket_id(), [node()]) ->
                                    [{ok, {non_neg_integer(), non_neg_integer(), binary()}}].
 get_dcp_docs_estimate(Bucket, SrcNode, VBucket, ReplicaNodes) ->
@@ -838,19 +822,6 @@ handle_call({get_vbucket_high_seqno, VBucket},
     %% persisted seq no should not be possible here
     {ok, SeqNo} = ns_memcached:get_vbucket_high_seqno(Bucket, VBucket),
     {reply, SeqNo, State};
-handle_call({get_tap_docs_estimate_many_taps, _VBucketId, _TapName} = Req, From, State) ->
-    handle_call_via_servant(
-      From, State, Req,
-      fun ({_, VBucketId, TapNames}, #state{bucket_name = Bucket}) ->
-              [ns_memcached:get_tap_docs_estimate(Bucket, VBucketId, Name)
-               || Name <- TapNames]
-      end);
-handle_call({get_mass_tap_docs_estimate, VBucketsR}, From, State) ->
-    handle_call_via_servant(
-      From, State, VBucketsR,
-      fun (VBuckets, #state{bucket_name = Bucket}) ->
-              ns_memcached:get_mass_tap_docs_estimate(Bucket, VBuckets)
-      end);
 handle_call({get_dcp_docs_estimate, _VBucketId, _ReplicaNodes} = Req, From, State) ->
     handle_call_via_servant(
       From, State, Req,

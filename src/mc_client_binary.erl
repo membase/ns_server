@@ -59,10 +59,8 @@
          enable_traffic/1,
          disable_traffic/1,
          wait_for_checkpoint_persistence/3,
-         get_tap_docs_estimate/3,
          get_dcp_docs_estimate/3,
          map_status/1,
-         get_mass_tap_docs_estimate/2,
          get_mass_dcp_docs_estimate/2,
          ext/2,
          rev_to_mcd_ext/1,
@@ -943,35 +941,6 @@ wait_for_seqno_persistence(Sock, VBucket, SeqNo) ->
         Other ->
             process_error_response(Other)
     end.
-
--spec get_tap_docs_estimate(port(), vbucket_id(), binary()) ->
-                                   {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
-get_tap_docs_estimate(Sock, VBucket, TapName) ->
-    Default = {0, 0, <<"unknown">>},
-
-    RV = mc_binary:quick_stats(
-           Sock,
-           iolist_to_binary([<<"tap-vbtakeover ">>, integer_to_list(VBucket), $\s | TapName]),
-           fun (<<"estimate">>, V, {_, AccChkItems, AccStatus}) ->
-                   {list_to_integer(binary_to_list(V)), AccChkItems, AccStatus};
-               (<<"chk_items">>, V, {AccEstimate, _, AccStatus}) ->
-                   {AccEstimate, list_to_integer(binary_to_list(V)), AccStatus};
-               (<<"status">>, V, {AccEstimate, AccChkItems, _}) ->
-                   {AccEstimate, AccChkItems, V};
-               (_, _, Acc) ->
-                   Acc
-           end, Default),
-
-    handle_docs_estimate_result(RV, Default).
-
--spec get_mass_tap_docs_estimate(port(), [vbucket_id()]) ->
-                                        {ok, [{non_neg_integer(), non_neg_integer(), binary()}]}.
-get_mass_tap_docs_estimate(Sock, VBuckets) ->
-    %% TODO: consider pipelining that stuff. For now it just does
-    %% vbucket after vbucket sequentially
-    {ok, [case get_tap_docs_estimate(Sock, VB, <<>>) of
-              {ok, V} -> V
-          end || VB <- VBuckets]}.
 
 -spec get_dcp_docs_estimate(port(), vbucket_id(), binary() | string()) ->
                                    {ok, {non_neg_integer(), non_neg_integer(), binary()}}.
