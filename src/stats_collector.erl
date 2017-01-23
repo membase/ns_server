@@ -434,7 +434,6 @@ parse_stats_test() ->
          {<<"ep_warmup">>,<<"true">>},
          {<<"ep_dbinit">>,<<"0">>},
          {<<"ep_dbname">>,<<"./data/n_0/default">>},
-         {<<"ep_tap_keepalive">>,<<"0">>},
          {<<"ep_warmup_time">>,<<"0">>},
          {<<"ep_warmup_oom">>,<<"0">>},
          {<<"ep_warmup_dups">>,<<"0">>},
