@@ -79,8 +79,6 @@
 
 %% external API
 -export([active_buckets/0,
-         backfilling/1,
-         backfilling/2,
          connected/2,
          connected/3,
          warmed/2,
@@ -452,23 +450,6 @@ do_handle_call({raw_stats, SubStat, StatsFun, StatsFunState}, _From, State) ->
     catch T:E ->
             {reply, {exception, {T, E}}, State}
     end;
-do_handle_call(backfilling, _From, State) ->
-    End = <<":pending_backfill">>,
-    ES = byte_size(End),
-    {ok, Reply} = mc_binary:quick_stats(
-                    State#state.sock, <<"tap">>,
-                    fun (<<"eq_tapq:", K/binary>>, <<"true">>, Acc) ->
-                            S = byte_size(K) - ES,
-                            case K of
-                                <<_:S/binary, End/binary>> ->
-                                    true;
-                                _ ->
-                                    Acc
-                            end;
-                        (_, _, Acc) ->
-                            Acc
-                    end, false),
-    {reply, Reply, State};
 do_handle_call({delete_vbucket, VBucket}, _From, #state{sock=Sock} = State) ->
     case mc_client_binary:delete_vbucket(Sock, VBucket) of
         ok ->
@@ -1024,19 +1005,6 @@ eval(Bucket, Fn) ->
 sync(Bucket, Key, VBucket, CAS) ->
     do_call({server(Bucket), node()},
             {sync, Key, VBucket, CAS}, ?TIMEOUT_VERY_HEAVY).
-
-%% @doc Returns true if backfill is running on this node for the given bucket.
--spec backfilling(bucket_name()) ->
-                         boolean().
-backfilling(Bucket) ->
-    backfilling(node(), Bucket).
-
-%% @doc Returns true if backfill is running on the given node for the given
-%% bucket.
--spec backfilling(node(), bucket_name()) ->
-                         boolean().
-backfilling(Node, Bucket) ->
-    do_call({server(Bucket), Node}, backfilling, ?TIMEOUT).
 
 %% @doc Delete a vbucket. Will set the vbucket to dead state if it
 %% isn't already, blocking until it successfully does so.
