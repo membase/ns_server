@@ -31,8 +31,6 @@ child_specs(BucketName) ->
       permanent, infinity, supervisor, [docs_kv_sup]},
      {{ns_memcached_sup, BucketName}, {ns_memcached_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [ns_memcached_sup]},
-     {{ns_vbm_sup, BucketName}, {ns_vbm_sup, start_link, [BucketName]},
-      permanent, infinity, supervisor, [ns_vbm_sup]},
      {{dcp_sup, BucketName}, {dcp_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [dcp_sup]},
      {{dcp_replication_manager, BucketName}, {dcp_replication_manager, start_link, [BucketName]},
