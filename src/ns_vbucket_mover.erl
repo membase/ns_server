@@ -43,8 +43,7 @@
                 map::array(),
                 moves_scheduler_state,
                 progress_callback::progress_callback(),
-                all_nodes_set::set(),
-                replication_type::bucket_replication_type()}).
+                all_nodes_set::set()}).
 
 %%
 %% API
@@ -139,6 +138,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
     ets:new(compaction_inhibitions, [named_table, private, set]),
 
     {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
+    dcp = ns_bucket:replication_type(BucketConfig),
 
     {ok, #state{bucket=Bucket,
                 disco_events_subscription=Subscription,
@@ -148,8 +148,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                                                                        ?MAX_INFLIGHT_MOVES_PER_NODE,
                                                                        fun (Msg, Args) -> ?log_debug(Msg, Args) end),
                 progress_callback=ProgressCallback,
-                all_nodes_set=AllNodesSet,
-                replication_type=ns_bucket:replication_type(BucketConfig)}}.
+                all_nodes_set=AllNodesSet}}.
 
 
 handle_call(_, _From, _State) ->
@@ -318,7 +317,6 @@ inhibit_view_compaction(Bucket, Rebalancer, Node) ->
 -spec spawn_workers(#state{}) -> {noreply, #state{}} | {stop, normal, #state{}}.
 spawn_workers(#state{bucket=Bucket,
                      moves_scheduler_state = SubState,
-                     replication_type = ReplType,
                      all_nodes_set = AllNodesSet} = State) ->
     {Actions, NewSubState} = vbucket_move_scheduler:choose_action(SubState),
     ?log_debug("Got actions: ~p", [Actions]),
@@ -327,8 +325,7 @@ spawn_workers(#state{bucket=Bucket,
              Pid = ns_single_vbucket_mover:spawn_mover(Bucket,
                                                        V,
                                                        OldChain,
-                                                       NewChain,
-                                                       ReplType),
+                                                       NewChain),
              register_child_process(Pid);
          {compact, N} ->
              case (cluster_compat_mode:is_index_aware_rebalance_on()

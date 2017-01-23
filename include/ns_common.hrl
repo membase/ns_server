@@ -44,7 +44,7 @@
 
 -type checkpoint_id() :: non_neg_integer().
 
--type bucket_replication_type() :: tap | dcp | {dcp, [vbucket_id()]}.
+-type bucket_replication_type() :: tap | dcp.
 
 -type dcp_error() :: {dcp_error, mc_error_atom(), binary()}.
 -type dcp_conn_name() :: nonempty_string().

@@ -18,9 +18,6 @@
 -include("ns_common.hrl").
 
 -export([start_link_timestamper/0,
-         note_not_ready_vbuckets/2,
-         note_ebucketmigrator_start/4,
-         note_deregister_tap_name/3,
          note_vbucket_state_change/4,
          note_bucket_creation/3,
          note_bucket_deletion/1,
@@ -33,16 +30,11 @@
          note_became_master/0,
          note_name_changed/0,
          note_observed_death/3,
-         note_vbucket_filter_change_old/0,
-         note_vbucket_filter_change_native/2,
-         note_ebucketmigrator_upstream_reused/3,
          note_bucket_rebalance_started/1,
          note_bucket_rebalance_ended/1,
          note_bucket_failover_started/2,
          note_bucket_failover_ended/2,
          note_indexing_initiated/3,
-         note_checkpoint_waiting_started/4,
-         note_checkpoint_waiting_ended/4,
          note_seqno_waiting_started/4,
          note_seqno_waiting_ended/4,
          note_takeover_started/4,
@@ -70,16 +62,6 @@
 
 submit_cast(Arg) ->
     (catch gen_event:notify(master_activity_events_ingress, {submit_master_event, Arg})).
-
-note_not_ready_vbuckets(Pid, VBucketIds) ->
-    submit_cast({not_ready_vbuckets, Pid, VBucketIds}).
-
-note_ebucketmigrator_start(Pid, Src, Dst, Options) ->
-    submit_cast({ebucketmigrator_start, Pid, Src, Dst, Options}),
-    master_activity_events_pids_watcher:observe_fate_of(Pid, {ebucketmigrator_terminate, Src, Dst, Options}).
-
-note_deregister_tap_name(Bucket, Src, Name) ->
-    submit_cast({deregister_tap_name, self(), Bucket, Src, Name}).
 
 note_vbucket_state_change(Bucket, Node, VBucketId, NewState) ->
     submit_cast({vbucket_state_change, Bucket, Node, VBucketId, NewState}).
@@ -132,15 +114,6 @@ note_name_changed() ->
 note_observed_death(Pid, Reason, EventTuple) ->
     submit_cast(list_to_tuple(tuple_to_list(EventTuple) ++ [Pid, Reason])).
 
-note_vbucket_filter_change_old() ->
-    submit_cast({vbucket_filter_change_old, self()}).
-
-note_vbucket_filter_change_native(TapName, Checkpoints) ->
-    submit_cast({vbucket_filter_change_native, self(), TapName, Checkpoints}).
-
-note_ebucketmigrator_upstream_reused(Pid, OldPid, TapName) ->
-    submit_cast({ebucketmigrator_upstream_reused, Pid, OldPid, TapName}).
-
 note_bucket_rebalance_started(BucketName) ->
     submit_cast({bucket_rebalance_started, BucketName, self()}).
 
@@ -156,12 +129,6 @@ note_bucket_failover_ended(BucketName, Node) ->
 note_indexing_initiated(_BucketName, [], _VBucket) -> ok;
 note_indexing_initiated(BucketName, [MasterNode], VBucket) ->
     submit_cast({indexing_initated, BucketName, MasterNode, VBucket}).
-
-note_checkpoint_waiting_started(BucketName, VBucket, WaitedCheckpointId, Nodes) ->
-    submit_cast({checkpoint_waiting_started, BucketName, VBucket, WaitedCheckpointId, Nodes}).
-
-note_checkpoint_waiting_ended(BucketName, VBucket, WaitedCheckpointId, Nodes) ->
-    submit_cast({checkpoint_waiting_ended, BucketName, VBucket, WaitedCheckpointId, Nodes}).
 
 note_seqno_waiting_started(BucketName, VBucket, SeqNo, Nodes) ->
     submit_cast({seqno_waiting_started, BucketName, VBucket, SeqNo, Nodes}).
@@ -380,54 +347,6 @@ maybe_get_pids_node(Pid) when is_pid(Pid) ->
 maybe_get_pids_node(_PerhapsBinary) ->
     skip_this_pair_please.
 
-format_ebucketmigrator_options(Opts) ->
-    {Opts1, MaybeVBuckets} = case lists:keyfind(vbuckets, 1, Opts) of
-                                 false ->
-                                     {Opts, []};
-                                 {vbuckets, VBuckets} ->
-                                     {lists:keydelete(vbuckets, 1, Opts),
-                                      [{vbuckets, VBuckets}]}
-                             end,
-    {Opts2, MaybeCheckpoints} = case lists:keyfind(checkpoints, 1, Opts) of
-                                    false ->
-                                        {Opts1, []};
-                                    {checkpoints, Checkpoints} ->
-                                        {lists:keydelete(checkpoints, 1, Opts1),
-                                         [{checkpoints, {struct, Checkpoints}}]}
-                                end,
-    {MaybeVBuckets ++ MaybeCheckpoints, Opts2}.
-
-event_to_jsons({TS, not_ready_vbuckets, Pid, VBucketIds}) ->
-    [[{vbuckets, VBucketIds}]
-     ++ format_simple_plist_as_json([{type, notReadyVBuckets},
-                                     {ts, misc:time_to_epoch_float(TS)},
-                                     {pid, Pid}])];
-event_to_jsons({TS, ebucketmigrator_start, Pid, Src, Dst, Opts}) ->
-    {FormattedOpts, JustOps} = format_ebucketmigrator_options(Opts),
-    [FormattedOpts ++
-         format_simple_plist_as_json([{type, ebucketmigratorStart},
-                                      {ts, misc:time_to_epoch_float(TS)},
-                                      {node, maybe_get_pids_node(Pid)},
-                                      {pid, Pid},
-                                      {src, format_mcd_pair(Src)},
-                                      {dst, format_mcd_pair(Dst)} | JustOps])];
-event_to_jsons({TS, ebucketmigrator_terminate, Src, Dst, Opts, Pid, Reason}) ->
-    {FormattedOpts, JustOps} = format_ebucketmigrator_options(Opts),
-    [FormattedOpts ++
-         format_simple_plist_as_json([{type, ebucketmigratorTerminate},
-                                      {ts, misc:time_to_epoch_float(TS)},
-                                      {pid, Pid},
-                                      {reason, Reason},
-                                      {src, format_mcd_pair(Src)},
-                                      {dst, format_mcd_pair(Dst)} | JustOps])];
-event_to_jsons({TS, deregister_tap_name, Pid, Bucket, Src, Name}) ->
-    [format_simple_plist_as_json([{type, deregisterTapName},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {bucket, Bucket},
-                                  {pid, Pid},
-                                  {pidNode, maybe_get_pids_node(Pid)},
-                                  {host, format_mcd_pair(Src)},
-                                  {name, Name}])];
 event_to_jsons({TS, vbucket_state_change, Bucket, Node, VBucketId, NewState}) ->
     [format_simple_plist_as_json([{type, vbucketStateChange},
                                   {ts, misc:time_to_epoch_float(TS)},
@@ -497,26 +416,6 @@ event_to_jsons({TS, vbucket_move_done, BucketName, VBucketId}) ->
                                   {bucket, BucketName},
                                   {vbucket, VBucketId}])];
 
-event_to_jsons({TS, vbucket_filter_change_old, Pid}) ->
-    [format_simple_plist_as_json([{type, vbucketFilterChangeOld},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {pid, Pid},
-                                  {node, maybe_get_pids_node(Pid)}])];
-event_to_jsons({TS, vbucket_filter_change_native, Pid, TapName, Checkpoints}) ->
-    [format_simple_plist_as_json([{type, vbucketFilterChangeNative},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {pid, Pid},
-                                  {node, maybe_get_pids_node(Pid)},
-                                  {name, TapName}]) ++
-         [{checkpoints, {struct, Checkpoints}}]];
-event_to_jsons({TS, ebucketmigrator_upstream_reused, Pid, OldPid, TapName}) ->
-    [format_simple_plist_as_json([{type, ebucketmigratorUpstreamReused},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {pid, Pid},
-                                  {oldPid, OldPid},
-                                  {node, maybe_get_pids_node(Pid)},
-                                  {name, TapName}])];
-
 event_to_jsons({TS, bucket_rebalance_started, BucketName, Pid}) ->
     [format_simple_plist_as_json([{type, bucketRebalanceStarted},
                                   {ts, misc:time_to_epoch_float(TS)},
@@ -585,26 +484,6 @@ event_to_jsons({TS, indexing_initated, BucketName, Node, VBucket}) ->
                                   {node, node_to_host(Node, ns_config:get())},
                                   {bucket, BucketName},
                                   {vbucket, VBucket}])];
-
-event_to_jsons({TS, checkpoint_waiting_started, BucketName, VBucket, WaitedCheckpointId, Nodes}) ->
-    Config = ns_config:get(),
-    [format_simple_plist_as_json([{type, checkpointWaitingStarted},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {bucket, BucketName},
-                                  {vbucket, VBucket},
-                                  {checkpointId, WaitedCheckpointId},
-                                  {node, node_to_host(N, Config)}])
-     || N <- Nodes];
-
-event_to_jsons({TS, checkpoint_waiting_ended, BucketName, VBucket, WaitedCheckpointId, Nodes}) ->
-    Config = ns_config:get(),
-    [format_simple_plist_as_json([{type, checkpointWaitingEnded},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {bucket, BucketName},
-                                  {vbucket, VBucket},
-                                  {checkpointId, WaitedCheckpointId},
-                                  {node, node_to_host(N, Config)}])
-     || N <- Nodes];
 
 event_to_jsons({TS, backfill_phase_ended, BucketName, VBucket}) ->
     [format_simple_plist_as_json([{type, backfillPhaseEnded},

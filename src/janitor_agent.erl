@@ -60,11 +60,8 @@
          get_src_dst_vbucket_replications/3,
          initiate_indexing/5,
          wait_index_updated/5,
-         create_new_checkpoint/4,
          mass_prepare_flush/2,
          complete_flush/3,
-         get_replication_persistence_checkpoint_id/4,
-         wait_checkpoint_persisted/5,
          get_dcp_docs_estimate/4,
          get_mass_dcp_docs_estimate/3,
          wait_dcp_data_move/5,
@@ -454,17 +451,6 @@ dcp_takeover(Bucket, Rebalancer, OldMasterNode, NewMasterNode, VBucket) ->
                     {if_rebalance, Rebalancer,
                      {dcp_takeover, OldMasterNode, VBucket}}, infinity).
 
-%% returns checkpoint id which 100% contains all currently persisted
-%% docs. Normally it's persisted_checkpoint_id + 1 (assuming
-%% checkpoint after persisted one has some stuff persisted already)
-get_replication_persistence_checkpoint_id(Bucket, Rebalancer, MasterNode, VBucket) ->
-    ?rebalance_info("~s: Doing get_replication_persistence_checkpoint_id call for vbucket ~p on ~s", [Bucket, VBucket, MasterNode]),
-    RV = gen_server:call(server_name(Bucket, MasterNode),
-                         {if_rebalance, Rebalancer, {get_replication_persistence_checkpoint_id, VBucket}},
-                         infinity),
-    true = is_integer(RV),
-    RV.
-
 get_vbucket_high_seqno(Bucket, Rebalancer, MasterNode, VBucket) ->
     ?rebalance_info("~s: Doing get_vbucket_high_seqno call for vbucket ~p on ~s",
                     [Bucket, VBucket, MasterNode]),
@@ -473,20 +459,6 @@ get_vbucket_high_seqno(Bucket, Rebalancer, MasterNode, VBucket) ->
                          infinity),
     true = is_integer(RV),
     RV.
-
--spec create_new_checkpoint(bucket_name(), pid(), node(), vbucket_id()) -> {checkpoint_id(), checkpoint_id()}.
-create_new_checkpoint(Bucket, Rebalancer, MasterNode, VBucket) ->
-    ?rebalance_info("~s: Doing create_new_checkpoint call for vbucket ~p on ~s", [Bucket, VBucket, MasterNode]),
-    {_PersistedCheckpointId, _OpenCheckpointId} =
-        gen_server:call(server_name(Bucket, MasterNode),
-                        {if_rebalance, Rebalancer, {create_new_checkpoint, VBucket}},
-                        infinity).
-
--spec wait_checkpoint_persisted(bucket_name(), pid(), node(), vbucket_id(), checkpoint_id()) -> ok.
-wait_checkpoint_persisted(Bucket, Rebalancer, Node, VBucket, WaitedCheckpointId) ->
-    ok = gen_server:call({server_name(Bucket), Node},
-                         {if_rebalance, Rebalancer, {wait_checkpoint_persisted, VBucket, WaitedCheckpointId}},
-                         infinity).
 
 -spec wait_seqno_persisted(bucket_name(), pid(), node(), vbucket_id(), seq_no()) -> ok.
 wait_seqno_persisted(Bucket, Rebalancer, Node, VBucket, SeqNo) ->
@@ -740,29 +712,6 @@ handle_call(initiate_indexing, From, #state{bucket_name = Bucket} = State) ->
                        ok = ns_couchdb_api:initiate_indexing(Bucket)
                end),
     {noreply, State2};
-handle_call({create_new_checkpoint, VBucket},
-            _From,
-            #state{bucket_name = Bucket} = State) ->
-    %% NOTE: this happens on current master of vbucket thus undefined
-    %% persisted checkpoint id should not be possible here
-    {ok, {PersistedCheckpointId, _}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
-    {ok, OpenCheckpointId, _LastPersistedCkpt} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
-    {reply, {PersistedCheckpointId, OpenCheckpointId}, State};
-handle_call({wait_checkpoint_persisted, VBucket, CheckpointId},
-           From,
-           #state{bucket_name = Bucket} = State) ->
-    State2 = spawn_rebalance_subprocess(
-               State,
-               From,
-               fun () ->
-                       ?rebalance_debug("Going to wait for persistence of checkpoint ~B in vbucket ~B",
-                                        [CheckpointId, VBucket]),
-                       ok = do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId),
-                       ?rebalance_debug("Done waiting for persistence of checkpoint ~B in vbucket ~B",
-                                       [CheckpointId, VBucket]),
-                       ok
-               end),
-    {noreply, State2};
 handle_call({wait_seqno_persisted, VBucket, SeqNo},
            From,
            #state{bucket_name = Bucket} = State) ->
@@ -801,20 +750,6 @@ handle_call({uninhibit_view_compaction, Ref},
                        compaction_new_daemon:uninhibit_view_compaction(Bucket, Ref)
                end),
     {noreply, State2};
-handle_call({get_replication_persistence_checkpoint_id, VBucket},
-            _From,
-            #state{bucket_name = Bucket} = State) ->
-    %% NOTE: this happens on current master of vbucket thus undefined
-    %% persisted checkpoint id should not be possible here
-    {ok, {PersistedCheckpointId, OpenCheckpointId}} = ns_memcached:get_vbucket_checkpoint_ids(Bucket, VBucket),
-    case PersistedCheckpointId + 1 < OpenCheckpointId of
-        true ->
-            {reply, PersistedCheckpointId + 1, State};
-        false ->
-            {ok, NewOpenCheckpointId, _LastPersistedCkpt} = ns_memcached:create_new_checkpoint(Bucket, VBucket),
-            ?log_debug("After creating new checkpoint here's what we have: ~p (~p)", [{PersistedCheckpointId, OpenCheckpointId, NewOpenCheckpointId}, VBucket]),
-            {reply, erlang:min(PersistedCheckpointId + 1, NewOpenCheckpointId - 1), State}
-    end;
 handle_call({get_vbucket_high_seqno, VBucket},
             _From,
             #state{bucket_name = Bucket} = State) ->
@@ -1046,14 +981,6 @@ save_flushseq(BucketName, ConfigFlushSeq) ->
     ?log_info("Saving new flushseq: ~p", [ConfigFlushSeq]),
     Cont = list_to_binary(integer_to_list(ConfigFlushSeq)),
     misc:atomic_write_file(flushseq_file_path(BucketName), Cont).
-
-do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId) ->
-    case ns_memcached:wait_for_checkpoint_persistence(Bucket, VBucket, CheckpointId) of
-        ok -> ok;
-        {memcached_error, etmpfail, _} ->
-            ?rebalance_debug("Got etmpfail waiting for checkpoint persistence. Will try again"),
-            do_wait_checkpoint_persisted(Bucket, VBucket, CheckpointId)
-    end.
 
 do_wait_seqno_persisted(Bucket, VBucket, SeqNo) ->
     case ns_memcached:wait_for_seqno_persistence(Bucket, VBucket, SeqNo) of
