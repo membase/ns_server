@@ -169,8 +169,6 @@
 
         %% Number of items fetched from disk.
         ep_bg_fetched,                          % needed by ep_cache_miss_rate
-        %% Number of tap disk fetches
-        %% ep_tap_bg_fetched,
 
         %% Number of times replica item values got ejected from memory
         %% to disk
@@ -238,15 +236,6 @@
 -record(stat_entry, {timestamp :: integer() | atom(),
                      values :: [{atom(), number()}] | '_'}).
 
--record(tap_stream_stats, {count = 0,
-                           qlen = 0,
-                           queue_fill = 0,
-                           queue_drain = 0,
-                           queue_backoff = 0,
-                           queue_backfillremaining = 0,
-                           queue_itemondisk = 0,
-                           total_backlog_size = 0}).
-
 -record(dcp_stream_stats, {count = 0,
                            items_remaining = 0,
                            items_sent = 0,
@@ -254,17 +243,6 @@
                            total_backlog_size = 0,
                            total_bytes = 0,
                            backoff = 0}).
-
--define(TAP_STAT_GAUGES,
-        ep_tap_rebalance_count, ep_tap_rebalance_qlen, ep_tap_rebalance_queue_backfillremaining, ep_tap_rebalance_queue_itemondisk, ep_tap_rebalance_total_backlog_size,
-        ep_tap_replica_count, ep_tap_replica_qlen, ep_tap_replica_queue_backfillremaining, ep_tap_replica_queue_itemondisk, ep_tap_replica_total_backlog_size,
-        ep_tap_user_count, ep_tap_user_qlen, ep_tap_user_queue_backfillremaining, ep_tap_user_queue_itemondisk, ep_tap_user_total_backlog_size,
-        ep_tap_total_count, ep_tap_total_qlen, ep_tap_total_queue_backfillremaining, ep_tap_total_queue_itemondisk, ep_tap_total_total_backlog_size).
--define(TAP_STAT_COUNTERS,
-        ep_tap_rebalance_queue_fill, ep_tap_rebalance_queue_drain, ep_tap_rebalance_queue_backoff,
-        ep_tap_replica_queue_fill, ep_tap_replica_queue_drain, ep_tap_replica_queue_backoff,
-        ep_tap_user_queue_fill, ep_tap_user_queue_drain, ep_tap_user_queue_backoff,
-        ep_tap_total_queue_fill, ep_tap_total_queue_drain, ep_tap_total_queue_backoff).
 
 -define(DCP_STAT_GAUGES,
         ep_dcp_replica_count,
@@ -322,56 +300,7 @@
         ep_dcp_other_total_bytes,
         ep_dcp_other_backoff).
 
--ifdef(NEED_TAP_STREAM_STATS_CODE).
-
--define(DEFINE_EXTRACT(A, N), extract_agg_stat(<<??A>>, V, Acc) ->
-               Acc#tap_stream_stats{N = list_to_integer(binary_to_list(V))}).
-?DEFINE_EXTRACT(qlen, qlen);
-?DEFINE_EXTRACT(fill, queue_fill);
-?DEFINE_EXTRACT(drain, queue_drain);
-?DEFINE_EXTRACT(backoff, queue_backoff);
-?DEFINE_EXTRACT(backfill_remaining, queue_backfillremaining);
-?DEFINE_EXTRACT(itemondisk, queue_itemondisk);
-?DEFINE_EXTRACT(total_backlog_size, total_backlog_size);
-?DEFINE_EXTRACT(count, count);
-extract_agg_stat(_K, _V, Acc) -> Acc.
--undef(DEFINE_EXTRACT).
-
--define(DEFINE_TO_KVLIST(N), {<<Prefix/binary, ??N>>, list_to_binary(integer_to_list(Record#tap_stream_stats.N))}).
-tap_stream_stats_to_kvlist(Prefix, Record) ->
-    [?DEFINE_TO_KVLIST(count),
-     ?DEFINE_TO_KVLIST(qlen),
-     ?DEFINE_TO_KVLIST(queue_fill),
-     ?DEFINE_TO_KVLIST(queue_drain),
-     ?DEFINE_TO_KVLIST(queue_backoff),
-     ?DEFINE_TO_KVLIST(queue_backfillremaining),
-     ?DEFINE_TO_KVLIST(queue_itemondisk),
-     ?DEFINE_TO_KVLIST(total_backlog_size)].
--undef(DEFINE_TO_KVLIST).
-
--define(DEFINE_ADDER(N), N = A#tap_stream_stats.N + B#tap_stream_stats.N).
-add_tap_stream_stats(A, B) ->
-    #tap_stream_stats{?DEFINE_ADDER(count),
-                      ?DEFINE_ADDER(qlen),
-                      ?DEFINE_ADDER(queue_fill),
-                      ?DEFINE_ADDER(queue_drain),
-                      ?DEFINE_ADDER(queue_backoff),
-                      ?DEFINE_ADDER(queue_backfillremaining),
-                      ?DEFINE_ADDER(queue_itemondisk),
-                      ?DEFINE_ADDER(total_backlog_size)}.
--undef(DEFINE_ADDER).
-
--define(DEFINE_SUBTRACTOR(N), N = A#tap_stream_stats.N - B#tap_stream_stats.N).
-sub_tap_stream_stats(A, B) ->
-    #tap_stream_stats{?DEFINE_SUBTRACTOR(count),
-                      ?DEFINE_SUBTRACTOR(qlen),
-                      ?DEFINE_SUBTRACTOR(queue_fill),
-                      ?DEFINE_SUBTRACTOR(queue_drain),
-                      ?DEFINE_SUBTRACTOR(queue_backoff),
-                      ?DEFINE_SUBTRACTOR(queue_backfillremaining),
-                      ?DEFINE_SUBTRACTOR(queue_itemondisk),
-                      ?DEFINE_SUBTRACTOR(total_backlog_size)}.
--undef(DEFINE_SUBTRACTOR).
+-ifdef(NEED_DCP_STREAM_STATS_CODE).
 
 -define(DEFINE_EXTRACT(N), extract_agg_dcp_stat(<<??N>>, V, Acc) ->
                Acc#dcp_stream_stats{N = list_to_integer(binary_to_list(V))}).
@@ -424,4 +353,4 @@ calc_dcp_other_stats(A, B, C, D, E, F) ->
                       ?DEFINE_FORMULA(backoff)}.
 -undef(DEFINE_FORMULA).
 
--endif. % NEED_TAP_STREAM_STATS_CODE
+-endif. % NEED_DCP_STREAM_STATS_CODE

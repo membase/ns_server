@@ -34,7 +34,7 @@
                 logged_ts = 0,
                 min_files_size = undefined}).
 
--define(NEED_TAP_STREAM_STATS_CODE, 1).
+-define(NEED_DCP_STREAM_STATS_CODE, 1).
 -include("ns_stats.hrl").
 
 start_link(Bucket) ->
@@ -72,10 +72,6 @@ grab_stats(#state{bucket=Bucket}) ->
                          ?log_info("Failed to fetch couch stats:~n~p", [Crap]),
                          []
                  end,
-    TapStats = case ns_memcached:stats(Bucket, <<"tapagg _">>) of
-                   {ok, Values} -> Values;
-                   {memcached_error, key_enoent, _} -> []
-               end,
     DcpStats = case ns_memcached:stats(Bucket, <<"dcpagg :">>) of
                    {ok, ValuesDcp} -> ValuesDcp;
                    {memcached_error, key_enoent, _} -> []
@@ -99,7 +95,7 @@ grab_stats(#state{bucket=Bucket}) ->
                 end
         end,
 
-    {PlainStats, TapStats, DcpStats, Timings, CouchStats, XDCStats}.
+    {PlainStats, DcpStats, Timings, CouchStats, XDCStats}.
 
 handle_info(config_changed, State) ->
     {noreply, State#state{min_files_size = undefined}};
@@ -141,10 +137,10 @@ get_min_files_size(Bucket) ->
 
 
 process_stats(TS, Stats, undefined, LastTS, State) ->
-    process_stats(TS, Stats, {undefined, undefined, undefined, undefined}, LastTS, State);
+    process_stats(TS, Stats, {undefined, undefined, undefined}, LastTS, State);
 process_stats(TS,
-              {PlainStats, TapStats, DcpStats, Timings, CouchStats, XDCStats},
-              {LastPlainCounters, LastTapCounters, LastDcpCounters, LastTimingsCounters},
+              {PlainStats, DcpStats, Timings, CouchStats, XDCStats},
+              {LastPlainCounters, LastDcpCounters, LastTimingsCounters},
               LastTS,
               #state{bucket = Bucket,
                      min_files_size = MinFilesSize0} = State) ->
@@ -157,16 +153,15 @@ process_stats(TS,
     XDCValues = transform_xdc_stats(XDCStats),
     {PlainValues, PlainCounters} = parse_plain_stats(TS, PlainStats, LastTS,
                                                      LastPlainCounters, MinFilesSize),
-    {TapValues, TapCounters} = parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters),
     {DcpValues, DcpCounters} = parse_dcpagg_stats(TS, DcpStats, LastTS, LastDcpCounters),
     {TimingValues, TimingsCounters} = parse_timings(TS, Timings, LastTS, LastTimingsCounters),
     %% Don't send event with undefined values
     Stats =
         case lists:member(undefined,
-                          [LastPlainCounters, LastTapCounters, LastDcpCounters, LastTimingsCounters]) of
+                          [LastPlainCounters, LastDcpCounters, LastTimingsCounters]) of
             false ->
                 Values = lists:merge(
-                           [PlainValues, TapValues, DcpValues, TimingValues, CouchStats, XDCValues]),
+                           [PlainValues, DcpValues, TimingValues, CouchStats, XDCValues]),
                 [{Bucket, Values}];
             true ->
                 []
@@ -176,7 +171,7 @@ process_stats(TS,
     NewState = maybe_log_stats(TS, State, StatsToBeLogged),
 
     {Stats,
-     {PlainCounters, TapCounters, DcpCounters, TimingsCounters},
+     {PlainCounters, DcpCounters, TimingsCounters},
      NewState#state{min_files_size = MinFilesSize}}.
 
 %% Internal functions
@@ -217,11 +212,6 @@ sum_stat_values(Dict, [FirstName | RestNames]) ->
     lists:foldl(fun (Name, Acc) ->
                         orddict_fetch(Name, Dict) + Acc
                 end, orddict_fetch(FirstName, Dict), RestNames).
-
-
-extract_agg_tap_stats(KVs) ->
-    lists:foldl(fun ({K, V}, Acc) -> extract_agg_stat(K, V, Acc) end,
-                #tap_stream_stats{}, KVs).
 
 extract_agg_dcp_stats(KVs) ->
     lists:foldl(fun ({K, V}, Acc) -> extract_agg_dcp_stat(K, V, Acc) end,
@@ -271,17 +261,6 @@ diff_stats_counters(TS, LastCounters, LastTS, KnownGauges, KnownCounters, GetVal
                             lists:sort(lists:zip(KnownGauges, Gauges)),
                             lists:sort(lists:zip(KnownCounters, Deltas))),
     {Values0, Counters}.
-
-parse_aggregate_tap_stats(AggTap) ->
-    ReplicaStats = extract_agg_tap_stats([{K, V} || {<<"replication:", K/binary>>, V} <- AggTap]),
-    RebalanceStats = extract_agg_tap_stats([{K, V} || {<<"rebalance:", K/binary>>, V} <- AggTap]),
-    NonUserStats = add_tap_stream_stats(ReplicaStats, RebalanceStats),
-    TotalStats = extract_agg_tap_stats([{K, V} || {<<"_total:", K/binary>>, V} <- AggTap]),
-    UserStats = sub_tap_stream_stats(TotalStats, NonUserStats),
-    lists:append([tap_stream_stats_to_kvlist(<<"ep_tap_rebalance_">>, RebalanceStats),
-                  tap_stream_stats_to_kvlist(<<"ep_tap_replica_">>, ReplicaStats),
-                  tap_stream_stats_to_kvlist(<<"ep_tap_user_">>, UserStats),
-                  tap_stream_stats_to_kvlist(<<"ep_tap_total_">>, TotalStats)]).
 
 parse_aggregate_dcp_stats(AggDcp) ->
     ReplicaStats = extract_agg_dcp_stats([{K, V} || {<<"replication:", K/binary>>, V} <- AggDcp]),
@@ -357,11 +336,6 @@ parse_plain_stats(TS, PlainStats, LastTS, LastPlainCounters, MinFilesSize) ->
                            Values0,
                            lists:sort(AggregateValues)),
     {Values, Counters}.
-
-parse_tapagg_stats(TS, TapStats, LastTS, LastTapCounters) ->
-    parse_stats_raw(TS, parse_aggregate_tap_stats(TapStats),
-                    LastTapCounters, LastTS,
-                    [?TAP_STAT_GAUGES], [?TAP_STAT_COUNTERS]).
 
 parse_dcpagg_stats(TS, DcpStats, LastTS, LastDcpCounters) ->
     parse_stats_raw(TS, parse_aggregate_dcp_stats(DcpStats),
