@@ -114,12 +114,10 @@ handle_cast({update_stats, VBucket, NodeToDocsLeft}, State) ->
 
                                      case NewLeft >= Left of
                                          true ->
-                                             %% it's possible to get stats
-                                             %% update before before we get
-                                             %% refined docs_total from
-                                             %% ebucketmigrator_srv; so we can
-                                             %% end up in a situation where
-                                             %% new docs_left is greater than
+                                             %% our initial estimates are
+                                             %% imprecise, so we can end up in
+                                             %% a situation where new
+                                             %% docs_left is greater than
                                              %% docs_total;
                                              %%
                                              %% another possibility is that
@@ -131,7 +129,7 @@ handle_cast({update_stats, VBucket, NodeToDocsLeft}, State) ->
                                              %% which is probably not desireable;
                                              %%
                                              %% obviously, this adjustment may
-                                             %% loose some mutations (meaning
+                                             %% lose some mutations (meaning
                                              %% that final doc_total wouldn't
                                              %% be precise) but user
                                              %% experience-wise it seems to be
@@ -342,10 +340,8 @@ update_docs_left_for_move(Parent, BucketName,
                   fun ({OkE, Stat}) ->
                           {ok, {E, _, Status}} = OkE,
 
-                          %% we expect tap name to exist; if it does not, it
-                          %% means that ebucketmigrator has already terminated
-                          %% and we will get bad estimate that will corrupt
-                          %% our estimates;
+                          %% we expect vbucket to still be replicated; if it
+                          %% is not the case, we will get bad estimate
                           case Status =:= <<"backfilling">> orelse
                               Status =:= <<"backfill completed">> of
                               true ->

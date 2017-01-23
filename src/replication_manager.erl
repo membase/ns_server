@@ -13,8 +13,6 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc common stab for tap and dcp replication managers
-%%
 -module(replication_manager).
 
 -behavior(gen_server).

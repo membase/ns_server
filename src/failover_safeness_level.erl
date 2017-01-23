@@ -18,12 +18,12 @@
 %% of time required to replicate backlog of un-replicated yet items.
 %%
 %% The approach is to subscribe to stats and keep moving averages of
-%% replication tap streams backlog and replication tap streams drain
+%% replication streams backlog and replication streams drain
 %% rate. After each new sample we update averages and compute
-%% estimated time to drain all replication backlog. If that estimate is
-%% higher then 2000 ms we switch to 'yellow' level. Switching back to
-%% green has much lower bound to avoid too frequent changing of levels
-%% (i.e. hysteresis).
+%% estimated time to drain all replication backlog. If that estimate
+%% is higher then 2000 ms we switch to 'yellow' level. Switching back
+%% to green has much lower bound to avoid too frequent changing of
+%% levels (i.e. hysteresis).
 %%
 %% We also keep track of last time we've seen any stats sample. And we
 %% use it when asked about current safeness level. If our information
@@ -209,7 +209,7 @@ build_local_safeness_info(BucketNames) ->
 %% build_local_safeness_info/1 from all replica nodes.
 %%
 %% We check that all needed outgoing replications are there (with
-%% right vbuckets) and that tap producer stats of given node indicate
+%% right vbuckets) and that dcp producer stats of given node indicate
 %% that all outgoing replications from given node are reasonably up to
 %% date (see discussion of green/yellow levels at top of this
 %% file). So we actually use node statuses of all nodes (well, only

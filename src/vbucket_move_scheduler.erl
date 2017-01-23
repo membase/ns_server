@@ -24,7 +24,7 @@
 %% Input is old and new vbucket map, from which it computes moves as
 %% well as 2 parameters that describe concurrency limits.
 %%
-%% First limit is number of concurrent tap backfills into/out-of any
+%% First limit is number of concurrent backfills into/out-of any
 %% node. The idea is moving vbucket involves reading entire vbucket
 %% from disk and sending it to destination node where entire vbucket
 %% needs to be persisted. While this phase of vbucket move occurs
