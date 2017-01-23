@@ -17,6 +17,7 @@
 
 -module(menelaus_users).
 
+-include("ns_common.hrl").
 -include("ns_config.hrl").
 -include("rbac.hrl").
 
@@ -35,6 +36,26 @@
          upgrade_to_4_5/1,
          get_memcached_auth_infos/1,
          build_memcached_auth_info/1]).
+
+-export([start_storage/0, start_replicator/0]).
+
+replicator_name() ->
+    users_replicator.
+
+storage_name() ->
+    users_storage.
+
+start_storage() ->
+    Replicator = erlang:whereis(replicator_name()),
+    Path = filename:join(path_config:component_path(data, "config"), "users.dets"),
+    replicated_dets:start_link(storage_name(), Path, Replicator).
+
+start_replicator() ->
+    GetRemoteNodes =
+        fun () ->
+                ns_node_disco:nodes_actual_other()
+        end,
+    doc_replicator:start_link(replicated_dets, replicator_name(), GetRemoteNodes, storage_name()).
 
 -spec get_users(ns_config()) -> [{rbac_identity(), []}].
 get_users(Config) ->
