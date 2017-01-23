@@ -163,7 +163,7 @@ process_stats(TS,
     %% Don't send event with undefined values
     Stats =
         case lists:member(undefined,
-                          [LastTapCounters, LastTapCounters, LastDcpCounters, LastTimingsCounters]) of
+                          [LastPlainCounters, LastTapCounters, LastDcpCounters, LastTimingsCounters]) of
             false ->
                 Values = lists:merge(
                            [PlainValues, TapValues, DcpValues, TimingValues, CouchStats, XDCValues]),
