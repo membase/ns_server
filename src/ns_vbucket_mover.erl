@@ -160,7 +160,7 @@ handle_cast(unhandled, unhandled) ->
 
 
 handle_info(log_tap_stats, State) ->
-    rpc:eval_everywhere(diag_handler, log_all_tap_and_checkpoint_stats, []),
+    rpc:eval_everywhere(diag_handler, log_all_dcp_stats, []),
     misc:flush(log_tap_stats),
     {noreply, State};
 handle_info(spawn_initial, State) ->
