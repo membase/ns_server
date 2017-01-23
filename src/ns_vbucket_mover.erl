@@ -25,7 +25,7 @@
 -define(MOVES_BEFORE_COMPACTION, ns_config:read_key_fast(rebalance_moves_before_compaction, 64)).
 -define(MAX_INFLIGHT_MOVES_PER_NODE, ns_config:read_key_fast(rebalance_inflight_moves_per_node, 64)).
 
--define(TAP_STATS_LOGGING_INTERVAL, 10*60*1000).
+-define(DCP_STATS_LOGGING_INTERVAL, 10*60*1000).
 
 %% API
 -export([start_link/4]).
@@ -127,7 +127,7 @@ init({Bucket, OldMap, NewMap, ProgressCallback}) ->
                                                     ok
                                             end),
 
-    timer2:send_interval(?TAP_STATS_LOGGING_INTERVAL, log_tap_stats),
+    timer2:send_interval(?DCP_STATS_LOGGING_INTERVAL, log_dcp_stats),
 
     AllNodesSet = sets:del_element(undefined, AllNodesSet0),
     {ok, NodeVersions} = janitor_agent:prepare_nodes_for_rebalance(Bucket, sets:to_list(AllNodesSet), self()),
@@ -159,9 +159,9 @@ handle_cast(unhandled, unhandled) ->
     exit(unhandled).
 
 
-handle_info(log_tap_stats, State) ->
+handle_info(log_dcp_stats, State) ->
     rpc:eval_everywhere(diag_handler, log_all_dcp_stats, []),
-    misc:flush(log_tap_stats),
+    misc:flush(log_dcp_stats),
     {noreply, State};
 handle_info(spawn_initial, State) ->
     report_progress(State),
