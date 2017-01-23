@@ -123,9 +123,8 @@ config_string(BucketName) ->
                 CFG =
                     io_lib:format(
                       "ht_size=~B;ht_locks=~B;"
-                      "tap_noop_interval=~B;"
                       "max_size=~B;"
-                      "tap_keepalive=~B;dbname=~s;"
+                      "dbname=~s;"
                       "backend=couchdb;couch_bucket=~s;max_vbuckets=~B;"
                       "alog_path=~s;data_traffic_enabled=false;max_num_workers=~B;"
                       "uuid=~s;item_eviction_policy=~s;"
@@ -136,15 +135,7 @@ config_string(BucketName) ->
                        proplists:get_value(
                          ht_locks, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_LOCKS", 47)),
-                       proplists:get_value(
-                         tap_noop_interval, BucketConfig,
-                         misc:getenv_int("MEMBASE_TAP_NOOP_INTERVAL", 20)),
                        MemQuota,
-                       %% Five minutes, should be enough time for
-                       %% ebucketmigrator to restart.
-                       proplists:get_value(
-                         tap_keepalive, BucketConfig,
-                         misc:getenv_int("MEMBASE_TAP_KEEPALIVE", 300)),
                        DBSubDir,
                        BucketName,
                        NumVBuckets,
