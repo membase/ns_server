@@ -3,15 +3,16 @@ package main
 import (
 	"bytes"
 	"flag"
-	"github.com/tdewolff/minify"
-	"github.com/tdewolff/minify/js"
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/tdewolff/minify"
+	"github.com/tdewolff/minify/js"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 func getHTMLNodeAttr(n *html.Node, tagName string, attrKey string) string {
