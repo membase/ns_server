@@ -117,8 +117,8 @@ preconfigured_roles_45() ->
 
 -spec preconfigured_roles_spock() -> [rbac_role_def(), ...].
 preconfigured_roles_spock() ->
-    [{bucket_reader, [bucket_name],
-      [{name, <<"Bucket Reader">>},
+    [{data_reader, [bucket_name],
+      [{name, <<"Data Reader">>},
        {desc, <<"Can read information from specified bucket">>}],
       [{[{bucket, bucket_name}, stats], [read]},
        {[{bucket, bucket_name}, data, docs], [read]},
@@ -126,8 +126,8 @@ preconfigured_roles_spock() ->
        {[{bucket, bucket_name}, data, xattr], [read]},
        {[{bucket, bucket_name}, n1ql], [execute]},
        {[pools], [read]}]},
-     {bucket_reader_writer, [bucket_name],
-      [{name, <<"Bucket Reader Writer">>},
+     {data_reader_writer, [bucket_name],
+      [{name, <<"Data Reader Writer">>},
        {desc, <<"Can read and write information from/to specified bucket">>}],
       [{[{bucket, bucket_name}, stats], [read]},
        {[{bucket, bucket_name}, data, docs], [read, write]},
