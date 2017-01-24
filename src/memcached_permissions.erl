@@ -175,8 +175,8 @@ generate_json(Buckets, RoleDefinitions, Users) ->
 
 generate_json_test() ->
     Buckets = ["default", "test"],
-    Users = [{{"ivanivanov", builtin}, [{roles, [{views_admin, ["default"]}, {bucket_admin, ["test"]}]}]},
-             {{"petrpetrov", saslauthd}, [{roles, [admin]}]}],
+    Users = [{{"ivanivanov", builtin}, [{views_admin, ["default"]}, {bucket_admin, ["test"]}]},
+             {{"petrpetrov", saslauthd}, [admin]}],
     RoleDefinitions = menelaus_roles:preconfigured_roles(),
 
     Json =
