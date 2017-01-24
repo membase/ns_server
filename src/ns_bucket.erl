@@ -38,7 +38,6 @@
          get_bucket_names/1,
          get_bucket_names_of_type/1,
          get_bucket_names_of_type/2,
-         couchbase_bucket_exists/1,
          get_buckets/0,
          get_buckets/1,
          is_persistent/1,
@@ -160,18 +159,6 @@ config_string(BucketName) ->
 credentials(Bucket) ->
     {ok, BucketConfig} = get_bucket(Bucket),
     {Bucket, proplists:get_value(sasl_password, BucketConfig, "")}.
-
--spec couchbase_bucket_exists(binary()) -> boolean().
-couchbase_bucket_exists(Bucket) ->
-    case get_bucket(binary_to_list(Bucket)) of
-        {ok, Config} ->
-            case proplists:get_value(type, Config) of
-                membase -> true;
-                _ -> false
-            end;
-        not_present ->
-            false
-    end.
 
 get_bucket(Bucket) ->
     get_bucket(Bucket, ns_config:latest()).
