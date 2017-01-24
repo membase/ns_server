@@ -438,7 +438,7 @@ upgrade_config(Config) ->
              upgrade_config_from_4_1_1_to_4_5()];
         {value, {4,5}} ->
             [{set, {node, node(), config_version}, CurrentVersion} |
-             upgrade_config_from_4_5_to_Spock(Config)];
+             upgrade_config_from_4_5_to_spock(Config)];
         V0 ->
             OldVersion =
                 case V0 of
@@ -562,10 +562,10 @@ do_upgrade_config_from_4_1_1_to_4_5(DefaultConfig) ->
      {set, DefaultsKey, McdDefaults},
      {set, CompactionDaemonKey, CompactionDaemonCfg}].
 
-upgrade_config_from_4_5_to_Spock(Config) ->
-    do_upgrade_config_from_4_5_to_Spock(Config, default()).
+upgrade_config_from_4_5_to_spock(Config) ->
+    do_upgrade_config_from_4_5_to_spock(Config, default()).
 
-do_upgrade_config_from_4_5_to_Spock(Config, DefaultConfig) ->
+do_upgrade_config_from_4_5_to_spock(Config, DefaultConfig) ->
     McdKey = {node, node(), memcached},
     {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
     {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
@@ -714,7 +714,7 @@ upgrade_4_1_1_to_4_5_test() ->
                   {set, {node, _, compaction_daemon}, compaction_daemon_config}],
                  do_upgrade_config_from_4_1_1_to_4_5(Default)).
 
-upgrade_4_5_to_Spock_test() ->
+upgrade_4_5_to_spock_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
              [{old, info}]},
@@ -726,7 +726,7 @@ upgrade_4_5_to_Spock_test() ->
     ?assertMatch([{set, {node, _, memcached}, [{old, info},
                                                {rbac_file, rbac_file_path}]},
                   {set, {node, _, memcached_config}, new_memcached_config}],
-                 do_upgrade_config_from_4_5_to_Spock(Cfg, Default)).
+                 do_upgrade_config_from_4_5_to_spock(Cfg, Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
