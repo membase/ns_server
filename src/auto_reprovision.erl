@@ -30,7 +30,8 @@
 -export([
          enable/1,
          disable/0,
-         reset_count/0
+         reset_count/0,
+         reprovision_buckets/2
         ]).
 
 %% gen_server callbacks.
@@ -59,6 +60,12 @@ disable() ->
 reset_count() ->
     call(reset_count).
 
+-spec reprovision_buckets([bucket_name()], [node()]) -> {ok, dict()}.
+reprovision_buckets([], _UnsafeNodes) ->
+    {ok, dict:new()};
+reprovision_buckets(Buckets, UnsafeNodes) ->
+    call({reprovision_buckets, Buckets, UnsafeNodes}).
+
 call(Msg) ->
     misc:wait_for_global_name(?MODULE),
     gen_server:call({global, ?MODULE}, Msg, 5000).
@@ -79,7 +86,57 @@ handle_call(reset_count, _From, State) ->
     {Enabled, MaxNodes, Count} = get_reprovision_cfg(),
     ale:info(?USER_LOGGER, "auto-reprovision count reset from ~p", [Count]),
     ok = persist_config(Enabled, MaxNodes, 0),
-    {reply, ok, State#state{count = 0}}.
+    {reply, ok, State#state{count = 0}};
+handle_call({reprovision_buckets, Buckets, UnsafeNodes}, _From,
+            #state{enabled = Enabled, max_nodes = MaxNodes, count = Count} = State) ->
+    RCount = MaxNodes - Count,
+    Candidates = lists:sublist(UnsafeNodes, RCount),
+    NewCount = Count + length(Candidates),
+
+    %% As part of auto-reprovision operation, we mend the maps of all the
+    %% affected buckets and update the ns_config along with the adjusted
+    %% auto-reprovision count as part of a single transaction. The updated
+    %% buckets will be brought online as part of the next janitor cleanup.
+    TxnRV = ns_config:run_txn(
+              fun(Cfg, SetFn) ->
+                      %% Update the bucket configs with reprovisioned data.
+                      NewBConfigs =
+                          lists:foldl(
+                            fun(Bucket, Acc) ->
+                                    {ok, BCfg} = ns_bucket:get_bucket(Bucket, Cfg),
+                                    NewBCfg = do_reprovision_bucket(Bucket, BCfg, UnsafeNodes,
+                                                                    Candidates),
+                                    lists:keyreplace(Bucket, 1, Acc, {Bucket, NewBCfg})
+                            end, ns_bucket:get_buckets(Cfg), Buckets),
+
+                      {value, BucketsKV} = ns_config:search(Cfg, buckets),
+                      NewBucketsKV = lists:keyreplace(configs, 1, BucketsKV,
+                                                      {configs, NewBConfigs}),
+
+                      %% Update the count in auto_reprovision_cfg.
+                      RCfg = [{enabled, Enabled}, {max_nodes, MaxNodes}, {count, NewCount}],
+
+                      case NewCount >= MaxNodes of
+                          true ->
+                              ale:info(?USER_LOGGER, "auto-reprovision is disabled as maximum "
+                                       "number of nodes (~p) that can be auto-reprovisioned has "
+                                       "been reached.", [MaxNodes]);
+                          false ->
+                              ok
+                      end,
+
+                      %% Add both the updates to the transaction.
+                      NewCfg = SetFn(buckets, NewBucketsKV, Cfg),
+                      {commit, SetFn(auto_reprovision_cfg, RCfg, NewCfg)}
+              end),
+
+    Results = [case TxnRV of
+                   {commit, _} -> {Bucket, ok};
+                   {abort, Error} -> {Bucket, Error};
+                   _ -> {Bucket, reprovision_failed}
+               end || Bucket <- Buckets],
+
+    {reply, {ok, dict:from_list(Results)}, State#state{count = NewCount}}.
 
 handle_cast(_, State) ->
     {noreply, State}.
@@ -105,3 +162,28 @@ get_reprovision_cfg() ->
     {proplists:get_value(enabled, RCfg, false),
      proplists:get_value(max_nodes, RCfg, ?DEFAULT_MAX_NODES_SUPPORTED),
      proplists:get_value(count, RCfg, 0)}.
+
+do_reprovision_bucket(Bucket, BucketConfig, UnsafeNodes, Candidates) ->
+    %% Since this will be called by the orchestrator immediately after the cleanup (map
+    %% fixup would have happened as part of cleanup) we are just reusing the map in the
+    %% bucket config.
+    Map = proplists:get_value(map, BucketConfig, []),
+    true = (Map =/= []),
+
+    NewMap = [promote_replica(Chain, Candidates) || Chain <- Map],
+
+    ale:info(?USER_LOGGER,
+             "Bucket ~p has been reprovisioned on following nodes: ~p. "
+             "Nodes on which the data service restarted: ~p.",
+             [Bucket, Candidates, UnsafeNodes]),
+
+    lists:keyreplace(map, 1, BucketConfig, {map, NewMap}).
+
+promote_replica([Master | _] = Chain, Candidates) ->
+    case lists:member(Master, Candidates) of
+        true ->
+            NewChain = mb_map:promote_replica(Chain, [Master]),
+            promote_replica(NewChain, Candidates);
+        false ->
+            Chain
+    end.

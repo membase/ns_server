@@ -24,6 +24,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([promote_replicas/2,
+         promote_replica/2,
          promote_replicas_for_graceful_failover/2,
          generate_map/3,
          is_balanced/3,

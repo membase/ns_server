@@ -23,11 +23,11 @@
 
 -export([cleanup/2, stop_rebalance_status/1]).
 
-
 -spec cleanup(Bucket::bucket_name(), Options::list()) ->
                      ok |
                      {error, wait_for_memcached_failed, [node()]} |
-                     {error, marking_as_warmed_failed, [node()]}.
+                     {error, marking_as_warmed_failed, [node()]} |
+                     {error, unsafe_nodes, [node()]}.
 cleanup(Bucket, Options) ->
     FullConfig = ns_config:get(),
     case ns_bucket:get_bucket(Bucket, FullConfig) of
@@ -95,39 +95,120 @@ cleanup_with_membase_bucket_vbucket_map(Bucket, Options, BucketConfig) ->
     true = (Servers =/= []),
     Timeout = proplists:get_value(query_states_timeout, Options),
     {ok, States, Zombies} = janitor_agent:query_states(Bucket, Servers, Timeout),
-    cleanup_with_states(Bucket, Options, BucketConfig, Servers, States, Zombies).
+    cleanup_with_states(Bucket, Options, BucketConfig, Servers, States,
+                        Zombies).
 
-cleanup_with_states(Bucket, _Options, _BucketConfig, _Servers, _States, Zombies) when Zombies =/= [] ->
+cleanup_with_states(Bucket, _Options, _BucketConfig,
+                    _Servers, _States, Zombies) when Zombies =/= [] ->
     ?log_info("Bucket ~p not yet ready on ~p", [Bucket, Zombies]),
     {error, wait_for_memcached_failed, Zombies};
-cleanup_with_states(Bucket, Options, BucketConfig, Servers, States, [] = Zombies) ->
-    {NewBucketConfig, IgnoredVBuckets} = compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies),
+cleanup_with_states(Bucket, Options, BucketConfig, Servers, States,
+                    [] = Zombies) ->
+    {NewBucketConfig, IgnoredVBuckets} =
+        compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies),
 
     case NewBucketConfig =:= BucketConfig of
         true ->
             ok;
         false ->
-            ?log_info("Janitor is going to change bucket config for bucket ~p", [Bucket]),
+            ?log_info("Janitor is going to change bucket config for bucket ~p",
+                      [Bucket]),
             ?log_info("VBucket states:~n~p", [States]),
             ?log_info("Old bucket config:~n~p", [BucketConfig]),
             ok = ns_bucket:set_bucket_config(Bucket, NewBucketConfig)
     end,
 
-    ApplyTimeout = proplists:get_value(apply_config_timeout, Options, undefined_timeout),
-    ok = janitor_agent:apply_new_bucket_config_with_timeout(Bucket, undefined, Servers,
-                                                            NewBucketConfig, IgnoredVBuckets, ApplyTimeout),
-
-    case Zombies =:= [] andalso proplists:get_bool(consider_stopping_rebalance_status, Options) of
+    %% Find all the unsafe nodes (nodes on which memcached restarted within
+    %% the auto-failover timeout) using the vbucket states. If atleast one
+    %% unsafe node is found then we won't bring the bucket online until we
+    %% we reprovision it. Reprovisioning is initiated by the orchestrator at
+    %% the end of every janitor run.
+    UnsafeNodes = find_unsafe_nodes_with_vbucket_states(NewBucketConfig, States,
+                                                        proplists:get_bool(check_for_unsafe_nodes,
+                                                                           Options)),
+    case UnsafeNodes =/= [] of
         true ->
-            maybe_stop_rebalance_status();
-        _ -> ok
-    end,
+            {error, unsafe_nodes, UnsafeNodes};
+        false ->
+            ApplyTimeout = proplists:get_value(apply_config_timeout, Options,
+                                               undefined_timeout),
+            ok = janitor_agent:apply_new_bucket_config_with_timeout(Bucket, undefined,
+                                                                    Servers,
+                                                                    NewBucketConfig,
+                                                                    IgnoredVBuckets,
+                                                                    ApplyTimeout),
 
-    case janitor_agent:mark_bucket_warmed(Bucket, Servers) of
-        ok ->
-            ok;
-        {error, BadNodes, _BadReplies} ->
-            {error, marking_as_warmed_failed, BadNodes}
+            case Zombies =:= [] andalso
+                proplists:get_bool(consider_stopping_rebalance_status, Options) of
+                true ->
+                    maybe_stop_rebalance_status();
+                _ -> ok
+            end,
+
+            case janitor_agent:mark_bucket_warmed(Bucket, Servers) of
+                ok ->
+                    ok;
+                {error, BadNodes, _BadReplies} ->
+                    {error, marking_as_warmed_failed, BadNodes}
+            end
+    end.
+
+find_unsafe_nodes_with_vbucket_states(_BucketConfig, _States, false) ->
+    [];
+find_unsafe_nodes_with_vbucket_states(BucketConfig, States, true) ->
+    Map = proplists:get_value(map, BucketConfig, []),
+    true = (Map =/= []),
+    EnumeratedChains = lists:zip(lists:seq(0, length(Map) - 1), Map),
+
+    lists:foldl(
+      fun ({VB, [Master | _ ] = Chain}, UnsafeNodesAcc) ->
+              case lists:member(Master, UnsafeNodesAcc) of
+                  true ->
+                      UnsafeNodesAcc;
+                  false ->
+                      case data_loss_possible(VB, Chain, States) of
+                          {true, Node} ->
+                              [Node | UnsafeNodesAcc];
+                          false ->
+                              UnsafeNodesAcc
+                      end
+              end
+      end, [], EnumeratedChains).
+
+%% Condition that indicates possibility of data loss:
+%% A vBucket is "missing" on a node where it is supposed to be active as per the
+%% vBucket map, it is not active elsewhere in the cluster, and the vBucket is in
+%% replica state on some other node[s]. If such a vBucket is brought online on
+%% the node supposed to be its current master, then it will come up empty and
+%% when the replication streams are establised the replicas will also lose their
+%% data.
+data_loss_possible(VBucket, Chain, States) ->
+    {_NodeStates, ChainStates, ExtraStates} = construct_vbucket_states(VBucket,
+                                                                       Chain,
+                                                                       States,
+                                                                       []),
+    case ChainStates of
+        [{Master, State}|ReplicaStates] when State =:= missing ->
+            OtherNodeStates = ReplicaStates ++ ExtraStates,
+            case [N || {N, active} <- OtherNodeStates] of
+                [] ->
+                    %% If none of the nodes have the vBucket active check if
+                    %% the other nodes have the vBucket in replica state.
+                    case [N || {N, replica} <- OtherNodeStates] of
+                        [] ->
+                            false;
+                        Replicas ->
+                            ?log_info("vBucket ~p missing on master ~p while "
+                                      "replicas ~p are active. Can lead to "
+                                      "dataloss.",
+                                      [VBucket, Master, Replicas]),
+                            {true, Master}
+                    end;
+                _ ->
+                    false
+            end;
+        [{_,_}|_] ->
+            false
     end.
 
 stop_rebalance_status(Fn) ->
@@ -185,7 +266,7 @@ compute_servers_list_cleanup(BucketConfig, FullConfig) ->
             compute_servers_list_cleanup(BucketConfig1, FullConfig)
     end.
 
-compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies) ->
+enumerate_chains(BucketConfig) ->
     OrigMap = proplists:get_value(map, BucketConfig, []),
     true = ([] =/= OrigMap),
     Map = maybe_adjust_chain_size(OrigMap, BucketConfig),
@@ -211,13 +292,21 @@ compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies) ->
     EnumeratedChains = lists:zip3(lists:seq(0, MapLen - 1),
                                   Map,
                                   EffectiveFFMap),
+    {EnumeratedChains, OrigMap, Map}.
+
+compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies) ->
+    {EnumeratedChains, OrigMap, AdjustedMap} = enumerate_chains(BucketConfig),
     MapUpdates = [sanify_chain(Bucket, States, Chain, FutureChain, VBucket, Zombies)
                   || {VBucket, Chain, FutureChain} <- EnumeratedChains],
-    IgnoredVBuckets = [VBucket || {VBucket, ignore} <- lists:zip(lists:seq(0, MapLen - 1), MapUpdates)],
+
+    MapLen = length(AdjustedMap),
+    IgnoredVBuckets = [VBucket || {VBucket, ignore} <-
+                                      lists:zip(lists:seq(0, MapLen - 1),
+                                                MapUpdates)],
     NewMap = [case NewChain of
                   ignore -> OldChain;
                   _ -> NewChain
-              end || {NewChain, OldChain} <- lists:zip(MapUpdates, Map)],
+              end || {NewChain, OldChain} <- lists:zip(MapUpdates, AdjustedMap)],
     NewBucketConfig = case NewMap =:= OrigMap of
                           true ->
                               BucketConfig;
@@ -247,29 +336,37 @@ sanify_chain(Bucket, States, Chain, FutureChain, VBucket, Zombies) ->
                                         undefined)
     end.
 
-%% this will decide what vbucket map chain is right for this vbucket
-do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, [] = Zombies) ->
+construct_vbucket_states(VBucket, Chain, States, Zombies) ->
     NodeStates = [{N, S} || {N, V, S} <- States, V == VBucket],
-    ChainStates = lists:map(fun (N) ->
-                                    case lists:keyfind(N, 1, NodeStates) of
-                                        %% NOTE: cannot use code below
-                                        %% due to "stupid" warning by
-                                        %% dialyzer. Yes indeed our
-                                        %% Zombies is always [] as of
-                                        %% now
-                                        %%
-                                        %% false -> {N, case lists:member(N, Zombies) of
-                                        %%                  true -> zombie;
-                                        %%                  _ -> missing
-                                        %%              end};
-                                        false ->
-                                            [] = Zombies,
-                                            {N, missing};
-                                        X -> X
-                                    end
-                            end, Chain),
+    ChainStates = lists:map(
+                    fun (N) ->
+                            case lists:keyfind(N, 1, NodeStates) of
+                                %% NOTE: cannot use code below
+                                %% due to "stupid" warning by
+                                %% dialyzer. Yes indeed our
+                                %% Zombies is always [] as of
+                                %% now
+                                %%
+                                %% false -> {N, case lists:member(N, Zombies) of
+                                %%                  true -> zombie;
+                                %%                  _ -> missing
+                                %%              end};
+                                false ->
+                                    [] = Zombies,
+                                    {N, missing};
+                                X -> X
+                            end
+                    end, Chain),
     ExtraStates = [X || X = {N, _} <- NodeStates,
                         not lists:member(N, Chain)],
+    {NodeStates, ChainStates, ExtraStates}.
+
+%% this will decide what vbucket map chain is right for this vbucket
+do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, [] = Zombies) ->
+    {NodeStates, ChainStates, ExtraStates} = construct_vbucket_states(VBucket,
+                                                                      Chain,
+                                                                      States,
+                                                                      Zombies),
     case ChainStates of
         [{undefined, _}|_] ->
             %% if for some reason (failovers most likely) we don't

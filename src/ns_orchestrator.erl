@@ -484,8 +484,7 @@ handle_info(janitor, idle, #idle_state{janitor_requests=[]} = State) ->
 handle_info(janitor, idle, #idle_state{janitor_requests=Requests}) ->
     misc:verify_name(?MODULE), % MB-3180: Make sure we're still registered
     maybe_drop_recovery_status(),
-    {Item, _} = hd(Requests),
-    Pid = proc_lib:spawn_link(?MODULE, run_cleanup, [Item]),
+    Pid = proc_lib:spawn_link(?MODULE, run_cleanup, [Requests]),
     %% NOTE: Bucket will be popped from Buckets when janitor run will
     %% complete successfully
     {next_state, janitor_running, #janitor_state{janitor_requests=Requests,
@@ -495,20 +494,42 @@ handle_info(janitor, StateName, StateData) ->
     {next_state, StateName, StateData};
 handle_info({'EXIT', Pid, Reason}, janitor_running,
             #janitor_state{pid = Pid,
-                           janitor_requests = [{Item, _ReplyTo} = Request | RestRequests]}) ->
-    Ret = case Reason of
+                           janitor_requests = Requests}) ->
+    Out = case Reason of
               shutdown ->
-                  shutdown;
-              normal ->
-                  ok;
-              {shutdown, {error, wait_for_memcached_failed, _}} ->
-                  warming_up;
-              _ ->
-                  ?log_warning("Janitor run exited for ~p with reason ~p~n",
-                               [Item, Reason]),
-                  janitor_failed
+                  %% We get here if the janitor was killed by the orchestrator
+                  %% when it got another message.
+                  [{I, shutdown} || {I, _} <- Requests];
+              {shutdown, RetValues} ->
+                  %% This contains the results of the janitor run performed as
+                  %% a batch. We transform the return values pertaining to individual
+                  %% bucket's run so that the result can be communicated to the
+                  %% interested parties.
+                  [case Ret of
+                       ok ->
+                           {Item, ok};
+                       {error, wait_for_memcached_failed, _} ->
+                           {Item, warming_up}
+                   end || {Item, Ret} <- RetValues];
+              _X ->
+                  [{I, janitor_failed} || {I, _} <- Requests]
           end,
-    notify_janitor_finished(Request, Ret),
+    ItemRetDict = dict:from_list(Out),
+
+    RestRequests =
+        lists:filter(fun({Item, _} = Request) ->
+                             case dict:find(Item, ItemRetDict) of
+                                 error ->
+                                     true;
+                                 {ok, Ret} ->
+                                     notify_janitor_finished(Request, Ret),
+
+                                     %% If the return value is either 'shutdown' or 'janitor_failed'
+                                     %% then retain the request for the next janitor run.
+                                     Ret =:= shutdown orelse Ret =:= janitor_failed
+                             end
+                     end, Requests),
+
     case RestRequests of
         [] ->
             ok;
@@ -960,14 +981,41 @@ recovery(_Event, _From, State) ->
 %% Internal functions
 %%
 
-run_cleanup(Item) ->
-    RV = do_run_cleanup(Item),
-    case RV of
-        ok ->
-            ok;
-        Error ->
-            exit({shutdown, Error})
-    end.
+run_cleanup(Requests) ->
+    {RequestsRV0, Reprovision} =
+        lists:foldl(
+          fun({Item, _}, {OAcc, RAcc}) ->
+                  case do_run_cleanup(Item) of
+                      {error, unsafe_nodes, Nodes} ->
+                          {OAcc, [{Item, Nodes} | RAcc]};
+                      RV ->
+                          {[{Item, RV} | OAcc], RAcc}
+                  end
+          end, {[], []}, Requests),
+
+    RequestsRV =
+        case Reprovision =/= [] of
+            true ->
+                UnsafeNodes = get_unsafe_nodes_from_reprovision_list(Reprovision),
+                %% The unsafe nodes only affect the ephemeral buckets.
+                Buckets = ns_bucket:get_bucket_names_of_type(membase, ephemeral),
+
+                {ok, Results} = auto_reprovision:reprovision_buckets(Buckets, UnsafeNodes),
+                lists:foldl(
+                  fun({{bucket, Bucket} = Item, _}, Acc) ->
+                          case dict:find(Bucket, Results) of
+                              error ->
+                                  Acc;
+                              {ok, RV} ->
+                                  [{Item, RV} | Acc]
+                          end
+                  end, RequestsRV0, Reprovision);
+            false ->
+                RequestsRV0
+        end,
+
+    %% TODO: this would go away when we implement a gen_server to handle janitor cleanup.
+    exit({shutdown, RequestsRV}).
 
 do_run_cleanup(services) ->
     %% we need to be able to terminate spawned subprocesses synchronously
@@ -975,6 +1023,19 @@ do_run_cleanup(services) ->
     service_janitor:cleanup();
 do_run_cleanup({bucket, Bucket}) ->
     ns_janitor:cleanup(Bucket, [consider_stopping_rebalance_status]).
+
+get_unsafe_nodes_from_reprovision_list(ReprovisionList) ->
+    %% It is possible that when the janitor cleanup is working its way through
+    %% the bucket list the unsafe nodes are found at different junctures. So
+    %% we need to merge the unsafe node information obtained from all the bucket
+    %% cleanups to determine the final list of unsafe nodes.
+    sets:to_list(lists:foldl(
+                   fun({_, Nodes}, Acc) ->
+                           lists:foldl(
+                             fun(Node, A) ->
+                                     sets:add_element(Node, A)
+                             end, Acc, Nodes)
+                   end, sets:new(), ReprovisionList)).
 
 add_janitor_request(Request, Requests) ->
     add_janitor_request(Request, Requests, []).
