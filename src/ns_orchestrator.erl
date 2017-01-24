@@ -668,13 +668,7 @@ idle({delete_bucket, BucketName}, _From,
 
     {reply, Reply, idle, NewState};
 idle({failover, Node}, _From, State) ->
-    Result =
-        case ns_rebalancer:check_failover_possible(Node) of
-            ok ->
-                ns_rebalancer:orchestrate_failover(Node);
-            Error ->
-                Error
-        end,
+    Result = ns_rebalancer:run_failover(Node),
     {reply, Result, idle, State};
 idle({try_autofailover, Node}, From, State) ->
     case ns_rebalancer:validate_autofailover(Node) of

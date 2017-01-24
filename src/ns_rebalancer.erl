@@ -40,7 +40,7 @@
          verify_replication/3,
          start_link_graceful_failover/1,
          generate_vbucket_map_options/2,
-         check_failover_possible/1]).
+         run_failover/1]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
 
@@ -60,6 +60,19 @@
 %%
 %% API
 %%
+
+run_failover(Node) ->
+    misc:executing_on_new_process(
+      fun () ->
+              ok = check_no_tap_buckets(),
+
+              case check_failover_possible(Node) of
+                  ok ->
+                      ns_rebalancer:orchestrate_failover(Node);
+                  Error ->
+                      Error
+              end
+      end).
 
 orchestrate_failover(Node) ->
     ale:info(?USER_LOGGER, "Starting failing over ~p", [Node]),
@@ -400,6 +413,8 @@ start_link_rebalance(KeepNodes, EjectNodes,
     proc_lib:start_link(
       erlang, apply,
       [fun () ->
+               ok = check_no_tap_buckets(),
+
                KVKeep = ns_cluster_membership:service_nodes(KeepNodes, kv),
                case KVKeep =:= [] of
                    true ->
@@ -1259,6 +1274,7 @@ start_link_graceful_failover(Node) ->
     proc_lib:start_link(erlang, apply, [fun run_graceful_failover/1, [Node]]).
 
 run_graceful_failover(Node) ->
+    ok = check_no_tap_buckets(),
     pull_and_push_config(ns_node_disco:nodes_wanted()),
 
     %% No graceful failovers for non KV node
@@ -1409,4 +1425,15 @@ drop_old_2i_indexes(KeepNodes) ->
                     ?rebalance_error("Failed to cleanup indexes: ~p", [Errors]),
                     {old_indexes_cleanup_failed, Errors}
             end
+    end.
+
+check_no_tap_buckets() ->
+    case cluster_compat_mode:have_non_dcp_buckets() of
+        false ->
+            ok;
+        {true, BadBuckets} ->
+            ale:error(?USER_LOGGER,
+                      "Cannot rebalance/failover with non-dcp buckets. "
+                      "Non-dcp buckets: ~p", [BadBuckets]),
+            {error, {found_non_dcp_buckets, BadBuckets}}
     end.
