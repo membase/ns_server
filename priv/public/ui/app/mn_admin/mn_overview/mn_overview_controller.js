@@ -5,19 +5,25 @@
     'mnOverviewService',
     'mnBarUsage',
     'mnPlot',
-    'mnServersService',
     'mnBucketsService',
     'mnPoll',
     'ui.bootstrap',
     'mnElementCrane',
     'mnAboutDialogService',
-    'mnPromiseHelper'
+    'mnPromiseHelper',
+    'mnXDCRService'
   ]).controller('mnOverviewController', mnOverviewController);
 
-  function mnOverviewController($scope, $rootScope, mnServersService, mnBucketsService, mnOverviewService, mnPoller, mnAboutDialogService, mnPromiseHelper) {
+  function mnOverviewController($scope, $rootScope, mnBucketsService, mnOverviewService, mnPoller, mnAboutDialogService, mnPromiseHelper, mnXDCRService) {
     var vm = this;
 
+    vm.getEndings = getEndings;
+
     activate();
+
+    function getEndings(length) {
+      return length !== 1 ? "s" : "";
+    }
 
     function activate() {
       $rootScope.$broadcast("reloadPoolDefaultPoller");
@@ -25,12 +31,16 @@
       mnPromiseHelper(vm, mnAboutDialogService.getState())
         .applyToScope("aboutState");
 
+      new mnPoller($scope, mnXDCRService.getReplicationState)
+        .setInterval(3000)
+        .subscribe("xdcrReferences", vm)
+        .cycle();
       new mnPoller($scope, mnOverviewService.getOverviewConfig)
         .reloadOnScopeEvent("mnPoolDefaultChanged")
         .subscribe("mnOverviewConfig", vm)
         .cycle();
       new mnPoller($scope, function () {
-          return mnServersService.getNodes();
+          return mnOverviewService.getServices();
         })
         .reloadOnScopeEvent("nodesChanged")
         .subscribe("nodes", vm)

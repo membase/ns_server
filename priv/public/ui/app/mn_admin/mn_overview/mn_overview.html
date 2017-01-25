@@ -1,45 +1,81 @@
 <mn-element-cargo depot="header">
   <span ng-show="overviewCtl.aboutState">
     {{overviewCtl.aboutState.implementationVersion | mnPrettyVersion}}
-    state ID: {{overviewCtl.aboutState.clusterStateId}}
   </span>
 </mn-element-cargo>
 
 <div mn-spinner="(rbac.cluster.bucket['*'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || !overviewCtl.buckets">
-  <div class="margin-top1">
-    <div class="interim row items-space-around content-box" style="font-size:1rem;padding:1rem;">
-      <div class="text-center">
-        <h4>Active Servers</h4><small>{{overviewCtl.nodes.active.length || '0'}}</small>
+
+  <div class="row items-top margin-top1 service-widget-row">
+    <div
+       class="service-widget"
+       ng-class="['dynamic_' + overviewCtl.nodes.kv.statusClass]">
+      <h4>Data Service</h4>
+      <a ui-sref="app.admin.servers.list">
+        {{overviewCtl.nodes.kv.length || '0'}}
+        node{{overviewCtl.getEndings(overviewCtl.nodes.kv.length)}}
+      </a>
+      <div
+         class="error"
+         ng-repeat="(nodeStatuses, count) in overviewCtl.nodes.kv.nodesByStatuses">
+        {{count + ' node' + overviewCtl.getEndings(count) + ' ' + nodeStatuses}}
       </div>
-      <a
-         class="text-center"
-         ui-sref="app.admin.servers.list({list: 'pending'})"
-         ng-show="overviewCtl.nodes.failedOver.length">
-        <h4>Servers Failed Over</h4><small>{{overviewCtl.nodes.failedOver.length}}</small>
+    </div>
+    <div class="service-widget" ng-class="['dynamic_' + overviewCtl.nodes.index.statusClass]">
+      <h4>GSI Service</h4>
+      <a ui-sref="app.admin.servers.list">
+        {{overviewCtl.nodes.index.length || '0'}}
+        node{{overviewCtl.getEndings(overviewCtl.nodes.index.length)}}
       </a>
-      <span class="text-center" ng-show="!overviewCtl.nodes.failedOver.length">
-        <h4>Servers Failed Over</h4><small>0</small>
-      </span>
-      <a
-         class="text-center"
-         ui-sref="app.admin.servers.list"
-         ng-show="overviewCtl.nodes.down.length">
-        <h4>Servers Down</h4><small>{{overviewCtl.nodes.down.length}}</small>
+      <div
+         class="error"
+         ng-repeat="(nodeStatuses, count) in overviewCtl.nodes.index.nodesByStatuses">
+        {{count + ' node' + overviewCtl.getEndings(count) + ' ' + nodeStatuses}}
+      </div>
+    </div>
+    <div
+       class="service-widget"
+       ng-class="['dynamic_' + overviewCtl.nodes.fts.statusClass]">
+      <h4>FTS Service</h4>
+      <a ui-sref="app.admin.servers.list">
+        {{overviewCtl.nodes.fts.length || '0'}}
+        node{{overviewCtl.getEndings(overviewCtl.nodes.fts.length)}}
       </a>
-      <span class="text-center" ng-show="!overviewCtl.nodes.down.length">
-        <h4>Servers Down</h4><small>0</small>
-      </span>
-      <a
-         class="text-center"
-         ui-sref="app.admin.servers.list({list: 'pending'})"
-         ng-show="overviewCtl.nodes.pending.length">
-        <h4>Servers Pending Rebalance</h4><small>{{overviewCtl.nodes.pending.length}}</small>
+      <div
+         class="error"
+         ng-repeat="(nodeStatuses, count) in overviewCtl.nodes.fts.nodesByStatuses">
+        {{count + ' node' + overviewCtl.getEndings(count) + ' ' + nodeStatuses}}
+      </div>
+    </div>
+    <div
+       class="service-widget"
+       ng-class="['dynamic_' + overviewCtl.nodes.n1ql.statusClass]">
+      <h4>Query Service</h4>
+      <a ui-sref="app.admin.servers.list">
+        {{overviewCtl.nodes.n1ql.length || '0'}}
+        node{{overviewCtl.getEndings(overviewCtl.nodes.n1ql.length)}}
       </a>
-      <span class="text-center" ng-show="!overviewCtl.nodes.pending.length">
-        <h4>Servers Pending Rebalance</h4><small>0</small>
-      </span>
+      <div
+         class="error"
+         ng-repeat="(nodeStatuses, count) in overviewCtl.nodes.n1ql.nodesByStatuses">
+        {{count + ' node' + overviewCtl.getEndings(count) + ' ' + nodeStatuses}}
+      </div>
+    </div>
+    <div
+       class="service-widget"
+       ng-class="['dynamic_' + (adminCtl.tasks.tasksXDCR.length ? 'healthy' : 'inactive')]">
+      <h4>XDCR</h4>
+      <a ui-sref="app.admin.replications">
+        {{overviewCtl.xdcrReferences.filtered.length}}
+        remote cluster{{overviewCtl.getEndings(xdcrReferences.filtered.length)}}
+      </a>
+      <a ui-sref="app.admin.replications">
+        {{adminCtl.tasks.tasksXDCR.length}}
+        replication{{overviewCtl.getEndings(adminCtl.tasks.tasksXDCR.length)}}
+      </a>
     </div>
   </div>
+
   <div class="row margin-top2">
     <div
        class="column width-6">
@@ -58,6 +94,7 @@
          base-info="overviewCtl.mnOverviewConfig.hddOverviewConfig"></div>
     </div>
   </div>
+
   <div class="margin-top2">
     <h4>
       Buckets &nbsp;<small>{{overviewCtl.buckets.length || '0'}} active</small>

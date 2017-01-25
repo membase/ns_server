@@ -199,18 +199,6 @@ h1 > * {
   width: 4px;
 }
 
-.dynamic_healthy {
-    background-color: #2ca01c;
-}
-
-.dynamic_inactiveFailed,
-.dynamic_warmup {
-    background-color: orange;
-}
-.dynamic_unhealthy {
-    background-color: red;
-}
-
 .back-gray {
   padding: .5rem;
   background-color: #ececec;
@@ -1555,4 +1543,55 @@ input[type="checkbox"]:checked + label:before {
   padding:0 2rem;
   margin:0 -2rem;
   transition: none;
+}
+/* service widgets displaying status & details for each service + XDCR */
+
+.service-widget {
+  padding: 0 0 0 .5rem;
+  flex: 0 1 auto;
+  margin-right: 1.5rem;
+}
+.service-widget > a,
+.service-widget > .error {
+  font-size: .75rem;
+}
+.service-widget > a {
+  display:block;
+  color: #000;
+  white-space: nowrap;
+}
+.service-widget > a:hover {
+  color: #000;
+  text-decoration: underline;
+}
+/* dynamic statuses ------------ */
+.dynamic_inactive {
+  background-color: #a1a1a1;
+}
+.service-widget.dynamic_inactive {
+  background-color: #fff;
+  border-left: 8px solid #a1a1a1;
+}
+.dynamic_healthy {
+  background-color: #80c677;
+}
+.service-widget.dynamic_healthy {
+  border-left: 8px solid #80c677;
+  background-color: #fff;
+}
+.dynamic_inactiveFailed,
+.dynamic_warmup {
+  background-color: #f6a623;
+}
+.service-widget.dynamic_inactiveFailed,
+.service-widget.dynamic_warmup {
+  border-left: 8px solid #f6a623;
+  background-color: #fff;
+}
+.dynamic_unhealthy {
+  background-color: #e07f82;
+}
+.service-widget.dynamic_unhealthy {
+  border-left: 8px solid #e07f82;
+  background-color: #fff;
 }

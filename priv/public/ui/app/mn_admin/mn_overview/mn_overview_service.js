@@ -3,15 +3,17 @@
 
   angular
     .module('mnOverviewService', [
-      'mnPoolDefault'
+      'mnPoolDefault',
+      'mnServersService'
     ])
     .factory('mnOverviewService', mnOverviewServiceFactory);
 
-  function mnOverviewServiceFactory($http, mnPoolDefault) {
+  function mnOverviewServiceFactory($http, mnPoolDefault, mnServersService) {
 
     var mnOverviewService = {
       getStats: getStats,
-      getOverviewConfig: getOverviewConfig
+      getOverviewConfig: getOverviewConfig,
+      getServices: getServices
     };
 
     var processPlotOptions = function (plotOptions, plotDatas) {
@@ -76,6 +78,73 @@
     };
 
     return mnOverviewService;
+
+    function addStatusMessagePart(status, message) {
+      if (status.length) {
+        return status + ", " + message;
+      } else {
+        return status + message;
+      }
+    }
+
+    function getStatusWeight(status) {
+      var priority = {
+        unhealthy: 0,
+        inactiveFailed: 1,
+        warmup: 2,
+        healthy: 3,
+      };
+      return priority[status] === undefined ? 100 : priority[status];
+    }
+
+    function getNodesByService(service, nodes) {
+
+      var nodes2 = _.filter(nodes.allNodes, function (node) {
+        return _.indexOf(node.services, service) > -1;
+      });
+      var nodesByStatuses = {};
+      var statusClass = "inactive";
+
+      _.forEach(nodes2, function (node) {
+        var status = "";
+
+        if (node.clusterMembership === 'inactiveFailed') {
+          status = addStatusMessagePart(status, "failed over");
+        }
+        if (node.status === 'unhealthy') {
+          status = addStatusMessagePart(status, "not responding");
+        }
+        if (node.status === 'warmup') {
+          status = addStatusMessagePart(status, "warmup");
+        }
+        if (status != "") {
+          nodesByStatuses[status] = ++nodesByStatuses[status] || 1;
+        }
+        if (getStatusWeight(statusClass) > getStatusWeight(node.status)) {
+          statusClass = node.status;
+        }
+        if (getStatusWeight(statusClass) > getStatusWeight(node.clusterMembership)) {
+          statusClass = node.clusterMembership;
+        }
+      });
+
+      nodes2.nodesByStatuses = nodesByStatuses;
+      nodes2.statusClass = statusClass;
+
+      return nodes2;
+    }
+
+    function getServices() {
+      return mnServersService.getNodes().then(function (nodes) {
+        return {
+          kv: getNodesByService("kv", nodes),
+          index: getNodesByService("index", nodes),
+          n1ql: getNodesByService("n1ql", nodes),
+          fts: getNodesByService("fts", nodes),
+          all: nodes
+        };
+      });
+    }
 
     function getStats() {
       return $http({
