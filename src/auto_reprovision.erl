@@ -31,7 +31,8 @@
          enable/1,
          disable/0,
          reset_count/0,
-         reprovision_buckets/2
+         reprovision_buckets/2,
+         get_cleanup_options/0
         ]).
 
 %% gen_server callbacks.
@@ -65,6 +66,10 @@ reprovision_buckets([], _UnsafeNodes) ->
     {ok, dict:new()};
 reprovision_buckets(Buckets, UnsafeNodes) ->
     call({reprovision_buckets, Buckets, UnsafeNodes}).
+
+-spec get_cleanup_options() -> [term()].
+get_cleanup_options() ->
+    call(get_cleanup_options).
 
 call(Msg) ->
     misc:wait_for_global_name(?MODULE),
@@ -136,7 +141,11 @@ handle_call({reprovision_buckets, Buckets, UnsafeNodes}, _From,
                    _ -> {Bucket, reprovision_failed}
                end || Bucket <- Buckets],
 
-    {reply, {ok, dict:from_list(Results)}, State#state{count = NewCount}}.
+    {reply, {ok, dict:from_list(Results)}, State#state{count = NewCount}};
+
+handle_call(get_cleanup_options, _From,
+            #state{enabled = Enabled, max_nodes = MaxNodes, count = Count} = State) ->
+    {reply, [{check_for_unsafe_nodes, Enabled =:= true andalso Count < MaxNodes}], State}.
 
 handle_cast(_, State) ->
     {noreply, State}.

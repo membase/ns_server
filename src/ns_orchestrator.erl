@@ -982,10 +982,11 @@ recovery(_Event, _From, State) ->
 %%
 
 run_cleanup(Requests) ->
+    Options = auto_reprovision:get_cleanup_options(),
     {RequestsRV0, Reprovision} =
         lists:foldl(
           fun({Item, _}, {OAcc, RAcc}) ->
-                  case do_run_cleanup(Item) of
+                  case do_run_cleanup(Item, Options) of
                       {error, unsafe_nodes, Nodes} ->
                           {OAcc, [{Item, Nodes} | RAcc]};
                       RV ->
@@ -1017,12 +1018,12 @@ run_cleanup(Requests) ->
     %% TODO: this would go away when we implement a gen_server to handle janitor cleanup.
     exit({shutdown, RequestsRV}).
 
-do_run_cleanup(services) ->
+do_run_cleanup(services, _Options) ->
     %% we need to be able to terminate spawned subprocesses synchronously
     process_flag(trap_exit, true),
     service_janitor:cleanup();
-do_run_cleanup({bucket, Bucket}) ->
-    ns_janitor:cleanup(Bucket, [consider_stopping_rebalance_status]).
+do_run_cleanup({bucket, Bucket}, Options) ->
+    ns_janitor:cleanup(Bucket, [consider_stopping_rebalance_status | Options]).
 
 get_unsafe_nodes_from_reprovision_list(ReprovisionList) ->
     %% It is possible that when the janitor cleanup is working its way through
