@@ -231,10 +231,12 @@ angular.module('mnSettingsNotificationsService', [
     mnSettingsNotificationsService.buildPhoneHomeThingy = function (mnHttpParams) {
       return $q.all([
         mnBucketsService.getBucketsByType(false, mnHttpParams),
-        mnPools.get(mnHttpParams)
+        mnPools.get(mnHttpParams),
+        mnPoolDefault.get(undefined, mnHttpParams)
       ]).then(function (resp) {
         var buckets = resp[0];
         var pools = resp[1];
+        var poolDefault = resp[2];
         var perBucketQueries = [];
 
         angular.forEach(buckets.byType.membase, function (bucket) {
@@ -244,17 +246,22 @@ angular.module('mnSettingsNotificationsService', [
               bucket: bucket.name
             }
           };
-          perBucketQueries.push($q.all([
-            mnAnalyticsService.doGetStats(statsParams, mnHttpParams),
-            mnViewsListService.getDdocs(bucket.name, mnHttpParams)
-          ]));
+          var queries = [
+            mnAnalyticsService.doGetStats(statsParams, mnHttpParams)
+          ];
+          if (_.indexOf(poolDefault.thisNode.services, "kv") > -1) {
+            queries.push(mnViewsListService.getDdocs(bucket.name, mnHttpParams));
+          } else {
+            queries.push($q.when({}));
+          }
+          perBucketQueries.push($q.all(queries));
         });
 
         var queries = [
           $q.when(buckets),
           $q.all(perBucketQueries),
           $q.when(pools),
-          mnPoolDefault.get(undefined, mnHttpParams)
+          $q.when(poolDefault)
         ];
 
         if (mnPoolDefault.export.compat.atLeast40 && mnPermissions.export.cluster.indexes.read) {
