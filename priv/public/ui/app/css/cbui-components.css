@@ -201,12 +201,13 @@ h1 > * {
 .dynamic_healthy {
     background-color: #2ca01c;
 }
-.dynamic_unhealthy {
-    background-color: red;
-}
+
 .dynamic_inactiveFailed,
 .dynamic_warmup {
     background-color: orange;
+}
+.dynamic_unhealthy {
+    background-color: red;
 }
 
 .back-gray {
