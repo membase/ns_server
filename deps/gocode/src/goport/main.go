@@ -17,11 +17,14 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"sync"
 	"time"
 )
@@ -152,7 +155,43 @@ func (th *throttledWriter) Write(data []byte) (int, error) {
 	return written, nil
 }
 
-func readCmd() *exec.Cmd {
+type argsFlag []string
+
+func (args *argsFlag) String() string {
+	return fmt.Sprintf("%v", *args)
+}
+
+func (args *argsFlag) Set(v string) error {
+	*args = append(*args, v)
+	return nil
+}
+
+type cmdFlag string
+
+func (c *cmdFlag) String() string {
+	return string(*c)
+}
+
+func (c *cmdFlag) Set(v string) error {
+	if v == "" {
+		return errors.New("-cmd can't be empty")
+	}
+
+	if path.IsAbs(v) {
+		*c = cmdFlag(v)
+	} else {
+		abs, err := exec.LookPath(v)
+		if err != nil {
+			return fmt.Errorf("Failed to find %s in path: %s", v, err.Error())
+		}
+
+		*c = cmdFlag(abs)
+	}
+
+	return nil
+}
+
+func getCmdFromEnv() (string, []string) {
 	rawArgs := os.Getenv("GOPORT_ARGS")
 	if rawArgs == "" {
 		log.Fatalf("GOPORT_ARGS is empty")
@@ -169,7 +208,7 @@ func readCmd() *exec.Cmd {
 		log.Fatalf("missing executable")
 	}
 
-	return exec.Command(args[0], args[1:]...)
+	return args[0], args[1:]
 }
 
 func main() {
@@ -177,10 +216,15 @@ func main() {
 	var gracefulShutdown bool
 	var proxyStdIn bool
 
+	var cmd string
+	var args []string
+
 	flag.IntVar(&burst, "burst", 512*1024, "burst limit")
 	flag.BoolVar(&gracefulShutdown, "graceful-shutdown", false,
 		"shutdown the child gracefully")
 	flag.BoolVar(&proxyStdIn, "proxy-stdin", false, "proxy stdin to the child process")
+	flag.Var((*cmdFlag)(&cmd), "cmd", "command to execute")
+	flag.Var((*argsFlag)(&args), "args", "command arguments")
 	flag.Parse()
 
 	log.SetPrefix("[goport] ")
@@ -189,26 +233,30 @@ func main() {
 		log.Fatalf("burst can't be less than zero")
 	}
 
-	cmd := readCmd()
+	if cmd == "" {
+		cmd, args = getCmdFromEnv()
+	}
+
+	p := exec.Command(cmd, args...)
 	th := newThrottledWriter(burst)
 
-	stdin, err := cmd.StdinPipe()
+	stdin, err := p.StdinPipe()
 	if err != nil {
 		log.Fatalf("couldn't get stdin: %s", err.Error())
 	}
 
-	cmd.Stdout = th
-	cmd.Stderr = th
+	p.Stdout = th
+	p.Stderr = th
 
-	err = cmd.Start()
+	err = p.Start()
 	if err != nil {
-		log.Fatalf("couldn't start %s: %s", cmd.Path, err.Error())
+		log.Fatalf("couldn't start %s: %s", p.Path, err.Error())
 	}
 
-	go stdinWatcher(cmd, stdin, gracefulShutdown, proxyStdIn)
+	go stdinWatcher(p, stdin, gracefulShutdown, proxyStdIn)
 
-	err = cmd.Wait()
+	err = p.Wait()
 	if err != nil {
-		log.Fatalf("%s terminated: %s", cmd.Path, err.Error())
+		log.Fatalf("%s terminated: %s", p.Path, err.Error())
 	}
 }
