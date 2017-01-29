@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"path"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -191,6 +192,40 @@ func (c *cmdFlag) Set(v string) error {
 	return nil
 }
 
+// different platforms define different types to represent process wait
+// status, but most of them have these methods
+type processStatus interface {
+	Exited() bool
+	Signaled() bool
+	Signal() syscall.Signal
+	ExitStatus() int
+}
+
+func getExitStatus(cmd *exec.Cmd) int {
+	status, ok := cmd.ProcessState.Sys().(processStatus)
+
+	if !ok {
+		if cmd.ProcessState.Success() {
+			return 0
+		}
+
+		return 1
+	}
+
+	if !status.Signaled() && !status.Exited() {
+		panic("process neither exited nor signaled")
+	}
+
+	if status.Signaled() {
+		sig := status.Signal()
+		// convert to exit status the way Linux does it
+		return 128 + int(sig)
+	} else {
+		// exited
+		return status.ExitStatus()
+	}
+}
+
 func getCmdFromEnv() (string, []string) {
 	rawArgs := os.Getenv("GOPORT_ARGS")
 	if rawArgs == "" {
@@ -256,7 +291,14 @@ func main() {
 	go stdinWatcher(p, stdin, gracefulShutdown, proxyStdIn)
 
 	err = p.Wait()
-	if err != nil {
-		log.Fatalf("%s terminated: %s", p.Path, err.Error())
+	switch err.(type) {
+	case nil:
+		// process exited with exit status 0
+	case *exec.ExitError:
+		// process exited with non-zero exit status
+	default:
+		log.Fatalf("unexpected error in p.Wait(): %s", err.Error())
 	}
+
+	os.Exit(getExitStatus(p))
 }
