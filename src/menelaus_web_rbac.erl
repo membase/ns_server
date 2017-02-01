@@ -431,13 +431,11 @@ handle_change_password_with_identity(Req, Identity) ->
     menelaus_util:execute_if_validated(
       fun (Values) ->
               case menelaus_users:change_password(Identity, proplists:get_value(password, Values)) of
-                  {commit, _} ->
+                  ok ->
                       ns_audit:password_change(Req, Identity),
                       menelaus_util:reply(Req, 200);
-                  {abort, user_not_found} ->
-                      menelaus_util:reply_json(Req, <<"User was not found.">>, 404);
-                retry_needed ->
-                    erlang:error(exceeded_retries)
+                  user_not_found ->
+                      menelaus_util:reply_json(Req, <<"User was not found.">>, 404)
               end
       end, Req, validate_change_password(Req:parse_post())).
 

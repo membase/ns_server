@@ -65,90 +65,110 @@ get_users(Config) ->
 get_identity({Identity, _}) ->
     Identity.
 
-build_auth_builtin(undefined, undefined, _MemcachedAuth) ->
+build_auth(false, undefined, _UserName) ->
     password_required;
-build_auth_builtin(undefined, Password, MemcachedAuth) ->
+build_auth(false, Password, UserName) ->
     [{ns_server, ns_config_auth:hash_password(Password)},
-     {memcached, MemcachedAuth}];
-build_auth_builtin(User, undefined, _MemcachedAuth) ->
-    get_auth_info(User);
-build_auth_builtin(User, Password, MemcachedAuth) ->
-    Auth = get_auth_info(User),
-    {Salt, Mac} = get_salt_and_mac(Auth),
+     {memcached, build_memcached_auth(UserName, Password)}];
+build_auth({_, _}, undefined, _UserName) ->
+    same;
+build_auth({_, CurrentAuth}, Password, UserName) ->
+    {Salt, Mac} = get_salt_and_mac(CurrentAuth),
     case ns_config_auth:hash_password(Salt, Password) of
         Mac ->
-            case get_memcached_auth(Auth) of
+            case get_memcached_auth(CurrentAuth) of
                 undefined ->
-                    [{memcached, MemcachedAuth} | Auth];
+                    [{memcached, build_memcached_auth(UserName, Password)} | CurrentAuth];
                 _ ->
-                    Auth
+                    same
             end;
         _ ->
             [{ns_server, ns_config_auth:hash_password(Password)},
-             {memcached, MemcachedAuth}]
+             {memcached, build_memcached_auth(UserName, Password)}]
     end.
 
-build_auth(saslauthd, _User, undefined, undefined) ->
-    [];
-build_auth(builtin, User, Password, MemcachedAuth) ->
-    case build_auth_builtin(User, Password, MemcachedAuth) of
-        password_required ->
-            password_required;
-        Auth ->
-            [{authentication, Auth}]
-    end.
-
-build_memcached_auth(_User, undefined) ->
-    undefined;
 build_memcached_auth(User, Password) ->
     [MemcachedAuth] = build_memcached_auth_info([{User, Password}]),
     MemcachedAuth.
 
 -spec store_user(rbac_identity(), rbac_user_name(), rbac_password(), [rbac_role()]) -> run_txn_return().
-store_user({UserName, Type} = Identity, Name, Password, Roles) ->
+store_user(Identity, Name, Password, Roles) ->
     Props = case Name of
                 undefined ->
                     [];
                 _ ->
                     [{name, Name}]
             end,
-    MemcachedAuth = build_memcached_auth(UserName, Password),
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            store_user_spock(Identity, Props, Password, Roles, ns_config:get());
+        false ->
+            store_user_45(Identity, Props, Roles)
+    end.
+
+store_user_45({_UserName, saslauthd} = Identity, Props, Roles) ->
     ns_config:run_txn(
       fun (Config, SetFn) ->
-              Users = get_users(Config),
-              case build_auth(Type, proplists:get_value(Identity, Users), Password, MemcachedAuth) of
-                  password_required ->
-                      {abort, password_required};
-                  Auth ->
-                      NewProps = [{roles, Roles} | Props] ++ Auth,
-                      case menelaus_roles:validate_roles(Roles, Config) of
-                          ok ->
-                              NewUsers = lists:keystore(Identity, 1, Users, {Identity, NewProps}),
-                              {commit, SetFn(user_roles, NewUsers, Config)};
-                          Error ->
-                              {abort, Error}
-                      end
+              case menelaus_roles:validate_roles(Roles, Config) of
+                  ok ->
+                      Users = get_users(Config),
+                      NewUsers = lists:keystore(Identity, 1, Users,
+                                                {Identity, [{roles, Roles} | Props]}),
+                      {commit, SetFn(user_roles, NewUsers, Config)};
+                  Error ->
+                      {abort, Error}
               end
       end).
 
+store_user_spock({UserName, Type} = Identity, Props, Password, Roles, Config) ->
+    CurrentAuth = replicated_dets:get(storage_name(), {auth, Identity}),
+    case Type of
+        saslauthd ->
+            store_user_spock_with_auth(Identity, Props, same, Roles, Config);
+        builtin ->
+            case build_auth(CurrentAuth, Password, UserName) of
+                password_required ->
+                    {abort, password_required};
+                Auth ->
+                    store_user_spock_with_auth(Identity, Props, Auth, Roles, Config)
+            end
+    end.
+
+store_user_spock_with_auth(Identity, Props, Auth, Roles, Config) ->
+    case menelaus_roles:validate_roles(Roles, Config) of
+        ok ->
+            ok = replicated_dets:set(storage_name(), {user, Identity}, [{roles, Roles} | Props]),
+            case Auth of
+                same ->
+                    ok;
+                _ ->
+                    ok = replicated_dets:set(storage_name(), {auth, Identity}, Auth)
+            end,
+            {commit, ok};
+        Error ->
+            {abort, Error}
+    end.
+
 change_password({UserName, builtin} = Identity, Password) when is_list(Password) ->
-    MemcachedAuth = build_memcached_auth(UserName, Password),
-    ns_config:run_txn(
-      fun (Config, SetFn) ->
-              Users = get_users(Config),
-              case proplists:get_value(Identity, Users) of
-                  undefined ->
-                      {abort, user_not_found};
-                  User ->
-                      Auth = build_auth_builtin(User, Password, MemcachedAuth),
-                      NewUser = lists:keyreplace(authentication, 1, User, {authentication, Auth}),
-                      NewUsers = lists:keystore(Identity, 1, Users, {Identity, NewUser}),
-                      {commit, SetFn(user_roles, NewUsers, Config)}
-              end
-      end).
+    case replicated_dets:get(storage_name(), {user, Identity}) of
+        false ->
+            user_not_found;
+        _ ->
+            CurrentAuth = replicated_dets:get(storage_name(), {auth, Identity}),
+            Auth = build_auth(CurrentAuth, Password, UserName),
+            replicated_dets:set(storage_name(), {auth, Identity}, Auth)
+    end.
 
 -spec delete_user(rbac_identity()) -> run_txn_return().
 delete_user(Identity) ->
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            delete_user_spock(Identity);
+        false ->
+            delete_user_45(Identity)
+    end.
+
+delete_user_45(Identity) ->
     ns_config:run_txn(
       fun (Config, SetFn) ->
               case ns_config:search(Config, user_roles) of
@@ -163,6 +183,20 @@ delete_user(Identity) ->
                       end
               end
       end).
+
+delete_user_spock({_, Type} = Identity) ->
+    case Type of
+        builtin ->
+            _ = replicated_dets:delete(storage_name(), {auth, Identity});
+        saslauthd ->
+            ok
+    end,
+    case replicated_dets:delete(storage_name(), {user, Identity}) of
+        {not_found, _} ->
+            {abort, {error, not_found}};
+        ok ->
+            {commit, ok}
+    end.
 
 get_auth_info(Props) ->
     proplists:get_value(authentication, Props).
