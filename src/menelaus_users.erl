@@ -35,7 +35,12 @@
          get_user_name/1,
          upgrade_to_4_5/1,
          get_memcached_auth_infos/1,
-         build_memcached_auth_info/1]).
+         build_memcached_auth_info/1,
+         get_users_version/0,
+         get_auth_version/0]).
+
+%% callbacks for replicated_dets
+-export([init/1, on_save/2]).
 
 -export([start_storage/0, start_replicator/0]).
 
@@ -45,10 +50,21 @@ replicator_name() ->
 storage_name() ->
     users_storage.
 
+versions_name() ->
+    menelaus_users_versions.
+
 start_storage() ->
     Replicator = erlang:whereis(replicator_name()),
     Path = filename:join(path_config:component_path(data, "config"), "users.dets"),
-    replicated_dets:start_link(storage_name(), Path, Replicator).
+    replicated_dets:start_link(?MODULE, [], storage_name(), Path, Replicator).
+
+get_users_version() ->
+    [{user_version, V, Base}] = ets:lookup(versions_name(), user_version),
+    {V, Base}.
+
+get_auth_version() ->
+    [{auth_version, V, Base}] = ets:lookup(versions_name(), auth_version),
+    {V, Base}.
 
 start_replicator() ->
     GetRemoteNodes =
@@ -56,6 +72,24 @@ start_replicator() ->
                 ns_node_disco:nodes_actual_other()
         end,
     doc_replicator:start_link(replicated_dets, replicator_name(), GetRemoteNodes, storage_name()).
+
+init([]) ->
+    Base = crypto:rand_uniform(0, 16#100000000),
+
+    _ = ets:new(versions_name(), [protected, named_table]),
+    ets:insert_new(versions_name(), [{user_version, 0, Base}, {auth_version, 0, Base}]),
+    gen_event:notify(user_storage_events, {user_version, {0, Base}}),
+    gen_event:notify(user_storage_events, {auth_version, {0, Base}}),
+    Base.
+
+on_save({user, _}, Base) ->
+    Ver = ets:update_counter(versions_name(), user_version, 1),
+    gen_event:notify(user_storage_events, {user_version, {Ver, Base}}),
+    Base;
+on_save({auth, _}, Base) ->
+    Ver = ets:update_counter(versions_name(), auth_version, 1),
+    gen_event:notify(user_storage_events, {auth_version, {Ver, Base}}),
+    Base.
 
 -spec get_users(ns_config()) -> [{rbac_identity(), []}].
 get_users(Config) ->

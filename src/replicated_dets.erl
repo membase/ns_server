@@ -19,13 +19,15 @@
 
 -behaviour(replicated_storage).
 
--export([start_link/3, set/3, delete/2, get/2, get/3]).
+-export([start_link/5, set/3, delete/2, get/2, get/3]).
 
 -export([init/1, init_after_ack/1, handle_call/3,
          get_id/1, find_doc/2, get_all_docs/1,
          get_revision/1, set_revision/2, is_deleted/1, save_doc/2]).
 
--record(state, {path :: string(),
+-record(state, {child_module :: atom(),
+                child_state :: term(),
+                path :: string(),
                 name :: string()}).
 
 -record(doc, {id :: term(),
@@ -33,8 +35,8 @@
               deleted :: boolean(),
               value :: term()}).
 
-start_link(Name, Path, Replicator) ->
-    replicated_storage:start_link(Name, ?MODULE, [Name, Path, Replicator], Replicator).
+start_link(ChildModule, InitParams, Name, Path, Replicator) ->
+    replicated_storage:start_link(Name, ?MODULE, [Name, ChildModule, InitParams, Path, Replicator], Replicator).
 
 set(Name, Id, Value) ->
     gen_server:call(Name, {interactive_update, #doc{id = Id,
@@ -59,10 +61,13 @@ get(Name, Id, Default) ->
             Value
     end.
 
-init([Name, Path, Replicator]) ->
+init([Name, ChildModule, InitParams, Path, Replicator]) ->
     replicated_storage:anounce_startup(Replicator),
+    ChildState = ChildModule:init(InitParams),
     #state{name = Name,
-           path = Path}.
+           path = Path,
+           child_module = ChildModule,
+           child_state = ChildState}.
 
 init_after_ack(State) ->
     ok = open(State),
@@ -103,9 +108,13 @@ set_revision(Doc, NewRev) ->
 is_deleted(#doc{deleted = Deleted}) ->
     Deleted.
 
-save_doc(Doc, #state{name = TableName} = State) ->
+save_doc(#doc{id = Id} = Doc,
+         #state{name = TableName,
+                child_module = ChildModule,
+                child_state = ChildState} = State) ->
     ok = dets:insert(TableName, [Doc]),
-    {ok, State}.
+    NewChildState = ChildModule:on_save(Id, ChildState),
+    {ok, State#state{child_state = NewChildState}}.
 
 handle_call({get, Id}, _From, #state{name = TableName} = State) ->
     RV = case dets:lookup(TableName, Id) of

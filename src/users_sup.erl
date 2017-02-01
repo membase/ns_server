@@ -35,6 +35,10 @@ child_specs() ->
       {menelaus_users, start_replicator, []},
       permanent, 1000, worker, [doc_replicator]},
 
+     {user_storage_events,
+      {gen_event, start_link, [{local, user_storage_events}]},
+      permanent, 1000, worker, []},
+
      {users_storage,
       {menelaus_users, start_storage, []},
       permanent, 1000, worker, [replicated_dets, replicated_storage]}].
