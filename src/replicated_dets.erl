@@ -17,9 +17,12 @@
 
 -module(replicated_dets).
 
+-include("ns_common.hrl").
+-include("pipes.hrl").
+
 -behaviour(replicated_storage).
 
--export([start_link/5, set/3, delete/2, get/2, get/3]).
+-export([start_link/5, set/3, delete/2, get/2, get/3, select/3]).
 
 -export([init/1, init_after_ack/1, handle_call/3,
          get_id/1, find_doc/2, get_all_docs/1,
@@ -60,6 +63,11 @@ get(Name, Id, Default) ->
         {Id, Value} ->
             Value
     end.
+
+select(Name, KeySpec, N) ->
+    DocSpec = #doc{id = KeySpec, deleted = false, _ = '_'},
+    MatchSpec = [{DocSpec, [], ['$_']}],
+    ?make_producer(select_from_dets(Name, MatchSpec, N, ?yield())).
 
 init([Name, ChildModule, InitParams, Path, Replicator]) ->
     replicated_storage:anounce_startup(Replicator),
@@ -125,4 +133,44 @@ handle_call({get, Id}, _From, #state{name = TableName} = State) ->
              [] ->
                  false
          end,
-    {reply, RV, State}.
+    {reply, RV, State};
+handle_call(suspend, {Pid, _} = From, #state{name = TableName} = State) ->
+    MRef = erlang:monitor(process, Pid),
+    ?log_debug("Suspended by process ~p", [Pid]),
+    gen_server:reply(From, {ok, TableName}),
+    receive
+        {'DOWN', MRef, _, _, _} ->
+            ?log_info("Suspending process ~p died", [Pid]),
+            {noreply, State};
+        release ->
+            ?log_debug("Released by process ~p", [Pid]),
+            erlang:demonitor(MRef, [flush]),
+            {noreply, State}
+    end.
+
+select_from_dets(Name, MatchSpec, N, Yield) ->
+    {ok, TableName} = gen_server:call(Name, suspend, infinity),
+    dets:safe_fixtable(TableName, true),
+    do_select_from_dets(TableName, MatchSpec, N, Yield),
+    dets:safe_fixtable(Name, false),
+    Name ! release,
+    ok.
+
+do_select_from_dets(TableName, MatchSpec, N, Yield) ->
+    case dets:select(TableName, MatchSpec, N) of
+        {Selection, Continuation} when is_list(Selection) ->
+            do_select_from_dets_continue(Selection, Continuation, Yield);
+        '$end_of_table' ->
+            ok
+    end.
+
+do_select_from_dets_continue(Selection, Continuation, Yield) ->
+    lists:foreach(fun (#doc{id = Id, value = Value}) ->
+                          Yield({Id, Value})
+                  end, Selection),
+    case dets:select(Continuation) of
+        {Selection2, Continuation2} when is_list(Selection2) ->
+            do_select_from_dets_continue(Selection2, Continuation2, Yield);
+        '$end_of_table' ->
+            ok
+    end.
