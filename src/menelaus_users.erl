@@ -209,13 +209,23 @@ get_memcached_auth(Auth) ->
 
 -spec authenticate(rbac_user_id(), rbac_password()) -> boolean().
 authenticate(Username, Password) ->
-    Users = get_users(ns_config:latest()),
-    case proplists:get_value({Username, builtin}, Users) of
-        undefined ->
-            false;
-        Props ->
-            {Salt, Mac} = get_salt_and_mac(get_auth_info(Props)),
-            ns_config_auth:hash_password(Salt, Password) =:= Mac
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            Identity = {Username, builtin},
+            case replicated_dets:get(storage_name(), {user, Identity}) of
+                false ->
+                    false;
+                _ ->
+                    case replicated_dets:get(storage_name(), {auth, Identity}) of
+                        false ->
+                            false;
+                        {_, Auth} ->
+                            {Salt, Mac} = get_salt_and_mac(Auth),
+                            ns_config_auth:hash_password(Salt, Password) =:= Mac
+                    end
+            end;
+        false ->
+            false
     end.
 
 -spec get_auth_infos(ns_config()) -> [{rbac_identity(), term()}].
