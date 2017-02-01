@@ -109,7 +109,7 @@ refresh() ->
     ns_memcached:connect_and_send_rbac_refresh().
 
 trim_users(Users) ->
-    [{menelaus_users:get_identity(User), menelaus_users:get_roles(User)} ||
+    [{menelaus_users:get_identity(User), menelaus_users:get_user_roles(User)} ||
         User <- Users].
 
 bucket_permissions(Bucket, CompiledRoles) ->

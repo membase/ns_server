@@ -294,7 +294,7 @@ compile_roles(Roles, Definitions) ->
 get_user_roles({User, saslauthd} = Identity) ->
     case cluster_compat_mode:is_cluster_45() of
         true ->
-            menelaus_users:get_roles(ns_config:latest(), Identity);
+            menelaus_users:get_roles(Identity);
         false ->
             case saslauthd_auth:get_role_pre_45(User) of
                 admin ->
@@ -306,7 +306,7 @@ get_user_roles({User, saslauthd} = Identity) ->
             end
     end;
 get_user_roles({_User, builtin} = Identity) ->
-    menelaus_users:get_roles(ns_config:latest(), Identity).
+    menelaus_users:get_roles(Identity).
 
 -spec get_roles(rbac_identity()) -> [rbac_role()].
 get_roles({"", wrong_token}) ->

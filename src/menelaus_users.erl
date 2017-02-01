@@ -30,8 +30,8 @@
          change_password/2,
          authenticate/2,
          get_auth_infos/1,
+         get_user_roles/1,
          get_roles/1,
-         get_roles/2,
          get_user_name/2,
          upgrade_to_4_5/1,
          get_memcached_auth_infos/1,
@@ -239,14 +239,20 @@ get_memcached_auth_infos(Users) ->
     [get_memcached_auth(get_auth_info(Props)) ||
         {{_Username, builtin}, Props} <- Users].
 
--spec get_roles({rbac_identity(), []}) -> [rbac_role()].
-get_roles({_Identity, Props}) ->
+-spec get_user_roles({rbac_identity(), []}) -> [rbac_role()].
+get_user_roles({_Identity, Props}) ->
     proplists:get_value(roles, Props, []).
 
--spec get_roles(ns_config(), rbac_identity()) -> [rbac_role()].
-get_roles(Config, Identity) ->
-    Props = ns_config:search_prop(Config, user_roles, Identity, []),
-    get_roles({Identity, Props}).
+-spec get_roles(rbac_identity()) -> [rbac_role()].
+get_roles(Identity) ->
+    Props =
+        case cluster_compat_mode:is_cluster_spock() of
+            true ->
+                replicated_dets:get(storage_name(), {user, Identity}, []);
+            false ->
+                ns_config:search_prop(ns_config:latest(), user_roles, Identity, [])
+        end,
+    get_user_roles({Identity, Props}).
 
 -spec get_user_name(ns_config(), rbac_identity()) -> rbac_user_name().
 get_user_name(Config, Identity) ->
