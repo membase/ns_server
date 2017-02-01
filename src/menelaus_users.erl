@@ -32,7 +32,7 @@
          get_auth_infos/1,
          get_user_roles/1,
          get_roles/1,
-         get_user_name/2,
+         get_user_name/1,
          upgrade_to_4_5/1,
          get_memcached_auth_infos/1,
          build_memcached_auth_info/1]).
@@ -254,9 +254,15 @@ get_roles(Identity) ->
         end,
     get_user_roles({Identity, Props}).
 
--spec get_user_name(ns_config(), rbac_identity()) -> rbac_user_name().
-get_user_name(Config, Identity) ->
-    Props = ns_config:search_prop(Config, user_roles, Identity, []),
+-spec get_user_name(rbac_identity()) -> rbac_user_name().
+get_user_name(Identity) ->
+    Props =
+        case cluster_compat_mode:is_cluster_spock() of
+            false ->
+                ns_config:search_prop(ns_config:latest(), user_roles, Identity, []);
+            true ->
+                replicated_dets:get(storage_name(), {user, Identity}, [])
+        end,
     proplists:get_value(name, Props).
 
 collect_result(Port, Acc) ->

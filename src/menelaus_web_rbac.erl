@@ -223,7 +223,7 @@ handle_get_users(Req) ->
 handle_whoami(Req) ->
     Identity = menelaus_auth:get_identity(Req),
     Roles = menelaus_roles:get_roles(Identity),
-    Name = menelaus_users:get_user_name(ns_config:latest(), Identity),
+    Name = menelaus_users:get_user_name(Identity),
     menelaus_util:reply_json(Req, get_user_json(Identity, Name, Roles)).
 
 parse_until(Str, Delimeters) ->

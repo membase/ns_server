@@ -19,7 +19,7 @@
 
 -behaviour(replicated_storage).
 
--export([start_link/3, set/3, delete/2, get/2]).
+-export([start_link/3, set/3, delete/2, get/2, get/3]).
 
 -export([init/1, init_after_ack/1, handle_call/3,
          get_id/1, find_doc/2, get_all_docs/1,
@@ -50,6 +50,14 @@ delete(Name, Id) ->
 
 get(Name, Id) ->
     gen_server:call(Name, {get, Id}, infinity).
+
+get(Name, Id, Default) ->
+    case get(Name, Id) of
+        false ->
+            Default;
+        {Id, Value} ->
+            Value
+    end.
 
 init([Name, Path, Replicator]) ->
     replicated_storage:anounce_startup(Replicator),
