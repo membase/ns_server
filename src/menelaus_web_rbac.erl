@@ -377,6 +377,8 @@ handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
     end.
 
 handle_delete_user(Type, UserId, Req) ->
+    menelaus_web:assert_is_45(),
+
     case type_to_atom(Type) of
         unknown ->
             menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
