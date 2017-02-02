@@ -8,13 +8,24 @@
     'mnPermissions'
   ]).factory('mnAuthService', mnAuthServiceFactory);
 
-  function mnAuthServiceFactory($http, $state, mnPools, $rootScope, mnPendingQueryKeeper, mnPermissions, $uibModalStack, $window, $q) {
+  function mnAuthServiceFactory($http, $state, mnPools, $rootScope, mnPendingQueryKeeper, mnPermissions, $uibModalStack, $window, $q, $cacheFactory) {
     var mnAuthService = {
       login: login,
-      logout: logout
+      logout: logout,
+      whoami: whoami
     };
 
     return mnAuthService;
+
+    function whoami() {
+      return $http({
+        method: 'GET',
+        cache: true,
+        url: '/whoami'
+      }).then(function (resp) {
+        return resp.data;
+      });
+    }
 
     function login(user) {
       user = user || {};
@@ -50,6 +61,7 @@
           delete $rootScope.pools;
           mnPermissions.clear();
         });
+        $cacheFactory.get('$http').remove('/whoami');
         $window.localStorage.removeItem('mn_xdcr_regex');
         $window.localStorage.removeItem('mn_xdcr_testKeys');
         mnPendingQueryKeeper.cancelAllQueries();

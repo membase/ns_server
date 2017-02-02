@@ -31,7 +31,9 @@
     'mnMemoryQuotaService',
     'mnElementCrane',
     'ngAnimate',
-    'mnDragAndDrop'
+    'mnDragAndDrop',
+    'mnResetPasswordDialog',
+    'mnResetPasswordDialogService'
   ]).config(mnAdminConfig);
 
   function mnAdminConfig($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider, mnHelperProvider) {
@@ -59,6 +61,9 @@
           },
           permissions: function (mnPermissions) {
             return mnPermissions.check();
+          },
+          whoami: function (mnAuthService) {
+            return mnAuthService.whoami();
           }
         },
         views: {

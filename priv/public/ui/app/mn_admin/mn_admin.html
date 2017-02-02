@@ -1,4 +1,4 @@
-<div class="page-wrap">
+<div class="page-wrap" ng-click="adminCtl.toggleUserDropdownMenu(false);">
   <div
      mn-launchpad
      launchpad-source="adminCtl.launchpadSource"
@@ -65,8 +65,28 @@
       <a href="{{adminCtl.poolDefault.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
         Support
       </a>
-      <a ng-click="adminCtl.logout()">Sign Out</a>
+      <a
+         class="nowrap ellipsis max-width-3"
+         ng-click="$event.stopPropagation();adminCtl.toggleUserDropdownMenu();">
+          {{adminCtl.user.id}}
+        <span class="has-menu">&nbsp;</span>
+      </a>
     </nav>
+  </div>
+
+  <div
+     class="panel user-dropdown-menu"
+     ng-click="$event.stopPropagation();"
+     ng-show="adminCtl.showUserDropdownMenu">
+    <a
+       ng-show="pools.isEnterprise && poolDefault.compat.atLeast50 && adminCtl.user.type === 'builtin'"
+       href=""
+       ng-click="adminCtl.showResetPasswordDialog()">
+      Reset password
+    </a>
+    <a href="" ng-click="adminCtl.logout()" class="nowrap ellipsis max-width-4">
+      Sign out {{adminCtl.user.id}}
+    </a>
   </div>
 
   <header>

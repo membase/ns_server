@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions, mnPools, mnMemoryQuotaService) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions, mnPools, mnMemoryQuotaService, mnResetPasswordDialogService, whoami) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -14,6 +14,10 @@
     vm.isProgressBarClosed = true;
     vm.toggleProgressBar = toggleProgressBar;
     vm.filterTasks = filterTasks;
+    vm.showResetPasswordDialog = showResetPasswordDialog;
+
+    vm.user = whoami;
+    vm.toggleUserDropdownMenu = toggleUserDropdownMenu;
 
     vm.$state = $state
 
@@ -30,11 +34,20 @@
 
     activate();
 
+    function showResetPasswordDialog() {
+      vm.showUserDropdownMenu = false;
+      mnResetPasswordDialogService.showDialog();
+    }
+
     function runInternalSettingsDialog() {
       $uibModal.open({
         templateUrl: "app/mn_admin/mn_internal_settings/mn_internal_settings.html",
         controller: "mnInternalSettingsController as internalSettingsCtl"
       });
+    }
+
+    function toggleUserDropdownMenu(value) {
+      vm.showUserDropdownMenu = value === undefined ? !vm.showUserDropdownMenu : value;
     }
 
     function toggleProgressBar() {
