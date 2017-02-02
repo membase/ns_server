@@ -856,6 +856,11 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
                    timeout=60)
          for kind in ["connections"]],
 
+        [AllOsTask("fts mossScope (%s)" % path,
+                   ["mossScope", "stats", "diag", path],
+                   log_file="fts_mossScope_stats.log")
+         for path in glob.glob(os.path.join(viewdir, "@fts", "*.pindex", "store"))],
+
         [AllOsTask("ddocs for %s (%s)" % (bucket, path),
                    ["couch_dbdump", path],
                    log_file = "ddocs.log")
