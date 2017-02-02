@@ -48,15 +48,23 @@
     }
     function submit() {
       var params = getParams();
+
       mnPromiseHelper(vm, mnSettingsAlertsService.saveAlerts(params))
         .showGlobalSpinner()
         .catchErrors()
-        .showGlobalSuccess("Settings saved successfully!", 4000);
+        .showGlobalSuccess("Settings saved successfully!", 4000)
+        .onSuccess(getState);
+    }
+    function getState() {
+      return mnPromiseHelper(vm, mnSettingsAlertsService.getAlerts())
+        .onSuccess(function (data) {
+          vm.state = data;
+          vm.validState = _.merge({},data);
+        });
     }
     function activate() {
-      mnPromiseHelper(vm, mnSettingsAlertsService.getAlerts())
-        .applyToScope("state")
-        .onSuccess(function () {
+      getState()
+        .onSuccess(function (data) {
           $scope.$watch('settingsAlertsCtl.state', _.debounce(watchOnAlertsSettings, 500, {leading: true}), true);
         });
     }
@@ -74,7 +82,13 @@
       return !vm.state || !vm.state.enabled;
     }
     function getParams() {
-      var params = _.clone(vm.state);
+      var params
+      if (vm.state.enabled === false) {
+        params = _.clone(vm.validState);
+        params.enabled = false;
+      } else {
+        params = _.clone(vm.state);
+      }
       params.alerts = mnHelper.checkboxesToList(params.alerts);
       params.recipients = params.recipients.replace(/\s+/g, ',');
       params.emailUser = params.emailServer.user;
