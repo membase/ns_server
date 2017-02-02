@@ -7,64 +7,67 @@
      ui-view="lostConnection">
   </div>
 
-  <nav class="nav-header">
-    <a ng-click="adminCtl.toggleProgressBar()" class="activities">
-      Activity
-      <span
-         ng-if="adminCtl.filterTasks(adminCtl.tasks.running).length > 0"
-         class="label badge">
-        {{adminCtl.filterTasks(adminCtl.tasks.running).length}}
-      </span>
-    </a>
-    <div class="relative inline">
-      <div
-         mn-drag-and-drop
-         base-corner-right="true"
-         class="tasks-progress panel dialog-small"
-         ng-if="rbac.cluster.tasks.read && !adminCtl.isProgressBarClosed && adminCtl.filterTasks(adminCtl.tasks.running).length">
-        <div class="close-tasks">
-          <span ng-click="adminCtl.toggleProgressBar()">X</span>
-        </div>
-        <div class="panel-content">
-          <div ng-repeat="task in adminCtl.filterTasks(adminCtl.tasks.running)">
-            <div class="text-small text-left">
-              {{task | formatProgressMessage}}
-              <span ng-if="task.progress != undefined">{{(task.progress | number:1) + '%'}}</span>
-            </div>
-            <div
-               class="bar-wrapper"
-               ng-show="task.type !== 'loadingSampleBucket' && task.type !== 'orphanBucket'">
-              <div
-                 class="bar positive"
-                 ng-style="{'width': task.progress + '%'}">
-                <div></div>
+  <div class="row">
+    <span class="red nowrap text-smaller" style="padding-left:1.6rem;">DEVELOPER BUILD</span>
+    <nav class="nav-header">
+      <a ng-click="adminCtl.toggleProgressBar()" class="activities">
+        Activity
+        <span
+           ng-if="adminCtl.filterTasks(adminCtl.tasks.running).length > 0"
+           class="label badge">
+          {{adminCtl.filterTasks(adminCtl.tasks.running).length}}
+        </span>
+      </a>
+      <div class="relative inline">
+        <div
+           mn-drag-and-drop
+           base-corner-right="true"
+           class="tasks-progress panel dialog-small"
+           ng-if="rbac.cluster.tasks.read && !adminCtl.isProgressBarClosed && adminCtl.filterTasks(adminCtl.tasks.running).length">
+          <div class="close-tasks">
+            <span ng-click="adminCtl.toggleProgressBar()">X</span>
+          </div>
+          <div class="panel-content">
+            <div ng-repeat="task in adminCtl.filterTasks(adminCtl.tasks.running)">
+              <div class="text-small text-left">
+                {{task | formatProgressMessage}}
+                <span ng-if="task.progress != undefined">{{(task.progress | number:1) + '%'}}</span>
               </div>
               <div
-                 class="bar negative"
-                 ng-style="{'width': (100 - task.progress) + '%'}">
-                <div></div>
+                 class="bar-wrapper"
+                 ng-show="task.type !== 'loadingSampleBucket' && task.type !== 'orphanBucket'">
+                <div
+                   class="bar positive"
+                   ng-style="{'width': task.progress + '%'}">
+                  <div></div>
+                </div>
+                <div
+                   class="bar negative"
+                   ng-style="{'width': (100 - task.progress) + '%'}">
+                  <div></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    <a
-       ng-click="adminCtl.runInternalSettingsDialog();"
-       ng-show="adminCtl.enableInternalSettings && (rbac.cluster.settings.read || rbac.cluster.xdcr.settings.read)">
-      Edit internal settings
-    </a>
-    <a href="classic-index.html" target="_self">
-      Classic UI
-    </a>
-    <a href="http://docs.couchbase.com/4.5" target="cbdocs">
-      Documentation
-    </a>
-    <a href="{{adminCtl.poolDefault.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
-      Support
-    </a>
-    <a ng-click="adminCtl.logout()">Sign Out</a>
-  </nav>
+      <a
+         ng-click="adminCtl.runInternalSettingsDialog();"
+         ng-show="adminCtl.enableInternalSettings && (rbac.cluster.settings.read || rbac.cluster.xdcr.settings.read)">
+        Edit internal settings
+      </a>
+      <a href="classic-index.html" target="_self">
+        Classic UI
+      </a>
+      <a href="http://docs.couchbase.com/4.5" target="cbdocs">
+        Documentation
+      </a>
+      <a href="{{adminCtl.poolDefault.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
+        Support
+      </a>
+      <a ng-click="adminCtl.logout()">Sign Out</a>
+    </nav>
+  </div>
 
   <header>
     <a
@@ -162,10 +165,10 @@
          mn-tab="settings"
          ng-class="{currentNav: ('app.admin.settings' | includedByState)}"
          ui-sref="app.admin.settings.cluster">
-         <span
-            ng-show="adminCtl.updates.sendStats && !!adminCtl.updates.newVersion"
-            class="label neutral badge notify">i</span>
-         Settings
+        <span
+           ng-show="adminCtl.updates.sendStats && !!adminCtl.updates.newVersion"
+           class="label neutral badge notify">i</span>
+        Settings
       </a>
       <a
          mn-tab="logs"
