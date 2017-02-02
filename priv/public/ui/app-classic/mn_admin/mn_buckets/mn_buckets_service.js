@@ -57,7 +57,7 @@
     function getBucketsByType(fromCache, mnHttpParams) {
       return mnBucketsStats[fromCache ? "get" : "getFresh"](mnHttpParams).then(function (resp) {
         var bucketsDetails = resp.data
-        bucketsDetails.byType = {membase: [], memcached: []};
+        bucketsDetails.byType = {membase: [], memcached: [], ephemeral: []};
         bucketsDetails.byType.membase.isMembase = true;
         bucketsDetails.byType.memcached.isMemcached = true;
         _.each(bucketsDetails, function (bucket) {
