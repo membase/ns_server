@@ -21,9 +21,10 @@
 -export([start_link/0, sync/0]).
 
 %% callbacks
--export([format_status/1, init/0, filter_event/1, handle_event/2, generate/1, refresh/0]).
+-export([format_status/1, init/0, filter_event/1, handle_event/2, producer/1, refresh/0]).
 
 -include("ns_common.hrl").
+-include("pipes.hrl").
 
 -record(state, {buckets,
                 users,
@@ -77,6 +78,9 @@ handle_event({user_roles, V}, #state{users = Users} = State) ->
         NewUsers ->
             {changed, State#state{users = NewUsers}}
     end.
+
+producer(State) ->
+    ?make_producer(?yield(generate(State))).
 
 generate(#state{buckets = Buckets,
                 users = Users,

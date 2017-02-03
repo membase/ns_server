@@ -22,9 +22,10 @@
 -export([start_link/0, sync/0]).
 
 %% callbacks
--export([init/0, filter_event/1, handle_event/2, generate/1, refresh/0]).
+-export([init/0, filter_event/1, handle_event/2, producer/1, refresh/0]).
 
 -include("ns_common.hrl").
+-include("pipes.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -96,6 +97,9 @@ handle_event({roles_definitions, V}, #state{roles = V}) ->
     unchanged;
 handle_event({roles_definitions, NewRoles}, #state{roles = _V} = State) ->
     {changed, State#state{roles = NewRoles}}.
+
+producer(State) ->
+    ?make_producer(?yield(generate(State))).
 
 generate(#state{buckets = Buckets,
                 users = Users,
