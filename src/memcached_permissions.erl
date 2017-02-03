@@ -30,7 +30,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -record(state, {buckets,
-                users,
                 roles,
                 admin_user}).
 
@@ -65,15 +64,14 @@ sync() ->
 init() ->
     Config = ns_config:get(),
     #state{buckets = ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)),
-           users = trim_users(menelaus_users:get_users(Config)),
            admin_user = ns_config:search_node_prop(Config, memcached, admin_user),
            roles = menelaus_roles:get_definitions(Config)}.
 
 filter_event({buckets, _V}) ->
     true;
-filter_event({user_roles, _V}) ->
-    true;
 filter_event({roles_definitions, _V}) ->
+    true;
+filter_event({user_version, _V}) ->
     true;
 filter_event(_) ->
     false.
@@ -86,35 +84,30 @@ handle_event({buckets, V}, #state{buckets = Buckets} = State) ->
         NewBuckets ->
             {changed, State#state{buckets = NewBuckets}}
     end;
-handle_event({user_roles, V}, #state{users = Users} = State) ->
-    case trim_users(V) of
-        Users ->
-            unchanged;
-        NewUsers ->
-            {changed, State#state{users = NewUsers}}
-    end;
+handle_event({user_version, _V}, State) ->
+    {changed, State};
 handle_event({roles_definitions, V}, #state{roles = V}) ->
     unchanged;
 handle_event({roles_definitions, NewRoles}, #state{roles = _V} = State) ->
     {changed, State#state{roles = NewRoles}}.
 
 producer(State) ->
-    ?make_producer(?yield(generate(State))).
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            make_producer(State);
+        false ->
+            ?make_producer(?yield(generate_45(State)))
+    end.
 
-generate(#state{buckets = Buckets,
-                users = Users,
-                roles = RoleDefinitions,
-                admin_user = Admin}) ->
+generate_45(#state{buckets = Buckets,
+                   roles = RoleDefinitions,
+                   admin_user = Admin}) ->
     Json =
-        {[memcached_admin_json(Admin, Buckets) | generate_json(Buckets, RoleDefinitions, Users)]},
+        {[memcached_admin_json(Admin, Buckets) | generate_json_45(Buckets, RoleDefinitions)]},
     menelaus_util:encode_json(Json).
 
 refresh() ->
     ns_memcached:connect_and_send_rbac_refresh().
-
-trim_users(Users) ->
-    [{menelaus_users:get_identity(User), menelaus_users:get_user_roles(User)} ||
-        User <- Users].
 
 bucket_permissions(Bucket, CompiledRoles) ->
     lists:usort([MemcachedPermission ||
@@ -165,22 +158,56 @@ jsonify_user({UserName, Type}, [{global, GlobalPermissions} | BucketPermissions]
 memcached_admin_json(AU, Buckets) ->
     jsonify_user({AU, builtin}, [{global, [all]} | [{Name, [all]} || Name <- Buckets]]).
 
-generate_json(Buckets, RoleDefinitions, Users) ->
+generate_json_45(Buckets, RoleDefinitions) ->
     RolesDict = dict:new(),
-    BucketUsers = [{{Name, builtin}, menelaus_roles:get_roles({Name, bucket})} ||
-                      Name <- Buckets],
     {Json, _} =
-        lists:foldl(fun ({Identity, Roles}, {Acc, Dict}) ->
+        lists:foldl(fun (Bucket, {Acc, Dict}) ->
+                            Roles = menelaus_roles:get_roles({Bucket, bucket}),
                             {Permissions, NewDict} =
                                 permissions_for_user(Roles, Buckets, RoleDefinitions, Dict),
-                            {[jsonify_user(Identity, Permissions) | Acc], NewDict}
-                    end, {[], RolesDict}, BucketUsers ++ Users),
+                            {[jsonify_user({Bucket, builtin}, Permissions) | Acc], NewDict}
+                    end, {[], RolesDict}, Buckets),
     lists:reverse(Json).
 
-generate_json_test() ->
+jsonify_users(AU, Buckets, RoleDefinitions) ->
+    ?make_transducer(
+       begin
+           ?yield(array_start),
+           ?yield({kv, memcached_admin_json(AU, Buckets)}),
+
+           %% TODO: to be removed after buckets will be upgraded to builtin users
+           Dict1 =
+               lists:foldl(
+                 fun (Bucket, Dict) ->
+                         Roles = menelaus_roles:get_roles({Bucket, bucket}),
+                         {Permissions, NewDict} =
+                             permissions_for_user(Roles, Buckets, RoleDefinitions, Dict),
+                         ?yield({kv, jsonify_user({Bucket, builtin}, Permissions)}),
+                         NewDict
+                 end, dict:new(), Buckets),
+
+           pipes:fold(
+             ?producer(),
+             fun ({{user, Identity}, Props}, Dict) ->
+                     Roles = proplists:get_value(roles, Props, []),
+                     {Permissions, NewDict} =
+                         permissions_for_user(Roles, Buckets, RoleDefinitions, Dict),
+                     ?yield({kv, jsonify_user(Identity, Permissions)}),
+                     NewDict
+             end, Dict1),
+           ?yield(array_end)
+       end).
+
+make_producer(#state{buckets = Buckets,
+                     roles = RoleDefinitions,
+                     admin_user = Admin}) ->
+    pipes:compose([menelaus_users:select_users('_'),
+                   jsonify_users(Admin, Buckets, RoleDefinitions),
+                   sjson:encode_extended_json([{compact, false},
+                                               {strict, false}])]).
+
+generate_json_45_test() ->
     Buckets = ["default", "test"],
-    Users = [{{"ivanivanov", builtin}, [{views_admin, ["default"]}, {bucket_admin, ["test"]}]},
-             {{"petrpetrov", saslauthd}, [admin]}],
     RoleDefinitions = menelaus_roles:preconfigured_roles(),
 
     Json =
@@ -199,27 +226,5 @@ generate_json_test() ->
                          'MetaWrite','Read','SimpleStats','TapConsumer',
                          'TapProducer','Write','XattrRead','XattrWrite']}]}},
             {privileges,[]},
-            {type, builtin}]}},
-         {<<"ivanivanov">>,
-          {[{buckets,{[{<<"default">>,
-                        ['DcpConsumer','IdleConnection','MetaRead','Read',
-                         'TapConsumer','XattrRead']},
-                       {<<"test">>,
-                        ['DcpConsumer','DcpProducer','IdleConnection','MetaRead',
-                         'MetaWrite','Read','SimpleStats','TapConsumer',
-                         'TapProducer','Write','XattrRead','XattrWrite']}]}},
-            {privileges,['Stats']},
-            {type, builtin}]}},
-         {<<"petrpetrov">>,
-          {[{buckets,{[{<<"default">>,
-                        ['DcpConsumer','DcpProducer','IdleConnection','MetaRead',
-                         'MetaWrite','Read','SimpleStats','TapConsumer',
-                         'TapProducer','Write','XattrRead','XattrWrite']},
-                       {<<"test">>,
-                        ['DcpConsumer','DcpProducer','IdleConnection','MetaRead',
-                         'MetaWrite','Read','SimpleStats','TapConsumer',
-                         'TapProducer','Write','XattrRead','XattrWrite']}]}},
-            {privileges,['AuditManagement','BucketManagement',
-                         'NodeManagement','SessionManagement','Stats']},
-            {type, saslauthd}]}}],
-    ?assertEqual(Json, generate_json(Buckets, RoleDefinitions, Users)).
+            {type, builtin}]}}],
+    ?assertEqual(Json, generate_json_45(Buckets, RoleDefinitions)).
