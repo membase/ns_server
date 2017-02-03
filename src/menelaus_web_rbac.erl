@@ -19,6 +19,7 @@
 -module(menelaus_web_rbac).
 
 -include("ns_common.hrl").
+-include("pipes.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -212,6 +213,14 @@ handle_get_users(Req) ->
     menelaus_web:assert_is_enterprise(),
     menelaus_web:assert_is_45(),
 
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            handle_get_users_spock(Req);
+        false ->
+            handle_get_users_45(Req)
+    end.
+
+handle_get_users_45(Req) ->
     Users = menelaus_users:get_users(ns_config:latest()),
     Json = lists:map(
              fun ({Identity, Props}) ->
@@ -219,6 +228,27 @@ handle_get_users(Req) ->
                      get_user_json(Identity, proplists:get_value(name, Props), Roles)
              end, Users),
     menelaus_util:reply_json(Req, Json).
+
+handle_get_users_spock(Req) ->
+    pipes:run(menelaus_users:select_users('_'),
+              [jsonify_users(),
+               sjson:encode_extended_json([{compact, false},
+                                           {strict, false}]),
+               pipes:simple_buffer(2048)],
+              menelaus_util:send_chunked(Req, 200, [{"Content-Type", "application/json"}])).
+
+jsonify_users() ->
+    ?make_transducer(
+       begin
+           ?yield(array_start),
+           pipes:foreach(?producer(),
+                         fun ({{user, Identity}, Props}) ->
+                                 Roles = proplists:get_value(roles, Props, []),
+                                 Name = proplists:get_value(name, Props),
+                                 ?yield({json, get_user_json(Identity, Name, Roles)})
+                         end),
+           ?yield(array_end)
+       end).
 
 handle_whoami(Req) ->
     Identity = menelaus_auth:get_identity(Req),

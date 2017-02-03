@@ -24,6 +24,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([get_users/1,
+         select_users/1,
          get_identity/1,
          store_user/4,
          delete_user/1,
@@ -94,6 +95,9 @@ on_save({auth, _}, Base) ->
 -spec get_users(ns_config()) -> [{rbac_identity(), []}].
 get_users(Config) ->
     ns_config:search(Config, user_roles, []).
+
+select_users(KeySpec) ->
+    replicated_dets:select(storage_name(), {user, KeySpec}, 100).
 
 -spec get_identity({rbac_identity(), []}) -> rbac_identity().
 get_identity({Identity, _}) ->
