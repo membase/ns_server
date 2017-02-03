@@ -61,15 +61,17 @@ start_link(Module, Path) ->
 init([Module, Path]) ->
     ?log_debug("Init config writer for ~p, ~p", [Module, Path]),
     Pid = self(),
-    ns_pubsub:subscribe_link(ns_config_events,
-                             fun (Evt, _) ->
-                                     case Module:filter_event(Evt) of
-                                         true ->
-                                             gen_server:cast(Pid, Evt);
-                                         false ->
-                                             ok
-                                     end
-                             end, ignored),
+    EventHandler =
+        fun (Evt) ->
+                case Module:filter_event(Evt) of
+                    true ->
+                        gen_server:cast(Pid, Evt);
+                    false ->
+                        ok
+                end
+        end,
+    ns_pubsub:subscribe_link(ns_config_events, EventHandler),
+    ns_pubsub:subscribe_link(user_storage_events, EventHandler),
 
     Stuff = Module:init(),
     State = #state{path = Path,
