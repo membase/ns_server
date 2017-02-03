@@ -338,11 +338,11 @@ walk_json(Fun, Array) when is_list(Array) ->
       end, Array),
     Fun(array_end);
 walk_json(Fun, Literal) ->
-    true = is_literal(Literal),
+    {true, Literal} = {is_literal(Literal), Literal},
     Fun({literal, Literal}).
 
 walk_json_kv(Fun, {K, V}) ->
-    true = is_string(K),
+    {true, K} = {is_string(K), K},
     Fun({kv_start, K}),
     walk_json(Fun, V),
     Fun(kv_end).
@@ -357,11 +357,11 @@ is_null(Json) ->
     Json =:= null.
 
 encode_literal(Literal) ->
-    true = is_literal(Literal),
+    {true, Literal} = {is_literal(Literal), Literal},
     ejson:encode(Literal).
 
 encode_string(String) ->
-    true = is_string(String),
+    {true, String} = {is_string(String), String},
     ejson:encode(String).
 
 -ifdef(EUNIT).
