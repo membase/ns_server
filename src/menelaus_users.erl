@@ -25,7 +25,6 @@
 
 -export([get_users/1,
          select_users/1,
-         get_identity/1,
          select_auth_infos/1,
          store_user/4,
          delete_user/1,
@@ -33,11 +32,9 @@
          authenticate/2,
          get_memcached_auth/1,
          get_auth_infos/1,
-         get_user_roles/1,
          get_roles/1,
          get_user_name/1,
          upgrade_to_4_5/1,
-         get_memcached_auth_infos/1,
          build_memcached_auth_info/1,
          get_users_version/0,
          get_auth_version/0]).
@@ -103,10 +100,6 @@ select_users(KeySpec) ->
 
 select_auth_infos(KeySpec) ->
     replicated_dets:select(storage_name(), {auth, KeySpec}, 100).
-
--spec get_identity({rbac_identity(), []}) -> rbac_identity().
-get_identity({Identity, _}) ->
-    Identity.
 
 build_auth(false, undefined, _UserName) ->
     password_required;
@@ -277,15 +270,6 @@ get_auth_infos(Config) ->
     [{{Username, builtin}, get_salt_and_mac(get_auth_info(Props))} ||
         {{Username, builtin}, Props} <- Users].
 
--spec get_memcached_auth_infos([{rbac_identity(), []}]) -> list().
-get_memcached_auth_infos(Users) ->
-    [get_memcached_auth(get_auth_info(Props)) ||
-        {{_Username, builtin}, Props} <- Users].
-
--spec get_user_roles({rbac_identity(), []}) -> [rbac_role()].
-get_user_roles({_Identity, Props}) ->
-    proplists:get_value(roles, Props, []).
-
 -spec get_roles(rbac_identity()) -> [rbac_role()].
 get_roles(Identity) ->
     Props =
@@ -295,7 +279,7 @@ get_roles(Identity) ->
             false ->
                 ns_config:search_prop(ns_config:latest(), user_roles, Identity, [])
         end,
-    get_user_roles({Identity, Props}).
+    proplists:get_value(roles, Props, []).
 
 -spec get_user_name(rbac_identity()) -> rbac_user_name().
 get_user_name(Identity) ->
