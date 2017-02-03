@@ -20,6 +20,7 @@
 
 -include("ns_common.hrl").
 -include("menelaus_web.hrl").
+-include("pipes.hrl").
 
 -export([redirect_permanently/2,
          respond/2,
@@ -73,7 +74,8 @@
          ensure_local/1,
          reply_global_error/2,
          reply_error/3,
-         require_auth/1]).
+         require_auth/1,
+         send_chunked/3]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
@@ -534,3 +536,15 @@ require_auth(Req) ->
             reply(Req, 401, [{"WWW-Authenticate",
                               "Basic realm=\"Couchbase Server Admin / REST\""}])
     end.
+
+send_chunked(Req, StatusCode, ExtraHeaders) ->
+    ?make_consumer(
+       begin
+           Resp = menelaus_util:respond(
+                    Req, {StatusCode, extend_server_headers(ExtraHeaders), chunked}),
+           pipes:foreach(?producer(),
+                         fun (Part) ->
+                                 Resp:write_chunk(Part)
+                         end),
+           Resp:write_chunk(<<>>)
+       end).
