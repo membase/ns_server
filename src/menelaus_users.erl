@@ -321,7 +321,7 @@ build_memcached_auth_info(UserPasswords) ->
       end, UserPasswords),
     Port ! {self(), {command, <<"\n">>}},
     {0, Json} = collect_result(Port, []),
-    {struct, [{<<"users">>, Infos}]} = mochijson2:decode(Json),
+    {[{<<"users">>, Infos}]} = ejson:decode(Json),
     Infos.
 
 collect_users(asterisk, _Role, Dict) ->
