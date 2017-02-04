@@ -27,7 +27,6 @@
 -include("pipes.hrl").
 
 -record(state, {buckets,
-                users,
                 admin_user,
                 admin_pass}).
 
@@ -50,16 +49,14 @@ init() ->
     AU = ns_config:search_node_prop(Config, memcached, admin_user),
     AP = ns_config:search_node_prop(Config, memcached, admin_pass),
     Buckets = extract_creds(ns_config:search(Config, buckets, [])),
-    Users = menelaus_users:get_memcached_auth_infos(menelaus_users:get_users(Config)),
 
     #state{buckets = Buckets,
-           users = Users,
            admin_user = AU,
            admin_pass = AP}.
 
 filter_event({buckets, _V}) ->
     true;
-filter_event({user_roles, _V}) ->
+filter_event({auth_version, _V}) ->
     true;
 filter_event(_) ->
     false.
@@ -71,25 +68,61 @@ handle_event({buckets, V}, #state{buckets = Buckets} = State) ->
         NewBuckets ->
             {changed, State#state{buckets = NewBuckets}}
     end;
-handle_event({user_roles, V}, #state{users = Users} = State) ->
-    case menelaus_users:get_memcached_auth_infos(V) of
-        Users ->
-            unchanged;
-        NewUsers ->
-            {changed, State#state{users = NewUsers}}
-    end.
+handle_event({auth_version, _V}, State) ->
+    {changed, State}.
 
 producer(State) ->
-    ?make_producer(?yield(generate(State))).
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            make_producer(State);
+        false ->
+            ?make_producer(?yield(generate_45(State)))
+    end.
 
-generate(#state{buckets = Buckets,
-                users = Users,
-                admin_user = AU,
-                admin_pass = AP}) ->
+generate_45(#state{buckets = Buckets,
+                   admin_user = AU,
+                   admin_pass = AP}) ->
     UserPasswords = [{AU, AP} | Buckets],
-    Infos = menelaus_users:build_memcached_auth_info(UserPasswords) ++ Users,
+    Infos = menelaus_users:build_memcached_auth_info(UserPasswords),
     Json = {struct, [{<<"users">>, Infos}]},
     menelaus_util:encode_json(Json).
+
+make_producer(#state{buckets = Buckets,
+                     admin_user = AU,
+                     admin_pass = AP}) ->
+    pipes:compose([menelaus_users:select_auth_infos('_'),
+                   jsonify_auth(AU, AP, Buckets),
+                   sjson:encode_extended_json([{compact, false},
+                                               {strict, false}])]).
+
+jsonify_auth(AU, AP, Buckets) ->
+    ?make_transducer(
+       begin
+           ?yield(object_start),
+           ?yield({kv_start, <<"users">>}),
+           ?yield(array_start),
+
+           %% TODO: remove buckets after upgrade will be implemented
+           AdminAndBuckets = menelaus_users:build_memcached_auth_info([{AU, AP} | Buckets]),
+           lists:foreach(
+             fun (AdminOrBucket) ->
+                     ?yield({json, AdminOrBucket})
+             end, AdminAndBuckets),
+
+           pipes:foreach(
+             ?producer(),
+             fun ({{auth, _Identity}, Auth}) ->
+                     case menelaus_users:get_memcached_auth(Auth) of
+                         undefined ->
+                             ok;
+                         V ->
+                             ?yield({json, V})
+                     end
+             end),
+           ?yield(array_end),
+           ?yield(kv_end),
+           ?yield(object_end)
+       end).
 
 refresh() ->
     ns_memcached:connect_and_send_isasl_refresh().

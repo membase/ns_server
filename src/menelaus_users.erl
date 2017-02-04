@@ -26,10 +26,12 @@
 -export([get_users/1,
          select_users/1,
          get_identity/1,
+         select_auth_infos/1,
          store_user/4,
          delete_user/1,
          change_password/2,
          authenticate/2,
+         get_memcached_auth/1,
          get_auth_infos/1,
          get_user_roles/1,
          get_roles/1,
@@ -98,6 +100,9 @@ get_users(Config) ->
 
 select_users(KeySpec) ->
     replicated_dets:select(storage_name(), {user, KeySpec}, 100).
+
+select_auth_infos(KeySpec) ->
+    replicated_dets:select(storage_name(), {auth, KeySpec}, 100).
 
 -spec get_identity({rbac_identity(), []}) -> rbac_identity().
 get_identity({Identity, _}) ->
