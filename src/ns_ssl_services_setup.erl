@@ -530,7 +530,7 @@ apply_node_cert_data({user_set, Cert, PKey, CAChain}, Path) ->
     ok = misc:atomic_write_file(memcached_key_path(), PKey).
 
 all_services() ->
-    [ssl_service, capi_ssl_service, xdcr_proxy, query_svc, memcached].
+    [ssl_service, capi_ssl_service, xdcr_proxy, query_svc, memcached, fts].
 
 notify_service(Service) ->
     RV = (catch do_notify_service(Service)),
@@ -569,4 +569,6 @@ do_notify_service(xdcr_proxy) ->
 do_notify_service(query_svc) ->
     query_rest:maybe_refresh_cert();
 do_notify_service(memcached) ->
-    ns_memcached:connect_and_send_ssl_certs_refresh().
+    ns_memcached:connect_and_send_ssl_certs_refresh();
+do_notify_service(fts) ->
+    ns_ports_setup:restart_fts().
