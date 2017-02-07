@@ -400,6 +400,15 @@ default() ->
                           {max_nodes, 1},
                           % count is the number of nodes that were auto-failovered
                           {count, 0}]},
+     % auto-reprovision (mostly applicable to ephemeral buckets) is the operation that
+     % is carried out when memcached process on a node restarts within the auto-failover
+     % timeout.
+     {auto_reprovision_cfg, [{enabled, false},
+                             % max_nodes is the maximum number of nodes that may be
+                             % automatically reprovisioned
+                             {max_nodes, 1},
+                             % count is the number of nodes that were auto-reprovisioned
+                             {count, 0}]},
 
      %% everything is unlimited by default
      {{request_limit, rest}, undefined},
