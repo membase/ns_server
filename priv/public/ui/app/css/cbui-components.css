@@ -1468,6 +1468,7 @@ meter {
 .match_indicator .match  {display: none;}
 
 .read-only-editor {opacity:.5;}
+.read-only-editor .CodeMirror-cursor { visibility: hidden!important; }
 
 
 /* info popup styles ************************** */

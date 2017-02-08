@@ -20,7 +20,7 @@
     };
 
     var metaOptions = _.clone(codemirrorOptions);
-    metaOptions.readOnly = 'nocursor';
+    metaOptions.readOnly = true;
     metaOptions.lineWrapping = true;
 
     var editorOptions = _.clone(codemirrorOptions);
@@ -148,7 +148,7 @@
     }
     function activate() {
       $scope.$watch(isEditorDisabled, function (isDisabled) {
-        editorOptions.readOnly = isDisabled ? 'nocursor' : false;
+        editorOptions.readOnly = !!isDisabled;
         editorOptions.matchBrackets = !isDisabled;
         vm.editorOptions = editorOptions;
       });

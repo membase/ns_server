@@ -21,7 +21,7 @@
     }
     var viewsOptions = _.clone(codemirrorOptions);
     var sampleDocumentOptions = _.clone(codemirrorOptions);
-    sampleDocumentOptions.readOnly = 'nocursor';
+    sampleDocumentOptions.readOnly = true;
     sampleDocumentOptions.lineWrapping = true;
     var sampleMetaOptions = _.clone(sampleDocumentOptions);
 
@@ -142,7 +142,7 @@
 
     function activate() {
       $scope.$watch(isViewsEditorControllsDisabled, function (isDisabled) {
-        viewsOptions.readOnly = isDisabled ? 'nocursor' : false;
+        viewsOptions.readOnly = !!isDisabled;
         viewsOptions.matchBrackets = !isDisabled;
         vm.viewsOptions = viewsOptions;
       });
