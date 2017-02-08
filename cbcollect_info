@@ -833,7 +833,7 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
                       "reports.log", "xdcr_trace.log", "http_access.log",
                       "http_access_internal.log", "ns_couchdb.log",
                       "goxdcr.log", "query.log", "projector.log", "indexer.log",
-                      "fts.log", "metakv.log"]],
+                      "fts.log", "metakv.log", "json_rpc.log"]],
 
         [make_cbstats_task(kind, memcached_pass, guts)
          for kind in ["all", "allocator", "checkpoint", "config",

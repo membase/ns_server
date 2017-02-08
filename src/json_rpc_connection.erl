@@ -90,7 +90,7 @@ handle_info({chunk, Chunk}, #state{id_to_caller_tid = IdToCaller} = State) ->
     {_, Id} = lists:keyfind(<<"id">>, 1, KV),
     [{_, From}] = ets:lookup(IdToCaller, Id),
     ets:delete(IdToCaller, Id),
-    ?log_debug("got response: ~p", [KV]),
+    ale:debug(?JSON_RPC_LOGGER, "got response: ~p", [KV]),
     {RV, Result} =
         case lists:keyfind(<<"error">>, 1, KV) of
             false ->
@@ -154,7 +154,8 @@ handle_call({call, Name, EJsonArgThunk}, From, #state{counter = Counter,
               {id, Counter},
               {method, NameB}
               | MaybeParams]},
-    ?log_debug("sending jsonrpc call:~p", [ns_config_log:sanitize(EJSON)]),
+    ale:debug(?JSON_RPC_LOGGER,
+              "sending jsonrpc call:~p", [ns_config_log:sanitize(EJSON)]),
     ok = gen_tcp:send(Sock, [ejson:encode(EJSON) | <<"\n">>]),
     ets:insert(IdToCaller, {Counter, From}),
     {noreply, State#state{counter = Counter + 1}}.

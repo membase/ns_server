@@ -81,6 +81,7 @@
 -define(INDEXER_LOG_FILENAME, "indexer.log").
 -define(METAKV_LOG_FILENAME, "metakv.log").
 -define(FTS_LOG_FILENAME, "fts.log").
+-define(JSON_RPC_LOG_FILENAME, "json_rpc.log").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
@@ -98,12 +99,14 @@
 -define(XDCR_TRACE_LOGGER, xdcr_trace).
 -define(ACCESS_LOGGER, access).
 -define(METAKV_LOGGER, metakv).
+-define(JSON_RPC_LOGGER, json_rpc).
 
 -define(LOGGERS, [?NS_SERVER_LOGGER,
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
                   ?NS_DOCTOR_LOGGER, ?STATS_LOGGER,
                   ?REBALANCE_LOGGER, ?CLUSTER_LOGGER,
-                  ?XDCR_LOGGER, ?XDCR_TRACE_LOGGER, ?METAKV_LOGGER]).
+                  ?XDCR_LOGGER, ?XDCR_TRACE_LOGGER,
+                  ?METAKV_LOGGER, ?JSON_RPC_LOGGER]).
 
 -define(NS_COUCHDB_LOGGERS, [?NS_SERVER_LOGGER,
                              ?COUCHDB_LOGGER,

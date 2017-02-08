@@ -157,6 +157,7 @@ do_init_logging() ->
     ok = start_disk_sink(disk_access, ?ACCESS_LOG_FILENAME),
     ok = start_disk_sink(disk_access_int, ?INT_ACCESS_LOG_FILENAME),
     ok = start_disk_sink(disk_metakv, ?METAKV_LOG_FILENAME),
+    ok = start_disk_sink(disk_json_rpc, ?JSON_RPC_LOG_FILENAME),
 
     ok = start_sink(ns_log, ns_log_sink, []),
 
@@ -180,7 +181,8 @@ do_init_logging() ->
                          {?NS_DOCTOR_LOGGER, warn}],
 
     MainFilesLoggers = AllLoggers --
-        [?XDCR_LOGGER, ?ERROR_LOGGER, ?XDCR_TRACE_LOGGER, ?METAKV_LOGGER],
+        [?XDCR_LOGGER, ?ERROR_LOGGER, ?XDCR_TRACE_LOGGER,
+         ?METAKV_LOGGER, ?JSON_RPC_LOGGER],
 
     lists:foreach(
       fun (Logger) ->
@@ -219,6 +221,8 @@ do_init_logging() ->
     ok = ale:add_sink(?ACCESS_LOGGER, disk_access_int, debug),
 
     ok = ale:add_sink(?METAKV_LOGGER, disk_metakv, get_loglevel(?METAKV_LOGGER)),
+
+    ok = ale:add_sink(?JSON_RPC_LOGGER, disk_json_rpc, get_loglevel(?JSON_RPC_LOGGER)),
 
     case misc:get_env_default(dont_suppress_stderr_logger, false) of
         true ->
