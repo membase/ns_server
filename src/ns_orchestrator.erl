@@ -563,6 +563,8 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
             ok
     end,
 
+    consider_switching_compat_mode(),
+
     {next_state, idle, #idle_state{}};
 
 handle_info(Msg, StateName, StateData) ->
