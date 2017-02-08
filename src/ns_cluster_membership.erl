@@ -248,7 +248,13 @@ default_services() ->
 topology_aware_services() ->
     case cluster_compat_mode:is_cluster_45() of
         true ->
-            [fts | maybe_example_service()];
+            Services = [fts | maybe_example_service()],
+            case cluster_compat_mode:is_cluster_spock() of
+                true ->
+                    [index | Services];
+                false ->
+                    Services
+            end;
         false ->
             []
     end.
