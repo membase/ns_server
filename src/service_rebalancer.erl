@@ -95,7 +95,7 @@ rebalance(Rebalancer, Service, Type,
           AllNodes, KeepNodes, EjectNodes, DeltaNodes, ProgressCallback) ->
     erlang:register(worker_name(Service), self()),
 
-    ?log_debug("Rabalancing service ~p.~nKeepNodes: ~p~nEjectNodes: ~p~nDeltaNodes: ~p",
+    ?log_debug("Rebalancing service ~p.~nKeepNodes: ~p~nEjectNodes: ~p~nDeltaNodes: ~p",
                [Service, KeepNodes, EjectNodes, DeltaNodes]),
 
     {ok, NodeInfos} = service_agent:get_node_infos(Service, AllNodes, Rebalancer),
