@@ -906,7 +906,7 @@ rebalancing(Event, _From, State) ->
 
 recovery(Event, State) ->
     ?log_warning("Got unexpected event: ~p", [Event]),
-    {next_state, recovery_running, State}.
+    {next_state, recovery, State}.
 
 recovery({start_recovery, Bucket}, _From,
          #recovery_state{bucket=BucketInRecovery,
