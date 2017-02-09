@@ -518,48 +518,8 @@ handle_info({'EXIT', Pid, Reason}, janitor_running,
     consider_switching_compat_mode(),
     {next_state, idle, #idle_state{janitor_requests = RestRequests}};
 handle_info({'EXIT', Pid, Reason}, rebalancing,
-            #rebalancing_state{rebalancer=Pid,
-                               keep_nodes=KeepNodes,
-                               eject_nodes=EjectNodes,
-                               failed_nodes=FailedNodes,
-                               type=Type} = State) ->
-    cancel_stop_timer(State),
-    Status = case Reason of
-                 graceful_failover_done ->
-                     none;
-                 normal ->
-                     ?user_log(?REBALANCE_SUCCESSFUL,
-                               "Rebalance completed successfully.~n"),
-                     ns_cluster:counter_inc(rebalance_success),
-                     auto_failover:reset_count_async(),
-                     none;
-                 stopped ->
-                     ?user_log(?REBALANCE_STOPPED,
-                               "Rebalance stopped by user.~n"),
-                     ns_cluster:counter_inc(rebalance_stop),
-                     none;
-                 _ ->
-                     ?user_log(?REBALANCE_FAILED,
-                               "Rebalance exited with reason ~p~n", [Reason]),
-                     ns_cluster:counter_inc(rebalance_fail),
-                     {none, <<"Rebalance failed. See logs for detailed reason. "
-                              "You can try rebalance again.">>}
-             end,
-
-    set_rebalance_status(Type, Status, undefined),
-    rpc:eval_everywhere(diag_handler, log_all_dcp_stats, []),
-    case (lists:member(node(), EjectNodes) andalso Reason =:= normal) orelse
-        lists:member(node(), FailedNodes) of
-        true ->
-            ok = ns_config_rep:ensure_config_seen_by_nodes(KeepNodes),
-            ns_rebalancer:eject_nodes([node()]);
-        false ->
-            ok
-    end,
-
-    consider_switching_compat_mode(),
-
-    {next_state, idle, #idle_state{}};
+            #rebalancing_state{rebalancer=Pid} = State) ->
+    handle_rebalance_completion(Reason, State);
 
 handle_info(Msg, StateName, StateData) ->
     ?log_warning("Got unexpected message ~p in state ~p with data ~p",
@@ -1311,3 +1271,45 @@ do_cancel_stop_timer(undefined) ->
     ok;
 do_cancel_stop_timer(TRef) when is_reference(TRef) ->
     gen_fsm:cancel_timer(TRef).
+
+handle_rebalance_completion(Reason,
+                            #rebalancing_state{keep_nodes = KeepNodes,
+                                               eject_nodes = EjectNodes,
+                                               failed_nodes = FailedNodes,
+                                               type = Type} = State) ->
+    cancel_stop_timer(State),
+    Status = case Reason of
+                 graceful_failover_done ->
+                     none;
+                 normal ->
+                     ?user_log(?REBALANCE_SUCCESSFUL,
+                               "Rebalance completed successfully.~n"),
+                     ns_cluster:counter_inc(rebalance_success),
+                     auto_failover:reset_count_async(),
+                     none;
+                 stopped ->
+                     ?user_log(?REBALANCE_STOPPED,
+                               "Rebalance stopped by user.~n"),
+                     ns_cluster:counter_inc(rebalance_stop),
+                     none;
+                 _ ->
+                     ?user_log(?REBALANCE_FAILED,
+                               "Rebalance exited with reason ~p~n", [Reason]),
+                     ns_cluster:counter_inc(rebalance_fail),
+                     {none, <<"Rebalance failed. See logs for detailed reason. "
+                              "You can try rebalance again.">>}
+             end,
+
+    set_rebalance_status(Type, Status, undefined),
+    rpc:eval_everywhere(diag_handler, log_all_dcp_stats, []),
+    case (lists:member(node(), EjectNodes) andalso Reason =:= normal) orelse
+        lists:member(node(), FailedNodes) of
+        true ->
+            ok = ns_config_rep:ensure_config_seen_by_nodes(KeepNodes),
+            ns_rebalancer:eject_nodes([node()]);
+        false ->
+            ok
+    end,
+
+    consider_switching_compat_mode(),
+    {next_state, idle, #idle_state{}}.
