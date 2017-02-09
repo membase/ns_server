@@ -1273,10 +1273,7 @@ do_cancel_stop_timer(TRef) when is_reference(TRef) ->
     gen_fsm:cancel_timer(TRef).
 
 handle_rebalance_completion(Reason,
-                            #rebalancing_state{keep_nodes = KeepNodes,
-                                               eject_nodes = EjectNodes,
-                                               failed_nodes = FailedNodes,
-                                               type = Type} = State) ->
+                            #rebalancing_state{type = Type} = State) ->
     cancel_stop_timer(State),
     Status = case Reason of
                  graceful_failover_done ->
@@ -1302,14 +1299,24 @@ handle_rebalance_completion(Reason,
 
     set_rebalance_status(Type, Status, undefined),
     rpc:eval_everywhere(diag_handler, log_all_dcp_stats, []),
-    case (lists:member(node(), EjectNodes) andalso Reason =:= normal) orelse
-        lists:member(node(), FailedNodes) of
-        true ->
-            ok = ns_config_rep:ensure_config_seen_by_nodes(KeepNodes),
-            ns_rebalancer:eject_nodes([node()]);
-        false ->
-            ok
-    end,
-
+    maybe_eject_myself(Reason, State),
     consider_switching_compat_mode(),
     {next_state, idle, #idle_state{}}.
+
+maybe_eject_myself(Reason, State) ->
+    case need_eject_myself(Reason, State) of
+        true ->
+            eject_myself(State);
+        false ->
+            ok
+    end.
+
+need_eject_myself(normal, #rebalancing_state{eject_nodes = EjectNodes,
+                                             failed_nodes = FailedNodes}) ->
+    lists:member(node(), EjectNodes) orelse lists:member(node(), FailedNodes);
+need_eject_myself(_Reason, #rebalancing_state{failed_nodes = FailedNodes}) ->
+    lists:member(node(), FailedNodes).
+
+eject_myself(#rebalancing_state{keep_nodes = KeepNodes}) ->
+    ok = ns_config_rep:ensure_config_seen_by_nodes(KeepNodes),
+    ns_rebalancer:eject_nodes([node()]).
