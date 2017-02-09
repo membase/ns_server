@@ -14,7 +14,7 @@
           kv: true,
           index: $scope.poolDefault.compat.atLeast40,
           n1ql: $scope.poolDefault.compat.atLeast40,
-          fts: false
+          fts: $scope.poolDefault.compat.atLeast50
         }
       },
       credentials: {
