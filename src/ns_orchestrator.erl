@@ -522,7 +522,8 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                                keep_nodes=KeepNodes,
                                eject_nodes=EjectNodes,
                                failed_nodes=FailedNodes,
-                               stop_timer=MaybeTref}) ->
+                               stop_timer=MaybeTref,
+                               type=Type}) ->
     Status = case Reason of
                  graceful_failover_done ->
                      none;
@@ -551,10 +552,7 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                               "You can try rebalance again.">>}
              end,
 
-    ns_config:set([{rebalance_status, Status},
-                   {rebalance_status_uuid, couch_uuids:random()},
-                   {rebalancer_pid, undefined},
-                   {graceful_failover_pid, undefined}]),
+    set_rebalance_status(Type, Status, undefined),
     rpc:eval_everywhere(diag_handler, log_all_dcp_stats, []),
     case (lists:member(node(), EjectNodes) andalso Reason =:= normal) orelse
         lists:member(node(), FailedNodes) of
@@ -699,10 +697,9 @@ idle({start_graceful_failover, Node}, _From,
     case ns_rebalancer:start_link_graceful_failover(Node) of
         {ok, Pid} ->
             notify_janitor_finished(JanitorRequests, rebalance_running),
-            ns_config:set([{rebalance_status, running},
-                           {rebalance_status_uuid, couch_uuids:random()},
-                           {graceful_failover_pid, Pid},
-                           {rebalancer_pid, Pid}]),
+
+            Type = graceful_failover,
+            set_rebalance_status(Type, running, Pid),
 
             Nodes = ns_cluster_membership:active_nodes(),
             Progress = rebalance_progress:init(Nodes, [kv]),
@@ -713,7 +710,7 @@ idle({start_graceful_failover, Node}, _From,
                                 keep_nodes = [],
                                 failed_nodes = [],
                                 progress=Progress,
-                                type=graceful_failover}};
+                                type=Type}};
         {error, RV} ->
             {reply, RV, idle, State}
     end;
@@ -741,10 +738,9 @@ idle({start_rebalance, KeepNodes, EjectNodes,
 
             notify_janitor_finished(JanitorRequests, rebalance_running),
             ns_cluster:counter_inc(rebalance_start),
-            ns_config:set([{rebalance_status, running},
-                           {rebalance_status_uuid, couch_uuids:random()},
-                           {graceful_failover_pid, undefined},
-                           {rebalancer_pid, Pid}]),
+
+            Type = rebalance,
+            set_rebalance_status(Type, running, Pid),
 
             {reply, ok, rebalancing,
              #rebalancing_state{rebalancer=Pid,
@@ -752,7 +748,7 @@ idle({start_rebalance, KeepNodes, EjectNodes,
                                 keep_nodes=KeepNodes,
                                 eject_nodes=EjectNodes,
                                 failed_nodes=FailedNodes,
-                                type=rebalance}};
+                                type=Type}};
         {error, no_kv_nodes_left} ->
             {reply, no_kv_nodes_left, idle, State};
         {error, delta_recovery_not_possible} ->
@@ -764,10 +760,9 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{janitor_requests = Janit
             fun () ->
                     ns_rebalancer:move_vbuckets(Bucket, Moves)
             end),
-    ns_config:set([{rebalance_status, running},
-                   {rebalance_status_uuid, couch_uuids:random()},
-                   {graceful_failover_pid, undefined},
-                   {rebalancer_pid, Pid}]),
+
+    Type = move_vbuckets,
+    set_rebalance_status(Type, running, Pid),
 
     Nodes = ns_cluster_membership:active_nodes(),
     Progress = rebalance_progress:init(Nodes, [kv]),
@@ -778,7 +773,7 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{janitor_requests = Janit
                         keep_nodes=ns_node_disco:nodes_wanted(),
                         eject_nodes=[],
                         failed_nodes=[],
-                        type=move_vbuckets}};
+                        type=Type}};
 idle(stop_rebalance, _From, State) ->
     ns_janitor:stop_rebalance_status(
       fun () ->
@@ -1299,3 +1294,18 @@ get_janitor_items() ->
                                                                    ephemeral)],
     Buckets = MembaseBuckets ++ EphemeralBuckets,
     [services | Buckets].
+
+set_rebalance_status(_Type, Status, undefined) ->
+    do_set_rebalance_status(Status, undefined, undefined);
+set_rebalance_status(rebalance, Status, Pid) when is_pid(Pid) ->
+    do_set_rebalance_status(Status, Pid, undefined);
+set_rebalance_status(graceful_failover, Status, Pid) when is_pid(Pid) ->
+    do_set_rebalance_status(Status, Pid, Pid);
+set_rebalance_status(move_vbuckets, Status, Pid) ->
+    set_rebalance_status(rebalance, Status, Pid).
+
+do_set_rebalance_status(Status, RebalancerPid, GracefulPid) ->
+    ns_config:set([{rebalance_status, Status},
+                   {rebalance_status_uuid, couch_uuids:random()},
+                   {rebalancer_pid, GracefulPid},
+                   {graceful_failover_pid, RebalancerPid}]).
