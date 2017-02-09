@@ -35,7 +35,8 @@
                             keep_nodes,
                             eject_nodes,
                             failed_nodes,
-                            stop_timer}).
+                            stop_timer,
+                            type}).
 -record(recovery_state, {uuid :: binary(),
                          bucket :: bucket_name(),
                          recoverer_state :: any()}).
@@ -711,7 +712,8 @@ idle({start_graceful_failover, Node}, _From,
                                 eject_nodes = [],
                                 keep_nodes = [],
                                 failed_nodes = [],
-                                progress=Progress}};
+                                progress=Progress,
+                                type=graceful_failover}};
         {error, RV} ->
             {reply, RV, idle, State}
     end;
@@ -749,7 +751,8 @@ idle({start_rebalance, KeepNodes, EjectNodes,
                                 progress=rebalance_progress:init(KeepNodes ++ EjectNodes),
                                 keep_nodes=KeepNodes,
                                 eject_nodes=EjectNodes,
-                                failed_nodes=FailedNodes}};
+                                failed_nodes=FailedNodes,
+                                type=rebalance}};
         {error, no_kv_nodes_left} ->
             {reply, no_kv_nodes_left, idle, State};
         {error, delta_recovery_not_possible} ->
@@ -774,7 +777,8 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{janitor_requests = Janit
                         progress=Progress,
                         keep_nodes=ns_node_disco:nodes_wanted(),
                         eject_nodes=[],
-                        failed_nodes=[]}};
+                        failed_nodes=[],
+                        type=move_vbuckets}};
 idle(stop_rebalance, _From, State) ->
     ns_janitor:stop_rebalance_status(
       fun () ->
