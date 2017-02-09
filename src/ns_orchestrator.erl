@@ -522,8 +522,8 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                                keep_nodes=KeepNodes,
                                eject_nodes=EjectNodes,
                                failed_nodes=FailedNodes,
-                               stop_timer=MaybeTref,
-                               type=Type}) ->
+                               type=Type} = State) ->
+    cancel_stop_timer(State),
     Status = case Reason of
                  graceful_failover_done ->
                      none;
@@ -537,12 +537,6 @@ handle_info({'EXIT', Pid, Reason}, rebalancing,
                      ?user_log(?REBALANCE_STOPPED,
                                "Rebalance stopped by user.~n"),
                      ns_cluster:counter_inc(rebalance_stop),
-                     case MaybeTref of
-                         undefined ->
-                             ok;
-                         _ ->
-                             gen_fsm:cancel_timer(MaybeTref)
-                     end,
                      none;
                  _ ->
                      ?user_log(?REBALANCE_FAILED,
@@ -1309,3 +1303,11 @@ do_set_rebalance_status(Status, RebalancerPid, GracefulPid) ->
                    {rebalance_status_uuid, couch_uuids:random()},
                    {rebalancer_pid, GracefulPid},
                    {graceful_failover_pid, RebalancerPid}]).
+
+cancel_stop_timer(State) ->
+    do_cancel_stop_timer(State#rebalancing_state.stop_timer).
+
+do_cancel_stop_timer(undefined) ->
+    ok;
+do_cancel_stop_timer(TRef) when is_reference(TRef) ->
+    gen_fsm:cancel_timer(TRef).
