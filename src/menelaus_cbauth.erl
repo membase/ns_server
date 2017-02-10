@@ -36,6 +36,7 @@ init([]) ->
     ns_pubsub:subscribe_link(json_rpc_events, fun json_rpc_event/1),
     ns_pubsub:subscribe_link(ns_node_disco_events, fun node_disco_event/1),
     ns_pubsub:subscribe_link(ns_config_events, fun ns_config_event/1),
+    ns_pubsub:subscribe_link(user_storage_events, fun user_storage_event/1),
     json_rpc_connection_sup:reannounce(),
     {ok, #state{}}.
 
@@ -57,6 +58,11 @@ ns_config_event(Event) ->
         _ ->
             ok
     end.
+
+user_storage_event({user_version, _V}) ->
+    ?MODULE ! maybe_notify_cbauth;
+user_storage_event(_) ->
+    ok.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.

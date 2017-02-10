@@ -678,9 +678,8 @@ handle_check_permissions_post(Req) ->
     end.
 
 check_permissions_url_version(Config) ->
-    Users = menelaus_users:get_users(Config),
     erlang:phash2([menelaus_roles:get_definitions(Config),
-                   [{Identity, proplists:get_value(roles, Props)} || {Identity, Props} <- Users],
+                   menelaus_users:get_users_version(),
                    ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)),
                    ns_config_auth:get_no_auth_buckets(Config)]).
 
