@@ -72,13 +72,10 @@ is_interesting({{node, _, memcached}, _}) -> true;
 is_interesting({{node, _, capi_port}, _}) -> true;
 is_interesting({{node, _, ssl_capi_port}, _}) -> true;
 is_interesting({{node, _, ssl_rest_port}, _}) -> true;
-is_interesting({buckets, _}) -> true;
 is_interesting({rest, _}) -> true;
 is_interesting({rest_creds, _}) -> true;
-is_interesting({read_only_user_creds, _}) -> true;
 is_interesting({cluster_compat_version, _}) -> true;
 is_interesting({{node, _, is_enterprise}, _}) -> true;
-is_interesting({{node, _, ldap_enabled}, _}) -> true;
 is_interesting({roles_definitions, _}) -> true;
 is_interesting({user_roles, _}) -> true;
 is_interesting(_) -> false.
@@ -181,38 +178,6 @@ build_node_info(N, User, Config) ->
        erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_pass))},
       {ports, [Port || {_Key, Port} <- Services]}] ++ Local}.
 
-build_buckets_info(Config) ->
-    Buckets = ns_bucket:get_buckets(Config),
-    lists:map(fun ({BucketName, BucketProps}) ->
-                      {[{name, erlang:list_to_binary(BucketName)},
-                        {password,
-                         case proplists:get_value(auth_type, BucketProps) of
-                             sasl ->
-                                 erlang:list_to_binary(ns_bucket:sasl_password(BucketProps));
-                             none ->
-                                 <<"">>
-                         end}]}
-              end, Buckets).
-
-build_user({User, Type}, Salt, Mac) ->
-    {[{user, erlang:list_to_binary(User)},
-      {type, Type},
-      {salt, base64:encode(Salt)},
-      {mac, base64:encode(Mac)}]}.
-
-build_cred_info(Config, Type) ->
-    case ns_config_auth:get_creds(Config, Type) of
-        {User, Salt, Mac} ->
-            [build_user({User, Type}, Salt, Mac)];
-        undefined ->
-            []
-    end.
-
-build_users(Config) ->
-    build_cred_info(Config, admin) ++ build_cred_info(Config, ro_admin) ++
-        [build_user(Identity, Salt, Mac) ||
-            {Identity, {Salt, Mac}} <- menelaus_users:get_auth_infos(Config)].
-
 build_auth_info() ->
     Config = ns_config:get(),
     Nodes = lists:foldl(fun (Node, Acc) ->
@@ -229,13 +194,10 @@ build_auth_info() ->
     PermissionCheckURL = io_lib:format("http://127.0.0.1:~w/_cbauth/checkPermission", [Port]),
 
     [{nodes, Nodes},
-     {buckets, build_buckets_info(Config)},
      {authCheckURL, iolist_to_binary(AuthCheckURL)},
      {permissionCheckURL, iolist_to_binary(PermissionCheckURL)},
-     {ldapEnabled, cluster_compat_mode:is_ldap_enabled()},
      {permissionsVersion, menelaus_web_rbac:check_permissions_url_version(Config)},
-     {authVersion, auth_version(Config)},
-     {users, build_users(Config)}].
+     {authVersion, auth_version(Config)}].
 
 auth_version(Config) ->
     erlang:phash2([ns_config_auth:get_creds(Config, admin),

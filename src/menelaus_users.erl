@@ -31,7 +31,6 @@
          change_password/2,
          authenticate/2,
          get_memcached_auth/1,
-         get_auth_infos/1,
          get_roles/1,
          get_user_name/1,
          upgrade_to_4_5/1,
@@ -234,9 +233,6 @@ delete_user_spock({_, Type} = Identity) ->
             {commit, ok}
     end.
 
-get_auth_info(Props) ->
-    proplists:get_value(authentication, Props).
-
 get_salt_and_mac(Auth) ->
     proplists:get_value(ns_server, Auth).
 
@@ -263,12 +259,6 @@ authenticate(Username, Password) ->
         false ->
             false
     end.
-
--spec get_auth_infos(ns_config()) -> [{rbac_identity(), term()}].
-get_auth_infos(Config) ->
-    Users = get_users(Config),
-    [{{Username, builtin}, get_salt_and_mac(get_auth_info(Props))} ||
-        {{Username, builtin}, Props} <- Users].
 
 -spec get_roles(rbac_identity()) -> [rbac_role()].
 get_roles(Identity) ->
