@@ -59,10 +59,8 @@ ns_config_event(Event) ->
             ok
     end.
 
-user_storage_event({user_version, _V}) ->
-    ?MODULE ! maybe_notify_cbauth;
-user_storage_event(_) ->
-    ok.
+user_storage_event(_Event) ->
+    ?MODULE ! maybe_notify_cbauth.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
@@ -236,7 +234,12 @@ build_auth_info() ->
      {permissionCheckURL, iolist_to_binary(PermissionCheckURL)},
      {ldapEnabled, cluster_compat_mode:is_ldap_enabled()},
      {permissionsVersion, menelaus_web_rbac:check_permissions_url_version(Config)},
+     {authVersion, auth_version(Config)},
      {users, build_users(Config)}].
+
+auth_version(Config) ->
+    erlang:phash2([ns_config_auth:get_creds(Config, admin),
+                   menelaus_users:get_auth_version()]).
 
 handle_cbauth_post(Req) ->
     {User, Source} = menelaus_auth:get_identity(Req),
