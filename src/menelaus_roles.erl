@@ -195,11 +195,17 @@ preconfigured_roles_spock() ->
        {[pools], [read]}]}].
 
 upgrade_roles_spock(Definitions) ->
-    {value, {views_admin, Params, Info, Permissions}} =
-        lists:keysearch(views_admin, 1, Definitions),
-    lists:keyreplace(views_admin, 1, Definitions,
-                    {views_admin, Params, Info,
-                     [{[{bucket, bucket_name}, n1ql], [execute]} | Permissions]}).
+    D1 = upgrade_role_add_permission(Definitions, views_admin,
+                                     {[{bucket, bucket_name}, n1ql], [execute]}),
+    upgrade_role_add_permission(D1, bucket_sasl,
+                                {[{bucket, bucket_name}, n1ql], [execute]}).
+
+upgrade_role_add_permission(Definitions, Role, Permission) ->
+    {value, {Role, Params, Info, Permissions}} =
+        lists:keysearch(Role, 1, Definitions),
+    lists:keyreplace(Role, 1, Definitions,
+                     {Role, Params, Info,
+                      [Permission | Permissions]}).
 
 -spec get_definitions(ns_config()) -> [rbac_role_def(), ...].
 get_definitions(Config) ->
