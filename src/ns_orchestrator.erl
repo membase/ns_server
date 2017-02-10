@@ -1276,23 +1276,16 @@ handle_rebalance_completion(Reason,
                             #rebalancing_state{type = Type} = State) ->
     cancel_stop_timer(State),
     maybe_reset_autofailover_count(Reason, State),
+    log_rebalance_completion(Reason, State),
 
     Status = case Reason of
-                 graceful_failover_done ->
-                     none;
                  normal ->
-                     ?user_log(?REBALANCE_SUCCESSFUL,
-                               "Rebalance completed successfully.~n"),
                      ns_cluster:counter_inc(rebalance_success),
                      none;
                  stopped ->
-                     ?user_log(?REBALANCE_STOPPED,
-                               "Rebalance stopped by user.~n"),
                      ns_cluster:counter_inc(rebalance_stop),
                      none;
                  _ ->
-                     ?user_log(?REBALANCE_FAILED,
-                               "Rebalance exited with reason ~p~n", [Reason]),
                      ns_cluster:counter_inc(rebalance_fail),
                      {none, <<"Rebalance failed. See logs for detailed reason. "
                               "You can try rebalance again.">>}
@@ -1326,3 +1319,23 @@ maybe_reset_autofailover_count(normal, #rebalancing_state{type = rebalance}) ->
     auto_failover:reset_count_async();
 maybe_reset_autofailover_count(_, _) ->
     ok.
+
+log_rebalance_completion(Reason, #rebalancing_state{type = Type}) ->
+    do_log_rebalance_completion(Reason, Type).
+
+do_log_rebalance_completion(normal, Type) ->
+    ale:info(?USER_LOGGER,
+             "~s completed successfully.", [rebalance_type2text(Type)]);
+do_log_rebalance_completion(stopped, Type) ->
+    ale:info(?USER_LOGGER,
+             "~s stopped by user.", [rebalance_type2text(Type)]);
+do_log_rebalance_completion(Error, Type) ->
+    ale:error(?USER_LOGGER,
+              "~s exited with reason ~p", [rebalance_type2text(Type), Error]).
+
+rebalance_type2text(rebalance) ->
+    <<"Rebalance">>;
+rebalance_type2text(move_vbuckets) ->
+    rebalance_type2text(rebalance);
+rebalance_type2text(graceful_failover) ->
+    <<"Graceful failover">>.

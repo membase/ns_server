@@ -1318,8 +1318,7 @@ run_graceful_failover(Node) ->
                                              I / NumBuckets, NumBuckets),
               I+1
       end, 0, InterestingBuckets),
-    orchestrate_failover(Node),
-    erlang:exit(graceful_failover_done).
+    orchestrate_failover(Node).
 
 do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I, N) ->
     run_janitor_pre_rebalance(BucketName),
