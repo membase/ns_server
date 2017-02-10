@@ -1275,6 +1275,8 @@ do_cancel_stop_timer(TRef) when is_reference(TRef) ->
 handle_rebalance_completion(Reason,
                             #rebalancing_state{type = Type} = State) ->
     cancel_stop_timer(State),
+    maybe_reset_autofailover_count(Reason, State),
+
     Status = case Reason of
                  graceful_failover_done ->
                      none;
@@ -1282,7 +1284,6 @@ handle_rebalance_completion(Reason,
                      ?user_log(?REBALANCE_SUCCESSFUL,
                                "Rebalance completed successfully.~n"),
                      ns_cluster:counter_inc(rebalance_success),
-                     auto_failover:reset_count_async(),
                      none;
                  stopped ->
                      ?user_log(?REBALANCE_STOPPED,
@@ -1320,3 +1321,8 @@ need_eject_myself(_Reason, #rebalancing_state{failed_nodes = FailedNodes}) ->
 eject_myself(#rebalancing_state{keep_nodes = KeepNodes}) ->
     ok = ns_config_rep:ensure_config_seen_by_nodes(KeepNodes),
     ns_rebalancer:eject_nodes([node()]).
+
+maybe_reset_autofailover_count(normal, #rebalancing_state{type = rebalance}) ->
+    auto_failover:reset_count_async();
+maybe_reset_autofailover_count(_, _) ->
+    ok.
