@@ -23,7 +23,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([get_users/1,
+-export([get_users_45/1,
          select_users/1,
          select_auth_infos/1,
          store_user/4,
@@ -90,8 +90,8 @@ on_save({auth, _}, Base) ->
     gen_event:notify(user_storage_events, {auth_version, {Ver, Base}}),
     Base.
 
--spec get_users(ns_config()) -> [{rbac_identity(), []}].
-get_users(Config) ->
+-spec get_users_45(ns_config()) -> [{rbac_identity(), []}].
+get_users_45(Config) ->
     ns_config:search(Config, user_roles, []).
 
 select_users(KeySpec) ->
@@ -146,7 +146,7 @@ store_user_45({_UserName, saslauthd} = Identity, Props, Roles) ->
       fun (Config, SetFn) ->
               case menelaus_roles:validate_roles(Roles, Config) of
                   ok ->
-                      Users = get_users(Config),
+                      Users = get_users_45(Config),
                       NewUsers = lists:keystore(Identity, 1, Users,
                                                 {Identity, [{roles, Roles} | Props]}),
                       {commit, SetFn(user_roles, NewUsers, Config)};

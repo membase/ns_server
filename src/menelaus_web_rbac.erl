@@ -221,7 +221,7 @@ handle_get_users(Req) ->
     end.
 
 handle_get_users_45(Req) ->
-    Users = menelaus_users:get_users(ns_config:latest()),
+    Users = menelaus_users:get_users_45(ns_config:latest()),
     Json = lists:map(
              fun ({Identity, Props}) ->
                      Roles = proplists:get_value(roles, Props, []),
