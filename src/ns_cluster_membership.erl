@@ -45,6 +45,7 @@
          supported_services_for_version/1,
          cluster_supported_services/0,
          topology_aware_services/0,
+         topology_aware_services_for_version/1,
          default_services/0,
          set_service_map/2,
          get_service_map/2,
@@ -245,11 +246,11 @@ cluster_supported_services() ->
 default_services() ->
     [kv].
 
-topology_aware_services() ->
-    case cluster_compat_mode:is_cluster_45() of
+topology_aware_services_for_version(Version) ->
+    case cluster_compat_mode:is_version_45(Version) of
         true ->
             Services = [fts | maybe_example_service()],
-            case cluster_compat_mode:is_cluster_spock() of
+            case cluster_compat_mode:is_version_spock(Version) of
                 true ->
                     [index | Services];
                 false ->
@@ -258,6 +259,9 @@ topology_aware_services() ->
         false ->
             []
     end.
+
+topology_aware_services() ->
+    topology_aware_services_for_version(cluster_compat_mode:get_compat_version()).
 
 maybe_example_service() ->
     case os:getenv("ENABLE_EXAMPLE_SERVICE") =/= false of

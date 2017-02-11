@@ -1266,6 +1266,8 @@ set_rebalance_status(rebalance, Status, Pid) when is_pid(Pid) ->
 set_rebalance_status(graceful_failover, Status, Pid) when is_pid(Pid) ->
     do_set_rebalance_status(Status, Pid, Pid);
 set_rebalance_status(move_vbuckets, Status, Pid) ->
+    set_rebalance_status(rebalance, Status, Pid);
+set_rebalance_status(service_upgrade, Status, Pid) ->
     set_rebalance_status(rebalance, Status, Pid).
 
 do_set_rebalance_status(Status, RebalancerPid, GracefulPid) ->
@@ -1291,16 +1293,14 @@ handle_rebalance_completion(Reason, State) ->
     rpc:eval_everywhere(diag_handler, log_all_dcp_stats, []),
 
     R = consider_switching_compat_mode_dont_exit(),
-    maybe_eject_myself(Reason, State),
-
-    case R of
-        {changed, _, _} ->
-            exit(normal);
-        unchanged ->
-            ok
-    end,
-
-    {next_state, idle, #idle_state{}}.
+    case maybe_start_service_upgrader(Reason, R, State) of
+        {started, NewState} ->
+            {next_state, rebalancing, NewState};
+        not_needed ->
+            maybe_eject_myself(Reason, State),
+            maybe_exit(R, State),
+            {next_state, idle, #idle_state{}}
+    end.
 
 maybe_eject_myself(Reason, State) ->
     case need_eject_myself(Reason, State) of
@@ -1343,7 +1343,9 @@ rebalance_type2text(rebalance) ->
 rebalance_type2text(move_vbuckets) ->
     rebalance_type2text(rebalance);
 rebalance_type2text(graceful_failover) ->
-    <<"Graceful failover">>.
+    <<"Graceful failover">>;
+rebalance_type2text(service_upgrade) ->
+    <<"Service upgrade">>.
 
 update_rebalance_counters(Reason, #rebalancing_state{type = Type}) ->
     Counter =
@@ -1371,3 +1373,67 @@ reason2status(_Error, Type) ->
             "You can try again.",
             [rebalance_type2text(Type)]),
     {none, iolist_to_binary(Msg)}.
+
+maybe_start_service_upgrader(normal, unchanged, _State) ->
+    not_needed;
+maybe_start_service_upgrader(normal, {changed, OldVersion, NewVersion},
+                             #rebalancing_state{keep_nodes = KeepNodes} = State) ->
+    Old = ns_cluster_membership:topology_aware_services_for_version(OldVersion),
+    New = ns_cluster_membership:topology_aware_services_for_version(NewVersion),
+
+    Services = [S || S <- New -- Old,
+                     ns_cluster_membership:service_nodes(KeepNodes, S) =/= []],
+    case Services of
+        [] ->
+            not_needed;
+        _ ->
+            ale:info(?USER_LOGGER,
+                     "Starting upgrade for the following services: ~p", [Services]),
+            Pid = start_service_upgrader(KeepNodes, Services),
+
+            Type = service_upgrade,
+            set_rebalance_status(Type, running, Pid),
+            ns_cluster:counter_inc(Type, start),
+            Progress = rebalance_progress:init(KeepNodes, Services),
+
+            NewState = State#rebalancing_state{type = Type,
+                                               progress = Progress,
+                                               rebalancer = Pid},
+
+            {started, NewState}
+    end;
+maybe_start_service_upgrader(_Reason, _SwitchCompatResult, _State) ->
+    %% rebalance failed, so we'll just let the user start rebalance again
+    not_needed.
+
+start_service_upgrader(KeepNodes, Services) ->
+    proc_lib:spawn_link(
+      fun () ->
+              Config = ns_config:get(),
+              EjectNodes = [],
+
+              ok = service_janitor:cleanup(Config),
+
+              %% since we are not actually ejecting anything here, we can
+              %% ignore the return value
+              _ = ns_rebalancer:rebalance_topology_aware_services(
+                    Config, Services, KeepNodes, EjectNodes)
+      end).
+
+maybe_exit(SwitchCompatResult, #rebalancing_state{type = Type}) ->
+    case need_exit(SwitchCompatResult, Type) of
+        true ->
+            exit(normal);
+        false ->
+            ok
+    end.
+
+need_exit({changed, _, _}, _Type) ->
+    %% switched compat version, but didn't have to upgrade services
+    true;
+need_exit(_, service_upgrade) ->
+    %% needed to upgrade the services, so we need to exit because we must have
+    %% upgraded the compat version just before that
+    true;
+need_exit(_, _) ->
+    false.

@@ -17,7 +17,7 @@
 
 -include("ns_common.hrl").
 
--export([cleanup/0, complete_service_failover/1]).
+-export([cleanup/0, cleanup/1, complete_service_failover/1]).
 
 -define(INITIAL_REBALANCE_TIMEOUT, ns_config:get_timeout(initial_rebalance, 120000)).
 
@@ -25,12 +25,12 @@ cleanup() ->
     Config = ns_config:get(),
     case ns_config_auth:is_system_provisioned(Config) of
         true ->
-            do_cleanup(Config);
+            cleanup(Config);
         false ->
             ok
     end.
 
-do_cleanup(Config) ->
+cleanup(Config) ->
     case maybe_init_services(Config) of
         ok ->
             %% config might have been changed by maybe_init_services
