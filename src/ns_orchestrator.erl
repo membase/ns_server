@@ -1097,16 +1097,24 @@ is_rebalance_running() ->
     ns_config:search(rebalance_status) =:= {value, running}.
 
 consider_switching_compat_mode() ->
-    CurrentVersion = cluster_compat_mode:get_compat_version(),
+    case consider_switching_compat_mode_dont_exit() of
+        {changed, _, _} ->
+            exit(normal);
+        unchanged ->
+            ok
+    end.
+
+consider_switching_compat_mode_dont_exit() ->
+    OldVersion = cluster_compat_mode:get_compat_version(),
 
     case cluster_compat_mode:consider_switching_compat_mode() of
         changed ->
             NewVersion = cluster_compat_mode:get_compat_version(),
             ale:warn(?USER_LOGGER, "Changed cluster compat mode from ~p to ~p",
-                     [CurrentVersion, NewVersion]),
-            exit(normal);
+                     [OldVersion, NewVersion]),
+            {changed, OldVersion, NewVersion};
         ok ->
-            ok
+            unchanged
     end.
 
 perform_bucket_flushing(BucketName) ->
@@ -1281,8 +1289,17 @@ handle_rebalance_completion(Reason, State) ->
     update_rebalance_counters(Reason, State),
     update_rebalance_status(Reason, State),
     rpc:eval_everywhere(diag_handler, log_all_dcp_stats, []),
+
+    R = consider_switching_compat_mode_dont_exit(),
     maybe_eject_myself(Reason, State),
-    consider_switching_compat_mode(),
+
+    case R of
+        {changed, _, _} ->
+            exit(normal);
+        unchanged ->
+            ok
+    end,
+
     {next_state, idle, #idle_state{}}.
 
 maybe_eject_myself(Reason, State) ->
