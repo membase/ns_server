@@ -653,6 +653,7 @@ idle({start_graceful_failover, Node}, _From,
             notify_janitor_finished(JanitorRequests, rebalance_running),
 
             Type = graceful_failover,
+            ns_cluster:counter_inc(Type, start),
             set_rebalance_status(Type, running, Pid),
 
             Nodes = ns_cluster_membership:active_nodes(),
@@ -691,9 +692,9 @@ idle({start_rebalance, KeepNodes, EjectNodes,
             end,
 
             notify_janitor_finished(JanitorRequests, rebalance_running),
-            ns_cluster:counter_inc(rebalance_start),
 
             Type = rebalance,
+            ns_cluster:counter_inc(Type, start),
             set_rebalance_status(Type, running, Pid),
 
             {reply, ok, rebalancing,
@@ -716,6 +717,7 @@ idle({move_vbuckets, Bucket, Moves}, _From, #idle_state{janitor_requests = Janit
             end),
 
     Type = move_vbuckets,
+    ns_cluster:counter_inc(Type, start),
     set_rebalance_status(Type, running, Pid),
 
     Nodes = ns_cluster_membership:active_nodes(),
@@ -1277,16 +1279,14 @@ handle_rebalance_completion(Reason,
     cancel_stop_timer(State),
     maybe_reset_autofailover_count(Reason, State),
     log_rebalance_completion(Reason, State),
+    update_rebalance_counters(Reason, State),
 
     Status = case Reason of
                  normal ->
-                     ns_cluster:counter_inc(rebalance_success),
                      none;
                  stopped ->
-                     ns_cluster:counter_inc(rebalance_stop),
                      none;
                  _ ->
-                     ns_cluster:counter_inc(rebalance_fail),
                      {none, <<"Rebalance failed. See logs for detailed reason. "
                               "You can try rebalance again.">>}
              end,
@@ -1339,3 +1339,16 @@ rebalance_type2text(move_vbuckets) ->
     rebalance_type2text(rebalance);
 rebalance_type2text(graceful_failover) ->
     <<"Graceful failover">>.
+
+update_rebalance_counters(Reason, #rebalancing_state{type = Type}) ->
+    Counter =
+        case Reason of
+            normal ->
+                success;
+            stopped ->
+                stop;
+            _Error ->
+                fail
+        end,
+
+    ns_cluster:counter_inc(Type, Counter).

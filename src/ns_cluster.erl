@@ -60,7 +60,8 @@
 -export([do_change_address/2]).
 
 -export([counters/0,
-         counter_inc/1]).
+         counter_inc/1,
+         counter_inc/2]).
 
 -export([alert_key/1]).
 -record(state, {}).
@@ -135,10 +136,7 @@ change_address(Address) ->
 
 %% @doc Returns proplist of cluster-wide counters.
 counters() ->
-    case ns_config:search(counters) of
-        {value, PList} -> PList;
-        false -> []
-    end.
+    ns_config:search(ns_config:latest(), counters, []).
 
 %% @doc Increment a cluster-wide counter.
 counter_inc(CounterName) ->
@@ -148,6 +146,10 @@ counter_inc(CounterName) ->
     ok = ns_config:set(counters,
                        [{CounterName, proplists:get_value(CounterName, PList, 0) + 1} |
                         proplists:delete(CounterName, PList)]).
+
+counter_inc(Type, Name)
+  when is_atom(type), is_atom(Name) ->
+    counter_inc(list_to_atom(atom_to_list(Type) ++ "_" ++ atom_to_list(Name))).
 
 %%
 %% gen_server handlers
