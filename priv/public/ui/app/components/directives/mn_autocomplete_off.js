@@ -9,7 +9,7 @@
     .module('mnAutocompleteOff', [])
     .directive('mnAutocompleteOff', mnAutocompleteOff);
 
-  function mnAutocompleteOff() {
+  function mnAutocompleteOff($rootScope) {
     var autocompleteOff = {
       link: link
     };
@@ -17,7 +17,7 @@
     return autocompleteOff;
 
     function link($scope, $element, $attr) {
-      if (!$scope.ENV || $scope.ENV.disable_autocomplete) {
+      if (!$rootScope.ENV || $rootScope.ENV.disable_autocomplete) {
         //avoiding autocomplete via additional input
         var input = angular.element('<input style="display:none" readonly disabled>');
         input.attr("type", $attr.type);
