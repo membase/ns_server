@@ -1274,24 +1274,12 @@ do_cancel_stop_timer(undefined) ->
 do_cancel_stop_timer(TRef) when is_reference(TRef) ->
     gen_fsm:cancel_timer(TRef).
 
-handle_rebalance_completion(Reason,
-                            #rebalancing_state{type = Type} = State) ->
+handle_rebalance_completion(Reason, State) ->
     cancel_stop_timer(State),
     maybe_reset_autofailover_count(Reason, State),
     log_rebalance_completion(Reason, State),
     update_rebalance_counters(Reason, State),
-
-    Status = case Reason of
-                 normal ->
-                     none;
-                 stopped ->
-                     none;
-                 _ ->
-                     {none, <<"Rebalance failed. See logs for detailed reason. "
-                              "You can try rebalance again.">>}
-             end,
-
-    set_rebalance_status(Type, Status, undefined),
+    update_rebalance_status(Reason, State),
     rpc:eval_everywhere(diag_handler, log_all_dcp_stats, []),
     maybe_eject_myself(Reason, State),
     consider_switching_compat_mode(),
@@ -1352,3 +1340,17 @@ update_rebalance_counters(Reason, #rebalancing_state{type = Type}) ->
         end,
 
     ns_cluster:counter_inc(Type, Counter).
+
+update_rebalance_status(Reason, #rebalancing_state{type = Type}) ->
+    set_rebalance_status(Type, reason2status(Reason, Type), undefined).
+
+reason2status(normal, _Type) ->
+    none;
+reason2status(stopped, _Type) ->
+    none;
+reason2status(_Error, Type) ->
+    Msg = io_lib:format(
+            "~s failed. See logs for detailed reason. "
+            "You can try again.",
+            [rebalance_type2text(Type)]),
+    {none, iolist_to_binary(Msg)}.
