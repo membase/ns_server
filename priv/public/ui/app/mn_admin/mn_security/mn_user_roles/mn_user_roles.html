@@ -63,8 +63,8 @@
                href=""
                class="margin-right-half"
                ng-repeat="role in user.roles"
-               uib-tooltip="{{userRolesCtl.getRoleFromRoles(userRolesCtl.rolesByRole, role).desc}}">
-              {{userRolesCtl.getRoleFromRoles(userRolesCtl.rolesByRole, role).name}} <span ng-show="role.bucket_name">[{{role.bucket_name}}]</span>
+               uib-tooltip="{{userRolesCtl.rolesByRole[role.role + (role.bucket_name ? '[' + role.bucket_name + ']' : '')].desc}}">
+              {{userRolesCtl.rolesByRole[role.role + (role.bucket_name ? '[' + role.bucket_name + ']' : '')].name}} <span ng-show="role.bucket_name">[{{role.bucket_name}}]</span>
             </a>
           </td>
           <td>

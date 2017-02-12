@@ -11,11 +11,13 @@
       "mnSpinner",
       "ui.select",
       "mnLdapService",
-      "mnEqual"
+      "mnEqual",
+      "mnBucketsService",
+      "mnFilters"
     ])
     .controller("mnUserRolesController", mnUserRolesController);
 
-  function mnUserRolesController($scope, $uibModal, mnLdapService, mnPromiseHelper, mnUserRolesService, mnPoller, mnHelper, $state, poolDefault) {
+  function mnUserRolesController($scope, $uibModal, mnLdapService, mnPromiseHelper, mnUserRolesService, mnPoller, mnHelper, $state, poolDefault, mnBucketsService) {
     var vm = this;
     vm.addUser = addUser;
     vm.deleteUser = deleteUser;
@@ -23,7 +25,6 @@
     vm.resetUserPassword = resetUserPassword;
 
     vm.toggleSaslauthdAuth = toggleSaslauthdAuth;
-    vm.getRoleFromRoles = mnUserRolesService.getRoleFromRoles;
     vm.rolesFilter = rolesFilter;
 
     vm.isLdapEnabled = poolDefault.ldapEnabled;
@@ -146,7 +147,10 @@
         controller: 'mnUserRolesAddDialogController as userRolesAddDialogCtl',
         resolve: {
           user: mnHelper.wrapInFunction(user),
-          isLdapEnabled: mnHelper.wrapInFunction(poolDefault.ldapEnabled)
+          isLdapEnabled: mnHelper.wrapInFunction(poolDefault.ldapEnabled),
+          buckets: function () {
+            return mnBucketsService.getBucketsByType();
+          }
         }
       });
     }
@@ -156,7 +160,10 @@
         controller: 'mnUserRolesAddDialogController as userRolesAddDialogCtl',
         resolve: {
           user: mnHelper.wrapInFunction(undefined),
-          isLdapEnabled: mnHelper.wrapInFunction(poolDefault.ldapEnabled)
+          isLdapEnabled: mnHelper.wrapInFunction(poolDefault.ldapEnabled),
+          buckets: function () {
+            return mnBucketsService.getBucketsByType();
+          }
         }
       });
     }

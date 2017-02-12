@@ -66,23 +66,57 @@
       </div>
       <div class="formrow">
         <label for="user_inp">Role(s)</label>
-        <ui-select
-           style="border: 1px solid #d1d1d1;"
-           on-select="userRolesAddDialogCtl.onSelect($select)"
-           multiple
-           ng-if="userRolesAddDialogCtl.roles"
-           ng-model="userRolesAddDialogCtl.roles.selected">
-          <ui-select-match
-             placeholder="choose single or multiple roles">
-            {{$item.name}}<span ng-show="$item.bucket_name">[{{$item.bucket_name}}]</span>
-          </ui-select-match>
-          <ui-select-choices
-             repeat="role in userRolesAddDialogCtl.roles | filter: $select.search">
-            <span
-               class="ellipsis"
-               ng-bind-html="(role.name + (role.bucket_name ? '[' + role.bucket_name + ']' : '')) | highlight: $select.search"></span>
-          </ui-select-choices>
-        </ui-select>
+        <script type="text/ng-template" id="rolesTree">
+          <div ng-init="::isArray = ('isArray' | lodash:role);">
+            <div
+               ng-if="::isArray"
+               ng-init="::
+                        getUIID = userRolesAddDialogCtl.getUIID(role, level);
+                        hasTitle = ('isArray' | lodash:role[1]) || !!role[0].bucket_name;
+                        roles = role">
+              <label
+                 ng-if="::hasTitle"
+                 ng-init="::userRolesAddDialogCtl.toggleWrappers(getUIID, true)"
+                 ng-click="::userRolesAddDialogCtl.toggleWrappers(getUIID)"
+                 class="disclosure"
+                 ng-class="{
+                           'disclosed': !userRolesAddDialogCtl.closedWrappers[getUIID],
+                           'alert-success': userRolesAddDialogCtl.closedWrappers[getUIID] && userRolesAddDialogCtl.containsSelected[getUIID]
+                           }">
+                {{::level == 0 ? (role[0][0].role.split('_')[0] + " Roles") : (level == 1 ? role[0].name : "")}}
+              </label>
+              <div ng-class="::{'indent-1': hasTitle}">
+                <div
+                   ng-show="!userRolesAddDialogCtl.closedWrappers[getUIID]"
+                   ng-init="::level = level + 1;"
+                   ng-repeat="role in roles"
+                   ng-include="'rolesTree'">
+                </div>
+              </div>
+            </div>
+            <div
+               ng-if="::!isArray"
+               ng-init="::getUIID = userRolesAddDialogCtl.getUIID(role, level);"
+               ng-class="{'alert-success': userRolesAddDialogCtl.selectedRoles[getUIID]}">
+              <input
+                 type="checkbox"
+                 id="for-{{::getUIID}}"
+                 ng-disabled="role.bucket_name !== '*' && userRolesAddDialogCtl.selectedRoles[role.role + '[*]']"
+                 ng-change="::userRolesAddDialogCtl.onCheckChange(role, getUIID)"
+                 ng-model="userRolesAddDialogCtl.selectedRoles[getUIID]">
+              <label
+                 for="for-{{::getUIID}}">
+                {{::!role.bucket_name ? role.name : role.bucket_name == "*" ? "all [*]" : role.bucket_name}}
+              </label>
+            </div>
+          </div>
+        </script>
+        <div>
+          <div
+             ng-init="level = 0;"
+             ng-repeat="(key, role) in userRolesAddDialogCtl.rolesTree"
+             ng-include="'rolesTree'"></div>
+        </div>
       </div>
     </div>
     <div class="panel-footer">

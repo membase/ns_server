@@ -2,17 +2,17 @@
   "use strict";
 
   angular
-    .module("mnUserRolesService", [])
+    .module("mnUserRolesService", ['mnHelper'])
     .factory("mnUserRolesService", mnUserRolesFactory);
 
-  function mnUserRolesFactory($q, $http) {
+  function mnUserRolesFactory($q, $http, mnHelper) {
     var mnUserRolesService = {
       getState: getState,
       addUser: addUser,
       getRoles: getRoles,
       deleteUser: deleteUser,
       getRolesByRole: getRolesByRole,
-      getRoleFromRoles: getRoleFromRoles
+      getRolesTree: getRolesTree
     };
 
     return mnUserRolesService;
@@ -23,6 +23,17 @@
         url: "/settings/rbac/roles"
       }).then(function (resp) {
         return resp.data;
+      });
+    }
+
+    function getRolesTree() {
+      return getRoles().then(function (roles) {
+        var roles1 = _.groupBy(roles, 'role');
+        var roles2 = _.groupBy(roles1, function (array, role) {
+          return role.split("_")[0];
+        });
+
+        return roles2;
       });
     }
 
@@ -42,42 +53,23 @@
       });
     }
 
-    function getRoleFromRoles(rolesByRole, role) {
-      if (!rolesByRole) {
-        return;
-      }
-      return rolesByRole[role.role] && (role.bucket_name ? rolesByRole[role.role][role.bucket_name] : rolesByRole[role.role]);
-    }
-
     function getUserUrl(user) {
       return "/settings/rbac/users/" + encodeURIComponent(user.type) + "/"  + encodeURIComponent(user.id);
     }
 
-    function getRolesByRole(roles) {
-      return (roles ? $q.when(roles) : getRoles()).then(function (roles) {
+    function getRolesByRole(userRoles, forAddDialog) {
+      return (userRoles ? $q.when(userRoles) : getRoles()).then(function (roles) {
         var rolesByRole = {};
         angular.forEach(roles, function (role) {
-          rolesByRole[role.role] = rolesByRole[role.role] || {};
-          if (role.bucket_name) {
-            rolesByRole[role.role][role.bucket_name] = role;
-          } else {
-            rolesByRole[role.role] = _.extend(rolesByRole[role.role], role);
-          }
+          rolesByRole[role.role + (role.bucket_name ? '[' + role.bucket_name + ']' : '')] = forAddDialog ? true : role;
         });
         return rolesByRole;
       });
     }
 
     function doAddUser(user, roles) {
-      var rolesWithBucketName = _.map(roles, function (role) {
-        if (role.bucket_name) {
-          return role.role + "[" + role.bucket_name + "]";
-        } else {
-          return role.role;
-        }
-      });
       var data = {
-        roles: rolesWithBucketName.join(','),
+        roles: roles.join(','),
         name: user.name
       };
       if (user.type === "builtin") {
@@ -95,6 +87,7 @@
       if (!user || !user.id) {
         return $q.reject({username: "username is required"});
       }
+      roles = mnHelper.checkboxesToList(roles);
       if (!roles || !roles.length) {
         return $q.reject({roles: "at least one role should be added"});
       }
