@@ -252,6 +252,21 @@ handle_call(connected_and_list_vbuckets, _From, #state{status = Status} = State)
     {reply, warming_up, State};
 handle_call(connected_and_list_vbuckets, From, State) ->
     handle_call(list_vbuckets, From, State);
+handle_call(warmed, From, #state{status = warmed} = State) ->
+    %% A bucket is set to "warmed" state in ns_memcached,
+    %% after the bucket is loaded in memcached and ns_server
+    %% has enabled traffic to it.
+    %% So, normally, a "warmed" state in ns_memcached also
+    %% indicates that the bucket is also ready in memcached.
+    %% But in some failure scenarios where memcached becomes
+    %% unresponsive, it may take up to 10s for ns_memcached
+    %% to realize there is an issue.
+    %% So, in addition to checking ns_memcached state, also
+    %% retrive stats from memcached to verify it is
+    %% responsive.
+    handle_call(verify_warmup, From, State);
+handle_call(warmed, _From, State) ->
+    {reply, false, State};
 handle_call(disable_traffic, _From, State) ->
     case State#state.status of
         Status when Status =:= warmed; Status =:= connected ->
@@ -433,6 +448,10 @@ try_deliver_work(State, From, RestFroms, QueueSlot) ->
     end.
 
 
+do_handle_call(verify_warmup,  _From, #state{bucket = Bucket,
+                                             sock = Sock} = State) ->
+    Stats = retrieve_warmup_stats(Sock),
+    {reply, has_started(Stats, Bucket), State};
 do_handle_call({raw_stats, SubStat, StatsFun, StatsFunState}, _From, State) ->
     try mc_binary:quick_stats(State#state.sock, SubStat, StatsFun, StatsFunState) of
         Reply ->
@@ -823,8 +842,7 @@ connected(Node, Bucket) ->
 
 -spec warmed(node(), bucket_name(), pos_integer() | infinity) -> boolean().
 warmed(Node, Bucket, Timeout) ->
-    connected_common(Node, Bucket, Timeout,
-                     fun extract_new_response_warmed/1).
+    do_call({server(Bucket), Node}, warmed, Timeout).
 
 -spec warmed(node(), bucket_name()) -> boolean().
 warmed(Node, Bucket) ->
@@ -1434,11 +1452,6 @@ handle_connected_result(R, NewRespFn) ->
 
 extract_new_response_connected(Resp) when is_list(Resp) ->
     R = proplists:get_value(connected, Resp),
-    true = is_boolean(R),
-    R.
-
-extract_new_response_warmed(Resp) when is_list(Resp) ->
-    R = proplists:get_value(warmed, Resp),
     true = is_boolean(R),
     R.
 
