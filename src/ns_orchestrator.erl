@@ -83,7 +83,7 @@
 -define(CREATE_BUCKET_TIMEOUT, ns_config:get_timeout(create_bucket, 5000)).
 -define(RECOVERY_QUERY_STATES_TIMEOUT,
         ns_config:get_timeout(recovery_query_states, 5000)).
--define(JANITOR_INTERVAL, ns_config:read_key_fast(janitor_interval, 10000)).
+-define(JANITOR_INTERVAL, ns_config:read_key_fast(janitor_interval, 5000)).
 -define(STOP_REBALANCE_TIMEOUT, ns_config:get_timeout(stop_rebalance_timeout, 60000)).
 
 %% gen_fsm callbacks
