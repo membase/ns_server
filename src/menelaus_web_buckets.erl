@@ -1003,7 +1003,7 @@ validate_replicas_number(Params, IsNew) ->
 %% used/checked at multiple places and would need changes in all those places.
 %% Hence the above described approach.
 get_storage_mode(Params, _BucketConfig, true = _IsNew) ->
-    case proplists:get_value("bucketType", Params) of
+    case proplists:get_value("bucketType", Params, "membase") of
         "membase" ->
             {ok, storage_mode, couchstore};
         "couchbase" ->
