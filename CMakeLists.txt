@@ -130,9 +130,10 @@ ADD_CUSTOM_TARGET (ns_distclean)
 ADD_DEPENDENCIES (ns_distclean realclean ns_dataclean)
 
 ADD_SUBDIRECTORY (deps)
-Rebar (TARGET ns_server NOCLEAN
-  DEPENDS ale ns_babysitter
-          ns_ssl_proxy gen_smtp ns_couchdb ns_cfg triq)
+REBAR (TARGET ns_server NOCLEAN DEPENDS ns_cfg ale triq)
+
+ADD_CUSTOM_TARGET (erlang_deps
+  DEPENDS gen_smtp ale ns_babysitter ns_ssl_proxy ns_couchdb triq)
 
 MACRO (NS_SERVER_TEST)
   PARSE_ARGUMENTS (NS_SERVER_TEST "" "NAME;TEST_TARGET" "EXPLICIT" ${ARGN})
@@ -160,7 +161,7 @@ MACRO (NS_SERVER_TEST)
 
   # Also create a custom target
   ADD_CUSTOM_TARGET (${_name} COMMAND ${_cmd} WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-  ADD_DEPENDENCIES (${_name} ns_server)
+  ADD_DEPENDENCIES (${_name} ns_server erlang_deps)
 ENDMACRO(NS_SERVER_TEST)
 
 NS_SERVER_TEST (NAME ns_test TEST_TARGET start)
@@ -207,7 +208,7 @@ ADD_CUSTOM_TARGET (ns_dialyzer
   -D "COUCHBASE_PLT=${COUCHBASE_PLT}"
   -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-dialyzer.cmake"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" VERBATIM)
-ADD_DEPENDENCIES (ns_dialyzer ns_server)
+ADD_DEPENDENCIES (ns_dialyzer ns_server erlang_deps)
 
 SET (obsessive_args -Wunmatched_returns -Werror_handling -Wrace_conditions
   -Wbehaviours -Wunderspecs)
@@ -217,7 +218,7 @@ ADD_CUSTOM_TARGET (ns_dialyzer_obsessive
   -D "COUCHBASE_PLT=${COUCHBASE_PLT}"
   -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-dialyzer.cmake"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" VERBATIM)
-ADD_DEPENDENCIES (ns_dialyzer_obsessive ns_server)
+ADD_DEPENDENCIES (ns_dialyzer_obsessive ns_server erlang_deps)
 
 #
 # Install
