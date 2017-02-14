@@ -94,7 +94,7 @@ handle_event({user_roles, V}, #state{users = Users} = State) ->
     end;
 handle_event({roles_definitions, V}, #state{roles = V}) ->
     unchanged;
-handle_event({roles_definitions, _V}, #state{roles = NewRoles} = State) ->
+handle_event({roles_definitions, NewRoles}, #state{roles = _V} = State) ->
     {changed, State#state{roles = NewRoles}}.
 
 generate(#state{buckets = Buckets,
