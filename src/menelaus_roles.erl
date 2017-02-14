@@ -208,14 +208,20 @@ upgrade_role_add_permission(Definitions, Role, Permission) ->
                      {Role, Params, Info,
                       [Permission | Permissions]}).
 
--spec get_definitions(ns_config()) -> [rbac_role_def(), ...].
+-spec get_definitions(ns_config()) -> [rbac_role_def(), ...] | undefined.
 get_definitions(Config) ->
     {value, RolesDefinitions} = ns_config:search(Config, roles_definitions),
     case cluster_compat_mode:is_cluster_spock(Config) of
         true ->
             RolesDefinitions;
         false ->
-            upgrade_roles_spock(RolesDefinitions)
+            case RolesDefinitions of
+                undefined ->
+                    %% can happen briefly after node joins the cluster
+                    undefined;
+                _ ->
+                    upgrade_roles_spock(RolesDefinitions)
+            end
     end.
 
 -spec object_match(rbac_permission_object(), rbac_permission_pattern_object()) ->
@@ -279,7 +285,10 @@ substitute_params(Params, ParamDefinitions, Permissions) ->
                                  end, ObjectPattern), AllowedOperations}
               end, Permissions).
 
--spec compile_roles([rbac_role()], [rbac_role_def()]) -> [rbac_compiled_role()].
+-spec compile_roles([rbac_role()], [rbac_role_def()] | undefined) -> [rbac_compiled_role()].
+compile_roles(_Roles, undefined) ->
+    %% can happen briefly after node joins the cluster
+    [];
 compile_roles(Roles, Definitions) ->
     lists:map(fun (Name) when is_atom(Name) ->
                       {Name, [], _Props, Permissions} = lists:keyfind(Name, 1, Definitions),

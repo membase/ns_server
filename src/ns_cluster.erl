@@ -1086,6 +1086,8 @@ perform_actual_join(RemoteNode, NewCookie) ->
                                  %% update for the sake of incrementing the
                                  %% vclock
                                  {update, Pair};
+                             ({roles_definitions, _}) ->
+                                 {set_initial, {roles_definitions, undefined}};
                              (_) ->
                                  erase
                          end),
