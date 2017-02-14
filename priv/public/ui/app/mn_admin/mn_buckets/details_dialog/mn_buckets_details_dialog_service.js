@@ -39,18 +39,21 @@
       if (bucketConf.isNew) {
         copyProperties(["name", "bucketType"]);
       }
-      if (bucketConf.bucketType === "membase") {
+      if (bucketConf.bucketType === "membase" || bucketConf.bucketType === "ephemeral") {
         copyProperties(["evictionPolicy", "threadsNumber", "replicaNumber", "autoCompactionDefined"]);
         if (bucketConf.isNew) {
-          copyProperty("replicaIndex");
+          if (bucketConf.bucketType !== "ephemeral") {
+            copyProperty("replicaIndex");
+          }
 
           if (pools.isEnterprise && (bucketConf.isWizard || poolDefault.compat.atLeast46)) {
             copyProperty("conflictResolutionType");
           }
         }
+
         if (bucketConf.autoCompactionDefined) {
           _.extend(conf, mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings));
-      }
+        }
       }
       if (bucketConf.authType === "sasl") {
         copyProperty("saslPassword");

@@ -5,7 +5,7 @@
     <th class="text-center">Item Count</th>
     <th class="text-center">Ops/sec</th>
     <th class="text-center" ng-show="!buckets"></th>
-    <th class="text-center" ng-show="buckets.isMembase">Disk Fetches/sec</th>
+    <th class="text-center" ng-show="!buckets.isMemcached">Disk Fetches/sec</th>
     <th class="text-center" ng-show="buckets.isMemcached">Hit Ratio</th>
     <th class="text-center">RAM Used / Quota</th>
     <th class="text-center">Data/Disk Usage</th>
@@ -56,7 +56,7 @@
       <td class="text-center">
         {{'round' | mnMath:bucket.basicStats.opsPerSec}}
       </td>
-      <td  class="text-center" ng-if="buckets.isMembase">
+      <td  class="text-center" ng-if="!buckets.isMemcached">
         {{bucket.basicStats.diskFetches | mnTruncateTo3Digits}}
       </td>
       <td  class="text-center" ng-if="buckets.isMemcached">
@@ -67,14 +67,14 @@
         {{bucket.quota.ram | mnFormatQuantity}}
       </td>
       <td class="text-center">
-        <span ng-show="buckets.isMembase">
+        <span ng-show="!buckets.isMemcached">
           {{bucket.basicStats.dataUsed | mnFormatQuantity}} /
           {{bucket.basicStats.diskUsed | mnFormatQuantity}}
         </span>
-        <span ng-show="!buckets.isMembase">N/A</span>
+        <span ng-show="buckets.isMemcached">N/A</span>
       </td>
       <td
-         ng-if="buckets.isMembase"
+         ng-if="!buckets.isMemcached"
          class="text-right">
         <a
            ng-click="$event.stopPropagation()"

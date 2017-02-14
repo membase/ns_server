@@ -17,7 +17,9 @@
     function populateBucketsSelectBox(params) {
       return mnBucketsService.getBucketsByType().then(function (buckets) {
         var rv = {};
-        rv.bucketsNames = buckets.byType.membase.names;
+        rv.bucketsNames =
+          buckets.byType.membase.names
+          .concat(buckets.byType.ephemeral.names);
         rv.bucketsNames.selected = params.bucket;
         return rv;
       });

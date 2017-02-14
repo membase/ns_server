@@ -8,16 +8,16 @@
             {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? 'Port' : bucketsDetailsCtl.bucketDetails.name === 'default' ? 'None' : 'Authentication'}}
             {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? ': ' + bucketsDetailsCtl.bucketDetails.proxyPort : ''}}
         </span>
-        <span class="column" ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
+        <span class="column" ng-if="!bucket.isMemcached && rbac.cluster.bucket[bucket.name].settings.read">
           <span class="semi-bold">Replicas:</span> {{bucketsDetailsCtl.bucketDetails.replicaNumber != 0 ? (bucketsDetailsCtl.bucketDetails.replicaNumber | mnCount:'replica copy') : 'disabled'}}
         </span>
-        <span class="column" ng-if="bucket.isMembase && rbac.cluster.tasks.read">
+        <span class="column" ng-if="!bucket.isMemcached && rbac.cluster.tasks.read">
           <span class="semi-bold">Compaction:</span> {{bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask ? bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.progress + "% complete" : "Not active"}}
         </span>
-        <span class="column" ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
+        <span class="column" ng-if="!bucket.isMemcached && rbac.cluster.bucket[bucket.name].settings.read">
           <span class="semi-bold">Cache Metadata:</span> {{bucketsDetailsCtl.bucketDetails.evictionPolicy === "valueOnly" ? 'Value Ejection' : 'Full Ejection'}}
         </span>
-        <span class="column" ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
+        <span class="column" ng-if="!bucket.isMemcached && rbac.cluster.bucket[bucket.name].settings.read">
           <span class="semi-bold">Disk I/O priority:</span> {{bucketsDetailsCtl.bucketDetails.threadsNumber === 3 ? 'Low' : 'High'}}
         </span>
       </div>
@@ -42,9 +42,9 @@
            ng-show="rbac.cluster.bucket[bucket.name].settings.read">
         </div>
       </div>
-      <h4 ng-show="bucket.isMembase">Disk</h4>
-      <hr ng-show="bucket.isMembase">
-      <div class="row indent-1" ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
+      <h4 ng-show="!bucket.isMemcached">Disk</h4>
+      <hr ng-show="!bucket.isMemcached">
+      <div class="row indent-1" ng-if="!bucket.isMemcached && rbac.cluster.bucket[bucket.name].settings.read">
         <div class="column text-smaller" style="width:230px;">
           Persistence Enabled: Yes<br>
           Disk Usage: {{bucketsDetailsCtl.bucketDetails.basicStats.diskUsed | mnFormatQuantity}}<br>
@@ -67,7 +67,7 @@
          ng-click="bucketsDetailsCtl.deleteBucket(bucketsDetailsCtl.bucketDetails)">Delete</button>
       <button
          class="outline"
-         ng-show="!bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && bucket.isMembase && rbac.cluster.tasks.read && rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].compact"
+         ng-show="!bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && !bucket.isMemcached && rbac.cluster.tasks.read && rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].compact"
          ng-disabled="bucketsDetailsCtl.compactionTasks.disableCompact"
          ng-click="bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.bucketDetails.controllers.compactAll, 'disableCompact')">Compact</button>
       <button

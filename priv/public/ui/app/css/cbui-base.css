@@ -398,6 +398,9 @@ h4 {
   font-weight: 600;
   line-height: 1.4;
 }
+h4 label {
+  line-height: inherit;
+}
 
 /* 14px sidebar section headers */
 h5 {
