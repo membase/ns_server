@@ -22,7 +22,7 @@
 
 -behaviour(replicated_storage).
 
--export([start_link/5, set/3, delete/2, get/2, get/3, select/3]).
+-export([start_link/5, set/3, delete/2, get/2, get/3, select/3, empty/1]).
 
 -export([init/1, init_after_ack/1, handle_call/3,
          get_id/1, find_doc/2, get_all_docs/1,
@@ -52,6 +52,9 @@ delete(Name, Id) ->
                                                     rev = 0,
                                                     deleted = true,
                                                     value = []}}, infinity).
+
+empty(Name) ->
+    gen_server:call(Name, empty, infinity).
 
 get(Name, Id) ->
     gen_server:call(Name, {get, Id}, infinity).
@@ -146,7 +149,13 @@ handle_call(suspend, {Pid, _} = From, #state{name = TableName} = State) ->
             ?log_debug("Released by process ~p", [Pid]),
             erlang:demonitor(MRef, [flush]),
             {noreply, State}
-    end.
+    end;
+handle_call(empty, _From, #state{name = TableName,
+                                 child_module = ChildModule,
+                                 child_state = ChildState} = State) ->
+    ok = dets:delete_all_objects(TableName),
+    NewChildState = ChildModule:on_empty(ChildState),
+    {reply, ok, State#state{child_state = NewChildState}}.
 
 select_from_dets(Name, MatchSpec, N, Yield) ->
     {ok, TableName} = gen_server:call(Name, suspend, infinity),

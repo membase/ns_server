@@ -36,10 +36,11 @@
          upgrade_to_4_5/1,
          build_memcached_auth_info/1,
          get_users_version/0,
-         get_auth_version/0]).
+         get_auth_version/0,
+         empty_storage/0]).
 
 %% callbacks for replicated_dets
--export([init/1, on_save/2]).
+-export([init/1, on_save/2, on_empty/1]).
 
 -export([start_storage/0, start_replicator/0]).
 
@@ -72,10 +73,15 @@ start_replicator() ->
         end,
     doc_replicator:start_link(replicated_dets, replicator_name(), GetRemoteNodes, storage_name()).
 
-init([]) ->
-    Base = crypto:rand_uniform(0, 16#100000000),
+empty_storage() ->
+    replicated_dets:empty(storage_name()).
 
+init([]) ->
     _ = ets:new(versions_name(), [protected, named_table]),
+    init_versions().
+
+init_versions() ->
+    Base = crypto:rand_uniform(0, 16#100000000),
     ets:insert_new(versions_name(), [{user_version, 0, Base}, {auth_version, 0, Base}]),
     gen_event:notify(user_storage_events, {user_version, {0, Base}}),
     gen_event:notify(user_storage_events, {auth_version, {0, Base}}),
@@ -89,6 +95,10 @@ on_save({auth, _}, Base) ->
     Ver = ets:update_counter(versions_name(), auth_version, 1),
     gen_event:notify(user_storage_events, {auth_version, {Ver, Base}}),
     Base.
+
+on_empty(_Base) ->
+    true = ets:delete_all_objects(versions_name()),
+    init_versions().
 
 -spec get_users_45(ns_config()) -> [{rbac_identity(), []}].
 get_users_45(Config) ->
