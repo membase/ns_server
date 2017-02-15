@@ -87,12 +87,10 @@ update_children() ->
 
                          case HaveBucket of
                              true ->
-                                 [{{docs_sup, Bucket},
-                                   {docs_sup, start_link, [Bucket]},
-                                   permanent, infinity, supervisor, [docs_sup]},
-                                  {{single_bucket_kv_sup, Bucket},
+                                 [{{single_bucket_kv_sup, Bucket},
                                    {single_bucket_kv_sup, start_link, [Bucket]},
-                                   permanent, infinity, supervisor, [single_bucket_kv_sup]}];
+                                   permanent, infinity, supervisor,
+                                   [single_bucket_kv_sup]}];
                              false ->
                                  []
                          end
