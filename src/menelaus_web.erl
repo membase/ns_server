@@ -3389,7 +3389,7 @@ mk_string_field_validator(AV, Params) ->
             end
     end.
 
-parse_and_validat_time_interval(JSONName, Params) ->
+parse_and_validate_time_interval(JSONName, Params) ->
     FromH = JSONName ++ "[fromHour]",
     FromM = JSONName ++ "[fromMinute]",
     ToH = JSONName ++ "[toHour]",
@@ -3423,7 +3423,7 @@ parse_and_validate_extra_index_settings(Params) ->
                          index_circular_compaction_days,
                          "index circular compaction days"}) ++ RV0,
 
-    Time0 = parse_and_validat_time_interval("indexCircularCompaction[interval]",
+    Time0 = parse_and_validate_time_interval("indexCircularCompaction[interval]",
                                             Params),
     TimeResults = case Time0 of
                       [] ->
@@ -3475,7 +3475,7 @@ parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
                          [] -> [{error, "parallelDBAndViewCompaction", <<"parallelDBAndViewCompaction is missing">>}];
                          X -> X
                      end,
-    PeriodTimeResults = parse_and_validat_time_interval("allowedTimePeriod",
+    PeriodTimeResults = parse_and_validate_time_interval("allowedTimePeriod",
                                                         Params),
     PurgeIntervalResults = (mk_number_field_validator(0.04, 60, Params, list_to_float))({"purgeInterval", purge_interval, "metadata purge interval"}),
 
