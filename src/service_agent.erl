@@ -384,6 +384,7 @@ handle_unset_rebalancer(#state{rebalancer = Pid,
     drop_rebalance_messages(),
 
     State1 = terminate_long_poll_workers(State),
+    drop_long_poll_messages(),
 
     State2 = refresh_state(State1),
     State3 = cleanup_service(State2),
