@@ -53,7 +53,6 @@
           mnHttp: mnHttpParams,
           method: 'GET',
           url: '/pools/default',
-          responseType: 'json',
           params: params,
           timeout: 30000
         }),
