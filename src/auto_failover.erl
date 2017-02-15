@@ -549,7 +549,7 @@ actual_down_nodes_inner_test() ->
                        [{"bucket1", [{servers, [a]}]}])),
     ?assertEqual([], R([a, b, c],
                        [{"bucket1", [{servers, [a, b]}]}])),
-    %% this also tests too "old" hearbeats a bit
+    %% this also tests too "old" heartbeats a bit
     ?assertEqual([a,b,c],
                  actual_down_nodes_inner([a,b,c],
                                          [{"bucket1", [{servers, [a, b]}]}],

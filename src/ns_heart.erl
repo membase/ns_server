@@ -113,7 +113,7 @@ handle_info(beat, State) ->
         0 ->
             ok;
         _ ->
-            ?log_warning("Dropped ~p hearbeats", [Dropped])
+            ?log_warning("Dropped ~p heartbeats", [Dropped])
     end,
     {Status, NewState2} = update_current_status(NewState),
     heartbeat(Status),
