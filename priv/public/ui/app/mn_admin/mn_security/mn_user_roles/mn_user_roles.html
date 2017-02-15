@@ -73,6 +73,9 @@
                class="outline"
                ng-click="userRolesCtl.deleteUser(user)">Delete</button>
             <button
+               ng-show="user.type !== 'saslauthd'"
+               ng-click="userRolesCtl.resetUserPassword(user)">Reset Password</button>
+            <button
                ng-click="userRolesCtl.editUser(user)">Edit</button>
           </td>
         </tr>

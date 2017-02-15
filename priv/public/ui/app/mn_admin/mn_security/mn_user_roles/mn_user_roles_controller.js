@@ -10,7 +10,8 @@
       "mnSortableTable",
       "mnSpinner",
       "ui.select",
-      "mnLdapService"
+      "mnLdapService",
+      "mnEqual"
     ])
     .controller("mnUserRolesController", mnUserRolesController);
 
@@ -19,6 +20,7 @@
     vm.addUser = addUser;
     vm.deleteUser = deleteUser;
     vm.editUser = editUser;
+    vm.resetUserPassword = resetUserPassword;
 
     vm.toggleSaslauthdAuth = toggleSaslauthdAuth;
     vm.getRoleFromRoles = mnUserRolesService.getRoleFromRoles;
@@ -75,6 +77,15 @@
         controller: 'mnUserRolesAddDialogController as userRolesAddDialogCtl',
         resolve: {
           user: mnHelper.wrapInFunction(undefined)
+        }
+      });
+    }
+    function resetUserPassword(user) {
+      $uibModal.open({
+        templateUrl: 'app/mn_admin/mn_security/mn_user_roles/reset_password_dialog/mn_user_roles_reset_password_dialog.html',
+        controller: 'mnUserRolesResetPasswordDialogController as userRolesResetPasswordDialogCtl',
+        resolve: {
+          user: mnHelper.wrapInFunction(user)
         }
       });
     }

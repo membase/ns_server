@@ -52,7 +52,7 @@
            id="name_full_inp"
            ng-model="userRolesAddDialogCtl.user.name">
       </div>
-      <div class="formrow" ng-if="userRolesAddDialogCtl.user.type !== 'saslauthd'">
+      <div class="formrow" ng-if="userRolesAddDialogCtl.user.type !== 'saslauthd' && !userRolesAddDialogCtl.isEditingMode">
         <label for="password_inp">Password:</label>
         <input
            type="password"
