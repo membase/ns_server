@@ -344,7 +344,12 @@ build_bucket_capabilities(BucketConfig) ->
                                false ->
                                    []
                            end,
-                [cbhello, touch, couchapi, cccp, xdcrCheckpointing, nodesExt | MaybeDCP];
+                case ns_bucket:storage_mode(BucketConfig) of
+                    couchstore ->
+                        [cbhello, touch, couchapi, cccp, xdcrCheckpointing, nodesExt | MaybeDCP];
+                    ephemeral ->
+                        [cbhello, touch, cccp, xdcrCheckpointing, nodesExt | MaybeDCP]
+                end;
             memcached ->
                 [cbhello, nodesExt]
         end,
