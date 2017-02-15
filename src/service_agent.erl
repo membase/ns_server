@@ -383,19 +383,45 @@ handle_unset_rebalancer(#state{rebalancer = Pid,
 
     drop_rebalance_messages(),
 
-    State1 = terminate_long_poll_workers(State),
-    drop_long_poll_messages(),
+    %% It's possible that we never saw the json-rpc connection. It might
+    %% happen in the following scenario. A one node cluster is initialized
+    %% with topology aware service, orchestrator will try to run initial
+    %% rebalance (as part of service janitoring) for the service. That happens
+    %% shortly after starting service_agent and the corresponding service
+    %% itself. If while agent waits for the connection new node is added and
+    %% rebalanced in, then orchestrator will terminate the janitor run to
+    %% proceed with rebalance. That will result in unset_rebalance call when
+    %% connection is still missing. In this case we don't have long poll
+    %% workers yet, so we shouldn't attempt to terminate/restart them.
+    State1 =
+        when_have_connection(
+            fun (S) ->
+                    S1 = terminate_long_poll_workers(S),
+                    drop_long_poll_messages(),
 
-    State2 = refresh_state(State1),
-    State3 = cleanup_service(State2),
+                    S2 = refresh_state(S1),
+                    S3 = cleanup_service(S2),
+                    start_long_poll_workers(S3)
+            end, State),
 
-    State4 = start_long_poll_workers(State3),
-
-    State4#state{rebalancer = undefined,
+    State1#state{rebalancer = undefined,
                  rebalancer_mref = undefined,
                  rebalance_worker = undefined,
                  rebalance_waiters = undefined,
                  rebalance_observer = undefined}.
+
+when_have_connection(Fun, #state{conn = Conn,
+                                 tasks_worker = TasksWorker,
+                                 topology_worker = TopologyWorker} = State) ->
+    case Conn of
+        undefined ->
+            undefined = TasksWorker,
+            undefined = TopologyWorker,
+
+            State;
+        _ when is_pid(Conn) ->
+            Fun(State)
+    end.
 
 drop_rebalance_messages() ->
     receive
@@ -608,6 +634,9 @@ do_start_long_poll_workers(Tasks, Topology,
 
 terminate_long_poll_workers(#state{tasks_worker = TasksWorker,
                                    topology_worker = TopologyWorker} = State) ->
+    true = (TasksWorker =/= undefined),
+    true = (TopologyWorker =/= undefined),
+
     Workers = [TopologyWorker, TasksWorker],
     lists:foreach(fun erlang:unlink/1, Workers),
     misc:terminate_and_wait(kill, Workers),
