@@ -286,6 +286,13 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                        | Suffix2]
               end,
 
+    Suffix4 = case ns_bucket:storage_mode(BucketConfig) of
+                  couchstore ->
+                      [{replicaIndex, proplists:get_value(replica_index, BucketConfig, true)} | Suffix3];
+                  _ ->
+                      Suffix3
+              end,
+
     FlushEnabled = proplists:get_value(flush_enabled, BucketConfig, false),
     MaybeFlushController =
         case FlushEnabled of
@@ -304,7 +311,6 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                                  _ -> <<"">>
                              end},
               {proxyPort, proplists:get_value(moxi_port, BucketConfig, 0)},
-              {replicaIndex, proplists:get_value(replica_index, BucketConfig, true)},
               {uri, BuildUUIDURI(["pools", "default", "buckets", Id])},
               {streamingUri, BuildUUIDURI(["pools", "default", "bucketsStreaming", Id])},
               {localRandomKeyUri, bin_concat_path(["pools", "default",
@@ -326,7 +332,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                                 {nodeStatsListURI, NodeStatsListURI}]}},
               {ddocs, {struct, [{uri, DDocsURI}]}},
               {nodeLocator, ns_bucket:node_locator(BucketConfig)}
-              | Suffix3]}.
+              | Suffix4]}.
 
 build_bucket_capabilities(BucketConfig) ->
     Caps =
@@ -1211,9 +1217,19 @@ parse_validate_replicas_number(NumReplicas) ->
     end.
 
 parse_validate_replica_index(Params, ReplicasNum, true = _IsNew) ->
-    parse_validate_replica_index(
-      proplists:get_value("replicaIndex", Params,
-                          replicas_num_default(ReplicasNum)));
+    case proplists:get_value("bucketType", Params) =:= "ephemeral" of
+        true ->
+            case proplists:is_defined("replicaIndex", Params) of
+                true ->
+                    {error, replicaIndex, <<"replicaIndex not supported for ephemeral buckets">>};
+                false ->
+                    ignore
+            end;
+        false ->
+            parse_validate_replica_index(
+              proplists:get_value("replicaIndex", Params,
+                                  replicas_num_default(ReplicasNum)))
+    end;
 parse_validate_replica_index(_Params, _ReplicasNum, false = _IsNew) ->
     ignore.
 
