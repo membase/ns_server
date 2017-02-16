@@ -56,7 +56,8 @@ versions_name() ->
 start_storage() ->
     Replicator = erlang:whereis(replicator_name()),
     Path = filename:join(path_config:component_path(data, "config"), "users.dets"),
-    replicated_dets:start_link(?MODULE, [], storage_name(), Path, Replicator).
+    CacheSize = ns_config:read_key_fast(menelaus_users_cache_size, 256),
+    replicated_dets:start_link(?MODULE, [], storage_name(), Path, Replicator, CacheSize).
 
 get_users_version() ->
     [{user_version, V, Base}] = ets:lookup(versions_name(), user_version),
