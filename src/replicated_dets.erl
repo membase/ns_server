@@ -56,8 +56,15 @@ delete(Name, Id) ->
 empty(Name) ->
     gen_server:call(Name, empty, infinity).
 
-get(Name, Id) ->
-    gen_server:call(Name, {get, Id}, infinity).
+get(TableName, Id) ->
+    case dets:lookup(TableName, Id) of
+        [#doc{id = Id, deleted = false, value = Value}] ->
+            {Id, Value};
+        [#doc{id = Id, deleted = true}] ->
+            false;
+        [] ->
+            false
+    end.
 
 get(Name, Id, Default) ->
     case get(Name, Id) of
@@ -127,16 +134,6 @@ save_doc(#doc{id = Id} = Doc,
     NewChildState = ChildModule:on_save(Id, ChildState),
     {ok, State#state{child_state = NewChildState}}.
 
-handle_call({get, Id}, _From, #state{name = TableName} = State) ->
-    RV = case dets:lookup(TableName, Id) of
-             [#doc{id = Id, deleted = false, value = Value}] ->
-                 {Id, Value};
-             [#doc{id = Id, deleted = true}] ->
-                 false;
-             [] ->
-                 false
-         end,
-    {reply, RV, State};
 handle_call(suspend, {Pid, _} = From, #state{name = TableName} = State) ->
     MRef = erlang:monitor(process, Pid),
     ?log_debug("Suspended by process ~p", [Pid]),
