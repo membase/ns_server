@@ -72,6 +72,10 @@ do_pull() ->
             meld_config(KVList, Node)
     end.
 
+handle_call(synchronize_everything, {Pid, _Tag} = _From, State) ->
+    RemoteNode = node(Pid),
+    ?log_debug("Got full synchronization request from ~p", [RemoteNode]),
+    {reply, ok, State};
 handle_call(pull, _From, State) ->
     ok = do_pull(),
     {reply, ok, State};
