@@ -15,7 +15,7 @@
 
     function link(scope, element, attrs, ctrl) {
       function validate(value) {
-        ctrl.$setValidity('mnEqual', value === attrs.mnEqual);
+        ctrl.$setValidity('mnEqual', (value === undefined ? "" : value) === attrs.mnEqual);
         return value;
       };
 
