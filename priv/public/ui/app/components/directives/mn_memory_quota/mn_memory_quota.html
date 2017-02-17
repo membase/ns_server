@@ -16,7 +16,15 @@
 <div
    class="formrow"
    ng-if="config.displayedServices.kv">
-  <label for="kv_ram_quota">Data RAM Quota</label>
+  <label for="kv_ram_quota" class="inline">Data RAM Quota</label>
+  <span
+     class="fa-stack icon-info"
+     uib-tooltip="The main memory allocation amount for the data service (per node)."
+     tooltip-placement="right">
+    <span class="icon fa-circle-thin fa-stack-2x"></span>
+    <span class="icon fa-info fa-stack-1x"></span>
+  </span>
+
   <div class="form-inline">
     <input
        type="number"
@@ -25,9 +33,6 @@
        ng-disabled="config.services && !config.services.model.kv || (rbac && !rbac.cluster.pools.write)"
        ng-model="config.memoryQuota">
     <small>MB (min {{::config.minMemorySize}})</small>
-    <a
-       href=""
-       uib-tooltip="Main memory allocation amount for data service per node.">What&#39;s this?</a>
 
     </div>
   <div
@@ -40,7 +45,15 @@
 <div
    class="formrow"
    ng-if="config.displayedServices.index">
-  <label for="index_ram_quota">Index RAM Quota</label>
+  <label for="index_ram_quota" class="inline">Index RAM Quota</label>
+  <span
+     class="fa-stack icon-info"
+     uib-tooltip="The main memory allocation amount for the index service (per node)."
+     tooltip-placement="right">
+    <span class="icon fa-circle-thin fa-stack-2x"></span>
+    <span class="icon fa-info fa-stack-1x"></span>
+  </span>
+
   <div class="form-inline">
     <input
        type="number"
@@ -50,9 +63,6 @@
        mn-focus="config.services.model.kv === false"
        ng-model="config.indexMemoryQuota">
     <small>MB (min 256)</small>
-    <a
-       href=""
-       uib-tooltip="Main memory allocation amount for index service per node.">What&#39;s this?</a>
     </div>
   <div
      class="error"
@@ -64,7 +74,15 @@
 <div
    class="formrow"
    ng-if="config.displayedServices.fts">
-  <label for="fts_ram_quota">Full Text RAM Quota</label>
+  <label for="fts_ram_quota" class="inline">Full Text RAM Quota</label>
+  <span
+     class="fa-stack icon-info"
+     uib-tooltip="Main memory allocation amount for full text service (per node)."
+     tooltip-placement="right">
+    <span class="icon fa-circle-thin fa-stack-2x"></span>
+    <span class="icon fa-info fa-stack-1x"></span>
+  </span>
+
   <div class="form-inline">
     <input
        type="number"
@@ -73,9 +91,6 @@
        ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)"
          ng-model="config.ftsMemoryQuota">
     <small>MB (min 256)</small>
-    <a
-       href=""
-       uib-tooltip="Main memory allocation amount for full text service per node.">What&#39;s this?</a>
     </div>
   <div
      class="error"

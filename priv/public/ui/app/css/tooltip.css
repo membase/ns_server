@@ -4,122 +4,80 @@
   position: absolute;
   z-index: 1070;
   display: block;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: 12px;
-  font-style: normal;
-  font-weight: normal;
-  line-height: 1.42857143;
-  text-align: left;
-  text-align: start;
-  text-decoration: none;
-  text-shadow: none;
-  text-transform: none;
-  letter-spacing: normal;
-  word-break: normal;
-  word-spacing: normal;
-  word-wrap: normal;
-  white-space: normal;
-  filter: alpha(opacity=0);
-  opacity: 0;
-  transition: opacity 300ms ease;
-  line-break: auto;
-}
-.tooltip.in {
-  filter: alpha(opacity=90);
-  opacity: .9;
-}
-.tooltip.top {
-  padding: 5px 0;
-  margin-top: -3px;
-}
-.tooltip.right {
-  padding: 0 5px;
-  margin-left: 3px;
-}
-.tooltip.bottom {
-  padding: 5px 0;
-  margin-top: 3px;
-}
-.tooltip.left {
-  padding: 0 5px;
-  margin-left: -3px;
-}
-.tooltip-inner {
-  max-width: 200px;
-  padding: 3px 8px;
-  color: #fff;
-  background-color: #000;
-  border-radius: 4px;
-}
-.tooltip-arrow {
-  position: absolute;
-  width: 0;
-  height: 0;
-  border-color: transparent;
-  border-style: solid;
-}
-.tooltip.top .tooltip-arrow {
-  bottom: 0;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 5px 5px 0;
-  border-top-color: #000;
-}
-.tooltip.top-left .tooltip-arrow {
-  right: 5px;
-  bottom: 0;
-  margin-bottom: -5px;
-  border-width: 5px 5px 0;
-  border-top-color: #000;
-}
-.tooltip.top-right .tooltip-arrow {
-  bottom: 0;
-  left: 5px;
-  margin-bottom: -5px;
-  border-width: 5px 5px 0;
-  border-top-color: #000;
-}
-.tooltip.right .tooltip-arrow {
-  top: 50%;
-  left: 0;
-  margin-top: -5px;
-  border-width: 5px 5px 5px 0;
-  border-right-color: #000;
-}
-.tooltip.left .tooltip-arrow {
-  top: 50%;
-  right: 0;
-  margin-top: -5px;
-  border-width: 5px 0 5px 5px;
-  border-left-color: #000;
-}
-.tooltip.bottom .tooltip-arrow {
-  top: 0;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 0 5px 5px;
-  border-bottom-color: #000;
-}
-.tooltip.bottom-left .tooltip-arrow {
-  top: 0;
-  right: 5px;
-  margin-top: -5px;
-  border-width: 0 5px 5px;
-  border-bottom-color: #000;
-}
-.tooltip.bottom-right .tooltip-arrow {
-  top: 0;
-  left: 5px;
-  margin-top: -5px;
-  border-width: 0 5px 5px;
-  border-bottom-color: #000;
+  font-size: .8125rem;
 }
 .fade {
   opacity: 0;
-  -webkit-transition: opacity .15s linear;
-       -o-transition: opacity .15s linear;
-          transition: opacity .15s linear;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+  -webkit-transition: opacity .25s linear;
+  transition: opacity .25s linear;
 }
 .fade.in {
   opacity: 1;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=100)";
+}
+.tooltip.right {
+  padding: 0 0 0 1.25rem;
+}
+.tooltip.top {
+  padding: 0 0 1rem 0;
+}
+.tooltip.left {
+  padding: 0 1.25rem 0 0;
+}
+
+.tooltip-inner {
+  position: relative;
+  max-width: 300px;
+  padding: .5rem .5rem .75rem 1rem;
+  color: #333;
+  background-color: #fff;
+  border-radius: 3px;
+  border-top: solid .25rem #4287d6;
+  box-shadow: 0px 5px 14px 2px rgba(0,0,0,0.14);
+}
+.tooltip.large .tooltip-inner {
+  max-width: 600px;
+}
+.tooltip.right .tooltip-inner:after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 0;
+  left: 0;
+  top: calc(50% - 14px);
+  box-sizing: border-box;
+  border: 8px solid #fff;
+  border-color: transparent transparent #fff #fff;
+  transform-origin: 0 0;
+  transform: rotate(-315deg);
+  box-shadow: -3px 3px 8px 0 rgba(0, 0, 0, 0.14);
+}
+.tooltip.top .tooltip-inner:after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 0;
+  bottom: -16px;
+  left: calc(50% - .75rem);
+  box-sizing: border-box;
+  border: 8px solid #fff;
+  border-color: transparent transparent #fff #fff;
+  transform-origin: 0 0;
+  transform: rotate(-45deg);
+  box-shadow: -3px 3px 8px 0 rgba(0, 0, 0, 0.14);
+}
+.tooltip.left .tooltip-inner:after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 0;
+  right: -8px;
+  bottom: calc(50% - 6px);
+  box-sizing: border-box;
+  border: 8px solid #fff;
+  border-color: transparent transparent #fff #fff;
+  transform-origin: center;
+  transform: rotate(-135deg);
+  box-shadow: -3px 3px 8px 0 rgba(0, 0, 0, 0.14);
 }

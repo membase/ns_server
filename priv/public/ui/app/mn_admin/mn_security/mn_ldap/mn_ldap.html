@@ -21,7 +21,14 @@
         </div>
 
         <div class="formrow">
-          <label for="read-only-admins-field">Read-Only Admins:</label>
+          <label for="read-only-admins-field" class="inline">Read-Only Admins:</label>
+          <span
+             class="fa-stack icon-info"
+             uib-tooltip="UIDs must be in ASCII and must be new line separated."
+             tooltip-placement="right">
+            <span class="icon fa-circle-thin fa-stack-2x"></span>
+            <span class="icon fa-info fa-stack-1x"></span>
+          </span>
           <textarea
              id="read-only-admins-field"
              rows="5"
@@ -30,12 +37,16 @@
              autocapitalize="off"
              ng-model="ldapCtl.state.roAdmins"
              ng-disabled="ldapCtl.isReadOnlyAdminsDisabled()"></textarea>
-          <a
-             href=""
-             uib-tooltip="UIDs must be in ASCII and must be new line separated.">What&#39;s this?</a>
         </div>
         <div class="formrow">
-          <label for="full-admin-field">Full Admins:</label>
+          <label for="full-admin-field" class="inline">Full Admins:</label>
+          <span
+             class="fa-stack icon-info"
+             uib-tooltip="UIDs must be in ASCII and must be new line separated."
+             tooltip-placement="right">
+            <span class="icon fa-circle-thin fa-stack-2x"></span>
+            <span class="icon fa-info fa-stack-1x"></span>
+          </span>
           <textarea
              id="full-admin-field"
              autocorrect="off"
@@ -44,9 +55,6 @@
              rows="5"
              ng-model="ldapCtl.state.admins"
              ng-disabled="ldapCtl.isFullAdminsDisabled()"></textarea>
-          <a
-             href=""
-             uib-tooltip="UIDs must be in ASCII and must be new line separated.">What&#39;s this?</a>
         </div>
 
         <div class="formrow checkbox-list">

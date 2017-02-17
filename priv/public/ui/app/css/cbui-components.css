@@ -149,6 +149,7 @@ header h1 {
 
 header h1 .icon {
   padding: 0 .25rem;
+  font-size: inherit;
 }
 
 h1 > * {
@@ -454,9 +455,11 @@ table th span.has-menu:after {
   font-family: FontAwesome;
   content: "\f0da";
   font-size: 1rem;
+  width: 1rem;
+  text-align: center;
   color: #333;
   position: absolute;
-  top: 0;
+  top: -1px;
   left: 0;
   text-decoration:none;
 }
@@ -464,9 +467,11 @@ table th span.has-menu:after {
   font-family: FontAwesome;
   content: "\f0d7";
   font-size: 1rem;
+  width: 1rem;
+  text-align: center;
   color: #333;
   position: absolute;
-  top: 0;
+  top: -1px;
   left: 0;
   text-decoration:none;
 }
@@ -1437,3 +1442,22 @@ meter {
 .match_indicator .match  {display: none;}
 
 .read-only-editor {opacity:.5;}
+
+
+/* info popup styles ************************** */
+.icon-info {
+  cursor: pointer;
+  color: #a1a1a1;
+  font-size: 1.125rem;
+}
+.icon-info:hover {
+  color: #000;
+}
+.icon-info .fa-stack-1x {
+  line-height: inherit;
+  font-size: .5em;
+  top: 1px;
+}
+label + .fa-stack { /* elevate info icon next to regular label */
+  top: -4px;
+}

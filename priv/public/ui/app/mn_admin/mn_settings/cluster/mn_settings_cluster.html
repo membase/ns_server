@@ -50,15 +50,19 @@
 
       <div ng-show="settingsClusterCtl.showAdvancedSettings">
         <div class="formrow width-300">
-          <label for="index_settings_thread">Indexer Threads</label>
+          <label for="index_settings_thread" class="inline">Indexer Threads</label>
+          <span
+             class="fa-stack icon-info"
+             uib-tooltip="Number of dedicated threads the indexer uses. On multi-core machines increasing this number will increase the indexer's CPU utilization. Defaults to 0 which instructs the indexer to use all available machine cores."
+             tooltip-placement="right">
+            <span class="icon fa-circle-thin fa-stack-2x"></span>
+            <span class="icon fa-info fa-stack-1x"></span>
+          </span>
           <input
              type="number"
              ng-model="settingsClusterCtl.indexSettings.indexerThreads"
              ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
              id="index_settings_thread">
-          <a
-             href=""
-             uib-tooltip="Number of dedicated threads the indexer uses. On multi-core machines increasing this number will increase the indexer's CPU utilization. Defaults to 0 which instructs the indexer to use all available machine cores.">What&#39;s this?</a>
           <div
              class="error error-field"
              ng-show="settingsClusterCtl.indexSettingsErrors.indexerThreads">
@@ -67,17 +71,21 @@
         </div>
 
         <div class="formrow width-300">
-          <label for="in_memory_snapshot">
+          <label for="in_memory_snapshot" class="inline">
             Max Rollback Points
           </label>
+          <span
+             class="fa-stack icon-info"
+             uib-tooltip="The maximum number of committed rollback points."
+             tooltip-placement="right">
+            <span class="icon fa-circle-thin fa-stack-2x"></span>
+            <span class="icon fa-info fa-stack-1x"></span>
+          </span>
           <input
              type="number"
              ng-model="settingsClusterCtl.indexSettings.maxRollbackPoints"
              ng-disabled="settingsClusterCtl.indexSettings.storageMode === '' || !rbac.cluster.indexes.write"
              id="in_memory_snapshot">
-          <a
-             href=""
-             uib-tooltip="The maximum number of committed rollback points.">What&#39;s this?</a>
           <div
              class="error error-field"
              ng-show="settingsClusterCtl.indexSettingsErrors.maxRollbackPoints">

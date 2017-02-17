@@ -1,4 +1,12 @@
-<h4>Services</h4>
+<h4 class="inline">Services</h4>
+<span
+   class="fa-stack icon-info"
+   uib-tooltip="Only uncheck services you are certain you will NOT use on this node. Services are enabled on a per-node basis. The selection of services CANNOT be changed on an active node. To make service changes, you must first take down the node."
+   tooltip-placement="right">
+  <span class="icon fa-circle-thin fa-stack-2x"></span>
+  <span class="icon fa-info fa-stack-1x"></span>
+</span>
+<br>
 <input
    type="checkbox"
    value="kv"
@@ -30,7 +38,3 @@
    ng-model="config.services.model.fts"
    ng-disabled="config.services.disabled.fts">
 <label for="fts_service">Full Text</label>
-
-<a
-   href=""
-   uib-tooltip="Only uncheck services you are certain you will NOT use on this node. Services are enabled on a per-node basis.">What&#39;s this?</a>

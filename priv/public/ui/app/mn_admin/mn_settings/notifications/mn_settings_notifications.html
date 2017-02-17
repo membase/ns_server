@@ -30,17 +30,21 @@
         {{settingsNotificationsCtl.updates.info}}
       </p>
     </div>
-    <div class="formrow">
+    <div class="formrow checkbox-list">
       <label class="checkbox">
         <input
            type="checkbox"
            ng-disabled="!rbac.cluster.settings.write"
            ng-model="settingsNotificationsCtl.updates.enabled">
         Enable software update notifications.
-        <a
-           href=""
-           uib-tooltip="Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.">What&#39;s this?</a>
       </label>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip="Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data."
+         tooltip-placement="right">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
     </div>
     <button
        ng-show="rbac.cluster.settings.write"

@@ -29,7 +29,15 @@
       </div>
 
       <div class="formrow">
-        <label for="add-server-hostname">Server IP Address</label>
+        <label for="add-server-hostname" class="inline">Server IP Address</label>
+        <span
+           class="fa-stack icon-info"
+           uib-tooltip="This is the hostname or IP address of a server node that you wish to add."
+           tooltip-placement="right">
+          <span class="icon fa-circle-thin fa-stack-2x"></span>
+          <span class="icon fa-info fa-stack-1x"></span>
+        </span>
+        <br>
         <input
            type="text"
            id="add-server-hostname"
@@ -40,10 +48,8 @@
            autocorrect="off"
            spellcheck="false"
            autocapitalize="off">
-        <a
-           href=""
-           uib-tooltip="This is the hostname or IP address of a server node that you wish to add.">What&#39;s this?</a>
-      </div>
+
+        </div>
 
       <div class="formrow">
         <span ng-if="serversAddDialogCtl.isGroupsAvailable">

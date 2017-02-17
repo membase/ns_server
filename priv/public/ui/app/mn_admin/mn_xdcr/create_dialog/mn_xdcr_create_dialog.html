@@ -67,16 +67,22 @@
            ng-model="xdcrCreateDialogCtl.replication.enableAdvancedFiltering">
         <label
            for="xdcr_advaced_filtering_btn"
-           class="checkbox">Enable advanced filtering</label>
+           class="checkbox">
+          Enable advanced filtering
+        </label>
       </div>
 
       <span ng-show="xdcrCreateDialogCtl.replication.enableAdvancedFiltering">
         <div class="formrow">
-          <label>Filter Expression
-            <a
-               href=""
-               uib-tooltip="The filter expression is a regular expression against which the keys of documents are tested. If the key matches the document will be replicated; otherwise the document won’t be replicated. You may test your filter expression against a number of sample candidate keys in the provided text boxes.">What&#39;s this?</a>
-          </label>
+          <label class="inline">Filter Expression</label>
+          <span
+             class="fa-stack icon-info"
+             uib-tooltip="The filter expression is a regular expression against which the keys of documents are tested. If the key matches, the document will be replicated; otherwise the document won’t be replicated. You may test your filter expression against a number of sample candidate keys in the provided fields."
+             tooltip-placement="right">
+            <span class="icon fa-circle-thin fa-stack-2x"></span>
+            <span class="icon fa-info fa-stack-1x"></span>
+          </span>
+          <br>
           <pre
              class="input"
              contenteditable="true"

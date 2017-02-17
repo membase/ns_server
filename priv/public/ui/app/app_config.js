@@ -15,8 +15,8 @@
     // When using a tooltip in an absolute positioned element,
     // you need tooltip-append-to-body="true" https://github.com/angular-ui/bootstrap/issues/4195
     $uibTooltipProvider.options({
-      appendToBody: true,
-      placement: "auto right"
+      placement: "auto right",
+      trigger: "outsideClick"
     });
 
     $urlRouterProvider.otherwise(function ($injector, $location) {

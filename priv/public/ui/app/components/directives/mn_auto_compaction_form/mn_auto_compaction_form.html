@@ -171,7 +171,14 @@
   </div>
 
   <div class="formrow">
-    <h4>Metadata Purge Interval</h4>
+    <label class="inline">Metadata Purge Interval</label>
+    <span
+       class="fa-stack icon-info"
+       uib-tooltip="Set how frequently a node will purge metadata on deleted items. The available range is 0.04 - 60 where 0.04 = 1h, 0.5 = 12h. If set too high, it may significantly delay the node from reclaiming disk space. If set too low, it may cause data inconsistencies in XDCR or Views."
+       tooltip-placement="top">
+      <span class="icon fa-circle-thin fa-stack-2x"></span>
+      <span class="icon fa-info fa-stack-1x"></span>
+    </span>
     <div>
       <label
          class="checkbox"
@@ -188,10 +195,6 @@
            id="metadata-purge-frequency">
         <small>Range 0.04 (1 H) - 60days</small>
       </span>
-
-      <a
-         href=""
-         uib-tooltip="Metadata Purge Interval. Allowed range is 0.04 - 60 where 0.04 = 1h, 0.5 = 12h. Set how frequently a node will purge metadata on deleted items. If set too high, may significantly delay the node from reclaiming disk space. If set too low, may cause data inconsistencies in XDCR or Views.">What&#39;s this?</a>
       <div
          class="error"
          ng-show="validationErrors.purgeInterval">

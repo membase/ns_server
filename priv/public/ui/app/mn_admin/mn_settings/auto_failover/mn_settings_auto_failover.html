@@ -27,9 +27,16 @@
       </label>
     </div>
     <div class="formrow width-300">
-      <label for="auto_failover_timeout">
+      <label for="auto_failover_timeout" class="inline">
         Timeout <small>in seconds</small>
       </label>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip="How long (in seconds) a node must be considered down before it gets auto-failed-over."
+         tooltip-placement="right">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
       <input
          type="number"
          autocorrect="off"
@@ -41,9 +48,6 @@
       <div class="error error-field" ng-show="settingsAutoFailoverCtl.errors.timeout">
         {{settingsAutoFailoverCtl.errors.timeout}}
       </div>
-      <a
-         href=""
-         uib-tooltip="How long (in seconds) a node must be considered down before it gets auto-failed-over.">What&#39;s this?</a>
     </div>
 
     <button

@@ -25,11 +25,14 @@
            autocapitalize="off">
       </div>
       <div class="formrow">
-        <label for="cluster_reference_hostname">IP/Hostname
-        <a
-           href=""
-           uib-tooltip="This is the hostname or IP address of a node in the cluster you want to add.">What&#39;s this?</a>
-        </label>
+        <label for="cluster_reference_hostname" class="inline">IP/Hostname</label>
+        <span
+           class="fa-stack icon-info"
+           uib-tooltip="This is the hostname or IP address of a node in the remote cluster you want to add."
+           tooltip-placement="right">
+          <span class="icon fa-circle-thin fa-stack-2x"></span>
+          <span class="icon fa-info fa-stack-1x"></span>
+        </span>
         <input
            ng-model="xdcrReferenceDialogCtl.cluster.hostname"
            id="cluster_reference_hostname"
@@ -65,11 +68,17 @@
            id="demand_encryption_flag-2"
            type="checkbox">
         <label
-           class="checkbox"
-           for="demand_encryption_flag-2">Enable TLS Encryption</label>
-        <a
-           href=""
-           uib-tooltip="If checked, XDCR data encryption occurs using TSL. Obtain the TSL certificate from the remote cluster (Security &gt; Root Certificate) and paste below.">What&#39;s this?</a>
+           class="checkbox margin-right-zero"
+           for="demand_encryption_flag-2">
+          Enable TLS Encryption
+        </label>
+        <span
+           class="fa-stack icon-info"
+           uib-tooltip="If checked, XDCR data encryption occurs using TSL. Obtain the TSL certificate from the remote cluster (Security &gt; Root Certificate) and paste below."
+           tooltip-placement="top">
+          <span class="icon fa-circle-thin fa-stack-2x"></span>
+          <span class="icon fa-info fa-stack-1x"></span>
+        </span>
       </div>
       <div class="formrow">
         <textarea

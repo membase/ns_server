@@ -25,23 +25,32 @@
         </div>
       <div>
           <div
-             class="chart-cell-small gray-7 has-hover"
+             class="chart-cell-small gray-7 has-hover relative"
              ng-class="{dynamic_dim: statInfo.missing}"
              ng-if="analyticsListCtl.isDetailsOpened(block.blockName)"
              ng-repeat="statInfo in block.stats track by statInfo.name"
-             ui-sref-active="dynamic_selected"
-             uib-tooltip="{{statInfo.desc}}"
-             tooltip-placement="auto bottom">
+             ui-sref-active="dynamic_selected">
             <div ui-sref="{graph: statInfo.name}">
               <div style="background-color:#fff;border:1px solid #d1d1d1;display:table;margin:0 auto .5rem auto;">
-              <div
-                 mn-plot
-                 mn-plot-config="statInfo.config"
-                 is-small-graph="true"
-                 style="width: 150px; height: 50px;">
+                <div
+                   mn-plot
+                   mn-plot-config="statInfo.config"
+                   is-small-graph="true"
+                   style="width: 150px; height: 50px;">
+                </div>
               </div>
-            </div>
-              <desc>{{statInfo.config.value}} {{statInfo.title}}</desc>
+              <desc>{{statInfo.config.value}} {{statInfo.title}}
+                <span
+                   class="fa-stack icon-info relative"
+                   style="top: -4px;"
+                   uib-tooltip="{{statInfo.desc}}"
+                   tooltip-placement="right"
+                   tooltip-trigger="'mouseenter'"
+                   tooltip-append-to-body="true">
+                  <span class="icon fa-circle-thin fa-stack-2x"></span>
+                  <span class="icon fa-info fa-stack-1x"></span>
+                </span>
+              </desc>
             </div>
             <a class="text-smaller" ng-show="!analyticsCtl.isSpecificStats" ui-sref="{graph: '@' + analyticsCtl.nodes.nodesNames[1], specificStat: statInfo.name}">show by server</a>
             <a class="text-smaller" ng-show="analyticsCtl.isSpecificStats" ui-sref="{graph: 'ops', statsHostname: statInfo.name.slice(1), specificStat: null}">show this server</a>

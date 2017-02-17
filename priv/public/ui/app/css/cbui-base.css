@@ -251,7 +251,12 @@ button {
 }
 
 .icon {
-  font-family: FontAwesome;
+  display: inline-block;
+  font: normal normal normal 18px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 button.icon {
     min-width: auto;
@@ -320,6 +325,43 @@ button.icon {
 }
 .fa-square:before {
   content: "\f0c8";
+}
+.fa-stack {
+  position: relative;
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  line-height: 1rem;
+  vertical-align: middle;
+}
+.fa-stack-1x,
+.fa-stack-2x {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  text-align: center;
+}
+.fa-stack-1x {
+  line-height: inherit;
+  font-size: .5em;
+}
+.fa-stack-2x {
+  font-size: 1em;
+}
+.fa-inverse {
+  color: #ffffff;
+}
+.fa-circle-thin:before {
+  content: "\f1db";
+}
+.fa-info:before {
+  content: "\f129";
+}
+.fa-info-circle:before {
+  content: "\f05a";
+}
+.fa-info-circle:hover {
+  color: #f5a623;
 }
 
 /* Headings  -----------------------------*/

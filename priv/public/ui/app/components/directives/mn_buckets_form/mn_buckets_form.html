@@ -66,7 +66,17 @@
   </div>
   <div class="formrow checkbox-list">
     <div ng-show="bucketConf.bucketType === 'membase'">
-      <h4>Cache Metadata</h4>
+      <h4 class="inline">Cache Metadata</h4>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip="VALUE EJECTION: During ejection, only the value will be ejected (key and metadata will remain in memory).
+            &nbsp;FULL EJECTION: During ejection, everything (including key, metadata and value) will be ejected.
+            Value Ejection needs more system memory, but provides the best performance. Full Ejection reduces memory overhead requirement."
+         tooltip-placement="top">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
+      <br>
       <input
          type="radio"
          name="evictionPolicy"
@@ -82,12 +92,6 @@
          id="cache_metadata_non_retain-init"
          ng-model="bucketConf.evictionPolicy">
       <label for="cache_metadata_non_retain-init">Full Ejection</label>
-
-      <a
-         href=""
-         uib-tooltip="Value Ejection - During ejection, only the value will be ejected (key and metadata will remain in memory).
-            Full Ejection - During ejection, everything (including key, metadata and value) will be ejected.
-            Value Ejection needs more system memory but provides the best performance. Full Ejection reduces memory overhead requirement.">What&#39;s this?</a>
       <div
          class="error"
          ng-show="!!evictionPolicyWarning">
@@ -235,7 +239,18 @@
 
   <h3
      class="interim"
-     ng-show="bucketConf.bucketType === 'membase'">Disk I/O Priority</h3>
+     ng-show="bucketConf.bucketType === 'membase'">
+    <label class="inline" ng-show="bucketConf.bucketType === 'membase'">
+      Disk I/O Priority
+    </label>
+    <span
+       class="fa-stack icon-info"
+       uib-tooltip="This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority."
+       tooltip-placement="right">
+      <span class="icon fa-circle-thin fa-stack-2x"></span>
+      <span class="icon fa-info fa-stack-1x"></span>
+    </span>
+  </h3>
   <div
      class="formrow checkbox-list"
      ng-show="bucketConf.bucketType === 'membase'">
@@ -254,9 +269,6 @@
        id="hight_threads_number_init"
        ng-model="bucketConf.threadsNumber">
     <label for="hight_threads_number_init">High</label>
-    <a
-       href=""
-       uib-tooltip="This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority.">What&#39;s this?</a>
     <div
        class="error"
        ng-show="!!threadsNumberWarning">
@@ -290,7 +302,16 @@
     </div>
   </div>
 
-  <h3 class="interim">Flush</h3>
+  <h3 class="interim">
+    <label class="inline">Flush</label>
+    <span
+       class="fa-stack icon-info"
+       uib-tooltip="When flushed, items in the bucket are removed as soon as possible in both memcached and Couchbase buckets. NOTE: This does not immediately show in item count statistics with memcached buckets."
+       tooltip-placement="right">
+      <span class="icon fa-circle-thin fa-stack-2x"></span>
+      <span class="icon fa-info fa-stack-1x"></span>
+    </span>
+  </h3>
   <div class="formrow checkbox-list">
     <input
        type="checkbox"
@@ -299,8 +320,4 @@
        ng-false-value="0"
        ng-true-value="1">
     <label for="for-enable-flush-init">Enable</label>
-    <a
-       href=""
-       uib-tooltip="When flushed, items in the bucket are removed as soon as possible in both memcached and Couchbase buckets. Note this does not immediately show in item count statistics with memcached buckets.">What&#39;s this?</a>
-  </div>
 </div>

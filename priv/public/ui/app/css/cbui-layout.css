@@ -244,6 +244,10 @@ footer {
     margin-right: .5rem;
 }
 
+.margin-right-zero {
+    margin-right: 0 !important;
+}
+
 .margin-top-1 {
   margin-top: -1rem;
 }

@@ -12,7 +12,7 @@
      ng-submit="wizardStep4Ctl.onSubmit()">
     <div class="panel-content">
       <h3 class="interim">Update Notifications</h3>
-      <div class="formrow">
+      <div class="formrow checkbox-list">
         <label for="init-notifications-updates-enabled" class="checkbox">
           <input
              type="checkbox"
@@ -21,9 +21,13 @@
              checked="checked">
           Enable software update notifications
         </label>
-        <a
-         href=""
-         uib-tooltip="Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data.">What&#39;s this?</a>
+        <span
+           class="fa-stack icon-info"
+           uib-tooltip="Enabling software update notifications allows notification in the Couchbase web console when a new version of Couchbase Server is available. Configuration information transferred in the update check is anonymous and does not include any stored key-value data."
+           tooltip-placement="right">
+          <span class="icon fa-circle-thin fa-stack-2x"></span>
+          <span class="icon fa-info fa-stack-1x"></span>
+        </span>
       </div>
       <div ng-show="!wizardStep4Ctl.isEnterprise">
         <h3 class="interim">Community Updates</h3>
