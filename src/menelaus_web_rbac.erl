@@ -394,7 +394,7 @@ handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
             case menelaus_users:store_user(Identity, Name, Password, Roles) of
                 {commit, _} ->
                     ns_audit:set_user(Req, Identity, Roles, Name),
-                    handle_get_users(Req);
+                    reply_put_delete_users(Req);
                 {abort, {error, roles_validation, UnknownRoles}} ->
                     reply_bad_roles(Req, [role_to_string(UR) || UR <- UnknownRoles]);
                 {abort, password_required} ->
@@ -417,12 +417,20 @@ handle_delete_user(Type, UserId, Req) ->
             case menelaus_users:delete_user(Identity) of
                 {commit, _} ->
                     ns_audit:delete_user(Req, Identity),
-                    handle_get_users(Req);
+                    reply_put_delete_users(Req);
                 {abort, {error, not_found}} ->
                     menelaus_util:reply_json(Req, <<"User was not found.">>, 404);
                 retry_needed ->
                     erlang:error(exceeded_retries)
             end
+    end.
+
+reply_put_delete_users(Req) ->
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            menelaus_util:reply_json(Req, <<>>, 200);
+        false ->
+            handle_get_users_45(Req)
     end.
 
 validate_change_password(Args) ->
