@@ -26,7 +26,6 @@
 -export([setup_disk_storage_conf/2,
          storage_conf/1, storage_conf_from_node_status/1,
          query_storage_conf/0,
-         local_bucket_disk_usage/1,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
          delete_unused_buckets_db_files/0,
@@ -157,13 +156,6 @@ setup_disk_storage_conf(DbPath, IxPath) ->
         _ ->
             ok
     end.
-
-%% this is RPCed by pre-2.0 nodes
-local_bucket_disk_usage(BucketName) ->
-    {ok, Stats} = ns_couchdb_api:fetch_couch_stats(BucketName),
-    Docs = proplists:get_value(couch_docs_actual_disk_size, Stats, 0),
-    Views = proplists:get_value(couch_views_actual_disk_size, Stats, 0),
-    Docs + Views.
 
 % Returns a proplist of lists of proplists.
 %

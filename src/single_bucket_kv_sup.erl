@@ -20,6 +20,7 @@
 -include("ns_common.hrl").
 
 -export([start_link/1, init/1]).
+-export([sync_config_to_couchdb_node/0]).
 
 
 start_link(BucketName) ->
@@ -27,7 +28,16 @@ start_link(BucketName) ->
     supervisor:start_link({local, Name}, ?MODULE, [BucketName]).
 
 child_specs(BucketName) ->
-    [{{docs_kv_sup, BucketName}, {docs_kv_sup, start_link, [BucketName]},
+    [
+     %% Since config replication (even to local nodes) is asynchronous, it's
+     %% possible that when we try to start processes on couchdb node, it
+     %% hasn't seen the config for the bucket yet. Depending on a particular
+     %% process, it might or might not result in failure. So we explicitly
+     %% synchronize config to couchdb node here.
+     {sync_config_to_couchdb_node,
+      {single_bucket_kv_sup, sync_config_to_couchdb_node, []},
+      transient, brutal_kill, worker, []},
+     {{docs_kv_sup, BucketName}, {docs_kv_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [docs_kv_sup]},
      {{ns_memcached_sup, BucketName}, {ns_memcached_sup, start_link, [BucketName]},
       permanent, infinity, supervisor, [ns_memcached_sup]},
@@ -55,10 +65,23 @@ child_specs(BucketName) ->
       permanent, 1000, worker, [stats_reader]},
      {{failover_safeness_level, BucketName},
       {failover_safeness_level, start_link, [BucketName]},
-      permanent, 1000, worker, [failover_safeness_level]}].
+      permanent, 1000, worker, [failover_safeness_level]}
+    ].
 
 init([BucketName]) ->
     {ok, {{one_for_one,
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},
           child_specs(BucketName)}}.
+
+sync_config_to_couchdb_node() ->
+    ?log_debug("Syncing config to couchdb node"),
+
+    remote_monitors:wait_for_net_kernel(),
+    case ns_config_rep:ensure_config_seen_by_nodes([ns_node_disco:couchdb_node()]) of
+        ok ->
+            ?log_debug("Synced config to couchdb node successfully"),
+            ignore;
+        {error, Error} ->
+            {error, {couchdb_config_sync_failed, Error}}
+    end.
