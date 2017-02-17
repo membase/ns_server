@@ -100,6 +100,8 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+touch_key(Key, #state{evict_list = [Key | _]} = State) ->
+    State;
 touch_key(Key, #state{evict_list = EvictList} = State) ->
     State#state{evict_list = [Key | lists:delete(Key, EvictList)]}.
 
@@ -109,12 +111,13 @@ remove_key(Key, #state{evict_list = EvictList} = State) ->
 add_key(Key, #state{ets = Ets,
                     size = Size,
                     evict_list = EvictList} = State) ->
-    NewEvictList = [Key | EvictList],
-    case length(NewEvictList) > Size of
-        true ->
-            Last = lists:last(NewEvictList),
-            ets:delete(Ets, Last),
-            State#state{evict_list = lists:sublist(NewEvictList, Size)};
-        false ->
-            State#state{evict_list = NewEvictList}
-    end.
+    NewEvictList =
+        case length(EvictList) of
+            Size ->
+                {Prev, [Last]} = lists:split(Size - 1, EvictList),
+                ets:delete(Ets, Last),
+                Prev;
+            _ ->
+                EvictList
+        end,
+    State#state{evict_list = [Key | NewEvictList]}.
