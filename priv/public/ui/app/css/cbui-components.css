@@ -1461,3 +1461,49 @@ meter {
 label + .fa-stack { /* elevate info icon next to regular label */
   top: -4px;
 }
+
+ /*Custom Radio Buttons and Checkboxes using Font Awesome*/
+
+input[type="radio"],
+input[type="checkbox"] {
+  display: none;
+}
+input[type="radio"] + label,
+input[type="checkbox"] + label {
+  display: inline-block;
+  font-weight: normal;
+  cursor: pointer;
+  font-size: .875rem;
+  margin-right: 1rem;
+}
+input[type="radio"] + label:last-child,
+input[type="checkbox"] + label:last-child {
+  margin-right: 0;
+}
+input[type="checkbox"] + label:before,
+input[type="radio"] + label:before {
+  position: relative;
+  display: inline-block;
+  font: normal normal normal 16px/1 FontAwesome;
+  color: #a1a1a1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: .96rem;
+}
+input[type="checkbox"] + label:before {
+  top: 1px;
+}
+input[type="radio"] + label:before {
+  content: "\f1db"; /* Radio Unchecked */
+}
+input[type="radio"]:checked + label:before {
+  content: "\f05d"; /* Radio Checked */
+  color: #555;
+}
+input[type="checkbox"] + label:before {
+  content: "\f096"; /* Checkbox Unchecked */
+}
+input[type="checkbox"]:checked + label:before {
+  content: "\f046"; /* Checkbox Checked */
+  color: #555;
+}

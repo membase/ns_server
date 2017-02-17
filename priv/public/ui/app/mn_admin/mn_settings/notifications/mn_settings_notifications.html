@@ -30,12 +30,13 @@
         {{settingsNotificationsCtl.updates.info}}
       </p>
     </div>
-    <div class="formrow checkbox-list">
-      <label class="checkbox">
-        <input
-           type="checkbox"
-           ng-disabled="!rbac.cluster.settings.write"
-           ng-model="settingsNotificationsCtl.updates.enabled">
+    <div class="formrow">
+      <input
+         type="checkbox"
+         id="for-update-notice-enable"
+         ng-disabled="!rbac.cluster.settings.write"
+         ng-model="settingsNotificationsCtl.updates.enabled">
+      <label for="for-update-notice-enable" class="margin-right-zero">
         Enable software update notifications.
       </label>
       <span

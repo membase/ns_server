@@ -2,11 +2,12 @@
   <form class="forms" ng-submit="settingsAlertsCtl.submit()">
 
     <div class="formrow checkbox-list">
-      <label>
-        <input
-           type="checkbox"
-           ng-disabled="!rbac.cluster.settings.write"
-           ng-model="settingsAlertsCtl.state.enabled">
+      <input
+         type="checkbox"
+         id="for-email-alert-enable"
+         ng-disabled="!rbac.cluster.settings.write"
+         ng-model="settingsAlertsCtl.state.enabled">
+      <label for="for-email-alert-enable">
         Enable email alerts
       </label>
     </div>
@@ -67,12 +68,12 @@
     <div class="formrow checkbox-list width-300 indent-1">
       <input
          type="checkbox"
-         id="email_alerts_encrypt"
+         id="for-email-alerts-encrypt"
          ng-model="settingsAlertsCtl.state.emailServer.encrypt"
          ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
-      <label
-         class="checkbox"
-         for="email_alerts_encrypt">Require encryption (TLS)</label>
+      <label for="for-email-alerts-encrypt">
+        Require encryption (TLS)
+      </label>
     </div>
 
     <div class="formrow">
@@ -127,13 +128,17 @@
       <h4>Available Alerts</h4>
 
       <div class="indent-1">
-        <label class="checkbox" ng-repeat="alert in settingsAlertsCtl.state.knownAlerts">
+        <span ng-repeat="alert in settingsAlertsCtl.state.knownAlerts">
           <input
              type="checkbox"
+             id="for_alerts_{{$index}}"
              ng-model="settingsAlertsCtl.state.alerts[alert]"
              ng-disabled="settingsAlertsCtl.isFormElementsDisabled() || !rbac.cluster.settings.write">
-          <span>{{alert | alertsLabel}}</span>
-        </label>
+          <label for="for_alerts_{{$index}}">
+          <span>&nbsp;{{alert | alertsLabel}}</span>
+          </label>
+          <br>
+        </span>
       </div>
     </div>
     <button

@@ -1001,14 +1001,6 @@ label {
   font-size: .75rem;
 }
 
-label.checkbox {
-  text-transform: none;
-  font-weight: normal;
-  cursor: pointer;
-  color: #000;
-  font-size: .961rem;
-}
-
 .checkbox input[type=text] {
   margin-bottom: .5rem;
 }
@@ -1203,18 +1195,15 @@ legend {
   display: block;
 }
 
-.forms .checkbox-list label {
-  color: inherit;
+.forms label.checkbox {
   display: inline-block;
   margin-bottom: 0;
   margin-right: 16px;
   text-transform: none;
   font-weight: normal;
+  cursor: pointer;
+  color: #000;
   font-size: .961rem;
-}
-
-.forms .checkbox-list label.inline {
-    display: inline;
 }
 
 .forms .checkbox-list .desc {

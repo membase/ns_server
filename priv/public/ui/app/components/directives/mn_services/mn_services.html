@@ -10,31 +10,39 @@
 <input
    type="checkbox"
    value="kv"
-   id="kv_service"
+   id="for-kv-service"
    ng-model="config.services.model.kv"
    ng-disabled="config.services.disabled.kv || !isEnterprise">
-<label for="kv_service">Data</label>
+<label for="for-kv-service">
+  Data
+</label>
 <input
    type="checkbox"
    value="index"
-   id="index_service"
+   id="for-index-service"
    ng-change="onChange(config.services.model.index, 'index')"
    ng-model="config.services.model.index"
    ng-disabled="config.services.disabled.index">
-<label for="index_service">Index</label>
+<label for="for-index-service">
+  Index
+</label>
 <input
    type="checkbox"
    value="n1ql"
-   id="n1ql_service"
+   id="for-n1ql-service"
    ng-change="onChange(config.services.model.n1ql, 'n1ql')"
    ng-model="config.services.model.n1ql"
    ng-disabled="config.services.disabled.n1ql">
-<label for="n1ql_service">Query</label>
+<label for="for-n1ql-service">
+  Query
+</label>
 <input
    type="checkbox"
    value="fts"
-   id="fts_service"
+   id="for-fts-service"
    ng-change="onChange(config.services.model.fts, 'fts')"
    ng-model="config.services.model.fts"
    ng-disabled="config.services.disabled.fts">
-<label for="fts_service">Full Text</label>
+<label for="for-fts-service">
+  Full Text
+</label>

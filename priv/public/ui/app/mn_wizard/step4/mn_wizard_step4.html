@@ -13,12 +13,12 @@
     <div class="panel-content">
       <h3 class="interim">Update Notifications</h3>
       <div class="formrow checkbox-list">
-        <label for="init-notifications-updates-enabled" class="checkbox">
-          <input
-             type="checkbox"
-             id="init-notifications-updates-enabled"
-             ng-model="wizardStep4Ctl.sendStats"
-             checked="checked">
+        <input
+           type="checkbox"
+           id="init-notifications-updates-enabled"
+           ng-model="wizardStep4Ctl.sendStats"
+           checked="checked">
+        <label for="init-notifications-updates-enabled" class="margin-right-zero">
           Enable software update notifications
         </label>
         <span
@@ -92,11 +92,12 @@
       </div>
 
       <div class="formrow" ng-if="wizardStep4Ctl.isEnterprise">
-        <label class="checkbox">
-          <input
-             type="checkbox"
-             ng-model="wizardStep4Ctl.register.agree"
-             name="agree">
+        <input
+           type="checkbox"
+           id="for_accept_terms"
+           ng-model="wizardStep4Ctl.register.agree"
+           name="agree">
+        <label for="for_accept_terms">
           I agree to the <a href="http://www.couchbase.com/agreement/free-license" target="_blank">terms and conditions</a> associated with this product.
         </label>
       </div>

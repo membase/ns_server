@@ -27,17 +27,21 @@
     <input
        type="radio"
        value="membase"
-       id="bucket_type_membase_init"
+       id="for-bucket-type-membase"
        ng-model="bucketConf.bucketType"
        ng-disabled="!bucketConf.isNew">
-    <label for="bucket_type_membase_init">Couchbase</label>
+    <label for="for-bucket-type-membase">
+      Couchbase
+    </label>
     <input
        type="radio"
        value="memcached"
-       id="bucket_type_memcached_init"
+       id="for-bucket-type-memcached"
        ng-model="bucketConf.bucketType"
        ng-disabled="!bucketConf.isNew">
-    <label for="bucket_type_memcached_init">Memcached</label>
+    <label for="for-bucket-type-memcached">
+    Memcached
+    </label>
   </div>
 
   <h3 class="interim">Memory Settings</h3>
@@ -81,17 +85,21 @@
          type="radio"
          name="evictionPolicy"
          value="valueOnly"
-         id="cache_metadata_retain-init"
+         id="for-metadata-value-eject"
          checked="checked"
          ng-model="bucketConf.evictionPolicy">
-      <label for="cache_metadata_retain-init">Value Ejection</label>
+      <label for="for-metadata-value-eject">
+        Value Ejection
+      </label>
       <input
          type="radio"
          name="evictionPolicy"
          value="fullEviction"
-         id="cache_metadata_non_retain-init"
+         id="for-metadata-full-eject"
          ng-model="bucketConf.evictionPolicy">
-      <label for="cache_metadata_non_retain-init">Full Ejection</label>
+      <label for="for-metadata-full-eject">
+       Full Ejection
+     </label>
       <div
          class="error"
          ng-show="!!evictionPolicyWarning">
@@ -107,17 +115,17 @@
      class="formrow checkbox-list"
      ng-if="!bucketConf.isWizard">
     <input
-       id="js_bucket_details_sasl_selected"
+       id="for-access-sasl"
        type="radio"
        name="authType"
        value="sasl"
        ng-model="bucketConf.authType">
-    <label class="inline" for="js_bucket_details_sasl_selected">
+    <label for="for-access-sasl">
       <span ng-if="bucketConf.isDefault || (bucketConf.name === 'default')">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</span>
       <span ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">Standard port (TCP port 11211. Needs SASL auth.)</span>
     </label>
 
-    <div ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">
+    <div class="margin-bottom-half" ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">
       <label for="js_bucket_details_sasl_password">Enter password:</label>
       <input
          type="password"
@@ -137,10 +145,11 @@
        name="authType"
        ng-model="bucketConf.authType"
        value="none"
-       id="js_bucket_details_auth_type"
+       id="for-access-port"
        ng-disabled="bucketConf.isDefault || (bucketConf.name === 'default')">
-    <label for="js_bucket_details_auth_type">Dedicated port (supports ASCII protocol and is auth-less)</label>
-
+    <label for="for-access-port">
+      Dedicated port (supports ASCII protocol and is auth-less)
+    </label>
     <label for="js_bucket_details_proxy_port">Protocol Port:</label>
     <input
        type="text"
@@ -171,22 +180,24 @@
       </p>
       <input
          type="radio"
-         id="for-enable-conflict-resolution-seqno"
+         id="for-conflict-resolution-seqno"
          ng-model="bucketConf.conflictResolutionType"
          name="conflictResolutionType"
          value="seqno"
          ng-disabled="!bucketConf.isNew">
-      <label
-         for="for-enable-conflict-resolution-seqno">Sequence number</label>
+      <label for="for-conflict-resolution-seqno">
+        Sequence number
+      </label>
       <input
          type="radio"
-         id="for-enable-conflict-resolution-lww"
+         id="for-conflict-resolution-lww"
          ng-model="bucketConf.conflictResolutionType"
          name="conflictResolutionType"
          value="lww"
          ng-disabled="!bucketConf.isNew">
-      <label
-         for="for-enable-conflict-resolution-lww">Timestamp</label>
+      <label for="for-conflict-resolution-lww">
+        Timestamp
+      </label>
 
       <div
          class="error"
@@ -209,9 +220,11 @@
      ng-show="bucketConf.bucketType === 'membase'">
     <input
        type="checkbox"
-       id="for-enable-replicas-init"
+       id="for-enable-replicas"
        ng-model="replicaNumberEnabled">
-    <label for="for-enable-replicas-init">Enable</label>
+    <label for="for-enable-replicas">
+      Enable
+    </label>
     <span ng-if="replicaNumberEnabled">
       <select
          class="width-2"
@@ -228,15 +241,16 @@
       <br>
       <input
          type="checkbox"
-         id="label_replica_index_flag-init"
+         id="for-enable-view-replicas"
          ng-model="bucketConf.replicaIndex"
          ng-false-value="0"
          ng-true-value="1"
          ng-disabled="!(replicaNumberEnabled && bucketConf.isNew)">
-      <label for="label_replica_index_flag-init">Replicate view indexes</label>
+      <label for="for-enable-view-replicas">
+        Replicate view indexes
+      </label>
     </span>
   </div>
-
   <h3
      class="interim"
      ng-show="bucketConf.bucketType === 'membase'">
@@ -259,16 +273,20 @@
        name="threadsNumber"
        value="3"
        checked="true"
-       id="low_threads_number_init"
+       id="for-low-threads"
        ng-model="bucketConf.threadsNumber">
-    <label for="low_threads_number_init">Low (default)</label>
+    <label for="for-low-threads">
+      Low (default)
+    </label>
     <input
        type="radio"
        name="threadsNumber"
        value="8"
-       id="hight_threads_number_init"
+       id="for-high-threads"
        ng-model="bucketConf.threadsNumber">
-    <label for="hight_threads_number_init">High</label>
+    <label for="for-high-threads">
+      High
+    </label>
     <div
        class="error"
        ng-show="!!threadsNumberWarning">
@@ -283,11 +301,12 @@
       <h3 class="interim">Auto-Compaction</h3>
       <div class="formrow checkbox-list">
         <div class="desc">Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes.</div>
-        <label>
-          <input
-             type="checkbox"
-             ng-model="bucketConf.autoCompactionDefined"
-             value="true">
+        <input
+           type="checkbox"
+           id="for-auto-compaction-override"
+           ng-model="bucketConf.autoCompactionDefined"
+           value="true">
+        <label for="for-auto-compaction-override">
           Override the default auto-compaction settings?
         </label>
       </div>
@@ -312,12 +331,15 @@
       <span class="icon fa-info fa-stack-1x"></span>
     </span>
   </h3>
-  <div class="formrow checkbox-list">
+  <div class="formrow">
     <input
        type="checkbox"
-       id="for-enable-flush-init"
+       id="for-enable-flush"
        ng-model="bucketConf.flushEnabled"
        ng-false-value="0"
        ng-true-value="1">
-    <label for="for-enable-flush-init">Enable</label>
+    <label for="for-enable-flush">
+      Enable
+    </label>
+  </div>
 </div>

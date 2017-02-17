@@ -18,11 +18,12 @@
 
   <form class="forms" ng-submit="settingsAutoFailoverCtl.submit()">
     <div class="formrow">
-      <label class="checkbox">
-        <input
-           type="checkbox"
-           ng-disabled="!rbac.cluster.settings.write"
-           ng-model="settingsAutoFailoverCtl.state.enabled">
+      <input
+         type="checkbox"
+         id="for-auto-failover-enable"
+         ng-disabled="!rbac.cluster.settings.write"
+         ng-model="settingsAutoFailoverCtl.state.enabled">
+      <label for="for-auto-failover-enable">
         Enable auto-failover
       </label>
     </div>

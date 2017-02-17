@@ -50,7 +50,7 @@
            id="setup-sample-{{bucket.name}}"
            ng-disabled="!rbac.cluster.buckets.create"
            ng-model="settingsSampleBucketsCtl.selected[bucket.name]">
-        <label class="checkbox" for="setup-sample-{{bucket.name}}">{{bucket.name}}</label>
+        <label for="setup-sample-{{bucket.name}}">&nbsp;{{bucket.name}}</label>
       </div>
       <div ng-if="!settingsSampleBucketsCtl.state.available.length">
         There are no samples available to install.

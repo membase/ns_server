@@ -60,15 +60,16 @@
   </div>
 
   <div class="formrow">
-    <label class="checkbox" for="abort-outside-{{mnPeriod}}">
-      <input
-         id="abort-outside-{{mnPeriod}}"
-         type="checkbox"
-         ng-class="{invalid: errors[mnPeriod + '_abortOutside_']}"
-         ng-model="autoCompactionSettings[mnPeriod].abortOutside"
-         ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
-         value="true">
-      Abort compaction if run time exceeds the set time interval</label>
+    <input
+       type="checkbox"
+       id="for-compact-abort-outside-{{mnPeriod}}"
+       ng-class="{invalid: errors[mnPeriod + '_abortOutside_']}"
+       ng-model="autoCompactionSettings[mnPeriod].abortOutside"
+       ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
+       value="true">
+    <label for="for-compact-abort-outside-{{mnPeriod}}">
+      Abort compaction if run time exceeds the set time interval
+    </label>
     <div
        class="error"
        ng-show="errors[mnPeriod + '_abortOutside_']">

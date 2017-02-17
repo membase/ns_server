@@ -5,8 +5,10 @@
   <div class="formrow form-inline indent-1">
     <input
        type="checkbox"
+       id="for-data-frag-percent"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentageFlag"
        ng-disabled="(rbac && !rbac.cluster.settings.write)">
+    <label for="for-data-frag-percent"></label>
     <input
        type="number"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentage"
@@ -23,8 +25,10 @@
   <div class="formrow form-inline indent-1">
     <input
        type="checkbox"
+       id="for-data-frag-size"
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.sizeFlag">
+    <label for="for-data-frag-size"></label>
     <input
        type="number"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.size"
@@ -43,8 +47,10 @@
   <div class="formrow form-inline indent-1">
     <input
        type="checkbox"
+       id="for-view-frag-percent"
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
        ng-model="autoCompactionSettings.viewFragmentationThreshold.percentageFlag">
+    <label for="for-view-frag-percent"></label>
     <input
        ng-model="autoCompactionSettings.viewFragmentationThreshold.percentage"
        ng-class="{invalid: validationErrors.viewFragmentationThreshold_percentage_}"
@@ -61,8 +67,10 @@
   <div class="formrow form-inline indent-1">
     <input
        type="checkbox"
+       id="for-view-frag-size"
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
        ng-model="autoCompactionSettings.viewFragmentationThreshold.sizeFlag">
+    <label for="for-view-frag-size"></label>
     <input
        type="number"
        ng-model="autoCompactionSettings.viewFragmentationThreshold.size"
@@ -78,12 +86,13 @@
 
   <h4>Time Interval</h4>
   <div class="formrow">
-    <label class="checkbox">
-      <input
-        type="checkbox"
-        ng-disabled="(rbac && !rbac.cluster.settings.write)"
-        ng-model="autoCompactionSettings.allowedTimePeriodFlag">
-      Set the time interval for when compaction is allowed to run
+    <input
+      type="checkbox"
+      id="for-enable-compaction-timeperiod"
+      ng-disabled="(rbac && !rbac.cluster.settings.write)"
+      ng-model="autoCompactionSettings.allowedTimePeriodFlag">
+    <label for="for-enable-compaction-timeperiod">
+        Set the time interval for when compaction is allowed to run
     </label>
 
     <div
@@ -94,13 +103,14 @@
        class="indent-1">
     </div>
 
-    <label class="checkbox">
-      <input
-         type="checkbox"
-         ng-disabled="(rbac && !rbac.cluster.settings.write)"
-         ng-class="{invalid: validationErrors.parallelDBAndViewCompaction}"
-         ng-model="autoCompactionSettings.parallelDBAndViewCompaction"
-         value="true">
+    <input
+       type="checkbox"
+       id="for-compact-parallel"
+       ng-disabled="(rbac && !rbac.cluster.settings.write)"
+       ng-class="{invalid: validationErrors.parallelDBAndViewCompaction}"
+       ng-model="autoCompactionSettings.parallelDBAndViewCompaction"
+       value="true">
+    <label for="for-compact-parallel">
       Compact buckets and views indexes in parallel
     </label>
     <div
@@ -120,9 +130,7 @@
          id="index-regular-compaction-radio"
          ng-value="false"
          ng-model="autoCompactionSettings.indexCircularCompactionFlag">
-      <label
-         class="checkbox"
-         for="index-regular-compaction-radio">
+      <label for="index-regular-compaction-radio">
         Append-only write mode with index fragmentation level trigger:
       </label>
       <br>
@@ -140,12 +148,10 @@
       <input
          type="radio"
          ng-disabled="(rbac && !rbac.cluster.settings.write)"
-         id="index-circular-compaction-radio"
+         id="for-index-circular-compaction"
          ng-value="true"
          ng-model="autoCompactionSettings.indexCircularCompactionFlag">
-      <label
-         class="checkbox"
-         for="index-circular-compaction-radio">
+      <label for="for-index-circular-compaction">
         Circular write mode with day + time interval trigger:
       </label>
       <br>
@@ -153,10 +159,10 @@
         <input
            ng-disabled="!autoCompactionSettings.indexCircularCompactionFlag || !rbac.cluster.settings.write"
            type="checkbox"
-           id="days_of_week_{{day}}"
+           id="for-compaction-day-{{day}}"
            ng-model="autoCompactionSettings.indexCircularCompactionDaysOfWeek[day]"
            ng-value="day">
-        <label class="checkbox" for="days_of_week_{{day}}">
+        <label for="for-compaction-day-{{day}}">
           {{day}}
         </label>
       </span>

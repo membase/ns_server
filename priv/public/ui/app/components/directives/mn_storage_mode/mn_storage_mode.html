@@ -7,7 +7,9 @@
        id="storage_mode_forestdb"
        ng-model="config.storageMode"
        ng-disabled="isDisabled">
-    <label for="storage_mode_forestdb" class="checkbox">Standard Global Secondary Indexes</label>
+    <label for="storage_mode_forestdb" class="checkbox">
+      Standard Global Secondary Indexes
+    </label>
   </div>
   <div class="indent-1">
     <input
@@ -16,7 +18,9 @@
        id="storage_memory_optimized"
        ng-model="config.storageMode"
        ng-disabled="isDisabled">
-    <label for="storage_memory_optimized" class="checkbox">Memory-Optimized Global Secondary Indexes</label>
+    <label for="storage_memory_optimized" class="checkbox">
+      Memory-Optimized Global Secondary Indexes
+    </label>
   </div>
   <div class="error error-field" ng-show="errors.storageMode">
     {{errors.storageMode | mnFormatStorageModeError}}
