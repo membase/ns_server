@@ -46,7 +46,11 @@
       </tr>
       <tbody
          ng-if="userRolesCtl.state.users.length"
-         ng-repeat="user in userRolesCtl.state.users | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by user.id">
+         ng-repeat="user in userRolesCtl.state.users |
+                    orderBy: mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert |
+                    limitTo: (userRolesCtl.pageNumber - 1) * userRolesCtl.pageLimit - userRolesCtl.state.users.length |
+                    limitTo: userRolesCtl.pageLimit
+                    track by user.id">
         <tr
            ng-click="userRolesCtl.toggleDetails(user.id)"
            ng-class="{
@@ -86,15 +90,32 @@
         </tr>
       </tbody>
     </table>
-    <div class="text-smaller">
-      <strong class="margin-right-half">Roles:</strong>
-      <a
-         href=""
-         class="margin-right-half"
-         uib-tooltip="{{role.desc}}"
-         ng-repeat="role in userRolesCtl.roles | filter:userRolesCtl.rolesFilter">
-        {{role.name}}
-      </a>
+    <div class="row">
+      <select
+         ng-change="userRolesCtl.pageLimitChanged()"
+         ng-model="userRolesCtl.pageLimit"
+         ng-options="o as o for o in [10,20,50,100]"></select>
+      <div>
+        <a href=""
+           ng-hide="userRolesCtl.pageNumber === 1"
+           ng-click="userRolesCtl.prevPage()">&lt; Prev</a>
+        <a href="" ng-show="userRolesCtl.pageNumber > 3">...</a>
+        <a href=""
+           ng-repeat="pageNumber in userRolesCtl.getVisiblePages() track by pageNumber"
+           ng-click="userRolesCtl.goToPage(pageNumber)">
+          {{pageNumber}}
+        </a>
+        <span ng-show="userRolesCtl.pageNumber + 2 < userRolesCtl.getTotalPageCount()">
+          <a href="">...</a>
+          <a href=""
+             ng-click="userRolesCtl.goToPage(userRolesCtl.getTotalPageCount())">
+            {{userRolesCtl.getTotalPageCount()}}
+          </a>
+        </span>
+        <a href=""
+           ng-show="userRolesCtl.state.users.length > userRolesCtl.pageNumber * userRolesCtl.pageLimit"
+           ng-click="userRolesCtl.nextPage()">Next &gt;</a>
+      </div>
     </div>
   </div>
 </div>

@@ -24,10 +24,18 @@
         }
       })
       .state('app.admin.security.userRoles', {
-        url: "/userRoles?openedUsers",
+        url: "/userRoles?openedUsers&{pageNumber:int}&{pageLimit:int}",
         params: {
           openedUsers: {
             array: true,
+            dynamic: true
+          },
+          pageNumber: {
+            value: 1,
+            dynamic: true
+          },
+          pageLimit: {
+            value: 10,
             dynamic: true
           }
         },
