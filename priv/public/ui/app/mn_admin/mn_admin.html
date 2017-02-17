@@ -22,7 +22,7 @@
         <div
            mn-drag-and-drop
            base-corner-right="true"
-           class="tasks-progress panel dialog-small"
+           class="tasks-progress panel dialog-small enable-ng-animation"
            ng-if="rbac.cluster.tasks.read && !adminCtl.isProgressBarClosed && adminCtl.filterTasks(adminCtl.tasks.running).length">
           <div class="close-tasks">
             <span ng-click="adminCtl.toggleProgressBar()">X</span>
