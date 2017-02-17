@@ -48,9 +48,10 @@
          ng-if="userRolesCtl.state.users.length"
          ng-repeat="user in userRolesCtl.state.users | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by user.id">
         <tr
-           class="has-hover"
            ng-click="userRolesCtl.toggleDetails(user.id)"
-           ng-class="{'no-stroke': userRolesCtl.isDetailsOpened(user.id)}">
+           ng-class="{
+                     'no-stroke': userRolesCtl.isDetailsOpened(user.id) && rbac.cluster.admin.security.write,
+                     'has-hover': rbac.cluster.admin.security.write}">
           <td class="ellipsis">{{user.id}}</td>
           <td class="ellipsis text-center">{{user.name}}</td>
           <td class="text-center">
@@ -67,13 +68,11 @@
           </td>
         </tr>
         <tr>
-          <td class="text-right" colspan="4" ng-if="userRolesCtl.isDetailsOpened(user.id)">
+          <td class="text-right" colspan="4" ng-if="userRolesCtl.isDetailsOpened(user.id) && rbac.cluster.admin.security.write">
             <button
                class="outline"
-               ng-show="rbac.cluster.admin.security.write"
                ng-click="userRolesCtl.deleteUser(user)">Delete</button>
             <button
-               ng-show="rbac.cluster.admin.security.write"
                ng-click="userRolesCtl.editUser(user)">Edit</button>
           </td>
         </tr>
