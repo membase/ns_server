@@ -182,16 +182,17 @@ preconfigured_roles_spock() ->
        {desc, <<"Can execute DELETE statement on bucket to delete data">>}],
       [{[{bucket, bucket_name}, n1ql, delete], [execute]},
        {[pools], [read]}]},
-     {manage_index, [bucket_name],
-      [{name, <<"Manage Index">>},
+     {query_manage_index, [bucket_name],
+      [{name, <<"Query Manage Index">>},
        {desc, <<"Can manage indexes for the bucket">>}],
       [{[{bucket, bucket_name}, n1ql, create_index], [execute]},
        {[{bucket, bucket_name}, n1ql, alter_index], [execute]},
        {[pools], [read]}]},
-     {system_catalog, [bucket_name],
-      [{name, <<"System Catalog">>},
+     {query_system_catalog, [bucket_name],
+      [{name, <<"Query System Catalog">>},
        {desc, <<"Can lookup system catalog information">>}],
       [{[{bucket, bucket_name}, n1ql, list_indexes], [execute]},
+       {[n1ql, meta], [read]},
        {[pools], [read]}]}].
 
 upgrade_roles_spock(Definitions) ->
