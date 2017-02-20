@@ -130,7 +130,6 @@
       mnPromiseHelper(vm.state, mnViewsListService.createDdoc(url, vm.state.currentDocument.doc.json))
         .catchErrors("viewsError")
         .showSpinner("viewsLoading")
-        .reloadState()
         .showGlobalSuccess("View saved successfully!", 4000);
     }
     function onSelectViewName(selected) {
