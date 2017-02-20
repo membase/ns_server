@@ -52,10 +52,10 @@
         promise.then(cb);
         return this;
       }
-      function reloadState() {
+      function reloadState(state) {
         promise.then(function () {
           spinnerCtrl(true);
-          mnHelper.reloadState();
+          mnHelper.reloadState(state);
         });
         return this;
       }

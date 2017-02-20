@@ -32,7 +32,7 @@
 
       function applyChanges() {
         mnPromiseHelper($scope, mnGroupsService.applyChanges(vm.state.uri, vm.state.currentGroups))
-          .reloadState()
+          .reloadState("app.admin.servers.list.groups")
           .showGlobalSuccess("Group changes saved successfully!", 4000)
           .getPromise()
           .then(null, function (resp) {

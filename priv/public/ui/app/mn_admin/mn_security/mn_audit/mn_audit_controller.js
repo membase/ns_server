@@ -34,7 +34,7 @@
       mnPromiseHelper(vm, mnAuditService.saveAuditSettings(vm.state))
         .catchErrorsFromSuccess()
         .showSpinner()
-        .reloadState()
+        .reloadState("app.admin.security")
         .showGlobalSuccess("Audit settings changed successfully!", 4000);
     };
   }

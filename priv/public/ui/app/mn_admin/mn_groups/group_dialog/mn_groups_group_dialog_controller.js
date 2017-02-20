@@ -23,7 +23,7 @@
         .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
-        .reloadState()
+        .reloadState("app.admin.servers.list.groups")
         .showGlobalSuccess("Group saved successfully!", 4000);
     }
   }

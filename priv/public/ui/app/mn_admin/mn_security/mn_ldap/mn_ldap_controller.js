@@ -60,7 +60,7 @@
         mnPromiseHelper(vm, mnLdapService.postSaslauthdAuth(vm.state))
           .showErrorsSensitiveSpinner()
           .catchErrors()
-          .reloadState()
+          .reloadState("app.admin.security")
           .showGlobalSuccess("User saved successfully!", 4000);
       }
       function activate() {

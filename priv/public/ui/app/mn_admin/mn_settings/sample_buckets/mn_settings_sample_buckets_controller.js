@@ -40,7 +40,7 @@
       mnPromiseHelper(vm, mnSettingsSampleBucketsService.installSampleBuckets(vm.selected))
         .showGlobalSpinner()
         .catchGlobalErrors()
-        .reloadState()
+        .reloadState("app.admin.settings")
         .showGlobalSuccess("Task added successfully!", 4000);
     }
 

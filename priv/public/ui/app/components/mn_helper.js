@@ -89,9 +89,9 @@
       function reloadApp() {
         $window.location.reload();
       }
-      function reloadState() {
+      function reloadState(state) {
         mnPendingQueryKeeper.cancelAllQueries();
-        return $state.reload();
+        return $state.reload(state);
       }
     }
   }
