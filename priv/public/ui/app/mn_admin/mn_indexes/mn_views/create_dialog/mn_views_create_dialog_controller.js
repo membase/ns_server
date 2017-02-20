@@ -72,7 +72,8 @@
         .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
-        .broadcast("reloadViewsPoller");
+        .broadcast("reloadViewsPoller")
+        .showGlobalSuccess("View created successfully!", 4000);
     };
 
   }

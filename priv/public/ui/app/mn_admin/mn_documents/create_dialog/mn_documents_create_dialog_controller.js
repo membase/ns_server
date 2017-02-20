@@ -34,7 +34,8 @@
           }
         });
       mnPromiseHelper($scope, promise, $uibModalInstance)
-        .showGlobalSpinner();
+        .showGlobalSpinner()
+        .showGlobalSuccess("Document created successfully!", 4000);
     }
   }
 })();

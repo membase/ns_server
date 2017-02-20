@@ -5,14 +5,16 @@
     .module('mnAlertsService', ['ui.bootstrap', 'mnFilters'])
     .service('mnAlertsService', mnAlertsServiceFactory);
 
-  function mnAlertsServiceFactory($uibModal, $rootScope) {
+  function mnAlertsServiceFactory($uibModal, $rootScope, $window, $timeout) {
     var alerts = [];
+    var alertsHistory = [];
     var mnAlertsService = {
       setAlert: setAlert,
       formatAndSetAlerts: formatAndSetAlerts,
       showAlertInPopup: showAlertInPopup,
-      closeAlert: closeAlert,
-      alerts: alerts
+      alerts: alerts,
+      removeItem: removeItem,
+      isNewAlert: isNewAlert
     };
 
     return mnAlertsService;
@@ -28,21 +30,56 @@
         templateUrl: "app/components/mn_alerts_popup_message.html"
       }).result;
     }
-    function setAlert(type, message, id) {
-      alerts.push({type: type, msg: message, id: id, dismissed: false});
+
+    function isNewAlert(item) {
+      var findedItem = _.find(alertsHistory, item);
+      return _.indexOf(alertsHistory, findedItem) === -1;
+    }
+
+    function startTimer(item, timeout) {
+      return $timeout(function () {
+        removeItem(item);
+      }, parseInt(timeout, 10));
+    }
+
+    function removeItem(item) {
+      var index = _.indexOf(alerts, item);
+      item.timeout && $timeout.cancel(item.timeout);
+      alerts.splice(index, 1);
+    }
+
+    function setAlert(type, message, timeout, id) {
+      var item = {
+        type: type,
+        msg: message,
+        id: id
+      };
+      var findedItem = _.find(alerts, item);
+
+      if (findedItem) {
+        findedItem.timeout && $timeout.cancel(findedItem.timeout);
+        item = findedItem;
+      } else {
+        alerts.push(item);
+        alertsHistory.push(item);
+      }
+      if (timeout) {
+        item.timeout = startTimer(item, timeout);
+      }
+      $window.scrollTo(0, 0);
     }
     function formatAndSetAlerts(incomingAlerts, type, timeout) {
       timeout = timeout || 60000;
-      if ((angular.isArray(incomingAlerts) && angular.isString(incomingAlerts[0])) || angular.isObject(incomingAlerts)) {
+      if ((angular.isArray(incomingAlerts) && angular.isString(incomingAlerts[0])) ||
+          angular.isObject(incomingAlerts)) {
         angular.forEach(incomingAlerts, function (msg) {
-          incomingAlerts.push({type: type, msg: msg, timeout: timeout});
-        }, alerts);
+          setAlert(type, msg, timeout);
+        });
       }
 
-      angular.isString(incomingAlerts) && alerts.push({type: type, msg: incomingAlerts, timeout: timeout, dismissed: false});
-    }
-    function closeAlert(alert) {
-      alert.dismissed = true;
+      if (angular.isString(incomingAlerts)) {
+        setAlert(type, incomingAlerts, timeout);
+      }
     }
   }
 })();

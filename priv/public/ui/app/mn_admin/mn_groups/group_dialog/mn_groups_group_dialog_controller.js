@@ -23,7 +23,8 @@
         .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
-        .reloadState();
+        .reloadState()
+        .showGlobalSuccess("Group saved successfully!", 4000);
     }
   }
 })();

@@ -13,7 +13,8 @@
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showGlobalSpinner()
         .closeFinally()
-        .broadcast("reloadTasksPoller");
+        .broadcast("reloadTasksPoller")
+        .showGlobalSuccess("Replication deleted successfully!", 4000);
     }
   }
 })();

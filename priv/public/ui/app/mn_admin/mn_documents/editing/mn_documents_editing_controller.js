@@ -50,7 +50,8 @@
         .applyToScope("state")
         .onSuccess(function (doc) {
           vm.isDocumentChanged = false;
-        });
+        })
+        .showGlobalSuccess("Document saved successfully!", 4000);
     }
     function codemirrorLoaded(cm) {
       activate().then(function (resp) {

@@ -40,7 +40,8 @@
       mnPromiseHelper(vm, mnSettingsSampleBucketsService.installSampleBuckets(vm.selected))
         .showGlobalSpinner()
         .catchGlobalErrors()
-        .reloadState();
+        .reloadState()
+        .showGlobalSuccess("Task added successfully!", 4000);
     }
 
     function isAnyBucketSelected() {

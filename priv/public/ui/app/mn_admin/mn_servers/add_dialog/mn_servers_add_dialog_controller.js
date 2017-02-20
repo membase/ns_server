@@ -58,7 +58,8 @@
         .catchErrors()
         .closeOnSuccess()
         .broadcast("reloadServersPoller")
-        .broadcast("maybeShowMemoryQuotaDialog", vm.addNodeConfig.services.model);
+        .broadcast("maybeShowMemoryQuotaDialog", vm.addNodeConfig.services.model)
+        .showGlobalSuccess("Server added successfully!", 4000);
     };
   }
 })();

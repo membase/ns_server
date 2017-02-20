@@ -40,7 +40,8 @@
 
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showGlobalSpinner()
-        .closeOnSuccess();
+        .closeOnSuccess()
+        .showGlobalSuccess("Memory quota saved successfully!", 4000);
     }
   }
 })();

@@ -25,7 +25,8 @@
         .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
-        .reloadState();
+        .reloadState()
+        .showGlobalSuccess("Settings saved successfully!", 4000);
     }
 
     function activate() {

@@ -18,7 +18,8 @@
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showGlobalSpinner()
         .closeFinally()
-        .broadcast("reloadDocumentsPoller");
+        .broadcast("reloadDocumentsPoller")
+        .showGlobalSuccess("Document deleted successfully!", 4000);
     }
   }
 })();

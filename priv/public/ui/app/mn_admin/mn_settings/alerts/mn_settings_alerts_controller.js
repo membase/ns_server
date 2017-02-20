@@ -50,7 +50,8 @@
       var params = getParams();
       mnPromiseHelper(vm, mnSettingsAlertsService.saveAlerts(params))
         .showGlobalSpinner()
-        .catchErrors();
+        .catchErrors()
+        .showGlobalSuccess("Settings saved successfully!", 4000);
     }
     function activate() {
       mnPromiseHelper(vm, mnSettingsAlertsService.getAlerts())
@@ -66,7 +67,7 @@
 
       mnPromiseHelper(vm, mnSettingsAlertsService.testMail(params))
         .showGlobalSpinner()
-        .showGlobalSuccess('Test email was sent successfully!')
+        .showGlobalSuccess('Test email was sent successfully!', 4000)
         .catchGlobalErrors('An error occurred during sending test email.');
     }
     function isFormElementsDisabled() {

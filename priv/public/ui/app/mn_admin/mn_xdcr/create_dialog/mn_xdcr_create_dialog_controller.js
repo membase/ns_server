@@ -39,7 +39,8 @@
           .showGlobalSpinner()
           .catchErrors()
           .closeOnSuccess()
-          .broadcast("reloadTasksPoller");
+          .broadcast("reloadTasksPoller")
+          .showGlobalSuccess("Replication created successfully!", 4000);
       };
     }
 })();

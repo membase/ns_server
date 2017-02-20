@@ -41,7 +41,8 @@
         .showGlobalSpinner()
         .catchErrors()
         .broadcast("reloadRolesPoller")
-        .closeOnSuccess();
+        .closeOnSuccess()
+        .showGlobalSuccess("User saved successfully!", 4000);
     }
   }
 })();

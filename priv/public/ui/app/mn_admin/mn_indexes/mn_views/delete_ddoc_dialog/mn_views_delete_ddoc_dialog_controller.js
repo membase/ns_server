@@ -16,7 +16,8 @@
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showGlobalSpinner()
         .closeFinally()
-        .broadcast("reloadViewsPoller");
+        .broadcast("reloadViewsPoller")
+        .showGlobalSuccess("Design document deleted successfully!", 4000);
     }
   }
 })();

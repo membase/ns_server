@@ -60,7 +60,8 @@
         mnPromiseHelper(vm, mnLdapService.postSaslauthdAuth(vm.state))
           .showErrorsSensitiveSpinner()
           .catchErrors()
-          .reloadState();
+          .reloadState()
+          .showGlobalSuccess("User saved successfully!", 4000);
       }
       function activate() {
         mnPromiseHelper(vm, mnLdapService.getSaslauthdAuth())
@@ -78,4 +79,3 @@
     }
 
 })();
-

@@ -14,7 +14,8 @@
       mnPromiseHelper(vm, mnUserRolesService.deleteUser(user), $uibModalInstance)
         .showGlobalSpinner()
         .closeFinally()
-        .broadcast("reloadRolesPoller");
+        .broadcast("reloadRolesPoller")
+        .showGlobalSuccess("User deleted successfully!", 4000);
     }
   }
 })();

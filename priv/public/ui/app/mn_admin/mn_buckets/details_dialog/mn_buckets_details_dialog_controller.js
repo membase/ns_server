@@ -33,7 +33,8 @@
             $uibModalInstance.close();
             $rootScope.$broadcast("reloadBucketsPoller");
           }
-        });
+        })
+        .showGlobalSuccess("Bucket settings saved successfully!", 4000);
     };
   }
 })();

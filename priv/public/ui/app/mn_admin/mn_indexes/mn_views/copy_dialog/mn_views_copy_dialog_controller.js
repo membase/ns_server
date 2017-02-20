@@ -22,7 +22,8 @@
       }, copy);
 
       mnPromiseHelper(vm, promise)
-        .showGlobalSpinner();
+        .showGlobalSpinner()
+        .showGlobalSuccess("View copied successfully!", 4000);
     }
     function prepareToCopy(url, ddoc) {
       return function () {

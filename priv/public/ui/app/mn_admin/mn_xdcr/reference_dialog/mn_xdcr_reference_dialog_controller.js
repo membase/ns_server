@@ -16,7 +16,8 @@
         .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
-        .broadcast("reloadXdcrPoller");
+        .broadcast("reloadXdcrPoller")
+        .showGlobalSuccess("Cluster reference saved successfully!", 4000);
     };
   }
 })();

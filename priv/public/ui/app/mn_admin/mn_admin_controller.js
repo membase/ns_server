@@ -22,7 +22,7 @@
     vm.lostConnState = mnLostConnectionService.getState();
 
     vm.alerts = mnAlertsService.alerts;
-    vm.closeAlert = mnAlertsService.closeAlert;
+    vm.closeAlert = mnAlertsService.removeItem;
 
     $rootScope.rbac = mnPermissions.export;
     $rootScope.poolDefault = mnPoolDefault.export;
@@ -140,8 +140,8 @@
           }
         });
 
-        if (tasks.tasksRebalance.errorMessage && !_.find(mnAlertsService.alerts, {id: tasks.tasksRebalance.statusId})) {
-          mnAlertsService.setAlert("error", tasks.tasksRebalance.errorMessage, tasks.tasksRebalance.statusId);
+        if (tasks.tasksRebalance.errorMessage && mnAlertsService.isNewAlert({id: tasks.tasksRebalance.statusId})) {
+          mnAlertsService.setAlert("error", tasks.tasksRebalance.errorMessage, null, tasks.tasksRebalance.statusId);
         }
         vm.tasks = tasks;
       }, vm)

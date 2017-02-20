@@ -39,7 +39,6 @@
     <script src="libs/angular-messages.js"></script>
     <script src="libs/angular-ui-router-1.0.0-alpha.1.js"></script>
     <script src="libs/angular-uib-stackedMap.js"></script>
-    <script src="libs/angular-uib-alert.js"></script>
     <script src="libs/angular-uib-modal.js"></script>
     <script src="libs/angular-uib-position.js"></script>
     <script src="libs/angular-uib-tooltip.js"></script>
@@ -243,17 +242,6 @@
     <script src="app/mn_about_dialog/mn_about_dialog_controller.js"></script>
     <script src="app/mn_about_dialog/mn_about_dialog_service.js"></script>
 
-    <script id="template/alert/alert.html" type="text/ng-template">
-      <div
-         class="interim alert"
-         ng-class="{'alert-error': type !== 'success', 'alert-success': type === 'success'}"
-         role="alert">
-        <p>
-          <span ng-transclude></span>
-          <a href="" ng-click="close()">click to dismiss</a>
-        </p>
-      </div>
-    </script>
     <script id="template/modal/backdrop.html" type="text/ng-template">
       <div
          class="modal-backdrop in dialog_overlay dialog_full_screen"

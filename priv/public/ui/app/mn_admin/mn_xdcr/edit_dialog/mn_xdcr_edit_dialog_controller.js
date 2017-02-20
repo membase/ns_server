@@ -15,7 +15,8 @@
         .showGlobalSpinner()
         .catchErrors()
         .closeOnSuccess()
-        .broadcast("reloadTasksPoller");
+        .broadcast("reloadTasksPoller")
+        .showGlobalSuccess("Settings saved successfully!", 4000);
     };
   }
 })();

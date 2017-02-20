@@ -12,7 +12,7 @@
     'mnSpinner'
   ]).controller('mnSettingsClusterController', mnSettingsClusterController);
 
-  function mnSettingsClusterController($scope, $uibModal, mnPoolDefault, mnMemoryQuotaService, mnSettingsClusterService, mnHelper, mnPromiseHelper) {
+  function mnSettingsClusterController($scope, $q, $uibModal, mnPoolDefault, mnMemoryQuotaService, mnSettingsClusterService, mnHelper, mnPromiseHelper) {
     var vm = this;
     vm.saveVisualInternalSettings = saveVisualInternalSettings;
 
@@ -39,19 +39,29 @@
     }
 
     function saveSettings() {
-      mnPromiseHelper(vm, mnSettingsClusterService.postPoolsDefault(vm.memoryQuotaConfig, false, vm.clusterName))
-        .catchErrors("memoryQuotaErrors")
-        .showGlobalSpinner()
-        .onSuccess(function () {
-          vm.initialMemoryQuota = vm.memoryQuotaConfig.indexMemoryQuota;
-        });
+      var queries = [];
+      var promise1 = mnPromiseHelper(vm, mnSettingsClusterService.postPoolsDefault(vm.memoryQuotaConfig, false, vm.clusterName))
+          .catchErrors("memoryQuotaErrors")
+          .onSuccess(function () {
+            vm.initialMemoryQuota = vm.memoryQuotaConfig.indexMemoryQuota;
+          })
+          .getPromise();
+
+      queries.push(promise1);
 
       if (!_.isEqual(vm.indexSettings, vm.initialIndexSettings) && mnPoolDefault.export.compat.atLeast40 && $scope.rbac.cluster.indexes.write) {
-        mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
-          .catchErrors("indexSettingsErrors")
-          .showGlobalSpinner()
-          .applyToScope("initialIndexSettings");
+        var promise2 = mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
+            .catchErrors("indexSettingsErrors")
+            .applyToScope("initialIndexSettings")
+            .getPromise();
+
+        queries.push(promise2);
       }
+
+      var promise3 = $q.all(queries);
+      mnPromiseHelper(vm, promise3)
+        .showGlobalSpinner()
+        .showGlobalSuccess("Settings saved successfully!", 4000);
     }
     function saveVisualInternalSettings() {
       if (vm.clusterSettingsLoading) {

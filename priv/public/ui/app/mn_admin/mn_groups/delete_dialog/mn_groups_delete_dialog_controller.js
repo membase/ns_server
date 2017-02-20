@@ -20,7 +20,8 @@
         .showGlobalSpinner()
         .catchErrors()
         .closeFinally()
-        .reloadState();
+        .reloadState()
+        .showGlobalSuccess("Group deleted successfully!", 4000);
     }
   }
 })();

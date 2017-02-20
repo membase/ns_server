@@ -15,8 +15,8 @@
         .showGlobalSpinner()
         .closeFinally()
         .catchGlobalErrors()
-        .broadcast("reloadBucketsPoller");
+        .broadcast("reloadBucketsPoller")
+        .showGlobalSuccess("Bucket flushed successfully!", 4000);
     }
   }
 })();
-

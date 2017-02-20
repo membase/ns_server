@@ -111,7 +111,7 @@
       }
       function showGlobalSuccess(successMessage, timeout) {
         promise.then(function (resp) {
-          mnAlertsService.showAlertInPopup(successMessage || resp.data, 'success', timeout);
+          mnAlertsService.formatAndSetAlerts(successMessage || resp.data, 'success', timeout);
         });
         return this;
       }

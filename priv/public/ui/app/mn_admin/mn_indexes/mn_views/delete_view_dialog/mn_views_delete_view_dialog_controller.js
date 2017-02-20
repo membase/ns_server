@@ -23,7 +23,8 @@
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showGlobalSpinner()
         .closeFinally()
-        .broadcast("reloadViewsPoller");
+        .broadcast("reloadViewsPoller")
+        .showGlobalSuccess("View deleted successfully!", 4000);
     };
   }
 })();

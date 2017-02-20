@@ -44,7 +44,8 @@
       };
       mnPromiseHelper(vm, mnSettingsAutoFailoverService.saveAutoFailoverSettings(data))
         .showGlobalSpinner()
-        .catchErrors();
+        .catchErrors()
+        .showGlobalSuccess("Settings saved successfully!", 4000);
     };
   }
 })();
