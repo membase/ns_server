@@ -10,16 +10,7 @@
 
   function mnPromiseHelperFactory(mnAlertsService, mnHelper, $timeout, $rootScope) {
 
-    mnPromiseHelper.handleModalAction = handleModalAction;
-
     return mnPromiseHelper;
-
-    function handleModalAction($scope, promise, $uibModalInstance, vm) {
-      return mnPromiseHelper(vm || $scope, promise, $uibModalInstance)
-        .showErrorsSensitiveSpinner()
-        .closeFinally()
-        .reloadState();
-    }
 
     function mnPromiseHelper(scope, promise, modalInstance) {
       var spinnerNameOrFunction = 'viewLoading';
