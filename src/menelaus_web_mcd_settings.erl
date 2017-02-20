@@ -39,6 +39,7 @@ supported_setting_names() ->
      {ssl_cipher_list, string},
      {client_cert_auth, string},
      {connection_idle_time, {int, 0, ?MAXINT}},
+     {privilege_debug, bool},
      {breakpad_enabled, bool},
      {breakpad_minidump_dir_path, string},
      {dedupe_nmvb_maps, bool}].

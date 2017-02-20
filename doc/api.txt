@@ -417,6 +417,7 @@ GET /pools/default/serverGroups =>
   (breakpad_minidump_dir_path: <string>)?
   (ssl_cipher_list: <string>)?
   (connection_idle_time: <number>)?
+  (privilege_debug: <bool>)?
 }
 
 

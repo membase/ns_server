@@ -244,6 +244,7 @@ default() ->
        {ssl_cipher_list, "HIGH"},
        {connection_idle_time, 0},
        {verbosity, 0},
+       {privilege_debug, false},
        {breakpad_enabled, true},
        %% Location that Breakpad should write minidumps upon memcached crash.
        {breakpad_minidump_dir_path, BreakpadMinidumpDir},
@@ -311,6 +312,7 @@ default() ->
         {ssl_minimum_protocol, {memcached_config_mgr, ssl_minimum_protocol, []}},
 
         {connection_idle_time, connection_idle_time},
+	{privilege_debug, privilege_debug},
 
         {breakpad,
          {[{enabled, breakpad_enabled},
