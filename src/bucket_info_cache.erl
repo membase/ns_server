@@ -216,24 +216,10 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
     Servers = lists:sort(Servers0),
     BucketUUID = proplists:get_value(uuid, BucketConfig),
 
-    NIs = lists:foldl(
-            fun(Node, Acc) ->
-                    HostName = menelaus_web:build_node_hostname(Config, Node,
-                                                                ?LOCALHOST_MARKER_STRING),
-
-                    Info0 = [{hostname, list_to_binary(HostName)},
-                             {ports, {build_ports(Node, Config)}}],
-
-                    Info = case ns_bucket:storage_mode(BucketConfig) of
-                               couchstore ->
-                                   Url = capi_utils:capi_bucket_url_bin(Node, Bucket, BucketUUID,
-                                                                        ?LOCALHOST_MARKER_STRING),
-                                   [{couchApiBase, Url} | Info0];
-                               _ ->
-                                   Info0
-                           end,
-                    [{Info} | Acc]
-            end, [], Servers),
+    NIs = [{[{couchApiBase, capi_utils:capi_bucket_url_bin(Node, Bucket, BucketUUID, ?LOCALHOST_MARKER_STRING)},
+             {hostname, list_to_binary(menelaus_web:build_node_hostname(Config, Node, ?LOCALHOST_MARKER_STRING))},
+             {ports, {build_ports(Node, Config)}}]}
+           || Node <- Servers],
 
     AllServers = Servers ++ ordsets:subtract(ns_cluster_membership:active_nodes(Config), Servers),
     NEIs = build_nodes_ext(AllServers, Config, []),
@@ -244,22 +230,15 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
 
     Caps = menelaus_web_buckets:build_bucket_capabilities(BucketConfig),
 
-    MaybeVBMapDDocs =
-        case lists:keyfind(type, 1, BucketConfig) of
-            {_, memcached} ->
-                Caps;
-            _ ->
-                {struct, VBMap} = ns_bucket:json_map_with_full_config(?LOCALHOST_MARKER_STRING,
-                                                                      BucketConfig, Config),
-                VBMapInfo = [{vBucketServerMap, {VBMap}} | Caps],
-                case ns_bucket:storage_mode(BucketConfig) of
-                    couchstore ->
-                        [{ddocs, {[{uri, <<"/pools/default/buckets/", BucketBin/binary, "/ddocs">>}]}}
-                         | VBMapInfo];
-                    _ ->
-                        VBMapInfo
-                end
-        end,
+    MaybeVBMap = case lists:keyfind(type, 1, BucketConfig) of
+                     {_, memcached} ->
+                         Caps;
+                     _ ->
+                         {struct, VBMap} = ns_bucket:json_map_with_full_config(?LOCALHOST_MARKER_STRING, BucketConfig, Config),
+                         [{ddocs, {[{uri, <<"/pools/default/buckets/", BucketBin/binary, "/ddocs">>}]}},
+                          {vBucketServerMap, {VBMap}}
+                         | Caps]
+                 end,
 
     %% NOTE: that we're reading compat mode not from config snapshot
     %% we're given. So we can serve older config with newer compat
@@ -285,7 +264,7 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
           {nodesExt, NEIs},
           {nodeLocator, ns_bucket:node_locator(BucketConfig)},
           {uuid, UUID}
-          | MaybeVBMapDDocs]},
+          | MaybeVBMap]},
     {ok, ejson:encode(J), BucketConfig}.
 
 compute_bucket_info(Bucket) ->
