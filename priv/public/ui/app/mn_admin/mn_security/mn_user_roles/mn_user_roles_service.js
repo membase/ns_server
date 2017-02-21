@@ -98,29 +98,7 @@
       if (!roles || !roles.length) {
         return $q.reject({roles: "at least one role should be added"});
       }
-      if (originalUser && originalUser.id === user.id) {
-        if (originalUser.type === user.type) {
-          return doAddUser(user, roles);
-        } else {
-          return doAddUser(user, roles).then(function () {
-            return deleteUser(originalUser);
-          });
-        }
-      } else {
-        return getUsers().then(function (users) {
-          if (_.find(users, {id: user.id})) {
-            return $q.reject({username: "username already exists"});
-          } else {
-            if (originalUser && originalUser.id !== user.id) {
-              return doAddUser(user, roles).then(function () {
-                return deleteUser(originalUser);
-              });
-            } else {
-              return doAddUser(user, roles);
-            }
-          }
-        });
-      }
+      return doAddUser(user, roles);
     }
 
     function getState() {

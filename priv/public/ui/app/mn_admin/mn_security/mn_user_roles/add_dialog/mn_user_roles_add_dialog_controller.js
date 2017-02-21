@@ -12,6 +12,7 @@
     vm.roles = [];
     vm.save = save;
     vm.onSelect = onSelect;
+    vm.isEditingMode = !!user;
 
     activate();
 
