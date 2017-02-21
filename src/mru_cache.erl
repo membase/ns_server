@@ -401,8 +401,154 @@ check_invariants(Operations) ->
               end
       end).
 
+
+-record(model_state, {items = [], recent_count = 0, stale_count = 0}).
+
+check_model(Operations) ->
+    run_check_cache(
+      Operations,
+      fun (Op, Result, ModelState) ->
+              ModelResult = model_op(Op, ModelState),
+              model_check_results(Result, ModelResult, ModelState)
+      end, #model_state{}).
+
+model_check_results({CacheResult, CacheState},
+                    {ModelResult, ModelStates}, LastState) ->
+    ValidResult = (CacheResult =:= ModelResult),
+
+    CacheStateAsModel = cache_state2model_state(CacheState),
+    ValidState = lists:member(CacheStateAsModel, ModelStates),
+
+    case ValidResult andalso ValidState of
+        true ->
+            {ok, CacheStateAsModel};
+        false ->
+            {failed, [{result, CacheResult},
+                      {last_state, LastState},
+                      {state, CacheState},
+                      {model_result, ModelResult},
+                      {model_states, ModelStates}]}
+    end.
+
+cache_state2model_state(#cache_state{items = Items,
+                                     recent_count = Recent,
+                                     stale_count = Stale}) ->
+    #model_state{items = Items,
+                 recent_count = Recent,
+                 stale_count = Stale}.
+
+model_op(flush, _) ->
+    model_result(ok, #model_state{});
+model_op({lookup, Key}, State) ->
+    case model_take(Key, State) of
+        false ->
+            model_result(false, State);
+        {ok, recent, Value, _} ->
+            model_result({ok, Value}, State);
+        {ok, stale, Value, NewState} ->
+            NewStates = model_put(Key, Value, recent, NewState),
+            model_result({ok, Value}, NewStates)
+    end;
+model_op({update, Key, Value}, State) ->
+    case model_take(Key, State) of
+        false ->
+            model_result(not_found, State);
+        {ok, Recency, _, NewState} ->
+            NewStates = model_put(Key, Value, Recency, NewState),
+            model_result(ok, NewStates)
+    end;
+model_op({add, Key, Value}, State) ->
+    {R, NewState} =
+        case model_take(Key, State) of
+            false ->
+                {true, State};
+            {ok, _, _, NewState0} ->
+                {false, NewState0}
+        end,
+    NewStates = model_put(Key, Value, recent, NewState),
+    model_result(R, NewStates);
+model_op({delete, Key}, State) ->
+    case model_take(Key, State) of
+        false ->
+            model_result(not_found, State);
+        {ok, _, _, NewState} ->
+            model_result(ok, NewState)
+    end.
+
+model_result(Result, #model_state{} = State) ->
+    model_result(Result, [State]);
+model_result(Result, States) when is_list(States) ->
+    {Result, States}.
+
+model_take(Key, #model_state{items = Items} = State) ->
+    case lists:keytake(Key, 1, Items) of
+        false ->
+            false;
+        {value, {_, {Recency, Value}}, NewItems} ->
+            NewState = State#model_state{items = NewItems},
+            {ok, Recency, Value, model_dec_count(Recency, NewState)}
+    end.
+
+model_put(Key, Value, Recency, #model_state{items = Items} = State) ->
+    NewItems = lists:merge([{Key, {Recency, Value}}], Items),
+    NewState = model_inc_count(Recency, State#model_state{items = NewItems}),
+    EvictStates = model_maybe_evict(NewState),
+    lists:usort([model_maybe_swap(S, Key) || S <- EvictStates]).
+
+model_maybe_swap(#model_state{recent_count = ?CACHE_SIZE,
+                              stale_count = 0,
+                              items = Items}, LastKey) ->
+    {value, {_, {recent, Value}}, RestItems} = lists:keytake(LastKey, 1, Items),
+    NewItems0 =
+        [{LastKey, {recent, Value}}] ++
+        [{K, {stale, V}} || {K, {_, V}} <- RestItems],
+    NewItems = lists:sort(NewItems0),
+
+    NewRecent = 1,
+    NewStale = ?CACHE_SIZE - 1,
+
+    #model_state{items = NewItems,
+                 recent_count = NewRecent,
+                 stale_count = NewStale};
+model_maybe_swap(State, _) ->
+    State.
+
+model_maybe_evict(#model_state{recent_count = Recent,
+                               stale_count = Stale,
+                               items = Items})
+  when Recent + Stale > ?CACHE_SIZE ->
+    StaleKeys = [K || {K, {stale, _}} <- Items],
+    lists:map(
+      fun (Key) ->
+              #model_state{recent_count = Recent,
+                           stale_count = Stale - 1,
+                           items = lists:keydelete(Key, 1, Items)}
+      end, StaleKeys);
+model_maybe_evict(State) ->
+    [State].
+
+model_dec_count(Recency, State) ->
+    model_update_count(Recency, -1, State).
+
+model_inc_count(Recency, State) ->
+    model_update_count(Recency, +1, State).
+
+model_update_count(recent, D, State) ->
+    do_model_update_count(#model_state.recent_count, D, State);
+model_update_count(stale, D, State) ->
+    do_model_update_count(#model_state.stale_count, D, State).
+
+do_model_update_count(N, D, State) ->
+    V = element(N, State),
+    setelement(N, State, V + D).
+
 %% triq properties
 prop_invariants_() ->
     {?FORALL(Ops, ops(), check_invariants(Ops) =:= true),
      [{iters, 1000},
       {diag, fun check_invariants/1}]}.
+
+prop_sequential_() ->
+    {?FORALL(Ops, ops(), check_model(Ops) =:= true),
+     [{iters, 1000},
+      {diag, fun check_model/1}]}.
