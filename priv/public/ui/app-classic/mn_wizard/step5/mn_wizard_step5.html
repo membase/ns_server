@@ -28,9 +28,6 @@
       <div ng-show="wizardStep5Ctl.form.password.$error.minlength">
         A password of at least six characters is required
       </div>
-      <div ng-show="wizardStep5Ctl.form.password.$error.maxlength || wizardStep5Ctl.form.username.$error.maxlength">
-        Maximum 24 characters exceeded
-      </div>
       <div ng-show="wizardStep5Ctl.form.username.$error.required">
         Username is required
       </div>
@@ -46,7 +43,6 @@
         class="inp"
         value="Administrator"
         id="secure-username"
-        ng-maxlength="24"
         ng-model="wizardStep5Ctl.user.username"
         required>
     </div>
@@ -59,7 +55,6 @@
         class="inp focusme"
         id="secure-password"
         ng-minlength="6"
-        ng-maxlength="24"
         required
         mn-autocomplete-off
         mn-focus="wizardStep5Ctl.focusMe">
@@ -71,7 +66,6 @@
         name="passwordVerify"
         class="inp"
         id="secure-password-verify"
-        maxlength="24"
         mn-autocomplete-off
         ng-model="wizardStep5Ctl.user.verifyPassword"/>
     </div>
