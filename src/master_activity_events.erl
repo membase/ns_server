@@ -55,7 +55,8 @@
          note_dcp_add_stream_response/7,
          note_dcp_close_stream_response/7,
          note_dcp_set_vbucket_state/4,
-         note_set_service_map/2
+         note_set_service_map/2,
+         note_autofailover_node_state_change/4
         ]).
 
 -export([stream_events/2]).
@@ -190,6 +191,10 @@ note_dcp_set_vbucket_state(Bucket, ConnName, VBucket, State) ->
 
 note_set_service_map(Service, Nodes) ->
     submit_cast({set_service_map, Service, Nodes}).
+
+note_autofailover_node_state_change(Node, PrevState, NewState, NewCounter) ->
+    submit_cast({autofailover_node_state_change, Node, PrevState, NewState,
+                 NewCounter}).
 
 start_link_timestamper() ->
     {ok, ns_pubsub:subscribe_link(master_activity_events_ingress, fun timestamper_body/2, [])}.
@@ -658,6 +663,14 @@ event_to_jsons({TS, set_service_map, Service, Nodes}) ->
                                    {ts, misc:time_to_epoch_int(TS)},
                                    {service, Service}])]];
 
+event_to_jsons({TS, autofailover_node_state_change, Node, PrevState,
+                NewState, NewCounter}) ->
+    [format_simple_plist_as_json([{type, autofailoverNodeStateChange},
+                                  {ts, misc:time_to_epoch_float(TS)},
+                                  {node, Node},
+                                  {prevState, PrevState},
+                                  {newState, NewState},
+                                  {newCounter, NewCounter}])];
 event_to_jsons(Event) ->
     ?log_warning("Got unknown kind of event: ~p", [Event]),
     [].

@@ -138,6 +138,21 @@ increment_down_state(NodeState, DownNodes, BigState, NodesChanged) ->
             NodeState
     end.
 
+log_master_activity(#node_state{state = _Same, down_counter = _SameCounter},
+                    #node_state{state = _Same, down_counter = _SameCounter}) ->
+    ok;
+log_master_activity(#node_state{state = Prev, name = {Node, _} = Name} = NodeState,
+                    #node_state{state = New, down_counter = NewCounter} = NewState) ->
+    case New of
+        up ->
+            false = Prev =:= up,
+            ?log_debug("Transitioned node ~p state ~p -> up", [Name, Prev]);
+        _ ->
+            ?log_debug("Incremented down state:~n~p~n->~p", [NodeState,
+                                                             NewState])
+    end,
+    master_activity_events:note_autofailover_node_state_change(Node, Prev,
+                                                               New, NewCounter).
 
 process_frame(Nodes, DownNodes, State, SvcConfig) ->
     SortedNodes = ordsets:from_list(Nodes),
@@ -150,15 +165,11 @@ process_frame(Nodes, DownNodes, State, SvcConfig) ->
     UpFun =
         fun (#node_state{state = removed}, Acc) -> Acc;
             (NodeState, Acc) ->
-                case NodeState#node_state.state of
-                    up -> ok;
-                    Prev ->
-                        ?log_debug("Transitioned node ~p state ~p -> up", [NodeState#node_state.name, Prev])
-                end,
-                [NodeState#node_state{state = up,
-                                      down_counter = 0,
-                                      mailed_down_warning = false}
-                 | Acc]
+                NewUpState = NodeState#node_state{state = up,
+                                                  down_counter = 0,
+                                                  mailed_down_warning = false},
+                log_master_activity(NodeState, NewUpState),
+                [NewUpState | Acc]
         end,
     UpStates0 = fold_matching_nodes(UpNodes, State#state.nodes_states, UpFun, []),
     UpStates = lists:reverse(UpStates0),
@@ -166,7 +177,7 @@ process_frame(Nodes, DownNodes, State, SvcConfig) ->
         fun (#node_state{state = removed}, Acc) -> Acc;
             (NodeState, Acc) ->
                 NewState = increment_down_state(NodeState, DownNodes, State, NodesChanged),
-                ?log_debug("Incremented down state:~n~p~n->~p", [NodeState, NewState]),
+                log_master_activity(NodeState, NewState),
                 [NewState | Acc]
         end,
     DownStates0 = fold_matching_nodes(DownNodes, State#state.nodes_states, DownFun, []),
