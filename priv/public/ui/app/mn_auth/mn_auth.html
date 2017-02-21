@@ -40,14 +40,12 @@
              name="username"
              placeholder="Username"
              required
-             ng-maxlength="24"
              mn-focus>
           <div
              ng-messages="loginForm.username.$error"
              ng-show="loginForm.username.$dirty"
              class="error error-field">
             <div ng-message="required">Username is required.</div>
-            <div ng-message="maxlength">Username must not exceed 24 characters.</div>
           </div>
         </div>
 
@@ -61,7 +59,6 @@
              ng-model-options="{updateOn: 'default'}"
              name="password"
              placeholder="Password"
-             ng-maxlength="24"
              required
              mn-autocomplete-off>
           <div
@@ -69,7 +66,6 @@
              ng-show="loginForm.password.$dirty"
              class="error error-field">
             <div ng-message="required">Password is required.</div>
-            <div ng-message="maxlength">Password must not exceed 24 characters.</div>
           </div>
         </div>
       </div>

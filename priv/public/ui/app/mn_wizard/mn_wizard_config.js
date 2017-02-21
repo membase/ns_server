@@ -26,7 +26,6 @@
     'mnAboutDialog',
     'mnBucketsDetailsDialogService',
     'mnMinlength',
-    'mnMaxlength',
     'mnEqual'
   ]).config(mnWizardConfig);
 
