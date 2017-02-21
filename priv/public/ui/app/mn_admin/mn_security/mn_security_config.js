@@ -35,7 +35,6 @@
         templateUrl: "app/mn_admin/mn_security/mn_user_roles/mn_user_roles.html",
         data: {
           compat: "atLeast45",
-          ldap: true,
           enterprise: true
         }
       })

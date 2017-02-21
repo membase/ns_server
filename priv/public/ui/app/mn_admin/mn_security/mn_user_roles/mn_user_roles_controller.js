@@ -15,7 +15,7 @@
     ])
     .controller("mnUserRolesController", mnUserRolesController);
 
-  function mnUserRolesController($scope, $uibModal, mnLdapService, mnPromiseHelper, mnUserRolesService, mnPoller, mnHelper) {
+  function mnUserRolesController($scope, $uibModal, mnLdapService, mnPromiseHelper, mnUserRolesService, mnPoller, mnHelper, poolDefault) {
     var vm = this;
     vm.addUser = addUser;
     vm.deleteUser = deleteUser;
@@ -25,6 +25,7 @@
     vm.toggleSaslauthdAuth = toggleSaslauthdAuth;
     vm.getRoleFromRoles = mnUserRolesService.getRoleFromRoles;
     vm.rolesFilter = rolesFilter;
+    vm.isLdapEnabled = poolDefault.ldapEnabled;
 
     activate();
 
@@ -35,9 +36,11 @@
     function activate() {
       mnHelper.initializeDetailsHashObserver(vm, 'openedUsers', 'app.admin.security.userRoles');
 
-      mnPromiseHelper(vm, mnLdapService.getSaslauthdAuth())
-        .applyToScope("saslauthdAuth")
-        .showSpinner("saslauthdAuthLoading");
+      if (poolDefault.ldapEnabled) {
+        mnPromiseHelper(vm, mnLdapService.getSaslauthdAuth())
+          .applyToScope("saslauthdAuth")
+          .showSpinner("saslauthdAuthLoading");
+      }
 
       mnPromiseHelper(vm, mnUserRolesService.getRoles())
         .applyToScope(function (roles) {
@@ -67,7 +70,8 @@
         templateUrl: 'app/mn_admin/mn_security/mn_user_roles/add_dialog/mn_user_roles_add_dialog.html',
         controller: 'mnUserRolesAddDialogController as userRolesAddDialogCtl',
         resolve: {
-          user: mnHelper.wrapInFunction(user)
+          user: mnHelper.wrapInFunction(user),
+          isLdapEnabled: mnHelper.wrapInFunction(poolDefault.ldapEnabled)
         }
       });
     }
@@ -76,7 +80,8 @@
         templateUrl: 'app/mn_admin/mn_security/mn_user_roles/add_dialog/mn_user_roles_add_dialog.html',
         controller: 'mnUserRolesAddDialogController as userRolesAddDialogCtl',
         resolve: {
-          user: mnHelper.wrapInFunction(undefined)
+          user: mnHelper.wrapInFunction(undefined),
+          isLdapEnabled: mnHelper.wrapInFunction(poolDefault.ldapEnabled)
         }
       });
     }

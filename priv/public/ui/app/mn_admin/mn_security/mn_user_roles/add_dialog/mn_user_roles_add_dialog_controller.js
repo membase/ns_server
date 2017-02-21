@@ -5,14 +5,15 @@
     .module("mnUserRoles")
     .controller("mnUserRolesAddDialogController", mnUserRolesAddDialogController);
 
-  function mnUserRolesAddDialogController($scope, mnUserRolesService, $uibModalInstance, mnPromiseHelper, user) {
+  function mnUserRolesAddDialogController($scope, mnUserRolesService, $uibModalInstance, mnPromiseHelper, user, isLdapEnabled) {
     var vm = this;
-    vm.user = _.clone(user) || {type: "saslauthd"};
+    vm.user = _.clone(user) || {type: isLdapEnabled ? "saslauthd" : "builtin"};
     vm.userID = vm.user.id || 'New';
     vm.roles = [];
     vm.save = save;
     vm.onSelect = onSelect;
     vm.isEditingMode = !!user;
+    vm.isLdapEnabled = isLdapEnabled;
 
     activate();
 

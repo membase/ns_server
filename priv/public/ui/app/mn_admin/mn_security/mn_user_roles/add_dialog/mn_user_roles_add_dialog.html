@@ -13,23 +13,25 @@
         {{error}}
       </div>
       <div class="formrow checkbox-list">
-        <h4>Authentication Source:</h4>
-        <input
-           type="radio"
-           name="type"
-           value="saslauthd"
-           ng-disabled="userRolesAddDialogCtl.isEditingMode"
-           id="user-type-ldap"
-           ng-model="userRolesAddDialogCtl.user.type">
-        <label for="user-type-ldap">LDAP</label>
-        <input
-           type="radio"
-           name="type"
-           value="builtin"
-           ng-disabled="userRolesAddDialogCtl.isEditingMode"
-           id="user-type-builtin"
-           ng-model="userRolesAddDialogCtl.user.type">
-        <label for="user-type-builtin">Couchbase</label>
+        <div ng-if="userRolesAddDialogCtl.isLdapEnabled">
+          <h4>Authentication Source:</h4>
+          <input
+             type="radio"
+             name="type"
+             value="saslauthd"
+             ng-disabled="userRolesAddDialogCtl.isEditingMode"
+             id="user-type-ldap"
+             ng-model="userRolesAddDialogCtl.user.type">
+          <label for="user-type-ldap">LDAP</label>
+          <input
+             type="radio"
+             name="type"
+             value="builtin"
+             ng-disabled="userRolesAddDialogCtl.isEditingMode"
+             id="user-type-builtin"
+             ng-model="userRolesAddDialogCtl.user.type">
+          <label for="user-type-builtin">Couchbase</label>
+        </div>
       </div>
       <div class="formrow">
         <label for="name_inp">Username:</label>

@@ -177,10 +177,10 @@
          ng-show="rbac.cluster.admin.security.read && (pools.isEnterprise || rbac.cluster.admin.security.write)">
         <a
            ui-sref="app.admin.security.userRoles"
-           ng-show="pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45">Security</a>
+           ng-show="pools.isEnterprise && poolDefault.compat.atLeast45">Security</a>
         <a
            ui-sref="app.admin.security.rootCertificate"
-           ng-show="pools.isEnterprise && !(adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.write === false">Security</a>
+           ng-show="pools.isEnterprise && !poolDefault.compat.atLeast45 && rbac.cluster.admin.security.write === false">Security</a>
       </span>
       <a
          mn-tab="settings"

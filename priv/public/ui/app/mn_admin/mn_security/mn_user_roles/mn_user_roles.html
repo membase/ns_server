@@ -1,6 +1,6 @@
 <div mn-spinner="!userRolesCtl.state || userRolesCtl.viewLoading" min-height="300px">
-  <div class="interim row">
-    <span>
+  <div class="interim row" ng-class="{'flex-right': !userRolesCtl.isLdapEnabled}">
+    <span ng-if="userRolesCtl.isLdapEnabled">
       <span
          class="icon"
          ng-class="{
