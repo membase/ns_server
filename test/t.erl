@@ -100,20 +100,52 @@ run_eunit_tests(Modules) ->
             FailedTests
     end.
 
+-define(TRIQ_ITERS, 100).
+
 run_triq_tests(Modules) ->
     lists:flatmap(fun run_module_triq_tests/1, Modules).
 
 run_module_triq_tests(Module) ->
     lists:filter(
-      fun ({M, F, _} = MFA) ->
+      fun (MFA) ->
               io:format("Testing ~s~n", [format_mfa(MFA)]),
-              case triq:check(M:F()) of
-                  true ->
-                      false;
-                  _ ->
-                      true
-              end
+              check_triq_prop(MFA) =/= ok
       end, get_module_triq_tests(Module)).
+
+check_triq_prop({M, F, _}) ->
+    {Prop, Options} =
+        case is_extended_triq_prop(F) of
+            true ->
+                M:F();
+            false ->
+                {M:F(), []}
+        end,
+
+    do_check_triq_prop(Prop, Options).
+
+do_check_triq_prop(Prop, Options) ->
+    Iters = proplists:get_value(iters, Options, ?TRIQ_ITERS),
+
+    case triq:check(Prop, Iters) of
+        true ->
+            ok;
+        _ ->
+            [CounterExample|_] = triq:counterexample(),
+            triq_prop_diag(CounterExample, Options),
+            failed
+    end.
+
+triq_prop_diag(CounterExample, Options) ->
+    case lists:keyfind(diag, 1, Options) of
+        false ->
+            ok;
+        {diag, DiagFun} ->
+            Diag = DiagFun(CounterExample),
+            io:format("~nExtra diagnostics:~n~n~p~n~n", [Diag])
+    end.
+
+is_extended_triq_prop(Name) ->
+    lists:suffix("_", atom_to_list(Name)).
 
 get_module_triq_tests(Module) ->
     Exports = Module:module_info(exports),
