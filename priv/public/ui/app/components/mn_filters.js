@@ -136,6 +136,10 @@
       });
     };
   }
+  function addNodeCount(perNode) {
+    var serversCount = (_.keys(perNode) || []).length;
+    return serversCount + " " + (serversCount === 1 ? 'node' : 'nodes');
+  }
   function formatProgressMessage() {
     return function (task) {
       switch (task.type) {
@@ -152,10 +156,10 @@
       case "orphanBucket":
         return "orphan bucket: " + task.bucket;
       case "clusterLogsCollection":
-        var serversCount = (_.keys(task.perNode) || []).length;
-        return "collecting logs from " + serversCount + " " + (serversCount === 1 ? 'node' : 'nodes');
+        return "collecting logs from " + addNodeCount(task.perNode);
       case "rebalance":
-        return (task.subtype == 'gracefulFailover') ? "failing over 1 node" : "rebalance";
+        var serversCount = (_.keys(task.perNode) || []).length;
+        return (task.subtype == 'gracefulFailover') ? "failing over 1 node" : ("rebalancing " + addNodeCount(task.perNode));
       }
     };
   }
