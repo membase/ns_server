@@ -7,24 +7,22 @@
       <div ng-show="!serversFailOverDialogCtl.status.down && !serversFailOverDialogCtl.status.dataless">
         <h3>Failover Options</h3>
         <div class="formrow checkbox-list">
-          <label class="checkbox">
-            <input
-               type="radio"
-               name="failOver"
-               ng-model="serversFailOverDialogCtl.status.failOver"
-               value="startGracefulFailover"
-               ng-disabled="!serversFailOverDialogCtl.status.gracefulFailoverPossible">
-            Graceful Failover (default)
-          </label>
+          <input
+             id="for_graceful_failover"
+             type="radio"
+             name="failOver"
+             ng-model="serversFailOverDialogCtl.status.failOver"
+             value="startGracefulFailover"
+             ng-disabled="!serversFailOverDialogCtl.status.gracefulFailoverPossible">
+          <label for="for_graceful_failover">Graceful Failover (default)</label>
           <br>
-          <label class="checkbox">
-            <input
-               type="radio"
-               name="failOver"
-               ng-model="serversFailOverDialogCtl.status.failOver"
-               value="failOver">
-            Hard Failover
-          </label>
+          <input
+             id="for_hard_failover"
+             type="radio"
+             name="failOver"
+             ng-model="serversFailOverDialogCtl.status.failOver"
+             value="failOver">
+          <label for="for_hard_failover">Hard Failover</label>
         </div>
         <div>
           <p>If you use hard failover option on a functioning node it may result in data loss. This is because failover will immediately remove the node from the cluster and any data that has not yet been replicated to other nodes may be permanently lost if it had not been persisted to disk.</p>
