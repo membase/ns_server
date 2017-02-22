@@ -4,7 +4,7 @@
 
 -export([start/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
-         restart_xdcr_proxy/0, restart_fts/0, sync/0, create_erl_node_spec/4,
+         restart_xdcr_proxy/0, sync/0, create_erl_node_spec/4,
          create_goxdcr_upgrade_spec/1, shutdown_ports/0]).
 
 -export([run_cbsasladm/1]).
@@ -62,10 +62,6 @@ restart_xdcr_proxy() ->
         Error ->
             Error
     end.
-
-restart_fts() ->
-    {ok, _} = restart_port_by_name(fts),
-    ok.
 
 restart_port_by_name(Name) ->
     ns_ports_manager:restart_port_by_name(ns_server:get_babysitter_node(), Name).
