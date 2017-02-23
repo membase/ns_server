@@ -13,8 +13,14 @@
 
   function mnGsiController($scope, mnGsiService, mnHelper, mnPoller) {
     var vm = this;
+    vm.generateIndexId = generateIndexId;
 
     activate();
+
+    function generateIndexId(row) {
+      return row.id + (row.hosts ? row.hosts.join() : "");
+    }
+
 
     function activate() {
       mnHelper.initializeDetailsHashObserver(vm, 'openedIndex', 'app.admin.indexes.gsi');

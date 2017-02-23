@@ -36,18 +36,18 @@
     </thead>
     <tbody
        ng-if="gsiCtl.state.indexes.length"
-       ng-repeat="row in gsiCtl.state.indexes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by row.id">
+       ng-repeat="row in gsiCtl.state.indexes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by gsiCtl.generateIndexId(row)">
       <tr
          class="has-hover"
          ng-class="{
-                 'grayblue-5': gsiCtl.isDetailsOpened(row.id),
-                 'no-stroke': gsiCtl.isDetailsOpened(row.id)
+                 'grayblue-5': gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row)),
+                 'no-stroke': gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row))
                  }"
-         ng-click="gsiCtl.toggleDetails(row.id)">
+         ng-click="gsiCtl.toggleDetails(gsiCtl.generateIndexId(row))">
         <td
            class="break-all max-width-4"
            title="{{row.bucket}}">
-          <span ng-class="{closed:!gsiCtl.isDetailsOpened(row.id)}">{{row.bucket}}</span>
+          <span ng-class="{closed:!gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row))}">{{row.bucket}}</span>
         </td>
         <td
            class="text-center"
@@ -79,7 +79,7 @@
         <td
            colspan="6"
            class="grayblue-5"
-           ng-if="gsiCtl.isDetailsOpened(row.id)">
+           ng-if="gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row))">
           <div class="interim content-box row flex-left">
             <span class="column">
               <span class="semi-bold">Definition:</span>
