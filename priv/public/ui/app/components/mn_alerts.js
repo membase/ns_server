@@ -55,14 +55,13 @@
         id: id
       };
       var findedItem = _.find(alerts, item);
-
       if (findedItem) {
-        findedItem.timeout && $timeout.cancel(findedItem.timeout);
-        item = findedItem;
-      } else {
-        alerts.push(item);
-        alertsHistory.push(item);
+        removeItem(findedItem);
       }
+
+      alerts.push(item);
+      alertsHistory.push(item);
+
       if (timeout) {
         item.timeout = startTimer(item, timeout);
       }

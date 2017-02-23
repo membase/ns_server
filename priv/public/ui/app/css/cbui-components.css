@@ -952,22 +952,25 @@ section.status-red .cbui-tablerow-statusmsg {
 .animate-alert.ng-move,
 .animate-alert.ng-enter,
 .animate-alert.ng-leave {
-  transition: opacity ease .5s;
+  transition: all ease .5s;
 }
 
 .animate-alert.ng-leave.ng-leave-active,
 .animate-alert.ng-move,
 .animate-alert.ng-enter {
   opacity: 0;
+  height: 0rem;
 }
 
 .animate-alert.ng-leave,
 .animate-alert.ng-move.ng-move-active,
 .animate-alert.ng-enter.ng-enter-active {
   opacity: 1;
+  height: 2.5rem;
 }
 
 .alert {
+  overflow: hidden;
   text-align:center;
   line-height: 2.5rem;
   height: 2.5rem;
