@@ -618,7 +618,7 @@ fts_spec(Config) ->
             {ok, FTSMemoryQuota} = ns_storage_conf:get_memory_quota(Config, fts),
             Options = "startCheckServer=skip," ++
                       "slowQueryLogTimeout=5s," ++
-                      "defaultMaxPartitionsPerPIndex=32," ++
+                      "defaultMaxPartitionsPerPIndex=171," ++
                       "bleveMaxResultWindow=10000," ++
                       "failoverAssignAllPrimaries=false," ++
                       "hideUI=true," ++
