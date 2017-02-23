@@ -54,7 +54,14 @@
         msg: message,
         id: id
       };
-      var findedItem = _.find(alerts, item);
+
+      //in case we get alert with the same message
+      //but different id find and remove it
+      var findedItem = _.find(alerts, {
+        type: type,
+        msg: message
+      });
+
       if (findedItem) {
         removeItem(findedItem);
       }
