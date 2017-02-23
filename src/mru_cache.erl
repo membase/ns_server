@@ -239,17 +239,71 @@ swap_tables(Name, Recent, Stale, {Key, _} = LastItem) ->
     update_item(Name, tables, {NewRecent, NewStale}).
 
 %% locking stuff
-take_lock(Name, Lock) ->
-    case ets:insert_new(Name, {Lock, {}}) of
+-define(LOCK_ITERS_FAST, 10).
+-define(LOCK_INVALIDATE_ITERS, 100).
+
+take_lock(Name, LockName) ->
+    Lock = {LockName, {make_ref(), self()}},
+    case take_lock_fast(Name, Lock, ?LOCK_ITERS_FAST) of
+        ok ->
+            ok;
+        failed ->
+            take_lock_slow(Name, LockName, Lock)
+    end.
+
+take_lock_fast(_Name, _Lock, 0) ->
+    failed;
+take_lock_fast(Name, Lock, Iters) ->
+    case ets:insert_new(Name, Lock) of
+        true ->
+            ok;
+        false ->
+            take_lock_fast(Name, Lock, Iters - 1)
+    end.
+
+
+take_lock_slow(Name, LockName, Lock) ->
+    Iters = ?LOCK_INVALIDATE_ITERS + random:uniform(?LOCK_INVALIDATE_ITERS),
+    MaybeCurrentLock = get_one(Name, LockName),
+    case take_lock_slow_loop(Name, Lock, Iters) of
+        ok ->
+            ok;
+        failed ->
+            try_invalidate_lock(Name, LockName, MaybeCurrentLock),
+            take_lock_slow(Name, LockName, Lock)
+    end.
+
+try_invalidate_lock(_, _, false) ->
+    ok;
+try_invalidate_lock(Name, LockName, MaybeLockValue) ->
+    case get_one(Name, LockName) =:= MaybeLockValue of
+        true ->
+            {ok, {_, Pid} = LockValue} = MaybeLockValue,
+
+            case is_process_alive(Pid) of
+                true ->
+                    ok;
+                false ->
+                    %% this only succeeds if the object stays the same
+                    ets:delete_object(Name, {LockName, LockValue})
+            end;
+        false ->
+            ok
+    end.
+
+take_lock_slow_loop(_, _, 0) ->
+    failed;
+take_lock_slow_loop(Name, Lock, Iters) ->
+    case ets:insert_new(Name, Lock) of
         true ->
             ok;
         false ->
             erlang:yield(),
-            take_lock(Name, Lock)
+            take_lock_slow_loop(Name, Lock, Iters - 1)
     end.
 
-put_lock(Name, Lock) ->
-    ets:delete(Name, Lock).
+put_lock(Name, LockName) ->
+    ets:delete(Name, LockName).
 
 with_item_lock(Name, Key, Body) ->
     with_lock(Name, {lock, Key}, Body).
