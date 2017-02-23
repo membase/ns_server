@@ -123,7 +123,7 @@
 
     }
 
-    function addUser(user, roles) {
+    function addUser(user, roles, isEditingMode) {
       if (!user || !user.id) {
         return $q.reject({username: "username is required"});
       }
@@ -131,7 +131,18 @@
       if (!roles || !roles.length) {
         return $q.reject({roles: "at least one role should be added"});
       }
-      return doAddUser(user, roles);
+      if (isEditingMode) {
+        return doAddUser(user, roles);
+      } else {
+        return getUsers().then(function (users) {
+          if (_.find(users, {id: user.id, type: user.type})) {
+            return $q.reject({username: "username already exists"});
+          } else {
+            return doAddUser(user, roles);
+          }
+        });
+      }
+
     }
 
     function getState() {

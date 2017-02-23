@@ -98,7 +98,7 @@
       if (vm.form.$invalid) {
         return;
       }
-      mnPromiseHelper(vm, mnUserRolesService.addUser(vm.user, _.clone(vm.selectedRoles), user), $uibModalInstance)
+      mnPromiseHelper(vm, mnUserRolesService.addUser(vm.user, _.clone(vm.selectedRoles), user), $uibModalInstance, vm.isEditingMode)
         .showGlobalSpinner()
         .catchErrors()
         .broadcast("reloadRolesPoller")
