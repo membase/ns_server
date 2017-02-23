@@ -23,11 +23,16 @@
            mn-drag-and-drop
            base-corner-right="true"
            class="tasks-progress panel dialog-small enable-ng-animation"
-           ng-if="rbac.cluster.tasks.read && !adminCtl.isProgressBarClosed && adminCtl.filterTasks(adminCtl.tasks.running).length">
+           ng-if="rbac.cluster.tasks.read && !adminCtl.isProgressBarClosed">
           <div class="close-tasks">
             <span ng-click="adminCtl.toggleProgressBar()">X</span>
           </div>
           <div class="panel-content">
+            <div
+               class="text-small margin-bottom1"
+               ng-show="!adminCtl.filterTasks(adminCtl.tasks.running).length">
+              No active processes to display
+            </div>
             <div ng-repeat="task in adminCtl.filterTasks(adminCtl.tasks.running)">
               <div class="text-small text-left">
                 {{task | formatProgressMessage}}

@@ -138,7 +138,9 @@
           $rootScope.$broadcast("rebalanceFinished");
         }
 
-        if (!filterTasks(tasks.running).length) {
+        if (!vm.isProgressBarClosed &&
+            !filterTasks(tasks.running).length &&
+            prevTask && filterTasks(prevTask.running).length) {
           vm.isProgressBarClosed = true;
         }
 
