@@ -159,7 +159,7 @@ img {
 /* EMBEDDED FONTS ---------------------------------------------------------------- */
 
 /* Opens Sans (http://www.fontsquirrel.com/license/open-sans)
-   Font Awesome (https://fortawesome.github.io/Font-Awesome/license/)    */
+   Font Awesome (http://fontawesome.io/license/) */
 
 /* Regular */
 
@@ -213,11 +213,21 @@ img {
 }
 
 /* icon font ---------------------------------------------------- */
-
 @font-face {
   font-family: 'FontAwesome';
-  src: url("fonts/Font-Awesome.woff?v=3.2.1") format('woff'),
-        url("fonts/Font-Awesome.ttf?v=3.2.1") format('truetype');
+  src:  url('fonts/fontawesome-webfont.woff2?v=4.7.0') format('woff2'),
+        url('fonts/fontawesome-webfont.woff?v=4.7.0') format('woff'),
+        url('fonts/fontawesome-webfont.ttf?v=4.7.0') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+.icon {
+  display: inline-block;
+  font: normal normal normal 18px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Typography ------------------------------ */
@@ -250,14 +260,6 @@ button {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.icon {
-  display: inline-block;
-  font: normal normal normal 18px/1 FontAwesome;
-  font-size: inherit;
-  text-rendering: auto;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
 button.icon {
     min-width: auto;
     padding: 0 1rem;
