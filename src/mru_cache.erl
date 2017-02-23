@@ -289,6 +289,24 @@ value() ->
 ops() ->
     list(op()).
 
+ops_conc() ->
+    ?LET(Ops, ops(), chunk(Ops, 5)).
+
+chunk([], _) ->
+    [];
+chunk(Ops, MaxSize) ->
+    ?LET(ChunkSize, int(1, MaxSize),
+         begin
+             {Chunk, Rest} =
+                 try
+                     lists:split(ChunkSize, Ops)
+                 catch
+                     error:badarg ->
+                         {Ops, []}
+                 end,
+             [{concurrent, Chunk} | chunk(Rest, MaxSize)]
+         end).
+
 op() ->
     frequency([{1, op_flush()},
                {20, ?LET(Key, key(),
@@ -326,12 +344,34 @@ get_cache_state() ->
                  recent_count = RecentCount,
                  stale_count = StaleCount}.
 
-dispatch_op(Op) when is_atom(Op) ->
-    dispatch_op({Op});
-dispatch_op(Op) when is_tuple(Op) ->
-    [F | Args] = tuple_to_list(Op),
-    R = erlang:apply(mru_cache, F, [?CACHE | Args]),
+dispatch_op({concurrent, Ops}) ->
+    Results =
+        async:with_many(
+          fun (Op) ->
+                  receive race -> ok end,
+                  {Op, eval_mfa(op_to_mfa(Op))}
+          end, Ops,
+          fun (Asyncs) ->
+                  lists:foreach(
+                    fun (A) ->
+                            async:send(A, race)
+                    end, Asyncs),
+                    Results = async:wait_many(Asyncs),
+                    [R || {_, R} <- Results]
+          end),
+    {lists:sort(Results), get_cache_state()};
+dispatch_op(Op) ->
+    R = eval_mfa(op_to_mfa(Op)),
     {R, get_cache_state()}.
+
+eval_mfa({M, F, A}) ->
+    erlang:apply(M, F, A).
+
+op_to_mfa(Op) when is_atom(Op) ->
+    op_to_mfa({Op});
+op_to_mfa(Op) when is_tuple(Op) ->
+    [F | Args] = tuple_to_list(Op),
+    {mru_cache, F, [?CACHE | Args]}.
 
 run_check_cache(Operations, Check) ->
     run_check_cache(Operations,
@@ -552,3 +592,7 @@ prop_sequential_() ->
     {?FORALL(Ops, ops(), check_model(Ops) =:= true),
      [{iters, 1000},
       {diag, fun check_model/1}]}.
+
+prop_invariants_concurrent_() ->
+    {?FORALL(Ops, ops_conc(), check_invariants(Ops)),
+     [{iters, 1000}]}.
