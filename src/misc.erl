@@ -36,6 +36,8 @@
 
 -include("ns_common.hrl").
 -include_lib("kernel/include/file.hrl").
+
+-include("triq.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -compile(export_all).
@@ -598,6 +600,8 @@ uniqc_test() ->
     [] = uniqc([]),
     [{c, 1}] = uniqc([c]).
 
+unique(Xs) ->
+    [X || {X, _} <- uniqc(Xs)].
 
 keygroup(Index, List) ->
     keygroup(Index, List, []).
@@ -1881,3 +1885,42 @@ ejson_encode_pretty(Json) ->
                 sjson:encode_json([{compact, false},
                                    {strict, false}]),
                 pipes:collect())).
+
+upermutations(Xs) ->
+    do_upermutations(lists:sort(Xs)).
+
+do_upermutations([]) ->
+    [[]];
+do_upermutations(Xs) ->
+    [[X|Ys] || X <- unique(Xs), Ys <- do_upermutations(Xs -- [X])].
+
+prop_upermutations() ->
+    ?FORALL(Xs, resize(10, list(int(0,5))),
+            begin
+                Perms = upermutations(Xs),
+
+                NoDups = (lists:usort(Perms) =:= Perms),
+
+                XsSorted = lists:sort(Xs),
+                ProperPerms =
+                    lists:all(
+                      fun (P) ->
+                              lists:sort(P) =:= XsSorted
+                      end, Perms),
+
+                N = length(Xs),
+                Counts = [C || {_, C} <- uniqc(XsSorted)],
+                ExpectedSize =
+                    fact(N) div lists:foldl(
+                                  fun (X, Y) -> X * Y end,
+                                  1,
+                                  lists:map(fun fact/1, Counts)),
+                ProperSize = (ExpectedSize =:= length(Perms)),
+
+                NoDups andalso ProperPerms andalso ProperSize
+            end).
+
+fact(0) ->
+    1;
+fact(N) ->
+    N * fact(N-1).

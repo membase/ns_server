@@ -452,22 +452,31 @@ check_model(Operations) ->
               model_check_results(Result, ModelResult, ModelState)
       end, #model_state{}).
 
-model_check_results({CacheResult, CacheState},
-                    {ModelResult, ModelStates}, LastState) ->
-    ValidResult = (CacheResult =:= ModelResult),
+model_check_results(CacheResult, ModelResult, LastState)
+  when is_tuple(ModelResult) ->
+    model_check_results(CacheResult, [ModelResult], LastState);
+model_check_results({CacheResult, CacheState}, ModelResults, LastState) ->
+    R = case lists:keyfind(CacheResult, 1, ModelResults) of
+            {_, ModelStates} ->
+                CacheStateAsModel = cache_state2model_state(CacheState),
+                case lists:member(CacheStateAsModel, ModelStates) of
+                    true ->
+                        {ok, CacheStateAsModel};
+                    false ->
+                        false
+                end;
+            false ->
+                false
+        end,
 
-    CacheStateAsModel = cache_state2model_state(CacheState),
-    ValidState = lists:member(CacheStateAsModel, ModelStates),
-
-    case ValidResult andalso ValidState of
-        true ->
-            {ok, CacheStateAsModel};
+    case R of
+        {ok, _} ->
+            R;
         false ->
             {failed, [{result, CacheResult},
                       {last_state, LastState},
                       {state, CacheState},
-                      {model_result, ModelResult},
-                      {model_states, ModelStates}]}
+                      {model_results, ModelResults}]}
     end.
 
 cache_state2model_state(#cache_state{items = Items,
@@ -477,9 +486,44 @@ cache_state2model_state(#cache_state{items = Items,
                  recent_count = Recent,
                  stale_count = Stale}.
 
-model_op(flush, _) ->
+model_ops([], States) ->
+    [{[], States}];
+model_ops([Op | Ops], States) ->
+    Results = [model_simple_op(Op, S) || S <- States],
+
+    Groupped =
+        lists:foldl(
+          fun ({OpR, OpStates}, [{OpR, PrevStates} | Rest]) ->
+                  [{OpR, lists:umerge(OpStates, PrevStates)} | Rest];
+              (P, Acc) ->
+                  [P | Acc]
+          end, [], lists:keysort(1, Results)),
+
+    lists:flatmap(
+      fun ({OpR, OpStates}) ->
+              [{[{Op, OpR} | RestR], RestStates} ||
+                  {RestR, RestStates} <- model_ops(Ops, OpStates)]
+      end, Groupped).
+
+model_op({concurrent, Ops}, State) ->
+    Results =
+        lists:foldl(
+          fun (Perm, Acc) ->
+                  PermResults0 = model_ops(Perm, [State]),
+                  PermResults = [{lists:sort(Rs), Ss} || {Rs, Ss} <- PermResults0],
+                  dict:merge(
+                    fun (_, X, Y) ->
+                            lists:umerge(X, Y)
+                    end, dict:from_list(PermResults), Acc)
+          end, dict:new(), misc:upermutations(Ops)),
+
+    dict:to_list(Results);
+model_op(Op, State) ->
+    model_simple_op(Op, State).
+
+model_simple_op(flush, _) ->
     model_result(ok, #model_state{});
-model_op({lookup, Key}, State) ->
+model_simple_op({lookup, Key}, State) ->
     case model_take(Key, State) of
         false ->
             model_result(false, State);
@@ -489,7 +533,7 @@ model_op({lookup, Key}, State) ->
             NewStates = model_put(Key, Value, recent, NewState),
             model_result({ok, Value}, NewStates)
     end;
-model_op({update, Key, Value}, State) ->
+model_simple_op({update, Key, Value}, State) ->
     case model_take(Key, State) of
         false ->
             model_result(not_found, State);
@@ -497,7 +541,7 @@ model_op({update, Key, Value}, State) ->
             NewStates = model_put(Key, Value, Recency, NewState),
             model_result(ok, NewStates)
     end;
-model_op({add, Key, Value}, State) ->
+model_simple_op({add, Key, Value}, State) ->
     {R, NewState} =
         case model_take(Key, State) of
             false ->
@@ -507,7 +551,7 @@ model_op({add, Key, Value}, State) ->
         end,
     NewStates = model_put(Key, Value, recent, NewState),
     model_result(R, NewStates);
-model_op({delete, Key}, State) ->
+model_simple_op({delete, Key}, State) ->
     case model_take(Key, State) of
         false ->
             model_result(not_found, State);
@@ -595,4 +639,8 @@ prop_sequential_() ->
 
 prop_invariants_concurrent_() ->
     {?FORALL(Ops, ops_conc(), check_invariants(Ops)),
+     [{iters, 1000}]}.
+
+prop_concurrent_() ->
+    {?FORALL(Ops, ops_conc(), check_model(Ops)),
      [{iters, 1000}]}.
