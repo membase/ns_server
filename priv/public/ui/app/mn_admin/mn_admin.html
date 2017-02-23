@@ -172,9 +172,26 @@
          ui-sref-active="currentNav"
          ui-sref="app.admin.servers.list">Servers</a>
       <a
+         mn-tab="buckets"
+         ui-sref="app.admin.buckets"
+         ui-sref-active="currentNav">Buckets</a>
+      <a
+         mn-tab="indexes"
+         ng-class="{currentNav: ('app.admin.indexes' | includedByState)}"
+         ui-sref="app.admin.indexes.gsi">
+        <span
+           ui-sref="app.admin.indexes.gsi"
+           ng-show="rbac.cluster.indexes.read">Indexes</span>
+        <span
+           ui-sref="app.admin.indexes.views.list"
+           ng-show="rbac.cluster.indexes.read === false">Indexes</span>
+      </a>
+      <a
          mn-tab="replications"
          ui-sref-active="currentNav"
-         ui-sref="app.admin.replications">XDCR</a>
+         ui-sref="app.admin.replications"
+         class="margin-bottom1">XDCR</a>
+
       <span
          mn-tab="security"
          ng-class="{currentNav: ('app.admin.security' | includedByState)}"
@@ -201,23 +218,6 @@
          ng-class="{currentNav: ('app.admin.logs' | includedByState)}"
          ng-show="rbac.cluster.logs.read">Logs</a>
 
-      <hr style="margin: 1rem 1rem 1rem 5rem;">
-
-      <a
-         mn-tab="buckets"
-         ui-sref="app.admin.buckets"
-         ui-sref-active="currentNav">Buckets</a>
-      <a
-         mn-tab="indexes"
-         ng-class="{currentNav: ('app.admin.indexes' | includedByState)}"
-         ui-sref="app.admin.indexes.gsi">
-        <span
-           ui-sref="app.admin.indexes.gsi"
-           ng-show="rbac.cluster.indexes.read">Indexes</span>
-        <span
-           ui-sref="app.admin.indexes.views.list"
-           ng-show="rbac.cluster.indexes.read === false">Indexes</span>
-      </a>
     </nav>
 
     <!-- all page content goes here -->

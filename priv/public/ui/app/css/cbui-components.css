@@ -320,23 +320,20 @@ nav.sub-nav a.selected:after {
 .nav-sidebar a {
   font-size: 1rem;
   display: block;
-  padding: .125rem 1rem .125rem .125rem;
+  padding: .25rem .75rem .25rem 0;
   text-align: right;
-  margin-top: 1px;
   white-space: nowrap;
+  border-right: 2px solid #fff;
 }
 
 .nav-sidebar a:hover {
-  background-color: #eceff2;
-}
-
-.nav-sidebar a:hover {
-  background-color: #eceff2;
+  border-right: 2px solid #d9e7f7;
 }
 
 .nav-sidebar a.currentNav,
 .nav-sidebar .currentNav a {
-  color: #a1a1a1;
+  border-right: 2px solid #d9e7f7;
+  color: #555;
 }
 
 /* cbui table row links ------------------------ */
