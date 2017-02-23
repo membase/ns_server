@@ -10,16 +10,15 @@
     ])
     .controller("mnResetPasswordDialogController", mnResetPasswordDialogController);
 
-  function mnResetPasswordDialogController($scope, mnResetPasswordDialogService, mnPromiseHelper, mnAuthService) {
+  function mnResetPasswordDialogController($scope, mnResetPasswordDialogService, mnPromiseHelper, mnAuthService, user) {
     var vm = this;
     vm.submit = submit;
-    vm.user = {};
+    vm.user = {
+      name: user.id
+    };
 
     function submit() {
-      var promise = mnAuthService.whoami().then(function (user) {
-        vm.user.name = user.id;
-        return mnResetPasswordDialogService.post(vm.user);
-      });
+      mnResetPasswordDialogService.post(vm.user);
 
       mnPromiseHelper(vm, promise)
         .showGlobalSpinner()

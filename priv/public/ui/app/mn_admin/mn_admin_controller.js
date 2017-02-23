@@ -36,7 +36,7 @@
 
     function showResetPasswordDialog() {
       vm.showUserDropdownMenu = false;
-      mnResetPasswordDialogService.showDialog();
+      mnResetPasswordDialogService.showDialog(whoami);
     }
 
     function runInternalSettingsDialog() {
