@@ -457,6 +457,8 @@ handle_change_password(Req) ->
             case menelaus_auth:get_identity(Req) of
                 {_, builtin} = Identity ->
                     handle_change_password_with_identity(Req, Identity);
+                {_, admin} = Identity ->
+                    handle_change_password_with_identity(Req, Identity);
                 _ ->
                     menelaus_util:reply_json(
                       Req, <<"Changing of password is not allowed for this user.">>, 404)
@@ -468,7 +470,7 @@ handle_change_password(Req) ->
 handle_change_password_with_identity(Req, Identity) ->
     menelaus_util:execute_if_validated(
       fun (Values) ->
-              case menelaus_users:change_password(Identity, proplists:get_value(password, Values)) of
+              case do_change_password(Identity, proplists:get_value(password, Values)) of
                   ok ->
                       ns_audit:password_change(Req, Identity),
                       menelaus_util:reply(Req, 200);
@@ -476,6 +478,11 @@ handle_change_password_with_identity(Req, Identity) ->
                       menelaus_util:reply_json(Req, <<"User was not found.">>, 404)
               end
       end, Req, validate_change_password(Req:parse_post())).
+
+do_change_password({_, builtin} = Identity, Password) ->
+    menelaus_users:change_password(Identity, Password);
+do_change_password({User, admin}, Password) ->
+    ns_config_auth:set_credentials(admin, User, Password).
 
 handle_settings_read_only_admin_name(Req) ->
     case ns_config_auth:get_user(ro_admin) of
