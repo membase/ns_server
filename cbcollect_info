@@ -241,11 +241,28 @@ class Task(object):
 class TaskRunner(object):
     default_name = "couchbase.log"
 
-    def __init__(self, verbosity=0, task_regexp=''):
+    def __init__(self, verbosity=0, task_regexp='', tmp_dir=None):
         self.files = {}
         self.verbosity = verbosity
         self.start_time = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
-        self.tmpdir = tempfile.mkdtemp()
+
+        # Depending on platform, mkdtemp() may act unpredictably if passed an empty string.
+        if not tmp_dir:
+            tmp_dir = None
+        else:
+            tmp_dir = os.path.abspath(os.path.expanduser(tmp_dir))
+
+        try:
+            self.tmpdir = tempfile.mkdtemp(dir=tmp_dir)
+        except OSError as e:
+           print "Could not use temporary dir {0}: {1}".format(tmp_dir, e)
+           sys.exit(1)
+
+        # If a dir wasn't passed by --tmp-dir, check if the env var was set and if we were able to use it
+        if not tmp_dir and os.getenv("TMPDIR") and os.path.split(self.tmpdir)[0] != os.getenv("TMPDIR"):
+                log("Could not use TMPDIR {0}".format(os.getenv("TMPDIR")))
+        log("Using temporary dir {0}".format(os.path.split(self.tmpdir)[0]))
+
         self.task_regexp = re.compile(task_regexp)
 
         AltExit.register(self.finalize)
@@ -1159,6 +1176,8 @@ def main():
     parser.add_option("--task-regexp", dest="task_regexp",
                       default="",
                       help="Run only tasks matching regexp. For debugging purposes only.")
+    parser.add_option("--tmp-dir", dest="tmp_dir", default=None,
+                      help="set the temp dir used while processing collected data. Overrides the TMPDIR env variable if set")
     options, args = parser.parse_args()
 
     if len(args) != 1:
@@ -1206,7 +1225,8 @@ def main():
         do_upload_and_exit(args[0], options.just_upload_into)
 
     runner = TaskRunner(verbosity=options.verbosity,
-                        task_regexp=options.task_regexp)
+                        task_regexp=options.task_regexp,
+                        tmp_dir=options.tmp_dir)
 
     if not options.product_only:
         runner.run_tasks(make_os_tasks())
