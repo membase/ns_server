@@ -344,6 +344,12 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
               | Suffix4]}.
 
 build_bucket_capabilities(BucketConfig) ->
+    MaybeXattr = case cluster_compat_mode:is_cluster_spock() of
+                     true ->
+                         [xattr];
+                     false ->
+                         []
+                 end,
     Caps =
         case ns_bucket:bucket_type(BucketConfig) of
             membase ->
@@ -355,12 +361,13 @@ build_bucket_capabilities(BucketConfig) ->
                            end,
                 case ns_bucket:storage_mode(BucketConfig) of
                     couchstore ->
-                        [cbhello, touch, couchapi, cccp, xdcrCheckpointing, nodesExt | MaybeDCP];
+                        MaybeXattr ++ MaybeDCP ++ [cbhello, touch, couchapi, cccp, xdcrCheckpointing,
+                                                   nodesExt];
                     ephemeral ->
-                        [cbhello, touch, cccp, xdcrCheckpointing, nodesExt | MaybeDCP]
+                        MaybeXattr ++ MaybeDCP ++ [cbhello, touch, cccp, xdcrCheckpointing, nodesExt]
                 end;
             memcached ->
-                [cbhello, nodesExt]
+                MaybeXattr ++ [cbhello, nodesExt]
         end,
 
     [{bucketCapabilitiesVer, ''},

@@ -331,7 +331,8 @@ default() ->
         {verbosity, verbosity},
         {audit_file, {"~s", [audit_file]}},
         {rbac_file, {"~s", [rbac_file]}},
-        {dedupe_nmvb_maps, dedupe_nmvb_maps}
+        {dedupe_nmvb_maps, dedupe_nmvb_maps},
+        {xattr_enabled, {memcached_config_mgr, is_enabled, [?SPOCK_VERSION_NUM]}}
        ]}},
 
      {memory_quota, KvQuota},
