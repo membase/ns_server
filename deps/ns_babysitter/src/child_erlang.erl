@@ -53,7 +53,7 @@ open_port_args() ->
                   "-kernel", "inet_dist_listen_min", "21100", "inet_dist_listen_max", "21299",
                   "error_logger", "false",
                   "-sasl", "sasl_error_logger", "false",
-                  "-nouser",
+                  "-user", "user_io",
                   "-run", "child_erlang", "child_start", "ns_bootstrap"]
         ++ get_ns_server_vm_extra_args() ++ ["--"],
     AllArgs = ErlangArgs ++ AppArgs,
@@ -83,18 +83,18 @@ child_start(Arg) ->
     end.
 
 do_child_start([ModuleToBootAsString]) ->
-    case erlang:pid_to_list(erlang:group_leader()) of
-        "<0.0.0>" ->
-            %% we're doing nouser. Without user io:format will
-            %% actually stuck, so we're making group_leader() be
-            %% standard_error so that at least io:format works
-            StdErr = erlang:whereis(standard_error),
-            {true, have_stderr} = {StdErr =/= undefined, have_stderr},
-            erlang:group_leader(StdErr, self()),
-            erlang:group_leader(StdErr, erlang:whereis(application_controller));
-        _ ->
-            ok
-    end,
+    %% erl can be started either with -nouser or with
+    %% -user user_io (which redirects outout to debug log)
+    %% in any case we want default io:format to print stuff
+    %% to console
+    %% so we overwrite group_leader from our user_io (or undefined) to
+    %% standard_error so io:format will write to console
+    %% and io:format(user... will write to debug log (or crash)
+    StdErr = erlang:whereis(standard_error),
+    {true, have_stderr} = {StdErr =/= undefined, have_stderr},
+    erlang:group_leader(StdErr, self()),
+    erlang:group_leader(StdErr, erlang:whereis(application_controller)),
+
     BootModule = list_to_atom(ModuleToBootAsString),
     BootModule:start(),
     %% NOTE: win32 support in erlang handles {fd, 0, 1} specially and
