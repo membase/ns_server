@@ -253,7 +253,13 @@ authenticate({Username, Password}) ->
 saslauthd_authenticate(Username, Password) ->
     case saslauthd_auth:authenticate(Username, Password) of
         true ->
-            {ok, {Username, saslauthd}};
+            Identity = {Username, saslauthd},
+            case menelaus_users:user_exists(Identity) of
+                false ->
+                    false;
+                true ->
+                    {ok, Identity}
+            end;
         false ->
             false;
         {error, Error} ->
