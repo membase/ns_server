@@ -172,7 +172,7 @@ generate_json_45(Buckets, RoleDefinitions) ->
 jsonify_users(AU, Buckets, RoleDefinitions) ->
     ?make_transducer(
        begin
-           ?yield(array_start),
+           ?yield(object_start),
            ?yield({kv, memcached_admin_json(AU, Buckets)}),
 
            %% TODO: to be removed after buckets will be upgraded to builtin users
@@ -195,7 +195,7 @@ jsonify_users(AU, Buckets, RoleDefinitions) ->
                      ?yield({kv, jsonify_user(Identity, Permissions)}),
                      NewDict
              end, Dict1),
-           ?yield(array_end)
+           ?yield(object_end)
        end).
 
 make_producer(#state{buckets = Buckets,
