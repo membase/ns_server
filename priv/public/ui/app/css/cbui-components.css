@@ -137,14 +137,16 @@ td.node_name a {
 }
 
 /* Main Header Elements ------------ */
-header .logobug {
-  margin: 0 .5rem 0 0;
-  min-width: 58px;
+img.logobug {
+  margin: 6px .5rem 6px 0;
+  min-width: 48px;
+  max-width: 48px;
 }
 
 header h1 {
   max-width: 65%;
   margin-right: 1.5rem;
+  line-height: 1.4;
 }
 
 header h1 .icon {
@@ -157,7 +159,7 @@ h1 > * {
 }
 
 .about-text {
-  min-width:15%;
+  min-width: 15%;
   font-size: .75rem;
   font-weight: 400;
 }
@@ -252,7 +254,7 @@ h1 a:active
  {
   font-size: 2rem;
   font-weight: 400;
-  line-height: 1;
+  line-height: 1.4;
   color: #fff;
   cursor: pointer;
 }
@@ -292,10 +294,10 @@ h1 a:active
 nav.sub-nav a {
   font-size: .961rem;
   font-weight: 400;
-  cursor:pointer;
-  padding: .25rem 2.5rem .25rem 2rem;
+  cursor: pointer;
+  padding: 1px 2.5rem 2px 2rem;
   color: #fff;
-  position:relative;
+  position: relative;
 }
 nav.sub-nav a:hover {
   background-color: #79aae4
@@ -303,7 +305,7 @@ nav.sub-nav a:hover {
 nav.sub-nav a:hover:after {
   font-family: FontAwesome;
   content: "\f107";
-  position:absolute;
+  position: absolute;
   right: 1rem;
 }
 nav.sub-nav a.selected {

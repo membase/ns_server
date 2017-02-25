@@ -16,27 +16,26 @@ nav.nav-header {
   align-content: center;
   padding: 0 1.5rem 0 0;
   margin: 0;
-  height: 1.1rem;
   width: 100%;
 }
 
 header {
-  display:-webkit-box;
-  display:-ms-flexbox;
-  display:flex;
-  -ms-flex-wrap:no-wrap;
-  flex-wrap:no-wrap;
-  -webkit-box-pack:start;
-  -ms-flex-pack:start;
-  justify-content:flex-start;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: no-wrap;
+  flex-wrap: no-wrap;
+  -webkit-box-pack: start;
+  -ms-flex-pack: start;
+  justify-content: flex-start;
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  background-color: #4287D6;
-  padding:0 1.5rem;
-  color:#fff;
-  height: 4rem;
-  position:relative;
+  background-color: #4287d6;
+  padding: 0 1.5rem;
+  height: 60px;
+  color: #fff;
+  position: relative;
 }
 
 main {
