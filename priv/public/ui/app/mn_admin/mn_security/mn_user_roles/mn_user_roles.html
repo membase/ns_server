@@ -56,8 +56,8 @@
            ng-class="{
                      'no-stroke': userRolesCtl.isDetailsOpened(user.id) && rbac.cluster.admin.security.write,
                      'has-hover': rbac.cluster.admin.security.write}">
-          <td class="ellipsis">{{user.id}}</td>
-          <td class="ellipsis text-center">{{user.name}}</td>
+          <td class="ellipsis max-width-3">{{user.id}}</td>
+          <td class="ellipsis max-width-3 text-center">{{user.name}}</td>
           <td class="text-center">
             <a
                href=""
