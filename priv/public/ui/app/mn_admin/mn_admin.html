@@ -163,7 +163,6 @@
        class="nav-sidebar hide-for-small"
        mn-pluggable-ui-tabs
        mn-tab-bar-name="adminTab">
-      <h5>cluster</h5>
       <a
          mn-tab="overview"
          ui-sref="app.admin.overview"
@@ -202,7 +201,8 @@
          ng-class="{currentNav: ('app.admin.logs' | includedByState)}"
          ng-show="rbac.cluster.logs.read">Logs</a>
 
-      <h5>data</h5>
+      <hr style="margin: 1rem 1rem 1rem 5rem;">
+
       <a
          mn-tab="buckets"
          ui-sref="app.admin.buckets"
