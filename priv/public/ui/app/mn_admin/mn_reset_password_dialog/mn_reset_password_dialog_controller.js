@@ -18,7 +18,7 @@
     };
 
     function submit() {
-      mnResetPasswordDialogService.post(vm.user);
+      var promise = mnResetPasswordDialogService.post(vm.user);
 
       mnPromiseHelper(vm, promise)
         .showGlobalSpinner()

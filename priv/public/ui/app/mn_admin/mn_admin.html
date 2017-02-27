@@ -84,7 +84,7 @@
      ng-click="$event.stopPropagation();"
      ng-show="adminCtl.showUserDropdownMenu">
     <a
-       ng-show="pools.isEnterprise && poolDefault.compat.atLeast50 && adminCtl.user.type === 'builtin'"
+       ng-show="pools.isEnterprise && poolDefault.compat.atLeast50 && (adminCtl.user.type === 'builtin' || adminCtl.user.type === 'admin')"
        href=""
        ng-click="adminCtl.showResetPasswordDialog()">
       Reset password
