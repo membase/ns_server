@@ -36,47 +36,77 @@
          type="hidden"
          ng-model="internalSettingsCtl.state.certUseSha1"
          value="false">
-      <label class="checkbox formrow">
+      <div class="formrow">
         <input
            type="checkbox"
+           id="for_view_aware_rebalance"
            ng-model="internalSettingsCtl.state.indexAwareRebalanceDisabled"
            value="true">
-         <span title="When not disabled makes sure indexes are always up-to-date during rebalance">
+        <label for="for_view_aware_rebalance" class="margin-right-zero">
           Disable view-index aware rebalance
+        </label>
+        <span
+           class="fa-stack icon-info"
+           uib-tooltip="When not disabled makes sure indexes are always up-to-date during rebalance"
+           tooltip-placement="right">
+          <span class="icon fa-circle-thin fa-stack-2x"></span>
+          <span class="icon fa-info fa-stack-1x"></span>
         </span>
-      </label>
-      <label class="checkbox formrow">
+      </div>
+      <div class="formrow">
         <input
            type="checkbox"
+           id="for_view_waiting_rebalance"
            ng-model="internalSettingsCtl.state.rebalanceIndexWaitingDisabled"
            value="true">
-        <span title="Whether index aware rebalance waiting for index up-to-dateness should be disabled. Makes rebalance faster">
+        <label for="for_view_waiting_rebalance" class="margin-right-zero">
           Disable view-index waiting during rebalance
+        </label>
+        <span
+           class="fa-stack icon-info"
+           uib-tooltip="Whether index aware rebalance waiting for index up-to-dateness should be disabled. Makes rebalance faster"
+           tooltip-placement="right">
+          <span class="icon fa-circle-thin fa-stack-2x"></span>
+          <span class="icon fa-info fa-stack-1x"></span>
         </span>
-      </label>
-      <label class="checkbox formrow">
+      </div>
+      <div class="formrow">
         <input
            type="checkbox"
+           id="for_view_pausing_rebalance"
            ng-model="internalSettingsCtl.state.rebalanceIndexPausingDisabled"
            value="true">
-        <span title="That's too complex to explain">
+        <label for="for_view_pausing_rebalance" class="margin-right-zero">
           Disable view-index pausing during rebalance
+        </label>
+        <span
+           class="fa-stack icon-info"
+           uib-tooltip="That's too complex to explain"
+           tooltip-placement="right">
+          <span class="icon fa-circle-thin fa-stack-2x"></span>
+          <span class="icon fa-info fa-stack-1x"></span>
         </span>
-      </label>
-      <label class="checkbox formrow">
+      </div>
+      <div class="formrow">
         <input
            type="checkbox"
+           id="for_view_no_compact"
            ng-model="internalSettingsCtl.state.rebalanceIgnoreViewCompactions"
            value="true">
-        <span>Don't compact views during rebalance</span>
-      </label>
-      <label class="checkbox formrow">
+        <label for="for_view_no_compact">
+          Don't compact views during rebalance
+        </label>
+      </div>
+      <div class="formrow">
         <input
            type="checkbox"
+           id="for_no_index_failover"
            ng-model="internalSettingsCtl.state.indexAutoFailoverDisabled"
            value="true">
-        <span>Do not failover Index service automatically.</span>
-      </label>
+        <label for="for_no_index_failover">
+          Do not failover Index service automatically
+        </label>
+      </div>
       <label class="formrow">
         <span>Max in-/out-going backfills per node during rebalance</span>
         <input
@@ -202,15 +232,23 @@
            type="text"
            ng-model="internalSettingsCtl.state.xdcrAnticipatoryDelay">
       </label>
-      <label class="checkbox formrow">
+      <div class="formrow">
         <input
            type="checkbox"
+           id="for_use_sha1"
            ng-model="internalSettingsCtl.state.certUseSha1"
            value="true">
-        <span title="When enabled forces sha1 signature algorithm during ssl certificates generation">
+        <label for="for_use_sha1" class="margin-right-zero">
           Use sha1 in ssl certificates
+        </label>
+        <span
+           class="fa-stack icon-info"
+           uib-tooltip="When enabled forces sha1 signature algorithm during ssl certificates generation"
+           tooltip-placement="right">
+          <span class="icon fa-circle-thin fa-stack-2x"></span>
+          <span class="icon fa-info fa-stack-1x"></span>
         </span>
-      </label>
+      </div>
     </div>
     <div class="panel-footer">
       <a href="" ng-click="$dismiss()">Cancel</a>
