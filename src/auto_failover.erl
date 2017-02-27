@@ -301,14 +301,15 @@ handle_info(tick, State0) ->
               ({failover, {Node, _UUID}}, S) ->
                   case ns_orchestrator:try_autofailover(Node) of
                       ok ->
-                          {_, Reason} = lists:keyfind(Node, 1, DownNodes),
-                          case Reason of
+                          {_, DownInfo} = lists:keyfind(Node, 1, DownNodes),
+                          case DownInfo of
                               unknown ->
                                   ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
                                             "Node (~p) was automatically failovered.~n~p",
                                             [Node, ns_doctor:get_node(Node, NodeStatuses)]);
-                              _ ->
-                                  %% TODO: Display diag information.
+                              {Reason, MARes} ->
+                                  MA = [atom_to_list(M) || M <- MARes],
+                                  master_activity_events:note_autofailover_done(Node, string:join(MA, ",")),
                                   ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
                                             "Node (~p) was automatically failed over. Reason: ~s",
                                             [Node, Reason])
@@ -400,18 +401,18 @@ fastfo_down_nodes(NonPendingNodes) ->
                       case is_node_down(NodeStatus) of
                           false ->
                               Acc;
-                          {true, DownReason} ->
-                              [{Node, DownReason} | Acc]
+                          {true, DownInfo} ->
+                              [{Node, DownInfo} | Acc]
                       end
               end
       end, [], NonPendingNodes).
 
 is_node_down({unhealthy, _}) ->
-    {true, "All monitors report node is unhealthy."};
+    {true, {"All monitors report node is unhealthy.", [unhealthy_node]}};
 is_node_down({{needs_attention, MonitorStatuses}, _}) ->
     %% Different monitors are reporting different status for the node.
     Down = lists:foldl(
-             fun (MonitorStatus, Acc) ->
+             fun (MonitorStatus, {RAcc, MAcc}) ->
                      {Monitor, Status} = case MonitorStatus of
                                              {M, S} ->
                                                  {M, S};
@@ -421,13 +422,13 @@ is_node_down({{needs_attention, MonitorStatuses}, _}) ->
                      Module = health_monitor:get_module(Monitor),
                      case Module:is_node_down(Status) of
                          false ->
-                             Acc;
-                         {true, Reason} ->
-                             Reason ++ " " ++  Acc
+                             {RAcc, MAcc};
+                         {true, {Reason, MAinfo}} ->
+                             {Reason ++ " " ++  RAcc, [MAinfo | MAcc]}
                      end
-             end, [], MonitorStatuses),
+             end, {[], []}, MonitorStatuses),
     case Down of
-        [] ->
+        {[], []} ->
             false;
         _ ->
             {true, Down}
