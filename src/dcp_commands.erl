@@ -21,9 +21,9 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
--export([open_connection/3, open_connection/4,
+-export([open_connection/4, open_connection/5,
          add_stream/4, close_stream/3, stream_request/8,
-         setup_flow_control/2,
+         setup_flow_control/2, negotiate_xattr/2,
          process_response/2, format_packet_nicely/1, command_2_atom/1]).
 
 -spec process_response(#mc_header{}, #mc_entry{}) -> any().
@@ -39,27 +39,46 @@ process_response(#mc_header{status=Status}, #mc_entry{data=Msg}) ->
 process_response({ok, Header, Body}) ->
     process_response(Header, Body).
 
--spec open_connection(port(), dcp_conn_name(), dcp_conn_type()) -> ok | dcp_error().
-open_connection(Sock, ConnName, Type) ->
-    open_connection(Sock, ConnName, Type, ns_server).
+-spec open_connection(port(), dcp_conn_name(), dcp_conn_type(), boolean()) -> ok | dcp_error().
+open_connection(Sock, ConnName, Type, XAttr) ->
+    open_connection(Sock, ConnName, Type, XAttr, ns_server).
 
--spec open_connection(port(), dcp_conn_name(), dcp_conn_type(), atom()) -> ok | dcp_error().
-open_connection(Sock, ConnName, Type, Logger) ->
+-spec open_connection(port(), dcp_conn_name(), dcp_conn_type(), boolean(), atom()) ->
+                             ok | dcp_error().
+open_connection(Sock, ConnName, Type, XAttr, Logger) ->
     Flags = case Type of
                 consumer ->
-                    <<0:32/big>>;
+                    ?DCP_CONNECTION_FLAG_CONSUMER;
                 producer ->
-                    <<1:32/big>>;
+                    ?DCP_CONNECTION_FLAG_PRODUCER;
                 notifier ->
-                    <<2:32/big>>
+                    ?DCP_CONNECTION_FLAG_NOTIFIER
             end,
-    Extra = <<0:32, Flags/binary>>,
+
+    NewFlags = case XAttr of
+                   true ->
+                       Flags bor ?DCP_CONNECTION_FLAG_XATTR;
+                   false ->
+                       Flags
+               end,
+
+    Extra = <<0:32, NewFlags:32>>,
 
     ale:debug(Logger, "Open ~p connection ~p on socket ~p", [Type, ConnName, Sock]),
     process_response(
       mc_client_binary:cmd_vocal(?DCP_OPEN, Sock,
                                  {#mc_header{},
                                   #mc_entry{key = ConnName,ext = Extra}})).
+
+negotiate_xattr(Sock, AgentName) ->
+    Data = <<?MC_FEATURE_XATTR:16>>,
+    case mc_client_binary:hello(Sock, AgentName, Data) of
+        {ok, RV} ->
+            {ok, Data =:= RV};
+        Error ->
+            ?log_debug("XATTR negotiation failed. Reason = ~p", [Error]),
+            Error
+    end.
 
 -spec add_stream(port(), vbucket_id(), integer(), add | takeover) -> {ok, quiet}.
 add_stream(Sock, Partition, Opaque, Type) ->

@@ -21,13 +21,14 @@
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
 
--export([start_link/3, init/2, handle_packet/5, handle_call/4, handle_cast/3]).
+-export([start_link/4, init/2, handle_packet/5, handle_call/4, handle_cast/3]).
 
-start_link(ConnName, ProducerNode, Bucket) ->
-    dcp_proxy:start_link(producer, ConnName, ProducerNode, Bucket, ?MODULE, []).
+start_link(ConnName, ProducerNode, Bucket, XAttr) ->
+    dcp_proxy:start_link(producer, ConnName, ProducerNode,
+                         Bucket, ?MODULE, [XAttr]).
 
-init([], ParentState) ->
-    {[], dcp_proxy:maybe_connect(ParentState)}.
+init([XAttr], ParentState) ->
+    {[], dcp_proxy:maybe_connect(ParentState, XAttr)}.
 
 handle_packet(request, ?DCP_SET_VBUCKET_STATE, Packet, State, ParentState) ->
     Consumer = dcp_proxy:get_partner(ParentState),

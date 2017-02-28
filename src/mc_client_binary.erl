@@ -36,6 +36,7 @@
          delete_vbucket/2,
          sync_delete_vbucket/2,
          flush/1,
+         hello/3,
          get_vbucket/2,
          list_buckets/1,
          refresh_isasl/1,
@@ -257,6 +258,17 @@ flush(Sock) ->
         {ok, #mc_header{status=?SUCCESS}, _ME, _NCB} ->
             ok;
         Response -> process_error_response(Response)
+    end.
+
+hello(Sock, AgentName, Data) ->
+    %% AgentName is the name of the client issuing the hello command.
+    case cmd(?CMD_HELLO, Sock, undefined, undefined,
+             {#mc_header{},
+              #mc_entry{key = AgentName, data = Data}}) of
+        {ok, #mc_header{status=?SUCCESS}, #mc_entry{data = RetData}, _NCB} ->
+            {ok, RetData};
+        Response ->
+            process_error_response(Response)
     end.
 
 decode_vb_state(<<?VB_STATE_ACTIVE:32>>)  -> active;

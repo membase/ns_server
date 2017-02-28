@@ -166,3 +166,10 @@
 
 %% hello features
 -define(MC_FEATURE_DATATYPE, 16#01).
+-define(MC_FEATURE_XATTR,    16#06).
+
+%% DCP Open Connection flags.
+-define(DCP_CONNECTION_FLAG_CONSUMER, 16#00).
+-define(DCP_CONNECTION_FLAG_PRODUCER, 16#01).
+-define(DCP_CONNECTION_FLAG_NOTIFIER, 16#02).
+-define(DCP_CONNECTION_FLAG_XATTR,    16#04).

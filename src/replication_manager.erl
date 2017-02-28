@@ -94,7 +94,18 @@ handle_call({remove_undesired_replications, FutureReps}, From, State) ->
 handle_call({set_desired_replications, DesiredReps}, _From,
             #state{bucket_name = Bucket} = State) ->
 
-    RV = dcp_replication_manager:set_desired_replications(Bucket, DesiredReps),
+    %% If the cluster is not fully Spock then the DCP connections opened by
+    %% the replicators won't include XATTRs. But when the cluster turns fully
+    %% Spock then the DCP connections need to be re-established with XATTRs
+    %% set. This code path is invoked by the ns_janitor via the respective
+    %% janitor agents. Here we essentially determine if the cluster has
+    %% become XATTR aware and whether or not to indicate the downstream
+    %% DCP replication modules to drop the existing connections and recreate
+    %% them. This could mean that the ongoing rebalance can fail and we are
+    %% ok with that as it can be restarted.
+    XAttr = cluster_compat_mode:is_cluster_spock(),
+
+    RV = dcp_replication_manager:set_desired_replications(Bucket, DesiredReps, XAttr),
     {reply, RV, State#state{desired_replications = DesiredReps}};
 handle_call({change_vbucket_replication, VBucket, NewSrc}, _From, State) ->
     CurrentReps = get_actual_replications_as_list(State),

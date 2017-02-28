@@ -27,7 +27,8 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/6, maybe_connect/1, connect_proxies/2, nuke_connection/4, terminate_and_wait/2]).
+-export([start_link/6, maybe_connect/1, maybe_connect/2,
+         connect_proxies/2, nuke_connection/4, terminate_and_wait/2]).
 
 -export([get_socket/1, get_partner/1, get_conn_name/1, get_bucket/1]).
 
@@ -192,24 +193,41 @@ suppress_logging(<<_:8, ?DCP_NOP:8, _Rest/binary>>) ->
 suppress_logging(_) ->
     false.
 
+maybe_connect(State) ->
+    maybe_connect(State, false).
+
 maybe_connect(#state{sock = undefined,
-                     connect_info = {Type, ConnName, Node, Bucket}} = State) ->
-    Sock = connect(Type, ConnName, Node, Bucket),
+                     connect_info = {Type, ConnName, Node, Bucket}} = State, XAttr) ->
+    Sock = connect(Type, ConnName, Node, Bucket, XAttr),
 
     %% setup socket to receive the first message
     ok = inet:setopts(Sock, [{active, once}]),
 
     State#state{sock = Sock};
-maybe_connect(State) ->
+maybe_connect(State, _) ->
     State.
 
 connect(Type, ConnName, Node, Bucket) ->
+    connect(Type, ConnName, Node, Bucket, false).
+
+connect(Type, ConnName, Node, Bucket, XAttr) ->
     Username = ns_config:search_node_prop(Node, ns_config:latest(), memcached, admin_user),
     Password = ns_config:search_node_prop(Node, ns_config:latest(), memcached, admin_pass),
 
-    Sock = mc_replication:connect({ns_memcached:host_port(Node), Username, Password, Bucket}),
-    ok = dcp_commands:open_connection(Sock, ConnName, Type),
+    HostPort = ns_memcached:host_port(Node),
+    Sock = mc_replication:connect({HostPort, Username, Password, Bucket}),
+
+    XAttr = maybe_negotiate_xattr(Sock, XAttr),
+    ok = dcp_commands:open_connection(Sock, ConnName, Type, XAttr),
     Sock.
+
+maybe_negotiate_xattr(_Sock, false = _XAttr) ->
+    false;
+maybe_negotiate_xattr(Sock, true = _XAttr) ->
+    %% If we are here that means that the cluster is XATTRs capable.
+    %% So when we try to negotiate XATTRs we don't expect it to fail.
+    {ok, true} = dcp_commands:negotiate_xattr(Sock, "proxy"),
+    true.
 
 disconnect(Sock) ->
     gen_tcp:close(Sock).

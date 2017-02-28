@@ -29,7 +29,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/1, get_actual_replications/1, set_desired_replications/2, get_replicator_pid/2]).
+-export([start_link/1, get_actual_replications/1, set_desired_replications/3, get_replicator_pid/2]).
 
 start_link(Bucket) ->
     gen_server:start_link({local, server_name(Bucket)}, ?MODULE,
@@ -53,9 +53,9 @@ get_actual_replications(Bucket) ->
 get_replicator_pid(Bucket, Partition) ->
     gen_server:call(server_name(Bucket), {get_replicator_pid, Partition}, infinity).
 
-set_desired_replications(Bucket, DesiredReps) ->
+set_desired_replications(Bucket, DesiredReps, XAttr) ->
     NeededNodes = [Node || {Node, [_|_]} <- DesiredReps],
-    gen_server:call(server_name(Bucket), {manage_replicators, NeededNodes}, infinity),
+    gen_server:call(server_name(Bucket), {manage_replicators, NeededNodes, XAttr}, infinity),
 
     Rs = [{Node, dcp_replicator:setup_replication(Node, Bucket, Partitions)}
           || {Node, [_|_] = Partitions} <- DesiredReps],
@@ -83,8 +83,8 @@ handle_info(Msg, State) ->
     ?rebalance_warning("Unexpected handle_info(~p, ~p)", [Msg, State]),
     {noreply, State}.
 
-handle_call({manage_replicators, NeededNodes}, _From, Bucket) ->
-    dcp_sup:manage_replicators(Bucket, NeededNodes),
+handle_call({manage_replicators, NeededNodes, XAttr}, _From, Bucket) ->
+    dcp_sup:manage_replicators(Bucket, NeededNodes, XAttr),
     {reply, ok, Bucket};
 handle_call(get_actual_replications, _From, Bucket) ->
     Reps = lists:sort([{Node, dcp_replicator:get_partitions(Node, Bucket)} ||
