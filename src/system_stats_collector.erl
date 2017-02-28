@@ -322,7 +322,12 @@ process_stats(TS, Binary, PrevSample, _, State) ->
     {RetStats, NewPrevSample, State}.
 
 increment_counter(Name, By) ->
-    (catch do_increment_counter(Name, By)).
+    try
+        do_increment_counter(Name, By)
+    catch
+        _:_ ->
+            ok
+    end.
 
 do_increment_counter(Name, By) ->
     ets:insert_new(ns_server_system_stats, {Name, 0}),
