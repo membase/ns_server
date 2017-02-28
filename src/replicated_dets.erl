@@ -31,16 +31,12 @@
 -record(state, {child_module :: atom(),
                 child_state :: term(),
                 path :: string(),
-                name :: string(),
-                cache :: pid()}).
+                name :: atom()}).
 
 -record(doc, {id :: term(),
               rev :: term(),
               deleted :: boolean(),
               value :: term()}).
-
-cache_name(Name) ->
-    list_to_atom(atom_to_list(Name) ++ "_cache").
 
 start_link(ChildModule, InitParams, Name, Path, Replicator, CacheSize) ->
     replicated_storage:start_link(Name, ?MODULE,
@@ -63,7 +59,7 @@ empty(Name) ->
     gen_server:call(Name, empty, infinity).
 
 get(TableName, Id) ->
-    case lru_cache:lookup(cache_name(TableName), Id) of
+    case mru_cache:lookup(TableName, Id) of
         {ok, V} ->
             {Id, V};
         false ->
@@ -94,12 +90,11 @@ select(Name, KeySpec, N) ->
 init([Name, ChildModule, InitParams, Path, Replicator, CacheSize]) ->
     replicated_storage:anounce_startup(Replicator),
     ChildState = ChildModule:init(InitParams),
-    {ok, Cache} = lru_cache:start_link(cache_name(Name), CacheSize),
+    mru_cache:new(Name, CacheSize),
     #state{name = Name,
            path = Path,
            child_module = ChildModule,
-           child_state = ChildState,
-           cache = Cache}.
+           child_state = ChildState}.
 
 init_after_ack(State) ->
     ok = open(State),
@@ -145,15 +140,14 @@ save_doc(#doc{id = Id,
               value = Value} = Doc,
          #state{name = TableName,
                 child_module = ChildModule,
-                child_state = ChildState,
-                cache = Cache} = State) ->
+                child_state = ChildState} = State) ->
     ok = dets:insert(TableName, [Doc]),
     NewChildState = ChildModule:on_save(Id, ChildState),
     case Deleted of
         true ->
-            _ = lru_cache:delete(Cache, Id);
+            _ = mru_cache:delete(TableName, Id);
         false ->
-            _ = lru_cache:update(Cache, Id, Value)
+            _ = mru_cache:update(TableName, Id, Value)
     end,
     {ok, State#state{child_state = NewChildState}}.
 
@@ -172,18 +166,16 @@ handle_call(suspend, {Pid, _} = From, #state{name = TableName} = State) ->
     end;
 handle_call(empty, _From, #state{name = TableName,
                                  child_module = ChildModule,
-                                 child_state = ChildState,
-                                 cache = Cache} = State) ->
+                                 child_state = ChildState} = State) ->
     ok = dets:delete_all_objects(TableName),
     NewChildState = ChildModule:on_empty(ChildState),
-    lru_cache:flush(Cache),
+    mru_cache:flush(TableName),
     {reply, ok, State#state{child_state = NewChildState}}.
 
-handle_info({cache, Id} = Msg, #state{name = TableName,
-                                      cache = Cache} = State) ->
+handle_info({cache, Id} = Msg, #state{name = TableName} = State) ->
     case dets:lookup(TableName, Id) of
         [#doc{id = Id, deleted = false, value = Value}] ->
-            _ = lru_cache:add(Cache, Id, Value);
+            _ = mru_cache:add(TableName, Id, Value);
         _ ->
             ok
     end,
