@@ -31,7 +31,8 @@
 %% callbacks
 -export([init/1, grab_stats/1, process_stats/5]).
 
--export([increment_counter/2, get_ns_server_stats/0, set_counter/2,
+-export([increment_counter/1, increment_counter/2,
+         get_ns_server_stats/0, set_counter/2,
          add_histo/2,
          cleanup_stale_epoch_histos/0, log_system_stats/1,
          stale_histo_epoch_cleaner/0]).
@@ -320,6 +321,9 @@ process_stats(TS, Binary, PrevSample, _, State) ->
     update_merger_rates(),
     sample_ns_memcached_queues(),
     {RetStats, NewPrevSample, State}.
+
+increment_counter(Name) ->
+    increment_counter(Name, 1).
 
 increment_counter(Name, By) ->
     try

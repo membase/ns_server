@@ -36,18 +36,24 @@ dispose(Name) ->
     ets:delete(Name).
 
 lookup(Name, Key) ->
-    with_item_lock(
-      Name, Key,
-      fun () ->
-              {Recent, Stale} = get_tables(Name),
-              do_lookup(Name, Recent, Stale, Key)
-      end).
+    system_stats_collector:increment_counter({Name, lookup, total}),
+
+    time_call({Name, lookup},
+              fun () ->
+                      with_item_lock(
+                        Name, Key,
+                        fun () ->
+                                {Recent, Stale} = get_tables(Name),
+                                do_lookup(Name, Recent, Stale, Key)
+                        end)
+              end).
 
 do_lookup(Name, Recent, Stale, Key) ->
     case get_one(Recent, Key) of
         false ->
             case get_one(Stale, Key) of
                 false ->
+                    system_stats_collector:increment_counter({Name, lookup, miss}),
                     false;
                 {ok, Value} ->
                     %% the key might have been evicted (or entire cache might
@@ -55,22 +61,30 @@ do_lookup(Name, Recent, Stale, Key) ->
                     %% need to be prepared
                     case migrate(Name, Recent, Stale, {Key, Value}) of
                         ok ->
+                            system_stats_collector:increment_counter(
+                              {Name, lookup, stale}),
                             {ok, Value};
                         not_found ->
+                            system_stats_collector:increment_counter(
+                              {Name, lookup, evicted}),
                             false
                     end
             end;
         {ok, Value} ->
+            system_stats_collector:increment_counter({Name, lookup, recent}),
             {ok, Value}
     end.
 
 update(Name, Key, Value) ->
-    with_item_lock(
-      Name, Key,
-      fun () ->
-              {Recent, Stale} = get_tables(Name),
-              do_update(Recent, Stale, Key, Value)
-      end).
+    time_call({Name, update},
+              fun () ->
+                      with_item_lock(
+                        Name, Key,
+                        fun () ->
+                                {Recent, Stale} = get_tables(Name),
+                                do_update(Recent, Stale, Key, Value)
+                        end)
+              end).
 
 do_update(Recent, Stale, Key, Value) ->
     case update_item(Recent, Key, Value) of
@@ -86,12 +100,15 @@ do_update(Recent, Stale, Key, Value) ->
     end.
 
 add(Name, Key, Value) ->
-    with_item_lock(
-      Name, Key,
-      fun () ->
-              {Recent, Stale} = get_tables(Name),
-              do_add(Name, Recent, Stale, Key, Value)
-      end).
+    time_call({Name, add},
+              fun () ->
+                      with_item_lock(
+                        Name, Key,
+                        fun () ->
+                                {Recent, Stale} = get_tables(Name),
+                                do_add(Name, Recent, Stale, Key, Value)
+                        end)
+              end).
 
 do_add_try_update(Name, Recent, Stale, Key, Value) ->
     case update_item(Recent, Key, Value) of
@@ -111,17 +128,21 @@ do_add(Name, Recent, Stale, Key, Value) ->
     end.
 
 delete(Name, Key) ->
-    with_item_lock(
-      Name, Key,
+    time_call(
+      {Name, delete},
       fun () ->
-              {Recent, Stale} = get_tables(Name),
-              case ets:member(Recent, Key) orelse ets:member(Stale, Key) of
-                  true ->
-                      do_delete(Name, Recent, Stale, Key),
-                      ok;
-                  false ->
-                      not_found
-              end
+              with_item_lock(
+                Name, Key,
+                fun () ->
+                        {Recent, Stale} = get_tables(Name),
+                        case ets:member(Recent, Key) orelse ets:member(Stale, Key) of
+                            true ->
+                                do_delete(Name, Recent, Stale, Key),
+                                ok;
+                            false ->
+                                not_found
+                        end
+                end)
       end).
 
 do_delete(Name, Recent, Stale, Key) ->
@@ -133,21 +154,27 @@ do_delete(Name, Recent, Stale, Key) ->
       end).
 
 flush(Name) ->
-    with_lock(
-      Name, housekeeping,
+    time_call(
+      {Name, flush},
       fun () ->
-              %% it's safe to just delete all objects from both recent and
-              %% stale tables; the concurrent operations might end up looking
-              %% as if they happened before or after the flush; so we just
-              %% need to ensure that migrate, add_recent and do_delete do not
-              %% violate any invariants; migrate is prepared that item of
-              %% interest might have been evicted/flushed, do_delete just
-              %% blindly deletes the object from both tables, add_recent will
-              %% just insert a new item into the recent table
-              {Recent, Stale} = get_tables(Name),
-              ets:delete_all_objects(Recent),
-              ets:delete_all_objects(Stale),
-              ok
+              with_lock(
+                Name, housekeeping,
+                fun () ->
+                        %% it's safe to just delete all objects from both
+                        %% recent and stale tables; the concurrent operations
+                        %% might end up looking as if they happened before or
+                        %% after the flush; so we just need to ensure that
+                        %% migrate, add_recent and do_delete do not violate
+                        %% any invariants; migrate is prepared that item of
+                        %% interest might have been evicted/flushed, do_delete
+                        %% just blindly deletes the object from both tables,
+                        %% add_recent will just insert a new item into the
+                        %% recent table
+                        {Recent, Stale} = get_tables(Name),
+                        ets:delete_all_objects(Recent),
+                        ets:delete_all_objects(Stale),
+                        ok
+                end)
       end).
 
 %% internal
@@ -238,6 +265,11 @@ swap_tables(Name, Recent, Stale, {Key, _} = LastItem) ->
     %% now actual swapping
     update_item(Name, tables, {NewRecent, NewStale}).
 
+time_call(Hist, Body) ->
+    {T, R} = timer:tc(Body),
+    system_stats_collector:add_histo(Hist, T),
+    R.
+
 %% locking stuff
 -define(LOCK_ITERS_FAST, 10).
 -define(LOCK_INVALIDATE_ITERS, 100).
@@ -246,8 +278,10 @@ take_lock(Name, LockName) ->
     Lock = {LockName, {make_ref(), self()}},
     case take_lock_fast(Name, Lock, ?LOCK_ITERS_FAST) of
         ok ->
+            system_stats_collector:increment_counter({Name, take_lock, fast}),
             ok;
         failed ->
+            system_stats_collector:increment_counter({Name, take_lock, slow}),
             take_lock_slow(Name, LockName, Lock)
     end.
 
@@ -284,6 +318,7 @@ try_invalidate_lock(Name, LockName, MaybeLockValue) ->
                 true ->
                     ok;
                 false ->
+                    system_stats_collector:increment_counter({Name, take_lock, invalidate}),
                     %% this only succeeds if the object stays the same
                     ets:delete_object(Name, {LockName, LockValue})
             end;
@@ -306,10 +341,14 @@ put_lock(Name, LockName) ->
     ets:delete(Name, LockName).
 
 with_item_lock(Name, Key, Body) ->
-    with_lock(Name, {lock, Key}, Body).
+    with_lock(Name, item, {lock, Key}, Body).
 
 with_lock(Name, Lock, Body) ->
-    take_lock(Name, Lock),
+    with_lock(Name, Lock, Lock, Body).
+
+with_lock(Name, LockType, Lock, Body) ->
+    time_call({Name, {lock, LockType}},
+              fun () -> take_lock(Name, Lock) end),
     try
         Body()
     after
