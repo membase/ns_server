@@ -59,53 +59,14 @@ iso_8601_fmt({{Year,Month,Day},{Hour,Min,Sec}}) ->
 %% if/when calling process is killed.
 -spec parallel_map(fun((any()) -> any()), [any()], non_neg_integer() | infinity) -> [any()].
 parallel_map(Fun, List, Timeout) when is_list(List) andalso is_function(Fun) ->
-    MainParent = self(),
-    Ref = erlang:make_ref(),
-    IntermediatePid =
-        spawn(fun () ->
-                      Parent = self(),
-                      erlang:monitor(process, MainParent),
-                      {_Pids, RepliesLeft}
-                          = lists:foldl(
-                              fun (E, {Acc, I}) ->
-                                      Pid = spawn_link(
-                                              fun () ->
-                                                      Parent ! {I, (catch Fun(E))}
-                                              end),
-                                      {[Pid | Acc], I+1}
-                              end, {[], 0}, List),
-                      RV = parallel_map_gather_loop(Ref, [], RepliesLeft),
-                      MainParent ! {Ref, RV}
-              end),
-    MRef = erlang:monitor(process, IntermediatePid),
-    receive
-        {Ref, RV} ->
-            receive
-                {'DOWN', MRef, _, _, _} -> ok
-            end,
-            RV;
-        {'DOWN', MRef, _, _, Reason} ->
-            exit({child_died, Reason})
-    after Timeout ->
-            IntermediatePid ! {'DOWN', [], [], [], []},
-            receive
-                {'DOWN', MRef, _, _, _} -> ok
-            end,
-            receive
-                {Ref, _} -> ok
-            after 0 -> ok
-            end,
+    case async:run_with_timeout(
+           fun () ->
+                   async:map(Fun, List)
+           end, Timeout) of
+        {ok, R} ->
+            R;
+        {error, timeout} ->
             exit(timeout)
-    end.
-
-parallel_map_gather_loop(_Ref, Acc, 0) ->
-    [V || {_, V} <- lists:keysort(1, Acc)];
-parallel_map_gather_loop(Ref, Acc, RepliesLeft) ->
-    receive
-        {_I, _Res} = Pair ->
-            parallel_map_gather_loop(Ref, [Pair|Acc], RepliesLeft-1);
-        {'DOWN', _, _, _, _} ->
-            exit(harakiri)
     end.
 
 gather_dir_info(Name) ->
@@ -1330,51 +1291,7 @@ compute_map_diff(NewMap, OldMap) ->
 %% it will be rethrown. Care is taken to propagate exits of 'parent'
 %% process to this worker process.
 executing_on_new_process(Body) ->
-    Ref = erlang:make_ref(),
-    Parent = self(),
-    {ChildPid, ChildMRef} = erlang:spawn_monitor(
-                              fun () ->
-                                      ParentMRef = erlang:monitor(process, Parent),
-                                      receive
-                                          proceed -> ok;
-                                          {'DOWN', ParentMRef, _, _, Reason} ->
-                                              exit(Reason)
-                                      end,
-                                      erlang:demonitor(ParentMRef, [flush]),
-                                      try Body() of
-                                          RV ->
-                                              exit({Ref, RV})
-                                      catch T:E ->
-                                              Stack = erlang:get_stacktrace(),
-                                              exit({Ref, T, E, Stack})
-                                      end
-                              end),
-    {_WatcherPid, WatcherMRef} = erlang:spawn_monitor(
-                                   fun () ->
-                                           erlang:monitor(process, Parent),
-                                           erlang:monitor(process, ChildPid),
-                                           receive
-                                               {'DOWN', _, _, _, Reason} ->
-                                                   erlang:exit(ChildPid, Reason)
-                                           end
-                                   end),
-    ChildPid ! proceed,
-    receive
-        {'DOWN', ChildMRef, _, _, ChildReason} ->
-            receive
-                {'DOWN', WatcherMRef, _, _, _} ->
-                    ok
-            end,
-            case ChildReason of
-                {Ref, RV} ->
-                    RV;
-                {Ref, T, E, Stack} ->
-                    erlang:raise(T, E, Stack);
-                _ ->
-                    ?log_error("Got unexpected reason from ~p: ~p", [ChildPid, ChildReason]),
-                    erlang:error({unexpected_reason, ChildReason})
-            end
-    end.
+    async:with(Body, fun async:wait/1).
 
 %% returns if Reason is EXIT caused by undefined function/module
 is_undef_exit(M, F, A, {undef, [{M, F, A, []} | _]}) -> true; % R15, R16
