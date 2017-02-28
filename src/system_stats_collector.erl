@@ -456,6 +456,7 @@ get_histo_bin(Value) when Value > 2000000 -> 4000000;
 get_histo_bin(Value) when Value > 1000000 -> 2000000;
 get_histo_bin(Value) ->
     Step = if
+               Value < 100 -> 10;
                Value < 1000 -> 100;
                Value < 10000 -> 1000;
                Value =< 1000000 -> 10000
