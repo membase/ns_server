@@ -1,9 +1,13 @@
 <mn-element-cargo depot="alerts">
-  <div
-     class="interim alert alert-warning"
-     ng-show="bucketsCtl.areThereCreationWarnings()">
-    <p ng-show="bucketsCtl.isBucketCreationWarning()">Attention: Cannot create, delete or edit buckets while rebalance is running.</p>
-    <p ng-show="bucketsCtl.isMaxBucketCountWarning()">Attention: Maximum number of buckets has been reached. For optimal performance, no more than {{bucketsCtl.maxBucketCount}} buckets are allowed.</p>
+  <div ng-show="bucketsCtl.areThereCreationWarnings()">
+    <div
+       class="interim alert alert-warning"
+       ng-show="bucketsCtl.isBucketCreationWarning()"><p>Attention: Cannot create, delete or edit buckets while rebalance is running.</p>
+    </div>
+    <div
+       class="interim alert alert-warning"
+       ng-show="bucketsCtl.isMaxBucketCountWarning()"><p>Attention: Maximum number of buckets has been reached. For optimal performance, no more than {{bucketsCtl.maxBucketCount}} buckets are allowed.</p>
+    </div>
   </div>
 </mn-element-cargo>
 
