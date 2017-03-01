@@ -368,6 +368,17 @@ button.icon {
 .fa-info-circle:hover {
   color: #f5a623;
 }
+
+.fa-search-minus:before {
+  content: "\f010";
+}
+.fa-times-circle-o:before {
+  content: "\f05c";
+}
+.fa-times-circle:before {
+  content: "\f057";
+}
+
 .fa-warning:before,
 .fa-exclamation-triangle:before {
   content: "\f071";
@@ -385,6 +396,7 @@ h1 {
   font-weight: 400;
   line-height: 1.1;
   color: #fff;
+  letter-spacing: .025rem;
   display:-webkit-box;
   display:-ms-flexbox;
   display:flex;
@@ -415,11 +427,11 @@ h4 label {
   line-height: inherit;
 }
 
-/* 14px sidebar section headers */
+/* smaller section headers */
 h5 {
-  font-size: 0.875rem;
+  font-size: .875rem;
   font-weight: 600;
-  color: #555;
+  color: #333;
 }
 
 /* margins:  only the first element of type (2nd el in pair),
@@ -578,6 +590,14 @@ sup {
 
 sub {
   bottom: -0.2rem;
+}
+
+.allcaps {
+  text-transform: uppercase;
+}
+
+.intialcaps {
+  text-transform: capitalize;
 }
 
 .error {
@@ -779,7 +799,7 @@ button[disabled] {
 
 .btn.outline,
 button.outline {
-  background: none;
+  background-color: #fff;
   border: 1px solid #a6b2bf;
   color: #333;
   line-height: 1.9rem;
@@ -1075,25 +1095,25 @@ input:-webkit-autofill:active {
 }
 
 input[type="text"]::-webkit-input-placeholder {
-  font-size: .9rem;
+  font-size: .75rem;
   padding: .3rem 0 0 0;
   line-height:normal;
 }
 
 input[type="text"]::-moz-placeholder {
-  font-size: .9rem;
+  font-size: .75rem;
   padding: 0;
   line-height:1.9rem;
 }
 
 input[type="text"]:-ms-input-placeholder {
-  font-size: .9rem;
+  font-size: .75rem;
   padding: .25rem 0 0 0;
   line-height:normal;
 }
 
 input[type="text"]::placeholder {
-  font-size: .9rem;
+  font-size: .75rem;
   padding: .25rem 0 .25rem 0;
   line-height:normal;
 }
@@ -1358,6 +1378,7 @@ select.select-small {
 .gray-7 {
   background-color: #f5f5f5;
 }
+
 .red-3 {
   color: #e07f82;
 }
@@ -1369,6 +1390,7 @@ select.select-small {
   transition: all linear 0.2s;
   cursor: pointer;
 }
+
 .disable-text-selection {
   -webkit-touch-callout: none;
   -webkit-user-select: none;

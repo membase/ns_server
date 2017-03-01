@@ -102,10 +102,6 @@
   cursor:pointer;
   }
 
-  .main-content {
-  width: 100%;
-  }
-
   nav.nav-sidebar {
   position:absolute;
   width:100%;
@@ -144,18 +140,6 @@
 
   .cbui-tablerow-controls a {
   padding: .25rem;
-  }
-
-  .cbui-tablerow {
-  padding: .5rem 1rem;
-  }
-  .cbui-tablerow-title {
-  white-space:normal;
-  }
-
-  .cbui-tablerow-expansion {
-  padding: 0 1rem 1rem 1rem;
-  margin: 0 0 0 8px;
   }
 
 }

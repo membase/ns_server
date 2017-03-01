@@ -63,7 +63,7 @@ nav.sub-nav {
 }
 
 nav.nav-sidebar {
-  width: 104px;
+  flex: 0 0 104px;
   border-right: 1px solid #ececec;
   padding: 1rem 0 2rem 0;
   margin: .25rem 2.5rem 0 0;
@@ -71,7 +71,7 @@ nav.nav-sidebar {
 }
 
 .main-content {
-  width: 100%;
+  flex: 1;
 }
 
 .relative {
@@ -105,6 +105,10 @@ nav.nav-sidebar {
   -ms-flex-pack: justify;
   justify-content: space-between;
   position: relative;
+}
+
+.row.row-min {
+  min-height: 0;
 }
 
 .row.items-top {
@@ -229,15 +233,15 @@ footer {
 .indent-1 {
   margin-left: 1rem;
 }
-.indent-15 {
-  margin-left: 1.5rem;
+
+.padding-left-half {
+  padding-left: .5rem;
 }
-.indent-2 {
-  margin-left: 2rem;
-}
+
 .indent-3 {
   margin-left: 3rem;
 }
+
 .padding-left-2 {
   padding-left: 2.5rem;
 }
@@ -302,6 +306,11 @@ footer {
 
 .text-nowrap {
   white-space: nowrap;
+}
+
+.wrap {
+  white-space: normal;
+  overflow: visible;
 }
 
 .flex-left {

@@ -1,94 +1,86 @@
-<table class="table-stroked">
-  <tr>
-    <th>Bucket Name</th>
-    <th class="text-center">Data Nodes</th>
-    <th class="text-center">Item Count</th>
-    <th class="text-center">Ops/sec</th>
-    <th class="text-center" ng-show="!buckets"></th>
-    <th class="text-center" ng-show="!buckets.isMemcached">Disk Fetches/sec</th>
-    <th class="text-center" ng-show="buckets.isMemcached">Hit Ratio</th>
-    <th class="text-center">RAM Used / Quota</th>
-    <th class="text-center">Data/Disk Usage</th>
-    <th></th>
-  </tr>
-  <tbody>
-    <tr ng-if="!buckets.length">
-      <td colspan="10">
-        No buckets currently defined! Click "+ Add Data Bucket" above to create one.
-      </td>
-    </tr>
-  </tbody>
-  <tbody
+<div class="cbui-table">
+  <div class="cbui-table-header">
+    <span class="cbui-table-cell flex-grow-3">name</span>
+    <span class="cbui-table-cell flex-grow-half"></span>
+    <span class="cbui-table-cell">items</span>
+    <span class="cbui-table-cell">resident</span>
+    <span class="cbui-table-cell">ops/sec</span>
+    <span class="cbui-table-cell flex-grow-1-5">RAM used/quota</span>
+    <span class="cbui-table-cell">disk used</span>
+    <span class="cbui-table-cell flex-grow-1-5"></span>
+  </div>
+  <div class="zero-content" ng-if="!buckets.length">
+    No buckets currently defined! Use "ADD BUCKET" above to create one.
+  </div>
+
+  <section
      ng-if="buckets.length"
-     ng-repeat="bucket in buckets | orderBy:'name' track by bucket.name">
-    <tr
-       class="has-hover"
-       ng-class="{
-                 'grayblue-5': bucketsListCtl.isDetailsOpened(bucket.name),
-                 'no-stroke': bucketsListCtl.isDetailsOpened(bucket.name)
-                 }"
-       ng-click="bucketsListCtl.toggleDetails(bucket.name)">
-      <td class="break-all max-width-4">
-        <a
-           ng-class="{closed:!bucketsListCtl.isDetailsOpened(bucket.name)}"
-           ng-click="$event.stopPropagation()"
-           class="link-heavy text-medium"
-           title="View Analytics for {{ bucket.name }}"
-           ui-sref="app.admin.buckets.analytics.list.graph({bucket: bucket.name })"
-           ng-show="rbac.cluster.bucket[bucket.name].stats.read"
-           >{{bucket.name}}</a>
-        <span ng-show="!rbac.cluster.bucket[bucket.name].stats.read">{{bucket.name}}</span>
-      </td>
-      <td class="text-center">
-      <div
+     ng-repeat="bucket in buckets | orderBy:'name' track by bucket.name"
+     class="has-hover success"
+     ng-click="bucketsListCtl.toggleDetails(bucket.name)">
+    <div class="cbui-tablerow">
+      <span class="cbui-table-cell flex-grow-3 row">
+        <div class="cbui-tablerow-title ellipsis">{{bucket.name}}</div>
+        <span class="label lt-blue" ng-show="bucket.isMemcached">
+          memcached
+        </span>
+        <span class="label lt-blue" ng-show="bucket.isEphemeral">
+          ephemeral
+        </span>
+      </span>
+
+      <span class="cbui-table-cell flex-grow-half">
+       <span
          title="{{bucket.pieConfig.status[0]}} healthy, {{bucket.pieConfig.status[1]}} warmup, {{bucket.pieConfig.status[2]}} unhealthy"
          class="chartist-pie"
          chartist
          chartist-data="bucket.pieConfig"
          chartist-chart-type="Pie"
          chartist-chart-options="bucketsListCtl.getPieOptions()"
-         style="height:18px;width:18px;display:inline-block;vertical-align:middle;"></div>
-      {{ bucket.nodes.length }}
-      </td>
-      <td class="text-center">
+         style="height:18px;width:18px;display:inline-block;vertical-align:middle;"></span>
+        <span>{{ bucket.nodes.length }}</span>
+      </span>
+
+      <span class="cbui-table-cell">
         {{bucket.basicStats.itemCount | number}}
-      </td>
-      <td class="text-center">
+      </span>
+      <span class="cbui-table-cell">
+        &#8212;
+      </span>
+      <span class="cbui-table-cell">
         {{'round' | mnMath:bucket.basicStats.opsPerSec}}
-      </td>
-      <td  class="text-center" ng-if="!buckets.isMemcached">
-        {{bucket.basicStats.diskFetches | mnTruncateTo3Digits}}
-      </td>
-      <td  class="text-center" ng-if="buckets.isMemcached">
-        {{(bucket.basicStats.hitRatio * 100) | mnTruncateTo3Digits}}%
-      </td>
-      <td class="text-center">
+      </span>
+      <span class="cbui-table-cell flex-grow-1-5">
         {{bucket.basicStats.memUsed | mnFormatQuantity}} /
         {{bucket.quota.ram | mnFormatQuantity}}
-      </td>
-      <td class="text-center">
-        <span ng-show="!buckets.isMemcached">
-          {{bucket.basicStats.dataUsed | mnFormatQuantity}} /
+      </span>
+      <span class="cbui-table-cell">
+        <span ng-show="buckets.isMembase">
           {{bucket.basicStats.diskUsed | mnFormatQuantity}}
         </span>
-        <span ng-show="buckets.isMemcached">N/A</span>
-      </td>
-      <td
-         ng-if="!buckets.isMemcached"
-         class="text-right">
-        <a
-           ng-click="$event.stopPropagation()"
-           class="link-heavy"
-           ng-show="rbac.cluster.bucket[bucket.name].data.docs.read"
-           ui-sref="app.admin.buckets.documents.control.list({bucket: bucket.name})">Documents</a>  &nbsp;
-        <a
-           ng-click="$event.stopPropagation()"
-           class="link-heavy"
-           ng-show="rbac.cluster.bucket[bucket.name].views.read"
-           ui-sref="app.admin.buckets.views.list({bucket: bucket.name})">Views</a>
-      </td>
-      <td ng-if="buckets.isMemcached"></td>
-    </tr>
-    <tr class="grayblue-5" ng-if="bucketsListCtl.isDetailsOpened(bucket.name)" ui-view="details"></tr>
-  </tbody>
-</table>
+        <span ng-show="!buckets.isMembase">
+          &#8212;
+        </span>
+      </span>
+      <span class="cbui-table-cell flex-grow-1-5 wrap text-right">
+        <span ng-if="buckets.isMembase">
+          <a
+             ng-click="$event.stopPropagation()"
+             class="nowrap"
+             style="margin-right: -3px;"
+             ng-show="rbac.cluster.bucket[bucket.name].data.read"
+             ui-sref="app.admin.buckets.documents.control.list({bucket: bucket.name})">
+             Documents</a></span>
+          <a
+            ng-click="$event.stopPropagation()"
+            title="Go to statistics for {{ bucket.name }}"
+            ui-sref="app.admin.buckets.analytics.list.graph({bucket: bucket.name })"
+            ng-show="rbac.cluster.bucket[bucket.name].stats.read"
+            class="margin-left-half nowrap">
+            Statistics
+          </a>
+        </span>
+      </div>
+    <div class="cbui-tablerow-expanded" ng-if="bucketsListCtl.isDetailsOpened(bucket.name)" ui-view="details"></div>
+  </section>
+</div>

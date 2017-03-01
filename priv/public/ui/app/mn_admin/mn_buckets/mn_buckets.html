@@ -10,16 +10,15 @@
     </div>
   </div>
 </mn-element-cargo>
+<mn-element-cargo depot="actions">
+  <a href=""
+     ng-hide="bucketsCtl.isCreateNewDataBucketDisabled() || !rbac.cluster.buckets.create"
+     ng-click="bucketsCtl.addBucket()">
+    ADD BUCKET
+  </a>
+</mn-element-cargo>
 
 <div mn-spinner="!bucketsCtl.buckets" min-height="300px">
-  <div class="interim row items-bottom">
-    <h4>Couchbase Buckets</h4>
-    <button
-       ng-hide="bucketsCtl.isCreateNewDataBucketDisabled() || !rbac.cluster.buckets.create"
-       ng-click="bucketsCtl.addBucket()">
-      + Add Data Bucket
-    </button>
-  </div>
   <div
      mn-spinner="bucketsCtl.showBucketsPollerSpinner"
      min-height="91px">
@@ -32,9 +31,6 @@
   </div>
 
   <div class="margin-top2" ng-if="bucketsCtl.buckets.byType.memcached.length">
-    <div class="interim row">
-      <h4>Memcached Buckets</h4>
-    </div>
     <div
        mn-spinner="bucketsCtl.showBucketsPollerSpinner"
        min-height="91px">
@@ -48,9 +44,6 @@
   </div>
 
   <div class="margin-top2" ng-if="bucketsCtl.buckets.byType.ephemeral.length">
-    <div class="interim row">
-      <h4>Ephemeral Buckets</h4>
-    </div>
     <div
        mn-spinner="bucketsCtl.showBucketsPollerSpinner"
        min-height="91px">
