@@ -26,15 +26,13 @@
       });
     }
 
-    function getRolesTree() {
-      return getRoles().then(function (roles) {
-        var roles1 = _.groupBy(roles, 'role');
-        var roles2 = _.groupBy(roles1, function (array, role) {
-          return role.split("_")[0];
-        });
-
-        return roles2;
+    function getRolesTree(roles) {
+      var roles1 = _.groupBy(roles, 'role');
+      var roles2 = _.groupBy(roles1, function (array, role) {
+        return role.split("_")[0];
       });
+
+      return roles2;
     }
 
     function getUsers() {
@@ -83,11 +81,29 @@
       });
     }
 
+    function prepareRolesForSaving(roles) {
+      if (roles.admin) {
+        return ["admin"];
+      }
+      if (roles.cluster_admin) {
+        return ["cluster_admin"];
+      }
+      var i;
+      for (i in roles) {
+        var name = i.split("[");
+        if (name[1] !== "*]" && roles[name[0] + "[*]"]) {
+          delete roles[i];
+        }
+      }
+      return mnHelper.checkboxesToList(roles);
+
+    }
+
     function addUser(user, roles, originalUser) {
       if (!user || !user.id) {
         return $q.reject({username: "username is required"});
       }
-      roles = mnHelper.checkboxesToList(roles);
+      roles = prepareRolesForSaving(roles);
       if (!roles || !roles.length) {
         return $q.reject({roles: "at least one role should be added"});
       }

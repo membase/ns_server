@@ -101,7 +101,9 @@
               <input
                  type="checkbox"
                  id="for-{{::getUIID}}"
-                 ng-disabled="role.bucket_name !== '*' && userRolesAddDialogCtl.selectedRoles[role.role + '[*]']"
+                 ng-disabled="(role.role !== 'admin' && userRolesAddDialogCtl.selectedRoles['admin']) ||
+                              (userRolesAddDialogCtl.selectedRoles['cluster_admin'] && role.role !== 'admin' && role.role !== 'cluster_admin') ||
+                              (role.bucket_name !== '*' && userRolesAddDialogCtl.selectedRoles[role.role + '[*]'])"
                  ng-change="::userRolesAddDialogCtl.onCheckChange(role, getUIID)"
                  ng-model="userRolesAddDialogCtl.selectedRoles[getUIID]">
               <label

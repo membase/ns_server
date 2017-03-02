@@ -45,9 +45,19 @@
           vm.selectedRoles[role.role + "[" + name + "]"] = vm.selectedRoles[id];
         });
       }
-      buckets.byType.names.concat("*").some(function (name) {
-        return maybeContainsSelected(role.role, name);
-      });
+
+      if (role.role === "admin" || role.role === "cluster_admin") {
+        vm.roles.forEach(function (role1) {
+          if (role1.role !== "admin" ) {
+            vm.selectedRoles[getUIID(role1, 2)] = vm.selectedRoles[id];
+          }
+          maybeContainsSelected(role1.role, role1.bucket_name);
+        });
+      } else {
+        buckets.byType.names.concat("*").some(function (name) {
+          return maybeContainsSelected(role.role, name);
+        });
+      }
     }
 
     function maybeContainsSelected(role, bucketName) {
@@ -66,20 +76,21 @@
     }
 
     function activate() {
-      var promise = mnPromiseHelper(vm, mnUserRolesService.getRolesTree())
-          .showSpinner()
-          .applyToScope("rolesTree");
+      mnPromiseHelper(vm, mnUserRolesService.getRoles())
+        .showSpinner()
+        .onSuccess(function (roles) {
+          vm.roles = roles;
+          vm.rolesTree = mnUserRolesService.getRolesTree(roles);
+          if (user) {
+            user.roles.forEach(function (role) {
+              onCheckChange(role, getUIID(role, 2));
+            });
+          }
+        });
 
       if (user) {
         mnPromiseHelper(vm, mnUserRolesService.getRolesByRole(user.roles, true))
-          .onSuccess(function (selectedRoles) {
-            vm.selectedRoles = selectedRoles;
-            user.roles.forEach(function (role) {
-              if (role.bucket_name) {
-                maybeContainsSelected(role.role, role.bucket_name);
-              }
-            });
-          });
+          .applyToScope("selectedRoles")
       }
     }
 
