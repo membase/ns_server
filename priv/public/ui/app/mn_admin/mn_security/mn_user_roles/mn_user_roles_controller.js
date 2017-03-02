@@ -13,7 +13,8 @@
       "mnLdapService",
       "mnEqual",
       "mnBucketsService",
-      "mnFilters"
+      "mnFilters",
+      "mnAutocompleteOff"
     ])
     .controller("mnUserRolesController", mnUserRolesController);
 

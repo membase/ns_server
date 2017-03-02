@@ -17,7 +17,7 @@
     return autocompleteOff;
 
     function link($scope, $element, $attr) {
-      if (!$rootScope.ENV || $rootScope.ENV.disable_autocomplete) {
+      if ($attr.mnAutocompleteOff === "enforce" || !$rootScope.ENV || $rootScope.ENV.disable_autocomplete) {
         //avoiding autocomplete via additional input
         var input = angular.element('<input style="display:none" readonly disabled>');
         input.attr("type", $attr.type);
