@@ -1,197 +1,30 @@
 <div
    mn-spinner="serversCtl.showSpinner"
    min-height="110px">
-  <table
-     mn-sortable-table
-     class="table-stroked">
-    <tbody>
-      <tr>
-        <th
-           mn-sortable-title="hostname"
-           sort-by-default="true"
-           colspan="2">Server Node Name</th>
-        <th
-           mn-sortable-title="group"
-           sort-function="serversCtl.sortByGroup"
-           style="{%= serversCtl.mnPoolDefault.value.isGroupsAvailable && rbac.cluster.server_groups.read ? 'width: auto;' : 'width: 0px;' %}">
-          {{ poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "Group" : " " }}
-        </th>
-        <th mn-sortable-title="services">Services</th>
-        <th class="text-center">RAM Usage</th>
-        <th class="text-center">Swap Usage</th>
-        <th class="text-center">CPU Usage</th>
-        <th class="text-center">Data/Disk Usage</th>
-        <th class="text-center">Active/Replica Items</th>
-        <th></th>
-      </tr>
-    </tbody>
-    <tbody
-       ng-repeat="node in serversCtl.nodes[serversListCtl.stateParamsNodeType] | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by node.otpNode">
-      <tr
-         ng-if="serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.nodes.write"
-         class="grayblue-5">
-        <td colspan="10">
-          <div class="row">
-            <span class="error">
-              This server is now reachable. Do you want to add it back to the cluster on the next rebalance?
-            </span>
+  <div class="cbui-table" mn-sortable-table>
+    <div class="cbui-table-header">
+      <span
+         mn-sortable-title="hostname"
+         sort-by-default="true"
+         class="cbui-table-cell flex-grow-1-5">name</span>
+      <span
+         mn-sortable-title="group"
+         sort-function="serversCtl.sortByGroup"
+         class="cbui-table-cell flex-grow-1-5">
+        {{ poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "group" : " " }}
+      </span>
+      <span class="cbui-table-cell flex-grow-2-5" mn-sortable-title="services">services</span>
+      <span class="cbui-table-cell">CPU</span>
+      <span class="cbui-table-cell">RAM</span>
+      <span class="cbui-table-cell">swap</span>
+      <span class="cbui-table-cell">disk used</span>
+      <span class="cbui-table-cell">items</span>
+      <span class="cbui-table-cell flex-grow-1-5"> </span>
+    </div>
+    <div
+       ng-repeat="node in serversCtl.nodes.allNodes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by node.otpNode"
+       ui-view="item">
+    </div>
 
-            <span>
-              <span ng-click="serversListCtl.reAddNode('full', node.otpNode)">
-                <button ng-show="serversListCtl.isKVNode(node)">Add Back: Full Recovery</button>
-                <button ng-show="!serversListCtl.isKVNode(node)">Recovery</button>
-              </span>
-              <span
-                 ng-show="serversListCtl.isKVNode(node) && poolDefault.compat.atLeast30"
-                 ng-click="serversListCtl.reAddNode('delta', node.otpNode)">
-                <button>Add Back: Delta Recovery</button>
-              </span>
-            </span>
-          </div>
-        </td>
-      </tr>
-
-      <tr
-         ng-click="!serversListCtl.isNodeUnhealthy(node) && rbac.cluster.nodes.read && serversCtl.toggleDetails(node.hostname)"
-         ng-class="{
-                   'has-hover': rbac.cluster.nodes.read,
-                   'grayblue-5': serversCtl.isDetailsOpened(node.hostname),
-                   'no-stroke': serversCtl.isDetailsOpened(node.hostname)
-                   }">
-        <td
-           class="node-status"
-           ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]">
-        </td>
-        <td class="ellipsis max-width-3">
-          <span ng-class="{closed: !serversCtl.isDetailsOpened(node.hostname)}">
-            <span ng-if="serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read">
-              {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
-            </span>
-            <span ng-if="serversListCtl.isNodeUnhealthy(node) || !rbac.cluster.stats.read">
-              {{node.hostname}}
-            </span>
-            <a
-               ng-if="!serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node) && rbac.cluster.stats.read"
-               title="{{'View Analytics for ' + node.hostname}}"
-               class="link-heavy"
-               ng-click="$event.stopPropagation()"
-               ui-sref="app.admin.servers.list.analytics.list.graph({statsHostname: node.hostname})">
-              {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
-            </a>
-          </span>
-        </td>
-        <td class="ellipsis max-width-3">
-          <span
-             ng-show="rbac.cluster.server_groups.read && serversCtl.mnPoolDefault.value.isGroupsAvailable"
-             class="label cell-label lt-blue"
-             title="{{serversCtl.getGroupsByHostname[node.hostname].name}}">
-            {{serversCtl.getGroupsByHostname[node.hostname].name}}
-          </span>
-        </td>
-        <td>
-            <span ng-repeat="service in node.services | mnFormatServicesArray | orderBy" class="label services">{{service}}</span>
-        </td>
-
-        <td
-           class="text-center"
-           mn-vertical-bar=""
-           conf="serversListCtl.getRamUsageConf(node)">
-        </td>
-        <td
-           class="text-center"
-           mn-vertical-bar=""
-           conf="serversListCtl.getSwapUsageConf(node)">
-        </td>
-        <td
-           class="text-center"
-           mn-vertical-bar=""
-           conf="serversListCtl.getCpuUsageConf(node)">
-        </td>
-        <td class="text-center">
-          <span ng-if="!serversListCtl.isDataDiskUsageAvailable(node)">
-            N/A
-          </span>
-          <span ng-if="serversListCtl.isDataDiskUsageAvailable(node)">
-            {{serversListCtl.couchDataSize(node) | mnFormatQuantity}} /<br> {{serversListCtl.couchDiskUsage(node) | mnFormatQuantity}}
-          </span>
-        </td>
-
-        <td class="text-center">
-          {{node.interestingStats.curr_items || 0 | mnFormatQuantity:1000:' ' }} /<br>
-          {{node.interestingStats.vb_replica_curr_items || 0 | mnFormatQuantity:1000:' ' }}
-        </td>
-        <td ng-if="adminCtl.tasks.inRebalance && adminCtl.tasks.tasksRebalance.status === 'running' && rbac.cluster.tasks.read" style="vertical-align: middle;">
-          <div class="rebalance-progress">
-            <div ng-style="{width: (serversListCtl.getRebalanceProgress(node) | mnTruncateTo3Digits) + '%'}"></div>
-          </div>
-          <div class="text-smaller text-right">
-            {{serversListCtl.getRebalanceProgress(node) | mnTruncateTo3Digits}} % Complete
-          </div>
-        </td>
-        <td ng-if="!adminCtl.tasks.inRebalance && serversListCtl.isNodeInactiveAdded(node) && node.recoveryType === 'none' && rbac.cluster.tasks.read">
-          <span class="error">Pending Add</span>
-          &nbsp;&nbsp;
-          <a
-             ng-show="rbac.cluster.nodes.write"
-             class="link-heavy"
-             ng-disabled="adminCtl.tasks.inRecoveryMode"
-             ng-click="$event.stopPropagation(); serversListCtl.ejectServer(node)">Cancel</a>
-        </td>
-        <td
-           ng-if="!adminCtl.tasks.inRebalance && serversListCtl.isNodeInactiveAdded(node) && node.recoveryType !== 'none' && rbac.cluster.tasks.read"
-           class="text-center">
-          <span class="error">Pending {{node.recoveryType}} Recovery</span>
-          &nbsp;&nbsp;
-          <a
-             ng-show="rbac.cluster.nodes.write"
-             class="link-heavy"
-             ng-disabled="adminCtl.tasks.inRecoveryMode"
-             ng-click="$event.stopPropagation(); serversListCtl.cancelFailOverNode(node.otpNode)">Cancel</a>
-        </td>
-        <td
-           ng-show="rbac.cluster.tasks.read"
-           ng-if="!adminCtl.tasks.inRebalance && !serversListCtl.isNodeInactiveAdded(node) && node.pendingEject;">
-          <span class="error">Pending Removal</span>
-          &nbsp;&nbsp;
-          <a
-             ng-show="rbac.cluster.nodes.write"
-             class="link-heavy"
-             ng-disabled="adminCtl.tasks.inRecoveryMode"
-             ng-click="$event.stopPropagation(); serversListCtl.cancelEjectServer(node)">Cancel</a>
-        </td>
-        <td
-           ng-if="!adminCtl.tasks.inRebalance && !serversListCtl.isNodeInactiveAdded(node) && !node.pendingEject && rbac.cluster.tasks.read"
-           class="text-center">
-          <a
-             ng-show="!(serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node)) && rbac.cluster.nodes.write"
-             class="link-heavy"
-             ng-disabled="serversListCtl.disableRemoveBtn(node)"
-             ng-click="$event.stopPropagation(); serversListCtl.ejectServer(node)">Remove</a>
-          &nbsp;
-          <a
-             ng-show="!(serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node)) && rbac.cluster.nodes.write"
-             class="link-heavy"
-             ng-disabled="serversListCtl.isFailOverDisabled(node)"
-             ng-click="$event.stopPropagation(); serversListCtl.failOverNode(node)">Failover</a>
-          <span
-             class="error"
-             ng-show="serversListCtl.isNodeInactiveFailed(node) && !serversListCtl.isNodeUnhealthy(node)">
-            Failed Over: Pending Removal
-          </span>
-        </td>
-        <td ng-if="!rbac.cluster.tasks.read"></td>
-      </tr>
-      <tr
-         class="grayblue-5"
-         ng-if="serversCtl.isDetailsOpened(node.hostname) && rbac.cluster.nodes.read"
-         ui-view="details">
-      </tr>
-    </tbody>
-
-    <tbody ng-if="!serversCtl.nodes[serversListCtl.stateParamsNodeType].length">
-      <tr class="border-top">
-        <td colspan="10">There are no servers pending rebalance.</td>
-      </tr>
-    </tbody>
-  </table>
+  </div>
 </div>

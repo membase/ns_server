@@ -7,7 +7,7 @@
 
     function mnServersListItemDetailsController($scope, mnServersListItemDetailsService, mnPromiseHelper) {
       var vm = this;
-      $scope.$watch('this.node', function (node) {
+      $scope.$watch('node', function (node) {
         mnPromiseHelper(vm, mnServersListItemDetailsService.getNodeDetails(node))
           .applyToScope("server");
       });

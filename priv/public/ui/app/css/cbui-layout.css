@@ -234,6 +234,10 @@ footer {
   margin-left: 1rem;
 }
 
+.indent-2 {
+  margin-left: 2rem;
+}
+
 .padding-left-half {
   padding-left: .5rem;
 }

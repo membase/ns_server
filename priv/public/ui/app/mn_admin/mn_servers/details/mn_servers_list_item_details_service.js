@@ -12,6 +12,9 @@
     return mnServersListItemDetailsService;
 
     function getBaseConfig(totals) {
+      if (!totals) {
+        return;
+      }
       return {
         topRight: {
           name: 'Total',
@@ -55,6 +58,10 @@
         var rv = {};
         var details = resp.data;
         var memoryCacheConfig = getBaseConfig(details.storageTotals.ram);
+
+        if (!memoryCacheConfig) {
+          return;
+        }
 
         memoryCacheConfig.topLeft = {
           name: 'Couchbase Quota',

@@ -19,32 +19,24 @@
        ng-click="adminCtl.resetAutoFailOverCount()">Reset Quota</button>
   </div>
 </mn-element-cargo>
+<mn-element-cargo depot="actions">
+  <a href=""
+     ui-sref="app.admin.servers.list.groups"
+     ng-show="poolDefault.isGroupsAvailable && !poolDefault.rebalancing && poolDefault.isEnterprise && rbac.cluster.server_groups.read">
+    GROUPS
+  </a>
+  <a href=""
+     ng-show="poolDefault && !poolDefault.rebalancing && rbac.cluster.nodes.write"
+     ng-click="serversCtl.addServer()">
+    ADD SERVER
+  </a>
+</mn-element-cargo>
 
 <div
    mn-spinner="!serversCtl.nodes || (rbac.cluster.tasks.read && !adminCtl.tasks) || (rbac.cluster.server_groups.read && !serversCtl.getGroupsByHostname)"
    min-height="300px">
-  <div class="interim row">
-    <span class="left pills">
-      <a
-         ui-sref="app.admin.servers.list({ list: 'active' })"
-         ui-sref-active="pills-selected">Active Servers</a>
-      <a
-         ui-sref="app.admin.servers.list({ list: 'pending' })"
-         ui-sref-active="pills-selected">Pending Rebalance</a>
-      <span
-         class="label red badge"
-         data-ng-show="!poolDefault.rebalancing && serversCtl.nodes.pending.length">
-        {{serversCtl.nodes.pending.length}}
-      </span>
-    </span>
-    <span class="right">
-      <button
-         class="outline"
-         ui-sref="app.admin.servers.list.groups"
-         ng-show="poolDefault.isGroupsAvailable && poolDefault.isEnterprise && rbac.cluster.server_groups.read">Server Groups</button>
-      <button
-         ng-show="poolDefault && !poolDefault.rebalancing && rbac.cluster.nodes.write"
-         ng-click="serversCtl.addServer()">+ Add Server</button>
+  <div class="row flex-right">
+    <span>
       <button
          ng-show="!poolDefault.rebalancing  && rbac.cluster.nodes.write && rbac.cluster.tasks.read"
          ng-click="serversCtl.postRebalance()"

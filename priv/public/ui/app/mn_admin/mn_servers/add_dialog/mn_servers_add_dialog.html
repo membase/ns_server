@@ -53,7 +53,7 @@
 
       <div class="formrow">
         <span ng-if="serversAddDialogCtl.isGroupsAvailable">
-          <label for="js_servers_group_select">Server Group</label>
+          <label for="js_servers_group_select">Assign Group</label>
           <select
              id="js_servers_group_select"
              ng-model="serversAddDialogCtl.addNodeConfig.selectedGroup"
@@ -62,7 +62,9 @@
       </div>
 
       <div class="formrow">
-        <label for="user_inp">Username</label>
+        <label for="user_inp" class="inline">Username&nbsp;</label>
+        <small>an existing username with admin access to this server</small>
+        <br>
         <input
            type="text"
            id="user_inp"
@@ -73,7 +75,9 @@
       </div>
 
       <div class="formrow">
-        <label for="password_inp">Password</label>
+        <label for="password_inp" class="inline">Password&nbsp;</label>
+        <small>an existing password with admin access to this server</small>
+        <br>
         <input
            mn-autocomplete-off
            type="password"
@@ -83,6 +87,15 @@
            spellcheck="false">
       </div>
 
+      <label class="inline">Services</label>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip="Only uncheck services you are certain you will NOT use on this node. Services are enabled on a per-node basis. The selection of services CANNOT be changed on an active node. To make service changes, you must first take down the node."
+         tooltip-placement="right">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
+      <br>
       <div
          class="formrow checkbox-list"
          mn-services="serversAddDialogCtl.addNodeConfig">

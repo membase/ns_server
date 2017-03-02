@@ -5,15 +5,20 @@
   <div
      class="panel-content"
      mn-spinner="serversEjectDialogCtl.viewLoading">
-    <p class="error"><strong>Warning</strong> - Removing this node will:</p>
-    <ul ng-messages="serversEjectDialogCtl.warningFlags" ng-messages-multiple>
-      <li ng-message="isThereIndex"><p>Remove indexes from the cluster and may cause queries to fail</p></li>
-      <li ng-message="isLastIndex"><p>Remove the last index node from the cluster so new indexes can’t be created</p></li>
-      <li ng-message="isLastQuery"><p>Remove the last query node from the cluster so queries can’t be run</p></li>
-      <li ng-message="isLastFts"><p>Remove the last full text node from the cluster so full text search can’t be run</p></li>
-      <li ng-message="isKv"><p>Reduce cache capacity across all data buckets</p></li>
-    </ul>
-    <p>Are you sure you want to remove this server?</p>
+    <div class="row flex-left">
+      <span class="icon fa-warning fa-2x red-3"></span>
+      <p>Warning: This action is not reversible.<br>Removing this node from the cluster will:</p>
+    </div>
+    <div class="indent-3">
+      <ul ng-messages="serversEjectDialogCtl.warningFlags" ng-messages-multiple>
+        <li ng-message="isThereIndex"><p>Remove indexes from the cluster and may cause queries to fail</p></li>
+        <li ng-message="isLastIndex"><p>Remove the last index node from the cluster so new indexes can’t be created</p></li>
+        <li ng-message="isLastQuery"><p>Remove the last query node from the cluster so queries can’t be run</p></li>
+        <li ng-message="isLastFts"><p>Remove the last full text node from the cluster so full text search can’t be run</p></li>
+        <li ng-message="isKv"><p>Reduce cache capacity across all data buckets</p></li>
+      </ul>
+      <p>Are you sure you want to remove this server?</p>
+    </div>
   </div>
   <div class="panel-footer">
     <a href="" ng-click="$dismiss()">Cancel</a>

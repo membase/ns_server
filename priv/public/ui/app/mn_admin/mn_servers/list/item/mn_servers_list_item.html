@@ -1,0 +1,175 @@
+<section
+   class="has-hover"
+   ng-click="!serversItemCtl.isNodeUnhealthy && rbac.cluster.nodes.read && serversCtl.toggleDetails(node.hostname)"
+   ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]">
+  <div class="cbui-tablerow">
+    <span class="cbui-table-cell flex-grow-1-5 cbui-tablerow-title">
+      {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
+    </span>
+    <span class="cbui-table-cell flex-grow-1-5">
+      <span
+         class="label lt-blue"
+         ng-show="rbac.cluster.server_groups.read && serversCtl.mnPoolDefault.value.isGroupsAvailable"
+         title="{{serversCtl.getGroupsByHostname[node.hostname].name}}">
+        {{serversCtl.getGroupsByHostname[node.hostname].name}}
+      </span>
+    </span>
+    <span class="cbui-table-cell flex-grow-2-5">
+      <span ng-repeat="service in node.services | mnFormatServicesArray | orderBy" class="label neutral">{{service}}</span>
+    </span>
+    <span class="cbui-table-cell">
+      <span ng-show="!serversItemCtl.getCpuUsageConf.exist">
+        ---
+      </span>
+      <span ng-show="serversItemCtl.getCpuUsageConf.exist">
+        {{serversItemCtl.getCpuUsageConf.value | mnTruncateTo3Digits}}%
+      </span>
+    </span>
+    <span class="cbui-table-cell">
+      <span ng-show="!serversItemCtl.getRamUsageConf.exist">
+        ---
+      </span>
+      <span ng-show="serversItemCtl.getRamUsageConf.exist">
+        {{serversItemCtl.getRamUsageConf.value | mnTruncateTo3Digits}}%
+      </span>
+    </span>
+    <span
+       class="cbui-table-cell">
+      <span ng-show="!serversItemCtl.getSwapUsageConf.exist">
+        ---
+      </span>
+      <span ng-show="serversItemCtl.getSwapUsageConf.exist">
+        {{serversItemCtl.getSwapUsageConf.value | mnTruncateTo3Digits}}%
+      </span>
+    </span>
+    <span class="cbui-table-cell">
+      <span ng-show="!serversItemCtl.couchDiskUsage">
+        ---
+      </span>
+      <span ng-show="serversItemCtl.couchDiskUsage">
+        {{serversItemCtl.couchDiskUsage | mnFormatQuantity}}
+      </span>
+    </span>
+    <span class="cbui-table-cell">
+      {{node.interestingStats.curr_items || 0 | mnFormatQuantity:1000:' ' }} /
+      {{node.interestingStats.vb_replica_curr_items || 0 | mnFormatQuantity:1000:' ' }}
+    </span>
+    <span class="cbui-table-cell flex-grow-1-5 text-right">
+      <a
+         ng-if="!serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeUnhealthy && rbac.cluster.stats.read"
+         title="{{'View Analytics for ' + node.hostname}}"
+         ng-click="$event.stopPropagation()"
+         ui-sref="app.admin.servers.list.analytics.list.graph({statsHostname: node.hostname})">
+        Statistics
+      </a>
+    </span>
+  </div>
+
+  <!-- STATUSES & ACTIONS TO TAKE + REBALANCE PROGRESS METERS -->
+  <!-- unreachable/unresponsive node pre- and post-failover -->
+  <div
+     class="cbui-tablerow error"
+     ng-show="serversItemCtl.isNodeUnhealthy && !serversItemCtl.isNodeInactiveFailed">
+    <span>
+      Node unresponsive (wait for node, or failover to remove on next rebalance)
+    </span>
+    <button ng-click="serversItemCtl.failOverNode(node);$event.stopPropagation();">
+      Failover
+    </button>
+  </div>
+  <div
+     class="cbui-tablerow error"
+     ng-show="serversItemCtl.isNodeInactiveFailed && serversItemCtl.isNodeUnhealthy">
+    Node failed-over, unresponsive | Not taking traffic | REMOVAL pending rebalance
+  </div>
+
+  <!-- reachable failed-over node -->
+  <div
+     class="cbui-tablerow error"
+     ng-show="serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeUnhealthy">
+    Node failed-over | Not taking traffic | REMOVAL pending rebalance
+  </div>
+  <div
+     class="cbui-tablerow"
+     ng-if="serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeUnhealthy && rbac.cluster.nodes.write">
+    <span>
+      This server is now reachable. Do you want to add it back to the cluster on the next rebalance?
+    </span>
+
+    <span class="nowrap">
+      <span ng-click="serversItemCtl.reAddNode('full', node.otpNode);$event.stopPropagation()">
+        <button class="outline" ng-show="serversItemCtl.isKVNode">Add Back: Full Recovery</button>
+        <button class="outline" ng-show="!serversItemCtl.isKVNode">Recovery</button>
+      </span>
+      <span
+         ng-show="serversItemCtl.isKVNode && poolDefault.compat.atLeast30"
+         ng-click="serversItemCtl.reAddNode('delta', node.otpNode); $event.stopPropagation()">
+        <button class="outline">Add Back: Delta Recovery</button>
+      </span>
+    </span>
+  </div>
+
+  <!-- reachable failed-over node being added back -->
+  <div
+     class="cbui-tablerow"
+     ng-if="!adminCtl.tasks.inRebalance && serversItemCtl.isNodeInactiveAdded && node.recoveryType !== 'none' && rbac.cluster.tasks.read">
+    <span class="error">Node failed-over | Not taking traffic | <span class="allcaps">{{node.recoveryType}}</span> RECOVERY pending rebalance</span>
+    <button
+       ng-show="rbac.cluster.nodes.write"
+       class="outline"
+       ng-disabled="adminCtl.tasks.inRecoveryMode"
+       ng-click="$event.stopPropagation(); serversItemCtl.cancelFailOverNode(node.otpNode)">
+      Cancel Add Back
+    </button>
+  </div>
+
+  <!-- active node flagged for removal -->
+  <div
+     class="cbui-tablerow"
+     ng-show="rbac.cluster.tasks.read"
+     ng-if="!adminCtl.tasks.inRebalance && !serversItemCtl.isNodeInactiveAdded && node.pendingEject;">
+    <span class="error">Node flagged for removal | Still taking traffic | REMOVAL pending rebalance</span>
+
+    <button
+       ng-show="rbac.cluster.nodes.write"
+       class="outline"
+       ng-disabled="adminCtl.tasks.inRecoveryMode"
+       ng-click="$event.stopPropagation(); serversItemCtl.cancelEjectServer(node)">
+      Cancel Remove
+    </button>
+  </div>
+
+  <!-- freshly added node -->
+  <div
+     class="cbui-tablerow"
+     ng-if="!adminCtl.tasks.inRebalance && serversItemCtl.isNodeInactiveAdded && node.recoveryType === 'none' && rbac.cluster.tasks.read">
+    <span class="error">This server will be added to the cluster pending rebalance.</span>
+    <button
+       ng-show="rbac.cluster.nodes.write"
+       class="outline"
+       ng-disabled="adminCtl.tasks.inRecoveryMode"
+       ng-click="$event.stopPropagation(); serversItemCtl.ejectServer(node)">
+      Cancel Add
+    </button>
+  </div>
+
+  <!-- rebalance task progress metering -->
+  <div
+     class="row row-min items-bottom"
+     ng-if="adminCtl.tasks.inRebalance && adminCtl.tasks.tasksRebalance.status === 'running' && rbac.cluster.tasks.read">
+    <div class="task-progress-row">
+      <div
+         ng-style="{width: (serversItemCtl.getRebalanceProgress | mnTruncateTo3Digits) + '%'}"
+         class="task-progress-row-meter"></div>
+    </div>
+    <div class="task-progress-row-text flex-right">
+      {{serversItemCtl.getRebalanceProgress | mnTruncateTo3Digits}}% complete
+    </div>
+  </div>
+
+  <!-- server details section -->
+  <div
+     ui-view="details"
+     class="cbui-tablerow-expanded"
+     ng-if="serversCtl.isDetailsOpened(node.hostname) && rbac.cluster.nodes.read"></div>
+</section>

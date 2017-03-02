@@ -584,7 +584,7 @@ table th span.has-menu:after {
   justify-content: space-between;
   position: relative;
   padding: .25rem 1rem;
-  min-height: 2.5rem;
+  min-height: 3rem;
   margin: 0;
 }
 .cbui-tablerow.padding-left {
@@ -640,7 +640,7 @@ table th span.has-menu:after {
   font-size: .961rem !important;
 }
 section.has-hover:hover {
-  background-color: #ecf3fa;
+  background-color: #f6fafd;
   transition: all linear 0.2s;
   cursor: pointer;
 }
@@ -651,7 +651,7 @@ section.has-hover:hover {
   padding: 0;
 }
 section.success {
-  border-left: .5rem solid #56b349;
+  border-left: .5rem solid #80c677;
   color: #333;
 }
 section.warning {
@@ -667,20 +667,20 @@ section.error {
   font-size: .75rem;
   flex: 0 1 auto;
 }
-.cbui-table-serverprops {
-  line-height: 2.2;
-  font-size: .75rem
+.cbui-table-props {
+  margin-top: 1rem;
+  font-size: .75rem;
+  flex: 0 1 auto;
 }
-.cbui-table-serverprops .wrap {
-  white-space: normal;
-  -webkit-column-break-after: always;
-  page-break-after: always;
-  break-after: always;
-  word-break: break-all;
-  line-height: 1;
+.cbui-table-props div {
+  margin-top: .75rem;
+  line-height: 1.3;
+}
+.cbui-table-props div:first-child {
+  margin-top: 0;
 }
 .cbui-table-meters {
-  margin: 0 0 0 4rem;
+  margin: 1rem 0 0 4rem;
   flex: 0 2 100%;
 }
 
@@ -924,7 +924,7 @@ section.error {
   position: relative;
   top: -1px;
   white-space: nowrap;
-  text-transform: uppercase;
+  text-transform: lowercase;
 }
 
 .label.cell-label {
@@ -938,11 +938,6 @@ section.error {
 
 .label.neutral {
   background-color: #d8d8d8;
-}
-
-.label.services {
-  background-color: #d8d8d8;
-  text-transform: lowercase;
 }
 
 .label[yellow] {
@@ -1227,10 +1222,10 @@ meter {
   background-color: #d8dde4;
 }
 .bar-usages.label-top-0-red .label-top-0 {
-  color: rgb(228, 58, 27);
+  color: #333;
 }
 .bar-usages.label-top-0-red .marker-0 {
-  background-color: rgb(228, 58, 27);
+  background-color: #333;
 }
 .bar-usages.overcommitted .label-bottom-2:before {
   background-color: rgb(244, 0, 21);
@@ -1460,28 +1455,25 @@ meter {
   left:0;
 }
 
-/* per server rebalance progress --------------- */
+/* per item (row) task progress for buckets & servers ---- */
 
-.rebalance-progress {
+.task-progress-row {
   position: relative;
   height: .5rem;
   background-color: #ececec;
-  width: 100%;
-  margin: 0 0 -1px 0;
+  flex: 2 0 auto;
 }
-.rebalance-progress div {
+.task-progress-row-meter {
   position: absolute;
   height: 100%;
   background-color: #7babe2;
 }
-.rebalance-progress-servertext {
+.task-progress-row-text {
   font-size: .75rem;
   white-space: nowrap;
-  min-width: 100px;
-  max-width: 100px;
-  background-color: #fff;
-  margin: 0 0 -1px 0;
-  padding: 0 0 0 1.5rem;
+  flex: 0 0 100px;
+  text-align: right;
+  margin: 0 1rem 1px 1rem;
 }
 
 /* create xdcr dialog --------------- */
@@ -1763,7 +1755,7 @@ section.dynamic_unhealthy {
   margin-bottom: 1.5rem;
 }
 
-/* for when services are presented as a simplecolumn of checkboxes (no text input for quotas) */
+/* for when services are presented as a simple column of checkboxes (no text input for quotas) */
 .services .checkbox-service {
   margin-bottom: .5rem;
 }
