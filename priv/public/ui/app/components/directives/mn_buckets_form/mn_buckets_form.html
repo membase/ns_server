@@ -35,8 +35,8 @@
        value="sasl"
        ng-model="bucketConf.authType">
     <label class="inline" for="for-access-sasl">
-      <span ng-if="bucketConf.isDefault || (bucketConf.name === 'default')">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</span>
-      <span ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">Standard port (TCP port 11211. Needs SASL auth.)</span>
+      <span ng-if="bucketConf.isDefault || (bucketConf.name === 'default')">Standard port (TCP port 11210. ASCII protocol or Binary auth-less)</span>
+      <span ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">Standard port (TCP port 11210. Needs SASL auth.)</span>
     </label>
     <div class="margin-bottom-half" ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">
       <label for="js_bucket_details_sasl_password">Enter password:</label>
