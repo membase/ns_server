@@ -143,7 +143,8 @@ roles_spock() ->
        {[admin], none},
        {[], [read]}]},
      {bucket_sasl, [bucket_name],
-      [],
+      [{name, <<"Bucket Full Access">>},
+       {desc, <<"Full access to bucket data">>}],
       [{[{bucket, bucket_name}, data], all},
        {[{bucket, bucket_name}, views], all},
        {[{bucket, bucket_name}], [read, flush]},
@@ -395,7 +396,7 @@ get_all_assignable_roles(Config) ->
     BucketNames = get_possible_param_values(Config, bucket_name),
 
     lists:foldr(
-      fun ({bucket_sasl, _, _, _}, Acc) ->
+      fun ({_, _, [], _}, Acc) ->
               Acc;
           ({Role, [], Props, _}, Acc) ->
               [{Role, Props} | Acc];
