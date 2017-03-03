@@ -54,6 +54,8 @@ init() ->
            admin_user = AU,
            admin_pass = AP}.
 
+filter_event({cluster_compat_version, ?SPOCK_VERSION_NUM}) ->
+    true;
 filter_event({buckets, _V}) ->
     true;
 filter_event({auth_version, _V}) ->
@@ -68,6 +70,8 @@ handle_event({buckets, V}, #state{buckets = Buckets} = State) ->
         NewBuckets ->
             {changed, State#state{buckets = NewBuckets}}
     end;
+handle_event({cluster_compat_version, _V}, State) ->
+    {changed, State};
 handle_event({auth_version, _V}, State) ->
     {changed, State}.
 
