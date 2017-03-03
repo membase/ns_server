@@ -180,10 +180,17 @@ filter_roles(Config, RawPermission, Roles) ->
               end, Roles)
     end.
 
+assert_api_can_be_used() ->
+    menelaus_web:assert_is_45(),
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            ok;
+        false ->
+            menelaus_web:assert_is_enterprise()
+    end.
 
 handle_get_roles(Req) ->
-    menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_45(),
+    assert_api_can_be_used(),
 
     Params = Req:parse_qs(),
     Permission = proplists:get_value("permission", Params, undefined),
@@ -210,8 +217,7 @@ get_user_json({Id, Type}, Name, Roles) ->
      end}.
 
 handle_get_users(Req) ->
-    menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_45(),
+    assert_api_can_be_used(),
 
     case cluster_compat_mode:is_cluster_spock() of
         true ->
@@ -337,8 +343,7 @@ validate_cred(Username, username) ->
         <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters and must be valid utf8">>.
 
 handle_put_user(Type, UserId, Req) ->
-    menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_45(),
+    assert_api_can_be_used(),
 
     case type_to_atom(Type) of
         unknown ->
