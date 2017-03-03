@@ -349,6 +349,7 @@ handle_put_user(Type, UserId, Req) ->
         unknown ->
             menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
         saslauthd = T ->
+            menelaus_web:assert_is_enterprise(),
             handle_put_user_with_identity({UserId, T}, Req);
         builtin = T ->
             menelaus_web:assert_is_spock(),
