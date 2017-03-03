@@ -20,6 +20,7 @@
 -include("ns_common.hrl").
 -include("ns_config.hrl").
 -include("rbac.hrl").
+-include("pipes.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -44,6 +45,8 @@
 -export([init/1, on_save/2, on_empty/1]).
 
 -export([start_storage/0, start_replicator/0]).
+
+-define(MAX_USERS_ON_CE, 20).
 
 replicator_name() ->
     users_replicator.
@@ -167,18 +170,44 @@ store_user_45({_UserName, saslauthd} = Identity, Props, Roles) ->
               end
       end).
 
+count_users() ->
+    pipes:run(menelaus_users:select_users('_'),
+              ?make_consumer(
+                 pipes:fold(?producer(),
+                            fun (_, Acc) ->
+                                    Acc + 1
+                            end, 0))).
+
+check_limit(Identity) ->
+    case cluster_compat_mode:is_enterprise() of
+        true ->
+            true;
+        false ->
+            case count_users() >= ?MAX_USERS_ON_CE of
+                true ->
+                    user_exists(Identity);
+                false ->
+                    true
+            end
+    end.
+
 store_user_spock({UserName, Type} = Identity, Props, Password, Roles, Config) ->
     CurrentAuth = replicated_dets:get(storage_name(), {auth, Identity}),
-    case Type of
-        saslauthd ->
-            store_user_spock_with_auth(Identity, Props, same, Roles, Config);
-        builtin ->
-            case build_auth(CurrentAuth, Password, UserName) of
-                password_required ->
-                    {abort, password_required};
-                Auth ->
-                    store_user_spock_with_auth(Identity, Props, Auth, Roles, Config)
-            end
+    case check_limit(Identity) of
+        true ->
+            case Type of
+                saslauthd ->
+                    store_user_spock_with_auth(Identity, Props, same, Roles, Config);
+                builtin ->
+                    case build_auth(CurrentAuth, Password, UserName) of
+                        password_required ->
+                            {abort, password_required};
+                        Auth ->
+                            store_user_spock_with_auth(Identity, Props, Auth, Roles, Config)
+                    end
+            end;
+        false ->
+            {abort, too_many}
     end.
 
 store_user_spock_with_auth(Identity, Props, Auth, Roles, Config) ->

@@ -405,6 +405,9 @@ handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
                     reply_bad_roles(Req, [role_to_string(UR) || UR <- UnknownRoles]);
                 {abort, password_required} ->
                     menelaus_util:reply_error(Req, "password", "Password is required for new user.");
+                {abort, too_many} ->
+                    menelaus_util:reply_error(
+                      Req, "_", "You cannot create any more users on Community Edition.");
                 retry_needed ->
                     erlang:error(exceeded_retries)
             end;
