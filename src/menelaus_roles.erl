@@ -117,11 +117,13 @@ roles_45() ->
 roles_spock() ->
     [{admin, [],
       [{name, <<"Admin">>},
-       {desc, <<"Can manage ALL cluster features including security.">>}],
+       {desc, <<"Can manage ALL cluster features including security.">>},
+       {ce, true}],
       [{[], all}]},
      {ro_admin, [],
       [{name, <<"Read Only Admin">>},
-       {desc, <<"Can view ALL cluster features.">>}],
+       {desc, <<"Can view ALL cluster features.">>},
+       {ce, true}],
       [{[{bucket, any}, password], none},
        {[{bucket, any}, data], none},
        {[admin, security], [read]},
@@ -144,7 +146,8 @@ roles_spock() ->
        {[], [read]}]},
      {bucket_sasl, [bucket_name],
       [{name, <<"Bucket Full Access">>},
-       {desc, <<"Full access to bucket data">>}],
+       {desc, <<"Full access to bucket data">>},
+       {ce, true}],
       [{[{bucket, bucket_name}, data], all},
        {[{bucket, bucket_name}, views], all},
        {[{bucket, bucket_name}], [read, flush]},
@@ -260,6 +263,16 @@ get_definitions(Config) ->
             roles_spock();
         false ->
             roles_45()
+    end.
+
+get_definitions_filtered_for_rest_api(Config) ->
+    case cluster_compat_mode:is_enterprise() of
+        true ->
+            get_definitions(Config);
+        false ->
+            [Role ||
+                {_, _, Props, _} = Role <- get_definitions(Config),
+                proplists:get_value(ce, Props, false) =:= true]
     end.
 
 -spec object_match(rbac_permission_object(), rbac_permission_pattern_object()) ->
@@ -405,7 +418,7 @@ get_all_assignable_roles(Config) ->
                 fun (BucketName, Acc1) ->
                         [{{Role, [BucketName]}, Props} | Acc1]
                 end, Acc, BucketNames)
-      end, [], get_definitions(Config)).
+      end, [], get_definitions_filtered_for_rest_api(Config)).
 
 -spec validate_role(rbac_role(), [rbac_role_def()], ns_config()) -> boolean().
 validate_role(Role, Definitions, Config) when is_atom(Role) ->
@@ -424,7 +437,7 @@ validate_role(Role, Params, Definitions, Config) ->
     end.
 
 validate_roles(Roles, Config) ->
-    Definitions = get_definitions(Config),
+    Definitions = get_definitions_filtered_for_rest_api(Config),
     UnknownRoles = [Role || Role <- Roles,
                             not validate_role(Role, Definitions, Config)],
     case UnknownRoles of
