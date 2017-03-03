@@ -358,7 +358,12 @@ nav.sub-nav a.selected:after {
   border-radius: 1rem;
   cursor:pointer;
 }
-
+.pills.pills-small a {
+  display: table;
+  font-size: .875rem;
+  padding: .125rem .5rem;
+  margin-bottom: .5rem;
+}
 .pills a:hover {
   background-color: #b3cfef;
 }
@@ -1058,12 +1063,6 @@ meter {
 }
 
 /* Charts ------------------------ */
-.chart-large {
-}
-.chart-medium {
-}
-.chart-small {
-}
 
 .ct-chart-pie .ct-series.ct-series-a .ct-slice-pie {
     fill: #4A0;
@@ -1081,13 +1080,25 @@ meter {
   vertical-align: middle;
 }
 
+.chart-small {
+  background-color: #fff;
+  border: 1px solid #d1d1d1;
+  display: table;
+  margin: 0 auto .25rem auto;
+}
 .chart-cell-small {
-  border:4px solid #fff;
-  padding:1rem 1rem .5rem 1rem;
+  border: 4px solid #fff;
+  border-width: 2px 4px;
+  padding: .5rem .5rem .25rem .5rem;
   text-align: center;
-  font-size: .875rem;
+  font-size: .688rem;
+  color: #333;
+  font-weight: 600;
   display: inline-block;
-  width: 25%;
+  cursor: pointer;
+  position: relative;
+  line-height: 1.2;
+  width: 174px;
 }
 .chart-column-headers {
   padding: 0 0 .5rem 0;
@@ -1096,7 +1107,15 @@ meter {
   display: inline-block;
   width: 25%;
 }
-
+.columns-four {
+  max-width: 710px;
+}
+.columns-three {
+    max-width: 600px;
+}
+.columns-three .chart-column-headers {
+  width: 33%;
+}
 /* Query Monitor ------------------- */
 .kill-button {
   margin: -.25rem 0 -.3rem 2rem;
@@ -1610,6 +1629,10 @@ input[type="checkbox"]:checked + label:before {
 .service-widget.dynamic_unhealthy {
   border-left: 8px solid #e07f82;
   background-color: #fff;
+}
+
+.dynamic_selected { /* selected chart cell in statistics */
+  background-color: #ecf3fa;
 }
 
 /* selecting user roles -----------------  */

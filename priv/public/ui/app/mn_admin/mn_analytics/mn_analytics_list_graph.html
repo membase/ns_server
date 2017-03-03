@@ -1,8 +1,31 @@
-<div class="margin-top2 margin-bottom2 text-center">
+<div class="row flex-center">
+  <div
+     min-height="269px"
+     mn-spinner="!analyticsListGraphCtl.selectedStat || analyticsCtl.viewLoading">
+    <h4 class="initialcaps width-12 text-center margin-top1 margin-bottom-half">{{analyticsListGraphCtl.selectedStat.title}}&nbsp;
+      <span
+         ng-show="analyticsListGraphCtl.selectedStat.visiblePeriod"
+         class="text-smaller defaultcaps">
+        last {{analyticsListGraphCtl.selectedStat.visiblePeriod | mnFormatUptime}}
+      </span>
+    </h4>
+    <span
+       class="text-center margin-top4"
+       ng-show="!analyticsListGraphCtl.selectedStat.visiblePeriod">
+      No samples, yet
+    </span>
+    <div
+       class="inline margin-right-1 text-small  "
+       style="width: 742px; height: 269px;"
+       ng-if="analyticsListGraphCtl.selectedStat.graphConfig"
+       mn-plot
+       mn-plot-config="analyticsListGraphCtl.selectedStat.graphConfig">
+    </div>
+  </div>
   <div
      ng-hide="!analyticsListGraphCtl.selectedStat"
      ng-if="rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read"
-     class="pills margin-bottom1">
+     class="pills pills-small width-1 margin-right-1">
     <a ui-sref="{zoom: 'minute'}" ui-sref-active="pills-selected">Minute</a>
     <a ui-sref="{zoom: 'hour'}" ui-sref-active="pills-selected">Hour</a>
     <a ui-sref="{zoom: 'day'}" ui-sref-active="pills-selected">Day</a>
@@ -10,29 +33,12 @@
     <a ui-sref="{zoom: 'month'}" ui-sref-active="pills-selected">Month</a>
     <a ui-sref="{zoom: 'year'}" ui-sref-active="pills-selected">Year</a>
   </div>
+<!-- this is probably redundant with the tooltips
   <div
-     min-height="269px"
-     mn-spinner="!analyticsListGraphCtl.selectedStat || analyticsCtl.viewLoading">
-    <h2>{{analyticsListGraphCtl.selectedStat.title}}
-      <span ng-show="analyticsListGraphCtl.selectedStat.visiblePeriod">
-        <small>last {{analyticsListGraphCtl.selectedStat.visiblePeriod | mnFormatUptime}}</small>
-      </span>
-    </h2>
-    <span
-       style="position: absolute; width: 742px;"
-       class="text-center margin-top4"
-       ng-show="!analyticsListGraphCtl.selectedStat.visiblePeriod">
-      No samples, yet
-    </span>
-    <div
-       class="inline"
-       style="width: 742px; height: 269px;"
-       ng-if="analyticsListGraphCtl.selectedStat.graphConfig"
-       mn-plot
-       mn-plot-config="analyticsListGraphCtl.selectedStat.graphConfig">
-    </div>
+     ng-show="!analyticsCtl.state.isEmptyState"
+     class="width-2 text-smaller">
+    <strong class="text-larger">* </strong>
+    {{analyticsListGraphCtl.selectedStat.desc}}
   </div>
-  <div ng-show="!analyticsCtl.state.isEmptyState">
-    <small>{{analyticsListGraphCtl.selectedStat.desc}}</small>
-  </div>
+-->
 </div>

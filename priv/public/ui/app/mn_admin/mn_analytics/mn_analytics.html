@@ -1,8 +1,8 @@
-<div style="max-width:1150px;">
-  <div class="formrow">
+<div style="width: 888px; margin: 0 auto;">
+  <div class="row flex-center text-smaller">
     <!--TODO move dropboxes into separate state -->
     <span ng-show="!analyticsCtl.isSpecificStats">
-      Statistics for
+      Bucket: &nbsp;
     </span>
     <span ng-show="analyticsCtl.isSpecificStats">
       <em>{{analyticsCtl.state.origTitle}}</em> for bucket:
@@ -19,7 +19,7 @@
       </ui-select-choices>
     </ui-select>
     <span ng-if="!analyticsCtl.isSpecificStats">
-      on
+      &nbsp; on&nbsp;
       <ui-select
          class="inline middle"
          ng-model="analyticsCtl.nodes.nodesNames.selected"
@@ -37,18 +37,18 @@
   <div
      class="margin-top2"
      ng-if="!analyticsCtl.isSpecificStats && rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read" >
-    <h2>TOP KEYS</h2>
+    <h4 class="disclosed"> &nbsp;Top Keys</h4>
     <table class="table-stroked">
       <thead>
         <tr>
           <th>Key</th>
-          <th>Ops/Sec</th>
+          <th class="text-center">Ops/Sec</th>
         </tr>
       </thead>
       <tbody>
         <tr ng-repeat="key in analyticsCtl.state.stats.hot_keys">
           <td>{{key.name}}</td>
-          <td>{{analyticsCtl.computeOps(key)}}</td>
+          <td class="text-center">{{analyticsCtl.computeOps(key)}}</td>
         </tr>
       </tbody>
     </table>
