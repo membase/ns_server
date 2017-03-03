@@ -76,7 +76,6 @@ is_interesting({rest, _}) -> true;
 is_interesting({rest_creds, _}) -> true;
 is_interesting({cluster_compat_version, _}) -> true;
 is_interesting({{node, _, is_enterprise}, _}) -> true;
-is_interesting({roles_definitions, _}) -> true;
 is_interesting({user_roles, _}) -> true;
 is_interesting(_) -> false.
 

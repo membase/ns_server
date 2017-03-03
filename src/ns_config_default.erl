@@ -393,8 +393,7 @@ default() ->
      %% everything is unlimited by default
      {{request_limit, rest}, undefined},
      {{request_limit, capi}, undefined},
-     {drop_request_memory_threshold_mib, undefined},
-     {roles_definitions, menelaus_roles:preconfigured_roles_45()}].
+     {drop_request_memory_threshold_mib, undefined}].
 
 %% Recursively replace all strings in a hierarchy that start
 %% with a given Prefix with a ReplacementPrefix.  For example,

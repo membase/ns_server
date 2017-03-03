@@ -92,4 +92,4 @@ create_service_maps(Config, Services) ->
 
 upgrade_config_from_4_6_to_spock() ->
     ?log_info("Performing online config upgrade to Spock version"),
-    [{set, roles_definitions, menelaus_roles:preconfigured_roles()}].
+    [{delete, roles_definitions}].

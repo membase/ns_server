@@ -69,7 +69,7 @@ init() ->
 
 filter_event({buckets, _V}) ->
     true;
-filter_event({roles_definitions, _V}) ->
+filter_event({cluster_compat_version, _V}) ->
     true;
 filter_event({user_version, _V}) ->
     true;
@@ -86,10 +86,13 @@ handle_event({buckets, V}, #state{buckets = Buckets} = State) ->
     end;
 handle_event({user_version, _V}, State) ->
     {changed, State};
-handle_event({roles_definitions, V}, #state{roles = V}) ->
-    unchanged;
-handle_event({roles_definitions, NewRoles}, #state{roles = _V} = State) ->
-    {changed, State#state{roles = NewRoles}}.
+handle_event({cluster_compat_version, _V}, #state{roles = Roles} = State) ->
+    case menelaus_roles:get_definitions() of
+        Roles ->
+            unchanged;
+        NewRoles ->
+            {changed, State#state{roles = NewRoles}}
+    end.
 
 producer(State) ->
     case cluster_compat_mode:is_cluster_spock() of
@@ -208,7 +211,7 @@ make_producer(#state{buckets = Buckets,
 
 generate_json_45_test() ->
     Buckets = ["default", "test"],
-    RoleDefinitions = menelaus_roles:preconfigured_roles(),
+    RoleDefinitions = menelaus_roles:roles_45(),
 
     Json =
         [{<<"default">>,

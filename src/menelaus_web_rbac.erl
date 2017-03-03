@@ -693,7 +693,7 @@ handle_check_permissions_post(Req) ->
     end.
 
 check_permissions_url_version(Config) ->
-    erlang:phash2([menelaus_roles:get_definitions(Config),
+    erlang:phash2([cluster_compat_mode:get_compat_version(Config),
                    menelaus_users:get_users_version(),
                    ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)),
                    ns_config_auth:get_no_auth_buckets(Config)]).
