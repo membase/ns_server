@@ -247,7 +247,8 @@ default() ->
        {breakpad_enabled, true},
        %% Location that Breakpad should write minidumps upon memcached crash.
        {breakpad_minidump_dir_path, BreakpadMinidumpDir},
-       {dedupe_nmvb_maps, false}]},
+       {dedupe_nmvb_maps, false},
+       {client_cert_auth, "disable"}]},
 
      %% Memcached config
      {{node, node(), memcached},
@@ -305,6 +306,7 @@ default() ->
           ]}},
 
         {ssl_cipher_list, {"~s", [ssl_cipher_list]}},
+        {client_cert_auth, {"~s", [client_cert_auth]}},
         {ssl_minimum_protocol, {memcached_config_mgr, ssl_minimum_protocol, []}},
 
         {connection_idle_time, connection_idle_time},
@@ -586,11 +588,15 @@ do_upgrade_config_from_4_5_to_spock(Config, DefaultConfig) ->
 
     NewMcdConfig = lists:keystore(rbac_file, 1, CurrentMcdConfig, RBACFileTupleMcd),
 
+    DefaultsKey = {node, node(), memcached_defaults},
+    {value, McdDefaults} = ns_config:search([DefaultConfig], DefaultsKey),
+
     JTKey = {node, node(), memcached_config},
     {value, DefaultJsonTemplateConfig} = ns_config:search([DefaultConfig], JTKey),
 
 
     [{set, McdKey, NewMcdConfig},
+     {set, DefaultsKey, McdDefaults},
      {set, JTKey, DefaultJsonTemplateConfig}].
 
 encrypt_config_val(Val) ->
@@ -731,13 +737,18 @@ upgrade_4_5_to_spock_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
              [{old, info}]},
+            {{node, node(), memcached_defaults}, old_memcached_defaults},
             {{node, node(), memcached_config}, old_memcached_config}]],
     Default = [{{node, node(), memcached}, [{some, stuff},
                                             {rbac_file, rbac_file_path}]},
+               {{node, node(), memcached_defaults}, [{some, stuff},
+                                            {client_cert_auth, enable}]},
                {{node, node(), memcached_config}, new_memcached_config}],
 
     ?assertMatch([{set, {node, _, memcached}, [{old, info},
                                                {rbac_file, rbac_file_path}]},
+                  {set, {node, _, memcached_defaults}, [{some, stuff},
+                                               {client_cert_auth, enable}]},
                   {set, {node, _, memcached_config}, new_memcached_config}],
                  do_upgrade_config_from_4_5_to_spock(Cfg, Default)).
 
