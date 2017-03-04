@@ -170,6 +170,14 @@ async_loop_wait_result(ParentMRef, Child, Reply, ChildAsyncs) ->
                                    Reply, [Pid | ChildAsyncs]);
         {Reply, Result0} ->
             Result = async_loop_handle_result(Result0),
+
+            unlink(Child),
+            receive
+                {'EXIT', Child, _} -> ok
+            after
+                0 -> ok
+            end,
+
             async_loop_with_result(ParentMRef, Result);
         {'$async_msg', Msg} ->
             Child ! Msg,
