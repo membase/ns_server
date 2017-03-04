@@ -157,8 +157,8 @@ add_couch_api_base(BucketName, BucketUUID, KV, Node, LocalAddr) ->
                                 KVAcc;
                             Url ->
                                 {ok, BCfg} = ns_bucket:get_bucket(BucketName),
-                                case ns_bucket:storage_mode(BCfg) of
-                                    couchstore ->
+                                case ns_bucket:bucket_type(BCfg) of
+                                    membase ->
                                         [{Key, Url} | KVAcc];
                                     _ ->
                                         KVAcc

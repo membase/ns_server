@@ -222,8 +222,8 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
                                                                 ?LOCALHOST_MARKER_STRING),
                     Info0 = [{hostname, list_to_binary(HostName)},
                              {ports, {build_ports(Node, Config)}}],
-                    Info = case ns_bucket:storage_mode(BucketConfig) of
-                               couchstore ->
+                    Info = case ns_bucket:bucket_type(BucketConfig) of
+                               membase ->
                                    Url = capi_utils:capi_bucket_url_bin(Node, Bucket, BucketUUID,
                                                                         ?LOCALHOST_MARKER_STRING),
                                    [{couchApiBase, Url} | Info0];
