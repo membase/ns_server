@@ -386,6 +386,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["settings", "saslauthdAuth"] ->
                     {{[admin, security], read},
                      fun menelaus_web_rbac:handle_saslauthd_auth_settings/1};
+                ["settings", "clientCertAuth"] ->
+                    {{[admin, security], read},
+                     fun menelaus_web_cert:handle_client_cert_auth_settings/1};
                 ["settings", "audit"] ->
                     {{[admin, security], read},
                      fun handle_settings_audit/1};
@@ -542,6 +545,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["settings", "saslauthdAuth"] ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_saslauthd_auth_settings_post/1};
+                ["settings", "clientCertAuth"] ->
+                    {{[admin, security], write},
+                     fun menelaus_web_cert:handle_client_cert_auth_settings_post/1};
                 ["settings", "audit"] ->
                     {{[admin, security], write},
                      fun handle_settings_audit_post/1};

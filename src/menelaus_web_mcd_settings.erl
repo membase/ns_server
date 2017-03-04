@@ -37,7 +37,6 @@ supported_setting_names() ->
      {dedicated_port_maxconn, {int, 1000, ?MAXINT}},
      {verbosity, {int, 0, ?MAXINT}},
      {ssl_cipher_list, string},
-     {client_cert_auth, string},
      {connection_idle_time, {int, 0, ?MAXINT}},
      {privilege_debug, bool},
      {breakpad_enabled, bool},

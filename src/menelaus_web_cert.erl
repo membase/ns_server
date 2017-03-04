@@ -23,7 +23,9 @@
          handle_regenerate_certificate/1,
          handle_upload_cluster_ca/1,
          handle_reload_node_certificate/1,
-         handle_get_node_certificate/2]).
+         handle_get_node_certificate/2,
+         handle_client_cert_auth_settings/1,
+         handle_client_cert_auth_settings_post/1]).
 
 handle_cluster_certificate(Req) ->
     menelaus_web:assert_is_enterprise(),
@@ -142,4 +144,29 @@ handle_get_node_certificate(NodeId, Req) ->
             end;
         false ->
             menelaus_util:reply_text(Req, <<"Node is not found">>, 404)
+    end.
+
+client_cert_auth() ->
+    ns_config:search(ns_config:latest(), client_cert_auth, disable).
+
+handle_client_cert_auth_settings(Req) ->
+    Val = client_cert_auth(),
+    menelaus_util:reply_json(Req, {[{client_cert_auth, atom_to_binary(Val, latin1)}]}).
+
+handle_client_cert_auth_settings_post(Req) ->
+    menelaus_web:assert_is_enterprise(),
+    Params = Req:parse_post(),
+    NewVal = proplists:get_value("client_cert_auth", Params),
+    OldVal = client_cert_auth(),
+    case catch list_to_existing_atom(NewVal) of
+    _ when length(Params) > 1 ->
+        menelaus_util:reply_json(Req, <<"Invalid keys">>, 400);
+    OldVal ->
+        menelaus_util:reply(Req, 200);
+    NewValue when NewValue =:= enable; NewValue =:= disable; NewValue =:= mandatory ->
+        ns_config:set(client_cert_auth, NewValue),
+        ns_audit:client_cert_auth(Req, atom_to_list(NewValue)),
+        menelaus_util:reply(Req, 202);
+    _Error ->
+        menelaus_util:reply_json(Req, <<"Invalid option">>, 400)
     end.
