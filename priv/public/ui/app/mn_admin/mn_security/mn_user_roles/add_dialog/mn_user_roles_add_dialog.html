@@ -1,11 +1,18 @@
 <div class="dialog-med">
-  <h2 class="ellipsis panel-header">
-    Manage User &gt; {{userRolesAddDialogCtl.userID}}
-  </h2>
+  <div class="panel-header">
+    <h2 class="ellipsis">
+      <span ng-if="!userRolesAddDialogCtl.isEditingMode">
+        Add New User
+      </span>
+      <span ng-if="userRolesAddDialogCtl.isEditingMode">
+        Edit User {{userRolesAddDialogCtl.userID}}
+      </span>
+    </h2>
+  </div>
   <form
      ng-submit="userRolesAddDialogCtl.save()"
      mn-spinner="userRolesAddDialogCtl.viewLoading">
-    <div class="panel-content forms">
+    <div class="panel-content forms max-height-500">
       <div
          class="error error-form"
          ng-show="userRolesAddDialogCtl.errors"
@@ -67,8 +74,8 @@
            id="password_inp"
            ng-model="userRolesAddDialogCtl.user.password">
       </div>
-      <div class="formrow">
-        <label for="user_inp">Role(s)</label>
+      <label>Roles</label>
+      <fieldset class="select-user-roles">
         <script type="text/ng-template" id="rolesTree">
           <div ng-init="::isArray = ('isArray' | lodash:role);">
             <div
@@ -81,10 +88,10 @@
                  ng-if="::hasTitle"
                  ng-init="::userRolesAddDialogCtl.toggleWrappers(getUIID, true)"
                  ng-click="::userRolesAddDialogCtl.toggleWrappers(getUIID)"
-                 class="disclosure"
+                 class="disclosure initialcaps"
                  ng-class="{
                            'disclosed': !userRolesAddDialogCtl.closedWrappers[getUIID],
-                           'alert-success': userRolesAddDialogCtl.closedWrappers[getUIID] && userRolesAddDialogCtl.containsSelected[getUIID]
+                           'has-selection': userRolesAddDialogCtl.closedWrappers[getUIID] && userRolesAddDialogCtl.containsSelected[getUIID]
                            }">
                 {{::level == 0 ? (role[0][0].role.split('_')[0] + " Roles") : (level == 1 ? role[0].name : "")}}
               </label>
@@ -100,7 +107,7 @@
             <div
                ng-if="::!isArray"
                ng-init="::getUIID = userRolesAddDialogCtl.getUIID(role, level);"
-               ng-class="{'alert-success': userRolesAddDialogCtl.selectedRoles[getUIID]}">
+               ng-class="{'has-selection': userRolesAddDialogCtl.selectedRoles[getUIID]}">
               <input
                  type="checkbox"
                  id="for-{{::getUIID}}"
@@ -122,9 +129,9 @@
              ng-repeat="(key, role) in userRolesAddDialogCtl.rolesTree"
              ng-include="'rolesTree'"></div>
         </div>
-      </div>
+      </fieldset>
     </div>
-    <div class="panel-footer">
+    <div class="panel-footer scroll-shadow">
       <a
          href=""
          ng-click="$dismiss()">Cancel</a>

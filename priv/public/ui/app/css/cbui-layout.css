@@ -219,7 +219,12 @@ footer {
 .indent-1 {
   margin-left: 1rem;
 }
-
+.indent-15 {
+  margin-left: 1.5rem;
+}
+.indent-2 {
+  margin-left: 2rem;
+}
 .padding-left-2 {
   padding-left: 2.5rem;
 }
@@ -310,4 +315,9 @@ footer {
 
 .width-680 {
   width:680px;
+}
+
+.max-height-500 {
+  max-height: 500px;
+  overflow: auto;
 }

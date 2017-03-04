@@ -425,40 +425,40 @@ table th span.has-menu:after {
 
 /* inserts right-caret (triangle) & down-caret before items with ".disclosure"  */
 .disclosure {
-  position:relative;
-  padding-left: 1rem;
+  position: relative;
+  padding-left: 1.25rem;
   cursor: pointer;
-  text-decoration:none;
+  text-decoration: none;
 }
 
 .disclosed {
-  position:relative;
-  padding-left: 1rem;
+  position: relative;
+  padding-left: 1.25rem;
   cursor: pointer;
-  text-decoration:none;
+  text-decoration: none;
 }
 
 .disclosure:before {
   font-family: FontAwesome;
   content: "\f0da";
-  font-size: 1rem;
+  font-size: 1.125rem;
   width: 1rem;
   text-align: center;
   color: #333;
   position: absolute;
-  top: -1px;
+  top: -2px;
   left: 0;
   text-decoration:none;
 }
 .disclosed:before {
   font-family: FontAwesome;
   content: "\f0d7";
-  font-size: 1rem;
+  font-size: 1.125rem;
   width: 1rem;
   text-align: center;
   color: #333;
   position: absolute;
-  top: -1px;
+  top: -2px;
   left: 0;
   text-decoration:none;
 }
@@ -698,20 +698,20 @@ section.status-red .cbui-tablerow-statusmsg {
 
 .panel-header {
   width: 100%;
-  display:-webkit-flex;
-  display:-ms-flexbox;
-  display:flex;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
   -webkit-align-items: center;
-      -ms-flex-align: center;
-          align-items: center;
-  -webkit-justify-content:space-between;
-      -ms-flex-pack:justify;
-          justify-content:space-between;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-justify-content: space-between;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
   background-color: #4287D6;
   color: #fff;
   border-radius: 3px 3px 0px 0px;
-  padding: 0 .75rem 0 1.25rem;
-  min-height:3rem;
+  padding: 0 2rem 0 1.25rem;
+  min-height: 3rem;
 }
 
 .panel-header h2 {
@@ -724,15 +724,15 @@ section.status-red .cbui-tablerow-statusmsg {
 
 .panel-footer {
   width: 100%;
-  display:-webkit-flex;
-  display:-ms-flexbox;
-  display:flex;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
   -webkit-align-items: center;
-      -ms-flex-align: center;
-          align-items: center;
-  -webkit-justify-content:flex-end;
-      -ms-flex-pack:end;
-          justify-content:flex-end;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-justify-content: flex-end;
+  -ms-flex-pack: end;
+  justify-content: flex-end;
   border-top: 1px solid #ececec;
   margin-bottom: 0 !important;
   padding: .75rem 1rem;
@@ -750,13 +750,21 @@ section.status-red .cbui-tablerow-statusmsg {
 
 .dialog-med .panel-content {
   padding: 1rem 2rem 1px 2rem;
-  margin-bottom: 1rem;
+  margin-bottom: .5rem;
+  position: relative;
+  z-index:1;
 }
 
 .dialog-med .panel-footer {
   -webkit-justify-content:flex-end;
-      -ms-flex-pack:end;
-          justify-content:flex-end;
+  -ms-flex-pack:end;
+  justify-content:flex-end;
+  position: relative;
+  z-index:2;
+}
+
+.scroll-shadow {
+  box-shadow: 0 -36px 28px -12px #fff;
 }
 
 .without-titlebar-close .ui-dialog-titlebar-close {display: none;}
@@ -1492,6 +1500,7 @@ input[type="checkbox"] + label {
   cursor: pointer;
   font-size: .875rem;
   margin-right: 1rem;
+  padding-left: .25rem;
 }
 input[type="radio"] + label:last-child,
 input[type="checkbox"] + label:last-child {
@@ -1506,6 +1515,11 @@ input[type="radio"] + label:before {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   width: .96rem;
+  left: -2px;
+}
+input[type="checkbox"][disabled="disabled"] + label:before,
+input[type="radio"][disabled="disabled"] + label:before {
+  opacity: .5;
 }
 input[type="checkbox"] + label:before {
   top: 1px;
@@ -1596,4 +1610,43 @@ input[type="checkbox"]:checked + label:before {
 .service-widget.dynamic_unhealthy {
   border-left: 8px solid #e07f82;
   background-color: #fff;
+}
+
+/* selecting user roles -----------------  */
+.select-user-roles div,
+.select-user-roles label,
+.select-user-roles input[type="checkbox"] + label {
+  position: relative;
+  margin-top: 1px;
+  font-size: .962rem;
+  line-height: 2;
+  font-weight: normal;
+  margin-left: -8px;
+  padding-left: 8px;
+}
+.select-user-roles label,
+.select-user-roles input[type="checkbox"] + label {
+  cursor: pointer;
+}
+.select-user-roles .disclosure {
+  padding-left: 1.75rem;
+}
+.select-user-roles .disclosure:before {
+  left: 6px;
+  top: -3px;
+}
+.select-user-roles div .indent-1 {
+  margin-left: 1rem;
+}
+.select-user-roles .has-selection {
+  background-color: #ecf3fa;
+}
+.has-selection:after {
+  color: #56b349;
+  font-family: FontAwesome;
+  content: "\f00c";
+  font-size: 1rem;
+  position: absolute;
+  top: -1px;
+  right: 1rem;
 }
