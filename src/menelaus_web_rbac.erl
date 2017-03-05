@@ -42,7 +42,8 @@
          handle_check_permission_for_cbauth/1,
          forbidden_response/1,
          role_to_string/1,
-         validate_cred/2]).
+         validate_cred/2,
+         handle_get_password_policy/1]).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of
@@ -828,3 +829,13 @@ forbidden_response(Permissions) when is_list(Permissions) ->
       {permissions, format_permissions(Permissions)}]};
 forbidden_response(Permission) ->
     forbidden_response([Permission]).
+
+handle_get_password_policy(Req) ->
+    menelaus_web:assert_is_spock(),
+    {MinLength, MustPresent} = get_password_policy(),
+    menelaus_util:reply_json(Req,
+                             {[{minLength, MinLength},
+                               {enforceUppercase, lists:member(uppercase, MustPresent)},
+                               {enforceLowercase, lists:member(lowercase, MustPresent)},
+                               {enforceDigits, lists:member(digits, MustPresent)},
+                               {enforceSpecialChars, lists:member(special, MustPresent)}]}).

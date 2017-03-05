@@ -395,6 +395,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["settings", "rbac", "users"] ->
                     {{[admin, security], read},
                      fun menelaus_web_rbac:handle_get_users/1};
+                ["settings", "passwordPolicy"] ->
+                    {{[admin, security], read},
+                     fun menelaus_web_rbac:handle_get_password_policy/1};
                 ["internalSettings"] ->
                     {{[admin, settings], read},
                      fun handle_internal_settings/1};
