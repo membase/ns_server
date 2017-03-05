@@ -320,15 +320,80 @@ type_to_atom("saslauthd") ->
 type_to_atom(_) ->
     unknown.
 
+verify_length([P, Len]) ->
+    length(P) >= Len.
+
+verify_control_chars(P) ->
+    lists:all(
+      fun (C) ->
+              C > 31 andalso C =/= 127
+      end, P).
+
+verify_utf8(P) ->
+    couch_util:validate_utf8(P).
+
+verify_lowercase(P) ->
+    string:to_upper(P) =/= P.
+
+verify_uppercase(P) ->
+    string:to_lower(P) =/= P.
+
+verify_digits(P) ->
+    lists:any(
+      fun (C) ->
+              C > 47 andalso C < 58
+      end, P).
+
+password_special_characters() ->
+    "@%+\\/'\"!#$^?:,(){}[]~`-_".
+
+verify_special(P) ->
+    lists:any(
+      fun (C) ->
+              lists:member(C, "@%+\\/'\"!#$^?:,(){}[]~`-_")
+      end, P).
+
+get_verifier(uppercase, P) ->
+    {fun verify_uppercase/1, P, <<"The password must contain at least one uppercase letter">>};
+get_verifier(lowercase, P) ->
+    {fun verify_lowercase/1, P, <<"The password must contain at least one lowercase letter">>};
+get_verifier(digits, P) ->
+    {fun verify_digits/1, P, <<"The password must contain at least one digit">>};
+get_verifier(special, P) ->
+    {fun verify_special/1, P,
+     list_to_binary("The password must contain at least one of the following characters: " ++
+                        password_special_characters())}.
+
+execute_verifiers([]) ->
+    true;
+execute_verifiers([{Fun, Arg, Error} | Rest]) ->
+    case Fun(Arg) of
+        true ->
+            execute_verifiers(Rest);
+        false ->
+            Error
+    end.
+
+get_password_policy() ->
+    {value, Policy} = ns_config:search(password_policy),
+    MinLength = proplists:get_value(min_length, Policy),
+    true = MinLength =/= undefined,
+    MustPresent = proplists:get_value(must_present, Policy),
+    true = MustPresent =/= undefined,
+    {MinLength, MustPresent}.
+
 validate_cred(undefined, _) -> <<"Field must be given">>;
-validate_cred(P, password) when length(P) < 6 -> <<"The password must be at least six characters.">>;
 validate_cred(P, password) ->
-    V = lists:all(
-          fun (C) ->
-                  C > 31 andalso C =/= 127
-          end, P)
-        andalso couch_util:validate_utf8(P),
-    V orelse <<"The password must not contain control characters and be valid utf8">>;
+    {MinLength, MustPresent} = get_password_policy(),
+    LengthError = io_lib:format("The password must be at least ~p characters long.", [MinLength]),
+
+    Verifiers =
+        [{fun verify_length/1, [P, MinLength], list_to_binary(LengthError)},
+         {fun verify_utf8/1, P, <<"The password must be valid utf8">>},
+         {fun verify_control_chars/1, P, <<"The password must not contain control characters">>}] ++
+        [get_verifier(V, P) || V <- MustPresent],
+
+    execute_verifiers(Verifiers);
 validate_cred([], username) ->
     <<"Username must not be empty">>;
 validate_cred(Username, username) ->
