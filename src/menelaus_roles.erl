@@ -242,13 +242,12 @@ roles_spock() ->
      {query_manage_index, [bucket_name],
       [{name, <<"Query Manage Index">>},
        {desc, <<"Can manage indexes for the bucket">>}],
-      [{[{bucket, bucket_name}, n1ql, create_index], [execute]},
-       {[{bucket, bucket_name}, n1ql, alter_index], [execute]},
+      [{[{bucket, bucket_name}, n1ql, index], all},
        {[pools], [read]}]},
      {query_system_catalog, [bucket_name],
       [{name, <<"Query System Catalog">>},
        {desc, <<"Can lookup system catalog information">>}],
-      [{[{bucket, bucket_name}, n1ql, list_indexes], [execute]},
+      [{[{bucket, bucket_name}, n1ql, index], [list]},
        {[n1ql, meta], [read]},
        {[pools], [read]}]}].
 
