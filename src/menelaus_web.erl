@@ -610,6 +610,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {local, fun menelaus_web_rbac:handle_reset_admin_password/1};
                 ["controller", "changePassword"] ->
                     {no_check, fun menelaus_web_rbac:handle_change_password/1};
+                ["controller", "validatePassword"] ->
+                    {done, menelaus_web_rbac:handle_validate_password(Req)};
                 ["pools", "default", "buckets", Id] ->
                     {{[{bucket, Id}, settings], write},
                      fun menelaus_web_buckets:handle_bucket_update/3,
