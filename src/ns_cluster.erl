@@ -27,6 +27,7 @@
 -define(ADD_NODE_TIMEOUT, ns_config:get_timeout({ns_cluster, add_node}, 160000)).
 -define(ENGAGE_TIMEOUT, ns_config:get_timeout({ns_cluster, engage}, 30000)).
 -define(COMPLETE_TIMEOUT, ns_config:get_timeout({ns_cluster, complete}, 120000)).
+-define(CHANGE_ADDRESS_TIMEOUT, ns_config:get_timeout({ns_cluster, change_address}, 30000)).
 
 -define(cluster_log(Code, Fmt, Args),
         ale:xlog(?USER_LOGGER, ns_log_sink:get_loglevel(?MODULE, Code),
@@ -129,7 +130,7 @@ complete_join(NodeKVList) ->
 change_address(Address) ->
     case misc:is_good_address(Address) of
         ok ->
-            gen_server:call(?MODULE, {change_address, Address});
+            gen_server:call(?MODULE, {change_address, Address}, ?CHANGE_ADDRESS_TIMEOUT);
         Error ->
             Error
     end.
