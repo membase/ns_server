@@ -870,5 +870,6 @@ handle_post_password_policy(Req) ->
                              must_present_value(enforceDigits, digits, Values) ++
                              must_present_value(enforceSpecialChars, special, Values)}],
               ns_config:set(password_policy, Policy),
+              ns_audit:password_policy(Req, Policy),
               menelaus_util:reply(Req, 200)
       end, Req, validate_post_password_policy(Req:parse_post())).

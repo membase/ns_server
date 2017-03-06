@@ -743,6 +743,23 @@
               "sessionid" : "",
               "error" : ""
           }
+      },
+      {
+          "id" : 8235,
+          "name" : "password policy",
+          "description" : "Password policy was changed",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : "",
+              "remote" : {"ip" : "", "port" : 1},
+              "min_length" : 0,
+              "must_present" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
       }
     ]
 }

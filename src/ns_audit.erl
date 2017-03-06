@@ -60,7 +60,8 @@
          reload_node_certificate/3,
          modify_index_storage_mode/2,
          master_password_change/2,
-         data_key_rotation/2
+         data_key_rotation/2,
+         password_policy/2
         ]).
 
 -export([stats/0]).
@@ -150,7 +151,9 @@ code(set_user) ->
 code(master_password_change) ->
     8233;
 code(data_key_rotation) ->
-    8234.
+    8234;
+code(password_policy) ->
+    8235.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -527,3 +530,9 @@ data_key_rotation(Req, undefined) ->
     put(data_key_rotation, Req, []);
 data_key_rotation(Req, Error) ->
     put(data_key_rotation, Req, [{error, Error}]).
+
+password_policy(Req, Policy) ->
+    PreparedPolicy =
+        lists:keystore(must_present, 1, Policy,
+                       {must_present, {list, proplists:get_value(must_present, Policy)}}),
+    put(password_policy, Req, PreparedPolicy).
