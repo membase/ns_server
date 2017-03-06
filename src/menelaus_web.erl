@@ -542,6 +542,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["settings", "audit"] ->
                     {{[admin, security], write},
                      fun handle_settings_audit_post/1};
+                ["settings", "passwordPolicy"] ->
+                    {{[admin, security], write},
+                     fun menelaus_web_rbac:handle_post_password_policy/1};
                 ["validateCredentials"] ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_validate_saslauthd_creds_post/1};

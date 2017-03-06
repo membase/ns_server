@@ -43,7 +43,8 @@
          forbidden_response/1,
          role_to_string/1,
          validate_cred/2,
-         handle_get_password_policy/1]).
+         handle_get_password_policy/1,
+         handle_post_password_policy/1]).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of
@@ -839,3 +840,35 @@ handle_get_password_policy(Req) ->
                                {enforceLowercase, lists:member(lowercase, MustPresent)},
                                {enforceDigits, lists:member(digits, MustPresent)},
                                {enforceSpecialChars, lists:member(special, MustPresent)}]}).
+
+validate_post_password_policy(Args) ->
+    R0 = menelaus_util:validate_has_params({Args, [], []}),
+    R1 = menelaus_util:validate_required(minLength, R0),
+    R2 = menelaus_util:validate_integer(minLength, R1),
+    R3 = menelaus_util:validate_range(minLength, 0, 100, R2),
+    R4 = menelaus_util:validate_boolean(enforceUppercase, R3),
+    R5 = menelaus_util:validate_boolean(enforceLowercase, R4),
+    R6 = menelaus_util:validate_boolean(enforceDigits, R5),
+    R7 = menelaus_util:validate_boolean(enforceSpecialChars, R6),
+    menelaus_util:validate_unsupported_params(R7).
+
+must_present_value(JsonField, MustPresentAtom, Args) ->
+    case proplists:get_value(JsonField, Args) of
+        true ->
+            [MustPresentAtom];
+        _ ->
+            []
+    end.
+
+handle_post_password_policy(Req) ->
+    menelaus_util:execute_if_validated(
+      fun (Values) ->
+              Policy = [{min_length, proplists:get_value(minLength, Values)},
+                        {must_present,
+                         must_present_value(enforceUppercase, uppercase, Values) ++
+                             must_present_value(enforceLowercase, lowercase, Values) ++
+                             must_present_value(enforceDigits, digits, Values) ++
+                             must_present_value(enforceSpecialChars, special, Values)}],
+              ns_config:set(password_policy, Policy),
+              menelaus_util:reply(Req, 200)
+      end, Req, validate_post_password_policy(Req:parse_post())).
