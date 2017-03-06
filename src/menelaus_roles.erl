@@ -272,7 +272,7 @@ get_definitions_filtered_for_rest_api(Config) ->
         false ->
             [Role ||
                 {_, _, Props, _} = Role <- get_definitions(Config),
-                proplists:get_value(ce, Props, false) =:= true]
+                proplists:get_value(ce, Props, false)]
     end.
 
 -spec object_match(rbac_permission_object(), rbac_permission_pattern_object()) ->
