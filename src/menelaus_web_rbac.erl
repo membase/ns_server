@@ -28,6 +28,7 @@
          handle_validate_saslauthd_creds_post/1,
          handle_get_roles/1,
          handle_get_users/1,
+         handle_get_users/2,
          handle_whoami/1,
          handle_put_user/3,
          handle_delete_user/3,
@@ -46,6 +47,9 @@
          validate_cred/2,
          handle_get_password_policy/1,
          handle_post_password_policy/1]).
+
+-define(MIN_USERS_PAGE_SIZE, 2).
+-define(MAX_USERS_PAGE_SIZE, 100).
 
 assert_is_ldap_enabled() ->
     case cluster_compat_mode:is_ldap_enabled() of
@@ -208,6 +212,11 @@ handle_get_roles(Req) ->
             menelaus_util:reply_json(Req, Json)
     end.
 
+get_user_json(Identity, Props) ->
+    Roles = proplists:get_value(roles, Props, []),
+    Name = proplists:get_value(name, Props),
+    get_user_json(Identity, Name, Roles).
+
 get_user_json({Id, Type}, Name, Roles) ->
     UserJson = [{id, list_to_binary(Id)},
                 {type, Type},
@@ -224,9 +233,40 @@ handle_get_users(Req) ->
 
     case cluster_compat_mode:is_cluster_spock() of
         true ->
-            handle_get_users_spock(Req);
+            handle_get_all_users(Req, '_');
         false ->
             handle_get_users_45(Req)
+    end.
+
+validate_get_users(Args) ->
+    R1 = menelaus_util:validate_integer(pageSize, {Args, [], []}),
+    R2 = menelaus_util:validate_range(pageSize, ?MIN_USERS_PAGE_SIZE, ?MAX_USERS_PAGE_SIZE, R1),
+    R3 = menelaus_util:validate_any_value(startAfter, R2),
+    menelaus_util:validate_unsupported_params(R3).
+
+handle_get_users(Type, Req) ->
+    menelaus_web:assert_is_spock(),
+
+    case type_to_atom(Type) of
+        unknown ->
+            menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
+        TypeAtom ->
+            handle_get_users_with_type(Req, TypeAtom)
+    end.
+
+handle_get_users_with_type(Req, TypeAtom) ->
+    Query = Req:parse_qs(),
+
+    case lists:keyfind("pageSize", 1, Query) of
+        false ->
+            handle_get_all_users(Req, {'_', TypeAtom});
+        _ ->
+            menelaus_util:execute_if_validated(
+              fun (Values) ->
+                      handle_get_users_page(Req, {'_', TypeAtom},
+                                            proplists:get_value(pageSize, Values),
+                                            proplists:get_value(startAfter, Values))
+              end, Req, validate_get_users(Query))
     end.
 
 handle_get_users_45(Req) ->
@@ -238,8 +278,8 @@ handle_get_users_45(Req) ->
              end, Users),
     menelaus_util:reply_json(Req, Json).
 
-handle_get_users_spock(Req) ->
-    pipes:run(menelaus_users:select_users('_'),
+handle_get_all_users(Req, Pattern) ->
+    pipes:run(menelaus_users:select_users(Pattern),
               [jsonify_users(),
                sjson:encode_extended_json([{compact, false},
                                            {strict, false}]),
@@ -252,12 +292,52 @@ jsonify_users() ->
            ?yield(array_start),
            pipes:foreach(?producer(),
                          fun ({{user, Identity}, Props}) ->
-                                 Roles = proplists:get_value(roles, Props, []),
-                                 Name = proplists:get_value(name, Props),
-                                 ?yield({json, get_user_json(Identity, Name, Roles)})
+                                 ?yield({json, get_user_json(Identity, Props)})
                          end),
            ?yield(array_end)
        end).
+
+more_fun({{A, _}, _}, {{B, _}, _}) ->
+    A > B.
+
+add_to_skew(El, Skew, PageSize) ->
+    Skew1 = couch_skew:in(El, fun more_fun/2, Skew),
+    case couch_skew:size(Skew1) > PageSize of
+        true ->
+            {_, S} = couch_skew:out(fun more_fun/2, Skew1),
+            S;
+        false ->
+            Skew1
+    end.
+
+skew_to_list(Skew, Acc) ->
+    case couch_skew:size(Skew) of
+        0 ->
+            Acc;
+        _ ->
+            {El, NewSkew} = couch_skew:out(fun more_fun/2, Skew),
+            skew_to_list(NewSkew, [El | Acc])
+    end.
+
+handle_get_users_page(Req, Pattern, PageSize, After) ->
+    {PageSkew, Skipped, Total} =
+        pipes:run(menelaus_users:select_users(Pattern),
+                  ?make_consumer(
+                     pipes:fold(
+                       ?producer(),
+                       fun ({{user, {UserName, _}}, _}, {Skew, S, T})
+                             when After =/= undefined andalso UserName =< After ->
+                               {Skew, S + 1, T + 1};
+                           ({{user, Identity}, Props}, {Skew, S, T}) ->
+                               {add_to_skew({Identity, Props}, Skew, PageSize), S, T + 1}
+                       end, {couch_skew:new(), 0, 0}))),
+
+    Json =
+        {[{skipped, Skipped},
+          {total, Total},
+          {users, [get_user_json(Identity, Props) ||
+                      {Identity, Props} <- skew_to_list(PageSkew, [])]}]},
+    menelaus_util:reply_ok(Req, "application/json", misc:ejson_encode_pretty(Json)).
 
 handle_whoami(Req) ->
     Identity = menelaus_auth:get_identity(Req),
