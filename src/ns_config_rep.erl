@@ -343,7 +343,7 @@ do_push(RawKVList, OtherNodes) ->
 pull_random_node()  -> pull_random_node(5).
 pull_random_node(N) -> pull_one_node(misc:shuffle(ns_node_disco:nodes_actual_other()), N).
 
-pull_one_node([], _N)    -> ok;
+pull_one_node([], _N)    -> error;
 pull_one_node(_Nodes, 0) -> error;
 pull_one_node([Node | Rest], N) ->
     ?log_info("Pulling config from: ~p", [Node]),
