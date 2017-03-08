@@ -49,6 +49,7 @@
          maybe_cleanup_old_buckets/0,
          find_node_hostname/2,
          build_bucket_auto_compaction_settings/1,
+         parse_validate_purge_interval/1,
          parse_validate_auto_compaction_settings/2,
          parse_validate_boolean_field/3,
          is_xdcr_over_ssl_allowed/0,
@@ -3281,25 +3282,31 @@ handle_set_autocompaction(Req) ->
     Params = Req:parse_post(),
     Is40 = cluster_compat_mode:is_cluster_40(),
     SettingsRV = parse_validate_auto_compaction_settings(Params, Is40),
+    PurgeIntervalRV = parse_validate_purge_interval(Params),
     ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
-    case {ValidateOnly, SettingsRV} of
-        {_, {errors, Errors}} ->
+    case {ValidateOnly, SettingsRV, PurgeIntervalRV} of
+        {_, {errors, Errors}, _} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400);
-        {true, {ok, _ACSettings, _, _}} ->
+        {_, _, [{error, Field, Msg}]} ->
+            reply_json(Req, {struct, [{errors, {struct, {Field, Msg}}}]}, 400);
+        {true, {ok, _ACSettings, _}, _} ->
             reply_json(Req, {struct, [{errors, {struct, []}}]}, 200);
-        {false, {ok, ACSettings, MaybePurgeInterval, MaybeIndex}} ->
+        {false, {ok, ACSettings, MaybeIndex}, _} ->
             ns_config:set(autocompaction, ACSettings),
-            case MaybePurgeInterval of
-                [{purge_interval, PurgeInterval}] ->
-                    case compaction_api:get_purge_interval(global) =:= PurgeInterval of
-                        true ->
-                            ok;
-                        false ->
-                            compaction_api:set_global_purge_interval(PurgeInterval)
-                    end;
-                [] ->
-                    ok
-            end,
+
+            MaybePurgeInterval =
+                case PurgeIntervalRV of
+                    [{ok, purge_interval, PurgeInterval}] ->
+                        case compaction_api:get_purge_interval(global) =:= PurgeInterval of
+                            true ->
+                                ok;
+                            false ->
+                                compaction_api:set_global_purge_interval(PurgeInterval)
+                        end,
+                        [{purge_interval, PurgeInterval}];
+                    [] ->
+                        []
+                end,
 
             case Is40 of
                 true ->
@@ -3313,7 +3320,8 @@ handle_set_autocompaction(Req) ->
                     ok
             end,
 
-            ns_audit:modify_compaction_settings(Req, ACSettings ++ MaybePurgeInterval ++ MaybeIndex),
+            ns_audit:modify_compaction_settings(Req, ACSettings ++ MaybePurgeInterval
+                                                ++ MaybeIndex),
             reply_json(Req, [], 200)
     end.
 
@@ -3468,6 +3476,15 @@ parse_and_validate_extra_index_settings(Params) ->
                   end,
     TimeResults ++ RV1.
 
+parse_validate_purge_interval(Params) ->
+    Fun = mk_number_field_validator(0.04, 60, Params, list_to_float),
+    case Fun({"purgeInterval", purge_interval, "metadata purge interval"}) of
+        [{error, Field, Msg}]->
+            [{error, iolist_to_binary(Field), Msg}];
+        RV ->
+            RV
+    end.
+
 parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
     PercResults = lists:flatmap(mk_number_field_validator(2, 100, Params),
                                 [{"databaseFragmentationThreshold[percentage]",
@@ -3507,11 +3524,10 @@ parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
                      end,
     PeriodTimeResults = parse_and_validate_time_interval("allowedTimePeriod",
                                                         Params),
-    PurgeIntervalResults = (mk_number_field_validator(0.04, 60, Params, list_to_float))({"purgeInterval", purge_interval, "metadata purge interval"}),
 
     Errors0 = [{iolist_to_binary(Field), Msg} ||
                   {error, Field, Msg} <- lists:append([PercResults, ParallelResult, PeriodTimeResults,
-                                                       SizeResults, PurgeIntervalResults, IndexResults])],
+                                                       SizeResults, IndexResults])],
     BadFields = lists:sort(["databaseFragmentationThreshold",
                             "viewFragmentationThreshold"]),
     Errors = case ordsets:intersection(lists:sort(proplists:get_keys(Params)),
@@ -3542,9 +3558,8 @@ parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
                     _ -> [{allowed_time_period, [{F, V} || {ok, F, V} <- PeriodTimeResults]}
                           | MainFields]
                 end,
-            MaybePurgeResults = [{F, V} || {ok, F, V} <- PurgeIntervalResults],
             MaybeIndexResults = [{F, V} || {ok, F, V} <- IndexResults],
-            {ok, AllFields, MaybePurgeResults, MaybeIndexResults};
+            {ok, AllFields, MaybeIndexResults};
         _ ->
             {errors, Errors}
     end.
@@ -3809,8 +3824,7 @@ do_handle_set_recovery_type(Req, Type, Params) ->
 
 basic_parse_validate_auto_compaction_settings_test() ->
     %% TODO: Need to mock cluster_compat_mode:is_cluster_***
-    {ok, Stuff0, [],
-     []} =
+    {ok, Stuff0, []} =
         parse_validate_auto_compaction_settings([{"databaseFragmentationThreshold[percentage]", "10"},
                                                  {"viewFragmentationThreshold[percentage]", "20"},
                                                  {"indexFragmentationThreshold[size]", "42"},

@@ -63,6 +63,7 @@
          bin_concat_path/2]).
 
 -define(MAX_BUCKET_NAME_LEN, 100).
+-define(DEFAULT_EPHEMERAL_PURGE_INTERVAL, 3).
 
 checking_bucket_uuid(Req, BucketConfig, Body) ->
     ReqUUID0 = proplists:get_value("bucket_uuid", Req:parse_qs()),
@@ -175,6 +176,9 @@ add_couch_api_base(BucketName, BucketUUID, KV, Node, LocalAddr) ->
 %% representation of bucket types to externally known bucket types.
 %% Ideally the 'display_type' function should suffice here but there
 %% is too much reliance on the atom membase by other modules (ex: xdcr).
+external_bucket_type(BucketConfig) ->
+    external_bucket_type(ns_bucket:bucket_type(BucketConfig), BucketConfig).
+
 external_bucket_type(memcached = _Type, _) ->
     memcached;
 external_bucket_type(membase = _Type, BucketConfig) ->
@@ -184,6 +188,37 @@ external_bucket_type(membase = _Type, BucketConfig) ->
         ephemeral ->
             ephemeral
     end.
+
+build_auto_compaction_info(BucketConfig, couchstore) ->
+    ACSettings = case proplists:get_value(autocompaction, BucketConfig) of
+                     undefined -> false;
+                     false -> false;
+                     ACSettingsX -> ACSettingsX
+                 end,
+
+    case ACSettings of
+        false ->
+            [{autoCompactionSettings, false}];
+        _ ->
+            [{autoCompactionSettings,
+              menelaus_web:build_bucket_auto_compaction_settings(ACSettings)}]
+    end;
+build_auto_compaction_info(_BucketConfig, ephemeral) ->
+    [].
+
+build_purge_interval_info(BucketConfig, couchstore) ->
+    case proplists:get_value(autocompaction, BucketConfig, false) of
+        false ->
+            [];
+        _Val ->
+            PInterval = case proplists:get_value(purge_interval, BucketConfig) of
+                            undefined -> compaction_api:get_purge_interval(global);
+                            PI -> PI
+                        end,
+            [{purgeInterval, PInterval}]
+    end;
+build_purge_interval_info(BucketConfig, ephemeral) ->
+    [{purgeInterval, proplists:get_value(purge_interval, BucketConfig)}].
 
 build_bucket_info(Id, undefined, InfoLevel, LocalAddr, MayExposeAuth,
                   SkipMap) ->
@@ -279,25 +314,12 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                       [{uuid, MaybeBucketUUID} | Suffix1]
               end,
 
-    ACSettings = case proplists:get_value(autocompaction, BucketConfig) of
-                     undefined -> false;
-                     false -> false;
-                     ACSettingsX -> ACSettingsX
-                 end,
+    StorageMode = ns_bucket:storage_mode(BucketConfig),
+    ACInfo = build_auto_compaction_info(BucketConfig, StorageMode),
+    PIInfo = build_purge_interval_info(BucketConfig, StorageMode),
+    Suffix3 = ACInfo ++ PIInfo ++ Suffix2,
 
-    Suffix3 = case ACSettings of
-                  false ->
-                      [{autoCompactionSettings, false} | Suffix2];
-                  _ ->
-                      [{autoCompactionSettings, menelaus_web:build_bucket_auto_compaction_settings(ACSettings)},
-                       {purgeInterval, case proplists:get_value(purge_interval, BucketConfig) of
-                                           undefined -> compaction_api:get_purge_interval(global);
-                                           PurgeInterval -> PurgeInterval
-                                       end}
-                       | Suffix2]
-              end,
-
-    Suffix4 = case ns_bucket:storage_mode(BucketConfig) of
+    Suffix4 = case StorageMode of
                   couchstore ->
                       DDocsURI = bin_concat_path(["pools", "default", "buckets",
                                                   Id, "ddocs"]),
@@ -880,8 +902,9 @@ validate_bucket_type_specific_params(CommonParams, Params, membase, IsNew,
          get_storage_mode(Params, BucketConfig, IsNew)
          | validate_bucket_auto_compaction_settings(Params)],
 
-    get_conflict_resolution_type_and_thresholds(Params, BucketConfig, IsNew)
-        ++ BucketParams;
+    validate_bucket_purge_interval(Params, BucketConfig, IsNew) ++
+        get_conflict_resolution_type_and_thresholds(Params, BucketConfig, IsNew) ++
+        BucketParams;
 validate_bucket_type_specific_params(_CommonParams, Params, _BucketType,
                                      _IsNew, _BucketConfig) ->
     [{error, bucketType, <<"invalid bucket type">>}
@@ -994,18 +1017,47 @@ quota_size_error(CommonParams, BucketType, IsNew, BucketConfig) ->
             ignore
     end.
 
+validate_bucket_purge_interval(Params, _BucketConfig, true = IsNew) ->
+    BucketType = proplists:get_value("bucketType", Params, "membase"),
+    parse_validate_bucket_purge_interval(Params, BucketType, IsNew);
+validate_bucket_purge_interval(Params, BucketConfig, false = IsNew) ->
+    BucketType = external_bucket_type(BucketConfig),
+    parse_validate_bucket_purge_interval(Params, atom_to_list(BucketType), IsNew).
+
+parse_validate_bucket_purge_interval(Params, "couchbase", IsNew) ->
+    parse_validate_bucket_purge_interval(Params, "membase", IsNew);
+parse_validate_bucket_purge_interval(Params, "membase", _IsNew) ->
+    case menelaus_web:parse_validate_boolean_field("autoCompactionDefined", '_', Params) of
+        [] -> [];
+        [{error, _F, _V}] = Error -> Error;
+        [{ok, _, false}] -> [{ok, purge_interval, undefined}];
+        [{ok, _, true}] -> menelaus_web:parse_validate_purge_interval(Params)
+    end;
+parse_validate_bucket_purge_interval(Params, "ephemeral", IsNew) ->
+    case proplists:is_defined("autoCompactionDefined", Params) of
+        true ->
+            [{error, autoCompactionDefined,
+              <<"autoCompactionDefined must not be set for ephemeral buckets">>}];
+        false ->
+            Val = menelaus_web:parse_validate_purge_interval(Params),
+            case Val =:= [] andalso IsNew =:= true of
+                true ->
+                    [{ok, purge_interval, ?DEFAULT_EPHEMERAL_PURGE_INTERVAL}];
+                false ->
+                    Val
+            end
+    end.
+
 validate_bucket_auto_compaction_settings(Params) ->
     case parse_validate_bucket_auto_compaction_settings(Params) of
         nothing ->
             [];
         false ->
-            [{ok, autocompaction, false},
-             {ok, purge_interval, undefined}];
+            [{ok, autocompaction, false}];
         {errors, Errors} ->
             [{error, F, M} || {F, M} <- Errors];
-        {ok, ACSettings, MaybePurgeInterval} ->
-            [{ok, autocompaction, ACSettings}
-             | purge_interval(MaybePurgeInterval)]
+        {ok, ACSettings} ->
+            [{ok, autocompaction, ACSettings}]
     end.
 
 parse_validate_bucket_auto_compaction_settings(Params) ->
@@ -1015,17 +1067,12 @@ parse_validate_bucket_auto_compaction_settings(Params) ->
         [{ok, _, false}] -> false;
         [{ok, _, true}] ->
             case menelaus_web:parse_validate_auto_compaction_settings(Params, false) of
-                {ok, AllFields, MaybePurge, _} ->
-                    {ok, AllFields, MaybePurge};
+                {ok, AllFields, _} ->
+                    {ok, AllFields};
                 Error ->
                     Error
             end
     end.
-
-purge_interval([{purge_interval, PurgeInterval}]) ->
-    [{ok, purge_interval, PurgeInterval}];
-purge_interval([]) ->
-    [].
 
 validate_replicas_number(Params, IsNew) ->
     validate_with_missing(
@@ -1688,15 +1735,15 @@ basic_parse_validate_bucket_auto_compaction_settings_test() ->
                                                              {"allowedTimePeriod[toMinute]", "3"},
                                                              {"allowedTimePeriod[abortOutside]", "false"}]),
     ?assertMatch(false, Value1),
-    {ok, Stuff0, []} = parse_validate_bucket_auto_compaction_settings([{"autoCompactionDefined", "true"},
-                                                                       {"databaseFragmentationThreshold[percentage]", "10"},
-                                                                       {"viewFragmentationThreshold[percentage]", "20"},
-                                                                       {"parallelDBAndViewCompaction", "false"},
-                                                                       {"allowedTimePeriod[fromHour]", "0"},
-                                                                       {"allowedTimePeriod[fromMinute]", "1"},
-                                                                       {"allowedTimePeriod[toHour]", "2"},
-                                                                       {"allowedTimePeriod[toMinute]", "3"},
-                                                                       {"allowedTimePeriod[abortOutside]", "false"}]),
+    {ok, Stuff0} = parse_validate_bucket_auto_compaction_settings([{"autoCompactionDefined", "true"},
+                                                                   {"databaseFragmentationThreshold[percentage]", "10"},
+                                                                   {"viewFragmentationThreshold[percentage]", "20"},
+                                                                   {"parallelDBAndViewCompaction", "false"},
+                                                                   {"allowedTimePeriod[fromHour]", "0"},
+                                                                   {"allowedTimePeriod[fromMinute]", "1"},
+                                                                   {"allowedTimePeriod[toHour]", "2"},
+                                                                   {"allowedTimePeriod[toMinute]", "3"},
+                                                                   {"allowedTimePeriod[abortOutside]", "false"}]),
     Stuff1 = lists:sort(Stuff0),
     ?assertEqual([{allowed_time_period, [{from_hour, 0},
                                          {to_hour, 2},
