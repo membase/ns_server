@@ -1096,13 +1096,16 @@ perform_actual_join(RemoteNode, NewCookie) ->
                          end),
 
         ns_config:merge_dynamic_and_static(),
-
         ?cluster_debug("pre-join cleaned config is:~n~p", [ns_config_log:sanitize(ns_config:get())]),
+
         {ok, _Cookie} = ns_cookie_manager:cookie_sync(),
         %% Let's verify connectivity.
         Connected = net_kernel:connect_node(RemoteNode),
         ?cluster_debug("Connection from ~p to ~p:  ~p",
                        [node(), RemoteNode, Connected]),
+
+        ok = ns_config_rep:pull_from_one_node_directly(RemoteNode),
+        ?cluster_debug("pre-join merged config is:~n~p", [ns_config_log:sanitize(ns_config:get())]),
 
         {ok, ok}
     catch

@@ -46,7 +46,7 @@
 % API
 -export([ensure_config_pushed/0,
          ensure_config_seen_by_nodes/0, ensure_config_seen_by_nodes/1,
-         pull_and_push/1]).
+         pull_and_push/1, pull_from_one_node_directly/1]).
 
 -export([get_remote/2, pull_remotes/1]).
 
@@ -361,6 +361,9 @@ pull_one_node([Node | Rest], N, Errors) ->
             merge_one_remote_config(RemoteKVList),
             ok
     end.
+
+pull_from_one_node_directly(Node) ->
+    pull_one_node([Node], 1).
 
 pull_from_all_nodes(Nodes) ->
     {Good, Bad} = ns_config_replica:get_compressed_many(Nodes, ?PULL_TIMEOUT),
