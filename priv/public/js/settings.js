@@ -1116,6 +1116,10 @@ var EmailAlertsSection = {
           label: 'Clock CAS drift threshold has exceeded on a node',
           enabled: $.inArray('ep_clock_cas_drift_threshold_exceeded', val.alerts)!==-1,
           value: 'ep_clock_cas_drift_threshold_exceeded'
+        },{
+          label: 'Communication issues among some nodes in the cluster',
+          enabled: $.inArray('communication_issue', val.alerts)!==-1,
+          value: 'communication_issue'
         }];
 
         renderTemplate('email_alerts', val, $i('email_alerts_container'));
