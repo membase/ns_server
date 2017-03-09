@@ -41,9 +41,7 @@
           activated and this node is removed from the cluster. It is
           recommended to select "Remove Server" and rebalance to
           safely remove the node without any data loss.
-
-        </div>
-        <div>
+          <br>
           <input
              id="for_failover_confirm"
              type="checkbox"
@@ -70,11 +68,13 @@
           this node is removed from the cluster. If the node might
           come back online, it is recommended to wait.
           Check this box if you want to failover the node, despite the resulting data loss
-          <label>
-            <input
-               type="checkbox"
-               name="confirmation"
-               ng-model="serversFailOverDialogCtl.status.confirmation"> Please confirm Failover.</label>
+          <br>
+          <input
+             id="for_failover_confirm_1"
+             type="checkbox"
+             name="confirmation"
+             ng-model="serversFailOverDialogCtl.status.confirmation">
+          <label for="for_failover_confirm_1">Please confirm failover.</label>
         </div>
         <div
            class="error error-form"
