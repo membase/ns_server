@@ -50,11 +50,11 @@
                     orderBy: mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert |
                     limitTo: (userRolesCtl.pageNumber - 1) * userRolesCtl.pageLimit - userRolesCtl.state.users.length |
                     limitTo: userRolesCtl.pageLimit
-                    track by user.id">
+                    track by (user.id + user.type)">
         <tr
-           ng-click="userRolesCtl.toggleDetails(user.id)"
+           ng-click="userRolesCtl.toggleDetails(user.id + user.type)"
            ng-class="{
-                     'no-stroke': userRolesCtl.isDetailsOpened(user.id) && rbac.cluster.admin.security.write,
+                     'no-stroke': userRolesCtl.isDetailsOpened(user.id + user.type) && rbac.cluster.admin.security.write,
                      'has-hover': rbac.cluster.admin.security.write}">
           <td class="ellipsis max-width-3">{{user.id}}</td>
           <td class="ellipsis max-width-3 text-center">{{user.name}}</td>
@@ -72,7 +72,7 @@
           </td>
         </tr>
         <tr>
-          <td class="text-right" colspan="4" ng-if="userRolesCtl.isDetailsOpened(user.id) && rbac.cluster.admin.security.write">
+          <td class="text-right" colspan="4" ng-if="userRolesCtl.isDetailsOpened(user.id + user.type) && rbac.cluster.admin.security.write">
             <button
                class="outline"
                ng-click="userRolesCtl.deleteUser(user)">Delete</button>
