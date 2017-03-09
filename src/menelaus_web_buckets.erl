@@ -220,6 +220,18 @@ build_purge_interval_info(BucketConfig, couchstore) ->
 build_purge_interval_info(BucketConfig, ephemeral) ->
     [{purgeInterval, proplists:get_value(purge_interval, BucketConfig)}].
 
+build_eviction_policy(BucketConfig) ->
+    case ns_bucket:eviction_policy(BucketConfig) of
+        value_only ->
+            <<"valueOnly">>;
+        full_eviction ->
+            <<"fullEviction">>;
+        no_eviction ->
+            <<"noEviction">>;
+        nru_eviction ->
+            <<"nruEviction">>
+    end.
+
 build_bucket_info(Id, undefined, InfoLevel, LocalAddr, MayExposeAuth,
                   SkipMap) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(Id),
@@ -245,14 +257,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                            bin_concat_path(Segments, QSProps)
                    end,
 
-    EvictionPolicy =
-        case proplists:get_value(eviction_policy, BucketConfig, value_only) of
-            value_only ->
-                <<"valueOnly">>;
-            full_eviction ->
-                <<"fullEviction">>
-        end,
-
+    EvictionPolicy = build_eviction_policy(BucketConfig),
     ConflictResolutionType = ns_bucket:conflict_resolution_type(BucketConfig),
 
     Suffix = case InfoLevel of
@@ -897,7 +902,7 @@ validate_bucket_type_specific_params(CommonParams, Params, membase, IsNew,
          ReplicasNumResult,
          parse_validate_replica_index(Params, ReplicasNumResult, IsNew),
          parse_validate_threads_number(Params, IsNew),
-         parse_validate_eviction_policy(Params, IsNew),
+         parse_validate_eviction_policy(Params, BucketConfig, IsNew),
          quota_size_error(CommonParams, membase, IsNew, BucketConfig),
          get_storage_mode(Params, BucketConfig, IsNew)
          | validate_bucket_auto_compaction_settings(Params)],
@@ -1353,18 +1358,52 @@ parse_validate_threads_number(NumThreads) ->
             {ok, num_threads, X}
     end.
 
-parse_validate_eviction_policy(Params, IsNew) ->
+parse_validate_eviction_policy(Params, BCfg, IsNew) ->
+    BType = case IsNew of
+                     true -> proplists:get_value("bucketType", Params, "membase");
+                     false -> atom_to_list(external_bucket_type(BCfg))
+                 end,
+    do_parse_validate_eviction_policy(Params, BCfg, BType, IsNew).
+
+do_parse_validate_eviction_policy(Params, BCfg, "couchbase", IsNew) ->
+    do_parse_validate_eviction_policy(Params, BCfg, "membase", IsNew);
+do_parse_validate_eviction_policy(Params, _BCfg, "membase", IsNew) ->
     validate_with_missing(proplists:get_value("evictionPolicy", Params),
                           "valueOnly", IsNew,
-                          fun parse_validate_eviction_policy/1).
+                          fun parse_validate_membase_eviction_policy/1);
+do_parse_validate_eviction_policy(Params, _BCfg, "ephemeral", true = IsNew) ->
+    validate_with_missing(proplists:get_value("evictionPolicy", Params),
+                          "noEviction", IsNew,
+                          fun parse_validate_ephemeral_eviction_policy/1);
+do_parse_validate_eviction_policy(Params, BCfg, "ephemeral", false = _IsNew) ->
+    case proplists:get_value("evictionPolicy", Params) of
+        undefined ->
+            ignore;
+        Val ->
+            case build_eviction_policy(BCfg) =:= list_to_binary(Val) of
+                true ->
+                    ignore;
+                false ->
+                    {error, evictionPolicy,
+                     <<"Eviction policy cannot be updated for ephemeral buckets">>}
+            end
+    end.
 
-parse_validate_eviction_policy("valueOnly") ->
+parse_validate_membase_eviction_policy("valueOnly") ->
     {ok, eviction_policy, value_only};
-parse_validate_eviction_policy("fullEviction") ->
+parse_validate_membase_eviction_policy("fullEviction") ->
     {ok, eviction_policy, full_eviction};
-parse_validate_eviction_policy(_Other) ->
+parse_validate_membase_eviction_policy(_Other) ->
     {error, evictionPolicy,
-     <<"Eviction policy must be either 'valueOnly' or 'fullEviction'">>}.
+     <<"Eviction policy must be either 'valueOnly' or 'fullEviction' for couchbase buckets">>}.
+
+parse_validate_ephemeral_eviction_policy("noEviction") ->
+    {ok, eviction_policy, no_eviction};
+parse_validate_ephemeral_eviction_policy("nruEviction") ->
+    {ok, eviction_policy, nru_eviction};
+parse_validate_ephemeral_eviction_policy(_Other) ->
+    {error, evictionPolicy,
+     <<"Eviction policy must be either 'noEviction' or 'nruEviction' for ephemeral buckets">>}.
 
 parse_validate_drift_ahead_threshold(Threshold) ->
     case menelaus_util:parse_validate_number(Threshold, 100, undefined) of

@@ -60,6 +60,7 @@
          ram_quota/1,
          conflict_resolution_type/1,
          drift_thresholds/1,
+         eviction_policy/1,
          storage_mode/1,
          raw_ram_quota/1,
          sasl_password/1,
@@ -116,7 +117,8 @@ config_string(BucketName) ->
                 AccessLog = filename:join(DBSubDir, "access.log"),
                 NumVBuckets = proplists:get_value(num_vbuckets, BucketConfig),
                 NumThreads = proplists:get_value(num_threads, BucketConfig, 3),
-                EvictionPolicy = proplists:get_value(eviction_policy, BucketConfig, value_only),
+                ItemEvictionPolicy = memcached_item_eviction_policy(BucketConfig),
+                EphemeralFullPolicy = memcached_ephemeral_full_policy(BucketConfig),
                 ConflictResolutionType = conflict_resolution_type(BucketConfig),
                 DriftThresholds = drift_thresholds(BucketConfig),
                 StorageMode = storage_mode(BucketConfig),
@@ -128,9 +130,9 @@ config_string(BucketName) ->
                       "dbname=~s;"
                       "backend=couchdb;couch_bucket=~s;max_vbuckets=~B;"
                       "alog_path=~s;data_traffic_enabled=false;max_num_workers=~B;"
-                      "uuid=~s;item_eviction_policy=~s;"
+                      "uuid=~s;"
                       "conflict_resolution_type=~s;"
-                      "bucket_type=~s",
+                      "bucket_type=~s;~s",
                       [proplists:get_value(
                          ht_size, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
@@ -144,10 +146,11 @@ config_string(BucketName) ->
                        AccessLog,
                        NumThreads,
                        BucketUUID,
-                       EvictionPolicy,
                        ConflictResolutionType,
-                       storage_mode_to_bucket_type(StorageMode)]),
-                {CFG, {MemQuota, DBSubDir, NumThreads, EvictionPolicy,
+                       storage_mode_to_bucket_type(StorageMode),
+                       eviction_policy_cfg_string(BucketConfig, ItemEvictionPolicy,
+                                                  EphemeralFullPolicy)]),
+                {CFG, {MemQuota, DBSubDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
                        DriftThresholds}, DBSubDir};
             memcached ->
                 {io_lib:format("cache_size=~B;uuid=~s", [MemQuota, BucketUUID]),
@@ -247,6 +250,53 @@ drift_thresholds(BucketConfig) ->
             {proplists:get_value(drift_ahead_threshold_ms, BucketConfig),
              proplists:get_value(drift_behind_threshold_ms, BucketConfig)};
         seqno ->
+            undefined
+    end.
+
+eviction_policy(BucketConfig) ->
+    Default = case storage_mode(BucketConfig) of
+                  undefined -> value_only;
+                  couchstore -> value_only;
+                  ephemeral -> no_eviction
+              end,
+    proplists:get_value(eviction_policy, BucketConfig, Default).
+
+%% The policy parameter accepted by memcached for couchbase and ephemeral buckets
+%% are different. This function, memcached_eviction_policy() and
+%% memcached_ephemeral_full_policy() map between the REST API understanding of
+%% eviction policies and memcached's understanding of them.
+eviction_policy_cfg_string(BucketConfig, ItemEvictionPolicy, EphemeralFullPolicy) ->
+    case storage_mode(BucketConfig) of
+        couchstore ->
+            io_lib:format("item_eviction_policy=~s", [ItemEvictionPolicy]);
+        ephemeral ->
+            io_lib:format("ephemeral_full_policy=~s", [EphemeralFullPolicy])
+    end.
+
+%% The 'item_eviction_policy' is applicable only for couchbase buckets. Consequently,
+%% this function returns the eviction policy set in the bucket config for couchbase
+%% buckets only. For ephemeral buckets, it returns 'undefined'.
+memcached_item_eviction_policy(BucketConfig) ->
+    case storage_mode(BucketConfig) of
+        couchstore ->
+            proplists:get_value(eviction_policy, BucketConfig, value_only);
+        _ ->
+            undefined
+    end.
+
+%% The 'ephemeral_full_policy' is applicable only for ephemeral buckets. Consequently,
+%% this function maps the eviction policy set in the bucket config to the values
+%% the memcached process expects for ephemeral buckets. For couchbase buckets, it
+%% returns 'undefined'.
+memcached_ephemeral_full_policy(BucketConfig) ->
+    case storage_mode(BucketConfig) of
+        ephemeral ->
+            Policy = proplists:get_value(eviction_policy, BucketConfig, no_eviction),
+            case Policy of
+                nru_eviction -> auto_delete;
+                _ -> fail_new_data
+            end;
+        _ ->
             undefined
     end.
 

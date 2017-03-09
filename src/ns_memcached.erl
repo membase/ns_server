@@ -1278,6 +1278,7 @@ maybe_set_drift_thresholds(Sock, Bucket, {DAT, DBT}, ActualDAT, ActualDBT) ->
                  dbname = missing_path,
                  max_num_workers = missing_num_threads,
                  item_eviction_policy = missing_eviction_policy,
+                 ephemeral_full_policy = missing_ephemeral_full_policy,
                  ahead_threshold = missing_ahead_threshold,
                  behind_threshold = missing_behind_threshold}).
 
@@ -1285,16 +1286,18 @@ maybe_set_drift_thresholds(Sock, Bucket, {DAT, DBT}, ActualDAT, ActualDBT) ->
                            {pos_integer(), nonempty_string()}) ->
                                   ok | no_return().
 ensure_bucket_config(Sock, Bucket, membase,
-                     {MaxSize, DBDir, NumThreads, EvictionPolicy,
+                     {MaxSize, DBDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
                       DriftThresholds}) ->
     MaxSizeBin = list_to_binary(integer_to_list(MaxSize)),
     DBDirBin = list_to_binary(DBDir),
     NumThreadsBin = list_to_binary(integer_to_list(NumThreads)),
-    EvictionPolicyBin = atom_to_binary(EvictionPolicy, latin1),
+    ItemEvictionPolicyBin = atom_to_binary(ItemEvictionPolicy, latin1),
+    EphemeralFullPolicyBin = atom_to_binary(EphemeralFullPolicy, latin1),
     {ok, #qstats{max_size = ActualMaxSizeBin,
                  dbname = ActualDBDirBin,
                  max_num_workers = ActualNumThreads,
-                 item_eviction_policy = ActualEvictionPolicy,
+                 item_eviction_policy = ActualItemEvictionPolicy,
+                 ephemeral_full_policy = ActualEphemeralFullPolicy,
                  ahead_threshold = ActualDAT,
                  behind_threshold = ActualDBT}} =
         mc_binary:quick_stats(
@@ -1307,6 +1310,8 @@ ensure_bucket_config(Sock, Bucket, membase,
                   QStats#qstats{max_num_workers = V};
               (<<"ep_item_eviction_policy">>, V, QStats) ->
                   QStats#qstats{item_eviction_policy = V};
+              (<<"ep_ephemeral_full_policy">>, V, QStats) ->
+                  QStats#qstats{ephemeral_full_policy = V};
               (<<"ep_hlc_drift_ahead_threshold_us">>, V, QStats) ->
                   QStats#qstats{ahead_threshold = V};
               (<<"ep_hlc_drift_behind_threshold_us">>, V, QStats) ->
@@ -1318,7 +1323,10 @@ ensure_bucket_config(Sock, Bucket, membase,
     CanReloadBuckets = ns_config:read_key_fast(dont_reload_bucket_on_cfg_change, false) =:= false,
 
     NumThreadsChanged = CanReloadBuckets andalso (NumThreadsBin =/= ActualNumThreads),
-    EvictionPolicyChanged = CanReloadBuckets andalso (EvictionPolicyBin =/= ActualEvictionPolicy),
+
+    ItemEvictionPolicyChanged = CanReloadBuckets
+        andalso ItemEvictionPolicy =/= undefined
+        andalso (ItemEvictionPolicyBin =/= ActualItemEvictionPolicy),
 
     case NumThreadsChanged of
         true ->
@@ -1329,18 +1337,26 @@ ensure_bucket_config(Sock, Bucket, membase,
             ok
     end,
 
-    case EvictionPolicyChanged of
+    case ItemEvictionPolicyChanged of
         true ->
             ale:info(?USER_LOGGER,
                      "Eviction policy changed form '~s' to '~s' for bucket ~p",
-                     [ActualEvictionPolicy, EvictionPolicyBin, Bucket]);
+                     [ActualItemEvictionPolicy, ItemEvictionPolicyBin, Bucket]);
+        false ->
+            ok
+    end,
+
+    case EphemeralFullPolicy =/= undefined of
+        true ->
+            maybe_update_ephemeral_full_policy(Sock, Bucket, EphemeralFullPolicyBin,
+                                               ActualEphemeralFullPolicy);
         false ->
             ok
     end,
 
     maybe_set_drift_thresholds(Sock, Bucket, DriftThresholds, ActualDAT, ActualDBT),
 
-    case NumThreadsChanged orelse EvictionPolicyChanged of
+    case NumThreadsChanged orelse ItemEvictionPolicyChanged of
         true ->
             ale:info(?USER_LOGGER,
                      "Restarting bucket ~p due to configuration change",
@@ -1377,6 +1393,19 @@ ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
                       end, not_present),
     ok.
 
+maybe_update_ephemeral_full_policy(Sock, Bucket, NewFullPolicy, CurrFullPolicy) ->
+    case NewFullPolicy =/= CurrFullPolicy of
+        true ->
+            ok = mc_client_binary:set_engine_param(Sock,
+                                                   <<"ephemeral_full_policy">>,
+                                                   NewFullPolicy,
+                                                   flush),
+            ?log_info("Ephemeral full policy changed from '~s' to '~s' for bucket ~p",
+                      [CurrFullPolicy, NewFullPolicy, Bucket]),
+            ok;
+        false ->
+            ok
+    end.
 
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
