@@ -36,6 +36,9 @@
 %% Amount of time to wait between checkout out of disk (s)
 -define(DISK_USAGE_TIMEOUT, 60 * 60 * 12).
 
+%% Amount of time to wait before reporting communication issues (s)
+-define(COMMUNICATION_ISSUE_TIMEOUT, 60 * 5).
+
 -export([start_link/0, stop/0, local_alert/2, global_alert/2,
          fetch_alerts/0, consume_alerts/1]).
 
@@ -57,6 +60,8 @@ short_description(indexer_ram_max_usage) ->
     "indexer ram approaching threshold warning";
 short_description(ep_clock_cas_drift_threshold_exceeded) ->
     "cas drift threshold exceeded error";
+short_description(communication_issue) ->
+    "communication issue among some nodes";
 short_description(Other) ->
     %% this case is needed for tests to work
     couch_util:to_list(Other).
@@ -79,7 +84,9 @@ errors(indexer_ram_max_usage) ->
 errors(ep_clock_cas_drift_threshold_exceeded) ->
     "Remote or replica mutation received for bucket ~p on node ~p with timestamp more "
     "than ~p milliseconds ahead of local clock. Please ensure that NTP is set up correctly "
-    "on all nodes across the replication topology and clocks are synchronized.".
+    "on all nodes across the replication topology and clocks are synchronized.";
+errors(communication_issue) ->
+    "Warning: Node \"~s\" is having issues communicating with following nodes \"~s\".".
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -239,7 +246,7 @@ start_timer() ->
 %% broadcast alerts to clients connected to any particular node
 global_checks() ->
     [oom, ip, write_fail, overhead, disk, audit_write_fail,
-     indexer_ram_max_usage, cas_drift_threshold].
+     indexer_ram_max_usage, cas_drift_threshold, communication_issue].
 
 %% @doc fires off various checks
 check_alerts(Opaque, Hist, Stats) ->
@@ -381,7 +388,41 @@ check(cas_drift_threshold, Opaque, _History, Stats) ->
                                    [Bucket, Host, Threshold])
                 end,
     check_stat_increased(NewStats, ep_clock_cas_drift_threshold_exceeded, Opaque,
-                         Formatter).
+                         Formatter);
+
+check(communication_issue, Opaque, _History, _Stats) ->
+    ClusterStatus = case mb_master:master_node() =:= node() of
+                        true ->
+                            dict:to_list(node_status_analyzer:get_nodes());
+                        false ->
+                            []
+                    end,
+    lists:foreach(
+      fun ({Node, Status}) ->
+              case Status of
+                  {{_, [{_,{potential_network_partition, Nodes}}]}, TS} ->
+                      TimeElapsed = timer:now_diff(erlang:now(), TS)/1000000,
+                      case TimeElapsed > ?COMMUNICATION_ISSUE_TIMEOUT of
+                          true ->
+                              {_Sname, Host} = misc:node_name_host(Node),
+                              Others = lists:map(
+                                         fun (N) ->
+                                                 {_S, H} = misc:node_name_host(N),
+                                                 H
+                                         end, Nodes),
+                              OH = string:join(Others, ", "),
+                              Err = fmt_to_bin(errors(communication_issue),
+                                               [Host, OH]),
+                              global_alert({communication_issue, Node}, Err);
+                          false ->
+                              ok
+                      end;
+                  _ ->
+                      ok
+              end
+      end, ClusterStatus),
+    Opaque.
+
 
 %% @doc only check for disk usage if there has been no previous
 %% errors or last error was over the timeout ago
@@ -555,7 +596,8 @@ maybe_send_out_email_alert({Key0, Node}, Message) ->
 alert_keys() ->
     [ip, disk, overhead, ep_oom_errors, ep_item_commit_failed,
      audit_dropped_events, indexer_ram_max_usage,
-     ep_clock_cas_drift_threshold_exceeded].
+     ep_clock_cas_drift_threshold_exceeded,
+     communication_issue].
 
 %% Cant currently test the alert timeouts as would need to mock
 %% calls to the archiver
