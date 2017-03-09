@@ -262,10 +262,10 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[{bucket, Id}, views], read},
                      fun menelaus_web_buckets:handle_ddocs_list/3, ["default", Id]};
                 ["pools", "default", "buckets", Id, "docs"] ->
-                    {{[{bucket, Id}, data], read},
+                    {{[{bucket, Id}, data, docs], read},
                      fun menelaus_web_crud:handle_list/2, [Id]};
                 ["pools", "default", "buckets", Id, "docs", DocId] ->
-                    {{[{bucket, Id}, data], read},
+                    {{[{bucket, Id}, data, docs], read},
                      fun menelaus_web_crud:handle_get/3, [Id, DocId]};
                 ["pools", "default", "buckets", "@query", "stats"] ->
                     {{[stats], read},
@@ -284,7 +284,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_stats:handle_bucket_stats/3,
                      ["default", Id]};
                 ["pools", "default", "buckets", Id, "localRandomKey"] ->
-                    {{[{bucket, Id}, data], read},
+                    {{[{bucket, Id}, data, docs], read},
                      fun menelaus_web_buckets:handle_local_random_key/3,
                      ["default", Id]};
                 ["pools", "default", "buckets", Id, "statsDirectory"] ->
@@ -621,7 +621,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_buckets:handle_bucket_create/2,
                      ["default"]};
                 ["pools", "default", "buckets", Id, "docs", DocId] ->
-                    {{[{bucket, Id}, data], write},
+                    {{[{bucket, Id}, data, docs], write},
                      fun menelaus_web_crud:handle_post/3, [Id, DocId]};
                 ["pools", "default", "buckets", Id, "controller", "doFlush"] ->
                     {{[{bucket, Id}], flush},
@@ -737,7 +737,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                       {[xdcr, remote_clusters], write},
                       fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]);
                 ["pools", "default", "buckets", Id, "docs", DocId] ->
-                    {{[{bucket, Id}, data], write},
+                    {{[{bucket, Id}, data, docs], write},
                      fun menelaus_web_crud:handle_delete/3, [Id, DocId]};
                 ["controller", "cancelXCDR", XID] ->
                     goxdcr_rest:spec(

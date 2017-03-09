@@ -63,13 +63,13 @@ verify_bucket_uuid(BucketConfig, MaybeUUID) ->
 get_required_permission('GET', BucketName, [<<"_design">> | _]) ->
     {[{bucket, BucketName}, views], read};
 get_required_permission('GET', BucketName, _) ->
-    {[{bucket, BucketName}, data], read};
+    {[{bucket, BucketName}, data, docs], read};
 
 
 get_required_permission(_, BucketName, [<<"_design">> | _]) ->
     {[{bucket, BucketName}, views], write};
 get_required_permission(_, BucketName, _) ->
-    {[{bucket, BucketName}, data], write}.
+    {[{bucket, BucketName}, data, docs], write}.
 
 continue_do_db_req(#httpd{user_ctx=UserCtx,
                           path_parts=[_DbName | RestPathParts]} = Req,
