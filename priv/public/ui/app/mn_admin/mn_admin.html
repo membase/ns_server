@@ -195,13 +195,13 @@
       <span
          mn-tab="security"
          ng-class="{currentNav: ('app.admin.security' | includedByState)}"
-         ng-show="rbac.cluster.admin.security.read && (pools.isEnterprise || rbac.cluster.admin.security.write)">
+         ng-show="rbac.cluster.admin.security.read && (pools.isEnterprise || poolDefault.compat.atLeast50)">
         <a
            ui-sref="app.admin.security.userRoles"
-           ng-show="pools.isEnterprise && poolDefault.compat.atLeast45">Security</a>
+           ng-show="poolDefault.compat.atLeast50">Security</a>
         <a
            ui-sref="app.admin.security.rootCertificate"
-           ng-show="pools.isEnterprise && !poolDefault.compat.atLeast45 && rbac.cluster.admin.security.write === false">Security</a>
+           ng-show="pools.isEnterprise && !poolDefault.compat.atLeast50">Security</a>
       </span>
       <a
          mn-tab="settings"

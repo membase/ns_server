@@ -4,7 +4,7 @@
      mn-pluggable-ui-tabs
      mn-tab-bar-name="securityTab">
     <a
-       ng-show="poolDefault.compat.atLeast50 && rbac.cluster.admin.security.read && pools.isEnterprise"
+       ng-show="poolDefault.compat.atLeast50 && rbac.cluster.admin.security.read"
        ui-sref="app.admin.security.userRoles"
        ui-sref-active="selected">Users</a>
     <a

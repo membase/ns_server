@@ -42,8 +42,7 @@
         controller: "mnUserRolesController as userRolesCtl",
         templateUrl: "app/mn_admin/mn_security/mn_user_roles/mn_user_roles.html",
         data: {
-          compat: "atLeast50",
-          enterprise: true
+          compat: "atLeast50"
         }
       })
       .state('app.admin.security.rootCertificate', {
