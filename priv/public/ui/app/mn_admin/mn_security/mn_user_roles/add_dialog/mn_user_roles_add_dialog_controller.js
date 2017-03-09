@@ -95,6 +95,9 @@
     }
 
     function save() {
+      if (vm.form.$invalid) {
+        return;
+      }
       mnPromiseHelper(vm, mnUserRolesService.addUser(vm.user, vm.selectedRoles, user), $uibModalInstance)
         .showGlobalSpinner()
         .catchErrors()
