@@ -31,7 +31,6 @@
          delete_user/1,
          change_password/2,
          authenticate/2,
-         get_memcached_auth/1,
          get_roles/1,
          user_exists/1,
          get_user_name/1,
@@ -118,27 +117,25 @@ select_auth_infos(KeySpec) ->
 build_auth(false, undefined, _UserName) ->
     password_required;
 build_auth(false, Password, UserName) ->
-    [{ns_server, ns_config_auth:hash_password(Password)},
-     {memcached, build_memcached_auth(UserName, Password)}];
+    build_memcached_auth(UserName, Password);
 build_auth({_, _}, undefined, _UserName) ->
     same;
 build_auth({_, CurrentAuth}, Password, UserName) ->
     {Salt, Mac} = get_salt_and_mac(CurrentAuth),
     case ns_config_auth:hash_password(Salt, Password) of
         Mac ->
-            case get_memcached_auth(CurrentAuth) of
-                undefined ->
-                    [{memcached, build_memcached_auth(UserName, Password)} | CurrentAuth];
+            case has_scram_hashes(CurrentAuth) of
+                false ->
+                    build_memcached_auth(UserName, Password);
                 _ ->
                     same
             end;
         _ ->
-            [{ns_server, ns_config_auth:hash_password(Password)},
-             {memcached, build_memcached_auth(UserName, Password)}]
+            build_memcached_auth(UserName, Password)
     end.
 
 build_memcached_auth(User, Password) ->
-    [MemcachedAuth] = build_memcached_auth_info([{User, Password}]),
+    [{MemcachedAuth}] = build_memcached_auth_info([{User, Password}]),
     MemcachedAuth.
 
 -spec store_user(rbac_identity(), rbac_user_name(), rbac_password(), [rbac_role()]) -> run_txn_return().
@@ -275,10 +272,12 @@ delete_user_spock({_, Type} = Identity) ->
     end.
 
 get_salt_and_mac(Auth) ->
-    proplists:get_value(ns_server, Auth).
+    SaltAndMacBase64 = binary_to_list(proplists:get_value(<<"plain">>, Auth)),
+    <<Salt:16/binary, Mac:20/binary>> = base64:decode(SaltAndMacBase64),
+    {Salt, Mac}.
 
-get_memcached_auth(Auth) ->
-    proplists:get_value(memcached, Auth).
+has_scram_hashes(Auth) ->
+    proplists:is_defined(<<"sha1">>, Auth).
 
 -spec authenticate(rbac_user_id(), rbac_password()) -> boolean().
 authenticate(Username, Password) ->

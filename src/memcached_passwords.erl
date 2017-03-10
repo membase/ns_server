@@ -116,12 +116,7 @@ jsonify_auth(AU, AP, Buckets) ->
            pipes:foreach(
              ?producer(),
              fun ({{auth, _Identity}, Auth}) ->
-                     case menelaus_users:get_memcached_auth(Auth) of
-                         undefined ->
-                             ok;
-                         V ->
-                             ?yield({json, V})
-                     end
+                     ?yield({json, {Auth}})
              end),
            ?yield(array_end),
            ?yield(kv_end),
