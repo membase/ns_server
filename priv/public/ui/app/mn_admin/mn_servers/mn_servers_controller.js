@@ -36,15 +36,15 @@
   function formatFailoverWarnings() {
     return function (warning) {
       switch (warning) {
-        case 'rebalanceNeeded': return 'Rebalance required, some data is not currently replicated!';
-        case 'hardNodesNeeded': return 'At least two servers with the data service are required to provide replication!';
-        case 'softNodesNeeded': return 'Additional active servers required to provide the desired number of replicas!';
-        case 'softRebalanceNeeded': return 'Rebalance recommended, some data does not have the desired replicas configuration!';
+      case 'rebalanceNeeded': return 'Rebalance required, some data is not currently replicated!';
+      case 'hardNodesNeeded': return 'At least two servers with the data service are required to provide replication!';
+      case 'softNodesNeeded': return 'Additional active servers required to provide the desired number of replicas!';
+      case 'softRebalanceNeeded': return 'Rebalance recommended, some data does not have the desired replicas configuration!';
       }
     };
   }
 
-  function mnServersController($scope, $state, $uibModal, mnPoolDefault, mnPoller, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools, mnSettingsAutoFailoverService, mnTasksDetails) {
+  function mnServersController($scope, $state, $uibModal, mnPoolDefault, mnPoller, mnServersService, mnHelper, mnGroupsService, mnPromiseHelper, mnPools, mnSettingsAutoFailoverService, mnTasksDetails, permissions) {
     var vm = this;
     vm.mnPoolDefault = mnPoolDefault.latestValue();
 
@@ -58,30 +58,35 @@
     function activate() {
       mnHelper.initializeDetailsHashObserver(vm, 'openedServers', 'app.admin.servers.list');
 
-      new mnPoller($scope, function () {
-        return mnGroupsService.getGroupsByHostname();
-      })
-      .subscribe("getGroupsByHostname", vm)
-      .reloadOnScopeEvent(["serverGroupsUriChanged", "reloadServersPoller"])
-      .cycle();
+      if (permissions.cluster.server_groups.read) {
+        new mnPoller($scope, function () {
+          return mnGroupsService.getGroupsByHostname();
+        })
+          .subscribe("getGroupsByHostname", vm)
+          .reloadOnScopeEvent(["serverGroupsUriChanged", "reloadServersPoller"])
+          .cycle();
+      }
 
       new mnPoller($scope, function () {
         return mnServersService.getNodes();
       })
-      .subscribe(function (nodes) {
-        vm.showSpinner = false;
-        vm.nodes = nodes;
-      })
-      .reloadOnScopeEvent(["mnPoolDefaultChanged", "reloadNodes"])
-      .cycle();
+        .subscribe(function (nodes) {
+          vm.showSpinner = false;
+          vm.nodes = nodes;
+        })
+        .reloadOnScopeEvent(["mnPoolDefaultChanged", "reloadNodes"])
+        .cycle();
 
-      new mnPoller($scope, function () {
-        return mnSettingsAutoFailoverService.getAutoFailoverSettings();
-      })
-      .setInterval(10000)
-      .subscribe("autoFailoverSettings", vm)
-      .reloadOnScopeEvent(["reloadServersPoller", "rebalanceFinished"])
-      .cycle();
+
+      if (permissions.cluster.settings.read) {
+        new mnPoller($scope, function () {
+          return mnSettingsAutoFailoverService.getAutoFailoverSettings();
+        })
+          .setInterval(10000)
+          .subscribe("autoFailoverSettings", vm)
+          .reloadOnScopeEvent(["reloadServersPoller", "rebalanceFinished"])
+          .cycle();
+      }
 
       $scope.$on("reloadServersPoller", function () {
         vm.showSpinner = true;

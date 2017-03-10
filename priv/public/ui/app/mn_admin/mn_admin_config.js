@@ -108,7 +108,8 @@
           }
         },
         data: {
-          title: "Buckets"
+          title: "Buckets",
+          permission: "cluster.bucket['*'].settings.read"
         }
       })
       .state('app.admin.servers', {
@@ -155,6 +156,7 @@
           }
         },
         data: {
+          permissions: "cluster.xdcr.remote_clusters.read",
           title: "Replication"
         }
       })

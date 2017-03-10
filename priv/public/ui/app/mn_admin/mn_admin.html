@@ -1,5 +1,6 @@
 <div class="page-wrap">
   <div
+     ng-if="rbac.cluster.settings.read"
      mn-launchpad
      launchpad-source="adminCtl.launchpadSource"
      launchpad-id="adminCtl.launchpadId"></div>
@@ -10,7 +11,7 @@
   <div class="row">
     <span class="red nowrap text-smaller" style="padding-left:1.6rem;">DEVELOPER BUILD</span>
     <nav class="nav-header">
-      <a ng-click="adminCtl.toggleProgressBar()" class="activities">
+      <a ng-click="adminCtl.toggleProgressBar()" class="activities" ng-if="rbac.cluster.tasks.read">
         Activity
         <span
            ng-if="adminCtl.filterTasks(adminCtl.tasks.running).length > 0"
@@ -18,7 +19,7 @@
           {{adminCtl.filterTasks(adminCtl.tasks.running).length}}
         </span>
       </a>
-      <div class="relative inline">
+      <div class="relative inline" ng-if="rbac.cluster.tasks.read">
         <div
            mn-drag-and-drop
            base-corner-right="true"
@@ -171,11 +172,13 @@
          ui-sref="app.admin.servers.list">Servers</a>
       <a
          mn-tab="buckets"
+         ng-show="rbac.cluster.bucket['*'].settings.read"
          ui-sref="app.admin.buckets"
          ui-sref-active="currentNav">Buckets</a>
       <a
          mn-tab="indexes"
          ng-class="{currentNav: ('app.admin.indexes' | includedByState)}"
+         ng-show="rbac.cluster.bucket['*'].settings.read || rbac.cluster.indexes.read"
          ui-sref="app.admin.indexes.gsi">
         <span
            ui-sref="app.admin.indexes.gsi"
@@ -185,6 +188,7 @@
            ng-show="rbac.cluster.indexes.read === false">Indexes</span>
       </a>
       <a
+         ng-show="rbac.cluster.xdcr.remote_clusters.read"
          mn-tab="replications"
          ui-sref-active="currentNav"
          ui-sref="app.admin.replications"

@@ -5,7 +5,7 @@
     .module("mnViews")
     .controller("mnViewsListController", mnViewsListController);
 
-  function mnViewsListController($scope, $rootScope, $state, $uibModal, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoller) {
+  function mnViewsListController($scope, $rootScope, $state, $uibModal, mnViewsListService, mnViewsEditingService, mnPromiseHelper, mnCompaction, mnHelper, mnPoller, permissions) {
     var vm = this;
 
     vm.type = $state.params.type;
@@ -141,24 +141,29 @@
         .broadcast("reloadViewsPoller");
     }
     function activate() {
-      new mnPoller($scope, function () {
-        return mnViewsListService.getTasksOfCurrentBucket($state.params);
-      })
-      .subscribe("tasks", vm)
-      .reloadOnScopeEvent(["reloadViewsPoller", "mnTasksDetailsChanged"])
-      .cycle();
-
-      new mnPoller($scope, function () {
-        var promise = mnViewsListService.getViewsListState($state.params);
-        promise["finally"](function () {
-          $scope.viewsCtl.ddocsLoading = false;
-        });
-        return promise;
-      })
-      .setInterval(10000)
-      .subscribe("ddocs", vm)
-      .reloadOnScopeEvent("reloadViewsPoller", vm, "showViewsPollerSpinner")
-      .cycle();
+      if (permissions.cluster.tasks.read) {
+        new mnPoller($scope, function () {
+          return mnViewsListService.getTasksOfCurrentBucket($state.params);
+        })
+          .subscribe("tasks", vm)
+          .reloadOnScopeEvent(["reloadViewsPoller", "mnTasksDetailsChanged"])
+          .cycle();
+      }
+      if (permissions.cluster.bucket[$state.params.bucket].views.read) {
+        new mnPoller($scope, function () {
+          var promise = mnViewsListService.getViewsListState($state.params);
+          promise["finally"](function () {
+            $scope.viewsCtl.ddocsLoading = false;
+          });
+          return promise;
+        })
+          .setInterval(10000)
+          .subscribe("ddocs", vm)
+          .reloadOnScopeEvent("reloadViewsPoller", vm, "showViewsPollerSpinner")
+          .cycle();
+      } else {
+        $scope.viewsCtl.ddocsLoading = false;
+      }
     }
   }
 })();

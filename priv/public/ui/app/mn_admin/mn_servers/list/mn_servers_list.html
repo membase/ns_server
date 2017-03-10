@@ -52,12 +52,12 @@
       </tr>
 
       <tr
-         class="has-hover"
          ng-click="!serversListCtl.isNodeUnhealthy(node) && rbac.cluster.nodes.read && serversCtl.toggleDetails(node.hostname)"
          ng-class="{
-                 'grayblue-5': serversCtl.isDetailsOpened(node.hostname),
-                 'no-stroke': serversCtl.isDetailsOpened(node.hostname)
-                 }">
+                   'has-hover': rbac.cluster.nodes.read,
+                   'grayblue-5': serversCtl.isDetailsOpened(node.hostname),
+                   'no-stroke': serversCtl.isDetailsOpened(node.hostname)
+                   }">
         <td
            class="node-status"
            ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]">
@@ -82,9 +82,8 @@
         </td>
         <td class="ellipsis max-width-3">
           <span
-             ng-show="serversCtl.mnPoolDefault.value.isGroupsAvailable"
+             ng-show="rbac.cluster.server_groups.read && serversCtl.mnPoolDefault.value.isGroupsAvailable"
              class="label cell-label lt-blue"
-             ng-show="rbac.cluster.server_groups.read"
              title="{{serversCtl.getGroupsByHostname[node.hostname].name}}">
             {{serversCtl.getGroupsByHostname[node.hostname].name}}
           </span>
@@ -180,6 +179,7 @@
             Failed Over: Pending Removal
           </span>
         </td>
+        <td ng-if="!rbac.cluster.tasks.read"></td>
       </tr>
       <tr
          class="grayblue-5"

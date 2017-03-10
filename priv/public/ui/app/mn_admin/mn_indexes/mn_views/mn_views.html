@@ -8,7 +8,7 @@
 
 <div
    ng-if="viewsCtl.mnPoolDefault.value.isKvNode"
-   mn-spinner="viewsCtl.ddocsLoading || !viewsCtl.state"
+   mn-spinner="viewsCtl.ddocsLoading || (permissions.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.read && !viewsCtl.state)"
    min-height="300px">
   <ui-select
      ng-model="viewsCtl.state.bucketsNames.selected"

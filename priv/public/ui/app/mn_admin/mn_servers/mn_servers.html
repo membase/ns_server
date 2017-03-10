@@ -21,7 +21,7 @@
 </mn-element-cargo>
 
 <div
-   mn-spinner="!serversCtl.nodes || !adminCtl.tasks || !serversCtl.getGroupsByHostname"
+   mn-spinner="!serversCtl.nodes || (rbac.cluster.tasks.read && !adminCtl.tasks) || (rbac.cluster.server_groups.read && !serversCtl.getGroupsByHostname)"
    min-height="300px">
   <div class="interim row">
     <span class="left pills">

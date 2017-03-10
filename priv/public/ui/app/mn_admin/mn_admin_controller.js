@@ -61,14 +61,16 @@
     }
 
     function activate() {
-      mnPromiseHelper(vm, mnSettingsNotificationsService.maybeCheckUpdates({group: "global"}))
-        .applyToScope("updates")
-        .onSuccess(function (updates) {
-          if (updates.sendStats) {
-            mnPromiseHelper(vm, mnSettingsNotificationsService.buildPhoneHomeThingy({group: "global"}))
-              .applyToScope("launchpadSource")
-          }
-        });
+      if (mnPermissions.export.cluster.settings.read) {
+        mnPromiseHelper(vm, mnSettingsNotificationsService.maybeCheckUpdates({group: "global"}))
+          .applyToScope("updates")
+          .onSuccess(function (updates) {
+            if (updates.sendStats) {
+              mnPromiseHelper(vm, mnSettingsNotificationsService.buildPhoneHomeThingy({group: "global"}))
+                .applyToScope("launchpadSource")
+            }
+          });
+      }
 
       var etagPoller = new mnEtagPoller($scope, function (previous) {
         return mnPoolDefault.get({
@@ -115,51 +117,53 @@
       })
       .cycle();
 
-      var tasksPoller = new mnPoller($scope, function () {
-        return mnTasksDetails.getFresh({group: "global"});
-      })
-      .setInterval(function (result) {
-        return (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
-      })
-      .subscribe(function (tasks, prevTask) {
-        vm.showTasksSpinner = false;
-        if (!_.isEqual(tasks, prevTask)) {
-          $rootScope.$broadcast("mnTasksDetailsChanged");
-        }
-        var isRebalanceFinished =
-            tasks.tasksRebalance && tasks.tasksRebalance.status !== 'running' &&
-            prevTask && prevTask.tasksRebalance && prevTask.tasksRebalance.status === "running";
-        if (isRebalanceFinished) {
-          $rootScope.$broadcast("rebalanceFinished");
-        }
-
-        if (!vm.isProgressBarClosed &&
-            !filterTasks(tasks.running).length &&
-            prevTask && filterTasks(prevTask.running).length) {
-          vm.isProgressBarClosed = true;
-        }
-
-        tasks.running.forEach(function (task) {
-          if (task.type !== "indexer" &&
-              task.type !== "view_compaction" &&
-              task.type !== "orphanBucket") {
-            if (!prevTask) {
-              vm.isProgressBarClosed = false;
-            } else {
-              var task = _.find(prevTask.tasks, {type: task.type});
-              if (!task || task.status !== "running") {
-                vm.isProgressBarClosed = false;
+      if (mnPermissions.export.cluster.tasks.read) {
+        var tasksPoller = new mnPoller($scope, function () {
+          return mnTasksDetails.getFresh({group: "global"});
+        })
+            .setInterval(function (result) {
+              return (_.chain(result.tasks).pluck('recommendedRefreshPeriod').compact().min().value() * 1000) >> 0 || 10000;
+            })
+            .subscribe(function (tasks, prevTask) {
+              vm.showTasksSpinner = false;
+              if (!_.isEqual(tasks, prevTask)) {
+                $rootScope.$broadcast("mnTasksDetailsChanged");
               }
-            }
-          }
-        });
+              var isRebalanceFinished =
+                  tasks.tasksRebalance && tasks.tasksRebalance.status !== 'running' &&
+                  prevTask && prevTask.tasksRebalance && prevTask.tasksRebalance.status === "running";
+              if (isRebalanceFinished) {
+                $rootScope.$broadcast("rebalanceFinished");
+              }
 
-        if (tasks.tasksRebalance.errorMessage && mnAlertsService.isNewAlert({id: tasks.tasksRebalance.statusId})) {
-          mnAlertsService.setAlert("error", tasks.tasksRebalance.errorMessage, null, tasks.tasksRebalance.statusId);
-        }
-        vm.tasks = tasks;
-      }, vm)
-      .cycle();
+              if (!vm.isProgressBarClosed &&
+                  !filterTasks(tasks.running).length &&
+                  prevTask && filterTasks(prevTask.running).length) {
+                vm.isProgressBarClosed = true;
+              }
+
+              tasks.running.forEach(function (task) {
+                if (task.type !== "indexer" &&
+                    task.type !== "view_compaction" &&
+                    task.type !== "orphanBucket") {
+                  if (!prevTask) {
+                    vm.isProgressBarClosed = false;
+                  } else {
+                    var task = _.find(prevTask.tasks, {type: task.type});
+                    if (!task || task.status !== "running") {
+                      vm.isProgressBarClosed = false;
+                    }
+                  }
+                }
+              });
+
+              if (tasks.tasksRebalance.errorMessage && mnAlertsService.isNewAlert({id: tasks.tasksRebalance.statusId})) {
+                mnAlertsService.setAlert("error", tasks.tasksRebalance.errorMessage, null, tasks.tasksRebalance.statusId);
+              }
+              vm.tasks = tasks;
+            }, vm)
+            .cycle();
+      }
 
       $scope.$on("reloadTasksPoller", function (event, params) {
         if (!params || !params.doNotShowSpinner) {

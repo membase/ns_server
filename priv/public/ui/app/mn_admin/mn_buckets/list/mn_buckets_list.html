@@ -79,7 +79,7 @@
         <a
            ng-click="$event.stopPropagation()"
            class="link-heavy"
-           ng-show="rbac.cluster.bucket[bucket.name].data.read"
+           ng-show="rbac.cluster.bucket[bucket.name].data.docs.read"
            ui-sref="app.admin.buckets.documents.control.list({bucket: bucket.name})">Documents</a>  &nbsp;
         <a
            ng-click="$event.stopPropagation()"

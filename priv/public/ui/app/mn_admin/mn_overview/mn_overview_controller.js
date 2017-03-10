@@ -14,7 +14,7 @@
     'mnXDCRService'
   ]).controller('mnOverviewController', mnOverviewController);
 
-  function mnOverviewController($scope, $rootScope, mnBucketsService, mnOverviewService, mnPoller, mnAboutDialogService, mnPromiseHelper, mnXDCRService) {
+  function mnOverviewController($scope, $rootScope, mnBucketsService, mnOverviewService, mnPoller, mnAboutDialogService, mnPromiseHelper, mnXDCRService, permissions) {
     var vm = this;
 
     vm.getEndings = getEndings;
@@ -31,10 +31,13 @@
       mnPromiseHelper(vm, mnAboutDialogService.getState())
         .applyToScope("aboutState");
 
-      new mnPoller($scope, mnXDCRService.getReplicationState)
-        .setInterval(3000)
-        .subscribe("xdcrReferences", vm)
-        .cycle();
+      if (permissions.cluster.xdcr.remote_clusters.read) {
+        new mnPoller($scope, mnXDCRService.getReplicationState)
+          .setInterval(3000)
+          .subscribe("xdcrReferences", vm)
+          .cycle();
+      }
+
       new mnPoller($scope, mnOverviewService.getOverviewConfig)
         .reloadOnScopeEvent("mnPoolDefaultChanged")
         .subscribe("mnOverviewConfig", vm)
@@ -45,14 +48,17 @@
         .reloadOnScopeEvent("nodesChanged")
         .subscribe("nodes", vm)
         .cycle();
-      new mnPoller($scope, function () {
+
+      if (permissions.cluster.bucket['*'].settings.read) {
+        new mnPoller($scope, function () {
           return mnBucketsService.getBucketsByType();
         })
-        .reloadOnScopeEvent("bucketUriChanged")
-        .subscribe("buckets", vm)
-        .cycle();
+          .reloadOnScopeEvent("bucketUriChanged")
+          .subscribe("buckets", vm)
+          .cycle();
+      }
 
-      if ($scope.rbac.cluster.bucket['*'].stats.read) {
+      if (permissions.cluster.bucket['*'].stats.read) {
         new mnPoller($scope, mnOverviewService.getStats)
           .setInterval(3000)
           .subscribe("mnOverviewStats", vm)

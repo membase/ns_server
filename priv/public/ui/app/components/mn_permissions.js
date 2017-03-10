@@ -72,6 +72,7 @@
           "cluster.bucket[" + name + "].recovery!write",
           "cluster.bucket[" + name + "].settings!read",
           "cluster.bucket[" + name + "].data!read",
+          "cluster.bucket[" + name + "].data.docs!read",
           "cluster.bucket[" + name + "].recovery!read",
           "cluster.bucket[" + name + "].views!read",
           "cluster.bucket[" + name + "].views!write",
@@ -93,19 +94,25 @@
       }
 
       function check() {
-        return mnBucketsService.getBucketsByType().then(function (bucketsDetails) {
-          var permissions = getAll();
-          angular.forEach(bucketsDetails, function (bucket) {
-            permissions = permissions.concat(generateBucketPermissions(bucket.name));
-          });
-          mnPermissions.export.default.all = bucketsDetails.byType.defaultName;
-          mnPermissions.export.default.membase = bucketsDetails.byType.membase.defaultName;
-          mnPermissions.export.default.ephemeral = bucketsDetails.byType.ephemeral.defaultName;
-          return doCheck(permissions);
-        }, function (resp) {
-          switch (resp.status) {
-            case 403: return doCheck(getAll());
-            default: return $q.reject(resp);
+        return doCheck(getAll().concat(generateBucketPermissions('*'))).then(function (resp) {
+          if (resp.cluster.bucket['*'].settings.read) {
+            return mnBucketsService.getBucketsByType().then(function (bucketsDetails) {
+              var permissions = [];
+
+              if (bucketsDetails.length) {
+                angular.forEach(bucketsDetails, function (bucket) {
+                  permissions = permissions.concat(generateBucketPermissions(bucket.name));
+                });
+
+                mnPermissions.export.default.all = bucketsDetails.byType.defaultName;
+                mnPermissions.export.default.membase = bucketsDetails.byType.membase.defaultName;
+                mnPermissions.export.default.ephemeral = bucketsDetails.byType.ephemeral.defaultName;
+                return doCheck(permissions);
+              }
+              return resp;
+            });
+          } else {
+            return resp;
           }
         });
       }
@@ -160,8 +167,19 @@
           data: interestingPermissions.join(',')
         }).then(function (resp) {
           var rv = convertIntoTree(resp.data);
-          mnPermissions.export.data = resp.data;
-          mnPermissions.export.cluster = rv.cluster;
+
+          if (mnPermissions.export.data) {
+            mnPermissions.export.data = _.merge(mnPermissions.export.data, resp.data);
+          } else {
+            mnPermissions.export.data = resp.data;
+          }
+
+          if (mnPermissions.export.cluster) {
+            mnPermissions.export.cluster = _.merge(mnPermissions.export.cluster, rv.cluster);
+          } else {
+            mnPermissions.export.cluster = rv.cluster;
+          }
+
           return mnPermissions.export;
         });
       }

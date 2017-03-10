@@ -4,7 +4,7 @@
   </span>
 </mn-element-cargo>
 
-<div mn-spinner="(rbac.cluster.bucket['*'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || !overviewCtl.buckets">
+<div mn-spinner="(rbac.cluster.bucket['*'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || (rbac.cluster.bucket['*'].settings.read && !overviewCtl.buckets)">
 
   <div class="row items-top margin-top1 service-widget-row">
     <div
@@ -62,6 +62,7 @@
       </div>
     </div>
     <div
+       ng-show="rbac.cluster.xdcr.remote_clusters.read"
        class="service-widget"
        ng-class="['dynamic_' + (adminCtl.tasks.tasksXDCR.length ? 'healthy' : 'inactive')]">
       <h4>XDCR</h4>
@@ -96,7 +97,7 @@
   </div>
 
   <div class="margin-top2">
-    <h4>
+    <h4 ng-show="rbac.cluster.bucket['*'].settings.read">
       Buckets &nbsp;<small>{{overviewCtl.buckets.length || '0'}} active</small>
     </h4>
     <hr>
@@ -130,7 +131,7 @@
            style="height: 170px; width: 400px"></div>
       </div>
     </div>
-    <div ng-show="!overviewCtl.buckets.length">
+    <div ng-show="!overviewCtl.buckets.length && rbac.cluster.bucket['*'].settings.read">
       No buckets currently defined! Go to <a ui-sref="app.admin.buckets">Buckets</a> to create some.
     </div>
   </div>
