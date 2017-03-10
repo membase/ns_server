@@ -398,7 +398,7 @@ fastfo_down_nodes(NonPendingNodes) ->
                   error ->
                       Acc;
                   {ok, NodeStatus} ->
-                      case is_node_down(NodeStatus) of
+                      case is_node_down(Node, NodeStatus) of
                           false ->
                               Acc;
                           {true, DownInfo} ->
@@ -407,10 +407,26 @@ fastfo_down_nodes(NonPendingNodes) ->
               end
       end, [], NonPendingNodes).
 
-is_node_down({unhealthy, _}) ->
-    {true, {"All monitors report node is unhealthy.", [unhealthy_node]}};
-is_node_down({{needs_attention, MonitorStatuses}, _}) ->
+is_node_down(Node, {unhealthy, _}) ->
+    %% When ns_server is the only monitor running on a node,
+    %% then we cannot distinguish between ns_server down and node down.
+    %% This is currently true for all non-KV nodes.
+    %% For such nodes, display ns-server down message as it is
+    %% applicable during both conditions.
+    case health_monitor:node_monitors(Node) of
+        [ns_server] = Monitor ->
+            is_node_down(Monitor);
+        _ ->
+            {true, {"All monitors report node is unhealthy.",
+                    [unhealthy_node]}}
+    end;
+is_node_down(_, {{needs_attention, MonitorStatuses}, _}) ->
     %% Different monitors are reporting different status for the node.
+    is_node_down(MonitorStatuses);
+is_node_down(_, _) ->
+    false.
+
+is_node_down(MonitorStatuses) ->
     Down = lists:foldl(
              fun (MonitorStatus, {RAcc, MAcc}) ->
                      {Monitor, Status} = case MonitorStatus of
@@ -432,9 +448,7 @@ is_node_down({{needs_attention, MonitorStatuses}, _}) ->
             false;
         _ ->
             {true, Down}
-    end;
-is_node_down(_) ->
-    false.
+    end.
 
 %% @doc Returns a list of nodes that should be active, but are not running.
 -spec actual_down_nodes(dict(), [atom()], [{atom(), term()}]) -> [atom()].

@@ -65,7 +65,7 @@ annotate_status(empty) ->
     {recv_ts, erlang:now()}.
 
 is_node_down(needs_attention) ->
-    {true, {"Cluster manager is down.", cluster_manager_down}};
+    {true, {"The cluster manager did not respond for the duration of the auto-failover threshold.", cluster_manager_down}};
 is_node_down(_) ->
     false.
 

@@ -73,9 +73,9 @@ analyze_status(Node, AllNodes) ->
     end.
 
 is_node_down(needs_attention) ->
-    {true, {"None of the buckets are ready. Either buckets have not warmed up or potential issue with the data service.", no_buckets_ready}};
+    {true, {"The data service did not respond for the duration of the auto-failover threshold. Either none of the buckets have warmed up or there is an issue with the data service.", no_buckets_ready}};
 is_node_down({not_ready, Buckets}) ->
-    {true, {"Data service is operational but following buckets are not ready: " ++ string:join(Buckets, ", ") ++ ".", some_buckets_not_ready}}.
+    {true, {"The data service is online but the following buckets' data are not accessible: " ++ string:join(Buckets, ", ") ++ ".", some_buckets_not_ready}}.
 
 %% Internal functions
 get_not_ready_buckets(_, _, []) ->
