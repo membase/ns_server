@@ -25,7 +25,7 @@
 
 -export([init/0, handle_call/4, handle_cast/3, handle_info/3]).
 
--define(NS_MEMCACHED_TIMEOUT, 1000).
+-define(NS_MEMCACHED_TIMEOUT, 500).
 
 start_link() ->
     health_monitor:start_link(?MODULE).
@@ -173,7 +173,11 @@ local_node_status(Buckets) ->
     end.
 
 get_buckets(Buckets) ->
-    ReadyBuckets = ns_memcached:warmed_buckets(?NS_MEMCACHED_TIMEOUT),
+    ReadyBuckets = try ns_memcached:warmed_buckets(?NS_MEMCACHED_TIMEOUT)
+                   catch exit:{timeout, _} ->
+                           ?log_warning("ns_memcached:warmed_buckets timed out while trying to get buckets: ~p", [Buckets]),
+                           []
+                   end,
     lists:map(
       fun (Bucket) ->
               State = case lists:member(Bucket, ReadyBuckets) of
