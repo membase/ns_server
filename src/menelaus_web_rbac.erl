@@ -218,8 +218,15 @@ get_user_json(Identity, Props) ->
     get_user_json(Identity, Name, Roles).
 
 get_user_json({Id, Type}, Name, Roles) ->
+    TypeForREST =
+        case Type of
+            saslauthd ->
+                external;
+            _ ->
+                Type
+        end,
     UserJson = [{id, list_to_binary(Id)},
-                {type, Type},
+                {type, TypeForREST},
                 {roles, [{role_to_json(Role)} || Role <- Roles]}],
     {case Name of
          undefined ->
@@ -398,7 +405,7 @@ reply_bad_roles(Req, BadRoles) ->
 
 type_to_atom("builtin") ->
     builtin;
-type_to_atom("saslauthd") ->
+type_to_atom("external") ->
     saslauthd;
 type_to_atom(_) ->
     unknown.
