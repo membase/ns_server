@@ -22,6 +22,7 @@
        ng-disabled="groupsCtl.disableApplyChangesBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
        ng-click="groupsCtl.applyChanges()"
        >Apply Changes</button>
+     <a ng-click="groupsCtl.reloadState('app.admin.servers.list.groups')">Reset</a>
   </div>
   <div mn-spinner="viewLoading">
     <div
@@ -38,17 +39,29 @@
         </h4>
       </div>
         <div
-           class="formrow indent-1"
+           class="row indent-1"
            ng-repeat="server in group.nodes">
-          <select
-             style="margin-top: .5rem;"
-             ng-change="groupsCtl.changeNodeGroup(
-                        server,
-                        '{{groupsCtl.groupsModel[server.hostname].name}}'
-                        )"
-             ng-init="groupsCtl.groupsModel[server.hostname] = group"
-             ng-model="groupsCtl.groupsModel[server.hostname]"
-             ng-options="sGroup as sGroup.name for sGroup in groupsCtl.state.groups | orderBy:'name'"></select> -
+          <div
+             style="height: 1rem;"
+             class="node-status"
+             ng-class="['dynamic_' + server.status, 'dynamic_' + server.clusterMembership]">
+          </div>
+          <div>
+            <span
+               ng-repeat="service in server.services | mnFormatServicesArray | orderBy"
+               class="label services">{{service}}</span>
+          </div>
+          <div>
+            <div uib-dropdown>
+              <div uib-dropdown-toggle>Move <span class="has-menu">&nbsp;</span></div>
+              <div uib-dropdown-menu class="panel">
+                <a
+                   href=""
+                   ng-repeat="groupNew in groupsCtl.state.groups | orderBy:'name'"
+                   ng-click="groupsCtl.changeNodeGroup(group.name, groupNew.name, server)">{{groupNew.name}}</a>
+              </div>
+            </div>
+          </div>
           {{server.hostname | mnStripPortHTML:group.nodes}}
         </div>
         <div ng-show="!group.nodes.length">

@@ -25,7 +25,6 @@
       vm.applyChanges = applyChanges;
       vm.reloadState = mnHelper.reloadState;
       vm.changeNodeGroup = changeNodeGroup;
-      vm.groupsModel = {};
       vm.disableApplyChangesBtn = true;
 
       activate();
@@ -76,12 +75,13 @@
         });
       }
 
-      function changeNodeGroup(server, currentGroupName) {
+      function changeNodeGroup(groupOld, groupNew, server) {
         var fromGroup = _.find(vm.state.currentGroups, function (cGroup) {
-          return cGroup.name === currentGroupName;
+          return cGroup.name === groupOld;
         });
+
         var toGroup = _.find(vm.state.currentGroups, function (cGroup) {
-          return cGroup.name === vm.groupsModel[server.hostname].name;
+          return cGroup.name === groupNew;
         });
 
         _.remove(fromGroup.nodes, function (node) {
