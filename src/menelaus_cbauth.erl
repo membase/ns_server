@@ -25,7 +25,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {cbauth_info = undefined, rpc_processes = []}).
+-record(state, {cbauth_info = undefined, rpc_processes = [], cert_version}).
 
 -include("ns_common.hrl").
 
@@ -37,8 +37,12 @@ init([]) ->
     ns_pubsub:subscribe_link(ns_node_disco_events, fun node_disco_event/1),
     ns_pubsub:subscribe_link(ns_config_events, fun ns_config_event/1),
     ns_pubsub:subscribe_link(user_storage_events, fun user_storage_event/1),
+    ns_pubsub:subscribe_link(ssl_service_events, fun ssl_service_event/1),
     json_rpc_connection_sup:reannounce(),
-    {ok, #state{}}.
+    {ok, #state{cert_version = new_cert_version()}}.
+
+new_cert_version() ->
+    crypto:rand_uniform(0, 16#100000000).
 
 json_rpc_event({_, Label, _} = Event) ->
     case is_cbauth_connection(Label) of
@@ -61,6 +65,9 @@ ns_config_event(Event) ->
 
 user_storage_event(_Event) ->
     ?MODULE ! maybe_notify_cbauth.
+
+ssl_service_event(_Event) ->
+    ?MODULE ! ssl_service_event.
 
 terminate(_Reason, _State)     -> ok.
 code_change(_OldVsn, State, _) -> {ok, State}.
@@ -87,7 +94,7 @@ handle_cast({Msg, Label, Pid}, #state{rpc_processes = Processes,
     ?log_debug("Observed json rpc process ~p ~p", [{Label, Pid}, Msg]),
     Info = case CBAuthInfo of
                undefined ->
-                   build_auth_info();
+                   build_auth_info(State);
                _ ->
                    CBAuthInfo
            end,
@@ -106,6 +113,9 @@ handle_cast({Msg, Label, Pid}, #state{rpc_processes = Processes,
     {noreply, State#state{rpc_processes = NewProcesses,
                           cbauth_info = Info}}.
 
+handle_info(ssl_service_event, State) ->
+    self() ! maybe_notify_cbauth,
+    {noreply, State#state{cert_version = new_cert_version()}};
 handle_info(maybe_notify_cbauth, State) ->
     misc:flush(maybe_notify_cbauth),
     {noreply, maybe_notify_cbauth(State)};
@@ -120,7 +130,7 @@ handle_info(_Info, State) ->
 
 maybe_notify_cbauth(#state{rpc_processes = Processes,
                            cbauth_info = CBAuthInfo} = State) ->
-    case build_auth_info() of
+    case build_auth_info(State) of
         CBAuthInfo ->
             State;
         Info ->
@@ -198,7 +208,7 @@ build_node_info(N, User, Config) ->
        erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_pass))},
       {ports, [Port || {_Key, Port} <- Services]}] ++ Local}.
 
-build_auth_info() ->
+build_auth_info(#state{cert_version = CertVersion}) ->
     Config = ns_config:get(),
     Nodes = lists:foldl(fun (Node, Acc) ->
                                 case build_node_info(Node, Config) of
@@ -217,7 +227,8 @@ build_auth_info() ->
      {authCheckURL, iolist_to_binary(AuthCheckURL)},
      {permissionCheckURL, iolist_to_binary(PermissionCheckURL)},
      {permissionsVersion, menelaus_web_rbac:check_permissions_url_version(Config)},
-     {authVersion, auth_version(Config)}].
+     {authVersion, auth_version(Config)},
+     {certVersion, CertVersion}].
 
 auth_version(Config) ->
     erlang:phash2([ns_config_auth:get_creds(Config, admin),

@@ -39,7 +39,11 @@ restart_ssl_service() ->
     end.
 
 child_specs() ->
-    [{ns_ssl_services_setup,
+    [{ssl_service_events,
+      {gen_event, start_link, [{local, ssl_service_events}]},
+      permanent, 1000, worker, []},
+
+     {ns_ssl_services_setup,
       {ns_ssl_services_setup, start_link, []},
       permanent, 1000, worker, []},
 
