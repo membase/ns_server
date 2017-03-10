@@ -114,28 +114,28 @@ select_users(KeySpec) ->
 select_auth_infos(KeySpec) ->
     replicated_dets:select(storage_name(), {auth, KeySpec}, 100).
 
-build_auth(false, undefined, _UserName) ->
+build_auth(false, undefined) ->
     password_required;
-build_auth(false, Password, UserName) ->
-    build_memcached_auth(UserName, Password);
-build_auth({_, _}, undefined, _UserName) ->
+build_auth(false, Password) ->
+    build_memcached_auth(Password);
+build_auth({_, _}, undefined) ->
     same;
-build_auth({_, CurrentAuth}, Password, UserName) ->
+build_auth({_, CurrentAuth}, Password) ->
     {Salt, Mac} = get_salt_and_mac(CurrentAuth),
     case ns_config_auth:hash_password(Salt, Password) of
         Mac ->
             case has_scram_hashes(CurrentAuth) of
                 false ->
-                    build_memcached_auth(UserName, Password);
+                    build_memcached_auth(Password);
                 _ ->
                     same
             end;
         _ ->
-            build_memcached_auth(UserName, Password)
+            build_memcached_auth(Password)
     end.
 
-build_memcached_auth(User, Password) ->
-    [{MemcachedAuth}] = build_memcached_auth_info([{User, Password}]),
+build_memcached_auth(Password) ->
+    [{MemcachedAuth}] = build_memcached_auth_info([{"x", Password}]),
     proplists:delete(<<"n">>, MemcachedAuth).
 
 -spec store_user(rbac_identity(), rbac_user_name(), rbac_password(), [rbac_role()]) -> run_txn_return().
@@ -188,7 +188,7 @@ check_limit(Identity) ->
             end
     end.
 
-store_user_spock({UserName, Type} = Identity, Props, Password, Roles, Config) ->
+store_user_spock({_UserName, Type} = Identity, Props, Password, Roles, Config) ->
     CurrentAuth = replicated_dets:get(storage_name(), {auth, Identity}),
     case check_limit(Identity) of
         true ->
@@ -196,7 +196,7 @@ store_user_spock({UserName, Type} = Identity, Props, Password, Roles, Config) ->
                 saslauthd ->
                     store_user_spock_with_auth(Identity, Props, same, Roles, Config);
                 builtin ->
-                    case build_auth(CurrentAuth, Password, UserName) of
+                    case build_auth(CurrentAuth, Password) of
                         password_required ->
                             {abort, password_required};
                         Auth ->
@@ -222,13 +222,13 @@ store_user_spock_with_auth(Identity, Props, Auth, Roles, Config) ->
             {abort, Error}
     end.
 
-change_password({UserName, builtin} = Identity, Password) when is_list(Password) ->
+change_password({_UserName, builtin} = Identity, Password) when is_list(Password) ->
     case replicated_dets:get(storage_name(), {user, Identity}) of
         false ->
             user_not_found;
         _ ->
             CurrentAuth = replicated_dets:get(storage_name(), {auth, Identity}),
-            Auth = build_auth(CurrentAuth, Password, UserName),
+            Auth = build_auth(CurrentAuth, Password),
             replicated_dets:set(storage_name(), {auth, Identity}, Auth)
     end.
 
