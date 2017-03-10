@@ -214,7 +214,11 @@ handle_cast(leave, State) ->
 
     misc:create_marker(leave_marker_path()),
 
-    %% first thing we do is stopping nearly everything
+    %% empty users storage
+    users_sup:stop_replicator(),
+    menelaus_users:empty_storage(),
+
+    %% stop nearly everything
     ok = ns_server_cluster_sup:stop_ns_server(),
 
     stats_archiver:wipe(),
