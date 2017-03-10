@@ -24,9 +24,14 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+%% internal
+-export([delay_death/2, delay_death_init/3]).
+
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Id, M, Args),
-        {Id, {M, start_link, Args}, permanent, 5000, worker, [M]}).
+        {Id,
+         {?MODULE, delay_death, [{M, start_link, Args}, 1000]},
+          permanent, 5000, worker, [?MODULE, M]}).
 
 %% ===================================================================
 %% API functions
@@ -60,5 +65,54 @@ stop_child(Id) ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10},
+    {ok, { {one_for_one, 1000, 10},
            []} }.
+
+%% internal
+delay_death(MFA, Timeout) ->
+    Parent = self(),
+    proc_lib:start_link(?MODULE, delay_death_init, [MFA, Parent, Timeout]).
+
+delay_death_init({M, F, A}, Parent, Timeout) ->
+    Start = erlang:now(),
+    process_flag(trap_exit, true),
+
+    case erlang:apply(M, F, A) of
+        {ok, Pid} ->
+            proc_lib:init_ack({ok, self()}),
+            delay_death_loop(Pid, Parent, Start, Timeout);
+        Other ->
+            proc_lib:init_ack(Other)
+    end.
+
+delay_death_loop(Child, Parent, Start, Timeout) ->
+    receive
+        {'EXIT', Child, Reason} ->
+            handle_child_exit(Reason, Parent, Start, Timeout);
+        {'EXIT', Parent, Reason} ->
+            handle_parent_exit(Child, Reason);
+        _ ->
+            delay_death_loop(Child, Parent, Start, Timeout)
+    end.
+
+handle_parent_exit(Child, Reason) ->
+    exit(Child, Reason),
+    receive
+        {'EXIT', Child, ChildReason} ->
+            exit(ChildReason)
+    end.
+
+handle_child_exit(Reason, Parent, Start, Timeout) ->
+    TimeSpent = timer:now_diff(erlang:now(), Start) div 1000,
+    Left = erlang:max(Timeout - TimeSpent, 0),
+
+    receive
+        {'EXIT', Parent, _} ->
+            %% exit immediately if we're asked to
+            ok
+    after
+        Left ->
+            ok
+    end,
+
+    exit(Reason).
