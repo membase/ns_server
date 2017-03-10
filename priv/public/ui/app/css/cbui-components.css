@@ -1560,7 +1560,17 @@ input[type="checkbox"]:checked + label:before {
 
 /* user menu --------------------*/
 
-.user-dropdown-menu {
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+.dropdown.open .dropdown-menu {
+  display: block;
+}
+.dropdown .dropdown-menu {
+  display: none;
+}
+.dropdown-menu {
   background-color: #fff;
   position: absolute;
   top: 20px;
@@ -1568,12 +1578,12 @@ input[type="checkbox"]:checked + label:before {
   z-index: 10;
   padding: .5rem 2rem;
 }
-.user-dropdown-menu a:link {
+.dropdown-menu a:link {
   font-size: 1rem;
   line-height:1.8rem;
   display:block;
 }
-.user-dropdown-menu a:hover {
+.dropdown-menu a:hover {
   background-color:#eceff2;
   padding:0 2rem;
   margin:0 -2rem;

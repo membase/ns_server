@@ -17,7 +17,6 @@
     vm.showResetPasswordDialog = showResetPasswordDialog;
 
     vm.user = whoami;
-    vm.toggleUserDropdownMenu = toggleUserDropdownMenu;
 
     vm.$state = $state
 
@@ -44,10 +43,6 @@
         templateUrl: "app/mn_admin/mn_internal_settings/mn_internal_settings.html",
         controller: "mnInternalSettingsController as internalSettingsCtl"
       });
-    }
-
-    function toggleUserDropdownMenu(value) {
-      vm.showUserDropdownMenu = value === undefined ? !vm.showUserDropdownMenu : value;
     }
 
     function toggleProgressBar() {
