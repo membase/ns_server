@@ -32,11 +32,11 @@
           <input
              type="radio"
              name="type"
-             value="saslauthd"
+             value="external"
              ng-disabled="userRolesAddDialogCtl.isEditingMode"
-             id="user-type-ldap"
+             id="user-type-external"
              ng-model="userRolesAddDialogCtl.user.type">
-          <label for="user-type-ldap">LDAP</label>
+          <label for="user-type-external">External</label>
           <input
              type="radio"
              name="type"
@@ -70,7 +70,7 @@
            id="name_full_inp"
            ng-model="userRolesAddDialogCtl.user.name">
       </div>
-      <div ng-if="userRolesAddDialogCtl.user.type !== 'saslauthd' && !userRolesAddDialogCtl.isEditingMode">
+      <div ng-if="userRolesAddDialogCtl.user.type !== 'external' && !userRolesAddDialogCtl.isEditingMode">
         <div class="formrow">
           <label for="password_inp">Password:</label>
           <input

@@ -68,7 +68,7 @@
             </a>
           </td>
           <td>
-            {{user.type === "builtin" ? "Internal" : "LDAP"}}
+            {{user.type === "builtin" ? "Internal" : "External"}}
           </td>
         </tr>
         <tr>
@@ -77,7 +77,7 @@
                class="outline"
                ng-click="userRolesCtl.deleteUser(user)">Delete</button>
             <button
-               ng-show="user.type !== 'saslauthd'"
+               ng-show="user.type !== 'external'"
                ng-click="userRolesCtl.resetUserPassword(user)">Reset Password</button>
             <button
                ng-click="userRolesCtl.editUser(user)">Edit</button>
