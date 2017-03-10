@@ -115,8 +115,8 @@ jsonify_auth(AU, AP, Buckets) ->
 
            pipes:foreach(
              ?producer(),
-             fun ({{auth, _Identity}, Auth}) ->
-                     ?yield({json, {Auth}})
+             fun ({{auth, {UserName, _Type}}, Auth}) ->
+                     ?yield({json, {[{<<"n">>, list_to_binary(UserName)} | Auth]}})
              end),
            ?yield(array_end),
            ?yield(kv_end),

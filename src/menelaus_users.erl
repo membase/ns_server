@@ -136,7 +136,7 @@ build_auth({_, CurrentAuth}, Password, UserName) ->
 
 build_memcached_auth(User, Password) ->
     [{MemcachedAuth}] = build_memcached_auth_info([{User, Password}]),
-    MemcachedAuth.
+    proplists:delete(<<"n">>, MemcachedAuth).
 
 -spec store_user(rbac_identity(), rbac_user_name(), rbac_password(), [rbac_role()]) -> run_txn_return().
 store_user(Identity, Name, Password, Roles) ->
