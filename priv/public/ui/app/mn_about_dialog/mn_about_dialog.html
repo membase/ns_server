@@ -8,15 +8,6 @@
     <p>
       Version: {{aboutDialogCtl.state.implementationVersion | mnPrettyVersion}}
     </p>
-    <p>
-      Cluster State ID:
-      <em ng-show="!aboutDialogCtl.state.clusterStateId">
-        Please login to view your Cluster State ID.
-      </em>
-      <em ng-show="aboutDialogCtl.state.clusterStateId">
-        {{aboutDialogCtl.state.clusterStateId}}
-      </em>
-    </p>
   </div>
   <div class="panel-footer">
     <button
