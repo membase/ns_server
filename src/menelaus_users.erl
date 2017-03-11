@@ -35,6 +35,8 @@
          user_exists/1,
          get_user_name/1,
          upgrade_to_4_5/1,
+         get_salt_and_mac/1,
+         build_memcached_auth/1,
          build_memcached_auth_info/1,
          get_users_version/0,
          get_auth_version/0,

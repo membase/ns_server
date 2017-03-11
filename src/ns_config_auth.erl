@@ -38,7 +38,14 @@ get_key(ro_admin) ->
     read_only_user_creds.
 
 set_credentials(Role, User, Password) ->
-    ns_config:set(get_key(Role), {User, {password, hash_password(Password)}}).
+    Auth =
+        case cluster_compat_mode:is_cluster_spock() of
+            true ->
+                {auth, menelaus_users:build_memcached_auth(Password)};
+            false ->
+                {password, hash_password(Password)}
+        end,
+    ns_config:set(get_key(Role), {User, Auth}).
 
 is_system_provisioned() ->
     is_system_provisioned(ns_config:latest()).
@@ -64,17 +71,22 @@ get_user(Role) ->
 get_password(special) ->
     ns_config:search_node_prop(ns_config:latest(), memcached, admin_pass).
 
+get_salt_and_mac({password, {Salt, Mac}}) ->
+    {Salt, Mac};
+get_salt_and_mac({auth, Auth}) ->
+    menelaus_users:get_salt_and_mac(Auth).
+
 get_creds(Config, Role) ->
     case ns_config:search(Config, get_key(Role)) of
-        {value, {User, {password, {Salt, Mac}}}} ->
-            {User, Salt, Mac};
+        {value, {User, Auth}} ->
+            {User, get_salt_and_mac(Auth)};
         _ ->
             undefined
     end.
 
-credentials_changed(Role, User, Password) ->
-    case ns_config:search(get_key(Role)) of
-        {value, {User, {password, {Salt, Mac}}}} ->
+credentials_changed(admin, User, Password) ->
+    case get_creds(ns_config:latest(), admin) of
+        {User, {Salt, Mac}} ->
             hash_password(Salt, Password) =/= Mac;
         _ ->
             true
@@ -112,7 +124,8 @@ authenticate(Username, Password) ->
 authenticate_non_special(Role, User, Password) ->
     do_authenticate(Role, ns_config:search(get_key(Role)), User, Password).
 
-do_authenticate(_Role, {value, {User, {password, {Salt, Mac}}}}, User, Password) ->
+do_authenticate(_Role, {value, {User, Auth}}, User, Password) ->
+    {Salt, Mac} = get_salt_and_mac(Auth),
     hash_password(Salt, Password) =:= Mac;
 do_authenticate(admin, {value, null}, _User, _Password) ->
     true;
