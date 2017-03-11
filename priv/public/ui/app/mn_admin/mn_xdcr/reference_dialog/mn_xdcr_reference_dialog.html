@@ -78,13 +78,38 @@
           <span class="icon fa-info fa-stack-1x"></span>
         </span>
       </div>
-      <div class="formrow">
+      <div class="formrow" ng-show="xdcrReferenceDialogCtl.cluster.demandEncryption && xdcrReferenceDialogCtl.mnPoolDefault.value.isEnterprise">
+        <div class="checkbox-list formrow">
+          <div>
+            <input
+               type="radio"
+               value="half"
+               id="for_encription_type_half"
+               ng-model="xdcrReferenceDialogCtl.cluster.encryptionType">
+            <label
+               for="for_encription_type_half"
+               class="checkbox">
+              Half (only encrypt password)
+            </label>
+          </div>
+          <div>
+            <input
+               type="radio"
+               value="full"
+               id="for_encription_type_full"
+               ng-model="xdcrReferenceDialogCtl.cluster.encryptionType">
+            <label
+               for="for_encription_type_full"
+               class="checkbox">
+              Full (TLS encrypt password and data)
+            </label>
+          </div>
+        </div>
         <textarea
            rows="4"
            autocorrect="off"
            autocompleterg="off"
            spellcheck="false"
-           ng-show="xdcrReferenceDialogCtl.cluster.demandEncryption"
            ng-model="xdcrReferenceDialogCtl.cluster.certificate"
            placeholder="Copy/paste the certificate information from your remote cluster into this field. You can find the certificate information on the Couchbase Web Console in the security area.">
         </textarea>

@@ -39,6 +39,7 @@
       if (!cluster.demandEncryption) {
         delete cluster.certificate;
         delete cluster.demandEncryption;
+        delete cluster.encryptionType;
       }
       return $http.post('/pools/default/remoteClusters' + (name ? ("/" + encodeURIComponent(name)) : ""), cluster);
     }
