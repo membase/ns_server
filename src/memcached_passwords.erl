@@ -131,12 +131,15 @@ jsonify_auth(AU, AP, Buckets, RestCreds) ->
                        User
                end,
 
-           %% TODO: remove buckets after upgrade will be implemented
-           AdminAndBuckets = menelaus_users:build_memcached_auth_info([{AU, AP} | Buckets]),
+           [AdminAuthInfo] = menelaus_users:build_memcached_auth_info([{AU, AP}]),
+           ?yield({json, AdminAuthInfo}),
+
            lists:foreach(
-             fun (AdminOrBucket) ->
-                     ?yield({json, AdminOrBucket})
-             end, AdminAndBuckets),
+             fun ({Bucket, Password}) ->
+                     {Salt, Mac} = ns_config_auth:hash_password(Password),
+                     BucketAuth = menelaus_users:build_plain_memcached_auth_info(Salt, Mac),
+                     ?yield({json, {[{<<"n">>, list_to_binary(Bucket ++ ";legacy")} | BucketAuth]}})
+             end, Buckets),
 
            pipes:foreach(
              ?producer(),

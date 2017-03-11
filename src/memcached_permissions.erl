@@ -206,12 +206,12 @@ jsonify_users(AU, Buckets, RoleDefinitions, ClusterAdmin) ->
                        EmitUser({ClusterAdmin, builtin}, Roles1, dict:new())
                end,
 
-           %% TODO: to be removed after buckets will be upgraded to builtin users
            Dict2 =
                lists:foldl(
                  fun (Bucket, Dict) ->
+                         LegacyName = Bucket ++ ";legacy",
                          Roles2 = menelaus_roles:get_roles({Bucket, bucket}),
-                         EmitUser({Bucket, builtin}, Roles2, Dict)
+                         EmitUser({LegacyName, builtin}, Roles2, Dict)
                  end, Dict1, Buckets),
 
            pipes:fold(
