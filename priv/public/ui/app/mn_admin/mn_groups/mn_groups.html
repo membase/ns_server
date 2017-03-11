@@ -1,75 +1,85 @@
 <mn-element-cargo depot="alerts">
   <div
-     class="interim alert alert-warning"
+     class="alert alert-warning"
      ng-show="groupsCtl.serverGroupsWarnig">
-    <p>Error: Changes must be saved before deleting the group.</p>
+    <p>Changes must be saved before deleting the group.</p>
   </div>
   <div
-     class="interim alert alert-warning"
+     class="alert alert-warning"
      ng-show="groupsCtl.revisionMismatch">
-    <p>Error: Revision mismatch. Changes are not applied.</p>
-    <button ng-click="groupsCtl.reloadState('app.admin.servers.list.groups')">Press to sync</button>
+    <p>Revision mismatch. Please sync the state of groups before trying to apply changes.</p>
+    <a ng-click="groupsCtl.reloadState('app.admin.servers.list.groups')">Sync Groups</a>
   </div>
 </mn-element-cargo>
 
-<div>
-  <div class="interim row flex-right">
-    <button
-       ng-disabled="groupsCtl.disableAddGroupBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
-       ng-click="groupsCtl.createGroup()"
-       >Create Group</button>
-    <button
-       ng-disabled="groupsCtl.disableApplyChangesBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
-       ng-click="groupsCtl.applyChanges()"
-       >Apply Changes</button>
-     <a ng-click="groupsCtl.reloadState('app.admin.servers.list.groups')">Reset</a>
+  <div class="row flex-right margin-bottom-half">
+    <a
+       href=""
+       class="margin-right-1"
+       ng-show="!groupsCtl.disableApplyChangesBtn"
+       ng-click="groupsCtl.reloadState('app.admin.servers.list.groups')"
+       >Reset</a>
+    <span>
+      <button
+         ng-disabled="groupsCtl.disableApplyChangesBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
+         ng-click="groupsCtl.applyChanges()"
+         >Apply Changes</button>
+      <button
+         ng-disabled="groupsCtl.disableAddGroupBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
+         ng-click="groupsCtl.createGroup()"
+         >Create Group</button>
+    </span>
   </div>
+
   <div mn-spinner="viewLoading">
     <div
-       ng-repeat="group in groupsCtl.state.groups | orderBy:'name'">
-      <hr>
-      <div class="formrow">
-        <h4 class="ellipsis">{{group.name}}
-          <small>
-            <a
-               class="link-heavy"
-               ng-show="rbac.cluster.server_groups.write"
-               ng-click="groupsCtl.createGroup(group)">(Rename)</a>
-          </small>
+       ng-repeat="group in groupsCtl.state.groups | orderBy:'name'"
+       class="margin-bottom1">
+      <div class="cbui-table-header flex-left">
+        <h4 class="ellipsis">{{group.name}}&nbsp;
+          <a
+             href=""
+             class="text-smaller"
+             ng-show="rbac.cluster.server_groups.write"
+             ng-click="groupsCtl.createGroup(group)"
+             >edit name</a>
         </h4>
       </div>
-        <div
-           class="row indent-1"
+
+<!-- group list of servers ********************** -->
+        <section
+           class="row flex-left"
            ng-repeat="server in group.nodes">
-          <div
-             style="height: 1rem;"
-             class="node-status"
+          <span
+             class="cbui-table-cell status success"
              ng-class="['dynamic_' + server.status, 'dynamic_' + server.clusterMembership]">
-          </div>
-          <div>
+          </span>
+          <span class="cbui-table-cell">
+            {{server.hostname | mnStripPortHTML:group.nodes}}
+          </span>
+          <span class="cbui-table-cell flex-grow-3">
             <span
                ng-repeat="service in server.services | mnFormatServicesArray | orderBy"
-               class="label services">{{service}}</span>
-          </div>
-          <div>
+               class="label services cell-label">{{service}}
+             </span>
+           </span>
+           <span class="cbui-table-cell flex-grow-3"></span>
             <div uib-dropdown>
-              <div uib-dropdown-toggle>Move <span class="has-menu">&nbsp;</span></div>
-              <div uib-dropdown-menu class="panel">
+              <div uib-dropdown-toggle class="menu-toggle">move to<span class="has-menu"></span></div>
+              <div uib-dropdown-menu class="dropdown-menu">
                 <a
                    href=""
                    ng-repeat="groupNew in groupsCtl.state.groups | orderBy:'name'"
                    ng-click="groupsCtl.changeNodeGroup(group.name, groupNew.name, server)">{{groupNew.name}}</a>
               </div>
             </div>
-          </div>
-          {{server.hostname | mnStripPortHTML:group.nodes}}
-        </div>
-        <div ng-show="!group.nodes.length">
-          This group is empty,
+        </section>
+<!-- ZERO CONTENT ***************** -->
+        <div ng-show="!group.nodes.length" class="zero-content">
+          This group is empty.
           <a
              href=""
-             ng-click="groupsCtl.deleteGroup(group)">click to delete</a>.
+             ng-click="groupsCtl.deleteGroup(group)">click to delete</a>
         </div>
     </div>
   </div>
-</div>

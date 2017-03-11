@@ -264,6 +264,9 @@ button.icon {
     min-width: auto;
     padding: 0 1rem;
 }
+.fa-2x {
+  font-size: 2em;
+}
 .fa-spin {
   -webkit-animation: fa-spin 2s infinite linear;
   animation: fa-spin 2s infinite linear;
@@ -364,6 +367,14 @@ button.icon {
 }
 .fa-info-circle:hover {
   color: #f5a623;
+}
+.fa-warning:before,
+.fa-exclamation-triangle:before {
+  content: "\f071";
+}
+.fa-warning + p {
+  margin: .25rem 0 .5rem 1rem;
+  line-height: 1.4;
 }
 
 /* Headings  -----------------------------*/
@@ -1346,6 +1357,12 @@ select.select-small {
 }
 .gray-7 {
   background-color: #f5f5f5;
+}
+.red-3 {
+  color: #e07f82;
+}
+.bg-red-3 {
+  background-color: #e07f82;
 }
 .has-hover:hover {
   background-color: #ecf3fa;

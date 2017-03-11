@@ -198,7 +198,7 @@ h1 > * {
 
 .node-status {
   padding:0;
-  width: 4px;
+  width: .5rem;
 }
 
 .back-gray {
@@ -414,10 +414,11 @@ a.pills-selected:hover {
 
 /* this inserts the down-caret (triangle) displayed after items with ".has-menu"  */
 .has-menu:after {
-  font-family:FontAwesome;
+  font-family: FontAwesome;
   content: "\f0d7";
-  color: #222;
-  position:absolute;
+  color: #333;
+  position: absolute;
+  right: .5rem;
 }
 
 .menu-sortable-link.has-menu:after {
@@ -738,6 +739,7 @@ section.status-red .cbui-tablerow-statusmsg {
 
 .panel-content {
   padding: 1.5rem;
+  font-size: .961rem;
 }
 
 .panel-footer {
@@ -813,12 +815,11 @@ section.status-red .cbui-tablerow-statusmsg {
 }
 
 .dialog-small .panel-content {
-  padding: 1.5rem 1rem .5rem 1.5rem;
+  padding: 1.5rem 1rem 1rem 1.5rem;
 }
 
 .dialog-small .panel-footer {
-  border-top: 0;
-  padding: 0 1rem 1rem 0;
+
 }
 
 /* Wizard Dialog (uses Panel) --------- */
@@ -839,56 +840,6 @@ section.status-red .cbui-tablerow-statusmsg {
   background-color: rgba(0,0,0,.80);
 }
 
-/*  SIMPLE MENU VERSION OF "PANELS" ----- */
-.menu {
-  border: 1px solid #ddd;
-  padding: .25rem 4rem 1rem 1rem;
-  position:absolute;
-  top: 2rem;
-  left: 0;
-  z-index: 999;
-  opacity:.98;
-  filter: alpha(opacity=98);
-}
-
-.menu a:link {
-  color: #000;
-  font-size: 1rem;
-  line-height:1.8rem;
-  display:block;
-}
-
-.menu a:visited {
-  color: #000;
-}
-
-.menu a:hover {
-  color: #cc2a2e;
-  background-color:#eceff2;
-  padding:0 4rem 0 1rem;
-  margin:0 -4rem 0 -1rem;
-  transition: none;
-}
-
-.menu a:active {
-  color: #000;
-}
-
-/* Sorting ("view by...") Menu  --------- */
-.menu-sortable-controls {
-  font-size: .875rem;
-  margin-right: 2.5rem;
-}
-
-.menu-sortable-link {
-  position:relative;
-  padding-right: 0rem;
-  font-weight:700;
-}
-
-.menu-selecteditem {
-  font-weight:700;
-}
 
 /* search/filter control ----------------- */
 .filter-input-group {
@@ -907,7 +858,7 @@ section.status-red .cbui-tablerow-statusmsg {
 /* Labels/Badges ---------------------------*/
 .label {
   font-size: .688rem;
-  font-weight: 600;
+  font-weight: 400;
   display: inline-block;
   line-height: 1;
   color: #333;
@@ -915,16 +866,16 @@ section.status-red .cbui-tablerow-statusmsg {
   text-decoration: none;
   border: 1px solid #fff;
   border-radius: 1px;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.25rem;
   position: relative;
   top: -3px;
   white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .label.cell-label {
-  display: inline;
-  top: auto;
-  position: static;
+  top: 2px;
+  position: relative;;
 }
 
 .label.lt-blue {
@@ -937,7 +888,7 @@ section.status-red .cbui-tablerow-statusmsg {
 
 .label.services {
   background-color: #d8d8d8;
-  margin-right:-1px;
+  text-transform: lowercase;
 }
 
 .label[yellow] {
@@ -1572,6 +1523,21 @@ input[type="checkbox"]:checked + label:before {
 }
 
 /* user menu --------------------*/
+.menu-toggle {
+  color: #555;
+  font-weight: 500;
+  font-size: .875rem;
+  display: inline-block;
+  position: relative;
+  padding-right: 1.5rem;
+  cursor: pointer;
+}
+.menu-toggle:hover {
+  color: #4287d6;
+}
+.menu-toggle:active {
+  color: #4287d6;
+}
 
 .dropdown {
   position: relative;
@@ -1587,19 +1553,27 @@ input[type="checkbox"]:checked + label:before {
   background-color: #fff;
   position: absolute;
   top: 20px;
-  right: 10px;
+  right: 0;
   z-index: 10;
-  padding: .5rem 2rem;
+  border: 1px solid #d1d1d1;
+  border-radius: 2px;
+  box-shadow: 0 5px 6px 0 rgba(0,0,0,0.25);
+  white-space: nowrap;
 }
-.dropdown-menu a:link {
-  font-size: 1rem;
-  line-height:1.8rem;
-  display:block;
+.dropdown-menu a {
+  color: #4287d6;
+  font-size: .875rem;
+  line-height: 2.5rem;
+  display: block;
+  border-bottom: 1px solid #d1d1d1;
+  padding: 0 2rem;
+}
+.dropdown-menu a:last-child {
+  border-bottom: none;
 }
 .dropdown-menu a:hover {
-  background-color:#eceff2;
-  padding:0 2rem;
-  margin:0 -2rem;
+  color: #000;
+  background-color:#f6fafd;
   transition: none;
 }
 /* service widgets displaying status & details for each service + XDCR */
@@ -1695,4 +1669,14 @@ input[type="checkbox"]:checked + label:before {
   position: absolute;
   top: -1px;
   right: 1rem;
+}
+
+/*  ZERO CONTENT  ----------------  */
+.zero-content {
+  background-color: #f6f7f9;
+  font-size: .875rem;
+  padding: 1rem 2rem;
+  border-radius: 9px;
+  margin: .5rem;
+  text-align: center;
 }

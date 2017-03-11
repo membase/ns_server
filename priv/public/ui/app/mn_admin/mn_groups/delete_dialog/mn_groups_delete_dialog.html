@@ -1,12 +1,15 @@
 <div class="dialog-small">
   <div class="panel-header">
-    <h2>Delete Group</h2>
+    <h2>Confirm Delete Group</h2>
   </div>
   <form
      ng-submit="groupsDeleteDialogCtl.onSubmit()"
      mn-spinner="groupsDeleteDialogCtl.viewLoading">
     <div class="panel-content">
-      <p>Are you sure you want to remove this server group?</p>
+      <div class="row flex-left">
+        <span class="icon fa-warning fa-2x red-3"></span>
+        <p>Warning: This action is not reversible.<br>Delete this server group?</p>
+      </div>
     </div>
     <div class="panel-footer">
       <a href="" ng-click="$dismiss()">Cancel</a>
