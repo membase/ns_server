@@ -28,7 +28,8 @@
 
 -record(state, {buckets,
                 admin_user,
-                admin_pass}).
+                admin_pass,
+                rest_creds}).
 
 start_link() ->
     Path = ns_config:search_node_prop(ns_config:latest(), isasl, path),
@@ -60,6 +61,8 @@ filter_event({buckets, _V}) ->
     true;
 filter_event({auth_version, _V}) ->
     true;
+filter_event({rest_creds, _V}) ->
+    true;
 filter_event(_) ->
     false.
 
@@ -73,7 +76,11 @@ handle_event({buckets, V}, #state{buckets = Buckets} = State) ->
 handle_event({cluster_compat_version, _V}, State) ->
     {changed, State};
 handle_event({auth_version, _V}, State) ->
-    {changed, State}.
+    {changed, State};
+handle_event({rest_creds, Creds}, #state{rest_creds = Creds}) ->
+    unchanged;
+handle_event({rest_creds, Creds}, State) ->
+    {changed, State#state{rest_creds = Creds}}.
 
 producer(State) ->
     case cluster_compat_mode:is_cluster_spock() of
@@ -93,18 +100,36 @@ generate_45(#state{buckets = Buckets,
 
 make_producer(#state{buckets = Buckets,
                      admin_user = AU,
-                     admin_pass = AP}) ->
+                     admin_pass = AP,
+                     rest_creds = RestCreds}) ->
     pipes:compose([menelaus_users:select_auth_infos('_'),
-                   jsonify_auth(AU, AP, Buckets),
+                   jsonify_auth(AU, AP, Buckets, RestCreds),
                    sjson:encode_extended_json([{compact, false},
                                                {strict, false}])]).
 
-jsonify_auth(AU, AP, Buckets) ->
+get_admin_auth_json({User, {password, {Salt, Mac}}}) ->
+    %% this happens after upgrade to Spock, before the first password change
+    {User, menelaus_users:build_plain_memcached_auth_info(Salt, Mac)};
+get_admin_auth_json({User, {auth, Auth}}) ->
+    {User, Auth};
+get_admin_auth_json(_) ->
+    undefined.
+
+jsonify_auth(AU, AP, Buckets, RestCreds) ->
     ?make_transducer(
        begin
            ?yield(object_start),
            ?yield({kv_start, <<"users">>}),
            ?yield(array_start),
+
+           ClusterAdmin =
+               case get_admin_auth_json(RestCreds) of
+                   undefined ->
+                       undefined;
+                   {User, Auth} ->
+                       ?yield({json, {[{<<"n">>, list_to_binary(User)} | Auth]}}),
+                       User
+               end,
 
            %% TODO: remove buckets after upgrade will be implemented
            AdminAndBuckets = menelaus_users:build_memcached_auth_info([{AU, AP} | Buckets]),
@@ -116,7 +141,14 @@ jsonify_auth(AU, AP, Buckets) ->
            pipes:foreach(
              ?producer(),
              fun ({{auth, {UserName, _Type}}, Auth}) ->
-                     ?yield({json, {[{<<"n">>, list_to_binary(UserName)} | Auth]}})
+                     case UserName of
+                         ClusterAdmin ->
+                             ?log_warning("Encountered user ~p with the same name as cluster administrator",
+                                          [ClusterAdmin]),
+                             ok;
+                         _ ->
+                             ?yield({json, {[{<<"n">>, list_to_binary(UserName)} | Auth]}})
+                     end
              end),
            ?yield(array_end),
            ?yield(kv_end),

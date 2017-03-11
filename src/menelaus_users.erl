@@ -38,6 +38,7 @@
          get_salt_and_mac/1,
          build_memcached_auth/1,
          build_memcached_auth_info/1,
+         build_plain_memcached_auth_info/2,
          get_users_version/0,
          get_auth_version/0,
          empty_storage/0]).
@@ -353,6 +354,10 @@ build_memcached_auth_info(UserPasswords) ->
     {0, Json} = collect_result(Port, []),
     {[{<<"users">>, Infos}]} = ejson:decode(Json),
     Infos.
+
+build_plain_memcached_auth_info(Salt, Mac) ->
+    SaltAndMac = <<Salt/binary, Mac/binary>>,
+    [{<<"plain">>, base64:encode(SaltAndMac)}].
 
 collect_users(asterisk, _Role, Dict) ->
     Dict;
