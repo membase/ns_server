@@ -500,15 +500,20 @@ validate_cred(Username, username) ->
 handle_put_user(Type, UserId, Req) ->
     assert_api_can_be_used(),
 
-    case type_to_atom(Type) of
-        unknown ->
-            menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
-        saslauthd = T ->
-            menelaus_web:assert_is_enterprise(),
-            handle_put_user_with_identity({UserId, T}, Req);
-        builtin = T ->
-            menelaus_web:assert_is_spock(),
-            handle_put_user_with_identity({UserId, T}, Req)
+    case validate_cred(UserId, username) of
+        true ->
+            case type_to_atom(Type) of
+                unknown ->
+                    menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
+                saslauthd = T ->
+                    menelaus_web:assert_is_enterprise(),
+                    handle_put_user_with_identity({UserId, T}, Req);
+                builtin = T ->
+                    menelaus_web:assert_is_spock(),
+                    handle_put_user_with_identity({UserId, T}, Req)
+            end;
+        Error ->
+            menelaus_util:reply_global_error(Req, Error)
     end.
 
 validate_password(R1) ->
