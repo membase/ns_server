@@ -82,6 +82,11 @@
     }
 
     function prepareRolesForSaving(roles) {
+      if (_.isArray(roles)) {
+        return _.map(roles, function (role) {
+          return role.role + (role.bucket_name ? '[' + role.bucket_name + ']' : '');
+        });
+      }
       if (roles.admin) {
         return ["admin"];
       }
@@ -99,7 +104,7 @@
 
     }
 
-    function addUser(user, roles, originalUser) {
+    function addUser(user, roles) {
       if (!user || !user.id) {
         return $q.reject({username: "username is required"});
       }

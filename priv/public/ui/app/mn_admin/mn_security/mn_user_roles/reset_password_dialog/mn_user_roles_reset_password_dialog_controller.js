@@ -16,7 +16,7 @@
       if (vm.form.$invalid) {
         return;
       }
-      mnPromiseHelper(vm, mnUserRolesService.addUser(vm.user, vm.user.roles, user), $uibModalInstance)
+      mnPromiseHelper(vm, mnUserRolesService.addUser(vm.user, vm.user.roles), $uibModalInstance)
         .showGlobalSpinner()
         .catchErrors()
         .broadcast("reloadRolesPoller")
