@@ -33,7 +33,6 @@
          handle_put_user/3,
          handle_delete_user/3,
          handle_change_password/1,
-         handle_validate_password/1,
          handle_settings_read_only_admin_name/1,
          handle_settings_read_only_user_post/1,
          handle_read_only_user_delete/1,
@@ -652,12 +651,6 @@ do_change_password({_, builtin} = Identity, Password) ->
     menelaus_users:change_password(Identity, Password);
 do_change_password({User, admin}, Password) ->
     ns_config_auth:set_credentials(admin, User, Password).
-
-handle_validate_password(Req) ->
-    menelaus_util:execute_if_validated(
-      fun (_Values) ->
-              menelaus_util:reply(Req, 200)
-      end, Req, validate_change_password(Req:parse_post())).
 
 handle_settings_read_only_admin_name(Req) ->
     case ns_config_auth:get_user(ro_admin) of
