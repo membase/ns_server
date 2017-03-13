@@ -81,17 +81,17 @@
         .onSuccess(function (roles) {
           vm.roles = roles;
           vm.rolesTree = mnUserRolesService.getRolesTree(roles);
+
           if (user) {
-            user.roles.forEach(function (role) {
-              onCheckChange(role, getUIID(role, 2));
-            });
+            return mnPromiseHelper(vm, mnUserRolesService.prepareUserRoles(user.roles))
+              .applyToScope("selectedRoles")
+              .onSuccess(function () {
+                user.roles.forEach(function (role) {
+                  onCheckChange(role, getUIID(role, 2));
+                });
+              });
           }
         });
-
-      if (user) {
-        mnPromiseHelper(vm, mnUserRolesService.getRolesByRole(user.roles, true))
-          .applyToScope("selectedRoles")
-      }
     }
 
     function save() {

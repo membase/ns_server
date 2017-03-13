@@ -12,7 +12,8 @@
       getRoles: getRoles,
       deleteUser: deleteUser,
       getRolesByRole: getRolesByRole,
-      getRolesTree: getRolesTree
+      getRolesTree: getRolesTree,
+      prepareUserRoles: prepareUserRoles
     };
 
     return mnUserRolesService;
@@ -55,11 +56,29 @@
       return "/settings/rbac/users/" + encodeURIComponent(user.type) + "/"  + encodeURIComponent(user.id);
     }
 
-    function getRolesByRole(userRoles, forAddDialog) {
+    function prepareUserRoles(userRoles) {
+      return $q.all([getRolesByRole(userRoles), getRolesByRole()])
+        .then(function (rv) {
+          var userRolesByRole = rv[0];
+          var rolesByRole = rv[1];
+          var i;
+          for (i in userRolesByRole) {
+            if (!rolesByRole[i]) {
+              delete userRolesByRole[i];
+            } else {
+              userRolesByRole[i] = true;
+            }
+          }
+
+          return userRolesByRole;
+        });
+    }
+
+    function getRolesByRole(userRoles) {
       return (userRoles ? $q.when(userRoles) : getRoles()).then(function (roles) {
         var rolesByRole = {};
         angular.forEach(roles, function (role) {
-          rolesByRole[role.role + (role.bucket_name ? '[' + role.bucket_name + ']' : '')] = forAddDialog ? true : role;
+          rolesByRole[role.role + (role.bucket_name ? '[' + role.bucket_name + ']' : '')] = role;
         });
         return rolesByRole;
       });
