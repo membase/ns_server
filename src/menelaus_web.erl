@@ -2524,6 +2524,8 @@ validate_settings(Port, U, P) ->
 %% through the /node URIs
 handle_settings_web_post(Req) ->
     PostArgs = Req:parse_post(),
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
+
     Port = proplists:get_value("port", PostArgs),
     U = proplists:get_value("username", PostArgs),
     P = proplists:get_value("password", PostArgs),
@@ -2531,39 +2533,47 @@ handle_settings_web_post(Req) ->
         [_Head | _] = Errors ->
             reply_json(Req, Errors, 400);
         [] ->
-            PortInt = case Port of
-                         "SAME" -> proplists:get_value(port, webconfig());
-                         _      -> list_to_integer(Port)
-                      end,
-            case Port =/= PortInt orelse ns_config_auth:credentials_changed(admin, U, P) of
-                false -> ok; % No change.
+            case ValidateOnly of
                 true ->
-                    maybe_cleanup_old_buckets(),
-                    ns_config:set(rest, [{port, PortInt}]),
-                    ns_config_auth:set_credentials(admin, U, P),
-                    case ns_config:search(uuid) of
-                        false ->
-                            Uuid = couch_uuids:random(),
-                            ns_config:set(uuid, Uuid);
-                        _ ->
-                            ok
-                    end,
-                    ns_audit:password_change(Req, {U, admin}),
-
-                    menelaus_ui_auth:reset()
-
-                    %% No need to restart right here, as our ns_config
-                    %% event watcher will do it later if necessary.
-            end,
-            Host = Req:get_header_value("host"),
-            PureHostName = case string:tokens(Host, ":") of
-                               [Host] -> Host;
-                               [HostName, _] -> HostName
-                           end,
-            NewHost = PureHostName ++ ":" ++ integer_to_list(PortInt),
-            %% TODO: detect and support https when time will come
-            reply_json(Req, {struct, [{newBaseUri, list_to_binary("http://" ++ NewHost ++ "/")}]})
+                    reply(Req, 200);
+                false ->
+                    do_handle_settings_web_post(Port, U, P, Req)
+            end
     end.
+
+do_handle_settings_web_post(Port, U, P, Req) ->
+    PortInt = case Port of
+                  "SAME" -> proplists:get_value(port, webconfig());
+                  _      -> list_to_integer(Port)
+              end,
+    case Port =/= PortInt orelse ns_config_auth:credentials_changed(admin, U, P) of
+        false -> ok; % No change.
+        true ->
+            maybe_cleanup_old_buckets(),
+            ns_config:set(rest, [{port, PortInt}]),
+            ns_config_auth:set_credentials(admin, U, P),
+            case ns_config:search(uuid) of
+                false ->
+                    Uuid = couch_uuids:random(),
+                    ns_config:set(uuid, Uuid);
+                _ ->
+                    ok
+            end,
+            ns_audit:password_change(Req, {U, admin}),
+
+            menelaus_ui_auth:reset()
+
+            %% No need to restart right here, as our ns_config
+            %% event watcher will do it later if necessary.
+    end,
+    Host = Req:get_header_value("host"),
+    PureHostName = case string:tokens(Host, ":") of
+                       [Host] -> Host;
+                       [HostName, _] -> HostName
+                   end,
+    NewHost = PureHostName ++ ":" ++ integer_to_list(PortInt),
+    %% TODO: detect and support https when time will come
+    reply_json(Req, {struct, [{newBaseUri, list_to_binary("http://" ++ NewHost ++ "/")}]}).
 
 handle_settings_alerts(Req) ->
     {value, Config} = ns_config:search(email_alerts),
