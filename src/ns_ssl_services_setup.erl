@@ -26,6 +26,7 @@
          memcached_key_path/0,
          sync_local_cert_and_pkey_change/0,
          ssl_minimum_protocol/0,
+         client_cert_auth/0,
          set_node_certificate_chain/4]).
 
 %% used by ssl proxy
@@ -49,7 +50,8 @@
 
 -record(state, {cert_state,
                 reload_state,
-                min_ssl_ver}).
+                min_ssl_ver,
+                client_cert_auth}).
 
 -record(cert_state, {cert,
                      pkey,
@@ -199,6 +201,9 @@ supported_versions(MinVer) ->
 ssl_minimum_protocol() ->
     ns_config:search(ns_config:latest(), ssl_minimum_protocol, 'tlsv1').
 
+client_cert_auth() ->
+    ns_config:search(ns_config:latest(), client_cert_auth, disable).
+
 %% The list is obtained by running the following openssl command:
 %%
 %%   openssl ciphers LOW:RC4 | tr ':' '\n'
@@ -247,14 +252,26 @@ supported_ciphers() ->
             ssl:cipher_suites() -- low_security_ciphers()
     end.
 
+ssl_auth_options() ->
+    case client_cert_auth() of
+        disable ->
+            [];
+        enable ->
+            [{verify, verify_peer}];
+        mandatory ->
+            [{fail_if_no_peer_cert, true},
+             {verify, verify_peer}]
+    end.
+
 ssl_server_opts() ->
     Path = ssl_cert_key_path(),
-    [{keyfile, Path},
-     {certfile, Path},
-     {versions, supported_versions(ssl_minimum_protocol())},
-     {cacertfile, ssl_cacert_key_path()},
-     {dh, dh_params_der()},
-     {ciphers, supported_ciphers()}].
+    ssl_auth_options() ++
+        [{keyfile, Path},
+         {certfile, Path},
+         {versions, supported_versions(ssl_minimum_protocol())},
+         {cacertfile, ssl_cacert_key_path()},
+         {dh, dh_params_der()},
+         {ciphers, supported_ciphers()}].
 
 start_link_rest_service() ->
     Config0 = menelaus_web:webconfig(),
@@ -374,7 +391,8 @@ init([]) ->
                end,
     {ok, #state{cert_state = build_cert_state(Data),
                 reload_state = RetrySvc,
-                min_ssl_ver = ssl_minimum_protocol()}}.
+                min_ssl_ver = ssl_minimum_protocol(),
+                client_cert_auth = client_cert_auth()}}.
 
 format_status(_Opt, [_PDict, #state{cert_state = CertState} = State]) ->
     State#state{cert_state = CertState#cert_state{pkey = <<"sanitized">>}}.
@@ -388,6 +406,9 @@ config_change_detector_loop({{node, _Node, capi_port}, _}, Parent) ->
     Parent;
 config_change_detector_loop({ssl_minimum_protocol, _}, Parent) ->
     Parent ! ssl_minimum_protocol_changed,
+    Parent;
+config_change_detector_loop({client_cert_auth, _}, Parent) ->
+    Parent ! client_cert_auth_changed,
     Parent;
 config_change_detector_loop(_OtherEvent, Parent) ->
     Parent.
@@ -439,6 +460,21 @@ handle_info(ssl_minimum_protocol_changed, #state{reload_state = ReloadState,
             ReloadServices = [ssl_service, capi_ssl_service],
             ?log_debug("Notify services ~p about ssl_minimum_protocol change", [ReloadServices]),
             {noreply, #state{min_ssl_ver = Other,
+                             reload_state =
+                                 lists:umerge(lists:sort(ReloadServices), lists:sort(ReloadState))}}
+    end;
+handle_info(client_cert_auth_changed, #state{reload_state = ReloadState,
+                                             client_cert_auth = Auth} = State) ->
+    misc:flush(client_cert_auth_changed),
+    case client_cert_auth() of
+        Auth ->
+            {noreply, State};
+        Other ->
+            misc:create_marker(marker_path()),
+            self() ! notify_services,
+            ReloadServices = [ssl_service, capi_ssl_service],
+            ?log_debug("Notify services ~p about client_cert_auth change", [ReloadServices]),
+            {noreply, #state{client_cert_auth = Other,
                              reload_state =
                                  lists:umerge(lists:sort(ReloadServices), lists:sort(ReloadState))}}
     end;

@@ -146,18 +146,15 @@ handle_get_node_certificate(NodeId, Req) ->
             menelaus_util:reply_text(Req, <<"Node is not found">>, 404)
     end.
 
-client_cert_auth() ->
-    ns_config:search(ns_config:latest(), client_cert_auth, disable).
-
 handle_client_cert_auth_settings(Req) ->
-    Val = client_cert_auth(),
+    Val = ns_ssl_services_setup:client_cert_auth(),
     menelaus_util:reply_json(Req, {[{client_cert_auth, atom_to_binary(Val, latin1)}]}).
 
 handle_client_cert_auth_settings_post(Req) ->
     menelaus_web:assert_is_enterprise(),
     Params = Req:parse_post(),
     NewVal = proplists:get_value("client_cert_auth", Params),
-    OldVal = client_cert_auth(),
+    OldVal = ns_ssl_services_setup:client_cert_auth(),
     case catch list_to_existing_atom(NewVal) of
     _ when length(Params) > 1 ->
         menelaus_util:reply_json(Req, <<"Invalid keys">>, 400);

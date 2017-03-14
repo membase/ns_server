@@ -319,7 +319,7 @@ ssl_minimum_protocol([], _Params) ->
     ns_ssl_services_setup:ssl_minimum_protocol().
 
 client_cert_auth([], _Params) ->
-    Val = ns_config:search(ns_config:latest(), client_cert_auth, disable),
+    Val = ns_ssl_services_setup:client_cert_auth(),
     atom_to_binary(Val, latin1).
 
 is_enabled([FeatureVersion], _Params) ->
