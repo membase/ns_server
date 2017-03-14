@@ -128,10 +128,30 @@ maybe_notify_cbauth(#state{rpc_processes = Processes,
             State#state{cbauth_info = Info}
     end.
 
+personalize_info(Label, Info) ->
+    SpecialUser = ns_config_auth:get_user(special) ++ Label,
+    "htuabc-" ++ ReversedTrimmedLabel = lists:reverse(Label),
+    MemcachedUser = [$@ | lists:reverse(ReversedTrimmedLabel)],
+
+    Nodes = proplists:get_value(nodes, Info),
+    NewNodes =
+        lists:map(fun ({Node}) ->
+                          OtherUsers = proplists:get_value(other_users, Node),
+                          NewNode = case lists:member(MemcachedUser, OtherUsers) of
+                                        true ->
+                                            lists:keyreplace(user, 1, Node,
+                                                             {user, list_to_binary(MemcachedUser)});
+                                        false ->
+                                            Node
+                                    end,
+                          {lists:keydelete(other_users, 1, NewNode)}
+                  end, Nodes),
+    [{specialUser, erlang:list_to_binary(SpecialUser)} |
+     lists:keyreplace(nodes, 1, Info, {nodes, NewNodes})].
+
 notify_cbauth(Label, Pid, Info) ->
     Method = "AuthCacheSvc.UpdateDB",
-    SpecialUser = ns_config_auth:get_user(special) ++ Label,
-    NewInfo = {[{specialUser, erlang:list_to_binary(SpecialUser)} | Info]},
+    NewInfo = {personalize_info(Label, Info)},
 
     try json_rpc_connection:perform_call(Label, Method, NewInfo) of
         {error, method_not_found} ->
@@ -173,6 +193,7 @@ build_node_info(N, User, Config) ->
             end,
     {[{host, erlang:list_to_binary(Host)},
       {user, erlang:list_to_binary(User)},
+      {other_users, ns_config:search_node_prop(N, Config, memcached, other_users, [])},
       {password,
        erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_pass))},
       {ports, [Port || {_Key, Port} <- Services]}] ++ Local}.

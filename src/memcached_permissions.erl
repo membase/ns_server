@@ -31,7 +31,7 @@
 
 -record(state, {buckets,
                 roles,
-                admin_user,
+                users,
                 cluster_admin}).
 
 bucket_permissions_to_check(Bucket) ->
@@ -65,7 +65,8 @@ sync() ->
 init() ->
     Config = ns_config:get(),
     #state{buckets = ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)),
-           admin_user = ns_config:search_node_prop(Config, memcached, admin_user),
+           users = [ns_config:search_node_prop(Config, memcached, admin_user) |
+                    ns_config:search_node_prop(Config, memcached, other_users, [])],
            roles = menelaus_roles:get_definitions(Config)}.
 
 filter_event({buckets, _V}) ->
@@ -115,9 +116,10 @@ producer(State) ->
 
 generate_45(#state{buckets = Buckets,
                    roles = RoleDefinitions,
-                   admin_user = Admin}) ->
+                   users = Users}) ->
     Json =
-        {[memcached_admin_json(Admin, Buckets) | generate_json_45(Buckets, RoleDefinitions)]},
+        {[memcached_admin_json(U, Buckets) || U <-Users] ++
+             generate_json_45(Buckets, RoleDefinitions)},
     menelaus_util:encode_json(Json).
 
 refresh() ->
@@ -183,11 +185,13 @@ generate_json_45(Buckets, RoleDefinitions) ->
                     end, {[], RolesDict}, Buckets),
     lists:reverse(Json).
 
-jsonify_users(AU, Buckets, RoleDefinitions, ClusterAdmin) ->
+jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
     ?make_transducer(
        begin
            ?yield(object_start),
-           ?yield({kv, memcached_admin_json(AU, Buckets)}),
+           lists:foreach(fun (U) ->
+                                 ?yield({kv, memcached_admin_json(U, Buckets)})
+                         end, Users),
 
            EmitUser =
                fun (Identity, Roles, Dict) ->
@@ -232,10 +236,10 @@ jsonify_users(AU, Buckets, RoleDefinitions, ClusterAdmin) ->
 
 make_producer(#state{buckets = Buckets,
                      roles = RoleDefinitions,
-                     admin_user = Admin,
+                     users = Users,
                      cluster_admin = ClusterAdmin}) ->
     pipes:compose([menelaus_users:select_users('_'),
-                   jsonify_users(Admin, Buckets, RoleDefinitions, ClusterAdmin),
+                   jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin),
                    sjson:encode_extended_json([{compact, false},
                                                {strict, false}])]).
 

@@ -27,7 +27,7 @@
 -include("pipes.hrl").
 
 -record(state, {buckets,
-                admin_user,
+                users,
                 admin_pass,
                 rest_creds}).
 
@@ -48,11 +48,12 @@ format_status(State) ->
 init() ->
     Config = ns_config:get(),
     AU = ns_config:search_node_prop(Config, memcached, admin_user),
+    Users = ns_config:search_node_prop(Config, memcached, other_users, []),
     AP = ns_config:search_node_prop(Config, memcached, admin_pass),
     Buckets = extract_creds(ns_config:search(Config, buckets, [])),
 
     #state{buckets = Buckets,
-           admin_user = AU,
+           users = [AU | Users],
            admin_pass = AP}.
 
 filter_event({cluster_compat_version, ?SPOCK_VERSION_NUM}) ->
@@ -91,19 +92,19 @@ producer(State) ->
     end.
 
 generate_45(#state{buckets = Buckets,
-                   admin_user = AU,
+                   users = Users,
                    admin_pass = AP}) ->
-    UserPasswords = [{AU, AP} | Buckets],
+    UserPasswords = [{U, AP} || U <- Users] ++ Buckets,
     Infos = menelaus_users:build_memcached_auth_info(UserPasswords),
     Json = {struct, [{<<"users">>, Infos}]},
     menelaus_util:encode_json(Json).
 
 make_producer(#state{buckets = Buckets,
-                     admin_user = AU,
+                     users = Users,
                      admin_pass = AP,
                      rest_creds = RestCreds}) ->
     pipes:compose([menelaus_users:select_auth_infos('_'),
-                   jsonify_auth(AU, AP, Buckets, RestCreds),
+                   jsonify_auth(Users, AP, Buckets, RestCreds),
                    sjson:encode_extended_json([{compact, false},
                                                {strict, false}])]).
 
@@ -115,7 +116,7 @@ get_admin_auth_json({User, {auth, Auth}}) ->
 get_admin_auth_json(_) ->
     undefined.
 
-jsonify_auth(AU, AP, Buckets, RestCreds) ->
+jsonify_auth([AU | Users], AP, Buckets, RestCreds) ->
     ?make_transducer(
        begin
            ?yield(object_start),
@@ -131,8 +132,13 @@ jsonify_auth(AU, AP, Buckets, RestCreds) ->
                        User
                end,
 
-           [AdminAuthInfo] = menelaus_users:build_memcached_auth_info([{AU, AP}]),
-           ?yield({json, AdminAuthInfo}),
+           [{AdminAuthInfo}] = menelaus_users:build_memcached_auth_info([{AU, AP}]),
+           ?yield({json, {AdminAuthInfo}}),
+           lists:foreach(fun (U) ->
+                                 UserAuthInfo = lists:keyreplace(<<"n">>, 1, AdminAuthInfo,
+                                                                 {<<"n">>, list_to_binary(U)}),
+                                 ?yield({json, {UserAuthInfo}})
+                         end, Users),
 
            lists:foreach(
              fun ({Bucket, Password}) ->

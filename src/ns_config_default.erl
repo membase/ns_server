@@ -259,6 +259,7 @@ default() ->
                       _ -> undefined
                   end},
        {admin_user, "@ns_server"},
+       {other_users, ["@cbq-engine", "@projector", "@goxdcr", "@index", "@fts"]},
        {admin_pass, binary_to_list(couch_uuids:random())},
        {engines,
         [{membase,
