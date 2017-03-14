@@ -468,6 +468,19 @@ table th span.has-menu:after {
   text-decoration:none;
 }
 
+.reverse.disclosure:before {
+  font-family: FontAwesome;
+  content: "\f0da";
+  font-size: 1.125rem;
+  width: 1rem;
+  text-align: center;
+  color: #333;
+  position: absolute;
+  top: -2px;
+  left: 0;
+  text-decoration:none;
+}
+
 /* this inserts the magnifying glass displayed inside input fields with ".filter-input"  */
 .filter-input-group:after{
   font-family:FontAwesome;
@@ -1518,8 +1531,8 @@ input[type="checkbox"] + label {
   font-weight: normal;
   cursor: pointer;
   font-size: .875rem;
-  margin-right: 1rem;
-  padding-left: .25rem;
+  padding-left: .5rem;
+  margin-right: .75rem;
 }
 input[type="radio"] + label:last-child,
 input[type="checkbox"] + label:last-child {
@@ -1533,7 +1546,7 @@ input[type="radio"] + label:before {
   color: #a1a1a1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  width: .96rem;
+  width: 1rem;
   left: -2px;
 }
 input[type="checkbox"][disabled="disabled"] + label:before,

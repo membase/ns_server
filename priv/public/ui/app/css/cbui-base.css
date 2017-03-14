@@ -626,8 +626,6 @@ pre {
   line-height: 1.5;
   color: #333;
   overflow: auto;
-  background: rgba(0, 0, 0, 0.03);
-  padding: 1.5rem;
   word-wrap: normal;
 }
 
