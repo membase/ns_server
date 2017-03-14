@@ -258,7 +258,7 @@ default() ->
                       true -> misc:get_env_default(memcached_ssl_port, 11207);
                       _ -> undefined
                   end},
-       {admin_user, "_admin"},
+       {admin_user, "@ns_server"},
        {admin_pass, binary_to_list(couch_uuids:random())},
        {engines,
         [{membase,
