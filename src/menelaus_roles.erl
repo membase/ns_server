@@ -197,6 +197,8 @@ roles_spock() ->
        {desc, <<"Can read DCP data streams and stats">>}],
       [{[{bucket, bucket_name}, stats], [read]},
        {[{bucket, bucket_name}, data, dcp], [read]},
+       {[{bucket, bucket_name}, data, sxattr], [read]},
+       {[admin, memcached, idle], [write]},
        {[pools], [read]}]},
      {data_backup, [bucket_name],
       [{name, <<"Data Backup">>},

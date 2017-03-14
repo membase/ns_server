@@ -44,7 +44,6 @@ bucket_permissions_to_check(Bucket) ->
      {{[{bucket, Bucket}, data, tap], write},  'Tap'},
      {{[{bucket, Bucket}, data, meta], read},  'MetaRead'},
      {{[{bucket, Bucket}, data, meta], write}, 'MetaWrite'},
-     {{[{bucket, Bucket}, data, idle], read},  'IdleConnection'},
      {{[{bucket, Bucket}, data, xattr], read}, 'XattrRead'},
      {{[{bucket, Bucket}, data, xattr], write},'XattrWrite'}].
 
@@ -53,6 +52,7 @@ global_permissions_to_check() ->
      {{[buckets], create},                  'BucketManagement'},
      {{[admin, memcached, node], write},    'NodeManagement'},
      {{[admin, memcached, session], write}, 'SessionManagement'},
+     {{[admin, memcached, idle], write},    'IdleConnection'},
      {{[admin, security, audit], write},    'AuditManagement'}].
 
 start_link() ->
