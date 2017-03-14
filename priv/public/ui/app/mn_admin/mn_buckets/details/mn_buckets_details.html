@@ -36,8 +36,8 @@
       </div>
       <div class="nowrap" ng-if="!bucket.isMemcached">
         <strong>Conflict Resolution:</strong>
-        <span ng-show="bucketConf.conflictResolutionType === 'lww'">Timestamp</span>
-        <span ng-show="bucketConf.conflictResolutionType === 'seqno'">Sequence Number</span>
+        <span ng-show="bucket.conflictResolutionType === 'lww'">Timestamp</span>
+        <span ng-show="bucket.conflictResolutionType === 'seqno'">Sequence Number</span>
       </div>
       <div
          class="nowrap"
