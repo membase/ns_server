@@ -121,6 +121,15 @@ set_password(Password, State) ->
     ?log_debug("Sending password to gosecrets"),
     call_gosecrets({set_password, Password}, State).
 
+recover_or_prompt_password(EncryptedDataKey, State) ->
+    case application:get_env(master_password) of
+        {ok, P} ->
+            ?log_info("Password was recovered from application environment"),
+            ok = set_password(P, State);
+        _ ->
+            prompt_the_password(EncryptedDataKey, State)
+    end.
+
 init([]) ->
     maybe_create_isasl_key(),
     Path = data_key_store_path(),
@@ -134,48 +143,32 @@ init([]) ->
                 undefined
         end,
     State = start_gosecrets(),
-    RV1 =
-        case os:getenv("CB_WAIT_FOR_MASTER_PASSWORD") of
-            "true" ->
-                case application:get_env(master_password) of
-                    {ok, P} ->
-                        ?log_info("Password was recovered from application environment"),
-                        ok = set_password(P, State);
-                    _ ->
-                        prompt_the_password(EncryptedDataKey, State)
-                end;
-            _ ->
-                Password =
-                    case os:getenv("CB_MASTER_PASSWORD") of
-                        false ->
-                            "";
-                        S ->
-                            S
-                    end,
-                ok = set_password(Password, State)
+    Password =
+        case os:getenv("CB_MASTER_PASSWORD") of
+            false ->
+                "";
+            S ->
+                S
         end,
-    case RV1 of
+    ok = set_password(Password, State),
+
+    EncryptedDataKey1 =
+        case EncryptedDataKey of
+            undefined ->
+                ?log_debug("Create new data key."),
+                {ok, NewDataKey} = call_gosecrets(create_data_key, State),
+                ok = misc:mkdir_p(path_config:component_path(data, "config")),
+                ok = misc:atomic_write_file(Path, NewDataKey),
+                NewDataKey;
+            _ ->
+                EncryptedDataKey
+        end,
+    case call_gosecrets({set_data_key, EncryptedDataKey1}, State) of
         ok ->
-            EncryptedDataKey1 =
-                case EncryptedDataKey of
-                    undefined ->
-                        ?log_debug("Create new data key."),
-                        {ok, NewDataKey} = call_gosecrets(create_data_key, State),
-                        ok = misc:mkdir_p(path_config:component_path(data, "config")),
-                        ok = misc:atomic_write_file(Path, NewDataKey),
-                        NewDataKey;
-                    _ ->
-                        EncryptedDataKey
-                end,
-            case call_gosecrets({set_data_key, EncryptedDataKey1}, State) of
-                ok ->
-                    ok;
-                Error ->
-                    ?log_error("Incorrect master password. Error: ~p", [Error]),
-                    ns_babysitter_bootstrap:stop()
-            end;
-        _ ->
-            ok
+            ok;
+        Error ->
+            ?log_error("Incorrect master password. Error: ~p", [Error]),
+            recover_or_prompt_password(EncryptedDataKey, State)
     end,
     {ok, State}.
 
