@@ -79,8 +79,11 @@ prompt_the_password(EncryptedDataKey, State) ->
     end,
     RV.
 
-prompt_the_password(EncryptedDataKey, State, StdIn, Try) ->
-    ?log_debug("Waiting for the master password to be supplied. Attempt ~p", [Try]),
+prompt_the_password(EncryptedDataKey, State, StdIn, Tries) ->
+    prompt_the_password(EncryptedDataKey, State, StdIn, Tries, Tries).
+
+prompt_the_password(EncryptedDataKey, State, StdIn, Try, Tries) ->
+    ?log_debug("Waiting for the master password to be supplied. Attempt ~p", [Tries - Try + 1]),
     receive
         {StdIn, M} ->
             ?log_error("Password prompt interrupted: ~p", [M]),
@@ -98,7 +101,7 @@ prompt_the_password(EncryptedDataKey, State, StdIn, Try) ->
                             confirm_set_password(From, P);
                         Error ->
                             ?log_error("Incorrect master password. Error: ~p", [Error]),
-                            maybe_retry_prompt_the_password(EncryptedDataKey, State, StdIn, From, Try)
+                            maybe_retry_prompt_the_password(EncryptedDataKey, State, StdIn, From, Try, Tries)
                     end
             end
     end.
@@ -108,14 +111,14 @@ confirm_set_password(From, Password) ->
     gen_server:reply(From, ok),
     ok.
 
-maybe_retry_prompt_the_password(_EncryptedDataKey, _State, _StdIn, ReplyTo, 1) ->
+maybe_retry_prompt_the_password(_EncryptedDataKey, _State, _StdIn, ReplyTo, 1, _Tries) ->
     gen_server:reply(ReplyTo, auth_failure),
     ?log_error("Incorrect master password!"),
     ns_babysitter_bootstrap:stop(),
     auth_failure;
-maybe_retry_prompt_the_password(EncryptedDataKey, State, StdIn, ReplyTo, Try) ->
+maybe_retry_prompt_the_password(EncryptedDataKey, State, StdIn, ReplyTo, Try, Tries) ->
     gen_server:reply(ReplyTo, retry),
-    prompt_the_password(EncryptedDataKey, State, StdIn, Try - 1).
+    prompt_the_password(EncryptedDataKey, State, StdIn, Try - 1, Tries).
 
 set_password(Password, State) ->
     ?log_debug("Sending password to gosecrets"),
