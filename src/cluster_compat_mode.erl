@@ -192,6 +192,31 @@ consider_switching_compat_mode() ->
             end
     end.
 
+upgrades() ->
+    [{?VERSION_40, goxdcr, goxdcr_upgrade, upgrade}].
+
+do_upgrades(undefined, _, _, _) ->
+    %% this happens during the cluster initialization. no upgrade needed
+    ok;
+do_upgrades(CurrentVersion, NewVersion, Config, NodesWanted) ->
+    do_upgrades(upgrades(), CurrentVersion, NewVersion, Config, NodesWanted).
+
+do_upgrades([], _, _, _, _) ->
+    ok;
+do_upgrades([{Version, Name, Module, Fun} | Rest],
+            CurrentVersion, NewVersion, Config, NodesWanted)
+  when CurrentVersion < Version andalso NewVersion >= Version ->
+    ?log_debug("Initiating ~p upgrade due to version change from ~p to ~p",
+               [Name, CurrentVersion, NewVersion]),
+    case Module:Fun(Config, NodesWanted) of
+        ok ->
+            do_upgrades(Rest, CurrentVersion, NewVersion, Config, NodesWanted);
+        _ ->
+            Name
+    end;
+do_upgrades([_ | Rest], CurrentVersion, NewVersion, Config, NodesWanted) ->
+    do_upgrades(Rest, CurrentVersion, NewVersion, Config, NodesWanted).
+
 do_consider_switching_compat_mode(Config, CurrentVersion) ->
     NodesWanted = lists:sort(ns_config:search(Config, nodes_wanted, undefined)),
     NodesUp = lists:sort([node() | nodes()]),
@@ -204,16 +229,16 @@ do_consider_switching_compat_mode(Config, CurrentVersion) ->
                 AnotherVersion ->
                     case is_enabled_at(AnotherVersion, CurrentVersion) of
                         true ->
-                            case goxdcr_upgrade:maybe_upgrade(CurrentVersion,
-                                                              AnotherVersion,Config, NodesWanted) of
+                            case do_upgrades(CurrentVersion, AnotherVersion, Config, NodesWanted) of
                                 ok ->
                                     do_switch_compat_mode(AnotherVersion, NodesWanted),
                                     changed;
-                                _ ->
+                                Name ->
                                     ?log_error("Refusing to upgrade the compat "
-                                               "version from ~p to ~p due to failure of goxdcr upgrade"
+                                               "version from ~p to ~p due to failure of ~p upgrade"
                                                "~nNodesWanted: ~p~nNodeInfos: ~p",
-                                               [CurrentVersion, AnotherVersion, NodesWanted, NodeInfos])
+                                               [CurrentVersion, AnotherVersion, Name,
+                                                NodesWanted, NodeInfos])
                             end;
                         false ->
                             ?log_error("Refusing to downgrade the compat "

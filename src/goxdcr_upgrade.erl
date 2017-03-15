@@ -19,21 +19,9 @@
 -module(goxdcr_upgrade).
 -include("ns_common.hrl").
 
--export([maybe_upgrade/4,
+-export([upgrade/2,
          config_upgrade/1,
          updates_allowed/0]).
-
-maybe_upgrade(undefined, _, _, _) ->
-    %% this happens during the cluster initialization. no upgrade needed
-    ok;
-maybe_upgrade(CurrentVersion, NewVersion, Config, NodesWanted)
-  when CurrentVersion < ?VERSION_40 andalso
-       NewVersion >= ?VERSION_40 ->
-    ?log_debug("Initiating goxdcr upgrade due to version change from ~p to ~p",
-               [CurrentVersion, NewVersion]),
-    upgrade(Config, NodesWanted);
-maybe_upgrade(_, _, _, _) ->
-    ok.
 
 upgrade(Config, Nodes) ->
     try
@@ -51,7 +39,6 @@ upgrade(Config, Nodes) ->
                       [{T,E,erlang:get_stacktrace()}]),
             {error, goxdcr_upgrade}
     end.
-
 
 do_upgrade(Config, Nodes) ->
     %% this will make sure that goxdcr_upgrade is propagated everywhere
