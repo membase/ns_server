@@ -100,7 +100,7 @@ extract_interesting_buckets(BucketName, NodeInfos) ->
 last_membase_sample(BucketName, Nodes) ->
     lists:foldl(
       fun ({_, Stats},
-           {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData}) ->
+           {AccMem, AccItems, AccOps, AccFetches, AccDisk, AccData, AccActiveNonRes}) ->
               {extract_interesting_stat(mem_used, Stats) + AccMem,
                extract_interesting_stat(curr_items, Stats) + AccItems,
                extract_interesting_stat(ops, Stats) + AccOps,
@@ -110,8 +110,9 @@ last_membase_sample(BucketName, Nodes) ->
                    extract_interesting_stat(couch_views_actual_disk_size, Stats) + AccDisk,
                extract_interesting_stat(couch_docs_data_size, Stats) +
                    extract_interesting_stat(couch_views_data_size, Stats) +
-                   extract_interesting_stat(couch_spatial_data_size, Stats) + AccData}
-      end, {0, 0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)).
+                   extract_interesting_stat(couch_spatial_data_size, Stats) + AccData,
+               extract_interesting_stat(vb_active_num_non_resident, Stats) + AccActiveNonRes}
+      end, {0, 0, 0, 0, 0, 0, 0}, grab_latest_bucket_stats(BucketName, Nodes)).
 
 
 
@@ -134,14 +135,15 @@ last_memcached_sample(BucketName, Nodes) ->
      end}.
 
 last_bucket_stats(membase, BucketName, Nodes) ->
-    {MemUsed, ItemsCount, Ops, Fetches, Disk, Data}
+    {MemUsed, ItemsCount, Ops, Fetches, Disk, Data, ActiveNonRes}
         = last_membase_sample(BucketName, Nodes),
     [{opsPerSec, Ops},
      {diskFetches, Fetches},
      {itemCount, ItemsCount},
      {diskUsed, Disk},
      {dataUsed, Data},
-     {memUsed, MemUsed}];
+     {memUsed, MemUsed},
+     {vbActiveNumNonResident, ActiveNonRes}];
 last_bucket_stats(memcached, BucketName, Nodes) ->
     {MemUsed, ItemsCount, Ops, HitRatio} = last_memcached_sample(BucketName, Nodes),
     [{opsPerSec, Ops},
