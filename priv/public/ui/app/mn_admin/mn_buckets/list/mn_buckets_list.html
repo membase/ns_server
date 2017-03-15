@@ -45,7 +45,12 @@
         {{bucket.basicStats.itemCount | number}}
       </span>
       <span class="cbui-table-cell">
-        &#8212;
+        <span ng-show="bucket.isMembase && poolDefault.compat.atLeast50">
+          {{(bucket.basicStats.itemCount-bucket.basicStats.vbActiveNumNonResident)*100.0/bucket.basicStats.itemCount | mnTruncateTo3Digits}}%
+        </span>
+        <span ng-show="bucket.isMemcached || bucket.isEphemeral || !poolDefault.compat.atLeast50">
+          &#8212;
+        </span>
       </span>
       <span class="cbui-table-cell">
         {{'round' | mnMath:bucket.basicStats.opsPerSec}}
