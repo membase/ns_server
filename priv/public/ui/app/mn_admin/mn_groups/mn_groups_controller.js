@@ -76,6 +76,9 @@
       }
 
       function changeNodeGroup(groupOld, groupNew, server) {
+        if (groupOld === groupNew || groupNew === server.toGroupPending) {
+          return;
+        }
         var fromGroup = _.find(vm.state.currentGroups, function (cGroup) {
           return cGroup.name === groupOld;
         });
@@ -89,6 +92,12 @@
         });
 
         toGroup.nodes.push(server);
+
+        if (server.toGroupPending === groupOld) {
+          delete server.toGroupPending;
+        } else {
+          server.toGroupPending = toGroup.name
+        }
 
         vm.disableApplyChangesBtn = false;
       }

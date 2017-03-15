@@ -12,74 +12,82 @@
   </div>
 </mn-element-cargo>
 
-  <div class="row flex-right margin-bottom-half">
-    <a
-       href=""
-       class="margin-right-1"
-       ng-show="!groupsCtl.disableApplyChangesBtn"
-       ng-click="groupsCtl.reloadState('app.admin.servers.list.groups')"
-       >Reset</a>
-    <span>
-      <button
-         ng-disabled="groupsCtl.disableApplyChangesBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
-         ng-click="groupsCtl.applyChanges()"
-         >Apply Changes</button>
-      <button
-         ng-disabled="groupsCtl.disableAddGroupBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
-         ng-click="groupsCtl.createGroup()"
-         >Create Group</button>
-    </span>
-  </div>
+<div class="row flex-right margin-bottom-half">
+  <a
+     href=""
+     class="margin-right-1"
+     ng-show="!groupsCtl.disableApplyChangesBtn"
+     ng-click="groupsCtl.reloadState('app.admin.servers.list.groups')"
+     >Reset</a>
+  <span>
+    <button
+       ng-disabled="groupsCtl.disableApplyChangesBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
+       ng-click="groupsCtl.applyChanges()"
+       >Apply Changes</button>
+    <button
+       ng-disabled="groupsCtl.disableAddGroupBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
+       ng-click="groupsCtl.createGroup()"
+       >Create Group</button>
+  </span>
+</div>
 
-  <div mn-spinner="viewLoading">
-    <div
-       ng-repeat="group in groupsCtl.state.groups | orderBy:'name'"
-       class="margin-bottom1">
-      <div class="cbui-table-header flex-left">
-        <h4 class="ellipsis">{{group.name}}&nbsp;
-          <a
-             href=""
-             class="text-smaller"
-             ng-show="rbac.cluster.server_groups.write"
-             ng-click="groupsCtl.createGroup(group)"
-             >edit name</a>
-        </h4>
-      </div>
+<div mn-spinner="viewLoading">
+  <div
+     ng-repeat="group in groupsCtl.state.groups | orderBy:'name'"
+     class="margin-bottom1">
+    <div class="cbui-table-header flex-left">
+      <h4 class="ellipsis">{{group.name}}&nbsp;
+        <a
+           href=""
+           class="text-smaller"
+           ng-show="rbac.cluster.server_groups.write"
+           ng-click="groupsCtl.createGroup(group)"
+           >edit name</a>
+      </h4>
+    </div>
 
-<!-- group list of servers ********************** -->
-        <section
-           class="row flex-left"
-           ng-repeat="server in group.nodes">
-          <span
-             class="cbui-table-cell status success"
-             ng-class="['dynamic_' + server.status, 'dynamic_' + server.clusterMembership]">
-          </span>
-          <span class="cbui-table-cell">
-            {{server.hostname | mnStripPortHTML:group.nodes}}
-          </span>
-          <span class="cbui-table-cell flex-grow-3">
-            <span
-               ng-repeat="service in server.services | mnFormatServicesArray | orderBy"
-               class="label services cell-label">{{service}}
-             </span>
-           </span>
-           <span class="cbui-table-cell flex-grow-3"></span>
-            <div uib-dropdown>
-              <div uib-dropdown-toggle class="menu-toggle">move to<span class="has-menu"></span></div>
-              <div uib-dropdown-menu class="dropdown-menu">
-                <a
-                   href=""
-                   ng-repeat="groupNew in groupsCtl.state.groups | orderBy:'name'"
-                   ng-click="groupsCtl.changeNodeGroup(group.name, groupNew.name, server)">{{groupNew.name}}</a>
-              </div>
-            </div>
-        </section>
-<!-- ZERO CONTENT ***************** -->
-        <div ng-show="!group.nodes.length" class="zero-content">
-          This group is empty.
-          <a
-             href=""
-             ng-click="groupsCtl.deleteGroup(group)">click to delete</a>
+    <!-- group list of servers ********************** -->
+    <section
+       class="row flex-left"
+       ng-repeat="server in group.nodes">
+      <span
+         class="cbui-table-cell status success"
+         ng-class="['dynamic_' + server.status, 'dynamic_' + server.clusterMembership]">
+      </span>
+      <span class="cbui-table-cell">
+        {{server.hostname | mnStripPortHTML:group.nodes}}
+      </span>
+      <span class="cbui-table-cell flex-grow-3">
+        <span
+           ng-repeat="service in server.services | mnFormatServicesArray | orderBy"
+           class="label services cell-label">{{service}}
+        </span>
+      </span>
+      <span class="cbui-table-cell flex-grow-3"></span>
+      <span>
+        <div uib-dropdown>
+          <div uib-dropdown-toggle class="menu-toggle">move to<span class="has-menu"></span></div>
+          <div uib-dropdown-menu class="dropdown-menu">
+            <a
+               href=""
+               ng-repeat="groupNew in groupsCtl.state.groups | orderBy:'name'"
+               ng-click="groupsCtl.changeNodeGroup(group.name, groupNew.name, server)">{{groupNew.name}}</a>
+          </div>
         </div>
+        <small ng-show="server.toGroupPending">
+          {{server.toGroupPending}} pending
+          <a href="" ng-click="groupsCtl.changeNodeGroup(server.toGroupPending, group.name, server)">
+            Cancel
+          </a>
+        </small>
+      </span>
+    </section>
+    <!-- ZERO CONTENT ***************** -->
+    <div ng-show="!group.nodes.length" class="zero-content">
+      This group is empty.
+      <a
+         href=""
+         ng-click="groupsCtl.deleteGroup(group)">click to delete</a>
     </div>
   </div>
+</div>
