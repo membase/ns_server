@@ -71,63 +71,80 @@ validate_storage_mode(State) ->
     %% Do not allow:
     %% - changing index storage mode to mem optimized in community edition
     %% - changing index storage mode when there are nodes running index
-    %% service in the cluster
+    %%   service in the cluster
     IndexErr = "Changing the optimization mode of global indexes is not supported when index service nodes are present in the cluster. Please remove all index service nodes to change this option.",
-    CEErr = "Memory optimized indexes are restricted to enterprise edition and are not available in the community edition.",
 
+    OldValue = index_settings_manager:get(storageMode),
     validate_by_fun(
-      fun (Value) ->
-              OldValue = index_settings_manager:get(storageMode),
-              IsEE = cluster_compat_mode:is_enterprise(),
-              IsMemOpt = index_settings_manager:is_memory_optimized(Value),
-              case OldValue =:= <<"">> orelse Value =:= OldValue of
+      fun (Value) when Value =:= OldValue ->
+              ok;
+          (Value) ->
+              case OldValue =:= <<"">> of
                   true ->
-                        case IsMemOpt andalso IsEE =:= false of
-                            true ->
-                              ?log_debug("Community edition. Cannot set index storage mode to memory optimized. ~n"),
-                              {error, CEErr};
-                            false ->
-                                ok
-                        end;
+                      is_storage_mode_acceptable(Value);
                   false ->
-                      case IsEE of
-                          true ->
-                              %% Note it is not sufficient to check
-                              %% service_active_nodes(index) because the
-                              %% index nodes could be down or failed over.
-                              IndexNodes = ns_cluster_membership:service_nodes(ns_node_disco:nodes_wanted(), index),
-                              case IndexNodes of
-                                  [] ->
-                                      ok;
-                                  _ ->
-                                      ?log_debug("Index nodes ~p present. Cannot change index storage mode. ~n", [IndexNodes]),
-                                      {error, IndexErr}
-                              end;
-                          false ->
-                              ?log_debug("Community edition. Cannot change index storage mode. ~n"),
-                              {error, CEErr}
+                      %% Note it is not sufficient to check service_active_nodes(index) because the
+                      %% index nodes could be down or failed over.
+                      NodesWanted = ns_node_disco:nodes_wanted(),
+                      IndexNodes = ns_cluster_membership:service_nodes(NodesWanted, index),
+                      case IndexNodes of
+                          [] ->
+                              is_storage_mode_acceptable(Value);
+                          _ ->
+                              ?log_debug("Index nodes ~p present. Cannot change index storage mode.~n",
+                                         [IndexNodes]),
+                              {error, IndexErr}
                       end
               end
       end, storageMode, State1).
 
+is_storage_mode_acceptable(Value) ->
+    ReportError = fun(Msg) ->
+                          ?log_debug(Msg),
+                          {error, Msg}
+                  end,
+
+    case Value of
+        ?INDEX_STORAGE_MODE_FORESTDB ->
+            ok;
+        ?INDEX_STORAGE_MODE_MEMORY_OPTIMIZED ->
+            case cluster_compat_mode:is_enterprise() of
+                true ->
+                    ok;
+                false ->
+                    ReportError("Memory optimized indexes are restricted to enterprise edition and "
+                                "are not available in the community edition.")
+            end;
+        ?INDEX_STORAGE_MODE_PLASMA ->
+            case cluster_compat_mode:is_cluster_spock() of
+                true ->
+                    ok;
+                false ->
+                    ReportError("Storage mode can be set to 'plasma' only if the cluster is Spock.")
+            end;
+        _ ->
+            ReportError(io_lib:format("Invalid value '~s'", [binary_to_list(Value)]))
+    end.
+
 acceptable_values(logLevel) ->
-    ["silent", "fatal", "error", "warn", "info",
-     "verbose", "timing", "debug", "trace"];
-acceptable_values(storageMode) ->
-    ["forestdb", "memory_optimized"].
+    [<<"silent">>, <<"fatal">>, <<"error">>, <<"warn">>, <<"info">>,
+     <<"verbose">>, <<"timing">>, <<"debug">>, <<"trace">>];
+ acceptable_values(storageMode) ->
+    [?INDEX_STORAGE_MODE_FORESTDB, ?INDEX_STORAGE_MODE_MEMORY_OPTIMIZED,
+     ?INDEX_STORAGE_MODE_PLASMA].
 
 validate_string(State, Param) ->
     State1 = validate_any_value(Param, State, fun list_to_binary/1),
     validate_by_fun(
       fun (Value) ->
               AV = acceptable_values(Param),
-              case lists:member(binary_to_list(Value), AV) of
+              case lists:member(Value, AV) of
                   true ->
                       ok;
                   false ->
                       {error,
                        io_lib:format("~p must be one of ~s",
-                                     [Param, string:join(AV, ", ")])}
+                                     [Param, string:join([binary_to_list(X) || X <- AV], ", ")])}
               end
       end, Param, State1).
 

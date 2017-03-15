@@ -206,6 +206,11 @@
 -define(MIN_FREE_RAM, misc:get_env_default(quota_min_free_ram, 1024)).
 -define(MIN_FREE_RAM_PERCENT, 80).
 
+%% Index storage mode values.
+-define(INDEX_STORAGE_MODE_MEMORY_OPTIMIZED, <<"memory_optimized">>).
+-define(INDEX_STORAGE_MODE_FORESTDB, <<"forestdb">>).
+-define(INDEX_STORAGE_MODE_PLASMA, <<"plasma">>).
+
 -define(VERSION_25, [2, 5]).
 -define(VERSION_30, [3, 0]).
 -define(VERSION_40, [4, 0]).

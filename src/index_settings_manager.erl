@@ -19,8 +19,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(INDEX_CONFIG_KEY, {metakv, <<"/indexing/settings/config">>}).
--define(MEMORY_OPTIMIZED_STORAGE_MODE, <<"memory_optimized">>).
--define(FORESTDB_STORAGE_MODE, <<"forestdb">>).
 
 -export([start_link/0,
          get/1, get/2,
@@ -93,7 +91,7 @@ config_upgrade_to_45(Config) ->
     [{set, ?INDEX_CONFIG_KEY, New}].
 
 -spec is_memory_optimized(any()) -> boolean().
-is_memory_optimized(?MEMORY_OPTIMIZED_STORAGE_MODE) ->
+is_memory_optimized(?INDEX_STORAGE_MODE_MEMORY_OPTIMIZED) ->
     true;
 is_memory_optimized(_) ->
     false.
@@ -232,7 +230,7 @@ extra_default_settings_for_45(Config) ->
                             %% was the only type supported in previous
                             %% release. compaction mode set to "full"
                             %% for the same reason.
-                            {?FORESTDB_STORAGE_MODE, <<"full">>, []}
+                            {?INDEX_STORAGE_MODE_FORESTDB, <<"full">>, []}
                     end,
     DaysOfWeek = misc:get_days_list(),
     CircDefaults = [{daysOfWeek, list_to_binary(string:join(DaysOfWeek, ","))},
