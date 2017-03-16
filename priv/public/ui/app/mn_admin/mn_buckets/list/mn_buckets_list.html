@@ -30,14 +30,14 @@
       </span>
 
       <span class="cbui-table-cell flex-grow-half">
-       <span
-         title="{{bucket.pieConfig.status[0]}} healthy, {{bucket.pieConfig.status[1]}} warmup, {{bucket.pieConfig.status[2]}} unhealthy"
-         class="chartist-pie"
-         chartist
-         chartist-data="bucket.pieConfig"
-         chartist-chart-type="Pie"
-         chartist-chart-options="bucketsListCtl.getPieOptions()"
-         style="height:18px;width:18px;display:inline-block;vertical-align:middle;"></span>
+        <span
+           title="{{bucket.pieConfig.status[0]}} healthy, {{bucket.pieConfig.status[1]}} warmup, {{bucket.pieConfig.status[2]}} unhealthy"
+           class="chartist-pie"
+           chartist
+           chartist-data="bucket.pieConfig"
+           chartist-chart-type="Pie"
+           chartist-chart-options="bucketsListCtl.getPieOptions()"
+           style="height:18px;width:18px;display:inline-block;vertical-align:middle;"></span>
         <span>{{ bucket.nodes.length }}</span>
       </span>
 
@@ -60,32 +60,34 @@
         {{bucket.quota.ram | mnFormatQuantity}}
       </span>
       <span class="cbui-table-cell">
-        <span ng-show="buckets.isMembase">
+        <span ng-show="bucket.isMembase">
           {{bucket.basicStats.diskUsed | mnFormatQuantity}}
         </span>
-        <span ng-show="!buckets.isMembase">
+        <span ng-show="!bucket.isMembase">
           &#8212;
         </span>
       </span>
       <span class="cbui-table-cell flex-grow-1-5 wrap text-right">
-        <span ng-if="buckets.isMembase">
+        <span ng-if="bucket.isMembase">
           <a
              ng-click="$event.stopPropagation()"
              class="nowrap"
              style="margin-right: -3px;"
              ng-show="rbac.cluster.bucket[bucket.name].data.read"
              ui-sref="app.admin.buckets.documents.control.list({bucket: bucket.name})">
-             Documents</a></span>
-          <a
-            ng-click="$event.stopPropagation()"
-            title="Go to statistics for {{ bucket.name }}"
-            ui-sref="app.admin.buckets.analytics.list.graph({bucket: bucket.name })"
-            ng-show="rbac.cluster.bucket[bucket.name].stats.read"
-            class="margin-left-half nowrap">
-            Statistics
-          </a>
+            Documents</a>
         </span>
-      </div>
+        <a
+           ng-click="$event.stopPropagation()"
+           title="Go to statistics for {{ bucket.name }}"
+           ui-sref="app.admin.buckets.analytics.list.graph({bucket: bucket.name })"
+           ng-show="rbac.cluster.bucket[bucket.name].stats.read"
+           class="margin-left-half nowrap">
+          Statistics
+        </a>
+
+      </span>
+    </div>
     <div class="cbui-tablerow-expanded" ng-if="bucketsListCtl.isDetailsOpened(bucket.name)" ui-view="details"></div>
   </section>
 </div>

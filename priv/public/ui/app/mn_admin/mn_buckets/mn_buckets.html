@@ -24,36 +24,9 @@
      min-height="91px">
     <div
        mn-buckets-list
-       buckets="bucketsCtl.buckets.byType.membase"
+       buckets="bucketsCtl.buckets"
        pool-default="poolDefault"
        rbac="rbac">
     </div>
   </div>
-
-  <div class="margin-top2" ng-if="bucketsCtl.buckets.byType.memcached.length">
-    <div
-       mn-spinner="bucketsCtl.showBucketsPollerSpinner"
-       min-height="91px">
-      <div
-         mn-buckets-list
-         buckets="bucketsCtl.buckets.byType.memcached"
-         pool-default="poolDefault"
-         rbac="rbac">
-      </div>
-    </div>
-  </div>
-
-  <div class="margin-top2" ng-if="bucketsCtl.buckets.byType.ephemeral.length">
-    <div
-       mn-spinner="bucketsCtl.showBucketsPollerSpinner"
-       min-height="91px">
-      <div
-         mn-buckets-list
-         buckets="bucketsCtl.buckets.byType.ephemeral"
-         pool-default="poolDefault"
-         rbac="rbac">
-      </div>
-    </div>
-  </div>
-
 </div>
