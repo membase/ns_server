@@ -697,7 +697,13 @@ handle_set_rebalance_observer(Observer, State) ->
 
 handle_new_tasks(Tasks, State) ->
     State1 = State#state{tasks = Tasks},
+    validate_new_tasks(State1),
     handle_new_tasks_if_rebalance(State1).
+
+validate_new_tasks(#state{rebalancer = undefined} = State) ->
+    [] = find_stale_tasks(State);
+validate_new_tasks(_) ->
+    ok.
 
 handle_new_tasks_if_rebalance(#state{rebalance_observer = undefined} = State) ->
     State;
