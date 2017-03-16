@@ -38,7 +38,7 @@
 
 %% External API
 bucket_disk_usage(BucketName) ->
-    {_, _, _, _, DiskUsed, _}
+    {_, _, _, _, DiskUsed, _, _}
         = last_membase_sample(BucketName, ns_bucket:live_bucket_nodes(BucketName)),
     DiskUsed.
 
