@@ -27,11 +27,11 @@
     <button
        ng-disabled="groupsCtl.disableAddGroupBtn || poolDefault.rebalancing || !rbac.cluster.server_groups.write"
        ng-click="groupsCtl.createGroup()"
-       >Create Group</button>
+       >Add Group</button>
   </span>
 </div>
 
-<div mn-spinner="viewLoading">
+<div mn-spinner="viewLoading" class="margin-bottom2">
   <div
      ng-repeat="group in groupsCtl.state.groups | orderBy:'name'"
      class="margin-bottom1">
@@ -46,7 +46,7 @@
       </h4>
     </div>
 
-    <!-- group list of servers ********************** -->
+<!-- group list of servers ********************** -->
     <section
        class="row flex-left"
        ng-repeat="server in group.nodes">
@@ -63,10 +63,9 @@
            class="label services cell-label">{{service}}
         </span>
       </span>
-      <span class="cbui-table-cell flex-grow-3"></span>
-      <span>
-        <div uib-dropdown>
-          <div uib-dropdown-toggle class="menu-toggle">move to<span class="has-menu"></span></div>
+      <span class="cbui-table-cell wrap flex-grow-3 text-right">
+        <div uib-dropdown ng-show="!server.toGroupPending">
+          <div uib-dropdown-toggle class="menu-toggle">move to <span class="icon fa-caret-down"></span></div>
           <div uib-dropdown-menu class="dropdown-menu">
             <a
                href=""
@@ -74,20 +73,30 @@
                ng-click="groupsCtl.changeNodeGroup(group.name, groupNew.name, server)">{{groupNew.name}}</a>
           </div>
         </div>
-        <small ng-show="server.toGroupPending">
-          {{server.toGroupPending}} pending
-          <a href="" ng-click="groupsCtl.changeNodeGroup(server.toGroupPending, group.name, server)">
-            Cancel
+        <small ng-show="server.toGroupPending" class="row success">
+          <span>
+            <span class="icon fa-check"></span>
+            pending move to {{server.toGroupPending}}
+          </span>
+          <a
+             href=""
+             class="indent-1"
+             ng-click="groupsCtl.changeNodeGroup(server.toGroupPending, group.name, server)">
+            cancel
           </a>
         </small>
       </span>
     </section>
-    <!-- ZERO CONTENT ***************** -->
+
+<!-- zero content *********************** -->
     <div ng-show="!group.nodes.length" class="zero-content">
       This group is empty.
       <a
          href=""
-         ng-click="groupsCtl.deleteGroup(group)">click to delete</a>
+         ng-click="groupsCtl.deleteGroup(group)"
+         class="indent-1">
+        delete group
+      </a>
     </div>
   </div>
 </div>

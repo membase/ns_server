@@ -1589,7 +1589,6 @@ input[type="checkbox"]:checked + label:before {
   font-size: .875rem;
   display: inline-block;
   position: relative;
-  padding-right: 1.5rem;
   cursor: pointer;
 }
 .menu-toggle:hover {
@@ -1612,7 +1611,7 @@ input[type="checkbox"]:checked + label:before {
 .dropdown-menu {
   background-color: #fff;
   position: absolute;
-  top: 20px;
+  top: 28px;
   right: 0;
   z-index: 10;
   border: 1px solid #d1d1d1;
