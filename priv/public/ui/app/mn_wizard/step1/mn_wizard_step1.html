@@ -14,11 +14,12 @@
         Start New Cluster or Join Cluster
       </h3>
       <div class="formrow">
-        <label>
-          <input
-             type="radio"
-             ng-model="wizardStep1Ctl.joinCluster"
-             value="no">
+        <input
+           type="radio"
+           ng-model="wizardStep1Ctl.joinCluster"
+           value="no"
+           id="for-start-new-cluster">
+        <label for="for-start-new-cluster">
           Start a new cluster
         </label>
         <div ng-if="wizardStep1Ctl.isJoinCluster('no')">
@@ -49,11 +50,12 @@
       </div>
 
       <div ng-form novalidate class="formrow">
-        <label>
-          <input
-             type="radio"
-             ng-model="wizardStep1Ctl.joinCluster"
-             value="ok">
+        <input
+           type="radio"
+           ng-model="wizardStep1Ctl.joinCluster"
+           value="ok"
+           id="for-join-cluster">
+        <label for="for-join-cluster">
           Join a cluster now
         </label>
         <div ng-if="wizardStep1Ctl.isJoinCluster('ok')">
