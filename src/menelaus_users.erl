@@ -41,7 +41,9 @@
          build_plain_memcached_auth_info/2,
          get_users_version/0,
          get_auth_version/0,
-         empty_storage/0]).
+         empty_storage/0,
+         upgrade_to_spock/2,
+         config_upgrade/0]).
 
 %% callbacks for replicated_dets
 -export([init/1, on_save/2, on_empty/1]).
@@ -213,16 +215,19 @@ store_user_spock({_UserName, Type} = Identity, Props, Password, Roles, Config) -
 store_user_spock_with_auth(Identity, Props, Auth, Roles, Config) ->
     case menelaus_roles:validate_roles(Roles, Config) of
         ok ->
-            ok = replicated_dets:set(storage_name(), {user, Identity}, [{roles, Roles} | Props]),
-            case Auth of
-                same ->
-                    ok;
-                _ ->
-                    ok = replicated_dets:set(storage_name(), {auth, Identity}, Auth)
-            end,
+            store_user_spock_validated(Identity, [{roles, Roles} | Props], Auth),
             {commit, ok};
         Error ->
             {abort, Error}
+    end.
+
+store_user_spock_validated(Identity, Props, Auth) ->
+    ok = replicated_dets:set(storage_name(), {user, Identity}, Props),
+    case Auth of
+        same ->
+            ok;
+        _ ->
+            ok = replicated_dets:set(storage_name(), {auth, Identity}, Auth)
     end.
 
 change_password({_UserName, builtin} = Identity, Password) when is_list(Password) ->
@@ -414,3 +419,64 @@ upgrade_to_4_5_asterisk_test() ->
     ?assertMatch([{set, user_roles, _}], Upgraded),
     [{set, user_roles, UpgradedUserRoles}] = Upgraded,
     ?assertMatch(UserRoles, lists:sort(UpgradedUserRoles)).
+
+upgrade_to_spock(_Config, Nodes) ->
+    try
+        ns_config:set(users_upgrade, started),
+        do_upgrade_to_spock(Nodes),
+        ok
+    catch T:E ->
+            ale:error(?USER_LOGGER, "Unsuccessful user storage upgrade.~n~p",
+                      [{T,E,erlang:get_stacktrace()}]),
+            ns_config:delete(users_upgrade),
+            error
+    end.
+
+do_upgrade_to_spock(Nodes) ->
+    %% propagate users_upgrade to nodes
+    case ns_config_rep:ensure_config_seen_by_nodes(Nodes) of
+        ok ->
+            ok;
+        {error, BadNodes} ->
+            throw({push_config, BadNodes})
+    end,
+    %% pull latest user information from nodes
+    case ns_config_rep:pull_remotes(Nodes) of
+        ok ->
+            ok;
+        Error ->
+            throw({pull_config, Error})
+    end,
+
+    Config = ns_config:get(),
+    {AdminName, _} = ns_config_auth:get_creds(Config, admin),
+
+    case ns_config_auth:get_creds(Config, ro_admin) of
+        undefined ->
+            ok;
+        {ROAdmin, {Salt, Mac}} ->
+            Auth = build_plain_memcached_auth_info(Salt, Mac),
+            {commit, ok} =
+                store_user_spock_with_auth({ROAdmin, builtin}, [{name, "Read Only User"}],
+                                           Auth, [ro_admin], Config)
+    end,
+
+    lists:foreach(
+      fun ({Name, _}) when Name =:= AdminName ->
+              ?log_warning("Not creating user for bucket ~p, because the name matches administrators id",
+                           [AdminName]);
+          ({BucketName, BucketConfig}) ->
+              Password = proplists:get_value(sasl_password, BucketConfig, ""),
+              Name = "Generated user for bucket " ++ BucketName,
+              {commit, ok} = store_user_spock({BucketName, builtin}, [{name, Name}], Password,
+                                              [{bucket_sasl, [BucketName]}], Config)
+      end, ns_bucket:get_buckets(Config)),
+
+    LdapUsers = get_users_45(Config),
+    lists:foreach(
+      fun ({{_, saslauthd} = Identity, Props}) ->
+              ok = store_user_spock_validated(Identity, Props, same)
+      end, LdapUsers).
+
+config_upgrade() ->
+    [{delete, users_upgrade}].

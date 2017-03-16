@@ -22,7 +22,7 @@
 
 -behaviour(replicated_storage).
 
--export([start_link/6, set/3, delete/2, get/2, get/3, select/3, empty/1]).
+-export([start_link/6, set/3, delete/2, delete_all/1, get/2, get/3, select/3, empty/1]).
 
 -export([init/1, init_after_ack/1, handle_call/3, handle_info/2,
          get_id/1, find_doc/2, get_all_docs/1,
@@ -54,6 +54,18 @@ delete(Name, Id) ->
                                                     rev = 0,
                                                     deleted = true,
                                                     value = []}}, infinity).
+
+delete_all(Name) ->
+    Keys =
+        pipes:run(select(Name, '_', 100),
+                  ?make_consumer(
+                     pipes:fold(?producer(),
+                                fun ({Key, _}, Acc) ->
+                                        [Key | Acc]
+                                end, []))),
+    lists:foreach(fun (Key) ->
+                          delete(Name, Key)
+                  end, Keys).
 
 empty(Name) ->
     gen_server:call(Name, empty, infinity).

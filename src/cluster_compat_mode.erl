@@ -193,7 +193,8 @@ consider_switching_compat_mode() ->
     end.
 
 upgrades() ->
-    [{?VERSION_40, goxdcr, goxdcr_upgrade, upgrade}].
+    [{?VERSION_40, goxdcr, goxdcr_upgrade, upgrade},
+     {?SPOCK_VERSION_NUM, users, menelaus_users, upgrade_to_spock}].
 
 do_upgrades(undefined, _, _, _) ->
     %% this happens during the cluster initialization. no upgrade needed
