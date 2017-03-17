@@ -10,8 +10,10 @@
     <th colspan="2" ng-show="!buckets"></th>
     <th colspan="2" ng-show="buckets.isMembase">Disk Fetches/sec</th>
     <th colspan="2" ng-show="buckets.isMemcached">Hit Ratio</th>
+    <th ng-if="buckets.isEphemeral"></th>
     <th colspan="2">RAM/Quota Usage</th>
     <th colspan="2">Data/Disk Usage</th>
+    <th ng-if="buckets.isEphemeral"></th>
     <th></th>
     <th></th>
     <th></th>
@@ -58,6 +60,7 @@
       <td colspan="2" ng-if="buckets.isMemcached">
         {{(bucket.basicStats.hitRatio * 100) | mnTruncateTo3Digits}}%
       </td>
+      <td ng-if="buckets.isEphemeral"></td>
       <td colspan="2">
         {{bucket.basicStats.memUsed | mnFormatQuantity}} /<br>
         {{bucket.quota.ram | mnFormatQuantity}}
@@ -69,6 +72,7 @@
         </span>
         <span ng-show="!buckets.isMembase">N/A</span>
       </td>
+      <td ng-if="buckets.isEphemeral"></td>
       <td colspan="4" class="last" ng-if="buckets.isMembase">
         <a
           class="list_button disable-if-stale"
@@ -76,7 +80,7 @@
           ui-sref="app.admin.indexes.views.list({viewsBucket: bucket.name})"><span>Views</span></a>
         <a
           class="list_button when-roadmin-hide-me"
-          ng-show="rbac.cluster.bucket[bucket.name].data.read"
+          ng-show="rbac.cluster.bucket[bucket.name].data.read && !buckets.isEphemeral"
           ui-sref="app.admin.documents.control.list({documentsBucket: bucket.name})"><span>Documents</span></a>
       </td>
     </tr>

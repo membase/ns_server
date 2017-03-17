@@ -100,6 +100,7 @@
           });
           mnPermissions.export.default.all = bucketsDetails.byType.defaultName;
           mnPermissions.export.default.membase = bucketsDetails.byType.membase.defaultName;
+          mnPermissions.export.default.ephemeral = bucketsDetails.byType.ephemeral.defaultName;
           return doCheck(permissions);
         }, function (resp) {
           switch (resp.status) {

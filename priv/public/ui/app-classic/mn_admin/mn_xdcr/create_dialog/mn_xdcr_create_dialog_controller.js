@@ -13,7 +13,7 @@
       delete vm.replication.socketOptions;
       vm.replication.replicationType = "continuous";
       vm.replication.type = "xmem";
-      vm.buckets = buckets.byType.membase;
+      vm.buckets = buckets.byType.membase.concat(buckets.byType.ephemeral);
       if (vm.buckets[0]) {
         vm.replication.fromBucket = vm.buckets[0].name;
       }
@@ -46,4 +46,3 @@
       };
     }
 })();
-

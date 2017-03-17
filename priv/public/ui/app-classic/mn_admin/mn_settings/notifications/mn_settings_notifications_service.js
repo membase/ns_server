@@ -101,7 +101,8 @@ angular.module('mnSettingsNotificationsService', [
         buckets: { //Number of buckets
           total: bucketsList.length,
           membase: bucketsList.byType.membase.length,
-          memcached: bucketsList.byType.memcached.length
+          memcached: bucketsList.byType.memcached.length,
+          ephemeral: bucketsList.byType.ephemeral.length
         },
         counters: poolsDefault.counters,
         nodes: {
@@ -136,8 +137,9 @@ angular.module('mnSettingsNotificationsService', [
         stats.nodes.services[servicesContainerName] ++;
       }
 
+      var interestedBuckets = bucketsList.byType.membase.concat(bucketsList.byType.ephemeral);
       _.each(perBucketStats, function (perBucketStat, index) {
-        var bucketName = bucketsList.byType.membase[index].name;
+        var bucketName = interestedBuckets[index].name;
         var ddocs = perBucketStat[1].data;
         if (ddocs && ddocs.rows) {
           stats.istats.total_ddocs += ddocs.rows.length;
@@ -237,7 +239,7 @@ angular.module('mnSettingsNotificationsService', [
         var pools = resp[1];
         var perBucketQueries = [];
 
-        angular.forEach(buckets.byType.membase, function (bucket) {
+        angular.forEach(buckets.byType.membase.concat(buckets.byType.ephemeral), function (bucket) {
           var statsParams = {
             $stateParams: {
               zoom: "week",

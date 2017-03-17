@@ -10,7 +10,7 @@
             {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? ': ' + bucketsDetailsCtl.bucketDetails.proxyPort : ''}}
           </span>
         </div>
-        <div ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
+        <div ng-if="!bucket.isMemcached && rbac.cluster.bucket[bucket.name].settings.read">
           Replicas: <span>{{bucketsDetailsCtl.bucketDetails.replicaNumber != 0 ? (bucketsDetailsCtl.bucketDetails.replicaNumber | mnCount:'replica copy') : 'disabled'}}</span>
         </div>
         <div ng-if="bucket.isMembase && rbac.cluster.tasks.read">
@@ -18,10 +18,10 @@
           {{bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask ? bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.progress + "% complete" : "Not active"}}
           </span>
         </div>
-        <div ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
+        <div ng-if="!bucket.isMemcached && rbac.cluster.bucket[bucket.name].settings.read">
           Cache Metadata: <span>{{bucketsDetailsCtl.bucketDetails.evictionPolicy === "valueOnly" ? 'Value Ejection' : 'Full Ejection'}}</span>
         </div>
-        <div ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
+        <div ng-if="!bucket.isMemcached && rbac.cluster.bucket[bucket.name].settings.read">
           Disk I/O priority: <span>{{bucketsDetailsCtl.bucketDetails.threadsNumber === 3 ? 'Low' : 'High'}}</span>
         </div>
       </div>
@@ -30,9 +30,9 @@
           ng-class="{dynamic_disabled: poolDefault.rebalancing}"
           class="inner_btn casper_buckets_edit_bucket_popup"
           ng-click="!($event | isDisabled) && bucketsDetailsCtl.editBucket(bucketsDetailsCtl.bucketDetails)"
-          ng-show="rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].settings.write">Edit</a>
+          ng-show="rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].settings.write && !bucket.isEphemeral">Edit</a>
         <button
-          ng-show="!bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && bucket.isMembase && rbac.cluster.tasks.read && rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].compact"
+          ng-show="!bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && bucket.isMembase && rbac.cluster.tasks.read && rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].compact && !bucket.isEphemeral"
           class="inner_btn compact_btn"
           ng-class="{dynamic_disabled: bucketsDetailsCtl.compactionTasks.disableCompact}" ng-click="!bucketsDetailsCtl.compactionTasks.disableCompact && bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.bucketDetails.controllers.compactAll, 'disableCompact')">
             <span>Compact</span>

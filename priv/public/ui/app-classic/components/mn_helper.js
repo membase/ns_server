@@ -23,7 +23,7 @@
         var params = $transition$.params();
         if (params[bucketParamName] === null) {
           mnBucketsService.getBucketsByType(true).then(function (buckets) {
-            var defaultBucket = memcached ? buckets.byType.defaultName : buckets.byType.membase.defaultName;
+            var defaultBucket = memcached ? buckets.byType.defaultName : buckets.byType.membase.defaultName || buckets.byType.ephemeral.defaultName;
             if (!defaultBucket) {
               deferred.resolve();
             } else {
