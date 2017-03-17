@@ -1,31 +1,5 @@
 <div mn-spinner="!userRolesCtl.state || userRolesCtl.viewLoading" min-height="300px">
-  <div class="interim row" ng-class="{'flex-right': !userRolesCtl.isLdapEnabled}">
-    <span ng-if="userRolesCtl.isLdapEnabled">
-      <span
-         class="icon"
-         ng-class="{
-                   'fa-check': userRolesCtl.saslauthdAuth.enabled,
-                   'green': userRolesCtl.saslauthdAuth.enabled,
-                   'fa-ban': !userRolesCtl.saslauthdAuth.enabled,
-                   'red': !userRolesCtl.saslauthdAuth.enabled
-                   }"></span>
-      <span class="text-small">authentication</span>
-      <span ng-show="userRolesCtl.saslauthdAuth" class="text-small">
-        <span ng-show="!userRolesCtl.saslauthdAuth.enabled">Not</span> enabled
-      </span>&nbsp;
-      <a
-         href=""
-         class="text-small "
-         ng-show="!userRolesCtl.saslauthdAuthLoading"
-         ng-click="userRolesCtl.toggleSaslauthdAuth()">
-        <span ng-show="!userRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">
-          enable
-        </span>
-        <span ng-show="userRolesCtl.saslauthdAuth.enabled && rbac.cluster.admin.security.write">
-          disable
-        </span>
-      </a>
-    </span>
+  <div class="row flex-right margin-bottom-half">
     <button
        ng-show="rbac.cluster.admin.security.write"
        ng-click="userRolesCtl.addUser()">+ Add User</button>

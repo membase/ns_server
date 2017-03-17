@@ -25,7 +25,6 @@
     vm.editUser = editUser;
     vm.resetUserPassword = resetUserPassword;
 
-    vm.toggleSaslauthdAuth = toggleSaslauthdAuth;
     vm.rolesFilter = rolesFilter;
 
     vm.isLdapEnabled = poolDefault.ldapEnabled;
@@ -100,12 +99,6 @@
     function activate() {
       mnHelper.initializeDetailsHashObserver(vm, 'openedUsers', 'app.admin.security.userRoles');
 
-      if (poolDefault.ldapEnabled) {
-        mnPromiseHelper(vm, mnLdapService.getSaslauthdAuth())
-          .applyToScope("saslauthdAuth")
-          .showSpinner("saslauthdAuthLoading");
-      }
-
       mnPromiseHelper(vm, mnUserRolesService.getRoles())
         .applyToScope(function (roles) {
           vm.roles = roles;
@@ -131,15 +124,6 @@
           .reloadOnScopeEvent("reloadRolesPoller")
           .cycle();
 
-    }
-
-    function toggleSaslauthdAuth() {
-      var config = {
-        enabled: !vm.saslauthdAuth.enabled
-      };
-      mnPromiseHelper(vm, mnLdapService.postSaslauthdAuth(config))
-        .applyToScope("saslauthdAuth")
-        .showSpinner("saslauthdAuthLoading");
     }
 
     function editUser(user) {

@@ -28,15 +28,7 @@
       </div>
       <div class="formrow checkbox-list">
         <div ng-if="userRolesAddDialogCtl.isLdapEnabled">
-          <h4>Authentication Source:</h4>
-          <input
-             type="radio"
-             name="type"
-             value="external"
-             ng-disabled="userRolesAddDialogCtl.isEditingMode"
-             id="user-type-external"
-             ng-model="userRolesAddDialogCtl.user.type">
-          <label for="user-type-external">External</label>
+          <h4>Authentication Source</h4>
           <input
              type="radio"
              name="type"
@@ -45,10 +37,18 @@
              id="user-type-builtin"
              ng-model="userRolesAddDialogCtl.user.type">
           <label for="user-type-builtin">Couchbase</label>
+          <input
+             type="radio"
+             name="type"
+             value="external"
+             ng-disabled="userRolesAddDialogCtl.isEditingMode"
+             id="user-type-external"
+             ng-model="userRolesAddDialogCtl.user.type">
+          <label for="user-type-external">External</label>
         </div>
       </div>
       <div class="formrow">
-        <label for="name_inp">Username:</label>
+        <label for="name_inp">Username</label>
         <input
            type="text"
            autocorrect="off"
@@ -72,7 +72,7 @@
       </div>
       <div ng-if="userRolesAddDialogCtl.user.type !== 'external' && !userRolesAddDialogCtl.isEditingMode">
         <div class="formrow">
-          <label for="password_inp">Password:</label>
+          <label for="password_inp">Password</label>
           <input
              type="password"
              autocorrect="off"
@@ -85,7 +85,7 @@
              ng-model="userRolesAddDialogCtl.user.password">
         </div>
         <div class="formrow">
-          <label for="secure-password-verify">Verify Password:</label>
+          <label for="secure-password-verify">Verify Password</label>
           <input
              type="password"
              autocorrect="off"
