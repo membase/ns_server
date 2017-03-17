@@ -10,9 +10,9 @@
     <div class="cbui-table-bucketprops">
       <div class="nowrap">
         <strong>Type: </strong>
-        <span ng-show="buckets.isMembase">Couchbase</span>
-        <span ng-show="buckets.isMemcached">Memcached</span>
-        <span ng-show="buckets.isEphemeral">Ephemeral</span>
+        <span ng-show="bucket.isMembase">Couchbase</span>
+        <span ng-show="bucket.isMemcached">Memcached</span>
+        <span ng-show="bucket.isEphemeral">Ephemeral</span>
       </div>
       <div class="nowrap" ng-show="rbac.cluster.bucket[bucket.name].settings.read">
         <strong>RAM Quota: </strong>
@@ -21,7 +21,7 @@
       <div
          class="nowrap"
          ng-if="rbac.cluster.bucket[bucket.name].settings.read"
-         ng-show="!buckets.isMemcached">
+         ng-show="!bucket.isMemcached">
         <strong>Replicas:</strong>
         {{bucketsDetailsCtl.bucketDetails.replicaNumber != 0 ? (bucketsDetailsCtl.bucketDetails.replicaNumber | mnCount:'') : 'disabled'}}
       </div>
