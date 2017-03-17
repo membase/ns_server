@@ -420,10 +420,18 @@ upgrade_to_4_5_asterisk_test() ->
     [{set, user_roles, UpgradedUserRoles}] = Upgraded,
     ?assertMatch(UserRoles, lists:sort(UpgradedUserRoles)).
 
-upgrade_to_spock(_Config, Nodes) ->
+upgrade_to_spock(Config, Nodes) ->
     try
-        ns_config:set(users_upgrade, started),
-        do_upgrade_to_spock(Nodes),
+        Repair =
+            case ns_config:search(Config, users_upgrade) of
+                false ->
+                    ns_config:set(users_upgrade, started),
+                    false;
+                {value, started} ->
+                    ?log_debug("Found unfinished users upgrade. Continue."),
+                    true
+            end,
+        do_upgrade_to_spock(Nodes, Repair),
         ok
     catch T:E ->
             ale:error(?USER_LOGGER, "Unsuccessful user storage upgrade.~n~p",
@@ -432,7 +440,7 @@ upgrade_to_spock(_Config, Nodes) ->
             error
     end.
 
-do_upgrade_to_spock(Nodes) ->
+do_upgrade_to_spock(Nodes, Repair) ->
     %% propagate users_upgrade to nodes
     case ns_config_rep:ensure_config_seen_by_nodes(Nodes) of
         ok ->
@@ -448,6 +456,15 @@ do_upgrade_to_spock(Nodes) ->
             throw({pull_config, Error})
     end,
 
+    case Repair of
+        true ->
+            %% in case if aborted upgrade left some junk
+            replicated_storage:sync_to_me(storage_name(),
+                                          ns_config:read_key_fast(users_upgrade_timeout, 60000)),
+            replicated_dets:delete_all(storage_name());
+        false ->
+            ok
+    end,
     Config = ns_config:get(),
     {AdminName, _} = ns_config_auth:get_creds(Config, admin),
 

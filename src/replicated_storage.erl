@@ -17,7 +17,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/4, start_link_remote/5, wait_for_startup/0, anounce_startup/1]).
+-export([start_link/4, start_link_remote/5, wait_for_startup/0, anounce_startup/1, sync_to_me/2]).
 
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
@@ -65,6 +65,9 @@ wait_for_startup() ->
 anounce_startup(Pid) ->
     ?log_debug("Announce my startup to ~p", [Pid]),
     Pid ! {replicated_storege_pid, self()}.
+
+sync_to_me(Name, Timeout) ->
+    gen_server:call(Name, {sync_to_me, Timeout}, infinity).
 
 init([Module, InitParams, Replicator]) ->
     Self = self(),
@@ -115,6 +118,19 @@ handle_call({interactive_update, Doc}, _From,
                     {reply, Error, State}
             end
     end;
+handle_call(sync_token, From, #state{replicator = Replicator} = State) ->
+    ?log_debug("Received sync_token from ~p", [From]),
+    Replicator ! {sync_token, From},
+    {noreply, State};
+handle_call({sync_to_me, Timeout}, From, #state{replicator = Replicator} = State) ->
+    ?log_debug("Received sync_to_me with timeout = ~p", [Timeout]),
+    proc_lib:spawn_link(
+      fun () ->
+              Res = gen_server:call(Replicator, {sync_to_me, Timeout}, infinity),
+              ?log_debug("sync_to_me reply: ~p", [Res]),
+              gen_server:reply(From, Res)
+      end),
+    {noreply, State};
 handle_call(Msg, From, #state{child_module = Module, child_state = ChildState} = State) ->
     case Module:handle_call(Msg, From, ChildState) of
         {reply, Res, NewChildState} ->

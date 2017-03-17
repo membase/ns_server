@@ -65,6 +65,17 @@ loop(Module, GetNodes, StorageFrontend, RemoteNodes) ->
                             D <- Docs]
                 end,
                 AllNodes;
+            {sync_token, From} ->
+                ?log_debug("Received sync_token from ~p", [From]),
+                gen_server:reply(From, ok),
+                RemoteNodes;
+            {'$gen_call', From, {sync_to_me, Timeout}} ->
+                ?log_debug("Received sync_to_me with timeout = ~p", [Timeout]),
+                proc_lib:spawn_link(
+                  fun () ->
+                          handle_sync_to_me(From, StorageFrontend, RemoteNodes, Timeout)
+                  end),
+                RemoteNodes;
             {'$gen_call', From, {pull_docs, Nodes, Timeout}} ->
                 gen_server:reply(From, handle_pull_docs(StorageFrontend, Nodes, Timeout)),
                 RemoteNodes;
@@ -92,6 +103,21 @@ nodeup_monitoring_loop(LocalStoragePid) ->
             ok
     end,
     nodeup_monitoring_loop(LocalStoragePid).
+
+handle_sync_to_me(From, StorageFrontend, Nodes, Timeout) ->
+    Results = async:map(
+                fun (Node) ->
+                        gen_server:call({StorageFrontend, Node}, sync_token, Timeout)
+                end, Nodes),
+    case lists:filter(
+           fun ({_Node, Result}) ->
+                   Result =/= ok
+           end, lists:zip(Nodes, Results)) of
+        [] ->
+            gen_server:reply(From, ok);
+        Failed ->
+            gen_server:reply(From, {error, Failed})
+    end.
 
 handle_pull_docs(StorageFrontend, Nodes, Timeout) ->
     {RVs, BadNodes} = gen_server:multi_call(Nodes, StorageFrontend, get_all_docs, Timeout),
