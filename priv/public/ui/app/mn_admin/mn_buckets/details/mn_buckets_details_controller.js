@@ -68,6 +68,9 @@
               return mnBucketsDetailsDialogService.reviewBucketConf(vm.bucketDetails);
             },
             autoCompactionSettings: function () {
+              if (vm.bucketDetails.autoCompactionSettings === undefined) {
+                return;
+              }
               return !vm.bucketDetails.autoCompactionSettings ?
                       mnSettingsAutoCompactionService.getAutoCompaction(true) :
                       mnSettingsAutoCompactionService.prepareSettingsForView(vm.bucketDetails);

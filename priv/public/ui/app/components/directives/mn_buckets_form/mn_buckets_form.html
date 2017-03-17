@@ -155,6 +155,30 @@
       </div>
     </div>
 
+    <div class="formrow" ng-show="bucketConf.bucketType === 'ephemeral'">
+      <hr>
+      <h4>Metadata Purge Interval</h4>
+      <label
+         class="checkbox"
+         for="metadata-purge-frequency">
+        Set the frequency of metadata purge interval:
+      </label>
+      <span class="form-inline">
+        <input
+           type="text"
+           ng-disabled="(rbac && !rbac.cluster.settings.write)"
+           ng-model="bucketConf.purgeInterval"
+           ng-class="{invalid: bucketConf.purgeInterval}"
+           id="metadata-purge-frequency">
+        <small>Range 0.04 (1 H) - 60days</small>
+      </span>
+      <div
+         class="error"
+         ng-show="validation.result.errors.purgeInterval">
+        {{validation.result.errors.purgeInterval}}
+      </div>
+    </div>
+
     <div ng-if="pools.isEnterprise && (bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral') && (bucketConf.isWizard || poolDefault.compat.atLeast46)">
       <hr>
       <h4>Conflict Resolution</h4>
@@ -319,9 +343,8 @@
     </div>
 
     <div
-       ng-if="!bucketConf.isWizard"
-       id="js_bucket_auto_compaction_settings"
-       ng-show="bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral'">
+       ng-if="!bucketConf.isWizard && bucketConf.bucketType === 'membase'"
+       id="js_bucket_auto_compaction_settings">
       <hr>
       <h4>Auto-Compaction</h4>
       <div class="formrow checkbox-list">

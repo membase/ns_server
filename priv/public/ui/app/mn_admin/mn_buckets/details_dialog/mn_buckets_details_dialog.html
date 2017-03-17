@@ -4,6 +4,7 @@
     <h2 ng-show="!bucketsDetailsDialogCtl.bucketConf.isNew">Edit Bucket Settings</h2>
   </div>
   <form
+     novalidate
      ng-submit="bucketsDetailsDialogCtl.onSubmit()"
      mn-spinner="bucketsDetailsDialogCtl.viewLoading || !bucketsDetailsDialogCtl.validationKeeper.result">
     <div

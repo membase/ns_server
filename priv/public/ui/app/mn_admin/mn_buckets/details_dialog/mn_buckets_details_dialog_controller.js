@@ -7,9 +7,11 @@
 
   function mnBucketsDetailsDialogController($scope, $rootScope, $state, mnBucketsDetailsDialogService, bucketConf, autoCompactionSettings, mnHelper, mnPromiseHelper, $uibModalInstance, mnAlertsService) {
     var vm = this;
-    bucketConf.autoCompactionDefined = !!bucketConf.autoCompactionSettings;
+    if (autoCompactionSettings !== undefined) {
+      bucketConf.autoCompactionDefined = !!bucketConf.autoCompactionSettings;
+      vm.autoCompactionSettings = autoCompactionSettings;
+    }
     vm.bucketConf = bucketConf;
-    vm.autoCompactionSettings = autoCompactionSettings;
     vm.validationKeeper = {};
     vm.onSubmit = onSubmit;
 

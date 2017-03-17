@@ -39,8 +39,14 @@
       if (bucketConf.isNew) {
         copyProperties(["name", "bucketType"]);
       }
+      if (bucketConf.bucketType === "membase") {
+        copyProperty("autoCompactionDefined");
+      }
+      if (bucketConf.bucketType === "ephemeral") {
+        copyProperty("purgeInterval");
+      }
       if (bucketConf.bucketType === "membase" || bucketConf.bucketType === "ephemeral") {
-        copyProperties(["evictionPolicy", "threadsNumber", "replicaNumber", "autoCompactionDefined"]);
+        copyProperties(["evictionPolicy", "threadsNumber", "replicaNumber"]);
         if (bucketConf.isNew) {
           if (bucketConf.bucketType !== "ephemeral") {
             copyProperty("replicaIndex");
