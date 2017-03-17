@@ -1009,6 +1009,7 @@ handle_sample_buckets(Req) ->
     reply_json(Req, Map).
 
 handle_post_sample_buckets(Req) ->
+    menelaus_web_rbac:assert_no_users_upgrade(),
     Samples = mochijson2:decode(Req:recv_body()),
 
     Errors = case validate_post_sample_buckets(Samples) of
@@ -2527,6 +2528,8 @@ validate_settings(Port, U, P) ->
 %% These represent settings for a cluster.  Node settings should go
 %% through the /node URIs
 handle_settings_web_post(Req) ->
+    menelaus_web_rbac:assert_no_users_upgrade(),
+
     PostArgs = Req:parse_post(),
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
 

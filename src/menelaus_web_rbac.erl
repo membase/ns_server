@@ -45,7 +45,8 @@
          role_to_string/1,
          validate_cred/2,
          handle_get_password_policy/1,
-         handle_post_password_policy/1]).
+         handle_post_password_policy/1,
+         assert_no_users_upgrade/0]).
 
 -define(MIN_USERS_PAGE_SIZE, 2).
 -define(MAX_USERS_PAGE_SIZE, 100).
@@ -498,6 +499,7 @@ validate_cred(Username, username) ->
 
 handle_put_user(Type, UserId, Req) ->
     assert_api_can_be_used(),
+    assert_no_users_upgrade(),
 
     case validate_cred(UserId, username) of
         true ->
@@ -576,6 +578,7 @@ handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
 
 handle_delete_user(Type, UserId, Req) ->
     menelaus_web:assert_is_45(),
+    assert_no_users_upgrade(),
 
     case type_to_atom(Type) of
         unknown ->
@@ -661,6 +664,8 @@ handle_settings_read_only_admin_name(Req) ->
     end.
 
 handle_settings_read_only_user_post(Req) ->
+    assert_no_users_upgrade(),
+
     PostArgs = Req:parse_post(),
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
     U = proplists:get_value("username", PostArgs),
@@ -691,6 +696,8 @@ handle_settings_read_only_user_post(Req) ->
     end.
 
 handle_read_only_user_delete(Req) ->
+    assert_no_users_upgrade(),
+
     case ns_config_auth:get_user(ro_admin) of
         undefined ->
             menelaus_util:reply_json(Req, <<"Read-Only admin does not exist">>, 404);
@@ -701,6 +708,8 @@ handle_read_only_user_delete(Req) ->
     end.
 
 handle_read_only_user_reset(Req) ->
+    assert_no_users_upgrade(),
+
     case ns_config_auth:get_user(ro_admin) of
         undefined ->
             menelaus_util:reply_json(Req, <<"Read-Only admin does not exist">>, 404);
@@ -753,6 +762,8 @@ reset_admin_password(Password) ->
     end.
 
 handle_reset_admin_password(Req) ->
+    assert_no_users_upgrade(),
+
     menelaus_util:ensure_local(Req),
     Password =
         case proplists:get_value("generate", Req:parse_qs()) of
@@ -965,3 +976,14 @@ handle_post_password_policy(Req) ->
               ns_audit:password_policy(Req, Policy),
               menelaus_util:reply(Req, 200)
       end, Req, validate_post_password_policy(Req:parse_post())).
+
+assert_no_users_upgrade() ->
+    case menelaus_users:upgrade_status() of
+        undefined ->
+            ok;
+        started ->
+            erlang:throw({web_exception,
+                          503,
+                          "Not allowed during cluster upgrade.",
+                          []})
+    end.

@@ -43,7 +43,8 @@
          get_auth_version/0,
          empty_storage/0,
          upgrade_to_spock/2,
-         config_upgrade/0]).
+         config_upgrade/0,
+         upgrade_status/0]).
 
 %% callbacks for replicated_dets
 -export([init/1, on_save/2, on_empty/1]).
@@ -497,3 +498,6 @@ do_upgrade_to_spock(Nodes, Repair) ->
 
 config_upgrade() ->
     [{delete, users_upgrade}].
+
+upgrade_status() ->
+    ns_config:read_key_fast(users_upgrade, undefined).

@@ -437,6 +437,8 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
     menelaus_web:handle_streaming(F, Req, undefined).
 
 handle_bucket_delete(_PoolId, BucketId, Req) ->
+    menelaus_web_rbac:assert_no_users_upgrade(),
+
     case ns_orchestrator:delete_bucket(BucketId) of
         ok ->
             ns_audit:delete_bucket(Req, BucketId),
@@ -516,6 +518,7 @@ init_bucket_validation_context(IsNew, BucketName, AllBuckets, ClusterStorageTota
       }.
 
 handle_bucket_update(_PoolId, BucketId, Req) ->
+    menelaus_web_rbac:assert_no_users_upgrade(),
     Params = Req:parse_post(),
     handle_bucket_update_inner(BucketId, Req, Params, 32).
 
@@ -626,6 +629,7 @@ do_bucket_create(Req, Name, Params, Ctx) ->
     end.
 
 handle_bucket_create(PoolId, Req) ->
+    menelaus_web_rbac:assert_no_users_upgrade(),
     Params = Req:parse_post(),
     Name = proplists:get_value("name", Params),
     Ctx = init_bucket_validation_context(true, Name, Req),
