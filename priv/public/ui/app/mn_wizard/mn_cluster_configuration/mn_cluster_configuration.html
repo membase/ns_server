@@ -1,0 +1,125 @@
+<div
+   class="panel dialog-med dialog dialog-wizard"
+   mn-spinner="clusterConfigurationCtl.viewLoading || !clusterConfigurationCtl.config.selfConfig">
+  <div class="panel-header flex-left">
+    <img
+       src="../images/cb_logo_bug_white_2.svg"
+       width="32"
+       height="32"
+       class="margin-right-half">
+    <h2>Couchbase &gt; New Cluster / Configure </h2>
+  </div>
+  <form
+     class="forms"
+     novalidate
+     ng-submit="clusterConfigurationCtl.onSubmit()">
+    <div class="panel-content">
+      <div class="formrow">
+        <div class="row">
+          <label for="setup_hostname">Host Name / IP Address</label>
+          <small class="text-smaller">Usually localhost or similar</small>
+        </div>
+        <input
+           type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
+           name="hostname"
+           id="setup_hostname"
+           required
+           ng-model="clusterConfigurationCtl.config.hostname">
+        <div
+           class="error error-form"
+           ng-if="clusterConfigurationCtl.postHostnameErrors[0]">
+          {{clusterConfigurationCtl.postHostnameErrors[0]}}
+        </div>
+      </div>
+
+      <div class="formrow">
+        <div class="row">
+          <label for="setup_db_path_input">Data Disk Path</label>
+          <small class="text-smaller">Path cannot be changed after setup</small>
+        </div>
+        <input
+           type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
+           id="setup_db_path_input"
+           ng-model="clusterConfigurationCtl.config.dbPath"
+           ng-change="clusterConfigurationCtl.onDbPathChange()">
+        <p>
+          Free: {{clusterConfigurationCtl.dbPathTotal}}
+        </p>
+      </div>
+
+      <div
+         class="error error-form"
+         ng-if="clusterConfigurationCtl.postDiskStorageErrors">
+        <div ng-repeat="error in clusterConfigurationCtl.postDiskStorageErrors">
+          Attention: {{error}}<br>
+        </div>
+      </div>
+
+      <div class="formrow">
+        <div class="row">
+          <label for="setup_index_path_input">Indexes Disk Path</label>
+          <small class="text-smaller">Path cannot be changed after setup</small>
+        </div>
+        <input
+           type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
+           id="setup_index_path_input"
+           ng-model="clusterConfigurationCtl.config.indexPath"
+           ng-change="clusterConfigurationCtl.onIndexPathChange()">
+        <p>
+          Free: {{clusterConfigurationCtl.indexPathTotal}}
+        </p>
+      </div>
+
+      <div class="formrow">
+        <div class="row formrow">
+          <label>Couchbase Memory Quotas</label>
+          <small class="text-smaller">Per service / per node</small>
+        </div>
+        <div>
+          <div
+             class="error error-form"
+             ng-show="!!clusterConfigurationCtl.setupServicesErrors[0]">
+            {{clusterConfigurationCtl.setupServicesErrors[0]}}
+          </div>
+          <div
+             class="formrow"
+             mn-memory-quota="clusterConfigurationCtl.config.startNewClusterConfig"
+             is-enterprise="clusterConfigurationCtl.isEnterprise"
+             errors="clusterConfigurationCtl.postMemoryErrors">
+          </div>
+          <div
+             class="formrow"
+             mn-storage-mode="clusterConfigurationCtl.config.startNewClusterConfig.indexSettings"
+             is-disabled="!clusterConfigurationCtl.isEnterprise || !clusterConfigurationCtl.config.startNewClusterConfig.services.model.index"
+             errors="clusterConfigurationCtl.postIndexSettingsErrors">
+          </div>
+        </div>
+      </div>
+      <div class="formrow">
+        <input
+           type="checkbox"
+           id="init-notifications-updates-enabled"
+           ng-model="clusterConfigurationCtl.sendStats"
+           checked="checked">
+        <label for="init-notifications-updates-enabled">
+          Enable software update notifications in the web console
+        </label>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <a ui-sref="app.wizard.termsAndConditions">&lt; Back</a>
+      <button
+         ng-disabled="clusterConfigurationCtl.postMemoryErrors && clusterConfigurationCtl.joinCluster === 'no'"
+         type="submit">Save & Finish</button>
+    </div>
+  </form>
+</div>

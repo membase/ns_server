@@ -564,7 +564,7 @@ del {
 
 strong,
 b {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .semi-bold {
@@ -859,6 +859,20 @@ button.outline.btn-small {
 .btn-small .icon {
   top: 0;
 }
+
+button.btn-lg {
+  height: 2.5rem;
+  width: 17.5rem;
+  font-size: 1rem;
+}
+
+button.tight {
+  min-width: 0;
+  padding: 0 .75rem;
+  line-height: normal;
+  font-size: .961rem;
+}
+
 /* HTML Tables ------------------------------------*/
 
 table {
@@ -1035,6 +1049,11 @@ label {
 .formrow p {
   margin: 0;
   font-size: .75rem;
+}
+
+.formrow small {
+  font-size: .75rem;
+  color: #888;
 }
 
 .checkbox input[type=text] {
@@ -1368,7 +1387,7 @@ select.select-small {
 }
 
 .forms .error-form {
-  margin: 0 0 1rem 0;
+  margin: 0 0 .5rem 0;
 }
 
 /* background colors ----------------------------------- */

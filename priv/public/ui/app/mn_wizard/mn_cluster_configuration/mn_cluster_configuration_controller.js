@@ -2,29 +2,30 @@
   "use strict";
   angular
     .module('mnWizard')
-    .controller('mnWizardStep1Controller', mnWizardStep1Controller);
+    .controller('mnClusterConfigurationController', mnClusterConfigurationController);
 
-  function mnWizardStep1Controller($scope, $rootScope, $state, $q, mnWizardStep1Service, mnSettingsClusterService, mnAuthService, pools, mnHelper, mnServersService, mnPools, mnAlertsService, mnPromiseHelper) {
+  function mnClusterConfigurationController($scope, $rootScope, $state, $q, mnClusterConfigurationService, mnSettingsClusterService, mnAuthService, pools, mnHelper, mnServersService, mnPools, mnAlertsService, mnPromiseHelper, mnWizardService) {
     var vm = this;
 
-    vm.joinClusterConfig = mnWizardStep1Service.getJoinClusterConfig();
-    vm.joinCluster = 'no';
+    vm.joinClusterConfig = mnClusterConfigurationService.getJoinClusterConfig();
+    vm.defaultJoinClusterSerivesConfig = _.clone(vm.joinClusterConfig.services, true);
     vm.isEnterprise = pools.isEnterprise;
 
     vm.onDbPathChange = onDbPathChange;
     vm.onIndexPathChange = onIndexPathChange;
-    vm.isJoinCluster = isJoinCluster;
     vm.onSubmit = onSubmit;
+    vm.sendStats = true;
 
     activate();
 
     function activate() {
-      mnPromiseHelper(vm, mnWizardStep1Service.getConfig())
-      .applyToScope("config")
-      .onSuccess(function (config) {
-        vm.onDbPathChange();
-        vm.onIndexPathChange();
-      });
+      mnPromiseHelper(vm, mnClusterConfigurationService.getConfig())
+        .applyToScope("config")
+        .onSuccess(function (config) {
+          vm.defaultConfig = _.clone(config);
+          vm.onDbPathChange();
+          vm.onIndexPathChange();
+        });
 
       $scope.$watch('wizardStep1Ctl.config.startNewClusterConfig', _.debounce(onMemoryQuotaChanged, 500), true);
     }
@@ -38,16 +39,23 @@
         .catchErrorsFromSuccess("postMemoryErrors");
     }
     function onDbPathChange() {
-      vm.dbPathTotal = mnWizardStep1Service.lookup(vm.config.dbPath, vm.config.selfConfig.preprocessedAvailableStorage);
+      vm.dbPathTotal = mnClusterConfigurationService.lookup(vm.config.dbPath, vm.config.selfConfig.preprocessedAvailableStorage);
     }
     function onIndexPathChange() {
-      vm.indexPathTotal = mnWizardStep1Service.lookup(vm.config.indexPath, vm.config.selfConfig.preprocessedAvailableStorage);
-    }
-    function isJoinCluster(value) {
-      return vm.joinCluster === value;
+      vm.indexPathTotal = mnClusterConfigurationService.lookup(vm.config.indexPath, vm.config.selfConfig.preprocessedAvailableStorage);
     }
     function goNext() {
-      return $state.go('app.wizard.step2');
+      var newClusterState = mnWizardService.getNewClusterState();
+      return mnClusterConfigurationService.postAuth(newClusterState.user).then(function () {
+        return mnAuthService.login(newClusterState.user).then(function () {
+          var config = mnClusterConfigurationService.getNewClusterConfig();
+          if (config.services.model.index) {
+            mnSettingsClusterService.postIndexSettings(config.indexSettings);
+          }
+        }).then(function () {
+          return $state.go('app.admin.overview');
+        });
+      });
     }
     function addErrorHandler(query, name) {
       return mnPromiseHelper(vm, query)
@@ -56,9 +64,10 @@
     }
     function postMemoryQuota() {
       var data = _.clone(vm.config.startNewClusterConfig);
+      var newClusterState = mnWizardService.getNewClusterState();
       !vm.config.startNewClusterConfig.services.model.index && (delete data.indexMemoryQuota);
       !vm.config.startNewClusterConfig.services.model.fts && (delete data.ftsMemoryQuota);
-      return addErrorHandler(mnSettingsClusterService.postPoolsDefault(data), "postMemory");
+      return addErrorHandler(mnSettingsClusterService.postPoolsDefault(data, false, newClusterState.clusterName), "postMemory");
     }
     function validateIndexSettings() {
       return mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.config.startNewClusterConfig.indexSettings, true))
@@ -71,7 +80,7 @@
       }), "setupServices");
     }
     function postDiskStorage() {
-      return addErrorHandler(mnWizardStep1Service.postDiskStorage({
+      return addErrorHandler(mnClusterConfigurationService.postDiskStorage({
         path: vm.config.dbPath,
         index_path: vm.config.indexPath
       }), "postDiskStorage");
@@ -79,34 +88,33 @@
     function postJoinCluster() {
       var data = _.clone(vm.joinClusterConfig.clusterMember);
       data.services = mnHelper.checkboxesToList(vm.joinClusterConfig.services.model).join(',');
-      return addErrorHandler(mnWizardStep1Service.postJoinCluster(data), "postJoinCluster");
+      return addErrorHandler(mnClusterConfigurationService.postJoinCluster(data), "postJoinCluster");
+    }
+    function postStats() {
+      var user = mnWizardService.getTermsAndConditionsState();
+      var promise = mnClusterConfigurationService.postStats(user, vm.sendStats);
+
+      return mnPromiseHelper(vm, promise)
+        .catchGlobalErrors()
+        .getPromise();
     }
     function doStartNewCluster() {
       var newClusterParams = vm.config.startNewClusterConfig;
-      var quotaIsChanged = newClusterParams.memoryQuota != vm.config.selfConfig.memoryQuota || newClusterParams.indexMemoryQuota != vm.config.selfConfig.indexMemoryQuota;
       var hadServicesString = vm.config.selfConfig.services.sort().join("");
       var hasServicesString = mnHelper.checkboxesToList(newClusterParams.services.model).sort().join("");
       if (hadServicesString === hasServicesString) {
-        if (quotaIsChanged) {
-          return postMemoryQuota().then(goNext);
-        } else {
-          return goNext();
-        }
+        return postMemoryQuota().then(goNext);
       } else {
-        if (quotaIsChanged) {
-          var hadIndexService = hadServicesString.indexOf("index") > -1;
-          var hasIndexService = hasServicesString.indexOf("index") > -1;
-          if (hadIndexService && !hasIndexService) {
-            return postServices().then(function () {
-              return postMemoryQuota().then(goNext);
-            });
-          } else {
-            return postMemoryQuota().then(function () {
-              return postServices().then(goNext);
-            });
-          }
+        var hadIndexService = hadServicesString.indexOf("index") > -1;
+        var hasIndexService = hasServicesString.indexOf("index") > -1;
+        if (hadIndexService && !hasIndexService) {
+          return postServices().then(function () {
+            return postMemoryQuota().then(postStats).then(goNext);
+          });
         } else {
-          return postServices().then(goNext);
+          return postMemoryQuota().then(function () {
+            return postServices().then(postStats).then(goNext);
+          });
         }
       }
     }
@@ -122,9 +130,9 @@
       delete vm.postIndexSettingsErrors;
 
       var promise = postDiskStorage().then(function () {
-        return addErrorHandler(mnWizardStep1Service.postHostname(vm.config.hostname), "postHostname");
+        return addErrorHandler(mnClusterConfigurationService.postHostname(vm.config.hostname), "postHostname");
       }).then(function () {
-        if (vm.isJoinCluster('no')) {
+        if (mnWizardService.getState().isNewCluster) {
           if (vm.config.startNewClusterConfig.services.model.index) {
             return validateIndexSettings().then(function () {
               if (vm.postIndexSettingsErrors) {
@@ -146,7 +154,9 @@
           });
         }
       });
-      mnPromiseHelper(vm, promise).showGlobalSpinner();
+
+      mnPromiseHelper(vm, promise)
+        .showGlobalSpinner();
     };
   }
 })();

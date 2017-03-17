@@ -109,14 +109,6 @@ main.interim {
   padding: 0 1.5rem;
 }
 
-.interim.content-box {
-  border-radius: 5px;
-  background-color: #f5f5f5;
-  font-size: .75rem;
-  padding: 1rem 1rem 0 1rem;
-  margin-bottom: 1.5rem;
-}
-
 h3.interim {
   margin: 2rem 0 0 0;
   border-bottom: 1px solid #d1d1d1;
@@ -825,6 +817,10 @@ section.error {
 .panel-footer a {
   margin-right: 1.5rem;
   font-size: .961rem;
+}
+
+.panel-footer a.tight {
+  margin-right: 1rem;
 }
 
 /* Modal Dialog - Medium (uses Panel) ------ */
@@ -1747,4 +1743,18 @@ section.dynamic_unhealthy {
   border-radius: 9px;
   margin: .5rem;
   text-align: center;
+}
+
+/*  GENERAL PURPOSE CONTENT AREA --  */
+.content-box {
+  border-radius: 9px;
+  background-color: #d9e7f7;
+  font-size: .75rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* for when services are presented as a simplecolumn of checkboxes (no text input for quotas) */
+.services .checkbox-service {
+  margin-bottom: .5rem;
 }

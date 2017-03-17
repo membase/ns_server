@@ -3,31 +3,30 @@
   <form
      ng-submit="settingsClusterCtl.saveVisualInternalSettings()"
      class="forms">
-    <div class="formrow width-300">
-      <label for="cluster-name-field">Cluster Name</label>
-      <span class="input-append">
-        <input
-           id="cluster-name-field"
-           type="text"
-           autocorrect="off"
-           spellcheck="false"
-           autocapitalize="off"
-           maxlength="256"
-           ng-model="settingsClusterCtl.clusterName"
-           ng-disabled="!rbac.cluster.pools.write">
-        <small>&nbsp; (0 — 256 chars)</small>
-      </span>
+    <label for="cluster-name-field">Cluster Name</label>
+    <div class="row formrow width-480 margin-bottom2">
+      <input
+         id="cluster-name-field"
+         type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
+         maxlength="256"
+         ng-model="settingsClusterCtl.clusterName"
+         ng-disabled="!rbac.cluster.pools.write">
+      <small>&nbsp; (0 — 256 chars)</small>
     </div>
+    <hr class="width-480">
     <div class="formrow">
-      <h4>RAM Quotas <small>in megabytes per server node</small></h4>
+      <h4>Couchbase Memory Quotas <small>in megabytes per server node</small></h4>
     </div>
     <div
        rbac="rbac"
-       class="indent-1"
+       class="width-480 margin-bottom2"
        mn-memory-quota="settingsClusterCtl.memoryQuotaConfig"
        errors="settingsClusterCtl.memoryQuotaErrors">
     </div>
-
+    <hr class="width-480">
     <h4 ng-show="poolDefault.compat.atLeast40 && rbac.cluster.indexes.read">
       Index Settings
     </h4>
@@ -40,15 +39,15 @@
            errors="settingsClusterCtl.indexSettingsErrors"></div>
       </div>
       <div class="formrow">
-        <a
-           class="disclosure link-heavy"
+        <span
+           class="disclosure text-medium"
            ng-class="{disclosed: settingsClusterCtl.showAdvancedSettings}"
            ng-click="settingsClusterCtl.showAdvancedSettings = !settingsClusterCtl.showAdvancedSettings">
           {{ settingsClusterCtl.showAdvancedSettings ? 'Hide': 'Show' }} Advanced Index Settings
-        </a>
+        </span>
       </div>
 
-      <div ng-show="settingsClusterCtl.showAdvancedSettings">
+      <div ng-show="settingsClusterCtl.showAdvancedSettings" class="indent-1">
         <div class="formrow width-300">
           <label for="index_settings_thread" class="inline">Indexer Threads</label>
           <span
@@ -93,8 +92,7 @@
           </div>
         </div>
 
-
-        <div class="formrow width-300 ">
+        <div class="formrow width-300">
           <label for="indexer_log_level">
             Indexer Log Level
           </label>

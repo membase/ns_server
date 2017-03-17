@@ -1,12 +1,12 @@
 (function () {
   "use strict";
 
-  angular.module('mnWizardStep1Service', [
+  angular.module('mnClusterConfigurationService', [
     'mnHelper'
-  ]).factory('mnWizardStep1Service', mnWizardStep1ServiceFactory);
+  ]).factory('mnClusterConfigurationService', mnClusterConfigurationServiceFactory);
 
-  function mnWizardStep1ServiceFactory($http, mnHelper, IEC) {
-    var mnWizardStep1Service = {
+  function mnClusterConfigurationServiceFactory($http, mnHelper, IEC) {
+    var mnClusterConfigurationService = {
       getDynamicRamQuota: getDynamicRamQuota,
       getJoinClusterConfig: getJoinClusterConfig,
       getNewClusterConfig: getNewClusterConfig,
@@ -15,11 +15,14 @@
       postHostname: postHostname,
       postJoinCluster: postJoinCluster,
       lookup: lookup,
-      getConfig: getConfig
+      getConfig: getConfig,
+      postAuth: postAuth,
+      postEmail: postEmail,
+      postStats: postStats
     };
     var re = /^[A-Z]:\//;
     var preprocessPath;
-    var dynamicRamQuota;
+
     var joinClusterConfig = {
       clusterMember: {
         hostname: "127.0.0.1",
@@ -52,10 +55,49 @@
       }
     };
 
-    return mnWizardStep1Service;
+    return mnClusterConfigurationService;
+
+    function postStats(user, sendStats) {
+      user.email && postEmail(user);
+      return doPostStats({sendStats: sendStats});
+    }
+
+    function postEmail(register) {
+      var params = _.clone(register);
+      delete params.agree;
+      params.callback = 'JSON_CALLBACK';
+
+      return $http({
+        method: 'JSONP',
+        url: 'http://ph.couchbase.net/email',
+        params: params
+      });
+    }
+    function doPostStats(data) {
+      return $http({
+        method: 'POST',
+        url: '/settings/stats',
+        data: data
+      });
+    }
+
+    function postAuth(user, justValidate) {
+      var data = _.clone(user);
+      delete data.verifyPassword;
+      data.port = "SAME";
+
+      return $http({
+        method: 'POST',
+        url: '/settings/web',
+        data: data,
+        params: {
+          just_validate: justValidate ? 1 : 0
+        }
+      });
+    }
 
     function getConfig() {
-      return mnWizardStep1Service.getSelfConfig().then(function (resp) {
+      return mnClusterConfigurationService.getSelfConfig().then(function (resp) {
         var selfConfig = resp;
         var rv = {};
         rv.selfConfig = selfConfig;

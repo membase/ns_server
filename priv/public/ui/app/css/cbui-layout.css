@@ -346,15 +346,19 @@ footer {
 }
 
 .width-300 {
-  width:300px;
+  width: 300px;
 }
 
 .width-480 {
-  width:480px;
+  width: 480px;
+}
+
+.width-530 {
+  width: 530px;
 }
 
 .width-680 {
-  width:680px;
+  width: 680px;
 }
 
 .max-height-500 {

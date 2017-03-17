@@ -8,13 +8,14 @@
     ])
     .directive('mnMemoryQuota', mnMemoryQuotaDirective);
 
-   function mnMemoryQuotaDirective() {
+  function mnMemoryQuotaDirective() {
     var mnMemoryQuota = {
       restrict: 'A',
       scope: {
         config: '=mnMemoryQuota',
         errors: "=",
-        rbac: "="
+        rbac: "=",
+        isEnterprise: "="
       },
       templateUrl: 'app/components/directives/mn_memory_quota/mn_memory_quota.html',
       controller: controller
