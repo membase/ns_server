@@ -69,10 +69,8 @@
     function prepareBucketsDropdownData(params, fromCache) {
       return mnBucketsService.getBucketsByType(fromCache).then(function (buckets) {
         var rv = {};
-        rv.bucketsNames =
-          buckets.byType.membase.names
-          .concat(buckets.byType.ephemeral.names);
-        rv.bucketsNames.selected = params.bucket || buckets.byType.membase.defaultName || buckets.byType.ephemeral.defaultName;
+        rv.bucketsNames = buckets.byType.membase.names;
+        rv.bucketsNames.selected = params.bucket || buckets.byType.membase.defaultName;
         return rv;
       });
     }
