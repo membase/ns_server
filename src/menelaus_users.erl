@@ -437,7 +437,6 @@ upgrade_to_spock(Config, Nodes) ->
     catch T:E ->
             ale:error(?USER_LOGGER, "Unsuccessful user storage upgrade.~n~p",
                       [{T,E,erlang:get_stacktrace()}]),
-            ns_config:delete(users_upgrade),
             error
     end.
 
