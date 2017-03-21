@@ -162,13 +162,14 @@ name(Service) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ atom_to_list(Service)).
 
 pick_leader(NodeInfos) ->
+    Master = node(),
     {Leader, _} =
         misc:min_by(
-          fun ({_, InfoLeft}, {_, InfoRight}) ->
+          fun ({NodeLeft, InfoLeft}, {NodeRight, InfoRight}) ->
                   {_, PrioLeft} = lists:keyfind(priority, 1, InfoLeft),
                   {_, PrioRight} = lists:keyfind(priority, 1, InfoRight),
 
-                  PrioLeft > PrioRight
+                  {PrioLeft, NodeLeft =:= Master} > {PrioRight, NodeRight =:= Master}
           end, NodeInfos),
 
     Leader.
