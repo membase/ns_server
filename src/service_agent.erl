@@ -590,36 +590,43 @@ pass_connection(Worker, Conn) ->
 start_long_poll_worker(Conn, Tag, Initial, GrabFun) ->
     true = is_pid(Conn),
 
-    Rev =
+    Initial1 =
         case Initial of
-            {R, _} ->
-                R;
+            {_, _} ->
+                Initial;
             undefined ->
-                undefined
+                {undefined, undefined}
         end,
 
     Agent = self(),
     Worker = proc_lib:spawn_link(
                fun () ->
-                       long_poll_worker_loop(Agent, Conn, Tag, Rev, GrabFun)
+                       long_poll_worker_loop(Agent, Conn, Tag, Initial1, GrabFun)
                end),
 
     Worker.
 
-long_poll_worker_loop(Agent, Conn, Tag, OldRev, GrabFun) ->
-    {Rev, _} = New = GrabFun(Conn, OldRev),
-    case Rev =:= OldRev of
+long_poll_worker_loop(Agent, Conn, Tag, {OldRev, OldValue}, GrabFun) ->
+    {NewRev, NewValue} = New = GrabFun(Conn, OldRev),
+    case NewRev =:= OldRev of
         true ->
+            %% assert that values are the same to catch misbehaving services
+            %% early
+            {true, _, _} = {NewValue =:= OldValue, OldValue, NewValue},
             ok;
         false ->
             Agent ! {Tag, New}
     end,
 
-    long_poll_worker_loop(Agent, Conn, Tag, Rev, GrabFun).
+    long_poll_worker_loop(Agent, Conn, Tag, New, GrabFun).
 
 start_long_poll_workers(#state{tasks = Tasks,
                                topology = Topology} = State) ->
-    do_start_long_poll_workers(Tasks, Topology, State).
+    %% since we resolve node ids into node names in the main process, we
+    %% remove them from the initial value passed to the topology long poller;
+    %% that way it can assert that whenever revision is the same, the values
+    %% also match
+    do_start_long_poll_workers(Tasks, cleanup_topology(Topology), State).
 
 do_start_long_poll_workers(Tasks, Topology,
                            #state{conn = Conn,
@@ -631,6 +638,9 @@ do_start_long_poll_workers(Tasks, Topology,
                                             Topology, fun grab_topology/2),
     State#state{tasks_worker = TasksWorker,
                 topology_worker = TopologyWorker}.
+
+cleanup_topology({Rev, Topology}) ->
+    {Rev, Topology#topology{nodes = []}}.
 
 terminate_long_poll_workers(#state{tasks_worker = TasksWorker,
                                    topology_worker = TopologyWorker} = State) ->
