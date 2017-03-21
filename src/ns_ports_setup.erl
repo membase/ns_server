@@ -635,7 +635,7 @@ fts_spec(Config) ->
 
 example_service_spec(Config) ->
     CacheCmd = find_executable("cache-service"),
-    {value, NodeUUID} = ns_config:search(Config, {node, node(), uuid}),
+    NodeUUID = ns_config:search(Config, {node, node(), uuid}, false),
 
     case CacheCmd =/= false andalso
         NodeUUID =/= false andalso
