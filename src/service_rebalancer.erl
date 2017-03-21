@@ -116,17 +116,22 @@ rebalance(Rebalancer, Service, Type,
     ok = service_agent:start_rebalance(Service, Leader, Rebalancer,
                                        Id, Type, KeepNodesArg, EjectNodesArg),
 
-    wait_for_rebalance_completion(AllNodes, ProgressCallback).
+    Timeout = ns_config:get_timeout({service_rebalance_timeout, Service}, 10 * 60 * 1000),
 
-wait_for_rebalance_completion(AllNodes, Callback) ->
+    wait_for_rebalance_completion(AllNodes, ProgressCallback, Timeout).
+
+wait_for_rebalance_completion(AllNodes, Callback, Timeout) ->
     receive
         {rebalance_progress, Progress} ->
             report_progress(AllNodes, Callback, Progress),
-            wait_for_rebalance_completion(AllNodes, Callback);
+            wait_for_rebalance_completion(AllNodes, Callback, Timeout);
         {rebalance_failed, Error} ->
             exit({rebalance_failed, {service_error, Error}});
         rebalance_done ->
             ok
+    after
+        Timeout ->
+            exit({rebalance_failed, inactivity_timeout})
     end.
 
 report_progress(AllNodes, Callback, Progress) ->
