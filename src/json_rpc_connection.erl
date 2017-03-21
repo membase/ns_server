@@ -74,10 +74,12 @@ init({Label, GetSocket}) ->
     ?log_debug("Observed revrpc connection: label ~p, handling process ~p",
                [Label, self()]),
     gen_event:notify(json_rpc_events, {started, Label, self()}),
-    {ok, #state{label = Label,
-                counter = 0,
-                sock = InetSock,
-                id_to_caller_tid = IdToCaller}}.
+
+    gen_server:enter_loop(?MODULE, [],
+                          #state{label = Label,
+                                 counter = 0,
+                                 sock = InetSock,
+                                 id_to_caller_tid = IdToCaller}).
 
 handle_cast(reannounce, #state{label = Label} = State) ->
     gen_event:notify(json_rpc_events, {needs_update, Label, self()}),
