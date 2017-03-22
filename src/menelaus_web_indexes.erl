@@ -71,7 +71,10 @@ validate_storage_mode(State) ->
     %% Do not allow:
     %% - changing index storage mode to mem optimized in community edition
     %% - changing index storage mode when there are nodes running index
-    %%   service in the cluster
+    %%   service in the cluster.
+    %% - changing index storage mode back to forestdb after having it set to either
+    %%   memory_optimized or plasma.
+    %% - setting the storage mode to forestdb on a newly configured spock cluster.
     IndexErr = "Changing the optimization mode of global indexes is not supported when index service nodes are present in the cluster. Please remove all index service nodes to change this option.",
 
     OldValue = index_settings_manager:get(storageMode),
@@ -112,7 +115,12 @@ is_storage_mode_acceptable(Value) ->
 
     case Value of
         ?INDEX_STORAGE_MODE_FORESTDB ->
-            ok;
+            case cluster_compat_mode:is_cluster_spock() of
+                true ->
+                    ReportError("Storage mode cannot be set to 'forestdb' in Spock.");
+                false ->
+                    ok
+            end;
         ?INDEX_STORAGE_MODE_MEMORY_OPTIMIZED ->
             case cluster_compat_mode:is_enterprise() of
                 true ->
