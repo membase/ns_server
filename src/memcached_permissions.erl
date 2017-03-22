@@ -210,27 +210,43 @@ jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
                        EmitUser({ClusterAdmin, builtin}, Roles1, dict:new())
                end,
 
-           Dict2 =
-               lists:foldl(
-                 fun (Bucket, Dict) ->
-                         LegacyName = Bucket ++ ";legacy",
-                         Roles2 = menelaus_roles:get_roles({Bucket, bucket}),
-                         EmitUser({LegacyName, builtin}, Roles2, Dict)
-                 end, Dict1, Buckets),
+           {Dict2, DefaultFound} =
+               pipes:fold(
+                 ?producer(),
+                 fun ({{user, {UserName, _} = Identity}, Props}, {Dict, DefFound}) ->
+                         {case UserName of
+                              ClusterAdmin ->
+                                  ?log_warning("Encountered user ~p with the same name as cluster administrator",
+                                               [ClusterAdmin]),
+                                  Dict;
+                              _ ->
+                                  Roles3 = proplists:get_value(roles, Props, []),
+                                  EmitUser(Identity, Roles3, Dict)
+                          end,
+                          case UserName of
+                              "default" ->
+                                  ?log_warning("Encountered user with the name 'default'"),
+                                  true;
+                              _ ->
+                                  DefFound
+                          end}
+                 end, {Dict1, false}),
 
-           pipes:fold(
-             ?producer(),
-             fun ({{user, {UserName, _} = Identity}, Props}, Dict) ->
-                     case UserName of
-                         ClusterAdmin ->
-                             ?log_warning("Encountered user ~p with the same name as cluster administrator",
-                                          [ClusterAdmin]),
-                             Dict;
-                         _ ->
-                             Roles3 = proplists:get_value(roles, Props, []),
-                             EmitUser(Identity, Roles3, Dict)
-                     end
-             end, Dict2),
+           lists:foldl(
+             fun (Bucket, Dict) ->
+                     NewDict =
+                         case {Bucket, DefaultFound} of
+                             {"default", false} ->
+                                 Roles2 = menelaus_roles:get_roles({Bucket, bucket}),
+                                 EmitUser({Bucket, builtin}, Roles2, Dict);
+                             _ ->
+                                 Dict
+                         end,
+                     LegacyName = Bucket ++ ";legacy",
+                     Roles3 = menelaus_roles:get_roles({Bucket, bucket}),
+                     EmitUser({LegacyName, builtin}, Roles3, NewDict)
+             end, Dict2, Buckets),
+
            ?yield(object_end)
        end).
 
