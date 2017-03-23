@@ -103,7 +103,7 @@
       var hadServicesString = vm.config.selfConfig.services.sort().join("");
       var hasServicesString = mnHelper.checkboxesToList(newClusterParams.services.model).sort().join("");
       if (hadServicesString === hasServicesString) {
-        return postMemoryQuota().then(goNext);
+        return postMemoryQuota().then(postStats).then(goNext);
       } else {
         var hadIndexService = hadServicesString.indexOf("index") > -1;
         var hasIndexService = hasServicesString.indexOf("index") > -1;
