@@ -47,13 +47,17 @@
               mnServersService
                 .setupServices({services: 'kv,index,fts,n1ql'}).then(function () {
                   var newClusterState = mnWizardService.getNewClusterState();
-                  mnClusterConfigurationService
-                    .postAuth(newClusterState.user).then(function () {
-                      return mnAuthService
-                        .login(newClusterState.user).then(function () {
-                          return $state.go('app.admin.overview');
-                        })
-                    });
+                  var data = mnClusterConfigurationService.getNewClusterConfig();
+                  mnSettingsClusterService
+                    .postPoolsDefault(data, false, newClusterState.clusterName).then(function () {
+                      mnClusterConfigurationService
+                        .postAuth(newClusterState.user).then(function () {
+                          return mnAuthService
+                            .login(newClusterState.user).then(function () {
+                              return $state.go('app.admin.overview');
+                            })
+                        });
+                    })
                 });
             });
         });
