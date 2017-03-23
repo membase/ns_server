@@ -132,7 +132,8 @@ perform_loading_task(Name, Quota) ->
 
     EPort = open_port({spawn_executable, Cmd},
                       [exit_status,
-                       {env, [{"CBDOCLOADER_SKIP_AUTH", "true"}]},
+                       {env, [{"CB_USERNAME", "@ns_server"},
+                              {"CB_PASSWORD", ns_config_auth:get_password(special)}]},
                        {args, Args},
                        stderr_to_stdout]),
     case wait_for_exit(EPort, Name) of
