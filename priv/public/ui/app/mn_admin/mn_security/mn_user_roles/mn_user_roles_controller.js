@@ -14,7 +14,8 @@
       "mnEqual",
       "mnBucketsService",
       "mnFilters",
-      "mnAutocompleteOff"
+      "mnAutocompleteOff",
+      "mnFocus"
     ])
     .controller("mnUserRolesController", mnUserRolesController);
 

@@ -16,15 +16,12 @@
      mn-spinner="userRolesAddDialogCtl.viewLoading">
     <div class="panel-content forms max-height-500">
       <div
+         mn-focus="!!userRolesAddDialogCtl.errors"
+         tabindex="1"
          class="error error-form"
          ng-show="userRolesAddDialogCtl.errors"
          ng-repeat="error in userRolesAddDialogCtl.errors">
         {{error}}
-      </div>
-      <div
-         class="error error-form"
-         ng-show="userRolesAddDialogCtl.form.$submitted && userRolesAddDialogCtl.form.password.$error.mnEqual">
-        'Password' and 'Verify Password' do not match
       </div>
       <div class="formrow checkbox-list">
         <div ng-if="userRolesAddDialogCtl.isLdapEnabled">
@@ -83,6 +80,11 @@
              mn-equal="{{userRolesAddDialogCtl.user.verifyPassword}}"
              id="password_inp"
              ng-model="userRolesAddDialogCtl.user.password">
+        </div>
+        <div
+           class="error error-form"
+           ng-show="userRolesAddDialogCtl.form.$submitted && userRolesAddDialogCtl.form.password.$error.mnEqual">
+          'Password' and 'Verify Password' do not match
         </div>
         <div class="formrow">
           <label for="secure-password-verify">Verify Password</label>
