@@ -18,11 +18,13 @@
          rbac="rbac"
          errors="serversMemoryQuotaDialogCtl.errors">
       </div>
-      <div class="formrow"
+      <div
+         class="formrow"
          ng-if="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index"
          mn-storage-mode="serversMemoryQuotaDialogCtl.indexSettings"
          is-disabled="!serversMemoryQuotaDialogCtl.isEnterprise || serversMemoryQuotaDialogCtl.initialIndexSettings.storageMode !== ''"
-         errors="serversMemoryQuotaDialogCtl.postIndexSettingsErrors">
+         errors="serversMemoryQuotaDialogCtl.postIndexSettingsErrors"
+         pool-default="poolDefault">
       </div>
     </div>
     <div class="panel-footer">

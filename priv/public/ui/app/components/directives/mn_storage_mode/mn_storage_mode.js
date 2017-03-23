@@ -24,7 +24,8 @@
         config: '=mnStorageMode',
         errors: "=",
         isDisabled: "=",
-        noLabel: "="
+        noLabel: "=",
+        poolDefault: "=?"
       },
       templateUrl: 'app/components/directives/mn_storage_mode/mn_storage_mode.html'
     };

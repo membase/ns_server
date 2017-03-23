@@ -51,7 +51,7 @@
       ftsMemoryQuota: undefined,
       minMemorySize: 256,
       indexSettings: {
-        storageMode: "forestdb"
+        storageMode: "plasma"
       }
     };
 
