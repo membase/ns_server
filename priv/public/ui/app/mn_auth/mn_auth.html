@@ -1,21 +1,22 @@
 <div class="sign-in-background"></div>
-<div class="row items-center items-top dialog_main_wrapper">
+<div class="row flex-center items-top dialog_main_wrapper">
   <div class="panel dialog-small dialog">
     <div class="panel-header">
       <img
          src="/images/cb_logo_bug_white.svg"
-         width="35"
-         height="35"
-         alt="Couchbase Server"
-         class="logobug">
+         width="40"
+         height="40"
+         class="logobug"
+         alt="Couchbase Server">
       <h2>Couchbase Server</h2>
     </div>
     <form
        name="loginForm"
+       class="forms"
        novalidate=""
        ng-submit="!loginForm.$invalid && authCtl.submit()">
 
-      <div class="panel-content forms">
+      <div class="panel-content">
         <div
            ng-messages="authCtl.error"
            class="error error-form"
@@ -24,7 +25,7 @@
             Login failed. Please try again.
           </span>
           <span ng-message="_410">
-            The client's version does not match the server's. Please the reload tab.
+            The client's version does not match the server's. Please reload the tab.
           </span>
         </div>
 
@@ -49,24 +50,22 @@
           </div>
         </div>
 
-        <div class="formrow">
-          <input
-             type="password"
-             autocorrect="off"
-             spellcheck="false"
-             id="auth-password-input"
-             ng-model="authCtl.user.password"
-             ng-model-options="{updateOn: 'default'}"
-             name="password"
-             placeholder="Password"
-             required
-             mn-autocomplete-off>
-          <div
-             ng-messages="loginForm.password.$error"
-             ng-show="loginForm.password.$dirty"
-             class="error error-field">
-            <div ng-message="required">Password is required.</div>
-          </div>
+        <input
+           type="password"
+           autocorrect="off"
+           spellcheck="false"
+           id="auth-password-input"
+           ng-model="authCtl.user.password"
+           ng-model-options="{updateOn: 'default'}"
+           name="password"
+           placeholder="Password"
+           required
+           mn-autocomplete-off>
+        <div
+           ng-messages="loginForm.password.$error"
+           ng-show="loginForm.password.$dirty"
+           class="error error-field">
+          <div ng-message="required">Password is required.</div>
         </div>
       </div>
       <div class="panel-footer">

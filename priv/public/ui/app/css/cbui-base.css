@@ -1113,25 +1113,25 @@ input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0px 1000px #fff inset;
 }
 
-input[type="text"]::-webkit-input-placeholder {
-  font-size: .75rem;
+input::-webkit-input-placeholder {
+  font-size: .875rem;
   padding: .3rem 0 0 0;
   line-height:normal;
 }
 
-input[type="text"]::-moz-placeholder {
-  font-size: .75rem;
+input::-moz-placeholder {
+  font-size: .875rem;
   padding: 0;
   line-height:1.9rem;
 }
 
-input[type="text"]:-ms-input-placeholder {
-  font-size: .75rem;
+input:-ms-input-placeholder {
+  font-size: .875rem;
   padding: .25rem 0 0 0;
   line-height:normal;
 }
 
-input[type="text"]::placeholder {
+input::placeholder {
   font-size: .75rem;
   padding: .25rem 0 .25rem 0;
   line-height:normal;

@@ -860,26 +860,28 @@ section.error {
 }
 
 /* Small Dialog (uses Panel) -------- */
+.dialog-small .panel-header {
+  padding: 0 1rem;
+}
 .dialog-small .logobug {
   margin: 0 .5rem 0 0;
+  min-width: 40px;
+  max-width: 40px;
 }
-
 .dialog-small h2 {
   -webkit-flex:1 1 auto;
-      -ms-flex:1 1 auto;
-          flex:1 1 auto;
+  -ms-flex:1 1 auto;
+  flex:1 1 auto;
 }
-
 .dialog-small {
   width: 380px;
 }
-
 .dialog-small .panel-content {
-  padding: 1.5rem 1rem 1rem 1.5rem;
+  padding: 1.5rem 1.25rem 1rem 1.25rem;
 }
-
 .dialog-small .panel-footer {
-
+  border: 0;
+  padding: 0 1rem 1rem 1rem;
 }
 
 /* Wizard Dialog (uses Panel) --------- */
