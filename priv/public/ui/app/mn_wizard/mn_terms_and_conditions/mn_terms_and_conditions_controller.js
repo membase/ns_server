@@ -37,27 +37,22 @@
         return;
       }
 
-      var index_settings = mnSettingsClusterService.getIndexSettings()
-      index_settings.storageMode = 'forestdb'
-
       mnClusterConfigurationService
         .postStats(vm.register, true).then(function () {
-          mnSettingsClusterService
-            .postIndexSettings(index_settings).then(function () {
-              mnServersService
-                .setupServices({services: 'kv,index,fts,n1ql'}).then(function () {
-                  var newClusterState = mnWizardService.getNewClusterState();
-                  var data = mnClusterConfigurationService.getNewClusterConfig();
-                  mnSettingsClusterService
-                    .postPoolsDefault(data, false, newClusterState.clusterName).then(function () {
-                      mnClusterConfigurationService
-                        .postAuth(newClusterState.user).then(function () {
-                          return mnAuthService
-                            .login(newClusterState.user).then(function () {
-                              return $state.go('app.admin.overview');
-                            })
+          mnServersService
+            .setupServices({services: 'kv,index,fts,n1ql'}).then(function () {
+              var newClusterState = mnWizardService.getNewClusterState();
+              var newClusterConfig = mnClusterConfigurationService.getNewClusterConfig();
+              mnSettingsClusterService.postIndexSettings(newClusterConfig.indexSettings);
+              mnSettingsClusterService
+                .postPoolsDefault(newClusterConfig, false, newClusterState.clusterName).then(function () {
+                  mnClusterConfigurationService
+                    .postAuth(newClusterState.user).then(function () {
+                      return mnAuthService
+                        .login(newClusterState.user).then(function () {
+                          return $state.go('app.admin.overview');
                         });
-                    })
+                    });
                 });
             });
         });
