@@ -4,7 +4,7 @@
     <div
        class="margin-top1 flex-order-two"
        ng-repeat="block in analyticsCtl.state.statsDirectoryBlocks track by block.blockName"
-       ng-class="{dynamic_withtotal: block.withTotal, 'flex-order-one': block.blockName=='Summary', 'columns-four': block.columns, 'columns-three': block.blockName.indexOf('Mapreduce View Stats') > -1}">
+       ng-class="{dynamic_withtotal: block.withTotal, 'flex-order-one': block.blockName=='Summary', 'columns-four': block.columns, 'columns-three': block.blockName.indexOf('Mapreduce View Stats') > -1, 'columns-four': block.blockName.indexOf('Full Text Search Stats') > -1}">
       <h4
          class="disclosure"
          ng-class="{disclosed: analyticsListCtl.isDetailsOpened(block.blockName)}"
