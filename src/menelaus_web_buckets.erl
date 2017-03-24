@@ -82,7 +82,12 @@ checking_bucket_uuid(Req, BucketConfig, Body) ->
     end.
 
 may_expose_bucket_auth(Name, Req) ->
-    menelaus_auth:has_permission({[{bucket, Name}, password], read}, Req).
+    case menelaus_auth:get_token(Req) of
+        undefined ->
+            menelaus_auth:has_permission({[{bucket, Name}, password], read}, Req);
+        _ ->
+            false
+    end.
 
 handle_bucket_list(Req) ->
     BucketNamesUnsorted =
