@@ -137,7 +137,7 @@
          checked="checked"
          ng-model="bucketConf.evictionPolicy">
       <label for="for-metadata-value-eject">
-        {{bucketConf.bucketType === 'ephemeral' ? 'No eviction' : 'Value-only'}}
+        {{bucketConf.bucketType === 'ephemeral' ? 'No ejection' : 'Value-only'}}
       </label>
       <input
          type="radio"
@@ -146,7 +146,7 @@
          id="for-metadata-full-eject"
          ng-model="bucketConf.evictionPolicy">
       <label for="for-metadata-full-eject">
-        {{bucketConf.bucketType === 'ephemeral' ? 'NRU eviction' : 'Full'}}
+        {{bucketConf.bucketType === 'ephemeral' ? 'NRU ejection' : 'Full'}}
       </label>
       <div
          class="error"
