@@ -71,6 +71,13 @@
       $rootScope.showMainSpinner = false;
     });
 
+    $transitionsProvider.onError({
+      from: "app.admin.**",
+      to: "app.admin.**"
+    }, function ($rootScope) {
+      $rootScope.showMainSpinner = false;
+    });
+
     $transitionsProvider.onBefore({
       from: "app.admin.**",
       to: "app.admin.**"
