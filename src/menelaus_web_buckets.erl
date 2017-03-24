@@ -818,28 +818,31 @@ parse_bucket_params_without_warnings(Ctx, Params) ->
             {errors, TotalErrors, JSONSummaries, OKs}
     end.
 
-basic_bucket_params_screening(Ctx, Params) ->
-    BucketConfig = Ctx#bv_ctx.bucket_config,
+basic_bucket_params_screening(#bv_ctx{bucket_config = false, new = false}, _Params) ->
+    {[], [{name, <<"Bucket with given name doesn't exist">>}]};
+basic_bucket_params_screening(#bv_ctx{bucket_config = BucketConfig} = Ctx, Params) ->
     AuthType = case proplists:get_value("authType", Params) of
-                   "none" -> none;
-                   "sasl" -> sasl;
+                   "none" ->
+                       none;
+                   "sasl" ->
+                       sasl;
                    undefined when BucketConfig =/= false ->
                        ns_bucket:auth_type(BucketConfig);
-                   _ -> {crap, <<"invalid authType">>} % this is not for end users
+                   _ ->
+                       invalid
                end,
-    case {Ctx#bv_ctx.new, BucketConfig, AuthType} of
-        {false, false, _} ->
-            {[], [{name, <<"Bucket with given name doesn't exist">>}]};
-        {_, _, {crap, Crap}} ->
-            {[], [{authType, Crap}]};
-        _ -> basic_bucket_params_screening_tail(Ctx, Params, AuthType)
+    case AuthType of
+        invalid ->
+            {[], [{authType, <<"invalid authType">>}]};
+        _ ->
+            basic_bucket_params_screening_tail(
+              Ctx, lists:keystore("authType", 1, Params, {"authType", AuthType}))
     end.
 
 basic_bucket_params_screening_tail(#bv_ctx{bucket_config = BucketConfig,
-                                           new = IsNew} = Ctx,
-                                   Params, AuthType) ->
+                                           new = IsNew} = Ctx, Params) ->
     BucketType = get_bucket_type(IsNew, BucketConfig, Params),
-    CommonParams = validate_common_params(Ctx, Params, AuthType),
+    CommonParams = validate_common_params(Ctx, Params),
     TypeSpecificParams =
         validate_bucket_type_specific_params(CommonParams, Params, BucketType,
                                              IsNew, BucketConfig),
@@ -850,8 +853,8 @@ basic_bucket_params_screening_tail(#bv_ctx{bucket_config = BucketConfig,
 
 validate_common_params(#bv_ctx{bucket_name = BucketName,
                                bucket_config = BucketConfig, new = IsNew,
-                               all_buckets = AllBuckets},
-                       Params, AuthType) ->
+                               all_buckets = AllBuckets}, Params) ->
+    AuthType = proplists:get_value("authType", Params),
     [{ok, name, BucketName},
      {ok, auth_type, AuthType},
      parse_validate_flush_enabled(Params, IsNew),
