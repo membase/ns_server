@@ -3,10 +3,10 @@
     <h4>Documents</h4>
     <span class="text-small indent-1">Filter:&nbsp;</span>
     <div
-       mn-filter="documentsListCtl.filterInitParams"
-       items="documentsListCtl.filterItems"
-       disabled="documentsControlCtl.isEmptyState()"
-       on-close="documentsListCtl.onFilterClose(params)"
+       mn-filter
+       config="documentsListCtl.filterConfig"
+       mn-disabled="documentsControlCtl.isEmptyState()"
+       on-close="documentsListCtl.onFilterClose()"
        on-reset="documentsListCtl.onFilterReset()"
        ></div>
   </div>

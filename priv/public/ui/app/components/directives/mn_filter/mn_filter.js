@@ -9,16 +9,15 @@
     var mnFilter = {
       restrict: "A",
       scope: {
-        items: "=",
-        mnFilter: "=",
-        disabled: "=",
+        config: "=",
+        mnDisabled: "=",
         onClose: "&",
         onOpen: "&",
         onReset: "&"
       },
       templateUrl: "app/components/directives/mn_filter/mn_filter.html",
       controller: mnFilterController,
-      controllerAs: "mnFilterController",
+      controllerAs: "mnFilterCtl",
       bindToController: true
     };
 
@@ -28,34 +27,15 @@
       var vm = this;
 
       vm.togglePopup = togglePopup;
-      vm.stopEvent = stopEvent;
 
-      activate();
 
-      function stopEvent($event) {
-        $event.stopPropagation();
-      }
-
-      function onClose() {
-        vm.onClose({params: vm.mnFilter});
-      }
-
-      function togglePopup() {
-        vm.showPopup = !vm.showPopup;
+      function togglePopup(open) {
+        vm.showPopup = open;
         if (vm.showPopup) {
           vm.onOpen && vm.onOpen();
         } else {
-          vm.onClose && onClose();
+          vm.onClose && vm.onClose();
         }
-      }
-
-      function activate() {
-        angular.element($window).on("click", function () {
-          if (vm.showPopup) {
-            togglePopup();
-            $scope.$apply();
-          }
-        });
       }
     }
   }

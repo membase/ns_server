@@ -13,24 +13,27 @@
     vm.deleteDocument = deleteDocument;
     vm.onFilterClose = onFilterClose;
     vm.onFilterReset = onFilterReset;
-    vm.filterParams = {};
+
+    var filterConfig = {};
 
     try {
-      vm.filterInitParams = JSON.parse($state.params.documentsFilter);
+      filterConfig.params = JSON.parse($state.params.documentsFilter);
     } catch (e) {
-      vm.filterInitParams = {};
+      filterConfig.params = {};
     }
 
-    vm.filterItems = {
+    filterConfig.items = {
       inclusiveEnd: true,
       endkey: true,
       startkey: true
     };
 
+    vm.filterConfig = filterConfig;
+
     activate();
 
     function onFilterReset() {
-      vm.filterInitParams = {};
+      vm.filterConfig.params = {};
     }
     function lookupSubmit() {
       vm.lookupId && $state.go('^.^.editing', {
@@ -59,7 +62,8 @@
         }
       });
     }
-    function onFilterClose(params) {
+    function onFilterClose() {
+      var params = filterConfig.params;
       params = removeEmptyValueFilter(params);
       params && $state.go('^.list', {
         documentsFilter: _.isEmpty(params) ? null : JSON.stringify(params)

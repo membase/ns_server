@@ -7,9 +7,9 @@
 
   function mnViewsEditingResultController($scope, $state, mnPromiseHelper, mnViewsEditingService, viewsPerPageLimit) {
     var vm = this;
-
+    var filterConfig = {};
     if ($state.params.isSpatial) {
-      vm.filterItems = {
+      filterConfig.items = {
         stale: true,
         connectionTimeout: true,
         bbox: true,
@@ -17,7 +17,7 @@
         endRange: true
       };
     } else {
-      vm.filterItems = {
+      filterConfig.items = {
         stale: true,
         connectionTimeout: true,
         descending: true,
@@ -34,6 +34,7 @@
       };
     }
 
+    vm.filterConfig = filterConfig;
     vm.onFilterClose = onFilterClose;
     vm.onFilterOpen = onFilterOpen;
     vm.onFilterReset = onFilterReset;
@@ -44,8 +45,9 @@
     vm.loadSampleDocument = loadSampleDocument;
     vm.generateViewHref = generateViewHref;
     vm.getFilterParamsAsString = mnViewsEditingService.getFilterParamsAsString;
-    vm.filterParams = mnViewsEditingService.getFilterParams();
     vm.activate = activate;
+
+    filterConfig.params = mnViewsEditingService.getFilterParams();
 
     if ($state.params.activate) {
       $state.go('^.result', {
@@ -55,7 +57,7 @@
     }
 
     function onFilterReset() {
-      vm.filterParams = mnViewsEditingService.getInitialViewsFilterParams($state.params.isSpatial);
+      filterConfig.params = mnViewsEditingService.getInitialViewsFilterParams($state.params.isSpatial);
     }
 
     function generateViewHref() {
@@ -93,7 +95,8 @@
     function isNextDisabled() {
       return isEmptyState() || vm.viewLoading || !vm.state.rows || vm.state.rows.length < viewsPerPageLimit || $state.params.pageNumber >= 15;
     }
-    function onFilterClose(params) {
+    function onFilterClose() {
+      var params = filterConfig.params
       if (params.group === false) {
         delete params.group;
       }

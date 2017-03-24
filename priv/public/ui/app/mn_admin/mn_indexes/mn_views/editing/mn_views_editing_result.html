@@ -4,10 +4,10 @@
       <span class="row flex-left text-small indent-1 width-12">
         Filter:&nbsp;
         <div
-           mn-filter="viewsEditingResultCtl.filterParams"
-           items="viewsEditingResultCtl.filterItems"
-           disabled="viewsEditingResultCtl.isEmptyState()"
-           on-close="viewsEditingResultCtl.onFilterClose(params)"
+           mn-filter
+           config="viewsEditingResultCtl.filterConfig"
+           mn-disabled="viewsEditingResultCtl.isEmptyState()"
+           on-close="viewsEditingResultCtl.onFilterClose()"
            on-reset="viewsEditingResultCtl.onFilterReset()"
            on-open="viewsEditingResultCtl.onFilterOpen()">
         </div>&nbsp;

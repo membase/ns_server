@@ -1586,7 +1586,7 @@ input[type="checkbox"]:checked + label:before {
   box-shadow: 0 5px 6px 0 rgba(0,0,0,0.25);
   white-space: nowrap;
 }
-.dropdown-menu a {
+.dropdown-menu.dropdown-menu-select-like a {
   color: #4287d6;
   font-size: .875rem;
   line-height: 2.5rem;
@@ -1594,10 +1594,10 @@ input[type="checkbox"]:checked + label:before {
   border-bottom: 1px solid #d1d1d1;
   padding: 0 2rem;
 }
-.dropdown-menu a:last-child {
+.dropdown-menu.dropdown-menu-select-like a:last-child {
   border-bottom: none;
 }
-.dropdown-menu a:hover {
+.dropdown-menu.dropdown-menu-select-like a:hover {
   color: #000;
   background-color:#f6fafd;
   transition: none;
