@@ -492,7 +492,8 @@ extract_bucket_props(BucketId, Props) ->
           bucket_name,
           bucket_config,
           all_buckets,
-          cluster_storage_totals}).
+          cluster_storage_totals,
+          cluster_version}).
 
 init_bucket_validation_context(IsNew, BucketName, Req) ->
     ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
@@ -502,9 +503,10 @@ init_bucket_validation_context(IsNew, BucketName, Req) ->
 init_bucket_validation_context(IsNew, BucketName, ValidateOnly, IgnoreWarnings) ->
     init_bucket_validation_context(IsNew, BucketName,
                                    ns_bucket:get_buckets(), extended_cluster_storage_info(),
-                                   ValidateOnly, IgnoreWarnings).
+                                   ValidateOnly, IgnoreWarnings, cluster_compat_mode:get_compat_version()).
 
-init_bucket_validation_context(IsNew, BucketName, AllBuckets, ClusterStorageTotals, ValidateOnly, IgnoreWarnings) ->
+init_bucket_validation_context(IsNew, BucketName, AllBuckets, ClusterStorageTotals,
+                               ValidateOnly, IgnoreWarnings, ClusterVersion) ->
     {BucketConfig, ExtendedTotals} =
         case lists:keyfind(BucketName, 1, AllBuckets) of
             false -> {false, ClusterStorageTotals};
@@ -524,7 +526,8 @@ init_bucket_validation_context(IsNew, BucketName, AllBuckets, ClusterStorageTota
        bucket_name = BucketName,
        all_buckets = AllBuckets,
        bucket_config = BucketConfig,
-       cluster_storage_totals = ExtendedTotals
+       cluster_storage_totals = ExtendedTotals,
+       cluster_version = ClusterVersion
       }.
 
 handle_bucket_update(_PoolId, BucketId, Req) ->
@@ -1418,7 +1421,8 @@ handle_cancel_view_compaction(_PoolId, Bucket, DDocId, Req) ->
 
 %% for test
 basic_bucket_params_screening(IsNew, Name, Params, AllBuckets) ->
-    Ctx = init_bucket_validation_context(IsNew, Name, AllBuckets, undefined, false, false),
+    Ctx = init_bucket_validation_context(IsNew, Name, AllBuckets, undefined,
+                                         false, false, ?VERSION_46),
     basic_bucket_params_screening(Ctx, Params).
 
 -ifdef(EUNIT).
