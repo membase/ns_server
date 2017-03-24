@@ -313,13 +313,18 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                 []
         end,
 
+    Suffix5 = case MayExposeAuth of
+                  true ->
+                      [{saslPassword,
+                       list_to_binary(proplists:get_value(sasl_password, BucketConfig, ""))} |
+                       Suffix4];
+                  false ->
+                      Suffix4
+              end,
+
     {struct, [{name, list_to_binary(Id)},
               {bucketType, external_bucket_type(BucketType, BucketConfig)},
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
-              {saslPassword, case MayExposeAuth of
-                                 true -> list_to_binary(proplists:get_value(sasl_password, BucketConfig, ""));
-                                 _ -> <<"">>
-                             end},
               {proxyPort, proplists:get_value(moxi_port, BucketConfig, 0)},
               {uri, BuildUUIDURI(["pools", "default", "buckets", Id])},
               {streamingUri, BuildUUIDURI(["pools", "default", "bucketsStreaming", Id])},
@@ -341,7 +346,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                                 {directoryURI, StatsDirectoryUri},
                                 {nodeStatsListURI, NodeStatsListURI}]}},
               {nodeLocator, ns_bucket:node_locator(BucketConfig)}
-              | Suffix4]}.
+              | Suffix5]}.
 
 build_bucket_capabilities(BucketConfig) ->
     MaybeXattr = case cluster_compat_mode:is_cluster_spock() of
