@@ -79,7 +79,8 @@
              mn-minlength="6"
              mn-equal="{{setupNewClusterCtl.state.user.verifyPassword}}"
              required
-             mn-autocomplete-off>
+             mn-autocomplete-off
+             placeholder="6 characters minimum">
          </div>
          <div class="column width-6">
            <label for="secure-password-verify">Confirm Password</label>
@@ -90,7 +91,8 @@
               name="passwordVerify"
               id="secure-password-verify"
               mn-autocomplete-off
-              ng-model="setupNewClusterCtl.state.user.verifyPassword">
+              ng-model="setupNewClusterCtl.state.user.verifyPassword"
+              placeholder="6 characters minimum">
           </div>
         </div>
     </div>

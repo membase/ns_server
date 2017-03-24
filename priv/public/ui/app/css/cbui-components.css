@@ -858,11 +858,11 @@ section.error {
 /* Sign In page details ------------ */
 .sign-in-background {
   background: #eceff2;
-  height: 4.5rem;
-  width:100%;
-  position:absolute;
-  top: 24px;
-  z-index:1;
+  height: 4rem;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  z-index: 1;
 }
 
 /* Small Dialog (uses Panel) -------- */
@@ -1546,7 +1546,7 @@ input[type="checkbox"] + label {
   font-weight: normal;
   cursor: pointer;
   font-size: .875rem;
-  padding-left: .5rem;
+  padding-left: .25rem;
   margin-right: .75rem;
 }
 input[type="radio"] + label:last-child,
