@@ -1682,6 +1682,7 @@ section.dynamic_healthy {
   background-color: #fff;
 }
 .service-widget.dynamic_warmup,
+.service-widget.dynamic_inactiveFailed,
 section.dynamic_inactiveAdded,
 section.dynamic_warmup {
   border-left: 8px solid #f7a623;  /* orange-1 */
