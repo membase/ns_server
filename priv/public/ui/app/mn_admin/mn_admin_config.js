@@ -109,7 +109,7 @@
         },
         data: {
           title: "Buckets",
-          permission: "cluster.bucket['*'].settings.read"
+          permissions: "cluster.bucket['*'].settings.read"
         }
       })
       .state('app.admin.servers', {
