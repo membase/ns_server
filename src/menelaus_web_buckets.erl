@@ -853,7 +853,15 @@ parse_bucket_params_without_warnings(Ctx, Params) ->
 
 basic_bucket_params_screening(#bv_ctx{bucket_config = false, new = false}, _Params) ->
     {[], [{name, <<"Bucket with given name doesn't exist">>}]};
-basic_bucket_params_screening(#bv_ctx{bucket_config = BucketConfig} = Ctx, Params) ->
+basic_bucket_params_screening(#bv_ctx{cluster_version = Version} = Ctx, Params) ->
+    case cluster_compat_mode:is_version_spock(Version) of
+        true ->
+            basic_bucket_params_screening_tail(Ctx, Params);
+        false ->
+            basic_bucket_params_screening_auth_46(Ctx, Params)
+    end.
+
+basic_bucket_params_screening_auth_46(#bv_ctx{bucket_config = BucketConfig} = Ctx, Params) ->
     AuthType = case proplists:get_value("authType", Params) of
                    "none" ->
                        none;
@@ -876,10 +884,11 @@ basic_bucket_params_screening_tail(#bv_ctx{bucket_config = BucketConfig,
                                            new = IsNew} = Ctx, Params) ->
     BucketType = get_bucket_type(IsNew, BucketConfig, Params),
     CommonParams = validate_common_params(Ctx, Params),
+    VersionSpecificParams = validate_version_specific_params(Ctx, Params),
     TypeSpecificParams =
         validate_bucket_type_specific_params(CommonParams, Params, BucketType,
                                              IsNew, BucketConfig),
-    Candidates = CommonParams ++ TypeSpecificParams,
+    Candidates = CommonParams ++ VersionSpecificParams ++ TypeSpecificParams,
     assert_candidates(Candidates),
     {[{K,V} || {ok, K, V} <- Candidates],
      [{K,V} || {error, K, V} <- Candidates]}.
@@ -887,14 +896,22 @@ basic_bucket_params_screening_tail(#bv_ctx{bucket_config = BucketConfig,
 validate_common_params(#bv_ctx{bucket_name = BucketName,
                                bucket_config = BucketConfig, new = IsNew,
                                all_buckets = AllBuckets}, Params) ->
-    AuthType = proplists:get_value("authType", Params),
     [{ok, name, BucketName},
-     {ok, auth_type, AuthType},
      parse_validate_flush_enabled(Params, IsNew),
      validate_bucket_name(IsNew, BucketConfig, BucketName, AllBuckets),
-     validate_auth_params(AuthType, Params, BucketConfig, BucketName, IsNew),
      parse_validate_ram_quota(Params, BucketConfig),
      parse_validate_other_buckets_ram_quota(Params)].
+
+validate_version_specific_params(#bv_ctx{cluster_version = Version} = Ctx, Params) ->
+    case cluster_compat_mode:is_version_spock(Version) of
+        true ->
+            [validate_moxi_port(Ctx, Params)];
+        false ->
+            AuthType = proplists:get_value("authType", Params),
+            true = AuthType =/= undefined,
+            [{ok, auth_type, AuthType},
+             validate_auth_params_46(AuthType, Ctx, Params)]
+    end.
 
 validate_bucket_type_specific_params(CommonParams, _Params, memcached, IsNew,
                                      BucketConfig) ->
@@ -958,7 +975,7 @@ validate_bucket_name(false = _IsNew, BucketConfig, _BucketName, _AllBuckets) ->
     true = (BucketConfig =/= false),
     {ok, currentBucket, BucketConfig}.
 
-validate_auth_params(none = _AuthType, Params, BucketConfig, BucketName, _IsNew) ->
+validate_auth_params_46(none = _AuthType, #bv_ctx{bucket_config = BucketConfig} = Ctx, Params) ->
     case proplists:get_value("proxyPort", Params) of
         undefined when BucketConfig =/= false ->
             case ns_bucket:auth_type(BucketConfig) of
@@ -968,22 +985,30 @@ validate_auth_params(none = _AuthType, Params, BucketConfig, BucketName, _IsNew)
                     {error, proxyPort, <<"port is missing">>}
             end;
         ProxyPort ->
-            case (catch menelaus_util:parse_validate_port_number(ProxyPort)) of
-                {error, [Error]} ->
-                    {error, proxyPort, Error};
-                PP ->
-                    case ns_bucket:is_port_free(BucketName, PP) of
-                        true ->
-                            {ok, moxi_port, PP};
-                        false ->
-                            {error, proxyPort,
-                             <<"port is already in use">>}
-                    end
-            end
+            do_validate_moxi_port(Ctx, ProxyPort)
     end;
-validate_auth_params(sasl = _AuthType, Params, _BucketConfig, _BucketName, IsNew) ->
+validate_auth_params_46(sasl = _AuthType, #bv_ctx{new = IsNew}, Params) ->
     validate_with_missing(proplists:get_value("saslPassword", Params), "",
                           IsNew, fun validate_bucket_password/1).
+
+validate_moxi_port(Ctx, Params) ->
+    do_validate_moxi_port(Ctx, proplists:get_value("proxyPort", Params)).
+
+do_validate_moxi_port(_Ctx, undefined) ->
+    ignore;
+do_validate_moxi_port(#bv_ctx{bucket_name = BucketName}, ProxyPort) ->
+    case (catch menelaus_util:parse_validate_port_number(ProxyPort)) of
+        {error, [Error]} ->
+            {error, proxyPort, Error};
+        PP ->
+            case ns_bucket:is_port_free(BucketName, PP) of
+                true ->
+                    {ok, moxi_port, PP};
+                false ->
+                    {error, proxyPort,
+                     <<"port is already in use">>}
+            end
+    end.
 
 get_bucket_type(false = _IsNew, BucketConfig, _Params)
   when is_list(BucketConfig) ->
