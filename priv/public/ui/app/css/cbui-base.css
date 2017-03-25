@@ -264,6 +264,10 @@ button.icon {
     min-width: auto;
     padding: 0 1rem;
 }
+.fa-fw {
+  width: 1rem;
+  text-align: center;
+}
 .fa-2x {
   font-size: 2em;
 }
