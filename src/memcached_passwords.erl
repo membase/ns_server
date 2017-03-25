@@ -116,18 +116,6 @@ get_admin_auth_json({User, {auth, Auth}}) ->
 get_admin_auth_json(_) ->
     undefined.
 
-create_legacy_user(Bucket, Password, Yield) ->
-    {Salt, Mac} = ns_config_auth:hash_password(Password),
-    BucketAuth = menelaus_users:build_plain_memcached_auth_info(Salt, Mac),
-    Yield({json, {[{<<"n">>, list_to_binary(Bucket ++ ";legacy")} | BucketAuth]}}).
-
-maybe_create_default_user("default" = Username, Password, false, Yield) ->
-    [BucketAuth] =
-        menelaus_users:build_memcached_auth_info([{Username, Password}]),
-    Yield({json, BucketAuth});
-maybe_create_default_user(_, _, _, _) ->
-    ok.
-
 jsonify_auth([AU | Users], AP, Buckets, RestCreds) ->
     ?make_transducer(
        begin
@@ -152,33 +140,25 @@ jsonify_auth([AU | Users], AP, Buckets, RestCreds) ->
                                  ?yield({json, {UserAuthInfo}})
                          end, Users),
 
-           DefaultFound =
-               pipes:fold(
-                 ?producer(),
-                 fun ({{auth, {UserName, _Type}}, Auth}, DefFound) ->
-                         case UserName of
-                             ClusterAdmin ->
-                                 ?log_warning("Encountered user ~p with the same name as cluster administrator",
-                                              [ClusterAdmin]),
-                                 ok;
-                             _ ->
-                                 ?yield({json, {[{<<"n">>, list_to_binary(UserName)} | Auth]}})
-                         end,
-                         case UserName of
-                             "default" ->
-                                 ?log_warning("Encountered user with the name 'default'"),
-                                 true;
-                             _ ->
-                                 DefFound
-                         end
-                 end, false),
-
            lists:foreach(
              fun ({Bucket, Password}) ->
-                     create_legacy_user(Bucket, Password, ?yield()),
-                     maybe_create_default_user(Bucket, Password, DefaultFound, ?yield())
+                     {Salt, Mac} = ns_config_auth:hash_password(Password),
+                     BucketAuth = menelaus_users:build_plain_memcached_auth_info(Salt, Mac),
+                     ?yield({json, {[{<<"n">>, list_to_binary(Bucket ++ ";legacy")} | BucketAuth]}})
              end, Buckets),
 
+           pipes:foreach(
+             ?producer(),
+             fun ({{auth, {UserName, _Type}}, Auth}) ->
+                     case UserName of
+                         ClusterAdmin ->
+                             ?log_warning("Encountered user ~p with the same name as cluster administrator",
+                                          [ClusterAdmin]),
+                             ok;
+                         _ ->
+                             ?yield({json, {[{<<"n">>, list_to_binary(UserName)} | Auth]}})
+                     end
+             end),
            ?yield(array_end),
            ?yield(kv_end),
            ?yield(object_end)
