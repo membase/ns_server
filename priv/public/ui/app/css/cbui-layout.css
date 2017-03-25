@@ -72,6 +72,7 @@ nav.nav-sidebar {
 
 .main-content {
   flex: 1;
+  overflow: auto;
 }
 
 .relative {
