@@ -218,6 +218,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
             case PathTokens of
                 [] ->
                     {done, redirect_permanently("/ui/index.html", Req)};
+                ["ui"] ->
+                    {done, redirect_permanently("/ui/index.html", Req)};
                 ["versions"] ->
                     {done, handle_versions(Req)};
                 ["whoami"] ->
