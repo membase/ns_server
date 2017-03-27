@@ -332,7 +332,7 @@ send_server_error(Req, Msg) ->
 
 %%% =============================================================
 %%%
-maybe_serve_file(RestPrefix, Plugins, Req, Path) ->
+maybe_serve_file(RestPrefix, Plugins, Path, Req) ->
     case doc_roots(RestPrefix, Plugins) of
         DocRoots when is_list(DocRoots) ->
             serve_file_multiple_roots(Req, Path, DocRoots);

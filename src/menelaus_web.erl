@@ -220,6 +220,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
             case PathTokens of
                 [] ->
                     {done, redirect_permanently("/ui/index.html", Req)};
+                ["ui"] ->
+                    {done, redirect_permanently("/ui/index.html", Req)};
                 ["versions"] ->
                     {done, handle_versions(Req)};
                 ["whoami"] ->
@@ -448,8 +450,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["sasl_logs", LogName] ->
                     {{[admin, logs], read}, fun diag_handler:handle_sasl_logs/2, [LogName]};
                 ["images" | _] ->
-                    {done, menelaus_util:serve_file(Req, Path, AppRoot,
-                                                    [{"Cache-Control", "max-age=30000000"}])};
+                    {ui, IsSSL, fun handle_serve_file/4, [AppRoot, Path, 30000000]};
                 ["couchBase" | _] -> {no_check,
                                       fun menelaus_pluggable_ui:proxy_req/4,
                                       ["couchBase",
@@ -466,10 +467,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[admin, internal], all},
                      fun menelaus_web_rbac:handle_check_permission_for_cbauth/1};
                 [?PLUGGABLE_UI, "ui", RestPrefix | _] ->
-                    {done, menelaus_pluggable_ui:maybe_serve_file(
-                             RestPrefix, Plugins, Req,
-                             nth_path_tail(Path, 3))};
-
+                    {ui, IsSSL, fun menelaus_pluggable_ui:maybe_serve_file/4,
+                        [RestPrefix, Plugins, nth_path_tail(Path, 3)]};
                 [?PLUGGABLE_UI, RestPrefix | _] ->
                     {no_check,
                      fun (PReq) ->
@@ -479,9 +478,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                                Plugins, PReq)
                      end};
                 _ ->
-                    {done, menelaus_util:serve_file(
-                             Req, Path, AppRoot,
-                             [{"Cache-Control", "max-age=10"}])}
+                    {ui, IsSSL, fun handle_serve_file/4, [AppRoot, Path, 10]}
             end;
         'POST' ->
             case PathTokens of
@@ -885,6 +882,11 @@ handle_ui_root(AppRoot, Path, ?VERSION_41, [], Req) ->
     menelaus_util:serve_static_file(Req, {AppRoot, Path},
                                     "text/html; charset=utf8",
                                     [{"Cache-Control", "must-revalidate"}]).
+
+handle_serve_file(AppRoot, Path, MaxAge, Req) ->
+    menelaus_util:serve_file(
+        Req, Path, AppRoot,
+        [{"Cache-Control", lists:concat(["max-age=", MaxAge])}]).
 
 loop_inner(Req, Info, Path, PathTokens) ->
     menelaus_auth:validate_request(Req),
