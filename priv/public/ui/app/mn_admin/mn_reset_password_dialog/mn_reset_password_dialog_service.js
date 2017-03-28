@@ -7,7 +7,7 @@
     ])
     .factory("mnResetPasswordDialogService", mnResetPasswordDialogFactory);
 
-  function mnResetPasswordDialogFactory($http, $uibModal, $window) {
+  function mnResetPasswordDialogFactory($http, $uibModal, $q) {
     var mnResetPasswordDialogService = {
       post: post,
       showDialog: showDialog
@@ -28,7 +28,6 @@
     }
 
     function post(user) {
-
       return $http({
         headers: {
           'Authorization': "Basic " + btoa(user.name + ":" + user.currentPassword),
@@ -41,6 +40,10 @@
         }
       }).then(function (resp) {
         return resp.data;
+      }, function (resp) {
+        if (resp.status === 401) {
+          return $q.reject("Incorrect user password");
+        }
       });
     }
   }
