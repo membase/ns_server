@@ -48,14 +48,13 @@
 /* dialog closing (X) hyperlinks ------------ */
 .modal-close {
     display: block;
-    font-size: 1rem;
+    text-align: center;
+    font-size: 1.2rem;
     padding: .5rem .75rem;
-    margin-right: -.6rem;
-    font-weight: 500;
-    border: 1px solid #4287d6;
+    font-weight: 400;
     position: absolute;
-    top: .2rem;
-    right: .8rem;
+    top: 0;
+    right: .5rem;
     color: #fff;
 }
 
@@ -68,9 +67,9 @@
 }
 
 .modal-close:hover {
-    color: #fff;
-    border: 1px solid #eceff2;
-    transition: none;
+  color: #fff;
+  font-weight: 600;
+  transition: none;
 }
 
 .modal-close:active {

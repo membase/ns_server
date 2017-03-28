@@ -1154,6 +1154,14 @@ textarea {
   line-height: 1.5;
 }
 
+select[multiple] {
+  padding: 0;
+}
+
+select[multiple] option {
+  padding: .25rem .5rem;
+}
+
 textarea {
   font-size: .938rem;
 }
@@ -1373,7 +1381,7 @@ select.select-small {
 }
 
 .forms .error-form {
-  margin: 0 0 .5rem 0;
+  margin-bottom:.5rem;
 }
 
 /* background colors ----------------------------------- */
