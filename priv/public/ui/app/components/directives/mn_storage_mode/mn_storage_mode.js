@@ -25,7 +25,8 @@
         errors: "=",
         isDisabled: "=",
         noLabel: "=",
-        poolDefault: "=?"
+        poolDefault: "=?",
+        isForestdbHidden: "="
       },
       templateUrl: 'app/components/directives/mn_storage_mode/mn_storage_mode.html'
     };

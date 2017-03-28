@@ -21,6 +21,7 @@
       <div
          class="formrow"
          ng-if="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index"
+         is-forestdb-hidden="true"
          mn-storage-mode="serversMemoryQuotaDialogCtl.indexSettings"
          is-disabled="!serversMemoryQuotaDialogCtl.isEnterprise || serversMemoryQuotaDialogCtl.initialIndexSettings.storageMode !== ''"
          errors="serversMemoryQuotaDialogCtl.postIndexSettingsErrors"

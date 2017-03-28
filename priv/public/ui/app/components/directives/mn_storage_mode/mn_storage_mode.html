@@ -1,5 +1,16 @@
 <label for="index_ram_quota" ng-hide="noLabel">Index Storage Setting</label>
 <div class="checkbox-list storage-mode">
+  <div ng-hide="isForestdbHidden">
+    <input
+       type="radio"
+       value="forestdb"
+       id="storage_mode_forestdb"
+       ng-model="config.storageMode"
+       ng-disabled="isDisabled">
+    <label for="storage_mode_forestdb" class="checkbox">
+      Legacy Global Secondary Indexes
+    </label>
+  </div>
   <div ng-show="!poolDefault || poolDefault.compat.atLeast50">
     <input
        type="radio"
@@ -9,17 +20,6 @@
        ng-disabled="isDisabled">
     <label for="storage_plasma_indexes" class="checkbox">
       Standard Global Secondary Indexes
-    </label>
-  </div>
-  <div>
-    <input
-       type="radio"
-       value="forestdb"
-       id="storage_mode_forestdb"
-       ng-model="config.storageMode"
-       ng-disabled="isDisabled">
-    <label for="storage_mode_forestdb" class="checkbox">
-      Legacy Global Secondary Indexes
     </label>
   </div>
   <div>

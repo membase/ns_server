@@ -33,6 +33,7 @@
     <div ng-show="poolDefault.compat.atLeast40 && rbac.cluster.indexes.read">
       <div class="formrow">
         <div
+           is-forestdb-hidden="settingsClusterCtl.initialIndexSettings.storageMode !== 'forestdb'"
            mn-storage-mode="settingsClusterCtl.indexSettings"
            is-disabled="!adminCtl.poolDefault.isEnterprise || !rbac.cluster.indexes.write"
            no-label="true"
