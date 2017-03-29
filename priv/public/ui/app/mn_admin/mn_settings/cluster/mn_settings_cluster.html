@@ -3,8 +3,8 @@
   <form
      ng-submit="settingsClusterCtl.saveVisualInternalSettings()"
      class="forms">
-    <label for="cluster-name-field">Cluster Name</label>
-    <div class="row formrow width-480 margin-bottom2">
+    <div class="formrow width-480 margin-bottom2">
+      <h4>Cluster Name <small>(0 — 256 chars)</small></h4>
       <input
          id="cluster-name-field"
          type="text"
@@ -14,9 +14,8 @@
          maxlength="256"
          ng-model="settingsClusterCtl.clusterName"
          ng-disabled="!rbac.cluster.pools.write">
-      <small>&nbsp; (0 — 256 chars)</small>
     </div>
-    <hr class="width-480">
+
     <div class="formrow">
       <h4>Couchbase Memory Quotas <small>in megabytes per server node</small></h4>
     </div>
@@ -26,7 +25,7 @@
        mn-memory-quota="settingsClusterCtl.memoryQuotaConfig"
        errors="settingsClusterCtl.memoryQuotaErrors">
     </div>
-    <hr class="width-480">
+
     <h4 ng-show="poolDefault.compat.atLeast40 && rbac.cluster.indexes.read">
       Index Settings
     </h4>
@@ -121,11 +120,13 @@
         </div>
       </div>
     </div>
-    <button
-       type="submit"
-       ng-show="rbac.cluster.pools.write || rbac.cluster.indexes.write"
-       ng-disabled="!!settingsClusterCtl.indexSettingsErrors || !!settingsClusterCtl.memoryQuotaErrors">
-      Save
-    </button>
+    <div class="margin-top2">
+      <button
+         type="submit"
+         ng-show="rbac.cluster.pools.write || rbac.cluster.indexes.write"
+         ng-disabled="!!settingsClusterCtl.indexSettingsErrors || !!settingsClusterCtl.memoryQuotaErrors">
+        Save
+      </button>
+    </div>
   </form>
 </div>
