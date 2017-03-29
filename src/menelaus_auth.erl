@@ -273,7 +273,7 @@ verify_login_creds(Username, Password) ->
         {ok, {Username, bucket}} ->
             false;
         {ok, Identity} ->
-            case check_permission(Identity, {[pools], read}) of
+            case check_permission(Identity, {[ui], read}) of
                 allowed ->
                     {ok, Identity};
                 _ ->
