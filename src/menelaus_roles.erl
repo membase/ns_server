@@ -198,6 +198,7 @@ roles_spock() ->
       [{[{bucket, bucket_name}, stats], [read]},
        {[{bucket, bucket_name}, data, dcp], [read]},
        {[{bucket, bucket_name}, data, sxattr], [read]},
+       {[{bucket, bucket_name}, data, xattr], [read]},
        {[admin, memcached, idle], [write]},
        {[pools], [read]}]},
      {data_backup, [bucket_name],
