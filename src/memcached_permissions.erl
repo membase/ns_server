@@ -35,17 +35,19 @@
                 cluster_admin}).
 
 bucket_permissions_to_check(Bucket) ->
-    [{{[{bucket, Bucket}, data, docs], read},  'Read'},
-     {{[{bucket, Bucket}, data, docs], write}, 'Write'},
-     {{[{bucket, Bucket}, stats], read},       'SimpleStats'},
-     {{[{bucket, Bucket}, data, dcp], read},   'DcpConsumer'},
-     {{[{bucket, Bucket}, data, dcp], write},  'DcpProducer'},
-     {{[{bucket, Bucket}, data, tap], read},   'Tap'},
-     {{[{bucket, Bucket}, data, tap], write},  'Tap'},
-     {{[{bucket, Bucket}, data, meta], read},  'MetaRead'},
-     {{[{bucket, Bucket}, data, meta], write}, 'MetaWrite'},
-     {{[{bucket, Bucket}, data, xattr], read}, 'XattrRead'},
-     {{[{bucket, Bucket}, data, xattr], write},'XattrWrite'}].
+    [{{[{bucket, Bucket}, data, docs], read},   'Read'},
+     {{[{bucket, Bucket}, data, docs], write},  'Write'},
+     {{[{bucket, Bucket}, stats], read},        'SimpleStats'},
+     {{[{bucket, Bucket}, data, dcp], read},    'DcpConsumer'},
+     {{[{bucket, Bucket}, data, dcp], write},   'DcpProducer'},
+     {{[{bucket, Bucket}, data, tap], read},    'Tap'},
+     {{[{bucket, Bucket}, data, tap], write},   'Tap'},
+     {{[{bucket, Bucket}, data, meta], read},   'MetaRead'},
+     {{[{bucket, Bucket}, data, meta], write},  'MetaWrite'},
+     {{[{bucket, Bucket}, data, xattr], read},  'XattrRead'},
+     {{[{bucket, Bucket}, data, xattr], write}, 'XattrWrite'},
+     {{[{bucket, Bucket}, data, sxattr], read}, 'SystemXattrRead'},
+     {{[{bucket, Bucket}, data, sxattr], write},'SystemXattrWrite'}].
 
 global_permissions_to_check() ->
     [{{[stats, memcached], read},           'Stats'},
@@ -267,8 +269,8 @@ generate_json_45_test() ->
         [{<<"default">>,
           {[{buckets,{[{<<"default">>,
                         ['DcpConsumer','DcpProducer','MetaRead','MetaWrite',
-                         'Read','SimpleStats','Tap','Write','XattrRead',
-                         'XattrWrite']},
+                         'Read','SimpleStats','SystemXattrRead', 'SystemXattrWrite',
+                         'Tap','Write','XattrRead', 'XattrWrite']},
                        {<<"test">>,[]}]}},
             {privileges,[]},
             {type, builtin}]}},
@@ -276,8 +278,8 @@ generate_json_45_test() ->
           {[{buckets,{[{<<"default">>,[]},
                        {<<"test">>,
                         ['DcpConsumer','DcpProducer','MetaRead','MetaWrite',
-                         'Read','SimpleStats','Tap','Write','XattrRead',
-                         'XattrWrite']}]}},
+                         'Read','SimpleStats', 'SystemXattrRead', 'SystemXattrWrite',
+                         'Tap','Write','XattrRead', 'XattrWrite']}]}},
             {privileges,[]},
             {type, builtin}]}}],
     ?assertEqual(Json, generate_json_45(Buckets, RoleDefinitions)).
