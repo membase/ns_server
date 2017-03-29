@@ -204,7 +204,10 @@ build_auto_compaction_info(BucketConfig, couchstore) ->
               menelaus_web:build_bucket_auto_compaction_settings(ACSettings)}]
     end;
 build_auto_compaction_info(_BucketConfig, ephemeral) ->
-    [].
+    [];
+build_auto_compaction_info(_BucketConfig, undefined) ->
+    %% When the bucket type is memcached.
+    [{autoCompactionSettings, false}].
 
 build_purge_interval_info(BucketConfig, couchstore) ->
     case proplists:get_value(autocompaction, BucketConfig, false) of
@@ -218,7 +221,10 @@ build_purge_interval_info(BucketConfig, couchstore) ->
             [{purgeInterval, PInterval}]
     end;
 build_purge_interval_info(BucketConfig, ephemeral) ->
-    [{purgeInterval, proplists:get_value(purge_interval, BucketConfig)}].
+    [{purgeInterval, proplists:get_value(purge_interval, BucketConfig)}];
+build_purge_interval_info(_BucketConfig, undefined) ->
+    %% When the bucket type is memcached.
+    [].
 
 build_eviction_policy(BucketConfig) ->
     case ns_bucket:eviction_policy(BucketConfig) of
