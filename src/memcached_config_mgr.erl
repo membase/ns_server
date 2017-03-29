@@ -320,7 +320,7 @@ ssl_minimum_protocol([], _Params) ->
 
 client_cert_auth([], _Params) ->
     Val = ns_ssl_services_setup:client_cert_auth(),
-    atom_to_binary(Val, latin1).
+    {[{K, list_to_binary(V)} || {K,V} <- Val]}.
 
 is_enabled([FeatureVersion], _Params) ->
     cluster_compat_mode:is_enabled(FeatureVersion).

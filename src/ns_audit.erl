@@ -541,4 +541,4 @@ password_policy(Req, Policy) ->
     put(password_policy, Req, PreparedPolicy).
 
 client_cert_auth(Req, Value) ->
-    put(client_cert_auth, Req, [{value, Value}]).
+    put(client_cert_auth, Req, Value).

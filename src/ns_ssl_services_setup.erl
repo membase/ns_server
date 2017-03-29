@@ -202,7 +202,8 @@ ssl_minimum_protocol() ->
     ns_config:search(ns_config:latest(), ssl_minimum_protocol, 'tlsv1').
 
 client_cert_auth() ->
-    ns_config:search(ns_config:latest(), client_cert_auth, disable).
+    DefaultValue = [{state, "disable"}],
+    ns_config:search(ns_config:latest(), client_cert_auth, DefaultValue).
 
 %% The list is obtained by running the following openssl command:
 %%
@@ -253,7 +254,8 @@ supported_ciphers() ->
     end.
 
 ssl_auth_options() ->
-    case client_cert_auth() of
+    Val = list_to_atom(proplists:get_value(state, client_cert_auth())),
+    case Val of
         disable ->
             [];
         enable ->
