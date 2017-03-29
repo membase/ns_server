@@ -90,7 +90,9 @@
         $window.location.reload();
       }
       function reloadState(state) {
-        mnPendingQueryKeeper.cancelAllQueries();
+        if (!state) {
+          mnPendingQueryKeeper.cancelAllQueries();
+        }
         return $state.reload(state);
       }
     }
