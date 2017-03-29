@@ -55,7 +55,7 @@ do_upgrade_config(Config, FinalVersion) ->
             [{set, cluster_compat_version, ?VERSION_46}];
         {value, ?VERSION_46} ->
             [{set, cluster_compat_version, ?SPOCK_VERSION_NUM} |
-             upgrade_config_from_4_6_to_spock()]
+             upgrade_config_from_4_6_to_spock(Config)]
     end.
 
 upgrade_config_from_3_0_to_4_0(Config) ->
@@ -90,6 +90,7 @@ create_service_maps(Config, Services) ->
                 S <- Services],
     [{set, {service_map, Service}, Map} || {Service, Map} <- Maps].
 
-upgrade_config_from_4_6_to_spock() ->
+upgrade_config_from_4_6_to_spock(Config) ->
     ?log_info("Performing online config upgrade to Spock version"),
-    [{delete, roles_definitions} | menelaus_users:config_upgrade()].
+    [{delete, roles_definitions} | menelaus_users:config_upgrade() ++
+         ns_bucket:config_upgrade_to_spock(Config)].
