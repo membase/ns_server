@@ -10,6 +10,7 @@
       saslPassword: '',
       bucketType: 'membase',
       evictionPolicy: 'valueOnly',
+      evictionPolicyEphemeral: 'noEviction',
       replicaNumber: "1",
       replicaIndex: "0",
       threadsNumber: "3",

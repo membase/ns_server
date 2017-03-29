@@ -113,7 +113,7 @@
 
     <div
        class="formrow checkbox-list"
-       ng-show="bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral'">
+       ng-if="bucketConf.bucketType === 'membase'">
       <hr>
       <h4>
         <label class="inline">Ejection Method</label>
@@ -137,7 +137,7 @@
          checked="checked"
          ng-model="bucketConf.evictionPolicy">
       <label for="for-metadata-value-eject">
-        {{bucketConf.bucketType === 'ephemeral' ? 'No ejection' : 'Value-only'}}
+        Value-only
       </label>
       <input
          type="radio"
@@ -146,12 +146,48 @@
          id="for-metadata-full-eject"
          ng-model="bucketConf.evictionPolicy">
       <label for="for-metadata-full-eject">
-        {{bucketConf.bucketType === 'ephemeral' ? 'NRU ejection' : 'Full'}}
+        Full
       </label>
       <div
          class="error"
          ng-show="!!evictionPolicyWarning">
         {{evictionPolicyWarning}}
+      </div>
+    </div>
+
+    <div
+       class="formrow checkbox-list"
+       ng-if="bucketConf.bucketType === 'ephemeral'">
+      <hr>
+      <h4>
+        <label class="inline">Ejection Method</label>
+      </h4>
+
+      <input
+         type="radio"
+         name="evictionPolicyEphemeral"
+         value="noEviction"
+         id="for-metadata-value-eject"
+         checked="checked"
+         ng-disabled="!bucketConf.isNew"
+         ng-model="bucketConf.evictionPolicyEphemeral">
+      <label for="for-metadata-value-eject">
+        No ejection
+      </label>
+      <input
+         type="radio"
+         name="evictionPolicyEphemeral"
+         value="nruEviction"
+         id="for-metadata-full-eject"
+         ng-disabled="!bucketConf.isNew"
+         ng-model="bucketConf.evictionPolicyEphemeral">
+      <label for="for-metadata-full-eject">
+        NRU ejection
+      </label>
+      <div
+         class="error"
+         ng-show="validation.result.errors.evictionPolicy">
+        {{validation.result.errors.evictionPolicy}}
       </div>
     </div>
 

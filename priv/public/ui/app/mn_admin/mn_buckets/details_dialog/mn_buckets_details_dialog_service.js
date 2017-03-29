@@ -40,13 +40,14 @@
         copyProperties(["name", "bucketType"]);
       }
       if (bucketConf.bucketType === "membase") {
-        copyProperty("autoCompactionDefined");
+        copyProperties(["autoCompactionDefined", "evictionPolicy"]);
       }
       if (bucketConf.bucketType === "ephemeral") {
         copyProperty("purgeInterval");
+        conf["evictionPolicy"] = bucketConf["evictionPolicyEphemeral"];
       }
       if (bucketConf.bucketType === "membase" || bucketConf.bucketType === "ephemeral") {
-        copyProperties(["evictionPolicy", "threadsNumber", "replicaNumber"]);
+        copyProperties(["threadsNumber", "replicaNumber"]);
         if (bucketConf.isNew) {
           if (bucketConf.bucketType !== "ephemeral") {
             copyProperty("replicaIndex");
@@ -101,6 +102,7 @@
     }
     function reviewBucketConf(bucketDetails) {
       return mnBucketsDetailsService.doGetDetails(bucketDetails).then(function (bucketConf) {
+        bucketConf["evictionPolicyEphemeral"] = bucketConf["evictionPolicy"];
         bucketConf.ramQuotaMB = mnBytesToMBFilter(bucketConf.quota.rawRAM);
         bucketConf.isDefault = bucketConf.name === 'default';
         bucketConf.replicaIndex = bucketConf.replicaIndex ? 1 : 0;
