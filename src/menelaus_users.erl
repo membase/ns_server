@@ -496,7 +496,7 @@ do_upgrade_to_spock(Nodes, Repair) ->
       end, LdapUsers).
 
 config_upgrade() ->
-    [{delete, users_upgrade}].
+    [{delete, users_upgrade}, {delete, read_only_user_creds}].
 
 upgrade_status() ->
     ns_config:read_key_fast(users_upgrade, undefined).
