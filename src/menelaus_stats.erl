@@ -1554,51 +1554,66 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
                {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
                 [{struct, [{title, <<"items">>},
-                          {name, per_fts_stat(Id, <<"doc_count">>)},
-                          {desc, <<"Number of documents">>}]},
+                           {name, per_fts_stat(Id, <<"doc_count">>)},
+                           {desc, <<"Number of documents"
+                                    " (measured from doc_count)">>}]},
                  {struct, [{title, <<"bytes indexed/sec">>},
                            {name, per_fts_stat(Id, <<"total_bytes_indexed">>)},
-                           {desc, <<"Number of plain text bytes indexed per second">>}]},
+                           {desc, <<"Number of plain text bytes indexed per second"
+                                    " (measured from total_bytes_indexed)">>}]},
                  {struct, [{title, <<"queries/sec">>},
                            {name, per_fts_stat(Id, <<"total_queries">>)},
-                           {desc, <<"Number of queries per second">>}]},
+                           {desc, <<"Number of queries per second"
+                                    " (measured from total_queries)">>}]},
                  {struct, [{title, <<"error queries/sec">>},
                            {name, per_fts_stat(Id, <<"total_queries_error">>)},
-                           {desc, <<"Number of queries that resulted in errors per second. Includes timeouts.">>}]},
+                           {desc, <<"Number of queries that resulted in errors per second. Includes timeouts"
+                                    " (measured from total_queries_error)">>}]},
                  {struct, [{title, <<"items remaining">>},
                            {name, per_fts_stat(Id, <<"num_mutations_to_index">>)},
-                           {desc, <<"Number of mutations not yet indexed">>}]},
+                           {desc, <<"Number of mutations not yet indexed"
+                                    " (measured from num_mutations_to_index)">>}]},
                  {struct, [{title, <<"compactions/sec">>},
                            {name, per_fts_stat(Id, <<"total_compactions">>)},
-                           {desc, <<"Number of compactions completed per second">>}]},
+                           {desc, <<"Number of compactions completed per second"
+                                    " (measured from total_compactions)">>}]},
                  {struct, [{title, <<"avg query latency(ms)">>},
                            {name, per_fts_stat(Id, <<"avg_queries_latency">>)},
-                           {desc, <<"Average time to answer query">>}]},
+                           {desc, <<"Average time to answer query"
+                                    " (measured from avg_queries_latency)">>}]},
                  {struct, [{title, <<"timeout queries/sec">>},
                            {name, per_fts_stat(Id, <<"total_queries_timeout">>)},
-                           {desc, <<"Number of queries that timeout per second">>}]},
+                           {desc, <<"Number of queries that timeout per second"
+                                    " (measured from total_queries_timeout)">>}]},
                  {struct, [{title, <<"records to persist">>},
                            {name, per_fts_stat(Id, <<"num_recs_to_persist">>)},
-                           {desc, <<"Number of index records not yet persisted to disk">>}]},
+                           {desc, <<"Number of index records not yet persisted to disk"
+                                    " (measured from num_recs_to_persist)">>}]},
                  {struct, [{title, <<"partitions actual">>},
                            {name, per_fts_stat(Id, <<"num_pindexes_actual">>)},
-                           {desc, <<"Number of index partitions">>}]},
+                           {desc, <<"Number of index partitions"
+                                    " (measured from num_pindexes_actual)">>}]},
                  {struct, [{title, <<"bytes returned/sec">>},
                            {name, per_fts_stat(Id, <<"total_bytes_query_results">>)},
-                           {desc, <<"Number of bytes returned in results per second">>}]},
+                           {desc, <<"Number of bytes returned in results per second"
+                                    " (measured from total_bytes_query_results)">>}]},
                  {struct, [{title, <<"slow queries/sec">>},
                            {name, per_fts_stat(Id, <<"total_queries_slow">>)},
-                           {desc, <<"Number of slow queries per second">>}]},
+                           {desc, <<"Number of slow queries per second"
+                                    " (measured from total_queries_slow)">>}]},
                  {struct, [{isBytes, true},
                            {title, <<"disk size">>},
                            {name, per_fts_stat(Id, <<"num_bytes_used_disk">>)},
-                           {desc, <<"Total disk file size used by the index">>}]},
+                           {desc, <<"Total disk file size used by the index"
+                                    " (measured from num_bytes_used_disk)">>}]},
                  {struct, [{title, <<"partitions target">>},
                            {name, per_fts_stat(Id, <<"num_pindexes_target">>)},
-                           {desc, <<"Number of index partitions expected">>}]},
+                           {desc, <<"Number of index partitions expected"
+                                    " (measured from num_pindexes_target)">>}]},
                  {struct, [{title, <<"term searchers/sec">>},
                            {name, per_fts_stat(Id, <<"total_term_searchers">>)},
-                           {desc, <<"Number of term searchers started per second">>}]}]}]}
+                           {desc, <<"Number of term searchers started per second"
+                                    " (measured from total_term_searchers)">>}]}]}]}
      || Id <- AllIndexes].
 
 couchbase_query_stats_descriptions() ->
