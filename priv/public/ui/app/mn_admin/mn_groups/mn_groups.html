@@ -50,10 +50,10 @@
     <section
        class="row flex-left"
        ng-repeat="server in group.nodes">
-      <span
-         class="cbui-table-cell status success"
+      <section
+         class="cbui-table-cell status"
          ng-class="['dynamic_' + server.status, 'dynamic_' + server.clusterMembership]">
-      </span>
+      </section>
       <span class="cbui-table-cell">
         {{server.hostname | mnStripPortHTML:group.nodes}}
       </span>
