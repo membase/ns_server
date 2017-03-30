@@ -1,95 +1,106 @@
+<mn-element-cargo depot="actions">
+  <a href=""
+     ng-show="rbac.cluster.admin.security.write"
+     ng-click="userRolesCtl.addUser()">
+    ADD USER
+  </a>
+</mn-element-cargo>
 <div mn-spinner="!userRolesCtl.state || userRolesCtl.viewLoading" min-height="300px">
-  <div class="row flex-right margin-bottom-half">
-    <button
-       ng-show="rbac.cluster.admin.security.write"
-       ng-click="userRolesCtl.addUser()">+ Add User</button>
-  </div>
-
-  <div>
-    <table
-       class="table-stroked"
-       mn-sortable-table>
-      <tr>
-        <th mn-sortable-title="id">Username</th>
-        <th
-           mn-sortable-title="name"
-           sort-by-default="true"
-           class="text-center">Full Name</th>
-        <th mn-sortable-title="roles" class="text-center">Roles</th>
-        <th mn-sortable-title="type">Auth</th>
-      </tr>
-      <tbody
-         ng-if="userRolesCtl.state.users.length"
-         ng-repeat="user in userRolesCtl.state.users |
-                    orderBy: mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert |
-                    limitTo: (userRolesCtl.pageNumber - 1) * userRolesCtl.pageLimit - userRolesCtl.state.users.length |
-                    limitTo: userRolesCtl.pageLimit
-                    track by (user.id + user.type)">
-        <tr
-           ng-click="userRolesCtl.toggleDetails(user.id + user.type)"
-           ng-class="{
-                     'no-stroke': userRolesCtl.isDetailsOpened(user.id + user.type) && rbac.cluster.admin.security.write,
-                     'has-hover': rbac.cluster.admin.security.write}">
-          <td class="ellipsis max-width-3">{{user.id}}</td>
-          <td class="ellipsis max-width-3 text-center">{{user.name}}</td>
-          <td class="text-center">
-            <a
-               href=""
-               class="margin-right-half"
-               ng-repeat="role in user.roles"
-               uib-tooltip="{{userRolesCtl.rolesByRole[role.role + (role.bucket_name ? '[*]' : '')].desc}}">
-              {{userRolesCtl.rolesByRole[role.role + (role.bucket_name ? '[*]' : '')].name}} <span ng-show="role.bucket_name">[{{role.bucket_name}}]</span>
-            </a>
-          </td>
-          <td>
-            {{user.type === "builtin" ? "Internal" : "External"}}
-          </td>
-        </tr>
-        <tr>
-          <td class="text-right" colspan="4" ng-if="userRolesCtl.isDetailsOpened(user.id + user.type) && rbac.cluster.admin.security.write">
-            <button
-               class="outline"
-               ng-click="userRolesCtl.deleteUser(user)">Delete</button>
-            <button
-               ng-show="user.type !== 'external'"
-               ng-click="userRolesCtl.resetUserPassword(user)">Reset Password</button>
-            <button
-               ng-click="userRolesCtl.editUser(user)">Edit</button>
-          </td>
-        </tr>
-      </tbody>
-      <tbody ng-if="!userRolesCtl.state.users.length">
-        <tr>
-          <td colspan="4">Users list is empty</td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="row">
-      <select
-         ng-change="userRolesCtl.pageLimitChanged()"
-         ng-model="userRolesCtl.pageLimit"
-         ng-options="o as o for o in [10,20,50,100]"></select>
-      <div>
-        <a href=""
-           ng-hide="userRolesCtl.pageNumber === 1"
-           ng-click="userRolesCtl.prevPage()">&lt; Prev</a>
-        <a href="" ng-show="userRolesCtl.pageNumber > 3">...</a>
-        <a href=""
-           ng-repeat="pageNumber in userRolesCtl.getVisiblePages() track by pageNumber"
-           ng-click="userRolesCtl.goToPage(pageNumber)">
-          {{pageNumber}}
-        </a>
-        <span ng-show="userRolesCtl.pageNumber + 2 < userRolesCtl.getTotalPageCount()">
-          <a href="">...</a>
-          <a href=""
-             ng-click="userRolesCtl.goToPage(userRolesCtl.getTotalPageCount())">
-            {{userRolesCtl.getTotalPageCount()}}
-          </a>
-        </span>
-        <a href=""
-           ng-show="userRolesCtl.state.users.length > userRolesCtl.pageNumber * userRolesCtl.pageLimit"
-           ng-click="userRolesCtl.nextPage()">Next &gt;</a>
-      </div>
+  <div class="cbui-table" mn-sortable-table>
+    <div class="cbui-table-header padding-left">
+      <span
+         class="cbui-table-cell"
+         mn-sortable-title="id">username</span>
+      <span
+         class="cbui-table-cell"
+         mn-sortable-title="name"
+         sort-by-default="true">full name</span>
+      <span
+        class="cbui-table-cell flex-grow-3"
+        mn-sortable-title="roles">roles</span>
+      <span
+         class="cbui-table-cell flex-grow-half"
+         mn-sortable-title="type">auth type</span>
     </div>
+    <section
+       class="has-hover"
+       ng-if="userRolesCtl.state.users.length"
+       ng-click="userRolesCtl.toggleDetails(user.id + user.type)"
+       ng-repeat="user in userRolesCtl.state.users |
+                  orderBy: mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert |
+                  limitTo: (userRolesCtl.pageNumber - 1) * userRolesCtl.pageLimit - userRolesCtl.state.users.length |
+                  limitTo: userRolesCtl.pageLimit
+                  track by (user.id + user.type)">
+      <div class="cbui-tablerow padding-left">
+        <span class="cbui-table-cell">{{user.id}}</span>
+        <span class="cbui-table-cell">{{user.name}}</span>
+        <span class="cbui-table-cell flex-grow-3 wrap">
+          <span
+              class="relative"
+              style="cursor:default;"
+              ng-repeat="role in user.roles track by $index"
+              tooltip-trigger="'mouseenter'"
+              tooltip-append-to-body="true"
+              ng-click="$event.stopPropagation()"
+              uib-tooltip="{{userRolesCtl.rolesByRole[role.role + (role.bucket_name ? '[' + role.bucket_name + ']' : '')].desc}}">
+            <span class="ellipsis">
+              {{userRolesCtl.rolesByRole[role.role + (role.bucket_name ? '[' + role.bucket_name + ']' : '')].name}}<span ng-show="role.bucket_name"
+              >[{{role.bucket_name}}]</span
+              ><span ng-show="!$last && user.roles.length > 1">,</span>
+            </span>
+          </span>
+        </span>
+        <span class="cbui-table-cell flex-grow-half">
+          {{user.type === "builtin" ? "Internal" : "LDAP"}}
+        </span>
+      </div>
+      <div
+         class="cbui-tablerow-expanded text-right"
+         ng-if="userRolesCtl.isDetailsOpened(user.id + user.type) && rbac.cluster.admin.security.write">
+        <button
+           class="outline"
+           ng-click="userRolesCtl.deleteUser(user)">Delete</button>
+        <button
+           class="outline"
+           ng-show="user.type !== 'saslauthd'"
+           ng-click="userRolesCtl.resetUserPassword(user)">Reset Password</button>
+        <button
+           ng-click="userRolesCtl.editUser(user)">Edit</button>
+      </div>
+    </section>
+
+    <div
+       ng-if="!userRolesCtl.state.users.length"
+       class="zero-content">
+      No users to display.
+    </div>
+  </div>
+  <div class="row pagination">
+    <select
+       ng-change="userRolesCtl.pageLimitChanged()"
+       ng-model="userRolesCtl.pageLimit"
+       ng-options="o as o for o in [10,20,50,100]"></select>
+    <span>
+      <a href=""
+         ng-hide="userRolesCtl.pageNumber === 1"
+         ng-click="userRolesCtl.prevPage()">&lt; Prev</a>
+      <a href="" ng-show="userRolesCtl.pageNumber > 3">...</a>
+      <a href=""
+         ng-repeat="pageNumber in userRolesCtl.getVisiblePages() track by pageNumber"
+         ng-click="userRolesCtl.goToPage(pageNumber)"
+         ng-show="userRolesCtl.getTotalPageCount() > 1">
+        {{pageNumber}}
+      </a>
+      <span ng-show="userRolesCtl.pageNumber + 2 < userRolesCtl.getTotalPageCount()">
+        <a href="">...</a>
+        <a href=""
+           ng-click="userRolesCtl.goToPage(userRolesCtl.getTotalPageCount())">
+          {{userRolesCtl.getTotalPageCount()}}
+        </a>
+      </span>
+      <a href=""
+         ng-show="userRolesCtl.state.users.length > userRolesCtl.pageNumber * userRolesCtl.pageLimit"
+         ng-click="userRolesCtl.nextPage()">Next &gt;</a>
+    </span>
   </div>
 </div>

@@ -6,13 +6,14 @@
      ng-submit="userRolesDeleteDialogCtl.onSubmit()"
      mn-spinner="userRolesDeleteDialogCtl.viewLoading">
     <div class="panel-content">
-      <p class="error">
-        Are you sure you want to permanently delete {{userRolesDeleteDialogCtl.username}}?
-      </p>
+      <div class="row flex-left">
+        <span class="icon fa-warning fa-2x red-3"></span>
+        <p>Warning: This action is not reversible.<br>Delete {{userRolesDeleteDialogCtl.username}}?</p>
+      </div>
     </div>
     <div class="panel-footer">
       <a href="" ng-click="$dismiss()">Cancel</a>
-      <button type="submit">Yes, Delete</button>
+      <button type="submit">Delete User</button>
     </div>
   </form>
 </div>
