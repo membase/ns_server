@@ -145,7 +145,8 @@
               tasks.running.forEach(function (task) {
                 if (task.type !== "indexer" &&
                     task.type !== "view_compaction" &&
-                    task.type !== "orphanBucket") {
+                    task.type !== "orphanBucket" &&
+                    task.type !== "warming_up") {
                   if (!prevTask) {
                     vm.isProgressBarClosed = false;
                   } else {
