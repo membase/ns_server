@@ -27,6 +27,7 @@
       ejectNode: ejectNode,
       postRebalance: postRebalance,
       getNodeStatuses: getNodeStatuses,
+      addNodesByStatus: addNodesByStatus,
       getNodes: getNodes,
       addServer: addServer
     };
@@ -118,6 +119,55 @@
         return $q.reject(resp);
       });
     }
+    function addStatusMessagePart(status, message) {
+      if (status.length) {
+        return status + ", " + message;
+      } else {
+        return status + message;
+      }
+    }
+    function getStatusWeight(status) {
+      var priority = {
+        unhealthy: 0,
+        inactiveFailed: 1,
+        warmup: 2,
+        healthy: 3,
+      };
+      return priority[status] === undefined ? 100 : priority[status];
+    }
+    function addNodesByStatus(nodes) {
+      var nodesByStatuses = {};
+      var statusClass = "inactive";
+
+      _.forEach(nodes, function (node) {
+        var status = "";
+
+        if (node.clusterMembership === 'inactiveFailed') {
+          status = addStatusMessagePart(status, "failed over");
+        }
+        if (node.status === 'unhealthy') {
+          status = addStatusMessagePart(status, "not responding");
+        }
+        if (node.status === 'warmup') {
+          status = addStatusMessagePart(status, "warmup");
+        }
+        if (status != "") {
+          nodesByStatuses[status] = ++nodesByStatuses[status] || 1;
+        }
+        if (getStatusWeight(statusClass) > getStatusWeight(node.status)) {
+          statusClass = node.status;
+        }
+        if (getStatusWeight(statusClass) > getStatusWeight(node.clusterMembership)) {
+          statusClass = node.clusterMembership;
+        }
+      });
+
+
+      nodes.nodesByStatuses = nodesByStatuses;
+      nodes.statusClass = statusClass;
+
+      return nodes;
+    }
     function getNodeStatuses(hostname) {
       return $http({
         method: 'GET',
@@ -204,4 +254,3 @@
     }
   }
 })();
-

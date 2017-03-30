@@ -79,59 +79,13 @@
 
     return mnOverviewService;
 
-    function addStatusMessagePart(status, message) {
-      if (status.length) {
-        return status + ", " + message;
-      } else {
-        return status + message;
-      }
-    }
-
-    function getStatusWeight(status) {
-      var priority = {
-        unhealthy: 0,
-        inactiveFailed: 1,
-        warmup: 2,
-        healthy: 3,
-      };
-      return priority[status] === undefined ? 100 : priority[status];
-    }
 
     function getNodesByService(service, nodes) {
-
       var nodes2 = _.filter(nodes.allNodes, function (node) {
         return _.indexOf(node.services, service) > -1;
       });
-      var nodesByStatuses = {};
-      var statusClass = "inactive";
 
-      _.forEach(nodes2, function (node) {
-        var status = "";
-
-        if (node.clusterMembership === 'inactiveFailed') {
-          status = addStatusMessagePart(status, "failed over");
-        }
-        if (node.status === 'unhealthy') {
-          status = addStatusMessagePart(status, "not responding");
-        }
-        if (node.status === 'warmup') {
-          status = addStatusMessagePart(status, "warmup");
-        }
-        if (status != "") {
-          nodesByStatuses[status] = ++nodesByStatuses[status] || 1;
-        }
-        if (getStatusWeight(statusClass) > getStatusWeight(node.status)) {
-          statusClass = node.status;
-        }
-        if (getStatusWeight(statusClass) > getStatusWeight(node.clusterMembership)) {
-          statusClass = node.clusterMembership;
-        }
-      });
-
-      nodes2.nodesByStatuses = nodesByStatuses;
-      nodes2.statusClass = statusClass;
-
-      return nodes2;
+      return mnServersService.addNodesByStatus(nodes2);
     }
 
     function getServices() {
