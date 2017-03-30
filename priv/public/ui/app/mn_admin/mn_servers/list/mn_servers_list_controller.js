@@ -11,7 +11,6 @@
     vm.sortByGroup = sortByGroup
 
     function sortByGroup(node) {
-      console.log(vm.getGroupsByHostname)
       return vm.getGroupsByHostname[node.hostname].name;
     }
   }

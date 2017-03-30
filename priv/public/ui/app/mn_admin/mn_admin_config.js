@@ -105,6 +105,10 @@
           "details@app.admin.buckets": {
             templateUrl: 'app/mn_admin/mn_buckets/details/mn_buckets_details.html',
             controller: 'mnBucketsDetailsController as bucketsDetailsCtl'
+          },
+          "item@app.admin.buckets": {
+            templateUrl: 'app/mn_admin/mn_buckets/list/item/mn_buckets_list_item.html',
+            controller: 'mnBucketsListItemController as bucketsItemCtl'
           }
         },
         data: {

@@ -11,70 +11,9 @@
   <div class="zero-content" ng-if="!buckets.length">
     No buckets currently defined! Use "ADD BUCKET" above to create one.
   </div>
-
-  <section
+  <div
      ng-if="buckets.length"
      ng-repeat="bucket in buckets | orderBy:'name' track by bucket.name"
-     class="has-hover success"
-     ng-click="bucketsListCtl.toggleDetails(bucket.name)">
-    <div class="cbui-tablerow">
-      <span class="cbui-table-cell flex-grow-3 row">
-        <div class="cbui-tablerow-title ellipsis">{{bucket.name}}</div>
-        <span class="label lt-blue" ng-show="bucket.isMemcached">
-          memcached
-        </span>
-        <span class="label lt-blue" ng-show="bucket.isEphemeral">
-          ephemeral
-        </span>
-      </span>
-
-      <span class="cbui-table-cell">
-        {{bucket.basicStats.itemCount | number}}
-      </span>
-      <span class="cbui-table-cell">
-        <span ng-show="bucket.isMembase && poolDefault.compat.atLeast50">
-          {{(bucket.basicStats.itemCount-bucket.basicStats.vbActiveNumNonResident)*100.0/bucket.basicStats.itemCount | mnTruncateTo3Digits}}%
-        </span>
-        <span ng-show="bucket.isMemcached || bucket.isEphemeral || !poolDefault.compat.atLeast50">
-          &#8212;
-        </span>
-      </span>
-      <span class="cbui-table-cell">
-        {{'round' | mnMath:bucket.basicStats.opsPerSec}}
-      </span>
-      <span class="cbui-table-cell flex-grow-1-5">
-        {{bucket.basicStats.memUsed | mnFormatQuantity}} /
-        {{bucket.quota.ram | mnFormatQuantity}}
-      </span>
-      <span class="cbui-table-cell">
-        <span ng-show="bucket.isMembase">
-          {{bucket.basicStats.diskUsed | mnFormatQuantity}}
-        </span>
-        <span ng-show="!bucket.isMembase">
-          &#8212;
-        </span>
-      </span>
-      <span class="cbui-table-cell flex-grow-1-5 wrap text-right">
-        <span ng-if="bucket.isMembase">
-          <a
-             ng-click="$event.stopPropagation()"
-             class="nowrap"
-             style="margin-right: -3px;"
-             ng-show="rbac.cluster.bucket[bucket.name].data.read"
-             ui-sref="app.admin.buckets.documents.control.list({bucket: bucket.name})">
-            Documents</a>
-        </span>
-        <a
-           ng-click="$event.stopPropagation()"
-           title="Go to statistics for {{ bucket.name }}"
-           ui-sref="app.admin.buckets.analytics.list.graph({bucket: bucket.name })"
-           ng-show="rbac.cluster.bucket[bucket.name].stats.read"
-           class="margin-left-half nowrap">
-          Statistics
-        </a>
-
-      </span>
-    </div>
-    <div class="cbui-tablerow-expanded" ng-if="bucketsListCtl.isDetailsOpened(bucket.name)" ui-view="details"></div>
-  </section>
+     ui-view="item">
+  </div>
 </div>

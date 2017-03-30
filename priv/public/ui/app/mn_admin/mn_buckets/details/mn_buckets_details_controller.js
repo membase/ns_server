@@ -5,27 +5,22 @@
     .module('mnBuckets')
     .controller('mnBucketsDetailsController', mnBucketsDetailsController);
 
-    function mnBucketsDetailsController($scope, mnBucketsDetailsService, mnTasksDetails, mnPromiseHelper, mnSettingsAutoCompactionService, mnCompaction, $uibModal, mnBytesToMBFilter, mnBucketsDetailsDialogService, mnPoller) {
+  function mnBucketsDetailsController($scope, mnBucketsDetailsService, mnTasksDetails, mnPromiseHelper, mnSettingsAutoCompactionService, mnCompaction, $uibModal, mnBytesToMBFilter, mnBucketsDetailsDialogService, mnPoller, mnHelper) {
       var vm = this;
       vm.editBucket = editBucket;
       vm.deleteBucket = deleteBucket;
       vm.flushBucket = flushBucket;
       vm.registerCompactionAsTriggeredAndPost = registerCompactionAsTriggeredAndPost;
       vm.getGuageConfig = getGuageConfig;
+      vm.getEndings = mnHelper.getEndings;
 
       var compactionTasks;
       var warmUpTasks;
 
       activate();
 
-      function activate() {
-        warmUpTasks = new mnPoller($scope, function () {
-          return mnBucketsDetailsService.getWarmUpTasks($scope.bucket);
-        })
-        .subscribe("warmUpTasks", vm)
-        .reloadOnScopeEvent(["nodesChanged", "mnTasksDetailsChanged"])
-        .cycle();
 
+      function activate() {
         compactionTasks = new mnPoller($scope, function () {
           return mnBucketsDetailsService.getCompactionTask($scope.bucket);
         })
@@ -34,9 +29,12 @@
         .cycle();
 
         $scope.$watch('bucket', function () {
-          warmUpTasks.reload();
           compactionTasks.reload();
           mnPromiseHelper(vm, mnBucketsDetailsService.doGetDetails($scope.bucket)).applyToScope("bucketDetails");
+        });
+
+        $scope.$watchGroup(['bucket', 'adminCtl.tasks'], function (values) {
+          vm.warmUpTasks = mnBucketsDetailsService.getWarmUpTasks(values[0], values[1]);
         });
       }
 

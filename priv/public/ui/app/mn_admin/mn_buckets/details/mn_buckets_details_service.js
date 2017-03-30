@@ -21,23 +21,18 @@
 
     return mnBucketsDetailsService;
 
-    function getWarmUpTasks(bucket) {
-      return $q.all([
-        mnTasksDetails.get(),
-        mnPoolDefault.get()
-      ]).then(function (resp) {
-        var tasks = resp[0];
-        var poolDefault = resp[1];
-
-        return _.filter(tasks.tasks, function (task) {
-          var isNeeded = task.type === 'warming_up' && task.status === 'running' && task.bucket === bucket.name;
-          if (isNeeded) {
-            task.hostname = _.find(poolDefault.nodes, function (node) {
-              return node.otpNode === task.node;
-            }).hostname;
-          }
-          return isNeeded;
-        });
+    function getWarmUpTasks(bucket, tasks) {
+      if (!bucket || !tasks) {
+        return;
+      }
+      return _.filter(tasks.tasksWarmingUp, function (task) {
+        var isNeeded = task.bucket === bucket.name;
+        if (isNeeded) {
+          task.hostname = _.find(bucket.nodes, function (node) {
+            return node.otpNode === task.node;
+          }).hostname;
+        }
+        return isNeeded;
       });
     }
 

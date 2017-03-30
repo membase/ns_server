@@ -11,7 +11,8 @@
       scope: {
         buckets: '=',
         rbac: "=",
-        poolDefault: "="
+        poolDefault: "=",
+        adminCtl: "="
       },
       templateUrl: 'app/mn_admin/mn_buckets/list/mn_buckets_list.html',
       controller: controller,
