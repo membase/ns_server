@@ -1,10 +1,4 @@
-<div>
-  <div
-     class="error form-error"
-     ng-show="bucketConf.isWizard">
-    The default bucket is for development purposes only. You may choose to skip creation of this bucket below.
-  </div>
-
+<div class="forms">
   <div class="formrow">
     <label>Name</label>
     <input
@@ -20,44 +14,11 @@
        ng-show="validation.result.errors.name">
       {{validation.result.errors.name}}
     </div>
-    <p class="text-small">Grant users access to this bucket in Security/Users</p>
-  </div>
-
-  <div
-     ng-if="!bucketConf.isWizard"
-     class="formrow checkbox-list">
-    <hr>
-    <h4>Access Control</h4>
-    <input
-       id="for-access-sasl"
-       type="radio"
-       name="authType"
-       value="sasl"
-       ng-model="bucketConf.authType">
-    <label class="inline" for="for-access-sasl">
-      <span ng-if="bucketConf.isDefault || (bucketConf.name === 'default')">Standard port (TCP port 11210. ASCII protocol or Binary auth-less)</span>
-      <span ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">Standard port (TCP port 11210. Needs SASL auth.)</span>
-    </label>
-    <div class="margin-bottom-half" ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">
-      <label for="js_bucket_details_sasl_password">Enter password:</label>
-      <input
-         type="password"
-         id="js_bucket_details_sasl_password"
-         ng-model="bucketConf.saslPassword"
-         ng-disabled="bucketConf.authType !== 'sasl'"
-         mn-autocomplete-off>
-      <div
-         class="error"
-         ng-show="validation.result.errors.saslPassword">
-        {{validation.result.errors.saslPassword}}
-      </div>
-    </div>
   </div>
 
   <div class="formrow">
-    <hr>
-    <h4>Memory Quota</h4>
-    <div class="form-inline">
+    <label>Memory Quota <small>in megabytes per server node</small></label>
+    <div class="form-inline margin-bottom1">
       <input
          type="number"
          mn-focus="(bucketConf.isWizard || !bucketConf.isNew)"
@@ -67,58 +28,140 @@
       <abbr>MB</abbr>
     </div>
     <div
-       class="bar-usages"
+       class="bar-usages bucket-add"
        ng-class="{overcommitted: !!validation.result.guageConfig.topLeft}"
        mn-bar-usage
        base-info="validation.result.guageConfig">
     </div>
     <div
-       class="error form-error"
+       class="error"
        ng-show="validation.result.errors.ramQuotaMB">
       {{validation.result.errors.ramQuotaMB}}
     </div>
   </div>
 
-  <a
-     class="disclosure link-heavy"
-     ng-class="{disclosed: showAdvancedSettings}"
-     ng-click="showAdvancedSettings = !showAdvancedSettings">
-    {{showAdvancedSettings ? 'Hide' : 'Show'}} advanced bucket settings
-  </a>
-  <div ng-show="showAdvancedSettings" class="indent-1">
-    <div class="formrow checkbox-list margin-top1">
-      <h4>Bucket Type</h4>
-      <input
-         type="radio"
-         value="membase"
-         id="for-bucket-type-membase"
-         ng-model="bucketConf.bucketType"
-         ng-disabled="!bucketConf.isNew">
-      <label for="for-bucket-type-membase">Couchbase</label>
-      <input
-         type="radio"
-         value="memcached"
-         id="for-bucket-type-memcached"
-         ng-model="bucketConf.bucketType"
-         ng-disabled="!bucketConf.isNew">
-      <label for="for-bucket-type-memcached">Memcached</label>
-      <input
-         type="radio"
-         value="ephemeral"
-         id="for-bucket-type-ephemeral"
-         ng-model="bucketConf.bucketType"
-         ng-disabled="!bucketConf.isNew">
-      <label for="for-bucket-type-ephemeral">Ephemeral</label>
+  <div class="formrow checkbox-list">
+    <h4>Bucket Type</h4>
+    <input
+       type="radio"
+       value="membase"
+       id="for-bucket-type-membase"
+       ng-model="bucketConf.bucketType"
+       ng-disabled="!bucketConf.isNew">
+    <label for="for-bucket-type-membase">Couchbase</label>
+    <input
+       type="radio"
+       value="memcached"
+       id="for-bucket-type-memcached"
+       ng-model="bucketConf.bucketType"
+       ng-disabled="!bucketConf.isNew">
+    <label for="for-bucket-type-memcached">Memcached</label>
+    <input
+       type="radio"
+       value="ephemeral"
+       id="for-bucket-type-ephemeral"
+       ng-model="bucketConf.bucketType"
+       ng-disabled="!bucketConf.isNew">
+    <label for="for-bucket-type-ephemeral">Ephemeral</label>
+  </div>
+
+  <div class="formrow">
+    <span
+       class="disclosure"
+       ng-class="{disclosed: showAdvancedSettings}"
+       ng-click="showAdvancedSettings = !showAdvancedSettings">
+      Advanced bucket settings
+    </span>
+  </div>
+
+  <div ng-show="showAdvancedSettings">
+    <div
+       class="formrow checkbox-list"
+       ng-show="bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral'">
+      <h4>Replicas</h4>
+      <div class="row flex-left margin-bottom-half">
+        <span class="column">
+          <input
+             type="checkbox"
+             id="for-enable-replicas"
+             ng-model="replicaNumberEnabled">
+          <label for="for-enable-replicas">Enable</label>
+        </span>
+        <div ng-if="replicaNumberEnabled" class="row flex-left width-8">
+          <select
+             class="width-3 margin-right-half"
+             name="replicaNumber"
+             ng-model="bucketConf.replicaNumber"
+             ng-options="number for number in [1,2,3]">
+          </select>
+          <small>Number of replica (backup) copies</small>
+        </div>
+      </div>
+      <div
+         class="error"
+         ng-show="validation.result.errors.replicaNumber">
+        {{validation.result.errors.replicaNumber}}
+      </div>
+      <div class="formrow" ng-show="bucketConf.bucketType === 'membase'">
+        <input
+           type="checkbox"
+           id="for-enable-view-replicas"
+           ng-model="bucketConf.replicaIndex"
+           ng-false-value="0"
+           ng-true-value="1"
+           ng-disabled="!(replicaNumberEnabled && bucketConf.isNew)">
+        <label for="for-enable-view-replicas">Replicate view indexes</label>
+      </div>
+    </div>
+
+    <div ng-if="pools.isEnterprise && (bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral') && (bucketConf.isWizard || poolDefault.compat.atLeast46)">
+      <h4 class="inline">Conflict Resolution</h4>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip="Choose the timestamp conflict resolution method if XDCR replications will be set up for this bucket. Attention: timestamp conflict resolution requires additional NTP setup."
+         tooltip-placement="right">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
+      <div class="formrow checkbox-list">
+        <input
+           type="radio"
+           id="for-conflict-resolution-seqno"
+           ng-model="bucketConf.conflictResolutionType"
+           name="conflictResolutionType"
+           value="seqno"
+           ng-disabled="!bucketConf.isNew">
+        <label for="for-conflict-resolution-seqno">Sequence number</label>
+        <input
+           type="radio"
+           id="for-conflict-resolution-lww"
+           ng-model="bucketConf.conflictResolutionType"
+           name="conflictResolutionType"
+           value="lww"
+           ng-disabled="!bucketConf.isNew">
+        <label for="for-conflict-resolution-lww">Timestamp</label>
+        <div
+           class="error"
+           ng-show="validation.result.errors.conflictResolutionType">
+          {{validation.result.errors.conflictResolutionType}}
+        </div>
+        <div
+           class="error"
+           ng-show="bucketConf.conflictResolutionType === 'lww'">
+          Warning: Timestamp-based conflict resolution requires NTP to be correctly set up
+          on all the nodes in your replication topology to ensure high-quality time synchronization.
+          See  <a href="http://developer.couchbase.com/documentation/server/current/install/synchronize-clocks-using-ntp.html"
+          target="_blank">Setting Up NTP</a> in the Couchbase documentation.
+        </div>
+      </div>
     </div>
 
     <div
        class="formrow checkbox-list"
        ng-if="bucketConf.bucketType === 'membase'">
-      <hr>
       <h4>
         <label class="inline">Ejection Method</label>
         <span
-           ng-show="bucketConf.bucketType !== 'ephemeral'"
            class="fa-stack icon-info"
            uib-tooltip="VALUE EJECTION: During ejection, only the value will be ejected (key and metadata will remain in memory).
                         &nbsp;FULL EJECTION: During ejection, everything (including key, metadata and value) will be ejected.
@@ -158,9 +201,16 @@
     <div
        class="formrow checkbox-list"
        ng-if="bucketConf.bucketType === 'ephemeral'">
-      <hr>
       <h4>
         <label class="inline">Ejection Method</label>
+        <span
+           class="fa-stack icon-info"
+           uib-tooltip="NO EJECTION is the default value for ephemeral buckets. It is safe but not efficient.
+                        NRU EJECTION is more efficient but only use this if you are aware of the risks and benefits."
+           tooltip-placement="top">
+          <span class="icon fa-circle-thin fa-stack-2x"></span>
+          <span class="icon fa-info fa-stack-1x"></span>
+        </span>
       </h4>
 
       <input
@@ -192,8 +242,16 @@
     </div>
 
     <div class="formrow" ng-show="bucketConf.bucketType === 'ephemeral'">
-      <hr>
-      <h4>Metadata Purge Interval</h4>
+      <h4>
+        <label class="inline">Metadata Purge Interval</label>
+        <span
+           class="fa-stack icon-info"
+           uib-tooltip="Set how frequently a node will purge metadata on deleted items. The available range is 0.04 - 60 where 0.04 = 1h, 0.5 = 12h. If set too high, it may significantly delay the node from reclaiming disk space. If set too low, it may cause data inconsistencies in XDCR or Views."
+           tooltip-placement="top">
+          <span class="icon fa-circle-thin fa-stack-2x"></span>
+          <span class="icon fa-info fa-stack-1x"></span>
+        </span>
+      </h4>
       <label
          class="checkbox"
          for="metadata-purge-frequency">
@@ -215,162 +273,32 @@
       </div>
     </div>
 
-    <div ng-if="pools.isEnterprise && (bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral') && (bucketConf.isWizard || poolDefault.compat.atLeast46)">
-      <hr>
-      <h4>Conflict Resolution</h4>
-      <div class="formrow checkbox-list">
-        <p>
-          Select the conflict resolution method to use if XDCR replications will be set up for this bucket:
-        </p>
-        <input
-           type="radio"
-           id="for-conflict-resolution-seqno"
-           ng-model="bucketConf.conflictResolutionType"
-           name="conflictResolutionType"
-           value="seqno"
-           ng-disabled="!bucketConf.isNew">
-        <label for="for-conflict-resolution-seqno">
-          Sequence number
-        </label>
-        <input
-           type="radio"
-           id="for-conflict-resolution-lww"
-           ng-model="bucketConf.conflictResolutionType"
-           name="conflictResolutionType"
-           value="lww"
-           ng-disabled="!bucketConf.isNew">
-        <label for="for-conflict-resolution-lww">
-          Timestamp
-        </label>
-
-        <div
-           class="error"
-           ng-show="validation.result.errors.conflictResolutionType">
-          {{validation.result.errors.conflictResolutionType}}
-        </div>
-        <div
-           class="error"
-           ng-show="bucketConf.conflictResolutionType === 'lww'">
-          Warning: Timestamp-based conflict resolution requires NTP to be correctly set up on all the nodes in your replication topology to ensure high-quality time synchronization. See  <a href="http://developer.couchbase.com/documentation/server/current/install/synchronize-clocks-using-ntp.html">Setting up NTP</a> in the Couchbase documentation.
-        </div>
-      </div>
-    </div>
-
-    <div
-       class="formrow checkbox-list input-append"
-       ng-show="bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral'">
-      <hr>
-      <h4>Replicas</h4>
-      <input
-         type="checkbox"
-         id="for-enable-replicas"
-         ng-model="replicaNumberEnabled">
-      <label for="for-enable-replicas">
-        Enable
-      </label>
-      <div class="inline" ng-show="bucketConf.bucketType === 'membase'">
-        <input
-           type="checkbox"
-           id="for-enable-view-replicas"
-           ng-model="bucketConf.replicaIndex"
-           ng-false-value="0"
-           ng-true-value="1"
-           ng-disabled="!(replicaNumberEnabled && bucketConf.isNew)">
-        <label for="for-enable-view-replicas">
-          Replicate view indexes
-        </label>
-      </div>
-      <div ng-if="replicaNumberEnabled">
-        <select
-           class="width-2"
-           name="replicaNumber"
-           ng-model="bucketConf.replicaNumber"
-           ng-options="number for number in [1,2,3]">
-        </select>
-        <div class="desc">Number of replica (backup) copies</div>
-        <div
-           class="error"
-           ng-show="validation.result.errors.replicaNumber">
-          {{validation.result.errors.replicaNumber}}
-        </div>
-      </div>
-    </div>
-
-    <div
-       ng-if="!bucketConf.isWizard"
-       class="formrow checkbox-list">
-      <hr>
-      <h4>Access Control</h4>
+    <div ng-show="bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral'">
+      <h4 class="inline">Bucket Priority</h4>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip='This allows tasks to be handled based on priority. It only has a relative effect, i.e. your nodes cannot be all "high".'
+         tooltip-placement="right">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
       <div class="formrow checkbox-list">
         <input
            type="radio"
-           name="authType"
-           ng-model="bucketConf.authType"
-           value="none"
-           id="for-access-port"
-           ng-disabled="bucketConf.isDefault || (bucketConf.name === 'default')">
-        <label for="for-access-port">
-          Dedicated port (supports ASCII protocol and is auth-less)
-        </label>
-        <label for="js_bucket_details_proxy_port">Protocol Port:</label>
+           name="threadsNumber"
+           value="3"
+           checked="true"
+           id="for-low-threads"
+           ng-model="bucketConf.threadsNumber">
+        <label for="for-low-threads">Default</label>
         <input
-           type="text"
-           autocorrect="off"
-           spellcheck="false"
-           autocapitalize="off"
-           id="js_bucket_details_proxy_port"
-           ng-model="bucketConf.proxyPort"
-           ng-disabled="bucketConf.authType !== 'none'">
-        <div
-           class="error"
-           ng-show="bucketConf.authType === 'none'">
-          <span
-             ng-show="validation.result.errors.proxyPort">
-            {{validation.result.errors.proxyPort}}
-          </span>
-          <span>
-            Dedicated ports for memcached ASCII protocol are deprecated. Please see documentation for alternatives.
-          </span>
-        </div>
+           type="radio"
+           name="threadsNumber"
+           value="8"
+           id="for-high-threads"
+           ng-model="bucketConf.threadsNumber">
+        <label for="for-high-threads">High</label>
       </div>
-    </div>
-
-    <div
-       class="formrow checkbox-list"
-       ng-show="bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral'">
-      <hr>
-      <h4>
-        <label class="inline">
-          {{bucketConf.bucketType === 'ephemeral' ? 'Bucket Priority' : 'Bucket Disk I/O Priority'}}
-        </label>
-        <span
-           ng-show="bucketConf.bucketType !== 'ephemeral'"
-           class="fa-stack icon-info"
-           uib-tooltip="This is an advanced setting for Disk I/O optimization which allows tasks to be handled based on priority."
-           tooltip-placement="right">
-          <span class="icon fa-circle-thin fa-stack-2x"></span>
-          <span class="icon fa-info fa-stack-1x"></span>
-        </span>
-      </h4>
-      <input
-         type="radio"
-         name="threadsNumber"
-         value="3"
-         checked="true"
-         id="for-low-threads"
-         ng-model="bucketConf.threadsNumber">
-      <label for="for-low-threads">
-        Low (default)
-      </label>
-      <input
-         type="radio"
-         name="threadsNumber"
-         value="8"
-         id="for-high-threads"
-         ng-model="bucketConf.threadsNumber">
-      <label for="for-high-threads">
-        High
-      </label>
       <div
          class="error"
          ng-show="!!threadsNumberWarning">
@@ -379,20 +307,24 @@
     </div>
 
     <div
-       ng-if="!bucketConf.isWizard && bucketConf.bucketType === 'membase'"
-       id="js_bucket_auto_compaction_settings">
-      <hr>
-      <h4>Auto-Compaction</h4>
+       ng-if="!bucketConf.isWizard"
+       id="js_bucket_auto_compaction_settings"
+       ng-show="bucketConf.bucketType === 'membase'">
+      <h4 class="inline">Auto-Compaction</h4>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip="Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes."
+         tooltip-placement="right">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
       <div class="formrow checkbox-list">
-        <div class="desc">Auto-Compaction settings trigger the compaction process. The process compacts databases and their respective view indexes.</div>
         <input
            type="checkbox"
            id="for-auto-compaction-override"
            ng-model="bucketConf.autoCompactionDefined"
            value="true">
-        <label for="for-auto-compaction-override">
-          Override the default auto-compaction settings?
-        </label>
+        <label for="for-auto-compaction-override">Override the default auto-compaction settings?</label>
       </div>
 
       <div
@@ -404,28 +336,22 @@
          validation-errors="validation.result.errors"></div>
     </div>
 
+    <label class="inline">Flush</label>
+    <span
+       class="fa-stack icon-info"
+       uib-tooltip="When flushed, items in the bucket are removed as soon as possible in both memcached and Couchbase buckets. NOTE: This does not immediately show in item count statistics with memcached buckets."
+       tooltip-placement="right">
+      <span class="icon fa-circle-thin fa-stack-2x"></span>
+      <span class="icon fa-info fa-stack-1x"></span>
+    </span>
     <div class="formrow checkbox-list">
-      <hr>
-      <h4>
-        <label class="inline">Flush</label>
-        <span
-           class="fa-stack icon-info"
-           uib-tooltip="When flushed, items in the bucket are removed as soon as possible in both memcached and Couchbase buckets. NOTE: This does not immediately show in item count statistics with memcached buckets."
-           tooltip-placement="right">
-          <span class="icon fa-circle-thin fa-stack-2x"></span>
-          <span class="icon fa-info fa-stack-1x"></span>
-        </span>
-      </h4>
-
       <input
          type="checkbox"
          id="for-enable-flush"
          ng-model="bucketConf.flushEnabled"
          ng-false-value="0"
          ng-true-value="1">
-      <label for="for-enable-flush">
-        Enable
-      </label>
+      <label for="for-enable-flush">Enable</label>
     </div>
   </div>
 </div>

@@ -67,9 +67,7 @@
        ng-model="autoCompactionSettings[mnPeriod].abortOutside"
        ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
        value="true">
-    <label for="for-compact-abort-outside-{{mnPeriod}}">
-      Abort compaction if run time exceeds the set time interval
-    </label>
+    <label for="for-compact-abort-outside-{{mnPeriod}}">Abort compaction exceeding the set time interval</label>
     <div
        class="error"
        ng-show="errors[mnPeriod + '_abortOutside_']">
