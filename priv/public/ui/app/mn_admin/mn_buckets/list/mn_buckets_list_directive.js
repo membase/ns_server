@@ -23,14 +23,6 @@
     function controller() {
       var vm = this;
       mnHelper.initializeDetailsHashObserver(vm, 'openedBucket', 'app.admin.buckets');
-      vm.getPieOptions = getPieOptions;
-
-      function getPieOptions() {
-        return {
-          showLabel: false,
-          chartPadding: 0
-        };
-      }
     }
   }
 })();

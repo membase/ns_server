@@ -11,45 +11,8 @@
 
     return mnBucketsService;
 
-    function getPieConfig(bucket) {
-      var h = _.reduce(_.pluck(bucket.nodes, 'status'), function (counts, stat) {
-        counts[stat] = (counts[stat] || 0) + 1;
-        return counts;
-      }, {});
-
-      var pieConfig = {};
-      var healthStats = [h.healthy || 0, h.warmup || 0, h.unhealthy || 0];
-      pieConfig.status = _.clone(healthStats);
-
-      var total = _.inject(healthStats, function (a,b) {return a+b}, 0);
-
-      var minimalAngle = Math.PI/180*30;
-      var nodeSize = total < 1E-6 ? 0 : Math.PI*2/total;
-
-      var stolenSize = 0;
-      var maxAngle = 0;
-      var maxIndex = -1;
-
-      for (var i = healthStats.length; i--;) {
-        var newValue = healthStats[i] * nodeSize;
-        if (newValue != 0 && newValue < minimalAngle) {
-          stolenSize += minimalAngle - newValue;
-          newValue = minimalAngle;
-        }
-        healthStats[i] = newValue;
-        if (newValue >= maxAngle) {
-          maxAngle = newValue;
-          maxIndex = i;
-        }
-      }
-
-      pieConfig.series = healthStats;
-      bucket.pieConfig = pieConfig;
-    }
-
     function getBucketsForBucketsPage(fromCache, mnHttpParams) {
       return getBucketsByType(fromCache, mnHttpParams).then(function (buckets) {
-        angular.forEach(buckets, getPieConfig);
         return buckets;
       });
     }

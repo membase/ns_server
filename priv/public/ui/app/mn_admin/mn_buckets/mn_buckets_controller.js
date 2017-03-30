@@ -15,7 +15,6 @@
       'mnSpinner',
       'mnFilters',
       'mnTasksDetails',
-      'angular-chartist',
       'mnWarmupProgress',
       'mnElementCrane'
     ])
