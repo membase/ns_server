@@ -11,19 +11,16 @@
     'mnElementCrane',
     'mnAboutDialogService',
     'mnPromiseHelper',
-    'mnXDCRService'
+    'mnXDCRService',
+    'mnHelper'
   ]).controller('mnOverviewController', mnOverviewController);
 
-  function mnOverviewController($scope, $rootScope, mnBucketsService, mnOverviewService, mnPoller, mnAboutDialogService, mnPromiseHelper, mnXDCRService, permissions) {
+  function mnOverviewController($scope, $rootScope, mnBucketsService, mnOverviewService, mnPoller, mnAboutDialogService, mnPromiseHelper, mnHelper, mnXDCRService, permissions) {
     var vm = this;
 
-    vm.getEndings = getEndings;
+    vm.getEndings = mnHelper.getEndings;
 
     activate();
-
-    function getEndings(length) {
-      return length !== 1 ? "s" : "";
-    }
 
     function activate() {
       $rootScope.$broadcast("reloadPoolDefaultPoller");
