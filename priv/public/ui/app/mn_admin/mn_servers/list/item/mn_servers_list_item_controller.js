@@ -23,6 +23,9 @@
 
     function activate() {
       $scope.$watch("node", onNodeUpdate, true);
+      $scope.$watchGroup(['node', 'adminCtl.tasks'], function (values) {
+        vm.getRebalanceProgress = getRebalanceProgress(values[0], values[1]);
+      });
     }
     function onNodeUpdate(node) {
       vm.isNodeUnhealthy = isNodeUnhealthy(node);
@@ -30,7 +33,7 @@
       vm.isLastActiveData = isLastActiveData(node);
       vm.isNodeInactiveAdded = isNodeInactiveAdded(node);
       vm.couchDiskUsage = couchDiskUsage(node);
-      vm.getRebalanceProgress = getRebalanceProgress(node);
+
       vm.disableRemoveBtn = disableRemoveBtn(node);
       vm.isFailOverDisabled = isFailOverDisabled(node);
       vm.isKVNode = isKVNode(node);
@@ -92,9 +95,9 @@
              node.interestingStats['couch_views_actual_disk_size'] +
              node.interestingStats['couch_spatial_disk_size'];
     }
-    function getRebalanceProgress(node) {
-      return $scope.adminCtl.tasks && ($scope.adminCtl.tasks.tasksRebalance.perNode && $scope.adminCtl.tasks.tasksRebalance.perNode[node.otpNode]
-           ? $scope.adminCtl.tasks.tasksRebalance.perNode[node.otpNode].progress : 0 );
+    function getRebalanceProgress(node, tasks) {
+      return tasks && (tasks.tasksRebalance.perNode && tasks.tasksRebalance.perNode[node.otpNode]
+           ? tasks.tasksRebalance.perNode[node.otpNode].progress : 0 );
     }
     function isActiveUnhealthy(node) {
       return $state.params.type === "active" && isNodeUnhealthy(node);
