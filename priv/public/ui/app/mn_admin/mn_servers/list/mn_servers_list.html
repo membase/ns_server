@@ -22,7 +22,7 @@
       <span class="cbui-table-cell flex-grow-1-5"> </span>
     </div>
     <div
-       ng-repeat="node in serversCtl.nodes.allNodes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by node.otpNode"
+       ng-repeat="node in serversCtl.nodes.allNodes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:serversCtl.listFiter track by node.otpNode"
        ui-view="item">
     </div>
 

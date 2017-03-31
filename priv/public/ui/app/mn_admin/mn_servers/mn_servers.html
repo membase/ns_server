@@ -20,6 +20,34 @@
   </div>
 </mn-element-cargo>
 <mn-element-cargo depot="actions">
+  <div
+     ng-if="serversCtl.showFilterFlag"
+     class="filter-input-group width-4">
+    <input
+       type="text"
+       ng-model="serversCtl.filterField"
+       mn-focus="serversCtl.focusFilterField"
+       maxlength="256"
+       class="filter-input borderless"
+       placeholder="filter servers list">
+    <span
+       class="icon fa-search-minus"
+       ng-show="serversCtl.filterField.length == 0">
+    </span>
+    <span
+       class="icon fa-times-circle"
+       ng-show="serversCtl.filterField"
+       ng-click="serversCtl.filterField = ''">
+    </span>
+  </div>
+  <a href="">
+    <span
+       ng-click="serversCtl.showFilter()"
+       ng-show="!serversCtl.showFilterFlag">FILTER LIST</span>
+    <span
+       ng-click="serversCtl.hideFilter()"
+       ng-show="serversCtl.showFilterFlag">HIDE</span>
+  </a>
   <a href=""
      ui-sref="app.admin.servers.list.groups"
      ng-show="poolDefault.isGroupsAvailable && !poolDefault.rebalancing && poolDefault.isEnterprise && rbac.cluster.server_groups.read">
