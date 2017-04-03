@@ -358,47 +358,14 @@ nav.sub-nav a.selected:after {
 .pills a:hover {
   background-color: #b3cfef;
 }
-
-a.pills-selected {
+.pills a.selected {
   background-color: #7babe2;
+  color: #fff !important;
+}
+.pills a.selected:hover {
+  background-color: #7babe2 !important;
   color: #fff;
-}
-
-a.pills-selected:hover {
-  background-color: #7babe2;
-  color: #fff;
-}
-
-/*  interim sub-navigation pills version  */
-.sub-nav {
-  display: -webkit-flex;
-  display: -ms-flexbox;
-  display: flex;
-  min-height: 1rem;
-  -webkit-align-items: center;
-  -ms-flex-align: center;
-  align-items: center;
-  -webkit-flex-wrap: no-wrap;
-  -ms-flex-wrap: no-wrap;
-  flex-wrap: no-wrap;
-  -webkit-justify-content: space-between;
-  -ms-flex-pack: justify;
-  justify-content: space-between;
-  position: relative;
-}
-.sub-nav .pills a {
-  padding: .3rem 1.5rem;
-  background-color: #689fde;
-  color: #fff;
-  font-size: .875rem;
-  border-radius: 2px;
-}
-.sub-nav .pills a:hover,
-.sub-nav .pills a.pills-selected:hover {
-  background-color: #7babe2;
-}
-.sub-nav .pills a.pills-selected {
-  background-color: #7babe2;
+  cursor: text;
 }
 
 /* Icons --------------------------------------- */

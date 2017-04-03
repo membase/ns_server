@@ -3,11 +3,11 @@
     <span class="pills">
       <a
          ui-sref="{ type: 'development' }"
-         ui-sref-active="pills-selected">Development Views</a>
+         ui-sref-active="selected">Development Views</a>
 
       <a
          ui-sref="{ type: 'production' }"
-         ui-sref-active="pills-selected">Production Views</a>
+         ui-sref-active="selected">Production Views</a>
       <span
          class="label red badge"
          ng-show="viewsListCtl.ddocs.production.length && rbac.cluster.bucket[viewsCtl.state.bucketsNames.selected].views.read">{{viewsListCtl.ddocs.production.length}}
