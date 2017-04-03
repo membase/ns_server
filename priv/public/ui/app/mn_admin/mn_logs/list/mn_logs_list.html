@@ -1,16 +1,14 @@
 <div mn-spinner="!logsListCtl.logs" min-height="300px">
-  <table class="table-stroked">
-    <thead>
-      <tr>
-        <th>Event</th>
-        <th class="text-center">Module Code</th>
-        <th class="text-center">Server Node</th>
-        <th class="text-center">Time</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr ng-repeat="row in logsListCtl.logs | orderBy:'serverTime':true track by $index">
-        <td class="break-all">
+  <div class="cbui-table">
+    <div class="cbui-table-header padding-left">
+      <span class="cbui-table-cell flex-grow-3">event</span>
+      <span class="cbui-table-cell">module code</span>
+      <span class="cbui-table-cell">server node</span>
+      <span class="cbui-table-cell flex-grow-1-5">time</span>
+    </div>
+    <section ng-repeat="row in logsListCtl.logs | orderBy:'serverTime':true track by $index">
+      <div class="cbui-tablerow">
+        <span class="cbui-table-cell flex-grow-3 wrap">
           <span
              ng-if="!logsListCtl.isOpened($index) && logsListCtl.isOverLimit(row)"
              >{{row.text | mnLimitTo: logsListCtl.textLimit}}</span>
@@ -21,20 +19,20 @@
             <a
                href=""
                ng-show="!logsListCtl.isOpened($index)"
-               ng-click="logsListCtl.toggle($index)">... show</a>
+               ng-click="logsListCtl.toggle($index)">...show</a>
             <a
                href=""
                ng-show="logsListCtl.isOpened($index)"
                ng-click="logsListCtl.toggle($index)">hide</a>
           </span>
-        </td>
-        <td class="text-center width-2">{{row.module}} {{row.code | moduleCode }}</td>
-        <td class="text-center width-2">{{row.node}}</td>
-        <td class="text-center width-2">
-          <strong class="nowrap">{{row.serverTime | date:'mediumTime':'UTC'}}</strong>
+        </span>
+        <span class="cbui-table-cell" title="{{row.module}} {{row.code | moduleCode }}">{{row.module}} {{row.code | moduleCode }}</span>
+        <span class="cbui-table-cell">{{row.node}}</span>
+        <span class="cbui-table-cell flex-grow-1-5 wrap">
+          <span class="semi-bold nowrap">{{row.serverTime | date:'mediumTime':'UTC'}}</span> &nbsp;
           <span class="nowrap">{{row.serverTime | date:'EEE MMM d, yyyy':'UTC'}}</span>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+        </span>
+      </div>
+    </section>
+  </div>
 </div>
