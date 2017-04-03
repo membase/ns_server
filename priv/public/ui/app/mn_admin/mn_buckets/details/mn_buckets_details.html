@@ -17,7 +17,7 @@
          ng-if="rbac.cluster.bucket[bucket.name].settings.read"
          ng-show="!bucket.isMemcached">
         <strong>Replicas:</strong>
-        {{bucketsDetailsCtl.bucketDetails.replicaNumber != 0 ? (bucketsDetailsCtl.bucketDetails.replicaNumber | mnCount:'') : 'disabled'}}
+        {{bucketsDetailsCtl.bucketDetails.replicaNumber != 0 ? (bucketsDetailsCtl.bucketDetails.replicaNumber) : 'disabled'}}
       </div>
       <div class="nowrap">
          <strong>Server Nodes: </strong> {{ bucket.nodes.length }}
