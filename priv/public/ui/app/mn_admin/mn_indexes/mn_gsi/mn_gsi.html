@@ -6,95 +6,42 @@
   </div>
 </mn-element-cargo>
 
-
 <div
    ng-if="rbac.cluster.indexes.read"
    mn-spinner="!gsiCtl.state">
-  <table
-     mn-sortable-table
-     class="table-stroked">
-    <thead>
-      <tr>
-        <th mn-sortable-title="bucket">Bucket</th>
-        <th
-           class="text-center"
-           sort-by-default="true"
-           mn-sortable-title="hosts">Node</th>
-        <th
-           class="text-center"
-           mn-sortable-title="index">Index Name</th>
-        <th
-           class="text-center"
-           mn-sortable-title="storageMode | mnFormatStorageMode">Storage Type</th>
-        <th
-           class="text-center"
-           mn-sortable-title="status">Status</th>
-        <th
-           class="text-center"
-           mn-sortable-title="progress">Initial Build Progress</th>
-      </tr>
-    </thead>
-    <tbody
+  <div class="cbui-table" mn-sortable-table>
+    <div class="cbui-table-header padding-left">
+     <span class="cbui-table-cell" mn-sortable-title="bucket">bucket</span>
+     <span class="cbui-table-cell" sort-by-default="true" mn-sortable-title="hosts">node</span>
+     <span class="cbui-table-cell" mn-sortable-title="index">index name</span>
+     <span class="cbui-table-cell" mn-sortable-title="storageMode | mnFormatStorageMode">storage type</span>
+     <span class="cbui-table-cell" mn-sortable-title="status">status</span>
+     <span class="cbui-table-cell" mn-sortable-title="progress">build progress</span>
+    </div>
+    <section
        ng-if="gsiCtl.state.indexes.length"
-       ng-repeat="row in gsiCtl.state.indexes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by gsiCtl.generateIndexId(row)">
-      <tr
-         class="has-hover"
-         ng-class="{
-                 'grayblue-5': gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row)),
-                 'no-stroke': gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row))
-                 }"
-         ng-click="gsiCtl.toggleDetails(gsiCtl.generateIndexId(row))">
-        <td
-           class="break-all max-width-4"
-           title="{{row.bucket}}">
+       ng-repeat="row in gsiCtl.state.indexes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by gsiCtl.generateIndexId(row)"
+       ng-click="gsiCtl.toggleDetails(gsiCtl.generateIndexId(row))"
+       class="has-hover">
+      <div class="cbui-tablerow">
+        <span class="cbui-table-cell">
           <span ng-class="{closed:!gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row))}">{{row.bucket}}</span>
-        </td>
-        <td
-           class="text-center"
-           title="{{row.hosts[0]}}">
-          {{row.hosts[0]}}
-        </td>
-        <td
-           class="break-all text-center"
-           title="{{row.index}}">
-          {{row.index}}
-        </td>
-        <td
-           class="ellipsis text-center"
-           title="{{row.storageMode | mnFormatStorageMode}}">
-          {{row.storageMode | mnFormatStorageMode}}
-        </td>
-        <td
-           class="ellipsis text-center"
-           title="{{row.status}}">
-          {{row.status}}
-        </td>
-        <td
-           class="ellipsis text-center"
-           title="{{row.progress}}">
-          <span ng-if="row.progress">{{row.progress}} %</span>
-        </td>
-      </tr>
-      <tr>
-        <td
-           colspan="6"
-           class="grayblue-5"
-           ng-if="gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row))">
-          <div class="interim content-box row flex-left">
-            <span class="column">
-              <span class="semi-bold">Definition:</span>
-              {{row.definition}}
-            </span>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-    <tbody ng-if="!gsiCtl.state.indexes.length">
-      <tr>
-        <td colspan="6">
-          There are no indexes currently.
-        </td>
-      </tr>
-    </tbody>
-  </table>
+        </span>
+        <span class="cbui-table-cell">{{row.hosts[0]}}</span>
+        <span class="cbui-table-cell">{{row.index}}</span>
+        <span class="cbui-table-cell">{{row.storageMode | mnFormatStorageMode}}</span>
+        <span class="cbui-table-cell">{{row.status}}</span>
+        <span class="cbui-table-cell"><span ng-if="row.progress">{{row.progress}}%</span></span>
+      </div>
+      <div class="cbui-tablerow-expanded" ng-if="gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row))">
+        <div class="content-box">
+          <span class="semi-bold">Definition</span><br>
+          {{row.definition}}
+        </div>
+      </div>
+    </section>
+    <div ng-if="!gsiCtl.state.indexes.length" class="zero-content">
+      There are no indexes currently.
+    </div>
+  </div>
 </div>
