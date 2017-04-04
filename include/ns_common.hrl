@@ -206,6 +206,8 @@
 -define(MIN_FREE_RAM, misc:get_env_default(quota_min_free_ram, 1024)).
 -define(MIN_FREE_RAM_PERCENT, 80).
 
+-define(DEFAULT_EPHEMERAL_PURGE_INTERVAL_DAYS, 3).
+
 %% Index storage mode values.
 -define(INDEX_STORAGE_MODE_MEMORY_OPTIMIZED, <<"memory_optimized">>).
 -define(INDEX_STORAGE_MODE_FORESTDB, <<"forestdb">>).

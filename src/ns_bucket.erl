@@ -120,6 +120,7 @@ config_string(BucketName) ->
                 NumThreads = proplists:get_value(num_threads, BucketConfig, 3),
                 ItemEvictionPolicy = memcached_item_eviction_policy(BucketConfig),
                 EphemeralFullPolicy = memcached_ephemeral_full_policy(BucketConfig),
+                EphemeralPurgeAge = ephemeral_metadata_purge_age(BucketConfig),
                 ConflictResolutionType = conflict_resolution_type(BucketConfig),
                 DriftThresholds = drift_thresholds(BucketConfig),
                 StorageMode = storage_mode(BucketConfig),
@@ -151,8 +152,9 @@ config_string(BucketName) ->
                        storage_mode_to_bucket_type(StorageMode),
                        eviction_policy_cfg_string(BucketConfig, ItemEvictionPolicy,
                                                   EphemeralFullPolicy)]),
-                {CFG, {MemQuota, DBSubDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
-                       DriftThresholds}, DBSubDir};
+                CFG1 = metadata_purge_age_cfg_string(EphemeralPurgeAge) ++ CFG,
+                {CFG1, {MemQuota, DBSubDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
+                       DriftThresholds, EphemeralPurgeAge}, DBSubDir};
             memcached ->
                 {io_lib:format("cache_size=~B;uuid=~s", [MemQuota, BucketUUID]),
                  MemQuota, undefined}
@@ -299,6 +301,26 @@ memcached_ephemeral_full_policy(BucketConfig) ->
             end;
         _ ->
             undefined
+    end.
+
+ephemeral_metadata_purge_age(BucketConfig) ->
+    case storage_mode(BucketConfig) of
+        ephemeral ->
+            %% Purge interval is accepted in # of days but the ep-engine
+            %% needs it to be expressed in seconds.
+            Val = proplists:get_value(purge_interval, BucketConfig,
+                                      ?DEFAULT_EPHEMERAL_PURGE_INTERVAL_DAYS),
+            erlang:round(Val * 24 * 3600);
+        _ ->
+            undefined
+    end.
+
+metadata_purge_age_cfg_string(PurgeAge) ->
+    case PurgeAge of
+        undefined ->
+            [];
+        _ ->
+            io_lib:format("ephemeral_metadata_purge_age=~p;", [PurgeAge])
     end.
 
 -spec storage_mode([{_,_}]) -> atom().

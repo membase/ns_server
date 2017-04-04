@@ -1280,14 +1280,15 @@ maybe_set_drift_thresholds(Sock, Bucket, {DAT, DBT}, ActualDAT, ActualDBT) ->
                  item_eviction_policy = missing_eviction_policy,
                  ephemeral_full_policy = missing_ephemeral_full_policy,
                  ahead_threshold = missing_ahead_threshold,
-                 behind_threshold = missing_behind_threshold}).
+                 behind_threshold = missing_behind_threshold,
+                 ephemeral_metadata_purge_age = missing_ephemeral_metadata_purge_age}).
 
 -spec ensure_bucket_config(port(), bucket_name(), bucket_type(),
                            {pos_integer(), nonempty_string()}) ->
                                   ok | no_return().
 ensure_bucket_config(Sock, Bucket, membase,
                      {MaxSize, DBDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
-                      DriftThresholds}) ->
+                      DriftThresholds, EphemeralPurgeAge}) ->
     MaxSizeBin = list_to_binary(integer_to_list(MaxSize)),
     DBDirBin = list_to_binary(DBDir),
     NumThreadsBin = list_to_binary(integer_to_list(NumThreads)),
@@ -1299,7 +1300,8 @@ ensure_bucket_config(Sock, Bucket, membase,
                  item_eviction_policy = ActualItemEvictionPolicy,
                  ephemeral_full_policy = ActualEphemeralFullPolicy,
                  ahead_threshold = ActualDAT,
-                 behind_threshold = ActualDBT}} =
+                 behind_threshold = ActualDBT,
+                 ephemeral_metadata_purge_age = ActualPurgeAge}} =
         mc_binary:quick_stats(
           Sock, <<>>,
           fun (<<"ep_max_size">>, V, QStats) ->
@@ -1316,6 +1318,8 @@ ensure_bucket_config(Sock, Bucket, membase,
                   QStats#qstats{ahead_threshold = V};
               (<<"ep_hlc_drift_behind_threshold_us">>, V, QStats) ->
                   QStats#qstats{behind_threshold = V};
+              (<<"ep_ephemeral_metadata_purge_age">>, V, QStats) ->
+                  QStats#qstats{ephemeral_metadata_purge_age = V};
               (_, _, QStats) ->
                   QStats
           end, #qstats{}),
@@ -1350,6 +1354,15 @@ ensure_bucket_config(Sock, Bucket, membase,
         true ->
             maybe_update_ephemeral_full_policy(Sock, Bucket, EphemeralFullPolicyBin,
                                                ActualEphemeralFullPolicy);
+        false ->
+            ok
+    end,
+
+    case EphemeralPurgeAge =/= undefined of
+        true ->
+            EphemeralPurgeAgeBin = list_to_binary(integer_to_list(EphemeralPurgeAge)),
+            maybe_set_ephemeral_metadata_purge_age(Sock, Bucket, EphemeralPurgeAgeBin,
+                                                   ActualPurgeAge);
         false ->
             ok
     end,
@@ -1401,6 +1414,19 @@ maybe_update_ephemeral_full_policy(Sock, Bucket, NewFullPolicy, CurrFullPolicy) 
                                                    NewFullPolicy),
             ?log_info("Ephemeral full policy changed from '~s' to '~s' for bucket ~p",
                       [CurrFullPolicy, NewFullPolicy, Bucket]),
+            ok;
+        false ->
+            ok
+    end.
+
+maybe_set_ephemeral_metadata_purge_age(Sock, Bucket, NewPurgeAge, CurrPurgeAge) ->
+    case NewPurgeAge =/= CurrPurgeAge of
+        true ->
+            ok = mc_client_binary:set_flush_param(Sock,
+                                                   <<"ephemeral_metadata_purge_age">>,
+                                                   NewPurgeAge),
+            ?log_info("Ephemeral metadata purge age changed from '~s' to '~s' for bucket ~p",
+                      [CurrPurgeAge, NewPurgeAge, Bucket]),
             ok;
         false ->
             ok
