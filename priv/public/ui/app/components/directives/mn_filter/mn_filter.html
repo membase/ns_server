@@ -18,178 +18,181 @@
     <form ng-submit="mnFilterCtl.togglePopup()">
       <div class="panel-content forms">
         <div
-           class="row interim flex-left"
+           class="row formrow flex-right"
            ng-show="mnFilterCtl.config.items.conflict">
-          <label class="width-5" for="filter_conflicts">conflicts</label>
           <input
              id="filter_conflicts"
              ng-model="mnFilterCtl.config.params.conflicts"
              type="checkbox">
+          <label for="filter_conflicts">conflicts</label>
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.bbox">
-          <label class="width-5" for="filter_bbox">bbox</label>
+          <label class="width-6" for="filter_bbox">bbox</label>
           <input
              id="filter_bbox"
              ng-model="mnFilterCtl.config.params.bbox"
              type="text"
-             class="width-7"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
              autocapitalize="off">
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.startRange">
-          <label class="width-5" for="filter_start_range">start_range</label>
+          <label class="width-6" for="filter_start_range">start_range</label>
           <input
              id="filter_start_range"
              ng-model="mnFilterCtl.config.params.start_range"
              type="text"
-             class="width-7"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
              autocapitalize="off">
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.endRange">
-          <label class="width-5" for="filter_end_range">end_range</label>
+          <label class="width-6" for="filter_end_range">end_range</label>
           <input
              id="filter_end_range"
              ng-model="mnFilterCtl.config.params.end_range"
              type="text"
-             class="width-7"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
              autocapitalize="off">
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow flex-right"
            ng-show="mnFilterCtl.config.items.descending">
-          <label class="width-5" for="filter_descending">descending</label>
           <input
              id="filter_descending"
              ng-model="mnFilterCtl.config.params.descending"
              type="checkbox">
+          <label for="filter_descending">descending</label>
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.startkey">
-          <label class="width-5" for="filter_startkey">startkey</label>
+          <label class="width-6" for="filter_startkey">startkey</label>
           <input
              id="filter_startkey"
              ng-model="mnFilterCtl.config.params.startkey"
              type="text"
-             class="width-7"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
              autocapitalize="off">
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.endkey">
-          <label class="width-5" for="filter_endkey">endkey</label>
+          <label class="width-6" for="filter_endkey">endkey</label>
           <input
              id="filter_endkey"
              ng-model="mnFilterCtl.config.params.endkey"
              type="text"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
-             autocapitalize="off"
-             class="width-7">
+             autocapitalize="off">
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.startkeyDocid">
-          <label class="width-5" for="filter_startkey_docid">startkey_docid</label>
+          <label class="width-6" for="filter_startkey_docid">startkey_docid</label>
           <input
              id="filter_startkey_docid"
              ng-model="mnFilterCtl.config.params.startkey_docid"
              type="text"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
-             autocapitalize="off"
-             class="width-7">
+             autocapitalize="off">
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.endkeyDocid">
-          <label class="width-5" for="filter_endkey_docid">endkey_docid</label>
+          <label class="width-6" for="filter_endkey_docid">endkey_docid</label>
           <input
              id="filter_endkey_docid"
              ng-model="mnFilterCtl.config.params.endkey_docid"
              type="text"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
-             autocapitalize="off"
-             class="width-7">
+             autocapitalize="off">
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow flex-right"
            ng-show="mnFilterCtl.config.items.group">
-          <label class="width-5" for="filter_group">group</label>
           <input
              id="filter_group"
              name="group"
              ng-model="mnFilterCtl.config.params.group"
              type="checkbox">
+          <label for="filter_group">group</label>
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.groupLevel">
-          <label class="width-5" for="filter_group_level">group_level</label>
+          <label class="width-6" for="filter_group_level">group_level</label>
           <input
              id="filter_group_level"
              ng-model="mnFilterCtl.config.params.group_level"
              type="text"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
              autocapitalize="off"
-             class="width-7">
+>
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow flex-right"
            ng-show="mnFilterCtl.config.items.inclusiveEnd">
-          <label class="width-5" for="filter_inclusive_end">inclusive_end</label>
           <input
              id="filter_inclusive_end"
              ng-model="mnFilterCtl.config.params.inclusive_end"
              type="checkbox"
              ng-false-value="false"
              ng-true-value="true">
+          <label class="width-5" for="filter_inclusive_end">inclusive_end</label>
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.key">
-          <label class="width-5" for="filter_key">key</label>
+          <label class="width-6" for="filter_key">key</label>
           <input
              id="filter_key"
              ng-model="mnFilterCtl.config.params.key"
              type="text"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
              autocapitalize="off"
-             class="width-7">
+>
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.keys">
-          <label class="width-5" for="filter_keys">keys</label>
+          <label class="width-6" for="filter_keys">keys</label>
           <input
              id="filter_keys"
              ng-model="mnFilterCtl.config.params.keys"
              type="text"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
              autocapitalize="off"
-             class="width-7">
+>
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.reduce">
-          <label class="width-5" for="filter_reduce">reduce</label>
+          <label class="width-6" for="filter_reduce">reduce</label>
           <div class="checkbox-list">
             <input
                type="radio"
@@ -215,7 +218,7 @@
           </div>
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.stale">
           <label class="width-5" for="filter_stale">stale</label>
           <div class="checkbox-list">
@@ -243,17 +246,17 @@
           </div>
         </div>
         <div
-           class="row interim flex-left"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.connectionTimeout">
-          <label class="width-5" for="filter_connection_timeout">connection_timeout</label>
+          <label class="width-6" for="filter_connection_timeout">connection_timeout</label>
           <input
              id="filter_connection_timeout"
              ng-model="mnFilterCtl.config.params.connection_timeout"
              type="text"
+             class="width-6"
              autocorrect="off"
              spellcheck="false"
              autocapitalize="off"
-             class="width-7"
              placeholder="milliseconds">
         </div>
       </div>
