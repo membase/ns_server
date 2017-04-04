@@ -73,6 +73,7 @@ roles_45() ->
       [{name, <<"Cluster Admin">>},
        {desc, <<"Can manage all cluster features EXCEPT security.">>}],
       [{[admin], none},
+       {[n1ql, curl], none},
        {[], all}]},
      {bucket_admin, [bucket_name],
       [{name, <<"Bucket Admin">>},
@@ -134,6 +135,7 @@ roles_spock() ->
       [{name, <<"Cluster Admin">>},
        {desc, <<"Can manage all cluster features EXCEPT security.">>}],
       [{[admin], none},
+       {[n1ql, curl], none},
        {[], all}]},
      {bucket_admin, [bucket_name],
       [{name, <<"Bucket Admin">>},
@@ -261,6 +263,12 @@ roles_spock() ->
        {desc, <<"Can lookup system catalog information">>}],
       [{[{bucket, bucket_name}, n1ql, index], [list]},
        {[n1ql, meta], [read]},
+       {[ui], [read]},
+       {[pools], [read]}]},
+     {query_external_access, [],
+      [{name, <<"Query External Access">>},
+       {desc, <<"Can execute CURL statement">>}],
+      [{[n1ql, curl], [execute]},
        {[ui], [read]},
        {[pools], [read]}]}].
 
