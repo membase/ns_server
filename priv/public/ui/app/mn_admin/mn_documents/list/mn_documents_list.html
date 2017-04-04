@@ -54,8 +54,7 @@
     <button
        type="submit"
        class="append"
-       ng-disabled="documentsControlCtl.isEmptyState()"
-       ng-class="!rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">
+       ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">
       Look Up ID
     </button>
   </form>

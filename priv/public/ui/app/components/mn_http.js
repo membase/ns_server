@@ -8,7 +8,7 @@
       $httpProvider.interceptors.push('mnHttpInterceptor');
     });
 
-  function mnHttpFactory(mnPendingQueryKeeper, $q, $httpParamSerializerJQLike, $timeout, jQueryLikeParamSerializerFilter) {
+  function mnHttpFactory(mnPendingQueryKeeper, $q, $httpParamSerializerJQLike, $timeout, jQueryLikeParamSerializerFilter, $exceptionHandler) {
     var myHttpInterceptor = {
       request: request,
       response: response,
@@ -94,6 +94,9 @@
       return response;
     }
     function responseError(response) {
+      if (response instanceof Error) {
+        $exceptionHandler(response);
+      }
       clearOnResponse(response);
       return $q.reject(response);
     }

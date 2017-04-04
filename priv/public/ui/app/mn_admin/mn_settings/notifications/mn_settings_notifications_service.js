@@ -292,7 +292,7 @@ angular.module('mnSettingsNotificationsService', [
         mnHttp: mnHttpParams,
         url: 'http://ph.couchbase.net/v2',
         timeout: 8000,
-        params: {launchID: data.launchID, version: data.version, callback: 'JSON_CALLBACK'}
+        params: {launchID: data.launchID, version: data.version}
       });
     };
 

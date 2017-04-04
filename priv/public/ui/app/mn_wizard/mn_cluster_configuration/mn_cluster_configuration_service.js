@@ -65,7 +65,6 @@
     function postEmail(register) {
       var params = _.clone(register);
       delete params.agree;
-      params.callback = 'JSON_CALLBACK';
 
       return $http({
         method: 'JSONP',

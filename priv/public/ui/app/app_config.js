@@ -5,13 +5,20 @@
     .module('app')
     .config(appConfig);
 
-  function appConfig($httpProvider, $stateProvider, $urlRouterProvider, $uibModalProvider, $transitionsProvider, $uibTooltipProvider, $animateProvider) {
+  function appConfig($httpProvider, $stateProvider, $urlRouterProvider, $uibModalProvider, $transitionsProvider, $uibTooltipProvider, $animateProvider, $qProvider, $sceDelegateProvider) {
     $httpProvider.defaults.headers.common['invalid-auth-response'] = 'on';
     $httpProvider.defaults.headers.common['Cache-Control'] = 'no-cache';
     $httpProvider.defaults.headers.common['Pragma'] = 'no-cache';
     $httpProvider.defaults.headers.common['ns-server-ui'] = 'yes';
 
     $animateProvider.classNameFilter(/enable-ng-animation/);
+
+    $sceDelegateProvider.resourceUrlWhitelist([
+      'self', // Allow same origin resource loads
+      'http://ph.couchbase.net/**' // Allow JSONP calls that match this pattern
+    ]);
+
+    $qProvider.errorOnUnhandledRejections(false);
 
     $uibModalProvider.options.backdrop = 'static';
     // When using a tooltip in an absolute positioned element,
