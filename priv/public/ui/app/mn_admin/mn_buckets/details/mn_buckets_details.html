@@ -26,7 +26,9 @@
          class="nowrap"
          ng-if="!bucket.isMemcached && rbac.cluster.bucket[bucket.name].settings.read">
         <strong>Ejection Method: </strong>
-        {{bucketsDetailsCtl.bucketDetails.evictionPolicy === "valueOnly" ? 'Value-Only' : 'Full'}}
+        {{bucket.isEphemeral ?
+        bucketsDetailsCtl.bucketDetails.evictionPolicy === "noEviction" ? 'No ejection' : 'NRU ejection' :
+        bucketsDetailsCtl.bucketDetails.evictionPolicy === "valueOnly" ? 'Value-Only' : 'Full'}}
       </div>
       <div class="nowrap" ng-if="!bucket.isMemcached">
         <strong>Conflict Resolution:</strong>
