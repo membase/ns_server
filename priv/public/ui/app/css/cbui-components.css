@@ -539,7 +539,6 @@ table th span.has-menu:after {
   display: -webkit-flex;
   display: -ms-flexbox;
   display: flex;
-  min-height: 1rem;
   -webkit-align-items: center;
   -ms-flex-align: center;
   align-items: center;
@@ -556,6 +555,9 @@ table th span.has-menu:after {
 }
 .cbui-tablerow.padding-left {
   padding-left: 1rem;
+}
+.cbui-tablerow.row-min {
+  min-height: 1rem;
 }
 .cbui-table-header {
   display: -webkit-flex;
@@ -683,6 +685,11 @@ section.error {
   background-color: #e07f82;
 }
 /* flex-grow factors control column width -------- */
+.cbui-table-cell.flex-grow-0 {
+  -webkit-box-flex: 0;
+  -ms-flex-positive: 0;
+  flex-grow: 0;
+}
 .cbui-table-cell.flex-grow-half {
   -webkit-box-flex: .5;
   -ms-flex-positive: .5;
