@@ -440,8 +440,6 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["ui", "classic-index.html"] ->
                     {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_45,
                                                        Plugins]};
-                ["classic-index.html"] ->
-                    {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_41, []]};
                 ["dot", Bucket] ->
                     {{[{bucket, Bucket}, settings], read}, fun handle_dot/2, [Bucket]};
                 ["dotsvg", Bucket] ->
