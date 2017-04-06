@@ -884,17 +884,15 @@ section.error {
   font-size: .688rem;
   font-weight: 400;
   display: inline-block;
-  line-height: 1;
+  line-height: 1.1;
   color: #333;
   text-align: center;
   text-decoration: none;
   border: 1px solid #fff;
-  border-radius: 1px;
-  padding: 0.25rem 0.25rem;
+  border-radius: 2px;
+  padding: .3rem;
   position: relative;
-  top: -1px;
   white-space: nowrap;
-  text-transform: lowercase;
 }
 
 .label.cell-label {

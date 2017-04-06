@@ -600,6 +600,10 @@ sub {
   text-transform: uppercase;
 }
 
+.nocaps {
+  text-transform: lowercase;
+}
+
 .intialcaps {
   text-transform: capitalize;
 }
