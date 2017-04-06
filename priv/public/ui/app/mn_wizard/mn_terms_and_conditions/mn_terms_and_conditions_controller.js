@@ -21,7 +21,7 @@
       if (vm.isEnterprise) {
         promise = mnWizardService.getEELicense();
       } else {
-        promise = mnWizardService.getEELicense();
+        promise = mnWizardService.getCELicense();
       }
 
       mnPromiseHelper(vm, promise)
