@@ -1486,7 +1486,7 @@ meter {
 .match_indicator .loading,
 .match_indicator .match  {display: none;}
 
-.read-only-editor {opacity:.5;}
+.read-only-editor {opacity:.7;}
 .read-only-editor .CodeMirror-cursor { visibility: hidden!important; }
 
 
@@ -1748,4 +1748,9 @@ section.dynamic_unhealthy {
 }
 .pagination a {
   padding-left: .5rem;
+}
+
+/* CodeMirror JSON editor ---------- */
+.height-100 .CodeMirror {
+  height: 75vh;
 }
