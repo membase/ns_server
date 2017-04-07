@@ -506,6 +506,11 @@ ol ol ol li {
   list-style-type: lower-roman;
 }
 
+ul.nobullet li {
+  list-style-type: none;
+  padding: .25rem 0;
+}
+
 p,
 ul,
 ol,
