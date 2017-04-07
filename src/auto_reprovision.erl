@@ -61,9 +61,9 @@ disable() ->
 reset_count() ->
     call(reset_count).
 
--spec reprovision_buckets([bucket_name()], [node()]) -> {ok, dict()}.
+-spec reprovision_buckets([bucket_name()], [node()]) -> ok | {error, term()}.
 reprovision_buckets([], _UnsafeNodes) ->
-    {ok, dict:new()};
+    ok;
 reprovision_buckets(Buckets, UnsafeNodes) ->
     call({reprovision_buckets, Buckets, UnsafeNodes}).
 
@@ -135,13 +135,12 @@ handle_call({reprovision_buckets, Buckets, UnsafeNodes}, _From,
                       {commit, SetFn(auto_reprovision_cfg, RCfg, NewCfg)}
               end),
 
-    Results = [case TxnRV of
-                   {commit, _} -> {Bucket, ok};
-                   {abort, Error} -> {Bucket, Error};
-                   _ -> {Bucket, reprovision_failed}
-               end || Bucket <- Buckets],
-
-    {reply, {ok, dict:from_list(Results)}, State#state{count = NewCount}};
+    {RV, State1} = case TxnRV of
+                       {commit, _} -> {ok, State#state{count = NewCount}};
+                       {abort, Error} -> {Error, State};
+                       _ -> {{error, reprovision_failed}, State}
+                   end,
+    {reply, RV, State1};
 
 handle_call(get_cleanup_options, _From,
             #state{enabled = Enabled, max_nodes = MaxNodes, count = Count} = State) ->
