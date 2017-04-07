@@ -1321,9 +1321,21 @@ meter {
   height: 1rem;
   vertical-align: middle;
 }
+.cbui > .selectize-input {
+  padding: 7px 8px;
+}
+.cbui.selectize-control.single .selectize-input:after {
+  margin-top: -2px;
+  right: 10px;
+}
+.cbui.narrow > .selectize-input {
+  width: 64px;
+}
+.cbui.narrow.ui-select-container {
+  min-width: 64px;
+}
 
 /* vertical usage bar --------------- */
-
 .vertical_bar {
   display: inline-block;
   vertical-align: middle;

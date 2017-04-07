@@ -1,78 +1,88 @@
-<div class="interim row margin-top1">
-  <div class="row flex-left width-12">
-    <h4>Documents</h4>
-    <span class="text-small indent-1">Filter:&nbsp;</span>
+<mn-element-cargo depot="actions">
+  <a href=""
+     ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write"
+     ng-click="documentsListCtl.showCreateDialog()">
+    ADD DOCUMENT
+  </a>
+</mn-element-cargo>
+
+<div class="row margin-top-half margin-bottom-half">
+  <div class="row flex-left">
+    <ui-select
+       on-select="documentsCtl.onSelectBucketName($item)"
+       ng-model="documentsCtl.state.bucketsNames.selected"
+       theme="selectize"
+       style="display: inline-block; vertical-align: middle;"
+       class="cbui">
+      <ui-select-match>{{$select.selected}}</ui-select-match>
+      <ui-select-choices repeat="name in documentsCtl.state.bucketsNames | filter: $select.search">
+        <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
+      </ui-select-choices>
+    </ui-select>
+    <span class="text-smaller indent-1">filter:&nbsp;</span>
     <div
        mn-filter
        config="documentsListCtl.filterConfig"
        mn-disabled="documentsControlCtl.isEmptyState()"
        on-close="documentsListCtl.onFilterClose()"
        on-reset="documentsListCtl.onFilterReset()"
-       ></div>
+       >filter</div>
   </div>
-  <div class="row nowrap">
-    <form ng-submit="!documentsControlCtl.isEmptyState() && documentsListCtl.lookupSubmit()">
-      <input
-         type="text"
-         autocorrect="off"
-         spellcheck="false"
-         autocapitalize="off"
-         placeholder="Document ID"
-         ng-model="documentsListCtl.lookupId"
-         ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">
-      <button
-         type="submit"
-         ng-disabled="documentsControlCtl.isEmptyState()"
-         ng-class="!rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">
-        Lookup Id
-      </button>
-    </form>
-    &nbsp;
+  <form ng-submit="!documentsControlCtl.isEmptyState() && documentsListCtl.lookupSubmit()" class="row flex-right width-6">
+    <input
+       type="text"
+       class="prepend width-6"
+       autocorrect="off"
+       spellcheck="false"
+       autocapitalize="off"
+       placeholder="Document ID"
+       ng-model="documentsListCtl.lookupId"
+       ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">
     <button
-       ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write"
-       ng-click="documentsListCtl.showCreateDialog()">Create Document</button>
-  </div>
+       type="submit"
+       class="append"
+       ng-disabled="documentsControlCtl.isEmptyState()"
+       ng-class="!rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">
+      Look Up ID
+    </button>
+  </form>
 </div>
 
 <div mn-spinner="!documentsControlCtl.state || documentsControlCtl.viewLoading">
-  <table class="table-stroked">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Content</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr
-         class="has-hover"
-         ui-sref="^.^.editing({documentId: r.id})"
-         ng-repeat="r in documentsControlCtl.state.docs.rows track by r.id"
-         ng-show="documentsControlCtl.state.docs.rows.length">
-        <td class="break-all max-width-4">
-          <a href="">{{ r.id }}</a>
-        </td>
-        <td class="break-all">
+  <div class="cbui-table">
+    <div class="cbui-table-header-filled padding-left">
+      <span class="cbui-table-cell">ID</span>
+      <span class="cbui-table-cell flex-grow-2">content sample</span>
+      <span class="cbui-table-cell"></span>
+    </div>
+
+    <section
+       class="has-hover"
+       ui-sref="^.^.editing({documentId: r.id})"
+       ng-repeat="r in documentsControlCtl.state.docs.rows track by r.id"
+       ng-show="documentsControlCtl.state.docs.rows.length">
+      <div class="cbui-tablerow">
+        <span class="cbui-table-cell wrap break-all">{{ r.id }}</span>
+        <span class="cbui-table-cell flex-grow-2 wrap break-all">
           {{r.doc.json !== undefined ? r.doc.json : r.doc.base64 | mnLimitTo: 200}}
-        </td>
-        <td class="text-right nowrap">
+        </span>
+        <span class="cbui-table-cell wrap text-right">
           <button
-             class="outline"
+             class="outline tight"
              ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write"
              ng-click="$event.stopPropagation(); documentsListCtl.deleteDocument(r.id)">Delete</button>
           <button
              ng-click="$event.stopPropagation()"
-             ui-sref="^.^.editing({documentId: r.id})">
-            <span ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">Edit Document</span>
+             ui-sref="^.^.editing({documentId: r.id})"
+             class="outline tight">
+            <span ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">Edit</span>
             <span ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read && !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">View Document</span>
           </button>
-        </td>
-      </tr>
-      <tr ng-if="!documentsControlCtl.state.docs.rows.length">
-        <td colspan="3">
-          There are currently no documents in this bucket {{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}
-        </td>
-      </tr>
-    </tbody>
-  </table>
+        </span>
+      </div>
+    </section>
+    <div ng-if="!documentsControlCtl.state.docs.rows.length" class="zero-content">
+      There are currently no documents in this bucket {{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}
+    </div>
+  </div>
 </div>

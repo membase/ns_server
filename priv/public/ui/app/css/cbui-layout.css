@@ -65,8 +65,8 @@ nav.sub-nav {
 nav.nav-sidebar {
   flex: 0 0 104px;
   border-right: 1px solid #ececec;
-  padding: 1rem 0 2rem 0;
-  margin: .25rem 2.5rem 0 0;
+  padding: .5rem 0 2rem 0;
+  margin: 0 2.5rem 0 0;
   text-align: right;
 }
 

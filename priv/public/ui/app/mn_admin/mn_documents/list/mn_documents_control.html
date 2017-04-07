@@ -1,35 +1,21 @@
 <mn-element-cargo depot="alerts">
   <div
-     class="interim alert alert-warning"
+     class="alert alert-warning"
      ng-show="documentsControlCtl.state.docs.errors[0]">
     <p>Error: {{documentsControlCtl.state.docs.errors[0].reason}} ({{documentsControlCtl.state.docs.errors[0].error }})</p>
   </div>
 </mn-element-cargo>
 
 <div mn-spinner="!documentsControlCtl.state || !documentsCtl.state">
-  <div class="row">
-    <ui-select
-       on-select="documentsCtl.onSelectBucketName($item)"
-       ng-model="documentsCtl.state.bucketsNames.selected"
-       theme="selectize"
-       style="display: inline-block; vertical-align: middle;">
-      <ui-select-match>{{$select.selected}}</ui-select-match>
-      <ui-select-choices repeat="name in documentsCtl.state.bucketsNames | filter: $select.search">
-        <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
-      </ui-select-choices>
-    </ui-select>
-  </div>
-
   <ui-view></ui-view>
 
   <div class="row">
     <div>
-     <span class="text-small">show per page: </span>
      <ui-select
         ng-model="documentsControlCtl.state.pageLimits.selected"
         theme="selectize"
         on-select="documentsControlCtl.onSelectPageLimits($item)"
-        class="inline middle">
+        class="inline middle cbui narrow">
        <ui-select-match>{{$select.selected}}</ui-select-match>
        <ui-select-choices
           repeat="name in documentsControlCtl.state.pageLimits | filter: $select.search">
@@ -38,8 +24,9 @@
             ng-bind-html="name | highlight: $select.search"></span>
        </ui-select-choices>
      </ui-select>
+     <span class="text-smaller">&nbsp;per page</span>
     </div>
-    <p class="inline middle text-small">
+    <p class="inline middle text-smaller">
       &lt; page {{documentsControlCtl.state.pageNumber + 1}} &gt;
     </p>
     <div>
