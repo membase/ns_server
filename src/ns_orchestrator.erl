@@ -25,7 +25,6 @@
 %% Constants and definitions
 
 -type reply_to() :: [{pid(), any()}].
--type janitor_item() :: {bucket, bucket_name()}.
 -type janitor_request() :: {janitor_item(), reply_to()}.
 -record(idle_state, {janitor_requests = [] :: [janitor_request()]}).
 -record(janitor_state, {janitor_requests :: [janitor_request()],
