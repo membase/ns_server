@@ -1104,6 +1104,10 @@ meter {
 .columns-three .chart-column-headers {
   width: 33%;
 }
+.columns-five {
+  max-width: 888px;
+}
+
 /* Query Monitor ------------------- */
 .kill-button {
   margin: -.25rem 0 -.3rem 2rem;

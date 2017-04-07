@@ -2,9 +2,12 @@
   <ui-view></ui-view>
   <div class="row flex-column items-top">
     <div
-       class="margin-top1 flex-order-two"
+       class="margin-top1 flex-order-two columns-four"
        ng-repeat="block in analyticsCtl.state.statsDirectoryBlocks track by block.blockName"
-       ng-class="{dynamic_withtotal: block.withTotal, 'flex-order-one': block.blockName=='Summary', 'columns-four': block.columns, 'columns-three': block.blockName.indexOf('Mapreduce View Stats') > -1, 'columns-four': block.blockName.indexOf('Full Text Search Stats') > -1}">
+       ng-class="{dynamic_withtotal: block.withTotal,
+                 'flex-order-one': block.blockName=='Summary',
+                 'columns-five': (block.blockName=='Summary') || (block.blockName.indexOf('Server Resources') > -1),
+                 'columns-three': (block.blockName.indexOf('Mapreduce View Stats') > -1) || (block.blockName.indexOf('Spatial View Stats') > -1)}">
       <h4
          class="disclosure"
          ng-class="{disclosed: analyticsListCtl.isDetailsOpened(block.blockName)}"

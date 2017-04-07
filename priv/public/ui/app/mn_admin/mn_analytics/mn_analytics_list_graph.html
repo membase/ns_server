@@ -1,6 +1,6 @@
 <div class="row flex-center">
   <div
-     min-height="269px"
+     min-height="100px"
      mn-spinner="!analyticsListGraphCtl.selectedStat || analyticsCtl.viewLoading">
     <h4 class="initialcaps width-12 text-center margin-top1 margin-bottom-half">{{analyticsListGraphCtl.selectedStat.title}}&nbsp;
       <span
@@ -15,8 +15,8 @@
       No samples, yet
     </span>
     <div
-       class="inline margin-right-1 text-small  "
-       style="width: 742px; height: 269px;"
+       class="inline margin-right-1 text-smaller"
+       style="width: 740px; height: 240px;"
        ng-if="analyticsListGraphCtl.selectedStat.graphConfig"
        mn-plot
        mn-plot-config="analyticsListGraphCtl.selectedStat.graphConfig">
@@ -26,12 +26,12 @@
      ng-hide="!analyticsListGraphCtl.selectedStat"
      ng-if="rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read"
      class="pills pills-small width-1 margin-right-1">
-    <a ui-sref="{zoom: 'minute'}" ui-sref-active="pills-selected">Minute</a>
-    <a ui-sref="{zoom: 'hour'}" ui-sref-active="pills-selected">Hour</a>
-    <a ui-sref="{zoom: 'day'}" ui-sref-active="pills-selected">Day</a>
-    <a ui-sref="{zoom: 'week'}" ui-sref-active="pills-selected">Week</a>
-    <a ui-sref="{zoom: 'month'}" ui-sref-active="pills-selected">Month</a>
-    <a ui-sref="{zoom: 'year'}" ui-sref-active="pills-selected">Year</a>
+    <a ui-sref="{zoom: 'minute'}" ui-sref-active="selected">Minute</a>
+    <a ui-sref="{zoom: 'hour'}" ui-sref-active="selected">Hour</a>
+    <a ui-sref="{zoom: 'day'}" ui-sref-active="selected">Day</a>
+    <a ui-sref="{zoom: 'week'}" ui-sref-active="selected">Week</a>
+    <a ui-sref="{zoom: 'month'}" ui-sref-active="selected">Month</a>
+    <a ui-sref="{zoom: 'year'}" ui-sref-active="selected">Year</a>
   </div>
 <!-- this is probably redundant with the tooltips
   <div
