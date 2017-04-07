@@ -142,21 +142,16 @@
                 vm.isProgressBarClosed = true;
               }
 
-              tasks.running.forEach(function (task) {
-                if (task.type !== "indexer" &&
-                    task.type !== "view_compaction" &&
-                    task.type !== "orphanBucket" &&
-                    task.type !== "warming_up") {
+                if (tasks.inRebalance) {
                   if (!prevTask) {
                     vm.isProgressBarClosed = false;
                   } else {
-                    var task = _.find(prevTask.tasks, {type: task.type});
-                    if (!task || task.status !== "running") {
+                    if (!prevTask.tasksRebalance ||
+                        prevTask.tasksRebalance.status !== "running") {
                       vm.isProgressBarClosed = false;
                     }
                   }
                 }
-              });
 
               if (tasks.tasksRebalance.errorMessage && mnAlertsService.isNewAlert({id: tasks.tasksRebalance.statusId})) {
                 mnAlertsService.setAlert("error", tasks.tasksRebalance.errorMessage, null, tasks.tasksRebalance.statusId);
