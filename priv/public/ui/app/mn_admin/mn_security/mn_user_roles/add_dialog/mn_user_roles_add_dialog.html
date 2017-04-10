@@ -117,7 +117,7 @@
                            'disclosed': !userRolesAddDialogCtl.closedWrappers[getUIID],
                            'has-selection': userRolesAddDialogCtl.closedWrappers[getUIID] && userRolesAddDialogCtl.containsSelected[getUIID]
                            }">
-                {{::level == 0 ? (role[0][0].role.split('_')[0] + " Roles") : (level == 1 ? role[0].name : "")}}
+                {{::level == 0 ? ((role[0][0].role.split('_')[0] == "fts" ? "FTS" : role[0][0].role.split('_')[0]) + " Roles") : (level == 1 ? role[0].name : "")}}
               </label>
               <div ng-class="::{'indent-1': hasTitle}">
                 <div
