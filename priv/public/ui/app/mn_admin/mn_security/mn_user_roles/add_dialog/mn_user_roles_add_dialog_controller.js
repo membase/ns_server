@@ -11,7 +11,6 @@
     vm.userID = vm.user.id || 'New';
     vm.roles = [];
     vm.save = save;
-    vm.onSelect = onSelect;
     vm.isEditingMode = !!user;
     vm.isLdapEnabled = isLdapEnabled;
     vm.onCheckChange = onCheckChange;
@@ -69,10 +68,6 @@
         vm.containsSelected[role + "_wrapper"] = false;
         vm.containsSelected[role.split("_")[0] + "_wrapper"] = false;
       }
-    }
-
-    function onSelect(select) {
-      select.search = "";
     }
 
     function activate() {
