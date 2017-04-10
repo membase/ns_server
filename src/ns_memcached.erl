@@ -1396,10 +1396,9 @@ ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
 maybe_update_ephemeral_full_policy(Sock, Bucket, NewFullPolicy, CurrFullPolicy) ->
     case NewFullPolicy =/= CurrFullPolicy of
         true ->
-            ok = mc_client_binary:set_engine_param(Sock,
+            ok = mc_client_binary:set_flush_param(Sock,
                                                    <<"ephemeral_full_policy">>,
-                                                   NewFullPolicy,
-                                                   flush),
+                                                   NewFullPolicy),
             ?log_info("Ephemeral full policy changed from '~s' to '~s' for bucket ~p",
                       [CurrFullPolicy, NewFullPolicy, Bucket]),
             ok;
