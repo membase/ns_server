@@ -39,7 +39,12 @@
              ng-model="termsCtl.agree"
              name="agree">
           <label class="checkbox" for="for-accept-terms">
-            I accept the <a href="http://www.couchbase.com/agreement/free-license" target="_blank">terms & conditions</a>
+            <span ng-show="termsCtl.isEnterprise">
+              I accept the <a href="https://www.couchbase.com/ESLA05242016" target="_blank">terms & conditions</a>
+            </span>
+            <span ng-show="!termsCtl.isEnterprise">
+              I accept the <a href="https://www.couchbase.com/community" target="_blank">terms & conditions</a>
+            </span>
           </label>
         </div>
 
