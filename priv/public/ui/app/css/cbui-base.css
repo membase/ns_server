@@ -234,7 +234,8 @@ h6,
 p,
 a,
 label,
-button {
+button,
+li {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale;

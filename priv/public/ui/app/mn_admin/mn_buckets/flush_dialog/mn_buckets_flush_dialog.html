@@ -1,19 +1,22 @@
-<div class="dialog-med">
+<div class="dialog-small">
   <div class="panel-header">
-    <h2>Flushing</h2>
+    <h2>Confirm Flush Bucket</h2>
   </div>
   <div mn-spinner="bucketsFlushDialogCtl.viewLoading">
     <div class="panel-content">
-      <p class="error">Warning: Flushing this bucket will result in complete data loss for this bucket.</p>
-      <p>Are you sure you want to flush it?</p>
+      <div class="row flex-left">
+        <span class="icon fa-warning fa-2x red-3"></span>
+        <p>
+          Warning: Bucket data will be lost.
+          <br>Flush this bucket?
+        </p>
+      </div>
     </div>
     <div class="panel-footer">
-      <a
-         href=""
-         ng-click="$dismiss()">Cancel</a>
+      <a href="" ng-click="$dismiss()">Cancel</a>
       <button
          type="submit"
-         ng-click="bucketsFlushDialogCtl.doFlush()">Flush</button>
+         ng-click="bucketsFlushDialogCtl.doFlush()">Flush Bucket</button>
     </div>
   </div>
 </div>
