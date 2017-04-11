@@ -44,8 +44,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% Server state
--record(state, {port :: port() | {inactive, tuple()},
-                name :: term(),
+-record(state, {port :: port() | undefined,
+                params :: tuple(),
                 messages,
                 logger :: atom(),
                 log_tref :: timer:tref(),
@@ -95,12 +95,13 @@ init(Fun) ->
 
     Port = case DontStart of
                false -> open_port(Params2);
-               true -> {inactive, Params2}
+               true -> undefined
            end,
-    {ok, State#state{port = Port, name = Name,
+    {ok, State#state{port = Port,
+                     params = Params2,
                      messages = ringbuffer:new(?NUM_MESSAGES)}}.
 
-handle_info({send_to_port, Msg}, #state{port = P} = State) when not is_port(P) ->
+handle_info({send_to_port, Msg}, #state{port = undefined} = State) ->
     ?log_debug("Got send_to_port when there's no port running yet. Will kill myself."),
     {stop, {unexpected_send_to_port, {send_to_port, Msg}}, State};
 handle_info({send_to_port, Msg}, State) ->
@@ -135,7 +136,7 @@ handle_info(log, State) ->
     State1 = log(State),
     {noreply, State1};
 handle_info({_Port, {exit_status, Status}}, State) ->
-    ns_crash_log:record_crash({State#state.name,
+    ns_crash_log:record_crash({port_name(State),
                                Status,
                                string:join(ringbuffer:to_list(State#state.messages), "\n")}),
     {stop, {abnormal, Status}, State};
@@ -143,14 +144,15 @@ handle_info({'EXIT', Port, Reason} = Exit, #state{port=Port} = State) ->
     ?log_error("Got unexpected exit signal from port: ~p. Exiting.", [Exit]),
     {stop, Reason, State}.
 
-handle_call(is_active, _From, State) ->
-    {reply, is_port(State#state.port), State};
+handle_call(is_active, _From, #state{port = Port} = State) ->
+    {reply, Port =/= undefined, State};
 
-handle_call(activate, _From, #state{port = P} = State) when is_port(P) ->
-    {reply, {error, already_active}, State};
-handle_call(activate, _From, #state{port = {inactive, Params}} = State) ->
+handle_call(activate, _From, #state{port = undefined,
+                                    params = Params} = State) ->
     State2 = State#state{port = open_port(Params)},
-    {reply, ok, State2}.
+    {reply, ok, State2};
+handle_call(activate, _From, State) ->
+    {reply, {error, already_active}, State}.
 
 handle_cast(unhandled, unhandled) ->
     erlang:exit(unhandled).
@@ -174,15 +176,15 @@ wait_for_child_death_process_info(Msg, State) ->
         {stop, _, State2} -> State2
     end.
 
-terminate(Reason, #state{port = P} = _State) when not is_port(P) ->
+terminate(Reason, #state{port = undefined} = _State) ->
     ?log_debug("doing nothing in terminate(~p) because port is not active", [Reason]),
     ok;
-terminate(shutdown, #state{port = Port, name = Name} = State) ->
+terminate(shutdown, #state{port = Port} = State) ->
     ShutdownCmd = misc:get_env_default(ns_babysitter, port_shutdown_command, "shutdown"),
-    ?log_debug("Sending ~s to port ~p", [ShutdownCmd, Name]),
+    ?log_debug("Sending ~s to port ~p", [ShutdownCmd, port_name(State)]),
     port_command(Port, [ShutdownCmd, 10]),
     State2 = wait_for_child_death(State),
-    ?log_debug("~p has exited", [Name]),
+    ?log_debug("~p has exited", [port_name(State)]),
     log(State2); % Log any remaining messages
 terminate(_Reason, State) ->
     log(State). % Log any remaining messages
@@ -207,13 +209,13 @@ log(#state{logger = undefined} = State) ->
         [] ->
             ok;
         Buf ->
-            ?log_info(format_lines(State#state.name, lists:reverse(Buf))),
+            ?log_info(format_lines(port_name(State), lists:reverse(Buf))),
             case State#state.dropped of
                 0 ->
                     ok;
                 Dropped ->
                     ?log_warning("Dropped ~p log lines from ~p",
-                                 [Dropped, State#state.name])
+                                 [Dropped, port_name(State)])
             end
     end,
     State#state{log_tref=undefined, log_buffer=[], dropped=0};
@@ -241,3 +243,7 @@ open_port({_Name, Cmd, Args, OptsIn}) ->
             Port ! {self(), {command, Data}}
     end,
     Port.
+
+port_name(#state{params = Params}) ->
+    {Name, _, _, _} = Params,
+    Name.
