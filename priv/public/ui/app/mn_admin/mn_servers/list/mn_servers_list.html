@@ -3,23 +3,24 @@
    min-height="110px">
   <div class="cbui-table" mn-sortable-table>
     <div class="cbui-table-header">
-      <span
-         mn-sortable-title="hostname"
-         sort-by-default="true"
-         class="cbui-table-cell flex-grow-1-5">name</span>
-      <span
-         mn-sortable-title="group"
-         sort-function="serversCtl.sortByGroup"
-         class="cbui-table-cell flex-grow-1-5">
-        {{ poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "group" : " " }}
+
+      <span class="cbui-table-cell flex-grow-2-5">
+        <span
+           mn-sortable-title="hostname"
+           sort-by-default="true">
+          name /
+        </span>
+        <span mn-sortable-title="group" sort-function="serversCtl.sortByGroup">
+          {{ poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "group" : " " }}
+        </span>
       </span>
-      <span class="cbui-table-cell flex-grow-2-5" mn-sortable-title="services">services</span>
-      <span class="cbui-table-cell">CPU</span>
-      <span class="cbui-table-cell">RAM</span>
-      <span class="cbui-table-cell">swap</span>
-      <span class="cbui-table-cell">disk used</span>
+      <span class="cbui-table-cell flex-grow-1-5" mn-sortable-title="services">services</span>
+      <span class="cbui-table-cell flex-grow-half">CPU</span>
+      <span class="cbui-table-cell flex-grow-half">RAM</span>
+      <span class="cbui-table-cell flex-grow-half">swap</span>
+      <span class="cbui-table-cell flex-grow-half">disk used</span>
       <span class="cbui-table-cell">items</span>
-      <span class="cbui-table-cell flex-grow-1-5"> </span>
+      <span class="cbui-table-cell"></span>
     </div>
     <div
        ng-repeat="node in serversCtl.nodes.allNodes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:serversCtl.listFiter track by node.otpNode"

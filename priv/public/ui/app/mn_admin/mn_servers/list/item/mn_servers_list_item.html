@@ -3,21 +3,21 @@
    ng-click="!serversItemCtl.isNodeUnhealthy && rbac.cluster.nodes.read && serversCtl.toggleDetails(node.hostname)"
    ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]">
   <div class="cbui-tablerow">
-    <span class="cbui-table-cell flex-grow-1-5 cbui-tablerow-title">
-      {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
+    <span class="cbui-table-cell flex-grow-2-5 cbui-tablerow-title row flex-left">
+      <span class="ellipsis" title="{{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}">
+      {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}&nbsp;
     </span>
-    <span class="cbui-table-cell flex-grow-1-5">
       <span
-         class="label lt-blue"
+         class="label lt-blue ellipsis"
          ng-show="rbac.cluster.server_groups.read && serversCtl.mnPoolDefault.value.isGroupsAvailable"
          title="{{serversCtl.getGroupsByHostname[node.hostname].name}}">
         {{serversCtl.getGroupsByHostname[node.hostname].name}}
       </span>
     </span>
-    <span class="cbui-table-cell flex-grow-2-5">
+    <span class="cbui-table-cell flex-grow-1-5">
       <span ng-repeat="service in node.services | mnFormatServicesArray | orderBy" class="label neutral nocaps">{{service}}</span>
     </span>
-    <span class="cbui-table-cell">
+    <span class="cbui-table-cell flex-grow-half">
       <span ng-show="!serversItemCtl.getCpuUsageConf.exist">
         ---
       </span>
@@ -25,7 +25,7 @@
         {{serversItemCtl.getCpuUsageConf.value | mnTruncateTo3Digits}}%
       </span>
     </span>
-    <span class="cbui-table-cell">
+    <span class="cbui-table-cell flex-grow-half">
       <span ng-show="!serversItemCtl.getRamUsageConf.exist">
         ---
       </span>
@@ -34,7 +34,7 @@
       </span>
     </span>
     <span
-       class="cbui-table-cell">
+       class="cbui-table-cell flex-grow-half">
       <span ng-show="!serversItemCtl.getSwapUsageConf.exist">
         ---
       </span>
@@ -42,7 +42,7 @@
         {{serversItemCtl.getSwapUsageConf.value | mnTruncateTo3Digits}}%
       </span>
     </span>
-    <span class="cbui-table-cell">
+    <span class="cbui-table-cell flex-grow-half">
       <span ng-show="!serversItemCtl.couchDiskUsage">
         ---
       </span>
@@ -50,11 +50,10 @@
         {{serversItemCtl.couchDiskUsage | mnFormatQuantity}}
       </span>
     </span>
-    <span class="cbui-table-cell">
-      {{node.interestingStats.curr_items || 0 | mnFormatQuantity:1000:' ' }} /
-      {{node.interestingStats.vb_replica_curr_items || 0 | mnFormatQuantity:1000:' ' }}
+    <span class="cbui-table-cell" title="{{node.interestingStats.curr_items || 0 | mnFormatQuantity:1000:' ' }}/{{node.interestingStats.vb_replica_curr_items || 0 | mnFormatQuantity:1000:' ' }}">
+      {{node.interestingStats.curr_items || 0 | mnFormatQuantity:1000:' ' }}/{{node.interestingStats.vb_replica_curr_items || 0 | mnFormatQuantity:1000:' ' }}
     </span>
-    <span class="cbui-table-cell flex-grow-1-5 text-right">
+    <span class="cbui-table-cell text-right">
       <a
          ng-if="!serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeUnhealthy && rbac.cluster.stats.read"
          title="{{'View Analytics for ' + node.hostname}}"
