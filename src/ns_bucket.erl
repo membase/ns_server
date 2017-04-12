@@ -83,7 +83,6 @@
          config_to_map_options/1,
          needs_rebalance/2,
          bucket_view_nodes/1,
-         bucket_view_nodes/2,
          bucket_config_view_nodes/1,
          config_upgrade_to_spock/1]).
 
