@@ -3,10 +3,11 @@
 
   angular.module('mnXDCRService', [
     'mnTasksDetails',
-    'mnPoolDefault'
+    'mnPoolDefault',
+    'mnFilters'
   ]).factory('mnXDCRService', mnXDCRServiceFactory);
 
-  function mnXDCRServiceFactory($q, $http, mnTasksDetails, mnPoolDefault) {
+  function mnXDCRServiceFactory($q, $http, mnTasksDetails, mnPoolDefault, getStringBytesFilter) {
     var mnXDCRService = {
       removeExcessSettings: removeExcessSettings,
       saveClusterReference: saveClusterReference,
@@ -15,10 +16,48 @@
       getReplicationSettings: getReplicationSettings,
       saveReplicationSettings: saveReplicationSettings,
       postRelication: postRelication,
-      getReplicationState: getReplicationState
+      getReplicationState: getReplicationState,
+      validateRegex: validateRegex
     };
 
     return mnXDCRService;
+
+    function doValidateOnOverLimit(text) {
+      return getStringBytesFilter(text) > 250;
+    }
+
+    function validateRegex(regex, testKey) {
+      if (doValidateOnOverLimit(regex)) {
+        return $q.reject('Regex should not have size more than 250 bytes');
+      }
+      if (doValidateOnOverLimit(testKey)) {
+        return $q.reject('Test key should not have size more than 250 bytes');
+      }
+      return $http({
+        method: 'POST',
+        mnHttp: {
+          cancelPrevious: true
+        },
+        data: {
+          expression: regex,
+          keys: JSON.stringify([testKey])
+        },
+        transformResponse: function (data) {
+          //angular expect response in JSON format
+          //but server returns with text message in case of error
+          var resp;
+
+          try {
+            resp = JSON.parse(data);
+          } catch (e) {
+            resp = data;
+          }
+
+          return resp;
+        },
+        url: '/_goxdcr/regexpValidation'
+      });
+    }
 
     function removeExcessSettings(settings) {
       var neededProperties = ["replicationType", "optimisticReplicationThreshold", "failureRestartInterval", "docBatchSizeKb", "workerBatchSize", "checkpointInterval", "type", "toBucket", "toCluster", "fromBucket"];

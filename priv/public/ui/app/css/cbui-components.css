@@ -1472,7 +1472,7 @@ meter {
 
 /* create xdcr dialog --------------- */
 
-.dynamic-hightlight span {
+.dynamic-hightlight {
   Background-color: LightSkyBlue;
 }
 .match_indicator {
@@ -1500,6 +1500,7 @@ meter {
 
 .read-only-editor {opacity:.7;}
 .read-only-editor .CodeMirror-cursor { visibility: hidden!important; }
+.codemirror-auto-height .CodeMirror {height: auto;}
 
 
 /* info popup styles ************************** */

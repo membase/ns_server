@@ -70,7 +70,7 @@
         </label>
       </div>
 
-      <span ng-show="xdcrCreateDialogCtl.replication.enableAdvancedFiltering">
+      <span ng-if="xdcrCreateDialogCtl.replication.enableAdvancedFiltering">
         <div class="formrow">
           <label class="inline">Filter Expression</label>
           <span
@@ -80,37 +80,31 @@
             <span class="icon fa-circle-thin fa-stack-2x"></span>
             <span class="icon fa-info fa-stack-1x"></span>
           </span>
-          <br>
-          <pre
-             class="input"
-             contenteditable="true"
+          <input
+             type="text"
+             ng-model="xdcrCreateDialogCtl.filterExpression"
+             ng-blur="xdcrCreateDialogCtl.onExpressionUpdate()"
+             autocorrect="off"
              spellcheck="false"
-             mn-contenteditable
-             mn-regex
-             ng-model="xdcrCreateDialogCtl.advancedFiltering.filterExpression"
-             ></pre>
+             autocapitalize="off">
+          <br>
           <div
              class="error error-field"
-             ng-show="xdcrCreateDialogCtl.advancedFiltering.filterExpressionError">
-            {{xdcrCreateDialogCtl.advancedFiltering.filterExpressionError}}
+             ng-show="xdcrCreateDialogCtl.filterExpressionError">
+            {{xdcrCreateDialogCtl.filterExpressionError}}
           </div>
         </div>
 
         <div class="formrow">
           <label for="xdcr_advaced_settings_type">Test Key</label>
           <div class="spinner_wrap relative">
-            <pre
-               class="input"
-               contenteditable="true"
-               spellcheck="false"
-               mn-contenteditable
-               mn-regex-test-key
-               ng-model="xdcrCreateDialogCtl.advancedFiltering.testKey"
-               ng-class="{'dynamic-hightlight': xdcrCreateDialogCtl.advancedFiltering.hightlightTestKey}"
-               ></pre>
+            <div
+               class="codemirror-auto-height"
+               ui-codemirror="xdcrCreateDialogCtl.editorOptions">
+            </div>
             <div
                class="match_indicator"
-               ng-class="{dynamic_match: !xdcrCreateDialogCtl.advancedFiltering.filterExpressionError && xdcrCreateDialogCtl.advancedFiltering.filterExpression && xdcrCreateDialogCtl.advancedFiltering.isSucceeded, dynamic_spinner: xdcrCreateDialogCtl.advancedFiltering.dynamicSpinner}">
+               ng-class="{dynamic_match: !xdcrCreateDialogCtl.filterExpressionError && xdcrCreateDialogCtl.filterExpression && xdcrCreateDialogCtl.isSucceeded, dynamic_spinner: xdcrCreateDialogCtl.filterExpressionSpinner}">
               <span class="no_match">No Match</span>
               <span class="loading">...</span>
               <span class="match">Match</span>

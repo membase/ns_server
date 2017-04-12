@@ -8,9 +8,9 @@
     'mnPromiseHelper',
     'mnPoll',
     'mnAutocompleteOff',
-    'mnRegex',
     'mnPoolDefault',
-    'mnSpinner'
+    'mnSpinner',
+    "ui.codemirror"
   ]).controller('mnXDCRController', mnXDCRController);
 
   function mnXDCRController($scope, permissions, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnTasksDetails, mnBucketsService, mnPromiseHelper) {
