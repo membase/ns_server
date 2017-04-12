@@ -63,39 +63,6 @@
     </div>
   </div>
 
-  <h2 ng-if="!bucketConf.isWizard">Access Control</h2>
-  <div ng-if="!bucketConf.isWizard" class="sub_section">
-    <div>
-      <input id="js_bucket_details_sasl_selected" type="radio" name="authType" value="sasl" ng-model="bucketConf.authType">
-      <div class="with_radiogroup">
-        <label for="js_bucket_details_sasl_selected">
-          <span ng-if="bucketConf.isDefault || (bucketConf.name === 'default')">Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</span>
-          <span ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">Standard port (TCP port 11211. Needs SASL auth.)</span>
-        </label>
-        <div ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">
-          <label for="js_bucket_details_sasl_password">Enter password:</label>
-          <input type="password" name="saslPassword" id="js_bucket_details_sasl_password" ng-model="bucketConf.saslPassword" ng-disabled="bucketConf.authType !== 'sasl'" value="" mn-autocomplete-off>
-          <div class="error-container err-saslPassword" ng-show="validation.result.errors.saslPassword">
-            {{validation.result.errors.saslPassword}}
-          </div>
-        </div>
-      </div>
-    </div>
-    <div>
-      <input type="radio" name="authType" ng-model="bucketConf.authType" value="none" id="js_bucket_details_auth_type" ng-disabled="bucketConf.isDefault || (bucketConf.name === 'default')">
-      <div class="with_radiogroup">
-        <label for="js_bucket_details_auth_type">Dedicated port (supports ASCII protocol and is auth-less)</label>
-        <div>
-          <label for="js_bucket_details_proxy_port">Protocol Port:</label>
-          <input id="js_bucket_details_proxy_port" name="proxyPort" style="width:50px" ng-model="bucketConf.proxyPort" ng-disabled="bucketConf.authType !== 'none'">
-          <div style="width:500px" class="error-container err-proxyPort" ng-show="bucketConf.authType === 'none'">
-            <span ng-show="validation.result.errors.proxyPort">{{validation.result.errors.proxyPort}}</span> <span>Dedicated ports for memcached ASCII protocol are deprecated. Please see documentation for alternatives.</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div ng-if="pools.isEnterprise && bucketConf.bucketType === 'membase' && (bucketConf.isWizard || poolDefault.compat.atLeast46)">
     <h2>Conflict Resolution</h2>
     <div class="sub_section">

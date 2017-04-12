@@ -3,13 +3,6 @@
   <div class="gong_rb">
     <div class="pad">
       <div style="width:800px;float:left;">
-        <div ng-show="rbac.cluster.bucket[bucket.name].settings.read">
-          Access Control:
-          <span>
-            {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? 'Port' : bucketsDetailsCtl.bucketDetails.name === 'default' ? 'None' : 'Authentication'}}
-            {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? ': ' + bucketsDetailsCtl.bucketDetails.proxyPort : ''}}
-          </span>
-        </div>
         <div ng-if="!bucket.isMemcached && rbac.cluster.bucket[bucket.name].settings.read">
           Replicas: <span>{{bucketsDetailsCtl.bucketDetails.replicaNumber != 0 ? (bucketsDetailsCtl.bucketDetails.replicaNumber | mnCount:'replica copy') : 'disabled'}}</span>
         </div>

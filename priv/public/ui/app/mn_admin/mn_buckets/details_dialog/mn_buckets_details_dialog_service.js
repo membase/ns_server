@@ -62,17 +62,12 @@
           _.extend(conf, mnSettingsAutoCompactionService.prepareSettingsForSaving(autoCompactionSettings));
         }
       }
-      if (bucketConf.authType === "sasl") {
-        copyProperty("saslPassword");
-      }
-      if (bucketConf.authType === "none") {
-        copyProperty("proxyPort");
-      }
+
       if (bucketConf.isWizard) {
         copyProperty("otherBucketsRamQuotaMB");
       }
 
-      copyProperties(["authType", "ramQuotaMB", "flushEnabled"]);
+      copyProperties(["ramQuotaMB", "flushEnabled"]);
 
       return conf;
     }
