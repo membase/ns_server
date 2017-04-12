@@ -5,12 +5,11 @@
     .module('mnAuth')
     .controller('mnAuthController', mnAuthController);
 
-  function mnAuthController(mnAuthService, $location, $state, mnAboutDialogService, $urlRouter) {
+  function mnAuthController(mnAuthService, $location, $state, $urlRouter) {
     var vm = this;
 
     vm.loginFailed = false;
     vm.submit = submit;
-    vm.showAboutDialog = mnAboutDialogService.showAboutDialog;
 
     function error(resp) {
       vm.error = {};

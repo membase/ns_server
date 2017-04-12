@@ -4,7 +4,6 @@
   angular.module('mnAuth', [
     'mnAuthService',
     'ui.router',
-    'mnAboutDialog',
     'mnAutocompleteOff',
     'ngMessages'
   ]).config(mnAuthConfig);

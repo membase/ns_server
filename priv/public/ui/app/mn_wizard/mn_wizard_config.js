@@ -8,7 +8,6 @@
     'mnSpinner',
     'mnPromiseHelper',
     'mnFocus',
-    'mnAboutDialog',
     'mnAutocompleteOff',
     'mnMinlength',
     'mnEqual',

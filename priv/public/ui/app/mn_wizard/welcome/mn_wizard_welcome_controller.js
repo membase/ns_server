@@ -5,9 +5,9 @@
     .module("mnWizard")
     .controller("mnWizardWelcomeController", mnWizardWelcomeController);
 
-  function mnWizardWelcomeController(pools, mnAboutDialogService, mnWizardService) {
+  function mnWizardWelcomeController(pools, mnWizardService) {
     var vm = this;
-    vm.showAboutDialog = mnAboutDialogService.showAboutDialog;
+
     vm.implementationVersion = pools.implementationVersion;
     vm.setIsNewClusterFlag = setIsNewClusterFlag;
 
