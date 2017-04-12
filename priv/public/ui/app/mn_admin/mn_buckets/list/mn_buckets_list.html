@@ -9,7 +9,8 @@
     <span class="cbui-table-cell flex-grow-1-5"></span>
   </div>
   <div class="zero-content" ng-if="!buckets.length">
-    No buckets currently defined! Use "ADD BUCKET" above to create one.
+    You have no data buckets. Use "ADD BUCKET" above to create one,
+    or load a <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.
   </div>
   <div
      ng-if="buckets.length"

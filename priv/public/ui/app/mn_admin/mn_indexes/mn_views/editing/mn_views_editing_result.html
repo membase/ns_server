@@ -1,47 +1,50 @@
 <div>
-  <div class="interim row">
-      <h4>Results</h4>
-      <span class="row flex-left text-small indent-1 width-12">
-        Filter:&nbsp;
+  <div class="row margin-top2 margin-bottom-half">
+    <span class="row text-small flex-left">
+      <h4 class="inline">Results</h4>
+
         <div
            mn-filter
+           class="indent-1"
            config="viewsEditingResultCtl.filterConfig"
            mn-disabled="viewsEditingResultCtl.isEmptyState()"
            on-close="viewsEditingResultCtl.onFilterClose()"
            on-reset="viewsEditingResultCtl.onFilterReset()"
            on-open="viewsEditingResultCtl.onFilterOpen()">
-        </div>&nbsp;
+        </div>
+        <span>&nbsp; filter: &nbsp;</span>
         <a
            class="ellipsis"
            href="{{viewsEditingResultCtl.generateViewHref()}}"
            target="_blank">
           {{viewsEditingResultCtl.getFilterParamsAsString()}}
         </a>
-      </span>
-      <div class="nowrap">
-        <button
-           class="icon fa-angle-left outline"
-           ng-disabled="viewsEditingResultCtl.isPrevDisabled()"
-           ng-click="!viewsEditingResultCtl.isPrevDisabled() && viewsEditingResultCtl.prevPage()"></button>
-        <button
-           class="icon fa-angle-right outline"
-           ng-disabled="viewsEditingResultCtl.isNextDisabled()"
-           ng-click="!viewsEditingResultCtl.isNextDisabled() && viewsEditingResultCtl.nextPage()"></button>
-        <button ng-click="viewsEditingResultCtl.activate()">Show Results</button>
-      </div>
-  </div>
 
-  <div
-     class="pills margin-bottom-half"
-     ng-show="viewsEditingCtl.state.isDevelopmentDocument">
-    <a
-       ui-sref-active="pills-selected"
-       ui-sref="{full_set: null}">Development Time Subset</a>
-    <a
-       ui-sref-active="pills-selected"
-       ui-sref="{full_set: 'true'}">Full Cluster Data Set</a>
+    </span>
   </div>
-
+  <div class="row margin-bottom-half">
+    <div
+       class="pills text-right"
+       ng-show="viewsEditingCtl.state.isDevelopmentDocument">
+      <a
+         ui-sref-active="selected"
+         ui-sref="{full_set: null}">Development Time Subset</a>
+      <a
+         ui-sref-active="selected"
+         ui-sref="{full_set: 'true'}">Full Cluster Data Set</a>
+    </div>
+    <span class="nowrap">
+      <button
+       class="icon fa-angle-left outline"
+       ng-disabled="viewsEditingResultCtl.isPrevDisabled()"
+       ng-click="!viewsEditingResultCtl.isPrevDisabled() && viewsEditingResultCtl.prevPage()"></button>
+      <button
+         class="icon fa-angle-right outline"
+         ng-disabled="viewsEditingResultCtl.isNextDisabled()"
+         ng-click="!viewsEditingResultCtl.isNextDisabled() && viewsEditingResultCtl.nextPage()"></button>
+      <button ng-click="viewsEditingResultCtl.activate()">Show Results</button>
+    </span>
+  </div>
   <div
      class="error"
      ng-show="viewsEditingResultCtl.errors">
@@ -88,15 +91,15 @@
       </tbody>
       <tbody ng-show="!viewsEditingResultCtl.state">
         <tr>
-          <td colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}">
+          <td class="zero-content" colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}">
             To see the results of this view, click "Show Results" above.
           </td>
         </tr>
       </tbody>
       <tbody ng-show="viewsEditingResultCtl.state && !viewsEditingResultCtl.state.rows.length && !viewsEditingResultCtl.errors">
         <tr>
-          <td colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}">
-            The results of this view is empty.
+          <td class="zero-content" colspan="{{viewsEditingCtl.isSpatial ? 3 : 2}}">
+            This view returns no results.
           </td>
         </tr>
       </tbody>

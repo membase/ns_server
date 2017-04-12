@@ -2,7 +2,7 @@
   <div ng-class="{fiter_opened: viewsEditingCtl.isFilterOpened}">
     <div ng-show="rbac.cluster.bucket[viewsEditingCtl.currentBucketName].data.read">
       <div ng-click="viewsEditingCtl.toggleSampleDocument()">
-        <div class="interim row">
+        <div class="row margin-bottom-half">
           <h4
              class="disclosure"
              ng-class="{disclosed: !viewsEditingCtl.isSampleDocumentClosed}">
@@ -24,40 +24,34 @@
       </div>
 
       <div
-         class="interim row items-top padded text-small"
+         class="row items-top padded text-small"
          ng-hide="viewsEditingCtl.isSampleDocumentClosed"
          mn-spinner="viewsEditingCtl.awaitingSampleDocument()">
         <div
-           class="flex-grow-one width-8 column read-only-editor"
+           class="width-8 column read-only-editor"
            spellcheck="false"
            ng-if="!viewsEditingCtl.state.sampleDocument.warnings"
            ng-model="viewsEditingCtl.state.sampleDocument.jsonJSON"
            ui-codemirror="viewsEditingCtl.sampleDocumentOptions"></div>
         <div
-           class="flex-grow-one width-4 read-only-editor"
+           class="width-4 read-only-editor"
            spellcheck="false"
            ng-if="!viewsEditingCtl.state.sampleDocument.warnings"
            ng-model="viewsEditingCtl.state.sampleDocument.metaJSON"
            ui-codemirror="viewsEditingCtl.sampleMetaOptions"></div>
         <div
-           class="flex-grow-one"
+           class="zero-content width-12"
            ng-show="viewsEditingCtl.state.sampleDocument.warnings"
            ng-messages="viewsEditingCtl.state.sampleDocument.warnings">
-          <span ng-message="documentDoesNotExist">A document with that ID does not exist</span>
-          <span ng-message="largeDocument">Large documents are not allowed for preview</span>
-          <span ng-message="thereAreNoDocs">There are no documents</span>
+          <span ng-message="documentDoesNotExist">A document with that ID does not exist.</span>
+          <span ng-message="largeDocument">Large documents are not allowed for preview.</span>
+          <span ng-message="thereAreNoDocs">There are no documents to display.</span>
         </div>
       </div>
     </div>
 
-    <div
-       class="interim row"
-       ng-click="viewsEditingCtl.toggleViews()">
-      <h4
-         class="disclosure"
-         ng-class="{disclosed: !viewsEditingCtl.isViewsClosed}">
-        {{viewsEditingCtl.isSpatial ? "Spatial" : "View"}} Code
-      </h4>
+    <div class="row margin-top2 margin-bottom-half">
+      <h4>{{viewsEditingCtl.isSpatial ? "Spatial" : "View"}} Index Code</h4>
       <span>
         <button
            ng-hide="viewsEditingCtl.isViewsClosed"
@@ -76,17 +70,17 @@
     </div>
     <div
        ng-hide="viewsEditingCtl.isViewsClosed"
-       class="interim row padded text-small"
+       class="row padded text-small"
        mn-spinner="viewsEditingCtl.awaitingViews()">
       <div
-         class="flex-grow-one column"
+         class="column"
          ng-class="{'width-8': !viewsEditingCtl.isSpatial, 'read-only-editor': viewsEditingCtl.isViewsEditorControllsDisabled()}">
         <label for="viewcode_map">Map</label>
         <textarea
            autocorrect="off"
            autocapitalize="off"
            spellcheck="false"
-           class="flex-grow-one width-4 text-small"
+           class="width-4 text-small"
            ng-if="viewsEditingCtl.isSpatial"
            spellcheck="false"
            ng-model="viewsEditingCtl.state.currentDocument.doc.json.spatial[viewsEditingCtl.viewId]"
@@ -104,7 +98,7 @@
       <div
          ng-class="{'read-only-editor': viewsEditingCtl.isViewsEditorControllsDisabled()}"
          ng-if="!viewsEditingCtl.isSpatial"
-         class="flex-grow-one width-4">
+         class="width-4">
         <label for="viewcode_reduce">Reduce
           <span class="text-normal">(built in:
             <a ng-click="viewsEditingCtl.setReduceValue('_count')" href="">_count</a>,

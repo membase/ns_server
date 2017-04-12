@@ -41,14 +41,15 @@
     <div class="cbui-table">
 
       <div class="zero-content" ng-if="!viewsCtl.state.bucketsNames.selected && !viewsListCtl.ddocs.ddocsAreInFactMissing">
-        No buckets currently defined! Go to <a ui-sref="app.admin.buckets">Data Buckets</a> to create some.
+        You have no data buckets. Go to <a ui-sref="app.admin.buckets">Buckets</a> to add one,
+        or load a <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.
       </div>
       <div class="zero-content" ng-if="viewsListCtl.ddocs.ddocsAreInFactMissing">
         This node doesn't host the current bucket. For a list of design docs, please open the web console on a different node.
       </div>
       <div class="zero-content" ng-if="viewsCtl.state.bucketsNames.selected && !viewsListCtl.ddocs.ddocsAreInFactMissing && !viewsListCtl.ddocs[viewsListCtl.type].length">
-        <span ng-show="viewsListCtl.isDevelopmentViews">There are currently no design documents in development. <span class="when-roadmin-avoid-me">Click "Create View" above to create one.</span></span>
-        <span ng-show="!viewsListCtl.isDevelopmentViews">There are no design documents currently published. <span class="when-roadmin-avoid-me">Please visit "Development Views" to create one.</span></span>
+        <span ng-show="viewsListCtl.isDevelopmentViews">There are currently no design documents in development. <span class="when-roadmin-avoid-me">Use ADD VIEW above to create one.</span></span>
+        <span ng-show="!viewsListCtl.isDevelopmentViews">There are no design documents currently published. <span class="when-roadmin-avoid-me">Go to Development Views to create one.</span></span>
       </div>
 
       <div
