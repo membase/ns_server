@@ -1349,6 +1349,7 @@ do_cancel_stop_timer(TRef) when is_reference(TRef) ->
 handle_rebalance_completion(Reason, State) ->
     cancel_stop_timer(State),
     maybe_reset_autofailover_count(Reason, State),
+    maybe_reset_reprovision_count(Reason, State),
     log_rebalance_completion(Reason, State),
     update_rebalance_counters(Reason, State),
     update_rebalance_status(Reason, State),
@@ -1385,6 +1386,11 @@ eject_myself(#rebalancing_state{keep_nodes = KeepNodes}) ->
 maybe_reset_autofailover_count(normal, #rebalancing_state{type = rebalance}) ->
     auto_failover:reset_count_async();
 maybe_reset_autofailover_count(_, _) ->
+    ok.
+
+maybe_reset_reprovision_count(normal, #rebalancing_state{type = rebalance}) ->
+    auto_reprovision:reset_count();
+maybe_reset_reprovision_count(_, _) ->
     ok.
 
 log_rebalance_completion(Reason, #rebalancing_state{type = Type}) ->
