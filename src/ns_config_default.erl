@@ -278,7 +278,7 @@ default() ->
            {static_config_string, "vb0=true"}]}]},
        {config_path, path_config:default_memcached_config_path()},
        {audit_file, ns_audit_cfg:default_audit_json_path()},
-       {rbac_file, filename:join(DataDir, "memcached.rbac")},
+       {rbac_file, filename:join(path_config:component_path(data, "config"), "memcached.rbac")},
        {log_path, LogDir},
        %% Prefix of the log files within the log path that should be rotated.
        {log_prefix, "memcached.log"},
