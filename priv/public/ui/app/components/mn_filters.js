@@ -467,7 +467,6 @@
       // We append the build # to the release version when we display in the UI so that
       // customers think of the build # as a descriptive piece of the version they're
       // running (which in the case of maintenance packs and one-off's, it is.)
-      a[0] = a[0] + "-" + a[1];
       a[3] = (a[3] && (a[3].substr(0, 1).toUpperCase() + a[3].substr(1))) || "DEV";
       return a; // Example result: ["1.8.0-9", "9", "ga083a1e", "Enterprise"]
     }
