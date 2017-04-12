@@ -169,7 +169,7 @@ verify_bucket_auth(#httpd{method = Method,
         {ok, BucketConfig} ->
             case menelaus_auth:verify_rest_auth(MochiReq, Permission) of
                 {allowed, _} ->
-                    case couch_util:get_value(type, BucketConfig) =:= membase of
+                    case ns_bucket:can_have_views(BucketConfig) of
                         true ->
                             {allowed, BucketConfig};
                         _ ->

@@ -82,6 +82,7 @@
          past_vbucket_maps/1,
          config_to_map_options/1,
          needs_rebalance/2,
+         can_have_views/1,
          bucket_view_nodes/1,
          bucket_config_view_nodes/1,
          config_upgrade_to_spock/1]).
@@ -981,6 +982,9 @@ is_compatible_past_map(Nodes, BucketConfig, Map) ->
 
     lists:member(Map, Matching).
 
+can_have_views(BucketConfig) ->
+    storage_mode(BucketConfig) =:= couchstore.
+
 bucket_view_nodes(Bucket) ->
     bucket_view_nodes(Bucket, ns_config:latest()).
 
@@ -993,10 +997,10 @@ bucket_view_nodes(Bucket, Config) ->
     end.
 
 bucket_config_view_nodes(BucketConfig) ->
-    case bucket_type(BucketConfig) of
-        membase ->
+    case can_have_views(BucketConfig) of
+        true ->
             lists:sort(ns_bucket:bucket_nodes(BucketConfig));
-        memcached ->
+        false ->
             []
     end.
 
