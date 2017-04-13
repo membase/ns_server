@@ -48,6 +48,8 @@ get_number(Min, Max, Default) ->
 get_string(SV) ->
     {ok, list_to_binary(string:strip(SV))}.
 
+conf(security) ->
+    [{disable_ui_over_http, diasableUIOverHttp, false, fun get_bool/1}];
 conf(internal) ->
     [{index_aware_rebalance_disabled, indexAwareRebalanceDisabled, false, fun get_bool/1},
      {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false, fun get_bool/1},

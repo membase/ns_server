@@ -62,7 +62,8 @@
          master_password_change/2,
          data_key_rotation/2,
          password_policy/2,
-         client_cert_auth/2
+         client_cert_auth/2,
+         security_settings/2
         ]).
 
 -export([stats/0]).
@@ -156,7 +157,9 @@ code(data_key_rotation) ->
 code(password_policy) ->
     8235;
 code(client_cert_auth) ->
-    8236.
+    8236;
+code(security_settings) ->
+    8237.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -542,3 +545,6 @@ password_policy(Req, Policy) ->
 
 client_cert_auth(Req, Value) ->
     put(client_cert_auth, Req, Value).
+
+security_settings(Req, Settings) ->
+    put(security_settings, Req, [{settings, {prepare_list(Settings)}}]).
