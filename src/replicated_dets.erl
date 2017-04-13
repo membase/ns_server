@@ -190,7 +190,12 @@ handle_call(empty, _From, #state{name = TableName,
     ok = dets:delete_all_objects(TableName),
     NewChildState = ChildModule:on_empty(ChildState),
     mru_cache:flush(TableName),
-    {reply, ok, State#state{child_state = NewChildState}}.
+    {reply, ok, State#state{child_state = NewChildState}};
+handle_call(Msg, From, #state{name = TableName,
+                              child_module = ChildModule,
+                              child_state = ChildState} = State) ->
+    {reply, RV, NewChildState} = ChildModule:handle_call(Msg, From, TableName, ChildState),
+    {reply, RV, State#state{child_state = NewChildState}}.
 
 handle_info({cache, Id} = Msg, #state{name = TableName} = State) ->
     case dets:lookup(TableName, Id) of
