@@ -1765,10 +1765,4 @@ section.dynamic_unhealthy {
 /* CodeMirror JSON editor ---------- */
 .height-100 .CodeMirror {
   height: 75vh;
-  -ms-word-break: break-all;
-  -webkit-hyphens: auto;
-  -moz-hyphens: auto;
-  -ms-hyphens: auto;
-  overflow-wrap: break-word;
-  hyphens: auto;
 }
