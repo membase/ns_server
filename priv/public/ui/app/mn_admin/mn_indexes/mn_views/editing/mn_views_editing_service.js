@@ -5,7 +5,7 @@
     .module("mnViewsEditingService", ["mnViewsListService", "mnDocumentsEditingService", "mnViewsListService", "mnFilters"])
     .factory("mnViewsEditingService", mnViewsEditingFactory);
 
-  function mnViewsEditingFactory($http, $state, mnPermissions, mnViewsListService, mnDocumentsEditingService, mnDocumentsListService, $q, removeEmptyValueFilter, $httpParamSerializerJQLike, mnPoolDefault, viewsPerPageLimit, docBytesLimit, getStringBytesFilter) {
+  function mnViewsEditingFactory($http, $state, mnPermissions, mnViewsListService, mnDocumentsEditingService, mnDocumentsListService, $q, removeEmptyValueFilter, jQueryLikeParamSerializerFilter, mnPoolDefault, viewsPerPageLimit, docBytesLimit, getStringBytesFilter) {
     var mnViewsEditingService = {
       getViewsEditingState: getViewsEditingState,
       prepareRandomDocument: prepareRandomDocument,
@@ -52,7 +52,7 @@
       });
     }
     function getFilterParamsAsString(params) {
-      return "?" + $httpParamSerializerJQLike(removeEmptyValueFilter(getFilterParams(params)));
+      return "?" + jQueryLikeParamSerializerFilter(removeEmptyValueFilter(getFilterParams(params)));
     }
     function getFilterParams(params) {
       params = params || $state.params;

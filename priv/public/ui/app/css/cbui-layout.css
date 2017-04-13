@@ -91,6 +91,14 @@ nav.nav-sidebar {
 }
 /* ******************************* */
 
+
+/* https://drafts.csswg.org/css-flexbox/#min-size-auto
+don't allow flex container to be more than screen size
+*/
+.min-width-zero {
+  min-width: 0;
+}
+
 .row {
   display: -webkit-flex;
   display: -ms-flexbox;
@@ -356,6 +364,10 @@ footer {
 
 .width-300 {
   width: 300px;
+}
+
+.width-15 {
+  width: 15rem;
 }
 
 .width-480 {

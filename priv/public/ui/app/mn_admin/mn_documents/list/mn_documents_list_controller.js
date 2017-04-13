@@ -5,7 +5,7 @@
     .module("mnDocuments")
     .controller("mnDocumentsListController", mnDocumentsListController);
 
-  function mnDocumentsListController($scope, $rootScope, mnDocumentsListService, $state, $uibModal, removeEmptyValueFilter) {
+  function mnDocumentsListController($scope, $rootScope, mnDocumentsListService, $state, $uibModal, removeEmptyValueFilter, jQueryLikeParamSerializerFilter) {
     var vm = this;
 
     vm.lookupSubmit = lookupSubmit;
@@ -13,6 +13,8 @@
     vm.deleteDocument = deleteDocument;
     vm.onFilterClose = onFilterClose;
     vm.onFilterReset = onFilterReset;
+    vm.getDocumentsURI = getDocumentsURI;
+    vm.getFilterParamsAsString = getFilterParamsAsString;
 
     var filterConfig = {};
 
@@ -31,6 +33,14 @@
     vm.filterConfig = filterConfig;
 
     activate();
+
+    function getDocumentsURI() {
+      return mnDocumentsListService.getDocumentsURI($state.params) + getFilterParamsAsString($state.params);
+    }
+
+    function getFilterParamsAsString(params) {
+      return "?" + jQueryLikeParamSerializerFilter(removeEmptyValueFilter(mnDocumentsListService.getDocumentsParams($state.params)));
+    }
 
     function onFilterReset() {
       vm.filterConfig.params = {};

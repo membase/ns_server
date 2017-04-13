@@ -7,7 +7,7 @@
 </mn-element-cargo>
 
 <div class="row margin-top-half margin-bottom-half">
-  <div class="row flex-left">
+  <div class="row flex-left min-width-zero">
     <ui-select
        on-select="documentsCtl.onSelectBucketName($item)"
        ng-model="documentsCtl.state.bucketsNames.selected"
@@ -19,19 +19,28 @@
         <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>
-    <span class="text-smaller indent-1">filter:&nbsp;</span>
     <div
        mn-filter
+       class="indent-1"
        config="documentsListCtl.filterConfig"
        mn-disabled="documentsControlCtl.isEmptyState()"
        on-close="documentsListCtl.onFilterClose()"
        on-reset="documentsListCtl.onFilterReset()"
-       >filter</div>
+       ></div>
+    <span class="text-small padding-left-half">filter:</span>
+    <a
+       class="text-small ellipsis padding-left-half"
+       ng-href="{{documentsListCtl.getDocumentsURI()}}"
+       target="_blank"
+       >
+      {{documentsListCtl.getFilterParamsAsString()}}
+    </a>
   </div>
-  <form ng-submit="!documentsControlCtl.isEmptyState() && documentsListCtl.lookupSubmit()" class="row flex-right width-6">
+  <form ng-submit="!documentsControlCtl.isEmptyState() && documentsListCtl.lookupSubmit()"
+        class="row flex-right indent-1">
     <input
        type="text"
-       class="prepend width-6"
+       class="prepend width-15"
        autocorrect="off"
        spellcheck="false"
        autocapitalize="off"

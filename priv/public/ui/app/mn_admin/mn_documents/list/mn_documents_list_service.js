@@ -9,7 +9,9 @@
     var mnDocumentsListService = {
       getDocuments: getDocuments,
       getDocumentsListState: getDocumentsListState,
-      populateBucketsSelectBox: populateBucketsSelectBox
+      populateBucketsSelectBox: populateBucketsSelectBox,
+      getDocumentsParams: getDocumentsParams,
+      getDocumentsURI: getDocumentsURI
     };
 
     return mnDocumentsListService;
@@ -58,7 +60,7 @@
       return rv;
     }
 
-    function getDocuments(params) {
+    function getDocumentsParams(params) {
       var param;
       try {
         param = JSON.parse(params.documentsFilter) || {};
@@ -80,11 +82,18 @@
       if (param.endkey) {
         param.endkey = JSON.stringify(param.endkey);
       }
+      return param;
+    }
 
+    function getDocumentsURI(params) {
+      return "/pools/default/buckets/" + encodeURIComponent(params.bucket) + "/docs";
+    }
+
+    function getDocuments(params) {
       return $http({
         method: "GET",
-        url: "/pools/default/buckets/" + encodeURIComponent(params.bucket) + "/docs",
-        params: param
+        url: getDocumentsURI(params),
+        params: getDocumentsParams(params)
       });
     }
   }
