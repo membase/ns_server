@@ -22,7 +22,7 @@
 
 -behaviour(replicated_storage).
 
--export([start_link/6, set/3, delete/2, delete_all/1, get/2, get/3, select/3, empty/1]).
+-export([start_link/6, set/3, delete/2, delete_all/1, get/2, get/3, select/3, select/4, empty/1]).
 
 -export([init/1, init_after_ack/1, handle_call/3, handle_info/2,
          get_id/1, find_doc/2, get_all_docs/1,
@@ -95,9 +95,17 @@ get(Name, Id, Default) ->
     end.
 
 select(Name, KeySpec, N) ->
+    select(Name, KeySpec, N, false).
+
+select(Name, KeySpec, N, Locked) ->
     DocSpec = #doc{id = KeySpec, deleted = false, _ = '_'},
     MatchSpec = [{DocSpec, [], ['$_']}],
-    ?make_producer(select_from_dets(Name, MatchSpec, N, ?yield())).
+    case Locked of
+        true ->
+            ?make_producer(select_from_dets_locked(Name, MatchSpec, N, ?yield()));
+        false ->
+            ?make_producer(select_from_dets(Name, MatchSpec, N, ?yield()))
+    end.
 
 init([Name, ChildModule, InitParams, Path, Replicator, CacheSize]) ->
     replicated_storage:anounce_startup(Replicator),
@@ -196,10 +204,14 @@ handle_info({cache, Id} = Msg, #state{name = TableName} = State) ->
 
 select_from_dets(Name, MatchSpec, N, Yield) ->
     {ok, TableName} = gen_server:call(Name, suspend, infinity),
+    RV = select_from_dets_locked(TableName, MatchSpec, N, Yield),
+    Name ! release,
+    RV.
+
+select_from_dets_locked(TableName, MatchSpec, N, Yield) ->
     dets:safe_fixtable(TableName, true),
     do_select_from_dets(TableName, MatchSpec, N, Yield),
-    dets:safe_fixtable(Name, false),
-    Name ! release,
+    dets:safe_fixtable(TableName, false),
     ok.
 
 do_select_from_dets(TableName, MatchSpec, N, Yield) ->
