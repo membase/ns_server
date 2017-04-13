@@ -162,7 +162,7 @@ save_doc(#doc{id = Id,
                 child_module = ChildModule,
                 child_state = ChildState} = State) ->
     ok = dets:insert(TableName, [Doc]),
-    NewChildState = ChildModule:on_save(Id, ChildState),
+    NewChildState = ChildModule:on_save(Id, Value, Deleted, ChildState),
     case Deleted of
         true ->
             _ = mru_cache:delete(TableName, Id);

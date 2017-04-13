@@ -44,14 +44,17 @@
          empty_storage/0,
          upgrade_to_spock/2,
          config_upgrade/0,
-         upgrade_status/0]).
+         upgrade_status/0,
+         get_passwordless/0]).
 
 %% callbacks for replicated_dets
--export([init/1, on_save/2, on_empty/1]).
+-export([init/1, on_save/4, on_empty/1, handle_call/4]).
 
 -export([start_storage/0, start_replicator/0]).
 
 -define(MAX_USERS_ON_CE, 20).
+
+-record(state, {base, passwordless}).
 
 replicator_name() ->
     users_replicator.
@@ -86,9 +89,12 @@ start_replicator() ->
 empty_storage() ->
     replicated_dets:empty(storage_name()).
 
+get_passwordless() ->
+    gen_server:call(storage_name(), get_passwordless, infinity).
+
 init([]) ->
     _ = ets:new(versions_name(), [protected, named_table]),
-    init_versions().
+    #state{base = init_versions()}.
 
 init_versions() ->
     Base = crypto:rand_uniform(0, 16#100000000),
@@ -97,18 +103,56 @@ init_versions() ->
     gen_event:notify(user_storage_events, {auth_version, {0, Base}}),
     Base.
 
-on_save({user, _}, Base) ->
+on_save({user, _}, _Value, _Deleted, State = #state{base = Base}) ->
     Ver = ets:update_counter(versions_name(), user_version, 1),
     gen_event:notify(user_storage_events, {user_version, {Ver, Base}}),
-    Base;
-on_save({auth, _}, Base) ->
+    State;
+on_save({auth, Identity}, Value, Deleted, State = #state{base = Base}) ->
+    NewState = maybe_update_passwordless(Identity, Value, Deleted, State),
     Ver = ets:update_counter(versions_name(), auth_version, 1),
     gen_event:notify(user_storage_events, {auth_version, {Ver, Base}}),
-    Base.
+    NewState.
 
-on_empty(_Base) ->
+on_empty(_State) ->
     true = ets:delete_all_objects(versions_name()),
     init_versions().
+
+maybe_update_passwordless(_Identity, _Value, _Deleted, State = #state{passwordless = undefined}) ->
+    State;
+maybe_update_passwordless(Identity, _Value, true, State = #state{passwordless = Passwordless}) ->
+    State#state{passwordless = lists:delete(Identity, Passwordless)};
+maybe_update_passwordless(Identity, Auth, false, State = #state{passwordless = Passwordless}) ->
+    NewPasswordless =
+        case authenticate_with_info(Auth, "") of
+            true ->
+                case lists:member(Identity, Passwordless) of
+                    true ->
+                        Passwordless;
+                    false ->
+                        [Identity | Passwordless]
+                end;
+            false ->
+                lists:delete(Identity, Passwordless)
+        end,
+    State#state{passwordless = NewPasswordless}.
+
+handle_call(get_passwordless, _From, TableName, #state{passwordless = undefined} = State) ->
+    Passwordless =
+        pipes:run(
+          replicated_dets:select(TableName, {auth, '_'}, 100, true),
+          ?make_consumer(
+             pipes:fold(?producer(),
+                        fun ({{auth, Identity}, Auth}, Acc) ->
+                                case authenticate_with_info(Auth, "") of
+                                    true ->
+                                        [Identity | Acc];
+                                    false ->
+                                        Acc
+                                end
+                        end, []))),
+    {reply, Passwordless, State#state{passwordless = Passwordless}};
+handle_call(get_passwordless, _From, _TableName, #state{passwordless = Passwordless} = State) ->
+    {reply, Passwordless, State}.
 
 -spec get_users_45(ns_config()) -> [{rbac_identity(), []}].
 get_users_45(Config) ->
@@ -301,13 +345,17 @@ authenticate(Username, Password) ->
                         false ->
                             false;
                         {_, Auth} ->
-                            {Salt, Mac} = get_salt_and_mac(Auth),
-                            ns_config_auth:hash_password(Salt, Password) =:= Mac
+                            authenticate_with_info(Auth, Password)
                     end
             end;
         false ->
             false
     end.
+
+-spec authenticate_with_info(list(), rbac_password()) -> boolean().
+authenticate_with_info(Auth, Password) ->
+    {Salt, Mac} = get_salt_and_mac(Auth),
+    ns_config_auth:hash_password(Salt, Password) =:= Mac.
 
 -spec user_exists(rbac_identity()) -> boolean().
 user_exists(Identity) ->
