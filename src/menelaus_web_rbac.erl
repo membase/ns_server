@@ -212,12 +212,12 @@ handle_get_roles(Req) ->
             menelaus_util:reply_json(Req, Json)
     end.
 
-get_user_json(Identity, Props) ->
+get_user_json(Identity, Props, Passwordless) ->
     Roles = proplists:get_value(roles, Props, []),
     Name = proplists:get_value(name, Props),
-    get_user_json(Identity, Name, Roles).
+    get_user_json(Identity, Name, Passwordless, Roles).
 
-get_user_json({Id, Type}, Name, Roles) ->
+get_user_json({Id, Type}, Name, Passwordless, Roles) ->
     TypeForREST =
         case Type of
             saslauthd ->
@@ -228,12 +228,21 @@ get_user_json({Id, Type}, Name, Roles) ->
     UserJson = [{id, list_to_binary(Id)},
                 {type, TypeForREST},
                 {roles, [{role_to_json(Role)} || Role <- Roles]}],
-    {case Name of
-         undefined ->
-             UserJson;
-         _ ->
-             [{name, list_to_binary(Name)} | UserJson]
-     end}.
+    UserJson1 =
+        case Name of
+            undefined ->
+                UserJson;
+            _ ->
+                [{name, list_to_binary(Name)} | UserJson]
+        end,
+    UserJson2 =
+        case Passwordless of
+            false ->
+                UserJson1;
+            _ ->
+                [{passwordless, true} | UserJson1]
+        end,
+    {UserJson2}.
 
 handle_get_users(Req) ->
     assert_api_can_be_used(),
@@ -281,25 +290,27 @@ handle_get_users_45(Req) ->
     Json = lists:map(
              fun ({Identity, Props}) ->
                      Roles = proplists:get_value(roles, Props, []),
-                     get_user_json(Identity, proplists:get_value(name, Props), Roles)
+                     get_user_json(Identity, proplists:get_value(name, Props), false, Roles)
              end, Users),
     menelaus_util:reply_json(Req, Json).
 
 handle_get_all_users(Req, Pattern) ->
+    Passwordless = menelaus_users:get_passwordless(),
     pipes:run(menelaus_users:select_users(Pattern),
-              [jsonify_users(),
+              [jsonify_users(Passwordless),
                sjson:encode_extended_json([{compact, false},
                                            {strict, false}]),
                pipes:simple_buffer(2048)],
               menelaus_util:send_chunked(Req, 200, [{"Content-Type", "application/json"}])).
 
-jsonify_users() ->
+jsonify_users(Passwordless) ->
     ?make_transducer(
        begin
            ?yield(array_start),
            pipes:foreach(?producer(),
                          fun ({{user, Identity}, Props}) ->
-                                 ?yield({json, get_user_json(Identity, Props)})
+                                 ?yield({json, get_user_json(Identity, Props,
+                                                             lists:member(Identity, Passwordless))})
                          end),
            ?yield(array_end)
        end).
@@ -327,6 +338,7 @@ skew_to_list(Skew, Acc) ->
     end.
 
 handle_get_users_page(Req, Pattern, PageSize, After) ->
+    Passwordless = menelaus_users:get_passwordless(),
     {PageSkew, Skipped, Total} =
         pipes:run(menelaus_users:select_users(Pattern),
                   ?make_consumer(
@@ -342,15 +354,17 @@ handle_get_users_page(Req, Pattern, PageSize, After) ->
     Json =
         {[{skipped, Skipped},
           {total, Total},
-          {users, [get_user_json(Identity, Props) ||
+          {users, [get_user_json(Identity, Props, lists:member(Identity, Passwordless)) ||
                       {Identity, Props} <- skew_to_list(PageSkew, [])]}]},
     menelaus_util:reply_ok(Req, "application/json", misc:ejson_encode_pretty(Json)).
 
 handle_whoami(Req) ->
+    Passwordless = menelaus_users:get_passwordless(),
     Identity = menelaus_auth:get_identity(Req),
     Roles = menelaus_roles:get_roles(Identity),
     Name = menelaus_users:get_user_name(Identity),
-    menelaus_util:reply_json(Req, get_user_json(Identity, Name, Roles)).
+    menelaus_util:reply_json(
+      Req, get_user_json(Identity, Name, lists:member(Identity, Passwordless), Roles)).
 
 parse_until(Str, Delimeters) ->
     lists:splitwith(fun (Char) ->
