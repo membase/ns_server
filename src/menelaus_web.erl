@@ -366,6 +366,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[settings], read}, fun handle_settings_stats/1};
                 ["settings", "autoFailover"] ->
                     {{[settings], read}, fun handle_settings_auto_failover/1};
+                ["settings", "autoReprovision"] ->
+                    {{[settings], read}, fun handle_settings_auto_reprovision/1};
                 ["settings", "maxParallelIndexers"] ->
                     {{[indexes], read}, fun handle_settings_max_parallel_indexers/1};
                 ["settings", "viewUpdateDaemon"] ->
@@ -523,6 +525,10 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[settings], write}, fun handle_settings_auto_failover_post/1};
                 ["settings", "autoFailover", "resetCount"] ->
                     {{[settings], write}, fun handle_settings_auto_failover_reset_count/1};
+                ["settings", "autoReprovision"] ->
+                    {{[settings], write}, fun handle_settings_auto_reprovision_post/1};
+                ["settings", "autoReprovision", "resetCount"] ->
+                    {{[settings], write}, fun handle_settings_auto_reprovision_reset_count/1};
                 ["settings", "maxParallelIndexers"] ->
                     {{[indexes], write}, fun handle_settings_max_parallel_indexers_post/1};
                 ["settings", "viewUpdateDaemon"] ->
@@ -2489,6 +2495,87 @@ handle_settings_auto_failover_reset_count(Req) ->
     auto_failover:reset_count(),
     ns_audit:reset_auto_failover_count(Req),
     reply(Req, 200).
+
+maybe_handle_auto_reprovision_request(Req, Body) ->
+    case cluster_compat_mode:is_cluster_spock() of
+        true ->
+            Body();
+        false ->
+            Msg = <<"auto-reprovision is enabled in cluster versions spock and above">>,
+            reply_text(Req, Msg, 400)
+    end.
+
+%% @doc Settings to en-/disable auto-reprovision
+handle_settings_auto_reprovision(Req) ->
+    maybe_handle_auto_reprovision_request(
+      Req, fun() ->
+                   Config = build_settings_auto_reprovision(),
+                   Enabled = proplists:get_value(enabled, Config),
+                   MaxNodes = proplists:get_value(max_nodes, Config),
+                   Count = proplists:get_value(count, Config),
+                   reply_json(Req, {struct, [{enabled, Enabled},
+                                             {max_nodes, MaxNodes},
+                                             {count, Count}]})
+           end).
+
+build_settings_auto_reprovision() ->
+    {value, Config} = ns_config:search(ns_config:get(), auto_reprovision_cfg),
+    Config.
+
+handle_settings_auto_reprovision_post(Req) ->
+    maybe_handle_auto_reprovision_request(
+      Req, fun() ->
+                   PostArgs = Req:parse_post(),
+                   ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
+                   Enabled = proplists:get_value("enabled", PostArgs),
+                   MaxNodes = proplists:get_value("maxNodes", PostArgs),
+                   case {ValidateOnly,
+                         validate_settings_auto_reprovision(Enabled, MaxNodes)} of
+                       {false, [true, MaxNodes2]} ->
+                           auto_reprovision:enable(MaxNodes2),
+                           reply(Req, 200);
+                       {false, false} ->
+                           auto_reprovision:disable(),
+                           reply(Req, 200);
+                       {false, {error, Errors}} ->
+                           Errors2 = [<<Msg/binary, "\n">> || {_, Msg} <- Errors],
+                           reply_text(Req, Errors2, 400);
+                       {true, {error, Errors}} ->
+                           reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200);
+                                                % Validation only and no errors
+                       {true, _}->
+                           reply_json(Req, {struct, [{errors, null}]}, 200)
+                   end
+           end).
+
+validate_settings_auto_reprovision(Enabled, MaxNodes) ->
+    Enabled2 = case Enabled of
+        "true" -> true;
+        "false" -> false;
+        _ -> {enabled, <<"The value of \"enabled\" must be true or false">>}
+    end,
+    case Enabled2 of
+        true ->
+            case is_valid_positive_integer(MaxNodes) of
+                true ->
+                    [Enabled2, list_to_integer(MaxNodes)];
+                false ->
+                    {error, [{maxNodes,
+                              <<"The value of \"maxNodes\" must be a positive integer">>}]}
+            end;
+        false ->
+            Enabled2;
+        Error ->
+            {error, [Error]}
+    end.
+
+%% @doc Resets the number of nodes that were automatically reprovisioned to zero
+handle_settings_auto_reprovision_reset_count(Req) ->
+    maybe_handle_auto_reprovision_request(
+      Req, fun() ->
+                   auto_reprovision:reset_count(),
+                   reply(Req, 200)
+           end).
 
 maybe_cleanup_old_buckets() ->
     case ns_config_auth:is_system_provisioned() of
