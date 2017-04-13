@@ -63,9 +63,6 @@
 -export([handle_streaming_wakeup/4,
          handle_pool_info_wait_wake/4]).
 
-%% for /diag
--export([build_internal_settings_kvs/0]).
-
 -import(menelaus_util,
         [redirect_permanently/2,
          bin_concat_path/1,
@@ -409,7 +406,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_rbac:handle_get_password_policy/1};
                 ["internalSettings"] ->
                     {{[admin, settings], read},
-                     fun handle_internal_settings/1};
+                     fun menelaus_web_settings:handle_internal_settings/1};
                 ["nodes", NodeId] ->
                     {{[nodes], read}, fun handle_node/2, [NodeId]};
                 ["nodes", "self", "xdcrSSLPorts"] ->
@@ -555,7 +552,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_rbac:handle_validate_saslauthd_creds_post/1};
                 ["internalSettings"] ->
                     {{[admin, settings], write},
-                     fun handle_internal_settings_post/1};
+                     fun menelaus_web_settings:handle_internal_settings_post/1};
                 ["pools", "default"] ->
                     {{[pools], write}, fun handle_pool_settings_post/1};
                 ["controller", "ejectNode"] ->
@@ -3566,124 +3563,6 @@ handle_settings_auto_compaction(Req) ->
     JSON = [{autoCompactionSettings, build_global_auto_compaction_settings()},
             {purgeInterval, compaction_api:get_purge_interval(global)}],
     reply_json(Req, {struct, JSON}, 200).
-
-internal_settings_conf() ->
-    GetBool = fun (SV) ->
-                      case SV of
-                          "true" -> {ok, true};
-                          "false" -> {ok, false};
-                          _ -> invalid
-                      end
-              end,
-
-    GetNumber = fun (Min, Max) ->
-                        fun (SV) ->
-                                parse_validate_number(SV, Min, Max)
-                        end
-                end,
-    GetNumberOrEmpty = fun (Min, Max, Empty) ->
-                               fun (SV) ->
-                                       case SV of
-                                           "" -> Empty;
-                                           _ ->
-                                               parse_validate_number(SV, Min, Max)
-                                       end
-                               end
-                       end,
-    GetString = fun (SV) ->
-                        {ok, list_to_binary(string:strip(SV))}
-                end,
-
-    [{index_aware_rebalance_disabled, indexAwareRebalanceDisabled, false, GetBool},
-     {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false, GetBool},
-     {index_pausing_disabled, rebalanceIndexPausingDisabled, false, GetBool},
-     {rebalance_ignore_view_compactions, rebalanceIgnoreViewCompactions, false, GetBool},
-     {rebalance_moves_per_node, rebalanceMovesPerNode, 1, GetNumber(1, 1024)},
-     {rebalance_moves_before_compaction, rebalanceMovesBeforeCompaction, 64, GetNumber(1, 1024)},
-     {{couchdb, max_parallel_indexers}, maxParallelIndexers, <<>>, GetNumber(1, 1024)},
-     {{couchdb, max_parallel_replica_indexers}, maxParallelReplicaIndexers, <<>>, GetNumber(1, 1024)},
-     {max_bucket_count, maxBucketCount, 10, GetNumber(1, 8192)},
-     {{request_limit, rest}, restRequestLimit, undefined, GetNumberOrEmpty(0, 99999, {ok, undefined})},
-     {{request_limit, capi}, capiRequestLimit, undefined, GetNumberOrEmpty(0, 99999, {ok, undefined})},
-     {drop_request_memory_threshold_mib, dropRequestMemoryThresholdMiB, undefined,
-      GetNumberOrEmpty(0, 99999, {ok, undefined})},
-     {gotraceback, gotraceback, <<"crash">>, GetString},
-     {{auto_failover_disabled, index}, indexAutoFailoverDisabled, true, GetBool},
-     {{cert, use_sha1}, certUseSha1, false, GetBool}] ++
-        case cluster_compat_mode:is_goxdcr_enabled() of
-            false ->
-                [{{xdcr, max_concurrent_reps}, xdcrMaxConcurrentReps, 32, GetNumber(1, 256)},
-                 {{xdcr, checkpoint_interval}, xdcrCheckpointInterval, 1800, GetNumber(60, 14400)},
-                 {{xdcr, worker_batch_size}, xdcrWorkerBatchSize, 500, GetNumber(500, 10000)},
-                 {{xdcr, doc_batch_size_kb}, xdcrDocBatchSizeKb, 2048, GetNumber(10, 100000)},
-                 {{xdcr, failure_restart_interval}, xdcrFailureRestartInterval, 30, GetNumber(1, 300)},
-                 {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, 256,
-                  GetNumberOrEmpty(0, 20*1024*1024, undefined)},
-                 {xdcr_anticipatory_delay, xdcrAnticipatoryDelay, 0, GetNumber(0, 99999)}];
-            true ->
-                []
-        end.
-
-build_internal_settings_kvs() ->
-    Conf = internal_settings_conf(),
-    [{JK, case ns_config:read_key_fast(CK, DV) of
-              undefined ->
-                  DV;
-              V ->
-                  V
-          end}
-     || {CK, JK, DV, _} <- Conf].
-
-handle_internal_settings(Req) ->
-    InternalSettings = lists:filter(
-                         fun ({_, undefined}) ->
-                                 false;
-                             (_) ->
-                                 true
-                         end, build_internal_settings_kvs()),
-    reply_json(Req, {InternalSettings}).
-
-handle_internal_settings_post(Req) ->
-    Conf = [{CK, atom_to_list(JK), JK, Parser} ||
-               {CK, JK, _, Parser} <- internal_settings_conf()],
-    Params = Req:parse_post(),
-    CurrentValues = build_internal_settings_kvs(),
-    {ToSet, Errors} =
-        lists:foldl(
-          fun ({SJK, SV}, {ListToSet, ListErrors}) ->
-                  case lists:keyfind(SJK, 2, Conf) of
-                      {CK, SJK, JK, Parser} ->
-                          case Parser(SV) of
-                              {ok, V} ->
-                                  case proplists:get_value(JK, CurrentValues) of
-                                      V ->
-                                          {ListToSet, ListErrors};
-                                      _ ->
-                                          {[{CK, V} | ListToSet], ListErrors}
-                                  end;
-                              _ ->
-                                  {ListToSet,
-                                   [iolist_to_binary(io_lib:format("~s is invalid", [SJK])) | ListErrors]}
-                          end;
-                      false ->
-                          {ListToSet,
-                           [iolist_to_binary(io_lib:format("Unknown key ~s", [SJK])) | ListErrors]}
-                  end
-          end, {[], []}, Params),
-
-    case Errors of
-        [] ->
-            case ToSet of
-                [] ->
-                    ok;
-                _ ->
-                    ns_config:set(ToSet),
-                    ns_audit:internal_settings(Req, ToSet)
-            end,
-            reply_json(Req, []);
-        _ ->
-            reply_json(Req, {[{error, X} || X <- Errors]}, 400)
-    end.
 
 handle_node_rename(Req) ->
     Params = Req:parse_post(),
