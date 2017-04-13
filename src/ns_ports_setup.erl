@@ -427,6 +427,14 @@ index_node_spec(Config) ->
                             []
                     end,
             NodeUUID = binary_to_list(ns_config:uuid()),
+            HttpsArgs = case ns_config:search(Config, {node, node(), indexer_https_port}, undefined) of
+                            undefined ->
+                                [];
+                            Port ->
+                                ["--httpsPort=" ++ integer_to_list(Port),
+                                 "--certFile=" ++ ns_ssl_services_setup:ssl_cert_key_path(),
+                                 "--keyFile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
+                        end,
 
             Spec = {'indexer', IndexerCmd,
                     ["-vbuckets=" ++ integer_to_list(NumVBuckets),
@@ -439,7 +447,7 @@ index_node_spec(Config) ->
                      "-streamMaintPort=" ++ integer_to_list(StMaintPort),
                      "-storageDir=" ++ IdxDir2,
                      "-diagDir=" ++ MinidumpDir,
-                     "-nodeUUID=" ++ NodeUUID] ++ AddSM,
+                     "-nodeUUID=" ++ NodeUUID] ++ AddSM ++ HttpsArgs,
                     [use_stdio, exit_status, stderr_to_stdout, stream,
                      {log, ?INDEXER_LOG_FILENAME},
                      {env, build_go_env_vars(Config, index)}]},

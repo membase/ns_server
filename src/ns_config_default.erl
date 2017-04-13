@@ -188,6 +188,12 @@ default() ->
      {{node, node(), indexer_http_port},
       misc:get_env_default(indexer_http_port, 9102)},
 
+     {{node, node(), indexer_https_port},
+            case IsEnterprise of
+                true -> misc:get_env_default(indexer_https_port, 19102);
+                _ -> undefined
+            end},
+
      {{node, node(), indexer_stinit_port},
       misc:get_env_default(indexer_stinit_port, 9103)},
 
