@@ -893,7 +893,10 @@ table td {
   padding: 1rem;
   vertical-align: middle;
 }
-
+.break-all-modal {
+  -ms-word-break: break-all;
+  overflow-wrap: break-word;
+}
 .break-all {
   -ms-word-break: break-all;
   word-break: break-all;
