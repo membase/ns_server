@@ -27,7 +27,7 @@
           vm.onIndexPathChange();
         });
 
-      $scope.$watch('wizardStep1Ctl.config.startNewClusterConfig', _.debounce(onMemoryQuotaChanged, 500), true);
+      $scope.$watch('clusterConfigurationCtl.config.startNewClusterConfig', _.debounce(onMemoryQuotaChanged, 500), true);
     }
 
     function onMemoryQuotaChanged(memoryQuotaConfig) {
