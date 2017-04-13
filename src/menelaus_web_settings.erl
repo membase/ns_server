@@ -19,9 +19,9 @@
 
 -include("ns_common.hrl").
 
--export([build_internal_settings_kvs/0,
-         handle_internal_settings/1,
-         handle_internal_settings_post/1]).
+-export([build_kvs/1,
+         handle_get/2,
+         handle_post/2]).
 
 get_bool("true") ->
     {ok, true};
@@ -48,7 +48,7 @@ get_number(Min, Max, Default) ->
 get_string(SV) ->
     {ok, list_to_binary(string:strip(SV))}.
 
-internal_settings_conf() ->
+conf(internal) ->
     [{index_aware_rebalance_disabled, indexAwareRebalanceDisabled, false, fun get_bool/1},
      {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false, fun get_bool/1},
      {index_pausing_disabled, rebalanceIndexPausingDisabled, false, fun get_bool/1},
@@ -79,8 +79,8 @@ internal_settings_conf() ->
                 []
         end.
 
-build_internal_settings_kvs() ->
-    Conf = internal_settings_conf(),
+build_kvs(Type) ->
+    Conf = conf(Type),
     [{JK, case ns_config:read_key_fast(CK, DV) of
               undefined ->
                   DV;
@@ -89,20 +89,23 @@ build_internal_settings_kvs() ->
           end}
      || {CK, JK, DV, _} <- Conf].
 
-handle_internal_settings(Req) ->
-    InternalSettings = lists:filter(
-                         fun ({_, undefined}) ->
-                                 false;
-                             (_) ->
-                                 true
-                         end, build_internal_settings_kvs()),
-    menelaus_util:reply_json(Req, {InternalSettings}).
+handle_get(Type, Req) ->
+    Settings = lists:filter(
+                 fun ({_, undefined}) ->
+                         false;
+                     (_) ->
+                         true
+                 end, build_kvs(Type)),
+    menelaus_util:reply_json(Req, {Settings}).
 
-handle_internal_settings_post(Req) ->
+audit_fun(Type) ->
+    list_to_atom(atom_to_list(Type) ++ "_settings").
+
+handle_post(Type, Req) ->
     Conf = [{CK, atom_to_list(JK), JK, Parser} ||
-               {CK, JK, _, Parser} <- internal_settings_conf()],
+               {CK, JK, _, Parser} <- conf(Type)],
     Params = Req:parse_post(),
-    CurrentValues = build_internal_settings_kvs(),
+    CurrentValues = build_kvs(Type),
     {ToSet, Errors} =
         lists:foldl(
           fun ({SJK, SV}, {ListToSet, ListErrors}) ->
@@ -133,7 +136,8 @@ handle_internal_settings_post(Req) ->
                     ok;
                 _ ->
                     ns_config:set(ToSet),
-                    ns_audit:internal_settings(Req, ToSet)
+                    AuditFun = audit_fun(Type),
+                    ns_audit:AuditFun(Req, ToSet)
             end,
             menelaus_util:reply_json(Req, []);
         _ ->

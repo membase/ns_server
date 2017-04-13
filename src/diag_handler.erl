@@ -290,7 +290,7 @@ collect_diag_per_node_binary_body(Reply) ->
                            Bucket <- PersistentBuckets]),
     Reply(ets_tables, (catch grab_all_ets_tables())),
     Reply(couchdb_ets_tables, (catch grab_couchdb_ets_tables())),
-    Reply(internal_settings, (catch menelaus_web_settings:build_internal_settings_kvs())),
+    Reply(internal_settings, (catch menelaus_web_settings:build_kvs(internal))),
     Reply(logging, (catch ale:capture_logging_diagnostics())),
     Reply(system_info, (catch grab_system_info())).
 
