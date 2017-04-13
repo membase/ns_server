@@ -85,7 +85,7 @@ roles_45() ->
        {[xdcr], none},
        {[admin], none},
        {[], [read]}]},
-     {bucket_sasl, [bucket_name],
+     {bucket_full_access, [bucket_name],
       [],
       [{[{bucket, bucket_name}, data], all},
        {[{bucket, bucket_name}, views], all},
@@ -147,7 +147,7 @@ roles_spock() ->
        {[xdcr], none},
        {[admin], none},
        {[], [read]}]},
-     {bucket_sasl, [bucket_name],
+     {bucket_full_access, [bucket_name],
       [{name, <<"Bucket Full Access">>},
        {desc, <<"Full access to bucket data">>},
        {ce, true}],
@@ -398,7 +398,7 @@ get_roles({"", anonymous}) ->
         false ->
             [admin];
         true ->
-            [{bucket_sasl, [BucketName]} ||
+            [{bucket_full_access, [BucketName]} ||
                 BucketName <- ns_config_auth:get_no_auth_buckets(ns_config:latest())]
     end;
 get_roles({_, admin}) ->
@@ -406,7 +406,7 @@ get_roles({_, admin}) ->
 get_roles({_, ro_admin}) ->
     [ro_admin];
 get_roles({BucketName, bucket}) ->
-    [{bucket_sasl, [BucketName]}];
+    [{bucket_full_access, [BucketName]}];
 get_roles({_, builtin} = Identity) ->
     get_user_roles(Identity);
 get_roles({_, saslauthd} = Identity) ->
@@ -550,16 +550,16 @@ views_admin_wildcard_test() ->
     views_admin_check_default(Roles),
     bucket_views_admin_check_global(Roles).
 
-bucket_sasl_check(Roles, Bucket, Allowed) ->
+bucket_full_access_check(Roles, Bucket, Allowed) ->
     ?assertEqual(Allowed, is_allowed({[{bucket, Bucket}, data], anything}, Roles)),
     ?assertEqual(Allowed, is_allowed({[{bucket, Bucket}], flush}, Roles)),
     ?assertEqual(Allowed, is_allowed({[{bucket, Bucket}], flush}, Roles)),
     ?assertEqual(false, is_allowed({[{bucket, Bucket}], write}, Roles)).
 
-bucket_sasl_test() ->
-    Roles = compile_roles([{bucket_sasl, ["default"]}], roles_45()),
-    bucket_sasl_check(Roles, "default", true),
-    bucket_sasl_check(Roles, "another", false),
+bucket_full_access_test() ->
+    Roles = compile_roles([{bucket_full_access, ["default"]}], roles_45()),
+    bucket_full_access_check(Roles, "default", true),
+    bucket_full_access_check(Roles, "another", false),
     ?assertEqual(true, is_allowed({[pools], read}, Roles)),
     ?assertEqual(false, is_allowed({[another], read}, Roles)).
 

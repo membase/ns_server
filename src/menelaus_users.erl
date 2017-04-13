@@ -534,7 +534,7 @@ do_upgrade_to_spock(Nodes, Repair) ->
               Password = proplists:get_value(sasl_password, BucketConfig, ""),
               Name = "Generated user for bucket " ++ BucketName,
               {commit, ok} = store_user_spock({BucketName, builtin}, [{name, Name}], Password,
-                                              [{bucket_sasl, [BucketName]}], Config)
+                                              [{bucket_full_access, [BucketName]}], Config)
       end, ns_bucket:get_buckets(Config)),
 
     LdapUsers = get_users_45(Config),
