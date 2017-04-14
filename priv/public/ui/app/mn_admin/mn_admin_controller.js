@@ -9,6 +9,7 @@
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
+    vm.implementationVersion = pools.implementationVersion;
     vm.logout = mnAuthService.logout;
     vm.resetAutoFailOverCount = resetAutoFailOverCount;
     vm.isProgressBarClosed = true;

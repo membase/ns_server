@@ -9,13 +9,12 @@
     'mnPoll',
     'ui.bootstrap',
     'mnElementCrane',
-    'mnAboutDialogService',
     'mnPromiseHelper',
     'mnXDCRService',
     'mnHelper'
   ]).controller('mnOverviewController', mnOverviewController);
 
-  function mnOverviewController($scope, $rootScope, mnBucketsService, mnOverviewService, mnPoller, mnAboutDialogService, mnPromiseHelper, mnHelper, mnXDCRService, permissions) {
+  function mnOverviewController($scope, $rootScope, mnBucketsService, mnOverviewService, mnPoller, mnPromiseHelper, mnHelper, mnXDCRService, permissions) {
     var vm = this;
 
     vm.getEndings = mnHelper.getEndings;
@@ -24,9 +23,6 @@
 
     function activate() {
       $rootScope.$broadcast("reloadPoolDefaultPoller");
-
-      mnPromiseHelper(vm, mnAboutDialogService.getState())
-        .applyToScope("aboutState");
 
       if (permissions.cluster.xdcr.remote_clusters.read) {
         new mnPoller($scope, mnXDCRService.getReplicationState)

@@ -65,10 +65,10 @@
       <a href="classic-index.html" target="_self">
         Classic UI
       </a>
-      <a href="https://developer.couchbase.com/documentation-archive" target="_blank">
+      <a ng-href="https://developer.couchbase.com/documentation/server/{{::(adminCtl.implementationVersion | parseVersion)[0].split('.').splice(0,2).join('.')}}/introduction/whats-new.html" target="_blank">
         Documentation
       </a>
-      <a href="{{adminCtl.poolDefault.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
+      <a ng-href="{{adminCtl.poolDefault.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
         Support
       </a>
     </nav>
