@@ -267,6 +267,13 @@ roles_spock() ->
        {desc, <<"Can execute CURL statement">>}],
       [{[n1ql, curl], [execute]},
        {[ui], [read]},
+       {[pools], [read]}]},
+     {replication_target, [bucket_name],
+      [{name, <<"Replication Target">>},
+       {desc, <<"XDC replication target for bucket">>}],
+      [{[{bucket, bucket_name}, settings], [read]},
+       {[{bucket, bucket_name}, data, meta], [read, write]},
+       {[{bucket, bucket_name}, stats], [read]},
        {[pools], [read]}]}].
 
 -spec get_definitions() -> [rbac_role_def(), ...].
