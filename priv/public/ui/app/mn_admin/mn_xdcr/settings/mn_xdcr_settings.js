@@ -9,7 +9,9 @@
       var mnXdcrSettings = {
         restrict: 'A',
         scope: {
-          settings: '=mnXdcrSettings'
+          settings: '=mnXdcrSettings',
+          mnPoolDefault: "=",
+          mnPools: "="
         },
         isolate: false,
         replace: true,
@@ -21,9 +23,8 @@
 
       return mnXdcrSettings;
 
-      function controller($scope, mnPoolDefault) {
+      function controller($scope) {
         var vm = this;
-        vm.mnPoolDefault = mnPoolDefault.latestValue();
         $scope.$watch('xdcrSettingsCtl.settings', function (settings) {
           mnPromiseHelper(vm, $http({
             method: 'POST',

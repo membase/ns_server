@@ -7,7 +7,7 @@
     'mnFilters'
   ]).factory('mnXDCRService', mnXDCRServiceFactory);
 
-  function mnXDCRServiceFactory($q, $http, mnTasksDetails, mnPoolDefault, getStringBytesFilter) {
+  function mnXDCRServiceFactory($q, $http, mnTasksDetails, mnPoolDefault, mnPools, getStringBytesFilter) {
     var mnXDCRService = {
       removeExcessSettings: removeExcessSettings,
       saveClusterReference: saveClusterReference,
@@ -61,10 +61,17 @@
 
     function removeExcessSettings(settings) {
       var neededProperties = ["replicationType", "optimisticReplicationThreshold", "failureRestartInterval", "docBatchSizeKb", "workerBatchSize", "checkpointInterval", "type", "toBucket", "toCluster", "fromBucket"];
-      if (mnPoolDefault.latestValue().value.goxdcrEnabled) {
+      if (mnPoolDefault.export.goxdcrEnabled) {
         neededProperties = neededProperties.concat(["sourceNozzlePerNode", "targetNozzlePerNode", "statsInterval", "logLevel"]);
       } else {
         neededProperties = neededProperties.concat(["maxConcurrentReps", "workerProcesses"]);
+      }
+      if (mnPools.export.isEnterprise &&
+          mnPoolDefault.export.compat.atLeast50 &&
+          mnPoolDefault.export.goxdcrEnabled &&
+          settings.type === "xmem"
+         ) {
+        neededProperties.push("networkUsageLimit");
       }
       var rv = {};
       angular.forEach(neededProperties,  function (key) {

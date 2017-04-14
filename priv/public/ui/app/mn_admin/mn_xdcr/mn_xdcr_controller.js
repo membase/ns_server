@@ -9,6 +9,7 @@
     'mnPoll',
     'mnAutocompleteOff',
     'mnPoolDefault',
+    'mnPools',
     'mnSpinner',
     "ui.codemirror"
   ]).controller('mnXDCRController', mnXDCRController);
