@@ -186,6 +186,11 @@ with_verify_bucket_auth(Req, BucketName, UUID, Fun) ->
             couch_httpd:send_json(Req, 403, menelaus_web_rbac:forbidden_response(Permission))
     end.
 
+verify_bucket_type_support(views = _OperType, BucketConfig) ->
+    ns_bucket:can_have_views(BucketConfig);
+verify_bucket_type_support(_OperType, BucketConfig) ->
+    ns_bucket:bucket_type(BucketConfig) =:= membase.
+
 verify_bucket_auth(#httpd{method = Method,
                           path_parts = Path,
                           mochi_req = MochiReq},
@@ -200,7 +205,7 @@ verify_bucket_auth(#httpd{method = Method,
         {ok, BucketConfig} ->
             case menelaus_auth:verify_rest_auth(MochiReq, Permission) of
                 {allowed, _} ->
-                    case ns_bucket:can_have_views(BucketConfig) of
+                    case verify_bucket_type_support(Type, BucketConfig) of
                         true ->
                             {allowed, BucketConfig};
                         _ ->
