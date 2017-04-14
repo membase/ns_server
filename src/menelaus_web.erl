@@ -833,15 +833,19 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
             {done, reply_text(Req, "Method Not Allowed", 405)}
     end.
 
-serve_ui(Req, false, F, Args) ->
-    case ns_config:read_key_fast(disable_ui_over_http, false) of
+serve_ui(Req, IsSSL, F, Args) ->
+    IsDisabledKey = case IsSSL of
+                        true ->
+                            disable_ui_over_https;
+                        false ->
+                            disable_ui_over_http
+                    end,
+    case ns_config:read_key_fast(IsDisabledKey, false) of
         true ->
             reply(Req, 404);
         false ->
-            serve_ui(Req, true, F, Args)
-    end;
-serve_ui(Req, true, F, Args) ->
-    apply(F, Args ++ [Req]).
+            apply(F, Args ++ [Req])
+    end.
 
 use_minified(Req) ->
     Query = Req:parse_qs(),
