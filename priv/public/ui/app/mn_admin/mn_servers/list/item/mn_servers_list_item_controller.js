@@ -121,6 +121,7 @@
           warnings.isThereIndex = !!_.find(indexStatus.indexes, function (index) {
             return _.indexOf(index.hosts, node.hostname) > -1;
           });
+          warnings.isThereReplica = warnings.isThereIndex;
           return warnings;
         }) : warnings;
       }).then(function (warnings) {
