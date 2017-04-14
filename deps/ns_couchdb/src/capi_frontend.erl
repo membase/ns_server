@@ -59,17 +59,47 @@ verify_bucket_uuid(BucketConfig, MaybeUUID) ->
             erlang:throw({not_found, uuids_dont_match})
     end.
 
+%% The following code splits all api calls into 3 types: xdcr, views and kv
+%% xdcr -  needs the meta permission because the APIs reveal no data and overall goxdcr
+%%         uses this permission to access memcached
+%% views - access to design docs and view definitions and as such doesn't need data
+%%         permissions
+%% kv    - everything else. "rounded up" to data permissions because it's simple and
+%%         people don't directly use APIs like _all_tasks and who cares about the "/"
+%%         welcome API anyway?
+%%
+%% Note: _view_merge and _spatial_merge do not go through this codepath and have their
+%% own auth handling in capi_view:handle_with_auth
 
-get_required_permission('GET', BucketName, [<<"_design">> | _]) ->
-    {[{bucket, BucketName}, views], read};
-get_required_permission('GET', BucketName, _) ->
-    {[{bucket, BucketName}, data, docs], read};
+xdcr_prefixes() ->
+    [<<"_pre_replicate">>, <<"_mass_vbopaque_check">>, <<"_commit_for_checkpoint">>].
 
+get_oper_type([<<"_", _B/binary>> = Prefix | RestOfPath]) ->
+    case lists:member(Prefix, xdcr_prefixes()) of
+        true ->
+            xdcr;
+        false ->
+            get_oper_type_rest(RestOfPath)
+    end;
+get_oper_type([_ | RestOfPath]) ->
+    get_oper_type_rest(RestOfPath).
 
-get_required_permission(_, BucketName, [<<"_design">> | _]) ->
-    {[{bucket, BucketName}, views], write};
-get_required_permission(_, BucketName, _) ->
-    {[{bucket, BucketName}, data, docs], write}.
+get_oper_type_rest([<<"_design">> | _]) ->
+    views;
+get_oper_type_rest(_) ->
+    kv.
+
+get_oper('GET') ->
+    read;
+get_oper(_) ->
+    write.
+
+get_required_permission(BucketName, Method, xdcr) ->
+    {[{bucket, BucketName}, data, meta], get_oper(Method)};
+get_required_permission(BucketName, Method, views) ->
+    {[{bucket, BucketName}, views], get_oper(Method)};
+get_required_permission(BucketName, Method, kv) ->
+    {[{bucket, BucketName}, data, docs], get_oper(Method)}.
 
 continue_do_db_req(#httpd{user_ctx=UserCtx,
                           path_parts=[_DbName | RestPathParts]} = Req,
@@ -157,11 +187,12 @@ with_verify_bucket_auth(Req, BucketName, UUID, Fun) ->
     end.
 
 verify_bucket_auth(#httpd{method = Method,
-                          path_parts=[_DbName | RestPathParts],
+                          path_parts = Path,
                           mochi_req = MochiReq},
                    BucketName) ->
     ListBucketName = ?b2l(BucketName),
-    Permission = get_required_permission(Method, ListBucketName, RestPathParts),
+    Type = get_oper_type(Path),
+    Permission = get_required_permission(ListBucketName, Method, Type),
 
     case ns_bucket:get_bucket(ListBucketName) of
         not_present ->
