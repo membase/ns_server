@@ -220,30 +220,30 @@ input.borderless {
 /* HYPERLINKS PER FUNCTIONAL AREA --------------- */
 
 /* nav header utility links --------------------- */
-nav.nav-header a {
+.nav-header a {
   display: inline-block;
   font-size: .75rem;
   color: #888;
   padding-left: .5rem;
 }
 
-nav.nav-header a:first-child {
+.nav-header a:first-child {
   padding-left: 0;
 }
 
-nav.nav-header a:link {
+.nav-header a:link {
   color: #888;
 }
 
-nav.nav-header a:visited {
+.nav-header a:visited {
   color: #888;
 }
 
-nav.nav-header a:hover {
+.nav-header a:hover {
   color: #3c7ac2;
 }
 
-nav.nav-header a:active {
+.nav-header a:active {
   color: #689fde;
 }
 
@@ -1368,8 +1368,6 @@ meter {
   -ms-transform: scaleY(0.1) scaleX(0.1);
   -o-transform: scaleY(0.1) scaleX(0.1);
   transform: scaleY(0.1) scaleX(0.1);
-  top: 50%!important;
-  right: 10px!important;
 }
 .tasks-progress.ng-enter.ng-enter-active,
 .tasks-progress.ng-leave {
@@ -1382,12 +1380,13 @@ meter {
 
 .tasks-progress {
   position: absolute;
-  top: 50%;
-  right: 10px;
+  top: 22px;
+  right: 0;
   z-index: 100;
+  background-color: #fff;
   -webkit-box-shadow: 0 0 25px 0px rgba(0,0,0,0.75);
   -moz-box-shadow: 0 0 25px 0px rgba(0,0,0,0.75);
-  box-shadow: 0 0 25px 0px rgba(0,0,0,0.75);
+  box-shadow: 0 3px 16px 0px rgba(0,0,0,0.75);
 }
 .tasks-progress .close-tasks {
   width: 100%;
@@ -1573,7 +1572,7 @@ input[type="checkbox"]:checked + label:before {
   color: #555;
 }
 
-/* user menu --------------------*/
+/* standard menu --------------------*/
 .menu-toggle {
   color: #555;
   font-weight: 500;
@@ -1588,7 +1587,6 @@ input[type="checkbox"]:checked + label:before {
 .menu-toggle:active {
   color: #4287d6;
 }
-
 .dropdown {
   position: relative;
   display: inline-block;
@@ -1604,6 +1602,7 @@ input[type="checkbox"]:checked + label:before {
   position: absolute;
   top: 28px;
   right: 0;
+  text-align: left;
   z-index: 10;
   border: 1px solid #d1d1d1;
   border-radius: 2px;
@@ -1623,9 +1622,18 @@ input[type="checkbox"]:checked + label:before {
 }
 .dropdown-menu.dropdown-menu-select-like a:hover {
   color: #000;
-  background-color:#f6fafd;
+  background-color: #f6fafd;
   transition: none;
 }
+/* logged-in user menu --------------------*/
+.nav-header a.dropdown-toggle  {
+  margin: 0 .5rem;
+  padding-right: .5rem;
+}
+.nav-header .dropdown-menu {
+  top: 22px;
+}
+
 /* service widgets displaying status & details for each service + XDCR */
 
 .service-widget {
