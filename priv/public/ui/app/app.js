@@ -11,7 +11,7 @@
     'mnEnv'
   ]).run(appRun);
 
-  function appRun($state, $urlRouter, $exceptionHandler, mnPools, $window, $transitions) {
+  function appRun($state, $urlRouter, $exceptionHandler, mnPools, $window) {
 
     var originalOnerror = $window.onerror;
     $window.onerror = onError;
@@ -39,7 +39,7 @@
       $urlRouter.sync();
     });
 
-    $transitions.defaultErrorHandler(function (error) {
+    $state.defaultErrorHandler(function (error) {
       error && $exceptionHandler(error);
     });
   }

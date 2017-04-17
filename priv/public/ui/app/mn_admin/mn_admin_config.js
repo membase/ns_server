@@ -289,9 +289,6 @@
             value: null
           }
         },
-        resolve: {
-          setDefaultBucketName: mnHelperProvider.setDefaultBucketName("bucket", parent + '.analytics.list.graph', true)
-        },
         data: {
           title: "Statistics",
           child: parent
@@ -325,54 +322,54 @@
         },
         controller: 'mnAnalyticsListGraphController as analyticsListGraphCtl',
         templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list_graph.html',
-        resolve: {
-          setDefaultGraph: function (mnAnalyticsService, setDefaultBucketName, $state, $q, $transition$) {
-            var params = $transition$.params();
-            if (!params.bucket) {
+        redirectTo: function (trans) {
+          var mnAnalyticsService = trans.injector().get("mnAnalyticsService");
+          var $q = trans.injector().get("$q");
+          var params = _.clone(trans.params(), true);
+
+          if (params.bucket === null) {
+            return mnHelperProvider.setDefaultBucketName("bucket", parent + '.analytics.list.graph', true)(trans);
+          }
+          return mnAnalyticsService.getStats({$stateParams: params}).then(function (state) {
+            if (state.isEmptyState) {
               return;
             }
-            return mnAnalyticsService.getStats({$stateParams: params}).then(function (state) {
-              if (state.isEmptyState) {
-                return;
+            var originalParams = _.clone(params);
+            function checkLackOfParam(paramName) {
+              return !params[paramName] || !params[paramName].length || !_.intersection(params[paramName], _.pluck(state.statsDirectoryBlocks, 'blockName')).length;
+            }
+            if (params.specificStat) {
+              if (checkLackOfParam("openedSpecificStatsBlock")) {
+                params.openedSpecificStatsBlock = [state.statsDirectoryBlocks[0].blockName];
               }
-              var originalParams = _.clone(params);
-              function checkLackOfParam(paramName) {
-                return !params[paramName] || !params[paramName].length || !_.intersection(params[paramName], _.pluck(state.statsDirectoryBlocks, 'blockName')).length;
+            } else {
+              if (checkLackOfParam("openedStatsBlock")) {
+                params.openedStatsBlock = [
+                  state.statsDirectoryBlocks[0].blockName,
+                  state.statsDirectoryBlocks[1].blockName
+                ];
               }
+            }
+            var selectedStat = state.statsByName && state.statsByName[params.graph];
+            if (!selectedStat || !selectedStat.config.data.length) {
+              var findBy = function (info) {
+                return info.config.data.length;
+              };
               if (params.specificStat) {
-                if (checkLackOfParam("openedSpecificStatsBlock")) {
-                  params.openedSpecificStatsBlock = [state.statsDirectoryBlocks[0].blockName];
-                }
+                var directoryForSearch = state.statsDirectoryBlocks[0];
               } else {
-                if (checkLackOfParam("openedStatsBlock")) {
-                  params.openedStatsBlock = [
-                    state.statsDirectoryBlocks[0].blockName,
-                    state.statsDirectoryBlocks[1].blockName
-                  ];
-                }
+                var directoryForSearch = state.statsDirectoryBlocks[1];
               }
-              var selectedStat = state.statsByName && state.statsByName[params.graph];
-              if (!selectedStat || !selectedStat.config.data.length) {
-                var findBy = function (info) {
-                  return info.config.data.length;
-                };
-                if (params.specificStat) {
-                  var directoryForSearch = state.statsDirectoryBlocks[0];
-                } else {
-                  var directoryForSearch = state.statsDirectoryBlocks[1];
-                }
-                selectedStat = _.detect(directoryForSearch.stats, findBy) ||
-                               _.detect(state.statsByName, findBy);
+              selectedStat = _.detect(directoryForSearch.stats, findBy) ||
+                _.detect(state.statsByName, findBy);
                 if (selectedStat) {
                   params.graph = selectedStat.name;
                 }
               }
               if (!_.isEqual(originalParams, params)) {
-                $state.go(parent + ".analytics.list.graph", params);
-                return $q.reject();
+                return {state: parent + ".analytics.list.graph", params: params};
               }
             });
-          }
         }
       });
   }

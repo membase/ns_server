@@ -18,25 +18,21 @@
     };
 
     function setDefaultBucketName(bucketParamName, stateRedirect, memcached) {
-      return function ($q, $state, mnBucketsService, $transition$) {
-        var deferred = $q.defer();
-        var params = $transition$.params();
+      return function (trans) {
+        var params = trans.params();
+        var mnBucketsService = trans.injector().get("mnBucketsService");
         if (params[bucketParamName] === null) {
-          mnBucketsService.getBucketsByType(true).then(function (buckets) {
-            var defaultBucket = memcached ? buckets.byType.defaultName : buckets.byType.membase.defaultName || buckets.byType.ephemeral.defaultName;
-            if (!defaultBucket) {
-              deferred.resolve();
-            } else {
-              deferred.reject();
+          return mnBucketsService.getBucketsByType(true).then(function (buckets) {
+            var defaultBucket = memcached ?
+                buckets.byType.defaultName :
+                buckets.byType.membase.defaultName || buckets.byType.ephemeral.defaultName;
+            if (defaultBucket) {
+              params = _.clone(params, true);
               params[bucketParamName] = defaultBucket;
-              $state.go(stateRedirect, _.clone(params));
+              return {state: stateRedirect, params: params};
             }
           });
-        } else {
-          deferred.resolve();
         }
-
-        return deferred.promise;
       };
     }
     function mnHelperFactory($window, $state, $location, $timeout, $q, mnTasksDetails, mnAlertsService, $http, mnPendingQueryKeeper) {

@@ -64,7 +64,8 @@
     $transitionsProvider.onStart({
       from: "app.admin.**",
       to: "app.admin.**"
-    }, function (mnLostConnectionService) {
+    }, function (trans) {
+      var mnLostConnectionService = trans.injector().get('mnLostConnectionService');
       var state = mnLostConnectionService.getState();
       //block navigation in app.admin while lostConnection is active
       //and allow navigation for the moment of reloading (e.g location.reload)
@@ -74,24 +75,30 @@
     $transitionsProvider.onFinish({
       from: "app.admin.**",
       to: "app.admin.**"
-    }, function ($rootScope) {
+    }, function (trans) {
+      var $rootScope = trans.injector().get('$rootScope');
       $rootScope.showMainSpinner = false;
     });
 
     $transitionsProvider.onError({
       from: "app.admin.**",
       to: "app.admin.**"
-    }, function ($rootScope) {
+    }, function (trans) {
+      var $rootScope = trans.injector().get('$rootScope');
       $rootScope.showMainSpinner = false;
     });
 
     $transitionsProvider.onBefore({
       from: "app.admin.**",
       to: "app.admin.**"
-    }, function ($uibModalStack, mnPendingQueryKeeper, $transition$, $rootScope) {
+    }, function (trans) {
+      var mnPools = trans.injector().get('mnPools');
+      var $rootScope = trans.injector().get('$rootScope');
+      var mnPendingQueryKeeper = trans.injector().get('mnPendingQueryKeeper');
+      var $uibModalStack = trans.injector().get('$uibModalStack');
       var isModalOpen = !!$uibModalStack.getTop();
-      var toName = $transition$.to().name;
-      var fromName = $transition$.from().name;
+      var toName = trans.to().name;
+      var fromName = trans.from().name;
       if ($rootScope.mnGlobalSpinnerFlag) {
         return false;
       }
@@ -105,7 +112,8 @@
     $transitionsProvider.onBefore({
       from: "app.auth",
       to: "app.admin.**"
-    }, function (mnPools, $state) {
+    }, function (trans, $state) {
+      var mnPools = trans.injector().get('mnPools');
       return mnPools.get().then(function (pools) {
         return pools.isInitialized ? true : $state.target("app.wizard.welcome");
       }, function (resp) {
@@ -117,7 +125,8 @@
     $transitionsProvider.onBefore({
       from: "app.wizard.**",
       to: "app.admin.**"
-    }, function (mnPools) {
+    }, function (trans) {
+      var mnPools = trans.injector().get('mnPools');
       return mnPools.get().then(function (pools) {
         return pools.isInitialized;
       });
@@ -125,7 +134,8 @@
     $transitionsProvider.onBefore({
       from: "app.wizard.**",
       to: "app.auth"
-    }, function (mnPools) {
+    }, function (trans) {
+      var mnPools = trans.injector().get('mnPools');
       return mnPools.get().then(function (pools) {
         return pools.isInitialized;
       });
@@ -133,7 +143,8 @@
     $transitionsProvider.onBefore({
       from: "app.admin.**",
       to: "app.auth"
-    }, function (mnPools) {
+    }, function (trans) {
+      var mnPools = trans.injector().get('mnPools');
       return mnPools.get().then(function () {
         return false;
       }, function (resp) {
@@ -146,25 +157,30 @@
       to: function (state) {
         return state.data && state.data.permissions;
       }
-    }, function ($state, $parse, mnPermissions, $transition$) {
+    }, function (trans) {
+      var mnPermissions = trans.injector().get('mnPermissions');
+      var $parse = trans.injector().get('$parse');
       return mnPermissions.check().then(function() {
-        return !!$parse($transition$.to().data.permissions)(mnPermissions.export);
+        return !!$parse(trans.to().data.permissions)(mnPermissions.export);
       });
     });
     $transitionsProvider.onStart({
       to: function (state) {
         return state.data && state.data.compat;
       }
-    }, function ($state, $parse, mnPoolDefault, $transition$) {
+    }, function (trans) {
+      var mnPoolDefault = trans.injector().get('mnPoolDefault');
+      var $parse = trans.injector().get('$parse');
       return mnPoolDefault.get().then(function() {
-        return !!$parse($transition$.to().data.compat)(mnPoolDefault.export.compat);
+        return !!$parse(trans.to().data.compat)(mnPoolDefault.export.compat);
       });
     });
     $transitionsProvider.onStart({
       to: function (state) {
         return state.data && state.data.ldap;
       }
-    }, function ($state, $parse, mnPoolDefault, $transition$) {
+    }, function (trans) {
+      var mnPoolDefault = trans.injector().get('mnPoolDefault');
       return mnPoolDefault.get().then(function(value) {
         return value.ldapEnabled;
       });
@@ -173,7 +189,8 @@
       to: function (state) {
         return state.data && state.data.enterprise;
       }
-    }, function ($state, mnPools) {
+    }, function (trans) {
+      var mnPools = trans.injector().get('mnPools');
       return mnPools.get().then(function (pools) {
         return pools.isEnterprise;
       });
