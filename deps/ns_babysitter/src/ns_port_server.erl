@@ -31,7 +31,9 @@
          code_change/3,
          terminate/2]).
 
--define(NUM_MESSAGES, 5). % Number of the most recent messages to log on crash
+%% Keep on 1KiB worth of recent messages to log if process crashes.
+-define(KEEP_MESSAGES_BYTES, 1024).
+
 %% we're passing port stdout/stderr messages to log after delay of
 %% INTERVAL milliseconds. Dropping messages once MAX_MESSAGES is
 %% reached. Thus we're limiting rate of messages to
@@ -99,7 +101,7 @@ init(Fun) ->
            end,
     {ok, State#state{port = Port,
                      params = Params2,
-                     messages = ringbuffer:new(?NUM_MESSAGES)}}.
+                     messages = ringbuffer:new(?KEEP_MESSAGES_BYTES)}}.
 
 handle_info({send_to_port, Msg}, #state{port = undefined} = State) ->
     ?log_debug("Got send_to_port when there's no port running yet. Will kill myself."),
@@ -112,7 +114,7 @@ handle_info({Port, {data, Data}}, #state{port = Port,
                                          logger = Logger} = State) ->
     %% Store the last messages in case of a crash
     Msg = extract_message(Data),
-    Messages = ringbuffer:add(Msg, State#state.messages),
+    Messages = ringbuffer:add(Msg, byte_size(Msg), State#state.messages),
     State1 = State#state{messages=Messages},
 
     NewState =
