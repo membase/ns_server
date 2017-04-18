@@ -228,7 +228,7 @@ get_user_json({Id, Type}, Name, Passwordless, Roles) ->
                 Type
         end,
     UserJson = [{id, list_to_binary(Id)},
-                {type, TypeForREST},
+                {domain, TypeForREST},
                 {roles, [{role_to_json(Role)} || Role <- Roles]}],
     UserJson1 =
         case Name of
