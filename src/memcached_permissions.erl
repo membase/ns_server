@@ -167,11 +167,11 @@ permissions_for_user(Roles, Buckets, RoleDefinitions, RolesDict) ->
     MergedPermissions = [{Bucket, lists:umerge(Perm)} || {Bucket, Perm} <- ZippedPermissions],
     {MergedPermissions, NewRolesDict}.
 
-jsonify_user({UserName, Type}, [{global, GlobalPermissions} | BucketPermissions]) ->
+jsonify_user({UserName, Domain}, [{global, GlobalPermissions} | BucketPermissions]) ->
     Buckets = {buckets, {[{list_to_binary(BucketName), Permissions} ||
                              {BucketName, Permissions} <- BucketPermissions]}},
     Global = {privileges, GlobalPermissions},
-    {list_to_binary(UserName), {[Buckets, Global, {type, Type}]}}.
+    {list_to_binary(UserName), {[Buckets, Global, {domain, Domain}]}}.
 
 memcached_admin_json(AU, Buckets) ->
     jsonify_user({AU, local}, [{global, [all]} | [{Name, [all]} || Name <- Buckets]]).
@@ -263,7 +263,7 @@ generate_json_45_test() ->
                          'Tap','Write','XattrRead', 'XattrWrite']},
                        {<<"test">>,[]}]}},
             {privileges,[]},
-            {type, local}]}},
+            {domain, local}]}},
          {<<"test">>,
           {[{buckets,{[{<<"default">>,[]},
                        {<<"test">>,
@@ -271,5 +271,5 @@ generate_json_45_test() ->
                          'Read','SimpleStats', 'SystemXattrRead', 'SystemXattrWrite',
                          'Tap','Write','XattrRead', 'XattrWrite']}]}},
             {privileges,[]},
-            {type, local}]}}],
+            {domain, local}]}}],
     ?assertEqual(Json, generate_json_45(Buckets, RoleDefinitions)).
