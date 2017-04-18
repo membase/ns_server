@@ -75,14 +75,22 @@ split_fold_incremental_loop(Binary, CP, Len, Fun, Acc, Start) ->
     NewAcc = Fun(NewPiece, Acc),
     split_fold_incremental_loop(Binary, CP, Len, Fun, NewAcc, MatchPos + MatchLen).
 
+should_sanitize() ->
+    try
+        ns_config:read_key_fast(sanitize_backtrace_registers, true)
+    catch
+        error:badarg ->
+            false
+    end.
+
 -spec sanitize_backtrace(atom(), binary()) -> [binary()].
 sanitize_backtrace(Name, Backtrace) ->
     SanitizeRegisters =
-        case {Name, ns_config:read_key_fast(sanitize_backtrace_registers, true)} of
-            {auth, true} ->
-                true;
-            {memcached_passwords, true} ->
-                true;
+        case Name of
+            auth ->
+                should_sanitize();
+            memcached_passwords ->
+                should_sanitize();
             _ ->
                 false
         end,
