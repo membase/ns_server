@@ -7,7 +7,7 @@
     ])
     .factory('mnPoolDefault', mnPoolDefaultFactory);
 
-  function mnPoolDefaultFactory($http, $q, mnPools, $window, $location, $httpParamSerializerJQLike) {
+  function mnPoolDefaultFactory($http, $q, mnPools, $window, $location, $httpParamSerializerJQLike, mnHelper) {
     var latest = {};
     var mnPoolDefault = {
       latestValue: latestValue,
@@ -83,6 +83,11 @@
         cache = poolDefault;
 
         return poolDefault;
+      }, function (resp) {
+        if ((resp.status === 404 && resp.data === "unknown pool") || resp.status === 500) {
+          return mnHelper.reloadApp();
+        }
+        return $q.reject(resp);
       });
       return request;
     }
