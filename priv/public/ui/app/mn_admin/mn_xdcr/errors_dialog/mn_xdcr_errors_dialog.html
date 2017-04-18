@@ -4,11 +4,10 @@
   </div>
   <form ng-submit="$dismiss()">
     <div class="panel-content">
-      <div class="row flex-left">
-        <span class="icon fa-warning fa-2x red-3"></span>
-        <div ng-repeat="error in xdcrCtl.xdcrErrors">
-          Attention: {{error}}
-        </div>
+      <div ng-repeat="error in xdcrCtl.xdcrErrors">
+        <span class="icon fa-warning red-3"></span>
+        {{error}}
+        <hr class="margin-top1">
       </div>
     </div>
     <div class="panel-footer">
