@@ -9,7 +9,7 @@
 <div mn-spinner="!documentsControlCtl.state || !documentsCtl.state">
   <ui-view></ui-view>
 
-  <div class="row">
+  <div class="row" ng-if="!documentsCtl.state.currentBucket.isEphemeral">
     <div>
      <ui-select
         ng-model="documentsControlCtl.state.pageLimits.selected"

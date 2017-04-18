@@ -20,21 +20,25 @@
       </ui-select-choices>
     </ui-select>
     <div
-       mn-filter
-       class="indent-1"
-       config="documentsListCtl.filterConfig"
-       mn-disabled="documentsControlCtl.isEmptyState()"
-       on-close="documentsListCtl.onFilterClose()"
-       on-reset="documentsListCtl.onFilterReset()"
-       ></div>
-    <span class="text-small padding-left-half">filter:</span>
-    <a
-       class="text-small ellipsis padding-left-half"
-       ng-href="{{documentsListCtl.getDocumentsURI()}}"
-       target="_blank"
-       >
-      {{documentsListCtl.getFilterParamsAsString()}}
-    </a>
+       class="row min-width-zero"
+       ng-if="!documentsCtl.state.currentBucket.isEphemeral">
+      <div
+         mn-filter
+         class="indent-1"
+         config="documentsListCtl.filterConfig"
+         mn-disabled="documentsControlCtl.isEmptyState()"
+         on-close="documentsListCtl.onFilterClose()"
+         on-reset="documentsListCtl.onFilterReset()"
+         ></div>
+      <span class="text-small padding-left-half">filter:</span>
+      <a
+         class="text-small ellipsis padding-left-half"
+         ng-href="{{documentsListCtl.getDocumentsURI()}}"
+         target="_blank"
+         >
+        {{documentsListCtl.getFilterParamsAsString()}}
+      </a>
+    </div>
   </div>
   <form ng-submit="!documentsControlCtl.isEmptyState() && documentsListCtl.lookupSubmit()"
         class="row flex-right indent-1">
@@ -91,7 +95,8 @@
       </div>
     </section>
     <div ng-if="!documentsControlCtl.state.docs.rows.length" class="zero-content">
-      There are currently no documents in this bucket{{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}
+      <span ng-show="!documentsCtl.state.currentBucket.isEphemeral">There are currently no documents in this bucket{{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}</span>
+      <span ng-show="documentsCtl.state.currentBucket.isEphemeral">&nbsp;</span>
     </div>
   </div>
 </div>
