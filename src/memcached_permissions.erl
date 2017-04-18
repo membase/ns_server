@@ -174,7 +174,7 @@ jsonify_user({UserName, Type}, [{global, GlobalPermissions} | BucketPermissions]
     {list_to_binary(UserName), {[Buckets, Global, {type, Type}]}}.
 
 memcached_admin_json(AU, Buckets) ->
-    jsonify_user({AU, builtin}, [{global, [all]} | [{Name, [all]} || Name <- Buckets]]).
+    jsonify_user({AU, local}, [{global, [all]} | [{Name, [all]} || Name <- Buckets]]).
 
 generate_json_45(Buckets, RoleDefinitions) ->
     RolesDict = dict:new(),
@@ -183,9 +183,15 @@ generate_json_45(Buckets, RoleDefinitions) ->
                             Roles = menelaus_roles:get_roles({Bucket, bucket}),
                             {Permissions, NewDict} =
                                 permissions_for_user(Roles, Buckets, RoleDefinitions, Dict),
-                            {[jsonify_user({Bucket, builtin}, Permissions) | Acc], NewDict}
+                            {[jsonify_user({Bucket, local}, Permissions) | Acc], NewDict}
                     end, {[], RolesDict}, Buckets),
     lists:reverse(Json).
+
+%% to be removed after menelaus_users will be changed to use local/external
+convert_identity({User, builtin}) ->
+    {User, local};
+convert_identity({User, saslauthd}) ->
+    {User, external}.
 
 jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
     ?make_transducer(
@@ -199,7 +205,7 @@ jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
                fun (Identity, Roles, Dict) ->
                        {Permissions, NewDict} =
                            permissions_for_user(Roles, Buckets, RoleDefinitions, Dict),
-                       ?yield({kv, jsonify_user(Identity, Permissions)}),
+                       ?yield({kv, jsonify_user(convert_identity(Identity), Permissions)}),
                        NewDict
                end,
 
@@ -209,7 +215,7 @@ jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
                        dict:new();
                    _ ->
                        Roles1 = menelaus_roles:get_roles({ClusterAdmin, admin}),
-                       EmitUser({ClusterAdmin, builtin}, Roles1, dict:new())
+                       EmitUser({ClusterAdmin, local}, Roles1, dict:new())
                end,
 
            Dict2 =
@@ -217,7 +223,7 @@ jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
                  fun (Bucket, Dict) ->
                          LegacyName = Bucket ++ ";legacy",
                          Roles2 = menelaus_roles:get_roles({Bucket, bucket}),
-                         EmitUser({LegacyName, builtin}, Roles2, Dict)
+                         EmitUser({LegacyName, local}, Roles2, Dict)
                  end, Dict1, Buckets),
 
            pipes:fold(
@@ -257,7 +263,7 @@ generate_json_45_test() ->
                          'Tap','Write','XattrRead', 'XattrWrite']},
                        {<<"test">>,[]}]}},
             {privileges,[]},
-            {type, builtin}]}},
+            {type, local}]}},
          {<<"test">>,
           {[{buckets,{[{<<"default">>,[]},
                        {<<"test">>,
@@ -265,5 +271,5 @@ generate_json_45_test() ->
                          'Read','SimpleStats', 'SystemXattrRead', 'SystemXattrWrite',
                          'Tap','Write','XattrRead', 'XattrWrite']}]}},
             {privileges,[]},
-            {type, builtin}]}}],
+            {type, local}]}}],
     ?assertEqual(Json, generate_json_45(Buckets, RoleDefinitions)).
