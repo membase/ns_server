@@ -222,6 +222,8 @@ get_user_json({Id, Type}, Name, Passwordless, Roles) ->
         case Type of
             saslauthd ->
                 external;
+            builtin ->
+                local;
             _ ->
                 Type
         end,
@@ -417,7 +419,7 @@ reply_bad_roles(Req, BadRoles) ->
       Req,
       iolist_to_binary(io_lib:format("Malformed or unknown roles: [~s]", [Str])), 400).
 
-type_to_atom("builtin") ->
+type_to_atom("local") ->
     builtin;
 type_to_atom("external") ->
     saslauthd;
