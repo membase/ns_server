@@ -68,7 +68,7 @@ crash_consumption_loop() ->
                      info
              end,
     ale:log(?USER_LOGGER, LogLevel,
-            "Service '~p' exited with status ~p. Restarting. Messages: ~s",
+            "Service '~p' exited with status ~p. Restarting. Messages:~n~s",
             [Name, Status, Messages]),
     crash_consumption_loop().
 
