@@ -32,7 +32,10 @@
                   limitTo: userRolesCtl.pageLimit
                   track by (user.id + user.domain)">
       <div class="cbui-tablerow padding-left">
-        <span class="cbui-table-cell">{{user.id}}</span>
+        <span class="cbui-table-cell">
+          {{user.id}}
+          <span ng-show="user.passwordless" class="label lt-blue">no password</span>
+        </span>
         <span class="cbui-table-cell">{{user.name}}</span>
         <span class="cbui-table-cell flex-grow-3 wrap">
           <span
