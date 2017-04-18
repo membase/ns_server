@@ -155,7 +155,7 @@ handle_info(Info, State) ->
 
 terminate(_Reason, #state{worker = Worker} = State) when Worker =/= undefined ->
     flush_buffer(State),
-    ok = gen_server:call(Worker, nop, infinity),
+    ok = gen_server:call(Worker, sync, infinity),
     exit(Worker, kill),
     ok;
 terminate(_Reason, _State) ->
@@ -453,11 +453,7 @@ worker_loop(State) ->
                 erlang:send_after(State#worker_state.rotation_check_interval,
                                   self(), check_file),
                 check_log_file(State);
-            {'$gen_call', From, nop} ->
-                gen_server:reply(From, ok),
-                State;
             {'$gen_call', From, sync} ->
-                file:datasync(State#worker_state.file),
                 gen_server:reply(From, ok),
                 State;
             Msg ->
