@@ -128,7 +128,10 @@ generic_loglevel(LoggerName, LogLevel, Formatter, Preformatted, Raw) ->
          true ->
              io_lib:format(
                "Info = ale_utils:assemble_info(~s, ~p, M, F, L, Data),"
-               "UserMsg = io_lib:format(Fmt, Args),",
+               "UserMsg = case Args =/= [] of "
+               "              true -> io_lib:format(Fmt, Args);"
+               "              false -> Fmt"
+               "          end,",
                [LoggerName, LogLevel]);
          false ->
              ""
