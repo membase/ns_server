@@ -187,12 +187,6 @@ generate_json_45(Buckets, RoleDefinitions) ->
                     end, {[], RolesDict}, Buckets),
     lists:reverse(Json).
 
-%% to be removed after menelaus_users will be changed to use local/external
-convert_identity({User, builtin}) ->
-    {User, local};
-convert_identity({User, saslauthd}) ->
-    {User, external}.
-
 jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
     ?make_transducer(
        begin
@@ -236,7 +230,7 @@ jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
                              Dict;
                          _ ->
                              Roles3 = proplists:get_value(roles, Props, []),
-                             EmitUser(convert_identity(Identity), Roles3, Dict)
+                             EmitUser(Identity, Roles3, Dict)
                      end
              end, Dict2),
            ?yield(object_end)

@@ -109,7 +109,7 @@ authenticate(Username, Password) ->
                 false ->
                     case menelaus_users:authenticate(Username, Password) of
                         true ->
-                            {ok, {Username, builtin}};
+                            {ok, {Username, local}};
                         false ->
                             case is_bucket_auth(Username, Password) of
                                 true ->

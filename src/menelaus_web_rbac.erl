@@ -144,7 +144,7 @@ handle_validate_saslauthd_creds_post(Req) ->
 
     {Role, Src} =
         case VRV of
-            {ok, {_, saslauthd}} -> {saslauthd_auth:get_role_pre_45(User), saslauthd};
+            {ok, {_, external}} -> {saslauthd_auth:get_role_pre_45(User), saslauthd};
             {ok, {_, R}} -> {R, builtin};
             {error, Error} ->
                 erlang:throw({web_exception, 400, Error, []});
@@ -218,17 +218,8 @@ get_user_json(Identity, Props, Passwordless) ->
     get_user_json(Identity, Name, Passwordless, Roles).
 
 get_user_json({Id, Type}, Name, Passwordless, Roles) ->
-    TypeForREST =
-        case Type of
-            saslauthd ->
-                external;
-            builtin ->
-                local;
-            _ ->
-                Type
-        end,
     UserJson = [{id, list_to_binary(Id)},
-                {domain, TypeForREST},
+                {domain, Type},
                 {roles, [{role_to_json(Role)} || Role <- Roles]}],
     UserJson1 =
         case Name of
@@ -420,9 +411,9 @@ reply_bad_roles(Req, BadRoles) ->
       iolist_to_binary(io_lib:format("Malformed or unknown roles: [~s]", [Str])), 400).
 
 type_to_atom("local") ->
-    builtin;
+    local;
 type_to_atom("external") ->
-    saslauthd;
+    external;
 type_to_atom(_) ->
     unknown.
 
@@ -522,10 +513,10 @@ handle_put_user(Type, UserId, Req) ->
             case type_to_atom(Type) of
                 unknown ->
                     menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
-                saslauthd = T ->
+                external = T ->
                     menelaus_web:assert_is_enterprise(),
                     handle_put_user_with_identity({UserId, T}, Req);
-                builtin = T ->
+                local = T ->
                     menelaus_web:assert_is_spock(),
                     handle_put_user_with_identity({UserId, T}, Req)
             end;
@@ -551,9 +542,9 @@ validate_put_user(Type, Args) ->
     R2 = menelaus_util:validate_required(roles, R1),
     R3 = menelaus_util:validate_any_value(roles, R2),
     R4 = case Type of
-             builtin ->
+             local ->
                  validate_password(R3);
-             saslauthd ->
+             external ->
                  R3
          end,
     menelaus_util:validate_unsupported_params(R4).
@@ -642,7 +633,7 @@ handle_change_password(Req) ->
     case menelaus_auth:get_token(Req) of
         undefined ->
             case menelaus_auth:get_identity(Req) of
-                {_, builtin} = Identity ->
+                {_, local} = Identity ->
                     handle_change_password_with_identity(Req, Identity);
                 {_, admin} = Identity ->
                     handle_change_password_with_identity(Req, Identity);
@@ -666,7 +657,7 @@ handle_change_password_with_identity(Req, Identity) ->
               end
       end, Req, validate_change_password(Req:parse_post())).
 
-do_change_password({_, builtin} = Identity, Password) ->
+do_change_password({_, local} = Identity, Password) ->
     menelaus_users:change_password(Identity, Password);
 do_change_password({User, admin}, Password) ->
     ns_config_auth:set_credentials(admin, User, Password).

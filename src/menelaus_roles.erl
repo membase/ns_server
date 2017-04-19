@@ -396,7 +396,7 @@ get_roles({_, ro_admin}) ->
     [ro_admin];
 get_roles({BucketName, bucket}) ->
     [{bucket_full_access, [BucketName]}];
-get_roles({User, saslauthd} = Identity) ->
+get_roles({User, external} = Identity) ->
     case cluster_compat_mode:is_cluster_45() of
         true ->
             menelaus_users:get_roles(Identity);
@@ -410,7 +410,7 @@ get_roles({User, saslauthd} = Identity) ->
                     []
             end
     end;
-get_roles({_User, builtin} = Identity) ->
+get_roles({_User, local} = Identity) ->
     menelaus_users:get_roles(Identity).
 
 -spec get_compiled_roles(rbac_identity()) -> [rbac_compiled_role()].

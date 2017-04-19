@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc implementation of builtin and saslauthd users
+%% @doc implementation of local and external users
 
 -module(menelaus_users).
 
@@ -203,11 +203,12 @@ store_user(Identity, Name, Password, Roles) ->
             store_user_45(Identity, Props, Roles)
     end.
 
-store_user_45({_UserName, saslauthd} = Identity, Props, Roles) ->
+store_user_45({UserName, external}, Props, Roles) ->
     ns_config:run_txn(
       fun (Config, SetFn) ->
               case menelaus_roles:validate_roles(Roles, Config) of
                   ok ->
+                      Identity = {UserName, saslauthd},
                       Users = get_users_45(Config),
                       NewUsers = lists:keystore(Identity, 1, Users,
                                                 {Identity, [{roles, Roles} | Props]}),
@@ -243,9 +244,9 @@ store_user_spock({_UserName, Type} = Identity, Props, Password, Roles, Config) -
     case check_limit(Identity) of
         true ->
             case Type of
-                saslauthd ->
+                external ->
                     store_user_spock_with_auth(Identity, Props, same, Roles, Config);
-                builtin ->
+                local ->
                     case build_auth(CurrentAuth, Password) of
                         password_required ->
                             {abort, password_required};
@@ -275,7 +276,7 @@ store_user_spock_validated(Identity, Props, Auth) ->
             ok = replicated_dets:set(storage_name(), {auth, Identity}, Auth)
     end.
 
-change_password({_UserName, builtin} = Identity, Password) when is_list(Password) ->
+change_password({_UserName, local} = Identity, Password) when is_list(Password) ->
     case replicated_dets:get(storage_name(), {user, Identity}) of
         false ->
             user_not_found;
@@ -312,9 +313,9 @@ delete_user_45(Identity) ->
 
 delete_user_spock({_, Type} = Identity) ->
     case Type of
-        builtin ->
+        local ->
             _ = replicated_dets:delete(storage_name(), {auth, Identity});
-        saslauthd ->
+        external ->
             ok
     end,
     case replicated_dets:delete(storage_name(), {user, Identity}) of
@@ -336,7 +337,7 @@ has_scram_hashes(Auth) ->
 authenticate(Username, Password) ->
     case cluster_compat_mode:is_cluster_spock() of
         true ->
-            Identity = {Username, builtin},
+            Identity = {Username, local},
             case replicated_dets:get(storage_name(), {user, Identity}) of
                 false ->
                     false;
@@ -357,36 +358,30 @@ authenticate_with_info(Auth, Password) ->
     {Salt, Mac} = get_salt_and_mac(Auth),
     ns_config_auth:hash_password(Salt, Password) =:= Mac.
 
--spec user_exists(rbac_identity()) -> boolean().
-user_exists(Identity) ->
+get_user_props_45({User, external}) ->
+    ns_config:search_prop(ns_config:latest(), user_roles, {User, saslauthd}, []).
+
+get_user_props(Identity) ->
     case cluster_compat_mode:is_cluster_spock() of
         true ->
-            replicated_dets:get(storage_name(), {user, Identity}) =/= false;
+            replicated_dets:get(storage_name(), {user, Identity}, []);
         false ->
-            ns_config:search_prop(ns_config:latest(), user_roles, Identity) =/= undefined
+            get_user_props_45(Identity)
     end.
+
+-spec user_exists(rbac_identity()) -> boolean().
+user_exists(Identity) ->
+    get_user_props(Identity) =/= [].
 
 -spec get_roles(rbac_identity()) -> [rbac_role()].
 get_roles(Identity) ->
-    Props =
-        case cluster_compat_mode:is_cluster_spock() of
-            true ->
-                replicated_dets:get(storage_name(), {user, Identity}, []);
-            false ->
-                ns_config:search_prop(ns_config:latest(), user_roles, Identity, [])
-        end,
-    proplists:get_value(roles, Props, []).
+    proplists:get_value(roles, get_user_props(Identity), []).
 
 -spec get_user_name(rbac_identity()) -> rbac_user_name().
-get_user_name(Identity) ->
-    Props =
-        case cluster_compat_mode:is_cluster_spock() of
-            false ->
-                ns_config:search_prop(ns_config:latest(), user_roles, Identity, []);
-            true ->
-                replicated_dets:get(storage_name(), {user, Identity}, [])
-        end,
-    proplists:get_value(name, Props).
+get_user_name({_, Domain} = Identity) when Domain =:= local orelse Domain =:= external ->
+    proplists:get_value(name, get_user_props(Identity));
+get_user_name(_) ->
+    undefined.
 
 collect_result(Port, Acc) ->
     receive
@@ -522,7 +517,7 @@ do_upgrade_to_spock(Nodes, Repair) ->
         {ROAdmin, {Salt, Mac}} ->
             Auth = build_plain_memcached_auth_info(Salt, Mac),
             {commit, ok} =
-                store_user_spock_with_auth({ROAdmin, builtin}, [{name, "Read Only User"}],
+                store_user_spock_with_auth({ROAdmin, local}, [{name, "Read Only User"}],
                                            Auth, [ro_admin], Config)
     end,
 
@@ -533,14 +528,14 @@ do_upgrade_to_spock(Nodes, Repair) ->
           ({BucketName, BucketConfig}) ->
               Password = proplists:get_value(sasl_password, BucketConfig, ""),
               Name = "Generated user for bucket " ++ BucketName,
-              {commit, ok} = store_user_spock({BucketName, builtin}, [{name, Name}], Password,
+              {commit, ok} = store_user_spock({BucketName, local}, [{name, Name}], Password,
                                               [{bucket_full_access, [BucketName]}], Config)
       end, ns_bucket:get_buckets(Config)),
 
     LdapUsers = get_users_45(Config),
     lists:foreach(
-      fun ({{_, saslauthd} = Identity, Props}) ->
-              ok = store_user_spock_validated(Identity, Props, same)
+      fun ({{LdapUser, saslauthd}, Props}) ->
+              ok = store_user_spock_validated({LdapUser, external}, Props, same)
       end, LdapUsers).
 
 config_upgrade() ->
