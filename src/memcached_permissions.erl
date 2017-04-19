@@ -205,7 +205,7 @@ jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
                fun (Identity, Roles, Dict) ->
                        {Permissions, NewDict} =
                            permissions_for_user(Roles, Buckets, RoleDefinitions, Dict),
-                       ?yield({kv, jsonify_user(convert_identity(Identity), Permissions)}),
+                       ?yield({kv, jsonify_user(Identity, Permissions)}),
                        NewDict
                end,
 
@@ -236,7 +236,7 @@ jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
                              Dict;
                          _ ->
                              Roles3 = proplists:get_value(roles, Props, []),
-                             EmitUser(Identity, Roles3, Dict)
+                             EmitUser(convert_identity(Identity), Roles3, Dict)
                      end
              end, Dict2),
            ?yield(object_end)
