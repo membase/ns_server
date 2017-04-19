@@ -374,24 +374,6 @@ compile_roles(Roles, Definitions) ->
                       substitute_params(Params, ParamDefinitions, Permissions)
               end, Roles).
 
--spec get_user_roles(rbac_identity()) -> [rbac_role()].
-get_user_roles({User, saslauthd} = Identity) ->
-    case cluster_compat_mode:is_cluster_45() of
-        true ->
-            menelaus_users:get_roles(Identity);
-        false ->
-            case saslauthd_auth:get_role_pre_45(User) of
-                admin ->
-                    [admin];
-                ro_admin ->
-                    [ro_admin];
-                false ->
-                    []
-            end
-    end;
-get_user_roles({_User, builtin} = Identity) ->
-    menelaus_users:get_roles(Identity).
-
 -spec get_roles(rbac_identity()) -> [rbac_role()].
 get_roles({"", wrong_token}) ->
     case ns_config_auth:is_system_provisioned() of
@@ -414,10 +396,22 @@ get_roles({_, ro_admin}) ->
     [ro_admin];
 get_roles({BucketName, bucket}) ->
     [{bucket_full_access, [BucketName]}];
-get_roles({_, builtin} = Identity) ->
-    get_user_roles(Identity);
-get_roles({_, saslauthd} = Identity) ->
-    get_user_roles(Identity).
+get_roles({User, saslauthd} = Identity) ->
+    case cluster_compat_mode:is_cluster_45() of
+        true ->
+            menelaus_users:get_roles(Identity);
+        false ->
+            case saslauthd_auth:get_role_pre_45(User) of
+                admin ->
+                    [admin];
+                ro_admin ->
+                    [ro_admin];
+                false ->
+                    []
+            end
+    end;
+get_roles({_User, builtin} = Identity) ->
+    menelaus_users:get_roles(Identity).
 
 -spec get_compiled_roles(rbac_identity()) -> [rbac_compiled_role()].
 get_compiled_roles(Identity) ->
