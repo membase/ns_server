@@ -28,20 +28,20 @@
           <h4>Authentication Domain</h4>
           <input
              type="radio"
-             name="type"
-             value="builtin"
+             name="domain"
+             value="local"
              ng-disabled="userRolesAddDialogCtl.isEditingMode"
-             id="user-type-builtin"
-             ng-model="userRolesAddDialogCtl.user.type">
-          <label for="user-type-builtin">Couchbase</label>
+             id="user-domain-local"
+             ng-model="userRolesAddDialogCtl.user.domain">
+          <label for="user-domain-local">Couchbase</label>
           <input
              type="radio"
-             name="type"
+             name="domain"
              value="external"
              ng-disabled="userRolesAddDialogCtl.isEditingMode"
-             id="user-type-external"
-             ng-model="userRolesAddDialogCtl.user.type">
-          <label for="user-type-external">External</label>
+             id="user-domain-external"
+             ng-model="userRolesAddDialogCtl.user.domain">
+          <label for="user-domain-external">External</label>
         </div>
       </div>
       <div class="formrow">
@@ -67,7 +67,7 @@
            id="name_full_inp"
            ng-model="userRolesAddDialogCtl.user.name">
       </div>
-      <div ng-if="userRolesAddDialogCtl.user.type !== 'external' && !userRolesAddDialogCtl.isEditingMode">
+      <div ng-if="userRolesAddDialogCtl.user.domain !== 'external' && !userRolesAddDialogCtl.isEditingMode">
         <div class="formrow">
           <label for="password_inp">Password</label>
           <input

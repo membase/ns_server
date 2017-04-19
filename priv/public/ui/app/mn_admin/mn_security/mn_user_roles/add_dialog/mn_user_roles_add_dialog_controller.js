@@ -7,7 +7,7 @@
 
   function mnUserRolesAddDialogController($scope, mnUserRolesService, $uibModalInstance, mnPromiseHelper, user, isLdapEnabled, buckets) {
     var vm = this;
-    vm.user = _.clone(user) || {type: "builtin"};
+    vm.user = _.clone(user) || {domain: "local"};
     vm.userID = vm.user.id || 'New';
     vm.roles = [];
     vm.save = save;

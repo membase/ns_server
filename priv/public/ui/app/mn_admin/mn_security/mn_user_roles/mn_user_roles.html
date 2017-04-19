@@ -20,17 +20,17 @@
         mn-sortable-title="roles">roles</span>
       <span
          class="cbui-table-cell flex-grow-half"
-         mn-sortable-title="type">auth domain</span>
+         mn-sortable-title="domain">auth domain</span>
     </div>
     <section
        class="has-hover"
        ng-if="userRolesCtl.state.users.length"
-       ng-click="userRolesCtl.toggleDetails(user.id + user.type)"
+       ng-click="userRolesCtl.toggleDetails(user.id + user.domain)"
        ng-repeat="user in userRolesCtl.state.users |
                   orderBy: mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert |
                   limitTo: (userRolesCtl.pageNumber - 1) * userRolesCtl.pageLimit - userRolesCtl.state.users.length |
                   limitTo: userRolesCtl.pageLimit
-                  track by (user.id + user.type)">
+                  track by (user.id + user.domain)">
       <div class="cbui-tablerow padding-left">
         <span class="cbui-table-cell">{{user.id}}</span>
         <span class="cbui-table-cell">{{user.name}}</span>
@@ -51,18 +51,18 @@
           </span>
         </span>
         <span class="cbui-table-cell flex-grow-half">
-          {{user.type === "builtin" ? "Internal" : "LDAP"}}
+          {{user.domain === "local" ? "Couchbase" : "External"}}
         </span>
       </div>
       <div
          class="cbui-tablerow-expanded text-right"
-         ng-if="userRolesCtl.isDetailsOpened(user.id + user.type) && rbac.cluster.admin.security.write">
+         ng-if="userRolesCtl.isDetailsOpened(user.id + user.domain) && rbac.cluster.admin.security.write">
         <button
            class="outline"
            ng-click="userRolesCtl.deleteUser(user)">Delete</button>
         <button
            class="outline"
-           ng-show="user.type !== 'saslauthd'"
+           ng-show="user.domain !== 'external'"
            ng-click="userRolesCtl.resetUserPassword(user)">Reset Password</button>
         <button
            ng-click="userRolesCtl.editUser(user)">Edit</button>
