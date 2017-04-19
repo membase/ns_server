@@ -29,9 +29,16 @@
        id="storage_memory_optimized"
        ng-model="config.storageMode"
        ng-disabled="isDisabled">
-    <label for="storage_memory_optimized" class="checkbox">
+    <label for="storage_memory_optimized" class="checkbox margin-right-zero">
       Memory-Optimized Global Secondary Indexes
     </label>
+    <span
+       class="fa-stack icon-info"
+       uib-tooltip="Memory-optimized indexing is highly performant but requires careful attention to your index RAM quota. It is an Enterprise-only feature."
+       tooltip-placement="right">
+      <span class="icon fa-circle-thin fa-stack-2x"></span>
+      <span class="icon fa-info fa-stack-1x"></span>
+    </span>
   </div>
   <div class="error error-field" ng-show="errors.storageMode">
     {{errors.storageMode | mnFormatStorageModeError}}
