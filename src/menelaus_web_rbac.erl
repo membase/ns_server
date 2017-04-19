@@ -896,7 +896,7 @@ check_permissions_url_version(Config) ->
 handle_check_permission_for_cbauth(Req) ->
     Params = Req:parse_qs(),
     Identity = {proplists:get_value("user", Params),
-                list_to_existing_atom(proplists:get_value("src", Params))},
+                list_to_existing_atom(proplists:get_value("domain", Params))},
     RawPermission = proplists:get_value("permission", Params),
     Permission = parse_permission(misc:trim(RawPermission)),
 

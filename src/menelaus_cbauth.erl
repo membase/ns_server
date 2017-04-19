@@ -235,9 +235,9 @@ auth_version(Config) ->
                    menelaus_users:get_auth_version()]).
 
 handle_cbauth_post(Req) ->
-    {User, Source} = menelaus_auth:get_identity(Req),
+    {User, Domain} = menelaus_auth:get_identity(Req),
     menelaus_util:reply_json(Req, {[{user, erlang:list_to_binary(User)},
-                                    {source, Source}]}).
+                                    {domain, Domain}]}).
 
 is_cbauth_connection(Label) ->
     lists:suffix("-cbauth", Label).
