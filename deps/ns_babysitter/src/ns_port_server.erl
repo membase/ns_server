@@ -96,7 +96,7 @@ init(Fun) ->
         end,
 
     Port = case DontStart of
-               false -> port_open(Params2);
+               false -> port_open(Params2, State);
                true -> undefined
            end,
     {ok, State#state{port = Port,
@@ -134,7 +134,11 @@ handle_info({Port, {data, Data}}, #state{port = Port,
                        end,
                 State1#state{log_buffer=Buf, log_tref=TRef, dropped=Dropped};
             _ ->
-                ale:debug(Logger, [Msg, $\n]),
+                %% This makes sure that disk sink's buffer is flushed. Since
+                %% logging to it asynchronous, this is needed for goport's
+                %% flow control to actually do its job.
+                ale:sync_sink(Logger),
+                ale:debug(Logger, Msg),
                 State1
         end,
 
@@ -146,7 +150,7 @@ handle_info(log, State) ->
 handle_info({_Port, {exit_status, Status}}, State) ->
     ns_crash_log:record_crash({port_name(State),
                                Status,
-                               misc:intersperse(ringbuffer:to_list(State#state.messages), $\n)}),
+                               get_death_messages(State)}),
     {stop, {abnormal, Status}, State};
 handle_info({'EXIT', Port, Reason} = Exit, #state{port=Port} = State) ->
     ?log_error("Got unexpected exit signal from port: ~p. Exiting.", [Exit]),
@@ -157,7 +161,7 @@ handle_call(is_active, _From, #state{port = Port} = State) ->
 
 handle_call(activate, _From, #state{port = undefined,
                                     params = Params} = State) ->
-    State2 = State#state{port = port_open(Params)},
+    State2 = State#state{port = port_open(Params, State)},
     {reply, ok, State2};
 handle_call(activate, _From, State) ->
     {reply, {error, already_active}, State}.
@@ -229,10 +233,10 @@ log(#state{logger = undefined} = State) ->
 log(_) ->
     ok.
 
-port_open({_Name, Cmd, Args, OptsIn}) ->
+port_open({_Name, Cmd, Args, OptsIn}, #state{logger = Logger}) ->
     %% Incoming options override existing ones (specified in proplists docs)
     Opts0 = OptsIn ++ [{args, Args}, exit_status,
-                       {line, 8192}, stream, binary, stderr_to_stdout],
+                       stream, binary, stderr_to_stdout],
 
     WriteDataArg = proplists:get_value(write_data, Opts0),
     Opts1 = lists:keydelete(write_data, 1, Opts0),
@@ -243,7 +247,16 @@ port_open({_Name, Cmd, Args, OptsIn}) ->
                     lists:delete(stderr_to_stdout, Opts2)
             end,
     ViaGoport = proplists:get_value(via_goport, Opts3, false),
-    Opts = proplists:delete(via_goport, Opts3),
+    Opts4 = proplists:delete(via_goport, Opts3),
+
+    %% don't split port output into lines if all we need to do is to redirect
+    %% it into a file
+    Opts = case Logger of
+               undefined ->
+                   [{line, 8192} | Opts4];
+               _ ->
+                   Opts4
+           end,
 
     Port =
         case ViaGoport of
@@ -291,4 +304,25 @@ port_deliver(Port) when is_port(Port) ->
 extract_message({eol, Msg}) ->
     Msg;
 extract_message({noeol, Msg}) ->
+    Msg;
+extract_message(Msg) ->
     Msg.
+
+get_death_messages(#state{messages = Messages, logger = undefined}) ->
+    %% we use line splitting for the processes whose output is not forwarded
+    %% to disk
+    misc:intersperse(ringbuffer:to_list(Messages), $\n);
+get_death_messages(#state{messages = Messages}) ->
+    %% Since the messages here are not split in lines, they can be quite big
+    %% and hence the total size of them can be quite a bit larger than
+    %% ?KEEP_MESSAGES_BYTES. So we manually split them into lines here and
+    %% select as few as possible.
+    Combined = iolist_to_binary(ringbuffer:to_list(Messages)),
+    Lines = binary:split(Combined, [<<"\n">>, <<"\r\n">>], [global]),
+
+    R = lists:foldl(
+          fun (Line, Acc) ->
+                  ringbuffer:add(Line, byte_size(Line), Acc)
+          end, ringbuffer:new(?KEEP_MESSAGES_BYTES), Lines),
+
+    misc:intersperse(ringbuffer:to_list(R), $\n).
