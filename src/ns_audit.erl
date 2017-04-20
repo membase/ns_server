@@ -196,8 +196,8 @@ format_iso8601({{YYYY, MM, DD}, {Hour, Min, Sec}}, Microsecs, Offset) ->
 
 get_user_id(undefined) ->
     undefined;
-get_user_id({User, Source}) ->
-    {[{source, case Source of
+get_user_id({User, Domain}) ->
+    {[{source, case Domain of
                    admin ->
                        ns_server;
                    ro_admin ->
@@ -207,8 +207,8 @@ get_user_id({User, Source}) ->
                end},
       {user, to_binary(User)}]}.
 
-get_identity({User, Source}) ->
-    {[{source, Source}, {user, to_binary(User)}]}.
+get_identity({User, Domain}) ->
+    {[{source, Domain}, {user, to_binary(User)}]}.
 
 get_remote(Req) ->
     Socket = Req:get(socket),

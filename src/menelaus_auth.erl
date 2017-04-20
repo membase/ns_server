@@ -133,16 +133,16 @@ maybe_refresh_token(Req) ->
 -spec validate_request(mochiweb_request()) -> ok.
 validate_request(Req) ->
     undefined = Req:get_header_value("menelaus-auth-user"),
-    undefined = Req:get_header_value("menelaus-auth-src"),
+    undefined = Req:get_header_value("menelaus-auth-domain"),
     undefined = Req:get_header_value("menelaus-auth-token"),
     ok.
 
 -spec store_user_info(mochiweb_request(), rbac_identity(), auth_token() | undefined) ->
                              mochiweb_request().
-store_user_info(Req, {User, Src}, Token) ->
+store_user_info(Req, {User, Domain}, Token) ->
     Headers = Req:get(headers),
     H1 = mochiweb_headers:enter("menelaus-auth-user", User, Headers),
-    H2 = mochiweb_headers:enter("menelaus-auth-src", Src, H1),
+    H2 = mochiweb_headers:enter("menelaus-auth-domain", Domain, H1),
     H3 = case Token of
              undefined ->
                  H2;
@@ -154,11 +154,11 @@ store_user_info(Req, {User, Src}, Token) ->
 -spec get_identity(mochiweb_request()) -> rbac_identity() | undefined.
 get_identity(Req) ->
     case {Req:get_header_value("menelaus-auth-user"),
-          Req:get_header_value("menelaus-auth-src")} of
+          Req:get_header_value("menelaus-auth-domain")} of
         {undefined, undefined} ->
             undefined;
-        {User, Src} ->
-            {User, list_to_existing_atom(Src)}
+        {User, Domain} ->
+            {User, list_to_existing_atom(Domain)}
     end.
 
 -spec get_token(mochiweb_request()) -> auth_token() | undefined.

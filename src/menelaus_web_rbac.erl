@@ -217,9 +217,9 @@ get_user_json(Identity, Props, Passwordless) ->
     Name = proplists:get_value(name, Props),
     get_user_json(Identity, Name, Passwordless, Roles).
 
-get_user_json({Id, Type}, Name, Passwordless, Roles) ->
+get_user_json({Id, Domain}, Name, Passwordless, Roles) ->
     UserJson = [{id, list_to_binary(Id)},
-                {domain, Type},
+                {domain, Domain},
                 {roles, [{role_to_json(Role)} || Role <- Roles]}],
     UserJson1 =
         case Name of
@@ -253,26 +253,26 @@ validate_get_users(Args) ->
     R3 = menelaus_util:validate_any_value(startAfter, R2),
     menelaus_util:validate_unsupported_params(R3).
 
-handle_get_users(Type, Req) ->
+handle_get_users(Domain, Req) ->
     menelaus_web:assert_is_spock(),
 
-    case type_to_atom(Type) of
+    case domain_to_atom(Domain) of
         unknown ->
-            menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
-        TypeAtom ->
-            handle_get_users_with_type(Req, TypeAtom)
+            menelaus_util:reply_json(Req, <<"Unknown user domain.">>, 404);
+        DomainAtom ->
+            handle_get_users_with_domain(Req, DomainAtom)
     end.
 
-handle_get_users_with_type(Req, TypeAtom) ->
+handle_get_users_with_domain(Req, DomainAtom) ->
     Query = Req:parse_qs(),
 
     case lists:keyfind("pageSize", 1, Query) of
         false ->
-            handle_get_all_users(Req, {'_', TypeAtom});
+            handle_get_all_users(Req, {'_', DomainAtom});
         _ ->
             menelaus_util:execute_if_validated(
               fun (Values) ->
-                      handle_get_users_page(Req, {'_', TypeAtom},
+                      handle_get_users_page(Req, {'_', DomainAtom},
                                             proplists:get_value(pageSize, Values),
                                             proplists:get_value(startAfter, Values))
               end, Req, validate_get_users(Query))
@@ -410,11 +410,11 @@ reply_bad_roles(Req, BadRoles) ->
       Req,
       iolist_to_binary(io_lib:format("Malformed or unknown roles: [~s]", [Str])), 400).
 
-type_to_atom("local") ->
+domain_to_atom("local") ->
     local;
-type_to_atom("external") ->
+domain_to_atom("external") ->
     external;
-type_to_atom(_) ->
+domain_to_atom(_) ->
     unknown.
 
 verify_length([P, Len]) ->
@@ -504,15 +504,15 @@ validate_cred(Username, username) ->
     V orelse
         <<"The username must not contain spaces, control or any of ()<>@,;:\\\"/[]?={} characters and must be valid utf8">>.
 
-handle_put_user(Type, UserId, Req) ->
+handle_put_user(Domain, UserId, Req) ->
     assert_api_can_be_used(),
     assert_no_users_upgrade(),
 
     case validate_cred(UserId, username) of
         true ->
-            case type_to_atom(Type) of
+            case domain_to_atom(Domain) of
                 unknown ->
-                    menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
+                    menelaus_util:reply_json(Req, <<"Unknown user domain.">>, 404);
                 external = T ->
                     menelaus_web:assert_is_enterprise(),
                     handle_put_user_with_identity({UserId, T}, Req);
@@ -536,12 +536,12 @@ validate_password(R1) ->
               end
       end, password, R2).
 
-validate_put_user(Type, Args) ->
+validate_put_user(Domain, Args) ->
     R0 = menelaus_util:validate_has_params({Args, [], []}),
     R1 = menelaus_util:validate_any_value(name, R0),
     R2 = menelaus_util:validate_required(roles, R1),
     R3 = menelaus_util:validate_any_value(roles, R2),
-    R4 = case Type of
+    R4 = case Domain of
              local ->
                  validate_password(R3);
              external ->
@@ -549,7 +549,7 @@ validate_put_user(Type, Args) ->
          end,
     menelaus_util:validate_unsupported_params(R4).
 
-handle_put_user_with_identity({_UserId, Type} = Identity, Req) ->
+handle_put_user_with_identity({_UserId, Domain} = Identity, Req) ->
     menelaus_util:execute_if_validated(
       fun (Values) ->
               handle_put_user_validated(Identity,
@@ -557,7 +557,7 @@ handle_put_user_with_identity({_UserId, Type} = Identity, Req) ->
                                         proplists:get_value(password, Values),
                                         proplists:get_value(roles, Values),
                                         Req)
-      end, Req, validate_put_user(Type, Req:parse_post())).
+      end, Req, validate_put_user(Domain, Req:parse_post())).
 
 handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
     Roles = parse_roles(RawRoles),
@@ -583,13 +583,13 @@ handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
             reply_bad_roles(Req, BadRoles)
     end.
 
-handle_delete_user(Type, UserId, Req) ->
+handle_delete_user(Domain, UserId, Req) ->
     menelaus_web:assert_is_45(),
     assert_no_users_upgrade(),
 
-    case type_to_atom(Type) of
+    case domain_to_atom(Domain) of
         unknown ->
-            menelaus_util:reply_json(Req, <<"Unknown user type.">>, 404);
+            menelaus_util:reply_json(Req, <<"Unknown user domain.">>, 404);
         T ->
             Identity = {UserId, T},
             case menelaus_users:delete_user(Identity) of

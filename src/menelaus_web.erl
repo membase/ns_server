@@ -398,9 +398,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["settings", "rbac", "users"] ->
                     {{[admin, security], read},
                      fun menelaus_web_rbac:handle_get_users/1};
-                ["settings", "rbac", "users", Type] ->
+                ["settings", "rbac", "users", Domain] ->
                     {{[admin, security], read},
-                     fun menelaus_web_rbac:handle_get_users/2, [Type]};
+                     fun menelaus_web_rbac:handle_get_users/2, [Domain]};
                 ["settings", "passwordPolicy"] ->
                     {{[admin, security], read},
                      fun menelaus_web_rbac:handle_get_password_policy/1};
@@ -766,9 +766,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["settings", "rbac", "users", UserId] ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_delete_user/3, ["external", UserId]};
-                ["settings", "rbac", "users", Type, UserId] ->
+                ["settings", "rbac", "users", Domain, UserId] ->
                     {{[admin, security], write},
-                     fun menelaus_web_rbac:handle_delete_user/3, [Type, UserId]};
+                     fun menelaus_web_rbac:handle_delete_user/3, [Domain, UserId]};
                 ["couchBase" | _] -> {no_check,
                                       fun menelaus_pluggable_ui:proxy_req/4,
                                       ["couchBase",
@@ -803,9 +803,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["settings", "rbac", "users", UserId] ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_put_user/3, ["external", UserId]};
-                ["settings", "rbac", "users", Type, UserId] ->
+                ["settings", "rbac", "users", Domain, UserId] ->
                     {{[admin, security], write},
-                     fun menelaus_web_rbac:handle_put_user/3, [Type, UserId]};
+                     fun menelaus_web_rbac:handle_put_user/3, [Domain, UserId]};
                 ["couchBase" | _] ->
                     {no_check, fun menelaus_pluggable_ui:proxy_req/4,
                      ["couchBase",

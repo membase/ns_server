@@ -239,11 +239,11 @@ check_limit(Identity) ->
             end
     end.
 
-store_user_spock({_UserName, Type} = Identity, Props, Password, Roles, Config) ->
+store_user_spock({_UserName, Domain} = Identity, Props, Password, Roles, Config) ->
     CurrentAuth = replicated_dets:get(storage_name(), {auth, Identity}),
     case check_limit(Identity) of
         true ->
-            case Type of
+            case Domain of
                 external ->
                     store_user_spock_with_auth(Identity, Props, same, Roles, Config);
                 local ->
@@ -311,8 +311,8 @@ delete_user_45(Identity) ->
               end
       end).
 
-delete_user_spock({_, Type} = Identity) ->
-    case Type of
+delete_user_spock({_, Domain} = Identity) ->
+    case Domain of
         local ->
             _ = replicated_dets:delete(storage_name(), {auth, Identity});
         external ->
