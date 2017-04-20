@@ -50,7 +50,7 @@
       for (var kind in stats) {
         var newSamples = restoreOpsBlock(prevStats[kind],
                                          stats[kind],
-                                         value.samplesCount);
+                                         value.samplesCount + 1);
         stats[kind] = newSamples;
       }
       return value;
