@@ -374,6 +374,8 @@ func (p *port) startChild() error {
 	child.Stdout = stdoutW
 	child.Stderr = stderrW
 
+	SetPgid(child)
+
 	err = child.Start()
 	if err != nil {
 		return err
@@ -431,7 +433,7 @@ func (p *port) terminateChild() error {
 			return err
 		}
 	} else {
-		err := p.child.Process.Kill()
+		err := Kill(p.child)
 		if err != nil {
 			return err
 		}
