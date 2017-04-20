@@ -29,6 +29,7 @@ import (
 	"path"
 	"strconv"
 	"syscall"
+	"time"
 )
 
 const (
@@ -557,8 +558,24 @@ func (p *port) flushChildStream(tag string) {
 		return
 	}
 
-	for data := range stream.reads {
-		<-p.doProxyChildOutput(tag, data)
+	for {
+		timeout := time.After(500 * time.Millisecond)
+
+		select {
+		case data, ok := <-stream.reads:
+			if !ok {
+				return
+			}
+			<-p.doProxyChildOutput(tag, data)
+		case <-timeout:
+			// This shouldn't happen as long as the child
+			// terminates properly. But if the child creates new
+			// process group and we don't terminate all processes
+			// (which we don't do at least on windows), then we'll
+			// have to wait forever here.
+			log.Printf("Timeout while flushing %s", tag)
+			return
+		}
 	}
 }
 
