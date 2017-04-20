@@ -218,7 +218,13 @@ convert_date(Year, Rest) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, Sec}}).
 
 convert_date({utcTime, [Y1, Y2 | Rest]}) ->
-    Year = list_to_integer([Y1, Y2]) + 2000,
+    Year =
+        case list_to_integer([Y1, Y2]) of
+            YY when YY < 50 ->
+                YY + 2000;
+            YY ->
+                YY + 1900
+        end,
     convert_date(Year, Rest);
 convert_date({generalTime, [Y1, Y2, Y3, Y4 | Rest]}) ->
     Year = list_to_integer([Y1, Y2, Y3, Y4]),
