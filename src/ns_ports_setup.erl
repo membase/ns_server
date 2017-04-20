@@ -267,15 +267,15 @@ do_dynamic_children(shutdown, Config) ->
 do_dynamic_children(normal, Config) ->
     [memcached_spec(),
      moxi_spec(Config),
-     run_via_goport(fun kv_node_projector_spec/1, Config),
-     run_via_goport(fun index_node_spec/1, Config),
-     run_via_goport(fun query_node_spec/1, Config),
+     kv_node_projector_spec(Config),
+     index_node_spec(Config),
+     query_node_spec(Config),
      saslauthd_port_spec(Config),
-     run_via_goport(fun goxdcr_spec/1, Config),
+     goxdcr_spec(Config),
      per_bucket_moxi_specs(Config),
      maybe_create_ssl_proxy_spec(Config),
-     run_via_goport(fun fts_spec/1, Config),
-     run_via_goport(fun example_service_spec/1, Config)].
+     fts_spec(Config),
+     example_service_spec(Config)].
 
 expand_specs(Specs, Config) ->
     [expand_args(S, Config) || S <- Specs].
@@ -304,7 +304,7 @@ query_node_spec(Config) ->
                         end,
             Spec = {'query', Command,
                     [DataStoreArg, HttpArg, CnfgStoreArg, EntArg] ++ HttpsArgs,
-                    [use_stdio, exit_status, stderr_to_stdout, stream,
+                    [via_goport, exit_status, stderr_to_stdout,
                      {env, build_go_env_vars(Config, 'cbq-engine')},
                      {log, ?QUERY_LOG_FILENAME}]},
 
@@ -342,7 +342,7 @@ kv_node_projector_spec(Config) ->
                     "127.0.0.1:" ++ integer_to_list(RestPort)],
 
             Spec = {'projector', ProjectorCmd, Args,
-                    [use_stdio, exit_status, stderr_to_stdout, stream,
+                    [via_goport, exit_status, stderr_to_stdout,
                      {log, ?PROJECTOR_LOG_FILENAME},
                      {env, build_go_env_vars(Config, projector)}]},
             [Spec]
@@ -386,7 +386,7 @@ create_goxdcr_spec(Config, Cmd, Upgrade) ->
         end,
 
     [{'goxdcr', Cmd, Args,
-      [use_stdio, exit_status, stderr_to_stdout, stream,
+      [via_goport, exit_status, stderr_to_stdout,
        {log, ?GOXDCR_LOG_FILENAME},
        {env, build_go_env_vars(Config, goxdcr)}]}].
 
@@ -449,7 +449,7 @@ index_node_spec(Config) ->
                      "-storageDir=" ++ IdxDir2,
                      "-diagDir=" ++ MinidumpDir,
                      "-nodeUUID=" ++ NodeUUID] ++ AddSM ++ HttpsArgs,
-                    [use_stdio, exit_status, stderr_to_stdout, stream,
+                    [via_goport, exit_status, stderr_to_stdout,
                      {log, ?INDEXER_LOG_FILENAME},
                      {env, build_go_env_vars(Config, index)}]},
             [Spec]
@@ -477,7 +477,7 @@ saslauthd_port_spec(Config) ->
     case Cmd =/= false of
         true ->
             [{saslauthd_port, Cmd, [],
-              [use_stdio, exit_status, stderr_to_stdout, stream,
+              [use_stdio, exit_status, stderr_to_stdout,
                {env, build_go_env_vars(Config, saslauthd)}]}];
         _ ->
             []
@@ -509,28 +509,6 @@ format(Config, Name, Format, Keys) ->
                            (Key) -> ns_config:search_node_prop(Config, Name, Key)
                        end, Keys),
     lists:flatten(io_lib:format(Format, Values)).
-
-run_via_goport(SpecFun, Config) ->
-    Specs = SpecFun(Config),
-    lists:map(fun do_run_via_goport/1, Specs).
-
-do_run_via_goport({Name, Cmd, Args, Opts}) ->
-    GoportName =
-        case erlang:system_info(system_architecture) of
-            "win32" ->
-                "goport.exe";
-            _ ->
-                "goport"
-        end,
-
-    GoportPath = path_config:component_path(bin, GoportName),
-    GoportArgsEnv = binary_to_list(ejson:encode([list_to_binary(L) || L <- [Cmd | Args]])),
-
-    Env = proplists:get_value(env, Opts, []),
-    Env1 = [{"GOPORT_ARGS", GoportArgsEnv} | Env],
-
-    Opts1 = lists:keystore(env, 1, Opts, {env, Env1}),
-    {Name, GoportPath, [], Opts1}.
 
 moxi_spec(Config) ->
     case ns_cluster_membership:should_run_service(Config, kv, node()) of
@@ -636,7 +614,7 @@ fts_spec(Config) ->
                      "-extra=" ++ io_lib:format("~s:~b", [Host, NsRestPort]),
                      "-options=" ++ Options
                     ] ++ BindHttps,
-                    [use_stdio, exit_status, stderr_to_stdout, stream,
+                    [via_goport, exit_status, stderr_to_stdout,
                      {log, ?FTS_LOG_FILENAME},
                      {env, build_go_env_vars(Config, fts)}]},
             [Spec]
@@ -655,8 +633,7 @@ example_service_spec(Config) ->
             Args = ["-node-id", binary_to_list(NodeUUID),
                     "-host", Host ++ ":" ++ integer_to_list(Port)],
             Spec = {example, CacheCmd, Args,
-                    [use_stdio, exit_status,
-                     stderr_to_stdout, stream,
+                    [via_goport, exit_status, stderr_to_stdout,
                      {env, build_go_env_vars(Config, example)}]},
             [Spec];
         false ->
@@ -664,11 +641,12 @@ example_service_spec(Config) ->
     end.
 
 run_cbsasladm(Iterations) ->
-    [{cbsasladm, Cmd, [], Opts}] =
-        run_via_goport(fun (_) ->
-                               [{cbsasladm, find_executable("cbsasladm"),
-                                 ["-i", integer_to_list(Iterations), "pwconv", "-", "-"],
-                                 [use_stdio, exit_status, stream]}]
-                       end, undefined),
-    Opts1 = [{args, ["-graceful-shutdown", "-proxy-stdin"]} | Opts],
-    open_port({spawn_executable, Cmd}, Opts1).
+    Args = ["-i", integer_to_list(Iterations), "pwconv", "-", "-"],
+
+    {ok, P} =
+        goport:start_link(find_executable("cbsasladm"),
+                          [exit_status, graceful_shutdown, stderr_to_stdout,
+                           stream, binary,
+                           {args, Args},
+                           {name, false}]),
+    P.

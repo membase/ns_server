@@ -44,7 +44,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 %% Server state
--record(state, {port :: port() | undefined,
+-record(state, {port :: port() | pid() | undefined,
                 params :: tuple(),
                 messages,
                 logger :: atom(),
@@ -94,7 +94,7 @@ init(Fun) ->
         end,
 
     Port = case DontStart of
-               false -> open_port(Params2);
+               false -> port_open(Params2);
                true -> undefined
            end,
     {ok, State#state{port = Port,
@@ -106,39 +106,45 @@ handle_info({send_to_port, Msg}, #state{port = undefined} = State) ->
     {stop, {unexpected_send_to_port, {send_to_port, Msg}}, State};
 handle_info({send_to_port, Msg}, State) ->
     ?log_debug("Sending the following to port: ~p", [Msg]),
-    port_command(State#state.port, Msg),
+    port_write(State#state.port, Msg),
     {noreply, State};
-handle_info({_Port, {data, {_, Msg}}}, #state{logger = Logger} = State) ->
+handle_info({Port, {data, Data}}, #state{port = Port,
+                                         logger = Logger} = State) ->
     %% Store the last messages in case of a crash
+    Msg = extract_message(Data),
     Messages = ringbuffer:add(Msg, State#state.messages),
     State1 = State#state{messages=Messages},
 
-    case Logger of
-        undefined ->
-            {Buf, Dropped} = case {State#state.log_buffer, State#state.dropped} of
-                                 {B, D} when length(B) < ?MAX_MESSAGES ->
-                                     {[Msg|B], D};
-                                 {B, D} ->
-                                     {B, D + 1}
-                             end,
-            TRef = case State#state.log_tref of
-                       undefined ->
-                           timer2:send_after(?INTERVAL, log);
-                       T ->
-                           T
-                   end,
-            {noreply, State1#state{log_buffer=Buf, log_tref=TRef, dropped=Dropped}};
-        _ ->
-            ale:debug(Logger, [Msg, $\n]),
-            {noreply, State1}
-    end;
+    NewState =
+        case Logger of
+            undefined ->
+                {Buf, Dropped} = case {State#state.log_buffer, State#state.dropped} of
+                                     {B, D} when length(B) < ?MAX_MESSAGES ->
+                                         {[Msg|B], D};
+                                     {B, D} ->
+                                         {B, D + 1}
+                                 end,
+                TRef = case State#state.log_tref of
+                           undefined ->
+                               timer2:send_after(?INTERVAL, log);
+                           T ->
+                               T
+                       end,
+                State1#state{log_buffer=Buf, log_tref=TRef, dropped=Dropped};
+            _ ->
+                ale:debug(Logger, [Msg, $\n]),
+                State1
+        end,
+
+    port_deliver(Port),
+    {noreply, NewState};
 handle_info(log, State) ->
     State1 = log(State),
     {noreply, State1};
 handle_info({_Port, {exit_status, Status}}, State) ->
     ns_crash_log:record_crash({port_name(State),
                                Status,
-                               string:join(ringbuffer:to_list(State#state.messages), "\n")}),
+                               misc:intersperse(ringbuffer:to_list(State#state.messages), $\n)}),
     {stop, {abnormal, Status}, State};
 handle_info({'EXIT', Port, Reason} = Exit, #state{port=Port} = State) ->
     ?log_error("Got unexpected exit signal from port: ~p. Exiting.", [Exit]),
@@ -149,7 +155,7 @@ handle_call(is_active, _From, #state{port = Port} = State) ->
 
 handle_call(activate, _From, #state{port = undefined,
                                     params = Params} = State) ->
-    State2 = State#state{port = open_port(Params)},
+    State2 = State#state{port = port_open(Params)},
     {reply, ok, State2};
 handle_call(activate, _From, State) ->
     {reply, {error, already_active}, State}.
@@ -180,9 +186,8 @@ terminate(Reason, #state{port = undefined} = _State) ->
     ?log_debug("doing nothing in terminate(~p) because port is not active", [Reason]),
     ok;
 terminate(shutdown, #state{port = Port} = State) ->
-    ShutdownCmd = misc:get_env_default(ns_babysitter, port_shutdown_command, "shutdown"),
-    ?log_debug("Sending ~s to port ~p", [ShutdownCmd, port_name(State)]),
-    port_command(Port, [ShutdownCmd, 10]),
+    ?log_debug("Shutting down port ~p", [port_name(State)]),
+    port_shutdown(Port),
     State2 = wait_for_child_death(State),
     ?log_debug("~p has exited", [port_name(State)]),
     log(State2); % Log any remaining messages
@@ -222,28 +227,66 @@ log(#state{logger = undefined} = State) ->
 log(_) ->
     ok.
 
-
-open_port({_Name, Cmd, Args, OptsIn}) ->
+port_open({_Name, Cmd, Args, OptsIn}) ->
     %% Incoming options override existing ones (specified in proplists docs)
-    Opts0 = OptsIn ++ [{args, Args}, exit_status, {line, 8192},
-                       stderr_to_stdout],
+    Opts0 = OptsIn ++ [{args, Args}, exit_status,
+                       {line, 8192}, stream, binary, stderr_to_stdout],
+
     WriteDataArg = proplists:get_value(write_data, Opts0),
     Opts1 = lists:keydelete(write_data, 1, Opts0),
-    Opts = case lists:delete(ns_server_no_stderr_to_stdout, Opts1) of
-               Opts1 ->
-                   Opts1;
-               Opts3 ->
-                   lists:delete(stderr_to_stdout, Opts3)
-           end,
-    Port = open_port({spawn_executable, Cmd}, Opts),
+    Opts3 = case lists:delete(ns_server_no_stderr_to_stdout, Opts1) of
+                Opts1 ->
+                    Opts1;
+                Opts2 ->
+                    lists:delete(stderr_to_stdout, Opts2)
+            end,
+    ViaGoport = proplists:get_value(via_goport, Opts3, false),
+    Opts = proplists:delete(via_goport, Opts3),
+
+    Port =
+        case ViaGoport of
+            true ->
+                {ok, P} = goport:start_link(Cmd, Opts),
+                P;
+            false ->
+                erlang:open_port({spawn_executable, Cmd}, Opts)
+        end,
+
     case WriteDataArg of
         undefined ->
             ok;
         Data ->
-            Port ! {self(), {command, Data}}
+            port_write(Port, Data)
     end,
+
+    %% initiate initial delivery
+    port_deliver(Port),
+
     Port.
 
 port_name(#state{params = Params}) ->
     {Name, _, _, _} = Params,
     Name.
+
+port_write(Port, Data) when is_pid(Port) ->
+    ok = goport:write(Port, Data);
+port_write(Port, Data) when is_port(Port) ->
+    Port ! {self(), {command, Data}}.
+
+port_shutdown(Port) when is_pid(Port) ->
+    ok = goport:shutdown(Port);
+port_shutdown(Port) when is_port(Port) ->
+    ShutdownCmd = misc:get_env_default(ns_babysitter,
+                                       port_shutdown_command, "shutdown"),
+    ?log_debug("Shutdown command: ~p", [ShutdownCmd]),
+    port_command(Port, [ShutdownCmd, $\n]).
+
+port_deliver(Port) when is_pid(Port) ->
+    goport:deliver(Port);
+port_deliver(Port) when is_port(Port) ->
+    ok.
+
+extract_message({eol, Msg}) ->
+    Msg;
+extract_message({noeol, Msg}) ->
+    Msg.

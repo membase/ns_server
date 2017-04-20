@@ -397,9 +397,9 @@ build_memcached_auth_info(UserPasswords) ->
     lists:foreach(
       fun ({User, Password}) ->
               PasswordStr = User ++ " " ++ Password ++ "\n",
-              Port ! {self(), {command, list_to_binary(PasswordStr)}}
+              ok = goport:write(Port, PasswordStr)
       end, UserPasswords),
-    Port ! {self(), {command, <<"\n">>}},
+    ok = goport:close(Port, stdin),
     {0, Json} = collect_result(Port, []),
     {[{<<"users">>, Infos}]} = ejson:decode(Json),
     Infos.
