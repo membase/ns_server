@@ -242,16 +242,39 @@ handle_get_users(Req) ->
 
     case cluster_compat_mode:is_cluster_spock() of
         true ->
-            handle_get_all_users(Req, '_');
+            handle_get_users_with_domain(Req, '_');
         false ->
             handle_get_users_45(Req)
     end.
 
-validate_get_users(Args) ->
+validate_get_users(Args, DomainAtom, HasStartAfter) ->
     R1 = menelaus_util:validate_integer(pageSize, {Args, [], []}),
     R2 = menelaus_util:validate_range(pageSize, ?MIN_USERS_PAGE_SIZE, ?MAX_USERS_PAGE_SIZE, R1),
     R3 = menelaus_util:validate_any_value(startAfter, R2),
-    menelaus_util:validate_unsupported_params(R3).
+    R4 =
+        case HasStartAfter of
+            false ->
+                R3;
+            true ->
+                case DomainAtom of
+                    '_' ->
+                        R4_1 = menelaus_util:validate_required(startAfterDomain, R3),
+                        R4_2 = menelaus_util:validate_any_value(startAfterDomain, R4_1),
+                        menelaus_util:validate_by_fun(
+                          fun (Value) ->
+                                  case domain_to_atom(Value) of
+                                      unknown ->
+                                          {error, "Unknown user domain"};
+                                      Atom ->
+                                          {value, Atom}
+                                  end
+                          end, startAfterDomain, R4_2);
+                    _ ->
+                        R4_1 = menelaus_util:validate_prohibited(startAfterDomain, R3),
+                        menelaus_util:return_value(startAfterDomain, DomainAtom, R4_1)
+                end
+        end,
+    menelaus_util:validate_unsupported_params(R4).
 
 handle_get_users(Domain, Req) ->
     menelaus_web:assert_is_spock(),
@@ -270,12 +293,20 @@ handle_get_users_with_domain(Req, DomainAtom) ->
         false ->
             handle_get_all_users(Req, {'_', DomainAtom});
         _ ->
+            HasStartAfter = lists:keyfind("startAfter", 1, Query) =/= false,
             menelaus_util:execute_if_validated(
               fun (Values) ->
+                      After =
+                          case proplists:get_value(startAfter, Values) of
+                              undefined ->
+                                  undefined;
+                              U ->
+                                  {U, proplists:get_value(startAfterDomain, Values)}
+                          end,
                       handle_get_users_page(Req, {'_', DomainAtom},
                                             proplists:get_value(pageSize, Values),
-                                            proplists:get_value(startAfter, Values))
-              end, Req, validate_get_users(Query))
+                                            After)
+              end, Req, validate_get_users(Query, DomainAtom, HasStartAfter))
     end.
 
 handle_get_users_45(Req) ->
@@ -308,7 +339,7 @@ jsonify_users(Passwordless) ->
            ?yield(array_end)
        end).
 
-more_fun({{A, _}, _}, {{B, _}, _}) ->
+more_fun({A, _}, {B, _}) ->
     A > B.
 
 add_to_skew(El, Skew, PageSize) ->
@@ -337,13 +368,14 @@ handle_get_users_page(Req, Pattern, PageSize, After) ->
                   ?make_consumer(
                      pipes:fold(
                        ?producer(),
-                       fun ({{user, {UserName, _}}, _}, {Skew, S, T})
-                             when After =/= undefined andalso UserName =< After ->
-                               {Skew, S + 1, T + 1};
-                           ({{user, Identity}, Props}, {Skew, S, T}) ->
-                               {add_to_skew({Identity, Props}, Skew, PageSize), S, T + 1}
+                       fun ({{user, Identity}, Props}, {Skew, S, T}) ->
+                               case After =:= undefined orelse more_fun(Identity, After) of
+                                   false ->
+                                       {Skew, S + 1, T + 1};
+                                   true ->
+                                       {add_to_skew({Identity, Props}, Skew, PageSize), S, T + 1}
+                               end
                        end, {couch_skew:new(), 0, 0}))),
-
     Json =
         {[{skipped, Skipped},
           {total, Total},

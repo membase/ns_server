@@ -65,6 +65,7 @@
          validate_any_value/3,
          validate_by_fun/3,
          validate_required/2,
+         validate_prohibited/2,
          execute_if_validated/3,
          get_values/1,
          return_value/3,
@@ -395,6 +396,8 @@ validate_by_fun(Fun, Name, {_, InList, _} = State) ->
             case Fun(Value) of
                 ok ->
                     State;
+                {value, V} ->
+                    return_value(Name, V, State);
                 {error, Error} ->
                     return_error(Name, Error, State)
             end
@@ -486,6 +489,14 @@ validate_required(Name, {OutList, _, _} = State) ->
             return_error(Name, "The value must be supplied", State);
         _ ->
             State
+    end.
+
+validate_prohibited(Name, {OutList, _, _} = State) ->
+    case lists:keyfind(atom_to_list(Name), 1, OutList) of
+        false ->
+            State;
+        _ ->
+            return_error(Name, "The value must not be supplied", State)
     end.
 
 execute_if_validated(Fun, Req, {_, Values, Errors}) ->
