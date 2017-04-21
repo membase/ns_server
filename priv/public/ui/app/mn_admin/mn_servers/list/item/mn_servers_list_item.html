@@ -5,13 +5,13 @@
   <div class="cbui-tablerow">
     <span class="cbui-table-cell flex-grow-2-5 cbui-tablerow-title row flex-left">
       <span class="ellipsis" title="{{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}">
-      {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}&nbsp;
+      {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes | mnLimitTo: 35}}{{node.hostname.length > 35 ? '...' : ''}}&nbsp;
     </span>
       <span
          class="label lt-blue ellipsis"
          ng-show="rbac.cluster.server_groups.read && serversCtl.mnPoolDefault.value.isGroupsAvailable"
          title="{{serversCtl.getGroupsByHostname[node.hostname].name}}">
-        {{serversCtl.getGroupsByHostname[node.hostname].name}}
+        {{serversCtl.getGroupsByHostname[node.hostname].name | mnLimitTo: 20}}{{serversCtl.getGroupsByHostname[node.hostname].name.length > 20 ? '...' : ''}}
       </span>
     </span>
     <span class="cbui-table-cell flex-grow-1-5">
