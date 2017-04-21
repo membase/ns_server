@@ -8,11 +8,13 @@
     </div>
     <section ng-repeat="row in logsListCtl.logs | orderBy:'serverTime':true track by $index">
       <div class="cbui-tablerow">
-        <span class="cbui-table-cell flex-grow-3 wrap">
+        <span class="cbui-table-cell flex-grow-3 min-width-zero">
           <span
              ng-if="!logsListCtl.isOpened($index) && logsListCtl.isOverLimit(row)"
+             class="pre-line"
              >{{row.text | mnLimitTo: logsListCtl.textLimit}}</span>
           <span
+             class="pre-line"
              ng-if="logsListCtl.isOpened($index) || !logsListCtl.isOverLimit(row)"
              >{{row.text}}</span>
           <span ng-show="logsListCtl.isOverLimit(row)">
