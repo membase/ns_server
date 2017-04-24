@@ -16,8 +16,10 @@
         theme="selectize"
         on-select="documentsControlCtl.onSelectPageLimits($item)"
         class="inline middle cbui narrow">
-       <ui-select-match>{{$select.selected}}</ui-select-match>
+       <ui-select-match
+          class="ui-select-match">{{$select.selected}}</ui-select-match>
        <ui-select-choices
+          class="ui-select-choices"
           repeat="name in documentsControlCtl.state.pageLimits | filter: $select.search">
          <span
             class="select-item ellipsis"
