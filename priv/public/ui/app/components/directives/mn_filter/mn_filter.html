@@ -66,13 +66,16 @@
              autocapitalize="off">
         </div>
         <div
-           class="row formrow flex-right"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.descending">
-          <input
-             id="filter_descending"
-             ng-model="mnFilterCtl.config.params.descending"
-             type="checkbox">
-          <label for="filter_descending">descending</label>
+          <span class="width-6"></span>
+          <span class="width-6">
+            <input
+               id="filter_descending"
+               ng-model="mnFilterCtl.config.params.descending"
+               type="checkbox">
+            <label for="filter_descending">descending</label>
+          </span>
         </div>
         <div
            class="row formrow"
@@ -127,14 +130,17 @@
              autocapitalize="off">
         </div>
         <div
-           class="row formrow flex-right"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.group">
-          <input
-             id="filter_group"
-             name="group"
-             ng-model="mnFilterCtl.config.params.group"
-             type="checkbox">
-          <label for="filter_group">group</label>
+          <span class="width-6"></span>
+          <span class="width-6">
+            <input
+               id="filter_group"
+               name="group"
+               ng-model="mnFilterCtl.config.params.group"
+               type="checkbox">
+            <label for="filter_group">group</label>
+          </span>
         </div>
         <div
            class="row formrow"
@@ -151,15 +157,18 @@
 >
         </div>
         <div
-           class="row formrow flex-right"
+           class="row formrow"
            ng-show="mnFilterCtl.config.items.inclusiveEnd">
-          <input
-             id="filter_inclusive_end"
-             ng-model="mnFilterCtl.config.params.inclusive_end"
-             type="checkbox"
-             ng-false-value="false"
-             ng-true-value="true">
-          <label class="width-5" for="filter_inclusive_end">inclusive_end</label>
+          <span class="width-6"></span>
+          <span class="width-6">
+            <input
+               id="filter_inclusive_end"
+               ng-model="mnFilterCtl.config.params.inclusive_end"
+               type="checkbox"
+               ng-false-value="false"
+               ng-true-value="true">
+            <label class="width-5" for="filter_inclusive_end">inclusive_end</label>
+          </span>
         </div>
         <div
            class="row formrow"
@@ -193,29 +202,31 @@
            class="row formrow"
            ng-show="mnFilterCtl.config.items.reduce">
           <label class="width-6" for="filter_reduce">reduce</label>
-          <div class="checkbox-list">
-            <input
-               type="radio"
-               group="reduce"
-               ng-model="mnFilterCtl.config.params.reduce"
-               id="reduce_true"
-               value="true"><!--
-         --><label for="reduce_true">true</label><!--
-         --><input
-               type="radio"
-               group="reduce"
-               ng-model="mnFilterCtl.config.params.reduce"
-               id="reduce_false"
-               value="false"><!--
-         --><label for="reduce_false">false</label><!--
-         --><input
-               type="radio"
-               group="reduce"
-               ng-model="mnFilterCtl.config.params.reduce"
-               id="reduce_none"
-               value=""><!--
-          --><label for="reduce_none">none</label>
-          </div>
+          <span class="width-6">
+            <div class="checkbox-list">
+              <input
+                 type="radio"
+                 group="reduce"
+                 ng-model="mnFilterCtl.config.params.reduce"
+                 id="reduce_true"
+                 value="true"><!--
+           --><label for="reduce_true">true</label><!--
+           --><input
+                 type="radio"
+                 group="reduce"
+                 ng-model="mnFilterCtl.config.params.reduce"
+                 id="reduce_false"
+                 value="false"><!--
+           --><label for="reduce_false">false</label><!--
+           --><input
+                 type="radio"
+                 group="reduce"
+                 ng-model="mnFilterCtl.config.params.reduce"
+                 id="reduce_none"
+                 value=""><!--
+            --><label for="reduce_none">none</label>
+            </div>
+          </span>
         </div>
         <div
            class="row formrow"
