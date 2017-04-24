@@ -15,7 +15,8 @@
       threadsNumber: "3",
       flushEnabled: "0",
       ramQuotaMB: "0",
-      uri: '/pools/default/buckets'
+      uri: '/pools/default/buckets',
+      purgeInterval: "1",
     })
     .constant('daysOfWeek', [
       'Monday',
