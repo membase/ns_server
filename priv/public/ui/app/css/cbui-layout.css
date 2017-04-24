@@ -6,8 +6,8 @@ html, body, .root-container {
 
 .page-wrap {
   min-height: 100%;
-  margin-bottom: -34px;
-  padding-bottom: 34px;
+  margin-bottom: -24px;
+  padding-bottom: 24px;
 }
 
 nav.nav-header {
@@ -179,11 +179,12 @@ section {
 }
 
 footer {
-  text-align:center;
-  padding: .5rem 0;
-  width:100%;
-  background-color:#eceff2;
-  font-size: .75rem;
+  text-align: center;
+  padding: .25rem 0;
+  width: 100%;
+  color: #555;
+  background-color: #ecf3fa;
+  font-size: .688rem;
 }
 
 /* WIDTH HELPERS --------------------- */
