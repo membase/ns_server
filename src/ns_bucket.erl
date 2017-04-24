@@ -127,7 +127,7 @@ config_string(BucketName) ->
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
-                      "ht_size=~B;ht_locks=~B;"
+                      "ht_locks=~B;"
                       "max_size=~B;"
                       "dbname=~s;"
                       "backend=couchdb;couch_bucket=~s;max_vbuckets=~B;"
@@ -136,9 +136,6 @@ config_string(BucketName) ->
                       "conflict_resolution_type=~s;"
                       "bucket_type=~s;~s",
                       [proplists:get_value(
-                         ht_size, BucketConfig,
-                         misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
-                       proplists:get_value(
                          ht_locks, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_LOCKS", 47)),
                        MemQuota,
@@ -153,7 +150,8 @@ config_string(BucketName) ->
                        eviction_policy_cfg_string(BucketConfig, ItemEvictionPolicy,
                                                   EphemeralFullPolicy)]),
                 CFG1 = metadata_purge_age_cfg_string(EphemeralPurgeAge) ++ CFG,
-                {CFG1, {MemQuota, DBSubDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
+                CFG2 = ht_size_cfg_string(BucketConfig) ++ CFG1,
+                {CFG2, {MemQuota, DBSubDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
                        DriftThresholds, EphemeralPurgeAge}, DBSubDir};
             memcached ->
                 {io_lib:format("cache_size=~B;uuid=~s", [MemQuota, BucketUUID]),
@@ -321,6 +319,15 @@ metadata_purge_age_cfg_string(PurgeAge) ->
             [];
         _ ->
             io_lib:format("ephemeral_metadata_purge_age=~p;", [PurgeAge])
+    end.
+
+ht_size_cfg_string(BucketConfig) ->
+    case proplists:get_value(ht_size, BucketConfig,
+                             misc:getenv_int("MEMBASE_HT_SIZE", 0)) of
+        0 ->
+            [];
+        X when is_integer(X) ->
+            io_lib:format("ht_size=~B;", [X])
     end.
 
 -spec storage_mode([{_,_}]) -> atom().
