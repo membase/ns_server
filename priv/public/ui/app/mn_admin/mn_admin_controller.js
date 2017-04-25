@@ -86,7 +86,7 @@
         vm.tabName = resp.clusterName;
 
         if (previous && !_.isEqual(resp.nodes, previous.nodes)) {
-          $rootScope.$broadcast("nodesChanged");
+          $rootScope.$broadcast("nodesChanged", [resp.nodes, previous.nodes]);
         }
 
         if (previous && previous.buckets.uri !== resp.buckets.uri) {
