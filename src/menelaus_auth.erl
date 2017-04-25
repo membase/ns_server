@@ -270,8 +270,6 @@ saslauthd_authenticate(Username, Password) ->
                                 false | {ok, rbac_identity()} | {error, term()}.
 verify_login_creds(Username, Password) ->
     case authenticate({Username, Password}) of
-        {ok, {Username, bucket}} ->
-            false;
         {ok, Identity} ->
             case check_permission(Identity, {[ui], read}) of
                 allowed ->
