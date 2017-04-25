@@ -952,12 +952,7 @@ handle_uilogin(Req) ->
     Params = Req:parse_post(),
     User = proplists:get_value("user", Params),
     Password = proplists:get_value("password", Params),
-    case menelaus_auth:verify_login_creds(User, Password) of
-        {ok, Identity} ->
-            menelaus_auth:complete_uilogin(Req, Identity);
-        false ->
-            menelaus_auth:reject_uilogin(Req, {User, rejected})
-    end.
+    menelaus_auth:uilogin(Req, User, Password).
 
 handle_uilogout(Req) ->
     case menelaus_auth:extract_ui_auth_token(Req) of

@@ -148,7 +148,7 @@ handle_validate_saslauthd_creds_post(Req) ->
             {ok, {_, R}} -> {R, builtin};
             {error, Error} ->
                 erlang:throw({web_exception, 400, Error, []});
-            false -> {false, builtin}
+            _ -> {false, builtin}
         end,
     JRole = case Role of
                 admin ->

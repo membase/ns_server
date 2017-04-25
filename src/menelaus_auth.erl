@@ -26,8 +26,7 @@
          extract_auth/1,
          extract_auth_user/1,
          extract_ui_auth_token/1,
-         complete_uilogin/2,
-         reject_uilogin/2,
+         uilogin/3,
          complete_uilogout/1,
          maybe_refresh_token/1,
          get_identity/1,
@@ -98,18 +97,6 @@ kill_auth_cookie(Req) ->
     Options = [{path, "/"}, {http_only, true}],
     {Name, Content} = mochiweb_cookies:cookie(ui_auth_cookie_name(Req), "", Options),
     {Name, Content ++ "; expires=Thu, 01 Jan 1970 00:00:00 GMT"}.
-
--spec complete_uilogin(mochiweb_request(), rbac_identity()) -> mochiweb_response().
-complete_uilogin(Req, Identity) ->
-    Token = menelaus_ui_auth:generate_token(Identity),
-    CookieHeader = generate_auth_cookie(Req, Token),
-    ns_audit:login_success(store_user_info(Req, Identity, Token)),
-    menelaus_util:reply(Req, 200, [CookieHeader]).
-
--spec reject_uilogin(mochiweb_request(), rbac_identity()) -> mochiweb_response().
-reject_uilogin(Req, Identity) ->
-    ns_audit:login_failure(store_user_info(Req, Identity, undefined)),
-    menelaus_util:reply(Req, 400).
 
 -spec complete_uilogout(mochiweb_request()) -> mochiweb_response().
 complete_uilogout(Req) ->
@@ -267,18 +254,38 @@ saslauthd_authenticate(Username, Password) ->
     end.
 
 -spec verify_login_creds(rbac_user_id(), rbac_password()) ->
-                                false | {ok, rbac_identity()} | {error, term()}.
+                                auth_failure | {forbidden, rbac_identity(), rbac_permission()} |
+                                {ok, rbac_identity()} | {error, term()}.
 verify_login_creds(Username, Password) ->
     case authenticate({Username, Password}) of
         {ok, Identity} ->
-            case check_permission(Identity, {[ui], read}) of
+            UIPermission = {[ui], read},
+            case check_permission(Identity, UIPermission) of
                 allowed ->
                     {ok, Identity};
                 _ ->
-                    false
+                    {forbidden, Identity, UIPermission}
             end;
+        false ->
+            auth_failure;
         Other ->
             Other
+    end.
+
+-spec uilogin(mochiweb_request(), rbac_user_id(), rbac_password()) -> mochiweb_response().
+uilogin(Req, User, Password) ->
+    case verify_login_creds(User, Password) of
+        {ok, Identity} ->
+            Token = menelaus_ui_auth:generate_token(Identity),
+            CookieHeader = generate_auth_cookie(Req, Token),
+            ns_audit:login_success(store_user_info(Req, Identity, Token)),
+            menelaus_util:reply(Req, 200, [CookieHeader]);
+        auth_failure ->
+            ns_audit:login_failure(store_user_info(Req, {User, rejected}, undefined)),
+            menelaus_util:reply(Req, 400);
+        {forbidden, Identity, Permission} ->
+            ns_audit:login_failure(store_user_info(Req, Identity, undefined)),
+            menelaus_util:reply_json(Req, menelaus_web_rbac:forbidden_response(Permission), 403)
     end.
 
 -spec verify_rest_auth(mochiweb_request(), rbac_permission() | no_check) ->
