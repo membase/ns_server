@@ -100,23 +100,6 @@
       });
     }
 
-    function escapeHtml(value) {
-      return angular.element("<pre />").text(value).html();
-    }
-
-    function prepareDropboxItem(isSpatial, ddoc) {
-      return function (value, key) {
-        var name = key + (isSpatial ? " [Spatial]" : "");
-        return {viewId: key, documentId: ddoc.doc.meta.id, name: name, escapedName: escapeHtml(name), isSpatial: isSpatial};
-      };
-    }
-
-    function prepareDdocDropboxItem(ddoc) {
-      return ([{escapedName: escapeHtml(ddoc.doc.meta.id), isTitle: true}])
-        .concat(_.map(ddoc.doc.json.spatial, prepareDropboxItem(true, ddoc)))
-        .concat(_.map(ddoc.doc.json.views, prepareDropboxItem(false, ddoc)));
-    }
-
     function prepareDocForCodeMirror(doc) {
       doc.metaJSON = angular.toJson(doc.meta, 2);
       doc.jsonJSON = angular.toJson(doc.json, 2);
@@ -189,33 +172,7 @@
       });
     }
     function getEmptyViewState(params) {
-      return prepareViewsSelectbox(params).then(function (rv) {
-        rv.isEmptyState = true;
-        return rv;
-      });
-    }
-
-    function prepareViewsSelectbox(params) {
-      return mnViewsListService.getDdocsByType(params.bucket).then(function (ddocs) {
-        var rv = {};
-        if (ddocs.rows && ddocs.rows.length) {
-          var viewsNames = [];
-          if (ddocs.development.length) {
-            viewsNames.push({escapedName: "Development Views", isTitle: true});
-            viewsNames = viewsNames.concat(_.map(ddocs.development, prepareDdocDropboxItem));
-          }
-          if (ddocs.production.length) {
-            viewsNames.push({escapedName: "Production Views", isTitle: true});
-            viewsNames = viewsNames.concat(_.map(ddocs.production, prepareDdocDropboxItem));
-          }
-          rv.viewsNames = _.flatten(viewsNames);
-          rv.viewsNames.selected = _.find(rv.viewsNames, function (item) {
-            return item.viewId === params.viewId && item.documentId === params.documentId;
-          });
-          rv.ddocs = ddocs;
-        }
-        return rv;
-      })
+      return {isEmptyState: true};
     }
 
     function getViewsEditingState(params) {
@@ -224,11 +181,12 @@
         url: "/couchBase/" + buildViewUrl(params)
       }).then(function () {
         return $q.all([
-          prepareViewsSelectbox(params),
+          mnViewsListService.getDdocsByType(params.bucket),
           mnPoolDefault.get()
         ]).then(function (resp) {
-          var rv = resp[0];
+          var rv = {};
           var poolDefault = resp[1];
+          rv.ddocs = resp[0];
           rv.capiBase = poolDefault.capiBase;
           rv.isDevelopmentDocument = mnViewsListService.isDevModeDoc(params.documentId)
           if (rv.ddocs.rows.length) {
