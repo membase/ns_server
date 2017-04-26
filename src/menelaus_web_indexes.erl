@@ -84,9 +84,15 @@ validate_storage_mode(State) ->
                       is_storage_mode_acceptable(Value);
                   false ->
                       %% Note it is not sufficient to check service_active_nodes(index) because the
-                      %% index nodes could be down or failed over.
+                      %% index nodes could be down or failed over. However, we should allow the
+                      %% storage mode to be changed if there is an index node in "inactiveAdded"
+                      %% state (the state set when a node has been added but the rebalance has not
+                      %% been run yet).
                       NodesWanted = ns_node_disco:nodes_wanted(),
-                      IndexNodes = ns_cluster_membership:service_nodes(NodesWanted, index),
+                      AllIndexNodes = ns_cluster_membership:service_nodes(NodesWanted, index),
+                      InactiveAddedNodes = ns_cluster_membership:inactive_added_nodes(),
+                      IndexNodes = AllIndexNodes -- InactiveAddedNodes,
+
                       case IndexNodes of
                           [] ->
                               is_storage_mode_acceptable(Value);
