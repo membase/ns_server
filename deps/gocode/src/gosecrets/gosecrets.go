@@ -42,35 +42,33 @@ func main() {
 func (s *encryptionService) readCommand() (byte, []byte) {
 	var size uint16
 	err := binary.Read(s.reader, binary.BigEndian, &size)
+	if err == io.EOF {
+		// parent died. close normally
+		os.Exit(0)
+	}
 	if err != nil {
-		processReadError(err)
+		reportReadError(err)
 	}
 	if size < 1 {
 		panic("Command is too short")
 	}
 	command, err := s.reader.ReadByte()
 	if err != nil {
-		processReadError(err)
+		reportReadError(err)
 	}
 	if size == 1 {
 		return command, nil
 	}
+
 	buf := make([]byte, size-1)
-	n, err := s.reader.Read(buf)
+	_, err = io.ReadFull(s.reader, buf)
 	if err != nil {
-		processReadError(err)
-	}
-	if uint16(n) != size-1 {
-		panic("Error reading input")
+		reportReadError(err)
 	}
 	return command, buf
 }
 
-func processReadError(err error) {
-	if err == io.EOF {
-		// parent died. close normally
-		os.Exit(0)
-	}
+func reportReadError(err error) {
 	panic(fmt.Sprintf("Error reading input %v", err))
 }
 
