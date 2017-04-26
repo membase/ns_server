@@ -100,10 +100,16 @@
       return mnPoolDefault.clearCache().get(params);
     }
     /**
+     * getUrlsRunningService - returns a list of URLs for nodes in the cluster
+     *   running the named service. It assumes that you are currently on a page
+     *   associated with the service, and it appends the path for the current page
+     *   to the URL.
+     *
      * @param nodeInfos - details on the nodes in the cluster returned
      *                    by
      * @param service - name of service
-     * @param max - max number of links to return
+     * @param max - optional max number of links to return
+     *
      * @return a list of URLs for the current UI location running the
      *         specified service.
      */
@@ -126,7 +132,7 @@
           + "://" + hostnameAndPort[0]
           + ":" + port
           + appbase
-          + "#" + $location.path()
+          + "#!" + $location.path()
           + (search ? "?" + search : "")
           + (hash ? "#" + hash : "");
       });
