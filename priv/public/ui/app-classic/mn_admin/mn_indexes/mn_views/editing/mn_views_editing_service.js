@@ -100,14 +100,19 @@
       });
     }
 
+    function escapeHtml(value) {
+      return angular.element("<pre />").text(value).html();
+    }
+
     function prepareDropboxItem(isSpatial, ddoc) {
       return function (value, key) {
-        return {viewId: key, documentId: ddoc.doc.meta.id, name: key + (isSpatial ? " [Spatial]" : ""), isSpatial: isSpatial};
+        var name = key + (isSpatial ? " [Spatial]" : "");
+        return {viewId: key, documentId: ddoc.doc.meta.id, name: name, escapedName: escapeHtml(name), isSpatial: isSpatial};
       };
     }
 
     function prepareDdocDropboxItem(ddoc) {
-      return ([{name: ddoc.doc.meta.id, isTitle: true}])
+      return ([{escapedName: escapeHtml(ddoc.doc.meta.id), isTitle: true}])
         .concat(_.map(ddoc.doc.json.spatial, prepareDropboxItem(true, ddoc)))
         .concat(_.map(ddoc.doc.json.views, prepareDropboxItem(false, ddoc)));
     }
@@ -196,11 +201,11 @@
         if (ddocs.rows && ddocs.rows.length) {
           var viewsNames = [];
           if (ddocs.development.length) {
-            viewsNames.push({name: "Development Views", isTitle: true});
+            viewsNames.push({escapedName: "Development Views", isTitle: true});
             viewsNames = viewsNames.concat(_.map(ddocs.development, prepareDdocDropboxItem));
           }
           if (ddocs.production.length) {
-            viewsNames.push({name: "Production Views", isTitle: true});
+            viewsNames.push({escapedName: "Production Views", isTitle: true});
             viewsNames = viewsNames.concat(_.map(ddocs.production, prepareDdocDropboxItem));
           }
           rv.viewsNames = _.flatten(viewsNames);
