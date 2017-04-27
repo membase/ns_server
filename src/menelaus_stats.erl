@@ -1712,7 +1712,7 @@ membase_drift_stats_description() ->
               {name,<<"ep_replica_ahead_exceptions">>},
               {desc,<<"Total number of ahead exceptions for all replica vBuckets">>}]}].
 
-membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
+membase_summary_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes, IsEphemeral) ->
     [{struct,[{blockName,<<"Summary">>},
               {stats,
                [{struct,[{title,<<"ops per second">>},
@@ -1756,93 +1756,99 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                 {struct, [{isBytes,true},
                           {title, <<"memory used">>},
                           {name, <<"mem_used">>},
-                          {desc, <<"Memory used as measured from mem_used">>}]},
-                {struct,[{title,<<"disk creates per sec.">>},
-                         {name,<<"ep_ops_create">>},
-                         {desc,<<"Number of new items created on disk per second for this bucket (measured from vb_active_ops_create + vb_replica_ops_create + vb_pending_ops_create)">>}]},
-                {struct,[{title,<<"disk updates per sec.">>},
-                         {name,<<"ep_ops_update">>},
-                         {desc,<<"Number of items updated on disk per second for this bucket (measured from vb_active_ops_update + vb_replica_ops_update + vb_pending_ops_update)">>}]},
-                {struct,[{title,<<"disk reads per sec.">>},
-                         {name,<<"ep_bg_fetched">>},
-                         {desc,<<"Number of reads per second from disk for this bucket (measured from ep_bg_fetched)">>}]},
-                {struct,[{title,<<"disk write queue">>},
-                         {name,<<"disk_write_queue">>},
-                         {desc,<<"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+ep_flusher_todo)">>}]},
-                {struct,[{isBytes,true},
-                         {name,<<"couch_docs_data_size">>},
-                         {title,<<"docs data size">>},
-                         {desc,<<"The size of active data in this bucket "
-                                 "(measured from couch_docs_data_size)">>}]},
-                {struct,[{isBytes, true},
-                         {name,<<"couch_docs_actual_disk_size">>},
-                         {title,<<"docs total disk size">>},
-                         {desc,<<"The size of all data files for this bucket, including the data itself, meta data and temporary files "
-                                 "(measured from couch_docs_actual_disk_size)">>}]},
-                {struct,[{name,<<"couch_docs_fragmentation">>},
-                         {title,<<"docs fragmentation %">>},
-                         {desc,<<"How much fragmented data there is to be compacted compared to real data for the data files in this bucket "
-                                 "(measured from couch_docs_fragmentation)">>}]},
-                {struct,[{isBytes,true},
-                         {name,<<"couch_total_disk_size">>},
-                         {title,<<"total disk size">>},
-                         {desc,<<"The total size on disk of all data and view files for this bucket."
-                                 "(measured from couch_total_disk_size)">>}]},
-                {struct,[{isBytes,true},
-                         {name,<<"couch_views_data_size">>},
-                         {title,<<"views data size">>},
-                         {desc,<<"The size of active data on for all the indexes in this bucket"
-                                 "(measured from couch_views_data_size)">>}]},
-                {struct,[{isBytes,true},
-                         {name,<<"couch_views_actual_disk_size">>},
-                         {title,<<"views total disk size">>},
-                         {desc,<<"The size of all active items in all the indexes for this bucket on disk"
-                                 "(measured from couch_views_actual_disk_size)">>}]},
-                {struct,[{name,<<"couch_views_fragmentation">>},
-                         {title,<<"views fragmentation %">>},
-                         {desc,<<"How much fragmented data there is to be compacted compared to real data for the view index files in this bucket"
-                                 "(measured from couch_views_fragmentation)">>}]},
-                {struct,[{name,<<"couch_views_ops">>},
-                         {title,<<"view reads per sec.">>},
-                         {desc,<<"All the view reads for all design documents including scatter gather."
-                                 "(measured from couch_views_ops)">>}]},
-                {struct, [{title, <<"disk update time">>},
-                          {name, <<"avg_disk_update_time">>},
-                          {hidden, true},
-                          {desc, <<"Average disk update time in microseconds as from disk_update histogram of timings"
-                                   "(measured from avg_disk_update_time)">>}]},
-                {struct, [{title, <<"disk commit time">>},
-                          {name, <<"avg_disk_commit_time">>},
-                          {hidden, true},
-                          {desc, <<"Average disk commit time in seconds as from disk_update histogram of timings"
-                                   "(measured from avg_disk_commit_time)">>}]},
-                {struct, [{title, <<"bg wait time">>},
-                          {hidden, true},
-                          {name, <<"avg_bg_wait_time">>},
-                          {desc, <<"Average background fetch time in microseconds"
-                                   "(measured from avg_bg_wait_time)">>}]},
-                {struct,[{title,<<"incoming XDCR ops/sec.">>},
-                         {name,<<"xdc_ops">>},
-                         {desc,<<"Incoming XDCR operations per second for this bucket "
-                                 "(measured from xdc_ops)">>}]},
-                {struct,[{title,<<"intra-replication queue">>},
-                         {name,<<"ep_dcp_replica_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]}
-                | (case display_outbound_xdcr_mutations(BucketId) of
-                       true ->
-                           [{struct,[{title,<<"outbound XDCR mutations">>},
-                                     {name,<<"replication_changes_left">>},
-                                     {desc,<<"Number of mutations to be replicated to other clusters"
-                                             "(measured from replication_changes_left)">>}]}];
-                       false ->
-                           []
-                   end ++
-                       membase_query_stats_description(AddQuery) ++
-                       membase_index_stats_description(IndexNodes) ++
-                       membase_fts_stats_description(FtsNodes) ++
-                       membase_drift_stats_description()
-                  )]}]},
-    {struct,[{blockName,<<"vBucket Resources">>},
+                          {desc, <<"Memory used as measured from mem_used">>}]}]
+               ++ case IsEphemeral of
+                      true -> [];
+                      false ->
+                          [{struct,[{title,<<"disk creates per sec.">>},
+                                    {name,<<"ep_ops_create">>},
+                                    {desc,<<"Number of new items created on disk per second for this bucket (measured from vb_active_ops_create + vb_replica_ops_create + vb_pending_ops_create)">>}]},
+                           {struct,[{title,<<"disk updates per sec.">>},
+                                    {name,<<"ep_ops_update">>},
+                                    {desc,<<"Number of items updated on disk per second for this bucket (measured from vb_active_ops_update + vb_replica_ops_update + vb_pending_ops_update)">>}]},
+                           {struct,[{title,<<"disk reads per sec.">>},
+                                    {name,<<"ep_bg_fetched">>},
+                                    {desc,<<"Number of reads per second from disk for this bucket (measured from ep_bg_fetched)">>}]},
+                           {struct,[{title,<<"disk write queue">>},
+                                    {name,<<"disk_write_queue">>},
+                                    {desc,<<"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+ep_flusher_todo)">>}]},
+                           {struct,[{isBytes,true},
+                                    {name,<<"couch_docs_data_size">>},
+                                    {title,<<"docs data size">>},
+                                    {desc,<<"The size of active data in this bucket "
+                                            "(measured from couch_docs_data_size)">>}]},
+                           {struct,[{isBytes, true},
+                                    {name,<<"couch_docs_actual_disk_size">>},
+                                    {title,<<"docs total disk size">>},
+                                    {desc,<<"The size of all data files for this bucket, including the data itself, meta data and temporary files "
+                                            "(measured from couch_docs_actual_disk_size)">>}]},
+                           {struct,[{name,<<"couch_docs_fragmentation">>},
+                                    {title,<<"docs fragmentation %">>},
+                                    {desc,<<"How much fragmented data there is to be compacted compared to real data for the data files in this bucket "
+                                            "(measured from couch_docs_fragmentation)">>}]},
+                           {struct,[{isBytes,true},
+                                    {name,<<"couch_total_disk_size">>},
+                                    {title,<<"total disk size">>},
+                                    {desc,<<"The total size on disk of all data and view files for this bucket."
+                                            "(measured from couch_total_disk_size)">>}]},
+                           {struct,[{isBytes,true},
+                                    {name,<<"couch_views_data_size">>},
+                                    {title,<<"views data size">>},
+                                    {desc,<<"The size of active data on for all the indexes in this bucket"
+                                            "(measured from couch_views_data_size)">>}]},
+                           {struct,[{isBytes,true},
+                                    {name,<<"couch_views_actual_disk_size">>},
+                                    {title,<<"views total disk size">>},
+                                    {desc,<<"The size of all active items in all the indexes for this bucket on disk"
+                                            "(measured from couch_views_actual_disk_size)">>}]},
+                           {struct,[{name,<<"couch_views_fragmentation">>},
+                                    {title,<<"views fragmentation %">>},
+                                    {desc,<<"How much fragmented data there is to be compacted compared to real data for the view index files in this bucket"
+                                            "(measured from couch_views_fragmentation)">>}]},
+                           {struct,[{name,<<"couch_views_ops">>},
+                                    {title,<<"view reads per sec.">>},
+                                    {desc,<<"All the view reads for all design documents including scatter gather."
+                                            "(measured from couch_views_ops)">>}]},
+                           {struct, [{title, <<"disk update time">>},
+                                     {name, <<"avg_disk_update_time">>},
+                                     {hidden, true},
+                                     {desc, <<"Average disk update time in microseconds as from disk_update histogram of timings"
+                                              "(measured from avg_disk_update_time)">>}]},
+                           {struct, [{title, <<"disk commit time">>},
+                                     {name, <<"avg_disk_commit_time">>},
+                                     {hidden, true},
+                                     {desc, <<"Average disk commit time in seconds as from disk_update histogram of timings"
+                                              "(measured from avg_disk_commit_time)">>}]}]
+                  end
+               ++ [{struct, [{title, <<"bg wait time">>},
+                             {hidden, true},
+                             {name, <<"avg_bg_wait_time">>},
+                             {desc, <<"Average background fetch time in microseconds"
+                                      "(measured from avg_bg_wait_time)">>}]},
+                   {struct,[{title,<<"incoming XDCR ops/sec.">>},
+                            {name,<<"xdc_ops">>},
+                            {desc,<<"Incoming XDCR operations per second for this bucket "
+                                    "(measured from xdc_ops)">>}]},
+                   {struct,[{title,<<"intra-replication queue">>},
+                            {name,<<"ep_dcp_replica_items_remaining">>},
+                            {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]}]
+               ++ case display_outbound_xdcr_mutations(BucketId) of
+                      true ->
+                          [{struct,[{title,<<"outbound XDCR mutations">>},
+                                    {name,<<"replication_changes_left">>},
+                                    {desc,<<"Number of mutations to be replicated to other clusters"
+                                            "(measured from replication_changes_left)">>}]}];
+                      false ->
+                          []
+                  end
+               ++ membase_query_stats_description(AddQuery)
+               ++ membase_index_stats_description(IndexNodes)
+               ++ membase_fts_stats_description(FtsNodes)
+               ++ membase_drift_stats_description()
+              }]}].
+
+membase_vbucket_resources_stats_description() ->
+    [{struct,[{blockName,<<"vBucket Resources">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
               {columns,
                [<<"Active">>,<<"Replica">>,<<"Pending">>,<<"Total">>]},
@@ -1942,8 +1948,10 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                 {struct,[{isBytes,true},
                          {title,<<"metadata in RAM">>},
                          {name,<<"ep_meta_data_memory">>},
-                         {desc,<<"Total amount of item  metadata consuming RAM in this bucket (measured from ep_meta_data_memory)">>}]}]}]},
-     {struct,[{blockName,<<"Disk Queues">>},
+                         {desc,<<"Total amount of item  metadata consuming RAM in this bucket (measured from ep_meta_data_memory)">>}]}]}]}].
+
+membase_disk_queues_stats_description() ->
+    [{struct,[{blockName,<<"Disk Queues">>},
               {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
               {columns,
                [<<"Active">>,<<"Replica">>,<<"Pending">>,<<"Total">>]},
@@ -1995,8 +2003,10 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                          {desc,<<"Average age in seconds of pending items in the pending item queue for this bucket and should be transient during rebalancing (measured from vb_avg_pending_queue_age)">>}]},
                 {struct,[{title,<<"average age">>},
                          {name,<<"vb_avg_total_queue_age">>},
-                         {desc,<<"Average age in seconds of all items in the disk write queue for this bucket (measured from vb_avg_total_queue_age)">>}]}]}]},
-     {struct,[{blockName,<<"DCP Queues">>},
+                         {desc,<<"Average age in seconds of all items in the disk write queue for this bucket (measured from vb_avg_total_queue_age)">>}]}]}]}].
+
+membase_dcp_queues_stats_description() ->
+    [{struct,[{blockName,<<"DCP Queues">>},
               {extraCSSClasses,<<"dynamic_closed">>},
               {columns,
                [<<"Replication">>,<<"XDCR">>,<<"Views/Indexes">>,<<"Other">>]},
@@ -2073,7 +2083,60 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                 {struct, [{title, <<"backoffs/sec">>},
                           {name, <<"ep_dcp_other_backoff">>},
                           {desc,<<"Number of backoffs for other DCP connections">>}]}
-               ]}]}]
+               ]}]}].
+
+membase_incoming_xdcr_operations_stats_description() ->
+    [{struct,[{blockName,<<"Incoming XDCR Operations">>},
+              {bigTitlePrefix, <<"Incoming XDCR">>},
+              {extraCSSClasses,<<"dynamic_closed">>},
+              {stats,
+               [{struct,[{title,<<"metadata reads per sec.">>},
+                         {bigTitle,<<"Incoming XDCR metadata reads per sec.">>},
+                         {name,<<"ep_num_ops_get_meta">>},
+                         {desc,<<"Number of metadata read operations per second for this bucket as the target for XDCR "
+                                 "(measured from ep_num_ops_get_meta)">>}]},
+                {struct,[{title,<<"sets per sec.">>},
+                         {name,<<"ep_num_ops_set_meta">>},
+                         {desc,<<"Number of set operations per second for this bucket as the target for XDCR"
+                                 "(measured from ep_num_ops_set_meta)">>}]},
+                {struct,[{title,<<"deletes per sec.">>},
+                         {name,<<"ep_num_ops_del_meta">>},
+                         {desc,<<"Number of delete operations per second for this bucket as the target for XDCR "
+                                 "(measured from ep_num_ops_del_meta)">>}]},
+                {struct,[{title,<<"total ops per sec.">>},
+                         {bigTitle, <<"Incoming XDCR total ops/sec.">>},
+                         {name,<<"xdc_ops">>},
+                         {desc,<<"Total XDCR operations per second for this bucket "
+                                 "(measured from ep_num_ops_del_meta + ep_num_ops_get_meta + ep_num_ops_set_meta)">>}]}]}]}].
+
+display_outbound_xdcr_mutations(BucketID) ->
+    case cluster_compat_mode:is_goxdcr_enabled() of
+        true ->
+            goxdcr_status_keeper:get_replications(BucketID) =/= [];
+        false ->
+            true
+    end.
+
+ephemeral_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
+    membase_summary_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes, true)
+        ++ membase_vbucket_resources_stats_description()
+        ++ membase_dcp_queues_stats_description()
+        ++ couchbase_index_stats_descriptions(BucketId, IndexNodes)
+        ++ couchbase_fts_stats_descriptions(BucketId, FtsNodes)
+        ++ couchbase_replication_stats_descriptions(BucketId)
+        ++ couchbase_goxdcr_stats_descriptions(BucketId)
+        ++ case AddQuery of
+               true -> couchbase_query_stats_descriptions();
+               false -> []
+           end
+        ++ membase_incoming_xdcr_operations_stats_description().
+
+
+membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
+    membase_summary_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes, false)
+        ++ membase_vbucket_resources_stats_description()
+        ++ membase_disk_queues_stats_description()
+        ++ membase_dcp_queues_stats_description()
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_index_stats_descriptions(BucketId, IndexNodes)
         ++ couchbase_fts_stats_descriptions(BucketId, FtsNodes)
@@ -2083,36 +2146,8 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
                true -> couchbase_query_stats_descriptions();
                false -> []
            end
-        ++ [{struct,[{blockName,<<"Incoming XDCR Operations">>},
-                     {bigTitlePrefix, <<"Incoming XDCR">>},
-                     {extraCSSClasses,<<"dynamic_closed">>},
-                     {stats,
-                      [{struct,[{title,<<"metadata reads per sec.">>},
-                                {bigTitle,<<"Incoming XDCR metadata reads per sec.">>},
-                                {name,<<"ep_num_ops_get_meta">>},
-                                {desc,<<"Number of metadata read operations per second for this bucket as the target for XDCR "
-                                        "(measured from ep_num_ops_get_meta)">>}]},
-                       {struct,[{title,<<"sets per sec.">>},
-                                {name,<<"ep_num_ops_set_meta">>},
-                                {desc,<<"Number of set operations per second for this bucket as the target for XDCR"
-                                        "(measured from ep_num_ops_set_meta)">>}]},
-                       {struct,[{title,<<"deletes per sec.">>},
-                                {name,<<"ep_num_ops_del_meta">>},
-                                {desc,<<"Number of delete operations per second for this bucket as the target for XDCR "
-                                        "(measured from ep_num_ops_del_meta)">>}]},
-                       {struct,[{title,<<"total ops per sec.">>},
-                                {bigTitle, <<"Incoming XDCR total ops/sec.">>},
-                                {name,<<"xdc_ops">>},
-                                {desc,<<"Total XDCR operations per second for this bucket "
-                                        "(measured from ep_num_ops_del_meta + ep_num_ops_get_meta + ep_num_ops_set_meta)">>}]}]}]}].
+        ++ membase_incoming_xdcr_operations_stats_description().
 
-display_outbound_xdcr_mutations(BucketID) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        true ->
-            goxdcr_status_keeper:get_replications(BucketID) =/= [];
-        false ->
-            true
-    end.
 
 memcached_stats_description() ->
     [{struct,[{blockName,<<"Memcached">>},
@@ -2239,9 +2274,10 @@ server_resources_stats_description(IndexNodes, FtsNodes) ->
 
 base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
-    Base = case ns_bucket:bucket_type(BucketConfig) of
+    Base = case menelaus_web_buckets:external_bucket_type(BucketConfig) of
                membase -> membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes);
-               memcached -> memcached_stats_description()
+               memcached -> memcached_stats_description();
+               ephemeral -> ephemeral_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes)
            end,
     [{struct, server_resources_stats_description(IndexNodes, FtsNodes)} | Base].
 
