@@ -9,8 +9,12 @@
         <span ng-show="bucket.isEphemeral">Ephemeral</span>
       </div>
       <div class="nowrap" ng-show="rbac.cluster.bucket[bucket.name].settings.read">
-        <strong>RAM Quota: </strong>
+        <strong>Bucket RAM Quota: </strong>
         {{bucket.quota.ram | mnFormatQuantity}}
+      </div>
+      <div class="nowrap" ng-show="rbac.cluster.bucket[bucket.name].settings.read">
+        <strong>Cluster RAM Quota: </strong>
+        {{bucket.basicStats.storageTotals.ram.quotaTotalPerNode | mnFormatQuantity}}
       </div>
       <div
          class="nowrap"
@@ -43,7 +47,7 @@
       </div>
     </div>
 
-    <div class="cbui-table-meters">
+    <div class="cbui-table-meters buckets">
       <h5 ng-show="rbac.cluster.bucket[bucket.name].settings.read">Memory</h5>
       <hr>
       <div
@@ -53,12 +57,12 @@
          ng-show="rbac.cluster.bucket[bucket.name].settings.read">
       </div>
     </div>
-    <div class="cbui-table-meters">
+    <div class="cbui-table-meters buckets">
       <h5 ng-show="bucket.isMembase">Disk</h5>
       <hr ng-show="bucket.isMembase">
       <div ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
         <div
-           class="bar-usages label-top-has-square label-top-0-other-data"
+           class="bar-usages"
            mn-bar-usage
            base-info="bucketsDetailsCtl.getGuageConfig(bucketsDetailsCtl.bucketDetails)"
            ng-if="rbac.cluster.bucket[bucket.name].settings.read">
@@ -71,10 +75,11 @@
      ng-if="bucketsDetailsCtl.warmUpTasks.length && rbac.cluster.tasks.read"
      mn-warmup-progress
      warm-up-tasks="bucketsDetailsCtl.warmUpTasks"
-     sort-by="hostname">
+     sort-by="hostname"
+     class="margin-bottom1">
   </div>
 
-  <div class="row flex-right margin-top1">
+  <div class="row flex-right">
     <span>
       <button
          class="outline"

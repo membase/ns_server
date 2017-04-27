@@ -1,6 +1,6 @@
 <div
    mn-spinner="!serversListItemDetailsCtl.server.getMemoryCacheConfig || !serversListItemDetailsCtl.server.getDiskStorageConfig">
-<!-- first row of items: properties, graph 1, graph 2 -->
+
   <div class="row flex-left items-top">
     <div class="cbui-table-props">
       <div>
@@ -11,6 +11,9 @@
       </div>
       <div>
         <strong>Version:</strong> {{serversListItemDetailsCtl.server.details.version | mnPrettyVersion:true}}
+      </div>
+      <div>
+        <strong>Data Service RAM Quota:</strong> {{serversListItemDetailsCtl.server.details.storageTotals.ram.quotaTotal | mnFormatMemSize}}
       </div>
       <div
         title="{{serversListItemDetailsCtl.server.details.storage.hdd[0].path}}"
@@ -24,17 +27,26 @@
          class="break-all">
         <strong>Index Storage Path:</strong> {{serversListItemDetailsCtl.server.details.storage.hdd[0].index_path | mnEllipsisiseOnLeft:100}}
       </div>
+      <div>
+        <strong>Node:</strong> {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
+      </div>
+      <div>
+        <strong>Group:</strong>
+        <span ng-show="rbac.cluster.server_groups.read && serversCtl.mnPoolDefault.value.isGroupsAvailable">
+          {{serversCtl.getGroupsByHostname[node.hostname].name}}
+        </span>
+      </div>
     </div>
-    <div class="cbui-table-meters">
+    <div class="cbui-table-meters servers">
       <h5>Memory</h5>
       <hr>
       <div
-         class="column bar-usages label-top-0-red"
+         class="column bar-usages"
          mn-bar-usage
          base-info="serversListItemDetailsCtl.server.getMemoryCacheConfig"></div>
     </div>
 
-    <div class="cbui-table-meters">
+    <div class="cbui-table-meters servers">
       <h5>Disk Storage</h5>
       <hr>
       <div
@@ -44,67 +56,66 @@
       </div>
     </div>
   </div>
-<!-- second row:  rebalance progress items: buckets, data out, data in -->
-  <div class="margin-top1">
-    <h5
-       ng-show="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">
-      Rebalance Progress
-    </h5>
-    <hr ng-show="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">
-    <p ng-if="serversListItemDetailsCtl.tasks.detailedProgress.bucket && rbac.cluster.tasks.read">
-      <span>Bucket:</span>
-      {{serversListItemDetailsCtl.tasks.detailedProgress.bucket}}
-      ({{serversListItemDetailsCtl.tasks.detailedProgress.bucketNumber}} out of {{serversListItemDetailsCtl.server.detailedProgress.bucketsCount}})
-    </p>
-      <div
-         ng-if="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read"
-         class="row items-top flex-left">
-        <div class="column width-6" ng-if="serversListItemDetailsCtl.tasks.detailedProgress.outgoing">
-          <p>
-            <span class="semi-bold">Data being transferred out</span>
-            <br>
-            <span class="text-smaller">
-              Total number of keys to be transferred:
-              {{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.docsTotal }}
-              <br>
-              Estimated number of keys transferred:
-              {{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.docsTransferred }}
-              <br>
-              Number of active vBuckets and replica vBuckets to transfer:
-              Active-{{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.activeVBucketsLeft }},
-              Replica-{{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.replicaVBucketsLeft }}
-            </span>
-          </p>
-        </div>
 
-        <div
-           ng-if="serversListItemDetailsCtl.tasks.detailedProgress.ingoing"
-           class="width-6">
-          <p>
-            <span class="semi-bold">Data being transferred in</span>
-            <br>
-            <span class="text-smaller">
-              Total number of keys to be transferred:
-              {{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.docsTotal }}
-              <br>
-              Estimated number of keys transferred:
-              {{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.docsTransferred }}
-              <br>
-              Number of active vBuckets and replica vBuckets to transfer:
-              Active-{{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.activeVBucketsLeft }},
-              Replica-{{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.replicaVBucketsLeft }}
-            </span>
-          </p>
-        </div>
-      </div>
+<!-- rebalance progress items: buckets, data out, data in -->
+  <h5
+    class="margin-top1"
+     ng-show="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">
+    Rebalance Progress
+  </h5>
+  <hr ng-show="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">
+  <p ng-if="serversListItemDetailsCtl.tasks.detailedProgress.bucket && rbac.cluster.tasks.read">
+    <span>Bucket:</span>
+    {{serversListItemDetailsCtl.tasks.detailedProgress.bucket}}
+    ({{serversListItemDetailsCtl.tasks.detailedProgress.bucketNumber}} out of {{serversListItemDetailsCtl.server.detailedProgress.bucketsCount}})
+  </p>
+  <div
+     ng-if="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read"
+     class="row items-top flex-left">
+    <div class="column width-6" ng-if="serversListItemDetailsCtl.tasks.detailedProgress.outgoing">
+      <p>
+        <span class="semi-bold">Data being transferred out</span>
+        <br>
+        <span class="text-smaller">
+          Total number of keys to be transferred:
+          {{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.docsTotal }}
+          <br>
+          Estimated number of keys transferred:
+          {{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.docsTransferred }}
+          <br>
+          Number of active vBuckets and replica vBuckets to transfer:
+          Active-{{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.activeVBucketsLeft }},
+          Replica-{{ serversListItemDetailsCtl.tasks.detailedProgress.outgoing.replicaVBucketsLeft }}
+        </span>
+      </p>
     </div>
 
     <div
-       ng-if="serversListItemDetailsCtl.tasks.warmUpTasks.length && rbac.cluster.tasks.read"
-       mn-warmup-progress
-       warm-up-tasks="serversListItemDetailsCtl.tasks.warmUpTasks"
-       sort-by="bucket">
+       ng-if="serversListItemDetailsCtl.tasks.detailedProgress.ingoing"
+       class="width-6">
+      <p>
+        <span class="semi-bold">Data being transferred in</span>
+        <br>
+        <span class="text-smaller">
+          Total number of keys to be transferred:
+          {{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.docsTotal }}
+          <br>
+          Estimated number of keys transferred:
+          {{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.docsTransferred }}
+          <br>
+          Number of active vBuckets and replica vBuckets to transfer:
+          Active-{{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.activeVBucketsLeft }},
+          Replica-{{ serversListItemDetailsCtl.tasks.detailedProgress.ingoing.replicaVBucketsLeft }}
+        </span>
+      </p>
     </div>
+  </div>
+
+  <div
+     ng-if="serversListItemDetailsCtl.tasks.warmUpTasks.length && rbac.cluster.tasks.read"
+     mn-warmup-progress
+     warm-up-tasks="serversListItemDetailsCtl.tasks.warmUpTasks"
+     sort-by="bucket">
   </div>
 
   <div

@@ -62,42 +62,24 @@
       };
       bucketRamGuageConfig.items = [{
         name: 'other buckets',
-        value: ramSummary.otherBuckets,
-        itemStyle: {'background-color': '#00BCE9', 'z-index': '2'},
-        labelStyle: {'color': '#1878a2', 'text-align': 'left'}
+        value: ramSummary.otherBuckets
       }, {
         name: 'this bucket',
-        value: ramSummary.thisAlloc,
-        itemStyle: {'background-color': '#7EDB49', 'z-index': '1'},
-        labelStyle: {'color': '#409f05', 'text-align': 'center'}
+        value: ramSummary.thisAlloc
       }, {
         name: 'remaining',
-        value: ramSummary.total - ramSummary.otherBuckets - ramSummary.thisAlloc,
-        itemStyle: {'background-color': '#E1E2E3'},
-        labelStyle: {'color': '#444245', 'text-align': 'right'}
+        value: ramSummary.total - ramSummary.otherBuckets - ramSummary.thisAlloc
       }];
-      bucketRamGuageConfig.markers = [];
 
       if (bucketRamGuageConfig.items[2].value < 0) {
         bucketRamGuageConfig.items[1].value = ramSummary.total - ramSummary.otherBuckets;
         bucketRamGuageConfig.items[2] = {
           name: 'overcommitted',
-          value: ramSummary.otherBuckets + ramSummary.thisAlloc - ramSummary.total,
-          itemStyle: {'background-color': '#F40015'},
-          labelStyle: {'color': '#e43a1b'}
+          value: ramSummary.otherBuckets + ramSummary.thisAlloc - ramSummary.total
         };
-        bucketRamGuageConfig.markers.push({
-          value: ramSummary.total,
-          itemStyle: {'background-color': '#444245'}
-        });
-        bucketRamGuageConfig.markers.push({
-          value: ramSummary.otherBuckets + ramSummary.thisAlloc,
-          itemStyle: {'background-color': 'red'}
-        });
         bucketRamGuageConfig.topLeft = {
           name: 'total allocated',
-          value: ramSummary.otherBuckets + ramSummary.thisAlloc,
-          itemStyle: {'color': '#e43a1b'}
+          value: ramSummary.otherBuckets + ramSummary.thisAlloc
         };
       }
       return bucketRamGuageConfig;
@@ -106,35 +88,19 @@
     function getGuageConfig(total, thisBucket, otherBuckets, otherData) {
       var free = total - otherData - thisBucket - otherBuckets;
 
-      guageConfig.topLeft = {
-        name: 'other data',
-        value: otherData,
-        itemStyle: {color: "#C19710"}
-      };
       guageConfig.topRight = {
         name: 'total cluster storage',
         value: total
       };
       guageConfig.items = [{
-        name: null,
-        value: otherData,
-        itemStyle: {'background-color':'#FDC90D', 'z-index': '3'},
-        labelStyle: {}
-      }, {
         name: 'other buckets',
-        value: otherBuckets,
-        itemStyle: {'background-color':'#00BCE9', 'z-index': '2'},
-        labelStyle: {'color':'#1878a2', 'text-align': 'left'}
+        value: otherBuckets
       }, {
         name: 'this bucket',
-        value: thisBucket,
-        itemStyle: {'background-color':'#7EDB49', 'z-index': '1'},
-        labelStyle: {'color':'#409f05', 'text-align': 'center'}
+        value: thisBucket
       }, {
         name: 'remaining',
-        value: free,
-        itemStyle: {'background-color':'#E1E2E3'},
-        labelStyle: {'color':'#444245', 'text-align': 'right'}
+        value: free
       }];
 
       return guageConfig;

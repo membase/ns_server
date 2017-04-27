@@ -638,11 +638,13 @@ section.error {
   line-height: 2.2;
   font-size: .75rem;
   flex: 0 1 auto;
+  max-width: 280px;
 }
 .cbui-table-props {
-  margin-top: 1rem;
   font-size: .75rem;
   flex: 0 1 auto;
+  min-width: 280px;
+  max-width: 580px;
 }
 .cbui-table-props div {
   margin-top: .75rem;
@@ -652,10 +654,22 @@ section.error {
   margin-top: 0;
 }
 .cbui-table-meters {
-  margin: 1rem 0 0 4rem;
-  flex: 0 2 100%;
+  margin: 1rem 2rem 0 2rem;
+  flex: 0 1 100%;
+  max-width: 480px;
 }
-
+.cbui-table-meters + .cbui-table-meters {
+  margin: 1rem 2rem 0 1rem;
+}
+.cbui-table-meters.buckets .row {
+  display: block;
+}
+.cbui-table-meters.buckets .row span {
+  display: block;
+}
+.cbui-table-meters.servers .bar-usages .label-bottom-1.with-square:before {
+  background-color: #efebe0;
+}
 /* table cell-related stuff --------- */
 .cbui-table-cell {
   -webkit-box-flex: 1;
@@ -1217,6 +1231,18 @@ meter {
 }
 .bar-usages.overcommitted .marker-1 {
   background-color: rgb(68, 66, 69);
+}
+.bar-usages.overcommitted.bar-usages-dashboard .label-bottom-1:before {
+  background-color: #e07f82; /* .red-3 */
+}
+.bar-usages.overcommitted.bar-usages-dashboard .label-bottom-2:before {
+  background-color: #efebe0;
+}
+.bar-usages.overcommitted.bar-usages-dashboard.has-free-space .usage-item-0 {
+  background-color: #efebe0;
+}
+.bar-usages.overcommitted.bar-usages-dashboard.has-free-space .usage-item-1 {
+  background-color: #e07f82; /* .red-3 */
 }
 
 /* spinner ---------------- */

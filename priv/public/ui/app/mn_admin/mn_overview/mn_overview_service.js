@@ -28,52 +28,28 @@
     };
 
     var ramOverviewConfigBase = {
-      topLeft: {
-        name: 'Total Allocated'
-      },
       topRight: {
-        name: 'Total in Cluster'
+        name: 'total quota'
       },
       items: [{
-        name: 'In Use',
-        itemStyle: {'background-color': '#00BCE9', 'z-index': 3},
-        labelStyle: {'color':'#1878a2', 'text-align': 'left'}
+        name: 'in use'
       }, {
-        name: 'Unused',
-        itemStyle: {'background-color': '#7EDB49', 'z-index': 2},
-        labelStyle: {'color': '#409f05', 'text-align': 'center'}
+        name: 'unused quota'
       }, {
-        name: 'Unallocated',
-        itemStyle: {'background-color': '#E1E2E3'},
-        labelStyle: {'color': '#444245', 'text-align': 'right'}
-      }],
-      markers: [{
-        itemStyle: {'background-color': '#e43a1b'}
+        name: 'unallocated'
       }]
     };
 
     var hddOverviewConfigBase = {
-      topLeft: {
-        name: 'Usable Free Space'
-      },
       topRight: {
-        name: 'Total Cluster Storage'
+        name: 'usable free space'
       },
       items: [{
-        name: 'In Use',
-        itemStyle: {'background-color': '#00BCE9', 'z-index': 3},
-        labelStyle: {'color': '#1878A2', 'text-align': 'left'}
+        name: 'in use by couchbase'
       }, {
-        name: 'Other Data',
-        itemStyle: {'background-color': '#FDC90D', 'z-index': 2},
-        labelStyle: {'color': '#C19710', 'text-align': 'center'}
+        name: 'other data'
       }, {
-        name: "Free",
-        itemStyle: {'background-color': '#E1E2E3'},
-        labelStyle: {'color': '#444245', 'text-align': 'right'}
-      }],
-      markers: [{
-        itemStyle: {'background-color': '#E43A1B'}
+        name: "free"
       }]
     };
 
@@ -144,30 +120,28 @@
 
           var ramOverviewConfig = _.clone(ramOverviewConfigBase, true);
 
-          ramOverviewConfig.topLeft.value = bucketsQuota;
-          ramOverviewConfig.topRight.value = quotaTotal;
+          ramOverviewConfig.topRight.value = bucketsQuota;
           ramOverviewConfig.items[0].value = usedQuota;
           ramOverviewConfig.items[1].value = bucketsQuota - usedQuota;
           ramOverviewConfig.items[2].value = Math.max(quotaTotal - bucketsQuota, 0);
-          ramOverviewConfig.markers[0].value = bucketsQuota
 
           if (ramOverviewConfig.items[1].value < 0) {
             ramOverviewConfig.items[0].value = bucketsQuota;
             ramOverviewConfig.items[1] = {
-              name: 'Overused',
-              value: usedQuota - bucketsQuota,
-              itemStyle: {'background-color': '#F40015', 'z-index': 4},
-              labelStyle: {'color': '#e43a1b'}
+              name: 'overused',
+              value: usedQuota - bucketsQuota
+            };
+            ramOverviewConfig.topRight = {
+              name: 'cluster quota',
+              value: quotaTotal
             };
             if (usedQuota < quotaTotal) {
-              ramOverviewConfig.items[2].name = 'Available';
-              ramOverviewConfig.items[2].value = quotaTotal - usedQuota;
+              ramOverviewConfig.items[2] = {
+                name: 'available',
+                value: quotaTotal - usedQuota
+              };
             } else {
-              ramOverviewConfig.items.length = 2;
-              ramOverviewConfig.markers.push({
-                value: quotaTotal,
-                itemStyle: {'color': '#444245', 'z-index': 5}
-              })
+              ramOverviewConfig.items.pop();
             }
           }
 
@@ -184,12 +158,10 @@
 
           var hddOverviewConfig = _.clone(hddOverviewConfigBase, true);
 
-          hddOverviewConfig.topLeft.value = free;
-          hddOverviewConfig.topRight.value = total;
+          hddOverviewConfig.topRight.value = free;
           hddOverviewConfig.items[0].value = usedSpace;
           hddOverviewConfig.items[1].value = other;
           hddOverviewConfig.items[2].value = total - other - usedSpace;
-          hddOverviewConfig.markers[0].value = other + usedSpace + free;
 
           rv.hddOverviewConfig = hddOverviewConfig;
         })();

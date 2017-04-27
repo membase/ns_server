@@ -80,7 +80,11 @@
        class="column width-6">
       <h4>Data Service Memory</h4>
       <div
-         class="bar-usages"
+         ng-class="{
+                   overcommitted: overviewCtl.mnOverviewConfig.ramOverviewConfig.items[1].name === 'overused',
+                   'has-free-space': overviewCtl.mnOverviewConfig.ramOverviewConfig.items[2].name === 'available'
+}"
+         class="bar-usages bar-usages-dashboard"
          mn-bar-usage
          base-info="overviewCtl.mnOverviewConfig.ramOverviewConfig"></div>
     </div>
