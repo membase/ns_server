@@ -137,7 +137,7 @@ config_string(BucketName) ->
                       "bucket_type=~s;~s",
                       [proplists:get_value(
                          ht_size, BucketConfig,
-                         misc:getenv_int("MEMBASE_HT_SIZE", 0)),
+                         misc:getenv_int("MEMBASE_HT_SIZE", 3079)),
                        proplists:get_value(
                          ht_locks, BucketConfig,
                          misc:getenv_int("MEMBASE_HT_LOCKS", 47)),
