@@ -1335,8 +1335,7 @@ do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I, N) ->
 check_graceful_failover_possible(Node, BucketsAll) ->
     case check_graceful_failover_possible_rec(Node, BucketsAll) of
         false -> false;
-        [] -> false;
-        [_|_] -> true
+        _ -> true
     end.
 
 check_graceful_failover_possible_rec(_Node, []) ->
