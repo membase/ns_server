@@ -30,6 +30,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -record(state, {buckets,
+                param_values,
                 roles,
                 users,
                 cluster_admin}).
@@ -67,6 +68,8 @@ sync() ->
 init() ->
     Config = ns_config:get(),
     #state{buckets = ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)),
+           param_values =
+               menelaus_roles:calculate_possible_param_values(ns_bucket:get_buckets(Config)),
            users = [ns_config:search_node_prop(Config, memcached, admin_user) |
                     ns_config:search_node_prop(Config, memcached, other_users, [])],
            roles = menelaus_roles:get_definitions(Config)}.
@@ -82,13 +85,14 @@ filter_event({rest_creds, _V}) ->
 filter_event(_) ->
     false.
 
-handle_event({buckets, V}, #state{buckets = Buckets} = State) ->
+handle_event({buckets, V}, #state{buckets = Buckets, param_values = ParamValues} = State) ->
     Configs = proplists:get_value(configs, V),
-    case ns_bucket:get_bucket_names(Configs) of
-        Buckets ->
+    case {ns_bucket:get_bucket_names(Configs),
+          menelaus_roles:calculate_possible_param_values(Configs)} of
+        {Buckets, ParamValues} ->
             unchanged;
-        NewBuckets ->
-            {changed, State#state{buckets = NewBuckets}}
+        {NewBuckets, NewParamValues} ->
+            {changed, State#state{buckets = NewBuckets, param_values = NewParamValues}}
     end;
 handle_event({user_version, _V}, State) ->
     {changed, State};
@@ -117,11 +121,12 @@ producer(State) ->
     end.
 
 generate_45(#state{buckets = Buckets,
+                   param_values = ParamValues,
                    roles = RoleDefinitions,
                    users = Users}) ->
     Json =
         {[memcached_admin_json(U, Buckets) || U <-Users] ++
-             generate_json_45(Buckets, RoleDefinitions)},
+             generate_json_45(Buckets, ParamValues, RoleDefinitions)},
     menelaus_util:encode_json(Json).
 
 refresh() ->
@@ -137,17 +142,17 @@ global_permissions(CompiledRoles) ->
                     {Permission, MemcachedPermission} <- global_permissions_to_check(),
                     menelaus_roles:is_allowed(Permission, CompiledRoles)]).
 
-permissions_for_role(Buckets, RoleDefinitions, Role) ->
-    CompiledRoles = menelaus_roles:compile_roles([Role], RoleDefinitions),
+permissions_for_role(Buckets, ParamValues, RoleDefinitions, Role) ->
+    CompiledRoles = menelaus_roles:compile_roles([Role], RoleDefinitions, ParamValues),
     [{global, global_permissions(CompiledRoles)} |
      [{Bucket, bucket_permissions(Bucket, CompiledRoles)} || Bucket <- Buckets]].
 
-permissions_for_role(Buckets, RoleDefinitions, Role, RolesDict) ->
+permissions_for_role(Buckets, ParamValues, RoleDefinitions, Role, RolesDict) ->
     case dict:find(Role, RolesDict) of
         {ok, Permissions} ->
             {Permissions, RolesDict};
         error ->
-            Permissions = permissions_for_role(Buckets, RoleDefinitions, Role),
+            Permissions = permissions_for_role(Buckets, ParamValues, RoleDefinitions, Role),
             {Permissions, dict:store(Role, Permissions, RolesDict)}
     end.
 
@@ -156,12 +161,12 @@ zip_permissions(Permissions, PermissionsAcc) ->
                           {Bucket, [Perm | PermAcc]}
                   end, Permissions, PermissionsAcc).
 
-permissions_for_user(Roles, Buckets, RoleDefinitions, RolesDict) ->
+permissions_for_user(Roles, Buckets, ParamValues, RoleDefinitions, RolesDict) ->
     Acc0 = [{global, []} | [{Bucket, []} || Bucket <- Buckets]],
     {ZippedPermissions, NewRolesDict} =
         lists:foldl(fun (Role, {Acc, Dict}) ->
                             {Permissions, NewDict} =
-                                permissions_for_role(Buckets, RoleDefinitions, Role, Dict),
+                                permissions_for_role(Buckets, ParamValues, RoleDefinitions, Role, Dict),
                             {zip_permissions(Permissions, Acc), NewDict}
                     end, {Acc0, RolesDict}, Roles),
     MergedPermissions = [{Bucket, lists:umerge(Perm)} || {Bucket, Perm} <- ZippedPermissions],
@@ -176,18 +181,18 @@ jsonify_user({UserName, Domain}, [{global, GlobalPermissions} | BucketPermission
 memcached_admin_json(AU, Buckets) ->
     jsonify_user({AU, local}, [{global, [all]} | [{Name, [all]} || Name <- Buckets]]).
 
-generate_json_45(Buckets, RoleDefinitions) ->
+generate_json_45(Buckets, ParamValues, RoleDefinitions) ->
     RolesDict = dict:new(),
     {Json, _} =
         lists:foldl(fun (Bucket, {Acc, Dict}) ->
                             Roles = menelaus_roles:get_roles({Bucket, bucket}),
                             {Permissions, NewDict} =
-                                permissions_for_user(Roles, Buckets, RoleDefinitions, Dict),
+                                permissions_for_user(Roles, Buckets, ParamValues, RoleDefinitions, Dict),
                             {[jsonify_user({Bucket, local}, Permissions) | Acc], NewDict}
                     end, {[], RolesDict}, Buckets),
     lists:reverse(Json).
 
-jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
+jsonify_users(Users, Buckets, ParamValues, RoleDefinitions, ClusterAdmin) ->
     ?make_transducer(
        begin
            ?yield(object_start),
@@ -198,7 +203,7 @@ jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
            EmitUser =
                fun (Identity, Roles, Dict) ->
                        {Permissions, NewDict} =
-                           permissions_for_user(Roles, Buckets, RoleDefinitions, Dict),
+                           permissions_for_user(Roles, Buckets, ParamValues, RoleDefinitions, Dict),
                        ?yield({kv, jsonify_user(Identity, Permissions)}),
                        NewDict
                end,
@@ -237,17 +242,20 @@ jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin) ->
        end).
 
 make_producer(#state{buckets = Buckets,
+                     param_values = ParamValues,
                      roles = RoleDefinitions,
                      users = Users,
                      cluster_admin = ClusterAdmin}) ->
     pipes:compose([menelaus_users:select_users('_'),
-                   jsonify_users(Users, Buckets, RoleDefinitions, ClusterAdmin),
+                   jsonify_users(Users, Buckets, ParamValues, RoleDefinitions, ClusterAdmin),
                    sjson:encode_extended_json([{compact, false},
                                                {strict, false}])]).
 
 generate_json_45_test() ->
-    Buckets = ["default", "test"],
     RoleDefinitions = menelaus_roles:roles_45(),
+    BucketsConfig = [{"default", [{uuid, <<"default_id">>}]}, {"test", [{uuid, <<"test_id">>}]}],
+    Buckets = ns_bucket:get_bucket_names(BucketsConfig),
+    ParamValues =  menelaus_roles:calculate_possible_param_values(BucketsConfig),
 
     Json =
         [{<<"default">>,
@@ -266,4 +274,4 @@ generate_json_45_test() ->
                          'Tap','Write','XattrRead', 'XattrWrite']}]}},
             {privileges,[]},
             {domain, local}]}}],
-    ?assertEqual(Json, generate_json_45(Buckets, RoleDefinitions)).
+    ?assertEqual(Json, generate_json_45(Buckets, ParamValues, RoleDefinitions)).

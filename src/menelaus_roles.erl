@@ -51,9 +51,10 @@
          is_allowed/2,
          get_roles/1,
          get_compiled_roles/1,
-         compile_roles/2,
+         compile_roles/3,
          get_all_assignable_roles/1,
-         validate_roles/2]).
+         validate_roles/2,
+         calculate_possible_param_values/1]).
 
 -spec roles_45() -> [rbac_role_def(), ...].
 roles_45() ->
@@ -366,19 +367,36 @@ substitute_params(Params, ParamDefinitions, Permissions) ->
                                  end, ObjectPattern), AllowedOperations}
               end, Permissions).
 
--spec compile_roles([rbac_role()], [rbac_role_def()] | undefined) -> [rbac_compiled_role()].
-compile_roles(_Roles, undefined) ->
+-spec compile_params([atom()], [rbac_role_param()], rbac_all_param_values()) ->
+                            false | [[rbac_role_param()]].
+compile_params(ParamDefs, Params, AllParamValues) ->
+    PossibleValues = get_possible_param_values(ParamDefs, AllParamValues),
+    case find_matching_value(ParamDefs, Params, PossibleValues) of
+        false ->
+            false;
+        Values ->
+            strip_ids(ParamDefs, Values)
+    end.
+
+-spec compile_roles([rbac_role()], [rbac_role_def()] | undefined, rbac_all_param_values()) ->
+                           [rbac_compiled_role()].
+compile_roles(_Roles, undefined, _AllParamValues) ->
     %% can happen briefly after node joins the cluster
     [];
-compile_roles(Roles, Definitions) ->
-    lists:map(fun (Name) when is_atom(Name) ->
-                      {Name, [], _Props, Permissions} = lists:keyfind(Name, 1, Definitions),
-                      Permissions;
-                  ({Name, Params}) ->
-                      {Name, ParamDefinitions, _Props, Permissions} =
-                          lists:keyfind(Name, 1, Definitions),
-                      substitute_params(Params, ParamDefinitions, Permissions)
-              end, Roles).
+compile_roles(Roles, Definitions, AllParamValues) ->
+    lists:filtermap(fun (Name) when is_atom(Name) ->
+                            {Name, [], _Props, Permissions} = lists:keyfind(Name, 1, Definitions),
+                            {true, Permissions};
+                        ({Name, Params}) ->
+                            {Name, ParamDefs, _Props, Permissions} =
+                                lists:keyfind(Name, 1, Definitions),
+                            case compile_params(ParamDefs, Params, AllParamValues) of
+                                false ->
+                                    false;
+                                NewParams ->
+                                    {true, substitute_params(NewParams, ParamDefs, Permissions)}
+                            end
+                    end, Roles).
 
 -spec get_roles(rbac_identity()) -> [rbac_role()].
 get_roles({"", wrong_token}) ->
@@ -422,12 +440,13 @@ get_roles({_User, local} = Identity) ->
 -spec get_compiled_roles(rbac_identity()) -> [rbac_compiled_role()].
 get_compiled_roles(Identity) ->
     Definitions = get_definitions(),
-    compile_roles(get_roles(Identity), Definitions).
+    AllPossibleValues = calculate_possible_param_values(ns_bucket:get_buckets()),
+    compile_roles(get_roles(Identity), Definitions, AllPossibleValues).
 
 calculate_possible_param_values(_Buckets, []) ->
     [[]];
 calculate_possible_param_values(Buckets, [bucket_name]) ->
-    [[any] | [[Name] || {Name, _} <- Buckets]].
+    [[any] | [[{Name, proplists:get_value(uuid, Props)}] || {Name, Props} <- Buckets]].
 
 all_params_combinations() ->
     [[], [bucket_name]].
@@ -455,7 +474,49 @@ get_all_assignable_roles(Config) ->
                           end, Acc, get_possible_param_values(ParamDefs, AllPossibleValues))
                 end, [], get_definitions_filtered_for_rest_api(Config)).
 
--spec validate_role(rbac_role(), [rbac_role_def()], [[rbac_role_param()]]) -> boolean().
+strip_id(bucket_name, {P, _Id}) ->
+    P;
+strip_id(bucket_name, P) ->
+    P.
+
+strip_ids(ParamDefs, Params) ->
+    [strip_id(ParamDef, Param) || {ParamDef, Param} <- lists:zip(ParamDefs, Params)].
+
+match_param(bucket_name, P, P) ->
+    true;
+match_param(bucket_name, P, {P, _Id}) ->
+    true;
+match_param(bucket_name, _, _) ->
+    false.
+
+match_params([], [], []) ->
+    true;
+match_params(ParamDefs, Params, Values) ->
+    case lists:dropwhile(
+           fun ({ParamDef, Param, Value}) ->
+                   match_param(ParamDef, Param, Value)
+           end, lists:zip3(ParamDefs, Params, Values)) of
+        [] ->
+            true;
+        _ ->
+            false
+    end.
+
+-spec find_matching_value([atom()], [rbac_role_param()], [[rbac_role_param()]]) ->
+                                 false | [rbac_role_param()].
+find_matching_value(ParamDefs, Params, PossibleValues) ->
+    case lists:dropwhile(
+           fun (Values) ->
+                   not match_params(ParamDefs, Params, Values)
+           end, PossibleValues) of
+        [] ->
+            false;
+        [V | _] ->
+            V
+    end.
+
+-spec validate_role(rbac_role(), [rbac_role_def()], [[rbac_role_param()]]) ->
+                           false | {ok, rbac_role()}.
 validate_role(Role, Definitions, AllValues) when is_atom(Role) ->
     validate_role(Role, [], Definitions, AllValues);
 validate_role({Role, Params}, Definitions, AllValues) ->
@@ -464,7 +525,15 @@ validate_role({Role, Params}, Definitions, AllValues) ->
 validate_role(Role, Params, Definitions, AllValues) ->
     case lists:keyfind(Role, 1, Definitions) of
         {Role, ParamsDef, _, _} when length(Params) =:= length(ParamsDef) ->
-            lists:member(Params, get_possible_param_values(ParamsDef, AllValues));
+            PossibleValues = get_possible_param_values(ParamsDef, AllValues),
+            case find_matching_value(ParamsDef, Params, PossibleValues) of
+                false ->
+                    false;
+                [] ->
+                    {ok, Role};
+                Expanded ->
+                    {ok, {Role, Expanded}}
+            end;
         _ ->
             false
     end.
@@ -472,11 +541,18 @@ validate_role(Role, Params, Definitions, AllValues) ->
 validate_roles(Roles, Config) ->
     Definitions = get_definitions_filtered_for_rest_api(Config),
     AllParamValues = calculate_possible_param_values(ns_bucket:get_buckets(Config)),
-    UnknownRoles = [Role || Role <- Roles,
-                            not validate_role(Role, Definitions, AllParamValues)],
+    {ValidatedRoles, UnknownRoles} =
+        lists:foldl(fun (Role, {V, U}) ->
+                            case validate_role(Role, Definitions, AllParamValues) of
+                                false ->
+                                    {V, [Role | U]};
+                                {ok, R} ->
+                                    {[R | V], U}
+                            end
+                    end, {[], []}, Roles),
     case UnknownRoles of
         [] ->
-            ok;
+            {ok, ValidatedRoles};
         _ ->
             {error, roles_validation, UnknownRoles}
     end.
@@ -493,10 +569,20 @@ object_match_test() ->
     ?assertEqual(true, object_match([{b, "a"}], [{b, any}])),
     ?assertEqual(true, object_match([{b, any}], [{b, any}])).
 
+toy_config() ->
+    [[{buckets,
+       [{configs,
+         [{"test", [{uuid, <<"test_id">>}]},
+          {"default", [{uuid, <<"default_id">>}]}]}]}]].
+
+compile_roles(Roles, Definitions) ->
+    AllPossibleValues = calculate_possible_param_values(ns_bucket:get_buckets(toy_config())),
+    compile_roles(Roles, Definitions, AllPossibleValues).
+
 compile_roles_test() ->
     ?assertEqual([[{[{bucket, "test"}], none}]],
                  compile_roles([{test_role, ["test"]}],
-                               [{test_role, [param], [], [{[{bucket, param}], none}]}])).
+                               [{test_role, [bucket_name], [], [{[{bucket, bucket_name}], none}]}])).
 
 admin_test() ->
     Roles = compile_roles([admin], roles_45()),
@@ -594,12 +680,14 @@ replication_admin_test() ->
     ?assertEqual(true, is_allowed({[other], read}, Roles)).
 
 validate_role_test() ->
-    Config = [[{buckets, [{configs, [{"test", []}]}]}]],
+    Config = toy_config(),
     Definitions = roles_45(),
     AllParamValues = calculate_possible_param_values(ns_bucket:get_buckets(Config)),
-    ?assertEqual(true, validate_role(admin, Definitions, AllParamValues)),
-    ?assertEqual(true, validate_role({bucket_admin, ["test"]}, Definitions, AllParamValues)),
-    ?assertEqual(true, validate_role({views_admin, [any]}, Definitions, AllParamValues)),
+    ?assertEqual({ok, admin}, validate_role(admin, Definitions, AllParamValues)),
+    ?assertEqual({ok, {bucket_admin, [{"test", <<"test_id">>}]}},
+                 validate_role({bucket_admin, ["test"]}, Definitions, AllParamValues)),
+    ?assertEqual({ok, {views_admin, [any]}},
+                 validate_role({views_admin, [any]}, Definitions, AllParamValues)),
     ?assertEqual(false, validate_role(something, Definitions, AllParamValues)),
     ?assertEqual(false, validate_role({bucket_admin, ["something"]}, Definitions, AllParamValues)),
     ?assertEqual(false, validate_role({something, ["test"]}, Definitions, AllParamValues)),

@@ -28,7 +28,7 @@
 -type rbac_identity_type() :: rejected | wrong_token | anonymous | admin | ro_admin | bucket |
                               external | local | local_token.
 -type rbac_identity() :: {rbac_user_id(), rbac_identity_type()}.
--type rbac_role_param() :: string() | any.
+-type rbac_role_param() :: string() | {string(), binary()} | any.
 -type rbac_role_name() :: atom().
 -type rbac_role() :: rbac_role_name() | {rbac_role_name(), nonempty_list(rbac_role_param())}.
 -type rbac_user_name() :: string() | undefined.

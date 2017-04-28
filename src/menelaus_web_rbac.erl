@@ -164,12 +164,15 @@ role_to_json(Name) when is_atom(Name) ->
     [{role, Name}];
 role_to_json({Name, [any]}) ->
     [{role, Name}, {bucket_name, <<"*">>}];
+role_to_json({Name, [{BucketName, _Id}]}) ->
+    [{role, Name}, {bucket_name, list_to_binary(BucketName)}];
 role_to_json({Name, [BucketName]}) ->
     [{role, Name}, {bucket_name, list_to_binary(BucketName)}].
 
 filter_roles(_Config, undefined, Roles) ->
     Roles;
 filter_roles(Config, RawPermission, Roles) ->
+    AllValues = menelaus_roles:calculate_possible_param_values(ns_bucket:get_buckets(Config)),
     case parse_permission(RawPermission) of
         error ->
             error;
@@ -177,7 +180,7 @@ filter_roles(Config, RawPermission, Roles) ->
             lists:filtermap(
               fun ({Role, _} = RoleInfo) ->
                       Definitions = menelaus_roles:get_definitions(Config),
-                      [CompiledRole] = menelaus_roles:compile_roles([Role], Definitions),
+                      [CompiledRole] = menelaus_roles:compile_roles([Role], Definitions, AllValues),
                       case menelaus_roles:is_allowed(Permission, [CompiledRole]) of
                           true ->
                               {true, RoleInfo};

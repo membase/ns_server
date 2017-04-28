@@ -207,7 +207,7 @@ store_user_45({UserName, external}, Props, Roles) ->
     ns_config:run_txn(
       fun (Config, SetFn) ->
               case menelaus_roles:validate_roles(Roles, Config) of
-                  ok ->
+                  {ok, _} ->
                       Identity = {UserName, saslauthd},
                       Users = get_users_45(Config),
                       NewUsers = lists:keystore(Identity, 1, Users,
@@ -260,8 +260,8 @@ store_user_spock({_UserName, Domain} = Identity, Props, Password, Roles, Config)
 
 store_user_spock_with_auth(Identity, Props, Auth, Roles, Config) ->
     case menelaus_roles:validate_roles(Roles, Config) of
-        ok ->
-            store_user_spock_validated(Identity, [{roles, Roles} | Props], Auth),
+        {ok, NewRoles} ->
+            store_user_spock_validated(Identity, [{roles, NewRoles} | Props], Auth),
             {commit, ok};
         Error ->
             {abort, Error}
