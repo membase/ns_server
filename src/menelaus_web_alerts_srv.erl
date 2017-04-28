@@ -70,7 +70,7 @@ short_description(Other) ->
 errors(ip) ->
     "IP address seems to have changed. Unable to listen on ~p. (POSIX error code: '~p')";
 errors(ep_oom_errors) ->
-    "Hard Out Of Memory Error. Bucket \"~s\" on node ~s is full. All memory allocated to this bucket is used for metadata.";
+    "Hard out-of-memory error: Bucket \"~s\" on node ~s is full. No memory currently allocated to this bucket can be easily released.";
 errors(ep_item_commit_failed) ->
     "Write Commit Failure. Disk write failed for item in Bucket \"~s\" on node ~s.";
 errors(overhead) ->
