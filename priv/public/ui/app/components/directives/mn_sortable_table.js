@@ -32,7 +32,7 @@
       $transclude(function (cloned) {
         cloned.attr(
           'ng-click',
-          'mnSortableTable.setOrderOrToggleInvert(mnSortableTitle || sortFunction, mnSortableTitle)'
+          'mnSortableTable.setOrderOrToggleInvert(sortFunction || mnSortableTitle, mnSortableTitle)'
         );
         cloned.removeAttr('mn-sortable-title');
         $element.after($compile(cloned)($scope));
@@ -53,6 +53,7 @@
 
     function controller($scope, $element, $attrs) {
       var currentSortableTitle;
+      var currentOrderByStringOrFunction;
       var vm = this;
 
       vm.sortableTableProperties = {
@@ -60,6 +61,15 @@
         invert: null
       };
       vm.setOrderOrToggleInvert = setOrderOrToggleInvert;
+      vm.sortableTableProperties.orderBy = orderBy;
+
+      function orderBy(value) {
+        if (angular.isFunction(currentOrderByStringOrFunction)) {
+          return currentOrderByStringOrFunction({value: value});
+        } else {
+          return currentOrderByStringOrFunction;
+        }
+      }
 
       function isOrderBy(name) {
         return currentSortableTitle === name;
@@ -74,7 +84,7 @@
       }
       function setOrder(orderBy, name) {
         currentSortableTitle = name;
-        vm.sortableTableProperties.orderBy = orderBy;
+        currentOrderByStringOrFunction = orderBy;
       }
     }
 

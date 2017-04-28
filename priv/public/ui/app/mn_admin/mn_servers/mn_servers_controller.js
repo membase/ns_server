@@ -56,6 +56,11 @@
     vm.filterField = "";
     vm.hideFilter = hideFilter;
     vm.showFilter = showFilter;
+    vm.sortByGroup = sortByGroup
+
+    function sortByGroup(node) {
+      return vm.getGroupsByHostname[node.hostname] && vm.getGroupsByHostname[node.hostname].name;
+    }
 
 
     activate();

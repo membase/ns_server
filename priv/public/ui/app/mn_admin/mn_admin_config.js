@@ -139,7 +139,6 @@
         },
         views: {
           "" : {
-            controller: 'mnServersListController as serversListCtl',
             templateUrl: 'app/mn_admin/mn_servers/list/mn_servers_list.html'
           },
           "details@app.admin.servers.list": {

@@ -10,7 +10,7 @@
            sort-by-default="true">
           name /
         </span>
-        <span mn-sortable-title="group" sort-function="serversCtl.sortByGroup">
+        <span mn-sortable-title="group" sort-function="serversCtl.sortByGroup(value)">
           {{ poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "group" : " " }}
         </span>
       </span>
