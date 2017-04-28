@@ -72,7 +72,9 @@
       var mnPermissions = {
         clear: clear,
         set: set,
+        get: doCheck,
         check: check,
+        getFresh: getFresh,
         export: {
           data: {},
           cluster: {},
@@ -82,8 +84,8 @@
           }
         }
       };
-      var promisePerPermission = {};
-      var timeId;
+
+      var cached;
 
       return mnPermissions;
 
@@ -91,13 +93,26 @@
         delete $rootScope.rbac;
         mnPermissions.export.cluster = {};
         mnPermissions.export.data = {};
+        clearCache();
+      }
+
+      function clearCache() {
+        cached = null;
+      }
+
+      function getFresh() {
+        clearCache();
+        return mnPermissions.check();
       }
 
       function check() {
+        if (cached) {
+          return $q.when(mnPermissions.export);
+        }
         return doCheck(["cluster.bucket[.].settings!read"]).then(function (resp) {
           var permissions = getAll();
           if (resp.data["cluster.bucket[.].settings!read"]) {
-            return mnBucketsService.getBucketsByType().then(function (bucketsDetails) {
+            return mnBucketsService.getBucketsByType(true).then(function (bucketsDetails) {
               if (bucketsDetails.length) {
                 angular.forEach(bucketsDetails, function (bucket) {
                   permissions = permissions.concat(generateBucketPermissions(bucket.name));
@@ -112,6 +127,13 @@
           } else {
             return doCheck(permissions);
           }
+        }).then(function (resp) {
+          cached = convertIntoTree(resp.data);
+
+          mnPermissions.export.data = resp.data;
+          mnPermissions.export.cluster = cached.cluster;
+
+          return mnPermissions.export;
         });
       }
 
@@ -136,22 +158,6 @@
           method: "POST",
           url: "/pools/default/checkPermissions",
           data: interestingPermissions.join(',')
-        }).then(function (resp) {
-          var rv = convertIntoTree(resp.data);
-
-          if (mnPermissions.export.data) {
-            mnPermissions.export.data = _.merge(mnPermissions.export.data, resp.data);
-          } else {
-            mnPermissions.export.data = resp.data;
-          }
-
-          if (mnPermissions.export.cluster) {
-            mnPermissions.export.cluster = _.merge(mnPermissions.export.cluster, rv.cluster);
-          } else {
-            mnPermissions.export.cluster = rv.cluster;
-          }
-
-          return mnPermissions.export;
         });
       }
     }

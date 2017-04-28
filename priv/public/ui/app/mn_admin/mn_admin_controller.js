@@ -113,7 +113,7 @@
         }
 
         if (previous && previous.checkPermissionsURI != resp.checkPermissionsURI) {
-          mnPermissions.check();
+          mnPermissions.getFresh();
         }
       })
       .cycle();
