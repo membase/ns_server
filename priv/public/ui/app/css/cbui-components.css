@@ -1646,6 +1646,7 @@ input[type="checkbox"]:checked + label:before {
 .nav-header a.dropdown-toggle  {
   margin: 0 .5rem;
   padding-right: .5rem;
+  vertical-align: top;
 }
 .nav-header .dropdown-menu {
   top: 22px;
