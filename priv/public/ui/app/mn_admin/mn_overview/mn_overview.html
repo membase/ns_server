@@ -2,7 +2,7 @@
   {{::adminCtl.implementationVersion | mnPrettyVersion}}
 </mn-element-cargo>
 
-<div mn-spinner="(rbac.cluster.bucket['*'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || (rbac.cluster.bucket['*'].settings.read && !overviewCtl.buckets)">
+<div mn-spinner="(rbac.cluster.bucket['.'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || (rbac.cluster.bucket['.'].settings.read && !overviewCtl.buckets)">
 
   <div class="row items-top margin-top1 service-widget-row">
     <div
@@ -99,12 +99,12 @@
   </div>
 
   <div class="margin-top2">
-    <h4 ng-show="rbac.cluster.bucket['*'].settings.read">
+    <h4 ng-show="rbac.cluster.bucket['.'].settings.read">
       Buckets &nbsp;<small>{{overviewCtl.buckets.length || '0'}} active</small>
     </h4>
     <hr>
     <div
-       ng-if="rbac.cluster.bucket['*'].stats.read"
+       ng-if="rbac.cluster.bucket['.'].stats.read"
        class="interim row items-space-around">
       <div
          ng-show="overviewCtl.buckets.length">
@@ -133,7 +133,7 @@
            style="height: 170px; width: 400px"></div>
       </div>
     </div>
-    <div class="zero-content" ng-show="!overviewCtl.buckets.length && rbac.cluster.bucket['*'].settings.read">
+    <div class="zero-content" ng-show="!overviewCtl.buckets.length && rbac.cluster.bucket['.'].settings.read">
       You have no data buckets. Go to <a ui-sref="app.admin.buckets">Buckets</a> to add one,
       or load a <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.
     </div>

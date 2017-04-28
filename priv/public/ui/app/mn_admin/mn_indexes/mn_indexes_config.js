@@ -20,7 +20,7 @@
         },
         data: {
           title: "Indexes",
-          permissions: "cluster.bucket['*'].settings.read || cluster.indexes.read"
+          permissions: "cluster.bucket['.'].settings.read || cluster.indexes.read"
         }
       })
       .state('app.admin.indexes.gsi', {
@@ -48,7 +48,7 @@
           }
         },
         data: {
-          permissions: "cluster.bucket['*'].settings.read"
+          permissions: "cluster.bucket['.'].settings.read"
         },
         views: {}
       };

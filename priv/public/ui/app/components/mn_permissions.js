@@ -10,7 +10,7 @@
     this.$get = ["$http", "$timeout", "$q", "$rootScope", "mnBucketsService", "$parse", mnPermissionsFacatory];
     this.set = set;
 
-    var interestingPermissions = [
+    var interestingPermissions = ([
       "cluster.buckets!create",
       "cluster.nodes!write",
       "cluster.pools!read",
@@ -34,7 +34,7 @@
       "cluster.admin.security!write",
       "cluster.samples!read",
       "cluster.nodes!read"
-    ];
+    ]).concat(generateBucketPermissions('.'));
 
     function getAll() {
       return _.clone(interestingPermissions);
@@ -44,6 +44,28 @@
       if (!_.contains(interestingPermissions, permission)) {
         interestingPermissions.push(permission);
       }
+    }
+
+    function generateBucketPermissions(name) {
+      return [
+        "cluster.bucket[" + name + "].settings!write",
+        "cluster.bucket[" + name + "].data!write",
+        "cluster.bucket[" + name + "].recovery!write",
+        "cluster.bucket[" + name + "].settings!read",
+        "cluster.bucket[" + name + "].data!read",
+        "cluster.bucket[" + name + "].data.docs!read",
+        "cluster.bucket[" + name + "].recovery!read",
+        "cluster.bucket[" + name + "].views!read",
+        "cluster.bucket[" + name + "].views!write",
+        "cluster.bucket[" + name + "].stats!read",
+        "cluster.bucket[" + name + "]!flush",
+        "cluster.bucket[" + name + "]!delete",
+        "cluster.bucket[" + name + "]!compact",
+        "cluster.bucket[" + name + "].views!compact",
+        "cluster.bucket[" + name + "].xdcr!read",
+        "cluster.bucket[" + name + "].xdcr!write",
+        "cluster.bucket[" + name + "].xdcr!execute"
+      ];
     }
 
     function mnPermissionsFacatory($http, $timeout, $q, $rootScope, mnBucketsService, $parse) {
@@ -65,28 +87,6 @@
 
       return mnPermissions;
 
-      function generateBucketPermissions(name) {
-        return [
-          "cluster.bucket[" + name + "].settings!write",
-          "cluster.bucket[" + name + "].data!write",
-          "cluster.bucket[" + name + "].recovery!write",
-          "cluster.bucket[" + name + "].settings!read",
-          "cluster.bucket[" + name + "].data!read",
-          "cluster.bucket[" + name + "].data.docs!read",
-          "cluster.bucket[" + name + "].recovery!read",
-          "cluster.bucket[" + name + "].views!read",
-          "cluster.bucket[" + name + "].views!write",
-          "cluster.bucket[" + name + "].stats!read",
-          "cluster.bucket[" + name + "]!flush",
-          "cluster.bucket[" + name + "]!delete",
-          "cluster.bucket[" + name + "]!compact",
-          "cluster.bucket[" + name + "].views!compact",
-          "cluster.bucket[" + name + "].xdcr!read",
-          "cluster.bucket[" + name + "].xdcr!write",
-          "cluster.bucket[" + name + "].xdcr!execute"
-        ];
-      }
-
       function clear() {
         delete $rootScope.rbac;
         mnPermissions.export.cluster = {};
@@ -94,11 +94,10 @@
       }
 
       function check() {
-        return doCheck(getAll().concat(generateBucketPermissions('*'))).then(function (resp) {
-          if (resp.cluster.bucket['*'].settings.read) {
+        return doCheck(["cluster.bucket[.].settings!read"]).then(function (resp) {
+          var permissions = getAll();
+          if (resp.data["cluster.bucket[.].settings!read"]) {
             return mnBucketsService.getBucketsByType().then(function (bucketsDetails) {
-              var permissions = [];
-
               if (bucketsDetails.length) {
                 angular.forEach(bucketsDetails, function (bucket) {
                   permissions = permissions.concat(generateBucketPermissions(bucket.name));
@@ -107,39 +106,12 @@
                 mnPermissions.export.default.all = bucketsDetails.byType.defaultName;
                 mnPermissions.export.default.membase = bucketsDetails.byType.membase.defaultName;
                 mnPermissions.export.default.ephemeral = bucketsDetails.byType.ephemeral.defaultName;
-                return doCheck(permissions);
               }
-              return resp;
+              return doCheck(permissions);
             });
           } else {
-            return resp;
+            return doCheck(permissions);
           }
-        });
-      }
-
-      function createWildcard(cluster, wildcard) {
-        for (var bucket in cluster.bucket) {
-          if (bucket != "*" && $parse(wildcard.join("."))(cluster.bucket[bucket])) {
-            wildcard.unshift("bucket['*']");
-            $parse(wildcard.join(".")).assign(cluster, true);
-            return;
-          }
-        }
-        wildcard.unshift("bucket['*']");
-        $parse(wildcard.join(".")).assign(cluster, false);
-      }
-
-      function createWildcards(root) {
-        var wildcards = [
-          ["stats", "read"],
-          ["xdcr", "read"],
-          ["xdcr", "write"],
-          ["xdcr", "execute"]
-        ];
-
-        root.cluster.bucket = root.cluster.bucket || {};
-        wildcards.forEach(function (wildcard) {
-          createWildcard(root.cluster, wildcard);
         });
       }
 
@@ -156,7 +128,6 @@
           var path = levels.shift() + "['" + levels.join("']['") + "']"; //in order to properly handle bucket names
           $parse(path).assign(rv, value);
         });
-        createWildcards(rv);
         return rv;
       }
 

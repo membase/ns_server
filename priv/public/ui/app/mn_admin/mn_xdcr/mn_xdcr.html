@@ -96,7 +96,7 @@
               <span>{{xdcrCtl.humanStatus(row)}}</span>
               <div
                  style="cursor: pointer; display: inline-block;"
-                 ng-show="row.status !== 'notRunning' && poolDefault.compat.atLeast30 && rbac.cluster.bucket['*'].xdcr.write && rbac.cluster.bucket['*'].xdcr.execute"
+                 ng-show="row.status !== 'notRunning' && poolDefault.compat.atLeast30 && rbac.cluster.bucket['.'].xdcr.write && rbac.cluster.bucket['.'].xdcr.execute"
                  class="icon text-normal"
                  ng-class="['fa-' + xdcrCtl.status(row)]"
                  ng-click="xdcrCtl.status(row) !== 'spinner' && xdcrCtl.pausePlayReplication(row)"></div>
@@ -110,11 +110,11 @@
             <td class="text-right">
               <a
                  class="link-heavy"
-                 ng-show="rbac.cluster.bucket['*'].xdcr.write"
+                 ng-show="rbac.cluster.bucket['.'].xdcr.write"
                  ng-click="xdcrCtl.deleteReplication(row)">Delete</a> &nbsp;
               <a
                  class="link-heavy"
-                 ng-show="rbac.cluster.bucket['*'].xdcr.read && rbac.cluster.xdcr.settings.read"
+                 ng-show="rbac.cluster.bucket['.'].xdcr.read && rbac.cluster.xdcr.settings.read"
                  ng-click="xdcrCtl.editReplication(row)">Edit</a>
             </td>
           </tr>
