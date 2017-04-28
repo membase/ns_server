@@ -294,14 +294,16 @@ get_definitions(Config) ->
     end.
 
 get_definitions_filtered_for_rest_api(Config) ->
-    case cluster_compat_mode:is_enterprise() of
-        true ->
-            get_definitions(Config);
-        false ->
-            [Role ||
-                {_, _, Props, _} = Role <- get_definitions(Config),
-                proplists:get_value(ce, Props, false)]
-    end.
+    Filter =
+        case cluster_compat_mode:is_enterprise() of
+            true ->
+                fun (Props) -> Props =/= [] end;
+            false ->
+                fun (Props) -> proplists:get_value(ce, Props, false) end
+        end,
+    [Role ||
+        {_, _, Props, _} = Role <- get_definitions(Config),
+        Filter(Props)].
 
 -spec object_match(rbac_permission_object(), rbac_permission_pattern_object()) ->
                           boolean().
@@ -431,9 +433,7 @@ get_all_assignable_roles(Config) ->
     BucketNames = get_possible_param_values(Config, bucket_name),
 
     lists:foldr(
-      fun ({_, _, [], _}, Acc) ->
-              Acc;
-          ({Role, [], Props, _}, Acc) ->
+      fun ({Role, [], Props, _}, Acc) ->
               [{Role, Props} | Acc];
           ({Role, [bucket_name], Props, _}, Acc) ->
               lists:foldr(
