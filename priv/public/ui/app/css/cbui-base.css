@@ -156,10 +156,9 @@ img {
   -ms-interpolation-mode: bicubic;
 }
 
-/* EMBEDDED FONTS ---------------------------------------------------------------- */
+/* EMBEDDED FONT ---------------------------------------------------------------- */
 
 /* Opens Sans (http://www.fontsquirrel.com/license/open-sans)
-   Font Awesome (http://fontawesome.io/license/) */
 
 /* Regular */
 @font-face {
@@ -194,22 +193,6 @@ img {
   font-style: normal;
 }
 
-/* icon font ---------------------------------------------------- */
-@font-face {
-  font-family: 'FontAwesome';
-  src:  url('fonts/fontawesome-webfont.woff?v=4.7.0') format('woff');
-  font-weight: normal;
-  font-style: normal;
-}
-.icon {
-  display: inline-block;
-  font: normal normal normal 18px/1 FontAwesome;
-  font-size: inherit;
-  text-rendering: auto;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
 /* Typography ------------------------------ */
 
 html {
@@ -239,138 +222,6 @@ li {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale;
-}
-
-button.icon {
-    min-width: auto;
-    padding: 0 1rem;
-}
-.fa-fw {
-  width: 1rem;
-  text-align: center;
-}
-.fa-2x {
-  font-size: 2em;
-}
-.fa-spin {
-  -webkit-animation: fa-spin 2s infinite linear;
-  animation: fa-spin 2s infinite linear;
-}
-.fa-pulse {
-  -webkit-animation: fa-spin 1s infinite steps(8);
-  animation: fa-spin 1s infinite steps(8);
-}
-@-webkit-keyframes fa-spin {
-  0% {
-    -webkit-transform: rotate(0deg);
-    transform: rotate(0deg);
-  }
-  100% {
-    -webkit-transform: rotate(359deg);
-    transform: rotate(359deg);
-  }
-}
-@keyframes fa-spin {
-  0% {
-    -webkit-transform: rotate(0deg);
-    transform: rotate(0deg);
-  }
-  100% {
-    -webkit-transform: rotate(359deg);
-    transform: rotate(359deg);
-  }
-}
-.fa-angle-right:before {
-    content: "\f105";
-}
-.fa-angle-left:before {
-    content: "\f104";
-}
-.fa-angle-down:before {
-    content: "\f107";
-}
-.fa-angle-up:before {
-    content: "\f106";
-}
-.fa-check:before {
-    content: "\f00c";
-}
-.fa-ban:before {
-    content: "\f05e";
-}
-.fa-pause:before {
-  content: "\f04c";
-}
-.fa-play:before {
-  content: "\f04b";
-}
-.fa-expand:before {
-  content: "\f065";
-}
-.fa-compress:before {
-  content: "\f066";
-}
-.fa-refresh:before {
-  content: "\f021";
-}
-.fa-square:before {
-  content: "\f0c8";
-}
-.fa-stack {
-  position: relative;
-  display: inline-block;
-  width: 1rem;
-  height: 1rem;
-  line-height: 1rem;
-  vertical-align: middle;
-}
-.fa-stack-1x,
-.fa-stack-2x {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  text-align: center;
-}
-.fa-stack-1x {
-  line-height: inherit;
-  font-size: .5em;
-}
-.fa-stack-2x {
-  font-size: 1em;
-}
-.fa-inverse {
-  color: #ffffff;
-}
-.fa-circle-thin:before {
-  content: "\f1db";
-}
-.fa-info:before {
-  content: "\f129";
-}
-.fa-info-circle:before {
-  content: "\f05a";
-}
-.fa-info-circle:hover {
-  color: #f5a623;
-}
-
-.fa-search-minus:before {
-  content: "\f010";
-}
-.fa-times-circle-o:before {
-  content: "\f05c";
-}
-.fa-times-circle:before {
-  content: "\f057";
-}
-
-.fa-warning:before,
-.fa-exclamation-triangle:before {
-  content: "\f071";
-}
-.fa-warning + p {
-  margin: .25rem 0 .5rem 1rem;
-  line-height: 1.4;
 }
 
 /* Headings  -----------------------------*/

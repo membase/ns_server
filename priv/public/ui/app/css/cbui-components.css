@@ -556,6 +556,9 @@ table th span.has-menu:after {
 .cbui-tablerow.padding-left {
   padding-left: 1rem;
 }
+.cbui-tablerow.padding-left-0 {
+  padding-left: 0;
+}
 .cbui-tablerow.row-min {
   min-height: 1rem;
 }
@@ -880,7 +883,11 @@ section.error {
   border: 0;
   padding: 0 1rem 1rem 1rem;
 }
-
+/* Delete and other confirmations dialog ----- */
+.fa-warning + p {
+  margin: .25rem 0 .5rem 1rem;
+  line-height: 1.4;
+}
 /* Wizard Dialog (uses Panel) --------- */
 .dialog-wizard  .panel-footer {
   -webkit-justify-content:space-between;
