@@ -209,7 +209,13 @@ verify_bucket_auth(#httpd{method = Method,
                         true ->
                             {allowed, BucketConfig};
                         _ ->
-                            {not_found, no_couchbase_bucket_exists}
+                            case Type =:= views of
+                                true ->
+                                    {not_found,
+                                     <<"views are supported only on couchbase buckets">>};
+                                false ->
+                                    {not_found, no_couchbase_bucket_exists}
+                            end
                     end;
                 forbidden ->
                     {forbidden, Permission};
