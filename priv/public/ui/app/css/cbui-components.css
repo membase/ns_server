@@ -562,6 +562,10 @@ table th span.has-menu:after {
 .cbui-tablerow.row-min {
   min-height: 1rem;
 }
+.cbui-tablerow.items-top {
+  -webkit-align-items: flex-start;
+  align-items: flex-start;
+}
 .cbui-table-header {
   display: -webkit-flex;
   display: -ms-flexbox;
@@ -807,12 +811,14 @@ section.error {
   margin-bottom: 0 !important;
   padding: .75rem 1rem;
 }
-
+.panel-footer.spaced {
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+}
 .panel-footer a {
   margin-right: 1.5rem;
   font-size: .961rem;
 }
-
 .panel-footer a.tight {
   margin-right: 1rem;
 }
@@ -830,9 +836,6 @@ section.error {
 }
 
 .dialog-med .panel-footer {
-  -webkit-justify-content:flex-end;
-  -ms-flex-pack:end;
-  justify-content:flex-end;
   position: relative;
   z-index:2;
 }
@@ -890,9 +893,12 @@ section.error {
 }
 /* Wizard Dialog (uses Panel) --------- */
 .dialog-wizard  .panel-footer {
-  -webkit-justify-content:space-between;
-      -ms-flex-pack:justify;
-          justify-content:space-between;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+}
+/* Large Dialog --------- */
+.dialog-lg {
+  width: 640px;
 }
 
 /* modal background -------------------- */
@@ -1796,7 +1802,36 @@ section.dynamic_unhealthy {
   padding-left: .5rem;
 }
 
-/* CodeMirror JSON editor ---------- */
+/* CodeMirror JSON editor height ---------- */
 .height-100 .CodeMirror {
   height: 75vh;
+}
+
+/* "LOADING" animated ellipsis ------------------ */
+.loading {
+  display: inline-block;
+  width: 1rem;
+}
+.loading-placeholder {
+  display: inline-block;
+  width: 1rem;
+}
+.loading:after {
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: bottom;
+  -webkit-animation: ellipsis steps(4,end) 900ms infinite;
+  animation: ellipsis steps(4,end) 900ms infinite;
+  content: "\2026"; /* ascii code for the ellipsis character */
+  width: 0;
+}
+@keyframes ellipsis {
+  to {
+    width: 1rem;
+  }
+}
+@-webkit-keyframes ellipsis {
+  to {
+    width: 1rem;
+  }
 }

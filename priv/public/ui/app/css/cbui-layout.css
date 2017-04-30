@@ -150,6 +150,11 @@ don't allow flex container to be more than screen size
     -ms-flex-pack: space-around;
     justify-content: space-around;
 }
+.row.items-stretch {
+  -webkit-box-align: stretch;
+  -ms-grid-row-align: stretch;
+  align-items: stretch;
+}
 
 .flex-grow-one {
     flex-grow: 1;
@@ -245,12 +250,20 @@ footer {
 }
 
 /* LAYOUT HELPERS ------------------- */
+.margin-left-half {
+  margin-left: .5rem;
+}
+
 .indent-1 {
   margin-left: 1rem;
 }
 
 .indent-2 {
   margin-left: 2rem;
+}
+
+.padding-0 {
+  padding: 0 !important;
 }
 
 .padding-left-half {
@@ -394,4 +407,22 @@ footer {
 }
 .min-height-2 {
   height: 2rem;
+}
+
+.break-word {
+  word-break: break-all;
+}
+.break-all-modal {
+  -ms-word-break: break-all;
+  overflow-wrap: break-word;
+}
+.break-all {
+  -ms-word-break: break-all;
+  word-break: break-all;
+  /* Non standard for webkit */
+  word-break: break-word;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  -ms-hyphens: auto;
+  hyphens: auto;
 }

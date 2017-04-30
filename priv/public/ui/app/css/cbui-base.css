@@ -744,20 +744,6 @@ table td {
   padding: 1rem;
   vertical-align: middle;
 }
-.break-all-modal {
-  -ms-word-break: break-all;
-  overflow-wrap: break-word;
-}
-.break-all {
-  -ms-word-break: break-all;
-  word-break: break-all;
-  /* Non standard for webkit */
-  word-break: break-word;
-  -webkit-hyphens: auto;
-  -moz-hyphens: auto;
-  -ms-hyphens: auto;
-  hyphens: auto;
-}
 
 .border-top {
   border-top: 1px solid #eceff2;
@@ -1240,6 +1226,9 @@ select.select-small {
 .grayblue-5 {
   background-color: #f6f7f9;
 }
+.gray-6 {
+  background-color: #ececec;
+}
 .gray-7 {
   background-color: #f5f5f5;
 }
@@ -1254,6 +1243,10 @@ select.select-small {
   background-color: #ecf3fa;
   transition: all linear 0.2s;
   cursor: pointer;
+}
+
+.hidden {
+  display: none;
 }
 
 .disable-text-selection {
