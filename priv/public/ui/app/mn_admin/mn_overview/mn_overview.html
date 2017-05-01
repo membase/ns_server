@@ -98,8 +98,8 @@
     </div>
   </div>
 
-  <div class="margin-top2">
-    <h4 ng-show="rbac.cluster.bucket['.'].settings.read">
+  <div class="margin-top2" ng-if="rbac.cluster.bucket['.'].settings.read">
+    <h4>
       Buckets &nbsp;<small>{{overviewCtl.buckets.length || '0'}} active</small>
     </h4>
     <hr>
@@ -133,9 +133,9 @@
            style="height: 170px; width: 400px"></div>
       </div>
     </div>
-    <div class="zero-content" ng-show="!overviewCtl.buckets.length && rbac.cluster.bucket['.'].settings.read">
-      You have no data buckets. Go to <a ui-sref="app.admin.buckets">Buckets</a> to add one,
-      or load a <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.
+    <div class="zero-content" ng-show="!overviewCtl.buckets.length">
+      You have no data buckets.
+      <span ng-show="rbac.cluster.buckets.create">Go to <a ui-sref="app.admin.buckets">Buckets</a> to add one, or load a <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.</span>
     </div>
   </div>
 </div>
