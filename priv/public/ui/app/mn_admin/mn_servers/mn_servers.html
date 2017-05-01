@@ -54,7 +54,7 @@
     GROUPS
   </a>
   <a href=""
-     ng-show="poolDefault && !poolDefault.rebalancing && rbac.cluster.nodes.write"
+     ng-show="poolDefault && !poolDefault.rebalancing && rbac.cluster.pools.write"
      ng-click="serversCtl.addServer()">
     ADD SERVER
   </a>
@@ -64,22 +64,22 @@
    mn-spinner="!serversCtl.nodes || (rbac.cluster.tasks.read && !adminCtl.tasks) || (rbac.cluster.server_groups.read && !serversCtl.getGroupsByHostname)"
    min-height="300px">
   <div class="row flex-right">
-    <span>
+    <span ng-show="rbac.cluster.tasks.read">
       <button
-         ng-show="!poolDefault.rebalancing  && rbac.cluster.nodes.write && rbac.cluster.tasks.read"
+         ng-show="!poolDefault.rebalancing  && rbac.cluster.pools.write"
          ng-click="serversCtl.postRebalance()"
          ng-disabled="adminCtl.tasks.inRecoveryMode || (!serversCtl.nodes.pending.length && poolDefault.balanced) || serversCtl.nodes.unhealthyActive || adminCtl.tasks.isLoadingSamples || adminCtl.tasks.isOrphanBucketTask"
          class="orange">Rebalance</button>
       <button
          class="orange"
-         ng-show="poolDefault.rebalancing && rbac.cluster.nodes.write"
+         ng-show="poolDefault.rebalancing && rbac.cluster.pools.write"
          ng-click="serversCtl.stopRebalance()">
         <span ng-show="adminCtl.tasks.isSubtypeGraceful">Stop Fail Over</span>
         <span ng-show="!adminCtl.tasks.isSubtypeGraceful">Stop Rebalance</span>
       </button>
       <button
          ng-click="serversCtl.onStopRecovery()"
-         ng-show="adminCtl.tasks.inRecoveryMode && rbac.cluster.tasks.read && rbac.cluster.bucket[adminCtl.tasks.tasksRecovery.bucket].write"
+         ng-show="adminCtl.tasks.inRecoveryMode && rbac.cluster.bucket[adminCtl.tasks.tasksRecovery.bucket].recovery.write"
          class="orange">Stop Recovery</button>
     </span>
   </div>
