@@ -98,7 +98,7 @@
     </section>
     <div ng-if="!documentsControlCtl.state.docs.rows.length" class="zero-content">
       <span ng-show="!documentsCtl.state.currentBucket.isEphemeral">There are currently no documents in this bucket{{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}</span>
-      <span ng-show="documentsCtl.state.currentBucket.isEphemeral">&nbsp;</span>
+      <span ng-show="documentsCtl.state.currentBucket.isEphemeral">Documents are retrieved from ephemeral buckets by using the id lookup.</span>
     </div>
   </div>
 </div>
