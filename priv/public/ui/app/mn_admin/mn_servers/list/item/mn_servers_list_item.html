@@ -68,7 +68,7 @@
   <!-- unreachable/unresponsive node pre- and post-failover -->
   <div
      class="cbui-tablerow error"
-     ng-show="serversItemCtl.isNodeUnhealthy && !serversItemCtl.isNodeInactiveFailed">
+     ng-show="serversItemCtl.isNodeUnhealthy && !serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeInactiveAdded">
     <span>
       Node unresponsive (wait for node, or failover to remove on next rebalance)
     </span>
