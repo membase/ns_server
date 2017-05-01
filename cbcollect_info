@@ -736,7 +736,11 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
                        make_index_task("MOI allocator stats are: ", "stats/storage/mm",
                                        memcached_pass, index_port),
                        make_index_task("Indexer Go routine dump: ", "debug/pprof/goroutine?debug=1",
-                                       memcached_pass, index_port, logfile="indexer_pprof.log")]
+                                       memcached_pass, index_port, logfile="indexer_pprof.log"),
+                       make_index_task("Indexer Rebalance Tokens: ", "listRebalanceTokens",
+                                       memcached_pass, index_port),
+                       make_index_task("Indexer Metadata Tokens: ", "listMetadataTokens",
+                                       memcached_pass, index_port)]
 
     projector_tasks = []
     proj_port = read_guts(guts, "projector_port")
