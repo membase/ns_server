@@ -528,8 +528,10 @@ do_upgrade_to_spock(Nodes, Repair) ->
           ({BucketName, BucketConfig}) ->
               Password = proplists:get_value(sasl_password, BucketConfig, ""),
               Name = "Generated user for bucket " ++ BucketName,
-              {commit, ok} = store_user_spock({BucketName, local}, [{name, Name}], Password,
-                                              [{bucket_full_access, [BucketName]}], Config)
+              ok = store_user_spock_validated(
+                     {BucketName, local},
+                     [{name, Name}, {roles, [{bucket_full_access, [BucketName]}]}],
+                     build_memcached_auth(Password))
       end, ns_bucket:get_buckets(Config)),
 
     LdapUsers = get_users_45(Config),
