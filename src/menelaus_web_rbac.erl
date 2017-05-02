@@ -169,9 +169,9 @@ role_to_json({Name, [{BucketName, _Id}]}) ->
 role_to_json({Name, [BucketName]}) ->
     [{role, Name}, {bucket_name, list_to_binary(BucketName)}].
 
-filter_roles(_Config, undefined, Roles) ->
+filter_roles_by_permission(_Config, undefined, Roles) ->
     Roles;
-filter_roles(Config, RawPermission, Roles) ->
+filter_roles_by_permission(Config, RawPermission, Roles) ->
     AllValues = menelaus_roles:calculate_possible_param_values(ns_bucket:get_buckets(Config)),
     case parse_permission(RawPermission) of
         error ->
@@ -207,7 +207,7 @@ handle_get_roles(Req) ->
 
     Config = ns_config:get(),
     Roles = menelaus_roles:get_all_assignable_roles(Config),
-    case filter_roles(Config, Permission, Roles) of
+    case filter_roles_by_permission(Config, Permission, Roles) of
         error ->
             menelaus_util:reply_json(Req, <<"Malformed permission.">>, 400);
         FilteredRoles ->
