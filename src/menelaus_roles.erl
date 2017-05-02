@@ -354,6 +354,8 @@ is_allowed({Object, Operation}, Roles) ->
 
 -spec substitute_params([string()], [atom()], [rbac_permission_pattern_raw()]) ->
                                [rbac_permission_pattern()].
+substitute_params([], [], Permissions) ->
+    Permissions;
 substitute_params(Params, ParamDefinitions, Permissions) ->
     ParamPairs = lists:zip(ParamDefinitions, Params),
     lists:map(fun ({ObjectPattern, AllowedOperations}) ->
@@ -378,16 +380,11 @@ compile_params(ParamDefs, Params, AllParamValues) ->
             strip_ids(ParamDefs, Values)
     end.
 
--spec compile_roles([rbac_role()], [rbac_role_def()] | undefined, rbac_all_param_values()) ->
-                           [rbac_compiled_role()].
-compile_roles(_Roles, undefined, _AllParamValues) ->
-    %% can happen briefly after node joins the cluster on pre Spock clusters
-    [];
-compile_roles(Roles, Definitions, AllParamValues) ->
+compile_roles(CompileRole, Roles, Definitions, AllParamValues) ->
     lists:filtermap(fun (Name) when is_atom(Name) ->
                             case lists:keyfind(Name, 1, Definitions) of
                                 {Name, [], _Props, Permissions} ->
-                                    {true, Permissions};
+                                    {true, CompileRole(Name, [], [], Permissions)};
                                 false ->
                                     false
                             end;
@@ -398,12 +395,23 @@ compile_roles(Roles, Definitions, AllParamValues) ->
                                         false ->
                                             false;
                                         NewParams ->
-                                            {true, substitute_params(NewParams, ParamDefs, Permissions)}
+                                            {true, CompileRole(Name, NewParams, ParamDefs, Permissions)}
                                     end;
                                 false ->
                                     false
                             end
                     end, Roles).
+
+-spec compile_roles([rbac_role()], [rbac_role_def()] | undefined, rbac_all_param_values()) ->
+                           [rbac_compiled_role()].
+compile_roles(_Roles, undefined, _AllParamValues) ->
+    %% can happen briefly after node joins the cluster on pre Spock clusters
+    [];
+compile_roles(Roles, Definitions, AllParamValues) ->
+    compile_roles(
+      fun (_Name, Params, ParamDefs, Permissions) ->
+              substitute_params(Params, ParamDefs, Permissions)
+      end, Roles, Definitions, AllParamValues).
 
 -spec get_roles(rbac_identity()) -> [rbac_role()].
 get_roles({"", wrong_token}) ->
