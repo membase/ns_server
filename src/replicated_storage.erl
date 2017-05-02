@@ -33,6 +33,7 @@
 -callback save_doc(term(), term()) -> {ok, term()} | {error, term()}.
 
 -include("ns_common.hrl").
+-include("pipes.hrl").
 
 -record(state, {child_module :: atom(),
                 child_state :: term(),
@@ -118,6 +119,25 @@ handle_call({interactive_update, Doc}, _From,
                     {reply, Error, State}
             end
     end;
+handle_call({mass_update, Context}, From, #state{child_module = Module,
+                                                 child_state = ChildState} = State) ->
+    Updater =
+        ?make_consumer(
+           pipes:fold(
+             ?producer(),
+             fun (Doc, {Errors, St}) ->
+                     {reply, RV, NewSt} =
+                         handle_call({interactive_update, Doc}, From, St),
+                     {case RV of
+                          ok ->
+                              Errors;
+                          Error ->
+                              [{Doc, Error} | Errors]
+                      end, NewSt}
+             end, {[], State})),
+    {RV1, NewState} =
+        Module:handle_mass_update(Context, Updater, ChildState),
+    {reply, RV1, NewState};
 handle_call(sync_token, From, #state{replicator = Replicator} = State) ->
     ?log_debug("Received sync_token from ~p", [From]),
     Replicator ! {sync_token, From},

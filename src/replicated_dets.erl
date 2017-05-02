@@ -22,11 +22,12 @@
 
 -behaviour(replicated_storage).
 
--export([start_link/6, set/3, delete/2, delete_all/1, get/2, get/3, select/3, select/4, empty/1]).
+-export([start_link/6, set/3, delete/2, delete_all/1, get/2, get/3, select/3, select/4, empty/1,
+         select_with_update/4]).
 
 -export([init/1, init_after_ack/1, handle_call/3, handle_info/2,
          get_id/1, find_doc/2, get_all_docs/1,
-         get_revision/1, set_revision/2, is_deleted/1, save_doc/2]).
+         get_revision/1, set_revision/2, is_deleted/1, save_doc/2, handle_mass_update/3]).
 
 -record(state, {child_module :: atom(),
                 child_state :: term(),
@@ -106,6 +107,29 @@ select(Name, KeySpec, N, Locked) ->
         false ->
             ?make_producer(select_from_dets(Name, MatchSpec, N, ?yield()))
     end.
+
+
+select_with_update(Name, KeySpec, N, UpdateFun) ->
+    gen_server:call(Name, {mass_update, {Name, KeySpec, N, UpdateFun}}, infinity).
+
+handle_mass_update({Name, KeySpec, N, UpdateFun}, Updater, _State) ->
+    Transducer =
+        ?make_transducer(
+           pipes:foreach(
+             ?producer(),
+             fun ({Id, Value}) ->
+                     case UpdateFun(Id, Value) of
+                         skip ->
+                             ok;
+                         delete ->
+                             ?yield(delete_doc(Id));
+                         {update, NewValue} ->
+                             ?yield(update_doc(Id, NewValue))
+                     end
+             end)),
+    {RawErrors, ParentState} = pipes:run(select(Name, KeySpec, N, true), Transducer, Updater),
+    Errors = [{Id, Error} || {#doc{id = Id}, Error} <- RawErrors],
+    {Errors, ParentState}.
 
 init([Name, ChildModule, InitParams, Path, Replicator, CacheSize]) ->
     replicated_storage:anounce_startup(Replicator),
