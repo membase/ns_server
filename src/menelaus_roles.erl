@@ -385,16 +385,23 @@ compile_roles(_Roles, undefined, _AllParamValues) ->
     [];
 compile_roles(Roles, Definitions, AllParamValues) ->
     lists:filtermap(fun (Name) when is_atom(Name) ->
-                            {Name, [], _Props, Permissions} = lists:keyfind(Name, 1, Definitions),
-                            {true, Permissions};
-                        ({Name, Params}) ->
-                            {Name, ParamDefs, _Props, Permissions} =
-                                lists:keyfind(Name, 1, Definitions),
-                            case compile_params(ParamDefs, Params, AllParamValues) of
+                            case lists:keyfind(Name, 1, Definitions) of
+                                {Name, [], _Props, Permissions} ->
+                                    {true, Permissions};
                                 false ->
-                                    false;
-                                NewParams ->
-                                    {true, substitute_params(NewParams, ParamDefs, Permissions)}
+                                    false
+                            end;
+                        ({Name, Params}) ->
+                            case lists:keyfind(Name, 1, Definitions) of
+                                {Name, ParamDefs, _Props, Permissions} ->
+                                    case compile_params(ParamDefs, Params, AllParamValues) of
+                                        false ->
+                                            false;
+                                        NewParams ->
+                                            {true, substitute_params(NewParams, ParamDefs, Permissions)}
+                                    end;
+                                false ->
+                                    false
                             end
                     end, Roles).
 
