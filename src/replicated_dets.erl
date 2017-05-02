@@ -44,16 +44,16 @@ start_link(ChildModule, InitParams, Name, Path, Replicator, CacheSize) ->
                                   Replicator).
 
 set(Name, Id, Value) ->
-    gen_server:call(Name, {interactive_update, #doc{id = Id,
-                                                    rev = 0,
-                                                    deleted = false,
-                                                    value = Value}}, infinity).
+    gen_server:call(Name, {interactive_update, update_doc(Id, Value)}, infinity).
 
 delete(Name, Id) ->
-    gen_server:call(Name, {interactive_update, #doc{id = Id,
-                                                    rev = 0,
-                                                    deleted = true,
-                                                    value = []}}, infinity).
+    gen_server:call(Name, {interactive_update, delete_doc(Id)}, infinity).
+
+delete_doc(Id) ->
+    #doc{id = Id, rev = 0, deleted = true, value = []}.
+
+update_doc(Id, Value) ->
+    #doc{id = Id, rev = 0, deleted = false, value = Value}.
 
 delete_all(Name) ->
     Keys =
