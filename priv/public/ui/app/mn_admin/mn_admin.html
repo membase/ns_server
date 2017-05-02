@@ -24,7 +24,7 @@
            mn-drag-and-drop
            base-corner-right="true"
            class="tasks-progress dialog-small enable-ng-animation"
-           ng-if="rbac.cluster.tasks.read && !adminCtl.isProgressBarClosed">
+           ng-if="!adminCtl.isProgressBarClosed">
           <div class="close-tasks">
             <span ng-click="adminCtl.toggleProgressBar()">X</span>
           </div>
@@ -59,7 +59,7 @@
       </div>
       <a
          ng-click="adminCtl.runInternalSettingsDialog();"
-         ng-show="adminCtl.enableInternalSettings && (rbac.cluster.settings.read || rbac.cluster.xdcr.settings.read)">
+         ng-show="adminCtl.enableInternalSettings && rbac.cluster.admin.settings.write">
         Edit internal settings
       </a>
       <a href="classic-index.html" target="_self">
@@ -173,7 +173,7 @@
       <a
          mn-tab="indexes"
          ng-class="{currentNav: ('app.admin.indexes' | includedByState)}"
-         ng-show="rbac.cluster.bucket['.'].settings.read || rbac.cluster.indexes.read"
+         ng-show="rbac.cluster.bucket['.'].views.read || rbac.cluster.indexes.read"
          ui-sref="app.admin.indexes.gsi">
         <span
            ui-sref="app.admin.indexes.gsi"
@@ -192,10 +192,10 @@
       <span
          mn-tab="security"
          ng-class="{currentNav: ('app.admin.security' | includedByState)}"
-         ng-show="rbac.cluster.admin.security.read && (pools.isEnterprise || poolDefault.compat.atLeast50)">
+         ng-show="pools.isEnterprise || (rbac.cluster.admin.security.read && poolDefault.compat.atLeast50)">
         <a
            ui-sref="app.admin.security.userRoles"
-           ng-show="poolDefault.compat.atLeast50">Security</a>
+           ng-show="rbac.cluster.admin.security.read && poolDefault.compat.atLeast50">Security</a>
         <a
            ui-sref="app.admin.security.rootCertificate"
            ng-show="pools.isEnterprise && !poolDefault.compat.atLeast50">Security</a>

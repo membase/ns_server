@@ -51,6 +51,8 @@
       "cluster.xdcr.remote_clusters!write",
       "cluster.admin.security!read",
       "cluster.admin.logs!read",
+      "cluster.admin.settings!read",
+      "cluster.admin.settings!write",
       "cluster.logs!read",
       "cluster.pools!write",
       "cluster.indexes!write",

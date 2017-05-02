@@ -167,7 +167,9 @@
         if (!params || !params.doNotShowSpinner) {
           vm.showTasksSpinner = true;
         }
-        tasksPoller.reload(true);
+        if (tasksPoller) {
+          tasksPoller.reload(true);
+        }
       });
 
       $scope.$on("reloadPoolDefaultPoller", function () {

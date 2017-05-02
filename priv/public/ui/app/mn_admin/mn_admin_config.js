@@ -174,7 +174,8 @@
           }
         },
         data: {
-          title: "Logs"
+          title: "Logs",
+          permissions: "cluster.admin.logs.read"
         }
       })
       .state('app.admin.logs.list', {
@@ -188,7 +189,6 @@
         controller: 'mnLogsCollectInfoController as logsCollectInfoCtl',
         templateUrl: 'app/mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
         data: {
-          permissions: "cluster.admin.logs.read",
           title: "Collect Information"
         }
       })
@@ -239,7 +239,8 @@
         url: "/documents?bucket",
         data: {
           title: "Documents",
-          child: parent
+          child: parent,
+          permissions: "cluster.bucket['.'].settings.read && cluster.bucket['.'].data.read"
         }
       })
       .state(parent + '.documents.control', {
@@ -290,7 +291,9 @@
         },
         data: {
           title: "Statistics",
-          child: parent
+          child: parent,
+          permissions: "cluster.bucket['.'].settings.read && " +
+            "cluster.bucket['.'].stats.read && cluster.stats.read"
         }
       })
       .state(parent + '.analytics.list', {
