@@ -45,7 +45,8 @@
          upgrade_to_spock/2,
          config_upgrade/0,
          upgrade_status/0,
-         get_passwordless/0]).
+         get_passwordless/0,
+         filter_out_invalid_roles/3]).
 
 %% callbacks for replicated_dets
 -export([init/1, on_save/4, on_empty/1, handle_call/4]).
@@ -549,3 +550,8 @@ config_upgrade() ->
 
 upgrade_status() ->
     ns_config:read_key_fast(users_upgrade, undefined).
+
+filter_out_invalid_roles(Props, Definitions, AllPossibleValues) ->
+    Roles = proplists:get_value(roles, Props, []),
+    FilteredRoles = menelaus_roles:filter_out_invalid_roles(Roles, Definitions, AllPossibleValues),
+    lists:keystore(roles, 1, Props, {roles, FilteredRoles}).

@@ -339,10 +339,10 @@ filter_out_invalid_roles() ->
            pipes:foreach(
              ?producer(),
              fun ({Key, Props}) ->
-                     Roles = proplists:get_value(roles, Props, []),
-                     FilteredRoles =
-                         menelaus_roles:filter_out_invalid_roles(Roles, Definitions, AllPossibleValues),
-                     ?yield({Key, lists:keystore(roles, 1, Props, {roles, FilteredRoles})})
+                     NewProps =
+                         menelaus_users:filter_out_invalid_roles(Props, Definitions,
+                                                                 AllPossibleValues),
+                     ?yield({Key, NewProps})
              end)
        end).
 
