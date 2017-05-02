@@ -214,6 +214,7 @@ select_from_dets(Name, MatchSpec, N, Yield) ->
     RV.
 
 select_from_dets_locked(TableName, MatchSpec, N, Yield) ->
+    ?log_debug("Starting select with ~p", [{TableName, MatchSpec, N}]),
     dets:safe_fixtable(TableName, true),
     do_select_from_dets(TableName, MatchSpec, N, Yield),
     dets:safe_fixtable(TableName, false),
