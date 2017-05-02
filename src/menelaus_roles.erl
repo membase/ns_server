@@ -564,21 +564,14 @@ validate_role(Role, Params, Definitions, AllValues) ->
 validate_roles(Roles, Config) ->
     Definitions = get_definitions_filtered_for_rest_api(Config),
     AllParamValues = calculate_possible_param_values(ns_bucket:get_buckets(Config)),
-    {ValidatedRoles, UnknownRoles} =
-        lists:foldl(fun (Role, {V, U}) ->
-                            case validate_role(Role, Definitions, AllParamValues) of
-                                false ->
-                                    {V, [Role | U]};
-                                {ok, R} ->
-                                    {[R | V], U}
-                            end
-                    end, {[], []}, Roles),
-    case UnknownRoles of
-        [] ->
-            {ok, ValidatedRoles};
-        _ ->
-            {error, roles_validation, UnknownRoles}
-    end.
+    lists:foldl(fun (Role, {Validated, Unknown}) ->
+                        case validate_role(Role, Definitions, AllParamValues) of
+                            false ->
+                                {Validated, [Role | Unknown]};
+                            {ok, R} ->
+                                {[R | Validated], Unknown}
+                        end
+                end, {[], []}, Roles).
 
 %% assertEqual is used instead of assert and assertNot to avoid
 %% dialyzer warnings

@@ -207,14 +207,14 @@ store_user_45({UserName, external}, Props, Roles) ->
     ns_config:run_txn(
       fun (Config, SetFn) ->
               case menelaus_roles:validate_roles(Roles, Config) of
-                  {ok, _} ->
+                  {_, []} ->
                       Identity = {UserName, saslauthd},
                       Users = get_users_45(Config),
                       NewUsers = lists:keystore(Identity, 1, Users,
                                                 {Identity, [{roles, Roles} | Props]}),
                       {commit, SetFn(user_roles, NewUsers, Config)};
-                  Error ->
-                      {abort, Error}
+                  {_, BadRoles} ->
+                      {abort, {error, roles_validation, BadRoles}}
               end
       end).
 
@@ -260,11 +260,11 @@ store_user_spock({_UserName, Domain} = Identity, Props, Password, Roles, Config)
 
 store_user_spock_with_auth(Identity, Props, Auth, Roles, Config) ->
     case menelaus_roles:validate_roles(Roles, Config) of
-        {ok, NewRoles} ->
+        {NewRoles, []} ->
             store_user_spock_validated(Identity, [{roles, NewRoles} | Props], Auth),
             {commit, ok};
-        Error ->
-            {abort, Error}
+        {_, BadRoles} ->
+            {abort, {error, roles_validation, BadRoles}}
     end.
 
 store_user_spock_validated(Identity, Props, Auth) ->
@@ -527,17 +527,21 @@ do_upgrade_to_spock(Nodes, Repair) ->
                            [AdminName]);
           ({BucketName, BucketConfig}) ->
               Password = proplists:get_value(sasl_password, BucketConfig, ""),
+              UUID = proplists:get_value(uuid, BucketConfig),
               Name = "Generated user for bucket " ++ BucketName,
               ok = store_user_spock_validated(
                      {BucketName, local},
-                     [{name, Name}, {roles, [{bucket_full_access, [BucketName]}]}],
+                     [{name, Name}, {roles, [{bucket_full_access, [{BucketName, UUID}]}]}],
                      build_memcached_auth(Password))
       end, ns_bucket:get_buckets(Config)),
 
     LdapUsers = get_users_45(Config),
     lists:foreach(
       fun ({{LdapUser, saslauthd}, Props}) ->
-              ok = store_user_spock_validated({LdapUser, external}, Props, same)
+              Roles = proplists:get_value(roles, Props),
+              {ValidatedRoles, _} = menelaus_roles:validate_roles(Roles, Config),
+              NewProps = lists:keystore(roles, 1, Props, {roles, ValidatedRoles}),
+              ok = store_user_spock_validated({LdapUser, external}, NewProps, same)
       end, LdapUsers).
 
 config_upgrade() ->
