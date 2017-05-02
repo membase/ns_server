@@ -324,11 +324,27 @@ handle_get_users_45(Req) ->
 handle_get_all_users(Req, Pattern) ->
     Passwordless = menelaus_users:get_passwordless(),
     pipes:run(menelaus_users:select_users(Pattern),
-              [jsonify_users(Passwordless),
+              [filter_out_invalid_roles(),
+               jsonify_users(Passwordless),
                sjson:encode_extended_json([{compact, false},
                                            {strict, false}]),
                pipes:simple_buffer(2048)],
               menelaus_util:send_chunked(Req, 200, [{"Content-Type", "application/json"}])).
+
+filter_out_invalid_roles() ->
+    Definitions = menelaus_roles:get_definitions(),
+    AllPossibleValues = menelaus_roles:calculate_possible_param_values(ns_bucket:get_buckets()),
+    ?make_transducer(
+       begin
+           pipes:foreach(
+             ?producer(),
+             fun ({Key, Props}) ->
+                     Roles = proplists:get_value(roles, Props, []),
+                     FilteredRoles =
+                         menelaus_roles:filter_out_invalid_roles(Roles, Definitions, AllPossibleValues),
+                     ?yield({Key, lists:keystore(roles, 1, Props, {roles, FilteredRoles})})
+             end)
+       end).
 
 jsonify_users(Passwordless) ->
     ?make_transducer(
@@ -368,6 +384,7 @@ handle_get_users_page(Req, Pattern, PageSize, After) ->
     Passwordless = menelaus_users:get_passwordless(),
     {PageSkew, Skipped, Total} =
         pipes:run(menelaus_users:select_users(Pattern),
+                  filter_out_invalid_roles(),
                   ?make_consumer(
                      pipes:fold(
                        ?producer(),
@@ -389,7 +406,11 @@ handle_get_users_page(Req, Pattern, PageSize, After) ->
 handle_whoami(Req) ->
     Passwordless = menelaus_users:get_passwordless(),
     Identity = menelaus_auth:get_identity(Req),
-    Roles = menelaus_roles:get_roles(Identity),
+    Definitions = menelaus_roles:get_definitions(),
+    AllPossibleValues = menelaus_roles:calculate_possible_param_values(ns_bucket:get_buckets()),
+
+    Roles = menelaus_roles:filter_out_invalid_roles(
+              menelaus_roles:get_roles(Identity), Definitions, AllPossibleValues),
     Name = menelaus_users:get_user_name(Identity),
     menelaus_util:reply_json(
       Req, get_user_json(Identity, Name, lists:member(Identity, Passwordless), Roles)).

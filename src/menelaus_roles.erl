@@ -54,7 +54,8 @@
          compile_roles/3,
          get_all_assignable_roles/1,
          validate_roles/2,
-         calculate_possible_param_values/1]).
+         calculate_possible_param_values/1,
+         filter_out_invalid_roles/3]).
 
 -spec roles_45() -> [rbac_role_def(), ...].
 roles_45() ->
@@ -457,6 +458,13 @@ get_compiled_roles(Identity) ->
     Definitions = get_definitions(),
     AllPossibleValues = calculate_possible_param_values(ns_bucket:get_buckets()),
     compile_roles(get_roles(Identity), Definitions, AllPossibleValues).
+
+filter_out_invalid_roles(Roles, Definitions, AllPossibleValues) ->
+    compile_roles(fun (Name, [], _, _) ->
+                          Name;
+                      (Name, Params, _, _) ->
+                          {Name, Params}
+                  end, Roles, Definitions, AllPossibleValues).
 
 calculate_possible_param_values(_Buckets, []) ->
     [[]];
