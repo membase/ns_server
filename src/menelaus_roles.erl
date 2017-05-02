@@ -381,7 +381,7 @@ compile_params(ParamDefs, Params, AllParamValues) ->
 -spec compile_roles([rbac_role()], [rbac_role_def()] | undefined, rbac_all_param_values()) ->
                            [rbac_compiled_role()].
 compile_roles(_Roles, undefined, _AllParamValues) ->
-    %% can happen briefly after node joins the cluster
+    %% can happen briefly after node joins the cluster on pre Spock clusters
     [];
 compile_roles(Roles, Definitions, AllParamValues) ->
     lists:filtermap(fun (Name) when is_atom(Name) ->
