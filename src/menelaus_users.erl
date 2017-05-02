@@ -46,7 +46,8 @@
          config_upgrade/0,
          upgrade_status/0,
          get_passwordless/0,
-         filter_out_invalid_roles/3]).
+         filter_out_invalid_roles/3,
+         cleanup_bucket_roles/1]).
 
 %% callbacks for replicated_dets
 -export([init/1, on_save/4, on_empty/1, handle_call/4]).
@@ -555,3 +556,29 @@ filter_out_invalid_roles(Props, Definitions, AllPossibleValues) ->
     Roles = proplists:get_value(roles, Props, []),
     FilteredRoles = menelaus_roles:filter_out_invalid_roles(Roles, Definitions, AllPossibleValues),
     lists:keystore(roles, 1, Props, {roles, FilteredRoles}).
+
+cleanup_bucket_roles(BucketName) ->
+    ?log_debug("Delete all roles for bucket ~p", [BucketName]),
+    Buckets = lists:keydelete(BucketName, 1, ns_bucket:get_buckets()),
+    Definitions = menelaus_roles:get_definitions(),
+    AllPossibleValues = menelaus_roles:calculate_possible_param_values(Buckets),
+
+    UpdateFun =
+        fun ({user, Key}, Props) ->
+                case menelaus_users:filter_out_invalid_roles(Props, Definitions,
+                                                             AllPossibleValues) of
+                    Props ->
+                        skip;
+                    NewProps ->
+                        ?log_debug("Changing properties of ~p from ~p to ~p due to deletion of ~p",
+                                   [Key, Props, NewProps, BucketName]),
+                        {update, NewProps}
+                end
+        end,
+    case replicated_dets:select_with_update(storage_name(), {user, '_'}, 100, UpdateFun) of
+        [] ->
+            ok;
+        Errors ->
+            ?log_warning("Failed to cleanup some roles: ~p", [Errors]),
+            ok
+    end.
