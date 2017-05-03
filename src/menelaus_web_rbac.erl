@@ -449,6 +449,8 @@ role_to_string(Role) when is_atom(Role) ->
     atom_to_list(Role);
 role_to_string({Role, [any]}) ->
     lists:flatten(io_lib:format("~p[*]", [Role]));
+role_to_string({Role, [{BucketName, _}]}) ->
+    role_to_string({Role, [BucketName]});
 role_to_string({Role, [BucketName]}) ->
     lists:flatten(io_lib:format("~p[~s]", [Role, BucketName])).
 
