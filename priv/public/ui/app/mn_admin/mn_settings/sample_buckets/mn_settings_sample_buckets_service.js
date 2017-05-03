@@ -24,7 +24,7 @@
         getSampleBuckets(),
         mnPoolDefault.getFresh(),
         mnTasksDetails.get(),
-        mnBucketsService.getBucketsByType(true),
+        mnBucketsService.getBucketsByType(),
         mnServersService.getNodes()
       ]).then(function (resp) {
         var warnings = {

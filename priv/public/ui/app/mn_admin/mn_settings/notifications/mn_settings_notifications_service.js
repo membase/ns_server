@@ -232,7 +232,7 @@ angular.module('mnSettingsNotificationsService', [
 
     mnSettingsNotificationsService.buildPhoneHomeThingy = function (mnHttpParams) {
       return $q.all([
-        mnBucketsService.getBucketsByType(false, mnHttpParams),
+        mnBucketsService.getBucketsByType(mnHttpParams),
         mnPools.get(mnHttpParams),
         mnPoolDefault.get(undefined, mnHttpParams)
       ]).then(function (resp) {

@@ -22,7 +22,7 @@
         var params = trans.params();
         var mnBucketsService = trans.injector().get("mnBucketsService");
         if (params[bucketParamName] === null) {
-          return mnBucketsService.getBucketsByType(true).then(function (buckets) {
+          return mnBucketsService.getBucketsByType().then(function (buckets) {
             var defaultBucket = memcached ?
                 buckets.byType.defaultName :
                 buckets.byType.membase.defaultName || buckets.byType.ephemeral.defaultName;

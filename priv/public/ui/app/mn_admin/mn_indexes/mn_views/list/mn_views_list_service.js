@@ -66,8 +66,8 @@
     function cutOffDesignPrefix(id) {
       return id.replace(/^_design\/(dev_|)/, "");
     }
-    function prepareBucketsDropdownData(params, fromCache) {
-      return mnBucketsService.getBucketsByType(fromCache).then(function (buckets) {
+    function prepareBucketsDropdownData(params) {
+      return mnBucketsService.getBucketsByType().then(function (buckets) {
         var rv = {};
         rv.bucketsNames = buckets.byType.membase.names;
         rv.bucketsNames.selected = params.bucket || buckets.byType.membase.defaultName;

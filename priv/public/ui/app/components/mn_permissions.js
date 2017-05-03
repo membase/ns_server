@@ -112,7 +112,7 @@
         return doCheck(["cluster.bucket[.].settings!read"]).then(function (resp) {
           var permissions = getAll();
           if (resp.data["cluster.bucket[.].settings!read"]) {
-            return mnBucketsService.getBucketsByType(true).then(function (bucketsDetails) {
+            return mnBucketsService.getBucketsByType().then(function (bucketsDetails) {
               if (bucketsDetails.length) {
                 angular.forEach(bucketsDetails, function (bucket) {
                   permissions = permissions.concat(generateBucketPermissions(bucket.name));

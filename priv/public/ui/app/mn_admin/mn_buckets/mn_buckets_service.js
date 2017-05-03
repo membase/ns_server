@@ -6,20 +6,24 @@
   function mnBucketsServiceFactory($http, $q, mnBucketsStats) {
     var mnBucketsService = {
       getBucketsByType: getBucketsByType,
-      getBucketsForBucketsPage: getBucketsForBucketsPage
+      getBucketsForBucketsPage: getBucketsForBucketsPage,
+      export: {}
     };
 
     return mnBucketsService;
 
-    function getBucketsForBucketsPage(fromCache, mnHttpParams) {
-      return getBucketsByType(fromCache, mnHttpParams).then(function (buckets) {
+    function getBucketsForBucketsPage(mnHttpParams) {
+      return getBucketsByType(mnHttpParams).then(function (buckets) {
         return buckets;
       });
     }
 
-    function getBucketsByType(fromCache, mnHttpParams) {
-      return mnBucketsStats[fromCache ? "get" : "getFresh"](mnHttpParams).then(function (resp) {
-        var bucketsDetails = resp.data
+    function getBucketsByType(mnHttpParams) {
+      if (mnBucketsStats.isCached()) {
+        return $q.when(mnBucketsService.export.details);
+      }
+      return mnBucketsStats.get(mnHttpParams).then(function (resp) {
+        var bucketsDetails = resp.data;
         bucketsDetails.byType = {membase: [], memcached: [], ephemeral: []};
         bucketsDetails.byType.membase.isMembase = true;
         bucketsDetails.byType.memcached.isMemcached = true;
@@ -38,6 +42,8 @@
 
         bucketsDetails.byType.ephemeral.names = _.pluck(bucketsDetails.byType.ephemeral, 'name');
         bucketsDetails.byType.ephemeral.defaultName = _.contains(bucketsDetails.byType.ephemeral.names, 'default') ? 'default' : bucketsDetails.byType.ephemeral.names[0] || '';
+
+        mnBucketsService.export.details = bucketsDetails;
         return bucketsDetails;
       });
     }
