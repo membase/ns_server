@@ -42,10 +42,9 @@
           mnServersService
             .setupServices({services: 'kv,index,fts,n1ql'}).then(function () {
               var newClusterState = mnWizardService.getNewClusterState();
-              var newClusterConfig = mnClusterConfigurationService.getNewClusterConfig();
-              mnSettingsClusterService.postIndexSettings(newClusterConfig.indexSettings);
+              mnSettingsClusterService.postIndexSettings({storageMode: "plasma"});
               mnSettingsClusterService
-                .postPoolsDefault(newClusterConfig, false, newClusterState.clusterName).then(function () {
+                .postPoolsDefault(false, false, newClusterState.clusterName).then(function () {
                   mnClusterConfigurationService
                     .postAuth(newClusterState.user).then(function () {
                       return mnAuthService

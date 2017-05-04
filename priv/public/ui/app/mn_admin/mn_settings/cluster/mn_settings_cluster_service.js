@@ -15,11 +15,15 @@
 
     function postPoolsDefault(memoryQuotaConfig, justValidate, clusterName) {
       var data = {
-        memoryQuota: memoryQuotaConfig.memoryQuota === null ? "" : memoryQuotaConfig.memoryQuota,
-        indexMemoryQuota: memoryQuotaConfig.indexMemoryQuota === null ? "" : memoryQuotaConfig.indexMemoryQuota,
-        ftsMemoryQuota: memoryQuotaConfig.ftsMemoryQuota === null ? "" : memoryQuotaConfig.ftsMemoryQuota,
         clusterName: clusterName
+      };
+
+      if (memoryQuotaConfig) {
+        data.memoryQuota = memoryQuotaConfig.memoryQuota === null ? "" : memoryQuotaConfig.memoryQuota;
+        data.indexMemoryQuota = memoryQuotaConfig.indexMemoryQuota === null ? "" : memoryQuotaConfig.indexMemoryQuota;
+        data.ftsMemoryQuota = memoryQuotaConfig.ftsMemoryQuota === null ? "" : memoryQuotaConfig.ftsMemoryQuota;
       }
+
       var config = {
         method: 'POST',
         url: '/pools/default',
