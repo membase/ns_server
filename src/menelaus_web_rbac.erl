@@ -466,7 +466,9 @@ reply_bad_roles(Req, BadRoles) ->
     Str = string:join(BadRoles, ","),
     menelaus_util:reply_json(
       Req,
-      iolist_to_binary(io_lib:format("Malformed or unknown roles: [~s]", [Str])), 400).
+      iolist_to_binary(io_lib:format(
+                         "Cannot assign roles to user because the following roles are unknown, "
+                         "malformed or role parameters are undefined: [~s]", [Str])), 400).
 
 domain_to_atom("local") ->
     local;
