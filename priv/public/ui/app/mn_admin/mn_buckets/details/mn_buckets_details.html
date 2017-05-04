@@ -8,17 +8,16 @@
         <span ng-show="bucket.isMemcached">Memcached</span>
         <span ng-show="bucket.isEphemeral">Ephemeral</span>
       </div>
-      <div class="nowrap" ng-show="rbac.cluster.bucket[bucket.name].settings.read">
+      <div class="nowrap">
         <strong>Bucket RAM Quota: </strong>
         {{bucket.quota.ram | mnFormatQuantity}}
       </div>
-      <div class="nowrap" ng-show="rbac.cluster.bucket[bucket.name].settings.read">
+      <div class="nowrap">
         <strong>Cluster RAM Quota: </strong>
         {{bucket.basicStats.storageTotals.ram.quotaTotalPerNode | mnFormatQuantity}}
       </div>
       <div
          class="nowrap"
-         ng-if="rbac.cluster.bucket[bucket.name].settings.read"
          ng-show="!bucket.isMemcached">
         <strong>Replicas:</strong>
         {{bucketsDetailsCtl.bucketDetails.replicaNumber != 0 ? (bucketsDetailsCtl.bucketDetails.replicaNumber) : 'disabled'}}
@@ -28,7 +27,7 @@
        </div>
       <div
          class="nowrap"
-         ng-if="!bucket.isMemcached && rbac.cluster.bucket[bucket.name].settings.read">
+         ng-if="!bucket.isMemcached">
         <strong>Ejection Method: </strong>
         {{bucket.isEphemeral ?
         bucketsDetailsCtl.bucketDetails.evictionPolicy === "noEviction" ? 'No ejection' : 'NRU ejection' :
@@ -48,24 +47,22 @@
     </div>
 
     <div class="cbui-table-meters buckets">
-      <h5 ng-show="rbac.cluster.bucket[bucket.name].settings.read">Memory</h5>
+      <h5>Memory</h5>
       <hr>
       <div
          class="bar-usages"
          mn-bar-usage
-         base-info="bucketsDetailsCtl.bucketRamGuageConfig"
-         ng-show="rbac.cluster.bucket[bucket.name].settings.read">
+         base-info="bucketsDetailsCtl.bucketRamGuageConfig">
       </div>
     </div>
     <div class="cbui-table-meters buckets">
       <h5 ng-show="bucket.isMembase">Disk</h5>
       <hr ng-show="bucket.isMembase">
-      <div ng-if="bucket.isMembase && rbac.cluster.bucket[bucket.name].settings.read">
+      <div ng-if="bucket.isMembase">
         <div
            class="bar-usages"
            mn-bar-usage
-           base-info="bucketsDetailsCtl.getGuageConfig(bucketsDetailsCtl.bucketDetails)"
-           ng-if="rbac.cluster.bucket[bucket.name].settings.read">
+           base-info="bucketsDetailsCtl.getGuageConfig(bucketsDetailsCtl.bucketDetails)">
         </div>
       </div>
     </div>
@@ -84,11 +81,11 @@
       <button
          class="outline"
          ng-disabled="poolDefault.rebalancing"
-         ng-show="rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].delete"
+         ng-show="rbac.cluster.bucket[bucket.name].delete"
          ng-click="$event.stopPropagation();bucketsDetailsCtl.deleteBucket(bucketsDetailsCtl.bucketDetails)">Delete</button>
       <button
          class="outline"
-         ng-show="!bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && bucket.isMembase && rbac.cluster.tasks.read && rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].compact"
+         ng-show="!bucketsDetailsCtl.compactionTasks.thisBucketCompactionTask.cancelURI && bucket.isMembase && rbac.cluster.tasks.read && rbac.cluster.bucket[bucket.name].compact"
          ng-disabled="bucketsDetailsCtl.compactionTasks.disableCompact"
          ng-click="$event.stopPropagation();bucketsDetailsCtl.registerCompactionAsTriggeredAndPost(bucketsDetailsCtl.bucketDetails.controllers.compactAll, 'disableCompact')">Compact</button>
       <button
@@ -99,12 +96,12 @@
       <button
          class="outline"
          ng-disabled="poolDefault.rebalancing"
-         ng-show="bucketsDetailsCtl.bucketDetails.controllers !== undefined && bucketsDetailsCtl.bucketDetails.controllers.flush !== undefined && rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].flush"
+         ng-show="bucketsDetailsCtl.bucketDetails.controllers !== undefined && bucketsDetailsCtl.bucketDetails.controllers.flush !== undefined && rbac.cluster.bucket[bucket.name].flush"
          ng-click="$event.stopPropagation();bucketsDetailsCtl.flushBucket(bucketsDetailsCtl.bucketDetails)">Flush</button>
      <button
         ng-disabled="poolDefault.rebalancing"
         ng-click="$event.stopPropagation();bucketsDetailsCtl.editBucket(bucketsDetailsCtl.bucketDetails)"
-        ng-show="rbac.cluster.bucket[bucket.name].settings.read && rbac.cluster.bucket[bucket.name].settings.write">Edit</button>
+        ng-show="rbac.cluster.bucket[bucket.name].settings.write">Edit</button>
     </span>
   </div>
 </div>
