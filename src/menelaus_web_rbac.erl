@@ -638,7 +638,13 @@ handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
                     erlang:error(exceeded_retries)
             end;
         _ ->
-            reply_bad_roles(Req, BadRoles)
+            ParsedRoles = lists:filter(fun ({error, _}) ->
+                                               false;
+                                           (_) ->
+                                               true
+                                       end, Roles),
+            {_, MoreBadRoles} = menelaus_roles:validate_roles(ParsedRoles, ns_config:latest()),
+            reply_bad_roles(Req, BadRoles ++ [role_to_string(R) || R <- MoreBadRoles])
     end.
 
 handle_delete_user(Domain, UserId, Req) ->
