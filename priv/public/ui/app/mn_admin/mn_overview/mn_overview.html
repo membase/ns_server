@@ -2,7 +2,7 @@
   {{::adminCtl.implementationVersion | mnPrettyVersion}}
 </mn-element-cargo>
 
-<div mn-spinner="(rbac.cluster.bucket['.'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || (rbac.cluster.bucket['.'].settings.read && !overviewCtl.buckets)">
+<div mn-spinner="(rbac.cluster.bucket['.'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || (rbac.cluster.bucket['.'].settings.read && !buckets.details)">
 
   <div class="row items-top margin-top1 service-widget-row">
     <div
@@ -100,14 +100,14 @@
 
   <div class="margin-top2" ng-if="rbac.cluster.bucket['.'].settings.read">
     <h4>
-      Buckets &nbsp;<small>{{overviewCtl.buckets.length || '0'}} active</small>
+      Buckets &nbsp;<small>{{buckets.details.length || '0'}} active</small>
     </h4>
     <hr>
     <div
        ng-if="rbac.cluster.bucket['.'].stats.read"
        class="interim row items-space-around">
       <div
-         ng-show="overviewCtl.buckets.length">
+         ng-show="buckets.details.length">
         <div>Operations Per Second
           <span ng-show="!overviewCtl.mnOverviewStats.opsGraphConfig.stats.length">
             (No samples, yet)
@@ -120,7 +120,7 @@
            style="height: 170px; width: 400px;"></div>
       </div>
       <div
-         ng-show="overviewCtl.buckets.length">
+         ng-show="buckets.details.length">
         <div>Disk Fetches Per Second
           <span ng-show="!overviewCtl.mnOverviewStats.readsGraphConfig.stats.length">
             (No samples, yet)
@@ -133,7 +133,7 @@
            style="height: 170px; width: 400px"></div>
       </div>
     </div>
-    <div class="zero-content" ng-show="!overviewCtl.buckets.length">
+    <div class="zero-content" ng-show="!buckets.details.length">
       You have no data buckets.
       <span ng-show="rbac.cluster.buckets.create">Go to <a ui-sref="app.admin.buckets">Buckets</a> to add one, or load a <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.</span>
     </div>

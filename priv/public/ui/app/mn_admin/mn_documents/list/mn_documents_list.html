@@ -1,6 +1,6 @@
 <mn-element-cargo depot="actions">
   <a href=""
-     ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write"
+     ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.currentBucketName].data.write"
      ng-click="documentsListCtl.showCreateDialog()">
     ADD DOCUMENT
   </a>
@@ -10,7 +10,7 @@
   <div class="row flex-left min-width-zero">
     <ui-select
        on-select="documentsCtl.onSelectBucketName($item)"
-       ng-model="documentsCtl.state.bucketsNames.selected"
+       ng-model="documentsCtl.currentBucketName"
        theme="selectize"
        style="display: inline-block; vertical-align: middle;"
        class="cbui">
@@ -18,13 +18,13 @@
          class="ui-select-match">{{$select.selected}}</ui-select-match>
       <ui-select-choices
          class="ui-select-choices"
-         repeat="name in documentsCtl.state.bucketsNames | filter: $select.search">
+         repeat="name in buckets.details.byType.membase.names.concat(buckets.details.byType.ephemeral.names) | filter: $select.search">
         <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>
     <div
        class="row min-width-zero"
-       ng-if="!documentsCtl.state.currentBucket.isEphemeral">
+       ng-if="!buckets.details[documentsCtl.currentBucketName].isEphemeral">
       <div
          mn-filter
          class="indent-1"
@@ -53,11 +53,11 @@
        autocapitalize="off"
        placeholder="Document ID"
        ng-model="documentsListCtl.lookupId"
-       ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">
+       ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.currentBucketName].data.read">
     <button
        type="submit"
        class="append"
-       ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read">
+       ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.currentBucketName].data.read">
       Look Up ID
     </button>
   </form>
@@ -84,21 +84,21 @@
         <span class="cbui-table-cell wrap text-right">
           <button
              class="outline tight"
-             ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write"
+             ng-show="rbac.cluster.bucket[documentsCtl.currentBucketName].data.write"
              ng-click="$event.stopPropagation(); documentsListCtl.deleteDocument(r.id)">Delete</button>
           <button
              ng-click="$event.stopPropagation()"
              ui-sref="^.^.editing({documentId: r.id})"
              class="outline tight">
-            <span ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">Edit</span>
-            <span ng-show="rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.read && !rbac.cluster.bucket[documentsCtl.state.bucketsNames.selected].data.write">View Document</span>
+            <span ng-show="rbac.cluster.bucket[documentsCtl.currentBucketName].data.write">Edit</span>
+            <span ng-show="rbac.cluster.bucket[documentsCtl.currentBucketName].data.read && !rbac.cluster.bucket[documentsCtl.currentBucketName].data.write">View Document</span>
           </button>
         </span>
       </div>
     </section>
     <div ng-if="!documentsControlCtl.state.docs.rows.length" class="zero-content">
-      <span ng-show="!documentsCtl.state.currentBucket.isEphemeral">There are currently no documents in this bucket{{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}</span>
-      <span ng-show="documentsCtl.state.currentBucket.isEphemeral">Documents are retrieved from ephemeral buckets by using the id lookup.</span>
+      <span ng-show="!buckets.details[documentsCtl.currentBucketName].isEphemeral">There are currently no documents in this bucket{{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}</span>
+      <span ng-show="buckets.details[documentsCtl.currentBucketName].isEphemeral">Documents are retrieved from ephemeral buckets by using the id lookup.</span>
     </div>
   </div>
 </div>

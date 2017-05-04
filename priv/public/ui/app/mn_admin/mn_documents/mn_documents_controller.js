@@ -22,23 +22,13 @@
     var vm = this;
 
     vm.onSelectBucketName = onSelectBucketName;
-
-    activate();
+    vm.currentBucketName = $state.params.bucket;
 
     function onSelectBucketName(selectedBucket) {
       $state.go('^.list', {
         bucket: selectedBucket,
         pageNumber: 0
       });
-    }
-
-    function activate() {
-      new mnPoller($scope, function () {
-          return mnDocumentsListService.populateBucketsSelectBox($state.params);
-        })
-        .subscribe("state", vm)
-        .reloadOnScopeEvent("bucketUriChanged")
-        .cycle();
     }
   }
 })();

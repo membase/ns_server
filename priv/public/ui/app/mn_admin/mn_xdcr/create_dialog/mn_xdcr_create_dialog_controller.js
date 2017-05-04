@@ -5,7 +5,7 @@
     .module('mnXDCR')
     .controller('mnXDCRCreateDialogController', mnXDCRCreateDialogController);
 
-  function mnXDCRCreateDialogController($scope, $uibModalInstance, $timeout, $window, mnPromiseHelper, mnPoolDefault, mnPools, mnXDCRService, buckets, replicationSettings) {
+  function mnXDCRCreateDialogController($scope, $uibModalInstance, $timeout, $window, mnPromiseHelper, mnPoolDefault, mnPools, mnXDCRService, replicationSettings) {
     var vm = this;
     var codemirrorInstance;
     var codemirrorMarkers = [];
@@ -46,7 +46,6 @@
     delete vm.replication.socketOptions;
     vm.replication.replicationType = "continuous";
     vm.replication.type = "xmem";
-    vm.buckets = buckets.byType.membase.concat(buckets.byType.ephemeral);
     vm.createReplication = createReplication;
     vm.onExpressionUpdate = onExpressionUpdate;
 

@@ -6,10 +6,10 @@
   </div>
 </mn-element-cargo>
 
-<div mn-spinner="!documentsControlCtl.state || !documentsCtl.state">
+<div mn-spinner="!documentsControlCtl.state">
   <ui-view></ui-view>
 
-  <div class="row" ng-if="!documentsCtl.state.currentBucket.isEphemeral">
+  <div class="row" ng-if="!buckets.details[documentsCtl.currentBucketName].isEphemeral">
     <div>
      <ui-select
         ng-model="documentsControlCtl.state.pageLimits.selected"

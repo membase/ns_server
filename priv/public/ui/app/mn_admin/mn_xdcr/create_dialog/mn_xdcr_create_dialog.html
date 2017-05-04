@@ -14,7 +14,7 @@
         <label for="replication_from_bucket">Replicate From Bucket</label>
         <select
            ng-model="xdcrCreateDialogCtl.replication.fromBucket"
-           ng-options="bucket.name as bucket.name for bucket in xdcrCreateDialogCtl.buckets">
+           ng-options="bucket.name as bucket.name for bucket in buckets.details.byType.membase.concat(buckets.details.byType.ephemeral);">
           <option value="" disabled selected style="display: none;">
             select a bucket
           </option>

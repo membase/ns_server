@@ -4,7 +4,6 @@
   angular.module('mnXDCR', [
     'mnXDCRService',
     'mnHelper',
-    'mnBucketsService',
     'mnPromiseHelper',
     'mnPoll',
     'mnAutocompleteOff',
@@ -14,7 +13,7 @@
     "ui.codemirror"
   ]).controller('mnXDCRController', mnXDCRController);
 
-  function mnXDCRController($scope, permissions, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnTasksDetails, mnBucketsService, mnPromiseHelper) {
+  function mnXDCRController($scope, permissions, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnTasksDetails, mnPromiseHelper) {
     var vm = this;
 
     vm.mnPoolDefault = mnPoolDefault.latestValue();
@@ -114,7 +113,6 @@
         templateUrl: 'app/mn_admin/mn_xdcr/create_dialog/mn_xdcr_create_dialog.html',
         scope: $scope,
         resolve: {
-          buckets: mnHelper.wrapInFunction(mnBucketsService.getBucketsByType()),
           replicationSettings: mnHelper.wrapInFunction(mnXDCRService.getReplicationSettings())
         }
       });

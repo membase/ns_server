@@ -18,17 +18,12 @@
   </a>
 </mn-element-cargo>
 
-<div mn-spinner="!bucketsCtl.buckets" min-height="300px">
+<div mn-spinner="!buckets.details" min-height="300px">
   <div
-     mn-spinner="bucketsCtl.showBucketsPollerSpinner"
-     min-height="91px">
-    <div
-       admin-ctl="adminCtl"
-       mn-buckets-list
-       buckets="bucketsCtl.buckets"
-       pool-default="poolDefault"
-
-       rbac="rbac">
-    </div>
+     admin-ctl="adminCtl"
+     mn-buckets-list
+     buckets="buckets.details"
+     pool-default="poolDefault"
+     rbac="rbac">
   </div>
 </div>

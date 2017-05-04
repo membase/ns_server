@@ -6,17 +6,10 @@
   function mnBucketsServiceFactory($http, $q, mnBucketsStats) {
     var mnBucketsService = {
       getBucketsByType: getBucketsByType,
-      getBucketsForBucketsPage: getBucketsForBucketsPage,
       export: {}
     };
 
     return mnBucketsService;
-
-    function getBucketsForBucketsPage(mnHttpParams) {
-      return getBucketsByType(mnHttpParams).then(function (buckets) {
-        return buckets;
-      });
-    }
 
     function getBucketsByType(mnHttpParams) {
       if (mnBucketsStats.isCached()) {
@@ -25,10 +18,12 @@
       return mnBucketsStats.get(mnHttpParams).then(function (resp) {
         var bucketsDetails = resp.data;
         bucketsDetails.byType = {membase: [], memcached: [], ephemeral: []};
+        bucketsDetails.byName = {};
         bucketsDetails.byType.membase.isMembase = true;
         bucketsDetails.byType.memcached.isMemcached = true;
         bucketsDetails.byType.ephemeral.isEphemeral = true;
         _.each(bucketsDetails, function (bucket) {
+          bucketsDetails.byName[bucket.name] = bucket;
           bucketsDetails.byType[bucket.bucketType].push(bucket);
           bucket.isMembase = bucket.bucketType === 'membase';
           bucket.isEphemeral = bucket.bucketType === 'ephemeral';

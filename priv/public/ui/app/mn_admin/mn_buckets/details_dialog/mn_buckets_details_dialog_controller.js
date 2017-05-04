@@ -33,7 +33,7 @@
         .onSuccess(function (result) {
           if (!result.data) {
             $uibModalInstance.close();
-            $rootScope.$broadcast("reloadBucketsPoller");
+            $rootScope.$broadcast("reloadBucketStats");
           }
         })
         .showGlobalSuccess("Bucket settings saved successfully!", 4000);

@@ -9,7 +9,7 @@
     </span>
     <ui-select
        class="inline middle"
-       ng-model="analyticsCtl.buckets.bucketsNames.selected"
+       ng-model="analyticsCtl.currentBucket"
        theme="selectize"
        ng-disabled="disabled"
        on-select="analyticsCtl.onSelectBucket($item)">
@@ -17,7 +17,7 @@
          class="ui-select-match">{{$select.selected}}</ui-select-match>
       <ui-select-choices
          class="ui-select-choices"
-         repeat="name in analyticsCtl.buckets.bucketsNames | filter: $select.search">
+         repeat="name in buckets.details.byType.names | filter: $select.search">
         <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>
@@ -42,7 +42,7 @@
   <ui-view></ui-view>
   <div
      class="margin-top2"
-     ng-if="!analyticsCtl.isSpecificStats && rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read" >
+     ng-if="!analyticsCtl.isSpecificStats && rbac.cluster.bucket[analyticsCtl.currentBucket].stats.read" >
     <h4 class="padding-left margin-bottom-half">Top Keys</h4>
     <table class="table-stroked">
       <thead>

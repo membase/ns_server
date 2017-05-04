@@ -15,7 +15,6 @@
         .showGlobalSpinner()
         .catchGlobalErrors()
         .closeFinally()
-        .broadcast("reloadBucketsPoller")
         .showGlobalSuccess("Bucket deleted successfully!", 4000);
     }
   }

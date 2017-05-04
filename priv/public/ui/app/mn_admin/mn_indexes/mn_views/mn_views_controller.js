@@ -25,6 +25,7 @@
       vm.mnPoolDefault = mnPoolDefault.latestValue();
       vm.ddocsLoading = true;
       vm.kvNodeLink = "";
+      vm.currentBucketName = $state.params.bucket;
 
       activate();
 
@@ -33,15 +34,7 @@
       }
 
       function activate() {
-        if (vm.mnPoolDefault.value.isKvNode) {
-          new mnPoller($scope, function () {
-            return mnViewsListService.prepareBucketsDropdownData($state.params);
-          })
-            .reloadOnScopeEvent("bucketUriChanged")
-            .subscribe("state", vm)
-            .cycle();
-        }
-        else {
+        if (!vm.mnPoolDefault.value.isKvNode) {
           var urls = mnPoolDefault.getUrlsRunningService(vm.mnPoolDefault.value.nodes, "kv", 1);
           vm.kvNodeLink = urls && urls.length > 0 ? urls[0] : "";
         }

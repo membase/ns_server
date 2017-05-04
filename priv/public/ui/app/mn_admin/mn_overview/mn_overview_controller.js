@@ -42,15 +42,6 @@
         .subscribe("nodes", vm)
         .cycle();
 
-      if (permissions.cluster.bucket['.'].settings.read) {
-        new mnPoller($scope, function () {
-          return mnBucketsService.getBucketsByType();
-        })
-          .reloadOnScopeEvent("bucketUriChanged")
-          .subscribe("buckets", vm)
-          .cycle();
-      }
-
       if (permissions.cluster.bucket['.'].stats.read) {
         new mnPoller($scope, mnOverviewService.getStats)
           .setInterval(3000)

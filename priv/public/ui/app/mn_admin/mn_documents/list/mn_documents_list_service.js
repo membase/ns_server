@@ -9,28 +9,11 @@
     var mnDocumentsListService = {
       getDocuments: getDocuments,
       getDocumentsListState: getDocumentsListState,
-      populateBucketsSelectBox: populateBucketsSelectBox,
       getDocumentsParams: getDocumentsParams,
       getDocumentsURI: getDocumentsURI
     };
 
     return mnDocumentsListService;
-
-    function populateBucketsSelectBox(params) {
-      return mnBucketsService.getBucketsByType().then(function (buckets) {
-        var rv = {};
-        var bucket
-        rv.bucketsNames =
-          buckets.byType.membase.names
-          .concat(buckets.byType.ephemeral.names);
-
-        rv.currentBucket = buckets.find(function (bucket) {
-          return bucket.name == params.bucket;
-        });
-        rv.bucketsNames.selected = params.bucket;
-        return rv;
-      });
-    }
 
     function getListState(docs, params) {
       var rv = {};

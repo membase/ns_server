@@ -5,7 +5,7 @@
     .module("mnUserRoles")
     .controller("mnUserRolesAddDialogController", mnUserRolesAddDialogController);
 
-  function mnUserRolesAddDialogController($scope, mnUserRolesService, $uibModalInstance, mnPromiseHelper, user, isLdapEnabled, buckets) {
+  function mnUserRolesAddDialogController($scope, mnUserRolesService, $uibModalInstance, mnPromiseHelper, user, isLdapEnabled) {
     var vm = this;
     vm.user = _.clone(user) || {domain: "local"};
     vm.userID = vm.user.id || 'New';
@@ -40,7 +40,7 @@
 
     function onCheckChange(role, id) {
       if (role.bucket_name === "*") {
-        buckets.byType.names.forEach(function (name) {
+        $scope.buckets.details.byType.names.forEach(function (name) {
           vm.selectedRoles[role.role + "[" + name + "]"] = vm.selectedRoles[id];
         });
       }

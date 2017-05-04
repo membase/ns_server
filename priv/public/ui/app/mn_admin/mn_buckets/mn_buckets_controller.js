@@ -33,16 +33,15 @@
 
     vm.maxBucketCount = poolDefault.value.maxBucketCount;
 
-    activate();
 
     function isCreateNewDataBucketDisabled() {
-      return !vm.buckets || areThereCreationWarnings();
+      return !$scope.buckets || !$scope.buckets.details || areThereCreationWarnings();
     }
     function isBucketCreationWarning() {
       return poolDefault.value.rebalancing;
     }
     function isMaxBucketCountWarning() {
-      return (vm.buckets || []).length >= poolDefault.value.maxBucketCount;
+      return (($scope.buckets && !$scope.buckets.details) || []).length >= poolDefault.value.maxBucketCount;
     }
     function areThereCreationWarnings() {
       return isMaxBucketCountWarning() || isBucketCreationWarning();
@@ -69,16 +68,6 @@
             });
           }
         });
-    }
-    function activate() {
-      new mnPoller($scope, function () {
-        return mnBucketsService.getBucketsForBucketsPage();
-      })
-      .setInterval(10000)
-      .subscribe("buckets", vm)
-      .reloadOnScopeEvent("bucketUriChanged")
-      .reloadOnScopeEvent("reloadBucketsPoller", vm, "showBucketsPollerSpinner")
-      .cycle();
     }
   }
 })();

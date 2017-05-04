@@ -30,7 +30,7 @@
           getState(value);
         }
       }, true);
-      $scope.$on("bucketUriChanged", doGetState);
+      $scope.$on("reloadBucketStats", doGetState);
       $scope.$on("nodesChanged", doGetState);
       $scope.$on("reloadTasksPoller", doGetState);
     }

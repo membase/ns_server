@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions, mnPools, mnMemoryQuotaService, mnResetPasswordDialogService, whoami, mnBucketsStats) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions, mnPools, mnMemoryQuotaService, mnResetPasswordDialogService, whoami, mnBucketsStats, mnBucketsService) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -31,6 +31,7 @@
     $rootScope.rbac = mnPermissions.export;
     $rootScope.poolDefault = mnPoolDefault.export;
     $rootScope.pools = mnPools.export;
+    $rootScope.buckets = mnBucketsService.export;
 
     activate();
 
@@ -90,8 +91,7 @@
         }
 
         if (previous && previous.buckets.uri !== resp.buckets.uri) {
-          mnBucketsStats.clearCache();
-          $rootScope.$broadcast("bucketUriChanged");
+          $rootScope.$broadcast("reloadBucketStats");
         }
 
         if (previous && previous.serverGroupsUri !== resp.serverGroupsUri) {
@@ -174,6 +174,12 @@
         mnPoolDefault.clearCache();
         etagPoller.reload();
       });
+
+      $scope.$on("reloadBucketStats", function () {
+        mnBucketsStats.clearCache();
+        mnBucketsService.getBucketsByType();
+      });
+      $rootScope.$broadcast("reloadBucketStats");
 
       $scope.$on("maybeShowMemoryQuotaDialog", function (event, services) {
         return mnPoolDefault.get().then(function (poolsDefault) {

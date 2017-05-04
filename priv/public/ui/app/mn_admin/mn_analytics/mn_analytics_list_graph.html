@@ -24,7 +24,7 @@
   </div>
   <div
      ng-hide="!analyticsListGraphCtl.selectedStat"
-     ng-if="rbac.cluster.bucket[analyticsCtl.buckets.bucketsNames.selected].stats.read"
+     ng-if="rbac.cluster.bucket[analyticsCtl.currentBucket].stats.read"
      class="pills pills-small width-1 margin-right-1">
     <a ui-sref="{zoom: 'minute'}" ui-sref-active="selected">Minute</a>
     <a ui-sref="{zoom: 'hour'}" ui-sref-active="selected">Hour</a>

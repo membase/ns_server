@@ -17,6 +17,7 @@
     vm.computeOps = computeOps;
     vm.onSelectBucket = onSelectBucket;
     vm.onSelectNode = onSelectNode;
+    vm.currentBucket = $state.params.bucket;
 
     activate();
 
@@ -43,18 +44,6 @@
       })
       .subscribe("state", vm)
       .reloadOnScopeEvent("reloadAnalyticsPoller");
-
-      new mnPoller($scope, function () {
-        return mnBucketsService.getBucketsByType().then(function (buckets) {
-          var rv = {};
-          rv.bucketsNames = buckets.byType.names;
-          rv.bucketsNames.selected = $state.params.bucket;
-          return rv;
-        });
-      })
-      .subscribe("buckets", vm)
-      .reloadOnScopeEvent("bucketUriChanged")
-      .cycle();
     }
     function onSelectBucket(selectedBucket) {
       $state.go('^.graph', {
