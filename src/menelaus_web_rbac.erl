@@ -625,9 +625,10 @@ handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
     BadRoles = [BadRole || {error, BadRole} <- Roles],
     case BadRoles of
         [] ->
-            case menelaus_users:store_user(Identity, Name, Password, Roles) of
+            UniqueRoles = ordsets:to_list(ordsets:from_list(Roles)),
+            case menelaus_users:store_user(Identity, Name, Password, UniqueRoles) of
                 {commit, _} ->
-                    ns_audit:set_user(Req, Identity, Roles, Name),
+                    ns_audit:set_user(Req, Identity, UniqueRoles, Name),
                     reply_put_delete_users(Req);
                 {abort, {error, roles_validation, UnknownRoles}} ->
                     reply_bad_roles(Req, [role_to_string(UR) || UR <- UnknownRoles]);
