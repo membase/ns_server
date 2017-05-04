@@ -101,13 +101,19 @@ select(Name, KeySpec, N) ->
 select(Name, KeySpec, N, Locked) ->
     DocSpec = #doc{id = KeySpec, deleted = false, _ = '_'},
     MatchSpec = [{DocSpec, [], ['$_']}],
-    case Locked of
-        true ->
-            ?make_producer(select_from_dets_locked(Name, MatchSpec, N, ?yield()));
-        false ->
-            ?make_producer(select_from_dets(Name, MatchSpec, N, ?yield()))
-    end.
 
+    Select =
+        case Locked of
+            true ->
+                fun select_from_dets_locked/4;
+            false ->
+                fun select_from_dets/4
+        end,
+
+    ?make_producer(Select(Name, MatchSpec, N,
+                          fun (#doc{id = Id, value = Value}) ->
+                                  ?yield({Id, Value})
+                          end)).
 
 select_with_update(Name, KeySpec, N, UpdateFun) ->
     gen_server:call(Name, {mass_update, {Name, KeySpec, N, UpdateFun}}, infinity).
@@ -253,9 +259,7 @@ do_select_from_dets(TableName, MatchSpec, N, Yield) ->
     end.
 
 do_select_from_dets_continue(Selection, Continuation, Yield) ->
-    lists:foreach(fun (#doc{id = Id, value = Value}) ->
-                          Yield({Id, Value})
-                  end, Selection),
+    lists:foreach(Yield, Selection),
     case dets:select(Continuation) of
         {Selection2, Continuation2} when is_list(Selection2) ->
             do_select_from_dets_continue(Selection2, Continuation2, Yield);
