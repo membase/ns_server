@@ -13,15 +13,25 @@
 
     return mnSettingsClusterService;
 
+    function maybeSetQuota(data, memory, service, key) {
+      if (!memory.services || memory.services.model[service]) {
+        if (memory[key] === null) {
+          data[key] = "";
+        } else {
+          data[key] = memory[key];
+        }
+      }
+    }
+
     function postPoolsDefault(memoryQuotaConfig, justValidate, clusterName) {
       var data = {
         clusterName: clusterName
       };
 
       if (memoryQuotaConfig) {
-        data.memoryQuota = memoryQuotaConfig.memoryQuota === null ? "" : memoryQuotaConfig.memoryQuota;
-        data.indexMemoryQuota = memoryQuotaConfig.indexMemoryQuota === null ? "" : memoryQuotaConfig.indexMemoryQuota;
-        data.ftsMemoryQuota = memoryQuotaConfig.ftsMemoryQuota === null ? "" : memoryQuotaConfig.ftsMemoryQuota;
+        maybeSetQuota(data, memoryQuotaConfig, "kv", "memoryQuota");
+        maybeSetQuota(data, memoryQuotaConfig, "index", "indexMemoryQuota");
+        maybeSetQuota(data, memoryQuotaConfig, "fts", "ftsMemoryQuota");
       }
 
       var config = {
