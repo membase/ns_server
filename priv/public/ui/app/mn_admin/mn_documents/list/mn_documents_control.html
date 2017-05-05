@@ -14,6 +14,7 @@
      <ui-select
         ng-model="documentsControlCtl.state.pageLimits.selected"
         theme="selectize"
+        ng-disabled="documentsControlCtl.isEmptyState()"
         on-select="documentsControlCtl.onSelectPageLimits($item)"
         class="inline middle cbui narrow">
        <ui-select-match

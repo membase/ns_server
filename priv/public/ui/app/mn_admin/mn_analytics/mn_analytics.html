@@ -11,7 +11,7 @@
        class="inline middle"
        ng-model="analyticsCtl.currentBucket"
        theme="selectize"
-       ng-disabled="disabled"
+       ng-disabled="!buckets.details.byType.names.length"
        on-select="analyticsCtl.onSelectBucket($item)">
       <ui-select-match
          class="ui-select-match">{{$select.selected}}</ui-select-match>
@@ -27,7 +27,6 @@
          class="inline middle"
          ng-model="analyticsCtl.nodes.nodesNames.selected"
          theme="selectize"
-         ng-disabled="disabled"
          on-select="analyticsCtl.onSelectNode($item)">
         <ui-select-match
            class="ui-select-match">{{$select.selected}}</ui-select-match>

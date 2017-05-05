@@ -11,6 +11,7 @@
     <ui-select
        on-select="documentsCtl.onSelectBucketName($item)"
        ng-model="documentsCtl.currentBucketName"
+       ng-disabled="!buckets.details.byType.membase.names.concat(buckets.details.byType.ephemeral.names).length"
        theme="selectize"
        style="display: inline-block; vertical-align: middle;"
        class="cbui">

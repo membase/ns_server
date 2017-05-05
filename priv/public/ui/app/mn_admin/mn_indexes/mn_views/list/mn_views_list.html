@@ -17,6 +17,7 @@
        ng-model="viewsCtl.currentBucketName"
        on-select="viewsCtl.onSelectBucket($item)"
        theme="selectize"
+       ng-disabled="!buckets.details.byType.membase.names.length"
        class="inline">
       <ui-select-match
          class="ui-select-match">{{$select.selected}}</ui-select-match>
