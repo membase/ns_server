@@ -1333,9 +1333,15 @@ do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I, N) ->
               ProgressFun, Map, Map1).
 
 check_graceful_failover_possible(Node, BucketsAll) ->
-    case check_graceful_failover_possible_rec(Node, BucketsAll) of
-        false -> false;
-        _ -> true
+    Services = ns_cluster_membership:node_services(Node),
+    case lists:member(kv, Services) of
+        true ->
+            case check_graceful_failover_possible_rec(Node, BucketsAll) of
+                false -> false;
+                _ -> true
+            end;
+        false ->
+            false
     end.
 
 check_graceful_failover_possible_rec(_Node, []) ->
