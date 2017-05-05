@@ -9,8 +9,31 @@
 
     this.$get = ["$http", "$timeout", "$q", "$rootScope", "mnBucketsService", "$parse", mnPermissionsFacatory];
     this.set = set;
+    this.setBucketSpecific = setBucketSpecific;
 
-    var interestingPermissions = ([
+    var bucketSpecificPermissions = [function (name) {
+      return [
+        "cluster.bucket[" + name + "].settings!write",
+        "cluster.bucket[" + name + "].data!write",
+        "cluster.bucket[" + name + "].recovery!write",
+        "cluster.bucket[" + name + "].settings!read",
+        "cluster.bucket[" + name + "].data!read",
+        "cluster.bucket[" + name + "].data.docs!read",
+        "cluster.bucket[" + name + "].recovery!read",
+        "cluster.bucket[" + name + "].views!read",
+        "cluster.bucket[" + name + "].views!write",
+        "cluster.bucket[" + name + "].stats!read",
+        "cluster.bucket[" + name + "]!flush",
+        "cluster.bucket[" + name + "]!delete",
+        "cluster.bucket[" + name + "]!compact",
+        "cluster.bucket[" + name + "].views!compact",
+        "cluster.bucket[" + name + "].xdcr!read",
+        "cluster.bucket[" + name + "].xdcr!write",
+        "cluster.bucket[" + name + "].xdcr!execute"
+      ];
+    }];
+
+    var interestingPermissions = [
       "cluster.buckets!create",
       "cluster.nodes!write",
       "cluster.pools!read",
@@ -34,7 +57,7 @@
       "cluster.admin.security!write",
       "cluster.samples!read",
       "cluster.nodes!read"
-    ]).concat(generateBucketPermissions('.'));
+    ];
 
     function getAll() {
       return _.clone(interestingPermissions);
@@ -44,34 +67,27 @@
       if (!_.contains(interestingPermissions, permission)) {
         interestingPermissions.push(permission);
       }
+      return this;
     }
 
-    function generateBucketPermissions(name) {
-      return [
-        "cluster.bucket[" + name + "].settings!write",
-        "cluster.bucket[" + name + "].data!write",
-        "cluster.bucket[" + name + "].recovery!write",
-        "cluster.bucket[" + name + "].settings!read",
-        "cluster.bucket[" + name + "].data!read",
-        "cluster.bucket[" + name + "].data.docs!read",
-        "cluster.bucket[" + name + "].recovery!read",
-        "cluster.bucket[" + name + "].views!read",
-        "cluster.bucket[" + name + "].views!write",
-        "cluster.bucket[" + name + "].stats!read",
-        "cluster.bucket[" + name + "]!flush",
-        "cluster.bucket[" + name + "]!delete",
-        "cluster.bucket[" + name + "]!compact",
-        "cluster.bucket[" + name + "].views!compact",
-        "cluster.bucket[" + name + "].xdcr!read",
-        "cluster.bucket[" + name + "].xdcr!write",
-        "cluster.bucket[" + name + "].xdcr!execute"
-      ];
+    function setBucketSpecific(func) {
+      if (angular.isFunction(func)) {
+        bucketSpecificPermissions.push(func);
+      }
+      return this;
+    }
+
+    function generateBucketPermissions(bucketName) {
+      return bucketSpecificPermissions.reduce(function (acc, getChunk) {
+        return acc.concat(getChunk(bucketName));
+      }, []);
     }
 
     function mnPermissionsFacatory($http, $timeout, $q, $rootScope, mnBucketsService, $parse) {
       var mnPermissions = {
         clear: clear,
         set: set,
+        setBucketSpecific: setBucketSpecific,
         get: doCheck,
         check: check,
         getFresh: getFresh,
@@ -86,6 +102,8 @@
       };
 
       var cached;
+
+      interestingPermissions.push(generateBucketPermissions("."));
 
       return mnPermissions;
 
