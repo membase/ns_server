@@ -92,51 +92,39 @@
   </div>
 
   <header>
-    <a ui-sref="app.admin.overview">
+    <a ui-sref="app.admin.overview" class="logobug-wrapper">
       <img src="../images/cb_logo_bug_white_2.svg" width="48" height="48" alt="Couchbase Server" class="logobug">
     </a>
-    <h1 class="nowrap">
-      <a ui-sref="app.admin.overview">
-        <span
-           class="hide-for-small ellipsis">
-<!-- the cluster name -->
-          {{adminCtl.tabName}}
-        </span>
+    <h1>
+      <a ui-sref="app.admin.overview" class="hide-for-small ellipsis">
+        {{adminCtl.tabName}} <!-- the cluster name -->
       </a>
-      <span
-         class="hide-for-small"
-         ng-show="adminCtl.tabName">
+      <span class="hide-for-small" ng-show="adminCtl.tabName">
         <span class="icon fa-angle-right"></span>
       </span>
       <span ng-if="adminCtl.$state.current.data.child">
-        <a
-           href="{{adminCtl.$state.href(adminCtl.$state.current.data.child, adminCtl.$state.params)}}">
-<!-- the back-to parent page name -->
-          {{adminCtl.$state.get(adminCtl.$state.current.data.child).data.title}}
+        <a href="{{adminCtl.$state.href(adminCtl.$state.current.data.child, adminCtl.$state.params)}}">
+          {{adminCtl.$state.get(adminCtl.$state.current.data.child).data.title}} <!-- the back-to-parent page name -->
         </a>
-        <span class="icon fa-angle-right"></span>
       </span>
+      <span ng-if="adminCtl.$state.current.data.child" class="icon fa-angle-right"></span>
       <span>
-<!-- the current page name -->
-        {{adminCtl.$state.current.data.title}}
+        {{adminCtl.$state.current.data.title}} <!-- the current page name -->
       </span>
     </h1>
 
-<!-- no space between tags allows css :empty to work here -->
-    <mn-element-depot name="header" class="about-text hide-for-small"></mn-element-depot>
-    <mn-element-depot name="actions" class="header-controls hide-for-small"></mn-element-depot>
+<!-- Depots are the placeholders for page-specific controls/content -->
+    <mn-element-depot name="header" class="hide-for-small"></mn-element-depot>
+    <mn-element-depot name="actions" class="hide-for-small"></mn-element-depot>
   </header>
 
-  <mn-element-depot name="subnav">
-  </mn-element-depot>
-
-  <mn-element-depot name="alerts">
-  </mn-element-depot>
+  <mn-element-depot name="subnav"></mn-element-depot>
+  <mn-element-depot name="alerts"></mn-element-depot>
 
   <div
      class="alert alert-warning"
      ng-show="adminCtl.lostConnState.isActivated">
-    <p>Difficulties communicating with the cluster; displaying cached information!</p>
+    <p>Difficulties communicating with the cluster. Displaying cached information.</p>
   </div>
 
   <div
@@ -146,10 +134,8 @@
                'alert-error': alert.type !== 'success',
                'alert-success': alert.type === 'success'
                }">
-    <p>
-      {{alert.msg}}
-    </p>
-    <a href="" ng-click="adminCtl.closeAlert(alert)" class="close">X</a>
+    <p>{{alert.msg}}</p>
+    <a ng-click="adminCtl.closeAlert(alert)" class="close">X</a>
   </div>
 
   <main>

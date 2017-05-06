@@ -2,20 +2,24 @@
   <div ng-show="bucketsCtl.areThereCreationWarnings()">
     <div
        class="interim alert alert-warning"
-       ng-show="bucketsCtl.isBucketCreationWarning()"><p>Attention: Cannot create, delete or edit buckets while rebalance is running.</p>
+       ng-show="bucketsCtl.isBucketCreationWarning()">
+      <p>Attention: Cannot create, delete or edit buckets while rebalance is running.</p>
     </div>
     <div
        class="interim alert alert-warning"
-       ng-show="bucketsCtl.isMaxBucketCountWarning()"><p>Attention: Maximum number of buckets has been reached. For optimal performance, no more than {{bucketsCtl.maxBucketCount}} buckets are allowed.</p>
+       ng-show="bucketsCtl.isMaxBucketCountWarning()">
+      <p>Attention: Maximum number of buckets has been reached. For optimal performance, no more than {{bucketsCtl.maxBucketCount}} buckets are allowed.</p>
     </div>
   </div>
 </mn-element-cargo>
 <mn-element-cargo depot="actions">
-  <a href=""
-     ng-hide="bucketsCtl.isCreateNewDataBucketDisabled() || !rbac.cluster.buckets.create"
-     ng-click="bucketsCtl.addBucket()">
-    ADD BUCKET
-  </a>
+  <div class="header-controls">
+    <a
+       ng-hide="bucketsCtl.isCreateNewDataBucketDisabled() || !rbac.cluster.buckets.create"
+       ng-click="bucketsCtl.addBucket()">
+      ADD BUCKET
+    </a>
+  </div>
 </mn-element-cargo>
 
 <div mn-spinner="!buckets.details" min-height="300px">

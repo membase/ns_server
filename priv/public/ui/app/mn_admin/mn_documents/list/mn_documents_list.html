@@ -1,9 +1,11 @@
 <mn-element-cargo depot="actions">
-  <a href=""
-     ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.currentBucketName].data.write"
-     ng-click="documentsListCtl.showCreateDialog()">
-    ADD DOCUMENT
-  </a>
+  <div class="header-controls">
+    <a
+       ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.currentBucketName].data.write"
+       ng-click="documentsListCtl.showCreateDialog()">
+      ADD DOCUMENT
+    </a>
+  </div>
 </mn-element-cargo>
 
 <div class="row margin-top-half margin-bottom-half">

@@ -1,9 +1,11 @@
 <mn-element-cargo depot="actions">
-  <a href=""
-     ng-show="rbac.cluster.admin.security.write"
-     ng-click="userRolesCtl.addUser()">
-    ADD USER
-  </a>
+  <div class="header-controls">
+    <a
+       ng-show="rbac.cluster.admin.security.write"
+       ng-click="userRolesCtl.addUser()">
+      ADD USER
+    </a>
+  </div>
 </mn-element-cargo>
 <div mn-spinner="!userRolesCtl.state || userRolesCtl.viewLoading" min-height="300px">
   <div class="cbui-table" mn-sortable-table>

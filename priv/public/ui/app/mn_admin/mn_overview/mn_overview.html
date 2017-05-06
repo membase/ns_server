@@ -1,5 +1,7 @@
 <mn-element-cargo depot="header">
-  {{::adminCtl.implementationVersion | mnPrettyVersion}}
+  <div  class="about-text">
+    {{::adminCtl.implementationVersion | mnPrettyVersion}}
+  </div>
 </mn-element-cargo>
 
 <div mn-spinner="(rbac.cluster.bucket['.'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || (rbac.cluster.bucket['.'].settings.read && !buckets.details)">

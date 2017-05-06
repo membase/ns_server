@@ -1,14 +1,16 @@
 <mn-element-cargo depot="actions">
-  <a href=""
-     ng-show="viewsListCtl.showViewCreationButtons() && rbac.cluster.bucket[viewsCtl.currentBucketName].views.write"
-     ng-click="viewsListCtl.showSpatialCreationDialog()">
-    ADD SPATIAL VIEW
-  </a>
-  <a href=""
-     ng-click="viewsListCtl.showMapreduceCreationDialog()"
-     ng-show="viewsListCtl.showViewCreationButtons() && rbac.cluster.bucket[viewsCtl.currentBucketName].views.write">
-    ADD VIEW
-  </a>
+  <div class="header-controls">
+    <a
+       ng-show="viewsListCtl.showViewCreationButtons() && rbac.cluster.bucket[viewsCtl.currentBucketName].views.write"
+       ng-click="viewsListCtl.showSpatialCreationDialog()">
+      ADD SPATIAL VIEW
+    </a>
+    <a
+       ng-click="viewsListCtl.showMapreduceCreationDialog()"
+       ng-show="viewsListCtl.showViewCreationButtons() && rbac.cluster.bucket[viewsCtl.currentBucketName].views.write">
+      ADD VIEW
+    </a>
+  </div>
 </mn-element-cargo>
 
 <div ng-if="!rbac.cluster.bucket[viewsCtl.currentBucketName] || rbac.cluster.bucket[viewsCtl.currentBucketName].views.read">
