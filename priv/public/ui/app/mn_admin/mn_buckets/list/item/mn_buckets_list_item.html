@@ -53,7 +53,7 @@
          ng-click="$event.stopPropagation()"
          title="Go to statistics for {{ bucket.name }}"
          ui-sref="app.admin.buckets.analytics.list.graph({bucket: bucket.name })"
-         ng-show="rbac.cluster.bucket[bucket.name].stats.read && cluster.stats.read"
+         ng-show="rbac.cluster.bucket[bucket.name].stats.read && rbac.cluster.stats.read"
          class="margin-left-half nowrap">
         Statistics
       </a>
