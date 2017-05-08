@@ -895,7 +895,13 @@ parse_vertices([$. | Rest], Acc) ->
         {Name, [$[ | Rest1]} ->
             case parse_until(Rest1, "]") of
                 {Param, [$] | Rest2]} ->
-                    parse_vertices(Rest2, [{list_to_rbac_atom(Name), Param} | Acc]);
+                    parse_vertices(Rest2, [{list_to_rbac_atom(Name),
+                                            case Param of
+                                                "." ->
+                                                    any;
+                                                _ ->
+                                                    Param
+                                            end} | Acc]);
                 _ ->
                     error
             end
