@@ -301,6 +301,15 @@ verify_fun(Cert, Event, State) ->
         {bad_cert, Error} ->
             ?log_error("Certificate ~p validation failed with reason ~p",
                        [Subject, Error]),
+
+            Trace = erlang:process_info(self(), [current_stacktrace]),
+            {RootCertDer, Len} = State,
+            OtpCert = public_key:pkix_decode_cert(RootCertDer, otp),
+            InitValidationState = pubkey_cert:init_validation_state(OtpCert, Len, []),
+
+            ?log_debug("Certificate validation trace:~n     Initial Context: ~p~n"
+                       "     Cert: ~p~n     Stack: ~p~n",
+                       [InitValidationState, Cert, Trace]),
             {fail, {Error, Subject}};
         {extension, _} ->
             {unknown, State};
@@ -330,7 +339,8 @@ validate_chain([Entry | Rest]) ->
 
 validate_chain_signatures({'Certificate', RootCertDer, not_encrypted}, Chain) ->
     DerChain = [Der || {'Certificate', Der, not_encrypted} <- Chain],
-    public_key:pkix_path_validation(RootCertDer, DerChain, [{verify_fun, {fun verify_fun/3, []}}]).
+    public_key:pkix_path_validation(RootCertDer, DerChain,
+                                    [{verify_fun, {fun verify_fun/3, {RootCertDer, length(Chain)}}}]).
 
 decode_and_validate_chain(CA, Chain) ->
     case decode_chain(Chain) of
