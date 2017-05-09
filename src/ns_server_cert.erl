@@ -123,12 +123,14 @@ validate_pkey(PKeyPemBin) ->
                     {ok, Entry};
                 'DSAPrivateKey' ->
                     {ok, Entry};
-                _ ->
+                Other ->
+                    ?log_debug("Invalid pkey type: ~p", [Other]),
                     {error, {invalid_pkey, Type}}
             end;
         [{_, _, _}] ->
             {error, encrypted_pkey};
-        _ ->
+        Other ->
+            ?log_debug("Too many (~p) pkey entries.", [length(Other)]),
             {error, too_many_pkey_entries}
     catch T:E ->
             ?log_error("Unknown error while parsing private key:~n~p", [{T,E,erlang:get_stacktrace()}]),
