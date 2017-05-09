@@ -129,6 +129,8 @@ validate_pkey(PKeyPemBin) ->
             end;
         [{_, _, _}] ->
             {error, encrypted_pkey};
+        [] ->
+            {error, malformed_pkey};
         Other ->
             ?log_debug("Too many (~p) pkey entries.", [length(Other)]),
             {error, too_many_pkey_entries}
