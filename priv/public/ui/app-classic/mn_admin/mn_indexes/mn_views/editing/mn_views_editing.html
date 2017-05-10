@@ -7,11 +7,14 @@
         ng-model="viewsEditingCtl.state.viewsNames.selected"
         theme="selectize"
         style="display: inline-block; vertical-align: middle;">
-        <ui-select-match>{{$select.selected.documentId + "/_views/" + $select.selected.name}}</ui-select-match>
+        <ui-select-match
+           class="ui-select-match"
+           >{{$select.selected.documentId + "/_views/" + $select.selected.name}}</ui-select-match>
         <ui-select-choices
-          repeat="item in viewsEditingCtl.state.viewsNames | filter: $select.search"
-          ui-disable-choice="item.isTitle">
-            <a class="select-item ellipsis" ng-bind-html="item.escapedName | highlight: $select.search"></a>
+           class="ui-select-choices"
+           repeat="item in viewsEditingCtl.state.viewsNames | filter: $select.search"
+           ui-disable-choice="item.isTitle">
+          <a class="select-item ellipsis" ng-bind-html="item.escapedName | highlight: $select.search"></a>
         </ui-select-choices>
       </ui-select>
     </span>

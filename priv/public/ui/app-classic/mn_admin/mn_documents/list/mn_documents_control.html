@@ -1,8 +1,11 @@
 <div class="doc_header" style="margin-top:-50px;">
   <div class="items_per_list_wrap">
     <ui-select ng-model="documentsControlCtl.state.pageLimits.selected" theme="selectize" on-select="documentsControlCtl.onSelectPageLimits($item)" style="width: 80px; display: inline-block; vertical-align: middle;">
-      <ui-select-match>{{$select.selected}}</ui-select-match>
-      <ui-select-choices repeat="name in documentsControlCtl.state.pageLimits | filter: $select.search">
+      <ui-select-match
+         class="ui-select-match">{{$select.selected}}</ui-select-match>
+      <ui-select-choices
+         class="ui-select-choices"
+         repeat="name in documentsControlCtl.state.pageLimits | filter: $select.search">
         <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>

@@ -32,8 +32,12 @@
           ng-if="externalRolesAddDialogCtl.roles"
           ng-model="externalRolesAddDialogCtl.roles.selected"
           >
-            <ui-select-match placeholder="choose single or multiple roles">{{$item.name}}<span ng-show="$item.bucket_name">[{{$item.bucket_name}}]</span></ui-select-match>
-            <ui-select-choices repeat="role in externalRolesAddDialogCtl.roles | filter: $select.search">
+          <ui-select-match
+             class="ui-select-match"
+             placeholder="choose single or multiple roles">{{$item.name}}<span ng-show="$item.bucket_name">[{{$item.bucket_name}}]</span></ui-select-match>
+          <ui-select-choices
+             class="ui-select-choices"
+             repeat="role in externalRolesAddDialogCtl.roles | filter: $select.search">
               <span class="select-item ellipsis" ng-bind-html="(role.name + (role.bucket_name ? '[' + role.bucket_name + ']' : '')) | highlight: $select.search"></span>
             </ui-select-choices>
         </ui-select>

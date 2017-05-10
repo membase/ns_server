@@ -18,8 +18,11 @@
       ng-disabled="disabled"
       on-select="analyticsCtl.onSelectBucket($item)"
       style="display: inline-block; vertical-align: middle;">
-        <ui-select-match>{{$select.selected}}</ui-select-match>
-        <ui-select-choices repeat="name in analyticsCtl.buckets.bucketsNames | filter: $select.search">
+      <ui-select-match
+         class="ui-select-match">{{$select.selected}}</ui-select-match>
+      <ui-select-choices
+         class="ui-select-choices"
+         repeat="name in analyticsCtl.buckets.bucketsNames | filter: $select.search">
           <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
         </ui-select-choices>
     </ui-select>
@@ -33,8 +36,11 @@
         ng-disabled="disabled"
         on-select="analyticsCtl.onSelectNode($item)"
         style="display: inline-block; vertical-align: middle;">
-          <ui-select-match>{{$select.selected}}</ui-select-match>
-          <ui-select-choices repeat="name in analyticsCtl.nodes.nodesNames | filter: $select.search">
+        <ui-select-match
+           class="ui-select-match">{{$select.selected}}</ui-select-match>
+        <ui-select-choices
+           class="ui-select-choices"
+           repeat="name in analyticsCtl.nodes.nodesNames | filter: $select.search">
             <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
           </ui-select-choices>
       </ui-select>

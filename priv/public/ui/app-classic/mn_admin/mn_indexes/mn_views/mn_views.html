@@ -1,5 +1,5 @@
 <div ng-if="!viewsCtl.mnPoolDefault.value.isKvNode">
-  The views interface is only available on nodes running the Data service. You may access the interface here: 
+  The views interface is only available on nodes running the Data service. You may access the interface here:
   <a id="js_healthy_kv_node_link" href="{{viewsCtl.kvNodeLink}}">{{viewsCtl.kvNodeLink}}</a>
 </div>
 <div ng-if="viewsCtl.mnPoolDefault.value.isKvNode" id="js_views" class="views">
@@ -10,8 +10,12 @@
         on-select="viewsCtl.onSelectBucket($item)"
         theme="selectize"
         style="display: inline-block; vertical-align: middle;">
-        <ui-select-match>{{$select.selected}}</ui-select-match>
-        <ui-select-choices repeat="name in viewsCtl.state.bucketsNames | filter: $select.search">
+        <ui-select-match
+           class="ui-select-match"
+           >{{$select.selected}}</ui-select-match>
+        <ui-select-choices
+           class="ui-select-choices"
+           repeat="name in viewsCtl.state.bucketsNames | filter: $select.search">
           <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search" ></span>
         </ui-select-choices>
       </ui-select>

@@ -114,7 +114,7 @@
           + "://" + hostnameAndPort[0]
           + ":" + port
           + appbase
-          + "#" + $location.path()
+          + "#!" + $location.path()
           + (search ? "?" + search : "")
           + (hash ? "#" + hash : "");
       });
