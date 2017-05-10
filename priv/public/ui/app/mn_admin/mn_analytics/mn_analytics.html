@@ -52,7 +52,7 @@
       </thead>
       <tbody>
         <tr ng-repeat="key in analyticsCtl.state.stats.hot_keys">
-          <td>{{key.name}}</td>
+          <td class="break-word">{{key.name}}</td>
           <td class="text-center">{{analyticsCtl.computeOps(key)}}</td>
         </tr>
       </tbody>
