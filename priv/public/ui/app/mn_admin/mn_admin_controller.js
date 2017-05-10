@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions, mnPools, mnMemoryQuotaService, mnResetPasswordDialogService, whoami, mnBucketsStats, mnBucketsService) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions, mnPools, mnMemoryQuotaService, mnResetPasswordDialogService, whoami, mnBucketsStats, mnBucketsService, $q) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -57,10 +57,17 @@
     }
 
     function resetAutoFailOverCount() {
-      mnPromiseHelper(vm, mnSettingsAutoFailoverService.resetAutoFailOverCount({group: "global"}))
+      var queries = [
+        mnSettingsAutoFailoverService.resetAutoFailOverCount({group: "global"})
+      ];
+      if (mnPoolDefault.export.compat.atLeast50) {
+        queries.push(mnSettingsAutoFailoverService.resetAutoReprovisionCount({group: "global"}));
+      }
+      mnPromiseHelper(vm, $q.all(queries))
+        .reloadState()
         .showSpinner('resetQuotaLoading')
-        .catchGlobalErrors('Unable to reset the auto-failover quota!')
-        .reloadState();
+        .catchGlobalErrors('Unable to reset Auto-failover quota!')
+        .showGlobalSuccess("Auto-failover quota reset successfully!");
     }
 
     function activate() {

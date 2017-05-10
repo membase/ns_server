@@ -7,44 +7,84 @@
     'mnPromiseHelper'
   ]).controller('mnSettingsAutoFailoverController', mnSettingsAutoFailoverController);
 
-  function mnSettingsAutoFailoverController($scope, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService) {
+  function mnSettingsAutoFailoverController($scope, $q, mnHelper, mnPromiseHelper, mnSettingsAutoFailoverService, mnPoolDefault) {
     var vm = this;
 
-    vm.isAutoFailOverDisabled = isAutoFailOverDisabled;
     vm.submit = submit;
 
     activate();
 
-    function watchOnAutoFailoverSettings() {
-      if (!$scope.rbac.cluster.settings.write) {
-        return;
+    function getAutoFailoverSettings() {
+      return {
+        enabled: vm.autoFailoverSettings.enabled,
+        timeout: vm.autoFailoverSettings.timeout
+      };
+    }
+
+    function getReprovisionSettings() {
+      return {
+        enabled: vm.reprovisionSettings.enabled,
+        maxNodes: vm.reprovisionSettings.max_nodes
+      };
+    }
+
+    function watchOnSettings(method, dataFunc) {
+      return function () {
+        if (!$scope.rbac.cluster.settings.write) {
+          return;
+        }
+        mnPromiseHelper(vm, mnSettingsAutoFailoverService[method](dataFunc(), {just_validate: 1}))
+          .catchErrorsFromSuccess(method + "Errors");
       }
-      mnPromiseHelper(vm, mnSettingsAutoFailoverService.saveAutoFailoverSettings({
-        enabled: vm.state.enabled,
-        timeout: vm.state.timeout
-      }, {
-        just_validate: 1
-      })).catchErrorsFromSuccess();
     }
 
     function activate() {
-      mnPromiseHelper(vm, mnSettingsAutoFailoverService.getAutoFailoverSettings())
-        .applyToScope(function (autoFailoverSettings) {
-          vm.state = autoFailoverSettings.data;
-          $scope.$watch('settingsAutoFailoverCtl.state', _.debounce(watchOnAutoFailoverSettings, 500, {leading: true}), true);
+      if (mnPoolDefault.export.compat.atLeast50) {
+        mnPromiseHelper(vm, mnSettingsAutoFailoverService.getAutoReprovisionSettings())
+          .applyToScope(function (resp) {
+            vm.reprovisionSettings = resp.data;
+
+            $scope.$watch(
+              'settingsAutoFailoverCtl.reprovisionSettings',
+              _.debounce(watchOnSettings("postAutoReprovisionSettings", getReprovisionSettings),
+                         500, {leading: true}), true);
+          });
+      }
+
+      mnPromiseHelper(vm,
+        mnSettingsAutoFailoverService.getAutoFailoverSettings())
+        .applyToScope(function (resp) {
+          vm.autoFailoverSettings = resp.data;
+
+          $scope.$watch(
+            'settingsAutoFailoverCtl.autoFailoverSettings',
+            _.debounce(watchOnSettings("saveAutoFailoverSettings", getAutoFailoverSettings),
+                       500, {leading: true}), true);
         });
     }
-    function isAutoFailOverDisabled() {
-      return !vm.state || !vm.state.enabled;
-    }
+
     function submit() {
-      var data = {
-        enabled: vm.state.enabled,
-        timeout: vm.state.timeout
-      };
-      mnPromiseHelper(vm, mnSettingsAutoFailoverService.saveAutoFailoverSettings(data))
-        .showGlobalSpinner()
+      var queries = [
+        mnPromiseHelper(vm, mnSettingsAutoFailoverService.saveAutoFailoverSettings(getAutoFailoverSettings()))
+          .catchErrors(function (resp) {
+            vm.saveAutoFailoverSettingsErrors = resp && {timeout: resp};
+          })
+          .getPromise()
+      ];
+
+      if (mnPoolDefault.export.compat.atLeast50) {
+        queries.push(
+          mnPromiseHelper(vm, mnSettingsAutoFailoverService.postAutoReprovisionSettings(getReprovisionSettings()))
+            .catchErrors(function (resp) {
+              vm.postAutoReprovisionSettingsErrors = resp && {maxNodes: resp};
+            })
+            .getPromise()
+        );
+      }
+
+      mnPromiseHelper(vm, $q.all(queries))
         .catchErrors()
+        .showGlobalSpinner()
         .showGlobalSuccess("Settings saved successfully!");
     };
   }

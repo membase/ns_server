@@ -7,8 +7,11 @@
   function mnSettingsAutoFailoverServiceFactory($http) {
     var mnSettingsAutoFailoverService = {
       resetAutoFailOverCount: resetAutoFailOverCount,
+      resetAutoReprovisionCount: resetAutoReprovisionCount,
       getAutoFailoverSettings: getAutoFailoverSettings,
-      saveAutoFailoverSettings: saveAutoFailoverSettings
+      saveAutoFailoverSettings: saveAutoFailoverSettings,
+      getAutoReprovisionSettings: getAutoReprovisionSettings,
+      postAutoReprovisionSettings: postAutoReprovisionSettings
     };
 
     return mnSettingsAutoFailoverService;
@@ -32,6 +35,27 @@
         url: "/settings/autoFailover",
         data: autoFailoverSettings,
         params: params
+      });
+    }
+    function getAutoReprovisionSettings() {
+      return $http({
+        method: 'GET',
+        url: "/settings/autoReprovision"
+      });
+    }
+    function postAutoReprovisionSettings(settings, params) {
+      return $http({
+        method: 'POST',
+        url: "/settings/autoReprovision",
+        data: settings,
+        params: params
+      });
+    }
+    function resetAutoReprovisionCount(mnHttpParams) {
+      return $http({
+        method: 'POST',
+        url: "/settings/autoReprovision/resetCount",
+        mnHttp: mnHttpParams
       });
     }
   }

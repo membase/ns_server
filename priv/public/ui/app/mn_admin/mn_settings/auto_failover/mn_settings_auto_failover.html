@@ -1,33 +1,32 @@
-<div mn-spinner="settingsAutoFailoverCtl.viewLoading || !settingsAutoFailoverCtl.state || adminCtl.resetQuotaLoading">
+<mn-element-cargo depot="alerts">
   <div
-     class="forms"
-     ng-show="settingsAutoFailoverCtl.state.count > 0">
-    <div class="formrow">
-      <div
-         class="error error-form">
-        A server was automatically failed over. Auto-failover is disabled until you reset it.
-        <button
-           ng-click="adminCtl.resetAutoFailOverCount()"
-           ng-show="rbac.cluster.settings.write"
-           class="middle">
-          Reset Auto-Failover
-        </button>
-      </div>
-    </div>
+     class="alert alert-warning"
+     ng-show="settingsAutoFailoverCtl.autoFailoverSettings.count > 0">
+    <p>
+      A server was automatically failed over. Auto-failover is disabled until you reset it. &nbsp;
+      <a
+         href=""
+         ng-click="adminCtl.resetAutoFailOverCount()"
+         ng-show="rbac.cluster.settings.write">
+        Reset Auto-Failover
+      </a>
+    </p>
   </div>
+</mn-element-cargo>
 
-  <form class="forms" ng-submit="settingsAutoFailoverCtl.submit()">
+<div mn-spinner="settingsAutoFailoverCtl.viewLoading || !settingsAutoFailoverCtl.autoFailoverSettings || adminCtl.resetQuotaLoading">
+  <form ng-submit="settingsAutoFailoverCtl.submit()">
     <div class="formrow">
       <input
          type="checkbox"
          id="for-auto-failover-enable"
          ng-disabled="!rbac.cluster.settings.write"
-         ng-model="settingsAutoFailoverCtl.state.enabled">
+         ng-model="settingsAutoFailoverCtl.autoFailoverSettings.enabled">
       <label for="for-auto-failover-enable">
         Enable auto-failover
       </label>
     </div>
-    <div class="formrow width-300">
+    <div class="formrow">
       <label for="auto_failover_timeout" class="inline">
         Timeout <small>in seconds</small>
       </label>
@@ -38,22 +37,54 @@
         <span class="icon fa-circle-thin fa-stack-2x"></span>
         <span class="icon fa-info fa-stack-1x"></span>
       </span>
+      <br>
       <input
          type="number"
          autocorrect="off"
          spellcheck="false"
          autocapitalize="off"
          id="auto_failover_timeout"
-         ng-model="settingsAutoFailoverCtl.state.timeout"
-         ng-disabled="settingsAutoFailoverCtl.isAutoFailOverDisabled() || !rbac.cluster.settings.write">
-      <div class="error error-field" ng-show="settingsAutoFailoverCtl.errors.timeout">
-        {{settingsAutoFailoverCtl.errors.timeout}}
+         ng-model="settingsAutoFailoverCtl.autoFailoverSettings.timeout"
+         ng-disabled="!settingsAutoFailoverCtl.autoFailoverSettings.enabled || !rbac.cluster.settings.write">
+      <div
+         class="error error-field"
+         ng-show="settingsAutoFailoverCtl.saveAutoFailoverSettingsErrors.timeout">
+        {{settingsAutoFailoverCtl.saveAutoFailoverSettingsErrors.timeout}}
       </div>
     </div>
-
+    <div class="formrow width-480" ng-show="poolDefault.compat.atLeast50">
+      <hr class="margin-top2">
+    </div>
+    <div class="formrow"  ng-show="poolDefault.compat.atLeast50">
+      <input
+         type="checkbox"
+         ng-model="settingsAutoFailoverCtl.reprovisionSettings.enabled"
+         id="for-auto-reprovision-enable">
+      <label for="for-auto-reprovision-enable">
+        Enable auto-reprovisioning (Ephemeral Buckets only)
+      </label>
+    </div>
+    <div class="formrow">
+      <label for="for-max-nodes">
+        Max Concurrent Nodes
+      </label>
+      <input
+         type="number"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
+         id="for-max-nodes"
+         ng-model="settingsAutoFailoverCtl.reprovisionSettings.max_nodes"
+         ng-disabled="!settingsAutoFailoverCtl.reprovisionSettings.enabled">
+      <div
+         class="error error-field"
+         ng-show="settingsAutoFailoverCtl.postAutoReprovisionSettingsErrors.maxNodes">
+        {{settingsAutoFailoverCtl.postAutoReprovisionSettingsErrors.maxNodes}}
+      </div>
+    </div>
     <button
        ng-show="rbac.cluster.settings.write"
-       ng-disabled="settingsAutoFailoverCtl.errors"
+       ng-disabled="settingsAutoFailoverCtl.postAutoReprovisionSettingsErrors || settingsAutoFailoverCtl.saveAutoFailoverSettingsErrors"
        type="submit">Save</button>
   </form>
 </div>
