@@ -296,20 +296,34 @@ set_cluster_ca(CA) ->
             {error, Error}
     end.
 
-verify_fun(Cert, Event, State) ->
+-record(verify_state, {last_subject, root_cert, chain_len}).
+
+get_subject(Cert) ->
     TBSCert = Cert#'OTPCertificate'.tbsCertificate,
-    Subject = format_name(TBSCert#'OTPTBSCertificate'.subject),
+    format_name(TBSCert#'OTPTBSCertificate'.subject).
+
+verify_fun(Cert, Event, State) ->
+    Subject = get_subject(Cert),
     ?log_debug("Certificate verification event : ~p", [{Subject, Event}]),
 
     case Event of
+        {bad_cert, invalid_issuer} ->
+            case State#verify_state.last_subject of
+                undefined ->
+                    RootOtpCert = public_key:pkix_decode_cert(State#verify_state.root_cert, otp),
+                    RootSubject = get_subject(RootOtpCert),
+                    {fail, {invalid_root_issuer, Subject, RootSubject}};
+                LastSubject ->
+                    {fail, {invalid_issuer, Subject, LastSubject}}
+            end;
         {bad_cert, Error} ->
             ?log_error("Certificate ~p validation failed with reason ~p",
                        [Subject, Error]),
 
             Trace = erlang:process_info(self(), [current_stacktrace]),
-            {RootCertDer, Len} = State,
-            OtpCert = public_key:pkix_decode_cert(RootCertDer, otp),
-            InitValidationState = pubkey_cert:init_validation_state(OtpCert, Len, []),
+            OtpCert = public_key:pkix_decode_cert(State#verify_state.root_cert, otp),
+            InitValidationState =
+                pubkey_cert:init_validation_state(OtpCert, State#verify_state.chain_len, []),
 
             ?log_debug("Certificate validation trace:~n     Initial Context: ~p~n"
                        "     Cert: ~p~n     Stack: ~p~n",
@@ -318,7 +332,7 @@ verify_fun(Cert, Event, State) ->
         {extension, _} ->
             {unknown, State};
         valid ->
-            {valid, State};
+            {valid, State#verify_state{last_subject = Subject}};
         valid_peer ->
             {valid, State}
     end.
@@ -343,8 +357,10 @@ validate_chain([Entry | Rest]) ->
 
 validate_chain_signatures({'Certificate', RootCertDer, not_encrypted}, Chain) ->
     DerChain = [Der || {'Certificate', Der, not_encrypted} <- Chain],
-    public_key:pkix_path_validation(RootCertDer, DerChain,
-                                    [{verify_fun, {fun verify_fun/3, {RootCertDer, length(Chain)}}}]).
+    public_key:pkix_path_validation(
+      RootCertDer, DerChain,
+      [{verify_fun, {fun verify_fun/3, #verify_state{root_cert = RootCertDer,
+                                                     chain_len = length(Chain)}}}]).
 
 decode_and_validate_chain(CA, Chain) ->
     case decode_chain(Chain) of
