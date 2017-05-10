@@ -167,7 +167,7 @@ persist_config(Enabled, MaxNodes, Count) ->
 
 get_reprovision_cfg() ->
     {value, RCfg} = ns_config:search(ns_config:latest(), auto_reprovision_cfg),
-    {proplists:get_value(enabled, RCfg, false),
+    {proplists:get_value(enabled, RCfg, true),
      proplists:get_value(max_nodes, RCfg, ?DEFAULT_MAX_NODES_SUPPORTED),
      proplists:get_value(count, RCfg, 0)}.
 

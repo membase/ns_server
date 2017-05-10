@@ -403,7 +403,7 @@ default() ->
      % auto-reprovision (mostly applicable to ephemeral buckets) is the operation that
      % is carried out when memcached process on a node restarts within the auto-failover
      % timeout.
-     {auto_reprovision_cfg, [{enabled, false},
+     {auto_reprovision_cfg, [{enabled, true},
                              % max_nodes is the maximum number of nodes that may be
                              % automatically reprovisioned
                              {max_nodes, 1},
