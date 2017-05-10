@@ -1,13 +1,13 @@
 <div mn-spinner="(rbac.cluster.xdcr.remote_clusters.read && !xdcrCtl.references) || (rbac.cluster.tasks.read && !adminCtl.tasks)" min-height="300px">
   <div ng-show="rbac.cluster.xdcr.remote_clusters.read">
 
-    <div class="interim row">
+    <div class="row margin-bottom-half">
       <h4>Remote Clusters</h4>
 
       <button
          ng-show="rbac.cluster.xdcr.remote_clusters.write"
          ng-click="xdcrCtl.createClusterReference()">
-        Create Remote Cluster
+        Add Remote Cluster
       </button>
     </div>
 
@@ -17,7 +17,7 @@
       <table class="table-stroked">
         <thead>
           <tr>
-            <th>Name</th>
+            <th>name</th>
             <th>IP/hostname</th>
             <th></th>
           </tr>
@@ -32,11 +32,9 @@
             </td>
             <td class="text-right">
               <a
-                 class="link-heavy"
                  ng-show="rbac.cluster.xdcr.remote_clusters.write"
                  ng-click="xdcrCtl.deleteClusterReference(row)">Delete</a> &nbsp;
               <a
-                 class="link-heavy"
                  ng-show="rbac.cluster.xdcr.remote_clusters.write"
                  ng-click="xdcrCtl.editClusterReference(row)">Edit</a>
             </td>
@@ -52,7 +50,7 @@
 
   <!-- Ongoing Replications -->
   <div ng-show="rbac.cluster.tasks.read">
-    <div class="interim row">
+    <div class="row margin-bottom-half">
       <h4>Ongoing Replications</h4>
       <button
          ng-show="xdcrCtl.references.filtered.length"
@@ -67,13 +65,13 @@
       <table class="table-stroked">
         <thead>
           <tr>
-            <th>Bucket</th>
-            <th>Protocol</th>
-            <th>From</th>
-            <th>To</th>
-            <th ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise">Filtered</th>
-            <th>Status</th>
-            <th>When</th>
+            <th>bucket</th>
+            <th class="resp-hide-sml">protocol</th>
+            <th class="resp-hide-sml">from</th>
+            <th class="resp-hide-sml">to</th>
+            <th ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise" class="resp-hide-sml">filtered</th>
+            <th>status</th>
+            <th class="resp-hide-sml">when</th>
             <th></th>
           </tr>
         </thead>
@@ -82,10 +80,10 @@
            ng-repeat="row in adminCtl.tasks.tasksXDCR track by row.id">
           <tr>
             <td class="break-all max-width-4">{{row.source}}</td>
-            <td>{{"Version " + (row.replicationType === "xmem" ? "2" : row.replicationType === "capi" ? "1" : "unknown")}}</td>
-            <td>this cluster</td>
-            <td>{{xdcrCtl.to(row)}}</td>
-            <td ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise">
+            <td class="resp-hide-sml">{{"Version " + (row.replicationType === "xmem" ? "2" : row.replicationType === "capi" ? "1" : "unknown")}}</td>
+            <td class="resp-hide-sml">this cluster</td>
+            <td class="resp-hide-sml">{{xdcrCtl.to(row)}}</td>
+            <td class="resp-hide-sml" ng-show="xdcrCtl.mnPoolDefault.value.isEnterprise">
               <a
                  ng-show="row.filterExpression"
                  href=""
@@ -106,14 +104,12 @@
                 Last {{row.errors.length | mnCount:'error'}}
               </a>
             </td>
-            <td>{{row.when}}</td>
+            <td class="resp-hide-sml">{{row.when}}</td>
             <td class="text-right">
               <a
-                 class="link-heavy"
                  ng-show="rbac.cluster.bucket['.'].xdcr.write"
                  ng-click="xdcrCtl.deleteReplication(row)">Delete</a> &nbsp;
               <a
-                 class="link-heavy"
                  ng-show="rbac.cluster.bucket['.'].xdcr.read && rbac.cluster.xdcr.settings.read"
                  ng-click="xdcrCtl.editReplication(row)">Edit</a>
             </td>

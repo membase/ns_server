@@ -206,6 +206,8 @@ body {
   line-height: 1.5;
   background: #fff;
   color: #000;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 h1,
@@ -1251,7 +1253,7 @@ select.select-small {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 .disable-text-selection {

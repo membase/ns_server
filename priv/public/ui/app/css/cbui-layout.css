@@ -14,7 +14,7 @@ nav.nav-header {
   display: flex;
   justify-content: flex-end;
   align-content: center;
-  padding: 0 1.5rem 0 0;
+  padding: 0 1rem 0 0;
   margin: 0;
   width: 100%;
   height: 18px;
@@ -33,8 +33,8 @@ header {
   -ms-flex-align: center;
   align-items: center;
   background-color: #4287d6;
-  padding: 0 1.5rem;
-  height: 60px;
+  padding: 0 1rem;
+  height: 3.75rem;
   color: #fff;
   position: relative;
 }
@@ -48,7 +48,7 @@ main {
   -webkit-box-align:start;
   -ms-flex-align:start;
   align-items:flex-start;
-  padding: 1rem 1.5rem;
+  padding: 1rem;
   margin: 0;
   width: 100vw;
 }
@@ -64,10 +64,10 @@ nav.sub-nav {
 }
 
 nav.nav-sidebar {
-  flex: 0 0 104px;
+  flex: 0 0 auto;
   border-right: 1px solid #ececec;
   padding: .5rem 0 2rem 0;
-  margin: 0 2.5rem 0 0;
+  margin: 0 2rem 0 0;
   text-align: right;
 }
 

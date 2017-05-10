@@ -14,10 +14,10 @@
         {{serversCtl.getGroupsByHostname[node.hostname].name | mnLimitTo: 20}}{{serversCtl.getGroupsByHostname[node.hostname].name.length > 20 ? '...' : ''}}
       </span>
     </span>
-    <span class="cbui-table-cell flex-grow-1-5">
+    <span class="cbui-table-cell flex-grow-1-5 resp-hide-xsml">
       <span ng-repeat="service in node.services | mnFormatServicesArray | orderBy" class="label neutral nocaps">{{service}}</span>
     </span>
-    <span class="cbui-table-cell flex-grow-half">
+    <span class="cbui-table-cell flex-grow-half resp-hide-sml">
       <span ng-show="!serversItemCtl.getCpuUsageConf.exist">
         ---
       </span>
@@ -25,7 +25,7 @@
         {{serversItemCtl.getCpuUsageConf.value | mnTruncateTo3Digits}}%
       </span>
     </span>
-    <span class="cbui-table-cell flex-grow-half">
+    <span class="cbui-table-cell flex-grow-half resp-hide-sml">
       <span ng-show="!serversItemCtl.getRamUsageConf.exist">
         ---
       </span>
@@ -33,8 +33,7 @@
         {{serversItemCtl.getRamUsageConf.value | mnTruncateTo3Digits}}%
       </span>
     </span>
-    <span
-       class="cbui-table-cell flex-grow-half">
+    <span class="cbui-table-cell flex-grow-half resp-hide-med">
       <span ng-show="!serversItemCtl.getSwapUsageConf.exist">
         ---
       </span>
@@ -42,7 +41,7 @@
         {{serversItemCtl.getSwapUsageConf.value | mnTruncateTo3Digits}}%
       </span>
     </span>
-    <span class="cbui-table-cell flex-grow-half">
+    <span class="cbui-table-cell flex-grow-half resp-hide-med">
       <span ng-show="!serversItemCtl.couchDiskUsage">
         ---
       </span>
@@ -50,10 +49,10 @@
         {{serversItemCtl.couchDiskUsage | mnFormatQuantity}}
       </span>
     </span>
-    <span class="cbui-table-cell" title="{{node.interestingStats.curr_items || 0 | mnFormatQuantity:1000:' ' }}/{{node.interestingStats.vb_replica_curr_items || 0 | mnFormatQuantity:1000:' ' }}">
+    <span class="cbui-table-cell resp-hide-med" title="{{node.interestingStats.curr_items || 0 | mnFormatQuantity:1000:' ' }}/{{node.interestingStats.vb_replica_curr_items || 0 | mnFormatQuantity:1000:' ' }}">
       {{node.interestingStats.curr_items || 0 | mnFormatQuantity:1000:' ' }}/{{node.interestingStats.vb_replica_curr_items || 0 | mnFormatQuantity:1000:' ' }}
     </span>
-    <span class="cbui-table-cell text-right">
+    <span class="cbui-table-cell text-right resp-hide-sml">
       <a
          ng-if="!serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeUnhealthy && rbac.cluster.stats.read && rbac.cluster.bucket['.'].stats.read"
          title="{{'View Analytics for ' + node.hostname}}"

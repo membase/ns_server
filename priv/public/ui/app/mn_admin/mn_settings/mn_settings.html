@@ -11,7 +11,7 @@
        id="settings_update_notifications"
        ui-sref="app.admin.settings.notifications"
        ui-sref-active="selected"
-       class="casper_settings_update_notifications"
+       class="casper_settings_update_notifications resp-hide-sml"
        ng-show="rbac.cluster.settings.read">Software Updates</a>
     <a
        id="settings_auto_failover"
@@ -27,13 +27,13 @@
        ui-sref-active="selected">Email Alerts</a>
     <a
        id="settings_compaction"
-       class="casper_settings_compaction"
+       class="casper_settings_compaction resp-hide-sml"
        ng-show="rbac.cluster.settings.read"
        ui-sref="app.admin.settings.autoCompaction"
        ui-sref-active="selected">Auto-Compaction</a>
     <a
        id="settings_sample_buckets"
-       class="casper_settings_sample_buckets"
+       class="casper_settings_sample_buckets resp-hide-sml"
        ng-show="rbac.cluster.samples.read"
        ui-sref="app.admin.settings.sampleBuckets"
        ui-sref-active="selected">Sample Buckets</a>

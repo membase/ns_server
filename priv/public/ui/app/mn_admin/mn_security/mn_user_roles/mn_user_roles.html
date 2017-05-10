@@ -1,7 +1,6 @@
 <mn-element-cargo depot="actions">
   <div class="header-controls">
-    <a
-       ng-show="rbac.cluster.admin.security.write"
+    <a ng-show="rbac.cluster.admin.security.write"
        ng-click="userRolesCtl.addUser()">
       ADD USER
     </a>
@@ -14,14 +13,14 @@
          class="cbui-table-cell"
          mn-sortable-title="id">username</span>
       <span
-         class="cbui-table-cell"
+         class="cbui-table-cell resp-hide-sml"
          mn-sortable-title="name"
          sort-by-default="true">full name</span>
       <span
         class="cbui-table-cell flex-grow-3"
         mn-sortable-title="roles">roles</span>
       <span
-         class="cbui-table-cell flex-grow-half"
+         class="cbui-table-cell resp-hide-xsml"
          mn-sortable-title="domain">auth domain</span>
     </div>
     <section
@@ -38,7 +37,7 @@
           {{user.id}}
           <span ng-show="user.passwordless" class="label lt-blue">no password</span>
         </span>
-        <span class="cbui-table-cell">{{user.name}}</span>
+        <span class="cbui-table-cell resp-hide-sml">{{user.name}}</span>
         <span class="cbui-table-cell flex-grow-3 wrap">
           <span
               class="relative"
@@ -55,7 +54,7 @@
             </span>
           </span>
         </span>
-        <span class="cbui-table-cell flex-grow-half">
+        <span class="cbui-table-cell resp-hide-xsml">
           {{user.domain === "local" ? "Couchbase" : "External"}}
         </span>
       </div>

@@ -57,13 +57,13 @@
       <span class="cbui-table-cell">
         {{server.hostname | mnStripPortHTML:group.nodes}}
       </span>
-      <span class="cbui-table-cell flex-grow-3">
+      <span class="cbui-table-cell flex-grow-1-5">
         <span
            ng-repeat="service in server.services | mnFormatServicesArray | orderBy"
            class="label neutral">{{service}}
         </span>
       </span>
-      <span class="cbui-table-cell wrap flex-grow-3 text-right">
+      <span class="cbui-table-cell wrap flex-grow-1-5 text-right">
         <div uib-dropdown ng-show="!server.toGroupPending && groupsCtl.state.groups.length > 1">
           <div uib-dropdown-toggle class="menu-toggle">move to <span class="icon fa-caret-down"></span></div>
           <div uib-dropdown-menu class="dropdown-menu-select-like">

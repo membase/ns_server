@@ -1,7 +1,7 @@
 <div
    mn-spinner="!serversListItemDetailsCtl.server.getMemoryCacheConfig || !serversListItemDetailsCtl.server.getDiskStorageConfig">
 
-  <div class="row flex-left items-top">
+  <div class="row flex-left items-top resp-sml">
     <div class="cbui-table-props">
       <div>
         <strong>Uptime:</strong> {{serversListItemDetailsCtl.server.details.uptime | mnFormatUptime}}
@@ -26,15 +26,6 @@
          ng-if="!!serversListItemDetailsCtl.server.details.storage.hdd[0].index_path"
          class="break-all">
         <strong>Index Storage Path:</strong> {{serversListItemDetailsCtl.server.details.storage.hdd[0].index_path | mnEllipsisiseOnLeft:100}}
-      </div>
-      <div>
-        <strong>Node:</strong> {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
-      </div>
-      <div>
-        <strong>Group:</strong>
-        <span ng-show="rbac.cluster.server_groups.read && serversCtl.mnPoolDefault.value.isGroupsAvailable">
-          {{serversCtl.getGroupsByHostname[node.hostname].name}}
-        </span>
       </div>
     </div>
     <div class="cbui-table-meters servers">

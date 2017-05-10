@@ -17,7 +17,7 @@
       var configLocation = "::" + tabBarName + ".pluggableUiConfigs[" + index + "]";
       var defaultTemplate = "<a ng-show=\"{{" + configLocation + ".ngShow}}\" ui-sref=\"{{ " + configLocation + ".state }}\" ui-sref-active=\"selected\">{{ " + configLocation + ".name }}</a>"
       var tabTemplates = {
-        adminTab: "<a ng-show=\"{{" + configLocation + ".ngShow}}\" class=\"line\" ui-sref-active=\"currentNav\" ui-sref=\"{{" + configLocation + ".state}}\">{{" + configLocation + ".name}}</a>",
+        adminTab: "<a ng-show=\"{{" + configLocation + ".ngShow}}\" class=\"line resp-hide-sml\" ui-sref-active=\"currentNav\" ui-sref=\"{{" + configLocation + ".state}}\">{{" + configLocation + ".name}}</a>",
         indexesTab:  "<a class=\"pills\" ng-show=\"{{" + configLocation + ".ngShow}}\" ui-sref=\"{{" + configLocation + ".state}}\" ui-sref-active=\"selected\">{{" + configLocation + ".name}}</a>"
      };
 

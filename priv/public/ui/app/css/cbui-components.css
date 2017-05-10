@@ -168,6 +168,7 @@ header h1 .icon {
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: right;
+  letter-spacing: .025rem;
 }
 
 .menu-icon {
@@ -304,12 +305,13 @@ h1 a:active
 
 .header-controls a:hover {
   color: #fff;
-  border: 1px solid #eceff2;
+  border-color: #fff;
   transition: none;
 }
 
 .header-controls a:active {
   color: #d8dde4;
+  border: 1px solid #4287d6;
 }
 
 /* sub-navigation links ------------------------ */
@@ -469,8 +471,9 @@ table th span.has-menu:after {
   -ms-flex: 0 1 auto;
   flex: 0 1 auto;
 }
-.filter-input {
-  width: 100%;
+input.filter-input {
+  width: auto;
+  padding-right: 2rem;
 }
 
 /* this inserts the magnifying glass displayed inside input fields with ".filter-input"  */
@@ -485,7 +488,7 @@ table th span.has-menu:after {
   font-size: 20px;
   position: absolute;
   top: .4rem;
-  right: .5rem;
+  right: .4rem;
   cursor: pointer;
 }
 
@@ -506,8 +509,8 @@ table th span.has-menu:after {
   content: "\f00c";
   font-size: 1.125rem;
   color: #2ca01c;
-  position:absolute;
-  top: 0;
+  position: absolute;
+  top: -4px;
   left: -1.5rem;
 }
 
@@ -517,8 +520,8 @@ table th span.has-menu:after {
   content: "\f06a";
   font-size: 1.125rem;
   color: #f5a623;
-  position:absolute;
-  top: 0;
+  position: absolute;
+  top: -4px;
   left: -1.5rem;
 }
 
@@ -528,8 +531,8 @@ table th span.has-menu:after {
   content: "\f071";
   font-size: 1rem;
   color: #d65558;
-  position:absolute;
-  top: 0;
+  position: absolute;
+  top: -4px;
   left: -1.5rem;
 }
 
@@ -537,8 +540,8 @@ table th span.has-menu:after {
 .alert span.close {
   font-family:FontAwesome;
   font-size: 1.125rem;
-  position:absolute;
-  top: 0;
+  position: absolute;
+  top: -4px;
   cursor: pointer;
   right: 0;
   padding: 0 1.5rem;
@@ -1026,21 +1029,19 @@ section.error {
 }
 
 .alert {
-  overflow: hidden;
-  text-align:center;
-  line-height: 2.5rem;
-  height: 2.5rem;
-  font-size:.75rem;
-  font-weight:600;
+  text-align: center;
+  font-size: .75rem;
+  font-weight: 600;
   display: block;
   color: #333;
-  position:relative;
-  padding-right: 3rem;
+  position: relative;
+  padding: .5rem 3rem;
 }
 
 .alert .close {
   position: absolute;
   right: 1.5rem;
+  top: 4px;
   font-size: 1rem;
 }
 

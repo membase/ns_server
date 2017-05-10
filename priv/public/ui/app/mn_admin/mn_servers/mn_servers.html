@@ -1,17 +1,17 @@
 <mn-element-cargo depot="alerts">
   <div
-     class="interim alert alert-warning"
+     class="alert alert-warning"
      ng-repeat="warning in serversCtl.mnPoolDefault.value.failoverWarnings"
      ng-show="warning && warning != 'failoverNeeded' && !poolDefault.rebalancing">
-    <p>Fail Over Warning: {{warning | formatFailoverWarnings}}</p>
+    <p>Warning: {{warning | formatFailoverWarnings}}</p>
   </div>
   <div
-     class="interim alert alert-warning"
+     class="alert alert-warning"
      ng-show="adminCtl.tasks.isLoadingSamples && rbac.cluster.tasks.read">
-    <p>Warning: Rebalance is not available until data loading is completed!</p>
+    <p>Warning: Rebalance is not available until data loading is completed.</p>
   </div>
   <div
-     class="interim alert alert-warning"
+     class="alert alert-warning"
      ng-show="serversCtl.autoFailoverSettings.data.count > 0 && rbac.cluster.settings.read">
     <p>A server was automatically failed over.</p>
     <button
@@ -20,7 +20,7 @@
   </div>
 </mn-element-cargo>
 <mn-element-cargo depot="actions">
-  <div class="header-controls">
+  <div class="header-controls resp-sml">
     <div
        ng-if="serversCtl.showFilterFlag"
        class="filter-input-group">
@@ -44,19 +44,24 @@
     <a>
       <span
          ng-click="serversCtl.showFilter()"
-         ng-show="!serversCtl.showFilterFlag">FILTER</span>
+         ng-show="!serversCtl.showFilterFlag"
+         class="allcaps">
+        <span class="icon fa-search-minus hidden resp-show-sml"></span> filter</span>
       <span
          ng-click="serversCtl.hideFilter()"
-         ng-show="serversCtl.showFilterFlag">DONE</span>
+         ng-show="serversCtl.showFilterFlag"
+         class="allcaps">done</span>
     </a>
     <a
        ui-sref="app.admin.servers.list.groups"
-       ng-show="poolDefault.isGroupsAvailable && !poolDefault.rebalancing && poolDefault.isEnterprise && rbac.cluster.server_groups.read">
+       ng-show="poolDefault.isGroupsAvailable && !poolDefault.rebalancing && poolDefault.isEnterprise && rbac.cluster.server_groups.read"
+       class="resp-hide-sml">
       GROUPS
     </a>
     <a
        ng-show="poolDefault && !poolDefault.rebalancing && rbac.cluster.nodes.write"
-       ng-click="serversCtl.addServer()">
+       ng-click="serversCtl.addServer()"
+       class="resp-hide-sml">
       ADD SERVER
     </a>
   </div>

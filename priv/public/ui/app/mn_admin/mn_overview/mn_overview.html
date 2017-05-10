@@ -1,12 +1,12 @@
 <mn-element-cargo depot="header">
-  <div  class="about-text">
+  <div  class="about-text resp-xsml">
     {{::adminCtl.implementationVersion | mnPrettyVersion}}
   </div>
 </mn-element-cargo>
 
 <div mn-spinner="(rbac.cluster.bucket['.'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || (rbac.cluster.bucket['.'].settings.read && !buckets.details)">
 
-  <div class="row items-top margin-top1 service-widget-row">
+  <div class="row items-top margin-top1 service-widget-row resp-margin-xsml">
     <div
        class="service-widget"
        ng-class="['dynamic_' + overviewCtl.nodes.kv.statusClass]">
@@ -77,9 +77,9 @@
     </div>
   </div>
 
-  <div class="row margin-top2">
+  <div class="row resp-wrap-med">
     <div
-       class="column width-6">
+       class="column width-6 margin-top2">
       <h4>Data Service Memory</h4>
       <div
          ng-class="{
@@ -91,7 +91,7 @@
          base-info="overviewCtl.mnOverviewConfig.ramOverviewConfig"></div>
     </div>
     <div
-       class="column width-6">
+       class="column width-6 margin-top2">
       <h4>Data Service Disk</h4>
       <div
          class="bar-usages"
@@ -100,39 +100,34 @@
     </div>
   </div>
 
-  <div class="margin-top2" ng-if="rbac.cluster.bucket['.'].settings.read">
-    <h4>
-      Buckets &nbsp;<small>{{buckets.details.length || '0'}} active</small>
-    </h4>
-    <hr>
+  <div ng-if="rbac.cluster.bucket['.'].settings.read">
     <div
        ng-if="rbac.cluster.bucket['.'].stats.read"
-       class="interim row items-space-around">
-      <div
-         ng-show="buckets.details.length">
-        <div>Operations Per Second
+       class="row flex-left items-top resp-wrap-med">
+      <div ng-show="buckets.details.length" class="margin-top2">
+        <h4>Buckets Operations Per Second</h4>
           <span ng-show="!overviewCtl.mnOverviewStats.opsGraphConfig.stats.length">
             (No samples, yet)
           </span>
-        </div>
         <div
            ng-if="overviewCtl.mnOverviewStats.opsGraphConfig.stats.length"
            mn-plot
            mn-plot-config="overviewCtl.mnOverviewStats.opsGraphConfig"
-           style="height: 170px; width: 400px;"></div>
+           style="height: 150px; width: 360px; margin-right: 2rem;"
+           class="text-smaller"></div>
       </div>
-      <div
-         ng-show="buckets.details.length">
-        <div>Disk Fetches Per Second
+      <div ng-show="buckets.details.length" class="margin-top2">
+        <h4>Disk Fetches Per Second</h4>
           <span ng-show="!overviewCtl.mnOverviewStats.readsGraphConfig.stats.length">
             (No samples, yet)
           </span>
-        </div>
+
         <div
            ng-if="overviewCtl.mnOverviewStats.readsGraphConfig.stats.length"
            mn-plot
            mn-plot-config="overviewCtl.mnOverviewStats.readsGraphConfig"
-           style="height: 170px; width: 400px"></div>
+           style="height: 150px; width: 360px"
+           class="text-smaller"></div>
       </div>
     </div>
     <div class="zero-content" ng-show="!buckets.details.length">

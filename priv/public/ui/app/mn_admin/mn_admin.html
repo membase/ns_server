@@ -9,7 +9,7 @@
   </div>
 
   <div class="row">
-    <span class="red nowrap text-smaller" style="padding-left:1.5rem;">BETA BUILD</span>
+    <span class="red nowrap text-smaller resp-hide-sml" style="padding-left:1rem;">BETA BUILD</span>
     <nav class="nav-header">
       <a ng-click="adminCtl.toggleProgressBar()" class="activities" ng-if="rbac.cluster.tasks.read">
         Activity
@@ -93,10 +93,10 @@
       <img src="../images/cb_logo_bug_white_2.svg" width="48" height="48" alt="Couchbase Server" class="logobug">
     </a>
     <h1>
-      <a ui-sref="app.admin.overview" class="hide-for-small ellipsis">
+      <a ui-sref="app.admin.overview" class="resp-txt-xsml ellipsis">
         {{adminCtl.tabName}} <!-- the cluster name -->
       </a>
-      <span class="hide-for-small" ng-show="adminCtl.tabName">
+      <span class="resp-hide-xsml" ng-show="adminCtl.tabName">
         <span class="icon fa-angle-right"></span>
       </span>
       <span ng-if="adminCtl.$state.current.data.child">
@@ -111,8 +111,13 @@
     </h1>
 
 <!-- Depots are the placeholders for page-specific controls/content -->
-    <mn-element-depot name="header" class="hide-for-small"></mn-element-depot>
-    <mn-element-depot name="actions" class="hide-for-small"></mn-element-depot>
+    <div class="row flex-right">
+      <mn-element-depot name="header"></mn-element-depot>
+      <mn-element-depot name="actions"></mn-element-depot>
+      <span class="menu-icon" ng-click="showRespMenu = !showRespMenu">
+        <span class="icon fa-navicon"></span>
+      </span>
+    </div>
   </header>
 
   <mn-element-depot name="subnav"></mn-element-depot>
@@ -137,7 +142,9 @@
 
   <main>
     <nav
-       class="nav-sidebar hide-for-small"
+       class="nav-sidebar"
+       ng-class="{'resp-show-menu' : showRespMenu}"
+       ng-click="showRespMenu = !showRespMenu"
        mn-pluggable-ui-tabs
        mn-tab-bar-name="adminTab">
       <a
@@ -157,7 +164,8 @@
          mn-tab="indexes"
          ng-class="{currentNav: ('app.admin.indexes' | includedByState)}"
          ng-show="rbac.cluster.bucket['.'].views.read || rbac.cluster.indexes.read"
-         ui-sref="app.admin.indexes.gsi">
+         ui-sref="app.admin.indexes.gsi"
+         class="resp-hide-sml">
         <span
            ui-sref="app.admin.indexes.gsi"
            ng-show="rbac.cluster.indexes.read">Indexes</span>
@@ -197,7 +205,6 @@
          ui-sref="app.admin.logs.list"
          ng-class="{currentNav: ('app.admin.logs' | includedByState)}"
          ng-show="rbac.cluster.logs.read">Logs</a>
-
     </nav>
 
     <!-- all page content goes here -->

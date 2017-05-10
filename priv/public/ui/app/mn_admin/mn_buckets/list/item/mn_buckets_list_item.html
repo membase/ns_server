@@ -27,11 +27,11 @@
     <span class="cbui-table-cell">
       {{'round' | mnMath:bucket.basicStats.opsPerSec}}
     </span>
-    <span class="cbui-table-cell flex-grow-1-5">
+    <span class="cbui-table-cell flex-grow-1-5 resp-hide-sml">
       {{bucket.basicStats.memUsed | mnFormatQuantity}} /
       {{bucket.quota.ram | mnFormatQuantity}}
     </span>
-    <span class="cbui-table-cell">
+    <span class="cbui-table-cell resp-hide-med">
       <span ng-show="bucket.isMembase">
         {{bucket.basicStats.diskUsed | mnFormatQuantity}}
       </span>
@@ -39,7 +39,7 @@
         &#8212;
       </span>
     </span>
-    <span class="cbui-table-cell flex-grow-1-5 wrap text-right">
+    <span class="cbui-table-cell flex-grow-1-5 wrap text-right resp-hide-xsml">
       <span ng-if="!bucket.isMemcached">
         <a
            ng-click="$event.stopPropagation()"

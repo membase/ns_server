@@ -14,13 +14,13 @@
           {{ poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "group" : " " }}
         </span>
       </span>
-      <span class="cbui-table-cell flex-grow-1-5" mn-sortable-title="services">services</span>
-      <span class="cbui-table-cell flex-grow-half">CPU</span>
-      <span class="cbui-table-cell flex-grow-half">RAM</span>
-      <span class="cbui-table-cell flex-grow-half">swap</span>
-      <span class="cbui-table-cell flex-grow-half">disk used</span>
-      <span class="cbui-table-cell">items</span>
-      <span class="cbui-table-cell"></span>
+      <span class="cbui-table-cell flex-grow-1-5 resp-hide-xsml" mn-sortable-title="services">services</span>
+      <span class="cbui-table-cell flex-grow-half resp-hide-sml">CPU</span>
+      <span class="cbui-table-cell flex-grow-half resp-hide-sml">RAM</span>
+      <span class="cbui-table-cell flex-grow-half resp-hide-med">swap</span>
+      <span class="cbui-table-cell flex-grow-half resp-hide-med">disk used</span>
+      <span class="cbui-table-cell resp-hide-med">items</span>
+      <span class="cbui-table-cell resp-hide-sml"></span>
     </div>
     <div
        ng-repeat="node in serversCtl.nodes.allNodes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:serversCtl.listFiter track by node.otpNode"

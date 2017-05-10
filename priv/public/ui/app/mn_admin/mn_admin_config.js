@@ -161,7 +161,7 @@
         },
         data: {
           permissions: "cluster.xdcr.remote_clusters.read",
-          title: "Replication"
+          title: "XDCR Replications"
         }
       })
       .state('app.admin.logs', {
