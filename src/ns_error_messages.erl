@@ -193,6 +193,13 @@ file_read_error(Reason) ->
 
 reload_node_certificate_error(no_cluster_ca) ->
     <<"Cluster CA needs to be set before setting node certificate.">>;
+reload_node_certificate_error({bad_cert, {invalid_root_issuer, Subject, RootSubject}}) ->
+    list_to_binary(io_lib:format("Last certificate of the chain ~p is not issued by the "
+                                 "cluster root certificate ~p",
+                                 [Subject, RootSubject]));
+reload_node_certificate_error({bad_cert, {invalid_issuer, Subject, LastSubject}}) ->
+    list_to_binary(io_lib:format("Certificate ~p is not issued by the next certificate in chain ~p",
+                                 [Subject, LastSubject]));
 reload_node_certificate_error({bad_cert, {Error, Subject}}) ->
     list_to_binary(io_lib:format("Incorrectly configured certificate chain. Error: ~p. Certificate: ~p",
                                  [Error, Subject]));
