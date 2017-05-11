@@ -67,7 +67,7 @@ run_upgrade(Config, Json) ->
 
     Logger = start_logger(Name, Log),
 
-    Opts0 = proplists:delete(log, Opts),
+    Opts0 = proplists:delete(log, Opts -- [via_goport]),
     Opts1 = Opts0 ++ [{args, Args}, {line, 8192}],
 
     misc:executing_on_new_process(
