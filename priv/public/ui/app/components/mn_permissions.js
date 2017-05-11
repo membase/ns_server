@@ -88,8 +88,6 @@
     function mnPermissionsFacatory($http, $timeout, $q, $rootScope, mnBucketsService, $parse) {
       var mnPermissions = {
         clear: clear,
-        set: set,
-        setBucketSpecific: setBucketSpecific,
         get: doCheck,
         check: check,
         getFresh: getFresh,
