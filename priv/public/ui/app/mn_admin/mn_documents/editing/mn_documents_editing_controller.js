@@ -39,8 +39,9 @@
     vm.save = save;
 
     function save() {
+      var parsedMeta = JSON.parse(vm.state.meta);
       var promise = mnDocumentsEditingService
-          .createDocument($state.params, vm.state.doc)
+          .createDocument($state.params, vm.state.doc, parsedMeta.flags)
           .then(function () {
             return mnDocumentsEditingService.getDocumentsEditingState($state.params);
           });

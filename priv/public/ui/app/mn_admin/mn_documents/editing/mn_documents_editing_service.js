@@ -57,16 +57,18 @@
         url: buildDocumentUrl(params)
       });
     }
-    function createDocument(params, doc) {
+
+    function createDocument(params, doc, flags) {
       return $http({
         method: "POST",
-        mnHttp: {
-          isNotForm: true
-        },
         url: buildDocumentUrl(params),
-        data: doc || { "click": "to edit", "with JSON": "there are no reserved field names" }
+        data: {
+          flags: flags || 0x02000006,
+          value: doc || '{"click": "to edit", "with JSON": "there are no reserved field names"}'
+        }
       });
     }
+
     function getDocument(params) {
       if (!params.documentId) {
         return $q.reject({data: {reason: "Document ID cannot be empty"}});
