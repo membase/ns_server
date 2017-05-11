@@ -598,6 +598,10 @@ fts_spec(Config) ->
                                      true -> 3;
                                      false -> 0
                                  end,
+            BucketTypesAllowed = case cluster_compat_mode:is_enterprise() of
+                                     true -> "membase:ephemeral";
+                                     false -> "membase"
+                                 end,
             Options = "startCheckServer=skip," ++
                       "slowQueryLogTimeout=5s," ++
                       "defaultMaxPartitionsPerPIndex=171," ++
@@ -606,7 +610,8 @@ fts_spec(Config) ->
                       "hideUI=true," ++
                       "cbaudit=" ++ atom_to_list(cluster_compat_mode:is_enterprise()) ++ "," ++
                       "ftsMemoryQuota=" ++ integer_to_list(FTSMemoryQuota * 1024000) ++ "," ++
-                      "maxReplicasAllowed=" ++ integer_to_list(MaxReplicasAllowed),
+                      "maxReplicasAllowed=" ++ integer_to_list(MaxReplicasAllowed) ++ "," ++
+                      "bucketTypesAllowed=" ++ BucketTypesAllowed,
             Spec = {fts, FtCmd,
                     [
                      "-cfg=metakv",
