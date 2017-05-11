@@ -4,6 +4,7 @@
   angular
     .module('app')
     .constant('bucketsFormConfiguration', {
+      authType: 'sasl',
       name: '',
       conflictResolutionType: 'seqno',
       saslPassword: '',
