@@ -426,6 +426,19 @@ class LiteralTask(AllOsTask):
         print >> fp, self.literal
         return 0
 
+class CollectFile(AllOsTask):
+    def __init__(self, description, file_path, **kwargs):
+        self.description = description
+        self.command = ''
+        self.command_to_print = ''
+        self.file_path = file_path
+        self.__dict__.update(kwargs)
+
+    def execute(self, fp):
+        self._task_runner.collect_file(self.file_path)
+        print >> fp, "Collected file %s" % self.file_path
+        return 0
+
 def make_curl_task(name, user, password, url,
                    timeout=60, log_file="couchbase.log", base_task=AllOsTask,
                    **kwargs):
@@ -896,6 +909,8 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
                    log_file="stats.log",
                    timeout=60)
          for stat in ([], ["subdoc_execute"])],
+
+        CollectFile("Users storage", read_guts(guts, "users_storage_path")),
 
         make_stats_archives_task(guts, initargs_path)
         ]

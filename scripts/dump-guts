@@ -580,6 +580,8 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
     {_, DataDir} = lists:keyfind(path_config_datadir, 1, StaticTerms),
     StatsDir = filename:join(DataDir, "stats"),
 
+    UsersStoragePath = filename:join([DataDir, "config", "users.dets"]),
+
     Pairs = OtherPorts ++
         [{ns_config, iolist_to_binary(io_lib:format("~p", [sanitize_config(NSConfig)]))},
          {static_config, iolist_to_binary(io_lib:format("~p", [StaticTerms]))},
@@ -600,7 +602,8 @@ main_with_everything(StaticTerms, NSConfig, CouchInisPList, Node) ->
          {memcached_breakpad_minidump_dir, PerNodeMDD},
          {nodes, string:join(Nodes, ",")},
          {stats_dir, StatsDir},
-         {localtoken_path, filename:join(DataDir, "localtoken")}],
+         {localtoken_path, filename:join(DataDir, "localtoken")},
+         {users_storage_path, UsersStoragePath}],
 
     output([E || {K, V} <- Pairs,
                  E <- [K, V]]),
