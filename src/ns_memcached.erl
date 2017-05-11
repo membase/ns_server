@@ -106,7 +106,7 @@
          raw_stats/5,
          sync_bucket_config/1,
          flush/1,
-         set/4,
+         set/5,
          ready_nodes/4,
          sync/4, add/4, get/3, delete/3, delete/4,
          get_from_replica/3,
@@ -363,7 +363,7 @@ assign_queue({add, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
 assign_queue({get, _Key, _VBucket}) -> #state.heavy_calls_queue;
 assign_queue({get_from_replica, _Key, _VBucket}) -> #state.heavy_calls_queue;
 assign_queue({delete, _Key, _VBucket, _CAS}) -> #state.heavy_calls_queue;
-assign_queue({set, _Key, _VBucket, _Value}) -> #state.heavy_calls_queue;
+assign_queue({set, _Key, _VBucket, _Value, _Flags}) -> #state.heavy_calls_queue;
 assign_queue({get_keys, _VBuckets, _Params}) -> #state.heavy_calls_queue;
 assign_queue({sync, _Key, _VBucket, _CAS}) -> #state.very_heavy_calls_queue;
 assign_queue({get_mass_dcp_docs_estimate, _VBuckets}) -> #state.very_heavy_calls_queue;
@@ -521,10 +521,10 @@ do_handle_call({delete, Key, VBucket, CAS}, _From, State) ->
                                   #mc_entry{key = Key, cas = CAS}}),
     {reply, Reply, State};
 
-do_handle_call({set, Key, VBucket, Val}, _From, State) ->
+do_handle_call({set, Key, VBucket, Val, Flags}, _From, State) ->
     Reply = mc_client_binary:cmd(?SET, State#state.sock, undefined, undefined,
                                  {#mc_header{vbucket = VBucket},
-                                  #mc_entry{key = Key, data = Val}}),
+                                  #mc_entry{key = Key, data = Val, flag = Flags}}),
     {reply, Reply, State};
 
 do_handle_call({add, Key, VBucket, Val}, _From, State) ->
@@ -947,12 +947,11 @@ delete(Bucket, Key, VBucket) ->
     delete(Bucket, Key, VBucket, 0).
 
 %% @doc send a set command to memcached instance
--spec set(bucket_name(), binary(), integer(), binary()) ->
+-spec set(bucket_name(), binary(), integer(), binary(), integer()) ->
     {ok, #mc_header{}, #mc_entry{}, any()} | {memcached_error, any(), any()}.
-set(Bucket, Key, VBucket, Value) ->
+set(Bucket, Key, VBucket, Value, Flags) ->
     do_call({server(Bucket), node()},
-            {set, Key, VBucket, Value}, ?TIMEOUT_HEAVY).
-
+            {set, Key, VBucket, Value, Flags}, ?TIMEOUT_HEAVY).
 
 -spec update_with_rev(Bucket::bucket_name(), VBucket::vbucket_id(),
                       Id::binary(), Value::binary() | undefined, Rev :: rev(),

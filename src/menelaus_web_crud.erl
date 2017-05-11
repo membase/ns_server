@@ -21,6 +21,10 @@
          handle_post/3,
          handle_delete/3]).
 
+%% RFC-20 Common flags value used by clients to indicate the
+%% data format as JSON.
+-define(COMMON_FLAGS_JSON, 16#02000006).
+
 parse_bool(undefined, Default) -> Default;
 parse_bool("true", _) -> true;
 parse_bool("false", _) -> false;
@@ -179,7 +183,7 @@ handle_get(BucketId, DocId, Req) ->
             menelaus_util:reply_json(Req, capi_utils:couch_doc_to_mochi_json(EJSON))
     end.
 
-do_mutate(BucketId, DocId, BodyOrUndefined) ->
+do_mutate(BucketId, DocId, BodyOrUndefined, Flags) ->
     BinaryBucketId = list_to_binary(BucketId),
     BinaryDocId = list_to_binary(DocId),
     case BodyOrUndefined of
@@ -190,15 +194,35 @@ do_mutate(BucketId, DocId, BodyOrUndefined) ->
         _ ->
             attempt(BinaryBucketId,
                     BinaryDocId,
-                    capi_crud, set, [BinaryBucketId, BinaryDocId, BodyOrUndefined])
+                    capi_crud, set, [BinaryBucketId, BinaryDocId, BodyOrUndefined, Flags])
     end.
 
 handle_post(BucketId, DocId, Req) ->
-    ok = do_mutate(BucketId, DocId, Req:recv_body()),
-    menelaus_util:reply_json(Req, []).
+    Params = Req:parse_post(),
+    Value = list_to_binary(proplists:get_value("value", Params, [])),
+
+    Flags = case proplists:get_value("flags", Params) of
+                undefined ->
+                    ?COMMON_FLAGS_JSON;
+                Val ->
+                    case (catch list_to_integer(Val)) of
+                        Int when is_integer(Int) andalso Int > 0 ->
+                            Int;
+                        _ ->
+                            {error, <<"'flags' must be a valid positive integer">>}
+                    end
+            end,
+
+    case Flags of
+        {error, Msg} ->
+            menelaus_util:reply_text(Req, Msg, 400);
+        _ ->
+            ok = do_mutate(BucketId, DocId, Value, Flags),
+            menelaus_util:reply_json(Req, [])
+    end.
 
 handle_delete(BucketId, DocId, Req) ->
-    ok = do_mutate(BucketId, DocId, undefined),
+    ok = do_mutate(BucketId, DocId, undefined, undefined),
     menelaus_util:reply_json(Req, []).
 
 

@@ -20,7 +20,7 @@
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
 
--export([get/3, set/3, delete/2]).
+-export([get/3, set/4, delete/2]).
 
 -export([is_valid_json/1]).
 
@@ -30,10 +30,10 @@ handle_mutation_rv(#mc_header{status = ?SUCCESS} = _Header, _Entry) ->
 handle_mutation_rv(#mc_header{status = ?NOT_MY_VBUCKET} = _Header, _Entry) ->
     throw(not_my_vbucket).
 
-set(BucketBin, DocId, Value) ->
+set(BucketBin, DocId, Value, Flags) ->
     Bucket = binary_to_list(BucketBin),
     {VBucket, _} = cb_util:vbucket_from_id(Bucket, DocId),
-    {ok, Header, Entry, _} = ns_memcached:set(Bucket, DocId, VBucket, Value),
+    {ok, Header, Entry, _} = ns_memcached:set(Bucket, DocId, VBucket, Value, Flags),
     handle_mutation_rv(Header, Entry).
 
 delete(BucketBin, DocId) ->
