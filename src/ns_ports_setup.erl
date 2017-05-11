@@ -594,6 +594,10 @@ fts_spec(Config) ->
                                  "-tlsKeyFile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
                         end,
             {ok, FTSMemoryQuota} = ns_storage_conf:get_memory_quota(Config, fts),
+            MaxReplicasAllowed = case cluster_compat_mode:is_enterprise() of
+                                     true -> 3;
+                                     false -> 0
+                                 end,
             Options = "startCheckServer=skip," ++
                       "slowQueryLogTimeout=5s," ++
                       "defaultMaxPartitionsPerPIndex=171," ++
@@ -601,7 +605,8 @@ fts_spec(Config) ->
                       "failoverAssignAllPrimaries=false," ++
                       "hideUI=true," ++
                       "cbaudit=" ++ atom_to_list(cluster_compat_mode:is_enterprise()) ++ "," ++
-                      "ftsMemoryQuota=" ++ integer_to_list(FTSMemoryQuota * 1024000),
+                      "ftsMemoryQuota=" ++ integer_to_list(FTSMemoryQuota * 1024000) ++ "," ++
+                      "maxReplicasAllowed=" ++ integer_to_list(MaxReplicasAllowed),
             Spec = {fts, FtCmd,
                     [
                      "-cfg=metakv",
