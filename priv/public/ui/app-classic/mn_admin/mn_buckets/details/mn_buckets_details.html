@@ -3,7 +3,7 @@
   <div class="gong_rb">
     <div class="pad">
       <div style="width:800px;float:left;">
-        <div ng-show="rbac.cluster.bucket[bucket.name].settings.read">
+        <div ng-show="rbac.cluster.bucket[bucket.name].settings.read && !poolDefault.compat.atLeast50">
           Access Control:
           <span>
             {{bucketsDetailsCtl.bucketDetails.authType === 'none' ? 'Port' : bucketsDetailsCtl.bucketDetails.name === 'default' ? 'None' : 'Authentication'}}

@@ -63,8 +63,8 @@
     </div>
   </div>
 
-  <h2 ng-if="!bucketConf.isWizard">Access Control</h2>
-  <div ng-if="!bucketConf.isWizard" class="sub_section">
+  <h2 ng-if="!bucketConf.isWizard && !poolDefault.compat.atLeast50">Access Control</h2>
+  <div ng-if="!bucketConf.isWizard && !poolDefault.compat.atLeast50" class="sub_section">
     <div>
       <input id="js_bucket_details_sasl_selected" type="radio" name="authType" value="sasl" ng-model="bucketConf.authType">
       <div class="with_radiogroup">

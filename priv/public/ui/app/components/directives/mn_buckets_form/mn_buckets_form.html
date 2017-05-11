@@ -57,12 +57,15 @@
        ng-disabled="!bucketConf.isNew">
     <label for="for-bucket-type-memcached">Memcached</label>
     <input
+       ng-show="poolDefault.compat.atLeast50"
        type="radio"
        value="ephemeral"
        id="for-bucket-type-ephemeral"
        ng-model="bucketConf.bucketType"
        ng-disabled="!bucketConf.isNew">
-    <label for="for-bucket-type-ephemeral">Ephemeral</label>
+    <label
+       for="for-bucket-type-ephemeral"
+       ng-show="poolDefault.compat.atLeast50">Ephemeral</label>
   </div>
 
   <div class="formrow">
@@ -195,6 +198,77 @@
          class="error"
          ng-show="!!evictionPolicyWarning">
         {{evictionPolicyWarning}}
+      </div>
+    </div>
+
+    <div
+       class="formrow checkbox-list"
+       ng-if="!bucketConf.isWizard && !poolDefault.compat.atLeast50">
+      <h4>Access Control</h4>
+      <input
+         id="js_bucket_details_sasl_selected"
+         type="radio"
+         name="authType"
+         value="sasl"
+         ng-model="bucketConf.authType">
+      <label for="js_bucket_details_sasl_selected">
+        <span
+           ng-if="bucketConf.isDefault || (bucketConf.name === 'default')">
+          Standard port (TCP port 11211. ASCII protocol or Binary auth-less)</span>
+        <span
+           ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">
+          Standard port (TCP port 11211. Needs SASL auth.)</span>
+      </label>
+      <div
+         ng-if="!bucketConf.isDefault && (bucketConf.name !== 'default')">
+        <input
+           placeholder="Enter password"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
+           type="password"
+           name="saslPassword"
+           id="js_bucket_details_sasl_password"
+           ng-model="bucketConf.saslPassword"
+           ng-disabled="bucketConf.authType !== 'sasl'"
+           value=""
+           mn-autocomplete-off>
+        <div
+           class="error"
+           ng-show="validation.result.errors.saslPassword">
+          {{validation.result.errors.saslPassword}}
+        </div>
+      </div>
+
+      <input
+         type="radio"
+         name="authType"
+         ng-model="bucketConf.authType"
+         value="none"
+         id="js_bucket_details_auth_type"
+         ng-disabled="bucketConf.isDefault || (bucketConf.name === 'default')">
+      <label
+         for="js_bucket_details_auth_type">
+        Dedicated port (supports ASCII protocol and is auth-less)</label>
+
+      <input
+         placeholder="Protocol Port"
+         id="js_bucket_details_proxy_port"
+         name="proxyPort"
+         type="text"
+         style="width:150px"
+         ng-model="bucketConf.proxyPort"
+         ng-disabled="bucketConf.authType !== 'none'">
+      <div
+         class="error"
+         ng-show="bucketConf.authType === 'none'">
+        <span
+           ng-show="validation.result.errors.proxyPort">
+          {{validation.result.errors.proxyPort}}</span>
+        <span>
+          Dedicated ports for memcached ASCII protocol are deprecated.
+          Please see documentation for alternatives.
+        </span>
       </div>
     </div>
 
