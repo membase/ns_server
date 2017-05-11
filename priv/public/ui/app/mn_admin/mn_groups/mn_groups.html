@@ -64,11 +64,12 @@
         </span>
       </span>
       <span class="cbui-table-cell wrap flex-grow-3 text-right">
-        <div uib-dropdown ng-show="!server.toGroupPending">
+        <div uib-dropdown ng-show="!server.toGroupPending && groupsCtl.state.groups.length > 1">
           <div uib-dropdown-toggle class="menu-toggle">move to <span class="icon fa-caret-down"></span></div>
           <div uib-dropdown-menu class="dropdown-menu-select-like">
             <a
                href=""
+               ng-show="groupNew.name !== group.name"
                ng-repeat="groupNew in groupsCtl.state.groups | orderBy:'name'"
                ng-click="groupsCtl.changeNodeGroup(group.name, groupNew.name, server)">{{groupNew.name}}</a>
           </div>
