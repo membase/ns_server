@@ -28,7 +28,7 @@
 
 .tooltip-inner {
   position: relative;
-  max-width: 300px;
+  width: 300px;
   padding: .5rem .5rem .75rem 1rem;
   color: #333;
   background-color: #fff;
