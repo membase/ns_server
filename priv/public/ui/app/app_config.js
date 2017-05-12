@@ -138,6 +138,10 @@
       var mnPools = trans.injector().get('mnPools');
       return mnPools.get().then(function (pools) {
         return pools.isInitialized;
+      }, function (resp) {
+        switch (resp.status) {
+        case 401: return true;
+        }
       });
     });
     $transitionsProvider.onBefore({

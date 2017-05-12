@@ -33,7 +33,9 @@
       var promise = login(vm.state.user);
       mnPromiseHelper(vm, promise)
         .showGlobalSpinner()
-        .catchErrors();
+        .catchErrors(function (data) {
+          vm.errors = (data && data.statusText) || data;
+        });
     }
   }
 })();

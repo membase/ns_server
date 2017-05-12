@@ -22,7 +22,8 @@
           if (rejection.status === 401 &&
               rejection.config.url !== "/pools" &&
               rejection.config.url !== "/controller/changePassword" &&
-              $injector.get('$state').includes('app.admin') &&
+              ($injector.get('$state').includes('app.admin') ||
+               $injector.get('$state').includes('app.wizard')) &&
               !rejection.config.headers["ignore-401"] &&
               !$injector.get('mnLostConnectionService').getState().isActivated) {
             $injector.get('mnAuthService').logout();
