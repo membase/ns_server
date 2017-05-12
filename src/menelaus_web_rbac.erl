@@ -1072,7 +1072,7 @@ handle_check_permission_for_cbauth(Req) ->
 vertex_to_iolist(Atom) when is_atom(Atom) ->
     atom_to_list(Atom);
 vertex_to_iolist({Atom, any}) ->
-    [atom_to_list(Atom), "[*]"];
+    [atom_to_list(Atom), "[.]"];
 vertex_to_iolist({Atom, Param}) ->
     [atom_to_list(Atom), "[", Param, "]"].
 
@@ -1179,7 +1179,7 @@ format_permissions_test() ->
                    {[], all},
                    {[admin, diag], read},
                    {[{bucket, "test"}, xdcr], [write, execute]}],
-    Formatted = [<<"cluster.bucket[*].views!write">>,
+    Formatted = [<<"cluster.bucket[.].views!write">>,
                  <<"cluster.bucket[default]!all">>,
                  <<"cluster!all">>,
                  <<"cluster.admin.diag!read">>,
