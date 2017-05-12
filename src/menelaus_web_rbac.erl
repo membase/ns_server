@@ -454,14 +454,6 @@ role_to_string({Role, [{BucketName, _}]}) ->
 role_to_string({Role, [BucketName]}) ->
     lists:flatten(io_lib:format("~p[~s]", [Role, BucketName])).
 
-parse_roles_test() ->
-    Res = parse_roles("admin, bucket_admin[test.test], bucket_admin[*], no_such_atom, bucket_admin[default"),
-    ?assertMatch([admin,
-                  {bucket_admin, ["test.test"]},
-                  {bucket_admin, [any]},
-                  {error, "no_such_atom"},
-                  {error, "bucket_admin[default"}], Res).
-
 reply_bad_roles(Req, BadRoles) ->
     Str = string:join(BadRoles, ","),
     menelaus_util:reply_json(
@@ -916,20 +908,6 @@ parse_permissions(Body) ->
                       {Trimmed, parse_permission(Trimmed)}
               end, RawPermissions).
 
-parse_permissions_test() ->
-    ?assertMatch(
-       [{"cluster.admin!write", {[admin], write}},
-        {"cluster.admin", error},
-        {"admin!write", error}],
-       parse_permissions("cluster.admin!write, cluster.admin, admin!write")),
-    ?assertMatch(
-       [{"cluster.bucket[test.test]!read", {[{bucket, "test.test"}], read}},
-        {"cluster.bucket[test.test].stats!read", {[{bucket, "test.test"}, stats], read}}],
-       parse_permissions(" cluster.bucket[test.test]!read, cluster.bucket[test.test].stats!read ")),
-    ?assertMatch(
-       [{"cluster.no_such_atom!no_such_atom", {['_unknown_'], '_unknown_'}}],
-       parse_permissions("cluster.no_such_atom!no_such_atom")).
-
 handle_check_permissions_post(Req) ->
     Body = Req:recv_body(),
     case Body of
@@ -992,22 +970,6 @@ format_permissions(Permissions) ->
                         [iolist_to_binary(permission_to_iolist(Permission)) | Acc]
                 end, [], Permissions).
 
-format_permissions_test() ->
-    Permissions = [{[{bucket, any}, views], write},
-                   {[{bucket, "default"}], all},
-                   {[], all},
-                   {[admin, diag], read},
-                   {[{bucket, "test"}, xdcr], [write, execute]}],
-    Formatted = [<<"cluster.bucket[*].views!write">>,
-                 <<"cluster.bucket[default]!all">>,
-                 <<"cluster!all">>,
-                 <<"cluster.admin.diag!read">>,
-                 <<"cluster.bucket[test].xdcr!write">>,
-                 <<"cluster.bucket[test].xdcr!execute">>],
-    ?assertEqual(
-       lists:sort(Formatted),
-       lists:sort(format_permissions(Permissions))).
-
 forbidden_response(Permissions) when is_list(Permissions) ->
     {[{message, <<"Forbidden. User needs one of the following permissions">>},
       {permissions, format_permissions(Permissions)}]};
@@ -1067,3 +1029,42 @@ assert_no_users_upgrade() ->
                           "Not allowed during cluster upgrade.",
                           []})
     end.
+
+%% Tests
+parse_roles_test() ->
+    Res = parse_roles("admin, bucket_admin[test.test], bucket_admin[*], no_such_atom, bucket_admin[default"),
+    ?assertMatch([admin,
+                  {bucket_admin, ["test.test"]},
+                  {bucket_admin, [any]},
+                  {error, "no_such_atom"},
+                  {error, "bucket_admin[default"}], Res).
+
+parse_permissions_test() ->
+    ?assertMatch(
+       [{"cluster.admin!write", {[admin], write}},
+        {"cluster.admin", error},
+        {"admin!write", error}],
+       parse_permissions("cluster.admin!write, cluster.admin, admin!write")),
+    ?assertMatch(
+       [{"cluster.bucket[test.test]!read", {[{bucket, "test.test"}], read}},
+        {"cluster.bucket[test.test].stats!read", {[{bucket, "test.test"}, stats], read}}],
+       parse_permissions(" cluster.bucket[test.test]!read, cluster.bucket[test.test].stats!read ")),
+    ?assertMatch(
+       [{"cluster.no_such_atom!no_such_atom", {['_unknown_'], '_unknown_'}}],
+       parse_permissions("cluster.no_such_atom!no_such_atom")).
+
+format_permissions_test() ->
+    Permissions = [{[{bucket, any}, views], write},
+                   {[{bucket, "default"}], all},
+                   {[], all},
+                   {[admin, diag], read},
+                   {[{bucket, "test"}, xdcr], [write, execute]}],
+    Formatted = [<<"cluster.bucket[*].views!write">>,
+                 <<"cluster.bucket[default]!all">>,
+                 <<"cluster!all">>,
+                 <<"cluster.admin.diag!read">>,
+                 <<"cluster.bucket[test].xdcr!write">>,
+                 <<"cluster.bucket[test].xdcr!execute">>],
+    ?assertEqual(
+       lists:sort(Formatted),
+       lists:sort(format_permissions(Permissions))).
