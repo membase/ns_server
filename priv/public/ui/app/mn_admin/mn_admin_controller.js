@@ -92,6 +92,7 @@
 
         if (previous && previous.buckets.uri !== resp.buckets.uri) {
           $rootScope.$broadcast("reloadBucketStats");
+          $rootScope.$broadcast("reloadPermissions");
         }
 
         if (previous && previous.serverGroupsUri !== resp.serverGroupsUri) {
@@ -114,7 +115,7 @@
         }
 
         if (previous && previous.checkPermissionsURI != resp.checkPermissionsURI) {
-          mnPermissions.getFresh();
+          $rootScope.$broadcast("reloadPermissions");
         }
       })
       .cycle();
@@ -162,6 +163,10 @@
             }, vm)
             .cycle();
       }
+
+      $scope.$on("reloadPermissions", function () {
+        mnPermissions.getFresh();
+      });
 
       $scope.$on("reloadTasksPoller", function (event, params) {
         if (!params || !params.doNotShowSpinner) {

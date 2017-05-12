@@ -20,7 +20,7 @@
     ])
     .controller('mnBucketsController', mnBucketsController);
 
-  function mnBucketsController($scope, mnBucketsService, mnHelper, mnPoolDefault, mnPromiseHelper, mnPoller, $uibModal) {
+  function mnBucketsController($scope, mnBucketsService, mnHelper, mnPoolDefault, mnPromiseHelper, mnPoller, $uibModal, $rootScope, $interval) {
     var vm = this;
 
     var poolDefault = mnPoolDefault.latestValue();
@@ -33,6 +33,17 @@
 
     vm.maxBucketCount = poolDefault.value.maxBucketCount;
 
+    activate();
+
+    function activate() {
+      var pull = $interval(function () {
+        $rootScope.$broadcast("reloadBucketStats");
+      }, 5000);
+
+      $scope.$on('$destroy', function () {
+        $interval.cancel(pull);
+      });
+    }
 
     function isCreateNewDataBucketDisabled() {
       return !$scope.buckets || !$scope.buckets.details || areThereCreationWarnings();
