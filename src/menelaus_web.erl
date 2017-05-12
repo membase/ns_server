@@ -399,10 +399,10 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_rbac:handle_get_roles/1};
                 ["settings", "rbac", "users"] ->
                     {{[admin, security], read},
-                     fun menelaus_web_rbac:handle_get_users/1};
+                     fun menelaus_web_rbac:handle_get_users/2, [Path]};
                 ["settings", "rbac", "users", Domain] ->
                     {{[admin, security], read},
-                     fun menelaus_web_rbac:handle_get_users/2, [Domain]};
+                     fun menelaus_web_rbac:handle_get_users/3, [Path, Domain]};
                 ["settings", "passwordPolicy"] ->
                     {{[admin, security], read},
                      fun menelaus_web_rbac:handle_get_password_policy/1};

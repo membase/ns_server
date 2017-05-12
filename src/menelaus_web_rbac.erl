@@ -27,8 +27,8 @@
          handle_saslauthd_auth_settings_post/1,
          handle_validate_saslauthd_creds_post/1,
          handle_get_roles/1,
-         handle_get_users/1,
          handle_get_users/2,
+         handle_get_users/3,
          handle_whoami/1,
          handle_put_user/3,
          handle_delete_user/3,
@@ -240,29 +240,29 @@ get_user_json({Id, Domain}, Name, Passwordless, Roles) ->
         end,
     {UserJson2}.
 
-handle_get_users(Req) ->
+handle_get_users(Path, Req) ->
     assert_api_can_be_used(),
 
     case cluster_compat_mode:is_cluster_spock() of
         true ->
-            handle_get_users_with_domain(Req, '_');
+            handle_get_users_with_domain(Req, '_', Path);
         false ->
             handle_get_users_45(Req)
     end.
 
-validate_get_users(Args, DomainAtom, HasStartAfter) ->
+validate_get_users(Args, DomainAtom, HasStartFrom) ->
     R1 = menelaus_util:validate_integer(pageSize, {Args, [], []}),
     R2 = menelaus_util:validate_range(pageSize, ?MIN_USERS_PAGE_SIZE, ?MAX_USERS_PAGE_SIZE, R1),
-    R3 = menelaus_util:validate_any_value(startAfter, R2),
+    R3 = menelaus_util:validate_any_value(startFrom, R2),
     R4 =
-        case HasStartAfter of
+        case HasStartFrom of
             false ->
                 R3;
             true ->
                 case DomainAtom of
                     '_' ->
-                        R4_1 = menelaus_util:validate_required(startAfterDomain, R3),
-                        R4_2 = menelaus_util:validate_any_value(startAfterDomain, R4_1),
+                        R4_1 = menelaus_util:validate_required(startFromDomain, R3),
+                        R4_2 = menelaus_util:validate_any_value(startFromDomain, R4_1),
                         menelaus_util:validate_by_fun(
                           fun (Value) ->
                                   case domain_to_atom(Value) of
@@ -271,45 +271,45 @@ validate_get_users(Args, DomainAtom, HasStartAfter) ->
                                       Atom ->
                                           {value, Atom}
                                   end
-                          end, startAfterDomain, R4_2);
+                          end, startFromDomain, R4_2);
                     _ ->
-                        R4_1 = menelaus_util:validate_prohibited(startAfterDomain, R3),
-                        menelaus_util:return_value(startAfterDomain, DomainAtom, R4_1)
+                        R4_1 = menelaus_util:validate_prohibited(startFromDomain, R3),
+                        menelaus_util:return_value(startFromDomain, DomainAtom, R4_1)
                 end
         end,
     menelaus_util:validate_unsupported_params(R4).
 
-handle_get_users(Domain, Req) ->
+handle_get_users(Path, Domain, Req) ->
     menelaus_web:assert_is_spock(),
 
     case domain_to_atom(Domain) of
         unknown ->
             menelaus_util:reply_json(Req, <<"Unknown user domain.">>, 404);
         DomainAtom ->
-            handle_get_users_with_domain(Req, DomainAtom)
+            handle_get_users_with_domain(Req, DomainAtom, Path)
     end.
 
-handle_get_users_with_domain(Req, DomainAtom) ->
+handle_get_users_with_domain(Req, DomainAtom, Path) ->
     Query = Req:parse_qs(),
 
     case lists:keyfind("pageSize", 1, Query) of
         false ->
             handle_get_all_users(Req, {'_', DomainAtom});
         _ ->
-            HasStartAfter = lists:keyfind("startAfter", 1, Query) =/= false,
+            HasStartFrom = lists:keyfind("startFrom", 1, Query) =/= false,
             menelaus_util:execute_if_validated(
               fun (Values) ->
-                      After =
-                          case proplists:get_value(startAfter, Values) of
+                      Start =
+                          case proplists:get_value(startFrom, Values) of
                               undefined ->
                                   undefined;
                               U ->
-                                  {U, proplists:get_value(startAfterDomain, Values)}
+                                  {U, proplists:get_value(startFromDomain, Values)}
                           end,
-                      handle_get_users_page(Req, {'_', DomainAtom},
+                      handle_get_users_page(Req, DomainAtom, Path,
                                             proplists:get_value(pageSize, Values),
-                                            After)
-              end, Req, validate_get_users(Query, DomainAtom, HasStartAfter))
+                                            Start)
+              end, Req, validate_get_users(Query, DomainAtom, HasStartFrom))
     end.
 
 handle_get_users_45(Req) ->
@@ -358,49 +358,169 @@ jsonify_users(Passwordless) ->
            ?yield(array_end)
        end).
 
-more_fun({A, _}, {B, _}) ->
-    A > B.
+-record(skew, {skew, size, less_fun, filter, skipped = 0}).
 
-add_to_skew(El, Skew, PageSize) ->
-    Skew1 = couch_skew:in(El, fun more_fun/2, Skew),
-    case couch_skew:size(Skew1) > PageSize of
-        true ->
-            {_, S} = couch_skew:out(fun more_fun/2, Skew1),
-            S;
+add_to_skew(_El, undefined) ->
+    undefined;
+add_to_skew(El, #skew{skew = CouchSkew,
+                      size = Size,
+                      filter = Filter,
+                      less_fun = LessFun,
+                      skipped = Skipped} = Skew) ->
+    case Filter(El, LessFun) of
         false ->
-            Skew1
+            Skew#skew{skipped = Skipped + 1};
+        true ->
+            CouchSkew1 = couch_skew:in(El, LessFun, CouchSkew),
+            case couch_skew:size(CouchSkew1) > Size of
+                true ->
+                    {_, CouchSkew2} = couch_skew:out(LessFun, CouchSkew1),
+                    Skew#skew{skew = CouchSkew2};
+                false ->
+                    Skew#skew{skew = CouchSkew1}
+            end
     end.
 
-skew_to_list(Skew, Acc) ->
-    case couch_skew:size(Skew) of
+skew_to_list(#skew{skew = CouchSkew,
+                   less_fun = LessFun}) ->
+    skew_to_list(CouchSkew, LessFun, []).
+
+skew_to_list(CouchSkew, LessFun, Acc) ->
+    case couch_skew:size(CouchSkew) of
         0 ->
             Acc;
         _ ->
-            {El, NewSkew} = couch_skew:out(fun more_fun/2, Skew),
-            skew_to_list(NewSkew, [El | Acc])
+            {El, NewSkew} = couch_skew:out(LessFun, CouchSkew),
+            skew_to_list(NewSkew, LessFun, [El | Acc])
     end.
 
-handle_get_users_page(Req, Pattern, PageSize, After) ->
+skew_size(#skew{skew = CouchSkew}) ->
+    couch_skew:size(CouchSkew).
+
+skew_out(#skew{skew = CouchSkew, less_fun = LessFun} = Skew) ->
+    {El, NewCouchSkew} = couch_skew:out(LessFun, CouchSkew),
+    {El, Skew#skew{skew = NewCouchSkew}}.
+
+skew_min(undefined) ->
+    undefined;
+skew_min(#skew{skew = CouchSkew}) ->
+    case couch_skew:size(CouchSkew) of
+        0 ->
+            undefined;
+        _ ->
+            couch_skew:min(CouchSkew)
+    end.
+
+skew_skipped(#skew{skipped = Skipped}) ->
+    Skipped.
+
+create_skews(Start, PageSize) ->
+    SkewThis =
+        #skew{
+           skew = couch_skew:new(),
+           size = PageSize + 1,
+           less_fun = fun ({A, _}, {B, _}) ->
+                              A >= B
+                      end,
+           filter = fun (El, LessFun) ->
+                            Start =:= undefined orelse LessFun(El, {Start, x})
+                    end},
+    SkewPrev =
+        case Start of
+            undefined ->
+                undefined;
+            _ ->
+                #skew{
+                   skew = couch_skew:new(),
+                   size = PageSize,
+                   less_fun = fun ({A, _}, {B, _}) ->
+                                      A < B
+                              end,
+                   filter = fun (El, LessFun) ->
+                                    LessFun(El, {Start, x})
+                            end}
+        end,
+    SkewLast =
+        #skew{
+           skew = couch_skew:new(),
+           size = PageSize,
+           less_fun = fun ({A, _}, {B, _}) ->
+                              A < B
+                      end,
+           filter = fun (_El, _LessFun) ->
+                            true
+                    end},
+    [SkewPrev, SkewThis, SkewLast].
+
+add_to_skews(El, Skews) ->
+    [add_to_skew(El, Skew) || Skew <- Skews].
+
+build_link(Name, noparams, PageSize, _DomainAtom, Path) ->
+    {Name, iolist_to_binary(
+             io_lib:format("/~s?pageSize=~p", [Path, PageSize]))};
+build_link(Name, {User, Domain}, PageSize, '_', Path) ->
+    {Name, iolist_to_binary(
+             io_lib:format("/~s?startFrom=~s&startFromDomain=~p&pageSize=~p",
+                           [Path, User, Domain, PageSize]))};
+build_link(Name, {User, _Domain}, PageSize, _DomainAtom, Path) ->
+    {Name, iolist_to_binary(
+             io_lib:format("/~s?startFrom=~s&pageSize=~p", [Path, User, PageSize]))}.
+
+seed_links(Pairs) ->
+    [{Name, {http_uri:encode(User), Domain}} || {Name, {User, Domain}} <- Pairs].
+
+build_links(Links, PageSize, DomainAtom, Path) ->
+    {links, {[build_link(Name, Identity, PageSize, DomainAtom, Path) || {Name, Identity} <- Links]}}.
+
+json_from_skews([SkewPrev, SkewThis, SkewLast], PageSize, UserJson) ->
+    {Users, Next} =
+        case skew_size(SkewThis) of
+            Size when Size =:= PageSize + 1 ->
+                {{N, _}, NewSkew} = skew_out(SkewThis),
+                {skew_to_list(NewSkew), N};
+            _ ->
+                {skew_to_list(SkewThis), undefined}
+        end,
+    {First, Prev} = case skew_min(SkewPrev) of
+                        undefined ->
+                            {undefined, undefined};
+                        {P, _} ->
+                            {noparams, P}
+                    end,
+    {Last, CorrectedNext} =
+        case Next of
+            undefined ->
+                {undefined, Next};
+            _ ->
+                case skew_min(SkewLast) of
+                    {L, _} when L < Next ->
+                        {L, L};
+                    {L, _} ->
+                        {L, Next}
+                end
+        end,
+    {[{skipped, skew_skipped(SkewThis)}, {users, [UserJson(El) || El <- Users]}],
+     seed_links([{first, First}, {prev, Prev}, {next, CorrectedNext}, {last, Last}])}.
+
+handle_get_users_page(Req, DomainAtom, Path, PageSize, Start) ->
     Passwordless = menelaus_users:get_passwordless(),
-    {PageSkew, Skipped, Total} =
-        pipes:run(menelaus_users:select_users(Pattern),
+    {PageSkews, Total} =
+        pipes:run(menelaus_users:select_users({'_', DomainAtom}),
                   filter_out_invalid_roles(),
                   ?make_consumer(
                      pipes:fold(
                        ?producer(),
-                       fun ({{user, Identity}, Props}, {Skew, S, T}) ->
-                               case After =:= undefined orelse more_fun(Identity, After) of
-                                   false ->
-                                       {Skew, S + 1, T + 1};
-                                   true ->
-                                       {add_to_skew({Identity, Props}, Skew, PageSize), S, T + 1}
-                               end
-                       end, {couch_skew:new(), 0, 0}))),
-    Json =
-        {[{skipped, Skipped},
-          {total, Total},
-          {users, [get_user_json(Identity, Props, lists:member(Identity, Passwordless)) ||
-                      {Identity, Props} <- skew_to_list(PageSkew, [])]}]},
+                       fun ({{user, Identity}, Props}, {Skews, T}) ->
+                               {add_to_skews({Identity, Props}, Skews), T + 1}
+                       end, {create_skews(Start, PageSize), 0}))),
+    UserJson =
+        fun ({Identity, Props}) ->
+                get_user_json(Identity, Props, lists:member(Identity, Passwordless))
+        end,
+
+    {JsonFromSkews, Links} = json_from_skews(PageSkews, PageSize, UserJson),
+
+    Json = {[{total, Total} | [build_links(Links, PageSize, DomainAtom, Path) | JsonFromSkews]]},
     menelaus_util:reply_ok(Req, "application/json", misc:ejson_encode_pretty(Json)).
 
 handle_whoami(Req) ->
@@ -1068,3 +1188,112 @@ format_permissions_test() ->
     ?assertEqual(
        lists:sort(Formatted),
        lists:sort(format_permissions(Permissions))).
+
+toy_users(First, Last) ->
+    [{{lists:flatten(io_lib:format("a~b", [U])), local}, []} || U <- lists:seq(First, Last)].
+
+process_toy_users(Users, Start, PageSize) ->
+    {JsonFromSkews, Links} =
+        json_from_skews(
+          lists:foldl(
+            fun (U, Skews) ->
+                    add_to_skews(U, Skews)
+            end, create_skews(Start, PageSize), Users),
+          PageSize, fun (U) -> U end),
+    {lists:sort(JsonFromSkews), lists:sort(Links)}.
+
+toy_result(Params, Links) ->
+    {lists:sort(Params), lists:sort(seed_links(Links))}.
+
+no_users_no_params_page_test() ->
+    ?assertEqual(
+       toy_result(
+         [{skipped, 0},
+          {users, []}],
+         []),
+       process_toy_users([], undefined, 3)).
+
+no_users_page_test() ->
+    ?assertEqual(
+       toy_result(
+         [{skipped, 0},
+          {users, []}],
+         []),
+       process_toy_users([], {"a14", local}, 3)).
+
+one_user_no_params_page_test() ->
+    ?assertEqual(
+       toy_result(
+         [{skipped, 0},
+          {users, toy_users(10, 10)}],
+         []),
+       process_toy_users(toy_users(10, 10), undefined, 3)).
+
+first_page_test() ->
+    ?assertEqual(
+       toy_result(
+         [{skipped, 0},
+          {users, toy_users(10, 12)}],
+         [{last, {"a28", local}},
+          {next, {"a13", local}}]),
+       process_toy_users(toy_users(10, 30), undefined, 3)).
+
+first_page_with_params_test() ->
+    ?assertEqual(
+       toy_result(
+         [{skipped, 0},
+          {users, toy_users(10, 12)}],
+         [{last, {"a28", local}},
+          {next, {"a13", local}}]),
+       process_toy_users(toy_users(10, 30), {"a10", local}, 3)).
+
+middle_page_test() ->
+    ?assertEqual(
+       toy_result(
+         [{skipped, 4},
+          {users, toy_users(14, 16)}],
+         [{first, noparams},
+          {prev, {"a11", local}},
+          {last, {"a28", local}},
+          {next, {"a17", local}}]),
+       process_toy_users(toy_users(10, 30), {"a14", local}, 3)).
+
+middle_page_non_existent_user_test() ->
+    ?assertEqual(
+       toy_result(
+         [{skipped, 5},
+          {users, toy_users(15, 17)}],
+         [{first, noparams},
+          {prev, {"a12", local}},
+          {last, {"a28", local}},
+          {next, {"a18", local}}]),
+       process_toy_users(toy_users(10, 30), {"a14b", local}, 3)).
+
+near_the_end_page_test() ->
+    ?assertEqual(
+       toy_result(
+         [{skipped, 17},
+          {users, toy_users(27, 29)}],
+         [{first, noparams},
+          {prev, {"a24", local}},
+          {last, {"a28", local}},
+          {next, {"a28", local}}]),
+       process_toy_users(toy_users(10, 30), {"a27", local}, 3)).
+
+at_the_end_page_test() ->
+    ?assertEqual(
+       toy_result(
+         [{skipped, 19},
+          {users, toy_users(29, 30)}],
+         [{first, noparams},
+          {prev, {"a26", local}}]),
+       process_toy_users(toy_users(10, 30), {"a29", local}, 3)).
+
+after_the_end_page_test() ->
+    ?assertEqual(
+       toy_result(
+         [{skipped, 21},
+          {users, []}],
+         [{first, noparams},
+          {prev, {"a28", local}}]),
+       process_toy_users(toy_users(10, 30), {"b29", local}, 3)).
