@@ -163,6 +163,8 @@ handle_info({'EXIT', Pid, Reason}, #state{pid = Pid,
 handle_info(_, State) ->
     {noreply, State}.
 
+terminate(Reason, #state{pid = Pid} = _State) when is_pid(Pid) ->
+    misc:terminate_and_wait(Reason, Pid);
 terminate(_Reason, _State) ->
     ok.
 
