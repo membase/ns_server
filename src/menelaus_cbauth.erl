@@ -232,8 +232,10 @@ build_auth_info(#state{cert_version = CertVersion}) ->
      {certVersion, CertVersion}].
 
 auth_version(Config) ->
-    erlang:phash2([ns_config_auth:get_creds(Config, admin),
-                   menelaus_users:get_auth_version()]).
+    B = term_to_binary(
+          [ns_config_auth:get_creds(Config, admin),
+           menelaus_users:get_auth_version()]),
+    base64:encode(crypto:hash(sha, B)).
 
 handle_cbauth_post(Req) ->
     {User, Domain} = menelaus_auth:get_identity(Req),
