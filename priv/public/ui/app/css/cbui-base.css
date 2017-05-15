@@ -1204,6 +1204,11 @@ input.input-small {
   line-height:normal;
 }
 
+input.input-short-1,
+.forms input.input-short-1 {
+  width: 4rem;
+}
+
 select.select-small {
   font-size: .75rem;
   height: 28px;

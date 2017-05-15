@@ -3,7 +3,7 @@
     <label class="checkbox">Start Time: </label>
     <div class="row flex-left">
       <input
-         class="width-2"
+         class="input-short-1"
          ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
          ng-model="autoCompactionSettings[mnPeriod].fromHour"
          ng-class="{invalid: errors[mnPeriod + '_fromHour_']}"
@@ -11,7 +11,7 @@
          required
          placeholder="HH"> &nbsp; : &nbsp;
       <input
-         class="width-2"
+         class="input-short-1"
          ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
          ng-model="autoCompactionSettings[mnPeriod].fromMinute"
          ng-class="{invalid: errors[mnPeriod + '_fromMinute_']}"
@@ -25,7 +25,7 @@
     <label class="checkbox">End Time:</label>
     <div class="row flex-left">
       <input
-         class="width-2"
+         class="input-short-1"
          type="number"
          placeholder="HH"
          required
@@ -33,7 +33,7 @@
          ng-model="autoCompactionSettings[mnPeriod].toHour"
          ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)" /> &nbsp; : &nbsp;
       <input
-         class="width-2"
+         class="input-short-1"
          ng-class="{invalid: errors[mnPeriod + '_toMinute_']}"
          ng-model="autoCompactionSettings[mnPeriod].toMinute"
          ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
