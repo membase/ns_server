@@ -1052,7 +1052,8 @@ handle_check_permissions_post(Req) ->
 check_permissions_url_version(Config) ->
     erlang:phash2([cluster_compat_mode:get_compat_version(Config),
                    menelaus_users:get_users_version(),
-                   ns_bucket:get_bucket_names(ns_bucket:get_buckets(Config)),
+                   [{Name, proplists:get_value(uuid, BucketConfig)} ||
+                       {Name, BucketConfig} <- ns_bucket:get_buckets(Config)],
                    ns_config_auth:get_no_auth_buckets(Config)]).
 
 handle_check_permission_for_cbauth(Req) ->
