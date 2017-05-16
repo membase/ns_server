@@ -192,13 +192,13 @@ save_doc(#doc{id = Id,
                 child_module = ChildModule,
                 child_state = ChildState} = State) ->
     ok = dets:insert(TableName, [Doc]),
-    NewChildState = ChildModule:on_save(Id, Value, Deleted, ChildState),
     case Deleted of
         true ->
             _ = mru_cache:delete(TableName, Id);
         false ->
             _ = mru_cache:update(TableName, Id, Value)
     end,
+    NewChildState = ChildModule:on_save(Id, Value, Deleted, ChildState),
     {ok, State#state{child_state = NewChildState}}.
 
 handle_call(suspend, {Pid, _} = From, #state{name = TableName} = State) ->
@@ -218,8 +218,8 @@ handle_call(empty, _From, #state{name = TableName,
                                  child_module = ChildModule,
                                  child_state = ChildState} = State) ->
     ok = dets:delete_all_objects(TableName),
-    NewChildState = ChildModule:on_empty(ChildState),
     mru_cache:flush(TableName),
+    NewChildState = ChildModule:on_empty(ChildState),
     {reply, ok, State#state{child_state = NewChildState}};
 handle_call(Msg, From, #state{name = TableName,
                               child_module = ChildModule,
