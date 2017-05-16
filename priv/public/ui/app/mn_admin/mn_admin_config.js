@@ -252,7 +252,7 @@
         url: "?{pageLimit:int}&{pageNumber:int}&documentsFilter",
         params: {
           pageLimit: {
-            value: 5
+            value: 10
           },
           pageNumber: {
             value: 0

@@ -25,13 +25,12 @@
 
       rv.docs = docs;
 
-      rv.pageLimits = [5, 10, 20, 50, 100];
+      rv.pageLimits = [10, 20, 50, 100];
       rv.pageLimits.selected = params.pageLimit;
       return rv;
     }
 
     function getDocumentsListState(params) {
-      params.pageLimit = params.pageLimit || 5;
       return getDocuments(params).then(function (resp) {
         return getListState(resp.data, params);
       }, function (resp) {
