@@ -173,18 +173,13 @@ local_node_status(Buckets) ->
     end.
 
 get_buckets(Buckets) ->
-    ReadyBuckets = try ns_memcached:warmed_buckets(?NS_MEMCACHED_TIMEOUT)
-                   catch exit:{timeout, _} ->
-                           ?log_warning("ns_memcached:warmed_buckets timed out while trying to get buckets: ~p", [Buckets]),
-                           []
-                   end,
-    lists:map(
-      fun (Bucket) ->
-              State = case lists:member(Bucket, ReadyBuckets) of
-                          true ->
-                              ready;
-                          false ->
-                              not_ready
-                      end,
-              {Bucket, State}
-      end, Buckets).
+    ReadyBuckets = ns_memcached:warmed_buckets(?NS_MEMCACHED_TIMEOUT),
+    NotReadyBuckets = Buckets -- ReadyBuckets,
+    case NotReadyBuckets =/= [] of
+        true ->
+            ?log_warning("The following buckets are not ready: ~p", [NotReadyBuckets]);
+        _ ->
+            ok
+    end,
+    [{B, not_ready} || B <- NotReadyBuckets] ++
+        [{B, ready} || B <- ReadyBuckets].

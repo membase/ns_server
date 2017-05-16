@@ -842,7 +842,12 @@ connected(Node, Bucket) ->
 
 -spec warmed(node(), bucket_name(), pos_integer() | infinity) -> boolean().
 warmed(Node, Bucket, Timeout) ->
-    do_call({server(Bucket), Node}, warmed, Timeout).
+    try
+        do_call({server(Bucket), Node}, warmed, Timeout)
+    catch
+        _:_ ->
+            false
+    end.
 
 -spec warmed(node(), bucket_name()) -> boolean().
 warmed(Node, Bucket) ->
