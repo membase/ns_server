@@ -65,6 +65,10 @@ child_specs() ->
       {ns_ssl_services_sup, start_link, []},
       permanent, infinity, supervisor, []},
 
+     {users_sup,
+      {users_sup, start_link, []},
+      permanent, infinity, supervisor, []},
+
      %% we cannot "kill" this guy anyways. Thus hefty shutdown timeout.
      {start_couchdb_node, {?MODULE, start_couchdb_node, []},
       {permanent, 5}, 86400000, worker, []},
