@@ -57,6 +57,11 @@
          calculate_possible_param_values/1,
          filter_out_invalid_roles/3]).
 
+-export([start_compiled_roles_cache/0]).
+
+%% for RPC from ns_couchdb node
+-export([build_compiled_roles/1]).
+
 -spec roles_45() -> [rbac_role_def(), ...].
 roles_45() ->
     [{admin, [],
@@ -458,11 +463,60 @@ get_roles({User, external} = Identity) ->
 get_roles({_User, local} = Identity) ->
     menelaus_users:get_roles(Identity).
 
+compiled_roles_cache_name() ->
+    compiled_roles_cache.
+
+start_compiled_roles_cache() ->
+    UsersFilter =
+        fun ({user_version, _V}) ->
+                true;
+            (_) ->
+                false
+        end,
+    ConfigFilter =
+        fun ({buckets, _}) ->
+                true;
+            ({cluster_compat_version, _}) ->
+                true;
+            (_) ->
+                false
+        end,
+    GetVersion =
+        fun () ->
+                {cluster_compat_mode:get_compat_version(ns_config:latest()),
+                 menelaus_users:get_users_version(),
+                 [{Name, proplists:get_value(uuid, BucketConfig)} ||
+                     {Name, BucketConfig} <- ns_bucket:get_buckets(ns_config:latest())]}
+        end,
+    GetEvents =
+        fun () ->
+                dist_manager:wait_for_node(fun ns_node_disco:ns_server_node/0),
+                [{{user_storage_events, ns_node_disco:ns_server_node()}, UsersFilter},
+                 {ns_config_events, ConfigFilter}]
+        end,
+    versioned_cache:start_link(
+      compiled_roles_cache_name(), 200, fun build_compiled_roles/1,
+      GetEvents, GetVersion).
+
 -spec get_compiled_roles(rbac_identity()) -> [rbac_compiled_role()].
 get_compiled_roles(Identity) ->
-    Definitions = get_definitions(),
-    AllPossibleValues = calculate_possible_param_values(ns_bucket:get_buckets()),
-    compile_roles(get_roles(Identity), Definitions, AllPossibleValues).
+    case ns_node_disco:couchdb_node() == node() of
+        false ->
+            build_compiled_roles(Identity);
+        true ->
+            versioned_cache:get(compiled_roles_cache_name(), Identity)
+    end.
+
+build_compiled_roles(Identity) ->
+    case ns_node_disco:couchdb_node() == node() of
+        false ->
+            Definitions = get_definitions(),
+            AllPossibleValues = calculate_possible_param_values(ns_bucket:get_buckets()),
+            compile_roles(get_roles(Identity), Definitions, AllPossibleValues);
+        true ->
+            ?log_debug("Retrieve compiled roles for user ~p from ns_server node", [Identity]),
+            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, build_compiled_roles, [Identity])
+    end.
 
 filter_out_invalid_roles(Roles, Definitions, AllPossibleValues) ->
     compile_roles(fun (Name, [], _, _) ->

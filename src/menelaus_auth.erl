@@ -38,8 +38,7 @@
 
 %% rpc from ns_couchdb node
 -export([authenticate/1,
-         saslauthd_authenticate/2,
-         check_permission_on_ns_server/2]).
+         saslauthd_authenticate/2]).
 
 %% External API
 
@@ -327,15 +326,6 @@ do_verify_rest_auth(Auth, Permission) ->
 check_permission(_Identity, no_check) ->
     allowed;
 check_permission(Identity, Permission) ->
-    case ns_node_disco:couchdb_node() == node() of
-        false ->
-            check_permission_on_ns_server(Identity, Permission);
-        true ->
-            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, check_permission_on_ns_server,
-                     [Identity, Permission])
-    end.
-
-check_permission_on_ns_server(Identity, Permission) ->
     Roles = menelaus_roles:get_compiled_roles(Identity),
     case Roles of
         [] ->

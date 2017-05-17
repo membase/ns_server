@@ -73,6 +73,9 @@ child_specs() ->
       permanent, infinity, supervisor,
       [ns_couchdb_config_sup]},
 
+     {compiled_roles_cache, {menelaus_roles, start_compiled_roles_cache, []},
+      permanent, 1000, worker, [versioned_cache]},
+
      {request_throttler, {request_throttler, start_link, []},
       permanent, 1000, worker, [request_throttler]},
 
