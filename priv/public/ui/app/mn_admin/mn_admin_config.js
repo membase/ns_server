@@ -329,9 +329,6 @@
           var $q = trans.injector().get("$q");
           var params = _.clone(trans.params(), true);
 
-          if (params.bucket === null) {
-            return mnHelperProvider.setDefaultBucketName("bucket", parent + '.analytics.list.graph', true)(trans);
-          }
           return mnAnalyticsService.getStats({$stateParams: params}).then(function (state) {
             if (state.isEmptyState) {
               return;

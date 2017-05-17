@@ -11,13 +11,13 @@
        class="inline middle"
        ng-model="analyticsCtl.currentBucket"
        theme="selectize"
-       ng-disabled="!buckets.details.byType.names.length"
+       ng-disabled="!rbac.bucketNames['.stats!read'].length"
        on-select="analyticsCtl.onSelectBucket($item)">
       <ui-select-match
          class="ui-select-match">{{$select.selected}}</ui-select-match>
       <ui-select-choices
          class="ui-select-choices"
-         repeat="name in buckets.details.byType.names | filter: $select.search">
+         repeat="name in rbac.bucketNames['.stats!read'] | filter: $select.search">
         <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>

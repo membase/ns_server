@@ -13,7 +13,7 @@
     <ui-select
        on-select="documentsCtl.onSelectBucketName($item)"
        ng-model="documentsCtl.currentBucketName"
-       ng-disabled="!buckets.details.byType.membase.names.concat(buckets.details.byType.ephemeral.names).length"
+       ng-disabled="!rbac.bucketNames['.data.docs!read'].length"
        theme="selectize"
        style="display: inline-block; vertical-align: middle;"
        class="cbui">
@@ -21,7 +21,7 @@
          class="ui-select-match">{{$select.selected}}</ui-select-match>
       <ui-select-choices
          class="ui-select-choices"
-         repeat="name in buckets.details.byType.membase.names.concat(buckets.details.byType.ephemeral.names) | filter: $select.search">
+         repeat="name in rbac.bucketNames['.data.docs!read'] | filter: $select.search">
         <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>

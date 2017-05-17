@@ -9,9 +9,10 @@
        ui-sref-active="selected">Global Indexes</a>
     <a
        ng-show="rbac.cluster.pools.read"
-       ui-sref="app.admin.indexes.views.list"
+       ui-state="'app.admin.indexes.views.list'"
+       ui-state-params="{bucket: rbac.bucketNames['.views!read'][0] || null}"
        ng-class="{selected: ('app.admin.indexes.views' | includedByState)}"
-       ui-sref-active="selected">Views</a>
+       ui-state-active="selected">Views</a>
   </nav>
 </mn-element-cargo>
 

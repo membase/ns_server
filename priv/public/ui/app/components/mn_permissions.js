@@ -11,26 +11,36 @@
     this.set = set;
     this.setBucketSpecific = setBucketSpecific;
 
-    var bucketSpecificPermissions = [function (name) {
-      return [
+    var bucketSpecificPermissions = [function (name, buckets) {
+      var basePermissions = [
         "cluster.bucket[" + name + "].settings!write",
-        "cluster.bucket[" + name + "].data!write",
-        "cluster.bucket[" + name + "].recovery!write",
         "cluster.bucket[" + name + "].settings!read",
-        "cluster.bucket[" + name + "].data!read",
-        "cluster.bucket[" + name + "].data.docs!read",
+        "cluster.bucket[" + name + "].recovery!write",
         "cluster.bucket[" + name + "].recovery!read",
-        "cluster.bucket[" + name + "].views!read",
-        "cluster.bucket[" + name + "].views!write",
         "cluster.bucket[" + name + "].stats!read",
         "cluster.bucket[" + name + "]!flush",
         "cluster.bucket[" + name + "]!delete",
         "cluster.bucket[" + name + "]!compact",
-        "cluster.bucket[" + name + "].views!compact",
         "cluster.bucket[" + name + "].xdcr!read",
         "cluster.bucket[" + name + "].xdcr!write",
         "cluster.bucket[" + name + "].xdcr!execute"
       ];
+      if (name === "." || buckets.byName[name].isMembase) {
+        basePermissions = basePermissions.concat([
+          "cluster.bucket[" + name + "].views!read",
+          "cluster.bucket[" + name + "].views!write",
+          "cluster.bucket[" + name + "].views!compact"
+        ]);
+      }
+      if (name === "." || !buckets.byName[name].isMemcached) {
+        basePermissions = basePermissions.concat([
+          "cluster.bucket[" + name + "].data!write",
+          "cluster.bucket[" + name + "].data!read",
+          "cluster.bucket[" + name + "].data.docs!read"
+        ]);
+      }
+
+      return basePermissions
     }];
 
     var interestingPermissions = [
@@ -79,9 +89,9 @@
       return this;
     }
 
-    function generateBucketPermissions(bucketName) {
+    function generateBucketPermissions(bucketName, buckets) {
       return bucketSpecificPermissions.reduce(function (acc, getChunk) {
-        return acc.concat(getChunk(bucketName));
+        return acc.concat(getChunk(bucketName, buckets));
       }, []);
     }
 
@@ -101,7 +111,7 @@
         }
       };
 
-      var cached;
+      var cache;
 
       interestingPermissions.push(generateBucketPermissions("."));
 
@@ -115,7 +125,7 @@
       }
 
       function clearCache() {
-        cached = null;
+        cache = null;
       }
 
       function getFresh() {
@@ -124,32 +134,45 @@
       }
 
       function check() {
-        if (cached) {
+        if (!!cache) {
           return $q.when(mnPermissions.export);
         }
+
         return doCheck(["cluster.bucket[.].settings!read"]).then(function (resp) {
           var permissions = getAll();
           if (resp.data["cluster.bucket[.].settings!read"]) {
             return mnBucketsService.getBucketsByType().then(function (bucketsDetails) {
               if (bucketsDetails.length) {
                 angular.forEach(bucketsDetails, function (bucket) {
-                  permissions = permissions.concat(generateBucketPermissions(bucket.name));
+                  permissions = permissions.concat(generateBucketPermissions(bucket.name, bucketsDetails));
                 });
-
-                mnPermissions.export.default.all = bucketsDetails.byType.defaultName;
-                mnPermissions.export.default.membase = bucketsDetails.byType.membase.defaultName;
-                mnPermissions.export.default.ephemeral = bucketsDetails.byType.ephemeral.defaultName;
               }
-              return doCheck(permissions);
+              return doCheck(permissions).then(function (resp) {
+                var bucketNamesByPermission = {};
+                var permissions = resp.data;
+                angular.forEach(bucketsDetails, function (bucket) {
+                  var interesting = generateBucketPermissions(bucket.name, bucketsDetails);
+                  angular.forEach(interesting, function (permission) {
+                    var bucketPermission = permission.split("[" + bucket.name + "]")[1];
+                    bucketNamesByPermission[bucketPermission] = bucketNamesByPermission[bucketPermission] || [];
+                    if (permissions[permission]) {
+                      bucketNamesByPermission[bucketPermission].push(bucket.name);
+                    }
+                  });
+                });
+                resp.bucketNames = bucketNamesByPermission;
+                return resp;
+              });
             });
           } else {
             return doCheck(permissions);
           }
         }).then(function (resp) {
-          cached = convertIntoTree(resp.data);
+          cache = convertIntoTree(resp.data);
 
           mnPermissions.export.data = resp.data;
-          mnPermissions.export.cluster = cached.cluster;
+          mnPermissions.export.cluster = cache.cluster;
+          mnPermissions.export.bucketNames = resp.bucketNames || {};
 
           return mnPermissions.export;
         });

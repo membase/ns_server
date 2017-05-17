@@ -19,13 +19,13 @@
        ng-model="viewsCtl.currentBucketName"
        on-select="viewsCtl.onSelectBucket($item)"
        theme="selectize"
-       ng-disabled="!buckets.details.byType.membase.names.length"
+       ng-disabled="!rbac.bucketNames['.views!read'].length"
        class="inline">
       <ui-select-match
          class="ui-select-match">{{$select.selected}}</ui-select-match>
       <ui-select-choices
          class="ui-select-choices"
-         repeat="name in buckets.details.byType.membase.names | filter: $select.search">
+         repeat="name in rbac.bucketNames['.views!read'] | filter: $select.search">
         <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search" ></span>
       </ui-select-choices>
     </ui-select>

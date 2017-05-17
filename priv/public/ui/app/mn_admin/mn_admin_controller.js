@@ -92,7 +92,6 @@
 
         if (previous && previous.buckets.uri !== resp.buckets.uri) {
           $rootScope.$broadcast("reloadBucketStats");
-          $rootScope.$broadcast("reloadPermissions");
         }
 
         if (previous && previous.serverGroupsUri !== resp.serverGroupsUri) {
@@ -183,7 +182,7 @@
       });
 
       $scope.$on("reloadBucketStats", function () {
-        mnBucketsStats.clearCache();
+        mnBucketsService.clearCache();
         mnBucketsService.getBucketsByType();
       });
       $rootScope.$broadcast("reloadBucketStats");

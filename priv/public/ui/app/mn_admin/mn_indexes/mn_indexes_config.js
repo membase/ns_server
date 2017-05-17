@@ -72,7 +72,6 @@
               value: 'development'
             }
           },
-          redirectTo:  mnHelperProvider.setDefaultBucketName("bucket", parent + '.views.list'),
           controller: 'mnViewsListController as viewsListCtl',
           templateUrl: 'app/mn_admin/mn_indexes/mn_views/list/mn_views_list.html'
         })
