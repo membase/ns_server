@@ -37,7 +37,9 @@
          verify_local_token/1]).
 
 %% rpc from ns_couchdb node
--export([verify_rest_auth_on_ns_server/2]).
+-export([authenticate/1,
+         saslauthd_authenticate/2,
+         check_permission_on_ns_server/2]).
 
 %% External API
 
@@ -204,19 +206,24 @@ has_permission(Permission, Req) ->
                           false | {ok, rbac_identity()} | {error, term()}.
 authenticate(undefined) ->
     {ok, {"", anonymous}};
-authenticate({token, Token}) ->
-    case menelaus_ui_auth:check(Token) of
+authenticate({token, Token} = Param) ->
+    case ns_node_disco:couchdb_node() == node() of
         false ->
-            %% this is needed so UI can get /pools on unprovisioned
-            %% system with leftover cookie
-            case ns_config_auth:is_system_provisioned() of
+            case menelaus_ui_auth:check(Token) of
                 false ->
-                    {ok, {"", wrong_token}};
-                true ->
-                    false
+                    %% this is needed so UI can get /pools on unprovisioned
+                    %% system with leftover cookie
+                    case ns_config_auth:is_system_provisioned() of
+                        false ->
+                            {ok, {"", wrong_token}};
+                        true ->
+                            false
+                    end;
+                Other ->
+                    Other
             end;
-        Other ->
-            Other
+        true ->
+            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, authenticate, [Param])
     end;
 authenticate({Username, Password}) ->
     case ns_config_auth:authenticate(Username, Password) of
@@ -229,19 +236,25 @@ authenticate({Username, Password}) ->
 -spec saslauthd_authenticate(rbac_user_id(), rbac_password()) ->
                                     false | {ok, rbac_identity()} | {error, term()}.
 saslauthd_authenticate(Username, Password) ->
-    case saslauthd_auth:authenticate(Username, Password) of
-        true ->
-            Identity = {Username, external},
-            case menelaus_users:user_exists(Identity) of
+    case ns_node_disco:couchdb_node() == node() of
+        false ->
+            case saslauthd_auth:authenticate(Username, Password) of
+                true ->
+                    Identity = {Username, external},
+                    case menelaus_users:user_exists(Identity) of
+                        false ->
+                            false;
+                        true ->
+                            {ok, Identity}
+                    end;
                 false ->
                     false;
-                true ->
-                    {ok, Identity}
+                {error, Error} ->
+                    {error, Error}
             end;
-        false ->
-            false;
-        {error, Error} ->
-            {error, Error}
+        true ->
+            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, saslauthd_authenticate,
+                     [Username, Password])
     end.
 
 -spec verify_login_creds(rbac_user_id(), rbac_password()) ->
@@ -283,21 +296,14 @@ uilogin(Req, User, Password) ->
                               auth_failure | forbidden | {allowed, mochiweb_request()}.
 verify_rest_auth(Req, Permission) ->
     Auth = extract_auth(Req),
-    RV = case ns_node_disco:couchdb_node() == node() of
-             false ->
-                 verify_rest_auth_on_ns_server(Auth, Permission);
-             true ->
-                 rpc:call(ns_node_disco:ns_server_node(), ?MODULE, verify_rest_auth_on_ns_server,
-                          [Auth, Permission])
-         end,
-    case RV of
+    case do_verify_rest_auth(Auth, Permission) of
         {allowed, Identity, Token} ->
             {allowed, store_user_info(Req, Identity, Token)};
         Other ->
             Other
     end.
 
-verify_rest_auth_on_ns_server(Auth, Permission) ->
+do_verify_rest_auth(Auth, Permission) ->
     case authenticate(Auth) of
         false ->
             auth_failure;
@@ -321,6 +327,15 @@ verify_rest_auth_on_ns_server(Auth, Permission) ->
 check_permission(_Identity, no_check) ->
     allowed;
 check_permission(Identity, Permission) ->
+    case ns_node_disco:couchdb_node() == node() of
+        false ->
+            check_permission_on_ns_server(Identity, Permission);
+        true ->
+            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, check_permission_on_ns_server,
+                     [Identity, Permission])
+    end.
+
+check_permission_on_ns_server(Identity, Permission) ->
     Roles = menelaus_roles:get_compiled_roles(Identity),
     case Roles of
         [] ->

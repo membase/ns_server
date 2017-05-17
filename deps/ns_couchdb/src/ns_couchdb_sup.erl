@@ -46,6 +46,9 @@ init([]) ->
 
 child_specs() ->
     [
+     {menelaus_users_auth_cache, {menelaus_users, start_auth_cache, []},
+      permanent, 1000, worker, [versioned_cache]},
+
      {cb_couch_sup, {cb_couch_sup, start_link, []},
       permanent, 5000, supervisor, [cb_couch_sup]},
 

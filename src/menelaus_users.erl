@@ -52,7 +52,10 @@
 %% callbacks for replicated_dets
 -export([init/1, on_save/4, on_empty/1, handle_call/4]).
 
--export([start_storage/0, start_replicator/0]).
+-export([start_storage/0, start_replicator/0, start_auth_cache/0]).
+
+%% RPC'd from ns_couchdb node
+-export([get_auth_info_on_ns_server/1]).
 
 -define(MAX_USERS_ON_CE, 20).
 
@@ -66,6 +69,9 @@ storage_name() ->
 
 versions_name() ->
     menelaus_users_versions.
+
+auth_cache_name() ->
+    menelaus_users_cache.
 
 start_storage() ->
     Replicator = erlang:whereis(replicator_name()),
@@ -97,6 +103,19 @@ start_replicator() ->
                 ns_node_disco:nodes_actual_other()
         end,
     doc_replicator:start_link(replicated_dets, replicator_name(), GetRemoteNodes, storage_name()).
+
+start_auth_cache() ->
+    versioned_cache:start_link(
+      auth_cache_name(), 200,
+      fun (I) ->
+              ?log_debug("Retrieve user ~p from ns_server node", [I]),
+              rpc:call(ns_node_disco:ns_server_node(), ?MODULE, get_auth_info_on_ns_server, [I])
+      end,
+      fun () ->
+              dist_manager:wait_for_node(fun ns_node_disco:ns_server_node/0),
+              [{{user_storage_events, ns_node_disco:ns_server_node()}, fun (_) -> true end}]
+      end,
+      fun () -> {get_auth_version(), get_users_version()} end).
 
 empty_storage() ->
     replicated_dets:empty(storage_name()).
@@ -350,19 +369,35 @@ authenticate(Username, Password) ->
     case cluster_compat_mode:is_cluster_spock() of
         true ->
             Identity = {Username, local},
-            case replicated_dets:get(storage_name(), {user, Identity}) of
+            case get_auth_info(Identity) of
                 false ->
                     false;
-                _ ->
-                    case replicated_dets:get(storage_name(), {auth, Identity}) of
-                        false ->
-                            false;
-                        {_, Auth} ->
-                            authenticate_with_info(Auth, Password)
-                    end
+                Auth ->
+                    authenticate_with_info(Auth, Password)
             end;
         false ->
             false
+    end.
+
+get_auth_info(Identity) ->
+    case ns_node_disco:couchdb_node() == node() of
+        false ->
+            get_auth_info_on_ns_server(Identity);
+        true ->
+            versioned_cache:get(auth_cache_name(), Identity)
+    end.
+
+get_auth_info_on_ns_server(Identity) ->
+    case replicated_dets:get(storage_name(), {user, Identity}) of
+        false ->
+            false;
+        _ ->
+            case replicated_dets:get(storage_name(), {auth, Identity}) of
+                false ->
+                    false;
+                {_, Auth} ->
+                    Auth
+            end
     end.
 
 -spec authenticate_with_info(list(), rbac_password()) -> boolean().
