@@ -18,6 +18,7 @@
 -behavior(application).
 
 -export([start/2, stop/1]).
+-export([make_pidfile/0, delete_pidfile/0]).
 
 -include("ns_common.hrl").
 -include_lib("ale/include/ale.hrl").
@@ -217,3 +218,26 @@ read_disk_log_index_file(Path) ->
         false ->
             {Ix, NFiles}
     end.
+
+make_pidfile() ->
+    case application:get_env(ns_babysitter, pidfile) of
+        {ok, PidFile} -> make_pidfile(PidFile);
+        X -> X
+    end.
+
+make_pidfile(PidFile) ->
+    Pid = os:getpid(),
+    %% Pid is a string representation of the process id, so we append
+    %% a newline to the end.
+    ok = misc:write_file(PidFile, list_to_binary(Pid ++ "\n")),
+    ok.
+
+delete_pidfile() ->
+    case application:get_env(ns_babysitter, pidfile) of
+        {ok, PidFile} -> delete_pidfile(PidFile);
+        X -> X
+    end.
+
+delete_pidfile(PidFile) ->
+    ok = file:delete(PidFile).
+

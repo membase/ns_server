@@ -54,7 +54,6 @@ init([]) ->
           child_specs()}}.
 
 pre_start() ->
-    misc:make_pidfile(),
     misc:ping_jointo().
 
 child_specs() ->

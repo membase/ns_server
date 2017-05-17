@@ -256,19 +256,6 @@ get_env_default(App, Var, Def) ->
             Def
     end.
 
-make_pidfile() ->
-    case application:get_env(pidfile) of
-        {ok, PidFile} -> make_pidfile(PidFile);
-        X -> X
-    end.
-
-make_pidfile(PidFile) ->
-    Pid = os:getpid(),
-    %% Pid is a string representation of the process id, so we append
-    %% a newline to the end.
-    ok = misc:write_file(PidFile, list_to_binary(Pid ++ "\n")),
-    ok.
-
 ping_jointo() ->
     case application:get_env(jointo) of
         {ok, NodeName} -> ping_jointo(NodeName);
