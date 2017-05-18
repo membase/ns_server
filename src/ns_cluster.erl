@@ -126,7 +126,8 @@ complete_join(NodeKVList) ->
                                       | not_self_started
                                       | {address_save_failed, any()}
                                       | {address_not_allowed, string()}
-                                      | already_part_of_cluster.
+                                      | already_part_of_cluster
+                                      | not_renamed.
 change_address(Address) ->
     case misc:is_good_address(Address) of
         ok ->
@@ -421,7 +422,8 @@ check_host_connectivity(OtherHost) ->
             {error, host_connectivity, M, ConnRV}
     end.
 
--spec do_change_address(string(), boolean()) -> ok | {address_save_failed, _} | not_self_started.
+-spec do_change_address(string(), boolean()) -> ok | not_renamed |
+                                                {address_save_failed, _} | not_self_started.
 do_change_address(NewAddr, UserSupplied) ->
     NewAddr1 =
         case UserSupplied of
@@ -434,7 +436,7 @@ do_change_address(NewAddr, UserSupplied) ->
     ?cluster_info("Change of address to ~p is requested.", [NewAddr1]),
     case maybe_rename(NewAddr1, UserSupplied) of
         not_renamed ->
-            ok;
+            not_renamed;
         renamed ->
             ns_server_sup:node_name_changed(),
             ?cluster_info("Renamed node. New name is ~p.", [node()]),
@@ -506,6 +508,8 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
                                 E;
                             not_self_started ->
                                 ?cluster_debug("Haven't changed address because of not_self_started condition", []),
+                                ok;
+                            not_renamed ->
                                 ok;
                             ok ->
                                 ok

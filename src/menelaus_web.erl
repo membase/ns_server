@@ -3669,6 +3669,8 @@ handle_node_rename(Req) ->
                     ok ->
                         ns_audit:rename_node(Req, Node, Hostname),
                         ok;
+                    not_renamed ->
+                        ok;
                     {cannot_resolve, Errno} ->
                         Msg = io_lib:format("Could not resolve the hostname: ~p", [Errno]),
                         {error, iolist_to_binary(Msg), 400};
