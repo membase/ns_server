@@ -49,4 +49,7 @@ child_specs() ->
 
      {users_storage,
       {menelaus_users, start_storage, []},
-      permanent, 1000, worker, [replicated_dets, replicated_storage]}].
+      permanent, 1000, worker, [replicated_dets, replicated_storage]},
+
+     {compiled_roles_cache, {menelaus_roles, start_compiled_roles_cache, []},
+      permanent, 1000, worker, [versioned_cache]}].

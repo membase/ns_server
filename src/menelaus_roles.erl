@@ -489,27 +489,32 @@ start_compiled_roles_cache() ->
                      {Name, BucketConfig} <- ns_bucket:get_buckets(ns_config:latest())]}
         end,
     GetEvents =
-        fun () ->
-                dist_manager:wait_for_node(fun ns_node_disco:ns_server_node/0),
-                [{{user_storage_events, ns_node_disco:ns_server_node()}, UsersFilter},
-                 {ns_config_events, ConfigFilter}]
+        case ns_node_disco:couchdb_node() == node() of
+            true ->
+                fun () ->
+                        dist_manager:wait_for_node(fun ns_node_disco:ns_server_node/0),
+                        [{{user_storage_events, ns_node_disco:ns_server_node()}, UsersFilter},
+                         {ns_config_events, ConfigFilter}]
+                end;
+            false ->
+                fun () ->
+                        [{user_storage_events, UsersFilter},
+                         {ns_config_events, ConfigFilter}]
+                end
         end,
+
     versioned_cache:start_link(
       compiled_roles_cache_name(), 200, fun build_compiled_roles/1,
       GetEvents, GetVersion).
 
 -spec get_compiled_roles(rbac_identity()) -> [rbac_compiled_role()].
 get_compiled_roles(Identity) ->
-    case ns_node_disco:couchdb_node() == node() of
-        false ->
-            build_compiled_roles(Identity);
-        true ->
-            versioned_cache:get(compiled_roles_cache_name(), Identity)
-    end.
+    versioned_cache:get(compiled_roles_cache_name(), Identity).
 
 build_compiled_roles(Identity) ->
     case ns_node_disco:couchdb_node() == node() of
         false ->
+            ?log_debug("Compile roles for user ~p", [Identity]),
             Definitions = get_definitions(),
             AllPossibleValues = calculate_possible_param_values(ns_bucket:get_buckets()),
             compile_roles(get_roles(Identity), Definitions, AllPossibleValues);
