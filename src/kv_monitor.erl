@@ -182,4 +182,4 @@ get_buckets(Buckets) ->
             ok
     end,
     [{B, not_ready} || B <- NotReadyBuckets] ++
-        [{B, ready} || B <- ReadyBuckets].
+        [{B, ready} || B <- ReadyBuckets, lists:member(B, Buckets)].
