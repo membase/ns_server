@@ -149,10 +149,9 @@
           .reloadOnScopeEvent(["reloadViewsPoller", "mnTasksDetailsChanged"])
           .cycle();
       }
-      if (permissions.cluster.bucket[$state.params.bucket] &&
-          permissions.cluster.bucket[$state.params.bucket].views.read) {
+      if (permissions.cluster.bucket['.'].views.read) {
         new mnPoller($scope, function () {
-          var promise = mnViewsListService.getViewsListState($state.params);
+          var promise = mnViewsListService.getViewsListState($state.params)
           promise["finally"](function () {
             $scope.viewsCtl.ddocsLoading = false;
           });

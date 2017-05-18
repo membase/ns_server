@@ -8,7 +8,7 @@
        ui-sref="app.admin.indexes.gsi"
        ui-sref-active="selected">Global Indexes</a>
     <a
-       ng-show="rbac.cluster.pools.read"
+       ng-show="rbac.cluster.bucket['.'].settings.read && rbac.cluster.bucket['.'].views.read"
        ui-state="'app.admin.indexes.views.list'"
        ui-state-params="{bucket: rbac.bucketNames['.views!read'][0] || null}"
        ng-class="{selected: ('app.admin.indexes.views' | includedByState)}"

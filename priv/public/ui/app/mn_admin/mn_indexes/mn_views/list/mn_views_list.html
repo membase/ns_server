@@ -13,7 +13,20 @@
   </div>
 </mn-element-cargo>
 
-<div ng-if="!rbac.cluster.bucket[viewsCtl.currentBucketName] || rbac.cluster.bucket[viewsCtl.currentBucketName].views.read">
+<mn-element-cargo depot="alerts">
+  <div
+     ng-if="viewsListCtl.ddocs.status"
+     ng-switch="viewsListCtl.ddocs.status"
+     class="interim alert alert-warning" >
+    <p ng-switch-when="_404">Bucket name should be specified.</p>
+    <p ng-switch-when="400">Error 400: This bucket is hosted on another node.</p>
+    <p ng-switch-when="404">Error 404: This bucket does not exist.</p>
+    <p ng-switch-when="403">Error 403: You do not have the necessary permissions to see views in this bucket.</p>
+    <p ng-switch-default>Unexpected Error</p>
+  </div>
+</mn-element-cargo>
+
+<div>
   <div class="row">
     <ui-select
        ng-model="viewsCtl.currentBucketName"
@@ -38,24 +51,46 @@
          ui-sref-active="selected">Production Views</a>
       <span
          class="label red badge"
-         ng-show="viewsListCtl.ddocs.production.length && rbac.cluster.bucket[viewsCtl.currentBucketName].views.read">{{viewsListCtl.ddocs.production.length}}
+         ng-show="viewsListCtl.ddocs.production.length">{{viewsListCtl.ddocs.production.length}}
       </span>
     </span>
   </div>
 
   <div mn-spinner="viewsListCtl.showViewsPollerSpinner">
     <div class="cbui-table">
+      <div
+         class="zero-content"
+         ng-show="viewsListCtl.ddocs.status">
+      </div>
+      <div
+         class="zero-content"
+         ng-show="!viewsListCtl.ddocs.status && !rbac.bucketNames['.views!read'].length">
+        There are currently no buckets and no views to show.
+        <span ng-show="rbac.cluster.buckets.create">
+          Go to <a ui-sref="app.admin.buckets">Buckets</a> to add one,
+          or load a <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.
+        </span>
+      </div>
 
-      <div class="zero-content" ng-if="!viewsCtl.currentBucketName && !viewsListCtl.ddocs.ddocsAreInFactMissing">
-        You have no data buckets. Go to <a ui-sref="app.admin.buckets">Buckets</a> to add one,
-        or load a <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.
-      </div>
-      <div class="zero-content" ng-if="viewsListCtl.ddocs.ddocsAreInFactMissing">
-        This node doesn't host the current bucket. For a list of design docs, please open the web console on a different node.
-      </div>
-      <div class="zero-content" ng-if="viewsCtl.currentBucketName && !viewsListCtl.ddocs.ddocsAreInFactMissing && !viewsListCtl.ddocs[viewsListCtl.type].length">
-        <span ng-show="viewsListCtl.isDevelopmentViews">There are currently no design documents in development. <span class="when-roadmin-avoid-me">Use ADD VIEW above to create one.</span></span>
-        <span ng-show="!viewsListCtl.isDevelopmentViews">There are no design documents currently published. <span class="when-roadmin-avoid-me">Go to Development Views to create one.</span></span>
+      <div
+         class="zero-content"
+         ng-show="!viewsListCtl.ddocs.status && rbac.bucketNames['.views!read'].length && !viewsListCtl.ddocs[viewsListCtl.type].length">
+        <span ng-show="viewsListCtl.isDevelopmentViews">
+          There are currently no design documents in development.
+          <span
+             class="when-roadmin-avoid-me"
+             ng-show="rbac.cluster.bucket[viewsCtl.currentBucketName].views.write">
+            Use ADD VIEW above to create one.
+          </span>
+        </span>
+        <span ng-show="!viewsListCtl.isDevelopmentViews">
+          There are no design documents currently published.
+          <span
+             class="when-roadmin-avoid-me"
+             ng-show="rbac.cluster.bucket[viewsCtl.currentBucketName].views.write">
+            Go to Development Views to create one.
+          </span>
+        </span>
       </div>
 
       <div
@@ -129,10 +164,9 @@
           </button>
           <button
              class="outline tight"
-             ng-show="rbac.cluster.bucket[viewsCtl.currentBucketName].views.write"
              ng-click="$event.stopPropagation()"
              ui-sref=".editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, false))">
-            {{viewsListCtl.isDevModeDoc(row.doc.meta.id) ? 'Edit' : 'Show' }}
+            {{viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.bucket[viewsCtl.currentBucketName].views.write ? 'Edit' : 'Show' }}
           </button>
         </span>
       </div>
@@ -152,7 +186,6 @@
           </button>
           <button
              ng-click="$event.stopPropagation()"
-             ng-show="rbac.cluster.bucket[viewsCtl.currentBucketName].views.read"
              ui-sref=".editing.result(viewsListCtl.getInitialViewsFilterParams(key, row, true))">
             {{viewsListCtl.isDevModeDoc(row.doc.meta.id) && rbac.cluster.bucket[viewsCtl.currentBucketName].views.write ? 'Edit' : 'Show' }}
            </button>

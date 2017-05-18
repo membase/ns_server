@@ -19,8 +19,7 @@
           }
         },
         data: {
-          title: "Indexes",
-          permissions: "cluster.bucket['.'].settings.read || cluster.indexes.read"
+          title: "Indexes"
         }
       })
       .state('app.admin.indexes.gsi', {
@@ -30,6 +29,9 @@
             array: true,
             dynamic: true
           }
+        },
+        data: {
+          permissions: "cluster.indexes.read"
         },
         controller: "mnGsiController as gsiCtl",
         templateUrl: "app/mn_admin/mn_indexes/mn_gsi/mn_gsi.html"
@@ -48,7 +50,7 @@
           }
         },
         data: {
-          permissions: "cluster.bucket['.'].settings.read"
+          permissions: "cluster.bucket['.'].settings.read && cluster.bucket['.'].views.read"
         },
         views: {}
       };

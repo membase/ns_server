@@ -2,7 +2,7 @@
   <div
      class="interim alert alert-warning"
      ng-if="!viewsCtl.mnPoolDefault.value.isKvNode">
-    <p>The views interface is only available on nodes running the Data service. You may access the interface here: <a ng-href="{{viewsCtl.kvNodeLink}}">{{viewsCtl.kvNodeLink}}</a></p>
+    <p>This node does not have the data service running (required for Views). You may access the interface here: <a ng-href="{{viewsCtl.kvNodeLink}}">{{viewsCtl.kvNodeLink}}</a></p>
   </div>
 </mn-element-cargo>
 
