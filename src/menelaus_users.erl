@@ -74,12 +74,22 @@ start_storage() ->
     replicated_dets:start_link(?MODULE, [], storage_name(), Path, Replicator, CacheSize).
 
 get_users_version() ->
-    [{user_version, V, Base}] = ets:lookup(versions_name(), user_version),
-    {V, Base}.
+    case ns_node_disco:couchdb_node() == node() of
+        false ->
+            [{user_version, V, Base}] = ets:lookup(versions_name(), user_version),
+            {V, Base};
+        true ->
+            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, get_users_version, [])
+    end.
 
 get_auth_version() ->
-    [{auth_version, V, Base}] = ets:lookup(versions_name(), auth_version),
-    {V, Base}.
+    case ns_node_disco:couchdb_node() == node() of
+        false ->
+            [{auth_version, V, Base}] = ets:lookup(versions_name(), auth_version),
+            {V, Base};
+        true ->
+            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, get_auth_version, [])
+    end.
 
 start_replicator() ->
     GetRemoteNodes =
