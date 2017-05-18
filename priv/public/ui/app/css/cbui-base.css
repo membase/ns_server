@@ -484,6 +484,11 @@ sub {
   display: inline-flex;
 }
 
+.ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .nowrap {
   white-space: nowrap;
 }

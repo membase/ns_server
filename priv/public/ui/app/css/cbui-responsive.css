@@ -1,5 +1,4 @@
-/* Responsive Styles --------------------------------------- */
-
+/* Responsive Styles ------------------------------------ */
 @-ms-viewport {
   width: device-width;
 }
@@ -9,7 +8,8 @@
   }
 }
 
-@media (max-width: 1020px) { /* ----- responsive medium ----- */
+/* responsive medium ------------------------------------ */
+@media (max-width: 1020px) {
 
   html, body {
     font-size: 15px;
@@ -39,7 +39,6 @@
     max-width: 40px;
   }
   .logobug-wrapper {
-    -webkit-box-flex: 1;
     flex: 1 1 0;
     white-space: nowrap;
     flex: 0 1 auto;
@@ -82,16 +81,16 @@
     border: 0;
     border-left: 4px solid #d9e7f7;
   }
-  .nav-sidebar a.currentNav,
-  .nav-sidebar .currentNav a {
+  .nav-sidebar a.currentnav,
+  .nav-sidebar .currentnav a {
     border: 0;
     border-left: 4px solid #d9e7f7;
     color: #555;
   }
 }
 
-@media (max-width: 700px) { /* ----- responsive small ----- */
-
+/* responsive small ------------------------------------- */
+@media (max-width: 700px) {
   .resp-hide-sml {
     display: none !important;
   }
@@ -130,8 +129,8 @@
   }
 }
 
-@media (max-width: 480px) { /* ----- responsive extra-small ----- */
-
+/* responsive extra-small ------------------------------- */
+@media (max-width: 480px) {
   .resp-hide-xsml {
     display: none !important;
   }
@@ -178,18 +177,20 @@
   }
   .service-widget {
   margin-bottom: .5rem;
-  -webkit-column-break-inside: avoid;
   page-break-inside: avoid;
   break-inside: avoid;
   }
 }
 
-.resp-show {
-  display: block;
-}
-nav.resp-show-menu {
-  transform: translateX(0);
-}
-.resp-show-flex {
-  display: flex;
+/* "global" resp styles placed here for precedence ------ */
+@media (max-width: 1020px) {
+  .resp-show {
+    display: block;
+  }
+  nav.resp-show-menu {
+    transform: translateX(0);
+  }
+  .resp-show-flex {
+    display: flex;
+  }
 }
