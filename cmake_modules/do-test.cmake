@@ -23,6 +23,7 @@ EXECUTE_PROCESS(COMMAND "${CMAKE_COMMAND}" -E echo
   -pa ./ebin ${ebindirs} "${COUCHDB_BIN_DIR}/src/couchdb"
   -pa "${COUCHDB_BIN_DIR}/src/mochiweb"
   -pa "${COUCHDB_BIN_DIR}/src/ejson"
+  -pa "${COUCHDB_BIN_DIR}/src/couch_index_merger/ebin"
   -noshell -kernel error_logger silent -shutdown_time 10000
   -sname "${NODE_NAME}"
   -eval "\"application:start(sasl).\""
@@ -33,6 +34,7 @@ EXECUTE_PROCESS(RESULT_VARIABLE _failure
   -pa ./ebin ${ebindirs} "${COUCHDB_BIN_DIR}/src/couchdb"
   -pa "${COUCHDB_BIN_DIR}/src/mochiweb"
   -pa "${COUCHDB_BIN_DIR}/src/ejson"
+  -pa "${COUCHDB_BIN_DIR}/src/couch_index_merger/ebin"
   -noshell -kernel error_logger silent -shutdown_time 10000
   -sname "${NODE_NAME}"
   -eval "application:start(sasl)."
