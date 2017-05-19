@@ -22,7 +22,7 @@
       </div>
     </div>
     <div class="service-widget" ng-class="['dynamic_' + overviewCtl.nodes.index.statusClass]">
-      <h4>GSI Service</h4>
+      <h4>Index Service</h4>
       <a ui-sref="app.admin.servers.list">
         {{overviewCtl.nodes.index.length || '0'}}
         node{{overviewCtl.getEndings(overviewCtl.nodes.index.length)}}
@@ -36,7 +36,7 @@
     <div
        class="service-widget"
        ng-class="['dynamic_' + overviewCtl.nodes.fts.statusClass]">
-      <h4>FTS Service</h4>
+      <h4>Search Service</h4>
       <a ui-sref="app.admin.servers.list">
         {{overviewCtl.nodes.fts.length || '0'}}
         node{{overviewCtl.getEndings(overviewCtl.nodes.fts.length)}}
