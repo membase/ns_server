@@ -17,6 +17,8 @@
 %%
 -module(ns_audit).
 
+-behaviour(gen_server).
+
 -include("ns_common.hrl").
 
 -export([login_success/1,
@@ -66,7 +68,45 @@
          security_settings/2
         ]).
 
--export([stats/0]).
+-export([start_link/0, stats/0]).
+
+%% gen_server callbacks
+-export([init/1, handle_cast/2, handle_call/3,
+         handle_info/2, terminate/2, code_change/3]).
+
+-record(state, {queue, retries}).
+
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+init([]) ->
+    {ok, #state{queue = queue:new(), retries = 0}}.
+
+terminate(_Reason, _State)     -> ok.
+code_change(_OldVsn, State, _) -> {ok, State}.
+
+handle_call({log, Code, Body}, _From, #state{queue = Queue} = State) ->
+    ?log_debug("Audit ~p: ~p", [Code, Body]),
+    EncodedBody = ejson:encode({Body}),
+    NewQueue = queue:in({Code, EncodedBody}, Queue),
+    self() ! send,
+    {reply, ok, State#state{queue = NewQueue}}.
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+handle_info(send, #state{queue = Queue, retries = Retries} = State) ->
+    misc:flush(send),
+    {Res, NewQueue} = send_to_memcached(Queue),
+    NewRetries =
+        case Res of
+            ok ->
+                0;
+            error ->
+                timer2:send_after(1000, send),
+                Retries + 1
+        end,
+    {noreply, State#state{queue = NewQueue, retries = NewRetries}}.
 
 code(login_success) ->
     8192;
@@ -252,30 +292,24 @@ prepare(Req, Params) ->
 
 put(Code, Req, Params) ->
     Body = prepare(Req, Params),
-    proc_lib:spawn_link(
-      fun () ->
-              ?log_debug("Audit ~p: ~p", [Code, Body]),
-              EncodedBody = ejson:encode({Body}),
-              send_to_memcached(Code, EncodedBody, 1)
-      end).
+    ok = gen_server:call(?MODULE, {log, Code, Body}).
 
-send_to_memcached(Code, EncodedBody, Iteration) ->
-    case (catch ns_memcached_sockets_pool:executing_on_socket(
-                  fun (Sock) ->
-                          mc_client_binary:audit_put(Sock, code(Code), EncodedBody)
-                  end)) of
-        ok ->
-            ok;
-        Error ->
-            case Iteration of
-                21 ->
-                    ?log_error("Audit put call ~p with body ~p failed with error ~p",
-                               [Code, EncodedBody, Error]);
-                _ ->
-                    ?log_debug("Audit put call ~p with body ~p failed with error ~p. Retrying in 1s. Iteration ~p",
-                               [Code, EncodedBody, Error, Iteration]),
-                    timer:sleep(1000),
-                    send_to_memcached(Code, EncodedBody, Iteration + 1)
+send_to_memcached(Queue) ->
+    case queue:out(Queue) of
+        {empty, Queue} ->
+            {ok, Queue};
+        {{value, {Code, EncodedBody}}, NewQueue} ->
+            case (catch ns_memcached_sockets_pool:executing_on_socket(
+                          fun (Sock) ->
+                                  mc_client_binary:audit_put(Sock, code(Code), EncodedBody)
+                          end)) of
+                ok ->
+                    send_to_memcached(NewQueue);
+                Error ->
+                    ?log_debug(
+                       "Audit put call ~p with body ~p failed with error ~p. Retrying in 1s.",
+                       [Code, EncodedBody, Error]),
+                    {error, Queue}
             end
     end.
 

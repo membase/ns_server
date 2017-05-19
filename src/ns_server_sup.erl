@@ -159,6 +159,9 @@ child_specs() ->
      {ns_audit_cfg, {ns_audit_cfg, start_link, []},
       {permanent, 4}, 1000, worker, []},
 
+     {ns_audit, {ns_audit, start_link, []},
+      {permanent, 4}, 1000, worker, []},
+
      {memcached_config_mgr, {memcached_config_mgr, start_link, []},
       {permanent, 4}, 1000, worker, []},
 
